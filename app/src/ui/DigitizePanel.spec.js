@@ -93,7 +93,11 @@ function baseElement(shapes = [], extra = {}) {
 // cannot quietly change what 20 tests are asserting; the default-closed state
 // gets its own test below, which is the one thing this helper would hide.
 function openLayers(utils) {
-  const btn = utils.container.querySelector('button[aria-expanded][class*="seq-toggle"]');
+  // The Layers block lives on the Shapes tab since 2026-09-30 (the panel
+  // opens on Settings), so the tab comes first; then the disclosure inside.
+  const tab = [...utils.container.querySelectorAll('button[role="tab"]')]
+    .find((b) => b.textContent.trim().startsWith("Shapes"));
+  if (tab) fireEvent.click(tab);
   const shapesBtn = [...utils.container.querySelectorAll("button")]
     .find((b) => /^Edit shapes/.test(b.textContent.trim()));
   if (shapesBtn) fireEvent.click(shapesBtn);
@@ -221,49 +225,33 @@ describe("whole-design params", () => {
     expect(queryByLabelText("Add fine detail lines")).toBeNull();
   });
 
-  test("present on a user-declared photo, whose reading carries no warning at all", () => {
-    // The override path, not the engine's: isPhoto forces the tonal lane, and
-    // the forced row has no CLASSIFIED_* warning to read.
-    const { getByLabelText } = renderPanel([shapeRow("s1")], { isPhoto: true, warnings: [] });
-    expect(getByLabelText("Add fine detail lines")).toBeTruthy();
-  });
-
-  test("absent under a forced-FLAT override, even if the engine had read it as a photo", () => {
-    const { queryByLabelText } = renderPanel([shapeRow("s1")], {
-      ...TONAL,
-      params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" },
+  test("present when stage 1.25 detected a photograph, whatever colour class stage 0 gave", () => {
+    // The engine's own verdict (EXIF camera or a face), which is what turns
+    // the photographic machinery on since the user-declared override went
+    // (Kent, 2026-09-30). It arrives as its own warning code.
+    const { getByLabelText } = renderPanel([shapeRow("s1")], {
+      warnings: [{ code: "PHOTO_DETECTED", message: "engine prose", signal: "face" }],
     });
-    expect(queryByLabelText("Add fine detail lines")).toBeNull();
+    expect(getByLabelText("Add fine detail lines")).toBeTruthy();
   });
 });
 
-// ---- what the art was read as, and correcting it ---------------------------
+// ---- what the art was read as ---------------------------------------------
 //
 // Stage 0 classifies every job on its own (flat / gradient / photo_subject /
-// photo_scene). This row is Studio finally SAYING so in plain words, with the
-// override recast as a correction to that sentence instead of a question asked
-// before anything has been digitized -- Kent 2026-08-30, "choose flat work,
-// real photo etc. IDK what ANY of that even means".
-//
-// What gets SENT is unchanged, and these tests hold that line: "It's flat art"
-// still writes forced_class=flat, "It's a photo" still sets isPhoto (which
-// buildDigitizeConfig turns into forced_class=photo_subject -- see
-// digitizer.spec.js's precedence test).
+// photo_scene), and stage 1.25 adds PHOTO_DETECTED when the file's camera
+// header or a face says photograph. This row is Studio SAYING so in plain
+// words -- and nothing else. Kent, 2026-09-30: "get rid of the 'it's flat
+// art' / 'it's a photo' check boxes ... just automatically recognize what it
+// is". Until that day the row carried a one-click correction ("It's flat
+// art" wrote forced_class=flat, "It's a photo" set isPhoto); these tests hold
+// the new line: no button on any reading, and a legacy override stored in
+// the element changes nothing on screen.
 //
 // `health` stays null here (renderPanel's default), so the reactive re-run
 // bails at runDigitize's own `!health` guard and no digitize is attempted --
-// same no-service posture as the rest of this file, and the reason these
-// assert on the PATCH rather than on a network call.
-//
-// The flat correction is scoped to FLAT-COLOR art on purpose and the copy has
-// to keep saying so: forcing flat on genuinely TEXTURED logo art measured
-// WORSE (k-means shatters the texture into confetti), so "no shading or photo
-// texture" is load-bearing, not padding.
-describe("the reading row -- correcting a photo/gradient reading to flat", () => {
-  const MISROUTE_CODES = [
-    "CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE", "CLASSIFIED_GRADIENT",
-  ];
-
+// same no-service posture as the rest of this file.
+describe("the reading row -- states the reading, offers no correction", () => {
   function panelWarnedAs(code, extra = {}) {
     return renderPanel([shapeRow("s1")], {
       warnings: [{ code, message: "engine prose" }],
@@ -271,130 +259,72 @@ describe("the reading row -- correcting a photo/gradient reading to flat", () =>
     });
   }
 
-  for (const code of MISROUTE_CODES) {
-    test(`offers the flat correction on ${code}`, () => {
-      const { getByRole, getByText } = panelWarnedAs(code);
-      expect(getByRole("button", { name: "It's flat art" })).toBeTruthy();
-      // The texture caveat, not just the button.
-      expect(getByText(/no shading or photo texture/)).toBeTruthy();
+  const READINGS = [
+    // A face routed the design flat (Kent's ruling 2026-09-30).
+    ["FACE_ROUTED_FLAT", /A face was found, so it's sewing as flat art/],
+    ["CLASSIFIED_PHOTO_SUBJECT", /Read as a photo/],
+    ["CLASSIFIED_PHOTO_SCENE", /Read as a photo/],
+    // Stage 1.25's verdict on its own (stage 0 said flat): a photograph, but
+    // the sentence promises the tier the art is really sewing in.
+    ["PHOTO_DETECTED", /Read as a photograph, sewing as solid color regions/],
+    ["CLASSIFIED_GRADIENT", /Read as shaded artwork/],
+    ["CLASSIFICATION_UNCERTAIN", /Couldn't tell what this artwork is/],
+    ["COLOR_CAP_APPLIED", /Read as flat art/],
+  ];
+
+  for (const [code, sentence] of READINGS) {
+    test(`${code}: states the reading and has no button at all`, () => {
+      const { getByText, container } = panelWarnedAs(code);
+      expect(getByText(sentence)).toBeTruthy();
+      const row = container.querySelector(".dgp-read");
+      expect(row).toBeTruthy();
+      expect(row.querySelectorAll("button")).toHaveLength(0);
+      // The old corrections, by name, so a revival is caught by its label.
+      expect(row.textContent).not.toMatch(/It's a photo|It's flat art|Use automatic detection|You set this to/);
     });
   }
 
-  test("a flat reading states itself and offers the OTHER direction instead", () => {
-    // Was "stays silent for a flat result whose warnings are about something
-    // else". It no longer stays silent -- saying what the art was read as is
-    // the point of the row -- but the FLAT correction is still absent, which
-    // is what that test was actually protecting.
-    const { queryByRole, getByRole, getByText } = panelWarnedAs("COLOR_CAP_APPLIED");
-    expect(queryByRole("button", { name: "It's flat art" })).toBeNull();
-    expect(getByText(/Read as flat art/)).toBeTruthy();
-    expect(getByRole("button", { name: "It's a photo" })).toBeTruthy();
+  test("says nothing about a reading before the first run has produced one", () => {
+    const { queryByText, container } = renderPanel([shapeRow("s1")], { result: null });
+    expect(queryByText(/Read as/)).toBeNull();
+    expect(container.querySelector(".dgp-read")).toBeNull();
   });
 
-  test("an uncertain classification says so rather than claiming a reading", () => {
-    const { getByText, getByRole } = panelWarnedAs("CLASSIFICATION_UNCERTAIN");
-    expect(getByText(/Couldn't tell what this artwork is/)).toBeTruthy();
-    expect(getByRole("button", { name: "It's a photo" })).toBeTruthy();
-  });
+  // One render per test: testing-library only cleans the DOM up BETWEEN
+  // tests, so two panels in one test double every label.
+  // PHOTO_DETECTED alone is a photograph on a flat tier; the detail lines
+  // read off its raster, so the option is offered there too.
+  for (const code of ["CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_GRADIENT", "PHOTO_DETECTED", "FACE_ROUTED_FLAT"]) {
+    test(`${code}: the detail-lines option rides this reading`, () => {
+      const { getByLabelText } = panelWarnedAs(code);
+      expect(getByLabelText("Add fine detail lines")).toBeTruthy();
+    });
+  }
+  for (const code of ["COLOR_CAP_APPLIED", "CLASSIFICATION_UNCERTAIN"]) {
+    test(`${code}: no detail-lines option on a flat reading`, () => {
+      const { queryByLabelText } = panelWarnedAs(code);
+      expect(queryByLabelText("Add fine detail lines")).toBeNull();
+    });
+  }
 
-  test("stays silent once the override is already set -- offering it twice is nonsense", () => {
-    const { queryByRole } = panelWarnedAs("CLASSIFIED_PHOTO_SUBJECT", {
+  // A project saved before 2026-09-30 can carry params.forced_class or
+  // isPhoto. Neither is sent (digitizer.spec.js) and neither may resurrect
+  // the "You set this to..." row: the reading shown is the engine's.
+  test("a legacy forced_class saved in the element changes nothing on screen", () => {
+    const flat = panelWarnedAs("CLASSIFIED_PHOTO_SUBJECT", {
       params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" },
     });
-    expect(queryByRole("button", { name: "It's flat art" })).toBeNull();
+    expect(flat.getByText(/Read as a photo/)).toBeTruthy();
+    expect(flat.queryByText(/You set this to/)).toBeNull();
+    expect(flat.container.querySelectorAll(".dgp-read button")).toHaveLength(0);
+    expect(flat.getByLabelText("Add fine detail lines")).toBeTruthy();
   });
 
-  test("says nothing about a reading before the first run has produced one", () => {
-    const { queryByText, queryByRole } = renderPanel([shapeRow("s1")], { result: null });
-    expect(queryByText(/Read as/)).toBeNull();
-    expect(queryByRole("button", { name: "It's a photo" })).toBeNull();
-  });
-
-  test("taking the correction writes forced_class in exactly one params patch (one undo step)", async () => {
-    const { getByRole, patches } = panelWarnedAs("CLASSIFIED_PHOTO_SUBJECT");
-    await fireEvent.click(getByRole("button", { name: "It's flat art" }));
-    expect(patches).toHaveLength(1);
-    expect(Object.keys(patches[0].patch)).toEqual(["params"]);
-    expect(patches[0].patch.params.forced_class).toBe("flat");
-    // A params patch replaces the whole object -- dropping a sibling here would
-    // silently reset the design's width/colors along with the override.
-    expect(patches[0].patch.params.max_colors).toBe(DEFAULT_DIGITIZE_PARAMS.max_colors);
-    expect(patches[0].patch.params.target_width_mm).toBe(DEFAULT_DIGITIZE_PARAMS.target_width_mm);
-  });
-});
-
-describe("the reading row -- a standing override, and going back to automatic", () => {
-  const FORCED = { params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" } };
-
-  test("a standing row says the design is being forced, with no warning left to hang it off", () => {
-    // The point of "standing": after the forced re-digitize the art classifies
-    // as flat and the CLASSIFIED_* warning is GONE. If the row hung off the
-    // warning, the override would become invisible and permanent one run after
-    // the user set it. Hence `warnings: []` here.
-    const { getByText, getByRole } = renderPanel([shapeRow("s1")], { ...FORCED, warnings: [] });
-    expect(getByText("You set this to flat art.")).toBeTruthy();
-    expect(getByRole("button", { name: "Use automatic detection" })).toBeTruthy();
-  });
-
-  test("absent entirely when no override is set", () => {
-    const { queryByText, queryByRole } = renderPanel([shapeRow("s1")]);
-    expect(queryByText(/^You set this to/)).toBeNull();
-    expect(queryByRole("button", { name: "Use automatic detection" })).toBeNull();
-  });
-
-  test("reverting DELETES the key rather than nulling it, in one patch", async () => {
-    // Deleted, not set to null: the params object has to come back byte-
-    // identical to a design that never overrode anything, or the service's job
-    // cache key differs and the revert re-runs a job it already has.
-    const { getByRole, patches } = renderPanel([shapeRow("s1")], FORCED);
-    await fireEvent.click(getByRole("button", { name: "Use automatic detection" }));
-    expect(patches).toHaveLength(1);
-    expect(Object.keys(patches[0].patch)).toEqual(["params"]);
-    expect("forced_class" in patches[0].patch.params).toBe(false);
-    expect(patches[0].patch.params).toEqual({ ...DEFAULT_DIGITIZE_PARAMS });
-  });
-
-  test("a standing PHOTO override reads the same way, and reverting clears isPhoto alone", async () => {
-    // isPhoto lives on the element, not in params, so reverting it must not
-    // manufacture a params patch -- that would change the job cache key on a
-    // design whose params never moved.
-    const { getByText, getByRole, patches } = renderPanel([shapeRow("s1")], { isPhoto: true });
-    expect(getByText("You set this to a photo.")).toBeTruthy();
-    await fireEvent.click(getByRole("button", { name: "Use automatic detection" }));
-    expect(patches).toHaveLength(1);
-    expect(Object.keys(patches[0].patch)).toEqual(["isPhoto"]);
-    expect(patches[0].patch.isPhoto).toBe(false);
-  });
-});
-
-// Controller ruling 2026-08-19 (fix round 1, Important 2): declaring the art a
-// photo while a flat-art override is standing left the config and the row
-// disagreeing -- buildDigitizeConfig sends photo_subject (isPhoto wins, see
-// digitizer.spec.js's precedence test) while the row read only
-// params.forced_class and kept saying flat. Fixed at the source: the handler
-// clears params.forced_class in the SAME patch. The row now also resolves
-// isPhoto first, so the two cannot disagree even if a patch ever left both set.
-describe("the reading row -- \"It's a photo\" from a standing flat override", () => {
-  const FORCED = { params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" } };
-
-  test("clears forced_class in the same patch, and the row stops saying flat", async () => {
-    const { getByRole, getByText, queryByText, patches } = renderPanel([shapeRow("s1")], FORCED);
-    // Sanity on the starting contradiction this fix removes.
-    expect(getByText("You set this to flat art.")).toBeTruthy();
-
-    await fireEvent.click(getByRole("button", { name: "It's a photo" }));
-    expect(patches).toHaveLength(1);
-    expect(Object.keys(patches[0].patch)).toEqual(["isPhoto", "params"]);
-    expect(patches[0].patch.isPhoto).toBe(true);
-    expect("forced_class" in patches[0].patch.params).toBe(false);
-    // Rest of the design's params survive the spread, same rule as every
-    // other params-replacing patch in this file.
-    expect(patches[0].patch.params).toEqual({ ...DEFAULT_DIGITIZE_PARAMS });
-
-    // Proves the row CONDITION, not just the patch shape: the harness merges
-    // the patch into `element` and re-renders the real panel off it.
-    expect(queryByText("You set this to flat art.")).toBeNull();
-    expect(getByText("You set this to a photo.")).toBeTruthy();
+  test("a legacy isPhoto saved in the element changes nothing on screen", () => {
+    const photo = panelWarnedAs("COLOR_CAP_APPLIED", { isPhoto: true });
+    expect(photo.getByText(/Read as flat art/)).toBeTruthy();
+    expect(photo.queryByText(/You set this to/)).toBeNull();
+    expect(photo.queryByLabelText("Add fine detail lines")).toBeNull();
   });
 });
 
@@ -741,6 +671,62 @@ describe("findings that have a knob behind them", () => {
     expect(queryByTestId("digitize-fixes")).toBeNull();
   });
 
+  test("tight gaps offer the width the finding names, not a 25% step", () => {
+    // SATIN_GAPS_TIGHT (2026-09-30) names the width at which its headline
+    // shape's gaps clear the pull + the thread; the button jumps there.
+    const { getByTestId } = withFindings([
+      { code: "SATIN_GAPS_TIGHT", severity: "warn", message: "sews its gaps closed at 80 mm",
+        extra: { shapes: [{ shape_id: "S1", clear_width_mm: 158 }, { shape_id: "S2", clear_width_mm: 113 }] } }]);
+    const box = getByTestId("digitize-fixes");
+    expect(box.textContent).toMatch(/Make it bigger/);
+    expect(box.textContent).toMatch(/80 → 158 mm wide/);
+    expect(box.querySelector(".dgp-fix").title).toMatch(/gaps closed/);
+  });
+
+  test("the named width and the 25% step share one button, and the larger target wins either way", () => {
+    for (const findings of [
+      [{ code: "LETTERING_TOO_SMALL", severity: "warn", message: "a" },
+       { code: "SATIN_GAPS_TIGHT", severity: "warn", message: "b", extra: { shapes: [{ shape_id: "S1", clear_width_mm: 158 }] } }],
+      [{ code: "SATIN_GAPS_TIGHT", severity: "warn", message: "b", extra: { shapes: [{ shape_id: "S1", clear_width_mm: 158 }] } },
+       { code: "LETTERING_TOO_SMALL", severity: "warn", message: "a" }],
+    ]) {
+      const { container, getByTestId, unmount } = withFindings(findings);
+      expect(container.querySelectorAll(".dgp-fix").length).toBe(1);
+      expect(getByTestId("digitize-fixes").textContent).toMatch(/80 → 158 mm wide/);
+      unmount();
+    }
+  });
+
+  test("a named width past the ceiling is capped at 400, and none is offered when already there", () => {
+    const tight = { code: "SATIN_GAPS_TIGHT", severity: "warn", message: "x",
+                    extra: { shapes: [{ shape_id: "S1", clear_width_mm: 620 }] } };
+    const capped = withFindings([tight]);
+    expect(capped.getByTestId("digitize-fixes").textContent).toMatch(/80 → 400 mm wide/);
+    capped.unmount();
+    const atLimit = withFindings([tight], { target_width_mm: 400 });
+    expect(atLimit.queryByTestId("digitize-fixes")).toBeNull();
+  });
+
+  test("lettering the artwork cannot carry jumps to the width the prep's grid could trace, when one is named", () => {
+    // 2026-09-30: LETTERING_TOO_SMALL / LETTERING_ILLEGIBLE carry `traced_at_mm`
+    // when a low-resolution source lost the lettering (bridge: 118 mm); the
+    // same button jumps there. Without it (a source above the prep floor,
+    // where a bigger design adds no pixels) the 25% step stays.
+    const named = withFindings([{ code: "LETTERING_TOO_SMALL", severity: "warn", message: "lost in tracing",
+                                  extra: { traced_at_mm: 118, shapes: [{ shape_id: "S1", column_mm: 0.8, extent_mm: 3.4 }] } }]);
+    expect(named.getByTestId("digitize-fixes").textContent).toMatch(/80 → 118 mm wide/);
+    named.unmount();
+    const step = withFindings([{ code: "LETTERING_ILLEGIBLE", severity: "warn", message: "x",
+                                 extra: { traced_at_mm: null, rows: [] } }]);
+    expect(step.getByTestId("digitize-fixes").textContent).toMatch(/80 → 100 mm wide/);
+  });
+
+  test("a tight-gaps finding with no named width falls back to the 25% step", () => {
+    const { getByTestId } = withFindings(
+      [{ code: "SATIN_GAPS_TIGHT", severity: "warn", message: "x", extra: { shapes: [] } }]);
+    expect(getByTestId("digitize-fixes").textContent).toMatch(/80 → 100 mm wide/);
+  });
+
   test("a fix already at its limit is not offered", () => {
     // "Make it bigger" on a design already at the 400 mm ceiling would do
     // nothing and cost a full re-digitize.
@@ -847,9 +833,15 @@ describe("the Edit shapes disclosure", () => {
   // Renders WITHOUT openLayers on purpose -- this is the state the shared
   // helper opens past, so it is the one thing the other 46 tests cannot see.
   function raw(shapes) {
-    return render(Harness, {
+    const utils = render(Harness, {
       props: { element: baseElement(shapes), onPatch: () => {} },
     });
+    // The disclosure lives on the Shapes tab (2026-09-30); this opens the
+    // tab and nothing else, so the disclosure's own state is what is seen.
+    const tab = [...utils.container.querySelectorAll('button[role="tab"]')]
+      .find((b) => b.textContent.trim().startsWith("Shapes"));
+    if (tab) fireEvent.click(tab);
+    return utils;
   }
 
   test("the shape rows are closed on arrival", () => {
@@ -1237,5 +1229,421 @@ describe("border readout — what sewed, not what was asked for", () => {
     const { getByText, getByLabelText } = renderPanel(SHAPES, { result: resultWith(RUNS) });
     await fireEvent.change(getByLabelText("Design edge"), { target: { value: "none" } });
     expect(getByText("Design edge off.")).toBeTruthy();
+  });
+});
+
+// ---- what the upload STORES and what a digitize SENDS (2026-09-20) --------
+//
+// The panel used to send its 1,200-px canvas PNG to the service; it now
+// stores the file's own bytes (lib/sourceStore.js) and sends THOSE, keeping
+// the canvas as the preview. jsdom has neither a canvas nor IndexedDB, so
+// both are stood in for: the canvas by a stub returning a fixed data URL,
+// the store by an in-memory map through vi.mock. `loadImage` is the same
+// controlled stub the file banner describes.
+const { fakeStore } = vi.hoisted(() => ({ fakeStore: new Map() }));
+vi.mock("../lib/sourceStore.js", () => ({
+  sourceStoreAvailable: () => true,
+  sourceKeyFor: async (bytes) => "key-" + bytes.length,
+  putSource: async (key, rec) => { fakeStore.set(key, rec); },
+  getSource: async (key) => fakeStore.get(key) || null,
+  deleteSource: async (key) => { fakeStore.delete(key); },
+}));
+
+const { proposeCropMock } = vi.hoisted(() => ({ proposeCropMock: vi.fn(() => null) }));
+vi.mock("../lib/cropProposal.js", () => ({ proposeCrop: proposeCropMock }));
+
+describe("the upload proposes a crop", () => {
+  beforeEach(() => {
+    fakeStore.clear();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      drawImage() {},
+      getImageData: () => ({ width: 10, height: 10, data: new Uint8ClampedArray(400) }),
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,AAAA");
+    loadImageResult = () => Promise.resolve({ width: 1400, height: 316 });
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  test("the patch carries proposeCrop's rectangle, measured with the target width", async () => {
+    const proposal = { x0: 0.1, y0: 0.1, x1: 0.9, y1: 0.9 };
+    proposeCropMock.mockClear();
+    proposeCropMock.mockReturnValue(proposal);
+    const patches = [];
+    const { container } = render(Harness, {
+      props: {
+        element: baseElement([], { sourcePng: null, result: null, review: null }),
+        health: { ok: true, limits: { max_upload_bytes: 12 * 1024 * 1024, max_pixels: 40_000_000 } },
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    const input = container.querySelector('.dgp-upload input[type="file"]');
+    Object.defineProperty(input, "files", { value: [new File([new Uint8Array([1, 2, 3])], "l.png", { type: "image/png" })] });
+    await fireEvent.change(input);
+    await waitFor(() => expect(patches.length).toBeGreaterThanOrEqual(1));
+    expect(patches[0].patch.crop).toEqual(proposal);
+    expect(proposeCropMock.mock.calls[0][1]).toBeGreaterThan(0);
+    proposeCropMock.mockReturnValue(null);
+  });
+});
+
+describe("a moved crop box restitches", () => {
+  let calls;
+  beforeEach(() => {
+    calls = [];
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  async function panel(extra) {
+    const mod = await import("../lib/digitizer.js");
+    vi.spyOn(mod, "digitize").mockImplementation(async () => {
+      calls.push(1);
+      return null;
+    });
+    return render(Harness, {
+      props: {
+        element: baseElement([], {
+          result: { stitches: [], colors: [], stitchCount: 0, colorCount: 0, name: "t", widthMM: 50, heightMM: 40 },
+          crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 },
+          ...extra,
+        }),
+        health: { ok: true },
+      },
+    });
+  }
+
+  test("changing the crop with a result in hand arms a restitch after the idle pause", async () => {
+    const { getByRole, queryByText } = await panel();
+    await fireEvent.click(getByRole("button", { name: "Use whole image" }));
+    vi.advanceTimersByTime(1500);
+    expect(calls).toHaveLength(0);
+    expect(queryByText("Restitch now")).not.toBeNull();
+    vi.advanceTimersByTime(1000);
+    await Promise.resolve();
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // The upload's patch is simulated by a rerender that sets `sourcePng` and
+  // `crop` together, which is what onFile's single patch does. `digitize` is
+  // held open so the first run is genuinely in flight when the box moves.
+  async function inFlightPanel() {
+    const mod = await import("../lib/digitizer.js");
+    const cfgs = [];
+    const releases = [];
+    vi.spyOn(mod, "digitize").mockImplementation((_img, cfg) => {
+      cfgs.push(cfg);
+      return new Promise((resolve) => releases.push(() => resolve(null)));
+    });
+    const health = { ok: true };
+    const utils = render(Harness, {
+      props: { element: baseElement([], { sourcePng: null, result: null, review: null, crop: null }), health },
+    });
+    await utils.rerender({
+      element: baseElement([], {
+        sourcePng: "data:image/png;base64,BBBB",
+        result: null,
+        review: null,
+        crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 },
+      }),
+      health,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    return { ...utils, cfgs, releases };
+  }
+
+  test("the upload's own patch (new art + proposal together) starts exactly one run", async () => {
+    const { cfgs, releases } = await inFlightPanel();
+    expect(cfgs).toHaveLength(1);
+    expect(cfgs[0].crop).toEqual([0.2, 0.2, 0.8, 0.8]);
+    releases[0]();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(cfgs).toHaveLength(1);
+  });
+
+  test("a crop moved while the first run is in flight reruns once after it, with the moved crop", async () => {
+    const { getByRole, cfgs, releases } = await inFlightPanel();
+    expect(cfgs).toHaveLength(1);
+    await fireEvent.click(getByRole("button", { name: "Use whole image" }));
+    // Let the idle pause elapse while the first run is still open: the timer
+    // hits runDigitize's in-flight guard and becomes a rerun request.
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(cfgs).toHaveLength(1);
+    releases[0]();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(cfgs).toHaveLength(2);
+    // Full frame is omitted from the config entirely (buildDigitizeConfig).
+    expect(cfgs[1].crop).toBeUndefined();
+    releases[1]();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(cfgs).toHaveLength(2);
+  });
+
+  test("mounting with a crop already set arms nothing -- only a CHANGE does", async () => {
+    // A saved project reopening with a crop must not restitch on arrival.
+    const { queryByText } = await panel();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(calls).toHaveLength(0);
+    expect(queryByText("Restitch now")).toBeNull();
+  });
+
+  test("a crop moved in flight whose pause outlasts the first run still reruns exactly once", async () => {
+    const { getByRole, cfgs, releases } = await inFlightPanel();
+    await fireEvent.click(getByRole("button", { name: "Use whole image" }));
+    releases[0]();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(cfgs).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(cfgs).toHaveLength(2);
+    expect(cfgs[1].crop).toBeUndefined();
+    releases[1]();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(cfgs).toHaveLength(2);
+  });
+});
+
+describe("the crop box's drag floor tracks the preview raster", () => {
+  // The service refuses a crop under 16 px on either axis. On a 100 x 100
+  // preview that is 16%, far above CropBox's own 2% default.
+  function pngB64(width, height) {
+    const b = new Uint8Array(24);
+    b.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52], 0);
+    new DataView(b.buffer).setUint32(16, width);
+    new DataView(b.buffer).setUint32(20, height);
+    return Buffer.from(b).toString("base64");
+  }
+  function ptr(type, x, y) {
+    const e = new Event(type, { bubbles: true, cancelable: true });
+    e.clientX = x; e.clientY = y;
+    return e;
+  }
+  afterEach(() => vi.restoreAllMocks());
+
+  async function dragRightEdgeToTenPercent(sourcePng) {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      left: 0, top: 0, right: 200, bottom: 100, width: 200, height: 100, x: 0, y: 0,
+    });
+    const patches = [];
+    const { getByRole } = render(Harness, {
+      props: {
+        element: baseElement([], { sourcePng, crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 } }),
+        onPatch: (d) => patches.push(d.patch),
+      },
+    });
+    getByRole("button", { name: "Drag right edge" }).dispatchEvent(ptr("pointerdown", 160, 50));
+    // -100 px of 200: x1 0.8 -> 0.3, a 0.1-wide box.
+    window.dispatchEvent(ptr("pointermove", 60, 50));
+    window.dispatchEvent(ptr("pointerup", 60, 50));
+    return patches.filter((p) => "crop" in p);
+  }
+
+  test("a 100 px preview refuses a box 10 px wide", async () => {
+    expect(await dragRightEdgeToTenPercent(pngB64(100, 100))).toHaveLength(0);
+  });
+
+  test("a 1200 px preview allows the same drag (120 px)", async () => {
+    const got = await dragRightEdgeToTenPercent(pngB64(1200, 1200));
+    expect(got).toHaveLength(1);
+    expect(got[0].crop.x1).toBeCloseTo(0.3);
+  });
+});
+
+describe("the upload stores the file and a digitize sends it", () => {
+  const LIMITS = { max_upload_bytes: 12 * 1024 * 1024, max_pixels: 40_000_000 };
+  beforeEach(() => {
+    fakeStore.clear();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage() {} });
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,AAAA");
+    loadImageResult = () => Promise.resolve({ width: 1400, height: 316 });
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  async function upload(container, file) {
+    const input = container.querySelector('.dgp-upload input[type="file"]');
+    Object.defineProperty(input, "files", { value: [file] });
+    await fireEvent.change(input);
+  }
+
+  test("a PNG is stored under its content key; the element carries the key and the preview, never the bytes", async () => {
+    const patches = [];
+    const { container } = render(Harness, {
+      props: {
+        element: baseElement([], { sourcePng: null, result: null, review: null }),
+        health: { ok: true, limits: LIMITS },
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    const bytes = new Uint8Array([137, 80, 78, 71, 9, 9, 9]);
+    await upload(container, new File([bytes], "logo.png", { type: "image/png" }));
+    await waitFor(() => expect(patches.length).toBeGreaterThanOrEqual(1));
+    const p = patches[0].patch;
+    expect(p.sourcePng).toBe("AAAA");
+    expect(p.name).toBe("logo.png");
+    expect(p.sourceFile).toEqual({ key: "key-7", type: "image/png", size: 7, width: 1400, height: 316 });
+    expect(fakeStore.get("key-7")).toEqual({ bytes, type: "image/png", name: "logo.png" });
+    expect(JSON.stringify(p)).not.toContain('"bytes"');
+  });
+
+  test("an SVG keeps the preview path — nothing stored, sourceFile null — because only a browser rasterises it", async () => {
+    const patches = [];
+    const { container } = render(Harness, {
+      props: {
+        element: baseElement([], { sourcePng: null, result: null, review: null }),
+        health: { ok: true, limits: LIMITS },
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    await upload(container, new File(["<svg xmlns='http://www.w3.org/2000/svg'/>"], "logo.svg", { type: "image/svg+xml" }));
+    await waitFor(() => expect(patches.length).toBeGreaterThanOrEqual(1));
+    expect(patches[0].patch.sourcePng).toBe("AAAA");
+    expect(patches[0].patch.sourceFile).toBeNull();
+    expect(fakeStore.size).toBe(0);
+  });
+
+  test("a digitize sends the stored bytes while they are there, and the preview — saying so — once they are gone", async () => {
+    const mod = await import("../lib/digitizer.js");
+    const sent = [];
+    vi.spyOn(mod, "digitize").mockImplementation(async (image) => { sent.push(image); return null; });
+    const bytes = new Uint8Array([82, 73, 70, 70]);
+    fakeStore.set("k9", { bytes, type: "image/webp", name: "logo.webp" });
+    const { getByRole, queryByTestId, findByTestId } = render(Harness, {
+      props: {
+        element: baseElement([], { name: "logo.webp", sourceFile: { key: "k9", type: "image/webp", size: 4, width: 10, height: 10 } }),
+        health: { ok: true, limits: LIMITS },
+      },
+    });
+    await fireEvent.click(getByRole("button", { name: /^Digitize( again)?$/ }));
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toEqual({ bytes, type: "image/webp", name: "logo.webp" });
+    expect(queryByTestId("source-note")).toBeNull();
+
+    // Cleared site data, another browser: the original is gone. The preview
+    // goes up (the pre-2026-09-20 result) and the panel says which one this is.
+    fakeStore.clear();
+    await fireEvent.click(getByRole("button", { name: /^Digitize( again)?$/ }));
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]).toBe("data:image/png;base64,AAAA");
+    expect(await findByTestId("source-note")).toHaveTextContent(/original file is no longer stored/);
+  });
+});
+
+// ---- The list <-> canvas shape sync (2026-09-30) ----------------------------
+// The canvas half (the outline drawn, the amber selection applied) is pinned
+// in e2e/field-panel-sync.spec.js against the live service; this is the
+// list's half: what a row sends, and what it shows for what it is sent.
+describe("list <-> canvas shape sync", () => {
+  test("hovering a row sends its shape id, leaving it sends null", async () => {
+    const hovers = [];
+    const utils = render(Harness, {
+      props: { element: baseElement([shapeRow("s1"), shapeRow("s2")]), onShapeHover: (d) => hovers.push(d) },
+    });
+    openLayers(utils);
+    const rows = utils.container.querySelectorAll(".dgp-layer");
+    expect(rows).toHaveLength(2);
+    await fireEvent.mouseEnter(rows[1]);
+    await fireEvent.mouseLeave(rows[1]);
+    expect(hovers).toEqual(["s2", null]);
+  });
+
+  test("clicking a sewing row's name sends its shape id; hidden and deleted rows have no name button", async () => {
+    const picks = [];
+    const utils = render(Harness, {
+      props: {
+        element: baseElement(
+          [shapeRow("live"), shapeRow("off", { stitched: false }), shapeRow("gone")],
+          { deletedShapeIds: ["gone"] },
+        ),
+        onShapeSelect: (d) => picks.push(d),
+      },
+    });
+    openLayers(utils);
+    const btns = utils.container.querySelectorAll(".dgp-lname-btn");
+    expect(btns).toHaveLength(1);
+    expect(btns[0]).toHaveAttribute("aria-label", expect.stringMatching(/^Show .* on the canvas$/));
+    await fireEvent.click(btns[0]);
+    expect(picks).toEqual(["live"]);
+    // Nothing else was patched by the click — selection is App's state, not
+    // the element's.
+    expect(utils.container.querySelector(".dgp-layer-sel")).toBeNull();
+  });
+
+  test("the hovered and selected ids mark their rows, and a selection opens the closed list", async () => {
+    const utils = render(Harness, {
+      props: { element: baseElement([shapeRow("a"), shapeRow("b")]), hoverShapeId: "a" },
+    });
+    // Closed by default: no rows at all yet.
+    expect(utils.container.querySelectorAll(".dgp-layer")).toHaveLength(0);
+    await utils.rerender({ element: baseElement([shapeRow("a"), shapeRow("b")]), hoverShapeId: "a", selectedShapeId: "b" });
+    await waitFor(() => expect(utils.container.querySelectorAll(".dgp-layer")).toHaveLength(2));
+    const rows = utils.container.querySelectorAll(".dgp-layer");
+    expect(rows[0]).toHaveClass("dgp-layer-hover");
+    expect(rows[0]).not.toHaveClass("dgp-layer-sel");
+    expect(rows[1]).toHaveClass("dgp-layer-sel");
+    expect(rows[1]).toHaveAttribute("data-shape-id", "b");
+  });
+});
+
+// ---- The three tabs (2026-09-30) ---------------------------------------------
+describe("Settings / Shapes / Threads", () => {
+  function tabs(container) {
+    return [...container.querySelectorAll('button[role="tab"]')];
+  }
+  function tabNamed(container, name) {
+    return tabs(container).find((b) => b.textContent.trim().startsWith(name));
+  }
+
+  test("opens on Settings: the knobs and Rotation, no Layers block, no spool list", () => {
+    const { container } = render(Harness, { props: { element: baseElement([shapeRow("s1")]) } });
+    expect(tabs(container).map((b) => b.getAttribute("aria-selected"))).toEqual(["true", "false", "false"]);
+    // Names are the plain words: the counts are aria-hidden.
+    expect(tabs(container).map((b) => b.textContent.replace(/\d+/g, "").trim())).toEqual(["Settings", "Shapes", "Threads"]);
+    expect(container.querySelector(".dgp-params")).not.toBeNull();
+    expect(container.querySelector(".dgp-layers")).toBeNull();
+    expect(container.querySelector(".dgp-blocks")).toBeNull();
+    expect([...container.querySelectorAll("label")].some((l) => /Rotation/.test(l.textContent))).toBe(true);
+  });
+
+  test("Shapes shows the Layers block and its count; Threads shows the spools; the knobs stay on Settings", async () => {
+    const { container } = render(Harness, { props: { element: baseElement([shapeRow("s1"), shapeRow("s2")]) } });
+    expect(tabNamed(container, "Shapes").querySelector(".dgp-tab-count")).toHaveTextContent("2");
+    await fireEvent.click(tabNamed(container, "Shapes"));
+    expect(container.querySelector(".dgp-layers")).not.toBeNull();
+    expect(container.querySelector(".dgp-blocks")).toBeNull();
+    await fireEvent.click(tabNamed(container, "Threads"));
+    expect(container.querySelector(".dgp-layers")).toBeNull();
+    expect(container.querySelector(".dgp-blocks")).not.toBeNull();
+    expect(container.querySelector(".dgp-params")).not.toBeNull(); // the knobs are above the tabs
+  });
+
+  test("a shape selected on the canvas switches to Shapes and opens the list", async () => {
+    const utils = render(Harness, { props: { element: baseElement([shapeRow("a"), shapeRow("b")]) } });
+    expect(tabNamed(utils.container, "Settings").getAttribute("aria-selected")).toBe("true");
+    await utils.rerender({ element: baseElement([shapeRow("a"), shapeRow("b")]), selectedShapeId: "b" });
+    await waitFor(() => expect(utils.container.querySelectorAll(".dgp-layer")).toHaveLength(2));
+    expect(tabNamed(utils.container, "Shapes").getAttribute("aria-selected")).toBe("true");
+    expect(utils.container.querySelector(".dgp-layer-sel")).toHaveAttribute("data-shape-id", "b");
+  });
+
+  test("Threads lists spools, not sew blocks: a cone loaded twice is one row, and a pick recolors both blocks", async () => {
+    const patches = [];
+    const element = baseElement([shapeRow("s1")], {
+      result: {
+        stitchCount: 100, widthMM: 10, heightMM: 10, colorCount: 2, stitches: [],
+        colors: [
+          { r: 20, g: 20, b: 20, name: "0134 Smoky" },
+          { r: 200, g: 30, b: 30, name: "1720 Not Quite Red" },
+          { r: 200, g: 30, b: 30, name: "1720 Not Quite Red" },
+        ],
+      },
+    });
+    const { container } = render(Harness, { props: { element, onPatch: (d) => patches.push(d) } });
+    await fireEvent.click(tabNamed(container, "Threads"));
+    const rows = [...container.querySelectorAll(".dgp-block")];
+    expect(rows.map((r) => r.querySelector(".dgp-block-n").textContent)).toEqual(["0134 Smoky", "1720 Not Quite Red"]);
+    expect(rows[1].querySelector(".dgp-block-note")).toHaveTextContent("loaded 2 times");
+    expect(rows[0].querySelector(".dgp-block-note")).toBeNull();
+    expect(tabNamed(container, "Threads").querySelector(".dgp-tab-count")).toHaveTextContent("2");
   });
 });

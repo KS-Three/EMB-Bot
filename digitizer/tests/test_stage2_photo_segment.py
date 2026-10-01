@@ -910,3 +910,101 @@ def test_the_repro_sweep_is_one_region_per_piece_at_studio_defaults():
     for r in largest:
         mm_x, mm_y, rgb, _m, _c = _sample_pixels(r.polygon, result.source_pixels)
         assert ramp.rides(mm_x, mm_y, rgb_to_lab(rgb)), r.shape_id
+
+
+# --- 14. SEEDS' block hierarchy has a floor (2026-09-22 native-crash fix) ----
+#
+# `_seeds_superpixels` scales its `num_superpixels` request by the foreground
+# fraction inside the crop, which is unbounded from below at
+# `SEEDS_MIN_FG_FRAC` (0.05) -- a small, sparse crop asks for up to
+# `SEEDS_MAX_REQUESTED_SUPERPIXELS` (20,000) superpixels over a few tens of
+# thousands of pixels. `cv::ximgproc::SuperpixelSEEDSImpl::initialize` picks
+# its block hierarchy by halving until a block is at least one pixel wide,
+# and validates nothing about the request against the image size: past a
+# certain density the hierarchy collapses to ONE level, `initImage` sets
+# `seeds_current_level = seeds_nr_levels - 2` = -1, the block-update loop
+# never runs, and `iterate()` goes out of bounds. See the test bodies for the
+# two measured outcomes.
+
+
+def _sparse_crop_mask(canvas=(600, 900), bbox=(214, 222), fg_frac=0.0785):
+    """A `base_valid` whose bounding box is `bbox` and which fills only about
+    `fg_frac` of it -- an ellipse OUTLINE, the shape a subject cutout leaves
+    behind on a ring-like design. Returns `(rgb, base_valid)`.
+
+    `fg_frac` is a floor, not a target: the thickness loop stops at the first
+    integer thickness that reaches it. At the defaults that lands 222x214 /
+    47,508 px at 0.0930 -- the real crash's bbox exactly, a little denser than
+    its 0.0785 -- which asks for 12,901 superpixels against a cap of 11,877,
+    so the density clamp is genuinely exercised and not just stepped over."""
+    h, w = canvas
+    bh, bw = bbox
+    y0, x0 = (h - bh) // 2, (w - bw) // 2
+    base_valid = np.zeros((h, w), bool)
+    ring = np.zeros((bh, bw), np.uint8)
+    a, b = bw // 2, bh // 2
+    # Thicken the outline until it covers `fg_frac` of the bbox.
+    for t in range(1, max(a, b)):
+        ring[:] = 0
+        cv2.ellipse(ring, (a, b), (a - 1, b - 1), 0, 0, 360, 255, t)
+        if ring.astype(bool).mean() >= fg_frac:
+            break
+    base_valid[y0:y0 + bh, x0:x0 + bw] = ring.astype(bool)
+    rgb = np.zeros((h, w, 3), np.uint8)
+    rgb[:] = (240, 240, 240)
+    rgb[base_valid] = (40, 90, 160)
+    # Real artwork is not flat: give the ring some structure so the merge
+    # downstream has something to work with.
+    yy, xx = np.mgrid[0:h, 0:w]
+    rgb[..., 0] = np.where(base_valid, (40 + (xx % 37) * 3).astype(np.uint8), rgb[..., 0])
+    rgb[..., 1] = np.where(base_valid, (90 + (yy % 29) * 3).astype(np.uint8), rgb[..., 1])
+    return rgb, base_valid
+
+
+def test_a_small_sparse_crop_still_gets_a_real_oversegmentation():
+    """The crash this section exists for, as the pipeline actually produced
+    it: `region_blobs.png` forced photo-class WITH the rembg subject cutout
+    available leaves a 222x214 foreground bbox holding 7.85% foreground, so
+    `_seeds_superpixels` asks for 1200 / 0.0785 = 15,292 superpixels over a
+    47,508-pixel crop. Unguarded that is `cv2.error: Unknown C++ exception
+    from OpenCV code` out of `seeds.iterate`, or a bare `Windows fatal
+    exception: access violation` -- measured both ways on the same input.
+
+    Pinned as BEHAVIOUR, not as a request number: whatever the guard does to
+    the count, the crop must come back oversegmented into more than one
+    superpixel. The collapsed hierarchy's quieter failure mode returns a
+    label array that is entirely zero (measured at 200x200 / 20,000 and
+    64x64 / 1200), which is a whole photo flattened to one region -- so a
+    shape/dtype check alone would not have caught it."""
+    from digitizer_core.stage2_photo_segment import _seeds_superpixels
+
+    rgb, base_valid = _sparse_crop_mask()
+    labels = _seeds_superpixels(rgb, base_valid)
+
+    assert labels.shape == base_valid.shape
+    assert (labels[~base_valid] == 0).all(), "background must stay excluded"
+    distinct = np.unique(labels[base_valid])
+    assert distinct.size > 1, (
+        f"crop collapsed to {distinct.size} superpixel(s) -- SEEDS' hierarchy "
+        "collapsed instead of oversegmenting")
+
+
+def test_a_crop_too_small_for_seeds_degrades_instead_of_crashing():
+    """Below SEEDS' own workable size there is no request that keeps the
+    hierarchy above one level -- its `num_superpixels < 10` floor puts a
+    floor under the density too, so a crop with a side under 16 px collapses
+    at ANY count (measured: 4x37, 4x48, ... all the way down). The documented
+    no-op for that is one superpixel over the whole crop, not a call into
+    native code that hangs (measured >25 s at 1xN) or faults."""
+    from digitizer_core.stage2_photo_segment import _seeds_superpixels
+
+    base_valid = np.zeros((60, 60), bool)
+    base_valid[20:32, 20:29] = True          # a 12x9 foreground bbox
+    rgb = np.zeros((60, 60, 3), np.uint8)
+    rgb[base_valid] = (200, 60, 60)
+
+    labels = _seeds_superpixels(rgb, base_valid)
+
+    assert labels.shape == base_valid.shape
+    assert (labels[~base_valid] == 0).all()
+    assert np.unique(labels[base_valid]).size >= 1

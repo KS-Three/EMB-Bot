@@ -846,3 +846,13 @@ test("shouldScrollCanvasIntoView: an unmeasurable rect is never a reason to scro
   expect(shouldScrollCanvasIntoView(null, port)).toBe(false);
   expect(shouldScrollCanvasIntoView({ top: 0, bottom: 100 }, null)).toBe(false);
 });
+
+test("shapesToRegions: the shape's id rides onto the region shape (the field maps clicks back through it)", () => {
+  const square = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
+  const { regions } = shapesToRegions([
+    { id: "s3", points: square, curves: {}, stitchType: "fill", colorRgb: [1, 2, 3], angleDeg: null },
+    { points: square.map((p) => ({ x: p.x + 200, y: p.y })), curves: {}, stitchType: "satin", colorRgb: [1, 2, 3], angleDeg: null },
+  ]);
+  expect(regions[0].shapes[0].id).toBe("s3");
+  expect(regions[1].shapes[0].id).toBe("");
+});

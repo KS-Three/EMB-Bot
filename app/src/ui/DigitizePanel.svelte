@@ -1,7 +1,8 @@
 <script>
-  import { createEventDispatcher, onDestroy } from "svelte";
+  import { createEventDispatcher, onDestroy, tick } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
+  import { tip } from "../lib/tip.js";
   import {
     buildDigitizeConfig,
     digitize,
@@ -29,6 +30,9 @@
     textClusterSeed,
     remapBlockColors,
     editKind,
+    stitchWidthGroupRows,
+    STITCH_WIDTH_MIN_MM,
+    STITCH_WIDTH_MAX_MM,
     spoolCount } from "../lib/digitizer.js";
   import {
     appliedBorders,
@@ -40,7 +44,10 @@
     indexRuns,
     shapeBorderState } from "../lib/borderMenu.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
-  import { loadImage, rasterSize, isVectorFile } from "../lib/rasterize.js";
+  import { loadImage, rasterSize, isVectorFile, uploadPlan, pngDimensionsFromBase64 } from "../lib/rasterize.js";
+  import CropBox from "./CropBox.svelte";
+  import { proposeCrop } from "../lib/cropProposal.js";
+  import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
 
   // Editor panel for an auto-digitized artwork element (build step 10).
   // The element stores the source image (processing size, PNG base64), the
@@ -52,14 +59,31 @@
   export let element;
   export let project; // garmentId rides into the config (fabric preset service-side)
   export let health = null; // /health payload or null; App owns the probe
+  // Canvas -> list (2026-09-30): the shape under the pointer on the field,
+  // and the one selected there. The matching row highlights, and a
+  // selection opens the list and scrolls its row into view (revealRow,
+  // below the list state). The list -> canvas half is the rows' own
+  // mouseenter/mouseleave ("shapehover") and the name button ("shapeselect"),
+  // which App routes to the field.
+  export let hoverShapeId = null;
+  export let selectedShapeId = null;
 
   const d = createEventDispatcher();
 
-  // Processing size (long edge). The pipeline needs nowhere near the
-  // original resolution ("2000 px across is plenty" — service limits), and
-  // this base64 lives in localStorage with the project, so smaller is a
-  // feature: at 1200 px a flat-color logo PNG is typically well under 500 KB.
+  // PREVIEW size (long edge) — since 2026-09-20 this canvas is what the
+  // panel SHOWS and saves with the project, not what it sends. It used to be
+  // both, and the pipeline read a raster the customer never made: resampled
+  // at Chrome's default smoothing, its RGB under transparency rewritten by
+  // the canvas (DOCTRINE 2026-09-19/20; nine logos 503 -> 609 trims). The
+  // file's own bytes now go to /digitize (lib/rasterize.js `uploadPlan`) and
+  // live in IndexedDB (lib/sourceStore.js). This base64 lives in localStorage
+  // with the project, so smaller is a feature: at 1200 px a flat-color logo
+  // PNG is typically well under 500 KB.
   const PROCESS_MAX_PX = 1200;
+  // Set when a digitize had to send the preview because the original's bytes
+  // are gone (cleared site data, another browser): the two digitize
+  // differently, so the panel says which one this result came from.
+  let sourceNote = "";
   // Storage guard on the stored base64 itself (localStorage isn't infinite —
   // same reasoning as DesignPanel's 1 MB DST cap).
   const MAX_SOURCE_B64 = 2_000_000;
@@ -94,17 +118,49 @@
       cv.width = w;
       cv.height = h;
       cv.getContext("2d").drawImage(img, 0, 0, w, h);
+      // Propose a crop from the preview we already drew. Measuring this
+      // canvas is fine; SENDING it is the 2026-09-19/20 regression.
+      let crop = null;
+      try {
+        const px = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height);
+        crop = proposeCrop(px, (element.params && element.params.target_width_mm) || 80);
+      } catch {
+        crop = null; // tainted canvas or no 2d context: no proposal, no crash
+      }
       const dataUrl = cv.toDataURL("image/png");
       const b64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
       if (b64.length > MAX_SOURCE_B64) {
         error = "That image is too heavy to save with the design — the limit is about 1.5 MB after downscaling. Simplify or shrink it and try again.";
         return;
       }
+      // The file itself is what digitizes, when the service can decode it and
+      // it is within the service's limits; its bytes go to IndexedDB so a
+      // re-digitize after a reload sends the same thing. A store that refuses
+      // (private window, storage blocked) is not a failed upload — the preview
+      // path still works, it is just the pre-2026-09-20 result.
+      let sourceFile = null;
+      const plan = uploadPlan(file, img, health && health.limits);
+      if (plan.asIs && sourceStoreAvailable()) {
+        try {
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          // Asked again WITH the bytes: a JPEG the browser rotated on decode
+          // stays on the canvas path (uploadPlan's "orientation").
+          if (uploadPlan(file, img, health && health.limits, bytes).asIs) {
+            const key = await sourceKeyFor(bytes);
+            const type = file.type || plan.type || "";
+            await putSource(key, { bytes, type, name: file.name });
+            sourceFile = { key, type, size: bytes.length, width: img.width, height: img.height };
+          }
+        } catch {
+          sourceFile = null;
+        }
+      }
+      sourceNote = "";
       // New artwork resets everything the old artwork produced — including
       // the layer list and its edits, which are keyed to the OLD art's
       // shape ids and would only produce SHAPE_EDIT_UNKNOWN_ID noise here.
       patch({
-        sourcePng: b64, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
+        sourcePng: b64, sourceFile, crop, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
         review: null, shapeOverrides: {}, deletedShapeIds: [], appliedEdits: null,
         mergeGroups: [], splitLines: {},
       });
@@ -183,7 +239,8 @@
   //
   // Nothing here contradicts a standing ruling: no fix sets `border: "auto"`
   // (DOCTRINE: +60% stitches and WORSE on a photo), none sets `forced_class`
-  // speculatively (measured worse on textured logo art), and none turns on
+  // (no Studio control does since 2026-09-30, and forcing flat measured
+  // worse on textured logo art before that), and none turns on
   // `edge_cap`, which Kent reserved per design and which no sew-out has
   // settled.
   const FIX_FOR = {
@@ -196,8 +253,8 @@
     },
     LETTERING_TOO_SMALL: {
       label: "Make it bigger",
-      next: (p) => ({ target_width_mm: Math.min(400, Math.round((p.target_width_mm || 80) * 1.25)) }),
-      spent: (p) => `${Math.round(p.target_width_mm)} → ${Math.min(400, Math.round((p.target_width_mm || 80) * 1.25))} mm wide`,
+      next: (p, f) => ({ target_width_mm: namedOrStep(p, f) }),
+      spent: (p, f) => `${Math.round(p.target_width_mm)} → ${namedOrStep(p, f)} mm wide`,
     },
     // Same cure as above, and deduped below so two findings never offer the
     // same button twice.
@@ -213,23 +270,62 @@
     // the other half is the artwork, which no button here can change.
     LETTERING_ILLEGIBLE: {
       label: "Make it bigger",
-      next: (p) => ({ target_width_mm: Math.min(400, Math.round((p.target_width_mm || 80) * 1.25)) }),
-      spent: (p) => `${Math.round(p.target_width_mm)} → ${Math.min(400, Math.round((p.target_width_mm || 80) * 1.25))} mm wide`,
+      next: (p, f) => ({ target_width_mm: namedOrStep(p, f) }),
+      spent: (p, f) => `${Math.round(p.target_width_mm)} → ${namedOrStep(p, f)} mm wide`,
+    },
+    // The tight-gaps finding (2026-09-30, Kent's pick) NAMES the width at
+    // which its headline shape's gaps clear the fabric's pull plus the
+    // thread, so its button jumps straight there instead of stepping 25%:
+    // one press clears THAT shape by construction (arithmetic on its
+    // polygon; the design can still segment new small shapes at the larger
+    // size, which the finding states per shape and never as a promise).
+    // Two size buttons would confuse, so `offeredFixes` keeps ONE per
+    // parameter and lets the larger target win when this and a 25% step
+    // both apply. Without a named width (no shapes in the payload) it takes
+    // the same 25% step as the others.
+    SATIN_GAPS_TIGHT: {
+      label: "Make it bigger",
+      next: (p, f) => ({ target_width_mm: namedOrStep(p, f) }),
+      spent: (p, f) => `${Math.round(p.target_width_mm)} → ${namedOrStep(p, f)} mm wide`,
     },
   };
 
+  // The width a finding names, capped at the 400 mm ceiling; the 25% step
+  // when the payload names none. Two findings name one: SATIN_GAPS_TIGHT's
+  // headline shape (`extra.shapes[0].clear_width_mm`, the shape with the most
+  // closed gap), and the lettering findings' `extra.traced_at_mm` (2026-09-30:
+  // the width at which the prep's grid could trace lettering a low-resolution
+  // source lost -- present only when the source sits under the prep floor,
+  // where a bigger design gives the tracer more pixels; absent, the step).
+  function namedOrStep(p, f) {
+    const extra = (f && f.extra) || {};
+    const shapes = Array.isArray(extra.shapes) ? extra.shapes : [];
+    const fromShape = shapes.length ? shapes[0].clear_width_mm : null;
+    const named = typeof fromShape === "number" && fromShape > 0 ? fromShape
+                : typeof extra.traced_at_mm === "number" && extra.traced_at_mm > 0 ? extra.traced_at_mm : null;
+    const w = named != null ? named : (p.target_width_mm || 80) * 1.25;
+    return Math.min(400, Math.round(w));
+  }
+
   function offeredFixes(el) {
     const found = (el && el.preflight && el.preflight.findings) || [];
+    const params = (el && el.params) || {};
     const out = [];
     for (const f of found) {
       const fix = FIX_FOR[f.code];
-      if (!fix || out.some((o) => o.label === fix.label)) continue;
-      const patch = fix.next(el.params || {});
+      if (!fix) continue;
+      const patch = fix.next(params, f);
       // A fix already at its limit is not offered: "Make it bigger" on a
       // design already at 400 mm would do nothing and cost a full re-digitize.
       const key = Object.keys(patch)[0];
-      if ((el.params || {})[key] === patch[key]) continue;
-      out.push({ label: fix.label, patch, spent: fix.spent(el.params || {}), why: f.message });
+      if (params[key] === patch[key]) continue;
+      const offer = { label: fix.label, patch, spent: fix.spent(params, f), why: f.message };
+      // ONE button per parameter: findings with the same cure never offer it
+      // twice, and when one names a width (SATIN_GAPS_TIGHT) while another
+      // steps 25%, the larger target is the one press that serves both.
+      const i = out.findIndex((o) => Object.keys(o.patch)[0] === key);
+      if (i < 0) out.push(offer);
+      else if (key === "target_width_mm" && patch[key] > out[i].patch[key]) out[i] = offer;
     }
     return out;
   }
@@ -293,6 +389,27 @@
   $: changed = runDelta(element);
   $: hasPrior = !!(element && element.priorRun && element.result);
 
+  // What goes to the service: the customer's file while its bytes are still
+  // here, else the preview PNG — and the panel says so, because the two
+  // digitize differently (DOCTRINE 2026-09-19/20: the preview is resampled and
+  // its RGB under transparency rewritten).
+  async function imageToSend(el) {
+    if (el.sourceFile && el.sourceFile.key) {
+      let rec = null;
+      try {
+        rec = await getSource(el.sourceFile.key);
+      } catch {
+        rec = null;   // a store that will not read is a missing original, not a failed digitize
+      }
+      if (rec) {
+        sourceNote = "";
+        return { bytes: rec.bytes, type: rec.type || el.sourceFile.type || "", name: el.name || rec.name || "art" };
+      }
+      sourceNote = "Digitized from the saved preview — the original file is no longer stored in this browser, and the preview sews a little differently. Replace the artwork with the original for the full result.";
+    }
+    return el.sourcePng;
+  }
+
   async function runDigitize(el) {
     if (!el.sourcePng || !health) return;
     // An armed restitch is now redundant whichever way this call goes: either
@@ -312,7 +429,11 @@
     phase = "submitting";
     try {
       const cfg = buildDigitizeConfig(el, project);
-      const job = await digitize(el.sourcePng, cfg, {
+      // The preview path is synchronous here on purpose: it is the
+      // pre-2026-09-20 flow tick for tick, so nothing about restitch timing
+      // moved for an element with no stored original.
+      const image = el.sourceFile && el.sourceFile.key ? await imageToSend(el) : el.sourcePng;
+      const job = await digitize(image, cfg, {
         onState: (s) => {
           if (!destroyed) phase = s === "running" ? "running" : "queued";
         },
@@ -396,19 +517,6 @@
     }
   }
 
-  // `isPhoto` (spec 2026-08-18 decision 4) lives on the element itself, not
-  // element.params (buildDigitizeConfig reads it directly — see its own
-  // comment), so it needs its own prev-value watcher rather than riding the
-  // params one above. Same re-digitize-on-change behavior as every param
-  // control, just tracking a different field.
-  let prevIsPhoto = element.isPhoto;
-  $: {
-    if (element.isPhoto !== prevIsPhoto) {
-      prevIsPhoto = element.isPhoto;
-      if (element.result || phase !== "idle") runDigitize(element);
-    }
-  }
-
   // New artwork digitizes ITSELF. Every other change in this panel already
   // re-runs on its own once a result exists; the first run was the single
   // thing left that the user had to ask for by hand, which meant uploading an
@@ -448,12 +556,28 @@
   // — correct, but it made the canvas editor feel like it was drawing on a
   // photograph rather than editing a design.
   //
-  // Debounced rather than immediate because a restitch is a full stage 0-7
-  // service run: measured 0.65s on simple line art but ~10-14s on a real
-  // photograph, with no useful cache (the job key folds shape_overrides into
-  // the config, so every edit is a guaranteed miss). Firing per drag would
-  // queue a 10s run behind every nudge. Waiting for the user to STOP means
-  // ten adjustments cost one run, not ten.
+  // Debounced rather than immediate because a restitch costs real time and a
+  // drag produces many edits a second: waiting for the user to STOP means ten
+  // adjustments cost one run, not ten.
+  //
+  // RE-MEASURED 2026-09-17, at customer defaults, because the figures that
+  // used to sit here sent a session down a dead end. They said "0.65s on
+  // simple line art but ~10-14s on a real photograph, with no useful cache
+  // (the job key folds shape_overrides into the config, so every edit is a
+  // guaranteed miss)" — true when written on 2026-08-13, and wrong NINE DAYS
+  // LATER when the stage 0-4 generation cache landed. A shape edit HITS that
+  // cache: `generation_key` strips the four review-edit keys, so only the
+  // tail re-runs, and the "10-14s" describes a full run nobody pays any more.
+  //
+  // What a shape edit actually costs (finish_generation + plan_stitches):
+  //   five logo fixtures      0.95 - 3.61 s
+  //   owl_kent (photograph)   44.6 s, of which ~97% is plan_stitches
+  //
+  // So the pause is what stops a DRAG queueing runs; it is not standing in
+  // front of a ten-second wait on ordinary line art. Treat both numbers as
+  // dated measurements, not facts — the trail, the per-flag bisect and the
+  // fill-reorder memo that took the photograph from 79.3 s are in
+  // `docs/flag-runtime-bills-2026-09-12.md`.
   const RESTITCH_IDLE_MS = 2000;
   let restitchTimer = 0;
   // Armed = a restitch is scheduled and has not started. Its own flag rather
@@ -480,6 +604,51 @@
       // digitize" branch already covers that honestly.
       if (element.result && health) {
         scheduleRestitch(kind === "border" ? 0 : RESTITCH_IDLE_MS);
+      }
+    }
+  }
+
+  // A moved crop box changes what the service would digitize, so it restitches
+  // after the same idle pause a shape edit uses (and lights the same armed
+  // state).
+  //
+  // Two windows, the same two the params watcher above handles:
+  //  - The upload's own patch sets a fresh proposal AND a new `sourcePng` in
+  //    one go. That tick is skipped (`sameArt` is false): the sourcePng
+  //    watcher above starts the one and only digitize for a new upload, with
+  //    that crop already in its config.
+  //  - The box moved while that FIRST run is still in flight -- the likeliest
+  //    moment a customer drags it, since the box appears the instant the file
+  //    lands. `result` is still null then, so gating on it alone dropped the
+  //    move silently: the run returned with the proposal's crop and nothing
+  //    marked it stale. `phase !== "idle"` catches it; when the timer fires,
+  //    runDigitize's in-flight guard turns it into `rerunWanted` (or, if the
+  //    first run already returned, it simply runs), so exactly one rerun
+  //    follows with the moved crop.
+  // The crop box's drag floor, sized to the raster it shows. The service
+  // refuses a crop under `digitizer_core/crop.py` MIN_CROP_PX (16) on either
+  // axis, and CropBox's own 2% is under that on any preview narrower than
+  // 800 px. Read off `sourcePng`'s PNG header, so it survives a reload
+  // without a second persisted field. The preview is never larger than the
+  // original, so a floor that holds on the preview holds on either raster
+  // the service may be sent.
+  const CROP_MIN_PX = 16;
+  $: cropMinFrac = (() => {
+    const dim = pngDimensionsFromBase64(element.sourcePng);
+    if (!dim) return 0.02;
+    return Math.min(0.5, Math.max(0.02, CROP_MIN_PX / Math.min(dim.width, dim.height)));
+  })();
+
+  let prevCropJson = JSON.stringify(element.crop ?? null);
+  let prevCropSrc = element.sourcePng;
+  $: {
+    const now = JSON.stringify(element.crop ?? null);
+    const sameArt = element.sourcePng === prevCropSrc;
+    prevCropSrc = element.sourcePng;
+    if (now !== prevCropJson) {
+      prevCropJson = now;
+      if (sameArt && element.sourcePng && health && (element.result || phase !== "idle")) {
+        scheduleRestitch(RESTITCH_IDLE_MS);
       }
     }
   }
@@ -559,9 +728,9 @@
   //   2026-09-07: on all 10 fixtures that emit it, BACKGROUND_ENCLOSED emits
   //   too.
   //
-  // `warningLines` itself keeps every code -- the flat-art nudge and the
-  // classification readout below switch on codes there, so filtering upstream
-  // would silently disable them.
+  // `warningLines` itself keeps every code -- the classification readout
+  // below switches on codes there, so filtering upstream would silently
+  // disable it.
   $: otherWarningLines = warningLines.filter(
     (w) => w.code !== "BACKGROUND_ENCLOSED" && !SILENT_WARNINGS.has(w.code)
            && w.text);
@@ -574,119 +743,55 @@
   $: attentionLines = otherWarningLines.filter((w) => ATTENTION_WARNINGS.has(w.code));
   $: noteLines = otherWarningLines.filter((w) => !ATTENTION_WARNINGS.has(w.code));
 
-  // ---- what stage 0 made of the art, and correcting it ----------------------
+  // ---- what stage 0 made of the art ----------------------------------------
   //
-  // Stage 0 already classifies every job on its own (flat / gradient /
-  // photo_subject / photo_scene) and reports the answer as a CLASSIFIED_*
-  // warning. Studio used to keep that to itself and instead ASK: a "This is a
-  // photo" checkbox sitting in the params list beside stitch width, plus a
-  // "digitize as flat art" nudge that appeared only on a misroute and spoke
-  // the engine's vocabulary. Kent, 2026-08-30: "the photo upload is very
-  // confusing -- choose flat work, real photo etc. IDK what ANY of that even
-  // means, can't we just upload a photo/image and the tool AUTOMATICALLY
-  // recognizes what needs to be done?"
+  // Stage 0 classifies every job on its own (flat / gradient / photo_subject /
+  // photo_scene) and reports the answer as a CLASSIFIED_* warning; stage
+  // 1.25 adds PHOTO_DETECTED when the file's camera header or a face says
+  // the art is a photograph (buildDigitizeConfig asks for that detection on
+  // every job). The panel STATES the reading in plain words. It asks nothing
+  // and offers no correction -- Kent, 2026-09-30: "get rid of the 'it's flat
+  // art' / 'it's a photo' check boxes when uploading a photo, logo or
+  // ANYTHING ... just automatically recognize what it is, and how it needs to
+  // be digitized." That was the second time he asked (2026-08-30: "IDK what
+  // ANY of that even means"); the first time the question moved from a
+  // pre-upload quiz to a one-click correction on this row, and the
+  // correction is what went on 2026-09-30.
   //
-  // It always did. So the question stops being asked up front: the run starts
-  // on upload (see the sourcePng watcher below), the panel STATES what the
-  // art was read as in plain words, and the override becomes a correction to
-  // that sentence rather than a quiz taken before anything has been seen.
+  // So there is no `forced_class` and no `isPhoto` any more: a saved project
+  // that still carries either is read as if it did not (buildDigitizeConfig
+  // never sends them). The cost is named rather than hidden: stage 0 still
+  // misroutes real logos (ROADMAP phase 2), and a misrouted design now has no
+  // in-product correction -- fixing the routing is the fix, not a button.
   //
-  // The override itself stays, deliberately: ROADMAP phase 2 is open ("most
-  // real logos reach the wrong lane") and phase-4 v1 is built to work around
-  // stage 0 with an explicit user override, not by advancing it (spec
-  // 2026-08-18 decision 4). What gets SENT changed 2026-09-02 (Kent's call,
-  // defect 15): isPhoto now means `is_photographic=true` -- photographic
-  // CONTENT, which buys depth sequencing and the palette bind -- not
-  // `forced_class=photo_subject`, which forced the FILL TIER and measurably
-  // hurt (owl_kent @ 80mm: 13 stops -> 17 forced, vs 11 declared). The flat
-  // correction is unchanged and still writes forced_class=flat; only the
-  // "it's a photo" direction moved.
-  // The override is an ordinary digitize param (buildDigitizeConfig sends it
-  // when set), which is the whole reason it needs no machinery of its own:
-  // setting or clearing it changes element.params, and the params-changed
-  // block above re-digitizes. Neither control calls runDigitize itself.
-  $: forcedClass = (element.params && element.params.forced_class) || null;
-
-  // Plain-language names for the four classes, used only when something has
-  // been forced -- the automatic readings get their own sentences below.
-  const FORCED_LABEL = {
-    flat: "flat art",
-    gradient: "shaded artwork",
-    photo_subject: "a photo",
-    photo_scene: "a photo",
-  };
-
-  // One state for the whole flat/photo business, in the order that decides it:
   // `warningLines` is read INLINE here, not through a `hasCode(...)` helper:
   // these are legacy `$:` statements, whose dependencies are collected
   // syntactically, so a helper would leave this tracking only the (never
   // reassigned) function and the reading would freeze at its first value.
-  // an explicit user override outranks whatever the engine read, and isPhoto
-  // outranks a leftover params.forced_class exactly as buildDigitizeConfig's
-  // own precedence does -- so the sentence on screen can never disagree with
-  // the config that gets sent (the 2026-08-19 contradiction, now impossible by
-  // construction rather than by the checkbox handler alone).
+  //
+  // Order matters for honesty: the sentence names the TIER the art is sewing
+  // in, and stage 0's class decides that. Stage 1.25's PHOTO_DETECTED does
+  // not move the tier -- it turns the photographic machinery on (palette
+  // bind, depth sequencing) -- so it only gets its own sentence when the
+  // class said nothing tonal, and that sentence promises solid regions, not
+  // shading. The warning line beside it names WHICH signal fired.
   $: artRead =
-    element.isPhoto ? "forced" :
-    forcedClass ? "forced" :
+    // A face routed the design flat (Kent's ruling 2026-09-30): the class IS
+    // flat and no CLASSIFIED_* warning exists, so this can lead without
+    // shadowing anything; it leads so the sentence names the reason.
+    warningLines.some((w) => w.code === "FACE_ROUTED_FLAT") ? "face" :
     warningLines.some((w) => w.code === "CLASSIFIED_PHOTO_SUBJECT" || w.code === "CLASSIFIED_PHOTO_SCENE") ? "photo" :
     warningLines.some((w) => w.code === "CLASSIFIED_GRADIENT") ? "gradient" :
+    warningLines.some((w) => w.code === "PHOTO_DETECTED") ? "detected" :
     warningLines.some((w) => w.code === "CLASSIFICATION_UNCERTAIN") ? "unsure" :
     "flat";
-  $: forcedLabel =
-    element.isPhoto ? FORCED_LABEL.photo_subject : (FORCED_LABEL[forcedClass] || "your own setting");
-  // Offering flat is scoped to FLAT-COLOR art and the copy has to keep saying
-  // so: forcing flat on genuinely TEXTURED logo art measured WORSE, because
-  // k-means shatters the texture. This is "the classifier read your artwork
-  // wrong", not a general "make it better" button.
-  $: offerFlat = artRead === "photo" || artRead === "gradient";
-  // Whether the art is being sewn down a TONAL lane at all -- by the engine's
-  // reading or by the user's own override. `detail_layer` only does anything
-  // there, so the control rides this rather than sitting in the params list
-  // beside stitch width labelled "Detail lines for photos" on a flat logo
-  // that will never use it (Kent's call, 2026-08-30).
-  $: tonalLane =
-    element.isPhoto ? true :
-    forcedClass ? forcedClass !== "flat" :
-    offerFlat;
-  // The other direction. Not offered from a standing photo override (there is
-  // nothing to correct) and not from a forced-flat one either, where the
-  // "It's a photo" button below is the one-click path instead.
-  $: offerPhoto = artRead === "flat" || artRead === "unsure";
-
-  // Back to automatic clears BOTH overrides in ONE patch (one undo step), and
-  // clears forced_class by REMOVING the key rather than nulling it: the params
-  // object has to come back identical to a design that never overrode
-  // anything, or the service's job cache key differs and the revert pays for a
-  // run the cache already holds.
-  function useAutomatic() {
-    const next = {};
-    if (element.params && "forced_class" in element.params) {
-      const { forced_class, ...rest } = element.params;
-      next.params = rest;
-    }
-    if (element.isPhoto) next.isPhoto = false;
-    if (Object.keys(next).length) patch(next);
-  }
-
-  // "It's a photo" clears a stale flat-art override in the SAME patch that
-  // sets isPhoto (controller ruling, fix round 1 2026-08-19): left alone, the
-  // two would visibly contradict each other -- buildDigitizeConfig's
-  // isPhoto-wins precedence sends is_photographic while params.forced_class
-  // still said flat. Fixing it at the source means no reader of
-  // params.forced_class needs isPhoto-awareness of its own.
-  //
-  // Unchecking does NOT bring a cleared override back -- that decision is
-  // gone for good, same one-way "reverting deletes, never restores" posture
-  // useAutomatic has.
-  function setIsPhoto(checked) {
-    if (checked && element.params && element.params.forced_class) {
-      const { forced_class, ...rest } = element.params;
-      patch({ isPhoto: true, params: rest });
-    } else {
-      patch({ isPhoto: checked });
-    }
-  }
+  // Whether the art is photographic or shaded content. `detail_layer` reads
+  // its lines off the source raster, which is worth offering there and not
+  // on a flat logo (Kent's call, 2026-08-30) -- so the control rides this
+  // row rather than sitting in the params list beside stitch width. A
+  // detected photograph counts even when its tier is flat.
+  $: tonalLane = artRead === "photo" || artRead === "gradient" || artRead === "detected"
+    || artRead === "face";
 
   // Resize honesty (Kent's rule, same as DesignPanel): the field's resize
   // handles SCALE baked stitches, they don't re-digitize — density changes
@@ -731,6 +836,30 @@
     patch({ blockColors: { ...(element.blockColors || {}), [i]: rgb } });
   }
 
+  // Thread per color lists SPOOLS, not sew blocks (2026-09-30). The design
+  // edge re-loads a cone, so a two-spool logo sews three blocks, and the
+  // list named "1720 Not Quite Red" twice — a customer reading it as what to
+  // buy buys a spool they have (the same rule the summary and the review's
+  // shopping list already follow: a colour is a cone to buy). Grouped by
+  // the cone's name and colour; a pick applies to every block of that
+  // spool, since on the machine they are one spool.
+  $: spoolRows = spoolGroups(element);
+  function spoolGroups(el) {
+    const colors = (el.result && el.result.colors) || [];
+    const groups = new Map();
+    colors.forEach((c, i) => {
+      const key = blockName(el, i) + "|" + [c.r || 0, c.g || 0, c.b || 0].join(",");
+      if (!groups.has(key)) groups.set(key, { name: blockName(el, i), first: i, blocks: [] });
+      groups.get(key).blocks.push(i);
+    });
+    return [...groups.values()];
+  }
+  function pickSpool(g, rgb) {
+    const next = { ...(element.blockColors || {}) };
+    for (const i of g.blocks) next[i] = rgb;
+    patch({ blockColors: next });
+  }
+
   const FILL_ANGLES = [
     { value: null, label: "Auto (per shape)" },
     { value: 0, label: "0°" },
@@ -768,6 +897,32 @@
   // element, so this resets when you switch designs -- which is what you want,
   // since "I was editing shapes" does not carry from one artwork to another.
   let layersOpen = false;
+  let layerListEl = null;
+  // Three tabs once there is a result (2026-09-30, the last item of Kent's
+  // design review): Settings — what you turn and what the run said;
+  // Shapes — the Layers list and its editors; Threads — the spools. One
+  // column had grown to 1,738px at 1440x900 with all of it stacked, and the
+  // customer's question ("what do I change?") was buried under the expert's
+  // list. Resets with the panel, which `{#key el.id}` remounts per element.
+  let tab = "settings";
+  // A shape picked on the canvas is found in the list: open it if it was
+  // closed, then bring the row into view. `nearest` so a row already on
+  // screen does not jump, and a row the user just clicked (which also
+  // arrives here, via App) is a no-op. Matched by walking the rows rather
+  // than an attribute selector so an id needs no escaping.
+  $: if (selectedShapeId) revealRow(selectedShapeId);
+  async function revealRow(id) {
+    tab = "shapes";
+    layersOpen = true;
+    await tick();
+    if (!layerListEl) return;
+    for (const li of layerListEl.querySelectorAll("[data-shape-id]")) {
+      if (li.dataset.shapeId === String(id)) {
+        if (typeof li.scrollIntoView === "function") li.scrollIntoView({ block: "nearest" });
+        return;
+      }
+    }
+  }
 
   // What the design-level border setting is called in a per-shape row's
   // "Design (...)" option. null is the automatic default and has no bare word
@@ -945,6 +1100,95 @@
   function overrideUnderlay(row, ov) {
     const e = ov[row.id] || {};
     return e.underlay_style == null ? "auto" : e.underlay_style;
+  }
+
+  // Per-shape stitch width (shape_overrides[sid].stitch_width_mm, contract
+  // v1.8). The engine measures every column-shaped shape, gives the letters
+  // of a detected word one shared width, and reports all of it in
+  // `row.stitchWidth` (reviewFromJob). The input here holds the OVERRIDE
+  // only; empty means "auto", and the placeholder shows what auto sews so
+  // the user has a starting number rather than a blank box.
+  //
+  // A shape in a word takes its edit for the WHOLE word by default —
+  // Kent's rule (2026-09-29): letters that belong together must not sew at
+  // varying widths. `wordScope` holds the ids the user has narrowed to
+  // "this shape only"; absent means the word.
+  let wordScope = new Set();
+  // Ids are content-derived, so a scope narrowed on one design could
+  // otherwise outlive it and land on another design's shape.
+  let wordScopeFor = null;
+  $: if (element && element.id !== wordScopeFor) {
+    wordScopeFor = element.id;
+    wordScope = new Set();
+  }
+
+  function overrideStitchWidth(row, ov) {
+    const e = ov[row.id] || {};
+    return typeof e.stitch_width_mm === "number" ? e.stitch_width_mm : null;
+  }
+
+  // The rows one edit reaches: the shape's word unless narrowed.
+  function stitchWidthTargets(row) {
+    const rows = wordScope.has(row.id) ? [row] : stitchWidthGroupRows(sewableShapes, row);
+    return rows.length ? rows : [row];
+  }
+
+  function setShapeStitchWidth(row, raw) {
+    const txt = String(raw == null ? "" : raw).trim();
+    let v = null;
+    if (txt !== "") {
+      v = Math.round(parseFloat(txt) * 100) / 100;
+      if (!Number.isFinite(v)) return;
+      v = Math.min(STITCH_WIDTH_MAX_MM, Math.max(STITCH_WIDTH_MIN_MM, v));
+    }
+    // One element patch for the whole word = one undo step, one restitch.
+    const cur = { ...(element.shapeOverrides || {}) };
+    for (const r of stitchWidthTargets(row)) {
+      const entry = { ...(cur[r.id] || {}) };
+      if (v == null) delete entry.stitch_width_mm;
+      else entry.stitch_width_mm = v;
+      if (Object.keys(entry).length) cur[r.id] = entry;
+      else delete cur[r.id];
+    }
+    patch({ shapeOverrides: cur });
+  }
+
+  function toggleWordScope(row) {
+    const next = new Set(wordScope);
+    if (next.has(row.id)) next.delete(row.id);
+    else next.add(row.id);
+    wordScope = next;
+  }
+
+  function fmtMm(v) {
+    return typeof v === "number" ? (Math.round(v * 100) / 100).toFixed(2) : "";
+  }
+
+  // The sentence under the input: what auto measured and chose, and
+  // whether the engine could honour the last request in full.
+  function stitchWidthNote(row, ov) {
+    const w = row.stitchWidth;
+    if (!w) return "";
+    const parts = [];
+    if (w.group) {
+      const n = stitchWidthGroupRows(sewableShapes, row).length;
+      parts.push(n > 1 ? `shared by ${n} shapes in this word` : "in a word");
+    }
+    // A shape the plan sews as a RUN is a bean on its own outline, with no
+    // column and no pull — its number is the artwork stroke, and the way to
+    // a satin column is a width. Everything else reads the sewn column.
+    if (row.tier === "run" && typeof w.artMm === "number") {
+      parts.push(`${fmtMm(w.artMm)} mm stroke, sewn as a thin run — set a width for a satin column`);
+    } else if (typeof w.measuredMm === "number") {
+      parts.push(`measured ${fmtMm(w.measuredMm)} mm`);
+    }
+    if (w.source === "group" || w.source === "floor") parts.push(`evened to ${fmtMm(w.sewnMm)} mm`);
+    if (w.limited) parts.push("kept short of the request so a counter or gap stays open");
+    if (w.skipReason === "gap_or_hole_would_close") parts.push("could not widen: a gap or counter would close");
+    else if (w.skipReason === "would_split_or_vanish") parts.push("could not narrow that far");
+    else if (w.skipReason === "below_fabric_pull") parts.push("this fabric's pull alone sews wider than that");
+    else if (w.skipReason === "hand_edited_outline") parts.push("outline was hand-edited, auto left it alone");
+    return parts.join(" · ");
   }
 
   function rowName(row) {
@@ -1619,6 +1863,7 @@
        a failed REPLACE — where they can already see their artwork — was the
        only case that spoke. -->
   {#if error}<p class="dgp-error" role="alert">{error}</p>{/if}
+  {#if sourceNote}<p class="dgp-note" data-testid="source-note">{sourceNote}</p>{/if}
 
   {#if !element.sourcePng}
     <p class="dgp-note">
@@ -1631,10 +1876,11 @@
     </p>
   {:else}
     <div class="dgp-src">
-      <img
-        class="dgp-thumb"
+      <CropBox
         src={"data:image/png;base64," + element.sourcePng}
-        alt={element.name || "Artwork"}
+        crop={element.crop}
+        onchange={(c) => patch({ crop: c })}
+        minFrac={cropMinFrac}
       />
       <span class="dgp-srcname">{element.name || "Artwork"}</span>
     </div>
@@ -1651,8 +1897,15 @@
     {/if}
 
     <div class="dgp-params">
-      <label class="dgp-param">
-        <span>Stitch width</span>
+      <!-- Every setting carries `use:tip` (lib/tip.js) with its key in
+           lib/settingHelp.js — hover the label or focus the control and the
+           three-line help shows. The "?" is a generated glyph on an empty,
+           aria-hidden element, so the label's text is unchanged. -->
+      <label class="dgp-param" use:tip={"designWidth"}>
+        <!-- Renamed from "Stitch width" 2026-09-29: this is the DESIGN's
+             width. "Stitch width" now means the per-shape satin column, in
+             the Edit shapes list below, and one word cannot mean both. -->
+        <span>Design width<i class="tipmark" aria-hidden="true"></i></span>
         <input
           type="number"
           min="10"
@@ -1663,8 +1916,8 @@
         />
         <span class="dgp-unit">mm</span>
       </label>
-      <label class="dgp-param">
-        <span>Colors (max {element.params.max_colors})</span>
+      <label class="dgp-param" use:tip={"colors"}>
+        <span>Colors (max {element.params.max_colors})<i class="tipmark" aria-hidden="true"></i></span>
         <input
           type="range"
           min="2"
@@ -1674,16 +1927,29 @@
           on:input={(e) => setParam("max_colors", parseInt(e.currentTarget.value, 10))}
         />
       </label>
-      <label class="dgp-checkline">
+      <label class="dgp-checkline" use:tip={"satinThin"}>
         <input
           type="checkbox"
           checked={element.params.satin}
           on:change={(e) => setParam("satin", e.currentTarget.checked)}
         />
-        Satin for thin shapes
+        Satin for thin shapes<i class="tipmark" aria-hidden="true"></i>
       </label>
-      <label class="dgp-param">
-        <span>Fill angle</span>
+      <!-- Off by default on purpose: on real lettering the per-letter reading
+           is a smooth chain, not a step (digitizer_core/stitchwidth.py), so
+           the word's median is a guess. The always-on half is per shape, in
+           Edit shapes: every measured column shows its width, and "whole
+           word" writes one width to every letter. -->
+      <label class="dgp-checkline" use:tip={"evenWidths"}>
+        <input
+          type="checkbox"
+          checked={!!element.params.stitch_width_auto}
+          on:change={(e) => setParam("stitch_width_auto", e.currentTarget.checked)}
+        />
+        Even out lettering widths<i class="tipmark" aria-hidden="true"></i>
+      </label>
+      <label class="dgp-param" use:tip={"fillAngle"}>
+        <span>Fill angle<i class="tipmark" aria-hidden="true"></i></span>
         <select
           value={element.params.fill_angle_deg == null ? "auto" : String(element.params.fill_angle_deg)}
           on:change={onAngleChange}
@@ -1693,8 +1959,8 @@
           {/each}
         </select>
       </label>
-      <label class="dgp-param">
-        <span>Border</span>
+      <label class="dgp-param" use:tip={"border"}>
+        <span>Border<i class="tipmark" aria-hidden="true"></i></span>
         <select
           value={element.params.border ?? ""}
           on:change={(e) => setParam("border", e.currentTarget.value || null)}
@@ -1717,8 +1983,8 @@
            no per-shape border rides it. Toggleable on purpose — bean and
            satin read very differently on cloth and the choice is his, per
            design. -->
-      <label class="dgp-param">
-        <span>Design edge</span>
+      <label class="dgp-param" use:tip={"designEdge"}>
+        <span>Design edge<i class="tipmark" aria-hidden="true"></i></span>
         <select
           value={element.params.edge_cap}
           on:change={(e) => setParam("edge_cap", e.currentTarget.value)}
@@ -1764,54 +2030,28 @@
       {/if}
     </div>
 
-    <!-- What the art was read as, in plain words, plus the one correction that
-         applies to that reading. Sits with the params, not down in the warnings
-         list, because it IS a param — and a FORCED row has to stand whether or
-         not there is a result to hang it off. Once a flat override takes effect
-         the art classifies as flat and the CLASSIFIED_* warning is gone: a row
-         anchored to that warning would make the override invisible, and
-         permanent, one run after the user set it. The automatic readings do
-         hang off the last run, since before it there is nothing to report. -->
-    {#if artRead === "forced" || element.result}
-      <div class="dgp-read" class:dgp-read-on={!offerFlat}>
+    <!-- What the art was read as, in plain words. Sits with the params, not
+         down in the warnings list, because the reading decides what the
+         params list even shows (the detail-lines option below). It hangs off
+         the last run, since before it there is nothing to report. A
+         statement, not an offer: nothing here is a button. -->
+    {#if element.result}
+      <div class="dgp-read" use:tip={"photoReading"}>
         <p class="dgp-read-text">
-          {#if artRead === "forced"}
-            You set this to {forcedLabel}.
+          {#if artRead === "face"}
+            A face was found, so it's sewing as flat art: solid color regions with an outline.
           {:else if artRead === "photo"}
-            Read as a photo, so it's sewing with shaded thread. If it's really a flat-color
-            logo — solid colors, no shading or photo texture — say so and it'll sew as flat art.
+            Read as a photo, so it's sewing with shaded thread.
           {:else if artRead === "gradient"}
-            Read as shaded artwork, so it's sewing in blended thread shades. If it's really a
-            flat-color logo — solid colors, no shading or photo texture — say so and it'll sew
-            as flat art.
+            Read as shaded artwork, so it's sewing in blended thread shades.
+          {:else if artRead === "detected"}
+            Read as a photograph, sewing as solid color regions.
           {:else if artRead === "unsure"}
             Couldn't tell what this artwork is, so it's sewing as flat art.
           {:else}
             Read as flat art, sewing as solid color regions.
           {/if}
         </p>
-        {#if artRead === "forced"}
-          {#if forcedClass === "flat"}
-            <button type="button" class="dgp-read-btn" on:click={() => setIsPhoto(true)}>
-              It's a photo
-            </button>
-          {/if}
-          <button type="button" class="dgp-read-btn" on:click={useAutomatic}>
-            Use automatic detection
-          </button>
-        {:else if offerFlat}
-          <button
-            type="button"
-            class="dgp-read-btn"
-            on:click={() => setParam("forced_class", "flat")}
-          >
-            It's flat art
-          </button>
-        {:else if offerPhoto}
-          <button type="button" class="dgp-read-btn" on:click={() => setIsPhoto(true)}>
-            It's a photo
-          </button>
-        {/if}
         {#if tonalLane}
           <label class="dgp-checkline dgp-read-opt">
             <input
@@ -1855,6 +2095,44 @@
         {element.result.widthMM.toFixed(0)}×{element.result.heightMM.toFixed(0)} mm ·
         {spoolCount(element.result)} color{spoolCount(element.result) === 1 ? "" : "s"}
       </p>
+      <!-- "Since last run" sits with the stats, above the tabs: a re-run
+           can be started from any of them (Apply on Shapes, a spool on
+           Threads), and its outcome should be read where you are. -->
+      {#if hasPrior}
+        <p class="dgp-delta" role="status" data-testid="digitize-delta">
+          {#if changed.length}
+            Since last run: {changed.join(" · ")}
+          {:else}
+            Since last run: no change to stitches, threads or trims.
+          {/if}
+        </p>
+      {/if}
+      <!-- The run's warnings too: a layer edit that no longer matches a
+           shape, a background that was hard to separate. Whatever tab you
+           are on, these are not to be missed. -->
+      {#if attentionLines.length}
+        <ul class="dgp-warnings">
+          {#each attentionLines as w (w.code + w.text)}
+            <li>{w.text}</li>
+          {/each}
+        </ul>
+      {/if}
+
+      <!-- The tabs (see `tab` in the script). The stats line, the delta and
+           the warnings above are common to all three; everything below
+           belongs to one. The counts are aria-hidden so the tabs' names stay
+           the plain words. -->
+      <div class="dgp-tabs" role="tablist" aria-label="Digitize panel">
+        <button type="button" role="tab" class="dgp-tab" class:dgp-tab-on={tab === "settings"} aria-selected={tab === "settings"} on:click={() => (tab = "settings")}>Settings</button>
+        <button type="button" role="tab" class="dgp-tab" class:dgp-tab-on={tab === "shapes"} aria-selected={tab === "shapes"} on:click={() => (tab = "shapes")}>
+          Shapes{#if reviewShapes.length}<span class="dgp-tab-count" aria-hidden="true">{reviewShapes.length}</span>{/if}
+        </button>
+        <button type="button" role="tab" class="dgp-tab" class:dgp-tab-on={tab === "threads"} aria-selected={tab === "threads"} on:click={() => (tab = "threads")}>
+          Threads<span class="dgp-tab-count" aria-hidden="true">{spoolRows.length}</span>
+        </button>
+      </div>
+
+      {#if tab === "settings"}
 
       <!-- Item 10: a re-digitize used to replace the design in place with
            nothing to compare against, so a knob you turned and a knob you
@@ -1875,16 +2153,9 @@
         </div>
       {/if}
 
-      {#if hasPrior}
-        <p class="dgp-delta" role="status" data-testid="digitize-delta">
-          {#if changed.length}
-            Since last run: {changed.join(" · ")}
-          {:else}
-            Since last run: no change to stitches, threads or trims.
-          {/if}
-        </p>
       {/if}
 
+      {#if tab === "shapes"}
       {#if unstitchedRows.length}
         <div class="dgp-enclosed-banner" role="alert">
           <p class="dgp-enclosed-banner-text">
@@ -1899,13 +2170,9 @@
           </button>
         </div>
       {/if}
-      {#if attentionLines.length}
-        <ul class="dgp-warnings">
-          {#each attentionLines as w (w.code + w.text)}
-            <li>{w.text}</li>
-          {/each}
-        </ul>
       {/if}
+
+      {#if tab === "settings"}
       {#if noteLines.length}
         <details class="dgp-notes">
           <summary>{noteLines.length} note{noteLines.length === 1 ? "" : "s"} about how this was digitized</summary>
@@ -1931,7 +2198,9 @@
           Re-digitize at {element.sizeMm.toFixed(0)} mm
         </button>
       {/if}
+      {/if}
 
+      {#if tab === "shapes"}
       {#if reviewShapes.length}
         <div class="dgp-layers">
           <div class="dgp-layers-head">
@@ -2246,7 +2515,7 @@
             </span>
           </button>
           {#if layersOpen}
-          <ol class="dgp-layerlist">
+          <ol class="dgp-layerlist" bind:this={layerListEl}>
             {#each orderedShapes as row, i (row.id)}
               <!-- One name per row, reused by every control in it, so a
                    screen reader and a voice command can both tell the rows
@@ -2280,7 +2549,16 @@
               {@const tier = effTier(row, overrides)}
               {@const siblings = dead || unstitched ? [] : layerSiblings(row, sewableShapes, overrides)}
               {@const siblingIdx = siblings.findIndex((r) => r.id === row.id)}
-              <li class="dgp-layer" class:dead class:unstitched>
+              <li
+                class="dgp-layer"
+                class:dead
+                class:unstitched
+                class:dgp-layer-hover={hoverShapeId === row.id}
+                class:dgp-layer-sel={selectedShapeId === row.id}
+                data-shape-id={row.id}
+                on:mouseenter={() => d("shapehover", row.id)}
+                on:mouseleave={() => d("shapehover", null)}
+              >
                 {#if !dead && !unstitched}
                   <label class="dgp-mergecheck" title="Select for merge">
                     <input
@@ -2323,7 +2601,18 @@
                       {/if}
                     {:else}
                       <ThreadPicker {rgb} compact name={rowAria} on:pick={(e) => recolorShape(row.id, e.detail)} />
-                      <span class="dgp-lname">{rowName(row)}</span>
+                      <!-- The name is the row's handle onto the canvas: click
+                           it and the field selects this shape, the amber
+                           outline showing which one. Only a sewing row gets
+                           this — a hidden or deleted shape has no outline to
+                           show and a Delete armed on it would be a surprise. -->
+                      <button
+                        type="button"
+                        class="dgp-lname dgp-lname-btn"
+                        title="Show this shape on the canvas"
+                        aria-label={"Show " + rowAria + " on the canvas"}
+                        on:click={() => d("shapeselect", row.id)}
+                      >{rowName(row)}</button>
                       <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
                       <span class="dgp-ltier tier-{tier || 'none'}">{tier || "not sewn"}</span>
                       <!-- The border this row actually has on it (borderMenu
@@ -2382,6 +2671,7 @@
                         value={overrideTier(row, overrides)}
                         on:change={(e) => setShapeTier(row.id, e.currentTarget.value)}
                         aria-label={"Stitch type — " + rowAria}
+                        use:tip={"shapeTier"}
                       >
                         <option value="auto">Auto{row.tier ? " (" + row.tier + ")" : ""}</option>
                         <option value="satin">Satin</option>
@@ -2400,6 +2690,7 @@
                           value={overrideAngle(row, overrides)}
                           on:change={(e) => setShapeAngle(row.id, e.currentTarget.value)}
                           aria-label={"Fill angle — " + rowAria}
+                          use:tip={"shapeAngle"}
                         >
                           {#each SHAPE_ANGLES as a}
                             <option value={a.value == null ? "auto" : String(a.value)}>{a.label}</option>
@@ -2410,6 +2701,7 @@
                           value={overrideUnderlay(row, overrides)}
                           on:change={(e) => setShapeUnderlay(row.id, e.currentTarget.value)}
                           aria-label={"Underlay style — " + rowAria}
+                          use:tip={"shapeUnderlay"}
                         >
                           {#each SHAPE_UNDERLAYS as u}
                             <option value={u.value == null ? "auto" : u.value}>{u.label}</option>
@@ -2421,6 +2713,7 @@
                         value={overrideBorder(row, overrides)}
                         on:change={(e) => setShapeBorder(row.id, e.currentTarget.value)}
                         aria-label={"Border — " + rowAria}
+                        use:tip={"shapeBorder"}
                       >
                         <option value="default">Design ({borderLabel(element.params.border)})</option>
                         <option value="off">No border</option>
@@ -2428,6 +2721,52 @@
                         <option value="bean">Bean border</option>
                       </select>
                     </div>
+                    <!-- Stitch width (contract v1.8): only where the engine
+                         measured a column. A fill region has no column to
+                         size, so the control is absent rather than disabled
+                         there; the tier select above is that shape's lever. -->
+                    {#if row.stitchWidth && tier !== "fill"}
+                      {@const swOverride = overrideStitchWidth(row, overrides)}
+                      {@const swGroupN = stitchWidthGroupRows(sewableShapes, row).length}
+                      <div class="dgp-lrow dgp-lwidth" data-testid="stitch-width-row">
+                        <label class="dgp-lwidth-label">
+                          <span>Stitch width</span>
+                          <input
+                            type="number"
+                            class="dgp-lwidth-input"
+                            min={STITCH_WIDTH_MIN_MM}
+                            max={STITCH_WIDTH_MAX_MM}
+                            step="0.1"
+                            placeholder={"auto " + fmtMm(row.stitchWidth.autoMm)}
+                            value={swOverride == null ? "" : swOverride}
+                            aria-label={"Stitch width — " + rowAria}
+                            use:tip={"stitchWidth"}
+                            on:change={(e) => setShapeStitchWidth(row, e.currentTarget.value)}
+                          />
+                          <span class="dgp-unit">mm</span>
+                        </label>
+                        {#if swOverride != null}
+                          <button
+                            type="button"
+                            class="dgp-lbtn dgp-lwidth-auto"
+                            title={swGroupN > 1 && !wordScope.has(row.id) ? "Back to the engine's own width, for the whole word" : "Back to the engine's own width"}
+                            on:click={() => setShapeStitchWidth(row, "")}
+                          >Auto</button>
+                        {/if}
+                        {#if swGroupN > 1}
+                          <label class="dgp-lwidth-scope" use:tip={"wholeWord"}>
+                            <input
+                              type="checkbox"
+                              checked={!wordScope.has(row.id)}
+                              on:change={() => toggleWordScope(row)}
+                              aria-label={"Whole word — " + rowAria}
+                            />
+                            whole word
+                          </label>
+                        {/if}
+                        <span class="dgp-lwidth-note">{stitchWidthNote(row, overrides)}</span>
+                      </div>
+                    {/if}
                   {/if}
                 </div>
                 <div class="dgp-lbtns">
@@ -2565,19 +2904,26 @@
       {:else if health}
         <p class="dgp-note">Digitize again to get an editable layer list for this result.</p>
       {/if}
+      {/if}
 
+      {#if tab === "threads"}
       <div class="dgp-blocks">
         <span class="dgp-blocks-label">Thread per color</span>
-        {#each Array.from({ length: (element.result.colors || []).length }) as _, i}
+        {#each spoolRows as g (g.first)}
           <div class="dgp-block">
-            <span class="dgp-block-n">{blockName(element, i)}</span>
-            <ThreadPicker rgb={blockRgb(element, i)} compact on:pick={(e) => pickBlock(i, e.detail)} />
+            <span class="dgp-block-n">{g.name}</span>
+            {#if g.blocks.length > 1}
+              <span class="dgp-block-note">loaded {g.blocks.length} times</span>
+            {/if}
+            <ThreadPicker rgb={blockRgb(element, g.first)} compact on:pick={(e) => pickSpool(g, e.detail)} />
           </div>
         {/each}
       </div>
+      {/if}
 
-      <label class="letterspacing">
-        <span>Rotation</span>
+      {#if tab === "settings"}
+      <label class="letterspacing" use:tip={"rotation"}>
+        <span>Rotation<i class="tipmark" aria-hidden="true"></i></span>
         <input
           type="range"
           min="0"
@@ -2588,12 +2934,49 @@
         />
         <span class="label">{rotation}°</span>
       </label>
+      {/if}
     {/if}
   {/if}
 </div>
 
 <style>
   .digipanel { margin-top: 4px; }
+  /* The three tabs: a hairline underline strip, the lit one in ink with a
+     2px accent rule — the same segmented language as the hoop picker and
+     the view segments, laid flat because it heads a column. */
+  .dgp-tabs {
+    display: flex;
+    gap: var(--space-4, 16px);
+    margin: 12px 0 10px;
+    border-bottom: 1px solid var(--border, #e2e5eb);
+  }
+  .dgp-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 2px 8px;
+    margin-bottom: -1px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--muted, #616875);
+    font: inherit;
+    font-size: var(--fs-sm, 14px);
+    font-weight: var(--fw-medium, 500);
+    cursor: pointer;
+  }
+  .dgp-tab:hover { color: var(--ink, #1c1f26); }
+  .dgp-tab-on { color: var(--ink, #1c1f26); border-bottom-color: var(--accent, #4f46e5); font-weight: var(--fw-semibold, 600); }
+  .dgp-tab-count {
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--bg, #f6f7fb);
+    color: var(--muted, #616875);
+    font-size: var(--fs-2xs, 11px);
+    font-weight: var(--fw-semibold, 600);
+  }
+  .dgp-tab-on .dgp-tab-count { background: var(--tint, #eef0ff); color: var(--accent, #4f46e5); }
+  .dgp-block-note { font-size: var(--fs-2xs, 11px); color: var(--muted, #616875); }
   .dgp-upload { display: inline-block; cursor: pointer; }
   .dgp-upload input[type="file"] {
     position: absolute;
@@ -2636,15 +3019,7 @@
     color: var(--muted, #6b7280);
     margin: 8px 0 0;
   }
-  .dgp-src { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-  .dgp-thumb {
-    width: 56px;
-    height: 56px;
-    object-fit: contain;
-    border: 1px solid var(--tint-border, #ccd6fb);
-    border-radius: var(--radius-s, 6px);
-    background: #fff;
-  }
+  .dgp-src { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 10px; }
   .dgp-srcname { font-size: var(--fs-xs, 12px); color: var(--muted, #667); word-break: break-all; }
   .dgp-offline {
     margin-top: 10px;
@@ -2787,67 +3162,34 @@
     font-size: var(--fs-xs, 12px);
     white-space: nowrap;
   }
-  /* The reading row borrows .dgp-enclosed-banner's shape wholesale, for the
-     reason that banner's own comment gives: an offer the user is meant to act
-     on has to be a box, not another dim line in a list. */
+  /* The reading row is a STATEMENT of what the engine read, not an offer:
+     nothing in it is a button (Kent, 2026-09-30), nothing is wrong and
+     nothing needs chasing, and it stays for the life of the design. So it
+     takes .dgp-check's quiet surface/tint vocabulary rather than warning
+     yellow. Still a box, so the detail-lines option reads as part of it. */
   .dgp-read {
     display: flex;
-    align-items: center;
-    /* Wraps because a forced-flat row carries TWO buttons ("It's a photo" and
-       "Use automatic detection"), which together outrun the panel's width and
-       would otherwise squeeze the sentence into a three-word column. The
-       min-width on the text below is what decides the break: one button still
-       sits inline, two drop to their own line. */
     flex-wrap: wrap;
+    align-items: center;
     gap: 10px;
     margin: 10px 0 0;
     padding: 8px 10px;
-    border: 1px solid var(--warn-text, #8a6d1a);
+    border: 1px solid var(--tint-border, #ccd6fb);
     border-radius: var(--radius-s, 6px);
-    background: var(--warn-bg, #fdf6e3);
+    background: var(--surface, #fff);
   }
   .dgp-read-text {
     flex: 1 1 auto;
-    min-width: 55%;
     margin: 0;
     font-size: var(--fs-xs, 12px);
-    color: var(--warn-text, #8a6d1a);
+    color: var(--muted, #667);
   }
-  /* The detail-lines option rides this row rather than the params list, so it
-     takes the row's own width and sits on its own line under the sentence and
-     the correction -- never sharing a line with a button. It takes the same
-     two-state colour as .dgp-read-text so it reads as part of whichever row it
-     is in, rather than inheriting the panel default through the container. */
+  /* The detail-lines option takes the row's own width and sits on its own
+     line under the sentence, in the same colour so it reads as part of the
+     row rather than inheriting the panel default through the container. */
   .dgp-read-opt {
     flex: 1 1 100%;
-    color: var(--warn-text, #8a6d1a);
-  }
-  .dgp-read-btn {
-    flex-shrink: 0;
-    padding: 5px 10px;
-    border: 1px solid var(--warn-text, #8a6d1a);
-    border-radius: var(--radius-s, 6px);
-    background: var(--warn-text, #8a6d1a);
-    color: #fff;
-    cursor: pointer;
-    font-size: var(--fs-xs, 12px);
-    white-space: nowrap;
-  }
-  /* A row that is only STATING what happened — a forced override, or a reading
-     with nothing to correct — is not a warning: nothing is wrong and nothing
-     needs chasing, and unlike the flat-art offer it never goes away. So it
-     drops to .dgp-check's quiet surface/tint vocabulary instead of sitting
-     there in warning yellow for the life of the design. */
-  .dgp-read-on {
-    border-color: var(--tint-border, #ccd6fb);
-    background: var(--surface, #fff);
-  }
-  .dgp-read-on .dgp-read-text,
-  .dgp-read-on .dgp-read-opt { color: var(--muted, #667); }
-  .dgp-read-on .dgp-read-btn {
-    border-color: var(--tint-border, #ccd6fb);
-    background: var(--surface, #fff);
-    color: inherit;
+    color: var(--muted, #667);
   }
   .dgp-resize { font-size: var(--fs-xs, 12px); color: var(--warn-text, #8a6d1a); margin: 8px 0 6px; }
   .dgp-blocks { margin-top: 10px; }
@@ -2961,6 +3303,25 @@
      deliberately NOT struck through — this isn't something the user
      removed, so it shouldn't look removed. */
   .dgp-layer.unstitched { opacity: 0.75; }
+  /* The list and the canvas point at the same shape (2026-09-30): a row
+     under the pointer here, or whose shape is under the pointer there, takes
+     the hover ground; the selected shape's row takes the tint with an
+     accent edge, the list's twin of the amber outline on the field. */
+  .dgp-layer:hover,
+  .dgp-layer-hover { background: var(--bg, #f6f7fb); }
+  .dgp-layer-sel,
+  .dgp-layer-sel:hover { background: var(--tint, #eef0ff); box-shadow: inset 3px 0 0 var(--accent, #4f46e5); }
+  .dgp-lname-btn {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font-family: inherit;
+    line-height: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .dgp-lname-btn:hover { color: var(--accent, #4f46e5); text-decoration: underline; }
   .dgp-ltier-unstitched {
     color: var(--warn-text, #8a6d1a);
     border-color: var(--warn-text, #8a6d1a);
@@ -3090,6 +3451,24 @@
     cursor: pointer;
   }
   .dgp-lsel:hover { border-color: var(--accent, #4f46e5); }
+  .dgp-lwidth { gap: 6px; }
+  .dgp-lwidth-label { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-2xs, 0.6875rem); }
+  .dgp-lwidth-input {
+    /* 84px, not 64: the placeholder is "auto 2.08" and a number input keeps
+       a spinner on the right, so 64 clipped it to "auto 2.0" on the first
+       drive (2026-09-30). Sized for "auto 12.34" plus the spinner. */
+    width: 84px;
+    padding: 2px 4px;
+    font-size: var(--fs-2xs, 0.6875rem);
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 8px);
+    background: var(--surface, #fff);
+    color: var(--ink, #1c1f26);
+  }
+  .dgp-lwidth-input:focus { border-color: var(--accent, #4f46e5); outline: none; }
+  .dgp-lwidth-auto { width: auto; padding: 0 6px; }
+  .dgp-lwidth-scope { display: inline-flex; align-items: center; gap: 3px; font-size: var(--fs-2xs, 0.6875rem); cursor: pointer; }
+  .dgp-lwidth-note { font-size: var(--fs-2xs, 0.6875rem); color: var(--ink-soft, #5c6270); flex-basis: 100%; }
   /* A 4-wide grid, not a 1-wide column. These seven 26x18 buttons were
      stacked vertically, which made `.dgp-lbtns` 26px wide and 138px TALL --
      and since it is the tallest child of `.dgp-layer`, it set every row's

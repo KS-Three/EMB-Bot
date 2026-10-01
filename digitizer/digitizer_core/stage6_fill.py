@@ -758,6 +758,7 @@ _TRIM_STITCH_EQUIVALENT = 25.0
 def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
                 slack: Polygon, entry: tuple[float, float] | None,
                 trim_at_mm: float, row_mm: float | None = None,
+                cut_bridges: bool = False,
                 ) -> tuple[int, float, float]:
     """-> (cuts, travel stitches, exposed travel stitches) this path ORDER
     costs, by `fill_region`'s rule.
@@ -768,6 +769,10 @@ def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
     that will actually sew, and the third figure is how many of those travel
     stitches lie over fill already laid. Without it the third figure is 0.0
     and the first two are exactly what this function returned before.
+
+    `cut_bridges` asks `_cut_is_cheaper` about each found bridge exactly as
+    `emit` does, so a bridge the emitter will lift is counted here as the cut
+    it becomes and not as the travel it would have been.
 
     `emit` cuts exactly when `travel_path` finds no route AND the gap exceeds
     `trim_at_mm` (its `bridge is None` branch), and lays travel stitches when it
@@ -799,6 +804,11 @@ def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
         if cur is not None:
             bridge = travel_path(poly, ring, cur, path[0], slack,
                                  sewn if row_mm is not None else None, cache)
+            # The same question `emit` asks, so the order is scored with the
+            # lifts that will actually be made.
+            if (cut_bridges and bridge and row_mm is not None
+                    and _cut_is_cheaper(cur, bridge, sewn, trim_at_mm)):
+                bridge = None
             if bridge is None:
                 if math.dist(cur, path[0]) > trim_at_mm:
                     cuts += 1
@@ -831,6 +841,41 @@ def _score(cost: tuple) -> float:
     exposed_stitches = rest[0] if rest else 0.0
     return (cuts * _TRIM_STITCH_EQUIVALENT + travel_stitches
             + exposed_stitches * _EXPOSED_STITCH_WEIGHT)
+
+
+def _cut_is_cheaper(a: tuple[float, float], bridge: list[tuple[float, float]],
+                    sewn, trim_at_mm: float) -> bool:
+    """Does this ONE bridge cost more than the cut it avoids, at `_score`'s rate?
+
+    `_score` is only ever asked to compare two whole column orders. `emit`
+    never asks it about a single bridge: any in-shape route is sewn, however
+    much of it lies on finished fill, and the thread is lifted only when no
+    route exists at all. Traced 2026-09-19 (`tools/travel_legs.py`): 97.7% of
+    the exposed travel on the nine logos is this, and Becker's worst leg laps
+    a finished column for 24.5 mm to cross an 8.4 mm gap — 16 travel stitches
+    plus 9.3 exposed ones, 34.6 against a cut's 25.
+
+    `PipelineConfig.fill_bridge_cut`, default OFF. No constant is added: the
+    bridge is priced with the same two the scorer uses, both Kent's.
+
+    Only a bridge that SHOWS is weighed — travel under fill still to come is
+    what a professional does, however long. And only where the gap is over
+    `trim_at_mm`, so the lift really is the cut being priced: under it the
+    lift is a jump, and that arm was priced out on 2026-09-11 (26 mm
+    corpus-wide, DOCTRINE).
+
+    `bridge` is `travel_path`'s return: `a` excluded, `b` included, so its
+    last point is the far end and `len(bridge) - 1` is what `emit` appends.
+    """
+    if not bridge or sewn is None:
+        return False
+    if math.dist(a, bridge[-1]) <= trim_at_mm:
+        return False
+    exposed_mm = _exposed_mm([a] + list(bridge), sewn) - _EXPOSED_TOLERANCE_MM
+    if exposed_mm <= 0.0:
+        return False
+    return _score((0, float(len(bridge) - 1),
+                   exposed_mm / machine.TRAVEL_STITCH_MM)) > _score((1, 0.0, 0.0))
 
 
 # ---------------------------------------------------------------------------
@@ -1035,6 +1080,7 @@ def _reorder_for_fewer_cuts(paths: list[list[tuple[float, float]]], poly: Polygo
 def _reorder_for_cover(paths: list[list[tuple[float, float]]], poly: Polygon,
                        ring, slack: Polygon, entry: tuple[float, float] | None,
                        trim_at_mm: float, row_mm: float,
+                       cut_bridges: bool = False,
                        ) -> list[list[tuple[float, float]]]:
     """Prefer a next path whose bridge crosses UNSEWN ground, when it is cheaper.
 
@@ -1059,9 +1105,26 @@ def _reorder_for_cover(paths: list[list[tuple[float, float]]], poly: Polygon,
     ends = [(p[0], p[-1]) for p in paths if p]
     if len(ends) != len(paths):
         return paths
-    before = _order_cost(paths, poly, ring, slack, entry, trim_at_mm, row_mm)
-    if before[2] <= 0.0:
-        return paths                     # nothing exposed; nothing to win
+    before = _order_cost(paths, poly, ring, slack, entry, trim_at_mm, row_mm,
+                         cut_bridges=cut_bridges)
+    # Nothing exposed, nothing to win -- unless `cut_bridges` is why nothing is
+    # exposed: the scorer lifts a dear bridge, so an order can read "one cut,
+    # nothing on top" and still lose to the order this function would have
+    # found. Review finding 2026-09-19, a plate with two holes: this exit kept
+    # a plan scoring 86.0 where flag-OFF's order scores 40.1 by the same
+    # scorer. So the exit is taken on what the order exposes BEFORE any lift,
+    # which is exactly the question flag-OFF asks: ON prices the candidate for
+    # the same shapes OFF does and picks the cheaper of the same two orders,
+    # so it can never buy a dearer plan than it replaces -- and a shape with
+    # nothing exposed sews as it does with the flag off.
+    # (The first cure asked "is there a cut?" instead. The cut `_order_cost`
+    # counts is usually just the ENTRY hop from the previous shape, so that
+    # re-ordered nearly every multi-column fill under ON, exposed or not.)
+    exposed = before[2]
+    if cut_bridges and exposed <= 0.0 and before[0] > 0:
+        exposed = _order_cost(paths, poly, ring, slack, entry, trim_at_mm, row_mm)[2]
+    if exposed <= 0.0:
+        return paths
 
     pinned = len(paths) - 1
     remaining = set(range(pinned))
@@ -1105,7 +1168,8 @@ def _reorder_for_cover(paths: list[list[tuple[float, float]]], poly: Polygon,
     order.append(pinned)
     candidate = [paths[j][::-1] if j in flipped else paths[j] for j in order]
     assert candidate[-1][-1] == paths[-1][-1], "exit point must be unchanged"
-    after = _order_cost(candidate, poly, ring, slack, entry, trim_at_mm, row_mm)
+    after = _order_cost(candidate, poly, ring, slack, entry, trim_at_mm, row_mm,
+                        cut_bridges=cut_bridges)
     return candidate if _score(after) < _score(before) else paths
 
 
@@ -1353,6 +1417,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  under_cover: bool = False,
                  row_phase_mm: float = 0.0,
                  keep_row=None,
+                 cut_bridges: bool = False,
                  ) -> tuple[list[StitchRun], dict]:
     """One shape -> its runs, in sew order (underlay first), plus a small report.
 
@@ -1367,6 +1432,13 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     Underlay-phase travel is left alone: the fill covers it anyway. The
     parameter itself defaults False so a caller that does not pass it (the
     contour tier's finish patches) is byte-identical to before it existed.
+
+    `cut_bridges` (`PipelineConfig.fill_bridge_cut`, default OFF): a fill
+    bridge that shows and costs more at `_score`'s rate than the cut it
+    avoids is lifted instead of sewn — see `_cut_is_cheaper`. Inert without
+    `under_cover`, which is what tracks the sewn footprint, and on the two-pass
+    fills (crosshatch, the density boost), where that footprint cannot tell
+    what pass two will cover.
 
     `start_near` is where the needle is when this shape's turn comes; the
     underlay and the fill both begin at whichever of their own valid starting
@@ -1415,6 +1487,15 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     # the exposure tolerance already allows.
     sewn = None
     route_cache: dict = {}
+    # `cut_bridges` is for single-pass fills. Crosshatch and the density boost
+    # sew the shape twice, and the footprint above cannot tell pass-one fill
+    # that pass two is about to cover from fill that is finished: every
+    # pass-two bridge would read as exposed and be weighed against a cut it
+    # does not need (measured on a two-hole plate: trims 0 -> 2 crosshatch,
+    # 1 -> 3 boosted, hiding nothing). Same predicate as the dispatch below.
+    two_pass = technique == "crosshatch" or (
+        technique == "tatami" and density_boost and is_solid_fill(poly))
+    cut_bridges = cut_bridges and under_cover and not two_pass
 
     def emit(paths: list[list[tuple[float, float]]], kind: str, max_step: float) -> None:
         nonlocal sewn
@@ -1434,6 +1515,9 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                 bridge = travel_path(poly, ring, runs[-1].points[-1], pts[0], slack,
                                      sewn if (under_cover and kind == stitches.FILL) else None,
                                      route_cache)
+                if (cut_bridges and bridge and under_cover and kind == stitches.FILL
+                        and _cut_is_cheaper(runs[-1].points[-1], bridge, sewn, trim_at_mm)):
+                    bridge = None       # dearer than the cut: lift, as if no route existed
                 if bridge is None:
                     d = math.dist(runs[-1].points[-1], pts[0])
                     report["jumps"] += 1
@@ -1481,11 +1565,13 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     fill_paths = _memoized(_k, lambda: _reorder_for_fewer_cuts(
         fill_paths, poly, ring, slack, entry, trim_at_mm))
     if under_cover:
+        # `cut_bridges` changes what the scorer counts, so it is part of the
+        # key: without it an ON run is handed the order an OFF run chose.
         _k = _reorder_key(b"cover", fill_paths, poly, ring, slack, entry,
-                          trim_at_mm, row_mm)
+                          trim_at_mm, row_mm, cut_bridges)
         _before = fill_paths
         fill_paths = _memoized(_k, lambda: _reorder_for_cover(
-            _before, poly, ring, slack, entry, trim_at_mm, row_mm))
+            _before, poly, ring, slack, entry, trim_at_mm, row_mm, cut_bridges))
     emit(fill_paths, stitches.FILL, stitch_mm)
 
     if not runs:

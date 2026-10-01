@@ -152,3 +152,24 @@ def test_generation_cache_is_a_bounded_lru():
     assert cache.stats()["entries"] == 2
     cache.clear()
     assert cache.stats()["entries"] == 0
+
+
+def test_crop_is_part_of_the_generation_identity():
+    """A changed crop must invalidate stages 0-4. `crop` is not an EDIT_KEY,
+    so `generation_key` already covers it -- this pins it, because a stale
+    generation served across a crop change is silent."""
+    image = ART.read_bytes()
+    base = {"target_width_mm": 80.0}
+    cropped = {"target_width_mm": 80.0, "crop": [0.1, 0.1, 0.9, 0.9]}
+    other = {"target_width_mm": 80.0, "crop": [0.2, 0.2, 0.8, 0.8]}
+
+    assert generation_key(image, base) != generation_key(image, cropped)
+    assert generation_key(image, cropped) != generation_key(image, other)
+    assert generation_key(image, cropped) == generation_key(image, dict(cropped))
+
+
+def test_crop_is_not_an_edit_key():
+    """Edit keys are the four the shape-layers contract applies AFTER stage 4.
+    A crop is a stage-0/1 input; filing it as an edit key would serve every
+    crop change from a stale generation."""
+    assert "crop" not in EDIT_KEYS

@@ -30,6 +30,9 @@ import { fileURLToPath } from "node:url";
 // drives a row has to open it first. Idempotent, so it is safe to call after
 // every re-digitize -- the panel remounts per element and closes again.
 async function openShapeRows(page) {
+  // The list lives on the Shapes tab since 2026-09-30; the tab appears with
+  // the result, so the click waits for it.
+  await page.getByRole("tab", { name: "Shapes" }).click({ timeout: 120_000 });
   const btn = page.getByRole("button", { name: /^Edit shapes/ });
   await expect(btn).toBeVisible({ timeout: 120_000 });
   if ((await btn.getAttribute("aria-expanded")) !== "true") await btn.click();
@@ -208,7 +211,7 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
   // shapes new ids; the applied border override now names a shape that no
   // longer exists. The width change re-digitizes automatically (the panel's
   // params watcher), carrying the now-stale override to the service.
-  const width = page.getByLabel("Stitch width");
+  const width = page.getByLabel("Design width");
   await width.fill("40");
   await width.blur();
 

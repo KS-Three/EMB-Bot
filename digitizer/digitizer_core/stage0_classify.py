@@ -66,7 +66,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from .alpha_edge import extend_opaque_colour, extension_applies
 from .config import PipelineConfig
+from .crop import apply_crop
 from .letterbox import strip_letterbox
 from .threads import rgb_to_lab
 from .warnings_codes import (
@@ -168,7 +170,8 @@ CONFIDENCE_FLOOR = 0.55
 # --- Image loading (standalone -- see module docstring) ---------------------
 
 def _load(image: str | Path | bytes | np.ndarray,
-          strip_bars: bool = False) -> tuple[np.ndarray, np.ndarray | None]:
+          strip_bars: bool = False,
+          crop=None) -> tuple[np.ndarray, np.ndarray | None]:
     """-> (rgb uint8, alpha uint8 or None)."""
     if isinstance(image, np.ndarray):
         raw = image
@@ -184,6 +187,11 @@ def _load(image: str | Path | bytes | np.ndarray,
         rgb, alpha = cv2.cvtColor(raw[:, :, :3], cv2.COLOR_BGR2RGB), raw[:, :, 3]
     else:
         rgb, alpha = cv2.cvtColor(raw, cv2.COLOR_BGR2RGB), None
+    # The customer's crop, applied before the letterbox strip and before any
+    # signal reads the pixels. Same module and same position as
+    # `stage1_prep._load`, and the two MUST stay in step for the same reason
+    # the strip below does.
+    rgb, alpha = apply_crop(rgb, alpha, crop)
     # Same strip as `stage1_prep._load`, behind the same `cfg.strip_letterbox`
     # flag, and the two MUST stay in step: this module deliberately owns its
     # own decode, so if only one stripped, stage 0 would classify a different
@@ -465,7 +473,17 @@ def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
         _write_debug(cfg, result)
         return result
 
-    rgb, alpha = _load(image, cfg.strip_letterbox)
+    rgb, alpha = _load(image, cfg.strip_letterbox, cfg.crop)
+    # In step with stage 1 (`cfg.alpha_edge_extend`): the signals below mask
+    # to `fg`, but `_gradient_smoothness`'s kernel sits on the edge and reads
+    # what is under the alpha whatever the mask says — Becker with black
+    # underneath classified "gradient" from a raster stage 1 had already
+    # extended (measured 2026-09-20).
+    # Stage 0 reads the extension wherever the file has alpha when
+    # `alpha_edge_extend_stage0_whole` (Kent's pick 2026-09-20); stage 1 keeps
+    # the resolution-floor gate for the pixels it sews. `alpha_edge.py` says why.
+    if extension_applies(cfg, alpha, ignore_gate=cfg.alpha_edge_extend_stage0_whole):
+        rgb = extend_opaque_colour(rgb, alpha, cfg.alpha_edge_extend_px)
     fg = _fg_mask(rgb, alpha)
 
     ucm = _unique_color_mass(rgb, fg, cfg.seed)

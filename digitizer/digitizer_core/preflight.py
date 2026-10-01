@@ -119,7 +119,7 @@ import re
 
 import cv2
 import numpy as np
-from shapely.geometry import Point
+from shapely.geometry import Point, Polygon
 from skimage.color import deltaE_ciede2000
 
 from . import machine, stitches
@@ -128,19 +128,23 @@ from .pipeline import PipelineResult, fabric_for
 from .stage0_classify import classify
 from .stage1_prep import _dominant_border_color, prep
 from .stage6_meander import MEANDER_CELL_MM, MEANDER_COARSE_LEVELS
+from .shapefield import build_shape_field
 from .stage6_satin import strip_splits
 from .stage6_scanline import SCANLINE_LEVEL_STRIDES, SCANLINE_ROW_MM
 from .stage6_streamline import (STREAMLINE_D_SEP_DARK_MM,
                                 STREAMLINE_D_SEP_LIGHT_MM)
 from . import legibility as _legibility
 from .stitches import StitchPlan
+from .textcluster import (LETTER_MAX_HEIGHT_MM, LETTER_MIN_HEIGHT_MM,
+                          LETTER_STROKE_CV_MAX, _skeleton_stroke_stats)
 from .threads import chart_for, rgb_to_lab
 
 # --- Codes (may migrate to warnings_codes.py at merge) ---------------------
 
 THREAD_MATCH_POOR = "THREAD_MATCH_POOR"        # extra: {thread_number, thread_name, brand_id, delta_e, yardstick, excess_delta_e, better_spool, worst_shape_id, worst_shape_area_mm2, worst_shape_area_frac, worst_patch_mm2, region_count, regions_scored, sub_floor_count, regions: [{shape_id, delta_e, footprint_mm2, sub_floor, excess_delta_e}], artwork_rgb, thread_rgb} — worst_patch_mm2 is the graded footprint that JUDGED (a shade band's own strip), region_count the offenders at or above `_THREAD_MATCH_MIN_PATCH_MM2`, sub_floor_count the offenders under it (listed, flagged, never judging) — excess_delta_e/better_spool are the gap to the best ALREADY-LOADED spool and that spool, populated on EVERY route since 2026-09-06 (both None when nothing loaded is meaningfully closer). `yardstick` ("excess"/"raw") says which one produced the SEVERITY, so a populated excess is never mistaken for a rescored finding
-LETTERING_ILLEGIBLE = "LETTERING_ILLEGIBLE"    # extra: {clusters, readable, judged, lost, worst_cluster, worst_similarity, worst_art_text, worst_render_text, legibility, rows: [{cluster, height_mm, art_text, art_conf, render_text, render_conf, similarity, sewn, enclosed}]} — `judged` is the sewn clusters the art side could read, `lost` how many of those read back under LEGIBILITY_WARN; `rows` carries every cluster, unsewn and unreadable ones included, flagged
-LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, satin_total, shapes: [{shape_id, column_mm, extent_mm}]} — satin_total is the DENOMINATOR the message needs ("38 of 46"), which reads very differently from a bare 38
+LETTERING_ILLEGIBLE = "LETTERING_ILLEGIBLE"    # extra: {clusters, readable, judged, lost, worst_cluster, worst_similarity, worst_art_text, worst_render_text, legibility, rows: [{cluster, height_mm, art_text, art_conf, render_text, render_conf, similarity, sewn, enclosed}]} — `judged` is the sewn clusters the art side could read, `lost` how many of those read back under LEGIBILITY_WARN; `rows` carries every cluster, unsewn and unreadable ones included, flagged — when the artwork cannot carry the lettering (`_resolution_note`, 2026-09-30) three more ride: input_px_per_mm, source_px_per_letter (the smallest flagged lettering's height in SOURCE pixels), traced_at_mm (the design width at which the prep's grid would give it LETTERING_MIN_SOURCE_PX; only when the source is under cfg.min_px_per_mm, where the prep upsamples)
+LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, satin_total, shapes: [{shape_id, column_mm, extent_mm}]} — satin_total is the DENOMINATOR the message needs ("38 of 46"), which reads very differently from a bare 38 — when the artwork cannot carry the lettering (`_resolution_note`, 2026-09-30) three more ride: input_px_per_mm, source_px_per_letter (the smallest flagged lettering's height in SOURCE pixels), traced_at_mm (the design width at which the prep's grid would give it LETTERING_MIN_SOURCE_PX; only when the source is under cfg.min_px_per_mm, where the prep upsamples)
+SATIN_GAPS_TIGHT = "SATIN_GAPS_TIGHT"          # extra: {count, judged, close_mm, pull_mm, thread_mm, fabric, design_width_mm, worst_shape_id, worst_tight_frac, shapes: [{shape_id, width_mm, height_mm, channel_mm, tight_mm, tight_frac, gap_p10_mm, gap_p50_mm, clear_width_mm}]} — a satin shape whose own gaps (between two of its strokes, or a counter) are narrower than the close, 2 x the fabric's pull comp + the thread: they sew shut before any rule runs. `judged` is how many stroke-built satin shapes were measured, `channel_mm` the length of gap read, `tight_mm` the part under the close, `clear_width_mm` the design width at which the shape's tightest tenth (gap_p10_mm) would clear it — arithmetic on THIS polygon, None when it already clears
 STITCHES_TOO_LONG = "STITCHES_TOO_LONG"        # extra: {count, max_mm}
 STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total, uncovered_shapes, shapes: [{shape_id, short, steps, median_mm, also_too_small}]} — `shapes` is every satin shape carrying a short step, worst first; `also_too_small` is whether LETTERING_TOO_SMALL already named it, and `uncovered_shapes` counts the ones it did NOT (a sewable column with a narrow waist passes lettering's median test and still breaks thread)
 TRIM_HEAVY = "TRIM_HEAVY"                      # extra: {per_1000, trims, stitches, in_shape, between_shapes, worst_shape_id, shapes: [{shape_id, trims}]} — in_shape + between_shapes == trims by construction; a cut INSIDE a shape is that shape failing to sew in one pass and merging shapes cannot remove it, which is the OPPOSITE of where the old message ("merge or remove the smallest shapes") sent people. Corpus-wide the split is 53/47, so one remedy was only ever right half the time
@@ -214,6 +218,52 @@ MIN_LETTER_EXTENT_MM = 4.0
 # A satin column narrower than the needle minimum: every cross re-enters the
 # previous hole's neighborhood and the stroke reads as a scar, not a line.
 MIN_COLUMN_MM = machine.MIN_STITCH_MM
+# Lettering the ARTWORK cannot carry (2026-09-30, Kent's pick after bridge's
+# teal words). "BAR & RESTAURANT" on logo_bridge_bar.jpg is 3.25-4.5 mm of
+# sewable lettering in a 400 px JPEG, 3.5 px/mm at 80 mm: 11-16 source
+# pixels per letter, and six-cone quantization keeps six blobs of it before
+# any stitch rule runs. Digitized at 140 mm the words come back, because the
+# prep upsamples a low-res source to `cfg.min_px_per_mm` and the tracer then
+# sees 28-px letters. Under this many source pixels across a letter's
+# height the loss is tracing, not stitching, and the lettering findings say
+# so: a larger source carries it; a larger design lets the prep's grid try,
+# and only when the source is under the prep floor (a source above it is
+# never upsampled, so growing the design adds no pixels to a letter).
+# One logo calibrated it; the docstring of `_resolution_note` says what to
+# re-measure if a second disagrees.
+LETTERING_MIN_SOURCE_PX = 20.0
+
+# Tight gaps inside a satin shape (2026-09-30, Kent's pick after the
+# script-as-lettering measurement: a preflight finding, not an engine
+# change). Two facing rails each push out by the fabric's pull compensation
+# and the thread covers COVERAGE_THREAD_W_MM, so a gap between two strokes of
+# one shape -- or a counter -- narrower than 2 x pull + thread sews shut
+# before any rule runs: 1.0 mm on pique knit. bridge's "Bridge" at 80 mm
+# has 22% of its inter-letter gap length under that in the ARTWORK and more
+# in the polygon the rails follow (docs/renders/bridge-phantom-2026-09-30/
+# script-as-lettering.json). No rule keeps such a gap open without a smaller
+# pull, which is a fabric constant (ROADMAP gate 1); the customer's lever is
+# the size, so the finding names the width at which the shape's tightest
+# tenth clears the close -- arithmetic on the polygon it measured, which is
+# why it is per shape and never a count-derived target (see
+# LETTERING_TOO_SMALL's note on why that one refuses to quote a size).
+# Measured on the corpus at its own widths (2026-09-30, the floor at 6 mm):
+# bridge's script (37.7 x 14.4 mm) 32% of 49 mm of gap under 1.0, its ring
+# 56% of 46, "Bar" 18% of 61; tires' TIRES 32% of 63; gaulke's word 17% of
+# 38; golden_tee three marks; becker, enthusiast, fremont, whitebg, MARINE,
+# drone and screenshot none. bridge digitized AT 140 mm fires on nothing:
+# the script clears (its tenth was predicted to at 158) -- and under the
+# 3 mm floor four small shapes the larger scale segments anew fired in its
+# place, so the width is a claim about ONE shape, never a promise that the
+# design comes back clean.
+TIGHT_GAP_CEILING_MM = 6.0     # a channel wider than this is not a gap between strokes of one shape
+TIGHT_SLIVER_MM = 0.3          # the closing's own slivers along the outline are not gaps (`_gap_channels`)
+TIGHT_FRAC_WARN = 0.10         # a tenth of a shape's gap length under the close fires...
+TIGHT_MIN_CHANNEL_MM = 6.0     # ...when at least this much of it is: at 3.0 the corpus sweep fired on 4 mm shapes with one closed counter
+TIGHT_MIN_AREA_MM2 = 10.0      # below this a shape is LETTERING_TOO_SMALL's business, not a gap's
+_GAP_PX_PER_MM = 12.0          # the gap zone's raster; 0.1 mm bins need about a pixel per step
+_GAP_MAX_PX = 1600             # ...capped so a design-sized shape stays cheap
+_GAP_BINS_MM = tuple(round(x, 2) for x in np.arange(0.2, 2.0, 0.1)) + (2.0, 2.5, 3.0, 4.0, 5.0, 6.0)
 
 # Fraction of satin stitches under MIN_STITCH_MM. The benchmark logo measured
 # 54.6% before the zigzag-order fix and 10.4% after (re-measured 9.9% by this
@@ -1330,7 +1380,12 @@ def _ground_sewn_findings(p, result: PipelineResult,
     area_frac = biggest.area_mm2 / total_area
 
     thread = chart_for(cfg)[biggest.thread_index]
-    border_rgb = _dominant_border_color(p.rgb)
+    # The artwork's own page colour, read off the raster's border. Under
+    # `cfg.alpha_edge_extend` the raster's border carries nearest-opaque
+    # colour (stage 1 extends it under the transparency for every reader);
+    # the file's own colour there is `p.raw_rgb`, which is what this
+    # finding has always read and must keep reading.
+    border_rgb = _dominant_border_color(p.raw_rgb if getattr(p, "raw_rgb", None) is not None else p.rgb)
     # Same CIEDE2000-on-skimage-rgb2lab convention as every other colour
     # distance in this module (`threads.rgb_to_lab`, never cv2's 8-bit Lab).
     delta_e = float(deltaE_ciede2000(
@@ -1617,6 +1672,233 @@ def _lettering_findings(plan: StitchPlan) -> tuple[list[dict], int]:
 
 # --- Stitch length ----------------------------------------------------------
 
+def _gap_channels(poly: Polygon):
+    """-> (widths_mm, lengths_mm) of the gaps INSIDE a shape, as a histogram:
+    for every channel of fabric between two of its strokes or inside a
+    counter, how many millimetres of channel run at each width, from
+    TIGHT_SLIVER_MM to TIGHT_GAP_CEILING_MM. The gap zone is the polygon's
+    morphological closing minus itself (a channel wider than the ceiling is
+    not a gap between strokes of one shape); its widths are read by
+    granulometry -- open the zone by a growing disk and each step's lost
+    area over that step's width is the length of channel at that width --
+    rather than at a skeleton, because a medial axis throws a spur into
+    every corner and a rectangular 2 mm channel then reads a third of its
+    length as "narrow" (measured on the synthetic word in the tests). The
+    closing's arcs are approximate and leave hairline slivers along every
+    convex stretch of the outline (0.06 mm on bridge's ring); the first
+    step drops everything under TIGHT_SLIVER_MM, and a real gap under
+    0.3 mm -- below the thread at any pull -- goes with them, so the tight
+    share reads LOW, never high. None when the shape has no gap to judge."""
+    c = TIGHT_GAP_CEILING_MM / 2.0
+    try:
+        gap = (poly.buffer(c, join_style=1, quad_segs=16)
+                   .buffer(-c, join_style=1, quad_segs=16).difference(poly))
+    except Exception:   # shapely on a degenerate polygon: nothing to judge
+        return None
+    if gap.is_empty or gap.area <= 0.0:
+        return None
+    parts = [g for g in (gap.geoms if hasattr(gap, "geoms") else [gap])
+             if isinstance(g, Polygon) and not g.is_empty and g.area > 0.0]
+    if not parts:
+        return None
+    x0, y0, x1, y1 = gap.bounds
+    scale = min(_GAP_PX_PER_MM, _GAP_MAX_PX / max(x1 - x0, y1 - y0, 1e-6))
+    w = int(math.ceil((x1 - x0) * scale)) + 4
+    h = int(math.ceil((y1 - y0) * scale)) + 4
+
+    def to_px(coords) -> np.ndarray:
+        pts = np.asarray(coords, np.float64)
+        return np.column_stack([(pts[:, 0] - x0) * scale + 2,
+                                (pts[:, 1] - y0) * scale + 2]).astype(np.int32)
+
+    mask = np.zeros((h, w), np.uint8)
+    for part in parts:
+        cv2.fillPoly(mask, [to_px(part.exterior.coords)], 1)
+        for ring in part.interiors:
+            cv2.fillPoly(mask, [to_px(ring.coords)], 0)
+    widths: list[float] = []
+    lengths: list[float] = []
+    prev = float(mask.sum())
+    prev_w = 0.0
+    for wd in _GAP_BINS_MM:
+        d = max(1, int(round(wd * scale)))
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (d, d))
+        opened = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+        area = float(opened.sum())
+        lost = prev - area
+        if lost > 0.0 and prev_w >= TIGHT_SLIVER_MM:
+            # channel of width between prev_w and wd: its length is the area
+            # it lost over its width, in px over px per mm
+            widths.append(wd)
+            lengths.append(lost / (wd * scale) / scale)
+        prev, prev_w = area, wd
+        if prev <= 0.0:
+            break
+    if not lengths:
+        return None
+    return np.asarray(widths), np.asarray(lengths)
+
+
+def _percentile_of_lengths(widths: np.ndarray, lengths: np.ndarray, q: float) -> float:
+    """The width under which `q` of the channel length runs."""
+    cum = np.cumsum(lengths) / float(lengths.sum())
+    return float(widths[int(np.searchsorted(cum, q, side="left").clip(0, len(widths) - 1))])
+
+
+def _tight_gap_findings(result: PipelineResult, plan: StitchPlan,
+                        cfg: PipelineConfig) -> tuple[list[dict], dict]:
+    """Satin shapes whose own gaps sew closed at this size, aggregated to one
+    finding the way LETTERING_TOO_SMALL is (the worst shape judges, every
+    flagged one rides in `extra.shapes`).
+
+    Judged: every shape that sewed as satin, is stroke-built (its skeleton
+    stroke width varies under LETTER_STROKE_CV_MAX -- a blob has no gaps
+    between strokes to speak of), sits in the letter doors' height band and
+    is not a text cluster (the legibility check owns those; a connected
+    script word is never one -- the letter door's aspect ceiling refuses it,
+    measured 2026-09-30). The close is 2 x the garment fabric's pull
+    compensation + COVERAGE_THREAD_W_MM. A shape fires when a tenth of its
+    gap length is under the close and at least TIGHT_MIN_CHANNEL_MM of it is;
+    the headline shape is the one with the most closed gap. `clear_width_mm`
+    is the design width at which the shape's tightest tenth of gap would
+    clear the close: arithmetic on this polygon, not a promise about the
+    polygon the engine draws at that size (bridge at 140 mm: the script
+    clears and nothing fires; under a 3 mm floor four small shapes segmented
+    anew at that scale fired instead).
+    One warn per design, whatever the count -- the same bill as
+    LETTERING_TOO_SMALL, which this extends (the counters-under-the-close
+    flag of the small-text battery, machine-physics backlog row 14)."""
+    fabric = fabric_for(cfg)
+    pull = max(0.0, float(fabric.pull_comp_mm))
+    thread = float(machine.COVERAGE_THREAD_W_MM)
+    close_mm = 2.0 * pull + thread
+    satin_ids = {run.shape_id for _b, run in plan.iter_runs()
+                 if run.kind == stitches.SATIN and run.shape_id}
+    x0, _y0, x1, _y1 = plan.stats.bbox_mm
+    design_w = float(x1 - x0)
+    judged = 0
+    rows: list[dict] = []
+    for r in result.regions:
+        if r.shape_id not in satin_ids or r.meta.get("text_cluster_id"):
+            continue
+        poly = r.polygon
+        if poly is None or poly.is_empty or poly.area < TIGHT_MIN_AREA_MM2:
+            continue
+        bx0, by0, bx1, by1 = poly.bounds
+        w, h = bx1 - bx0, by1 - by0
+        if h <= 0 or w <= 0 or not (LETTER_MIN_HEIGHT_MM <= h <= LETTER_MAX_HEIGHT_MM):
+            continue
+        stats = _skeleton_stroke_stats(r)
+        if stats is None or stats.cv > LETTER_STROKE_CV_MAX:
+            continue
+        judged += 1
+        chan = _gap_channels(poly)
+        if chan is None:
+            continue
+        widths, lengths = chan
+        channel_mm = float(lengths.sum())
+        tight_mm = float(lengths[widths <= close_mm].sum())
+        tight_frac = tight_mm / channel_mm if channel_mm > 0 else 0.0
+        p10 = _percentile_of_lengths(widths, lengths, 0.10)
+        p50 = _percentile_of_lengths(widths, lengths, 0.50)
+        clear = design_w * close_mm / p10 if 0.0 < p10 < close_mm else None
+        rows.append({"shape_id": r.shape_id, "width_mm": round(w, 1), "height_mm": round(h, 1),
+                     "channel_mm": round(channel_mm, 1), "tight_mm": round(tight_mm, 1),
+                     "tight_frac": round(tight_frac, 3), "gap_p10_mm": round(p10, 2),
+                     "gap_p50_mm": round(p50, 2),
+                     "clear_width_mm": None if clear is None else round(clear)})
+    flagged = [row for row in rows
+               if row["tight_frac"] >= TIGHT_FRAC_WARN and row["tight_mm"] >= TIGHT_MIN_CHANNEL_MM]
+    # The headline is the shape with the MOST closed gap, not the highest
+    # share: a 5 mm mark with one shut counter reads 100% and is not the
+    # word the customer will see smoosh.
+    flagged.sort(key=lambda row: (-row["tight_mm"], row["shape_id"]))
+    metrics = {"satin_gaps_judged": judged, "satin_gaps_tight_shapes": len(flagged),
+               "satin_gaps_tight_worst_frac": flagged[0]["tight_frac"] if flagged else None}
+    if not flagged:
+        return [], metrics
+    worst = flagged[0]
+    n = len(flagged)
+    one = n == 1
+    msg = (f"{n} satin {'shape sews' if one else 'shapes sew'} the gaps between "
+           f"{'its' if one else 'their'} own strokes closed at {design_w:.0f} mm: "
+           f"{worst['shape_id']} ({worst['width_mm']:.1f} x {worst['height_mm']:.1f} mm) has "
+           f"{round(100 * worst['tight_frac'])}% of the space between its strokes narrower than "
+           f"{close_mm:.1f} mm, the pull compensation ({pull:.1f} mm a side) plus a {thread:.1f} mm "
+           f"thread on {fabric.label}. Connected lettering and marks with spokes do this; the "
+           f"lever is the size.")
+    if worst["clear_width_mm"]:
+        msg += (f" Its tightest tenth of gap clears that at about {worst['clear_width_mm']:.0f} mm "
+                f"of design width.")
+    return [finding(SATIN_GAPS_TIGHT, "warn", msg, count=n, judged=judged,
+                    close_mm=round(close_mm, 2), pull_mm=round(pull, 2), thread_mm=round(thread, 2),
+                    fabric=fabric.label, design_width_mm=round(design_w, 1),
+                    worst_shape_id=worst["shape_id"], worst_tight_frac=worst["tight_frac"],
+                    shapes=flagged)], metrics
+
+
+def _resolution_note(findings: list[dict], p, plan: StitchPlan,
+                     cfg: PipelineConfig) -> None:
+    """Append the resolution fact to LETTERING_TOO_SMALL and LETTERING_ILLEGIBLE
+    when the artwork cannot carry the lettering they name (in place; a
+    finding's text and `extra` grow, nothing else changes).
+
+    The smallest flagged lettering (TOO_SMALL: the shapes' `extent_mm`;
+    ILLEGIBLE: the rows' `height_mm`) times `Prep.input_px_per_mm` -- the
+    resolution the INPUT delivered, before stage 1's upscale -- is its height
+    in source pixels. Under LETTERING_MIN_SOURCE_PX the words were lost in
+    tracing (bridge: 11-16, six blobs of 96 mm² of teal), and no chip that
+    moves a stitch rule reaches that. Two levers exist and the sentence names
+    both: a larger source image, always; a larger design, only when the source
+    sits under `cfg.min_px_per_mm` (the prep upsamples it to that grid, so a
+    bigger design gives the tracer more grid pixels per letter -- bridge's
+    words came back at 140 mm), at the width where the smallest flagged
+    lettering would have LETTERING_MIN_SOURCE_PX grid pixels:
+    W x MIN_PX / (letter_mm x min_px_per_mm). A source above the floor is
+    never upsampled, so growing the design adds nothing there and the
+    sentence says only the source.
+
+    Calibrated on one logo (bridge: lost at 13-18 grid px, recovered at 28).
+    If a second logo loses lettering above 20 source pixels per letter, or
+    keeps it below, re-measure the constant on both before moving it."""
+    if p is None or plan.stats is None:
+        return
+    px = float(getattr(p, "input_px_per_mm", 0.0) or 0.0)
+    if px <= 0.0:
+        return
+    x0, _y0, x1, _y1 = plan.stats.bbox_mm
+    design_w = float(x1 - x0)
+    grid = float(cfg.min_px_per_mm)
+    for f in findings:
+        if f.get("code") not in (LETTERING_TOO_SMALL, LETTERING_ILLEGIBLE):
+            continue
+        extra = f.setdefault("extra", {})
+        if f["code"] == LETTERING_TOO_SMALL:
+            sizes = [s.get("extent_mm") for s in extra.get("shapes", []) if s.get("extent_mm")]
+        else:
+            sizes = [r.get("height_mm") for r in extra.get("rows", []) if r.get("height_mm")]
+        if not sizes:
+            continue
+        letter_mm = float(min(sizes))
+        per_letter = letter_mm * px
+        if per_letter >= LETTERING_MIN_SOURCE_PX:
+            continue
+        extra["input_px_per_mm"] = round(px, 2)
+        extra["source_px_per_letter"] = round(per_letter, 1)
+        note = (f" The artwork carries {px:.1f} pixels per millimetre at this width, "
+                f"about {per_letter:.0f} across the smallest of this lettering, so it is "
+                f"lost in tracing before any stitch: a larger source image carries it")
+        if px < grid and design_w > 0:
+            traced_at = design_w * LETTERING_MIN_SOURCE_PX / (letter_mm * grid)
+            extra["traced_at_mm"] = round(traced_at)
+            note += (f", and a design above about {traced_at:.0f} mm gives the tracer "
+                     f"enough pixels to try.")
+        else:
+            extra["traced_at_mm"] = None
+            note += "; making the design bigger adds no pixels to it."
+        f["message"] = f["message"].rstrip() + note
+
+
 def _stitch_length_findings(plan: StitchPlan,
                             already_small: set[str] | None = None
                             ) -> tuple[list[dict], dict]:
@@ -1901,12 +2183,22 @@ def _satin_rail_advance_mm(plan: StitchPlan) -> float | None:
 
     Rails alternate A, B, A, B ... so two apart is the same rail — measured
     two-apart, never sliced at fixed parity (the playbook's parity trap).
+
+    On the RAILS, with the split penetrations stripped (2026-09-19): a
+    split satin column carries one or more penetrations along each cross
+    (`stage6_satin.strip_splits` is the reader every other instrument here
+    uses), and with them in the list "two apart" is a mid-cross hop, not
+    the rail pitch — the lettering plan's 127 mm fixture under
+    `satin_lettering_split` read 1.09 mm against the 0.40 target and raised
+    `DENSITY_EXTREME` on columns sewn at 0.43 (the same trap in its second
+    form: the parity is broken by the splits instead of the slicing).
+    Unsplit runs are unchanged by the strip.
     """
     adv: list[float] = []
     for _b, run in plan.iter_runs():
         if run.kind != stitches.SATIN:
             continue
-        pts = run.points
+        pts = strip_splits(run.points)
         for i in range(len(pts) - 2):
             adv.append(math.dist(pts[i], pts[i + 2]))
     if len(adv) < _MIN_SAMPLES:
@@ -3136,6 +3428,20 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     lettering, satin_shape_count = _lettering_findings(plan)
     findings.extend(lettering)
     metrics["satin_shapes"] = satin_shape_count
+    # A satin shape's own gaps against the fabric's pull and the thread.
+    # Needs the regions (the polygons the rails follow), so a bare plan
+    # skips it and the metrics say so.
+    if result is not None:
+        tight_findings, tight_metrics = _tight_gap_findings(result, plan, cfg)
+        findings.extend(tight_findings)
+        metrics.update(tight_metrics)
+    else:
+        metrics.update({"satin_gaps_judged": None, "satin_gaps_tight_shapes": None,
+                        "satin_gaps_tight_worst_frac": None})
+    # Lettering the artwork cannot carry: the resolution fact on the two
+    # lettering findings, when the artwork was given (the legibility check
+    # above and the lettering check just before are both in `findings` here).
+    _resolution_note(findings, p, plan, cfg)
 
     # The shapes lettering just named, so the short-stitch check can say which
     # of ITS carriers are not covered by that warning. The two measure the same

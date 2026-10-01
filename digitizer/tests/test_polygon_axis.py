@@ -108,10 +108,17 @@ def test_the_flag_removes_the_corner_hooks_a_thinned_raster_grows():
     assert half_off < 1.2 < half_on
 
 
-def test_stage7_passes_the_flag_to_both_readers():
+def test_stage7_passes_the_flag_to_all_three_readers():
     """`satin_shape` decomposes on a skeleton and `_stroke_rows` classifies on
     one. If the flag reached only one, a shape would be ROUTED on one skeleton
-    and SEWN on another."""
+    and SEWN on another.
+
+    THREE since 2026-09-20, not two: `_sews_satin` — the borders-last,
+    detail-picking and seam-ownership prediction — used to call
+    `is_satin_candidate`, which has no `polygon_axis` parameter at all, so
+    turning this flag on would have moved a layer late on a shape the
+    emitter then sewed as fill. See
+    `tests/test_prediction_matches_emitter.py`."""
     import inspect
 
     from digitizer_core import stage6_satin as s6
@@ -119,7 +126,8 @@ def test_stage7_passes_the_flag_to_both_readers():
 
     src = inspect.getsource(s7)
     assert "polygon_axis=cfg.satin_polygon_axis" in src
-    assert src.count("polygon_axis=cfg.satin_polygon_axis") == 2, "satin_shape AND classify_ribbon"
+    assert src.count("polygon_axis=cfg.satin_polygon_axis") == 3, \
+        "satin_shape AND classify_ribbon AND _sews_satin"
     for fn in (s6.satin_shape, s6.extract_strokes, s6.classify_ribbon,
                s6.classify_strokes, s6._stroke_rows, s6._stroke_rung_takes):
         assert "polygon_axis" in inspect.signature(fn).parameters, fn.__name__

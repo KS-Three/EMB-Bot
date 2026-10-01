@@ -263,3 +263,93 @@ def test_no_logo_trips_either_signal(rel):
     signals = ps.detect(path, rgb=rgb, cfg=PipelineConfig())
     assert signals.is_photograph is not True, (
         f"{rel} is a logo and trips {signals.signal}: {signals.why}")
+
+
+# --- a face sews FLAT (Kent's ruling 2026-09-30) ----------------------------
+#
+# `cfg.faces_route_flat`: a detected face takes the flat lane, exactly as
+# `forced_class="flat"` would, and FACE_ROUTED_FLAT replaces PHOTO_DETECTED.
+# Measured on two stand-in portraits at 80 mm: the automatic lane read both
+# as `gradient` and merged the subject into the background; forced flat gave
+# a recognisable person on both, and is the run Kent called awesome on his
+# own portrait. The route is pinned here as byte-identity with the forced
+# run, not as a quality claim.
+
+def _codes(result):
+    return [w.get("code") for w in result.warnings]
+
+
+def test_faces_route_flat_is_off_by_default_and_changes_nothing_off(monkeypatch):
+    assert PipelineConfig().faces_route_flat is False
+    _fake_face(monkeypatch)
+    cfg = PipelineConfig(detect_photographic=True, target_width_mm=60.0)
+    result = finish_generation(build_generation(str(LOGO), cfg).fork(), cfg)
+    assert "PHOTO_DETECTED" in _codes(result)
+    assert "FACE_ROUTED_FLAT" not in _codes(result)
+
+
+def test_a_face_routes_flat_byte_identical_to_the_forced_run(monkeypatch):
+    """The whole ruling in one assertion: routed == forced_class="flat",
+    on class, shape ids and every warning but the one that says why."""
+    _fake_face(monkeypatch)
+    routed_cfg = PipelineConfig(detect_photographic=True, faces_route_flat=True,
+                                target_width_mm=60.0)
+    forced_cfg = PipelineConfig(forced_class="flat", target_width_mm=60.0)
+    routed = finish_generation(build_generation(str(LOGO), routed_cfg).fork(), routed_cfg)
+    forced = finish_generation(build_generation(str(LOGO), forced_cfg).fork(), forced_cfg)
+
+    assert routed.design_class == "flat"
+    assert routed.detected_photographic is False, \
+        "the photographic machinery must stay OFF — that is the forced run Kent liked"
+    assert "PHOTO_DETECTED" not in _codes(routed)
+    hit = [w for w in routed.warnings if w.get("code") == "FACE_ROUTED_FLAT"]
+    assert len(hit) == 1 and hit[0]["faces"] == 1
+    assert routed.shape_ids == forced.shape_ids
+    assert [c for c in _codes(routed) if c != "FACE_ROUTED_FLAT"] == _codes(forced)
+    # And downstream reads it as flat too: preflight grades on the flat
+    # yardstick, not the photo one.
+    plan = plan_stitches(routed, routed_cfg)
+    from digitizer_core.preflight import _is_photo_class
+    assert _is_photo_class(plan, routed_cfg) is False
+
+
+def test_a_camera_fresh_portrait_still_routes_flat(tmp_path, monkeypatch):
+    """EXIF short-circuits plain detection; the ROUTE needs the face itself,
+    so the face pass runs anyway when the flag is on."""
+    _fake_face(monkeypatch)
+    art = _jpeg_with_camera(tmp_path / "portrait.jpg")
+    cfg = PipelineConfig(detect_photographic=True, faces_route_flat=True,
+                         target_width_mm=60.0)
+    out, signals = ps.resolve(cfg, image=art, rgb=np.zeros((64, 64, 3), np.uint8))
+    assert signals.exif_camera and signals.faces == 1
+    assert signals.signal == "exif", "the verdict's own name is unchanged"
+    # ...and without the flag, EXIF still short-circuits the detector.
+    plain = PipelineConfig(detect_photographic=True)
+    _, quiet = ps.resolve(plain, image=art, rgb=np.zeros((64, 64, 3), np.uint8))
+    assert quiet.exif_camera and quiet.faces is None
+
+
+def test_an_explicit_class_or_declaration_outranks_the_face_route(monkeypatch):
+    _fake_face(monkeypatch)
+    forced = PipelineConfig(detect_photographic=True, faces_route_flat=True,
+                            forced_class="gradient", target_width_mm=60.0)
+    r = finish_generation(build_generation(str(LOGO), forced).fork(), forced)
+    assert r.design_class == "gradient"
+    assert "FACE_ROUTED_FLAT" not in _codes(r)
+
+    declared = PipelineConfig(detect_photographic=True, faces_route_flat=True,
+                              is_photographic=False, target_width_mm=60.0)
+    r = finish_generation(build_generation(str(LOGO), declared).fork(), declared)
+    assert "FACE_ROUTED_FLAT" not in _codes(r)
+    assert "PHOTO_DETECTED" not in _codes(r)
+
+
+def test_no_face_means_the_flag_is_a_no_op():
+    """On the owl (no EXIF, no face) the flag must leave everything alone."""
+    off = PipelineConfig(target_width_mm=60.0, detect_photographic=True)
+    on = PipelineConfig(target_width_mm=60.0, detect_photographic=True, faces_route_flat=True)
+    a = finish_generation(build_generation(str(OWL), off).fork(), off)
+    b = finish_generation(build_generation(str(OWL), on).fork(), on)
+    assert a.design_class == b.design_class
+    assert a.shape_ids == b.shape_ids
+    assert _codes(a) == _codes(b)

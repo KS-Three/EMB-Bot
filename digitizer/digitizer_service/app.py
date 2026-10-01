@@ -28,6 +28,8 @@ from fastapi.responses import Response
 from shapely.geometry import Polygon
 from starlette.concurrency import run_in_threadpool
 
+from digitizer_core.calibration import profile as calibration
+from digitizer_core.fabrics import fabric_for_garment, get_fabric, normalize_profile
 from digitizer_core import PipelineConfig, __doc__ as core_doc  # noqa: F401
 from digitizer_core import machine
 from digitizer_core.adapter import design_size_mm, design_to_pattern, plan_to_design
@@ -36,6 +38,7 @@ from digitizer_core.pipeline import build_generation, finish_generation, plan_st
 from digitizer_core.preflight import _owning_region_id, run_preflight
 from digitizer_core.stage0_classify import CLASSES
 from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
+from digitizer_core.stitchwidth import review_block, validate_override_mm
 
 from . import formats
 from .jobs import DONE, GenerationCache, JobRegistry, content_key, generation_key
@@ -153,7 +156,8 @@ def _require_token(supplied: str | None) -> None:
 # resolution) — but it is still validated here, in this same closed set, so a
 # bad value is still a 400 at submit.
 _OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer",
-                  "sew_order", "stitched", "underlay_style", "boundary_override"}
+                  "sew_order", "stitched", "underlay_style", "boundary_override",
+                  "stitch_width_mm"}
 # Kept in lockstep with digitizer_core.regions._TIER_VALUES — see that
 # copy's own comment for what "wave"/"chevron"/"brick" (alongside
 # "crosshatch") each do.
@@ -381,6 +385,16 @@ def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
         st = entry.get("stitched")
         if st is not None and not isinstance(st, bool):
             bad = "stitched must be a boolean"
+        sw = entry.get("stitch_width_mm")
+        if sw is not None:
+            # Contract v1.8: the sewn column width for one shape. The range
+            # is the engine's own (`stitchwidth.validate_override_mm`,
+            # the same check `apply_shape_edits` repeats) — a 400 here, a
+            # ValueError there.
+            try:
+                entry["stitch_width_mm"] = validate_override_mm(sw)
+            except ValueError as exc:
+                bad = str(exc)
         bo = entry.get("boundary_override")
         if bo is not None:
             if not isinstance(bo, list):
@@ -477,6 +491,46 @@ def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
             status_code=400,
             detail="garment_rgb must be three integers 0-255, e.g. [235, 232, 223].",
         )
+    # `crop` is only read at job time (`digitizer_core.crop.validate_crop`), so
+    # a malformed one used to fail there with whatever Python said first:
+    # "cannot convert float NaN to integer" (the json module ACCEPTS NaN),
+    # "could not convert string to float" for a dict, a TypeError for a null
+    # element, "has no len()" for a bare number. Checked here as a 400 naming
+    # the shape, like garment_rgb. Range, inversion and the pixel floor stay
+    # at job time: the floor needs the decoded raster's size.
+    #
+    # Normalised too, so one crop is one cache key: `null` is the same as
+    # absent (popped), and [0, 0, 1, 1] and [0.0, 0.0, 1.0, 1.0] serialise
+    # the same. A request WITHOUT `crop` is untouched -- no key in, no key
+    # out -- so no pre-crop content/generation key moves.
+    if "crop" in data:
+        crop = data["crop"]
+        if crop is None:
+            data.pop("crop")
+        elif not (
+            isinstance(crop, list) and len(crop) == 4
+            and all(isinstance(v, (int, float)) and not isinstance(v, bool)
+                    and math.isfinite(v) for v in crop)
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="crop must be four finite fractions [x0, y0, x1, y1] in 0-1.",
+            )
+        else:
+            data["crop"] = [float(v) for v in crop]
+    # `fabric_profile` (2026-09-30): three optional finite numbers, canonical
+    # form from `fabrics.normalize_profile` so a no-op profile (delta 0,
+    # scale 1, or null) is the same cache key as none. Anything else is a
+    # 400 naming the field, not a TypeError inside stage 5.
+    if "fabric_profile" in data:
+        try:
+            norm = normalize_profile(data["fabric_profile"])
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if norm is None:
+            data.pop("fabric_profile")
+        else:
+            data["fabric_profile"] = norm
     forced = data.get("forced_class")
     if forced is not None and forced not in CLASSES:
         raise HTTPException(
@@ -670,6 +724,18 @@ def _review_payload(result, plan=None) -> dict:
                 # `textClusterSeed`.
                 "ocr_char": r.meta.get("ocr_char"),
                 "ocr_confidence": r.meta.get("ocr_confidence"),
+                # Stitch width (contract v1.8, `digitizer_core/stitchwidth.py`):
+                # the column this shape measured, the one auto wants (its
+                # word's shared width), the one it sews, and the override in
+                # effect — all in SEWN mm. `source` says who chose the sewn
+                # width ("shape" | "group" | "floor" | "override"), `group`
+                # names the text cluster the width is shared with, `limited`
+                # that a counter or a gap between strokes clamped the change,
+                # `skip_reason` why a wanted change was not made. Every
+                # field None on a shape that was never measured (a fill
+                # region). The one client-writable half is
+                # `shape_overrides[sid].stitch_width_mm`.
+                "stitch_width": review_block(r),
                 # The sew position and effective tier the layers panel orders
                 # by. None means the shape produced no stitches (the plan's
                 # SHAPE_NOT_STITCHED warning says how many did).
@@ -958,6 +1024,90 @@ def job_status(job_id: str, x_embbot_token: str | None = Header(None)) -> dict:
     if job is None:
         raise HTTPException(status_code=404, detail="No such job. It may have been evicted.")
     return job.public()
+
+
+# --- Closed-loop sew-out calibration (2026-09-30) ----------------------------
+#
+# The customer's half of docs/sewout-calibration-brief-2026-09-30.md: download
+# the calibration card in their machine's format, sew it, photograph it, and
+# get a draft fabric profile back. The arithmetic lives in
+# `digitizer_core.calibration.profile`; these routes are adapters. The card
+# is built on first use (~15 s, block 5 runs the pipeline four times) and
+# cached for the process — every download and every read uses the same
+# design, which is what makes the photo comparable to the reference.
+
+@app.get("/calibration/info")
+def calibration_info(x_embbot_token: str | None = Header(None)) -> dict:
+    """What the Studio can show before the card is built: hoop, marks,
+    blocks, formats; size and counts once it is. Never builds."""
+    _require_token(x_embbot_token)
+    info = calibration.card_info(calibration._bundle)
+    info["formats"] = sorted(formats.FORMATS)
+    return info
+
+
+@app.get("/calibration/card")
+def calibration_card(
+    format: str = "dst",
+    x_embbot_token: str | None = Header(None),
+) -> Response:
+    """Card v2 in the requested machine format — the same writer `/export`
+    uses, so a customer sews the file their own designs would come as."""
+    _require_token(x_embbot_token)
+    fmt = str(format).lower().lstrip(".")
+    if fmt not in formats.FORMATS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"unsupported format {fmt!r}. Supported: {', '.join(sorted(formats.FORMATS))}",
+        )
+    bundle = calibration.card_bundle()
+    try:
+        pattern = design_to_pattern(bundle.design, label=calibration.card_v2.LABEL)
+        data = formats.write(pattern, fmt)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"could not write {fmt}: {exc}") from exc
+    w_mm, h_mm = bundle.card_mm
+    return Response(
+        content=data,
+        media_type=formats.FORMATS[fmt]["mime"],
+        headers={
+            "Content-Disposition": f'attachment; filename="{calibration.card_v2.NAME}.{fmt}"',
+            "X-Design-Width-Mm": f"{w_mm:.2f}",
+            "X-Design-Height-Mm": f"{h_mm:.2f}",
+            "X-Card-Hoop": "5x7",
+            "X-Stitch-Convention": formats.FORMATS[fmt].get("convention", ""),
+        },
+    )
+
+
+@app.post("/calibration/read")
+async def calibration_read(
+    photo: UploadFile = File(...),
+    garment_id: str | None = Form(None),
+    fabric_id: str | None = Form(None),
+    x_embbot_token: str | None = Header(None),
+) -> dict:
+    """A photo of the sewn card → readings, a draft profile for this
+    garment's preset, and the overlay. Synchronous: a read is 10-20 s and
+    the Studio waits on it. 422 when the card cannot be found in the photo."""
+    _require_token(x_embbot_token)
+    data = await photo.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="No photo received.")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Photo is {len(data)//1024//1024} MB; the limit is "
+                   f"{MAX_UPLOAD_BYTES//1024//1024} MB. Export it smaller and try again.",
+        )
+    img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(status_code=400, detail="Could not decode the photo as an image.")
+    fabric = get_fabric(fabric_id) if fabric_id else fabric_for_garment(garment_id)
+    try:
+        return await run_in_threadpool(calibration.read_calibration_photo, img, fabric)
+    except calibration.CalibrationReadError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post("/export")

@@ -40,7 +40,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from .alpha_edge import extend_opaque_colour, extension_applies  # noqa: F401  (re-exported: stage 1 is where it acts)
 from .config import PipelineConfig
+from .crop import apply_crop
 from .letterbox import strip_letterbox
 from .threads import rgb_to_lab
 from .warnings_codes import (
@@ -65,6 +67,24 @@ class Prep:
     # the SOURCE resolves detail at the target size (preflight's photo
     # resolution guard) must read this, never `px_per_mm`.
     input_px_per_mm: float = 0.0
+    # The raster as the SOURCE delivered it — after the letterbox strip and
+    # the denoise, BEFORE the resolution-floor upscale — and the per-axis
+    # factor that upscale applied to reach `rgb`: `rgb`'s pixel (x, y) sits
+    # at ((x + 0.5) / sx - 0.5, (y + 0.5) / sy - 0.5) in this frame, cv2's
+    # half-pixel-centre convention. Set only when stage 1 upscaled; None and
+    # (1.0, 1.0) otherwise, so `native_rgb is not None` reads as "was
+    # upscaled". `native_alpha` is the source's own alpha (uint8) when it
+    # had one: on a cutout the anti-alias ramp lives THERE — the RGB under
+    # transparency is whatever the exporter left (`becker_marine_logo.png`
+    # is black everywhere, shape entirely in alpha) — and the `alpha < 128`
+    # threshold that makes `bg_mask` throws it away, then the NEAREST
+    # upscale of that mask turns every edge into a staircase of source
+    # pixels (0.68 mm a step on Becker at 100 mm). `stage4_vectorize` reads
+    # the edge from these under `cfg.subpixel_edges_upscaled`; the Lanczos
+    # ramp in `rgb` is manufactured and `subpixel.py` declines it.
+    native_rgb: np.ndarray | None = None
+    native_alpha: np.ndarray | None = None
+    upscale: tuple[float, float] = (1.0, 1.0)
     # True when the background came from the alpha channel rather than a
     # border color flood. An alpha cutout's background is the GARMENT, whose
     # color this pipeline cannot know (the RGB under transparency is whatever
@@ -102,11 +122,19 @@ class Prep:
     # miss). `pipeline.finish_generation` compares it with `cfg.garment_rgb`
     # to decide whether those holes sew (`cfg.enclosed_by_garment`).
     bg_rgb: tuple[int, int, int] | None = None
+    # The raster with the file's OWN colour under the transparency, in
+    # `rgb`'s frame and through the same denoise and upscale — set only
+    # under `cfg.alpha_edge_extend`, where `rgb` carries nearest-opaque
+    # colour there instead. For the readers that want the exporter's colour
+    # (preflight's `GROUND_SEWN` border colour); `bg_edge_rgb` above is
+    # already read from it. None otherwise: read `rgb`.
+    raw_rgb: np.ndarray | None = None
     warnings: list[dict] = field(default_factory=list)
 
 
 def _load(image: str | Path | bytes | np.ndarray,
-          strip_bars: bool = False) -> tuple[np.ndarray, np.ndarray | None]:
+          strip_bars: bool = False,
+          crop=None) -> tuple[np.ndarray, np.ndarray | None]:
     """-> (rgb uint8, alpha uint8 or None)."""
     if isinstance(image, np.ndarray):
         raw = image
@@ -122,6 +150,9 @@ def _load(image: str | Path | bytes | np.ndarray,
         rgb, alpha = cv2.cvtColor(raw[:, :, :3], cv2.COLOR_BGR2RGB), raw[:, :, 3]
     else:
         rgb, alpha = cv2.cvtColor(raw, cv2.COLOR_BGR2RGB), None
+    # See `stage0_classify._load` -- same crop, same position, and they must
+    # stay in step.
+    rgb, alpha = apply_crop(rgb, alpha, crop)
     # Letterbox bars are not artwork, and every ink rule below reads darkness
     # as ink -- so black bars invert the whole design rather than merely
     # degrading it. Strip before anything reads the pixels.
@@ -236,13 +267,26 @@ def _border_connected(mask: np.ndarray) -> np.ndarray:
 
 
 def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
-    rgb, alpha = _load(image, cfg.strip_letterbox)
+    rgb, alpha = _load(image, cfg.strip_letterbox, cfg.crop)
     warnings: list[dict] = []
+
+    # `cfg.alpha_edge_extend`: every stage reads nearest-opaque colour under
+    # every non-opaque pixel instead of whatever the exporter left there;
+    # `raw` keeps the file's own, carried through the same steps, for the two
+    # readers that want exactly that (`bg_edge_rgb` below, preflight's border
+    # colour — see `extend_opaque_colour`). With the flag off nothing here
+    # runs and `raw` is never read.
+    extend = extension_applies(cfg, alpha)
+    raw = rgb
+    if extend:
+        rgb = extend_opaque_colour(rgb, alpha, cfg.alpha_edge_extend_px)
 
     if cfg.denoise:
         # Edge-preserving; on flat art this is nearly a no-op, which is the
         # point — it cleans JPEG mosquito noise without softening boundaries.
         rgb = cv2.bilateralFilter(rgb, d=5, sigmaColor=30, sigmaSpace=5)
+        if extend:
+            raw = cv2.bilateralFilter(raw, d=5, sigmaColor=30, sigmaSpace=5)
 
     h, w = rgb.shape[:2]
     bg_outline_px = None
@@ -345,6 +389,15 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
 
     fg = ~bg
     if not fg.any():
+        if cfg.crop is not None:
+            # The customer dragged the crop box onto empty background. The
+            # uncropped message maps (errors._KNOWN) to advice ending "or crop
+            # tighter", which is backwards here: widen the box. A crop is the
+            # caller's own input, so this stays OUT of `_KNOWN` and reaches the
+            # panel as written, like a bad boundary_override does.
+            raise ValueError(
+                "the crop rectangle contains no artwork — widen it, or use "
+                "the whole image")
         raise ValueError("no foreground pixels — the whole image reads as background")
 
     ys, xs = np.nonzero(fg)
@@ -426,10 +479,24 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         )
 
     # --- resolution floor ---------------------------------------------------
+    native_rgb: np.ndarray | None = None
+    native_alpha: np.ndarray | None = None
+    upscale = (1.0, 1.0)
     if px_per_mm < cfg.min_px_per_mm:
         want = min(cfg.upscale_cap, cfg.min_px_per_mm / px_per_mm)
         new_size = (int(round(w * want)), int(round(h * want)))
+        # Kept for stage 4's native-resolution edge read (see `Prep`): the
+        # source's own pixels, and the factor each axis actually got — the
+        # rounding to whole pixels makes it differ from `want` by a part in
+        # a hundred on a small raster, enough to walk a contour off its edge
+        # by the far side of the image.
+        native_rgb, native_alpha = rgb, alpha
+        upscale = (new_size[0] / float(w), new_size[1] / float(h))
         rgb = cv2.resize(rgb, new_size, interpolation=cv2.INTER_LANCZOS4)
+        if extend:
+            # The file's own under-alpha colour, brought to the same frame
+            # the same way, for the two readers that want it.
+            raw = cv2.resize(raw, new_size, interpolation=cv2.INTER_LANCZOS4)
         bg = (
             cv2.resize(bg.astype(np.uint8), new_size, interpolation=cv2.INTER_NEAREST) > 0
         )
@@ -480,14 +547,15 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     # Color the artwork's outer anti-alias band blends toward (see Prep).
     # Measured from the background side of the boundary, so it is correct for
     # both an opaque backdrop and an alpha cutout (where it picks up whatever
-    # RGB sits under the transparency).
+    # RGB sits under the transparency — from `raw` under `alpha_edge_extend`,
+    # so the flag changes what the filters read and not what this reads).
     bg_edge_rgb = None
     if bg.any():
         near_fg = (
             cv2.dilate((~bg).astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
         ) & bg
         if near_fg.any():
-            bg_edge_rgb = rgb[near_fg].reshape(-1, 3).mean(axis=0)
+            bg_edge_rgb = (raw if extend else rgb)[near_fg].reshape(-1, 3).mean(axis=0)
 
     return Prep(
         rgb=rgb,
@@ -495,10 +563,14 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         px_per_mm=px_per_mm,
         art_bbox=art_bbox,  # type: ignore[arg-type]
         input_px_per_mm=input_px_per_mm,
+        native_rgb=native_rgb,
+        native_alpha=native_alpha,
+        upscale=upscale,
         bg_from_alpha=bg_from_alpha,
         bg_outline_px=bg_outline_px,
         bg_edge_rgb=bg_edge_rgb,
         enclosed_mask=enclosed if enclosed.any() else None,
         bg_rgb=bg_rgb,
+        raw_rgb=raw if extend else None,
         warnings=warnings,
     )

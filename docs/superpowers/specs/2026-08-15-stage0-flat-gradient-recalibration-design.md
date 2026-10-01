@@ -208,6 +208,24 @@ building it produced a measurement:
    is stable on both counts — and for a reason unrelated to correctness: its
    gradient reading (0.458) sits far enough above the 0.0015 threshold that no
    downscale in range crosses it.
+   *Status 2026-09-20:* `photo/drone_render.png` left BOTH sets, and not through
+   this spec — Kent's flip of `alpha_edge_extend` (gated on the resolution-floor
+   upscale) gave stage 0 nearest-opaque colour under the render's alpha at every
+   sweep width, and its 250-px `photo_subject` turned out to be the backdrop under
+   the alpha (`unique_color_mass` 0.335 pre-flip, 0.091 extended, 0.159 native).
+   The test pins the pre-flip reading; the drone does not count toward §2. The
+   remaining four fixtures still carry the defect this spec is about
+   (scope-history 2026-09-20, the flip addendum). Measured the same day under
+   all three forms of the extension (`tools/stage0_scale_arms.py`, the scale
+   addendum): the `flat` → `gradient` flips on downscale are the windows on
+   every fixture, opaque or not — this spec's subject, unchanged — while the
+   `photo_*` misroutes on the alpha fixtures were the RGB under the alpha,
+   which PIL's premultiplied resample puts there (black under alpha == 0)
+   and the extension removes. Kent's pick on that reading, the same day:
+   stage 0 classifies on the whole-image extension
+   (`alpha_edge_extend_stage0_whole`, ON), so `photo/enthusiast_logo.png`
+   left `FLIPS_ACROSS_SWEEP` too; it stays in `DEPARTS_FROM_NATIVE` with
+   the three synthetics — the four windows cases this spec is about.
 3. **It is not an artifact of the resampler.** `photo/enthusiast_logo.png` is
    `flat` at its native 1400x316 and `gradient` at 500 px under NEAREST,
    BILINEAR, BICUBIC and LANCZOS alike. NEAREST interpolates nothing and posts

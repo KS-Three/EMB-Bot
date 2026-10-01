@@ -28,6 +28,15 @@ BACKGROUND_ABSENT = "BACKGROUND_ABSENT"            # full-bleed art: no backgrou
 # extra: {"signal": "exif" | "face", "detail": str}
 PHOTO_DETECTED = "PHOTO_DETECTED"
 
+# Stage 1.25 under cfg.faces_route_flat (Kent's ruling 2026-09-30, see
+# config.py): a face was found and the design took the FLAT lane for it,
+# exactly as forced_class="flat" would. Emitted INSTEAD of PHOTO_DETECTED —
+# the two would contradict each other on one screen ("digitized as a
+# photograph" beside "sewing as flat art"), and the photographic machinery
+# PHOTO_DETECTED announces is precisely what this route declines.
+# Info, not a problem. extra: {"faces": int, "detail": str}
+FACE_ROUTED_FLAT = "FACE_ROUTED_FLAT"
+
 # Stage 1.5 (photo prep — photo plan §2 rows 3-4, build step 3 first slice)
 # Info, not a problem: tone prep + texture kill ran on this photo-classified
 # design. extra: {"technique": str, "fallback": bool (rolling_guidance
@@ -193,7 +202,7 @@ SHAPE_TOO_THIN_TO_FILL = "SHAPE_TOO_THIN_TO_FILL"  # narrower than a fill can ho
 # list[str], "threads": list[str], "total_mm2": float, "largest_mm2": float};
 # stage 7's still carries {"count": int} only.
 SHAPE_NOT_STITCHED = "SHAPE_NOT_STITCHED"
-LONG_JUMPS_TRIMMED = "LONG_JUMPS_TRIMMED"          # travel could not stay inside the shape. extra: {"count": int}
+LONG_JUMPS_TRIMMED = "LONG_JUMPS_TRIMMED"          # the thread is lifted inside a shape: travel could not stay inside it, or (cfg.fill_bridge_cut) a route existed and the cut was cheaper than thread on top of finished fill. extra: {"count": int}
 SMALL_SHAPES_AS_RUN = "SMALL_SHAPES_AS_RUN"        # too small for fill or satin; sewn as run outlines instead. extra: {"count": int}
 # Stage 6 (satin tier, 2026-09-03). A stretch of a stroke inside a satin shape
 # whose crosses fell under SATIN_MIN_CROSS_MM sewed as a bean run along its

@@ -24,12 +24,14 @@ moving Live → Closed swaps a line for a line.
 """
 from __future__ import annotations
 
+import io
 import re
+import sys
 
 import pytest
 
 from tools.scope_budget import (BUDGET, SCOPE, areas, line_count,
-                                live_and_closed, sections, word_count)
+                                live_and_closed, main, sections, word_count)
 
 
 @pytest.fixture(scope="module")
@@ -99,6 +101,38 @@ def test_the_section_parser_is_not_vacuous(text):
     assert sum(h for _n, h, _d in rows) < line_count(text)
 
 
+ENTRY_WORD_CAP = 400
+
+
+def test_no_live_defect_entry_exceeds_its_word_cap(text):
+    """Kent's rule 4b, 2026-09-30: 400 words per numbered entry.
+
+    The TOTAL budget was being met by arithmetic rather than compaction — four
+    commits across two weeks landed within three words of 27,000 (26,996 /
+    26,995 / 26,998 / 26,997), because a lane under the wall trims whatever is
+    cheapest that day and never the expensive thing. Meanwhile one entry ran
+    to 1,783 words, 7% of the whole file, untouched for six weeks.
+
+    A per-entry cap bites where the total cannot. It is not a second budget:
+    the median entry was already 113 words when this landed, so it does not
+    touch a well-written entry at all. What it forces is the move the file's
+    own rules already ask for — evidence to the area doc, verdict left behind.
+
+    Set at 400, not the 250 first proposed: I had measured the median entry at 113
+    words with a regex that only matched SINGLE-LINE entries, and the file's own
+    parser says 214. A 250 cap would have sat 17% above typical and put every
+    ordinary edit back into trimming; 400 is about twice the median and bites
+    the tail only. Measured clean at the time of writing: 25 of 25, max 397.
+    """
+    live, _closed = live_and_closed(text)
+    over = [(n, len(body.split())) for n, _i, body in live
+            if len(body.split()) > ENTRY_WORD_CAP]
+    assert not over, (
+        f"live defect entries over the {ENTRY_WORD_CAP}-word cap (rule 4b) — move the "
+        "evidence to the area doc and leave the verdict: "
+        + ", ".join(f"#{n} at {w}w" for n, w in sorted(over, key=lambda e: -e[1])))
+
+
 def test_every_live_defect_carries_a_dated_pointer(text):
     """CLAUDE.md's rule for this file, in its own words: *"Every claim carries
     a `(verb date — source)` pointer; one without a pointer is unverified."*
@@ -141,3 +175,63 @@ def test_the_entry_split_is_the_load_bearing_part(text):
     assert len(live) >= 15, [n for n, _i, _b in live]
     assert len(closed) >= 10, [n for n, _i, _b in closed]
     assert not ({n for n, _i, _b in live} & {n for n, _i, _b in closed})
+
+
+def _fits_cp1252(ch: str) -> bool:
+    try:
+        ch.encode("cp1252")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+def test_main_prints_its_whole_report_to_a_cp1252_console(monkeypatch):
+    """Kent's crash, reproduced. It is a REGRESSION test, not a unit test.
+
+    Running the tool on Windows without `-X utf8` printed the per-section
+    table and then died::
+
+        UnicodeEncodeError: 'charmap' codec can't encode character '→'
+
+    on the capability-area table, because area 1 is named *"Auto-digitizing
+    quality (image → stitches)"* in MASTER_SCOPE.md's own heading and the
+    tool prints doc text verbatim. It died **after** most of its output, so a
+    hurried reader could mistake a crash for a finished run — which is the
+    worst possible failure for the instrument that says whether a doc edit
+    fits, at six words of headroom.
+
+    The stream here is `errors="strict"` on purpose: strict is the default,
+    and lenience is the entire bug.
+    """
+    raw = io.BytesIO()
+    stream = io.TextIOWrapper(raw, encoding="cp1252", errors="strict",
+                              newline="")
+    monkeypatch.setattr(sys, "stdout", stream)
+
+    rc = main([])
+    stream.flush()
+    out = raw.getvalue().decode("utf-8")
+
+    assert rc == 0
+    assert "capability area" in out, "the table that crashed never printed"
+    assert "numbered entries:" in out, "main() stopped before its last section"
+    assert "The reclaim is" in out, "main() stopped before its closing advice"
+
+
+def test_that_regression_test_still_has_teeth(monkeypatch):
+    """The test above is only a test while the doc still holds a character
+    cp1252 cannot encode. Rename area 1 and it would pass on any stream,
+    forever, proving nothing — so assert the hazard is still in the output."""
+    raw = io.BytesIO()
+    stream = io.TextIOWrapper(raw, encoding="cp1252", errors="strict",
+                              newline="")
+    monkeypatch.setattr(sys, "stdout", stream)
+    main([])
+    stream.flush()
+    out = raw.getvalue().decode("utf-8")
+
+    hazards = sorted({ch for ch in out if not _fits_cp1252(ch)})
+    assert hazards, (
+        "nothing this tool prints is outside cp1252 any more, so the "
+        "regression test above can no longer fail. Point it at whatever "
+        "MASTER_SCOPE.md uses now, or retire both.")

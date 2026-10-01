@@ -75,6 +75,44 @@ is identical to baf702c) reproduced the old golden byte-for-byte first, with
 `ribbon_curve.png` as the untouched control. `enthusiast_logo`'s entry did
 not move (its fill has no travel at all) and stays as it was.
 
+**Exception TAKEN 2026-09-29, `cfg.satin_rail_comp` ON by default (Kent's
+pick on the labelled sitting, `docs/kent-review-2026-09-28.md`):** the
+`logo_whitebg.png`, `logo_alpha.png` and `ribbon_curve.png` entries were
+re-captured after the fabric's pull moved off the polygon and onto the rails
+for every satin-tier shape — the AMOUNT unchanged, so region ids, areas and
+warnings are unmoved on all three, and every satin column's crosses, caps and
+underlay moved: whitebg 4575 → 4580, alpha 4595 → 4602, ribbon 991 → 990
+stitch coords. The pre-change tree (`main` at 72102e8a) reproduced all three
+old entries on this machine before the capture
+(`tools/recapture_flat_lane_key.py --pre-change-tree`, `machine OK` each).
+`photo/enthusiast_logo.png` moves under this flip as well (2252 coords here
+against the golden's 2351, where the platform drift alone reads 2353) and
+stays un-re-pinned: the tool refuses it on this machine, the standing platform
+red, so its mismatch now carries the flip too and CI deselects it either way.
+
+**Exception TAKEN 2026-09-29 (second that day), the walk-target seam under
+rail comp:** the `logo_whitebg.png`, `logo_alpha.png` and `ribbon_curve.png`
+entries were re-captured after a stroke's first underlay run under
+`satin_rail_comp` started at the raw spine's end (on the travel web) and
+carried the needle out to the cap with its first stitch, instead of starting
+at the cap-extended tip a half-width off the web — one underlay penetration
+per free-ended satin stroke: whitebg 4580 → 4581, alpha 4602 → 4603, ribbon
+990 → 991 coords; region ids, areas and warnings unmoved on all three. The
+pre-change tree (`main` at 8a48c3b4) reproduced all three old entries on
+this machine first (`tools/recapture_flat_lane_key.py --pre-change-tree`,
+`machine OK` each). `photo/enthusiast_logo.png` stays the platform red.
+
+The junction tuck in sewn terms (2026-09-29, the third change to
+`satin_rail_comp`'s path that day, DOCTRINE "BECKER's C sews its bowl as
+fill by design") moved NONE of the three flat keys — byte-identical, no
+re-capture — and is noted so the next capture does not go looking; the
+platform red's own reading moved 2252 → 2275 coords under it, against the
+same 2351 golden. The seam closing under rail comp (2026-09-29, the fourth
+change to that path that day, DOCTRINE "The on-rails polygon carries the
+seams of its own construction") moved none of the three flat keys either,
+and left the platform red at 2275: none of these shapes has a stage-5
+seam, which is the only thing it touches.
+
 **Second exception, SANCTIONED BUT NOT YET TAKEN (2026-08-14):** the
 `photo/enthusiast_logo.png` entry is stale as of PR #146 (the pro-parity satin
 work: junction entry walk + corner-fork removal —

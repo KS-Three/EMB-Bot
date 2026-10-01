@@ -500,7 +500,7 @@ test("JEF downloads through the service on a LETTERING project too — the prefe
     props: { project: project(LETTERING), runtime: {}, digitizerHealth: { status: "ok" } },
   });
   await fireEvent.click(getByTestId("jef-button"));
-  await waitFor(() => expect(getByText(/Downloaded JEF/)).toBeInTheDocument());
+  await waitFor(() => expect(getByText(/Saved JEF/)).toBeInTheDocument());
   expect(exportCalls).toEqual([{ format: "jef", preferService: false }]);
 });
 
@@ -663,7 +663,7 @@ test("XXX and VP3 download through the service on a lettering project too", asyn
     });
     await fireEvent.click(ui(view).getByTestId(`${fmt}-button`));
     await waitFor(() =>
-      expect(ui(view).getByText(new RegExp(`Downloaded ${fmt.toUpperCase()}`))).toBeInTheDocument());
+      expect(ui(view).getByText(new RegExp(`Saved ${fmt.toUpperCase()}`))).toBeInTheDocument());
     expect(exportCalls).toEqual([{ format: fmt, preferService: false }]);
     view.unmount();
   }
@@ -712,4 +712,109 @@ test("VP3's 0.1 mm is not put in front of the customer", () => {
   expect(view.container.textContent).not.toMatch(/narrower/i);
   // Not vacuous: the JEF caveat IS on the page at this size.
   expect(ui(view).getByTestId("jef-hoop-header-note")).toBeInTheDocument();
+});
+
+// ---- "Your machine" (2026-09-30, lib/machines.js) ----------------------------
+// A customer knows the brand on their machine, not that Brother reads PES;
+// the picker turns the one into the other and the grid stays for everyone
+// else. The choice is remembered, so it is cleared before each test here.
+
+function machineSelect(container) {
+  return container.querySelector('select[aria-label="Your machine"]');
+}
+
+test("with no machine chosen there is no machine button and DST stays the filled format", () => {
+  localStorage.removeItem("embstudio:machine");
+  const { container, unmount } = render(DownloadStep, { props: { project: project(LETTERING), runtime: {} } });
+  expect(machineSelect(container).value).toBe("");
+  expect(container.querySelector('[data-testid="machine-download"]')).toBeNull();
+  const dst = [...container.querySelectorAll(".formats button")].find((b) => b.textContent.trim() === "DST");
+  expect(dst.classList.contains("primary")).toBe(true);
+  unmount();
+});
+
+test("choosing Brother shows one filled 'Download PES' button, demotes DST, and remembers the choice", async () => {
+  localStorage.removeItem("embstudio:machine");
+  const { container, unmount } = render(DownloadStep, { props: { project: project(LETTERING), runtime: {} } });
+  await fireEvent.change(machineSelect(container), { target: { value: "brother" } });
+  const btn = container.querySelector('[data-testid="machine-download"]');
+  expect(btn).toHaveTextContent("Download PES for Brother / Baby Lock");
+  expect(btn.classList.contains("primary")).toBe(true);
+  expect(btn).not.toBeDisabled();
+  const dst = [...container.querySelectorAll(".formats button")].find((b) => b.textContent.trim() === "DST");
+  expect(dst.classList.contains("primary")).toBe(false);
+  // Only one filled button on the step now.
+  expect(container.querySelectorAll("button.primary")).toHaveLength(1);
+  expect(localStorage.getItem("embstudio:machine")).toBe("brother");
+  unmount();
+});
+
+test("a service-only format with the service down disables the machine button and says why", async () => {
+  localStorage.removeItem("embstudio:machine");
+  const { container, unmount } = render(DownloadStep, { props: { project: project(LETTERING), runtime: {}, digitizerHealth: null } });
+  await fireEvent.change(machineSelect(container), { target: { value: "janome" } });
+  const btn = container.querySelector('[data-testid="machine-download"]');
+  expect(btn).toHaveTextContent("Download JEF for Janome / Elna / Kenmore");
+  expect(btn).toBeDisabled();
+  expect(container.querySelector(".machinepick-note")).toHaveTextContent(/JEF needs the digitizer service/);
+  unmount();
+});
+
+test("a remembered machine shows its button on the next visit", () => {
+  localStorage.setItem("embstudio:machine", "husqvarna");
+  const { container, unmount } = render(DownloadStep, { props: { project: project(LETTERING), runtime: {}, digitizerHealth: { status: "ok" } } });
+  expect(machineSelect(container).value).toBe("husqvarna");
+  expect(container.querySelector('[data-testid="machine-download"]')).toHaveTextContent("Download VP3 for Husqvarna Viking / Pfaff");
+  localStorage.removeItem("embstudio:machine");
+  unmount();
+});
+
+// ---- save-location control -------------------------------------------------
+//
+// The "save to a folder" control (folderTarget.js) is offered ONLY where the
+// browser can honour it — Chromium desktop, which has showDirectoryPicker and
+// IndexedDB. jsdom has neither, so the default render must not show it, and
+// every download stays a plain Downloads-folder download (the 33 tests above
+// run in exactly that state). These two pin the gate itself. The write path,
+// permission handling and error tags are folderTarget.spec.js's job.
+
+test("no save-location control when the browser can't write to a folder", () => {
+  const view = render(DownloadStep, {
+    props: { project: project(LETTERING), runtime: {}, digitizerHealth: null },
+  });
+  expect(ui(view).queryByTestId("save-where")).not.toBeInTheDocument();
+});
+
+test("save-location control appears where folder saving is supported", async () => {
+  // Minimal File System Access + IndexedDB stubs: enough for the component to
+  // decide it CAN offer the control and to read "no folder yet" on mount.
+  window.showDirectoryPicker = () => {};
+  window.indexedDB = {
+    open: () => {
+      const db = {
+        objectStoreNames: { contains: () => true },
+        createObjectStore: () => {}, close: () => {},
+        transaction: () => {
+          const r = { result: undefined, onsuccess: null };
+          const tx = { objectStore: () => ({ get: () => r }), oncomplete: null, onerror: null, onabort: null };
+          setTimeout(() => { if (r.onsuccess) r.onsuccess(); if (tx.oncomplete) tx.oncomplete(); }, 0);
+          return tx;
+        },
+      };
+      const req = { result: db, onsuccess: null, onupgradeneeded: null, onerror: null };
+      setTimeout(() => { if (req.onsuccess) req.onsuccess(); }, 0);
+      return req;
+    },
+  };
+  try {
+    const view = render(DownloadStep, {
+      props: { project: project(LETTERING), runtime: {}, digitizerHealth: null },
+    });
+    const row = await waitFor(() => ui(view).getByTestId("save-where"));
+    expect(row).toHaveTextContent(/Downloads folder/i);
+    expect(ui(view).getByTestId("folder-choose")).toBeInTheDocument();
+  } finally {
+    delete window.showDirectoryPicker;
+    delete window.indexedDB;
+  }
 });

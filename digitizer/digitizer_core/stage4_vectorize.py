@@ -26,7 +26,7 @@ from .config import PipelineConfig
 from .regions import Region, assign_shape_ids
 from .stage1_prep import Prep
 from .stage3_segment import RegionMask
-from .subpixel import drop_isolated_rejects, subpixel_contour
+from .subpixel import DROP_REJECTED_RUN_MAX, drop_isolated_rejects, subpixel_contour
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (COLOR_CAP_APPLIED,
                              THREAD_RESNAPPED_AFTER_DRIFT, warn)
@@ -291,6 +291,56 @@ def _refine_curves(raw: np.ndarray, simplified: np.ndarray, eps_px: float,
     return np.array([est[i % n] if (i % n) in est else raw[i % n] for i in out], dtype=np.float64)
 
 
+def _native_profile_image(p: Prep) -> np.ndarray:
+    """The image the native-resolution edge read samples: (H, W, 3) float32
+    CIELAB of the source's own pixels, or (H, W, 4) with the source's alpha
+    appended when it had one — the RGB composited over white by alpha, so
+    the exporter's junk under transparency (Becker's is black) never enters
+    a profile, and alpha itself scaled to 0..100, L's range, so a
+    transparent-to-ink edge reads at least that much contrast whatever the
+    ink's colour (white ink over transparency has none in Lab at all)."""
+    rgb = p.native_rgb
+    h, w = rgb.shape[:2]
+    if p.native_alpha is None:
+        return rgb_to_lab(rgb.reshape(-1, 3)).reshape(h, w, 3).astype(np.float32)
+    a = p.native_alpha.astype(np.float32)[..., None] / 255.0
+    comp = np.clip(rgb.astype(np.float32) * a + 255.0 * (1.0 - a), 0.0, 255.0).astype(np.uint8)
+    lab = rgb_to_lab(comp.reshape(-1, 3)).reshape(h, w, 3).astype(np.float32)
+    return np.concatenate([lab, (a * 100.0).astype(np.float32)], axis=-1)
+
+
+def _native_subpixel(raw_int: np.ndarray, lab_native: np.ndarray, mask: np.ndarray,
+                     mask_origin: tuple[int, int], p: Prep,
+                     min_contrast_de: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """`subpixel_contour` in the SOURCE's frame for a raster stage 1
+    upscaled: -> (moved points in the UPSCALED frame, accepted, corner).
+
+    The contour's pixel centres go down by cv2's half-pixel-centre rule
+    (`Prep.upscale`), the mask stays where it is and is consulted through
+    the same mapping, the step chords scale with the upscale so they span
+    source pixels, and the moved points come back up the same way. Every
+    window, plateau and floor in `subpixel.py` is then a quantity of the
+    source's pixels — the ones that carry the ramp."""
+    sx, sy = p.upscale
+    raw = raw_int.astype(np.float64)
+    down = np.stack([(raw[:, 0] + 0.5) / sx - 0.5, (raw[:, 1] + 0.5) / sy - 0.5], axis=1)
+
+    def inside(xy: np.ndarray) -> np.ndarray:
+        xi = np.rint((xy[:, 0] + 0.5) * sx - 0.5).astype(int) - int(mask_origin[0])
+        yi = np.rint((xy[:, 1] + 0.5) * sy - 0.5).astype(int) - int(mask_origin[1])
+        within = (xi >= 0) & (yi >= 0) & (xi < mask.shape[1]) & (yi < mask.shape[0])
+        out = np.zeros(len(xy), dtype=bool)
+        out[within] = mask[yi[within], xi[within]] > 0
+        return out
+
+    moved, accepted, corner = subpixel_contour(down, lab_native, mask, mask_origin,
+                                               min_contrast_de=min_contrast_de,
+                                               inside_fn=inside, step_scale=max(sx, sy),
+                                               corner_fit=True)
+    up = np.stack([(moved[:, 0] + 0.5) * sx - 0.5, (moved[:, 1] + 0.5) * sy - 0.5], axis=1)
+    return up, accepted, corner
+
+
 def vectorize(
     region_masks: list[RegionMask],
     thread_indices: list[int],
@@ -344,7 +394,15 @@ def vectorize(
     # §8 decision 3 (Becker-class sources); until it is measured on real
     # upscaled art the step declines there, and the polygon is today's.
     upscaled = bool(p.input_px_per_mm) and p.px_per_mm > p.input_px_per_mm * (1.0 + 1e-6)
-    subpixel = bool(cfg.subpixel_edges) and not upscaled
+    # `subpixel_edges_upscaled`: the declined regime read at the SOURCE's
+    # own resolution instead — the ramp is real there, it is only the
+    # resample's that is manufactured. Each raw vertex is handed down to the
+    # source's frame, read against the source's pixels (with its alpha as a
+    # fourth channel, `_native_profile_image`), and brought back up; see
+    # `_native_subpixel`. Inert unless stage 1 upscaled.
+    native = (upscaled and bool(cfg.subpixel_edges) and bool(cfg.subpixel_edges_upscaled)
+              and p.native_rgb is not None)
+    subpixel = bool(cfg.subpixel_edges) and (not upscaled or native)
     # The refinement's resolution gate (`_CURVE_MIN_PX_PER_MM`) is what keeps
     # its one-pixel floor from reading raster texture as arcs. With the
     # profile reading on, the floor is keyed to acceptance chord by chord
@@ -356,7 +414,9 @@ def vectorize(
     if curve_turn is not None and not subpixel and resolution_gated:
         curve_turn = None
     lab_img = None
-    if subpixel:
+    if native:
+        lab_img = _native_profile_image(p)
+    elif subpixel:
         h_img, w_img = p.rgb.shape[:2]
         lab_img = rgb_to_lab(p.rgb.reshape(-1, 3)).reshape(h_img, w_img, 3).astype(np.float32)
     min_area_mm2 = (cfg.min_detail_mm ** 2) * 0.25  # a sliver after simplification
@@ -420,10 +480,18 @@ def vectorize(
             probe = cv2.approxPolyDP(contour, eps, True).reshape(-1, 2)
             if len(probe) >= 3 and not _wide_enough_to_refine(probe, p.px_per_mm):
                 return raw_int, None, None
-            moved, accepted, corner = subpixel_contour(raw_int, lab_img, padded, (x0 - 1, y0 - 1),
-                                                       min_contrast_de=cfg.merge_delta_e)
+            if native:
+                moved, accepted, corner = _native_subpixel(raw_int, lab_img, padded, (x0 - 1, y0 - 1),
+                                                           p, cfg.merge_delta_e)
+                # A rejected run is measured in vertices, and the trace
+                # carries `upscale` of them per source pixel.
+                run_max = int(round(DROP_REJECTED_RUN_MAX * max(p.upscale)))
+            else:
+                moved, accepted, corner = subpixel_contour(raw_int, lab_img, padded, (x0 - 1, y0 - 1),
+                                                           min_contrast_de=cfg.merge_delta_e)
+                run_max = DROP_REJECTED_RUN_MAX
             share = float(accepted.mean()) if len(accepted) else 0.0
-            moved, accepted = drop_isolated_rejects(moved, accepted, protect=corner)
+            moved, accepted = drop_isolated_rejects(moved, accepted, protect=corner, max_run=run_max)
             return moved.astype(np.float32).reshape(-1, 1, 2), share, accepted
 
         outer_src, outer_share, outer_acc = ring_source(contours[outer])

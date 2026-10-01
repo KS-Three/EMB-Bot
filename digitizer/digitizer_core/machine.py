@@ -503,6 +503,11 @@ PUSH_CUTBACK_MM = 0.4
 # locally bulges past its mean — junctions and flares, exactly the crosses
 # that float. This is the structural fix long before the format ceiling
 # (MAX_STITCH_MM 12.1) forces anything.
+# The decision is per COLUMN, not per leg (2026-09-30,
+# `stage6_satin._comb_thresholds`): a column whose legs straddle this value
+# would otherwise flicker between split and raw every few legs (Becker's
+# lettering at 100 mm, 122 changes); once a leg over it turns the comb on,
+# the comb stays on while legs are at least SPLIT_SEGMENT_MM long.
 SPLIT_SATIN_ABOVE_MM = 5.0
 
 # Target segment of a split cross: k = ceil(cross / this) segments, interior
@@ -766,6 +771,26 @@ TRIM_AT_MM = 3.0
 # through the fabric, so the cone gives up more than the path length. Rule of
 # thumb used for the operator-facing estimate only; nothing geometric.
 THREAD_LENGTH_FACTOR = 1.35
+
+# How long the machine is busy. Same standing as THREAD_LENGTH_FACTOR above:
+# operator-facing estimate only, nothing geometric, so gate 1 does not apply.
+#
+# PLAN_SPM is a planning speed, not the nameplate — a machine rated 1,000-1,200
+# does not hold it, because firmware slows for stitches over 3-4 mm and top
+# speed spikes tension. TRIM_COST_STITCHES is what one trim costs in
+# stitch-equivalents: trimmer, reposition, and the operator's colour-stop
+# handling on top (~11 s at the plan rate).
+#
+# [P] Tajima TMEZ, HAPPY workbook; [T] Embroidery Legacy. The machine-physics
+# playbook rates this pair "high confidence on mechanism, medium on
+# constants", which is why every surface that prints a run time prints the
+# basis beside it instead of letting it read as measured here.
+#
+# Hand-ported to `src/sewtime.js` for the same reason `fabrics.js` and
+# THREAD_LENGTH_FACTOR are: a lettering design never reaches this engine, and
+# the two lanes must not quote a customer different times for the same job.
+PLAN_SPM = 650
+TRIM_COST_STITCHES = 120
 
 
 def clamp_stitch_mm(value: float) -> float:

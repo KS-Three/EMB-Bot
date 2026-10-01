@@ -1,5 +1,7 @@
 """`cfg.satin_rail_comp` — pull compensation on the rails, not the polygon.
-DEFAULT OFF (quality review 2026-09-08 item 6, built 2026-09-09).
+Built OFF 2026-09-09 (quality review 2026-09-08 item 6); DEFAULT ON since
+2026-09-28, Kent's flip on the labelled sitting (docs/kent-review-2026-09-28.md).
+OFF is the pre-flip path and is passed explicitly wherever a test needs it.
 
 Stage 5 grows every shape by the fabric's pull with a round join and the
 satin tier skeletonises the grown polygon: arcs on every corner, slots
@@ -8,9 +10,11 @@ keeps its artwork polygon in stage 5 and `_rail_points` moves each rail
 outward by the same pull, held back where a counter would close under
 `min_detail_mm`. The AMOUNT never changes (gate 1); where it lands does.
 
-What these tests guarantee: OFF is the shipped path; ON sews a satin shape
-on its artwork with rails one pull outside it and caps not lengthened; a
-counter is held open; fills and widened lettering are untouched.
+What these tests guarantee: ON is the shipped path and OFF stays reachable;
+ON sews a satin shape on its artwork with rails one pull outside it and caps
+not lengthened; a counter is held open; fills and widened lettering are
+untouched; and the price the flip was measured to carry on the lettering
+fixture is pinned as a ceiling, so it can only get cheaper.
 """
 from __future__ import annotations
 
@@ -85,9 +89,12 @@ def _outside(points, poly: Polygon) -> float:
                for p in points)
 
 
-def test_the_flag_is_off_by_default():
-    """The amount is gate 1's; where it lands is Kent's on the render."""
-    assert PipelineConfig().satin_rail_comp is False
+def test_the_flag_is_on_by_default_since_2026_09_28():
+    # Kent flipped it on the labelled sitting (docs/kent-review-2026-09-28.md):
+    # after-better on five logos, before-better on none. OFF is the old path.
+    assert PipelineConfig().satin_rail_comp is True
+    assert PipelineConfig(satin_rail_comp=False).satin_rail_comp is False
+    # The amount is gate 1's; where it lands was Kent's on the render.
     assert PULL > 0, "the polo preset stopped carrying a pull, so nothing here is measurable"
 
 
@@ -98,7 +105,7 @@ def test_a_bar_is_sewn_on_its_artwork_with_rails_one_pull_outside_and_caps_not_l
     fabric's pull earns is untouched) and the caps stop at the artwork."""
     png = tmp_path / "bar.png"
     _bar_png(png, 24.0, 3.0)
-    off_r, off_p, off_seen = _sewn(png, target_width_mm=24.0)
+    off_r, off_p, off_seen = _sewn(png, target_width_mm=24.0, satin_rail_comp=False)
     on_r, on_p, on_seen = _sewn(png, target_width_mm=24.0, satin_rail_comp=True)
     sid = next(iter(on_seen))
     art = next(r.polygon for r in on_r.regions if r.shape_id == sid)
@@ -163,7 +170,7 @@ def test_the_end_cutback_owes_only_the_push_on_rails(tmp_path):
     positions. The flag moves the column's width, never its length."""
     png = tmp_path / "bar.png"
     _bar_png(png, 24.0, 3.0)
-    _r, off_p, off_seen = _sewn(png, target_width_mm=24.0, directional_comp=True)
+    _r, off_p, off_seen = _sewn(png, target_width_mm=24.0, directional_comp=True, satin_rail_comp=False)
     r, on_p, on_seen = _sewn(png, target_width_mm=24.0, directional_comp=True, satin_rail_comp=True)
     sid = next(iter(on_seen))
     assert set(off_seen) == set(on_seen)
@@ -185,7 +192,7 @@ def test_on_the_wordmark_every_satin_shape_sews_on_its_artwork():
     is only the underlap tongue under a later colour (and the clip of an
     earlier one) -- less than half of OFF's growth band on every shape."""
     art = TESTDATA / "photo" / "drone_render.png"
-    off_r, _off_p, off_seen = _sewn(art)
+    off_r, _off_p, off_seen = _sewn(art, satin_rail_comp=False)
     on_r, _on_p, on_seen = _sewn(art, satin_rail_comp=True)
     art_by_id = {rg.shape_id: rg.polygon for rg in on_r.regions}
     assert len(on_seen) >= 30 and set(on_seen) == set(off_seen)
@@ -221,6 +228,115 @@ def test_widened_lettering_keeps_its_compensated_column(tmp_path):
         assert seen[rg.shape_id].area > rg.polygon.area * 1.3
 
 
+def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
+    """The one cost the labelled sitting could not show: trims. MARINE at
+    80.2 mm (the lettering route's own fixture, `tests/test_stroke_order_euler`)
+    sews 9 trims and 1,784 stitches with the pull in the polygon and 22 trims
+    and 2,058 stitches with it on the rails (2026-09-29, the day of the flip;
+    letter-to-shape hops 3 -> 6, underlay->satin 3 -> 5, satin->underlay
+    1 -> 7). The 2026-09-19 levers priced on the grown polygon do not buy it
+    back: both levers ON reads 17 trims on the rails against 8 off them.
+
+    Where they come from, by `tools/refused_walks.py`: 11 of the 22 were
+    walks refused because the stroke's first run started a half-width off
+    the travel web (`target_unsnapped`); the seam fix the same day
+    (`test_under_rail_comp_a_strokes_first_run_starts_on_the_travel_web`)
+    takes those to 2, but eight of them become cursor-side refusals -- the
+    previous column's end sits 3.5 to 7 mm from any node, past `trim_at` --
+    so the fixture reads 21 trims at 2,061 stitches. The cursor side is
+    `satin_walk_cursor_reach_mm`'s question, parked for cloth (Kent,
+    2026-09-20); the rest are letter-to-letter hops and two split webs.
+
+    The junction tuck's floor and reach-in went to sewn terms the same day
+    (DOCTRINE 2026-09-29, the C's bowl): a stacked arm reaches its node as
+    it does on the grown polygon, which is more thread -- the fixture
+    2,061 -> 2,093 stitches (1.155 -> 1.173 of OFF) for bare artwork
+    7.38 -> 7.03% at the same 21 trims -- so the stitch ceiling is 1.18.
+
+    **`satin_tip_caps` (ON since 2026-09-29) now rides in BOTH arms, and the
+    ceilings moved for that reason alone.** Rail comp's OWN price on this
+    fixture did not change: with tip caps off on both sides it still reads
+    9 -> 21 trims and 1,784 -> 2,093 stitches, **1.173 of OFF** against the
+    1.18 that was pinned here before. What moved is the baseline -- tip caps
+    costs the OFF arm 9 -> 11 trims and 1,784 -> 1,928 stitches, and the ON
+    arm 21 -> 22 and 2,093 -> 2,354 -- so the pair reads 11 -> 22 at 1.221.
+    The 09-19 engine is pinned below as its own arm so that attribution
+    cannot rot: if THAT number moves, rail comp's price really has changed.
+
+    Pinned as CEILINGS, the way the underlay lever's own cost is: a cheaper
+    build lowers them and this test stays green; a dearer one fails it. The
+    direction is recorded here, not asserted -- the day the rails sew the
+    word in the typed word's three trims, nothing here should be in the way.
+
+    **2026-09-30, the envelope's sibling rule (`_in_sibling_ribbon`) made
+    every arm cheaper and moved the ratios both ways.** The rule refuses a
+    reach that ends in another stroke's corridor, and the grown polygon's
+    rays escape at more stations than the rails' do (275 against 238
+    reached under the shipped envelope): with tip caps 2,010 -> 1,968
+    against 2,461 -> 2,372, the ratio 1.224 -> 1.205; without them 1,820 ->
+    1,783 against 2,119 -> 2,103, 1.164 -> 1.179. Rail comp's own price did
+    not change -- its baseline did. The first ceiling stands; the second
+    reads 1.19 because 1.179 sits a thousandth under the old line and that
+    margin is the rule's, not this test's.
+    """
+    from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
+    from tests.test_stroke_order_euler import FIXTURE
+
+    def sewn(**kw):
+        c = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
+        gen = build_generation(str(FIXTURE), c)
+        return plan_stitches(finish_generation(gen.fork(), c), c)
+
+    off, on = sewn(satin_rail_comp=False), sewn()
+    assert off.stats.trims <= 11, off.stats.trims           # the grown polygon: 9 on the 09-19 engine, 11 with tip caps
+    assert on.stats.trims <= 22, on.stats.trims             # the rails: 21 before tip caps, 22 with them
+    assert on.stats.stitch_count <= 1.23 * off.stats.stitch_count, (off.stats.stitch_count, on.stats.stitch_count)
+
+    # Rail comp's own price, isolated on the engine the numbers above were
+    # first read on. This is the arm that says whether the ceilings moved
+    # because rail comp got dearer or because another flag joined the ride.
+    off0 = sewn(satin_rail_comp=False, satin_tip_caps=False)
+    on0 = sewn(satin_tip_caps=False)
+    assert off0.stats.trims <= 9, off0.stats.trims
+    assert on0.stats.trims <= 21, on0.stats.trims
+    assert on0.stats.stitch_count <= 1.19 * off0.stats.stitch_count, (
+        off0.stats.stitch_count, on0.stats.stitch_count)
+
+
+def test_under_rail_comp_a_strokes_first_run_starts_on_the_travel_web():
+    """The walk's target is the first point of a stroke's first run. Under
+    rail comp `_stroke_underlay` runs a free end out to the cap, so that
+    point sat about a half-width off the raw spine's end -- the node the
+    travel web is built from -- past the walk's strict 0.8 mm target snap,
+    and the walk refused (MARINE at 80 mm, 2026-09-29: `target_unsnapped`
+    walks 1 -> 11 when the flag went on). Now the run starts at the raw
+    end, on the web, and its first stitch carries the needle out to the
+    cap under the column -- the same cure `underlay_on_column` carries.
+    On this T the first underlay of each stroke used to start 1.58 mm off
+    the web on the rails and 0.0 off it on the grown polygon."""
+    bar = Polygon([(0, 0), (24, 0), (24, 3), (0, 3)])
+    stem = Polygon([(10.5, 3), (13.5, 3), (13.5, 20), (10.5, 20)])
+    poly = bar.union(stem).buffer(0)
+    strokes, _half, _field = s6.extract_strokes(poly, half_extra_mm=PULL, corner_twigs=True,
+                                                 junction_stack=True)
+    assert len(strokes) == 2
+    ends = [st.spine[0] for st in strokes] + [st.spine[-1] for st in strokes]
+    runs, report = s6.satin_shape(poly, "T", underlay_style="center", trim_at_mm=3.0,
+                                  rail_comp_mm=PULL, rail_comp_floor_mm=1.5, corner_twigs=True,
+                                  junction_stack=True, stroke_order="euler")
+    assert not report["empty"]
+    # the first run of each stroke is its centre underlay, and it starts on the web
+    firsts = [r for i, r in enumerate(runs)
+              if r.kind == "underlay" and (i == 0 or runs[i - 1].kind == "satin"
+                                           or runs[i - 1].kind == "travel")]
+    assert len(firsts) == 2, [r.kind for r in runs]
+    for r in firsts:
+        miss = min(math.dist(r.points[0], e) for e in ends)
+        assert miss < 0.8, f"a stroke's first run starts {miss:.2f} mm off the travel web"
+        # and the stitch from there runs out to the cap, not back along the spine
+        assert math.dist(r.points[0], r.points[1]) <= 3.0
+
+
 def test_push_rails_pushes_a_pinched_cross_and_leaves_a_directionless_one():
     """`_push_rails`: a pinched 0.2 mm cross is pushed to 0.8 — the cross the
     grown polygon would have carried, and what the drop check must see; a
@@ -233,3 +349,360 @@ def test_push_rails_pushes_a_pinched_cross_and_leaves_a_directionless_one():
     assert abs(math.dist(pa[0], pb[0]) - 0.8) < 1e-9
     assert abs(math.dist(pa[1], pb[1]) - (2.0 + 0.6)) < 1e-9
     assert pa[2] == a[2] and pb[2] == b[2]
+
+
+def test_the_flips_bare_artwork_is_hairlines_on_the_sides_and_a_hole_at_a_tapered_end():
+    """WHAT the flip's bare artwork is, which its headline could not say.
+
+    `docs/kent-review-2026-09-28.md` recorded ENTHUSIAST's cost as bare
+    artwork 6.27 -> 7.10% with the rise "along the rails (mid-rail 2.06 ->
+    4.12%), cause not yet isolated". Isolated 2026-09-29 with
+    `tools/bare_anatomy.py`, which splits every bare component by WHERE it
+    sits (a disc at a run's terminal cross = an `end` gap, else a `side` gap)
+    and HOW THICK it is (max inscribed radius). The two populations want
+    opposite responses and the percentage cannot tell them apart:
+
+    - **The mid-rail half is HAIRLINES and is not the defect.** 80% of the
+      side area sits in components under 0.10 mm half-width, the worst side
+      component is SMALLER on than off (0.45 against 0.50 mm2), and the
+      same-rail step distribution barely moves (p50 0.427 -> 0.419 mm, share
+      over 0.45 mm 35.1 -> 33.6%, the summed overshoot past the 0.4 mm pitch
+      88.2 -> 71.5 mm). A 0.4 mm thread at the 0.4 mm pitch just touches, so
+      every rail step over it leaves a sliver the coverage model counts;
+      rail comp makes more of them and makes each thinner.
+    - **The cloth-visible cost is at a TAPERED END.** The apex of the A
+      (`Scd87e08f`) sews to within 0.08 mm of the artwork off the rails and
+      stops 1.63 mm short on them, leaving one 3.61 mm2 triangle at 0.71 mm
+      half-width -- the largest bare component on the fixture, and under
+      preflight's `_UNCOVERED_MIN_PATCH_MM2` (5.0), so nothing reports it.
+      Rendered both ways: `docs/renders/rail-comp-bare-anatomy-2026-09-29/`.
+
+    Pinned as CEILINGS and a FLOOR, the way the trims are: the end gap can
+    only get smaller, the hairline share can only get purer. A build that
+    closes the apex lowers the first and leaves this green; one that turns
+    the hairlines into holes fails the third.
+    """
+    from tools.bare_anatomy import components
+    from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
+
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6)
+    gen = build_generation(str(TESTDATA / "photo" / "enthusiast_logo.png"), cfg)
+    result = finish_generation(gen.fork(), cfg)
+    plan = plan_stitches(result, cfg)
+    polys = {r.shape_id: r.polygon for r in result.regions}
+    comps = components(polys, plan)
+    assert comps
+
+    ends = [c for c in comps if c[2]]
+    sides = [c for c in comps if not c[2]]
+    assert ends and sides
+
+    # 1. the tapered-end hole, as a ceiling (3.61 mm2 measured 2026-09-29)
+    worst_end = max(a for a, _h, _e, _s in ends)
+    assert worst_end <= 3.8, f"the flip's worst end gap grew to {worst_end:.2f} mm2"
+
+    # 2. no side gap is a hole (0.45 mm2 measured; OFF's worst is 0.50)
+    worst_side = max(a for a, _h, _e, _s in sides)
+    assert worst_side <= 0.55, f"a mid-rail gap reached {worst_side:.2f} mm2 — no longer a hairline"
+
+    # 3. and the side population STAYS hairlines (80% measured)
+    side_area = sum(a for a, _h, _e, _s in sides)
+    hairline = sum(a for a, h, _e, _s in sides if h < 0.10)
+    assert hairline / side_area >= 0.70, (
+        f"only {100 * hairline / side_area:.0f}% of mid-rail bare is thinner than "
+        "0.10 mm half-width — the sides have started opening real gaps")
+def test_under_rail_comp_the_skeleton_reads_the_polygon_with_its_seams_closed():
+    """Stage 5 hands an on-rails shape its artwork unioned with the underlap
+    reach under whatever sews later and cut by whatever sewed earlier, and
+    that boundary carries hairline seams a fraction of a pull wide wherever
+    the artwork's sub-pixel edge meets a buffered or neighbouring one. The
+    medial axis reads each seam as a branch: `logo_golden_tee` at 80 mm sewed
+    178 -> 494 strokes and 6,892 -> 11,377 stitches when the flag went on,
+    the O of GOLF alone 29 -> 88 (2026-09-29). The grown polygon never had
+    them -- a round-joined `buffer(pull)` swallows anything narrower than
+    the pull -- so the skeleton now reads the polygon with its seams closed
+    (`_close_seams`: what a half-pull closing fills where it is nowhere
+    wider than half a pull AND touches a stretch of boundary stage 5 added,
+    the on-rails polygon's boundary off the artwork's), and the rails and
+    caps read that same polygon, so no ray stops at a seam's wall. A crotch, a
+    counter or a notch of the artwork's own stays as the artwork drew it:
+    the closing at the pull's radius tried first re-cut MARINE's letters
+    37 -> 28 strokes, and the width test alone still cost MARINE four folds
+    and ENTHUSIAST an unsewn element from the artwork's own notches.
+    """
+    from shapely.geometry import box
+
+    bar = box(0.0, 0.0, 24.0, 2.4)
+    seam_w = 0.4 * PULL                      # a hairline: under half a pull
+    # a notch in the top edge and a hairline hole through the middle
+    seamed = (bar.difference(box(6.0, 1.4, 6.0 + seam_w, 2.4))
+                 .difference(box(12.0, 0.4, 12.0 + seam_w, 2.0)))
+    closed = s6._close_seams(seamed, PULL)
+    assert closed.geom_type == "Polygon" and not closed.interiors
+    assert closed.symmetric_difference(bar).area < 0.05, closed.symmetric_difference(bar).area
+
+    def strokes(poly):
+        return len(s6.extract_strokes(poly, half_extra_mm=PULL, corner_twigs=True,
+                                      junction_stack=True)[0])
+
+    assert strokes(bar) == 1
+    assert strokes(seamed) > strokes(bar), "the seams must shatter the raw skeleton for this to test anything"
+    assert strokes(closed) == strokes(bar)
+
+    # a counter, and a slit wider than half a pull, are artwork and stay
+    with_art = (bar.difference(box(17.0, 0.2, 19.0, 2.2))
+                   .difference(box(20.0, 0.4, 20.0 + 0.8 * PULL, 2.0))
+                   .difference(box(12.0, 0.4, 12.0 + seam_w, 2.0)))
+    kept = s6._close_seams(with_art, PULL)
+    assert len(kept.interiors) == 2, [Polygon(r).area for r in kept.interiors]
+    # the counter keeps its area to within the hairline fillets at its four
+    # corners (0.005 mm2 each at a half-pull radius)
+    assert abs(max(Polygon(r).area for r in kept.interiors) - 4.0) < 0.05
+
+    # zero pull is the identity, so rail comp OFF cannot be moved by any of this
+    assert s6._close_seams(seamed, 0.0) is seamed
+
+    # WHERE the seam is decides: the same seams are the artwork's own when
+    # the artwork polygon carries them (nothing closes), and stage 5's when
+    # the artwork is the clean bar (they close)
+    assert s6._close_seams(seamed, PULL, art_poly=seamed) is seamed
+    own = s6._close_seams(seamed, PULL, art_poly=bar)
+    assert own.symmetric_difference(bar).area < 0.05
+
+    # and through `satin_shape` the seamed bar sews the clean bar's columns
+    def satin_runs(poly):
+        runs, _report = s6.satin_shape(poly, "bar", underlay_style="center", trim_at_mm=3.0,
+                                       rail_comp_mm=PULL, rail_comp_floor_mm=1.5,
+                                       corner_twigs=True, junction_stack=True, stroke_order="euler")
+        return sum(1 for r in runs if r.kind == s6.stitches.SATIN)
+
+    assert satin_runs(seamed) == satin_runs(bar) == 1
+
+
+def test_a_closed_seam_is_closed_for_the_rails_too_and_never_seals_a_bay(monkeypatch):
+    """The seams close for the whole column, not only its skeleton. With the
+    rails still reading the seamed polygon a spine down a closed slit had its
+    crosses stopped at the slit's walls: a 24 x 2.4 mm bar with a 0.12 mm
+    lengthwise slit, the artwork the clean bar, sewed a 0-0.87 mm sliver
+    column and a stray 165-point fill beside a pinched main one (the review
+    of 2026-09-30). Through `satin_shape` with `art_poly`, as stage 7 calls
+    it, the slit bar now sews exactly the clean bar.
+
+    And three edges of the WHERE rule: a seam that would shut the mouth of a
+    bay seals a counter no hairline, so it stays open; an artwork polygon
+    whose boundary cannot be read closes nothing (the width test alone is
+    the rule that cost MARINE its folds); and a closed shape that sews
+    nothing falls back to what its raw polygon sews.
+    """
+    from shapely.geometry import box
+
+    bar = box(0.0, 0.0, 24.0, 2.4)
+    slit = bar.difference(box(3.0, 1.14, 21.0, 1.26))
+
+    def sewn(poly, art):
+        runs, report = s6.satin_shape(poly, "bar", underlay_style="center", trim_at_mm=3.0,
+                                      art_poly=art, rail_comp_mm=PULL, rail_comp_floor_mm=1.5,
+                                      corner_twigs=True, junction_stack=True, stroke_order="euler")
+        return [(r.kind, r.points) for r in runs], report
+
+    assert sewn(slit, bar) == sewn(bar, bar)
+
+    # a 1.2 mm bay opening onto the top edge through a 0.1 mm mouth
+    bay = bar.difference(box(10.0, 0.6, 11.2, 1.8)).difference(box(10.55, 1.7, 10.65, 2.4))
+    assert bay.geom_type == "Polygon" and not bay.interiors
+    stayed = s6._close_seams(bay, PULL, art_poly=box(0.0, -1.0, 24.0, 2.4))
+    assert not stayed.interiors, [Polygon(r).area for r in stayed.interiors]
+
+    # an artwork with no boundary to compare against closes nothing
+    notched = bar.difference(box(6.0, 1.4, 6.0 + 0.4 * PULL, 2.4))
+    assert s6._close_seams(notched, PULL, art_poly=Point(1.0, 1.0)) is notched
+    # a MultiPolygon artwork is read like a Polygon one
+    two = bar.union(box(30.0, 0.0, 32.0, 2.4))
+    assert s6._close_seams(notched, PULL, art_poly=two).symmetric_difference(bar).area < 0.05
+
+    # the fallback: a closing that leaves nothing sewable sews the raw polygon
+    raw = sewn(bar, bar)
+    monkeypatch.setattr(s6, "_close_seams", lambda poly, pull, art=None: box(0.0, 0.0, 0.05, 0.05))
+    assert s6.satin_shape(box(0.0, 0.0, 0.05, 0.05), "speck", underlay_style="center",
+                          trim_at_mm=3.0, rail_comp_mm=PULL)[1]["empty"]
+    assert not raw[1]["empty"] and sewn(bar, bar) == raw
+def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else():
+    """`satin_rails_follow_edge="envelope"` (2026-09-30, Kent's pick after
+    #561). The symmetric-offset model places both rails at the NEARER edge's
+    distance, so wherever the spine sits off-centre the far rail stops short
+    -- BECKER's C, golden_tee's bands once their seams were closed. `True`
+    cures it at every station and pays in rail roughness (satin wobble std
+    +40% on Becker) and overshoot (ENTHUSIAST 0.257 -> 0.290, the headline).
+    The envelope extends a rail only where its side is short by at least
+    `_ENVELOPE_GAP_MM`, and only to the running minimum of its own edge
+    profile over +-`_ENVELOPE_WINDOW` stations, so it cannot overshoot a
+    concavity and carries none of the edge's roughness.
+
+    Pinned on Becker at 80 mm, the fixture with the defect (2026-09-30:
+    bare 10.22 / 9.48 / 7.24% False / envelope / True, satin std 0.091 /
+    0.100 / 0.128, overshoot 0.0127 / 0.0127 / 0.0157): the envelope covers
+    more than the symmetric width, at less than a third of True's roughness
+    and none of its overshoot. And the design limit, on a synthetic band: a
+    2 mm bulge the axis cannot re-centre under is shorter than the window,
+    so the envelope keeps the symmetric width there where True reaches --
+    corner-sized bare is `satin_cap_recentre`'s question, not this mode's.
+
+    **`satin_tip_caps=False` here, held on the engine this mode was measured
+    on** (it was written before that flag was flipped ON, 2026-09-30, and the
+    three numbers above are reproduced byte for byte with it OFF). That is not
+    bookkeeping: the two cures reach for MUCH of the same bare, and the
+    shipped engine makes the envelope's own headroom look small. Re-measured
+    2026-09-30 on the merged tree, Becker 80 mm, bare / satin std / stitches:
+
+        tip caps OFF   10.222% / 0.0914 / 5,691   9.484% / 0.0999 / 5,750   7.235% / 0.1281 / 6,079
+        tip caps ON     9.483% / 0.0943 / 6,101   9.030% / 0.1108 / 6,219   6.840% / 0.1243 / 6,601
+                        ^ False                   ^ envelope                ^ True
+
+    **Tip caps alone take Becker's symmetric-rail bare to 9.483%, which is the
+    figure the envelope reached without them (9.484%).** The envelope then
+    takes a further 0.45 points, at +17.5% roughness rather than the +9.3% it
+    costs on the pre-flip engine. Both assertions below would fail on the
+    shipped default for that reason and for no other; pin the mode where it
+    was measured, and read the overlap from the table rather than from a
+    loosened threshold. What the envelope is worth ON TOP of tip caps is a
+    separate question and belongs to its flip decision, not to this test.
+
+    **Re-measured 2026-09-30 under the sibling rule** (`_in_sibling_ribbon`,
+    the test after this one: a reach that ends inside another stroke's
+    corridor is a junction escape and keeps the symmetric width), tip caps
+    OFF, False / envelope / True: bare 10.222 / 9.550 / 7.235%, satin std
+    0.0914 / 0.0994 / 0.1281, stitches 5,691 / 5,697 / 6,079. The reach the
+    eye wanted is kept (0.67 of the 0.74 points) and the escapes are gone
+    -- and with them the envelope's thread: it sews 6 stitches more than
+    the symmetric rails now, not 59, because the escapes were the longest
+    crosses on the design and carried the split points. The stitch
+    assertion below reads that: under True's count, and within 2% of the
+    symmetric rails' either way.
+
+    **Re-read the same day after the split comb (#578) and the teeth rule
+    (`_drop_short_reaches`)**: bare 10.222 / 9.709 / 7.185%, satin std
+    0.1016 / 0.1012 / 0.1325, stitches 6,014 / 6,006 / 6,553. The comb adds
+    its penetrations to every arm (the symmetric arm 5,691 -> 6,014) and
+    the wobble instrument reads them; the teeth rule gives 0.16 points of
+    bare back at 80 mm, where a single-station reach was covering it.
+    Every assertion below holds on both readings.
+    """
+    from shapely.geometry import box
+    from tools import edge_wobble as EW
+    from tools.rail_edge import bare_area
+
+    def arm(mode):
+        r, p = digitize(TESTDATA / "becker_marine_logo.png",
+                        PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+                                       max_colors=6, satin_rails_follow_edge=mode,
+                                       satin_tip_caps=False))
+        polys = {rg.shape_id: rg.polygon for rg in r.regions}
+        num, den = bare_area(polys, p)
+        wob = EW.analyse_plan(polys, p, background=set())
+        return num / den, wob["by_tier"]["satin"]["wobble_std_mm"], p.stats.stitch_count
+
+    off_bare, off_std, off_st = arm(False)
+    env_bare, env_std, env_st = arm("envelope")
+    on_bare, on_std, on_st = arm(True)
+    assert env_bare < off_bare - 0.005, (off_bare, env_bare)          # it reaches: 10.2 -> 9.5%
+    assert env_std <= off_std * 1.15, (off_std, env_std)             # at a tenth more roughness (True: +40%)
+    assert on_std > env_std, (on_std, env_std)
+    assert env_st < on_st and abs(env_st - off_st) <= 0.02 * off_st, (off_st, env_st, on_st)   # and none of True's thread
+
+    band = box(0, 0, 24, 2.4).union(box(11, 2.4, 13, 3.6))            # a 2 mm bulge, 1.2 mm deep
+    tops = {}
+    for mode in (False, True, "envelope"):
+        runs, _ = s6.satin_shape(band, "band", underlay_style="center", trim_at_mm=3.0,
+                                 rail_comp_mm=PULL, rail_comp_floor_mm=1.5, corner_twigs=True,
+                                 junction_stack=True, stroke_order="euler", rails_follow_edge=mode)
+        pts = [q for r in runs if r.kind == s6.stitches.SATIN for q in r.points if 11 <= q[0] <= 13]
+        tops[mode] = max(q[1] for q in pts)
+    assert tops[False] < 3.3 < 3.6 <= tops[True], tops                # the symmetric rail stops short; True reaches
+    assert abs(tops["envelope"] - tops[False]) < 1e-6, tops           # the envelope holds: the bulge is shorter than its window
+
+
+def test_the_envelope_keeps_a_junction_escape_at_the_symmetric_width(monkeypatch):
+    """Kent's note on the envelope's sitting (2026-09-30, Becker at 100 mm):
+    "the lettering needs to be smooth and have flow to it, these stitches
+    look like they are just trying to fill a void." Measured: at a junction
+    the far ray escapes along the meeting arm -- the E's stem read its right
+    side at 7.4-9.6 mm where its own half-width is 3.0-3.3 -- for as long
+    as the arm is thick, about 13 stations at 100 mm, longer than the median
+    window and the envelope's put together, and the corridor cap (the merged
+    footprint at the node) let 2-3 mm of it through. Over nine logos 313 of
+    459 reached stations landed on ground a sibling stroke already sews; on Becker's
+    letters 78% of the envelope's new thread was overlay, and no cap on the
+    reach -- absolute, a ratio to the width, the boundary distance at its
+    end -- told the two apart. `docs/renders/envelope-escapes-2026-09-30/`
+    has the census and the crops.
+
+    The rule: a reach whose END lies inside another stroke's corridor keeps
+    the symmetric width (`_in_sibling_ribbon`). A stem with an arm off its
+    middle: the stem's crosses through the junction stay the stem's width,
+    and with the rule neutered they run into the arm -- so the fixture
+    exercises the rule and the rule is what holds them. The bulge above is
+    the genuine reach this must not touch, and the test before this one
+    still shows the envelope reaching on Becker.
+    """
+    from shapely.geometry import box
+
+    # The arm ends within the ray's reach (four half-widths): a far ray
+    # that finds no boundary falls back to the nominal half-width, which is
+    # no escape -- Becker's arms are 9 mm long against a 9.6 mm reach.
+    stem = box(12.5, 0.0, 17.5, 30.0)
+    arm = box(17.5, 12.5, 23.5, 17.5)
+    tee = stem.union(arm)
+
+    def half_lengths(mode):
+        # `max_width_mm=inf` is the lettering exemption, where the escapes
+        # were found: under the 5 mm ceiling the ceiling itself holds the
+        # reach at 2.2 mm and this fixture shows nothing either way.
+        runs, _ = s6.satin_shape(tee, "tee", underlay_style="center", trim_at_mm=3.0,
+                                 rail_comp_mm=PULL, rail_comp_floor_mm=1.5, corner_twigs=True,
+                                 junction_stack=True, stroke_order="euler",
+                                 rails_follow_edge=mode, max_width_mm=float("inf"))
+        out = []
+        for r in runs:
+            if r.kind != s6.stitches.SATIN:
+                continue
+            pts = s6.strip_splits(list(r.points))
+            for a, b in zip(pts[0::2], pts[1::2]):
+                if abs(b[0] - a[0]) > abs(b[1] - a[1]):       # the stem's crosses run across it
+                    out.append(max(abs(a[0] - 15.0), abs(b[0] - 15.0)))
+        return out
+
+    # Read against the symmetric rails, not the stem's nominal width: at the
+    # node the skeleton pulls the spine 0.7 mm toward the arm and the width
+    # with it, so the symmetric column already bulges 1.2 mm into the arm
+    # there (half-length 4.0 against 2.8). That bulge is the symmetric
+    # model's own and not this rule's business; the rule is about what the
+    # envelope adds on top of it -- nothing, where every rule-less station
+    # ran 1.2-2.5 mm further (6.5).
+    sym = half_lengths(False)
+    held = half_lengths("envelope")
+    assert sym and held
+    assert max(held) <= max(sym) + 0.05, (max(sym), max(held))     # the envelope adds nothing through the junction
+    monkeypatch.setattr(s6, "_in_sibling_ribbon", lambda *a, **k: False)
+    loose = half_lengths("envelope")
+    assert max(loose) > max(sym) + 1.0, (max(sym), max(loose))     # without the rule: into the arm
+
+
+def test_a_reach_shorter_than_the_window_is_not_a_reach():
+    """`_drop_short_reaches` (2026-09-30, Kent's pick after #578): the
+    running minimum cannot follow a feature shorter than its window, so a
+    stretch of fewer than `_ENVELOPE_WINDOW` stations that clears the gap is
+    a bump in the profile, not an edge -- on the cloth a tooth, the rail
+    stepping out 0.37 mm and back within a millimetre. Becker at 100 mm had
+    eight of them among 23 stretches (four on the letters M, A, I and N);
+    tires, bridge and screenshot had nothing else. Dropped; a stretch at
+    least the window long is untouched, so is a column with no reach."""
+    w = [2.0] * 12
+    off = list(w)
+    off[1] += 0.5                       # one station
+    off[4] += 0.4; off[5] += 0.4        # two
+    off[8] += 0.6; off[9] += 0.6; off[10] += 0.6   # three: the window
+    assert s6._drop_short_reaches(off, w) == 2
+    assert off == [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.6, 2.6, 2.6, 2.0]
+    plain = list(w)
+    assert s6._drop_short_reaches(plain, w) == 0 and plain == w
+    assert s6._ENVELOPE_WINDOW == 3     # the window IS the minimum; a new number here is a new decision

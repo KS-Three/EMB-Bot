@@ -261,7 +261,21 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    **`digitizer` runs 33 to 55 minutes** — re-measured 2026-09-12 over the
    last 36 successful jobs: min **32.7**, p50 **49.7**, p90 54.6, max 55.4,
    with daily medians 48.6 (09-11) and 50.6 (09-12). **Budget an hour, and
-   read a 50-minute job as normal rather than stuck.** (A fifth job,
+    read a 50-minute job as normal rather than stuck.** **Re-measured
+    2026-09-29 on PR #562: 1h 02m 50s — above the 09-12 range; the drift the
+    paragraph below predicts is happening.**
+   **Re-measured 2026-09-30: 65.2 minutes on PR #563, green** — the last
+   five successful jobs read 33.3 / 45.0 / 54.0 / 58.4 / 65.2, so the top
+   has moved past the hour the line above budgets. Budget seventy, read an
+   hour as normal, and spend the one `curl` on `/actions/runs/<id>/jobs`
+   before calling anything stuck: that job's test step was live the whole
+   time. **And 66.2 on PR #567 the same night, green** — a tree that took
+   four merges of `main` inside one PR; the record moves a minute at a
+   time now, so seventy is the budget until a job passes it.
+   **One did — 75.9 minutes (1h 15m 56s) on PR #575, 2026-09-30, green**,
+   on a diff that touched only `.claude/skills/`, so the job's length is the
+   suite's, not the change's. **Budget eighty**, read seventy-five as normal,
+   and still spend the `curl` before calling anything stuck. (A fifth job,
    `art-fidelity-baseline`, is push-to-`main`-only and `continue-on-error` — it
    never appears on a PR and gates nothing.)
 

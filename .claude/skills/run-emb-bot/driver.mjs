@@ -80,7 +80,15 @@ async function startServer() {
   // SIGTERM to the vite it spawns, so killing the npm wrapper leaves the
   // port bound and the next run dies on EADDRINUSE — kill the whole group
   // (see shutdown()).
-  vite = spawn("npm", ["run", "dev", "--", "--port", String(PORT), "--strictPort"],
+  // Windows: npm is npm.cmd, and since CVE-2024-27980 Node refuses to spawn a
+  // .cmd without a shell (spawn npm ENOENT). There are no process groups
+  // there either, so no detached — shutdown() kills the tree with taskkill.
+  // One command string, not an args array: shell:true with args is DEP0190 on
+  // Node 24. PORT is a Number, so nothing here reaches the shell unparsed.
+  vite = process.platform === "win32"
+    ? spawn(`npm run dev -- --port ${PORT} --strictPort`,
+      { cwd: APP, stdio: ["ignore", "pipe", "pipe"], shell: true, windowsHide: true })
+    : spawn("npm", ["run", "dev", "--", "--port", String(PORT), "--strictPort"],
     { cwd: APP, stdio: ["ignore", "pipe", "pipe"], detached: true });
   const out = [];
   vite.stdout.on("data", (d) => out.push(String(d)));
@@ -158,12 +166,13 @@ const commands = {
   // Click by visible label — the Studio's buttons are text, not ids.
   //
   // EXACT FIRST, deliberately. A substring match here is a live trap: the
-  // digitize panel has both "Digitize" (runs the job) and "Digitize as flat
-  // art" (only flips forced_class), and getByRole(...).first() on a
-  // substring picks the wrong one in DOM order — the click "succeeds",
-  // nothing is submitted, and you debug the service for an hour. So: try
-  // exact, fall back to substring, and always print what was resolved and
-  // how many candidates there were.
+  // digitize panel once had both "Digitize" (runs the job) and "Digitize as
+  // flat art" (only flipped an override, gone since 2026-09-30), and
+  // getByRole(...).first() on a substring picked the wrong one in DOM order
+  // — the click "succeeded", nothing was submitted, and you debugged the
+  // service for an hour. "Digitize" and "Digitize again" still collide the
+  // same way. So: try exact, fall back to substring, and always print what
+  // was resolved and how many candidates there were.
   async btn(...label) {
     const t = label.join(" ");
     let loc = page.getByRole("button", { name: t, exact: true });
@@ -196,13 +205,10 @@ const commands = {
   },
   // Dump the current design's stitch stats straight out of the canvas caption
   // — cheaper than reading a screenshot, and the number that actually matters.
+  // Reads `span.stats` by name: a first-match text search lands on the left
+  // panel's delta notes and `.dgp-stats` before it reaches the canvas.
   async stats() {
-    return await page.evaluate(() => {
-      const t = [...document.querySelectorAll("*")]
-        .map((e) => e.childNodes.length === 1 && e.textContent ? e.textContent.trim() : "")
-        .find((s) => /\d+\s+stitches/.test(s));
-      return t || "(no stitch caption on screen)";
-    });
+    return (await caption()) || "(no stitch caption on screen)";
   },
   // Wait for a button whose text is EXACTLY this. Needed because several
   // controls only mount after async work: the digitize panel's "Digitize"
@@ -236,7 +242,13 @@ const commands = {
 
 async function shutdown() {
   try { await browser?.close(); } catch {}
-  if (vite && vite.pid) {
+  if (vite && vite.pid && process.platform === "win32") {
+    // Negative pids are POSIX-only, and vite.kill() would take down only the
+    // cmd/npm wrapper and leave node+vite holding the port. /T kills the tree.
+    await new Promise((r) => spawn("taskkill", ["/pid", String(vite.pid), "/T", "/F"],
+      { stdio: "ignore", windowsHide: true }).on("exit", r).on("error", r));
+    await new Promise((r) => setTimeout(r, 500));
+  } else if (vite && vite.pid) {
     // Negative pid = the whole process group, which is what actually frees
     // the port. Fall back to the bare pid if the group is already gone.
     try { process.kill(-vite.pid, "SIGTERM"); }
@@ -255,13 +267,23 @@ async function shutdown() {
 //
 // Exit 1 on a console error (favicon 404 and the digitizer-probe
 // ERR_CONNECTION_REFUSED are filtered — both are expected noise).
-const STITCH_RE = /[\d,]+ stitches[^\n]*/;
+//
+// The caption is the canvas's own `span.stats` (EmbroideryField.svelte),
+// "2,244 stitches · 80×16 mm · 4×4 in hoop". Read THAT element, and anchor
+// the match on its `· W×H mm · … hoop` shape. A loose /[\d,]+ stitches/ over
+// body.innerText matches whatever comes first in DOM order, and the left
+// panel comes first: on 2026-09-30 it reported "114 stitches (+5.3% of the
+// design)" — a border delta note — as the artwork lane's result, and the
+// DigitizePanel's `.dgp-stats` ("… mm · 2 colors") would match next.
+const STITCH_RE = /[\d,]+ stitches · [\d.]+×[\d.]+ mm · [^·\n]+ hoop/;
+const CAPTION_JS = `(() => {
+  const t = document.querySelector("span.stats")?.innerText || "";
+  const m = t.match(${STITCH_RE});
+  return m ? m[0] : null;
+})()`;
 
 async function caption() {
-  return await page.evaluate((src) => {
-    const m = document.body.innerText.match(new RegExp(src));
-    return m ? m[0] : null;
-  }, STITCH_RE.source);
+  return await page.evaluate(CAPTION_JS);
 }
 
 async function waitCaption(ms = 60000) {

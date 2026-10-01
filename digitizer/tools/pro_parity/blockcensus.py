@@ -577,6 +577,29 @@ FIXTURES = [
     ("hotel_fremont", TD / "photo/logo_hotel_fremont.webp", "artwork", "hotel_fremont_hat"),
     ("golden_tee", TD / "photo/logo_golden_tee.jpg", "artwork", "golf_hat"),
     ("drone_thermal", TD / "photo/logo_drone_thermal_badge.png", "artwork", "precision_drone"),
+    # Recovered 2026-09-28 from the vendors' own two-panel previews by
+    # tools/pro_parity/preview_split.py, which carries a hand-set manifest of
+    # WHICH panel is artwork — see that module's docstring for the two
+    # heuristics that were measured and rejected, one of which scored the
+    # Becker preview (no artwork in it at all) above a genuine artwork file.
+    # These take registered artwork from 5 designs to 11, and from 5 clients
+    # to 8; before this the aggregate was one client's logo plus four others.
+    # Low-resolution (372-607 px wide) because they are the vendor's own
+    # re-render of what the customer sent, not the original file.
+    ("mfab_hat", TD / "art/logo_mfab_hat.png", "artwork", "mfab_hat"),
+    ("mfab_lc", TD / "art/logo_mfab_lc.png", "artwork", "mfab_lc"),
+    ("golke_roofing", TD / "art/logo_golke_roofing.png", "artwork", "gaulke_roofing_hat"),
+    # toat_machine and toat_beanie are the SAME LOGO digitized twice, by two
+    # different jobs, into two different .PES files (92,877 vs 93,313 bytes,
+    # differing md5). That makes them a candidate inter-pro pair — the one
+    # quantity this repo has never measured — but only a candidate: nothing
+    # on file says whether two different professionals produced them or one
+    # shop revised its own work. Their artwork crops also differ slightly
+    # (377x259 vs 372x273), so they are not a duplicate of each other the way
+    # the drone badge is; the runtime duplicate check below still sees them.
+    ("toat_machine", TD / "art/logo_toat_machine.png", "artwork", "machine_beanie"),
+    ("toat_beanie", TD / "art/logo_toat_beanie.png", "artwork", "toat_beanie"),
+    ("hotel_fremont_patch", TD / "art/logo_hotel_fremont_patch.png", "artwork", "hotel_fremont_patch"),
     ("becker_chest_small_render",
      TD / "reference/becker_chest_small_beckers_logo_lc_2_a.jpg",
      "pro-derived-render", "becker_chest_small"),

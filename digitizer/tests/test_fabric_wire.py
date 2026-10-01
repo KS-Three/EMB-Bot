@@ -56,6 +56,14 @@ FIELDS = {
     "satinUnderlay": "satin_underlay",
     "densityAdjust": "density_adjust",
     "trimAtMm": "trim_at_mm",
+    # What the DIGITIZER assumed the operator would hoop (playbook Law 33).
+    # These two are not stitch parameters — nothing in either engine reads
+    # them to place a penetration — but they are stated to the customer on
+    # the worksheet, so the two engines disagreeing would print one thing for
+    # a design that went through the service and another for the same
+    # garment in the lettering lane. Same reason as every field above.
+    "assumedBacking": "assumed_backing",
+    "needsTopper": "needs_topper",
 }
 
 
@@ -102,6 +110,15 @@ def _norm(v) -> str:
     this file failed: `str(0.90)` is `'0.9'`, the JS text was `'0.90'`, and it
     reported fleece_sweatshirt as divergent when the two engines agree.
     """
+    if isinstance(v, bool):
+        # Python spells it `True`, JavaScript spells it `true`, and they are
+        # the same physical fact — which is the whole job of this function.
+        # Without this branch `str(True)` is `"True"`, never equal to the JS
+        # literal, so the first boolean field added to the table would report
+        # as drift on every preset while the two engines agree perfectly.
+        # (The numeric branch below already excludes bools on purpose: `True`
+        # must not normalise to `1.0` and collide with a real number.)
+        return "true" if v else "false"
     if isinstance(v, (int, float)) and not isinstance(v, bool):
         return repr(float(v))
     text = str(v).strip().strip('"')
@@ -124,6 +141,9 @@ def test_the_parser_is_not_vacuous():
     assert js["terry_towel"]["densityAdjust"] == "0.85"          # raw text
     assert _norm("0.90") == _norm(0.9) == "0.9"                 # and normalised
     assert _norm("edge_run") == "edge_run"                      # not a number
+    assert _norm(True) == _norm("true") == "true"               # and the two spellings of a bool
+    assert _norm(False) == _norm("false") == "false"
+    assert _norm(True) != _norm(1.0), "a bool must not collide with a number"
     assert all(len(v) == len(FIELDS) for v in js.values()), js
 
     garments = _js_garment_fabric(FABRICS_JS.read_text(encoding="utf-8"))
@@ -236,3 +256,59 @@ def test_the_two_spacing_constants_agree_across_the_engines():
     # the live one: 0.40 was the pre-2026-09-03 fill row, kept in machine.py
     # only as a named record of what moved.
     assert _norm(machine.FILL_ROW_MM_BEFORE_2026_09_03) != _norm(machine.FILL_ROW_MM)
+
+
+# --- The profile arithmetic, RUN on both sides -------------------------------------
+#
+# `apply_profile` (fabrics.py) and `applyFabricProfile` (src/fabrics.js) are
+# the third hand-copied physical pair, added 2026-09-30 for the calibration
+# profile. Unlike the two above, this one is arithmetic, not a table, so a
+# text comparison cannot see a drifted clamp or a changed rounding. It is
+# executed instead: node applies a set of profiles to every preset and the
+# result is compared to Python's, value for value.
+
+import json
+import shutil
+import subprocess
+
+import pytest
+
+_PROFILES = [
+    {},
+    {"pull_comp_delta_mm": 0.15},
+    {"density_scale": 0.9, "trim_at_delta_mm": 0.5},
+    {"pull_comp_delta_mm": -0.25, "density_scale": 1.2, "trim_at_delta_mm": -2.0},
+    {"pull_comp_delta_mm": 5.0, "density_scale": 0.01, "trim_at_delta_mm": 9.0},
+    {"pull_comp_delta_mm": 0.07, "density_scale": 0.93, "trim_at_delta_mm": 0.33},
+]
+
+_NODE_SCRIPT = """
+const f = require(process.argv[1]);
+const profiles = JSON.parse(process.argv[2]);
+const out = [];
+for (const fab of f.FABRICS) for (const p of profiles) {
+  const g = f.applyFabricProfile(fab, p);
+  out.push([fab.id, g.pullCompMm, g.densityAdjust, g.trimAtMm, g.profile || null]);
+}
+process.stdout.write(JSON.stringify(out));
+"""
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_the_profile_arithmetic_agrees_across_the_engines():
+    from digitizer_core.fabrics import FABRICS, apply_profile
+
+    res = subprocess.run(["node", "-e", _NODE_SCRIPT, str(FABRICS_JS), json.dumps(_PROFILES)],
+                         capture_output=True, text=True, check=True)
+    js = json.loads(res.stdout)
+    py = []
+    for fab in FABRICS:
+        for p in _PROFILES:
+            g = apply_profile(fab, p)
+            py.append([fab.id, g.pull_comp_mm, g.density_adjust, g.trim_at_mm, g.profile])
+    assert len(js) == len(py) == len(FABRICS) * len(_PROFILES)
+    drift = []
+    for a, b in zip(js, py):
+        if a[0] != b[0] or a[4] != b[4] or any(abs(x - y) > 1e-9 for x, y in zip(a[1:4], b[1:4])):
+            drift.append(f"{a[0]}: browser {a[1:]} != python {b[1:]}")
+    assert not drift, "the two engines would sew a calibrated garment differently:\n  " + "\n  ".join(drift)

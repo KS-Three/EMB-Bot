@@ -337,9 +337,11 @@ hand-rolling it in JS.
   that gate is the finding, not a hedge: the defect population
   (drone/summit) and the disproof population (61/64 sub-mm satins on real
   customer logos are ground the pro also satined) BOTH classify `gradient`,
-  so classification can't separate them — the photo lane (the user's own
-  "It's a photo" correction, a "This is a photo" toggle before 2026-08-30)
-  is the only honest gate. Flat/gradient stay byte-identical.
+  so classification can't separate them — the photo lane (stage 0's own
+  photo classes, or stage 1.25's EXIF-or-face detection, which the Studio
+  asks for on every job since 2026-09-30; the user's own "It's a photo"
+  correction before that) is the only honest gate. Flat/gradient stay
+  byte-identical.
 - **Run the service**: `.venv/Scripts/python -m digitizer_service` →
   `127.0.0.1:8721`. **Building the venv from scratch takes TWO installs, not
   one.** CLAUDE.md sends you to `pip install -e .` (correctly — it enforces the
@@ -350,7 +352,12 @@ hand-rolling it in JS.
   `pip install -e ".[service]"`. Cost a cycle on 2026-08-25.
   *(confirmed — `digitizer/pyproject.toml` `[project.optional-dependencies]`)* `GET /health`, `POST /digitize` (image+config → job),
   `POST /digitize-manual` (hand-authored shapes, no image — stages 1-4
-  skipped; same job/response contract), `GET /jobs/{id}`, `POST /export`.
+  skipped; same job/response contract), `GET /jobs/{id}`, `POST /export`,
+  and since 2026-09-30 the calibration trio — `GET /calibration/info`,
+  `GET /calibration/card?format=` (card v2 in any machine format; built on
+  first use, ~15 s, cached for the process) and `POST /calibration/read`
+  (a photo of the sewn card → readings + a draft fabric profile, synchronous,
+  10-20 s; 422 when the card is not found). `digitizer_core/calibration/`.
   Binds loopback only, CORS localhost-only.
 - **The stage 0-4 generation cache** (2026-08-22): `/digitize` caches
   `build_generation`'s output per artwork + every config field EXCEPT the
@@ -369,7 +376,8 @@ hand-rolling it in JS.
   columns already sewn, `--off` for the before), `digitizer/tools/satin_lean.py`
   (how far satin crosses lean off their own perpendicular and off the house
   angle, and the thread pitch across the column; `--stock` for the instrument's
-  own floor on unhoused columns), `digitizer/tools/fill_dust.py` (fill steps
+  own floor on unhoused columns; `--anchor` for the house anchored to the
+  line of text, lettering plan step 1), `digitizer/tools/fill_dust.py` (fill steps
   halved by float dust at the stitch-length threshold), `digitizer/tools/rail_edge.py`
   (where satin rails sit against the artwork edge, rail jitter and same-rail
   holes; `--ladders` for the containment-miss census, `--bare` for coverage as
@@ -407,6 +415,13 @@ hand-rolling it in JS.
   instrument), `digitizer/tools/thread_color_render.py` (a design drawn in
   the cones it will actually sew, each changed shape tiled OFF beside ON at
   90 px/mm — a 0.9 mm2 shard is four pixels at whole-design scale),
+  `tools/preview-vs-dst.mjs` (the only thing comparing a PICTURE to a FILE:
+  the previewer's own `designToStrands` against pystitch's read of the
+  encoded bytes, three fixtures x DST/EXP/PES, reporting orientation, how far
+  the file's thread strays from the drawn line, and sewn thread either side —
+  its fixtures must REACH the split path, which its test asserts, because the
+  crossval harness's axis-aligned `long` fixture is exactly how the 2026-09-20
+  dogleg survived),
   `tools/long-stitch-census.mjs` (the BROWSER lettering lane: every sewn
   segment of the 85 shipped fonts at three texts, counted past one DST
   record **per axis** — `--doctrine` reproduces DOCTRINE 2026-09-07's own
@@ -448,6 +463,19 @@ hand-rolling it in JS.
   thread's IoU against the compensated target and the artwork; `--compare`
   digitizes OFF/ON `cfg.satin_rail_comp` with stitches, trims and
   preflight's coverage/uncovered — the item 6 instrument),
+  `digitizer/tools/travel_cover.py` (every travel leg read against the thread
+  sewn AFTER it, by preflight's own ribbon rule — exposed length per leg and
+  per design, `--order nearest|euler`, `--width`; the lettering plan's step 2
+  instrument, which found the 245 mm exposed at 80 mm to be the nearest
+  order's own legs, not the Euler walk's — and not the satin tier's at all:
+  see the next one; its 1 mm grid under-reads fill exposure by a third),
+  `digitizer/tools/travel_legs.py` (WHOSE each travel leg is and what it lies
+  on: the emitter off the construction call stack, the runs either side, the
+  grid reading beside an exact one, and `own-fill` / `top` / `other` /
+  `underlay` / `own-bare` / `art-bare` / `FABRIC` under every exposed
+  sample; `--set KEY=VALUE` puts any config field on, so it is how
+  `fill_bridge_cut` is read — 97.7% of that 245 mm is the FILL tier's column
+  bridges on their own finished fill, defect 21's residual, none on fabric),
   `digitizer/tools/pushcomp_pins.py` (`test_pushcomp.GOLDEN_FLAG_OFF`'s tuples
   as THIS tree computes them, for a re-pin with the same pre-change proof),
   `digitizer/tools/resnap_escape.py` (cones `revalidate_threads` ADDS, and how
@@ -531,7 +559,7 @@ hand-rolling it in JS.
   so the legitimate dated snapshots in `docs/scope/` stay advisory instead of
   making it permanently red. `tests/test_doc_claims.py` covers it.
 
-  **Two traps these instruments have already sprung, both costly:**
+  **Three traps these instruments have already sprung, all costly:**
   `StitchRun.jump` means the needle was lifted to REACH the run — the run is
   still needle-down, so filtering on it does NOT exclude travel, it excludes
   genuinely sewn work (a `sewn` count built that way reported 11 of 25
@@ -539,6 +567,27 @@ hand-rolling it in JS.
   a finding labels a shade row `"<shape_id> shade <number>"` for its message —
   that string is not a shape id, and looking it up directly reports every
   gradient band as 0.00 mm2 and unsewn.
+
+  **And `dropped_elements`' `lost_frac` is a SUM of two opposite defects**
+  (2026-09-20): artwork never covered, plus thread standing on bare cloth.
+  Read `unsewn_frac` / `overshoot_frac`, never the total — a wordmark is
+  typically 100% overshoot and a photo lane 100% unsewn (`bridge`). **But
+  never quote `unsewn_frac`'s zero as evidence** — its per-region vote
+  (`mean > 0.5`) cannot fire where the largest region ink fraction is 0.33,
+  as on `enthusiast`; read `uncovered_elements` / `uncovered_ink_frac`, which
+  are colour-free and unopened (0.90% of ink, no component over 1 mm²).
+  **Nor quote `overshoot_frac` as an area:** `HALO_OPEN_PX` is 0.50 mm and
+  `pull_comp_mm` + thread half-width is 0.30 + 0.20 = 0.50 mm, so the opening
+  sits exactly on the pedestal and the figure swings 182.7 → 0.0 mm² across
+  kernels 3→13 px. It is a same-instrument drift tripwire, nothing more. The two move in OPPOSITE
+  directions under one engine change, so the total cannot say which one a
+  change bought, and a session read a wordmark's total as lost coverage and
+  set out to recover artwork that was never uncovered. Neither half polices
+  the other on its own: `unsewn_frac` only counts regions ≥ 1 mm² after a
+  0.5 mm opening, so coverage lost as a thin rind along every column is
+  invisible to it (a candidate that added 1.7 points of bare satin read
+  0.0028 there) — that shape of loss belongs to `rail_edge.bare_area`. See
+  DOCTRINE 2026-09-20 and `tests/test_lettering_coverage_regression.py`.
 - **Acceptance A/B contact sheet** (`digitizer/tools/acceptance_ab.py`, pure
   logic in `digitizer_core/tools_acceptance.py`): the phase-4 eyeball loop.
   Runs every image in the gitignored `digitizer/testdata/photo/acceptance/`
@@ -790,6 +839,77 @@ hand-rolling it in JS.
   successful run.** The wrapper enumerates the design dirs explicitly and fails
   loudly on an empty lane. `-SkipPrep` re-scores an existing output directory,
   which is what you want when only the SCORER changed.
+
+## Per-shape stitch width (2026-09-29)
+
+Kent, on small shapes, text and letters coming out rough: *"only being able to
+choose a single stitch width across the entire photo or logo"* — and the one
+control called "Stitch width" was the DESIGN's width. Now
+`digitizer_core/stitchwidth.py` (its module docstring is the design doc):
+
+- **Measure.** Every column-shaped region (`2*area/perimeter` under two satin
+  ceilings, or small, or in a text cluster) gets `meta["stitch_width_measured_mm"]`
+  — twice the mean skeleton half-width, via `textcluster._stats_of_polygon`, so
+  it is memoized with the text doors. Cold cost 0.6 s on the 31-shape
+  enthusiast logo, 1.2 s on the 50-shape drone render.
+- **Group.** A text cluster is split into WEIGHT MODES (`split_weight_modes`,
+  ratio `(1+0.15)/(1-0.15)` — the regularizer's tolerance, not a new number;
+  a run wider than the ratio is cut at its largest step, recursively); each
+  mode of two or more records its median as `stitch_width_auto_mm`, named by
+  `stitch_width_group` (`<cluster>` or `<cluster>:<k>`). **The median is NOT
+  a safe default, and this is measured, not assumed:** Gaulke's line is ONE
+  cluster of 35 letters whose widths run 0.77 → 1.33 mm as a smooth chain
+  with no step (an I, an M and an O of one font measure differently at the
+  skeleton), so no split finds "two words" and the first cut moved 21 letters
+  to a 0.95 that nobody has. Evening out is therefore `cfg.stitch_width_auto`,
+  **default False**, the Studio's "Even out lettering widths" box.
+- **Apply** (`apply_stitch_widths`, in `finish_generation` after the edits and
+  the `stitched` resolution): target = override (always), else — only under
+  `stitch_width_auto` — the group median past the 15% tolerance, else
+  `lettering_min_column_mm` on small shapes and lettering (None by default —
+  ROADMAP gate 1; on its own the flag keeps its exact 2026-09-09 door-1
+  meaning). The polygon is OFFSET by half the difference (`offset_polygon`):
+  a hole that would close is held at its original size (stage 5's own rule),
+  a gap between strokes is read off a mitre closing of the shell and never
+  bridged, a stroke thinner than a narrowing step is read off the mirror
+  opening and never erased (an E's arms), all bisected to the largest passing
+  step; `stitch_width_limited` says a guard clamped it; an override under
+  twice the fabric's pull is `below_fabric_pull`, unchanged. A sized shape is
+  `column_sized`, which `stage5_overlap.widened_lettering` now includes, so it
+  gets the regularizer's four rules (no sub-floor run routing, classified and
+  sewn on the compensated polygon, growth kept over the ground, pull on the
+  polygon not the rails).
+- **Wire** (contract v1.8): `shape_overrides[sid].stitch_width_mm`, SEWN mm in
+  `[SATIN_MIN_CROSS_MM, SATIN_WIDE_COLUMN_MAX_MM]` = [0.5, 6.5], validated in
+  `stitchwidth.validate_override_mm` from both `app.py` (400) and
+  `regions.apply_shape_edits` (ValueError). Not carried across a merge or
+  split — those run BEFORE the edits, so the key never exists on a source;
+  a merged shape is measured late in `apply_stitch_widths` instead, so the
+  panel offers it the control. The review payload's per-shape `stitch_width`
+  block reports `art_mm` (the artwork stroke, no pull) and `measured_mm /
+  auto_mm / sewn_mm / override_mm` (sewn mm, artwork + 2 × pull;
+  `stitch_width_pull_mm` is stamped so the payload needs no fabric) plus
+  `source / group / limited / skip_reason`. Sewn = art + 2·pull holds for a
+  SATIN column on both compensation paths (stage 5 grows a sized polygon
+  isotropically; the rails carry the pull on everything else) and NOT for a
+  shape the plan sews as a run — a sub-floor bean on the artwork outline, no
+  pull — which is why the Studio shows `art_mm` on a run-tier row.
+- **Studio.** `canonicalShapeEdits` carries the key (rounded to 0.01 mm,
+  range-checked so it never 400s); `reviewFromJob` maps `stitchWidth`;
+  `stitchWidthGroupRows` is the word. The row control in `DigitizePanel.svelte`
+  writes the whole weight group in ONE patch (one undo step, one restitch;
+  `editKind` reads it as "other", so it keeps the drag debounce) unless
+  "whole word" is unticked. **"Stitch width" on the params list was renamed
+  "Design width"** — both e2e specs that read that label were repointed.
+
+Measured (on-vs-off plan md5): with the box OFF every corpus fixture is
+byte-identical, pinned on the two art fixtures that would move
+(`tests/test_stitch_width.py`, Fremont and Golke). With it ON, over the 24
+`testdata` fixtures: 22 unchanged; `drone_render` / `thermal_badge` bring two
+letters of one word from 0.79/0.82 mm to the word's 0.65 mm; Gaulke moves
+21 letters and is the reason the box is off. The flat-lane goldens are
+unmoved (`enthusiast_logo` is the platform red, identical on the pristine
+tree).
 
 ## Manual digitize: copy/paste and per-shape dim (merged 2026-08-26, PR #255)
 
@@ -1173,6 +1293,10 @@ cd app && npm install && npm run dev     # Studio dev server
 tools/start-emb-bot.ps1     # Windows: both servers in their own windows + opens the browser
 cd app && npm test          # Studio tests (vitest) — expected clean
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
+node tools/studio-raster.mjs FILE...   # the Studio's PREVIEW raster (1,200-px long-edge cap, its own rasterize.js in
+                                       # Playwright's Chromium) -> digitizer/.cache/studio-raster/. What the panel SENT
+                                       # until 2026-09-20 and still sends for SVG/GIF/oversize; rasters now go as the
+                                       # file (DOCTRINE 2026-09-19/20)
 
 cd digitizer && .venv/Scripts/python -m pytest -q -n auto   # Python digitizer tests (runtime + expected failures below)
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
@@ -1321,8 +1445,36 @@ failures are EXPECTED:
    To re-derive this list rather than trusting it:
    `python -m pytest tests/ -q -n auto -rs 2>&1 | grep '^SKIPPED' | sed 's/:[0-9]*:/: /' | sort | uniq -c`
 
-Anything red outside class 1 is unexplained and yours to chase, and any
-skip outside classes 2-3 is a new one — chase that too.
+4. **Four photo-lane tests go RED on any machine that has
+   `rembg_isolated/venv` built — and CI never does.** `test_shade_palette_
+   demand.py::test_pipeline_gate_photo_classes_only[photo_subject-...]`,
+   `test_photo_sequencing.py::test_photo_class_plan_is_depth_sorted_end_to_
+   end`, `test_merge_adjacent_same_thread.py::test_the_pipelines_own_
+   output_no_longer_needs_the_merge` and `test_is_photographic.py::test_
+   declaring_a_gradient_photograph_brings_it_inside_max_colors`. With the
+   isolated worker present, stage 1 removes the stub's and the two-square
+   image's "background" (the light square goes; both squares land on one
+   thread) and re-cuts the owl (the merge test's block order and the
+   declared-photographic report's thread-match findings both move), and
+   each test's premise moves. Proved 2026-09-29 both ways: hide the venv
+   and all four pass; link it into a worktree at the pre-change commit and
+   all four fail there too. So on a cloud box that built the venv for a
+   render (the eye-pairs page needs it for the tires cutout) these four are
+   the MACHINE's, not a regression of what you just changed — and note that
+   they are not skips: `test_background_removal`'s two tests SKIP without
+   the venv (class 3), these four FAIL with it. When you attribute a red
+   set against a pre-change worktree, give that worktree the same venv
+   state first (a symlink to `rembg_isolated/venv` will do), or the fourth
+   reads as yours. The fix is theirs
+   and small — pin `photo_prep_background_removal=False` where the premise
+   is about something else — filed as #553, not folded into an unrelated
+   PR. A fourth symptom of the same venv under a loaded 4-core
+   full run: `test_real_background_removal_on_a_real_photo` can report
+   *"rembg worker timed out after 60s"* (it passed alone in 7 s the same
+   hour) — contention, not the engine.
+
+Anything red outside classes 1 and 4 is unexplained and yours to chase, and
+any skip outside classes 2-3 is a new one — chase that too.
 Runtime: 21:34 serial, measured 2026-08-17 on Kent's machine — which is
 why the command above carries `-n auto`: pytest-xdist is pinned in
 `requirements.txt`, and parallel runs are verified to produce the
@@ -1376,6 +1528,94 @@ correction). Two rules stop a repeat:
    -- digitizer/digitizer_core` shows landed pipeline commits, any grade
    comparison against the baseline is comparing against a stale ruler —
    say so wherever the comparison is quoted.
+
+### The eye-pairs reveal gallery (2026-09-17)
+
+`cd digitizer && python -m tools.eye_pairs_gallery` reads the yardstick's
+`eye_pairs_out/` (`pairs.json`, `arms.json`, `picks.jsonl`, `features.json`,
+`renders/`) and writes `eye_pairs_out/gallery/index.html` + `img/`, each
+distinct render shipped once, re-encoded under the artifact's size limit.
+**It refuses until every pair is picked** — the page names arms, and naming
+one mid-sitting breaks the repeat controls; the refusal is the same rule as
+the yardstick's `--reveal`. Publish `index.html` as an Artifact with `img/*`
+as `files` and `capabilities: {db: {}, downloads: true}`. Kent's per-pair
+"did the arm do what it claims" and per-arm rulings (`flip ON` / `keep OFF`
+/ `needs work`) land in the artifact's `db` (`notes/<pair>`,
+`rulings/<arm>`) — never in the page, so a republish cannot overwrite them
+(the 08-27 artifact trap); read them back with `ArtifactData` and commit
+them as `docs/eye-pairs-<date>/kent-notes.json`. No score or agreement
+figure appears on the page (`acceptance_ab`'s rule; ROADMAP gate 4) — the
+instrument chips show only which way each metric points against his pick,
+and the "disagreements" filter IS the exit-clause list. Spec:
+`docs/superpowers/specs/2026-09-17-eye-pairs-gallery-design.md`; the
+generator imports nothing from `tools/eye_pairs/` and pins its arm and
+metric tables by test.
+
+**The labelled page (2026-09-18) and its two later flags.** `--labelled`
+builds the before | after page straight from `--render`'s output, no picks:
+BEFORE left, AFTER right, the arm named, Kent's verdict taken on the page
+and stored under `<arm>__<fixture>`. `--tables corpus.json` puts a measured
+table (`{arm: {caption, columns, rows}}`) under that arm's head so the eye
+and the instruments sit on one page (2026-09-30; refused for an arm the page
+does not show or a ragged row). `--sitting <tag>` keys a SECOND look at an
+arm Kent has judged before as `<arm>__<fixture>__<tag>` (letters, digits,
+`.`, `-`; the ruling `<arm>__<tag>`), so the earlier verdicts neither pre-fill
+the new pairs nor get overwritten — read the page's store with `ArtifactData`
+before every republish, and never make room by moving his documents
+(DOCTRINE 2026-09-30). The built page is republished to the SAME artifact
+URL each sitting; the sittings' READMEs live in `docs/eye-pairs-<date>/`.
+
+
+### The labelled before | after page — "Flag Before After" (2026-09-18)
+
+`cd digitizer && python -m tools.eye_pairs_gallery --labelled` is the same
+generator's OTHER page: every rendered arm beside shipped, **BEFORE on the
+left and AFTER on the right, the flag named**, Kent's verdict taken on the
+page (`after is better` / `before is better` / `no difference` / `both
+bad`, then *did the flag do what it claims* and a note; per arm, his
+ruling). It reads only `--render`'s output (`features.json`, `designs/`,
+`renders/`) — **no `--pair`, no sitting, no pick**; an arm whose stitches
+equal shipped's is counted as *identical, not shown*, an arm that raised as
+*failed*. Pair ids are `<arm>__<fixture>`, not opaque, so a note keyed by
+one survives a re-render, a new arm, and a republish. Instrument chips stay
+hidden until he has given a verdict, then colour by agreement with it; the
+per-arm tally is a count of his verdicts, never a rate. **Every pair carries
+a change locator (2026-09-29)**: the generator blurs both renders by 0.6 mm
+(the 09-18 review's measure — stitch texture gone, shape and shade kept),
+thresholds the per-channel difference, and keeps up to three boxes by area;
+the page outlines them on both renders and *zoom to change* drives the
+synced zoom to each in turn. It finds shape and coverage changes, not
+texture: an angle-only pair (five of the 77) says *no change found after
+blur* instead. No share or figure reaches the page. Published as
+https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp — **republish to that
+URL**, never a new one: his notes live in its `db`, keyed by those ids.
+
+Two things it is not. It is **not the blind sitting** — a verdict given
+knowing which side is the flag is evidence for a *ruling*, and never enters
+the yardstick's agreement statistic (§4 of the eye-pairs spec needs the
+blind picks). And judging a pair here first **contaminates a later blind
+sitting on the same pairs**: he will have seen which side is which. Kent
+chose the labelled page with that known (2026-09-18); if the sitting is
+still wanted, run it on fixtures he has not judged here, or accept the
+contamination and say so in the reveal. His first sitting on it (34 pairs,
+six flags) is `docs/kent-review-2026-09-18.md` — *record it and stop*, all
+six stay OFF; the 2026-09-18 republish added the other five flags and the
+08-27 engine, which he has not judged.
+
+The first copy was made by hand on Kent's box and its generator never
+reached the repo; the 2026-09-18 rebuild ran in a cloud container as four
+parallel `--render --out <lane> --fixtures …` lanes (three of three logos
+each for the flag arms, one for `ref_0827` on all nine — its worktree path
+is fixed, so two ref lanes would collide), then
+`python -m tools.eye_pairs.merge eye_pairs_out <lane> …`: rows are unioned,
+the FIRST lane listed wins a (fixture, arm) that two lanes both rendered,
+and it refuses if two lanes disagree on a design's bytes or a fixture's
+source hash — which is how a base digitized once per lane is shown to be
+the same design. Budget an hour on four cores; `fremont` is ~2.5 min an
+arm under contention and `tires` ~80 s (photo-scene prep), the rest under
+25 s. `rembg_isolated/venv` was built first so photo-class fixtures got the
+cutout the product ships; without it every such render differs from Kent's
+box on BOTH sides.
 
 ### Eye pairs — the blind A/B picker (2026-09-17)
 
@@ -1574,6 +1814,24 @@ here since it explains *why*, not *what's currently true*.
 - **Verify claims, don't trust prior summaries at face value** — this very
   cookbook exists because a memory note said work was "merged to main" when
   it was actually sitting unmerged in a worktree. `git log` is ground truth.
+- **In a cloud session, `git push --force-with-lease` and `git clean -fd` are
+  BLOCKED** by the sandbox's destructive-git classifier, and you will meet them
+  the moment a designated branch's PR merges: restarting that branch from
+  `main` makes the next push non-fast-forward. The working fix is to **merge the
+  old, already-merged head back in** — non-destructive, and the two-dot diff
+  against `main` stays exactly your change. Confirm first with `git cherry
+  origin/main origin/<branch>` that the remote head carries only merged content.
+  To clear untracked leftovers, `rm` the specific files after checking each
+  against `main`; the blanket clean is refused. *(hit twice, 2026-09-12/13 —
+  if this becomes routine, a Bash permission rule in `.claude/settings.json`
+  is Kent's call.)*
+- **Never edit a tracked file from a STALE working tree.** A branch left behind
+  `main` will happily let you append to an old copy and commit the whole
+  regression: on 2026-09-18 this nearly re-bloated `.claude/memory/MEMORY.md`
+  from main's compacted 13,393 characters back to the 48,872 the overflow fix
+  had just removed. `git checkout -B <branch> origin/main` (or at minimum
+  `git checkout origin/main -- <file>`) BEFORE editing, and read the size or
+  content back afterwards.
 - **A Studio change is not verified until it has been LOOKED AT in a
   browser.** The suite is broad on logic and near-silent on presentation: a
   2026-08-25 sweep found an invisible primary CTA (white on white, every step

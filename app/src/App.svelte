@@ -26,6 +26,7 @@
     autoNameProject,
   } from "./lib/projects.js";
   import { buildProjectFile, parseProjectFile, projectFileName } from "./lib/projectFile.js";
+  import { collectSources, restoreSources } from "./lib/projectSources.js";
   import { triggerDownload } from "./lib/download.js";
   import { shouldShow, dismiss, visibleHint } from "./lib/hints.js";
   import { effectiveHoop } from "./lib/hoop.js";
@@ -362,6 +363,12 @@
   // including while the user drags the field's resize handles.
   let designDims = null;
 
+  // A shape selected ON THE FIELD (EmbroideryField's click-to-edit popover,
+  // 2026-09-29): { elementId, shapeId, n }. Runtime only — never saved.
+  // `n` counts field selections so the same shape picked twice still reaches
+  // ManualPanel as a new request.
+  let fieldShapeSelect = null;
+
   // The currently-selected element (SizePanel/ContentStep/the "create" step
   // summary all key off this one, not project.elements[0], so they stay in
   // sync with whatever the user clicked on the field).
@@ -674,6 +681,23 @@
     stepHistory.go("content");
   }
 
+  // The shape the Layers list and the canvas are both pointing at
+  // (2026-09-30). Two surfaces, one state: a row's hover or click lands
+  // here and goes to the field as `hoverShape` / `focusShape`; a canvas
+  // hover or click lands here and goes to the panel as the ids it should
+  // highlight. Each is { elId, shapeId } or null, and the panel only ever
+  // sees the pair for the element it is showing.
+  let hoverShape = null;
+  let selectedShape = null;
+  $: panelHoverShapeId = hoverShape && hoverShape.elId === project.selectedId ? hoverShape.shapeId : null;
+  $: panelSelectedShapeId = selectedShape && selectedShape.elId === project.selectedId ? selectedShape.shapeId : null;
+  function onPanelShapeHover(shapeId) {
+    hoverShape = shapeId ? { elId: project.selectedId, shapeId } : null;
+  }
+  function onPanelShapeSelect(shapeId) {
+    selectedShape = { elId: project.selectedId, shapeId };
+  }
+
   function onSelect(id) {
     project = selectElement(project, id);
     // record=false: pure selection isn't an edit — undo should never spend a
@@ -938,15 +962,22 @@
 
   // Export the current project from live in-memory state (never a stale
   // storage read mid-edit); any other row loads from the registry.
-  function exportFromDrawer(id) {
+  async function exportFromDrawer(id) {
     const proj = id === currentId ? project : loadProject(id);
     if (!proj) {
       drawerNotice = "Couldn't load that design to export it.";
       return;
     }
     const name = nameFor(id);
+    // The customer's original artwork rides in the file (2026-09-20,
+    // projectFile.js `sources`): the design then digitizes from the FILE
+    // wherever it is opened, not from the 1,200-px preview the registry
+    // keeps. An original this browser no longer holds is simply not
+    // embedded; that element digitizes from its preview there, with the
+    // panel's note, as every element did before originals travelled.
+    const sources = await collectSources(proj);
     triggerDownload({
-      bytes: buildProjectFile(proj, name),
+      bytes: buildProjectFile(proj, name, sources),
       filename: projectFileName(name),
       mime: "application/json",
     });
@@ -970,7 +1001,13 @@
       drawerNotice = "That doesn't look like a design file (.embproj).";
       return;
     }
-    const imported = importProject(parsed.project, parsed.name);
+    // The file's originals go into this browser's store BEFORE the project
+    // is registered, so every element points at a record that exists here
+    // (and at the key its bytes hash to — projectSources.js). A browser that
+    // cannot keep them registers the design all the same; those elements
+    // digitize from the preview, and the panel says so when they do.
+    const restored = await restoreSources(parsed.project, parsed.sources);
+    const imported = importProject(restored.project, parsed.name);
     if (!imported) {
       drawerNotice = "Couldn't save the imported design — storage may be full.";
       return;
@@ -1099,6 +1136,7 @@
         <GarmentStep
           {project}
           {showTemplatesHint}
+          {digitizerHealth}
           on:update={(e) => apply(e.detail)}
           on:template={(e) => pickTemplate(e.detail)}
           on:dismisshint={() => dismissHint("templates")}
@@ -1112,6 +1150,11 @@
           {designDims}
           {digitizerHealth}
           {showAddElementsHint}
+          hoverShapeId={panelHoverShapeId}
+          selectedShapeId={panelSelectedShapeId}
+          on:shapehover={(e) => onPanelShapeHover(e.detail)}
+          on:shapeselect={(e) => onPanelShapeSelect(e.detail)}
+          {fieldShapeSelect}
           on:checkservice={checkDigitizer}
           on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch)}
           on:elupdatemany={(e) => elUpdateMany(e.detail)}
@@ -1196,6 +1239,10 @@
       {project}
       {runtime}
       showDragHint={showDragFieldHint}
+      {hoverShape}
+      focusShape={selectedShape}
+      on:shapehover={(e) => (hoverShape = e.detail)}
+      on:shapefocus={(e) => (selectedShape = e.detail)}
       on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch, !e.detail.quiet)}
       on:elupdatemany={(e) => elUpdateMany(e.detail)}
       on:select={(e) => onSelect(e.detail)}
@@ -1203,6 +1250,7 @@
       on:dims={(e) => onDims(e.detail)}
       on:stats={(e) => onStats(e.detail)}
       on:addelement={(e) => onAddElement(e.detail)}
+      on:shapeselect={(e) => { fieldShapeSelect = { ...e.detail, n: (fieldShapeSelect ? fieldShapeSelect.n : 0) + 1 }; }}
       on:dismisshint={() => dismissHint("drag-field")}
     />
   </section>

@@ -8,3 +8,5 @@ debug_out/
 .pytest_cache/
 build/
 dist/
+# tools/studio-raster.mjs writes the Studio-capped rasters here (re-creatable from the checkout)
+.cache/

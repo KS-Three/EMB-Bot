@@ -173,3 +173,51 @@ def test_a_small_wrong_patch_is_not_hidden_by_a_large_right_one():
     assert len(comps) == 1
     assert wrong.mean() < 0.01, "the patch is a tiny fraction of the frame"
     assert comps[0]["area_px"] > 0
+
+
+# --- The three classes, not two ---------------------------------------------
+# `lost_frac` sums opposite defects, so this branch split it. The FIRST split
+# keyed on `ink` alone: everything on the ink was called "unsewn". That is
+# wrong wherever a region is ON the ink AND covered — thread is present, in
+# the wrong colour. On `logo_bridge_bar` every one of its 70 regions is
+# `ink=True` with `cover` 0.794-1.000, so a two-class split calls 271 mm2
+# "100% unsewn" when honest unsewn there is ~10 mm2.
+#
+# `dropped_elements`' own docstring has named three failure modes since it was
+# written — "white cloth where a colour belongs", "a colour where bare cloth
+# belongs", "one colour where another belongs". The split has to have three
+# buckets for the same reason the docstring has three bullets.
+
+
+def test_a_covered_region_on_the_ink_is_wrong_colour_not_unsewn():
+    """Thread IS there. Calling it unsewn sends the reader after coverage."""
+    got = de.split_lost([{"mm2": 10.0, "ink": True, "cover": 0.95}])
+    assert got["wrong_colour_mm2"] == 10.0
+    assert got["unsewn_mm2"] == 0.0
+    assert got["overshoot_mm2"] == 0.0
+
+
+def test_a_bare_region_on_the_ink_is_unsewn():
+    got = de.split_lost([{"mm2": 10.0, "ink": True, "cover": 0.0}])
+    assert got["unsewn_mm2"] == 10.0
+    assert got["wrong_colour_mm2"] == 0.0
+
+
+def test_a_region_off_the_ink_is_overshoot_however_covered():
+    """Off the ink, `cover` says nothing — it is spill either way."""
+    for cover in (0.0, 1.0):
+        got = de.split_lost([{"mm2": 4.0, "ink": False, "cover": cover}])
+        assert got["overshoot_mm2"] == 4.0, cover
+        assert got["unsewn_mm2"] == got["wrong_colour_mm2"] == 0.0
+
+
+def test_the_three_classes_are_exhaustive_and_disjoint():
+    """They must still sum to the total, or `lost_frac` stops being their sum
+    and every pinned number in the repo quietly means something else."""
+    lost = [{"mm2": 10.0, "ink": True, "cover": 0.95},
+            {"mm2": 5.0, "ink": True, "cover": 0.1},
+            {"mm2": 2.5, "ink": False, "cover": 1.0},
+            {"mm2": 1.0, "ink": False, "cover": 0.0}]
+    got = de.split_lost(lost)
+    total = got["unsewn_mm2"] + got["wrong_colour_mm2"] + got["overshoot_mm2"]
+    assert total == sum(x["mm2"] for x in lost) == 18.5

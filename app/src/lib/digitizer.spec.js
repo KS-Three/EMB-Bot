@@ -56,7 +56,8 @@ const PIPELINE_CONFIG_FIELDS = [
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
   "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
-  "forced_class", "edge_cap", "is_photographic", "garment_rgb",
+  "forced_class", "edge_cap", "is_photographic", "garment_rgb", "crop",
+  "stitch_width_auto", "detect_photographic", "faces_route_flat", "fabric_profile",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -73,6 +74,12 @@ test("buildDigitizeConfig sends the stored thread-brand preference and the proje
     // "bean" since Kent's flip 2026-09-11 — the service's own default moved
     // the same day, and this must keep matching it.
     edge_cap: "bean",
+    // Always on from the Studio since 2026-09-30 (Kent removed the per-design
+    // photo/flat override): the engine's own EXIF-or-face detection is what
+    // now answers "is this a photograph".
+    detect_photographic: true,
+    // ...and a detected face takes the flat lane (Kent's ruling 2026-09-30).
+    faces_route_flat: true,
     thread_brand: "madeira-rayon",
     garment_id: "left_chest",
   });
@@ -94,6 +101,24 @@ test("buildDigitizeConfig sends the project's fabric colour as garment_rgb, and 
   // Exactly three channels, whatever a custom hex round-trip stored.
   const custom = buildDigitizeConfig(digitizedElement(), { ...PROJECT, fabricRgb: [12.4, 200, 7, 255] });
   expect(custom.garment_rgb).toEqual([12, 200, 7]);
+});
+
+test("buildDigitizeConfig sends the project's calibration profile in the service's canonical form, and nothing for a no-op", async () => {
+  stubStorage({});
+  const { buildDigitizeConfig, canonicalFabricProfile } = await import("./digitizer.js");
+  const withProfile = buildDigitizeConfig(digitizedElement(), {
+    ...PROJECT, fabricProfile: { pull_comp_delta_mm: 0.15, density_scale: 1, trim_at_delta_mm: 0, stray: 3 },
+  });
+  // Only the three known keys, no-op values dropped, unknown keys never sent
+  // (the service would 400 them).
+  expect(withProfile.fabric_profile).toEqual({ pull_comp_delta_mm: 0.15 });
+  for (const k of Object.keys(withProfile)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+  // A pre-profile save, a null, and a profile that changes nothing all send
+  // no field — one cache key with the plain preset.
+  expect(buildDigitizeConfig(digitizedElement(), PROJECT)).not.toHaveProperty("fabric_profile");
+  expect(buildDigitizeConfig(digitizedElement(), { ...PROJECT, fabricProfile: null })).not.toHaveProperty("fabric_profile");
+  expect(buildDigitizeConfig(digitizedElement(), { ...PROJECT, fabricProfile: { density_scale: 1 } })).not.toHaveProperty("fabric_profile");
+  expect(canonicalFabricProfile({ density_scale: NaN, trim_at_delta_mm: "1" })).toBeNull();
 });
 
 test("border is OMITTED when unset, so the service picks per artwork class", async () => {
@@ -225,43 +250,16 @@ test("edge_cap rides buildDigitizeConfig, and back-fills today's default for pro
   }
 });
 
-test("forced_class rides buildDigitizeConfig only when the flat-art override is set", async () => {
-  // Same absent-means-auto sentinel fill_angle_deg uses, for the same reason:
-  // an absent key IS "classify normally" server-side (config.py's
-  // `forced_class: str | None = None`), so sending it unset would only change
-  // the job cache key for every design that never overrode anything.
+test("no per-design class override is sent -- a legacy forced_class or isPhoto is ignored (Kent, 2026-09-30)", async () => {
+  // Until 2026-09-30 a stored `params.forced_class` ("It's flat art") and
+  // `element.isPhoto` ("It's a photo") each rode the config. Kent asked for
+  // the choice to go and the engine to recognise the art itself, so neither
+  // field is read any more: a project saved with them still loads, and
+  // digitizes exactly as a fresh upload of the same art would.
   stubStorage({});
   const { buildDigitizeConfig } = await import("./digitizer.js");
 
-  expect("forced_class" in buildDigitizeConfig(digitizedElement(), PROJECT)).toBe(false);
-
-  const forced = buildDigitizeConfig(
-    digitizedElement({
-      params: {
-        target_width_mm: 80, max_colors: 6, satin: true,
-        fill_angle_deg: null, border: "off", forced_class: "flat",
-      },
-    }),
-    PROJECT
-  );
-  expect(forced.forced_class).toBe("flat");
-  // The service derives its allowlist from PipelineConfig's own fields, so an
-  // extra key here is a 400, not a silently-ignored request.
-  for (const k of Object.keys(forced)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
-});
-
-test("isPhoto sends is_photographic and still out-ranks a stale params.forced_class:\"flat\" (precedence, controller ruling 2026-08-19 fix round 1)", async () => {
-  // DigitizePanel.svelte's checkbox handler clears params.forced_class in the
-  // same patch that sets isPhoto, so the two should never coexist on an
-  // element edited live through the UI — but this covers the element this
-  // function actually receives regardless of how it got that way: a project
-  // saved before that handler existed (or from any other path), loaded fresh
-  // with both fields already set and no live click in this session. isPhoto
-  // wins as the user's newest explicit intent either way.
-  stubStorage({});
-  const { buildDigitizeConfig } = await import("./digitizer.js");
-
-  const both = buildDigitizeConfig(
+  const legacy = buildDigitizeConfig(
     digitizedElement({
       isPhoto: true,
       params: {
@@ -271,14 +269,47 @@ test("isPhoto sends is_photographic and still out-ranks a stale params.forced_cl
     }),
     PROJECT
   );
-  // The PRECEDENCE this test exists for is unchanged — isPhoto is still the
-  // user's newest explicit word and still beats a leftover override. What
-  // moved (2026-09-02, Kent's call, defect 15) is which field carries it:
-  // is_photographic, not forced_class. The stale "flat" must not leak
-  // through now that the branch writes a different key.
-  expect(both.is_photographic).toBe(true);
-  expect("forced_class" in both).toBe(false);
-  for (const k of Object.keys(both)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+  expect("forced_class" in legacy).toBe(false);
+  expect("is_photographic" in legacy).toBe(false);
+  // ...and it is byte-identical to the same design with neither field, so
+  // the service's job cache serves both from one entry.
+  const fresh = buildDigitizeConfig(
+    digitizedElement({
+      params: { target_width_mm: 80, max_colors: 6, satin: true, fill_angle_deg: null, border: "off" },
+    }),
+    PROJECT
+  );
+  expect(legacy).toEqual(fresh);
+  // The service derives its allowlist from PipelineConfig's own fields, so an
+  // extra key here is a 400, not a silently-ignored request.
+  for (const k of Object.keys(legacy)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+});
+
+test("the engine's own photograph detection is asked for on every job", async () => {
+  // What replaced the "It's a photo" declaration: `cfg.detect_photographic`
+  // (stage 1.25 -- EXIF camera, then the YuNet face detector) fills
+  // `is_photographic` in as True on a hit and changes nothing on silence, so
+  // it can only ADD photographs. Sent unconditionally like detail_layer,
+  // rather than omitted-when-false, because it is never false from here.
+  stubStorage({});
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+  expect(buildDigitizeConfig(digitizedElement(), PROJECT).detect_photographic).toBe(true);
+  expect(buildDigitizeConfig({}).detect_photographic).toBe(true);
+  // And with it, the face-to-flat route (Kent's ruling 2026-09-30) -- the
+  // engine requires detection for it, so the two always travel together.
+  expect(buildDigitizeConfig(digitizedElement(), PROJECT).faces_route_flat).toBe(true);
+  expect(buildDigitizeConfig({}).faces_route_flat).toBe(true);
+});
+
+test("describeWarnings says a found face sent the design down the flat lane", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const [line] = describeWarnings([
+    { code: "FACE_ROUTED_FLAT", message: "engine prose", faces: 1, detail: "1 face(s) detected" },
+  ]);
+  expect(line.text).toContain("face was found");
+  expect(line.text).toContain("flat art");
+  expect(line.text).not.toContain("engine prose");
 });
 
 test("startDigitize POSTs multipart image+config to /digitize exactly as test_service.py's client does", async () => {
@@ -309,6 +340,27 @@ test("startDigitize POSTs multipart image+config to /digitize exactly as test_se
   expect(sent.thread_brand).toBe("isacord");
   expect(sent.garment_id).toBe("left_chest");
   for (const k of Object.keys(sent)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+});
+
+test("startDigitize sends the customer's FILE when handed its bytes — its own type and name, not a re-encoded PNG", async () => {
+  stubStorage({});
+  const { startDigitize, buildDigitizeConfig } = await import("./digitizer.js");
+  const calls = [];
+  const fetchFn = vi.fn(async (url, opts) => {
+    calls.push({ url, opts });
+    return { ok: true, status: 202, json: async () => ({ job_id: "j2", state: "queued", cached: false }) };
+  });
+  const bytes = new Uint8Array([82, 73, 70, 70, 1, 2, 3, 4]);
+  await startDigitize({ bytes, type: "image/webp", name: "logo.webp" }, buildDigitizeConfig(digitizedElement(), PROJECT), fetchFn);
+  const image = calls[0].opts.body.get("image");
+  expect(image.type).toBe("image/webp");
+  expect(image.name).toBe("logo.webp");
+  expect(image.size).toBe(bytes.length);
+  // The base64 preview path is unchanged: a PNG named art.png.
+  await startDigitize(TINY_PNG_B64, buildDigitizeConfig(digitizedElement(), PROJECT), fetchFn);
+  const preview = calls[1].opts.body.get("image");
+  expect(preview.type).toBe("image/png");
+  expect(preview.name).toBe("art.png");
 });
 
 test("startDigitize surfaces the service's own detail sentence on a 400", async () => {
@@ -1847,37 +1899,47 @@ test("INPUT_LOW_RESOLUTION falls back to prose when the engine sends no numbers"
   expect(line.text).not.toContain("NaN");
 });
 
-describe("isPhoto forced class (spec 2026-08-18 decision 4)", () => {
-  // Defect 15, Kent's 2026-09-02 call. "It's a photo" answers "is this
-  // photographic CONTENT", which is `is_photographic` — depth sequencing and
-  // the palette bind. It used to send `forced_class="photo_subject"`, which
-  // answers a different question (which FILL TIER) and measurably hurt: on
-  // owl_kent.jpg @ 80mm the checkbox took 13 stops to 17, where
-  // is_photographic takes it to 11 on 12 cones instead of 14.
-  it("sends is_photographic when the element is marked as a photo", async () => {
+describe("the removed photo/flat override (Kent, 2026-09-30)", () => {
+  // Spec 2026-08-18 decision 4 gave the Studio an explicit "It's a photo"
+  // declaration; defect 15 (2026-09-02) made it send `is_photographic`
+  // rather than force the fill tier. On 2026-09-30 Kent removed the choice
+  // altogether -- the engine recognises the art -- so an element that still
+  // carries the old fields sends neither, whatever they say.
+  it("sends nothing for isPhoto in either state", async () => {
     const { buildDigitizeConfig } = await import("./digitizer.js");
-    const el = { isPhoto: true };
-    expect(buildDigitizeConfig(el).is_photographic).toBe(true);
+    for (const isPhoto of [true, false]) {
+      const cfg = buildDigitizeConfig({ isPhoto });
+      expect("is_photographic" in cfg).toBe(false);
+      expect("forced_class" in cfg).toBe(false);
+    }
   });
-  it("does NOT force the fill tier when the element is marked as a photo", async () => {
-    // The regression this replaces: forcing photo_subject adds thread-paint
-    // on top, which is not what the user was asked and not what they want.
+  it("sends nothing for a stored forced_class either", async () => {
     const { buildDigitizeConfig } = await import("./digitizer.js");
-    expect("forced_class" in buildDigitizeConfig({ isPhoto: true })).toBe(false);
-  });
-  it("omits both fields entirely when not marked", async () => {
-    const { buildDigitizeConfig } = await import("./digitizer.js");
-    const cfg = buildDigitizeConfig({ isPhoto: false });
+    const cfg = buildDigitizeConfig({ params: { forced_class: "flat" } });
     expect("forced_class" in cfg).toBe(false);
     expect("is_photographic" in cfg).toBe(false);
   });
-  it("still carries a flat-art override, the opposite correction", async () => {
-    // A photo MISROUTE correction ("digitize this as flat art") is a
-    // different, still-legitimate direction and must survive the change.
+});
+
+describe("crop in the digitize config", () => {
+  it("sends the crop as four fractions when the element carries one", async () => {
     const { buildDigitizeConfig } = await import("./digitizer.js");
-    const cfg = buildDigitizeConfig({ isPhoto: false, params: { forced_class: "flat" } });
-    expect(cfg.forced_class).toBe("flat");
-    expect("is_photographic" in cfg).toBe(false);
+    const cfg = buildDigitizeConfig({ crop: { x0: 0.1, y0: 0.2, x1: 0.9, y1: 0.8 } }, {});
+    expect(cfg.crop).toEqual([0.1, 0.2, 0.9, 0.8]);
+    for (const k of Object.keys(cfg)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+  });
+
+  it("omits crop entirely when the element has none", async () => {
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    expect("crop" in buildDigitizeConfig({}, {})).toBe(false);
+  });
+
+  it("omits crop when it is the full frame", async () => {
+    // An uncropped upload must be byte-identical to the pre-crop engine, so
+    // it must not send a crop key at all.
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    const cfg = buildDigitizeConfig({ crop: { x0: 0, y0: 0, x1: 1, y1: 1 } }, {});
+    expect("crop" in cfg).toBe(false);
   });
 });
 
@@ -2289,4 +2351,79 @@ describe("editKind (restitch pacing)", () => {
     const c = await edits(el({ s1: { border: "auto", tier: "fill" } }));
     expect(editKind(await edits(el({})), c)).toBe("other");
   });
+});
+
+// ---- stitch width (contract v1.8) -------------------------------------------
+
+test("canonicalShapeEdits carries stitch_width_mm inside the engine's range, rounded to 0.01, and drops anything else", async () => {
+  const { canonicalShapeEdits, STITCH_WIDTH_MIN_MM, STITCH_WIDTH_MAX_MM } = await import("./digitizer.js");
+  const el = digitizedElement({
+    shapeOverrides: {
+      a: { stitch_width_mm: 0.8000001 },
+      b: { stitch_width_mm: STITCH_WIDTH_MIN_MM },
+      c: { stitch_width_mm: STITCH_WIDTH_MAX_MM + 0.01 },
+      d: { stitch_width_mm: "0.9" },
+      e: { stitch_width_mm: NaN },
+      f: { stitch_width_mm: null, border: "bean" },
+    },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: {
+      a: { stitch_width_mm: 0.8 },
+      b: { stitch_width_mm: STITCH_WIDTH_MIN_MM },
+      f: { border: "bean" },
+    },
+  });
+});
+
+test("reviewFromJob maps the stitch_width block, and reads a pre-contract service as null", async () => {
+  const { reviewFromJob } = await import("./digitizer.js");
+  const review = {
+    palette: [{ number: "1", rgb: [0, 0, 0], brand_id: "isacord" }],
+    shapes: [
+      {
+        shape_id: "s1", thread_index: 0, thread_number: "1", area_mm2: 1, layer: 0,
+        outline_mm: [[0, 0], [1, 0], [1, 1], [0, 0]], holes_mm: [],
+        stitch_width: { measured_mm: 0.62, auto_mm: 0.8, sewn_mm: 0.8, override_mm: null,
+                        source: "group", group: "T1", limited: true, skip_reason: null },
+      },
+      {
+        shape_id: "s2", thread_index: 0, thread_number: "1", area_mm2: 1, layer: 0,
+        outline_mm: [[0, 0], [1, 0], [1, 1], [0, 0]], holes_mm: [],
+        stitch_width: { measured_mm: null, auto_mm: null, sewn_mm: null, override_mm: null,
+                        source: null, group: null, limited: false, skip_reason: null },
+      },
+      {
+        shape_id: "s3", thread_index: 0, thread_number: "1", area_mm2: 1, layer: 0,
+        outline_mm: [[0, 0], [1, 0], [1, 1], [0, 0]], holes_mm: [],
+      },
+    ],
+  };
+  const r = reviewFromJob(review);
+  expect(r.shapes[0].stitchWidth).toEqual({
+    artMm: null, measuredMm: 0.62, autoMm: 0.8, sewnMm: 0.8, overrideMm: null,
+    source: "group", group: "T1", limited: true, skipReason: null,
+  });
+  expect(r.shapes[1].stitchWidth).toBeNull();
+  expect(r.shapes[2].stitchWidth).toBeNull();
+});
+
+test("stitch_width_auto rides buildDigitizeConfig only when on, and is off for projects saved before the field existed", async () => {
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+  expect("stitch_width_auto" in buildDigitizeConfig(digitizedElement(), PROJECT)).toBe(false);
+  const on = digitizedElement({ params: { ...digitizedElement().params, stitch_width_auto: true } });
+  expect(buildDigitizeConfig(on, PROJECT).stitch_width_auto).toBe(true);
+});
+
+test("stitchWidthGroupRows: the word's members with the row first; a lone shape is its own list", async () => {
+  const { stitchWidthGroupRows } = await import("./digitizer.js");
+  const a = { id: "a", stitchWidth: { group: "W" } };
+  const b = { id: "b", stitchWidth: { group: "W" } };
+  const c = { id: "c", stitchWidth: { group: "X" } };
+  const d = { id: "d", stitchWidth: null };
+  const rows = [c, b, a, d];
+  expect(stitchWidthGroupRows(rows, a).map((r) => r.id)).toEqual(["a", "b"]);
+  expect(stitchWidthGroupRows(rows, c).map((r) => r.id)).toEqual(["c"]);
+  expect(stitchWidthGroupRows(rows, d).map((r) => r.id)).toEqual(["d"]);
+  expect(stitchWidthGroupRows(rows, null)).toEqual([]);
 });

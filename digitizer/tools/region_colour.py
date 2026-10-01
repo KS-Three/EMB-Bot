@@ -36,6 +36,7 @@ from digitizer_core import stage2_photo_segment as s2
 from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import run_stages
 from digitizer_core.threads import chart_for
+from tools._console import utf8_console
 
 BIMODAL_DE00 = 10.0     # preflight.DELTA_E_CLEARLY_DIFFERENT: mean-to-median this far apart
 
@@ -95,6 +96,7 @@ def census(art: Path, cfg: PipelineConfig) -> dict:
 
 
 def main(argv: list[str]) -> int:
+    utf8_console()          # the header below carries → and Δ
     from tests.conftest import TESTDATA
     from tools.corpus_scorecard import FIXTURES
 

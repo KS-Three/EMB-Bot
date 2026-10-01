@@ -55,7 +55,14 @@ PHOTO = "photo/photo_dof_meadow.png"        # photo route: must be untouched
 # misaligned one left 0 and took the hairline fallback. Bisected: restoring
 # truncation alone restores both counts. Kent's to keep or revisit — the
 # scorecard moves on these two fixtures by exactly those two findings.
-SEVERITY = {TINY: (1, 1), BRIDGE: (2, 1), PHOTO: (0, 1)}   # (block, warn)
+#
+# RE-PINNED 2026-09-18 with `subpixel_edges_upscaled` ON by default (Kent's
+# flip): BRIDGE (2, 1) -> (2, 2). bridge is 3.49 px/mm at 80 mm, under the
+# floor, so its edges are now read from its own pixels; one more small
+# shape's thread is judged, as a warn, under this file's unfloored read.
+# Not this file's change and not a rescoring — the same finding mechanism on
+# a different polygon (scope-history 2026-09-18, the flip's addendum).
+SEVERITY = {TINY: (1, 1), BRIDGE: (2, 2), PHOTO: (0, 1)}   # (block, warn)
 
 
 @lru_cache(maxsize=None)

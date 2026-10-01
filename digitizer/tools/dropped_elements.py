@@ -36,6 +36,73 @@ described the failure:
     knockout filled in  a colour where bare cloth belongs
     wrong thread        one colour where another belongs
 
+## `lost_frac` is a SUM, and a fixture can be entirely one of its halves
+
+Read the total as "coverage" and you will chase the wrong defect. Every region
+carries `ink`, so the total splits cleanly and both halves are reported:
+
+  * `unsewn_frac` — regions ON the ink. Artwork the stitch-out never covered.
+    This is the one Kent named ("the red arm was lost").
+  * `overshoot_frac` — regions OFF it. Thread standing on cloth the artwork
+    leaves bare: a column sewing wider than the shape it belongs to.
+
+Measured 2026-09-20, all four at 80 mm left_chest, on the post-#537 engine
+(the pre-#537 readings were 0.3002 / 0.1270 / 0.0509 / 0.1070 -- those two
+fixes moved the TOTALS and left the composition alone):
+
+    fixture      width   lost_frac   unsewn  wrong-colour  overshoot
+    enthusiast   80 mm      0.3006       0%           0%        100%
+    tires        80 mm      0.1270       0%           0%        100%
+    becker      100 mm      0.0404      71%           0%         29%
+    bridge       80 mm      0.1072       0%         100%          0%
+
+    Re-measured 2026-09-20 at each fixture's OWN `REAL_ART` width, with the
+    third class in. Two numbers moved and both were the two-class split's
+    fault: bridge was reported "100% unsewn" when nothing there is unsewn at
+    all (its `uncovered_ink_mm2` is 10.2 of 271.4 lost), and becker reads 71/29
+    at its real 100 mm rather than the 44/56 an 80 mm run gives.
+
+A 0% in that column is NOT "the instrument looked and found nothing": the vote
+is `A_ink[region].mean() > 0.5`, and where the largest per-region ink fraction
+is 0.33 (as on `enthusiast`) it could not have returned True whatever the
+engine did. `uncovered_elements` is the reading that can say nothing was lost.
+
+They move in OPPOSITE directions under one engine change — satin rails placed
+further out cover more artwork AND spill more thread — so the total cannot say
+which one a change bought, and a wordmark's total says nothing about coverage
+at all. That is not hypothetical: a session read `enthusiast`'s 0.3006 as lost
+coverage and set out to recover artwork that was never uncovered
+(`tools/rail_edge.py --bare` does not move across the change it blamed).
+
+## TWO MEASUREMENT BIASES, both recorded and NEITHER fixed (Kent, 2026-09-20)
+
+Fixing either renumbers every pinned `lost_frac` in the repo, including a
+`xfail(strict=True)` on `main`, so both are written down and left alone. Read
+`uncovered_elements` / `uncovered_ink_frac` when you need a number that does
+not ride on them.
+
+**1. The opening sits exactly on a fabric constant.** `left_chest` ->
+`pique_knit`, `pull_comp_mm` 0.30; `stage5_overlap` buffers every shape by it
+and `stitchviz` draws `THREAD_MM` 0.40, so a CORRECTLY sewn shape already
+stands 0.30 + 0.20 = **0.50 mm** proud of its artwork -- and `HALO_OPEN_PX` is
+5 px at `RES`, which is **0.50 mm**. The headline is a threshold detector
+balanced on the pedestal: the same design reads 182.7 / 108.5 / 32.9 / 10.2 /
+5.7 / 0.0 mm2 at kernels 3/5/7/9/11/13 px. Structural, not fixture-bound --
+every knit preset carries pull comp (pique 0.30, jersey 0.35, fleece 0.50).
+
+**2. The artwork is rasterised to the STITCH extents, not to its own size.**
+Lines below pass `design["widthMM"]` to `art_colour_field` / `art_ink_field`,
+and `adapter.py` documents that field as *"the true stitch extents"* -- 80.6 mm
+where the user asked for 80.0 -- while `stage1_prep.py` sets
+`px_per_mm = art_w_px / cfg.target_width_mm`, so the artwork's own ink bbox IS
+80.0 by construction. The instrument therefore enlarges the artwork by 0.75%
+USING THE VERY OVERSHOOT IT IS MEASURING, which damps its own reading.
+Measured 2026-09-20 with only that one argument corrected: `enthusiast`
+**0.2748 -> 0.2369**, which is BELOW the 0.26 bar
+`tests/test_lettering_coverage_regression.py` asserts under `xfail(strict=True)`
+-- so fixing this alone turns that test RED without the residual being closed.
+`uncovered_elements` reads 0 either way.
+
 ## Segment the disagreement, not the artwork
 
 Three definitions of "element" were tried first and each had a hole. They are
@@ -217,6 +284,41 @@ def analyse(image_path: str | Path, cfg: PipelineConfig | None = None) -> dict:
                           route=result.design_class)
 
 
+# A region is COVERED when this much of it has thread on it. The same 0.5 the
+# `ink` flag uses, for the same reason: a region is classified by what most of
+# it is, not by its edge pixels.
+COVERED_FRAC = 0.5
+
+
+def split_lost(lost: list[dict]) -> dict[str, float]:
+    """Split the lost area into the THREE failure modes this module's own
+    docstring names, not two.
+
+    A first cut of this keyed on `ink` alone and called everything on the ink
+    "unsewn". That is wrong wherever a region is on the ink AND covered:
+    thread is present, in the wrong colour. On `logo_bridge_bar` all 70
+    regions are `ink=True` at `cover` 0.794-1.000, so the two-class split
+    reported 271 mm2 "100% unsewn" when honest unsewn there is ~10 mm2 — and
+    "unsewn" is the word that sends a reader after coverage.
+
+      ink & bare      -> unsewn        "white cloth where a colour belongs"
+      ink & covered   -> wrong_colour  "one colour where another belongs"
+      not ink         -> overshoot     "a colour where bare cloth belongs"
+
+    Exhaustive and disjoint by construction, so the three still sum to
+    `lost_mm2` and `lost_frac` keeps meaning what every pinned number in the
+    repo already assumes it means.
+    """
+    on_ink = [x for x in lost if x["ink"]]
+    return {
+        "unsewn_mm2": sum(x["mm2"] for x in on_ink
+                          if x.get("cover", 0.0) < COVERED_FRAC),
+        "wrong_colour_mm2": sum(x["mm2"] for x in on_ink
+                                if x.get("cover", 0.0) >= COVERED_FRAC),
+        "overshoot_mm2": sum(x["mm2"] for x in lost if not x["ink"]),
+    }
+
+
 def analyse_design(image_path: str | Path, design: dict,
                    route: str | None = None, *,
                    registered: Registered | None = None) -> dict:
@@ -321,6 +423,62 @@ def analyse_design(image_path: str | Path, design: dict,
     ink_mm2 = float(A_ink.sum()) / px_per_mm2
     lost_mm2 = sum(x["mm2"] for x in lost)
 
+    # COVERAGE, WITHOUT COLOUR AND WITHOUT THE OPENING. Artwork ink carrying no
+    # thread -- a set difference of two masks, no CIEDE2000, no `LOST_DELTA_E`,
+    # no `HALO_OPEN_PX`, no `MIN_ELEMENT_MM2`. It exists because every filter
+    # above it is tuned around a half-millimetre, and on a knit that is exactly
+    # the size of the thing being filtered: `pique_knit`'s `pull_comp_mm` is
+    # 0.3 and `stitchviz.THREAD_MM` is 0.4, so a correctly-sewn shape already
+    # stands 0.3 + 0.2 = 0.50 mm proud of its artwork -- and `HALO_OPEN_PX` is
+    # 5 px at RES, which is 0.50 mm. The opening sits ON the pedestal, so the
+    # headline number is a threshold detector balanced on a fabric constant and
+    # its MAGNITUDE is not quotable (measured 2026-09-20: the same design reads
+    # 182.7 / 108.5 / 32.9 / 10.2 / 5.7 / 0.0 mm2 at kernels 3/5/7/9/11/13 px).
+    # These three are not: a mask difference cannot be moved by re-tuning a
+    # filter, so "did the artwork get sewn" has an answer that survives.
+    # `enthusiast_logo` at 80 mm reads 3.5 mm2 of 395.5 (0.90%), largest
+    # component 0.88 mm2, NOTHING at or over 1 mm2 -- a rim, not an element --
+    # while thread covers 1.51x the ink and the thread field matches the
+    # artwork DILATED BY 0.30 mm to IoU 0.856, which is `pull_comp_mm` exactly.
+    uncov = A_ink & ~thread
+    _n, _lab, _st, _ = cv2.connectedComponentsWithStats(
+        uncov.astype(np.uint8), 8)
+    _areas = sorted((float(_st[i, cv2.CC_STAT_AREA]) / px_per_mm2
+                     for i in range(1, _n)), reverse=True)
+    uncovered_ink_mm2 = float(uncov.sum()) / px_per_mm2
+    uncovered_worst_mm2 = _areas[0] if _areas else 0.0
+    uncovered_elements = sum(1 for a in _areas if a >= MIN_ELEMENT_MM2)
+
+    # THE TOTAL IS TWO DIFFERENT DEFECTS ADDED TOGETHER, and a fixture can be
+    # entirely one of them. Each region already knows which (`ink`): a region
+    # ON the artwork's ink is somewhere the stitch-out failed to put thread
+    # (Kent's "the red arm was lost"); a region OFF it is thread standing on
+    # cloth that should be bare -- a column sewing wider than its artwork.
+    # Split, because reading the total as "coverage" has already sent a
+    # session the wrong way (2026-09-20): a lettering guard was written to
+    # recover "lost coverage" on `enthusiast_logo`, whose `lost_frac` of
+    # 0.3006 is 118.7 mm2 of overshoot and ZERO mm2 of unsewn ink, and whose
+    # `tools/rail_edge.py --bare` coverage reading does not move at all
+    # across the change that was blamed for it. Measured the same day, same
+    # config, 80 mm left_chest -- the split is not a corner case, it is the
+    # normal state of affairs:
+    #
+    #     enthusiast  lost_frac 0.3002   unsewn   0%   overshoot 100%
+    #     tires       lost_frac 0.1270   unsewn   0%   overshoot 100%
+    #     becker      lost_frac 0.0509   unsewn  44%   overshoot  56%
+    #     bridge      lost_frac 0.1070   unsewn 100%   overshoot   0%
+    #
+    # The two also move in OPPOSITE directions under the same engine change:
+    # satin rails placed further out cover more artwork and spill more
+    # thread, so a single number hides which one a change bought. Pin the half
+    # a fixture is actually made of, and pin the other half alongside it so the
+    # first cannot be bought with it
+    # (`tests/test_lettering_coverage_regression.py` does both).
+    _split = split_lost(lost)
+    unsewn_mm2 = _split["unsewn_mm2"]
+    wrong_colour_mm2 = _split["wrong_colour_mm2"]
+    overshoot_mm2 = _split["overshoot_mm2"]
+
     # Same refusals as the scoring instrument: where the ink mask is unreliable,
     # every number here is unreliable in the same way and for the same reason.
     sat = ink_saturation(image_path)
@@ -338,6 +496,28 @@ def analyse_design(image_path: str | Path, design: dict,
         "lost": len(lost),
         "lost_mm2": round(lost_mm2, 1),
         "lost_frac": round(lost_mm2 / ink_mm2, 4) if ink_mm2 else 0.0,
+        # Both halves are expressed against the SAME denominator (the artwork's
+        # ink area), so they sum to `lost_frac` (to the last decimal place kept
+        # -- three independent roundings, so do not assert equality on them)
+        # and either can be compared against it directly.
+        # `overshoot_frac` can exceed 1.0 in principle -- it is thread outside
+        # the ink measured in units of the ink -- and that is the honest
+        # reading, not a bug to clamp.
+        "unsewn_mm2": round(unsewn_mm2, 1),
+        "unsewn_frac": round(unsewn_mm2 / ink_mm2, 4) if ink_mm2 else 0.0,
+        "wrong_colour_mm2": round(wrong_colour_mm2, 1),
+        "wrong_colour_frac": (round(wrong_colour_mm2 / ink_mm2, 4)
+                              if ink_mm2 else 0.0),
+        "overshoot_mm2": round(overshoot_mm2, 1),
+        "overshoot_frac": round(overshoot_mm2 / ink_mm2, 4) if ink_mm2 else 0.0,
+        # Colour-free, unfiltered coverage. `uncovered_elements` is the one to
+        # gate on: it counts artwork blobs at or over `MIN_ELEMENT_MM2` with no
+        # thread, which is Kent's "the red arm was lost" and nothing else.
+        "uncovered_ink_mm2": round(uncovered_ink_mm2, 1),
+        "uncovered_ink_frac": (round(uncovered_ink_mm2 / ink_mm2, 4)
+                               if ink_mm2 else 0.0),
+        "uncovered_worst_mm2": round(uncovered_worst_mm2, 2),
+        "uncovered_elements": uncovered_elements,
         "worst_mm2": lost[0]["mm2"] if lost else 0.0,
         "shift_x_mm": round(dx, 1),
         "shift_y_mm": round(dy, 1),
@@ -397,11 +577,18 @@ def main(argv: list[str] | None = None) -> int:
               f"{r['lost_mm2']:>8.1f} {100 * r['lost_frac']:>8.1f}% "
               f"{r['worst_mm2']:>8.1f}"
               + ("   REFUSED" if r["refusal"] else ""))
+        # On its own line rather than as two more columns: the table is already
+        # 76 characters and this is the reading most fixtures are decided by.
+        print(f"{'':26s}   unsewn {r['unsewn_mm2']:>7.1f} mm2 "
+              f"({100 * r['unsewn_frac']:.1f}%)   |   "
+              f"overshoot {r['overshoot_mm2']:>7.1f} mm2 "
+              f"({100 * r['overshoot_frac']:.1f}%)")
         if args.detail and r["_lost"]:
             for d in r["_lost"][:6]:
                 print(f"{'':26s}   {d['mm2']:>6.1f} mm2 at "
                       f"({d['cx'] / RES:.0f},{d['cy'] / RES:.0f}) mm, "
-                      f"dE {d['delta_e']:>5.1f}, {d['cover'] * 100:.0f}% sewn")
+                      f"dE {d['delta_e']:>5.1f}, {d['cover'] * 100:.0f}% sewn, "
+                      f"{'unsewn ink' if d['ink'] else 'thread on ground'}")
 
     if args.csv:
         args.csv.parent.mkdir(parents=True, exist_ok=True)

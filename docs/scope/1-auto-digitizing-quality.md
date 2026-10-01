@@ -3609,6 +3609,64 @@ rules out redundancy without proving independence. Instrument only, no engine
 change. *(measured 2026-08-27 — PR #281;
 `docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
 
+*Moved from MASTER_SCOPE (2026-09-19), verbatim, to make room under its word
+budget:* On Kent's four Becker artworks the two SPARSE ones measure roughest —
+complexity, not size (an earlier "small placements sew rougher" reading is
+withdrawn).
+
+## The wobble attributed to its stage — SATIN RAILS, not the outline (2026-09-19)
+
+Kent: *"right shapes, bad edges … wobbly / lumpy curves … it needs to be
+perfect."* A third smoothness instrument, and the first that can say WHICH
+STAGE a wobble was born in. A spike put both halves in one unit (offset
+removed): on `enthusiast_logo` stage 4's polygon tracks the artwork at
+**0.011 mm** std while the sewn rails wander **0.071** about that polygon; on
+Becker (0.55 mm source pixels) both wobble ~0.08; synthetic `logo_whitebg` is
+clean on both sides, which is why no suite saw it.
+
+`tools/edge_wobble.py` keeps the stitch-side half: `result.regions[].polygon`
+against `plan.iter_runs()`, signed distance, high-passed over 3 mm along the
+edge; no raster, no registration. On `main` at `24fce102`:
+
+| fixture | satin std / p95 / >0.15 mm | fill std | bean/run |
+|---|---|---|---|
+| `enthusiast_logo` | 0.110 / 0.230 / 12.5% | 0.010 | 0.000 |
+| `becker_marine_logo` | 0.099 / 0.200 / 9.5% | **0.177** | 0.000 |
+| `logo_gaulke_roofing` | 0.088 / 0.170 / 6.7% | 0.019 | 0.000 |
+| `logo_whitebg` | 0.038 / 0.067 / 0.8% | 0.022 | 0.000 |
+
+**By zone (`rail_zones`), share of rail penetrations over 0.15 mm:** corner
+26.0 / 14.9 / 12.0% (enthusiast / Becker / Gaulke), series end 10.5 / 12.8 /
+5.4%, mid-column 3.5 / 4.1 / 3.7%. Corners first, ends second, a lumpy curve a
+distant third — three different fixes. Renders of the five worst spots per
+logo: `docs/renders/edge-wobble-2026-09-19/` (`--render DIR`). Becker's fill
+row is probably the instrument misreading a split column's mid-points as row
+ends (DOCTRINE) — unconfirmed.
+
+**The reverse direction (`unsewn`) — outline with no thread within 0.5 mm:**
+Becker 32.6 mm in 16 spans (2.7% of its sewn outline; MARINE's square corners
+and feet), Gaulke 6.6 mm in 4, Enthusiast 2.2 mm in 3, synthetic 0.0. This is
+what stitches → outline cannot see, and what Kent's *"you missed quite a few"*
+was. Whole-design pages with every mark on a lettered grid: `*_all.png` in the
+same render folder. Blind still: bean-tier small text, and outline vs artwork.
+
+**`cfg.satin_cap_recentre` — BUILT, DEFAULT OFF, Kent's flip (2026-09-19).** A
+free end whose spine tail is a surviving cap fork is cut at the kink and
+rebuilt square. Bare outline Becker 32.6 → 29.3 mm, Enthusiast 2.2 → 0.8,
+Gaulke unchanged; satin wobble not worsened (Becker std 0.097 → 0.094), where
+`satin_rails_follow_edge` reaches 14.8 mm by roughening the rails to 0.137.
+Small because the fork is ~3 mm of Becker's 32.6 (7 of 44 free ends fork, 3
+pass the guards). NOT in MASTER_SCOPE's "Waiting on Kent" — that file sat at
+26,999 of 27,000 words. *(DOCTRINE 2026-09-19; `tests/test_satin_cap_recentre.py`)*
+
+Satin barely moved across 2026-09-19's satin flips (0.106 / 0.101 / 0.098 on
+the pre-flip base), and `satin_rails_follow_edge` moved the spike's figure
+~10% — neither is the lever. **Open:** why the rails wobble (worst points are
+all inward dips, 0.5–0.95 mm); whether 0.10 mm is what Kent's eye sees;
+Becker's fill tier (0.037 → 0.177 across the flips, unread); and the low-res
+OUTLINE half, which needs registration and was left in the spike.
+*(measured 2026-09-19 — `tests/test_edge_wobble.py`, 10; DOCTRINE 2026-09-19)*
+
 ## Fill travel under cover — defect 21 FIXED, default ON by Kent's flip (2026-09-03)
 
 Kent's *"the in-fill stitching doesn't look clean"* (Hotel Fremont, 2026-09-02)
@@ -3940,3 +3998,304 @@ queue, the numbers behind it live here. Verbatim.
    build the shade-merge or further hopping polish until he reopens it; the
    08-31 mechanical fixes (`start_near`, the re-snap rehome) are merged and
    unaffected. *(measured 2026-09-02 — `sequence_census.py`, 26 fixtures; tabled 2026-09-02 — Kent)*
+
+## Lettering house-angle: the THIRD reading — the line of text itself (2026-09-19)
+
+Both votes above can refuse a plain block word. "MARINE" in `manga_impact`,
+traced at 80 mm: its verticals and horizontals cancel in doubled-angle space
+(nR² 5.0 against 6.9) and its diagonals hold the four-fold resultant at
+0.164, under the 0.25 floor whose own comment names "the diagonal blind spot"
+— so the word got no house and its crosses read 0.23 concentration, while
+the same word at 127 mm passed (17.6). `_cluster_house_angle_deg` now has a
+third reading, `PipelineConfig.satin_house_from_line`: a group both votes
+refuse takes the cross along its own line of text — the stems' perpendicular
+for upright lettering, the rule's own anchor. A group with no line
+(`_line_of_text_deg` None) still fails open. Limit carried from the four-fold
+reading: a vertically STACKED upright word would get its cross along the
+stems; bars and stems then fade to their own perpendicular under
+`_clamp_to_span`, so the exposure is diagonals leaning toward the wrong axis.
+No fixture has one.
+
+Fires on three of the nine real logos' 24 lettering groups: the ENTHUSIAST
+wordmark (nR² 0.9, R4 0.243 — it straddles the four-fold floor between 80 mm
+and 93 mm, passing at 93) and two tiny groups on the phone screenshot.
+ENTHUSIAST at 80 mm: house None → 179.9°, the word's satin runs' cross
+concentration 0.059 → 0.287, +7 stitches, +1 trim; the chaining benchmark at
+93 mm is unchanged. **Built and flipped ON the same day — Kent's call.**
+Five tests in `tests/test_house_from_line.py` on a word built at test time
+from the committed `manga_impact.json`.
+
+The probe that found it also found what the doubled reading does on a
+diagonal-heavy word it ACCEPTS: a house pulled off the line by the single-
+diagonal residue (AMAZE 27°, NAVY 147°; on real logos enthusiast's subline
+130°, fremont 97.9° / 162°) — not the stems' perpendicular. That is step 1 of
+`docs/superpowers/plans/2026-09-19-lettering-construction.md`.
+*(built, measured, flipped 2026-09-19 — scope-history's entry of that day)*
+
+## Lettering house-angle: ANCHORED to the line of text (`satin_house_anchor`, built OFF and flipped ON 2026-09-19)
+
+Plan step 1. Both votes decide the house from every stroke, and on lettering
+with diagonals the diagonals pull the answer off the stems' perpendicular
+the 09-03 rule names: of the nine real logos' 24 lettering groups, the
+doubled-angle vote accepts twelve with a line and stems and puts NINE of
+them 12–79° off their own line (enthusiast's subline 130°, Fremont's EAT
+STAY PLAY 98°, drone 115° / 108°), and on the font word HOTEL 27° — 45° once
+the word is turned 20°. ON, a group that makes a line takes house = line +
+slant, the slant being the length-weighted median offset from the line's
+normal of the strokes within the 30° lean cap of it, on chord-resampled
+chains; a family under 10% of the skeleton is silent and the votes answer
+as before, as they do a group with no line. Output: drone's satin
+self-crossings 496 → 430 and Fremont's 87 → 66, at drone +167 stitches /
++5 trims, enthusiast +16 / +2, the rest within ±24. Instrument check: the
+slant reads under 2° on 15 of the 19 anchored groups; the four it does not
+are the Fremont rope's twists (not letters) and two 1–2 mm screenshot
+groups. A leaned script reads its own slant (`mam_script` +15.4°); the
+votes were not needed as a detector. **What the flip decides:** on
+THERMAL the vote's accidental 108° put both stroke families inside the fade
+(one uniform lean); anchored at 0° the stems sew square and the bars take
+their own perpendicular — the fonts' convention the rule adopted, not the
+pro's one angle. `tools/satin_lean.py drone [--anchor]`: THERMAL's cross
+concentration 0.319 → 0.248, AND DRONE's 0.227 → 0.297; the word's lean off
+each cross's own perpendicular p50 17.0° → 11.8°, bars at their own
+perpendicular 7% → 14% of crosses. Render
+`docs/renders/lettering-anchor-2026-09-19/drone_lettering_anchor_off_above_on_below.jpg`.
+Rejected on measurement: a kernel mode for the slant, a straightness gate on
+the votes. Limits: stem-poor words read their diagonals' middle (ZANY −12°);
+brush scripts with curved strokes read near zero. `tests/test_house_anchor.py`
+(15); `tools/satin_lean.py [--anchor]` prints each group's house and cross
+concentration. **Flipped ON the same day — Kent's call over the THERMAL
+render, keeping the fonts' bar rule (a bar takes its own perpendicular) over
+the pro's one angle; False is the pre-flip engine.** *(built, measured and
+flipped 2026-09-19 — scope-history, step 1 and its addendum)*
+
+## Lettering: one path per letter — the Euler-walk stroke order (`satin_stroke_order`, built and flipped ON 2026-09-19)
+
+Plan step 2. A satin shape's strokes sew nearest-first and travel between
+strokes along the unsewn web or trim when none is left; on a letter of
+several strokes that web is used up after the first few, and 18 of the
+plan fixture's 45 trims were that hop inside one letter. `"euler"` orders
+the strokes along one walk of the web — the font engine's `routeGlyph`
+construction: Chinese-postman duplication where a dead end forces it, a
+Hierholzer trail, each stroke sewn at its last visit so every travel leg it
+emits lies under a column sewn later (a stroke with an interior junction —
+an H's stem — sews whole and can still strand the needle at a dead end,
+which trims as before). Each stroke is walked through (column in
+at the walk's arrival end and out the other, underlay chained backwards
+from the entry), the graph builder's self-loop stubs are skipped, and the
+cursor may snap to the nearest node it can leave from. Fixture: 45 → 27
+trims, 2,564 → 2,482 stitches, uncovered 0.0 both ways; nine logos:
+trims **592 → 486** across the nine (Becker 46 → 38, tires 11 → 8, ENTHUSIAST 27 → 19, Fremont 75 → 55, Bridge Bar 112 → 85, Golden Tee 66 → 45, gaulke 39 → 35, drone 144 → 132, the screenshot 72 → 69) at a net −19 stitches (−58 to +65 per logo), travel 1,478 → 2,934 mm, satin self-crossings, uncovered area and preflight warnings unchanged on every one. Applies to every satin shape. `tools/travel_cover.py` reads every travel leg
+against the thread sewn after it (gate 3's instrument): at 80 mm across the nine logos the walk adds 1,064 mm of travel and 1.4 mm of new exposure (244.7 → 246.1 mm; the 245 mm exposed is not the satin tier's at all — traced 2026-09-19 with `tools/travel_legs.py`, 97.7% is the FILL tier's column bridges lying on their own finished fill, defect 21's residual, 0.0 mm on bare fabric; scope-history, "the exposed travel legs"); Becker at 80 mm reads uncovered 18.5 → 26.0 mm² because a nearest-order travel leg had lifted six half-millimetre cells of a bare column seam over the 0.25 floor.
+`tests/test_stroke_order_euler.py` (10). **Flipped ON the same day — Kent's
+call; "nearest" is the pre-flip engine.** *(built, measured and flipped
+2026-09-19 — scope-history, step 2 and its addendum)*
+
+## Lettering corners: the spur pruner's structure rule (`satin_corner_twigs`, built and flipped ON 2026-09-19)
+
+Plan step 3a, the letterform study's mechanism #2. `_prune_spurs` erased a
+corner's twig and with it the junction's degree, so a letter's diagonal and
+stem welded into one column folding through the corner (PRECISION's N,
+Becker's R foot). The study's tip-width classifier does not exist on this
+raster (census of 739 spurs: every one over 0.5 mm ends at a 1 px distance
+transform), so the rule is by structure: two short free arms at a node off
+a stem are a cap and both go; one short free arm between two longer arms
+is a corner and stays, holding the junction open. Fixture: satin
+self-crossing pairs 277 → 103 at 2,480 → 2,192 stitches; nine logos:
+1,813 → 1,004 at trims 486 → 488 and uncovered unchanged (Becker 34.8 →
+35.5 mm²), stitches +588 of which Becker's band at 100 mm is +725 — three
+more strokes, each with its own zigzag underlay, the cost to name. A
+synthetic N stops folding; a square-capped bar's spine is straight either
+way. `tests/test_corner_twigs.py` (6). **Step 3b, `satin_rail_comp`,
+re-measured on today's engine:** IoU-to-target Fremont 0.681 → 0.836,
+ENTHUSIAST 0.875 → 0.900, drone 0.803 → 0.826; meadow 0.811 → 0.779 at
++340 stitches; its skeleton is RULED the artwork (Kent, 2026-09-19) and
+its flip waits on a sew-out (plan `2026-09-09-rail-side-pull-comp.md` §7).
+**3a flipped ON the same day — Kent's call; False is the pre-flip
+pruner.** *(built, measured and flipped 2026-09-19 — scope-history, step
+3a and its addendum)*
+
+## Lettering: split, never fill (`satin_lettering_split`, built OFF 2026-09-19)
+
+Plan step 4, Kent's 2026-09-11 rule for the browser lettering engine on the
+traced path. A text-cluster member is classified and sewn with no width
+ceiling (`_satin_ceiling_for`: ∞, the per-stroke rung on, the fold guard
+on; every other shape keeps `satin_ceiling_mm`), so `classify_ribbon`'s
+width gates never send a letter to tatami and `split_satin` carries the
+width; the shape gates still apply, a blob still fills. Fixture, MARINE
+traced at 127 mm: the six members go fill 6 → satin 6 at 9,642 → 7,753
+stitches, trims 31 → 47, uncovered 0.0 — and satin self-crossings 0 →
+311, every one in the R's junction ball, with `DENSITY_EXTREME`
+(coverage_max 5.49 → 6.24); at 80 mm +328 stitches, the zigzag underlay
+the oversize skip used to withhold. Becker at 100 mm 12,037 → 9,056 at
+trims 39 → 71; composed with `satin_patch_junctions="satin"` its uncovered
+35.5 → 0.0 mm². Nine logos: only Becker moves. **The limit is DOCTRINE
+2026-09-09's — a junction blob is not a column: the flag lifts the ceiling
+and builds no junction**, so the flip trades tatami letters for split-satin
+letters whose junction balls fan until the bold-letter junction
+construction exists. Kept OFF (Kent, 2026-09-19), then FLIPPED ON
+later that day once `satin_junction_stack` took the fold out of the R and
+the split-satin density finding proved to be the instrument (Kent's call;
+False is the pre-flip engine). `tests/test_lettering_split.py`
+(7); renders `docs/renders/lettering-split-2026-09-19/`. *(built and
+measured 2026-09-19 — scope-history, step 4)*
+
+## Lettering: no edge cap on lettering (`edge_cap_skip_lettering`, built and flipped ON 2026-09-19)
+
+Plan step 5. The design-silhouette cap sews only the stretches of the
+outline nothing linear already covers, and on a satin-sewn letter that is
+exactly the bare corners and junction seams the decomposition leaves — on
+the 80 mm MARINE fixture 17 of the cap's 18 runs and 418 of its 457 stitches
+stood on the letters' outlines, the cap patching a defect upstream. A typed
+glyph gets no cap. ON, a text-cluster member that sewed satin hands its sewn
+polygon to the cap's `omit` (`_satin_lettering_cover`, read off the runs
+laid, never a verdict); a member that filled keeps its cap, since a tatami
+letter's rows end in open air at its edge. Fixture: stitches 2,192 → 1,774,
+trims 23 → 7 (the typed word: 3), cap runs 18 → 1, uncovered 0.0 both ways,
+every non-cap run byte-identical; Becker at 80 mm 6,588 → 6,444 at trims 43
+→ 36, uncovered 18.5 both ways; the 127 mm fixture and Becker at 100 mm,
+whose letters fill, byte-identical. Nine logos: five move — ENTHUSIAST 2,478
+→ 2,442 stitches at trims 18 → 16, Golden Tee 6,969 → 6,945 / 44 → 43,
+gaulke 4,536 → 4,454 / 41 → 38, drone 18,733 → 18,715 / 127 → 126, the
+screenshot 8,244 → 8,085 / 73 → 68; Becker (its letters fill at 100 mm),
+tires, Fremont and Bridge Bar byte-identical; trims 488 → 476 at −319
+stitches, with uncovered area, self-crossings and warnings unchanged on
+every one. Found on the way: the wide-column fold guard's load-bearing case
+on Becker at 80 mm is gone under the corner rule (coverage_max 4.67
+unguarded, against 7.07 on 2026-09-09); its test is pinned on the pruner it
+was read on.
+**Flipped ON the same day — Kent's call; False is the pre-flip cap.** `tests/test_edge_cap_lettering.py` (10);
+render `docs/renders/lettering-edge-cap-2026-09-19/`. *(built and measured
+2026-09-19 — scope-history, step 5)*
+
+## The bold-letter junction: `satin_junction_stack` (designed, built and flipped ON 2026-09-19)
+
+Kent's ruling on
+`docs/superpowers/plans/2026-09-19-junction-construction.md`: A + B + C as
+one flag. The defect: the R of the 127 mm fixture under
+`satin_lettering_split` folds one column over itself through one welded
+corner (311 self-crossing pairs, 294 in one junction blob), and across the
+nine logos 1,420 of 1,607 seam pairs sit in the 30–60° welds. A: a weld is
+refused past 30° of turn by the merge's own baseline — the corpus number
+(`tools/weld_turns.py`: the trough is 20–30° at 13 pairs on 75 welds) — and
+the arms end at the node; the fold guard's radius rule was tried at three
+windows and separates nothing. B: an arm ending at a meeting of several runs
+into the node by its own half-width. C: the satin junction cover under the
+arms. Measured: the R fixture 311 → 0 pairs at 7,253 → 7,283 stitches and
+trims 34 → 44 (the R's welds 8 → 3, all five over 30° refused), uncovered
+0.0 both ways; MARINE 80 mm 103 → 0 at trims 7 → 9 (the doc's A + C proxy
+paid +12: B is the lever on trims); Becker 100 mm under the split flag
+uncovered 35.5 → 0.0 at 8,612 → 8,353 stitches and trims 53 → 61, its remaining letter pairs not welds (read the same day: all four
+strokes that carry them are Goldman joins — the mitre, the pro's kind,
+counted within the run; nothing to build). Two predictions falsified: the layers inside the
+junctions do not rise toward the pro's (p95 3.3–4.2 against 3.9–7.2; B
+overlaps ends, it does not stack), and the fixture's trims pay +10 not +4.
+Nine logos: stitches 89,105 → 89,723 (+0.7%), trims 476 → 489 (Bridge Bar 82
+→ 95, Becker 38 → 44, Golden Tee 43 → 47, ENTHUSIAST 16 → 18, Fremont 56 →
+57, tires and the screenshot level, drone 126 → 122, gaulke 38 → 29), the
+lettering groups' self-crossing pairs 1,004 → 596 (Golden Tee 381 → 113,
+gaulke 186 → 106, drone 264 → 220, ENTHUSIAST 19 → 8, the screenshot 141 →
+136), uncovered unchanged on eight and Becker's 35.5 → 0.0, warnings
+unchanged on every one. Off byte-identical. `tests/test_junction_stack.py`
+(10); renders `docs/renders/junction-construction-2026-09-19/`. **Flipped ON the same day — Kent's call; False is the pre-flip
+engine.** Step 4's `DENSITY_EXTREME` was the
+instrument (below); its flip is Kent's again. *(built and measured 2026-09-19 — scope-history, the junction
+build)*
+
+## `DENSITY_EXTREME` on split satin was the instrument (fixed 2026-09-19)
+
+The first of the two findings the junction build surfaced, read the same
+day. `preflight._satin_rail_advance_mm` reads the satin rail pitch as the
+distance between points two apart (rails alternate A, B, A, B), and a
+split satin column carries extra penetrations along each cross, so on
+split lettering two apart was a mid-cross hop: the lettering plan's
+127 mm fixture under `satin_lettering_split` read 1.09 mm against the
+0.40 target (ratio 2.8, a `DENSITY_EXTREME` warn) on columns sewn at
+0.43. The reader now strips the splits with `stage6_satin.strip_splits`
+first, the reader the coverage map already used; unsplit runs are
+unchanged (MARINE 80 0.445 → 0.444, Becker 100 under the split flag
+0.455 → 0.415, the fixture 1.094 → 0.428, no finding). The playbook's
+parity trap in its second form — the parity broken by the splits instead
+of the slicing. `tests/test_density_split_satin.py` (3). *(read and
+fixed 2026-09-19 — scope-history)*
+
+## Rail comp: the flip's price and the seams (2026-09-29/30)
+
+Moved out of MASTER_SCOPE's quality-review Item 6 entry on 2026-09-30 to keep
+that file inside its budget; the verdict and a link stay there.
+
+- **Priced at the flip, 2026-09-29, same tree OFF → ON:** MARINE 80 mm 9 → 22
+  trims at +15% stitches, ENTHUSIAST `lost_frac` 0.2748 → 0.2565 for bare
+  6.27 → 7.10%, Becker 114 mm under `wide_columns` 5.38 → 7.47 — the trims a
+  ceiling in `tests/test_rail_comp.py`; the price ACCEPTED by Kent 2026-09-29,
+  "take the price, let it merge". *(measured 2026-09-29)*
+- **Trims.** Half of MARINE's trims were the walk's target sitting a
+  half-width off the web, fixed the same day — corpus trims 671 → 654 (OFF
+  634), MARINE 21 — the rest cursor-side and parked with
+  `satin_walk_cursor_reach_mm`. The junction tuck's floor and reach-in were
+  put in sewn terms the same day (MARINE bare 7.38 → 7.03% at +32 stitches,
+  corpus trims 654 → 651), and BECKER's C sews its 8 mm bowl as the cover's
+  fill BY DESIGN, two thirds of its junction bare —
+  `docs/renders/rail-comp-junctions-2026-09-29/`. *(measured 2026-09-29)*
+- **The seams, skeleton half (2026-09-29).** golden_tee's +65% stitches were
+  the SEAMS of stage 5's on-rails polygon (a hairline wherever two vectorised
+  edges meet, a skeleton branch each: 178 → 494 strokes), and the skeleton
+  reads that polygon with the seams of its construction closed — golden_tee
+  11,377 → 7,966, MARINE byte-identical, corpus trims 651 → 640, the
+  artwork's own boundary untouched (`docs/renders/rail-comp-seams-2026-09-29/`).
+  *(measured 2026-09-29)*
+- **The seams, rails half (2026-09-30, PR #565).** The rails, caps and
+  underlay still read the seamed polygon, so a spine down a closed seam had
+  its crosses stopped at the seam's walls: on main, golden_tee's mean satin
+  stitch was 1.301 mm with rail comp ON against 1.414 mm OFF — rail comp
+  sewing NARROWER than no comp. `satin_shape` now closes the polygon once and
+  sews the whole shape off it (raw polygon if the closed one sews nothing);
+  mean stitch 1.508 mm, golden_tee 7,952 → 7,965 stitches, 43 → 44 trims,
+  satin thread 7,777 → 9,208 mm; MARINE, ENTHUSIAST, ribbon_curve
+  byte-identical, drone +4 stitches. The same PR closes before
+  `simplified` mode simplifies, lets an unreadable artwork boundary close
+  nothing, and leaves a seam open where closing it would seal a bay.
+  *(measured 2026-09-30 — PR #565)*
+
+## Item 8's colour bundle — moved from MASTER_SCOPE (2026-09-30)
+
+Lifted verbatim to bring `MASTER_SCOPE.md` back under its 27,000-word budget after Kent's 2026-09-29 merge put two lanes' additions in one file (each was legal alone). The RULINGS stay in the summary; this is the measurement record behind them, which is settled and dated and was never current status.
+
+**Item 8 is MEASURED, nothing flipped (2026-09-10)**: the five colour flags priced as one set with `tools/flip_sheet.py` (26 fixtures, 80 mm, tree `920ebcd`). At the engine budget the four not ruled (`colour4`) take **−22 cones / −22 stops / −22 blocks** off nine fixtures with three grades up and none down; with the ruled `dissolve_phantom_blends` (`colour5`) −4,023 stitches and −77 trims on top, Bridge Bar's phantom halo gone on the render. At the Studio's shipped 6 the same four take **−47 cones / −43 stops** and every real logo lands on the promised 6 (drone 23 → 6), one synthetic grade down (summit F 16 → F 0, a new `THREAD_MATCH_POOR` block). Forced flat the bundle still takes 28 cones off five real logos (Golden Tee 24 cones under a budget of 12), so item 1 does not retire it. Forced flat the bind does most of it (−26) and the cap the rest (−21); only the dissolve is byte-identical there. Decision doc `docs/colour-bundle-decision-2026-09-10.md`. **Kent's ruling the same day: the four not ruled are ON by default as one set** (`enforce_color_cap`, `resnap_mask_matches_grader`, `revalidate_small_shapes`, `bind_resnap_all_classes`; the dissolve stays banked); False on each is the pre-flip engine. **Its one visible price on a real logo, found by the flip's own test run and understated by the sheet Kent ruled on: Bridge Bar's disc sews `6031` Limelight, 7.0 ΔE00 from the artwork's yellow (`0501` Sun sits 1.0 away), under the bind at both budgets — stage 2 hands the palette the disc REGION's mean, (223, 220, 77), pulled 12 ΔE00 darker and greener by the anti-aliased edges of the lettering, bird and rope inside it, the palette's nearest spool to that mean is Limelight, and the bound re-snap can no longer read the source pixels and correct it as the escape did. The fix is a robust region colour in stage 2, not in the bind — BUILT 2026-09-10 as `cfg.robust_region_colour`, DEFAULT ON since 2026-09-10 (Kent's pick after item 9; built OFF that day in #445 and flipped in the PR after on his ruling over the flip sheet and the Bridge Bar render; False is the pre-flip engine byte for byte): the one point each SLIC+RAG region hands the palette becomes the modal mean of its Lab pixels (the mean over the pixels within 5 ΔE00 of the per-channel median), chosen by `tools/region_colour.py`'s census over 20 lane fixtures / 422 regions — the median and the modal mean move nearly the same regions' spools (146 vs 163) and where they differ the modal mean lands on the artwork (the disc: mean → Limelight, median → Lemon at 2.1, modal mean → Sun at 1.0); 33 regions are bimodal, 27 of them on the phone-UI screenshot. The real logos move most of their AREA's spools (Bridge Bar 56.9%, drone 65.2%, the screenshot 65.0%; Golden Tee 33.8%), the photographs and ramps none. **Flip sheet, 26 fixtures at 80 mm:** 11 move, 15 byte-identical (every flat-lane fixture, gaulke, Fremont, the ramps, the photographs). At the engine's 12: Bridge Bar 12 cones and a repeated `0108` (13 blocks) → **11 / 11**, the disc `6031 → 0501`, `COLOR_STOPS_HEAVY` and one of three blocking threads gone, F 0 → F 4; the screenshot 11 → **10 cones**; Golden Tee 11 → 12 cones (+118 stitches, +5 trims) while its blocking threads fall 4 → 2; the synthetic photo-scene stub takes a fifth spool and +3,382 stitches / +29 trims at the same B 76 (the one real price, on no customer's artwork); net +2,498 stitches / +24 trims / +1 cone / 0 blocks. At the Studio's 6: net +2,244 stitches / +3 trims / 0 blocks / 0 stops; Bridge Bar **13,820 / 96 / 6 / 6 against 14,588 / 124 / 6 / 7** (−768 stitches, −28 trims, the repeated cone gone) with one more blocking thread on a shard while its 1,023 mm² disc leaves the blocking list, Golden Tee +249 stitches and one blocking shard fewer (four to three, all shards), the screenshot's 470 mm² ground off the list, drone level at five with its 211 mm² orange entering (Pumpkin at 10.9 for Fox Fire — the one large shape that gets worse); no grade letter moves. Renders `docs/renders/region-colour-2026-09-10/`: the disc goes from yellow-green to yellow. The flip's price is the sheet's, accepted: the stub's stitches and Golden Tee's twelfth cone at 12, drone's orange at 6. The photo-lane snapshot golden pins stage 2, so the flip re-captured it on ubuntu CI with the pre-change proof, on six of its seven keys (fur_ramp alone unmoved; region_blobs moves one stage-2 medoid on a blob the tonal split sews as its own bands, so its plan is byte-identical and the sheet read it as still). `tests/test_robust_region_colour.py` (10). *(measured 2026-09-10 — `tools/region_colour.py`, `tools/flip_sheet.py` `region_colour`)*** *(measured 2026-09-10 — scope-history's item 8 entries; decision sheet §2 bind entry)*
+
+
+## Defects 27 and 28 in full — moved from MASTER_SCOPE (2026-09-30)
+
+Both are LIVE and their verdicts stay in the dashboard; what moved is the evidence, under Kent's 250-word-per-entry cap the same day. #28 was 1,783 words — 7% of the whole file in one entry, and the single largest thing the total-only budget never touched.
+
+27. **Compression halos become their own cones — and the flat lane has dissolved them all along.** `stage2_quantize._quantize_population` runs "majority filter, then phantom-blend dissolve" and its comment records the bill without it ("two extra pale threads, plus ~30 sliver regions"); `Prep.bg_edge_rgb`'s docstring says it again. **The SLIC+RAG lane never got that pass** — so the defect is a missing PORT, not a missing idea. `logo_bridge_bar.jpg` (400 px JPEG, four ink colours) pays it in six grey cones — Cobblestone, Whale, Skylight, Saturn Grey, Silver, Umber — sewing the ringing around its black spokes. **FIXED, DEFAULT OFF** (`cfg.dissolve_phantom_blends`, `stage2_photo_segment.dissolve_phantom_blends`): a merged label that is more than half boundary AND a Lab interpolation of its own two adjacent sides folds into the side it is nearer, the page included, so the rebuilt edge lands at the step's midpoint instead of growing every shape by the halo stack. Bridge Bar 74 → **32** regions, 14,607 → 11,524 st, **114 → 64 trims**, silhouette −4.2%. Read the cone count (13 → 11) LAST: five of six greys go, all four real cones survive, and three NEW cones arrive on artwork the palette could not afford — what changed is what the cones SEW, measured by the palette's worst excess, **20.76 → 3.68** dE00. Residual: 0111 Whale survives as 12 shards, 0.7% of the design, cause not established. `tools/halo_spools.py` bills it — 44 halo regions before, 2 after — and across eleven fixtures finds halo cones on bridge (4), golden_tee (1) and gaulke (1) and NONE on the other eight, Becker (1.5 px/mm PNG, many thin features, no compression) included: the test is specific to compression, not to thin features. Corpus A/B, PRE-FIX and superseded: *"ten of fifteen fixtures byte-identical, gaulke a second clear win (blocks 4→3, trims 30→18), two mild negatives (golke +2 trims, tires +1)"* — the gaulke win was the lettering being deleted. **Post-fix, 26 fixtures, 2026-09-07: 22 byte-identical and FOUR move** — bridge_bar (14,338→11,506 st, **125→62 trims**, 18→12 blocks and cones), screenshot (71→**66** trims, 17→15 blocks — the "+2 trims" negative reversed), golden_tee (+24 st, trims flat), tires (+1 trim). **gaulke is byte-identical now**; it is no longer on this flag's credit side at all. **Kent has SEEN the render and ruled: leave it OFF and bank it** (2026-09-04) — not pending his eyes any more, deliberately parked. **That gaulke grade is RETRACTED as evidence (2026-09-06).** It read **F 0 → C 64 … the difference between "do not sew" and a usable design**; measured on the cones rather than the grade, the C 64 is a design that DROPPED ITS LETTERING: gaulke is black text on a white label, `off` loads `1375 Dark Charcoal` (L* 15.9, 288 st), and the flag leaves `0015`/`4071`/`0145` — **nothing darker than L* 85.7 on a white ground**. The only arm that loads real Black (`bind_resnap_all_classes`, `0020`) grades **F 16**. `THREAD_MATCH_POOR` grades per thread on its worst patch, so deleting the dark cone deletes the badly-scoring thread — the metric rewards not sewing the hard part (flip sheet). **That last conclusion is itself RETRACTED (2026-09-07)**: it shipped as yardstick-disagreements row 7, and it was the bug's artifact, not the metric's preference. Post-fix every gaulke arm loading real `0020 Black` grades HIGHER (F 16) than every arm that does not (F 4), and across seven arms × 26 fixtures **ten (arm, fixture) pairs remove a cone and not one scores higher** — all ten on fixtures at exactly 0, where the floor (defect 28) makes the question unanswerable on this corpus. What survives is the RULE that caught the bug: on a fixture where a flag removes a cone, read the cone list, not the grade. **CAUSE FOUND AND FIXED 2026-09-06 — one line, and the regression is gone.** `valid` inside the pass is `base_valid`, which already has the ENCLOSED pixels removed, so `~valid` is NOT the page: it also covers donut holes, letter counters and the inside of a label. Gaulke is black lettering on a white label on a black canvas, so reading `~valid` as the page told every letter it bordered the near-black background — its colour genuinely lies between that and the label's L* 98.8 ground — and the page endpoint DELETES rather than recolours: **12,961 px, 50.3 mm², the 21.0 mm² wordmark included, dropped to background.** The pass now takes stage 1's real background (`page_mask`). **Costs the flag nothing:** bridge_bar keeps 125 → 62 trims and 18 → 12 blocks, screenshot still 71 → 66 trims, gaulke byte-identical, and no grade moves either way. (An intermediate note here retracted the fold as the cause; that retraction was wrong — the probe behind it counted only relabelled pixels and a page-dropped label keeps its label. `tests/test_phantom_blend_photo.py::test_an_INTERIOR_band_is_never_sent_to_the_page` pins both directions.) The flip is a one-line default plus a 26-fixture scorecard recapture, to be decided alongside other gradient-lane work; his stated reasons for not flipping on the day were the two mild negatives and the five-of-six residual. *(measured 2026-09-04 — scope-history 09-04; `tests/test_phantom_blend_photo.py`; `docs/renders/halo-dissolve-2026-09-04/`)*
+
+28. **The largest quality wall in the corpus is three problems wearing one code — and one of them is two floors set 4× apart.** `THREAD_MATCH_POOR:block` grades **7 of 26 fixtures F 0** (14 of 52 matrix entries), all `gradient`, which is where real logo art goes. Decomposed 2026-09-06: **(1) the raw yardstick, 4 of 7** — `golden_tee`, `drone_render`, `region_blobs`, `summit_badge` clear every block once scored on EXCESS over the loaded spools (the photo route's 2026-08-24 rescoring, which the gradient lane never got). **REPRODUCIBLE as of 2026-09-07** (`tools/spool_remedy.py --yardstick`, no patch — excess is reported on every route, so forcing `_is_photo_class` and its confounds is unnecessary): it names those same four and no others. Nothing had reproduced this claim before, and its neighbour turned out to be a bug's artifact. **The offender set moves with the yardstick** — a thread's worst RAW patch can have a close loaded alternative while its second-worst does not, so 6 of the 24 findings block on a row raw scoring never looks at; a probe that keeps the raw top and reports its excess gets this wrong; **(2) halo cones, 1 of 7 — RETRACTED 2026-09-07, the category is EMPTY** (it read *"`gaulke_roofing`, defect 27's flag alone, F 0 → C 64"*; on the fixed tree that flag is byte-identical to `off` on gaulke on BOTH garments — F 4, raw 4, 2 blocking, worst ΔE **63.6 unchanged** — so the wall decomposes 4 + 0 + 2 and **gaulke is the seventh, unexplained**; its 63.6 names `1375`, a spool the design already loads, which points at category 1, unmeasured); **(3) survives EXCESS too — 3 of 7, not 2 (2026-09-07).** `screenshot` (`0111 Whale` excess 32.4, `2776 Black Chrome` 16.3), `bridge_bar` (`6156 Olive` 10.3) and now **`gaulke_roofing`**, which category (2) used to hold: it goes 2 raw blocks → **1** under excess, and the survivor is real — `3971 Silver` at raw 63.6, **excess 58.6**. So the wall decomposes **4 + 0 + 3**. **ROOT-CAUSED 2026-09-07: the MASK GAP accounts for TWO of the three, and it needs the small-shape floor to finish either** (`tools/spool_remedy.py --masks`). **(a) `gaulke` — the mask gap, newly named.** `revalidate_threads` and `_region_color_errors` claim the same estimator and have it (both take the median of the per-pixel CIEDE2000), but they do NOT share a MASK: preflight erodes the polygon raster one pixel and drops `p.bg_mask` (*"to keep anti-alias halo pixels from dragging a flat color toward the background"*), while `_region_footprint` is a bare `cv2.fillPoly` and does neither. On `Se6eddd27` (0.58 mm² at 16.1 px/mm) stage 4 scores **247 px** — 4.6× preflight's — and that set is BIMODAL, **103 near-black + 65 near-white**, so its median-of-per-pixel-dE makes `3971 Silver` the argmin **over the whole chart at 11.4 dE00**; preflight's eroded, background-excluded **54 px** read **[45,45,45]** and score that same Silver **63.6**. A **52.2 dE00 gap on one polygon.** Stage 4 is behaving correctly on the pixels it is given; the pixels are wrong. The RAW footprint is not held back by the small-shape floor — 247 px is above `THREAD_REVALIDATE_MIN_PX = 200`, `revalidate_small_shapes` alone leaves the region byte-identical, and an earlier draft of this entry had that backwards. (The MASKED footprint is a different matter — see the matched pair below.) **(b) `bridge_bar` — ALSO the mask.** A first version of this entry said "neither, still open" on the grounds that the two masks agree to 1.3 dE00 on `S880e5dff`. **That compared the wrong quantity** — the re-snap's gate reads the improvement over the best LOADED spool, not the assigned thread's score, and there the two masks read **1.8 against 10.3**, on opposite sides of `THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00 = 3.0`. So the raw footprint declines a re-snap the grader's mask would take. **(c) `screenshot` — the floor, and only the floor**: both footprints reach the same decision (`0015` best loaded either way, gain 31.3 vs 32.4) and both fail the pixel floor at 177/114 px; `revalidate_small_shapes` fixes it 32.7 → 1.4. **The mask and the floor are a matched pair**, which is the operational point: masking OUT the halo shrinks the footprint, so a shape the raw raster floated over the 200-px floor drops under it — gaulke 247 → 54, bridge_bar 240 → 156. `resnap_mask_matches_grader` alone therefore cannot re-snap either region; measured, bridge_bar needs **mask + `revalidate_small_shapes`**, which does move it (`6156` → `5866`, 21.3 → **16.2**) at the cost of one more block on that fixture, so it is improved rather than solved. On gaulke that pair is byte-identical to the mask alone, because the mask collapses the palette and `1375 Dark Charcoal` is no longer loaded for the small-shape rule to offer. **FIXED, DEFAULT ON since 2026-09-10** (`cfg.resnap_mask_matches_grader`, flipped with the colour bundle as one half of a pair): the re-snap applies preflight's two operations — erode one pixel, drop `p.bg_mask`, hairline fallback included — and the pixel floor then counts the MASKED set, which also feeds the small-shape restriction. Masks agree to **99.99% IoU** on gaulke and 100% on `logo_alpha` (the residual is `_region_footprint` rounding mm→px where `_region_color_errors` truncates; aligning the rasteriser would touch `tag_enclosed_background`, so it is deliberately left). **Corpus A/B, 26 fixtures: 19 byte-identical, −1,715 stitches, −5 blocks, −4 cones, +2 trims, and `logo_gaulke_roofing` F 4 → D 46 — no grade moves down anywhere.** **The effect is bigger than the one shape:** gaulke's cone list goes 6 → 3 and its plan palette 4 → 2, because the re-snap was reaching `1375` and `3971` *for halo pixels* — **a SECOND cause of defect 15's resnap escape**, distinct from the missing palette binding `bind_resnap_all_classes` treats (that one restricts WHERE the argmin may land; this one fixes WHY it goes wrong). **Residual, named:** `Se6eddd27` improves 63.6 → **16.7**, not to zero — with the halo gone the re-snap DECLINES the region and it keeps stage 2's `4174`, and `1375 Dark Charcoal` (5.0 dE00 from this artwork) is no longer loaded for the small-shape rule to offer; `revalidate_small_shapes` is byte-identical on top of this flag for that reason. Flipping it is Kent's — it moves the flat and gradient goldens the phase-4 spec pins. *(measured 2026-09-07 — `tools/spool_remedy.py --yardstick` and `--masks`; `tests/test_resnap_mask_matches_grader.py`, 10)* The mechanism under two of the three: **`revalidate_threads` refuses the shapes preflight condemns.** Stage 4 already re-snaps threads that drift off their colour during simplification (fix #6.3) — 46 of 153 shapes on `screenshot_phone_ui` wear a re-snapped thread — but `THREAD_REVALIDATE_MIN_PX = 200` against `preflight._MIN_COLOR_PIXELS = 50`, so **every shape of 50–199 px can be blocked and never corrected.** 12 refusals on `screenshot` (all in-band), 7 would change answer, worst `S43831dcd` at **177 px**: `0111 Whale` 32.7 ΔE → `0015 White` **1.4**. Corpus agrees with the split — refusals are 0/0/0/7/4 on the five other F fixtures against **63 (`bridge_bar`) and 12 (`screenshot`)**. **FIXED, DEFAULT ON since 2026-09-10** (`cfg.revalidate_small_shapes`, the pair's other half): ON, the re-ask uses `THREAD_REVALIDATE_MIN_PX_SMALL = 50` — preflight's own floor — and a shape admitted only by it may take only a cone the design already carried at pass entry. `screenshot_phone_ui_golke`'s worst thread ΔE00 **33.0 → 21.2** (`S43831dcd`, 177 px, `0111 Whale` 32.7 → `0015 White` **1.4**), **21 of 26 fixtures byte-identical**, and **no grade or block count moves anywhere** — `THREAD_MATCH_POOR` blocks per thread on its worst patch, so fixing six of a thread's shards is invisible while a seventh is bad. It fixes SEWN COLOUR that the scorecard cannot see, which is a phase-1 datum; the render is at `docs/renders/small-shape-resnap-2026-09-06/`. Two constructions rejected with measurements: the unrestricted chart argmin (buys `screenshot` 10 → 9 blocks but costs `drone_render` 4 → **5** and takes `bridge_bar` to **22** cones) and restriction to the stage-2 palette (13 spools against the design's 16, so it forbids moves onto cones already on the machine — no regression and no win). Residual, measured not guessed: `drone_render` 19 → **20** cones because a shard lands on `0674`, which the shipped pass otherwise VACATES. Flipping it ON is Kent's. `THREAD_MATCH_POOR` also has **no area floor at all** (worst shapes: min 0.58 mm², p50 3.17, max 1,648.5 — 12 of 23 under 5 mm²) while every sibling check has one. **It no longer judges `enclosed_background` regions** (2026-09-06): unstitched by default, their colour is the background's, and `revalidate_threads` already refuses that category error. Worth ONE finding across the whole matrix — `logo_gaulke_roofing` drops `4174` (24.5 ΔE00 on 6.16 mm²), F 0 → F 4, blocks 3 → 2, no grade letter moves. A hardening, not a rescue. Two rejected constructions are recorded with it: a plan-derived denominator (breaks ten deliberate `test_preflight.py` cases that pass a synthetic plan) and, before that, an instrument filtering `run.jump` — which is how the needle ARRIVED, not travel, and falsely made this look like eleven findings (DOCTRINE gotcha 2026-09-06). *(measured 2026-09-06 — `digitizer/tools/revalidate_floor.py`; scope-history 09-06)* **And the check knew which cone to use and did not say — FIXED 2026-09-06:** `_best_loaded_spool_error` ran on the photo route only, so off it the remedy read "pick a closer thread" without consulting the design's own cone list, and **5 of the F-wall's 24 blocking findings name a spool the design ALREADY LOADS** (gaulke 63.6 → `1375` loaded and 58.6 closer; screenshot 33.0 → `0015` loaded and 32.4 closer; bridge_bar 21.3 → 10.3; screenshot 17.3 → 5.0; drone 12.8 → 9.0) — the first two being this defect's own headline numbers. Reported on every route now, with `yardstick` in `extra` naming which one judged the severity (its ABSENCE used to carry that signal, a contract a test caught — DOCTRINE), and **no severity or grade moves anywhere**, measured over ten fixtures. Whether the gradient lane should be JUDGED on excess was **RULED 2026-09-10: it stays on RAW distance** — a logo's palette can be changed and a photograph's cannot, so on a logo the closest loaded cone is one to buy, not a pass; nothing in the code moves (the lane was never rescored) and row 4 of the disagreements closes. `tools/spool_remedy.py`, `tests/test_thread_match_better_spool.py` (11). **And the F wall has a DEPTH nobody had measured (2026-09-06, `tools/floor_depth.py`):** the score is `max(0, ...)`, so **12 of the corpus's 52 design/garment combos sit on exactly 0 with unclamped scores from −272 to −38 — a 234-point spread behind one printed value.** `screenshot_phone_ui_golke` must clear **312 points, ~11 blocking findings**, before its grade moves one letter; `drone_render` 228 (~8); the shallowest, `summit_badge` and `bridge_bar`, 78 (~3). That is the missing half of why a real thread fix here moves nothing — the check aggregates per thread AND the design is hundreds of points under water — and why `gaulke_roofing` is the one that moves (F 4, shallow, not floored). Un-clamping re-bases every grade, so it is a product call. *(measured 2026-09-06 — yardstick-disagreements row 6)*
+
+
+## Evidence moved from MASTER_SCOPE's live defects (2026-09-30)
+
+Kent's rule 4b caps a numbered entry at 400 words. These five entries keep their verdicts and their open questions in the dashboard; what follows is the measurement each rested on. Nothing here is current status — read the dashboard entry first, then this for the numbers.
+
+### Defect 19
+
+**MEASURED 2026-09-11, and GATED** (`tools/pro_silhouette.py`; the two sides are read differently ON PURPOSE — ours exactly from the plan's run kinds, his as a LOWER BOUND through `border_pro`'s certified fill-edge test, because a stitch file has no kinds). **Ours, `edge_cap` off: 5.9–100.0% of the sewn silhouette has no linear stitch on it** (3,266 mm; enthusiast 5.9, drone 20.2, Becker 24.5, gaulke 76.7, whitebg 82.6, **Fremont 100.0** — a badge whose satin is all interior lettering). **His: at least 19.1–26.1% of 7,063 mm of fill edge carries a certified border**, none in the fill's own colour block — he lays thread along fill edges as a matter of course; whether it adds to a whole silhouette is not knowable from a stitch file. **GATED AND FLIPPED ON, DEFAULT `"bean"` 2026-09-11** (Kent: "gate it, then flip"). The gate (`silhouette_cap(omit=…)`) caps only what is genuinely open: the bill falls from +8.6–100.4% to **+5.9–26.3%** (median +13.4%) and uncovered falls to **0.1–6.2%**. **Style NOT settled and still the sew-out's** — bean is cheaper in stitches on five of six, satin cheaper in TRIMS on five of six, and at Kent's own 25-stitch trim price the two are within 4%. **Two costs, stated:** the trim rate moves both ways (becker 6.26→8.03, gaulke 2.42→3.50, but fremont 4.55→4.28 and drone 5.26→5.24; four of six were already over the 4.1 professional ceiling with the cap off), and the cap re-loads a cone on **all six** fixtures — Kent ruled that stop acceptable rather than put a 5.4%-frontage cone on gaulke's edge instead of a 95.0% one (`test_duplicate_cone_layers` carries the carve-out). 45 tests moved; **no golden was recaptured** — the byte-identity guards pin `edge_cap="none"`, `conftest.PRE_FLIP`'s posture. **The accepted stop then broke TWO buyer-facing displays, caught by CI's e2e and fixed the same day (2026-09-11).** Since the cap re-loads a cone, sew BLOCKS and SPOOLS TO BUY stopped being the same number — and both screens were showing blocks: the Digitize panel's summary read *"3 colors"* for a two-spool vector logo (`e2e/digitize-auto-start.spec.js`, whose own comment says it asserts the colour count because *"the colour count is the thing the customer pays for"*), and the review's **"Threads to load"** list — a shopping list — named one spool twice with its metres split across the two rows, so a customer buying from it buys a spool they have and under-orders the one they need. `digitizer.spoolCount` folds by cone id for the panel and `QualityReport.cones` folds and SUMS for the list (the thread total is unchanged: a sum of sums is the same sum). **This is MASTER_SCOPE defect 42(e)'s rule hitting a second time** — "a colour is a cone to buy and a re-thread on a single-needle machine" — and the lesson is that a ruling which changes what the ENGINE DOES changes what every existing display of it MEANS. *(fixed 2026-09-11 — `QualityReport.spec.js` +1, `digitizer.spec.js` +3, both mutation-proved)* **`satin_rails_follow_edge` is NOT answerable this way** — a stitch file holds the rails and not the artwork, so asking whether they reach its edge is circular. *(measured 2026-09-11 — `docs/superpowers/plans/2026-09-11-edge-cap-from-the-pro.md`; `tests/test_pro_silhouette.py`, 4)* **The flip's CLOCK was not measured and cost 86 minutes a design for one day.** The gate built its cover as `unary_union(lines).buffer(...)`, which NODES every satin zigzag at every crossing — Fremont's 138 runs / 9,677 points become a 49,535-part MultiLineString — and buffering that soup was **5,189 of `hotel_fremont_hat`'s 5,203.9-second prep**, exhausting a 39 GB box (GEOS `bad allocation`). Buffering each run and unioning the RIBBONS is the same set (`buffer(A ∪ B, r) == buffer(A, r) ∪ buffer(B, r)`) and gives a **byte-identical `ours.dst` in 14.5 s** (md5 `57c1abf9…`, compared against the 86.7-minute run itself); `hotel_fremont_patch` — the corpus's missing 23rd design — preps in 26.7 s. Cap-only speedups, output identical stitch-for-stitch: roofing_lc 60.5×, drone 14.0×, gaulke_jb 1.2×. *(fixed 2026-09-12 — PR #464; `tests/test_edge_cap.py` +2, both watched red; DOCTRINE "Never `unary_union` a stitch path before buffering it")*
+
+### Defect 5
+
+is 95.8% grid noise). **The per-stroke rung was BUILT INERT 2026-09-05 and WIRED behind the flag 2026-09-06** (`stage6_satin.classify_strokes` still has no caller; the pipeline consults the same reading via `_stroke_rung_takes` — do not read "inert" as current): at the bare ≥ 0.75 area rule it reproduces the plan's Becker @ 100 mm 274.0 → 1,708.3 mm² exactly — but that rule is NOT what shipped (see the cap veto below, which cuts it to **3 regions, 78.8 mm²**); it adds 5.7 mm² at the corpus's own 80 mm (Becker is ALREADY 88.2% satin there) and +143.8 mm² over 14 fixtures. Becker's 17 regions sit ON the `cv = 0.50` gate — 11 within ±0.10 at 80 mm, 16 at 100 — so its satin share is a segmentation coin flip, not an artwork property (scaling a fixed polygon 1.25× moves cv < 0.02). Its real value is decisiveness (median |cv − 0.50| 0.154 per region vs 0.221 per stroke; knife-edge share 40.9% → 24.7%), and it MUST be promotion-only or it demotes 15 regions incl. one of 638.8 mm² (DOCTRINE). **The flag exists since 2026-09-06 — `cfg.satin_per_stroke`, DEFAULT OFF, byte-identical off** (threaded to all three call sites; the rung sits on the `dt_irregular` branch alone so the machine cap and Law 31's floor stay out of its reach). **The machine cap is a VETO in it, not a vote** — the render caught the first cut leaving 28.0 mm² of bare cloth (a 9.32 mm stroke sewn as capped satin, DOCTRINE's measured negative). ON, measured on the stitches: Becker @ 100 mm goes **B 88 `DENSITY_EXTREME` → A 100 with no findings**, uncovered 0.0 both ways, crossing 2.2 → 4.0%, median column 0.29 → 0.64 mm (**a whole-plan figure and 80% tatami turns** — our SATIN runs there measure 3.82 mm median, p90 4.93, against the pro's 2.52/5.00; read our widths off `satin_columns.py`'s second row, DOCTRINE 09-06), 11,374 → 11,206 stitches, and satin **75.2 → 154.0 mm² — 3.5% → 7.2% of the 2,125.6 mm² that actually SEWS**, which is the only honest denominator here: 1,462 mm² of Becker is `BACKGROUND_ENCLOSED` and never becomes thread, so every "% of region area" quoted for this rung (the plan's 7.6% → 47.6% included) divided by shapes the plan leaves open (DOCTRINE, 2026-09-06). Modest, and honest — but the gap's old diagnosis is WRONG: **the pro's own p90 column is 5.00 mm** on `beckers_logolc.dst`, which is 95.7 × 58.3 mm, i.e. the same artwork at our test size, so the 5 mm cap is not what separates us and raising it is not the path (DOCTRINE 09-06). What differs is how few shapes reach the tier — ONE at 100 mm — and the columns we do sew are already professional width. **Segmentation, full stop.** Separately, and now FIXED behind a flag: **100% of that fixture's `ARTWORK_UNCOVERED` at 80 AND 90 mm is inside SATIN shapes** — the crotch of the K (37.2 mm² at 80, 32.2 at 90) and an R, where arms meet and no cross is placed. **`cfg.satin_patch_junctions`, DEFAULT OFF, byte-identical off** (2026-09-06): sews what the emitted thread missed, as tatami under the shape's own id, and takes uncovered **23.8 → 0.0 mm² at 80 mm and 44.5 → 0.0 at 90, B 76 → B 88**, for +7-8% stitches — and clears the corpus's only other positive too (`photo_scene_stub` 6.5 → 0.0, +2%), i.e. **30.3 → 0.0 mm², 100% of the bare cloth in SATIN shapes**. Corpus A/B at 80 mm: **23 of 26 fixtures byte-cost-identical, +0.25% overall**, with one over-fire (`logo_bridge_bar` +59 st at 0.0 uncovered both ways — this pass is deliberately stricter than the grader). It cannot reach the corpus's two LARGEST uncovered figures — `photo_subject_stub` 956.0 mm² (23.4%, D 58) and `photo_grass_macro` 407.5 (8.9%, B 76) — and does not need to: both are baseline AND the parked thread-paint ruling (`photo_subject` routes to `streamline_fill`; coverage p50 0.49/0.54, inside DOCTRINE's 0.52-0.59 band). Four cross-LENGTH knobs were measured first and none reached it. Flipping it is Kent's — the patch's tatami sheen inside a satin letter is a look question (render: `docs/renders/junction-bare-2026-09-06/`). The p90 gate IS blind to a tail — `promoted_ribbon` admits `Sead76620` at p90 2.67 mm whose width maxes at 7.80, 2.8% of the spine over cap — but that tail is NOT the cause: lifting `_rail_points`' 5 mm ceiling to 99 moved uncovered 23.8 → 22.8 mm² for +13% stitches, and `satin_rails_follow_edge` only to 21.0 (DOCTRINE 09-06, hypothesis refuted the same day). @ 80 mm byte-identical (Becker already reads 54.5%, above the pro). **Flipping it ON is Kent's — render at `docs/renders/satin-per-stroke-2026-09-06/`.** *(measured 2026-08-14/17, 2026-09-05/06 — `docs/satin-gate-attribution-2026-08-16.md` §9; plan §PR 2)*
+
+### Defect 18
+
+*(2026-09-01 — `test_duplicate_cone_layers.py`, 13)* **A THIRD mechanism is open, found 2026-09-06 by `COLOR_STOPS_HEAVY`'s new `repeated_cones` field: 4 of the corpus's 52 design/garment combos still sew a cone in more than one block WITH this fold ON**, by two routes it cannot see — `region_blobs` sews `0182` in two blocks that are each a gradient BLEND BAND from a different parent (`Sb971b1c2-blend2`, `S0ad9734d-blend4`; a band is not a layer declaration), and `screenshot_phone_ui_golke` sews `3971` in two blocks of plain regions that all carry `thread_resnapped_de00` in layers 2 and 8 — i.e. the duplicate is created by `revalidate_threads`, not by stage 2's quantize, which is the only thing this fold addresses. Each costs a real machine stop and each merge is FREE (the cone is already loaded). Recorded, not fixed: extending the fold to bands and to re-snap output is a sequencing change owed its own measured work. The finding now names it to the operator. *(measured 2026-09-06 — scope-history 09-06)* **SPLIT AND HALF-CLOSED the same day.** The re-snap half needs no new code: `rehome_resnapped_regions` refuses a cone no layer declares (its docstring: *"there is no 'home' to send it to"*) and this fold works on that same quantize-time list, so an invented cone is invisible to both — verified, `3971` is declared by none of `screenshot`'s 13 layers. `cfg.bind_resnap_all_classes` (defect 15) removes it outright, so fixing the rehome would add a SECOND switch for a cause the first already prices. **Still open: the blend-band half** — `region_blobs` sews `0182` in two bands of different parents, built in stage 6 long after this fold, and unchanged with the bind ON. One synthetic fixture; any fix is a sequencing change. *(measured 2026-09-06)* **PRICED 2026-09-06 (`tools/cone_revisits.py`), and "each merge is FREE" is true of THREAD cost only:** across 26 fixtures × 2 garments the four duplicates sit at block gaps of **7 and 11 — NOT ONE is adjacent**, so every remaining fold is a reorder through `covered_by`, which `cone_merge_survey.py` already measured as the expensive across-layer case. Both halves re-confirmed by re-running with the flag rather than on the record: `screenshot` 17 blocks → **11 with the duplicate gone**, `region_blobs` 16 → 16 with it intact. So the open half is **one GENERATED fixture** (`make_photo_region_fixture.py` — three Gaussian blobs) at an 11-block reorder, against a flag already built that closes the other half and buys `screenshot` six blocks. That is the case against building the band fold, in numbers. `tests/test_cone_revisits.py` (8). *(measured 2026-09-06 — scope-history 09-06)*
+
+### Defect 20
+
+needle-breakage signal. ~~No off switch for photo classes~~ — stale when written; it landed 2026-09-01 (PR #316), so **the other half is measured: the tier costs −22,352 st / −16.4% of the photo lane and with it OFF four of nine score HIGHER, none lower** (B 88, B 88, A 100, A 100), coverage_max falling wherever it moves. **A yardstick finding, not a flip** — nothing in the scorecard scores tonal gradation, and Kent ratified the tier (spec decision 2). Detail: `docs/scope/1-auto-digitizing-quality.md`. *(2026-09-06 — `digitizer/tools/tonal_split_ab.py`; 2026-09-02 bisect, [notes](docs/scorecard-baseline-attribution-2026-09-02.md))* **Numbers above are in the pre-2026-09-03 coverage base** (one 0.40 fill = 1.0); since the fill row moved to 0.15 the same stack reads 8.0 against a 9.33 block / 6.67 warn, i.e. a warn — the thread is unchanged, the ruler is in fill layers now (scope-history 2026-09-03). **The re-base left old-base numbers in the PROSE, and four were found and fixed 2026-09-06** — `preflight`'s module docstring said "1.0 is one full covering layer" (it is one 0.40 mm ribbon; a fill lays 2.67), `_coverage_findings` named `COVERAGE_WARN_UNITS`/`COVERAGE_BLOCK_UNITS` and gave their values as "2.5 and 3.5" when they evaluate to **6.67 and 9.33**, and two `test_preflight.py` docstrings quoted 3.00 and 3.5 beside assertions computing 8.00 and 9.33. **And the check has never fired on real artwork:** swept over all 26 fixtures, `DENSITY_STACKED` fires on **0 of 52 combos** — six carry a peak over the warn level (`photo_dof_meadow` 7.97 the highest, still under the 9.33 block ceiling) and every one yields **0.0 mm² of qualifying patch**, so `_COVERAGE_MIN_PATCH_MM2` is doing all the work and the synthetic `_stacked(n)` plans are the ONLY exercise a block-severity check gets. It now emits `patches`/`worst_patch_mm2`/`worst_patch_at_mm` — the "where" its own message always asked for and discarded. `tests/test_stacked_where.py` (6). **And the SAME row change silently recalibrated a second check**: `SAME_HOLE_HEAVY` scores repeat points over total penetrations, so the 0.15 mm row grew its denominator — A/B'd at both pitches, penetrations **×1.17–2.30**, repeat points ×0.98–1.15 (28 vs 28 on `logo_whitebg`), rate **×0.43–0.83**, and `max_strikes` **identical on all four fixtures**. Its docstring's "our benchmark is 9.8%" is old-base and now reads ~2.7%; the corpus runs 0.001–0.103 and it fires on **0 of 26** against a threshold set as "far above" 9.8%. Gate 4 in miniature. `SAME_HOLE_RATE_MAX` deliberately NOT retuned (its baseline is pro files at their own pitch); fixed by emitting the density-invariant half — `max_strikes`, `points_3plus`, `worst_at_mm`. `tests/test_same_hole_depth.py` (8). *(measured 2026-09-06 — scope-history 09-06)*
+
+### Defect 15
+
+gradient and the re-snap sews more spools than the cone list names. **Counted 2026-09-06** (`digitizer/tools/resnap_escape.py`): **34 cones added corpus-wide, 25 outside the selected palette, every escape on the GRADIENT lane** — screenshot 7, drone 5, bridge_bar 5, golden_tee 4, gaulke 3 — while all nine photo-class fixtures add none. The binding works; the lane real logo art routes to never got it. **FIXED, DEFAULT ON since 2026-09-10** (`cfg.bind_resnap_all_classes`, Kent's ruling on the colour bundle — `docs/colour-bundle-decision-2026-09-10.md`; False is the pre-flip engine): binding every class removes **19 colour stops across five designs** (drone 19→14, bridge_bar 18→14, screenshot 16→11, golden_tee 16→13, gaulke 6→4; gaulke also −10.9% stitches, drone +3.1%) and costs **+2 blocks net** — screenshot 10→8, golden_tee 2→5, bridge_bar 3→4. **It is NOT a raw-yardstick artefact:** forcing the excess yardstick (probe, reverted) still gives golden_tee D 52→F 22 and drone D 40→F 28, the latter with no thread block moving, so part of the price is the extra stitches. The escape is the pipeline BUYING colour accuracy with unplanned cones. **I would not flip it on this evidence** — the value is the price tag. *(measured 2026-09-06 — `tests/test_bind_resnap_all_classes.py`, 13)* **A benefit the price tag did not have, added 2026-09-06:** binding also removes a SPOOL REVISIT on real customer artwork. An undeclared cone can only exist because this escape put one there, and nothing rejoins the regions that land on it (defect 18's third mechanism) — `screenshot_phone_ui_golke` goes **17 blocks / 16 distinct with `3971` sewn twice, to 11 / 11 with no duplicate**. That belongs on the credit side of this trade. *(measured 2026-09-06 — scope-history 09-06)*
+
+### Defect 15
+
+is untouched; only the photo direction moved. **DETECTION BUILT 2026-09-11, DEFAULT OFF** (`cfg.detect_photographic`, stage 1.25): EXIF camera then the shipped YuNet detector; a hit fills `is_photographic` in as True — never False, never over a declaration — so it can only ADD photographs. Gate 2 untouched: no colour gate moves. **It changes nothing on this repo's artwork** — all 22 committed fixtures read identically on and off, because not one carries a camera header or a face (0 false positives across 14 logos; `owl_kent` is the real photograph BOTH signals miss, which is why the declaration stays the fallback). The value is on real uploads, which is

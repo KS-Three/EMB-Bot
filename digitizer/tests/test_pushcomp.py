@@ -58,6 +58,15 @@ def region(poly: Polygon, sid: str = "S0", layer: int = 0) -> Region:
 
 
 def planned_for(poly: Polygon, directional: bool, fabric=PIQUE, **kw):
+    # On the polygon-growth path, explicitly, since `satin_rail_comp` went ON
+    # by default (2026-09-29, Kent's pick): every reading in this file is of
+    # the pull that stage 5 grows INTO the polygon and stage 6 then sews --
+    # `column_of` hands `satin_shape` stage 5's polygon and nothing else. On
+    # the rails the polygon is the artwork and the pull is stage 7's to pass
+    # (`rail_comp_mm`), so through this harness a bar reads no overhang at
+    # all and its caps stop at the artwork. That hand-off, and the cutback it
+    # owes, are pinned in `tests/test_rail_comp.py`.
+    kw.setdefault("satin_rail_comp", False)
     c = PipelineConfig(overlap_mm=0.25, directional_comp=directional, **kw)
     planned, _ = resolve_overlaps([region(poly)], fabric, c)
     return planned[0], c
@@ -276,11 +285,38 @@ def rail_overhang(art: Polygon, pts) -> float:
 # whoever re-pins it where it reproduces. Note `tools/pushcomp_pins.py` prints
 # tuples WITHOUT `edge_cap="none"` and so no longer matches this test's own
 # call; these were computed through the test's exact two lines.
+#
+# RE-PINNED 2026-09-29, three of the four, for `cfg.satin_rail_comp` ON by
+# default (Kent's pick on the labelled sitting, `docs/kent-review-2026-09-28.md`).
+# The isotropic baseline is still isotropic -- the AMOUNT of pull is the
+# fabric's and untouched -- but every satin column now takes it on the rails
+# instead of on the polygon, so its crosses, caps and underlay move: whitebg
+# 4575 -> 4580 penetrations / 14318 -> 14333 bytes, ribbon 991 -> 990 and
+# 995 -> 990 (its two garments now sew the same column). Earned the same way
+# as the pins above: a worktree at the pre-change commit (`72102e8a`, main)
+# reproduces all three old tuples byte-for-byte on this machine
+# (`tests/test_pushcomp.py::test_flag_off_is_byte_identical_to_the_shipped_engine`
+# green there, 2026-09-29), so what moved is the engine. `towel` stays
+# un-re-pinned for the standing reason -- the pre-change tree does not return
+# its committed tuple here -- and the flipped engine gives
+# ("5156a48fda60f52313ed", 6186, 19151) on this machine, recorded for whoever
+# re-pins it where it reproduces.
+#
+# RE-PINNED AGAIN 2026-09-29, the same three, one penetration each: under rail
+# comp a stroke's first underlay run now starts at the raw spine's end, on the
+# travel web, and its first stitch carries the needle out to the cap
+# (`satin_shape`, the walk-target seam `underlay_on_column` already cured) --
+# so every free-ended satin stroke gains one underlay penetration: whitebg
+# 4580 -> 4581, ribbon 990 -> 991 on both garments. The pre-change tree
+# (`main` at 8a48c3b4) reproduces the three old tuples byte-for-byte on this
+# machine (that test green there, 2026-09-29); `towel` stays un-re-pinned for
+# the standing reason, and the fixed engine gives
+# ("94412583a538b4d421b8", 6187, 19154) here.
 GOLDEN_FLAG_OFF = {
-    ("logo_whitebg.png", "left_chest"): ("89788936d8ce5223b304", 4575, 14318),
+    ("logo_whitebg.png", "left_chest"): ("4f4bfa09c27d011be7bb", 4581, 14336),
     ("logo_whitebg.png", "towel"): ("98c918e7c1576e46f623", 3258, 10349),
-    ("ribbon_curve.png", "left_chest"): ("723d6913a38596ea5a94", 991, 3497),
-    ("ribbon_curve.png", "hat_front"): ("fec9e9e6401f55d4c1dc", 995, 3509),
+    ("ribbon_curve.png", "left_chest"): ("4b87ae5794c312193e9c", 991, 3497),
+    ("ribbon_curve.png", "hat_front"): ("58849b92914232dc6c06", 991, 3497),
 }
 
 

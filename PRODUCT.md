@@ -40,7 +40,7 @@ row 7's sidecar count grew from 55 to 85 while staying one-per-font. Rows 2, 4,
 | 3 | Curated starter design pack (12–24 licensed designs via DST import) | ❌ Not started | no trace in repo |
 | 4 | Basic shapes tool (circle / rect / heart / star) | ✅ Done | `app/src/lib/shapePresets.js` generators + `ShapePanel.svelte`, new `"shape"` element type riding the manual-draw lane (`shapesToRegions → buildQualityDesign`); all four kinds verified digitizing live 2026-08-11 (star-tip coverage pinned in vitest); recipe (`kind`+`params`) persists in `.embproj` |
 | 5 | Thread palette sweep (remaining Ink/Stitch `.gpl` brands) | ✅ Done | 68 brand charts in `tools/palettes/`, matching the policy-filtered count (brands from companies that sell embroidery machines/software are excluded on purpose) |
-| 6 | `.embproj` project file save/load | ✅ Done | `app/src/lib/projectFile.js` |
+| 6 | `.embproj` project file save/load | ✅ Done | `app/src/lib/projectFile.js`; since 2026-09-20 the file also carries the uploaded originals (`sources`), so a design opened on another machine digitizes from the customer's file, not the preview |
 | 7 | Font-license compliance (hard gate before first dollar) | ✅ Done (shipping posture) | Per-font research was done on every flagged case, and **every one of them was pulled** — `milli_marif_bold`, `tt_directors`, `tt_masters`, `dejavufont` by name, each with its reasoning, in the `PULLED` set in `tools/build-embf.mjs` (enforced in the build, not a note), plus all 13 ShareAlike fonts on Kent's 2026-08-04 call. **`milli_marif_bold` is the case to read:** it *had* an adapter's permission email and full OFL-1.1 text, and that was still not enough — nothing on file confirmed the grant covered commercial embroidery distribution, so it went. (Until 2026-09-08 this row cited that font's `src/fonts/milli_marif_bold.LICENSE.txt` as the evidence that research had been done. The research is what deleted that file, on 2026-08-04 — so the row gating the first dollar was offering a pulled font's removed sidecar as proof of compliance.) The "zero sidecars ship" gap is closed, and is now closed BY CONSTRUCTION rather than by a count: **85 fonts ship as `.embf` in `bin/` and 85 `.LICENSE.txt` sidecars ship one directory UP, not beside them** — the binaries land in `src/fonts/bin/` (`BIN_DIR`, `tools/build-embf.mjs`) and the sidecars in `src/fonts/`, both served under `/fonts/` from `app/public/fonts/`, which is a generated, gitignored copy. (Re-counted 2026-09-08 and re-verified from the build script and `git ls-files` 2026-09-14; it was 55 when this row was written, so the 1:1 invariant has held across a 30-font expansion. This row said "beside them" until 2026-09-14 — the count was always right and the path never was, which is the kind of line that sends someone looking in an empty directory.) It is not a manual count any more — `test/font-license.test.js` asserts that *every shipped font's sidecar still resolves to its manifest `licenseId`*, and pins the two mislabels this project has actually hit (an NC/ND variant resolving to a permissive id, and the ALLOWED set widening silently); `test/embf-guard.test.js` guards the binary library. Both run in the `engine` CI job, which is required on `main`, so a font added without a sidecar or with a non-allowed licence fails the build rather than shipping. All license-flagged fonts were pulled from the build in the 2026-08-04 audit pass rather than kept; the remaining legal question only gates *restoring* pulled fonts (see "Known compliance risk"). |
 
 ## Launch posture (decided)
@@ -61,6 +61,10 @@ row 7's sidecar count grew from 55 to 85 while staying one-per-font. Rows 2, 4,
   per-shape override the Digitize panel's Border select does, so the panel
   stays the place for the finer choice (bean vs auto). A shape sewn as satin
   gets no border from either — the engine's rule, stated on the item.
+  Since 2026-09-29 a left-click on any shape — auto-digitized, hand-drawn or
+  preset — opens a popover with that shape's controls where it is; the
+  right-click menu is unchanged; a hand-drawn shape's points and curve
+  handles are dragged there too.
 
 ## Explicit non-goals (parking list — not the Ember bar)
 
@@ -104,6 +108,26 @@ be a separate ruling.
   check, with projects staying local (no server-side project storage) — but
   this was tabled, not committed. Pricing tiers and font-gating are tabled
   with it. Needs its own decision session before it can block launch.
+
+- **Direct send to embroidery machine (WiFi).** Kent asked (2026-09-30)
+  whether EMB-Bot could replace SmartStitch's own WiFi utility, **RnEmbNet**,
+  and push designs to his S-1501 over the network. Findings:
+  - RnEmbNet is a closed, compiled desktop app by **Raynen** (raynen.cn); the
+    machine's transfer protocol is proprietary and undocumented. Building a
+    drop-in replacement is not something this project can do from the app
+    alone — it would need a protocol spec / SDK from Raynen or SmartStitch, or
+    a device that speaks it.
+  - SmartStitch's "WiFi Adapter (1501 only)" is **not** a wireless drive — it
+    is a plain USB WiFi network card that gives the machine its radio. It hosts
+    no files, so there is nothing on the LAN to copy a design onto; the only
+    thing that sends a file over that link is RnEmbNet's own protocol.
+  - **What shipped instead (this PR): "save to a folder" in the Download step.**
+    The operator points EMB-Bot at RnEmbNet's send-folder once and every export
+    lands there, cutting the hunt-for-the-file step. It does not talk to the
+    machine — RnEmbNet still does the transfer. Chromium-desktop only (File
+    System Access API); other browsers fall back to a normal download.
+  - Real direct-send stays open, pending vendor documentation or a
+    WiFi-storage device the S-1501 will read from its USB port.
 
 ## Known compliance risk
 

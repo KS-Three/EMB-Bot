@@ -274,10 +274,15 @@ def test_per_shape_underlay_override_beats_the_photo_default_both_ways():
 
 
 def test_photo_satin_underlay_is_a_single_spine_run_not_zigzag():
-    # 1.4 mm ribbon + fleece's 0.5 mm pull comp each side = 2.4 mm column,
+    # 1.2 mm ribbon + fleece's 0.5 mm pull comp each side = 2.2 mm column,
     # under SATIN_ZIGZAG_ABOVE_MM (2.5) so stage 6's width upgrade never
-    # fires and the style contrast is what gets measured.
-    ribbon = lambda: [region(bar(30, 1.4), "T", MID, 0)]
+    # fires and the style contrast is what gets measured. Was 1.4 mm until
+    # 2026-09-29: with the pull on the rails (`satin_rail_comp`, Kent's
+    # pick) the upgrade reads the ARTWORK's width field plus two pulls, and
+    # the field over-reads a 1.4 mm bar as 1.67 mm (half 0.83, raster), so
+    # 1.4 landed at 2.67 and the zigzag fired on the photo arm too; 1.2
+    # reads under the line on both the artwork and the grown polygon.
+    ribbon = lambda: [region(bar(30, 1.2), "T", MID, 0)]
     flat, _ = plan_for(ribbon(), fabric=FAB_NAP)                 # zigzag
     photo, _ = plan_for(ribbon(), fabric=FAB_NAP, design_class="photo_subject")
     assert underlay_runs(flat, "T") == 2, "nap preset: spine run + zigzag"

@@ -286,4 +286,15 @@ PRE_FLIP["keep_thin_strokes"] = False
 # across two fixtures to keep a number green would have been the
 # fit-to-output move this repo's doctrine warns about.
 PRE_FLIP["strip_letterbox"] = False
+# `satin_rail_comp` joined the flipped set 2026-09-29 (Kent's pick on the
+# labelled sitting, `docs/kent-review-2026-09-28.md`), for the reason every
+# entry above gives: ON, a satin-tier shape keeps its artwork polygon in
+# stage 5 and takes the fabric's pull on its rails in stage 6, so every satin
+# column's crosses, caps, underlay and trims move -- and an arm measured
+# before that day was measured on the grown polygon. Measured at the flip:
+# left ON, 29 tests across 14 files moved (`docs/kent-review-2026-09-28.md`,
+# "Outcome"); none of them reads this dict, so the entry is the posture, kept
+# for the next test that prices a colour flag on a satin fixture. A test that
+# is ABOUT the rails is `tests/test_rail_comp.py` and names the flag itself.
+PRE_FLIP["satin_rail_comp"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

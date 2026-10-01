@@ -1,0 +1,859 @@
+{
+  "photo_px_per_mm": 10.0,
+  "truth": [
+    {
+      "shape": "satin-4mm",
+      "dx_mm": 0.4,
+      "dy_mm": -0.3,
+      "block": null
+    },
+    {
+      "shape": "satin-5mm",
+      "dx_mm": 0.4,
+      "dy_mm": -0.5,
+      "block": null
+    },
+    {
+      "shape": "fill-B-0.20",
+      "dx_mm": -0.4,
+      "dy_mm": 0.0,
+      "block": null
+    },
+    {
+      "shape": "seam-A-0",
+      "dx_mm": -2.0,
+      "dy_mm": 0.0,
+      "block": null
+    }
+  ],
+  "modes": {
+    "corners": {
+      "ecc": null,
+      "compare": {
+        "features": [
+          {
+            "name": "lock-A",
+            "role": "bar",
+            "d_width_mm": 0.026,
+            "d_height_mm": 0.004,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "lock-B",
+            "role": "bar",
+            "d_width_mm": 0.051,
+            "d_height_mm": 0.004,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "fill-C",
+            "role": "square",
+            "d_width_mm": 0.022,
+            "d_height_mm": 0.014,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "fill-B-0.20",
+            "role": "square",
+            "d_width_mm": -0.381,
+            "d_height_mm": 0.002,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "fill-D-0.15",
+            "role": "square",
+            "d_width_mm": 0.02,
+            "d_height_mm": -0.004,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "fill-A-0.40",
+            "role": "square",
+            "d_width_mm": 0.006,
+            "d_height_mm": 0.017,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "satin-3mm",
+            "role": "bar",
+            "d_width_mm": 0.038,
+            "d_height_mm": 0.022,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "satin-4mm",
+            "role": "bar",
+            "d_width_mm": 0.419,
+            "d_height_mm": -0.303,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "satin-5mm",
+            "role": "bar",
+            "d_width_mm": 0.421,
+            "d_height_mm": -0.502,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "straight-A-2.5",
+            "role": "path",
+            "d_width_mm": -0.019,
+            "d_height_mm": 0.022,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "curve-A-2.5",
+            "role": "path",
+            "d_width_mm": 0.004,
+            "d_height_mm": 0.033,
+            "d_coverage": 0.003,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "straight-B-2.0",
+            "role": "path",
+            "d_width_mm": -0.011,
+            "d_height_mm": 0.022,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "curve-B-2.0",
+            "role": "path",
+            "d_width_mm": 0.011,
+            "d_height_mm": 0.021,
+            "d_coverage": 0.003,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "word-2",
+            "role": "word",
+            "d_width_mm": 0.005,
+            "d_height_mm": 0.011,
+            "d_coverage": 0.009,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "word-1",
+            "role": "word",
+            "d_width_mm": 0.023,
+            "d_height_mm": 0.029,
+            "d_coverage": 0.013,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "word-0",
+            "role": "word",
+            "d_width_mm": 0.005,
+            "d_height_mm": 0.009,
+            "d_coverage": 0.013,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "word-3",
+            "role": "word",
+            "d_width_mm": 0.02,
+            "d_height_mm": 0.018,
+            "d_coverage": 0.023,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-A-0",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": -0.053,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-A-0.25",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-A-0.5",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-A-1",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-B-0",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-B-0.25",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-B-0.5",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-B-1",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": -0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          }
+        ],
+        "seam_gap_delta_mm": {
+          "0": 0.4,
+          "0.25": 0.0,
+          "0.5": 0.0,
+          "1": 0.0
+        },
+        "draft_profile_delta": {
+          "satin_pull_in_mm": 0.261,
+          "satin_push_out_mm": 0.2927,
+          "fill_pull_in_mm": 0.0832,
+          "fill_coverage_deficit": -0.0,
+          "seam_opened_mm": {
+            "0": 0.4,
+            "0.25": 0.0,
+            "0.5": 0.0,
+            "1": 0.0
+          },
+          "basis": "photo minus the engine's render, same reader \u2014 a draft, not a constant (gate 1)"
+        }
+      }
+    },
+    "auto": {
+      "ecc": 0.9899,
+      "compare": {
+        "features": [
+          {
+            "name": "lock-A",
+            "role": "bar",
+            "d_width_mm": 0.032,
+            "d_height_mm": 0.008,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "lock-B",
+            "role": "bar",
+            "d_width_mm": 0.053,
+            "d_height_mm": 0.005,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "fill-C",
+            "role": "square",
+            "d_width_mm": 0.026,
+            "d_height_mm": 0.013,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "fill-B-0.20",
+            "role": "square",
+            "d_width_mm": -0.38,
+            "d_height_mm": -0.002,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "fill-D-0.15",
+            "role": "square",
+            "d_width_mm": 0.023,
+            "d_height_mm": -0.008,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "fill-A-0.40",
+            "role": "square",
+            "d_width_mm": 0.008,
+            "d_height_mm": 0.015,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "satin-3mm",
+            "role": "bar",
+            "d_width_mm": 0.043,
+            "d_height_mm": 0.021,
+            "d_coverage": 0.001,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "satin-4mm",
+            "role": "bar",
+            "d_width_mm": 0.422,
+            "d_height_mm": -0.3,
+            "d_coverage": 0.001,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "satin-5mm",
+            "role": "bar",
+            "d_width_mm": 0.42,
+            "d_height_mm": -0.501,
+            "d_coverage": 0.001,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "straight-A-2.5",
+            "role": "path",
+            "d_width_mm": -0.016,
+            "d_height_mm": 0.021,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "curve-A-2.5",
+            "role": "path",
+            "d_width_mm": 0.026,
+            "d_height_mm": 0.033,
+            "d_coverage": 0.002,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "straight-B-2.0",
+            "role": "path",
+            "d_width_mm": -0.015,
+            "d_height_mm": 0.022,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "curve-B-2.0",
+            "role": "path",
+            "d_width_mm": 0.035,
+            "d_height_mm": 0.021,
+            "d_coverage": 0.002,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "word-2",
+            "role": "word",
+            "d_width_mm": 0.005,
+            "d_height_mm": 0.01,
+            "d_coverage": 0.01,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "word-1",
+            "role": "word",
+            "d_width_mm": 0.026,
+            "d_height_mm": 0.025,
+            "d_coverage": 0.015,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "word-0",
+            "role": "word",
+            "d_width_mm": 0.004,
+            "d_height_mm": 0.003,
+            "d_coverage": 0.017,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "word-3",
+            "role": "word",
+            "d_width_mm": 0.017,
+            "d_height_mm": 0.009,
+            "d_coverage": 0.014,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-A-0",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": -0.052,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-A-0.25",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-A-0.5",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-A-1",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-B-0",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-B-0.25",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-B-0.5",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-B-1",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          }
+        ],
+        "seam_gap_delta_mm": {
+          "0": 0.4,
+          "0.25": 0.0,
+          "0.5": 0.0,
+          "1": 0.0
+        },
+        "draft_profile_delta": {
+          "satin_pull_in_mm": 0.26,
+          "satin_push_out_mm": 0.295,
+          "fill_pull_in_mm": 0.0807,
+          "fill_coverage_deficit": -0.0,
+          "seam_opened_mm": {
+            "0": 0.4,
+            "0.25": 0.0,
+            "0.5": 0.0,
+            "1": 0.0
+          },
+          "basis": "photo minus the engine's render, same reader \u2014 a draft, not a constant (gate 1)"
+        }
+      }
+    },
+    "fiducials": {
+      "ecc": null,
+      "compare": {
+        "features": [
+          {
+            "name": "lock-A",
+            "role": "bar",
+            "d_width_mm": 0.025,
+            "d_height_mm": 0.006,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "lock-B",
+            "role": "bar",
+            "d_width_mm": 0.047,
+            "d_height_mm": 0.004,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "fill-C",
+            "role": "square",
+            "d_width_mm": 0.018,
+            "d_height_mm": 0.013,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "fill-B-0.20",
+            "role": "square",
+            "d_width_mm": -0.386,
+            "d_height_mm": -0.002,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "fill-D-0.15",
+            "role": "square",
+            "d_width_mm": 0.015,
+            "d_height_mm": -0.008,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "fill-A-0.40",
+            "role": "square",
+            "d_width_mm": 0.002,
+            "d_height_mm": 0.015,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "satin-3mm",
+            "role": "bar",
+            "d_width_mm": 0.032,
+            "d_height_mm": 0.02,
+            "d_coverage": 0.001,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "satin-4mm",
+            "role": "bar",
+            "d_width_mm": 0.411,
+            "d_height_mm": -0.299,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "satin-5mm",
+            "role": "bar",
+            "d_width_mm": 0.418,
+            "d_height_mm": -0.5,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "straight-A-2.5",
+            "role": "path",
+            "d_width_mm": -0.025,
+            "d_height_mm": 0.021,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "curve-A-2.5",
+            "role": "path",
+            "d_width_mm": 0.017,
+            "d_height_mm": 0.032,
+            "d_coverage": 0.002,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "straight-B-2.0",
+            "role": "path",
+            "d_width_mm": -0.015,
+            "d_height_mm": 0.021,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "curve-B-2.0",
+            "role": "path",
+            "d_width_mm": 0.007,
+            "d_height_mm": 0.022,
+            "d_coverage": 0.002,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "word-2",
+            "role": "word",
+            "d_width_mm": 0.001,
+            "d_height_mm": 0.011,
+            "d_coverage": 0.011,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "word-1",
+            "role": "word",
+            "d_width_mm": 0.02,
+            "d_height_mm": 0.026,
+            "d_coverage": 0.016,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "word-0",
+            "role": "word",
+            "d_width_mm": 0.002,
+            "d_height_mm": 0.047,
+            "d_coverage": 0.013,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "word-3",
+            "role": "word",
+            "d_width_mm": 0.015,
+            "d_height_mm": 0.01,
+            "d_coverage": 0.022,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-A-0",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": -0.057,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-A-0.25",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-A-0.5",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-A-1",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-B-0",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-B-0.25",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-B-0.5",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          },
+          {
+            "name": "seam-B-1",
+            "role": "seam",
+            "d_width_mm": null,
+            "d_height_mm": null,
+            "d_coverage": 0.0,
+            "ocr_photo": null,
+            "ocr_render": null,
+            "note": ""
+          }
+        ],
+        "seam_gap_delta_mm": {
+          "0": 0.45,
+          "0.25": 0.0,
+          "0.5": 0.0,
+          "1": 0.0
+        },
+        "draft_profile_delta": {
+          "satin_pull_in_mm": 0.2597,
+          "satin_push_out_mm": 0.287,
+          "fill_pull_in_mm": 0.0877,
+          "fill_coverage_deficit": -0.0,
+          "seam_opened_mm": {
+            "0": 0.45,
+            "0.25": 0.0,
+            "0.5": 0.0,
+            "1": 0.0
+          },
+          "basis": "photo minus the engine's render, same reader \u2014 a draft, not a constant (gate 1)"
+        }
+      }
+    }
+  }
+}

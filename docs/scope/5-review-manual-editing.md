@@ -934,3 +934,192 @@ looked at at 1440 × 900 and 1024 × 768.
 
 Open: whether Add should also offer the bean variant as a second item. Built as
 one gesture; the panel's select keeps the finer choice.
+
+**MASTER_SCOPE's summary of this section, moved here verbatim 2026-09-29** (its
+word budget; MASTER_SCOPE keeps a pointer):
+
+**The border decision is on the canvas too (2026-09-09, Kent's pick after item 6):** right-click a recognised shape — on its outline, or anywhere inside it — and the field's tool menu grows a shape section: the shape's name, then **Add border** (writes the engine's `auto`: satin where a column fits, bean where not) or **Remove border** (`off`), and **Use design setting** once the shape has its own. It writes `shapeOverrides[sid].border`, the field the panel's Border select already edits, through the same `elupdate` path as a boundary drag, so undo, carry-forward across a re-digitize and the automatic restitch all come for free; a shape sewn as satin gets no border from either way in (stage 7's rule, on the item's tooltip). **That restitch no longer waits (2026-09-17):** a border is complete when it is picked, so `editKind` schedules it at 0 ms; every other shape edit keeps the 2 s pause a drag needs. Narrow by construction — "border" only when EVERY difference in the edit set is a border value, so it cannot swallow a boundary. The edits that still pause say so, with a **Restitch now** control. *(measured 2026-09-17 — `editKind`, `lib/digitizer.js`; why it is not wider, in the area doc)* Interior picking is `shapeOverlay.hitShapeInterior` (smallest containing ring, so a mark inside a counter wins over its surround); the decision table is `borderMenu.js`. *(confirmed 2026-09-09 — `borderMenu.spec.js`, `shapeOverlay.spec.js`, `e2e/field-border-menu.spec.js` against the live service, and the open menu looked at at 1440 and 1024 px)*
+
+## Click a shape on the canvas, edit it there (2026-09-29)
+
+Kent asked for "a tool that allows me to manually digitize a logo or photo",
+was shown the manual draw lane in the browser, and said what was actually
+wrong: the controls are in a side panel, not on the shape. Spec:
+`docs/superpowers/specs/2026-09-29-shape-popover-design.md`; plan:
+`docs/superpowers/plans/2026-09-29-shape-popover.md`.
+
+What was true before: only auto-digitized shapes existed on the field
+(outlines, node drag, right-click border). Hand-drawn shapes had no field
+presence because `shapesToRegions` never passed `shape.id` and the engine
+emitted no outlines — every span for a manual design read `shape: ""`.
+
+What ships: `design.shapeOutlines` from `buildQualityDesign` (field mm, +y
+up, `T()` unrounded — the stitches' own space, so no second fit), one outline
+source for three lanes in `EmbroideryField.outlinesMmFor`, a pure decision
+table (`lib/shapePopover.js`) that reproduces `DigitizePanel.setOverride` /
+`recolorShape` and `ManualPanel.updateShape` / `deleteShape` so an edit from
+the popover is indistinguishable from one made in a panel, and the dialog
+itself (`ui/ShapePopover.svelte`) anchored at the click and clamped inside the
+hoop. A click is a press-and-release under 4 px; a drag still moves the
+element. Selecting a hand-drawn shape on the field highlights its row in
+`ManualPanel` (`shapeselect` → `fieldSelect`), and "Edit points" opens vertex
+mode there. *(superseded 2026-09-29 — node editing is on the field; see
+below)*
+
+Behaviours the reviews pinned down (the next session should not rediscover them):
+
+- On hand-drawn and preset elements a drag that STARTS exactly on an outline
+  selects the shape and does not move the element; a drag that starts on the
+  body moves it as before. *(found in review 2026-09-29 — read from
+  `EmbroideryField.svelte`; the e2e drag case starts inside the body, not on
+  an outline, so this half has no spec)*
+- Node dots are drawn only on digitized outlines — only those can be dragged.
+  A hand-drawn or preset outline shows its line, no dots. *(same source, same
+  gap)* *(superseded 2026-09-29 — node editing is on the field; see below)*
+- The popover pins to the element it opened on and closes when the selection
+  moves to another element. *(found in review 2026-09-29; no spec closes it
+  that way)*
+- The plan's `$: if (shapePop && !popModel) shapePop = null;` was a Svelte
+  `reactive_declaration_cycle` that the green unit suites could not see,
+  because nothing mounts `EmbroideryField` in vitest; the shipped form is
+  `$: if (shapePop && !popModel) dropStalePop();` with the assignment inside
+  the function. Only a browser run reaches this class of error — drive the
+  app before believing the suite.
+- Hidden (`stitched:false`) and deleted shapes are filtered out of the hit
+  paths — hover, press, and the click-to-edit `shapeAtPoint` — through the
+  one `liveOutlinesPx` helper in `EmbroideryField.svelte` (three call sites,
+  checked 2026-09-29). Add a new hit path through it, not around it.
+
+Deliberately not done: reorder/merge/split from the popover, removing either side
+panel, a Delete for preset shapes (the element chip already does it).
+
+Tests: `app/src/lib/shapePopover.spec.js` (the decision table),
+`app/src/ui/ShapePopover.spec.js` (the dialog), `app/e2e/field-shape-popover.spec.js`
+(click-to-edit on both lanes; a drag inside a shape still moves the element;
+on the hand-drawn lane the side panel's row follows the field's selection).
+
+**MASTER_SCOPE's paragraph for this section, moved here 2026-09-29** (its word
+budget; MASTER_SCOPE keeps a ~50-word summary) — verbatim but for one
+antecedent: "Their anchors" became "A hand-drawn shape's anchors", since a
+preset has none:
+
+**Click a shape, edit it there — both lanes (2026-09-29, Kent's ask).** A click (under 4 px) on or inside any shape opens `ShapePopover` there: an auto-digitized shape gets the Layers row's controls (thread, stitch type, fill angle, underlay, border, Edit points, Delete) writing `shapeOverrides` as the panel does; a hand-drawn shape Fill/Satin, colour, angle, Edit points (just closes it) and Delete writing `element.shapes` as `ManualPanel` does; a preset its colour. Hand-drawn and preset shapes are outlined and hit-testable on the field for the first time — `buildQualityDesign` emits `shapeOutlines` in field mm (input order, no fit) and `shapesToRegions` passes the shape id. A hand-drawn shape's anchors and curve handles edit on the field too — drag, bend, click-to-insert, focus-and-Delete — and the side canvas only draws (2026-09-29, field-node-edit spec); the popover drags by its header. *(confirmed 2026-09-29 — `shapePopover.spec.js`, `ShapePopover.spec.js`, `e2e/field-shape-popover.spec.js`; spec `docs/superpowers/specs/2026-09-29-shape-popover-design.md`)*
+
+## Node editing on the field (2026-09-29)
+
+A hand-drawn shape's anchors and curve handles are now edited on the hoop
+canvas; the side canvas in `ManualPanel` only draws. Spec
+`docs/superpowers/specs/2026-09-29-field-node-edit-design.md`, plan
+`docs/superpowers/plans/2026-09-29-field-node-edit.md`, branch
+`claude/field-node-edit`, built on the popover work (#562).
+
+**The engine now exports its fit.** `buildQualityDesign` returns `design.fit`
+beside `shapeOutlines`: `cxPx, cyPx, mmPerPx` and the offsets as applied, so
+the field can map a pointer to the authored px space and back. *(confirmed
+2026-09-29 — `src/`, engine test; commit 3f9ec2ab)*
+
+**The re-fit rule (`app/src/lib/fieldNodeEdit.js`).** A node edit patches
+`shapes + sizeMm + offsetXMm + offsetYMm` in one `elupdate` (one undo step) so
+nothing unedited moves: `mmPerPx` is held, `sizeMm` follows the new flattened
+bbox width, and the offsets shift by the centre delta — from the element's
+REQUESTED offsets, not `fit`'s rounded ones, which compounded the rounding
+across edits (worst drift of an unedited point over 60 random edits 0.097 →
+0.065 mm; fixed 2026-09-29, fix wave — final review's `drift.mjs`). An
+inward-x drag on an auto-fit element is pinned too: it narrows the bbox, so
+only the held scale keeps `mmPerPx`.
+- *Measured residual:* unedited points still move by the engine's own offset
+  rounding (`offXu = round(offset·10)`, the 0.1 mm DST grid) — up to 0.05
+  mm/axis, and `fieldNodeEdit.spec.js` pins it EXACTLY rather than under a
+  loose bound, with `mmPerPx` unchanged to 1e-12. The plan's 1e-6 tolerance
+  was unreachable; the engine was left untouched for byte-identity.
+  *(measured 2026-09-29 — `fieldNodeEdit.spec.js`, residual ±0.0273 mm in the
+  first run)*
+- *Known break, and NOTHING warns about it:* the PLACEMENT-BOX clamp. The
+  engine fits the design into the garment's placement box
+  (`garment.widthIn/heightIn`, via `fitScale`, and `targetWidthMm` is clamped
+  into the same box) — not "the 4 in hoop", which an earlier line here said.
+  An edit that grows the bbox past that box makes the engine rescale, so every
+  unedited point moves. `hoopFitNote` compares the POST-clamp design with the
+  physical hoop, so it sees a design that fits and says nothing — it cannot
+  report this, and it is not a cover. Measured: one auto-fit shape on
+  `left_chest` (101.6 mm box), one anchor dragged 40 px outward → `mmPerPx`
+  0.508 → 0.423 (the shape shrank 17%), the untouched left edge moved
+  10.2 mm, and the patch persisted `sizeMm` 121.9 against the 101.6 mm box.
+  The second break is the offset re-clamp (`reclampAll` in
+  `EmbroideryField.svelte`): an edit that pushes the element past a box EDGE
+  gets its offset pulled back, so the shape shifts. When it bites: auto-fit
+  (`sizeMm: null`) hand-drawn elements are the FIRST-element case —
+  `addElement` seeds `sizeMm = 0.4 × hoop` for later ones — so a seeded
+  element hits the scale break only past ~2.5× growth, or the offset break at
+  a box edge. **Kent's ruling (2026-09-29): a dragged node STOPS at the box
+  edge.** `clampMmToBox` (`fieldNodeEdit.js`) holds the dragged point inside
+  the box (`hoopSizeMm`, centred on the origin) in the `nodeEdit` branch of
+  `onPointerMove` and on the edge-insert point; since `editedElementPatch`
+  never moves an unedited point, the bbox stays inside too and neither the
+  scale clamp nor `reclampAll` can fire. With no garment (zero box) nothing is
+  clamped. *(measured 2026-09-29 — final review's `clamp.mjs` through the real
+  engine, re-run in the fix wave; the same spec's invariance test drags inward
+  to stay inside)* *(fixed 2026-09-29 — `e2e/field-node-edit.spec.js` (h): a
+  400 px drag past Tote's 203.2 mm box leaves the opposite corner within 2 px
+  and the caption at or under 203 mm; `fieldNodeEdit.spec.js` `clampMmToBox`)*
+
+**Gestures, on the selected hand-drawn shape.**
+- Anchor and handle drags are RELATIVE to the grab point, with a 4 px dead
+  zone before the first move — a jittery click commits nothing (a 6 px
+  off-centre press with jitter moved nothing; a +30,+20 drag moved 30.10,
+  20.35 mm). Basis (`fit` and shape) is frozen at press. *(measured
+  2026-09-29 — browser run, commit 2e101fe0)*
+- A drag moves ONE vertex, not the digitized lane's rubber-sheet `pullRing`.
+  *(confirmed 2026-09-29 — spec §1)*
+- Focus is set on PRESS, not on a release-without-move; Delete then removes
+  the anchor just touched. Any press that is not on an anchor clears the
+  focus (an insert shifts indices). *(confirmed 2026-09-29 — review of
+  4b411e4f)*
+- Delete with a focused anchor removes it (floor 3 anchors says so); with
+  none it deletes the shape as before. Delete DURING a drag is ignored.
+  "Remove point" is on the right-click menu over an anchor. *(confirmed
+  2026-09-29 — `e2e/field-node-edit.spec.js` (c), (d))*
+- A click on an edge inserts an anchor there. A DRAG that starts on an edge
+  does nothing — no edit, no move, no popover. *(confirmed 2026-09-29 — e2e
+  (c), (f))* At the 500-point cap the insert is refused with a message — no
+  e2e reaches the cap. *(read from code 2026-09-29 — the insert branch of
+  `endDrag` in `EmbroideryField.svelte`)*
+- The popover's "Edit points" on a hand-drawn shape just closes the popover;
+  the shape is already selected, so its handles are live.
+
+**What left `ManualPanel`.** Vertex mode, edge-click insert, the Edit points /
+Done editing buttons, the edit-mode cursors and `fieldSelect.edit` (1418 →
+1191 lines; 21 edit-mode tests retired). A click on the body of an
+already-selected shape on the side canvas no longer toggles it off; the row
+click still does. *(confirmed 2026-09-29 — commit c0f2ce41)*
+
+**The popover moves (Kent's request mid-run — it hid what he was editing).**
+Drag `ShapePopover` by its header; the position is clamped to the hoop and
+kept per element for the session. *(confirmed 2026-09-29 — `ShapePopover.spec.js`,
+e2e (g), commit e3529c57)*
+
+**Smear (found, fixed).** `drawOverlay` never clears the canvas, so node
+drags smeared. Node-edit redraws now go through `repaintNodeChrome()` (an rAF
+view repaint). *(measured 2026-09-29 — browser run, commit 2e101fe0)* The
+fix wave routed the remaining bare calls that REMOVE or MOVE chrome through it
+too: the two deselect sites (a press off every outline; a click-release on
+empty body), a press that switches the selected shape, and the DIGITIZED node
+drag's move and release (a rejected edit starts no regenerate, so its last
+live ring used to stay). Before it, a deselect left the amber ring and node
+dots on the canvas until the next repaint. *(fixed 2026-09-29 — fix wave;
+browser run: after either deselect the amber/green chrome pixels read 335/42
+→ 0/0 two frames later, and an 8-step digitized node drag on the
+two-squares fixture shows one live ring, no smear. No e2e drives the
+digitized FIELD drag — `e2e/digitize-boundary-edit.spec.js` drives the
+panel's boundary editor)*
+
+**Trap: stale `public/engine`.** A dev server started before the engine change
+serves an engine with no `fit`, and node editing is silently absent. Restart
+it, or run `node app/scripts/copy-engine.mjs`. *(hit 2026-09-29 — Tasks 3 and
+5)*
+
+Tests: `app/src/lib/fieldNodeEdit.spec.js` (hit-testing, drag maths, the
+re-fit invariant through the real engine), `app/src/ui/ShapePopover.spec.js`
+(the movable dialog), `app/e2e/field-node-edit.spec.js` (a)–(h) — anchor drag,
+handle bow, edge insert, Delete and the floor, invariance of a neighbour,
+edge-drag-does-nothing, popover move, drag stops at the placement box.

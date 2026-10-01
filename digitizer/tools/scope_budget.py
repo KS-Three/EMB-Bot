@@ -28,7 +28,8 @@ every number *"because ten other docs cite them by number"*, so moving an
 entry from Live to Closed swaps a line for a line. **The only real reclaim is
 summarising a capability area back down to a summary.**
 
-    .venv/bin/python -m tools.scope_budget
+    .venv/bin/python -m tools.scope_budget       # Windows: .venv/Scripts/
+    python tools/scope_budget.py                 # run from digitizer/
 """
 from __future__ import annotations
 
@@ -39,6 +40,13 @@ import sys
 REPO = pathlib.Path(__file__).resolve().parents[2]
 SCOPE = REPO / "MASTER_SCOPE.md"
 BUDGET = 27_000
+
+# `python tools/scope_budget.py` puts `tools/` on sys.path, NOT `digitizer/`,
+# so `tools._console` is unimportable until this line. Both invocations above
+# have to keep working; the repo already uses this pattern in ten other tools.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+
+from tools._console import utf8_console                    # noqa: E402
 
 
 def word_count(text: str) -> int:
@@ -158,6 +166,7 @@ def live_and_closed(text: str) -> tuple[list[tuple[str, int, str]],
 
 
 def main(argv: list[str]) -> int:
+    utf8_console()
     text = SCOPE.read_text(encoding="utf-8")
     total = line_count(text)
     words = word_count(text)

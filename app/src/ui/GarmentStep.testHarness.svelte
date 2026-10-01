@@ -13,6 +13,7 @@
   // does live in the Studio.
   export let project;
   export let onUpdate = () => {};
+  export let digitizerHealth = null;
 
   function handle(e) {
     project = { ...project, ...e.detail };
@@ -20,4 +21,4 @@
   }
 </script>
 
-<GarmentStep {project} on:update={handle} />
+<GarmentStep {project} {digitizerHealth} on:update={handle} />

@@ -27,6 +27,9 @@ beforeAll(async () => {
   const require = createRequire(import.meta.url);
   require("../../../src/units.js");
   require("../../../src/garments.js");
+  // The Fabric preset row (2026-09-30) resolves the garment's preset, and a
+  // calibration profile on top of it, through the real engine table.
+  require("../../../src/fabrics.js");
   globalThis.EMB.buildLetteringDesign =
     globalThis.EMB.buildLetteringDesign || (() => { throw new Error("not used by this spec"); });
   // TemplateRow kicks off font-manifest fetches for its previews; jsdom has
@@ -49,10 +52,10 @@ function baseProject(patch = {}) {
   };
 }
 
-function renderStep(patch = {}) {
+function renderStep(patch = {}, digitizerHealth = null) {
   const updates = [];
   const utils = render(Harness, {
-    props: { project: baseProject(patch), onUpdate: (d) => updates.push(d) },
+    props: { project: baseProject(patch), onUpdate: (d) => updates.push(d), digitizerHealth },
   });
   return { ...utils, updates };
 }
@@ -114,4 +117,52 @@ test("manually picking the suggested hoop itself shows no redundant reset link",
   const { container } = renderStep({ hoopId: "5x7" });
   expect(hoopButton(container, "5×7 in")).toHaveAttribute("aria-pressed", "true");
   expect(container.querySelector(".hoopreset")).toBeNull();
+});
+
+// --- the Fabric preset row (calibration profile, 2026-09-30) ----------------
+
+test("the fabric preset row names the garment's preset and its numbers, plain by default", () => {
+  const { container } = renderStep();
+  const row = container.querySelector(".fabricpreset");
+  expect(row).toHaveTextContent("Pique knit (polo)");
+  expect(row).toHaveTextContent("pull comp 0.3 mm");
+  expect(row.querySelector(".hooptile-chip")).toBeNull();
+  // No profile, so no way back to the plain preset — only the Calibrate button.
+  expect([...row.querySelectorAll("button")].map((b) => b.textContent.trim())).toEqual(["Calibrate for this fabric…"]);
+});
+
+test("a calibration profile shows the ADJUSTED numbers, a Calibrated chip, and a way back to the plain preset", async () => {
+  const { container, updates } = renderStep({
+    fabricProfile: { pull_comp_delta_mm: 0.15, density_scale: 0.9 },
+  });
+  const row = container.querySelector(".fabricpreset");
+  expect(row).toHaveTextContent("Pique knit (polo)");
+  expect(row).toHaveTextContent("pull comp 0.45 mm");
+  expect(row).toHaveTextContent("rows ×0.9");
+  expect(row.querySelector(".hooptile-chip")).toHaveTextContent("Calibrated");
+
+  await fireEvent.click(row.querySelector("button"));
+  expect(updates).toContainEqual({ fabricProfile: null });
+});
+
+test("a corrupt persisted profile leaves the plain preset in force rather than breaking the step", () => {
+  const { container } = renderStep({ fabricProfile: { pull_comp_mm: "nope" } });
+  const row = container.querySelector(".fabricpreset");
+  expect(row).toHaveTextContent("pull comp 0.3 mm");
+  expect(row.querySelector(".hooptile-chip")).toBeNull();
+});
+
+test("the Calibrate button needs the service, and opens the calibration flow inline when it is up", async () => {
+  const off = renderStep();
+  const btn = off.container.querySelector('[data-testid="calibrate-open"]');
+  expect(btn).toBeDisabled();
+  expect(btn).toHaveAttribute("title", expect.stringMatching(/Needs the digitizer service/));
+  expect(off.container.querySelector('[data-testid="calibrate-panel"]')).toBeNull();
+
+  const on = renderStep({}, { status: "ok" });
+  const open = on.container.querySelector('[data-testid="calibrate-open"]');
+  expect(open).toBeEnabled();
+  await fireEvent.click(open);
+  expect(on.container.querySelector('[data-testid="calibrate-panel"]')).toBeInTheDocument();
+  expect(open).toHaveTextContent("Hide calibration");
 });

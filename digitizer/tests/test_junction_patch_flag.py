@@ -35,6 +35,33 @@ def _points(plan) -> list:
 
 
 def _cfg(**kw) -> PipelineConfig:
+    # `subpixel_edges_upscaled` held OFF: the 37.2 mm2 bare crotch and every
+    # patch measured here are becker's on its staircase polygons; Kent's
+    # 2026-09-18 flip reads that source from its own pixels, and on the
+    # accurate outline band the SATIN cover mode lays a tatami run inside
+    # the satin shape (`test_the_satin_cover_*` failed on it). That is an
+    # open observation about the satin cover on the new polygon, recorded
+    # in scope-history's flip addendum; this file pins the patch mechanism
+    # on the polygons it was measured on.
+    kw.setdefault("subpixel_edges_upscaled", False)
+    # `satin_rails_follow_edge` held at the symmetric model since the envelope
+    # went ON (2026-09-30, Kent's ruling on its labelled sitting): the far
+    # rail's reach into the crotch takes three stitches off the satin cover's
+    # count (4,810 -> 4,807 against the arms alone) where the assertion below
+    # wants the cover to cost thread; the finding is still cleared either
+    # way. The cover is priced on the rails it was measured on.
+    kw.setdefault("satin_rails_follow_edge", False)
+    # `satin_corner_twigs` held OFF for the same reason (Kent's 2026-09-19
+    # flip): the corner rule re-decomposes the arms the cover patches, and on
+    # Becker at 80 mm the satin cover then clears the finding at a net -1
+    # stitch (6,528 -> 6,527) instead of adding thread -- the mechanism is
+    # measured on the decomposition it was built on.
+    kw.setdefault("satin_corner_twigs", False)
+    # `satin_junction_stack` held OFF too (Kent's 2026-09-19 flip, the same
+    # day): its part C composes this very cover under the arms by default,
+    # so OFF and ON would sew the same cover and this file's contrast -- the
+    # cover alone against no cover -- would read nothing.
+    kw.setdefault("satin_junction_stack", False)
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 

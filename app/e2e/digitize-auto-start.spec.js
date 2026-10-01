@@ -32,7 +32,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // The same flat two-squares fixture the stale-edits spec uses: black and red
 // on white, which stage 0 reads as flat art -- so this spec's expected reading
-// is the flat one, and the correction offered beside it is "It's a photo".
+// is the flat one. Nothing is offered beside it: the row is a statement, not
+// a question (Kent, 2026-09-30 -- the "It's a photo" / "It's flat art"
+// corrections are gone, and the engine's own detection answers instead).
 const ART_PNG = path.join(__dirname, "fixtures", "two-squares.png");
 // A vector logo with a `viewBox` and NO width/height — the shape SVGO and most
 // hand-written exports produce, and the one Chrome hands back at its 300 px
@@ -126,6 +128,19 @@ test("uploading artwork digitizes it on its own, and the panel says what it read
   await expect(page.getByText(/Drop in any image/)).toBeVisible();
 
   // ---- the whole interaction: choose a file ------------------------------
+  // Armed BEFORE the upload: the run starts on its own the moment the file
+  // lands. Playwright's `request.postDataBuffer()` is null for a multipart
+  // body carrying a Blob, so the config part is read off the FormData in
+  // the page instead, by wrapping fetch for the one POST that matters.
+  await page.evaluate(() => {
+    const real = window.fetch;
+    window.fetch = async (url, init) => {
+      if (String(url).endsWith("/digitize") && init && init.body instanceof FormData) {
+        window.__digitizeConfig = init.body.get("config");
+      }
+      return real(url, init);
+    };
+  });
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
 
   // No Digitize click. Stitches arrive anyway.
@@ -135,24 +150,27 @@ test("uploading artwork digitizes it on its own, and the panel says what it read
   const read = page.locator(".dgp-read");
   await expect(read).toHaveCount(1);
   await expect(read).toContainText("Read as flat art");
-  // The correction for THIS reading, and not the other one.
-  await expect(read.getByRole("button", { name: "It's a photo" })).toBeVisible();
-  await expect(read.getByRole("button", { name: "It's flat art" })).toHaveCount(0);
+  // ...and asks nothing. No correction, no "use automatic" -- automatic is
+  // the only mode there is.
+  await expect(read.getByRole("button")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "It's a photo" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "It's flat art" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Use automatic detection" })).toHaveCount(0);
+  // Flat art is not a tonal lane, so the detail-lines option stays off the
+  // row too (Kent, 2026-08-30).
+  await expect(read.getByLabel("Add fine detail lines")).toHaveCount(0);
 
-  // ---- correcting it is one click, and it re-runs by itself --------------
-  const statsBefore = await page.locator(".dgp-stats").innerText();
-  await read.getByRole("button", { name: "It's a photo" }).click();
-  await expect(read).toContainText("You set this to a photo.", { timeout: 120_000 });
-  // The correction reached the engine: since 2026-09-02 it sends
-  // `is_photographic` (photographic CONTENT -> depth sequencing + palette
-  // bind) rather than forcing the fill tier, so the class may still read
-  // flat while the SEW ORDER changes. What is asserted is what the user can
-  // actually check: the run is not the one it replaced.
-  await expect(page.locator(".dgp-stats")).not.toHaveText(statsBefore, { timeout: 120_000 });
-
-  // ---- and back, in one click, with no override left behind --------------
-  await read.getByRole("button", { name: "Use automatic detection" }).click();
-  await expect(read).toContainText("Read as flat art", { timeout: 120_000 });
+  // ---- the engine was asked to recognise a photograph itself -------------
+  // The request that produced these stitches carried detect_photographic;
+  // on this flat fixture it fires nothing, which is the point of the
+  // contract (silence changes nothing), but the ask has to leave the page.
+  const sentJson = await page.evaluate(() => window.__digitizeConfig);
+  expect(sentJson).toBeTruthy();
+  const sent = JSON.parse(sentJson);
+  expect(sent.detect_photographic).toBe(true);
+  expect(sent.faces_route_flat).toBe(true);
+  expect(sent).not.toHaveProperty("forced_class");
+  expect(sent).not.toHaveProperty("is_photographic");
 });
 
 test("JEF downloads a real file through the service — the format with no browser encoder", async ({ page }) => {
@@ -191,7 +209,7 @@ test("JEF downloads a real file through the service — the format with no brows
   // The panel names the encoder, and for JEF there is only one it can be —
   // this is the assertion that a browser-encoded file was not quietly
   // substituted, which is what the removed fallback would have done.
-  await expect(page.getByText("Downloaded JEF (digitizer service encoder)")).toBeVisible();
+  await expect(page.getByText("Saved JEF (digitizer service encoder)")).toBeVisible();
 
   // And it is genuinely a different file from the DST of the same design, not
   // the same bytes under another name. (What the bytes MEAN is decoded with

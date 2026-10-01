@@ -1,9 +1,16 @@
 const deps =
   typeof module !== "undefined" && module.exports
-    ? { units: require("./units.js"), render: require("./render.js") }
+    ? {
+        units: require("./units.js"),
+        render: require("./render.js"),
+        fabrics: require("./fabrics.js"),
+        sewtime: require("./sewtime.js"),
+      }
     : {
         units: (typeof globalThis !== "undefined" ? globalThis : this).EMB,
         render: (typeof globalThis !== "undefined" ? globalThis : this).EMB,
+        fabrics: (typeof globalThis !== "undefined" ? globalThis : this).EMB,
+        sewtime: (typeof globalThis !== "undefined" ? globalThis : this).EMB,
       };
 
 (function (root, factory) {
@@ -13,6 +20,22 @@ const deps =
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   const { mmToInch } = deps.units;
   const { renderStitches } = deps.render;
+  const { getFabric, GARMENT_FABRIC } = deps.fabrics;
+  const { sewTimeMin, PLAN_SPM } = deps.sewtime;
+
+  // The fabric preset behind a garment id, or null when the id is not one we
+  // ship. `fabricForGarment` is NOT used here on purpose: it falls back to
+  // pique_knit for anything unknown, which is the right answer when you are
+  // about to sew and the wrong one when you are about to print advice.
+  function fabricFor(garmentId) {
+    const fabricId = garmentId ? GARMENT_FABRIC[garmentId] : null;
+    return fabricId ? getFabric(fabricId) || null : null;
+  }
+
+  // "cap_buckram" is an id, not a sentence. The sheet is read by a person.
+  function backingLabel(id) {
+    return String(id || "").replace(/_/g, " ");
+  }
 
   const PAGE_W_IN = 8.5;
   const PAGE_H_IN = 11;
@@ -202,14 +225,53 @@ const deps =
         statsLines.push("Thread: " + options.sew.threadM.toFixed(1) + " m (estimate)");
       }
     }
-    if (stitchCount > CUTAWAY_STITCHES) {
-      // The cutaway prescription (see CUTAWAY_STITCHES above). A line in
-      // the stats block, not a warning banner: nothing is wrong with the
-      // design — the operator just hoops the right stabilizer under it.
+    // Run time — the half of the cost card that was missing. Needs no
+    // garment, so it prints for every design. Trims cost real minutes and are
+    // counted when the caller walked for them; a design with no walk still
+    // has a knowable needle time from its stitch count alone.
+    //
+    // The BASIS is printed beside the figure, not left implied: these are
+    // trade constants the playbook rates "medium confidence", and a bare
+    // number on a sheet an operator schedules from would read as measured.
+    const runMin = sewTimeMin(
+      stitchCount,
+      options.sew && typeof options.sew.trims === "number" ? options.sew.trims : 0
+    );
+    if (runMin !== null) {
       statsLines.push(
-        "Stabilizer: cutaway (over " + CUTAWAY_STITCHES.toLocaleString("en-US") +
-          " stitches - tear-away releases under this much thread)"
+        "Run time: ~" + runMin + " min at " + PLAN_SPM + " spm (incl. trims)"
       );
+    }
+
+    // What the DIGITIZER assumed the operator would hoop.
+    //
+    // This used to be a stitch-COUNT rule and nothing else: under 25,000
+    // stitches the sheet said nothing at all, so the same design on jersey
+    // and on canvas — goods that want opposite stabilizers — got identical
+    // silence. The backing class is a property of the garment, so it comes
+    // from the fabric preset now and prints on every sheet that names a
+    // garment we ship.
+    //
+    // The old threshold SURVIVES, demoted to an escalation: past this much
+    // thread tear-away releases whatever the goods would otherwise have
+    // taken. That keeps the previous behaviour as a special case instead of
+    // contradicting it, and keeps this line agreeing with the digitizer
+    // preflight's STABILIZER_CUTAWAY, whose own comment says to change both.
+    const fabric = fabricFor(options.garmentId);
+    if (fabric) {
+      const heavy = stitchCount > CUTAWAY_STITCHES;
+      if (heavy && fabric.assumedBacking !== "cutaway") {
+        statsLines.push(
+          "Stabilizer: cutaway (escalated - " +
+            stitchCount.toLocaleString("en-US") +
+            " stitches; tear-away releases under this much thread)"
+        );
+      } else {
+        statsLines.push("Stabilizer: " + backingLabel(fabric.assumedBacking));
+      }
+      // Stated either way. "No line" is what the sheet did before, and an
+      // operator cannot tell a considered "no topper" from an oversight.
+      statsLines.push("Topper: " + (fabric.needsTopper ? "yes" : "no"));
     }
     for (const line of statsLines) {
       doc.text(line, MARGIN_IN, cursorY);
@@ -223,6 +285,21 @@ const deps =
     doc.setFont(undefined, "bold");
     doc.text("Thread Sequence", MARGIN_IN, cursorY);
     cursorY += 0.22;
+
+    // What the numbers below ARE. The sheet has numbered these cones since it
+    // existed and never said that the ordinal is the operator's own work: a
+    // DST carries no colour data whatsoever, so on a multi-needle machine
+    // this is the needle assignment and on a single-needle it is the re-thread
+    // order, mapped by hand at setup, every job. Saying so costs one line and
+    // is the whole colour-stop half of the separation-of-duties contract.
+    doc.setFontSize(8);
+    doc.text(
+      "Set these in order at the machine - DST carries no colour data.",
+      MARGIN_IN,
+      cursorY
+    );
+    cursorY += 0.18;
+    doc.setFontSize(10);
 
     doc.setFontSize(10);
     doc.setFont(undefined, "normal");
