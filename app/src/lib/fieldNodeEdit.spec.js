@@ -7,8 +7,9 @@ import { createRequire } from "node:module";
 import {
   pxToFieldMm, fieldMmToPx, authoredInFieldMm, hitAuthored,
   applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, clampMmToBox,
-  breaksContainment, ringInsideBox, cutOutOutlinesInFieldMm, CUTOUT_HOLD_HINT,
+  breaksContainment, ringInsideBox, cutOutOutlinesInFieldMm, CUTOUT_HOLD_HINT, refitShapesPatch,
 } from "./fieldNodeEdit.js";
+import { withCutOut } from "./manualShapes.js";
 
 let EMB, generateElement, garment;
 beforeAll(async () => {
@@ -251,6 +252,64 @@ describe("cut-outs", () => {
     expect(out[0].cutOut).toBe(true);
     expect(out[0].points[0][0]).toBeCloseTo((100 - 150) * 0.2, 9);
     expect(out[0].points[0][1]).toBeCloseTo((150 - 100) * 0.2, 9);
+  });
+
+  // The Cut out switch on the hoop goes through the same re-fit rule as a node
+  // edit (fix wave, ruling after Task 8): a cut-out emits no region, so marking a
+  // shape OUTSIDE every other one drops it from the engine's bbox — without the
+  // re-fit the element re-fitted to the rest and the remaining shape jumped
+  // (e2e (f): 81x39 -> 81x91 mm). These run the real engine on both sides, and
+  // double as the orphan-bbox engine test: the orphan sits far outside the parent,
+  // so a bbox that counted it would move the parent by tens of mm, not 0.05.
+  describe("refitShapesPatch — the Cut out switch moves nothing else", () => {
+    const parent = rect("s1", 100, 100, 300, 300);
+    const stray = rect("s2", 380, 120, 460, 200, { stitchType: "fill", colorRgb: [200, 0, 0] });
+    const outline = (d) => Object.fromEntries(d.shapeOutlines.map((o) => [o.id, o.points]));
+    function holdsStill(before, patch) {
+      const d0 = generateElement(before, garment, {});
+      const d1 = generateElement({ ...before, ...patch }, garment, {});
+      expect(d1.fit.mmPerPx).toBeCloseTo(d0.fit.mmPerPx, 12);
+      const rx = Math.round(patch.offsetXMm * 10) / 10 - patch.offsetXMm - (Math.round(before.offsetXMm * 10) / 10 - before.offsetXMm);
+      const ry = Math.round(patch.offsetYMm * 10) / 10 - patch.offsetYMm - (Math.round(before.offsetYMm * 10) / 10 - before.offsetYMm);
+      expect(Math.abs(rx)).toBeLessThanOrEqual(0.05 + 1e-9);
+      expect(Math.abs(ry)).toBeLessThanOrEqual(0.05 + 1e-9);
+      const o0 = outline(d0), o1 = outline(d1);
+      expect(o1.s1).toHaveLength(o0.s1.length);
+      o1.s1.forEach((p, i) => { expect(p[0] - o0.s1[i][0]).toBeCloseTo(rx, 6); expect(p[1] - o0.s1[i][1]).toBeCloseTo(ry, 6); });
+      return { d0, d1 };
+    }
+    test("marking the stray shape Cut out: the parent stays put and the scale holds", () => {
+      const before = el([parent, stray]);
+      const d0 = generateElement(before, garment, {});
+      const shapes = [parent, withCutOut(stray, true)];
+      const patch = refitShapesPatch(before, d0.fit, shapes);
+      expect(patch.error).toBeUndefined();
+      expect(patch.shapes).toBe(shapes);
+      expect(patch.sizeMm).toBeCloseTo(200 * d0.fit.mmPerPx, 9); // the width that is left, at the held scale
+      const { d1 } = holdsStill(before, patch);
+      expect(d1.shapeOutlines.map((o) => o.id)).toEqual(["s1"]);
+      // Without the patch the element re-fits to the parent alone: the jump the rule removes.
+      const jumped = generateElement({ ...before, shapes }, garment, {});
+      expect(Math.abs(jumped.fit.mmPerPx / d0.fit.mmPerPx - 1)).toBeGreaterThan(0.2);
+    });
+    test("and turning it off again: the parent stays put and the scale holds", () => {
+      const before = el([parent, withCutOut(stray, true)], { sizeMm: 40 });
+      const d0 = generateElement(before, garment, {});
+      const shapes = [parent, stray];
+      const patch = refitShapesPatch(before, d0.fit, shapes);
+      expect(patch.error).toBeUndefined();
+      expect(patch.sizeMm).toBeCloseTo(360 * d0.fit.mmPerPx, 9);
+      const { d1 } = holdsStill(before, patch);
+      expect(d1.shapeOutlines.map((o) => o.id).sort()).toEqual(["s1", "s2"]);
+    });
+    test("nothing sewn before, or nothing left after: the plain shapes patch (nothing to hold still)", () => {
+      const only = el([parent]);
+      const f0 = generateElement(only, garment, {}).fit;
+      const allCut = [withCutOut(parent, true)];
+      expect(refitShapesPatch(only, f0, allCut)).toEqual({ shapes: allCut });
+      const none = el([withCutOut(parent, true)]);
+      expect(refitShapesPatch(none, f0, [parent])).toEqual({ shapes: [parent] });
+    });
   });
 
   test("through the real engine: editing a cut-out moves nothing of its parent (bbox agreement)", () => {

@@ -346,7 +346,31 @@ test("(e) Hole mode: a shape drawn inside another is born a cut-out and the coun
   await expect(page.locator(".mp-assign .mp-cutnote")).toHaveText("Cuts Shape 1.");
 });
 
-test("(f) a cut-out outside every shape says it cuts nothing", async ({ page }) => {
+// "81×39 mm" out of the caption -> [81, 39].
+const sizeOf = (stats) => stats.match(/(\d+)×(\d+) mm/).slice(1, 3).map(Number);
+
+// The dark box of the columns left of `xMax` only (canvas px) — Shape 1's own
+// box while Shape 2 still sews to its right.
+async function darkBBoxLeftOf(page, xMax) {
+  return page.evaluate(([MIN_RUN, boxSrc, xMax]) => {
+    const c = document.querySelector(".hoop canvas");
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    const f = eval(boxSrc)(d, c.width, c.height);
+    if (!f) return null;
+    const x1f = Math.min(f.x1, xMax);
+    const rows = new Uint32Array(c.height), cols = new Uint32Array(c.width);
+    for (let y = f.y0; y <= f.y1; y++) for (let x = f.x0; x <= x1f; x++) {
+      const i = (y * c.width + x) * 4;
+      if (d[i] < 80 && d[i + 1] < 80 && d[i + 2] < 80) { rows[y]++; cols[x]++; }
+    }
+    let x0 = -1, x1 = -1, y0 = -1, y1 = -1;
+    for (let x = 0; x < c.width; x++) if (cols[x] >= MIN_RUN) { if (x0 < 0) x0 = x; x1 = x; }
+    for (let y = 0; y < c.height; y++) if (rows[y] >= MIN_RUN) { if (y0 < 0) y0 = y; y1 = y; }
+    return x0 < 0 || y0 < 0 ? null : { x0, y0, x1, y1 };
+  }, [MIN_RUN, FABRIC_BOX_SRC, Math.round(xMax)]);
+}
+
+test("(f) a cut-out outside every shape says it cuts nothing, and switching it on the hoop moves nothing else", async ({ page }) => {
   test.setTimeout(120_000);
   await toContent(page);
   await openDrawing(page);
@@ -357,15 +381,31 @@ test("(f) a cut-out outside every shape says it cuts nothing", async ({ page }) 
   await expect(page.locator(".mp-shaperow")).toHaveCount(2);
   await closeDragHint(page);
   const both = await changedFrom(page, one.stats);
-  // The right half of the joint box is Shape 2.
+  // The right half of the joint box is Shape 2; the gap between them is its
+  // middle (0.45..0.55 of 0.15..0.85).
   const g = await geom(page);
+  const gapX = (both.bb.x0 + both.bb.x1) / 2;
   const p = g.css(both.bb.x0 + 0.8 * (both.bb.x1 - both.bb.x0), (both.bb.y0 + both.bb.y1) / 2);
   const dlg = await popoverAt(page, p);
   await expect(dlg).toHaveAttribute("aria-label", "Shape 2 · Fill");
+  // Shape 1's own box, read with the popover open and the view settled.
+  const ready = await settle(page);
+  expect(ready.stats).toBe(both.stats);
+  const s1Before = await darkBBoxLeftOf(page, gapX);
+  expect(s1Before).not.toBeNull();
+
   await dlg.getByRole("switch", { name: "Cut out" }).click();
   await expect(dlg).toHaveAttribute("aria-label", "Shape 2 · Cut out");
   await expect(dlg.locator(".shapepop-note")).toHaveText("Not inside a shape — cuts nothing.");
-  // It sews nothing, so the design is back to Shape 1 alone.
   const after = await changedFrom(page, both.stats);
-  expect(after.stats).toBe(one.stats);
+  // It sews nothing: the count drops by Shape 2's stitches...
+  expect(count(after.stats)).toBeLessThan(count(both.stats));
+  // ...but nothing else moves (the hoop's re-fit rule covers the switch). Until
+  // the fix wave the element re-fitted to Shape 1 alone and it jumped from
+  // 81×39 to 81×91 mm — the one-shape size. The height is Shape 1's, held.
+  expect(sizeOf(after.stats)).not.toEqual(sizeOf(one.stats));
+  expect(Math.abs(sizeOf(after.stats)[1] - sizeOf(both.stats)[1])).toBeLessThanOrEqual(1);
+  const s1After = await darkBBoxLeftOf(page, gapX);
+  expect(s1After).not.toBeNull();
+  for (const k of ["x0", "y0", "x1", "y1"]) expect(Math.abs(s1After[k] - s1Before[k]), k).toBeLessThanOrEqual(2);
 });

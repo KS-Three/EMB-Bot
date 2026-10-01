@@ -22,7 +22,7 @@
     shapeBorderState } from "../lib/borderMenu.js";
   import { boundaryIssues, canonicalShapeEdits, editsKey } from "../lib/digitizer.js";
   import { popoverModel, popoverPatch, recolorPatch } from "../lib/shapePopover.js";
-  import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT } from "../lib/fieldNodeEdit.js";
+  import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, refitShapesPatch, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT } from "../lib/fieldNodeEdit.js";
   import Hint from "./Hint.svelte";
   import Icon from "./Icon.svelte";
   import ShapePopover from "./ShapePopover.svelte";
@@ -784,6 +784,17 @@
     if (!patch) {
       if (key === "color") shapeEditError = "Couldn't match that color to the job's thread chart.";
       return;
+    }
+    if (key === "cutOut" && el.type === "manual" && patch.shapes) {
+      // A cut-out emits no region, so the switch can change the bbox the engine
+      // fits — a stray shape marked Cut out used to make the rest re-fit and
+      // jump. The hoop's rule (an edit never moves what was not edited) covers
+      // the switch too: hold the scale and the position, as a node edit does.
+      const fit = manualFit(el);
+      if (fit) {
+        const held = refitShapesPatch(el, fit, patch.shapes);
+        if (!held.error) patch = held;
+      }
     }
     dispatch("elupdate", { id: el.id, patch });
   }

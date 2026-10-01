@@ -175,9 +175,21 @@ export function editedElementPatch(element, fit, shapeId, edited) {
   if (issues.length) return { error: issues[0] };
   const shapes = (element.shapes || []).map((s) => (s && s.id === shapeId ? edited : s));
   if (breaksContainment(element.shapes || [], shapes)) return { error: CUTOUT_HOLD_HINT };
+  if (!flatBBox(element.shapes || []) || !flatBBox(shapes)) return { error: "Nothing to fit." };
+  return refitShapesPatch(element, fit, shapes);
+}
+
+// The re-fit arithmetic on its own: `element` re-sized and re-offset so that
+// `shapes` (its new list) sews every unchanged point where it sewed before.
+// editedElementPatch uses it for a node edit; the hoop's Cut out switch uses it
+// directly, because a cut-out emits no region and so switching one on or off
+// can change the bbox the engine fits. When nothing is sewn before, or nothing
+// would be after, there is nothing to hold still: the plain { shapes } patch.
+export function refitShapesPatch(element, fit, shapes) {
   const b0 = flatBBox(element.shapes || []);
-  const b1 = flatBBox(shapes);
-  if (!b0 || !b1) return { error: "Nothing to fit." };
+  const b1 = flatBBox(shapes || []);
+  if (!b0 || !b1) return { shapes };
+  if (!(fit && fit.mmPerPx > 0)) return { error: "Nothing to fit." };
   const s = fit.mmPerPx;
   const cx0 = (b0.minX + b0.maxX) / 2, cy0 = (b0.minY + b0.maxY) / 2;
   const cx1 = (b1.minX + b1.maxX) / 2, cy1 = (b1.minY + b1.maxY) / 2;
