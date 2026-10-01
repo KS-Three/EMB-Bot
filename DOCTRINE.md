@@ -7758,6 +7758,9 @@ the pixels per cap height; under about 20 the loss is segmentation, and the
 levers are the source or the size, never a stroke rule.** Size recovers this
 one at 140 mm; the dissolve and a wider palette make it worse. *(measured
 2026-09-30, `docs/renders/bridge-phantom-2026-09-30/teal-text.json`)*
+**Corrected the same day: there was a third lever, and "size recovers it"
+was the clue — the grid the engine traces on. See *When a bigger design
+brings the detail back from the SAME file*, below.**
 
 ## A rail that reaches for its far edge must first know whose edge it found (2026-09-30)
 
@@ -8043,3 +8046,55 @@ switch came back", above), and then asked for the snap ON as well.
 *(measured 2026-09-30/10-01 — `digitizer_core/stage2_photo_segment.py`
 `snap_region_edges`, `tests/test_snap_region_edges.py` (7),
 `conftest.PRE_FLIP`)*
+
+## When a bigger design brings the detail back from the SAME file, the loss is the engine's grid, not the artwork (2026-09-30)
+
+**A correction to *"Below the floor" is a diagnosis to earn* (above)**, which
+earned the first half and stopped. It moved bridge's teal words
+from "below the sewable floor" to "lost at segmentation, 3.5 px/mm … the
+levers are the source or the size, never a stroke rule" — and recorded, in
+the same breath, that the same 400 px JPEG brings the words back at 140 mm.
+A bigger design adds nothing to a file. What it changed was the engine's own
+raster: stage 1 enlarges a sub-floor source to `min_px_per_mm` = 4 at any
+design size, so a letter is 28 grid pixels at 140 mm and 13–18 at 80. There
+was a third lever and it was ours.
+
+Traced through stage 2, the words survive the oversegmentation (67 of 81 mm²
+of teal in teal-majority superpixels) and die in the RAG merge (39): a
+0.7–1.4 mm stroke is 3–5 px, every superpixel on the band holds ink and
+ground both, the merge compares MEANS at 26 dE00 and reads 19–23 between a
+diluted letter and a diluted ground, and both merge protections are
+size-gated above any letter. On a 5–10 px/mm grid the same file keeps 64–67.
+`cfg.work_px_per_mm` is the grid low-resolution line art is traced on
+(built OFF; 8 is the measured setting); `min_px_per_mm` keeps the warning.
+
+Three rules.
+
+1. **Before writing "the source cannot carry it", re-trace the same file on
+   a finer grid at the same design size.** One config override
+   (`work_px_per_mm`), one run. If the detail returns, the artwork carried it.
+2. **One fixture in a regime is not a regime.** Bridge was the corpus's only
+   gradient logo under 5 px/mm, so its loss read as bridge's. Downsampling
+   the high-resolution logos to 5 px/mm and scoring each against its own
+   full-resolution digitization (`tools/lowres_detail.py`) found the same loss
+   on three more — ENTHUSIAST's tagline, Fremont's "THE", Golke's second line
+   — on files nobody had thought to feed it. Every constant in the gradient
+   lane was tuned at 8.4 px/mm and up; a customer's website logo is 4–6.
+3. **A pixel-denominated rule changes meaning with the raster, and the
+   resolution floor decides which raster.** The merge's 1,000 px gates,
+   `thin_ink`'s 3 px floor, a 3×3 prior: each is a different millimetre at
+   4 px/mm than where it was measured. Same family as *thresholds on the
+   wrong population*; the tell here was a floor (4) set well under the
+   population the lane was calibrated on (8.4+).
+
+What it is not: robust, or a legibility fix. Half a pixel of foreground
+(the background mask enlarged smoothly instead of NEAREST) sent bridge's
+words to a grey-green cone and took ENTHUSIAST's fine ink 0.90 → 0.70 —
+where the superpixel grid lands is part of every number here, so the knob
+ships OFF and the flip waits on renders. The letters reach the stitch tier and sew
+as one satin bar each — 3.25–4.5 mm lettering is still a size question, now
+asked of thread. And enlargement is not free everywhere: from 6.5 px/mm
+sources the gain is inside the noise (two of five logos down), and a blurred
+synthetic (`logo_whitebg` at 5 px/mm) pays 12 → 21 trims.
+*(measured 2026-09-30 — `docs/fine-detail-work-grid-2026-09-30.md`;
+`tools/lowres_detail.py`; `tests/test_work_grid.py`)*

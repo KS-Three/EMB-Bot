@@ -17139,3 +17139,67 @@ flip; all accounted for in DOCTRINE's entry. Not measured: the rest of the
 gradient-class corpus rendered both ways (the sheet run died in a reboot
 after two fixtures, neither on the lane). Same day: the Studio's flat
 switch came back (PR #587).
+
+## 2026-09-30 — Bridge's "RESTAURANT" was the tracer's grid, not the file: `cfg.work_px_per_mm`, and a low-resolution regime the corpus never had (Kent's ask)
+
+Kent: *"the 'restaurant' is completely missing … figure out why, what
+prevents it from doing fine detail, and make a fix for it."* Full record with
+every table: `docs/fine-detail-work-grid-2026-09-30.md`; renders
+`docs/renders/fine-detail-work-grid-2026-09-30/`.
+
+**The trace** (`logo_bridge_bar.jpg`, 80 mm, `left_chest`, six colours; teal
+read off the engine's own raster, 81 mm²): in teal-majority SEEDS
+superpixels 67.1 → after the RAG merge **39.2** → sewn as 6 blobs, 46.6 mm².
+Eight merges swallow teal at 19–23 dE00 (threshold 26) across boundaries
+reading 17–19 Lab; both merge protections are gated at 1,000 px and the
+letters are 80–250. The same file traced on 5 / 6 / 7 / 8 px/mm keeps
+67.0 / 65.3 / 64.4 / 45.8 (+24.9 as thin ink) through the merge and sews 11 /
+9 / 13 / 11 teal regions (120 / 130 / 123 / 119 mm²) at 75 / 75 / 70 / 83
+trims against the shipped 101.
+
+**Built OFF:** `cfg.work_px_per_mm` (None = the engine before it; every
+number here is at 8.0), read
+through `config.work_grid_px_per_mm` by stage 1's enlargement,
+`alpha_edge.extension_applies` and preflight's resolution note.
+`min_px_per_mm` (4) still owns `INPUT_LOW_RESOLUTION`. Photo classes and a
+declared photograph keep the source line; `stage1_prep.WORK_GRID_MAX_SIDE_PX`
+(2,800) bounds the grid's share of the enlargement.
+
+**The regime** (`tools/lowres_detail.py`; each logo downsampled, scored
+against its own full-resolution digitization; `fine` = reference ink under
+1.5 mm sewn in its colour). Source 5 px/mm, traced at 4 / 6 / 7 / 8:
+ENTHUSIAST 0.25 / 0.59 / 0.57 / 0.90, screenshot 0.66 / 0.69 / 0.72 / 0.83,
+golden_tee 0.66 / 0.75 / 0.80 / 0.78, Fremont 0.86 / 0.85 / 0.88 / 0.90,
+drone 0.78 / 0.73 / 0.75 / 0.78; mean 0.64 / 0.72 / 0.74 / 0.84, mean area
+agreement 0.85 / 0.89 / 0.90 / 0.93. Trims at 4 → 8 (full-resolution file):
+8 → 15 (15), 66 → 80 (73), 56 → 60 (41), 31 → 38 (38), 92 → 140 (122).
+Source 4.2, traced at 4 → 7: mean 0.58 → 0.78 (golden_tee down, 0.72 →
+0.64). Source 6.5, as delivered → 8: mean 0.77 → 0.80 (Fremont 0.94 → 0.90
+and golden_tee 0.80 → 0.77 down). `logo_whitebg` at 5 px/mm: 12 → 21 trims,
+its `fine` unmoved. `logo_gaulke_roofing` refused by the instrument (its art
+box moves with the resolution). Becker (flat, cap-bound at 5.8 / 7.25
+px/mm): 100 mm 9,321 → 9,662 stitches, 50 → 57 trims; 80 mm 6,492 → 6,410,
+41 → 31.
+
+**Rejected, measured:** 4× superpixels at 4 px/mm (65.1 mm² after the merge
+on bridge; moves every design); `thin_ink`'s 3 px floor in source pixels
+(bridge at 8: 61 → 65 regions, 83 → 93 trims); cubic and linear for Lanczos
+(bridge 83 → 108 / 90 trims); forced flat (117 mm² of teal, an olive halo
+round every letter, 123 trims).
+
+**Why OFF (2026-10-01):** the full suite with it ON at 8 read 49 failed /
+2,968 passed on a box whose own baseline is not clean; about 45 are this
+change, most of them pins on 6–7.5 px/mm synthetics, several real
+(`gradient_ramp_radial` 2 regions for 1, the face-local split 4 for 2,
+`region_blobs`' photo golden). And the smooth-mask variant — the
+background mask enlarged bilinear, cut at one half — fixed the edge
+ladder's 400 px ribbon (6 regions → 1) while taking ENTHUSIAST's fine ink
+0.90 → 0.70, golden_tee 0.78 → 0.58 and bridge's teal words to a grey-green
+cone: half a pixel of foreground moves the result. Rejected; the
+sensitivity is the finding.
+
+**Not fixed:** the letters (3.25–4.5 mm, 0.7 mm strokes) each sew as one
+satin bar; the words are present and not legible letter by letter.
+
+*(measured 2026-09-30 — scratch probes over `stage2_photo_segment.segment`;
+`tools/lowres_detail.py`; `tests/test_work_grid.py`, `tests/test_lowres_detail.py`)*

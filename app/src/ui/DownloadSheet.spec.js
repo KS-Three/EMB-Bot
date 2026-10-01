@@ -97,3 +97,30 @@ test("Escape and the close button both dispatch close", async () => {
   await fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
   expect(onClose).toHaveBeenCalledTimes(2);
 });
+
+test("Show on design on a break-risk finding asks for that artwork's worst shape", async () => {
+  // The sheet is a dialog over an inert panel, so the canvas cannot show
+  // anything while it is open: the request has to leave the sheet, and App
+  // closes it and selects the shape.
+  const asked = [];
+  render(Harness, {
+    project: defaultProject(),
+    summaryRows: ROWS,
+    qualityEntries: [{
+      id: "el7",
+      label: "Artwork",
+      preflight: {
+        score: 88, grade: "B", metrics: {},
+        findings: [{
+          code: "STITCHES_TOO_SHORT", severity: "warn",
+          message: "31% of satin stitches are under the 1 mm needle minimum.",
+          extra: { break_risk: true, show_shape_ids: ["Sworst", "Snext"] },
+        }],
+      },
+      stats: {},
+    }],
+    onLocate: (d) => asked.push(d),
+  });
+  await fireEvent.click(screen.getByRole("button", { name: "Show on design" }));
+  expect(asked).toEqual([{ elId: "el7", shapeId: "Sworst" }]);
+});
