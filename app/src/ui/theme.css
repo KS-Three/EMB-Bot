@@ -489,6 +489,9 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
 
 @media (max-width: 480px) {
   .drawer { width: 100%; max-width: 100%; }
+  /* Topbar room at phone width: see the 820px block's topbar comment. */
+  .wordmark { display: none; }
+  .mydesigns { padding: var(--space-1) var(--space-2); }
 }
 
 /* Two-pane studio: guided steps on the left, live embroidery field on the
@@ -1090,10 +1093,14 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
      tall enough that the natural width is already a sane shape. */
   .hoop { max-width: min(100%, 62vh); }
 
-  /* Everything in the 44px bar still fits at this width: the wordmark is
-     short ("EMB·BOT") and the font-credits "?" is a 28px circle, so neither
-     is hidden any more. Only the gap and padding tighten. */
+  /* The 44px bar at phone width: wordmark + undo/redo + name + My designs +
+     "?" left the project name 31px wide. So at 820px and below the font-credits
+     "?" is hidden (the credits stay reachable from the Download sheet's footer
+     link), and at 480px and below the wordmark goes too (on a phone the
+     design's name matters more than the brand) and My designs tightens its
+     padding. The gap and bar padding tighten at every width in this block. */
   .topbar { gap: var(--space-2); padding: 0 var(--space-3); }
+  .font-credits-btn { display: none; }
   /* .panel needs a BOUNDED height for two things to work: .cfg-body's
      internal scroll (flex:1; min-height:0; overflow-y:auto) needs something
      to clip against, and the summary bar (a flex child pinned to the bottom of
