@@ -127,12 +127,18 @@ def test_the_default_runner_measures_the_worktree_it_actually_built(tiny_repo, t
     dest = scratch / f"eye-pairs-ref-{old}"
     try:
         assert (dest / "digitizer" / "requirements.txt").exists()
-        # The checkout has the venv; a fresh worktree of it never does.
-        assert env == {"ref": old, "rembg_venv_main": True, "rembg_venv_ref": False,
+        # The checkout has the venv, and since 2026-09-30 the worktree is
+        # linked to it (`refarm.link_photo_prep`) — where the platform allows
+        # a symlink. Where it does not, the worktree has none, and `env`
+        # says so: it is measured, not assumed.
+        linked = (dest / "digitizer" / "rembg_isolated" / "venv").exists()
+        assert env == {"ref": old, "rembg_venv_main": True, "rembg_venv_ref": linked,
                        "requirements_differ": False}
     finally:
         closer()
     assert not dest.exists()
+    # Discarding the worktree removes the link, never what it points at.
+    assert exe.exists()
 
 
 def registered(repo: Path) -> int:
