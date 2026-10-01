@@ -249,6 +249,8 @@ describe("names and the toggle", () => {
 ```
 
 - [ ] **Step 2: Run** `cd app && npx vitest run src/lib/manualShapes.spec.js` — the new tests FAIL (`resolveCutOuts is not a function`).
+> **Superseded in one detail (commit `e8c8157e`, after the final review):** the code below gives an equal-area tie to the LATER shape (`<=`). That let Duplicate take a hole away from the original, so the shipped rule is strict-smaller with an epsilon and a tie stays with the EARLIER shape. The block is kept as the plan was written; `manualShapes.js` is the truth.
+
 - [ ] **Step 3: Implement** in `manualShapes.js`, placed after `pointInShape`'s section and before `shapesToRegions` (it must come after `flattenShape` is defined, or be a function declaration that only runs later — function declarations hoist, constants do not):
 
 ```js
