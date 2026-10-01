@@ -44,6 +44,6 @@
       <div><dt>{row.label}</dt><dd>{row.value}</dd></div>
     {/each}
   </dl>
-  <QualityReport entries={qualityEntries} partial={qualityPartial} />
+  <QualityReport entries={qualityEntries} partial={qualityPartial} on:locate={(e) => d("locate", e.detail)} />
   <DownloadStep {project} {runtime} {digitizerHealth} on:credits={(e) => d("credits", e.detail)} />
 </div>

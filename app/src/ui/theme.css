@@ -2001,6 +2001,12 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .qr-grade.tone-warn { color: var(--warn); }
 .qr-grade.tone-bad  { color: var(--danger); }
 
+.qr-sub {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  margin: var(--space-4) 0 var(--space-2);
+}
+.qr-show { margin-left: var(--space-2); }
 .qr-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
 .qr-list li {
   display: grid;

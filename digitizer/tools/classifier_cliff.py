@@ -48,7 +48,10 @@ ARMS = {"shipped": {}, "area": {"classify_area_weighted": True},
         # stage 1 upscales a source under `min_px_per_mm` by a factor that
         # changes with the target size, so a 1.8 px/mm source is re-invented
         # at every width; pin the floor high and the upscale stops moving
-        "upscale_8": {"min_px_per_mm": 8.0, "upscale_cap": 8.0}}
+        "upscale_8": {"min_px_per_mm": 8.0, "upscale_cap": 8.0},
+        # `cfg.work_px_per_mm` (2026-09-30, built OFF): the cliff statistic
+        # must be read on this arm before anyone flips it
+        "work_grid_8": {"work_px_per_mm": 8.0}}
 
 
 def _one(args) -> dict:
