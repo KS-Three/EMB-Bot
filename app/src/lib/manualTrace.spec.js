@@ -1,7 +1,7 @@
 import { test, expect, beforeAll } from "vitest";
 import { createRequire } from "node:module";
 import { preloadAllFontsSync } from "./testFonts.js";
-import { shapeIssues, isValidShape, CANVAS_W, CANVAS_H, MAX_SHAPE_POINTS } from "./manualShapes.js";
+import { shapeIssues, isValidShape, resolveCutOuts, CANVAS_W, CANVAS_H, MAX_SHAPE_POINTS } from "./manualShapes.js";
 
 // Same engine-loading convention as flatten.spec.js / imageRegions.spec.js:
 // manualTrace.js sits on the same app/src/lib -> src/*.js vanilla-engine
@@ -66,7 +66,15 @@ test("traceShapesFromRGBA: two disjoint same-color blobs trace as two separate s
   expect(shapes[1].colorRgb).toEqual(RED);
 });
 
-test("traceShapesFromRGBA: an annulus (ring with a same-background-color hole) traces as ONE shape, the hole is dropped with a warning", async () => {
+const HOLE_WARNING = "A traced hole could not be kept — that shape will sew solid; cut it in by hand if needed.";
+
+// Temporary ids so resolveCutOuts can judge a traced batch the way the Studio will.
+function resolveBatch(shapes) {
+  const withIds = shapes.map((s, i) => ({ ...s, id: "s" + (i + 1) }));
+  return { withIds, res: resolveCutOuts(withIds) };
+}
+
+test("traceShapesFromRGBA: an annulus (ring with a same-background-color hole) traces as the ring plus a cut-out right after it, no warning", async () => {
   const { traceShapesFromRGBA } = await import("./manualTrace.js");
   const w = 24, h = 24;
   const rgba = makeCanvas(w, h);
@@ -74,9 +82,158 @@ test("traceShapesFromRGBA: an annulus (ring with a same-background-color hole) t
   fillRect(rgba, w, 4, 4, 20, 20, GREEN); // the ring
   fillRect(rgba, w, 9, 9, 15, 15, WHITE); // the hole, same color as background
   const { shapes, warnings } = traceShapesFromRGBA(rgba, w, h, { nColors: 1, removeBg: true });
-  expect(shapes).toHaveLength(1); // outer boundary only, hole is NOT its own shape
+  expect(shapes).toHaveLength(2);
+  expect(shapes[0].cutOut).toBeUndefined();
   expect(shapes[0].colorRgb).toEqual(GREEN);
-  expect(warnings.some((m) => m.includes("interior hole"))).toBe(true);
+  expect(shapes[1]).toMatchObject({ cutOut: true, colorRgb: GREEN, stitchType: "fill", angleDeg: null });
+  expect(warnings).toEqual([]);
+  const { res } = resolveBatch(shapes);
+  expect(res.parentOf).toEqual({ s2: "s1" });
+});
+
+test("traceShapesFromRGBA: a square with a square hole -> one shape then one cut-out, resolving to the square", async () => {
+  const { traceShapesFromRGBA } = await import("./manualTrace.js");
+  const w = 200, h = 200;
+  const rgba = makeCanvas(w, h);
+  fillRect(rgba, w, 0, 0, w, h, WHITE);
+  fillRect(rgba, w, 40, 40, 160, 160, RED);
+  fillRect(rgba, w, 80, 80, 120, 120, WHITE);
+  const { shapes, warnings } = traceShapesFromRGBA(rgba, w, h, { nColors: 1, removeBg: true });
+  expect(shapes.filter((s) => !s.cutOut)).toHaveLength(1);
+  expect(shapes.filter((s) => s.cutOut)).toHaveLength(1);
+  expect(shapes[1].cutOut).toBe(true);
+  expect(warnings.some((m) => m.includes("hole"))).toBe(false);
+  expect(resolveBatch(shapes).res.parentOf).toEqual({ s2: "s1" });
+});
+
+test("traceShapesFromRGBA: a solid square has no cut-out", async () => {
+  const { traceShapesFromRGBA } = await import("./manualTrace.js");
+  const w = 200, h = 200;
+  const rgba = makeCanvas(w, h);
+  fillRect(rgba, w, 0, 0, w, h, WHITE);
+  fillRect(rgba, w, 40, 40, 160, 160, RED);
+  const { shapes, warnings } = traceShapesFromRGBA(rgba, w, h, { nColors: 1, removeBg: true });
+  expect(shapes).toHaveLength(1);
+  expect(shapes.some((s) => s.cutOut)).toBe(false);
+  expect(warnings).toEqual([]);
+});
+
+test("traceShapesFromRGBA: two separate holes -> two cut-outs straight after the parent, both resolving to it", async () => {
+  const { traceShapesFromRGBA } = await import("./manualTrace.js");
+  const w = 200, h = 200;
+  const rgba = makeCanvas(w, h);
+  fillRect(rgba, w, 0, 0, w, h, WHITE);
+  fillRect(rgba, w, 20, 20, 180, 180, BLUE);
+  fillRect(rgba, w, 40, 40, 80, 80, WHITE);
+  fillRect(rgba, w, 110, 100, 150, 150, WHITE);
+  const { shapes, warnings } = traceShapesFromRGBA(rgba, w, h, { nColors: 1, removeBg: true });
+  expect(shapes.map((s) => !!s.cutOut)).toEqual([false, true, true]);
+  expect(warnings).toEqual([]);
+  expect(resolveBatch(shapes).res.parentOf).toEqual({ s2: "s1", s3: "s1" });
+});
+
+test("traceShapesFromRGBA: a round hole in a round disc is fitted with curves that stay inside the parent", async () => {
+  const { traceShapesFromRGBA } = await import("./manualTrace.js");
+  const w = 240, h = 240;
+  const rgba = makeCanvas(w, h);
+  fillRect(rgba, w, 0, 0, w, h, WHITE);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const d = Math.hypot(x + 0.5 - 120, y + 0.5 - 120);
+    if (d < 100 && d > 40) fillRect(rgba, w, x, y, x + 1, y + 1, GREEN);
+  }
+  // A small tolerance forces the hole ring to be curve-fitted.
+  const { shapes, warnings } = traceShapesFromRGBA(rgba, w, h, { nColors: 1, removeBg: true, simplifyTolPx: 6, curveTolPx: 0.5 });
+  expect(shapes.map((s) => !!s.cutOut)).toEqual([false, true]);
+  expect(Object.keys(shapes[1].curves).length).toBeGreaterThan(0);
+  expect(warnings).toEqual([]);
+  expect(resolveBatch(shapes).res.parentOf).toEqual({ s2: "s1" });
+});
+
+test("buildCutOut: a fitted hole that leaves its parent falls back to the straight ring", async () => {
+  const { buildCutOut } = await import("./manualTrace.js");
+  const parent = { points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }], curves: {}, colorRgb: RED, stitchType: "fill", angleDeg: null };
+  // Top edge at y=3 with one raw point bulging to y=-1: within simplifyTol (dropped from the
+  // simplified ring) but past curveTol, so the fitted curve pokes out of the parent.
+  const raw = [];
+  for (let x = 3; x < 97; x += 1) raw.push({ x, y: x === 50 ? -1 : 3 });
+  for (let y = 3; y < 97; y += 1) raw.push({ x: 97, y });
+  for (let x = 97; x > 3; x -= 1) raw.push({ x, y: 97 });
+  for (let y = 97; y > 3; y -= 1) raw.push({ x: 3, y });
+  const out = buildCutOut(parent, raw, 6, 0.5);
+  expect(out).not.toBeNull();
+  expect(out.cutOut).toBe(true);
+  expect(out.curves).toEqual({});
+});
+
+// An axis-aligned parent with two rectangular holes split by a 2px wall, each
+// 2px from the parent's edge. Rectangles simplify to four corners and cannot
+// cross, so this does not reproduce the sibling-crossing case (the direct
+// buildCutOut test covers that); it is a regression guard that every cut-out
+// the real trace emits on thin walls resolves to its parent.
+function thinWallImage() {
+  const w = 200, h = 200;
+  const rgba = makeCanvas(w, h);
+  fillRect(rgba, w, 0, 0, w, h, WHITE);
+  fillRect(rgba, w, 40, 40, 160, 160, RED);
+  fillRect(rgba, w, 42, 42, 98, 158, WHITE); // left hole
+  fillRect(rgba, w, 100, 42, 158, 158, WHITE); // right hole, 2px wall away, 2px from the edge
+  return { rgba, w, h };
+}
+
+test("traceShapesFromRGBA: holes split by thin walls never produce a cut-out that fails to resolve; a drop warns once", async () => {
+  const { traceShapesFromRGBA } = await import("./manualTrace.js");
+  const { rgba, w, h } = thinWallImage();
+  const { shapes, warnings } = traceShapesFromRGBA(rgba, w, h, { nColors: 1, removeBg: true });
+  const { res } = resolveBatch(shapes);
+  const cuts = shapes.map((s, i) => (s.cutOut ? "s" + (i + 1) : null)).filter(Boolean);
+  for (const id of cuts) {
+    expect(res.reasonOf[id]).toBeUndefined();
+    expect(res.parentOf[id]).toBe("s1");
+  }
+  const parents = shapes.filter((s) => !s.cutOut).length;
+  const lostSome = cuts.length < 2 * parents;
+  expect(warnings.filter((m) => m === HOLE_WARNING)).toHaveLength(lostSome ? 1 : 0);
+});
+
+test("traceShapesFromRGBA: a parent that loses a hole gets exactly one warning with the exact text", async () => {
+  const { traceShapesFromRGBA, buildCutOut } = await import("./manualTrace.js");
+  const w = 200, h = 200;
+  const rgba = makeCanvas(w, h);
+  fillRect(rgba, w, 0, 0, w, h, WHITE);
+  fillRect(rgba, w, 40, 40, 160, 160, RED);
+  fillRect(rgba, w, 50, 50, 90, 150, WHITE);
+  fillRect(rgba, w, 110, 50, 150, 150, WHITE);
+  // A synthetic image cannot make the real builder fail, so force it through the holeBuilder seam:
+  // the first hole is refused, the second kept.
+  let calls = 0;
+  const holeBuilder = (parent, ring, a, b, kept) => {
+    calls++;
+    return calls === 1 ? null : buildCutOut(parent, ring, a, b, kept);
+  };
+  const { shapes, warnings } = traceShapesFromRGBA(rgba, w, h, { nColors: 1, removeBg: true, holeBuilder });
+  expect(calls).toBe(2);
+  expect(shapes.filter((s) => s.cutOut)).toHaveLength(1);
+  expect(warnings.filter((m) => m === HOLE_WARNING)).toEqual([HOLE_WARNING]);
+});
+
+test("buildCutOut: a hole crossing an already-kept sibling is rejected (straight fallback if that clears, else null)", async () => {
+  const { buildCutOut } = await import("./manualTrace.js");
+  const sq = (x0, y0, x1, y1) => [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+  const parent = { points: sq(0, 0, 100, 100), curves: {}, colorRgb: RED, stitchType: "fill", angleDeg: null };
+  const kept = [{ points: sq(10, 10, 60, 90), curves: {}, colorRgb: RED, stitchType: "fill", angleDeg: null, cutOut: true }];
+  // Overlaps the kept hole: no straight fallback can clear it.
+  expect(buildCutOut(parent, sq(50, 20, 90, 80), 2.5, 3, kept)).toBeNull();
+  // Disjoint from it: accepted.
+  expect(buildCutOut(parent, sq(70, 20, 90, 80), 2.5, 3, kept)).not.toBeNull();
+  // Without the kept list the overlapping one would have been accepted (the old blind spot).
+  expect(buildCutOut(parent, sq(50, 20, 90, 80), 2.5, 3)).not.toBeNull();
+});
+
+test("buildCutOut: a hole that is not inside its parent even when straight is dropped (null)", async () => {
+  const { buildCutOut } = await import("./manualTrace.js");
+  const parent = { points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }], curves: {}, colorRgb: RED, stitchType: "fill", angleDeg: null };
+  const raw = [{ x: 20, y: 20 }, { x: 60, y: 20 }, { x: 60, y: 60 }, { x: 20, y: 60 }];
+  expect(buildCutOut(parent, raw, 2.5, 3)).toBeNull();
 });
 
 test("traceShapesFromRGBA: a clean solid blob plus scattered single-pixel color speckle is despeckled, not traced as spurious tiny shapes", async () => {
