@@ -7513,7 +7513,10 @@ class's, detection does not move it), and the detail-lines option follows it.
 
 **Two rules that follow, and both change what a session does:**
 
-1. **Do not bring the buttons back.** A misrouted design now has no
+1. **Do not bring the buttons back.** *(The FLAT button came back the same
+   evening, by Kent's own ruling — see "The flat switch came back" at the
+   end of this file. The photo button did not, and the rest of this rule
+   stands for it.)* A misrouted design now has no
    in-product correction, and that is the point rather than an oversight:
    stage 0 misroutes most real logos (phase 2), and the fix is the routing.
    A session that sees a misroute reaches for phase 2's evidence, not for a
@@ -7950,3 +7953,34 @@ fill. Before comparing a professional's file to ours, say what each was
 digitized FROM; a thumbnail fixture judged against vector-art work reads
 as an engine gap that is not there. The resolution line on the lettering
 findings (2026-09-30) is the record that applies.
+
+## 2026-09-30 — The flat switch came back, the same day it went
+
+**Kent's ruling, reversing half of that morning's.** He digitized the real
+Instagram icon; stage 0 read it `gradient` (correctly — it is a multi-stop
+sweep), the gradient lane sewed it badly, and the Studio had no way to say
+otherwise: *"The option to select 'digitize as flat' is gone. either we need
+to auto recognize when to digitize as flat, or make that switch available
+again."* Shown the lane's edge fix live (`snap_region_edges`, clean white
+shapes, the sweep still in bands with a hard line through it) he chose the
+switch: *"Still bad, bring the switch back."* He had ranked forced flat at
+80 mm best of every arm earlier the same session.
+
+**What is back:** on a reading that sews down a tonal lane (`photo`,
+`gradient`, a detected photograph) the reading row offers ONE button, "Sew as
+flat art", which writes `params.forced_class = "flat"`; a design it was used
+on says "You set this to flat art" and offers "Use automatic detection",
+which removes the key. `buildDigitizeConfig` sends `forced_class` only when
+it is exactly `"flat"`. **What is not:** "It's a photo" / `isPhoto` /
+`is_photographic` from the Studio, any other stored `forced_class`, and any
+button on a flat reading.
+
+**What this changes for a session:** a misroute has an in-product correction
+again, in ONE direction. Phase 2 is still the fix — a customer has to notice
+the misroute to use the button — and the automatic route for non-photographic
+gradient-class art (plan 2026-09-08's PR 6b, "route by consequence") is still
+an open ruling of Kent's, now with his stated preference on record: he was
+offered it in the same question and took the switch. Do not remove the
+button again on the strength of the morning's entry; ask.
+*(Kent's call 2026-09-30 — `app/src/lib/digitizer.js` `buildDigitizeConfig`,
+`DigitizePanel.svelte` reading row, `DigitizePanel.spec.js`)*
