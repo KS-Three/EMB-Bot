@@ -65,6 +65,11 @@
     }
   });
 
+  // A row's note is read out with its control (aria-describedby), so a screen
+  // reader hears "Cut out, switch, on — Cuts Shape 1." rather than the switch
+  // alone. Null on a row without a note, which omits the attribute.
+  const noteId = (row) => (row.note ? `shapepop-note-${row.key}` : null);
+
   function onKey(e) {
     if (e.key === "Escape") {
       e.preventDefault();
@@ -106,7 +111,7 @@
     {:else if row.kind === "choice"}
       <label class="shapepop-row">
         <span class="shapepop-label">{row.label}</span>
-        <select value={row.value} aria-label={row.label} on:change={(e) => d("change", { key: row.key, value: e.currentTarget.value })}>
+        <select value={row.value} aria-label={row.label} aria-describedby={noteId(row)} on:change={(e) => d("change", { key: row.key, value: e.currentTarget.value })}>
           {#each row.options as o (o.value)}
             <option value={o.value}>{o.label}</option>
           {/each}
@@ -116,7 +121,7 @@
       <label class="shapepop-row">
         <span class="shapepop-label">{row.label}</span>
         <input
-          type="number" step="1" placeholder="auto" aria-label={row.label}
+          type="number" step="1" placeholder="auto" aria-label={row.label} aria-describedby={noteId(row)}
           value={row.value == null ? "" : row.value}
           on:input={(e) => d("change", { key: row.key, value: e.currentTarget.value })}
         />
@@ -126,6 +131,16 @@
       <button type="button" class="shapepop-action" class:danger={row.danger} on:click={() => d("action", { key: row.key })}>
         {row.label}
       </button>
+    {:else if row.kind === "toggle"}
+      <div class="shapepop-row">
+        <span class="shapepop-label">{row.label}</span>
+        <button
+          type="button" role="switch" class="shapepop-toggle"
+          aria-checked={row.value ? "true" : "false"} aria-label={row.label} aria-describedby={noteId(row)}
+          on:click={() => d("change", { key: row.key, value: !row.value })}
+        >{row.value ? "On" : "Off"}</button>
+      </div>
     {/if}
+    {#if row.note}<p class="shapepop-note" id={noteId(row)} class:warn={row.warn}>{row.note}</p>{/if}
   {/each}
 </div>

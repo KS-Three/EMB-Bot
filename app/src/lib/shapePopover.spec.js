@@ -5,7 +5,7 @@
 import { describe, expect, test } from "vitest";
 import {
   laneOf, popoverModel, popoverPatch, recolorPatch,
-  DIGITIZED_TIERS, SHAPE_ANGLES, SHAPE_UNDERLAYS, BORDER_OPTIONS,
+  DIGITIZED_TIERS, SHAPE_ANGLES, SHAPE_UNDERLAYS, BORDER_OPTIONS, SATIN_CUTOUT_NOTE,
 } from "./shapePopover.js";
 
 const square = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
@@ -43,7 +43,8 @@ describe("popoverModel — manual lane", () => {
     const m = popoverModel({ element: manualEl, shapeId: "s1" });
     expect(m.lane).toBe("manual");
     expect(m.name).toBe("Shape 1 · Fill");
-    expect(m.rows.map((r) => r.key)).toEqual(["color", "stitchType", "angle", "editPoints", "delete"]);
+    expect(m.rows.map((r) => r.key)).toEqual(["color", "stitchType", "angle", "cutOut", "editPoints", "delete"]);
+    expect(m.rows[3]).toEqual({ key: "cutOut", kind: "toggle", label: "Cut out", value: false });
     expect(m.rows[0]).toEqual({ key: "color", kind: "thread", rgb: [20, 20, 20] });
     expect(m.rows[1].options).toEqual([{ value: "fill", label: "Fill" }, { value: "satin", label: "Satin" }]);
     expect(m.rows[1].value).toBe("fill");
@@ -176,5 +177,56 @@ describe("popoverPatch — digitized lane mirrors DigitizePanel.setOverride", ()
   test("recolorPatch is null when the chart cannot be loaded or is not the job's", async () => {
     expect(await recolorPatch(ctx, [1, 1, 1], { loadPalette: async () => { throw new Error("offline"); }, nearestInList: () => null })).toBeNull();
     expect(await recolorPatch(ctx, [1, 1, 1], { loadPalette: async () => ({ id: "madeira", threads: [] }), nearestInList: () => null })).toBeNull();
+  });
+});
+
+const box = (x0, y0, x1, y1) => [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+const holeEl = (parentType = "satin", holePts = box(20, 20, 40, 40)) => ({
+  id: 7, type: "manual",
+  shapes: [
+    { id: "s1", points: square, curves: {}, stitchType: parentType, colorRgb: [1, 1, 1], angleDeg: null },
+    { id: "s2", points: holePts, curves: {}, stitchType: "fill", colorRgb: [2, 2, 2], angleDeg: null, cutOut: true },
+  ],
+});
+
+describe("cut-outs in the popover", () => {
+  test("a cut-out inside a parent: toggle on, names its parent, no colour/type/angle rows", () => {
+    const m = popoverModel({ element: holeEl(), shapeId: "s2" });
+    expect(m.name).toBe("Shape 2 · Cut out");
+    expect(m.rows.map((r) => r.key)).toEqual(["cutOut", "editPoints", "delete"]);
+    expect(m.rows[0]).toEqual({ key: "cutOut", kind: "toggle", label: "Cut out", value: true, note: "Cuts Shape 1.", warn: false });
+  });
+  test("a cut-out outside everything says it cuts nothing, as a warning", () => {
+    const m = popoverModel({ element: holeEl("fill", box(300, 300, 320, 320)), shapeId: "s2" });
+    expect(m.rows[0].note).toBe("Not inside a shape — cuts nothing.");
+    expect(m.rows[0].warn).toBe(true);
+  });
+  test("a satin parent with a cut-out reads Fill with the note; stored fill has no note", () => {
+    const m = popoverModel({ element: holeEl("satin"), shapeId: "s1" });
+    expect(m.name).toBe("Shape 1 · Fill");
+    expect(m.rows[1].value).toBe("fill");
+    expect(m.rows[1].note).toBe(SATIN_CUTOUT_NOTE);
+    expect(SATIN_CUTOUT_NOTE).toBe("Sews as fill — satin cannot go round a cut-out.");
+    const f = popoverModel({ element: holeEl("fill"), shapeId: "s1" });
+    expect(f.rows[1].value).toBe("fill");
+    expect("note" in f.rows[1]).toBe(false);
+  });
+  test("a satin shape with no cut-out keeps satin and no note", () => {
+    const m = popoverModel({ element: manualEl, shapeId: "s2" });
+    expect(m.rows[1].value).toBe("satin");
+    expect("note" in m.rows[1]).toBe(false);
+  });
+  test("popoverPatch cutOut true marks only that shape; false removes the key", () => {
+    const el = holeEl();
+    const on = popoverPatch({ element: el, shapeId: "s1" }, "cutOut", true);
+    expect(on.shapes[0].cutOut).toBe(true);
+    expect(on.shapes[1]).toBe(el.shapes[1]);
+    const off = popoverPatch({ element: el, shapeId: "s2" }, "cutOut", false);
+    expect("cutOut" in off.shapes[1]).toBe(false);
+    expect(off.shapes[0]).toBe(el.shapes[0]);
+  });
+  test("digitized and preset lanes are unchanged", () => {
+    expect(popoverModel({ element: digitizedEl, shapeId: "Sabc" }).rows.map((r) => r.key)).toEqual(["color", "stitchType", "angle", "underlay", "border", "editPoints", "delete"]);
+    expect(popoverModel({ element: presetEl, shapeId: "" }).rows.map((r) => r.key)).toEqual(["color"]);
   });
 });
