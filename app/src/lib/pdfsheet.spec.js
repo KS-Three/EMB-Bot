@@ -682,6 +682,46 @@ test("run time still prints when the design was never walked for trims", () => {
   expect(strings).toContain("Run time: ~7 min at 650 spm (incl. trims)");
 });
 
+// --- the quote on paper (2026-10-01) -----------------------------------------
+
+test("run time names the operator's machine and the speed they run it at", () => {
+  // 4,321 / 850 = 5.08 min of needle, + 6 stops x 120 / 650 = 1.11 -> 6.
+  const strings = sheetStrings(
+    baseDesign(),
+    metaFor("left_chest", {
+      sew: { trims: 6, stops: 6, threadM: 4.2, spm: 850, machineLabel: "SmartStitch S-1501" },
+    })
+  );
+  expect(strings).toContain("Run time: ~6 min on your SmartStitch S-1501 at 850 spm (incl. trims)");
+});
+
+test("run time is charged per stop when the caller counted stops", () => {
+  // Same design, same six trims — and four colour stops the thread was not
+  // cut for. 4,321 + 10 x 120 = 5,521 / 650 = 8.49 -> 8; six alone is 7.75
+  // -> 8 too, so use enough stops to cross a minute: 14 -> 6,001 / 650 = 9.2.
+  const strings = sheetStrings(
+    baseDesign(),
+    metaFor("left_chest", { sew: { trims: 6, stops: 14, threadM: 4.2 } })
+  );
+  expect(strings).toContain("Run time: ~9 min at 650 spm (incl. trims)");
+});
+
+test("bobbin metres print with the rule that produced them", () => {
+  // 4,321 stitches at 3 m per 1,000 = 12.96 m.
+  const strings = sheetStrings(baseDesign(), metaFor("left_chest"));
+  expect(strings).toContain("Bobbin: ~13.0 m (at 3 m per 1,000 stitches)");
+});
+
+test("dollar lines print only when the caller hands them over", () => {
+  const without = sheetStrings(baseDesign(), metaFor("left_chest"));
+  expect(without.some((s) => s.includes("$"))).toBe(false);
+  const withQuote = sheetStrings(
+    baseDesign(),
+    metaFor("left_chest", { quoteLines: ["Thread cost: $0.01 (4.2 m of a $8.00 / 5,000 m cone)", ""] })
+  );
+  expect(withQuote).toContain("Thread cost: $0.01 (4.2 m of a $8.00 / 5,000 m cone)");
+});
+
 test("the thread sequence says these numbers are the operator's to set", () => {
   const strings = sheetStrings(baseDesign(), metaFor("left_chest"));
   // DST carries no colour data at all, so the ordinal beside each cone is

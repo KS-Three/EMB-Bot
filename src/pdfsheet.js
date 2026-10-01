@@ -21,7 +21,7 @@ const deps =
   const { mmToInch } = deps.units;
   const { renderStitches } = deps.render;
   const { getFabric, GARMENT_FABRIC } = deps.fabrics;
-  const { sewTimeMin, PLAN_SPM } = deps.sewtime;
+  const { sewTimeMin, PLAN_SPM, bobbinM, BOBBIN_M_PER_1000 } = deps.sewtime;
 
   // The fabric preset behind a garment id, or null when the id is not one we
   // ship. `fabricForGarment` is NOT used here on purpose: it falls back to
@@ -233,14 +233,41 @@ const deps =
     // The BASIS is printed beside the figure, not left implied: these are
     // trade constants the playbook rates "medium confidence", and a bare
     // number on a sheet an operator schedules from would read as measured.
-    const runMin = sewTimeMin(
-      stitchCount,
-      options.sew && typeof options.sew.trims === "number" ? options.sew.trims : 0
-    );
+    //
+    // 2026-10-01: charged per STOP when the caller counted them (a colour
+    // stop the thread was not already cut for is a stop too — estimate.js
+    // `sewFacts`), at the operator's own running speed when they have given
+    // one, and naming their machine. A caller that passes none of the three
+    // gets the line it always got.
+    const sew = options.sew || {};
+    const stops =
+      typeof sew.stops === "number" ? sew.stops : typeof sew.trims === "number" ? sew.trims : 0;
+    const spm = typeof sew.spm === "number" && sew.spm > 0 ? sew.spm : PLAN_SPM;
+    const runMin = sewTimeMin(stitchCount, stops, spm);
     if (runMin !== null) {
       statsLines.push(
-        "Run time: ~" + runMin + " min at " + PLAN_SPM + " spm (incl. trims)"
+        "Run time: ~" + runMin + " min" +
+          (sew.machineLabel ? " on your " + sew.machineLabel : "") +
+          " at " + spm.toLocaleString("en-US") + " spm (incl. trims)"
       );
+    }
+    // Under-thread, on the thread maker's rule and saying so — same wording
+    // as the screen's row. Skipped for an empty design, like the screen.
+    const bobbin = stitchCount > 0 ? bobbinM(stitchCount) : null;
+    if (bobbin !== null) {
+      statsLines.push(
+        "Bobbin: " + (bobbin < 0.05 ? "under 0.1" : "~" + bobbin.toFixed(1)) +
+          " m (at " + BOBBIN_M_PER_1000 + " m per 1,000 stitches)"
+      );
+    }
+    // The dollar lines, when the operator has entered prices. Passed in
+    // already worded (the Studio's `sewSummary` rows) rather than recomputed:
+    // the prices live in the Studio's storage, and two documents about one
+    // design must not phrase the same fact differently.
+    if (Array.isArray(options.quoteLines)) {
+      for (const line of options.quoteLines) {
+        if (typeof line === "string" && line) statsLines.push(line);
+      }
     }
 
     // What the DIGITIZER assumed the operator would hoop.

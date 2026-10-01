@@ -279,7 +279,13 @@ test("exportWorksheetPDF wires window.jspdf and forwards garment box (mm) to EMB
     // them drift apart without failing.
     const { sewFacts } = await import("./estimate.js");
     const facts = sewFacts(design);
-    expect(meta.sew).toEqual({ trims: facts.trims, threadM: facts.threadM });
+    // 2026-10-01: plus the stops the run time is charged for, and the
+    // operator's quote inputs — none entered here, so no speed, no machine
+    // name and no dollar lines reach the sheet.
+    expect(meta.sew).toEqual({
+      trims: facts.trims, threadM: facts.threadM, stops: facts.stops, spm: null, machineLabel: "",
+    });
+    expect(meta.quoteLines).toEqual([]);
     // Not a vacuous pass: this fixture really does sew and really does trim.
     expect(facts.trims).toBeGreaterThan(0);
     expect(facts.threadM).toBeGreaterThan(0);

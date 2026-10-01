@@ -5,7 +5,8 @@
   import { onMount, tick } from "svelte";
   import { isSewable } from "./lib/flow.js";
   import { designSummary } from "./lib/summary.js";
-  import { sewSummary } from "./lib/estimate.js";
+  import { sewSummary, QUOTE_ROW_LABELS } from "./lib/estimate.js";
+  import { loadQuote, saveQuote } from "./lib/quote.js";
   import { generateAll } from "./lib/generate.js";
   import { rehydrateImages } from "./lib/imageSource.js";
   import { chartIdForProject, designChartId } from "./lib/designChart.js";
@@ -233,7 +234,10 @@
       return null;
     }
   })();
-  $: sewFacts = combinedDesign ? sewSummary(combinedDesign) : [];
+  // The operator's quote inputs — machine, running speed, prices. One record
+  // for this browser, not per project (Kent's ruling 2026-10-01).
+  let quote = loadQuote();
+  $: sewFacts = combinedDesign ? sewSummary(combinedDesign, quote) : [];
   // The summary bar's colour figure: SPOOLS, the customer-facing meaning of
   // "colors" here (see spoolCount in lib/digitizer.js), counted on the same
   // combined design the size and stitch figures beside it come from.
@@ -245,7 +249,13 @@
     { label: "Garment", value: readable(project.garmentId) },
     { label: "Hoop", value: hoopInEffect.hoop.label + (hoopInEffect.suggested ? " (suggested)" : "") },
     ...designSummary(project, sewnColors),
-    ...(qualityIsTheWholeDesign ? [] : sewFacts),
+    // When one digitized element IS the design, QualityReport states the
+    // stitches, changes, trims and thread, so those rows stay suppressed —
+    // but it has never stated a run time, bobbin or cost, and suppressing
+    // those too left the commonest job (one logo) with no quote at all.
+    ...(qualityIsTheWholeDesign
+      ? sewFacts.filter((r) => QUOTE_ROW_LABELS.includes(r.label))
+      : sewFacts),
   ];
   $: subtitle = `${readable(project.garmentId)} · ${hoopInEffect.hoop.label}`;
 
@@ -1216,6 +1226,8 @@
         {qualityEntries}
         qualityPartial={!qualityIsTheWholeDesign}
         ready={readyToStitch}
+        {quote}
+        on:quote={(e) => { quote = saveQuote(e.detail); }}
         on:close={closeSheet}
         on:credits={(e) => openCredits(e.detail)}
       />

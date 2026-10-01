@@ -33,17 +33,29 @@
 // SEWS its short travel as running stitch, so every segment counted there is
 // thread that really goes down.
 import { EMB } from "./emb.js";
+import { profileById, threadCost, machineCost, money } from "./quote.js";
 
 // One walk, four facts, so they cannot drift apart. Chain-breaking rule is
 // designToStrands's, deliberately.
+//
+// `stops` (2026-10-01) is what the run time is charged for: every trim, plus
+// every colour change the thread was NOT already cut for. Both of our own
+// engines cut before they change ("a color change is a trim then a `color`",
+// adapter.py; digitize.js says the same), so there a change is already one
+// of the trims and counting it again would bill it twice. An imported DST
+// need not: its colour stop can arrive with no trim record at all, and until
+// now that stop cost nothing. `trims` itself is unchanged — it is the number
+// of tails somebody clips, which is a different question.
 export function sewFacts(design) {
-  const out = { stitches: 0, threadChanges: 0, trims: 0, pathMm: 0, threadM: null };
+  const out = { stitches: 0, threadChanges: 0, trims: 0, stops: 0, pathMm: 0, threadM: null };
   if (!design || !Array.isArray(design.stitches)) return out;
   let prev = null;
+  let cut = false; // thread already cut since the last sewn stitch
   for (const s of design.stitches) {
-    if (s.type === "color") { out.threadChanges++; prev = null; continue; }
-    if (s.type === "trim") { out.trims++; prev = null; continue; }
+    if (s.type === "color") { out.threadChanges++; if (!cut) out.stops++; cut = true; prev = null; continue; }
+    if (s.type === "trim") { out.trims++; out.stops++; cut = true; prev = null; continue; }
     if (s.type !== "stitch") { prev = null; continue; }
+    cut = false;
     out.stitches++;
     if (prev) out.pathMm += Math.hypot(s.x - prev.x, s.y - prev.y) / 10;
     prev = s;
@@ -63,7 +75,20 @@ export function sewFacts(design) {
 // runs, how many times they have to touch it, how much thread to have on hand.
 // Returns [] for a design with nothing sewn — there is no fact to state, and
 // "0 stitches · 0 m of thread" under "Nothing to stitch yet" is noise.
-export function sewSummary(design) {
+//
+// `quote` (optional, lib/quote.js) is what the operator said about their own
+// shop. Without it every row that existed reads exactly as it did. With it:
+// the run time is computed at the speed they run and names their machine,
+// and the two dollar rows appear — each only when ITS inputs are filled,
+// since a price is the operator's or it is absent.
+//
+// The rows QualityReport's own stats line does not carry. App appends these
+// even when one digitized element IS the design and the rest of this list is
+// suppressed — otherwise the commonest job, one logo, got no quote at all.
+export const QUOTE_ROW_LABELS = ["Run time", "Bobbin", "Thread cost", "Machine time"];
+
+export function sewSummary(design, quote) {
+  const q = quote || {};
   const f = sewFacts(design);
   if (!f.stitches) return [];
   const rows = [
@@ -78,9 +103,15 @@ export function sewSummary(design) {
   // The basis rides with the number, for the same reason the worksheet prints
   // it: 650 spm is a planning rate from a trade table, not something measured
   // here, and a bare "~10 min" would read as though it were.
-  const runMin = EMB.sewTimeMin ? EMB.sewTimeMin(f.stitches, f.trims) : null;
+  //
+  // Charged per STOP, not per trim (see sewFacts): a colour stop the thread
+  // was not already cut for is a stop too.
+  const spm = q.spm != null ? q.spm : EMB.PLAN_SPM;
+  const profile = profileById(q.profileId);
+  const runMin = EMB.sewTimeMin ? EMB.sewTimeMin(f.stitches, f.stops, spm) : null;
   if (runMin != null) {
-    rows.push({ label: "Run time", value: `~${runMin} min at ${EMB.PLAN_SPM} spm` });
+    const where = profile ? ` on your ${profile.label}` : "";
+    rows.push({ label: "Run time", value: `~${runMin} min${where} at ${spm.toLocaleString()} spm` });
   }
   // A single-colour design has no change to report, and printing "0 thread
   // changes" invites the reader to look for the control that sets it.
@@ -91,5 +122,25 @@ export function sewSummary(design) {
   // the same reason QualityReport prints it.
   rows.push({ label: "Trims", value: String(f.trims) });
   if (f.threadM != null) rows.push({ label: "Thread", value: `${f.threadM.toFixed(1)} m (estimate)` });
+  // Under-thread, on the thread maker's rule and saying so. Metres, not
+  // "bobbin changes" (Kent's ruling 2026-10-01): one piece is almost never a
+  // whole bobbin, and how much a bobbin holds depends on whose it is.
+  const bobbin = EMB.bobbinM ? EMB.bobbinM(f.stitches) : null;
+  if (bobbin != null) {
+    const shown = bobbin < 0.05 ? "under 0.1" : `~${bobbin.toFixed(1)}`;
+    rows.push({ label: "Bobbin", value: `${shown} m (at ${EMB.BOBBIN_M_PER_1000} m per 1,000 stitches)` });
+  }
+  // The dollars. Top thread only — there is no bobbin price to ask for yet.
+  const tCost = money(threadCost(f.threadM, q));
+  if (tCost != null) {
+    rows.push({
+      label: "Thread cost",
+      value: `${tCost} (${f.threadM.toFixed(1)} m of a ${money(q.conePrice)} / ${q.coneM.toLocaleString()} m cone)`,
+    });
+  }
+  const mCost = money(machineCost(runMin, q));
+  if (mCost != null) {
+    rows.push({ label: "Machine time", value: `${mCost} (${runMin} min at ${money(q.hourRate)}/hr)` });
+  }
   return rows;
 }
