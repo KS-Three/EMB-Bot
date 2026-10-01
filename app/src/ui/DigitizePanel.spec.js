@@ -244,14 +244,18 @@ describe("whole-design params", () => {
 // words -- and nothing else. Kent, 2026-09-30: "get rid of the 'it's flat
 // art' / 'it's a photo' check boxes ... just automatically recognize what it
 // is". Until that day the row carried a one-click correction ("It's flat
-// art" wrote forced_class=flat, "It's a photo" set isPhoto); these tests hold
-// the new line: no button on any reading, and a legacy override stored in
-// the element changes nothing on screen.
+// art" wrote forced_class=flat, "It's a photo" set isPhoto).
+//
+// The FLAT half came back the same evening, also Kent's call: his Instagram
+// icon read as shaded artwork, sewed badly down that lane, and he had no way
+// to say "flat". So a tonal reading offers ONE button, "Sew as flat art",
+// and a design it was used on says so and offers the way back. Nothing else
+// returned: no "It's a photo", and a flat reading still has no button.
 //
 // `health` stays null here (renderPanel's default), so the reactive re-run
 // bails at runDigitize's own `!health` guard and no digitize is attempted --
 // same no-service posture as the rest of this file.
-describe("the reading row -- states the reading, offers no correction", () => {
+describe("the reading row -- states the reading, offers flat on a tonal one", () => {
   function panelWarnedAs(code, extra = {}) {
     return renderPanel([shapeRow("s1")], {
       warnings: [{ code, message: "engine prose" }],
@@ -272,17 +276,62 @@ describe("the reading row -- states the reading, offers no correction", () => {
     ["COLOR_CAP_APPLIED", /Read as flat art/],
   ];
 
+  // The readings that sew down a tonal lane, where flat is a real alternative.
+  // FACE_ROUTED_FLAT is already flat, so it offers nothing.
+  const OFFERS_FLAT = new Set([
+    "CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE", "CLASSIFIED_GRADIENT", "PHOTO_DETECTED",
+  ]);
+
   for (const [code, sentence] of READINGS) {
-    test(`${code}: states the reading and has no button at all`, () => {
+    test(`${code}: states the reading${OFFERS_FLAT.has(code) ? " and offers flat" : " and has no button"}`, () => {
       const { getByText, container } = panelWarnedAs(code);
       expect(getByText(sentence)).toBeTruthy();
       const row = container.querySelector(".dgp-read");
       expect(row).toBeTruthy();
-      expect(row.querySelectorAll("button")).toHaveLength(0);
-      // The old corrections, by name, so a revival is caught by its label.
-      expect(row.textContent).not.toMatch(/It's a photo|It's flat art|Use automatic detection|You set this to/);
+      const buttons = [...row.querySelectorAll("button")].map((b) => b.textContent.trim());
+      expect(buttons).toEqual(OFFERS_FLAT.has(code) ? ["Sew as flat art"] : []);
+      // The corrections that did NOT come back, by name.
+      expect(row.textContent).not.toMatch(/It's a photo|Use automatic detection|You set this to/);
     });
   }
+
+  test("Sew as flat art writes forced_class=flat and keeps the other params", async () => {
+    const { getByRole, patches } = panelWarnedAs("CLASSIFIED_GRADIENT");
+    await fireEvent.click(getByRole("button", { name: "Sew as flat art" }));
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.params.forced_class).toBe("flat");
+    expect(patches[0].patch.params.max_colors).toBe(DEFAULT_DIGITIZE_PARAMS.max_colors);
+  });
+
+  test("a design set to flat says so, offers the way back, and drops the detail-lines option", () => {
+    // Once the override takes effect the art classifies flat and the
+    // CLASSIFIED_* warning is gone, so the row keys on the stored param.
+    const { getByText, container, queryByLabelText } = panelWarnedAs("COLOR_CAP_APPLIED", {
+      params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" },
+    });
+    expect(getByText(/You set this to flat art/)).toBeTruthy();
+    const buttons = [...container.querySelectorAll(".dgp-read button")].map((b) => b.textContent.trim());
+    expect(buttons).toEqual(["Use automatic detection"]);
+    expect(queryByLabelText("Add fine detail lines")).toBeNull();
+  });
+
+  test("a design set to flat keeps its row before any run has landed", () => {
+    const { getByText } = renderPanel([shapeRow("s1")], {
+      result: null,
+      params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" },
+    });
+    expect(getByText(/You set this to flat art/)).toBeTruthy();
+  });
+
+  test("Use automatic detection REMOVES the key, so the params match a design that never set it", async () => {
+    const { getByRole, patches } = panelWarnedAs("COLOR_CAP_APPLIED", {
+      params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Use automatic detection" }));
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.params).toEqual({ ...DEFAULT_DIGITIZE_PARAMS });
+    expect("forced_class" in patches[0].patch.params).toBe(false);
+  });
 
   test("says nothing about a reading before the first run has produced one", () => {
     const { queryByText, container } = renderPanel([shapeRow("s1")], { result: null });
@@ -307,17 +356,16 @@ describe("the reading row -- states the reading, offers no correction", () => {
     });
   }
 
-  // A project saved before 2026-09-30 can carry params.forced_class or
-  // isPhoto. Neither is sent (digitizer.spec.js) and neither may resurrect
-  // the "You set this to..." row: the reading shown is the engine's.
-  test("a legacy forced_class saved in the element changes nothing on screen", () => {
-    const flat = panelWarnedAs("CLASSIFIED_PHOTO_SUBJECT", {
-      params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "flat" },
+  // A project saved before 2026-09-30 can carry a forced_class the Studio no
+  // longer writes, or isPhoto. Neither is sent (digitizer.spec.js) and
+  // neither may put a "You set this to..." row up: only "flat" is honoured.
+  test("a legacy non-flat forced_class saved in the element changes nothing on screen", () => {
+    const legacy = panelWarnedAs("COLOR_CAP_APPLIED", {
+      params: { ...DEFAULT_DIGITIZE_PARAMS, forced_class: "photo_subject" },
     });
-    expect(flat.getByText(/Read as a photo/)).toBeTruthy();
-    expect(flat.queryByText(/You set this to/)).toBeNull();
-    expect(flat.container.querySelectorAll(".dgp-read button")).toHaveLength(0);
-    expect(flat.getByLabelText("Add fine detail lines")).toBeTruthy();
+    expect(legacy.getByText(/Read as flat art/)).toBeTruthy();
+    expect(legacy.queryByText(/You set this to/)).toBeNull();
+    expect(legacy.container.querySelectorAll(".dgp-read button")).toHaveLength(0);
   });
 
   test("a legacy isPhoto saved in the element changes nothing on screen", () => {
