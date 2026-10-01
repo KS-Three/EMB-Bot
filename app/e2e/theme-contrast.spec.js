@@ -7,6 +7,14 @@
 // up to the first opaque background, and holds every text element in the
 // top bar, the panel, the Download sheet and the My designs drawer to WCAG
 // AA. Disabled controls are exempt, as WCAG exempts them.
+//
+// It does NOT measure:
+//   - form-field values, select text and placeholders (not text nodes);
+//   - hover and focus states;
+//   - anything on the stage (`.field`);
+//   - the digitize, image and manual panels;
+//   - tooltips, the field menu, popovers, the font browser and font credits;
+//   - disabled or inert controls (exempt by WCAG).
 import { test, expect } from "@playwright/test";
 import { startStudio, typeText, openDownload, closeDownload } from "./helpers.js";
 
@@ -80,33 +88,39 @@ test("every text element in the chrome reads at WCAG AA against its own ground",
   await page.setViewportSize({ width: 1440, height: 900 });
   await startStudio(page);
 
-  // The 44px bar carries only a wordmark, the name and a few actions (4 text
-  // elements measured), so its "something was measured" floor is lower. This
-  // is a does-the-sweep-see-anything guard, not a contrast threshold.
-  for (const [root, floor] of [[".topbar", 3], [".panel", 5]]) {
+  // The `checked > 0` expectations only prove each root was found and
+  // something was measured; they are not contrast thresholds. Failures are
+  // collected across every root so one red run lists every failing element.
+  const all = [];
+  const collect = (label, res) => all.push(...res.failures.map((f) => `${label}: ${f}`));
+
+  for (const root of [".topbar", ".panel"]) {
     const res = await sweep(page, root);
-    expect(res.checked, `${root}: nothing was measured`).toBeGreaterThan(floor);
-    expect(res.failures, `${root} — empty design`).toEqual([]);
+    expect(res.checked, `${root}: nothing was measured`).toBeGreaterThan(0);
+    collect(`${root} — empty design`, res);
   }
 
   await typeText(page, "FRITSCH");
   const panel = await sweep(page, ".panel");
-  expect(panel.failures, ".panel — with a design").toEqual([]);
+  expect(panel.checked, ".panel — with a design: nothing was measured").toBeGreaterThan(0);
+  collect(".panel — with a design", panel);
 
   await page.getByRole("button", { name: "More garments" }).click();
   const menu = await sweep(page, ".gmenu");
-  expect(menu.checked).toBeGreaterThan(5);
-  expect(menu.failures, ".gmenu").toEqual([]);
+  expect(menu.checked, ".gmenu: nothing was measured").toBeGreaterThan(0);
+  collect(".gmenu", menu);
   await page.keyboard.press("Escape");
 
   await openDownload(page);
   const sheet = await sweep(page, ".sheet");
-  expect(sheet.checked).toBeGreaterThan(10);
-  expect(sheet.failures, ".sheet").toEqual([]);
+  expect(sheet.checked, ".sheet: nothing was measured").toBeGreaterThan(0);
+  collect(".sheet", sheet);
   await closeDownload(page);
 
   await page.getByRole("button", { name: /^My designs/ }).click();
   const drawer = await sweep(page, ".drawer");
-  expect(drawer.checked).toBeGreaterThan(3);
-  expect(drawer.failures, ".drawer").toEqual([]);
+  expect(drawer.checked, ".drawer: nothing was measured").toBeGreaterThan(0);
+  collect(".drawer", drawer);
+
+  expect(all, "contrast failures").toEqual([]);
 });
