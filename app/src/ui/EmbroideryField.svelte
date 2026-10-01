@@ -1424,9 +1424,11 @@
   // regeneration during a decode must not paint over the new frame.
   //
   // Registration differs by lane, and only one lane can register exactly:
-  //  - `image` (browser flatten): the stitches were traced from exactly the
-  //    flat's non-transparent pixels (imageRegions.js flatToRegions), so that
-  //    pixel bbox — the CONTENT box — is mapped onto the stitch rect. Fitting
+  //  - `image` (browser flatten): the stitches were traced from the flat's
+  //    non-transparent pixels (imageRegions.js flatToRegions), so that pixel
+  //    bbox — the CONTENT box — is mapped onto the stitch rect. It can run
+  //    slightly larger than the sewn extent on noisy art, because the trace
+  //    then drops specks and caps shapes per colour. Fitting
   //    the whole frame instead shrank and shifted the art (measured
   //    2026-09-30: a 23x20 px stitched square drawn back at 12x12).
   //  - `digitized` (service): the result keeps no source-px origin — the

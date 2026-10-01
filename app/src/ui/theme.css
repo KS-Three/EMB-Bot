@@ -531,8 +531,8 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   padding: var(--space-6) var(--space-5);
 
   /* Scroll shadows. The panel is a bounded scroll area whose content almost
-     always overflows (the Garment step alone is quick-start cards + ten
-     garment tiles + four hoop tiles), and with a hard edge against the summary bar
+     always overflows (the garment pill row, the fabric swatches and the hoop
+     segments, then the content panels below), and with a hard edge against the summary bar
      the cut landed mid-heading -- "What are you putting this on?" sliced
      through the glyphs, which reads as a rendering fault rather than as
      "there is more below". The pair of cover/shadow gradients is the
@@ -1174,8 +1174,7 @@ input.fabriccustom[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
 input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radius: var(--radius-full); }
 
 /* Hoop size row (Garment step, launch item 2) -- the four home-machine
-   hoop presets. Same bordered-card language as .tile, sized down: these are
-   a setting, not the step's main choice. The "Suggested" chip rides the
+   hoop presets: a setting, not the step's main choice. The "Suggested" chip rides the
    per-garment suggestion (see GarmentStep.svelte) and stays put while a
    different hoop is selected. */
 /* A SEGMENTED CONTROL since 2026-09-30, not four more cards: one bordered
@@ -1583,9 +1582,11 @@ input[type="color"] {
    inline dropdown. */
 .fontselect { position: relative; }
 
-/* Every other 2px-border / --radius-m / --surface card in the app carries
-   --shadow-1 (.tile, .tcard, .hooptile, .elrow); this one did not, so the
-   font picker sat visibly flat among its siblings in the same panel. */
+/* The font picker's trigger is a flat 1px-border / --radius-m / --surface
+   card, the same language as its panel siblings .tcard and .elrow, so it
+   reads as one of them. (It once carried --shadow-1 to match cards that have
+   since gone flat; the garment tiles it was matched against are now the pill
+   row.) */
 .fs-trigger {
   width: 100%;
   display: flex;

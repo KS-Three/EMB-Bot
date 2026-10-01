@@ -9,9 +9,11 @@ export function hasOriginal(el) {
   return !!el && (el.type === "image" || el.type === "digitized") && !!originalDataUrl(el.sourcePng);
 }
 
-// Aspect-preserving fit of an image inside `rect`, centred. The rect is the
-// one the element's own stitches occupy, so flipping Original <-> Stitches
-// compares like with like at the same place and size.
+// Aspect-preserving fit of the WHOLE image frame inside `rect`, centred. The
+// Original view uses it only as a fallback: for the digitized lane, fitted
+// into the placement box (no exact source-to-design mapping exists there),
+// and for an image element with no flat to take a content box from. It does
+// not register the art on its stitches — placeByContent does that.
 export function fitRect(imgW, imgH, rect) {
   if (!rect || !(imgW > 0) || !(imgH > 0) || !(rect.w > 0) || !(rect.h > 0)) return null;
   const s = Math.min(rect.w / imgW, rect.h / imgH);
@@ -36,9 +38,12 @@ export function placeByContent(imgW, imgH, content, rect) {
 
 // The browser lane's content box: the bbox of every flattened pixel that is
 // NOT the engine's transparent index (quantize.js TRANSPARENT_INDEX, 255 —
-// knocked-out background and alpha-cut pixels). `flatToRegions` traces
-// exactly these pixels, so this is the art the stitches were made from, not
-// a colour guess. In the flat's own px grid; null when nothing is kept.
+// knocked-out background and alpha-cut pixels). These are the pixels
+// `flatToRegions` traces, so the box comes from the same data as the
+// stitches, not from a colour guess. It is not quite what is stitched:
+// flatToRegions then drops specks and caps shapes per colour, so on noisy art
+// this box can be slightly LARGER than the sewn extent. In the flat's own px
+// grid; null when nothing is kept.
 export const TRANSPARENT_INDEX = 255;
 export function flatContentBox(indices, w, h) {
   if (!indices || !(w > 0) || !(h > 0)) return null;
