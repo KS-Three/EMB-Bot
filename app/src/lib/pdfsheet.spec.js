@@ -666,6 +666,23 @@ test("the topper line is stated either way, because absence is not an answer", (
   expect(sheetStrings(baseDesign(), metaFor("left_chest"))).toContain("Topper: no");
 });
 
+test("the needle line prints with its basis, ballpoint on knits and sharp on wovens", () => {
+  // Kent left needle size OFF this sheet on 2026-09-20 and put it back on
+  // 2026-10-01, with the basis beside it (DOCTRINE). Playbook Law 21: 75/11
+  // is the standard for 40wt; the point follows the goods' construction.
+  expect(sheetStrings(baseDesign(), metaFor("left_chest"))).toContain(
+    "Needle: 75/11 ballpoint (standard for 40wt thread)"
+  );
+  expect(sheetStrings(baseDesign(), metaFor("tote"))).toContain(
+    "Needle: 75/11 sharp (standard for 40wt thread)"
+  );
+  // In the order an operator reads them: backing, topper, needle.
+  const lines = sheetStrings(baseDesign(), metaFor("towel")).filter((s) =>
+    /^(Stabilizer|Topper|Needle):/.test(s)
+  );
+  expect(lines.map((s) => s.split(":")[0])).toEqual(["Stabilizer", "Topper", "Needle"]);
+});
+
 test("run time is printed with the basis that produced it", () => {
   // 4,321 stitches + 6 trims x 120 = 5,041 equivalents / 650 spm = 7.75 min.
   const strings = sheetStrings(
@@ -698,6 +715,7 @@ test("an unknown garment states nothing rather than guessing", () => {
   const strings = sheetStrings(baseDesign(), metaFor("no_such_garment"));
   expect(strings.some((s) => s.startsWith("Stabilizer:"))).toBe(false);
   expect(strings.some((s) => s.startsWith("Topper:"))).toBe(false);
+  expect(strings.some((s) => s.startsWith("Needle:"))).toBe(false);
   // The run time needs no garment, so it survives.
   expect(strings.some((s) => s.startsWith("Run time:"))).toBe(true);
 });

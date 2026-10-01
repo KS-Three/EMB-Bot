@@ -75,6 +75,19 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   simply run different, is worse than one that stays silent. Do not "complete"
   Part 3 by adding them later without asking again.
   *(2026-09-20 — `src/pdfsheet.js`, `app/src/lib/pdfsheet.spec.js`)*
+  **Needle size came back 2026-10-01 — asked again, as the line above
+  requires, and Kent said yes; TENSION IS STILL OFF.** The condition he took
+  it on: the figure never appears without its basis ("75/11 ballpoint
+  (standard for 40wt thread)"), and it comes off the fabric preset, so it
+  stays inside the line drawn above. Law 21's split — ballpoint on knits,
+  sharp on wovens and caps — and canvas stays 75/11 against the specialty
+  table's 80/12, also his call. **Terry is the exception, his too:** woven,
+but ballpoint, so the loops are parted rather than cut. It prints on the worksheet AND on a hooping
+  card in the Download sheet, from one function (`EMB.hoopingAdvice`), so the
+  two cannot state different advice. Do not read this as licence for gram
+  targets: nothing about tension became derivable.
+  *(2026-10-01 — `src/fabrics.js`, `test/fabrics.test.js`,
+  `docs/trade-knowledge-2026-09-13.md` addendum)*
 
 - **A backing class is a garment property, not a stitch-count threshold.**
   Same ruling's mechanism, recorded because the old behaviour looks defensible

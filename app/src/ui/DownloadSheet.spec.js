@@ -53,6 +53,37 @@ test("recaps the rows it is given and says Ready to stitch", () => {
   expect(screen.getByText('Text — "EMB"')).toBeInTheDocument();
 });
 
+test("shows the hooping card between the recap and the download buttons", () => {
+  const hoopingRows = [
+    { label: "Stabilizer", value: "cutaway", note: "" },
+    { label: "Topper", value: "no", note: "" },
+    { label: "Needle", value: "75/11 ballpoint", note: "standard for 40wt thread" },
+  ];
+  render(Harness, { project: defaultProject(), summaryRows: ROWS, hoopingRows, ready: true });
+  const card = screen.getByRole("region", { name: "What to hoop" });
+  expect(card).toHaveTextContent("75/11 ballpoint");
+  // Before the Download heading: advice an operator needs is read on the way
+  // to the file, not found after it.
+  const download = screen.getByRole("heading", { name: "Download", exact: true });
+  expect(card.compareDocumentPosition(download) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+test("the recap stays the sheet's only dl.summary with the hooping card shown", () => {
+  // Ten e2e specs read the recap as `.sheet dl.summary` under Playwright's
+  // strict mode. A second list wearing that class fails every one of them
+  // with "resolved to 2 elements" — and no unit test noticed (PR #596).
+  const hoopingRows = [{ label: "Stabilizer", value: "cutaway", note: "" }];
+  render(Harness, { project: defaultProject(), summaryRows: ROWS, hoopingRows, ready: true });
+  const lists = screen.getByRole("dialog", { name: "Download" }).querySelectorAll("dl.summary");
+  expect(lists).toHaveLength(1);
+  expect(lists[0]).toHaveTextContent("Left Chest");
+});
+
+test("shows no hooping card when there is no advice", () => {
+  render(Harness, { project: defaultProject(), summaryRows: ROWS, ready: true });
+  expect(screen.queryByRole("region", { name: "What to hoop" })).toBeNull();
+});
+
 test("says Nothing to stitch yet when the design cannot sew", () => {
   render(Harness, { project: defaultProject(), summaryRows: ROWS, ready: false });
   expect(screen.getByRole("heading", { name: "Nothing to stitch yet" })).toBeInTheDocument();

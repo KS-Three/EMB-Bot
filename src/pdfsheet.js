@@ -20,38 +20,12 @@ const deps =
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   const { mmToInch } = deps.units;
   const { renderStitches } = deps.render;
-  const { getFabric, GARMENT_FABRIC } = deps.fabrics;
+  const { hoopingAdvice, hoopingLine } = deps.fabrics;
   const { sewTimeMin, PLAN_SPM } = deps.sewtime;
-
-  // The fabric preset behind a garment id, or null when the id is not one we
-  // ship. `fabricForGarment` is NOT used here on purpose: it falls back to
-  // pique_knit for anything unknown, which is the right answer when you are
-  // about to sew and the wrong one when you are about to print advice.
-  function fabricFor(garmentId) {
-    const fabricId = garmentId ? GARMENT_FABRIC[garmentId] : null;
-    return fabricId ? getFabric(fabricId) || null : null;
-  }
-
-  // "cap_buckram" is an id, not a sentence. The sheet is read by a person.
-  function backingLabel(id) {
-    return String(id || "").replace(/_/g, " ");
-  }
 
   const PAGE_W_IN = 8.5;
   const PAGE_H_IN = 11;
   const MARGIN_IN = 0.5;
-
-  // Stitch count past which the worksheet prescribes cutaway stabilizer: a
-  // design this heavy needs permanent support or it distorts when the hoop
-  // comes off. Craft rule [P — OESD, via docs/photo-digitizing-plan-
-  // 2026-07-31.md §2 row 15: "est. > 25k st -> cutaway prescription on the
-  // worksheet"]. Twin of the digitizer preflight's STABILIZER_CUTAWAY
-  // constant (digitizer/digitizer_core/preflight.py, STITCHES_CUTAWAY_MIN)
-  // — duplicated deliberately, not carelessly: the worksheet also serves
-  // designs that never pass through the digitizer service (lettering,
-  // imports, combined multi-element designs), and the combined design's
-  // stitch count is only known here. Change one and change both.
-  const CUTAWAY_STITCHES = 25000;
 
   function rgbCss(color) {
     if (!color) return [0, 0, 0];
@@ -257,21 +231,15 @@ const deps =
     // taken. That keeps the previous behaviour as a special case instead of
     // contradicting it, and keeps this line agreeing with the digitizer
     // preflight's STABILIZER_CUTAWAY, whose own comment says to change both.
-    const fabric = fabricFor(options.garmentId);
-    if (fabric) {
-      const heavy = stitchCount > CUTAWAY_STITCHES;
-      if (heavy && fabric.assumedBacking !== "cutaway") {
-        statsLines.push(
-          "Stabilizer: cutaway (escalated - " +
-            stitchCount.toLocaleString("en-US") +
-            " stitches; tear-away releases under this much thread)"
-        );
-      } else {
-        statsLines.push("Stabilizer: " + backingLabel(fabric.assumedBacking));
-      }
-      // Stated either way. "No line" is what the sheet did before, and an
-      // operator cannot tell a considered "no topper" from an oversight.
-      statsLines.push("Topper: " + (fabric.needsTopper ? "yes" : "no"));
+    //
+    // The rule itself lives in fabrics.js `hoopingAdvice` since 2026-10-01:
+    // the Studio's hooping card states the same three rows before download,
+    // and one function is what stops the screen and the sheet disagreeing.
+    // That is also when the Needle line arrived (Kent's call, reversing the
+    // 2026-09-20 "leave needle size off" — DOCTRINE), basis printed beside it.
+    const advice = hoopingAdvice(options.garmentId, stitchCount);
+    if (advice) {
+      for (const row of advice.rows) statsLines.push(hoopingLine(row));
     }
     for (const line of statsLines) {
       doc.text(line, MARGIN_IN, cursorY);
