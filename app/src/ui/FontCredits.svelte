@@ -168,7 +168,7 @@
     color: var(--muted);
     cursor: pointer;
   }
-  .fc-close:hover { border-color: var(--accent); color: var(--accent); }
+  .fc-close:hover { border-color: var(--ink); color: var(--ink); }
 
   .fc-note {
     margin: 0;

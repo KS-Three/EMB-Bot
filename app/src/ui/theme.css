@@ -311,7 +311,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   font-size: var(--fs-sm);
   cursor: pointer;
 }
-.font-credits-btn:hover { color: var(--accent); }
+.font-credits-btn:hover { color: var(--ink); }
 
 .mydesigns .badge {
   display: inline-flex;
@@ -321,8 +321,8 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   height: 1.4rem;
   padding: 0 var(--space-2);
   border-radius: var(--radius-full);
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--fill);
+  color: var(--ink);
   font-size: var(--fs-xs);
   font-weight: var(--fw-medium);
 }
@@ -371,7 +371,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   cursor: pointer;
 }
 
-.drawer-close:hover { border-color: var(--accent); color: var(--accent); }
+.drawer-close:hover { border-color: var(--ink); color: var(--ink); }
 
 .drawer-new {
   margin: var(--space-4) var(--space-5) var(--space-2);
@@ -385,7 +385,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   cursor: pointer;
 }
 
-.drawer-new:hover { border-color: var(--accent); background: var(--tint); }
+.drawer-new:hover { border-color: var(--ink); background: var(--fill); }
 
 /* "Your changes aren't being saved" — a full localStorage, surfaced.
    Full width and above the whole studio rather than inside a panel: this is
@@ -469,7 +469,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   cursor: pointer;
 }
 
-.drawer-row-actions button:hover { border-color: var(--accent); color: var(--accent); }
+.drawer-row-actions button:hover { border-color: var(--ink); color: var(--ink); }
 
 .drawer-row-actions button.danger { color: var(--danger); }
 .drawer-row-actions button.danger:hover { border-color: var(--danger); }
@@ -1421,7 +1421,7 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
   cursor: pointer;
 }
 
-.eladd:hover { border-color: var(--accent); color: var(--accent); }
+.eladd:hover { border-color: var(--ink); color: var(--ink); }
 
 /* Onboarding hints (Slice 7 Task 3) — a small dismissible bubble (icon +
    sentence + ✕), at most one shown at a time (see App.svelte's hints.js
@@ -1858,7 +1858,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .unitselect:hover,
 .threadbrand select:hover,
-.tp-brand:hover { border-color: var(--accent); }
+.tp-brand:hover { border-color: var(--ink); }
 
 .autofit {
   padding: var(--space-2) var(--space-3);
@@ -1869,7 +1869,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   font-size: var(--fs-sm);
   white-space: nowrap;
 }
-.autofit:hover { border-color: var(--accent); }
+.autofit:hover { border-color: var(--ink); }
 
 .sizepanel .warn { margin: var(--space-2) 0 0; font-size: var(--fs-sm); }
 
@@ -2146,7 +2146,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   background: var(--surface);
   cursor: pointer;
 }
-.tp-trigger:hover { border-color: var(--accent); }
+.tp-trigger:hover { border-color: var(--ink); }
 
 .tp-swatch {
   flex: 0 0 auto;
@@ -2314,7 +2314,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   cursor: pointer;
 }
 
-.threadreset:hover { border-color: var(--accent); color: var(--accent); }
+.threadreset:hover { border-color: var(--ink); color: var(--ink); }
 
 /* ---- Configurator (spec §2.2) ------------------------------------------ */
 .cfg-title { text-align: center; margin-bottom: var(--space-1); }

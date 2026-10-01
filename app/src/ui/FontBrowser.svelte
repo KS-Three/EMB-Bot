@@ -278,7 +278,7 @@
     color: var(--muted);
     cursor: pointer;
   }
-  .fb-close:hover { border-color: var(--accent); color: var(--accent); }
+  .fb-close:hover { border-color: var(--ink); color: var(--ink); }
 
   .fb-controls {
     display: flex;
@@ -311,7 +311,7 @@
     font-size: var(--fs-sm);
     cursor: pointer;
   }
-  .fb-chip:hover { border-color: var(--accent); }
+  .fb-chip:hover { border-color: var(--ink); }
   .fb-chip.active { border-color: var(--accent); background: var(--tint); color: var(--accent); }
 
   .fb-body {
@@ -341,7 +341,7 @@
     text-align: left;
     cursor: pointer;
   }
-  .fb-tile:hover { border-color: var(--accent); }
+  .fb-tile:hover { border-color: var(--ink); }
   .fb-tile.sel { border-color: var(--accent); background: var(--tint); }
 
   .fb-tile-img {
