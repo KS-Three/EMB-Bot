@@ -937,12 +937,45 @@ describe("resolveCutOuts", () => {
     const r = resolveCutOuts([rect("s1", 0, 0, 10, 10), rect("s2", 20, 20, 30, 30)]);
     expect(r.flat.size).toBe(0);
   });
-  it("an equal-area tie goes to the LATER shape (drawn on top)", () => {
+  it("an equal-area tie stays with the EARLIER shape (the one that already had the hole)", () => {
     const r = resolveCutOuts([
       rect("s1", 0, 0, 300, 300), rect("s2", 0, 0, 300, 300), rect("s3", 100, 100, 200, 200, { cutOut: true }),
     ]);
+    expect(r.parentOf.s3).toBe("s1");
+    expect(r.holesOf).toEqual({ s1: ["s3"] });
+  });
+  it("Duplicate leaves the hole with the original: a rectangle and its copy 18 px over", () => {
+    const parent = rect("s1", 100, 50, 400, 350);
+    const hole = rect("s2", 200, 150, 300, 250, { cutOut: true });
+    const copy = duplicateShape(parent, "s9");
+    const r = resolveCutOuts([parent, hole, copy]);
+    expect(r.parentOf.s2).toBe("s1");
+    expect(r.holesOf).toEqual({ s1: ["s2"] });
+  });
+  it("Duplicate leaves the hole with the original: an irregular polygon (the float-noise tie)", () => {
+    // Non-integer vertices chosen so the copy's shoelace area comes out
+    // 1.5e-11 SMALLER than the original's — pure float noise. Both the old
+    // `<=` rule and a bare `<` handed the hole to the copy; only the
+    // relative epsilon keeps it with the original.
+    const poly = (pts) => pts.map(([x, y]) => ({ x, y }));
+    const parent = {
+      id: "s1", curves: {}, stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null,
+      points: poly([[341.94, 190], [292.32, 280.68], [193.11, 307.82], [103.11, 246.29], [108.78, 136.44], [193.17, 72.44], [299.43, 90.4]]),
+    };
+    const hole = {
+      id: "s2", cutOut: true, curves: {}, stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null,
+      points: poly([[205.3, 175.7], [235.1, 180.2], [225.9, 205.4], [200.6, 200.8]]),
+    };
+    const copy = duplicateShape(parent, "s9");
+    const r = resolveCutOuts([parent, hole, copy]);
+    expect(r.parentOf.s2).toBe("s1");
+    expect(r.holesOf).toEqual({ s1: ["s2"] });
+  });
+  it("a genuinely smaller container listed LATER still wins over an earlier bigger one", () => {
+    const r = resolveCutOuts([
+      rect("s1", 0, 0, 300, 300), rect("s3", 100, 100, 200, 200, { cutOut: true }), rect("s2", 50, 50, 250, 250),
+    ]);
     expect(r.parentOf.s3).toBe("s2");
-    expect(r.holesOf).toEqual({ s2: ["s3"] });
   });
   it("the maps carry no inherited keys (a shape id like 'constructor' is not pre-set)", () => {
     const r = resolveCutOuts([rect("s1", 0, 0, 300, 300), rect("s2", 100, 100, 200, 200, { cutOut: true })]);

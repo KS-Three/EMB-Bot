@@ -165,7 +165,11 @@ test("buildCutOut: a fitted hole that leaves its parent falls back to the straig
   expect(out.curves).toEqual({});
 });
 
-// A diagonal-edged parent with two holes split by a 2px wall, and a sliver wall around one hole.
+// An axis-aligned parent with two rectangular holes split by a 2px wall, each
+// 2px from the parent's edge. Rectangles simplify to four corners and cannot
+// cross, so this does not reproduce the sibling-crossing case (the direct
+// buildCutOut test covers that); it is a regression guard that every cut-out
+// the real trace emits on thin walls resolves to its parent.
 function thinWallImage() {
   const w = 200, h = 200;
   const rgba = makeCanvas(w, h);

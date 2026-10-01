@@ -604,8 +604,9 @@ function ringInside(inner, innerBox, outer, outerBox) {
 // -> { parentOf: {cutId: parentId|null}, reasonOf: {cutId: why it cuts
 // nothing}, holesOf: {parentId: [cutId...]}, flat: Map(id -> flattened ring) }.
 // Parent = the SMALLEST valid non-cut-out shape that contains the cut-out
-// (an O's counter drawn over a patch cuts the O, not the patch); a tie goes
-// to the later shape (drawn on top). Two cut-outs of one parent that cross or
+// (an O's counter drawn over a patch cuts the O, not the patch); an
+// equal-area tie (to a relative 1e-9) stays with the EARLIER shape, so
+// Duplicate leaves the hole with the original. Two cut-outs of one parent that cross or
 // nest: the earlier in the list stands — the engine fills even-odd, so both
 // would sew the overlap back in. Shapes without an id take no part.
 export function resolveCutOuts(shapes) {
@@ -634,7 +635,11 @@ export function resolveCutOuts(shapes) {
     let best = null;
     for (const p of solids) {
       if (!ringInside(ring, box.get(c.id), flat.get(p.id), box.get(p.id))) continue;
-      if (!best || area.get(p.id) <= area.get(best.id)) best = p;
+      // An equal-area tie stays with the EARLIER shape. The one case that
+      // produces real ties is Duplicate (a copy 18 px over, same area): the
+      // original must keep its hole, and without the epsilon the float noise
+      // in two shoelace sums would hand it to either one at random.
+      if (!best || area.get(p.id) < area.get(best.id) * (1 - 1e-9)) best = p;
     }
     if (!best) { reasonOf[c.id] = CUTOUT_NO_PARENT; continue; }
     const taken = holesOf[best.id] || [];
