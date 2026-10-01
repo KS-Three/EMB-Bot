@@ -2287,7 +2287,9 @@
   let fieldMenu = null;
 
   function onContextMenu(e) {
-    if (simActive) return;          // the simulator owns the canvas while playing
+    // The simulator owns the canvas while playing; Original view shows the
+    // artwork, whose pixels the stitch outlines need not line up with.
+    if (simActive || originalView) return;
     e.preventDefault();             // our menu, not the browser's
     if (!canvas) return;
     const r = canvas.getBoundingClientRect();
@@ -2471,7 +2473,10 @@
     // interaction happened.
     if (showDragHint) dispatch("dismisshint");
 
-    if (simActive) return; // watch-mode: no select/drag/resize during playback
+    // Watch-modes: no select/drag/resize during playback, nor over the
+    // Original artwork (a shape click would open the popover over the image,
+    // and on the digitized lane hit-test outlines the image does not match).
+    if (simActive || originalView) return;
     if (!canvas || !renderResult) return;
     const p = canvasPointFromEvent(e);
     // The anchor focus lasts until the next press: a press ON an anchor sets
@@ -2728,7 +2733,7 @@
 
   function onPointerMove(e) {
     if (!canvas) return;
-    if (simActive) { canvas.style.cursor = "default"; return; }
+    if (simActive || originalView) { canvas.style.cursor = "default"; return; }
     const p = canvasPointFromEvent(e);
     // A shape edit is its own drag mode — it never sets `dragMode`, so the
     // element move/resize/pan branches below stay untouched by it.
