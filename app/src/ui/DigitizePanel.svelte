@@ -2976,7 +2976,7 @@
     font-weight: var(--fw-medium, 500);
   }
   .dgp-tab-on .dgp-tab-count { background: var(--tint, #eef0ff); color: var(--accent, #4f46e5); }
-  .dgp-block-note { font-size: var(--fs-2xs, 11px); color: var(--muted, #616875); }
+  .dgp-block-note { font-size: var(--fs-xs, 11px); color: var(--muted, #616875); }
   .dgp-upload { display: inline-block; cursor: pointer; }
   .dgp-upload input[type="file"] {
     position: absolute;
@@ -3029,7 +3029,7 @@
     font-size: var(--fs-xs, 12px);
   }
   .dgp-offline p { margin: 0 0 6px; }
-  .dgp-cmd code { font-size: var(--fs-2xs, 0.6875rem); }
+  .dgp-cmd code { font-size: var(--fs-xs, 0.6875rem); }
   .dgp-check,
   .dgp-resizefix {
     padding: 5px 10px;
@@ -3232,7 +3232,7 @@
     gap: 6px;
     padding: 4px 6px;
     border-top: 1px solid var(--tint-border, #ccd6fb);
-    font-size: var(--fs-2xs, 0.6875rem);
+    font-size: var(--fs-xs, 0.6875rem);
   }
   .dgp-seq-swatch {
     width: 12px;
@@ -3398,7 +3398,7 @@
   .dgp-now:hover { background: rgba(127, 127, 127, 0.18); }
   .dgp-bline {
     margin: 0;
-    font-size: var(--fs-2xs);
+    font-size: var(--fs-xs);
     line-height: var(--lh-snug, 1.4);
     color: var(--ink);
   }
@@ -3412,7 +3412,7 @@
   }
   .dgp-bnote {
     margin: 4px 0 0;
-    font-size: var(--fs-2xs);
+    font-size: var(--fs-xs);
     color: var(--muted);
   }
   /* The needs-colour marker (contract v1.7): warning-tinted like the
@@ -3471,7 +3471,7 @@
   .dgp-lwidth-input:focus { border-color: var(--accent, #4f46e5); outline: none; }
   .dgp-lwidth-auto { width: auto; padding: 0 6px; }
   .dgp-lwidth-scope { display: inline-flex; align-items: center; gap: 3px; font-size: var(--fs-2xs, 0.6875rem); cursor: pointer; }
-  .dgp-lwidth-note { font-size: var(--fs-2xs, 0.6875rem); color: var(--ink-soft, #5c6270); flex-basis: 100%; }
+  .dgp-lwidth-note { font-size: var(--fs-xs, 0.6875rem); color: var(--ink-soft, #5c6270); flex-basis: 100%; }
   /* A 4-wide grid, not a 1-wide column. These seven 26x18 buttons were
      stacked vertically, which made `.dgp-lbtns` 26px wide and 138px TALL --
      and since it is the tallest child of `.dgp-layer`, it set every row's
