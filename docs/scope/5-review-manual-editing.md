@@ -1171,8 +1171,17 @@ square at 50 mm, fill, no underlay: **4,678** stitches with no hole, **4,678**
 with a 3-point triangle hole, **4,456** with a 4-point square hole. Traced
 holes are pixel contours and never have three points, which is why Image mode
 never met it; a hand-drawn A's counter is exactly three. The floor now follows
-the outer ring's to 3. Engine suite **580 → 581**, no stored hash or golden
-moved. *(fixed 2026-10-01 — `test/digitize.test.js`, commit 435eb2f9)*
+the outer ring's to 3. Engine suite **580 → 581** with the fix, **582** with the
+fix wave's follow-up `underlayRuns` test; no stored hash or golden moved.
+*(fixed 2026-10-01 — `test/digitize.test.js`, commit 435eb2f9)*
+
+**Byte-identity, measured against the base.** Base `23715897` against this
+branch: `shapesToRegions` emits identical output for **400 of 400** shape lists
+with no cut-out; the full manual pipeline hashes identical for **240 of 240**
+designs; the engine with holes of four or more points is identical on **120 of
+120**. The one engine move is the 3-point hole, as intended: **4,678 → 4,651**
+stitches (with underlay **5,074 → 5,031**). *(measured in the final review,
+2026-10-01; harness not committed)*
 
 **Two ways in, one record.**
 - **The popover (on the hoop).** Click a hand-drawn shape → its popover carries
@@ -1228,12 +1237,17 @@ cut-outs. The e2e fixture (`trace-holes-and-colors.png`) now adds **4** shapes
 *(confirmed 2026-10-01 — `manualTrace.spec.js`, `TraceImportPanel.spec.js`,
 commits 987a2fe6, 41d9cfa0; `e2e/manual-trace-import.spec.js`)*
 
-**A side effect outside this lane — an imported SVG with a triangular hole now
-cuts.** `src/svgimport.js` keeps rings of three or more points and nests holes
-into the smallest containing outer (`groupIntoShapes`), so a 3-point SVG hole
-already reached the engine and was dropped by the 4-point floor at the stitch
-stage. It now cuts. A fix, but a behaviour change. *(read from code 2026-10-01
-— `src/svgimport.js` `groupIntoShapes`; no SVG was run)*
+**A latent side effect outside this lane — SVG import, at API level only.**
+`src/svgimport.js`'s `parseSVG` keeps rings of three or more points and nests
+holes into the smallest containing outer (`groupIntoShapes`), so its 3-point
+holes used to reach the engine and be dropped by the 4-point floor. **Nothing
+in the app calls it:** `parseSVG` has no caller in `app/` or `tools/`, only
+`test/svgimport.test.js`; an uploaded `.svg` is rasterised instead
+(`app/src/lib/rasterize.js`, `uploadPlan` reason `"vector"`). Called directly,
+a triangular hole now cuts — **75,133 → 70,422** stitches — and a 4-point hole
+is identical. No user-facing change today. *(measured 2026-10-01 — final
+review, `parseSVG` called directly; no-caller confirmed by `git grep -n
+parseSVG -- app tools src test`)*
 
 **End to end.** `app/e2e/manual-cutout.spec.js` (a)–(f), all against the real
 app at 1440×900: (a) Cut out on the hoop drops the count (9,138 → 7,351), the
@@ -1275,7 +1289,8 @@ the digitized lane (it already has them). **Known residue, deliberately left
 (self-crossing) shape SILENTLY; the guard means editing cannot cause it, but
 drawing and import still can.
 
-**The build's parked follow-ups — all done in the fix wave.** The orphan's
+**The build's parked follow-ups — done in the fix wave, bar the two under
+"Still open" below.** The orphan's
 outline and the hollow swatch (above); a stale cut-out hint cleared when the
 BOX holds a frame; the drag basis's shapes frozen with `.slice()`; the popover's
 Cut out switch and Stitch type select described by their note
@@ -1285,13 +1300,36 @@ for the lit stitch-type button can never match it; `resolveCutOuts` returns at
 once when no shape is a cut-out (every drag frame and every `shapesToRegions`).
 *(built 2026-10-01 — `manualShapes.spec.js`, `ShapePopover.spec.js`,
 `ManualPanel.spec.js`, `test/digitize.test.js` (`underlayRuns`' own floor,
-mutation-checked))*
-- Tests: an equal-area parent tie goes to the LATER shape (pin the `<=`); a
-  real-engine test with an orphan far outside the parent; the engine test's
-  underlay assertion should isolate `underlayRuns`' own floor.
-- `resolveCutOuts` could early-return when no shape is a cut-out (byte-identity
-  structural, and no O(n²) pass per drag frame); its maps as
-  `Object.create(null)`; `withCutOut`'s unused destructured variable;
-  `drawCutOut`'s `setLineDash` guards exist only for other specs' canvas stubs.
+mutation-checked))* Also done there: a real-engine test with an orphan far
+outside its parent (`fieldNodeEdit.spec.js`), `resolveCutOuts`' maps as
+`Object.create(null)`, and `withCutOut`'s unused variable gone.
+
+**The parent tie — settled after the final review.** An equal-area tie (to a
+relative 1e-9) stays with the EARLIER shape. The fix wave had pinned the
+opposite (`<=`, the later shape), and the one thing that makes real ties is
+Duplicate — a copy 18 px over with the same area — so duplicating a shape with
+a hole moved the hole to the copy, and on an irregular shape the shoelace
+sums' float noise sent it to copy or original at random (1,287 vs 713 of 2,000
+random parents), after which the drag guard pinned the COPY's nodes. *(fixed
+2026-10-01 — `manualShapes.spec.js`, rectangle and irregular-polygon Duplicate
+tests, red on the old rule)*
+
+**Still open.**
+- `drawCutOut`'s `typeof ctx.setLineDash` guards (`app/src/ui/ManualPanel.svelte`
+  ~837–839) exist only for other specs' canvas stubs.
 - Design note: the `Shape | Hole` strip lights black like the toolbar's view
   strip, while the panel's own buttons light indigo.
+
+**What the owner has not ruled on.** Plain facts, each a session's call or
+inherited behaviour:
+- The side panel's Cut out switch re-fits the design to its width, as add and
+  delete there always have: a shape not inside another, switched there, reads
+  81×39 → 81×91 mm and 5,282 → 13,178 stitches. The hoop's switch holds
+  everything still.
+- Delete on the hoop (the popover and the Delete key) still re-fits, as on
+  `main`.
+- The review recap and the element chip count a cut-out as a shape
+  (`app/src/lib/summary.js` "Shapes", `app/src/ui/ContentStep.svelte`
+  `Shapes · N`), so an O reads "Shapes 2".
+- Deleting a parent re-homes its cut-outs by containment: delete an O drawn
+  over a patch and the O's counter now cuts the patch.

@@ -285,6 +285,32 @@ stored inside its parent is not a shape: click-to-select, the popover, node
 drag, insert, remove, Delete, duplicate and copy/paste would each have needed
 a `holeIndex` beside the shape id. That is the trade Kent was shown.
 
+**As built (2026-10-01) — where the build went past this section.**
+- **Hole mode on the side canvas: a click always draws, never selects.** In
+  Shape mode a click inside a finished shape selects it (PR #104), which made
+  it impossible to start a shape inside another — exactly where a hole goes.
+  (Session ruling; not yet the owner's.)
+- **The hoop's Cut out switch goes through the re-fit rule**
+  (`refitShapesPatch`, the arithmetic factored out of `editedElementPatch`),
+  so flipping it moves nothing else. The side panel's switch does not: the
+  panel has no fit to hold. (Session ruling; not yet the owner's.)
+- **An equal-area tie for the parent stays with the earlier shape**, so
+  Duplicate leaves a hole with the original. (Session ruling after the final
+  review.)
+- **The drag guard's box test only holds a shape that was inside the placement
+  box when the drag began** (`boxOk`); one already past it keeps #570's
+  behaviour.
+- **A cut-out that cuts nothing is drawn dashed on the hoop whenever its
+  element is selected** — it has no stitches to show where it is.
+- **Trace import:** a hole is tried curve-fitted, then straight, then dropped
+  with the warning; each try is checked against the parent's already-kept
+  holes as well as the parent. The preview draws a parent and its holes as one
+  even-odd path.
+- **`flow.js`'s `isSewable` ignores cut-outs:** an element holding only
+  cut-outs sews nothing.
+- **§8 named a new `test/manualkinds.test.js`;** the engine test for the hole
+  floor lives in `test/digitize.test.js` instead.
+
 ## 6. Satin columns (plan 2 — Kent's spine + width)
 
 **One new pure function**, `railsFromSpine(spine, halfWidthPx, { taperPx })`,
