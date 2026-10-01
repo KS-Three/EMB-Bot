@@ -16298,6 +16298,253 @@ this flag had not landed in.
 
 *(measured 2026-09-30 — `tools/rail_edge.py bare_area`, `tools/edge_wobble.py` (satin `wobble_std_mm`); `tests/test_rail_comp.py::test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else`; DOCTRINE 2026-09-30)*
 
+---
+
+## 2026-09-30 — `ARTWORK_UNCOVERED` could not fire on any real logo, and the floor was not why
+
+Kent's pick after the apex verdict: *"make preflight see these holes."* The
+constant `preflight._UNCOVERED_MIN_PATCH_MM2` had asked for this in writing
+since 2026-08-20 — *"nobody has looked at whether ... 4.50 mm² and ... 3.25
+mm² are real drops or acceptable. Widen the fixture set and adjudicate the
+middle before trusting this number."*
+
+**Finding 1: the 5.0 mm² floor sat above the entire population.** Swept on the
+nine corpus logos across erosion 0.2/0.3/0.4 × cell 0.25/0.5, the largest
+patch the check could see anywhere was **1.90 mm²**. Its 7.75 and 44.50 came
+from `enthusiast_logo` at 150 mm and `becker_marine_logo` at 90 mm on a tree
+seven default-flips old.
+
+**Finding 2: the floor was not the binding constraint.** With it set to zero
+the check still read **0.00 mm²** on ENTHUSIAST, where three other instruments
+read a 1–2 mm² hole at the A's apex. The 0.4 mm erosion had a cliff exactly at
+its shipped value:
+
+| `_UNCOVERED_ERODE_MM` | 0.1 | 0.2 | 0.3 | **0.4 (shipped)** |
+|---|---|---|---|---|
+| apex, mm² | 0.80 | 0.80 | 0.80 | **0.00** |
+
+`_UNCOVERED_CELL_MM` alone did the same: 0.60 at 0.20 mm, 0.40 at 0.25,
+**0.00 at 0.5**.
+
+**What shipped.** Cell 0.5 → **0.25 mm**; erosion 0.4 → **0.0**; floor 5.0 →
+**1.0 mm²**; two new filters that test what a rim IS rather than shaving every
+shape — `_UNCOVERED_MIN_HALF_MM` 0.30 (max inscribed radius) and
+`_UNCOVERED_MIN_FILL` 0.15 (area over bounding box). `_THREAD_MATCH_MIN_PATCH_MM2`
+**decoupled** and kept at the 5.0 its own sweep chose. New metrics
+`uncovered_holes` / `uncovered_hole_mm2` (adjudicated) beside the
+threshold-free `uncovered_worst_mm2`, plus `uncovered_patches` /
+`uncovered_top_mm2` so a floor can be re-derived from a report.
+
+| fixture | patches | holes | largest patch |
+|---|---|---|---|
+| golden_tee 80 | 108 | **0** | 3.12 mm² (a band seam) |
+| becker 100 | 93 | **17** | 3.00 |
+| bridge 80 | 58 | 0 | 0.88 |
+| screenshot 80 | 51 | 0 | 0.81 |
+| gaulke 80 | 48 | 0 | 0.31 |
+| drone 80 | 40 | **1** | 1.44 |
+| enthusiast 80 | 27 | **2** | 1.56 — the A's apex |
+| tires 80 | 9 | 0 | 0.06 |
+| fremont 92.5 | 1 | 0 | 0.25 |
+
+**438 patches, 20 holes, three fixtures.** Every firing patch on each fixture
+was rendered through `stitchviz.render_design` before the numbers were chosen
+and every one shows cloth between two sewn shapes:
+`docs/renders/uncovered-floor-2026-09-30/`.
+
+**MEAN thickness was measured as the compactness test and REFUTED** — the
+full-bleed rim's mean inscribed half is 0.332 mm, higher than fourteen of the
+twenty real holes (0.252–0.354). Fill ratio separates where mean does not:
+rim 0.007, golden_tee's seam 0.078, real holes 0.239–0.706.
+
+**Four pinned tests moved and none was a regression.** Three asserted SILENCE
+on fixtures where the check had nothing it could see, and were re-expressed to
+their actual claims (*this shape* is not reported; the RIM is not reported;
+zero HOLES rather than zero patches); the fourth
+(`test_edge_cap_lettering`) had a 0.5 mm² allowance that meant "unchanged"
+against a zero and means 3% against a seventeen, so it became proportional.
+
+**Shipped with it:** `tools/uncovered_floor.py` (the standing sweep, with a
+`--legacy` arm that re-reads the 2026-08-20 table's own fixtures) and
+`tests/test_preflight.py::test_the_letter_apex_is_reported_now_that_the_erosion_is_gone`.
+
+*(measured 2026-09-30 — `tools/uncovered_floor.py --corpus`; `docs/renders/uncovered-floor-2026-09-30/`; DOCTRINE 2026-09-30, two entries)*
+
+---
+
+## 2026-09-30 — what the sharper uncovered check found in its first full suite
+
+Five tests went red on the full digitizer suite after `ARTWORK_UNCOVERED` was
+re-derived (entry above). **None was a regression in the code they cover**, and
+two were not pins at all — they were findings.
+
+**1. `satin_lettering_split` leaves holes the fill lane did not.** MARINE at
+127.4 mm, the flag's own fixture:
+
+| arm | stitches | patches | holes | uncovered |
+|---|---|---|---|---|
+| split OFF (fill) | 9,600 | 5 | **0** | 0.0 mm² |
+| split ON (satin) | 7,168 | 43 | **11** | **22.9 mm²**, worst 4.31 @ 0.75 mm half |
+
+Rendered before it was written up: the holes are at the crowns of curved
+letters and between letter parts, where the split columns stop short of the
+artwork. `test_on_the_word_sews_fewer_stitches_and_nothing_goes_bare` passed
+for one reason — both arms read 0.0 under the old 5.0 mm² floor, so the
+comparison could not fail. Split into a passing stitch-count test and a
+**strict xfail** carrying the numbers; MASTER_SCOPE defect 50, and the call is
+Kent's.
+
+**2. The junction cover is inert on today's defaults — as `_cfg()` already
+said.** `tests/test_junction_patch_flag.py`'s config has held
+`satin_junction_stack=False` since 2026-09-19 with a comment saying part C
+composes the same cover. Quantified now, BECKER 80 mm on a bare config:
+
+| | stitches | uncovered | cover runs |
+|---|---|---|---|
+| stack ON, patch off | 6,101 | 29.3 | 3 |
+| stack ON, patch `"satin"` | 6,101 | 29.3 | 3 — identical |
+| stack OFF, patch off | 5,695 | 47.2 | 0 |
+| stack OFF, patch `"satin"` | 5,874 | **22.2** | 1 |
+
+**An observation for its own look:** the stack leaves MORE uncovered on this
+fixture than the cover alone — 29.3 against 22.2 — while costing 227 more
+stitches. It buys other things (self-crossings 311 → 0), so that is a trade to
+price, not a verdict.
+
+**3. Both patch tests asserted `uncovered_total_mm2 == 0.0`.** That was a
+property of the blind check, not of the patch. On their own `_cfg()` arms the
+patches do exactly their job — the K's crotch `Sead76620` goes **30.1 → 13.1**
+(tatami) and **30.1 → 16.8** (satin cover), totals 44.1 → 23.8 / 27.5 — while
+clearing no shape outright, because the check now resolves the residue inside
+each one. Re-pinned on the TARGET SHAPE and the total.
+
+**4. `test_marine_80_keeps_its_cover_without_the_junction_cover` came out
+stronger.** Its prediction was "A + B alone leave no bare artwork — the cover
+is the backstop, not the construction." Neutralising the cover now produces a
+plan identical stitch for stitch (2,354 both ways, 3.9 mm² both ways), which
+says "backstop, not construction" more sharply than a coverage bound. The
+0.5 mm² half was the blind check; MARINE 80 reads 3.9 mm² in two holes, and
+they are there whether the cover runs or not.
+
+**5. The thread-match floor was decoupled** and keeps the 5.0 its own
+2.0/5.0/10.0 sweep chose. `test_the_floor_is_the_uncovered_checks_number`
+asserted the coupling and is now
+`test_the_thread_match_floor_keeps_the_number_its_own_sweep_chose`.
+
+Suite on the merged tree before the repairs: **8 failed, 2,905 passed, 15
+skipped, 5 xfailed, 33m52s** — three of the eight the documented platform
+goldens. After: the four affected files read **42 passed, 1 xfailed**.
+
+*(measured 2026-09-30 — `tests/test_lettering_split.py`, `test_junction_patch_flag.py`, `test_junction_stack.py`, `test_thread_match_area_in_message.py`)*
+
+---
+
+## 2026-09-30 — defect 50 diagnosed: the crowns are a decomposition gap, and five cures are refuted
+
+Kent's pick: build the fix. The diagnosis came first and changed what the fix
+has to be.
+
+**The crowns look exactly like a width problem.** All 11 holes on MARINE
+127.4 (split ON) are **mid-rail**, 0.38–0.76 mm from the nearest cross and
+0.25–0.73 mm from the outline, and the rail sits **0.62–1.47 mm short of the
+artwork edge along its own cross ray**.
+
+**Five arms say it is not:**
+
+| arm | stitches | holes | uncovered | `lost_frac` |
+|---|---|---|---|---|
+| shipped | 7,168 | 11 | 22.9 | **0.1800** |
+| `rails_follow_edge="envelope"` | 7,567 | 11 | 22.9 | 0.1800 |
+| `rails_follow_edge=True` | 7,712 | 9 | 18.1 | 0.1937 |
+| width smoother removed (median window 1, 0 passes) | 7,471 | 11 | 22.3 | 0.1790 |
+| pitch 0.40 → 0.20 mm | 8,735 | 10 | 21.8 | 0.1911 |
+
+*(median window 1 alone, keeping the 4 smoothing passes, is WORSE: 16 holes /
+26.1 mm².)*
+
+- The **envelope** is inert for +399 stitches. A crown is narrower than its
+  ±`_ENVELOPE_WINDOW` stations — the design limit its own test pins on a
+  synthetic bulge — and it takes a running MINIMUM, so it refuses a local
+  maximum by construction.
+- **`True`** moves 2 of 11 and costs the headline metric.
+- The **smoother** is not the cause, which also kills the tidy story that a
+  crown is a local maximum every width model flattens.
+- **Pitch** buys one hole for 1,567 stitches.
+- The **1.6× floor cap** binds on exactly one of the eleven. **`_fold_caps`
+  never runs**: `fold_guard` follows `cfg.wide_columns`, default OFF.
+
+**Every arm that moves a crown makes `lost_frac` worse.** That is the tell.
+No column parameter reaches them because the crowns are not inside any
+column: the medial-axis split leaves wedges of artwork that **no stroke
+claims**, and 4 of the 11 sit at a node between two sub-strokes.
+
+**So the lever is a COVER, not a rail** — `_junction_cover_runs` generalised
+from junctions to "anywhere the strokes' union misses the artwork" — or a
+decomposition that does not leave the wedges. That is a different and larger
+build than the rail change this started as, and it is where defect 50 now
+sits.
+
+*(measured 2026-09-30 — the four probe arms above on MARINE 127.4; DOCTRINE 2026-09-30, "A satin column's crowns are a DECOMPOSITION gap")*
+
+---
+
+## 2026-09-30 — `satin_crown_cover` BUILT OFF: one cover closes defects 49 and 50
+
+Kent's ruling on `docs/superpowers/plans/2026-09-30-crown-cover.md` §7 — a
+cover under the arms rather than a new decomposition, on ALL satin shapes.
+
+**The build is small because the machinery existed.** `_uncovered_patches`
+already computes `polygon − all thread` at 0.25 mm, and `_junction_cover_runs`
+already sews a patch as a satin column placed first in the shape. The crown
+cover is that pair with the junction gate removed and `ARTWORK_UNCOVERED`'s
+own adjudicated thresholds — area ≥ 1.0 mm², max inscribed half ≥ 0.30 mm,
+fill ≥ 0.15 — the last two added to the finder as optional filters that
+default None, which keeps every other caller byte-identical.
+
+**The fixtures, OFF → ON:**
+
+| fixture | stitches | holes | uncovered | `lost_frac` |
+|---|---|---|---|---|
+| MARINE 127.4 | 7,168 → 7,352 (+2.6%) | **11 → 1** | 22.9 → 1.5 | 0.1800 → **0.1730** |
+| MARINE 80.2 | 2,354 → 2,358 (+0.2%) | **2 → 0** | 3.9 → 0.0 | 0.1083 → **0.1064** |
+| ENTHUSIAST 80 | 2,474 → 2,486 (+0.5%) | **2 → 1** | 2.6 → 1.0 | 0.2573 held |
+| BECKER 80 | 6,101 → 6,250 (+2.4%) | **12 → 7** | 29.3 → 10.8 | 0.0329 → **0.0217** |
+
+**The corpus:**
+
+| case | stitches | holes | uncovered | `lost_frac` | wedges |
+|---|---|---|---|---|---|
+| becker 100 | +2.0% | **17 → 9** | 31.4 → 15.4 | 0.0415 → 0.0350 | 20 |
+| enthusiast 80 | +0.5% | **2 → 1** | 2.6 → 1.0 | held | 1 |
+| drone 80 | +0.0% | **1 → 0** | 1.4 → 0.0 | held | 1 |
+| bridge 80 | +0.1% | 0 → 0 | 0 → 0 | 0.1573 → 0.1560 | 2 |
+| golden_tee 80 | **−1.4%** | 0 → 0 | 0 → 0 | 0.3779 → 0.3758 | 2 |
+| tires, fremont, gaulke, screenshot | 0.0% | 0 → 0 | 0 → 0 | unchanged | **0** |
+
+**Corpus holes 20 → 10. `lost_frac` never rises on any of the nine and falls
+on three.** The four fixtures reporting no holes find NO WEDGE AT ALL, which
+is the over-fire test passing rather than a threshold tuned to pass it.
+
+**ENTHUSIAST's survivor is the 1.00 mm² gap between two letters; the 1.56 mm²
+apex is covered.** That closes defect 49 as well, and makes 49 and 50 one
+mechanism rather than two.
+
+**Two build errors, both caught by a test, both recorded in DOCTRINE.**
+`_junction_cover_runs` had an undocumented tatami fallback, so the first build
+put fill inside a satin shape against Kent's 2026-09-09 ruling; suppressing it
+outright then made BECKER *worse than no cover* (29.3 → 37.1 mm², a 26.2 mm²
+hole, `lost_frac` through the gate) because crown mode replaces the junction
+cover's call and inherited its job. The skip is floored at
+`_JUNCTION_PATCH_MIN_MM2`, so it applies only to wedges that exist because the
+crown floor is lower.
+
+**One measurement NOT made:** how many wedges are skipped for want of a
+sewable column. The counter used during the build watched `_principal_spine`
+returning non-None (26 of 26), which is not the same thing — a spine can still
+resample to a column too short to sew — so the "0 without a satin answer" line
+first written here was withdrawn rather than published.
+
+*(measured 2026-09-30 — `tests/test_crown_cover.py`; `docs/superpowers/plans/2026-09-30-crown-cover.md` §6; DOCTRINE 2026-09-30)*
 ## 2026-09-30 — the phantom-blend fold's wrong turn: a member folded into an endpoint it does not touch becomes a teal speck
 
 Kent's pick after bridge's investigation: fix the fold, then flip. Traced on

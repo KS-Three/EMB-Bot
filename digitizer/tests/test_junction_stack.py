@@ -222,11 +222,35 @@ def test_marine_80_stops_folding_at_two_trims(m80_off, m80_on):
 def test_marine_80_keeps_its_cover_without_the_junction_cover(monkeypatch):
     """Prediction 2 of the plan (§6): A + B alone leave no bare artwork on
     the fixture — the cover (C) is the backstop, not the construction.
-    Falsified if uncovered rises over 0.5 mm² with the cover neutralised."""
+
+    RE-EXPRESSED 2026-09-30, and the prediction comes out STRONGER. The
+    original test neutralised the cover and asserted uncovered stayed under
+    0.5 mm²; both halves now read differently, for two separate reasons.
+
+    * The cover is not merely unnecessary here, it emits NOTHING: with it
+      neutralised the plan is identical, stitch for stitch (2,354 both ways,
+      3.9 mm² both ways). That is a sharper statement of "backstop, not
+      construction" than a coverage bound, so it is what is asserted now.
+    * The 0.5 mm² bound was a property of a check that could not resolve a
+      hole. `ARTWORK_UNCOVERED` measured on a 0.25 mm grid with no erosion
+      (2026-09-30) reads **3.9 mm² in TWO holes** on this fixture, worst
+      2.25 mm² — rendered, and cloth between two letter parts rather than a
+      coverage-model artefact (`docs/renders/uncovered-floor-2026-09-30/`).
+      They are not the cover's to fix: they are there whether it runs or not.
+    """
     monkeypatch.setattr(s6, "_junction_cover_runs", lambda *a, **k: [])
     cfg, result, plan = _run(FIXTURE_80, 80.2)
     assert _letter_folds(result, plan) == 0
-    assert _uncovered(FIXTURE_80, cfg, result, plan) <= 0.5
+    no_cover = _uncovered(FIXTURE_80, cfg, result, plan)
+
+    monkeypatch.undo()
+    cfg2, result2, plan2 = _run(FIXTURE_80, 80.2)
+    assert plan2.stats.stitch_count == plan.stats.stitch_count, \
+        "the cover emits thread here now; re-derive this prediction"
+    assert _uncovered(FIXTURE_80, cfg2, result2, plan2) == no_cover
+    # and a ceiling on what A + B leave, so a construction change that makes
+    # it worse is caught (3.9 mm² measured 2026-09-30)
+    assert no_cover <= 5.0, no_cover
 
 
 def test_an_explicit_cover_setting_wins_over_part_c():

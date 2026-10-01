@@ -6071,6 +6071,136 @@ written on and is an overstatement on this one.
 `tests/test_rail_comp.py::test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else`
 holds `satin_tip_caps=False` for exactly this reason, and says so.
 
+## A threshold above its whole population is not conservative, it is a DISABLED CHECK (2026-09-30)
+
+`preflight.ARTWORK_UNCOVERED` had a 5.0 mm² patch floor from 2026-08-20, set
+from a table whose two known defects read 7.75 and 44.50 mm². Swept on the
+nine corpus logos across erosion 0.2/0.3/0.4 and cell 0.25/0.5 — six settings
+— **the largest patch the check could see anywhere was 1.90 mm².** It could
+not fire on any real logo at any setting, and had not for weeks.
+
+The number never moved; the engine underneath it did. Those 7.75 and 44.50
+came off `enthusiast_logo` at 150 mm and `becker_marine_logo` at 90 mm on a
+tree seven default-flips old. **A threshold is a claim about a distribution,
+so it expires when the distribution moves** — and a check that cannot fire
+looks exactly like a clean design. The tell is cheap: sweep the floor to zero
+and see whether anything qualifies. Nothing did.
+
+`tools/uncovered_floor.py` is the standing instrument. Any threshold here
+that has not been swept against the current corpus should be assumed stale.
+
+## An erosion is a PROXY for a shape property — test the property (2026-09-30)
+
+The same check eroded its artwork mask by 0.4 mm, for a stated and correct
+reason: thread laid along a shape's boundary hangs over the outside, so every
+shape's outer half-thread reads uncovered by construction, and *"eroding by
+less reports every shape's rim as a defect"*.
+
+**It cannot tell that rim from a hole that touches a boundary, and a tapered
+tip's hole is nothing but boundary.** ENTHUSIAST's apex reads 0.80 mm² at
+every erosion from 0.1 to 0.3 and **0.00 at 0.4** — a cliff exactly at the
+shipped value. The erosion was not hiding a marginal reading; it was the
+reason the reading was zero.
+
+What a rim actually IS: long, thin, and wrapped around the design. Both
+properties are directly measurable on the patch — `_UNCOVERED_MIN_HALF_MM`
+(max inscribed radius, from a distance transform) and `_UNCOVERED_MIN_FILL`
+(area over bounding box). On the full-bleed guard the rim is ONE component of
+73.94 mm² in a 91.5 × 109 mm box, fill **0.007**; the twenty adjudicated
+holes run 0.239–0.706. 438 patches over nine logos become 20 holes on three
+fixtures, and ENTHUSIAST's apex survives.
+
+**MEAN thickness was the obvious alternative and is REFUTED.** The rim's mean
+inscribed half-width is **0.332 mm, HIGHER than fourteen of the twenty real
+holes** (0.252–0.354). A frame of thread-width cloth is not thinner on
+average than a 1 mm hole — it is only longer. Compactness is the property
+that differs; measure that one.
+
+**And a guard test that asserts SILENCE is asserting the blindness too.**
+Three tests went red on this change and none was a regression: they pinned
+"no finding" on fixtures where the check had nothing it could see. Each was
+re-expressed to its actual claim — *this shape* is not reported, the RIM is
+not reported, zero HOLES rather than zero patches. Before loosening such a
+test, check whether it was ever testing the thing its name says.
+
+## A satin column's crowns are a DECOMPOSITION gap — five rail and pitch cures, all refuted (2026-09-30)
+
+MASTER_SCOPE defect 50: `satin_lettering_split` leaves 11 holes / 22.9 mm² at
+the crowns of curved letters on MARINE 127.4 where the fill lane leaves none.
+Every hole is **mid-rail**, 0.38–0.76 mm from the nearest cross and 0.25–0.73
+mm from the outline, and the rail is **0.62–1.47 mm short of the artwork edge
+along its own cross ray**. That reads exactly like a width problem. It is not
+one, and five arms say so:
+
+| arm | stitches | holes | uncovered | `lost_frac` |
+|---|---|---|---|---|
+| shipped | 7,168 | 11 | 22.9 | **0.1800** |
+| `rails_follow_edge="envelope"` | 7,567 | 11 | 22.9 | 0.1800 |
+| `rails_follow_edge=True` | 7,712 | 9 | 18.1 | 0.1937 |
+| width smoother removed entirely | 7,471 | 11 | 22.3 | 0.1790 |
+| pitch 0.40 → 0.20 mm | 8,735 | 10 | 21.8 | 0.1911 |
+
+**The envelope is inert on them for +399 stitches** — a crown is narrower
+than its ±3-station window, the design limit its own test pins on a synthetic
+bulge, and it takes a running MINIMUM, which refuses a local maximum by
+construction. **`True` moves 2 of 11 and costs the headline.** **The smoother
+is not the cause either** — deleting the median and all four smoothing passes
+leaves 11 holes standing, which also kills the neat "a crown is a local
+maximum and every width model is a smoother" story. **And halving the pitch
+buys one hole for 1,567 stitches.**
+
+The `1.6 ×` floor cap binds on exactly ONE of the eleven; `_fold_caps` never
+runs at all, because `fold_guard` is tied to `cfg.wide_columns`, default OFF.
+
+**Every arm that moves a crown makes `lost_frac` worse.** That is the tell.
+A column parameter cannot reach these because the crowns are not inside any
+column: the medial-axis split leaves wedges of artwork that **no stroke
+claims**, four of the eleven sitting at a node between two sub-strokes. The
+lever is a COVER over what the strokes miss — `_junction_cover_runs`
+generalised from junctions to "anywhere the strokes' union misses the
+artwork" — or a decomposition that does not leave the wedges. Not a rail, not
+a pitch, not a smoother.
+
+**The transferable part:** when a hole sits mid-rail and short of the edge,
+the width model is the obvious suspect and can still be innocent. Sweep the
+parameter to its extreme before building on the hypothesis — removing the
+smoother outright cost one run and refuted a story that would have justified
+a week of work.
+
+## A flag that REPLACES an existing call inherits everything that call was doing (2026-09-30)
+
+`cfg.satin_crown_cover` is the junction cover with its junction gate removed
+and `ARTWORK_UNCOVERED`'s thresholds, and it closes defect 50: MARINE 127.4
+goes 11 holes / 22.9 mm² to **1 / 1.5**, ENTHUSIAST's apex closes (defect 49
+and 50 are one mechanism), the corpus goes 20 holes to 9, and `lost_frac`
+falls on three fixtures and holds on the rest. Two errors got there, and both
+are the same shape.
+
+**1. The cover had a tatami fallback nobody had written down.**
+`_junction_cover_runs` falls back to `stage6_fill.stitch_shape` when a
+column comes out degenerate, so the first build put tatami inside a satin
+shape on two MARINE shapes — against Kent's 2026-09-09 ruling, and against
+the design doc's own §7.3 claim that it "sews satin only". The config comment
+asserting that was written before it was true. **A claim about behaviour in a
+comment is a claim to check, not a note to write.**
+
+**2. Suppressing the fallback outright made BECKER WORSE THAN NO COVER.**
+Crown mode replaces the junction cover's call rather than running beside it,
+so a blanket `satin_only` also took away the tatami answer the JUNCTION cover
+had been giving: uncovered **29.3 → 37.1 mm²** with a 26.2 mm² hole where the
+fallback had been, and `lost_frac` 0.0329 → 0.0346, straight through the gate
+the flag is bound by. Flooring the skip at `_JUNCTION_PATCH_MIN_MM2` — so it
+applies only to the wedges that exist BECAUSE the crown floor is lower —
+leaves the junction cover untouched and reads 29.3 → **10.8** at 0.0217,
+better than either earlier attempt.
+
+**The rule: measure the fixture the OLD path was best on, not only the one the
+new path is for.** BECKER is where the junction cover earns its keep, and the
+new flag's own fixture (MARINE) could not have shown either error. Both were
+caught by a test — one by an assertion about tatami inside satin, one by the
+`lost_frac` gate — which is the argument for writing the gate into the test
+rather than checking it by eye at the end.
+
 
 ## The polygon axis must not read stage 5's grown polygon (2026-09-16)
 

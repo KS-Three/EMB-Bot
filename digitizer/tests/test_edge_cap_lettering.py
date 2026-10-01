@@ -62,6 +62,13 @@ def _run(**kw):
     # `tests/test_rail_comp.py` pins the price). The flag under test here is
     # priced on the engine it was read on; the rails' own cost is pinned there.
     kw.setdefault("satin_rail_comp", False)
+    # Same for `satin_rails_follow_edge`, "envelope" by default since #567
+    # (2026-09-30, Kent's pick). The envelope lowers BOTH arms' uncovered
+    # area but the capped arm more -- 16.8 -> 13.9 OFF, 17.6 -> 16.7 ON
+    # (measured 2026-09-30) -- so this flag's marginal cost reads +20% there
+    # against +4.8% here, while its absolute ON figure still improves. The
+    # envelope's own price belongs to its own tests, not to this flag's.
+    kw.setdefault("satin_rails_follow_edge", False)
     cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest",
                          max_colors=6, **kw)
     gen = build_generation(str(FIXTURE), cfg)
@@ -155,18 +162,30 @@ def test_on_no_cap_sample_stands_on_a_satin_letter(on):
 
 
 def test_on_the_fixture_loses_its_cap_trims_and_keeps_its_cover(off, on):
-    """Measured: trims 23 → 7, cap runs 18 → 1, stitches 2,192 → 1,774,
-    uncovered 0.0 → 0.0. Pinned as directions and floors, not as the
-    numbers, so a later step that moves the fixture does not fail this."""
+    """Measured: trims 23 → 7, cap runs 18 → 1, stitches 2,192 → 1,774.
+    Pinned as directions and floors, not as the numbers, so a later step that
+    moves the fixture does not fail this.
+
+    The uncovered arm read **0.0 → 0.0** when this was written, and reads
+    **16.8 → 17.6 mm²** since 2026-09-30 — not a regression in the flag, a
+    change of instrument. `ARTWORK_UNCOVERED` had a 5.0 mm² floor above the
+    largest patch it could resolve anywhere, so it qualified nothing on any
+    fixture; it now measures on a 0.25 mm grid with no erosion and a 1.0 mm²
+    floor. Both arms rose together and the flag's own cost is 0.8 mm² of a
+    17 mm² total, so the assertion below became proportional: an absolute
+    0.5 mm² allowance meant "unchanged" against a zero and means 3% against
+    a seventeen."""
     cfg_off, res_off, p_off = off
     cfg_on, res_on, p_on = on
     assert p_on.stats.trims <= p_off.stats.trims - 10
     assert len(_cap_runs(p_on)) <= 2 < len(_cap_runs(p_off))
     assert p_on.stats.stitch_count < p_off.stats.stitch_count
-    # The bare corners a letter still has are now its own to show — and on
-    # this fixture, with step 3's corner rule ON, they stay under the
-    # coverage floor: no uncovered artwork appears.
-    assert _uncovered(cfg_on, res_on, p_on) <= _uncovered(cfg_off, res_off, p_off) + 0.5
+    # The bare corners a letter still has are now its own to show — and the
+    # flag must not make them materially worse. Measured 2026-09-30:
+    # 16.8 → 17.6 mm², +4.8%.
+    off_mm2 = _uncovered(cfg_off, res_off, p_off)
+    on_mm2 = _uncovered(cfg_on, res_on, p_on)
+    assert on_mm2 <= max(off_mm2 * 1.10, off_mm2 + 0.5), (off_mm2, on_mm2)
 
 
 def test_on_only_the_cap_moves(off, on):

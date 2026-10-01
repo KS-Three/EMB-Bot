@@ -129,8 +129,61 @@ def test_on_the_shapes_that_are_not_lettering_keep_their_tiers(off, on):
     assert {s: t_off.get(s) for s in others} == {s: t_on.get(s) for s in others}
 
 
-def test_on_the_word_sews_fewer_stitches_and_nothing_goes_bare(off, on):
-    assert on[2].stats.stitch_count < off[2].stats.stitch_count                # 9,642 -> 7,753 measured
+def test_on_the_word_sews_fewer_stitches(off, on):
+    """The half of the old `..._and_nothing_goes_bare` that is still true.
+    9,642 -> 7,753 when measured; 9,600 -> 7,168 on 2026-09-30."""
+    assert on[2].stats.stitch_count < off[2].stats.stitch_count
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "MEASURED 2026-09-30, not a flaky pin: the split leaves 22.9 mm2 of bare "
+    "artwork in 11 holes where the fill lane leaves none. NOT a case for "
+    "reverting the flip -- `lost_frac` reads 0.2688 fill against 0.1800 "
+    "split -- but 11 crowns to close. MASTER_SCOPE defect 50."))
+def test_on_the_word_goes_bare_where_the_fill_lane_did_not(off, on):
+    """`satin_lettering_split` ON leaves holes the fill lane did not.
+
+    This assertion rode inside `..._and_nothing_goes_bare` and passed for one
+    reason only: `ARTWORK_UNCOVERED` had a 5.0 mm2 floor sitting above the
+    largest patch it could resolve anywhere, so BOTH arms read 0.0 and the
+    comparison could not fail. Measured on the 0.25 mm grid with no erosion
+    (2026-09-30), MARINE at 127.4 mm:
+
+        split OFF   9,600 stitches    5 patches,  0 holes,   0.0 mm2
+        split ON    7,168 stitches   43 patches, 11 holes,  22.9 mm2
+                                     worst 4.31 mm2 @0.75 mm half, fill 0.44
+
+    Rendered before this was written: the holes are at the crowns of curved
+    letters and between letter parts, where the split columns stop short of
+    the artwork — cloth, not a coverage-model artefact.
+
+    **Left as a strict xfail rather than loosened**, because the flag is a
+    shipped default (Kent's flip, 2026-09-19) and these holes are real. It
+    goes green the day the construction closes them, and that is the signal
+    to delete the xfail.
+
+    **Read the next paragraph before treating this as an argument against the
+    flag.** On `lost_frac` -- the metric that killed the 2026-09-30 apex
+    widening, and the one DOCTRINE says to price a lettering change on -- the
+    split is a large WIN, not a loss:
+
+        fill    0.2688  =  unsewn 0.0000  +  overshoot 0.2688
+        split   0.1800  =  unsewn 0.0102  +  overshoot 0.1699
+
+    The fill arm is 100% overshoot and spills more thread outside the artwork
+    than the split leaves bare. A first draft of this docstring read the
+    coverage number alone and framed the flip as the problem; that is the
+    exact error DOCTRINE's "Coverage is not the metric a customer sees" was
+    written about, the same day, by the same session.
+
+    **Neither built rail cure closes these** (measured 2026-09-30):
+    `satin_rails_follow_edge="envelope"` is inert on them -- 11 holes and
+    22.9 mm2 unchanged for +399 stitches, because a crown is narrower than
+    its +-`_ENVELOPE_WINDOW` stations, which is the design limit its own test
+    pins on a synthetic bulge -- and `True` takes 11 -> 9 holes and 22.9 ->
+    18.1 mm2 while pushing `lost_frac` 0.1800 -> 0.1937. Closing them needs a
+    construction that does not spend the split's advantage.
+    """
     pf_off = run_preflight(off[1], off[2], off[0], image=str(FIXTURE))
     pf_on = run_preflight(on[1], on[2], on[0], image=str(FIXTURE))
     assert pf_on["metrics"].get("uncovered_total_mm2", 0.0) <= pf_off["metrics"].get("uncovered_total_mm2", 0.0)
