@@ -29,7 +29,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { statSync } from "node:fs";
-import { startStudio, typeText, pickGarment, pickTemplate, openDownload } from "./helpers.js";
+import { startStudio, typeText, pickGarment, pickTemplate, openDownload, closeDownload } from "./helpers.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Same fixture digitize-stale-edits.spec.js uses (see that file's own
@@ -343,6 +343,38 @@ test("a template picked from My designs starts a new design and keeps the open o
   await page.getByRole("button", { name: /^My designs/ }).click();
   await expect(rows).toHaveCount(2);
   await expect(rows.filter({ hasText: /^KEEP ME$/ })).toHaveCount(1);
+});
+
+// --- the Download sheet and browser history ----------------------------------
+
+// The sheet pushes one history entry so a phone's Back closes it (spec §2.4).
+// Pinned here: Back closes it without leaving the Studio; Close pops the entry
+// it pushed (no dead Back left behind); and a reload with the sheet open
+// normalises the stale entry away so the next open still closes in one press.
+test("the Download sheet's history entry: Back closes it, Close and reload leave none behind", async ({ page }) => {
+  await startStudio(page);
+  await typeText(page, "BACK TEST");
+
+  await openDownload(page);
+  await page.goBack();
+  await expect(page.getByRole("dialog", { name: "Download" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Your design" })).toBeVisible();
+
+  await openDownload(page);
+  await closeDownload(page);
+  await expect.poll(() => page.evaluate(() => window.history.state)).toBeNull();
+
+  await openDownload(page);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Your design" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Download" })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.history.state)).toBeNull();
+
+  // One Escape is enough after the reload: no second entry was stacked.
+  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible({ timeout: 60_000 });
+  await openDownload(page);
+  await closeDownload(page);
+  await expect.poll(() => page.evaluate(() => window.history.state)).toBeNull();
 });
 
 // The Download button on a design with nothing in it, which nothing had ever
