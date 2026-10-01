@@ -158,14 +158,15 @@
   --tracking-tight: -0.02em;
   --tracking-snug: -0.01em;
   /* Two opened steps, because they are not the same job. `slight` is a nudge
-     for caps set inside a FIXED box (the logomark tile) or a label that just
-     wants air — folding it into `wide` pushed "EMB" past its own 28px tile.
+     for caps set inside a FIXED box (the old "EMB" tile in the top bar, since replaced
+     by the plain wordmark) or a label that just wants air — folding it into
+     `wide` pushed "EMB" past its own 28px tile.
      `wide` is the eyebrow: small, uppercase, meant to read as a label. */
   --tracking-slight: 0.02em;
   --tracking-wide: 0.08em;
 
   /* ---- Layout ------------------------------------------------------------ */
-  --topbar-h: 64px;
+  --topbar-h: 44px;
 }
 
 * { box-sizing: border-box; }
@@ -208,11 +209,13 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   height: var(--topbar-h);
   padding: 0 var(--space-5);
   background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  /* Flat on purpose (2026-09-30). It carried --shadow-1 from the elevation
-     pass; with the field below it now a dark surround, a drop shadow off a
-     white bar onto near-black is invisible where it lands and a smudge
-     where it meets the panel. The 1px border is the whole separation. */
+  /* Flat and borderless on purpose (2026-10-01 theme pass). It carried
+     --shadow-1 from the elevation pass, then (2026-09-30) a 1px bottom
+     border once the field below went to a dark surround, where a drop shadow
+     off a white bar onto near-black was invisible where it lands. The page
+     is white now, and a 44px bar that meets the dark surround on one side
+     and the white panel on the other needs no rule: the surround's own edge
+     is the separation. */
   position: relative;
   z-index: 1;
 }
@@ -224,26 +227,12 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   min-width: 0;
 }
 
-/* Small accent tile carrying "EMB" -- the logo mark. */
-.logomark {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-s);
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-medium);
-  letter-spacing: var(--tracking-slight);
-}
-
-.logo {
-  font-weight: var(--fw-medium);
-  font-size: var(--fs-lg);
-  letter-spacing: var(--tracking-snug);
+/* The wordmark: "EMB·BOT", plain ink, no tile. One of the two places the
+   600 weight survives (the other is the summary bar's figures). */
+.wordmark {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.08em;
   white-space: nowrap;
   color: var(--ink);
 }
@@ -285,9 +274,9 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  min-height: 40px;
-  border: 1px solid var(--border);
+  padding: var(--space-1) var(--space-3);
+  min-height: 32px;
+  border: 1px solid transparent;
   border-radius: var(--radius-s);
   background: var(--surface);
   color: var(--ink);
@@ -296,22 +285,25 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   cursor: pointer;
 }
 
-.mydesigns:hover { border-color: var(--ink); }
+.mydesigns:hover { background: var(--fill); }
 
 /* "Font credits" — opens FontCredits, the generated OFL/CC credits dialog.
-   Quiet text button, deliberately smaller than "My designs" since it's
-   informational, not a workflow action. */
+   A quiet 28px round "?" (its accessible name is "Font credits"),
+   deliberately smaller than "My designs" since it's informational, not a
+   workflow action. */
 .font-credits-btn {
-  padding: var(--space-2) var(--space-3);
-  min-height: 40px;
-  border: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
   background: none;
   color: var(--muted);
   font: inherit;
   font-size: var(--fs-sm);
   cursor: pointer;
 }
-.font-credits-btn:hover { color: var(--ink); }
+.font-credits-btn:hover { border-color: var(--ink); color: var(--ink); }
 
 .mydesigns .badge {
   display: inline-flex;
@@ -1089,11 +1081,10 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
      tall enough that the natural width is already a sane shape. */
   .hoop { max-width: min(100%, 62vh); }
 
-  /* The topbar has no room for all four actions plus the wordmark at this
-     width; the wordmark is redundant next to the logomark, and font credits
-     stay reachable from the Download step's own footer link. */
+  /* Everything in the 44px bar still fits at this width: the wordmark is
+     short ("EMB·BOT") and the font-credits "?" is a 28px circle, so neither
+     is hidden any more. Only the gap and padding tighten. */
   .topbar { gap: var(--space-2); padding: 0 var(--space-3); }
-  .logo, .font-credits-btn { display: none; }
   /* .panel needs a BOUNDED height for two things to work: .cfg-body's
      internal scroll (flex:1; min-height:0; overflow-y:auto) needs something
      to clip against, and the summary bar (a flex child pinned to the bottom of
