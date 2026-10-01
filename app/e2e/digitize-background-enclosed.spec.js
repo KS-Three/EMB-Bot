@@ -156,8 +156,6 @@ test("BACKGROUND_ENCLOSED: enclosed icon linework is held out by default and res
 
   // ---- reach the digitize panel (same route as the other digitize specs) --
   await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
   await page.getByRole("button", { name: "Artwork" }).click();
 
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_SINGLE_PNG);
@@ -226,8 +224,6 @@ test("BACKGROUND_ENCLOSED: the banner's 'Sew all' bulk-restores every enclosed r
   await page.goto("/");
 
   await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
   await page.getByRole("button", { name: "Artwork" }).click();
 
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_BULK_PNG);

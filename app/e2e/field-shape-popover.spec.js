@@ -48,8 +48,6 @@ const STATS = "span.stats";
 async function toContent(page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
 }
 
 // Draw a rectangle on ManualPanel's canvas: four clicks at fractions of the

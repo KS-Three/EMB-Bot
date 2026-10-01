@@ -43,7 +43,9 @@ MIN_N_VERDICT = 10
 MIN_N_FIT = 40
 
 
-def wilson(k: int, n: int, z: float = 1.959964) -> tuple[float, float]:
+def wilson(k: float, n: int, z: float = 1.959964) -> tuple[float, float]:
+    """`k` may be fractional: the exploratory fit's single-metric accuracy
+    gives half credit to a pair the metric has no say on."""
     if n == 0:
         return (0.0, 1.0)
     p = k / n
@@ -100,10 +102,30 @@ def _refused(features: dict, fixture: str, arm: str, metric: str) -> bool:
     return metric in (features.get(fixture, {}).get(arm, {}).get("refusals") or {})
 
 
-def _prefers_arm(metric: str, base_v: float | None, arm_v: float | None) -> bool | None:
-    """True/False = the metric prefers the arm/the base; None = it has no say."""
+def _both(features: dict, row: dict, metric: str, *, ties: bool) -> tuple[float, float] | None:
+    """-> (base value, arm value) for one decided row, or None when the
+    metric cannot speak on it: missing on either arm, always; equal on both,
+    unless `ties`.
+
+    THE one place a pair's two values are fetched. `ties` has no default
+    because what a tie means is the caller's decision, and the callers
+    differ on purpose: a verdict (`_scored`) and a lean drop a tie — the
+    metric prefers neither arm — while the exploratory fit keeps it as a
+    zero delta, "no say" on that one feature of a row that still has a
+    pick and three other features. Written out three times, that difference
+    was invisible (review 2026-09-17)."""
+    b = _value(features, row["fixture"], BASE, metric)
+    a = _value(features, row["fixture"], row["arm"], metric)
+    if b is None or a is None or (not ties and a == b):
+        return None
+    return b, a
+
+
+def _prefers_arm(metric: str, base_v: float, arm_v: float) -> bool | None:
+    """True/False = the metric prefers the arm/the base; None = it has no
+    direction, so it never has a say."""
     direction = METRICS[metric]
-    if direction == "none" or base_v is None or arm_v is None or base_v == arm_v:
+    if direction == "none":
         return None
     return arm_v > base_v if direction == "higher" else arm_v < base_v
 
@@ -114,11 +136,10 @@ def _scored(rows, features, metric, include_refused):
                 _refused(features, r["fixture"], BASE, metric)
                 or _refused(features, r["fixture"], r["arm"], metric)):
             continue
-        b = _value(features, r["fixture"], BASE, metric)
-        a = _value(features, r["fixture"], r["arm"], metric)
-        pref = _prefers_arm(metric, b, a)
+        values = _both(features, r, metric, ties=False)
+        pref = None if values is None else _prefers_arm(metric, *values)
         if pref is not None:
-            yield r, b, a, pref
+            yield r, *values, pref
 
 
 # How far the expected-by-chance agreement may sit from 0.5 before the
@@ -210,10 +231,10 @@ def lean(rows: list[dict], features: dict, metric: str) -> dict:
     """For a directionless metric: how often Kent picked the HIGHER value."""
     n = hi = 0
     for r in rows:
-        b = _value(features, r["fixture"], BASE, metric)
-        a = _value(features, r["fixture"], r["arm"], metric)
-        if b is None or a is None or a == b:
+        values = _both(features, r, metric, ties=False)
+        if values is None:
             continue
+        b, a = values
         n += 1
         hi += (a > b) == r["picked_is_arm"]
     return {"metric": metric, "n": n, "picked_higher": hi}
@@ -265,6 +286,31 @@ def flag_table(sealed: dict, picks: dict) -> dict:
     return table
 
 
+def ref_confound(env: dict | None, photo_class: bool) -> dict:
+    """Is a ref arm's difference from today's arm partly the ENVIRONMENT's?
+
+    -> {"confounded": True | False | None, "why": [every fact that fired]}.
+    Decided from facts measured when the row was rendered
+    (`refarm.ref_environment`), never from the design class alone: that
+    proxy called every photo-class fixture confounded, and on a checkout
+    with no rembg venv — every worktree — today's engine skips photo prep
+    exactly as the old one does, so there was nothing to flag (review
+    2026-09-17). None means the row predates the record: unknown, not clean.
+    """
+    if not env:
+        return {"confounded": None,
+                "why": ["environment not recorded when this arm was rendered"]}
+    why = []
+    if env["requirements_differ"]:
+        why.append(f"requirements.txt differs between {env['ref']} and HEAD: the old "
+                   "source ran under pins it was not written for")
+    if photo_class and env["rembg_venv_main"] != env["rembg_venv_ref"]:
+        only = "today's" if env["rembg_venv_main"] else "the old"
+        why.append(f"photo-class fixture, and the rembg venv existed for {only} engine "
+                   "only: one arm skipped photo prep")
+    return {"confounded": bool(why), "why": why}
+
+
 # ---- exploratory, and labelled so (spec section 4, SECONDARY) --------------
 
 def _logistic(A: np.ndarray, y: np.ndarray, ridge: float) -> np.ndarray:
@@ -298,10 +344,12 @@ def exploratory_fit(rows: list[dict], features: dict,
     for r in rows:
         vals = []
         for m in names:
-            b = _value(features, r["fixture"], BASE, m)
-            a = _value(features, r["fixture"], r["arm"], m)
-            if b is None or a is None:
+            # `ties=True`, deliberately: a zero delta is "no say" on ONE
+            # feature of a row that still has a pick and three others.
+            values = _both(features, r, m, ties=True)
+            if values is None:
                 break
+            b, a = values
             # Oriented: positive always means "this metric prefers the arm".
             vals.append(a - b if METRICS[m] == "higher" else b - a)
         else:
@@ -317,14 +365,15 @@ def exploratory_fit(rows: list[dict], features: dict,
     Z = X / scale          # scaled, NOT centred: a zero delta stays "no say"
     A = np.hstack([np.ones((len(Z), 1)), Z])
 
-    hits = total = 0
+    hits = total = scored_arm = 0
     for held in sorted(set(fx.tolist())):
         test, train = fx == held, fx != held
         if len(set(y[train].tolist())) < 2:
-            continue
+            continue                    # one answer to learn from: no model
         w = _logistic(A[train], y[train], ridge)
         hits += int((((A[test] @ w) > 0) == (y[test] == 1.0)).sum())
         total += int(test.sum())
+        scored_arm += int((y[test] == 1.0).sum())
 
     singles = {}
     for j, m in enumerate(names):
@@ -332,7 +381,36 @@ def exploratory_fit(rows: list[dict], features: dict,
         singles[m] = float(credit.mean())
     best = max(singles, key=singles.get)
 
+    # ROADMAP gate 4: neither accuracy is returned without its floor. Always
+    # guessing Kent's commoner pick scores `baseline` knowing nothing, and the
+    # arms are default-OFF flags he mostly turns down, so that floor is
+    # nowhere near 0.5 (review 2026-09-17: both figures were printed raw).
+    baseline = float(max(y.mean(), 1.0 - y.mean()))
+    # An accuracy and its floor are taken over the SAME rows. A fold is
+    # skipped when holding its fixture out leaves one answer to learn from,
+    # so LOFO can score fewer rows than `n` — and if every arm-pick sits in
+    # that one fixture, the rows it does score are all "shipped": 1.00 on
+    # them is their floor, and against the all-row floor (59/60) it read
+    # "+1.00 above baseline" for a model that learned nothing.
+    lofo_baseline = (max(scored_arm, total - scored_arm) / total) if total else None
+
+    def above(acc, floor):
+        if acc is None or floor is None or floor >= 1.0:
+            return None
+        return (acc - floor) / (1.0 - floor)
+
+    lofo = hits / total if total else None
+    lofo_lo, lofo_hi = wilson(hits, total)
     return {"label": "EXPLORATORY", "n": int(len(y)), "features": list(names),
             "weights": [float(v) for v in _logistic(A, y, ridge)],
-            "lofo_accuracy": hits / total if total else None,
-            "best_single": {"metric": best, "accuracy": singles[best]}}
+            "majority_baseline": baseline,
+            "lofo_accuracy": lofo, "lofo_hits": hits, "lofo_n": total,
+            "lofo_baseline": lofo_baseline,
+            "lofo_wilson": [lofo_lo, lofo_hi],
+            "lofo_above_baseline": above(lofo, lofo_baseline),
+            # The same test `sign_agreement` applies to `pe`: the interval's
+            # lower bound has to clear the floor, not the point estimate.
+            "lofo_beats_baseline": bool(total and lofo_lo > lofo_baseline),
+            "best_single": {"metric": best, "accuracy": singles[best],
+                            "wilson": list(wilson(singles[best] * len(y), len(y))),
+                            "above_baseline": above(singles[best], baseline)}}

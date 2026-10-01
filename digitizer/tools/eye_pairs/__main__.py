@@ -13,8 +13,11 @@ Spec: docs/superpowers/specs/2026-09-17-eye-pairs-design.md
 from __future__ import annotations
 
 import argparse
+import contextlib
+import filecmp
 import hashlib
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -35,10 +38,11 @@ from tools.thin_strokes import STUDIO_MAX_COLORS, corpus_cases
 from . import analysis as an
 from . import features as ft
 from .features import base_cfg, digitize_once, features_design_only, features_full
-from .pairs import (ARMS, BASE, EXCLUDED_FIXTURES, ArmRun, build_pairs, design_hash,
-                    load_picks, sealed_hash, unpicked)
 from .filearm import design_from_file
-from .refarm import add_worktree, link_photo_prep, remove_worktree, run_ref_design
+from .pairs import (ARMS, BASE, EXCLUDED_FIXTURES, ArmRun, build_pairs, design_hash,
+                    load_picks, now_iso, sealed_hash, unpicked)
+from .refarm import (add_worktree, discard_worktree, link_photo_prep, ref_environment,
+                     run_ref_design)
 from .server import PORT, make_server
 
 DIGITIZER = Path(__file__).resolve().parents[2]
@@ -46,6 +50,8 @@ REPO = DIGITIZER.parent
 OUT = DIGITIZER / "eye_pairs_out"
 # Re-exported so a test can monkeypatch the schema the cache key reads.
 FEATURES_SCHEMA = ft.FEATURES_SCHEMA
+# The drift control's fixture: the cheapest real logo in the corpus.
+VERIFY_FIXTURE = "tires"
 
 
 def _say(msg: str) -> None:
@@ -62,6 +68,21 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+@contextlib.contextmanager
+def _replacing(path: Path):
+    """Yields a temp path to write, then swaps it in. A render is REPLACED,
+    never rewritten in place: `pair()` hardlinks renders into `img/`, and
+    `cv2.imwrite` on the same path would change — and mid-write truncate — a
+    picture a live sitting is serving. After a replace the paired link still
+    holds the old bytes, which is what a copy used to guarantee."""
+    tmp = path.with_name(f"{path.stem}.tmp{path.suffix}")     # keeps the codec's extension
+    try:
+        yield tmp
+        tmp.replace(path)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
 _JPEG = [cv2.IMWRITE_JPEG_QUALITY, 92]
 
 
@@ -74,27 +95,43 @@ def holes_path(out: Path, name: str, arm: str) -> Path:
 
 
 def _write_holes(hpath: Path, design: dict) -> None:
-    cv2.imwrite(str(hpath), render_penetrations(design, px_per_mm=VIEW_PX_PER_MM), _JPEG)
+    # Replaced and checked the same way as the thread render beside it.
+    with _replacing(hpath) as tmp:
+        if not cv2.imwrite(str(tmp), render_penetrations(design, px_per_mm=VIEW_PX_PER_MM),
+                           _JPEG):
+            raise OSError(f"could not write {hpath}")
 
 
-def _default_ref_runner(ref: str):
-    """-> (runner, closer) for ONE commit. The worktree lives under the
-    system temp dir — never inside the repo (`refarm.guard_scratch`)."""
-    dest = Path(tempfile.gettempdir()).resolve() / f"eye-pairs-ref-{ref}"
-    remove_worktree(REPO, dest)                       # a crashed earlier run
-    shutil.rmtree(dest, ignore_errors=True)
-    worktree = add_worktree(REPO, ref, dest)
-    engine = worktree / "digitizer"
-    # The photo-prep venv is gitignored and lives in the primary checkout
-    # only; without this a photo-class fixture's ref design skips prep and
-    # the pair compares lanes, not engines (`refarm.link_photo_prep`).
-    linked = link_photo_prep(REPO, worktree)
+def _default_ref_runner(ref: str, *, repo=None, scratch=None):
+    """-> (runner, closer, env) for ONE commit. The worktree lives under the
+    system temp dir — never inside the repo (`refarm.guard_scratch`). `env`
+    is what was MEASURED about where the old engine runs, taken while its
+    worktree exists (`refarm.ref_environment`). `repo` and `scratch` exist
+    so a test can run this glue for real against a throwaway repository."""
+    repo = REPO if repo is None else Path(repo)
+    scratch = Path(tempfile.gettempdir() if scratch is None else scratch)
+    dest = scratch.resolve() / f"eye-pairs-ref-{ref}"
+    discard_worktree(repo, dest)                      # a crashed earlier run
+    try:
+        worktree = add_worktree(repo, ref, dest)
+        engine = worktree / "digitizer"
+        # The photo-prep venv is gitignored and lives in the primary checkout
+        # only; without this a photo-class fixture's ref design skips prep and
+        # the pair compares lanes, not engines (`refarm.link_photo_prep`).
+        linked = link_photo_prep(repo, worktree)
+        env = ref_environment(repo, ref, main_digitizer=repo / "digitizer",
+                              ref_digitizer=engine)
+    except BaseException:
+        # No closer exists yet, so nothing else would ever clean this up —
+        # whether `add` died partway or the measuring after it did.
+        discard_worktree(repo, dest)
+        raise
 
     def runner(image, width_mm, garment, max_colors):
         return run_ref_design(sys.executable, engine, image, width_mm, garment, max_colors)
 
     runner.photo_prep_env = linked
-    return runner, lambda: remove_worktree(REPO, dest)
+    return runner, lambda: discard_worktree(repo, dest), env
 
 
 def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
@@ -108,9 +145,13 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
     row missing only its penetration map (a run rendered before 2026-09-30)
     gets the map drawn from the kept design, with no digitize.
 
-    `ref_factory(commit) -> (runner, closer)` is built once PER COMMIT, so
-    two `__ref__` rows on different commits each get their own engine —
-    the cache used to be 'has any ref been built' (review finding 6).
+    `ref_factory(commit) -> (runner, closer, env)` is built once PER COMMIT,
+    so two `__ref__` rows on different commits each get their own engine —
+    the cache used to be 'has any ref been built' (review finding 6). `env`
+    is stored on every row that runner produces, and a ref row WITHOUT one
+    is a cache miss: it predates the record, and `--reveal` could only call
+    it unknown. That costs the ref rows alone — deliberately not a
+    `FEATURES_SCHEMA` bump, which would re-digitize every flag arm too.
     Never builds pairs: that is `pair()`.
     """
     out = Path(out)
@@ -130,6 +171,7 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
     feats_path = out / "features.json"
     feats = json.loads(feats_path.read_text(encoding="utf-8")) if feats_path.exists() else {}
     runners: dict[str, object] = {}
+    envs: dict[str, dict] = {}
     closers: list = []
     ready = 0
     try:
@@ -138,7 +180,8 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
             art = out / "renders" / f"{name}__art.png"
             sources = feats.setdefault("__sources__", {})
             if not art.exists() or sources.get(name) != src_hash:
-                _normalise_art(Path(path), art)
+                with _replacing(art) as tmp:
+                    _normalise_art(Path(path), tmp)
                 sources[name] = src_hash
             for arm, kw in [(BASE, {})] + list(arms.items()):
                 if "__file__" in kw and name not in kw["__file__"]:
@@ -150,6 +193,7 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                 if (row and "error" not in row
                         and row.get("source_sha256") == src_hash
                         and row.get("schema") == FEATURES_SCHEMA
+                        and ("__ref__" not in kw or row.get("env"))
                         and dpath.exists() and rpath.exists()):
                     if not hpath.exists():
                         _write_holes(hpath, json.loads(dpath.read_text(encoding="utf-8")))
@@ -162,12 +206,17 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                     if "__ref__" in kw:
                         commit = kw["__ref__"]
                         if commit not in runners:
-                            runner, closer = ref_factory(commit)
-                            runners[commit] = runner
+                            runner, closer, env = ref_factory(commit)
+                            runners[commit], envs[commit] = runner, env
                             closers.append(closer)
+                            if env.get("requirements_differ"):
+                                _say(f"[{arm}] WARNING: requirements.txt differs between "
+                                     f"{commit} and HEAD - the old source is running under "
+                                     "pins it was not written for; --reveal marks its rows")
                         design = runners[commit](path, width_mm, garment, STUDIO_MAX_COLORS)
                         row = features_design_only(path, design)
                         row["design_only"] = True
+                        row["env"] = envs[commit]
                         # Whether the ref engine had the photo-prep venv: the
                         # page's confound badge on a photo-class fixture reads
                         # this, so a ref pair rendered with the venv linked is
@@ -194,8 +243,16 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                 row["wall_s"] = round(time.time() - started, 1)
                 row["source_sha256"] = src_hash
                 row["schema"] = FEATURES_SCHEMA
+                row["design_hash"] = design_hash(design)     # read by `pair()`
                 dpath.write_text(json.dumps(design), encoding="utf-8")
-                cv2.imwrite(str(rpath), render_design(design, px_per_mm=VIEW_PX_PER_MM), _JPEG)
+                with _replacing(rpath) as tmp:
+                    # `imwrite` reports failure by RETURNING False. Raised
+                    # here, before the row is checkpointed, so a resumed
+                    # render does this arm again instead of pairing a row
+                    # that has no picture.
+                    if not cv2.imwrite(str(tmp), render_design(design, px_per_mm=VIEW_PX_PER_MM),
+                                       _JPEG):
+                        raise OSError(f"could not write {rpath}")
                 _write_holes(hpath, design)
                 feats.setdefault(name, {})[arm] = row
                 _write_json(feats_path, feats)          # checkpoint per arm
@@ -205,6 +262,24 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
             closer()
     print(f"{ready} arm-runs ready in {out}. Next: python -m tools.eye_pairs --pair")
     return ready
+
+
+def _place(src: Path, dst: Path) -> None:
+    """`dst` shows `src`: a hardlink where the filesystem allows one, a copy
+    where it does not, and nothing at all when it already does. A pair's
+    images used to be rmtree'd and copied afresh on every `--pair` — three
+    files a pair, the artwork once per PAIR rather than once per fixture
+    (review 2026-09-17)."""
+    if dst.exists():
+        # `shallow`: equal size + mtime is taken as equal without reading,
+        # which is what `copy2` below preserves; otherwise bytes are compared.
+        if os.path.samefile(src, dst) or filecmp.cmp(src, dst, shallow=True):
+            return
+        dst.unlink()
+    try:
+        os.link(src, dst)
+    except OSError:                         # FAT/exFAT, a cross-device out dir, ...
+        shutil.copy2(src, dst)
 
 
 def pair(out=OUT) -> int:
@@ -227,8 +302,12 @@ def pair(out=OUT) -> int:
             dpath = out / "designs" / f"{name}__{arm}.json"
             if "error" in row or not dpath.exists():
                 continue
-            runs.append(ArmRun(name, arm,
-                               design_hash(json.loads(dpath.read_text(encoding="utf-8"))),
+            # `--render` records the hash with the row. A row rendered before
+            # it did has none — no FEATURES_SCHEMA bump came with the field,
+            # on purpose — and is hashed from its design as before.
+            sewn = row.get("design_hash") or design_hash(
+                json.loads(dpath.read_text(encoding="utf-8")))
+            runs.append(ArmRun(name, arm, sewn,
                                design_only=bool(row.get("design_only", False))))
     public, sealed, skipped = build_pairs(runs)
     new_hash = sealed_hash(sealed)
@@ -247,18 +326,22 @@ def pair(out=OUT) -> int:
                              "pictures.")
 
     img = out / "img"
-    shutil.rmtree(img, ignore_errors=True)
-    img.mkdir()
+    img.mkdir(exist_ok=True)
+    wanted: dict[str, Path] = {}
     for p in public:
         s = sealed[p["pair"]]
-        shutil.copyfile(out / "renders" / f"{s['fixture']}__{s['left_arm']}.jpg", img / p["left"])
-        shutil.copyfile(out / "renders" / f"{s['fixture']}__{s['right_arm']}.jpg", img / p["right"])
-        shutil.copyfile(out / "renders" / f"{s['fixture']}__art.png", img / p["art"])
+        wanted[p["left"]] = out / "renders" / f"{s['fixture']}__{s['left_arm']}.jpg"
+        wanted[p["right"]] = out / "renders" / f"{s['fixture']}__{s['right_arm']}.jpg"
+        wanted[p["art"]] = out / "renders" / f"{s['fixture']}__art.png"
+    for stale in [f for f in img.iterdir() if f.name not in wanted]:
+        stale.unlink()                      # a larger earlier sitting's leftovers
+    for name, src in wanted.items():
+        _place(src, img / name)
     _write_json(out / "pairs.json", public)
     _write_json(out / "arms.json", sealed)
     _write_json(out / "skipped.json", skipped)
     _write_json(sitting, {"sealed_sha256": new_hash, "n_pairs": len(public),
-                          "built_ts": time.strftime("%Y-%m-%dT%H:%M:%S")})
+                          "built_ts": now_iso()})
     print(f"{len(public)} pairs ready in {out}. Next: python -m tools.eye_pairs --serve")
     return len(public)
 
@@ -311,11 +394,17 @@ def reveal(out=OUT) -> dict:
     table = an.flag_table(sealed, picks)
     ref_table = []
     for r in ref_rows:
-        # The ref worktree has no rembg venv, so a photo-class fixture's old
-        # arm skipped photo prep for an ENVIRONMENT reason, not an engine one.
-        confounded = feats.get(r["fixture"], {}).get(BASE, {}).get("design_class") in PHOTO_CLASSES
+        # Decided from what `--render` MEASURED about the two environments
+        # (the row's `env`), not from the design class alone — see
+        # `analysis.ref_confound` for the false positive that proxy produced.
+        by_arm = feats.get(r["fixture"], {})
+        verdict = an.ref_confound(
+            by_arm.get(r["arm"], {}).get("env"),
+            photo_class=by_arm.get(BASE, {}).get("design_class") in PHOTO_CLASSES)
         ref_table.append({"pair": r["pair"], "fixture": r["fixture"], "arm": r["arm"],
-                          "today_won": not r["picked_is_arm"], "confounded": confounded})
+                          "today_won": not r["picked_is_arm"],
+                          "confounded": verdict["confounded"],
+                          "confounded_why": verdict["why"]})
 
     results = {
         "n_pairs": len(ids), "decided_flag_pairs": len(flag_rows),
@@ -380,15 +469,60 @@ def _print(res: dict) -> None:
         print(f"  {arm:<20} W{t['wins']:>3}  L{t['losses']:>3}  T{t['ties']:>3}"
               f"   identical to shipped on {skips.get(arm, 0)} fixture(s)")
     for arm in sorted({r["arm"] for r in res["ref_table"]}):
-        rows = [r for r in res["ref_table"] if r["arm"] == arm]
-        won = sum(1 for r in rows if r["today_won"])
-        print(f"\nTODAY vs {arm}: today preferred on {won} of {len(rows)} decided"
-              + (" (photo-class fixtures are environment-confounded; see results.json)"
-                 if any(r["confounded"] for r in rows) else ""))
-    fit = res["exploratory"]
-    print("\nEXPLORATORY fit: " + ("not run (fewer than 40 decided pairs)" if fit is None else
-          f"LOFO accuracy {fit['lofo_accuracy']:.2f} vs best single "
-          f"{fit['best_single']['metric']} {fit['best_single']['accuracy']:.2f} (n={fit['n']})"))
+        _print_ref(arm, [r for r in res["ref_table"] if r["arm"] == arm])
+    _print_fit(res["exploratory"])
+
+
+def _print_ref(arm: str, rows: list[dict]) -> None:
+    """One ref arm: the tally, then every environment fact that fired and
+    the fixtures it fired on — named, because 'confounded' alone does not
+    say whether to distrust one photo fixture or the whole arm."""
+    won = sum(1 for r in rows if r["today_won"])
+    print(f"\nTODAY vs {arm}: today preferred on {won} of {len(rows)} decided")
+    fired: dict[tuple[str, str], list[str]] = {}
+    for r in rows:
+        label = "UNKNOWN" if r["confounded"] is None else "CONFOUNDED"
+        for why in r.get("confounded_why") or []:
+            fired.setdefault((label, why), []).append(r["fixture"])
+    for (label, why), fixtures in fired.items():
+        print(f"  {label} on {', '.join(sorted(set(fixtures)))}: {why}"
+              + (" (run --render again: only this arm re-digitizes, and records it)"
+                 if label == "UNKNOWN" else ""))
+    if not fired:
+        print("  no recorded fact confounds this arm: requirements.txt unchanged, and the")
+        print("  rembg venv was the same for both engines on every photo-class fixture")
+    clean = [r for r in rows if r["confounded"] is False]
+    if fired and clean:
+        print(f"  clean pairs: today preferred on {sum(1 for r in clean if r['today_won'])}"
+              f" of {len(clean)}")
+
+
+def _print_fit(fit: dict | None) -> None:
+    """ROADMAP gate 4: an accuracy is never printed without the floor it has
+    to clear, its interval, and the figure corrected for that floor."""
+    if fit is None:
+        print("\nEXPLORATORY fit: not run (fewer than 40 decided pairs)")
+        return
+
+    def line(name, acc, ci, above, note=""):
+        if acc is None:
+            return f"  {name:<12}n/a - no held-out fold had both of Kent's answers to learn from"
+        return (f"  {name:<12}acc {acc:.2f}  95% CI [{ci[0]:.2f}, {ci[1]:.2f}]  "
+                f"above baseline {'n/a' if above is None else format(above, '+.2f')}{note}")
+
+    best = fit["best_single"]
+    print(f"\nEXPLORATORY fit, n={fit['n']} - majority baseline {fit['majority_baseline']:.2f}"
+          " (always guessing Kent's")
+    print("commoner pick); 'above baseline' = (acc - baseline)/(1 - baseline), 0 = that")
+    print("guess. Weights are reported and shipped nowhere.")
+    print(line("LOFO", fit["lofo_accuracy"], fit["lofo_wilson"], fit["lofo_above_baseline"],
+               "" if fit["lofo_beats_baseline"] else "  - not distinguishable from the baseline"))
+    if fit["lofo_n"] and fit["lofo_n"] != fit["n"]:
+        # A skipped fold: LOFO is held to the floor of the rows it SCORED.
+        print(f"              scored {fit['lofo_n']} of {fit['n']} - a held-out fixture left only one "
+              f"of Kent's answers to learn from; baseline on those rows {fit['lofo_baseline']:.2f}")
+    print(line("best single", best["accuracy"], best["wilson"], best["above_baseline"],
+               f"  ({best['metric']})"))
 
 
 def verify(image, width_mm: float, garment: str) -> bool:
@@ -453,7 +587,14 @@ def main(argv: list[str] | None = None) -> int:
         reveal(args.out)
         return 0
     if args.verify:
-        name, path, width_mm, garment = corpus_cases()[1]      # "tires": the cheapest real logo
+        # By NAME. `corpus_cases()` is REAL_ART's dict order minus the
+        # byte-duplicates it finds at runtime, so an index is a coincidence.
+        by_name = {case[0]: case for case in corpus_cases()}
+        if VERIFY_FIXTURE not in by_name:
+            raise SystemExit(f"REFUSED: --verify runs on the corpus fixture "
+                             f"{VERIFY_FIXTURE!r}, and corpus_cases() no longer lists it "
+                             f"(it has: {', '.join(by_name)}).")
+        name, path, width_mm, garment = by_name[VERIFY_FIXTURE]
         print(f"verifying on {name}")
         return 0 if verify(path, width_mm, garment) else 1
     ap.print_help()

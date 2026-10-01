@@ -1,8 +1,6 @@
 <script>
   import { EMB } from "../lib/emb.js";
   import { createEventDispatcher } from "svelte";
-  import TemplateRow from "./TemplateRow.svelte";
-  import Hint from "./Hint.svelte";
   import { garmentArt } from "./garmentArt.js";
   import { effectiveHoop } from "../lib/hoop.js";
   import { fabricInForce } from "../lib/generate.js";
@@ -13,12 +11,6 @@
   // from the service, so the button below says why it is unavailable
   // instead of throwing when pressed — same posture as JEF on Download.
   export let digitizerHealth = null;
-  // Whether the "templates" onboarding hint should render right now -- App
-  // computes this from hints.js's shouldShow("templates") plus the A7
-  // cross-hint priority rule (drag-field/add-elements can outrank it even
-  // while this step is active, since the embroidery field is visible
-  // alongside every step -- see App.svelte's `visibleHintKey`).
-  export let showTemplatesHint = false;
   const d = createEventDispatcher();
 
   function readable(id) {
@@ -94,12 +86,7 @@
     : "Needs the digitizer service — start it to calibrate";
 </script>
 
-{#if showTemplatesHint}
-  <Hint on:dismiss={() => d("dismisshint")}>One click starts a ready-made design.</Hint>
-{/if}
-<TemplateRow on:pick={(e) => d("template", e.detail)} />
-
-<h2>What are you putting this on?</h2>
+<h3>Garment</h3>
 <div class="tiles">
   {#each tiles as t}
     <button class="tile" class:sel={project.garmentId === t.id} on:click={() => d("update", { garmentId: t.id })}>

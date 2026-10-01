@@ -278,24 +278,6 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   justify-self: end;
 }
 
-/* Download shortcut — jumps straight to the download step once a design
-   has stitches; a quiet ghost button so "My designs" stays the visually
-   stronger of the two. */
-.topbar-download {
-  padding: var(--space-2) var(--space-3);
-  min-height: 40px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-s);
-  background: var(--surface);
-  color: var(--ink);
-  font: inherit;
-  font-weight: var(--fw-semibold);
-  font-size: var(--fs-sm);
-  cursor: pointer;
-}
-
-.topbar-download:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-
 /* "My designs" — opens the ProjectsDrawer; badge shows the saved-project
    count. */
 .mydesigns {
@@ -519,19 +501,30 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
    hardcoded px offset (B10). */
 .studio {
   display: grid;
-  grid-template-columns: minmax(320px, 400px) 1fr;
+  grid-template-columns: 1fr minmax(320px, 400px);
   height: calc(100vh - var(--topbar-h));
 }
 
 .panel {
+  position: relative;          /* the sheet is absolutely positioned inside it */
   display: flex;
   flex-direction: column;
   min-height: 0;
   background: var(--surface);
-  border-right: 1px solid var(--border);
+  border-left: 1px solid var(--border);
 }
 
-.panel-body {
+/* Wraps the Configurator (body + summary bar) so it can be made `inert`
+   under the Download sheet. It must pass .panel's column flex through, or
+   .cfg-body loses its bound and the summary bar stops being pinned. */
+.panel-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.cfg-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -539,7 +532,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
 
   /* Scroll shadows. The panel is a bounded scroll area whose content almost
      always overflows (the Garment step alone is quick-start cards + ten
-     garment tiles + four hoop tiles), and with a hard edge against StepNav
+     garment tiles + four hoop tiles), and with a hard edge against the summary bar
      the cut landed mid-heading -- "What are you putting this on?" sliced
      through the glyphs, which reads as a rendering fault rather than as
      "there is more below". The pair of cover/shadow gradients is the
@@ -558,7 +551,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   background-attachment: local, local, scroll, scroll;
 }
 
-.panel-body h2 {
+.cfg-body h2 {
   margin-top: 0;
   font-size: var(--fs-xl);
   font-weight: var(--fw-bold);
@@ -584,7 +577,8 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
 
    Every label that takes this is one or two words. It would be wrong on a
    sentence. */
-.panel-body h3,
+.cfg-body h3,
+.sheet h3,
 .tp-label,
 .alignlabel {
   font-size: var(--fs-xs);
@@ -594,7 +588,8 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   color: var(--muted);
 }
 
-.panel-body h3 { margin-bottom: var(--space-2); }
+.cfg-body h3,
+.sheet h3 { margin-bottom: var(--space-2); }
 
 /* Right pane — the embroidery field / workspace. Shares --field-bg with the
    canvas itself (see EmbroideryField's own render path) so the whole
@@ -1073,11 +1068,11 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
 /* Stack on narrow screens: field above the panel */
 @media (max-width: 820px) {
   /* Stay bounded to the viewport when stacked. `height: auto` handed the
-     whole page a scrollbar, and StepNav -- the only control that moves you
-     through the flow -- sits at the bottom of .panel, so it landed below the
+     whole page a scrollbar, and the summary bar -- the only Download
+     control -- sits at the bottom of .panel, so it landed below the
      fold on every laptop/phone-height viewport: you had to scroll past the
-     field AND the full panel to reach Back/Next. Bounding the grid and
-     letting .panel-body scroll internally keeps the nav pinned on screen,
+     field AND the full panel to reach it. Bounding the grid and
+     letting .cfg-body scroll internally keeps the bar pinned on screen,
      the same contract the two-column layout already has. Rows are stated in
      vh (not auto) so the split is deterministic instead of content-driven. */
   .studio {
@@ -1102,16 +1097,18 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
      stay reachable from the Download step's own footer link. */
   .topbar { gap: var(--space-2); padding: 0 var(--space-3); }
   .logo, .font-credits-btn { display: none; }
-  /* .panel needs a BOUNDED height for two things to work: .panel-body's
+  /* .panel needs a BOUNDED height for two things to work: .cfg-body's
      internal scroll (flex:1; min-height:0; overflow-y:auto) needs something
-     to clip against, and StepNav (a flex child pinned to the bottom of
+     to clip against, and the summary bar (a flex child pinned to the bottom of
      .panel) is only pinned while the column is taller than its content. It
      used to carry an explicit `height: 54vh` to get that, because .studio
      was `height: auto` here. Now that .studio is viewport-bounded with
      explicit rows above, the 1fr row IS the bound -- `min-height: 0` just
      lets this grid item shrink to it instead of being floored at its
      content height. One budget, stated once, in .studio's rows. */
-  .panel { border-right: none; border-top: 1px solid var(--border); min-height: 0; }
+  .panel { border-left: none; border-top: 1px solid var(--border); min-height: 0; }
+  /* The Download sheet's phone-width override lives beside `.sheet` below:
+     it must come AFTER the base rule's `inset: 0` to win. */
 }
 
 /* Wide screens: the panel is the working surface (font row, colour, sliders,
@@ -1120,7 +1117,7 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
    empty ground. Give the panel a little more of the surplus; the field still
    takes the larger share. */
 @media (min-width: 1400px) {
-  .studio { grid-template-columns: minmax(400px, 460px) 1fr; }
+  .studio { grid-template-columns: 1fr minmax(400px, 460px); }
 }
 
 /* Garment / font tiles */
@@ -1916,18 +1913,6 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .sizepanel .warn { margin: var(--space-2) 0 0; font-size: var(--fs-sm); }
 
-/* Create step — settings recap */
-.createstep .summary { margin: var(--space-5) 0; }
-.createstep .summary > div {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--border);
-}
-.createstep .summary dt { color: var(--muted); margin: 0; }
-.createstep .summary dd { margin: 0; font-weight: var(--fw-semibold); text-align: right; }
-
 /* Create step — the digitizer's own preflight report (ui/QualityReport.svelte).
    Deliberately quieter than the settings recap above it: this is a list of
    sentences to READ, so the findings carry no card, no fill and no rule of
@@ -2181,7 +2166,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 /* Thread color picker (Slice 8 Task 4) -- B6 (NON-NEGOTIABLE): NOT a
    floating popover. `.tp-panel` renders IN NORMAL DOCUMENT FLOW directly
    below `.tp-trigger`, same in-flow pattern as the fabric-color row above --
-   the scrollable .panel-body clips absolutely-positioned overlays (the
+   the scrollable .cfg-body clips absolutely-positioned overlays (the
    Slice-7 A9 lesson), so nothing here uses position: absolute/z-index. */
 .threadpicker { display: flex; flex-direction: column; align-items: flex-start; }
 
@@ -2373,141 +2358,79 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .threadreset:hover { border-color: var(--accent); color: var(--accent); }
 
-/* Step nav — sits at the bottom of the left panel. Two rows (B11): the 4
-   step labels (small, clickable per reachability gating) above Back/Next,
-   since a 320px-wide footer can't fit both in a single row. */
-.stepnav {
+/* ---- Configurator (spec §2.2) ------------------------------------------ */
+.cfg-title { text-align: center; margin-bottom: var(--space-1); }
+.cfg-sub { text-align: center; color: var(--muted); font-size: var(--fs-sm); margin: 0 0 var(--space-5); }
+.startseg {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  background: var(--surface);
-  border-top: 1px solid var(--border);
+  padding: 3px;
+  margin-bottom: var(--space-5);
+  background: var(--bg);
+  border-radius: var(--radius-s);
 }
-
-.stepnav-steps {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-1);
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.stepnav-steps li { flex: 1; min-width: 0; }
-
-.stepnav-step {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-1);
-  min-height: 0;
-  border: 2px solid transparent;
+.startseg-btn {
+  flex: 1;
+  min-height: 36px;
+  border: 0;
   border-radius: var(--radius-s);
   background: transparent;
   color: var(--muted);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  text-align: center;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
   cursor: pointer;
 }
+.startseg-btn:hover { color: var(--ink); }
+.cfg-section + .cfg-section { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
 
-.stepnav-label {
-  width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Progress badge -- small numbered circle per step, checkmark once passed.
-   Chosen over a connecting progress-line: a 4-item flex row in this
-   ~320-400px sidebar footer makes cross-element line alignment fragile,
-   while a self-contained per-step badge has no shared geometry to keep in
-   sync. The checkmark glyph itself is aria-hidden (see StepNav.svelte) so
-   screen readers don't read it as literal text -- the button's own label
-   stays the accessible name. */
-.stepnav-badge {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
+/* The sticky foot: the figures a customer glances at while editing, and
+   the one Download. `.primary`'s paint is left alone on purpose — the
+   stepper's neutral `background: var(--surface)` once out-cascaded it and
+   painted the app's only CTA white-on-white (2026-08-25); the bar sets no
+   background on its button at all. Keep any neutral paint scoped away from
+   `.primary`. */
+.summarybar {
+  padding: var(--space-3) var(--space-5) var(--space-4);
   background: var(--surface);
-  color: var(--muted);
-  font-size: var(--fs-2xs);
-  font-weight: var(--fw-bold);
-  line-height: 1;
-}
-
-.stepnav-badge.done,
-.stepnav-step.active .stepnav-badge {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
-/* Active vs. hover, made genuinely distinct (previously both states just set
-   `color: var(--accent)`, so a hovered step and the actual current step were
-   visually identical). Active mirrors `.elrow.sel`'s established
-   selected-row pattern (tint background + tint-border border); hover gets
-   its own distinct neutral (the app's base-ground token) so resting, hover,
-   and active are three clearly different states. `:not(.active)` keeps
-   hovering the current step from being repainted by the (higher-specificity)
-   hover rule. */
-.stepnav-step:hover:not(:disabled):not(.active) { background: var(--bg); color: var(--ink); }
-
-/* Disabled text swapped from --border (near-invisible against the panel
-   background) to --muted at reduced opacity -- the same combination
-   `.undo-btn:disabled` already uses elsewhere in this file -- so a disabled
-   step still reads as "present but grayed out" instead of vanishing. */
-.stepnav-step:disabled { color: var(--muted); opacity: 0.45; cursor: not-allowed; }
-
-.stepnav-step.active {
-  background: var(--tint);
-  border-color: var(--tint-border);
-  color: var(--accent);
-  font-weight: var(--fw-bold);
-}
-
-/* Visual break between the step tabs and Back/Next -- previously nothing
-   separated the two rows. Button sizing below is untouched. */
-.stepnav-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding-top: var(--space-3);
   border-top: 1px solid var(--border);
 }
+.summarybar-figures { display: flex; justify-content: space-between; margin-bottom: var(--space-3); }
+.summarybar-figure { display: flex; flex-direction: column; font-size: var(--fs-2xs); color: var(--muted); }
+.summarybar-figure b { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--ink); }
+.summarybar-download { width: 100%; min-height: 44px; font-size: var(--fs-md); }
 
-.stepnav-controls button {
-  padding: var(--space-3) var(--space-5);
-  min-height: 44px;
-  /* border-width/style only -- NOT the `border` shorthand, which would also
-     reset border-color and re-break the accent border below. */
-  border-width: 2px;
-  border-style: solid;
-  cursor: pointer;
-  font-size: var(--fs-md);
-}
-
-/* The neutral paint is scoped away from `.primary`, and this is load-bearing.
-   This block sits ~490 lines AFTER `button.primary` and matches at the same
-   specificity (0,1,1), so the unscoped `background: var(--surface)` it used to
-   carry silently won the cascade and painted the wizard's Next button white --
-   on a `color` of --accent-ink (white), which `button.primary` still set and
-   nothing overrode. The result was an invisible primary CTA on every step of
-   the flow. Keep the paint scoped; keep the sizing shared. */
-.stepnav-controls button:not(.primary) {
-  border-color: var(--border);
+/* The Download sheet: a dialog over the panel, panel-wide, full height. */
+.sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow-y: auto;
+  padding: var(--space-5);
   background: var(--surface);
+  box-shadow: var(--shadow-2);
+  outline: none;
 }
+/* Stacked layout: full height below the topbar (spec §2.4). Absolute inside
+   .panel the sheet was clipped to the ~44vh panel row. After the base rule
+   on purpose — same specificity, so order decides. */
+@media (max-width: 820px) {
+  .sheet { position: fixed; top: var(--topbar-h); left: 0; right: 0; bottom: 0; }
+}
+.sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.sheet-head h2 { margin: 0; }
+.sheet-close { border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: var(--space-1); }
+.sheet-close:hover { color: var(--ink); }
+.sheet .summary { margin: var(--space-5) 0; }
+.sheet .summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+.sheet .summary dt { color: var(--muted); margin: 0; }
+.sheet .summary dd { margin: 0; font-weight: var(--fw-semibold); text-align: right; }
+.drawer-templates-head { margin: 0; }
 
 /* ---- Motion --------------------------------------------------------------
    Every transition in the app lives in here, gated on the user's motion
@@ -2517,9 +2440,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   .tcard,
   .elrow,
   .drawer-row,
-  .stepnav-step,
   .mydesigns,
-  .topbar-download,
   .drawer-new,
   .eladd,
   .fs-trigger,
@@ -2532,8 +2453,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   .fb-chip,
   .fb-tile,
   .fb-close,
-  button.primary,
-  .stepnav-controls button {
+  button.primary {
     transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
   }
 

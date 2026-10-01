@@ -1,8 +1,4 @@
-// The embroidery field is shown persistently on the right, so "preview" is no
-// longer a screen of its own — the guided steps are just the left-panel flow.
 import { isValidShape } from "./manualShapes.js";
-
-export const STEPS = ["garment", "content", "create", "download"];
 
 // "This element is ready to sew": each type has its own notion of having real
 // content. design/digitized carry their stitches ON the element (dstBase64 /
@@ -30,21 +26,4 @@ export function isSewable(el) {
     // so there is no "empty" state to gate on.
     el.type === "shape" ? true :
     el._hasImage === true;
-}
-
-export function canAdvance(step, project) {
-  if (step === "garment") return !!project.garmentId;
-  if (step === "content") return true;
-  if (step === "create") return project.elements.some(isSewable);
-  return true;
-}
-
-export function nextStep(step) {
-  const i = STEPS.indexOf(step);
-  return i >= 0 && i < STEPS.length - 1 ? STEPS[i + 1] : null;
-}
-
-export function prevStep(step) {
-  const i = STEPS.indexOf(step);
-  return i > 0 ? STEPS[i - 1] : null;
 }

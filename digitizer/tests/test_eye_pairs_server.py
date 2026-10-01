@@ -10,22 +10,35 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.eye_pairs import server as sv  # noqa: E402
-from tools.eye_pairs.pairs import load_picks  # noqa: E402
+from tools.eye_pairs.pairs import load_picks, sealed_hash  # noqa: E402
+
+
+def seal(out: Path, sealed: dict, n_pairs: int = 2) -> str:
+    """What `--pair` leaves behind: the sealed map and the record of it."""
+    (out / "arms.json").write_text(json.dumps(sealed))
+    digest = sealed_hash(sealed)
+    (out / "sitting.json").write_text(json.dumps(
+        {"sealed_sha256": digest, "n_pairs": n_pairs, "built_ts": "t"}))
+    return digest
+
+
+def build_site(out: Path) -> str:
+    (out / "img").mkdir()
+    pairs = [{"pair": pid, "left": f"{pid}_L.jpg", "right": f"{pid}_R.jpg",
+              "art": f"{pid}_art.png"} for pid in ("P001", "P002")]
+    (out / "pairs.json").write_text(json.dumps(pairs))
+    for pid in ("P001", "P002"):
+        for name in (f"{pid}_L.jpg", f"{pid}_R.jpg", f"{pid}_art.png"):
+            (out / "img" / name).write_bytes(b"bytes-of-" + name.encode())
+    (out / "features.json").write_text("{}")
+    (out / "designs").mkdir()
+    (out / "designs" / "becker__base.json").write_text("{}")
+    return seal(out, {"P001": {"fixture": "becker"}, "P002": {"fixture": "tires"}})
 
 
 @pytest.fixture()
 def site(tmp_path):
-    (tmp_path / "img").mkdir()
-    pairs = [{"pair": pid, "left": f"{pid}_L.jpg", "right": f"{pid}_R.jpg",
-              "art": f"{pid}_art.png"} for pid in ("P001", "P002")]
-    (tmp_path / "pairs.json").write_text(json.dumps(pairs))
-    for pid in ("P001", "P002"):
-        for name in (f"{pid}_L.jpg", f"{pid}_R.jpg", f"{pid}_art.png"):
-            (tmp_path / "img" / name).write_bytes(b"bytes-of-" + name.encode())
-    (tmp_path / "arms.json").write_text('{"P001": {"fixture": "becker"}}')
-    (tmp_path / "features.json").write_text("{}")
-    (tmp_path / "designs").mkdir()
-    (tmp_path / "designs" / "becker__base.json").write_text("{}")
+    build_site(tmp_path)
     httpd = sv.make_server(tmp_path, port=0)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     yield tmp_path, f"http://127.0.0.1:{httpd.server_address[1]}"
@@ -86,7 +99,7 @@ def test_only_listed_images_are_served(site):
 
 
 @pytest.mark.parametrize("path", ["/arms.json", "/features.json", "/pairs.json",
-                                  "/designs/becker__base.json",
+                                  "/sitting.json", "/designs/becker__base.json",
                                   "/img/../arms.json", "/img/%2e%2e/arms.json",
                                   "/img/nope.jpg"])
 def test_everything_sealed_is_a_404(site, path):
@@ -118,3 +131,124 @@ def test_a_bad_pick_is_a_400_and_writes_nothing(site, body):
         post(base + "/pick", body)
     assert err.value.code == 400
     assert not (out / "picks.jsonl").exists()
+
+
+def post_raw(url, data: bytes):
+    req = urllib.request.Request(url, data=data,
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req) as r:
+        return r.status, json.loads(r.read())
+
+
+@pytest.mark.parametrize("raw", [
+    b"[1, 2]", b'"P001"', b"null", b"7",                       # valid JSON, not an object
+    b'{"pair": "P001", "choice": "L", "ms": "fast"}',
+    b'{"pair": "P001", "choice": "L", "ms": [812]}',
+    b'{"pair": "P001", "choice": "L", "ms": true}',
+    b'{"pair": "P001", "choice": "L", "ms": -5}',
+    b'{"pair": "P001", "choice": "L", "ms": 1e999}',           # parses to inf
+    b'{"pair": ["P001"], "choice": "L", "ms": 5}',             # unhashable id
+], ids=["list", "string", "null", "number", "ms-word", "ms-list", "ms-bool",
+        "ms-negative", "ms-infinite", "pair-list"])
+def test_a_malformed_pick_is_a_400_not_a_dropped_connection(site, raw):
+    """Review 2026-09-17: a non-object body died on `body.get`, a non-numeric
+    `ms` on `int()` — inside the handler thread, so the client saw the
+    connection drop and the page's banner said 'Not saved (Failed to
+    fetch)' with nothing to say why."""
+    out, base = site
+    with pytest.raises(urllib.error.HTTPError) as err:
+        post_raw(base + "/pick", raw)
+    assert err.value.code == 400
+    assert not (out / "picks.jsonl").exists()
+    # ... and the server is still there for the next click.
+    assert post(base + "/pick", {"pair": "P001", "choice": "L", "ms": 5})[1] == {"ok": True}
+
+
+def test_an_oversized_body_is_refused_before_it_is_read(site):
+    """A pick is under a hundred bytes. Without a cap, a wrong
+    Content-Length parks a handler thread on a read nothing will satisfy."""
+    out, base = site
+    raw = b'{"pair": "P001", "choice": "L", "ms": 5, "pad": "' + b"x" * 5000 + b'"}'
+    with pytest.raises(urllib.error.HTTPError) as err:
+        post_raw(base + "/pick", raw)
+    assert err.value.code == 400
+    assert not (out / "picks.jsonl").exists()
+
+
+@pytest.mark.parametrize("ms, stored", [(None, 0), (812, 812), (812.6, 812)])
+def test_a_missing_or_fractional_ms_is_still_a_pick(site, ms, stored):
+    out, base = site
+    body = {"pair": "P001", "choice": "R"} | ({} if ms is None else {"ms": ms})
+    assert post(base + "/pick", body)[1] == {"ok": True}
+    assert load_picks(out / "picks.jsonl")["P001"]["ms"] == stored
+
+
+# ---- a sitting rebuilt under a running picker (review 2026-09-17) ----------
+# `make_server` reads the pair list ONCE. The public list is identical for any
+# two sittings of one size — it names nothing, by design — so after a `--pair`
+# in another terminal the ids on screen mean different pictures and nothing
+# in the public half can show it. The sealed map's hash is the identity.
+
+def test_serve_refuses_a_sealed_map_that_is_not_the_one_the_sitting_records(tmp_path):
+    build_site(tmp_path)
+    # A `--pair` that died between arms.json and sitting.json leaves this.
+    (tmp_path / "arms.json").write_text(json.dumps({"P001": {"fixture": "tires"},
+                                                    "P002": {"fixture": "becker"}}))
+    with pytest.raises(SystemExit, match="REFUSED.*--pair"):
+        sv.make_server(tmp_path, port=0)
+
+
+def test_serve_refuses_without_a_sitting_record(tmp_path):
+    build_site(tmp_path)
+    (tmp_path / "sitting.json").unlink()
+    with pytest.raises(SystemExit, match="REFUSED.*sitting.json"):
+        sv.make_server(tmp_path, port=0)
+
+
+def test_serve_refuses_a_pair_list_of_the_wrong_length(tmp_path):
+    build_site(tmp_path)
+    seal(tmp_path, {"P001": {"fixture": "becker"}}, n_pairs=1)
+    with pytest.raises(SystemExit, match="REFUSED"):
+        sv.make_server(tmp_path, port=0)
+
+
+def test_serve_refuses_when_a_listed_image_is_missing(tmp_path):
+    build_site(tmp_path)
+    (tmp_path / "img" / "P002_R.jpg").unlink()
+    with pytest.raises(SystemExit, match="REFUSED.*1 image"):
+        sv.make_server(tmp_path, port=0)
+
+
+def test_pairs_reports_the_sitting_on_disk_so_the_page_can_see_it_change(site):
+    out, base = site
+    first = json.loads(get(base + "/pairs")[1])["sitting"]
+    assert first == json.loads((out / "sitting.json").read_text())["sealed_sha256"]
+    rebuilt = seal(out, {"P001": {"fixture": "tires"}, "P002": {"fixture": "becker"}})
+    assert rebuilt != first
+    assert json.loads(get(base + "/pairs")[1])["sitting"] == rebuilt
+
+
+def test_a_pick_is_refused_once_the_sitting_has_been_rebuilt(site):
+    """The page polls, but a click can land between polls — and that click
+    was made looking at the OLD pictures. The server is what refuses it."""
+    out, base = site
+    seal(out, {"P001": {"fixture": "tires"}, "P002": {"fixture": "becker"}})
+    with pytest.raises(urllib.error.HTTPError) as err:
+        post(base + "/pick", {"pair": "P001", "choice": "L", "ms": 5})
+    assert err.value.code == 409
+    assert not (out / "picks.jsonl").exists()
+
+
+def test_rebuilding_the_same_sitting_disturbs_nothing(site):
+    out, base = site
+    seal(out, {"P001": {"fixture": "becker"}, "P002": {"fixture": "tires"}})   # same map
+    assert post(base + "/pick", {"pair": "P001", "choice": "L", "ms": 5})[1] == {"ok": True}
+
+
+def test_the_page_polls_for_a_rebuilt_sitting_and_stops_taking_picks(site):
+    _out, base = site
+    html = get(base + "/")[1].decode()
+    assert "setInterval(" in html and "r.sitting" in html
+    assert "sitting was rebuilt" in html                # the banner
+    assert "stale=true" in html and "if(busy||stale" in html
+    assert "r.status===409" in html                     # the server's refusal, shown

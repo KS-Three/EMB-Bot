@@ -114,8 +114,6 @@ async function overlayPixels(page) {
 async function digitize(page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
   await page.getByRole("button", { name: "Artwork" }).click();
   // No Digitize click: choosing the file starts the run (DigitizePanel's
   // sourcePng watcher).

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -37,6 +38,13 @@ _result, plan = digitize(image, cfg)
 with open(out, "w", encoding="utf-8") as fh:
     json.dump(plan_to_design(plan), fh)
 """
+
+
+# How every child's output is captured. `text=True` ALONE decodes in a reader
+# thread with the locale codec (cp1252 on Kent's box); one byte that codec
+# cannot map kills the thread, `proc.stderr` comes back None, and the reason
+# a child failed is lost (review 2026-09-17, reproduced on Python 3.14.6).
+CAPTURED = {"capture_output": True, "text": True, "encoding": "utf-8", "errors": "replace"}
 
 
 def guard_scratch(dest, repo_root) -> Path:
@@ -91,14 +99,72 @@ def link_photo_prep(repo_root, worktree) -> bool:
 def add_worktree(repo_root, ref: str, dest) -> Path:
     path = guard_scratch(dest, repo_root)
     subprocess.run(["git", "-C", str(repo_root), "worktree", "add", "--detach",
-                    str(path), ref], check=True, capture_output=True, text=True)
+                    str(path), ref], check=True, **CAPTURED)
     return path
 
 
 def remove_worktree(repo_root, dest) -> None:
     path = guard_scratch(dest, repo_root)
     subprocess.run(["git", "-C", str(repo_root), "worktree", "remove", "--force",
-                    str(path)], check=False, capture_output=True, text=True)
+                    str(path)], check=False, **CAPTURED)
+
+
+def prune_worktrees(repo_root) -> None:
+    """Drop registrations whose directory is GONE — and only those, which is
+    what makes this safe beside live lanes: a worktree that is still there
+    is never touched."""
+    subprocess.run(["git", "-C", str(repo_root), "worktree", "prune"],
+                   check=False, **CAPTURED)
+
+
+def discard_worktree(repo_root, dest) -> None:
+    """Leave neither a directory nor a registration, whatever state the
+    worktree is in. `remove --force` alone is not that: measured on git
+    2.55, it clears a registration whose directory is wholly gone but fails
+    validation on a HALF-MADE one (an `add` killed midway: the directory,
+    no `.git` file) — and with the registration left behind, every later
+    `add` at that path is refused as "missing but already registered"
+    (review 2026-09-17). Removing the directory and pruning covers both."""
+    path = guard_scratch(dest, repo_root)
+    remove_worktree(repo_root, path)
+    shutil.rmtree(path, ignore_errors=True)
+    prune_worktrees(repo_root)
+
+
+def rembg_venv_present(digitizer_dir) -> bool:
+    """Would the engine under this `digitizer/` find its isolated rembg
+    interpreter? The same two paths `stage1_photo_prep` looks at — restated
+    rather than imported, because the question is also asked of ANOTHER
+    checkout's tree. A fresh `git worktree add` never has one: the venv is
+    untracked, so an old engine run from a worktree skips photo prep for an
+    environment reason, not an engine one."""
+    venv = Path(digitizer_dir) / "rembg_isolated" / "venv"
+    return any((venv / rel).exists() for rel in ("bin/python", "Scripts/python.exe"))
+
+
+def requirements_differ(repo_root, ref: str) -> bool:
+    """Has `digitizer/requirements.txt` changed between `ref` and HEAD? The
+    ref arm runs the old commit's SOURCE under today's venv, so changed pins
+    mean the old engine ran against libraries it was not written for."""
+    proc = subprocess.run(
+        ["git", "-C", str(repo_root), "diff", "--quiet", ref, "HEAD", "--",
+         "digitizer/requirements.txt"], **CAPTURED)
+    # 0 = same, 1 = differs. Anything else (128: no such ref) is NOT an
+    # answer, and reading it as one would turn a typo into a measured fact.
+    if proc.returncode not in (0, 1):
+        raise RuntimeError(f"could not compare requirements.txt at {ref!r} with HEAD: "
+                           + (proc.stderr or "").strip()[-300:])
+    return proc.returncode == 1
+
+
+def ref_environment(repo_root, ref: str, *, main_digitizer, ref_digitizer) -> dict:
+    """The facts that decide whether a ref arm differs from today's for a
+    reason that is not the engine. Measured when the ref worktree exists and
+    stored on each row it produces; `analysis.ref_confound` reads them."""
+    return {"ref": ref,
+            "rembg_venv_main": rembg_venv_present(main_digitizer),
+            "rembg_venv_ref": rembg_venv_present(ref_digitizer),
+            "requirements_differ": requirements_differ(repo_root, ref)}
 
 
 def run_ref_design(python, engine_dir, image, width_mm: float, garment: str,
@@ -109,7 +175,7 @@ def run_ref_design(python, engine_dir, image, width_mm: float, garment: str,
         proc = subprocess.run(
             [str(python), "-c", DRIVER, str(image), out, str(width_mm), garment,
              str(max_colors)],
-            cwd=str(engine_dir), capture_output=True, text=True, timeout=timeout_s)
+            cwd=str(engine_dir), timeout=timeout_s, **CAPTURED)
         if proc.returncode != 0:
             raise RuntimeError("ref engine failed: " + (proc.stderr or proc.stdout)[-600:])
         return json.loads(Path(out).read_text(encoding="utf-8"))

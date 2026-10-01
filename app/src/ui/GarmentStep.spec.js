@@ -19,8 +19,7 @@ import { createRequire } from "node:module";
 // module load time, and emb.js throws unless the engine global already
 // exists — so the REAL units/garments engine modules load first (the picker
 // tests assert on the real suggestion rule, not a stub's), the
-// buildLetteringDesign gate gets a stub (TemplateRow only calls it inside
-// its own try/catch preview path), and the harness is imported dynamically
+// buildLetteringDesign gate gets a stub, and the harness is imported dynamically
 // after. Same "stub before importing" ordering TextStep.spec.js documents.
 let Harness;
 beforeAll(async () => {
@@ -30,12 +29,10 @@ beforeAll(async () => {
   // The Fabric preset row (2026-09-30) resolves the garment's preset, and a
   // calibration profile on top of it, through the real engine table.
   require("../../../src/fabrics.js");
+  // lib/emb.js refuses to load unless EMB.buildLetteringDesign exists; this
+  // spec never calls it, so a stub satisfies the gate.
   globalThis.EMB.buildLetteringDesign =
     globalThis.EMB.buildLetteringDesign || (() => { throw new Error("not used by this spec"); });
-  // TemplateRow kicks off font-manifest fetches for its previews; jsdom has
-  // no network and TemplateRow's own catch handles the rejection — this
-  // just keeps the run quiet.
-  globalThis.fetch = () => Promise.reject(new Error("no network in tests"));
   ({ default: Harness } = await import("./GarmentStep.testHarness.svelte"));
 });
 

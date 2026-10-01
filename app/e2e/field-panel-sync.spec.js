@@ -111,8 +111,6 @@ async function overlayPixels(page) {
 async function digitize(page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
   await page.getByRole("button", { name: "Artwork" }).click();
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });

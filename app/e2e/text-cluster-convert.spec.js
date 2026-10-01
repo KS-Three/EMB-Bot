@@ -31,6 +31,7 @@
 // convention: "each e2e spec here is self-contained, matching that file's
 // own convention").
 import { test, expect } from "@playwright/test";
+import { startStudio, pickGarment } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -135,11 +136,9 @@ test("text cluster: badge appears, convert to text, undo -- through the real ser
   test.skip(!serviceUp, skipReason);
   test.setTimeout(300_000);
 
-  await page.goto("/");
+  await startStudio(page);
 
-  await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
+  await pickGarment(page, "Tote");
   await page.getByRole("button", { name: "Artwork" }).click();
 
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
