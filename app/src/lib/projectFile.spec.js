@@ -49,6 +49,29 @@ test("a manual shape's cutOut flag survives the .embproj round trip, with the fi
   expect("cutOut" in shapes[0]).toBe(false);
 });
 
+test("a column survives the .embproj round trip with kind and widthPx intact, with the file version unchanged", () => {
+  const ring = [{ x: 10, y: 10 }, { x: 60, y: 10 }, { x: 60, y: 60 }, { x: 10, y: 60 }];
+  const column = { id: "s2", kind: "column", points: [{ x: 100, y: 300 }, { x: 300, y: 300 }, { x: 500, y: 300 }], curves: { 0: { x: 200, y: 180 } }, widthPx: 24.5, colorRgb: [9, 8, 7] };
+  const manual = {
+    ...defaultManualElement("e9"),
+    shapes: [
+      { id: "s1", points: ring, curves: {}, stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null },
+      column,
+    ],
+  };
+  const base = defaultProject();
+  const project = { ...base, elements: [...base.elements, manual] };
+  const text = buildProjectFile(project, "Column");
+  expect(JSON.parse(text).version).toBe(PROJECT_FILE_VERSION);
+  const shapes = parseProjectFile(text).project.elements.find((e) => e.id === "e9").shapes;
+  expect(shapes[1]).toEqual(column);
+  expect(shapes[1].kind).toBe("column");
+  expect(shapes[1].widthPx).toBe(24.5);
+  // a closed shape gains nothing: absent kind still means closed
+  expect("kind" in shapes[0]).toBe(false);
+  expect("widthPx" in shapes[0]).toBe(false);
+});
+
 test("a manual hoop pick survives the .embproj round trip (launch item 2)", () => {
   const project = { ...defaultProject(), hoopId: "6x10" };
   const parsed = parseProjectFile(buildProjectFile(project, "Hooped"));

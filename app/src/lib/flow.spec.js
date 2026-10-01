@@ -31,6 +31,23 @@ test("a manual element needs at least one valid completed shape", () => {
   expect(isSewable({ type: "manual", shapes: [{ points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }] }] })).toBe(true);
 });
 
+test("a manual element holding only a valid column is sewable", () => {
+  const spine = [{ x: 50, y: 100 }, { x: 350, y: 100 }];
+  const col = { id: "s1", kind: "column", points: spine, curves: {}, widthPx: 24, colorRgb: [20, 20, 20] };
+  expect(isSewable({ type: "manual", shapes: [col] })).toBe(true);
+  // one point is not a column yet; a 3 px stub is too short to sew
+  expect(isSewable({ type: "manual", shapes: [{ ...col, points: spine.slice(0, 1) }] })).toBe(false);
+  expect(isSewable({ type: "manual", shapes: [{ ...col, points: [{ x: 0, y: 0 }, { x: 3, y: 0 }] }] })).toBe(false);
+});
+
+test("a manual shape is judged on the ring generation sews, curves included", () => {
+  // The raw anchors are a clean square; the bowed top edge crosses the bottom
+  // one, and shapesToRegions skips it — so it is not sewable here either.
+  const sq = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
+  expect(isSewable({ type: "manual", shapes: [{ points: sq, curves: { 0: { x: 50, y: 400 } } }] })).toBe(false);
+  expect(isSewable({ type: "manual", shapes: [{ points: sq, curves: {} }] })).toBe(true);
+});
+
 test("a preset shape element is sewable from birth", () => {
   expect(isSewable({ type: "shape", kind: "circle", params: {} })).toBe(true);
 });

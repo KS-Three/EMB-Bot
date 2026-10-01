@@ -9,6 +9,8 @@
 // shape.angleOverride, both additive hooks this module is the first caller
 // of on the Studio side.
 
+import { railsFromSpine } from "./spineRails.js";
+
 // A nominal authoring-canvas size manual shapes are drawn against. Only the
 // RELATIVE geometry between shapes matters — buildQualityDesign fits the
 // combined bbox to the garment/hoop regardless of absolute px scale — so any
@@ -68,6 +70,22 @@ function segmentsIntersect(p1, p2, p3, p4) {
   return false;
 }
 
+// Does any edge of the closed ring `pts` touch a NON-adjacent edge of it? The
+// one self-intersection check in this module: a closed shape's own ring
+// (shapeIssues) and a column's rail ring (columnIssues) both ask it.
+function ringSelfCrosses(pts) {
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const a1 = pts[i], a2 = pts[(i + 1) % n];
+    for (let j = i + 1; j < n; j++) {
+      const adjacent = j === i + 1 || (i === 0 && j === n - 1);
+      if (adjacent) continue;
+      if (segmentsIntersect(a1, a2, pts[j], pts[(j + 1) % n])) return true;
+    }
+  }
+  return false;
+}
+
 // Human-readable problems with the CURRENT point list, or [] when it's a
 // clean sewable polygon. Mirrors digitizer.js's boundaryIssues — same
 // pattern (reason strings, not just a boolean) so callers can surface WHY a
@@ -84,19 +102,7 @@ export function shapeIssues(points) {
   if (pts.length > MAX_SHAPE_POINTS) {
     issues.push(`Too many points (max ${MAX_SHAPE_POINTS}).`);
   }
-  const n = pts.length;
-  outer: for (let i = 0; i < n; i++) {
-    const a1 = pts[i], a2 = pts[(i + 1) % n];
-    for (let j = i + 1; j < n; j++) {
-      const adjacent = j === i + 1 || (i === 0 && j === n - 1);
-      if (adjacent) continue;
-      const b1 = pts[j], b2 = pts[(j + 1) % n];
-      if (segmentsIntersect(a1, a2, b1, b2)) {
-        issues.push("This shape crosses itself.");
-        break outer;
-      }
-    }
-  }
+  if (ringSelfCrosses(pts)) issues.push("This shape crosses itself.");
   if (polygonArea(pts) <= MIN_AREA_PX2) {
     issues.push("This shape is too small to sew.");
   }
@@ -349,6 +355,100 @@ export function flattenShape(points, curves, closed) {
     if (!(closed && i === segCount - 1)) out.push(c);
   }
   return out;
+}
+
+// ---- Columns: an open spine plus a drawn width ------------------------------
+// A shape with `kind: "column"` is a hand-drawn satin column (spec 2026-09-30
+// §6, "Amended 2026-10-01"): `{ id, kind: "column", points, curves, widthPx,
+// colorRgb }`. `points`/`curves` are an OPEN spine — `curves[i]` is segment
+// i -> i+1 and there is no closing segment — and `widthPx` is the full drawn
+// width in the same authored canvas px (Kent's ruling 12: a resize scales it
+// with everything else; millimetres are a view through the element's fit).
+// It has no stitchType and no angleDeg, and it takes no part in cut-outs:
+// never a hole, never a hole's parent. `kind` absent means a closed shape, so
+// every record that predates this reads exactly as it did.
+
+// A new column's drawn width (Kent's ruling 9). The caller converts through
+// the element's fit; this module never stores a width in mm.
+export const COLUMN_DEFAULT_MM = 4.0;
+
+// A spine this long or shorter (flattened, canvas px) is a mis-click, not a
+// column. The engine has no minimum column length of its own, so the floor
+// lives here. Same magnitude as MIN_AREA_PX2's sliver guard.
+export const MIN_COLUMN_LEN_PX = 4;
+
+const COLUMN_NEEDS_2 = "A column needs at least 2 points.";
+const COLUMN_TOO_SHORT = "This column is too short to sew.";
+const COLUMN_FOLDS = "This column folds over itself — widen the bend or narrow the column.";
+
+export function isColumn(shape) {
+  return !!shape && shape.kind === "column";
+}
+
+function columnSpine(shape) {
+  return flattenShape(shape.points, shape.curves, false);
+}
+
+// The rails the engine sews between, or null when the column has none (under
+// two distinct points, or no positive width). Same point count, same
+// direction — see spineRails.js for why that is the whole contract.
+export function columnRails(shape) {
+  if (!isColumn(shape)) return null;
+  const rails = railsFromSpine(columnSpine(shape), shape.widthPx);
+  return rails ? { railA: rails.railA, railB: rails.railB } : null;
+}
+
+// THE ring any shape presents to the engine, and so to everything that asks
+// "where is this shape": a closed shape's flattened ring, a column's rail A
+// followed by rail B backwards. [] when a column has no rails.
+export function shapeRing(shape) {
+  if (!shape) return [];
+  if (!isColumn(shape)) return flattenShape(shape.points, shape.curves, true);
+  const rails = railsFromSpine(columnSpine(shape), shape.widthPx);
+  return rails ? rails.ring : [];
+}
+
+// A column's problems, in shapeIssues' reason-string form.
+//
+// "Folds over itself" is asked of the RAIL RING, not the spine: a spine may
+// pass near itself, or even cross itself, and what matters is whether the
+// outline the rails make is a simple ring. That makes it a statement about
+// the bend AND the width — the same hairpin folds at 24 px and is clean at 4.
+// It also means a spine that ends on its own start is refused: the two end
+// caps meet. A closed loop is a closed shape's job, not a column's.
+export function columnIssues(shape) {
+  const pts = shape && Array.isArray(shape.points) ? shape.points : [];
+  if (pts.length < 2) return [COLUMN_NEEDS_2];
+  const issues = [];
+  if (pts.length > MAX_SHAPE_POINTS) issues.push(`Too many points (max ${MAX_SHAPE_POINTS}).`);
+  const spine = columnSpine(shape);
+  let len = 0;
+  for (let i = 1; i < spine.length; i++) len += Math.hypot(spine[i].x - spine[i - 1].x, spine[i].y - spine[i - 1].y);
+  if (len <= MIN_COLUMN_LEN_PX) {
+    issues.push(COLUMN_TOO_SHORT);
+    return issues;
+  }
+  const rails = railsFromSpine(spine, shape.widthPx);
+  if (rails && ringSelfCrosses(rails.ring)) issues.push(COLUMN_FOLDS);
+  return issues;
+}
+
+// Why this shape will not sew, whichever kind it is. A closed shape is judged
+// on the ring it presents — curves flattened — which is the ring
+// shapesToRegions hands the engine.
+export function shapeProblems(shape) {
+  if (isColumn(shape)) return columnIssues(shape);
+  return shapeIssues(shapeRing(shape));
+}
+
+// Will shapesToRegions emit a region for this shape? No problems, not a
+// cut-out — and a column must actually have rails (a column with no usable
+// width has no message of its own, and sews nothing). A column's `cutOut`
+// flag is ignored: a column cannot be a cut-out.
+export function isSewableShape(shape) {
+  if (!shape) return false;
+  if (isColumn(shape)) return columnIssues(shape).length === 0 && columnRails(shape) !== null;
+  return !shape.cutOut && shapeProblems(shape).length === 0;
 }
 
 // ---- Edge-click-to-insert-vertex ------------------------------------------
@@ -617,18 +717,22 @@ export function resolveCutOuts(shapes) {
   // The common case — no cut-out at all — flattens nothing. This runs on every
   // drag frame and every shapesToRegions; callers read `flat` only for ids in
   // holesOf, so an empty Map is all they can ask of it.
-  if (!list.some((s) => s.cutOut)) return { parentOf, reasonOf, holesOf, flat: new Map() };
+  // A column takes no part: it is never a cut-out (a stray flag on one is
+  // ignored) and never a solid, however much of the canvas its rails enclose.
+  const isCut = (s) => !!s.cutOut && !isColumn(s);
+  if (!list.some(isCut)) return { parentOf, reasonOf, holesOf, flat: new Map() };
   const flat = new Map(), box = new Map(), valid = new Map();
   for (const s of list) {
+    if (isColumn(s)) continue;
     const ring = flattenShape(s.points, s.curves, true);
     flat.set(s.id, ring);
     box.set(s.id, ringBox(ring));
     valid.set(s.id, shapeIssues(ring).length === 0);
   }
-  const solids = list.filter((s) => !s.cutOut && valid.get(s.id));
+  const solids = list.filter((s) => !s.cutOut && !isColumn(s) && valid.get(s.id));
   const area = new Map(solids.map((s) => [s.id, polygonArea(flat.get(s.id))]));
   for (const c of list) {
-    if (!c.cutOut) continue;
+    if (!isCut(c)) continue;
     parentOf[c.id] = null;
     const ring = flat.get(c.id);
     if (!valid.get(c.id)) { reasonOf[c.id] = shapeIssues(ring)[0]; continue; }
@@ -659,6 +763,8 @@ export function resolveCutOuts(shapes) {
 // A copy of `shape` marked as a cut-out, or with the mark REMOVED — never
 // `cutOut: false`, so an untouched record equals a pre-feature record.
 export function withCutOut(shape, on) {
+  // A column cannot be a cut-out: handed back untouched, the same reference.
+  if (isColumn(shape)) return shape;
   if (on) return { ...shape, cutOut: true };
   const rest = { ...shape };
   delete rest.cutOut;
@@ -670,6 +776,7 @@ export function withCutOut(shape, on) {
 // satin round a hole, and the name says what will sew.
 export function manualShapeName(shape, cut) {
   const n = String(shape.id).replace(/^s/, "");
+  if (isColumn(shape)) return `Shape ${n} · Column`;
   if (shape.cutOut) return `Shape ${n} · Cut out`;
   const holed = !!(cut && cut.holesOf && (cut.holesOf[shape.id] || []).length);
   return `Shape ${n} · ${shape.stitchType === "satin" && !holed ? "Satin" : "Fill"}`;
@@ -691,8 +798,32 @@ export function shapesToRegions(shapes) {
   const regions = [];
   const cut = resolveCutOuts(shapes);
   for (const shape of shapes || []) {
+    if (!shape) continue;
+    // A column: its rail ring is a truthful `outer` for everything in the
+    // engine that reads an outline, and `sewAs` carries the rails the satin is
+    // sewn between. Forced satin, no angle (the rails ARE the direction), no
+    // holes. Only a column's region has a `sewAs` key — every other region is
+    // exactly what it was before columns existed.
+    if (isColumn(shape)) {
+      if (columnIssues(shape).length) continue;
+      const rails = railsFromSpine(flattenShape(shape.points, shape.curves, false), shape.widthPx);
+      if (!rails) continue;
+      const copy = (ring) => ring.map((p) => ({ x: p.x, y: p.y }));
+      regions.push({
+        rgb: Array.isArray(shape.colorRgb) ? shape.colorRgb : [20, 20, 20],
+        shapes: [{
+          id: shape.id == null ? "" : String(shape.id),
+          outer: copy(rails.ring),
+          holes: [],
+          tierOverride: "satin",
+          angleOverride: null,
+          sewAs: { kind: "column", railA: copy(rails.railA), railB: copy(rails.railB) },
+        }],
+      });
+      continue;
+    }
     // A cut-out sews nothing.
-    if (!shape || shape.cutOut) continue;
+    if (shape.cutOut) continue;
     const outer = flattenShape(shape.points, shape.curves, true);
     if (!isValidShape(outer)) continue;
     const angleOverride = (typeof shape.angleDeg === "number" && isFinite(shape.angleDeg)) ? shape.angleDeg : null;
