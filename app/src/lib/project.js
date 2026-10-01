@@ -268,10 +268,6 @@ export function defaultManualShape(id) {
     stitchType: "fill",
     colorRgb: [20, 20, 20],
     angleDeg: null,
-    // Holes cut into this shape, each { points, curves } in the same authoring
-    // space as the shell. Absent on every shape saved before 2026-10-01 and
-    // read as [] everywhere, so an old project is unchanged.
-    holes: [],
   };
 }
 
