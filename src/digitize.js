@@ -208,6 +208,38 @@
     return out;
   }
 
+  // Rungs for an authored column (manual-digitizing spec §6, "Amended
+  // 2026-10-01"). With NO rungs satinplay's `correspond` pairs the two rails by
+  // whole-rail arc fraction, which is right only when both gain length at the
+  // same rate; on a column that is straight and then turns, the inside rail is
+  // shorter and every cross LEANS (measured: 24 px column, crosses to 34.7 px).
+  // When the rails carry the same point count they were emitted pair by pair
+  // (railA[i], railB[i] = the two ends of the cross at spine point i), so the
+  // interior pairs are handed over as rungs and the crosses follow them.
+  // Different counts -> no pairing to trust -> [] (arc fraction, as before).
+  //
+  // THINNED to one rung per COLUMN_RUNG_MIN_PX of rail (measured on whichever
+  // rail moved less). `correspond` samples every section at 1 point per 2 px
+  // but never fewer than 12, so a section under 24 px is over-sampled; a
+  // flattened curve puts points a few px apart and would make every one of
+  // them a 12-sample section. 24 px is where its floor and its own density
+  // meet — a sampling number in region px, not a physical constant.
+  const COLUMN_RUNG_MIN_PX = 24;
+  function columnRungs(railA, railB) {
+    const n = railA ? railA.length : 0;
+    if (!railB || railB.length !== n || n < 3) return [];
+    const rungs = [];
+    let sinceA = 0, sinceB = 0;
+    for (let i = 1; i < n - 1; i++) {
+      sinceA += Math.hypot(railA[i].x - railA[i - 1].x, railA[i].y - railA[i - 1].y);
+      sinceB += Math.hypot(railB[i].x - railB[i - 1].x, railB[i].y - railB[i - 1].y);
+      if (Math.min(sinceA, sinceB) < COLUMN_RUNG_MIN_PX) continue;
+      rungs.push([railA[i], railB[i]]);
+      sinceA = 0; sinceB = 0;
+    }
+    return rungs;
+  }
+
   // Build underlay point-runs for a shape under a named style. Returns an array
   // of runs (each becomes one pushRun). ctx: { fillAngle, pxPerFinalMm, maxStitch,
   // underlayStitchPx, underlayRowPx, runningOutline, tatamiFill, insetRing,
@@ -695,6 +727,7 @@
         // 2026-10-01"). Null for every shape that does not — which is every
         // shape Image and Text mode produce — so those sew exactly as before.
         const column = (shape.sewAs && shape.sewAs.kind === "column") ? shape.sewAs : null;
+        const colRungs = column ? columnRungs(column.railA, column.railB) : [];
         if (useUnderlay) {
           if (fabric) {
             // Fabric mode: named underlay style per shape type.
@@ -710,7 +743,7 @@
               // here uses; two passes (its default), so the walk ends where
               // the satin starts. Every other style still reads `outer`.
               const uruns = (thin && column && style === "center_run")
-                ? [satinplaymod.centerRun(column.railA, column.railB, [],
+                ? [satinplaymod.centerRun(column.railA, column.railB, colRungs,
                     { pxPerMm: pxPerFinalMm, stepMm: underlayStitchPx / pxPerFinalMm })]
                 : underlayRuns(shape, style, uctx);
               for (const run of uruns) if (run && run.length) { runs.push(run); runKinds.push("underlay"); }
@@ -744,7 +777,7 @@
             // (`splitAboveMm` is deliberately not passed — ruling 5).
             const sat = satinmod.medialSatin || satinmod.satinColumn;
             pts = column
-              ? satinplaymod.satinFromRails(column.railA, column.railB, [],
+              ? satinplaymod.satinFromRails(column.railA, column.railB, colRungs,
                   { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg })
               : sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg });
             nSatin++;

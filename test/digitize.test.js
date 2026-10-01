@@ -1714,6 +1714,57 @@ test("sewAs column: rails that cannot sew contribute nothing — no bare underla
   }
 });
 
+// Cross lengths (region px) of a column's satin: stitches come in lead/trail
+// pairs, one pair per cross. pullCompMm 0 so a cross is the drawn width.
+const colCrossPx = (d) => {
+  const st = spanStitches(d, "satin", "c1"), k = 10 * d.fit.mmPerPx, out = [];
+  for (let i = 0; i + 1 < st.length; i += 2) out.push(Math.hypot(st[i + 1].x - st[i].x, st[i + 1].y - st[i].y) / k);
+  return out;
+};
+// Rails as the Studio's railsFromSpine emits them: same point count, same
+// direction, railA[i] and railB[i] the two ends of the cross at spine point i.
+// A "J": 200 px straight, then a quarter turn of spine radius 60 — the two
+// rails' lengths differ (313 vs 275 px), and not uniformly along the column.
+const jCol = () => {
+  const railA = [], railB = [];
+  for (let i = 0; i <= 4; i++) { railA.push({ x: 50 * i, y: -12 }); railB.push({ x: 50 * i, y: 12 }); }
+  for (let i = 1; i <= 15; i++) {
+    const t = -Math.PI / 2 + (i / 15) * Math.PI / 2;
+    railA.push({ x: 200 + 72 * Math.cos(t), y: 60 + 72 * Math.sin(t) });
+    railB.push({ x: 200 + 48 * Math.cos(t), y: 60 + 48 * Math.sin(t) });
+  }
+  return { railA, railB, outer: railA.concat(railB.slice().reverse()) };
+};
+
+test("sewAs column: crosses follow the rails' own index pairing, so a curved column does not lean", () => {
+  // With no rungs satinplay pairs the rails by WHOLE-rail arc fraction, which
+  // is only right when both rails gain length at the same rate. A quarter
+  // circle does (concentric arcs), so it is the control; the J does not, and
+  // its crosses leaned. Rails of equal point count are paired index to index.
+  for (const [name, col] of [["quarter circle", curvedCol()], ["J", jCol()]]) {
+    assert.strictEqual(col.railA.length, col.railB.length);
+    const cross = colCrossPx(colDesign(col, colSewAs(col), { pullCompMm: 0 }));
+    assert.ok(cross.length > 50, name + ": sewed " + cross.length + " crosses");
+    const lo = Math.min(...cross), hi = Math.max(...cross);
+    assert.ok(lo >= 24 * 0.85 && hi <= 24 * 1.15, name + ": every cross within 15% of the drawn 24 px, got " + lo.toFixed(1) + ".." + hi.toFixed(1));
+  }
+  // the centre run takes the same pairing: it stays mid-column on the J
+  const j = jCol();
+  const d = colDesign(j, colSewAs(j), { underlay: true, fabric: fab({ satinUnderlay: "center_run", pullCompMm: 0 }) });
+  assert.ok(spanStitches(d, "underlay", "c1").length >= 10);
+});
+
+test("sewAs column: rails with different point counts still sew (no index pairing to use)", () => {
+  const col = curvedCol();
+  const railB = col.railB.filter((_, i) => i % 2 === 0); // 17 points against 33
+  const d = colDesign({ outer: col.outer }, { sewAs: { kind: "column", railA: col.railA, railB } }, { pullCompMm: 0 });
+  const cross = colCrossPx(d);
+  assert.ok(cross.length > 50, "sewed " + cross.length + " crosses");
+  assert.strictEqual(d.shapeOutlines[0].dropped, false);
+  const want = SP.satinFromRails(col.railA, railB, [], { spacingMm: 0.4, pxPerMm: 1 / d.fit.mmPerPx, pullCompMm: 0, slantDeg: 0 }).map(fitT(d.fit));
+  assert.deepStrictEqual(spanStitches(d, "satin", "c1").map(xyNoNegZero), want.map(xyNoNegZero));
+});
+
 test("sewAs column: satinFromRails is reached through a real binding under Node", () => {
   // The top-stitch call sits in a best-effort try/catch, so an unbound name
   // (the spec first wrote `satinplay.satinFromRails`, which digitize.js never
