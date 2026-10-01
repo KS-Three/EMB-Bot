@@ -697,3 +697,46 @@ test("the review names what it costs to sew — on the lane the service never se
   // No service report on this lane, so nothing can contradict it.
   await expect(page.locator("section.quality")).toHaveCount(0);
 });
+
+test("Original view swaps the thread for the uploaded artwork, and any edit swaps it back", async ({ page }) => {
+  await page.route("**/health", (r) => r.abort());   // browser lane: an `image` element, no service
+  await startStudio(page);
+  const orig = page.getByRole("button", { name: "Original view" });
+  // A text-only design has no artwork to show.
+  await typeText(page, "ABC");
+  await expect(orig).toBeDisabled();
+
+  await page.getByRole("button", { name: "Artwork" }).click();
+  await page.locator("input[type=file]").first().setInputFiles(ART_PNG);
+  await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
+  await expect(orig).toBeEnabled();
+
+  const shot = () => page.evaluate(() => document.querySelector(".hoop canvas").toDataURL());
+  // The fixture is white, one black square and one (204, 0, 0) red square.
+  // Shaded thread never lands on that exact red over a large area; the
+  // uploaded PNG drawn back onto the canvas does. A bare "the canvas changed"
+  // is not enough: hiding the selection chrome alone changes it.
+  const artworkRed = () => page.evaluate(() => {
+    const c = document.querySelector(".hoop canvas");
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (Math.abs(d[i] - 204) <= 2 && d[i + 1] <= 2 && d[i + 2] <= 2) n++;
+    }
+    return n;
+  });
+  const stitched = await shot();
+  const stitchedRed = await artworkRed();
+
+  await orig.click();
+  await expect(orig).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(shot).not.toBe(stitched);
+  // Measured 2026-09-30: 0 such pixels stitched, 420 in Original view.
+  await expect.poll(artworkRed).toBeGreaterThan(Math.max(100, stitchedRed * 5));
+  // No chrome was added over the canvas to do it.
+  expect(await page.locator(".hoop > *").count()).toBe(1);
+
+  await page.getByRole("button", { name: "Realistic view" }).click();
+  await expect(orig).toHaveAttribute("aria-pressed", "false");
+  await expect.poll(shot).toBe(stitched);
+});
