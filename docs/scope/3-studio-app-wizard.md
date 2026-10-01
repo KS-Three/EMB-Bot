@@ -638,6 +638,10 @@ touching it:
   understanding), exact-colour match (the bound is "up to"), an e2e spec.
 - **The drawer lists saved designs first, templates after** (Kent, 2026-10-01).
   With the template cards on top the filter sat ~700 px down the list.
+- **The filter applies only while its controls are on screen.** They show with
+  two or more saved designs, and the drawer's `criteria` outlives them, so
+  deleting down to one used to leave that design hidden behind a filter with
+  nothing to clear it. *(fixed 2026-10-01 — `ProjectsDrawer.spec.js`)*
 
 *(built and driven in a browser 2026-10-01: three seeded pre-facts designs
 measured on open, row figures matched the canvas caption, `updatedAt`

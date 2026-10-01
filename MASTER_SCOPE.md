@@ -790,7 +790,7 @@ written from the summary bar's own combined design, so a design saved before
 this is unmeasured until it is next opened; a fact filter counts those rather
 than hiding them. No content search ("dogs"): that needs tagging. Detail:
 [area 3](docs/scope/3-studio-app-wizard.md).
-*(built and driven 2026-10-01 — `libraryFacts.spec.js`, `projects.spec.js`, `DesignFilter.spec.js`; no e2e spec)*
+*(built and driven 2026-10-01 — `libraryFacts.spec.js`, `projects.spec.js`, `DesignFilter.spec.js`, `ProjectsDrawer.spec.js`; no e2e spec)*
 
 **The built bundle works wherever it is served** — [area doc](docs/scope/3-studio-app-wizard.md). *(fixed 2026-09-07)*
 
