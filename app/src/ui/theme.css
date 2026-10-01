@@ -1120,56 +1120,18 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   .studio { grid-template-columns: 1fr minmax(400px, 460px); }
 }
 
-/* Garment / font tiles */
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: var(--gap);
-}
-
-/* Flat (2026-09-30): hairline border, no shadow, no lift. The elevation
-   pass had given these a 2px border plus --shadow-1 so they would read as
-   raised, clickable cards — and thirty raised cards on one step is exactly
-   the "template" look Kent asked to lose. Clickability now comes from the
-   hover border darkening to ink, and selection from the accent edge (border
-   plus the inset ring, so it is 2px of accent without any layout change)
-   over the tint. Same DOM, same `.sel` class, so wizard-smoke's assertions
-   and every e2e locator are untouched. */
-.tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-4) var(--space-3);
-  min-height: 92px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--surface);
-  font-size: var(--fs-md);
-  cursor: pointer;
-}
-
-.tile:hover { border-color: var(--ink); }
-.tile.sel { border-color: var(--accent); background: var(--tint); box-shadow: var(--ring-inset); }
-.tile.sel .tile-label { font-weight: var(--fw-semibold); color: var(--accent); }
-
 /* Garment icon (Slice 8 Task 3) -- one inline SVG per garment id (see
-   garmentArt.js), icon-over-label. Icon strokes `currentColor` (the tile's
-   own text color) except the ONE accent detail each icon carries via
-   `class="acc"`, which always stays the confident accent regardless of
-   selection state. */
+   garmentArt.js). Icon strokes `currentColor` (the host's own text color)
+   except the ONE accent detail each icon carries via `class="acc"`, which
+   always stays the confident accent. Used by the garment More menu. */
 .gart {
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--muted);
 }
-.tile.sel .gart, .tile:hover .gart { color: var(--ink); }
 .gart svg { width: 34px; height: 34px; display: block; }
 .gart .acc { stroke: var(--accent); }
-
-.tile-label { font-size: var(--fs-sm); line-height: 1.2; }
 
 /* Fabric color row (Garment step, Slice 8 Task 2) -- ~8 common garment
    tones + a raw-input "Custom" swatch, always in-flow (B6: no popover). */
@@ -2432,11 +2394,65 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .sheet .summary dd { margin: 0; font-weight: var(--fw-semibold); text-align: right; }
 .drawer-templates-head { margin: 0; }
 
+/* ---- Garment row (spec §3) --------------------------------------------- */
+.gpicker { position: relative; }
+.gpills { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.gpill {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.gpill:hover { border-color: var(--ink); }
+.gpill.sel { background: var(--ink); color: var(--surface); }
+.gpill-more { color: var(--muted); }
+
+.gmenu {
+  position: absolute;
+  z-index: 6;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-2);
+  outline: none;
+}
+.gmenu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.gmenu-item:hover, .gmenu-item:focus-visible { background: var(--bg); }
+.gmenu-item[aria-checked="true"] { background: var(--tint); color: var(--accent); font-weight: var(--fw-semibold); }
+.gmenu-item .gart svg { width: 24px; height: 24px; }
+
 /* ---- Motion --------------------------------------------------------------
    Every transition in the app lives in here, gated on the user's motion
    preference (B9/base brief) -- nothing above sets its own `transition`. */
 @media (prefers-reduced-motion: no-preference) {
-  .tile,
+  .gpill,
+  .gmenu-item,
   .tcard,
   .elrow,
   .drawer-row,
