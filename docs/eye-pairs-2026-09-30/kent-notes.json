@@ -1,5 +1,5 @@
 {
- "exported": "2026-09-30T22:14:43Z",
+ "exported": "2026-10-01T01:25:44Z",
  "artifact": "https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp",
  "page_built": "2026-09-30",
  "pairs": 7,
@@ -199,5 +199,83 @@
    }
   },
   "note": "Kent's evening sitting on the day's three lettering changes, read back from the store under <arm>__<fixture>__evening-0930 (notes) and <arm>__evening-0930 (rulings). The page carried a needle-hole map beside every render (the thread | needle holes toggle)."
+ },
+ "fourth_sitting": {
+  "sitting": "texture-0930",
+  "page_built": "2026-09-30",
+  "artifact_version": 7,
+  "arms": {
+   "split_7mm": {
+    "change": "split_satin_above_mm=7.0 (the pro's Becker style: raw crosses to about 7 mm, no comb)",
+    "pairs": {
+     "becker": {
+      "verdict": "same",
+      "job_done": "unsure",
+      "note": "",
+      "updated": "2026-10-01T01:22:01.115Z"
+     },
+     "bridge": {
+      "verdict": "same",
+      "job_done": "unsure",
+      "note": "",
+      "updated": "2026-10-01T01:22:08.264Z"
+     },
+     "drone": {
+      "verdict": "same",
+      "job_done": "unsure",
+      "note": "",
+      "updated": "2026-10-01T01:22:17.977Z"
+     },
+     "screenshot": {
+      "verdict": null,
+      "job_done": null,
+      "note": "please stop using this shitty logo, put it in an .md file somehwere. 15 characters at most.\n",
+      "updated": "2026-10-01T01:22:45.010Z"
+     },
+     "tires": {
+      "verdict": "same",
+      "job_done": "unsure",
+      "note": "",
+      "updated": "2026-10-01T01:22:53.116Z"
+     }
+    },
+    "identical_not_shown": [
+     "enthusiast",
+     "fremont",
+     "gaulke",
+     "golden_tee"
+    ]
+   },
+   "rails_symmetric": {
+    "change": "satin_rails_follow_edge=False (the envelope OFF)",
+    "pairs": {
+     "golden_tee": {
+      "verdict": "before",
+      "job_done": "yes",
+      "note": "It completed the stitch with a very nice line following the outline.",
+      "updated": "2026-10-01T01:21:35.048Z"
+     },
+     "tires": {
+      "verdict": "same",
+      "job_done": "unsure",
+      "note": "",
+      "updated": "2026-10-01T01:21:53.987Z"
+     }
+    },
+    "unjudged": [
+     "becker"
+    ],
+    "identical_not_shown": [
+     "bridge",
+     "drone",
+     "enthusiast",
+     "fremont",
+     "gaulke",
+     "screenshot"
+    ]
+   }
+  },
+  "rulings": {},
+  "note": "Kent's late sitting of 2026-09-30 on the lettering's two levers, read back from the store under <arm>__<fixture>__texture-0930 (notes); no ruling document was written. Seven of eight pairs judged (rails_symmetric on becker not judged). The screenshot note is his instruction to drop that fixture from the page."
  }
 }

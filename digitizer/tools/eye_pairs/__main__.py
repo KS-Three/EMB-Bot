@@ -35,8 +35,8 @@ from tools.thin_strokes import STUDIO_MAX_COLORS, corpus_cases
 from . import analysis as an
 from . import features as ft
 from .features import base_cfg, digitize_once, features_design_only, features_full
-from .pairs import (ARMS, BASE, ArmRun, build_pairs, design_hash, load_picks,
-                    sealed_hash, unpicked)
+from .pairs import (ARMS, BASE, EXCLUDED_FIXTURES, ArmRun, build_pairs, design_hash,
+                    load_picks, sealed_hash, unpicked)
 from .refarm import add_worktree, link_photo_prep, remove_worktree, run_ref_design
 from .server import PORT, make_server
 
@@ -115,7 +115,10 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
     out = Path(out)
     for sub in ("designs", "renders"):
         (out / sub).mkdir(parents=True, exist_ok=True)
-    cases = list(corpus_cases() if cases is None else cases)
+    # The default corpus minus the fixtures Kent has ruled off the page
+    # (`EXCLUDED_FIXTURES`); an explicit `cases` list is taken as given.
+    cases = ([c for c in corpus_cases() if c[0] not in EXCLUDED_FIXTURES]
+             if cases is None else list(cases))
     arms = dict(ARMS if arms is None else arms)
     if fixtures:
         cases = [c for c in cases if c[0] in fixtures]

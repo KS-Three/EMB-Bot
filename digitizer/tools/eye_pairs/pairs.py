@@ -19,6 +19,14 @@ N_IDENTICAL = 8
 N_REPEAT = 8
 
 BASE = "base"
+# Fixtures the page never shows. Kent, on the evening sitting of 2026-09-30:
+# "dont use this image to judge", and again on the texture sitting that
+# night: "please stop using this shitty logo" -- screenshot is a photo of a
+# screen, not artwork a customer would send, and three sittings of verdicts on
+# it were all "both bad" or "disregard". It stays in `REAL_ART` for the
+# instruments (the corpus tables still count it); the render and the labelled
+# page skip it.
+EXCLUDED_FIXTURES = frozenset({"screenshot"})
 REF_ARM = "ref_0827"
 # `main` on 2026-08-27, the engine Kent's fourteen notes and his "60%" describe.
 REF_COMMIT = "25da2fe"

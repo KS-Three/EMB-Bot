@@ -7894,3 +7894,26 @@ yet. Do not spend another day on rail-level texture without first
 putting the two remaining levers in front of him — the pro's own Becker
 style (raw crosses to about 7 mm, no comb) and the symmetric rails on the
 letters — or asking what "flow" is in his own words on a sew-out.
+
+## 2026-10-01 — Kent: screenshot is not a logo to judge digitizing by
+
+No screenshot.
+
+(His words on two sittings of 2026-09-30, the second asking for a note of
+fifteen characters at most; `tools.eye_pairs.pairs.EXCLUDED_FIXTURES`
+keeps it off the page.)
+
+## 2026-10-01 — The page cannot separate the pro's 7 mm split style from the comb, and cloth is not asked until the eye has a difference
+
+**Measured negative.** Raw satin crosses to about 7 mm (the pro's own
+Becker style) against the shipped comb at 5.0, on five pairs with a
+needle-hole map beside every render: *no difference* on all four Kent
+judged, becker's letters included. The threshold stays at the corpus vote,
+and no sew-out pack is owed — a physical constant goes to cloth when the
+eye has two things to choose between, not to settle a difference it
+cannot see. The symmetric rails lost the one pair they changed visibly
+(golden_tee: the envelope's "very nice line following the outline"), so
+the envelope's morning ruling stands. Two levers, no movement: the thing
+his becker note names ("does not flow, not smooth and structured") is not
+the split comb and not the envelope's reach, and the next lever has to
+come from his words or a sew-out, not from another rail-level change.

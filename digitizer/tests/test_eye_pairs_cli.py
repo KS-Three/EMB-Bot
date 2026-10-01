@@ -291,3 +291,33 @@ def test_verify_finds_no_drift_on_the_synthetic_image(rendered, capsys):
     printed = capsys.readouterr().out
     # Review finding 8: the artfid family and the refusal are checked too.
     assert "artfid" in printed and "refusal" in printed
+
+
+def test_the_default_corpus_leaves_out_the_excluded_fixtures(monkeypatch):
+    """Kent's rule (2026-09-30): screenshot is off the page. The default
+    corpus drops it; an explicit `cases` list is taken as given."""
+    from tools.eye_pairs.pairs import EXCLUDED_FIXTURES
+    seen = {}
+
+    def fake_corpus():
+        return [("screenshot", "x.png", 80.0, "left_chest"), ("becker", "y.png", 100.0, "left_chest")]
+
+    def fake_sha(path):
+        return "0" * 64
+
+    monkeypatch.setattr(cli, "corpus_cases", fake_corpus)
+    monkeypatch.setattr(cli, "_sha256", fake_sha)
+
+    def no_art(src, dst):
+        seen.setdefault("fixtures", []).append(dst.name.split("__")[0])
+        raise RuntimeError("stop here")
+
+    monkeypatch.setattr(cli, "_normalise_art", no_art)
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as td:
+        try:
+            cli.render(Path(td), arms={})
+        except RuntimeError:
+            pass
+    assert "screenshot" in EXCLUDED_FIXTURES and seen["fixtures"] == ["becker"]

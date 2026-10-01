@@ -96,3 +96,11 @@ NOT the eye's "smooth"**: becker's letters 42% of consecutive legs differ
 by >0.15 mm under every arm; the pro's own Becker columns 35%, and net of
 taper the pro is rougher (54% vs 45%). Do not build a rail smoother on
 that number; get Kent's words for "flow" first. Verdicts pending.
+
+**Texture verdicts (2026-10-01 01:21Z, 7 of 8)**: split_7mm — becker,
+bridge, drone, tires *same* (screenshot: "please stop using this shitty
+logo", now `EXCLUDED_FIXTURES`); rails_symmetric — golden_tee *before*
+("very nice line following the outline" = the envelope), tires *same*,
+becker unjudged. No rulings, no words for "flow". So 5.0 stays, no
+sew-out pack; the envelope stays ON; becker's flow note still open —
+next lever must come from his words or a sew-out, not rail-level changes.

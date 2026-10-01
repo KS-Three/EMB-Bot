@@ -16996,3 +16996,23 @@ than four points. Whatever his eye calls flow, it is not leg-length
 jitter, and the page asks him for the words. Records:
 `docs/eye-pairs-2026-09-30/README.md` (the texture section),
 `texture-corpus.json`, the spec's arms table, memory. Verdicts pending.
+
+## 2026-10-01 — The texture sitting judged: no difference between the pro's 7 mm style and the comb, the envelope kept on golden_tee, and screenshot ruled off the page
+
+Kent judged seven of the eight texture pairs at 01:21Z. `split_7mm`:
+becker, bridge, drone, tires *no difference*; screenshot unjudged with
+the note *"please stop using this shitty logo, put it in an .md file
+somehwere. 15 characters at most."* `rails_symmetric`: golden_tee *before
+better* (job done: yes — *"It completed the stitch with a very nice line
+following the outline."*), tires *no difference*, becker not judged. No
+rulings, no words for "flow". So: the 7 mm split threshold stays at the
+corpus vote (5.0) with no sew-out pack owed — the page could not separate
+the pro's raw crosses from the comb, on becker's letters with the holes
+toggle included; the envelope stays ON, the morning ruling standing on
+the one pair the symmetric rails changed visibly; becker's "does not flow"
+stays open with neither lever answering it. screenshot is off the page:
+`tools.eye_pairs.pairs.EXCLUDED_FIXTURES` (the render's default corpus and
+the labelled page, tested), DOCTRINE's fifteen-character entry; the
+instruments' corpus still counts it. Records:
+`docs/eye-pairs-2026-09-30/README.md` (the texture Outcome),
+`kent-notes.json` (`fourth_sitting`), DOCTRINE, MASTER_SCOPE, memory.

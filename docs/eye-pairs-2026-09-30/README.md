@@ -498,3 +498,42 @@ at the coverage it costs? And in the note under either arm, his own words
 for *flow*. The 7 mm threshold is a physical constant (a 6–7 mm float on
 pique or a cap), so a verdict for it is a sew-out question under gate 1
 before it is a flip. Verdicts pending at the time of writing.
+
+## Outcome — Kent's texture sitting (2026-10-01, 01:21Z; seven of eight judged)
+
+**`split_7mm`** (the pro's raw-cross style | today's comb):
+
+| pair | verdict | did the flag do its job? | note (verbatim) |
+|---|---|---|---|
+| becker | no difference | can't tell | |
+| bridge | no difference | can't tell | |
+| drone | no difference | can't tell | |
+| tires | no difference | can't tell | |
+| screenshot | — | | "please stop using this shitty logo, put it in an .md file somehwere. 15 characters at most." |
+
+**`rails_symmetric`** (the envelope | the symmetric rails):
+
+| pair | verdict | did the flag do its job? | note (verbatim) |
+|---|---|---|---|
+| golden_tee | **before better** | yes | "It completed the stitch with a very nice line following the outline." |
+| tires | no difference | can't tell | |
+| becker | not judged | | |
+
+No ruling document under either arm; no words for "flow" came.
+
+**What it settles.** The pro's raw-cross style and the comb read the same
+to his eye on every pair he judged, becker's letters with the holes toggle
+included — so the 7 mm threshold stays where the corpus vote put it (5.0),
+and no sew-out pack is owed: the page could not separate them, and cloth is
+asked only when the eye has a difference to settle. The symmetric rails
+lost the one pair they changed visibly — on golden_tee the envelope's
+line "following the outline" is the thing he likes, as it was on the
+morning's sitting — so the envelope stays ON and the morning ruling
+stands. Becker's note from the evening is still the open question, with
+neither lever answering it and no instrument naming it.
+
+**screenshot leaves the page.** His note is an instruction, and it is
+done: `tools.eye_pairs.pairs.EXCLUDED_FIXTURES` drops the fixture from
+`--render`'s default corpus and the labelled page drops its rows from any
+sitting (a test on each), and DOCTRINE carries the fifteen-character
+version. The instruments' corpus (`REAL_ART`, the tables) still counts it.

@@ -131,6 +131,7 @@ def test_tables_match_the_yardstick_package_when_it_is_here():
         pytest.skip("yardstick package not on this checkout")
     assert set(yp.ARMS) == set(g.ARM_INTENT)
     assert {a for a, kw in yp.ARMS.items() if "__ref__" in kw} == set(g.REF_ARMS)
+    assert yp.EXCLUDED_FIXTURES == g.EXCLUDED_FIXTURES == frozenset({"screenshot"})
     assert {m: d for m, d in ya.METRICS.items() if d != "none"} == g.METRIC_BETTER
 
 
@@ -836,3 +837,22 @@ def test_the_hole_map_rides_beside_a_render_when_the_yardstick_drew_one(tmp_path
     names, _n = g.collect_images(rev, PUBLIC, SEALED, tmp_path / "ri")
     assert names["P002"]["Lh"] == names["P002"]["Rh"] == names["P001"]["Rh"]   # base | base; P001's right is base
     assert "Lh" not in names["P001"] and "Rh" not in names["P003"]              # per_stroke, polygon_axis: no map
+
+
+# ---- a fixture ruled off the page ------------------------------------------
+# Kent, 2026-09-30, on two sittings: screenshot is not a logo to judge
+# digitizing by. The page drops its rows even from a sitting rendered before
+# the rule; the instruments' corpus still carries it.
+
+def test_an_excluded_fixture_never_reaches_the_labelled_page(tmp_path):
+    src = make_labelled_set(tmp_path)
+    feats = json.loads((src / "features.json").read_text(encoding="utf-8"))
+    feats["screenshot"] = {"base": _row(design_class="flat"), "per_stroke": _row(stitches=1100)}
+    (src / "features.json").write_text(json.dumps(feats), encoding="utf-8")
+    for arm, st in (("base", [[0, 0], [1, 1]]), ("per_stroke", [[0, 0], [2, 2]])):
+        (src / "designs" / f"screenshot__{arm}.json").write_text(json.dumps({"stitches": st}), encoding="utf-8")
+        _img(src / "renders" / f"screenshot__{arm}.jpg", (90, 90, 90))
+    _img(src / "renders" / "screenshot__art.png", (220, 220, 220))
+    data = g.build(src, tmp_path / "g", labelled=True)
+    assert [p["pair"] for p in data["pairs"]] == ["per_stroke__fx_a", "ref_0827__fx_p"]
+    assert "screenshot" not in (tmp_path / "g" / "index.html").read_text(encoding="utf-8")

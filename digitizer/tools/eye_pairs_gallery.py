@@ -39,6 +39,11 @@ import cv2
 import numpy as np
 
 BASE = "base"
+# Fixtures the page never shows -- `tools.eye_pairs.pairs.EXCLUDED_FIXTURES`,
+# restated and pinned by test. Kent, 2026-09-30, twice: screenshot is not a
+# logo to judge digitizing by. A sitting rendered before the rule still has
+# its rows; the labelled page drops them and counts them as excluded.
+EXCLUDED_FIXTURES = frozenset({"screenshot"})
 # The yardstick's `__ref__` arms: an engine snapshot run out of process, and
 # the label the page gives it (BEFORE is that engine on the left, AFTER is
 # today on the right). Restated from `tools.eye_pairs.pairs.ARMS` and pinned
@@ -600,6 +605,8 @@ def labelled_records(src: Path, feats: dict, sizes: dict[str, tuple[float, str]]
     skipped: list[dict] = []
     failed: list[dict] = []
     for fx in sorted(k for k in feats if k != "__sources__"):
+        if fx in EXCLUDED_FIXTURES:
+            continue
         by_arm = feats[fx]
         base_row = by_arm.get(BASE)
         if not base_row or "error" in base_row:
