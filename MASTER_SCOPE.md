@@ -289,7 +289,7 @@ here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art; human faces TABLED pending a more capable tier *(Kent, 2026-08-25)* |
 | 2. Font library & lettering | Implemented — 85 fonts, satin + bean/running + cross-stitch, LTR + Hebrew RTL | High (tech) / High (compliance). Zero stunted glyphs since the 2026-08-22 transform fix; the guards now assert their own coverage |
-| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — the 2026-09-01 icon was uncontrolled, so the card still gates this). Held at Medium by that gate alone. **Every display-layer defect this area has had came from DRIVING the app, none from reading it** — three sweeps, detail in the area doc and defect 42. The preview renders thread as a lit cylinder at physical width, eye-tuned not sew-verified; the customer can crop to the logo before the run *(2026-09-28)* |
+| 3. Studio app / configurator | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — the 2026-09-01 icon was uncontrolled, so the card still gates this). Held at Medium by that gate alone. **The wizard is gone (2026-09-30, PR #585)** — one panel, a summary bar, a Download sheet; spec `docs/superpowers/specs/2026-09-30-studio-configurator-design.md`, PRs 2–4 pending. **Every display-layer defect this area has had came from DRIVING the app, none from reading it** — three sweeps, detail in the area doc and defect 42. The preview renders thread as a lit cylinder at physical width, eye-tuned not sew-verified; the customer can crop to the logo before the run *(2026-09-28)* |
 | 4. Export formats | Implemented | Varies by format — see below |
 | 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Every interaction was driven in a real browser against a live service. Manual draw mode traces over the uploaded artwork; right-click places a curved node |
 
@@ -369,7 +369,7 @@ about the facts.
 
 14. **RESOLVED 2026-09-12 for XXX and VP3 — Kent's scope call.** `SERVICE_ONLY_FORMATS` is `{jef, xxx, vp3}`, both with buttons; PEC and U01 stay OUT. Two rulings that still govern: **U01 is held for want of a surviving thread palette and a real Barudan reader, NOT for the two hold-reasons once recorded — both were measured wrong**, and VP3's 0.1 mm quantisation is deliberately not surfaced to the customer. Evidence is a committed harness; run it rather than re-derive it. *(`digitizer/tools/format_roundtrip.py`; PRODUCT.md item 1)*
 
-15. **RESOLVED 2026-09-12 — the wizard's steps are browser history entries** (`lib/stepHistory.js`). The anti-trap rule IS the design and survives here: **the first step REPLACES the entry the browser already has, only a step after it pushes**, so Back from step 1 still leaves the Studio. Not routing — no URL reaches `pushState`. *(`app/src/App.stepHistory.spec.js`, with a source guard against a bare `step = ...`)*
+15. **RESOLVED 2026-09-12 — the wizard's steps are browser history entries** (`lib/stepHistory.js`). The anti-trap rule IS the design and survives here: **the first step REPLACES the entry the browser already has, only a step after it pushes**, so Back from step 1 still leaves the Studio. Not routing — no URL reaches `pushState`. *(`app/src/App.stepHistory.spec.js`, with a source guard against a bare `step = ...`)* **Superseded 2026-09-30:** there are no step entries; the Download sheet is the one history entry, and Back closes it.
 
 17. **RESOLVED 2026-09-17 (Kent) — clearing a stale BORDER recovers on ONE click**, a stale BOUNDARY on two. Kept: "Clear them" is an explicit click, so nothing is dropped behind the user's back — what "recovery is explicit" protects. Do NOT gate recovery out of the fast lane to tidy this. *(`e2e/digitize-stale-edits.spec.js`)*
 
@@ -663,10 +663,10 @@ nothing, in "Waiting on Kent". *(confirmed 2026-08-22 — manifest, engine suite
 **Next:** **upstream is exhausted; no external supply** — measured, not
 assumed (area doc, "Supply"). Terminus closed. Growth means commissioning.
 
-### 3. Studio app / guided wizard — [detail](docs/scope/3-studio-app-wizard.md)
+### 3. Studio app / configurator — [detail](docs/scope/3-studio-app-wizard.md)
 
 **Implemented · Medium.**
-The Svelte guided flow (garment → content → review → download), saved projects,
+The Svelte configurator (one panel: design → garment, summary bar, Download sheet), saved projects,
 the Layers panel, and fabric/garment presets. Logic coverage is broad —
 nearly every `app/src/lib/*.js` module has a paired spec — with UI-behaviour
 coverage riding on live-browser e2e specs across several garments, the image

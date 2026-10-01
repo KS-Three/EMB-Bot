@@ -19,6 +19,7 @@
 // the loop. Referenced across the repo rather than copied into e2e/fixtures:
 // one file, one regeneration path, no chance of the two drifting.
 import { test, expect } from "@playwright/test";
+import { startStudio, typeText, openDownload } from "./helpers.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -26,9 +27,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STANDARD_DST = path.resolve(__dirname, "../../test/fixtures/standard-tajima.dst");
 
 async function importFixture(page) {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await startStudio(page);
   await page.getByRole("button", { name: "Design file" }).click();
   await page.locator(".dp-upload input[type=file]").setInputFiles(STANDARD_DST);
   await expect(page.locator(".dp-stats")).toBeVisible({ timeout: 60_000 });
@@ -73,8 +72,7 @@ test("an imported design reaches Download and exports", async ({ page }) => {
   // of DownloadStep's own note, not of this assertion — here the point is only
   // that an imported file becomes a real machine file at all.
   await importFixture(page);
-  await page.getByRole("button", { name: "4 Download", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Download", exact: true })).toBeVisible();
+  await openDownload(page);
 
   const dl = page.waitForEvent("download");
   await page.getByRole("button", { name: "DST", exact: true }).click();
@@ -98,7 +96,7 @@ test("no DST caveat appears on the Download step, and DST leads", async ({ page 
   // DownloadStep.spec.js asserts the same thing at component level, but only
   // a real import proves the shipped app agrees.
   await importFixture(page);
-  await page.getByRole("button", { name: "4 Download", exact: true }).click();
+  await openDownload(page);
 
   await expect(page.getByTestId("dst-browser-encoder-note")).toHaveCount(0);
   await expect(page.getByText(/quarter turn/i)).toHaveCount(0);
@@ -121,21 +119,16 @@ test("no DST caveat appears on the Download step, and DST leads", async ({ page 
 
 test("a .pes fed to the DST lane is refused, with the way out named", async ({ page }) => {
   test.setTimeout(180_000);
-  await page.goto("/");
-  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await page.getByPlaceholder("Type a name or word").fill("WRONG FORMAT");
-  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
-  await page.getByRole("button", { name: "4 Download", exact: true }).click();
+  await startStudio(page);
+  await typeText(page, "WRONG FORMAT");
+  await openDownload(page);
   const dl = page.waitForEvent("download");
   await page.getByRole("button", { name: "PES", exact: true }).click();
   const anyway = page.getByRole("button", { name: "Download PES anyway", exact: true });
   if (await anyway.isVisible().catch(() => false)) await anyway.click();
   const pes = await (await dl).path();
 
-  await page.goto("/");
-  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await startStudio(page);
   await page.getByRole("button", { name: "Design file" }).click();
   await page.locator(".dp-upload input[type=file]").setInputFiles(pes);
 

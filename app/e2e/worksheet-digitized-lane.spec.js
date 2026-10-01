@@ -10,6 +10,7 @@
 // breakdown, and a shopping list is exactly the thing an operator carries to
 // the machine and adds up.
 import { test, expect } from "@playwright/test";
+import { startStudio, pickGarment, openDownload } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -116,21 +117,20 @@ test("a digitized design's review and worksheet agree, and the cone rows add up"
   test.skip(!serviceUp, skipReason);
   test.setTimeout(300_000);
 
-  await page.goto("/");
+  await startStudio(page);
   // Patch (3.5 in) SPECIFICALLY, not Left Chest. The garment sets the fit width,
   // which sets the thread metres, which decides whether the independent
   // rounding of the total and the rows lands on a disagreement. Left Chest
   // happens to round consistently, so this spec passed against the very bug
   // it exists to catch until the garment was pinned. A fixture that does not
   // straddle the boundary is not coverage.
-  await page.getByRole("button", { name: "Patch", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await pickGarment(page, "Patch");
   await page.getByRole("button", { name: "Artwork" }).click();
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   await expect(page.locator("span.stats")).toContainText(/\d[\d,]* stitches/, { timeout: 240000 });
 
   // ---- what the review says ----------------------------------------------
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await openDownload(page);
   await expect(page.locator(".qr-bill")).toBeVisible({ timeout: 60000 });
 
   const bill = (await page.locator(".qr-bill").first().innerText()).replace(/\s+/g, " ");
@@ -154,7 +154,6 @@ test("a digitized design's review and worksheet agree, and the cone rows add up"
   expect(stitches, "review states a stitch count").not.toBeNull();
 
   // ---- what the sheet says ------------------------------------------------
-  await page.getByRole("button", { name: "Next", exact: true }).click();
   const dl = await Promise.all([
     page.waitForEvent("download"),
     page.getByRole("button", { name: /PDF worksheet/i }).click(),

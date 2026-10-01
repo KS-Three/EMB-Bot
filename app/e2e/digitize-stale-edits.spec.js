@@ -140,8 +140,6 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
 
   // ---- reach the digitize panel (same route as the wizard smoke test) ----
   await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
 
   // The tile is health-gated (App probes /health on reaching this step); it
   // appearing IS the live assertion that the app sees the real service.

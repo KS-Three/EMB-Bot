@@ -15,6 +15,7 @@
 // but only a real download proves the app hands the sheet the same numbers it
 // just put on the screen.
 import { test, expect } from "@playwright/test";
+import { startStudio, pickGarment, openDownload } from "./helpers.js";
 import { readFileSync } from "node:fs";
 import zlib from "node:zlib";
 
@@ -41,13 +42,12 @@ function pdfText(bytes) {
 }
 
 test("the printed worksheet states the same trims and thread the review does", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await startStudio(page);
   await page.locator("textarea").first().fill("FRITSCH");
   await expect(page.locator("span.stats")).toContainText(/\d[\d,]* stitches/, { timeout: 20000 });
 
   // ---- what the screen says -----------------------------------------------
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await openDownload(page);
   const review = (await page.locator("body").innerText()).replace(/\s+/g, " ");
   const trims = review.match(/Trims (\d[\d,]*)/);
   const thread = review.match(/Thread ([\d.]+) m \(estimate\)/);
@@ -60,7 +60,6 @@ test("the printed worksheet states the same trims and thread the review does", a
   expect(Number(thread[1])).toBeGreaterThan(0);
 
   // ---- what the sheet says ------------------------------------------------
-  await page.getByRole("button", { name: "Next", exact: true }).click();
   const dl = await Promise.all([
     page.waitForEvent("download"),
     page.getByRole("button", { name: /PDF worksheet/i }).click(),
@@ -80,13 +79,11 @@ test("the worksheet names the chart its codes came out of", async ({ page }) => 
   // re-labelled the design's black to that catalog's nearest cone, the
   // Download step showed "Chart: Isacord Polyester 40" beside it, and the
   // printed sheet gave the code alone. All 68 charts number independently.
-  await page.goto("/");
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await startStudio(page);
   await page.locator("textarea").first().fill("FRITSCH");
   await expect(page.locator("span.stats")).toContainText(/\d[\d,]* stitches/, { timeout: 20000 });
 
-  await page.getByRole("button", { name: "Next", exact: true }).click();   // Review
-  await page.getByRole("button", { name: "Next", exact: true }).click();   // Download
+  await openDownload(page);
 
   // Pick a real manufacturer chart, the way a customer with a thread rack does.
   const chart = page.getByLabel("Thread chart");
@@ -124,14 +121,12 @@ test("a design that cannot be hooped says so on the sheet, not only in the expor
   // e2e rather than unit because the unit tier only proves pdfsheet.js prints
   // the sentence it is HANDED; this proves the Studio actually hands it over,
   // across DownloadStep -> exporters.js -> the engine copy.
-  await page.goto("/");
-  await page.getByRole("button", { name: "Full Back", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await startStudio(page);
+  await pickGarment(page, "Full Back");
   await page.getByPlaceholder("Type a name or word").fill("FRITSCH'S STITCHES");
   await expect(page.locator("span.stats")).toContainText(/\d[\d,]* stitches/, { timeout: 20000 });
 
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await openDownload(page);
 
   const dl = await Promise.all([
     page.waitForEvent("download"),
