@@ -2414,7 +2414,10 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .gmenu {
   position: absolute;
-  z-index: 6;
+  /* Only has to clear its siblings in .cfg-body. At 6 it beat the Download
+     sheet (.sheet, 5) — no stacking context between them — so a menu left
+     open drew over the sheet. */
+  z-index: 1;
   top: calc(100% + var(--space-2));
   left: 0;
   right: 0;

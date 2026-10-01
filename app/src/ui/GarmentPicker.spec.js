@@ -63,3 +63,20 @@ test("Escape closes the menu and returns focus to More", async () => {
   expect(screen.queryByRole("menu")).toBeNull();
   expect(document.activeElement).toBe(more);
 });
+
+test("focus leaving the picker closes the menu", async () => {
+  render(Harness, { garmentId: "left_chest" });
+  await fireEvent.click(screen.getByRole("button", { name: "More garments" }));
+  const item = screen.getByRole("menuitemradio", { name: "Beanie" });
+  await fireEvent.focusOut(item, { relatedTarget: document.body });
+  expect(screen.queryByRole("menu")).toBeNull();
+});
+
+test("focus moving between menu items keeps the menu open", async () => {
+  render(Harness, { garmentId: "left_chest" });
+  await fireEvent.click(screen.getByRole("button", { name: "More garments" }));
+  const from = screen.getByRole("menuitemradio", { name: "Beanie" });
+  const to = screen.getByRole("menuitemradio", { name: "Tote" });
+  await fireEvent.focusOut(from, { relatedTarget: to });
+  expect(screen.getByRole("menu", { name: "All garments" })).toBeInTheDocument();
+});

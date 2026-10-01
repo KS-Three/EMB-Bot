@@ -40,11 +40,19 @@
   function onWindowDown(e) {
     if (open && menuEl && !menuEl.contains(e.target) && e.target !== moreBtn) open = false;
   }
+  // Focus leaving the picker (Tab out to the summary bar, say) closes it too —
+  // a menu left open drew over the Download sheet. A null relatedTarget is
+  // ignored: a press on a menu item in a browser that does not focus buttons
+  // on click reports null, and closing there would swallow the pick.
+  let root = null;
+  function onFocusOut(e) {
+    if (open && root && e.relatedTarget && !root.contains(e.relatedTarget)) open = false;
+  }
 </script>
 
 <svelte:window on:pointerdown={onWindowDown} />
 
-<div class="gpicker">
+<div class="gpicker" bind:this={root} on:focusout={onFocusOut}>
   <div class="gpills" role="group" aria-label="Garment">
     {#each pills as p (p.id)}
       <button
