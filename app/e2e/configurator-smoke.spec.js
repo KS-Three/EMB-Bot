@@ -697,3 +697,95 @@ test("the review names what it costs to sew — on the lane the service never se
   // No service report on this lane, so nothing can contradict it.
   await expect(page.locator("section.quality")).toHaveCount(0);
 });
+
+test("Original view swaps the thread for the uploaded artwork, and any edit swaps it back", async ({ page }) => {
+  await page.route("**/health", (r) => r.abort());   // browser lane: an `image` element, no service
+  await startStudio(page);
+  const orig = page.getByRole("button", { name: "Original view" });
+  // A text-only design has no artwork to show.
+  await typeText(page, "ABC");
+  await expect(orig).toBeDisabled();
+
+  await page.getByRole("button", { name: "Artwork" }).click();
+  await page.locator("input[type=file]").first().setInputFiles(ART_PNG);
+  await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
+  await expect(orig).toBeEnabled();
+
+  const shot = () => page.evaluate(() => document.querySelector(".hoop canvas").toDataURL());
+  // The fixture is white, one black square and one (204, 0, 0) red square.
+  // Shaded thread never lands on that exact red over a large area; the
+  // uploaded PNG drawn back onto the canvas does. A bare "the canvas changed"
+  // is not enough: hiding the selection chrome alone changes it.
+  const artworkRed = () => page.evaluate(() => {
+    const c = document.querySelector(".hoop canvas");
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (Math.abs(d[i] - 204) <= 2 && d[i + 1] <= 2 && d[i + 2] <= 2) n++;
+    }
+    return n;
+  });
+  // Bbox of the red square in canvas px: red-ish thread when stitched, the
+  // exact source red when the artwork is drawn.
+  const redBox = (exact) => page.evaluate((exact) => {
+    const c = document.querySelector(".hoop canvas");
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+    for (let y = 0; y < c.height; y++) {
+      for (let x = 0; x < c.width; x++) {
+        const i = (y * c.width + x) * 4;
+        const hit = exact
+          ? Math.abs(d[i] - 204) <= 2 && d[i + 1] <= 2 && d[i + 2] <= 2
+          : d[i] > 120 && d[i + 1] < 70 && d[i + 2] < 70;
+        if (!hit) continue;
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+    }
+    return x1 < 0 ? null : { x0, y0, x1, y1 };
+  }, exact);
+  const stitched = await shot();
+  const stitchedRed = await artworkRed();
+  const stitchedBox = await redBox(false);
+  expect(stitchedBox, "no red thread on the stitched canvas").not.toBeNull();
+
+  await orig.click();
+  await expect(orig).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(shot).not.toBe(stitched);
+  // Measured 2026-09-30: 0 such pixels stitched, 420 in Original view.
+  await expect.poll(artworkRed).toBeGreaterThan(Math.max(100, stitchedRed * 5));
+  // Registration: the artwork's red square sits where the red stitches sat,
+  // every edge within 3 px. Fitting the whole frame (white margin and all)
+  // into the stitch rect drew it about half size and shifted.
+  const origBox = await redBox(true);
+  for (const k of ["x0", "y0", "x1", "y1"]) {
+    expect(Math.abs(origBox[k] - stitchedBox[k]), `${k}: artwork ${JSON.stringify(origBox)} vs stitches ${JSON.stringify(stitchedBox)}`)
+      .toBeLessThanOrEqual(3);
+  }
+  // No chrome was added over the canvas to do it.
+  expect(await page.locator(".hoop > *").count()).toBe(1);
+
+  await page.getByRole("button", { name: "Realistic view" }).click();
+  await expect(orig).toHaveAttribute("aria-pressed", "false");
+  await expect.poll(shot).toBe(stitched);
+
+  // The simulator and Original are exclusive: starting one ends the other.
+  await orig.click();
+  await expect(orig).toHaveAttribute("aria-pressed", "true");
+  const sim = page.getByRole("button", { name: "Stitch simulator" });
+  await sim.click();
+  await expect(sim).toHaveAttribute("aria-pressed", "true");
+  await expect(orig).toHaveAttribute("aria-pressed", "false");
+
+  // The simulator's bar stands over the view bar while it runs (theme.css
+  // `.fieldbars`), so it is left by its own Close.
+  await page.getByRole("button", { name: "Close simulator" }).click();
+
+  // …and any edit swaps it back: a new fabric colour regenerates the design,
+  // which is the thing the customer now wants to see.
+  await orig.click();
+  await expect(orig).toHaveAttribute("aria-pressed", "true");
+  await expect(sim).toHaveAttribute("aria-pressed", "false");
+  await page.locator("button.fabricswatch:not(.sel)").first().click();
+  await expect(orig).toHaveAttribute("aria-pressed", "false");
+});

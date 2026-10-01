@@ -1,7 +1,7 @@
 <script>
   import { EMB } from "../lib/emb.js";
   import { createEventDispatcher } from "svelte";
-  import { garmentArt } from "./garmentArt.js";
+  import GarmentPicker from "./GarmentPicker.svelte";
   import { effectiveHoop } from "../lib/hoop.js";
   import { fabricInForce } from "../lib/generate.js";
   import CalibratePanel from "./CalibratePanel.svelte";
@@ -12,18 +12,6 @@
   // instead of throwing when pressed — same posture as JEF on Download.
   export let digitizerHealth = null;
   const d = createEventDispatcher();
-
-  function readable(id) {
-    return id
-      .split("_")
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" ");
-  }
-
-  const tiles = (EMB.GARMENTS || []).map((g) => ({
-    id: g.id,
-    label: g.label || g.name || readable(g.id),
-  }));
 
   // 8 garment-common fabric tones (Slice 8 Task 2). Picking one patches
   // project.fabricRgb; the field re-renders the SAME design against a
@@ -87,14 +75,7 @@
 </script>
 
 <h3>Garment</h3>
-<div class="tiles">
-  {#each tiles as t}
-    <button class="tile" class:sel={project.garmentId === t.id} on:click={() => d("update", { garmentId: t.id })}>
-      <span class="gart" aria-hidden="true">{@html garmentArt(t.id)}</span>
-      <span class="tile-label">{t.label}</span>
-    </button>
-  {/each}
-</div>
+<GarmentPicker garmentId={project.garmentId} on:update={(e) => d("update", e.detail)} />
 
 <h3>Hoop size</h3>
 <div class="hooprow" role="group" aria-label="Hoop size">
