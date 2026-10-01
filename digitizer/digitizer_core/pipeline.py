@@ -686,6 +686,11 @@ def build_generation(
                 # "strokes" at 0.75), so the photo classes keep today's path
                 # until that residue is understood — byte-identical ON.
                 thin_population=bool(cfg.keep_thin_strokes and classification.class_ == "gradient"),
+                # Gradient-class LOGOS only, like the thin population: the
+                # measurement behind it is a white icon on a sweep (Kent's
+                # Instagram file, 2026-09-30), and the photo classes keep
+                # today's path until a photograph has been looked at.
+                snap_edges=bool(cfg.snap_region_edges and classification.class_ == "gradient"),
             )
             if classification.class_ in (*PHOTO_CLASSES, "gradient")
             else quantize(p, cfg)

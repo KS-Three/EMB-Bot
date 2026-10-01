@@ -297,4 +297,16 @@ PRE_FLIP["strip_letterbox"] = False
 # for the next test that prices a colour flag on a satin fixture. A test that
 # is ABOUT the rails is `tests/test_rail_comp.py` and names the flag itself.
 PRE_FLIP["satin_rail_comp"] = False
+# `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
+# renders of his Instagram icon, drone, Bridge Bar and the repro), for the
+# reason every entry above gives. ON, a gradient-lane region's edge follows
+# the pixels instead of the SEEDS superpixels, which removes exactly the
+# slivers and halo fragments the colour files use as their PREMISE -- the
+# resnap's Silver-on-near-black shape, the drifted sliver, the repeated cone
+# -- so an arm measured before that day was measured with them present.
+# Measured at the flip: left ON, 26 tests across 13 files moved, and in the
+# files that read this dict every one was a premise assert ("fixture drift",
+# "should be there to lose"), not the flag under test getting worse. The
+# test that is ABOUT the snap is `tests/test_snap_region_edges.py`.
+PRE_FLIP["snap_region_edges"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

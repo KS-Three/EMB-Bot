@@ -17123,3 +17123,19 @@ README said not judged). New arm `split_off` for the `back-1001` page;
 table `back-stitching-table.json`; tests 10 + the arm pins. Records:
 README's back-stitching section, kent-notes (`fifth_sitting` + chat picks),
 DOCTRINE (two entries), MASTER_SCOPE, memory.
+
+## 2026-10-01 — `snap_region_edges` ON: the gradient lane's edges follow pixels
+
+Kent's real Instagram icon (2000 px; kept gitignored in
+`testdata/photo/acceptance/`): stage 0 `gradient`, correct. 148 SEEDS
+superpixels straddle the white icon's edge, 7.6% of the white on the wrong
+side. `snap_region_edges` (stage 2, after the merge, margin 10 Lab,
+gradient class only) built OFF and flipped ON by Kent on renders. Through
+the service at 80 mm / max 6: 24,945 → 23,888 stitches, 44 → 28 trims, 11
+colours both. Regions at Studio params: drone 107 → 119, Bridge Bar 80 → 95,
+the repro 6 → 6. `THREAD_MATCH_POOR` blocks at 80 mm / left_chest: drone
+5 → 3, golden_tee 2 → 1, gaulke 0 → 0. 26 tests in 13 files moved at the
+flip; all accounted for in DOCTRINE's entry. Not measured: the rest of the
+gradient-class corpus rendered both ways (the sheet run died in a reboot
+after two fixtures, neither on the lane). Same day: the Studio's flat
+switch came back (PR #587).
