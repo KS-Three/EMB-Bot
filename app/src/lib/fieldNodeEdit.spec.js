@@ -8,16 +8,17 @@ import {
   pxToFieldMm, fieldMmToPx, authoredInFieldMm, hitAuthored,
   applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, clampMmToBox,
   breaksContainment, ringInsideBox, cutOutOutlinesInFieldMm, CUTOUT_HOLD_HINT, refitShapesPatch,
+  columnWidthMm, withColumnWidthMm, columnSewnMm,
 } from "./fieldNodeEdit.js";
-import { withCutOut } from "./manualShapes.js";
+import { withCutOut, shapeRing } from "./manualShapes.js";
 
-let EMB, generateElement, garment;
+let EMB, generateElement, fabricInForce, garment;
 beforeAll(async () => {
   const require = createRequire(import.meta.url);
   globalThis.window = globalThis;
   for (const f of ["units","garments","fabrics","fill","geometry","quantize","flatten","satin","satinplay","satinfont","fontbin","dst","dstimport","exp","fonts","digitize"]) require("../../../src/" + f + ".js");
   ({ EMB } = await import("./emb.js"));
-  ({ generateElement } = await import("./generate.js"));
+  ({ generateElement, fabricInForce } = await import("./generate.js"));
   garment = EMB.getGarment("left_chest");
 });
 
@@ -328,5 +329,224 @@ describe("cut-outs", () => {
     expect(Math.abs(ry)).toBeLessThanOrEqual(0.05 + 1e-9);
     expect(o1.s1).toHaveLength(o0.s1.length);
     o1.s1.forEach((p, i) => { expect(p[0] - o0.s1[i][0]).toBeCloseTo(rx, 6); expect(p[1] - o0.s1[i][1]).toBeCloseTo(ry, 6); });
+  });
+});
+
+// ---- Columns: an open spine plus a drawn width (spec 2026-09-30 §6, amended 2026-10-01) ----
+const col = (id, points, widthPx, extra = {}) => ({ id, kind: "column", points, curves: {}, widthPx, colorRgb: [0, 0, 200], ...extra });
+
+describe("columns — an open spine", () => {
+  const spine4 = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 200, y: 0 }, { x: 300, y: 0 }];
+  const curved = () => col("c1", spine4, 20, { curves: { 0: { x: 50, y: -9 }, 1: { x: 150, y: -8 }, 2: { x: 250, y: -7 } } });
+  const f1 = { cxPx: 0, cyPx: 0, mmPerPx: 0.2, offsetXMm: 0, offsetYMm: 0, pxPerMm: 6 };
+
+  test("authoredInFieldMm: n - 1 handles (no closing segment) and the rails in field mm", () => {
+    const c = col("c1", [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }], 20);
+    const a = authoredInFieldMm(c, f1);
+    expect(a.anchors).toHaveLength(3);
+    expect(a.handles).toHaveLength(2);
+    expect(a.handles[1]).toEqual(pxToFieldMm(f1, { x: 100, y: 50 }));
+    expect(a.rails.a).toHaveLength(3);
+    expect(a.rails.b).toHaveLength(3);
+    // the rails are the ring the engine sees: rail A, then rail B backwards
+    const ring = shapeRing(c).map((p) => pxToFieldMm(f1, p));
+    expect([...a.rails.a, ...a.rails.b.slice().reverse()]).toEqual(ring);
+    // each rail end sits half a width (10 px = 2 mm) from the spine's first anchor
+    expect(Math.hypot(a.rails.a[0][0] - a.anchors[0][0], a.rails.a[0][1] - a.anchors[0][1])).toBeCloseTo(2, 9);
+    // a closed shape has no rails key
+    expect(authoredInFieldMm(shapeA, fit).rails).toBeUndefined();
+  });
+  test("authoredInFieldMm: a column with no usable width still edits — empty rails", () => {
+    const a = authoredInFieldMm(col("c1", spine4, 0), f1);
+    expect(a.handles).toHaveLength(3);
+    expect(a.rails).toEqual({ a: [], b: [] });
+  });
+
+  test("hitAuthored(..., false): no phantom closing handle or edge", () => {
+    // an L: anchors (0,0) (100,0) (100,100); the closing chord would run (100,100) -> (0,0)
+    const anchors = [[0, 0], [100, 0], [100, 100]];
+    const open = { anchors, controls: {}, handles: [[50, 0], [100, 50]] };
+    expect(hitAuthored(open, 50, 50, false)).toBeNull();              // dead on the closing chord's midpoint
+    expect(hitAuthored(open, 30, 31, false)).toBeNull();              // on the closing chord
+    expect(hitAuthored(open, 30, 31)).toMatchObject({ kind: "edge", index: 2 }); // closed (the default) still finds it
+    expect(hitAuthored(open, 25, 2, false)).toMatchObject({ kind: "edge", index: 0 });
+    expect(hitAuthored(open, 100, 52, false)).toMatchObject({ kind: "handle", index: 1 });
+    expect(hitAuthored(open, 98, 99, false)).toMatchObject({ kind: "anchor", index: 2 });
+    // even handed a stale closing handle, an open hit never answers index n - 1
+    const stale = { anchors, controls: {}, handles: [[50, 0], [100, 50], [50, 50]] };
+    expect(hitAuthored(stale, 50, 50, false)).toBeNull();
+    expect(hitAuthored(stale, 50, 50)).toMatchObject({ kind: "handle", index: 2 });
+    for (let x = -20; x <= 120; x += 5) for (let y = -20; y <= 120; y += 5) {
+      const h = hitAuthored(stale, x, y, false);
+      if (h && h.kind !== "anchor") expect(h.index).toBeLessThan(2);
+    }
+  });
+
+  test("removeAnchor on a column: the FIRST anchor drops its own segment's curve and shifts the rest", () => {
+    const s = removeAnchor(curved(), 0);
+    expect(s.points.map((p) => p.x)).toEqual([100, 200, 300]);
+    expect(s.curves).toEqual({ 0: { x: 150, y: -8 }, 1: { x: 250, y: -7 } });
+  });
+  test("removeAnchor on a column: the LAST anchor drops curves[n - 2] and nothing else", () => {
+    const s = removeAnchor(curved(), 3);
+    expect(s.points.map((p) => p.x)).toEqual([0, 100, 200]);
+    expect(s.curves).toEqual({ 0: { x: 50, y: -9 }, 1: { x: 150, y: -8 } });
+  });
+  test("removeAnchor on a column: an INTERIOR anchor merges its two neighbours into one straight segment", () => {
+    const s = removeAnchor(curved(), 1);
+    expect(s.points.map((p) => p.x)).toEqual([0, 200, 300]);
+    expect(s.curves).toEqual({ 1: { x: 250, y: -7 } });
+  });
+  test("removeAnchor on a column: a stale closing-segment curve never survives into a real segment", () => {
+    const s = removeAnchor({ ...curved(), curves: { 3: { x: 1, y: 1 } } }, 0);
+    expect(s.curves).toEqual({});
+  });
+  test("removeAnchor on a column: the floor is 2", () => {
+    const three = col("c1", spine4.slice(0, 3), 20);
+    expect(removeAnchor(three, 1).points).toHaveLength(2);
+    expect(removeAnchor(col("c1", spine4.slice(0, 2), 20), 0)).toBeNull();
+  });
+
+  test("width reads and writes in mm through the fit; widthPx is the only thing stored", () => {
+    const c = col("c1", spine4, 20);
+    expect(columnWidthMm(c, f1)).toBeCloseTo(4, 12);
+    expect(columnSewnMm(c, f1, 0.4)).toBeCloseTo(4.4, 12);
+    const w = withColumnWidthMm(c, f1, 6);
+    expect(w.widthPx).toBeCloseTo(30, 12);
+    expect(w.widthMm).toBeUndefined();
+    expect(c.widthPx).toBe(20); // input untouched
+    expect(w.points).toBe(c.points);
+    // floor 0.1 mm
+    expect(withColumnWidthMm(c, f1, 0).widthPx).toBeCloseTo(0.5, 12);
+    expect(withColumnWidthMm(c, f1, -3).widthPx).toBeCloseTo(0.5, 12);
+    expect(withColumnWidthMm(c, f1, NaN).widthPx).toBeCloseTo(0.5, 12);
+  });
+
+  test("ringInsideBox sees the RAILS: a spine inside the box whose rail is past it fails", () => {
+    // spine along y = 0 from -40 to 40 px (±8 mm); box 20 x 6 mm -> half height 3 mm = 15 px
+    const sp = [{ x: -40, y: 0 }, { x: 40, y: 0 }];
+    expect(ringInsideBox(col("c1", sp, 20), f1, { wMm: 20, hMm: 6 })).toBe(true);   // rails at ±10 px = ±2 mm
+    expect(ringInsideBox(col("c1", sp, 40), f1, { wMm: 20, hMm: 6 })).toBe(false);  // rails at ±20 px = ±4 mm
+  });
+
+  test("editedElementPatch refuses a column edit by shapeProblems' first string", () => {
+    const R = rect("s1", 100, 100, 300, 300);
+    const c = col("c1", [{ x: 350, y: 200 }, { x: 500, y: 200 }], 20);
+    const e = { id: "e1", type: "manual", shapes: [R, c], sizeMm: 60, offsetXMm: 0, offsetYMm: 0 };
+    const f = { cxPx: 300, cyPx: 200, mmPerPx: 0.15, offsetXMm: 0, offsetYMm: 0, pxPerMm: 6 };
+    expect(editedElementPatch(e, f, "c1", applyAnchorDrag(c, 1, { x: 351, y: 200 }))).toEqual({ error: "This column is too short to sew." });
+    expect(editedElementPatch(e, f, "c1", { ...c, points: c.points.slice(0, 1) })).toEqual({ error: "A column needs at least 2 points." });
+    // a healthy two-point column is NOT refused (the closed-ring rule would say "Needs at least 3 points.")
+    expect(editedElementPatch(e, f, "c1", applyAnchorDrag(c, 1, { x: 480, y: 220 })).error).toBeUndefined();
+  });
+});
+
+describe("columns — the re-fit rule and ruling 12, through the real engine", () => {
+  const R = rect("s1", 100, 100, 300, 300);
+  // a STRAIGHT horizontal column whose right end is the bbox's right edge
+  const C = col("c1", [{ x: 350, y: 200 }, { x: 425, y: 200 }, { x: 500, y: 200 }], 20);
+  const gen = (element) => generateElement(element, garment, {});
+  const outline = (d) => Object.fromEntries(d.shapeOutlines.map((o) => [o.id, o.points]));
+  const residualOf = (off) => Math.round(off * 10) / 10 - off;
+  // The rectangle moved by exactly the offsets' rounding residual (the existing tolerance) and the scale held.
+  function rectangleHeld(before, patch) {
+    const d0 = gen(before), d1 = gen({ ...before, ...patch });
+    expect(d1.fit.mmPerPx).toBeCloseTo(d0.fit.mmPerPx, 12);
+    const rx = residualOf(patch.offsetXMm) - residualOf(before.offsetXMm);
+    const ry = residualOf(patch.offsetYMm) - residualOf(before.offsetYMm);
+    expect(Math.abs(rx)).toBeLessThanOrEqual(0.05 + 1e-9);
+    expect(Math.abs(ry)).toBeLessThanOrEqual(0.05 + 1e-9);
+    const o0 = outline(d0), o1 = outline(d1);
+    expect(o1.s1).toHaveLength(o0.s1.length);
+    o1.s1.forEach((p, i) => { expect(p[0] - o0.s1[i][0]).toBeCloseTo(rx, 6); expect(p[1] - o0.s1[i][1]).toBeCloseTo(ry, 6); });
+    return { d0, d1, o0, o1 };
+  }
+
+  test("(a) dragging one spine anchor: the rectangle stays put and the scale holds", () => {
+    const before = el([R, C]);
+    const d0 = gen(before);
+    expect(d0.shapeOutlines.map((o) => o.id).sort()).toEqual(["c1", "s1"]);
+    const moved = applyAnchorDrag(C, 2, { x: 560, y: 330 }); // outward: grows the bbox right and down
+    const patch = editedElementPatch(before, d0.fit, "c1", moved);
+    expect(patch.error).toBeUndefined();
+    expect(patch.sizeMm).not.toBe(before.sizeMm);
+    const { o0, o1 } = rectangleHeld(before, patch);
+    expect(o1.c1).not.toEqual(o0.c1); // the column itself did move
+    // Without the patch's size and offsets the engine re-fits the grown bbox: the jump the rule removes.
+    const jumped = gen({ ...before, shapes: patch.shapes });
+    expect(Math.abs(jumped.fit.mmPerPx / d0.fit.mmPerPx - 1)).toBeGreaterThan(0.05);
+  });
+
+  test("(b) doubling the width through refitShapesPatch: the rectangle stays put — the bbox is the rail ring", () => {
+    // A TALL column this time, so its rails (not its spine) are the bbox's right edge:
+    // the spine's bbox does not change with the width, the rail ring's does.
+    const tall = col("c1", [{ x: 480, y: 120 }, { x: 480, y: 280 }], 20);
+    const before = el([R, tall]);
+    const d0 = gen(before);
+    const mm0 = columnWidthMm(tall, d0.fit);
+    const wide = withColumnWidthMm(tall, d0.fit, 2 * mm0);
+    expect(wide.widthPx).toBeCloseTo(40, 9);
+    const shapes = [R, wide];
+    const patch = refitShapesPatch(before, d0.fit, shapes);
+    expect(patch.error).toBeUndefined();
+    // rail ring: 100 .. 490 px before, 100 .. 500 px after
+    expect(before.sizeMm).toBeCloseTo(390 * d0.fit.mmPerPx, 9);
+    expect(patch.sizeMm).toBeCloseTo(400 * d0.fit.mmPerPx, 9);
+    const { d1 } = rectangleHeld(before, patch);
+    expect(columnWidthMm(wide, d1.fit)).toBeCloseTo(2 * mm0, 9);
+  });
+
+  // The sewn width, measured from the stitches. The column's satin span is a
+  // zigzag emitted station by station as (lead, trail), so consecutive stitch
+  // points alternate between a CROSS (rail to rail — the width) and the short
+  // step along one rail to the next station (the 0.4 mm spacing). The crosses
+  // are the lengths over half the longest; the statistic is their MEDIAN, on a
+  // straight column, so the ends and the 0.1 mm stitch grid do not move it.
+  function sewnMedianMm(d, id) {
+    const spans = d.runs.filter((r) => r.kind === "satin" && r.shape === id);
+    expect(spans.length).toBeGreaterThan(0);
+    const lens = [];
+    for (const sp of spans) {
+      for (let i = sp.i0 + 1; i <= sp.i1; i++) {
+        const a = d.stitches[i - 1], b = d.stitches[i];
+        if (b.type !== "stitch") continue;
+        lens.push(Math.hypot(b.x - a.x, b.y - a.y) / 10);
+      }
+    }
+    const longest = Math.max(...lens);
+    const crosses = lens.filter((l) => l > longest / 2).sort((p, q) => p - q);
+    expect(crosses.length).toBeGreaterThan(20);
+    return crosses[Math.floor(crosses.length / 2)];
+  }
+
+  test("(c) ruling 12: at twice the size the DRAWN width doubles and the SEWN width grows by less — pull comp is fixed on top", () => {
+    const pullCompMm = fabricInForce(garment.id, null).pullCompMm;
+    expect(pullCompMm).toBeGreaterThan(0);
+    const S = 40;
+    // The spine sits 1.3 px off the bbox's centre line ON PURPOSE. Stitches land
+    // on the 0.1 mm DST grid, and a column centred on a grid line with a sewn
+    // half-width of x.x5 mm puts BOTH rails on a rounding tie: measured with the
+    // spine at y = 200, the crosses read 2.2 and 4.2 mm for a 2.3 / 4.3 model —
+    // the grid, not the engine's width. Off the tie the rails round one each way.
+    const C = col("c1", [{ x: 350, y: 201.3 }, { x: 425, y: 201.3 }, { x: 500, y: 201.3 }], 20);
+    const dS = gen(el([R, C], { sizeMm: S, offsetXMm: 0, offsetYMm: 0 }));
+    const d2 = gen(el([R, C], { sizeMm: 2 * S, offsetXMm: 0, offsetYMm: 0 }));
+    expect(d2.fit.mmPerPx).toBeCloseTo(2 * dS.fit.mmPerPx, 9);
+    const drawnS = columnWidthMm(C, dS.fit), drawn2 = columnWidthMm(C, d2.fit);
+    expect(Math.abs(drawn2 - 2 * drawnS)).toBeLessThanOrEqual(0.05);
+    const sewnS = sewnMedianMm(dS, "c1"), sewn2 = sewnMedianMm(d2, "c1");
+    // Measured 2026-10-01 on left_chest (pull comp 0.3 mm): drawn 2.0 -> 4.0 mm,
+    // sewn 2.3 -> 4.3 mm, ratio 1.870 against 2.000 for the drawn width.
+    expect(pullCompMm).toBeCloseTo(0.3, 9);
+    expect(drawnS).toBeCloseTo(2.0, 9);
+    expect(sewnS).toBeCloseTo(2.3, 6);
+    expect(sewn2).toBeCloseTo(4.3, 6);
+    // the model: sewn = drawn + pull comp, at both sizes
+    expect(Math.abs(sewnS - columnSewnMm(C, dS.fit, pullCompMm))).toBeLessThanOrEqual(0.1);
+    expect(Math.abs(sewn2 - columnSewnMm(C, d2.fit, pullCompMm))).toBeLessThanOrEqual(0.1);
+    const predicted = (2 * drawnS + pullCompMm) / (drawnS + pullCompMm);
+    const ratio = sewn2 / sewnS;
+    expect(ratio).toBeLessThan(2);
+    expect(Math.abs(ratio - predicted)).toBeLessThanOrEqual(0.03);
   });
 });
