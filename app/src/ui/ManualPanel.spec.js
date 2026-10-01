@@ -907,6 +907,26 @@ describe("Hole mode and cut-outs", () => {
     expect(patches).toHaveLength(0); // nothing rewritten
   });
 
+  test("the Cut out switch is NOT an .mp-btn, so `.mp-assign .mp-btn.active` can only ever be the stitch type", async () => {
+    const { getByText, getByRole, container } = renderPanel([BIG(), HOLE()]);
+    await fireEvent.click(getByText("Shape 2 · Cut out", { selector: ".mp-shapename" }).closest("button"));
+    const sw = getByRole("switch", { name: "Cut out" });
+    expect(sw.getAttribute("aria-checked")).toBe("true");
+    expect(sw.classList.contains("mp-switch")).toBe(true);
+    expect(sw.classList.contains("mp-btn")).toBe(false);
+    expect(container.querySelectorAll(".mp-assign .mp-btn.active")).toHaveLength(0);
+  });
+
+  test("a cut-out's list row has a hollow swatch (no colour); a normal shape's keeps its colour", () => {
+    const { container } = renderPanel([BIG(), HOLE()]);
+    const sw = [...container.querySelectorAll(".mp-shaperow .mp-swatch")];
+    expect(sw).toHaveLength(2);
+    expect(sw[0].classList.contains("hollow")).toBe(false);
+    expect(sw[0].getAttribute("style")).toMatch(/rgb\(20,\s*20,\s*20\)/);
+    expect(sw[1].classList.contains("hollow")).toBe(true);
+    expect(sw[1].getAttribute("style") || "").not.toContain("rgb(");
+  });
+
   test("a satin shape with no cut-out shows no note", async () => {
     const satin = { ...BIG(), stitchType: "satin" };
     const { getByText, queryByText } = renderPanel([satin]);

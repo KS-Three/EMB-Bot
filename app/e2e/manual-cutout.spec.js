@@ -314,12 +314,13 @@ test("(d) a cut-out's anchor dragged far outside its shape holds: the hint shows
   // a cut-out let outside would cut nothing and sew exactly `one`...
   expect(count(after.stats)).toBeLessThan(count(two.stats));
   expect(count(after.stats)).toBeLessThan(count(one.stats));
-  // ...and the parent's far (bottom-left) corner stayed put.
-  expect(Math.abs(after.bb.x0 - before.bb.x0)).toBeLessThanOrEqual(2);
-  expect(Math.abs(after.bb.y1 - before.bb.y1)).toBeLessThanOrEqual(2);
-  // The parent's whole box did not grow toward the drag either.
-  expect(after.bb.x1).toBeLessThanOrEqual(before.bb.x1 + 2);
-  expect(after.bb.y0).toBeGreaterThanOrEqual(before.bb.y0 - 2);
+  // ...and the hole is still where it was: its old middle is bare fabric. (This
+  // replaced four reads of the whole dark box, which an ESCAPED cut-out would
+  // not have changed either — it sews nothing. An escaped one would put thread
+  // back here; a held one keeps every corner but the dragged one, and the
+  // dragged one only moved outward, so the old middle stays inside the hole.)
+  const mHole = centreOf(before.bb);
+  expect(await darkNear(page, mHole.x, mHole.y)).toBe(false);
   // Still Shape 1's cut-out.
   const m1 = centreOf(after.bb);
   const dlg2 = await popoverAt(page, (await geom(page)).css(m1.x, m1.y));

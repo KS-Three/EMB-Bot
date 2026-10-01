@@ -906,8 +906,10 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
 .shapepop-action:hover,
 .shapepop-action:focus-visible { background: var(--tint); }
 .shapepop-action.danger { color: var(--danger, #b42318); }
+/* The same height as .shapepop-action: its vertical padding, less this one's
+   1px border on each side. */
 .shapepop-toggle {
-  padding: var(--space-1) var(--space-3);
+  padding: calc(var(--space-2) - 1px) var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius-s);
   background: var(--surface, #fff);
@@ -915,6 +917,11 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   color: var(--ink);
   cursor: pointer;
 }
+/* Hover and keyboard focus as .shapepop-action has them. Before the checked
+   rule on purpose: an On switch keeps its accent fill, and still shows the
+   browser's focus ring. */
+.shapepop-toggle:hover,
+.shapepop-toggle:focus-visible { background: var(--tint); }
 .shapepop-toggle[aria-checked="true"] {
   background: var(--accent);
   border-color: var(--accent);

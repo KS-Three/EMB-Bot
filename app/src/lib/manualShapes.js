@@ -610,6 +610,13 @@ function ringInside(inner, innerBox, outer, outerBox) {
 // would sew the overlap back in. Shapes without an id take no part.
 export function resolveCutOuts(shapes) {
   const list = (shapes || []).filter((s) => s && s.id != null);
+  // Null-prototype maps: a shape id is user data, and a plain {} would answer
+  // holesOf["constructor"] with a function.
+  const parentOf = Object.create(null), reasonOf = Object.create(null), holesOf = Object.create(null);
+  // The common case — no cut-out at all — flattens nothing. This runs on every
+  // drag frame and every shapesToRegions; callers read `flat` only for ids in
+  // holesOf, so an empty Map is all they can ask of it.
+  if (!list.some((s) => s.cutOut)) return { parentOf, reasonOf, holesOf, flat: new Map() };
   const flat = new Map(), box = new Map(), valid = new Map();
   for (const s of list) {
     const ring = flattenShape(s.points, s.curves, true);
@@ -619,7 +626,6 @@ export function resolveCutOuts(shapes) {
   }
   const solids = list.filter((s) => !s.cutOut && valid.get(s.id));
   const area = new Map(solids.map((s) => [s.id, polygonArea(flat.get(s.id))]));
-  const parentOf = {}, reasonOf = {}, holesOf = {};
   for (const c of list) {
     if (!c.cutOut) continue;
     parentOf[c.id] = null;
@@ -649,7 +655,8 @@ export function resolveCutOuts(shapes) {
 // `cutOut: false`, so an untouched record equals a pre-feature record.
 export function withCutOut(shape, on) {
   if (on) return { ...shape, cutOut: true };
-  const { cutOut, ...rest } = shape;
+  const rest = { ...shape };
+  delete rest.cutOut;
   return rest;
 }
 

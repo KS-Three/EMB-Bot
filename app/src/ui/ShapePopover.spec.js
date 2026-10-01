@@ -145,3 +145,19 @@ test("a note without warn has no warn class, on any row kind", () => {
   const { getByText } = renderPop(model);
   expect(getByText("Sews as fill.")).not.toHaveClass("warn");
 });
+
+test("a row's note describes that row's control (switch and select), and a row without one has none", () => {
+  const model = { name: "Shape 2 · Cut out", rows: [
+    { key: "cutOut", kind: "toggle", label: "Cut out", value: true, note: "Cuts Shape 1." },
+    { key: "stitchType", kind: "choice", label: "Stitch type", value: "fill", options: [{ value: "fill", label: "Fill" }], note: "Sews as fill." },
+    { key: "angle", kind: "number", label: "Angle", value: null },
+  ] };
+  const { getByRole, getByText, getByLabelText } = renderPop(model);
+  const sw = getByRole("switch", { name: "Cut out" });
+  expect(sw).toHaveAttribute("aria-describedby", "shapepop-note-cutOut");
+  expect(getByText("Cuts Shape 1.").id).toBe("shapepop-note-cutOut");
+  expect(sw).toHaveAccessibleDescription("Cuts Shape 1.");
+  const sel = getByRole("combobox", { name: "Stitch type" });
+  expect(sel).toHaveAccessibleDescription("Sews as fill.");
+  expect(getByLabelText("Angle")).not.toHaveAttribute("aria-describedby");
+});

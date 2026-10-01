@@ -933,6 +933,22 @@ describe("resolveCutOuts", () => {
     const r = resolveCutOuts([rect("s1", 0, 0, 10, 10)]);
     expect(r.parentOf).toEqual({}); expect(r.holesOf).toEqual({}); expect(r.reasonOf).toEqual({});
   });
+  it("no cut-outs: nothing is flattened either (the early-out every drag frame takes)", () => {
+    const r = resolveCutOuts([rect("s1", 0, 0, 10, 10), rect("s2", 20, 20, 30, 30)]);
+    expect(r.flat.size).toBe(0);
+  });
+  it("an equal-area tie goes to the LATER shape (drawn on top)", () => {
+    const r = resolveCutOuts([
+      rect("s1", 0, 0, 300, 300), rect("s2", 0, 0, 300, 300), rect("s3", 100, 100, 200, 200, { cutOut: true }),
+    ]);
+    expect(r.parentOf.s3).toBe("s2");
+    expect(r.holesOf).toEqual({ s2: ["s3"] });
+  });
+  it("the maps carry no inherited keys (a shape id like 'constructor' is not pre-set)", () => {
+    const r = resolveCutOuts([rect("s1", 0, 0, 300, 300), rect("s2", 100, 100, 200, 200, { cutOut: true })]);
+    expect(r.holesOf.constructor).toBeUndefined();
+    expect(r.parentOf.toString).toBeUndefined();
+  });
 });
 
 describe("shapesToRegions with cut-outs", () => {

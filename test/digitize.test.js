@@ -1525,3 +1525,26 @@ test("buildQualityDesign: a 3-point hole cuts, like a 4-point one (manual A's co
   // the underlay reader has the same floor: with underlay on, the hole still cuts
   assert.ok(run([tri], true).stitches.length < run([], true).stitches.length);
 });
+
+test("underlayRuns: a 3-point hole gets its own edge run and joins the lattice's rings (the underlay floor alone)", () => {
+  // The design-level assert above also passes when ONLY the region loop's floor
+  // is fixed (the fill cuts the hole either way), so it cannot tell whether
+  // underlayRuns' own floor moved. This reads underlayRuns directly with an
+  // identity ctx: each ring it keeps comes back as one run / one ring.
+  const sq = [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 300 }, { x: 0, y: 300 }];
+  const tri = [{ x: 100, y: 200 }, { x: 200, y: 200 }, { x: 150, y: 100 }];
+  const ctx = {
+    pxPerFinalMm: 6, fillAngle: 0, underlayStitchPx: 12, underlayRowPx: 15, maxStitch: 40,
+    insetRing: (ring) => ring,
+    runningOutline: (ring) => ring,
+    tatamiFill: (rings) => rings,
+    pcaAngleDeg: () => 0,
+  };
+  const edge = DG.underlayRuns({ outer: sq, holes: [tri] }, "edge_run", ctx);
+  assert.strictEqual(edge.length, 2, "outer + the triangle's own edge run");
+  assert.deepStrictEqual(edge[1], tri);
+  const zig = DG.underlayRuns({ outer: sq, holes: [tri] }, "zigzag", ctx);
+  assert.strictEqual(zig[0].length, 2, "the zigzag fill sees the triangle as a ring to stay out of");
+  // and the floor still drops a degenerate 2-point "hole"
+  assert.strictEqual(DG.underlayRuns({ outer: sq, holes: [tri.slice(0, 2)] }, "edge_run", ctx).length, 1);
+});

@@ -22,6 +22,7 @@
     shapeBorderState } from "../lib/borderMenu.js";
   import { boundaryIssues, canonicalShapeEdits, editsKey } from "../lib/digitizer.js";
   import { popoverModel, popoverPatch, recolorPatch } from "../lib/shapePopover.js";
+  import { resolveCutOuts } from "../lib/manualShapes.js";
   import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, refitShapesPatch, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT } from "../lib/fieldNodeEdit.js";
   import Hint from "./Hint.svelte";
   import Icon from "./Icon.svelte";
@@ -1284,6 +1285,13 @@
       // makes it restorable from the Layers list), so it has to be filtered
       // here or the canvas would keep outlining artwork that no longer sews.
       const hidden = hiddenShapeIds(el, rows);
+      // A cut-out that cuts NOTHING sews nothing and, idle, had no outline:
+      // it was invisible on the hoop until hovered. While its element is the
+      // selected one its dashed outline is drawn whatever the toggle says.
+      // Resolved once per element per draw, and only when there is one to find.
+      const orphanCut = el.type === "manual" && project.selectedId === el.id && outlines.some((o) => o.cutOut)
+        ? resolveCutOuts(el.shapes).parentOf
+        : null;
 
       ctx.save();
       ctx.lineJoin = "round";
@@ -1315,11 +1323,14 @@
         // the other two diagnostic overlays. (Since 2026-09-30 the Layers
         // list drives this too, through App: a row's hover and click land
         // in `hoverShape` / `focusShape` above.)
-        if (!showOutlines && !editing && !hovered) continue;
+        const orphan = !!(orphanCut && o.cutOut && orphanCut[o.id] == null);
+        if (!showOutlines && !editing && !hovered && !orphan) continue;
         // Mid node-drag the flattened ring is the STALE geometry: drawing it
         // beside the live authored outline showed two amber outlines. Idle,
-        // the flattened ring stays underneath the authored one (spec §5).
-        if (el.type === "manual" && editing && nodeEdit && nodeEdit.elId === el.id && nodeEdit.shapeId === o.id) {
+        // the flattened ring stays underneath the authored one (spec §5) —
+        // except under a selected CUT-OUT, whose dashes the second stroke
+        // would fill in: drawAuthoredNodes strokes that one alone.
+        if (el.type === "manual" && editing && (o.cutOut || (nodeEdit && nodeEdit.elId === el.id && nodeEdit.shapeId === o.id))) {
           drawAuthoredNodes(ctx, el, o.id);
           continue;
         }
@@ -2630,7 +2641,7 @@
           // it stood at press, and only holds a shape at the placement box if
           // it started inside it (one already past keeps the old behaviour).
           nodeEdit = { elId: edit.el.id, shapeId: selectedShapeId, kind: ah.kind, index: ah.index,
-                       basis: { fit: ap.fit, shape: ap.shape, shapes: edit.el.shapes || [],
+                       basis: { fit: ap.fit, shape: ap.shape, shapes: (edit.el.shapes || []).slice(),
                                 boxOk: ringInsideBox(ap.shape, ap.fit, hoopSizeMm(project)) },
                        live: ap.shape,
                        grab: { dx: nodeAt.x - pressAt.x, dy: nodeAt.y - pressAt.y }, moving: false };
@@ -2810,6 +2821,9 @@
       const cutHeld = !boxHeld && breaksContainment(b.shapes,
         b.shapes.map((s) => (s && s.id === candidate.id ? candidate : s)));
       if (cutHeld) shapeEditError = CUTOUT_HOLD_HINT;
+      // A frame held by the BOX is not the cut-out's doing: a hint left from an
+      // earlier frame would name the wrong cause.
+      if (boxHeld && shapeEditError === CUTOUT_HOLD_HINT) shapeEditError = "";
       if (!boxHeld && !cutHeld) {
         nodeEdit.live = candidate;
         // Clear only our own hint, never a different message showing.

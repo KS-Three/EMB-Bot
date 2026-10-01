@@ -1097,7 +1097,13 @@
             on:click={() => selectShape(s.id)}
             on:keydown={onCanvasKeydown}
           >
-            <span class="mp-swatch" style="background: rgb({s.colorRgb[0]},{s.colorRgb[1]},{s.colorRgb[2]})"></span>
+            {#if s.cutOut}
+              <!-- A cut-out sews nothing, so it has no colour to show: a hollow,
+                   dashed swatch, the list's version of its dashed outline. -->
+              <span class="mp-swatch hollow" aria-hidden="true"></span>
+            {:else}
+              <span class="mp-swatch" style="background: rgb({s.colorRgb[0]},{s.colorRgb[1]},{s.colorRgb[2]})"></span>
+            {/if}
             <span class="mp-shapetext">
               <span class="mp-shapename">{summary(s, cut)}</span>
               {#if cut.reasonOf[s.id]}
@@ -1145,10 +1151,13 @@
       </div>
       <div class="mp-row">
         <span class="mp-label">Cut out</span>
+        <!-- `mp-switch`, deliberately NOT `mp-btn`: `.mp-assign .mp-btn.active`
+             is how the stitch type's lit button is found (e2e
+             field-shape-popover), and a switch must never be able to match it. -->
         <button
           type="button"
-          class="mp-btn"
-          class:active={!!selectedShape.cutOut}
+          class="mp-switch"
+          class:on={!!selectedShape.cutOut}
           role="switch"
           aria-checked={selectedShape.cutOut ? "true" : "false"}
           aria-label="Cut out"
@@ -1350,6 +1359,8 @@
   .mp-cutnote { font-size: var(--fs-xs, 12px); color: var(--muted, #6b7280); margin: 6px 0 0; }
   .mp-cutnote.warn { color: var(--warn-text); }
   .mp-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--tint-border, #ccd6fb); display: inline-block; flex: none; }
+  /* Same box as a colour swatch; a dashed border and no fill — a hole. */
+  .mp-swatch.hollow { background: transparent; border: 1px dashed var(--muted, #6b7280); }
   .mp-remove { border: none; background: none; cursor: pointer; font-size: var(--fs-sm, 0.875rem); color: var(--danger, #c0392b); padding: 4px; }
   .mp-empty { font-size: var(--fs-xs, 12px); color: var(--muted, #6b7280); margin: 0; }
   .mp-assign { border-top: 1px solid var(--tint-border, #ccd6fb); padding-top: 10px; margin-top: 4px; }
@@ -1357,7 +1368,8 @@
   .mp-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
   .mp-label { display: block; font-size: var(--fs-xs, 12px); min-width: 70px; }
   .mp-btns { display: flex; gap: 6px; }
-  .mp-btn {
+  .mp-btn,
+  .mp-switch {
     padding: 5px 10px;
     border: 1px solid var(--tint-border, #ccd6fb);
     border-radius: var(--radius-s, 8px);
@@ -1365,7 +1377,8 @@
     cursor: pointer;
     font-size: var(--fs-xs, 12px);
   }
-  .mp-btn.active { background: var(--accent, #4f46e5); color: var(--accent-ink, #fff); border-color: var(--accent, #4f46e5); }
+  .mp-btn.active,
+  .mp-switch.on { background: var(--accent, #4f46e5); color: var(--accent-ink, #fff); border-color: var(--accent, #4f46e5); }
   .mp-angle input {
     width: 64px;
     padding: 5px 8px;
