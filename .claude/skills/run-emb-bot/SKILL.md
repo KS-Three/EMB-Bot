@@ -49,15 +49,18 @@ service is answering on 8721, the artwork auto-digitize lane. Starts its own
 Vite on 5199 and tears it down. Verified output:
 
 ```
-  text lane: 2465 stitches · 127×16 mm · 5×7 in hoop
-  artwork lane: 2,156 stitches · 80×17 mm · 2 colors
+  text lane: 2,539 stitches · 127×17 mm · 5×7 in hoop
+  artwork lane: 2,244 stitches · 80×16 mm · 4×4 in hoop
 ```
 
 **Treat both counts as a shape, not a pin** — they move when engine work
-lands, and neither is asserted anywhere. This block read 2452 / 2,166 when it
-was written; on 2026-09-01, at `ace3c4d`, the same command gives the numbers
-above (the artwork count moved with PRs #291/#293's colour-block folding).
-What matters is that each lane produces a real caption and the run exits 0.
+lands, and neither is asserted anywhere. Measured 2026-09-30 at `4b75546`.
+**Both lines must end `… in hoop`** — that is the canvas caption. Until
+2026-09-30 this block showed an artwork line ending `· 2 colors`, which is the
+left panel's `.dgp-stats`, not the canvas: the smoke's loose regex was
+matching whatever came first on the page, and by 2026-09-30 that was a border
+delta note (`114 stitches (+5.3% of the design) …`). What matters is that
+each lane produces a real caption and the run exits 0.
 
 Exit 0 = both lanes produced real stitches and nothing unexpected hit the
 console. Drop `--serve` to reuse a dev server you already have on 5173.
@@ -69,7 +72,7 @@ Screenshots → `/tmp/emb-shots/` (`--shots <dir>` to move them).
 node .claude/skills/run-emb-bot/driver.mjs repl <<'EOF'
 btn Logo patch
 upload input[type=file] app/e2e/fixtures/enthusiast_logo.png
-eval new Promise(r=>{const t=setInterval(()=>{const m=document.body.innerText.match(/[\d,]+ stitches[^\n]*/);if(m){clearInterval(t);r(m[0])}},1000);setTimeout(()=>{clearInterval(t);r('TIMEOUT')},120000)})
+eval new Promise(r=>{const t=setInterval(()=>{const m=document.querySelector('span.stats')?.innerText.match(/[\d,]+ stitches · [\d.]+×[\d.]+ mm · [^·\n]+ hoop/);if(m){clearInterval(t);r(m[0])}},1000);setTimeout(()=>{clearInterval(t);r('TIMEOUT')},120000)})
 ss my-shot
 net 8721
 console errors
@@ -90,15 +93,26 @@ which never kills the REPL), so a tmux-driven caller can poll
 | `click <sel>` / `fill <sel> <v>` / `type <sel> <v>` / `press <key>` | raw Playwright |
 | `upload <sel> <path>` | real file upload, path relative to repo root |
 | `wait <sel>` / `waittext <text>` | wait for a selector / text |
+| `stats` | the canvas caption (`span.stats`) — stitches · size · hoop |
 | `text <sel>` / `html [sel]` / `eval <js>` | read the page |
 | `net [filter]` | requests the page made — `net 8721` shows whether a click reached the digitizer |
 | `console [errors]` | console messages, each with the URL that produced it |
 | `reload` / `quit` | |
 
+**Read the canvas caption by name — `span.stats` — never the first
+`N stitches` on the page.** A loose `/[\d,]+ stitches[^\n]*/` over
+`document.body.innerText` matches in DOM order, and the left panel comes
+first: on 2026-09-30 the smoke reported `114 stitches (+5.3% of the design),
+around 27 separate edges` — a border delta note — while the canvas read
+`2,244 stitches · 80×16 mm · 4×4 in hoop`. The DigitizePanel's `.dgp-stats`
+(`… mm · 2 colors`) is the next false match; that is what the "Verified
+output" block above used to show. `stats` in the REPL reads the right
+element.
+
 `eval` takes an expression and awaits a promise, so you can poll:
 
 ```bash
-eval new Promise(r=>setTimeout(()=>r(document.body.innerText.match(/[\d,]+ stitches[^\n]*/)?.[0]||'none'),30000))
+eval new Promise(r=>setTimeout(()=>r(document.querySelector('span.stats')?.innerText.match(/[\d,]+ stitches · [\d.]+×[\d.]+ mm · [^·\n]+ hoop/)?.[0]||'none'),30000))
 ```
 
 ---
@@ -256,7 +270,7 @@ These are the ones that cost real time here.
 
   ```
   upload input[type=file] app/e2e/fixtures/enthusiast_logo.png
-  eval new Promise(r=>{const t=setInterval(()=>{const m=document.body.innerText.match(/[\d,]+ stitches[^\n]*/);if(m){clearInterval(t);r(m[0])}},1000);setTimeout(()=>{clearInterval(t);r('TIMEOUT')},120000)})
+  eval new Promise(r=>{const t=setInterval(()=>{const m=document.querySelector('span.stats')?.innerText.match(/[\d,]+ stitches · [\d.]+×[\d.]+ mm · [^·\n]+ hoop/);if(m){clearInterval(t);r(m[0])}},1000);setTimeout(()=>{clearInterval(t);r('TIMEOUT')},120000)})
   ```
 
   `app/e2e/digitize-auto-start.spec.js` is the authority: it proves stitches
@@ -453,6 +467,14 @@ out of the saved project instead.
 
 - **`nothing serving http://localhost:PORT — start it, or pass --serve`** —
   the driver won't guess. Add `--serve`, or start `npm run dev` yourself.
+
+- **`Error: spawn npm ENOENT` on Windows with `--serve`** — a driver from
+  before 2026-09-30. npm is `npm.cmd` there, and Node (CVE-2024-27980 fix)
+  won't spawn a `.cmd` without a shell. The driver now spawns through a shell
+  on win32 and stops Vite with `taskkill /T /F` (process groups are POSIX-only;
+  killing the wrapper alone left Vite holding the port → `EADDRINUSE` next
+  run). If a port is still bound after a crash, `netstat -ano | findstr :PORT`
+  gives the PID — check it's yours before `taskkill /pid <PID> /T /F`.
 
 - **Driver appears to hang with no output** — `repl` mode blocks on stdin by
   design. Pipe it a heredoc, or use `smoke`.

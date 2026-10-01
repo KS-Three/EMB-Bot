@@ -120,7 +120,10 @@ _WIDTH_SMOOTH_PASSES = 4
 # the symmetric width only to the conservative ENVELOPE of its own edge --
 # the running minimum of its median-filtered ray profile over +-this many
 # stations -- and only where that envelope clears the symmetric width by
-# the gap floor. See `_rail_points`.
+# the gap floor. See `_rail_points`. A reach whose end lands inside another
+# stroke's own corridor is refused there (`_in_sibling_ribbon`, 2026-09-30):
+# at a junction the far ray escapes along the meeting arm, and neither the
+# median window nor this one is longer than an arm is thick.
 _ENVELOPE_WINDOW = 3
 _ENVELOPE_GAP_MM = 0.3
 
@@ -2452,6 +2455,94 @@ def _fold_caps(spine: list[tuple[float, float]], angles: list[float],
     return caps
 
 
+def _drop_short_reaches(off: list[float], width: list[float],
+                        min_stations: int = _ENVELOPE_WINDOW) -> int:
+    """Revert every stretch of fewer than `min_stations` consecutive stations
+    at which `off` exceeds `width` back to `width`, in place; -> how many
+    stretches were dropped. The envelope's "a reach shorter than the window
+    is not a reach" (see the envelope branch of `_rail_points`)."""
+    n = len(off)
+    dropped = 0
+    i = 0
+    while i < n:
+        if off[i] > width[i]:
+            j = i
+            while j + 1 < n and off[j + 1] > width[j + 1]:
+                j += 1
+            if j - i + 1 < min_stations:
+                for k in range(i, j + 1):
+                    off[k] = width[k]
+                dropped += 1
+            i = j + 1
+        else:
+            i += 1
+    return dropped
+
+
+def _sibling_spines(siblings: list | None, field: _WidthField | None,
+                    fallback_half_mm: float, rail_comp_mm: float = 0.0) -> list[tuple[np.ndarray, float]]:
+    """The sibling spines `_in_sibling_ribbon` reads: (spine as an (n, 2)
+    array, that stroke's sewn half-width). The half-width is the MEDIAN of
+    the field's reading along the spine's INTERIOR -- the stroke's own
+    body -- not the reading at the nearest point: a sibling's spine starts
+    at the junction node, where the field reads the merged footprint, and
+    that radius round the node would refuse a genuine reach on the far side
+    of the very stem the sibling meets (measured on a 5 mm stem with a 5 mm
+    arm: 3.2 mm at the node against 2.7 in the body). The samples sit at
+    tenths of the arc length from 0.1 to 0.9, never at the ends, so a
+    two-vertex spine reads its middle and not its two nodes. The pull
+    (`rail_comp_mm`) is added because the ribbon another column SEWS is its
+    artwork half-width pushed out by it. A spine of fewer than two points
+    has no segment and is dropped; no field, or none of it on the raster,
+    reads the nominal half-width.
+    """
+    out: list[tuple[np.ndarray, float]] = []
+    for s in siblings or ():
+        a = np.asarray(s, dtype=float)
+        if a.ndim != 2 or a.shape[0] < 2 or a.shape[1] != 2:
+            continue
+        half = fallback_half_mm
+        if field is not None:
+            seg = np.hypot(*(a[1:] - a[:-1]).T)
+            cum = np.concatenate([[0.0], np.cumsum(seg)])
+            total = float(cum[-1])
+            vals = []
+            if total > 0.0:
+                for f in np.linspace(0.1, 0.9, 9):
+                    d = f * total
+                    k = int(np.searchsorted(cum, d, side="right") - 1)
+                    k = min(max(k, 0), len(seg) - 1)
+                    t = 0.0 if seg[k] <= 0.0 else (d - cum[k]) / seg[k]
+                    v = field.half_at((float(a[k, 0] + (a[k + 1, 0] - a[k, 0]) * t),
+                                       float(a[k, 1] + (a[k + 1, 1] - a[k, 1]) * t)))
+                    if v > 0.0:
+                        vals.append(v)
+            if vals:
+                half = float(np.median(vals))
+        out.append((a, half + rail_comp_mm))
+    return out
+
+
+def _in_sibling_ribbon(q: tuple[float, float], sibs: list[tuple[np.ndarray, float]]) -> bool:
+    """Does `q` lie inside another stroke's own corridor: nearer to some
+    sibling spine than that stroke's half-width (`_sibling_spines`)?
+
+    Exact point-to-segment distance over every segment of every sibling;
+    it runs only at stations the envelope would extend, a tenth of them on
+    a lettering shape.
+    """
+    qx, qy = q
+    for a, half in sibs:
+        p, d = a[:-1], a[1:] - a[:-1]
+        len2 = d[:, 0] * d[:, 0] + d[:, 1] * d[:, 1]
+        len2 = np.where(len2 > 0.0, len2, 1e-12)
+        t = np.clip(((qx - p[:, 0]) * d[:, 0] + (qy - p[:, 1]) * d[:, 1]) / len2, 0.0, 1.0)
+        fx, fy = p[:, 0] + t * d[:, 0], p[:, 1] + t * d[:, 1]
+        if float(np.min((fx - qx) ** 2 + (fy - qy) ** 2)) < half * half:
+            return True
+    return False
+
+
 def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                  fallback_half_mm: float,
                  field: _WidthField | None = None,
@@ -2461,8 +2552,16 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                  max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
                  fold_guard: bool = False,
                  rail_comp_mm: float = 0.0,
-                 rail_comp_floor_mm: float = 0.0) -> tuple[list, list]:
+                 rail_comp_floor_mm: float = 0.0,
+                 siblings: list | None = None) -> tuple[list, list]:
     """Cast the smoothed, unwrapped normals both ways to find the two rails.
+
+    `siblings` (2026-09-30, the envelope only): the OTHER strokes' spines of
+    this shape, in mm. An envelope reach whose end lies inside one of their
+    corridors -- within that stroke's own half-width of its spine
+    (`_sibling_spines`) -- is a junction escape, not a far edge, and keeps
+    the symmetric width; see the envelope branch. None, the default, tests
+    nothing and is byte-identical.
 
     `rail_comp_mm` (`cfg.satin_rail_comp`, 2026-09-09) is pull compensation
     applied HERE instead of by stage 5's polygon buffer: `poly` is the
@@ -2679,8 +2778,28 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         # keeps the symmetric width -- the thread's own width covers it.
         # The cross angle is untouched, the corridor and fold caps apply,
         # and False / True are byte-identical to before this mode existed.
+        #
+        # A far edge has to be the stroke's OWN edge (2026-09-30, Kent's note
+        # on the envelope's sitting: Becker's lettering "looks like it is
+        # just trying to fill a void"). At a junction the far ray escapes
+        # along the meeting arm -- an E's stem reads its right side at
+        # 7.4-9.6 mm where its own half-width is 3.0-3.3 -- and the escape
+        # lasts as long as the arm is thick, about 13 stations at 100 mm,
+        # longer than the median window and this one together; the corridor
+        # cap reads the merged footprint there and lets 2-3 mm of it
+        # through. Measured over nine logos
+        # (`docs/renders/envelope-escapes-2026-09-30/`): 313 of 459 reached
+        # stations landed on ground another stroke of the same shape already
+        # sews, 78% of the envelope's new thread on Becker's letters was
+        # overlay, and no cap on the reach -- absolute, a ratio to the
+        # width, the boundary distance at the end -- separated the two. What
+        # does is where the reach ENDS: inside a sibling stroke's corridor
+        # it is an escape (the instrument's screen kept 89% of genuine
+        # reaches and let 5% of escapes through), so such a station keeps
+        # its symmetric width.
         off_a, off_b = list(width), list(width)
-        for side, off in ((side_a, off_a), (side_b, off_b)):
+        sibs = _sibling_spines(siblings, field, fallback_half_mm, rail_comp_mm)
+        for side, off, sgn in ((side_a, off_a, 1.0), (side_b, off_b, -1.0)):
             prof = _median_filter(side, _WIDTH_MEDIAN_WINDOW)
             for i in range(n):
                 lo, hi = max(0, i - _ENVELOPE_WINDOW), min(n, i + _ENVELOPE_WINDOW + 1)
@@ -2691,7 +2810,27 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                     cap = min(cap, fold[i])
                 env = min(env, cap)
                 if env - width[i] >= _ENVELOPE_GAP_MM:
+                    if sibs:
+                        px_, py_ = spine[i]
+                        nx_, ny_ = norms[i]
+                        end = (px_ + sgn * nx_ * env, py_ + sgn * ny_ * env)
+                        if _in_sibling_ribbon(end, sibs):
+                            continue
                     off[i] = env
+        # A reach shorter than the window is not a reach (2026-09-30, Kent's
+        # pick after #578). The running minimum cannot follow a feature
+        # shorter than its window, so a stretch of fewer than
+        # `_ENVELOPE_WINDOW` stations that clears the gap is a bump in the
+        # profile, not an edge -- and on the cloth a tooth: 8 of Becker's 23
+        # stretches at 100 mm were one or two stations, stepping the rail out
+        # 0.37 mm (p50) and back within a millimetre, and tires, bridge and
+        # screenshot had nothing else. Dropped, at 7% of Becker's extension
+        # area. The step a LONGER stretch opens with is the artwork's own
+        # feature (a serif's edge is a step) and stays; a slope limit or a
+        # ramp into the reach was measured to cost a third to a half of the
+        # extension area for that (`docs/renders/envelope-teeth-2026-09-30/`).
+        _drop_short_reaches(off_a, width)
+        _drop_short_reaches(off_b, width)
     elif follow_edge:
         off_a = _median_filter(side_a, _WIDTH_MEDIAN_WINDOW)
         off_b = _median_filter(side_b, _WIDTH_MEDIAN_WINDOW)
@@ -3507,6 +3646,51 @@ def _round_corners(spine: list[tuple[float, float]], half_mm: float,
     return out
 
 
+def _comb_thresholds(legs: list[float], above_mm: float) -> list[float]:
+    """The split threshold each leg of a column is cut at: `above_mm` on its
+    own, `SPLIT_SEGMENT_MM` wherever the column's comb is ON.
+
+    A column whose legs straddle `SPLIT_SATIN_ABOVE_MM` used to split leg by
+    leg -- one leg at 5.1 mm split, the next at 4.9 raw -- and the comb
+    flickered down the column: Becker's MARINE at 100 mm, 1,412 letter legs,
+    443 of them within half a millimetre of the threshold, 59 on/off changes
+    (122 over the design; tires 21, bridge 20). Kent's note on that sitting:
+    the lettering "needs to be smooth and have flow to it" (2026-09-30).
+    The comb is a property of the COLUMN: once a leg over the threshold
+    turns it on, it stays on for every following leg at least one segment
+    long, and it starts at the first leg at least one segment long before
+    that; a leg under one segment is where the column has narrowed to a
+    single stitch and the comb ends. A leg over the threshold splits as it
+    always did (k = ceil(len / segment), the same k either way), so no leg
+    ever sews longer than the threshold; a leg between one segment and the
+    threshold inside the comb gains ONE penetration (k = 2, staggered like
+    its neighbours); a leg under one segment never splits. Measured on
+    Becker: 122 -> 35 changes for 402 added penetrations (+4.5% stitches),
+    the letters 59 -> 24; tires 21 -> 5, bridge 20 -> 5, screenshot 8 -> 3;
+    a design with no leg over the threshold is byte-identical, and so is
+    `split_satin=False` (above_mm = inf never turns the comb on).
+    `docs/renders/split-comb-2026-09-30/`.
+    """
+    seg = machine.SPLIT_SEGMENT_MM
+    n = len(legs)
+    on = [False] * n
+    carry = False
+    for i in range(n):
+        if legs[i] > above_mm:
+            carry = True
+        elif legs[i] < seg:
+            carry = False
+        on[i] = carry
+    carry = False
+    for i in range(n - 1, -1, -1):
+        if legs[i] > above_mm:
+            carry = True
+        elif legs[i] < seg:
+            carry = False
+        on[i] = on[i] or carry
+    return [seg if on[i] else above_mm for i in range(n)]
+
+
 def _split_points(pa: tuple[float, float], pb: tuple[float, float],
                   station: int, above_mm: float) -> list[tuple[float, float]]:
     """Intermediate penetrations for one cross, or [] when it needs none.
@@ -3605,7 +3789,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   rail_comp_floor_mm: float = 0.0,
                   junction_stack: bool = False,
                   cap_recentre: bool = False,
-                  tip_caps: bool = False) -> list[tuple[float, float]]:
+                  tip_caps: bool = False,
+                  siblings: list | None = None) -> list[tuple[float, float]]:
     """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
     separate columns and laid end to end in chain order.
 
@@ -3645,6 +3830,12 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                         capped_start=capped_s, capped_end=capped_e,
                         tuck_under_start=tuck_s, tuck_under_end=tuck_e)
         n_before = len(parts) if parts is not None else 0
+        # The other members are this member's siblings too: at the corner
+        # the stem's far ray escapes along the foot exactly as at a T.
+        member_sibs = None
+        if siblings is not None:
+            member_sibs = [*siblings, *(pts[a:b + 1] for k, (a, b) in enumerate(zip(edges_, edges_[1:]))
+                                        if k != m and b - a >= 1)]
         pts_m = satin_stroke(poly, member, half_mm, field, split_above_mm,
                              end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                              art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
@@ -3652,7 +3843,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
-                             tip_caps=tip_caps)
+                             tip_caps=tip_caps, siblings=member_sibs)
         above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
         if parts is not None and len(parts) > n_before and n_before > n_start_joined:
             # The join stays ONE stroke in `parts` as well: this member's
@@ -3698,7 +3889,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  rail_comp_floor_mm: float = 0.0,
                  junction_stack: bool = False,
                  cap_recentre: bool = False,
-                 tip_caps: bool = False) -> list[tuple[float, float]]:
+                 tip_caps: bool = False,
+                 siblings: list | None = None) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
 
     `parts` (2026-09-03), when a list is passed, additionally receives the
@@ -3758,7 +3950,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
-                             tip_caps=tip_caps)
+                             tip_caps=tip_caps, siblings=siblings)
 
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
@@ -3912,7 +4104,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                                   spacing_mm, angle_deg, follow_edge=rails_follow_edge,
                                   max_width_mm=max_width_mm, fold_guard=fold_guard,
                                   rail_comp_mm=rail_comp_mm,
-                                  rail_comp_floor_mm=rail_comp_floor_mm)
+                                  rail_comp_floor_mm=rail_comp_floor_mm,
+                                  siblings=siblings)
     crosses = _short_stitch_guard(rail_a, rail_b)
     above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
 
@@ -3939,6 +4132,26 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     in_bean = {i for i0, i1 in stretches for i in range(i0, i1 + 1)}
     last_station = len(crosses) - 1
     n_start = len(parts) if parts is not None else 0
+
+    # The column's comb (`_comb_thresholds`): the legs this loop will emit,
+    # in order, read off the SAME kept sequence the loop keeps -- a cross,
+    # then the return leg to the next kept cross -- so each leg's threshold
+    # is known before the first point is written.
+    kept_xy: list[tuple] = []
+    _prev: tuple | None = None
+    for _i, (_pa, _pb) in enumerate(crosses):
+        if _i in in_bean or thin[_i]:
+            continue
+        if _prev is not None and math.dist(_pa, _prev[0]) < 0.05 and math.dist(_pb, _prev[1]) < 0.05:
+            continue
+        _prev = (_pa, _pb)
+        kept_xy.append(_prev)
+    leg_lens: list[float] = []
+    for _k, (_pa, _pb) in enumerate(kept_xy):
+        if _k:
+            leg_lens.append(math.dist(kept_xy[_k - 1][1], _pa))
+        leg_lens.append(math.dist(_pa, _pb))
+    leg_above = _comb_thresholds(leg_lens, above)
 
     out: list[tuple[float, float]] = []
     prev_kept: tuple | None = None
@@ -3999,19 +4212,23 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
         # traverse in both directions — splitting only the outbound leg would
         # leave every other stitch over-length. Stagger phase runs on the
         # KEPT-station count: dropped stations must not advance the wave.
+        # This kept cross is leg 2*kept of the column; the return leg into
+        # it is leg 2*kept - 1. The comb's threshold for each (`leg_above`).
+        ret_above = leg_above[2 * kept - 1] if kept else above
+        cross_above = leg_above[2 * kept]
         if out:
-            out.extend(_split_points(out[-1], pa, kept, above))
+            out.extend(_split_points(out[-1], pa, kept, ret_above))
         out.append(pa)
-        out.extend(_split_points(pa, pb, kept, above))
+        out.extend(_split_points(pa, pb, kept, cross_above))
         out.append(pb)
         kept += 1
         if parts is not None:
             if cur:
-                cur.extend(_split_points(cur[-1], pa, cur_kept, above))
+                cur.extend(_split_points(cur[-1], pa, cur_kept, ret_above))
             else:
                 cur_i0 = i
             cur.append(pa)
-            cur.extend(_split_points(pa, pb, cur_kept, above))
+            cur.extend(_split_points(pa, pb, cur_kept, cross_above))
             cur.append(pb)
             cur_kept += 1
     flush(last_station)
@@ -4691,6 +4908,26 @@ _JUNCTION_PATCH_MIN_MM2 = 5.0
 # what decides whether a hole counts, so patching to a different floor would
 # either leave findings standing or spend thread on holes nobody grades.
 _JUNCTION_PATCH_CELL_MM = 0.25
+
+# `cfg.satin_crown_cover` (2026-09-30, MASTER_SCOPE defect 50): the same
+# cover, with the junction gate removed and a floor low enough to reach a
+# crown. `satin_lettering_split` leaves 11 holes / 22.9 mm2 at the crowns of
+# curved letters on MARINE 127.4 where the fill lane leaves none, and five
+# rail and pitch arms are refuted -- the envelope is inert, `follow_edge=True`
+# moves 2 of 11, deleting the width smoother moves none, halving the pitch
+# buys one for 1,567 stitches, and EVERY arm that moves a crown makes
+# `lost_frac` worse (DOCTRINE 2026-09-30). They are not in any column: the
+# strokes' union leaves wedges no stroke claims.
+#
+# The three thresholds are `ARTWORK_UNCOVERED`'s own, adjudicated the same day
+# over 438 patches on nine logos with a render behind every firing one
+# (`preflight._UNCOVERED_MIN_PATCH_MM2` / `_MIN_HALF_MM` / `_MIN_FILL`).
+# Reusing them is the point: a wedge too small, too thin or too stringy to
+# warn about is too small to spend thread on, and a cover keyed to the
+# warning cannot leave a warning standing that it declined to cover.
+_CROWN_MIN_MM2 = 1.0
+_CROWN_MIN_HALF_MM = 0.30
+_CROWN_MIN_FILL = 0.15
 # Half preflight's coverage cell: a patch outline at 0.5 mm is a staircase of
 # half-millimetre steps, and the fill inside it inherits every step.
 _JUNCTION_PATCH_GROW_MM = 0.30
@@ -4701,9 +4938,22 @@ _JUNCTION_PATCH_GROW_MM = 0.30
 
 
 def _uncovered_patches(poly: Polygon, runs: list[StitchRun],
-                       min_mm2: float = _JUNCTION_PATCH_MIN_MM2
+                       min_mm2: float = _JUNCTION_PATCH_MIN_MM2,
+                       min_half_mm: float | None = None,
+                       min_fill: float | None = None,
                        ) -> list[Polygon]:
     """Parts of `poly` the emitted thread does not reach, largest first.
+
+    `min_half_mm` and `min_fill` are the crown cover's two extra filters and
+    are None for every other caller, which keeps those byte-identical. They
+    are `ARTWORK_UNCOVERED`'s, and they exist because area alone cannot tell
+    a hole from an outline: at a 1.0 mm2 floor the largest patches on
+    golden_tee are one-cell seams between colour bands, and a full-bleed
+    design's rim comes back as ONE 73.9 mm2 component whose max inscribed
+    half is 0.90 mm -- thicker than most real holes -- at a fill of 0.007
+    (`preflight._UNCOVERED_MIN_FILL`, where MEAN thickness is refuted as the
+    alternative). Measured on the raster, so they cost one distance
+    transform and a bounding box.
 
     The thread model is `machine.COVERAGE_THREAD_W_MM` centred on every
     needle-down segment — the same ribbon `preflight._coverage_map` lays down,
@@ -4749,10 +4999,21 @@ def _uncovered_patches(poly: Polygon, runs: list[StitchRun],
     n, labels, stats, _cents = cv2.connectedComponentsWithStats(missing,
                                                                 connectivity=8)
     found: list[tuple[float, Polygon]] = []
+    dist = (cv2.distanceTransform(missing, cv2.DIST_L2, 5) * C
+            if min_half_mm is not None else None)
     for i in range(1, n):
         area_mm2 = float(stats[i, cv2.CC_STAT_AREA]) * C * C
         if area_mm2 < min_mm2:
             continue
+        if min_half_mm is not None or min_fill is not None:
+            sel = labels == i
+            if min_half_mm is not None and float(dist[sel].max()) < min_half_mm:
+                continue                      # a seam, not a hole
+            if min_fill is not None:
+                box = (float(stats[i, cv2.CC_STAT_WIDTH])
+                       * float(stats[i, cv2.CC_STAT_HEIGHT]) * C * C)
+                if area_mm2 / max(box, 1e-9) < min_fill:
+                    continue                  # an outline, not a patch
         # CCOMP, not EXTERNAL: a bare ring around thread that DID land — one
         # cross crossing the junction is enough to make one — would come back
         # from EXTERNAL as a solid disc, and re-sewing that middle stacks a
@@ -4857,7 +5118,11 @@ def _principal_spine(patch: Polygon) -> tuple[list[tuple[float, float]], float] 
 def _junction_cover_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
                          start_near: tuple[float, float] | None,
                          split_above_mm: float | None, spacing_mm: float,
-                         max_width_mm: float) -> list[StitchRun]:
+                         max_width_mm: float,
+                         min_mm2: float = _JUNCTION_PATCH_MIN_MM2,
+                         min_half_mm: float | None = None,
+                         min_fill: float | None = None,
+                         satin_only: bool = False) -> list[StitchRun]:
     """`satin_patch_junctions = "satin"`: what `_uncovered_patches` found,
     each sewn as a satin COLUMN along its own long axis, in the order the
     finder returns them (largest first), each turned to end nearest the
@@ -4887,7 +5152,7 @@ def _junction_cover_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
     # need not be. `runs` is never empty here (the caller checks).
     target = runs[0].points[0] if runs and runs[0].points else start_near
     cursor = start_near
-    for patch in _uncovered_patches(poly, runs):
+    for patch in _uncovered_patches(poly, runs, min_mm2, min_half_mm, min_fill):
         pts: list[tuple[float, float]] = []
         try:
             got = _principal_spine(patch)
@@ -4905,6 +5170,23 @@ def _junction_cover_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
                 pts = list(reversed(pts))
             out.append(StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id))
             cursor = pts[-1]
+            continue
+        if satin_only and patch.area < _JUNCTION_PATCH_MIN_MM2:
+            # `satin_crown_cover`, 2026-09-30: Kent's 2026-09-09 ruling is
+            # that no tatami goes inside a satin shape, so a CROWN wedge whose
+            # column comes out degenerate is SKIPPED rather than filled.
+            #
+            # The floor on this skip is not a nicety. Crown mode replaces the
+            # junction cover's call rather than running beside it, so a blanket
+            # skip also takes away the tatami answer the JUNCTION cover was
+            # already giving -- and measured 2026-09-30 that made BECKER at
+            # 80 mm WORSE than no cover at all: uncovered 29.3 -> 37.1 mm2 with
+            # a 26.2 mm2 hole where the fallback had been, and `lost_frac`
+            # 0.0329 -> 0.0346, through the gate this flag is bound by. So the
+            # skip applies only to patches BELOW the junction floor -- the ones
+            # that exist because the crown floor is lower. At or above it the
+            # behaviour is the junction cover's, unchanged, which is what makes
+            # this flag purely additive.
             continue
         try:
             got_runs, _report = stage6_fill.stitch_shape(
@@ -5069,6 +5351,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 rails_follow_edge: bool = False,
                 hairline_floor_mm: float = 0.0,
                 patch_junctions: bool | str = False,
+                crown_cover: bool = False,
                 max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
                 fold_guard: bool = False,
                 rail_comp_mm: float = 0.0,
@@ -5230,6 +5513,10 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     kept: list[dict] = []
     for si, st in enumerate(strokes):
         parts: list = []
+        # The envelope reads the other strokes' spines to tell a far edge
+        # from a junction escape (`_in_sibling_ribbon`); nothing else does.
+        siblings = ([s.spine for j, s in enumerate(strokes) if j != si]
+                    if rails_follow_edge == "envelope" else None)
         satin_stroke(poly, st, half_mm, field, split_above_mm,
                      end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                      art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
@@ -5237,7 +5524,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                      max_width_mm=max_width_mm, fold_guard=fold_guard,
                      rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                      junction_stack=junction_stack, cap_recentre=cap_recentre,
-                     tip_caps=tip_caps)
+                     tip_caps=tip_caps, siblings=siblings)
         mixed = len(parts) > 1
         for kind, pts, piece, at_start, at_end in parts:
             if kind == stitches.SATIN and len(pts) < 4:
@@ -5476,13 +5763,24 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
         # Part C of `satin_junction_stack`: the satin cover under the arms
         # for whatever A and B leave bare. An explicit cover setting wins.
         patch_junctions = "satin"
-    if patch_junctions == "satin" and runs:
+    if (patch_junctions == "satin" or crown_cover) and runs:
         # The cover goes FIRST, under the arms (2026-09-09, item 5 PR 2):
         # see `_junction_cover_runs`. Found on the runs as sewn so far, so
         # it patches exactly what the arms leave; prepended so the arms'
         # own runs, and the entry each column already chose, are untouched.
+        #
+        # `crown_cover` is the SAME cover with the junction gate off and the
+        # warning's own thresholds (2026-09-30, defect 50). It wins when both
+        # are on: its floor is the lower of the two and its extra filters are
+        # strictly narrowing, so the crown set CONTAINS the junction set and
+        # running the wider one is not "both covers", it is the one that
+        # finds more.
+        floors = ((_CROWN_MIN_MM2, _CROWN_MIN_HALF_MM, _CROWN_MIN_FILL, True)
+                  if crown_cover
+                  else (_JUNCTION_PATCH_MIN_MM2, None, None, False))
         cover = _junction_cover_runs(poly, runs, shape_id, start_near,
-                                     split_above_mm, spacing_mm, max_width_mm)
+                                     split_above_mm, spacing_mm, max_width_mm,
+                                     *floors)
         if cover:
             # From one cover to the next and from the last to the shape's
             # first run the needle walks the unsewn web, needle down, the

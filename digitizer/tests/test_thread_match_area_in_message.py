@@ -80,10 +80,25 @@ def _thread_match(fixture: str):
     return [f for f in report["findings"] if f.get("code") == "THREAD_MATCH_POOR"]
 
 
-def test_the_floor_is_the_uncovered_checks_number():
-    """One constant, not two: a patch too small to be worth an uncovered
-    finding is too small to condemn a spool over."""
-    assert pf._THREAD_MATCH_MIN_PATCH_MM2 == pf._UNCOVERED_MIN_PATCH_MM2 == 5.0
+def test_the_thread_match_floor_keeps_the_number_its_own_sweep_chose():
+    """DECOUPLED 2026-09-30. This used to assert one constant, not two ---
+    `_THREAD_MATCH_MIN_PATCH_MM2 == _UNCOVERED_MIN_PATCH_MM2 == 5.0` --- on
+    the argument that "a patch too small to be worth an uncovered finding is
+    too small to condemn a spool over".
+
+    That argument held while both numbers meant the same thing: an area on the
+    artwork worth an opinion. They no longer do. The uncovered floor is now
+    measured on a 0.25 mm grid with NO erosion and behind a thickness and a
+    compactness test, so its 1.0 is a filtered hole; a graded row's footprint
+    is a raw area. Dragging this floor down to 1.0 with it would re-open every
+    sub-floor thread verdict on evidence about a different quantity.
+
+    5.0 is what this constant's OWN 2.0 / 5.0 / 10.0 sweep chose
+    (`docs/superpowers/plans/2026-09-10-legibility-yardstick.md` §4.1), and it
+    keeps it."""
+    assert pf._THREAD_MATCH_MIN_PATCH_MM2 == 5.0
+    assert pf._UNCOVERED_MIN_PATCH_MM2 == 1.0
+    assert pf._THREAD_MATCH_MIN_PATCH_MM2 != pf._UNCOVERED_MIN_PATCH_MM2
 
 
 @pytest.mark.parametrize("fixture", [HUGE, HOLES])

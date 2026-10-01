@@ -590,6 +590,22 @@ hand-rolling it in JS.
   invisible to it (a candidate that added 1.7 points of bare satin read
   0.0028 there) — that shape of loss belongs to `rail_edge.bare_area`. See
   DOCTRINE 2026-09-20 and `tests/test_lettering_coverage_regression.py`.
+
+  **Which of the four to reach for, after 2026-09-30.** `preflight`'s
+  `ARTWORK_UNCOVERED` is now the one that names a HOLE: it measures every
+  thread kind on a 0.25 mm grid with no erosion, behind a thickness and a
+  compactness test, and reports `uncovered_hole_mm2` (adjudicated) beside
+  the threshold-free `uncovered_worst_mm2`. `tools/uncovered_floor.py`
+  sweeps its floor over the corpus, and **any threshold here that has not
+  been swept against the current corpus should be assumed stale** — the
+  5.0 mm² floor it replaced had drifted above the largest patch the check
+  could resolve anywhere.
+
+  **And `tools/bare_anatomy.py` counts SATIN CROSSES AND NOTHING ELSE**, so
+  every figure it prints is an upper bound on cloth — by 1.07x to 38.9x
+  fixture-dependent, which cannot be divided out. Pass `--all-thread` when
+  the claim is about what a customer sees; the default is the right reading
+  only for *"did the COLUMN cover its own artwork"*. DOCTRINE 2026-09-30.
 - **Acceptance A/B contact sheet** (`digitizer/tools/acceptance_ab.py`, pure
   logic in `digitizer_core/tools_acceptance.py`): the phase-4 eyeball loop.
   Runs every image in the gitignored `digitizer/testdata/photo/acceptance/`
@@ -1591,6 +1607,28 @@ texture: an angle-only pair (five of the 77) says *no change found after
 blur* instead. No share or figure reaches the page. Published as
 https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp — **republish to that
 URL**, never a new one: his notes live in its `db`, keyed by those ids.
+
+**The needle-holes toggle, and a second engine snapshot (2026-09-30).**
+`--render` writes `renders/<fixture>__<arm>__holes.jpg` beside every thread
+render — `stitchviz.render_penetrations`: the render faded to 35% over the
+cloth on the SAME frame, a dot at every `stitch` record, none at a jump —
+and the page's *thread | needle holes* control swaps every view's source in
+place, so the zoom, the verdicts and the locator's boxes stay put. Built
+because the thread render cannot show a split column's mid-column
+penetration (the comb, `docs/renders/split-comb-2026-09-30/`); a run
+rendered before the map existed gets it on the next `--render` from the
+kept designs, no digitize, and a sitting with no map shows no toggle. The
+ref arms are `REF_ARMS` in the generator (`ref_0827`; `ref_0930am`, the
+morning of 2026-09-30 before #577/#578/#579) and the page reads `is_ref`
+and `ref_label` off the record, never an id — it used to test the one
+literal `ref_0827`. The evening sitting on the day's three lettering
+changes is `docs/eye-pairs-2026-09-30/` (tag `evening-0930`). **A ref
+worktree gets the photo-prep venv linked in** (`refarm.link_photo_prep`,
+the row's `photo_prep_env`, read by the page's confound badge): the venv
+is gitignored and lives in the primary checkout only, so before this a
+photo-class fixture's ref side skipped prep and the pair compared lanes
+(tires, 2,500 against 2,646 from the same commit; Kent's one "before
+better" of that evening).
 
 Two things it is not. It is **not the blind sitting** — a verdict given
 knowing which side is the flag is evidence for a *ruling*, and never enters

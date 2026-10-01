@@ -1,0 +1,132 @@
+{
+ "note": "Split-satin flicker, per LEG (a cross and its return leg each split on their own length): Becker at 100 mm on the engine after the envelope's sibling rule (PR #577), then the same tree with the column comb (`_comb_thresholds`) and with the threshold raised to the pro's Becker style. Instrument: a scratch script over the capture pickles (envelope_capture.py's runs) -- legs are consecutive rail points after strip_ties/strip_splits, a leg is split when strip_splits removed points between them, a transition is a change of that state between consecutive legs of a run.",
+ "becker_100mm": {
+  "per_leg_shipped": {
+   "satin_runs": 68,
+   "legs": 4222,
+   "split": 1078,
+   "split_pct": 26,
+   "mixed_runs": 25,
+   "transitions": 122,
+   "legs_within_0_5mm_of_threshold": 584,
+   "max_unsplit_leg": 5.0,
+   "letters": {
+    "runs": 22,
+    "legs": 1412,
+    "split": 1029,
+    "split_pct": 73,
+    "mixed": 18,
+    "transitions": 59,
+    "band": 443
+   },
+   "stitches": 8932,
+   "trims": 50
+  },
+  "comb": {
+   "satin_runs": 68,
+   "legs": 4222,
+   "split": 1479,
+   "split_pct": 35,
+   "mixed_runs": 24,
+   "transitions": 37,
+   "max_unsplit_leg": 5.0,
+   "letters": {
+    "runs": 22,
+    "legs": 1412,
+    "split": 1212,
+    "split_pct": 86,
+    "mixed": 17,
+    "transitions": 26
+   },
+   "stitches": 9333,
+   "trims": 50
+  },
+  "raw_to_6": {
+   "split": 861,
+   "split_pct": 20,
+   "mixed_runs": 12,
+   "transitions": 18,
+   "max_unsplit_leg": 6.0,
+   "letters": {
+    "split": 861,
+    "split_pct": 61,
+    "mixed": 12,
+    "transitions": 18
+   },
+   "stitches": 8715,
+   "trims": 50
+  },
+  "raw_to_7": {
+   "split": 495,
+   "split_pct": 12,
+   "mixed_runs": 7,
+   "transitions": 8,
+   "max_unsplit_leg": 6.7,
+   "letters": {
+    "split": 495,
+    "split_pct": 35,
+    "mixed": 7,
+    "transitions": 8
+   },
+   "stitches": 8292,
+   "trims": 50
+  },
+  "simulated_on_shipped": {
+   "note": "add-only rules simulated on the shipped per-leg run: transitions after (legs newly split)",
+   "hysteresis": "35 (+402); letters 24 (+184)",
+   "majority_of_5": "85 (+28); letters 40 (+17)",
+   "run_median": "103 (+136); letters 40 (+136)"
+  },
+  "letters_top_row": [
+   "Scc08b907 M",
+   "S5a3cd301 A",
+   "Sa587cbf9 R",
+   "S14230a1b I",
+   "Sdd5f27fb N",
+   "Sf1c25fcd E"
+  ]
+ },
+ "corpus": {
+  "note": "transitions shipped -> comb (stitches shipped -> comb); logos with no leg over the threshold are byte-identical",
+  "tires": "21 -> 5 (2,646 -> 2,835)",
+  "bridge": "20 -> 5 (16,085 -> 16,175)",
+  "screenshot": "8 -> 3 (8,161 -> 8,201)",
+  "golden_tee": "4 -> 4 (8,581 -> 8,581)",
+  "drone": "2 -> 2, simulated (+12 legs)",
+  "enthusiast": "0",
+  "fremont": "0",
+  "gaulke": "0"
+ },
+ "pro_becker_files": {
+  "note": "the five professionally sewn Becker DSTs in testdata/reference, satin columns by tools/study_pro.classify, 24,108 legs; split share by leg length",
+  "legs_p50": 2.5,
+  "legs_p90": 4.9,
+  "legs_p99": 6.91,
+  "legs_max": 14.5,
+  "columns": 50,
+  "columns_with_any_split": 40,
+  "all_of_them_mixed": true,
+  "on_off_changes": 734,
+  "split_pct_by_length": {
+   "3.0-4.0": 1,
+   "4.0-4.5": 1,
+   "4.5-5.0": 2,
+   "5.0-5.5": 2,
+   "5.5-6.0": 8,
+   "6.0-7.0": 17,
+   "7.0-9.0": 32,
+   "over_9": 78
+  },
+  "legs_within_0_5mm_of_5": 2244,
+  "near_threshold_split_pct": 2,
+  "inside_splitting_columns_legs_3_to_5": 5780,
+  "inside_split_pct": 1
+ },
+ "corpus_law": {
+  "note": "machine.py SPLIT_SATIN_ABOVE_MM: corpus-wide split fraction by cross length 14% at 3.0, 27% at 4.0, 24% at 4.5, 53% at 5.0, 65% at 5.5, 92% at 7.0; house styles disagree (PRECISION DRON HAT from ~3.5, be-joy from ~5.0, beckers logo hat raw to ~6, jolly-af and sweet-heart to ~7)"
+ },
+ "rule": {
+  "name": "_comb_thresholds",
+  "statement": "once a leg over SPLIT_SATIN_ABOVE_MM turns the comb on it stays on for every leg at least SPLIT_SEGMENT_MM long, forwards and backwards; a leg under one segment ends it; over-threshold legs keep their own k, so no leg sews longer than the threshold; split_satin=False (inf) never turns it on"
+ }
+}

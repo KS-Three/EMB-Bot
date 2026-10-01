@@ -22,6 +22,12 @@ BASE = "base"
 REF_ARM = "ref_0827"
 # `main` on 2026-08-27, the engine Kent's fourteen notes and his "60%" describe.
 REF_COMMIT = "25da2fe"
+# `main` on the morning of 2026-09-30 (the merge of #574): the envelope as it
+# shipped that morning, before the day's three lettering changes -- the
+# sibling rule (#577), the split comb (#578) and the minimum stretch length
+# (#579). The evening sitting judges today against it.
+REF_0930AM = "ref_0930am"
+REF_0930AM_COMMIT = "1e5f8fe2"
 
 # One change per arm, on top of the shipped Studio config. A ref arm carries
 # `__ref__` instead of PipelineConfig kwargs. Adding a sitting is adding a row.
@@ -44,6 +50,14 @@ ARMS: dict[str, dict] = {
     "phantom_dissolve": {"dissolve_phantom_blends": True},
     "directional_comp": {"directional_comp": True},
     REF_ARM: {"__ref__": REF_COMMIT},
+    REF_0930AM: {"__ref__": REF_0930AM_COMMIT},
+    # The lettering texture sitting (2026-09-30, late): the two levers Kent's
+    # becker note points at -- "the lettering does not flow, satin stitching
+    # is not smooth and structured pattern", the third time that day. The
+    # pro's own Becker style (raw crosses to about 7 mm, no comb) and the
+    # symmetric rails (the envelope OFF).
+    "split_7mm": {"split_satin_above_mm": 7.0},
+    "rails_symmetric": {"satin_rails_follow_edge": False},
 }
 
 

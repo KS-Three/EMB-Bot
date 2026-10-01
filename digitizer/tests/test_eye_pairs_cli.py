@@ -81,6 +81,11 @@ def test_render_digitizes_and_pair_builds_the_sitting(rendered):
     for p in public:
         for k in ("left", "right", "art"):
             assert (out / "img" / p[k]).stat().st_size > 0
+    # The penetration map beside every thread render (2026-09-30), on its frame.
+    for arm in [BASE, *ARMS]:
+        thread = cv2.imread(str(out / "renders" / f"tiny__{arm}.jpg"))
+        holes = cv2.imread(str(cli.holes_path(out, "tiny", arm)))
+        assert holes is not None and holes.shape == thread.shape
     assert "tiny" not in (out / "pairs.json").read_text()
     assert json.loads((out / "sitting.json").read_text())["n_pairs"] == 7
 
@@ -91,6 +96,9 @@ def test_each_ref_arm_runs_its_own_commit_and_is_marked_design_only(rendered):
     assert sorted(seen["closed"]) == ["aaaaaaa", "bbbbbbb"]
     feats = json.loads((out / "features.json").read_text())["tiny"]
     assert feats["ref_a"]["design_only"] is True and feats["ref_b"]["design_only"] is True
+    # The fake runner carries no photo-prep venv, and the row says so (the
+    # page's confound badge reads this; the default runner sets it).
+    assert feats["ref_a"]["photo_prep_env"] is False
     assert not feats[BASE].get("design_only") and not feats["angle45"].get("design_only")
     da = json.loads((out / "designs" / "tiny__ref_a.json").read_text())
     db = json.loads((out / "designs" / "tiny__ref_b.json").read_text())
@@ -120,6 +128,26 @@ def test_a_second_render_is_all_cache(rendered, monkeypatch):
     monkeypatch.setattr(cli, "digitize_once", boom)
     assert cli.render(out, cases=[("tiny", art, 40.0, "left_chest")], arms=ARMS,
                       ref_factory=boom) == n_arms
+
+
+def test_a_missing_hole_map_is_drawn_from_the_kept_design_without_a_digitize(rendered, tmp_path,
+                                                                             monkeypatch):
+    """The map arrived 2026-09-30; a run rendered before it has its designs
+    and thread renders, and a re-render fills the maps in from the designs
+    on disk. A cache hit stays a cache hit."""
+    out, art, n_arms, _np, _seen = rendered
+    out2 = tmp_path / "out_h"
+    shutil.copytree(out, out2)
+    hole = cli.holes_path(out2, "tiny", BASE)
+    hole.unlink()
+
+    def boom(*_a, **_k):
+        raise AssertionError("a finished arm must not be digitized again")
+
+    monkeypatch.setattr(cli, "digitize_once", boom)
+    assert cli.render(out2, cases=[("tiny", art, 40.0, "left_chest")], arms=ARMS,
+                      ref_factory=boom) == n_arms
+    assert hole.read_bytes() == cli.holes_path(out, "tiny", BASE).read_bytes()
 
 
 def test_a_changed_source_image_is_a_cache_miss(rendered, tmp_path, monkeypatch):

@@ -56,6 +56,38 @@ def guard_scratch(dest, repo_root) -> Path:
     return path
 
 
+# The photo lane's prep (rembg, `stage1_photo_prep`) shells out to a venv
+# the primary checkout carries under `digitizer/rembg_isolated/venv`,
+# gitignored -- so a worktree of an older commit has none, and a photo-class
+# fixture's ref design SKIPS prep while today's runs it. Found 2026-09-30 on
+# the evening sitting: tires (photo_scene) read 2,500 stitches from the ref
+# worktree and 2,646 from the same commit with the venv linked, and Kent's
+# one "before better" of the night was that pair -- the un-prepped lane's
+# clean cartoon edges against the prepped lane's ragged matte. The link
+# makes the ref engine run the same lane as today's; where it cannot be
+# made (no venv here, or a filesystem without symlinks) the runner says so
+# and the page keeps its confound badge.
+PHOTO_PREP_VENV = Path("digitizer") / "rembg_isolated" / "venv"
+
+
+def link_photo_prep(repo_root, worktree) -> bool:
+    """Symlink the primary checkout's photo-prep venv into `worktree`; ->
+    whether the ref engine there now has one. Never copies, never fails a
+    run: an OSError (Windows without symlink rights) reads as False."""
+    src = Path(repo_root).resolve() / PHOTO_PREP_VENV
+    dst = Path(worktree).resolve() / PHOTO_PREP_VENV
+    if not src.is_dir():
+        return False
+    if dst.exists():
+        return True
+    try:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.symlink_to(src, target_is_directory=True)
+    except OSError:
+        return False
+    return True
+
+
 def add_worktree(repo_root, ref: str, dest) -> Path:
     path = guard_scratch(dest, repo_root)
     subprocess.run(["git", "-C", str(repo_root), "worktree", "add", "--detach",

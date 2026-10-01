@@ -22,8 +22,9 @@ the corpus table in scope-history 2026-09-30.
   Its smoosh: 40 mm² of red on yellow, 3 in the counters (guarded), 37 the
   pull band around the outline; 18 with the pull in the polygon. **A notch
   guard on the rail push was prototyped and rejected** (2 mm² recovered,
-  bare +0.3 to +1.2 points on every fixture). The teal text at 1.6 mm cap
-  height sews as blobs — below the floor.
+  bare +0.3 to +1.2 points on every fixture). The teal "BAR & RESTAURANT" sews as five blobs — NOT below the floor: the letters are
+  3.25–4.5 mm tall in a 400 px JPEG (3.5 px/mm) and are lost at quantization (six blobs of
+  96 mm²); 140 mm brings them back, the dissolve and eight colours make it worse (corrected 2026-09-30).
 - **The teal specks were the fold's wrong turn, fixed the same night (Kent's pick):**
   nine halo members folded into the endpoint's LABEL — a 550 px black cluster the halo
   never touches — became detached regions, grey by source, teal by the palette. Fold into

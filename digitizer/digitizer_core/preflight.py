@@ -142,8 +142,8 @@ from .threads import chart_for, rgb_to_lab
 # --- Codes (may migrate to warnings_codes.py at merge) ---------------------
 
 THREAD_MATCH_POOR = "THREAD_MATCH_POOR"        # extra: {thread_number, thread_name, brand_id, delta_e, yardstick, excess_delta_e, better_spool, worst_shape_id, worst_shape_area_mm2, worst_shape_area_frac, worst_patch_mm2, region_count, regions_scored, sub_floor_count, regions: [{shape_id, delta_e, footprint_mm2, sub_floor, excess_delta_e}], artwork_rgb, thread_rgb} — worst_patch_mm2 is the graded footprint that JUDGED (a shade band's own strip), region_count the offenders at or above `_THREAD_MATCH_MIN_PATCH_MM2`, sub_floor_count the offenders under it (listed, flagged, never judging) — excess_delta_e/better_spool are the gap to the best ALREADY-LOADED spool and that spool, populated on EVERY route since 2026-09-06 (both None when nothing loaded is meaningfully closer). `yardstick` ("excess"/"raw") says which one produced the SEVERITY, so a populated excess is never mistaken for a rescored finding
-LETTERING_ILLEGIBLE = "LETTERING_ILLEGIBLE"    # extra: {clusters, readable, judged, lost, worst_cluster, worst_similarity, worst_art_text, worst_render_text, legibility, rows: [{cluster, height_mm, art_text, art_conf, render_text, render_conf, similarity, sewn, enclosed}]} — `judged` is the sewn clusters the art side could read, `lost` how many of those read back under LEGIBILITY_WARN; `rows` carries every cluster, unsewn and unreadable ones included, flagged
-LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, satin_total, shapes: [{shape_id, column_mm, extent_mm}]} — satin_total is the DENOMINATOR the message needs ("38 of 46"), which reads very differently from a bare 38
+LETTERING_ILLEGIBLE = "LETTERING_ILLEGIBLE"    # extra: {clusters, readable, judged, lost, worst_cluster, worst_similarity, worst_art_text, worst_render_text, legibility, rows: [{cluster, height_mm, art_text, art_conf, render_text, render_conf, similarity, sewn, enclosed}]} — `judged` is the sewn clusters the art side could read, `lost` how many of those read back under LEGIBILITY_WARN; `rows` carries every cluster, unsewn and unreadable ones included, flagged — when the artwork cannot carry the lettering (`_resolution_note`, 2026-09-30) three more ride: input_px_per_mm, source_px_per_letter (the smallest flagged lettering's height in SOURCE pixels), traced_at_mm (the design width at which the prep's grid would give it LETTERING_MIN_SOURCE_PX; only when the source is under cfg.min_px_per_mm, where the prep upsamples)
+LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, satin_total, shapes: [{shape_id, column_mm, extent_mm}]} — satin_total is the DENOMINATOR the message needs ("38 of 46"), which reads very differently from a bare 38 — when the artwork cannot carry the lettering (`_resolution_note`, 2026-09-30) three more ride: input_px_per_mm, source_px_per_letter (the smallest flagged lettering's height in SOURCE pixels), traced_at_mm (the design width at which the prep's grid would give it LETTERING_MIN_SOURCE_PX; only when the source is under cfg.min_px_per_mm, where the prep upsamples)
 SATIN_GAPS_TIGHT = "SATIN_GAPS_TIGHT"          # extra: {count, judged, close_mm, pull_mm, thread_mm, fabric, design_width_mm, worst_shape_id, worst_tight_frac, shapes: [{shape_id, width_mm, height_mm, channel_mm, tight_mm, tight_frac, gap_p10_mm, gap_p50_mm, clear_width_mm}]} — a satin shape whose own gaps (between two of its strokes, or a counter) are narrower than the close, 2 x the fabric's pull comp + the thread: they sew shut before any rule runs. `judged` is how many stroke-built satin shapes were measured, `channel_mm` the length of gap read, `tight_mm` the part under the close, `clear_width_mm` the design width at which the shape's tightest tenth (gap_p10_mm) would clear it — arithmetic on THIS polygon, None when it already clears
 STITCHES_TOO_LONG = "STITCHES_TOO_LONG"        # extra: {count, max_mm}
 STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total, uncovered_shapes, shapes: [{shape_id, short, steps, median_mm, also_too_small}]} — `shapes` is every satin shape carrying a short step, worst first; `also_too_small` is whether LETTERING_TOO_SMALL already named it, and `uncovered_shapes` counts the ones it did NOT (a sewable column with a narrow waist passes lettering's median test and still breaks thread)
@@ -218,6 +218,20 @@ MIN_LETTER_EXTENT_MM = 4.0
 # A satin column narrower than the needle minimum: every cross re-enters the
 # previous hole's neighborhood and the stroke reads as a scar, not a line.
 MIN_COLUMN_MM = machine.MIN_STITCH_MM
+# Lettering the ARTWORK cannot carry (2026-09-30, Kent's pick after bridge's
+# teal words). "BAR & RESTAURANT" on logo_bridge_bar.jpg is 3.25-4.5 mm of
+# sewable lettering in a 400 px JPEG, 3.5 px/mm at 80 mm: 11-16 source
+# pixels per letter, and six-cone quantization keeps six blobs of it before
+# any stitch rule runs. Digitized at 140 mm the words come back, because the
+# prep upsamples a low-res source to `cfg.min_px_per_mm` and the tracer then
+# sees 28-px letters. Under this many source pixels across a letter's
+# height the loss is tracing, not stitching, and the lettering findings say
+# so: a larger source carries it; a larger design lets the prep's grid try,
+# and only when the source is under the prep floor (a source above it is
+# never upsampled, so growing the design adds no pixels to a letter).
+# One logo calibrated it; the docstring of `_resolution_note` says what to
+# re-measure if a second disagrees.
+LETTERING_MIN_SOURCE_PX = 20.0
 
 # Tight gaps inside a satin shape (2026-09-30, Kent's pick after the
 # script-as-lettering measurement: a preflight finding, not an engine
@@ -383,18 +397,102 @@ LEGIBILITY_WARN = 0.5
 # Ink alone: the same fixture's letters are hollow in the artwork, and the
 # enclosed white counters are not in `bg_mask`, so 42.3% of the design reads
 # "missing" when it is sewing exactly as designed.
-_UNCOVERED_CELL_MM = 0.5
+# 2026-09-30: 0.5 -> 0.25. A 0.5 mm cell cannot resolve the patches this
+# check exists to find. ENTHUSIAST's apex -- 2.17 mm2 of artwork carrying no
+# thread of any kind, confirmed by two instruments sharing no code with this
+# one (`tests/test_apex_is_real.py`) -- has a half-width of 0.46 mm, so a
+# 0.5 mm cell holding any neighbouring thread clears `_COVERAGE_FLOOR_UNITS`
+# and the hole disappears. Swept with the erosion held at its old 0.4, that
+# one change alone reads 0.00 mm2 at 0.5 mm, 0.40 at 0.25 and 0.60 at 0.20.
+# The cost is a 4x finer grid for this check's own `_coverage_map` call;
+# `DENSITY_STACKED` keeps `machine.COVERAGE_CELL_MM` and is untouched.
+_UNCOVERED_CELL_MM = 0.25
 
-# Half a thread width plus a cell's diagonal slack. Thread laid along a
-# shape's own boundary covers the inside of the edge and hangs over the
-# outside, so the outermost half-thread of any shape reads under the floor by
-# construction — the same effect `_COVERAGE_FLOOR_UNITS` names for column
-# edge cells. Eroding by less reports every shape's rim as a defect.
-# `cv2.erode` is called with an explicit zero border: without it a full-bleed
-# design (artwork touching the image edge) never erodes there, and
-# `logo_gaulke_roofing` reports a permanent 37.5 mm2 strip down its right
-# border — measured 2026-08-20, 0.0 with the border fixed, at every erosion.
-_UNCOVERED_ERODE_MM = 0.4
+# Was 0.4 mm, and it is 0.0 since 2026-09-30 — superseded by the thickness
+# test below, which is what it was a crude proxy for.
+#
+# The reasoning it carried was sound: thread laid along a shape's own
+# boundary covers the inside of the edge and hangs over the outside, so the
+# outermost half-thread of any shape reads under the coverage floor by
+# construction, and eroding by less "reports every shape's rim as a defect".
+# What it could not do is tell that rim from a hole that HAPPENS to touch the
+# boundary — and a tapered tip's hole is nothing but boundary. ENTHUSIAST's
+# apex reads 0.80 mm2 at every erosion from 0.0 to 0.3 and **0.00 at 0.4**, a
+# cliff exactly at the shipped value (measured 2026-09-30).
+#
+# The rim is THIN, which is the property to test, and `_UNCOVERED_MIN_HALF_MM`
+# tests it directly -- dropping that population without touching a hole that
+# happens to touch a boundary, which no erosion can do.
+#
+# `cv2.erode` was called with an explicit zero border, and still is when the
+# constant is positive: without it a full-bleed design (artwork touching the
+# image edge) never erodes there, and `logo_gaulke_roofing` reported a
+# permanent 37.5 mm2 strip down its right border — measured 2026-08-20, 0.0
+# with the border fixed, at every erosion.
+_UNCOVERED_ERODE_MM = 0.0
+
+# A patch thinner than this is the rim, not a hole. The max inscribed radius
+# of the uncovered component, from a distance transform on the cell grid, so
+# it is quantised to `_UNCOVERED_CELL_MM`: at 0.25 mm cells a one-cell strip
+# reads 0.25 and anything two cells thick somewhere reads 0.35 or more, which
+# is where this sits. Measured 2026-09-30 over the nine corpus logos at their
+# census widths, on the shipped constants:
+#
+#   fixture       patches   holes   largest patch mm2
+#   golden_tee      108        0          3.12   (a band seam -- see FILL)
+#   becker           93       17          3.00
+#   bridge           58        0          0.88
+#   screenshot       51        0          0.81
+#   gaulke           48        0          0.31
+#   drone            40        1          1.44
+#   enthusiast       27        2          1.56   <- the A's apex
+#   tires             9        0          0.06
+#   fremont           1        0          0.25
+#
+# **438 patches; 20 survive all three filters, on three fixtures.**
+# golden_tee is the case that settles the thickness test: SIX of its patches
+# clear the 1.0 mm2 area floor and exactly one clears thickness too (the last
+# falls to `_UNCOVERED_MIN_FILL`). The other five are one-cell seams between
+# adjacent colour columns, and the render shows continuous thread across them
+# (`docs/renders/uncovered-floor-2026-09-30/`). Area alone fires six times
+# there; the filters together fire none.
+#
+# The silent fixtures with the most patches -- golden_tee 108, bridge 58,
+# screenshot 51, gaulke 48 -- report ZERO holes between them, out of 265
+# patches. That is the rim class the erosion used to remove, removed better.
+_UNCOVERED_MIN_HALF_MM = 0.30
+
+# A patch that fills less than this much of its own bounding box is an
+# OUTLINE, not a patch — and the thickness test above cannot refuse one,
+# because a strip only has to be thick in one corner to pass.
+#
+# This is not hypothetical and it has a committed guard:
+# `test_a_full_bleed_design_does_not_report_its_own_border`. A full-bleed
+# design's artwork runs to the frame, thread hangs over that edge, and the
+# rim comes back as ONE component around the whole design —
+# `photo_chrome_specular` at 90 mm: **73.94 mm2, max half 0.90 mm, fill
+# 0.007**, a 91.5 x 109 mm bounding box holding 0.7% of itself. That is the
+# false positive the 0.4 mm erosion was really buying, and removing the
+# erosion brought it straight back.
+#
+# MEAN thickness was measured as the alternative and is REFUTED: the rim's
+# mean inscribed half is 0.332 mm, HIGHER than fourteen of the twenty
+# adjudicated holes (0.252-0.354). A frame of thread-width cloth is not
+# thinner on average than a 1 mm hole; it is only longer. Compactness is the
+# property that differs, so compactness is what is tested.
+#
+# Measured 2026-09-30 over every patch that clears the two filters above,
+# nine corpus logos plus the full-bleed guard:
+#
+#   the rim                      fill 0.007
+#   golden_tee's band seam       fill 0.078   (3.12 mm2 -- a line, not a hole)
+#   the twenty adjudicated holes fill 0.239 - 0.706
+#
+# 0.15 sits between 0.078 and 0.239 with better than 1.5x either way. It also
+# refuses golden_tee's seam, which the renders show is a thread-width line
+# between two colour bands rather than cloth in the middle of a shape — the
+# same class as the rim, drawn internally.
+_UNCOVERED_MIN_FILL = 0.15
 
 # How big one CONNECTED uncovered patch must be to report. Measured
 # 2026-08-20 over the committed fixtures, worst single patch in mm2:
@@ -421,7 +519,41 @@ _UNCOVERED_ERODE_MM = 0.4
 # and adjudicate the middle before trusting this number. The METRICS below
 # are reported unconditionally and are the honest output; the finding is the
 # opinionated part.
-_UNCOVERED_MIN_PATCH_MM2 = 5.0
+# 2026-09-30: 5.0 -> 1.0, which is the adjudication the paragraph above asks
+# for, done. Two things came out of it and the second is the reason the
+# number could move at all.
+#
+# **5.0 was unreachable.** Over the nine corpus logos at their census widths,
+# swept across erosion 0.2/0.3/0.4 and cell 0.25/0.5, the largest patch this
+# check can see anywhere is 1.90 mm2 (becker). `ARTWORK_UNCOVERED` could not
+# fire on any real logo at any setting — not a threshold slightly too high,
+# a threshold above the whole population. The 2026-08-20 table's 7.75 and
+# 44.50 came from `enthusiast_logo` at 150 mm and `becker_marine_logo` at
+# 90 mm on an engine seven default-flips ago.
+#
+# **And the rim class is now refused by SHAPE, not by area**, so the floor no
+# longer has to clear it. Behind `_UNCOVERED_MIN_HALF_MM` and
+# `_UNCOVERED_MIN_FILL`, 1.0 mm2 fires on becker (17 patches, worst 3.00),
+# ENTHUSIAST (2 — the apex at 1.56, and a gap between two letters at 1.00)
+# and drone (1 — 1.44); it is silent on golden_tee, bridge, screenshot,
+# gaulke, tires and fremont. The largest patches on each firing fixture were
+# rendered through `stitchviz.render_design` and every one shows cloth
+# between two sewn shapes, not a coverage-model artefact
+# (`docs/renders/uncovered-floor-2026-09-30/`). That adjudication is what the
+# paragraph above says nobody had done, and it happened before this number
+# was chosen.
+#
+# **The honest risk.** Three filters tuned on nine logos plus two guard
+# fixtures is a narrow base, and the margins are 1.5-2x, not the two orders
+# of magnitude `_COVERAGE_MIN_PATCH_MM2` earned. Each one refuses a NAMED
+# false-positive class with a committed guard behind it rather than a number
+# that happened to work, which is the most that can be claimed. It stays a
+# warn, never a block.
+_UNCOVERED_MIN_PATCH_MM2 = 1.0
+# How many patch areas ride out in the metrics, largest first. Twelve is
+# enough to read the shoulder of every corpus fixture measured 2026-09-30
+# and small enough that a report stays a report.
+_UNCOVERED_TOP_N = 12
 # The thread-match check's own patch floor, the sibling's number (quality
 # review 2026-09-08 item 11, built 2026-09-10). Until then THREAD_MATCH_POOR
 # had NO area floor: judged per thread on its worst graded patch, it told
@@ -438,7 +570,15 @@ _UNCOVERED_MIN_PATCH_MM2 = 5.0
 # uncovered finding is too small to condemn a spool over. The 2.0 / 5.0 /
 # 10.0 sweep is in docs/superpowers/plans/2026-09-10-legibility-yardstick.md
 # §4.1. A row with no footprint (a caller-built row) is judged as before.
-_THREAD_MATCH_MIN_PATCH_MM2 = _UNCOVERED_MIN_PATCH_MM2
+#
+# **Decoupled 2026-09-30, and it keeps the 5.0 its own sweep chose.** The
+# "one constant, not two" argument held while both numbers meant the same
+# thing — an area on the artwork worth an opinion. They no longer do: the
+# uncovered floor is now measured on a 0.25 mm grid with no erosion and with
+# a thickness test ahead of it, so its 1.0 is a filtered hole and a graded
+# row's footprint is not. Dragging this down with it would re-open every
+# sub-floor thread verdict on evidence about a different quantity.
+_THREAD_MATCH_MIN_PATCH_MM2 = 5.0
 
 # Fraction of a run's direction changes that must reverse (turn past 120 deg)
 # before the run is read as a satin COLUMN rather than a path. A column lays
@@ -1823,6 +1963,68 @@ def _tight_gap_findings(result: PipelineResult, plan: StitchPlan,
                     shapes=flagged)], metrics
 
 
+def _resolution_note(findings: list[dict], p, plan: StitchPlan,
+                     cfg: PipelineConfig) -> None:
+    """Append the resolution fact to LETTERING_TOO_SMALL and LETTERING_ILLEGIBLE
+    when the artwork cannot carry the lettering they name (in place; a
+    finding's text and `extra` grow, nothing else changes).
+
+    The smallest flagged lettering (TOO_SMALL: the shapes' `extent_mm`;
+    ILLEGIBLE: the rows' `height_mm`) times `Prep.input_px_per_mm` -- the
+    resolution the INPUT delivered, before stage 1's upscale -- is its height
+    in source pixels. Under LETTERING_MIN_SOURCE_PX the words were lost in
+    tracing (bridge: 11-16, six blobs of 96 mm² of teal), and no chip that
+    moves a stitch rule reaches that. Two levers exist and the sentence names
+    both: a larger source image, always; a larger design, only when the source
+    sits under `cfg.min_px_per_mm` (the prep upsamples it to that grid, so a
+    bigger design gives the tracer more grid pixels per letter -- bridge's
+    words came back at 140 mm), at the width where the smallest flagged
+    lettering would have LETTERING_MIN_SOURCE_PX grid pixels:
+    W x MIN_PX / (letter_mm x min_px_per_mm). A source above the floor is
+    never upsampled, so growing the design adds nothing there and the
+    sentence says only the source.
+
+    Calibrated on one logo (bridge: lost at 13-18 grid px, recovered at 28).
+    If a second logo loses lettering above 20 source pixels per letter, or
+    keeps it below, re-measure the constant on both before moving it."""
+    if p is None or plan.stats is None:
+        return
+    px = float(getattr(p, "input_px_per_mm", 0.0) or 0.0)
+    if px <= 0.0:
+        return
+    x0, _y0, x1, _y1 = plan.stats.bbox_mm
+    design_w = float(x1 - x0)
+    grid = float(cfg.min_px_per_mm)
+    for f in findings:
+        if f.get("code") not in (LETTERING_TOO_SMALL, LETTERING_ILLEGIBLE):
+            continue
+        extra = f.setdefault("extra", {})
+        if f["code"] == LETTERING_TOO_SMALL:
+            sizes = [s.get("extent_mm") for s in extra.get("shapes", []) if s.get("extent_mm")]
+        else:
+            sizes = [r.get("height_mm") for r in extra.get("rows", []) if r.get("height_mm")]
+        if not sizes:
+            continue
+        letter_mm = float(min(sizes))
+        per_letter = letter_mm * px
+        if per_letter >= LETTERING_MIN_SOURCE_PX:
+            continue
+        extra["input_px_per_mm"] = round(px, 2)
+        extra["source_px_per_letter"] = round(per_letter, 1)
+        note = (f" The artwork carries {px:.1f} pixels per millimetre at this width, "
+                f"about {per_letter:.0f} across the smallest of this lettering, so it is "
+                f"lost in tracing before any stitch: a larger source image carries it")
+        if px < grid and design_w > 0:
+            traced_at = design_w * LETTERING_MIN_SOURCE_PX / (letter_mm * grid)
+            extra["traced_at_mm"] = round(traced_at)
+            note += (f", and a design above about {traced_at:.0f} mm gives the tracer "
+                     f"enough pixels to try.")
+        else:
+            extra["traced_at_mm"] = None
+            note += "; making the design bigger adds no pixels to it."
+        f["message"] = f["message"].rstrip() + note
+
+
 def _stitch_length_findings(plan: StitchPlan,
                             already_small: set[str] | None = None
                             ) -> tuple[list[dict], dict]:
@@ -2567,7 +2769,9 @@ def _uncovered_findings(p, result: PipelineResult, plan: StitchPlan
     thread-match check when `run_preflight` is called without an image.
     """
     empty = {"uncovered_checked": False, "uncovered_worst_mm2": None,
-             "uncovered_total_mm2": None, "uncovered_wanted_mm2": None}
+             "uncovered_total_mm2": None, "uncovered_wanted_mm2": None,
+             "uncovered_patches": None, "uncovered_top_mm2": None,
+             "uncovered_holes": None, "uncovered_hole_mm2": None}
     got = _coverage_map(plan, cell_mm=_UNCOVERED_CELL_MM)
     if got is None:
         return [], empty
@@ -2631,9 +2835,11 @@ def _uncovered_findings(p, result: PipelineResult, plan: StitchPlan
         claimed |= one
 
     wanted_px = ((claimed > 0) & (~p.bg_mask)).astype(np.uint8)
-    k = max(1, int(round(_UNCOVERED_ERODE_MM * p.px_per_mm)))
-    wanted_px = cv2.erode(wanted_px, np.ones((2 * k + 1, 2 * k + 1), np.uint8),
-                          borderType=cv2.BORDER_CONSTANT, borderValue=0)
+    if _UNCOVERED_ERODE_MM > 0:
+        k = max(1, int(round(_UNCOVERED_ERODE_MM * p.px_per_mm)))
+        wanted_px = cv2.erode(wanted_px,
+                              np.ones((2 * k + 1, 2 * k + 1), np.uint8),
+                              borderType=cv2.BORDER_CONSTANT, borderValue=0)
 
     # Sample the artwork mask at each coverage cell's centre — the exact
     # inverse of the transform stage 4 applied, same as `_region_color_errors`.
@@ -2649,15 +2855,52 @@ def _uncovered_findings(p, result: PipelineResult, plan: StitchPlan
     missing = (wanted & ~covered).astype(np.uint8)
     metrics = {"uncovered_checked": True, "uncovered_worst_mm2": 0.0,
                "uncovered_total_mm2": 0.0,
-               "uncovered_wanted_mm2": round(wanted_mm2, 1)}
+               "uncovered_wanted_mm2": round(wanted_mm2, 1),
+               "uncovered_patches": 0, "uncovered_top_mm2": [],
+               "uncovered_holes": 0, "uncovered_hole_mm2": 0.0}
     if not missing.any():
         return [], metrics
 
-    _n, _labels, stats, cents = cv2.connectedComponentsWithStats(missing, connectivity=8)
+    n_cc, labels, stats, cents = cv2.connectedComponentsWithStats(missing, connectivity=8)
     areas = stats[1:, cv2.CC_STAT_AREA] * cell_area
-    big = np.nonzero(areas >= _UNCOVERED_MIN_PATCH_MM2)[0]
+    # THICKNESS FIRST, AREA SECOND -- a hairline and a hole can carry the
+    # same square millimetres and want opposite responses, and on this corpus
+    # the three LARGEST patches by area are hairlines (see
+    # `_UNCOVERED_MIN_HALF_MM`). The distance transform's maximum inside a
+    # component is that component's largest inscribed radius, in cells.
+    dist = cv2.distanceTransform(missing, cv2.DIST_L2, 5) * _UNCOVERED_CELL_MM
+    halves = np.zeros(n_cc - 1, np.float64)
+    for i in range(1, n_cc):
+        halves[i - 1] = float(dist[labels == i].max())
+    thick = halves >= _UNCOVERED_MIN_HALF_MM
+    # ... and COMPACT. A rim survives the thickness test on one fat corner;
+    # see `_UNCOVERED_MIN_FILL` for the measurement and for why the obvious
+    # alternative (mean thickness) is refuted rather than untried.
+    boxes = (stats[1:, cv2.CC_STAT_WIDTH] * stats[1:, cv2.CC_STAT_HEIGHT]
+             * cell_area)
+    fill = areas / np.maximum(boxes, 1e-9)
+    big = np.nonzero(thick & (fill >= _UNCOVERED_MIN_FILL)
+                     & (areas >= _UNCOVERED_MIN_PATCH_MM2))[0]
     metrics["uncovered_worst_mm2"] = round(float(areas.max()), 1)
     metrics["uncovered_total_mm2"] = round(float(areas[big].sum()), 1)
+    # The patch SIZES, so the floor above can be re-derived from a report
+    # instead of from a sweep that re-digitizes. `uncovered_worst_mm2` is
+    # threshold-free and `uncovered_total_mm2` is not, and neither says how
+    # many patches sit just under the floor -- which is the whole question
+    # the `_UNCOVERED_MIN_PATCH_MM2` comment says is unadjudicated. Bounded
+    # at `_UNCOVERED_TOP_N` because a busy design has hundreds of cell-sized
+    # slivers; `uncovered_patches` carries the count so a floor below the
+    # last listed value is still readable as "more than this many".
+    metrics["uncovered_patches"] = int(len(areas))
+    metrics["uncovered_top_mm2"] = [round(float(a), 2)
+                                    for a in np.sort(areas)[::-1][:_UNCOVERED_TOP_N]]
+    # `uncovered_worst_mm2` stays threshold-free -- the largest patch at any
+    # thickness, so it is comparable across settings and across engines.
+    # `uncovered_hole_mm2` is the adjudicated one: the largest patch that
+    # passes BOTH filters, which is what the finding is about and the number
+    # to watch when a build closes a hole.
+    metrics["uncovered_holes"] = int(len(big))
+    metrics["uncovered_hole_mm2"] = round(float(areas[big].max()), 1) if len(big) else 0.0
     if not len(big):
         return [], metrics
 
@@ -2682,7 +2925,7 @@ def _uncovered_findings(p, result: PipelineResult, plan: StitchPlan
                "area_mm2": area_of.get(sid)}
               for sid, v in sorted(by_shape.items(), key=lambda kv: -kv[1])]
     total = metrics["uncovered_total_mm2"]
-    worst = metrics["uncovered_worst_mm2"]
+    worst = metrics["uncovered_hole_mm2"]
     n_sh = len(shapes)
     noun = "shape" if n_sh == 1 else "shapes"
     return [finding(
@@ -3362,6 +3605,10 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     else:
         metrics.update({"satin_gaps_judged": None, "satin_gaps_tight_shapes": None,
                         "satin_gaps_tight_worst_frac": None})
+    # Lettering the artwork cannot carry: the resolution fact on the two
+    # lettering findings, when the artwork was given (the legibility check
+    # above and the lettering check just before are both in `findings` here).
+    _resolution_note(findings, p, plan, cfg)
 
     # The shapes lettering just named, so the short-stitch check can say which
     # of ITS carriers are not covered by that warning. The two measure the same

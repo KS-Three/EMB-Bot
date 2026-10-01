@@ -1,0 +1,112 @@
+{
+ "note": "The envelope's remaining reaches on the tree after PR #577 and #578 (the sibling rule and the split comb), per station from the capture pickles; 'teeth' are stretches of one or two stations at which the envelope clears the gap. Simulations on the captured offsets; 'measured' rows are the engine re-run with the rule.",
+ "becker_100mm": {
+  "before": {
+   "reached_stations": 78,
+   "stretches": 23,
+   "stretches_on_letters": 19,
+   "teeth": 8,
+   "teeth_ext_mm": [
+    0.35,
+    0.7,
+    0.35,
+    0.34,
+    0.46,
+    0.37,
+    0.35,
+    0.83
+   ],
+   "teeth_all_single_station": true,
+   "teeth_where": [
+    "emblem band x4",
+    "M (-41.4, 19.5)",
+    "A (-14.4, 30.1)",
+    "I (10.9, 14.4)",
+    "N (27.8, 24.3)"
+   ],
+   "extension_area_mm2": 20.6,
+   "max_added_rail_step_mm": 1.831,
+   "rail_steps_over_0_25": 30,
+   "rail_jitter_over_0_15_at_reached_pct": 28.4,
+   "symmetric_same_stations_pct": 9.3,
+   "letters_reached_pct": 26.3,
+   "letters_unreached_pct": 11.3,
+   "all_crosses_pct": 12.2,
+   "stitches": 9333,
+   "trims": 50,
+   "new_ground_on_letters_mm2": 15.2,
+   "bare_before_pct": 87
+  },
+  "simulated": {
+   "min_length_3": {
+    "stretches": 15,
+    "teeth": 0,
+    "extension_area_mm2": 19.11,
+    "max_added_step": 1.831,
+    "steps_over_0_25": 21
+   },
+   "min_3_plus_slope_0_3": {
+    "extension_area_mm2": 13.85,
+    "max_added_step": 0.3,
+    "steps_over_0_25": 25
+   },
+   "min_3_plus_slope_0_2": {
+    "extension_area_mm2": 10.57,
+    "max_added_step": 0.2,
+    "steps_over_0_25": 0
+   },
+   "min_3_plus_ramp_2": {
+    "extension_area_mm2": 15.73,
+    "max_added_step": 1.016,
+    "steps_over_0_25": 24
+   },
+   "min_3_plus_ramp_3": {
+    "extension_area_mm2": 12.61,
+    "max_added_step": 0.728,
+    "steps_over_0_25": 13
+   },
+   "slope_0_3_only": {
+    "extension_area_mm2": 14.81,
+    "max_added_step": 0.3,
+    "steps_over_0_25": 34,
+    "teeth": 8
+   }
+  },
+  "measured_min_length": {
+   "reached_stations": 72,
+   "stretches": 17,
+   "stretches_on_letters": 16,
+   "teeth_by_body_stations": 2,
+   "rail_jitter_over_0_15_at_reached_pct": 26.3,
+   "letters_reached_pct": 25.0,
+   "letters_unreached_pct": 11.0,
+   "all_crosses_pct": 11.9,
+   "stitches": 9321,
+   "trims": 50,
+   "new_ground_on_letters_mm2": 14.8,
+   "bare_before_pct": 87
+  }
+ },
+ "golden_tee_80mm": {
+  "before": {
+   "stretches": 12,
+   "teeth": 5,
+   "extension_area_mm2": 9.17,
+   "max_added_step": 1.039,
+   "stitches": 8581
+  },
+  "simulated_min_length": {
+   "stretches": 7,
+   "teeth": 0,
+   "extension_area_mm2": 7.94
+  },
+  "measured_stitches": 8575
+ },
+ "tires_bridge_screenshot": {
+  "note": "their only reaches were single-station teeth (1, 2 and 1); dropped, stitch counts unchanged (2,835 / 16,175 / 8,201)"
+ },
+ "rule": {
+  "name": "_drop_short_reaches",
+  "statement": "a stretch of fewer than _ENVELOPE_WINDOW (3) consecutive stations at which the envelope's offset exceeds the symmetric width reverts to the symmetric width; a stretch at least the window long is untouched; the window IS the minimum, no new constant"
+ }
+}

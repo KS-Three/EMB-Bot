@@ -175,9 +175,11 @@ def test_the_parsers_are_not_vacuous(live):
     # The exact set, so a button added or lost is a deliberate act. Grew to
     # four on 2026-09-10 when the legibility check landed ON by default
     # (quality review item 11): `LETTERING_ILLEGIBLE` shares the size cure
-    # and the panel dedupes the three into one button.
+    # and the panel dedupes the three into one button. Five on 2026-09-30:
+    # `SATIN_GAPS_TIGHT`'s chip jumps to the width the finding names
+    # (`clear_width_mm`) and shares that one size button with the three.
     assert fixes == {"COLOR_STOPS_HEAVY", "LETTERING_TOO_SMALL",
-                     "STITCHES_TOO_SHORT", "LETTERING_ILLEGIBLE"}
+                     "STITCHES_TOO_SHORT", "LETTERING_ILLEGIBLE", "SATIN_GAPS_TIGHT"}
 
     compared = _compared_codes()
     assert sum(len(v) for v in compared.values()) >= 8, compared

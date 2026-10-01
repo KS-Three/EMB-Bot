@@ -2028,6 +2028,7 @@ def sequence(
                     angle_deg=satin_angle_deg,
                     rails_follow_edge=cfg.satin_rails_follow_edge,
                     patch_junctions=cfg.satin_patch_junctions,
+                    crown_cover=cfg.satin_crown_cover,
                     polygon_axis=cfg.satin_polygon_axis,
                     stroke_order=cfg.satin_stroke_order,
                     corner_twigs=cfg.satin_corner_twigs,

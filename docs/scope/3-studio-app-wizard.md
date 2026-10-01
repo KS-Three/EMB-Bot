@@ -553,6 +553,21 @@ Lifted verbatim from the area-3 summary on 2026-09-18 to bring `MASTER_SCOPE.md`
 
 **Both "Make it bigger" chips offer a PARTIAL remedy, and the comment justifying them misquoted the finding it cited** — it read `LETTERING_TOO_SMALL`'s message as ending *"Enlarging helps"* when on that same commit it already ended *"...but does not fully clear it ... Remove or simplify the smallest lettering"*. Corrected in place with the history; the buttons are LEFT for Kent, since whether a partial remedy earns one is his call. `STITCHES_TOO_SHORT` no longer recommends enlarging at all and now names the shapes carrying the short steps — it and `LETTERING_TOO_SMALL` measure the same quantity at the same threshold (`MIN_COLUMN_MM` **is** `machine.MIN_STITCH_MM`) and it never fired alone over the corpus at 80 mm (the only width swept), but only **66%** of its short steps sit in a shape lettering named: the rest are sewable columns (1.1–3.2 mm median) with a narrow waist. **And the button itself is now measured: ONE PRESS CLEARS THE FINDING ON 1 OF 10** corpus fixtures (two presses on 4 of 10) and makes it **worse on 3** — `photo_dof_meadow` 0.36 → 0.58 → 0.71 — while the satin shape count rises on every fixture (2 → 9, 42 → 71), which is "the smallest shapes regenerate at any size" from the other side. No grade claim is drawn from that sweep: several checks move with size and 5 of the 10 are on the clamped floor. *(measured 2026-09-06 — `tools/short_satin_overlap.py`, `tools/enlarge_cure.py`, `tests/test_short_satin_shapes.py` (14); DOCTRINE)*
 
+**A third size chip, and this one jumps (2026-09-30, Kent's pick).** Preflight's
+`SATIN_GAPS_TIGHT` (a satin shape whose own gaps are narrower than the fabric's
+pull compensation plus the thread) names the design width at which its
+headline shape's tightest tenth of gap clears — arithmetic on that polygon —
+so its "Make it bigger" sets `target_width_mm` to that width (capped at
+400 mm) instead of stepping 25%. `offeredFixes` now keeps ONE button per
+parameter and lets the larger target win, so the jump and a 25% step from
+`LETTERING_TOO_SMALL` on the same run never show twice; a payload with no
+named width takes the 25% step. The finding's own words are on the tooltip.
+What the jump promises is exactly what the finding does: that shape clears;
+the design can segment new small shapes at the larger size (bridge at
+140 mm cleared its script and fired on nothing with the 6 mm floor). Spec:
+`DigitizePanel.spec.js` (the named width, the one-button rule both orders,
+the 400 cap, the fallback). *(2026-09-30)*
+
 ## Moved from MASTER_SCOPE (2026-09-20) — three fixed Studio entries
 
 Lifted verbatim from the area-3 summary on 2026-09-20 to buy budget space for
