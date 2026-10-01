@@ -104,3 +104,14 @@ logo", now `EXCLUDED_FIXTURES`); rails_symmetric — golden_tee *before*
 becker unjudged. No rulings, no words for "flow". So 5.0 stays, no
 sew-out pack; the envelope stays ON; becker's flow note still open —
 next lever must come from his words or a sew-out, not rail-level changes.
+
+**The pro beside ours (2026-10-01, Kent's pick)**: a `__file__` arm
+(`tools/eye_pairs/filearm.py`, `pro_file` in ARMS: becker's 101.9 mm hat
+PES) on the page under tag `pro-1001`, labels "OURS · today" | "THE PRO ·
+the pro's file", no ruling. Table by `tools/satin_columns` on both designs'
+stitch records: satin share 31.3 vs 42.6%, width p50 2.24 vs 2.66, legs
+over 5 mm 0 vs 26.5%, jitter 32.5 vs 28.5%. Renders: the pro sews BECKER
+(arch) as black FILL with grey satin keylines and MARINE as grey satin
+columns, one direction per stroke, no mid-column holes. Kent's texture
+head notes: "not sure what's being shown here" (both arms) — explain
+LEFT/RIGHT in plain words on a page. Verdict pending.

@@ -37,6 +37,7 @@ from . import features as ft
 from .features import base_cfg, digitize_once, features_design_only, features_full
 from .pairs import (ARMS, BASE, EXCLUDED_FIXTURES, ArmRun, build_pairs, design_hash,
                     load_picks, sealed_hash, unpicked)
+from .filearm import design_from_file
 from .refarm import add_worktree, link_photo_prep, remove_worktree, run_ref_design
 from .server import PORT, make_server
 
@@ -140,6 +141,8 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                 _normalise_art(Path(path), art)
                 sources[name] = src_hash
             for arm, kw in [(BASE, {})] + list(arms.items()):
+                if "__file__" in kw and name not in kw["__file__"]:
+                    continue            # a file arm names its fixtures; no file, no row
                 dpath = out / "designs" / f"{name}__{arm}.json"
                 rpath = out / "renders" / f"{name}__{arm}.jpg"
                 hpath = holes_path(out, name, arm)
@@ -170,6 +173,13 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                         # this, so a ref pair rendered with the venv linked is
                         # not marked as if its old side had skipped prep.
                         row["photo_prep_env"] = bool(getattr(runners[commit], "photo_prep_env", False))
+                    elif "__file__" in kw:
+                        rel = kw["__file__"][name]
+                        src = Path(rel) if Path(rel).is_absolute() else DIGITIZER / rel
+                        design = design_from_file(src)
+                        row = features_design_only(path, design)
+                        row["design_only"] = True
+                        row["from_file"] = str(rel)
                     else:
                         cfg = base_cfg(width_mm, garment, **kw)
                         gen, result, plan, design = digitize_once(path, cfg)

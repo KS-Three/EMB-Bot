@@ -53,6 +53,34 @@ REF_ARMS: dict[str, str] = {
     "ref_0827": "08-27 engine",
     "ref_0930am": "09-30 morning engine",
 }
+# The yardstick's `__file__` arms: a professional's machine file for the
+# same logo, read as a Design (2026-10-01). OURS is the left side and the
+# file the right, under these labels; no flag to flip, so the head takes a
+# note and the pair a verdict, like a ref arm.
+FILE_ARMS: dict[str, str] = {
+    "pro_file": "the pro's file",
+}
+
+
+def arm_kind(arm: str | None) -> str:
+    """'ref' (an older engine), 'file' (a stitch file) or 'flag' (a config
+    change on today's engine): what the page says on each side and whether
+    the arm's head takes a ruling."""
+    if arm in REF_ARMS:
+        return "ref"
+    if arm in FILE_ARMS:
+        return "file"
+    return "flag"
+
+
+def side_labels(arm: str | None, kind: str) -> dict[str, str] | None:
+    """Labelled page: what each side is called. None for a flag, whose
+    labels the page composes itself ('BEFORE · shipped', 'AFTER · <arm> ON')."""
+    if kind == "ref":
+        return {"L": f"BEFORE · {REF_ARMS[arm]}", "R": "AFTER · today"}
+    if kind == "file":
+        return {"L": "OURS · today", "R": f"THE PRO · {FILE_ARMS[arm]}"}
+    return None
 # A ref arm runs the old engine in a worktree, and unless the yardstick
 # linked the primary checkout's rembg venv into it (`photo_prep_env` on the
 # arm's row, 2026-09-30) a photo-class fixture's old arm skipped photo prep
@@ -152,6 +180,14 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "each -- fewer mid-column holes (the needle-holes toggle shows them), "
         "longer floats. A physical constant under gate 1: the page can say which "
         "reads right, only cloth says which sews right."),
+    "pro_file": (
+        "the pro's own Becker file (hat, 101.9 mm, PES)",
+        "LEFT is our engine's stitches for the Becker logo at 100 mm, as shipped "
+        "today. RIGHT is the professional digitizer's stitches for the same logo, "
+        "read from the file they sewed (the 101.9 mm hat version) and drawn by the "
+        "same renderer; the needle-holes toggle works on both. Nothing to flip: "
+        "say which lettering flows, and what the difference is -- the note is the "
+        "point."),
     "rails_symmetric": (
         "satin_rails_follow_edge=False",
         "Both rails at the nearer edge's distance, as shipped before the envelope: "
@@ -629,6 +665,7 @@ def labelled_records(src: Path, feats: dict, sizes: dict[str, tuple[float, str]]
                 continue
             _require(renders / f"{fx}__{arm}.jpg", fx, arm)
             is_ref = arm in REF_ARMS
+            kind = arm_kind(arm)
             shipped, arm_side = ("R", "L") if is_ref else ("L", "R")
             change, intent = arm_intent(arm)
             rec = {
@@ -638,6 +675,7 @@ def labelled_records(src: Path, feats: dict, sizes: dict[str, tuple[float, str]]
                 "shipped_side": shipped, "arm_side": arm_side, "arm": arm,
                 "arm_change": change, "arm_intent": intent,
                 "is_ref": is_ref, "ref_label": REF_ARMS.get(arm),
+                "arm_kind": kind, "labels": side_labels(arm, kind),
                 "confounded": confounded(is_ref, base_class, row),
                 "pick": None, "picked_arm": None, "ms": None,
                 "chips": chip_directions(feats, fx, arm, shipped, arm_side),
@@ -677,6 +715,7 @@ def labelled_arms(recs: list[dict], skipped: list[dict], failed: list[dict]
     for arm in sorted({a for a in seen if a != BASE}, key=lambda a: (order.get(a, len(order)), a)):
         change, intent = arm_intent(arm)
         arms[arm] = {"change": change, "intent": intent, "is_ref": arm in REF_ARMS,
+                     "kind": arm_kind(arm),
                      "n_pairs": sum(1 for r in recs if r["arm"] == arm),
                      "skipped": sum(1 for s in skipped if s["arm"] == arm),
                      "failed": sum(1 for f in failed if f["arm"] == arm)}

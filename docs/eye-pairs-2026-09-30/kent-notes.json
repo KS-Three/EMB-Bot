@@ -1,5 +1,5 @@
 {
- "exported": "2026-10-01T01:25:44Z",
+ "exported": "2026-10-01T01:38:02Z",
  "artifact": "https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp",
  "page_built": "2026-09-30",
  "pairs": 7,
@@ -275,7 +275,20 @@
     ]
    }
   },
-  "rulings": {},
+  "rulings": {
+   "rails_symmetric__texture-0930": {
+    "note": "not sure what's being shown here.",
+    "ruling": null,
+    "sitting": "texture-0930",
+    "updated": "2026-10-01T01:25:19.161Z"
+   },
+   "split_7mm__texture-0930": {
+    "note": "Not sure what's being shown here.",
+    "ruling": null,
+    "sitting": "texture-0930",
+    "updated": "2026-10-01T01:25:34.166Z"
+   }
+  },
   "note": "Kent's late sitting of 2026-09-30 on the lettering's two levers, read back from the store under <arm>__<fixture>__texture-0930 (notes); no ruling document was written. Seven of eight pairs judged (rails_symmetric on becker not judged). The screenshot note is his instruction to drop that fixture from the page."
  }
 }

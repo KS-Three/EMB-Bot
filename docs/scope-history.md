@@ -17016,3 +17016,29 @@ the labelled page, tested), DOCTRINE's fifteen-character entry; the
 instruments' corpus still counts it. Records:
 `docs/eye-pairs-2026-09-30/README.md` (the texture Outcome),
 `kent-notes.json` (`fourth_sitting`), DOCTRINE, MASTER_SCOPE, memory.
+
+## 2026-10-01 — The pro's own Becker beside ours on the page: a file-backed arm, one-rule table, the first target for "flow" (Kent's pick)
+
+Kent's pick after the texture verdicts. The labelled page rebuilt under
+the tag `pro-1001` with one pair: our engine's Becker at 100 mm on the
+left, the professionally digitized Becker (the 101.9 mm hat PES in
+`testdata/reference`, read through `adapter.pattern_to_design`) on the
+right, the same renderer, the needle-holes toggle on both. A third kind
+of arm in the yardstick: `__file__` names one stitch file per fixture
+(`tools/eye_pairs/filearm.py`); the gallery labels the sides ("OURS ·
+today" | "THE PRO · the pro's file"), takes a verdict and a note and no
+ruling; tests on the round trip, the unnamed fixture, the labels and the
+kind. Under the head, ours against the pro's by one rule
+(`tools/satin_columns`' cross detector over each design's needle-down
+passes): stitches 9,321 / 12,356, satin share 31.3 / 42.6%, column width
+p50 2.24 / 2.66 mm and p90 3.35 / 5.20, legs over 5 mm 0.0 / 26.5%,
+jitter 32.5 / 28.5%, turn p90 16.6 / 27.6°. The renders: the pro sews the
+big arch letters as a black fill with grey satin keylines and MARINE as
+grey columns with one direction per stroke and no mid-column holes; ours
+sews both rows as satin under the 5 mm comb. Also recorded: Kent's two
+head notes on the texture page ("not sure what's being shown here" under
+both arms) — the arm's flag-and-paragraph did not tell him what he was
+looking at, so the pro page says LEFT and RIGHT in plain words. Records:
+`docs/eye-pairs-2026-09-30/README.md` (the pro section),
+`pro-becker-table.json`, `kent-notes.json`, the spec's arms table, memory.
+Verdict pending.

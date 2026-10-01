@@ -519,7 +519,12 @@ before it is a flip. Verdicts pending at the time of writing.
 | tires | no difference | can't tell | |
 | becker | not judged | | |
 
-No ruling document under either arm; no words for "flow" came.
+No ruling under either arm, and the two head notes he left after the
+verdicts (01:25Z) say why: under `rails_symmetric`, *"not sure what's being
+shown here."*; under `split_7mm`, *"Not sure what's being shown here."* The
+arms' own words on the page — a config flag and a paragraph on what it
+changes — did not tell him what he was looking at. No words for "flow"
+came.
 
 **What it settles.** The pro's raw-cross style and the comb read the same
 to his eye on every pair he judged, becker's letters with the holes toggle
@@ -537,3 +542,83 @@ done: `tools.eye_pairs.pairs.EXCLUDED_FIXTURES` drops the fixture from
 `--render`'s default corpus and the labelled page drops its rows from any
 sitting (a test on each), and DOCTRINE carries the fifteen-character
 version. The instruments' corpus (`REAL_ART`, the tables) still counts it.
+
+## The pro's own Becker beside ours (2026-10-01)
+
+Kent's pick after the texture verdicts: five changes aimed at the
+lettering's flow, none reached his eye, and no instrument has named what
+flow is. So the page now shows the one thing that has it, if anything
+does: the professionally digitized Becker, from the file the pro sewed.
+The same artifact URL under the tag `pro-1001`, one pair:
+
+- **LEFT, "OURS · today":** our engine's digitize of the Becker logo at
+  100 mm, the shipped defaults (the evening and texture sittings' base).
+- **RIGHT, "THE PRO · the pro's file":**
+  `testdata/reference/becker_hat_polo_large_beckers_logo_hat.pes`, the
+  101.9 mm hat version — the closest of the five professional files to our
+  fixture's width — read through `adapter.pattern_to_design` and drawn by
+  the same renderer, the needle-holes toggle on both. The PES rather than
+  the DST beside it because the PES carries the pro's thread list (grey and
+  black, five blocks).
+- **A third kind of arm.** `tools/eye_pairs/pairs.py` takes a `__file__`
+  arm naming one stitch file per fixture (`filearm.design_from_file`); a
+  fixture it does not name gets no row. The gallery labels the sides
+  itself (`FILE_ARMS`, `side_labels`), takes a verdict and a note and no
+  ruling, as for a ref arm. Tests on the yardstick (the file round-trips
+  in our frame, an unnamed fixture gets no row), the gallery (the labels,
+  the kind, no ruling) and the spec's arms table.
+- **The table** under the head: `pro-becker-table.json`, ours against the
+  pro's by one rule — `tools/satin_columns`' scale-free cross detector
+  over needle-down passes of each design's stitch records.
+
+## Ours against the pro's, one rule
+
+| measure | ours (100 mm) | the pro's (101.9 mm) |
+|---|---|---|
+| stitches | 9,321 | 12,356 |
+| trims | 49 | 57 |
+| colour blocks | 2 | 5 |
+| satin crosses as % of penetrations | 31.3 | 42.6 |
+| satin column width p10 / p50 / p90 mm | 0.89 / 2.24 / 3.35 | 1.52 / 2.66 / 5.20 |
+| columns under 0.7 mm % | 7.3 | 5.3 |
+| column legs | 2,849 | 5,192 |
+| leg length p50 / p90 mm | 2.52 / 3.55 | 2.94 / 5.39 |
+| legs over 5 mm % | 0.0 | 26.5 |
+| legs over 7 mm % | 0.0 | 1.6 |
+| jitter > 0.15 mm % | 32.5 | 28.5 |
+| turn p90 ° | 16.6 | 27.6 |
+
+What the two renders show before any verdict (`pro_vs_ours.png` in the
+session scratch, the pro upright and the right way round — orientation
+checked by eye, as the DST doctrine demands): the pro sews BECKER's big
+arch letters as a black fill with grey satin keylines and counters, and
+MARINE as grey satin columns with one cross direction per stroke, no
+mid-column holes and a quarter of its legs over 5 mm; ours sews both
+rows as satin columns under the 5 mm comb, so the arch letters read as
+lumpy columns where the pro's read as flat fills with a clean edge. The
+pro's columns are wider (p50 2.66 against 2.24 mm, p90 5.20 against 3.35)
+and swing more (turn p90 27.6° against 16.6°), and by leg-length jitter
+the pro is no smoother (28.5% against 32.5%). If his eye says the pro's
+lettering flows, the candidates are in that paragraph: fill for the big
+letters, raw crosses to the width of the column, one direction per stroke.
+
+## How it was built
+
+```bash
+cd digitizer
+# the out dir seeded with becker's base from the texture render (a cache hit)
+.venv/bin/python -m tools.eye_pairs --render --fixtures becker --arms pro_file --out <out>
+.venv/bin/python -m tools.eye_pairs_gallery --labelled --src <out> --out <out>/gallery \
+    --tables ../docs/eye-pairs-2026-09-30/pro-becker-table.json --sitting pro-1001
+```
+
+Republished with 5 images (1.2 MB); the store read before the republish
+(13 evening notes, 7 texture notes, 3 head notes, nothing newer).
+
+## Kent's question
+
+One pair, two things: which lettering flows, and in the note, what the
+difference is — in his own words, since no instrument has them. A verdict
+for the pro's is not a flip of anything; it is the first target the
+instruments have had for "flow", and the next measurement starts from
+what he names.

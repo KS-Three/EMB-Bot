@@ -321,3 +321,28 @@ def test_the_default_corpus_leaves_out_the_excluded_fixtures(monkeypatch):
         except RuntimeError:
             pass
     assert "screenshot" in EXCLUDED_FIXTURES and seen["fixtures"] == ["becker"]
+
+
+def test_a_file_arm_reads_the_design_from_the_stitch_file_and_names_its_fixtures(rendered, tmp_path):
+    """The third kind of arm (2026-10-01): a design read from a stitch file,
+    one file per fixture; a fixture the arm does not name gets no row."""
+    import pystitch
+    from digitizer_core.adapter import design_to_pattern
+    out, art, _n, _np, _seen = rendered
+    out2 = tmp_path / "out_file"
+    shutil.copytree(out, out2)
+    base = json.loads((out2 / "designs" / f"tiny__{BASE}.json").read_text())
+    pes = tmp_path / "pro.pes"
+    pystitch.write_pes(design_to_pattern(base, "PRO"), str(pes))
+    cli.render(out2, cases=[("tiny", art, 40.0, "left_chest"), ("other", art, 40.0, "left_chest")],
+               arms={"pro_file": {"__file__": {"tiny": str(pes)}}}, ref_factory=fake_factory(out2, {}))
+    feats = json.loads((out2 / "features.json").read_text())
+    row = feats["tiny"]["pro_file"]
+    assert row["design_only"] is True and row["from_file"] == str(pes)
+    assert row["stitches"] == feats["tiny"][BASE]["stitches"]
+    assert "pro_file" not in feats["other"]                         # not named: no row, no failure
+    assert cli.holes_path(out2, "tiny", "pro_file").exists()
+    design = json.loads((out2 / "designs" / "tiny__pro_file.json").read_text())
+    ours = [(s["x"], s["y"]) for s in base["stitches"] if s["type"] == "stitch"]
+    theirs = [(s["x"], s["y"]) for s in design["stitches"] if s["type"] == "stitch"]
+    assert theirs == ours                                            # the file round-trips in our frame

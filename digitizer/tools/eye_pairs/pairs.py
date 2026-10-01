@@ -66,6 +66,15 @@ ARMS: dict[str, dict] = {
     # symmetric rails (the envelope OFF).
     "split_7mm": {"split_satin_above_mm": 7.0},
     "rails_symmetric": {"satin_rails_follow_edge": False},
+    # The pro's own file beside ours (2026-10-01, Kent's pick after the
+    # texture sitting left his becker note unanswered). A `__file__` arm
+    # names one stitch file per fixture, relative to `digitizer/`; a fixture
+    # without one gets no row. Becker's hat file is 101.9 mm wide against
+    # our 100 mm fixture, the closest of the five professional files; a PES
+    # rather than the DST beside it because the PES carries the thread list.
+    "pro_file": {"__file__": {
+        "becker": "testdata/reference/becker_hat_polo_large_beckers_logo_hat.pes",
+    }},
 }
 
 

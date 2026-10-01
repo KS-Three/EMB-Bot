@@ -20,7 +20,7 @@ from tools import eye_pairs_gallery as g  # noqa: E402
 SPEC_ARMS = ["per_stroke", "patch_junctions", "polygon_axis", "area_weighted",
              "design_angle", "rails_follow_edge", "wide_columns",
              "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827",
-             "ref_0930am", "split_7mm", "rails_symmetric"]
+             "ref_0930am", "split_7mm", "rails_symmetric", "pro_file"]
 # `rail_comp` shipped ON 2026-09-28 and left the table (docs/kent-review-2026-09-28.md);
 # `rail_envelope` shipped ON 2026-09-30 and left it (docs/eye-pairs-2026-09-30/).
 SPEC_METRICS = {
@@ -131,6 +131,7 @@ def test_tables_match_the_yardstick_package_when_it_is_here():
         pytest.skip("yardstick package not on this checkout")
     assert set(yp.ARMS) == set(g.ARM_INTENT)
     assert {a for a, kw in yp.ARMS.items() if "__ref__" in kw} == set(g.REF_ARMS)
+    assert {a for a, kw in yp.ARMS.items() if "__file__" in kw} == set(g.FILE_ARMS)
     assert yp.EXCLUDED_FIXTURES == g.EXCLUDED_FIXTURES == frozenset({"screenshot"})
     assert {m: d for m, d in ya.METRICS.items() if d != "none"} == g.METRIC_BETTER
 
@@ -507,7 +508,8 @@ def test_labelled_skips_identical_arms_and_counts_failures_but_never_scores(tmp_
     assert list(arms) == ["per_stroke", "design_angle", "wide_columns", "ref_0827"]
     assert arms["design_angle"] == {"change": g.ARM_INTENT["design_angle"][0],
                                     "intent": g.ARM_INTENT["design_angle"][1],
-                                    "is_ref": False, "n_pairs": 0, "skipped": 1, "failed": 0}
+                                    "is_ref": False, "kind": "flag",
+                                    "n_pairs": 0, "skipped": 1, "failed": 0}
     assert (arms["wide_columns"]["failed"], arms["wide_columns"]["n_pairs"]) == (1, 0)
     assert (arms["per_stroke"]["n_pairs"], arms["ref_0827"]["is_ref"]) == (1, True)
     # A null pick is not a loss: the page counts verdicts as Kent gives them.
@@ -856,3 +858,27 @@ def test_an_excluded_fixture_never_reaches_the_labelled_page(tmp_path):
     data = g.build(src, tmp_path / "g", labelled=True)
     assert [p["pair"] for p in data["pairs"]] == ["per_stroke__fx_a", "ref_0827__fx_p"]
     assert "screenshot" not in (tmp_path / "g" / "index.html").read_text(encoding="utf-8")
+
+
+# ---- a file arm: the pro's own digitize beside ours (2026-10-01) ----------
+
+def test_a_file_arm_is_ours_on_the_left_and_the_pro_on_the_right_with_no_ruling(tmp_path):
+    src = make_labelled_set(tmp_path)
+    feats = json.loads((src / "features.json").read_text(encoding="utf-8"))
+    feats["fx_a"]["pro_file"] = _row(stitches=1300, design_only=True, from_file="x.pes")
+    (src / "features.json").write_text(json.dumps(feats), encoding="utf-8")
+    (src / "designs" / "fx_a__pro_file.json").write_text(json.dumps({"stitches": [[0, 0], [4, 4]]}), encoding="utf-8")
+    _img(src / "renders" / "fx_a__pro_file.jpg", (160, 160, 160))
+    out = tmp_path / "g"
+    data = g.build(src, out, labelled=True)
+    rec = next(p for p in data["pairs"] if p["arm"] == "pro_file")
+    assert (rec["arm_kind"], rec["is_ref"], rec["shipped_side"], rec["arm_side"]) == ("file", False, "L", "R")
+    assert rec["labels"] == {"L": "OURS · today", "R": "THE PRO · the pro's file"}
+    assert (rec["counts"]["L"]["stitches"], rec["counts"]["R"]["stitches"]) == (1000, 1300)
+    assert data["arms"]["pro_file"]["kind"] == "file"
+    ref = next(p for p in data["pairs"] if p["arm"] == "ref_0827")
+    assert ref["arm_kind"] == "ref" and ref["labels"] == {"L": "BEFORE · 08-27 engine", "R": "AFTER · today"}
+    flag = next(p for p in data["pairs"] if p["arm"] == "per_stroke")
+    assert flag["arm_kind"] == "flag" and flag["labels"] is None
+    html = (out / "index.html").read_text(encoding="utf-8")
+    assert "p.labels[side]" in html and 'a.kind === "file"' in html and 'p.arm_kind === "file"' in html
