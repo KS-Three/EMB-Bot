@@ -216,8 +216,9 @@
     {/if}
 
     <div class="drawer-list">
-      <h3 class="drawer-templates-head">Start from a template</h3>
-      <TemplateRow on:pick={(e) => d("template", e.detail)} />
+      <!-- Saved designs first, templates after (Kent, 2026-10-01): with the
+           three template cards on top the filter sat ~700px down the list,
+           below the fold on a laptop and on a phone. -->
       {#if projects.length > 1}
         <DesignFilter {hoops} bind:criteria />
         {#if filtering}
@@ -277,6 +278,8 @@
           A design is measured when it is opened; an empty one has nothing to measure.
         </p>
       {/if}
+      <h3 class="drawer-templates-head">Start from a template</h3>
+      <TemplateRow on:pick={(e) => d("template", e.detail)} />
     </div>
   </div>
 </div>

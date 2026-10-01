@@ -635,9 +635,9 @@ touching it:
 - **A null design clears facts only when nothing in the project could sew** —
   otherwise it is a design still loading, and a good measurement stays.
 - **Not built:** content search ("dogs" — needs tagging or image
-  understanding), exact-colour match (the bound is "up to"), an e2e spec. The
-  filter sits below the template cards in the drawer, so it is below the fold
-  on a short screen.
+  understanding), exact-colour match (the bound is "up to"), an e2e spec.
+- **The drawer lists saved designs first, templates after** (Kent, 2026-10-01).
+  With the template cards on top the filter sat ~700 px down the list.
 
 *(built and driven in a browser 2026-10-01: three seeded pre-facts designs
 measured on open, row figures matched the canvas caption, `updatedAt`
