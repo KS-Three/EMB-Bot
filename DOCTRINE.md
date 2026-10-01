@@ -7984,3 +7984,49 @@ offered it in the same question and took the switch. Do not remove the
 button again on the strength of the morning's entry; ask.
 *(Kent's call 2026-09-30 — `app/src/lib/digitizer.js` `buildDigitizeConfig`,
 `DigitizePanel.svelte` reading row, `DigitizePanel.spec.js`)*
+
+## 2026-09-30 — A gradient-lane region's edge was a superpixel's edge: `snap_region_edges`, ON
+
+**Kent's report:** the Instagram icon "looks like shit" and "auto detect must
+not work". Stage 0 was right (`gradient`; the icon is a multi-stop sweep).
+The defect was one stage down: `stage2_photo_segment` builds every region out
+of whole SEEDS superpixels, so a region edge can only be a superpixel edge.
+On his real file (2000 px, 80 mm) 148 superpixels straddle the white icon's
+edge and 7.6% of the white lands on the wrong side — the jagged ring, the
+bitten dot, the stray diagonals. Forced flat sews the same shapes clean
+because k-means labels per pixel.
+
+**The fix:** after the merge (and the dissolve), an edge pixel moves into a
+neighbouring region only when its colour is closer to that region's mean by
+`SNAP_MARGIN_LAB` = 10, on the merge's own Lab (sweep subtracted when the
+design ramp fits). Gradient class only. Built OFF, flipped ON by Kent the
+same night on renders of his file at 80 and 188 mm, drone, Bridge Bar and
+the repro. His file at 80 mm through the service: 24,945 → 23,888 stitches,
+44 → 28 trims, 11 colours both. It does NOT fix the sweep sewing as hard
+bands; shown it live he still chose the flat switch for that icon ("The flat
+switch came back", above), and then asked for the snap ON as well.
+
+**What a session should take from it:**
+
+- **A "the classifier is broken" report can be a lane defect on a correct
+  classification.** A/B auto against `forced_class="flat"` and RENDER both
+  before touching stage 0. Every arm on his file graded F/0–F/16, so the
+  preflight score separated nothing; the render did.
+- **Without the ramp subtracted, a seam inside a sweep is not held by the
+  margin** — it settles toward the colour midpoint between the two regions'
+  means. Harmless (the seam's position is arbitrary) and pinned as such in
+  `tests/test_snap_region_edges.py`; do not "fix" it by raising the margin.
+- **It adds regions on busy art** (drone 107 → 119, Bridge Bar 80 → 95 at
+  Studio params): snapped pixels that stand apart become their own pieces.
+  drone's crosshair comes back that way. Not swept across the corpus — only
+  four designs were rendered both ways before the flip.
+- **The flip's bill:** 26 tests in 13 files moved. 21 were premise asserts in
+  the colour files (the slivers they trace are gone) and ride
+  `conftest.PRE_FLIP`; three are held on the pre-snap engine by name; one
+  count re-pinned as a gain (`THREAD_MATCH_POOR` blocks, drone 5 → 3,
+  golden_tee 2 → 1). A strict xfail tracking the cone fold's 38 → 308-stitch
+  shape stopped reproducing on defaults and is held on the pre-snap engine so
+  the defect is not quietly retired.
+*(measured 2026-09-30/10-01 — `digitizer_core/stage2_photo_segment.py`
+`snap_region_edges`, `tests/test_snap_region_edges.py` (7),
+`conftest.PRE_FLIP`)*
