@@ -1299,7 +1299,11 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
   width: 100%;
   height: 52px;
   border-radius: var(--radius-s);
-  background: var(--fill);
+  /* Same white as the picture inside it (the preview image has a white
+     ground), so the card is not a white picture between two grey blocks; the
+     card's own border and the rule below carry the separation. */
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
   overflow: hidden;
 }
 
