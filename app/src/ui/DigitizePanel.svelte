@@ -3217,7 +3217,10 @@
   /* `chevron` points down at rest -- that's the "open" reading, so the
      closed (▸) state is the one that needs a rotate; same reuse-one-icon,
      rotate-in-CSS convention Icon.svelte's own comment documents. */
-  .dgp-seq-caret { flex: none; color: var(--muted, #667); transition: transform 0.15s ease; }
+  .dgp-seq-caret { flex: none; color: var(--muted, #667); }
+  @media (prefers-reduced-motion: no-preference) {
+    .dgp-seq-caret { transition: transform 150ms ease; }
+  }
   .dgp-seq-caret-closed { transform: rotate(-90deg); }
   .dgp-seq-title { flex: 1; font-weight: var(--fw-medium, 500); }
   .dgp-seq-trims { color: var(--muted, #667); white-space: nowrap; }

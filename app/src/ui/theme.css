@@ -628,13 +628,13 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   max-width: none;
   max-height: none;
   /* The field canvas is the viewport onto the surround, not a card sitting
-     on the pane: the global `canvas` rule's border, --shadow-2 and
-     --radius-l (still right for ImagePanel's preview and ManualPanel's
-     drawing surface, which ARE cards on a light panel) would draw a frame
-     around a dark rectangle on a dark ground. */
+     on the pane: the global `canvas` rule's border and --radius-l (still
+     right for ImagePanel's preview and ManualPanel's drawing surface, which
+     ARE cards on a light panel; the global rule lost its drop shadow in the
+     2026-10-01 shadow audit, since an in-flow card does not float) would
+     draw a frame around a dark rectangle on a dark ground. */
   border: 0;
   border-radius: 0;
-  box-shadow: none;
   background: var(--surround);
 }
 
@@ -909,7 +909,6 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-m);
-  box-shadow: var(--shadow-1);
 }
 
 .zoombtn {
@@ -969,7 +968,6 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-m);
-  box-shadow: var(--shadow-1);
   width: min(420px, 70%);
 }
 .simscrub { flex: 1; min-width: 80px; }
@@ -1536,7 +1534,6 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;
-  box-shadow: var(--shadow-1);
 }
 
 input[type="range"]::-moz-range-thumb {
@@ -1546,7 +1543,6 @@ input[type="range"]::-moz-range-thumb {
   background: var(--accent);
   cursor: pointer;
   border: none;
-  box-shadow: var(--shadow-1);
 }
 
 label.letterspacing .label {
@@ -1629,7 +1625,6 @@ canvas {
   border-radius: var(--radius-l);
   border: 1px solid var(--border);
   background: var(--field-bg);
-  box-shadow: var(--shadow-2);
 }
 /* Still bounds ImagePanel's preview and ManualPanel's drawing surface. The
    field canvas opts out via `.hoop canvas`'s own max-height: none above,
@@ -2184,7 +2179,6 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   border: 1px solid var(--border);
   border-radius: var(--radius-m);
   background: var(--surface);
-  box-shadow: var(--shadow-1);
 }
 
 .tp-grid {
@@ -2460,7 +2454,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   .fb-tile,
   .fb-close,
   button.primary {
-    transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+    transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
   }
 
   .tp-chevron { transition: transform 150ms ease; }
