@@ -25,7 +25,7 @@ hold 67 of 81 mm² of teal, then `merge_hierarchical` compares MEAN colours at
 left. Both merge protections are size-gated (1,000 px; 9% of the design) and
 never see a letter. Traced at 5-10 px/mm the same merge keeps 64-67.
 
-**The fix, BUILT OFF (flip is Kent's):** `cfg.work_px_per_mm` (None; measured at 8.0) — the grid a low-res source is TRACED
+**The fix, ON at 8.0 (Kent's flip 2026-10-01; built OFF the day before):** `cfg.work_px_per_mm` — the grid a low-res source is TRACED
 on, separate from `min_px_per_mm` (4), which still owns `INPUT_LOW_RESOLUTION`.
 Photo classes keep the source line; a 2,800 px side budget bounds it; the
 alpha-extension gate and preflight's "lost in tracing" note follow the grid.
@@ -44,7 +44,15 @@ file's own; `logo_whitebg` at 5 px/mm is the one loser (12 → 21 trims).
 `thin_ink`'s 3 px floor counted in source px (worse); cubic/linear for
 Lanczos (no arm wins twice); forcing flat (olive halo round every letter).
 
-**Why OFF:** not robust — enlarging the bg mask smoothly instead of NEAREST
+**Kent's verdict (pairs page, 2026-10-01), same on every logo:** full-size
+file best, finer grid from the small file second, today's engine third. So
+it is ON — and the SOURCE is still the bigger lever; the low-res warning only
+fires under 4 px/mm, which is open and his. 43 tests read on the old grid
+hold it (`conftest.source_line_grid` / `held_on_source_line` /
+`work_px_per_mm=None`). A function-scoped pin cannot reach a module-scoped
+fixture or an `lru_cache`d digitize — hold those in the run itself.
+
+**Why it was built OFF:** not robust — enlarging the bg mask smoothly instead of NEAREST
 (half a pixel of foreground) sent bridge's words to a grey-green cone and
 ENTHUSIAST 0.90 → 0.70; and ON it moves ~45 tests, some real regressions on
 6-7 px/mm synthetics (radial ramp 2 regions for 1). A reboot killed the

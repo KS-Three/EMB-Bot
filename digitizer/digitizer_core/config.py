@@ -321,16 +321,23 @@ class PipelineConfig:
     # never a fabric number. None is the engine before the knob existed,
     # byte for byte.
     #
-    # BUILT OFF (None); 8.0 is the setting every number above was read at.
-    # Two reasons it is not ON. The result is not robust: enlarging the
-    # background mask smoothly instead of NEAREST — half a pixel of
-    # foreground — sent bridge's words to a grey-green cone and took
-    # ENTHUSIAST 0.90 -> 0.70, so part of the gain is where the superpixel
-    # grid happens to land. And ON at 8 it moves about 45 existing tests,
-    # several of them real regressions on 6-7 px/mm synthetics
-    # (`gradient_ramp_radial` sews 2 regions for 1, the face-local split 4
-    # for 2). The flip is Kent's, on renders.
-    work_px_per_mm: float | None = None
+    # ON at 8.0 — KENT'S FLIP, 2026-10-01, on renders: bridge, Becker and
+    # four logos shrunk to a 400 px file, each sewn by the old grid and by
+    # this one beside the full-size file's own digitization. His ranking on
+    # every logo: full-size file best, this grid second, the old grid third.
+    # So the source is still the bigger lever, and this is what the engine
+    # can do about a small one.
+    #
+    # Two things it was built OFF for, both still true and both priced into
+    # that verdict. It is not robust: enlarging the background mask smoothly
+    # instead of NEAREST — half a pixel of foreground — sent bridge's words
+    # to a grey-green cone and took ENTHUSIAST 0.90 -> 0.70, so part of the
+    # gain is where the superpixel grid happens to land (do not "improve" the
+    # mask without re-running `tools/lowres_detail.py`). And it costs 6-7
+    # px/mm synthetics: `gradient_ramp_radial` sews 2 regions for 1, the
+    # face-local split 4 for 2. The 43 tests whose numbers were read on the
+    # old grid hold it through `tests/conftest.py::source_line_grid`.
+    work_px_per_mm: float | None = 8.0
     denoise: bool = True
     # Stage 1 stops reading the RGB under an alpha cutout's transparency.
     # The shape of a cutout lives in alpha; the RGB underneath is whatever

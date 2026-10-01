@@ -143,13 +143,12 @@ def _disc_on_white(px: int) -> np.ndarray:
     return cv2.resize(big, (px + 80, px + 80), interpolation=cv2.INTER_AREA)
 
 
-def test_the_knob_ships_off_and_off_is_the_engine_before_it():
-    """Built OFF (the flip is Kent's, on renders): the default traces a
-    low-resolution source on `min_px_per_mm` exactly as before, including the
-    one odd path the old code had — an `upscale_cap` of 1 still records the
-    native raster and still warns."""
-    assert PipelineConfig().work_px_per_mm is None
-    p = prep(_band(280), _cfg(upscale_cap=1.0))
+def test_the_grid_ships_at_eight_and_none_is_still_the_engine_before_it():
+    """ON at 8.0 since Kent's flip (2026-10-01, on renders). `None` remains
+    the engine before the knob, including the one odd path the old code had —
+    an `upscale_cap` of 1 still records the native raster and still warns."""
+    assert PipelineConfig().work_px_per_mm == 8.0
+    p = prep(_band(280), _cfg(work_px_per_mm=None, upscale_cap=1.0))
     assert p.px_per_mm == pytest.approx(3.5) and p.native_rgb is not None
     assert _low_res(p) is not None
 

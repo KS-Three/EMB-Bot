@@ -17203,3 +17203,31 @@ satin bar; the words are present and not legible letter by letter.
 
 *(measured 2026-09-30 — scratch probes over `stage2_photo_segment.segment`;
 `tools/lowres_detail.py`; `tests/test_work_grid.py`, `tests/test_lowres_detail.py`)*
+
+## 2026-10-01 — `work_px_per_mm` ON at 8.0: Kent's ranking on the pairs page, and what the flip moved (Kent's flip)
+
+The pairs page (`https://claude.ai/artifact/531Ng39BhiUdgnBaEXEqaU`): bridge
+and Becker as uploaded; ENTHUSIAST, Fremont, golden_tee and drone shrunk to a
+400 px file, each sewn by the old grid and by 8 px/mm beside the full-size
+file's own digitization. Kent, on every logo: **full-size file best, finer
+grid second, the old grid third.**
+
+Read on `main` of that day (5 px/mm source; fine ink kept, old → 8, and
+trims): ENTHUSIAST 0.25 → 0.90, 8 → 15; golden_tee 0.63 → 0.72, 71 → 55;
+Fremont 0.87 → 0.90, 34 → 30; drone 0.80 → 0.78, 98 → 154 (its full-size
+file 139). Bridge 80 mm: 7 teal regions / 76.5 mm² / 103 trims → 11 / 125.4
+/ 98. Becker 100 mm: 9,321 → 9,662 stitches, 50 → 57 trims.
+
+Flipped: `PipelineConfig.work_px_per_mm` None → 8.0. 43 tests whose numbers
+were read on the old grid hold it (`tests/conftest.py`: `source_line_grid`,
+`held_on_source_line`; shared runs carry `work_px_per_mm=None`). Two state
+the new truth instead: Becker's `upscaled_to` reads 5.8 (the 4× cap), and the
+knob's own default. Real costs among the held ones, on synthetics:
+`gradient_ramp_radial` 1 → 2 regions, the face-local fixture 2 → 4, the edge
+ladder's 400 px ring 0.14 → 0.40 mm off its edge.
+
+Open, Kent's: his ranking puts the SOURCE first, and `INPUT_LOW_RESOLUTION`
+fires only under 4 px/mm.
+
+*(measured 2026-10-01 — `tools/lowres_detail.py`; `tests/test_work_grid.py`;
+`docs/fine-detail-work-grid-2026-09-30.md`)*

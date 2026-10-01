@@ -8052,8 +8052,8 @@ of teal in teal-majority superpixels) and die in the RAG merge (39): a
 ground both, the merge compares MEANS at 26 dE00 and reads 19–23 between a
 diluted letter and a diluted ground, and both merge protections are
 size-gated above any letter. On a 5–10 px/mm grid the same file keeps 64–67.
-`cfg.work_px_per_mm` is the grid low-resolution line art is traced on
-(built OFF; 8 is the measured setting); `min_px_per_mm` keeps the warning.
+`cfg.work_px_per_mm` is the grid low-resolution line art is traced on (ON
+at 8 since Kent's flip, 2026-10-01); `min_px_per_mm` keeps the warning.
 
 Three rules.
 
@@ -8077,8 +8077,10 @@ Three rules.
 What it is not: robust, or a legibility fix. Half a pixel of foreground
 (the background mask enlarged smoothly instead of NEAREST) sent bridge's
 words to a grey-green cone and took ENTHUSIAST's fine ink 0.90 → 0.70 —
-where the superpixel grid lands is part of every number here, so the knob
-ships OFF and the flip waits on renders. The letters reach the stitch tier and sew
+where the superpixel grid lands is part of every number here, so it was
+built OFF and flipped on RENDERS, not on the table: Kent ranked every logo
+full-size file, then this grid, then the old one. Read that ranking whole.
+The source is still the bigger lever. The letters reach the stitch tier and sew
 as one satin bar each — 3.25–4.5 mm lettering is still a size question, now
 asked of thread. And enlargement is not free everywhere: from 6.5 px/mm
 sources the gain is inside the noise (two of five logos down), and a blurred

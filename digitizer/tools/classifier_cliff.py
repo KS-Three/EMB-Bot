@@ -49,9 +49,10 @@ ARMS = {"shipped": {}, "area": {"classify_area_weighted": True},
         # changes with the target size, so a 1.8 px/mm source is re-invented
         # at every width; pin the floor high and the upscale stops moving
         "upscale_8": {"min_px_per_mm": 8.0, "upscale_cap": 8.0},
-        # `cfg.work_px_per_mm` (2026-09-30, built OFF): the cliff statistic
-        # must be read on this arm before anyone flips it
-        "work_grid_8": {"work_px_per_mm": 8.0}}
+        # `cfg.work_px_per_mm` is the grid `shipped` traces on since Kent's
+        # flip (2026-10-01); this arm is the engine before it, so the cliff
+        # statistic can be read on both sides of that change
+        "work_grid_off": {"work_px_per_mm": None}}
 
 
 def _one(args) -> dict:

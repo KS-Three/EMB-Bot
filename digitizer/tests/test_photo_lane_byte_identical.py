@@ -129,6 +129,7 @@ def _snapshot(key: str) -> dict:
 
 
 @pytest.mark.parametrize("fixture", FIXTURES)
+@pytest.mark.usefixtures("source_line_grid")
 def test_photo_lane_stage2_is_byte_identical_to_the_pre_refactor_golden(fixture):
     assert GOLDEN, f"{GOLDEN_PATH} missing — run tools/capture_photo_lane_golden.py"
     assert _snapshot(fixture) == GOLDEN[fixture]

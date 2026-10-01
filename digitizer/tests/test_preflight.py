@@ -202,6 +202,7 @@ def test_without_the_artwork_the_thread_check_is_skipped_and_says_so(whitebg):
     assert report["metrics"]["thread_worst_delta_e"] is None
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_a_bimodal_thread_is_judged_by_its_worst_region_not_the_pool():
     """THE trap this instrument used to fall into, twice in one day (docs/
     photo-quality-root-cause-2026-08-11.md): two regions share one spool,
@@ -695,6 +696,7 @@ def _res_prep(px: float):
     return _P()
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_lettering_the_artwork_cannot_carry_gets_the_resolution_fact_and_the_two_levers():
     """bridge's teal words (2026-09-30): 3.25-4.5 mm letters in a 400 px JPEG,
     3.5 px/mm at 80 mm, lost in tracing. The sentence names the source as the
@@ -1519,6 +1521,7 @@ def test_with_chaining_off_no_link_can_reach_the_float_ceiling():
         assert m["link_thread_mm"] < machine.TINY_STITCH_MM, (garment, m)
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_a_clean_one_shape_design_is_silent_across_the_2026_08_02_firing_band():
     """The pipeline half of the same pin, at the sizes the closeout measured
     the false block: bg_uncertain.png is ONE shape, and at 104-107 mm
@@ -2334,6 +2337,7 @@ def test_without_the_artwork_the_uncovered_check_is_skipped_and_says_so(whitebg,
 
 # --- The uncovered check on a BLEND design (2026-09-04) ----------------------
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_the_uncovered_check_actually_examines_a_blend_regions_ramp():
     """It never did before, and said "clean" about it.
 
@@ -2565,6 +2569,7 @@ def _two_spool_photo_scene(assign_swapped: bool):
     return result, img, chart, red_i, blue_i
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_photo_route_stays_quiet_when_every_cone_is_the_best_one_loaded():
     """The misfire this rescoring exists to stop.
 
@@ -2650,6 +2655,7 @@ def test_non_photo_routes_keep_the_raw_yardstick_untouched():
         assert "already loaded for this design" in f["message"]
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_a_one_cone_photo_design_is_not_silenced_by_the_rescoring():
     """The degenerate guard. With a single loaded spool every excess is 0 by
     construction, so an unguarded rescoring would go permanently quiet and

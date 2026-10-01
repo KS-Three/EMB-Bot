@@ -5,9 +5,11 @@ completely missing — figure out why, what prevents it from doing fine detail,
 and make a fix for it."*
 
 Renders: `docs/renders/fine-detail-work-grid-2026-09-30/`. Instrument:
-`digitizer/tools/lowres_detail.py`. Flag: `cfg.work_px_per_mm` — **built OFF**
-(None is today's engine, byte for byte); every "traced at 8" number below is
-with it set to 8.0. Why it is not ON is the section *Why it ships OFF*.
+`digitizer/tools/lowres_detail.py`. Flag: `cfg.work_px_per_mm` — built OFF on
+2026-09-30 and **ON at 8.0 since Kent's flip on 2026-10-01** (None is the
+engine before it, byte for byte); every "traced at 8" number below is with
+it set to 8.0. *Why it was built OFF* and *Kent's verdict* are the two
+sections to read before touching it.
 
 ## What was already on the record, and what it got wrong
 
@@ -147,7 +149,41 @@ measured in, on exactly the files with the least to spare.
   moving the floor must price that half: it is in every `@8` number above
   (ENTHUSIAST, Fremont and drone are alpha cutouts), not a separate bill.
 
-## Why it ships OFF
+## Kent's verdict, and the flip (2026-10-01)
+
+The pairs went on a page — bridge and Becker as uploaded, and ENTHUSIAST,
+Fremont, golden_tee and drone each shrunk to a 400 px wide file, sewn by the
+old grid and by this one beside the same logo digitized from its full-size
+file (`https://claude.ai/artifact/531Ng39BhiUdgnBaEXEqaU`; `screenshot` left
+off, his standing call). His ranking, the same on every logo:
+
+1. **the full-size file**,
+2. **the finer grid from the small file**,
+3. **today's engine from the small file.**
+
+Two rulings in that. The finer grid beats the old one to his eye, so
+`work_px_per_mm` is **ON at 8.0**. And the source beats both — "full size
+was better across the board" — so the grid is what the engine can do about a
+small file, not a substitute for a larger one. `INPUT_LOW_RESOLUTION` still
+fires only under 4 px/mm; every small file on that page was 5 and lost to
+its full-size self without the customer being told. Whether the warning's
+line should move is open, and his.
+
+What the flip costs in the suite: 43 tests whose numbers were read on the
+old grid hold it — a digitize of their own through
+`tests/conftest.py::source_line_grid`, a shared run through
+`work_px_per_mm=None` or `held_on_source_line`. Most are pins on a 3.5–7.5
+px/mm fixture. The ones that are real costs on synthetics, not moved pins:
+
+| fixture | old grid | at 8 |
+|---|---|---|
+| `gradient_ramp_radial` (6.4 px/mm) | 1 region | 2 |
+| face-local threshold fixture | 2 regions | 4 |
+| edge ladder, 400 px `logo_whitebg` ring | 0.14 mm off its edge | 0.40 |
+| edge ladder, 400 px ribbon | 1 region | 6 |
+| `region_blobs` (7.15 px/mm) | its photo-lane golden | moves |
+
+## Why it was built OFF
 
 Two things measured on 2026-10-01, after the tables above.
 
