@@ -7,8 +7,9 @@
 //
 //   Draw-shapes mode -> "Trace image..." -> upload a real PNG -> the real
 //   trace pipeline (app/src/lib/manualTrace.js, PR 1) runs against the
-//   decoded pixels -> preview shows the right shape/color counts and the
-//   hole-dropped warning -> "Add N shapes" -> the traced shapes land on
+//   decoded pixels -> preview shows the right shape/color counts and no
+//   hole warning -> "Add N shapes" -> the traced shapes (the ring's hole
+//   among them, as a Cut out shape) land on
 //   ManualPanel's own main canvas -> the first traced shape is selected on
 //   the DESIGN canvas (the hoop) and one of its anchors is dragged there, and
 //   the stitch count changes.
@@ -29,7 +30,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PNG = path.join(__dirname, "fixtures", "trace-holes-and-colors.png");
 
-test("upload -> trace preview (colors + hole warning) -> add shapes -> drag an anchor on the design canvas", async ({ page }) => {
+test("upload -> trace preview (colors, hole kept as a cut-out) -> add shapes -> drag an anchor on the design canvas", async ({ page }) => {
   test.setTimeout(60_000);
 
   await page.goto("/");
@@ -50,23 +51,31 @@ test("upload -> trace preview (colors + hole warning) -> add shapes -> drag an a
   // Real decode takes a moment -- wait for the real preview/legend/Add-count
   // to settle rather than sleeping. The fixture (see its own generation
   // notes / app/src/lib/manualTrace.spec.js's proven annulus + touching-
-  // block fixtures) traces to exactly 3 shapes: the two touching red/blue
-  // blocks (never merged, different colors) plus the ring, whose interior
-  // hole gets dropped with exactly one warning.
+  // block fixtures) traces to the two touching red/blue blocks (never
+  // merged, different colors) plus the ring. Until 2026-10-01 the ring's
+  // interior hole was dropped with an "interior hole" warning; it now
+  // arrives as a Cut out shape right after its parent, with no warning
+  // (manual-holes plan Task 7). The fallback that still drops a hole says
+  // "A traced hole could not be kept ..." -- so the absence of BOTH texts is
+  // asserted, not just an empty list.
   const addBtn = page.getByRole("button", { name: /^Add \d+ shapes?$/ });
-  await expect(addBtn).toHaveText("Add 3 shapes", { timeout: 15_000 });
+  await expect(addBtn).toHaveText("Add 4 shapes", { timeout: 15_000 });
   await expect(page.locator(".tip-preview")).toBeVisible();
   await expect(page.locator(".tip-swatch")).toHaveCount(3);
 
-  const warnings = page.locator(".tip-warnings li");
-  await expect(warnings).toHaveCount(1);
-  await expect(warnings.first()).toContainText("interior hole");
+  await expect(page.locator(".tip-warnings li")).toHaveCount(0);
+  await expect(page.getByText(/interior hole|traced hole could not be kept/)).toHaveCount(0);
 
   // ---- add the traced batch onto the real manual-digitizing canvas -------
   await addBtn.click();
   await expect(page.locator(".tip-upload")).toHaveCount(0); // panel closes itself on a successful add
   const rows = page.locator(".mp-shaperow");
-  await expect(rows).toHaveCount(3);
+  await expect(rows).toHaveCount(4);
+  // The ring's hole is a cut-out row, and it cuts its ring: the row ENDS at
+  // its name, with no "cuts nothing" reason line under it.
+  const cutRows = rows.filter({ hasText: "· Cut out" });
+  await expect(cutRows).toHaveCount(1);
+  await expect(cutRows.first()).toHaveText(/^\s*Shape \d+ · Cut out\s*$/);
 
   // ---- edit the first traced shape ON THE DESIGN CANVAS ------------------
   // The side canvas only draws now; a finished shape's points are edited on
@@ -109,9 +118,19 @@ test("upload -> trace preview (colors + hole warning) -> add shapes -> drag an a
     const k = hb.width / box.cw; // canvas px -> CSS px
     return { hb, k, cx: hb.x + ((box.x0 + box.x1) / 2) * k, cy: hb.y + ((box.y0 + box.y1) / 2) * k };
   };
-  const first = await centre(await settledBox());
-  await page.mouse.click(first.cx, first.cy);
-  await expect(page.getByRole("dialog")).toBeVisible();
+  // Since 2026-10-01 the ring's middle is its CUT-OUT (Shape 2), and a click
+  // there selects that, whose anchors are not at the green box's corner. So
+  // the click goes into the ring's band (15% in from its left edge, which the
+  // fixture's hole -- its middle third -- never reaches), and the popover must
+  // name the ring. The field's drag hint is closed by its own X first: the
+  // first press on the field dismisses it and moves the canvas ~76 px, which
+  // would land the release somewhere other than the press.
+  const dismiss = page.getByRole("button", { name: "Dismiss hint" });
+  if (await dismiss.count()) { await dismiss.first().click(); await expect(dismiss).toHaveCount(0); }
+  const box0 = await settledBox();
+  const first = await centre(box0);
+  await page.mouse.click(first.hb.x + (box0.x0 + 0.15 * (box0.x1 - box0.x0)) * first.k, first.cy);
+  await expect(page.getByRole("dialog")).toHaveAttribute("aria-label", "Shape 1 · Fill");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
@@ -127,5 +146,5 @@ test("upload -> trace preview (colors + hole warning) -> add shapes -> drag an a
   // The anchor drag reshapes the shape: the caption's stitch count moves,
   // and the shape survives under the same row/id.
   await expect.poll(() => stats.innerText(), { timeout: 20_000 }).not.toBe(before);
-  await expect(rows).toHaveCount(3);
+  await expect(rows).toHaveCount(4);
 });

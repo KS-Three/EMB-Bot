@@ -19,6 +19,12 @@ test("design and digitized elements gate on their baked content, not _hasImage",
   expect(isSewable({ type: "digitized", result: { ok: true } })).toBe(true);
 });
 
+test("a manual element holding only cut-outs sews nothing", () => {
+  const tri = [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 40 }];
+  expect(isSewable({ type: "manual", shapes: [{ points: tri, cutOut: true }] })).toBe(false);
+  expect(isSewable({ type: "manual", shapes: [{ points: tri, cutOut: true }, { points: tri }] })).toBe(true);
+});
+
 test("a manual element needs at least one valid completed shape", () => {
   expect(isSewable({ type: "manual", shapes: [] })).toBe(false);
   expect(isSewable({ type: "manual", shapes: [{ points: [{ x: 0, y: 0 }, { x: 10, y: 0 }] }] })).toBe(false);

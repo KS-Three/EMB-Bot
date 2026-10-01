@@ -1,6 +1,6 @@
 ---
 name: concurrent-session-designed-the-same-tool-2026-09-17
-description: Two live sessions on one checkout designed the same tool an hour apart; check reflog + worktree list for a sibling's work BEFORE brainstorming, and never switch the shared checkout's branch
+description: Three collisions between parallel sessions (same design, same build, same worktree); check reflog, worktree list, branches and live sessions BEFORE designing; stop a background session with `claude stop` under its own profile, never a bare kill
 metadata:
   type: feedback
 ---
@@ -52,3 +52,25 @@ And a finished lane that is only on local disk is invisible to every other
 session — push it (`git push origin <b>:refs/heads/<b>`) even without a PR.
 Resolution that day: Kent chose to compare the two builds and PR the better
 one with the other's strengths ported in.
+
+**A third time, 2026-10-01 — two LIVE sessions in one worktree.** Two resumed
+background sessions were both designing holes for the manual lane, with
+opposite designs (a ring stored inside its parent vs. a shape marked Cut
+out). One entered the other's freshly created worktree within three minutes
+and committed its own spec and plan there. What caught it: an untracked file
+nobody in this session had written, in a worktree just created; then the
+worktree's `locked` file under `.git/worktrees/<name>/` naming the OTHER
+session's process. Kent was shown both designs and ruled (Cut out — spec
+ruling 11), and said to stop the other session.
+**Stopping a background session:** a bare process kill does NOT stick — its
+supervisor respawned it 11 seconds later and it went on writing its own Task 1
+into the worktree, uncommitted. The stop that sticks is `claude stop <id>`, run
+under THAT session's own profile (`CLAUDE_CONFIG_DIR` set to the profile it
+was launched with); its conversation is kept and resumable. **Never `claude rm
+<id>`** while its job still names a live worktree — it removes the worktree
+the job points at. The stray edits were committed as found and reverted, not
+discarded (the repo's hook refuses discarding under `.claude/worktrees/`).
+**How to apply, on top of the above:** before creating a worktree or writing
+a spec, check `claude agents --json` and the process list for a session on
+the same topic; after creating a worktree, re-check `git status` before the
+first write — a file you did not write means someone else is in there.

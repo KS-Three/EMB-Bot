@@ -22,7 +22,8 @@
     shapeBorderState } from "../lib/borderMenu.js";
   import { boundaryIssues, canonicalShapeEdits, editsKey } from "../lib/digitizer.js";
   import { popoverModel, popoverPatch, recolorPatch } from "../lib/shapePopover.js";
-  import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, fieldMmToPx, pxToFieldMm, clampMmToBox } from "../lib/fieldNodeEdit.js";
+  import { resolveCutOuts } from "../lib/manualShapes.js";
+  import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, refitShapesPatch, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT } from "../lib/fieldNodeEdit.js";
   import Hint from "./Hint.svelte";
   import Icon from "./Icon.svelte";
   import ShapePopover from "./ShapePopover.svelte";
@@ -785,6 +786,17 @@
       if (key === "color") shapeEditError = "Couldn't match that color to the job's thread chart.";
       return;
     }
+    if (key === "cutOut" && el.type === "manual" && patch.shapes) {
+      // A cut-out emits no region, so the switch can change the bbox the engine
+      // fits — a stray shape marked Cut out used to make the rest re-fit and
+      // jump. The hoop's rule (an edit never moves what was not edited) covers
+      // the switch too: hold the scale and the position, as a node edit does.
+      const fit = manualFit(el);
+      if (fit) {
+        const held = refitShapesPatch(el, fit, patch.shapes);
+        if (!held.error) patch = held;
+      }
+    }
     dispatch("elupdate", { id: el.id, patch });
   }
 
@@ -844,7 +856,14 @@
       if (!rows || !pe.bboxMm) return null;
       return { rows, mm: shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el)) };
     }
-    return { rows: [], mm: designOutlinesInFieldMm(pe.design) };
+    const mm = designOutlinesInFieldMm(pe.design);
+    // A cut-out emits no region, so the engine has no outline for it: the
+    // field builds one from the authored ring through the same fit, after the
+    // engine's, so hitShapeInterior's smallest-ring rule picks the cut-out
+    // over the shape it sits in. One that cuts nothing is listed too — it has
+    // to stay clickable to be fixed or deleted (2026-09-30 spec §5).
+    const fit = el.type === "manual" ? manualFit(el) : null;
+    return { rows: [], mm: fit ? mm.concat(cutOutOutlinesInFieldMm(el.shapes, fit)) : mm };
   }
 
   // The outlines of ONE shape-bearing element, in canvas px — what the pointer
@@ -869,6 +888,7 @@
             const c = renderResult.toCanvas(x, y);
             return [c.x, c.y];
           }),
+        cutOut: !!o.cutOut,
       })),
       mmById: new Map(src.mm.map((o) => [o.id, o.points])),
     };
@@ -1265,6 +1285,13 @@
       // makes it restorable from the Layers list), so it has to be filtered
       // here or the canvas would keep outlining artwork that no longer sews.
       const hidden = hiddenShapeIds(el, rows);
+      // A cut-out that cuts NOTHING sews nothing and, idle, had no outline:
+      // it was invisible on the hoop until hovered. While its element is the
+      // selected one its dashed outline is drawn whatever the toggle says.
+      // Resolved once per element per draw, and only when there is one to find.
+      const orphanCut = el.type === "manual" && project.selectedId === el.id && outlines.some((o) => o.cutOut)
+        ? resolveCutOuts(el.shapes).parentOf
+        : null;
 
       ctx.save();
       ctx.lineJoin = "round";
@@ -1296,11 +1323,14 @@
         // the other two diagnostic overlays. (Since 2026-09-30 the Layers
         // list drives this too, through App: a row's hover and click land
         // in `hoverShape` / `focusShape` above.)
-        if (!showOutlines && !editing && !hovered) continue;
+        const orphan = !!(orphanCut && o.cutOut && orphanCut[o.id] == null);
+        if (!showOutlines && !editing && !hovered && !orphan) continue;
         // Mid node-drag the flattened ring is the STALE geometry: drawing it
         // beside the live authored outline showed two amber outlines. Idle,
-        // the flattened ring stays underneath the authored one (spec §5).
-        if (el.type === "manual" && editing && nodeEdit && nodeEdit.elId === el.id && nodeEdit.shapeId === o.id) {
+        // the flattened ring stays underneath the authored one (spec §5) —
+        // except under a selected CUT-OUT, whose dashes the second stroke
+        // would fill in: drawAuthoredNodes strokes that one alone.
+        if (el.type === "manual" && editing && (o.cutOut || (nodeEdit && nodeEdit.elId === el.id && nodeEdit.shapeId === o.id))) {
           drawAuthoredNodes(ctx, el, o.id);
           continue;
         }
@@ -1309,6 +1339,9 @@
         ctx.moveTo(pts[0].x, pts[0].y);
         for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
         ctx.closePath();
+        // A cut-out reads as a hole, not as a shape: dashed, same casing and
+        // colours. The canvas keeps dash state, so it is reset right after.
+        if (o.cutOut) ctx.setLineDash([4, 3]);
 
         // Cased line: a dark casing under a bright core. An outline traces the
         // EDGE of the artwork it describes, so it is always sitting on the
@@ -1329,6 +1362,7 @@
             : `rgba(${OUTLINE_RGB}, ${0.85 + 0.15 * pulse})`;
         ctx.lineWidth = (editing || hovered ? 1.9 : 1.4) + 1.4 * pulse;
         ctx.stroke();
+        if (o.cutOut) ctx.setLineDash([]);
 
         // Node dots say "drag me". On the digitized lane every vertex of the
         // dense ring is one; a hand-drawn shape's nodes are its AUTHORED
@@ -1380,12 +1414,17 @@
       else ctx.lineTo(next[0], next[1]);
     }
     ctx.closePath();
+    // A cut-out's authored outline is dashed like its idle one, including
+    // mid-drag (`ap.shape` is the live drag's shape then). Dots stay solid.
+    const dashed = !!(ap.shape && ap.shape.cutOut);
+    if (dashed) ctx.setLineDash([4, 3]);
     ctx.strokeStyle = "rgba(10, 22, 30, 0.5)";
     ctx.lineWidth = 3.4;
     ctx.stroke();
     ctx.strokeStyle = "rgba(255, 214, 64, 0.95)";
     ctx.lineWidth = 1.9;
     ctx.stroke();
+    if (dashed) ctx.setLineDash([]);
 
     const dot = (x, y, r, fill) => {
       ctx.beginPath();
@@ -2597,8 +2636,14 @@
           // the node's centre does not snap the node to the pointer.
           const nodeAt = fieldPxToAuthored(ap.fit, { x: ah.atPx[0], y: ah.atPx[1] });
           const pressAt = fieldPxToAuthored(ap.fit, p);
+          // `shapes` and `boxOk` are frozen with the fit: the hold-last-good
+          // guard in onPointerMove tests every frame against the element as
+          // it stood at press, and only holds a shape at the placement box if
+          // it started inside it (one already past keeps the old behaviour).
           nodeEdit = { elId: edit.el.id, shapeId: selectedShapeId, kind: ah.kind, index: ah.index,
-                       basis: { fit: ap.fit, shape: ap.shape }, live: ap.shape,
+                       basis: { fit: ap.fit, shape: ap.shape, shapes: (edit.el.shapes || []).slice(),
+                                boxOk: ringInsideBox(ap.shape, ap.fit, hoopSizeMm(project)) },
+                       live: ap.shape,
                        grab: { dx: nodeAt.x - pressAt.x, dy: nodeAt.y - pressAt.y }, moving: false };
           canvas.style.cursor = "grabbing";
           repaintNodeChrome();
@@ -2762,9 +2807,28 @@
       const q = fieldPxToAuthored(nodeEdit.basis.fit, p);
       // A dragged node stops at the placement box (Kent's ruling 2026-09-29).
       const at = clampAuthoredToBox(nodeEdit.basis.fit, { x: q.x + nodeEdit.grab.dx, y: q.y + nodeEdit.grab.dy });
-      nodeEdit.live = nodeEdit.kind === "anchor"
+      const candidate = nodeEdit.kind === "anchor"
         ? applyAnchorDrag(nodeEdit.live, nodeEdit.index, at)
         : applyHandleDrag(nodeEdit.live, nodeEdit.index, at);
+      // Hold last good (2026-09-30 spec §5, ruling 3): a frame that would
+      // bulge a bent edge past the placement box (tested on the flattened
+      // curve — the point clamp above only holds the through point), or take
+      // a cut-out out of the shape it cuts, is dropped and `live` stays where
+      // it was. The point clamp stays first: it is what lets a node slide
+      // along the box edge.
+      const b = nodeEdit.basis;
+      const boxHeld = b.boxOk && !ringInsideBox(candidate, b.fit, hoopSizeMm(project));
+      const cutHeld = !boxHeld && breaksContainment(b.shapes,
+        b.shapes.map((s) => (s && s.id === candidate.id ? candidate : s)));
+      if (cutHeld) shapeEditError = CUTOUT_HOLD_HINT;
+      // A frame held by the BOX is not the cut-out's doing: a hint left from an
+      // earlier frame would name the wrong cause.
+      if (boxHeld && shapeEditError === CUTOUT_HOLD_HINT) shapeEditError = "";
+      if (!boxHeld && !cutHeld) {
+        nodeEdit.live = candidate;
+        // Clear only our own hint, never a different message showing.
+        if (shapeEditError === CUTOUT_HOLD_HINT) shapeEditError = "";
+      }
       nodeEdit = nodeEdit; // reassign for Svelte
       repaintNodeChrome();
       return;
@@ -2922,6 +2986,9 @@
       if (canvas && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
       const el = project && (project.elements || []).find((x) => x.id === nodeEdit.elId);
       const changed = nodeEdit.live !== nodeEdit.basis.shape;
+      // The hold hint lives as long as the drag; a drag held from its very
+      // first frame commits nothing, so it is dropped here, not by the commit.
+      if (shapeEditError === CUTOUT_HOLD_HINT) shapeEditError = "";
       if (el && changed && e.type !== "pointercancel") commitNodeEdit(el, nodeEdit.live);
       nodeEdit = null;
       pressClient = null;
