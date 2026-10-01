@@ -19,6 +19,14 @@ N_IDENTICAL = 8
 N_REPEAT = 8
 
 BASE = "base"
+# Fixtures the page never shows. Kent, on the evening sitting of 2026-09-30:
+# "dont use this image to judge", and again on the texture sitting that
+# night: "please stop using this shitty logo" -- screenshot is a photo of a
+# screen, not artwork a customer would send, and three sittings of verdicts on
+# it were all "both bad" or "disregard". It stays in `REAL_ART` for the
+# instruments (the corpus tables still count it); the render and the labelled
+# page skip it.
+EXCLUDED_FIXTURES = frozenset({"screenshot"})
 REF_ARM = "ref_0827"
 # `main` on 2026-08-27, the engine Kent's fourteen notes and his "60%" describe.
 REF_COMMIT = "25da2fe"
@@ -58,6 +66,25 @@ ARMS: dict[str, dict] = {
     # symmetric rails (the envelope OFF).
     "split_7mm": {"split_satin_above_mm": 7.0},
     "rails_symmetric": {"satin_rails_follow_edge": False},
+    # The pro's own file beside ours (2026-10-01, Kent's pick after the
+    # texture sitting left his becker note unanswered). A `__file__` arm
+    # names one stitch file per fixture, relative to `digitizer/`; a fixture
+    # without one gets no row. Becker's hat file is 101.9 mm wide against
+    # our 100 mm fixture, the closest of the five professional files; a PES
+    # rather than the DST beside it because the PES carries the thread list.
+    "pro_file": {"__file__": {
+        "becker": "testdata/reference/becker_hat_polo_large_beckers_logo_hat.pes",
+    }},
+    # The back-stitching sitting (2026-10-01, from Kent's verdict on the pro
+    # pair: the pro's flows, and his words were the back stitching under the
+    # lettering). What `tools/underlay_cover.py` measured against his words:
+    # the scatter of holes inside MARINE's stems is the comb split -- every
+    # stem is 5.5-6.9 mm wide, over the 5.0 mm split threshold, and the
+    # split off takes the stems' interior top holes from 1,413 to 246
+    # against the pro's 304. (The stems' own back stitching is already
+    # there: a centre run and a ladder zigzag under every one; the pro's
+    # crosshatch is denser, not different in kind.)
+    "split_off": {"split_satin": False},
 }
 
 

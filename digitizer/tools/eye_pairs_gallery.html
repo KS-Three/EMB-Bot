@@ -336,9 +336,12 @@ function applyHoles() {
   }
 }
 function viewFor(p, side) {
+  // The generator names the sides for a ref or a file arm (`labels`); a flag's
+  // names are composed here.
   const who = LAB
-    ? (side === afterSide(p) ? (p.is_ref ? "AFTER · today" : `AFTER · ${p.arm} ON`)
-                             : (p.is_ref ? `BEFORE · ${refName(p)}` : "BEFORE · shipped"))
+    ? ((p.labels && p.labels[side]) ? p.labels[side]
+       : side === afterSide(p) ? (p.is_ref ? "AFTER · today" : `AFTER · ${p.arm} ON`)
+                               : (p.is_ref ? `BEFORE · ${refName(p)}` : "BEFORE · shipped"))
     : p.shipped_side === null ? "shipped (both)"
     : p.is_ref ? (side === p.shipped_side ? "today" : refName(p))
     : (side === p.shipped_side ? "shipped" : p.arm);
@@ -426,8 +429,10 @@ function pairCard(p) {
   const ta = el("textarea", {id: `note-${p.pair}`, placeholder: LAB ? "note — what your eye saw, what to fix" : "note — what your eye saw", text: note.note || ""});
   ta.addEventListener("input", debounce(() => write({note: ta.value}), 600));
   const jobLabel = LAB ? "Did the flag do what it claims?" : "Did the arm do what it claims?";
-  // An engine snapshot claims nothing, so a labelled ref pair takes a verdict and a note only.
-  const jobRow = (p.arm && !(LAB && p.is_ref))
+  // An engine snapshot or a pro's file claims nothing, so a labelled ref or
+  // file pair takes a verdict and a note only.
+  const noJob = LAB && (p.is_ref || p.arm_kind === "file");
+  const jobRow = (p.arm && !noJob)
     ? el("div", {class: "inputs" + (LAB ? " tight" : "")},
         el("label", {for: `note-${p.pair}`, text: jobLabel}),
         segControl(JOB, note.job_done, v => write({job_done: v, note: ta.value})),
@@ -484,8 +489,9 @@ function armHead(arm, a) {
   const ta = el("textarea", {id: `ruling-${rid}`, placeholder: "why", text: r.note || ""});
   ta.addEventListener("input", debounce(() => write({ruling: (state.rulings[rid] || {}).ruling ?? null, note: ta.value}), 600));
   // A ref arm is an engine snapshot, not a flag: a "win" for it means the
-  // OLD engine was preferred, and there is nothing to flip.
-  const isRef = a.is_ref === true;
+  // OLD engine was preferred, and there is nothing to flip. A file arm (the
+  // pro's own digitize) has nothing to flip either.
+  const isRef = a.is_ref === true || a.kind === "file";
   if (LAB) {
     // The tally is Kent's verdicts so far; refreshTallies fills it on every click.
     return el("section", {class: "armhead"},

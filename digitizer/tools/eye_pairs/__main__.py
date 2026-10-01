@@ -38,8 +38,9 @@ from tools.thin_strokes import STUDIO_MAX_COLORS, corpus_cases
 from . import analysis as an
 from . import features as ft
 from .features import base_cfg, digitize_once, features_design_only, features_full
-from .pairs import (ARMS, BASE, ArmRun, build_pairs, design_hash, load_picks,
-                    now_iso, sealed_hash, unpicked)
+from .filearm import design_from_file
+from .pairs import (ARMS, BASE, EXCLUDED_FIXTURES, ArmRun, build_pairs, design_hash,
+                    load_picks, now_iso, sealed_hash, unpicked)
 from .refarm import (add_worktree, discard_worktree, link_photo_prep, ref_environment,
                      run_ref_design)
 from .server import PORT, make_server
@@ -156,7 +157,10 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
     out = Path(out)
     for sub in ("designs", "renders"):
         (out / sub).mkdir(parents=True, exist_ok=True)
-    cases = list(corpus_cases() if cases is None else cases)
+    # The default corpus minus the fixtures Kent has ruled off the page
+    # (`EXCLUDED_FIXTURES`); an explicit `cases` list is taken as given.
+    cases = ([c for c in corpus_cases() if c[0] not in EXCLUDED_FIXTURES]
+             if cases is None else list(cases))
     arms = dict(ARMS if arms is None else arms)
     if fixtures:
         cases = [c for c in cases if c[0] in fixtures]
@@ -180,6 +184,8 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                     _normalise_art(Path(path), tmp)
                 sources[name] = src_hash
             for arm, kw in [(BASE, {})] + list(arms.items()):
+                if "__file__" in kw and name not in kw["__file__"]:
+                    continue            # a file arm names its fixtures; no file, no row
                 dpath = out / "designs" / f"{name}__{arm}.json"
                 rpath = out / "renders" / f"{name}__{arm}.jpg"
                 hpath = holes_path(out, name, arm)
@@ -216,6 +222,13 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                         # this, so a ref pair rendered with the venv linked is
                         # not marked as if its old side had skipped prep.
                         row["photo_prep_env"] = bool(getattr(runners[commit], "photo_prep_env", False))
+                    elif "__file__" in kw:
+                        rel = kw["__file__"][name]
+                        src = Path(rel) if Path(rel).is_absolute() else DIGITIZER / rel
+                        design = design_from_file(src)
+                        row = features_design_only(path, design)
+                        row["design_only"] = True
+                        row["from_file"] = str(rel)
                     else:
                         cfg = base_cfg(width_mm, garment, **kw)
                         gen, result, plan, design = digitize_once(path, cfg)
