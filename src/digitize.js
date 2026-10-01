@@ -218,25 +218,23 @@
   // interior pairs are handed over as rungs and the crosses follow them.
   // Different counts -> no pairing to trust -> [] (arc fraction, as before).
   //
-  // THINNED to one rung per COLUMN_RUNG_MIN_PX of rail (measured on whichever
-  // rail moved less). `correspond` samples every section at 1 point per 2 px
-  // but never fewer than 12, so a section under 24 px is over-sampled; a
-  // flattened curve puts points a few px apart and would make every one of
-  // them a 12-sample section. 24 px is where its floor and its own density
-  // meet — a sampling number in region px, not a physical constant.
-  const COLUMN_RUNG_MIN_PX = 24;
+  // EVERY interior pair is a rung — no thinning, no spacing constant. Two
+  // thinning rules were tried and measured (2026-10-01) and both lost to this:
+  //   - "once the slower rail has advanced 24 px" left a tight bend with no
+  //     rung at all (the inside rail of a 24 px column on a 16 px bend moves
+  //     10 px through the whole turn): crosses to 28.7 px;
+  //   - "once the faster rail has advanced one column width" fixed that bend
+  //     and then skipped the pairs that mattered on a bezier column: 30.6 px
+  //     where every-pair gives 26.3.
+  // Dense rungs are safe in `correspond`: it sorts cuts by rail-A fraction,
+  // drops a rung whose rail-B anchor runs backward, and skips cuts closer than
+  // 1e-6. Their only cost is samples — each section gets at least 12 — which
+  // is linear in the rail's point count and nowhere near a concern.
   function columnRungs(railA, railB) {
     const n = railA ? railA.length : 0;
     if (!railB || railB.length !== n || n < 3) return [];
     const rungs = [];
-    let sinceA = 0, sinceB = 0;
-    for (let i = 1; i < n - 1; i++) {
-      sinceA += Math.hypot(railA[i].x - railA[i - 1].x, railA[i].y - railA[i - 1].y);
-      sinceB += Math.hypot(railB[i].x - railB[i - 1].x, railB[i].y - railB[i - 1].y);
-      if (Math.min(sinceA, sinceB) < COLUMN_RUNG_MIN_PX) continue;
-      rungs.push([railA[i], railB[i]]);
-      sinceA = 0; sinceB = 0;
-    }
+    for (let i = 1; i < n - 1; i++) rungs.push([railA[i], railB[i]]);
     return rungs;
   }
 

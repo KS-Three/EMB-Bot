@@ -429,7 +429,12 @@ export function columnIssues(shape) {
     return issues;
   }
   const rails = railsFromSpine(spine, shape.widthPx);
-  if (rails && ringSelfCrosses(rails.ring)) issues.push(COLUMN_FOLDS);
+  // Long enough, but no rails: the width is missing, zero, negative or NaN.
+  // Nothing would sew, so it must not read as a healthy column. It takes the
+  // too-short message rather than a new string — either way there is no
+  // column here to sew.
+  if (!rails) issues.push(COLUMN_TOO_SHORT);
+  else if (ringSelfCrosses(rails.ring)) issues.push(COLUMN_FOLDS);
   return issues;
 }
 

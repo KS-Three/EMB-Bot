@@ -1133,6 +1133,16 @@ describe("columns: the model", () => {
     expect(shapeProblems(bow)).toEqual(["This shape crosses itself."]);
   });
 
+  it("columnIssues: a column with no usable width says it cannot sew (the too-short message)", () => {
+    const { widthPx, ...noWidth } = straight;
+    for (const bad of [noWidth, { ...straight, widthPx: 0 }, { ...straight, widthPx: -24 }, { ...straight, widthPx: NaN }, { ...straight, widthPx: "24" }]) {
+      expect(columnIssues(bad)).toEqual([TOO_SHORT]);
+      expect(shapeProblems(bad)).toEqual([TOO_SHORT]);
+      expect(isSewableShape(bad)).toBe(false);
+    }
+    expect(columnIssues(straight)).toEqual([]);
+  });
+
   it("isSewableShape: a 2-point column sews; a cut-out and a broken shape do not", () => {
     expect(isSewableShape(straight)).toBe(true);
     expect(isSewableShape(curved)).toBe(true);
@@ -1310,12 +1320,14 @@ describe("columns: through the real engine", () => {
     const crosses = lens.filter((l) => l >= drawnMm * 0.9);
     expect(steps.length + crosses.length).toBe(lens.length);     // the gap is empty
     expect(crosses.length).toBeGreaterThan(100);
-    // The widest crosses are NOT square to the spine: with no rungs the engine
-    // pairs the rails by whole-rail arc-length fraction, and this column's
-    // rails differ in length (431 vs 450 px), so crosses past the bend lean —
-    // measured 2026-10-01, up to 1.61x the drawn width. Bounded here, not
-    // endorsed: same-index rungs bring it to 1.10x (see the task-2 report).
-    expect(Math.max(...crosses)).toBeLessThan(drawnMm * 2);
+    // The crosses do not lean. This column's rails differ in length (431 vs
+    // 450 px); paired by whole-rail arc fraction its crosses reached 1.61x the
+    // drawn width. The engine now takes every interior rail pair as a rung
+    // (src/digitize.js columnRungs). What is left is in the rails' own pairs
+    // through the bend (1.10x) plus this fabric's pull comp: measured
+    // 2026-10-01, widest cross 4.16 mm on 3.52 mm drawn = 1.18x. Bound = that
+    // plus a small margin.
+    expect(Math.max(...crosses)).toBeLessThan(drawnMm * 1.25);
     crosses.sort((a, b) => a - b);
     const median = crosses[crosses.length >> 1];
     expect(median).toBeGreaterThan(drawnMm);                     // drawn + pull comp...

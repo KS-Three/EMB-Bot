@@ -1754,6 +1754,57 @@ test("sewAs column: crosses follow the rails' own index pairing, so a curved col
   assert.ok(spanStitches(d, "underlay", "c1").length >= 10);
 });
 
+// The Studio's rail construction (app/src/lib/spineRails.js), re-stated
+// minimally so the engine test imports no app code: each spine point offset by
+// +/- half the width along the normal of the averaged adjacent tangents,
+// lengthened to a miter and clamped at 2x the half-width.
+const railsOfSpine = (spine, widthPx) => {
+  const n = spine.length, half = widthPx / 2, dirs = [], railA = [], railB = [];
+  for (let i = 0; i < n - 1; i++) { const dx = spine[i + 1].x - spine[i].x, dy = spine[i + 1].y - spine[i].y, L = Math.hypot(dx, dy); dirs.push({ x: dx / L, y: dy / L }); }
+  for (let i = 0; i < n; i++) {
+    const dIn = i > 0 ? dirs[i - 1] : dirs[0], dOut = i < n - 1 ? dirs[i] : dirs[n - 2];
+    let tx = dIn.x + dOut.x, ty = dIn.y + dOut.y; const tl = Math.hypot(tx, ty); tx /= tl; ty /= tl;
+    const cosHalf = tx * dIn.x + ty * dIn.y, reach = cosHalf > 0.5 ? half / cosHalf : half * 2;
+    railA.push({ x: spine[i].x - ty * reach, y: spine[i].y + tx * reach });
+    railB.push({ x: spine[i].x + ty * reach, y: spine[i].y - tx * reach });
+  }
+  return { railA, railB, outer: railA.concat(railB.slice().reverse()) };
+};
+// A straight lead-in along +x, then an arc of spine radius `r` turning through
+// `sweepDeg`, one spine point every `stepDeg`.
+const hookSpine = (leadPx, r, sweepDeg, stepDeg, tailPx) => {
+  const spine = [{ x: 0, y: 0 }, { x: leadPx, y: 0 }];
+  let t = -Math.PI / 2;
+  for (let k = 1; k <= sweepDeg / stepDeg; k++) {
+    t = -Math.PI / 2 + (k * stepDeg * Math.PI) / 180;
+    spine.push({ x: leadPx + r * Math.cos(t), y: r + r * Math.sin(t) });
+  }
+  if (tailPx) { const l = spine[spine.length - 1]; spine.push({ x: l.x - Math.sin(t) * tailPx, y: l.y + Math.cos(t) * tailPx }); }
+  return spine;
+};
+
+test("sewAs column: a tight bend and a short hook keep their pairing (every interior pair is a rung)", () => {
+  // Width 24 px on a bend of spine radius 16: the inside rail turns on a 4 px
+  // radius and barely advances (10 px through the whole bend) while the
+  // outside one travels 73 px. Rungs kept only once the SLOWER rail had
+  // advanced 24 px left the bend with none — where the two rails' lengths
+  // differ most — and a hook under 24 px of lead-in with no rung at all.
+  // Measured before: crosses to 28.7 px (bend) and 26.7 px (hook).
+  const fixtures = [
+    ["tight bend: 60 px lead-in, r16 through 150 deg (42 px), 15 px tail", hookSpine(60, 16, 150, 10, 15)],
+    ["short hook: 15 px lead-in, r16 through 90 deg (25 px)", hookSpine(15, 16, 90, 15, 0)],
+  ];
+  for (const [name, spine] of fixtures) {
+    const col = railsOfSpine(spine, 24);
+    const cross = colCrossPx(colDesign(col, colSewAs(col), { pullCompMm: 0 }));
+    assert.ok(cross.length > 10, name + ": sewed " + cross.length + " crosses");
+    const lo = Math.min(...cross), hi = Math.max(...cross);
+    // No cross is excluded: these bends turn 10-15 deg per point, nowhere near
+    // the miter clamp. 10%, not 20%: the old spacing's worst here was 1.20x.
+    assert.ok(lo >= 24 * 0.9 && hi <= 24 * 1.1, name + ": every cross within 10% of the drawn 24 px, got " + lo.toFixed(1) + ".." + hi.toFixed(1));
+  }
+});
+
 test("sewAs column: rails with different point counts still sew (no index pairing to use)", () => {
   const col = curvedCol();
   const railB = col.railB.filter((_, i) => i % 2 === 0); // 17 points against 33
