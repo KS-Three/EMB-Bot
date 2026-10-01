@@ -26,9 +26,16 @@
   // it is next opened; under a stitch/color/hoop filter those are left out
   // and COUNTED below the list, never passed off as non-matches. The hoop
   // table and fit rule are the engine's own (src/garments.js).
+  //
+  // The controls only show with two or more saved designs, and `criteria`
+  // outlives them: deleting down to one design unmounts DesignFilter with its
+  // last value still bound here. So the filter applies only while its controls
+  // are on screen — otherwise the one design left stays hidden behind a filter
+  // nobody can see or clear.
   const hoops = EMB.HOOPS || [];
   let criteria = {};
-  $: filtered = filterProjects(projects, criteria, EMB.hoopFit);
+  $: canFilter = projects.length > 1;
+  $: filtered = filterProjects(projects, canFilter ? criteria : {}, EMB.hoopFit);
   $: filtering = hasFactCriteria(criteria) || !!(criteria.text && criteria.text.trim());
 
   // ---- .embproj import (hidden file input) ---------------------------------
@@ -219,7 +226,7 @@
       <!-- Saved designs first, templates after (Kent, 2026-10-01): with the
            three template cards on top the filter sat ~700px down the list,
            below the fold on a laptop and on a phone. -->
-      {#if projects.length > 1}
+      {#if canFilter}
         <DesignFilter {hoops} bind:criteria />
         {#if filtering}
           <p class="drawer-count" role="status">
