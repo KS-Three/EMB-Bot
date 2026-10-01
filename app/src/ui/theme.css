@@ -2412,7 +2412,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 }
 .sheet .summary dt { color: var(--muted); margin: 0; }
 .sheet .summary dd { margin: 0; font-weight: var(--fw-semibold); text-align: right; }
-.drawer-templates-head { margin-top: var(--space-4); }
+.drawer-templates-head { margin: 0; }
 
 /* ---- Motion --------------------------------------------------------------
    Every transition in the app lives in here, gated on the user's motion

@@ -185,8 +185,6 @@
     </div>
 
     <button type="button" class="drawer-new" on:click={() => d("new")}>+ New design</button>
-    <h3 class="drawer-templates-head">Start from a template</h3>
-    <TemplateRow on:pick={(e) => d("template", e.detail)} />
     <button type="button" class="drawer-new" on:click={() => fileInput && fileInput.click()}>
       Import design file (.embproj)
     </button>
@@ -203,6 +201,8 @@
     {/if}
 
     <div class="drawer-list">
+      <h3 class="drawer-templates-head">Start from a template</h3>
+      <TemplateRow on:pick={(e) => d("template", e.detail)} />
       {#each projects as row (row.id)}
         <div class="drawer-row" class:current={row.id === currentId}>
           {#if renamingId === row.id}
