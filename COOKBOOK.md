@@ -1630,6 +1630,22 @@ photo-class fixture's ref side skipped prep and the pair compared lanes
 (tires, 2,500 against 2,646 from the same commit; Kent's one "before
 better" of that evening).
 
+**Back stitching by one rule, and a pro's file as an arm (2026-10-01).**
+`digitizer/tools/underlay_cover.py` reads the STITCHES of ours or a machine
+file in sew order at 0.4 mm and calls a stitch back stitching when most of
+its thread ends up under thread sewn six or more stitches later (the gap
+excludes a cross's own neighbours); the pattern is read from the stitch's
+shape — run, zigzag (sawtooth, or this engine's ladder: cross, a walk along
+the rail, cross back, which `satin_columns` cannot see) or lattice rows —
+with the top thread's support and the holes more than 1 mm inside the
+sewn area, per block and for one band (`--crop 0.68 1.0` is MARINE on
+Becker). Built for Kent's verdict on the pro pair; what it found and the
+trap it walked into (an underlay flag that was a no-op on lettering) are
+in `docs/eye-pairs-2026-09-30/README.md`. The page's third kind of arm,
+`__file__` (`tools/eye_pairs/filearm.py`), puts a stitch file beside our
+digitize of the same fixture; the gallery labels it OURS | THE PRO and
+takes a verdict and a note, no ruling.
+
 Two things it is not. It is **not the blind sitting** — a verdict given
 knowing which side is the flag is evidence for a *ruling*, and never enters
 the yardstick's agreement statistic (§4 of the eye-pairs spec needs the
