@@ -51,7 +51,7 @@
   --accent: #4f46e5;
   --accent-dark: #4338ca; /* hover/active */
   --accent-ink: #ffffff; /* readable ink on top of accent (or other saturated) fills */
-  --tint: #eef0ff; /* accent-tinted selection/hover background */
+  --tint: #eef0ff; /* accent-tinted selection and focus background (hover is --fill) */
   --tint-border: #ccd6fb; /* accent-tinted border, pairs with --tint */
 
   --danger: #c0392b;
@@ -154,14 +154,16 @@
   /* ---- Tracking ----------------------------------------------------------
      Optical, not decorative: type set large needs pulling in and type set
      small-and-uppercase needs opening out, or both read wrong at the same
-     nominal spacing. `wide` is the eyebrow/section-label treatment. */
+     nominal spacing. `wide` now serves the small uppercase labels that are
+     deliberately kept (the field-menu state line, DigitizePanel's border
+     keys and tier badges) and the wordmark; section headings no longer use it. */
   --tracking-tight: -0.02em;
   --tracking-snug: -0.01em;
   /* Two opened steps, because they are not the same job. `slight` is a nudge
      for caps set inside a FIXED box (the old "EMB" tile in the top bar, since replaced
      by the plain wordmark) or a label that just wants air — folding it into
      `wide` pushed "EMB" past its own 28px tile.
-     `wide` is the eyebrow: small, uppercase, meant to read as a label. */
+     `wide` is for small uppercase labels and the wordmark. */
   --tracking-slight: 0.02em;
   --tracking-wide: 0.08em;
 
@@ -232,7 +234,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
 .wordmark {
   font-size: var(--fs-sm);
   font-weight: var(--fw-semibold);
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-wide); /* 0.08em */
   white-space: nowrap;
   color: var(--ink);
 }
@@ -1211,8 +1213,9 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
 .hooptile.sel .hooptile-name { font-weight: var(--fw-medium); }
 
 .hooptile-name { font-size: var(--fs-sm); line-height: 1.2; white-space: nowrap; }
-/* --muted on --bg (the hover ground) measures 5.24, on white 5.61; the
-   selected segment sets its own light value below. */
+/* --muted on --fill (the hover ground) and on white is re-measured by
+   e2e/theme-contrast.spec.js; the selected segment sets its own light value
+   below. */
 .hooptile-mm { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
 .hooptile.sel .hooptile-mm { color: var(--surround-muted); }
 
