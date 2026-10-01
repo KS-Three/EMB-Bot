@@ -375,6 +375,19 @@ test("the Download sheet's history entry: Back closes it, Close and reload leave
   await expect(page.getByRole("dialog", { name: "Download" })).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => window.history.state)).toBeNull();
 
+  // At phone width the sheet is full height below the topbar (spec §2.4),
+  // not clipped to the short panel row it is mounted in.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible({ timeout: 60_000 });
+  const phoneSheet = await openDownload(page);
+  const box = await phoneSheet.boundingBox();
+  const topbarH = await page.locator(".topbar").evaluate((el) => el.getBoundingClientRect().height);
+  expect(Math.round(box.y)).toBe(Math.round(topbarH));
+  expect(Math.round(box.y + box.height)).toBe(844);
+  expect(Math.round(box.width)).toBe(390);
+  await closeDownload(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+
   // One Escape is enough after the reload: no second entry was stacked.
   await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible({ timeout: 60_000 });
   await openDownload(page);
