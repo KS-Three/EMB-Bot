@@ -183,7 +183,11 @@ regime on average, and it is not clean enough to turn on unseen.
 commits on), bridge with the knob OFF reads 7 teal regions / 76.5 mm² / 103
 trims where every table above reads 6 / 46.6 / 101; at 8 it reads 11 /
 125.4 / 98. The gap is still there (+49 mm², four more letter groups) and
-smaller than measured; the regime table has NOT been re-run on that tree.
+smaller than measured. The regime, re-run on that tree at a 5 px/mm source
+(fine ink, OFF → 8): ENTHUSIAST 0.25 → 0.90, golden_tee 0.63 → 0.72 (trims
+71 → 55), Fremont 0.87 → 0.90 (34 → 30), drone 0.80 → 0.78 (98 → 154, its
+full-resolution file 139); mean of four 0.64 → 0.82. Drone is the one that
+pays without gaining fine ink — its area agreement rises 0.82 → 0.92.
 
 ## What is deliberately not moved
 
