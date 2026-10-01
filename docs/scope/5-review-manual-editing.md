@@ -1190,8 +1190,13 @@ moved. *(fixed 2026-10-01 — `test/digitize.test.js`, commit 435eb2f9)*
   browser drive, commit c267ca65)* The assign box carries the same switch.
 - On the hoop a cut-out's outline is drawn **dashed**, and only while it is
   selected, hovered, or Outlines is on; the hole itself shows in the
-  stitching. The side canvas fills a parent and its cut-outs as one even-odd
-  path, so a hole reads as a hole while drawing.
+  stitching. **One exception: a cut-out that cuts NOTHING is outlined whenever
+  its element is selected** — it has no stitches, so otherwise it was invisible
+  until hovered. A selected cut-out is stroked once (its authored outline), so
+  the dashes stay open. The side canvas fills a parent and its cut-outs as one
+  even-odd path, so a hole reads as a hole while drawing, and its list row
+  carries a hollow dashed swatch instead of a colour. *(built 2026-10-01 — fix
+  wave; looked at in the browser, `ManualPanel.spec.js`)*
 
 **The drag guard holds at the last good position (ruling 3).** A node drag that
 would take a cut-out outside its parent — or pull the parent across one of its
@@ -1211,12 +1216,17 @@ right after its parent, simplified and curve-fitted like an outer ring; there
 is no warning. If simplification leaves a hole that no longer resolves to that
 parent, it falls back fitted → straight → dropped, and only a drop warns:
 *"A traced hole could not be kept — that shape will sew solid; cut it in by
-hand if needed."* The trace preview paints a cut-out in the page colour, and
-"Add N shapes" and the legend count it. The e2e fixture
-(`trace-holes-and-colors.png`) now adds **4** shapes (was 3) with no warning,
-the ring's hole as `Shape 2 · Cut out`. *(confirmed 2026-10-01 —
-`manualTrace.spec.js`, `TraceImportPanel.spec.js`, commit 987a2fe6;
-`e2e/manual-trace-import.spec.js`)*
+hand if needed."* Each hole is judged against its parent AND the parent's
+holes already kept, because two holes either side of a thin wall can cross
+once each is simplified on its own — the later would then cut nothing in the
+real list with no warning. The trace preview draws a parent and its cut-outs
+as **one even-odd path**, so a hole shows whatever lies under it (it used to
+paint the hole in the page colour, which erased an island of an earlier
+colour drawn beneath the parent). "Add N shapes" and the legend count
+cut-outs. The e2e fixture (`trace-holes-and-colors.png`) now adds **4** shapes
+(was 3) with no warning, the ring's hole as `Shape 2 · Cut out`.
+*(confirmed 2026-10-01 — `manualTrace.spec.js`, `TraceImportPanel.spec.js`,
+commits 987a2fe6, 41d9cfa0; `e2e/manual-trace-import.spec.js`)*
 
 **A side effect outside this lane — an imported SVG with a triangular hole now
 cuts.** `src/svgimport.js` keeps rings of three or more points and nests holes
@@ -1231,22 +1241,32 @@ dialog becomes `Shape 2 · Cut out` with *"Cuts Shape 1."*, and the hole's
 middle is bare fabric; (b) off returns EXACTLY the two-shape count (9,138);
 (c) a three-point cut-out sews 7,426 against the parent's own 8,119 — the
 engine fix seen from the UI; (d) the drag holds (6,950, below the parent
-alone), parent corner within 2 px; (e) Hole mode; (f) an orphan says it cuts
-nothing. Mutation-checked: with `shapesToRegions` emitting `holes: []`, (a)
-fails (the count never moves off 8,119). *(confirmed 2026-10-01 — Task 8 runs)*
+alone) and the hole's old middle is still bare fabric — this replaced a "parent
+corner within 2 px" read of the whole dark box, which an escaped cut-out (it
+sews nothing) would not have changed either; (e) Hole mode; (f) an orphan says
+it cuts nothing, and switching it on the hoop holds Shape 1 still (below).
+Mutation-checked: with `shapesToRegions` emitting `holes: []`, (a) fails (the
+count never moves off 8,119); with the hoop switch's re-fit removed, (f) fails
+(13,178 against an expected drop below 5,282). *(confirmed 2026-10-01 — Task 8
+runs; fix wave)*
 
 **Found while proving it.**
 - The Cut out row made a hand-drawn shape's popover **~317 px tall** at
   1440×900, and `field-node-edit.spec.js` (g) — drag the popover 80 px down —
   started stopping at ~45 px: the clamp to the hoop's bottom edge, working as
-  built. The test now drags up. *(measured 2026-10-01 — Task 8 probe)*
-- **Marking a stray shape Cut out can resize the rest of the design.** A cut-out
-  is not part of the engine's fit, so on an auto-fit element the remaining
-  shapes re-fit to the width: in (f), two side-by-side rectangles read
-  81×39 mm, and turning the right one into an orphan cut-out made the left one
-  81×91 mm. Consistent with how adding or deleting a shape already re-fits, but
-  a user flipping one switch sees another shape jump. *(measured 2026-10-01 —
-  `e2e/manual-cutout.spec.js` (f) captions)*
+  built. The test now drags up, then back down by the same 80 px.
+  *(measured 2026-10-01 — Task 8 probe; two-way since the fix wave)*
+- **Marking a stray shape Cut out USED to resize the rest of the design — on
+  the hoop it no longer does.** A cut-out is not part of the engine's fit, so on
+  an auto-fit element the remaining shapes re-fitted: in (f), two side-by-side
+  rectangles read 81×39 mm, and turning the right one into an orphan cut-out
+  made the left one 81×91 mm. The hoop's Cut out switch now goes through the
+  same re-fit rule as a node edit (`refitShapesPatch`, `fieldNodeEdit.js`): the
+  scale and position are held, so the same flip now reads **5,282 → 2,636
+  stitches, 81×39 → 35×39 mm**, Shape 1's box unmoved within 2 canvas px. The
+  side panel's switch still re-fits, as adding or deleting a shape there always
+  has (it has no fit to hold). *(fixed 2026-10-01 — `fieldNodeEdit.spec.js`
+  real-engine pair, both directions; `e2e/manual-cutout.spec.js` (f))*
 
 **Not built.** Open runs and satin columns — plans 2 and 3 of the same spec.
 Reordering shapes. Drawing on the hoop canvas (ruling 4 deferred it). Holes on
@@ -1255,17 +1275,17 @@ the digitized lane (it already has them). **Known residue, deliberately left
 (self-crossing) shape SILENTLY; the guard means editing cannot cause it, but
 drawing and import still can.
 
-**Parked follow-ups (from the build ledger, all Minor).**
-- An orphan cut-out has no stitches and no idle outline on the hoop, so it is
-  invisible until hovered — draw its dashed outline whenever its element is
-  selected.
-- A cut-out's list row still shows a colour swatch; a cut-out has no colour.
-- When the box clamp refuses a frame, a stale cut-out hold hint can show the
-  wrong cause for that frame; a selected idle cut-out is stroked twice, so its
-  dashes partly fill in; freeze the drag basis's shapes with `.slice()`.
-- Popover: `aria-describedby` from the Cut out switch to its note; a
-  `:focus-visible` ring, hover and size on `.shapepop-toggle` matching
-  `.shapepop-action`.
+**The build's parked follow-ups — all done in the fix wave.** The orphan's
+outline and the hollow swatch (above); a stale cut-out hint cleared when the
+BOX holds a frame; the drag basis's shapes frozen with `.slice()`; the popover's
+Cut out switch and Stitch type select described by their note
+(`aria-describedby`), with hover, keyboard focus and height matching the
+popover's actions; the panel's switch moved off `.mp-btn` so the e2e selector
+for the lit stitch-type button can never match it; `resolveCutOuts` returns at
+once when no shape is a cut-out (every drag frame and every `shapesToRegions`).
+*(built 2026-10-01 — `manualShapes.spec.js`, `ShapePopover.spec.js`,
+`ManualPanel.spec.js`, `test/digitize.test.js` (`underlayRuns`' own floor,
+mutation-checked))*
 - Tests: an equal-area parent tie goes to the LATER shape (pin the `<=`); a
   real-engine test with an orphan far outside the parent; the engine test's
   underlay assertion should isolate `underlayRuns`' own floor.
