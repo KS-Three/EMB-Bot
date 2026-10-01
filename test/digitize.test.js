@@ -1507,3 +1507,21 @@ test("buildQualityDesign: an empty design carries fit null", () => {
   const d = DG.buildQualityDesign([], { garment: { widthIn: 4, heightIn: 4 } });
   assert.strictEqual(d.fit, null);
 });
+
+test("buildQualityDesign: a 3-point hole cuts, like a 4-point one (manual A's counter)", () => {
+  const sq = [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 300 }, { x: 0, y: 300 }];
+  const tri = [{ x: 100, y: 200 }, { x: 200, y: 200 }, { x: 150, y: 100 }];
+  const box = [{ x: 100, y: 100 }, { x: 200, y: 100 }, { x: 200, y: 200 }, { x: 100, y: 200 }];
+  const run = (holes, underlay) => DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: sq, holes, id: "s", tierOverride: "fill" }] }],
+    { garment: { widthIn: 8, heightIn: 8 }, pxPerMm: 6, underlay, targetWidthMm: 50 });
+  const solid = run([], false).stitches.length;
+  const withTri = run([tri], false).stitches.length;
+  const withBox = run([box], false).stitches.length;
+  assert.ok(withBox < solid, "a 4-point hole already cuts");
+  assert.ok(withTri < solid, "a 3-point hole must cut too: " + withTri + " vs " + solid);
+  // the triangle is half the box's area, so it removes less than the box does
+  assert.ok(withTri > withBox, "and removes less than the bigger hole");
+  // the underlay reader has the same floor: with underlay on, the hole still cuts
+  assert.ok(run([tri], true).stitches.length < run([], true).stitches.length);
+});
