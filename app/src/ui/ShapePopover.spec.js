@@ -122,3 +122,26 @@ test("a dragged position is clamped to the bounds", async () => {
   expect(last.y).toBeLessThanOrEqual(600);
   expect(last.x).toBeGreaterThan(300);
 });
+
+test("a toggle row is a switch that emits the flipped value; a note renders, warn flagged", async () => {
+  const model = { name: "Shape 2 · Cut out", rows: [
+    { key: "cutOut", kind: "toggle", label: "Cut out", value: true, note: "Not inside a shape — cuts nothing.", warn: true },
+  ] };
+  const { events, getByRole, getByText } = renderPop(model);
+  const sw = getByRole("switch", { name: "Cut out" });
+  expect(sw).toHaveAttribute("aria-checked", "true");
+  expect(sw).toHaveTextContent("On");
+  await fireEvent.click(sw);
+  expect(events).toEqual([{ kind: "change", detail: { key: "cutOut", value: false } }]);
+  const note = getByText("Not inside a shape — cuts nothing.");
+  expect(note).toHaveClass("shapepop-note");
+  expect(note).toHaveClass("warn");
+});
+
+test("a note without warn has no warn class, on any row kind", () => {
+  const model = { name: "Shape 1 · Fill", rows: [
+    { key: "stitchType", kind: "choice", label: "Stitch type", value: "fill", options: [{ value: "fill", label: "Fill" }], note: "Sews as fill." },
+  ] };
+  const { getByText } = renderPop(model);
+  expect(getByText("Sews as fill.")).not.toHaveClass("warn");
+});

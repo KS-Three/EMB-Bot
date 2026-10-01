@@ -126,6 +126,16 @@
       <button type="button" class="shapepop-action" class:danger={row.danger} on:click={() => d("action", { key: row.key })}>
         {row.label}
       </button>
+    {:else if row.kind === "toggle"}
+      <div class="shapepop-row">
+        <span class="shapepop-label">{row.label}</span>
+        <button
+          type="button" role="switch" class="shapepop-toggle"
+          aria-checked={row.value ? "true" : "false"} aria-label={row.label}
+          on:click={() => d("change", { key: row.key, value: !row.value })}
+        >{row.value ? "On" : "Off"}</button>
+      </div>
     {/if}
+    {#if row.note}<p class="shapepop-note" class:warn={row.warn}>{row.note}</p>{/if}
   {/each}
 </div>
