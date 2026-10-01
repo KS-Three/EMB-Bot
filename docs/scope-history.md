@@ -184,6 +184,54 @@ container.
 
 ---
 
+**Last updated:** 2026-09-18 (later) — eye pairs: the fourteen review items PR #506's fix scope skipped
+
+`digitizer/tools/eye_pairs/` only — no engine change, no default flip, and
+**no `FEATURES_SCHEMA` bump**: a multi-hour `--render` was running on Kent's
+machine while this was written, and every new row field is optional with its
+fallback stated. Spec, dated paragraph by paragraph:
+`docs/superpowers/specs/2026-09-17-eye-pairs-design.md`.
+
+The two that change what a result can be read as. (1) The exploratory fit's
+LOFO and best-single accuracies were printed raw; they now carry the majority
+baseline, a Wilson interval and `(acc − baseline)/(1 − baseline)` — a world
+where Kent picks shipped 54 of 60 times and every delta is zero scores raw
+**0.90** against a floor of **0.90** (gate 4). (2) The 08-27 arm's
+`confounded` flag was inferred from `design_class`; it is now derived from
+three facts measured at render time (the rembg venv under each engine,
+`git diff` on `requirements.txt`) and `--reveal` prints which fired. On a
+checkout with no rembg venv the old proxy was a false positive.
+
+The other twelve, one commit each: `--serve` refuses a torn sitting, reports
+the sitting hash on `/pairs` (the page polls it) and 409s a pick once a
+`--pair` has rebuilt it; a malformed pick is a 400 instead of a dropped
+connection; `--pair` reads a recorded `design_hash` and hardlinks `img/`
+(renders are now replaced atomically, because `cv2.imwrite` in place would
+have rewritten a linked picture under a live sitting); `--verify` picks
+`tires` by name; child processes are decoded as UTF-8 with replacement; a
+half-made ref worktree is discarded with `git worktree prune` (measured on git
+2.55: `remove --force` handles a missing directory but not a missing `.git`
+file); `build_pairs` links a repeat by key, held to three pinned digests of
+its output; one `_both(..., ties=)` fetch in `analysis`; `stitches` read from
+`stitchCount`; one `tiny_logo` fixture in conftest plus a teardown tripwire on
+the shared sitting; pick timestamps carry their UTC offset.
+
+Also in passing, before any of it: PR #506 was **open and red**, not merged.
+Red 1 was a test that simulated "no tesseract" by patching one function — it
+passes where the binary is missing and fails where it exists, i.e. only on CI.
+Red 2 was MASTER_SCOPE at 27,009 words on the MERGE ref with neither side
+over. Both fixed on #506's branch (Kent's call), which then merged at
+14:34Z.
+
+Suites at the time: the seven eye-pairs / instrument-split test files 82 →
+**146 tests**; those plus `test_scope_budget`, `test_doc_claims` and
+`test_dropped_elements` **189 passed** locally (Python 3.14.6, `-n 4`, 81 s).
+The full digitizer suite was NOT run locally — a 13%-in run showed no failure
+before it was stopped to free the CPU for the render — so CI is the full-suite
+evidence for this one.
+
+---
+
 **Last updated:** 2026-09-17 — border restitch pacing (PR #504)
 
 A border override now restitches on the pick instead of waiting out the 2 s
@@ -16996,6 +17044,101 @@ than four points. Whatever his eye calls flow, it is not leg-length
 jitter, and the page asks him for the words. Records:
 `docs/eye-pairs-2026-09-30/README.md` (the texture section),
 `texture-corpus.json`, the spec's arms table, memory. Verdicts pending.
+
+## 2026-10-01 — The texture sitting judged: no difference between the pro's 7 mm style and the comb, the envelope kept on golden_tee, and screenshot ruled off the page
+
+Kent judged seven of the eight texture pairs at 01:21Z. `split_7mm`:
+becker, bridge, drone, tires *no difference*; screenshot unjudged with
+the note *"please stop using this shitty logo, put it in an .md file
+somehwere. 15 characters at most."* `rails_symmetric`: golden_tee *before
+better* (job done: yes — *"It completed the stitch with a very nice line
+following the outline."*), tires *no difference*, becker not judged. No
+rulings, no words for "flow". So: the 7 mm split threshold stays at the
+corpus vote (5.0) with no sew-out pack owed — the page could not separate
+the pro's raw crosses from the comb, on becker's letters with the holes
+toggle included; the envelope stays ON, the morning ruling standing on
+the one pair the symmetric rails changed visibly; becker's "does not flow"
+stays open with neither lever answering it. screenshot is off the page:
+`tools.eye_pairs.pairs.EXCLUDED_FIXTURES` (the render's default corpus and
+the labelled page, tested), DOCTRINE's fifteen-character entry; the
+instruments' corpus still counts it. Records:
+`docs/eye-pairs-2026-09-30/README.md` (the texture Outcome),
+`kent-notes.json` (`fourth_sitting`), DOCTRINE, MASTER_SCOPE, memory.
+
+## 2026-10-01 — The pro's own Becker beside ours on the page: a file-backed arm, one-rule table, the first target for "flow" (Kent's pick)
+
+Kent's pick after the texture verdicts. The labelled page rebuilt under
+the tag `pro-1001` with one pair: our engine's Becker at 100 mm on the
+left, the professionally digitized Becker (the 101.9 mm hat PES in
+`testdata/reference`, read through `adapter.pattern_to_design`) on the
+right, the same renderer, the needle-holes toggle on both. A third kind
+of arm in the yardstick: `__file__` names one stitch file per fixture
+(`tools/eye_pairs/filearm.py`); the gallery labels the sides ("OURS ·
+today" | "THE PRO · the pro's file"), takes a verdict and a note and no
+ruling; tests on the round trip, the unnamed fixture, the labels and the
+kind. Under the head, ours against the pro's by one rule
+(`tools/satin_columns`' cross detector over each design's needle-down
+passes): stitches 9,321 / 12,356, satin share 31.3 / 42.6%, column width
+p50 2.24 / 2.66 mm and p90 3.35 / 5.20, legs over 5 mm 0.0 / 26.5%,
+jitter 32.5 / 28.5%, turn p90 16.6 / 27.6°. The renders: the pro sews the
+big arch letters as a black fill with grey satin keylines and MARINE as
+grey columns with one direction per stroke and no mid-column holes; ours
+sews both rows as satin under the 5 mm comb. Also recorded: Kent's two
+head notes on the texture page ("not sure what's being shown here" under
+both arms) — the arm's flag-and-paragraph did not tell him what he was
+looking at, so the pro page says LEFT and RIGHT in plain words. Records:
+`docs/eye-pairs-2026-09-30/README.md` (the pro section),
+`pro-becker-table.json`, `kent-notes.json`, the spec's arms table, memory.
+Verdict pending.
+
+## 2026-10-01 — The pro pair judged: the pro's flows, Kent's word is the back stitching, and the comb split is what the instrument finds in it
+
+Kent's verdict on the pro page (01:53Z): the pro's (`after`); his note:
+*"The pros file as back stitching to support the detail layering, the
+letters look perfect. the lettering is smooth, it's beautifull. The back
+stitching helps support the top threading so it has structure and
+support."* In chat he also took all three offered candidates (fill for the
+big letters, whole-stroke crosses, one direction per stroke). New
+instrument `digitizer/tools/underlay_cover.py`: one rule on the stitch
+records of either design — thread drawn in sew order, a stitch mostly under
+thread sewn six or more stitches later is back stitching, its pattern read
+from its shape (run / zigzag incl. the engine's ladder / lattice), the top
+thread's support, interior holes; cross-checked on our plan's kinds
+(underlay 95% covered, satin 17.5%). On MARINE (bottom 32%): the holes
+inside the stems are the comb split — every stem 5.5-6.9 mm wide, over the
+5.0 threshold — 1,413 today, 774 at the 7 mm arm, 246 with the split off,
+the pro's 304; holes/mm² 3.20 → 1.88 vs 2.07; legs over 5 / 7 mm with the
+split off 24.8 / 3.4% vs the pro's 26.5 / 1.6, longest 12.1 vs 11.1. The
+stems' back stitching is already there (19 strokes × centre run + ladder
+zigzag, 18% of the word's thread vs the pro's crosshatch 28.9%; support
+20.7% both) — the first read called the ladder "running", fixed by the
+two-rail rule; a flag to lift the zigzag's oversize skip was built,
+measured a no-op on lettering (infinite ceiling under
+`satin_lettering_split`) and reverted. Stacked satin, ours only: 19.5% of
+MARINE's satin thread under later satin. The arch letters: the fixture is
+146 × 91 px with white-bodied outlined letters; the pro's fill is his
+source's, not a lever here. Fourth-sitting correction: rails_symmetric on
+becker was judged *no difference* at 01:25Z, after the first read (the
+README said not judged). New arm `split_off` for the `back-1001` page;
+table `back-stitching-table.json`; tests 10 + the arm pins. Records:
+README's back-stitching section, kent-notes (`fifth_sitting` + chat picks),
+DOCTRINE (two entries), MASTER_SCOPE, memory.
+
+## 2026-10-01 — `snap_region_edges` ON: the gradient lane's edges follow pixels
+
+Kent's real Instagram icon (2000 px; kept gitignored in
+`testdata/photo/acceptance/`): stage 0 `gradient`, correct. 148 SEEDS
+superpixels straddle the white icon's edge, 7.6% of the white on the wrong
+side. `snap_region_edges` (stage 2, after the merge, margin 10 Lab,
+gradient class only) built OFF and flipped ON by Kent on renders. Through
+the service at 80 mm / max 6: 24,945 → 23,888 stitches, 44 → 28 trims, 11
+colours both. Regions at Studio params: drone 107 → 119, Bridge Bar 80 → 95,
+the repro 6 → 6. `THREAD_MATCH_POOR` blocks at 80 mm / left_chest: drone
+5 → 3, golden_tee 2 → 1, gaulke 0 → 0. 26 tests in 13 files moved at the
+flip; all accounted for in DOCTRINE's entry. Not measured: the rest of the
+gradient-class corpus rendered both ways (the sheet run died in a reboot
+after two fixtures, neither on the lane). Same day: the Studio's flat
+switch came back (PR #587).
 
 ## 2026-09-30 — Bridge's "RESTAURANT" was the tracer's grid, not the file: `cfg.work_px_per_mm`, and a low-resolution regime the corpus never had (Kent's ask)
 

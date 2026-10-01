@@ -20,6 +20,7 @@
 // Same runner split as wizard-smoke.spec.js: this is a @playwright/test spec
 // (`npm run test:e2e`), not a vitest one -- vite.config.js excludes e2e/**.
 import { test, expect } from "@playwright/test";
+import { pickGarment } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -139,9 +140,7 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
   await page.goto("/");
 
   // ---- reach the digitize panel (same route as the wizard smoke test) ----
-  await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
+  await pickGarment(page, "Tote");
 
   // The tile is health-gated (App probes /health on reaching this step); it
   // appearing IS the live assertion that the app sees the real service.

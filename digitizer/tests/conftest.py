@@ -53,6 +53,33 @@ def client():
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 
+
+def draw_tiny_logo(path: Path, extra_dot: bool = False) -> Path:
+    """A 240x160 white card with a black rectangle and a red disc: the
+    cheapest image that digitizes to two regions (~2 s). Three modules each
+    hand-built this, pixel for pixel, until 2026-09-18 — the instrument
+    splits, the eye-pairs features and the eye-pairs CLI. `extra_dot` is the
+    same artwork re-exported with one more mark: same NAME, different bytes,
+    for the cache-key test. cv2/numpy are imported here, not at module
+    scope, for the reason the `client` fixture above gives."""
+    import cv2
+    import numpy as np
+
+    img = np.full((160, 240, 3), 255, np.uint8)
+    cv2.rectangle(img, (30, 40), (110, 120), (0, 0, 0), -1)
+    cv2.circle(img, (170, 80), 35, (0, 0, 200), -1)
+    if extra_dot:
+        cv2.circle(img, (40, 140), 6, (0, 0, 0), -1)
+    cv2.imwrite(str(path), img)
+    return path
+
+
+@pytest.fixture(scope="session")
+def tiny_logo(tmp_path_factory) -> Path:
+    """`draw_tiny_logo` on disk as `tiny.png`, once per session. Read-only:
+    a test that needs to change it draws its own under `tmp_path`."""
+    return draw_tiny_logo(tmp_path_factory.mktemp("tiny_logo") / "tiny.png")
+
 # The real-read OCR tests skip when the tesseract binary is absent — but
 # never on CI, where the workflow apt-installs it: if that provisioning is
 # ever lost in a refactor, the five OCR tests must fail loud, not go dark
@@ -270,4 +297,16 @@ PRE_FLIP["strip_letterbox"] = False
 # for the next test that prices a colour flag on a satin fixture. A test that
 # is ABOUT the rails is `tests/test_rail_comp.py` and names the flag itself.
 PRE_FLIP["satin_rail_comp"] = False
+# `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
+# renders of his Instagram icon, drone, Bridge Bar and the repro), for the
+# reason every entry above gives. ON, a gradient-lane region's edge follows
+# the pixels instead of the SEEDS superpixels, which removes exactly the
+# slivers and halo fragments the colour files use as their PREMISE -- the
+# resnap's Silver-on-near-black shape, the drifted sliver, the repeated cone
+# -- so an arm measured before that day was measured with them present.
+# Measured at the flip: left ON, 26 tests across 13 files moved, and in the
+# files that read this dict every one was a premise assert ("fixture drift",
+# "should be there to lose"), not the flag under test getting worse. The
+# test that is ABOUT the snap is `tests/test_snap_region_edges.py`.
+PRE_FLIP["snap_region_edges"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

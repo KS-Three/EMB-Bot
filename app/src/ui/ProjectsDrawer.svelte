@@ -7,6 +7,7 @@
   // deleteFromDrawer).
   import { createEventDispatcher, onMount } from "svelte";
   import Icon from "./Icon.svelte";
+  import TemplateRow from "./TemplateRow.svelte";
   export let projects = [];
   export let currentId = null;
   // One-line status/error from App's .embproj import handling ("" hides it).
@@ -200,6 +201,8 @@
     {/if}
 
     <div class="drawer-list">
+      <h3 class="drawer-templates-head">Start from a template</h3>
+      <TemplateRow on:pick={(e) => d("template", e.detail)} />
       {#each projects as row (row.id)}
         <div class="drawer-row" class:current={row.id === currentId}>
           {#if renamingId === row.id}

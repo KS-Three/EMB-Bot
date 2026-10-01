@@ -4,15 +4,13 @@
 // choice survives a reload. The Left-chest template fits its suggested hoop,
 // so no oversize confirm stands between the click and the download.
 import { test, expect } from "@playwright/test";
+import { startStudio, pickTemplate, openDownload } from "./helpers.js";
 import { statSync } from "node:fs";
 
 async function reachDownload(page) {
-  await page.goto("/");
-  await page.locator(".tcard", { hasText: "Left-chest name" }).click();
-  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Download", exact: true })).toBeVisible();
+  await startStudio(page);
+  await pickTemplate(page, "Left-chest name");
+  await openDownload(page);
 }
 
 test("choosing Brother gives one PES button that downloads a real file, and the choice is remembered", async ({ page }) => {
@@ -42,21 +40,19 @@ test("choosing Brother gives one PES button that downloads a real file, and the 
   expect(statSync(p).size).toBeGreaterThan(200);
 
   // Remembered: the next visit starts with the machine already chosen. A
-  // reload lands on the first step; the topbar's Download shortcut is the
+  // reload lands on the design again; the summary bar's Download is the
   // route back once the design has regenerated.
   await page.reload();
   await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
-  await page.locator(".topbar-download").click();
-  await expect(page.getByRole("heading", { name: "Download", exact: true })).toBeVisible();
+  await openDownload(page);
   await expect(page.getByLabel("Your machine")).toHaveValue("brother");
   await expect(page.getByTestId("machine-download")).toHaveText("Download PES for Brother / Baby Lock");
 });
 
 test("the view segments: Stitches, Realistic and Simulate are one choice", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
-  await page.locator(".tcard", { hasText: "Left-chest name" }).click();
-  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
+  await startStudio(page);
+  await pickTemplate(page, "Left-chest name");
 
   const flat = page.locator('.zoomctl button[aria-label="Stitches view"]');
   const real = page.locator('.zoomctl button[aria-label="Realistic view"]');

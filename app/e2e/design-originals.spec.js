@@ -16,6 +16,7 @@
 // record never carried the bytes, and — with the digitizer service up — the
 // re-digitize request carries the file itself.
 import { test, expect } from "@playwright/test";
+import { startStudio, pickGarment } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
@@ -135,9 +136,8 @@ function storedLength(page, key) {
 }
 
 async function uploadArtwork(page) {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await startStudio(page);
+  await pickGarment(page, "Tote");
   await page.getByRole("button", { name: "Artwork" }).click();
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   // The panel stores the file before it patches the element; wait for the

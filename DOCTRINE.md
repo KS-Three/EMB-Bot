@@ -7513,7 +7513,10 @@ class's, detection does not move it), and the detail-lines option follows it.
 
 **Two rules that follow, and both change what a session does:**
 
-1. **Do not bring the buttons back.** A misrouted design now has no
+1. **Do not bring the buttons back.** *(The FLAT button came back the same
+   evening, by Kent's own ruling — see "The flat switch came back" at the
+   end of this file. The photo button did not, and the rest of this rule
+   stands for it.)* A misrouted design now has no
    in-product correction, and that is the point rather than an oversight:
    stage 0 misroutes most real logos (phase 2), and the fix is the routing.
    A session that sees a misroute reaches for phase 2's evidence, not for a
@@ -7897,6 +7900,139 @@ yet. Do not spend another day on rail-level texture without first
 putting the two remaining levers in front of him — the pro's own Becker
 style (raw crosses to about 7 mm, no comb) and the symmetric rails on the
 letters — or asking what "flow" is in his own words on a sew-out.
+
+## 2026-10-01 — Kent: screenshot is not a logo to judge digitizing by
+
+No screenshot.
+
+(His words on two sittings of 2026-09-30, the second asking for a note of
+fifteen characters at most; `tools.eye_pairs.pairs.EXCLUDED_FIXTURES`
+keeps it off the page.)
+
+## 2026-10-01 — The page cannot separate the pro's 7 mm split style from the comb, and cloth is not asked until the eye has a difference
+
+**Measured negative.** Raw satin crosses to about 7 mm (the pro's own
+Becker style) against the shipped comb at 5.0, on five pairs with a
+needle-hole map beside every render: *no difference* on all four Kent
+judged, becker's letters included. The threshold stays at the corpus vote,
+and no sew-out pack is owed — a physical constant goes to cloth when the
+eye has two things to choose between, not to settle a difference it
+cannot see. The symmetric rails lost the one pair they changed visibly
+(golden_tee: the envelope's "very nice line following the outline"), so
+the envelope's morning ruling stands. Two levers, no movement: the thing
+his becker note names ("does not flow, not smooth and structured") is not
+the split comb and not the envelope's reach, and the next lever has to
+come from his words or a sew-out, not from another rail-level change.
+
+## 2026-10-01 — Kent's word for Becker's "flow" is the back stitching, and the instrument finds the comb split in it
+
+The pro's own Becker beside ours was the first pair Kent judged with a
+verdict AND his own words: *"back stitching to support the detail layering
+... helps support the top threading so it has structure and support."*
+`tools/underlay_cover.py` reads both files by one rule (thread covered by
+thread sewn six or more stitches later), and what separates the two words
+of MARINE is not the amount of support — our stems already carry a centre
+run and a ladder zigzag, the top thread sits on thread 20.7% in both —
+but the comb: every stem is 5.5-6.9 mm wide, over the 5.0 mm split
+threshold, so the comb puts 1,413 holes inside the stems where the pro's
+raw crosses put 304 (246 with ours off). **Two rules.** (1) When the eye
+names a quality, measure what the eye saw — the needle-holes view — not
+the word it used: "back stitching" led to the holes, and the holes are the
+split. (2) Before building a lever, check it reaches the shape: a flag to
+lift the zigzag underlay's oversize skip was built, measured a no-op on
+every MARINE stem (a text-cluster member's ceiling is infinite under
+`satin_lettering_split`, so the skip never fires) and reverted the same
+hour. The split threshold stays a gate-1 number; the arm is for his eye.
+
+## 2026-10-01 — The arch letters' fill is the source's, not the engine's
+
+The pro's file fills BECKER's letters black with a grey keyline; ours sews
+them as 2.7 mm satin outlines around white bodies — because the fixture
+`becker_marine_logo.png` is 146 × 91 pixels (1.46 px/mm at 100 mm) and its
+letters ARE white-bodied outlines in a black band. Kent's chat pick "the
+big letters are a flat fill, not satin columns" is a difference between
+two sources, and no width rule in this engine can turn an outline into a
+fill. Before comparing a professional's file to ours, say what each was
+digitized FROM; a thumbnail fixture judged against vector-art work reads
+as an engine gap that is not there. The resolution line on the lettering
+findings (2026-09-30) is the record that applies.
+
+## 2026-09-30 — The flat switch came back, the same day it went
+
+**Kent's ruling, reversing half of that morning's.** He digitized the real
+Instagram icon; stage 0 read it `gradient` (correctly — it is a multi-stop
+sweep), the gradient lane sewed it badly, and the Studio had no way to say
+otherwise: *"The option to select 'digitize as flat' is gone. either we need
+to auto recognize when to digitize as flat, or make that switch available
+again."* Shown the lane's edge fix live (`snap_region_edges`, clean white
+shapes, the sweep still in bands with a hard line through it) he chose the
+switch: *"Still bad, bring the switch back."* He had ranked forced flat at
+80 mm best of every arm earlier the same session.
+
+**What is back:** on a reading that sews down a tonal lane (`photo`,
+`gradient`, a detected photograph) the reading row offers ONE button, "Sew as
+flat art", which writes `params.forced_class = "flat"`; a design it was used
+on says "You set this to flat art" and offers "Use automatic detection",
+which removes the key. `buildDigitizeConfig` sends `forced_class` only when
+it is exactly `"flat"`. **What is not:** "It's a photo" / `isPhoto` /
+`is_photographic` from the Studio, any other stored `forced_class`, and any
+button on a flat reading.
+
+**What this changes for a session:** a misroute has an in-product correction
+again, in ONE direction. Phase 2 is still the fix — a customer has to notice
+the misroute to use the button — and the automatic route for non-photographic
+gradient-class art (plan 2026-09-08's PR 6b, "route by consequence") is still
+an open ruling of Kent's, now with his stated preference on record: he was
+offered it in the same question and took the switch. Do not remove the
+button again on the strength of the morning's entry; ask.
+*(Kent's call 2026-09-30 — `app/src/lib/digitizer.js` `buildDigitizeConfig`,
+`DigitizePanel.svelte` reading row, `DigitizePanel.spec.js`)*
+
+## 2026-09-30 — A gradient-lane region's edge was a superpixel's edge: `snap_region_edges`, ON
+
+**Kent's report:** the Instagram icon "looks like shit" and "auto detect must
+not work". Stage 0 was right (`gradient`; the icon is a multi-stop sweep).
+The defect was one stage down: `stage2_photo_segment` builds every region out
+of whole SEEDS superpixels, so a region edge can only be a superpixel edge.
+On his real file (2000 px, 80 mm) 148 superpixels straddle the white icon's
+edge and 7.6% of the white lands on the wrong side — the jagged ring, the
+bitten dot, the stray diagonals. Forced flat sews the same shapes clean
+because k-means labels per pixel.
+
+**The fix:** after the merge (and the dissolve), an edge pixel moves into a
+neighbouring region only when its colour is closer to that region's mean by
+`SNAP_MARGIN_LAB` = 10, on the merge's own Lab (sweep subtracted when the
+design ramp fits). Gradient class only. Built OFF, flipped ON by Kent the
+same night on renders of his file at 80 and 188 mm, drone, Bridge Bar and
+the repro. His file at 80 mm through the service: 24,945 → 23,888 stitches,
+44 → 28 trims, 11 colours both. It does NOT fix the sweep sewing as hard
+bands; shown it live he still chose the flat switch for that icon ("The flat
+switch came back", above), and then asked for the snap ON as well.
+
+**What a session should take from it:**
+
+- **A "the classifier is broken" report can be a lane defect on a correct
+  classification.** A/B auto against `forced_class="flat"` and RENDER both
+  before touching stage 0. Every arm on his file graded F/0–F/16, so the
+  preflight score separated nothing; the render did.
+- **Without the ramp subtracted, a seam inside a sweep is not held by the
+  margin** — it settles toward the colour midpoint between the two regions'
+  means. Harmless (the seam's position is arbitrary) and pinned as such in
+  `tests/test_snap_region_edges.py`; do not "fix" it by raising the margin.
+- **It adds regions on busy art** (drone 107 → 119, Bridge Bar 80 → 95 at
+  Studio params): snapped pixels that stand apart become their own pieces.
+  drone's crosshair comes back that way. Not swept across the corpus — only
+  four designs were rendered both ways before the flip.
+- **The flip's bill:** 26 tests in 13 files moved. 21 were premise asserts in
+  the colour files (the slivers they trace are gone) and ride
+  `conftest.PRE_FLIP`; three are held on the pre-snap engine by name; one
+  count re-pinned as a gain (`THREAD_MATCH_POOR` blocks, drone 5 → 3,
+  golden_tee 2 → 1). A strict xfail tracking the cone fold's 38 → 308-stitch
+  shape stopped reproducing on defaults and is held on the pre-snap engine so
+  the defect is not quietly retired.
+*(measured 2026-09-30/10-01 — `digitizer_core/stage2_photo_segment.py`
+`snap_region_edges`, `tests/test_snap_region_edges.py` (7),
+`conftest.PRE_FLIP`)*
 
 ## When a bigger design brings the detail back from the SAME file, the loss is the engine's grid, not the artwork (2026-09-30)
 

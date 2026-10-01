@@ -22,6 +22,7 @@
 // reuse a running service, start one from a venv if there isn't one, and SKIP
 // (never fail) on a machine with no digitizer venv.
 import { test, expect } from "@playwright/test";
+import { startStudio, typeText, pickGarment, openDownload } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -32,9 +33,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // The same flat two-squares fixture the stale-edits spec uses: black and red
 // on white, which stage 0 reads as flat art -- so this spec's expected reading
-// is the flat one. Nothing is offered beside it: the row is a statement, not
-// a question (Kent, 2026-09-30 -- the "It's a photo" / "It's flat art"
-// corrections are gone, and the engine's own detection answers instead).
+// is the flat one. Nothing is offered beside a FLAT reading: the row is a
+// statement there (Kent, 2026-09-30 -- "It's a photo" is gone and the
+// engine's own detection answers instead; the flat switch that came back
+// the same evening, "Sew as flat art", shows on tonal readings only).
 const ART_PNG = path.join(__dirname, "fixtures", "two-squares.png");
 // A vector logo with a `viewBox` and NO width/height — the shape SVGO and most
 // hand-written exports produce, and the one Chrome hands back at its 300 px
@@ -112,12 +114,10 @@ test("uploading artwork digitizes it on its own, and the panel says what it read
   test.skip(!serviceUp, skipReason);
   test.setTimeout(300_000);
 
-  await page.goto("/");
+  await startStudio(page);
 
   // ---- reach the digitize panel (same route as the wizard smoke test) ----
-  await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
+  await pickGarment(page, "Tote");
   // Health-gated tile: it appearing IS the live assertion that the app sees
   // the real service, which is also what arms the upload watcher below.
   await page.getByRole("button", { name: "Artwork" }).click();
@@ -150,11 +150,11 @@ test("uploading artwork digitizes it on its own, and the panel says what it read
   const read = page.locator(".dgp-read");
   await expect(read).toHaveCount(1);
   await expect(read).toContainText("Read as flat art");
-  // ...and asks nothing. No correction, no "use automatic" -- automatic is
-  // the only mode there is.
+  // ...and asks nothing on a flat reading. No correction and no "use
+  // automatic": nothing was overridden, and flat has nothing to switch to.
   await expect(read.getByRole("button")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "It's a photo" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "It's flat art" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Sew as flat art" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Use automatic detection" })).toHaveCount(0);
   // Flat art is not a tonal lane, so the detail-lines option stays off the
   // row too (Kent, 2026-08-30).
@@ -184,14 +184,12 @@ test("JEF downloads a real file through the service — the format with no brows
   // it lives exactly in the space this spec covers, so the guard lives here
   // rather than beside the other download tests in wizard-smoke.spec.js,
   // which deliberately has no service bootstrap.
-  await page.goto("/");
-  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await startStudio(page);
   await page.getByRole("button", { name: "Artwork" }).click();
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
 
-  await page.getByRole("button", { name: "4 Download", exact: true }).click();
+  await openDownload(page);
   const jef = page.getByTestId("jef-button");
   // Enabled, because the service this spec bootstrapped is answering. The
   // disabled case is a component test (DownloadStep.spec.js) — reaching it
@@ -240,9 +238,7 @@ test("a vector logo is rendered at the work size, not at the browser's default",
   // Asserted on the COLOUR COUNT rather than on the absence of the warning: an
   // absence can pass for any reason, and the colour count is the thing the
   // customer pays for. Two is what the artwork has.
-  await page.goto("/");
-  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await startStudio(page);
   await page.getByRole("button", { name: "Artwork" }).click();
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_SVG);
 
@@ -285,13 +281,10 @@ async function jefHoopCode(page) {
 }
 
 async function reachDownloadWithText(page, garmentLabel, text) {
-  await page.goto("/");
-  await page.getByRole("button", { name: garmentLabel, exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await page.getByPlaceholder("Type a name or word").fill(text);
-  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
-  await page.getByRole("button", { name: "4 Download", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Download", exact: true })).toBeVisible();
+  await startStudio(page);
+  await pickGarment(page, garmentLabel);
+  await typeText(page, text);
+  await openDownload(page);
 }
 
 test("the JEF caveat appears exactly when the file's hoop code is the bad one", async ({ page }) => {

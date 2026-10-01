@@ -164,6 +164,41 @@ def test_ties_nulls_and_equal_values_are_not_counted():
     assert an.sign_agreement(rows, feats, "ragged_mm")["n"] < r["n"]
 
 
+def test_both_values_or_nothing_and_what_a_tie_means_is_the_callers_call():
+    """Review 2026-09-17: fetch-base / fetch-arm / skip-if-missing was written
+    out three times, and the three did not treat a tie alike — on purpose in
+    the fit, invisibly everywhere. One helper; `ties` is a required word."""
+    feats = {"fx": {BASE: {"artfid": 80.0, "ragged_mm": 0.2, "lost_frac": None},
+                    "a": {"artfid": 81.0, "ragged_mm": 0.2, "lost_frac": 0.1}}}
+    row = {"fixture": "fx", "arm": "a"}
+    assert an._both(feats, row, "artfid", ties=False) == (80.0, 81.0)
+    assert an._both(feats, row, "ragged_mm", ties=False) is None       # equal: no say
+    assert an._both(feats, row, "ragged_mm", ties=True) == (0.2, 0.2)  # the fit's zero delta
+    for ties in (True, False):
+        assert an._both(feats, row, "lost_frac", ties=ties) is None    # missing on one arm
+        assert an._both(feats, row, "thin_recall", ties=ties) is None  # missing on both
+    with pytest.raises(TypeError):
+        an._both(feats, row, "artfid")                                 # never defaulted
+
+
+def test_a_tie_is_no_say_for_a_verdict_and_a_zero_delta_for_the_fit():
+    """The divergence, pinned in one place so it stays deliberate."""
+    sealed, picks, feats = world(12, agree=12, metric="stitches",
+                                 arm_value=5000, base_value=4000)
+    feats["fx3"]["a"]["stitches"] = feats["fx3"][BASE]["stitches"]
+    rows = an.decided_rows(sealed, picks, ref=False)
+    assert an.lean(rows, feats, "stitches")["n"] == 11
+    sealed, picks, feats = world(12, agree=12)
+    feats["fx3"]["a"]["ragged_mm"] = feats["fx3"][BASE]["ragged_mm"]
+    rows = an.decided_rows(sealed, picks, ref=False)
+    assert an.sign_agreement(rows, feats, "ragged_mm")["n"] == 11
+    assert len(an.exit_clause(rows, feats, "ragged_mm")) == 0
+    assert "fx3" not in an.per_fixture_sign(rows, feats, "ragged_mm")["fixtures"]
+    # ... while the fit keeps every all-tie row of `lean_world`: 60 of 60.
+    sealed, picks, feats = lean_world()
+    assert an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats)["n"] == 60
+
+
 def test_refused_pairs_leave_the_headline_and_stay_in_the_all_pairs_row():
     sealed, picks, feats = world(30, agree=30, refused={f"fx{i}" for i in range(10)})
     rows = an.decided_rows(sealed, picks, ref=False)
@@ -222,6 +257,45 @@ def test_design_only_rows_are_kept_apart_from_flag_rows_by_the_stored_flag():
     assert [r["pair"] for r in an.decided_rows(sealed, picks, ref=True)] == ["P900"]
     flag = [r["pair"] for r in an.decided_rows(sealed, picks, ref=False)]
     assert "P900" not in flag and "P901" in flag
+
+
+def env(main=False, ref=False, reqs=False):
+    return {"ref": "25da2fe", "rembg_venv_main": main, "rembg_venv_ref": ref,
+            "requirements_differ": reqs}
+
+
+def test_a_photo_fixture_is_not_confounded_when_neither_engine_had_rembg():
+    """Review 2026-09-17: `confounded` was `design_class in PHOTO_CLASSES` —
+    an inference. On a checkout with no rembg venv (every worktree) today's
+    engine skipped photo prep exactly as the old one did, so the proxy
+    flagged a confound that was not there."""
+    out = an.ref_confound(env(main=False, ref=False), photo_class=True)
+    assert out == {"confounded": False, "why": []}
+
+
+def test_the_rembg_fact_fires_only_on_an_asymmetry_and_only_on_photo_fixtures():
+    out = an.ref_confound(env(main=True, ref=False), photo_class=True)
+    assert out["confounded"] is True
+    assert len(out["why"]) == 1 and "rembg" in out["why"][0]
+    assert "today's engine only" in out["why"][0]
+    # A flat logo never reaches photo prep, whatever the venvs are.
+    assert an.ref_confound(env(main=True, ref=False), photo_class=False)["confounded"] is False
+    # Both present is as symmetric as both absent.
+    assert an.ref_confound(env(main=True, ref=True), photo_class=True)["confounded"] is False
+
+
+def test_changed_pins_confound_every_fixture_and_say_so():
+    for photo in (True, False):
+        out = an.ref_confound(env(reqs=True), photo_class=photo)
+        assert out["confounded"] is True and "requirements.txt" in out["why"][0]
+    both = an.ref_confound(env(main=True, reqs=True), photo_class=True)
+    assert len(both["why"]) == 2                     # every fact that fired is named
+
+
+def test_an_unrecorded_environment_is_unknown_not_clean():
+    for missing in (None, {}):
+        out = an.ref_confound(missing, photo_class=True)
+        assert out["confounded"] is None and "not recorded" in out["why"][0]
 
 
 def test_the_ceiling_is_kents_own_consistency():
@@ -291,3 +365,95 @@ def test_the_fit_recovers_a_separable_world_leave_one_fixture_out():
 def test_the_fit_refuses_to_run_under_forty_pairs():
     sealed, picks, feats = fit_world(13, 3)         # 39 decided pairs
     assert an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats) is None
+
+
+def test_the_fit_reports_both_accuracies_against_the_majority_baseline():
+    """ROADMAP gate 4 (review 2026-09-17): the two accuracies were returned
+    and printed raw. An accuracy only means something beside what always
+    guessing Kent's commoner pick would score, and with its interval."""
+    sealed, picks, feats = fit_world(9, 6)
+    rows = an.decided_rows(sealed, picks, ref=False)
+    out = an.exploratory_fit(rows, feats)
+    share = sum(r["picked_is_arm"] for r in rows) / len(rows)
+    base = max(share, 1 - share)
+    assert out["label"] == "EXPLORATORY"
+    assert out["majority_baseline"] == pytest.approx(base)
+    assert out["lofo_n"] == 54
+    assert out["lofo_accuracy"] == pytest.approx(out["lofo_hits"] / out["lofo_n"])
+    assert out["lofo_wilson"] == pytest.approx(list(an.wilson(out["lofo_hits"], out["lofo_n"])))
+    assert out["lofo_above_baseline"] == pytest.approx((out["lofo_accuracy"] - base) / (1 - base))
+    assert out["lofo_beats_baseline"] is True       # a separable world clears it
+    best = out["best_single"]
+    assert best["above_baseline"] == pytest.approx((best["accuracy"] - base) / (1 - base))
+    lo, hi = best["wilson"]
+    assert lo <= best["accuracy"] <= hi
+
+
+def lean_world(n_fixtures=10, arms_per_fixture=6, arm_picks=6):
+    """Kent picks shipped on 54 of 60 pairs and NO metric has any say — every
+    delta is zero — so the only thing there is to learn is his lean."""
+    sealed, picks, feats = {}, {}, {}
+    same = {"artfid": 80.0, "lost_elements": 5.0, "ragged_mm": 0.20,
+            "roughness_deg": 4.0, "refusals": {}}
+    i = 0
+    for f in range(n_fixtures):
+        fx = f"fx{f}"
+        feats[fx] = {BASE: dict(same)}
+        for a in range(arms_per_fixture):
+            arm, pid = f"arm{a}", f"P{i:03d}"
+            i += 1
+            feats[fx][arm] = dict(same)
+            sealed[pid] = {"fixture": fx, "kind": "live", "repeat_of": None,
+                           "left_arm": BASE, "right_arm": arm}
+            # One arm-pick in each of the first `arm_picks` fixtures, so every
+            # leave-one-fixture-out training fold still holds both classes.
+            picks[pid] = {"pair": pid, "choice": "R" if (a == 0 and f < arm_picks) else "L"}
+    return sealed, picks, feats
+
+
+def test_a_fit_that_only_learned_kents_lean_earns_nothing():
+    """The trap gate 4 names: raw 0.90 reads like a result. It is the floor —
+    a model with no information predicts "shipped" every time and is right
+    on exactly the share of pairs where Kent picked shipped."""
+    sealed, picks, feats = lean_world()
+    out = an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats)
+    assert out["lofo_accuracy"] == pytest.approx(0.9)
+    assert out["majority_baseline"] == pytest.approx(0.9)
+    assert out["lofo_above_baseline"] == pytest.approx(0.0, abs=1e-9)
+    assert out["lofo_beats_baseline"] is False
+    # A metric with no say earns half credit a pair: far UNDER the floor.
+    assert out["best_single"]["accuracy"] == pytest.approx(0.5)
+    assert out["best_single"]["above_baseline"] == pytest.approx(-4.0)
+
+
+def test_a_skipped_fold_cannot_flatter_the_fit():
+    """Every arm-pick sits in ONE fixture. Holding that fixture out leaves a
+    single answer to learn from, so the fold is skipped — and the 54 rows
+    LOFO does score are all "shipped". 1.00 on those rows is their FLOOR.
+    Held to the floor over all 60 rows (59/60) it read "+1.00 above
+    baseline" for a model that learned nothing: the accuracy and its
+    baseline have to be taken over the same rows."""
+    sealed, picks, feats = lean_world(arm_picks=1)
+    out = an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats)
+    assert (out["n"], out["lofo_n"]) == (60, 54)
+    assert out["lofo_accuracy"] == 1.0
+    assert out["lofo_baseline"] == 1.0
+    assert out["lofo_above_baseline"] is None and out["lofo_beats_baseline"] is False
+    # `best_single` scores every row, so it is still held to the all-row floor.
+    assert out["majority_baseline"] == pytest.approx(59 / 60)
+
+
+def test_with_no_fold_skipped_the_two_floors_are_one_number():
+    sealed, picks, feats = fit_world(9, 6)
+    out = an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats)
+    assert out["lofo_n"] == out["n"]
+    assert out["lofo_baseline"] == pytest.approx(out["majority_baseline"])
+
+
+def test_a_one_sided_sitting_has_no_corrected_figure_rather_than_a_crash():
+    sealed, picks, feats = lean_world(arm_picks=0)      # Kent never picks an arm
+    out = an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats)
+    assert out["majority_baseline"] == 1.0
+    assert out["lofo_accuracy"] is None and out["lofo_above_baseline"] is None
+    assert out["lofo_beats_baseline"] is False
+    assert out["best_single"]["above_baseline"] is None

@@ -49,10 +49,13 @@ same session: `docs/superpowers/specs/2026-09-17-eye-pairs-design.md`,
   pair that makes the identical-skip rule testable in 1.2 s.
 - **`legibility.measure` raises `TesseractNotFoundError` here**; the
   feature reads `null` with the exception in `notes`.
-- **The 08-27 ref arm is environment-confounded on photo-class fixtures**:
-  its worktree has no `rembg_isolated/venv` while the main checkout does,
-  so the old engine skips photo prep for an environment reason. `--reveal`
-  marks those rows; do not read them as an engine difference.
+- **The 08-27 ref arm CAN be environment-confounded on photo-class
+  fixtures** — its worktree never has `rembg_isolated/venv`, so the old
+  engine skips photo prep for an environment reason. *Corrected 2026-09-18:*
+  this used to say it IS, and `--reveal` inferred it from the design class.
+  It depends on where the render ran: from a `.claude/worktrees/` lane today's
+  engine has no venv either, and nothing is confounded. It is now MEASURED at
+  render time — see [[eye-pairs-followup-2026-09-18]].
 - **The main checkout's branch was switched under this session** (a
   `claude/eye-pairs-review` branch appeared at my commit, 83 s before I
   looked). Another session was live in the same checkout. Never build in

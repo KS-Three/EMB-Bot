@@ -63,8 +63,8 @@ export const HELP = {
   photoReading: {
     title: "How the artwork was read",
     what: "The digitizer decides this on its own: flat art sews as solid colour regions, shaded art in blended thread shades, and a photo with a face in it sews as flat art, which reads best for a face.",
-    changes: "Nothing here is a switch. Add fine detail lines, offered on photos and shaded art, stitches a layer of fine lines on top: more stitches, more detail up close.",
-    when: "If the reading looks wrong for your artwork, the fix is cleaner artwork — solid colours and no shading for a logo, a clear face for a portrait — not a setting.",
+    changes: "Sew as flat art, offered when the art was read as shaded or a photo, sews it as solid colour regions instead; Use automatic detection takes that back. Add fine detail lines stitches a layer of fine lines on top: more stitches, more detail up close.",
+    when: "Choose Sew as flat art for a logo that was read as shaded: clean shapes and solid colours sew sharper that way. Leave a real photo or a soft colour blend on automatic.",
   },
 
   // ---- Digitize panel: per-shape controls -------------------------------
@@ -147,6 +147,12 @@ export const HELP = {
     what: "Renders the thread with its sheen and thickness, the way it looks sewn.",
     changes: "The view only. Off, the flat view shows stitch structure and coverage more honestly — gaps and density are easier to see.",
     when: "Realistic to judge the look; flat to judge the engineering.",
+  },
+  originalView: {
+    title: "Original view",
+    what: "Shows the artwork you uploaded in place of the stitches.",
+    changes: "The view only. Nothing about the design or the file changes.",
+    when: "Flip between this and the stitches to check the digitizing against what you asked for.",
   },
   simulator: {
     title: "Stitch simulator",

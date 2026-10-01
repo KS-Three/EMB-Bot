@@ -1,79 +1,34 @@
-import { test, expect } from "vitest";
-import { STEPS, canAdvance, nextStep, prevStep } from "./flow.js";
-import { defaultProject, addElement, updateElement } from "./project.js";
+import { expect, test } from "vitest";
+import { isSewable } from "./flow.js";
 
-test("steps order", () => { expect(STEPS).toEqual(["garment","content","create","download"]); });
-
-test("create step gates on at least one ready text element", () => {
-  const p = defaultProject(); // one empty text element
-  expect(canAdvance("create", p)).toBe(false);
-  expect(canAdvance("create", updateElement(p, "e1", { text: "Hi" }))).toBe(true);
+test("a text element is sewable once it has non-blank text", () => {
+  expect(isSewable({ type: "text", text: "" })).toBe(false);
+  expect(isSewable({ type: "text", text: "   " })).toBe(false);
+  expect(isSewable({ type: "text", text: "EMB" })).toBe(true);
 });
 
-test("create step gates on at least one ready image element", () => {
-  let p = defaultProject();
-  p = updateElement(p, "e1", { text: "" });
-  p = addElement(p, "image", 100); // e2, image, no _hasImage yet
-  expect(canAdvance("create", p)).toBe(false);
-  const withImage = updateElement(p, "e2", { _hasImage: true });
-  expect(canAdvance("create", withImage)).toBe(true);
+test("an image element is sewable only via its runtime _hasImage flag", () => {
+  expect(isSewable({ type: "image" })).toBe(false);
+  expect(isSewable({ type: "image", _hasImage: true })).toBe(true);
 });
 
-test("create step advances if ANY element is ready, even if others are not", () => {
-  let p = defaultProject(); // e1 text, empty
-  p = addElement(p, "image", 100); // e2 image, not ready
-  expect(canAdvance("create", p)).toBe(false);
-  const ready = updateElement(p, "e1", { text: "Hi" });
-  expect(canAdvance("create", ready)).toBe(true);
+test("design and digitized elements gate on their baked content, not _hasImage", () => {
+  expect(isSewable({ type: "design", _hasImage: true })).toBe(false);
+  expect(isSewable({ type: "design", dstBase64: "AAAA" })).toBe(true);
+  expect(isSewable({ type: "digitized", _hasImage: true })).toBe(false);
+  expect(isSewable({ type: "digitized", result: { ok: true } })).toBe(true);
 });
 
-test("content step always advances", () => {
-  expect(canAdvance("content", defaultProject())).toBe(true);
+test("a manual element needs at least one valid completed shape", () => {
+  expect(isSewable({ type: "manual", shapes: [] })).toBe(false);
+  expect(isSewable({ type: "manual", shapes: [{ points: [{ x: 0, y: 0 }, { x: 10, y: 0 }] }] })).toBe(false);
+  expect(isSewable({ type: "manual", shapes: [{ points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }] }] })).toBe(true);
 });
 
-test("nav", () => {
-  expect(nextStep("garment")).toBe("content");
-  expect(prevStep("content")).toBe("garment");
-  expect(nextStep("download")).toBe(null);
+test("a preset shape element is sewable from birth", () => {
+  expect(isSewable({ type: "shape", kind: "circle", params: {} })).toBe(true);
 });
 
-test("create step gates a manual element on having at least one valid completed shape", () => {
-  let p = defaultProject();
-  p = updateElement(p, "e1", { text: "" });
-  p = addElement(p, "manual", 100); // e2
-  expect(canAdvance("create", p)).toBe(false);
-
-  // A degenerate/collinear "shape" (a mis-click) doesn't count as ready.
-  const degenerate = updateElement(p, "e2", {
-    shapes: [{ id: "s1", points: [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 10, y: 0 }], stitchType: "fill", colorRgb: [1, 1, 1], angleDeg: null }],
-  });
-  expect(canAdvance("create", degenerate)).toBe(false);
-
-  const ready = updateElement(p, "e2", {
-    shapes: [{ id: "s1", points: [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 10, y: 20 }], stitchType: "fill", colorRgb: [1, 1, 1], angleDeg: null }],
-  });
-  expect(canAdvance("create", ready)).toBe(true);
-});
-
-test("create step: a preset shape element is ready from birth (kind + params always generate)", () => {
-  let p = defaultProject();
-  p = updateElement(p, "e1", { text: "" }); // the default text element is NOT ready
-  expect(canAdvance("create", p)).toBe(false);
-  p = addElement(p, "shape", 100); // e2
-  expect(canAdvance("create", p)).toBe(true);
-});
-
-test("create step gates design and digitized elements on their baked content, not _hasImage", () => {
-  let p = defaultProject();
-  p = updateElement(p, "e1", { text: "" });
-  p = addElement(p, "design", 100); // e2
-  expect(canAdvance("create", p)).toBe(false);
-  expect(canAdvance("create", updateElement(p, "e2", { dstBase64: "QQ==" }))).toBe(true);
-
-  let q = defaultProject();
-  q = updateElement(q, "e1", { text: "" });
-  q = addElement(q, "digitized", 100); // e2
-  expect(canAdvance("create", q)).toBe(false);
-  const ready = updateElement(q, "e2", { result: { stitches: [], colors: [] } });
-  expect(canAdvance("create", ready)).toBe(true);
+test("null is not sewable", () => {
+  expect(isSewable(null)).toBe(false);
 });

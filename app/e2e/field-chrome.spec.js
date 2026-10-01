@@ -29,13 +29,13 @@
 // Code-based @playwright/test spec (`npx playwright test`), not the
 // interactive MCP server — same Chromium, but this is the repeatable check.
 import { test, expect } from "@playwright/test";
+import { startStudio, pickTemplate } from "./helpers.js";
 
 // Lands on the content step with real stitches on the canvas. The quick-start
 // template is the shortest route to a design that actually generates.
 async function reachDesign(page) {
-  await page.goto("/");
-  await page.locator(".tcard", { hasText: "Left-chest name" }).click();
-  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
+  await startStudio(page);
+  await pickTemplate(page, "Left-chest name");
 }
 
 // Area of the intersection of two elements' boxes, in CSS px. 0 = no overlap.
