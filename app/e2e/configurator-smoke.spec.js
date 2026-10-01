@@ -768,4 +768,24 @@ test("Original view swaps the thread for the uploaded artwork, and any edit swap
   await page.getByRole("button", { name: "Realistic view" }).click();
   await expect(orig).toHaveAttribute("aria-pressed", "false");
   await expect.poll(shot).toBe(stitched);
+
+  // The simulator and Original are exclusive: starting one ends the other.
+  await orig.click();
+  await expect(orig).toHaveAttribute("aria-pressed", "true");
+  const sim = page.getByRole("button", { name: "Stitch simulator" });
+  await sim.click();
+  await expect(sim).toHaveAttribute("aria-pressed", "true");
+  await expect(orig).toHaveAttribute("aria-pressed", "false");
+
+  // The simulator's bar stands over the view bar while it runs (theme.css
+  // `.fieldbars`), so it is left by its own Close.
+  await page.getByRole("button", { name: "Close simulator" }).click();
+
+  // …and any edit swaps it back: a new fabric colour regenerates the design,
+  // which is the thing the customer now wants to see.
+  await orig.click();
+  await expect(orig).toHaveAttribute("aria-pressed", "true");
+  await expect(sim).toHaveAttribute("aria-pressed", "false");
+  await page.locator("button.fabricswatch:not(.sel)").first().click();
+  await expect(orig).toHaveAttribute("aria-pressed", "false");
 });
