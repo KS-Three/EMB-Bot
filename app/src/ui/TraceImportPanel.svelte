@@ -159,6 +159,19 @@
       const pts = flattenShape(s.points, s.curves, true);
       if (pts.length < 2) continue;
       const [r, g, b] = s.colorRgb || [20, 20, 20];
+      if (s.cutOut) {
+        // A hole sews nothing: paint it as the page behind, with a thin edge.
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.closePath();
+        ctx.fillStyle = "#f4f2ec";
+        ctx.fill();
+        ctx.strokeStyle = `rgb(${r},${g},${b})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        continue;
+      }
       ctx.beginPath();
       ctx.moveTo(pts[0].x, pts[0].y);
       for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);

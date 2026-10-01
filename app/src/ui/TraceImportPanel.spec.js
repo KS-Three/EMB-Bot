@@ -68,7 +68,8 @@ const BLUE = [30, 30, 200];
 // scratch check) to trace to exactly ONE shape with removeBg on (the
 // default) and zero warnings; toggling removeBg OFF brings the background in
 // as its own shape too (the red square becomes an interior hole of the now-
-// untouched white ring), which is what surfaces the dropped-hole warning.
+// untouched white ring). That hole now arrives as a cut-out shape (3 shapes
+// in all: the white ring, its cut-out, the red square), with no warning.
 function oneShapeImage() {
   const w = 30, h = 30;
   const rgba = makeCanvas(w, h);
@@ -86,6 +87,19 @@ function twoShapeImage() {
   fillRect(rgba, w, 0, 0, 20, 20, WHITE);
   fillRect(rgba, w, 2, 2, 10, 18, RED);
   fillRect(rgba, w, 10, 2, 18, 18, BLUE);
+  return { rgba, w, h };
+}
+
+// 22 disjoint same-color squares: one more than the per-color cap of 20, which
+// is what surfaces a trace warning now that holes no longer do.
+function overCapImage() {
+  const w = 120, h = 40;
+  const rgba = makeCanvas(w, h);
+  fillRect(rgba, w, 0, 0, w, h, WHITE);
+  for (let i = 0; i < 22; i++) {
+    const x = 2 + (i % 11) * 10, y = i < 11 ? 4 : 24;
+    fillRect(rgba, w, x, y, x + 5, y + 5, RED);
+  }
   return { rgba, w, h };
 }
 
@@ -166,9 +180,9 @@ describe("color count and remove-background controls", () => {
     const checkbox = utils.container.querySelector('input[type="checkbox"]');
     await fireEvent.click(checkbox); // uncheck remove-background
 
-    expect(addButton(utils)).toHaveTextContent("Add 2 shapes");
-    expect(utils.container.querySelector(".tip-warnings")).not.toBeNull();
-    expect(utils.container.querySelector(".tip-warnings").textContent).toContain("interior hole");
+    expect(addButton(utils)).toHaveTextContent("Add 3 shapes");
+    // The red square's surround is a hole of the white ring: kept as a cut-out, not warned about.
+    expect(utils.container.querySelector(".tip-warnings")).toBeNull();
   });
 });
 
@@ -209,6 +223,19 @@ describe("the Add button", () => {
     expect(utils.traced[0].shapes.map((s) => s.id)).toEqual(["s3"]);
   });
 
+  test("a traced hole is added as a cut-out, straight after its parent, ids in order", async () => {
+    const utils = renderPanel({ workImage: oneShapeImage() });
+    await fireEvent.click(utils.container.querySelector('input[type="checkbox"]')); // removeBg off
+    await fireEvent.click(addButton(utils));
+    const { shapes } = utils.traced[0];
+    expect(shapes.map((s) => s.id)).toEqual(["s1", "s2", "s3"]);
+    const cutIdx = shapes.findIndex((s) => s.cutOut);
+    expect(cutIdx).toBeGreaterThan(0);
+    expect(shapes[cutIdx].cutOut).toBe(true);
+    expect(shapes[cutIdx - 1].cutOut).toBeUndefined();
+    expect(shapes.filter((s) => s.cutOut)).toHaveLength(1);
+  });
+
   test("clicking Add resets local state back to the initial (no image) view", async () => {
     const utils = renderPanel({ workImage: oneShapeImage() });
     await fireEvent.click(addButton(utils));
@@ -221,9 +248,7 @@ describe("the Add button", () => {
 
 describe("warnings", () => {
   test("renders the trace's warnings when the result includes any", async () => {
-    const utils = renderPanel({ workImage: oneShapeImage() });
-    const checkbox = utils.container.querySelector('input[type="checkbox"]');
-    await fireEvent.click(checkbox); // removeBg off -> triggers the dropped-hole warning
+    const utils = renderPanel({ workImage: overCapImage() }); // 22 squares > the 20-shape cap
     const list = utils.container.querySelector(".tip-warnings");
     expect(list).not.toBeNull();
     expect(list.querySelectorAll("li")).toHaveLength(1);

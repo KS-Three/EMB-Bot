@@ -29,6 +29,7 @@ import {
   MAX_SHAPE_POINTS,
   quadraticControlForPointOnCurve,
   isValidShape,
+  resolveCutOuts,
 } from "./manualShapes.js";
 
 // ---- Tuning defaults --------------------------------------------------
@@ -49,7 +50,7 @@ const DEFAULT_DESPECKLE_SHARE = 0.0008; // vs. imageRegions.js's 0.0004 — a bi
 // (src/flatten.js's ABSORB_SHARE=0.0005), just tuned for this feature.
 
 const HOLE_DROPPED_WARNING =
-  "A traced shape had an interior hole that isn't supported yet — it will render solid; cut it in by hand if needed.";
+  "A traced hole could not be kept — that shape will sew solid; cut it in by hand if needed.";
 
 function pointsEqual(p, q, eps = 1e-6) {
   return Math.abs(p.x - q.x) <= eps && Math.abs(p.y - q.y) <= eps;
@@ -250,6 +251,36 @@ export function rescaleTracedShapes(shapes, srcW, srcH, canvasW = CANVAS_W, canv
   });
 }
 
+// ---- buildCutOut ----------------------------------------------------------
+// One traced hole -> a cut-out shape that is PROVEN to resolve to its parent,
+// or null. The outer ring and the hole are simplified independently, so a thin
+// wall between them can end up crossed; resolveCutOuts is the same judge the
+// Studio uses, so a hole that passes here will actually cut. Order of tries:
+// the simplified + curve-fitted ring, then the same ring with curves dropped
+// (a fitted bow can poke out of a parent the straight ring fits inside), then
+// give up (null). Winding does not matter: the fit places each control point
+// through a raw ring point, and containment is a point-in-shape test.
+export function buildCutOut(parent, holeRing, simplifyTolPx, curveTolPx) {
+  const simplified = simplifyRingAdaptive(holeRing, simplifyTolPx);
+  if (simplified.length < 3 || !isValidShape(simplified)) return null;
+  const { curves } = fitCurvesForRing(holeRing, simplified, curveTolPx);
+  const attempts = [curves];
+  if (Object.keys(curves).length > 0) attempts.push({});
+  const parentRec = { ...parent, id: "p" };
+  for (const c of attempts) {
+    const cut = {
+      points: simplified,
+      curves: c,
+      colorRgb: parent.colorRgb.slice(),
+      stitchType: "fill",
+      angleDeg: null,
+      cutOut: true,
+    };
+    if (resolveCutOuts([parentRec, { ...cut, id: "h" }]).parentOf.h === "p") return cut;
+  }
+  return null;
+}
+
 // ---- traceShapesFromRGBA -------------------------------------------------
 // Main entry point. Pipeline: flattenRGBA -> per palette color, build a
 // binary mask for that color's indices -> EMB.traceRegions on that mask ->
@@ -258,12 +289,14 @@ export function rescaleTracedShapes(shapes, srcW, srcH, canvasW = CANVAS_W, canv
 // manualShapes.js's nextShapeIds, once, right before building the batch
 // patch (see that function's own docs for why).
 //
-// Hole handling (see this PR's write-up): manualShapes.js shapes have no
-// hole concept — emitting a traced hole as its own same-color shape would
-// just fill it back in, corrupting exactly the kind of art (rings, letters
-// with counters, washers) this feature exists to help with. So a detected
-// hole is never emitted as a shape; one warning is added per shape that had
-// at least one dropped hole instead.
+// Hole handling: a traced hole (a ring's centre, a letter's counter) is
+// emitted right after its parent as a `cutOut: true` shape — it sews nothing
+// and removes its area from the parent. Each hole is checked against its own
+// parent with resolveCutOuts (see buildCutOut) because the outer ring and the
+// hole are simplified independently and a thin wall between them can cross;
+// a hole that cannot be made to resolve is dropped, and ONE warning is added
+// per parent that lost at least one. The per-colour cap counts traced
+// regions, not the cut-outs added beside them.
 export function traceShapesFromRGBA(rgba, w, h, opts = {}) {
   const nColors = opts.nColors || DEFAULT_N_COLORS;
   const removeBg = opts.removeBg !== false; // default true
@@ -311,16 +344,23 @@ export function traceShapesFromRGBA(rgba, w, h, opts = {}) {
       // trusting the traced+simplified ring is automatically clean.
       if (!isValidShape(simplifiedOuter)) continue;
 
-      shapes.push({
+      const parent = {
         points: simplifiedOuter,
         curves,
         colorRgb: palette[ci].slice(),
         stitchType: "fill",
         angleDeg: null,
-      });
+      };
+      shapes.push(parent);
 
       const realHoles = region.holes.filter((hh) => hh.length >= 4 && EMB.polygonArea(hh) > holeMin);
-      if (realHoles.length > 0) warnings.push(HOLE_DROPPED_WARNING);
+      let lost = false;
+      for (const hole of realHoles) {
+        const cut = buildCutOut(parent, hole, simplifyTolPx, curveTolPx);
+        if (cut) shapes.push(cut);
+        else lost = true;
+      }
+      if (lost) warnings.push(HOLE_DROPPED_WARNING);
     }
   }
 
