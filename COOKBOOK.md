@@ -10,7 +10,7 @@ Browser-based embroidery auto-digitizer + guided lettering studio, plus a
 Python digitizing engine that runs as a localhost service. Two parts:
 
 - **`app/`** — "EMB Bot Studio", a Svelte 5 + Vite configurator — one panel
-  (`ui/Configurator.svelte`: design, colours, garment), a sticky `SummaryBar`,
+  (`ui/Configurator.svelte`: design, garment), a sticky `SummaryBar`,
   and a `DownloadSheet` that wraps `DownloadStep`; e2e specs reach the sheet
   through `e2e/helpers.js` `openDownload` — built on top of the JS stitch engine via
   `window.EMB` (the `src/*.js` modules, copied into `app/public/engine/` by

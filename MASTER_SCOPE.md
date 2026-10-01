@@ -634,7 +634,7 @@ assumed (area doc, "Supply"). Terminus closed. Growth means commissioning.
 ### 3. Studio app / configurator — [detail](docs/scope/3-studio-app-wizard.md)
 
 **Implemented · Medium.**
-The Svelte configurator (one panel: design → colours → garment, summary bar, Download sheet), saved projects,
+The Svelte configurator (one panel: design → garment, summary bar, Download sheet), saved projects,
 the Layers panel, and fabric/garment presets. Logic coverage is broad —
 nearly every `app/src/lib/*.js` module has a paired spec — with UI-behaviour
 coverage riding on live-browser e2e specs across several garments, the image
