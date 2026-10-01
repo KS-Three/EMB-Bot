@@ -39,16 +39,52 @@
   // `estimate.js` returns null metres without a thread factor: a plausible
   // wrong number on a sheet an operator schedules from is worse than a row
   // that is simply absent. Callers drop the line.
-  function sewTimeMin(stitches, trims) {
+  //
+  // `spm` is the speed the OPERATOR runs at, when they have said (2026-10-01,
+  // the quote settings); omitted, it is the plan rate and the figure is the
+  // one this has always returned. It divides the stitches and NOT the stops:
+  // a trim is a stretch of clock — trimmer, reposition — and "120
+  // stitch-equivalents" is that clock expressed at the plan rate (~11 s).
+  // Dividing it by a faster speed would say the trimmer got quicker because
+  // the head did. A speed that is present and not a positive number is a bad
+  // input like any other: null.
+  //
+  // `trims` is every stop the caller counted. A colour change is one too —
+  // law 36: "a color change ≈ trim + constant" — and no maker publishes the
+  // constant (searched 2026-10-01: Tajima, Barudan, Melco, Happy, Brother,
+  // SmartStitch give no seconds for either), so a change is counted as a trim
+  // and nothing more. That under-counts it. It is still closer than the zero
+  // it was counted as before.
+  function sewTimeMin(stitches, trims, spm) {
     if (typeof stitches !== "number" || !isFinite(stitches) || stitches < 0) return null;
     if (typeof trims !== "number" || !isFinite(trims) || trims < 0) return null;
-    const equivalent = stitches + trims * TRIM_COST_STITCHES;
-    if (equivalent <= 0) return 0;
+    const rate = spm === undefined ? PLAN_SPM : spm;
+    if (typeof rate !== "number" || !isFinite(rate) || rate <= 0) return null;
+    const minutes = stitches / rate + (trims * TRIM_COST_STITCHES) / PLAN_SPM;
+    if (minutes <= 0) return 0;
     // Floor of one minute once there IS work: a 200-stitch monogram is 18
     // seconds, and printing "0 min" for it reads as "nothing to do" rather
     // than "under a minute".
-    return Math.max(1, Math.round(equivalent / PLAN_SPM));
+    return Math.max(1, Math.round(minutes));
   }
 
-  return { PLAN_SPM, TRIM_COST_STITCHES, sewTimeMin };
+  // Bobbin (under) thread per 1,000 stitches, in metres. [P] Madeira: "For
+  // standard length stitches the general rule for underthread requirement is
+  // approximately 3m per 1000 stitches" (madeira.co.uk/bobbins-underthreads;
+  // madeira.com's FAQ gives 3-3.5). Coats puts it at 2.3. Playbook law 38
+  // carries the same 3. Same standing as the two constants above: a thread
+  // maker's table, printed with its basis, never measured here. No Python
+  // twin — the service quotes no bobbin figure.
+  const BOBBIN_M_PER_1000 = 3;
+
+  // -> metres of bobbin thread, or null. Metres and not "bobbin changes":
+  // how much a bobbin holds depends on whose it is (Fil-Tec's L is 130 yd,
+  // Madeira's 123 m, and black holds less than white), and at 3 m per 1,000
+  // one piece is almost never a whole bobbin anyway.
+  function bobbinM(stitches) {
+    if (typeof stitches !== "number" || !isFinite(stitches) || stitches < 0) return null;
+    return (stitches / 1000) * BOBBIN_M_PER_1000;
+  }
+
+  return { PLAN_SPM, TRIM_COST_STITCHES, BOBBIN_M_PER_1000, sewTimeMin, bobbinM };
 });

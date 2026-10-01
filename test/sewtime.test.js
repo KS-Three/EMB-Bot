@@ -1,4 +1,5 @@
 const assert = require("node:assert");
+const fs = require("node:fs");
 const { test } = require("node:test");
 const sewtime = require("../src/sewtime.js");
 
@@ -55,4 +56,59 @@ test("the constants are the ones the sheet claims", () => {
   // that sentence has to move with it.
   assert.strictEqual(sewtime.PLAN_SPM, 650);
   assert.strictEqual(sewtime.TRIM_COST_STITCHES, 120);
+});
+
+// Read a constant straight out of the Python engine's machine.py — the same
+// helper test/digitize.test.js uses for THREAD_LENGTH_FACTOR.
+function machinePy(name) {
+  const src = fs.readFileSync(__dirname + "/../digitizer/digitizer_core/machine.py", "utf8");
+  const m = src.match(new RegExp("^" + name + "\\s*=\\s*([0-9.]+)", "m"));
+  assert.ok(m, name + " not found in digitizer/digitizer_core/machine.py");
+  return +m[1];
+}
+
+test("engine parity: the two time constants equal machine.py's", () => {
+  // Both files have called each other "twin" since 2026-09-20 and nothing
+  // held them together: the test above pins the JS side to literals, and no
+  // test read the Python side at all (found 2026-10-01).
+  assert.strictEqual(sewtime.PLAN_SPM, machinePy("PLAN_SPM"));
+  assert.strictEqual(sewtime.TRIM_COST_STITCHES, machinePy("TRIM_COST_STITCHES"));
+});
+
+// --- the operator's own speed (2026-10-01) ----------------------------------
+
+test("a typed running speed moves the needle time and leaves the stops alone", () => {
+  // 13,000 stitches: 20 min at 650, 10 min at 1,300.
+  assert.strictEqual(sewtime.sewTimeMin(13000, 0, 1300), 10);
+  // A trim is a fixed stretch of clock (trimmer, reposition): ~11 s, which is
+  // what 120 stitch-equivalents means AT the plan rate. Run the head twice as
+  // fast and the trimmer is no quicker. 60 stops x 120 / 650 = 11.08 min on
+  // top of the 10, not 5.54.
+  assert.strictEqual(sewtime.sewTimeMin(13000, 60, 1300), 21);
+});
+
+test("at the plan rate the speed argument changes nothing", () => {
+  assert.strictEqual(sewtime.sewTimeMin(6500, 10, 650), sewtime.sewTimeMin(6500, 10));
+});
+
+test("a speed that is not a positive number is no basis for a figure", () => {
+  assert.strictEqual(sewtime.sewTimeMin(6500, 0, 0), null);
+  assert.strictEqual(sewtime.sewTimeMin(6500, 0, -850), null);
+  assert.strictEqual(sewtime.sewTimeMin(6500, 0, NaN), null);
+  assert.strictEqual(sewtime.sewTimeMin(6500, 0, "850"), null);
+});
+
+// --- bobbin thread ------------------------------------------------------------
+
+test("bobbin metres are the thread maker's rule, per thousand stitches", () => {
+  // Madeira: "approximately 3m per 1000 stitches" of underthread.
+  assert.strictEqual(sewtime.BOBBIN_M_PER_1000, 3);
+  assert.strictEqual(sewtime.bobbinM(10000), 30);
+  assert.strictEqual(sewtime.bobbinM(0), 0);
+});
+
+test("bobbin metres are null on a count that cannot support a figure", () => {
+  assert.strictEqual(sewtime.bobbinM(null), null);
+  assert.strictEqual(sewtime.bobbinM(-5), null);
+  assert.strictEqual(sewtime.bobbinM(NaN), null);
 });
