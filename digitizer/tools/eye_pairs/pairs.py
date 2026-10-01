@@ -51,6 +51,13 @@ ARMS: dict[str, dict] = {
     "directional_comp": {"directional_comp": True},
     REF_ARM: {"__ref__": REF_COMMIT},
     REF_0930AM: {"__ref__": REF_0930AM_COMMIT},
+    # The lettering texture sitting (2026-09-30, late): the two levers Kent's
+    # becker note points at -- "the lettering does not flow, satin stitching
+    # is not smooth and structured pattern", the third time that day. The
+    # pro's own Becker style (raw crosses to about 7 mm, no comb) and the
+    # symmetric rails (the envelope OFF).
+    "split_7mm": {"split_satin_above_mm": 7.0},
+    "rails_symmetric": {"satin_rails_follow_edge": False},
 }
 
 

@@ -426,3 +426,75 @@ either way, on 2 before, 1 after.
 **becker: nothing to add to the note.** The lettering's flow is the
 open question the day did not answer; the two levers not yet on the page
 are named above.
+
+## The texture sitting — the lettering's two levers, before | after (2026-09-30, late)
+
+Kent's pick after the evening verdicts: his becker note — *"the lettering
+does not flow, satin stitching is not smooth and structured pattern"* —
+had survived the day's three changes, and two levers had not yet been in
+front of his eye. The same artifact URL, rebuilt under the tag
+`texture-0930`, the needle-holes toggle on:
+
+- **`split_7mm`** — `split_satin_above_mm=7.0`: raw satin crosses to about
+  7 mm and no comb, the house style of the pro who sewed Becker's own files.
+  Five pairs: becker (the letters: 85.8 → 35.1% of legs split, on/off
+  changes 26 → 8, mid-column holes 114 → 59 per 100 legs, 9,321 → 8,281
+  stitches), and tires, bridge, drone, screenshot where a non-lettering
+  column crosses 5 mm; golden_tee, gaulke, fremont, enthusiast identical
+  (no leg over the threshold).
+- **`rails_symmetric`** — `satin_rails_follow_edge=False`: both rails at
+  the nearer edge's distance, the envelope OFF. Three pairs: becker
+  (9,321 → 9,248, the letters' legs 1,412 → 1,390), golden_tee (8,575 →
+  8,573) and tires (the same count, a different design); six identical.
+  After the sibling rule and the teeth, the envelope's reaches on the
+  letters are few, and this is what they amount to.
+- **The tables** under each arm's head: `texture-corpus.json`, one
+  digitize per arm and logo on the engine that drew the pairs, on the
+  satin runs of `text_candidate` shapes — legs, split share, on/off
+  changes, holes per 100 legs, and two texture numbers described below.
+
+## What the instruments say, and what they cannot
+
+Two numbers were built for "smooth" and "flow": the share of consecutive
+legs whose length differs by more than 0.15 mm (a rail step), and the
+90th percentile of the turn between consecutive legs (the cross swinging).
+On becker's letters they read 42.2% and 6.2° shipped, 42.2% and 6.2°
+under the 7 mm split (the rails are the same rails), 40.4% and 6.6° under
+the symmetric rails. **Then the same numbers on the pro's own Becker
+files** (`testdata/reference/becker_*.dst`, 50 satin columns, 25,113 legs
+by `tools/study_pro.classify`): 34.9% and 45.8°, and net of taper — the
+second difference of leg length, roughness a straight taper does not
+count — the pro is *rougher*: 54.4% of legs over 0.15 mm against our
+45.2%, 35.3% over 0.30 mm against 21.0%, a median of 0.171 mm against
+0.126. So **leg-length jitter is not what his eye calls smooth**, and
+neither lever moves it more than four points. Whatever "flow" and
+"structured pattern" are, they are not in this instrument; the page asks
+him for the words.
+
+## How it was built
+
+```bash
+cd digitizer
+# the out dir seeded with the evening render's base (same engine, same config: a cache hit)
+.venv/bin/python -m tools.eye_pairs --render --arms split_7mm,rails_symmetric --out <out>
+.venv/bin/python -m tools.eye_pairs_gallery --labelled --src <out> --out <out>/gallery \
+    --tables ../docs/eye-pairs-2026-09-30/texture-corpus.json --sitting texture-0930
+```
+
+Eighteen arm-runs (the base cached), 8 pairs, 10 identical and not shown,
+33 images (5.8 MB) republished to the artifact above; the store read
+before the republish (13 evening notes, one head note, nothing newer).
+The table's instrument is a scratch script over `digitize()` with
+`strip_ties` / `strip_splits` on each satin run; the pro numbers a second
+one over `tools/study_pro`.
+
+## Kent's question
+
+On the five `split_7mm` pairs: does the pro's raw-cross style read as the
+structure the comb lacks — and on the holes view, is a column with one
+hole per rail station what "structured pattern" means? On the three
+`rails_symmetric` pairs: do the letters read smoother without the reach,
+at the coverage it costs? And in the note under either arm, his own words
+for *flow*. The 7 mm threshold is a physical constant (a 6–7 mm float on
+pique or a cap), so a verdict for it is a sew-out question under gate 1
+before it is a flip. Verdicts pending at the time of writing.

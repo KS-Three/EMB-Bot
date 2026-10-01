@@ -88,6 +88,8 @@ exactly one change:
 | `directional_comp` | `directional_comp=True` |
 | `ref_0827` | the engine at `25da2fe` (main on 2026-08-27), base config |
 | `ref_0930am` | the engine at `1e5f8fe2` (main on the morning of 2026-09-30, before #577, #578 and #579), base config — added 2026-09-30 for the evening's labelled sitting on the day's three lettering changes |
+| `split_7mm` | `split_satin_above_mm=7.0` — added 2026-09-30 for the lettering texture sitting: the pro's own Becker style, raw crosses to about 7 mm and no comb |
+| `rails_symmetric` | `satin_rails_follow_edge=False` — added 2026-09-30 for the same sitting: the symmetric rails, the envelope OFF on the letters |
 
 One digitize per (fixture, arm). An arm whose Design `stitches` hash equals
 the base's is **skipped and logged** (`identical_to_base`) — there is nothing

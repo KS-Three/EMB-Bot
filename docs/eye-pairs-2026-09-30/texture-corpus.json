@@ -1,0 +1,232 @@
+{
+ "split_7mm": {
+  "caption": "The lettering under this arm, measured 2026-09-30 on the engine that drew these pairs (main after #577, #578 and #579), shipped → arm where they differ, one figure where they agree; each logo at its own width and garment, max_colors=6. The lettering columns read the satin runs of text_candidate shapes only: legs are a cross and its return leg between consecutive rail points; split % is the share of legs with a mid-column penetration; changes counts the split state flipping between consecutive legs (the flicker); holes/100 legs is mid-column penetrations per hundred legs (what the needle-holes toggle shows); jitter is the share of consecutive legs whose length differs by more than 0.15 mm (a rail step); turn p90 is the 90th percentile of the angle change between consecutive legs (the cross swinging). thermal is drone's artwork byte for byte and is not repeated.",
+  "columns": [
+   "fixture",
+   "mm",
+   "stitches",
+   "lettering legs",
+   "split %",
+   "on/off changes",
+   "holes / 100 legs",
+   "jitter > 0.15 mm %",
+   "turn p90 °"
+  ],
+  "rows": [
+   [
+    "becker",
+    "100",
+    "9,321 → 8,281",
+    "1,412",
+    "85.8 → 35.1",
+    "26 → 8",
+    "114.2 → 59.4",
+    "42.2",
+    "6.17"
+   ],
+   [
+    "golden_tee",
+    "80",
+    "8,575",
+    "1,317",
+    "0",
+    "0",
+    "0",
+    "45.6",
+    "27.26"
+   ],
+   [
+    "gaulke",
+    "80",
+    "4,305",
+    "1,777",
+    "0",
+    "0",
+    "0",
+    "36.5",
+    "26.74"
+   ],
+   [
+    "drone",
+    "80",
+    "18,796 → 18,783",
+    "1,858",
+    "0.7 → 0",
+    "2 → 0",
+    "0.7 → 0",
+    "25",
+    "22.03"
+   ],
+   [
+    "fremont",
+    "92.5 patch",
+    "20,012",
+    "1,401",
+    "0",
+    "0",
+    "0",
+    "27.1",
+    "27.99"
+   ],
+   [
+    "enthusiast",
+    "80",
+    "2,474",
+    "802",
+    "0",
+    "0",
+    "0",
+    "26.7",
+    "15.21"
+   ],
+   [
+    "screenshot",
+    "80",
+    "8,201 → 8,150",
+    "1,334",
+    "0",
+    "0",
+    "0",
+    "33",
+    "31.34"
+   ],
+   [
+    "tires",
+    "80",
+    "2,835 → 2,615",
+    "no lettering",
+    "—",
+    "—",
+    "—",
+    "—",
+    "—"
+   ],
+   [
+    "bridge",
+    "80",
+    "16,175 → 16,064",
+    "no lettering",
+    "—",
+    "—",
+    "—",
+    "—",
+    "—"
+   ]
+  ]
+ },
+ "rails_symmetric": {
+  "caption": "The lettering under this arm, measured 2026-09-30 on the engine that drew these pairs (main after #577, #578 and #579), shipped → arm where they differ, one figure where they agree; each logo at its own width and garment, max_colors=6. The lettering columns read the satin runs of text_candidate shapes only: legs are a cross and its return leg between consecutive rail points; split % is the share of legs with a mid-column penetration; changes counts the split state flipping between consecutive legs (the flicker); holes/100 legs is mid-column penetrations per hundred legs (what the needle-holes toggle shows); jitter is the share of consecutive legs whose length differs by more than 0.15 mm (a rail step); turn p90 is the 90th percentile of the angle change between consecutive legs (the cross swinging). thermal is drone's artwork byte for byte and is not repeated.",
+  "columns": [
+   "fixture",
+   "mm",
+   "stitches",
+   "lettering legs",
+   "split %",
+   "on/off changes",
+   "holes / 100 legs",
+   "jitter > 0.15 mm %",
+   "turn p90 °"
+  ],
+  "rows": [
+   [
+    "becker",
+    "100",
+    "9,321 → 9,248",
+    "1,412 → 1,390",
+    "85.8 → 85.3",
+    "26",
+    "114.2 → 111.9",
+    "42.2 → 40.4",
+    "6.17 → 6.6"
+   ],
+   [
+    "golden_tee",
+    "80",
+    "8,575 → 8,573",
+    "1,317",
+    "0",
+    "0",
+    "0",
+    "45.6",
+    "27.26"
+   ],
+   [
+    "gaulke",
+    "80",
+    "4,305",
+    "1,777",
+    "0",
+    "0",
+    "0",
+    "36.5",
+    "26.74"
+   ],
+   [
+    "drone",
+    "80",
+    "18,796",
+    "1,858",
+    "0.7",
+    "2",
+    "0.7",
+    "25",
+    "22.03"
+   ],
+   [
+    "fremont",
+    "92.5 patch",
+    "20,012",
+    "1,401",
+    "0",
+    "0",
+    "0",
+    "27.1",
+    "27.99"
+   ],
+   [
+    "enthusiast",
+    "80",
+    "2,474",
+    "802",
+    "0",
+    "0",
+    "0",
+    "26.7",
+    "15.21"
+   ],
+   [
+    "screenshot",
+    "80",
+    "8,201",
+    "1,334",
+    "0",
+    "0",
+    "0",
+    "33",
+    "31.34"
+   ],
+   [
+    "tires",
+    "80",
+    "2,835",
+    "no lettering",
+    "—",
+    "—",
+    "—",
+    "—",
+    "—"
+   ],
+   [
+    "bridge",
+    "80",
+    "16,175",
+    "no lettering",
+    "—",
+    "—",
+    "—",
+    "—",
+    "—"
+   ]
+  ]
+ }
+}
