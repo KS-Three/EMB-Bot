@@ -10,12 +10,12 @@
   const d = createEventDispatcher();
 
   const DASH = "—";
-  function row(label) {
-    const r = (sewFacts || []).find((x) => x.label === label);
+  function row(facts, label) {
+    const r = (facts || []).find((x) => x.label === label);
     return r ? r.value : DASH;
   }
-  $: size = row("Size");
-  $: stitches = row("Stitches");
+  $: size = row(sewFacts, "Size");
+  $: stitches = row(sewFacts, "Stitches");
   $: colors = colorCount > 0 ? String(colorCount) : DASH;
   $: colorLabel = colorCount === 1 ? "color" : "colors";
 </script>

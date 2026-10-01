@@ -43,3 +43,11 @@ test("clicking Download dispatches download", async () => {
   await fireEvent.click(screen.getByRole("button", { name: "Download" }));
   expect(onDownload).toHaveBeenCalledTimes(1);
 });
+
+test("updates size and stitches when sewFacts prop changes", async () => {
+  const { rerender } = render(Harness, { sewFacts: [], colorCount: 0, canDownload: false });
+  expect(screen.getAllByText("—").length).toBe(3);
+  await rerender({ sewFacts: FACTS, colorCount: 1, canDownload: true });
+  expect(screen.getByText("76 × 18 mm")).toBeInTheDocument();
+  expect(screen.getByText("3,412")).toBeInTheDocument();
+});
