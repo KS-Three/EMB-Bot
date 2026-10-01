@@ -1,4 +1,4 @@
-import { test, expect } from "vitest";
+import { test, expect, describe, it } from "vitest";
 import {
   isValidShape, isNearStart, shapesToRegions, CLOSE_RADIUS_PX, PX_PER_MM,
   shapeIssues, isDuplicateOfLast, MAX_SHAPE_POINTS,
@@ -9,6 +9,7 @@ import {
   curvedNodeThrough, curvedNodeFlags, CURVED_NODE_BOW,
   duplicateShape, PASTE_OFFSET_PX, CANVAS_W, CANVAS_H,
   shouldScrollCanvasIntoView,
+  resolveCutOuts, manualShapeName, withCutOut, CUTOUT_NO_PARENT, CUTOUT_OVERLAP,
 } from "./manualShapes.js";
 
 // ---- isValidShape -----------------------------------------------------
@@ -855,4 +856,130 @@ test("shapesToRegions: the shape's id rides onto the region shape (the field map
   ]);
   expect(regions[0].shapes[0].id).toBe("s3");
   expect(regions[1].shapes[0].id).toBe("");
+});
+
+const rect = (id, x0, y0, x1, y1, extra = {}) => ({
+  id, points: [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }],
+  curves: {}, stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null, ...extra,
+});
+
+describe("resolveCutOuts", () => {
+  it("a cut-out inside one shape cuts that shape", () => {
+    const r = resolveCutOuts([rect("s1", 0, 0, 300, 300), rect("s2", 100, 100, 200, 200, { cutOut: true })]);
+    expect(r.parentOf).toEqual({ s2: "s1" });
+    expect(r.holesOf).toEqual({ s1: ["s2"] });
+    expect(r.reasonOf).toEqual({});
+  });
+  it("list order does not matter: a cut-out listed before its parent still resolves", () => {
+    const r = resolveCutOuts([rect("s2", 100, 100, 200, 200, { cutOut: true }), rect("s1", 0, 0, 300, 300)]);
+    expect(r.parentOf.s2).toBe("s1");
+  });
+  it("the SMALLEST containing shape is the parent (an O's counter over a patch cuts the O)", () => {
+    const r = resolveCutOuts([
+      rect("s1", 0, 0, 400, 400), rect("s2", 50, 50, 350, 350), rect("s3", 150, 150, 250, 250, { cutOut: true }),
+    ]);
+    expect(r.parentOf.s3).toBe("s2");
+    expect(r.holesOf.s1).toBeUndefined();
+  });
+  it("no containing shape: cuts nothing, with the reason", () => {
+    const r = resolveCutOuts([rect("s1", 0, 0, 100, 100), rect("s2", 200, 200, 260, 260, { cutOut: true })]);
+    expect(r.parentOf.s2).toBeNull();
+    expect(r.reasonOf.s2).toBe(CUTOUT_NO_PARENT);
+  });
+  it("crossing the parent's edge is not inside", () => {
+    const r = resolveCutOuts([rect("s1", 0, 0, 100, 100), rect("s2", 50, 50, 150, 90, { cutOut: true })]);
+    expect(r.parentOf.s2).toBeNull();
+    expect(r.reasonOf.s2).toBe(CUTOUT_NO_PARENT);
+  });
+  it("two cut-outs of one parent that cross: the earlier stands, the later cuts nothing", () => {
+    const r = resolveCutOuts([
+      rect("s1", 0, 0, 300, 300),
+      rect("s2", 50, 50, 150, 150, { cutOut: true }),
+      rect("s3", 100, 100, 200, 200, { cutOut: true }),
+    ]);
+    expect(r.parentOf).toEqual({ s2: "s1", s3: null });
+    expect(r.reasonOf.s3).toBe(CUTOUT_OVERLAP);
+    expect(r.holesOf.s1).toEqual(["s2"]);
+  });
+  it("a cut-out nested in a sibling cut-out is an overlap, not a second hole", () => {
+    const r = resolveCutOuts([
+      rect("s1", 0, 0, 300, 300),
+      rect("s2", 50, 50, 250, 250, { cutOut: true }),
+      rect("s3", 100, 100, 200, 200, { cutOut: true }),
+    ]);
+    expect(r.parentOf.s3).toBeNull();
+    expect(r.reasonOf.s3).toBe(CUTOUT_OVERLAP);
+  });
+  it("a cut-out never has a cut-out as its parent; an island's own cut-out resolves to the island", () => {
+    const r = resolveCutOuts([
+      rect("s1", 0, 0, 400, 400),
+      rect("s2", 50, 50, 350, 350, { cutOut: true }),
+      rect("s3", 100, 100, 300, 300),                    // island inside the hole
+      rect("s4", 150, 150, 250, 250, { cutOut: true }),  // the island's hole
+    ]);
+    expect(r.parentOf).toEqual({ s2: "s1", s4: "s3" });
+  });
+  it("an invalid cut-out reports its own shape issue", () => {
+    const bow = { id: "s2", cutOut: true, curves: {}, points: [{ x: 10, y: 10 }, { x: 90, y: 90 }, { x: 90, y: 10 }, { x: 10, y: 90 }] };
+    const r = resolveCutOuts([rect("s1", 0, 0, 100, 100), bow]);
+    expect(r.parentOf.s2).toBeNull();
+    expect(r.reasonOf.s2).toBe("This shape crosses itself.");
+  });
+  it("a triangle is a legal cut-out (three points)", () => {
+    const tri = { id: "s2", cutOut: true, curves: {}, points: [{ x: 100, y: 200 }, { x: 200, y: 200 }, { x: 150, y: 100 }] };
+    expect(resolveCutOuts([rect("s1", 0, 0, 300, 300), tri]).parentOf.s2).toBe("s1");
+  });
+  it("no cut-outs: empty maps", () => {
+    const r = resolveCutOuts([rect("s1", 0, 0, 10, 10)]);
+    expect(r.parentOf).toEqual({}); expect(r.holesOf).toEqual({}); expect(r.reasonOf).toEqual({});
+  });
+});
+
+describe("shapesToRegions with cut-outs", () => {
+  it("without any cut-out the output is exactly today's (holes: [])", () => {
+    const { regions } = shapesToRegions([rect("s1", 0, 0, 300, 300), rect("s2", 100, 100, 200, 200)]);
+    expect(regions).toHaveLength(2);
+    expect(regions[0].shapes[0].holes).toEqual([]);
+    expect(regions[1].shapes[0].holes).toEqual([]);
+  });
+  it("a resolved cut-out becomes its parent's hole and emits no region", () => {
+    const { regions } = shapesToRegions([rect("s1", 0, 0, 300, 300), rect("s2", 100, 100, 200, 200, { cutOut: true })]);
+    expect(regions).toHaveLength(1);
+    expect(regions[0].shapes[0].id).toBe("s1");
+    expect(regions[0].shapes[0].holes).toEqual([[{ x: 100, y: 100 }, { x: 200, y: 100 }, { x: 200, y: 200 }, { x: 100, y: 200 }]]);
+  });
+  it("a cut-out that cuts nothing emits no region and no hole", () => {
+    const { regions } = shapesToRegions([rect("s1", 0, 0, 100, 100), rect("s2", 200, 200, 260, 260, { cutOut: true })]);
+    expect(regions).toHaveLength(1);
+    expect(regions[0].shapes[0].holes).toEqual([]);
+  });
+  it("a curved cut-out is flattened like an outer ring", () => {
+    const c = rect("s2", 100, 100, 200, 200, { cutOut: true, curves: { 0: { x: 150, y: 60 } } });
+    const hole = shapesToRegions([rect("s1", 0, 0, 300, 300), c]).regions[0].shapes[0].holes[0];
+    expect(hole.length).toBeGreaterThan(4);
+  });
+});
+
+describe("names and the toggle", () => {
+  it("manualShapeName", () => {
+    const shapes = [rect("s1", 0, 0, 300, 300, { stitchType: "satin" }), rect("s2", 100, 100, 200, 200, { cutOut: true })];
+    const cut = resolveCutOuts(shapes);
+    expect(manualShapeName(shapes[1], cut)).toBe("Shape 2 · Cut out");
+    expect(manualShapeName(shapes[0], cut)).toBe("Shape 1 · Fill");      // holed: sews as fill
+    expect(manualShapeName(shapes[0])).toBe("Shape 1 · Satin");          // no cut info: the stored type
+  });
+  it("withCutOut adds the key, and removes it rather than storing false", () => {
+    const s = rect("s1", 0, 0, 10, 10);
+    expect(withCutOut(s, true).cutOut).toBe(true);
+    expect("cutOut" in withCutOut(withCutOut(s, true), false)).toBe(false);
+    expect(withCutOut(s, false)).toEqual(s);
+  });
+});
+
+describe("cut-out neighbours", () => {
+  it("a duplicated cut-out is still a cut-out", () => {
+    const copy = duplicateShape(rect("s1", 100, 100, 200, 200, { cutOut: true }), "s2");
+    expect(copy.cutOut).toBe(true);
+    expect(copy.id).toBe("s2");
+  });
 });
