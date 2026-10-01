@@ -15,10 +15,13 @@ export async function typeText(page, text) {
   await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible({ timeout: 60_000 });
 }
 
+// Every garment is reachable through More ›, by the engine's own label —
+// so one path serves all ten, whether or not the garment has a pill.
 export async function pickGarment(page, label) {
-  const tile = page.getByRole("button", { name: label, exact: true });
-  await tile.click();
-  await expect(tile).toHaveClass(/\bsel\b/);
+  await page.getByRole("button", { name: "More garments" }).click();
+  await page.getByRole("menu", { name: "All garments" }).getByRole("menuitemradio", { name: label, exact: true }).click();
+  await expect(page.getByRole("menu", { name: "All garments" })).toHaveCount(0);
+  await expect(page.locator(".cfg-sub")).toContainText(label);
 }
 
 export async function pickTemplate(page, name) {

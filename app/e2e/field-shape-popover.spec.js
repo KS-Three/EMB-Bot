@@ -4,6 +4,7 @@
 // drag. Service bootstrap and fixture copied from field-border-menu.spec.js,
 // per this directory's convention of self-contained specs.
 import { test, expect } from "@playwright/test";
+import { pickGarment } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -47,7 +48,7 @@ const STATS = "span.stats";
 
 async function toContent(page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Tote", exact: true }).click();
+  await pickGarment(page, "Tote");
 }
 
 // Draw a rectangle on ManualPanel's canvas: four clicks at fractions of the
