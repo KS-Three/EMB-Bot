@@ -3500,7 +3500,7 @@
     border-radius: var(--radius-s, 6px);
     background: var(--surface, #fff);
     cursor: pointer;
-    font-size: var(--fs-2xs, 0.6875rem);
+    font-size: var(--fs-xs, 11px);
     line-height: 1.3;
   }
   .dgp-lbtn:disabled { opacity: 0.4; cursor: default; }

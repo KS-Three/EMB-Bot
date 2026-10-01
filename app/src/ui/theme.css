@@ -379,7 +379,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   border: 2px dashed var(--border);
   border-radius: var(--radius-m);
   background: var(--surface);
-  color: var(--accent);
+  color: var(--ink);
   font-weight: var(--fw-medium);
   cursor: pointer;
 }
@@ -2394,6 +2394,10 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 }
 .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
 .sheet-head h2 { margin: 0; }
+/* `DownloadStep`'s own "Download" heading is a direct child of `.sheet`, and the
+   sheet's title is "Ready to stitch" in `.sheet-head` -- one 22 px title per
+   surface, so the inner heading steps down. */
+.sheet > h2 { font-size: var(--fs-lg); }
 .sheet-close { border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: var(--space-1); }
 .sheet-close:hover { color: var(--ink); }
 .sheet .summary { margin: var(--space-5) 0; }
