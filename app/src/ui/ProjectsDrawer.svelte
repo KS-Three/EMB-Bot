@@ -272,9 +272,9 @@
       {#if filtered.unmeasured > 0}
         <p class="drawer-empty">
           {filtered.unmeasured === 1
-            ? "1 older design has not been measured yet, so it can't be matched on stitches, colors or hoop."
-            : `${filtered.unmeasured} older designs have not been measured yet, so they can't be matched on stitches, colors or hoop.`}
-          Open a design once to measure it.
+            ? "1 design isn't measured yet, so it can't be matched on stitches, colors or hoop."
+            : `${filtered.unmeasured} designs aren't measured yet, so they can't be matched on stitches, colors or hoop.`}
+          A design is measured when it is opened; an empty one has nothing to measure.
         </p>
       {/if}
     </div>

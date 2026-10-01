@@ -16,7 +16,7 @@ at the bottom for the authority model behind the confidence ratings.
 (**42.5**, not the older ~70) and the metric's own **75-84** pro-vs-pro ceiling.
 Its code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-09-30. **This file is current state only, under a
+**Last updated:** 2026-10-01. **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
 on 2026-09-14). Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
@@ -777,6 +777,14 @@ failed writes.** Every project was "Untitled design"; `renameProject` and
 propagate now, index first. Detail:
 [area 3](docs/scope/3-studio-app-wizard.md); DOCTRINE.
 *(fixed 2026-09-07)*
+
+**"My designs" filters by what a design is** — name text, stitches up to,
+colors (spools) up to, fits a hoop. The facts live on the index entry and are
+written from the summary bar's own combined design, so a design saved before
+this is unmeasured until it is next opened; a fact filter counts those rather
+than hiding them. No content search ("dogs"): that needs tagging. Detail:
+[area 3](docs/scope/3-studio-app-wizard.md).
+*(built and driven 2026-10-01 — `libraryFacts.spec.js`, `projects.spec.js`, `DesignFilter.spec.js`; no e2e spec)*
 
 **The built bundle works wherever it is served** — [area doc](docs/scope/3-studio-app-wizard.md). *(fixed 2026-09-07)*
 
