@@ -99,7 +99,7 @@ def test_only_listed_images_are_served(site):
 
 
 @pytest.mark.parametrize("path", ["/arms.json", "/features.json", "/pairs.json",
-                                  "/designs/becker__base.json",
+                                  "/sitting.json", "/designs/becker__base.json",
                                   "/img/../arms.json", "/img/%2e%2e/arms.json",
                                   "/img/nope.jpg"])
 def test_everything_sealed_is_a_404(site, path):

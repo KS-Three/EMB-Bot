@@ -50,9 +50,10 @@ def fake_factory(out: Path, seen: dict):
 
 
 def fingerprint(out: Path) -> dict[str, bytes]:
-    """Every file of a sitting that a test could disturb, by content."""
+    """Every file of a sitting, by content — renders included, since a test
+    that re-rendered into the shared directory would replace one."""
     return {p.relative_to(out).as_posix(): p.read_bytes()
-            for p in sorted(out.rglob("*")) if p.is_file() and p.parent.name != "renders"}
+            for p in sorted(out.rglob("*")) if p.is_file()}
 
 
 @pytest.fixture(scope="module")
