@@ -33,9 +33,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // The same flat two-squares fixture the stale-edits spec uses: black and red
 // on white, which stage 0 reads as flat art -- so this spec's expected reading
-// is the flat one. Nothing is offered beside it: the row is a statement, not
-// a question (Kent, 2026-09-30 -- the "It's a photo" / "It's flat art"
-// corrections are gone, and the engine's own detection answers instead).
+// is the flat one. Nothing is offered beside a FLAT reading: the row is a
+// statement there (Kent, 2026-09-30 -- "It's a photo" is gone and the
+// engine's own detection answers instead; the flat switch that came back
+// the same evening, "Sew as flat art", shows on tonal readings only).
 const ART_PNG = path.join(__dirname, "fixtures", "two-squares.png");
 // A vector logo with a `viewBox` and NO width/height — the shape SVGO and most
 // hand-written exports produce, and the one Chrome hands back at its 300 px
@@ -149,11 +150,11 @@ test("uploading artwork digitizes it on its own, and the panel says what it read
   const read = page.locator(".dgp-read");
   await expect(read).toHaveCount(1);
   await expect(read).toContainText("Read as flat art");
-  // ...and asks nothing. No correction, no "use automatic" -- automatic is
-  // the only mode there is.
+  // ...and asks nothing on a flat reading. No correction and no "use
+  // automatic": nothing was overridden, and flat has nothing to switch to.
   await expect(read.getByRole("button")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "It's a photo" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "It's flat art" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Sew as flat art" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Use automatic detection" })).toHaveCount(0);
   // Flat art is not a tonal lane, so the detail-lines option stays off the
   // row too (Kent, 2026-08-30).

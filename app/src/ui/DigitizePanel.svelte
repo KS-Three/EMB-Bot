@@ -758,11 +758,17 @@
   // pre-upload quiz to a one-click correction on this row, and the
   // correction is what went on 2026-09-30.
   //
-  // So there is no `forced_class` and no `isPhoto` any more: a saved project
-  // that still carries either is read as if it did not (buildDigitizeConfig
-  // never sends them). The cost is named rather than hidden: stage 0 still
-  // misroutes real logos (ROADMAP phase 2), and a misrouted design now has no
-  // in-product correction -- fixing the routing is the fix, not a button.
+  // So there is no `isPhoto` any more: a saved project that still carries it
+  // is read as if it did not (buildDigitizeConfig never sends it).
+  //
+  // The FLAT correction came back the same evening, also Kent's call, after
+  // his Instagram icon read as shaded artwork and sewed badly with no way to
+  // say otherwise. It is one button on a TONAL reading ("Sew as flat art",
+  // writes `params.forced_class = "flat"`) and, on a design that used it, a
+  // sentence saying so plus the way back. It is an ordinary digitize param:
+  // changing element.params re-digitizes through the params-changed block,
+  // so neither control calls runDigitize itself. Stage 0 still misroutes
+  // real logos (ROADMAP phase 2); fixing the routing is still the fix.
   //
   // `warningLines` is read INLINE here, not through a `hasCode(...)` helper:
   // these are legacy `$:` statements, whose dependencies are collected
@@ -775,7 +781,14 @@
   // bind, depth sequencing) -- so it only gets its own sentence when the
   // class said nothing tonal, and that sentence promises solid regions, not
   // shading. The warning line beside it names WHICH signal fired.
+  // Only "flat" counts: any other stored value is a pre-09-30 leftover that
+  // buildDigitizeConfig does not send, so the row must not claim it either.
+  $: forcedFlat = !!(element.params && element.params.forced_class === "flat");
   $: artRead =
+    // The user's own word outranks whatever the engine read, and has to key
+    // on the stored param: once it takes effect the art classifies flat and
+    // the CLASSIFIED_* warning that offered it is gone.
+    forcedFlat ? "forced" :
     // A face routed the design flat (Kent's ruling 2026-09-30): the class IS
     // flat and no CLASSIFIED_* warning exists, so this can lead without
     // shadowing anything; it leads so the sentence names the reason.
@@ -792,6 +805,18 @@
   // detected photograph counts even when its tier is flat.
   $: tonalLane = artRead === "photo" || artRead === "gradient" || artRead === "detected"
     || artRead === "face";
+  // Flat is offered where the art is sewing down a tonal lane and flat is a
+  // real alternative. Not on "face" (already flat) and not on a flat reading.
+  $: offerFlat = artRead === "photo" || artRead === "gradient" || artRead === "detected";
+
+  // Back to automatic REMOVES the key rather than nulling it: the params
+  // have to come back identical to a design that never set it, or the
+  // service's job cache key differs and the revert pays for a run the cache
+  // already holds.
+  function useAutomatic() {
+    const { forced_class, ...rest } = element.params || {};
+    patch({ params: rest });
+  }
 
   // Resize honesty (Kent's rule, same as DesignPanel): the field's resize
   // handles SCALE baked stitches, they don't re-digitize — density changes
@@ -2033,12 +2058,16 @@
     <!-- What the art was read as, in plain words. Sits with the params, not
          down in the warnings list, because the reading decides what the
          params list even shows (the detail-lines option below). It hangs off
-         the last run, since before it there is nothing to report. A
-         statement, not an offer: nothing here is a button. -->
-    {#if element.result}
+         the last run, since before it there is nothing to report -- except
+         a design SET to flat, whose row stands with or without a result,
+         because the reading it would hang off is gone once the override
+         takes effect. One correction, on a tonal reading only. -->
+    {#if forcedFlat || element.result}
       <div class="dgp-read" use:tip={"photoReading"}>
         <p class="dgp-read-text">
-          {#if artRead === "face"}
+          {#if artRead === "forced"}
+            You set this to flat art, so it's sewing as solid color regions.
+          {:else if artRead === "face"}
             A face was found, so it's sewing as flat art: solid color regions with an outline.
           {:else if artRead === "photo"}
             Read as a photo, so it's sewing with shaded thread.
@@ -2052,6 +2081,19 @@
             Read as flat art, sewing as solid color regions.
           {/if}
         </p>
+        {#if artRead === "forced"}
+          <button type="button" class="dgp-read-btn" on:click={useAutomatic}>
+            Use automatic detection
+          </button>
+        {:else if offerFlat}
+          <button
+            type="button"
+            class="dgp-read-btn"
+            on:click={() => setParam("forced_class", "flat")}
+          >
+            Sew as flat art
+          </button>
+        {/if}
         {#if tonalLane}
           <label class="dgp-checkline dgp-read-opt">
             <input
@@ -3162,11 +3204,11 @@
     font-size: var(--fs-xs, 12px);
     white-space: nowrap;
   }
-  /* The reading row is a STATEMENT of what the engine read, not an offer:
-     nothing in it is a button (Kent, 2026-09-30), nothing is wrong and
+  /* The reading row STATES what the engine read: nothing is wrong and
      nothing needs chasing, and it stays for the life of the design. So it
      takes .dgp-check's quiet surface/tint vocabulary rather than warning
-     yellow. Still a box, so the detail-lines option reads as part of it. */
+     yellow, and its one button (the flat switch, back 2026-09-30) is quiet
+     too. Still a box, so the detail-lines option reads as part of it. */
   .dgp-read {
     display: flex;
     flex-wrap: wrap;
@@ -3190,6 +3232,17 @@
   .dgp-read-opt {
     flex: 1 1 100%;
     color: var(--muted, #667);
+  }
+  .dgp-read-btn {
+    flex-shrink: 0;
+    padding: 5px 10px;
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 6px);
+    background: var(--surface, #fff);
+    color: inherit;
+    cursor: pointer;
+    font-size: var(--fs-xs, 12px);
+    white-space: nowrap;
   }
   .dgp-resize { font-size: var(--fs-xs, 12px); color: var(--warn-text, #8a6d1a); margin: 8px 0 6px; }
   .dgp-blocks { margin-top: 10px; }

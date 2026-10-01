@@ -93,7 +93,7 @@ gradient and the re-snap sews more spools than the cone list names. **Counted 20
     forcing the FILL TIER rather than declaring content — and measurably
     hurt: owl_kent @ 80 mm goes 13 stops → **17** forced, vs **11 on 12
     cones** (from 14) declared, for ~6% more stitches. The flat-art override
-was untouched that day; both directions went on 09-30. **DETECTION BUILT 2026-09-11, DEFAULT OFF** (`cfg.detect_photographic`, stage 1.25): EXIF camera then the shipped YuNet detector; a hit fills `is_photographic` True — never False, never over a declaration — so it can only ADD photographs. **It changes nothing on this repo's artwork** (all 22 fixtures identical on and off; 0 false positives across 14 logos), which is both why it is safe and why it is unproven here; `owl_kent` is the real photograph BOTH signals miss, so the declaration stays the fallback. The value is on real uploads.
+was untouched that day; both directions went on 09-30, and the flat one came back that evening ("Sew as flat art", Kent's call — DOCTRINE). **DETECTION BUILT 2026-09-11, DEFAULT OFF** (`cfg.detect_photographic`, stage 1.25): EXIF camera then the shipped YuNet detector; a hit fills `is_photographic` True — never False, never over a declaration — so it can only ADD photographs. **It changes nothing on this repo's artwork** (all 22 fixtures identical on and off; 0 false positives across 14 logos), which is both why it is safe and why it is unproven here; `owl_kent` is the real photograph BOTH signals miss, so the declaration stays the fallback. The value is on real uploads.
     also why it is unproven here. *(measured 2026-09-11 — `digitizer/tools/photo_signals.py`; `tests/test_photo_detection.py`, 28)* *(measured 2026-09-02; the earlier
     26-stop figure for the forced route predates the rehome, borders-last
     and the cone fold — 17 is current, the ordering it was cited for is not)*
@@ -731,7 +731,7 @@ deferred by Kent). Driven in a real browser against the real service
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
 green suite. The list: DOCTRINE "Gotchas".
 
-**Uploading artwork is the whole interaction — the panel asks NOTHING about what the art is** (the "It's flat art" / "It's a photo" / "Use automatic detection" buttons went 2026-09-30, Kent's call): the Studio sends `detect_photographic` and `faces_route_flat` in place of any per-design override, and a found face sews FLAT; a misroute is phase 2's to fix, not a button's; [area doc](docs/scope/3-studio-app-wizard.md), DOCTRINE 2026-09-30. *(confirmed 2026-09-30)*
+**Uploading artwork is the whole interaction — the panel asks NOTHING about what the art is** (the "It's flat art" / "It's a photo" / "Use automatic detection" buttons went 2026-09-30, Kent's call): the Studio sends `detect_photographic` and `faces_route_flat` in place of any per-design override, and a found face sews FLAT; **the flat half came back the same evening (Kent): a tonal reading offers "Sew as flat art" (`forced_class=flat`), and a design set flat offers "Use automatic detection"**; a misroute is still phase 2's to fix; [area doc](docs/scope/3-studio-app-wizard.md), DOCTRINE 2026-09-30. *(confirmed 2026-09-30)*
 
 **The hoop you picked is DRAWN, and the export gate uses it** — four of ten garments have placement boxes larger than the biggest hoop (defect 39); [area doc](docs/scope/3-studio-app-wizard.md). *(2026-09-02 — PR #317; 2026-09-07)*
 
