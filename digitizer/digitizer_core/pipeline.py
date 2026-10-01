@@ -391,7 +391,10 @@ def build_generation(
     # reads regardless of which stage 2 path ran.
     classification = classify(image, cfg, forced_class=cfg.forced_class)
 
-    p: Prep = prep(image, cfg)
+    # The class rides into stage 1 for one decision: whether the working grid
+    # applies (`cfg.work_px_per_mm` — line art is traced on it, a photograph
+    # keeps the source line).
+    p: Prep = prep(image, cfg, design_class=classification.class_)
     if dbg:
         debugviz.stage1(dbg, p.rgb, p.bg_mask)
 

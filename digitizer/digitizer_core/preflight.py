@@ -123,7 +123,7 @@ from shapely.geometry import Point, Polygon
 from skimage.color import deltaE_ciede2000
 
 from . import machine, stitches
-from .config import PHOTO_CLASSES, PipelineConfig
+from .config import PHOTO_CLASSES, PipelineConfig, work_grid_px_per_mm
 from .pipeline import PipelineResult, fabric_for
 from .stage0_classify import classify
 from .stage1_prep import _dominant_border_color, prep
@@ -231,6 +231,11 @@ MIN_COLUMN_MM = machine.MIN_STITCH_MM
 # never upsampled, so growing the design adds no pixels to a letter).
 # One logo calibrated it; the docstring of `_resolution_note` says what to
 # re-measure if a second disagrees.
+# The name says SOURCE and the calibration was always in pixels of the
+# prep's GRID (lost at 13-18, back at 28 — both on the 4 px/mm grid). They
+# were the same thing until `cfg.work_px_per_mm` (2026-09-30) made the grid
+# finer than the source line, which is the cure for those very words: the
+# test reads the grid's pixels, the sentence still quotes the source's.
 LETTERING_MIN_SOURCE_PX = 20.0
 
 # Tight gaps inside a satin shape (2026-09-30, Kent's pick after the
@@ -1964,7 +1969,7 @@ def _tight_gap_findings(result: PipelineResult, plan: StitchPlan,
 
 
 def _resolution_note(findings: list[dict], p, plan: StitchPlan,
-                     cfg: PipelineConfig) -> None:
+                     cfg: PipelineConfig, design_class: str | None = None) -> None:
     """Append the resolution fact to LETTERING_TOO_SMALL and LETTERING_ILLEGIBLE
     when the artwork cannot carry the lettering they name (in place; a
     finding's text and `extra` grow, nothing else changes).
@@ -1986,15 +1991,26 @@ def _resolution_note(findings: list[dict], p, plan: StitchPlan,
 
     Calibrated on one logo (bridge: lost at 13-18 grid px, recovered at 28).
     If a second logo loses lettering above 20 source pixels per letter, or
-    keeps it below, re-measure the constant on both before moving it."""
+    keeps it below, re-measure the constant on both before moving it.
+
+    That calibration is in GRID pixels, so the test is too (`cfg.
+    work_px_per_mm`, 2026-09-30): lettering the prep's grid gives
+    LETTERING_MIN_SOURCE_PX or more (`Prep.px_per_mm`, the raster the tracer
+    read) was traced and gets no note, however few pixels the source had --
+    bridge's 3.4 mm letters are 12 source pixels and 27 on an 8 px/mm grid.
+    The sentence still quotes the SOURCE's pixels, which is the fact a
+    customer can act on, and the width it names is read on the working grid
+    (`config.work_grid_px_per_mm` for this design's class), the one a bigger
+    design will be traced on."""
     if p is None or plan.stats is None:
         return
     px = float(getattr(p, "input_px_per_mm", 0.0) or 0.0)
     if px <= 0.0:
         return
+    traced_px = max(px, float(getattr(p, "px_per_mm", 0.0) or 0.0))
     x0, _y0, x1, _y1 = plan.stats.bbox_mm
     design_w = float(x1 - x0)
-    grid = float(cfg.min_px_per_mm)
+    grid = work_grid_px_per_mm(cfg, design_class)
     for f in findings:
         if f.get("code") not in (LETTERING_TOO_SMALL, LETTERING_ILLEGIBLE):
             continue
@@ -2007,7 +2023,7 @@ def _resolution_note(findings: list[dict], p, plan: StitchPlan,
             continue
         letter_mm = float(min(sizes))
         per_letter = letter_mm * px
-        if per_letter >= LETTERING_MIN_SOURCE_PX:
+        if letter_mm * traced_px >= LETTERING_MIN_SOURCE_PX:
             continue
         extra["input_px_per_mm"] = round(px, 2)
         extra["source_px_per_letter"] = round(per_letter, 1)
@@ -3546,7 +3562,10 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     # thread-match rasterization and the two photo guardrails (resolution,
     # subject contrast). Without the artwork all three are skipped and the
     # metrics say so, each with its own None.
-    p = prep(image, cfg) if image is not None else None
+    # The class goes with it so the re-read lands on the grid the pipeline
+    # traced (`cfg.work_px_per_mm` is per class); a bare plan has none.
+    design_class = getattr(result, "design_class", None)
+    p = prep(image, cfg, design_class=design_class) if image is not None else None
 
     worst_de: float | None = None
     if p is not None and result is not None:
@@ -3608,7 +3627,7 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     # Lettering the artwork cannot carry: the resolution fact on the two
     # lettering findings, when the artwork was given (the legibility check
     # above and the lettering check just before are both in `findings` here).
-    _resolution_note(findings, p, plan, cfg)
+    _resolution_note(findings, p, plan, cfg, design_class=design_class)
 
     # The shapes lettering just named, so the short-stitch check can say which
     # of ITS carriers are not covered by that warning. The two measure the same
