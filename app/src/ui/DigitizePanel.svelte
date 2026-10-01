@@ -2970,7 +2970,7 @@
   .dgp-tab-count {
     padding: 1px 6px;
     border-radius: 999px;
-    background: var(--bg, #f6f7fb);
+    background: var(--fill, #f4f4f4);
     color: var(--muted, #616875);
     font-size: var(--fs-2xs, 11px);
     font-weight: var(--fw-medium, 500);
@@ -3311,7 +3311,7 @@
      the hover ground; the selected shape's row takes the tint with an
      accent edge, the list's twin of the amber outline on the field. */
   .dgp-layer:hover,
-  .dgp-layer-hover { background: var(--bg, #f6f7fb); }
+  .dgp-layer-hover { background: var(--fill, #f4f4f4); }
   .dgp-layer-sel,
   .dgp-layer-sel:hover { background: var(--tint, #eef0ff); box-shadow: inset 3px 0 0 var(--accent, #4f46e5); }
   .dgp-lname-btn {
