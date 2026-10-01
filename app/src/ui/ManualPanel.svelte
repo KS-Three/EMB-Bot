@@ -11,7 +11,9 @@
     curvedNodeThrough, curvedNodeFlags, quadraticControlForPointOnCurve,
     shouldScrollCanvasIntoView,
     duplicateShape, nextShapeIds,
+    resolveCutOuts, manualShapeName, withCutOut,
   } from "../lib/manualShapes.js";
+  import { SATIN_CUTOUT_NOTE } from "../lib/shapePopover.js";
   import { traceFitRect } from "../lib/manualTrace.js";
 
   // Node colours, straight vs curved. Same vocabulary the Ember demo uses
@@ -143,6 +145,20 @@
 
   $: shapes = element.shapes || [];
   $: selectedShape = shapes.find((s) => s.id === selectedShapeId) || null;
+  // What every cut-out cuts, resolved by containment (manualShapes.js) on
+  // every shapes change — nothing about it is stored. Read LEXICALLY by every
+  // template expression and by render()'s argument list below, so a change to
+  // it repaints both; a helper that read `cut` internally would not.
+  $: cut = resolveCutOuts(shapes);
+
+  // The side canvas's drawing mode (ruling 4: Shape | Hole, with Column and
+  // Line to come in plans 2 and 3). Ephemeral UI state like `draft`. A pick,
+  // not a toggle: pressing the lit one does nothing, and switching keeps the
+  // draft — the mode only decides what the NEXT finished shape is born as.
+  let drawMode = "shape";
+  function setDrawMode(m) {
+    if (drawMode !== m) drawMode = m;
+  }
   // Validity is always checked against the FLATTENED geometry (curves baked
   // to points, closed=true — shapeIssues has always treated its input as a
   // closed ring for self-intersection purposes, draft or not) so a curve
@@ -228,7 +244,10 @@
     // never depends on Svelte's reactive-statement flush having already run
     // by the time a caller in the same tick invokes finishShape.
     if (!isValidShape(flattenShape(draft, draftCurves, true))) return;
-    const shape = { ...defaultManualShape(nextShapeId(shapes)), points: draft, curves: draftCurves };
+    const base = { ...defaultManualShape(nextShapeId(shapes)), points: draft, curves: draftCurves };
+    // Hole mode: born marked. Same validity gate as any shape (a cut-out IS a
+    // shape), and the mode stays on Hole for the next one.
+    const shape = drawMode === "hole" ? withCutOut(base, true) : base;
     patch({ shapes: [...shapes, shape] });
     draft = [];
     draftCurves = {};
@@ -273,7 +292,11 @@
     // finished shape is under it, instead of starting a new draft on top of
     // it — gated on draft.length === 0 so an in-progress hand-drawn shape is
     // never preempted by a select-click partway through being drawn.
-    if (draft.length === 0) {
+    //
+    // Hole mode never selects (ruling, 2026-10-01): a hole is drawn INSIDE a
+    // shape, so its first click always lands on one, and selecting there
+    // would make a hole impossible to start. updateHoverCursor agrees.
+    if (draft.length === 0 && drawMode !== "hole") {
       const hitId = hitTestShapeAt(pt.x, pt.y);
       if (hitId) {
         // A click on a shape's body selects it (PR #104). Clicking the shape
@@ -504,10 +527,17 @@
   // canvas-click-to-select (onCanvasClick) and the hover cursor
   // (onCanvasPointerMove) off the exact same test, so the cursor never
   // promises a click will select something it actually won't.
+  //
+  // A shape's resolved cut-outs are not part of it: a point inside one of
+  // them skips that shape, so a click in a hole reaches the cut-out even when
+  // the cut-out sits EARLIER in the list than its parent.
   function hitTestShapeAt(x, y) {
     for (let i = shapes.length - 1; i >= 0; i--) {
       const s = shapes[i];
-      if (pointInShape(flattenShape(s.points, s.curves, true), x, y)) return s.id;
+      if (!pointInShape(flattenShape(s.points, s.curves, true), x, y)) continue;
+      const holes = cut.holesOf[s.id] || [];
+      if (holes.some((id) => pointInShape(cut.flat.get(id), x, y))) continue;
+      return s.id;
     }
     return null;
   }
@@ -601,7 +631,8 @@
   //   pointer   — hovering a finished shape's body, selectable by a click
   //               (see onCanvasClick's own draft.length === 0 gate — the
   //               cursor only offers "pointer" when a click would actually
-  //               select something).
+  //               select something). Never in Hole mode, where a click
+  //               always places a draft point.
   //   crosshair — the fallback (today's implicit default, made explicit so
   //               every case funnels through this one function — otherwise
   //               a cursor set to one of the above by a previous pointermove
@@ -612,7 +643,7 @@
       canvasEl.style.cursor = "copy";
       return;
     }
-    if (draft.length === 0) {
+    if (draft.length === 0 && drawMode !== "hole") {
       const hitId = hitTestShapeAt(pt.x, pt.y);
       if (hitId) {
         canvasEl.style.cursor = "pointer";
@@ -643,8 +674,22 @@
     updateShape(selectedShape.id, { angleDeg: Number.isFinite(v) ? v : null });
   }
 
-  function summary(shape) {
-    return `Shape ${shape.id.replace(/^s/, "")} · ${shape.stitchType === "satin" ? "Satin" : "Fill"}`;
+  // `c` is the resolved cut-out map, passed in (not read from `cut` here) so
+  // a template call `summary(s, cut)` re-runs when it changes.
+  function summary(shape, c) {
+    return manualShapeName(shape, c);
+  }
+
+  // What the assign box says under a cut-out: the shape it cuts, or why it
+  // cuts nothing.
+  function cutNote(shape, c) {
+    const parent = c.parentOf[shape.id];
+    if (parent) return `Cuts Shape ${String(parent).replace(/^s/, "")}.`;
+    return c.reasonOf[shape.id] || "";
+  }
+
+  function toggleCutOut(id) {
+    patch({ shapes: shapes.map((s) => (s.id === id ? withCutOut(s, !s.cutOut) : s)) });
   }
 
   // ---- Keyboard shortcuts ------------------------------------------------
@@ -730,11 +775,9 @@
   // Curved segments draw natively via quadraticCurveTo — flattening to
   // points (manualShapes.js's flattenShape) only ever happens for
   // validation and at the final shapesToRegions hand-off, never here.
-  function drawShape(ctx, points, curves, closed, fillStyle, strokeStyle, lineWidth) {
-    if (points.length < 2) return;
+  function tracePath(ctx, points, curves, closed) {
     const n = points.length;
     const segCount = closed ? n : n - 1;
-    ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
     for (let i = 0; i < segCount; i++) {
       const c = points[(i + 1) % n];
@@ -742,6 +785,12 @@
       if (control) ctx.quadraticCurveTo(control.x, control.y, c.x, c.y);
       else ctx.lineTo(c.x, c.y);
     }
+  }
+
+  function drawShape(ctx, points, curves, closed, fillStyle, strokeStyle, lineWidth) {
+    if (points.length < 2) return;
+    ctx.beginPath();
+    tracePath(ctx, points, curves, closed);
     if (fillStyle) {
       ctx.closePath();
       ctx.fillStyle = fillStyle;
@@ -750,6 +799,44 @@
     ctx.strokeStyle = strokeStyle;
     ctx.lineWidth = lineWidth;
     ctx.stroke();
+  }
+
+  // A shape with resolved cut-outs: ONE even-odd path — its own ring plus
+  // each cut-out's flattened ring — so the hole reads as a hole (the canvas
+  // and the backdrop show through it). The outline is stroked on its own ring
+  // only; each cut-out strokes its own dashed outline when its turn comes.
+  function drawHoledShape(ctx, points, curves, holeRings, fillStyle, strokeStyle, lineWidth) {
+    ctx.beginPath();
+    tracePath(ctx, points, curves, true);
+    ctx.closePath();
+    for (const ring of holeRings) {
+      if (!ring || ring.length < 3) continue;
+      tracePath(ctx, ring, null, true);
+      ctx.closePath();
+    }
+    ctx.fillStyle = fillStyle;
+    ctx.fill("evenodd");
+    ctx.beginPath();
+    tracePath(ctx, points, curves, true);
+    ctx.closePath();
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  }
+
+  // A cut-out sews nothing, so it is not filled: a dashed outline only.
+  // setLineDash is reset on the way out — every later stroke on this canvas
+  // (other shapes, the draft) assumes a solid line.
+  function drawCutOut(ctx, points, curves, strokeStyle, lineWidth) {
+    if (points.length < 2) return;
+    ctx.beginPath();
+    tracePath(ctx, points, curves, true);
+    ctx.closePath();
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = lineWidth;
+    if (typeof ctx.setLineDash === "function") ctx.setLineDash([4, 3]);
+    ctx.stroke();
+    if (typeof ctx.setLineDash === "function") ctx.setLineDash([]);
   }
 
   // The curves map to actually draw with: the committed map, with the
@@ -793,7 +880,7 @@
 
   function render(
     canvas, shapeList, draftPts, draftCrv, selectedId,
-    dragSeg, dragPoint
+    dragSeg, dragPoint, cutMap
   ) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -832,12 +919,19 @@
       // rather than replacing it, so "see what is underneath this" and "focus
       // the selected shape" compose instead of fighting.
       const a = alphaFor(s.id);
-      drawShape(
-        ctx, pts, liveCrv, true,
-        `rgba(${r},${g},${b},${(dimmed ? 0.18 : 0.55) * a})`,
-        isSel ? `rgba(79,70,229,${a})` : `rgba(${r},${g},${b},${a})`,
-        isSel ? 3 : (dimmed ? 1 : 1.5)
-      );
+      const strokeStyle = isSel ? `rgba(79,70,229,${a})` : `rgba(${r},${g},${b},${a})`;
+      const lineWidth = isSel ? 3 : (dimmed ? 1 : 1.5);
+      if (s.cutOut) {
+        // No fill and no stitch-type label: it sews nothing, and the dashed
+        // outline plus the list's "Cut out" already say what it is.
+        drawCutOut(ctx, pts, liveCrv, strokeStyle, lineWidth);
+        continue;
+      }
+      const fillStyle = `rgba(${r},${g},${b},${(dimmed ? 0.18 : 0.55) * a})`;
+      const holeIds = (cutMap && cutMap.holesOf[s.id]) || [];
+      const holeRings = holeIds.map((id) => cutMap.flat.get(id));
+      if (holeRings.length) drawHoledShape(ctx, pts, liveCrv, holeRings, fillStyle, strokeStyle, lineWidth);
+      else drawShape(ctx, pts, liveCrv, true, fillStyle, strokeStyle, lineWidth);
       if (!dimmed) {
         // Stitch-type label at the shape's centroid — dropped entirely (not
         // just faded) on a dimmed shape, since the sidebar's per-shape list
@@ -846,10 +940,17 @@
         let cx = 0, cy = 0;
         for (const p of pts) { cx += p.x; cy += p.y; }
         cx /= pts.length; cy /= pts.length;
-        ctx.fillStyle = "#111";
-        ctx.font = "11px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(s.stitchType === "satin" ? "SATIN" : "FILL", cx, cy);
+        // A label whose anchor falls in one of the shape's own holes is
+        // dropped: it would float in the see-through hole, over (or under)
+        // the cut-out's outline, naming a stitch that does not sew there.
+        const inHole = holeRings.some((ring) => ring && pointInShape(ring, cx, cy));
+        if (!inHole) {
+          ctx.fillStyle = "#111";
+          ctx.font = "11px sans-serif";
+          ctx.textAlign = "center";
+          // A satin shape with a cut-out sews as fill, and says so.
+          ctx.fillText(s.stitchType === "satin" && !holeRings.length ? "SATIN" : "FILL", cx, cy);
+        }
       }
     }
 
@@ -878,10 +979,12 @@
   // backdropCanvas/backdropOn/backdropOpacity are listed as arguments, not
   // merely referenced inside render(), because Svelte's reactive dependency
   // tracking only sees what the statement itself touches — a backdrop change
-  // read only from inside the function body would not repaint.
+  // read only from inside the function body would not repaint. `cut` is a
+  // real parameter (render draws the holes from it); drawMode is not listed
+  // because nothing drawn depends on it.
   $: render(
     canvasEl, shapes, draft, draftCurves, selectedShapeId,
-    curveDragSeg, curveDragPoint,
+    curveDragSeg, curveDragPoint, cut,
     backdropCanvas, backdropOn, backdropOpacity, shapeAlpha
   );
 </script>
@@ -923,6 +1026,24 @@
 
   {#if draftIssues.length}
     <p class="mp-draftissue" role="alert">{draftIssues.join(" ")}</p>
+  {/if}
+
+  <!-- What the next finished shape is born as (ruling 4). Same segmented
+       language as the hoop canvas's View strip (theme.css .viewseg): one
+       bordered strip, hairline-separated, the lit segment filled ink. -->
+  <div class="mp-mode" role="group" aria-label="Drawing mode">
+    {#each [["shape", "Shape"], ["hole", "Hole"]] as [val, label]}
+      <button
+        type="button"
+        class="mp-mode-btn"
+        class:mp-mode-on={drawMode === val}
+        aria-pressed={drawMode === val ? "true" : "false"}
+        on:click={() => setDrawMode(val)}
+      >{label}</button>
+    {/each}
+  </div>
+  {#if drawMode === "hole"}
+    <p class="mp-modehint">Draw inside a shape — it cuts that shape.</p>
   {/if}
 
   <div class="mp-tools">
@@ -977,7 +1098,12 @@
             on:keydown={onCanvasKeydown}
           >
             <span class="mp-swatch" style="background: rgb({s.colorRgb[0]},{s.colorRgb[1]},{s.colorRgb[2]})"></span>
-            <span class="mp-shapename">{summary(s)}</span>
+            <span class="mp-shapetext">
+              <span class="mp-shapename">{summary(s, cut)}</span>
+              {#if cut.reasonOf[s.id]}
+                <span class="mp-reason">{cut.reasonOf[s.id]}</span>
+              {/if}
+            </span>
           </button>
           <button
             type="button"
@@ -996,7 +1122,7 @@
 
   {#if selectedShape}
     <div class="mp-assign">
-      <h3>{summary(selectedShape)}</h3>
+      <h3>{summary(selectedShape, cut)}</h3>
       <div class="mp-row">
         <span class="mp-label">Dim</span>
         <input
@@ -1018,18 +1144,41 @@
         >Reset</button>
       </div>
       <div class="mp-row">
+        <span class="mp-label">Cut out</span>
+        <button
+          type="button"
+          class="mp-btn"
+          class:active={!!selectedShape.cutOut}
+          role="switch"
+          aria-checked={selectedShape.cutOut ? "true" : "false"}
+          aria-label="Cut out"
+          on:click={() => toggleCutOut(selectedShape.id)}
+        >{selectedShape.cutOut ? "On" : "Off"}</button>
+      </div>
+      {#if selectedShape.cutOut}
+        <!-- A cut-out sews nothing, so colour, stitch type and angle have
+             nothing to act on; what it cuts is the one thing worth saying. -->
+        <p class="mp-cutnote" class:warn={!!cut.reasonOf[selectedShape.id]}>{cutNote(selectedShape, cut)}</p>
+      {:else}
+      <div class="mp-row">
         <span class="mp-label">Stitch type</span>
         <div class="mp-btns">
           {#each [["fill", "Fill"], ["satin", "Satin"]] as [val, label]}
+            <!-- A shape with a cut-out in it sews as fill: the control reads
+                 Fill while the stored stitchType is left alone, so removing
+                 the cut-out gives the satin back. -->
             <button
               type="button"
               class="mp-btn"
-              class:active={selectedShape.stitchType === val}
+              class:active={((cut.holesOf[selectedShape.id] || []).length ? "fill" : selectedShape.stitchType) === val}
               on:click={() => updateShape(selectedShape.id, { stitchType: val })}
             >{label}</button>
           {/each}
         </div>
       </div>
+      {#if selectedShape.stitchType === "satin" && (cut.holesOf[selectedShape.id] || []).length}
+        <p class="mp-cutnote">{SATIN_CUTOUT_NOTE}</p>
+      {/if}
       <div class="mp-row">
         <span class="mp-label">Color</span>
         <ThreadPicker compact rgb={selectedShape.colorRgb} on:pick={(e) => updateShape(selectedShape.id, { colorRgb: e.detail })} />
@@ -1045,6 +1194,7 @@
         />
         <span class="mp-deg">° (blank = auto)</span>
       </label>
+      {/if}
     </div>
   {/if}
 </div>
@@ -1094,6 +1244,35 @@
     font-size: 0.78rem;
   }
   .mp-dim-reset:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* Drawing-mode strip — copied from theme.css .viewseg / .viewseg-btn (the
+     hoop canvas's View strip), with .zoombtn's base folded in since this
+     panel does not carry that class. */
+  .mp-mode {
+    display: inline-flex;
+    align-self: flex-start;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s, 8px);
+    background: var(--surface, #fff);
+    overflow: hidden;
+  }
+  .mp-mode-btn {
+    padding: 5px var(--space-3);
+    border: 0;
+    border-left: 1px solid var(--border);
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    font-size: var(--fs-xs, 12px);
+    font-weight: var(--fw-medium);
+    white-space: nowrap;
+  }
+  .mp-mode-btn:first-child { border-left: 0; }
+  .mp-mode-btn:hover { background: var(--bg); }
+  .mp-mode-btn.mp-mode-on,
+  .mp-mode-btn.mp-mode-on:hover { background: var(--ink); color: var(--surface, #fff); }
+  .mp-modehint { font-size: var(--fs-xs, 12px); color: var(--muted, #6b7280); margin: -4px 0 0; }
 
   .mp-tools { display: flex; gap: 6px; flex-wrap: wrap; }
   .mp-tools button {
@@ -1166,6 +1345,10 @@
     text-align: left;
   }
   .mp-shaperow.sel { border-color: var(--accent, #4f46e5); background: var(--tint, #eef0ff); }
+  .mp-shapetext { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .mp-reason { font-size: var(--fs-2xs); color: var(--warn-text); }
+  .mp-cutnote { font-size: var(--fs-xs, 12px); color: var(--muted, #6b7280); margin: 6px 0 0; }
+  .mp-cutnote.warn { color: var(--warn-text); }
   .mp-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--tint-border, #ccd6fb); display: inline-block; flex: none; }
   .mp-remove { border: none; background: none; cursor: pointer; font-size: var(--fs-sm, 0.875rem); color: var(--danger, #c0392b); padding: 4px; }
   .mp-empty { font-size: var(--fs-xs, 12px); color: var(--muted, #6b7280); margin: 0; }

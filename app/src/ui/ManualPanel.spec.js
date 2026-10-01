@@ -57,7 +57,7 @@ beforeAll(async () => {
   HTMLCanvasElement.prototype.getContext = () => ({
     clearRect: noop, fillRect: noop, beginPath: noop, moveTo: noop, lineTo: noop,
     quadraticCurveTo: noop, closePath: noop, fill: noop, stroke: noop, arc: noop, fillText: noop,
-    save: noop, restore: noop,
+    save: noop, restore: noop, setLineDash: noop,
     fillStyle: "", strokeStyle: "", lineWidth: 1, font: "", textAlign: "",
   });
   HTMLCanvasElement.prototype.getBoundingClientRect = () => ({
@@ -749,6 +749,182 @@ describe("draft keys never destroy a finished shape", () => {
 
     expect(patches).toHaveLength(0);                       // the shape is untouched...
     expect(queryByText("Undo point").disabled).toBe(false); // ...and so is the draft
+  });
+});
+
+// ---- Hole mode and cut-outs (manual holes, Task 6) -------------------------
+//
+// A cut-out is an ordinary shape with `cutOut: true`; what it cuts is
+// resolved by containment (resolveCutOuts). These pin the side panel's half:
+// the Shape | Hole strip, the list and assign box saying what a cut-out cuts,
+// and the ruling that a click in Hole mode always draws, never selects —
+// a hole is drawn INSIDE another shape, which is exactly where a Shape-mode
+// click selects instead.
+
+function square(x0, y0, x1, y1) {
+  return [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+}
+const BIG = () => ({ id: "s1", points: square(50, 50, 350, 350), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null });
+const HOLE = (id = "s2") => ({ id, points: square(150, 150, 250, 250), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null, cutOut: true });
+
+async function drawTri(canvas, dx = 0, dy = 0) {
+  const [p0, p1, p2] = tri(dx, dy);
+  await clickAt(canvas, p0.x, p0.y);
+  await clickAt(canvas, p1.x, p1.y);
+  await clickAt(canvas, p2.x, p2.y);
+  await clickAt(canvas, p0.x + 2, p0.y);
+}
+
+function modeButtons(getByRole) {
+  const group = getByRole("group", { name: "Drawing mode" });
+  const [shapeBtn, holeBtn] = group.querySelectorAll("button");
+  return { group, shapeBtn, holeBtn };
+}
+
+describe("Hole mode and cut-outs", () => {
+  test("the mode strip renders with Shape pressed, and Hole is a pick, not a toggle", async () => {
+    const { getByRole } = renderPanel();
+    const { shapeBtn, holeBtn } = modeButtons(getByRole);
+    expect(shapeBtn.textContent.trim()).toBe("Shape");
+    expect(holeBtn.textContent.trim()).toBe("Hole");
+    expect(shapeBtn.getAttribute("aria-pressed")).toBe("true");
+    expect(holeBtn.getAttribute("aria-pressed")).toBe("false");
+    await fireEvent.click(holeBtn);
+    await fireEvent.click(holeBtn); // pressing the active one does nothing
+    expect(holeBtn.getAttribute("aria-pressed")).toBe("true");
+    expect(shapeBtn.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  test("a shape finished in Hole mode is born cutOut: true; the mode stays Hole; the next Shape-mode shape has no cutOut key", async () => {
+    const { canvas, getByRole, patches } = renderPanel();
+    const { shapeBtn, holeBtn } = modeButtons(getByRole);
+    await fireEvent.click(holeBtn);
+    await drawTri(canvas);
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes[0].cutOut).toBe(true);
+    expect(holeBtn.getAttribute("aria-pressed")).toBe("true");
+
+    await fireEvent.click(shapeBtn);
+    await drawTri(canvas, 300, 0);
+    expect(patches).toHaveLength(2);
+    const second = patches[1].patch.shapes[1];
+    expect("cutOut" in second).toBe(false);
+  });
+
+  test("switching mode does not clear the draft", async () => {
+    const { canvas, getByRole } = renderPanel();
+    await clickAt(canvas, 20, 20);
+    await fireEvent.click(modeButtons(getByRole).holeBtn);
+    expect(getByRole("button", { name: "Undo point" })).not.toBeDisabled();
+  });
+
+  test("in Hole mode a click inside a finished shape (no draft) places a draft point and does NOT select it", async () => {
+    const { canvas, getByRole, getByText, patches } = renderPanel([BIG()]);
+    await fireEvent.click(modeButtons(getByRole).holeBtn);
+    await clickAt(canvas, 200, 200); // inside s1
+    expect(getByRole("button", { name: "Undo point" })).not.toBeDisabled();
+    expect(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button").className).not.toContain("sel");
+    expect(patches).toHaveLength(0);
+  });
+
+  test("in Hole mode the hover cursor over a shape's body is the drawing cursor, not pointer", async () => {
+    const { canvas, getByRole } = renderPanel([BIG()]);
+    await fireEvent.click(modeButtons(getByRole).holeBtn);
+    await fireEvent.pointerMove(canvas, { clientX: 200, clientY: 200 });
+    expect(canvas.style.cursor).toBe("crosshair");
+  });
+
+  test("the helper line shows only in Hole mode", async () => {
+    const { getByRole, container } = renderPanel();
+    expect(container.querySelector(".mp-modehint")).toBeNull();
+    const { shapeBtn, holeBtn } = modeButtons(getByRole);
+    await fireEvent.click(holeBtn);
+    expect(container.querySelector(".mp-modehint").textContent.trim()).toBe("Draw inside a shape — it cuts that shape.");
+    await fireEvent.click(shapeBtn);
+    expect(container.querySelector(".mp-modehint")).toBeNull();
+  });
+
+  test("a cut-out's list row reads Shape 2 · Cut out", () => {
+    const { getByText } = renderPanel([BIG(), HOLE()]);
+    expect(getByText("Shape 2 · Cut out", { selector: ".mp-shapename" })).toBeTruthy();
+  });
+
+  test("an orphan cut-out's row shows why it cuts nothing", () => {
+    const orphan = { ...HOLE(), points: square(400, 50, 500, 150) }; // outside s1
+    const { container } = renderPanel([BIG(), orphan]);
+    const reasons = [...container.querySelectorAll(".mp-reason")].map((n) => n.textContent.trim());
+    expect(reasons).toEqual(["Not inside a shape — cuts nothing."]);
+  });
+
+  test("the assign box of a cut-out: switch on, Cuts Shape 1., no Stitch type / Color / Fill angle", async () => {
+    const { getByText, queryByText, getByRole } = renderPanel([BIG(), HOLE()]);
+    await fireEvent.click(getByText("Shape 2 · Cut out", { selector: ".mp-shapename" }).closest("button"));
+    const sw = getByRole("switch");
+    expect(sw.getAttribute("aria-checked")).toBe("true");
+    expect(getByText("Cuts Shape 1.")).toBeTruthy();
+    expect(queryByText("Stitch type")).toBeNull();
+    expect(queryByText("Color")).toBeNull();
+    expect(queryByText("Fill angle")).toBeNull();
+    expect(getByText("Dim")).toBeTruthy();
+  });
+
+  test("an orphan cut-out's assign box shows its reason", async () => {
+    const orphan = { ...HOLE(), points: square(400, 50, 500, 150) };
+    const { getByText, container } = renderPanel([BIG(), orphan]);
+    await fireEvent.click(getByText("Shape 2 · Cut out", { selector: ".mp-shapename" }).closest("button"));
+    const note = container.querySelector(".mp-assign .mp-cutnote");
+    expect(note.textContent.trim()).toBe("Not inside a shape — cuts nothing.");
+    expect(note.className).toContain("warn");
+  });
+
+  test("flipping the switch off emits a patch where that shape has NO cutOut key", async () => {
+    const { getByText, getByRole, patches } = renderPanel([BIG(), HOLE()]);
+    await fireEvent.click(getByText("Shape 2 · Cut out", { selector: ".mp-shapename" }).closest("button"));
+    await fireEvent.click(getByRole("switch"));
+    expect(patches).toHaveLength(1);
+    const s2 = patches[0].patch.shapes.find((s) => s.id === "s2");
+    expect("cutOut" in s2).toBe(false);
+    expect(getByText("Shape 2 · Fill", { selector: ".mp-shapename" })).toBeTruthy();
+    expect(getByRole("switch").getAttribute("aria-checked")).toBe("false");
+  });
+
+  test("a normal shape's switch reads off, and flipping it on marks it cutOut: true", async () => {
+    const { getByText, getByRole, patches } = renderPanel([BIG()]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    expect(getByRole("switch").getAttribute("aria-checked")).toBe("false");
+    await fireEvent.click(getByRole("switch"));
+    expect(patches[0].patch.shapes[0].cutOut).toBe(true);
+  });
+
+  test("a satin parent with a resolved cut-out reads Fill, shows the note, and keeps its stored stitchType", async () => {
+    const satin = { ...BIG(), stitchType: "satin" };
+    const { getByText, container, patches } = renderPanel([satin, HOLE()]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    expect(container.querySelector(".mp-assign h3").textContent.trim()).toBe("Shape 1 · Fill");
+    expect(getByText("Sews as fill — satin cannot go round a cut-out.")).toBeTruthy();
+    const active = [...container.querySelectorAll(".mp-assign .mp-btn.active")].map((b) => b.textContent.trim());
+    expect(active).toEqual(["Fill"]);
+    expect(patches).toHaveLength(0); // nothing rewritten
+  });
+
+  test("a satin shape with no cut-out shows no note", async () => {
+    const satin = { ...BIG(), stitchType: "satin" };
+    const { getByText, queryByText } = renderPanel([satin]);
+    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
+    expect(queryByText("Sews as fill — satin cannot go round a cut-out.")).toBeNull();
+  });
+
+  test("Shape mode: a click in the hole reaches the cut-out even when the cut-out is EARLIER in the list", async () => {
+    const { canvas, getByText } = renderPanel([HOLE("s1"), { ...BIG(), id: "s2" }]);
+    await clickAt(canvas, 200, 200); // inside the hole, inside s2's outer ring
+    expect(getByText("Shape 1 · Cut out", { selector: ".mp-shapename" }).closest("button").className).toContain("sel");
+    expect(getByText(/Shape 2/, { selector: ".mp-shapename" }).closest("button").className).not.toContain("sel");
+  });
+
+  test("Shape mode: a click on the parent's body outside its hole still selects the parent", async () => {
+    const { canvas, getByText } = renderPanel([HOLE("s1"), { ...BIG(), id: "s2" }]);
+    await clickAt(canvas, 80, 80);
+    expect(getByText(/Shape 2/, { selector: ".mp-shapename" }).closest("button").className).toContain("sel");
   });
 });
 
