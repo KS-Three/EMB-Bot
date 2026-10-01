@@ -24,15 +24,13 @@
 // rules are pinned in src/lib/project.spec.js; the registry's sticky-name
 // contract in src/lib/projects.spec.js.
 import { test, expect } from "@playwright/test";
+import { typeText } from "./helpers.js";
 
 const nameField = (page) => page.getByLabel("Project name");
 const rows = (page) => page.locator(".drawer-row-name");
 
 async function startDesign(page, text) {
-  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await page.getByPlaceholder("Type a name or word").fill(text);
-  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
+  await typeText(page, text);
 }
 
 async function openDrawer(page) {

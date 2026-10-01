@@ -22,7 +22,6 @@ async function type(page, text) {
 
 test("a curly apostrophe sews the same design as a straight one, and says nothing", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Next", exact: true }).click();
 
   const straight = await type(page, "Fritsch's Stitches");
   await expect(page.getByText(/can.t stitch/i)).toHaveCount(0);
@@ -36,7 +35,6 @@ test("a curly apostrophe sews the same design as a straight one, and says nothin
 
 test("an em dash sews as a hyphen rather than vanishing", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Next", exact: true }).click();
   const hyphen = await type(page, "Mom - 2026");
   const emdash = await type(page, "Mom — 2026");
   expect(emdash).toBe(hyphen);
@@ -50,7 +48,6 @@ test("a character with no ASCII twin still gets its message", async ({ page }) =
   // "this font can't stitch", because the current font is not the problem.
   // (A first draft looked for that phrase and failed, correctly.)
   await page.goto("/");
-  await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.locator("textarea").first().fill("Emb 日本");
   await expect(page.getByText(/No font in this library can stitch/i)).toBeVisible({ timeout: 20000 });
 });
@@ -59,7 +56,6 @@ test("a font that cannot set the text still names the fonts that can", async ({ 
   // The other surviving variant: Cyrillic IS covered, by three fonts. The
   // fold must not have made this message unreachable either.
   await page.goto("/");
-  await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.locator("textarea").first().fill("Русский");
   await expect(page.getByText(/Switch fonts and it will stitch/i)).toBeVisible({ timeout: 20000 });
 });
