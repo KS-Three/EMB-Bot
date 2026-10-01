@@ -2,7 +2,7 @@
   import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, removeElement, resolveArtworkType, deriveProjectName, UNTITLED_NAME } from "./lib/project.js";
   import { createHistory } from "./lib/history.js";
   import { applyTemplate } from "./lib/templates.js";
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { isSewable } from "./lib/flow.js";
   import { designSummary } from "./lib/summary.js";
   import { sewSummary } from "./lib/estimate.js";
@@ -110,7 +110,10 @@
   function closeSheet() {
     if (!sheetOpen) return;
     if (isSheetEntry()) window.history.back();
-    else sheetOpen = false;
+    else {
+      sheetOpen = false;
+      returnFocusToDownload();
+    }
   }
   function onPopState() {
     const wasOpen = sheetOpen;
@@ -118,6 +121,14 @@
     // Forward can re-open the sheet; re-probe as openSheet does, so its
     // service-only controls (JEF) are not judged on a stale answer.
     if (sheetOpen && !wasOpen) checkDigitizer();
+    if (wasOpen && !sheetOpen) returnFocusToDownload();
+  }
+  // While the sheet is open the panel underneath is `inert`, so focus left
+  // there would be lost to <body> on close. Hand it back to the control that
+  // opened the sheet — after the sheet unmounts and the panel is live again.
+  async function returnFocusToDownload() {
+    await tick();
+    document.querySelector(".summarybar-download")?.focus();
   }
   // A reload with the sheet open boots with sheetOpen false while the
   // browser still sits on the sheet's entry. Left there, the next Download
@@ -1152,6 +1163,9 @@
   </section>
 
   <aside class="panel">
+    <!-- inert while the Download sheet covers it: the sheet is modal, so
+         Tab must not walk into the panel hidden underneath. -->
+    <div class="panel-main" inert={sheetOpen}>
     <Configurator
       {subtitle}
       {sewFacts}
@@ -1192,6 +1206,7 @@
         <GarmentStep {project} {digitizerHealth} on:update={(e) => apply(e.detail)} />
       </svelte:fragment>
     </Configurator>
+    </div>
     {#if sheetOpen}
       <DownloadSheet
         {project}

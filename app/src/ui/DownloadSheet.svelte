@@ -24,7 +24,7 @@
   }
 </script>
 
-<div class="sheet" role="dialog" aria-label="Download" tabindex="-1" bind:this={el} on:keydown={onKey}>
+<div class="sheet" role="dialog" aria-modal="true" aria-label="Download" tabindex="-1" bind:this={el} on:keydown={onKey}>
   <div class="sheet-head">
     {#if ready}
       <h2>Ready to stitch</h2>

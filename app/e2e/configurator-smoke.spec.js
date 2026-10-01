@@ -361,8 +361,13 @@ test("the Download sheet's history entry: Back closes it, Close and reload leave
   await expect(page.getByRole("heading", { name: "Your design" })).toBeVisible();
 
   await openDownload(page);
+  // Modal: the panel underneath is inert while the sheet covers it...
+  await expect(page.locator(".panel-main")).toHaveAttribute("inert", "");
   await closeDownload(page);
   await expect.poll(() => page.evaluate(() => window.history.state)).toBeNull();
+  // ...and on close focus returns to the control that opened it.
+  await expect(page.locator(".panel-main")).not.toHaveAttribute("inert");
+  await expect(page.locator(".summarybar-download")).toBeFocused();
 
   await openDownload(page);
   await page.reload();

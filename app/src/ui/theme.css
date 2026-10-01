@@ -514,6 +514,16 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   border-left: 1px solid var(--border);
 }
 
+/* Wraps the Configurator (body + summary bar) so it can be made `inert`
+   under the Download sheet. It must pass .panel's column flex through, or
+   .cfg-body loses its bound and the summary bar stops being pinned. */
+.panel-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .cfg-body {
   flex: 1;
   min-height: 0;

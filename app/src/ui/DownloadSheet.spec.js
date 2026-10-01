@@ -41,6 +41,11 @@ test("is a dialog named Download with the Download heading inside", () => {
   expect(screen.getByRole("heading", { name: "Download", exact: true })).toBeInTheDocument();
 });
 
+test("is modal: the dialog carries aria-modal", () => {
+  render(Harness, { project: defaultProject(), summaryRows: ROWS });
+  expect(screen.getByRole("dialog", { name: "Download" })).toHaveAttribute("aria-modal", "true");
+});
+
 test("recaps the rows it is given and says Ready to stitch", () => {
   render(Harness, { project: defaultProject(), summaryRows: ROWS, ready: true });
   expect(screen.getByRole("heading", { name: "Ready to stitch" })).toBeInTheDocument();
