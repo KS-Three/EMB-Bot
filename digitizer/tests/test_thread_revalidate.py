@@ -51,6 +51,10 @@ CFG = dict(
     # Azalea Pink was matched to, so the drift never forms either; the
     # mean-point engine (False, byte for byte) is the state this pin traces.
     robust_region_colour=False,
+    # And since the 2026-09-30 flip of `snap_region_edges` the sliver's
+    # pixels are handed back to the regions whose colour they carry, so it
+    # is gone a third way; the superpixel-edged engine is the state traced.
+    snap_region_edges=False,
 )
 
 

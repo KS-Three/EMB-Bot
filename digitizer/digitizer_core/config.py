@@ -199,6 +199,17 @@ class PipelineConfig:
     # region set on every gradient-class design, so it waits on Kent's
     # look at a render, not on a green suite.
     dissolve_phantom_blends: bool = False
+    # Make the gradient lane's region edges follow the PIXELS rather than the
+    # SEEDS superpixels they are built from
+    # (`stage2_photo_segment.snap_region_edges`). Measured 2026-09-30 on
+    # Kent's real Instagram file: 148 superpixels straddle the white icon's
+    # edge and 7.6% of the white sews on the wrong side — the jagged ring
+    # and bitten dot — while forced flat sews the same shapes clean. Gradient
+    # class only. Built OFF; ON by Kent's flip 2026-09-30 on renders of his
+    # Instagram file at 80 and 188 mm, `drone_render`, Bridge Bar and the
+    # repro (it moves the region set on every gradient-class design, which
+    # is why it waited on his eye and not on a green suite).
+    snap_region_edges: bool = True
     # The colour each SLIC+RAG region hands the palette. False: the plain
     # mean of its pixels, which a big flat region full of drawn-on inclusions
     # turns into a colour no pixel carries — Bridge Bar's yellow disc
