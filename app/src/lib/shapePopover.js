@@ -8,6 +8,7 @@
 // tell which surface an edit came from. Pure: no DOM, no Svelte, no fetch
 // (the one async dependency, the thread chart, is injected).
 import { loadPalette, nearestInList } from "./threads.js";
+import { resolveCutOuts, manualShapeName, withCutOut } from "./manualShapes.js";
 
 const LANES = new Set(["digitized", "manual", "shape"]);
 
@@ -69,12 +70,12 @@ export function BORDER_OPTIONS(designBorder) {
 
 const MANUAL_TIERS = [{ value: "fill", label: "Fill" }, { value: "satin", label: "Satin" }];
 
+export const SATIN_CUTOUT_NOTE = "Sews as fill — satin cannot go round a cut-out.";
+
 // ---- names ------------------------------------------------------------------
-// ManualPanel.summary and EmbroideryField.shapeMenuName, reproduced so the
-// popover's heading reads like the row it stands in for.
-function manualName(shape) {
-  return `Shape ${String(shape.id).replace(/^s/, "")} · ${shape.stitchType === "satin" ? "Satin" : "Fill"}`;
-}
+// The manual lane's name is manualShapeName (shared with ManualPanel); the
+// digitized and preset names are reproduced here so the popover's heading
+// reads like the row it stands in for.
 function digitizedName(row) {
   const parts = [row.threadNumber ? "Thread #" + row.threadNumber : "Shape"];
   const a = row.areaMm2;
@@ -94,14 +95,31 @@ export function popoverModel({ element, shapeId }) {
   if (lane === "manual") {
     const shape = (element.shapes || []).find((s) => s && s.id === shapeId);
     if (!shape) return null;
+    const cut = resolveCutOuts(element.shapes);
+    const name = manualShapeName(shape, cut);
+    const tail = [
+      { key: "editPoints", kind: "action", label: "Edit points" },
+      { key: "delete", kind: "action", label: "Delete shape", danger: true },
+    ];
+    if (shape.cutOut) {
+      const parent = cut.parentOf[shape.id];
+      const toggle = { key: "cutOut", kind: "toggle", label: "Cut out", value: true };
+      if (parent != null) { toggle.note = `Cuts Shape ${String(parent).replace(/^s/, "")}.`; toggle.warn = false; }
+      else { toggle.note = cut.reasonOf[shape.id]; toggle.warn = true; }
+      return { lane, shapeId, name, rows: [toggle, ...tail] };
+    }
+    const holed = (cut.holesOf[shape.id] || []).length > 0;
+    const stored = shape.stitchType === "satin" ? "satin" : "fill";
+    const typeRow = { key: "stitchType", kind: "choice", label: "Stitch type", value: holed ? "fill" : stored, options: MANUAL_TIERS };
+    if (holed && stored === "satin") typeRow.note = SATIN_CUTOUT_NOTE;
     return {
-      lane, shapeId, name: manualName(shape),
+      lane, shapeId, name,
       rows: [
         { key: "color", kind: "thread", rgb: shape.colorRgb },
-        { key: "stitchType", kind: "choice", label: "Stitch type", value: shape.stitchType === "satin" ? "satin" : "fill", options: MANUAL_TIERS },
+        typeRow,
         { key: "angle", kind: "number", label: "Fill angle", value: shape.angleDeg == null ? null : shape.angleDeg, hint: "° (blank = auto)" },
-        { key: "editPoints", kind: "action", label: "Edit points" },
-        { key: "delete", kind: "action", label: "Delete shape", danger: true },
+        { key: "cutOut", kind: "toggle", label: "Cut out", value: false },
+        ...tail,
       ],
     };
   }
@@ -169,6 +187,7 @@ export function popoverPatch({ element, shapeId }, key, value) {
       case "stitchType": return manualShapePatch(element, shapeId, { stitchType: value === "satin" ? "satin" : "fill" });
       case "angle": return manualShapePatch(element, shapeId, { angleDeg: parseAngle(value) });
       case "color": return manualShapePatch(element, shapeId, { colorRgb: [...value] });
+      case "cutOut": return { shapes: (element.shapes || []).map((s) => (s && s.id === shapeId ? withCutOut(s, !!value) : s)) };
       case "delete": return { shapes: (element.shapes || []).filter((s) => !s || s.id !== shapeId) };
       default: return null;
     }

@@ -12,7 +12,7 @@
 // shape records keep {x, y} canvas px.
 import {
   flattenShape, shapeIssues, curveHandlePoint, curveControlOrNull,
-  insertVertexAtSegment, nearestSegmentIndex,
+  insertVertexAtSegment, nearestSegmentIndex, resolveCutOuts,
 } from "./manualShapes.js";
 
 // shapeOverlay.js's grab radii, so a hand-drawn node feels like a digitized one.
@@ -26,6 +26,48 @@ export function pxToFieldMm(fit, q) {
 }
 export function fieldMmToPx(fit, [xMm, yMm]) {
   return { x: fit.cxPx + (xMm - fit.offsetXMm) / fit.mmPerPx, y: fit.cyPx - (yMm - fit.offsetYMm) / fit.mmPerPx };
+}
+
+export const CUTOUT_HOLD_HINT = "A cut-out has to stay inside its shape.";
+
+// Ruling 3 (spec 2026-09-30 §5): an edit may not take a cut-out out of the
+// shape it cuts, nor pull that shape across it. Compared before -> after, so
+// a cut-out that already cut nothing is free to move.
+export function breaksContainment(shapesBefore, shapesAfter) {
+  const before = resolveCutOuts(shapesBefore).parentOf;
+  const ids = Object.keys(before).filter((id) => before[id] != null);
+  if (!ids.length) return false;
+  const after = resolveCutOuts(shapesAfter).parentOf;
+  return ids.some((id) => after[id] !== before[id]);
+}
+
+// The placement box, tested on the FLATTENED ring. A handle's through point
+// (the curve at t = 0.5) can sit on the box edge while the curve bulges past
+// it — a quadratic's extreme along an axis is not at t = 0.5 — and a ring
+// past the box trips the engine's scale clamp, which rescales the design.
+export function ringInsideBox(shape, fit, box, epsMm = 0.01) {
+  if (!(box && box.wMm > 0 && box.hMm > 0)) return true;
+  const hw = box.wMm / 2 + epsMm, hh = box.hMm / 2 + epsMm;
+  for (const p of flattenShape(shape.points, shape.curves, true)) {
+    const [x, y] = pxToFieldMm(fit, p);
+    if (Math.abs(x) > hw || Math.abs(y) > hh) return false;
+  }
+  return true;
+}
+
+// A cut-out emits no region, so the engine has no outline for it. The field
+// draws and hit-tests this one instead — the authored ring through the same
+// fit the engine's outlines use. Unresolved cut-outs are included: one that
+// cuts nothing still has to be clickable, to be fixed or deleted.
+export function cutOutOutlinesInFieldMm(shapes, fit) {
+  const out = [];
+  for (const sh of shapes || []) {
+    if (!sh || !sh.cutOut || sh.id == null) continue;
+    const ring = flattenShape(sh.points, sh.curves, true);
+    if (ring.length < 3) continue;
+    out.push({ id: String(sh.id), points: ring.map((p) => pxToFieldMm(fit, p)), cutOut: true });
+  }
+  return out;
 }
 
 // Kent's ruling (2026-09-29): a dragged node stops at the garment PLACEMENT
@@ -132,9 +174,22 @@ export function editedElementPatch(element, fit, shapeId, edited) {
   const issues = shapeIssues(flattenShape(edited.points, edited.curves, true));
   if (issues.length) return { error: issues[0] };
   const shapes = (element.shapes || []).map((s) => (s && s.id === shapeId ? edited : s));
+  if (breaksContainment(element.shapes || [], shapes)) return { error: CUTOUT_HOLD_HINT };
+  if (!flatBBox(element.shapes || []) || !flatBBox(shapes)) return { error: "Nothing to fit." };
+  return refitShapesPatch(element, fit, shapes);
+}
+
+// The re-fit arithmetic on its own: `element` re-sized and re-offset so that
+// `shapes` (its new list) sews every unchanged point where it sewed before.
+// editedElementPatch uses it for a node edit; the hoop's Cut out switch uses it
+// directly, because a cut-out emits no region and so switching one on or off
+// can change the bbox the engine fits. When nothing is sewn before, or nothing
+// would be after, there is nothing to hold still: the plain { shapes } patch.
+export function refitShapesPatch(element, fit, shapes) {
   const b0 = flatBBox(element.shapes || []);
-  const b1 = flatBBox(shapes);
-  if (!b0 || !b1) return { error: "Nothing to fit." };
+  const b1 = flatBBox(shapes || []);
+  if (!b0 || !b1) return { shapes };
+  if (!(fit && fit.mmPerPx > 0)) return { error: "Nothing to fit." };
   const s = fit.mmPerPx;
   const cx0 = (b0.minX + b0.maxX) / 2, cy0 = (b0.minY + b0.maxY) / 2;
   const cx1 = (b1.minX + b1.maxX) / 2, cy1 = (b1.minY + b1.maxY) / 2;
@@ -156,11 +211,13 @@ export function editedElementPatch(element, fit, shapeId, edited) {
 }
 
 // The engine's bbox: every VALID shape's flattened outer ring (shapesToRegions
-// skips invalid ones, and buildQualityDesign fits what it is given).
+// skips invalid ones, and buildQualityDesign fits what it is given). A cut-out
+// is skipped too: the engine never sees it (it emits no region), so the bbox
+// must not either.
 function flatBBox(shapes) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const sh of shapes) {
-    if (!sh) continue;
+    if (!sh || sh.cutOut) continue;
     const ring = flattenShape(sh.points, sh.curves, true);
     if (shapeIssues(ring).length) continue;
     for (const p of ring) { if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x; if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y; }

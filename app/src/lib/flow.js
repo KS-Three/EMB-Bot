@@ -19,7 +19,7 @@ export function isSewable(el) {
   return el.type === "text" ? (el.text || "").trim().length > 0 :
     el.type === "design" ? !!el.dstBase64 :
     el.type === "digitized" ? !!el.result :
-    el.type === "manual" ? (el.shapes || []).some((s) => isValidShape(s.points)) :
+    el.type === "manual" ? (el.shapes || []).some((s) => !s.cutOut && isValidShape(s.points)) :
     // A preset shape element is born sewable: its geometry is generated from
     // kind + params, and shapePresets' generators clamp every input into a
     // range that always yields a valid ring (pinned by shapePresets.spec.js),
