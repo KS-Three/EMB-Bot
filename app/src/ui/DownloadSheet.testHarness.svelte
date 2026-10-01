@@ -7,6 +7,7 @@
   export let qualityPartial = false;
   export let ready = true;
   export let onClose = () => {};
+  export let onLocate = () => {};
 </script>
 
 <DownloadSheet
@@ -18,4 +19,5 @@
   {qualityPartial}
   {ready}
   on:close={onClose}
+  on:locate={(e) => onLocate(e.detail)}
 />

@@ -741,6 +741,15 @@
     persist(false);
   }
 
+  // "Show on design" on a break-risk finding in the quality report. The
+  // sheet is a dialog over an inert panel, so it closes first; then the same
+  // state a Layers-row click sets puts the amber highlight on the shape.
+  function onLocateShape({ elId, shapeId }) {
+    closeSheet();
+    if (project.selectedId !== elId) onSelect(elId);
+    selectedShape = { elId, shapeId };
+  }
+
   function onImage(elementId, workImage) {
     runtime = { ...runtime, workImages: { ...runtime.workImages, [elementId]: workImage } };
   }
@@ -1217,6 +1226,7 @@
         qualityPartial={!qualityIsTheWholeDesign}
         ready={readyToStitch}
         on:close={closeSheet}
+        on:locate={(e) => onLocateShape(e.detail)}
         on:credits={(e) => openCredits(e.detail)}
       />
     {/if}
