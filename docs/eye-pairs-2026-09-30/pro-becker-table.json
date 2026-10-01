@@ -1,0 +1,77 @@
+{
+ "pro_file": {
+  "caption": "Ours against the pro's Becker, both read as stitch records by one rule: needle-down passes between lifts (a jump, trim or colour change ends a pass); satin crosses by tools/satin_columns, the scale-free detector (three consecutive penetrations whose middle one sits off the chord by at least 0.1 mm, in a run of sign-alternating offsets); column width is that offset; column legs join two crossing penetrations; jitter is the share of consecutive column legs differing by more than 0.15 mm; turn the 90th percentile of the angle change between consecutive column legs. Our fixture is 100 mm wide, the pro's hat file 101.9; the pro's thread colours are its own (grey and black, five blocks).",
+  "columns": [
+   "measure",
+   "ours (today, 100 mm)",
+   "the pro's file (hat, 101.9 mm)"
+  ],
+  "rows": [
+   [
+    "width mm",
+    "100.0",
+    "101.9"
+   ],
+   [
+    "stitches",
+    "9,321",
+    "12,356"
+   ],
+   [
+    "trims",
+    "49",
+    "57"
+   ],
+   [
+    "colour blocks",
+    "2",
+    "5"
+   ],
+   [
+    "satin crosses as % of penetrations",
+    "31.3",
+    "42.6"
+   ],
+   [
+    "satin column width p10 / p50 / p90 mm",
+    "0.89 / 2.24 / 3.35",
+    "1.52 / 2.66 / 5.20"
+   ],
+   [
+    "columns under 0.7 mm %",
+    "7.3",
+    "5.3"
+   ],
+   [
+    "satin legs (column legs)",
+    "2,849",
+    "5,192"
+   ],
+   [
+    "leg length p50 / p90 mm",
+    "2.52 / 3.55",
+    "2.94 / 5.39"
+   ],
+   [
+    "legs over 5 mm %",
+    "0.0",
+    "26.5"
+   ],
+   [
+    "legs over 7 mm %",
+    "0.0",
+    "1.6"
+   ],
+   [
+    "jitter > 0.15 mm % (consecutive column legs)",
+    "32.5",
+    "28.5"
+   ],
+   [
+    "turn p90 ° (between column legs)",
+    "16.6",
+    "27.6"
+   ]
+  ]
+ }
+}

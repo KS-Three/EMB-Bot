@@ -7894,3 +7894,59 @@ yet. Do not spend another day on rail-level texture without first
 putting the two remaining levers in front of him — the pro's own Becker
 style (raw crosses to about 7 mm, no comb) and the symmetric rails on the
 letters — or asking what "flow" is in his own words on a sew-out.
+
+## 2026-10-01 — Kent: screenshot is not a logo to judge digitizing by
+
+No screenshot.
+
+(His words on two sittings of 2026-09-30, the second asking for a note of
+fifteen characters at most; `tools.eye_pairs.pairs.EXCLUDED_FIXTURES`
+keeps it off the page.)
+
+## 2026-10-01 — The page cannot separate the pro's 7 mm split style from the comb, and cloth is not asked until the eye has a difference
+
+**Measured negative.** Raw satin crosses to about 7 mm (the pro's own
+Becker style) against the shipped comb at 5.0, on five pairs with a
+needle-hole map beside every render: *no difference* on all four Kent
+judged, becker's letters included. The threshold stays at the corpus vote,
+and no sew-out pack is owed — a physical constant goes to cloth when the
+eye has two things to choose between, not to settle a difference it
+cannot see. The symmetric rails lost the one pair they changed visibly
+(golden_tee: the envelope's "very nice line following the outline"), so
+the envelope's morning ruling stands. Two levers, no movement: the thing
+his becker note names ("does not flow, not smooth and structured") is not
+the split comb and not the envelope's reach, and the next lever has to
+come from his words or a sew-out, not from another rail-level change.
+
+## 2026-10-01 — Kent's word for Becker's "flow" is the back stitching, and the instrument finds the comb split in it
+
+The pro's own Becker beside ours was the first pair Kent judged with a
+verdict AND his own words: *"back stitching to support the detail layering
+... helps support the top threading so it has structure and support."*
+`tools/underlay_cover.py` reads both files by one rule (thread covered by
+thread sewn six or more stitches later), and what separates the two words
+of MARINE is not the amount of support — our stems already carry a centre
+run and a ladder zigzag, the top thread sits on thread 20.7% in both —
+but the comb: every stem is 5.5-6.9 mm wide, over the 5.0 mm split
+threshold, so the comb puts 1,413 holes inside the stems where the pro's
+raw crosses put 304 (246 with ours off). **Two rules.** (1) When the eye
+names a quality, measure what the eye saw — the needle-holes view — not
+the word it used: "back stitching" led to the holes, and the holes are the
+split. (2) Before building a lever, check it reaches the shape: a flag to
+lift the zigzag underlay's oversize skip was built, measured a no-op on
+every MARINE stem (a text-cluster member's ceiling is infinite under
+`satin_lettering_split`, so the skip never fires) and reverted the same
+hour. The split threshold stays a gate-1 number; the arm is for his eye.
+
+## 2026-10-01 — The arch letters' fill is the source's, not the engine's
+
+The pro's file fills BECKER's letters black with a grey keyline; ours sews
+them as 2.7 mm satin outlines around white bodies — because the fixture
+`becker_marine_logo.png` is 146 × 91 pixels (1.46 px/mm at 100 mm) and its
+letters ARE white-bodied outlines in a black band. Kent's chat pick "the
+big letters are a flat fill, not satin columns" is a difference between
+two sources, and no width rule in this engine can turn an outline into a
+fill. Before comparing a professional's file to ours, say what each was
+digitized FROM; a thumbnail fixture judged against vector-art work reads
+as an engine gap that is not there. The resolution line on the lettering
+findings (2026-09-30) is the record that applies.

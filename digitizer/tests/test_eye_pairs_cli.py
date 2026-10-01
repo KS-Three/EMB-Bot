@@ -625,3 +625,58 @@ def test_verify_finds_no_drift_on_the_synthetic_image(rendered, capsys):
     printed = capsys.readouterr().out
     # Review finding 8: the artfid family and the refusal are checked too.
     assert "artfid" in printed and "refusal" in printed
+
+
+def test_the_default_corpus_leaves_out_the_excluded_fixtures(monkeypatch):
+    """Kent's rule (2026-09-30): screenshot is off the page. The default
+    corpus drops it; an explicit `cases` list is taken as given."""
+    from tools.eye_pairs.pairs import EXCLUDED_FIXTURES
+    seen = {}
+
+    def fake_corpus():
+        return [("screenshot", "x.png", 80.0, "left_chest"), ("becker", "y.png", 100.0, "left_chest")]
+
+    def fake_sha(path):
+        return "0" * 64
+
+    monkeypatch.setattr(cli, "corpus_cases", fake_corpus)
+    monkeypatch.setattr(cli, "_sha256", fake_sha)
+
+    def no_art(src, dst):
+        seen.setdefault("fixtures", []).append(dst.name.split("__")[0])
+        raise RuntimeError("stop here")
+
+    monkeypatch.setattr(cli, "_normalise_art", no_art)
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as td:
+        try:
+            cli.render(Path(td), arms={})
+        except RuntimeError:
+            pass
+    assert "screenshot" in EXCLUDED_FIXTURES and seen["fixtures"] == ["becker"]
+
+
+def test_a_file_arm_reads_the_design_from_the_stitch_file_and_names_its_fixtures(rendered, tmp_path):
+    """The third kind of arm (2026-10-01): a design read from a stitch file,
+    one file per fixture; a fixture the arm does not name gets no row."""
+    import pystitch
+    from digitizer_core.adapter import design_to_pattern
+    out, art, _n, _np, _seen = rendered
+    out2 = tmp_path / "out_file"
+    shutil.copytree(out, out2)
+    base = json.loads((out2 / "designs" / f"tiny__{BASE}.json").read_text())
+    pes = tmp_path / "pro.pes"
+    pystitch.write_pes(design_to_pattern(base, "PRO"), str(pes))
+    cli.render(out2, cases=[("tiny", art, 40.0, "left_chest"), ("other", art, 40.0, "left_chest")],
+               arms={"pro_file": {"__file__": {"tiny": str(pes)}}}, ref_factory=fake_factory(out2, {}))
+    feats = json.loads((out2 / "features.json").read_text())
+    row = feats["tiny"]["pro_file"]
+    assert row["design_only"] is True and row["from_file"] == str(pes)
+    assert row["stitches"] == feats["tiny"][BASE]["stitches"]
+    assert "pro_file" not in feats["other"]                         # not named: no row, no failure
+    assert cli.holes_path(out2, "tiny", "pro_file").exists()
+    design = json.loads((out2 / "designs" / "tiny__pro_file.json").read_text())
+    ours = [(s["x"], s["y"]) for s in base["stitches"] if s["type"] == "stitch"]
+    theirs = [(s["x"], s["y"]) for s in design["stitches"] if s["type"] == "stitch"]
+    assert theirs == ours                                            # the file round-trips in our frame
