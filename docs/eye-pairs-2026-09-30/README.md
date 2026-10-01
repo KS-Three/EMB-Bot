@@ -622,3 +622,110 @@ difference is — in his own words, since no instrument has them. A verdict
 for the pro's is not a flip of anything; it is the first target the
 instruments have had for "flow", and the next measurement starts from
 what he names.
+
+## The back stitching: the verdict on the pro pair, and what it measures as (2026-10-01)
+
+Kent judged the pair at 01:53Z. **The pro's flows** (`after`), and his
+note, verbatim:
+
+> The pros file as back stitching to support the detail layering, the
+> letters look perfect. the lettering is smooth, it's beautifull. The
+> back stitching helps support the top threading so it has structure and
+> support.
+
+Asked in chat a minute later (the store had read empty at 01:50Z; the
+note landed at 01:53Z and is the primary record), he took all three
+candidates the renders offered: the big letters as a flat fill, each
+stitch crossing the whole stroke in one go, one direction per stroke with
+no mid-column holes. His own words are the back stitching, so that is
+what got an instrument.
+
+### The instrument
+
+`tools/underlay_cover.py` reads the STITCHES of either design by one rule:
+thread is drawn into a raster in sew order at 0.4 mm, each pixel keeping
+the last stitch that covered it; a stitch most of whose thread ends up
+under a stitch sewn at least six stitches later is **back stitching**
+(the six-stitch gap excludes a satin cross's own neighbours), and its
+pattern is read from its shape — a run, a zigzag (a sawtooth the column
+detector sees, or this engine's *ladder*: cross, 1.45 mm along the rail,
+cross back, whose 90° turns the detector is blind to), or lattice rows.
+The top thread's **support** is the share of its area that already had
+thread beneath it. A hole more than 1 mm inside the sewn area is
+**interior** — on a satin stem a split point or back stitching, never a
+rail. Cross-checked against our plan's own kinds on Becker: `underlay`
+95% covered, `travel` 93%, `satin` 17.5% (columns under later columns),
+`fill` 21%, `run` 58%. Tests: `tests/test_underlay_cover.py` (10).
+
+### What it found on MARINE (the bottom 32% of each design)
+
+| measure | ours, today | ours, split 7 mm | ours, split off | the pro's file |
+|---|---|---|---|---|
+| stitches | 9,321 | 8,281 | 7,442 | 12,356 |
+| MARINE holes | 3,892 | 3,118 | 2,279 | 2,641 |
+| MARINE holes inside the stroke, top thread | 1,413 | 774 | 246 | 304 |
+| MARINE holes per mm² | 3.20 | 2.56 | 1.88 | 2.07 |
+| column legs over 5 / over 7 mm % | 0.0 / 0.0 | 17.0 / 0.0 | 24.8 / 3.4 | 26.5 / 1.6 |
+| longest column leg mm | 5.0 | 6.7 | 12.1 | 11.1 |
+| back stitching, % of thread (whole / MARINE) | 34.8 / 33.6 | 35.0 / 34.1 | 34.8 / 33.5 | 47.7 / 28.9 |
+| top thread sitting on thread % (whole / MARINE) | 21.8 / 20.7 | 22.0 / 21.1 | 22.1 / 21.3 | 32.7 / 20.7 |
+
+1. **The scatter of holes inside the stems is the comb split.** Every
+   MARINE stem is wider than the 5.0 mm split threshold (artwork ridge
+   widths p10 5.48, p50 5.48, p90 6.85, max 8.76 mm; 93% over 5), so
+   today's comb puts a staggered hole in the middle of every cross there
+   — 1,413 holes inside the stems against the pro's 304. The texture
+   arm's 7 mm threshold took it to 774 (Kent: *no difference*, judged on
+   the thread render); the comb off takes it to 246, and the word's hole
+   density from 3.20 to 1.88 per mm² against the pro's 2.07. The pro's
+   file sews a quarter of its legs over 5 mm and 1.6% over 7; ours with
+   the comb off 24.8% and 3.4%, the longest 12.1 mm against his 11.1.
+   That is the one thing on the page that moves toward his words.
+2. **The back stitching under the stems is already there.** The plan's
+   own kinds: 19 strokes in the word, each with a centre run and a ladder
+   zigzag (legs 0.82 × the stem), 38 underlay runs, 1,647 mm — 18% of
+   the word's thread against the pro's 28.9%, which is a crosshatch of
+   straight rows under each stem (2,791 mm). The top thread sits on
+   thread 20.7% in both. The instrument's first pass called our ladders
+   "running" and "lattice" and read the word as having 16 mm of zigzag;
+   the two-rail rule fixed the label, and a flag to lift the zigzag's
+   oversize skip (which never fires on lettering — a text-cluster member's
+   ceiling is infinite under `satin_lettering_split`) was built, measured
+   to change nothing in MARINE, and reverted.
+3. **Stacked satin, ours only.** 19.5% of MARINE's satin thread (1,470
+   mm) is sewn under later satin — columns over columns at the junctions
+   and across the E (`S4ce50f57` carries 44 satin runs, its short ones
+   92-96% covered). The rule finds none in the pro's word. Not touched
+   tonight; it is the next lever if his eye wants more than the comb.
+
+### The arch letters are the source's
+
+`becker_marine_logo.png` is 146 × 91 pixels — 1.46 px/mm at 100 mm. Its
+BECKER letters are white bodies with a 2.7 mm black outline (ridge p50
+2.74, p90 4.11 mm) inside a black band, and ours sews what is there: 46
+satin runs, 4 fill patches, 6 small-shape runs. The pro's file fills the
+bodies black with a grey keyline, from a source that had them black.
+"Fill for the big letters" is not a lever in this engine on this fixture;
+the resolution line (2026-09-30, the lettering findings) is the record
+that applies.
+
+### The page (tag `back-1001`)
+
+`split_off` (`split_satin=False`) beside today on the corpus, identical
+pairs not shown, with the `pro_file` pair kept for reference and the table
+above under the arm's head. Republished as version 9 of the same artifact:
+6 pairs (becker, bridge, drone, golden_tee, tires under `split_off`;
+enthusiast, fremont and gaulke identical to today, not shown; the pro
+pair), 26 images, 5.4 MB; the store read before the republish held the
+pro verdict and nothing newer. One question: with the comb off, does
+MARINE read as the pro's — on the thread render, or only with the holes
+toggle? The threshold itself stays a gate-1 number: the page says which
+reads right, cloth says which sews right.
+
+```bash
+cd digitizer
+.venv/bin/python -m tools.underlay_cover testdata/reference/becker_hat_polo_large_beckers_logo_hat.pes --crop 0.68 1.0
+.venv/bin/python -m tools.eye_pairs --render --arms split_off --out <out>   # base rows seeded from the texture render
+.venv/bin/python -m tools.eye_pairs_gallery --labelled --src <out> --out <out>/gallery \
+    --tables ../docs/eye-pairs-2026-09-30/back-stitching-table.json --sitting back-1001
+```

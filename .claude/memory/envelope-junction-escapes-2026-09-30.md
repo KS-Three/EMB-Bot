@@ -115,3 +115,18 @@ over 5 mm 0 vs 26.5%, jitter 32.5 vs 28.5%. Renders: the pro sews BECKER
 columns, one direction per stroke, no mid-column holes. Kent's texture
 head notes: "not sure what's being shown here" (both arms) — explain
 LEFT/RIGHT in plain words on a page. Verdict pending.
+
+**The pro verdict (2026-10-01 01:53Z)**: the pro's flows (`after`); Kent's
+note names the BACK STITCHING ("supports the top threading so it has
+structure and support"); in chat he also took fill-for-big-letters,
+whole-stroke crosses, one direction per stroke. Built
+`tools/underlay_cover.py` (covered-thread rule, both files). Findings on
+MARINE: the interior-hole scatter IS the comb split (stems 5.5-6.9 mm >
+5.0): 1,413 → 774 (7 mm) → 246 (off) vs the pro's 304; our stems already
+carry centre run + ladder zigzag (18% of thread vs his crosshatch 28.9%,
+support 20.7% both); 19.5% of our MARINE satin is stacked under later
+satin (next lever). The arch letters: the 146-px fixture has OUTLINED
+white-bodied letters; the pro's black fill is his source's. Trap: the
+oversize-skip flag was a no-op (lettering ceiling = inf) — reverted.
+Arm `split_off` on the `back-1001` page; rails_symmetric/becker corrected
+to "same".

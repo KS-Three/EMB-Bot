@@ -17042,3 +17042,36 @@ looking at, so the pro page says LEFT and RIGHT in plain words. Records:
 `docs/eye-pairs-2026-09-30/README.md` (the pro section),
 `pro-becker-table.json`, `kent-notes.json`, the spec's arms table, memory.
 Verdict pending.
+
+## 2026-10-01 — The pro pair judged: the pro's flows, Kent's word is the back stitching, and the comb split is what the instrument finds in it
+
+Kent's verdict on the pro page (01:53Z): the pro's (`after`); his note:
+*"The pros file as back stitching to support the detail layering, the
+letters look perfect. the lettering is smooth, it's beautifull. The back
+stitching helps support the top threading so it has structure and
+support."* In chat he also took all three offered candidates (fill for the
+big letters, whole-stroke crosses, one direction per stroke). New
+instrument `digitizer/tools/underlay_cover.py`: one rule on the stitch
+records of either design — thread drawn in sew order, a stitch mostly under
+thread sewn six or more stitches later is back stitching, its pattern read
+from its shape (run / zigzag incl. the engine's ladder / lattice), the top
+thread's support, interior holes; cross-checked on our plan's kinds
+(underlay 95% covered, satin 17.5%). On MARINE (bottom 32%): the holes
+inside the stems are the comb split — every stem 5.5-6.9 mm wide, over the
+5.0 threshold — 1,413 today, 774 at the 7 mm arm, 246 with the split off,
+the pro's 304; holes/mm² 3.20 → 1.88 vs 2.07; legs over 5 / 7 mm with the
+split off 24.8 / 3.4% vs the pro's 26.5 / 1.6, longest 12.1 vs 11.1. The
+stems' back stitching is already there (19 strokes × centre run + ladder
+zigzag, 18% of the word's thread vs the pro's crosshatch 28.9%; support
+20.7% both) — the first read called the ladder "running", fixed by the
+two-rail rule; a flag to lift the zigzag's oversize skip was built,
+measured a no-op on lettering (infinite ceiling under
+`satin_lettering_split`) and reverted. Stacked satin, ours only: 19.5% of
+MARINE's satin thread under later satin. The arch letters: the fixture is
+146 × 91 px with white-bodied outlined letters; the pro's fill is his
+source's, not a lever here. Fourth-sitting correction: rails_symmetric on
+becker was judged *no difference* at 01:25Z, after the first read (the
+README said not judged). New arm `split_off` for the `back-1001` page;
+table `back-stitching-table.json`; tests 10 + the arm pins. Records:
+README's back-stitching section, kent-notes (`fifth_sitting` + chat picks),
+DOCTRINE (two entries), MASTER_SCOPE, memory.

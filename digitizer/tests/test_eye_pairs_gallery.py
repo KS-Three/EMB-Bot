@@ -20,7 +20,7 @@ from tools import eye_pairs_gallery as g  # noqa: E402
 SPEC_ARMS = ["per_stroke", "patch_junctions", "polygon_axis", "area_weighted",
              "design_angle", "rails_follow_edge", "wide_columns",
              "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827",
-             "ref_0930am", "split_7mm", "rails_symmetric", "pro_file"]
+             "ref_0930am", "split_7mm", "rails_symmetric", "pro_file", "split_off"]
 # `rail_comp` shipped ON 2026-09-28 and left the table (docs/kent-review-2026-09-28.md);
 # `rail_envelope` shipped ON 2026-09-30 and left it (docs/eye-pairs-2026-09-30/).
 SPEC_METRICS = {

@@ -91,6 +91,7 @@ exactly one change:
 | `split_7mm` | `split_satin_above_mm=7.0` — added 2026-09-30 for the lettering texture sitting: the pro's own Becker style, raw crosses to about 7 mm and no comb |
 | `rails_symmetric` | `satin_rails_follow_edge=False` — added 2026-09-30 for the same sitting: the symmetric rails, the envelope OFF on the letters |
 | `pro_file` | the pro's own Becker file (`testdata/reference/becker_hat_polo_large_beckers_logo_hat.pes`, 101.9 mm) read as a Design — a `__file__` arm, one file per fixture, added 2026-10-01; fixtures it does not name get no row |
+| `split_off` | `split_satin=False` — added 2026-10-01 for the back-stitching sitting, from Kent's verdict on the pro pair: no comb, every cross rail to rail, the pro's style on Becker's 5.5-6.9 mm MARINE stems |
 
 One digitize per (fixture, arm). An arm whose Design `stitches` hash equals
 the base's is **skipped and logged** (`identical_to_base`) — there is nothing

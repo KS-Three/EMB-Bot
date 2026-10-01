@@ -75,6 +75,16 @@ ARMS: dict[str, dict] = {
     "pro_file": {"__file__": {
         "becker": "testdata/reference/becker_hat_polo_large_beckers_logo_hat.pes",
     }},
+    # The back-stitching sitting (2026-10-01, from Kent's verdict on the pro
+    # pair: the pro's flows, and his words were the back stitching under the
+    # lettering). What `tools/underlay_cover.py` measured against his words:
+    # the scatter of holes inside MARINE's stems is the comb split -- every
+    # stem is 5.5-6.9 mm wide, over the 5.0 mm split threshold, and the
+    # split off takes the stems' interior top holes from 1,413 to 246
+    # against the pro's 304. (The stems' own back stitching is already
+    # there: a centre run and a ladder zigzag under every one; the pro's
+    # crosshatch is denser, not different in kind.)
+    "split_off": {"split_satin": False},
 }
 
 
