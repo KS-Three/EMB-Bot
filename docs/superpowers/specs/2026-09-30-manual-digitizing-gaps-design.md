@@ -313,6 +313,54 @@ a `holeIndex` beside the shape id. That is the trade Kent was shown.
 
 ## 6. Satin columns (plan 2 — Kent's spine + width)
 
+**Amended 2026-10-01 — ruling 12 and three corrections; where this block and
+the older text below disagree, this block stands.**
+
+*Ruling 12 (Kent, on measured evidence —
+`docs/satin-column-width-on-resize-2026-10-01.md`): the DRAWN width scales
+with the design; the fabric's pull compensation stays a fixed amount on top.*
+He asked whether width should scale at the design's rate; the pro's own files
+say the sewn width under-shoots it (a 1.25× design carries 1.195× columns,
+1.33× → 1.265×, 1.97× → 1.78×), and the best fit is an outline that scales
+1:1 plus a fixed ≈0.3–0.55 mm that does not — which is what a millimetre
+pull-comp setting does. "Width never changes" fits about three times worse.
+
+What that makes the model:
+
+- **A column stores its width as geometry, in the same authored canvas px as
+  its points: `widthPx`** (the full drawn width). Not `widthMm`. A resize then
+  scales it with everything else for free, the engine's fit has nothing
+  circular to solve (the first draft never said how a width in mm became px —
+  the true mm-per-px is only known after a fit that includes the rails), and
+  ruling 2's "stored geometry never moves when the garment or fabric changes"
+  holds by construction.
+- **Millimetres are a view.** Drawn width = `widthPx × fit.mmPerPx`; sewn width
+  = drawn + the fabric's `pullCompMm` (satin pushes each rail out by half).
+  The popover and the panel read `Width 4.0 mm` with the note `Sews 4.4 mm on
+  Jersey / t-shirt.`; typing a width converts back through the current fit and
+  commits through the re-fit rule, so nothing else moves.
+- **A new column is 4.0 mm drawn** (ruling 9) at the element's current fit; in
+  an element with nothing sewn yet, at the canvas's nominal 6 px per mm.
+- **Past 6.5 mm sewn it warns and still sews** (ruling 5): `Over 6.5 mm sewn —
+  long satin stitches can snag. Consider a fill, or two columns.` No clamp and
+  no auto-split: the pro's files clamp nothing between 0.67 and 11.8 mm, and a
+  split threshold is a physical constant no one has sewn here (gate 1).
+
+Corrections to the text below:
+
+1. `digitize.js` has no `satinplay` binding; the call as written throws under
+   Node. The engine gains `const satinplaymod = _node ? dep("./satinplay.js")
+   : root.EMB;` and calls `satinplaymod.satinFromRails`.
+2. "Underlay comes from the synthetic `outer`" is wrong for the default style:
+   `center_run` there is a straight line along the ring's PCA axis, which runs
+   off a curved column. A column's `center_run` comes from
+   `satinplaymod.centerRun(railA, railB, [], …)`, which follows the rails. The
+   other named styles keep reading `outer`, which is truthful geometry.
+3. The shape record is `{ id, kind: "column", points, curves, widthPx,
+   colorRgb }` — an OPEN spine of two or more points. It has no `stitchType`,
+   no `angleDeg`, cannot be a cut-out and cannot be a cut-out's parent.
+   Run ↔ column conversion (ruling 8) waits for plan 3, when runs exist.
+
 **One new pure function**, `railsFromSpine(spine, halfWidthPx, { taperPx })`,
 in a new `app/src/lib/spineRails.js`: per-vertex normals from the averaged
 adjacent tangents, miter clamped (the clamp `offsetRing` already needs, for
@@ -476,6 +524,11 @@ rewritten to match.
    all; porting them changes every exported file, so it gets its own PR with the
    bill measured. Runs ship untied like everything else in the lane (§7).
 8. **Run ↔ column converts; closed ↔ open does not** (§4).
+12. **A column's drawn width scales with the design; pull compensation stays
+    fixed on top** (Kent, 2026-10-01, after the measurement in
+    `docs/satin-column-width-on-resize-2026-10-01.md`). Stored as `widthPx`,
+    geometry like the points; mm is a view through the fit (§6's amendment).
+    Listed here out of order so it sits beside ruling 9, which it refines.
 9. **A column defaults to 4.0 mm and taper is deferred** out of plan 2. The
    stored model keeps `taperMm`, so taper lands later without a migration.
 10. **A hole's minimum size reuses the existing sewability floor** rather than
