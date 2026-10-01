@@ -680,11 +680,11 @@ derives — Kent's ruling left tension off. *(2026-09-20 — DOCTRINE)*
 **Hooping advice shows before download, not only on paper.** The Download
 sheet's "What to hoop" card states stabilizer, topper and needle for every
 design type, from `EMB.hoopingAdvice` — the same function the worksheet
-prints, incl. the 25k cutaway escalation. Needle is 75/11, ballpoint on knits,
-sharp on wovens and caps, with its basis beside it; an unknown garment gets no
-card. Trade categories, not sew-out constants: nothing reads them for
-stitches. *(confirmed 2026-10-01 — `test/fabrics.test.js`,
-`app/src/lib/hooping.spec.js`, driven in a browser; DOCTRINE for the ruling)*
+prints, incl. the 25k cutaway escalation. Needle is 75/11, ballpoint on knits
+and terry, sharp on other wovens and caps, with its basis beside it; an unknown
+garment gets no card. Trade categories, not sew-out constants: nothing reads
+them for stitches. *(confirmed 2026-10-01 — `test/fabrics.test.js`,
+`app/src/lib/hooping.spec.js`, `e2e/configurator-smoke.spec.js`; DOCTRINE)*
 
 **What holds it at Medium:** fabric-preset accuracy is gated on the controlled
 sew-out CARD, which has not been sewn — the one physical out so far (2026-09-01)
