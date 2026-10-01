@@ -148,6 +148,12 @@ export const HELP = {
     changes: "The view only. Off, the flat view shows stitch structure and coverage more honestly — gaps and density are easier to see.",
     when: "Realistic to judge the look; flat to judge the engineering.",
   },
+  originalView: {
+    title: "Original view",
+    what: "Shows the artwork you uploaded in place of the stitches.",
+    changes: "The view only. Nothing about the design or the file changes.",
+    when: "Flip between this and the stitches to check the digitizing against what you asked for.",
+  },
   simulator: {
     title: "Stitch simulator",
     what: "Plays the design in the order the machine will sew it.",

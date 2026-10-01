@@ -12,6 +12,7 @@
 // file intentionally duplicates that boilerplate rather than importing it --
 // each e2e spec here is self-contained, matching that file's own convention).
 import { test, expect } from "@playwright/test";
+import { pickGarment } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -109,7 +110,7 @@ test("boundary editor: drag a vertex, save, apply -- the shape reshapes through 
 
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Tote", exact: true }).click();
+  await pickGarment(page, "Tote");
   await page.getByRole("button", { name: "Artwork" }).click();
 
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
