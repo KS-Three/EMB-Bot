@@ -1,8 +1,11 @@
 <script>
   // The panel's sticky foot (spec §2.3): three figures the customer keeps
-  // glancing at while editing, and the one Download. Figures come from the
-  // same rows the review recap used (lib/estimate.js sewSummary), so the
-  // bar and the sheet can never disagree.
+  // glancing at while editing, and the one Download. Size and stitches come
+  // from the browser estimate's rows (lib/estimate.js sewSummary); colors
+  // counts distinct spools. The sheet does NOT always read the same numbers:
+  // DownloadStep lists colour BLOCKS, not spools, and a digitized-only
+  // design's sheet shows the service's plan figures, which run ~1.6% apart
+  // from the browser estimate (see lib/estimate.js).
   import { createEventDispatcher } from "svelte";
   export let sewFacts = [];
   export let colorCount = 0;

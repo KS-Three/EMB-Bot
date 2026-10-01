@@ -26,7 +26,8 @@
   // "dims" event) -- passed straight through to SizePanel.
   export let designDims = null;
   // The digitizer service's /health payload, or null when it's unreachable.
-  // App owns the probe (re-run on entering this step and on "checkservice");
+  // App owns the probe (run on mount, again when the Download sheet opens,
+  // and on the explicit "check again" control, which fires "checkservice");
   // this component only gates the "+ Auto-digitize" tile and hands the value
   // to DigitizePanel so an offline panel can say so honestly.
   export let digitizerHealth = null;
