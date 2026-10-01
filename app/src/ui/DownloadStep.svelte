@@ -830,7 +830,7 @@
   }
 
   .hg-panel h3 { margin: 0 0 var(--space-3); }
-  .hg-note { margin: 0 0 var(--space-3); font-weight: 600; }
+  .hg-note { margin: 0 0 var(--space-3); font-weight: var(--fw-medium, 500); }
   .hg-body { margin: 0 0 var(--space-4); line-height: 1.5; }
   .hg-btns { display: flex; gap: var(--space-3); flex-wrap: wrap; }
   .hg-blocks {

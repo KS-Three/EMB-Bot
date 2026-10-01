@@ -185,9 +185,14 @@ body {
 /* Headings set their own tighter measure, and pull their tracking in — a
    display size at default tracking reads loose and unresolved. */
 h1, h2, h3, h4 {
+  font-weight: var(--fw-medium);
   line-height: var(--lh-tight);
   letter-spacing: var(--tracking-snug);
 }
+
+/* Bold in this theme is 500; the summary bar's figures are the exception and
+   their own rule wins on specificity. */
+b, strong { font-weight: var(--fw-medium); }
 
 h1, h2 { letter-spacing: var(--tracking-tight); }
 
@@ -1750,7 +1755,7 @@ canvas { touch-action: none; }
 }
 
 .caveat-mark {
-  font-weight: 700;
+  font-weight: var(--fw-medium);
   vertical-align: super;
   font-size: 0.75em;
   margin-left: 1px;
@@ -2401,7 +2406,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 }
 .sheet .summary dt { color: var(--muted); margin: 0; }
 .sheet .summary dd { margin: 0; font-weight: var(--fw-medium); text-align: right; }
-.drawer-templates-head { margin: 0; }
+.drawer-templates-head { margin: 0; font-size: var(--fs-md); }
 
 /* ---- Garment row (spec §3) --------------------------------------------- */
 .gpicker { position: relative; }
