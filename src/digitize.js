@@ -13,6 +13,10 @@
   const fillmod = _node ? dep("./fill.js") : root.EMB;
   const satinmod = _node ? dep("./satin.js") : root.EMB;
   const satinfontmod = _node ? dep("./satinfont.js") : root.EMB;
+  // Rail-native satin (satinFromRails, centerRun). `satinmod` is satin.js and
+  // has neither: in the browser the shared root.EMB hides that, under Node it
+  // is a TypeError. satinplay.js loads before this file in ENGINE_FILES.
+  const satinplaymod = _node ? dep("./satinplay.js") : root.EMB;
 
   // Physical constants this engine shares with the Python digitizer
   // (`digitizer/digitizer_core/machine.py`). fabrics.py's rule: until a
@@ -687,13 +691,29 @@
         // Nothing here is re-derived or guessed.
         const runs = [];
         const runKinds = [];
+        // Authored rails, when the shape carries them (spec §6, "Amended
+        // 2026-10-01"). Null for every shape that does not — which is every
+        // shape Image and Text mode produce — so those sew exactly as before.
+        const column = (shape.sewAs && shape.sewAs.kind === "column") ? shape.sewAs : null;
         if (useUnderlay) {
           if (fabric) {
             // Fabric mode: named underlay style per shape type.
             try {
               const style = thin ? (fabric.satinUnderlay || "center_run") : (fabric.fillUnderlay || "edge_lattice");
               const uctx = Object.assign({ fillAngle: angle }, underlayCtxBase);
-              for (const run of underlayRuns(shape, style, uctx)) if (run && run.length) { runs.push(run); runKinds.push("underlay"); }
+              // A column's centre run follows its RAILS (spec §6, "Amended
+              // 2026-10-01", correction 2): underlayRuns' center_run is a
+              // straight line along the ring's PCA axis, which only cuts a
+              // chord across a curved column. centerRun returns ONE point
+              // list, so it is wrapped to the array-of-runs form underlayRuns
+              // returns. Step = the underlay stitch length every other style
+              // here uses; two passes (its default), so the walk ends where
+              // the satin starts. Every other style still reads `outer`.
+              const uruns = (thin && column && style === "center_run")
+                ? [satinplaymod.centerRun(column.railA, column.railB, [],
+                    { pxPerMm: pxPerFinalMm, stepMm: underlayStitchPx / pxPerFinalMm })]
+                : underlayRuns(shape, style, uctx);
+              for (const run of uruns) if (run && run.length) { runs.push(run); runKinds.push("underlay"); }
             } catch (e) { /* underlay best-effort */ }
           } else {
             // No-fabric path: byte-identical to pre-Phase-2 behavior.
@@ -714,8 +734,19 @@
           if (thin) {
             // Medial-axis satin (rail-based) — clean on curves/terminals; falls
             // back to the outline-split satin internally for tiny/degenerate rings.
+            //
+            // AUTHORED RAILS (manual-digitizing spec §6, "Amended 2026-10-01"):
+            // a hand-drawn column hands over the two rails it was drawn with,
+            // so the satin is sewn between THOSE rather than between rails
+            // re-derived from the ring. Same options either way — pull comp
+            // stays inside the satin code. Reached only when `thin`, i.e.
+            // tierOverride "satin" with no hole; no split is asked for
+            // (`splitAboveMm` is deliberately not passed — ruling 5).
             const sat = satinmod.medialSatin || satinmod.satinColumn;
-            pts = sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg });
+            pts = column
+              ? satinplaymod.satinFromRails(column.railA, column.railB, [],
+                  { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg })
+              : sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg });
             nSatin++;
           }
           else {
