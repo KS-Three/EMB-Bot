@@ -1,12 +1,18 @@
 // Client-side project registry (localStorage-backed).
 //
 // Storage shape:
-//   embstudio:index      JSON array of {id, name, updatedAt, autoName} — one
-//                        entry per saved project, newest-first once sorted by
-//                        listProjects(). `autoName` is true while the name is
-//                        still the app's own guess (see isAutoNamed below);
-//                        entries written before it existed simply lack it,
-//                        which is why isAutoNamed has a second clause.
+//   embstudio:index      JSON array of {id, name, updatedAt, autoName, facts}
+//                        — one entry per saved project, newest-first once
+//                        sorted by listProjects(). `autoName` is true while
+//                        the name is still the app's own guess (see
+//                        isAutoNamed below); entries written before it
+//                        existed simply lack it, which is why isAutoNamed has
+//                        a second clause. `facts` ({st, col, w, h} — see
+//                        libraryFacts.js) is what the drawer filters on; it
+//                        is absent until the design has been generated once
+//                        with facts in the build (setProjectFacts below), so
+//                        every reader must treat a missing one as "not
+//                        measured", never as zero.
 //   embstudio:p:<id>     one JSON project record per id (same shape as the
 //                        legacy `embstudio:last` blob). Written via save.js's
 //                        serialize(); read via loadProject()'s own
@@ -242,6 +248,53 @@ export function autoNameProject(id, name) {
   }
 }
 
+// Records what the design IS (libraryFacts.js: stitches, spools, size) on
+// its index entry, so the drawer can filter without loading every record.
+// `null` removes them: an emptied design is unmeasured, not "0 stitches".
+//
+// Returns true only when the index actually changed, so the caller knows
+// whether its `projects` snapshot is stale. Three things it must not do:
+//
+//   - resurrect a deleted project: an id that is not in the index is a
+//     no-op, the same A2/A10 contract as saveProject. A measurement is
+//     derived reactively and can land after a delete just as an auto-save can.
+//   - bump `updatedAt`: an entry saved before facts existed is measured the
+//     first time it is opened, and opening a design to look at it must not
+//     reorder the drawer.
+//   - write when nothing changed: the caller's trigger fires on every
+//     regenerate, drag frames included.
+//
+// A failed write is reported false and otherwise ignored, for saveProject's
+// reason: the facts are derived from a record that is safely stored, and the
+// next regenerate writes them again.
+export function setProjectFacts(id, facts) {
+  try {
+    const idx = readIndex();
+    const i = idx.findIndex((e) => e.id === id);
+    if (i === -1) return false;
+    const had = idx[i].facts;
+    if (facts == null) {
+      if (had === undefined) return false;
+      const { facts: _dropped, ...rest } = idx[i];
+      idx[i] = rest;
+    } else {
+      if (
+        had &&
+        had.st === facts.st &&
+        had.col === facts.col &&
+        had.w === facts.w &&
+        had.h === facts.h
+      ) {
+        return false;
+      }
+      idx[i] = { ...idx[i], facts: { st: facts.st, col: facts.col, w: facts.w, h: facts.h } };
+    }
+    return writeIndex(idx);
+  } catch (e) {
+    return false;
+  }
+}
+
 // No-op for an unknown id (A10). Clears the current pointer if (and only
 // if) the deleted project was the current one.
 export function deleteProject(id) {
@@ -286,7 +339,11 @@ export function duplicateProject(id, name) {
     const newId = genId();
     const newName = name || srcEntry.name + " copy";
     localStorage.setItem(projectKey(newId), serialize(project));
-    idx.push({ id: newId, name: newName, updatedAt: Date.now() });
+    const entry = { id: newId, name: newName, updatedAt: Date.now() };
+    // Same design, same facts -- otherwise a copy would drop out of every
+    // filtered list until it was opened.
+    if (srcEntry.facts) entry.facts = srcEntry.facts;
+    idx.push(entry);
     if (!writeIndex(idx)) {
       // Same orphan hazard as createProject: the record write above
       // succeeded but the index write didn't, so undo it rather than leave

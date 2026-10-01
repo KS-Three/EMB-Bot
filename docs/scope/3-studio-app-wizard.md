@@ -611,6 +611,41 @@ name from its content; a name typed by hand is sticky. Separately,
 never landed — a name and a project's membership of the registry live ONLY in
 that index — and `deleteProject` removed the record before writing it. Both
 propagate now, index first. *(fixed 2026-09-07 — area 3; DOCTRINE)*
+
+**"My designs" filters by what a design is.** Each index entry carries `facts`
+(`{st, col, w, h}`: needle-down stitches, spools, size in mm —
+`lib/libraryFacts.js`), and the drawer filters on name text plus three upper
+bounds: stitches, colors, and "fits hoop" (rotation allowed, derived from w/h
+against `EMB.HOOPS` on read, so it is not stored). Things worth knowing before
+touching it:
+
+- **Facts are recorded reactively in `App.svelte`, not in `persist()`.**
+  `persist()` runs before the flush that regenerates `combinedDesign`, and a
+  text or uploaded-image design cannot be generated from its record alone
+  (font fetch, PNG decode). The same reactive write is the backfill: an entry
+  saved before facts existed is measured the first time it is opened. There is
+  no migration pass.
+- **A missing `facts` means "not measured", never zero.** Under a
+  stitch/color/hoop filter those entries are left out and counted in a line
+  below the list. A blank design is also unmeasured.
+- **`setProjectFacts` keeps the registry's invariants**: no-op for an id not
+  in the index (a late measurement cannot resurrect a deleted project), never
+  bumps `updatedAt` (measuring on open must not reorder the drawer), no write
+  when unchanged (the trigger fires per drag frame).
+- **A null design clears facts only when nothing in the project could sew** —
+  otherwise it is a design still loading, and a good measurement stays.
+- **Not built:** content search ("dogs" — needs tagging or image
+  understanding), exact-colour match (the bound is "up to"), an e2e spec.
+- **The drawer lists saved designs first, templates after** (Kent, 2026-10-01).
+  With the template cards on top the filter sat ~700 px down the list.
+- **The filter applies only while its controls are on screen.** They show with
+  two or more saved designs, and the drawer's `criteria` outlives them, so
+  deleting down to one used to leave that design hidden behind a filter with
+  nothing to clear it. *(fixed 2026-10-01 — `ProjectsDrawer.spec.js`)*
+
+*(built and driven in a browser 2026-10-01: three seeded pre-facts designs
+measured on open, row figures matched the canvas caption, `updatedAt`
+unchanged)*
 ## Moved from MASTER_SCOPE (2026-09-19) — the two engines' wire tests
 
 Lifted verbatim from the area-3 summary on 2026-09-19 to bring
