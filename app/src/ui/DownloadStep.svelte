@@ -851,7 +851,7 @@
     flex-wrap: wrap;
     gap: var(--space-2) var(--space-3);
     margin-bottom: var(--space-3);
-    font-size: 0.9rem;
+    font-size: var(--fs-md);
     color: var(--text-2, inherit);
   }
   .savewhere-label { opacity: 0.9; }

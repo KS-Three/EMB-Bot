@@ -1710,7 +1710,9 @@ canvas { touch-action: none; }
   font-size: var(--fs-sm);
   color: var(--muted);
 }
-.machinepick-label select { flex: 1 1 auto; min-width: 0; font-size: var(--fs-sm); }
+/* Border, radius, fill and font come from the shared select rule further
+   down (with .unitselect and the thread-chart pickers); this is layout only. */
+.machinepick-label select { flex: 1 1 auto; min-width: 0; }
 .machinepick-btn { width: 100%; }
 .machinepick-note { margin: 0; font-size: var(--fs-xs); color: var(--warn); }
 .formats-head { margin-top: 0; }
@@ -1842,6 +1844,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
    place, rather than a third bespoke copy. */
 .unitselect,
 .threadbrand select,
+.machinepick-label select,
 .tp-brand {
   padding: var(--space-2) var(--space-2);
   border: 2px solid var(--border);
@@ -1852,10 +1855,12 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   cursor: pointer;
 }
 
-.unitselect { font-size: var(--fs-md); }
+.unitselect,
+.machinepick-label select { font-size: var(--fs-md); }
 
 .unitselect:hover,
 .threadbrand select:hover,
+.machinepick-label select:hover,
 .tp-brand:hover { border-color: var(--ink); }
 
 .autofit {
