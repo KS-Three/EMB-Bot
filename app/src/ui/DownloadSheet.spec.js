@@ -68,6 +68,17 @@ test("shows the hooping card between the recap and the download buttons", () => 
   expect(card.compareDocumentPosition(download) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 
+test("the recap stays the sheet's only dl.summary with the hooping card shown", () => {
+  // Ten e2e specs read the recap as `.sheet dl.summary` under Playwright's
+  // strict mode. A second list wearing that class fails every one of them
+  // with "resolved to 2 elements" — and no unit test noticed (PR #596).
+  const hoopingRows = [{ label: "Stabilizer", value: "cutaway", note: "" }];
+  render(Harness, { project: defaultProject(), summaryRows: ROWS, hoopingRows, ready: true });
+  const lists = screen.getByRole("dialog", { name: "Download" }).querySelectorAll("dl.summary");
+  expect(lists).toHaveLength(1);
+  expect(lists[0]).toHaveTextContent("Left Chest");
+});
+
 test("shows no hooping card when there is no advice", () => {
   render(Harness, { project: defaultProject(), summaryRows: ROWS, ready: true });
   expect(screen.queryByRole("region", { name: "What to hoop" })).toBeNull();

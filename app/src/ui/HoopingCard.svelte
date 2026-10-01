@@ -12,7 +12,7 @@
 {#if rows.length}
   <section class="hooping" aria-label="What to hoop">
     <h3>What to hoop</h3>
-    <dl class="summary">
+    <dl>
       {#each rows as row}
         <div>
           <dt>{row.label}</dt>
@@ -28,10 +28,21 @@
 {/if}
 
 <style>
-  /* The rows reuse the sheet's `.summary` list; only the note and the
-     footnote are this card's own. */
-  /* The heading already spaces the list from the recap above it. */
-  .hooping dl { margin-top: 0; }
+  /* The rows LOOK like the sheet's `.summary` recap (theme.css) but must not
+     wear its class: the e2e specs read the recap as `.sheet dl.summary` in
+     strict mode, and a second match fails every one of them. So the row
+     rules are repeated here — keep them in step with `.sheet .summary`. */
+  /* No top margin: the heading already spaces the list from the recap. */
+  dl { margin: 0 0 var(--space-5); }
+  dl > div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--border);
+  }
+  dt { color: var(--muted); margin: 0; }
+  dd { margin: 0; font-weight: var(--fw-semibold); text-align: right; }
   small {
     display: block;
     font-weight: var(--fw-regular, 400);
