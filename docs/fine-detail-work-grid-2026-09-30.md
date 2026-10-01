@@ -179,6 +179,12 @@ ladder's 400 px rung reads a ring 0.40 mm off its edge for 0.14.
 So: the cause is established, the cure works on bridge and on the low-res
 regime on average, and it is not clean enough to turn on unseen.
 
+**And the baseline moved under it.** Merged onto `main` of 2026-10-01 (72
+commits on), bridge with the knob OFF reads 7 teal regions / 76.5 mm² / 103
+trims where every table above reads 6 / 46.6 / 101; at 8 it reads 11 /
+125.4 / 98. The gap is still there (+49 mm², four more letter groups) and
+smaller than measured; the regime table has NOT been re-run on that tree.
+
 ## What is deliberately not moved
 
 - **`min_px_per_mm` stays 4** and still owns `INPUT_LOW_RESOLUTION`. A
