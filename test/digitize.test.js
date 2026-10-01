@@ -1671,6 +1671,49 @@ test("sewAs column: ignored when the shape has a hole or is forced to fill (sews
   }
 });
 
+test("sewAs column: without sewAs the fabric path (center_run underlay) is byte-identical too", () => {
+  const crypto = require("node:crypto");
+  const col = straightCol();
+  const d = colDesign(col, {}, { underlay: true, fabric: fab({ satinUnderlay: "center_run" }) });
+  assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "satin"]);
+  const hash = crypto.createHash("sha256").update(JSON.stringify(d.stitches)).digest("hex");
+  // hash produced by 358d8ab8's own src/ (extracted with `git archive`), the
+  // commit before the engine read `sewAs` — not by the code under test.
+  assert.strictEqual(hash, "82e59c68f7bc4dda50be73744300fe17877fcbe09b35e05e79b78d257e5ffa57");
+});
+
+test("sewAs column: rails that cannot sew contribute nothing — no bare underlay, outline dropped", () => {
+  // centerRun still walks the midline of rails satinFromRails sews nothing
+  // between (measured: two coincident rails -> 51 underlay points, 0 satin),
+  // so on the Studio's normal path — a center_run fabric with underlay on —
+  // such a shape used to sew an underlay with no satin over it and keep a
+  // clickable outline. The other cases here already sewed nothing; they are
+  // pinned so that stays true, and so they stop counting as a satin.
+  const col = straightCol();
+  const other = { outer: sq(0, 60, 80), holes: [], id: "keep", tierOverride: "fill" };
+  const opts = colOpts({ underlay: true, fabric: fab({ satinUnderlay: "center_run" }) });
+  const build = (shapes) => DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes }], opts);
+  const bad = [
+    ["zero-width (coincident rails)", { kind: "column", railA: col.railA, railB: col.railA.map((p) => ({ x: p.x, y: p.y })) }],
+    ["railB reversed", { kind: "column", railA: col.railA, railB: col.railB.slice().reverse() }],
+    ["1-point rail", { kind: "column", railA: col.railA, railB: [col.railB[0]] }],
+    ["no rails", { kind: "column" }],
+  ];
+  for (const [name, sewAs] of bad) {
+    const shape = { outer: col.outer, holes: [], id: "c1", tierOverride: "satin", sewAs };
+    const alone = build([shape]);
+    assert.strictEqual(alone.stitchCount, 0, name + ": no stitches at all");
+    assert.deepStrictEqual(alone.runs, [], name + ": no spans");
+    assert.strictEqual(alone.shapeOutlines[0].dropped, true, name + ": outline dropped");
+    assert.strictEqual(alone._debug.nSatin, 0, name + ": not counted as a satin");
+    const d = build([shape, other]);
+    assert.deepStrictEqual(d.runs.filter((r) => r.shape === "c1"), [], name + ": no span for the column beside a good shape");
+    assert.deepStrictEqual(d.shapeOutlines.map((o) => o.dropped), [true, false], name);
+    assert.ok(spanStitches(d, "fill", "keep").length > 50, name + ": the other shape still sews");
+    assert.strictEqual(d._debug.nTrims, 0, name + ": and no travel was spent on the dropped column");
+  }
+});
+
 test("sewAs column: satinFromRails is reached through a real binding under Node", () => {
   // The top-stitch call sits in a best-effort try/catch, so an unbound name
   // (the spec first wrote `satinplay.satinFromRails`, which digitize.js never

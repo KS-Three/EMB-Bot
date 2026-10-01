@@ -775,6 +775,13 @@
             if (largeFill) nCenterOut++;
           }
         } catch (e) { pts = []; }
+        // A column whose rails sew no satin contributes NOTHING. centerRun
+        // still walks the midline of rails satinFromRails sews nothing between
+        // (two coincident rails: an underlay, no crosses), which left a bare
+        // centre run under a clickable outline. `runs` is this shape's own
+        // list, so dropping here discards its underlay with it. Column-only:
+        // a shape with no `sewAs` never takes this branch.
+        if (thin && column && !(pts && pts.length)) { nSatin--; dropOutline(poly); continue; }
         runs.push(pts); runKinds.push(thin ? "satin" : "fill");
         // finishing outline: running stitch along the outer edge (and holes)
         if (o.outline) {
