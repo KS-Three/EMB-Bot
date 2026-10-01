@@ -258,9 +258,12 @@ export function rescaleTracedShapes(shapes, srcW, srcH, canvasW = CANVAS_W, canv
 // Studio uses, so a hole that passes here will actually cut. Order of tries:
 // the simplified + curve-fitted ring, then the same ring with curves dropped
 // (a fitted bow can poke out of a parent the straight ring fits inside), then
-// give up (null). Winding does not matter: the fit places each control point
+// give up (null). `kept` is the parent's already-accepted cut-outs: the new hole
+// is also checked against them, because two holes split by a thin wall can
+// cross each other after independent simplification (and the later one would
+// then resolve to "Overlaps another cut-out" with no word from the trace). Winding does not matter: the fit places each control point
 // through a raw ring point, and containment is a point-in-shape test.
-export function buildCutOut(parent, holeRing, simplifyTolPx, curveTolPx) {
+export function buildCutOut(parent, holeRing, simplifyTolPx, curveTolPx, kept = []) {
   const simplified = simplifyRingAdaptive(holeRing, simplifyTolPx);
   if (simplified.length < 3 || !isValidShape(simplified)) return null;
   const { curves } = fitCurvesForRing(holeRing, simplified, curveTolPx);
@@ -276,7 +279,8 @@ export function buildCutOut(parent, holeRing, simplifyTolPx, curveTolPx) {
       angleDeg: null,
       cutOut: true,
     };
-    if (resolveCutOuts([parentRec, { ...cut, id: "h" }]).parentOf.h === "p") return cut;
+    const list = [parentRec, ...kept.map((k, i) => ({ ...k, id: "k" + i })), { ...cut, id: "h" }];
+    if (resolveCutOuts(list).parentOf.h === "p") return cut;
   }
   return null;
 }
@@ -303,6 +307,9 @@ export function traceShapesFromRGBA(rgba, w, h, opts = {}) {
   const simplifyTolPx = opts.simplifyTolPx != null ? opts.simplifyTolPx : DEFAULT_SIMPLIFY_TOL_PX;
   const curveTolPx = opts.curveTolPx != null ? opts.curveTolPx : DEFAULT_CURVE_TOL_PX;
   const maxShapesPerColor = opts.maxShapesPerColor != null ? opts.maxShapesPerColor : DEFAULT_MAX_SHAPES_PER_COLOR;
+  // Test seam: lets a spec force the "hole could not be kept" path, which a
+  // synthetic image cannot reach (the real builder is robust on clean pixels).
+  const holeBuilder = opts.holeBuilder || buildCutOut;
   const despeckleShare = opts.despeckleShare != null ? opts.despeckleShare : DEFAULT_DESPECKLE_SHARE;
 
   const flat = flattenRGBA(rgba, w, h, { nColors, removeBg });
@@ -355,9 +362,10 @@ export function traceShapesFromRGBA(rgba, w, h, opts = {}) {
 
       const realHoles = region.holes.filter((hh) => hh.length >= 4 && EMB.polygonArea(hh) > holeMin);
       let lost = false;
+      const kept = [];
       for (const hole of realHoles) {
-        const cut = buildCutOut(parent, hole, simplifyTolPx, curveTolPx);
-        if (cut) shapes.push(cut);
+        const cut = holeBuilder(parent, hole, simplifyTolPx, curveTolPx, kept);
+        if (cut) { kept.push(cut); shapes.push(cut); }
         else lost = true;
       }
       if (lost) warnings.push(HOLE_DROPPED_WARNING);

@@ -27,6 +27,7 @@ import { createRequire } from "node:module";
 import { preloadAllFontsSync } from "../lib/testFonts.js";
 
 let Harness;
+const fillLog = [];
 
 beforeAll(async () => {
   const require = createRequire(import.meta.url);
@@ -38,11 +39,16 @@ beforeAll(async () => {
   // Nothing here asserts on actual pixels, only on component state (button
   // text/disabled, legend/warning text, dispatched events).
   const noop = () => {};
-  HTMLCanvasElement.prototype.getContext = () => ({
-    clearRect: noop, fillRect: noop, beginPath: noop, moveTo: noop, lineTo: noop,
-    closePath: noop, fill: noop, stroke: noop,
-    fillStyle: "", strokeStyle: "", lineWidth: 1,
-  });
+  HTMLCanvasElement.prototype.getContext = () => {
+    const ctx = {
+      clearRect: noop, fillRect: noop, beginPath: noop, moveTo: noop, lineTo: noop,
+      closePath: noop, stroke: noop,
+      fillStyle: "", strokeStyle: "", lineWidth: 1,
+      // Records every fill's rule and colour so a spec can read how holes are drawn.
+      fill(rule) { fillLog.push({ rule, style: ctx.fillStyle }); },
+    };
+    return ctx;
+  };
 
   ({ default: Harness } = await import("./TraceImportPanel.testHarness.svelte"));
 });
@@ -234,6 +240,15 @@ describe("the Add button", () => {
     expect(shapes[cutIdx].cutOut).toBe(true);
     expect(shapes[cutIdx - 1].cutOut).toBeUndefined();
     expect(shapes.filter((s) => s.cutOut)).toHaveLength(1);
+  });
+
+  test("the preview draws a parent with its cut-outs as one even-odd fill, never painting the page colour", async () => {
+    fillLog.length = 0;
+    const utils = renderPanel({ workImage: oneShapeImage() });
+    await fireEvent.click(utils.container.querySelector('input[type="checkbox"]')); // removeBg off: white ring + cut-out
+    expect(fillLog.length).toBeGreaterThan(0);
+    expect(fillLog.some((f) => f.rule === "evenodd")).toBe(true);
+    expect(fillLog.every((f) => f.style !== "#f4f2ec")).toBe(true);
   });
 
   test("clicking Add resets local state back to the initial (no image) view", async () => {

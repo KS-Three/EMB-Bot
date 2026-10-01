@@ -155,29 +155,28 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#f4f2ec";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    for (const s of shapeList) {
-      const pts = flattenShape(s.points, s.curves, true);
-      if (pts.length < 2) continue;
+    // Each parent is drawn with the cut-outs that directly follow it as ONE
+    // path filled even-odd, so a hole stays transparent and whatever was drawn
+    // earlier shows through it (no page-colour paint that would erase it).
+    for (let si = 0; si < shapeList.length; si++) {
+      const s = shapeList[si];
+      if (s.cutOut) continue; // drawn with its parent
+      const group = [s];
+      while (si + 1 < shapeList.length && shapeList[si + 1].cutOut) group.push(shapeList[++si]);
       const [r, g, b] = s.colorRgb || [20, 20, 20];
-      if (s.cutOut) {
-        // A hole sews nothing: paint it as the page behind, with a thin edge.
-        ctx.beginPath();
+      ctx.beginPath();
+      let any = false;
+      for (const m of group) {
+        const pts = flattenShape(m.points, m.curves, true);
+        if (pts.length < 2) continue;
+        any = true;
         ctx.moveTo(pts[0].x, pts[0].y);
         for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
         ctx.closePath();
-        ctx.fillStyle = "#f4f2ec";
-        ctx.fill();
-        ctx.strokeStyle = `rgb(${r},${g},${b})`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        continue;
       }
-      ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-      ctx.closePath();
+      if (!any) continue;
       ctx.fillStyle = `rgba(${r},${g},${b},0.85)`;
-      ctx.fill();
+      ctx.fill("evenodd");
       ctx.strokeStyle = `rgb(${r},${g},${b})`;
       ctx.lineWidth = 1;
       ctx.stroke();
