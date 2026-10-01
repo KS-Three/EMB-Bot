@@ -16,7 +16,7 @@ at the bottom for the authority model behind the confidence ratings.
 (**42.5**, not the older ~70) and the metric's own **75-84** pro-vs-pro ceiling.
 Its code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-09-30. **This file is current state only, under a
+**Last updated:** 2026-10-01. **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
 on 2026-09-14). Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
@@ -741,6 +741,8 @@ delta against `priorRun`; `COLOR_STOPS_HEAVY`, `LETTERING_TOO_SMALL` and
 `STITCHES_TOO_SHORT` render as one-click adjustment chips offered AFTER the run
 (Kent's call — an adjustment, not a pre-run form). `QualityReport` surfaces
 trims. *(2026-09-02 — PRs #317/#318)* **Both "Make it bigger" chips offer a PARTIAL remedy** — one press clears the finding on 1 of 10 corpus fixtures, two presses on 4, and it worsens 3; the buttons are LEFT for Kent. The measurement, the misquoted comment it corrected and `STITCHES_TOO_SHORT`'s 66% moved to the area file, "Moved from MASTER_SCOPE (2026-09-18)". *(measured 2026-09-06 — `tools/enlarge_cure.py`, `tests/test_short_satin_shapes.py`)*
+
+**The quality report groups thread-break risk and can point at it.** Preflight tags `STITCHES_TOO_SHORT`, `DENSITY_STACKED` and `SAME_HOLE_HEAVY` with `extra.break_risk` and `extra.show_shape_ids` (worst first, shade bands mapped to their region); `QualityReport` renders them under "Thread-break risk" with **Show on design**, which closes the sheet and selects the shape on the canvas. No threshold moved and no finding was added, so no grade changes. **Three limits, all still true:** the stacking check fires on no corpus design and the same-hole rate is diluted by the 0.15 mm row pitch, so in practice the group shows short satin stitches; there is **no sharp-satin-angle check** (no threshold with a source — gate 1); and a "stitches under 0.5 mm" finding is deliberately absent, because a clean fill's row advance is under 0.5 mm by the row-pitch ruling — it rides out as `tiny_steps` / `tiny_step_fraction` only. Browser-built designs (lettering, shapes, hand-drawn, imported DST) still get no preflight. *(confirmed 2026-10-01 — `tests/test_break_risk.py`, `QualityReport.spec.js`, `DownloadSheet.spec.js`; measured 2026-10-01 — `logo_whitebg` at 80 mm, 573 of 4,129 fill steps under 0.5 mm with zero findings)*
 
 **`cfg.border` reaches its own default now** — `null` = unset, key omitted when
 unset, panel says "automatic", `fill_angle_deg`'s sentinel shape. Until

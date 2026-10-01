@@ -3521,6 +3521,113 @@ def _legibility_findings(p, result: PipelineResult, plan: StitchPlan,
 
 # --- The report -------------------------------------------------------------
 
+# --- Thread-break risk: the three findings, grouped and pointable ------------
+
+# The findings whose own messages say thread or needles break. Tagged, never
+# re-judged: `_tag_break_risk` moves no threshold and adds no finding, it marks
+# these `extra.break_risk` and gives each the shapes to show.
+#
+# A sharp-satin-angle check and a "stitches under 0.5 mm" finding are both
+# absent ON PURPOSE (2026-10-01). The angle has no threshold in this repo and
+# no trade source behind one, which is ROADMAP gate 1. The 0.5 mm line is
+# measured-wrong as a verdict: see `_tiny_step_metrics`.
+BREAK_RISK_CODES = frozenset({STITCHES_TOO_SHORT, DENSITY_STACKED,
+                              SAME_HOLE_HEAVY})
+
+# Shapes named per finding. The review step shows the first; the rest ride out
+# for a reader who wants them. Same cap as `_UNCOVERED_TOP_N`.
+_BREAK_SHOW_TOP_N = 12
+
+
+def _show_ids(shape_ids, region_ids: set[str] | None) -> list[str]:
+    """Run shape ids as the ids the Studio holds, in order, deduped, capped.
+
+    The canvas knows REGIONS. A shade band's run carries a derived id
+    (`_owning_region_id` has the rule), so with the regions in hand each id is
+    mapped to its owner and one nobody owns is dropped; a caller scoring a
+    bare plan has no regions, and the ids pass through.
+    """
+    out: list[str] = []
+    for sid in shape_ids:
+        if not sid:
+            continue
+        if region_ids is not None:
+            sid = _owning_region_id(sid, region_ids)
+            if sid is None:
+                continue
+        if sid not in out:
+            out.append(sid)
+    return out[:_BREAK_SHOW_TOP_N]
+
+
+def _shapes_near(plan: StitchPlan, at_mm, radius_mm: float) -> list[str]:
+    """Shape ids with a needle point within `radius_mm` of `at_mm`, nearest
+    first; the single nearest shape when none is that close."""
+    ax, ay = at_mm
+    best: dict[str, float] = {}
+    for _b, run in plan.iter_runs():
+        if not run.shape_id or not run.points:
+            continue
+        pts = np.asarray(run.points, dtype=float)
+        d = float(np.hypot(pts[:, 0] - ax, pts[:, 1] - ay).min())
+        if d < best.get(run.shape_id, math.inf):
+            best[run.shape_id] = d
+    ranked = sorted(best, key=lambda s: (best[s], s))
+    near = [s for s in ranked if best[s] <= radius_mm]
+    return near or ranked[:1]
+
+
+def _tag_break_risk(findings: list[dict], plan: StitchPlan,
+                    result: PipelineResult | None) -> None:
+    """Mark the break-risk findings and say which shapes to show, in place."""
+    region_ids = ({r.shape_id for r in result.regions}
+                  if result is not None else None)
+    for f in findings:
+        if f["code"] not in BREAK_RISK_CODES:
+            continue
+        extra = f.setdefault("extra", {})
+        if f["code"] == STITCHES_TOO_SHORT:
+            ids = [s["shape_id"] for s in extra.get("shapes", ())]
+        elif f["code"] == DENSITY_STACKED:
+            # Everything piled on the worst patch, out to that patch's own
+            # half-width: a stack is several shapes by definition.
+            ids = _shapes_near(plan, extra["worst_patch_at_mm"],
+                               math.sqrt(extra["worst_patch_mm2"]) / 2.0)
+        else:
+            ids = _shapes_near(plan, extra["worst_at_mm"],
+                               _SAME_HOLE_QUANTUM_MM)
+        extra["break_risk"] = True
+        extra["show_shape_ids"] = _show_ids(ids, region_ids)
+
+
+def _tiny_step_metrics(plan: StitchPlan) -> dict:
+    """Needle-down steps under `machine.TINY_STITCH_MM`, as a COUNT only.
+
+    "Stitches under 0.5 mm" is on every trade list of what breaks thread, and
+    it is not a finding here because it would fire on clean work. Measured
+    2026-10-01 at 80 mm, lock stitches stripped:
+
+        fixture               steps   under 0.5   where
+        logo_whitebg          5,730     618       fill 573, underlay 44, travel 1
+        becker_marine_logo    6,277     476       underlay 338, fill 125, run 12, satin 1
+
+    `logo_whitebg` has zero findings. Its 573 are the fill's row advance,
+    which IS the row pitch -- 0.15 mm since Kent's 2026-09-03 ruling -- so a
+    0.5 mm line condemns the ruled fill, not a defect. Reported so a change
+    that moves it is visible; a threshold on it would be a physical constant
+    with no sew-out behind it.
+    """
+    total = tiny = 0
+    for _b, run in plan.iter_runs():
+        pts = stitches.strip_ties(run.points)
+        for a, b in zip(pts, pts[1:]):
+            total += 1
+            if math.dist(a, b) < machine.TINY_STITCH_MM:
+                tiny += 1
+    return {"tiny_steps": tiny,
+            "tiny_step_fraction": round(tiny / total, 3) if total else None}
+
+
 def run_preflight(result: PipelineResult, plan: StitchPlan,
                   cfg: PipelineConfig | None = None,
                   image=None) -> dict:
@@ -3669,6 +3776,10 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     metrics["color_changes"] = color_changes
 
     metrics["stitch_count"] = plan.stats.stitch_count
+    metrics.update(_tiny_step_metrics(plan))
+
+    # Last, over the finished list: it tags findings, it does not make any.
+    _tag_break_risk(findings, plan, result)
 
     score = 100
     for f in findings:
