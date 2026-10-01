@@ -122,3 +122,42 @@ test("a dragged position is clamped to the bounds", async () => {
   expect(last.y).toBeLessThanOrEqual(600);
   expect(last.x).toBeGreaterThan(300);
 });
+
+test("a toggle row is a switch that emits the flipped value; a note renders, warn flagged", async () => {
+  const model = { name: "Shape 2 · Cut out", rows: [
+    { key: "cutOut", kind: "toggle", label: "Cut out", value: true, note: "Not inside a shape — cuts nothing.", warn: true },
+  ] };
+  const { events, getByRole, getByText } = renderPop(model);
+  const sw = getByRole("switch", { name: "Cut out" });
+  expect(sw).toHaveAttribute("aria-checked", "true");
+  expect(sw).toHaveTextContent("On");
+  await fireEvent.click(sw);
+  expect(events).toEqual([{ kind: "change", detail: { key: "cutOut", value: false } }]);
+  const note = getByText("Not inside a shape — cuts nothing.");
+  expect(note).toHaveClass("shapepop-note");
+  expect(note).toHaveClass("warn");
+});
+
+test("a note without warn has no warn class, on any row kind", () => {
+  const model = { name: "Shape 1 · Fill", rows: [
+    { key: "stitchType", kind: "choice", label: "Stitch type", value: "fill", options: [{ value: "fill", label: "Fill" }], note: "Sews as fill." },
+  ] };
+  const { getByText } = renderPop(model);
+  expect(getByText("Sews as fill.")).not.toHaveClass("warn");
+});
+
+test("a row's note describes that row's control (switch and select), and a row without one has none", () => {
+  const model = { name: "Shape 2 · Cut out", rows: [
+    { key: "cutOut", kind: "toggle", label: "Cut out", value: true, note: "Cuts Shape 1." },
+    { key: "stitchType", kind: "choice", label: "Stitch type", value: "fill", options: [{ value: "fill", label: "Fill" }], note: "Sews as fill." },
+    { key: "angle", kind: "number", label: "Angle", value: null },
+  ] };
+  const { getByRole, getByText, getByLabelText } = renderPop(model);
+  const sw = getByRole("switch", { name: "Cut out" });
+  expect(sw).toHaveAttribute("aria-describedby", "shapepop-note-cutOut");
+  expect(getByText("Cuts Shape 1.").id).toBe("shapepop-note-cutOut");
+  expect(sw).toHaveAccessibleDescription("Cuts Shape 1.");
+  const sel = getByRole("combobox", { name: "Stitch type" });
+  expect(sel).toHaveAccessibleDescription("Sews as fill.");
+  expect(getByLabelText("Angle")).not.toHaveAttribute("aria-describedby");
+});

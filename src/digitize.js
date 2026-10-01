@@ -213,7 +213,7 @@
     const style = styleName || "none";
     if (style === "none") return [];
     const outer = shape.outer;
-    const holes = (shape.holes || []).filter((hh) => hh && hh.length >= 4);
+    const holes = (shape.holes || []).filter((hh) => hh && hh.length >= 3);
     const rings = [outer].concat(holes);
     const pxPerFinalMm = ctx.pxPerFinalMm;
     const fillAngle = ctx.fillAngle || 0;
@@ -609,7 +609,8 @@
       for (const shape of shapes) {
         const poly = shape.outer;
         if (!poly || poly.length < 3) { if (poly) dropOutline(poly); continue; } // see the shapes0 filter's comment above
-        const holes = (shape.holes || []).filter((hh) => hh && hh.length >= 4);
+        // Hole floor is 3 too, for the reason in the shapes0 comment above: it was missed when the outer floor was relaxed.
+        const holes = (shape.holes || []).filter((hh) => hh && hh.length >= 3);
         const outerArea = polyArea(poly), holeArea = holes.reduce((a, hh) => a + polyArea(hh), 0);
         const area = Math.max(0, outerArea - holeArea), perim = polyPerim(poly) + holes.reduce((a, hh) => a + polyPerim(hh), 0);
         if (area <= 0 || perim <= 0) { dropOutline(poly); continue; }
