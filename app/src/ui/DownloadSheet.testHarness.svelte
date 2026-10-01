@@ -3,6 +3,7 @@
   export let project;
   export let runtime = { flats: {}, workImages: {} };
   export let summaryRows = [];
+  export let hoopingRows = [];
   export let qualityEntries = [];
   export let qualityPartial = false;
   export let ready = true;
@@ -14,6 +15,7 @@
   {runtime}
   digitizerHealth={null}
   {summaryRows}
+  {hoopingRows}
   {qualityEntries}
   {qualityPartial}
   {ready}

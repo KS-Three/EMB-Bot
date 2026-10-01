@@ -53,6 +53,26 @@ test("recaps the rows it is given and says Ready to stitch", () => {
   expect(screen.getByText('Text — "EMB"')).toBeInTheDocument();
 });
 
+test("shows the hooping card between the recap and the download buttons", () => {
+  const hoopingRows = [
+    { label: "Stabilizer", value: "cutaway", note: "" },
+    { label: "Topper", value: "no", note: "" },
+    { label: "Needle", value: "75/11 ballpoint", note: "standard for 40wt thread" },
+  ];
+  render(Harness, { project: defaultProject(), summaryRows: ROWS, hoopingRows, ready: true });
+  const card = screen.getByRole("region", { name: "What to hoop" });
+  expect(card).toHaveTextContent("75/11 ballpoint");
+  // Before the Download heading: advice an operator needs is read on the way
+  // to the file, not found after it.
+  const download = screen.getByRole("heading", { name: "Download", exact: true });
+  expect(card.compareDocumentPosition(download) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+test("shows no hooping card when there is no advice", () => {
+  render(Harness, { project: defaultProject(), summaryRows: ROWS, ready: true });
+  expect(screen.queryByRole("region", { name: "What to hoop" })).toBeNull();
+});
+
 test("says Nothing to stitch yet when the design cannot sew", () => {
   render(Harness, { project: defaultProject(), summaryRows: ROWS, ready: false });
   expect(screen.getByRole("heading", { name: "Nothing to stitch yet" })).toBeInTheDocument();

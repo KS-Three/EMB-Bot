@@ -108,3 +108,70 @@ test("a malformed profile throws by name rather than sewing something", () => {
   assert.throws(() => f.applyFabricProfile(polo, { density_scale: "0.9" }), /finite number/);
   assert.throws(() => f.applyFabricProfile(polo, { density_scale: NaN }), /finite number/);
 });
+
+// --- Hooping advice (2026-10-01) ---------------------------------------------
+// What the operator hoops: stabilizer, topper, needle. One function, read by
+// the Studio's hooping card AND the PDF worksheet, so the two cannot disagree.
+// Advice only — nothing here is read by a stitch planner.
+
+test("every preset carries a needle: 75/11, ballpoint on knits, sharp on wovens and caps", () => {
+  // Playbook Law 21 [P — Tajima, Madeira, Groz-Beckert, A&E]. The split is the
+  // goods' construction, so it is asserted per preset rather than by pattern.
+  const want = {
+    structured_cap: "75/11 sharp",
+    pique_knit: "75/11 ballpoint",
+    jersey_tee: "75/11 ballpoint",
+    fleece_sweatshirt: "75/11 ballpoint",
+    canvas_tote: "75/11 sharp",
+    terry_towel: "75/11 sharp",
+    woven_dress: "75/11 sharp",
+  };
+  const got = Object.fromEntries(f.FABRICS.map((fab) => [fab.id, fab.needle]));
+  assert.deepStrictEqual(got, want);
+});
+
+test("hoopingAdvice states stabilizer, topper and needle for a garment we ship", () => {
+  const a = f.hoopingAdvice("left_chest", 4321);
+  assert.strictEqual(a.fabricId, "pique_knit");
+  assert.strictEqual(a.backing, "cutaway");
+  assert.strictEqual(a.escalated, false);
+  assert.strictEqual(a.topper, false);
+  assert.strictEqual(a.needle, "75/11 ballpoint");
+  assert.deepStrictEqual(a.rows, [
+    { label: "Stabilizer", value: "cutaway", note: "" },
+    { label: "Topper", value: "no", note: "" },
+    { label: "Needle", value: "75/11 ballpoint", note: f.NEEDLE_BASIS },
+  ]);
+  assert.deepStrictEqual(a.rows.map(f.hoopingLine), [
+    "Stabilizer: cutaway",
+    "Topper: no",
+    "Needle: 75/11 ballpoint (standard for 40wt thread)",
+  ]);
+  assert.strictEqual(f.hoopingAdvice("towel", 100).topper, true);
+  assert.strictEqual(f.hoopingAdvice("hat_front", 100).rows[0].value, "cap buckram");
+});
+
+test("past 25,000 stitches anything lighter than cutaway escalates and says why", () => {
+  assert.strictEqual(f.CUTAWAY_STITCHES, 25000);
+  const edge = f.hoopingAdvice("tote", 25000);
+  assert.deepStrictEqual([edge.backing, edge.escalated], ["tearaway", false]);
+  const heavy = f.hoopingAdvice("tote", 26676);
+  assert.deepStrictEqual([heavy.backing, heavy.escalated], ["cutaway", true]);
+  assert.strictEqual(
+    f.hoopingLine(heavy.rows[0]),
+    "Stabilizer: cutaway (escalated - 26,676 stitches; tear-away releases under this much thread)"
+  );
+  // Already cutaway: nothing to escalate, and it is not told twice.
+  assert.strictEqual(f.hoopingAdvice("left_chest", 30000).escalated, false);
+  // The worksheet has escalated a cap since 2026-09-20; moving the rule here
+  // must not change what it prints.
+  assert.strictEqual(f.hoopingAdvice("hat_front", 30000).escalated, true);
+});
+
+test("an unknown garment gets no advice rather than the pique fallback", () => {
+  assert.strictEqual(f.hoopingAdvice("no_such_garment", 5000), null);
+  assert.strictEqual(f.hoopingAdvice("", 5000), null);
+  assert.strictEqual(f.hoopingAdvice(null, 5000), null);
+  // A missing stitch count is "not heavy", not a crash.
+  assert.strictEqual(f.hoopingAdvice("tote").backing, "tearaway");
+});

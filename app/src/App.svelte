@@ -6,6 +6,7 @@
   import { isSewable } from "./lib/flow.js";
   import { designSummary } from "./lib/summary.js";
   import { sewSummary } from "./lib/estimate.js";
+  import { hoopingRows } from "./lib/hooping.js";
   import { generateAll } from "./lib/generate.js";
   import { rehydrateImages } from "./lib/imageSource.js";
   import { chartIdForProject, designChartId } from "./lib/designChart.js";
@@ -247,6 +248,10 @@
     ...designSummary(project, sewnColors),
     ...(qualityIsTheWholeDesign ? [] : sewFacts),
   ];
+  // What to hoop under the combined design — stabilizer, topper, needle. The
+  // same engine function the PDF worksheet prints, so the sheet on screen and
+  // the sheet on paper cannot disagree. [] when there is no basis for advice.
+  $: hoopingAdviceRows = hoopingRows(project.garmentId, combinedDesign);
   $: subtitle = `${readable(project.garmentId)} · ${hoopInEffect.hoop.label}`;
 
   // ---- Undo/redo (Ember-audit follow-up) ------------------------------------
@@ -1213,6 +1218,7 @@
         {runtime}
         {digitizerHealth}
         {summaryRows}
+        hoopingRows={hoopingAdviceRows}
         {qualityEntries}
         qualityPartial={!qualityIsTheWholeDesign}
         ready={readyToStitch}

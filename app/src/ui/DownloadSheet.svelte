@@ -5,12 +5,15 @@
   // test ids and the "Download" h2 are what every export e2e reads.
   import { createEventDispatcher, onMount } from "svelte";
   import QualityReport from "./QualityReport.svelte";
+  import HoopingCard from "./HoopingCard.svelte";
   import DownloadStep from "./DownloadStep.svelte";
   import Icon from "./Icon.svelte";
   export let project;
   export let runtime;
   export let digitizerHealth = null;
   export let summaryRows = [];
+  // Stabilizer / topper / needle for the whole design (lib/hooping.js).
+  export let hoopingRows = [];
   export let qualityEntries = [];
   export let qualityPartial = false;
   export let ready = false;
@@ -44,6 +47,7 @@
       <div><dt>{row.label}</dt><dd>{row.value}</dd></div>
     {/each}
   </dl>
+  <HoopingCard rows={hoopingRows} />
   <QualityReport entries={qualityEntries} partial={qualityPartial} />
   <DownloadStep {project} {runtime} {digitizerHealth} on:credits={(e) => d("credits", e.detail)} />
 </div>
