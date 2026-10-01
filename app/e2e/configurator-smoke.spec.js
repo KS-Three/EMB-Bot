@@ -725,14 +725,43 @@ test("Original view swaps the thread for the uploaded artwork, and any edit swap
     }
     return n;
   });
+  // Bbox of the red square in canvas px: red-ish thread when stitched, the
+  // exact source red when the artwork is drawn.
+  const redBox = (exact) => page.evaluate((exact) => {
+    const c = document.querySelector(".hoop canvas");
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+    for (let y = 0; y < c.height; y++) {
+      for (let x = 0; x < c.width; x++) {
+        const i = (y * c.width + x) * 4;
+        const hit = exact
+          ? Math.abs(d[i] - 204) <= 2 && d[i + 1] <= 2 && d[i + 2] <= 2
+          : d[i] > 120 && d[i + 1] < 70 && d[i + 2] < 70;
+        if (!hit) continue;
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+    }
+    return x1 < 0 ? null : { x0, y0, x1, y1 };
+  }, exact);
   const stitched = await shot();
   const stitchedRed = await artworkRed();
+  const stitchedBox = await redBox(false);
+  expect(stitchedBox, "no red thread on the stitched canvas").not.toBeNull();
 
   await orig.click();
   await expect(orig).toHaveAttribute("aria-pressed", "true");
   await expect.poll(shot).not.toBe(stitched);
   // Measured 2026-09-30: 0 such pixels stitched, 420 in Original view.
   await expect.poll(artworkRed).toBeGreaterThan(Math.max(100, stitchedRed * 5));
+  // Registration: the artwork's red square sits where the red stitches sat,
+  // every edge within 3 px. Fitting the whole frame (white margin and all)
+  // into the stitch rect drew it about half size and shifted.
+  const origBox = await redBox(true);
+  for (const k of ["x0", "y0", "x1", "y1"]) {
+    expect(Math.abs(origBox[k] - stitchedBox[k]), `${k}: artwork ${JSON.stringify(origBox)} vs stitches ${JSON.stringify(stitchedBox)}`)
+      .toBeLessThanOrEqual(3);
+  }
   // No chrome was added over the canvas to do it.
   expect(await page.locator(".hoop > *").count()).toBe(1);
 

@@ -4,7 +4,7 @@
   import { ensureFonts, loadCoverage, loadManifest } from "../lib/fontLoader.js";
   import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
-  import { hasOriginal, loadOriginal, fitRect } from "../lib/originalImage.js";
+  import { hasOriginal, loadOriginal, fitRect, placeByContent, flatContentBox } from "../lib/originalImage.js";
   import { pickScaleBar } from "../lib/scalebar.js";
   import { tip } from "../lib/tip.js";
   import { designToStrands, strandStitchOrdinals } from "../lib/strands.js";
@@ -1422,21 +1422,64 @@
   // transform for itself, for the same reason: it can run without a render
   // having just left one. A token guards the awaits: a view change or a
   // regeneration during a decode must not paint over the new frame.
+  //
+  // Registration differs by lane, and only one lane can register exactly:
+  //  - `image` (browser flatten): the stitches were traced from exactly the
+  //    flat's non-transparent pixels (imageRegions.js flatToRegions), so that
+  //    pixel bbox — the CONTENT box — is mapped onto the stitch rect. Fitting
+  //    the whole frame instead shrank and shifted the art (measured
+  //    2026-09-30: a 23x20 px stitched square drawn back at 12x12).
+  //  - `digitized` (service): the result keeps no source-px origin — the
+  //    pipeline's art_bbox position inside its (cropped, resized) working
+  //    image never reaches the client, only its size via px_per_mm — so there
+  //    is no exact mapping and none is guessed: the whole image is fitted into
+  //    the placement box instead.
+  // Either way the draw is clipped to the hoop, so a frame larger than its
+  // content cannot spill onto the surround.
   let originalToken = 0;
   async function drawOriginals() {
     const my = ++originalToken;
+    const rr = renderResult;
+    if (!rr || !rr.toCanvas) return;
+    const centre = rr.toCanvas(0, 0);
+    const box = hoopSizeMm(project);
+    const placement = { x: centre.x - (box.wMm * rr.scale) / 2, y: centre.y - (box.hMm * rr.scale) / 2,
+                        w: box.wMm * rr.scale, h: box.hMm * rr.scale };
+    const realHoop = effectiveHoop(project).hoop;
+    const clip = realHoop && realHoop.widthMm > 0 && realHoop.heightMm > 0
+      ? { x: centre.x - (realHoop.widthMm * rr.scale) / 2, y: centre.y - (realHoop.heightMm * rr.scale) / 2,
+          w: realHoop.widthMm * rr.scale, h: realHoop.heightMm * rr.scale }
+      : placement;
+    const flats = (runtime && runtime.flats) || {};
     const jobs = (project.elements || []).filter(hasOriginal).map(async (el) => {
       const rect = perElementRects.find((r) => r.id === el.id);
       if (!rect) return;
       let im;
       try { im = await loadOriginal(el.sourcePng); } catch (e) { return; }
       if (my !== originalToken || !originalView || !canvas) return;
-      const box = fitRect(im.naturalWidth, im.naturalHeight, rect);
-      if (!box) return;
+      const iw = im.naturalWidth, ih = im.naturalHeight;
+      let at = null;
+      if (el.type === "image") {
+        const flat = flats[el.id];
+        const cb = flat && flatContentBox(flat.indices, flat.w, flat.h);
+        if (cb) {
+          // The flat is the prepped copy of sourcePng (same WORK_MAX_PX size);
+          // scaled anyway, so a grid that ever differs still registers.
+          const sx = iw / flat.w, sy = ih / flat.h;
+          at = placeByContent(iw, ih, { x: cb.x * sx, y: cb.y * sy, w: cb.w * sx, h: cb.h * sy }, rect);
+        }
+        if (!at) at = fitRect(iw, ih, rect);
+      } else {
+        at = fitRect(iw, ih, placement);
+      }
+      if (!at) return;
       const ctx = canvas.getContext("2d");
       ctx.save();
       if (dpr !== 1) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.drawImage(im, box.x, box.y, box.w, box.h);
+      ctx.beginPath();
+      ctx.rect(clip.x, clip.y, clip.w, clip.h);
+      ctx.clip();
+      ctx.drawImage(im, at.x, at.y, at.w, at.h);
       ctx.restore();
     });
     await Promise.all(jobs);

@@ -150,7 +150,7 @@ export const HELP = {
   },
   originalView: {
     title: "Original view",
-    what: "Shows the artwork you uploaded in place of the stitches, at the same spot and size.",
+    what: "Shows the artwork you uploaded in place of the stitches.",
     changes: "The view only. Nothing about the design or the file changes.",
     when: "Flip between this and the stitches to check the digitizing against what you asked for.",
   },

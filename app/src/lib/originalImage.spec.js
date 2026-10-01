@@ -1,5 +1,46 @@
 import { expect, test } from "vitest";
-import { originalDataUrl, fitRect, hasOriginal } from "./originalImage.js";
+import { originalDataUrl, fitRect, hasOriginal, placeByContent, flatContentBox } from "./originalImage.js";
+
+test("the content box, not the frame, is fitted to the rect", () => {
+  // 200x100 image whose art is the middle half: the image is drawn at twice
+  // the rect's size, shifted so the art fills the rect exactly.
+  expect(placeByContent(200, 100, { x: 50, y: 25, w: 100, h: 50 }, { x: 0, y: 0, w: 200, h: 100 }))
+    .toEqual({ x: -100, y: -50, w: 400, h: 200 });
+});
+
+test("off-centre content, uniform scale, centred in a rect of another aspect", () => {
+  // Content 40x20 at (20,60) in a 100x100 image; rect 80x80 at (10,10).
+  // s = min(80/40, 80/20) = 2 -> content 80x40, centred at y 10+20 = 30.
+  expect(placeByContent(100, 100, { x: 20, y: 60, w: 40, h: 20 }, { x: 10, y: 10, w: 80, h: 80 }))
+    .toEqual({ x: 10 - 40, y: 30 - 120, w: 200, h: 200 });
+});
+
+test("content equal to the whole frame is exactly fitRect", () => {
+  const rect = { x: 10, y: 20, w: 100, h: 100 };
+  expect(placeByContent(200, 100, { x: 0, y: 0, w: 200, h: 100 }, rect)).toEqual(fitRect(200, 100, rect));
+});
+
+test("placeByContent refuses degenerate input", () => {
+  const rect = { x: 0, y: 0, w: 10, h: 10 };
+  expect(placeByContent(0, 10, { x: 0, y: 0, w: 5, h: 5 }, rect)).toBeNull();
+  expect(placeByContent(10, 10, { x: 0, y: 0, w: 0, h: 5 }, rect)).toBeNull();
+  expect(placeByContent(10, 10, null, rect)).toBeNull();
+  expect(placeByContent(10, 10, { x: 0, y: 0, w: 5, h: 5 }, { x: 0, y: 0, w: 10, h: 0 })).toBeNull();
+});
+
+test("the flat's content box skips the transparent index (255) only", () => {
+  // 5x4 grid, kept pixels at (1,1), (3,1) and (2,2); index 0 counts as art.
+  const T = 255;
+  const idx = new Uint8Array([
+    T, T, T, T, T,
+    T, 0, T, 1, T,
+    T, T, 0, T, T,
+    T, T, T, T, T,
+  ]);
+  expect(flatContentBox(idx, 5, 4)).toEqual({ x: 1, y: 1, w: 3, h: 2 });
+  expect(flatContentBox(new Uint8Array(4).fill(T), 2, 2)).toBeNull();
+  expect(flatContentBox(new Uint8Array([0, 0, 0, 0]), 2, 2)).toEqual({ x: 0, y: 0, w: 2, h: 2 });
+});
 
 test("builds a PNG data URL from bare base64, and nothing from nothing", () => {
   expect(originalDataUrl("AAAA")).toBe("data:image/png;base64,AAAA");

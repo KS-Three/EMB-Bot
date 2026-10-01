@@ -20,6 +20,43 @@ export function fitRect(imgW, imgH, rect) {
   return { x: rect.x + (rect.w - w) / 2, y: rect.y + (rect.h - h) / 2, w, h };
 }
 
+// Where to draw the WHOLE image so that its CONTENT box (`content`, in source
+// px) lands centred in `rect` at a uniform scale. The stitches cover only the
+// content, not the frame (the background was knocked out), so fitting the
+// frame into the stitch rect shrinks and shifts the art; this registers it.
+// Content equal to the whole frame reduces exactly to fitRect.
+export function placeByContent(imgW, imgH, content, rect) {
+  if (!(imgW > 0) || !(imgH > 0) || !content || !rect) return null;
+  if (!(content.w > 0) || !(content.h > 0) || !(rect.w > 0) || !(rect.h > 0)) return null;
+  const s = Math.min(rect.w / content.w, rect.h / content.h);
+  const cx = rect.x + (rect.w - content.w * s) / 2;
+  const cy = rect.y + (rect.h - content.h * s) / 2;
+  return { x: cx - content.x * s, y: cy - content.y * s, w: imgW * s, h: imgH * s };
+}
+
+// The browser lane's content box: the bbox of every flattened pixel that is
+// NOT the engine's transparent index (quantize.js TRANSPARENT_INDEX, 255 —
+// knocked-out background and alpha-cut pixels). `flatToRegions` traces
+// exactly these pixels, so this is the art the stitches were made from, not
+// a colour guess. In the flat's own px grid; null when nothing is kept.
+export const TRANSPARENT_INDEX = 255;
+export function flatContentBox(indices, w, h) {
+  if (!indices || !(w > 0) || !(h > 0)) return null;
+  let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      if (indices[row + x] === TRANSPARENT_INDEX) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  if (x1 < 0) return null;
+  return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+}
+
 const cache = new Map();
 export function loadOriginal(sourcePng) {
   const url = originalDataUrl(sourcePng);
