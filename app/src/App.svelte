@@ -24,7 +24,9 @@
     listProjects,
     isAutoNamed,
     autoNameProject,
+    setProjectFacts,
   } from "./lib/projects.js";
+  import { designFacts } from "./lib/libraryFacts.js";
   import { buildProjectFile, parseProjectFile, projectFileName } from "./lib/projectFile.js";
   import { collectSources, restoreSources } from "./lib/projectSources.js";
   import { triggerDownload } from "./lib/download.js";
@@ -238,6 +240,33 @@
   // "colors" here (see spoolCount in lib/digitizer.js), counted on the same
   // combined design the size and stitch figures beside it come from.
   $: colorCount = combinedDesign && sewFacts.length ? spoolCount(combinedDesign) : 0;
+
+  // ---- Library facts: what "My designs" filters on --------------------------
+  // The open design's stitches, spools and size, written to its index entry
+  // (lib/libraryFacts.js, projects.js setProjectFacts) from the SAME combined
+  // design the summary bar reads, so a row in the drawer can never disagree
+  // with the bar.
+  //
+  // Recorded here rather than inside persist(): persist runs synchronously in
+  // the event handler, before this flush, so `combinedDesign` there still
+  // describes the previous state — and a text or uploaded-image design is not
+  // generatable at all until its font or artwork has loaded, which is after
+  // any save. Being reactive is also the backfill: a design saved before facts
+  // existed is measured the first time it is opened, with no migration pass
+  // (which could not measure those two kinds anyway).
+  //
+  // A null design only CLEARS the facts when nothing in the project could
+  // sew. Otherwise it is a design still loading (or whose font failed to
+  // fetch), and wiping a good measurement over that would drop the row out of
+  // every filter until the next successful open. `image` counts as "could
+  // sew" outright: its _hasImage flag is reset on load, so isSewable says no
+  // for exactly the stretch this guard exists for.
+  function recordFacts(id, design, proj) {
+    const facts = designFacts(design, design ? spoolCount(design) : 0);
+    if (!facts && proj.elements.some((el) => el.type === "image" || isSewable(el))) return;
+    if (setProjectFacts(id, facts)) refreshProjects();
+  }
+  $: recordFacts(currentId, combinedDesign, project);
 
   // The rows the Download sheet recaps — one list, built here, so the
   // sheet is a renderer and never re-derives what the app already knows.

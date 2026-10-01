@@ -8,6 +8,9 @@
   import { createEventDispatcher, onMount } from "svelte";
   import Icon from "./Icon.svelte";
   import TemplateRow from "./TemplateRow.svelte";
+  import DesignFilter from "./DesignFilter.svelte";
+  import { EMB } from "../lib/emb.js";
+  import { filterProjects, hasFactCriteria, factsLine } from "../lib/libraryFacts.js";
   export let projects = [];
   export let currentId = null;
   // One-line status/error from App's .embproj import handling ("" hides it).
@@ -15,6 +18,18 @@
   // parsing/registry calls and just feeds the outcome back down.
   export let notice = "";
   const d = createEventDispatcher();
+
+  // ---- Filter: find a design by what it is ---------------------------------
+  // Runs over the index entries the drawer already has: each carries `facts`
+  // (stitches, spools, size) once its design has been generated, so nothing
+  // is loaded to filter. An entry saved before facts existed has none until
+  // it is next opened; under a stitch/color/hoop filter those are left out
+  // and COUNTED below the list, never passed off as non-matches. The hoop
+  // table and fit rule are the engine's own (src/garments.js).
+  const hoops = EMB.HOOPS || [];
+  let criteria = {};
+  $: filtered = filterProjects(projects, criteria, EMB.hoopFit);
+  $: filtering = hasFactCriteria(criteria) || !!(criteria.text && criteria.text.trim());
 
   // ---- .embproj import (hidden file input) ---------------------------------
   // The drawer only picks the file; App does the reading/parsing (same
@@ -203,7 +218,15 @@
     <div class="drawer-list">
       <h3 class="drawer-templates-head">Start from a template</h3>
       <TemplateRow on:pick={(e) => d("template", e.detail)} />
-      {#each projects as row (row.id)}
+      {#if projects.length > 1}
+        <DesignFilter {hoops} bind:criteria />
+        {#if filtering}
+          <p class="drawer-count" role="status">
+            {filtered.shown.length} of {projects.length} designs
+          </p>
+        {/if}
+      {/if}
+      {#each filtered.shown as row (row.id)}
         <div class="drawer-row" class:current={row.id === currentId}>
           {#if renamingId === row.id}
             <div class="drawer-rename-row">
@@ -221,6 +244,9 @@
               <span class="drawer-row-name" title={row.name}>{row.name}</span>
               <span class="drawer-row-date">{friendlyDate(row.updatedAt)}</span>
             </div>
+            {#if row.facts}
+              <p class="drawer-row-facts">{factsLine(row.facts, hoops, EMB.hoopFit)}</p>
+            {/if}
           {/if}
           <div class="drawer-row-actions">
             <button type="button" on:click={() => d("open", row.id)}>Open</button>
@@ -240,6 +266,16 @@
       {/each}
       {#if projects.length === 0}
         <p class="drawer-empty">No saved designs yet.</p>
+      {:else if filtered.shown.length === 0}
+        <p class="drawer-empty">No saved design matches.</p>
+      {/if}
+      {#if filtered.unmeasured > 0}
+        <p class="drawer-empty">
+          {filtered.unmeasured === 1
+            ? "1 older design has not been measured yet, so it can't be matched on stitches, colors or hoop."
+            : `${filtered.unmeasured} older designs have not been measured yet, so they can't be matched on stitches, colors or hoop.`}
+          Open a design once to measure it.
+        </p>
       {/if}
     </div>
   </div>
