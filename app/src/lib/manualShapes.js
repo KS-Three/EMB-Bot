@@ -112,6 +112,51 @@ export function isValidShape(points) {
   return shapeIssues(points).length === 0;
 }
 
+// Do two rings cross anywhere? Segment-pair sweep over the same
+// segmentsIntersect shapeIssues uses for self-intersection, so "crossing"
+// means exactly one thing in this file. Rings are treated as closed.
+function ringsCross(a, b) {
+  for (let i = 0; i < a.length; i++) {
+    const a1 = a[i], a2 = a[(i + 1) % a.length];
+    for (let j = 0; j < b.length; j++) {
+      const b1 = b[j], b2 = b[(j + 1) % b.length];
+      if (segmentsIntersect(a1, a2, b1, b2)) return true;
+    }
+  }
+  return false;
+}
+
+// Human-readable problems with a HOLE being cut into `shell`, or [] when it is
+// a clean hole. Same reason-strings-not-a-boolean contract as shapeIssues, so a
+// panel can say WHY instead of just disabling a button.
+//
+// Three things have to hold, and the first two are not the same check: a ring
+// can have every vertex inside a concave shell and still cut across its waist,
+// and two holes can miss each other's vertices while their edges cross. All
+// three inputs are FLATTENED rings (curves already baked to points).
+export function holeIssues(shell, hole, otherHoles) {
+  const ring = hole || [];
+  // A hole is a ring like any other first: point count, self-intersection, area.
+  const issues = shapeIssues(ring);
+  if (issues.length) return issues; // no sense locating something that is not a ring
+  const shellRing = shell || [];
+  if (shellRing.length < 3) return ["This shape has no outline to cut into."];
+  const OUTSIDE = "A hole has to stay inside its shape.";
+  for (const p of ring) {
+    if (!pointInShape(shellRing, p.x, p.y)) { issues.push(OUTSIDE); break; }
+  }
+  if (!issues.length && ringsCross(ring, shellRing)) issues.push(OUTSIDE);
+  for (const other of otherHoles || []) {
+    if (!other || other.length < 3) continue;
+    // Crossing edges, or one ring swallowed whole by the other (no crossing at
+    // all in that case, so the sweep alone would pass it).
+    const nested = ring.every((p) => pointInShape(other, p.x, p.y)) ||
+      other.every((p) => pointInShape(ring, p.x, p.y));
+    if (ringsCross(ring, other) || nested) { issues.push("Two holes cannot overlap."); break; }
+  }
+  return issues;
+}
+
 // Sub-pixel click-jitter guard for the duplicate-consecutive-point dedupe
 // below — two clicks landing at the "same" screen spot can still differ by
 // a fractional pixel once converted through canvasPointFromEvent's scale
@@ -570,6 +615,21 @@ export function nextShapeIds(list, count) {
   return ids;
 }
 
+// A hole ring the engine will actually accept. `digitize.js` filters hole rings
+// to `hh.length >= 4` (the image lane applies the same filter itself,
+// imageRegions.js) while a SHELL only needs 3 — so a legally drawn triangular
+// hole would validate here and then be silently dropped at the other end, the
+// exact class of failure this lane keeps paying for. One vertex is inserted at
+// the midpoint of the first edge: it sits ON that edge, so the polygon, its
+// area and its winding are unchanged, and nothing downstream can tell the
+// difference except that the ring now survives. Rings of 4+ points pass through
+// untouched (identity, so no existing geometry moves).
+function ringForEngine(ring) {
+  if (ring.length >= 4) return ring;
+  const mid = { x: (ring[0].x + ring[1].x) / 2, y: (ring[0].y + ring[1].y) / 2 };
+  return [ring[0], mid, ...ring.slice(1)];
+}
+
 // Convert an element's COMPLETED shapes into buildQualityDesign's
 // colorRegions input. Each shape becomes its OWN region (a manual choice,
 // not an auto-merge-by-color step: two shapes the user happens to color the
@@ -586,6 +646,15 @@ export function shapesToRegions(shapes) {
     if (!shape) continue;
     const outer = flattenShape(shape.points, shape.curves, true);
     if (!isValidShape(outer)) continue;
+    // Holes ride through the same hand-off, flattened the same way. An invalid
+    // hole ring is dropped rather than throwing — the posture this function
+    // already takes on an invalid shell one line above. A shape with no holes
+    // emits `holes: []`, which is byte for byte what every design saved before
+    // holes existed produced.
+    const holes = (shape.holes || [])
+      .map((h) => (h ? flattenShape(h.points, h.curves, true) : null))
+      .filter((ring) => ring && isValidShape(ring))
+      .map(ringForEngine);
     const angleOverride = (typeof shape.angleDeg === "number" && isFinite(shape.angleDeg)) ? shape.angleDeg : null;
     // "satin"/"fill" are the user's explicit manual choice, forced through
     // digitize.js's tierOverride hook. The explicit value "auto" (preset
@@ -606,7 +675,7 @@ export function shapesToRegions(shapes) {
         // a click landed on. "" when the caller has none.
         id: shape.id == null ? "" : String(shape.id),
         outer: outer.map((p) => ({ x: p.x, y: p.y })),
-        holes: [],
+        holes,
         tierOverride,
         angleOverride,
       }],

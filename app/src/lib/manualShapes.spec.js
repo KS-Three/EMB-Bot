@@ -1,7 +1,7 @@
 import { test, expect } from "vitest";
 import {
   isValidShape, isNearStart, shapesToRegions, CLOSE_RADIUS_PX, PX_PER_MM,
-  shapeIssues, isDuplicateOfLast, MAX_SHAPE_POINTS,
+  shapeIssues, holeIssues, isDuplicateOfLast, MAX_SHAPE_POINTS,
   quadraticControlForPointOnCurve, curveHandlePoint, curveControlOrNull,
   flattenQuadraticSegment, flattenShape, hitTestSegmentMidpoint, CURVE_HANDLE_HIT_R,
   nextShapeIds, pointInShape,
@@ -855,4 +855,122 @@ test("shapesToRegions: the shape's id rides onto the region shape (the field map
   ]);
   expect(regions[0].shapes[0].id).toBe("s3");
   expect(regions[1].shapes[0].id).toBe("");
+});
+
+// ---- holes ----------------------------------------------------------------
+// Plan 1 of the manual-digitizing gaps spec
+// (docs/superpowers/specs/2026-09-30-manual-digitizing-gaps-design.md).
+
+const SHELL = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
+const HOLE_IN = [{ x: 20, y: 20 }, { x: 40, y: 20 }, { x: 40, y: 40 }, { x: 20, y: 40 }];
+const shiftRing = (ring, dx, dy = 0) => ring.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+
+test("holeIssues: a hole fully inside its shell is clean", () => {
+  expect(holeIssues(SHELL, HOLE_IN, [])).toEqual([]);
+});
+
+test("holeIssues: a hole entirely outside the shell is refused", () => {
+  const issues = holeIssues(SHELL, shiftRing(HOLE_IN, 500), []);
+  expect(issues.length).toBeGreaterThan(0);
+  expect(issues.join(" ")).toMatch(/inside/i);
+});
+
+test("holeIssues: a hole straddling the shell's edge is refused even though some points are inside", () => {
+  // x from 90 to 110: two points inside the shell, two outside, edges crossing it.
+  const straddle = [{ x: 90, y: 40 }, { x: 110, y: 40 }, { x: 110, y: 60 }, { x: 90, y: 60 }];
+  expect(holeIssues(SHELL, straddle, []).length).toBeGreaterThan(0);
+});
+
+test("holeIssues: a hole crossing ANOTHER hole is refused", () => {
+  const overlapping = shiftRing(HOLE_IN, 10, 10); // overlaps HOLE_IN's corner
+  expect(holeIssues(SHELL, overlapping, [HOLE_IN]).length).toBeGreaterThan(0);
+  // ...and the same hole is fine when that other hole is not there.
+  expect(holeIssues(SHELL, overlapping, [])).toEqual([]);
+});
+
+test("holeIssues: a second hole that merely sits beside the first is allowed", () => {
+  expect(holeIssues(SHELL, shiftRing(HOLE_IN, 30), [HOLE_IN])).toEqual([]);
+});
+
+test("holeIssues: its own geometry has to be sewable — too few points, self-crossing, too small", () => {
+  expect(holeIssues(SHELL, [{ x: 20, y: 20 }, { x: 30, y: 20 }], []).length).toBeGreaterThan(0);
+  const bowtie = [{ x: 20, y: 20 }, { x: 40, y: 40 }, { x: 40, y: 20 }, { x: 20, y: 40 }];
+  expect(holeIssues(SHELL, bowtie, []).join(" ")).toMatch(/crosses itself/i);
+  const sliver = [{ x: 20, y: 20 }, { x: 21, y: 20 }, { x: 21, y: 20.1 }, { x: 20, y: 20.1 }];
+  expect(holeIssues(SHELL, sliver, []).length).toBeGreaterThan(0);
+});
+
+test("holeIssues: a reason is a string a panel can show, not a boolean", () => {
+  for (const r of holeIssues(SHELL, shiftRing(HOLE_IN, 500), [])) {
+    expect(typeof r).toBe("string");
+    expect(r.length).toBeGreaterThan(0);
+  }
+});
+
+test("shapesToRegions: a shape's holes reach the engine as flattened rings", () => {
+  const { regions } = shapesToRegions([
+    {
+      id: "s1", points: SHELL, curves: {}, stitchType: "fill", colorRgb: [1, 2, 3], angleDeg: null,
+      holes: [{ points: HOLE_IN, curves: {} }],
+    },
+  ]);
+  expect(regions).toHaveLength(1);
+  const shape = regions[0].shapes[0];
+  expect(shape.holes).toHaveLength(1);
+  expect(shape.holes[0]).toHaveLength(4);
+  expect(shape.holes[0][0]).toEqual({ x: 20, y: 20 });
+  expect(shape.outer).toHaveLength(4);
+});
+
+test("shapesToRegions: two holes both ride along", () => {
+  const { regions } = shapesToRegions([
+    {
+      id: "s1", points: SHELL, curves: {}, stitchType: "fill", colorRgb: [1, 2, 3], angleDeg: null,
+      holes: [{ points: HOLE_IN, curves: {} }, { points: shiftRing(HOLE_IN, 30), curves: {} }],
+    },
+  ]);
+  expect(regions[0].shapes[0].holes).toHaveLength(2);
+});
+
+// The byte-identity case: every design saved before holes existed.
+test("shapesToRegions: absent, empty, and all-invalid holes are identical and emit holes: []", () => {
+  const base = { id: "s1", points: SHELL, curves: {}, stitchType: "fill", colorRgb: [1, 2, 3], angleDeg: null };
+  const absent = shapesToRegions([{ ...base }]).regions;
+  const empty = shapesToRegions([{ ...base, holes: [] }]).regions;
+  const junk = shapesToRegions([{
+    ...base,
+    holes: [{ points: [{ x: 20, y: 20 }, { x: 30, y: 20 }], curves: {} }], // 2 points: not a ring
+  }]).regions;
+  expect(absent[0].shapes[0].holes).toEqual([]);
+  expect(empty).toEqual(absent);
+  expect(junk).toEqual(absent);
+});
+
+// digitize.js:612 filters hole rings to `hh.length >= 4` (the image lane's own
+// filter does the same, imageRegions.js:44) while a SHELL only needs 3, so a
+// triangular hole would validate here and then silently never sew. The
+// hand-off densifies it instead of refusing a shape the author can legally draw.
+test("shapesToRegions: a three-point hole reaches the engine with four points, so it is not silently dropped", () => {
+  const triHole = [{ x: 20, y: 20 }, { x: 60, y: 20 }, { x: 40, y: 60 }];
+  const { regions } = shapesToRegions([{
+    id: "s1", points: SHELL, curves: {}, stitchType: "fill", colorRgb: [1, 2, 3], angleDeg: null,
+    holes: [{ points: triHole, curves: {} }],
+  }]);
+  const ring = regions[0].shapes[0].holes[0];
+  expect(ring.length).toBeGreaterThanOrEqual(4);
+  // The inserted vertex sits on an existing edge, so the polygon is unchanged:
+  // its area is still the triangle's 800 px².
+  const a = ring.reduce((acc, p, i) => {
+    const q = ring[(i + 1) % ring.length];
+    return acc + (p.x * q.y - q.x * p.y);
+  }, 0) / 2;
+  expect(Math.abs(a)).toBeCloseTo(800, 6);
+});
+
+test("shapesToRegions: a curved hole flattens like a curved shell does", () => {
+  const curved = shapesToRegions([{
+    id: "s1", points: SHELL, curves: {}, stitchType: "fill", colorRgb: [1, 2, 3], angleDeg: null,
+    holes: [{ points: HOLE_IN, curves: { 0: { x: 30, y: 10 } } }],
+  }]).regions[0].shapes[0].holes[0];
+  expect(curved.length).toBeGreaterThan(4); // the bow became line segments
 });
