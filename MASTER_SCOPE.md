@@ -16,7 +16,7 @@ at the bottom for the authority model behind the confidence ratings.
 (**42.5**, not the older ~70) and the metric's own **75-84** pro-vs-pro ceiling.
 Its code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-09-30. **This file is current state only, under a
+**Last updated:** 2026-10-01. **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
 on 2026-09-14). Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
@@ -769,6 +769,8 @@ thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.
 **Preview thread width is PHYSICAL** — `preview.js` `THREAD_WIDTH_MM` 0.4, drawn the same on the PDF sheet and SVG; holds zoomed in, not on a thumbnail. *(confirmed 2026-09-04 — `preview.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
 
 **Thread lighting is unverified against real thread** — eye-tuned; the one physical out cannot settle it (random operator threading, DOCTRINE). `pending sew-out`.
+
+**The thread picker matches a thread from a photo** — "Match from a photo…" in `ThreadPicker`: choose a picture, click a colour, get the chosen chart's five nearest threads with CIEDE2000 beside each; the photo is read on a canvas and never uploaded. `lib/colorMatch.js` is a port of the two skimage functions `digitizer_core/threads.py` snaps with, pinned to values generated from that Python, so both lanes name the same cone. **An approximate starting point, NOT a measurement, and the panel says so:** nothing corrects lighting or white balance (a white-reference click is the named follow-up — Kent's call 2026-10-01: not in this slice), and chart RGB is itself unverified against real thread. The picker's own nearest-name lookup (`nearestInList`) is still Euclidean RGB. *(confirmed 2026-10-01 — `colorMatch.spec.js`, `ThreadFromPhoto.spec.js`; driven in a browser)*
 
 **Typographic punctuation folds to its ASCII twin where a font lacks it** (`satinfont.js TYPOGRAPHIC_FOLD`) — [area doc](docs/scope/3-studio-app-wizard.md). *(fixed 2026-09-07)*
 
