@@ -114,7 +114,7 @@ test("a malformed profile throws by name rather than sewing something", () => {
 // the Studio's hooping card AND the PDF worksheet, so the two cannot disagree.
 // Advice only — nothing here is read by a stitch planner.
 
-test("every preset carries a needle: 75/11, ballpoint on knits, sharp on wovens and caps", () => {
+test("every preset carries a needle: 75/11, ballpoint on knits and terry, sharp on wovens and caps", () => {
   // Playbook Law 21 [P — Tajima, Madeira, Groz-Beckert, A&E]. The split is the
   // goods' construction, so it is asserted per preset rather than by pattern.
   const want = {
@@ -123,7 +123,9 @@ test("every preset carries a needle: 75/11, ballpoint on knits, sharp on wovens 
     jersey_tee: "75/11 ballpoint",
     fleece_sweatshirt: "75/11 ballpoint",
     canvas_tote: "75/11 sharp",
-    terry_towel: "75/11 sharp",
+    // The one exception to the knit/woven split: woven, but ballpoint so the
+    // loops are parted rather than cut. Kent's ruling 2026-10-01.
+    terry_towel: "75/11 ballpoint",
     woven_dress: "75/11 sharp",
   };
   const got = Object.fromEntries(f.FABRICS.map((fab) => [fab.id, fab.needle]));

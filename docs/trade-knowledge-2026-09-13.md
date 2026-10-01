@@ -259,9 +259,9 @@ records which in-repo source the shipped figure rests on, and the one place two
 in-repo sources disagree, so the next reader does not mistake a planning figure
 for a verified one.
 
-**What ships:** `75/11 ballpoint` on the knit presets (pique, jersey, fleece),
-`75/11 sharp` on the wovens and the cap (canvas/twill, dress woven, terry,
-structured cap), always printed with its basis — "standard for 40wt thread".
+**What ships:** `75/11 ballpoint` on the knit presets (pique, jersey, fleece)
+and on terry, `75/11 sharp` on the other wovens and the cap (canvas/twill,
+dress woven, structured cap), always printed with its basis — "standard for 40wt thread".
 
 **Source:** `docs/machine-physics-playbook-2026-07-31.md` Law 21 — "DB×K5 75/11
 is the standard for 40wt: sharp (RG) for wovens and caps, ballpoint (SES) for
@@ -278,9 +278,11 @@ Kent's call 2026-10-01, with both sources in front of him. Law 21's own
 surfaced by the card — there is no thread-weight or fabric-weight input to
 escalate on.
 
-**One judgement call that is not Kent's ruling:** terry towel is `sharp`
-because terry is a woven loop pile and Law 21 splits on knit vs woven. No
-source reached here addresses terry by name.
+**Terry towel is the one exception to Law 21's split, and it is Kent's
+ruling (2026-10-01), not a sourced figure:** terry is a woven loop pile, so the
+knit/woven rule says sharp, and it ships `ballpoint` — a ballpoint parts the
+loops instead of cutting them. No source reached here addresses terry by name;
+the basis is shop practice.
 
 **Not a sew-out, and not a gate-1 constant.** A needle recommendation places no
 stitch; nothing in either engine reads it.

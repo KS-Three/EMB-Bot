@@ -81,7 +81,8 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   (standard for 40wt thread)"), and it comes off the fabric preset, so it
   stays inside the line drawn above. Law 21's split — ballpoint on knits,
   sharp on wovens and caps — and canvas stays 75/11 against the specialty
-  table's 80/12, also his call. It prints on the worksheet AND on a hooping
+  table's 80/12, also his call. **Terry is the exception, his too:** woven,
+but ballpoint, so the loops are parted rather than cut. It prints on the worksheet AND on a hooping
   card in the Download sheet, from one function (`EMB.hoopingAdvice`), so the
   two cannot state different advice. Do not read this as licence for gram
   targets: nothing about tension became derivable.

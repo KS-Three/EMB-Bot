@@ -91,7 +91,9 @@ FABRICS: list[Fabric] = [
            "75/11 sharp"),
     Fabric("terry_towel", "Terry towel", 0.6, "double_lattice", "zigzag",
            0.85, 4.0, "High loops; heavy underlay + topping essential.",
-           "cutaway", True, "75/11 sharp"),   # terry is a woven loop pile
+           # Woven, so Law 21 says sharp; Kent ruled ballpoint 2026-10-01 —
+           # it parts the loops instead of cutting them.
+           "cutaway", True, "75/11 ballpoint"),
     Fabric("woven_dress", "Woven dress shirt", 0.2, "edge_run", "center_run",
            1.0, 3.0, "Stable woven; minimal compensation.", "tearaway", False,
            "75/11 sharp"),

@@ -109,7 +109,9 @@
       notes: "High loops; heavy underlay + topping essential.",
       assumedBacking: "cutaway",
       needsTopper: true,
-      needle: "75/11 sharp",   // terry is a WOVEN loop pile, not a knit
+      // Woven, so Law 21's split says sharp — Kent ruled ballpoint
+      // (2026-10-01): it parts the loops instead of cutting them.
+      needle: "75/11 ballpoint",
     },
     {
       id: "woven_dress",
