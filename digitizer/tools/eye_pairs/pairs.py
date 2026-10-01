@@ -10,8 +10,8 @@ import hashlib
 import json
 import os
 import random
-import time
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 SHUFFLE_SEED = 20260917
@@ -118,23 +118,33 @@ def build_pairs(runs: list[ArmRun], seed: int = SHUFFLE_SEED,
     for entry, flip in zip(order, flips):
         entry["flip"] = flip
 
+    # A repeat names its original by KEY — a fixture has one live pair per
+    # arm — and the key becomes a pair id only once ids exist. It used to
+    # hold the original's dict (`"of": orig`) and read `["pair"]` off it
+    # later, which worked only because ids were written onto those same
+    # objects in place: copy the entries anywhere in between and it was a
+    # KeyError (review 2026-09-17). Same draws from `rng`, same output.
+    def key(e: dict) -> tuple[str, str]:
+        return (e["fixture"], e["arm"])
+
     for orig in rng.sample(live, min(n_repeat, len(live))):
-        at = next(i for i, e in enumerate(order) if e is orig)
+        at = next(i for i, e in enumerate(order)
+                  if e["kind"] == "live" and key(e) == key(orig))
         slots = [i for i in range(len(order) + 1) if i not in (at, at + 1)]
         if not slots:
             continue
+        shown = order[at]          # the entry that carries `flip`, found by key
         order.insert(rng.choice(slots),
-                     {"fixture": orig["fixture"], "arm": orig["arm"],
-                      "kind": "repeat", "flip": not orig["flip"], "of": orig,
-                      "design_only": orig["design_only"]})
+                     {"fixture": shown["fixture"], "arm": shown["arm"],
+                      "kind": "repeat", "flip": not shown["flip"],
+                      "design_only": shown["design_only"]})
 
-    for n, entry in enumerate(order, start=1):
-        entry["pair"] = f"P{n:03d}"
+    ids = [f"P{n:03d}" for n in range(1, len(order) + 1)]
+    live_id = {key(e): pid for pid, e in zip(ids, order) if e["kind"] == "live"}
 
     public: list[dict] = []
     sealed: dict[str, dict] = {}
-    for entry in order:
-        pid = entry["pair"]
+    for pid, entry in zip(ids, order):
         left, right = ((entry["arm"], BASE) if entry["flip"]
                        else (BASE, entry["arm"]))
         public.append({"pair": pid, "left": f"{pid}_L.jpg",
@@ -142,7 +152,7 @@ def build_pairs(runs: list[ArmRun], seed: int = SHUFFLE_SEED,
         sealed[pid] = {
             "fixture": entry["fixture"], "left_arm": left, "right_arm": right,
             "kind": entry["kind"],
-            "repeat_of": entry["of"]["pair"] if entry["kind"] == "repeat" else None,
+            "repeat_of": live_id[key(entry)] if entry["kind"] == "repeat" else None,
             "design_only": entry["design_only"],
         }
     return public, sealed, skipped
@@ -162,13 +172,21 @@ def sealed_hash(sealed: dict[str, dict]) -> str:
 CHOICES = ("L", "R", "tie")
 
 
+def now_iso() -> str:
+    """ISO 8601 local time WITH its UTC offset, to the second. A naive stamp
+    cannot be ordered against a commit, a CI log, or a pick made on the far
+    side of a DST change — and picks.jsonl is the one file here that cannot
+    be regenerated (review 2026-09-17)."""
+    return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
 def append_pick(path: str | Path, pair: str, choice: str | None, ms: int,
                 undo_of: str | None = None, ts: str | None = None) -> None:
     """One line per click, flushed to disk before returning. Never rewrites."""
     if undo_of is None and choice not in CHOICES:
         raise ValueError(f"choice must be one of {CHOICES}, got {choice!r}")
     line = {"pair": pair, "choice": None if undo_of else choice, "ms": int(ms),
-            "ts": ts if ts is not None else time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "ts": ts if ts is not None else now_iso(),
             "undo_of": undo_of}
     with open(path, "a", encoding="utf-8") as fh:
         fh.write(json.dumps(line) + "\n")
