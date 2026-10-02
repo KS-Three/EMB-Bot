@@ -391,7 +391,10 @@ def build_generation(
     # reads regardless of which stage 2 path ran.
     classification = classify(image, cfg, forced_class=cfg.forced_class)
 
-    p: Prep = prep(image, cfg)
+    # The class rides into stage 1 for one decision: whether the working grid
+    # applies (`cfg.work_px_per_mm` — line art is traced on it, a photograph
+    # keeps the source line).
+    p: Prep = prep(image, cfg, design_class=classification.class_)
     if dbg:
         debugviz.stage1(dbg, p.rgb, p.bg_mask)
 
@@ -686,6 +689,11 @@ def build_generation(
                 # "strokes" at 0.75), so the photo classes keep today's path
                 # until that residue is understood — byte-identical ON.
                 thin_population=bool(cfg.keep_thin_strokes and classification.class_ == "gradient"),
+                # Gradient-class LOGOS only, like the thin population: the
+                # measurement behind it is a white icon on a sweep (Kent's
+                # Instagram file, 2026-09-30), and the photo classes keep
+                # today's path until a photograph has been looked at.
+                snap_edges=bool(cfg.snap_region_edges and classification.class_ == "gradient"),
             )
             if classification.class_ in (*PHOTO_CLASSES, "gradient")
             else quantize(p, cfg)

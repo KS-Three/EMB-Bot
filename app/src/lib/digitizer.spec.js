@@ -250,12 +250,33 @@ test("edge_cap rides buildDigitizeConfig, and back-fills today's default for pro
   }
 });
 
-test("no per-design class override is sent -- a legacy forced_class or isPhoto is ignored (Kent, 2026-09-30)", async () => {
-  // Until 2026-09-30 a stored `params.forced_class` ("It's flat art") and
-  // `element.isPhoto` ("It's a photo") each rode the config. Kent asked for
-  // the choice to go and the engine to recognise the art itself, so neither
-  // field is read any more: a project saved with them still loads, and
-  // digitizes exactly as a fresh upload of the same art would.
+test("the flat-art switch is sent, and only it: forced_class=flat rides the config (Kent, 2026-09-30 evening)", async () => {
+  // Kent removed both overrides on the morning of 2026-09-30 and brought the
+  // FLAT one back that evening, after his Instagram icon went down the
+  // gradient lane with no way to say otherwise. So a stored
+  // `params.forced_class === "flat"` is sent; any other value is not (the
+  // Studio has no control that writes one), and `isPhoto` stays gone.
+  stubStorage({});
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+  const base = { target_width_mm: 80, max_colors: 6, satin: true, fill_angle_deg: null, border: "off" };
+
+  const flat = buildDigitizeConfig(
+    digitizedElement({ params: { ...base, forced_class: "flat" } }), PROJECT);
+  expect(flat.forced_class).toBe("flat");
+  for (const k of Object.keys(flat)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+
+  for (const stale of ["photo_subject", "photo_scene", "gradient", "", null]) {
+    const cfg = buildDigitizeConfig(
+      digitizedElement({ params: { ...base, forced_class: stale } }), PROJECT);
+    expect("forced_class" in cfg).toBe(false);
+  }
+});
+
+test("a legacy isPhoto is ignored (Kent, 2026-09-30)", async () => {
+  // `element.isPhoto` ("It's a photo") rode the config until 2026-09-30.
+  // The engine's own detection answers that now, so the field is not read:
+  // a project saved with it still loads, and digitizes exactly as a fresh
+  // upload of the same art would.
   stubStorage({});
   const { buildDigitizeConfig } = await import("./digitizer.js");
 
@@ -264,7 +285,7 @@ test("no per-design class override is sent -- a legacy forced_class or isPhoto i
       isPhoto: true,
       params: {
         target_width_mm: 80, max_colors: 6, satin: true,
-        fill_angle_deg: null, border: "off", forced_class: "flat",
+        fill_angle_deg: null, border: "off",
       },
     }),
     PROJECT
@@ -1899,12 +1920,13 @@ test("INPUT_LOW_RESOLUTION falls back to prose when the engine sends no numbers"
   expect(line.text).not.toContain("NaN");
 });
 
-describe("the removed photo/flat override (Kent, 2026-09-30)", () => {
+describe("the removed photo override, and the flat switch that came back (Kent, 2026-09-30)", () => {
   // Spec 2026-08-18 decision 4 gave the Studio an explicit "It's a photo"
   // declaration; defect 15 (2026-09-02) made it send `is_photographic`
   // rather than force the fill tier. On 2026-09-30 Kent removed the choice
   // altogether -- the engine recognises the art -- so an element that still
-  // carries the old fields sends neither, whatever they say.
+  // carries `isPhoto` sends nothing for it. The FLAT switch returned the
+  // same evening and is the one override that is sent.
   it("sends nothing for isPhoto in either state", async () => {
     const { buildDigitizeConfig } = await import("./digitizer.js");
     for (const isPhoto of [true, false]) {
@@ -1913,10 +1935,10 @@ describe("the removed photo/flat override (Kent, 2026-09-30)", () => {
       expect("forced_class" in cfg).toBe(false);
     }
   });
-  it("sends nothing for a stored forced_class either", async () => {
+  it("sends a stored forced_class=flat, and still no is_photographic", async () => {
     const { buildDigitizeConfig } = await import("./digitizer.js");
     const cfg = buildDigitizeConfig({ params: { forced_class: "flat" } });
-    expect("forced_class" in cfg).toBe(false);
+    expect(cfg.forced_class).toBe("flat");
     expect("is_photographic" in cfg).toBe(false);
   });
 });

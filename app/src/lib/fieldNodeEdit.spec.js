@@ -7,7 +7,9 @@ import { createRequire } from "node:module";
 import {
   pxToFieldMm, fieldMmToPx, authoredInFieldMm, hitAuthored,
   applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, clampMmToBox,
+  breaksContainment, ringInsideBox, cutOutOutlinesInFieldMm, CUTOUT_HOLD_HINT, refitShapesPatch,
 } from "./fieldNodeEdit.js";
+import { withCutOut } from "./manualShapes.js";
 
 let EMB, generateElement, garment;
 beforeAll(async () => {
@@ -198,5 +200,133 @@ describe("clampMmToBox — a dragged node stops at the placement box (Kent, 2026
   });
   test("a zero box collapses to the origin", () => {
     expect(clampMmToBox([12, -7], { wMm: 0, hMm: 0 })).toEqual([0, 0]);
+  });
+});
+
+const rect = (id, x0, y0, x1, y1, extra = {}) => ({ id, points: [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }], curves: {}, stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null, ...extra });
+
+describe("cut-outs", () => {
+  const P = rect("s1", 0, 0, 300, 300);
+  const C = rect("s2", 100, 100, 200, 200, { cutOut: true });
+  const cfit = { cxPx: 150, cyPx: 150, mmPerPx: 0.2, offsetXMm: 0, offsetYMm: 0, pxPerMm: 6 };
+
+  test("breaksContainment: dragging a cut-out's corner outside its parent", () => {
+    const moved = applyAnchorDrag(C, 1, { x: 350, y: 100 });
+    expect(breaksContainment([P, C], [P, moved])).toBe(true);
+    expect(breaksContainment([P, C], [P, applyAnchorDrag(C, 1, { x: 250, y: 100 })])).toBe(false);
+  });
+  test("breaksContainment: pulling the parent's edge across its cut-out", () => {
+    const pulled = applyAnchorDrag(P, 0, { x: 180, y: 180 });
+    expect(breaksContainment([P, C], [pulled, C])).toBe(true);
+  });
+  test("breaksContainment: a cut-out that already cut nothing is free to move", () => {
+    const orphan = rect("s2", 400, 400, 450, 450, { cutOut: true });
+    expect(breaksContainment([P, orphan], [P, applyAnchorDrag(orphan, 0, { x: 380, y: 380 })])).toBe(false);
+  });
+  test("editedElementPatch refuses a containment-breaking edit with the hint", () => {
+    const e = { id: "e1", type: "manual", shapes: [P, C], sizeMm: 60, offsetXMm: 0, offsetYMm: 0 };
+    const out = editedElementPatch(e, cfit, "s2", applyAnchorDrag(C, 1, { x: 350, y: 100 }));
+    expect(out).toEqual({ error: CUTOUT_HOLD_HINT });
+  });
+  test("the bbox ignores cut-outs: moving an orphan cut-out far away changes no size or offset", () => {
+    const orphan = rect("s2", 400, 400, 450, 450, { cutOut: true });
+    const e = { id: "e1", type: "manual", shapes: [P, orphan], sizeMm: 60, offsetXMm: 1, offsetYMm: -2 };
+    const out = editedElementPatch(e, cfit, "s2", applyAnchorDrag(orphan, 2, { x: 590, y: 390 }));
+    expect(out.error).toBeUndefined();
+    expect(out.sizeMm).toBeCloseTo(60, 9);
+    expect(out.offsetXMm).toBeCloseTo(1, 9);
+    expect(out.offsetYMm).toBeCloseTo(-2, 9);
+  });
+  test("ringInsideBox tests the FLATTENED curve, not the handle's through point", () => {
+    const sh = { id: "s1", curves: {}, points: [{ x: 0, y: 0 }, { x: 25, y: -100 }, { x: 0, y: -100 }] };
+    const f = { cxPx: 0, cyPx: 0, mmPerPx: 0.2, offsetXMm: 0, offsetYMm: 0, pxPerMm: 6 };
+    const bent = applyHandleDrag(sh, 0, { x: 50, y: -50 });
+    expect(ringInsideBox(sh, f, { wMm: 20, hMm: 40 })).toBe(true);
+    expect(ringInsideBox(bent, f, { wMm: 20, hMm: 40 })).toBe(false);
+    expect(ringInsideBox(bent, f, { wMm: 0, hMm: 0 })).toBe(true);
+  });
+  test("cutOutOutlinesInFieldMm: one entry per cut-out, mapped through the fit, resolved or not", () => {
+    const orphan = rect("s3", 400, 400, 450, 450, { cutOut: true });
+    const out = cutOutOutlinesInFieldMm([P, C, orphan], cfit);
+    expect(out.map((o) => o.id)).toEqual(["s2", "s3"]);
+    expect(out[0].cutOut).toBe(true);
+    expect(out[0].points[0][0]).toBeCloseTo((100 - 150) * 0.2, 9);
+    expect(out[0].points[0][1]).toBeCloseTo((150 - 100) * 0.2, 9);
+  });
+
+  // The Cut out switch on the hoop goes through the same re-fit rule as a node
+  // edit (fix wave, ruling after Task 8): a cut-out emits no region, so marking a
+  // shape OUTSIDE every other one drops it from the engine's bbox — without the
+  // re-fit the element re-fitted to the rest and the remaining shape jumped
+  // (e2e (f): 81x39 -> 81x91 mm). These run the real engine on both sides, and
+  // double as the orphan-bbox engine test: the orphan sits far outside the parent,
+  // so a bbox that counted it would move the parent by tens of mm, not 0.05.
+  describe("refitShapesPatch — the Cut out switch moves nothing else", () => {
+    const parent = rect("s1", 100, 100, 300, 300);
+    const stray = rect("s2", 380, 120, 460, 200, { stitchType: "fill", colorRgb: [200, 0, 0] });
+    const outline = (d) => Object.fromEntries(d.shapeOutlines.map((o) => [o.id, o.points]));
+    function holdsStill(before, patch) {
+      const d0 = generateElement(before, garment, {});
+      const d1 = generateElement({ ...before, ...patch }, garment, {});
+      expect(d1.fit.mmPerPx).toBeCloseTo(d0.fit.mmPerPx, 12);
+      const rx = Math.round(patch.offsetXMm * 10) / 10 - patch.offsetXMm - (Math.round(before.offsetXMm * 10) / 10 - before.offsetXMm);
+      const ry = Math.round(patch.offsetYMm * 10) / 10 - patch.offsetYMm - (Math.round(before.offsetYMm * 10) / 10 - before.offsetYMm);
+      expect(Math.abs(rx)).toBeLessThanOrEqual(0.05 + 1e-9);
+      expect(Math.abs(ry)).toBeLessThanOrEqual(0.05 + 1e-9);
+      const o0 = outline(d0), o1 = outline(d1);
+      expect(o1.s1).toHaveLength(o0.s1.length);
+      o1.s1.forEach((p, i) => { expect(p[0] - o0.s1[i][0]).toBeCloseTo(rx, 6); expect(p[1] - o0.s1[i][1]).toBeCloseTo(ry, 6); });
+      return { d0, d1 };
+    }
+    test("marking the stray shape Cut out: the parent stays put and the scale holds", () => {
+      const before = el([parent, stray]);
+      const d0 = generateElement(before, garment, {});
+      const shapes = [parent, withCutOut(stray, true)];
+      const patch = refitShapesPatch(before, d0.fit, shapes);
+      expect(patch.error).toBeUndefined();
+      expect(patch.shapes).toBe(shapes);
+      expect(patch.sizeMm).toBeCloseTo(200 * d0.fit.mmPerPx, 9); // the width that is left, at the held scale
+      const { d1 } = holdsStill(before, patch);
+      expect(d1.shapeOutlines.map((o) => o.id)).toEqual(["s1"]);
+      // Without the patch the element re-fits to the parent alone: the jump the rule removes.
+      const jumped = generateElement({ ...before, shapes }, garment, {});
+      expect(Math.abs(jumped.fit.mmPerPx / d0.fit.mmPerPx - 1)).toBeGreaterThan(0.2);
+    });
+    test("and turning it off again: the parent stays put and the scale holds", () => {
+      const before = el([parent, withCutOut(stray, true)], { sizeMm: 40 });
+      const d0 = generateElement(before, garment, {});
+      const shapes = [parent, stray];
+      const patch = refitShapesPatch(before, d0.fit, shapes);
+      expect(patch.error).toBeUndefined();
+      expect(patch.sizeMm).toBeCloseTo(360 * d0.fit.mmPerPx, 9);
+      const { d1 } = holdsStill(before, patch);
+      expect(d1.shapeOutlines.map((o) => o.id).sort()).toEqual(["s1", "s2"]);
+    });
+    test("nothing sewn before, or nothing left after: the plain shapes patch (nothing to hold still)", () => {
+      const only = el([parent]);
+      const f0 = generateElement(only, garment, {}).fit;
+      const allCut = [withCutOut(parent, true)];
+      expect(refitShapesPatch(only, f0, allCut)).toEqual({ shapes: allCut });
+      const none = el([withCutOut(parent, true)]);
+      expect(refitShapesPatch(none, f0, [parent])).toEqual({ shapes: [parent] });
+    });
+  });
+
+  test("through the real engine: editing a cut-out moves nothing of its parent (bbox agreement)", () => {
+    const eP = rect("s1", 100, 100, 300, 300), eC = rect("s2", 150, 150, 250, 250, { cutOut: true });
+    const before = el([eP, eC]);
+    const d0 = generateElement(before, garment, {});
+    const o0 = Object.fromEntries(d0.shapeOutlines.map((o) => [o.id, o.points]));
+    const patch = editedElementPatch(before, d0.fit, "s2", applyAnchorDrag(eC, 1, { x: 270, y: 140 }));
+    expect(patch.error).toBeUndefined();
+    const d1 = generateElement({ ...before, ...patch }, garment, {});
+    const o1 = Object.fromEntries(d1.shapeOutlines.map((o) => [o.id, o.points]));
+    expect(d1.fit.mmPerPx).toBeCloseTo(d0.fit.mmPerPx, 12);
+    const rx = Math.round(patch.offsetXMm * 10) / 10 - patch.offsetXMm - (Math.round(before.offsetXMm * 10) / 10 - before.offsetXMm);
+    const ry = Math.round(patch.offsetYMm * 10) / 10 - patch.offsetYMm - (Math.round(before.offsetYMm * 10) / 10 - before.offsetYMm);
+    expect(Math.abs(rx)).toBeLessThanOrEqual(0.05 + 1e-9);
+    expect(Math.abs(ry)).toBeLessThanOrEqual(0.05 + 1e-9);
+    expect(o1.s1).toHaveLength(o0.s1.length);
+    o1.s1.forEach((p, i) => { expect(p[0] - o0.s1[i][0]).toBeCloseTo(rx, 6); expect(p[1] - o0.s1[i][1]).toBeCloseTo(ry, 6); });
   });
 });

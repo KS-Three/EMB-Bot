@@ -10,7 +10,7 @@ import {
   PROJECT_FILE_VERSION,
   SOURCE_MAX_BYTES,
 } from "./projectFile.js";
-import { defaultProject, defaultDigitizedElement, migrateProject, updateElement, addElement } from "./project.js";
+import { defaultProject, defaultDigitizedElement, defaultManualElement, migrateProject, updateElement, addElement } from "./project.js";
 
 // --- round trip ---------------------------------------------------------
 
@@ -28,6 +28,25 @@ test("buildProjectFile -> parseProjectFile round-trips a project and its name lo
   // from this project (parse runs migrateProject, which is idempotent on a
   // current-version project).
   expect(parsed.project).toEqual(migrateProject(project));
+});
+
+test("a manual shape's cutOut flag survives the .embproj round trip, with the file version unchanged", () => {
+  const ring = [{ x: 10, y: 10 }, { x: 60, y: 10 }, { x: 60, y: 60 }, { x: 10, y: 60 }];
+  const manual = {
+    ...defaultManualElement("e9"),
+    shapes: [
+      { id: "s1", points: ring, curves: {}, stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null },
+      { id: "s2", points: ring, curves: {}, stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null, cutOut: true },
+    ],
+  };
+  const base = defaultProject();
+  const project = { ...base, elements: [...base.elements, manual] };
+  const text = buildProjectFile(project, "Holed");
+  expect(JSON.parse(text).version).toBe(PROJECT_FILE_VERSION);
+  const parsed = parseProjectFile(text);
+  const shapes = parsed.project.elements.find((e) => e.id === "e9").shapes;
+  expect(shapes[1].cutOut).toBe(true);
+  expect("cutOut" in shapes[0]).toBe(false);
 });
 
 test("a manual hoop pick survives the .embproj round trip (launch item 2)", () => {

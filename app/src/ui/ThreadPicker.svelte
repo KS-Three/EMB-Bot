@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import { PALETTE_INDEX, STUDIO_PALETTE, getCachedPalette, loadPalette, nearestInList, filterThreads, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
   import Icon from "./Icon.svelte";
+  import ThreadFromPhoto from "./ThreadFromPhoto.svelte";
   import { get } from "svelte/store";
   import { designChartId } from "../lib/designChart.js";
 
@@ -99,13 +100,19 @@
   $: nearest = nearestInList(palette.threads, rgb);
   $: shown = filterThreads(palette.threads, query);
 
+  // "Match from a photo" (ThreadFromPhoto.svelte) lives inside the open
+  // panel and is closed with it, so a reopened picker starts on the grid.
+  let photoOpen = false;
+
   function toggle() {
     open = !open;
+    if (!open) photoOpen = false;
   }
 
   function pick(t) {
     d("pick", t.rgb);
     open = false;
+    photoOpen = false;
     query = "";
   }
 
@@ -118,10 +125,14 @@
   function pickCustom(e) {
     d("pick", fromHex(e.currentTarget.value));
     open = false;
+    photoOpen = false;
   }
 
   function onKeydown(e) {
-    if (open && e.key === "Escape") open = false;
+    if (open && e.key === "Escape") {
+      open = false;
+      photoOpen = false;
+    }
   }
 </script>
 
@@ -197,6 +208,35 @@
         <span>Custom…</span>
         <input type="color" value={toHex(rgb)} on:click|stopPropagation on:change|stopPropagation={pickCustom} />
       </label>
+      <button
+        type="button"
+        class="tp-photo"
+        aria-expanded={photoOpen}
+        on:click|stopPropagation={() => (photoOpen = !photoOpen)}
+      >Match from a photo…</button>
+      {#if photoOpen}
+        <ThreadFromPhoto
+          threads={pending ? [] : palette.threads}
+          chartLabel={palette.label}
+          onpick={pick}
+        />
+      {/if}
     </div>
   {/if}
 </div>
+
+<style>
+  /* Scoped here, not in theme.css: the one rule this picker owns itself. */
+  .tp-photo {
+    margin-top: var(--space-2);
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: inherit;
+    font-size: var(--fs-sm);
+    cursor: pointer;
+  }
+  .tp-photo:hover {
+    border-color: var(--accent);
+  }
+</style>

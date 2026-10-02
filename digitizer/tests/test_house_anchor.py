@@ -178,7 +178,13 @@ def test_on_the_word_sews_square_to_its_line(hotel_default):
 
 
 def test_off_the_word_turned_20_deg_is_further_off_still(hotel_turned):
-    group = _group(_run(hotel_turned, 80.2, satin_house_anchor=False))
+    # `snap_region_edges=False`: this arm documents what the VOTES do to a
+    # turned word without the anchor, measured on superpixel-edged letters.
+    # With the snap ON (2026-09-30) the letters' edges are clean enough that
+    # the votes land on the line by themselves here (159.1 against 160.4),
+    # which is the snap's doing and not a property of the anchor being off.
+    group = _group(_run(hotel_turned, 80.2, satin_house_anchor=False,
+                        snap_region_edges=False))
     line = tc._line_of_text_deg(group)
     assert 15.0 < _angle_gap(line, 0.0) < 25.0, line                            # the turn happened
     assert _angle_gap(_house(group), line) > 15.0, (_house(group), line)        # 25.5 against 160.4

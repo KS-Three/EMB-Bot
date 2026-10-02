@@ -137,6 +137,7 @@ def test_the_halo_extends_only_within_reach_of_the_edge_and_leaves_a_deeper_back
     assert PipelineConfig().alpha_edge_extend_px == 0
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_gated_on_the_upscale_the_extension_runs_under_the_floor_and_not_above_it():
     """`alpha_edge_extend_upscaled_only` (Kent's pick, 2026-09-20, and the
     form he flipped ON): the extension only where stage 1 will upscale — the
@@ -166,6 +167,7 @@ def test_gated_on_the_upscale_the_extension_runs_under_the_floor_and_not_above_i
     assert not np.array_equal(hi_f.rgb, hi_h.rgb)
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_stage_0_reads_the_whole_image_extension_above_the_floor_while_stage_1_keeps_the_gate():
     """`alpha_edge_extend_stage0_whole` (Kent's pick 2026-09-20, ON): above the
     resolution floor, where stage 1's gate is shut, stage 0 still classifies
