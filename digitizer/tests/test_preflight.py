@@ -751,16 +751,18 @@ def test_bridges_script_sews_its_gaps_closed_at_80mm_and_the_finding_says_where_
     assert len(flagged) == 1
     extra = flagged[0]["extra"]
     assert abs(extra["close_mm"] - 1.0) < 1e-6 and extra["fabric"].startswith("Pique")
-    # The teal words (2026-09-30): LETTERING_TOO_SMALL names three blobs of
-    # them, and the artwork -- 400 px, 3.5 px/mm at 80 mm -- cannot carry the
-    # lettering, so the finding says so and names the width at which the
-    # prep's grid could try (the words came back at 140 mm, measured).
+    # The teal words. On the source line (2026-09-30) LETTERING_TOO_SMALL
+    # named three blobs of them and said the artwork -- 400 px, 3.5 px/mm at
+    # 80 mm -- lost them in tracing. On the working grid (ON 2026-10-01) the
+    # prep traces this file at 8 px/mm, the smallest flagged lettering has
+    # 20 grid pixels or more, so it WAS traced and the finding carries no
+    # resolution note. The note itself is held on the source line by
+    # test_lettering_the_artwork_cannot_carry_gets_the_resolution_fact_and_the_two_levers.
     small = [f for f in report["findings"] if f["code"] == LETTERING_TOO_SMALL]
     assert len(small) == 1
-    assert 3.3 <= small[0]["extra"]["input_px_per_mm"] <= 3.7
-    assert "lost in tracing" in small[0]["message"] and "larger source image" in small[0]["message"]
-    assert 100 <= small[0]["extra"]["traced_at_mm"] <= 160
-    script = [s for s in extra["shapes"] if abs(s["width_mm"] - 37.7) < 1.5 and abs(s["height_mm"] - 14.4) < 1.5]
+    assert "input_px_per_mm" not in small[0]["extra"]
+    assert "lost in tracing" not in small[0]["message"]
+    script =[s for s in extra["shapes"] if abs(s["width_mm"] - 37.7) < 1.5 and abs(s["height_mm"] - 14.4) < 1.5]
     assert len(script) == 1, extra["shapes"]
     s = script[0]
     assert 0.2 <= s["tight_frac"] <= 0.5 and s["tight_mm"] >= 10.0

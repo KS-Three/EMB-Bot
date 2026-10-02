@@ -183,6 +183,55 @@ px/mm fixture. The ones that are real costs on synthetics, not moved pins:
 | edge ladder, 400 px ribbon | 1 region | 6 |
 | `region_blobs` (7.15 px/mm) | its photo-lane golden | moves |
 
+## What CI found on the flip, and the ring (2026-10-02)
+
+The flip's PR went red on three tests the local list of 46 did not hold.
+
+**One stated the old grid's truth.** `test_preflight`'s bridge test asserted
+the "lost in tracing" note on `LETTERING_TOO_SMALL`. On the working grid the
+smallest flagged lettering has 20 grid pixels or more, so it was traced and
+the finding carries no note — the behaviour the section below already
+describes. The test now says so; the note is still held on the source line
+by its own test.
+
+**Two were a real regression, in the Studio's own request.** The Studio
+asks for six colours. `app/e2e/fixtures/two-squares.png` — a black and a red
+square on white, 2.0 px/mm at 80 mm — sewed THREE shapes at 8: the red
+square's resampling ramp, a ring 0.125 mm wide and 14.9 mm² in a pink thread
+of its own. At the engine's default of twelve colours the same file sews
+two (measured; why twelve escapes it was not traced).
+
+The cause is the space the phantom-blend test reads. A cluster that is all
+edge pixels is dissolved only if its colour sits BETWEEN two others, within
+`merge_delta_e` of the chord — in Lab. A resize mixes in RGB, and a
+saturated colour running to a light ground is a curve in Lab: the ramp's
+middle, (222, 91, 91), is 11.7 dE off the Lab chord from the red to the
+ground's edge colour and 4.7 off the RGB one (14.2 and 0.1 against true
+white). On the source line the quantizer names that third thread too — the
+ring is half as many pixels wide there and stage 3 absorbs it as a sliver.
+
+**The fix** (`stage2_quantize._quantize_population`, `enlarged_past_line`):
+for a raster the working grid enlarged past the source line, the same
+betweenness test is also read along the RGB segment, the residual still
+judged in Lab against `merge_delta_e`. No new constant. A source on or over
+the line, one held on it, and a hand-built `Prep` are byte-identical — the
+flag is down. It is the flat lane's `quantize()` only: `thin_ink` and the
+enclosed-population call in the gradient lane pass no flag, so everything
+Kent ranked on the pairs page down that lane is unchanged.
+
+The 5 px/mm regime at 8, `main` → with the fix (`tools/lowres_detail.py
+--src 5 --grids 8`, Windows, same machine both arms):
+
+| logo | lane | regions | stitches | trims | agree | fine |
+|---|---|---|---|---|---|---|
+| ENTHUSIAST | flat | 33 → 34 | 2,411 → 2,424 | 15 → 15 | 0.994 → 0.995 | 0.895 → 0.918 |
+| Fremont, golden_tee, screenshot, drone, whitebg, tires | gradient | identical | identical | identical | identical | identical |
+
+Not measured: a flat-lane logo with a real 1–2 pixel feature whose colour
+happens to lie between two others. At 8 px/mm that is 0.125–0.25 mm, under
+anything a stitch can hold, so the rule's reach stops below the sewable
+floor — an argument, not a measurement.
+
 ## Why it was built OFF
 
 Two things measured on 2026-10-01, after the tables above.

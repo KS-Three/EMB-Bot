@@ -17231,3 +17231,29 @@ fires only under 4 px/mm.
 
 *(measured 2026-10-01 — `tools/lowres_detail.py`; `tests/test_work_grid.py`;
 `docs/fine-detail-work-grid-2026-09-30.md`)*
+
+## 2026-10-02 — The flip's red CI: one test on the old grid's truth, and a ring the working grid sewed in its own thread (fixed)
+
+PR #599's `digitizer` and `studio-e2e` jobs failed on three tests outside the
+46 the flip held.
+
+`test_preflight`'s bridge test asserted the "lost in tracing" note; on the
+working grid the lettering is traced and carries none. Restated.
+
+The two e2e failures were one regression. On the Studio's request (six
+colours) `two-squares.png` sewed three shapes at 8 px/mm for two: the red
+square's resampling ramp, a 0.125 mm ring of 14.9 mm² in a pink thread. The
+flat quantizer's phantom-blend test reads betweenness in Lab; a resize mixes
+in RGB, and the ramp's middle is 11.7 dE off the Lab chord and 4.7 off the
+RGB one. Fixed in `stage2_quantize._quantize_population`
+(`enlarged_past_line`): a raster enlarged past the source line is also read
+along the RGB segment, residual still in Lab against `merge_delta_e`. The
+source line, a held run and the gradient lane's callers are untouched.
+
+5 px/mm regime at 8, before → after: ENTHUSIAST (the one flat-lane logo)
+33 → 34 regions, 2,411 → 2,424 stitches, 15 trims both, fine ink 0.895 →
+0.918; the six gradient-lane logos identical.
+
+*(measured 2026-10-02, Windows, same machine both arms —
+`tools/lowres_detail.py --src 5 --grids 8`; `tests/test_work_grid.py`;
+`docs/fine-detail-work-grid-2026-09-30.md`)*
