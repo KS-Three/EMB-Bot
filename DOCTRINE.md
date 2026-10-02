@@ -5675,6 +5675,36 @@ changes nothing.** The control above was run in parallel and still matched
 byte-for-byte, so the pipeline may be fanned out to make a 52-row sweep
 affordable without putting the numbers in question.
 
+**Addendum 2026-10-02: Linux on Kent's laptop is not that Linux.** The same
+control was run under WSL2 on the Windows box (Ubuntu 24.04, `python3.12`,
+the pinned `requirements.txt`, apt `tesseract-ocr` 5.3.4, no
+`rembg_isolated/venv`): all 52 rows at `2c60cd87`, the baseline's own
+`captured_at_commit`, against the baseline `origin/main` carries.
+
+- **The OCR half reproduces.** 47 of 52 rows are identical leaf for leaf,
+  and every legibility row is among them, including the five designs whose
+  OCR moved on Windows on 09-15.
+- **`photo/photo_grass_macro.png` does not.** left_chest score 10 → 22,
+  `TRIM_HEAVY:warn` gone, `link_thread_mm` 0.6 → 1.7,
+  `uncovered_total_mm2` 407.8 → 432.2; hat_front `uncovered_total_mm2`
+  460.2 → 499.2. The tool reports both rows and exits 0, since no grade
+  fell and no block finding appeared. `link_thread_mm` 1.7 is the value
+  Windows gave for that row on 09-15.
+- **Three more rows move under the noise floor:** `region_blobs` (both
+  garments) and `repro_gradient_white_icon` hat_front, by two stitches in
+  about twenty thousand or 0.001 of `same_hole_fraction`.
+- **The drift is deterministic and its cause is not found.** The five rows
+  came out byte-identical across two serial runs, a 6-worker pool, 8 / 4 /
+  1 cores, and with AVX2 and FMA disabled in numpy and OpenCV. What is
+  left is the machine (Ryzen 7 4700U) or a library those switches do not
+  reach; neither was tested.
+
+**So "capture on Linux" means cloud Linux or CI, not WSL on this laptop.**
+The box is still worth using for a `diff` whose OCR rows can be trusted,
+with `photo_grass_macro` ignored; the recipe is COOKBOOK "The WSL scorecard
+box on Kent's laptop". *(measured 2026-10-02 — WSL 3.0.1, kernel
+6.18.40.1; one machine, one commit)*
+
 ## A cost measured at one width is not a cost (2026-09-12)
 
 `cfg.edge_cap="bean"` was flipped ON 2026-09-11 on `+5.9–26.3%, median +13.4%`
