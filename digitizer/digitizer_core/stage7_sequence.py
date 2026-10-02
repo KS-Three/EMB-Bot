@@ -59,8 +59,10 @@ from . import machine, stitches
 from .config import PipelineConfig
 from .fabrics import Fabric
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
+from .beanletters import BEAN_LETTER_KEY
 from .stage5_overlap import PlannedRegion, widened_lettering
 from .stage6_applique import applique_pass, nn_group_key
+from .stage6_beanletter import bean_letter
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
@@ -85,6 +87,7 @@ from .warnings_codes import (BLEND_NO_REGIONS_DECOMPOSED, BORDER_LIGHTENED,
                              HAIRLINE_STROKES_AS_RUN,
                              LONG_JUMPS_TRIMMED,
                              SHAPE_NOT_STITCHED, SHAPE_TOO_THIN_TO_FILL,
+                             SMALL_LETTERING_AS_BEAN,
                              SMALL_SHAPES_AS_RUN, warn)
 
 
@@ -298,6 +301,8 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
     tier = str(region.meta.get("tier", "auto")).lower()
     if tier == "satin":
         return True
+    if tier == "auto" and region.meta.get(BEAN_LETTER_KEY):
+        return False        # a bean letter (`beanletters.tag_bean_letters`): runs, not columns
     satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm)
     return (tier == "auto" and cfg.satin
             and classify_ribbon(region.polygon, satin_max_mm,
@@ -1788,6 +1793,8 @@ def sequence(
     brick = technique == "brick"
 
     thin = empty = jumps = as_run = 0
+    bean_letters = 0
+    bean_words: set = set()
     hairline_runs = hairline_shapes = 0
     bordered = lightened = border_narrow = 0
     rings_skipped = starved = 0
@@ -1928,6 +1935,20 @@ def sequence(
             # sews as a bean run instead — on the ARTWORK polygon, because a
             # run does not pull fabric and compensation would fatten a
             # thread-width stroke past its own letterform (see `run_outline`).
+            # Bean letters first (`cfg.bean_letter_max_stroke_mm`, 2026-10-02):
+            # small lettering whose INK is under the line carries the paths
+            # of that ink, and sews them. Ahead of the run rung because that
+            # one traces the OUTLINE of the traced blob, which is the shape
+            # the ink reading exists to get behind. "auto" only -- a tier the
+            # user set is an instruction. Nothing sewable falls through to
+            # the ladder below, exactly as every rung does.
+            if tier == "auto" and p.region.meta.get(BEAN_LETTER_KEY):
+                runs, report = bean_letter(p.region.meta[BEAN_LETTER_KEY], p.shape_id,
+                                           entry=entry, trim_at_mm=trim_at)
+                if not report["empty"]:
+                    report["bean_letter"] = 1
+                    report["bean_word"] = p.region.meta.get("text_cluster_id")
+                    return runs, report, False
             outline_tried = False
             if routes_to_run(p, tier):
                 runs, report = run_outline(p.region.polygon, p.shape_id,
@@ -2559,6 +2580,9 @@ def sequence(
             thin += int(filled and report["too_thin"])
             jumps += report["jumps"]
             as_run += report.get("as_run", 0)
+            if report.get("bean_letter"):
+                bean_letters += 1
+                bean_words.add(report.get("bean_word"))
             if report.get("hairline_runs"):
                 hairline_runs += report["hairline_runs"]
                 hairline_shapes += 1
@@ -2858,6 +2882,17 @@ def sequence(
                 "to hold a fill or satin — or too narrow to satin safely — "
                 "and sewed as a light outline run instead.",
                 count=as_run,
+            )
+        )
+    if bean_letters:
+        warnings.append(
+            warn(
+                SMALL_LETTERING_AS_BEAN,
+                f"Small lettering ({bean_letters} shape{'s' if bean_letters != 1 else ''}) "
+                "was sewn as a fine run stitch along each letter instead of satin, "
+                "so the letters stay open and readable at this size.",
+                count=bean_letters,
+                words=len(bean_words),
             )
         )
     if hairline_runs:

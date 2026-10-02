@@ -407,6 +407,31 @@ def resolve_overlaps(
         later[L] = running
         running = geom_by_layer[L] if running is None else running.union(geom_by_layer[L])
 
+    # Bean letters (`cfg.bean_letter_max_stroke_mm`): a letter sewn as a
+    # 0.4 mm line of thread along its ink no longer covers the hole its traced
+    # shape left in the ground, so the ground it stands on sews THROUGH -- the
+    # whole letter joins the one earlier shape it shares the most edge with.
+    # No tag, no entry: byte-identical.
+    ground_under: dict = {}
+    for b_ in regions:
+        if (not b_.meta.get("bean_letter_spines")
+                or str(b_.meta.get("tier", "auto")).lower() != "auto"):
+            continue
+        edge = b_.polygon.boundary
+        best, best_len = None, 0.0
+        for r_ in regions:
+            if (r_ is b_ or r_.meta["layer"] >= b_.meta["layer"]
+                    or not r_.meta.get("stitched", True)):
+                continue
+            if r_.polygon.distance(b_.polygon) > 0.1:
+                continue
+            shared = edge.intersection(r_.polygon.buffer(0.1)).length
+            if shared > best_len:
+                best, best_len = r_, shared
+        if best is not None:
+            ground_under.setdefault(best.shape_id, []).append(b_.polygon)
+    ground_under = {k: unary_union(v).buffer(0.1) for k, v in ground_under.items()}
+
     planned: list[PlannedRegion] = []
     holes_held = 0
     # The shapes, not just how many. A count answers "did anything go wrong";
@@ -429,6 +454,10 @@ def resolve_overlaps(
                 reach = poly.buffer(pull + overlap).intersection(later[L])
                 if not reach.is_empty:
                     grown = grown.union(reach)
+
+            under = ground_under.get(r.shape_id)
+            if under is not None:
+                grown = grown.union(under)
 
             # Hold open the bare fabric between this shape and any neighbour on
             # the same thread. Nothing else separates them: they share a colour,
@@ -499,6 +528,8 @@ def resolve_overlaps(
                 hole = Polygon(ring)
                 if hole.area < hole_floor:
                     continue           # already below the floor; stage 3's call
+                if under is not None and hole.buffer(-0.05).within(under):
+                    continue           # a bean letter's hole: sewn through, on purpose
                 if _shrink(hole, pull, axis).area < hole_floor:
                     held.append(hole)
             if held:

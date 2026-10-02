@@ -1277,6 +1277,23 @@ class PipelineConfig:
     # / 31. False is the pre-flip engine byte for byte: a text-cluster
     # member over the ceiling fills.
     satin_lettering_split: bool = True
+    # Bean letters (2026-10-02, `docs/superpowers/specs/2026-10-02-bean-letters-
+    # design.md`; Kent: "the tool needs the ability to identify the image it's
+    # being given and follow a path to produce the best output possible").
+    # A text cluster whose INK strokes are narrower than this many millimetres
+    # sews as three-pass bean runs along the skeleton of its source ink
+    # (`ink_path`, `beanletters`, `stage6_beanletter`) instead of as satin: at
+    # 0.7 mm a letter's counters close under pull compensation and the thread's
+    # own width, and bridge's "RESTAURANT" sewed as one satin blob per letter.
+    # The width is read from the ink, not from `text_cluster_stroke_mm`, which
+    # read 0.38 for HOTEL FREMONT's 0.67 mm strokes. A cluster holding two
+    # weights (Golke's bold line over its thin one) decides each separately.
+    # None is the engine before the knob, byte for byte. Built OFF; the
+    # intended value is 1.0 -- Kent's pick, a ROADMAP gate-1 number he set
+    # without cloth -- and the flip is his, on stitch renders
+    # (`tools/bean_letters.py`). At 1.0 Fremont's main wordmark goes bean at
+    # 80 mm: that is the rule as ruled, and the render is where he sees it.
+    bean_letter_max_stroke_mm: float | None = None
     # The bold-letter junction sewn as the pro sews it (junction construction
     # plan `2026-09-19-junction-construction.md`; Kent's ruling: A + B + C as
     # one flag). A: a weld through a node is REFUSED past
