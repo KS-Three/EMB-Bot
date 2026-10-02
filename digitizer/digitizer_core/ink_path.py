@@ -38,8 +38,10 @@ INK_THRESHOLD = 0.55
 INK_REACH_MM = 0.35
 # The ground colour is read from pixels at least this far from every member.
 INK_GROUND_CLEAR_MM = 0.8
-# A skeleton branch with a free end shorter than this is a spur.
-INK_MIN_BRANCH_MM = 0.6
+# A skeleton branch with a free end shorter than this (before its end is
+# carried out, below) is a corner spur, not an arm. At 0.6 it took bridge's E
+# middle arm, whose skeleton is 0.47 mm.
+INK_MIN_BRANCH_MM = 0.3
 # The crop round the cluster.
 _PAD_MM = 1.0
 # Smoothing of the inkness before the threshold, against JPEG blocks.
@@ -57,6 +59,27 @@ class MemberInk:
 def _length(pts) -> float:
     a = np.asarray(pts, np.float64)
     return float(np.hypot(*np.diff(a, axis=0).T).sum()) if len(a) > 1 else 0.0
+
+
+def _carry_out(end, inward, width: np.ndarray) -> tuple[float, float]:
+    """`end` moved outward by the ink's half-width there, along the direction
+    from a point about one half-width back down the spine (`inward` runs from
+    the end into the stroke). Working pixels throughout."""
+    h, w = width.shape
+    ex, ey = end
+    r = float(width[min(h - 1, max(0, int(round(ey)))), min(w - 1, max(0, int(round(ex))))])
+    if r <= 0.0 or not inward:
+        return end
+    back = inward[-1]
+    for q in inward:
+        if np.hypot(q[0] - ex, q[1] - ey) >= r:
+            back = q
+            break
+    dx, dy = ex - back[0], ey - back[1]
+    n = float(np.hypot(dx, dy))
+    if n <= 1e-9:
+        return end
+    return (ex + dx / n * r, ey + dy / n * r)
 
 
 def read_cluster_ink(p, members: list) -> list[MemberInk]:
@@ -151,10 +174,17 @@ def read_cluster_ink(p, members: list) -> list[MemberInk]:
         edges = [e for e in _skeleton_edges(skel) if len(e["pts"]) >= 2]
         spines = []
         for e in edges:
-            pts = [((x / up + X0 - cx) / ppm, (y / up + Y0 - cy) / ppm) for x, y in e["pts"]]
+            px = [(float(x), float(y)) for x, y in e["pts"]]
             spur = (e["free_start"] or e["free_end"]) and not e["closed"]
-            if spur and len(edges) > 1 and _length(pts) < INK_MIN_BRANCH_MM:
+            if spur and len(edges) > 1 and _length(px) / S < INK_MIN_BRANCH_MM:
                 continue
-            spines.append(pts)
+            # A skeleton stops half a stroke short of a free end; carry it out
+            # to the ink's edge along its own last stretch.
+            if not e["closed"]:
+                if e["free_start"]:
+                    px.insert(0, _carry_out(px[0], px[1:], width))
+                if e["free_end"]:
+                    px.append(_carry_out(px[-1], px[-2::-1], width))
+            spines.append([((x / up + X0 - cx) / ppm, (y / up + Y0 - cy) / ppm) for x, y in px])
         out.append(MemberInk(stroke_mm=stroke_mm, spines=spines))
     return out

@@ -95,6 +95,17 @@ def test_the_ink_keeps_the_counters_a_blob_does_not():
     assert ink.stroke_mm == pytest.approx(0.7, abs=0.25)
 
 
+def test_a_short_arm_reaches_the_end_of_its_ink():
+    """A skeleton stops half a stroke short of every free end, which left
+    bridge's E with a 0.47 mm middle arm that two length floors then dropped
+    (it sewed as a C). Free ends are carried out to the ink's edge."""
+    (ink,), (cx, cy) = _read(E, E_BOX)
+    middle = [x + cx for s in ink.spines for x, y in s if 1.2 <= y + cy <= 1.9]
+    assert middle and max(middle) >= 2.1
+    stem = [y + cy for s in ink.spines for x, y in s if x + cx <= 0.7]
+    assert min(stem) <= 0.45 and max(stem) >= 2.65
+
+
 def test_a_cutout_reads_its_ink_from_alpha_and_agrees_with_the_white_ground():
     (white,), _ = _read(E, E_BOX)
     (cut,), (cx, cy) = _read(E, E_BOX, cutout=True)

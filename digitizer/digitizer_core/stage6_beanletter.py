@@ -21,10 +21,14 @@ from . import machine, stitches
 from .stage6_satin import _bean_along
 from .stitches import StitchRun
 
-# A spine shorter than this is under two bean stations: the needle would be
-# re-entering its own holes (`run_outline` holds a ring to RUN_MIN_LOOP_MM;
-# an open spine is sewn there and back, so half of it).
+# A LETTER whose spines total less than this is under two bean stations:
+# the needle would be re-entering its own holes (`run_outline` holds a ring to
+# RUN_MIN_LOOP_MM; an open spine is sewn there and back, so half of it).
 _MIN_SPINE_MM = machine.RUN_MIN_LOOP_MM / 2.0
+# One spine of a letter that clears the floor sews if it holds one bean
+# stitch. Bridge's E (2026-10-02): its middle arm is under a millimetre, and a
+# per-spine floor of _MIN_SPINE_MM sewed the letter as a C.
+_MIN_ARM_MM = machine.BEAN_STITCH_MM
 
 
 def _length(pts) -> float:
@@ -47,7 +51,9 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
     report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False,
               "arcs": 0, "yielded": 0, "strokes": 0}
     todo = [list(map(tuple, s)) for s in (spines or [])
-            if len(s) >= 2 and _length(s) >= _MIN_SPINE_MM]
+            if len(s) >= 2 and _length(s) >= _MIN_ARM_MM]
+    if sum(_length(s) for s in todo) < _MIN_SPINE_MM:
+        todo = []
     runs: list[StitchRun] = []
     cursor = entry
     while todo:

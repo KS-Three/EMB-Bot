@@ -54,6 +54,14 @@ def test_separate_strokes_jump_and_a_far_one_trims():
     assert sum(r.trim for r in runs) == 0
 
 
+def test_a_short_arm_beside_a_stroke_is_sewn():
+    """An E's middle arm at bridge's size is under a millimetre. It is part
+    of a letter that clears the floor, so it sews."""
+    arm = [(0.0, 2.5), (0.8, 2.5)]
+    _runs, report = bean_letter([STEM, arm], "E", entry=None, trim_at_mm=3.0)
+    assert report["strokes"] == 2
+
+
 def test_a_speck_is_skipped_and_nothing_sewable_reports_empty():
     speck = [(0.0, 0.0), (0.3, 0.0)]
     runs, report = bean_letter([STEM, speck], "I", entry=None, trim_at_mm=3.0)
