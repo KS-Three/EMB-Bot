@@ -1,5 +1,6 @@
 import os
 import shutil
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -79,6 +80,54 @@ def tiny_logo(tmp_path_factory) -> Path:
     """`draw_tiny_logo` on disk as `tiny.png`, once per session. Read-only:
     a test that needs to change it draws its own under `tmp_path`."""
     return draw_tiny_logo(tmp_path_factory.mktemp("tiny_logo") / "tiny.png")
+
+@contextmanager
+def held_on_source_line():
+    """The tracing grid as it was before `cfg.work_px_per_mm` went ON
+    (Kent's flip, 2026-10-01): a low-resolution source enlarged to
+    `min_px_per_mm` and no further.
+
+    For a test whose NUMBERS were read on that grid and whose subject is
+    something else — a golden, a census, a threshold on a 6-7 px/mm
+    synthetic. Under the working grid the fixture is a different raster and
+    the pinned number is no longer the thing the test is about; the rule is
+    the one `alpha_edge_extend`'s flip set ("a test whose numbers were read
+    on the pre-flip engine holds OFF"). It patches the three readers of the
+    grid rather than a config, so it also reaches a run whose
+    `PipelineConfig` is built inside a tool. Not for a test ABOUT the grid:
+    `tests/test_work_grid.py` passes `work_px_per_mm` itself.
+
+    Two spellings. A test that digitizes for itself wears the
+    `source_line_grid` fixture below. A run SHARED between tests — a
+    module-scoped fixture, an `lru_cache`d digitize — wraps the run in this
+    context instead, because a function-scoped patch arrives after a
+    module-scoped fixture has already been built and a cache hands one
+    test's raster to the next.
+
+    A few of the tests that hold it are real costs of the flip and not just
+    moved pins — `gradient_ramp_radial` sews two regions for one on the
+    working grid, the face-local split four for two.
+    `docs/fine-detail-work-grid-2026-09-30.md` lists them."""
+    from digitizer_core import alpha_edge, preflight, stage1_prep
+
+    def line(cfg, class_=None):
+        return float(cfg.min_px_per_mm)
+
+    patch = pytest.MonkeyPatch()
+    try:
+        for mod in (stage1_prep, alpha_edge, preflight):
+            patch.setattr(mod, "work_grid_px_per_mm", line)
+        yield
+    finally:
+        patch.undo()
+
+
+@pytest.fixture
+def source_line_grid():
+    """`held_on_source_line` for the length of one test."""
+    with held_on_source_line():
+        yield
+
 
 # The real-read OCR tests skip when the tesseract binary is absent — but
 # never on CI, where the workflow apt-installs it: if that provisioning is

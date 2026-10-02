@@ -352,6 +352,7 @@ def test_the_review_payload_carries_the_stitch_width_block(client):
     ("art/logo_hotel_fremont_patch.png", False),
     ("art/logo_golke_roofing.png", True),
 ])
+@pytest.mark.usefixtures("source_line_grid")
 def test_with_nothing_asked_the_pass_changes_no_stitch_on_real_lettering(art, moves_when_on):
     """Two real-lettering fixtures with detected words, so the equality here
     is not vacuous: with the flag off, the plan is the plan without the pass.

@@ -279,6 +279,7 @@ def test_busy_gradient_fixtures_land_inside_the_accept_band(fixture):
 
 
 @pytest.mark.parametrize("fixture", ["gradient_ramp_linear.png", "gradient_ramp_radial.png"])
+@pytest.mark.usefixtures("source_line_grid")
 def test_simple_gradient_ramps_are_not_over_merged(fixture):
     """The other half of the retune's own validation: a clean 2-color
     gradient badge must not collapse to FEWER regions than its real content
@@ -883,6 +884,7 @@ def test_a_fitting_design_ramp_makes_the_linear_ramp_one_region():
     assert len(result.regions) == 1
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_a_fitting_radial_design_ramp_makes_the_radial_ramp_one_region():
     """`gradient_ramp_radial.png` is one sweep too — rings, not a plane.
     Until 2026-09-04 the design ramp declined it (linear fits at r² 0.00)

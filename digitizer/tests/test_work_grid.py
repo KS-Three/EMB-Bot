@@ -143,13 +143,12 @@ def _disc_on_white(px: int) -> np.ndarray:
     return cv2.resize(big, (px + 80, px + 80), interpolation=cv2.INTER_AREA)
 
 
-def test_the_knob_ships_off_and_off_is_the_engine_before_it():
-    """Built OFF (the flip is Kent's, on renders): the default traces a
-    low-resolution source on `min_px_per_mm` exactly as before, including the
-    one odd path the old code had — an `upscale_cap` of 1 still records the
-    native raster and still warns."""
-    assert PipelineConfig().work_px_per_mm is None
-    p = prep(_band(280), _cfg(upscale_cap=1.0))
+def test_the_grid_ships_at_eight_and_none_is_still_the_engine_before_it():
+    """ON at 8.0 since Kent's flip (2026-10-01, on renders). `None` remains
+    the engine before the knob, including the one odd path the old code had —
+    an `upscale_cap` of 1 still records the native raster and still warns."""
+    assert PipelineConfig().work_px_per_mm == 8.0
+    p = prep(_band(280), _cfg(work_px_per_mm=None, upscale_cap=1.0))
     assert p.px_per_mm == pytest.approx(3.5) and p.native_rgb is not None
     assert _low_res(p) is not None
 
@@ -257,3 +256,56 @@ def test_bridges_teal_words_survive_tracing_on_the_working_grid():
     assert sum(r.area_mm2 for r in after) >= sum(r.area_mm2 for r in before) + 25.0
     assert len(after) >= 9
     assert sum(r.area_mm2 for r in after) >= 100.0
+
+
+# --- the enlargement's edge ramp is a blend, not a thread (2026-10-02) -------
+
+def _two_squares(path: Path) -> Path:
+    """`app/e2e/fixtures/two-squares.png` drawn here: a black and a red
+    60 px square on white, 200 x 100 — 160 px of artwork, 2.0 px/mm at
+    80 mm."""
+    import cv2
+    art = np.full((100, 200, 3), 255, np.uint8)
+    art[20:80, 20:80] = (0, 0, 0)
+    art[20:80, 120:180] = (0, 0, 204)     # BGR
+    cv2.imwrite(str(path), art)
+    return path
+
+
+def test_an_enlarged_edge_ramp_is_not_sewn_as_its_own_thread(tmp_path):
+    """The Studio's own request (six colours) on the working grid sewed three
+    shapes for two: the red square's resampling ramp, a 0.125 mm ring of
+    14.9 mm² in a pink thread. CI's studio-e2e caught it on the flip's PR."""
+    from digitizer_core.pipeline import digitize
+
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="tote", max_colors=6, work_px_per_mm=8.0)
+    result, _plan = digitize(_two_squares(tmp_path / "two.png"), cfg)
+    assert len(result.regions) == 2
+    assert all(r.area_mm2 == pytest.approx(900.0, abs=2.0) for r in result.regions)
+
+
+def test_the_ramp_is_read_along_rgb_only_past_the_source_line(tmp_path):
+    """What dissolves it, and that nothing else moved: the ramp's middle is
+    off the Lab chord between the red and the ground and on the RGB one, and
+    `_quantize_population` reads the RGB one only for a raster the working
+    grid enlarged past the source line. The same raster with the flag down
+    keeps the ring as a third thread — the test as it was.
+
+    On the source line the quantizer is untouched and STILL names that third
+    thread (216, 44, 48); there the ring is half as many pixels wide and
+    stage 3 absorbs it as a sliver, which is why two shapes always sewed."""
+    from digitizer_core.stage2_quantize import _quantize_population, quantize
+
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="tote", max_colors=6, work_px_per_mm=8.0)
+    p = prep(_two_squares(tmp_path / "two.png"), cfg)
+    assert p.px_per_mm > max(p.input_px_per_mm, cfg.min_px_per_mm)
+    h, w = p.rgb.shape[:2]
+    args = (p.rgb.reshape(-1, 3), ~p.bg_mask, h, w, cfg, p.bg_edge_rgb)
+    assert len(_quantize_population(*args)[1]) == 3
+    assert len(_quantize_population(*args, enlarged_past_line=True)[1]) == 2
+    assert len(quantize(p, cfg).thread_indices) == 2
+
+    held = PipelineConfig(target_width_mm=80.0, garment_id="tote", max_colors=6, work_px_per_mm=None)
+    on_line = prep(_two_squares(tmp_path / "two.png"), held)
+    assert on_line.px_per_mm == pytest.approx(held.min_px_per_mm)
+    assert len(quantize(on_line, held).thread_indices) == 3

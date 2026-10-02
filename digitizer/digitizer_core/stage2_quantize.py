@@ -162,6 +162,7 @@ def _quantize_population(
     w: int,
     cfg: PipelineConfig,
     bg_edge_rgb: np.ndarray | None,
+    enlarged_past_line: bool = False,
 ) -> tuple[np.ndarray, list[int], list[dict]]:
     """Fit -> assign -> anti-alias cleanup -> spool-snap, over exactly the
     pixels in `valid`. This is the entire body `quantize()` has always run,
@@ -169,6 +170,19 @@ def _quantize_population(
     (see `quantize`) without either one's clustering, majority-filter
     voting, or phantom-blend dissolve ever comparing against — or being
     reassigned into — a cluster the other population produced.
+
+    `enlarged_past_line` (2026-10-02, the working grid's flip): the raster
+    was enlarged past the source line, so a shape's edge is a resampling
+    ramp several pixels deep instead of one anti-aliased pixel. That ramp is
+    a straight line in RGB — the space the resize mixes in — and a CURVE in
+    Lab, far enough off the chord for a saturated colour on a light ground
+    that the Lab test below misses its middle (two-squares.png at 8 px/mm
+    and six colours: the red square's ramp centre (222, 91, 91) sits 11.7 dE
+    off the Lab chord from the red to the ground's edge colour and 4.7 off
+    the RGB one — 14.2 and 0.1 against true white — and sewed as a 0.125 mm
+    pink ring in its own thread). True adds the same betweenness test read
+    along the RGB segment, the residual still judged in Lab against
+    `merge_delta_e`. False is the test as it always was, byte-identical.
 
     -> (labels (h, w) int32, -1 outside `valid`; final spool indices, one
     per output label; warnings).
@@ -198,6 +212,15 @@ def _quantize_population(
         else None
     )
 
+    # Each cluster's mean RGB, for the RGB-segment test (`enlarged_past_line`).
+    mean_rgb: dict[int, np.ndarray] = {}
+    if enlarged_past_line:
+        flat_labels = labels.reshape(-1)
+        for j in range(k):
+            members = flat_labels == j
+            if members.any():
+                mean_rgb[j] = flat_rgb[members].astype(np.float64).mean(axis=0)
+
     keep: list[int] = []
     phantom: list[int] = []
     for j in range(k):
@@ -212,7 +235,8 @@ def _quantize_population(
         # High edge fraction: dissolve ONLY if this color is colorimetrically
         # BETWEEN two other colors (a true anti-alias blend). An edge-fraction
         # test alone would also delete legitimately tiny real-color features.
-        endpoints = [centers[o] for o in range(k) if o != j and (valid & (labels == o)).any()]
+        others = [o for o in range(k) if o != j and (valid & (labels == o)).any()]
+        endpoints = [centers[o] for o in others]
         if bg_endpoint is not None:
             endpoints.append(bg_endpoint)
         blend = False
@@ -231,6 +255,28 @@ def _quantize_population(
                     break
             if blend:
                 break
+        if not blend and enlarged_past_line:
+            ends_rgb = [mean_rgb[o] for o in others]
+            if bg_edge_rgb is not None:
+                ends_rgb.append(np.asarray(bg_edge_rgb, np.float64).reshape(3))
+            rj = mean_rgb[j]
+            lab_j = rgb_to_lab(rj.reshape(1, 3))[0]
+            for a in range(len(ends_rgb)):
+                for b in range(a + 1, len(ends_rgb)):
+                    ra, rb = ends_rgb[a], ends_rgb[b]
+                    ab = rb - ra
+                    L = float(np.dot(ab, ab))
+                    if L <= 0:
+                        continue
+                    t = float(np.dot(rj - ra, ab)) / L
+                    if not (0.15 < t < 0.85):
+                        continue
+                    on_chord = rgb_to_lab((ra + t * ab).reshape(1, 3))[0]
+                    if np.linalg.norm(lab_j - on_chord) < cfg.merge_delta_e:
+                        blend = True
+                        break
+                if blend:
+                    break
         (phantom if blend else keep).append(j)
 
     if phantom:
@@ -351,13 +397,21 @@ def quantize(p: Prep, cfg: PipelineConfig) -> Quant:
     has_enclosed = enclosed is not None and enclosed.any()
     base_valid = valid & ~enclosed if has_enclosed else valid
 
+    # The working grid took this raster past the line a low-resolution source
+    # was always enlarged to (`cfg.min_px_per_mm`): its edges are resampling
+    # ramps, and the phantom-blend test reads them in RGB as well as Lab. A
+    # source at or above the line, or one held on it, is exactly as before —
+    # and so is a Prep built by hand, which records no input resolution (0.0).
+    source_px = float(p.input_px_per_mm or 0.0)
+    enlarged = source_px > 0.0 and float(p.px_per_mm) > max(source_px, float(cfg.min_px_per_mm)) + 1e-6
+
     base_labels, base_spools, warnings = _quantize_population(
-        flat_rgb, base_valid, h, w, cfg, p.bg_edge_rgb
+        flat_rgb, base_valid, h, w, cfg, p.bg_edge_rgb, enlarged_past_line=enlarged
     )
 
     if has_enclosed:
         enc_labels, enc_spools, enc_warnings = _quantize_population(
-            flat_rgb, enclosed, h, w, cfg, p.bg_edge_rgb
+            flat_rgb, enclosed, h, w, cfg, p.bg_edge_rgb, enlarged_past_line=enlarged
         )
         warnings = warnings + enc_warnings
         base_k = len(base_spools)

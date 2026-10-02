@@ -190,6 +190,7 @@ def test_the_drone_left_the_broken_set_through_the_alpha_extension_not_a_recalib
     assert _classify_at(TESTDATA / rel, 250, tmp_path) == native
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_enthusiast_s_sweep_flip_was_the_gate_s_boundary_and_stage_0_s_whole_image_read_removes_it(tmp_path):
     """The record behind `FLIPS_ACROSS_SWEEP` being empty, executable: with
     stage 0 held to the gate (`alpha_edge_extend_stage0_whole=False`)
