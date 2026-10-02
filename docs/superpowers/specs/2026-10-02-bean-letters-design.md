@@ -92,11 +92,22 @@ score (`digitizer_core/legibility.py`), before and after.
 
 ## Design
 
-**The rule.** Text-cluster members are grouped into LINES of text. A line whose
-median ink stroke width is under `cfg.bean_letter_max_stroke_mm` sews every
-member as bean runs along the skeleton of its SOURCE INK: no satin, no
-underlay, no pull compensation. A line switches together; two lines of one
-cluster decide separately.
+**The rule.** A text cluster's members are grouped by STROKE WEIGHT. A group
+whose median ink stroke width is under `cfg.bean_letter_max_stroke_mm` sews
+every member as bean runs along the skeleton of its SOURCE INK: no satin, no
+underlay, no pull compensation. A group switches together.
+
+*Amended during the build (2026-10-02):* this said "lines of text". Bridge's
+words run on an arc and Golke's word gaps equal its line gap, so a geometric
+line splitter had no clean rule, while the quantity being decided is the
+weight. A cluster splits in two only where its natural two-way split of
+per-letter widths leaves at least three members each side and the line falls
+between the two medians (`beanletters.weight_groups`); otherwise its median
+decides for all of it. Same outcome on the four measured logos.
+
+**The ground.** A bean letter no longer covers the hole its traced shape left
+in the ground beneath it, so that ground sews through: the letter joins the
+one earlier shape it shares the most edge with (`stage5_overlap`).
 
 1. **Ink reading — new module `ink_path.py`.** For one line: the inkness
    raster (ground-to-ink colour projection; the foreground alpha for a
