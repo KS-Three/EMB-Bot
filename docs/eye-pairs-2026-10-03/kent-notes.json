@@ -1,0 +1,100 @@
+{
+ "exported": "2026-10-03T16:38:00Z",
+ "artifact": "https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp",
+ "page_built": "2026-10-03",
+ "sitting": "off-flags-1003",
+ "pairs": 19,
+ "note": "The built-OFF sitting's store, read back with ArtifactData (the 19 <arm>__<fixture>__off-flags-1003 docs; the 140 older docs are still in the store and exported in ../eye-pairs-2026-09-28/ and ../eye-pairs-2026-09-30/). All 19 judged in seven minutes, 16:29Z to 16:36Z. No per-arm ruling was set on the page; the rulings collection holds nothing under this tag.",
+ "tally": {
+  "bean_letters": {"after": 0, "before": 5, "same": 0, "both_bad": 1},
+  "cap_recentre": {"after": 2, "before": 0, "same": 4, "both_bad": 2},
+  "split_off": {"after": 0, "before": 0, "same": 4, "both_bad": 1}
+ },
+ "notes": {
+  "bean_letters__bridge__off-flags-1003": {
+   "arm": "bean_letters", "fixture": "bridge", "job_done": "unsure", "verdict": "both_bad",
+   "updated": "2026-10-03T16:29:34.573Z",
+   "note": "The lettering is very thin and they don't look like the actual letters in the after."
+  },
+  "bean_letters__drone__off-flags-1003": {
+   "arm": "bean_letters", "fixture": "drone", "job_done": "unsure", "verdict": "before",
+   "updated": "2026-10-03T16:30:34.635Z",
+   "note": "The lettering is inconsistant and not uniform stitch patterning"
+  },
+  "bean_letters__enthusiast__off-flags-1003": {
+   "arm": "bean_letters", "fixture": "enthusiast", "job_done": "unsure", "verdict": "before",
+   "updated": "2026-10-03T16:30:57.196Z",
+   "note": "The lettering look like little worms now."
+  },
+  "bean_letters__fremont__off-flags-1003": {
+   "arm": "bean_letters", "fixture": "fremont", "job_done": "unsure", "verdict": "before",
+   "updated": "2026-10-03T16:31:34.410Z",
+   "note": "The lettering seems to be cleaner in the after, but they aren't thick enough"
+  },
+  "bean_letters__gaulke__off-flags-1003": {
+   "arm": "bean_letters", "fixture": "gaulke", "job_done": "unsure", "verdict": "before",
+   "updated": "2026-10-03T16:31:50.122Z",
+   "note": "After lettering is to skinny and not clean"
+  },
+  "bean_letters__golden_tee__off-flags-1003": {
+   "arm": "bean_letters", "fixture": "golden_tee", "job_done": "unsure", "verdict": "before",
+   "updated": "2026-10-03T16:32:25.903Z",
+   "note": "hard to tell what one is better here"
+  },
+  "cap_recentre__becker__off-flags-1003": {
+   "arm": "cap_recentre", "fixture": "becker", "job_done": null, "verdict": "after",
+   "updated": "2026-10-03T16:33:03.985Z",
+   "note": "Th \"E\" and \"N\" is slightly cleaner on the after"
+  },
+  "cap_recentre__bridge__off-flags-1003": {
+   "arm": "cap_recentre", "fixture": "bridge", "job_done": "unsure", "verdict": "both_bad",
+   "updated": "2026-10-03T16:33:24.523Z", "note": ""
+  },
+  "cap_recentre__drone__off-flags-1003": {
+   "arm": "cap_recentre", "fixture": "drone", "job_done": "unsure", "verdict": "same",
+   "updated": "2026-10-03T16:33:46.993Z", "note": ""
+  },
+  "cap_recentre__enthusiast__off-flags-1003": {
+   "arm": "cap_recentre", "fixture": "enthusiast", "job_done": "unsure", "verdict": "same",
+   "updated": "2026-10-03T16:33:55.329Z", "note": ""
+  },
+  "cap_recentre__fremont__off-flags-1003": {
+   "arm": "cap_recentre", "fixture": "fremont", "job_done": "unsure", "verdict": "same",
+   "updated": "2026-10-03T16:34:12.431Z", "note": ""
+  },
+  "cap_recentre__gaulke__off-flags-1003": {
+   "arm": "cap_recentre", "fixture": "gaulke", "job_done": "unsure", "verdict": "both_bad",
+   "updated": "2026-10-03T16:34:26.510Z", "note": ""
+  },
+  "cap_recentre__golden_tee__off-flags-1003": {
+   "arm": "cap_recentre", "fixture": "golden_tee", "job_done": "unsure", "verdict": "same",
+   "updated": "2026-10-03T16:34:37.374Z", "note": ""
+  },
+  "cap_recentre__tires__off-flags-1003": {
+   "arm": "cap_recentre", "fixture": "tires", "job_done": "unsure", "verdict": "after",
+   "updated": "2026-10-03T16:35:07.267Z",
+   "note": "The \"T\" is slightly cleaner on the after"
+  },
+  "split_off__becker__off-flags-1003": {
+   "arm": "split_off", "fixture": "becker", "job_done": "unsure", "verdict": "both_bad",
+   "updated": "2026-10-03T16:35:57.799Z", "note": ""
+  },
+  "split_off__bridge__off-flags-1003": {
+   "arm": "split_off", "fixture": "bridge", "job_done": "unsure", "verdict": "same",
+   "updated": "2026-10-03T16:36:08.306Z", "note": ""
+  },
+  "split_off__drone__off-flags-1003": {
+   "arm": "split_off", "fixture": "drone", "job_done": "unsure", "verdict": "same",
+   "updated": "2026-10-03T16:36:30.634Z", "note": ""
+  },
+  "split_off__golden_tee__off-flags-1003": {
+   "arm": "split_off", "fixture": "golden_tee", "job_done": "unsure", "verdict": "same",
+   "updated": "2026-10-03T16:36:35.960Z", "note": ""
+  },
+  "split_off__tires__off-flags-1003": {
+   "arm": "split_off", "fixture": "tires", "job_done": "unsure", "verdict": "same",
+   "updated": "2026-10-03T16:36:44.956Z", "note": ""
+  }
+ },
+ "rulings": {}
+}
