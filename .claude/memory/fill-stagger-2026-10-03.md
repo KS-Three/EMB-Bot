@@ -36,7 +36,10 @@ the same. Kept, and stated for the flip.
 
 **Why:** Kent's flip ("Waiting on Kent" 24). Not sewn from this lane. The
 lettering builder's fill is not staggered and does not ship either
-(`wideColumnFill`, off by Kent's ruling 2026-09-11, no Studio caller).
+(`wideColumnFill`, off by Kent's ruling 2026-09-11, no Studio caller: 8,500
+lettering builds, no fill row). A session sent to plumb the stagger there
+measured that first and stopped (Kent's call 2026-10-03). It goes in with
+whatever flips that flag.
 
 **Its audit held nine claims of eleven.** Failed: "equal to the last bit"
 (my proof sorted rows and sewed them all left to right, and never aimed a
@@ -63,5 +66,9 @@ thread order, 51,760 rows, and fails the audited commit on 997.
   of one row, a grid with no shift.
 - With other sessions live in the same file: tell them the exact lines, and
   put new tests in a new file.
+- Before taking a rule to a second builder, run the PRODUCT's own call and
+  count how often the path runs. `fillFromGeom` reads as live code and this
+  note called it a gap; it was behind a flag ruled off three weeks earlier.
+  Wrap `fill.tatamiFill`, build with `generate.js`'s options, count: 0.
 
 Related: [[fill-columns-2026-10-03]], [[lock-stitches-2026-10-03]].
