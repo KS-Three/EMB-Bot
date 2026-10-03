@@ -333,32 +333,48 @@ test("stagger: a long step is cut from the end the thread comes from", () => {
   assert.strictEqual(row1[row1.length - 2], fromHigh, "the half is counted from where the thread was");
 });
 
-test("stagger: where the shortest stitch is over half a stitch, half a stitch is the shortest", () => {
+test("stagger: where a stitch is under two shortest stitches, the clearance is kept and the floor is half a stitch", () => {
   // Found by audit: a step between one stitch and one stitch plus the shortest
-  // is halved, and the halves are under the shortest whenever the shortest is
-  // over half a stitch (a builder asked for a stitch under 2 mm). The rule has
-  // no answer there, so the shortest is taken as half a stitch: what an even
-  // cut never goes under either.
+  // is halved, so where a stitch is under two shortest stitches the halves are
+  // under the shortest (a builder asked for a stitch under 2 mm). They are
+  // never under HALF a stitch, which is as far down as an even cut goes too.
+  // The clearance at a row's ends stays what the caller gave. Lowering it to
+  // half a stitch was tried as a fix and failed its own audit: the floor did
+  // not move, and a third more short stitches were made.
   const polys = [rect(0, 0, 400, 100)];
-  const opts = { rowSpacing: 1.5, angleDeg: 0, maxStitch: 15, markConnectors: true };
-  const along = (extra) => {
+  const P15 = 15, M10 = 10, opts = { rowSpacing: 1.5, angleDeg: 0, maxStitch: P15, markConnectors: true };
+  const rowsOfFill = (extra) => holesOf(fill.tatamiFill(polys, Object.assign({}, opts, extra)), polys, 1.5, 0);
+  const steps = (rows) => {
     const out = [];
-    for (const row of holesOf(fill.tatamiFill(polys, Object.assign({}, opts, extra)), polys, 1.5, 0)) for (const s of row.spans) {
+    for (const row of rows) for (const s of row.spans) {
       const seq = [s.x0].concat(s.holes, [s.x1]);
       for (let k = 1; k < seq.length; k++) out.push(seq[k] - seq[k - 1]);
     }
     return out;
   };
-  const on = along({ stagger: 4, minStitch: 10 });
-  assert.ok(on.length > 1500, "fixture: stitches along rows, " + on.length);
-  assert.ok(Math.min(...on) >= 7.5 - 1e-9, "the shortest stitch along a row is " + Math.min(...on) + ", under half a stitch of 15");
-  assert.ok(Math.max(...on) <= 15 + 1e-9, "and none is over a stitch: " + Math.max(...on));
-  // it is the same fill as asking for half a stitch outright
-  assert.deepStrictEqual(fill.tatamiFill(polys, Object.assign({ stagger: 4, minStitch: 10 }, opts)), fill.tatamiFill(polys, Object.assign({ stagger: 4, minStitch: 7.5 }, opts)));
+  const on = rowsOfFill({ stagger: 4, minStitch: M10 }), off = rowsOfFill({});
+  assert.ok(steps(on).length > 1500, "fixture: stitches along rows, " + steps(on).length);
+  for (const [name, list] of [["staggered", steps(on)], ["as shipped", steps(off)]]) {
+    assert.ok(Math.min(...list) >= P15 / 2 - 1e-9, name + ": the shortest stitch along a row is " + Math.min(...list));
+    assert.ok(Math.max(...list) <= P15 + 1e-9, name + ": the longest is " + Math.max(...list));
+  }
+  assert.ok(steps(on).some((d) => d < M10 - 1e-9), "fixture: the stagger does make stitches under the shortest here");
+  // every hole that is ON the grid keeps the clearance the caller asked for
+  let onGrid = 0;
+  on.forEach((row, ri) => {
+    const phase = (SLOTS[ri % 4] / 4) * P15;
+    for (const s of row.spans) for (const h of s.holes) {
+      if (Math.abs((h - phase) / P15 - Math.round((h - phase) / P15)) * P15 > 1e-6) continue;
+      onGrid++;
+      assert.ok(Math.min(h - s.x0, s.x1 - h) >= M10 - 1e-9, "row " + ri + ": a grid hole " + Math.min(h - s.x0, s.x1 - h).toFixed(3) + " from a row's end, under the " + M10 + " asked for");
+    }
+  });
+  assert.ok(onGrid > 1000, "fixture: holes on the grid, " + onGrid);
 });
 
-test("stagger: a shortest stitch that is no length still never doubles a hole", () => {
-  // nothing, a negative, not a number: a grid point is kept unless it IS the end
+test("stagger: with no shortest stitch given, a grid point is still never sewn ON a row's end", () => {
+  // Nothing, a negative, not a number: no clearance at all, so a hole can sit
+  // any distance from an end short of on it. (The builder always gives one.)
   for (const minStitch of [undefined, 0, -1, NaN]) {
     const pts = fill.tatamiFill(RECT, base({ stagger: 4, minStitch }));
     for (const d of stitchLengths(pts)) assert.ok(d > 1e-6, "minStitch " + minStitch + ": a stitch of no length");

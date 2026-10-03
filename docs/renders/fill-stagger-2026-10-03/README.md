@@ -66,16 +66,20 @@ right, said the same thing, and was wrong twice: see the audit below.
 
 *(measured 2026-10-03 — a throwaway script against both engines)*
 
-Two things the rule does not say, found by the audit and written into the
-code:
+Two limits of the rule, found by the audit and now written down:
 
-- **Where the shortest stitch asked for is over half a stitch, half a stitch
-  is the shortest.** A step between one stitch and one stitch plus the
-  shortest is halved, so past that the rule makes stitches shorter than the
-  one it was given. It needs a builder asked for a stitch under 2 mm; the
-  default is 4.
+- **The 1 mm floor holds where a stitch is at least 2 mm.** A step between
+  one stitch and one stitch plus 1 mm is halved, so with a builder asked for
+  a stitch under 2 mm the halves come out under 1 mm. Never under half a
+  stitch, which is as far down as an even cut goes too, but far more of
+  them: in the audit's 54 builds at a 1.5 mm stitch, 34,458 steps of 0.75 to
+  1.0 mm where the shipped fill has 306. The default is 4 mm and no Studio
+  caller asks for less.
 - **A grid point exactly 1 mm from a row's end falls either way on the last
-  bit**, in both engines. It falls the same way all along a straight edge.
+  bit**, in both engines. It falls the same way all along a straight edge,
+  so nothing shows. It is common on a drawing in round numbers with no
+  preset (1,988 of 66,768 rows of the audit's 40 mm squares), and it can
+  fall differently at 0 and at 90 degrees for the same drawing.
 
 ## What it does
 
@@ -161,8 +165,9 @@ the same thing happens at the same place every cycle. One 40 mm square:
 
 ## What it costs
 
-- **Stitches: +6.9% over the set.** +2% on a plain 40 mm square, +10% to +12%
-  on a shape in small pieces (36 holes, 6 mm dots, a 10 mm triangle). A row
+- **Stitches: +6.9% over the set.** Under pique, +2% on a plain 40 mm square
+  and +10% to +12% on a shape in small pieces (36 holes, 6 mm dots, a 10 mm
+  triangle). A row
   cut evenly needs the fewest stitches there are. A row on a grid opens and
   closes on a part stitch: 4.70 stitches a row become 5.12, and short rows
   feel it most. The audit's wider sweep (12,880 designs): the median design
@@ -199,7 +204,11 @@ claims as claims.
   had sorted every row and never aimed a row at the tolerance.
 - **And "no stitch under the shortest is added".** True at the default. With
   a builder asked for a 1.5 mm stitch, stitches under 1 mm went from 29,852
-  to 64,004.
+  to 64,004. That one is a limit of the rule and not a slip in the port. My
+  first answer was to take the shortest as half a stitch there, and it
+  failed the second look: the floor did not move (a halved step was never
+  under half a stitch) and it made a third more short stitches, 45,552
+  against 34,458. It is taken out, and the claim now carries its limit.
 - **Where the 7.5% are.** I had written them off as "once, with nothing above
   or below". The audit asked where, and found the line of dashes.
 - **Three smaller things**, two caught while writing tests for the audit's
@@ -208,10 +217,21 @@ claims as claims.
   slots; and `stagger: true` meaning a cycle of one row, which is a grid
   with no shift at all.
 
-Both failures are fixed and the fixes are tests. The row proof above is the
-one made after.
+The first failure is fixed and the fix is a test. The second is a limit,
+stated above and tested as one. The row proof above is the one made after.
 
-*(measured 2026-10-03 — the auditor's sweeps)*
+**The second look, at the fixes.** Its own 39,979 rows and a band of 12,005
+more, aimed a hair either side of every threshold the rule has: all
+bit-identical with Python (the first head: 39,973 and 11,014). No row halved
+that Python would not halve, at design size or at offsets of a hundred
+million pixels. Flag off still identical on all 12,880 designs. Of 25,760
+builds with the flag on, 18 differ from the first head: 16 by one record
+moved 0.1 mm (a one-ulp half that sat on a rounding edge) and 2 by the one
+row in the tolerance band. The half-a-stitch change came out after that
+look, on its advice; the line that decides the clearance is again, to the
+character, the one the first round read.
+
+*(measured 2026-10-03 — the auditor's sweeps, two rounds)*
 
 ## Seen, not changed
 

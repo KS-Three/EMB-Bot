@@ -8407,6 +8407,19 @@ made again within the day:
   deciding the flip needs to see. Plot the remainder, or at least measure
   where it lies, before calling it scattered.
 
+And one from the audit's second look, at the fixes:
+
+- **A fix whose own test passes before the fix is not for that.** The audit
+  found the stagger adding stitches under the 1 mm floor when a builder asks
+  for a stitch under 2 mm. I took the floor as half a stitch there and wrote
+  the test: "no stitch along a row is under half a stitch". It passed with
+  the change and WITHOUT it, and I kept the change and reasoned about what
+  it restored. The second look measured it: a halved step was never under
+  half a stitch, so the floor had not moved, and the lower clearance made a
+  third more short stitches (45,552 against 34,458). A limit of a rule is
+  stated, not patched. And when the test for a fix is green before the fix,
+  stop: either the test asks the wrong thing or the fix does nothing.
+
 *(measured 2026-10-03 — `test/fill-stagger.test.js`,
 `tools/fill-stagger-census.mjs`; `docs/renders/fill-stagger-2026-10-03/`;
 MASTER_SCOPE "Waiting on Kent" 24; scope-history 10-03)*

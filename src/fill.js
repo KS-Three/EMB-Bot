@@ -817,12 +817,18 @@
   // on the row angle's cosine). A caller that gives none gets a billionth of a
   // stitch, which is over float noise near the origin and nothing more.
   //
-  // The shortest stitch is never taken as more than half a stitch. A step
-  // between one stitch and one stitch plus the shortest is halved, so past
-  // that the rule would make stitches shorter than the one it was given; and
-  // an even cut goes down to half a stitch as it is. (Found by audit, on a
-  // builder asked for a 1.5 mm stitch. The Python fill's 1 mm against 3 never
-  // meets it.)
+  // THE FLOOR. No stitch along a row is under `minStitch` -- where a stitch is
+  // at least two of them. A step between one stitch and one stitch plus
+  // `minStitch` is halved, so with a stitch under two shortest stitches the
+  // halves come out under the shortest (found by audit, on a builder asked
+  // for a 1.5 mm stitch; the Python fill's 1 mm against 3 never meets it).
+  // They are never under HALF a stitch, and an even cut goes that far down as
+  // it is. The clearance stays what the caller gave: taking it as half a
+  // stitch there was tried, moved no floor, and made a third more short
+  // stitches (second audit).
+  //
+  // With NO `minStitch` there is no clearance: a hole can sit any distance
+  // from a row's end short of on it. The builder always gives one.
   //
   // A grid point EXACTLY `minStitch` from an end falls either way on the last
   // bit, here as in Python. It falls the same way all along a straight edge.
@@ -833,7 +839,7 @@
   const STAGGER_MAX = 64;
   function staggeredRow(a, b, phase, stitch, minStitch, splitTol) {
     const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
-    const min = Math.max(Math.min(minStitch || 0, stitch / 2), stitch * STAGGER_EPS);
+    const min = Math.max(minStitch || 0, stitch * STAGGER_EPS);
     const xs = [x0];
     if (x1 - x0 >= 2 * min) {
       for (let x = Math.ceil((x0 - phase) / stitch) * stitch + phase; x < x1; x += stitch) {
