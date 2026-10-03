@@ -4,7 +4,7 @@
  "page_built": "2026-10-03",
  "sitting": "off-flags-1003",
  "pairs": 19,
- "note": "The built-OFF sitting's store, read back with ArtifactData (the 19 <arm>__<fixture>__off-flags-1003 docs; the 140 older docs are still in the store and exported in ../eye-pairs-2026-09-28/ and ../eye-pairs-2026-09-30/). All 19 judged in seven minutes, 16:29Z to 16:36Z. No per-arm ruling was set on the page; the rulings collection holds nothing under this tag.",
+ "note": "The built-OFF sitting's store, read back with ArtifactData (the 19 <arm>__<fixture>__off-flags-1003 docs; the 140 older docs are still in the store and exported in ../eye-pairs-2026-09-28/ and ../eye-pairs-2026-09-30/). All 19 judged in seven minutes, 16:29Z to 16:36Z. No per-arm ruling was set on the page; the rulings collection holds nothing under this tag. One ruling was given in chat afterwards and is recorded under rulings below.",
  "tally": {
   "bean_letters": {"after": 0, "before": 5, "same": 0, "both_bad": 1},
   "cap_recentre": {"after": 2, "before": 0, "same": 4, "both_bad": 2},
@@ -96,5 +96,11 @@
    "updated": "2026-10-03T16:36:44.956Z", "note": ""
   }
  },
- "rulings": {}
+ "rulings": {
+  "cap_recentre__off-flags-1003": {
+   "ruling": "flip_on",
+   "given": "in chat, 2026-10-03, after the sitting; not set on the page",
+   "note": "Asked for the ruling with his own tally in front of him (2 after, 0 before, 4 no difference, 2 both bad); he chose flip ON."
+  }
+ }
 }

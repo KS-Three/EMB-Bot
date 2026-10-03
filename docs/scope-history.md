@@ -17743,3 +17743,55 @@ again.
 
 Engine 668 passed. Not sewn.
 *(fixed 2026-10-03 — `islandsAmong`, `fillRingsOf` in `src/digitize.js`; `test/digitize.test.js`)*
+
+## 2026-10-03 — `satin_cap_recentre` ON by default (Kent's flip), and the guard it tripped was reading its own alignment grid
+
+Flipped on his labelled sitting of the day (`docs/eye-pairs-2026-10-03/`): 19
+pairs judged, `cap_recentre` *after* on becker and tires, the two the change
+locator boxed, *no difference* on four, *both bad* on two, *before* on none.
+Eight logos at the Studio's defaults, `main` with the crown cover on:
+84,475 -> 84,460 stitches, 455 -> 454 trims. Off against on, measured on
+Windows: `logo_whitebg`, `logo_alpha` and `bg_uncertain` identical to the
+stitch; enthusiast at 93 mm 3,149 -> 3,147, becker at 80 mm 6,563 -> 6,557, at
+100 mm 9,715 -> 9,702. No golden moved.
+
+What the flip moved in the suite: one test. CI's Linux run on the flip alone
+read 1 failed, 3,153 passed, 6 skipped, 7 xfailed in 1h15m39s, and the one was
+`test_lettering_coverage_has_not_regressed_since_the_rail_change`: enthusiast
+at 80 mm, `lost_frac` 0.2573 -> 0.2819 against a 0.26 bar. A full suite was
+not run on Kent's laptop; two other sessions each had one running.
+
+That number is not spill. The flag takes this design from 80.5 to 80.3 mm
+wide at its right end; `artfidelity_self.register` centres the stitches and
+the artwork and searches translation on a 0.4 mm grid; the centre moved
+0.1 mm and the search snapped from (0.0, +0.4) to (+0.4, +0.4). The sitting's
+kept designs, the instrument unchanged except that `register` was forced:
+
+| alignment, mm | flag off | flag on |
+|---|---|---|
+| searched on the 0.4 grid | 0.2573 at (0.0, +0.4) | 0.2819 at (+0.4, +0.4) |
+| forced, physically matched to the row above's flag-off | 0.2573 | 0.2481 |
+| searched at 0.1 (one pixel), window 1.2 | 0.1636 at (+0.1, +0.2) | 0.1555 at (+0.2, +0.2) |
+| forced, one pixel on from that | 0.1737 | 0.1623 |
+| forced (+0.4, +0.4) against its match (+0.5, +0.4) | 0.3226 | 0.3389 |
+
+The other seven logos keep their width and their alignment: on the grid
+becker 0.0229 -> 0.0230, tires 0.0784 -> 0.0799, golden_tee 0.4557 -> 0.4558,
+gaulke, bridge, drone and fremont unchanged to four places. A one-pixel
+search is not uniformly lower and is not a truer instrument (tires 0.0784 on
+the grid, 0.1018 at one pixel; fremont 0.0322 and 0.1002): it maximises IoU,
+not this number.
+
+Kent's rulings, in order: flip ON; then, with the red guard in front of him,
+a spill guard on the flag; then, with the table above, the bar re-pinned
+0.26 -> 0.29 attributed, the grid recorded as `dropped_elements`' third bias,
+and a second guard at a one-pixel alignment. That guard reads 0.1555 against
+a 0.17 bar, and `satin_rails_follow_edge=True`, the fixture's known
+spill-maker, reads 0.2173 there (0.3328 on the grid), which a test pins. The
+module's other readings on the flipped tree: overshoot 0.2819, bare 6.29%,
+uncovered 1.91%, inside bars that did not move.
+
+The session recommended the flip as nearly free on stitches and trims with
+the 0.2573 -> 0.2819 row in its own render table, and found it from CI.
+*(flipped and measured 2026-10-03 — `tests/test_satin_cap_recentre.py`,
+`tests/test_lettering_coverage_regression.py`, `tools/dropped_elements.py`)*
