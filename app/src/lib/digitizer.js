@@ -1639,6 +1639,14 @@ const WARNING_TEXT = {
     plural(w.count || 0,
       "One stroke was too fine for satin and sews as a running stitch instead.",
       "{n} strokes were too fine for satin and sew as running stitches instead."),
+  // Bean letters (`cfg.bean_letter_max_stroke_mm`, 2026-10-02): lettering too
+  // fine for satin sewed as a fine running stitch along each letter. Kent's
+  // ruling: the engine takes the path and says what it did -- a note, never a
+  // request for a different file, so it is NOT in ATTENTION_WARNINGS.
+  SMALL_LETTERING_AS_BEAN: (w) =>
+    plural(w.words || 1,
+      "Fine lettering sews as a running stitch along each letter, so it stays open and readable.",
+      "{n} lines of fine lettering sew as a running stitch along each letter, so they stay open and readable."),
   SHAPE_NOT_STITCHED: (w) =>
     plural(w.count || 0,
       "One shape couldn't be stitched and was left out.",

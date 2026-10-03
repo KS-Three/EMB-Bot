@@ -83,7 +83,7 @@ is a per-shape instruction for how to sew it.**
   while the top stitch comes from the path.
 
 So the engine change is small and local: `digitize.js:600`'s filter, the
-region loop, sequencing, trims, ties and spans are untouched — which is what
+region loop, sequencing, trims and spans are untouched — which is what
 keeps every existing fixture byte-identical.
 
 **For a column the shortcut is free. For a run it is not, and the first
@@ -113,8 +113,9 @@ proxy for hit-testing and the bbox, and nothing may sew it.
   Engine `node --test`, the Studio suite and every golden must be green with
   nothing re-captured.
 - **One door into the engine.** `buildQualityDesign` owns pull comp, underlay,
-  trims, ties, sequencing and spans. Nothing here gets a second path to the
-  stitch list (`generate.js`'s manual branch comment: "no parallel pipeline").
+  trims, sequencing and spans — and no ties, because it has none (ruling 7).
+  Nothing here gets a second path to the stitch list (`generate.js`'s manual
+  branch comment: "no parallel pipeline").
 - **Do not bump `PROJECT_FILE_VERSION`.** It is 2
   (`app/src/lib/projectFile.js:30`) and these fields are additive inside an
   element. Bumping has burned this repo once already: the migrator matched
@@ -267,7 +268,7 @@ Rejected: refusing the edit outright the way the digitized lane's
 clamping over refusing on this surface.
 
 **Known residue, deliberately left** (ruling 3, the half not taken):
-`shapesToRegions:587` still drops an invalid shape SILENTLY, with no message
+`shapesToRegions:697` still drops an invalid shape SILENTLY, with no message
 anywhere. A self-crossing hand-drawn shape vanishes from the stitch-out today
 and still will. The clamp means editing cannot cause it; drawing and import
 still can.
@@ -367,11 +368,18 @@ about the convenience underlay form, `satinplay.js:853-860`).
 **Defaults are the corpus's, not invented** (ruling 6): `passes` 3 and
 `stitchLenMm` 0.73, reusing `BEAN_PASSES` / `BEAN_STITCH_MM` — the same
 constants both engines already carry (`satinfont.js:79-80`,
-`machine.py:703-704`), measured off 14 professional bean outlines at 2.75
-passes median (p90 3.27) and 0.73 mm (p10 0.67, p90 1.87). A run shorter than
-`RUN_MIN_LOOP_MM` 2.2 is refused, the same floor that already decides when a
-run "reads as lint". Both controls stay editable. A 40 mm line sews ~165
-stitches, which is what a pro's bean outline is.
+`machine.py:708-709`), measured off 14 professional bean outlines at 2.75
+passes median (p90 3.27) and 0.73 mm (p10 0.67, p90 1.87). In JS the two are
+private to `satinfont.js` and reach other code only through its exported
+`LETTERING_GUARDS` (`:1286`, on the `EMB` global) — read them there, do not
+re-declare them. A run
+shorter than `RUN_MIN_LOOP_MM` 2.2 is refused, the same floor that already
+decides when a run "reads as lint". **That one is Python-only**
+(`machine.py:724`; the browser engine has it as a comment at
+`app/src/lib/digitizer.js:717`, not a value), so plan 3 adds ONE JS constant
+mirroring it — a new declaration, not a new number. Both controls stay
+editable. A 40 mm line sews ~165 stitches, which is what a pro's bean outline
+is.
 
 **A run sews untied, like every other shape in this lane** (ruling 7).
 `buildQualityDesign` has no tie code at all — lock stitches exist only in
@@ -390,16 +398,18 @@ a column), and `sewAs = { kind: "run", path, passes, stitchLenMm }`.
 `thin`/fill decision and emits `runAlongPath` as the top stitch, with
 `runKinds` entry `"run"` — the span kind already exists.
 
-No pull compensation (a run has no width to lose) and no fill underlay; a
-single-pass run gets the shape's tie only, which is what
-`buildQualityDesign`'s tail already does per shape.
+No pull compensation (a run has no width to lose), no fill underlay, and no
+tie — `buildQualityDesign` has none to give (ruling 7). So a **single-pass
+run sews unlocked** and does not get even the bean's partial self-securing;
+that is the known cost of `passes: 1` until the tie PR lands, not something
+this plan papers over.
 
 **The validity split is the real cost here.** `shapeIssues` currently means
 "is this a sewable closed ring". It becomes two rules: closed as today; open
 needs ≥2 points, total length over a floor, and self-crossing is *allowed*
 (a signature crosses itself). Every caller of `isValidShape` has to say which
-it means — `shapesToRegions:587`, `ManualPanel`'s draft gating,
-`lib/flow.js:13`, `fieldNodeEdit.js:158`'s bbox.
+it means — `shapesToRegions:697`, `ManualPanel`'s draft gating,
+`lib/flow.js:22`, `fieldNodeEdit.js:222`'s bbox.
 
 ## 8. Tests
 
@@ -441,7 +451,7 @@ which a green suite saw). Screenshots at 1440×900 and 1024×768 per plan.
    Smallest, and it lands the hold-last-good drag guard the other two reuse.
 2. **Columns** — `railsFromSpine` + the one-line `sewAs` branch in the satin
    emit. Medium.
-3. **Runs** — `runAlongPath` + the validity split across five callers.
+3. **Runs** — `runAlongPath` + the validity split across the four callers §7 names.
    Largest, and last because the split touches the other two's callers.
 
 Each is its own PR with its own plan, off this spec.
@@ -470,8 +480,9 @@ rewritten to match.
    pro's p99 6.2 and offers a fill or a split. Never blocks — `legibility_check`'s
    ruled posture (§6).
 6. **A run defaults to 3 passes at 0.73 mm, floor 2.2 mm**, reusing
-   `BEAN_PASSES` / `BEAN_STITCH_MM` / `RUN_MIN_LOOP_MM`. No new constants: the
-   numbers are measured off 14 professional bean outlines (§7).
+   `BEAN_PASSES` / `BEAN_STITCH_MM` / `RUN_MIN_LOOP_MM`. No new NUMBERS: they
+   are measured off 14 professional bean outlines. One new JS declaration,
+   since `RUN_MIN_LOOP_MM` exists only in Python today (§7).
 7. **Lock stitches are out of scope here.** `buildQualityDesign` has none at
    all; porting them changes every exported file, so it gets its own PR with the
    bill measured. Runs ship untied like everything else in the lane (§7).

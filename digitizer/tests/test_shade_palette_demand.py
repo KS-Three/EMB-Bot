@@ -266,7 +266,16 @@ def test_pipeline_gate_photo_classes_only(forced, fixture):
     """`run_stages` resolves the bool: photo classes feed demand, gradient
     (which routes through the SAME segment()) and flat (which never reaches
     it) do not — the region resnap's own `_PHOTO_CLASSES` posture."""
-    cfg = PipelineConfig(forced_class=forced, shade_palette_demand=True)
+    # `photo_prep=False` pinned 2026-10-02 (#553): the claim is the gate, not
+    # the cutout. Where `rembg_isolated/venv` exists, stage 1 cuts the stub's
+    # "background" away and the photo arm stops demanding shades at all; CI
+    # never builds that venv, so its cutout is requested-but-unavailable,
+    # which skips prep entirely — the same geometry as this pin, asserted by
+    # `test_background_removal.test_an_unavailable_cutout_falls_back_to_no_
+    # prep_at_all`. Pinning the cutout flag alone would run prep WITHOUT the
+    # cutout instead: a third route that neither machine was measuring.
+    cfg = PipelineConfig(forced_class=forced, shade_palette_demand=True,
+                         photo_prep=False)
     r = run_stages(str(Path(TESTDATA).parent / fixture), cfg)
     fed = any(w["code"] == PHOTO_SHADE_DEMAND for w in r.warnings)
     if forced == "photo_subject":
