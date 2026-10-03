@@ -63,6 +63,11 @@ def _cfg(**kw) -> PipelineConfig:
     # so OFF and ON would sew the same cover and this file's contrast -- the
     # cover alone against no cover -- would read nothing.
     kw.setdefault("satin_junction_stack", False)
+    # `satin_crown_cover` held OFF as well (Kent's 2026-10-02 flip): it IS this
+    # cover with the junction gate removed, on every satin shape, so with it ON
+    # the "off" arm already sews the cover and the contrast reads nothing --
+    # the same reason as the stack above.
+    kw.setdefault("satin_crown_cover", False)
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 
