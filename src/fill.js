@@ -709,13 +709,14 @@
       let m = !cur ? { ci: startAt, j: first ? first.order[0] : 0, how: "start", route: [] }
         : (planned.get(cur) || moveTo(cur, ready));
       if (m.how === "cut") m = webRoute(curNode, ready) || m;
-      // Landed, and the only way on is a cut: the landing has bought one stray
-      // penetration and nothing else. Start where the walk would have, and the
-      // one cut is the caller's, on the float in.
+      // Landed, and the only way on is a cut: the landing was one stray
+      // penetration. The pass starts where that cut was going instead, so it
+      // is the same walk without the stitch, and the cut is the caller's, on
+      // the float in. (Not at the walk's own nearest start: that is another
+      // walk, and it cost a cut more on 4 of the 12 passes this fired on.)
       if (m.how === "cut" && unlanded) {
         out.length = 0;
-        first = unlanded;
-        m = { ci: first.ci, j: first.order[0], how: "start", route: [] };
+        m = { ci: m.ci, j: m.j, how: "start", route: [] };
       }
       unlanded = null;
       planned = new Map();

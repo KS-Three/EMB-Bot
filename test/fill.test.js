@@ -555,6 +555,36 @@ test("columns: a pass does not land, take one stitch, and cut", () => {
   assert.strictEqual(cutsOf(pts), 0);
 });
 
+test("columns: dropping a landing that led nowhere never costs a cut", () => {
+  // The first version of the rule above started the walk over from the corner
+  // nearest the THREAD. That is a different walk from the one the cut led to,
+  // which began at the corner nearest the LANDING: on a spiral it cost two
+  // cuts where the stray stitch had cost one. The walk is the same one now,
+  // without the stitch: counted with the caller's cut on the float in, no
+  // more cuts than with the landing kept (1 on the spiral, 4 on the comb).
+  // (The build before sewed this comb with 2, by sewing across two of its
+  // mouths: the ground test's own fault, above. So the mouths are asked too.)
+  const ring = (pts) => pts.map(([x, y]) => ({ x, y }));
+  const spiral = ring([[0, 0], [300, 0], [300, 300], [0, 300], [0, 60], [45, 60], [45, 255], [255, 255], [255, 45], [90, 45], [90, 210], [210, 210], [210, 90], [135, 90], [135, 165], [165, 165], [165, 135], [150, 135], [150, 120], [180, 120], [180, 180], [120, 180], [120, 75], [225, 75], [225, 225], [75, 225], [75, 30], [270, 30], [270, 270], [30, 270], [30, 45], [0, 45]]);
+  const comb = ring([[0, 0], [24, 0], [24, 210], [39, 210], [39, 0], [63, 0], [63, 210], [78, 210], [78, 0], [102, 0], [102, 210], [117, 210], [117, 0], [141, 0], [141, 210], [156, 210], [156, 0], [180, 0], [180, 210], [195, 210], [195, 0], [219, 0], [219, 210], [234, 210], [234, 0], [258, 0], [258, 210], [273, 210], [273, 0], [297, 0], [297, 300], [0, 300]]);
+  const cases = [
+    [spiral, { rowSpacing: 19.0984, angleDeg: 85.9219, from: { x: 248.908, y: 111.981 } }, 1],
+    [comb, { rowSpacing: 25.9604, angleDeg: 135, from: { x: 219, y: 0 } }, 4],
+  ];
+  for (const [shape, o, withTheLanding] of cases) {
+    const test = fill.openGroundTest([shape]);
+    const clear = (a, b) => !test(a, b, 1.5, 0, 40);
+    const pts = fill.tatamiFill([shape], Object.assign({ maxStitch: 40, markConnectors: true, columns: true, openTol: 1.5, clear }, o));
+    assert.ok(!pts[1].trim, "one stitch, then a cut");
+    const cuts = cutsOf(pts) + (clear(o.from, pts[0]) ? 0 : 1);
+    assert.ok(cuts <= withTheLanding, "cuts, the caller's included: " + cuts + ", and with the landing kept " + withTheLanding);
+    if (shape !== comb) continue;
+    for (const x0 of [24, 63, 102, 141, 180, 219, 258]) {
+      assert.deepStrictEqual(threadThrough(pts, { x0, y0: -5, x1: x0 + 15, y1: 210 }, 1.5), { sewn: 0, floats: 0 }, "the mouth at x " + x0);
+    }
+  }
+});
+
 test("columns: the run to a strip's far end is laid BEFORE the strip, under its own row ends", () => {
   // Either way the hole costs no cut: run up the strip's side first and sew
   // back down, or sew up it and then find a way back down its side. The
