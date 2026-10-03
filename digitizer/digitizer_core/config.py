@@ -1543,6 +1543,14 @@ class PipelineConfig:
     # 455 -> 454 trims. Small by its own record: of Becker's 44 free ends 7
     # carry a fork and 3 pass the guards. False is the pre-flip engine, byte
     # for byte.
+    #
+    # What it does to the fidelity headline is NOT what the headline says.
+    # On enthusiast at 80 mm `lost_frac` reads 0.2573 -> 0.2819, and that is
+    # the instrument: the flag shortens the design 0.2 mm at its right edge
+    # and the 0.4 mm alignment grid snaps a step. At one physical alignment
+    # it reads lower (0.2573 -> 0.2481; 0.1636 -> 0.1555 at one pixel). Kent
+    # re-pinned that bar, attributed, the same day
+    # (`tests/test_lettering_coverage_regression.py`).
     satin_cap_recentre: bool = True
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the

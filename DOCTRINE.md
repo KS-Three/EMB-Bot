@@ -8434,6 +8434,12 @@ judged all 19 pairs the same day (`docs/eye-pairs-2026-10-03/`).
 - **`satin_cap_recentre` is ON** (Kent, in chat, on that sitting): *after* on
   becker and tires — the two pairs the change locator boxed — and *before* on
   none. `False` is the pre-flip engine.
+- **The enthusiast headline bar moved once, 0.26 → 0.29, attributed** (Kent,
+  the same day). The flip took `lost_frac` 0.2573 → 0.2819 on that fixture
+  with no spill behind it — the instrument's alignment grid, below — and he
+  ruled the bar re-pinned with that written beside it and a second guard
+  added at a one-pixel alignment (0.1555, bar 0.17). The fine guard is the
+  one to read as spill.
 - **`bean_letter_max_stroke_mm` stays OFF.** Today's satin read better on five
   of six logos and bridge was *both bad*. His reason is the line's WEIGHT —
   *"little worms"*, *"aren't thick enough"*, *"to skinny and not clean"* —
@@ -8462,6 +8468,31 @@ judged all 19 pairs the same day (`docs/eye-pairs-2026-10-03/`).
   therefore not yet separated from the picture of a bean. Settle that before
   a heavier construction is built — and gate 1 already holds a three-pass
   bean on knit as `pending sew-out`.
+- **Price a flag on its fidelity rows before recommending the flip, not on
+  stitches and trims alone.** The session recommended this flip as "nearly
+  free" — fifteen stitches and one trim — with enthusiast's 0.2573 → 0.2819
+  sitting in its own render table, and learned it from CI after Kent had
+  ruled. `features.json` carries `lost_frac`, `lost_elements` and
+  `uncovered_ink_frac` for every arm; read them, and run the guard a flip is
+  most likely to trip (`tests/test_lettering_coverage_regression.py`) before
+  asking for the ruling.
+- **A `lost_frac` delta beside a changed `widthMM` or `shift_x_mm` is the
+  alignment grid until a forced-alignment read says otherwise.**
+  `artfidelity_self.register` centres the stitches and the artwork and
+  searches translation in 0.4 mm steps, on an instrument whose opening is
+  0.5 mm. On enthusiast one design reads 0.1636, 0.2573 or 0.3226 depending
+  only on the step, and a 0.2 mm change at the design's right edge moved the
+  step. Held at one physical alignment the flag read LOWER on all three pairs
+  tried (0.2573 → 0.2481, 0.1636 → 0.1555, 0.1737 → 0.1623). A spill guard on
+  the flag was approved and not built, because there was no spill: measure
+  the instrument before guarding the engine against its reading.
+  `tools/dropped_elements.py` records it as bias 3; not fixed, because fixing
+  it renumbers every pinned fidelity figure in the repo. One earlier call
+  rests on a smaller move of this same reading and was NOT re-measured here:
+  the apex widening retracted on 2026-09-30 for 0.2573 → 0.2661 (defect 49).
+  Nobody recorded its `shift_*`. The crown cover closed that hole another
+  way, so nothing waits on it — but do not cite that retraction as proof the
+  widening spilled.
 - **A session's CLAUDE.md is the main checkout's working-tree copy.** With
   that checkout 77 commits behind, this session was handed "an 800-line
   budget" for MASTER_SCOPE and reported the file over it, with no guard,
@@ -8469,5 +8500,6 @@ judged all 19 pairs the same day (`docs/eye-pairs-2026-10-03/`).
   2026-09-14 and `tests/test_scope_budget.py` enforces it. Before reporting
   that a documented rule is broken, read the rule on `origin/main` and grep
   for the test that already holds it.
-*(ruled and judged 2026-10-03 — `docs/eye-pairs-2026-10-03/kent-notes.json`;
-`tests/test_satin_cap_recentre.py`, `tests/test_junction_stack.py`)*
+*(ruled, judged and measured 2026-10-03 — `docs/eye-pairs-2026-10-03/kent-notes.json`;
+`tests/test_satin_cap_recentre.py`, `tests/test_junction_stack.py`,
+`tests/test_lettering_coverage_regression.py`)*

@@ -149,3 +149,41 @@ one path draw as a single line. On cloth a three-pass bean builds up; on the
 page it cannot. "Too thin" may be the construction, the picture of it, or
 both, and gate 1 already holds a three-pass bean on knit as `pending
 sew-out`. Before the letters are rebuilt heavier, find out which.
+
+## After the ruling — the price this page left out, and what it turned out to be
+
+The table under each arm's head priced a flag in stitches, trims and colour
+changes. It should have carried the fidelity rows too, and for `cap_recentre`
+they were not flat:
+
+| enthusiast, 80 mm | flag off | flag on |
+|---|---|---|
+| `lost_frac`, as the instrument reads it | 0.2573 | 0.2819 |
+| lost elements | 36 | 46 |
+| uncovered ink | 1.52% | 1.91% |
+| design width | 80.5 mm | 80.3 mm |
+| alignment the instrument chose | (0.0, +0.4) | (+0.4, +0.4) |
+
+That took `tests/test_lettering_coverage_regression.py` over its 0.26 bar on
+the flip's first CI run (1 failed, 3,153 passed). Kent asked for a spill
+guard on the flag. None was built, because nothing spills: the instrument
+centres the stitches before it searches alignment on a 0.4 mm grid, the flag
+shortens this design by 0.2 mm at its right end, and the search snaps a whole
+step. The same two designs, alignment forced instead of searched:
+
+| alignment (physically matched) | flag off | flag on |
+|---|---|---|
+| where the flag-off design was scored | 0.2573 | 0.2481 |
+| best one-pixel alignment | 0.1636 | 0.1555 |
+| one pixel from it | 0.1737 | 0.1623 |
+
+The other seven logos keep their width and their alignment and do not move
+(becker +0.0001, tires +0.0015 on the grid). Kent's ruling on that: the bar
+re-pinned 0.26 → 0.29 with the attribution beside it, the grid recorded as the
+instrument's third measurement bias (`tools/dropped_elements.py`), and a
+second guard at a one-pixel alignment (reads 0.1555, bar 0.17) with a test
+that it still sees this fixture's known spill-maker
+(`satin_rails_follow_edge=True`, 0.2173).
+
+*(measured 2026-10-03 — the sitting's kept designs, `analyse_design` with
+`register` forced; Windows, and the 0.2819 reproduced on CI's Linux run)*
