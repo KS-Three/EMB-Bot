@@ -17607,6 +17607,48 @@ second look held every other claim about the fixes.
 Not sewn from this lane. Flip is Kent's: "Waiting on Kent" 24.
 *(built 2026-10-03 — `docs/renders/fill-stagger-2026-10-03/`, `tools/fill-stagger-census.mjs`)*
 
+## 2026-10-03 — The lettering fill that `fillStagger` leaves out is a fill nothing ships (measured first; not built)
+
+`fillStagger` covers the shape builder's cover fill. The lettering builder
+has a fill of its own, under a letter too wide for satin, and a session was
+sent to stagger it by the same flag. It measured first, and that fill is not
+a gap in anything exported. `satinplay.fillFromGeom` runs only when
+`wideColumnFill` is asked for. Kent ruled that off on 2026-09-11 (split on,
+fill off), `test/wide-columns.test.js` holds it off, and the Studio's one
+lettering call (`generate.js`) never passes it.
+
+That was measured before any plumbing, and is why there is none:
+
+| the call | builds | fill passes | stitches in fill runs |
+|---|---|---|---|
+| the Studio's own options | 4,250 | 0 | 0 of 24,861,796 |
+| the same, bold | 4,250 | 0 | 0 of 25,284,266 |
+| the same with `wideColumnFill: true` | 4,250 | 62,483 | 39,364,006 of 47,369,558 (83.1%) |
+
+85 fonts, 10 garments, 5 texts ("A", "AB", "Yours", "Your Name", "YOUR
+NAME"); 100 builds in each row are empty, two fonts having none of the
+letters. The committed census agrees on a smaller sweep:
+`node tools/long-stitch-census.mjs --arm split`, the shipped arm, re-routes
+0 stretches to fill, and `--arm both` re-routes 2,285.
+
+With the flag on the fill is used widely, and it has the lines in it. 64 of
+the 85 fonts fill somewhere: on the word "Hamburg", 7 of 83 at a 10 mm cap,
+20 at 12.7 mm, 49 at 25.4 mm. Over four cases ("Your Name" and "AB" at left
+chest, "Yours" on a full back, "YOUR NAME" on a hat front) that is 4,085
+fill passes and 1,317,897 holes between row ends: 82.5% have a hole of the
+next row within 0.3 mm, and 65.1% head three in a line. The same passes
+handed to `tatamiFill` again with the shape builder's three options (a cycle
+of 4, a shortest stitch of 1 mm, its split tolerance): 8.2% and 0.6% (8,474
+of 1,445,870), 6.85% more points, 64,319 floats before and after. Nearly six
+in ten of the threes that remain are on rows one to two stitches long.
+
+So the rule works there and nothing reaches it. Kent's call the same day:
+stop, and fix the record. Whatever change flips `wideColumnFill` plumbs the
+stagger with it. `fillFromGeom` would pass `stagger`, `minStitch` and
+`splitTol`, the two lengths divided by the fit scale as the stitch length
+beside them already is.
+*(measured 2026-10-03 — throwaway scripts over `src/fonts/bin`; `tools/long-stitch-census.mjs`)*
+
 ## 2026-10-03 — `fillColumns`: a corner lying on a scanline was a column, and was cut to (the lock-stitch audit's finding)
 
 **18 threads in 12,880 designs were a stub**: a cut, two penetrations in one

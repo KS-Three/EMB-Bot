@@ -1066,6 +1066,12 @@ sews nothing and cuts the smallest shape that contains it.
   `node tools/fill-stagger-census.mjs` prints the numbers and, with
   `--sheet out.svg`, draws every hole. No Studio caller passes the flag; the
   flip is Kent's ("Waiting on Kent" 24).
+  The lettering builder's own fill (`satinplay.fillFromGeom`) is NOT
+  staggered and does not ship: it runs only under `wideColumnFill`, off
+  since 2026-09-11. Whatever flips that passes `stagger`, `minStitch` and
+  `splitTol` there, the two lengths in the layout's units: final mm,
+  divided by the fit scale, times `pxPerMm`, as `fillStitchMm` beside them
+  already is.
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 
