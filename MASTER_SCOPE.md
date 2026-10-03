@@ -370,13 +370,13 @@ about the facts.
 
 18. **OPEN: a COLD photo digitize is ~90 s and `fill_travel_under_cover` is ~58% of it.** The 2026-09-17 memo fixed the RE-stitch (79.3 → 44.6 s); the first digitize still pays the flag in full. Three ways out, all Kent's: flip it off (costs stitches, re-exposes the travel it hides), optimise `_reorder_for_cover` (golden-pinned — a win must be byte-identical), or accept it. **Do not re-derive the numbers** — method, noise floor, per-flag table and three INERT flags are in the doc. *(measured 2026-09-17 — `docs/flag-runtime-bills-2026-09-12.md`)*
 
-19. **Three built-OFF satin flags are waiting on a call.** `satin_cap_recentre`
-   (the surviving cap fork — Latent 5, built 2026-09-22) and
-   `satin_patch_junctions = "satin"` (the other construction for BECKER's C
-   bowl, which under `satin_rail_comp` sews as the cover's fill by design —
-   recorded 2026-09-29, not decided) are flip calls. `satin_walk_cursor_reach_mm`
-   is not: Kent parked it for cloth 2026-09-20, and the 09-29 walk fix left
-   eight of MARINE's refusals on that side. *(2026-09-30 — area 1)*
+19. **One built-OFF satin flag is waiting on a call: `satin_cap_recentre`**
+   (the surviving cap fork — Latent 5, built 2026-09-22), drawn for the
+   2026-10-03 sitting beside `bean_letters` (21) and `split_off`.
+   `satin_patch_junctions = "satin"` is NOT one: `satin_junction_stack` has
+   sewn that cover as its part C since 2026-09-19, so off and on are one design
+   (8 of 8 logos identical). `satin_walk_cursor_reach_mm` stays parked for cloth
+   (Kent 2026-09-20). *(corrected 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`)*
 
 20. **Paired ground truth costs money or it does not exist.** No free source
    ships artwork PLUS a professional's stitch file of the same design, and the

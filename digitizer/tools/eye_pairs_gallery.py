@@ -114,11 +114,6 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "Classify each thin stroke on its own, so a stroke pooled with a blob "
         "keeps its satin; a stroke over the width cap is vetoed to fill rather "
         "than sewn as capped satin beside bare cloth."),
-    "patch_junctions": (
-        'satin_patch_junctions="satin"',
-        "Cover the bare hole where satin arms meet (a K's crotch) with a small "
-        "satin column sewn first, under the arms, instead of a tatami patch "
-        "appended last."),
     "polygon_axis": (
         'satin_polygon_axis="artwork"',
         "Read the satin axis off the artwork polygon instead of stage 5's grown "
@@ -208,6 +203,29 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "envelope reached. The envelope's coverage against its texture, on the "
         "letters. Say in your own words what 'flow' and 'structured' mean on a "
         "satin letter -- that note is worth more than the verdict."),
+    "cap_recentre": (
+        "satin_cap_recentre=True",
+        "A satin stroke's flat end is rebuilt square where its spine ends in a "
+        "surviving cap fork: today such an end tapers to a point at one corner "
+        "and leaves the other corner bare. The cause-side twin of the rail "
+        "reach, which gets to the same corners by letting each rail chase its "
+        "edge. Look at the ends of stems and bars."),
+    "keep_counters": (
+        "keep_counters=True",
+        "A letter's counter on a COLOURED ground stays a hole: today a counter "
+        "under the small-shape floor is absorbed into the letter around it and "
+        "the letter sews as one bar. It cannot read a counter the image has "
+        "already closed (bridge's JPEG), and it puts no ground thread in the "
+        "hole."),
+    "bean_letters": (
+        "bean_letter_max_stroke_mm=1.0",
+        "Small lettering whose INK strokes are under 1.0 mm sews as three-pass "
+        "bean runs along the skeleton of its source ink instead of as satin "
+        "blobs, and the ground under it sews through. Its own listed prices, "
+        "measured at 80 mm: bridge's RESTAURANT reads R-E-S-T with both A's as "
+        "a Y, and HOTEL FREMONT's main wordmark goes bean and loses its slab "
+        "serifs. The 1.0 mm line is a gate-1 number set without cloth: the page "
+        "says which reads right, only cloth says which sews right."),
 }
 
 # Arms that left the pending table because they SHIPPED. A sitting rendered
@@ -224,6 +242,15 @@ RETIRED_ARM_INTENT: dict[str, tuple[str, str]] = {
         "further out than the symmetric width, to the running minimum of that "
         "edge over seven stations. Kent flipped it on after the 2026-09-30 "
         "sitting (2 after, 0 before, golden_tee 'did its job')."),
+    # No flip of its own: the junction stack's part C has handed the cover
+    # this setting since 2026-09-19, so the arm was identical to the base.
+    "patch_junctions": (
+        'satin_patch_junctions="satin" (shipped inside satin_junction_stack, '
+        "ON 2026-09-19)",
+        "Cover the bare hole where satin arms meet (a K's crotch) with a small "
+        "satin column sewn first, under the arms. Already the engine as "
+        "shipped: the junction stack sews this cover as its part C, so the "
+        "flag off and the flag on are one design. Nothing to rule."),
 }
 
 

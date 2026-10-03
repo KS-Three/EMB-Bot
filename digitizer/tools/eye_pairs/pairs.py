@@ -41,7 +41,11 @@ REF_0930AM_COMMIT = "1e5f8fe2"
 # `__ref__` instead of PipelineConfig kwargs. Adding a sitting is adding a row.
 ARMS: dict[str, dict] = {
     "per_stroke": {"satin_per_stroke": True},
-    "patch_junctions": {"satin_patch_junctions": "satin"},
+    # `patch_junctions` (`satin_patch_junctions="satin"`) left 2026-10-03
+    # without a flip: `satin_junction_stack` (ON 2026-09-19) hands the cover
+    # that same setting as its part C, so the arm was the base. Rendered on
+    # the built-OFF sitting it was identical to the stitch on all eight logos,
+    # and on becker and enthusiast with crown cover off as well.
     "polygon_axis": {"satin_polygon_axis": "artwork"},
     "area_weighted": {"classify_area_weighted": True},
     "design_angle": {"design_angle": True},
@@ -85,6 +89,13 @@ ARMS: dict[str, dict] = {
     # there: a centre run and a ladder zigzag under every one; the pro's
     # crosshatch is denser, not different in kind.)
     "split_off": {"split_satin": False},
+    # The built-OFF sitting (2026-10-03): the flags that sat finished and
+    # unjudged -- MASTER_SCOPE "Waiting on Kent" 19 and 21, and #602 -- on
+    # one page, with `split_off` above carried over from its own unjudged
+    # sitting. `bean_letters` sews at 1.0, the value Kent picked.
+    "cap_recentre": {"satin_cap_recentre": True},
+    "keep_counters": {"keep_counters": True},
+    "bean_letters": {"bean_letter_max_stroke_mm": 1.0},
 }
 
 

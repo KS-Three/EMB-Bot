@@ -276,3 +276,32 @@ def test_an_explicit_cover_setting_wins_over_part_c():
     finally:
         s7.satin_shape = real
     assert seen and all(v is True for v in seen)
+
+
+def test_asking_for_the_satin_cover_is_the_engine_as_shipped(monkeypatch):
+    """`satin_patch_junctions="satin"` asked for explicitly reaches the cover
+    exactly as part C does unasked: the same calls, the same floors, the same
+    plan. That is why the setting stopped being a flip waiting on anyone --
+    the eye-pairs `patch_junctions` arm was identical to the stitch on all
+    eight logos (2026-10-03, crown cover on or off) and left the pending
+    table. If this fails, part C and the flag have come apart and the arm
+    has a question to ask again."""
+    real = s6._junction_cover_runs
+
+    def covered(**kw):
+        seen = []
+
+        def spy(poly, runs, shape_id, *a, **k):
+            seen.append((shape_id, a[-4:]))             # the four floors
+            return real(poly, runs, shape_id, *a, **k)
+
+        monkeypatch.setattr(s6, "_junction_cover_runs", spy)
+        _cfg, _result, plan = _run(FIXTURE_80, 80.2, **kw)
+        monkeypatch.undo()
+        return seen, _points(plan)
+
+    unasked, plan_unasked = covered()
+    asked, plan_asked = covered(satin_patch_junctions="satin")
+    assert unasked, "part C no longer reaches the cover on this fixture"
+    assert asked == unasked
+    assert plan_asked == plan_unasked
