@@ -27,6 +27,12 @@ Pictures and the full trail: `docs/renders/apex-verdict-2026-09-30/`.
 **These are FLOORS on a defect, not targets.** A build that closes the apex
 turns them red, and that is the signal to close defect 49 and rewrite this
 file — not to loosen a number.
+
+**That build shipped: `cfg.satin_crown_cover`, ON by default since Kent's flip
+2026-10-02, and both floors went red on it.** The instrument tests below now
+hold the PRE-FLIP engine (`satin_crown_cover=False`), because what they pin is
+that the hole was real and how two instruments read it; the last test pins
+that the shipped engine closes it.
 """
 from __future__ import annotations
 
@@ -53,15 +59,35 @@ APEX_MM = (23.05, -3.16)
 NEAR_MM = 1.5
 
 
-@pytest.fixture(scope="module")
-def sewn():
-    """One digitize of the shipped engine, shared by every test here."""
+def _sewn(**kw):
     cfg = PipelineConfig(target_width_mm=WIDTH_MM, garment_id=GARMENT,
-                         max_colors=6)
+                         max_colors=6, **kw)
     gen = build_generation(str(FIXTURE), cfg)
     result = finish_generation(gen.fork(), cfg)
     plan = plan_stitches(result, cfg)
     return result, plan, {r.shape_id: r.polygon for r in result.regions}
+
+
+@pytest.fixture(scope="module")
+def sewn():
+    """One digitize of the engine the hole was found on -- the crown cover
+    OFF -- shared by the instrument tests."""
+    return _sewn(satin_crown_cover=False)
+
+
+def test_the_shipped_engine_closes_the_apex(sewn):
+    """Defect 49, closed: with `satin_crown_cover` ON (the default) the
+    largest thread-free component in the design is under the 1.5 mm2 floor
+    the pre-flip engine held at the apex, and smaller than it was."""
+    from tools.bare_anatomy import components
+
+    assert PipelineConfig().satin_crown_cover is True
+    _r0, plan_off, polys_off = sewn
+    _r1, plan_on, polys_on = _sewn()
+    before = max(components(polys_off, plan_off, all_thread=True))[0]
+    after = max(components(polys_on, plan_on, all_thread=True))[0]
+    assert before >= 1.5
+    assert after < 1.5 and after < before, (before, after)
 
 
 def test_bare_anatomy_over_reports_because_it_counts_satin_and_nothing_else(sewn):

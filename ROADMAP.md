@@ -15,10 +15,7 @@ must say so out loud. It may not move the marker itself.
 
 **Phase 1 — Foundation.** In parallel: **Phase 4 — Finish (tonal)**, un-tabled
 by Kent 2026-08-18 (decision record:
-`docs/superpowers/plans/2026-08-18-photo-tonal-v1-spec.md`). Phases 2–3 remain
-open. The Studio's per-design override of stage 0 went on 2026-09-30 and its
-FLAT half came back the same evening (both Kent's calls — DOCTRINE): a tonal
-reading offers "Sew as flat art". A misroute is still phase 2's to fix.
+`docs/superpowers/plans/2026-08-18-photo-tonal-v1-spec.md`). Phases 2–3 remain open.
 
 ## Engine track
 
@@ -50,31 +47,14 @@ Starter design pack (sourcing decision and billing pending).
    tolerance, fabric presets (fill row spacing: settled; **DST orientation:
    settled 2026-09-08 and it was never a physical constant** — both see
    `DOCTRINE.md`). Fabric settles these, geometry cannot.
-
-   **DST orientation should not have been on this list, and being on it cost
-   six weeks.** The gate's own test is the sentence under it: *fabric settles
-   these*. Which nibble of a DST record carries X is settled by a documented
-   format with a reference implementation sitting in `digitizer/.venv`, and
-   five sources already agreed on the answer — none of which own a machine. It
-   was fixed on 2026-09-08 by reading `pystitch.DstWriter.encode_record` and
-   comparing bytes (10/10 identical), by the crossval harness that already had
-   a word for the answer (`identity`), and by a render. A sew-out could not
-   have answered it faster, or at all.
-
    **Before adding anything here, ask which kind it is.** If every source you
    would consult to settle it owns no machine, this gate does not apply.
 2. **No stage-0 recalibration without real tonal artwork.** Four approaches were
    measured and rejected; synthetic fixtures are barred as substitutes.
-3. **No default-OFF tier flipped on until its instrument is rebuilt.** Chaining
-   and contour. A green suite has already hidden needle-down thread on bare
-   fabric here. **Tonal-region splitting LEFT this gate 2026-08-19** — Kent's
-   spec decision 2, shipped in `d3f3c547`: photo classes split by default
-   (`pipeline.effective_split_tonal`), and the config flag is an override that
-   can only turn it ON. Re-confirmed as deliberate 2026-09-02. Its density cost
-   is real and tracked as a defect, not as a gate.
+3. **No default-OFF tier flipped on until its instrument is rebuilt.** Chaining and contour.
+   A green suite has already hidden needle-down thread on bare fabric here.
 4. **No quality claim on a raw agreement number.** Use the chance-corrected
    figure — raw moves when the mix moves, so a "gain" can be the floor shifting.
 
 ## Advisory ordering
 Hoist distance transform before satin work. Pull compensation before underlay.
-Standing rules (main-green, goldens-on-Linux, read-scope-first): moved to `MASTER_SCOPE.md` gotchas.

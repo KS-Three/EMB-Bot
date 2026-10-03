@@ -17319,6 +17319,31 @@ Related, same day: `keep_counters` (entry above) keeps counters the small-region
 floor would eat on a coloured ground, and does not move bridge's words; bean
 letters reads past the source pixels that close them first. Independent flags.
 
+## 2026-10-02 — `satin_crown_cover` ON by default (Kent's flip)
+
+Flipped on the evidence the flag was built to be flipped on (09-30): MARINE
+127.4 11 -> 1 hole, 22.9 -> 1.5 mm2, +2.6% stitches, `lost_frac` 0.1800 ->
+0.1730; corpus holes 20 -> 10 with `lost_frac` never rising. Nothing new was
+measured for the flip itself, and no cloth backs it.
+
+What the flip moved in the suite, on Windows, in two runs: the first reported
+2,450 tests before it was cut off at 78%, the second ran the other 859 (854
+passed) with the seven edited files in full. The only reds left are the three
+golden tests CI deselects. 16 tests in 7 files moved, all read on the engine
+without the cover. Main was merged in between and after the runs, so the
+whole suite has NOT run once on the final tree here; CI is that run.
+- Held OFF by name, each with its reason in place: `test_junction_patch_flag`
+  (the cover against no cover -- this IS that cover), `test_edge_cap_lettering`,
+  `test_rail_comp` and `test_trim_levers` (other flags' prices on MARINE 80;
+  with both trim levers on the cover's own run takes the fixture past that
+  file's nine-trim ceiling), `test_junction_stack` (one test that neutralises the emitter).
+- Two floors that said "a build that closes the apex turns this red"
+  (`test_apex_is_real`, `test_preflight`'s letter apex) keep the hole on the
+  pre-flip engine and now also pin that the shipped engine closes it.
+- `test_preflight`'s injected dropped limb: the cover sews the dropped tab, so
+  the finding is correctly not raised; the positive case holds the cover OFF.
+No golden moved on Windows. *(flipped 2026-10-02 -- `tests/test_crown_cover.py`)*
+
 ## 2026-10-03 — The browser fill carried thread across every hole and notch; `fillColumns` built OFF (quality review 2026-09-08 §4)
 
 A parallel session's read of the review found its "JS fill ... sews connectors
@@ -17527,6 +17552,102 @@ in five lies on a stitch under 0.3 mm (lettering under 1%).
 
 Not sewn. Flip is Kent's: "Waiting on Kent" 23.
 *(built 2026-10-03 — `docs/lock-stitches-2026-10-03.md`, `tools/lock-stitch-census.mjs`)*
+
+## 2026-10-03 — The browser fill's needle holes stood in line from row to row; `fillStagger` built OFF (quality review 2026-09-08 §4)
+
+The review's second cheap browser-lane defect has two halves. The connector
+sewn across a counter closed behind `fillColumns` (two entries up). The other
+half is the stagger: `src/fill.js` cuts every row into equal stitches from
+the row's own end, so two rows of one length are cut at the same places.
+Measured on ten manual-lane designs under every preset, 94.3% of the holes
+between a row's ends have a hole of the next row within 0.3 mm, and 86.5%
+are the head of three in a line. It is not only squares: 90% on a 30 mm
+circle, 56% on a star.
+
+`fillStagger` puts those holes on the Python fill's grid: a stitch apart,
+shifted row by row through a cycle of four in the order 0, 2, 1, 3
+(`_stagger_slots`), a point kept only when it is 1 mm from both ends of the
+row (`MIN_STITCH_MM`), a step left longer than a stitch cut in equal parts.
+The cover fill only, both walks. A row's ends, the turns, the travel and the
+cuts do not move: with the holes between the ends taken out, the staggered
+walk is the shipped one, point for point. After: 7.5% with a hole under them
+(the halved steps, which the rule itself lands near the next row's grid
+point) and 6 holes of 148,477 at the head of three in a line. Stitches
++6.9%, 4.70 a row to 5.12; the shortest stitch along a row 2 mm to 1 mm;
+cuts 176 and 176.
+
+The port was to be exact where it can be checked: on 32,000 random rows the
+holes `tatamiFill` returns equalled the Python fill's (`_row_points`, then
+`split_long_moves`) to the last bit. **Its own audit held nine claims of
+eleven and failed that one.** The proof had sorted each row and sewn every
+row left to right, and Python cuts a long step from the end the thread comes
+from: six rows of 39,979 were one ulp off, all sewn right to left. And the
+tolerance on "longer than a stitch" was taken from Python in spirit, not in
+size: Python's is a micron, the port's was a billionth of a stitch, and in
+the band between them one row of 12.2 million was halved here only. Both
+are now Python's (`splitTol`, the builder's `SPLIT_TOLERANCE_MM`), and the
+second proof is in thread order with rows aimed at the tolerance: 51,760
+rows, 345,858 penetrations, equal to the bit, where the audited commit
+fails 997 of the same rows.
+
+The audit failed a second claim, "no stitch under the shortest is added":
+true at the default, false for a builder asked for a stitch under 2 mm
+(29,852 stitches under 1 mm became 64,004). That is a limit of the rule, not
+a slip in the port: a step between one stitch and one stitch plus 1 mm is
+halved. My answer, taking the shortest as half a stitch there, failed the
+audit's second look: a halved step was never under half a stitch, so the
+floor did not move, and the lower clearance made a third more short stitches
+(45,552 against 34,458). It was taken out and the limit is stated instead.
+And the audit asked where the 7.5% are, which I had written off as
+scattered: 95.6% sit 1.5 to 2.6 mm from a row's end, so along a straight
+edge they are a pair of holes every four rows, a line of dashes beside the
+edge. Python's fill has it too. It is kept, and stated for the flip. The
+second look held every other claim about the fixes.
+
+Not sewn from this lane. Flip is Kent's: "Waiting on Kent" 24.
+*(built 2026-10-03 — `docs/renders/fill-stagger-2026-10-03/`, `tools/fill-stagger-census.mjs`)*
+
+## 2026-10-03 — The lettering fill that `fillStagger` leaves out is a fill nothing ships (measured first; not built)
+
+`fillStagger` covers the shape builder's cover fill. The lettering builder
+has a fill of its own, under a letter too wide for satin, and a session was
+sent to stagger it by the same flag. It measured first, and that fill is not
+a gap in anything exported. `satinplay.fillFromGeom` runs only when
+`wideColumnFill` is asked for. Kent ruled that off on 2026-09-11 (split on,
+fill off), `test/wide-columns.test.js` holds it off, and the Studio's one
+lettering call (`generate.js`) never passes it.
+
+That was measured before any plumbing, and is why there is none:
+
+| the call | builds | fill passes | stitches in fill runs |
+|---|---|---|---|
+| the Studio's own options | 4,250 | 0 | 0 of 24,861,796 |
+| the same, bold | 4,250 | 0 | 0 of 25,284,266 |
+| the same with `wideColumnFill: true` | 4,250 | 62,483 | 39,364,006 of 47,369,558 (83.1%) |
+
+85 fonts, 10 garments, 5 texts ("A", "AB", "Yours", "Your Name", "YOUR
+NAME"); 100 builds in each row are empty, two fonts having none of the
+letters. The committed census agrees on a smaller sweep:
+`node tools/long-stitch-census.mjs --arm split`, the shipped arm, re-routes
+0 stretches to fill, and `--arm both` re-routes 2,285.
+
+With the flag on the fill is used widely, and it has the lines in it. 64 of
+the 85 fonts fill somewhere: on the word "Hamburg", 7 of 83 at a 10 mm cap,
+20 at 12.7 mm, 49 at 25.4 mm. Over four cases ("Your Name" and "AB" at left
+chest, "Yours" on a full back, "YOUR NAME" on a hat front) that is 4,085
+fill passes and 1,317,897 holes between row ends: 82.5% have a hole of the
+next row within 0.3 mm, and 65.1% head three in a line. The same passes
+handed to `tatamiFill` again with the shape builder's three options (a cycle
+of 4, a shortest stitch of 1 mm, its split tolerance): 8.2% and 0.6% (8,474
+of 1,445,870), 6.85% more points, 64,319 floats before and after. Nearly six
+in ten of the threes that remain are on rows one to two stitches long.
+
+So the rule works there and nothing reaches it. Kent's call the same day:
+stop, and fix the record. Whatever change flips `wideColumnFill` plumbs the
+stagger with it. `fillFromGeom` would pass `stagger`, `minStitch` and
+`splitTol`, the two lengths divided by the fit scale as the stitch length
+beside them already is.
+*(measured 2026-10-03 — throwaway scripts over `src/fonts/bin`; `tools/long-stitch-census.mjs`)*
 
 ## 2026-10-03 — A ring inside a hole is an island: three nested rings sewed nothing, and pull compensation shrank it (browser builder, fixed)
 
