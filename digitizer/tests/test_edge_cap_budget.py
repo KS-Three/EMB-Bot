@@ -96,7 +96,12 @@ def _run(fixture: str, width: float, cap: str = "bean",
         PipelineConfig(target_width_mm=width, edge_cap=cap,
                        edge_cap_over_budget=over_budget,
                        subpixel_edges_upscaled=False,
-                       satin_lettering_split=False, **extra))
+                       satin_lettering_split=False,
+                       # ...and the tracing grid at its pre-flip source line
+                       # (`work_px_per_mm`, ON since 2026-10-01): becker
+                       # traced at 5.8-7.2 px/mm is a third set of polygons,
+                       # and the sweep reads [54.1, 57.6, 54.5] flat.
+                       work_px_per_mm=None, **extra))
     return plan
 
 

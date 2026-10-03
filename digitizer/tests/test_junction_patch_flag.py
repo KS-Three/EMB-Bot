@@ -19,6 +19,7 @@ clears the grader's finding, and a patch never sews outside the artwork.
 """
 from __future__ import annotations
 
+import pytest
 from shapely.geometry import Point, Polygon
 
 from digitizer_core import PipelineConfig, machine, stitches
@@ -81,6 +82,7 @@ def test_off_is_byte_identical_on_the_fixture_the_flag_moves():
         "the default and an explicit False must be the same plan"
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_on_clears_the_graders_finding_rather_than_merely_moving_a_number():
     """Proven on the emitted stitches through the grader that reported the
     defect, not on the patch geometry this module computed for itself.
@@ -226,6 +228,7 @@ def _first_run_of(plan, shape_id: str):
     return None
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_the_satin_cover_clears_the_graders_finding_with_no_tatami():
     """Same proof as the tatami patch — through `ARTWORK_UNCOVERED` on the
     emitted stitches — plus the property that makes it a different answer:

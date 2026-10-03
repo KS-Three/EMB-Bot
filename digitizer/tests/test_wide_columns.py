@@ -146,6 +146,7 @@ def _becker_coverage(monkeypatch, guard: bool) -> tuple[float, float]:
     return float(m["coverage_max"]), float(m["uncovered_worst_mm2"])
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_the_fold_guard_keeps_a_wide_column_on_a_bend_under_the_warn_line(monkeypatch):
     """Where the guard is load-bearing, measured 2026-09-20 at 114 mm:
     unguarded `coverage_max` 7.18, past `COVERAGE_WARN_UNITS`, the density

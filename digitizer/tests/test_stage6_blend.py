@@ -1360,6 +1360,7 @@ def test_pieces_of_one_radial_design_ramp_share_rings_and_threads():
         assert hi == pytest.approx(bhi, abs=machine.FILL_ROW_MM + 0.05), thread
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_a_radial_ramp_design_is_one_region_sewn_as_the_designs_rings_end_to_end():
     """`gradient_ramp_radial.png` at 80 mm / left chest. Until 2026-09-04
     the design ramp declined it, stage 2 cut the disc into a 4,069 mm² ring

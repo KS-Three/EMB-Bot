@@ -482,6 +482,60 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
 }
 .drawer-row-actions button.danger.armed:hover { border-color: var(--danger-hover); }
 
+/* What the design is, under its name — the same facts the filter matches on
+   (lib/libraryFacts.js). Absent on a design not measured yet. */
+.drawer-row-facts {
+  margin: 0 0 var(--space-2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+
+.drawer-count { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+
+/* DesignFilter.svelte — name search over three "up to" selects. The name
+   field spans the drawer; the selects sit two to a row, because three across
+   a 320px drawer clipped "Up to 2,000" to "Up to 2" (seen 2026-10-01). */
+.dfilter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  text-align: left;
+}
+
+.dfilter-field { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-1); min-width: 0; }
+.dfilter-field span { color: var(--muted); font-size: var(--fs-xs); text-align: left; }
+.dfilter-text { grid-column: 1 / -1; }
+
+.dfilter-field input,
+.dfilter-field select {
+  width: 100%;
+  min-height: 36px;
+  padding: var(--space-1) var(--space-2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+
+.dfilter-field input:focus,
+.dfilter-field select:focus { border-color: var(--accent); }
+
+.dfilter-clear {
+  justify-self: start;
+  align-self: end;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .drawer-rename-row { margin-bottom: var(--space-2); }
 
 .drawer-rename-row input {
@@ -1947,6 +2001,12 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .qr-grade.tone-warn { color: var(--warn); }
 .qr-grade.tone-bad  { color: var(--danger); }
 
+.qr-sub {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  margin: var(--space-4) 0 var(--space-2);
+}
+.qr-show { margin-left: var(--space-2); }
 .qr-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
 .qr-list li {
   display: grid;

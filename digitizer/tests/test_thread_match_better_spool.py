@@ -74,7 +74,12 @@ def _findings(fixture: str):
     return copies — the same rule as the other cached thread suites.
     """
     art = TESTDATA / fixture
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **PRE_FLIP)
+    # `work_px_per_mm=None`: the tracing grid at its pre-flip source line (ON
+    # since 2026-10-01). BRIDGE is 3.5 px/mm; traced at 8 it is other regions
+    # and this unfloored read finds (8, 5) where SEVERITY pins (2, 2) — the
+    # same mechanism on a different segmentation, not a rescoring.
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+                         work_px_per_mm=None, **PRE_FLIP)
     # PRE_FLIP: the colour flags Kent flipped ON on 2026-09-10 (the
     # bundle's four and `robust_region_colour`) are held OFF here because
     # this file documents a fact of the engine before those flips

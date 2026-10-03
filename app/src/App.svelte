@@ -7,6 +7,7 @@
   import { designSummary } from "./lib/summary.js";
   import { sewSummary, QUOTE_ROW_LABELS } from "./lib/estimate.js";
   import { loadQuote, saveQuote } from "./lib/quote.js";
+  import { hoopingRows } from "./lib/hooping.js";
   import { generateAll } from "./lib/generate.js";
   import { ensureFonts } from "./lib/fontLoader.js";
   import { rehydrateImages } from "./lib/imageSource.js";
@@ -26,7 +27,9 @@
     listProjects,
     isAutoNamed,
     autoNameProject,
+    setProjectFacts,
   } from "./lib/projects.js";
+  import { designFacts } from "./lib/libraryFacts.js";
   import { buildProjectFile, parseProjectFile, projectFileName } from "./lib/projectFile.js";
   import { collectSources, restoreSources } from "./lib/projectSources.js";
   import { triggerDownload } from "./lib/download.js";
@@ -264,6 +267,33 @@
   // combined design the size and stitch figures beside it come from.
   $: colorCount = combinedDesign && sewFacts.length ? spoolCount(combinedDesign) : 0;
 
+  // ---- Library facts: what "My designs" filters on --------------------------
+  // The open design's stitches, spools and size, written to its index entry
+  // (lib/libraryFacts.js, projects.js setProjectFacts) from the SAME combined
+  // design the summary bar reads, so a row in the drawer can never disagree
+  // with the bar.
+  //
+  // Recorded here rather than inside persist(): persist runs synchronously in
+  // the event handler, before this flush, so `combinedDesign` there still
+  // describes the previous state — and a text or uploaded-image design is not
+  // generatable at all until its font or artwork has loaded, which is after
+  // any save. Being reactive is also the backfill: a design saved before facts
+  // existed is measured the first time it is opened, with no migration pass
+  // (which could not measure those two kinds anyway).
+  //
+  // A null design only CLEARS the facts when nothing in the project could
+  // sew. Otherwise it is a design still loading (or whose font failed to
+  // fetch), and wiping a good measurement over that would drop the row out of
+  // every filter until the next successful open. `image` counts as "could
+  // sew" outright: its _hasImage flag is reset on load, so isSewable says no
+  // for exactly the stretch this guard exists for.
+  function recordFacts(id, design, proj) {
+    const facts = designFacts(design, design ? spoolCount(design) : 0);
+    if (!facts && proj.elements.some((el) => el.type === "image" || isSewable(el))) return;
+    if (setProjectFacts(id, facts)) refreshProjects();
+  }
+  $: recordFacts(currentId, combinedDesign, project);
+
   // The rows the Download sheet recaps — one list, built here, so the
   // sheet is a renderer and never re-derives what the app already knows.
   $: summaryRows = [
@@ -278,6 +308,10 @@
       ? sewFacts.filter((r) => QUOTE_ROW_LABELS.includes(r.label))
       : sewFacts),
   ];
+  // What to hoop under the combined design — stabilizer, topper, needle. The
+  // same engine function the PDF worksheet prints, so the sheet on screen and
+  // the sheet on paper cannot disagree. [] when there is no basis for advice.
+  $: hoopingAdviceRows = hoopingRows(project.garmentId, combinedDesign);
   $: subtitle = `${readable(project.garmentId)} · ${hoopInEffect.hoop.label}`;
 
   // ---- Undo/redo (Ember-audit follow-up) ------------------------------------
@@ -772,6 +806,15 @@
     persist(false);
   }
 
+  // "Show on design" on a break-risk finding in the quality report. The
+  // sheet is a dialog over an inert panel, so it closes first; then the same
+  // state a Layers-row click sets puts the amber highlight on the shape.
+  function onLocateShape({ elId, shapeId }) {
+    closeSheet();
+    if (project.selectedId !== elId) onSelect(elId);
+    selectedShape = { elId, shapeId };
+  }
+
   function onImage(elementId, workImage) {
     runtime = { ...runtime, workImages: { ...runtime.workImages, [elementId]: workImage } };
   }
@@ -1244,12 +1287,14 @@
         {runtime}
         {digitizerHealth}
         {summaryRows}
+        hoopingRows={hoopingAdviceRows}
         {qualityEntries}
         qualityPartial={!qualityIsTheWholeDesign}
         ready={readyToStitch}
         {quote}
         on:quote={(e) => { quote = saveQuote(e.detail); }}
         on:close={closeSheet}
+        on:locate={(e) => onLocateShape(e.detail)}
         on:credits={(e) => openCredits(e.detail)}
       />
     {/if}

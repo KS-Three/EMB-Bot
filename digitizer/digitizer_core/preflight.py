@@ -123,7 +123,7 @@ from shapely.geometry import Point, Polygon
 from skimage.color import deltaE_ciede2000
 
 from . import machine, stitches
-from .config import PHOTO_CLASSES, PipelineConfig
+from .config import PHOTO_CLASSES, PipelineConfig, work_grid_px_per_mm
 from .pipeline import PipelineResult, fabric_for
 from .stage0_classify import classify
 from .stage1_prep import _dominant_border_color, prep
@@ -231,6 +231,11 @@ MIN_COLUMN_MM = machine.MIN_STITCH_MM
 # never upsampled, so growing the design adds no pixels to a letter).
 # One logo calibrated it; the docstring of `_resolution_note` says what to
 # re-measure if a second disagrees.
+# The name says SOURCE and the calibration was always in pixels of the
+# prep's GRID (lost at 13-18, back at 28 — both on the 4 px/mm grid). They
+# were the same thing until `cfg.work_px_per_mm` (2026-09-30) made the grid
+# finer than the source line, which is the cure for those very words: the
+# test reads the grid's pixels, the sentence still quotes the source's.
 LETTERING_MIN_SOURCE_PX = 20.0
 
 # Tight gaps inside a satin shape (2026-09-30, Kent's pick after the
@@ -1964,7 +1969,7 @@ def _tight_gap_findings(result: PipelineResult, plan: StitchPlan,
 
 
 def _resolution_note(findings: list[dict], p, plan: StitchPlan,
-                     cfg: PipelineConfig) -> None:
+                     cfg: PipelineConfig, design_class: str | None = None) -> None:
     """Append the resolution fact to LETTERING_TOO_SMALL and LETTERING_ILLEGIBLE
     when the artwork cannot carry the lettering they name (in place; a
     finding's text and `extra` grow, nothing else changes).
@@ -1986,15 +1991,26 @@ def _resolution_note(findings: list[dict], p, plan: StitchPlan,
 
     Calibrated on one logo (bridge: lost at 13-18 grid px, recovered at 28).
     If a second logo loses lettering above 20 source pixels per letter, or
-    keeps it below, re-measure the constant on both before moving it."""
+    keeps it below, re-measure the constant on both before moving it.
+
+    That calibration is in GRID pixels, so the test is too (`cfg.
+    work_px_per_mm`, 2026-09-30): lettering the prep's grid gives
+    LETTERING_MIN_SOURCE_PX or more (`Prep.px_per_mm`, the raster the tracer
+    read) was traced and gets no note, however few pixels the source had --
+    bridge's 3.4 mm letters are 12 source pixels and 27 on an 8 px/mm grid.
+    The sentence still quotes the SOURCE's pixels, which is the fact a
+    customer can act on, and the width it names is read on the working grid
+    (`config.work_grid_px_per_mm` for this design's class), the one a bigger
+    design will be traced on."""
     if p is None or plan.stats is None:
         return
     px = float(getattr(p, "input_px_per_mm", 0.0) or 0.0)
     if px <= 0.0:
         return
+    traced_px = max(px, float(getattr(p, "px_per_mm", 0.0) or 0.0))
     x0, _y0, x1, _y1 = plan.stats.bbox_mm
     design_w = float(x1 - x0)
-    grid = float(cfg.min_px_per_mm)
+    grid = work_grid_px_per_mm(cfg, design_class)
     for f in findings:
         if f.get("code") not in (LETTERING_TOO_SMALL, LETTERING_ILLEGIBLE):
             continue
@@ -2007,7 +2023,7 @@ def _resolution_note(findings: list[dict], p, plan: StitchPlan,
             continue
         letter_mm = float(min(sizes))
         per_letter = letter_mm * px
-        if per_letter >= LETTERING_MIN_SOURCE_PX:
+        if letter_mm * traced_px >= LETTERING_MIN_SOURCE_PX:
             continue
         extra["input_px_per_mm"] = round(px, 2)
         extra["source_px_per_letter"] = round(per_letter, 1)
@@ -3521,6 +3537,113 @@ def _legibility_findings(p, result: PipelineResult, plan: StitchPlan,
 
 # --- The report -------------------------------------------------------------
 
+# --- Thread-break risk: the three findings, grouped and pointable ------------
+
+# The findings whose own messages say thread or needles break. Tagged, never
+# re-judged: `_tag_break_risk` moves no threshold and adds no finding, it marks
+# these `extra.break_risk` and gives each the shapes to show.
+#
+# A sharp-satin-angle check and a "stitches under 0.5 mm" finding are both
+# absent ON PURPOSE (2026-10-01). The angle has no threshold in this repo and
+# no trade source behind one, which is ROADMAP gate 1. The 0.5 mm line is
+# measured-wrong as a verdict: see `_tiny_step_metrics`.
+BREAK_RISK_CODES = frozenset({STITCHES_TOO_SHORT, DENSITY_STACKED,
+                              SAME_HOLE_HEAVY})
+
+# Shapes named per finding. The review step shows the first; the rest ride out
+# for a reader who wants them. Same cap as `_UNCOVERED_TOP_N`.
+_BREAK_SHOW_TOP_N = 12
+
+
+def _show_ids(shape_ids, region_ids: set[str] | None) -> list[str]:
+    """Run shape ids as the ids the Studio holds, in order, deduped, capped.
+
+    The canvas knows REGIONS. A shade band's run carries a derived id
+    (`_owning_region_id` has the rule), so with the regions in hand each id is
+    mapped to its owner and one nobody owns is dropped; a caller scoring a
+    bare plan has no regions, and the ids pass through.
+    """
+    out: list[str] = []
+    for sid in shape_ids:
+        if not sid:
+            continue
+        if region_ids is not None:
+            sid = _owning_region_id(sid, region_ids)
+            if sid is None:
+                continue
+        if sid not in out:
+            out.append(sid)
+    return out[:_BREAK_SHOW_TOP_N]
+
+
+def _shapes_near(plan: StitchPlan, at_mm, radius_mm: float) -> list[str]:
+    """Shape ids with a needle point within `radius_mm` of `at_mm`, nearest
+    first; the single nearest shape when none is that close."""
+    ax, ay = at_mm
+    best: dict[str, float] = {}
+    for _b, run in plan.iter_runs():
+        if not run.shape_id or not run.points:
+            continue
+        pts = np.asarray(run.points, dtype=float)
+        d = float(np.hypot(pts[:, 0] - ax, pts[:, 1] - ay).min())
+        if d < best.get(run.shape_id, math.inf):
+            best[run.shape_id] = d
+    ranked = sorted(best, key=lambda s: (best[s], s))
+    near = [s for s in ranked if best[s] <= radius_mm]
+    return near or ranked[:1]
+
+
+def _tag_break_risk(findings: list[dict], plan: StitchPlan,
+                    result: PipelineResult | None) -> None:
+    """Mark the break-risk findings and say which shapes to show, in place."""
+    region_ids = ({r.shape_id for r in result.regions}
+                  if result is not None else None)
+    for f in findings:
+        if f["code"] not in BREAK_RISK_CODES:
+            continue
+        extra = f.setdefault("extra", {})
+        if f["code"] == STITCHES_TOO_SHORT:
+            ids = [s["shape_id"] for s in extra.get("shapes", ())]
+        elif f["code"] == DENSITY_STACKED:
+            # Everything piled on the worst patch, out to that patch's own
+            # half-width: a stack is several shapes by definition.
+            ids = _shapes_near(plan, extra["worst_patch_at_mm"],
+                               math.sqrt(extra["worst_patch_mm2"]) / 2.0)
+        else:
+            ids = _shapes_near(plan, extra["worst_at_mm"],
+                               _SAME_HOLE_QUANTUM_MM)
+        extra["break_risk"] = True
+        extra["show_shape_ids"] = _show_ids(ids, region_ids)
+
+
+def _tiny_step_metrics(plan: StitchPlan) -> dict:
+    """Needle-down steps under `machine.TINY_STITCH_MM`, as a COUNT only.
+
+    "Stitches under 0.5 mm" is on every trade list of what breaks thread, and
+    it is not a finding here because it would fire on clean work. Measured
+    2026-10-01 at 80 mm, lock stitches stripped:
+
+        fixture               steps   under 0.5   where
+        logo_whitebg          5,730     618       fill 573, underlay 44, travel 1
+        becker_marine_logo    6,277     476       underlay 338, fill 125, run 12, satin 1
+
+    `logo_whitebg` has zero findings. Its 573 are the fill's row advance,
+    which IS the row pitch -- 0.15 mm since Kent's 2026-09-03 ruling -- so a
+    0.5 mm line condemns the ruled fill, not a defect. Reported so a change
+    that moves it is visible; a threshold on it would be a physical constant
+    with no sew-out behind it.
+    """
+    total = tiny = 0
+    for _b, run in plan.iter_runs():
+        pts = stitches.strip_ties(run.points)
+        for a, b in zip(pts, pts[1:]):
+            total += 1
+            if math.dist(a, b) < machine.TINY_STITCH_MM:
+                tiny += 1
+    return {"tiny_steps": tiny,
+            "tiny_step_fraction": round(tiny / total, 3) if total else None}
+
+
 def run_preflight(result: PipelineResult, plan: StitchPlan,
                   cfg: PipelineConfig | None = None,
                   image=None) -> dict:
@@ -3546,7 +3669,10 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     # thread-match rasterization and the two photo guardrails (resolution,
     # subject contrast). Without the artwork all three are skipped and the
     # metrics say so, each with its own None.
-    p = prep(image, cfg) if image is not None else None
+    # The class goes with it so the re-read lands on the grid the pipeline
+    # traced (`cfg.work_px_per_mm` is per class); a bare plan has none.
+    design_class = getattr(result, "design_class", None)
+    p = prep(image, cfg, design_class=design_class) if image is not None else None
 
     worst_de: float | None = None
     if p is not None and result is not None:
@@ -3608,7 +3734,7 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     # Lettering the artwork cannot carry: the resolution fact on the two
     # lettering findings, when the artwork was given (the legibility check
     # above and the lettering check just before are both in `findings` here).
-    _resolution_note(findings, p, plan, cfg)
+    _resolution_note(findings, p, plan, cfg, design_class=design_class)
 
     # The shapes lettering just named, so the short-stitch check can say which
     # of ITS carriers are not covered by that warning. The two measure the same
@@ -3669,6 +3795,10 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     metrics["color_changes"] = color_changes
 
     metrics["stitch_count"] = plan.stats.stitch_count
+    metrics.update(_tiny_step_metrics(plan))
+
+    # Last, over the finished list: it tags findings, it does not make any.
+    _tag_break_risk(findings, plan, result)
 
     score = 100
     for f in findings:
