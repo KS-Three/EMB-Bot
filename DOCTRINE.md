@@ -8164,3 +8164,156 @@ them together. Two more of Kent's calls that day, so nobody re-asks: quote
 inputs are ONE record per browser, not per project; and machine profiles are
 per MODEL, S-1501 first, everyone else types a speed.
 *(ruled 2026-10-01 — `src/sewtime.js`, `app/src/lib/quote.js`)*
+
+## A test that counts needle points cannot see thread, and a float has none (2026-10-03)
+
+`buildQualityDesign: annulus keeps hole empty (no sew points inside)` passed
+for as long as it existed while every fill row of the browser engine laid
+thread across that hole: 76 untrimmed floats over a 12 mm cut-out, 912 mm of
+it, and 20 plain stitches straight across a 3 mm one. Both ends of each land
+on the rim, so nothing is "inside". The Studio's field agreed with the test
+by default: it draws jumps only with its **Jumps** toggle on. The screen, the
+suite and the file were three views, and two of them did not show the defect.
+
+**And this entry's own first draft was wrong about the screen.** It said "the
+preview cannot show it: `render.js` draws no jumps", and six other documents
+of the same change said it with it. `src/render.js` is the PDF sheet's
+renderer. The field is `app/src/lib/preview.js`, the toggle is on its toolbar
+(an Ember-audit follow-up, `strands.js` says), and with it on that badge
+draws 77 dashed lines across the cut-out. One renderer had been read and the
+claim was about the app. Found the same day, by grepping the app for the word
+"jump" while looking for something else.
+
+**What to do with it:**
+
+- **To ask "is this ground clear", read the MOVES, not the points.** Walk the
+  stream: a move lays thread unless a trim has come since the last
+  penetration, and a `jump` after a stitch is a float. `test/fill.test.js`
+  `threadThrough` and `test/digitize.test.js` `threadAcross` are that walk.
+- **Leave the `end` record out of it.** It sits at the origin, which is
+  inside a centred hole; counted as a move it reads as one float that is not
+  there. It cost one wrong red here.
+- **Before writing "the screen cannot show it", grep the APP for the word.**
+  There are two renderers (`src/render.js` for the PDF sheet,
+  `app/src/lib/preview.js` for the field), and the field has view toggles:
+  Jumps, Trims, Outlines. To see a float on a real design, turn on Jumps.
+- **A margin that is "one pitch" is a different size on every pass.** A row
+  turn inside one column joins two row ends on adjacent edges of the hole,
+  and the chord clips the corner by less than the pitch. At a fill's 0.15 mm
+  that is under a thread's width. At an underlay's 2 to 2.5 mm it is a stitch
+  through the hole: 12.2 mm sewn 1.71 mm inside a cut-out, in the first build.
+  **A tolerance that guards open ground is ONE number for the shape, owned by
+  the caller** (`openTol`: the fill's pitch).
+- **And the ground is MEASURED, never "the outline plus a number".** The
+  second build let an underlay go "as deep as the pull compensation, since
+  the fill covers that far". A hole thinner than twice the compensation folds
+  when shrunk and is sewn as drawn, so there the fill covered nothing, and the
+  underlay went straight across a 1 mm slot. Hand each pass the rings the fill
+  is actually sewn to (`ground`).
+- **A box drawn well inside the hole measures the middle of the hole.** The
+  first build's tests sat 1.5 mm inside each rim, on two shapes, and all
+  twenty passed while thread lay 1.7 mm in on a third. An independent audit
+  with its own clipper found three real failures in an hour. Measure DEPTH
+  FROM THE EDGE, in mm of thread, on shapes the code was not written against.
+- **"Open ground" is what the fill does not COVER, not what is outside the
+  outline.** The fill is sewn to the pull-compensated rings, so its first
+  point sits a hair outside the true corner. Tested against the true outline,
+  a plain square read as leaving itself and went from one cut to two.
+- **"Does any row fork" is not the question.** No row of a T or an L is
+  split, and the old walk's turn at the step is still a float outside the
+  outline. A shape is plain only when every row is one span AND every row
+  turn stays inside. The converse trap is in the same place: at a pointed
+  corner two consecutive single-span rows can fail to overlap, which
+  `_columns` rightly calls a break, and that is not a reason to change a
+  rotated rectangle.
+- **Depth is not the whole question either: ask what KIND of move it is.** A
+  turn at the step of a T runs along the step's edge, under one fill row
+  out. It passes every depth test, and the plain walk FLOATS it, because it
+  is longer than a stitch: 6 to 28 mm of loose thread on the rim, on 35 of
+  165 notched designs, after the rebuild and with its tests green. Sewn,
+  thread on the rim is the fill's edge. Floated, it is a defect. Measure
+  floats and sewn thread separately, against the ground the fill COVERS.
+- **Ask about the moves the walk MAKES, not the rows in order.** Center-out
+  sews its upper half from the middle up, so its turns are the other
+  diagonal of each pair of rows. A check written against top-down turns
+  passed a shape whose bottom-up turn crossed open ground.
+- **Nearest-first strands the strips beside a row of holes.** After the
+  first strip the nearest reachable column is the band BELOW the holes, and
+  every other strip then costs a cut to get back to: one or more per hole.
+  Finish a level before descending.
+- **A fixture whose rows sit farther apart than the longest stitch, or whose
+  holes are under two tolerances wide, measures the fixture.** In the first
+  every plain row turn is too long to sew; in the second the engine rightly
+  treats the hole as closed. Every real caller has pitch far under stitch
+  far under hole.
+
+**What the second audit added** (it failed the rebuild four ways):
+
+- **A length on cloth must not depend on the drawing's resolution.** The edge
+  run's inset was "2 px, at most 0.6 mm": 0.2 mm at the Studio's 10 px per
+  mm, 0.6 mm on a design enlarged five times, and for a hole that is INTO the
+  hole. Every test ran at 10 px per mm. Sweep the scale (2, 10, 40).
+- **Keeping thread out of a hole by cutting it is the cheap answer, and the
+  cuts are the cost.** The rebuild cost 35 to 122 cuts on a 36-hole badge and
+  its own table said 42: measured on one drawing, at one row angle, with the
+  holes in one order. Count cuts BY WHERE THEY ARE (fill, underlay, between
+  runs), at the angle the engine picks AND at one it does not, and keep the
+  drawing in the tool (`tools/fill-columns-sheet.mjs` prints the table). The
+  engine's own angle for a symmetric shape is numerical noise: 82° for a
+  square with nine round holes.
+- **"None in 255 designs" is a statement about 255 designs.** The README said
+  a float between two runs never merely grazed the rim. The audit found 306
+  on 239 of 8,278.
+- **Code removed as unreachable by argument was reachable.** One random shape
+  in 3,000 went 1.4 deep on a tolerance of 1. An argument about geometry is a
+  hypothesis; run the random shapes before AND after
+  (`test/fill.test.js`, "shapes nobody chose"), and mutate each new rule to
+  see that some test dies.
+- **Travel along a traced curve puts a stitch on every vertex** unless it is
+  thinned: 2,561 stitches under 0.3 mm in one underlay. When a change adds
+  travel, count the short stitches as well as the cuts.
+- **Profile before optimizing.** A 36-hole design took 3.9 s, and the guess
+  was the sampling. It was two other things: asking what ground a move runs
+  over when the move lies on a ring's own edge (always the rim), and asking
+  again about every start further along a row already found blocked. Then a
+  grid of edges. 2,025 holes: from 94 s to 1.3.
+
+**What the third audit added** (one real regression, and it was in the
+question every move is asked):
+
+- **A rule that COUNTS crossings does not FIND them.** The scanline's
+  half-open rule gives a corner lying on the line to the side its edge leaves
+  by. That is right for parity, and it had been reused to cut a move where it
+  crosses the boundary. Along the tops of a U's two arms, right to left,
+  neither wall of the mouth was a crossing, and the mouth read as filled
+  ground. The same two points left to right read as open. The sheet's own wide
+  U, under terry, sewed 14.8 mm of fill across its notch.
+  **Ask a geometric question both ways round, and on whole-number shapes**,
+  where corners share a line. 9,000 random stars never ran a move along a line
+  of corners: the audit's 115 wrong answers in 176,672 random moves were all
+  collinear, and a drawn badge, letter or U is collinear all the time.
+- **And "on the line" means within rounding, not exactly.** Every fill but a
+  level one turns the shape first. A rule that stops only at a corner exactly
+  on the line gets 205 of 3,599 angles wrong.
+- **Three presets are not the presets.** Every sweep here ran no fabric,
+  pique and cap. Terry's underlay ends at the bottom, so its fill is sewn
+  upward, and upward was the direction that failed. Sweep `FABRICS.FABRICS`,
+  and treat where a pass is ENTERED from as an input like any other.
+- **Run the tool's own drawings through the suite.** The shape that failed
+  was on the sheet the README shows.
+- **A time measured at one row angle is the time at that angle.** "0.4 to
+  1.3 seconds on 2,025 holes" was the engine's own angle. At 30 degrees the
+  audit measured 3.5 to 18. One loop was 90% of it: a scan of every corner
+  for the nearest, inside a shortest-path search. A heap with the same
+  tie-break finds the same route (1,500 recorded designs hash the same), and
+  the stress shape is in the tool's table now.
+- **"None" is a rate with its denominator left off.** "No cut on a holed
+  shape" was true of the 48 it was measured on. Of the audit's 3,317, 95 keep
+  one. Print the rate and say where the exceptions are.
+- **Ask the auditor for what was NOT measured.** Travel was the cure and
+  nothing had measured where it lies: on average 16 mm of thread that is not
+  a row over rows already sewn in each holed fill, and up to nine lines of
+  thread on the worst millimetre of a rim. That goes to whoever decides the
+  flip, not into a footnote.
+*(measured 2026-10-03 — `test/fill.test.js`, `test/digitize.test.js`,
+`tools/fill-columns-sheet.mjs`; MASTER_SCOPE defect 52; scope-history 10-03)*
