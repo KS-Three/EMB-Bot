@@ -63,6 +63,7 @@ from .stage4_vectorize import (enforce_color_cap, garment_sews_enclosed,
                                rehome_resnapped_regions, revalidate_threads,
                                tag_enclosed_background, vectorize)
 from .designangle import set_design_angle
+from .beanletters import tag_bean_letters
 from .stitchwidth import apply_stitch_widths, measure_stitch_widths
 from .textcluster import (detect_text_clusters, ocr_suggest_text,
                           regularize_text_clusters,
@@ -1012,6 +1013,12 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
                         floor_sewn_mm=cfg.lettering_min_column_mm,
                         auto=cfg.stitch_width_auto,
                         satin_max=satin_ceiling_mm(cfg))
+    # Bean letters (`cfg.bean_letter_max_stroke_mm`, default None): read each
+    # text cluster's INK and hand the small ones their bean paths. Here, not
+    # in `build_generation`: it needs the review edits' `stitched` and `tier`
+    # (a shape the user pinned keeps its tier), and it moves no geometry.
+    # None tags nothing and reads nothing.
+    tag_bean_letters(regions, p, cfg)
     # Stage 1's BACKGROUND_ENCLOSED sentence promised holes "left unstitched";
     # when the rule looked at a garment, say what it decided. On a COPY —
     # `p` is shared across forks (`Generation.fork`), its warnings are not

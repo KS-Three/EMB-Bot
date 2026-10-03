@@ -17283,3 +17283,38 @@ bowl, a drone detail): asked last now.
 
 *(measured 2026-10-02, Windows — `tools/flip_sheet.py` arm `counters`;
 `tests/test_keep_counters.py`; `docs/renders/keep-counters-2026-10-02/`)*
+
+## 2026-10-02 — Bean letters, built OFF: small lettering read from the source ink (Kent: "We shouldn't have to warn the user of anything")
+
+Kent withdrew "warn sooner on small files" and asked the engine to take the
+path. A first spec (millimetre-denominated pixel rules) was refuted reading
+the code for its plan: the work grid already traces at 8 px/mm, and three of
+the five rules are pixel quantities on purpose. The remaining loss is
+construction — bridge's 0.7 mm-stroke words sewed one satin blob per letter.
+
+Two spikes: a bean along the TRACED shape has a ceiling (bridge's eight
+letter shapes carry zero holes); the same path read from the SOURCE INK
+reads as letters. `text_cluster_stroke_mm` proved unusable as a trigger.
+
+Built, `tools/bean_letters.py`, 80 mm left_chest, line 1.0 mm (the A's and the
+stitch counts are read on the final build):
+
+| arm | source px/mm | bean shapes | stitches OFF → ON | trims OFF → ON | OCR legibility OFF → ON |
+|---|---|---|---|---|---|
+| bridge | 3.49 | 8 | 17,724 → 17,529 | 98 → 104 | not read |
+| ENTHUSIAST at 5 | 5.00 | 0 | 2,424 → 2,424 | 15 → 15 | not read |
+| Fremont at 5 | 5.00 | 12 | 11,901 → 11,540 | 30 → 42 | 1.0 → 1.0 |
+| screenshot at 5 | 5.00 | 23 | 8,982 → 8,737 | 82 → 88 | 0.729 → 0.664 |
+| Fremont full file | 31.25 | 15 | 13,609 → 12,551 | 38 → 37 | 0.541 → 0.661 |
+
+Bridge's first build sewed its E as a C: a skeleton stops half a stroke short
+of a free end, the middle arm read 0.47 mm and two length floors dropped it.
+Ends are now carried out to the ink's edge. Both A's still sew as a Y (the
+threshold closes the A's top counter). The screenshot's OCR score falls
+while its thin line renders cleaner — the score is a yardstick, not a verdict
+(gate 4). Flip is Kent's; MASTER_SCOPE "Waiting on Kent" 21.
+*(built 2026-10-02 — renders `docs/renders/bean-letters-2026-10-02/`)*
+
+Related, same day: `keep_counters` (entry above) keeps counters the small-region
+floor would eat on a coloured ground, and does not move bridge's words; bean
+letters reads past the source pixels that close them first. Independent flags.
