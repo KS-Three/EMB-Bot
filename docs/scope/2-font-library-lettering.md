@@ -611,6 +611,13 @@ ink changes the design's bbox, and therefore its auto-scaling, so "A-B" in
 is a change to existing output, which is why it is Kent's call and not taken
 here.
 
+**Both paragraphs above are history; this note was added 2026-10-02.** The grep
+came back >0 on all twenty, at one authored value per font. Kent ruled
+2026-09-13 to revive them, and the per-glyph strip scope landed. The rebuild
+shipped 2026-09-15 through `tools/build-embf.mjs --only <keys>`. The six
+gate-1 glyphs are unchanged. The live record, including the measured bbox
+shift, is the header comment in `test/font-dead-glyphs.test.js`.
+
 ## Supply
 
 **Upstream is effectively exhausted, and there is no external supply.**

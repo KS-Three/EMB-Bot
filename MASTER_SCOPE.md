@@ -336,21 +336,15 @@ about the facts.
 6. **The `scratch_corpus/` 37 files.** Gitignored; cloud checkouts are empty
    but all 37 are present on Kent's machine (confirmed 2026-08-17), so a local
    session can run the corpus legs today. Blocks cloud-side M2/M3 only.
-7. **26 glyphs that sew nothing, in 6 shipped fonts — SPLIT IN TWO 2026-08-28,
-   diagnosed from the shipped `.embf` binaries alone** (user-facing half
-   already closed — the Studio says "This font can't stitch …"). 20 are
-   `stripRunParamsIfSatin` taking runs-only glyphs' params; 6 are a GATE 1
-   refusal (no authored run length upstream — defaulting one is refused by
-   `test/run-fonts.test.js:44`). Full per-font diagnosis: area 2 doc,
-   "stripRunParamsIfSatin". **Still open, one grep not a session:** count
-   `running_stitch_length_mm` in `<ink-stitch>/src/roaring_twenties_KOR/
-   ltr.svg`. **It has to be a LOCAL session** — that path is inside
-   `scratch_ink/`, which is gitignored and absent from a cloud checkout
-   (confirmed 2026-09-06), the same way item 6 blocks the corpus legs. **>0** → the narrow fix (scope the strip to glyphs WITH columns)
-   revives the 20 — Kent's call, since inking those glyphs changes the bbox
-   auto-scaling of any text containing `+ - / < = > \ _ ¯ °`. **0** → all 26
-   are the same gate-1 case and this closes permanently.
-   *(measured 2026-08-28 — `.embf` decode; detail: area 2)*
+7. **RESOLVED 2026-09-15 — of the 26 glyphs that sewed nothing, the 20
+   `roaring_twenties_KOR`/`_small` ones sew again; 6 stay a GATE 1 refusal.**
+   The grep came back >0 on all twenty. Kent ruled 2026-09-13 to revive them,
+   and `stripRunParamsIfSatin` now strips only glyphs that carry satin
+   columns. The rebuild landed 2026-09-15. The other 6 (`western_light`,
+   `ondulamarif_*`) have no authored run length upstream, and defaulting one
+   is refused by `test/run-fonts.test.js:44`. This item read "still open"
+   until 2026-10-02.
+   *(resolved 2026-09-15 — `test/font-dead-glyphs.test.js`; detail: area 2)*
 10. **RESOLVED 2026-08-25 — Studio typography: "tighter and more editorial."** Kent's standing direction; new UI is set to it, not re-litigated. *(area doc)*
 
 11. **RESOLVED 2026-09-02 (Kent's call) — `cfg.is_photographic` is reachable from the UI.** Detection remains open as defect 15. *(confirmed 2026-09-07; correction in DOCTRINE)*
@@ -444,8 +438,10 @@ successful only: `digitizer` **min 31.2 / p50 51.0 / max 59.0**; `studio-e2e`
 5.5; `studio` 0.9; `engine` 0.5. A fifth, `art-fidelity-baseline`, is
 push-to-`main`-only and gates nothing.
 
-**Budget an hour per PR; read a 50-minute `digitizer` job as normal.** Medians
-keep climbing, so treat every number here as drifting and spend one `curl` on
+**Budget eighty minutes per PR, and read a 75-minute `digitizer` job as
+normal.** The record is 75.9 minutes, green, on #575 (2026-09-30); CLAUDE.md
+footgun 7 carries the trail. Medians keep climbing, so treat every number
+here as drifting and spend one `curl` on
 `/actions/runs/<id>/jobs` before calling a job stuck. Superseded figures and
 the climb: scope-history.
 

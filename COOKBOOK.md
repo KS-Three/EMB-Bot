@@ -1197,31 +1197,31 @@ don't push for it.
 
 ## Known bugs (unresolved, not accepted — Kent's call on the fix)
 
-- **DST axis transposition — the WRITER half only, since 2026-09-07.**
-  EMB-Bot's own DST codec was transposed vs. the Tajima/pyembroidery standard
-  on both sides — confirmed via 4 independent sources + a clean-room decode.
-  Browser DST round-trips correctly against itself, which is why it shipped
-  undetected; every existing EMB-Bot DST is affected, so fixing the writer
-  means a migration path for old files.
+**None open as of 2026-10-02.** Every entry below is fixed and is kept for its
+trail. Put a new unresolved bug at the top, above this line's date.
 
-  **`src/dstimport.js` is FIXED** (PR #404): third-party DST now decodes
-  through `decodeDSTStandard`, so an imported file lands the right way round
-  instead of mirrored. That half needed no migration — nothing this app wrote
-  goes through it.
+- **DST axis transposition — FIXED 2026-09-08, both halves. The phantom end
+  stitch is FIXED too (#415).** EMB-Bot's own DST codec was transposed
+  against the Tajima/pyembroidery standard in both directions. Four
+  independent sources and a clean-room decode confirmed it. It shipped
+  undetected because browser DST round-tripped correctly against itself.
+  - The importer went standard first, in PR #404.
+  - The writer followed in `bca5a504`. `encodeRecord` is now byte-identical
+    to `pystitch.DstWriter.encode_record`, and `decodeDSTStandard` is a plain
+    alias of `decodeDST`.
+  - The phantom end stitch was the `end` record written as a move.
+    `src/dst.js` now stops at `if (st.type === "end") break;`.
 
-  **`src/dst.js`, the writer, is still transposed and still Kent's call.** It
-  also carries a second defect found the same day: a **phantom end stitch**,
-  because the `end` record's coordinates are written as a move, so every DST
-  this product has ever produced has one extra stitch past the design's last.
-  One line fixes it (`if (st.type === "end") break;`) and it changes the bytes
-  of every file, which is the same call as the transposition.
+  **Do not "fix" either half back.** This entry kept saying the writer was
+  "still transposed and still Kent's call" for weeks after it was fixed. A
+  stale instruction like that is how `crossval-stitch-formats.mjs` came to
+  tell its reader to un-fix the axis (memory,
+  `stale-diagnostics-and-two-flips-2026-09-13`).
 
-  What IS safe to hand out today: a project made only of auto-digitized
-  images exports DST through the service, and that path is correct —
-  measured 2026-09-07 at 80.3 x 16.7 mm in dst, pes and jef alike, all three
-  2,187 stitches, all three carrying the colour stop. The Download step says
-  so in those words. See `dst-codec-axis-discrepancy` in Kent's memory,
-  `docs/dst-axis-verdict-2026-07-31.md`, and scope-history 09-07.
+  **One thing stays true:** a `.dst` that EMB-Bot wrote BEFORE the fix is in
+  the old dialect and re-imports transposed. Nothing repairs old files. The
+  full trail is in CLAUDE.md footgun #1, `dst-codec-axis-discrepancy` in
+  memory, and `docs/dst-axis-verdict-2026-07-31.md`.
 - **Gradient-class designs fragment before blend treatment** — **FIXED
   2026-08-03**, same-day follow-up session. `gradient` class still segments
   via plain k-means (23 regions on the repro fixture, unchanged), but every

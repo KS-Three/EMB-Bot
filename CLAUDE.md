@@ -24,9 +24,11 @@ Each doc gates a different kind of decision. Read the one matching what you're a
   would change what someone DOES.**
 - **`MASTER_SCOPE.md` — for current status.** What's implemented, what's not, and
   how much to trust each capability area. A live dashboard kept current after
-  PR-sized work, not a one-time requirements doc. **Current state ONLY, under an
-  800-line budget.** Every claim carries a `(verb date — source)` pointer; one
-  without a pointer is unverified.
+  PR-sized work, not a one-time requirements doc. **Current state ONLY, under a
+  27,000-word budget, with 400 words per numbered defect.** Its own rules 4
+  and 4b set those numbers, and `tests/test_scope_budget.py` enforces them;
+  Kent replaced the old 800-line budget. Every claim carries a `(verb date —
+  source)` pointer; one without a pointer is unverified.
   - Dated snapshots: `docs/scope-history.md` — append-only. Never quote a number
     from it as live status.
   - Per-area detail: `docs/scope/`.
@@ -59,14 +61,14 @@ of stall.
 
 **Kent's call 2026-08-28.** Open a PR ready-for-review whenever you have
 verified the work yourself — tests run, diff re-read adversarially. Keep `draft`
-only when you genuinely want his eyes before CI spends fifteen minutes on it.
+only when you genuinely want his eyes before CI spends an hour or more on it.
 
 Two reasons this is not cosmetic:
 
 - **Auto-merge cannot be armed on a draft.** It fails with *"Pull request is a
-  draft"*, so every draft puts the ~15-minute `digitizer` wait on Kent instead
-  of on the machine. He un-drafted all four PRs on 2026-08-27/28 himself before
-  merging.
+  draft"*, so every draft puts the hour-plus `digitizer` wait on Kent instead
+  of on the machine (footgun 7 below has the measured budget). He un-drafted
+  all four PRs on 2026-08-27/28 himself before merging.
 - **Auto-merge has a THIRD refusal you will hit if you wait too long** —
   *"already in clean status … you can merge directly"*. Arm it while
   `mergeable_state` is `blocked` (required checks pending). Once every check is
@@ -338,13 +340,13 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    PR #275, 2026-08-27: `mcp__github__enable_pr_auto_merge` returned *"Auto-merge
    enabled … will merge automatically once all required checks pass"* instead of
    refusing. That is the arming step, which is the part that was impossible
-   before; do not sit on a PR watching `digitizer` for 15 minutes. Two
+   before; do not sit on a PR watching `digitizer` for an hour. Two
    conditions, both learned on that same PR:
 
    - **Mark the PR ready for review FIRST.** On a draft it fails with
-     *"Pull request is a draft"* — a third refusal message, distinct from the
-     two below, and the one a session hits by default, since PRs here are
-     opened as drafts.
+     *"Pull request is a draft"*. That is a third refusal message, distinct
+     from the two below. A session hits it whenever it opens a draft, and
+     ready-for-review is the default here since 2026-08-28 (top of this file).
    - **Arm it while `mergeable_state` is `blocked`.** That is the state
      required checks produce (required, not yet reported). It is NOT
      `unstable`, which is what this repo used to show and what the note below
