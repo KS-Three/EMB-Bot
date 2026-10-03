@@ -17932,3 +17932,62 @@ records; on, 3,783.
 Off, nothing moves: engine 693 passed. Not sewn. Flip is still Kent's:
 defect 52, "Waiting on Kent" 22.
 *(fixed 2026-10-03 — `test/fill.test.js` "a move of no length", `test/digitize.test.js`; `docs/renders/fill-columns-2026-10-03/README.md`, "A move of no length")*
+
+## 2026-10-03 — The corner fix's independent re-measure: the rule held, two of its claims did not, and it had already merged
+
+**It landed before its audit was read.** The corner fix (two entries up) was
+PR #616, left unarmed until its independent re-measure was in. #617 was cut
+from its branch, both were armed, and #617 merged with #616's four commits
+inside it. The re-measure had come back hours earlier, not clean, and had not
+been relayed. Nothing a customer gets moved: `fillColumns` is off. What
+moved is what `main` SAYS about it, and this entry and the render README's
+section are the correction.
+
+**What held**, on 45,416 designs of the auditor's own and a second 10,000,
+and 23,980 direct fills: flag absent and flag false identical on every one;
+a design whose passes are all plain walks identical with the flag on too
+(9,703); no column walk sews a row of no length (68,412 before); no span
+with a length left unsewn; no float over 4 mm off the cover and no design
+with more than 0.07 mm more thread past it; cuts 15,125 → 14,249, stitches
+−0.43%.
+
+**What did not:**
+
+- **"No thread is a stub."** 731 on 304 designs → 17 on 16, and 31 → 22 on
+  the second sweep; eight designs have one now and had none. Each is a row
+  WITH a length under the file's rounding step (0.44 px on the audit's own
+  comb drawn 3% narrower), alone in its column in a tatami underlay: cut to,
+  two penetrations the file rounds into one hole, cut from. My own sweep
+  went from 106 to none: it has no row that short left alone and cut to.
+- **"No design gains more than one cut."** 13 gain two to four, 15 on the
+  second sweep two to seven; fewer on 814, more on 388. Three teeth under
+  terry go from no cut to two with a stub, four teeth at 61.3° from none to
+  three. Only with a tatami underlay: none of 19,097 designs under the four
+  edge-run presets, none of 6,483 with underlay off. 330 of the 404 gained
+  cuts are on the float into a plain walk, not where I had looked.
+
+**Why a rule about one span moves a whole pass**, traced on two of the
+auditor's drawings: the walk takes the nearest column it can reach and looks
+one move ahead, and a corner of no length was somewhere it could always go
+next. Without it the order changes from the first column on. On the three
+teeth the old engine's "no cut" was a 318 px trip through the corners to the
+far corner of no length before the first row, and in the fill itself 99 mm
+of travel round the outline to seven more: 292 mm more thread for two cuts
+fewer. Better on twice as many designs as worse, and decided by nothing in
+the rule.
+
+**Also corrected:** threads of one stitch are not only fleece and terry (27
+under no preset, 8 under the cap preset, from 0.1 mm); the plain walk's
+doubled tip can have a cut either side of it, made by the builder (14 combs
+1.8 mm across); floats are 7.6% and 16.2% longer on its sweeps, and the
+reason I first gave for that was tested and is wrong (the look-ahead is
+right); and thread 0.15 to 0.22 mm off the cover rose 5.6%, inside the
+promise and nearer its edge.
+
+**Open, and not this rule's to close:** a row shorter than the file's unit
+that is cut to and cut from (the weighing of sub-0.1 mm stitches is its own
+lane), and a walk whose cut count turns on its first column.
+
+Off, nothing moves. Not sewn. Flip is still Kent's: defect 52, "Waiting on
+Kent" 22.
+*(measured 2026-10-03 — an independent agent with its own reader; four of its drawings rebuilt on `main`; `docs/renders/fill-columns-2026-10-03/README.md`, "A corner on a scanline")*
