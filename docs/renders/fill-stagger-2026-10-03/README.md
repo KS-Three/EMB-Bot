@@ -241,8 +241,17 @@ character, the one the first round read.
 - **The lettering builder's fill is not staggered, and does not ship.** A
   letter too wide for satin is filled by `src/satinplay.js` only under
   `wideColumnFill`, which is off by Kent's ruling of 2026-09-11 and which no
-  Studio caller passes. If that flag is ever turned on, its fill has the
-  same lines in it.
+  Studio caller passes. The Studio's own lettering call over 85 fonts, 10
+  garments and 5 texts, at normal weight and at bold, is 8,500 builds (200
+  of them empty: two fonts have none of the letters) and not one fill row.
+  If that flag is ever turned on, its fill has the same lines in it: 64 of
+  the 85 fonts then fill somewhere (on the word "Hamburg", 20 of 83 at a
+  12.7 mm cap and 49 at 25.4 mm), and of 1,317,897 holes between row ends
+  82.5% have one under them and 65.1% head three in a line. The same passes
+  given this stagger: 8.2% and 0.6%, for 6.85% more points and not one more
+  float. So the stagger goes in with whatever change flips
+  `wideColumnFill`. Not built: Kent's call 2026-10-03, on these numbers.
+  *(measured 2026-10-03 — throwaway scripts over `src/fonts/bin`, written up in scope-history; `node tools/long-stitch-census.mjs --arm split`, the shipped arm, re-routes 0 stretches to fill)*
 - **The shape lane's stitch is 4 mm and the Python fill's is 3 mm.** The grid
   uses the lane's own. Changing it would be a third more stitches in every
   fill and a different decision.
