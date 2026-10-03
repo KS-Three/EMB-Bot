@@ -1038,6 +1038,15 @@ sews nothing and cuts the smallest shape that contains it.
   `node tools/fill-columns-sheet.mjs`: it draws four manual-lane shapes off
   beside on, floats in red, and prints the cost table. In the Studio, the
   field's Jumps toggle draws every needle-up move as a dashed line.
+- **Lock stitches are built OFF in both JS builders (2026-10-03).**
+  `ties: true` on `buildQualityDesign` or `buildLetteringDesign` locks every
+  thread where it starts and where it is cut. It is ONE function,
+  `applyTies` in `src/digitize.js`, run on the finished record stream, which
+  is in DST units. Do not compute a lock in px: the lettering port of 09-14
+  did, and its 0.8 mm leg came out 0.1 to 0.5 mm. No Studio caller passes
+  the flag; the flip is Kent's ("Waiting on Kent" 23).
+  `node tools/lock-stitch-census.mjs` prints what a lock costs and how long
+  its legs really are, on every shipped font and eleven shapes.
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 

@@ -98,3 +98,4 @@ invisible. Put detail in the note, never in this file.
 - [WITHDRAWN: warn sooner on small files](warn-sooner-small-files-handoff-2026-10-01.md) — Kent 10-02: no warnings, the engine takes the path; replaced by bean letters, built OFF in PR #601
 - [The built-OFF sitting](built-off-sitting-2026-10-03.md) — `patch_junctions` "waiting on Kent" was already shipped (junction stack part C); render a flag vs shipped first. The artifact republish can be refused; the page serves locally
 - [Fill columns: thread across holes](fill-columns-2026-10-03.md) — JS fill floated across every hole, unseen by its test; `fillColumns` built OFF (Kent's flip, not sewn). Three audits, each failed the build before it: audit before arming, fuzz, mutate
+- [Lock stitches, both JS builders](lock-stitches-2026-10-03.md) — `ties` built OFF for shapes too; the 09-14 lettering lock was 0.8 PIXELS a leg (0.1–0.5 mm) and doubled a hole. Measure a length in the output's units, at two resolutions

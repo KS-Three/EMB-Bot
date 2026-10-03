@@ -5,6 +5,17 @@
 `.dst`/`.pes` a customer exports from lettering, which is Kent's call, and the
 dossier number it would have been decided on turns out to be wrong by 2.7×.
 
+> **Corrected 2026-10-03.** Two things below were wrong, and neither reached a
+> customer: the flag is off and no caller passes it. **The leg was never
+> 0.8 mm.** `tieRun` took `TIE_STITCH_MM` as a length in whatever units it was
+> handed, and it was handed pixels. Across the 85 fonts the median leg was
+> 0.30 mm on `KENT` and 0.10 mm on the 18-character text, the longest 0.57 mm,
+> and some rounded to nothing. **And the tie-in doubled a needle hole**: it sat
+> in front of the run's own first stitch. The stitch counts in the table below
+> are unaffected and reproduce to the stitch. Both are fixed, and the same
+> lock now covers the shape builder:
+> [`lock-stitches-2026-10-03.md`](lock-stitches-2026-10-03.md).
+
 ## What was missing
 
 **Zero tie/lock records existed anywhere in `src/`.** The only `lock`/`tie`
@@ -57,7 +68,7 @@ larger (hence more base stitches to divide by).
 
 **"Zero added trims" reproduces exactly**, at every length. It is structural,
 not lucky: a tie bounces between a point the needle already occupies and a
-point 0.8 mm into the shape, so it can introduce no travel long enough to cut.
+point one leg into the shape, so it can introduce no travel long enough to cut.
 
 Per-font spread on the 18-character string: min **+2.51%** (`fold_inkstitch`),
 max **+47.98%** (`noble`). `noble` is not a tie defect — it sews 1,334 stitches
