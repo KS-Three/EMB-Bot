@@ -619,6 +619,76 @@ test("fillColumns: a float between two runs that only grazes the rim is cut as w
   assert.strictEqual(floatsOffCover(drawn(plus, 350, { fabric: cap }), plus, cap.pullCompMm), 0, "a float across an inside corner");
 });
 
+// --- what the third audit found (2026-10-03, on the third build) --------------
+//
+// One thing that mattered, and it was in the question the walk asks of every
+// move (fill.js `groundUnder`; test/fill.test.js has it bare). Here it is as a
+// customer would have met it. Every sweep of mine had run no fabric, pique and
+// cap. The auditor ran all seven presets, and the shape was the sheet's own.
+
+test("fillColumns: the sheet's own shapes keep their thread on the cover under EVERY preset", () => {
+  // The wide U under terry: its underlay ends at the bottom, so the fill is
+  // sewn upward and finishes on top of one arm with the other still to sew.
+  // The way there runs along the arms' tops, across the mouth. Asked right to
+  // left, that move read as filled ground, and 14.8 mm of fill thread was
+  // sewn across the notch, 7 mm from either wall.
+  const ellipse = (rx, ry) => roundPx(0, 0, 1, 64).map((p) => ({ x: 150 + p.x * rx, y: 180 + p.y * ry }));
+  const shapes = {
+    "badge, two cut-outs": [{ outer: boxPx(0, 0, 400, 400), holes: [boxPx(60, 140, 180, 260), boxPx(285, 185, 315, 215)] }, 400],
+    "ring": [{ outer: ellipse(150, 180), holes: [ellipse(70, 100)] }, 300],
+    "two counters": [{ outer: boxPx(0, 0, 260, 360), holes: [boxPx(80, 60, 180, 140), boxPx(80, 200, 200, 300)] }, 260],
+    "wide U": [{ outer: ring([[0, 0], [140, 0], [140, 180], [300, 180], [300, 0], [440, 0], [440, 280], [0, 280]]), holes: [] }, 440],
+  };
+  for (const fabric of [null].concat(FABRICS.FABRICS)) {
+    for (const name of Object.keys(shapes)) {
+      const [shape, widthPx] = shapes[name], pull = fabric ? fabric.pullCompMm : 0;
+      const label = name + ", " + (fabric ? fabric.id : "no fabric");
+      const d = drawn(shape, widthPx, fabric ? { fabric } : {});
+      assert.deepStrictEqual(offCoverMm(d, shape, pull, 0.15), { sewn: 0, floats: 0 }, label);
+      assert.strictEqual(floatsOffCover(d, shape, pull), 0, label);
+    }
+  }
+});
+
+test("fillColumns: a ring inside a hole is an island, and its edge run lies on the island", () => {
+  // `holes` carries every ring inside the outline, and a ring inside a hole is
+  // filled ground again: `groupRingsIntoShapes` hands a bullseye over as the
+  // outline plus [hole, island]. The edge run was moved "out from a hole" for
+  // every ring in that list, which for the island is INTO the moat: 33.6 mm of
+  // underlay 0.2 mm inside the cut-out, on a ring whose flag-off run lies on
+  // the island.
+  const island = boxPx(160, 160, 240, 240);
+  const eye = { outer: boxPx(0, 0, 400, 400), holes: [boxPx(80, 80, 320, 320), island] };
+  // mm of thread between 0.15 and 1 mm OUTSIDE the island's own ring: nothing
+  // else of this design comes that near it from the moat side
+  const besideIsland = (d) => {
+    let mm = 0, attached = false, prev = null;
+    for (const s of d.stitches) {
+      if (s.type === "end") break;
+      if (s.type === "trim") { attached = false; prev = s; continue; }
+      if (prev && attached) {
+        const a = { x: prev.x + 200, y: 200 - prev.y }, b = { x: s.x + 200, y: 200 - s.y };
+        const len = Math.hypot(b.x - a.x, b.y - a.y), n = Math.max(1, Math.ceil(len / 0.5));
+        for (let k = 0; k < n; k++) {
+          const x = a.x + (b.x - a.x) * (k + 0.5) / n, y = a.y + (b.y - a.y) * (k + 0.5) / n;
+          const out = Math.max(160 - x, x - 240, 160 - y, y - 240);   // > 0: outside the island, by about this much
+          if (out > 1.5 && out < 10) mm += len / n / 10;
+        }
+      }
+      if (s.type === "stitch") attached = true;
+      prev = s;
+    }
+    return Math.round(mm * 10) / 10;
+  };
+  for (const fabricId of ["pique_knit", "terry_towel", "structured_cap", "fleece_sweatshirt"]) {
+    const fabric = FABRICS.getFabric(fabricId);
+    assert.strictEqual(besideIsland(drawn(eye, 400, { fabric })), 0, fabricId);
+    // (flag off, the old walk's floats cross that band on every row: the
+    // fixture can see thread there)
+    assert.ok(besideIsland(drawn(eye, 400, { fabric, fillColumns: false })) > 50, fabricId + ", flag off");
+  }
+});
+
 test("fillColumns: left off, every stitch is the one it has always been", () => {
   for (const underlay of [false, true]) {
     const base = Object.assign({ underlay }, ANNULUS_OPTS);

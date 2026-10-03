@@ -140,7 +140,9 @@
   // The move is first cut where it crosses the boundary, exactly; only the
   // stretches that lie OUTSIDE are then sampled for depth, at tol/4, so
   // anything deeper than about 1.1 tol is seen and a slot narrower than 2 tol
-  // is treated as closed. (It used to sample the whole move for inside and
+  // is treated as closed. (At most 4,000 samples to a stretch: one outside for
+  // more than 1,000 tol -- 150 mm at a fill's tolerance -- is sampled more
+  // coarsely than that.) (It used to sample the whole move for inside and
   // outside as well: 1,600 point-in-polygon tests for one 60 mm run, and
   // nearly all of a hole-heavy design's time.) `slack` is ignored at either
   // end: a run of ANOTHER pass may begin a hair off the edge (digitize.js,
@@ -165,17 +167,28 @@
     const reach = Math.max(tol, ON_EDGE_EPS);
     const enough = wantRim ? ON_EDGE_EPS : reach;   // close enough to stop looking
     const near = nearEdges(edges);
-    // Where the move crosses the boundary, as a distance from a. Half-open on
-    // which side of the line a corner is, so a corner lying exactly on it
-    // counts once: the scanline rule, turned to this line.
-    const stops = [lo];
+    // Where the ground under the move can CHANGE, as a distance from a: where
+    // it crosses an edge, and at every corner that lies ON its line, whichever
+    // side that corner's edges go off to. (The scanline's half-open rule was
+    // here first: a corner on the line belongs to the side its edge leaves by.
+    // That counts crossings and does not find them. Along the tops of a U's
+    // two arms, right to left, both walls of the mouth leave by the far side,
+    // neither was a crossing, and the mouth read as filled ground; the same
+    // two points left to right read as open. Third audit.)
+    const stops = [lo], onLine = ON_EDGE_EPS * len;
+    const stopAt = (p) => {
+      const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len;
+      if (t > lo && t < hi) stops.push(t);
+    };
     near(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.max(a.x, b.x), Math.max(a.y, b.y), (e) => {
       const u = edges[e][0], v = edges[e][1];
       const su = dx * (u.y - a.y) - dy * (u.x - a.x), sv = dx * (v.y - a.y) - dy * (v.x - a.x);
-      if ((su > 0) === (sv > 0)) return false;
-      const k = su / (su - sv);
-      const t = ((u.x + k * (v.x - u.x) - a.x) * dx + (u.y + k * (v.y - u.y) - a.y) * dy) / len;
-      if (t > lo && t < hi) stops.push(t);
+      // (v is the next edge's u, so every corner of a ring is asked once)
+      if (Math.abs(su) <= onLine) stopAt(u);
+      else if ((su > 0) !== (sv > 0)) {
+        const k = su / (su - sv);
+        stopAt({ x: u.x + k * (v.x - u.x), y: u.y + k * (v.y - u.y) });
+      }
       return false;
     });
     stops.push(hi);
@@ -236,7 +249,12 @@
         const r0 = row(Math.min(uv[0].y, uv[1].y)), r1 = row(Math.max(uv[0].y, uv[1].y));
         for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) (cells[r * side + c] || (cells[r * side + c] = [])).push(e);
       });
-      const seen = new Int32Array(edges.length);   // an edge is in every cell it crosses
+      // An edge is in every cell it crosses, so it is marked with the query it
+      // was last seen by. (`pass` would outrun what the array holds after 2^31
+      // queries of ONE edge list. A list lives for one pass of one shape: that
+      // many queries is minutes of nothing else, and the slowest shape
+      // measured builds in three seconds.)
+      const seen = new Int32Array(edges.length);
       let pass = 0;
       near = (x0, y0, x1, y1, fn) => {
         pass++;
@@ -570,10 +588,46 @@
       const goal = new Set(ready), N = cols.length * 4;
       const best = new Array(N).fill(Infinity), via = new Array(N).fill(null), seen = new Array(N).fill(false);
       best[from.ci * 4 + from.c] = 0;
+      // The nearest corner not yet settled comes off a heap of [distance,
+      // corner]; of two equally near, the lower-numbered. That is the corner a
+      // scan of all of them for the minimum picks, which is what this was, and
+      // was 90% of the 14 seconds a 2,025-hole grid took with its rows at 30
+      // degrees. An entry whose distance has since been bettered is stale.
+      const heap = [[0, from.ci * 4 + from.c]];
+      const before = (p, q) => p[0] < q[0] || (p[0] === q[0] && p[1] < q[1]);
+      const push = (item) => {
+        let i = heap.length;
+        heap.push(item);
+        while (i > 0) {
+          const up = (i - 1) >> 1;
+          if (!before(heap[i], heap[up])) break;
+          [heap[i], heap[up]] = [heap[up], heap[i]];
+          i = up;
+        }
+      };
+      const pop = () => {
+        const top = heap[0], last = heap.pop();
+        if (heap.length) {
+          heap[0] = last;
+          for (let i = 0; ;) {
+            const l = 2 * i + 1, r = l + 1;
+            let m = i;
+            if (l < heap.length && before(heap[l], heap[m])) m = l;
+            if (r < heap.length && before(heap[r], heap[m])) m = r;
+            if (m === i) break;
+            [heap[i], heap[m]] = [heap[m], heap[i]];
+            i = m;
+          }
+        }
+        return top;
+      };
       for (;;) {
         let u = -1;
-        for (let k = 0; k < N; k++) if (!seen[k] && best[k] <= cap && (u < 0 || best[k] < best[u])) u = k;
-        if (u < 0) return null;
+        while (heap.length && u < 0) {
+          const [d, k] = pop();
+          if (!seen[k] && d === best[k]) u = k;
+        }
+        if (u < 0 || best[u] > cap) return null;
         const ci = u >> 2, c = u & 3;
         if (goal.has(ci)) {
           if (best[u] > allowed(ci, c)) return null;
@@ -584,7 +638,7 @@
         seen[u] = true;
         for (const e of web[ci][c]) {
           const v = e.ci * 4 + e.c;
-          if (best[u] + e.len < best[v]) { best[v] = best[u] + e.len; via[v] = { from: u, pts: e.pts }; }
+          if (best[u] + e.len < best[v]) { best[v] = best[u] + e.len; via[v] = { from: u, pts: e.pts }; push([best[v], v]); }
         }
       }
     };
@@ -609,7 +663,12 @@
     // column it can reach, and from there the walk TRAVELS to its start like
     // any other move: round a ring, or along rims and rows. That travel is
     // laid before the pass, and lies under it.
-    let first = null, cur = null, curNode = null;
+    //
+    // Only the nearest are asked: START_TRIES starts, then twice that many
+    // corners of any column. A corner the thread could float to further off
+    // than those is not looked for, and the caller cuts (third audit: on a
+    // thin eight-pointed star the one such corner was the farthest of 64).
+    let first = null, cur = null, curNode = null, unlanded = null;
     if (o.from) {
       const below = cols.map(() => []);
       above.forEach((ups, ci) => ups.forEach((u) => below[u].push(ci)));
@@ -636,6 +695,7 @@
           cur = cornerOf(landing.ci, landing.j);
           curNode = { ci: landing.ci, c: landing.j };
           out.push(rotate(cur, cosP, sinP));
+          unlanded = first;
           first = null;
         }
       }
@@ -649,6 +709,15 @@
       let m = !cur ? { ci: startAt, j: first ? first.order[0] : 0, how: "start", route: [] }
         : (planned.get(cur) || moveTo(cur, ready));
       if (m.how === "cut") m = webRoute(curNode, ready) || m;
+      // Landed, and the only way on is a cut: the landing has bought one stray
+      // penetration and nothing else. Start where the walk would have, and the
+      // one cut is the caller's, on the float in.
+      if (m.how === "cut" && unlanded) {
+        out.length = 0;
+        first = unlanded;
+        m = { ci: first.ci, j: first.order[0], how: "start", route: [] };
+      }
+      unlanded = null;
       planned = new Map();
       const exitOf = (j) => variants[m.ci][j][variants[m.ci][j].length - 1];
       // Which corner to sew from. Arriving by a cut (or first of all) any of

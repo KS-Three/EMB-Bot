@@ -292,7 +292,11 @@
       const clear = ctx.clear || (() => true);
       const trace = (ring) => ctx.huggingOutline(ring, { stitchLen: edgeStitch, hug: ctx.openTol });
       const r = [trace(edgeRunRing(outer, false, ctx.edgeInsetPx))];
-      const left = holes.map((hh) => edgeRunRing(hh, true, ctx.edgeInsetPx));
+      // `holes` is every ring inside the outline, and a ring inside a hole is
+      // an ISLAND: filled ground again (even-odd), so its filled side is its
+      // own inside. (Third audit: a bullseye's island had its run in the moat.)
+      const isHole = (hh) => holes.filter((other) => other !== hh && pointInPoly(hh[0], other)).length % 2 === 0;
+      const left = holes.map((hh) => edgeRunRing(hh, isHole(hh), ctx.edgeInsetPx));
       // the EDGE_RUN_TRIES corners of the rings still to sew that are nearest
       // to p, nearest first (kept by insertion: with 2,000 holes, sorting
       // every corner for every ring was most of the design's time)

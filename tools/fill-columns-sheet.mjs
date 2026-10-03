@@ -149,6 +149,10 @@ const COSTS = [
   { name: "36 square holes of 4 mm, 60 mm badge", widthMm: 60, outer: box(0, 0, 60, 60), holes: grid(6, 60, (x, y) => box(x - 2, y - 2, x + 2, y + 2)) },
   { name: "36 round holes of 4 mm, 60 mm badge", widthMm: 60, outer: box(0, 0, 60, 60), holes: grid(6, 60, (x, y) => round(x, y, 2)) },
   { name: "196 square holes of 3 mm, 100 mm", widthMm: 100, outer: box(0, 0, 100, 100), holes: grid(14, 100, (x, y) => box(x - 1.5, y - 1.5, x + 1.5, y + 1.5)) },
+  // A stress shape, not a design: it is here for the time column. An audit
+  // found 3.5 to 18 seconds on it with the rows at 30 degrees, where the
+  // README had said 1.3 at most -- measured at the engine's own angle only.
+  { name: "2,025 square holes of 1.2 mm, 100 mm", widthMm: 100, outer: box(0, 0, 100, 100), holes: grid(45, 100, (x, y) => box(x - 0.6, y - 0.6, x + 0.6, y + 0.6)) },
 ];
 const PRESETS = [["no fabric", null], ["pique_knit", "pique_knit"], ["structured_cap", "structured_cap"], ["terry_towel", "terry_towel"]];
 console.log("\n| shape | preset | rows | cuts off | cuts on | stitches | time off | time on |");

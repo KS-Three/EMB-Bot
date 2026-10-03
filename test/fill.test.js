@@ -529,6 +529,32 @@ test("columns: told where the thread is, the walk starts from a corner it can re
   }
 });
 
+test("columns: a pass does not land, take one stitch, and cut", () => {
+  // When the thread can float to no corner the walk could start from, it lands
+  // on the nearest corner of any column and travels from there. But where the
+  // only way on from the landing is a cut, the landing has bought nothing: one
+  // penetration with a float into it and a cut out of it, where starting at
+  // the walk's own corner costs the same one cut and no stray stitch. 1 pass in
+  // 2,000 random shapes did it; this is that one, as its numbers.
+  const P = ([x, y]) => ({ x, y });
+  const shape = [
+    [[0, 31.094], [54.599, 31.094], [54.599, 55.712], [120.789, 55.712], [120.789, 12.485], [173.741, 12.485], [173.741, 13.911], [181.663, 13.911], [181.663, 40.533], [211.634, 40.533], [211.634, 108.657], [181.663, 108.657], [181.663, 97.688], [173.741, 97.688], [173.741, 87.521], [120.789, 87.521], [120.789, 135.971], [54.599, 135.971], [54.599, 124.418], [0, 124.418]],
+    [[163.13, 32.651], [170.171, 35.727], [174.73, 41.913], [175.585, 49.549], [172.508, 56.589], [166.323, 61.148], [158.687, 62.004], [151.647, 58.927], [147.088, 52.742], [146.232, 45.106], [149.309, 38.065], [155.494, 33.506]],
+    [[94.063, 68.258], [100.406, 65.569], [103.095, 71.912], [96.752, 74.601]],
+    [[138.509, 55.784], [145.512, 65.321], [135.975, 72.325], [128.972, 62.787]],
+    [[27.193, 63.807], [26.376, 59.585], [27.779, 55.519], [31.027, 52.7], [35.249, 51.883], [39.314, 53.286], [42.133, 56.534], [42.951, 60.756], [41.547, 64.821], [38.3, 67.64], [34.078, 68.458], [30.012, 67.054]],
+    [[86.581, 102.296], [71.314, 98.905], [66.617, 83.989], [77.187, 72.462], [92.454, 75.853], [97.151, 90.77]],
+  ].map((ring) => ring.map(P));
+  const from = { x: 170.171, y: 35.727 };   // on a hole's corner: where an edge run leaves the thread
+  const test = fill.openGroundTest(shape);
+  const clear = (a, b) => !test(a, b, 0.3, 0, 8);
+  const pts = fill.tatamiFill(shape, { rowSpacing: 2.5, angleDeg: 90, maxStitch: 8, markConnectors: true, columns: true, openTol: 0.3, from, clear });
+  assert.ok(!pts[1].trim, "one stitch at " + JSON.stringify([pts[0].x, pts[0].y]) + ", then a cut");
+  // the one cut is now the caller's, on the float into the pass
+  assert.strictEqual(clear(from, pts[0]), false);
+  assert.strictEqual(cutsOf(pts), 0);
+});
+
 test("columns: the run to a strip's far end is laid BEFORE the strip, under its own row ends", () => {
   // Either way the hole costs no cut: run up the strip's side first and sew
   // back down, or sew up it and then find a way back down its side. The
@@ -570,6 +596,106 @@ test("columns: found by the second audit, on direct calls", () => {
   const stairs = [{x:0,y:0},{x:75,y:0},{x:75,y:75},{x:150,y:75},{x:150,y:150},{x:225,y:150},{x:225,y:225},{x:300,y:225},{x:300,y:300},{x:0,y:300}];
   const loose = fill.tatamiFill([stairs], { rowSpacing:21.2241, angleDeg:90, maxStitch:40, markConnectors:true, columns:true, openTol:42.4483 });
   assert.strictEqual(floatsOffShape(loose, [stairs]), 0, "a float outside under a loose tolerance");
+});
+
+test("columns: found by the third audit -- the ground test does not depend on which way the move runs", () => {
+  // A U with its mouth at the top. The move from the top of one arm to the
+  // top of the other runs along y = 0, across the mouth, and four corners of
+  // the shape lie exactly ON that line. Where a move crosses the boundary was
+  // found by a one-sided rule -- a corner on the line belongs to the side its
+  // edge goes off to -- which is right for COUNTING crossings and wrong for
+  // FINDING them: taken right to left, both walls of the mouth go off to the
+  // far side, neither is "crossed", and the whole move read as one stretch
+  // of filled ground. The same two points, the other way round, read as open.
+  const P = (x, y) => ({ x, y });
+  const U = [P(0, 0), P(100, 0), P(100, 300), P(200, 300), P(200, 0), P(300, 0), P(300, 400), P(0, 400)];
+  const turns = { "mouth up": (p) => p, "mouth left": (p) => P(p.y, p.x), "mouth down": (p) => P(300 - p.x, 400 - p.y), "mouth right": (p) => P(400 - p.y, 300 - p.x) };
+  // And turned by an angle, as every fill but a level one turns it. The
+  // corners are then on the line only to within rounding, a hair either side:
+  // a rule that stops at a corner EXACTLY on the line gets 205 of 3,599
+  // angles wrong, these among them.
+  for (const deg of [6.8, 18.4, 31.9, 62.1, 137, 282.32]) {
+    const c = Math.cos(deg * Math.PI / 180), s = Math.sin(deg * Math.PI / 180);
+    turns["turned " + deg] = (p) => P(p.x * c - p.y * s + 37.3, p.x * s + p.y * c - 11.9);
+  }
+  for (const [name, turn] of Object.entries(turns)) {
+    const shape = [U.map(turn)], a = turn(P(100, 0)), b = turn(P(300, 0)), c = turn(P(200, 0));
+    assert.strictEqual(fill.crossesOpenGround(a, b, shape, 1.5, 0), true, name + ": across the mouth");
+    assert.strictEqual(fill.crossesOpenGround(b, a, shape, 1.5, 0), true, name + ": and back across it");
+    assert.strictEqual(fill.crossesOpenGround(a, b, shape, 1.5, 0, 40), true, name + ": as a float");
+    assert.strictEqual(fill.crossesOpenGround(b, a, shape, 1.5, 0, 40), true, name + ": as a float, back");
+    // along the top of one arm only, the move is on the outline all the way
+    assert.strictEqual(fill.crossesOpenGround(c, b, shape, 1.5, 0, 40), false, name + ": along the arm's own edge");
+    assert.strictEqual(fill.crossesOpenGround(b, c, shape, 1.5, 0, 40), false, name + ": and back along it");
+  }
+  // The walk that asked: started from the bottom left it sews upward, ends on
+  // top of one arm, and ran along y = 0 to the other -- 100 across the mouth,
+  // 50 from either wall, sewn.
+  const pts = fill.tatamiFill([U], { rowSpacing: 1.5, angleDeg: 0, maxStitch: 40, markConnectors: true, columns: true, openTol: 1.5, from: P(0, 400) });
+  assert.deepStrictEqual(threadThrough(pts, { x0: 100, y0: -5, x1: 200, y1: 300 }, 1.5), { sewn: 0, floats: 0 });
+});
+
+test("crossesOpenGround: between the corners of 60 whole-number shapes, both ways agree with a point-by-point reading", () => {
+  // Drawn on a grid of tens, so that corners share an x or a y and a move
+  // between two of them runs exactly along a line other corners lie on --
+  // which random stars and staircases almost never do, and a drawn badge, a
+  // letter or a U does all the time.
+  let seed = 31337;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  const ten = (v) => 10 * Math.round(v / 10);
+  const P = (x, y) => ({ x, y });
+  let asked = 0, open = 0;
+  for (let t = 0; t < 60; t++) {
+    const steps = 2 + Math.floor(rnd() * 4), top = [], bottom = [];
+    let x = 0;
+    for (let i = 0; i < steps; i++) {
+      const nx = i === steps - 1 ? 200 : Math.min(190, x + 20 + ten(60 * rnd()));
+      const y0 = pick([0, 0, 20, 50]), y1 = pick([150, 150, 120, 100]);
+      top.push(P(x, y0), P(nx, y0));
+      bottom.push(P(x, y1), P(nx, y1));
+      x = nx;
+      if (x >= 200) break;
+    }
+    if (top[top.length - 1].x < 200) { top[top.length - 1] = P(200, top[top.length - 1].y); bottom[bottom.length - 1] = P(200, bottom[bottom.length - 1].y); }
+    const polys = [top.concat(bottom.reverse())];
+    if (rnd() < 0.5) { const hx = pick([40, 80, 120]), hy = pick([60, 70, 80]); polys.push([P(hx, hy), P(hx + 20, hy), P(hx + 20, hy + 20), P(hx, hy + 20)]); }
+    const edges = [];
+    for (const poly of polys) for (let i = 0; i < poly.length; i++) edges.push([poly[i], poly[(i + 1) % poly.length]]);
+    const dist = (p) => {
+      let m = Infinity;
+      for (const [u, v] of edges) {
+        const dx = v.x - u.x, dy = v.y - u.y, l2 = dx * dx + dy * dy;
+        const k = l2 ? Math.max(0, Math.min(1, ((p.x - u.x) * dx + (p.y - u.y) * dy) / l2)) : 0;
+        m = Math.min(m, Math.hypot(p.x - (u.x + k * dx), p.y - (u.y + k * dy)));
+      }
+      return m;
+    };
+    const inside = (p) => { let c = false; for (const [u, v] of edges) if ((u.y > p.y) !== (v.y > p.y) && u.x + ((p.y - u.y) / (v.y - u.y)) * (v.x - u.x) > p.x) c = !c; return c; };
+    // how deep into unfilled ground the straight move goes, read point by point
+    const deepest = (a, b, tol) => {
+      const n = Math.max(2, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / (tol / 8)));
+      let worst = 0;
+      for (let k = 1; k < n; k++) {
+        const p = P(a.x + (b.x - a.x) * k / n, a.y + (b.y - a.y) * k / n), d = dist(p);
+        if (d > 1e-9 && !inside(p)) worst = Math.max(worst, d);
+      }
+      return worst;
+    };
+    const corners = polys.flat();
+    for (let k = 0; k < 12; k++) {
+      const a = pick(corners), b = pick(corners), tol = pick([1.5, 1.5, 4]);
+      if (a === b) continue;
+      const d = deepest(a, b, tol);
+      if (d > 0.9 * tol && d < 1.3 * tol) continue;   // the test itself sees to about 1.2 of the tolerance
+      const want = d >= 1.3 * tol;
+      const label = "shape " + t + " " + JSON.stringify([a, b]) + " tol " + tol + " (deepest " + d.toFixed(2) + ") of " + JSON.stringify(polys);
+      assert.strictEqual(fill.crossesOpenGround(a, b, polys, tol, 0), want, label);
+      assert.strictEqual(fill.crossesOpenGround(b, a, polys, tol, 0), want, "back: " + label);
+      asked++; if (want) open++;
+    }
+  }
+  assert.ok(asked >= 400 && open >= 60 && asked - open >= 60, "the fixture must ask both kinds: " + asked + " asked, " + open + " open");
 });
 
 test("columns: `ground` is where thread may lie, when that is not the pass's own outline", () => {
