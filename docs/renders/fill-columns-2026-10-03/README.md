@@ -148,7 +148,8 @@ What follows is the third audit's count on its own sweep *(measured
   round within the budget, so the underlay is cut where it used to be
   carried across the gap.
 - **An island is a separate piece.** A ring inside a hole is cut to, and cut
-  from, on every pass: a bullseye under terry, 1 → 6. (No Studio lane hands
+  from, on every pass: a bullseye under terry, 1 → 4 (1 → 6 until the
+  island's fill was sewn to its right size: below). (No Studio lane hands
   one over inside a shape: below.)
 - **Stitches: 3.3% more in all.** By design the median is +4.3%, nine in ten
   are under +13.5%, and the worst is +36.9% (a 16-tooth gear with a hole).
@@ -197,14 +198,18 @@ Each of these is the same with the option on or off.
   than twice the compensation is left partly unsewn by the fill itself, and
   the underlay under it then reads as uncovered (26 of 787 such designs). A
   hole 0.2 mm across is turned inside out by it, to 1 mm.
-- **Pull compensation shrinks an island.** A ring inside a hole is filled
-  ground, and it is compensated as if it were a hole: under terry its fill is
-  sewn 0.6 mm small on every side and its underlay shows that far outside it.
-  Three or more rings nested in one shape build nothing at all, because the
-  island's area is taken off like a hole's. No Studio lane hands a shape over
-  that way (the image lane, SVG import and manual cut-outs each make an
-  island its own shape); `groupRingsIntoShapes`, which three tool scripts
-  use, does.
+- **Pull compensation shrank an island: FIXED since, 2026-10-03, the option
+  off or on.** A ring inside a hole is filled ground, and it was compensated
+  as if it were a hole: under terry its fill was sewn 0.6 mm small on every
+  side and its underlay showed that far outside it. Three or more rings
+  nested in one shape built nothing at all, because the island's area was
+  taken off like a hole's. An island now grows as the outline does, or is
+  sewn as drawn where growing would bring it against the ring beside it
+  (`islandsAmong` in `digitize.js`; `docs/scope-history.md`, the entry after
+  this page's). The 29 island designs among the 36 above were measured
+  before that and not again. No Studio lane hands a shape over that way (the
+  image lane, SVG import and manual cut-outs each make an island its own
+  shape); `groupRingsIntoShapes`, which three tool scripts use, does.
 - **A float shorter than the preset's trim length between two SHAPES is
   left**, whatever lies between them. Where a fill ends decides whether that
   rule bites: 2 of 450 two-shape designs gained such a float with the option

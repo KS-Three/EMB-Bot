@@ -17493,3 +17493,97 @@ Off, nothing moves: engine 645 passed, Studio 1,587. Not sewn. Not built: row
 stagger, and tie stitches at a cut. Flip is Kent's; MASTER_SCOPE defect 52,
 "Waiting on Kent" 22.
 *(built 2026-10-03 — renders `docs/renders/fill-columns-2026-10-03/`)*
+
+## 2026-10-03 — A ring inside a hole is an island: three nested rings sewed nothing, and pull compensation shrank it (browser builder, fixed)
+
+The entry above ends "Left, and older than the flag: pull compensation
+shrinks an island." This is that, and its twin. `shape.holes` carries every
+ring inside the outline, and the fill is even-odd, so a ring inside a hole is
+filled ground again: an island. `groupRingsIntoShapes` hands a bullseye over
+as the outline plus [hole, island]. Two readers in `buildQualityDesign` took
+every ring in that list for a hole. Measured on `origin/main` at `aee5d876`,
+10 px per mm, left chest, the same with `fillColumns` absent, off or on:
+
+- **Three nested rings built nothing.** The area was the outline's minus
+  every ring's. A 40 mm box, a ring 4 mm in and one 4 mm inside that come to
+  1600 - 1024 - 576 = 0 mm², and a shape with no area is dropped: no stitch,
+  `shapeOutlines[0].dropped`, nothing said. Now 2,747 stitches with no
+  fabric, 3,456 on pique, 4,511 on terry.
+- **Pull compensation shrank the island.** Every ring in `holes` was moved
+  inward. A 40 mm bullseye on terry (0.6 mm): the outline's fill sewn
+  -6..406 px, right; the island drawn 160..240 sewn 166..234, and its lattice
+  underlay, sewn to the ring as drawn, 0.6 mm outside its fill all round. Now
+  154..246, the underlay under it. Pique: 163..237, now 157..243.
+
+**The rule.** `islandsAmong(holes)`: a ring WHOLLY inside an odd number of
+the other rings is an island, inside an even number a hole, so a hole in an
+island is a hole again. An island's area is added back, and under a preset
+its ring grows as the outline's does. (The perimeter was always every ring's.
+The width that picks satin or fill was computed from the wrong area too, and
+could not change a decision: a shape with any ring in `holes` is never satin.)
+
+**What growing brought with it.** A grown island and the shrunk wall of the
+hole round it move TOWARD each other, and so do two islands in one hole.
+Where the ground between is not more than twice the compensation the two
+rings cross, and under even-odd crossed rings are a fill sewn where neither
+was drawn: a 0.4 mm moat on terry came out 0.8 mm wide, 0.2 mm of it taken
+from the island and 0.2 from the band. So the rule this function already has
+for a hole too thin to shrink
+is applied: a ring that cannot be moved is sewn as drawn. An island that,
+grown, no longer lies against every other ring the way it was drawn stays as
+drawn; a hole that, shrunk, still meets such an island stays as drawn too.
+That is a step, not a slope. Terry, a moat as drawn and as sewn, mm:
+
+| drawn | 4.0 | 2.0 | 1.3 | 1.2 | 1.0 | 0.7 | 0.6 | 0.4 |
+|---|---|---|---|---|---|---|---|---|
+| sewn, `origin/main` | 4.0 | 2.0 | 1.3 | 1.2 | 1.0 | 0.7 | 0.6 | 0.4 |
+| sewn, now | 2.8 | 0.8 | 0.1 | 0.6 | 0.4 | 0.1 | 0.6 | 0.4 |
+
+Before, a moat was never narrowed at all: both its sides moved the same way.
+Now it is narrowed by twice the compensation where there is room, by once
+where the island has to stay, and not at all at one compensation or less,
+where the whole of that hole's ring is sewn as drawn, its far walls included.
+
+**Not the helper #606 left.** Its edge run asks ONE corner of a ring. Asked
+that way here, the second of two overlapping cut-outs is an island: 532 of
+14,472 designs with no island moved, 336 of them with the flag off. Asking
+every corner calls a box laid across a U's notch one. So two rings are nested
+only if no edge of one meets an edge of the other. The edge run keeps its
+own test. Given this one, it moved 168 flag-on designs, all on four malformed
+shapes, and doubled the underlay sewn off the fill's ground (overlapping
+cut-outs on canvas, 7.5 to 15 mm).
+
+**Measured**, hashes of the whole design against `origin/main`:
+
+| | `origin/main` | now |
+|---|---|---|
+| 14,472 designs with NO island (95 shapes, 60 of them seeded, and a three-colour design; no fabric and all seven presets; 19 option sets, `fillColumns` absent, off and on) | | all byte-identical |
+| 1,520 island designs | | 1,368 changed; the 152 that did not are the no-fabric ones that already sewed |
+| 150 seeded island shapes, 7 presets, both walks (2,100 designs): built nothing | 840 | 0 |
+| flag off: the fill's rings stop short of drawn ground | 615 of the 630 that built | 0 of 1,050 |
+| flag off: drawn ground with no fill thread within a row of it (160 points a design) | 154 designs, worst 5.1 mm | 0 of 168,000 points |
+| pairs of the fill's rings that cross | 0 | 0 |
+
+The seeded sweep reads the stitches on a grid with its own even-odd test and
+its own crossing test. Eight mutations of the fix (the old area, the old
+shrink, no guard, the hole not put back, depth without parity, one corner,
+every corner, the edge run's old bug) each fail a test in
+`test/digitize.test.js`, and each new test was watched failing on
+`origin/main` first. With `fillColumns` on, a bullseye under terry is cut 4
+times where it was 6. The island question costs a build of 2,025 holes about
+40 ms (40 to 77 in one run, 58 to 95 in another) and one of 196 nothing that
+shows.
+
+**Exported stitches change for island shapes, and for no others.** No Studio
+lane hands one over: `imageRegions.js` traces each blob with its own holes,
+`svgimport.js` splits rings by depth, and `resolveCutOuts` refuses a cut-out
+inside or across another. `groupRingsIntoShapes` (`tools/run-text.mjs`,
+`run-hat-text.mjs`, `glyph-satin.mjs`) and direct callers do.
+
+Left as they are: `underlayRuns`' `center_run` keeps off every ring in
+`holes` (no preset gives a fill that style), and the 29 island designs the
+`fillColumns` audit counted among its 36 were measured before this and not
+again.
+
+Engine 653 passed. Not sewn.
+*(fixed 2026-10-03 — `islandsAmong`, `fillRingsOf` in `src/digitize.js`; `test/digitize.test.js`)*
