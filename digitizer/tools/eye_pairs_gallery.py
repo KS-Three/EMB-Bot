@@ -114,11 +114,6 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "Classify each thin stroke on its own, so a stroke pooled with a blob "
         "keeps its satin; a stroke over the width cap is vetoed to fill rather "
         "than sewn as capped satin beside bare cloth."),
-    "patch_junctions": (
-        'satin_patch_junctions="satin"',
-        "Cover the bare hole where satin arms meet (a K's crotch) with a small "
-        "satin column sewn first, under the arms, instead of a tatami patch "
-        "appended last."),
     "polygon_axis": (
         'satin_polygon_axis="artwork"',
         "Read the satin axis off the artwork polygon instead of stage 5's grown "
@@ -247,6 +242,15 @@ RETIRED_ARM_INTENT: dict[str, tuple[str, str]] = {
         "further out than the symmetric width, to the running minimum of that "
         "edge over seven stations. Kent flipped it on after the 2026-09-30 "
         "sitting (2 after, 0 before, golden_tee 'did its job')."),
+    # No flip of its own: the junction stack's part C has handed the cover
+    # this setting since 2026-09-19, so the arm was identical to the base.
+    "patch_junctions": (
+        'satin_patch_junctions="satin" (shipped inside satin_junction_stack, '
+        "ON 2026-09-19)",
+        "Cover the bare hole where satin arms meet (a K's crotch) with a small "
+        "satin column sewn first, under the arms. Already the engine as "
+        "shipped: the junction stack sews this cover as its part C, so the "
+        "flag off and the flag on are one design. Nothing to rule."),
 }
 
 

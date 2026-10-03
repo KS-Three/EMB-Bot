@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools import eye_pairs_gallery as g  # noqa: E402
 
 # Restated from the yardstick spec, sections 3.2 and 3.7 / analysis.METRICS.
-SPEC_ARMS = ["per_stroke", "patch_junctions", "polygon_axis", "area_weighted",
+SPEC_ARMS = ["per_stroke", "polygon_axis", "area_weighted",
              "design_angle", "rails_follow_edge", "wide_columns",
              "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827",
              "ref_0930am", "split_7mm", "rails_symmetric", "pro_file", "split_off",
@@ -25,6 +25,8 @@ SPEC_ARMS = ["per_stroke", "patch_junctions", "polygon_axis", "area_weighted",
 # `rail_comp` shipped ON 2026-09-28 and left the table (docs/kent-review-2026-09-28.md);
 # `rail_envelope` shipped ON 2026-09-30 and left it (docs/eye-pairs-2026-09-30/).
 # The last three joined 2026-10-03: the built-OFF flags waiting on Kent's eye.
+# `patch_junctions` left the same day with no flip of its own: it was already
+# the shipped engine (`satin_junction_stack`'s part C, ON 2026-09-19).
 SPEC_METRICS = {
     "trims_per_1000": "lower", "preflight_raw_score": "higher",
     "preflight_blocks": "lower", "uncovered_total_mm2": "lower",
@@ -678,6 +680,12 @@ def test_a_shipped_arm_is_still_named_on_an_old_sitting():
     assert "rail_envelope" not in g.ARM_INTENT
     change, intent = g.arm_intent("rail_envelope")
     assert change.startswith('satin_rails_follow_edge="envelope"') and "shipped" in change and intent
+    # patch_junctions left 2026-10-03 without a flip: `satin_junction_stack`
+    # (ON 2026-09-19) sews the same satin cover as its part C, so the arm was
+    # identical to shipped on all eight logos, crown cover on or off.
+    assert "patch_junctions" not in g.ARM_INTENT
+    change, intent = g.arm_intent("patch_junctions")
+    assert change.startswith('satin_patch_junctions="satin"') and "shipped" in change and intent
     assert g.arm_intent("per_stroke") == g.ARM_INTENT["per_stroke"]
     assert g.arm_intent("nope") == ("nope", "")
     assert g.arm_intent(None) == ("", "")
