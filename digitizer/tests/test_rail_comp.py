@@ -283,6 +283,11 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
     from tests.test_stroke_order_euler import FIXTURE
 
     def sewn(**kw):
+        # `satin_crown_cover` held OFF in every arm (Kent's flip, 2026-10-02):
+        # the cover adds thread to both sides of each pair, so the ceilings
+        # below would move for its sake and not rail comp's -- the same thing
+        # tip caps did, told above. Its own price is `tests/test_crown_cover.py`'s.
+        kw.setdefault("satin_crown_cover", False)
         c = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
         gen = build_generation(str(FIXTURE), c)
         return plan_stitches(finish_generation(gen.fork(), c), c)

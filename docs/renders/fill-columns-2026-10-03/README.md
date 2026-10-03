@@ -183,9 +183,9 @@ moved is given there.
 ## Not built
 
 - **Row stagger**, the other half of quality review 2026-09-08 §4.
-- **Tie stitches at a cut, in this builder.** `buildQualityDesign` locks no
-  cut. (The lettering builder has had them behind `ties`, built OFF, since
-  2026-09-14.) With the option on there are fewer cuts to lock.
+- (**Tie stitches at a cut** were built the same day, also OFF: `ties`, in
+  [`docs/lock-stitches-2026-10-03.md`](../../lock-stitches-2026-10-03.md).
+  With this option on there are fewer cuts to lock.)
 
 ## Seen, not changed
 
