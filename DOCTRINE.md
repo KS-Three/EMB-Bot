@@ -8365,3 +8365,51 @@ question every move is asked):
   flip, not into a footnote.
 *(measured 2026-10-03 — `test/fill.test.js`, `test/digitize.test.js`,
 `tools/fill-columns-sheet.mjs`; MASTER_SCOPE defect 52; scope-history 10-03)*
+
+## 2026-10-03 — The built-OFF sitting: one flip, one flag voted down for its weight, and one that was never waiting
+
+Kent asked for one labelled page for every finished flag with no verdict and
+judged all 19 pairs the same day (`docs/eye-pairs-2026-10-03/`).
+
+**Rulings.**
+
+- **`satin_cap_recentre` is ON** (Kent, in chat, on that sitting): *after* on
+  becker and tires — the two pairs the change locator boxed — and *before* on
+  none. `False` is the pre-flip engine.
+- **`bean_letter_max_stroke_mm` stays OFF.** Today's satin read better on five
+  of six logos and bridge was *both bad*. His reason is the line's WEIGHT —
+  *"little worms"*, *"aren't thick enough"*, *"to skinny and not clean"* —
+  and he granted that fremont's path reads cleaner. So the path along the
+  source ink is not what he voted down; a three-pass bean on it is. Do not
+  re-offer the flag at 1.0 on the same renders.
+- **`split_off` and `keep_counters` drew nothing to rule on**: no difference
+  to his eye, and no real logo moves, respectively.
+
+**What to do differently.**
+
+- **Render a flag against shipped before writing that it waits on Kent.**
+  `satin_patch_junctions="satin"` was written into MASTER_SCOPE's decision
+  queue as a flip call on 2026-09-30, eleven days after
+  `satin_junction_stack`'s part C had made it the base (2026-09-19), and sat
+  there until this sitting. Off and on were one design on 8 of 8 logos, and a
+  test file had said why all along. A decision queue entry costs Kent's
+  attention; one arm-run on two logos costs minutes.
+- **Do not tell him which side of a pair wins before he has judged it.** The
+  session that drew the page described gaulke's bean side as "clean line
+  letters" in chat; his note on that pair was *"to skinny and not clean"*.
+  Say what changed and what it costs. The verdict is the thing being asked for.
+- **The renderer draws three bean passes as one thread** (`suspected`, read
+  from `stitchviz`, not measured): each stitch is drawn at one thread's width,
+  so passes laid on one path cover the same pixels. "Too thin" on the page is
+  therefore not yet separated from the picture of a bean. Settle that before
+  a heavier construction is built — and gate 1 already holds a three-pass
+  bean on knit as `pending sew-out`.
+- **A session's CLAUDE.md is the main checkout's working-tree copy.** With
+  that checkout 77 commits behind, this session was handed "an 800-line
+  budget" for MASTER_SCOPE and reported the file over it, with no guard,
+  three times and in a PR body. The budget had been 27,000 words since
+  2026-09-14 and `tests/test_scope_budget.py` enforces it. Before reporting
+  that a documented rule is broken, read the rule on `origin/main` and grep
+  for the test that already holds it.
+*(ruled and judged 2026-10-03 — `docs/eye-pairs-2026-10-03/kent-notes.json`;
+`tests/test_satin_cap_recentre.py`, `tests/test_junction_stack.py`)*

@@ -18,11 +18,12 @@ sitting page for the four built-OFF flags" (`cap_recentre`, `patch_junctions`,
   same setting as its part C: off and on were one design on 8 of 8 logos. A
   test file had said so since the flip. One `--render --arms <arm>` on two
   logos would have shown it; so would a grep for where the flag is consumed.
-- **Kent judged all 19 the same day, no ruling set** (`kent-notes.json`).
+- **Kent judged all 19 the same day** (`kent-notes.json`).
   `bean_letters` at 1.0: 0 after, 5 before, 1 both bad — "little worms",
   "aren't thick enough"; stays OFF, and the open question is the line's
   weight on the same path. `cap_recentre`: after on becker and tires (the two
-  the locator boxed), never before; the flip is his. `split_off`: no
+  the locator boxed), never before; **he flipped it ON in chat the same day**,
+  asked with his own tally in front of him. `split_off`: no
   difference. **Do not tell him which side of a pair looks better before he
   has judged it:** this session called gaulke's bean side "clean line
   letters" and his note on it was "to skinny and not clean".

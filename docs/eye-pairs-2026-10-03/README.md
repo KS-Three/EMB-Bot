@@ -135,7 +135,8 @@ Judged in seven minutes, 16:29Z to 16:36Z. Every verdict and note, verbatim:
   (*"Th "E" and "N" is slightly cleaner on the after"*) and tires (*"The "T"
   is slightly cleaner on the after"*) are exactly the two pairs the change
   locator boxed. It costs 15 stitches fewer and one trim fewer across the
-  eight. The flip is his and he has not made it.
+  eight. **He flipped it ON the same day, in chat**, asked with that tally in
+  front of him (`kent-notes.json`, rulings).
 - **`split_off`: no difference on four, both bad on becker.** As with
   `split_7mm` on the texture sitting, the thread render gives him nothing to
   see; it is a gate-1 question and cloth answers it, not this page.
