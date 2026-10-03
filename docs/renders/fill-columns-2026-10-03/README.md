@@ -180,9 +180,9 @@ What follows is the third audit's count on its own sweep *(measured
 ## Not built
 
 - **Row stagger**, the other half of quality review 2026-09-08 §4.
-- **Tie stitches at a cut, in this builder.** `buildQualityDesign` locks no
-  cut. (The lettering builder has had them behind `ties`, built OFF, since
-  2026-09-14.) With the option on there are fewer cuts to lock.
+- (**Tie stitches at a cut** were built the same day, also OFF: `ties`, in
+  [`docs/lock-stitches-2026-10-03.md`](../../lock-stitches-2026-10-03.md).
+  With this option on there are fewer cuts to lock.)
 
 ## Seen, not changed
 
@@ -205,8 +205,8 @@ Each of these is the same with the option on or off.
   nested in one shape built nothing at all, because the island's area was
   taken off like a hole's. An island now grows as the outline does, or is
   sewn as drawn where growing would bring it against the ring beside it
-  (`islandsAmong` in `digitize.js`; `docs/scope-history.md`, the entry after
-  this page's). The 29 island designs among the 36 above were measured
+  (`islandsAmong` in `digitize.js`; `docs/scope-history.md`, the island
+  entry of 2026-10-03). The 29 island designs among the 36 above were measured
   before that and not again. No Studio lane hands a shape over that way (the
   image lane, SVG import and manual cut-outs each make an island its own
   shape); `groupRingsIntoShapes`, which three tool scripts use, does.

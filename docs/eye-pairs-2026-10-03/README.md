@@ -6,13 +6,17 @@ waiting on his eye. Four were asked for — `satin_cap_recentre`,
 — and `split_off` rides with them, because the page it would replace
 (`back-1001`, built 2026-10-01) holds five `split_off` pairs and no verdict.
 
-**No verdicts yet.** The page is built and was checked in a browser from a
-local server (19 pairs, five arm heads, five tables, no console error). The
-republish to `https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp` was refused
-by the session's permission classifier and is Kent's to allow; until then the
-live page is still `back-1001`. The store was read twice before the attempt
-(140 notes, 3 rulings, newest `pro_file__becker__pro-1001` at
-2026-10-01T01:53Z) and nothing in it was written or moved.
+**Published 2026-10-03, no verdicts yet.** Republished to
+`https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp` (version 10) after being
+driven in a browser from a local server (19 pairs, five arm heads, five
+tables, no console error). The first attempt was refused by the session's
+permission classifier as a data-sharing upload and went ahead on Kent's word;
+a second refusal was a Read rule on image files outside the session folder,
+cleared by publishing from the lane's `digitizer/eye_pairs_out/gallery/`
+rather than a temp directory. The store was read before each attempt (140
+notes, 3 rulings, newest `pro_file__becker__pro-1001` at 2026-10-01T01:53Z)
+and nothing in it was written or moved. The `back-1001` pairs are no longer
+on the page; `split_off` is on it under this sitting's tag.
 
 ## The base
 
@@ -98,4 +102,4 @@ python -m tools.eye_pairs_gallery --labelled --src <merged> --out <gallery> \
 box beside another session's full digitizer suite a run took 2 to 12.5
 minutes (mean 5.7), and the four lanes 84 minutes of wall clock.
 
-*(measured 2026-10-03 — Windows, Kent's box; the page not yet published)*
+*(measured and published 2026-10-03 — Windows, Kent's box)*

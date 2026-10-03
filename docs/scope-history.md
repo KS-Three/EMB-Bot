@@ -17490,14 +17490,48 @@ fires on (12 of 102,888 direct calls, 2 of 17,912 passes inside designs).
 Left, and older than the flag: pull compensation shrinks an island.
 
 Off, nothing moves: engine 645 passed, Studio 1,587. Not sewn. Not built: row
-stagger, and tie stitches at a cut. Flip is Kent's; MASTER_SCOPE defect 52,
-"Waiting on Kent" 22.
+stagger. (Tie stitches at a cut were, the same day: the next entry.) Flip is
+Kent's; MASTER_SCOPE defect 52, "Waiting on Kent" 22.
 *(built 2026-10-03 — renders `docs/renders/fill-columns-2026-10-03/`)*
+
+## 2026-10-03 — Lock stitches reach the shape builder, built OFF; the lettering lock was 0.8 pixels (quality review 2026-09-08 §4)
+
+The review's first cheap browser-lane defect was half closed on 09-14:
+`buildLetteringDesign` got `ties`, `buildQualityDesign` did not, so manual
+draw, basic shapes, SVG import and the flatten lane still tied nothing.
+Scoping the second half meant measuring the first, on the stitch file. Across
+the 85 shipped fonts the lettering lock's leg was 0.30 mm (median, four
+letters) and 0.10 mm (eighteen), never over 0.57, because `tieRun` used
+`TIE_STITCH_MM` in its caller's units and was handed pixels; and its tie-in
+sat in front of the run's first stitch, doubling a needle hole per thread.
+Both latent: the flag is off and no caller passes it.
+
+One function now, `applyTies`, for both builders, run on the finished record
+stream (DST units). A thread is the records between two cuts, locked on its
+first and last penetration by `tieRun`'s bounce put straight after its
+anchor: Python's sequence at both ends. Lettering after: median leg 0.80 mm,
+no hole doubled, the same stitch counts to the stitch (+3.31%, +8.00%), the
+untied stream identical on 85 of 85 fonts. Shapes: 144 locks on eleven
+designs with `fillColumns` off and on, +1.02% stitches in all, +0.09% to
++6.04% by design. 32 rules mutated, 31 caught by a test, one equivalent.
+
+**Its own audit held eleven claims and failed the rule, twice.** First it
+locked a thread on its first and last "two stitch records in a row"; a row
+shorter than a stitch is one record after a float, so 6.1% of tie-offs on
+shapes with `fillColumns` off sat more than 4 mm of thread before the cut,
+the worst 371 mm. Moved to the thread's last penetration, the lock was laid
+along the float: 285 of 37,082 with their inner point in open ground, on a
+frame 0.8 mm into the hole. Laid back along the row the stitch closed: 21.
+What is kept as Python has it, and stated for the flip: on shapes one lock
+in five lies on a stitch under 0.3 mm (lettering under 1%).
+
+Not sewn. Flip is Kent's: "Waiting on Kent" 23.
+*(built 2026-10-03 — `docs/lock-stitches-2026-10-03.md`, `tools/lock-stitch-census.mjs`)*
 
 ## 2026-10-03 — A ring inside a hole is an island: three nested rings sewed nothing, and pull compensation shrank it (browser builder, fixed)
 
-The entry above ends "Left, and older than the flag: pull compensation
-shrinks an island." This is that, and its twin. `shape.holes` carries every
+The `fillColumns` entry of this date ends "Left, and older than the flag:
+pull compensation shrinks an island." This is that, and its twin. `shape.holes` carries every
 ring inside the outline, and the fill is even-odd, so a ring inside a hole is
 filled ground again: an island. `groupRingsIntoShapes` hands a bullseye over
 as the outline plus [hole, island]. Two readers in `buildQualityDesign` took
