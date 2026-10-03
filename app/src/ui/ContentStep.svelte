@@ -349,7 +349,10 @@
   .digitize-offline {
     font-size: var(--fs-xs, 12px);
     color: var(--muted, #667);
-    margin: 6px 0 0;
+    /* Bottom margin and line-height so the note's last line clears whatever
+       control follows it (the text box's top border) instead of touching it. */
+    line-height: 1.4;
+    margin: 6px 0 var(--space-3, 12px);
   }
   .digitize-recheck {
     border: none;

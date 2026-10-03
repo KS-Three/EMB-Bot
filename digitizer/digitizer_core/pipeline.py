@@ -695,6 +695,9 @@ def build_generation(
                 # Instagram file, 2026-09-30), and the photo classes keep
                 # today's path until a photograph has been looked at.
                 snap_edges=bool(cfg.snap_region_edges and classification.class_ == "gradient"),
+                # Logos only, the same gate again: a photograph's fragments
+                # enclose each other everywhere.
+                keep_counters=bool(cfg.keep_counters and classification.class_ == "gradient"),
             )
             if classification.class_ in (*PHOTO_CLASSES, "gradient")
             else quantize(p, cfg)
@@ -707,9 +710,11 @@ def build_generation(
     # the quantiser's own cluster colours, one per layer, so a contrasting
     # sub-floor stroke is kept rather than absorbed into what it touches. The
     # photo segmenters make their own call without it, on purpose.
+    counters_on = bool(cfg.keep_counters and classification.class_ not in PHOTO_CLASSES)
     masks, small_warnings = resolve_small_regions(
         masks, cfg, p.px_per_mm, p.enclosed_mask,
-        layer_lab=rgb_to_lab(q.cluster_rgb) if cfg.keep_thin_strokes else None)
+        layer_lab=rgb_to_lab(q.cluster_rgb) if (cfg.keep_thin_strokes or counters_on) else None,
+        keep_counters=counters_on)
     if dbg:
         debugviz.stage3(dbg, p.rgb, masks)
 
@@ -726,6 +731,15 @@ def build_generation(
     # fields a resent `shape_overrides` carries forward on a stable id — so it
     # belongs before shape edits, not after.
     tag_enclosed_background(regions, p)
+    # A kept counter (`cfg.keep_counters`) wears the same tag, and `counter`
+    # beside it to say which kind: it is a gap in the letter round it that
+    # shows the cloth unless switched on, which is everything that tag means
+    # downstream — unstitched by default, out of the palette's sewn-area
+    # ranking, a row the review can turn on.
+    for r in regions:
+        if r.source == "counter":
+            r.meta["counter"] = True
+            r.meta["enclosed_background"] = True
 
     # Fix #6.3 — re-ask the thread question against the pixels each shape's
     # FINAL polygon covers, now that simplification has moved the outline.

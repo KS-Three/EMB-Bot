@@ -7,6 +7,7 @@
   import QualityReport from "./QualityReport.svelte";
   import HoopingCard from "./HoopingCard.svelte";
   import DownloadStep from "./DownloadStep.svelte";
+  import QuoteSettings from "./QuoteSettings.svelte";
   import Icon from "./Icon.svelte";
   export let project;
   export let runtime;
@@ -17,6 +18,9 @@
   export let qualityEntries = [];
   export let qualityPartial = false;
   export let ready = false;
+  // The operator's quote inputs (lib/quote.js). Owned by App, which stores
+  // them and rebuilds `summaryRows` from them; this only relays the edit.
+  export let quote = {};
   const d = createEventDispatcher();
 
   let el = null;
@@ -47,6 +51,7 @@
       <div><dt>{row.label}</dt><dd>{row.value}</dd></div>
     {/each}
   </dl>
+  <QuoteSettings {quote} on:change={(e) => d("quote", e.detail)} />
   <HoopingCard rows={hoopingRows} />
   <QualityReport entries={qualityEntries} partial={qualityPartial} on:locate={(e) => d("locate", e.detail)} />
   <DownloadStep {project} {runtime} {digitizerHealth} on:credits={(e) => d("credits", e.detail)} />

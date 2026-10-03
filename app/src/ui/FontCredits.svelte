@@ -168,7 +168,7 @@
     color: var(--muted);
     cursor: pointer;
   }
-  .fc-close:hover { border-color: var(--accent); color: var(--accent); }
+  .fc-close:hover { border-color: var(--ink); color: var(--ink); }
 
   .fc-note {
     margin: 0;
@@ -213,7 +213,7 @@
     background: var(--tint);
     color: var(--accent);
     font-size: var(--fs-xs);
-    font-weight: var(--fw-bold, 700);
+    font-weight: var(--fw-medium, 500);
   }
 
   .fc-attribution {

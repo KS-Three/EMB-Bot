@@ -290,7 +290,7 @@ here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art; human faces TABLED pending a more capable tier *(Kent, 2026-08-25)* |
 | 2. Font library & lettering | Implemented — 85 fonts, satin + bean/running + cross-stitch, LTR + Hebrew RTL | High (tech) / High (compliance). Zero stunted glyphs since the 2026-08-22 transform fix; the guards now assert their own coverage |
-| 3. Studio app / configurator | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — the 2026-09-01 icon was uncontrolled, so the card still gates this). Held at Medium by that gate alone. **The wizard is gone (2026-09-30, PR #585)** — one panel, a summary bar, a Download sheet; spec `docs/superpowers/specs/2026-09-30-studio-configurator-design.md`, PRs 3–4 pending. **PR 2 (#586): the garment tiles are a Polo/Hat/Tee pill row with a More › menu, and Studio gains an Original view that is registered on the stitches only for browser-traced art, NOT yet for the service's digitized lane (open: the service must return the art's content box)** *(built and driven 2026-09-30 — `GarmentPicker.spec.js`, `configurator-smoke.spec.js`)*. **Every display-layer defect this area has had came from DRIVING the app, none from reading it** — three sweeps, detail in the area doc and defect 42. The preview renders thread as a lit cylinder at physical width, eye-tuned not sew-verified; the customer can crop to the logo before the run *(2026-09-28)* |
+| 3. Studio app / configurator | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — the 2026-09-01 icon was uncontrolled, so the card still gates this). Held at Medium by that gate alone. **The wizard is gone (2026-09-30, PR #585)** — one panel, a summary bar, a Download sheet; spec `docs/superpowers/specs/2026-09-30-studio-configurator-design.md`, PR 3 (progressive disclosure) is what remains. **PR 4 (theme, branch `claude/configurator-theme`, landed before PR 3 by Kent's call): white page, one `--fill` neutral for controls, 13 px type, a 44 px top bar with an `EMB·BOT` wordmark, plain hovers no longer use accent or tint (at rest accent/tint stay on the CTA, selection, links, focus, the in-flow hint banner, the font-licence badge, the quality grade and the digitize/manual panels' control borders), type is 400/500 with 600 only on the summary bar's figures and the wordmark (base headings and `b`/`strong` are 500); every TEXT NODE in the top bar, the panel (empty and text-design states), the garment menu, the Download sheet and the My designs drawer is held to WCAG AA by a computed-colour spec, 0 failures across ~130 elements (it does not measure field values/placeholders, hover/focus states, the stage, the digitize/image/manual panels, tooltips or popovers), spec §6's sheet slide was not built, so the panel is restyled but still long** *(built and driven 2026-10-01 — `theme.css`, `theme-contrast.spec.js`)*. **PR 2 (#586): the garment tiles are a Polo/Hat/Tee pill row with a More › menu, and Studio gains an Original view that is registered on the stitches only for browser-traced art, NOT yet for the service's digitized lane (open: the service must return the art's content box)** *(built and driven 2026-09-30 — `GarmentPicker.spec.js`, `configurator-smoke.spec.js`)*. **Every display-layer defect this area has had came from DRIVING the app, none from reading it** — three sweeps, detail in the area doc and defect 42. The preview renders thread as a lit cylinder at physical width, eye-tuned not sew-verified; the customer can crop to the logo before the run *(2026-09-28)* |
 | 4. Export formats | Implemented | Varies by format — see below |
 | 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Every interaction was driven in a real browser against a live service. Manual draw mode traces over the uploaded artwork; right-click places a curved node |
 
@@ -698,6 +698,23 @@ and terry, sharp on other wovens and caps, with its basis beside it; an unknown
 garment gets no card. Trade categories, not sew-out constants: nothing reads
 them for stitches. *(confirmed 2026-10-01 — `test/fabrics.test.js`,
 `app/src/lib/hooping.spec.js`, `e2e/configurator-smoke.spec.js`; DOCTRINE)*
+
+**The review sheet and worksheet quote the job on the operator's own terms.**
+"Quote settings" on the Download sheet (`app/src/lib/quote.js`, one
+`embstudio:quote` record per browser — Kent's ruling, not per project) holds a
+machine, a running speed, a cone price and length, and an hourly rate; every
+field is optional and an empty one drops its row. Run time is charged per STOP
+(a colour stop the thread was not cut for counts; it cost nothing before), at
+the typed speed for the needle and the plan rate for the stops, and names the
+machine. Bobbin prints as 3/5 of the top-thread metres — Kent's ruling, after
+Madeira's 3 m per 1,000 stitches read 4.0 m beside 2.5 m of top thread on
+lettering. One profile ships, the SmartStitch S-1501 (15 needles, 1,200 spm
+nameplate used only as a ceiling on the typed speed); its source is a brand
+storefront, not a datasheet. Planning figures throughout — nothing here was
+timed on a machine, and no maker publishes trim or colour-change seconds, so
+a change is costed as a trim. Not built: per-machine re-sequencing, a bobbin
+price, needle-count warnings, the service lane's own run time.
+*(confirmed 2026-10-01 — `quote.spec.js`, `estimate.spec.js`, `pdfsheet.spec.js`, and the rows read in the running app)*
 
 **What holds it at Medium:** fabric-preset accuracy is gated on the controlled
 sew-out CARD, which has not been sewn — the one physical out so far (2026-09-01)

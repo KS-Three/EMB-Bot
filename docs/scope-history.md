@@ -17258,6 +17258,32 @@ source line, a held run and the gradient lane's callers are untouched.
 `tools/lowres_detail.py --src 5 --grids 8`; `tests/test_work_grid.py`;
 `docs/fine-detail-work-grid-2026-09-30.md`)*
 
+## 2026-10-02 — Small lettering sews as one bar per letter because the small-region floor eats its counters on a coloured ground; `keep_counters` built OFF (Kent's pick)
+
+Once the working grid brought bridge's "BAR & RESTAURANT" back, each letter
+still sewed as one satin bar. Traced with clean Arial Bold at the same 4 mm
+cap: on white the satin tier sews letters (9 counters, per-stroke satin); on
+a yellow panel every counter is a region of the ground's colour under
+`min_detail_mm`² and `resolve_small_regions` absorbs all nine into the
+letter (teal 84 → 117 mm²). SEEDS + RAG merge close five, `snap_region_edges`
+recovers four, the floor takes the rest. Not the stitch tier; not the JPEG
+(little); not the denoise (worse). Bridge loses its counters a step earlier
+too: one of about eight is visible by colour in the raster, and stage 4's
+hole floor (0.5625 mm²) drops the two that leave stage 2.
+
+Built OFF: `cfg.keep_counters`. A region about to be absorbed stays out when
+one shape holds nine tenths of its ring and its colour is nearer the ground
+that shape sits on than the shape. A gap the run tier can sew is sewn by the
+existing rescue; a smaller one is tagged `counter` + `enclosed_background`,
+unsewn. Yellow panel: 0 → 9 counters, the words legible, 3,798 → 4,253
+stitches, 22 → 25 trims. Corpus at 80 mm: 25 of 26 identical, bridge +56
+stitches / −1 trim. Bridge's words do not move. The first cut asked the gate
+before the rescue and unstitched thread the engine lays today (bridge's "B"
+bowl, a drone detail): asked last now.
+
+*(measured 2026-10-02, Windows — `tools/flip_sheet.py` arm `counters`;
+`tests/test_keep_counters.py`; `docs/renders/keep-counters-2026-10-02/`)*
+
 ## 2026-10-02 — Bean letters, built OFF: small lettering read from the source ink (Kent: "We shouldn't have to warn the user of anything")
 
 Kent withdrew "warn sooner on small files" and asked the engine to take the
@@ -17288,3 +17314,7 @@ threshold closes the A's top counter). The screenshot's OCR score falls
 while its thin line renders cleaner — the score is a yardstick, not a verdict
 (gate 4). Flip is Kent's; MASTER_SCOPE "Waiting on Kent" 21.
 *(built 2026-10-02 — renders `docs/renders/bean-letters-2026-10-02/`)*
+
+Related, same day: `keep_counters` (entry above) keeps counters the small-region
+floor would eat on a coloured ground, and does not move bridge's words; bean
+letters reads past the source pixels that close them first. Independent flags.
