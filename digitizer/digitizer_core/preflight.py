@@ -3645,7 +3645,8 @@ def _tiny_step_metrics(plan: StitchPlan) -> dict:
             "tiny_step_fraction": round(tiny / total, 3) if total else None}
 
 
-_EDGE_WOBBLE_KEYS = ("wobble_p95_mm", "wobble_std_mm", "wobble_max_mm")
+_EDGE_WOBBLE_TIERS = ("satin", "border", "fill", "line")
+_EDGE_WOBBLE_STATS = ("p95_mm", "std_mm", "max_mm")
 
 
 def _edge_wobble_metrics(result: PipelineResult | None,
@@ -3656,18 +3657,30 @@ def _edge_wobble_metrics(result: PipelineResult | None,
     2026-10-03 nothing in this report could see it: `logo_whitebg` and a logo
     he calls jagged were graded without either number moving on the edge
     (MASTER_SCOPE defect 46). The instrument is `edge_wobble.analyse_plan`,
-    unchanged, read against the regions' own polygons.
+    read against the regions' own polygons.
+
+    **Per tier, never pooled.** The engine's run tier sews a shape's own
+    outline vertices and reads exactly 0, so one pooled figure moves when
+    shapes change tier and no rail has moved: `enthusiast_logo` reads satin
+    p95 0.247 mm and pooled 0.186, a quarter of the defect gone to 624 run
+    points at 0.000. Each tier the instrument reads -- satin rails, border
+    rails, fill row ends, run and bean lines -- reports its own three numbers.
 
     No finding and no deduction, on two rulings. Law 37: score smoothness
-    monotonically and invent no cutoff -- satin reads about 0.09 mm on every
-    real logo with every defence on, so a line would fire on all of them or
-    none. And Kent, 2026-10-02: the tool is not to warn the customer about
-    what it should fix. These ride out so a change that moves the edge shows
-    in `corpus_scorecard.diff`; like `raw_score`, they are inert there until
-    the baseline is recaptured.
+    monotonically and invent no cutoff -- the satin tier reads 0.07-0.11 mm
+    std on every real logo with every defence on, so a line would fire on all
+    of them or none. And Kent, 2026-10-02: the tool is not to warn the
+    customer about what it should fix. These ride out so a change that moves
+    the edge shows in `corpus_scorecard.diff`; like `raw_score`, they are
+    inert there until the baseline is recaptured.
 
-    None without the regions (no outline to measure against), and None when
-    no edge series is long enough to read -- never 0.0, which is a clean edge.
+    This is edge DEVIATION, in mm. It is not Law 37's own quantity, which is
+    direction change along the path (`tools/curve_fidelity.py`'s
+    `roughness_deg`) and is still offline.
+
+    None without the regions (no outline to measure against), None for a tier
+    the design does not sew, and None when no series is long enough to read.
+    A None is never a clean edge; a tier that reads 0.0 was measured.
 
     A shade band's runs are NOT read: they carry a derived id
     (`_owning_region_id`), and the instrument pairs a run with a polygon by
@@ -3675,11 +3688,20 @@ def _edge_wobble_metrics(result: PipelineResult | None,
     number here is the number the docs quote; mapping the bands in is a
     change to the measurement, with its own evidence to bring.
     """
+    out = {f"edge_wobble_{t}_{s}": None
+           for t in _EDGE_WOBBLE_TIERS for s in _EDGE_WOBBLE_STATS}
     if result is None:
-        return {f"edge_{k}": None for k in _EDGE_WOBBLE_KEYS}
+        return out
+    # No region is built without a polygon today. Skipped rather than trusted:
+    # a number that judges nothing must not be what fails a finished design.
     row = _edge_wobble.analyse_plan(
-        {r.shape_id: r.polygon for r in result.regions}, plan)
-    return {f"edge_{k}": row[k] for k in _EDGE_WOBBLE_KEYS}
+        {r.shape_id: r.polygon for r in result.regions if r.polygon is not None},
+        plan, unsewn=False)
+    for tier in _EDGE_WOBBLE_TIERS:
+        for stat in _EDGE_WOBBLE_STATS:
+            if tier in row["by_tier"]:
+                out[f"edge_wobble_{tier}_{stat}"] = row["by_tier"][tier][f"wobble_{stat}"]
+    return out
 
 
 def run_preflight(result: PipelineResult, plan: StitchPlan,
