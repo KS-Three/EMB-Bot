@@ -116,31 +116,58 @@
   // A THREAD is the records between two cuts (`trim`, `color`, either end of
   // the stream; `end` sews nothing and needs no rule). A `jump` is not a cut:
   // the question is "is the thread starting here, or being cut here", not
-  // "did the needle lift". Each thread is locked on its first SEWN SEGMENT --
-  // two penetrations in a row, in two places -- and on its last, by `tieRun`'s
-  // bounce laid along that segment and put straight after its anchor: at,
-  // [inner, at, inner, at], and on. That is the sequence Python sews at both
-  // ends. (The lettering port put the tie-in in FRONT of the run's own first
-  // stitch instead, which made that stitch a second penetration of the same
-  // hole.) A thread that sews no segment at all -- one lone penetration --
-  // gets no lock.
+  // "did the needle lift".
   //
-  // -> { stitches, nTies }: a new stream. `spans` (i0/i1 into the old one) are
-  // moved in place, and a lock stays inside the span of the run it protects.
+  // Each thread is locked AT ITS ENDS: on its first penetration and on its
+  // last, by `tieRun`'s bounce put straight after its anchor -- at, [inner,
+  // at, inner, at], and on, the sequence Python sews at both ends. (The
+  // lettering port put the tie-in in FRONT of the run's own first stitch
+  // instead, which made that stitch a second penetration of the same hole.)
+  // The bounce is laid toward the nearest other place the frame goes on that
+  // side: the next stitch, nearly always, and then the lock lies on that
+  // stitch. Where the thread's end is one penetration with a FLOAT beside it,
+  // that place is where the float starts or lands, which is along the row the
+  // stitch closes (a short row after a float is one record: the float lands
+  // on its start).
+  //
+  // The first version looked for "two stitch records in a row" instead, and
+  // an audit found what that costs: where a thread ends in a float and one
+  // stitch the lock sat up-thread at the last real sewing, with the tail
+  // loose behind it -- 6.1% of tie-offs in shape designs, by up to 371 mm.
+  //
+  // A doubled hole at either end is stepped over, so the lock still goes
+  // between it and the rest of the thread. A thread that goes down in one
+  // place only sews nothing and gets no lock.
+  //
+  // -> { stitches, nTies }: a new array (the records in it are the caller's
+  // own). `spans` (i0/i1 into the old one) are moved in place, and a lock
+  // stays inside the span its anchor is in.
   function applyTies(stitches, spans) {
     const leg = TIE_STITCH_MM * units.DST_UNITS_PER_MM;
     const cut = (s) => s.type === "trim" || s.type === "color";
-    const sewn = (k) => stitches[k].type === "stitch" && stitches[k + 1].type === "stitch" &&
-      (stitches[k].x !== stitches[k + 1].x || stitches[k].y !== stitches[k + 1].y);
+    const same = (p, q) => p.x === q.x && p.y === q.y;
+    // somewhere the frame goes that is not `at`
+    const elsewhere = (k, at) => (stitches[k].type === "stitch" || stitches[k].type === "jump") && !same(stitches[k], stitches[at]);
     const toward = new Map();   // anchor record -> the record its lock is laid toward
     for (let i = 0; i < stitches.length;) {
       if (cut(stitches[i])) { i++; continue; }
       let j = i;
       while (j < stitches.length && !cut(stitches[j])) j++;   // the thread is [i, j)
-      let first = -1, last = -1;
-      for (let k = i; k + 1 < j && first < 0; k++) if (sewn(k)) first = k;
-      for (let k = j - 2; k >= i && last < 0; k--) if (sewn(k)) last = k + 1;
-      if (first >= 0) { toward.set(first, first + 1); toward.set(last, last - 1); }
+      let first = -1, last = -1, places = false;
+      for (let k = i; k < j; k++) {
+        if (stitches[k].type !== "stitch") continue;
+        if (first < 0) first = k;
+        last = k;
+        if (!same(stitches[k], stitches[first])) places = true;
+      }
+      if (places) {
+        let next = first + 1, a = first;
+        while (!elsewhere(next, first)) { if (stitches[next].type === "stitch") a = next; next++; }
+        toward.set(a, next);
+        let prev = last - 1, z = last;
+        while (!elsewhere(prev, last)) { if (stitches[prev].type === "stitch") z = prev; prev--; }
+        toward.set(z, prev);
+      }
       i = j;
     }
     const out = [], start = new Array(stitches.length), end = new Array(stitches.length);
@@ -148,7 +175,9 @@
       start[k] = out.length;
       out.push(s);
       if (toward.has(k)) {
-        for (const p of tieRun(s, stitches[toward.get(k)], leg).slice(1)) out.push({ x: Math.round(p.x), y: Math.round(p.y), type: "stitch" });
+        const bounce = tieRun(s, stitches[toward.get(k)], leg);
+        const inner = { x: Math.round(bounce[1].x), y: Math.round(bounce[1].y) };
+        for (let b = 1; b < bounce.length; b++) out.push({ x: b % 2 ? inner.x : s.x, y: b % 2 ? inner.y : s.y, type: "stitch" });
       }
       end[k] = out.length - 1;
     });

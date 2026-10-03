@@ -2251,20 +2251,89 @@ test("applyTies: a float does not cut the thread, a trim and a colour change do"
     "j300,0 s300,0 s308,0 s300,0 s308,0 s300,0 s330,0 s322,0 s330,0 s322,0 s330,0 e0,0");
 });
 
-test("applyTies: a lock lies on the first and last stitch that HAS a length, and a lone penetration gets none", () => {
+test("applyTies: a doubled hole is stepped over, a short stitch is the whole leg, and one penetration is not a thread", () => {
   const stream = [
-    _rec("jump", 0, 0), _rec("stitch", 0, 0),              // one penetration, then floated away from
     _rec("jump", 50, 0), _rec("stitch", 50, 0), _rec("stitch", 50, 0), _rec("stitch", 53, 4),   // a doubled hole, then 0.5 mm
     _rec("stitch", 90, 4), _rec("stitch", 90, 4),          // ... and a doubled hole at the end
     _rec("trim", 90, 4),
     _rec("jump", 200, 0), _rec("stitch", 200, 0),          // a thread of one penetration
+    _rec("trim", 200, 0),
+    _rec("jump", 300, 0), _rec("stitch", 300, 0), _rec("stitch", 300, 0),   // two penetrations, one hole
     _rec("end", 0, 0),
   ];
   const r = DG.applyTies(stream, []);
-  assert.strictEqual(r.nTies, 2, "the second thread sews no stitch, so nothing holds a lock");
+  assert.strictEqual(r.nTies, 2, "a thread that penetrates in one place only sews nothing, so nothing holds a lock");
   assert.strictEqual(_show(r.stitches),
-    "j0,0 s0,0 j50,0 s50,0 s50,0 s53,4 s50,0 s53,4 s50,0 s53,4 s90,4 s82,4 s90,4 s82,4 s90,4 s90,4 t90,4 j200,0 s200,0 e0,0",
+    "j50,0 s50,0 s50,0 s53,4 s50,0 s53,4 s50,0 s53,4 s90,4 s82,4 s90,4 s82,4 s90,4 s90,4 t90,4 j200,0 s200,0 t200,0 j300,0 s300,0 s300,0 e0,0",
     "the 0.5 mm stitch is shorter than a leg, so the lock stops on its far end");
+});
+
+test("applyTies: a thread that ends on a float and one stitch is locked AT that stitch, not where it last sewed two in a row", () => {
+  // Found by audit. The first rule looked for "two stitch records in a row".
+  // A thread can end in a float and a single penetration (a short row after a
+  // float is one record: the float lands on its start), or begin with one and
+  // float away. The lock then sat at the last real sewing, up-thread, and the
+  // tail was loose: 6.1% of tie-offs in shape designs, by as much as 371 mm.
+  // A lock belongs where the thread ends. It is laid toward the place the
+  // frame was last (or goes next), which is along the row the stitch closes.
+  const stream = [
+    _rec("jump", 0, 0), _rec("stitch", 0, 0), _rec("stitch", 30, 0),
+    _rec("jump", 100, 50), _rec("stitch", 140, 50),                    // a float, then one penetration, then the cut
+    _rec("trim", 140, 50),
+    _rec("jump", 300, 0), _rec("stitch", 300, 0),                      // one penetration at a thread's START,
+    _rec("jump", 300, 40), _rec("stitch", 340, 40), _rec("stitch", 380, 40),   // a float, and then the sewing
+    _rec("end", 0, 0),
+  ];
+  const r = DG.applyTies(stream, []);
+  assert.strictEqual(r.nTies, 4);
+  assert.strictEqual(_show(r.stitches),
+    "j0,0 s0,0 s8,0 s0,0 s8,0 s0,0 s30,0 j100,50 s140,50 s132,50 s140,50 s132,50 s140,50 t140,50 " +
+    "j300,0 s300,0 s300,8 s300,0 s300,8 s300,0 j300,40 s340,40 s380,40 s372,40 s380,40 s372,40 s380,40 e0,0");
+});
+
+test("ties (shapes): every lock sits on its thread's first or last penetration", () => {
+  // The same thing asked of whole designs: an inverted U whose arms are
+  // narrower than a stitch (so the last rows are one record each, after a
+  // float across the mouth), an L whose column walk opens a thread with a
+  // doubled hole and a 35 mm float, and the three-shape fixture above.
+  const arch = { outer: ring([[0, 0], [400, 0], [400, 300], [370, 300], [370, 60], [30, 60], [30, 300], [0, 300]]), holes: [] };
+  const ell = { outer: ring([[0, 0], [122.5, 0], [122.5, 227.5], [350, 227.5], [350, 350], [0, 350]]), holes: [], angleOverride: 90 };
+  const designs = {
+    "arch, flag off": (ties) => drawn(arch, 400, { fillColumns: false, ties }),
+    "arch, flag on": (ties) => drawn(arch, 400, { ties }),
+    "L, flag on": (ties) => drawn(ell, 350, { ties }),
+    "three shapes": (ties) => _tieShapes({ ties }),
+    "three shapes, columns": (ties) => _tieShapes({ ties, fillColumns: true }),
+  };
+  let loneEnds = 0;
+  for (const [name, build] of Object.entries(designs)) {
+    const off = build(false).stitches, on = build(true).stitches;
+    // the locks, by diff: where the tied stream leaves the untied one, the
+    // record before is the anchor and the next four are its lock
+    const anchors = new Set();
+    for (let i = 0, j = 0; j < on.length;) {
+      if (i < off.length && off[i].type === on[j].type && _same(off[i], on[j])) { i++; j++; continue; }
+      anchors.add(j - 1);
+      j += 4;
+    }
+    let from = 0;
+    on.forEach((s, k) => {
+      if (s.type !== "trim" && s.type !== "color" && s.type !== "end") return;
+      const pens = [];
+      for (let m = from; m < k; m++) if (on[m].type === "stitch") pens.push(m);
+      from = k + 1;
+      const places = new Set(pens.map((m) => on[m].x + "," + on[m].y));
+      if (places.size < 2) return;   // sews nothing
+      const first = on[pens[0]], last = on[pens[pens.length - 1]];
+      const locked = pens.filter((m) => anchors.has(m));
+      assert.strictEqual(locked.length, 2, `${name}: thread ending at record ${k} has ${locked.length} locks`);
+      assert.ok(_same(on[locked[0]], first), `${name}: the tie-in at record ${locked[0]} is not on the thread's first penetration`);
+      assert.ok(_same(on[locked[1]], last), `${name}: the tie-off at record ${locked[1]} is not on the thread's last penetration`);
+      // a lone end: the thread floats on straight after its tie-in, or floated in to its tie-off
+      if (on[locked[0] + 5].type === "jump" || on[locked[1] - 1].type === "jump") loneEnds++;
+    });
+  }
+  assert.ok(loneEnds >= 2, "the fixtures must have a thread that starts or ends on a lone penetration: " + loneEnds);
 });
 
 test("applyTies: the spans move with the records, and a lock stays in its run's span", () => {
