@@ -129,7 +129,10 @@
   // the lock is laid along the row that stitch closed: toward where the
   // frame was just before it (a short row after a float or a cut is one
   // record, because the float or the cut lands on the row's start). Along a
-  // float is the last choice: a float may cross a hole.
+  // float is the last choice: a float may cross a hole. (A lock laid toward a
+  // jump's end can lie up to a leg outside the box of the stitches, if that
+  // end is outside it. A builder's jump ends on a row's start, and in 29,050
+  // audited builds no box grew; a stream written by hand can do it.)
   //
   // The first version looked for "two stitch records in a row" instead, and
   // an audit found what that costs: where a thread ends in a float and one
@@ -170,9 +173,16 @@
         // the row is one record at the hole's rim, and the next move floats
         // across the hole. Laid toward the float, the lock's inner point was
         // 0.8 mm into the hole. It is laid back along the row.
+        // (A cut left ON the old thread's last stitch carried the frame
+        // nowhere, so it is not where a row began. No builder writes one.)
         const before = first - 1;
-        const back = stitches[next].type === "jump" && before >= 0 &&
+        let back = stitches[next].type === "jump" && before >= 0 &&
           (stitches[before].type === "trim" || stitches[before].type === "jump") && !same(stitches[before], stitches[first]);
+        if (back && stitches[before].type === "trim") {
+          let p = before - 1;
+          while (p >= 0 && stitches[p].type !== "stitch") p--;
+          if (p >= 0 && same(stitches[p], stitches[before])) back = false;
+        }
         toward.set(a, back ? before : next);
         let prev = last - 1, z = last;
         while (!elsewhere(prev, last)) { if (stitches[prev].type === "stitch") z = prev; prev--; }

@@ -2307,6 +2307,23 @@ test("applyTies: one stitch after a cut, then a float -- the lock lies back alon
   assert.strictEqual(_show(DG.applyTies(stream, []).stitches),
     "j0,0 s0,0 s8,0 s0,0 s8,0 s0,0 s30,0 s22,0 s30,0 s22,0 s30,0 t100,50 " +
     "s130,50 s122,50 s130,50 s122,50 s130,50 j200,50 s230,50 s260,50 s252,50 s260,50 s252,50 s260,50 e0,0");
+  // Only then. A first stitch that is followed by a stitch is locked on that
+  // stitch, wherever the cut landed (a long row after center-out's cut)...
+  const sewsOn = [_rec("trim", 100, 50), _rec("stitch", 130, 50), _rec("stitch", 160, 50)];
+  assert.strictEqual(_show(DG.applyTies(sewsOn, []).stitches),
+    "t100,50 s130,50 s138,50 s130,50 s138,50 s130,50 s160,50 s152,50 s160,50 s152,50 s160,50");
+  // ... and a colour change is not where a row began: it marks the place the
+  // LAST thread ended. There the float is all there is to lay the lock along.
+  const newColour = [_rec("color", 100, 50), _rec("stitch", 130, 50), _rec("jump", 200, 50), _rec("stitch", 230, 50)];
+  assert.strictEqual(_show(DG.applyTies(newColour, []).stitches),
+    "c100,50 s130,50 s138,50 s130,50 s138,50 s130,50 j200,50 s230,50 s222,50 s230,50 s222,50 s230,50");
+  // Nor is a cut that was left ON the last thread's final stitch: it carried
+  // the frame nowhere. (No builder writes this; the audit wrote it by hand.)
+  const stale = [_rec("stitch", 0, 0), _rec("stitch", 50, 0), _rec("trim", 50, 0),
+    _rec("stitch", 200, 100), _rec("jump", 260, 100), _rec("stitch", 300, 100), _rec("stitch", 340, 100)];
+  assert.strictEqual(_show(DG.applyTies(stale, []).stitches),
+    "s0,0 s8,0 s0,0 s8,0 s0,0 s50,0 s42,0 s50,0 s42,0 s50,0 t50,0 " +
+    "s200,100 s208,100 s200,100 s208,100 s200,100 j260,100 s300,100 s340,100 s332,100 s340,100 s332,100 s340,100");
 });
 
 test("ties (shapes): with the column flag off, a lock adds no sewn thread to a hole", () => {
