@@ -659,20 +659,21 @@ test("fillColumns: a ring inside a hole is an island, and its edge run lies on t
   // the island.
   const island = boxPx(160, 160, 240, 240);
   const eye = { outer: boxPx(0, 0, 400, 400), holes: [boxPx(80, 80, 320, 320), island] };
-  // mm of thread between 0.15 and 1 mm OUTSIDE the island's own ring: nothing
-  // else of this design comes that near it from the moat side
-  const besideIsland = (d) => {
+  // mm of thread in the moat, between 0.15 and 1 mm past a line `past` px
+  // OUTSIDE the island's own ring: of one kind of run, or (no `kind`) of all
+  const besideIsland = (d, past, kind) => {
     let mm = 0, attached = false, prev = null;
-    for (const s of d.stitches) {
+    for (let i = 0; i < d.stitches.length; i++) {
+      const s = d.stitches[i];
       if (s.type === "end") break;
       if (s.type === "trim") { attached = false; prev = s; continue; }
-      if (prev && attached) {
+      if (prev && attached && (!kind || d.runs.some((r) => r.kind === kind && i > r.i0 && i <= r.i1))) {
         const a = { x: prev.x + 200, y: 200 - prev.y }, b = { x: s.x + 200, y: 200 - s.y };
         const len = Math.hypot(b.x - a.x, b.y - a.y), n = Math.max(1, Math.ceil(len / 0.5));
         for (let k = 0; k < n; k++) {
           const x = a.x + (b.x - a.x) * (k + 0.5) / n, y = a.y + (b.y - a.y) * (k + 0.5) / n;
           const out = Math.max(160 - x, x - 240, 160 - y, y - 240);   // > 0: outside the island, by about this much
-          if (out > 1.5 && out < 10) mm += len / n / 10;
+          if (out > past + 1.5 && out < past + 10) mm += len / n / 10;
         }
       }
       if (s.type === "stitch") attached = true;
@@ -681,12 +682,220 @@ test("fillColumns: a ring inside a hole is an island, and its edge run lies on t
     return Math.round(mm * 10) / 10;
   };
   for (const fabricId of ["pique_knit", "terry_towel", "structured_cap", "fleece_sweatshirt"]) {
-    const fabric = FABRICS.getFabric(fabricId);
-    assert.strictEqual(besideIsland(drawn(eye, 400, { fabric })), 0, fabricId);
+    const fabric = FABRICS.getFabric(fabricId), d = drawn(eye, 400, { fabric });
+    // no UNDERLAY comes that near the island from the moat side
+    assert.strictEqual(besideIsland(d, 0, "underlay"), 0, fabricId);
+    // The island's FILL does, and is meant to: it is sewn past the ring by
+    // the preset's pull compensation, as the outline's is (the tests below).
+    // Past what the fill covers, the moat is clear of every kind of thread.
+    assert.strictEqual(besideIsland(d, fabric.pullCompMm * 10), 0, fabricId + ", past the island's fill");
     // (flag off, the old walk's floats cross that band on every row: the
     // fixture can see thread there)
-    assert.ok(besideIsland(drawn(eye, 400, { fabric, fillColumns: false })) > 50, fabricId + ", flag off");
+    assert.ok(besideIsland(drawn(eye, 400, { fabric, fillColumns: false }), 0) > 50, fabricId + ", flag off");
   }
+});
+
+// --- a ring inside a hole is an ISLAND, to every reader (2026-10-03) ----------
+//
+// The fill is even-odd: a ring inside a hole is filled ground again, and a
+// ring inside THAT is a hole again. Two readers in buildQualityDesign took
+// every ring in `holes` for a hole. Both are older than `fillColumns` and
+// neither asks it, so each test here runs the flag off and on.
+
+// Where the FILL's needle went on the rows through the middle of a square
+// drawing `size` px wide, as x in the drawing's own px, sorted. With the rows
+// forced level (angleOverride 0) these are those rows' own stitches, so the
+// first and last inside a window are where a span of the fill begins and
+// ends: the edge it was sewn to.
+function fillOnMiddleRows(d, size) {
+  const xs = [];
+  for (const run of d.runs) {
+    if (run.kind !== "fill") continue;
+    for (let i = run.i0; i <= run.i1; i++) {
+      const s = d.stitches[i];
+      if (s.type === "stitch" && Math.abs(s.y) <= 2) xs.push(s.x + size / 2);
+    }
+  }
+  return xs.sort((a, b) => a - b);
+}
+const firstIn = (xs, lo, hi) => xs.find((x) => x > lo && x < hi);
+const lastIn = (xs, lo, hi) => xs.filter((x) => x > lo && x < hi).pop();
+const level = (shape) => Object.assign({ angleOverride: 0 }, shape);
+const bothWalks = (fn) => { for (const fillColumns of [false, true]) fn(fillColumns, fillColumns ? ", fillColumns" : ""); };
+
+test("buildQualityDesign: three nested rings are sewn, the innermost as filled ground", () => {
+  // A 40 mm box, a hole 4 mm in, a ring 4 mm inside that. Taken for a second
+  // hole, the innermost ring had its area SUBTRACTED: 1600 - 1024 - 576 =
+  // 0 mm2, and a shape with no area is dropped. No stitch, with or without a
+  // preset, and nothing said: a concentric-ring logo through the text tools
+  // (`groupRingsIntoShapes`) sewed nothing.
+  const [nested] = DG.groupRingsIntoShapes([boxPx(0, 0, 400, 400), boxPx(40, 40, 360, 360), boxPx(80, 80, 320, 320)]);
+  assert.strictEqual(nested.holes.length, 2, "one shape: the outline and both rings inside it");
+  for (const fabricId of [null, "pique_knit", "terry_towel"]) {
+    for (const tierOverride of ["fill", undefined]) {
+      bothWalks((fillColumns, walk) => {
+        const label = (fabricId || "no fabric") + ", tier " + (tierOverride || "auto") + walk;
+        const d = drawn(Object.assign({}, nested, { tierOverride }), 400, Object.assign({ fillColumns }, fabricId ? { fabric: FABRICS.getFabric(fabricId) } : {}));
+        assert.strictEqual(d.shapeOutlines[0].dropped, false, label);
+        // how far out from the centre each fill stitch lands, in px: the band
+        // is 160 to 200 out, the moat 120 to 160, the island all inside 120
+        const out = [];
+        for (const run of d.runs) {
+          if (run.kind !== "fill") continue;
+          for (let i = run.i0; i <= run.i1; i++) if (d.stitches[i].type === "stitch") out.push(Math.max(Math.abs(d.stitches[i].x), Math.abs(d.stitches[i].y)));
+        }
+        assert.ok(out.filter((m) => m > 170).length > 100, "the band is sewn, " + label);
+        assert.ok(out.filter((m) => m < 110).length > 100, "the island is sewn, " + label);
+        assert.strictEqual(out.filter((m) => m > 130 && m < 150).length, 0, "the moat is not, " + label);
+      });
+    }
+  }
+});
+
+test("buildQualityDesign: pull compensation grows an island, as it grows the outline", () => {
+  // A fill is sewn past its edge by the preset's pull compensation, so that it
+  // pulls in to true size: the outline grown, each hole shrunk. Every ring in
+  // `holes` was shrunk, and for an island that is the fill made SMALLER: on
+  // terry (0.6 mm) the outline's fill was sewn -6..406 px, right, and the
+  // island drawn 160..240 was sewn 166..234, wrong by twice the compensation.
+  const island = boxPx(160, 160, 240, 240), hole = boxPx(80, 80, 320, 320);
+  for (const fabric of FABRICS.FABRICS) {
+    const q = fabric.pullCompMm * 10;   // the compensation, in px
+    // (and whichever of the two rings is listed first)
+    for (const holes of [[hole, island], [island, hole]]) {
+      bothWalks((fillColumns, walk) => {
+        const label = fabric.id + (holes[0] === island ? ", island listed first" : "") + walk;
+        const xs = fillOnMiddleRows(drawn(level({ outer: boxPx(0, 0, 400, 400), holes }), 400, { fabric, fillColumns }), 400);
+        // (a stitch is rounded to 0.1 mm, and jersey's compensation is 0.35)
+        const sewnAt = (got, want, what) => assert.ok(Math.abs(got - want) <= 0.5, what + ", " + label + ": sewn at " + got + ", not " + want);
+        sewnAt(xs[0], 0 - q, "the outline's edge");
+        sewnAt(lastIn(xs, 0, 120), 80 + q, "the hole's wall");
+        sewnAt(firstIn(xs, 120, 200), 160 - q, "the island's left edge");
+        sewnAt(lastIn(xs, 200, 280), 240 + q, "the island's right edge");
+        sewnAt(firstIn(xs, 280, 400), 320 - q, "the hole's far wall");
+      });
+    }
+  }
+});
+
+test("buildQualityDesign: an island's underlay stays under its own fill", () => {
+  // The underlay is sewn to the ring as DRAWN. With the island's fill 0.6 mm
+  // small on every side (terry), its lattice underlay lay 0.6 mm outside the
+  // fill all round: sewn, and never covered.
+  const eye = level({ outer: boxPx(0, 0, 400, 400), holes: [boxPx(80, 80, 320, 320), boxPx(160, 160, 240, 240)] });
+  // the x and y reach of one kind of run over the island and the moat round it
+  const reach = (d, kind) => {
+    const r = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
+    for (const run of d.runs) {
+      if (run.kind !== kind) continue;
+      for (let i = run.i0; i <= run.i1; i++) {
+        const s = d.stitches[i];
+        if (s.type !== "stitch" || Math.max(Math.abs(s.x), Math.abs(s.y)) > 80) continue;
+        r.x0 = Math.min(r.x0, s.x); r.x1 = Math.max(r.x1, s.x); r.y0 = Math.min(r.y0, s.y); r.y1 = Math.max(r.y1, s.y);
+      }
+    }
+    return r;
+  };
+  for (const fabric of FABRICS.FABRICS) {
+    bothWalks((fillColumns, walk) => {
+      const d = drawn(eye, 400, { fabric, fillColumns });
+      const under = reach(d, "underlay"), fill = reach(d, "fill");
+      const label = fabric.id + walk + ": underlay " + JSON.stringify(under) + ", fill " + JSON.stringify(fill);
+      assert.ok(under.x1 > under.x0, "the island has an underlay, " + label);
+      // level rows: the fill's ends are its edge. Top and bottom it reaches to
+      // within a row of its edge, and a row is 0.15 mm.
+      assert.ok(under.x0 >= fill.x0 && under.x1 <= fill.x1, "across the rows, " + label);
+      assert.ok(under.y0 >= fill.y0 - 1 && under.y1 <= fill.y1 + 1, "along them, " + label);
+    });
+  }
+});
+
+test("buildQualityDesign: a hole inside an island is a hole again, and is shrunk", () => {
+  // Four rings: band, moat, a ring of island, and a hole in the middle of it.
+  // The count that says which is which is how many rings of the list a ring
+  // lies inside: even a hole, odd an island. (Subtracting all three areas left
+  // this one less than nothing, and it was dropped like the one above.)
+  const four = level({ outer: boxPx(0, 0, 400, 400), holes: [boxPx(40, 40, 360, 360), boxPx(80, 80, 320, 320), boxPx(120, 120, 280, 280)] });
+  for (const fabricId of ["pique_knit", "structured_cap", "terry_towel"]) {
+    const fabric = FABRICS.getFabric(fabricId), q = Math.round(fabric.pullCompMm * 10);
+    bothWalks((fillColumns, walk) => {
+      const label = fabricId + walk;
+      const xs = fillOnMiddleRows(drawn(four, 400, { fabric, fillColumns }), 400);
+      assert.strictEqual(lastIn(xs, 0, 60), 40 + q, "the outer hole's wall, " + label);
+      assert.strictEqual(firstIn(xs, 60, 100), 80 - q, "the island's outer edge, grown, " + label);
+      assert.strictEqual(lastIn(xs, 100, 150), 120 + q, "the inner hole's wall, shrunk, " + label);
+      assert.strictEqual(firstIn(xs, 150, 250), undefined, "nothing in the inner hole, " + label);
+    });
+  }
+});
+
+test("buildQualityDesign: an island too near the hole round it to grow is sewn as drawn", () => {
+  // Grown, an island moves TOWARD the wall of its hole while that wall moves
+  // toward it, and two rings that cross are a fill sewn where neither was
+  // drawn. A hole too thin to shrink is sewn as drawn; so is an island with a
+  // moat too thin to grow into. Terry, 0.6 mm: a 1 mm moat takes the hole's
+  // 0.6 and leaves the island where it is.
+  const fabric = FABRICS.getFabric("terry_towel");
+  const eye = level({ outer: boxPx(0, 0, 400, 400), holes: [boxPx(80, 80, 320, 320), boxPx(90, 90, 310, 310)] });
+  bothWalks((fillColumns, walk) => {
+    const xs = fillOnMiddleRows(drawn(eye, 400, { fabric, fillColumns }), 400);
+    assert.strictEqual(lastIn(xs, 0, 88), 86, "the hole's wall, shrunk as ever" + walk);
+    assert.strictEqual(firstIn(xs, 88, 200), 90, "the island's edge, as drawn" + walk);
+    assert.strictEqual(lastIn(xs, 200, 312), 310, "and its far edge" + walk);
+    assert.strictEqual(firstIn(xs, 312, 400), 314, "the hole's far wall" + walk);
+  });
+});
+
+test("buildQualityDesign: where a shrunk hole would still meet its island, both are sewn as drawn", () => {
+  // A 0.4 mm moat on terry: the hole's wall alone, moved 0.6 mm, is past the
+  // island's edge.
+  const fabric = FABRICS.getFabric("terry_towel");
+  const eye = level({ outer: boxPx(0, 0, 400, 400), holes: [boxPx(80, 80, 320, 320), boxPx(84, 84, 316, 316)] });
+  bothWalks((fillColumns, walk) => {
+    const xs = fillOnMiddleRows(drawn(eye, 400, { fabric, fillColumns }), 400);
+    assert.strictEqual(xs[0], -6, "the outline is still grown" + walk);
+    assert.strictEqual(lastIn(xs, 0, 82), 80, "the hole's wall, as drawn" + walk);
+    assert.strictEqual(firstIn(xs, 82, 200), 84, "the island's edge, as drawn" + walk);
+    assert.strictEqual(lastIn(xs, 200, 318), 316, "and its far edge" + walk);
+    assert.strictEqual(firstIn(xs, 318, 400), 320, "the hole's far wall" + walk);
+  });
+});
+
+test("buildQualityDesign: two islands too near each other to grow are both sewn as drawn", () => {
+  // Side by side in one hole, 0.8 mm apart: each grown 0.6 mm, they overlap.
+  const fabric = FABRICS.getFabric("terry_towel");
+  const pair = level({ outer: boxPx(0, 0, 400, 400), holes: [boxPx(60, 60, 340, 340), boxPx(100, 150, 196, 250), boxPx(204, 150, 300, 250)] });
+  bothWalks((fillColumns, walk) => {
+    const xs = fillOnMiddleRows(drawn(pair, 400, { fabric, fillColumns }), 400);
+    assert.strictEqual(lastIn(xs, 0, 80), 66, "the hole's wall, shrunk as ever" + walk);
+    assert.strictEqual(firstIn(xs, 80, 150), 100, "the left island's outer edge" + walk);
+    assert.strictEqual(lastIn(xs, 150, 200), 196, "its inner edge" + walk);
+    assert.strictEqual(firstIn(xs, 200, 250), 204, "the right island's inner edge" + walk);
+    assert.strictEqual(lastIn(xs, 250, 320), 300, "its outer edge" + walk);
+  });
+});
+
+test("buildQualityDesign: two holes that cross are still two holes", () => {
+  // An island is a ring wholly inside a hole. Two cut-outs that overlap, or
+  // one laid across the notch of another, are not that, whichever corner of
+  // either happens to lie inside the other: both are shrunk, as they always
+  // were. (Asking one corner calls the first of these an island; asking every
+  // corner calls the second one.)
+  const fabric = FABRICS.getFabric("terry_towel");
+  const overlap = level({ outer: boxPx(0, 0, 400, 400), holes: [boxPx(180, 180, 300, 300), boxPx(100, 100, 220, 220)] });
+  const u = ring([[80, 80], [320, 80], [320, 320], [240, 320], [240, 160], [160, 160], [160, 320], [80, 320]]);
+  const across = level({ outer: boxPx(0, 0, 400, 400), holes: [u, boxPx(120, 170, 280, 230)] });
+  bothWalks((fillColumns, walk) => {
+    let xs = fillOnMiddleRows(drawn(overlap, 400, { fabric, fillColumns }), 400);
+    assert.strictEqual(lastIn(xs, 0, 150), 106, "overlap: the second hole's wall" + walk);
+    assert.strictEqual(firstIn(xs, 150, 200), 186, "overlap: the first hole's wall, shrunk" + walk);
+    assert.strictEqual(lastIn(xs, 200, 250), 214, "overlap: the second hole's far wall" + walk);
+    assert.strictEqual(firstIn(xs, 250, 400), 294, "overlap: the first hole's far wall" + walk);
+    xs = fillOnMiddleRows(drawn(across, 400, { fabric, fillColumns }), 400);
+    assert.strictEqual(lastIn(xs, 0, 100), 86, "across: the U's outer wall" + walk);
+    assert.strictEqual(firstIn(xs, 100, 140), 126, "across: the box's wall, shrunk" + walk);
+    assert.strictEqual(lastIn(xs, 140, 200), 154, "across: the U's inner wall" + walk);
+  });
 });
 
 test("fillColumns: left off, every stitch is the one it has always been", () => {
@@ -695,6 +904,79 @@ test("fillColumns: left off, every stitch is the one it has always been", () => 
     assert.deepStrictEqual(
       DG.buildQualityDesign(ANNULUS, Object.assign({ fillColumns: false }, base)).stitches,
       DG.buildQualityDesign(ANNULUS, base).stitches);
+  }
+});
+
+// --- what the audit of the lock stitches found (2026-10-03, PR #609) ----------
+//
+// 18 threads in a 12,880-design sweep were a stub: a cut, two penetrations in
+// one hole, and the end of the design. A scanline that passes exactly through
+// a corner pointing up the rows finds a span of no length there (fill.js,
+// above `cutColumns`; test/fill.test.js has it bare). The column walk made a
+// column of it, and when that column was left for last with no way round to
+// it, cut to it.
+
+// The threads of a design: the penetrations between one cut (or the start, or
+// a colour change) and the next.
+function threadsOf(d) {
+  const out = [[]];
+  for (const s of d.stitches) {
+    if (s.type === "end") break;
+    if (s.type === "trim" || s.type === "color") { out.push([]); continue; }
+    if (s.type === "stitch") out[out.length - 1].push(s);
+  }
+  return out.filter((t) => t.length);
+}
+const holesOf = (thread) => new Set(thread.map((s) => s.x + "," + s.y)).size;
+// Two penetrations in one hole, one straight after the other.
+function doubledAt(d) {
+  const at = [];
+  for (let i = 1; i < d.stitches.length; i++) {
+    const a = d.stitches[i - 1], b = d.stitches[i];
+    if (a.type === "stitch" && b.type === "stitch" && a.x === b.x && a.y === b.y) at.push([b.x, b.y]);
+  }
+  return at;
+}
+
+test("fillColumns: no cut is made to reach a corner that only happens to lie on a scanline", () => {
+  // The audit's comb, as it found it. Its fill rows run along the teeth, 0.15
+  // mm apart, and two of them run exactly along the side of a tooth: each
+  // finds the tooth's top corner as a span of no length. The stream ended
+  // `trim(37,175) stitch(37,175) stitch(37,175) end`.
+  const comb = { outer: ring([[0, 0], [28, 0], [28, 245], [45.5, 245], [45.5, 0], [73.5, 0], [73.5, 245], [91, 245], [91, 0], [119, 0], [119, 245], [136.5, 245], [136.5, 0], [164.5, 0], [164.5, 245], [182, 245], [182, 0], [210, 0], [210, 245], [227.5, 245], [227.5, 0], [255.5, 0], [255.5, 245], [273, 245], [273, 0], [301, 0], [301, 245], [318.5, 245], [318.5, 0], [346.5, 0], [346.5, 350], [0, 350]]), holes: [] };
+  const d = drawn(comb, 346.5);
+  const threads = threadsOf(d);
+  assert.deepStrictEqual(threads.filter((t) => holesOf(t) < 2).map((t) => [t.length, t[0].x, t[0].y]), [], "threads that never leave one hole");
+  assert.ok(threads[threads.length - 1].length > 2, "the design ends on a thread of " + threads[threads.length - 1].length + " penetrations");
+  assert.deepStrictEqual(doubledAt(d), [], "two penetrations in one hole");
+  // and the thread still stays out of the gaps between the teeth
+  assert.deepStrictEqual(openGroundMm(d, comb, 0.3), { sewn: 0, floats: 0 });
+  // (without the flag the plain walk meets the same two corners on its way and
+  // never cuts for one: the stub is the flag's own)
+  const off = drawn(comb, 346.5, { fillColumns: false });
+  assert.deepStrictEqual(threadsOf(off).filter((t) => holesOf(t) < 2), []);
+});
+
+test("fillColumns: the tip of a holed shape gets one penetration at most, not two in one hole", () => {
+  // A house with a window, rows level: the first scanline of the fill IS the
+  // point of the roof. With no underlay the walk began there, with two
+  // penetrations in the tip; with one, it went there whenever it was nearest.
+  // The lattice underlays of terry and fleece run at 45 degrees and did the
+  // same at the eaves, which are the top of THEIR rows.
+  //
+  // (The window's walls lie ON the underlay's rows: x = 200 is one of the cap
+  // preset's, 2 mm apart. Two spans meet at that wall's corner and the move
+  // from one to the other has no length, which was a second penetration of
+  // (50, 0) until such a move laid no stitch: test/fill.test.js has it bare.)
+  const house = { outer: ring([[150, 0], [300, 120], [300, 300], [0, 300], [0, 120]]), holes: [boxPx(100, 150, 200, 250)], angleOverride: 0 };
+  for (const fabric of [null].concat(FABRICS.FABRICS)) {
+    for (const underlay of [false, true]) {
+      const label = (fabric ? fabric.id : "no fabric") + ", underlay " + underlay;
+      const d = drawn(house, 300, Object.assign({ underlay }, fabric ? { fabric } : {}));
+      assert.deepStrictEqual(doubledAt(d), [], label);
+      assert.deepStrictEqual(threadsOf(d).filter((t) => holesOf(t) < 2), [], label);
+      assert.deepStrictEqual(cutsBy(d), { all: 0, fill: 0, underlay: 0, between: 0 }, label);
+    }
   }
 });
 

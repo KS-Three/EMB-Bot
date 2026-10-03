@@ -17648,3 +17648,235 @@ stagger with it. `fillFromGeom` would pass `stagger`, `minStitch` and
 `splitTol`, the two lengths divided by the fit scale as the stitch length
 beside them already is.
 *(measured 2026-10-03 — throwaway scripts over `src/fonts/bin`; `tools/long-stitch-census.mjs`)*
+
+## 2026-10-03 — A ring inside a hole is an island: three nested rings sewed nothing, and pull compensation shrank it (browser builder, fixed)
+
+The `fillColumns` entry of this date ends "Left, and older than the flag:
+pull compensation shrinks an island." This is that, and its twin.
+`shape.holes` carries every ring inside the outline, and the fill is
+even-odd, so a ring inside a hole is filled ground again: an island.
+`groupRingsIntoShapes` hands a bullseye over as the outline plus [hole,
+island]. Two readers in `buildQualityDesign` took every ring in that list
+for a hole. Measured on `origin/main` at `b30626b5`, 10 px per mm, left
+chest, the same with `fillColumns` absent, off or on:
+
+- **Three nested rings built nothing.** The area was the outline's minus
+  every ring's. A 40 mm box, a ring 4 mm in and one 4 mm inside that come to
+  1600 - 1024 - 576 = 0 mm², and a shape with no area is dropped: no stitch,
+  `shapeOutlines[0].dropped`, nothing said. Now 2,747 stitches with no
+  fabric, 3,456 on pique, 4,511 on terry.
+- **Pull compensation shrank the island.** Every ring in `holes` was moved
+  inward. A 40 mm bullseye on terry (0.6 mm): the outline's fill sewn
+  -6..406 px, right; the island drawn 160..240 sewn 166..234, and its lattice
+  underlay, sewn to the ring as drawn, 0.6 mm outside its fill all round. Now
+  154..246, the underlay under it. Pique: 163..237, now 157..243.
+
+**The rule.** `islandsAmong(holes)`: a ring WHOLLY inside an odd number of
+the other rings is an island, inside an even number a hole, so a hole in an
+island is a hole again. An island's area is added back, and under a preset
+its ring grows as the outline's does. (The perimeter was always every ring's.
+The width that picks satin or fill was computed from the wrong area too, and
+could not change a decision: a shape with any ring in `holes` is never satin.)
+
+**What growing brought with it.** A grown island and the shrunk wall of the
+hole round it move TOWARD each other, and so do two islands in one hole.
+Where the ground between is not more than twice the compensation the two
+rings cross, and under even-odd crossed rings are a fill sewn where neither
+was drawn: a 0.4 mm moat on terry came out 0.8 mm wide, 0.2 mm of it taken
+from the island and 0.2 from the band. So the rule this function already has
+for a hole too thin to shrink is applied: a ring that cannot be moved is sewn
+as drawn. An island that, grown, no longer lies against every other ring the
+way it was drawn stays as drawn; a hole that, shrunk, still meets such an
+island stays as drawn too. That is a step, not a slope. Terry, a moat as
+drawn and as sewn, mm:
+
+| drawn | 4.0 | 2.0 | 1.3 | 1.2 | 1.0 | 0.7 | 0.6 | 0.4 |
+|---|---|---|---|---|---|---|---|---|
+| sewn, `origin/main` | 4.0 | 2.0 | 1.3 | 1.2 | 1.0 | 0.7 | 0.6 | 0.4 |
+| sewn, now | 2.8 | 0.8 | 0.1 | 0.6 | 0.4 | 0.1 | 0.6 | 0.4 |
+
+Before, a moat was never narrowed at all: both its sides moved the same way.
+Now it is narrowed by twice the compensation where there is room, by once
+where the island has to stay, and not at all at one compensation or less,
+where the whole of that hole's ring is sewn as drawn, its far walls included.
+
+**Not the helper #606 left.** Its edge run asks ONE corner of a ring. Asked
+that way here, the second of two overlapping cut-outs is an island: 588 of
+15,992 designs with no island moved, 364 of them with the flag off. Asking
+every corner calls a box laid across a U's notch one. So two rings are nested
+only if no edge of one meets an edge of the other. The edge run keeps its
+own test. Given this one, it moved 196 flag-on designs, all on four malformed
+shapes, and doubled the underlay sewn off the fill's ground (overlapping
+cut-outs on canvas, 7.5 to 15 mm).
+
+**Measured**, hashes of the whole design against `origin/main`:
+
+| | `origin/main` | now |
+|---|---|---|
+| 15,992 designs with NO island (95 shapes, 60 of them seeded, and a three-colour design; no fabric and all seven presets; 21 option sets, `fillColumns` absent, off and on, `ties` on in two) | | all byte-identical |
+| 1,680 island designs | | 1,512 changed; the 168 that did not are the no-fabric ones that already sewed |
+| 150 seeded island shapes, 7 presets, both walks (2,100 designs): built nothing | 840 | 0 |
+| flag off: the fill's rings stop short of drawn ground | 615 of the 630 that built | 0 of 1,050 |
+| flag off: drawn ground with no fill thread within a row of it (160 points a design) | 154 designs, worst 5.1 mm | 0 of 168,000 points |
+| pairs of the fill's rings that cross | 0 | 0 |
+
+The seeded sweep reads the stitches on a grid with its own even-odd test and
+its own crossing test. Eight mutations of the fix (the old area, the old
+shrink, no guard, the hole not put back, depth without parity, one corner,
+every corner, the edge run's old bug) each fail a test in
+`test/digitize.test.js`, and each new test was watched failing on
+`origin/main` first. With `fillColumns` on, a bullseye under terry is cut 4
+times where it was 6. The island question costs a build of 2,025 holes about
+40 ms (40 to 77 in one run, 58 to 95 in another) and one of 196 nothing that
+shows.
+
+**Exported stitches change for island shapes, and for no others.** No Studio
+lane hands one over: `imageRegions.js` traces each blob with its own holes,
+`svgimport.js` splits rings by depth, and `resolveCutOuts` refuses a cut-out
+inside or across another. `groupRingsIntoShapes` (`tools/run-text.mjs`,
+`run-hat-text.mjs`, `glyph-satin.mjs`) and direct callers do.
+
+Left as they are: `underlayRuns`' `center_run` keeps off every ring in
+`holes` (no preset gives a fill that style), and the 29 island designs the
+`fillColumns` audit counted among its 36 were measured before this and not
+again.
+
+Engine 668 passed. Not sewn.
+*(fixed 2026-10-03 — `islandsAmong`, `fillRingsOf` in `src/digitize.js`; `test/digitize.test.js`)*
+
+## 2026-10-03 — `fillColumns`: a corner lying on a scanline was a column, and was cut to (the lock-stitch audit's finding)
+
+**18 threads in 12,880 designs were a stub**: a cut, two penetrations in one
+hole, the end of the design. The independent audit of the lock stitches found
+them on designs built with `fillColumns` on and handed them over as their own
+task.
+
+**The cause was wider than the report.** A scanline that passes exactly
+through a corner pointing up the rows finds both of that corner's edges (the
+half-open rule) and pairs them: a span of no length. The first scanline sits
+on the topmost point, so a shape whose top is a single corner has one. But
+the audit's comb had its two part-way down, at rows 91 and 182 of its fill:
+x = 210 and x = 73.5 are a whole number of 1.5 px rows from the edge, and a
+quarter turn leaves a tooth's wall 3e-14 off level, which is enough to make
+its top corner a tip. `cutColumns` made each a column, since it overlaps
+nothing, and the walk travelled to it and sewed it, or cut to it when it was
+left for last. The Python engine's `_row_spans` has always left such a span
+out (`g.length <= 0`); the port of `_columns` came without that half. Now
+`spansWithLength` cuts the columns from the rows without it, by `overlaps`'
+own measure (the two edges of a corner do not always meet to the last bit),
+and a pass left with nothing sews nothing. The plain walk is not touched: it
+sews the tip twice, flag on or off, and never cuts for it.
+
+**Measured**, both engines side by side on 8,255 designs (4,095 drawn on
+whole numbers, 4,160 random; seven presets and none), flag on:
+
+| | before | after |
+|---|---|---|
+| stub threads | 106, on 66 designs | 0 |
+| a doubled point in a pass the column walk sews | 11,797 | 159 |
+| cuts | 2,354 | 2,196 |
+| stitches | 19,301,027 | 19,242,860 |
+| float length | 292 m | 318 m |
+
+Flag off or absent, 8,255 of 8,255 are byte-identical, before the merge of
+#609 and after it. No design has more thread off the cover. On 9,000 seeded
+direct fills the suite's random-shape assertions all hold, a doubled point
+falls from 7,348 of 8,226 column walks to none, and the cuts are the same
+shape for shape.
+
+**The corner had been doing work nobody gave it**, which is why 6,550 of the
+7,269 column-walk designs changed and not only the 66:
+
+- **It was a waypoint.** A way round may be four times the straight line, so
+  a far corner licensed a long trip: a comb at 135° ran 1,636 px round its
+  own outline to that corner and back, to make a move of 30. That move is a
+  cut now, and one existing test's bound went 4 → 5, measured with the
+  landing it is about and without. 27 designs gain one cut; 125 lose cuts.
+- **It was "well placed".** A pass takes the starting corner that leaves the
+  walk best placed for its next move, and one stitch to the corner of no
+  length counted. Without it a pass floats further to start (float length
+  +9%) and travels less (142 m less sewn thread).
+
+**Mutated seven ways. Two mutants passed every test** until one was written
+for each: a rule that also dropped rows under half a unit, and one that left
+a span out but not its pair of edges, so that the way round a valley was sewn
+straight across it, 15 deep. One mutant is the same engine.
+
+**Left:** a move of no length between two columns that touch is still sewn
+(159, on 121 designs: a scanline exactly along a hole's wall); a short
+lattice-underlay row at a comb's tooth can still be a thread of one stitch
+(52, on 24, where 94 were); and the plain walk's doubled tip. The sheet and
+both tables that carry `fillColumns`-on numbers were re-run: two of the
+sheet's four shapes and 19 of the cost table's 32 rows moved by a few
+stitches, the stress shape under terry went 34 → 28 cuts and about twice as
+slow, and three rows of the lock-stitch census moved.
+
+Off, nothing moves: engine 668 passed. Not sewn. Flip is still Kent's:
+defect 52, "Waiting on Kent" 22.
+*(fixed 2026-10-03 — `test/fill.test.js`, `test/digitize.test.js`; `docs/renders/fill-columns-2026-10-03/README.md`, "A corner on a scanline")*
+
+## 2026-10-03 — `fillColumns`: a move of no length laid a stitch (what the corner fix left)
+
+**159 times on 121 of 8,255 designs** a pass the column walk sews still put
+two penetrations on one point, after the corner fix above. Checked before
+anything was changed: the engine as merged with `main` gives that sweep's
+"after" column to the stitch, and a probe in a copy of it traced all 159 to
+one call, the move to the next column, sewn to the point the needle was
+already on.
+
+**152 are two spans of one scanline that meet at a point.** Each has a
+length and is rightly a column; the move between them has none. 136 are a
+wall of a hole or a notch that a quarter turn leaves 3e-14 off level, 15 a
+corner on a scanline, and 1 a notch exactly twice the pull compensation
+wide, which the outline the fill is sewn to closes to a slit. **7 are a
+pass that lands on a corner of the very column it begins with.** No cut
+beside any, no stub. In 73 the two points differ in their last digits, so
+the rule is not "the same numbers": `sewTo` lays no stitch when the move is
+no longer than `ON_EDGE_EPS`, the walk's own measure round a ring. One line.
+
+**Measured**, both engines side by side on the same 8,255, flag on:
+
+| | before | after |
+|---|---|---|
+| a doubled point in a pass the column walk sews | 159, on 121 | 0 |
+| stitches | 19,242,860 | 19,242,701 |
+| cuts | 2,196 | 2,196 |
+| float length | 318 m | 318 m |
+
+Each new file is the old one with those 159 records taken out and nothing
+else, read record by record. Flag off or absent, 8,255 of 8,255 are
+byte-identical. The sheet, both cost tables and the lock-stitch census were
+re-run and no number moved. A second sweep of 240 shapes drawn on whole
+numbers only, 8,400 designs: 1,727 on 278 before, none after, cuts 3,869
+and 3,869. The suite's seeded shapes by hand, 9,000 of three seeds, each
+sewn told nothing and told where the thread is: every assertion holds, the
+cuts are the same shape for shape, and there was ONE doubled point in
+16,452 column walks before. Random shapes do not find this. Whole numbers
+do.
+
+**Mutated eleven ways: eight die, three are the same engine** (identical on
+8,400 designs). "Only the same numbers are the same point" died on one test
+alone, written for it.
+
+**The independent re-measure held the fix and failed three of my
+sentences.** 49,920 designs of its own, 312,000 builds: flag off identical
+on all; 1,474 doubled points before and none after; cuts 7,140 and 7,140.
+But 581 of its 1,474 were a cause I had filed under "corner": rows CROSSING
+a notch closed to a slit, where the hole is doubled once a row (81 of an
+H's 649 stitches under terry; 1,420 of my own 1,727, on ten combs under
+fleece). 18 of the records taken out were one unit from the one before
+them, not on it: two points 1e-14 apart either side of a 0.1 mm boundary.
+And one was at the very end of its design. All three were rebuilt here, and
+the slit has a test.
+
+**Left, and larger than what was fixed:** a stitch shorter than the file's
+unit still rounds onto the point before it. 2,689 on the 8,255 with the
+flag on (15,566 on the audit's designs, nearly all a row under 0.1 mm at a
+tip or a sliver), and a machine cannot tell one from the 159. The plain
+walk keeps its doubled point (1,094), and a thread of one stitch is where
+it was (52, on 24). With the flag OFF the same 8,255 carry 16,575 such
+records; on, 3,783.
+
+Off, nothing moves: engine 693 passed. Not sewn. Flip is still Kent's:
+defect 52, "Waiting on Kent" 22.
+*(fixed 2026-10-03 — `test/fill.test.js` "a move of no length", `test/digitize.test.js`; `docs/renders/fill-columns-2026-10-03/README.md`, "A move of no length")*
