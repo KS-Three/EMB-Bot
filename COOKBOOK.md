@@ -1032,7 +1032,11 @@ sews nothing and cuts the smallest shape that contains it.
     drawn badge or U does it all the time. Ask the ground test both ways
     round on whole-number shapes ("whole-number shapes" in the same file),
     and sweep every preset in `FABRICS.FABRICS`: terry sews its fill upward,
-    and that was the direction a third audit found wrong.
+    and that was the direction a third audit found wrong. Draw notches
+    exactly twice a preset's pull compensation wide as well (4 to 12 px at
+    10 px per mm): the outline the fill is sewn to closes one to a slit, and
+    no sweep had one until an audit drew it (2026-10-03, "a move of no
+    length").
 
   To SEE thread rather than penetrations, run
   `node tools/fill-columns-sheet.mjs`: it draws four manual-lane shapes off
