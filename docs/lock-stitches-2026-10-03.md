@@ -100,14 +100,16 @@ calls it:
 | Triangle, 10 mm | off | 0 | 2 | 230 | 238 | +3.48% | 0.20 mm |
 | Badge, two cut-outs, 40 mm | off | 1 | 4 | 3,149 | 3,165 | +0.51% | 0.80 mm |
 | Badge, two cut-outs, 40 mm | on | 0 | 2 | 3,253 | 3,261 | +0.25% | 0.80 mm |
-| Badge, 36 holes, 60 mm | on | 0 | 2 | 8,740 | 8,748 | +0.09% | 0.20 mm |
+| Badge, 36 holes, 60 mm | on | 0 | 2 | 8,738 | 8,746 | +0.09% | 0.28 mm |
 | Thin bar, 3 x 40 mm (satin) | off | 0 | 2 | 226 | 234 | +3.54% | 0.80 mm |
 | Three squares apart, one colour | off | 5 | 12 | 3,015 | 3,063 | +1.59% | 0.80 mm |
 | Three squares, three colours | off | 5 | 12 | 3,015 | 3,063 | +1.59% | 0.80 mm |
 | Twelve 6 mm dots, one colour | off | 11 | 24 | 1,590 | 1,686 | +6.04% | 0.10 mm |
 
 *(measured 2026-10-03 — the same tool prints all 22 rows, of which these are
-eleven)*
+eleven. The 36-hole row is as re-measured after `fillColumns` stopped sewing
+a corner on a scanline, below: of the eleven rows with that option on, three
+moved, by 2 to 18 stitches.)*
 
 - **Locks: `2 + 2 × cuts`, four stitches each.** The percentage is a statement
   about how many pieces a design is in, not about locks. One 40 mm square
@@ -165,9 +167,12 @@ equalled its own, record for record, in 29,050 builds)*
 - **In lettering, 1,959 locks lie along a needle-down connector**, 348 of
   them under 0.3 mm. A connector is sewn thread, so the lock holds where it
   is long enough.
-- **With `fillColumns` on, 18 threads in 12,880 designs are two penetrations
-  in one hole**, at a tooth tip, cut to and cut from. They sew nothing and
-  get no lock. The stub is the column walk's, and is flagged as its own task.
+- **With `fillColumns` on, 18 threads in 12,880 designs were two penetrations
+  in one hole**, at a tooth tip, cut to and cut from. They sewed nothing and
+  got no lock. The stub was the column walk's: a corner lying exactly on a
+  scanline was a column of its own. It is left out since (fixed the same
+  day: [`renders/fill-columns-2026-10-03/`](renders/fill-columns-2026-10-03/README.md),
+  "A corner on a scanline").
 - **The untied lettering stream already has doubled holes**: 9,093 across the
   85 fonts on `KENT`. Where a needle-down connector ends on a run's first
   point, that point is pushed twice. Not caused by locks, and the same with
