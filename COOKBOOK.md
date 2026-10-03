@@ -1047,6 +1047,17 @@ sews nothing and cuts the smallest shape that contains it.
   the flag; the flip is Kent's ("Waiting on Kent" 23).
   `node tools/lock-stitch-census.mjs` prints what a lock costs and how long
   its legs really are, on every shipped font and eleven shapes.
+- **Row stagger is built OFF for the shape builder (2026-10-03).**
+  `fillStagger: true` on `buildQualityDesign` puts the cover fill's needle
+  holes on one grid shifted row by row (`tatamiFill`'s `stagger` and
+  `minStitch`): the Python fill's rule, row for row. It moves only the holes
+  BETWEEN a row's two ends. To check a change to it, take those out and
+  compare with the flag off ("the same walk" in
+  `test/fill-stagger.test.js`). Count holes in line across THREE rows, not
+  two: a halved step sits near the next row's grid point by the rule itself.
+  `node tools/fill-stagger-census.mjs` prints the numbers and, with
+  `--sheet out.svg`, draws every hole. No Studio caller passes the flag; the
+  flip is Kent's ("Waiting on Kent" 24).
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 

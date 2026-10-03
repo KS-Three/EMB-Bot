@@ -17527,3 +17527,36 @@ in five lies on a stitch under 0.3 mm (lettering under 1%).
 
 Not sewn. Flip is Kent's: "Waiting on Kent" 23.
 *(built 2026-10-03 — `docs/lock-stitches-2026-10-03.md`, `tools/lock-stitch-census.mjs`)*
+
+## 2026-10-03 — The browser fill's needle holes stood in line from row to row; `fillStagger` built OFF (quality review 2026-09-08 §4)
+
+The review's second cheap browser-lane defect has two halves. The connector
+sewn across a counter closed behind `fillColumns` (two entries up). The other
+half is the stagger: `src/fill.js` cuts every row into equal stitches from
+the row's own end, so two rows of one length are cut at the same places.
+Measured on ten manual-lane designs under every preset, 94.3% of the holes
+between a row's ends have a hole of the next row within 0.3 mm, and 86.5%
+are the head of three in a line. It is not only squares: 90% on a 30 mm
+circle, 56% on a star.
+
+`fillStagger` puts those holes on the Python fill's grid: a stitch apart,
+shifted row by row through a cycle of four in the order 0, 2, 1, 3
+(`_stagger_slots`), a point kept only when it is 1 mm from both ends of the
+row (`MIN_STITCH_MM`), a step left longer than a stitch cut in equal parts.
+The cover fill only, both walks. A row's ends, the turns, the travel and the
+cuts do not move: with the holes between the ends taken out, the staggered
+walk is the shipped one, point for point. After: 7.5% with a hole under them
+(the halved steps, which the rule itself lands near the next row's grid
+point) and 6 holes of 148,477 at the head of three in a line. Stitches
++6.9%, 4.70 a row to 5.12; the shortest stitch along a row 2 mm to 1 mm;
+cuts 176 and 176.
+
+The port is exact where it can be checked: on 32,000 random rows the holes
+`tatamiFill` returns equal the Python fill's (`_row_points`, then
+`split_long_moves`) to the last bit. Two things were taken from what the
+Python engine had already paid for instead of being found again: the slot
+order, and a tolerance on "longer than a stitch" (its defect 25 halved 8 to
+10% of a fill's stitches on float dust).
+
+Not sewn from this lane. Flip is Kent's: "Waiting on Kent" 24.
+*(built 2026-10-03 — `docs/renders/fill-stagger-2026-10-03/`, `tools/fill-stagger-census.mjs`)*
