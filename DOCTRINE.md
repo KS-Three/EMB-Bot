@@ -5602,6 +5602,54 @@ reachable directly rather than left to a fixture wandering into it.
 it was written for.** When a rule only triggers at a boundary, test the boundary
 directly; a corpus does not owe you an edge case.
 
+**Corrected 2026-10-03: the lock this entry describes had a leg of 0.8
+PIXELS.** `tieRun` used `TIE_STITCH_MM` as a length in its caller's units, and
+its one caller passed px. Across the 85 shipped fonts not one lock of 17,668
+reached 0.75 mm: the median was 0.30 mm on four letters and 0.10 mm on
+eighteen, and some rounded to nothing, which is four penetrations of one hole.
+Its tie-in also sat in front of the run's first stitch and doubled that hole
+(1,136 to 8,695 of them, by text). Neither reached a customer: the flag is off.
+*(measured 2026-10-03 — `tools/lock-stitch-census.mjs`, `docs/lock-stitches-2026-10-03.md`)*
+
+**What the wire test could not see.** `test_machine_wire.py` holds the VALUE
+of `TIE_STITCH_MM` equal in both trees, and it was. The defect was the UNIT at
+the call site, which no scan of constants can reach. Every tie test asserted
+counts, boxes and "no move longer than before", all true of a lock an eighth
+to a third of the intended size. Nothing asked how long a leg was in
+millimetres.
+
+**What to do with it:**
+
+- **A length on cloth is asserted in the OUTPUT's units, at two resolutions.**
+  The stream is in DST units. Measure there, at 2 and at 20 px per mm, on two
+  design sizes. This was the second pixel-for-millimetre in one week: the
+  `fillColumns` edge-run inset was "2 px", 0.2 mm at the Studio's scale and
+  0.6 mm on an enlarged design.
+- **Compute it there too when you can.** `applyTies` runs on the finished
+  stream, where a leg is 8 units and there is no scale to get wrong.
+- **Find a lock by DIFF, not by its shape.** A font's own triple run is
+  a, b, a, b as well: a pattern search reported a quarter more locks than
+  there were, with legs of 3 mm.
+
+**What the new rule's own audit added (same day).** Eleven claims held and
+the rule did not. It locked a thread on its first and last "two stitch
+records in a row", and a record is not a stitch: a row shorter than a stitch
+is ONE record after a float, because the float lands on its start. So a
+thread ending in a float and a short row had its lock up-thread, and 6.1% of
+tie-offs on shapes sat more than 4 mm before the cut they guard, one of them
+371 mm. Moved to the thread's real end, the lock was then laid along the
+float, and on a frame its inner point was 0.8 mm into the hole: 285 of 37,082
+locks. Laid back along the row the stitch closed: 21.
+
+- **State a rule about thread in terms of thread.** "Two stitch records in a
+  row" is a fact about the encoding. Ask what the needle and the thread do.
+- **Measure a new flag with the OTHER flags off.** Both faults showed only
+  with `fillColumns` off, where threads end in floats. Every design the
+  feature had been measured on ended its threads on real sewing.
+- **A fix is a new rule and gets the same audit.** The second version was
+  wrong in a way the first was not.
+*(measured 2026-10-03 — `docs/lock-stitches-2026-10-03.md`, "What an independent audit found")*
+
 ## When a fix lands, sweep the INSTRUMENTS built to test it (2026-09-14)
 
 The DST axis and colour-change fixes landed 2026-09-08 and the code was swept
