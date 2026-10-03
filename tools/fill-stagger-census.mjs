@@ -74,16 +74,20 @@ function rowsOf(pass) {
   return rows;
 }
 function measure(passes) {
-  const m = { holes: 0, pairs: 0, threes: 0, steps: 0, shortest: Infinity, longest: 0, under2: 0, spans: 0 };
+  // `fromEnd`: for each hole with one under it, how far it is from the nearer
+  // end of its own row. `rows`: the scanlines with thread on them.
+  const m = { holes: 0, pairs: 0, threes: 0, steps: 0, shortest: Infinity, longest: 0, under2: 0, spans: 0, rows: 0, fromEnd: [] };
   for (const pass of passes) {
     const rows = rowsOf(pass);
     for (let ri = 0; ri < rows.length; ri++) {
       m.spans += rows[ri].spans.length;
+      if (rows[ri].spans.length) m.rows++;
       const next = ri + 1 < rows.length ? rows[ri + 1].holes : [], after = ri + 2 < rows.length ? rows[ri + 2].holes : [];
-      for (const h of rows[ri].holes) {
+      for (const s of rows[ri].spans) for (const h of s.holes) {
         m.holes++;
         if (!next.some((g) => Math.abs(g - h) <= NEAR_MM)) continue;
         m.pairs++;
+        m.fromEnd.push(Math.min(h - s.x0, s.x1 - h));
         if (after.some((g) => Math.abs(g - h) <= NEAR_MM)) m.threes++;
       }
       // the stitches along the row: only rows the stagger has a say in
@@ -178,6 +182,26 @@ for (const fillColumns of [false, true]) {
   console.log(`| ${fillColumns ? "on" : "off"} | ${tot.builds} | ${a.holes.toLocaleString()} | ${b.holes.toLocaleString()} | ${share(a.pairs, a.holes)} | ${share(b.pairs, b.holes)} | ${share(a.threes, a.holes)} | ${share(b.threes, b.holes)} (${b.threes}) | ${more(tot.sOn, tot.sOff)} | ${aRow} | ${bRow} | ${tot.cOff} | ${tot.cOn} | ${mmOf(a.shortest)} mm | ${mmOf(b.shortest)} mm | ${share(a.under2, a.steps)} | ${share(b.under2, b.steps)} |`);
 }
 
+// ---- what is left: the holes that still have one under them ---------------
+// A first or last step longer than a stitch is cut in half, and the half lands
+// by the next row's first grid hole. Along a straight edge that is the same
+// place every cycle: a pair of holes every four rows, a line of dashes beside
+// the edge.
+{
+  const B = [];
+  for (const fabricId of presets) for (const [, widthMm, regions] of DESIGNS) B.push(...build(regions, widthMm, fabricId, { fillStagger: true }).cover);
+  const b = measure(B), near = b.fromEnd.filter((d) => d >= 1.5 && d <= 2.6).length;
+  console.log(`\nStaggered, the holes that still have one under them: ${b.pairs.toLocaleString()}. ${share(near, b.pairs)} of them are 1.5 to 2.6 mm from an end of their own row.`);
+  console.log("\nOne 40 mm square, by preset. A pair is a hole with one under it:\n");
+  console.log("| preset | rows | pairs | rows to a pair | from the nearer edge, median |");
+  console.log("|---|---|---|---|---|");
+  for (const fabricId of presets) {
+    const s = measure(build(DESIGNS[0][2], DESIGNS[0][1], fabricId, { fillStagger: true }).cover);
+    const mid = s.fromEnd.slice().sort((p, q) => p - q)[Math.floor(s.fromEnd.length / 2)];
+    console.log(`| ${fabricId || "none"} | ${s.rows} | ${s.pairs} | ${s.pairs ? (s.rows / s.pairs).toFixed(1) : "-"} | ${s.pairs ? mmOf(mid) + " mm" : "-"} |`);
+  }
+}
+
 // ---- the picture ----------------------------------------------------------
 // The holes of a patch of fill, off and on, at 16x: one dot a penetration, one
 // faint line a row. Rows are drawn 0.4 mm apart so that they can be told apart
@@ -190,7 +214,7 @@ if (SHEET) {
   ];
   const cell = (polys, angleDeg, stagger) => {
     const opts = Object.assign({ rowSpacing: 0.4 * PX, angleDeg, maxStitch: MAX_STITCH_MM * PX, markConnectors: true },
-      stagger ? { stagger: 4, minStitch: PX } : null);
+      stagger ? { stagger: 4, minStitch: PX, splitTol: 1e-6 * PX } : null);
     return { pts: FILL.tatamiFill(polys, opts), polys };
   };
   let y = 20, out = "";

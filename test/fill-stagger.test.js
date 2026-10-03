@@ -10,6 +10,8 @@
 // the fill returns.
 const assert = require("node:assert");
 const { test } = require("node:test");
+const fs = require("node:fs");
+const path = require("node:path");
 const fill = require("../src/fill.js");
 const DG = require("../src/digitize.js");
 
@@ -286,14 +288,73 @@ test("stagger: a cycle is 64 rows at most, whatever is asked for", () => {
   assert.deepStrictEqual(fill.tatamiFill(RECT, base({ stagger: Infinity, minStitch: MIN })), asked);
 });
 
-test("stagger: a cycle given as a fraction or as text is the whole number in it", () => {
-  const four = fill.tatamiFill(RECT, base(ON));
-  assert.deepStrictEqual(fill.tatamiFill(RECT, base({ stagger: 4.9, minStitch: MIN })), four);
-  assert.deepStrictEqual(fill.tatamiFill(RECT, base({ stagger: "4", minStitch: MIN })), four);
-  // under one row there is no cycle, and nothing is staggered
-  assert.deepStrictEqual(fill.tatamiFill(RECT, base({ stagger: 0.5, minStitch: MIN })), fill.tatamiFill(RECT, base()));
-  assert.deepStrictEqual(fill.tatamiFill(RECT, base({ stagger: -4, minStitch: MIN })), fill.tatamiFill(RECT, base()));
-  assert.deepStrictEqual(fill.tatamiFill(RECT, base({ stagger: NaN, minStitch: MIN })), fill.tatamiFill(RECT, base()));
+test("stagger: a cycle is a number of rows, and anything else is no stagger", () => {
+  // (off the grid's own origin, or a cycle of ONE row is the even cut by accident)
+  const polys = [rect(0.5, 0, 39, 20)];
+  const four = fill.tatamiFill(polys, base(ON)), none = fill.tatamiFill(polys, base());
+  assert.notDeepStrictEqual(fill.tatamiFill(polys, base({ stagger: 1, minStitch: MIN })), none, "fixture: a cycle of one row is a fill of its own");
+  assert.deepStrictEqual(fill.tatamiFill(polys, base({ stagger: 4.9, minStitch: MIN })), four, "a fraction is the whole number in it");
+  // under one row there is no cycle
+  for (const stagger of [0.5, -4, NaN]) assert.deepStrictEqual(fill.tatamiFill(polys, base({ stagger, minStitch: MIN })), none, String(stagger));
+  // `true` is not a cycle of one row (one grid with NO shift, every hole in
+  // line again), and text is not a number: a caller who passes a flag where a
+  // count belongs gets the fill as shipped, not a third fill
+  for (const stagger of [true, "4", [4], {}]) assert.deepStrictEqual(fill.tatamiFill(polys, base({ stagger, minStitch: MIN })), none, JSON.stringify(stagger));
+});
+
+test("stagger: a step a micron over a stitch is a stitch, not two halves", () => {
+  // `stitches.split_long_moves`: a step is cut only when it is over a stitch
+  // by more than the split tolerance, which the caller gives in its own units
+  // (`splitTol`; a micron). This row starts half a micron left of a grid
+  // point, so its first step is 4.0000005, and the Python fill sews it whole.
+  const near = [rect(-5e-7, 0, 30 + 5e-7, 1)];
+  const opts = base({ stagger: 4, minStitch: MIN, splitTol: 1e-6 });
+  const first = (polys) => allHoles(holesOf(fill.tatamiFill(polys, opts), polys, PITCH, 0)[0]);
+  assert.deepStrictEqual(first(near), [4, 8, 12, 16, 20, 24, 28]);
+  // five microns left of it, the step is over by more than the tolerance and is cut
+  const far = [rect(-5e-6, 0, 30 + 5e-6, 1)];
+  assert.strictEqual(first(far).length, 8);
+  assert.ok(Math.abs(first(far)[0] - 2) < 1e-5, "the first hole halves the step: " + first(far)[0]);
+});
+
+test("stagger: a long step is cut from the end the thread comes from", () => {
+  // `split_long_moves` cuts a PATH: prev + (cur - prev) * s / steps. On a row
+  // sewn right to left that is from the high end, and the two ends do not
+  // always give the same double. Row 1 of this rectangle runs right to left,
+  // its grid point 0.998 from the left end is skipped, and the step from 2
+  // down to the left end is cut in half.
+  const x0 = 0.302 - 3.3;   // -2.9979999999999998: one ulp off -2.998, and that ulp is the case
+  const polys = [[{ x: x0, y: 0 }, { x: 17.139, y: 0 }, { x: 17.139, y: 1 }, { x: x0, y: 1 }]];
+  const pts = fill.tatamiFill(polys, base({ stagger: 4, minStitch: MIN, splitTol: 1e-6 }));
+  const row1 = pts.filter((p) => Math.abs(p.y - PITCH) < 1e-9).map((p) => p.x);
+  assert.strictEqual(row1[0], 17.139, "fixture: the row is sewn from the right");
+  const fromHigh = 2 + (x0 - 2) * 0.5, fromLow = x0 + (2 - x0) * 0.5;
+  assert.notStrictEqual(fromHigh, fromLow, "fixture: the two ends give different doubles");
+  assert.strictEqual(row1[row1.length - 2], fromHigh, "the half is counted from where the thread was");
+});
+
+test("stagger: where the shortest stitch is over half a stitch, half a stitch is the shortest", () => {
+  // Found by audit: a step between one stitch and one stitch plus the shortest
+  // is halved, and the halves are under the shortest whenever the shortest is
+  // over half a stitch (a builder asked for a stitch under 2 mm). The rule has
+  // no answer there, so the shortest is taken as half a stitch: what an even
+  // cut never goes under either.
+  const polys = [rect(0, 0, 400, 100)];
+  const opts = { rowSpacing: 1.5, angleDeg: 0, maxStitch: 15, markConnectors: true };
+  const along = (extra) => {
+    const out = [];
+    for (const row of holesOf(fill.tatamiFill(polys, Object.assign({}, opts, extra)), polys, 1.5, 0)) for (const s of row.spans) {
+      const seq = [s.x0].concat(s.holes, [s.x1]);
+      for (let k = 1; k < seq.length; k++) out.push(seq[k] - seq[k - 1]);
+    }
+    return out;
+  };
+  const on = along({ stagger: 4, minStitch: 10 });
+  assert.ok(on.length > 1500, "fixture: stitches along rows, " + on.length);
+  assert.ok(Math.min(...on) >= 7.5 - 1e-9, "the shortest stitch along a row is " + Math.min(...on) + ", under half a stitch of 15");
+  assert.ok(Math.max(...on) <= 15 + 1e-9, "and none is over a stitch: " + Math.max(...on));
+  // it is the same fill as asking for half a stitch outright
+  assert.deepStrictEqual(fill.tatamiFill(polys, Object.assign({ stagger: 4, minStitch: 10 }, opts)), fill.tatamiFill(polys, Object.assign({ stagger: 4, minStitch: 7.5 }, opts)));
 });
 
 test("stagger: a shortest stitch that is no length still never doubles a hole", () => {
@@ -342,6 +403,7 @@ test("fillStagger (shapes): ON staggers the cover fill of every shape, by the Py
   for (const p of cover) {
     assert.strictEqual(p.opts.stagger, 4, "machine.FILL_STAGGERS");
     assert.ok(Math.abs(p.opts.minStitch / p.opts.maxStitch - 1.0 / 4) < 1e-12, "machine.MIN_STITCH_MM, in the fill's own units: " + p.opts.minStitch + " against a stitch of " + p.opts.maxStitch);
+    assert.ok(Math.abs(p.opts.splitTol / p.opts.minStitch / 1e-6 - 1) < 1e-9, "stitches.SPLIT_TOLERANCE_MM, a micron in the fill's own units: " + p.opts.splitTol);
     const lined = inLine(holesOf(p.pts, p.polys, p.opts.rowSpacing, p.opts.angleDeg), 0.3 * p.opts.minStitch);
     assert.ok(lined.n > 200, "fixture: holes between the ends of the rows, " + lined.n);
     assert.strictEqual(lined.threes, 0, "three holes in a line, of " + lined.n);
@@ -357,6 +419,21 @@ test("fillStagger (shapes): ON staggers the cover fill of every shape, by the Py
   assert.ok(under.length >= 3, "fixture: underlay passes, " + under.length);
   const offUnder = passes().seen.filter((p) => p.opts.rowSpacing !== cover[0].opts.rowSpacing);
   assert.deepStrictEqual(under.map((p) => p.pts), offUnder.map((p) => p.pts), "every underlay pass is the one sewn with the flag off");
+});
+
+test("fillStagger: the split tolerance is the Python engine's, to the digit", () => {
+  // `test_machine_wire.py` reads plain decimals and cannot see 1e-6, so this
+  // one is held here: the number in stitches.py against the number in
+  // digitize.js, both read off the source.
+  const read = (file, re) => {
+    const m = re.exec(fs.readFileSync(path.join(__dirname, "..", file), "utf8"));
+    assert.ok(m, "no SPLIT_TOLERANCE_MM in " + file);
+    return Number(m[1]);
+  };
+  const py = read("digitizer/digitizer_core/stitches.py", /^SPLIT_TOLERANCE_MM\s*=\s*([0-9.eE+-]+)/m);
+  const js = read("src/digitize.js", /\bconst SPLIT_TOLERANCE_MM\s*=\s*([0-9.eE+-]+)/);
+  assert.ok(py > 0 && py < 1e-3, "fixture: stitches.py says " + py);
+  assert.strictEqual(js, py);
 });
 
 test("fillStagger (shapes): the design keeps its size, its colours, its cuts and its runs", () => {

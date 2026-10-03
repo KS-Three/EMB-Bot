@@ -74,6 +74,10 @@
   // fill.js, "ROW STAGGER".
   const FILL_STAGGERS = 4;
   const MIN_STITCH_MM = 1.0;
+  // How far over a stitch a step along a row may be before it is cut in two —
+  // `stitches.SPLIT_TOLERANCE_MM`, a micron. The wire test reads plain
+  // decimals and cannot see this one; test/fill-stagger.test.js holds it.
+  const SPLIT_TOLERANCE_MM = 1e-6;
 
   // A lock stitch at `at`, laid along the path toward `toward` — the exact
   // shape of `stitches.tie_run`, including the two rules its docstring earns:
@@ -719,7 +723,7 @@
     // 2 mm and more apart and lie under the cover, and the Python engine does
     // not stagger them either (`_underlay_paths`, staggers=1). Off, nothing
     // reads it and every stitch is unchanged.
-    const staggerOpts = o.fillStagger ? { stagger: FILL_STAGGERS, minStitch: MIN_STITCH_MM * pxPerFinalMm } : null;
+    const staggerOpts = o.fillStagger ? { stagger: FILL_STAGGERS, minStitch: MIN_STITCH_MM * pxPerFinalMm, splitTol: SPLIT_TOLERANCE_MM * pxPerFinalMm } : null;
     // The rings a FILL is sewn to: the shape's own, or under a fabric preset
     // the pull-compensated ones (grow the outer, shrink the holes), so it sews
     // to true size on stretchy cloth. No-fabric fills stay unoffset.

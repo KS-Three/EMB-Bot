@@ -802,22 +802,38 @@
   //    is any fraction of a stitch past the edge, and kept it would put the
   //    needle down beside the hole it has just made.
   //  - Skipping one can leave a step longer than a stitch. That step is cut
-  //    into equal parts, as every move longer than a stitch is.
+  //    into equal parts, as every move longer than a stitch is: counted from
+  //    the end the thread comes from, which on a row sewn right to left is the
+  //    high end (`split_long_moves` cuts a path, not an interval, and the two
+  //    ends do not always give the same double).
   //  - A row with no room for a point that clears both ends is the one stitch
   //    between them, as it was.
   // NOT ported: a row shorter than `machine.TINY_STITCH_MM` collapsing to its
   // middle. That moves a row's ends, and the walks are built on them.
-  // A step a few ulp over a stitch is a stitch, not two halves (the Python
-  // engine's defect 25: which rows were halved turned on the row angle's
-  // cosine).
+  //
+  // "Longer than a stitch" has a tolerance, `splitTol`, in the caller's units:
+  // the Python engine's is a micron (`stitches.SPLIT_TOLERANCE_MM`, its defect
+  // 25: a step a few ulp over a stitch was halved, and which rows were turned
+  // on the row angle's cosine). A caller that gives none gets a billionth of a
+  // stitch, which is over float noise near the origin and nothing more.
+  //
+  // The shortest stitch is never taken as more than half a stitch. A step
+  // between one stitch and one stitch plus the shortest is halved, so past
+  // that the rule would make stitches shorter than the one it was given; and
+  // an even cut goes down to half a stitch as it is. (Found by audit, on a
+  // builder asked for a 1.5 mm stitch. The Python fill's 1 mm against 3 never
+  // meets it.)
+  //
+  // A grid point EXACTLY `minStitch` from an end falls either way on the last
+  // bit, here as in Python. It falls the same way all along a straight edge.
   const STAGGER_EPS = 1e-9;
   // The longest cycle. The table of slots is built whole, so a cycle is not
   // whatever number it is handed; and at any row pitch 64 rows without two
   // alike is past anything a cycle is for.
   const STAGGER_MAX = 64;
-  function staggeredRow(a, b, phase, stitch, minStitch) {
+  function staggeredRow(a, b, phase, stitch, minStitch, splitTol) {
     const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
-    const min = Math.max(minStitch || 0, stitch * STAGGER_EPS);
+    const min = Math.max(Math.min(minStitch || 0, stitch / 2), stitch * STAGGER_EPS);
     const xs = [x0];
     if (x1 - x0 >= 2 * min) {
       for (let x = Math.ceil((x0 - phase) / stitch) * stitch + phase; x < x1; x += stitch) {
@@ -825,13 +841,17 @@
       }
     }
     xs.push(x1);
+    if (a.x > b.x) xs.reverse();   // the way the thread runs
+    const tol = splitTol > 0 ? splitTol : stitch * STAGGER_EPS;
     const holes = [];
     for (let k = 1; k < xs.length; k++) {
-      const d = xs[k] - xs[k - 1], steps = Math.ceil(d / stitch - STAGGER_EPS);
-      for (let s = 1; s < steps; s++) holes.push(xs[k - 1] + (d * s) / steps);
-      if (k + 1 < xs.length) holes.push(xs[k]);
+      const p = xs[k - 1], q = xs[k], d = Math.abs(q - p);
+      if (d > stitch + tol) {
+        const steps = Math.ceil((d - tol) / stitch);
+        for (let s = 1; s < steps; s++) holes.push(p + (q - p) * (s / steps));
+      }
+      if (k + 1 < xs.length) holes.push(q);
     }
-    if (a.x > b.x) holes.reverse();
     return holes.map((x) => ({ x, y: a.y }));
   }
 
@@ -852,9 +872,11 @@
   //   that question, when they are not `polygons` themselves. An underlay is
   //   given the rings the FILL is sewn to.
   //   `from`, `clear`, `travelBudget` (with `columns`): see sewColumns.
-  //   `stagger` (default off), `minStitch`: the row stagger above. `stagger` is
-  //   the rows in a cycle, the grid's pitch is `maxStitch`, and `minStitch` (in
-  //   the polygons' units) is the shortest stitch a row may open or close on.
+  //   `stagger` (default off), `minStitch`, `splitTol`: the row stagger above.
+  //   `stagger` is the rows in a cycle, a NUMBER (a flag or text is no
+  //   stagger); the grid's pitch is `maxStitch`; `minStitch` and `splitTol`
+  //   (in the polygons' units) are the shortest stitch a row may open or close
+  //   on and how far over a stitch a step may be before it is cut.
   //   Either walk, any row order: a row's holes turn on its place among the
   //   scanlines and on nothing else.
   function tatamiFill(polygons, opts) {
@@ -899,11 +921,12 @@
     // The row stagger: the holes between the ends of the row a -> b. A row's
     // number is read off its height, so it is the same row whichever walk
     // sews it and in whatever order.
-    const stagger = opts.stagger > 0 && maxStitch > 0 ? Math.min(Math.floor(opts.stagger), STAGGER_MAX) : 0;
+    const cycle = typeof opts.stagger === "number" && maxStitch > 0 ? Math.min(Math.floor(opts.stagger), STAGGER_MAX) : 0;
+    const stagger = cycle >= 1 ? cycle : 0;
     const slots = stagger ? staggerSlots(stagger) : null;
     const rowHoles = !stagger ? null : (a, b) => {
       const ri = Math.round((a.y - minY) / rowSpacing);
-      return staggeredRow(a, b, (slots[ri % stagger] / stagger) * maxStitch, maxStitch, opts.minStitch);
+      return staggeredRow(a, b, (slots[ri % stagger] / stagger) * maxStitch, maxStitch, opts.minStitch, opts.splitTol);
     };
 
     // Collect ordered span endpoints (in rotated space) following the
