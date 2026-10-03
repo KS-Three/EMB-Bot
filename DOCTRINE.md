@@ -8184,19 +8184,48 @@ were three views, and two of them could not see the defect.
 - **Leave the `end` record out of it.** It sits at the origin, which is
   inside a centred hole; counted as a move it reads as one float that is not
   there. It cost one wrong red here.
-- **A corner clip is not a crossing, and the margin that says so is one row
-  pitch.** A row turn inside one column joins two row ends that sit on
-  adjacent edges of the hole, and the chord clips the corner by less than
-  the pitch: 0.15 mm on a real fill, in both engines. A fixture with rows 5
-  apart shows it as 5.
-- **A fixture whose rows sit farther apart than the longest stitch measures
-  something else.** Every plain row turn is then too long to sew, so a test
-  about holes reports the turns. Every real caller has the pitch far under
-  the stitch.
-- **An unforked shape can still break into two columns.** At a pointed
+- **A margin that is "one pitch" is a different size on every pass.** A row
+  turn inside one column joins two row ends on adjacent edges of the hole,
+  and the chord clips the corner by less than the pitch. At a fill's 0.15 mm
+  that is under a thread's width. At an underlay's 2 to 2.5 mm it is a stitch
+  through the hole: 12.2 mm sewn 1.71 mm inside a cut-out, in the first build.
+  **A tolerance that guards open ground is ONE number for the shape, owned by
+  the caller** (`openTol`: the fill's pitch, or its pull compensation).
+- **A box drawn well inside the hole measures the middle of the hole.** The
+  first build's tests sat 1.5 mm inside each rim, on two shapes, and all
+  twenty passed while thread lay 1.7 mm in on a third. An independent audit
+  with its own clipper found three real failures in an hour. Measure DEPTH
+  FROM THE EDGE, in mm of thread, on shapes the code was not written against.
+- **"Open ground" is what the fill does not COVER, not what is outside the
+  outline.** The fill is sewn to the pull-compensated rings, so its first
+  point sits a hair outside the true corner. Tested against the true outline,
+  a plain square read as leaving itself and went from one cut to two.
+- **"Does any row fork" is not the question.** No row of a T or an L is
+  split, and the old walk's turn at the step is still a float outside the
+  outline. A shape is plain only when every row is one span AND every row
+  turn stays inside. The converse trap is in the same place: at a pointed
   corner two consecutive single-span rows can fail to overlap, which
-  `_columns` rightly calls a break. Choose the column walk on SPANS (some row
-  has more than one), not on the column count, or a plain rotated rectangle
-  changes.
+  `_columns` rightly calls a break, and that is not a reason to change a
+  rotated rectangle.
+- **Depth is not the whole question either: ask what KIND of move it is.** A
+  turn at the step of a T runs along the step's edge, under one fill row
+  out. It passes every depth test, and the plain walk FLOATS it, because it
+  is longer than a stitch: 6 to 28 mm of loose thread on the rim, on 35 of
+  165 notched designs, after the rebuild and with its tests green. Sewn,
+  thread on the rim is the fill's edge. Floated, it is a defect. Measure
+  floats and sewn thread separately, against the ground the fill COVERS.
+- **Ask about the moves the walk MAKES, not the rows in order.** Center-out
+  sews its upper half from the middle up, so its turns are the other
+  diagonal of each pair of rows. A check written against top-down turns
+  passed a shape whose bottom-up turn crossed open ground.
+- **Nearest-first strands the strips beside a row of holes.** After the
+  first strip the nearest reachable column is the band BELOW the holes, and
+  every other strip then costs a cut to get back to: one or more per hole.
+  Finish a level before descending.
+- **A fixture whose rows sit farther apart than the longest stitch, or whose
+  holes are under two tolerances wide, measures the fixture.** In the first
+  every plain row turn is too long to sew; in the second the engine rightly
+  treats the hole as closed. Every real caller has pitch far under stitch
+  far under hole.
 *(measured 2026-10-03 — `test/fill.test.js`, `test/digitize.test.js`,
-`tools/fill-columns-sheet.mjs`; MASTER_SCOPE defect 52)*
+`tools/fill-columns-sheet.mjs`; MASTER_SCOPE defect 52; scope-history 10-03)*

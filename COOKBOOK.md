@@ -1012,8 +1012,13 @@ sews nothing and cuts the smallest shape that contains it.
   built OFF: `buildQualityDesign({ fillColumns: true })` sews a forked FILL
   shape column by column (`fill.js` `opts.columns`, a port of the Python
   `_columns`) and cuts instead of crossing. A satin shape is untouched by
-  it; its own underlay-to-satin move is a separate call. None of `generate.js`'s three
-  callers passes it; the flip is Kent's (MASTER_SCOPE defect 52). To SEE
+  it; its own underlay-to-satin move is a separate call. None of
+  `generate.js`'s three callers passes it; the flip is Kent's (MASTER_SCOPE
+  defect 52), and it costs cuts that grow with the number of holes. Two
+  things to know before touching it: every move is asked what ground it runs
+  over (`groundUnder`: inside may float, on the rim is sewn, deeper than
+  `openTol` into open ground is cut), and `openTol` is the caller's number,
+  never a pass's own row pitch. To SEE
   thread rather than penetrations, run `node tools/fill-columns-sheet.mjs`:
   it draws four manual-lane shapes off beside on, floats in red.
 

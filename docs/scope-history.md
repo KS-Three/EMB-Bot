@@ -17332,24 +17332,70 @@ whole design. No needle point inside either hole, so
 `render.js` draws no jumps, so the preview showed a clean hole.
 
 `tatamiFill({ columns })` ports `stage6_fill._columns`; `buildQualityDesign({
-fillColumns })` passes it to the fill and to every tatami underlay, and cuts
-the move between two runs of one shape when it crosses open ground. Four
-manual-lane shapes, off → on (`tools/fill-columns-sheet.mjs`):
+fillColumns })` passes it to a fill shape's fill and its tatami underlay, and
+cuts the move between two runs of one shape when it crosses open ground. Four
+manual-lane shapes on pique, off → on (`tools/fill-columns-sheet.mjs`):
 
 | shape | floats | loose thread mm | cuts | stitches |
 |---|---|---|---|---|
-| badge, two cut-outs | 79 → 2 | 915 → 49 | 1 → 3 | 3,149 → 3,226 |
-| ring | 89 → 2 | 1,380 → 17 | 1 → 2 | 1,579 → 1,667 |
-| two counters | 148 → 1 | 1,248 → 10 | 1 → 5 | 1,779 → 1,933 |
-| wide U (a notch, no hole) | 121 → 1 | 1,894 → 1 | 1 → 1 | 2,092 → 2,213 |
+| badge, two cut-outs | 79 → 2 | 915 → 49 | 1 → 4 | 3,149 → 3,229 |
+| ring | 89 → 2 | 1,380 → 17 | 1 → 1 | 1,579 → 1,667 |
+| two counters | 148 → 2 | 1,248 → 23 | 1 → 3 | 1,779 → 1,936 |
+| wide U (a notch, no hole) | 121 → 1 | 1,894 → 1 | 1 → 1 | 2,092 → 2,220 |
 
-The floats left run over the shape's own ground, under the fill. Two things
-the tests found on the way: an unforked shape at a 30° row angle has
-consecutive single-span rows that do not overlap at its pointed corners, which
-`_columns` rightly calls a break and which is not a fork (the walk is chosen
-on spans, not on column count); and today's engine never drops the needle on
-the far span's own start after a float, so a split row sewed from one stitch
-in (`[80,100]` sewed `86.7..100`). Off, nothing moves: engine 607 passed,
-Studio 1,586. Not built: travel under cover, and row stagger. Flip is Kent's;
-MASTER_SCOPE defect 52, "Waiting on Kent" 22.
+**The first build was wrong in three ways, and its own tests passed.** An
+independent audit re-measured the thread with its own clipper over 11,724
+forked fills and 1,980 designs. The fill pass held (0 mm over open ground;
+off byte-identical in 21,770 comparisons). Three things did not:
+
+- **Underlay rows still put thread in holes and on bare cloth.** The rule was
+  "a row turn may clip a corner by under one pitch", and an underlay's pitch
+  is 2 to 2.5 mm: 12.2 mm sewn 1.71 mm inside a cut-out on the cap preset.
+  Row turns inside a column were never asked the question at all.
+- **A shape whose rows never fork was left to the old walk**, whose turn at
+  the step of a T is a 22 mm float 2 mm outside the outline.
+- **A plain square went from one cut to two** on 48 of 84 preset designs: the
+  move between runs was tested against the true outline while the fill
+  covers the pull-compensated one.
+
+The repo's tests passed because their boxes sat 1.5 mm inside each rim, on
+two shapes. Rebuilt on ONE question, asked of every move: does it lay thread
+deeper than a fill row into ground nothing covers. The same audit priced the
+cuts — a 36-hole badge went 1 → 79 to 143 — which led to the level-first
+order and the run along a hole's rim. That badge now, cuts by where:
+
+| preset | cuts | the fill | between runs | inside the underlay |
+|---|---|---|---|---|
+| pique (edge run) | 42 | 6 | 36 | 0 |
+| no fabric (lattice) | 76 | 6 | 1 | 69 |
+| cap (edge zigzag) | 94 | 6 | 36 | 52 |
+
+**Depth was still not the whole question.** Before handing the rebuild back
+for audit it was re-measured as FLOATS, not depth, and it had left one kind:
+the turn at the step of a T, an L or a tall U. That turn runs along the
+step's own edge, under one fill row outside it, so it is not deep and nothing
+was cut; but the plain walk floats any turn longer than a stitch, and no later
+row covers this one. 39 of them on 35 of 165 notched designs, 6 to 28 mm
+long, nine at the angle the engine picks. So a move has three answers, not
+two: inside the fill it may float, on the rim it is sewn, in open ground it
+is cut. The same pass found the plain test asking about the turns of the rows
+taken top-down, while center-out sews its upper half from the middle up: the
+other diagonal of each pair of rows. Over 255 designs (17 shapes, five row
+angles, no fabric, pique and cap), off → on:
+
+| | off | on |
+|---|---|---|
+| floats over 4 mm that leave the ground the fill covers | 16,550 | 0 |
+| designs with thread deeper than a fill row off that ground | 242 | 115 |
+| deepest | 11.0 mm | 0.64 mm |
+
+What is left with the option on is the underlay's edge run chording across
+inside corners, the same with it off. Found by the tests on the way: an
+unforked shape at a 30° row angle has consecutive single-span rows that do
+not overlap at its pointed corners, which `_columns` rightly calls a break
+and which is not a fork; and today's engine never drops the needle on the far
+span's own start after a float, so a split row sewed from one stitch in. Off,
+nothing moves: engine 619 passed, Studio 1,587. Not built: travel along a
+hole's edge, and row stagger. Flip is Kent's; MASTER_SCOPE defect 52,
+"Waiting on Kent" 22.
 *(built 2026-10-03 — renders `docs/renders/fill-columns-2026-10-03/`)*
