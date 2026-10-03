@@ -17318,3 +17318,38 @@ while its thin line renders cleaner — the score is a yardstick, not a verdict
 Related, same day: `keep_counters` (entry above) keeps counters the small-region
 floor would eat on a coloured ground, and does not move bridge's words; bean
 letters reads past the source pixels that close them first. Independent flags.
+
+## 2026-10-03 — The browser fill carried thread across every hole and notch; `fillColumns` built OFF (quality review 2026-09-08 §4)
+
+A parallel session's read of the review found its "JS fill ... sews connectors
+across counters" item unowned, and cut-outs (#591) had just made holes
+something a customer draws. Measured before designing, on a 40 mm fill with a
+12 mm and a 3 mm cut-out, called as `generate.js`'s manual lane calls it
+(pique knit, underlay on): 76 untrimmed floats across the 12 mm hole, 912 mm
+of thread; 20 stitches sewn straight across the 3 mm one; one trim in the
+whole design. No needle point inside either hole, so
+`buildQualityDesign: annulus keeps hole empty` passed throughout, and
+`render.js` draws no jumps, so the preview showed a clean hole.
+
+`tatamiFill({ columns })` ports `stage6_fill._columns`; `buildQualityDesign({
+fillColumns })` passes it to the fill and to every tatami underlay, and cuts
+the move between two runs of one shape when it crosses open ground. Four
+manual-lane shapes, off → on (`tools/fill-columns-sheet.mjs`):
+
+| shape | floats | loose thread mm | cuts | stitches |
+|---|---|---|---|---|
+| badge, two cut-outs | 79 → 2 | 915 → 49 | 1 → 3 | 3,149 → 3,226 |
+| ring | 89 → 2 | 1,380 → 17 | 1 → 2 | 1,579 → 1,667 |
+| two counters | 148 → 1 | 1,248 → 10 | 1 → 5 | 1,779 → 1,933 |
+| wide U (a notch, no hole) | 121 → 1 | 1,894 → 1 | 1 → 1 | 2,092 → 2,213 |
+
+The floats left run over the shape's own ground, under the fill. Two things
+the tests found on the way: an unforked shape at a 30° row angle has
+consecutive single-span rows that do not overlap at its pointed corners, which
+`_columns` rightly calls a break and which is not a fork (the walk is chosen
+on spans, not on column count); and today's engine never drops the needle on
+the far span's own start after a float, so a split row sewed from one stitch
+in (`[80,100]` sewed `86.7..100`). Off, nothing moves: engine 607 passed,
+Studio 1,586. Not built: travel under cover, and row stagger. Flip is Kent's;
+MASTER_SCOPE defect 52, "Waiting on Kent" 22.
+*(built 2026-10-03 — renders `docs/renders/fill-columns-2026-10-03/`)*

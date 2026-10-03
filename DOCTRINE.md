@@ -8164,3 +8164,39 @@ them together. Two more of Kent's calls that day, so nobody re-asks: quote
 inputs are ONE record per browser, not per project; and machine profiles are
 per MODEL, S-1501 first, everyone else types a speed.
 *(ruled 2026-10-01 — `src/sewtime.js`, `app/src/lib/quote.js`)*
+
+## A test that counts needle points cannot see thread, and a float has none (2026-10-03)
+
+`buildQualityDesign: annulus keeps hole empty (no sew points inside)` passed
+for as long as it existed while every fill row of the browser engine laid
+thread across that hole: 76 untrimmed floats over a 12 mm cut-out, 912 mm of
+it, and 20 plain stitches straight across a 3 mm one. Both ends of each land
+on the rim, so nothing is "inside". The preview agreed with the test for the
+same reason: `render.js` draws no jumps. The screen, the suite and the file
+were three views, and two of them could not see the defect.
+
+**What to do with it:**
+
+- **To ask "is this ground clear", read the MOVES, not the points.** Walk the
+  stream: a move lays thread unless a trim has come since the last
+  penetration, and a `jump` after a stitch is a float. `test/fill.test.js`
+  `threadThrough` and `test/digitize.test.js` `threadAcross` are that walk.
+- **Leave the `end` record out of it.** It sits at the origin, which is
+  inside a centred hole; counted as a move it reads as one float that is not
+  there. It cost one wrong red here.
+- **A corner clip is not a crossing, and the margin that says so is one row
+  pitch.** A row turn inside one column joins two row ends that sit on
+  adjacent edges of the hole, and the chord clips the corner by less than
+  the pitch: 0.15 mm on a real fill, in both engines. A fixture with rows 5
+  apart shows it as 5.
+- **A fixture whose rows sit farther apart than the longest stitch measures
+  something else.** Every plain row turn is then too long to sew, so a test
+  about holes reports the turns. Every real caller has the pitch far under
+  the stitch.
+- **An unforked shape can still break into two columns.** At a pointed
+  corner two consecutive single-span rows can fail to overlap, which
+  `_columns` rightly calls a break. Choose the column walk on SPANS (some row
+  has more than one), not on the column count, or a plain rotated rectangle
+  changes.
+*(measured 2026-10-03 — `test/fill.test.js`, `test/digitize.test.js`,
+`tools/fill-columns-sheet.mjs`; MASTER_SCOPE defect 52)*

@@ -1005,6 +1005,16 @@ sews nothing and cuts the smallest shape that contains it.
 - On the side canvas, **Hole mode's click always draws**; Shape mode's click
   inside a finished shape selects it. That asymmetry is deliberate — a hole
   starts inside a shape.
+- **A cut-out is clear of the needle, not yet of thread (2026-10-03).** The
+  JS fill goes from one span of a split row straight to the next, so every
+  row lays a float (or, under 4 mm, a stitch) across the hole, and the
+  preview cannot show it because `render.js` draws no jumps. The cure is
+  built OFF: `buildQualityDesign({ fillColumns: true })` sews a forked shape
+  column by column (`fill.js` `opts.columns`, a port of the Python
+  `_columns`) and cuts instead of crossing. None of `generate.js`'s three
+  callers passes it; the flip is Kent's (MASTER_SCOPE defect 52). To SEE
+  thread rather than penetrations, run `node tools/fill-columns-sheet.mjs`:
+  it draws four manual-lane shapes off beside on, floats in red.
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 
