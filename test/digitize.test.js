@@ -2291,6 +2291,46 @@ test("applyTies: a thread that ends on a float and one stitch is locked AT that 
     "j300,0 s300,0 s300,8 s300,0 s300,8 s300,0 j300,40 s340,40 s380,40 s372,40 s380,40 s372,40 s380,40 e0,0");
 });
 
+test("applyTies: one stitch after a cut, then a float -- the lock lies back along the row that stitch closed", () => {
+  // Center-out's lower sweep opens so on a shape with a hole: the cut carries
+  // the frame to a row's start, the row is shorter than a stitch and so is ONE
+  // record, at the hole's rim, and the next move is a float across the hole.
+  // Laid toward that float the lock's inner point was 0.8 mm into the hole.
+  // The row began where the frame was just before the stitch: lay it there.
+  const stream = [
+    _rec("jump", 0, 0), _rec("stitch", 0, 0), _rec("stitch", 30, 0),
+    _rec("trim", 100, 50),                                   // the cut: the frame is on the next row's start
+    _rec("stitch", 130, 50),                                 // that row, one record, ending on a hole's rim
+    _rec("jump", 200, 50), _rec("stitch", 230, 50), _rec("stitch", 260, 50),   // a float over the hole, then the next span
+    _rec("end", 0, 0),
+  ];
+  assert.strictEqual(_show(DG.applyTies(stream, []).stitches),
+    "j0,0 s0,0 s8,0 s0,0 s8,0 s0,0 s30,0 s22,0 s30,0 s22,0 s30,0 t100,50 " +
+    "s130,50 s122,50 s130,50 s122,50 s130,50 j200,50 s230,50 s260,50 s252,50 s260,50 s252,50 s260,50 e0,0");
+});
+
+test("ties (shapes): with the column flag off, a lock adds no sewn thread to a hole", () => {
+  // The same thing in whole designs, where it was found: a frame, a thin ring
+  // and a grid of nine holes, no fabric (so that what the fill covers is what
+  // was drawn), rows at four angles.
+  const frame = { outer: boxPx(0, 0, 400, 400), holes: [boxPx(30, 30, 370, 370)] };
+  const thin = { outer: roundPx(175, 175, 175, 96), holes: [roundPx(175, 175, 161, 96)] };
+  const holes = [];
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) holes.push(boxPx(35 + 105 * i, 35 + 105 * j, 105 + 105 * i, 105 + 105 * j));
+  const nine = { outer: boxPx(0, 0, 350, 350), holes };
+  let locks = 0;
+  for (const [name, shape, widthPx] of [["frame", frame, 400], ["thin ring", thin, 350], ["nine holes", nine, 350]]) {
+    for (const angleOverride of [null, 0, 30, 90]) {
+      const sh = Object.assign({}, shape);
+      if (angleOverride != null) sh.angleOverride = angleOverride;
+      const off = drawn(sh, widthPx, { fillColumns: false }), on = drawn(sh, widthPx, { fillColumns: false, ties: true });
+      locks += on._debug.nTies;
+      assert.strictEqual(openGroundMm(on, shape, 0.15).sewn, openGroundMm(off, shape, 0.15).sewn, name + ", angle " + angleOverride);
+    }
+  }
+  assert.ok(locks >= 48, "every design here is cut by center-out, so it has four locks: " + locks);
+});
+
 test("ties (shapes): every lock sits on its thread's first or last penetration", () => {
   // The same thing asked of whole designs: an inverted U whose arms are
   // narrower than a stitch (so the last rows are one record each, after a

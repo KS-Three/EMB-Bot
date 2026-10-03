@@ -125,10 +125,11 @@
   // instead, which made that stitch a second penetration of the same hole.)
   // The bounce is laid toward the nearest other place the frame goes on that
   // side: the next stitch, nearly always, and then the lock lies on that
-  // stitch. Where the thread's end is one penetration with a FLOAT beside it,
-  // that place is where the float starts or lands, which is along the row the
-  // stitch closes (a short row after a float is one record: the float lands
-  // on its start).
+  // stitch. Where the thread's end is ONE penetration with a float beside it,
+  // the lock is laid along the row that stitch closed: toward where the
+  // frame was just before it (a short row after a float or a cut is one
+  // record, because the float or the cut lands on the row's start). Along a
+  // float is the last choice: a float may cross a hole.
   //
   // The first version looked for "two stitch records in a row" instead, and
   // an audit found what that costs: where a thread ends in a float and one
@@ -163,7 +164,16 @@
       if (places) {
         let next = first + 1, a = first;
         while (!elsewhere(next, first)) { if (stitches[next].type === "stitch") a = next; next++; }
-        toward.set(a, next);
+        // One penetration and then a float: that stitch closed a row which
+        // began where the frame was just before it. Center-out's lower sweep
+        // opens so on a shape with a hole -- the cut lands on a row's start,
+        // the row is one record at the hole's rim, and the next move floats
+        // across the hole. Laid toward the float, the lock's inner point was
+        // 0.8 mm into the hole. It is laid back along the row.
+        const before = first - 1;
+        const back = stitches[next].type === "jump" && before >= 0 &&
+          (stitches[before].type === "trim" || stitches[before].type === "jump") && !same(stitches[before], stitches[first]);
+        toward.set(a, back ? before : next);
         let prev = last - 1, z = last;
         while (!elsewhere(prev, last)) { if (stitches[prev].type === "stitch") z = prev; prev--; }
         toward.set(z, prev);
