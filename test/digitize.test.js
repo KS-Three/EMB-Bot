@@ -898,6 +898,79 @@ test("buildQualityDesign: two holes that cross are still two holes", () => {
   });
 });
 
+test("buildQualityDesign: island shapes nobody chose leave no drawn ground unsewn", () => {
+  // The tests above are concentric boxes. These are seeded: an outline (a box,
+  // a round, a blob), a hole in it, and in the hole either rings nested one
+  // inside the next or two or three islands side by side, with gaps from a
+  // hair to several mm. One question, asked of the STITCHES with nothing of
+  // the engine's: is every part of the drawn ground within a row of fill
+  // thread? Shrunk, an island's rim was not; grown with no thought for the
+  // ring beside it, a hair-thin moat ate into both its banks.
+  const rnd = (seed) => { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+  const shapeOf = (seed) => {
+    const r = rnd(seed), about = (pts, k) => pts.map((p) => ({ x: 200 + (p.x - 200) * k, y: 200 + (p.y - 200) * k }));
+    const kind = r(), n = 7 + Math.floor(r() * 9);
+    const outer = kind < 0.35 ? boxPx(0, 0, 400, 400) : kind < 0.6 ? roundPx(200, 200, 200, 12 + Math.floor(r() * 36))
+      : Array.from({ length: n }, (_, i) => { const k = 0.8 + 0.2 * r(); return { x: 200 + 200 * k * Math.cos(2 * Math.PI * i / n), y: 200 + 200 * k * Math.sin(2 * Math.PI * i / n) }; });
+    // a gap, px: a third of them a hair (under any preset's compensation), a third under twice terry's, a third wide
+    const gap = () => { const u = r(); return u < 0.33 ? 1 + 2 * r() : u < 0.66 ? 6 + 6 * r() : 14 + 40 * r(); };
+    let k = 0.55 + 0.3 * r();
+    const holes = [about(outer, k)];
+    if (r() < 0.6) {
+      for (let deep = 1 + Math.floor(r() * 3); deep > 0 && k > 0.2; deep--) { k -= gap() / 200; holes.push(about(outer, k)); }
+    } else {
+      const half = 200 * k * 0.55, count = 2 + Math.floor(r() * 2), g = gap(), w = (2 * half - g * (count - 1)) / count, h = half * (0.5 + 0.8 * r());
+      for (let i = 0; i < count && w > 12; i++) {
+        const x0 = 200 - half + i * (w + g);
+        holes.push(r() < 0.5 ? boxPx(x0, 200 - h / 2, x0 + w, 200 + h / 2) : roundPx(x0 + w / 2, 200, Math.min(w, h) / 2, 8 + Math.floor(r() * 16)));
+      }
+    }
+    return { outer, holes: holes.map((ring) => (r() < 0.4 ? ring.slice().reverse() : ring)).reverse() };
+  };
+  const toSegment = (p, u, v) => {
+    const dx = v.x - u.x, dy = v.y - u.y, l2 = dx * dx + dy * dy;
+    const t = l2 ? Math.max(0, Math.min(1, ((p.x - u.x) * dx + (p.y - u.y) * dy) / l2)) : 0;
+    return Math.hypot(p.x - (u.x + t * dx), p.y - (u.y + t * dy));
+  };
+  for (let seed = 1; seed <= 24; seed++) {
+    const shape = shapeOf(seed);
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const p of shape.outer) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
+    const edges = [];
+    for (const r of [shape.outer].concat(shape.holes)) for (let i = 0; i < r.length; i++) edges.push([r[i], r[(i + 1) % r.length]]);
+    // drawn ground, on a 3 px grid, more than 0.1 mm in from every edge
+    const ground = [];
+    for (let y = y0 + 1.5; y < y1; y += 3) for (let x = x0 + 1.5; x < x1; x += 3) {
+      const p = { x, y };
+      let inside = false;
+      for (const [u, v] of edges) if ((u.y > y) !== (v.y > y) && u.x + ((y - u.y) / (v.y - u.y)) * (v.x - u.x) > x) inside = !inside;
+      if (inside && !edges.some(([u, v]) => toSegment(p, u, v) <= 1)) ground.push(p);
+    }
+    const asked = ground.filter((_, i) => i % Math.ceil(ground.length / 200) === 0);
+    for (const fabricId of ["terry_towel", "pique_knit"]) {
+      const fabric = FABRICS.getFabric(fabricId), label = "seed " + seed + ", " + fabricId;
+      // the drawing's own width, so that a px is a stitch unit as in every test here
+      const d = drawn(shape, x1 - x0, { fabric, fillColumns: false });
+      assert.strictEqual(d.shapeOutlines[0].dropped, false, label);
+      const sewn = [];
+      for (const run of d.runs) {
+        if (run.kind !== "fill") continue;
+        let prev = null;
+        for (let i = run.i0; i <= run.i1; i++) {
+          const s = d.stitches[i];
+          if (s.type === "trim") { prev = null; continue; }
+          const p = { x: s.x + (x0 + x1) / 2, y: (y0 + y1) / 2 - s.y };
+          if (s.type === "stitch" && prev) sewn.push([prev, p]);
+          prev = p;
+        }
+      }
+      const reach = 1.5 * fabric.densityAdjust + 1;   // a fill row, and a stitch's rounding
+      const bare = asked.filter((p) => !sewn.some(([u, v]) => toSegment(p, u, v) <= reach));
+      assert.strictEqual(bare.length, 0, label + ": " + bare.length + " of " + asked.length + " points of drawn ground have no fill thread within a row, the first at " + JSON.stringify(bare[0]));
+    }
+  }
+});
+
 test("fillColumns: left off, every stitch is the one it has always been", () => {
   for (const underlay of [false, true]) {
     const base = Object.assign({ underlay }, ANNULUS_OPTS);
