@@ -44,6 +44,14 @@ sitting page for the four built-OFF flags" (`cap_recentre`, `patch_junctions`,
   session loaded a stale index. Fast-forward it at session start; a note
   written through the junction is uncommitted until someone lands it, so
   write notes in the lane that carries the PR.
+- **The CLAUDE.md a session is handed is that stale checkout's too, and it
+  cost a false finding.** The loaded copy said MASTER_SCOPE has an 800-line
+  budget; `main` had said 27,000 words since 2026-09-14, with
+  `tests/test_scope_budget.py` enforcing it. This session told Kent the file
+  was over budget with no guard, three times and in a PR body, before the
+  `update-master-scope` skill contradicted it. Before reporting that a
+  documented rule is broken, read the rule on `origin/main` and grep for the
+  test that already enforces it.
 
 Related: [[second-sitting-eleven-flags-2026-09-28]],
 [[flag-before-after-2026-09-18]], [[bridge-border-and-script-2026-09-30]],
