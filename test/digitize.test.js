@@ -2058,6 +2058,245 @@ test("tieRun: a zero-length path yields no bounce rather than a NaN direction", 
   assert.deepStrictEqual(DG.tieRun(at, { x: 5, y: 5 }), [at]);
 });
 
+// ---- Lock stitches on the SHAPE lane, and one rule for both (2026-10-03) ----
+// The 09-14 port reached buildLetteringDesign only. buildQualityDesign -- manual
+// draw, basic shapes, SVG import, the flatten lane -- still tied nothing: every
+// trim there left two loose ends. `ties: true` now means the same thing in both
+// builders, and it is asked of the FINISHED record stream, which is in DST
+// units: the two things the lettering port got wrong were both about where it
+// asked. Its leg was 0.8 PIXELS (0.2 to 2.0 mm, by resolution and size), and
+// its tie-in sat in front of the run's own first stitch, so that stitch became
+// a second penetration of the same hole.
+const _same = (p, q) => p.x === q.x && p.y === q.y;
+// A lock is a bounce between exactly two places (Python's `strip_ties` finds
+// them the same way): a, b, a, b. -> the leg of each, in DST units.
+const _lockLegs = (d) => {
+  const s = d.stitches, out = [];
+  for (let i = 0; i + 3 < s.length; i++) {
+    if (![0, 1, 2, 3].every((k) => s[i + k].type === "stitch")) continue;
+    if (!_same(s[i], s[i + 2]) || !_same(s[i + 1], s[i + 3]) || _same(s[i], s[i + 1])) continue;
+    out.push(Math.hypot(s[i + 1].x - s[i].x, s[i + 1].y - s[i].y));
+    i += 3;
+  }
+  return out;
+};
+// The stream cut into threads: the records between two cuts.
+const _threads = (d) => {
+  const out = [[]];
+  for (const s of d.stitches) {
+    if (s.type === "trim" || s.type === "color" || s.type === "end") out.push([]);
+    else out[out.length - 1].push(s);
+  }
+  return out.filter((t) => t.length);
+};
+// The two ends of a thread's sewing: its first and last pair of penetrations
+// that follow one another and are not the same place. null when it has none.
+const _sewnEnds = (thread) => {
+  const pairs = [];
+  for (let k = 0; k + 1 < thread.length; k++) {
+    if (thread[k].type === "stitch" && thread[k + 1].type === "stitch" && !_same(thread[k], thread[k + 1])) pairs.push(k);
+  }
+  return pairs.length ? { first: pairs[0], last: pairs[pairs.length - 1] + 1 } : null;
+};
+const _zeroLength = (d) => {
+  let n = 0;
+  for (let i = 1; i < d.stitches.length; i++) {
+    if (d.stitches[i].type === "stitch" && d.stitches[i - 1].type === "stitch" && _same(d.stitches[i], d.stitches[i - 1])) n++;
+  }
+  return n;
+};
+// Two colours, three shapes far apart, one of them with a hole: a colour
+// change, a trim between shapes, floats across the hole, and center-out's cut.
+const _tieShapes = (extra) => DG.buildQualityDesign(
+  [{ rgb: [10, 10, 10], shapes: [{ outer: sq(0, 0, 200), holes: [sq(60, 60, 50)], tierOverride: "fill" }, { outer: sq(600, 600, 180), holes: [], tierOverride: "fill" }] },
+   { rgb: [200, 30, 30], shapes: [{ outer: sq(300, 0, 160), holes: [], tierOverride: "fill" }] }],
+  Object.assign({ garment: { widthIn: 6, heightIn: 6 }, pxPerMm: 10, darkOnTop: false, underlay: true }, extra || {}));
+
+test("ties (shapes): OFF by default, and the flag off is byte-identical to omitting it", () => {
+  const omitted = _tieShapes(), explicitOff = _tieShapes({ ties: false });
+  assert.strictEqual(_fingerprint(omitted), _fingerprint(explicitOff));
+  assert.deepStrictEqual(omitted.runs, explicitOff.runs);
+  assert.strictEqual((omitted._debug || {}).nTies || 0, 0, "no ties emitted with the flag off");
+  assert.strictEqual(_lockLegs(omitted).length, 0, "and nothing in the untied design reads as a lock");
+});
+
+test("ties (shapes): ON locks every thread where it starts and where it is cut", () => {
+  // `apply_ties`' question: is the thread starting here, or being cut here.
+  // Not "did the needle lift": a float that is not cut leaves the thread whole.
+  const off = _tieShapes(), on = _tieShapes({ ties: true });
+  const threads = _threads(on);
+  assert.ok(_count(on, "trim") >= 3, "fixture: a colour change, a trim between shapes, a cut inside a fill");
+  assert.ok(threads.some((t) => t.some((s, k) => k > 0 && s.type === "jump")), "fixture: a float inside a thread");
+  for (const [ti, t] of threads.entries()) {
+    const ends = _sewnEnds(t);
+    assert.ok(ends, `thread ${ti} sews nothing`);
+    // in: at, inner, at, inner, at -- then on along the stitch it lies on
+    const a = t.slice(ends.first, ends.first + 5);
+    assert.ok(_same(a[0], a[2]) && _same(a[2], a[4]) && _same(a[1], a[3]), `thread ${ti} does not open with a lock`);
+    // off: the same bounce closing the thread, back on its last penetration
+    const z = t.slice(ends.last - 4, ends.last + 1);
+    assert.ok(_same(z[0], z[2]) && _same(z[2], z[4]) && _same(z[1], z[3]), `thread ${ti} does not close with a lock`);
+  }
+  assert.strictEqual(on._debug.nTies, 2 * threads.length);
+  assert.strictEqual(_count(on, "stitch") - _count(off, "stitch"), 4 * on._debug.nTies, "a lock is four stitches");
+  assert.strictEqual(on.stitchCount, _count(on, "stitch"), "and the design's stitch count is the tied stream's");
+  // rows at 45 degrees: a leg of 8 units is 5.66 across and 5.66 up
+  const slanted = _tieShapes({ ties: true, perRegionAngle: false });
+  assert.ok(_lockLegs(slanted).length >= 2 && slanted.stitches.every((s) => Number.isInteger(s.x) && Number.isInteger(s.y)),
+    "the stream stays in whole DST units");
+  for (const k of ["trim", "jump", "color", "end"]) assert.strictEqual(_count(on, k), _count(off, k), `ties must add no ${k}`);
+});
+
+test("ties (shapes): take the locks out and the design is the untied one, record for record", () => {
+  // Nothing else moves. Each lock is the four records after its anchor.
+  const off = _tieShapes(), on = _tieShapes({ ties: true });
+  const s = on.stitches, kept = [];
+  for (let i = 0; i < s.length; i++) {
+    kept.push(s[i]);
+    const w = s.slice(i, i + 5);
+    if (w.length === 5 && w.every((r) => r.type === "stitch") && _same(w[0], w[2]) && _same(w[2], w[4]) && _same(w[1], w[3]) && !_same(w[0], w[1])) i += 4;
+  }
+  assert.strictEqual(kept.map((r) => `${r.x},${r.y},${r.type}`).join(";"), _fingerprint(off));
+});
+
+test("ties: a lock's leg is 0.8 mm, whatever the resolution and whatever the size -- both builders", () => {
+  // In DST units (0.1 mm): never over 8, and 8 wherever the stitch it lies on
+  // has room. The lettering port measured 0.3, 0.5, 2.0 and 0.2 mm on these.
+  const font = _tieFont();
+  const want = DG.TIE_STITCH_MM * 10;
+  const check = (name, d) => {
+    const legs = _lockLegs(d);
+    assert.ok(legs.length >= 2, `${name}: no lock found`);
+    const longest = Math.max(...legs);
+    assert.ok(Math.abs(longest - want) <= 0.75, `${name}: longest lock leg is ${(longest / 10).toFixed(2)} mm, not ${DG.TIE_STITCH_MM}`);
+  };
+  for (const o of [{ pxPerMm: 8 }, { pxPerMm: 8, targetWidthMm: 40 }, { pxPerMm: 2 }, { pxPerMm: 20 }]) {
+    check("lettering " + JSON.stringify(o), DG.buildLetteringDesign(font, "AB", Object.assign({ garment: { widthIn: 5, heightIn: 2.25 }, ties: true }, o)));
+  }
+  for (const o of [{ pxPerMm: 10 }, { pxPerMm: 2 }, { pxPerMm: 40 }, { pxPerMm: 10, targetWidthMm: 30 }]) {
+    check("shapes " + JSON.stringify(o), _tieShapes(Object.assign({ ties: true }, o)));
+  }
+});
+
+test("ties: a lock adds no second penetration of the same hole -- both builders", () => {
+  // The lettering port put its tie-in in FRONT of the run's own first stitch:
+  // inner, at, inner, at, and then `at` again. The writers do not dedupe.
+  const font = _tieFont();
+  const lt = (ties) => DG.buildLetteringDesign(font, "Fritsch's Stitches", { ..._tieBase, ties });
+  assert.strictEqual(_zeroLength(lt(true)), _zeroLength(lt(false)), "lettering");
+  assert.strictEqual(_zeroLength(_tieShapes({ ties: true })), _zeroLength(_tieShapes()), "shapes");
+});
+
+test("ties (shapes): a lock never reaches past the stitch it lies on, and no sewn move gets longer", () => {
+  const box = (d) => {
+    const pts = d.stitches.filter((s) => s.type === "stitch");
+    return [Math.min(...pts.map((p) => p.x)), Math.min(...pts.map((p) => p.y)), Math.max(...pts.map((p) => p.x)), Math.max(...pts.map((p) => p.y))];
+  };
+  const longest = (d) => {
+    let m = 0;
+    for (let i = 1; i < d.stitches.length; i++) {
+      const s = d.stitches[i], p = d.stitches[i - 1];
+      if (s.type === "stitch" && (p.type === "stitch" || p.type === "jump")) m = Math.max(m, Math.hypot(s.x - p.x, s.y - p.y));
+    }
+    return m;
+  };
+  for (const extra of [{}, { fillColumns: true }, { fabric: FABRICS.getFabric("pique_knit") }]) {
+    const off = _tieShapes(extra), on = _tieShapes(Object.assign({ ties: true }, extra));
+    assert.deepStrictEqual(box(on), box(off), JSON.stringify(Object.keys(extra)) + ": the sewn box moved");
+    assert.ok(longest(on) <= longest(off) + 1e-9, "a lock made a longer sewn move than the untied design has");
+    assert.strictEqual(on.widthMM, off.widthMM);
+    assert.strictEqual(on.heightMM, off.heightMM);
+  }
+});
+
+test("ties (shapes): a lock belongs to the run it protects", () => {
+  // `design.runs` says what each stitch IS. Python folds a tie into the run it
+  // ties; here its records sit inside that run's span, so every span still
+  // ends on a record that exists and every stitch is still in exactly one.
+  for (const ties of [false, true]) {
+    const d = _tieShapes({ ties });
+    const owner = new Array(d.stitches.length).fill(0);
+    for (const r of d.runs) {
+      assert.ok(r.i0 >= 0 && r.i1 < d.stitches.length && r.i0 <= r.i1, `ties ${ties}: span ${r.i0}..${r.i1} of ${d.stitches.length}`);
+      for (let i = r.i0; i <= r.i1; i++) owner[i]++;
+    }
+    d.stitches.forEach((s, i) => {
+      if (s.type === "stitch") assert.strictEqual(owner[i], 1, `ties ${ties}: stitch ${i} is in ${owner[i]} spans`);
+    });
+  }
+  const kinds = (d) => d.runs.map((r) => r.kind + ":" + r.shape).join(",");
+  assert.strictEqual(kinds(_tieShapes({ ties: true })), kinds(_tieShapes()), "the runs themselves are the same runs");
+});
+
+// applyTies, asked directly: the rules below only bite on streams no ordinary
+// fixture produces (the same reason tieRun is exported).
+const _rec = (type, x, y) => ({ x, y, type });
+const _show = (s) => s.map((r) => `${r.type[0]}${r.x},${r.y}`).join(" ");
+
+test("applyTies: a float does not cut the thread, a trim and a colour change do", () => {
+  const stream = [
+    _rec("jump", 0, 0), _rec("stitch", 0, 0), _rec("stitch", 30, 0),
+    _rec("jump", 100, 0), _rec("stitch", 100, 0), _rec("stitch", 130, 0),   // floated to: same thread
+    _rec("trim", 130, 0),
+    _rec("jump", 200, 0), _rec("stitch", 200, 0), _rec("stitch", 230, 0),
+    _rec("color", 230, 0),                                                  // a stop with no trim before it
+    _rec("jump", 300, 0), _rec("stitch", 300, 0), _rec("stitch", 330, 0),
+    _rec("end", 0, 0),
+  ];
+  const r = DG.applyTies(stream, []);
+  assert.strictEqual(r.nTies, 6, "three threads, locked at both ends");
+  assert.strictEqual(_show(r.stitches),
+    "j0,0 s0,0 s8,0 s0,0 s8,0 s0,0 s30,0 j100,0 s100,0 s130,0 s122,0 s130,0 s122,0 s130,0 t130,0 " +
+    "j200,0 s200,0 s208,0 s200,0 s208,0 s200,0 s230,0 s222,0 s230,0 s222,0 s230,0 c230,0 " +
+    "j300,0 s300,0 s308,0 s300,0 s308,0 s300,0 s330,0 s322,0 s330,0 s322,0 s330,0 e0,0");
+});
+
+test("applyTies: a lock lies on the first and last stitch that HAS a length, and a lone penetration gets none", () => {
+  const stream = [
+    _rec("jump", 0, 0), _rec("stitch", 0, 0),              // one penetration, then floated away from
+    _rec("jump", 50, 0), _rec("stitch", 50, 0), _rec("stitch", 50, 0), _rec("stitch", 53, 4),   // a doubled hole, then 0.5 mm
+    _rec("stitch", 90, 4), _rec("stitch", 90, 4),          // ... and a doubled hole at the end
+    _rec("trim", 90, 4),
+    _rec("jump", 200, 0), _rec("stitch", 200, 0),          // a thread of one penetration
+    _rec("end", 0, 0),
+  ];
+  const r = DG.applyTies(stream, []);
+  assert.strictEqual(r.nTies, 2, "the second thread sews no stitch, so nothing holds a lock");
+  assert.strictEqual(_show(r.stitches),
+    "j0,0 s0,0 j50,0 s50,0 s50,0 s53,4 s50,0 s53,4 s50,0 s53,4 s90,4 s82,4 s90,4 s82,4 s90,4 s90,4 t90,4 j200,0 s200,0 e0,0",
+    "the 0.5 mm stitch is shorter than a leg, so the lock stops on its far end");
+});
+
+test("applyTies: the spans move with the records, and a lock stays in its run's span", () => {
+  const stream = [
+    _rec("jump", 0, 0), _rec("stitch", 0, 0), _rec("stitch", 30, 0),      // run A: 0..2
+    _rec("jump", 0, 10), _rec("stitch", 0, 10), _rec("stitch", 30, 10),   // run B: 3..5
+    _rec("end", 0, 0),
+  ];
+  const spans = [{ i0: 0, i1: 2, kind: "underlay" }, { i0: 3, i1: 5, kind: "fill" }];
+  const r = DG.applyTies(stream, spans);
+  // A gains its tie-in (4 after record 1); B moves by 4 and gains its tie-off
+  assert.deepStrictEqual(spans.map((s) => [s.i0, s.i1]), [[0, 6], [7, 13]]);
+  assert.strictEqual(r.stitches.length, 15);
+  assert.strictEqual(stream.length, 7, "the stream handed in is not changed");
+});
+
+test("ties (lettering): the locks are inside the runs they protect too", () => {
+  // The lettering port pushed its ties between two spans, where the renderer
+  // draws a strand as if spans had never existed.
+  const font = _tieFont();
+  const outside = (ties) => {
+    const d = DG.buildLetteringDesign(font, "AB", { ..._tieBase, ties });
+    const inSpan = new Array(d.stitches.length).fill(false);
+    for (const r of d.runs) {
+      assert.ok(r.i0 >= 0 && r.i1 < d.stitches.length && r.i0 <= r.i1, `ties ${ties}: span ${r.i0}..${r.i1} of ${d.stitches.length}`);
+      for (let i = r.i0; i <= r.i1; i++) inSpan[i] = true;
+    }
+    return d.stitches.filter((s, i) => s.type === "stitch" && !inSpan[i]).length;
+  };
+  assert.strictEqual(outside(true), outside(false), "stitches that belong to no run");
+});
+
 // ---- shapeOutlines (2026-09-29 spec: click a shape on the canvas) ---------
 // Additive field: where each input shape landed, in FIELD mm (+y up, the
 // stitches' own space, T() without the integer rounding). The Studio draws

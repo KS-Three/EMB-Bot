@@ -79,13 +79,15 @@
   //     penetration that was already there.
   //
   // Returns the bounce points including both endpoints, in the caller's own
-  // coordinate space — px here, same as `run.pts`, so `T()` maps them like any
-  // other point and no tie is ever computed in DST units.
-  function tieRun(at, toward) {
+  // units. `legLen` is one leg IN THOSE UNITS; left out, the caller is working
+  // in millimetres. (Until 2026-10-03 there was no `legLen`, and the one caller
+  // passed pixels: a lettering lock's leg was 0.8 PIXELS -- 0.5 mm on a default
+  // design, 0.3 mm on one fitted to 40 mm, 2.0 mm at 2 px per mm.)
+  function tieRun(at, toward, legLen) {
     const dx = toward.x - at.x, dy = toward.y - at.y;
     const d = Math.hypot(dx, dy);
     if (d < 1e-9) return [at];
-    const leg = Math.min(TIE_STITCH_MM, d);
+    const leg = Math.min(legLen > 0 ? legLen : TIE_STITCH_MM, d);
     const inner = { x: at.x + (dx / d) * leg, y: at.y + (dy / d) * leg };
     const pts = [at];
     for (let i = 0; i < TIE_STITCHES; i++) pts.push(i % 2 === 0 ? inner : at);
@@ -96,6 +98,62 @@
     const tail = pts[pts.length - 1];
     if (tail.x !== at.x || tail.y !== at.y) pts.push(at);
     return pts;
+  }
+
+  // Lock the thread wherever it starts and wherever it gets cut: the rule of
+  // `stitches.apply_ties`, for BOTH builders (`ties: true`, default off).
+  //
+  // It is asked of the FINISHED record stream, not of the runs on their way
+  // into it, for two reasons the lettering port (2026-09-14, inline, in px)
+  // paid for:
+  //  - the stream is in DST units, so a leg is `TIE_STITCH_MM` and nothing
+  //    else. In px it was whatever a pixel happened to be worth.
+  //  - "where the thread starts" is a fact about the stream. A run can open
+  //    with a float, a fill has a cut in the middle of it (center-out's, the
+  //    column walk's), and the first penetration after a cut is not always the
+  //    first point of anything.
+  //
+  // A THREAD is the records between two cuts (`trim`, `color`, either end of
+  // the stream; `end` sews nothing and needs no rule). A `jump` is not a cut:
+  // the question is "is the thread starting here, or being cut here", not
+  // "did the needle lift". Each thread is locked on its first SEWN SEGMENT --
+  // two penetrations in a row, in two places -- and on its last, by `tieRun`'s
+  // bounce laid along that segment and put straight after its anchor: at,
+  // [inner, at, inner, at], and on. That is the sequence Python sews at both
+  // ends. (The lettering port put the tie-in in FRONT of the run's own first
+  // stitch instead, which made that stitch a second penetration of the same
+  // hole.) A thread that sews no segment at all -- one lone penetration --
+  // gets no lock.
+  //
+  // -> { stitches, nTies }: a new stream. `spans` (i0/i1 into the old one) are
+  // moved in place, and a lock stays inside the span of the run it protects.
+  function applyTies(stitches, spans) {
+    const leg = TIE_STITCH_MM * units.DST_UNITS_PER_MM;
+    const cut = (s) => s.type === "trim" || s.type === "color";
+    const sewn = (k) => stitches[k].type === "stitch" && stitches[k + 1].type === "stitch" &&
+      (stitches[k].x !== stitches[k + 1].x || stitches[k].y !== stitches[k + 1].y);
+    const toward = new Map();   // anchor record -> the record its lock is laid toward
+    for (let i = 0; i < stitches.length;) {
+      if (cut(stitches[i])) { i++; continue; }
+      let j = i;
+      while (j < stitches.length && !cut(stitches[j])) j++;   // the thread is [i, j)
+      let first = -1, last = -1;
+      for (let k = i; k + 1 < j && first < 0; k++) if (sewn(k)) first = k;
+      for (let k = j - 2; k >= i && last < 0; k--) if (sewn(k)) last = k + 1;
+      if (first >= 0) { toward.set(first, first + 1); toward.set(last, last - 1); }
+      i = j;
+    }
+    const out = [], start = new Array(stitches.length), end = new Array(stitches.length);
+    stitches.forEach((s, k) => {
+      start[k] = out.length;
+      out.push(s);
+      if (toward.has(k)) {
+        for (const p of tieRun(s, stitches[toward.get(k)], leg).slice(1)) out.push({ x: Math.round(p.x), y: Math.round(p.y), type: "stitch" });
+      }
+      end[k] = out.length - 1;
+    });
+    for (const sp of spans || []) { sp.i0 = start[sp.i0]; sp.i1 = end[sp.i1]; }
+    return { stitches: out, nTies: toward.size };
   }
 
   // The size of a design is the size of its THREAD — measured from the records
@@ -965,11 +1023,17 @@
       }
     }
     stitches.push({ x: 0, y: 0, type: "end" });
-    const stitchCount = stitches.filter((s) => s.type === "stitch").length;
+    // Lock stitches, OFF by default (`ties`, 2026-10-03): until now this
+    // builder tied nothing, on any lane it serves -- manual draw, basic shapes,
+    // SVG import, the flatten lane -- so every trim left two loose ends. Off,
+    // the stream below is the one built above, untouched. See applyTies.
+    const tied = o.ties ? applyTies(stitches, spans) : null;
+    const sewn = tied ? tied.stitches : stitches;
+    const stitchCount = sewn.filter((s) => s.type === "stitch").length;
     // designWmm/designHmm is the traced-polygon box this was fit to; the sewn
     // extent is what the customer gets. See designExtentMm.
-    const extent = designExtentMm(stitches, designWmm, designHmm);
-    return { stitches, colors, widthMM: extent.widthMM, heightMM: extent.heightMM, stitchCount, colorCount: colors.length, runs: spans, shapeOutlines, fit: fitOut, _debug: { nSatin, nFill, nTrims, nCenterOut } };
+    const extent = designExtentMm(sewn, designWmm, designHmm);
+    return { stitches: sewn, colors, widthMM: extent.widthMM, heightMM: extent.heightMM, stitchCount, colorCount: colors.length, runs: spans, shapeOutlines, fit: fitOut, _debug: { nSatin, nFill, nTrims, nCenterOut, nTies: tied ? tied.nTies : 0 } };
   }
 
   // Build a Design from a PRE-DIGITIZED satin font (src/satinfont.js) instead of
@@ -1231,7 +1295,7 @@
       for (const r of colorRanges) { if (idx >= r.startIdx && idx < r.endIdx) return r.colorRgb; }
       return rgb;
     }
-    const stitches = [];
+    let stitches = [];
     const colors = [];
     let curRgb = null;
     function ensureColor(targetRgb) {
@@ -1241,39 +1305,23 @@
     }
     const maxStitchMm = o.maxStitchMm || 4;
     const maxStepPx = maxStitchMm / finalMmPerPx;   // longest single stitch (px)
-    let nTrims = 0, nSatin = 0, nTies = 0, lastPt = null, lastPrevPt = null, forceJumpNext = false;
+    let nTrims = 0, nSatin = 0, lastPt = null, forceJumpNext = false;
 
     // Lock stitches, OFF by default (2026-09-14). The Python lane ties every
     // block unconditionally and this lane tied nothing at all; `ties: true`
     // closes that gap. It ships default-OFF for the reason every other flag in
     // this repo did — it changes EVERY .dst/.pes a customer exports from
     // lettering, and this house makes Kent rule a flip like that with the
-    // measurement in front of him. With the flag off, `tieIn`/`tieOff` are
-    // no-ops and output is byte-identical to before the port, which is what
-    // the snapshot pins assert.
+    // measurement in front of him. With the flag off the stream is the one
+    // built below, untouched, which is what the snapshot pins assert.
     //
-    // Ties are emitted as ordinary `stitch` records spliced into the sewn
-    // stream, exactly where Python folds them into the run they protect,
-    // rather than as runs of their own — so nothing downstream has to
-    // special-case a two-millimetre run that is not really stitching.
+    // Ties are ordinary `stitch` records spliced into the sewn stream, exactly
+    // where Python folds them into the run they protect, rather than runs of
+    // their own — so nothing downstream has to special-case a two-millimetre
+    // run that is not really stitching. They are put in once the stream is
+    // finished (applyTies, 2026-10-03): until then they were pushed here as
+    // each run went by, in px, and came out 0.2 to 2.0 mm long.
     const ties = !!o.ties;
-    const pushPts = (arr) => { for (const q of arr) { const d = T(q); stitches.push({ x: d.x, y: d.y, type: "stitch" }); } };
-    // Lock the thread where it STARTS: bounce at pts[0] toward pts[1]. The
-    // leading `at` is dropped because the jump already put the needle there,
-    // so re-emitting it would be a zero-length stitch.
-    const tieIn = (pts) => {
-      if (!ties || !pts || pts.length < 2) return;
-      pushPts(tieRun(pts[0], pts[1]).slice(1));
-      nTies++;
-    };
-    // Lock the thread where it gets CUT: bounce at the last sewn point, back
-    // toward the one before it. Same drop, same reason — the needle is already
-    // standing on `lastPt`.
-    const tieOff = () => {
-      if (!ties || !lastPt || !lastPrevPt) return;
-      pushPts(tieRun(lastPt, lastPrevPt).slice(1));
-      nTies++;
-    };
     // RUN SPANS (`design.runs`) — what each stitch IS, for the renderer.
     //
     // The design model downstream is a flat {x,y,type} stream in which satin,
@@ -1311,22 +1359,17 @@
         // Color-range boundary: trim (needle up) + color-change marker at the
         // last sewn point, same pattern app/src/lib/combine.js already uses
         // to splice separate elements together.
-        if (lastPt) { const tp = T(lastPt); tieOff(); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); stitches.push({ x: tp.x, y: tp.y, type: "color" }); nTrims++; }
+        if (lastPt) { const tp = T(lastPt); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); stitches.push({ x: tp.x, y: tp.y, type: "color" }); nTrims++; }
         ensureColor(runRgb);
         forceJumpNext = true;
       }
       const start = pts[0];
       if (!lastPt) {
         const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
-        tieIn(pts);
       } else if (run.jump || forceJumpNext) {
         const gapMm = Math.hypot(start.x - lastPt.x, start.y - lastPt.y) * finalMmPerPx;
-        if (gapMm > trimAtMm && !forceJumpNext) { const tp = T(lastPt); tieOff(); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); nTrims++; }
+        if (gapMm > trimAtMm && !forceJumpNext) { const tp = T(lastPt); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); nTrims++; }
         const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
-        // A jump that was NOT trimmed leaves the thread continuous, so it
-        // needs no lock — same question `apply_ties` asks (`i == 0 or
-        // run.trim`), not "did the needle lift".
-        if (gapMm > trimAtMm || forceJumpNext) tieIn(pts);
         forceJumpNext = false;
       } else {
         const gap = Math.hypot(start.x - lastPt.x, start.y - lastPt.y);
@@ -1341,11 +1384,14 @@
       for (const q of pts) { const d = T(q); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
       pushSpan(ri0, SPAN_KIND[run.kind], run.charIdx);
       lastPt = pts[pts.length - 1];
-      lastPrevPt = pts[pts.length - 2];
     }
-    // The thread ends here, so it is cut here — `apply_ties` ties the last
-    // run for the same reason it ties a trimmed one.
-    tieOff();
+    // A trim cuts the thread and a jump that was not trimmed does not, so the
+    // locks go either side of every trim and at both ends of the stream — the
+    // question `apply_ties` asks (`i == 0 or run.trim`), not "did the needle
+    // lift". The stream's end is a cut too: the thread ends there.
+    const tied = ties ? applyTies(stitches, spans) : null;
+    const nTies = tied ? tied.nTies : 0;
+    if (tied) stitches = tied.stitches;
     const stitchCount = stitches.filter((s) => s.type === "stitch").length;
     // widthMM/heightMM must reflect the ACTUAL sewn footprint — the field's
     // stats line, SizePanel, the hoop ceiling check and the printed worksheet
@@ -1379,5 +1425,7 @@
   // this was reachable directly. The rule is the expensive half of the port
   // (Python learned it from a smoke run that pushed the design's box 0.8 mm
   // outside its artwork), so it gets a test that can actually reach it.
-  return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns, tieRun, FILL_ROW_MM, SATIN_SPACING_MM, THREAD_LENGTH_FACTOR, TIE_STITCH_MM, TIE_STITCHES };
+  // `applyTies` likewise: which records it calls a cut, and what it does with
+  // a thread that sews nothing, are asked of streams written out by hand.
+  return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns, tieRun, applyTies, FILL_ROW_MM, SATIN_SPACING_MM, THREAD_LENGTH_FACTOR, TIE_STITCH_MM, TIE_STITCHES };
 });
