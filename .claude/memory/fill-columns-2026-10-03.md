@@ -1,6 +1,6 @@
 ---
 name: fill-columns-2026-10-03
-description: "2026-10-03 — the browser (JS) fill laid thread across every hole and notch, unseen by its test and by the preview; `fillColumns` built OFF (Kent's flip, not sewn); three builds, the first two failed independent audits; what it costs and what each failure taught"
+description: "2026-10-03 — the browser (JS) fill laid thread across every hole and notch, unseen by its test and (unless Jumps is on) by the Studio; `fillColumns` built OFF (Kent's flip, not sewn); three builds, the first two failed independent audits; what it costs and what each failure taught"
 metadata:
   type: project
 ---
@@ -16,8 +16,12 @@ one. Quality review 2026-09-08 §4 had named it; nobody owned it; cut-outs
 (#591) made holes something a customer draws.
 
 **Why nothing saw it.** The engine test counts needle points inside the hole
-and a float has none. `src/render.js` draws no jumps, so the Studio preview
-shows a clean hole.
+and a float has none. The Studio's field draws jumps only with its **Jumps**
+toggle on, and that is off by default; with it on, 77 dashed lines cross the
+12 mm cut-out. (First written as "the preview cannot show it, `render.js`
+draws no jumps". `render.js` is the PDF sheet's renderer; the field is
+`app/src/lib/preview.js`. Grep the app for the word before saying what the
+screen cannot do.)
 
 **What is built (OFF).** `tatamiFill({ columns: true })`: a port of
 `stage6_fill._columns`. Every move of every pass of a fill shape is asked
@@ -28,7 +32,7 @@ shortest way through the columns' corners) and is cut only with no way round.
 `buildQualityDesign({ fillColumns })` applies it to FILL shapes only. Sheet
 and cost tables: `docs/renders/fill-columns-2026-10-03/`.
 
-**Three builds, two failed audits.**
+**Three builds, three audits, and each audit failed the build before it.**
 
 1. Twenty tests passed. An independent audit (own clipper, 11,724 fills)
    found underlay rows 1.7 mm inside a cut-out ("under one pitch" was the
@@ -41,7 +45,15 @@ and cost tables: `docs/renders/fill-columns-2026-10-03/`.
    2,025 holes taking 94 s. Its own cost table had said 42.
 3. This one travels. 255 designs: floats off the fill's ground 16,550 → 0,
    designs with thread deeper than a fill row off it 242 → 0, the badge's
-   cuts 1 → 0 on every preset at any angle. Stitches +1% to +14%.
+   cuts 1 → 0 on every preset at any angle. Stitches +1% to +14%. A third
+   audit (12,880 designs, all seven presets, three scales) found the ground
+   test itself wrong: a move along a line the shape's own corners lie on was
+   read differently in its two directions, and the sheet's own wide U under
+   terry sewed 14.8 mm of fill across its notch. Also an island's edge run on
+   the hole side, 14 s of build on 2,025 holes at 30° (one loop; now 1.5 s),
+   and "no cut on a holed shape", which was 95 of 3,317 keeping one. Fixed in
+   the same PR; what it costs in travel is in the README because that audit
+   was asked to measure it.
 
 **Why:** routing, so no gate, but it moves every browser-lane design with a
 hole or a notch, and it has NOT been sewn. Kent's flip: MASTER_SCOPE defect
@@ -60,6 +72,13 @@ hole or a notch, and it has NOT been sewn. Kent's flip: MASTER_SCOPE defect
   the rule. Two rules of the third build were wrong and green: travel put a
   stitch on every vertex of a traced curve, and a check I removed as
   unreachable was reachable.
+- Ask a geometric test both ways round, on whole-number shapes, and sweep
+  EVERY preset (`FABRICS.FABRICS`), not three. My 9,000 random shapes never
+  ran a move along a line of corners; terry was the preset that sewed the
+  fill upward.
+- "None" needs its denominator. Say "95 of 3,317", and where they are.
+- Before an audit, list what you have NOT measured and ask for it as a
+  number. Here that was travel over sewn rows and thread piling on rims.
 - To ask "is this ground clear", walk the MOVES and measure depth from the
   edge of what the fill COVERS (`offCoverMm`, `floatsOffCover` in
   `test/digitize.test.js`), floats apart from sewn thread. Skip the `end`

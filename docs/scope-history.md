@@ -17328,8 +17328,11 @@ something a customer draws. Measured before designing, on a 40 mm fill with a
 (pique knit, underlay on): 76 untrimmed floats across the 12 mm hole, 912 mm
 of thread; 20 stitches sewn straight across the 3 mm one; one trim in the
 whole design. No needle point inside either hole, so
-`buildQualityDesign: annulus keeps hole empty` passed throughout, and
-`render.js` draws no jumps, so the preview showed a clean hole.
+`buildQualityDesign: annulus keeps hole empty` passed throughout, and the
+Studio's field draws jumps only with its Jumps toggle on (off by default), so
+the screen showed a clean hole. (This entry first said the preview could not
+show it at all, citing `render.js`: that is the PDF sheet's renderer. With
+Jumps on the field draws 77 dashed lines across the 12 mm cut-out.)
 
 `tatamiFill({ columns })` ports `stage6_fill._columns`; `buildQualityDesign({
 fillColumns })` passes it to a fill shape's fill and its tatami underlay, and
@@ -17442,7 +17445,51 @@ vertex (2,561 stitches under 0.3 mm in one underlay), and a check removed as
 unreachable was reachable (1 shape in 3,000 random ones, 1.4 deep on a
 tolerance of 1). A seeded 150-shape test now runs in the suite.
 
-Off, nothing moves: engine 639 passed, Studio 1,587. Not sewn. Not built: row
+**The third audit failed the third build on the question itself** (12,880
+designs at 2, 10 and 40 px per mm, all seven presets and none, underlay on
+and off; 24,048 direct calls). What had failed before held: off
+byte-identical in 12,692 hashed outputs, plain and satin shapes untouched,
+720,171 spans all sewn, no float over 4 mm off the cover on 9,869 sound
+designs. What did not:
+
+- **The ground test read a move differently in its two directions** when a
+  corner of the shape lay exactly on the move's line. It cut a move where it
+  crosses the boundary by the scanline's half-open rule, which counts
+  crossings and does not find them: along the tops of a U's two arms, right
+  to left, neither wall of the mouth was a crossing. The sheet's own wide U,
+  under terry, sewed 14.8 mm of fill across its notch. 92 designs; 115 of
+  176,672 random moves, every one collinear. Every sweep of this session had
+  run three presets, and terry is the one whose fill is sewn upward. The move
+  now stops at every corner on its line, to within rounding (a rule that
+  stops only at corners exactly on it fails 205 of 3,599 angles).
+- **An island's edge run lay on the moat side.** `holes` carries every ring
+  inside the outline, and each was moved "out from a hole". No Studio lane
+  hands a ring inside a hole over that way; `groupRingsIntoShapes` does.
+- **2,025 holes took 3.5 to 18 seconds with the rows at 30°**, where this
+  entry's table says 1.3: that was the engine's own angle. One loop, a scan
+  for the minimum inside the last-resort route search, was 90% of it. A heap
+  with the same tie-break: 1.5 seconds, and 1,500 recorded designs hash the
+  same before and after.
+- **Three claims were rates with the denominator left off.** "No cut on a
+  holed shape": 95 of 3,317 keep one. Where a pass starts: the nearest 8 and
+  16 corners are asked, no further.
+
+Asked for what had not been measured, it measured the travel: in a holed
+fill, 54 mm of thread that is neither a row nor a row turn, 16 mm of it over
+rows already sewn, 2.3 mm of that across the face; and up to nine lines of
+thread on the worst millimetre of a rim, where the engine today lays two. On
+the same sweep, cuts fall from 0.89 a design to 0.25 and stitches rise 3.3%.
+
+Its re-check of the fix found the collinear failures gone (1,104 builds of
+the tool's shapes: 32 failing, then none), nothing broken, and the newest
+rule of the fix itself wrong: a pass that landed and could only go on by a
+cut had been restarted from the wrong corner, a cut dearer on a spiral. It
+is the walk the cut was going to now, without the stray stitch, and a second
+re-check found it equal to that walk, point for point, in all 14 passes it
+fires on (12 of 102,888 direct calls, 2 of 17,912 passes inside designs).
+Left, and older than the flag: pull compensation shrinks an island.
+
+Off, nothing moves: engine 645 passed, Studio 1,587. Not sewn. Not built: row
 stagger, and tie stitches at a cut. Flip is Kent's; MASTER_SCOPE defect 52,
 "Waiting on Kent" 22.
 *(built 2026-10-03 — renders `docs/renders/fill-columns-2026-10-03/`)*

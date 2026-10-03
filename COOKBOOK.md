@@ -1007,14 +1007,14 @@ sews nothing and cuts the smallest shape that contains it.
   starts inside a shape.
 - **A cut-out is clear of the needle, not yet of thread (2026-10-03).** The
   JS fill goes from one span of a split row straight to the next, so every
-  row lays a float (or, under 4 mm, a stitch) across the hole, and the
-  preview cannot show it because `render.js` draws no jumps. The cure is
-  built OFF: `buildQualityDesign({ fillColumns: true })` sews a forked FILL
+  row lays a float (or, under 4 mm, a stitch) across the hole. The Studio's
+  field shows it only with its **Jumps** toggle on, which is off by default.
+  The cure is built OFF: `buildQualityDesign({ fillColumns: true })` sews a forked FILL
   shape column by column (`fill.js` `opts.columns`, a port of the Python
   `_columns`) and goes ROUND a hole instead of crossing it. A satin shape is
   untouched by it, and so is a fill with no hole and no inside corner. None
   of `generate.js`'s three callers passes it; the flip is Kent's (MASTER_SCOPE
-  defect 52). It has not been sewn. Four things to know before touching it:
+  defect 52). It has not been sewn. Five things to know before touching it:
   - Every move is asked what ground it runs over (`groundUnder`): on the
     ground it may float, on the rim it is sewn, deeper than `openTol` into
     open ground it must go round or be cut.
@@ -1028,10 +1028,16 @@ sews nothing and cuts the smallest shape that contains it.
   - Change a rule, then run the seeded shapes ("shapes nobody chose" in
     `test/fill.test.js`) with more of them than the suite carries, and mutate
     the rule to see a test die. Two rules here were wrong and green.
+  - Random shapes never run a move along a line of their own corners, and a
+    drawn badge or U does it all the time. Ask the ground test both ways
+    round on whole-number shapes ("whole-number shapes" in the same file),
+    and sweep every preset in `FABRICS.FABRICS`: terry sews its fill upward,
+    and that was the direction a third audit found wrong.
 
   To SEE thread rather than penetrations, run
   `node tools/fill-columns-sheet.mjs`: it draws four manual-lane shapes off
-  beside on, floats in red, and prints the cost table.
+  beside on, floats in red, and prints the cost table. In the Studio, the
+  field's Jumps toggle draws every needle-up move as a dashed line.
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 

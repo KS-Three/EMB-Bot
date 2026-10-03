@@ -8171,9 +8171,18 @@ per MODEL, S-1501 first, everyone else types a speed.
 for as long as it existed while every fill row of the browser engine laid
 thread across that hole: 76 untrimmed floats over a 12 mm cut-out, 912 mm of
 it, and 20 plain stitches straight across a 3 mm one. Both ends of each land
-on the rim, so nothing is "inside". The preview agreed with the test for the
-same reason: `render.js` draws no jumps. The screen, the suite and the file
-were three views, and two of them could not see the defect.
+on the rim, so nothing is "inside". The Studio's field agreed with the test
+by default: it draws jumps only with its **Jumps** toggle on. The screen, the
+suite and the file were three views, and two of them did not show the defect.
+
+**And this entry's own first draft was wrong about the screen.** It said "the
+preview cannot show it: `render.js` draws no jumps", and six other documents
+of the same change said it with it. `src/render.js` is the PDF sheet's
+renderer. The field is `app/src/lib/preview.js`, the toggle is on its toolbar
+(an Ember-audit follow-up, `strands.js` says), and with it on that badge
+draws 77 dashed lines across the cut-out. One renderer had been read and the
+claim was about the app. Found the same day, by grepping the app for the word
+"jump" while looking for something else.
 
 **What to do with it:**
 
@@ -8184,6 +8193,10 @@ were three views, and two of them could not see the defect.
 - **Leave the `end` record out of it.** It sits at the origin, which is
   inside a centred hole; counted as a move it reads as one float that is not
   there. It cost one wrong red here.
+- **Before writing "the screen cannot show it", grep the APP for the word.**
+  There are two renderers (`src/render.js` for the PDF sheet,
+  `app/src/lib/preview.js` for the field), and the field has view toggles:
+  Jumps, Trims, Outlines. To see a float on a real design, turn on Jumps.
 - **A margin that is "one pitch" is a different size on every pass.** A row
   turn inside one column joins two row ends on adjacent edges of the hole,
   and the chord clips the corner by less than the pitch. At a fill's 0.15 mm
@@ -8264,5 +8277,43 @@ were three views, and two of them could not see the defect.
   over when the move lies on a ring's own edge (always the rim), and asking
   again about every start further along a row already found blocked. Then a
   grid of edges. 2,025 holes: from 94 s to 1.3.
+
+**What the third audit added** (one real regression, and it was in the
+question every move is asked):
+
+- **A rule that COUNTS crossings does not FIND them.** The scanline's
+  half-open rule gives a corner lying on the line to the side its edge leaves
+  by. That is right for parity, and it had been reused to cut a move where it
+  crosses the boundary. Along the tops of a U's two arms, right to left,
+  neither wall of the mouth was a crossing, and the mouth read as filled
+  ground. The same two points left to right read as open. The sheet's own wide
+  U, under terry, sewed 14.8 mm of fill across its notch.
+  **Ask a geometric question both ways round, and on whole-number shapes**,
+  where corners share a line. 9,000 random stars never ran a move along a line
+  of corners: the audit's 115 wrong answers in 176,672 random moves were all
+  collinear, and a drawn badge, letter or U is collinear all the time.
+- **And "on the line" means within rounding, not exactly.** Every fill but a
+  level one turns the shape first. A rule that stops only at a corner exactly
+  on the line gets 205 of 3,599 angles wrong.
+- **Three presets are not the presets.** Every sweep here ran no fabric,
+  pique and cap. Terry's underlay ends at the bottom, so its fill is sewn
+  upward, and upward was the direction that failed. Sweep `FABRICS.FABRICS`,
+  and treat where a pass is ENTERED from as an input like any other.
+- **Run the tool's own drawings through the suite.** The shape that failed
+  was on the sheet the README shows.
+- **A time measured at one row angle is the time at that angle.** "0.4 to
+  1.3 seconds on 2,025 holes" was the engine's own angle. At 30 degrees the
+  audit measured 3.5 to 18. One loop was 90% of it: a scan of every corner
+  for the nearest, inside a shortest-path search. A heap with the same
+  tie-break finds the same route (1,500 recorded designs hash the same), and
+  the stress shape is in the tool's table now.
+- **"None" is a rate with its denominator left off.** "No cut on a holed
+  shape" was true of the 48 it was measured on. Of the audit's 3,317, 95 keep
+  one. Print the rate and say where the exceptions are.
+- **Ask the auditor for what was NOT measured.** Travel was the cure and
+  nothing had measured where it lies: on average 16 mm of thread that is not
+  a row over rows already sewn in each holed fill, and up to nine lines of
+  thread on the worst millimetre of a rim. That goes to whoever decides the
+  flip, not into a footnote.
 *(measured 2026-10-03 — `test/fill.test.js`, `test/digitize.test.js`,
 `tools/fill-columns-sheet.mjs`; MASTER_SCOPE defect 52; scope-history 10-03)*
