@@ -2451,7 +2451,7 @@ def snap_region_edges(labels: np.ndarray, valid: np.ndarray, lab_img: np.ndarray
 
 def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
             split_tonal=False, shade_demand=False, design_ramp=None,
-            thin_population=False, snap_edges=False) -> Quant:
+            thin_population=False, snap_edges=False, keep_counters=False) -> Quant:
     h, w = p.rgb.shape[:2]
     valid = ~p.bg_mask
     flat_rgb = p.rgb.reshape(-1, 3)
@@ -2654,8 +2654,11 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     # photo lane -- see stage3_segment.resolve_small_regions for the
     # measurement. Photo quantisation makes sub-floor fragments mutually
     # adjacent everywhere, so chaining stops discriminating here.
+    # `keep_counters` is the caller's gate, like `thin_population`: read on
+    # `true_lab`, the raster's own colours, since every region here is layer 0.
     kept, floor_warnings = resolve_small_regions(
-        regions, cfg, p.px_per_mm, chain_rescue=False)
+        regions, cfg, p.px_per_mm, chain_rescue=False,
+        lab_img=true_lab if keep_counters else None, keep_counters=keep_counters)
 
     return kept_masks_to_quant(
         p,

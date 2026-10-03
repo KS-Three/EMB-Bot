@@ -739,6 +739,35 @@ class PipelineConfig:
     # holding OFF beside the teal patch being kept ON, and
     # `test_flag_defaults_on` there pins this default itself.
     keep_thin_strokes: bool = True
+    # A letter's counter on a COLOURED ground stays a hole
+    # (`stage3_segment.resolve_small_regions`). Measured 2026-10-02 on clean
+    # 4 mm "BAR & RESTAURANT": on white the counters are background, never
+    # regions, and the letters sew as letters; on a yellow panel each counter
+    # is a region of the ground's colour under `min_detail_mm`² (0.56-1.88
+    # against 2.25 mm²), the small-region floor absorbs all nine into the
+    # letter around them (teal 84 -> 117 mm²), and each letter sews as one
+    # bar. That floor asks "is this shape big enough to sew", and a counter is
+    # not a shape to sew — it is a gap to keep.
+    #
+    # ON, a sub-floor region ABOUT TO BE ABSORBED is kept out of its
+    # neighbour when (1) one region holds nine tenths of its one-pixel ring,
+    # and (2) it reads as the ground that region itself sits on: nearer the
+    # colour of the encloser's largest other neighbour than the encloser's
+    # own. The letter's polygon carries the hole. What is sewn in it is
+    # today's answer: a gap the run tier can sew is rescued and sewn as it
+    # already is; a smaller one is tagged `counter` and
+    # `enclosed_background` and left unstitched.
+    #
+    # Measured on that panel, OFF -> ON: 0 -> 9 counters, 3,798 -> 4,253
+    # stitches, 22 -> 25 trims, the words legible. Corpus (26 fixtures at
+    # 80 mm): `docs/renders/keep-counters-2026-10-02/README.md`.
+    #
+    # What it does NOT do: lower stage 4's hole floor (`min_detail_mm`² x
+    # 0.25), so a counter under 0.56 mm² is still filled there; read a
+    # counter the raster has already closed (bridge's JPEG: one of about
+    # eight is visible by colour, and bridge does not move); or put the
+    # ground's thread in the counter. OFF is the engine as it was.
+    keep_counters: bool = False
     # Widen rescued lettering to a sewable column
     # (`textcluster.regularize_text_clusters`, plan §4d, PR 4). The strokes
     # `keep_thin_strokes` keeps are 0.3-0.5 mm of ink: under

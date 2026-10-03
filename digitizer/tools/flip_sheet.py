@@ -221,6 +221,10 @@ ARMS: dict[str, dict] = {
     # against. `off` read against `off_rc` is the flip's price on the
     # shipped engine, sign reversed.
     "off_rc": {"robust_region_colour": False},
+    # 2026-10-02: `keep_counters` — a letter's counter on a coloured ground
+    # stays a hole instead of being absorbed by the small-region floor
+    # (`config.py`). Built OFF; this arm is its price on the corpus.
+    "counters": {"keep_counters": True},
 }
 
 # An arm is a "single" if it flips exactly one flag. Derived, not listed, so
