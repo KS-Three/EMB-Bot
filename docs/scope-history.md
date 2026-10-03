@@ -17531,12 +17531,13 @@ Not sewn. Flip is Kent's: "Waiting on Kent" 23.
 ## 2026-10-03 — A ring inside a hole is an island: three nested rings sewed nothing, and pull compensation shrank it (browser builder, fixed)
 
 The `fillColumns` entry of this date ends "Left, and older than the flag:
-pull compensation shrinks an island." This is that, and its twin. `shape.holes` carries every
-ring inside the outline, and the fill is even-odd, so a ring inside a hole is
-filled ground again: an island. `groupRingsIntoShapes` hands a bullseye over
-as the outline plus [hole, island]. Two readers in `buildQualityDesign` took
-every ring in that list for a hole. Measured on `origin/main` at `aee5d876`,
-10 px per mm, left chest, the same with `fillColumns` absent, off or on:
+pull compensation shrinks an island." This is that, and its twin.
+`shape.holes` carries every ring inside the outline, and the fill is
+even-odd, so a ring inside a hole is filled ground again: an island.
+`groupRingsIntoShapes` hands a bullseye over as the outline plus [hole,
+island]. Two readers in `buildQualityDesign` took every ring in that list
+for a hole. Measured on `origin/main` at `b30626b5`, 10 px per mm, left
+chest, the same with `fillColumns` absent, off or on:
 
 - **Three nested rings built nothing.** The area was the outline's minus
   every ring's. A 40 mm box, a ring 4 mm in and one 4 mm inside that come to
@@ -17562,11 +17563,11 @@ Where the ground between is not more than twice the compensation the two
 rings cross, and under even-odd crossed rings are a fill sewn where neither
 was drawn: a 0.4 mm moat on terry came out 0.8 mm wide, 0.2 mm of it taken
 from the island and 0.2 from the band. So the rule this function already has
-for a hole too thin to shrink
-is applied: a ring that cannot be moved is sewn as drawn. An island that,
-grown, no longer lies against every other ring the way it was drawn stays as
-drawn; a hole that, shrunk, still meets such an island stays as drawn too.
-That is a step, not a slope. Terry, a moat as drawn and as sewn, mm:
+for a hole too thin to shrink is applied: a ring that cannot be moved is sewn
+as drawn. An island that, grown, no longer lies against every other ring the
+way it was drawn stays as drawn; a hole that, shrunk, still meets such an
+island stays as drawn too. That is a step, not a slope. Terry, a moat as
+drawn and as sewn, mm:
 
 | drawn | 4.0 | 2.0 | 1.3 | 1.2 | 1.0 | 0.7 | 0.6 | 0.4 |
 |---|---|---|---|---|---|---|---|---|
@@ -17579,11 +17580,11 @@ where the island has to stay, and not at all at one compensation or less,
 where the whole of that hole's ring is sewn as drawn, its far walls included.
 
 **Not the helper #606 left.** Its edge run asks ONE corner of a ring. Asked
-that way here, the second of two overlapping cut-outs is an island: 532 of
-14,472 designs with no island moved, 336 of them with the flag off. Asking
+that way here, the second of two overlapping cut-outs is an island: 588 of
+15,992 designs with no island moved, 364 of them with the flag off. Asking
 every corner calls a box laid across a U's notch one. So two rings are nested
 only if no edge of one meets an edge of the other. The edge run keeps its
-own test. Given this one, it moved 168 flag-on designs, all on four malformed
+own test. Given this one, it moved 196 flag-on designs, all on four malformed
 shapes, and doubled the underlay sewn off the fill's ground (overlapping
 cut-outs on canvas, 7.5 to 15 mm).
 
@@ -17591,8 +17592,8 @@ cut-outs on canvas, 7.5 to 15 mm).
 
 | | `origin/main` | now |
 |---|---|---|
-| 14,472 designs with NO island (95 shapes, 60 of them seeded, and a three-colour design; no fabric and all seven presets; 19 option sets, `fillColumns` absent, off and on) | | all byte-identical |
-| 1,520 island designs | | 1,368 changed; the 152 that did not are the no-fabric ones that already sewed |
+| 15,992 designs with NO island (95 shapes, 60 of them seeded, and a three-colour design; no fabric and all seven presets; 21 option sets, `fillColumns` absent, off and on, `ties` on in two) | | all byte-identical |
+| 1,680 island designs | | 1,512 changed; the 168 that did not are the no-fabric ones that already sewed |
 | 150 seeded island shapes, 7 presets, both walks (2,100 designs): built nothing | 840 | 0 |
 | flag off: the fill's rings stop short of drawn ground | 615 of the 630 that built | 0 of 1,050 |
 | flag off: drawn ground with no fill thread within a row of it (160 points a design) | 154 designs, worst 5.1 mm | 0 of 168,000 points |
@@ -17619,5 +17620,5 @@ Left as they are: `underlayRuns`' `center_run` keeps off every ring in
 `fillColumns` audit counted among its 36 were measured before this and not
 again.
 
-Engine 653 passed. Not sewn.
+Engine 668 passed. Not sewn.
 *(fixed 2026-10-03 — `islandsAmong`, `fillRingsOf` in `src/digitize.js`; `test/digitize.test.js`)*
