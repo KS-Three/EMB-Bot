@@ -1130,8 +1130,7 @@
 
 <header class="topbar">
   <div class="topbar-logo">
-    <span class="logomark" aria-hidden="true">EMB</span>
-    <span class="logo">Bot Studio</span>
+    <span class="wordmark">EMB·BOT</span>
     <span class="undoredo">
       <button type="button" class="undo-btn" disabled={!canUndo} on:click={undoEdit} title="Undo (Ctrl+Z)" aria-label="Undo"><Icon name="undo" size={16} /></button>
       <button type="button" class="undo-btn" disabled={!canRedo} on:click={redoEdit} title="Redo (Ctrl+Y)" aria-label="Redo"><Icon name="redo" size={16} /></button>
@@ -1147,9 +1146,7 @@
     <button type="button" class="mydesigns" bind:this={myDesignsBtn} on:click={() => (drawerOpen = !drawerOpen)}>
       My designs <span class="badge">{projects.length}</span>
     </button>
-    <button type="button" class="font-credits-btn" bind:this={creditsBtn} on:click={() => openCredits(creditsBtn)}>
-      Font credits
-    </button>
+    <button type="button" class="font-credits-btn" aria-label="Font credits" title="Font credits" bind:this={creditsBtn} on:click={() => openCredits(creditsBtn)}>?</button>
   </div>
 </header>
 

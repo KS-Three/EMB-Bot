@@ -622,9 +622,9 @@ test("every control in the configurator has an accessible name", async ({ page }
 test("a page load produces no console errors and no failed requests", async ({ page }) => {
   // The only one there has ever been is the /favicon.ico 404 every browser
   // makes when a page declares no icon — which is also why a customer's
-  // bookmark showed a blank tab. `app/public/favicon.svg` (the topbar's own
-  // accent tile, with a stitch zigzag instead of the word "EMB", which is
-  // illegible at 16 px) settles both.
+  // bookmark showed a blank tab. `app/public/favicon.svg` (an accent tile with a
+  // stitch zigzag instead of the word "EMB", which is illegible at 16 px; the
+  // top bar itself now carries a plain wordmark, not that tile) settles both.
   const problems = [];
   page.on("console", (m) => { if (m.type() === "error") problems.push("[console] " + m.text().slice(0, 160)); });
   page.on("pageerror", (e) => problems.push("[pageerror] " + e.message.slice(0, 160)));

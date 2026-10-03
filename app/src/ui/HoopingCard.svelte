@@ -42,7 +42,7 @@
     border-bottom: 1px solid var(--border);
   }
   dt { color: var(--muted); margin: 0; }
-  dd { margin: 0; font-weight: var(--fw-semibold); text-align: right; }
+  dd { margin: 0; font-weight: var(--fw-medium); text-align: right; }
   small {
     display: block;
     font-weight: var(--fw-regular, 400);

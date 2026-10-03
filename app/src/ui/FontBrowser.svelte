@@ -278,7 +278,7 @@
     color: var(--muted);
     cursor: pointer;
   }
-  .fb-close:hover { border-color: var(--accent); color: var(--accent); }
+  .fb-close:hover { border-color: var(--ink); color: var(--ink); }
 
   .fb-controls {
     display: flex;
@@ -311,7 +311,7 @@
     font-size: var(--fs-sm);
     cursor: pointer;
   }
-  .fb-chip:hover { border-color: var(--accent); }
+  .fb-chip:hover { border-color: var(--ink); }
   .fb-chip.active { border-color: var(--accent); background: var(--tint); color: var(--accent); }
 
   .fb-body {
@@ -341,7 +341,7 @@
     text-align: left;
     cursor: pointer;
   }
-  .fb-tile:hover { border-color: var(--accent); }
+  .fb-tile:hover { border-color: var(--ink); }
   .fb-tile.sel { border-color: var(--accent); background: var(--tint); }
 
   .fb-tile-img {
@@ -350,12 +350,12 @@
     justify-content: center;
     height: 48px;
     border-radius: var(--radius-s);
-    background: var(--bg);
+    background: var(--fill);
     overflow: hidden;
   }
   .fb-tile-img img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
   .fb-tile-noimg { font-size: var(--fs-sm); color: var(--muted); letter-spacing: var(--tracking-slight, 0.02em); }
 
-  .fb-tile-name { font-size: var(--fs-sm); font-weight: var(--fw-semibold, 600); color: var(--ink); }
+  .fb-tile-name { font-size: var(--fs-sm); font-weight: var(--fw-medium, 500); color: var(--ink); }
   .fb-tile-band { font-size: var(--fs-xs); color: var(--muted); }
 </style>
