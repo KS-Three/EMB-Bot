@@ -133,6 +133,7 @@ from .stage6_satin import strip_splits
 from .stage6_scanline import SCANLINE_LEVEL_STRIDES, SCANLINE_ROW_MM
 from .stage6_streamline import (STREAMLINE_D_SEP_DARK_MM,
                                 STREAMLINE_D_SEP_LIGHT_MM)
+from . import edge_wobble as _edge_wobble
 from . import legibility as _legibility
 from .stitches import StitchPlan
 from .textcluster import (LETTER_MAX_HEIGHT_MM, LETTER_MIN_HEIGHT_MM,
@@ -3644,6 +3645,37 @@ def _tiny_step_metrics(plan: StitchPlan) -> dict:
             "tiny_step_fraction": round(tiny / total, 3) if total else None}
 
 
+_EDGE_WOBBLE_KEYS = ("wobble_p95_mm", "wobble_std_mm", "wobble_max_mm")
+
+
+def _edge_wobble_metrics(result: PipelineResult | None,
+                         plan: StitchPlan) -> dict:
+    """How far the sewn edge wanders about its own outline, as NUMBERS only.
+
+    Kent's most frequent complaint is "right shapes, bad edges", and until
+    2026-10-03 nothing in this report could see it: `logo_whitebg` and a logo
+    he calls jagged were graded without either number moving on the edge
+    (MASTER_SCOPE defect 46). The instrument is `edge_wobble.analyse_plan`,
+    unchanged, read against the regions' own polygons.
+
+    No finding and no deduction, on two rulings. Law 37: score smoothness
+    monotonically and invent no cutoff -- satin reads about 0.09 mm on every
+    real logo with every defence on, so a line would fire on all of them or
+    none. And Kent, 2026-10-02: the tool is not to warn the customer about
+    what it should fix. These ride out so a change that moves the edge shows
+    in `corpus_scorecard.diff`; like `raw_score`, they are inert there until
+    the baseline is recaptured.
+
+    None without the regions (no outline to measure against), and None when
+    no edge series is long enough to read -- never 0.0, which is a clean edge.
+    """
+    if result is None:
+        return {f"edge_{k}": None for k in _EDGE_WOBBLE_KEYS}
+    row = _edge_wobble.analyse_plan(
+        {r.shape_id: r.polygon for r in result.regions}, plan)
+    return {f"edge_{k}": row[k] for k in _EDGE_WOBBLE_KEYS}
+
+
 def run_preflight(result: PipelineResult, plan: StitchPlan,
                   cfg: PipelineConfig | None = None,
                   image=None) -> dict:
@@ -3796,6 +3828,7 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
 
     metrics["stitch_count"] = plan.stats.stitch_count
     metrics.update(_tiny_step_metrics(plan))
+    metrics.update(_edge_wobble_metrics(result, plan))
 
     # Last, over the finished list: it tags findings, it does not make any.
     _tag_break_risk(findings, plan, result)
