@@ -28,8 +28,8 @@ move after a cut alike. This sheet tells them apart.
 | shape | floats off | floats on | cuts off | cuts on | stitches off | stitches on |
 |---|---|---|---|---|---|---|
 | Badge, two cut-outs (12 mm and 3 mm) | 79 (915 mm) | 3 (48 mm) | 1 | 0 | 3,149 | 3,253 (+3.3%) |
-| Ring (an O) | 89 (1380 mm) | 2 (16 mm) | 1 | 0 | 1,579 | 1,700 (+7.7%) |
-| Two counters (a B) | 148 (1248 mm) | 3 (40 mm) | 1 | 0 | 1,779 | 1,957 (+10.0%) |
+| Ring (an O) | 89 (1380 mm) | 2 (16 mm) | 1 | 0 | 1,579 | 1,698 (+7.5%) |
+| Two counters (a B) | 148 (1248 mm) | 3 (40 mm) | 1 | 0 | 1,779 | 1,955 (+9.9%) |
 | Wide U (no hole at all: a notch) | 121 (1894 mm) | 1 (1 mm) | 1 | 0 | 2,092 | 2,230 (+6.6%) |
 
 *(measured 2026-10-03 with `node tools/fill-columns-sheet.mjs`, which prints
@@ -111,27 +111,31 @@ straight distance if that is more. Past it the thread is cut.
 | shape | preset | rows | cuts off | cuts on | stitches | time off | time on |
 |---|---|---|---|---|---|---|---|
 | 36 square holes of 4 mm, 60 mm badge | no fabric | the engine's own angle | 1 | 0 | +1.4% | 5 ms | 15 ms |
-| 36 square holes of 4 mm, 60 mm badge | no fabric | 30° | 1 | 0 | +14.0% | 10 ms | 86 ms |
+| 36 square holes of 4 mm, 60 mm badge | no fabric | 30° | 1 | 0 | +12.7% | 10 ms | 86 ms |
 | 36 square holes of 4 mm, 60 mm badge | pique_knit | the engine's own angle | 1 | 0 | +2.7% | 1 ms | 35 ms |
-| 36 square holes of 4 mm, 60 mm badge | pique_knit | 30° | 1 | 0 | +5.4% | 2 ms | 50 ms |
-| 36 square holes of 4 mm, 60 mm badge | terry_towel | 30° | 1 | 0 | +10.6% | 3 ms | 58 ms |
-| 36 round holes of 4 mm, 60 mm badge | terry_towel | 30° | 1 | 0 | +12.1% | 4 ms | 25 ms |
-| 196 square holes of 3 mm, 100 mm | no fabric | 30° | 1 | 0 | +9.1% | 8 ms | 217 ms |
+| 36 square holes of 4 mm, 60 mm badge | pique_knit | 30° | 1 | 0 | +4.6% | 2 ms | 50 ms |
+| 36 square holes of 4 mm, 60 mm badge | terry_towel | 30° | 1 | 0 | +10.3% | 3 ms | 58 ms |
+| 36 round holes of 4 mm, 60 mm badge | terry_towel | 30° | 1 | 0 | +11.6% | 4 ms | 25 ms |
+| 196 square holes of 3 mm, 100 mm | no fabric | 30° | 1 | 0 | +8.8% | 8 ms | 217 ms |
 | 196 square holes of 3 mm, 100 mm | pique_knit | 30° | 1 | 0 | +8.1% | 7 ms | 135 ms |
 | 196 square holes of 3 mm, 100 mm | terry_towel | 30° | 1 | 0 | +12.5% | 9 ms | 158 ms |
-| 2,025 square holes of 1.2 mm, 100 mm | no fabric | 30° | 1 | 0 | +19.8% | 212 ms | 2075 ms |
+| 2,025 square holes of 1.2 mm, 100 mm | no fabric | 30° | 1 | 0 | +19.1% | 212 ms | 2075 ms |
 | 2,025 square holes of 1.2 mm, 100 mm | pique_knit | the engine's own angle | 1 | 4 | +20.0% | 40 ms | 1221 ms |
-| 2,025 square holes of 1.2 mm, 100 mm | structured_cap | 30° | 1 | 2 | +40.6% | 49 ms | 1580 ms |
-| 2,025 square holes of 1.2 mm, 100 mm | terry_towel | the engine's own angle | 1 | 34 | +21.0% | 51 ms | 920 ms |
-| 2,025 square holes of 1.2 mm, 100 mm | terry_towel | 30° | 1 | 8 | +30.0% | 71 ms | 2728 ms |
+| 2,025 square holes of 1.2 mm, 100 mm | structured_cap | 30° | 1 | 2 | +38.8% | 49 ms | 1580 ms |
+| 2,025 square holes of 1.2 mm, 100 mm | terry_towel | the engine's own angle | 1 | 28 | +23.1% | 51 ms | 920 ms |
+| 2,025 square holes of 1.2 mm, 100 mm | terry_towel | 30° | 1 | 8 | +29.8% | 71 ms | 2728 ms |
 
 *(measured 2026-10-03 — the same tool prints all 32 rows, of which these are
 fourteen. On the 36-hole and 196-hole shapes every one of the 24 rows has 0
 in "cuts on". Times are one run on a laptop. The last shape is a stress
-test, not a design.)*
+test, not a design. Cuts and stitches are as re-measured after "A corner on
+a scanline", below: 19 of the 32 rows moved in stitches and one in cuts. The
+two time columns are the run before it, on a quieter laptop.)*
 
 What follows is the third audit's count on its own sweep *(measured
-2026-10-03 — 9,869 sound designs, re-checked on this build)*.
+2026-10-03 — 9,869 sound designs, re-checked on this build)*. It is the
+build before "A corner on a scanline", at the foot of this page; what that
+moved is given there.
 
 - **Cuts fall from 0.89 a design to 0.25.** Fewer on 6,866 designs, more on
   433. The one cut in the "off" column is center-out's own, which a forked
@@ -153,7 +157,7 @@ What follows is the third audit's count on its own sweep *(measured
   one over inside a shape: below.)
 - **Stitches: 3.3% more in all.** By design the median is +4.3%, nine in ten
   are under +13.5%, and the worst is +36.9% (a 16-tooth gear with a hole).
-  A dense grid of small holes costs most: up to +41% on the stress shape.
+  A dense grid of small holes costs most: up to +39% on the stress shape.
 - **Time: under a quarter of a second up to 196 holes.** The stress shape
   takes 0.6 to 2.7 seconds (off: 0.04 to 0.2). The audit found 3.5 to 18
   seconds on a grid like it with the rows at 30°, in one loop that is now a
@@ -216,6 +220,11 @@ Each of these is the same with the option on or off.
   on.
 - **The finishing outline (`outline: true`) is sewn after the fill**, so a
   float to it lies on top of the fill. No caller in the Studio passes it.
+- **A plain fill whose top is a single corner starts with two penetrations
+  in that corner.** The first scanline passes through it and finds a span of
+  no length, and the plain walk sews what it finds: 1,094 times in 8,255
+  designs built with the option on. It never cuts for one. (The column walk
+  leaves that span out: "A corner on a scanline", below.)
 
 ## How it got here
 
@@ -235,5 +244,189 @@ clipper, handed the claims as claims.
   that said more than had been measured.
 
 All of that is changed in this build. `docs/scope-history.md`, 2026-10-03.
+
+## A corner on a scanline
+
+Found the same day by the independent audit of the lock stitches (PR #609),
+which built 12,880 designs with this option on: **18 threads were a stub.** A
+cut, two penetrations in one hole, and the end of the design.
+
+A scanline that passes exactly through a corner pointing up the rows finds
+both of that corner's edges and pairs them: a span of no length. The first
+scanline sits on the shape's topmost point, so a shape whose top is a single
+corner has one. A drawing on whole numbers has one wherever a corner lands
+on a row: a comb's teeth 28 px wide, under rows 1.5 px apart. The walk made
+a column of it, travelled to it like any other, and sewed it: two
+penetrations in one hole. Left for last with no way round, it was cut to.
+The Python engine has always left such a span out; the port had not. The
+columns are now cut from the rows without it.
+
+Before and after, on 8,255 designs (4,095 drawn on whole numbers, 4,160
+random; all seven presets and none), option on:
+
+| | before | after |
+|---|---|---|
+| threads that never leave one hole | 106, on 66 designs | **0** |
+| two penetrations on one point, in a pass the column walk sews | 11,797, on 6,597 designs | 159, on 121 |
+| cuts | 2,354 | 2,196 |
+| stitches | 19,301,027 | 19,242,860 |
+| sewn thread | 57,773 m | 57,630 m |
+| float length | 292 m | 318 m |
+| designs with thread deeper than a fill row off the cover | 12 | 12, none with more of it |
+
+Option off or absent, all 8,255 are byte for byte what they were. 6,550 of
+the 7,269 designs with a pass the column walk sews changed in some stitch.
+On the fill itself, 9,000 seeded shapes: a doubled point in 7,348 of 8,226
+column walks before and in none after, with the cuts the same shape for
+shape. With `ties` on as well, the same 8,255 carry 20,902 locks where they
+carried 21,006, and 2,442 of them on a stitch under 0.3 mm where 2,790 were.
+
+*(measured 2026-10-03 — both engines side by side on one sweep;
+`test/fill.test.js`, `test/digitize.test.js`, "found by the audit of the
+lock stitches")*
+
+**What it costs:**
+
+- **A cut more on 27 designs, one each; fewer on 125.** On 8, combs under
+  fleece and terry, it is inside an underlay: the walk had travelled 109 mm
+  through that corner to the next tooth, which the budget allows when the
+  corner is far enough off (four times the straight line). The move that
+  trip stood in for is over the budget, so it is a cut: 3 → 4 on a comb of
+  six teeth. On the other 19 it is between two passes: the first used to end
+  on that corner (in 9, after 20 to 81 mm of travel to it) and the next
+  could be floated to from there. From where the pass ends now, it cannot.
+  Each of the 27 sews 18 to 125 mm less thread.
+- **The floats into a pass are longer: 9% in all, 30 → 33 mm on the median
+  design.** A pass may begin at any corner the thread can float to uncut,
+  and takes the one that leaves the walk best placed for the move after its
+  first column. Beside a tip that move was one stitch to the corner of no
+  length, which counted as well placed and led nowhere: the walk then
+  travelled back. Now it looks further for a corner that is, and floats
+  further to reach it (551 of 1,989 passes read, and most of the rise).
+  Those floats lie on ground the fill covers, and the travel they replace is
+  part of the 142 m of sewn thread the table loses.
+- **The stress shape under terry builds slower:** about twice as long at the
+  engine's own angle (with 28 cuts where there were 34) and a fifth longer
+  at 30°. Its other six rows are within a fifth either way *(timed side by
+  side, best of three, on a busy laptop)*.
+
+**What it leaves**, with the option on:
+
+- **Two columns that touch at a point: the 159 above.** The move from one to
+  the other has no length and was sewn all the same: two penetrations in
+  one hole. Gone since, with what else made them: "A move of no length",
+  below.
+- **A thread of one stitch.** A short row of a lattice underlay at the tip
+  of a comb's tooth can still be cut to and cut from: 52 on 24 designs, all
+  under fleece or terry, 0.7 to 2.5 mm long (94 on 42 before). Eight designs
+  gained one, with the cut above.
+
+## A move of no length
+
+What the section above left: on 121 of the same 8,255 designs a pass the
+column walk sews put two penetrations on one point, 159 times. Traced in a
+copy of the engine, every one was a stitch to the point the needle was
+already on.
+
+**152 were the move between two spans of one scanline that meet at a
+point**, with a gap of no width between them. Each span has a length and is
+rightly a column. The move from the end of one to the start of the other
+has none. Three things make such a pair:
+
+- **A wall on a scanline: 136.** The scanline runs along a wall of a hole or
+  a notch that a quarter turn has left a hair off level (3e-14 px on a 10 mm
+  wall), and finds the wall's corner twice.
+- **A corner on a scanline: 15.** The top of a round hole, the inside corner
+  of a star.
+- **A notch of no width: 1 here, and far the most where it happens.** A
+  notch exactly twice the pull compensation wide (1.2 mm under terry) is
+  closed to a slit by the outline the fill is sewn to. Every row that
+  crosses the slit is two spans that meet on it, so the hole was doubled
+  once a ROW: 81 of the 649 stitches of an H under terry, 680 on one comb
+  under fleece. I had read this one as a corner. The independent re-measure
+  told them apart.
+
+**7 were a pass landing on its own first column.** When the thread can
+float to no corner a pass could start from, it lands on the nearest corner
+it can reach and travels from there. Its first move was then to the corner
+it stood on.
+
+128 of the 159 were in the fill and 31 in an underlay. None had a cut beside
+it, and none made a stub.
+
+**In 73 of the 159 the two points were not the same numbers.** They differ
+in their last digits, by 2e-12 px at most: a scanline misses a corner by a
+rounding error, or two edges do not meet to the last bit. A rule that asked
+for equal numbers would have left them. "The same point" is the measure the
+walk already uses round a ring: a millionth of a pixel.
+
+Now a move of no length lays no stitch (`sewTo`, `src/fill.js`): the needle
+is already there. Before and after, on those 8,255 designs, option on:
+
+| | before | after |
+|---|---|---|
+| two penetrations on one point, in a pass the column walk sews | 159, on 121 designs | **0** |
+| stitches | 19,242,860 | 19,242,701 |
+| cuts | 2,196 | 2,196 |
+| sewn thread | 57,630 m | 57,630 m |
+| float length | 318 m | 318 m |
+
+**Nothing else moves.** Read record by record, each new stitch file is the
+old one with those penetrations taken out, 159 in all, and no other
+difference. Option off or absent, all 8,255 are byte for byte what they
+were. No cut or stitch count in either table above changes, nor the sheet,
+nor the lock-stitch census (both tools re-run on both engines). With `ties`
+on, the 121 designs carry the same 276 locks on the same legs.
+
+**A drawing on whole numbers does it far more often than that sweep says.**
+A second one, 240 shapes drawn on whole numbers only (combs, T, L, U, E, H,
+staircases, badges with square holes, houses) as 8,400 designs: 1,727 on
+278 designs before and none after. 1,420 of them lay along slits, on ten
+combs whose gaps are twice fleece's pull compensation, and 6 were one leg
+of a longer way through the columns' corners, not a move of their own: the
+rule sits where a stitch is laid, so it has them too. Cuts 3,869 and 3,869.
+
+*(measured 2026-10-03 — both engines side by side; `test/fill.test.js` "a
+move of no length", `test/digitize.test.js`)*
+
+**The independent re-measure** built 49,920 designs of its own: 780
+drawings, 22 families on whole numbers and 120 random, spread over the four
+quarter turns, under all seven presets and none, with its own generator and
+its own reader. Option absent and option false: identical on every one.
+Option on: 1,474 such penetrations in 56,760 column-walk passes before and
+none after, cuts 7,140 and 7,140, each new file the old one with those
+records taken out. It corrected three things I had claimed:
+
+- **The notch of no width**, above: 581 of its 1,474.
+- **"On the spot of the one before it" is true before rounding, not always
+  in the file.** Two points 1e-14 px apart can fall either side of a 0.1 mm
+  boundary. In 18 of its 1,474 the old file had a stitch one unit long
+  there. It is gone all the same.
+- **One of the 1,474 was at the very end of its design**, not in
+  mid-thread. No cut beside it either.
+
+*(measured 2026-10-03 — an agent handed the claims as claims; its three
+counter-examples rebuilt here)*
+
+**What is still two stitches on one point**, with the option on. None of it
+is new, and none of it is a move:
+
+- **A stitch shorter than the file's unit: the larger part of what is
+  left.** Two penetrations a real distance apart, up to 0.14 mm, that the
+  0.1 mm file rounds onto one point: 2,689 on the 8,255 designs, 2,621 of
+  them in a column walk. The re-measure counts 15,566 on its own designs,
+  nearly all a row shorter than 0.1 mm at a tip or a sliver, and a machine
+  cannot tell one from the 159. "A row with a length, however short, is
+  still a row" is the rule that keeps them.
+- **The plain walk's doubled point**: 1,094 on the 8,255 ("Seen, not
+  changed").
+- **A thread of one stitch**, as above: 52 on 24 designs.
+
+With the option OFF the same 8,255 designs carry 16,575 such records where
+the option on now leaves 3,783: the plain walk sews every span and every
+move of no length it meets (12,344), and has its own short stitches (4,231).
+
+*(measured 2026-10-03 — the fixed engine, each record traced to the run it
+came from)*
 
 The flip is Kent's: MASTER_SCOPE defect 52, "Waiting on Kent" 22.
