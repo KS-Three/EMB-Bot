@@ -17648,3 +17648,41 @@ stagger with it. `fillFromGeom` would pass `stagger`, `minStitch` and
 `splitTol`, the two lengths divided by the fit scale as the stitch length
 beside them already is.
 *(measured 2026-10-03 — throwaway scripts over `src/fonts/bin`; `tools/long-stitch-census.mjs`)*
+
+## 2026-10-03 — Two stitches in one hole: the browser fill's stitches under the file's unit (measured; no stitch changed)
+
+The builder rounds every point to 0.1 mm, so two penetrations nearer than
+that become two `stitch` records on one point, and the writers keep the
+record: `00 00 03` in a DST, read back by pystitch as a stitch on the spot.
+It came from #617 as a count. Here it was measured by a reader of its own,
+`tools/sub-unit-stitch-census.mjs`, and by a second one, an instrumented
+`pushRun` in a scratch copy. Both give the handover's figures to the stitch.
+
+| designs | flag absent (what ships) | `fillColumns` on, after #617 |
+|---|---|---|
+| the 8,255 of the #616 and #617 sweep | 16,575 pairs on 7,097 designs: 12,344 one point before rounding, 4,231 not | 3,783 on 2,553: 1,094, then 2,621 in column-walk passes and 68 in plain |
+| 8,270 from the Studio's own shape lanes | 16,399 in tatami passes, 23,549 in satin | 7,791 and 23,549 |
+| the 49,920 of #617's audit | 76,483 on 36,183 | 21,136 on 13,189, its 15,566 among them |
+
+What they are, on the sweep with every flag absent: 12,072 are a scanline
+through a corner, mostly the plain walk's first, which sits on the shape's
+topmost point; 272 are two spans meeting at a point. The short ones are 2,700
+moves across a gap under the unit wide, 1,366 rows at a tip, 112 lone rows,
+36 turns (fleece and terry only) and 17 waists. The audit's "15,518 along a
+row" is 11,561 rows and 3,957 gap moves. No strip two rows long is narrow
+from end to end in any set. 21,205 of the satin pairs are one preset star,
+which sews 48,645 stitches at 20 mm and is flagged as its own task.
+
+Python drops a span of no length, makes a row under 0.5 mm one penetration,
+and drops a penetration within 0.01 mm of the one before it at the record
+stream. Machines differ: Barudan, Ricoma, Brother, ZSK and Dahao delete the
+record as shipped; Happy keeps it; no filter was found for Tajima, whose
+manual says to correct the data. Nothing was sewn.
+
+Three rules were priced on scratch copies of the #617 engine. A column-walk
+pass that lays no second stitch in a hole: 3,783 to 1,162, each stream the
+old one less those records, cuts unchanged. Leaving such a row out of the
+columns: 3,783 to 1,894, and 1,328 designs change some other way. No run
+laying one, behind a new flag: 16,575 to 0 and 3,783 to 0, again records
+taken out and nothing else. The choice was put to Kent.
+*(measured 2026-10-03 — `docs/sub-unit-stitches-2026-10-03.md`, `tools/sub-unit-stitch-census.mjs`)*

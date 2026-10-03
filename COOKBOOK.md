@@ -1068,6 +1068,14 @@ sews nothing and cuts the smallest shape that contains it.
   `splitTol` there, the two lengths in the layout's units: final mm,
   divided by the fit scale, times `pxPerMm`, as `fillStitchMm` beside them
   already is.
+- **Two stitch records on one point are counted, not yet ruled on
+  (2026-10-03).** The builder rounds to 0.1 mm, so a row at a tip, a move
+  across the mouth of a notch, or a scanline through a corner can put two
+  `stitch` records on one point: the needle twice in one hole, with every
+  flag absent too. `node tools/sub-unit-stitch-census.mjs [srcDir]` counts
+  them on two sets of designs and says what made each, and `--against
+  <other src>` says whether two engines' streams differ only by such
+  records. The figures and the choices: `docs/sub-unit-stitches-2026-10-03.md`.
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 
