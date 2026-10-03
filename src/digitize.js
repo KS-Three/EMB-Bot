@@ -209,6 +209,38 @@
   const EDGE_RUN_TRIES = 8;
   // How many corners round the ring it is on it will leave from instead.
   const EDGE_RUN_EXITS = 16;
+  // How far inside the fill an edge run lies, with `fillColumns`. 0.2 mm is
+  // what the engine without the flag gives at the Studio's own 10 px per mm
+  // ("2 px"); there it grows with the design, to 0.6 mm on one enlarged five
+  // times. A length on cloth should not depend on the drawing's resolution.
+  const EDGE_RUN_INSET_MM = 0.2;
+
+  // The ring an edge-run underlay is sewn on, with `fillColumns`: the drawn
+  // ring moved `insetPx` into the FILLED side -- in from the outline, OUT from
+  // a hole. Without the flag it is `insetRing`, toward the ring's own centre,
+  // which for a hole is INTO the hole: covered by the fill's pull compensation
+  // at 0.2 mm, and past it at 0.6. A ring that folds when moved is used as
+  // drawn.
+  function edgeRunRing(ring, isHole, insetPx) {
+    const moved = offsetRing(ring, insetPx, isHole);
+    const a0 = signedArea(ring), a1 = signedArea(moved);
+    if (Math.sign(a0) !== Math.sign(a1) || Math.abs(a1) < 1e-6) return ring.map((q) => ({ x: q.x, y: q.y }));
+    return moved;
+  }
+  // A shape with no hole and no inside corner. Its edge run cannot leave it
+  // -- a chord of a convex ring is inside the ring -- so `fillColumns` leaves
+  // that run exactly as it is without the flag.
+  function isConvexRing(ring) {
+    let sign = 0;
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length], c = ring[(i + 2) % ring.length];
+      const z = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+      if (Math.abs(z) < 1e-9) continue;
+      if (sign && Math.sign(z) !== sign) return false;
+      sign = Math.sign(z);
+    }
+    return true;
+  }
 
   // Build underlay point-runs for a shape under a named style. Returns an array
   // of runs (each becomes one pushRun). ctx: { fillAngle, pxPerFinalMm, maxStitch,
@@ -232,44 +264,57 @@
     const maxStitch = ctx.maxStitch;
 
     function edgeRun() {
-      const r = [ctx.runningOutline(ctx.insetRing(outer, edgeInset), { stitchLen: edgeStitch })];
-      if (!ctx.columns || !r[0].length) {
+      if (!ctx.columns || (!holes.length && isConvexRing(outer))) {
+        const r = [ctx.runningOutline(ctx.insetRing(outer, edgeInset), { stitchLen: edgeStitch })];
         for (const hh of holes) r.push(ctx.runningOutline(ctx.insetRing(hh, edgeInset), { stitchLen: edgeStitch }));
         return r;
       }
-      // With `columns` the move from one ring to the next is CUT when it
-      // crosses a hole (buildQualityDesign, between runs). Taken in drawing
-      // order, each ring began at its own first corner and stopped a stitch
-      // short of it, so that move started part-way down a hole's side and
-      // crossed the hole it had just sewn round: a cut per hole. Here the
-      // rings are taken nearest-first, each entered at the corner the thread
-      // is nearest to that it can reach without a cut (`ctx.clear`), and
-      // closed back onto that corner, so the next move leaves along the
-      // hole's own edge.
+      // With `columns`, three things about the edge runs of a shape that has
+      // a hole or an inside corner change.
       //
-      // And when no ring can be reached from that corner -- a round hole,
-      // whose own body is in the way of everything on its far side -- the
-      // thread runs on round the ring it is on, over the stitches just laid,
-      // to the first corner one CAN be reached from.
+      // WHERE IT LIES. On the filled side of its ring (`edgeRunRing`), and
+      // keeping its corners (`huggingOutline`): never in a hole, never across
+      // an inside corner.
+      //
+      // THE ORDER. The move from one ring to the next is CUT when it crosses
+      // a hole (buildQualityDesign, between runs). Taken in drawing order,
+      // each ring began at its own first corner and stopped a stitch short of
+      // it, so that move started part-way down a hole's side and crossed the
+      // hole it had just sewn round: a cut per hole. Here the rings are taken
+      // nearest-first, each entered at the corner the thread is nearest to
+      // that it can reach without a cut (`ctx.clear`), and closed back onto
+      // that corner.
+      //
+      // THE WAY OUT. When no ring can be reached from that corner -- a round
+      // hole, whose own body is in the way of everything on its far side --
+      // the thread runs on round the ring it is on, over the stitches just
+      // laid, to the first corner one CAN be reached from.
       const clear = ctx.clear || (() => true);
-      const left = holes.map((hh) => ctx.insetRing(hh, edgeInset));
+      const trace = (ring) => ctx.huggingOutline(ring, { stitchLen: edgeStitch, hug: ctx.openTol });
+      const r = [trace(edgeRunRing(outer, false, ctx.edgeInsetPx))];
+      const left = holes.map((hh) => edgeRunRing(hh, true, ctx.edgeInsetPx));
+      // the EDGE_RUN_TRIES corners of the rings still to sew that are nearest
+      // to p, nearest first (kept by insertion: with 2,000 holes, sorting
+      // every corner for every ring was most of the design's time)
       const nearestTo = (p) => {
-        const cands = [];
-        left.forEach((ring, ri) => ring.forEach((v, vi) => cands.push({ ri, vi, d: Math.hypot(v.x - p.x, v.y - p.y) })));
-        return cands.sort((a, b) => a.d - b.d || a.ri - b.ri || a.vi - b.vi);
+        const best = [];
+        const before = (a, b) => a.d - b.d || a.ri - b.ri || a.vi - b.vi;
+        left.forEach((ring, ri) => ring.forEach((v, vi) => {
+          const c = { ri, vi, d: Math.hypot(v.x - p.x, v.y - p.y) };
+          if (best.length === EDGE_RUN_TRIES && before(c, best[best.length - 1]) >= 0) return;
+          let k = best.length;
+          while (k > 0 && before(c, best[k - 1]) < 0) k--;
+          best.splice(k, 0, c);
+          if (best.length > EDGE_RUN_TRIES) best.pop();
+        }));
+        return best;
       };
-      const reachFrom = (p, cands) => cands.slice(0, EDGE_RUN_TRIES).find((c) => clear(p, left[c.ri][c.vi]));
-      // from ring[0] to ring[to] the shorter way round, a stitch at a time
+      const reachFrom = (p, cands) => cands.find((c) => clear(p, left[c.ri][c.vi]));
+      // from ring[0] to ring[to] the shorter way round, sewn as the ring itself is
       const along = (ring, to) => {
-        const n = ring.length, forward = to <= n - to, pts = [];
-        let p = ring[0];
-        for (let k = 1; k <= (forward ? to : n - to); k++) {
-          const q = ring[forward ? k : n - k];
-          const steps = Math.max(1, Math.ceil(Math.hypot(q.x - p.x, q.y - p.y) / edgeStitch));
-          for (let s = 1; s <= steps; s++) pts.push({ x: p.x + (q.x - p.x) * s / steps, y: p.y + (q.y - p.y) * s / steps });
-          p = q;
-        }
-        return pts;
+        const n = ring.length;
+        const path = to <= n - to ? ring.slice(0, to + 1) : [ring[0]].concat(ring.slice(to).reverse());
+        return ctx.huggingOutline(path, { stitchLen: edgeStitch, hug: ctx.openTol, open: true }).slice(1);
       };
       let cur = r[0][r[0].length - 1], on = null;   // `on`: the hole ring the thread is on, from its entry corner
       while (left.length) {
@@ -290,10 +335,7 @@
         if (!pick) pick = cands[0];
         const ring = left.splice(pick.ri, 1)[0];
         const turned = ring.slice(pick.vi).concat(ring.slice(0, pick.vi));
-        const run = ctx.runningOutline(turned, { stitchLen: edgeStitch });
-        const last = run[run.length - 1];
-        if (Math.hypot(last.x - turned[0].x, last.y - turned[0].y) > 1e-6) run.push({ x: turned[0].x, y: turned[0].y });
-        r.push(run);
+        r.push(trace(turned));
         cur = turned[0];
         on = turned;
       }
@@ -302,7 +344,7 @@
     // With `columns`, a tatami pass is told where the thread is (`from`: the
     // end of the run before it) so that it starts from a corner the thread can
     // float to uncut, instead of always from the top left.
-    const entry = (from) => (ctx.columns ? { columns: true, openTol: ctx.openTol, from: from || undefined, clear: ctx.clear || undefined } : { columns: false, openTol: ctx.openTol });
+    const entry = (from) => (ctx.columns ? { columns: true, openTol: ctx.openTol, ground: ctx.ground || undefined, from: from || undefined, clear: ctx.clear || undefined } : {});
     function zigzag(from) {
       return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: zigRow, angleDeg: fillAngle + 90, maxStitch, markConnectors: true }, entry(from)))];
     }
@@ -538,19 +580,17 @@
     // A satin shape is untouched either way: its own moves are a separate
     // call (`columns` is set per shape, where `thin` is known).
     //
-    // How deep into unfilled ground a move may lay thread is ONE number for
-    // every pass of a shape, and it is the FILL's row pitch (`rowPx`), not
-    // each pass's own: an underlay's rows are 2 to 2.5 mm apart, and "a row
-    // turn clips a corner by under one pitch" is a stitch through the hole at
-    // that size. An underlay traces the TRUE edge while the fill covers the
-    // pull-compensated one, so under a fabric preset its reach is the pull
-    // compensation where that is larger.
+    // Where thread may lie is ONE thing for every pass of a shape: THE GROUND
+    // THE FILL COVERS (`fillRingsOf`), measured -- and how deep past it a move
+    // may go is one number, the FILL's row pitch (`rowPx`), not each pass's
+    // own. Two earlier rules, each found wanting by an audit:
+    //  - "under one pitch", with the pass's own pitch. An underlay's rows are
+    //    2 to 2.5 mm apart, and that was a stitch through the hole.
+    //  - "the drawn outline, plus the pull compensation, since the fill covers
+    //    that far". A hole thinner than twice the compensation is sewn AS
+    //    DRAWN (shrunk, it folds through itself), so there the fill covers no
+    //    further at all, and the underlay went straight across a 1 mm slot.
     const fillColumns = !!o.fillColumns;
-    const underlayOpenTolPx = Math.max(rowPx, fabric ? pullCompPx : 0);
-    // How far a run can START off the edge the fill covers, ignored at either
-    // end of the move between two runs: an edge run sits inset from the true
-    // edge, and the fill's first point a pull compensation outside it.
-    const openSlackPx = Math.min(2, 0.6 * pxPerFinalMm) + rowPx;
     // The rings a FILL is sewn to: the shape's own, or under a fabric preset
     // the pull-compensated ones (grow the outer, shrink the holes), so it sews
     // to true size on stretchy cloth. No-fabric fills stay unoffset.
@@ -570,9 +610,11 @@
       });
       return [offsetRing(poly, pullCompPx, true)].concat(insetHoles);
     }
+    const edgeInsetPx = EDGE_RUN_INSET_MM * pxPerFinalMm;   // with `fillColumns`
     const underlayCtxBase = {
       pxPerFinalMm, maxStitch: maxPx, underlayStitchPx, underlayRowPx,
       runningOutline: fillmod.runningOutline, tatamiFill: fillmod.tatamiFill,
+      huggingOutline: fillmod.huggingOutline, edgeInsetPx,
       insetRing, pcaAngleDeg,
     };
 
@@ -811,12 +853,15 @@
         // With `fillColumns`, on a FILL shape: would a float from a to b be
         // left uncut? Asked while the underlay is still being ordered, so it
         // needs the ground the fill WILL cover, before the fill is built.
-        let clearFloat = null;
+        // `cover` is that ground: the true rings, or the pull-compensated ones
+        // the fill is sewn to. `mustCut` is asked of every float of the shape.
+        let clearFloat = null, cover = null, mustCut = null;
         if (fillColumns && !thin) {
-          let cover = rings;
+          cover = rings;
           try { cover = fillRingsOf(poly, holes, rings); } catch (e) { cover = rings; }
           const crosses = fillmod.openGroundTest(cover);
-          clearFloat = (a, b) => !crosses(a, b, rowPx, openSlackPx, maxPx);
+          mustCut = (a, b) => crosses(a, b, rowPx, 0, maxPx);
+          clearFloat = (a, b) => !mustCut(a, b);
         }
         // What a tatami pass of this shape is told about where the thread is:
         // the end of the run before it. Nothing, without the flag.
@@ -829,15 +874,22 @@
             // Fabric mode: named underlay style per shape type.
             try {
               const style = thin ? (fabric.satinUnderlay || "center_run") : (fabric.fillUnderlay || "edge_lattice");
-              const uctx = Object.assign({ fillAngle: angle, columns: fillColumns && !thin, openTol: underlayOpenTolPx, clear: clearFloat }, underlayCtxBase);
+              const uctx = Object.assign({ fillAngle: angle, columns: fillColumns && !thin, openTol: rowPx, ground: cover, clear: clearFloat }, underlayCtxBase);
               for (const run of underlayRuns(shape, style, uctx)) if (run && run.length) { runs.push(run); runKinds.push("underlay"); }
             } catch (e) { /* underlay best-effort */ }
           } else {
-            // No-fabric path: byte-identical to pre-Phase-2 behavior.
+            // No-fabric path: byte-identical to pre-Phase-2 behavior. (With
+            // `fillColumns`, a fill shape's edge run lies where
+            // underlayRuns' does: inside the fill, corners kept.)
             try {
-              const inset = insetRing(poly, Math.min(2, 0.6 * pxPerFinalMm));
-              runs.push(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx })); runKinds.push("underlay");
-              if (!thin) { runs.push(fillmod.tatamiFill(rings, Object.assign({ rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true, columns: fillColumns, openTol: underlayOpenTolPx }, entryOf(runs)))); runKinds.push("underlay"); }
+              if (cover && (holes.length || !isConvexRing(poly))) {
+                runs.push(fillmod.huggingOutline(edgeRunRing(poly, false, edgeInsetPx), { stitchLen: underlayStitchPx, hug: rowPx })); runKinds.push("underlay");
+              } else {
+                const inset = insetRing(poly, Math.min(2, 0.6 * pxPerFinalMm));
+                runs.push(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx })); runKinds.push("underlay");
+              }
+              // (no `ground` here: with no fabric the fill is sewn to these same rings)
+              if (!thin) { runs.push(fillmod.tatamiFill(rings, Object.assign({ rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true, columns: fillColumns, openTol: rowPx }, entryOf(runs)))); runKinds.push("underlay"); }
             } catch (e) { /* underlay best-effort */ }
           }
         }
@@ -847,10 +899,6 @@
         // compensates internally through pullCompMm (unchanged). Underlay/outline
         // trace the TRUE edge and are never offset.
         let pts = [];
-        // The ground this shape's top stitching covers: the true rings, or the
-        // pull-compensated ones a fill is sewn to. What "open ground" is
-        // measured against when two runs of the shape are joined, below.
-        let coverRings = rings;
         try {
           if (thin) {
             // Medial-axis satin (rail-based) — clean on curves/terminals; falls
@@ -866,9 +914,8 @@
             for (const q of poly) { if (q.x < bx0) bx0 = q.x; if (q.x > bx1) bx1 = q.x; if (q.y < by0) by0 = q.y; if (q.y > by1) by1 = q.y; }
             const wMm = (bx1 - bx0) * mmPerPxFinal, hMm = (by1 - by0) * mmPerPxFinal;
             const largeFill = wMm > centerOutMinMm && hMm > centerOutMinMm;
-            coverRings = fillRings;
             pts = fillmod.tatamiFill(fillRings, Object.assign({ rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true, centerOut: largeFill, columns: fillColumns, openTol: rowPx }, entryOf(runs))); nFill++;
-            if (largeFill) nCenterOut++;
+            if (largeFill && !pts.columnWalk) nCenterOut++;   // the column walk is not center-out
           }
         } catch (e) { pts = []; }
         runs.push(pts); runKinds.push(thin ? "satin" : "fill");
@@ -897,15 +944,15 @@
         // With `fillColumns`, on a FILL shape, that move is cut when it lays
         // thread deeper than a fill row into ground the fill does not cover,
         // or is longer than a stitch and leaves that ground at all.
-        // Measured against `coverRings`, NOT the true outline: the fill's
-        // first point sits a pull compensation outside the true corner, and
-        // against the true outline a plain square read as leaving itself and
-        // went from one cut to two. The slack (`openSlackPx`) is how far a run
-        // can start off that edge: an edge run sits inset from the true one.
+        // Measured against `cover`, NOT the true outline: the fill's first
+        // point sits a pull compensation outside the true corner, and against
+        // the true outline a plain square read as leaving itself and went
+        // from one cut to two. No slack at either end: with the flag every run
+        // of a fill shape starts and ends on that ground or its rim.
         // Not covered: `o.outline`, which no caller passes, is sewn AFTER the
         // fill, so a float to it lies on top of the fill and is not cut.
         for (let ri = 0; ri < nonEmpty.length; ri++) {
-          if (fillColumns && !thin && ri > 0 && fillmod.crossesOpenGround(lastPx, nonEmpty[ri][0], coverRings, rowPx, openSlackPx, maxPx)) emitTrimAtLast();
+          if (mustCut && ri > 0 && mustCut(lastPx, nonEmpty[ri][0])) emitTrimAtLast();
           const spanI0 = stitches.length;
           pushRun(nonEmpty[ri]);
           pushSpan(spanI0, nonEmptyKinds[ri], shape.id);

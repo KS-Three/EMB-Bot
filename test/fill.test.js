@@ -475,21 +475,31 @@ test("columns: rows far apart go round a hole's rim -- not through it, and not b
   }
 });
 
-test("columns: the way round an edge has a budget, and past it the thread is cut", () => {
-  // A slit 3 thick and 90 deep, cut in from the right edge between two rows
-  // that are 5 apart. The turn from one row to the next is 5 long and crosses
-  // the slit's mouth; the way round the slit's edge is 185. The budget is the
+test("columns: the way round an edge has a budget, which decides where the walk can afford to go", () => {
+  // Two slits 3 thick, cut in from either side between two rows that are 5
+  // apart, leaving a neck 10 wide in the middle. The turn from one row to the
+  // next is 5 long and crosses a slit's mouth at EITHER end; the way round a
+  // slit's closed end to the start of the next row is 95. The budget is the
   // larger of `travelBudget` and four times the straight line (as the Python
-  // engine's is): 185 of travel to save one cut is over 40, and under 2000.
-  const slit = [{x:0,y:0},{x:100,y:0},{x:100,y:51},{x:10,y:51},{x:10,y:54},{x:100,y:54},{x:100,y:100},{x:0,y:100}];
+  // engine's is). Under 2000 the walk takes that way and sews on downward.
+  // Under 40 it cannot: 95 of travel for a move of 5. But the FAR end of what
+  // is left is 45 away, which allows 180, and round the slit and down the
+  // edge is 135: so it goes there and sews the rest from the bottom up.
+  // Either way nothing is cut and no slit is crossed.
+  const slits = [{x:0,y:0},{x:100,y:0},{x:100,y:51},{x:55,y:51},{x:55,y:54},{x:100,y:54},{x:100,y:100},{x:0,y:100},{x:0,y:54},{x:45,y:54},{x:45,y:51},{x:0,y:51}];
   const under = { rowSpacing:5, angleDeg:0, maxStitch:8, markConnectors:true, columns:true, openTol:1 };
-  const tight = fill.tatamiFill([slit], Object.assign({}, under, { travelBudget: 40 }));
-  const loose = fill.tatamiFill([slit], Object.assign({}, under, { travelBudget: 2000 }));
-  assert.strictEqual(cutsOf(tight), 1, "tight budget");
-  assert.strictEqual(cutsOf(loose), 0, "loose budget");
+  const tight = fill.tatamiFill([slits], Object.assign({}, under, { travelBudget: 40 }));
+  const loose = fill.tatamiFill([slits], Object.assign({}, under, { travelBudget: 2000 }));
+  // the first stitch laid ALONG row y
+  const sewn = (pts, y) => pts.findIndex((p, i) => i > 0 && Math.abs(p.y - y) < 1e-6 && Math.abs(pts[i - 1].y - y) < 1e-6);
+  assert.ok(sewn(tight, 95) < sewn(tight, 55), "tight budget: the rest is sewn from the bottom up");
+  assert.ok(sewn(loose, 55) < sewn(loose, 95), "loose budget: the rest is sewn on downward");
   for (const pts of [tight, loose]) {
-    assert.deepStrictEqual(threadThrough(pts, { x0:10, y0:51, x1:100, y1:54 }, 1), { sewn:0, floats:0 });
-    noLongStitch(pts, 8, "slit");
+    assert.strictEqual(cutsOf(pts), 0);
+    for (const mouth of [{ x0:55, y0:51, x1:100, y1:54 }, { x0:0, y0:51, x1:45, y1:54 }]) {
+      assert.deepStrictEqual(threadThrough(pts, mouth, 1), { sewn:0, floats:0 });
+    }
+    noLongStitch(pts, 8, "slits");
   }
 });
 
@@ -517,4 +527,246 @@ test("columns: told where the thread is, the walk starts from a corner it can re
       }
     }
   }
+});
+
+test("columns: the run to a strip's far end is laid BEFORE the strip, under its own row ends", () => {
+  // Either way the hole costs no cut: run up the strip's side first and sew
+  // back down, or sew up it and then find a way back down its side. The
+  // second lays the run ON TOP of the row ends it passes. Every long move
+  // along a side of the square or of the hole must come before the rows of
+  // its own strip that it runs past.
+  const pts = fill.tatamiFill([SQ, WIDE_HOLE], COLS);
+  assert.strictEqual(cutsOf(pts), 0);
+  let sideRuns = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    if (Math.abs(a.x - b.x) > 1e-6 || Math.abs(b.y - a.y) < 2 * PITCH + 1e-6) continue;   // along a side, past more than one row
+    sideRuns++;
+    const strip = a.x <= 20 ? [0, 20] : [80, 100], y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
+    for (let j = 0; j < i; j++) {
+      const p = pts[j];
+      assert.ok(!(p.y > y0 + 1e-6 && p.y < y1 - 1e-6 && p.x >= strip[0] - 1e-6 && p.x <= strip[1] + 1e-6 && Math.abs(p.x - a.x) > 1e-6),
+        "the run at " + i + " (" + a.x + "," + a.y + " to " + b.y + ") passes a row already sewn: point " + j + " at " + p.x + "," + p.y);
+    }
+  }
+  assert.ok(sideRuns >= 5, "this ring is sewn with a run up one strip; without one the test proves nothing: " + sideRuns);
+});
+
+test("columns: found by the second audit, on direct calls", () => {
+  // The center-out reposition is cut only when connectors are marked. A
+  // caller that does not mark them had it SEWN, across whatever it crossed:
+  // 23 units through the corner of an L, 10.8 deep.
+  const l = [{x:0,y:0},{x:100,y:0},{x:100,y:35},{x:35,y:35},{x:35,y:100},{x:0,y:100}];
+  const unmarked = fill.tatamiFill([l], { rowSpacing:5, angleDeg:0, maxStitch:8, columns:true, centerOut:true });
+  assert.deepStrictEqual(threadThrough(unmarked, { x0:35, y0:35, x1:100, y1:100 }, 5.5), { sewn:0, floats:0 }, "center-out, connectors not marked");
+  // A slit 0.06 wide under a tolerance of 0.005: the move was sampled no
+  // finer than a 4000th of its length, and the slit fell between two samples.
+  const bar = [{x:0,y:0},{x:400,y:0},{x:400,y:60},{x:0,y:60}];
+  const slit = [{x:200.0455,y:10},{x:200.1055,y:10},{x:200.1055,y:50},{x:200.0455,y:50}];
+  const fine = fill.tatamiFill([bar, slit], { rowSpacing:5, angleDeg:0, maxStitch:40, markConnectors:true, columns:true, openTol:0.005 });
+  assert.deepStrictEqual(threadThrough(fine, { x0:200.0455, y0:10, x1:200.1055, y1:50 }, 0.006), { sewn:0, floats:0 }, "a slit thinner than the old sampling step");
+  // A tolerance far over the row pitch, and a float that left the shape
+  // between two samples of ITS length.
+  const stairs = [{x:0,y:0},{x:75,y:0},{x:75,y:75},{x:150,y:75},{x:150,y:150},{x:225,y:150},{x:225,y:225},{x:300,y:225},{x:300,y:300},{x:0,y:300}];
+  const loose = fill.tatamiFill([stairs], { rowSpacing:21.2241, angleDeg:90, maxStitch:40, markConnectors:true, columns:true, openTol:42.4483 });
+  assert.strictEqual(floatsOffShape(loose, [stairs]), 0, "a float outside under a loose tolerance");
+});
+
+test("columns: `ground` is where thread may lie, when that is not the pass's own outline", () => {
+  // An underlay is sewn to the drawn outline, but the fill over it reaches 3
+  // further into every hole. Rows 8 apart turn round a round hole by clipping
+  // it by more than the 0.3 allowed -- and by far less than the 3 the fill
+  // covers. Judged against the underlay's own outline that is open ground:
+  // the column is cut in two at every such turn and the thread goes round the
+  // rim instead, 212 points and 1,555 of thread. Told the ground, the turn is
+  // one stitch: 180 points and 1,322.
+  const circle = (r) => Array.from({ length: 48 }, (_, i) => ({ x: 50 + r * Math.cos(2 * Math.PI * i / 48), y: 50 + r * Math.sin(2 * Math.PI * i / 48) }));
+  const grown = [{x:-3,y:-3},{x:103,y:-3},{x:103,y:103},{x:-3,y:103}];
+  const under = { rowSpacing:8, angleDeg:0, maxStitch:8, markConnectors:true, columns:true, openTol:0.3 };
+  const own = fill.tatamiFill([SQ, circle(20)], under);
+  const told = fill.tatamiFill([SQ, circle(20)], Object.assign({ ground: [grown, circle(17)] }, under));
+  assert.ok(told.length <= own.length - 20, "points: told the ground " + told.length + ", own outline " + own.length);
+  for (const pts of [own, told]) assert.strictEqual(cutsOf(pts), 0);
+  // and told, no thread goes deeper than the tolerance past what the fill covers
+  for (let i = 1; i < told.length; i++) {
+    if (told[i].trim) continue;
+    for (let s = 1; s < 20; s++) {
+      const x = told[i - 1].x + (told[i].x - told[i - 1].x) * s / 20, y = told[i - 1].y + (told[i].y - told[i - 1].y) * s / 20;
+      assert.ok(Math.hypot(x - 50, y - 50) > 17 - 0.3 - 1e-6, "thread " + (17 - Math.hypot(x - 50, y - 50)).toFixed(2) + " past the cover at " + i);
+    }
+  }
+});
+
+test("columns: the way round a curve does not put a stitch on every point it was traced with", () => {
+  // A round hole drawn with 200 points, 0.63 apart. A way round its rim that
+  // keeps every vertex is a stitch every 0.63: 2,561 stitches under 0.3 mm in
+  // the underlay of one 60 mm shape traced with 3,000 points. A vertex is
+  // kept only where skipping it would take the thread more than the tolerance
+  // off the ring. (The Python engine met the same thing and floors it too.)
+  const round = Array.from({ length: 200 }, (_, i) => ({ x: 50 + 20 * Math.cos(2 * Math.PI * i / 200), y: 50 + 20 * Math.sin(2 * Math.PI * i / 200) }));
+  for (const opts of [COLS, { rowSpacing:5, angleDeg:0, maxStitch:8, markConnectors:true, columns:true, openTol:1 }]) {
+    const pts = fill.tatamiFill([SQ, round], opts);
+    let short = 0;
+    for (let i = 1; i < pts.length; i++) {
+      if (pts[i].travel || pts[i].trim) continue;
+      const a = pts[i - 1], b = pts[i], d = Math.hypot(b.x - a.x, b.y - a.y);
+      // off the rows: a row turn is one pitch long by design
+      if (d < 0.9 && Math.abs(Math.abs(b.y - a.y) - opts.rowSpacing) > 1e-6) short++;
+    }
+    assert.ok(short <= 8, "stitches under 0.9 long, rows " + opts.rowSpacing + " apart: " + short);
+    assert.strictEqual(cutsOf(pts), 0);
+    // and the thinned way round still keeps out of the hole: 1 deep at most
+    for (let i = 1; i < pts.length; i++) {
+      if (pts[i].trim) continue;
+      const a = pts[i - 1], b = pts[i];
+      for (let s = 1; s < 20; s++) {
+        const x = a.x + (b.x - a.x) * s / 20, y = a.y + (b.y - a.y) * s / 20;
+        assert.ok(Math.hypot(x - 50, y - 50) > 20 - 1 - 1e-6, "thread " + (20 - Math.hypot(x - 50, y - 50)).toFixed(2) + " deep in the hole at " + i);
+      }
+    }
+  }
+});
+
+test("columns: a run along a strip's side does not cut across a corner of the edge it follows", () => {
+  // Found by the random shapes below, at 9,000 of them; kept here because 150
+  // do not happen to contain one. The run to a strip's far end goes from row
+  // end to row end, as far as one stitch reaches while it stays within the
+  // tolerance of every row end it passes. Past several rows that is not
+  // enough: the edge of this round hole turns between two rows, and a leg
+  // 3.5 long went 0.39 into the hole on a tolerance of 0.3.
+  const P = (a) => a.map(([x, y]) => ({ x, y }));
+  const polys = [
+    P([[25.659,74.07],[44.272,44.383],[73.922,25.711],[108.737,21.753],[141.822,33.293],[166.623,58.045],[178.229,91.106],[174.341,125.93],[155.728,155.617],[126.078,174.289],[91.263,178.247],[58.178,166.707],[33.377,141.955],[21.771,108.894]]),
+    P([[101.948,154.014],[98.148,158.004],[92.863,159.56],[87.507,158.265],[83.516,154.466],[81.96,149.18],[83.255,143.824],[87.055,139.834],[92.34,138.277],[97.696,139.573],[101.687,143.372],[103.243,148.658]]),
+    P([[146.443,142.717],[128.565,130.137],[141.144,112.259],[159.023,124.839]]),
+    P([[135.469,64.762],[136.03,62.858],[135.39,60.52],[137.063,59.069],[139.046,58.439],[140.903,58.353],[142.756,57.481],[144.387,58.614],[145.405,60.123],[147.388,60.9],[147.438,62.869],[147.27,64.641],[146.938,66.407],[146.774,68.783],[145.057,70.242],[142.877,70.83],[140.741,70.186],[139.386,68.423],[137.373,68.152],[136.103,66.647]]),
+    P([[37.232,112.128],[40.885,115.517],[39.776,120.374],[35.015,121.842],[31.363,118.454],[32.472,113.596]]),
+    P([[89.012,61.543],[92.984,63.615],[95.388,67.396],[95.579,71.873],[93.507,75.845],[89.726,78.249],[85.25,78.44],[81.277,76.367],[78.874,72.587],[78.682,68.11],[80.755,64.138],[84.536,61.734]]),
+  ];
+  const pts = fill.tatamiFill(polys, { rowSpacing:1, angleDeg:282.32, maxStitch:12, markConnectors:true, columns:true, openTol:0.3 });
+  const edges = [];
+  for (const p of polys) for (let i = 0; i < p.length; i++) edges.push([p[i], p[(i + 1) % p.length]]);
+  let deepest = 0;
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i].trim) continue;
+    const a = pts[i - 1], b = pts[i], n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 0.05));
+    for (let k = 0; k < n; k++) {
+      const p = { x: a.x + (b.x - a.x) * (k + 0.5) / n, y: a.y + (b.y - a.y) * (k + 0.5) / n };
+      let inside = false, d = Infinity;
+      for (const [u, v] of edges) {
+        if ((u.y > p.y) !== (v.y > p.y) && u.x + ((p.y - u.y) / (v.y - u.y)) * (v.x - u.x) > p.x) inside = !inside;
+        const dx = v.x - u.x, dy = v.y - u.y, t = Math.max(0, Math.min(1, ((p.x - u.x) * dx + (p.y - u.y) * dy) / (dx * dx + dy * dy)));
+        d = Math.min(d, Math.hypot(p.x - (u.x + t * dx), p.y - (u.y + t * dy)));
+      }
+      if (!inside) deepest = Math.max(deepest, d);
+    }
+  }
+  assert.ok(deepest <= 0.3 * 1.2, "deepest thread in open ground: " + deepest.toFixed(3));
+});
+
+// --- shapes nobody chose -------------------------------------------------------
+//
+// Every fixture above was drawn by whoever wrote the code it tests, and that
+// is how two builds of this walk passed their tests and failed an audit. These
+// are drawn by a seeded generator: stars and staircase blobs, up to five holes
+// each, any row angle, rows 1 to 5 apart, tolerances from a quarter of the
+// pitch up. What must hold on every one of them is what must hold on any
+// shape. (It has already paid: a check taken out as "unreachable" was put back
+// when 1 case in 3,000 went 1.4 deep on a tolerance of 1. The 150 here are what
+// the suite can afford; 9,000 were run by hand before this was written.)
+test("columns: 150 shapes nobody chose -- no thread in open ground, no float off the shape, every row sewn", () => {
+  let seed = 20261003;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  const star = (cx, cy, r, n, rough) => {
+    const ph = rnd() * Math.PI * 2, pts = [];
+    for (let i = 0; i < n; i++) {
+      const a = ph + (2 * Math.PI * i) / n, rr = r * (1 - rough * rnd());
+      pts.push({ x: cx + rr * Math.cos(a), y: cy + rr * Math.sin(a) });
+    }
+    return pts;
+  };
+  const stairs = (w, h) => {
+    const steps = 2 + Math.floor(rnd() * 4), top = [], bottom = [];
+    let x = 0;
+    for (let i = 0; i < steps; i++) {
+      const nx = i === steps - 1 ? w : x + (w - x) * (0.2 + 0.5 * rnd());
+      const y0 = h * 0.4 * rnd(), y1 = h * (0.6 + 0.4 * rnd());
+      top.push({ x, y: y0 }, { x: nx, y: y0 });
+      bottom.push({ x, y: y1 }, { x: nx, y: y1 });
+      x = nx;
+    }
+    return top.concat(bottom.reverse());
+  };
+  const edgesOf = (polys) => { const e = []; for (const p of polys) for (let i = 0; i < p.length; i++) e.push([p[i], p[(i + 1) % p.length]]); return e; };
+  const inside = (p, edges) => { let c = false; for (const [u, v] of edges) if ((u.y > p.y) !== (v.y > p.y) && u.x + ((p.y - u.y) / (v.y - u.y)) * (v.x - u.x) > p.x) c = !c; return c; };
+  const depth = (p, edges) => {
+    let m = Infinity;
+    for (const [u, v] of edges) {
+      const dx = v.x - u.x, dy = v.y - u.y, l2 = dx * dx + dy * dy;
+      const t = l2 ? Math.max(0, Math.min(1, ((p.x - u.x) * dx + (p.y - u.y) * dy) / l2)) : 0;
+      m = Math.min(m, Math.hypot(p.x - (u.x + t * dx), p.y - (u.y + t * dy)));
+    }
+    return m;
+  };
+  let cuts = 0;
+  for (let t = 0; t < 150; t++) {
+    const outer = rnd() < 0.67 ? star(100, 100, 60 + 40 * rnd(), 5 + Math.floor(rnd() * 30), pick([0, 0.2, 0.5])) : stairs(160 + 60 * rnd(), 120 + 80 * rnd());
+    const polys = [outer], outerEdges = edgesOf([outer]), placed = [];
+    for (let h = Math.floor(rnd() * 6); h > 0; h--) {
+      for (let tries = 0; tries < 20; tries++) {
+        const c = { x: 20 + 180 * rnd(), y: 20 + 180 * rnd() }, r = 4 + 16 * rnd();
+        if (!inside(c, outerEdges) || depth(c, outerEdges) < r + 4) continue;
+        if (placed.some((q) => Math.hypot(q.c.x - c.x, q.c.y - c.y) < q.r + r + 3)) continue;
+        polys.push(star(c.x, c.y, r, pick([4, 4, 6, 12, 20]), pick([0, 0, 0.3])));
+        placed.push({ c, r });
+        break;
+      }
+    }
+    const pitch = pick([1, 1, 2.5, 5]), maxStitch = pick([8, 8, 12]), tol = pick([pitch, pitch, 1, 0.3]);
+    const opts = { rowSpacing: pitch, angleDeg: pick([0, 90, 30, 45, 137, 360 * rnd()]), maxStitch, markConnectors: true, columns: true, openTol: tol, centerOut: rnd() < 0.3 };
+    const label = "shape " + t + " " + JSON.stringify(opts);
+    const edges = edgesOf(polys);
+    const pts = fill.tatamiFill(polys, opts);
+    cuts += cutsOf(pts);
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i];
+      assert.ok(isFinite(b.x) && isFinite(b.y), label);
+      if (b.trim) continue;
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      if (!b.travel) assert.ok(len <= maxStitch + 1e-6, label + ": a stitch " + len.toFixed(2) + " long at " + i);
+      const n = Math.max(1, Math.ceil(len / (tol / 3)));
+      for (let k = 0; k < n; k++) {
+        const p = { x: a.x + (b.x - a.x) * (k + 0.5) / n, y: a.y + (b.y - a.y) * (k + 0.5) / n };
+        if (inside(p, edges)) continue;
+        const d = depth(p, edges);
+        // the walk samples at a quarter of the tolerance, so it sees to about 1.2 of it
+        assert.ok(d <= tol * 1.3 + 1e-6, label + ": thread " + d.toFixed(3) + " deep at " + i);
+        if (b.travel) assert.ok(d <= 1e-4, label + ": a float " + d.toFixed(4) + " outside at " + i);
+      }
+    }
+    // every row's spans are sewn: the thread laid along scanlines adds up to them
+    const th = (opts.angleDeg * Math.PI) / 180, cn = Math.cos(-th), sn = Math.sin(-th);
+    const rot = (p) => ({ x: p.x * cn - p.y * sn, y: p.x * sn + p.y * cn });
+    const turned = edges.map(([u, v]) => [rot(u), rot(v)]);
+    let minY = Infinity, maxY = -Infinity, want = 0, got = 0;
+    for (const [u] of turned) { minY = Math.min(minY, u.y); maxY = Math.max(maxY, u.y); }
+    for (let y = minY; y <= maxY + 1e-9; y += pitch) {
+      const xs = [];
+      for (const [u, v] of turned) {
+        if (u.y === v.y) continue;
+        if (y >= Math.min(u.y, v.y) && y < Math.max(u.y, v.y)) xs.push(u.x + ((y - u.y) / (v.y - u.y)) * (v.x - u.x));
+      }
+      xs.sort((p, q) => p - q);
+      for (let i = 0; i + 1 < xs.length; i += 2) want += xs[i + 1] - xs[i];
+    }
+    for (let i = 1; i < pts.length; i++) {
+      if (pts[i].travel || pts[i].trim) continue;
+      const a = rot(pts[i - 1]), b = rot(pts[i]);
+      if (Math.abs(a.y - b.y) < 1e-6) got += Math.abs(b.x - a.x);
+    }
+    assert.ok(got >= want - 1e-3 * Math.max(1, want), label + ": rows sewn " + got.toFixed(1) + " of " + want.toFixed(1));
+  }
+  // and what the travel is for: the cuts left are nearly all center-out's own
+  assert.ok(cuts <= 12, "cuts over the 150 shapes: " + cuts);
 });

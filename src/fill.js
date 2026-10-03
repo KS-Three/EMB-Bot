@@ -84,6 +84,41 @@
     return { columns, above };
   }
 
+  // A column is rows that FOLLOW one another, which is not the same as rows
+  // the thread can get between. Where the turn from one row to the next goes
+  // deep into open ground -- a lattice at 45 degrees, round the corner of a
+  // square hole -- the column is cut in two there, and getting from one piece
+  // to the other becomes the walk's business like any other move. Left whole,
+  // that turn could only be cut: its two ends sit on different rings.
+  // (A fill's own turns are one pitch long and never deep, so only passes with
+  // rows far apart are split.) Changes `cut` in place.
+  function splitAtOpenTurns(cut, edges, tol) {
+    const { columns, above } = cut;
+    const whole = columns.length;
+    for (let ci = 0; ci < whole; ci++) {
+      const col = columns[ci], at = [];
+      for (let k = 0; k + 1 < col.length; k++) {
+        const a = col[k], b = col[k + 1];
+        if (leavesShape({ x: a.x0, y: a.y }, { x: b.x0, y: b.y }, edges, tol) ||
+            leavesShape({ x: a.x1, y: a.y }, { x: b.x1, y: b.y }, edges, tol)) at.push(k + 1);
+      }
+      if (!at.length) continue;
+      const before = columns.length;
+      let last = ci;
+      at.push(col.length);
+      for (let s = 0; s + 1 < at.length; s++) {
+        columns.push(col.slice(at[s], at[s + 1]));
+        above.push([last]);
+        last = columns.length - 1;
+      }
+      columns[ci] = col.slice(0, at[0]);
+      // whatever hung below the column now hangs below its last piece
+      for (let j = 0; j < before; j++) {
+        if (above[j].indexOf(ci) >= 0) above[j] = above[j].map((u) => (u === ci ? last : u));
+      }
+    }
+  }
+
   function distToSegment(p, u, v) {
     const dx = v.x - u.x, dy = v.y - u.y, len2 = dx * dx + dy * dy;
     const t = len2 ? Math.max(0, Math.min(1, ((p.x - u.x) * dx + (p.y - u.y) * dy) / len2)) : 0;
@@ -128,42 +163,99 @@
     const lo = slack || 0, hi = len - lo;
     if (!(hi > lo)) return INSIDE;
     const reach = Math.max(tol, ON_EDGE_EPS);
-    const near = wantRim ? ON_EDGE_EPS : reach;   // close enough to stop looking
-    // Where the LINE through a and b crosses the boundary, as a distance from
-    // a. Half-open on which side of the line a corner is, so a corner lying
-    // exactly on it counts once: the scanline rule, turned to this line.
-    const cross = [];
-    for (const [u, v] of edges) {
-      const su = dx * (u.y - a.y) - dy * (u.x - a.x), sv = dx * (v.y - a.y) - dy * (v.x - a.x);
-      if ((su > 0) === (sv > 0)) continue;
-      const k = su / (su - sv);
-      cross.push(((u.x + k * (v.x - u.x) - a.x) * dx + (u.y + k * (v.y - u.y) - a.y) * dy) / len);
-    }
-    cross.sort((p, q) => p - q);
+    const enough = wantRim ? ON_EDGE_EPS : reach;   // close enough to stop looking
+    const near = nearEdges(edges);
+    // Where the move crosses the boundary, as a distance from a. Half-open on
+    // which side of the line a corner is, so a corner lying exactly on it
+    // counts once: the scanline rule, turned to this line.
     const stops = [lo];
-    for (const c of cross) if (c > lo && c < hi) stops.push(c);
+    near(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.max(a.x, b.x), Math.max(a.y, b.y), (e) => {
+      const u = edges[e][0], v = edges[e][1];
+      const su = dx * (u.y - a.y) - dy * (u.x - a.x), sv = dx * (v.y - a.y) - dy * (v.x - a.x);
+      if ((su > 0) === (sv > 0)) return false;
+      const k = su / (su - sv);
+      const t = ((u.x + k * (v.x - u.x) - a.x) * dx + (u.y + k * (v.y - u.y) - a.y) * dy) / len;
+      if (t > lo && t < hi) stops.push(t);
+      return false;
+    });
     stops.push(hi);
-    let worst = INSIDE, behind = 0;
-    let last = 0;   // the edge the last sample was nearest: the next one usually is too
+    stops.sort((p, q) => p - q);
+    const filled = (p) => {   // even-odd, by a ray to the right
+      let c = false;
+      near(p.x, p.y, Infinity, p.y, (e) => {
+        const u = edges[e][0], v = edges[e][1];
+        if ((u.y > p.y) !== (v.y > p.y) && u.x + ((p.y - u.y) / (v.y - u.y)) * (v.x - u.x) > p.x) c = !c;
+        return false;
+      });
+      return c;
+    };
+    const at = (s) => ({ x: a.x + dx * s / len, y: a.y + dy * s / len });
+    let worst = INSIDE;
     for (let i = 0; i + 1 < stops.length; i++) {
       const s0 = stops[i], s1 = stops[i + 1];
-      while (behind < cross.length && cross[behind] <= (s0 + s1) / 2) behind++;
-      // even-odd along the line: inside when an odd number of crossings lie ahead
-      if ((cross.length - behind) % 2 === 1) continue;
+      if (!(s1 > s0) || filled(at((s0 + s1) / 2))) continue;
       const n = Math.min(4000, Math.max(1, Math.ceil((s1 - s0) / (reach / 4))));
       for (let k = 0; k < n; k++) {
-        const s = s0 + (s1 - s0) * (k + 0.5) / n;
-        const p = { x: a.x + dx * s / len, y: a.y + dy * s / len };
-        let d = distToSegment(p, edges[last][0], edges[last][1]);
-        for (let e = 0; d > near && e < edges.length; e++) {
+        const p = at(s0 + (s1 - s0) * (k + 0.5) / n);
+        let d = Infinity;
+        near(p.x - reach, p.y - reach, p.x + reach, p.y + reach, (e) => {
           const de = distToSegment(p, edges[e][0], edges[e][1]);
-          if (de < d) { d = de; last = e; }
-        }
+          if (de < d) d = de;
+          return d <= enough;
+        });
         if (d > reach) return OPEN;
         if (wantRim && d > ON_EDGE_EPS) worst = ON_RIM;
       }
     }
     return worst;
+  }
+
+  // The edges near a box, without looking at all of them: -> near(x0, y0, x1,
+  // y1, fn), which calls fn(edge index) once for every edge that could touch
+  // the box, until fn returns true. A grid, built once for an edge list and
+  // kept on it; a short list is simply scanned. Every move the walk considers
+  // is asked what ground it runs over, and with 2,000 holes that is 8,000
+  // edges looked at per move, which took a 100 mm design to 94 seconds.
+  const GRID_MIN_EDGES = 64, GRID_MAX_SIDE = 160;
+  function nearEdges(edges) {
+    if (edges._near) return edges._near;
+    let near = (x0, y0, x1, y1, fn) => { for (let e = 0; e < edges.length; e++) if (fn(e)) return; };
+    if (edges.length >= GRID_MIN_EDGES) {
+      let gx0 = Infinity, gy0 = Infinity, gx1 = -Infinity, gy1 = -Infinity;
+      for (const [u, v] of edges) {
+        gx0 = Math.min(gx0, u.x, v.x); gx1 = Math.max(gx1, u.x, v.x);
+        gy0 = Math.min(gy0, u.y, v.y); gy1 = Math.max(gy1, u.y, v.y);
+      }
+      const side = Math.min(GRID_MAX_SIDE, Math.ceil(Math.sqrt(edges.length)));
+      const w = Math.max(gx1 - gx0, 1e-9) / side, h = Math.max(gy1 - gy0, 1e-9) / side;
+      const col = (x) => Math.max(0, Math.min(side - 1, Math.floor((x - gx0) / w)));
+      const row = (y) => Math.max(0, Math.min(side - 1, Math.floor((y - gy0) / h)));
+      const cells = new Array(side * side);
+      edges.forEach((uv, e) => {
+        const c0 = col(Math.min(uv[0].x, uv[1].x)), c1 = col(Math.max(uv[0].x, uv[1].x));
+        const r0 = row(Math.min(uv[0].y, uv[1].y)), r1 = row(Math.max(uv[0].y, uv[1].y));
+        for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) (cells[r * side + c] || (cells[r * side + c] = [])).push(e);
+      });
+      const seen = new Int32Array(edges.length);   // an edge is in every cell it crosses
+      let pass = 0;
+      near = (x0, y0, x1, y1, fn) => {
+        pass++;
+        const c0 = col(x0), c1 = col(x1), r0 = row(y0), r1 = row(y1);
+        for (let r = r0; r <= r1; r++) {
+          for (let c = c0; c <= c1; c++) {
+            const cell = cells[r * side + c];
+            if (!cell) continue;
+            for (const e of cell) {
+              if (seen[e] === pass) continue;
+              seen[e] = pass;
+              if (fn(e)) return;
+            }
+          }
+        }
+      };
+    }
+    Object.defineProperty(edges, "_near", { value: near });
+    return near;
   }
 
   // "Is it cut": with no slack both ends are on the boundary, and a move no
@@ -217,10 +309,11 @@
   //   5. otherwise the thread is CUT, and the nearest column taken. With 1 to
   //      4 that is two shapes that do not touch, or a way round that is over
   //      the budget.
-  // A row turn inside a column is asked the same question: sewn, taken round
-  // the ring, or cut. A cut point is where the frame goes, not a penetration,
-  // so the same spot follows it as a plain point: the row starts on its own
-  // start.
+  // A row turn INSIDE a column is never one of these: a column whose turn
+  // would go deep is cut in two there first (splitAtOpenTurns), so that every
+  // hard move is a move between columns. A cut point is where the frame goes,
+  // not a penetration, so the same spot follows it as a plain point: the row
+  // starts on its own start.
   //
   // WHICH END a column is entered by. Sewn down one strip beside a hole and up
   // the other, the walk ends at the TOP of the second with the band below
@@ -282,6 +375,28 @@
     // side, so a ring's edge IS the rim. (Asking anyway cost 60% of a
     // 36-hole design's time: a point on an edge reads as outside half the
     // time, and then every edge is measured to find the one it is on.)
+    //
+    // NOT every vertex, though. A traced curve has one every few tenths of a
+    // millimetre, and a penetration on each is a stitch that short: 2,561 of
+    // them under 0.3 mm in the underlay of one 60 mm shape traced with 3,000
+    // points. A vertex is kept only where skipping it would take the thread
+    // more than `tol` off the ring -- so a real corner always is. (The Python
+    // engine met the same thing; it floors the spacing.)
+    const thinned = (from, pts) => {
+      const seq = [from].concat(pts), kept = [];
+      const hugs = (i, j) => {
+        for (let m = i + 1; m < j; m++) if (distToSegment(seq[m], seq[i], seq[j]) > tol) return false;
+        return true;
+      };
+      let i = 0;
+      while (i < seq.length - 1) {
+        let j = i + 1;
+        while (j + 1 < seq.length && hugs(i, j + 1)) j++;
+        kept.push(seq[j]);
+        i = j;
+      }
+      return kept;
+    };
     const arcs = {};
     const arcOf = (ri) => {
       if (!arcs[ri]) {
@@ -309,7 +424,7 @@
         if (off > ON_EDGE_EPS) pts.push({ x: ring[v].x, y: ring[v].y });
       }
       pts.push(b);
-      return { pts, len: span };
+      return { pts: thinned(a, pts), len: span };
     };
 
     // The way from `cur` to the start of some column in `ready`: -> { ci, j,
@@ -321,9 +436,18 @@
       all.sort(byDistance);
       const start = (c) => variants[c.ci][c.j][0];
       for (const how of ["stitch", "run"]) {
+        // Nearest first, so once a run along a row has met open ground, every
+        // start further along that same row, that same way, lies behind it:
+        // not asked. (Asking them all was 83% of a 196-hole design's time.)
+        const shut = {};
         for (const c of all) {
-          const fits = how === "stitch" ? !tooLong(c.d) : (tooLong(c.d) && Math.abs(start(c).y - cur.y) <= pitch * 1.0001);
-          if (fits && !leavesShape(cur, start(c), edges, tol)) return { ci: c.ci, j: c.j, how, route: [start(c)] };
+          const to = start(c);
+          const fits = how === "stitch" ? !tooLong(c.d) : (tooLong(c.d) && Math.abs(to.y - cur.y) <= pitch * 1.0001);
+          if (!fits) continue;
+          const lane = how === "run" ? (to.x < cur.x ? "L" : "R") + Math.round(to.y / pitch * 1e3) : null;
+          if (lane && shut[lane]) continue;
+          if (!leavesShape(cur, to, edges, tol)) return { ci: c.ci, j: c.j, how, route: [to] };
+          if (lane) shut[lane] = true;
         }
       }
       let best = null;
@@ -353,33 +477,36 @@
     // The run along a column's own side from the start of variant j to the
     // start of variant j ^ 2: row end to row end, each leg one stitch at most
     // and within `tol` of every row end it passes, so it stays on the column's
-    // edge. null when a leg would go deep into open ground.
+    // edge. From one row end to the NEXT is never deep: a column whose turn is
+    // has been cut in two there (splitAtOpenTurns). A leg past SEVERAL rows
+    // can be -- the edge may turn a corner between two rows, and the leg
+    // strays from the row ends besides -- so a leg stops growing where it
+    // would go deep. (Found by fuzzing, after this check had been taken out
+    // as unreachable: 1.4 deep on a tolerance of 1.)
     const sideRun = (ci, j) => {
       const seq = (j & 2) ? cols[ci].slice().reverse() : cols[ci];
       const side = seq.map((r) => ((j & 1) ? { x: r.x1, y: r.y, e: r.e1 } : { x: r.x0, y: r.y, e: r.e0 }));
       const hugs = (a, b) => {
         for (let m = a + 1; m < b; m++) if (distToSegment(side[m], side[a], side[b]) > tol) return false;
-        return true;
+        return groundUnder(side[a], side[b], edges, tol) !== OPEN;
       };
       const pts = [];
       let a = 0;
       while (a < side.length - 1) {
         let b = a + 1;
         while (b + 1 < side.length && !tooLong(dist(side[a], side[b + 1])) && hugs(a, b + 1)) b++;
-        if (groundUnder(side[a], side[b], edges, tol) === OPEN) return null;
         pts.push(side[b]);
         a = b;
       }
       return pts;
     };
     // How the needle gets from the start of variant `from` to the start of
-    // variant `to` of one column before any of it is sewn; null if it cannot.
+    // variant `to` of one column before any of it is sewn.
     const preRun = (ci, from, to) => {
       if (from === to) return [];
       const acrossRow = [variants[ci][to][0]];          // the other end of a row: inside by construction
       if ((from ^ to) === 1) return acrossRow;
       const side = sideRun(ci, from);
-      if (!side) return null;
       return (from ^ to) === 2 ? side : side.concat(acrossRow);
     };
 
@@ -407,10 +534,7 @@
         const n = col.length;
         link(ci, 0, ci, 1, [cornerOf(ci, 1)], [cornerOf(ci, 0)]);
         link(ci, 2, ci, 3, [cornerOf(ci, 3)], [cornerOf(ci, 2)]);
-        for (const s of [0, 1]) {
-          const down = n > 1 ? sideRun(ci, s) : [], up = n > 1 ? sideRun(ci, s + 2) : [];
-          if (down && up) link(ci, s, ci, s + 2, down, up);
-        }
+        for (const s of [0, 1]) link(ci, s, ci, s + 2, n > 1 ? sideRun(ci, s) : [], n > 1 ? sideRun(ci, s + 2) : []);
         for (const c of [0, 1, 2, 3]) {
           const ri = col[c < 2 ? 0 : n - 1].ri;
           if (!rowsAt.has(ri)) rowsAt.set(ri, []);
@@ -540,9 +664,8 @@
       for (const j of order) {
         const cost = afterwards(m.ci, exitOf(j));
         if (pick && cost >= pick.cost) continue;
-        const pre = landed ? [] : preRun(m.ci, m.j, j);
-        if (pre) pick = { j, cost, pre };
-        if (pick && pick.cost === 0) break;
+        pick = { j, cost, pre: landed ? [] : preRun(m.ci, m.j, j) };
+        if (cost === 0) break;
       }
       const key = variants[m.ci][pick.j];
       remaining.splice(remaining.indexOf(m.ci), 1);
@@ -553,14 +676,10 @@
         sewAlong(cur, m.route);
         sewAlong(variants[m.ci][m.j][0], pick.pre);
       }
-      for (let i = 1; i < key.length; i++) {
-        // odd i runs along a row, inside by construction; even i is the turn
-        // to this column's next row.
-        if (i % 2 === 0 && leavesShape(key[i - 1], key[i], edges, tol)) {
-          const round = ringRoute(key[i - 1], key[i]);
-          if (round) sewAlong(key[i - 1], round.pts); else cutTo(key[i]);
-        } else sewTo(key[i - 1], key[i]);
-      }
+      // Odd i runs along a row, inside by construction. Even i is the turn to
+      // this column's next row, and never deep: a column is cut in two where
+      // it would be (splitAtOpenTurns).
+      for (let i = 1; i < key.length; i++) sewTo(key[i - 1], key[i]);
       cur = key[key.length - 1];
       curNode = { ci: m.ci, c: exitCorner(m.ci, pick.j) };
     }
@@ -580,6 +699,10 @@
   //   thread, in the polygons' units. Defaults to this pass's own row pitch,
   //   which a FILL's row turns never exceed; an underlay pass, with rows 2 mm
   //   apart, must be given the fill's.
+  //   `ground` (with `columns`): the polygons that count as filled ground for
+  //   that question, when they are not `polygons` themselves. An underlay is
+  //   given the rings the FILL is sewn to.
+  //   `from`, `clear`, `travelBudget` (with `columns`): see sewColumns.
   function tatamiFill(polygons, opts) {
     const rowSpacing = opts.rowSpacing;
     const angleDeg = opts.angleDeg || 0;
@@ -722,32 +845,49 @@
     //    outside the outline (found by audit: 22 mm, 2 mm out).
     //  - the turns of the rows taken top-down. Center-out sews its upper half
     //    from the middle UP, and those turns are the other diagonal of each
-    //    pair of rows. The ones asked about are the ones in `key`, all but
-    //    the center-out reposition, which is cut whatever it crosses.
+    //    pair of rows. The ones asked about are the ones in `key`. The
+    //    center-out reposition is left out only where it will be CUT: a caller
+    //    that does not mark connectors has it sewn, across whatever it crosses.
     // A plain shape changes in one way: a turn longer than a stitch that runs
     // outside the shape is sewn along the rim, where the walk below floats it.
+    const markConnectors = !!opts.markConnectors;
     let rimTurn = null;
     if (opts.columns) {
       const tol = opts.openTol > 0 ? opts.openTol : rowSpacing;
       const floated = (d) => !!(maxStitch && maxStitch > 0 && d > maxStitch);
+      // What every move is measured against. An underlay pass is SEWN to the
+      // drawn outline, but where its thread may lie is what the fill will
+      // cover, which the caller knows and this pass's own outline is not.
+      let ground = edges;
+      if (opts.ground) {
+        ground = [];
+        for (const poly of opts.ground) {
+          const rp = poly.map((p) => rotate(p, cosN, sinN));
+          for (let i = 0; i < rp.length; i++) ground.push([rp[i], rp[(i + 1) % rp.length]]);
+        }
+      }
       let plain = rowSpans.every((r) => r.spans.length === 1);
       rimTurn = {};
       for (let i = 2; plain && i < key.length; i += 2) {
-        if (i === lowerSweepStartIdx) continue;
         const d = Math.hypot(key[i].x - key[i - 1].x, key[i].y - key[i - 1].y);
+        if (i === lowerSweepStartIdx && (markConnectors || !floated(d))) continue;
         if (d <= 2 * tol && !floated(d)) continue;   // cannot be deep, and is sewn anyway
-        const ground = groundUnder(key[i - 1], key[i], edges, tol, 0, true);
-        if (ground === OPEN) plain = false;
-        else if (ground === ON_RIM && floated(d)) rimTurn[i] = true;
+        const under = groundUnder(key[i - 1], key[i], ground, tol, 0, true);
+        if (under === OPEN) plain = false;
+        else if (under === ON_RIM && floated(d)) rimTurn[i] = true;
       }
       if (!plain) {
         const cut = cutColumns(rowSpans);
+        splitAtOpenTurns(cut, ground, tol);
         const budget = opts.travelBudget > 0 ? opts.travelBudget : (maxStitch > 0 ? 5 * maxStitch : Infinity);
         // the walk works in the rotated frame; the caller's `clear` does not
         const from = opts.from ? rotate(opts.from, cosN, sinN) : null;
         const clear = opts.clear ? ((a, b) => opts.clear(rotate(a, cosP, sinP), rotate(b, cosP, sinP))) : null;
-        return sewColumns(cut.columns, cut.above, { edges, rings, ringOf, posOf },
+        const walked = sewColumns(cut.columns, cut.above, { edges: ground, rings, ringOf, posOf },
           { maxStitch, tol, pitch: rowSpacing, cosP, sinP, budget, from, clear });
+        // for a caller that counts which walk it got (center-out is the other one)
+        Object.defineProperty(walked, "columnWalk", { value: true });
+        return walked;
       }
     }
 
@@ -759,7 +899,6 @@
     // travel), which may legally cross a hole. Long connectors are then
     // emitted as a single point tagged {travel:true} — needle-up move, not
     // sewn — instead of being densified into fake stitches across the gap.
-    const markConnectors = !!opts.markConnectors;
     const out = [];
     if (key.length === 0) return out;
     out.push(rotate(key[0], cosP, sinP));
@@ -824,9 +963,42 @@
     return out;
   }
 
+  // A running stitch round a closed ring that KEEPS ITS CORNERS: no stitch
+  // longer than `stitchLen`, and none whose chord strays more than `hug` from
+  // the ring. `runningOutline` above steps a fixed distance along the ring and
+  // lands where it lands, so it chords across every corner sharper than its
+  // step: outside an inside corner of the outline, and INTO a hole at each of
+  // the hole's corners (0.6 mm deep, with 2 mm stitches round a 4 mm hole).
+  // Starts on polygon[0] and ends on it -- or, with `opts.open`, runs along
+  // the points as a path and ends on the last.
+  function huggingOutline(polygon, opts) {
+    const n = polygon.length, stitchLen = opts.stitchLen, hug = opts.hug;
+    if (n === 0) return [];
+    const out = [{ x: polygon[0].x, y: polygon[0].y }];
+    if (n === 1) return out;
+    const end = opts.open ? n - 1 : n;   // index of the last point: n is polygon[0] again
+    const at = (k) => polygon[k % n];
+    const hugs = (a, b) => {
+      for (let m = a + 1; m < b; m++) if (distToSegment(at(m), at(a), at(b)) > hug) return false;
+      return true;
+    };
+    let a = 0;
+    while (a < end) {
+      // as far round as the chord from here still hugs every corner it skips
+      let b = a + 1;
+      while (b < end && hugs(a, b + 1)) b++;
+      const p = at(a), q = at(b);
+      const steps = Math.max(1, Math.ceil(Math.hypot(q.x - p.x, q.y - p.y) / stitchLen));
+      for (let s = 1; s <= steps; s++) out.push({ x: p.x + (q.x - p.x) * s / steps, y: p.y + (q.y - p.y) * s / steps });
+      a = b;
+    }
+    return out;
+  }
+
   return {
     tatamiFill,
     runningOutline,
+    huggingOutline,
     pcaAngleDeg,
     crossesOpenGround,
     openGroundTest,

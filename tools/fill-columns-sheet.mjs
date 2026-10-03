@@ -132,3 +132,41 @@ for (const r of rows) {
   console.log(`| ${r.name} | ${r.off.floats} (${r.off.floatMm} mm) | ${r.on.floats} (${r.on.floatMm} mm) | ${r.off.cuts} | ${r.on.cuts} | ${r.off.stitches.toLocaleString("en-US")} | ${r.on.stitches.toLocaleString("en-US")} (${pct(r.off.stitches, r.on.stitches) >= 0 ? "+" : ""}${pct(r.off.stitches, r.on.stitches)}%) |`);
 }
 console.log(`\nwrote ${join(OUT, "sheet.svg")}`);
+
+// --- what it costs: cuts, stitches and time, on shapes with many holes ---------
+//
+// The drawings are here so that the README's second table can be re-measured:
+// an audit could not reproduce the first version of it, because the badge it
+// was measured on was in nobody's repo, and the count turned out to depend on
+// the order the holes were drawn in.
+const round = (cx, cy, r, n = 24) => ellipse(cx, cy, r, r, n);
+const grid = (n, sizeMm, make) => {
+  const out = [], pitch = sizeMm / n;
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) out.push(make((c + 0.5) * pitch, (r + 0.5) * pitch));
+  return out;
+};
+const COSTS = [
+  { name: "36 square holes of 4 mm, 60 mm badge", widthMm: 60, outer: box(0, 0, 60, 60), holes: grid(6, 60, (x, y) => box(x - 2, y - 2, x + 2, y + 2)) },
+  { name: "36 round holes of 4 mm, 60 mm badge", widthMm: 60, outer: box(0, 0, 60, 60), holes: grid(6, 60, (x, y) => round(x, y, 2)) },
+  { name: "196 square holes of 3 mm, 100 mm", widthMm: 100, outer: box(0, 0, 100, 100), holes: grid(14, 100, (x, y) => box(x - 1.5, y - 1.5, x + 1.5, y + 1.5)) },
+];
+const PRESETS = [["no fabric", null], ["pique_knit", "pique_knit"], ["structured_cap", "structured_cap"], ["terry_towel", "terry_towel"]];
+console.log("\n| shape | preset | rows | cuts off | cuts on | stitches | time off | time on |");
+console.log("|---|---|---|---|---|---|---|---|");
+for (const design of COSTS) {
+  for (const [label, id] of PRESETS) {
+    for (const angleOverride of [null, 30]) {
+      const run = (fillColumns) => {
+        const shape = { outer: design.outer, holes: design.holes, tierOverride: "fill" };
+        if (angleOverride != null) shape.angleOverride = angleOverride;
+        const t0 = Date.now();
+        const d = DG.buildQualityDesign([{ rgb: [27, 58, 92], shapes: [shape] }],
+          Object.assign({ garment: { id: "left_chest", widthIn: 8, heightIn: 8 }, pxPerMm: PX, targetWidthMm: design.widthMm, darkOnTop: false, underlay: true, fillColumns },
+            id ? { fabric: FAB.getFabric(id) } : {}));
+        return { ms: Date.now() - t0, cuts: d.stitches.filter((s) => s.type === "trim").length, st: d.stitchCount };
+      };
+      const off = run(false), on = run(true);
+      console.log(`| ${design.name} | ${label} | ${angleOverride == null ? "the engine's own angle" : angleOverride + "°"} | ${off.cuts} | ${on.cuts} | ${pct(off.st, on.st) >= 0 ? "+" : ""}${pct(off.st, on.st)}% | ${off.ms} ms | ${on.ms} ms |`);
+    }
+  }
+}
