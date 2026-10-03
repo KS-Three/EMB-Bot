@@ -74,3 +74,8 @@ digitizer/eye_pairs_out/
 .codex/
 .agents/
 AGENTS.md
+
+# A local tool drops daemon/pipe.key in the checkout root (first seen
+# 2026-10-01; which tool was not identified). It is a key file, this repo is
+# PUBLIC, and until 2026-10-03 nothing kept `git add -A` from staging it.
+/daemon/
