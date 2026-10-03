@@ -698,6 +698,80 @@ test("fillColumns: left off, every stitch is the one it has always been", () => 
   }
 });
 
+// --- what the audit of the lock stitches found (2026-10-03, PR #609) ----------
+//
+// 18 threads in a 12,880-design sweep were a stub: a cut, two penetrations in
+// one hole, and the end of the design. A scanline that passes exactly through
+// a corner pointing up the rows finds a span of no length there (fill.js,
+// above `cutColumns`; test/fill.test.js has it bare). The column walk made a
+// column of it, and when that column was left for last with no way round to
+// it, cut to it.
+
+// The threads of a design: the penetrations between one cut (or the start, or
+// a colour change) and the next.
+function threadsOf(d) {
+  const out = [[]];
+  for (const s of d.stitches) {
+    if (s.type === "end") break;
+    if (s.type === "trim" || s.type === "color") { out.push([]); continue; }
+    if (s.type === "stitch") out[out.length - 1].push(s);
+  }
+  return out.filter((t) => t.length);
+}
+const holesOf = (thread) => new Set(thread.map((s) => s.x + "," + s.y)).size;
+// Two penetrations in one hole, one straight after the other.
+function doubledAt(d) {
+  const at = [];
+  for (let i = 1; i < d.stitches.length; i++) {
+    const a = d.stitches[i - 1], b = d.stitches[i];
+    if (a.type === "stitch" && b.type === "stitch" && a.x === b.x && a.y === b.y) at.push([b.x, b.y]);
+  }
+  return at;
+}
+
+test("fillColumns: no cut is made to reach a corner that only happens to lie on a scanline", () => {
+  // The audit's comb, as it found it. Its fill rows run along the teeth, 0.15
+  // mm apart, and two of them run exactly along the side of a tooth: each
+  // finds the tooth's top corner as a span of no length. The stream ended
+  // `trim(37,175) stitch(37,175) stitch(37,175) end`.
+  const comb = { outer: ring([[0, 0], [28, 0], [28, 245], [45.5, 245], [45.5, 0], [73.5, 0], [73.5, 245], [91, 245], [91, 0], [119, 0], [119, 245], [136.5, 245], [136.5, 0], [164.5, 0], [164.5, 245], [182, 245], [182, 0], [210, 0], [210, 245], [227.5, 245], [227.5, 0], [255.5, 0], [255.5, 245], [273, 245], [273, 0], [301, 0], [301, 245], [318.5, 245], [318.5, 0], [346.5, 0], [346.5, 350], [0, 350]]), holes: [] };
+  const d = drawn(comb, 346.5);
+  const threads = threadsOf(d);
+  assert.deepStrictEqual(threads.filter((t) => holesOf(t) < 2).map((t) => [t.length, t[0].x, t[0].y]), [], "threads that never leave one hole");
+  assert.ok(threads[threads.length - 1].length > 2, "the design ends on a thread of " + threads[threads.length - 1].length + " penetrations");
+  assert.deepStrictEqual(doubledAt(d), [], "two penetrations in one hole");
+  // and the thread still stays out of the gaps between the teeth
+  assert.deepStrictEqual(openGroundMm(d, comb, 0.3), { sewn: 0, floats: 0 });
+  // (without the flag the plain walk passes through the same two corners, and
+  // doubles them, but never cuts for one: the fixture is the flag's own)
+  const off = drawn(comb, 346.5, { fillColumns: false });
+  assert.deepStrictEqual(threadsOf(off).filter((t) => holesOf(t) < 2), []);
+});
+
+test("fillColumns: the tip of a holed shape gets one penetration at most, not two in one hole", () => {
+  // A house with a window, rows level: the first scanline of the fill IS the
+  // point of the roof. With no underlay the walk began there, with two
+  // penetrations in the tip; with one, it went there whenever it was nearest.
+  // The lattice underlays of terry and fleece run at 45 degrees and did the
+  // same at the eaves, which are the top of THEIR rows.
+  //
+  // (The window is kept off the underlay's rows on purpose. A wall that lies
+  // exactly on one -- x = 200 under the cap preset's rows 2 mm apart -- makes
+  // two spans that TOUCH at the wall's corner; the move from one to the other
+  // has no length, and that is still two penetrations in one hole. Another
+  // thing, seen and not changed: the render README.)
+  const house = { outer: ring([[150, 0], [300, 120], [300, 300], [0, 300], [0, 120]]), holes: [boxPx(95, 150, 195, 250)], angleOverride: 0 };
+  for (const fabric of [null].concat(FABRICS.FABRICS)) {
+    for (const underlay of [false, true]) {
+      const label = (fabric ? fabric.id : "no fabric") + ", underlay " + underlay;
+      const d = drawn(house, 300, Object.assign({ underlay }, fabric ? { fabric } : {}));
+      assert.deepStrictEqual(doubledAt(d), [], label);
+      assert.deepStrictEqual(threadsOf(d).filter((t) => holesOf(t) < 2), [], label);
+      assert.deepStrictEqual(cutsBy(d), { all: 0, fill: 0, underlay: 0, between: 0 }, label);
+    }
+  }
+});
+
 test("buildQualityDesign: thin solid bar goes satin, branched shape goes fill", () => {
   // thin bar 200x8 px at pxPerMm 8 → ~1mm wide final (fits 4in garment, scale>1 but still thin)
   const bar = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 8 }, { x: 0, y: 8 }];
