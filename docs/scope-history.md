@@ -17880,3 +17880,105 @@ records; on, 3,783.
 Off, nothing moves: engine 693 passed. Not sewn. Flip is still Kent's:
 defect 52, "Waiting on Kent" 22.
 *(fixed 2026-10-03 — `test/fill.test.js` "a move of no length", `test/digitize.test.js`; `docs/renders/fill-columns-2026-10-03/README.md`, "A move of no length")*
+
+## 2026-10-03 — A ring handed over closed got a wedge from `offsetRing`, and under a preset the wedge was sewn (browser builder, fixed)
+
+Found by the independent audit of the island fix (#613) and left there. A
+ring may say its first point again at the end: `[p0, p1, ..., pn, p0]`. The
+repeat is an edge of no length. It has no direction and so no normal, and
+`offsetRing` (`digitize.js`) gave each of its two ends the normal of the one
+real edge beside it: the first was moved along one by THREE times the
+distance (the mitre clamp), the last along the other by once. The corner
+between them became a wedge. Older than every flag.
+
+**Where it was sewn.** `offsetRing` has two callers. Under a fabric preset
+the fill is sewn to the pull-compensated rings (`fillRingsOf`): the outline
+grown, a hole shrunk, an island grown. With `fillColumns`, preset or none,
+the edge run of a shape with a hole or an inside corner lies on the ring
+moved 0.2 mm into the fill (`edgeRunRing`), and its first corner went 0.6 mm
+in. With no preset and no flag nothing is offset, and nothing was wrong.
+Measured on `origin/main` at `f887e27d`, 10 px per mm, left chest: mm of fill
+past the drawn edge at its furthest, on a 40 mm box and on an 8 mm island in
+a 24 mm hole in it.
+
+| preset | pull comp | outline closed, before | now | open | island closed, before | now | open |
+|---|---|---|---|---|---|---|---|
+| structured_cap | 0.4 | 1.2 | 0.4 | 0.4 | 1.1 | 0.4 | 0.4 |
+| pique_knit | 0.3 | 0.9 | 0.3 | 0.3 | 0.9 | 0.3 | 0.3 |
+| jersey_tee | 0.35 | 1.1 | 0.4 | 0.4 | 1.1 | 0.3 | 0.3 |
+| fleece_sweatshirt | 0.5 | 1.5 | 0.5 | 0.5 | 1.4 | 0.5 | 0.5 |
+| canvas_tote | 0.2 | 0.6 | 0.2 | 0.2 | 0.6 | 0.2 | 0.2 |
+| terry_towel | 0.6 | 1.8 | 0.6 | 0.6 | 1.7 | 0.5 | 0.5 |
+| woven_dress | 0.2 | 0.6 | 0.2 | 0.2 | 0.6 | 0.2 | 0.2 |
+
+(The island's rows fall where the shape's do, so its last row is up to one
+row short of the ring.) A closed hole had the wedge inward: on terry, 16
+fill stitches past a 20 mm hole's compensation, now none. The island's
+column is there because the island fix as merged (#613 at `61ec4daa`) grows
+an island with `offsetRing` as it stood. The commits that grow one from its
+corners said once came after the merge and are in #620.
+
+**The fix.** `offsetRing` moves the ring's corners said ONCE
+(`distinctCorners`: a point equal to the one after it is dropped, round the
+ring, to within 1e-9 px on both axes, since a closing point that was
+computed rarely lands exactly). A closed ring comes back as the same ring
+open does, one point shorter. One with fewer than three corners left has no
+outward side and is handed back as it came. A ring that says no point twice
+gets the same arithmetic on the same points.
+
+**What moves and what does not** (`tools/closed-ring-census.mjs`, run on the
+engine at `f887e27d` and on this one). 151 designs: 33 drawn by hand, 60
+seeded, and the Studio's own lanes' rings (40 basic shapes, 4 hand-drawn
+with curves and cut-outs, 14 from the image lane).
+
+- **Rings that say no point twice: nothing.** 4,536 outputs, no fabric and
+  all seven presets, `fillColumns` absent, off and on, and on a quarter of
+  the designs no underlay, `ties`, `fillStagger` and a cap. A hash of
+  everything the builder returns: 2,560 distinct, none different.
+- **Every ring closed, against the same design open** (the angle fixed, see
+  below). Outputs whose FILL differs from the open design's:
+
+| | outputs | before | now |
+|---|---|---|---|
+| no fabric, flag absent | 151 | 0 | 0 |
+| no fabric, `fillColumns` on | 151 | 17 | 0 |
+| a preset, flag absent | 1,057 | 1,008 | 0 |
+| a preset, `fillColumns` on | 1,057 | 1,008 | 0 |
+
+  (The 49 that did not differ are seven shapes sewn as satin, which have no
+  fill. The 17 are fills entered at another corner, because the wedged edge
+  run before them ended somewhere else.)
+
+**Who hands one over: no Studio lane.** `generateElement` run for real, the
+builder watched for the rings it is given, every call with a preset. Basic
+shapes: 3,975 rings, each kind across its sizes and settings, none
+(`shapePresets.dedupeRing` takes a repeat out, at the wrap too). The image
+lane: 642 rings from seven of the repo's PNG fixtures at 2, 4 and 8
+colours with and without background removal, and 20,304 from 400 noise
+maps with no smoothing, none; the tracer steps one px a point and stops
+before it says its start again. Trace import: 64 rings, none. A hand-drawn
+shape whose points repeat, closed or mid-ring or closed to within 1e-12 px,
+is refused by `isValidShape` as "This shape crosses itself." and the
+builder is not called; a closed cut-out cuts nothing. (That refusal is its
+own behaviour, older than this, and is not changed.) So no file a customer
+has made in the Studio carries the wedge. Direct callers could: `src/fonts.js`
+`pathToPolygons` keeps a closing point, and the two tool scripts that use it
+pass no fabric.
+
+**Left, and measured.** A closed ring is still not the open ring everywhere.
+With the fill now the same, the whole stream still differs from the open
+design's on 842 of the 1,057 under a preset (234 with `fillColumns` on) and
+on 118 of 151 with none (35). What differs is the underlay. Three readers
+take the POINTS, and a point said twice is one more of them: the centroid
+the flag-off edge run is drawn toward (`insetRing`) and a colour's shapes
+are ordered by (`orderShapes`), and the points' own axis (`pcaAngleDeg`),
+which sets the auto angle and a satin shape's centre run. On 700 of the 842
+the underlay is within 0.2 mm of the open design's. The furthest is 12.8 mm:
+an eight-pointed star sewn as satin, where one axis is as good as another,
+and its centre run took a different one. None of this is `offsetRing`, none
+moved with this change, and no Studio lane reaches it. The cure would be in
+one place, at the builder's door, and would move a closed ring's stitches
+with no preset too: not done here.
+
+Seven tests, each watched fail against the engine at `f887e27d`. Not sewn.
+*(fixed 2026-10-03 — `tools/closed-ring-census.mjs`; `test/digitize.test.js`, "a ring handed over CLOSED")*

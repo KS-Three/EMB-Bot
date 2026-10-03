@@ -1072,6 +1072,21 @@ sews nothing and cuts the smallest shape that contains it.
   `splitTol` there, the two lengths in the layout's units: final mm,
   divided by the fit scale, times `pxPerMm`, as `fillStitchMm` beside them
   already is.
+- **A ring may arrive CLOSED, and three readers still take its points
+  (2026-10-03).** `[p0, ..., pn, p0]`: the first point said again at the end.
+  `offsetRing` moves the corners said ONCE (`distinctCorners`), so the fill's
+  pull compensation and the `fillColumns` edge run are the open ring's. Three
+  things are still read off the POINTS, and a point said twice is one more of
+  them: the auto stitch angle and a satin shape's centre run (`pcaAngleDeg`),
+  and the flag-off edge run and the order of a colour's shapes (`insetRing`
+  and `orderShapes`, both by the points' centroid). No Studio lane sends a
+  closed ring: the tracer and the basic shapes never say a point twice, and
+  a hand-drawn shape that does is refused as crossing itself. A lane that
+  will (`src/fonts.js` `pathToPolygons` keeps the closing point) should take
+  it off before the builder. `node tools/closed-ring-census.mjs` prints the
+  wedge, closed against open, and what each lane hands over; `--hash` and
+  `--compare` are the before and after of an engine change on rings that say
+  no point twice.
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 
