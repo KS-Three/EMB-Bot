@@ -559,6 +559,27 @@
     if (pointInPoly(a[0], b)) return "inside";
     return pointInPoly(b[0], a) ? "around" : "apart";
   }
+  // A ring's corners with no point said twice running (a ring handed over
+  // closed says its first point again at the end).
+  function distinctCorners(ring) {
+    return ring.filter((p, i) => { const q = ring[(i + 1) % ring.length]; return p.x !== q.x || p.y !== q.y; });
+  }
+  // Does a ring cross or touch ITSELF: two edges that are not neighbours
+  // meeting? Edges are tried only against those whose reach in x overlaps
+  // theirs, so a ring of thousands of short edges costs little.
+  function crossesItself(ring) {
+    const pts = distinctCorners(ring), n = pts.length, edges = [];
+    for (let i = 0; i < n; i++) { const p = pts[i], q = pts[(i + 1) % n]; edges.push({ i, p, q, lo: Math.min(p.x, q.x), hi: Math.max(p.x, q.x) }); }
+    edges.sort((e, f) => e.lo - f.lo);
+    for (let a = 0; a < n; a++) {
+      for (let b = a + 1; b < n && edges[b].lo <= edges[a].hi; b++) {
+        const apart = Math.abs(edges[a].i - edges[b].i);
+        if (apart === 1 || apart === n - 1) continue;   // neighbours share a corner
+        if (segmentsMeet(edges[a].p, edges[a].q, edges[b].p, edges[b].q)) return true;
+      }
+    }
+    return false;
+  }
   // Which rings of a shape's `holes` are ISLANDS. `holes` carries every ring
   // inside the outline, and the fill is even-odd: a ring inside a hole is
   // filled ground again, and a ring inside that is a hole again. So a ring
@@ -575,12 +596,25 @@
     const depth = holes.map(() => 0);
     if (holes.length > 1) {
       const boxes = holes.map(ringBox);
-      for (let i = 0; i < holes.length; i++) {
-        for (let j = i + 1; j < holes.length; j++) {
+      const boxed = (a, b) => a.x0 >= b.x0 && a.x1 <= b.x1 && a.y0 >= b.y0 && a.y1 <= b.y1;
+      // This is asked of EVERY shape with two rings or more, and nearly none
+      // has an island, so it has to cost nothing. The rings are taken left to
+      // right; `open` holds those begun whose box has not ended yet, and only
+      // they can hold, or lie in, the next. (Every pair against every pair,
+      // 2,025 holes cost a build 40 ms.)
+      let open = [];
+      for (const i of holes.map((_, k) => k).sort((p, q) => boxes[p].x0 - boxes[q].x0)) {
+        open = open.filter((j) => boxes[j].x1 >= boxes[i].x0);
+        for (const j of open) {
+          // A ring inside another has its box inside the other's. (Forty long
+          // cut-outs side by side, their boxes all overlapping, cost a second
+          // and more with their edges tried against each other instead.)
+          if (!boxed(boxes[i], boxes[j]) && !boxed(boxes[j], boxes[i])) continue;
           const lie = ringsLie(holes[i], holes[j], boxes[i], boxes[j]);
           if (lie === "inside") depth[i]++;
           else if (lie === "around") depth[j]++;
         }
+        open.push(i);
       }
     }
     return depth.map((n) => n % 2 === 1);
@@ -803,28 +837,35 @@
       // can't prevent. Per hole: if the inset flips signed-area sign vs
       // the original (winding inverted) or its area is ~0 (collapsed),
       // discard the offset and keep the ORIGINAL hole ring.
+      // An island is held to the same test, which for it asks one thing: a
+      // ring with no area (three points in a line, lying in a cut-out) has no
+      // ground to grow, and is left as drawn, as it always was. And an island
+      // is grown from its corners said ONCE: said twice running, as a ring
+      // handed over closed says its first, a corner gets a wedge three times
+      // the compensation long from the offset (which the outline and the
+      // holes of such a ring have always had, and still have).
       const moved = holes.map((hh, i) => {
-        if (islands[i]) return offsetRing(hh, pullCompPx, true);
-        const off = offsetRing(hh, pullCompPx, false);
+        const off = islands[i] ? offsetRing(distinctCorners(hh), pullCompPx, true) : offsetRing(hh, pullCompPx, false);
         const a0 = signedArea(hh), a1 = signedArea(off);
         if (Math.sign(a0) !== Math.sign(a1) || Math.abs(a1) < 1e-6) return hh;
         return off;
       });
       // An island grown and the wall of the hole round it shrunk move TOWARD
-      // each other, and so do two islands in one hole. Where the ground
-      // between them is not more than twice the compensation the two rings
-      // cross, and crossed rings are a fill sewn where neither was drawn. So,
-      // as with the thin hole above, a ring that cannot be moved is sewn AS
-      // DRAWN: an island that, grown, no longer lies against every other ring
-      // the way it was drawn; and then any hole that, shrunk, still meets
-      // such an island as drawn. (Putting a ring back never brings two
-      // together: an island put back is smaller, a hole put back is larger.)
+      // each other, and so do two islands in one hole, and the two banks of a
+      // slit in an island. Where the ground between is not more than twice
+      // the compensation the rings cross, and crossed rings are a fill sewn
+      // where neither was drawn. So, as with the thin hole above, a ring that
+      // cannot be moved is sewn AS DRAWN: an island that, grown, crosses
+      // itself or no longer lies against every other ring the way it was
+      // drawn; and then any hole that, shrunk, still meets such an island as
+      // drawn. (Putting a ring back never brings two together: an island put
+      // back is smaller, a hole put back is larger.)
       if (islands.some(Boolean)) {
         const all = holes.map((_, i) => i), drawnBox = holes.map(ringBox), movedBox = moved.map(ringBox);
         // the rings that ring i, where it has been moved to, no longer lies against as it was drawn
         const upset = (i) => all.filter((j) => j !== i && ringsLie(moved[i], moved[j], movedBox[i], movedBox[j]) !== ringsLie(holes[i], holes[j], drawnBox[i], drawnBox[j]));
         const putBack = (i) => { moved[i] = holes[i]; movedBox[i] = drawnBox[i]; };
-        const stuck = all.filter((i) => islands[i] && upset(i).length);
+        const stuck = all.filter((i) => islands[i] && moved[i] !== holes[i] && (crossesItself(moved[i]) || upset(i).length));
         stuck.forEach(putBack);
         for (const i of stuck) upset(i).forEach(putBack);
       }
@@ -995,9 +1036,10 @@
         // Hole floor is 3 too, for the reason in the shapes0 comment above: it was missed when the outer floor was relaxed.
         const holes = (shape.holes || []).filter((hh) => hh && hh.length >= 3);
         // An island's area is ground the shape FILLS, so it is added back, not
-        // taken off a second time: subtracted, three nested rings came to no
-        // area at all and the whole shape was dropped. (The perimeter is every
-        // ring's, island or hole.)
+        // taken off a second time. Subtracted, nested rings could come to no
+        // area at all (three of them 4 mm apart in a 40 mm box do), and a
+        // shape with no area is dropped. (The perimeter is every ring's,
+        // island or hole.)
         const islands = islandsAmong(holes);
         const outerArea = polyArea(poly), holeArea = holes.reduce((a, hh, i) => a + (islands[i] ? -polyArea(hh) : polyArea(hh)), 0);
         const area = Math.max(0, outerArea - holeArea), perim = polyPerim(poly) + holes.reduce((a, hh) => a + polyPerim(hh), 0);

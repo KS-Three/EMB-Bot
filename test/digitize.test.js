@@ -875,6 +875,52 @@ test("buildQualityDesign: two islands too near each other to grow are both sewn 
   });
 });
 
+// --- what an independent audit of the island fix found (2026-10-03) -----------
+//
+// Its claims were handed over as claims and read with the auditor's own
+// clipper. Two of the three things below are the fix reaching further than it
+// should; the third is its cost on a shape with no island at all, and has no
+// test here because it is a time (islandsAmong, the box test).
+
+test("buildQualityDesign: an island that would cross ITSELF grown is sewn as drawn", () => {
+  // An island with a slit of its own, 0.1 mm wide. Grown, the slit's two
+  // walls pass each other, and a ring that crosses itself is a fill with a
+  // gap where neither wall was drawn: on terry 0.5 mm of the island bare on
+  // each bank of the slit. (An outline with such a slit has always done that,
+  // and still does.) The guard asked only whether an island met ANOTHER ring.
+  const fabric = FABRICS.getFabric("terry_towel");
+  const slit = ring([[130, 130], [199.5, 130], [199.5, 230], [200.5, 230], [200.5, 130], [270, 130], [270, 270], [130, 270]]);
+  const shape = level({ outer: boxPx(0, 0, 400, 400), holes: [boxPx(80, 80, 320, 320), slit] });
+  bothWalks((fillColumns, walk) => {
+    const xs = fillOnMiddleRows(drawn(shape, 400, { fabric, fillColumns }), 400);
+    assert.strictEqual(lastIn(xs, 0, 100), 86, "the hole's wall, shrunk as ever" + walk);
+    assert.strictEqual(firstIn(xs, 100, 150), 130, "the island's outer edge, as drawn" + walk);
+    // (the banks are drawn at 199.5 and 200.5, and a stitch is rounded to 0.1 mm)
+    assert.ok(Math.abs(lastIn(xs, 150, 200.4) - 199.5) <= 0.5, "the slit's left bank is sewn" + walk + ": " + lastIn(xs, 150, 200.4));
+    assert.ok(Math.abs(firstIn(xs, 200.4, 250) - 200.5) <= 0.5, "and its right bank" + walk + ": " + firstIn(xs, 200.4, 250));
+    assert.strictEqual(lastIn(xs, 250, 300), 270, "the island's far edge" + walk);
+  });
+});
+
+test("buildQualityDesign: a ring with no area inside a hole is not an island to grow", () => {
+  // Three points in a line, lying in a cut-out. It is wholly inside a hole,
+  // so by the count it is an island; grown by the compensation it became a
+  // sliver 1.2 mm wide and was FILLED, in the middle of the hole. A ring with
+  // no area has no ground to compensate, and is left as drawn, as it always
+  // was (the rule a hole that folds when shrunk has always had).
+  const fabric = FABRICS.getFabric("terry_towel");
+  const shape = level({ outer: boxPx(0, 0, 240, 240), holes: [boxPx(60, 60, 180, 180), ring([[90, 120], [120, 120], [150, 120]])] });
+  bothWalks((fillColumns, walk) => {
+    const d = drawn(shape, 240, { fabric, fillColumns });
+    let inHole = 0;   // fill stitches more than 1 mm inside the cut-out
+    for (const run of d.runs) {
+      if (run.kind !== "fill") continue;
+      for (let i = run.i0; i <= run.i1; i++) if (d.stitches[i].type === "stitch" && Math.abs(d.stitches[i].x) < 50 && Math.abs(d.stitches[i].y) < 50) inHole++;
+    }
+    assert.strictEqual(inHole, 0, "fill stitches in the cut-out" + walk);
+  });
+});
+
 test("buildQualityDesign: two holes that cross are still two holes", () => {
   // An island is a ring wholly inside a hole. Two cut-outs that overlap, or
   // one laid across the notch of another, are not that, whichever corner of
