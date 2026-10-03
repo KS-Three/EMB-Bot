@@ -333,13 +333,32 @@ def test_on_the_shipped_engine_the_fold_still_saves_stops_revisits_and_flying(
     assert st_on <= 1.02 * st_off, (st_off, st_on)
 
 
+# The two arms this defect was found on. `snap_region_edges` went ON later
+# the same day and drone's regions moved with it, so on today's defaults no
+# shape doubles -- but nothing about the fold's reorder was fixed; the
+# fixture just stopped showing it. Held on the engine it was measured on so
+# the defect stays tracked rather than quietly retired.
+@pytest.fixture(scope="module")
+def drone_presnap_off():
+    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=False,
+                               snap_region_edges=False))
+
+
+@pytest.fixture(scope="module")
+def drone_presnap_on():
+    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True,
+                               snap_region_edges=False))
+
+
 @pytest.mark.xfail(strict=True, reason=(
-    "Known on the shipped engine (2026-09-30): the fold's reorder hands one "
+    "Known on the engine as shipped the morning of 2026-09-30 (before "
+    "snap_region_edges): the fold's reorder hands one "
     "shape a different stage-5 neighbourhood and it sews 38 -> 308 stitches, "
     "more than the fold's whole 211-stitch net cost. Strict, so a fix "
     "announces itself."))
-def test_on_the_shipped_engine_no_shape_more_than_doubles_under_the_fold(
-        drone_shipped_off, drone_shipped_on):
+def test_before_the_snap_one_shape_more_than_doubles_under_the_fold(
+        drone_presnap_off, drone_presnap_on):
+    drone_shipped_off, drone_shipped_on = drone_presnap_off, drone_presnap_on
     from collections import Counter
 
     def per_shape(plan):

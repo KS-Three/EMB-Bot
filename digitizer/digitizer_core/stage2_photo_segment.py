@@ -2365,9 +2365,93 @@ def kept_masks_to_quant(
     )
 
 
+# How much closer (CIE76, in the merge's own Lab) an edge pixel's colour must
+# sit to a neighbouring region's mean than to its own region's before it
+# moves. A drawn edge clears it by a mile — white against the Instagram
+# sweep is ΔE 40-60 — while two regions of one sweep meet a pixel or two
+# apart at well under 1, and with the design ramp subtracted they read as
+# the same colour. 10 sits between, and is the same order as the flat
+# lane's `merge_delta_e` (6.0) for "these are the same colour".
+SNAP_MARGIN_LAB = 10.0
+# Each pass moves the edge one pixel. A SEEDS superpixel on a 2000 px
+# raster is ~65 px across, so a bite is at most about half that; 64 passes
+# covers it with room, and the loop stops early the moment nothing moves.
+SNAP_MAX_PASSES = 64
+
+_NEIGHBOURS_8 = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
+
+
+def snap_region_edges(labels: np.ndarray, valid: np.ndarray, lab_img: np.ndarray,
+                      margin: float = SNAP_MARGIN_LAB,
+                      max_passes: int = SNAP_MAX_PASSES) -> np.ndarray:
+    """-> a copy of `labels` whose edges follow the pixels, not the superpixels.
+
+    Every region this module forms is a union of whole SEEDS superpixels, so
+    its edge is a superpixel edge wherever the two disagree. Measured
+    2026-09-30 on Kent's real Instagram file: 148 superpixels straddle the
+    white ring/square edge and 7.6% of the white lands on the wrong side —
+    the jagged ring and bitten dot in the stitches, where forced flat (per
+    pixel k-means) sews the same shapes clean.
+
+    Each pass looks only at `valid` pixels with an 8-neighbour of another
+    label, and moves one into the neighbouring label whose mean colour is
+    closest if that is closer than its own label's mean by more than
+    `margin`. Means are the regions' as handed in and stay fixed, so every
+    move lowers the pixel's distance by at least `margin` and the loop
+    cannot oscillate. `valid` is the only foreground: an excluded pixel is
+    never read as a candidate and never written.
+    """
+    out = labels.copy()
+    h, w = out.shape
+    ids = out[valid]
+    if ids.size == 0:
+        return out
+    n = int(ids.max()) + 1
+    count = np.maximum(np.bincount(ids, minlength=n), 1)
+    means = np.stack(
+        [np.bincount(ids, weights=lab_img[..., c][valid], minlength=n) / count
+         for c in range(3)], axis=1)
+
+    pad_lab = np.pad(out, 1, constant_values=-1)
+    pad_valid = np.pad(valid, 1, constant_values=False)
+    for _ in range(max_passes):
+        pad_lab[1:-1, 1:-1] = out
+        edge = np.zeros((h, w), bool)
+        for dy, dx in _NEIGHBOURS_8:
+            nb = pad_lab[1 + dy:1 + dy + h, 1 + dx:1 + dx + w]
+            nbv = pad_valid[1 + dy:1 + dy + h, 1 + dx:1 + dx + w]
+            edge |= nbv & (nb != out)
+        edge &= valid
+        ys, xs = np.nonzero(edge)
+        if ys.size == 0:
+            break
+        px = lab_img[ys, xs]
+        own = out[ys, xs]
+        best = own.copy()
+        best_d = np.linalg.norm(px - means[own], axis=1)
+        need = best_d - margin
+        for dy, dx in _NEIGHBOURS_8:
+            ny, nx = ys + dy + 1, xs + dx + 1
+            ok = pad_valid[ny, nx]
+            cand = pad_lab[ny, nx]
+            ok &= cand != own
+            if not ok.any():
+                continue
+            d = np.full(ys.size, np.inf)
+            d[ok] = np.linalg.norm(px[ok] - means[cand[ok]], axis=1)
+            take = ok & (d < need) & (d < best_d)
+            best[take] = cand[take]
+            best_d[take] = d[take]
+        moved = best != own
+        if not moved.any():
+            break
+        out[ys[moved], xs[moved]] = best[moved]
+    return out
+
+
 def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
             split_tonal=False, shade_demand=False, design_ramp=None,
-            thin_population=False) -> Quant:
+            thin_population=False, snap_edges=False, keep_counters=False) -> Quant:
     h, w = p.rgb.shape[:2]
     valid = ~p.bg_mask
     flat_rgb = p.rgb.reshape(-1, 3)
@@ -2529,6 +2613,14 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     else:
         blend_warnings = []
 
+    # --- 3.75 Edges follow pixels (`cfg.snap_region_edges`) -----------------
+    # After the dissolve, so it snaps the labels that will actually be cut,
+    # and on `lab_img` — the merge's own colour space, sweep subtracted when
+    # the design ramp fits — so a seam inside the sweep stays put while a
+    # drawn edge snaps. See `snap_region_edges`.
+    if snap_edges and merged_count:
+        merged = snap_region_edges(merged, base_valid, lab_img)
+
     # --- 4. Min-area floor ---------------------------------------------------
     # `merge_hierarchical` only ever merges graph-adjacent nodes, but a
     # single merged label can still cover more than one connected component
@@ -2562,8 +2654,11 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     # photo lane -- see stage3_segment.resolve_small_regions for the
     # measurement. Photo quantisation makes sub-floor fragments mutually
     # adjacent everywhere, so chaining stops discriminating here.
+    # `keep_counters` is the caller's gate, like `thin_population`: read on
+    # `true_lab`, the raster's own colours, since every region here is layer 0.
     kept, floor_warnings = resolve_small_regions(
-        regions, cfg, p.px_per_mm, chain_rescue=False)
+        regions, cfg, p.px_per_mm, chain_rescue=False,
+        lab_img=true_lab if keep_counters else None, keep_counters=keep_counters)
 
     return kept_masks_to_quant(
         p,

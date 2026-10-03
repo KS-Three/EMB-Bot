@@ -112,7 +112,10 @@ Missing against the contract:
 - ~~assumed backing class and weight~~ **SHIPPED 2026-09-20** — `Fabric.assumed_backing`,
   printed as a `Stabilizer:` line; the stitch-count guess is gone
 - ~~topper yes/no~~ **SHIPPED 2026-09-20** — `needs_topper`, printed as `Topper:`
-- needle spec (75/11 RG or SES; escalate to 80/12 for metallic)
+- ~~needle spec (75/11 RG or SES~~ **SHIPPED 2026-10-01** — `needle` per preset,
+  printed as `Needle: 75/11 ballpoint (standard for 40wt thread)`, on the sheet
+  and on the Studio's hooping card. Still missing: ~~;~~ escalate to 80/12 for
+  metallic (no thread-weight input to escalate on)
 - tension targets in grams, with the satin-underside 1/3–2/3 check
 - the colour-stop → needle map. **DST carries no colour data, so the operator
   hand-maps every stop, every job** — the most concrete operator cost on this

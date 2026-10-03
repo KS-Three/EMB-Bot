@@ -570,6 +570,111 @@ export function nextShapeIds(list, count) {
   return ids;
 }
 
+// ---- Cut-outs (holes) -------------------------------------------------------
+// A hole is an ordinary shape marked `cutOut: true` (spec 2026-09-30 §5,
+// Kent's ruling 11). Nothing is stored about WHICH shape it cuts — that is
+// resolved here, by containment, every time, so moving, duplicating or
+// deleting shapes can never leave a stale link behind.
+export const CUTOUT_NO_PARENT = "Not inside a shape — cuts nothing.";
+export const CUTOUT_OVERLAP = "Overlaps another cut-out — cuts nothing.";
+
+function ringBox(ring) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of ring) { if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x; if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y; }
+  return { minX, minY, maxX, maxY };
+}
+function ringsCross(a, b) {
+  for (let i = 0; i < a.length; i++) {
+    const a1 = a[i], a2 = a[(i + 1) % a.length];
+    for (let j = 0; j < b.length; j++) {
+      if (segmentsIntersect(a1, a2, b[j], b[(j + 1) % b.length])) return true;
+    }
+  }
+  return false;
+}
+// Every vertex of `inner` inside `outer`, and no edge of one touching an edge
+// of the other. The box test first: most pairs fail it, and this runs on
+// every frame of a node drag.
+function ringInside(inner, innerBox, outer, outerBox) {
+  if (innerBox.minX < outerBox.minX || innerBox.maxX > outerBox.maxX || innerBox.minY < outerBox.minY || innerBox.maxY > outerBox.maxY) return false;
+  for (const p of inner) if (!pointInShape(outer, p.x, p.y)) return false;
+  return !ringsCross(inner, outer);
+}
+
+// -> { parentOf: {cutId: parentId|null}, reasonOf: {cutId: why it cuts
+// nothing}, holesOf: {parentId: [cutId...]}, flat: Map(id -> flattened ring) }.
+// Parent = the SMALLEST valid non-cut-out shape that contains the cut-out
+// (an O's counter drawn over a patch cuts the O, not the patch); an
+// equal-area tie (to a relative 1e-9) stays with the EARLIER shape, so
+// Duplicate leaves the hole with the original. Two cut-outs of one parent that cross or
+// nest: the earlier in the list stands — the engine fills even-odd, so both
+// would sew the overlap back in. Shapes without an id take no part.
+export function resolveCutOuts(shapes) {
+  const list = (shapes || []).filter((s) => s && s.id != null);
+  // Null-prototype maps: a shape id is user data, and a plain {} would answer
+  // holesOf["constructor"] with a function.
+  const parentOf = Object.create(null), reasonOf = Object.create(null), holesOf = Object.create(null);
+  // The common case — no cut-out at all — flattens nothing. This runs on every
+  // drag frame and every shapesToRegions; callers read `flat` only for ids in
+  // holesOf, so an empty Map is all they can ask of it.
+  if (!list.some((s) => s.cutOut)) return { parentOf, reasonOf, holesOf, flat: new Map() };
+  const flat = new Map(), box = new Map(), valid = new Map();
+  for (const s of list) {
+    const ring = flattenShape(s.points, s.curves, true);
+    flat.set(s.id, ring);
+    box.set(s.id, ringBox(ring));
+    valid.set(s.id, shapeIssues(ring).length === 0);
+  }
+  const solids = list.filter((s) => !s.cutOut && valid.get(s.id));
+  const area = new Map(solids.map((s) => [s.id, polygonArea(flat.get(s.id))]));
+  for (const c of list) {
+    if (!c.cutOut) continue;
+    parentOf[c.id] = null;
+    const ring = flat.get(c.id);
+    if (!valid.get(c.id)) { reasonOf[c.id] = shapeIssues(ring)[0]; continue; }
+    let best = null;
+    for (const p of solids) {
+      if (!ringInside(ring, box.get(c.id), flat.get(p.id), box.get(p.id))) continue;
+      // An equal-area tie stays with the EARLIER shape. The one case that
+      // produces real ties is Duplicate (a copy 18 px over, same area): the
+      // original must keep its hole, and without the epsilon the float noise
+      // in two shoelace sums would hand it to either one at random.
+      if (!best || area.get(p.id) < area.get(best.id) * (1 - 1e-9)) best = p;
+    }
+    if (!best) { reasonOf[c.id] = CUTOUT_NO_PARENT; continue; }
+    const taken = holesOf[best.id] || [];
+    const clash = taken.some((id) => {
+      const other = flat.get(id);
+      return ringsCross(ring, other)
+        || pointInShape(other, ring[0].x, ring[0].y)
+        || pointInShape(ring, other[0].x, other[0].y);
+    });
+    if (clash) { reasonOf[c.id] = CUTOUT_OVERLAP; continue; }
+    parentOf[c.id] = best.id;
+    holesOf[best.id] = [...taken, c.id];
+  }
+  return { parentOf, reasonOf, holesOf, flat };
+}
+
+// A copy of `shape` marked as a cut-out, or with the mark REMOVED — never
+// `cutOut: false`, so an untouched record equals a pre-feature record.
+export function withCutOut(shape, on) {
+  if (on) return { ...shape, cutOut: true };
+  const rest = { ...shape };
+  delete rest.cutOut;
+  return rest;
+}
+
+// The one name a shape goes by — list row, assign box, popover heading. A
+// shape with a cut-out in it reads Fill whatever it stores: the engine cannot
+// satin round a hole, and the name says what will sew.
+export function manualShapeName(shape, cut) {
+  const n = String(shape.id).replace(/^s/, "");
+  if (shape.cutOut) return `Shape ${n} · Cut out`;
+  const holed = !!(cut && cut.holesOf && (cut.holesOf[shape.id] || []).length);
+  return `Shape ${n} · ${shape.stitchType === "satin" && !holed ? "Satin" : "Fill"}`;
+}
+
 // Convert an element's COMPLETED shapes into buildQualityDesign's
 // colorRegions input. Each shape becomes its OWN region (a manual choice,
 // not an auto-merge-by-color step: two shapes the user happens to color the
@@ -580,10 +685,14 @@ export function nextShapeIds(list, count) {
 // Curved segments (shape.curves) are flattened to plain points here, at
 // this exact hand-off boundary — everything past this function (the stitch
 // engine, the Python pipeline) only ever sees straight-line rings.
+// A shape marked `cutOut` emits no region of its own; if it resolves to a
+// parent (see resolveCutOuts) its flattened ring arrives as that parent's hole.
 export function shapesToRegions(shapes) {
   const regions = [];
+  const cut = resolveCutOuts(shapes);
   for (const shape of shapes || []) {
-    if (!shape) continue;
+    // A cut-out sews nothing.
+    if (!shape || shape.cutOut) continue;
     const outer = flattenShape(shape.points, shape.curves, true);
     if (!isValidShape(outer)) continue;
     const angleOverride = (typeof shape.angleDeg === "number" && isFinite(shape.angleDeg)) ? shape.angleDeg : null;
@@ -606,7 +715,7 @@ export function shapesToRegions(shapes) {
         // a click landed on. "" when the caller has none.
         id: shape.id == null ? "" : String(shape.id),
         outer: outer.map((p) => ({ x: p.x, y: p.y })),
-        holes: [],
+        holes: (cut.holesOf[shape.id] || []).map((id) => cut.flat.get(id).map((p) => ({ x: p.x, y: p.y }))),
         tierOverride,
         angleOverride,
       }],

@@ -13,10 +13,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.eye_pairs import __main__ as cli  # noqa: E402
 from tools.eye_pairs.pairs import BASE, append_pick, design_hash  # noqa: E402
 
-from .conftest import draw_tiny_logo  # noqa: E402
+from .conftest import draw_tiny_logo, held_on_source_line  # noqa: E402
 
 # Measured 2026-09-17 on this image: fill_angle_deg=45 changes the stitches,
 # design_angle=True does not. The second is the identical-skip rule's test.
+# That reading is the source line's (4.4 px/mm at 40 mm, traced at 4). On the
+# working grid with the enlarged-ramp blend test (2026-10-02) the same two
+# regions keep their areas and design_angle is no longer inert — 2,407
+# stitches against 2,389 — so the whole module holds the old grid: its
+# subject is the sitting's bookkeeping, and it needs an arm that does nothing.
 # TWO ref arms on different commits: review finding 6 (2026-09-17) — the
 # runner used to be memoised on "any ref built", and the analysis picked the
 # ref bucket by name.
@@ -55,6 +60,14 @@ def fingerprint(out: Path) -> dict[str, bytes]:
     that re-rendered into the shared directory would replace one."""
     return {p.relative_to(out).as_posix(): p.read_bytes()
             for p in sorted(out.rglob("*")) if p.is_file()}
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _source_line_grid_for_the_module():
+    """Module-scoped because `rendered` is: a function-scoped hold arrives
+    after the shared sitting has been digitized."""
+    with held_on_source_line():
+        yield
 
 
 @pytest.fixture(scope="module")

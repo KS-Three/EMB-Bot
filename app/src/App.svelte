@@ -5,8 +5,11 @@
   import { onMount, tick } from "svelte";
   import { isSewable } from "./lib/flow.js";
   import { designSummary } from "./lib/summary.js";
-  import { sewSummary } from "./lib/estimate.js";
+  import { sewSummary, QUOTE_ROW_LABELS } from "./lib/estimate.js";
+  import { loadQuote, saveQuote } from "./lib/quote.js";
+  import { hoopingRows } from "./lib/hooping.js";
   import { generateAll } from "./lib/generate.js";
+  import { ensureFonts } from "./lib/fontLoader.js";
   import { rehydrateImages } from "./lib/imageSource.js";
   import { chartIdForProject, designChartId } from "./lib/designChart.js";
   import { flattenRGBA, WORK_MAX_PX, ALPHA_CUTOFF, sewnColorCount } from "./lib/flatten.js";
@@ -24,7 +27,9 @@
     listProjects,
     isAutoNamed,
     autoNameProject,
+    setProjectFacts,
   } from "./lib/projects.js";
+  import { designFacts } from "./lib/libraryFacts.js";
   import { buildProjectFile, parseProjectFile, projectFileName } from "./lib/projectFile.js";
   import { collectSources, restoreSources } from "./lib/projectSources.js";
   import { triggerDownload } from "./lib/download.js";
@@ -226,18 +231,68 @@
   // project/runtime like every other `$:` and never runs inside a render loop.
   // Never throws: it runs on every change, including while nothing is ready to
   // stitch. Feeds both the summary bar and the Download sheet's recap.
+  //
+  // `fontsTick` is a dependency only. A text element's font arrives
+  // asynchronously, and on a reload the first run of this lands before it:
+  // generateAll throws, this reads null, and nothing re-ran it — so a saved
+  // lettering project reopened to "— size — stitches" in the summary bar and
+  // no sew rows on the sheet until something was edited. Found 2026-10-01 by
+  // reloading the app mid-drive; DownloadStep has carried the same gate
+  // (`fontsReady`) for its own derivation all along.
+  //
+  // The bump lives in a function on purpose: a `$:` statement re-runs when
+  // anything it NAMES changes, so naming `fontsTick` in the statement that
+  // bumps it is a loop (it hung the page the first time this was written).
+  let fontsTick = 0;
+  function fontsArrived() { fontsTick += 1; }
+  $: fontKeyList = (project.elements || [])
+    .filter((el) => el.type === "text" && el.fontKey)
+    .map((el) => el.fontKey)
+    .join("|");
+  $: ensureFonts(fontKeyList ? fontKeyList.split("|") : []).then(fontsArrived).catch(() => {});
   $: combinedDesign = (() => {
+    fontsTick;
     try {
       return generateAll(project, runtime).combined || null;
     } catch (e) {
       return null;
     }
   })();
-  $: sewFacts = combinedDesign ? sewSummary(combinedDesign) : [];
+  // The operator's quote inputs — machine, running speed, prices. One record
+  // for this browser, not per project (Kent's ruling 2026-10-01).
+  let quote = loadQuote();
+  $: sewFacts = combinedDesign ? sewSummary(combinedDesign, quote) : [];
   // The summary bar's colour figure: SPOOLS, the customer-facing meaning of
   // "colors" here (see spoolCount in lib/digitizer.js), counted on the same
   // combined design the size and stitch figures beside it come from.
   $: colorCount = combinedDesign && sewFacts.length ? spoolCount(combinedDesign) : 0;
+
+  // ---- Library facts: what "My designs" filters on --------------------------
+  // The open design's stitches, spools and size, written to its index entry
+  // (lib/libraryFacts.js, projects.js setProjectFacts) from the SAME combined
+  // design the summary bar reads, so a row in the drawer can never disagree
+  // with the bar.
+  //
+  // Recorded here rather than inside persist(): persist runs synchronously in
+  // the event handler, before this flush, so `combinedDesign` there still
+  // describes the previous state — and a text or uploaded-image design is not
+  // generatable at all until its font or artwork has loaded, which is after
+  // any save. Being reactive is also the backfill: a design saved before facts
+  // existed is measured the first time it is opened, with no migration pass
+  // (which could not measure those two kinds anyway).
+  //
+  // A null design only CLEARS the facts when nothing in the project could
+  // sew. Otherwise it is a design still loading (or whose font failed to
+  // fetch), and wiping a good measurement over that would drop the row out of
+  // every filter until the next successful open. `image` counts as "could
+  // sew" outright: its _hasImage flag is reset on load, so isSewable says no
+  // for exactly the stretch this guard exists for.
+  function recordFacts(id, design, proj) {
+    const facts = designFacts(design, design ? spoolCount(design) : 0);
+    if (!facts && proj.elements.some((el) => el.type === "image" || isSewable(el))) return;
+    if (setProjectFacts(id, facts)) refreshProjects();
+  }
+  $: recordFacts(currentId, combinedDesign, project);
 
   // The rows the Download sheet recaps — one list, built here, so the
   // sheet is a renderer and never re-derives what the app already knows.
@@ -245,8 +300,18 @@
     { label: "Garment", value: readable(project.garmentId) },
     { label: "Hoop", value: hoopInEffect.hoop.label + (hoopInEffect.suggested ? " (suggested)" : "") },
     ...designSummary(project, sewnColors),
-    ...(qualityIsTheWholeDesign ? [] : sewFacts),
+    // When one digitized element IS the design, QualityReport states the
+    // stitches, changes, trims and thread, so those rows stay suppressed —
+    // but it has never stated a run time, bobbin or cost, and suppressing
+    // those too left the commonest job (one logo) with no quote at all.
+    ...(qualityIsTheWholeDesign
+      ? sewFacts.filter((r) => QUOTE_ROW_LABELS.includes(r.label))
+      : sewFacts),
   ];
+  // What to hoop under the combined design — stabilizer, topper, needle. The
+  // same engine function the PDF worksheet prints, so the sheet on screen and
+  // the sheet on paper cannot disagree. [] when there is no basis for advice.
+  $: hoopingAdviceRows = hoopingRows(project.garmentId, combinedDesign);
   $: subtitle = `${readable(project.garmentId)} · ${hoopInEffect.hoop.label}`;
 
   // ---- Undo/redo (Ember-audit follow-up) ------------------------------------
@@ -741,6 +806,15 @@
     persist(false);
   }
 
+  // "Show on design" on a break-risk finding in the quality report. The
+  // sheet is a dialog over an inert panel, so it closes first; then the same
+  // state a Layers-row click sets puts the amber highlight on the shape.
+  function onLocateShape({ elId, shapeId }) {
+    closeSheet();
+    if (project.selectedId !== elId) onSelect(elId);
+    selectedShape = { elId, shapeId };
+  }
+
   function onImage(elementId, workImage) {
     runtime = { ...runtime, workImages: { ...runtime.workImages, [elementId]: workImage } };
   }
@@ -1087,8 +1161,7 @@
 
 <header class="topbar">
   <div class="topbar-logo">
-    <span class="logomark" aria-hidden="true">EMB</span>
-    <span class="logo">Bot Studio</span>
+    <span class="wordmark">EMB·BOT</span>
     <span class="undoredo">
       <button type="button" class="undo-btn" disabled={!canUndo} on:click={undoEdit} title="Undo (Ctrl+Z)" aria-label="Undo"><Icon name="undo" size={16} /></button>
       <button type="button" class="undo-btn" disabled={!canRedo} on:click={redoEdit} title="Redo (Ctrl+Y)" aria-label="Redo"><Icon name="redo" size={16} /></button>
@@ -1104,9 +1177,7 @@
     <button type="button" class="mydesigns" bind:this={myDesignsBtn} on:click={() => (drawerOpen = !drawerOpen)}>
       My designs <span class="badge">{projects.length}</span>
     </button>
-    <button type="button" class="font-credits-btn" bind:this={creditsBtn} on:click={() => openCredits(creditsBtn)}>
-      Font credits
-    </button>
+    <button type="button" class="font-credits-btn" aria-label="Font credits" title="Font credits" bind:this={creditsBtn} on:click={() => openCredits(creditsBtn)}>?</button>
   </div>
 </header>
 
@@ -1213,10 +1284,14 @@
         {runtime}
         {digitizerHealth}
         {summaryRows}
+        hoopingRows={hoopingAdviceRows}
         {qualityEntries}
         qualityPartial={!qualityIsTheWholeDesign}
         ready={readyToStitch}
+        {quote}
+        on:quote={(e) => { quote = saveQuote(e.detail); }}
         on:close={closeSheet}
+        on:locate={(e) => onLocateShape(e.detail)}
         on:credits={(e) => openCredits(e.detail)}
       />
     {/if}

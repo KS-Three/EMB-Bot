@@ -92,6 +92,24 @@ test("configurator: text -> download sheet -> DST", async ({ page }) => {
   const summary = page.locator(".sheet dl.summary");
   await expect(summary).toContainText("Tote");
   await expect(summary).toContainText('Text — "EMB TEST"');
+  // The hooping card is its own region below the recap, fed from the garment
+  // (tote -> canvas: tearaway, sharp needle). Its rows must not wear the
+  // recap's `summary` class -- that turned every `.sheet dl.summary` locator
+  // in this suite into a strict-mode violation (PR #596) -- so it repeats the
+  // recap's row rules in its own stylesheet, and this is what catches the two
+  // drifting apart.
+  const hooping = page.getByRole("region", { name: "What to hoop" });
+  await expect(hooping).toContainText("tearaway");
+  await expect(hooping).toContainText("75/11 sharp");
+  const rowLook = (root) => root.locator("dl > div").first().evaluate((row) => {
+    const pick = (el, props) => props.map((p) => `${p}: ${getComputedStyle(el)[p]}`);
+    return [
+      ...pick(row, ["display", "justifyContent", "columnGap", "paddingTop", "paddingBottom", "borderBottom"]),
+      ...pick(row.querySelector("dt"), ["color", "marginTop"]),
+      ...pick(row.querySelector("dd"), ["fontWeight", "textAlign", "marginLeft"]),
+    ];
+  });
+  expect(await rowLook(hooping)).toEqual(await rowLook(page.locator(".sheet")));
   // A thread block was actually planned for the design (not an empty/failed
   // generate) -- the shopping-list summary the Download step exists for.
   await expect(page.locator(".threadlist .threadrow")).toHaveCount(1);
@@ -604,9 +622,9 @@ test("every control in the configurator has an accessible name", async ({ page }
 test("a page load produces no console errors and no failed requests", async ({ page }) => {
   // The only one there has ever been is the /favicon.ico 404 every browser
   // makes when a page declares no icon — which is also why a customer's
-  // bookmark showed a blank tab. `app/public/favicon.svg` (the topbar's own
-  // accent tile, with a stitch zigzag instead of the word "EMB", which is
-  // illegible at 16 px) settles both.
+  // bookmark showed a blank tab. `app/public/favicon.svg` (an accent tile with a
+  // stitch zigzag instead of the word "EMB", which is illegible at 16 px; the
+  // top bar itself now carries a plain wordmark, not that tile) settles both.
   const problems = [];
   page.on("console", (m) => { if (m.type() === "error") problems.push("[console] " + m.text().slice(0, 160)); });
   page.on("pageerror", (e) => problems.push("[pageerror] " + e.message.slice(0, 160)));

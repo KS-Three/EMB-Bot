@@ -359,14 +359,28 @@ test("(g) the shape popover is dragged by its header, stays open, and follows th
   const box0 = await dlg.boundingBox();
   const head = await dlg.locator(".shapepop-head").boundingBox();
   const from = { x: head.x + head.width / 2, y: head.y + head.height / 2 };
-  await drag(page, from, { x: from.x + 150, y: from.y + 80 });
+  // Right and UP. It was right and down until 2026-10-01, when the Cut out
+  // row made the dialog ~317 px tall: dragged down from here it now meets the
+  // hoop's bottom edge, where the popover's clamp stops it at ~45 px (the
+  // clamp working, not the drag failing). Up has the room.
+  await drag(page, from, { x: from.x + 150, y: from.y - 80 });
   // A press on the header is not an outside press: it stays open, same shape.
   await expect(dlg).toBeVisible();
   const box1 = await dlg.boundingBox();
   expect(box1.x - box0.x).toBeGreaterThanOrEqual(147);
   expect(box1.x - box0.x).toBeLessThanOrEqual(153);
-  expect(box1.y - box0.y).toBeGreaterThanOrEqual(77);
-  expect(box1.y - box0.y).toBeLessThanOrEqual(83);
+  expect(box1.y - box0.y).toBeGreaterThanOrEqual(-83);
+  expect(box1.y - box0.y).toBeLessThanOrEqual(-77);
+  // And back DOWN by the same 80 px: the drag works both ways, and the dialog
+  // returns to where it started vertically (the room it came up through is
+  // the room it goes back down into, so the clamp does not touch it).
+  const headUp = await dlg.locator(".shapepop-head").boundingBox();
+  const fromUp = { x: headUp.x + headUp.width / 2, y: headUp.y + headUp.height / 2 };
+  await drag(page, fromUp, { x: fromUp.x, y: fromUp.y + 80 });
+  await expect(dlg).toBeVisible();
+  const box2 = await dlg.boundingBox();
+  expect(Math.abs(box2.x - box1.x)).toBeLessThanOrEqual(3);
+  expect(Math.abs(box2.y - box0.y)).toBeLessThanOrEqual(3);
   // Moving the popover edited nothing.
   const after = await settle(page);
   expect(after.stats).toBe(before.stats);

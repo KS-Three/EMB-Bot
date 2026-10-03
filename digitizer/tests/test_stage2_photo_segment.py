@@ -262,8 +262,15 @@ def test_busy_gradient_fixtures_land_inside_the_accept_band(fixture):
     engine drone_render lands at 120 regions here — the flip sheet records
     and Kent accepted that (74 -> 107 at the fixture's own Studio params).
     Reading the band against an engine that adds regions on purpose would
-    make this test report the flip as fragmentation."""
-    cfg = PipelineConfig(target_width_mm=90.0, keep_thin_strokes=False)
+    make this test report the flip as fragmentation.
+
+    `snap_region_edges=False` since 2026-09-30, the day it went ON (Kent's
+    flip on renders), for the same reason: the snap hands edge pixels back
+    to the region whose colour they carry, and the pieces that leaves
+    standing on their own are regions it adds on purpose (drone_render's
+    crosshair comes back that way). Left ON, drone_render reads 81 here."""
+    cfg = PipelineConfig(target_width_mm=90.0, keep_thin_strokes=False,
+                         snap_region_edges=False)
     result = run_stages(str(PHOTO_DIR / fixture), cfg)
     assert result.design_class == "gradient"
     assert 20 <= len(result.regions) <= 80, (
@@ -272,6 +279,7 @@ def test_busy_gradient_fixtures_land_inside_the_accept_band(fixture):
 
 
 @pytest.mark.parametrize("fixture", ["gradient_ramp_linear.png", "gradient_ramp_radial.png"])
+@pytest.mark.usefixtures("source_line_grid")
 def test_simple_gradient_ramps_are_not_over_merged(fixture):
     """The other half of the retune's own validation: a clean 2-color
     gradient badge must not collapse to FEWER regions than its real content
@@ -876,6 +884,7 @@ def test_a_fitting_design_ramp_makes_the_linear_ramp_one_region():
     assert len(result.regions) == 1
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_a_fitting_radial_design_ramp_makes_the_radial_ramp_one_region():
     """`gradient_ramp_radial.png` is one sweep too — rings, not a plane.
     Until 2026-09-04 the design ramp declined it (linear fits at r² 0.00)

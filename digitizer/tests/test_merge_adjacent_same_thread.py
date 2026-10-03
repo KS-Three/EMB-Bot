@@ -286,6 +286,7 @@ def test_a_one_point_run_still_has_geometry():
     assert g is not None and not g.is_empty
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_the_hoist_moves_no_stitches_and_changes_no_pixels_on_the_owl():
     """The whole safety argument, end to end: if the gate is right, reordering
     disjoint blocks cannot change what the design looks like. A changed render

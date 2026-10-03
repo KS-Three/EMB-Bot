@@ -14,7 +14,9 @@
   // for the person at the machine: sentence case, says what to DO, never
   // engine vocabulary", which is exactly the copy this screen wants, and
   // re-wording it here would fork one voice into two that drift.
+  import { createEventDispatcher } from "svelte";
   import Icon from "./Icon.svelte";
+  const dispatch = createEventDispatcher();
 
   // [{ id, label, preflight, stats }] -- one per digitized element. App owns
   // the selection because only it knows the project; this component owns how
@@ -45,6 +47,20 @@
   function ordered(findings) {
     return [...(findings || [])].sort(
       (a, b) => (RANK[a.severity] ?? 3) - (RANK[b.severity] ?? 3));
+  }
+
+  // Thread-break risk (2026-10-01). Preflight tags the findings whose own
+  // message says thread or needles break (`extra.break_risk`) and names the
+  // shapes to show, worst first, in the ids the canvas holds
+  // (`extra.show_shape_ids`). Which findings those are is Python's call and
+  // is read off the flag — no code is compared here. They get their own
+  // heading, and the one thing a sentence cannot do: point.
+  function isBreakRisk(f) {
+    return !!(f.extra && f.extra.break_risk);
+  }
+  function showShape(f) {
+    const ids = f.extra && f.extra.show_shape_ids;
+    return Array.isArray(ids) && ids.length ? ids[0] : null;
   }
 
   function iconFor(severity) {
@@ -188,14 +204,37 @@
                with `each_key_duplicate` the moment a design has two. There is
                no stable identity to key on and no per-row state to preserve,
                so position is the honest key. -->
-          <ul class="qr-list">
-            {#each rows as f}
-              <li class="sev-{f.severity}">
-                <Icon name={iconFor(f.severity)} size={15} />
-                <span>{f.message}</span>
-              </li>
-            {/each}
-          </ul>
+          {@const risks = rows.filter(isBreakRisk)}
+          {@const rest = rows.filter((f) => !isBreakRisk(f))}
+          {#if risks.length}
+            <h4 class="qr-sub">Thread-break risk</h4>
+            <ul class="qr-list">
+              {#each risks as f}
+                {@const shapeId = showShape(f)}
+                <li class="sev-{f.severity}">
+                  <Icon name={iconFor(f.severity)} size={15} />
+                  <span>
+                    <span>{f.message}</span>
+                    {#if shapeId}
+                      <button type="button" class="linklike qr-show"
+                        on:click={() => dispatch("locate", { elId: e.id, shapeId })}>Show on design</button>
+                    {/if}
+                  </span>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+          {#if rest.length}
+            {#if risks.length}<h4 class="qr-sub">Also worth a look</h4>{/if}
+            <ul class="qr-list">
+              {#each rest as f}
+                <li class="sev-{f.severity}">
+                  <Icon name={iconFor(f.severity)} size={15} />
+                  <span>{f.message}</span>
+                </li>
+              {/each}
+            </ul>
+          {/if}
         {/if}
 
         {#if bill.length}

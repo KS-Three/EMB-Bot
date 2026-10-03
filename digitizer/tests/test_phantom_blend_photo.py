@@ -297,9 +297,14 @@ def bridge_pair():
         # says why). Against the shipped engine the cap and
         # the bind already take most of these greys, which the decision sheet
         # prices as colour5 over colour4.
+        # `work_px_per_mm=None` for the same reason (ON since 2026-10-01,
+        # Kent's flip): bridge is 3.5 px/mm, and traced at 8 the halo is
+        # segmented differently in BOTH arms — 62 regions against 59, where
+        # this fixture's bar is "much less".
         return digitize(BRIDGE, PipelineConfig(
             target_width_mm=80.0, max_colors=6, satin=True,
-            garment_id="left_chest", dissolve_phantom_blends=on, **PRE_FLIP))
+            garment_id="left_chest", dissolve_phantom_blends=on,
+            work_px_per_mm=None, **PRE_FLIP))
     return run(False), run(True)
 
 

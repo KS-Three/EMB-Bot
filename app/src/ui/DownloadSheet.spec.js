@@ -53,6 +53,37 @@ test("recaps the rows it is given and says Ready to stitch", () => {
   expect(screen.getByText('Text — "EMB"')).toBeInTheDocument();
 });
 
+test("shows the hooping card between the recap and the download buttons", () => {
+  const hoopingRows = [
+    { label: "Stabilizer", value: "cutaway", note: "" },
+    { label: "Topper", value: "no", note: "" },
+    { label: "Needle", value: "75/11 ballpoint", note: "standard for 40wt thread" },
+  ];
+  render(Harness, { project: defaultProject(), summaryRows: ROWS, hoopingRows, ready: true });
+  const card = screen.getByRole("region", { name: "What to hoop" });
+  expect(card).toHaveTextContent("75/11 ballpoint");
+  // Before the Download heading: advice an operator needs is read on the way
+  // to the file, not found after it.
+  const download = screen.getByRole("heading", { name: "Download", exact: true });
+  expect(card.compareDocumentPosition(download) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+test("the recap stays the sheet's only dl.summary with the hooping card shown", () => {
+  // Ten e2e specs read the recap as `.sheet dl.summary` under Playwright's
+  // strict mode. A second list wearing that class fails every one of them
+  // with "resolved to 2 elements" — and no unit test noticed (PR #596).
+  const hoopingRows = [{ label: "Stabilizer", value: "cutaway", note: "" }];
+  render(Harness, { project: defaultProject(), summaryRows: ROWS, hoopingRows, ready: true });
+  const lists = screen.getByRole("dialog", { name: "Download" }).querySelectorAll("dl.summary");
+  expect(lists).toHaveLength(1);
+  expect(lists[0]).toHaveTextContent("Left Chest");
+});
+
+test("shows no hooping card when there is no advice", () => {
+  render(Harness, { project: defaultProject(), summaryRows: ROWS, ready: true });
+  expect(screen.queryByRole("region", { name: "What to hoop" })).toBeNull();
+});
+
 test("says Nothing to stitch yet when the design cannot sew", () => {
   render(Harness, { project: defaultProject(), summaryRows: ROWS, ready: false });
   expect(screen.getByRole("heading", { name: "Nothing to stitch yet" })).toBeInTheDocument();
@@ -65,4 +96,31 @@ test("Escape and the close button both dispatch close", async () => {
   expect(onClose).toHaveBeenCalledTimes(1);
   await fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
   expect(onClose).toHaveBeenCalledTimes(2);
+});
+
+test("Show on design on a break-risk finding asks for that artwork's worst shape", async () => {
+  // The sheet is a dialog over an inert panel, so the canvas cannot show
+  // anything while it is open: the request has to leave the sheet, and App
+  // closes it and selects the shape.
+  const asked = [];
+  render(Harness, {
+    project: defaultProject(),
+    summaryRows: ROWS,
+    qualityEntries: [{
+      id: "el7",
+      label: "Artwork",
+      preflight: {
+        score: 88, grade: "B", metrics: {},
+        findings: [{
+          code: "STITCHES_TOO_SHORT", severity: "warn",
+          message: "31% of satin stitches are under the 1 mm needle minimum.",
+          extra: { break_risk: true, show_shape_ids: ["Sworst", "Snext"] },
+        }],
+      },
+      stats: {},
+    }],
+    onLocate: (d) => asked.push(d),
+  });
+  await fireEvent.click(screen.getByRole("button", { name: "Show on design" }));
+  expect(asked).toEqual([{ elId: "el7", shapeId: "Sworst" }]);
 });

@@ -6,7 +6,7 @@
    selectors are consumed across every Svelte component in app/src/ui. */
 :root {
   /* ---- Palette -------------------------------------------------------- */
-  --ink: #1c1f26;
+  --ink: #171a20;
   /* Darkened to clear WCAG AA (4.5:1) on the app's OWN non-white grounds, not
      just on white. Measured in the running app: at #6b7280 this token scored
      4.16 on --field-bg (`.fieldhint` — "Your embroidery appears here…", the
@@ -16,10 +16,14 @@
      has headroom rather than sitting on the line, and it is a small enough
      step that "muted" still reads as muted. */
   --muted: #616875;
-  --bg: #f6f7fb; /* light neutral ground */
+  --bg: #ffffff; /* the page — white, like the panel (2026-10-01 theme pass) */
+  /* The neutral fill: pills, segmented controls, hover grounds, read-only
+     inputs. It is what --bg used to be for controls before the page went
+     white — on a white page a white hover is no hover at all. */
+  --fill: #f4f4f4;
   --surface: #ffffff; /* cards / panels / popovers */
   --surface-fade: rgba(255, 255, 255, 0); /* transparent --surface, for gradient stops */
-  --border: #e2e5eb;
+  --border: #e6e6e6;
   --field-bg: #eceef3; /* the embroidery workspace neutral -- field pane + canvas share it (B4/B8) */
 
   /* The SURROUND: the dark neutral the hoop floats on (2026-09-30, Kent's
@@ -47,7 +51,7 @@
   --accent: #4f46e5;
   --accent-dark: #4338ca; /* hover/active */
   --accent-ink: #ffffff; /* readable ink on top of accent (or other saturated) fills */
-  --tint: #eef0ff; /* accent-tinted selection/hover background */
+  --tint: #eef0ff; /* accent-tinted selection and focus background (hover is --fill) */
   --tint-border: #ccd6fb; /* accent-tinted border, pairs with --tint */
 
   --danger: #c0392b;
@@ -107,22 +111,20 @@
 
   /* ---- Type -------------------------------------------------------------- */
   --font-sans: "Inter Variable", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  /* 11px. Not an invention -- the app already had a tier below --fs-xs and
-     spent it as bespoke literals: `font-size: 11px` seven times and `10px`
-     five times, mostly in DigitizePanel's layer rows and badges where the
-     density is deliberate. Naming it collapses three off-scale sizes
-     (10/11/13px) onto the scale instead of pretending the tier isn't there. */
-  --fs-2xs: 0.6875rem;
-  --fs-xs: 0.75rem;
-  --fs-sm: 0.875rem;
-  --fs-md: 1rem;
-  --fs-lg: 1.25rem;
-  /* 25px, not 24. The scale splits into two ramps on purpose and only one of
-     them is modular. 2xs/xs/sm (11/12/14) is a DENSITY ramp for dense UI —
-     forcing a ratio there would give 8/10/13px, unusable in a tool. From the
-     16px base upward is the DISPLAY ramp, and it is now a clean 1.25:
-     16 -> 20 -> 25. It was 16 -> 20 -> 24, i.e. 1.25 then 1.2. */
-  --fs-xl: 1.5625rem;
+  /* The scale, re-cut 2026-10-01 (Tesla-configurator pass): a 13px body and
+     every control, 22px for the panel title. It is a DENSITY ramp -- forcing
+     a modular ratio on 10/11/12/13 would give sizes unusable in a tool. The
+     bottom tier (--fs-2xs) is not an invention: the app already spent it as
+     bespoke 10/11px literals in DigitizePanel's layer rows and badges, where
+     the density is deliberate; naming it keeps them on the scale. Phone
+     widths lift form fields back to 16px (see the 820px block) so iOS Safari
+     does not zoom on focus. */
+  --fs-2xs: 0.625rem;   /* 10 -- labels under figures */
+  --fs-xs: 0.6875rem;   /* 11 -- captions */
+  --fs-sm: 0.75rem;     /* 12 -- small / secondary */
+  --fs-md: 0.8125rem;   /* 13 -- body, and every control */
+  --fs-lg: 1rem;        /* 16 -- drawer and dialog headings */
+  --fs-xl: 1.375rem;    /* 22 -- the panel title */
 
   /* Line height was the one part of the type system that was never stated.
      Measured on the Garment step: 16 distinct type styles rendered, and 11 of
@@ -140,31 +142,33 @@
   --lh-body: 1.55;
 
   /* ---- Weight ------------------------------------------------------------
-     Three weights were already in use (400/600/700) as bare literals at 34
-     call sites, so which one meant "emphasis" and which meant "heading" was
-     never stated. 500 is added because the jump from body to 600 is the only
-     step the UI had, and a label that wants to be a little stronger than its
-     value had nowhere to go. */
+     Two weights in the chrome: 400 body, 500 for everything that ranks
+     (headings, labels, selected states). Rank is carried by weight and
+     ink alone, the way the Tesla configurator does it. 600 survives in
+     exactly two places -- the summary bar's figures and the wordmark --
+     and --fw-bold (700) is gone. */
   --fw-normal: 400;
   --fw-medium: 500;
-  --fw-semibold: 600;
-  --fw-bold: 700;
+  --fw-semibold: 600; /* the summary bar's figures and the wordmark -- nothing else */
 
   /* ---- Tracking ----------------------------------------------------------
      Optical, not decorative: type set large needs pulling in and type set
      small-and-uppercase needs opening out, or both read wrong at the same
-     nominal spacing. `wide` is the eyebrow/section-label treatment. */
+     nominal spacing. `wide` now serves the small uppercase labels that are
+     deliberately kept (the field-menu state line, DigitizePanel's border
+     keys and tier badges) and the wordmark; section headings no longer use it. */
   --tracking-tight: -0.02em;
   --tracking-snug: -0.01em;
   /* Two opened steps, because they are not the same job. `slight` is a nudge
-     for caps set inside a FIXED box (the logomark tile) or a label that just
-     wants air — folding it into `wide` pushed "EMB" past its own 28px tile.
-     `wide` is the eyebrow: small, uppercase, meant to read as a label. */
+     for caps set inside a FIXED box (the old "EMB" tile in the top bar, since replaced
+     by the plain wordmark) or a label that just wants air — folding it into
+     `wide` pushed "EMB" past its own 28px tile.
+     `wide` is for small uppercase labels and the wordmark. */
   --tracking-slight: 0.02em;
   --tracking-wide: 0.08em;
 
   /* ---- Layout ------------------------------------------------------------ */
-  --topbar-h: 64px;
+  --topbar-h: 44px;
 }
 
 * { box-sizing: border-box; }
@@ -181,9 +185,14 @@ body {
 /* Headings set their own tighter measure, and pull their tracking in — a
    display size at default tracking reads loose and unresolved. */
 h1, h2, h3, h4 {
+  font-weight: var(--fw-medium);
   line-height: var(--lh-tight);
   letter-spacing: var(--tracking-snug);
 }
+
+/* Bold in this theme is 500; the summary bar's figures are the exception and
+   their own rule wins on specificity. */
+b, strong { font-weight: var(--fw-medium); }
 
 h1, h2 { letter-spacing: var(--tracking-tight); }
 
@@ -207,11 +216,13 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   height: var(--topbar-h);
   padding: 0 var(--space-5);
   background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  /* Flat on purpose (2026-09-30). It carried --shadow-1 from the elevation
-     pass; with the field below it now a dark surround, a drop shadow off a
-     white bar onto near-black is invisible where it lands and a smudge
-     where it meets the panel. The 1px border is the whole separation. */
+  /* Flat and borderless on purpose (2026-10-01 theme pass). It carried
+     --shadow-1 from the elevation pass, then (2026-09-30) a 1px bottom
+     border once the field below went to a dark surround, where a drop shadow
+     off a white bar onto near-black was invisible where it lands. The page
+     is white now, and a 44px bar that meets the dark surround on one side
+     and the white panel on the other needs no rule: the surround's own edge
+     is the separation. */
   position: relative;
   z-index: 1;
 }
@@ -223,26 +234,12 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   min-width: 0;
 }
 
-/* Small accent tile carrying "EMB" -- the logo mark. */
-.logomark {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-s);
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
-  letter-spacing: var(--tracking-slight);
-}
-
-.logo {
-  font-weight: var(--fw-bold);
-  font-size: var(--fs-lg);
-  letter-spacing: var(--tracking-snug);
+/* The wordmark: "EMB·BOT", plain ink, no tile. One of the two places the
+   600 weight survives (the other is the summary bar's figures). */
+.wordmark {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-wide); /* 0.08em */
   white-space: nowrap;
   color: var(--ink);
 }
@@ -259,7 +256,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   background: transparent;
   color: var(--ink);
   font: inherit;
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   text-align: center;
 }
 
@@ -268,7 +265,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
    middle of a letter ("Untitled d|") with nothing to say it had been cut. */
 .projectname { text-overflow: ellipsis; }
 
-.projectname:hover { background: var(--bg); }
+.projectname:hover { background: var(--fill); }
 .projectname:focus { border-color: var(--accent); background: var(--surface); }
 
 .topbar-actions {
@@ -284,33 +281,36 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  min-height: 40px;
-  border: 1px solid var(--border);
+  padding: var(--space-1) var(--space-3);
+  min-height: 32px;
+  border: 1px solid transparent;
   border-radius: var(--radius-s);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   cursor: pointer;
 }
 
-.mydesigns:hover { border-color: var(--ink); }
+.mydesigns:hover { background: var(--fill); }
 
 /* "Font credits" — opens FontCredits, the generated OFL/CC credits dialog.
-   Quiet text button, deliberately smaller than "My designs" since it's
-   informational, not a workflow action. */
+   A quiet 28px round "?" (its accessible name is "Font credits"),
+   deliberately smaller than "My designs" since it's informational, not a
+   workflow action. */
 .font-credits-btn {
-  padding: var(--space-2) var(--space-3);
-  min-height: 40px;
-  border: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
   background: none;
   color: var(--muted);
   font: inherit;
   font-size: var(--fs-sm);
   cursor: pointer;
 }
-.font-credits-btn:hover { color: var(--accent); }
+.font-credits-btn:hover { border-color: var(--ink); color: var(--ink); }
 
 .mydesigns .badge {
   display: inline-flex;
@@ -320,10 +320,10 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   height: 1.4rem;
   padding: 0 var(--space-2);
   border-radius: var(--radius-full);
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--fill);
+  color: var(--ink);
   font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
 }
 
 /* Projects drawer — right-side overlay listing every saved design
@@ -370,7 +370,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   cursor: pointer;
 }
 
-.drawer-close:hover { border-color: var(--accent); color: var(--accent); }
+.drawer-close:hover { border-color: var(--ink); color: var(--ink); }
 
 .drawer-new {
   margin: var(--space-4) var(--space-5) var(--space-2);
@@ -379,12 +379,12 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   border: 2px dashed var(--border);
   border-radius: var(--radius-m);
   background: var(--surface);
-  color: var(--accent);
-  font-weight: var(--fw-semibold);
+  color: var(--ink);
+  font-weight: var(--fw-medium);
   cursor: pointer;
 }
 
-.drawer-new:hover { border-color: var(--accent); background: var(--tint); }
+.drawer-new:hover { border-color: var(--ink); background: var(--fill); }
 
 /* "Your changes aren't being saved" — a full localStorage, surfaced.
    Full width and above the whole studio rather than inside a panel: this is
@@ -441,7 +441,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   font-size: var(--fs-md);
 }
 
@@ -462,13 +462,13 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   min-height: 32px;
   border: 1px solid var(--border);
   border-radius: var(--radius-s);
-  background: var(--bg);
+  background: var(--fill);
   color: var(--ink);
   font-size: var(--fs-xs);
   cursor: pointer;
 }
 
-.drawer-row-actions button:hover { border-color: var(--accent); color: var(--accent); }
+.drawer-row-actions button:hover { border-color: var(--ink); color: var(--ink); }
 
 .drawer-row-actions button.danger { color: var(--danger); }
 .drawer-row-actions button.danger:hover { border-color: var(--danger); }
@@ -482,6 +482,60 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
 }
 .drawer-row-actions button.danger.armed:hover { border-color: var(--danger-hover); }
 
+/* What the design is, under its name — the same facts the filter matches on
+   (lib/libraryFacts.js). Absent on a design not measured yet. */
+.drawer-row-facts {
+  margin: 0 0 var(--space-2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+
+.drawer-count { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+
+/* DesignFilter.svelte — name search over three "up to" selects. The name
+   field spans the drawer; the selects sit two to a row, because three across
+   a 320px drawer clipped "Up to 2,000" to "Up to 2" (seen 2026-10-01). */
+.dfilter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  text-align: left;
+}
+
+.dfilter-field { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-1); min-width: 0; }
+.dfilter-field span { color: var(--muted); font-size: var(--fs-xs); text-align: left; }
+.dfilter-text { grid-column: 1 / -1; }
+
+.dfilter-field input,
+.dfilter-field select {
+  width: 100%;
+  min-height: 36px;
+  padding: var(--space-1) var(--space-2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+
+.dfilter-field input:focus,
+.dfilter-field select:focus { border-color: var(--accent); }
+
+.dfilter-clear {
+  justify-self: start;
+  align-self: end;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .drawer-rename-row { margin-bottom: var(--space-2); }
 
 .drawer-rename-row input {
@@ -494,6 +548,9 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
 
 @media (max-width: 480px) {
   .drawer { width: 100%; max-width: 100%; }
+  /* Topbar room at phone width: see the 820px block's topbar comment. */
+  .wordmark { display: none; }
+  .mydesigns { padding: var(--space-1) var(--space-2); }
 }
 
 /* Two-pane studio: guided steps on the left, live embroidery field on the
@@ -551,41 +608,33 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   background-attachment: local, local, scroll, scroll;
 }
 
-.cfg-body h2 {
+.cfg-body h2,
+.sheet h2 {
   margin-top: 0;
   font-size: var(--fs-xl);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
 }
 
-/* ---- Section label ("eyebrow") -------------------------------------------
-   Heads a control GROUP. It was `--fs-md` semi-muted — the same size as the
-   body text beneath it — so it competed with its own content instead of
-   ranking above it, and the step's h2 had nothing to rank against. Set small,
-   uppercase and open, it reads as a label at a glance, and the panel gets
-   three clear voices: 25px display, 16px body, 12px label.
-
-   Keyed on ROLE, not on tag. Some group labels are `h3` ("Font", "Threads",
-   "Hoop size", "Quick start") and some are spans inside a component
-   (`.tp-label` = "Color", `.alignlabel` = "Align in hoop") — they rank the
-   same on screen, so giving the treatment only to `h3` would have left
-   "COLOR" and "Font" as mismatched peers three lines apart.
-
-   What deliberately does NOT get it: a FIELD label, which names a single
-   input rather than a group — "Letter spacing", "Curve", "Rotation", the
-   "Chart" beside its select. Those stay sentence case, one rank below. That
-   distinction is the hierarchy; flattening it would undo the point.
-
-   Every label that takes this is one or two words. It would be wrong on a
-   sentence. */
+/* ---- Section heading ------------------------------------------------------
+   Heads a control group: "Garment", "Hoop size", "Threads", and the two
+   span-labels that rank with them (.tp-label "Color", .alignlabel "Align in
+   hoop"). Sentence case at body size, medium weight, full ink -- the Tesla
+   configurator's voice: the heading is the same size as what it heads and
+   outranks it by weight alone. (It was a 12px uppercase muted eyebrow until
+   2026-10-01; with the body at 13px an eyebrow one pixel smaller read as
+   noise, not rank.) Keyed on ROLE, not tag: some group labels are `h3` and
+   some are spans inside a component, and they rank the same on screen.
+   A FIELD label -- "Letter spacing", "Curve" -- still does not take this:
+   it names a single input rather than a group and stays one rank below. */
 .cfg-body h3,
 .sheet h3,
 .tp-label,
 .alignlabel {
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-  color: var(--muted);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
 }
 
 .cfg-body h3,
@@ -643,13 +692,13 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   max-width: none;
   max-height: none;
   /* The field canvas is the viewport onto the surround, not a card sitting
-     on the pane: the global `canvas` rule's border, --shadow-2 and
-     --radius-l (still right for ImagePanel's preview and ManualPanel's
-     drawing surface, which ARE cards on a light panel) would draw a frame
-     around a dark rectangle on a dark ground. */
+     on the pane: the global `canvas` rule's border and --radius-l (still
+     right for ImagePanel's preview and ManualPanel's drawing surface, which
+     ARE cards on a light panel; the global rule lost its drop shadow in the
+     2026-10-01 shadow audit, since an in-flow card does not float) would
+     draw a frame around a dark rectangle on a dark ground. */
   border: 0;
   border-radius: 0;
-  box-shadow: none;
   background: var(--surround);
 }
 
@@ -735,11 +784,11 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
 .tipbox-title {
   display: block;
   margin-bottom: var(--space-1);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: #fff;
 }
 .tipbox-line { margin: var(--space-1) 0 0; }
-.tipbox-line b { font-weight: var(--fw-semibold); color: var(--surround-muted); }
+.tipbox-line b { font-weight: var(--fw-medium); color: var(--surround-muted); }
 
 /* The "?" beside a label that has a tip: a small ring, muted until the
    label is hovered or the control focused. Generated content on an empty,
@@ -757,13 +806,13 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   color: var(--muted);
   font-size: 10px;
   font-style: normal;
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   line-height: 1;
   vertical-align: middle;
   flex: 0 0 auto;
 }
 .tipmark::after { content: "?"; }
-label:hover .tipmark,
+label:hover .tipmark { border-color: var(--ink); color: var(--ink); }
 label:focus-within .tipmark { border-color: var(--accent); color: var(--accent); }
 
 /* Right-click tool menu on the design canvas (EmbroideryField). Drawing tools
@@ -797,7 +846,9 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   cursor: pointer;
 }
 
-.fieldmenu button:hover,
+.fieldmenu button:hover {
+  background: var(--fill);
+}
 .fieldmenu button:focus-visible {
   background: var(--tint);
 }
@@ -903,9 +954,37 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   color: var(--ink);
   cursor: pointer;
 }
-.shapepop-action:hover,
+.shapepop-action:hover { background: var(--fill); }
 .shapepop-action:focus-visible { background: var(--tint); }
 .shapepop-action.danger { color: var(--danger, #b42318); }
+/* The same height as .shapepop-action: its vertical padding, less this one's
+   1px border on each side. */
+.shapepop-toggle {
+  padding: calc(var(--space-2) - 1px) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--surface, #fff);
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+/* Hover and keyboard focus as .shapepop-action has them. Before the checked
+   rule on purpose: an On switch keeps its accent fill, and still shows the
+   browser's focus ring. */
+.shapepop-toggle:hover,
+.shapepop-toggle:focus-visible { background: var(--tint); }
+.shapepop-toggle[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.shapepop-note {
+  margin: 0;
+  padding: 0 var(--space-1) var(--space-1);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.shapepop-note.warn { color: var(--warn-text); }
 
 .fieldmeta { min-height: 1.25rem; font-size: var(--fs-md); }
 
@@ -924,7 +1003,6 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-m);
-  box-shadow: var(--shadow-1);
 }
 
 .zoombtn {
@@ -941,7 +1019,7 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   line-height: 1;
   cursor: pointer;
 }
-.zoombtn:hover:not(:disabled) { background: var(--bg); }
+.zoombtn:hover:not(:disabled) { background: var(--fill); }
 .zoombtn:disabled { color: var(--muted); cursor: default; opacity: 0.5; }
 .zoomfit { font-size: var(--fs-sm); }
 
@@ -984,7 +1062,6 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-m);
-  box-shadow: var(--shadow-1);
   width: min(420px, 70%);
 }
 .simscrub { flex: 1; min-width: 80px; }
@@ -1067,6 +1144,17 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
 
 /* Stack on narrow screens: field above the panel */
 @media (max-width: 820px) {
+  /* Safari on iOS zooms the whole page into any focused field under 16px,
+     and the body is 13px now. Fields keep 16px at phone widths only.
+     `!important` is deliberate: this is a platform constraint, not a style
+     choice, and it must beat whatever size a component gives its field.
+     Without it the element selector (specificity 0,0,1) loses to every
+     class-styled field (.projectname, .sizeinput, .unitselect, .tp-brand,
+     .simspeed) and to scoped Svelte rules, which carry a hash class on top
+     of their own (e.g. `.dgp-param select` compiles to 0,2,1 or more). It
+     only applies inside this phone-width block. */
+  input, textarea, select { font-size: 16px !important; }
+
   /* Stay bounded to the viewport when stacked. `height: auto` handed the
      whole page a scrollbar, and the summary bar -- the only Download
      control -- sits at the bottom of .panel, so it landed below the
@@ -1092,11 +1180,14 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
      tall enough that the natural width is already a sane shape. */
   .hoop { max-width: min(100%, 62vh); }
 
-  /* The topbar has no room for all four actions plus the wordmark at this
-     width; the wordmark is redundant next to the logomark, and font credits
-     stay reachable from the Download step's own footer link. */
+  /* The 44px bar at phone width: wordmark + undo/redo + name + My designs +
+     "?" left the project name 31px wide. So at 820px and below the font-credits
+     "?" is hidden (the credits stay reachable from the Download sheet's footer
+     link), and at 480px and below the wordmark goes too (on a phone the
+     design's name matters more than the brand) and My designs tightens its
+     padding. The gap and bar padding tighten at every width in this block. */
   .topbar { gap: var(--space-2); padding: 0 var(--space-3); }
-  .logo, .font-credits-btn { display: none; }
+  .font-credits-btn { display: none; }
   /* .panel needs a BOUNDED height for two things to work: .cfg-body's
      internal scroll (flex:1; min-height:0; overflow-y:auto) needs something
      to clip against, and the summary bar (a flex child pinned to the bottom of
@@ -1211,13 +1302,14 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
 }
 .hooptile:first-child { border-left: 0; }
 
-.hooptile:hover { background: var(--bg); }
+.hooptile:hover { background: var(--fill); }
 .hooptile.sel { background: var(--ink); color: var(--surface); }
-.hooptile.sel .hooptile-name { font-weight: var(--fw-semibold); }
+.hooptile.sel .hooptile-name { font-weight: var(--fw-medium); }
 
 .hooptile-name { font-size: var(--fs-sm); line-height: 1.2; white-space: nowrap; }
-/* --muted on --bg (the hover ground) measures 5.24, on white 5.61; the
-   selected segment sets its own light value below. */
+/* --muted on --fill (the hover ground) and on white is re-measured by
+   e2e/theme-contrast.spec.js; the selected segment sets its own light value
+   below. */
 .hooptile-mm { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
 .hooptile.sel .hooptile-mm { color: var(--surround-muted); }
 
@@ -1301,7 +1393,11 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
   width: 100%;
   height: 52px;
   border-radius: var(--radius-s);
-  background: var(--bg);
+  /* Same white as the picture inside it (the preview image has a white
+     ground), so the card is not a white picture between two grey blocks; the
+     card's own border and the rule below carry the separation. */
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
   overflow: hidden;
 }
 
@@ -1315,7 +1411,7 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
 .tcard-preview svg { width: 30px; height: 30px; color: var(--muted); }
 .tcard-preview .acc { stroke: var(--accent); }
 
-.tcard-label { font-weight: var(--fw-semibold); font-size: var(--fs-md); }
+.tcard-label { font-weight: var(--fw-medium); font-size: var(--fs-md); }
 .tcard-hint { font-size: var(--fs-xs); color: var(--muted); }
 
 /* Element manager (ContentStep) — one compact row per project.elements,
@@ -1357,9 +1453,9 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
   width: 26px;
   height: 26px;
   border-radius: var(--radius-s);
-  background: var(--bg);
+  background: var(--fill);
   color: var(--muted);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
   font-size: var(--fs-sm);
 }
 
@@ -1420,11 +1516,11 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
   background: var(--surface);
   color: var(--muted);
   font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   cursor: pointer;
 }
 
-.eladd:hover { border-color: var(--accent); color: var(--accent); }
+.eladd:hover { border-color: var(--ink); color: var(--ink); }
 
 /* Onboarding hints (Slice 7 Task 3) — a small dismissible bubble (icon +
    sentence + ✕), at most one shown at a time (see App.svelte's hints.js
@@ -1548,7 +1644,6 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;
-  box-shadow: var(--shadow-1);
 }
 
 input[type="range"]::-moz-range-thumb {
@@ -1558,7 +1653,6 @@ input[type="range"]::-moz-range-thumb {
   background: var(--accent);
   cursor: pointer;
   border: none;
-  box-shadow: var(--shadow-1);
 }
 
 label.letterspacing .label {
@@ -1641,7 +1735,6 @@ canvas {
   border-radius: var(--radius-l);
   border: 1px solid var(--border);
   background: var(--field-bg);
-  box-shadow: var(--shadow-2);
 }
 /* Still bounds ImagePanel's preview and ManualPanel's drawing surface. The
    field canvas opts out via `.hoop canvas`'s own max-height: none above,
@@ -1649,8 +1742,8 @@ canvas {
 @media (max-width: 820px) { canvas { max-height: 42vh; } }
 
 .stats { color: var(--muted); margin-top: var(--space-2); }
-.err { color: var(--danger); font-weight: var(--fw-semibold); }
-.warn { color: var(--warn); font-weight: var(--fw-semibold); }
+.err { color: var(--danger); font-weight: var(--fw-medium); }
+.warn { color: var(--warn); font-weight: var(--fw-medium); }
 
 /* Selection handles live on the canvas itself (drawn via ctx), but the
    cursor feedback needs the canvas to accept custom cursors crisply. */
@@ -1690,7 +1783,7 @@ canvas { touch-action: none; }
   border: 1px solid var(--border);
 }
 
-.threadrow-name { flex: 1; min-width: 0; font-weight: var(--fw-semibold); font-size: var(--fs-sm); }
+.threadrow-name { flex: 1; min-width: 0; font-weight: var(--fw-medium); font-size: var(--fs-sm); }
 .threadrow-block { flex: 0 0 auto; color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; }
 
 /* Even grid, not flex-wrap. Six labels of very different lengths (DST ...
@@ -1715,7 +1808,9 @@ canvas { touch-action: none; }
   font-size: var(--fs-sm);
   color: var(--muted);
 }
-.machinepick-label select { flex: 1 1 auto; min-width: 0; font-size: var(--fs-sm); }
+/* Border, radius, fill and font come from the shared select rule further
+   down (with .unitselect and the thread-chart pickers); this is layout only. */
+.machinepick-label select { flex: 1 1 auto; min-width: 0; }
 .machinepick-btn { width: 100%; }
 .machinepick-note { margin: 0; font-size: var(--fs-xs); color: var(--warn); }
 .formats-head { margin-top: 0; }
@@ -1742,7 +1837,7 @@ canvas { touch-action: none; }
 }
 
 .caveat-mark {
-  font-weight: 700;
+  font-weight: var(--fw-medium);
   vertical-align: super;
   font-size: 0.75em;
   margin-left: 1px;
@@ -1761,7 +1856,7 @@ canvas { touch-action: none; }
   font-size: var(--fs-sm);
   line-height: var(--lh-snug);
 }
-.encodernote strong { font-weight: var(--fw-bold); }
+.encodernote strong { font-weight: var(--fw-medium); }
 
 /* Footer link to FontCredits (Slice 10B Task 5) — a <button> styled as a
    link (not a real <a>) since it dispatches an event rather than
@@ -1801,7 +1896,7 @@ button.primary {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-ink);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
 }
 
 button.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
@@ -1837,7 +1932,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   font: inherit;
 }
 .sizeinput:focus { border-color: var(--accent); }
-.sizeinput[readonly] { background: var(--bg); color: var(--muted); }
+.sizeinput[readonly] { background: var(--fill); color: var(--muted); }
 
 /* Native <select>s that carry the app's control styling. `.unitselect` (the
    Size panel's in/mm toggle) already had it; the thread-chart pickers on the
@@ -1847,6 +1942,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
    place, rather than a third bespoke copy. */
 .unitselect,
 .threadbrand select,
+.machinepick-label select,
 .tp-brand {
   padding: var(--space-2) var(--space-2);
   border: 2px solid var(--border);
@@ -1857,11 +1953,13 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   cursor: pointer;
 }
 
-.unitselect { font-size: var(--fs-md); }
+.unitselect,
+.machinepick-label select { font-size: var(--fs-md); }
 
 .unitselect:hover,
 .threadbrand select:hover,
-.tp-brand:hover { border-color: var(--accent); }
+.machinepick-label select:hover,
+.tp-brand:hover { border-color: var(--ink); }
 
 .autofit {
   padding: var(--space-2) var(--space-3);
@@ -1872,7 +1970,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   font-size: var(--fs-sm);
   white-space: nowrap;
 }
-.autofit:hover { border-color: var(--accent); }
+.autofit:hover { border-color: var(--ink); }
 
 .sizepanel .warn { margin: var(--space-2) 0 0; font-size: var(--fs-sm); }
 
@@ -1910,7 +2008,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   border-radius: var(--radius-full);
   line-height: 1.5;
 }
-.qr-grade b { font-weight: var(--fw-semibold); }
+.qr-grade b { font-weight: var(--fw-medium); }
 .qr-grade .qr-score { font-size: var(--fs-xs); opacity: 0.85; }
 /* No success token exists in this palette, and inventing a green for one chip
    would put a fourth status hue in the app. --accent IS this app's affirmative
@@ -1919,6 +2017,12 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .qr-grade.tone-warn { color: var(--warn); }
 .qr-grade.tone-bad  { color: var(--danger); }
 
+.qr-sub {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  margin: var(--space-4) 0 var(--space-2);
+}
+.qr-show { margin-left: var(--space-2); }
 .qr-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
 .qr-list li {
   display: grid;
@@ -2006,7 +2110,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   color: var(--accent-ink);
   font: inherit;
   font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   cursor: pointer;
 }
 
@@ -2096,7 +2200,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .swatch .pct {
   font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
   color: var(--accent-ink);
   text-shadow: 0 1px 2px rgba(var(--shadow-color), 0.65);
 }
@@ -2135,8 +2239,6 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .tp-label {
   margin-bottom: var(--space-1);
-  color: var(--muted);
-  font-size: var(--fs-sm);
 }
 
 .tp-trigger {
@@ -2151,7 +2253,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   background: var(--surface);
   cursor: pointer;
 }
-.tp-trigger:hover { border-color: var(--accent); }
+.tp-trigger:hover { border-color: var(--ink); }
 
 .tp-swatch {
   flex: 0 0 auto;
@@ -2198,7 +2300,6 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   border: 1px solid var(--border);
   border-radius: var(--radius-m);
   background: var(--surface);
-  box-shadow: var(--shadow-1);
 }
 
 .tp-grid {
@@ -2240,7 +2341,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   line-height: 1;
   cursor: pointer;
 }
-.undo-btn:hover:not(:disabled) { background: var(--bg); }
+.undo-btn:hover:not(:disabled) { background: var(--fill); }
 .undo-btn:disabled { color: var(--muted); cursor: default; opacity: 0.45; }
 
 /* DesignPanel -- imported .dst design editor (upload, stats, per-block
@@ -2256,11 +2357,11 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   font-size: var(--fs-md);
   cursor: pointer;
 }
-.dp-upload-btn:hover { background: var(--bg); }
+.dp-upload-btn:hover { background: var(--fill); }
 .dp-error { color: var(--danger); font-size: var(--fs-sm); margin: 0; }
 .dp-stats { font-size: var(--fs-sm); color: var(--muted); margin: 0; }
 .dp-blocks { display: flex; flex-direction: column; gap: var(--space-1); }
-.dp-blocks-label { font-size: var(--fs-sm); font-weight: var(--fw-semibold); }
+.dp-blocks-label { font-size: var(--fs-sm); font-weight: var(--fw-medium); }
 .dp-block { display: flex; align-items: center; gap: var(--space-2); }
 .dp-block-n { font-size: var(--fs-sm); color: var(--muted); min-width: 4.5em; }
 .dp-note { font-size: var(--fs-sm); color: var(--muted); margin: 0; }
@@ -2319,7 +2420,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   cursor: pointer;
 }
 
-.threadreset:hover { border-color: var(--accent); color: var(--accent); }
+.threadreset:hover { border-color: var(--ink); color: var(--ink); }
 
 /* ---- Configurator (spec §2.2) ------------------------------------------ */
 .cfg-title { text-align: center; margin-bottom: var(--space-1); }
@@ -2328,7 +2429,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   display: flex;
   padding: 3px;
   margin-bottom: var(--space-5);
-  background: var(--bg);
+  background: var(--fill);
   border-radius: var(--radius-s);
 }
 .startseg-btn {
@@ -2381,6 +2482,10 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 }
 .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
 .sheet-head h2 { margin: 0; }
+/* `DownloadStep`'s own "Download" heading is a direct child of `.sheet`, and the
+   sheet's title is "Ready to stitch" in `.sheet-head` -- one 22 px title per
+   surface, so the inner heading steps down. */
+.sheet > h2 { font-size: var(--fs-lg); }
 .sheet-close { border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: var(--space-1); }
 .sheet-close:hover { color: var(--ink); }
 .sheet .summary { margin: var(--space-5) 0; }
@@ -2392,8 +2497,8 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   border-bottom: 1px solid var(--border);
 }
 .sheet .summary dt { color: var(--muted); margin: 0; }
-.sheet .summary dd { margin: 0; font-weight: var(--fw-semibold); text-align: right; }
-.drawer-templates-head { margin: 0; }
+.sheet .summary dd { margin: 0; font-weight: var(--fw-medium); text-align: right; }
+.drawer-templates-head { margin: 0; font-size: var(--fs-md); }
 
 /* ---- Garment row (spec §3) --------------------------------------------- */
 .gpicker { position: relative; }
@@ -2403,7 +2508,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   padding: 0 var(--space-3);
   border: 1px solid transparent;
   border-radius: var(--radius-full);
-  background: var(--bg);
+  background: var(--fill);
   color: var(--ink);
   font: inherit;
   font-size: var(--fs-sm);
@@ -2447,8 +2552,8 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   text-align: left;
   cursor: pointer;
 }
-.gmenu-item:hover, .gmenu-item:focus-visible { background: var(--bg); }
-.gmenu-item[aria-checked="true"] { background: var(--tint); color: var(--accent); font-weight: var(--fw-semibold); }
+.gmenu-item:hover, .gmenu-item:focus-visible { background: var(--fill); }
+.gmenu-item[aria-checked="true"] { background: var(--tint); color: var(--accent); font-weight: var(--fw-medium); }
 .gmenu-item .gart svg { width: 24px; height: 24px; }
 
 /* ---- Motion --------------------------------------------------------------
@@ -2474,7 +2579,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   .fb-tile,
   .fb-close,
   button.primary {
-    transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+    transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
   }
 
   .tp-chevron { transition: transform 150ms ease; }

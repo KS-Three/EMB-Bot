@@ -14,6 +14,19 @@ Dated narrative belongs in [`../scope-history.md`](../scope-history.md).
 
 ---
 
+**2026-10-01 — the theme pass (PR 4 of 4, PR #588).** Landed before PR 3 (progressive disclosure) by Kent's call 2026-10-01, so the panel is restyled but still long; PR 3 is the one remaining. Spec §6; plan `docs/superpowers/plans/2026-10-01-studio-configurator-pr4-theme.md`.
+*Palette:* `--ink #171a20`, `--bg #ffffff` (the page is white like the panel; only `body` uses it now), `--border #e6e6e6`, NEW `--fill #f4f4f4` — the neutral ground for pills, segmented controls, hovers and read-only inputs (what `--bg` used to be for controls; on a white page a white hover is no hover). `--muted`, `--accent`, `--tint`, `--danger`, `--warn` and the dark stage's `--surround*` are unchanged *(built 2026-10-01 — `theme.css`)*.
+*Type:* body and controls 13 px (`--fs-md`), small 12, caption 11, label 10, drawer/dialog heading 16, panel title 22. Two weights chrome-wide (400/500); 600 only on the summary bar's figures and the wordmark; base headings and `b`/`strong` are 500; `--fw-bold` deleted. Section headings (`.cfg-body h3, .sheet h3, .tp-label, .alignlabel`) are sentence case at body size, medium weight, full ink — no longer a 12 px uppercase muted eyebrow *(built 2026-10-01 — `theme.css`)*.
+*Accent discipline:* plain hovers no longer use accent or tint — they are ink borders or `--fill` grounds; at rest accent/tint remain on the Download CTA, selection, links, focus, the in-flow hint banner, the font-licence badge, the quality grade, and the digitize/manual panels' control borders (`--tint-border`). Spec §6's "sheet slide" transition was not built (the sheet appears without one). Transitions are 150 ms, all behind `prefers-reduced-motion: no-preference`; shadows only on floating surfaces (drawer, sheet, menus, popovers, tooltips) — in-flow shadows removed from the zoom bar, simulator bar, slider thumbs, canvas and thread panel *(built 2026-10-01 — `theme.css`)*.
+*Top bar:* 44 px, no bottom border, `EMB·BOT` wordmark replaces the tile + "Bot Studio"; Font credits is a round `?` button (accessible name still "Font credits"). At ≤ 820 px the `?` hides (credits stay reachable from the Download sheet's footer link); at ≤ 480 px the wordmark hides so the project name has room (31 → 145 px at 375 wide, measured) *(built 2026-10-01 — `theme.css`, `App.svelte`)*.
+*Phone guard:* under 820 px `input, textarea, select` are 16 px `!important` — iOS Safari zooms the page into any focused field under 16 px, and the plain rule lost the cascade to every class-styled field *(built 2026-10-01 — `theme.css`)*.
+*Contrast spec:* `e2e/theme-contrast.spec.js` (new) reads COMPUTED colours, walks to the first opaque ground, and holds every TEXT NODE in `.topbar`, `.panel` (empty and text-design states), `.gmenu`, `.sheet`, `.drawer` to WCAG AA (4.5:1; 3:1 large); disabled/inert exempt. It does not measure field values/placeholders, hover/focus states, the stage, the digitize/image/manual panels, tooltips or popovers. First run on the new theme: 0 failures across ~130 elements (top bar 4, panel 61–64, garment menu 10, sheet 35, drawer 20). Mutation-proved: `--muted: #9aa0a6` fails at 2.64:1 *(measured 2026-10-01 — `theme-contrast.spec.js`)*.
+*Found by looking at screenshots, fixed:* the offline note collided with the text box; the sheet's save-location line was off-scale and the "Your machine" select was a bare native control; the drawer showed two headings in a row (`TemplateRow`'s own "Quick start" removed) and grey-flanked template thumbnails; the phone top bar squeezed the project name.
+*Found by review, fixed:* a `var(--bg, #f6f7fb)` fallback form in `DigitizePanel` left the layer-list hover (and the canvas↔list cross-highlight) white on white; five plain hovers still sat on accent/tint.
+*Known, not fixed (open):* at 375 px the zoom/view bar under the canvas is clipped at both ends; the Color select and Font card still carry 2 px borders; the machine select is narrower than the Chart select; the top bar meets the white panel with no separation (the spec's "no border").
+
+---
+
 **2026-09-30 — garment pill row and the Original view (PR 2 of 4, PR #586).**
 *Garments:* the ten tiles are gone. `ui/GarmentPicker.svelte` shows pills `Polo` (left_chest), `Hat` (hat_front), `Tee` (full_back), a fourth pill for any other garment in force, and `More ›`, a `role="menu"` of all ten garments by the engine's labels with the `garmentArt` icons; the pure logic is `lib/garmentPills.js`, and `GarmentStep` still dispatches the same `update {garmentId}` *(built 2026-09-30 — `garmentPills.spec.js` 5, `GarmentPicker.spec.js` 6)*. e2e `pickGarment` (`e2e/helpers.js`) now goes through the More menu; 12 bare tile clicks in 10 specs were migrated *(measured 2026-09-30 — no-service group 29/29, sampled service-backed 5/5)*.
 *Original view:* a fourth segment in the field's View group (Stitches · Realistic · Simulate · Original). It is painted ON the canvas: the render runs with zero strands (fabric + hoop) and the uploaded artwork is drawn. View-only (never saved, not in undo), dropped by any regeneration, disabled when no element has an uploaded original; pure maths in `lib/originalImage.js` *(built 2026-09-30 — `originalImage.spec.js`, smoke + field-chrome e2e 24/24)*.
@@ -611,6 +624,41 @@ name from its content; a name typed by hand is sticky. Separately,
 never landed — a name and a project's membership of the registry live ONLY in
 that index — and `deleteProject` removed the record before writing it. Both
 propagate now, index first. *(fixed 2026-09-07 — area 3; DOCTRINE)*
+
+**"My designs" filters by what a design is.** Each index entry carries `facts`
+(`{st, col, w, h}`: needle-down stitches, spools, size in mm —
+`lib/libraryFacts.js`), and the drawer filters on name text plus three upper
+bounds: stitches, colors, and "fits hoop" (rotation allowed, derived from w/h
+against `EMB.HOOPS` on read, so it is not stored). Things worth knowing before
+touching it:
+
+- **Facts are recorded reactively in `App.svelte`, not in `persist()`.**
+  `persist()` runs before the flush that regenerates `combinedDesign`, and a
+  text or uploaded-image design cannot be generated from its record alone
+  (font fetch, PNG decode). The same reactive write is the backfill: an entry
+  saved before facts existed is measured the first time it is opened. There is
+  no migration pass.
+- **A missing `facts` means "not measured", never zero.** Under a
+  stitch/color/hoop filter those entries are left out and counted in a line
+  below the list. A blank design is also unmeasured.
+- **`setProjectFacts` keeps the registry's invariants**: no-op for an id not
+  in the index (a late measurement cannot resurrect a deleted project), never
+  bumps `updatedAt` (measuring on open must not reorder the drawer), no write
+  when unchanged (the trigger fires per drag frame).
+- **A null design clears facts only when nothing in the project could sew** —
+  otherwise it is a design still loading, and a good measurement stays.
+- **Not built:** content search ("dogs" — needs tagging or image
+  understanding), exact-colour match (the bound is "up to"), an e2e spec.
+- **The drawer lists saved designs first, templates after** (Kent, 2026-10-01).
+  With the template cards on top the filter sat ~700 px down the list.
+- **The filter applies only while its controls are on screen.** They show with
+  two or more saved designs, and the drawer's `criteria` outlives them, so
+  deleting down to one used to leave that design hidden behind a filter with
+  nothing to clear it. *(fixed 2026-10-01 — `ProjectsDrawer.spec.js`)*
+
+*(built and driven in a browser 2026-10-01: three seeded pre-facts designs
+measured on open, row figures matched the canvas caption, `updatedAt`
+unchanged)*
 ## Moved from MASTER_SCOPE (2026-09-19) — the two engines' wire tests
 
 Lifted verbatim from the area-3 summary on 2026-09-19 to bring

@@ -105,9 +105,9 @@ export async function fetchHealth(fetchFn = globalThis.fetch) {
 //     after the one cache-key change.
 // fill_angle_deg is omitted when null: null means "per-shape auto" and the
 // service treats an absent key the same way — omitting keeps the config (and
-// the job cache key) minimal. `forced_class` and `is_photographic` are never
-// sent at all (see the detect_photographic block below): stage 0 classifies
-// every job, and the Studio no longer carries a per-design override of it.
+// the job cache key) minimal. `is_photographic` is never sent at all, and
+// `forced_class` only as "flat" when the user set it on the reading row (see
+// the block above detect_photographic below).
 
 // `fabrics.py`'s PROFILE_FIELDS and no-op values, verbatim. Key filtering
 // only — the arithmetic lives in the engines (src/fabrics.js, fabrics.py).
@@ -166,12 +166,22 @@ export function buildDigitizeConfig(element, project) {
   // Until that day this branch forwarded two per-design overrides -- a
   // stored `params.forced_class` ("It's flat art", which forced stage 0's
   // fill TIER) and `element.isPhoto` ("It's a photo", which declared
-  // `is_photographic` and bought the photographic machinery). Neither is
-  // read any more, on purpose: a project saved with either still loads, and
-  // digitizes exactly as a fresh upload of the same art would. Stage 0's
-  // reading is the product's reading, so ROADMAP phase 2 (real logos reach
-  // the lane their content actually is) is now the fix for a misroute, not
-  // a button.
+  // `is_photographic` and bought the photographic machinery). `isPhoto` is
+  // not read any more, on purpose: a project saved with it still loads, and
+  // digitizes exactly as a fresh upload of the same art would.
+  //
+  // THE FLAT HALF CAME BACK the same evening, also Kent's call: his
+  // Instagram icon read as shaded artwork, sewed badly down the gradient
+  // lane, and there was no way to say "flat" ("either we need to auto
+  // recognize when to digitize as flat, or make that switch available
+  // again"). So a stored `params.forced_class === "flat"` is sent -- written
+  // only by the reading row's "Sew as flat art", removed by its "Use
+  // automatic detection". Any other stored value is a pre-09-30 leftover no
+  // control writes, and is still ignored. Absent IS "classify normally"
+  // server-side, so a design that never set it keeps its cache key. ROADMAP
+  // phase 2 is still the real fix for a misroute; this is the way round one
+  // until it lands.
+  if (p.forced_class === "flat") cfg.forced_class = "flat";
   //
   // What replaces the "It's a photo" declaration is the engine's own
   // detection (`cfg.detect_photographic`, stage 1.25, built 2026-09-11 and
