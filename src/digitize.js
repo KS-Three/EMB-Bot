@@ -285,23 +285,40 @@
     });
   }
 
+  // A ring's corners with no point said twice running (a ring handed over
+  // closed says its first point again at the end; to within a billionth of a
+  // px, since a closing point that was computed rarely lands exactly).
+  function distinctCorners(ring) {
+    return ring.filter((p, i) => { const q = ring[(i + 1) % ring.length]; return Math.abs(p.x - q.x) > 1e-9 || Math.abs(p.y - q.y) > 1e-9; });
+  }
+
   // Offset a polygon ring by `dPx` along per-vertex OUTWARD normals (miter join).
   // outward=true grows the ring, outward=false shrinks it — correct regardless of
   // winding (signed area picks the outward sense). Miter displacement is clamped
   // at 3*dPx so sharp concave vertices don't produce spikes. Returns a fresh ring.
+  //
+  // It is the ring's corners SAID ONCE that are moved (distinctCorners), so a
+  // ring handed over closed comes back as the same ring handed over open does,
+  // one point shorter. A point said twice running is an edge of no length: it
+  // has no direction and so no normal, and its two ends were each moved along
+  // the one real edge beside them -- the first by the whole mitre clamp, three
+  // times the distance -- which made a wedge of the corner. A ring that says
+  // no point twice is moved exactly as it always was; one with fewer than
+  // three corners left has no outward side and is handed back as it came.
   function offsetRing(ring, dPx, outward) {
-    const n = ring ? ring.length : 0;
     const copy = ring ? ring.map((q) => ({ x: q.x, y: q.y })) : [];
-    if (n < 3 || !(Math.abs(dPx) > 1e-9)) return copy;
+    if (copy.length < 3 || !(Math.abs(dPx) > 1e-9)) return copy;
+    const pts = distinctCorners(ring), n = pts.length;
+    if (n < 3) return copy;
     // signed area (shoelace): >0 and <0 pick opposite outward-normal senses.
     let area2 = 0;
-    for (let i = 0; i < n; i++) { const a = ring[i], b = ring[(i + 1) % n]; area2 += a.x * b.y - b.x * a.y; }
+    for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; area2 += a.x * b.y - b.x * a.y; }
     const sgn = area2 >= 0 ? 1 : -1;      // winding sign
     const dir = outward ? 1 : -1;         // grow vs shrink
     const maxDisp = 3 * dPx;              // miter clamp
     const out = [];
     for (let i = 0; i < n; i++) {
-      const prev = ring[(i - 1 + n) % n], cur = ring[i], next = ring[(i + 1) % n];
+      const prev = pts[(i - 1 + n) % n], cur = pts[i], next = pts[(i + 1) % n];
       let e1x = cur.x - prev.x, e1y = cur.y - prev.y;
       let e2x = next.x - cur.x, e2y = next.y - cur.y;
       const L1 = Math.hypot(e1x, e1y) || 1, L2 = Math.hypot(e2x, e2y) || 1;

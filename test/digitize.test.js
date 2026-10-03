@@ -986,6 +986,121 @@ test("buildQualityDesign: thin hole + large pull comp does not produce runaway f
     JSON.stringify(eHole) + " vs " + JSON.stringify(eNone));
 });
 
+// --- a ring handed over CLOSED (2026-10-03) ----------------------------------
+//
+// `[p0, p1, ..., pn, p0]`: the first point said again at the end. The repeat
+// is an edge of no length, so it has no direction and no normal. offsetRing
+// gave each of its two ends the normal of the one real edge beside it: the
+// first was moved THREE times the distance along one (the mitre clamp), the
+// last once along the other, and the corner between them became a wedge.
+// Under a fabric preset the fill is sewn to the offset rings, so the wedge was
+// sewn: on terry (0.6 mm), 1.8 mm outside a 40 mm box at its first corner.
+// Found by the independent audit of the island fix (PR #613), which grows an
+// island from its corners said once and left the outline and the holes alone.
+const closedRing = (r) => r.concat([{ x: r[0].x, y: r[0].y }]);
+const fillRunsOf = (d) => d.runs.filter((s) => s.kind === "fill").map((s) => d.stitches.slice(s.i0, s.i1 + 1));
+const lShape = () => ring([[0, 0], [400, 0], [400, 150], [150, 150], [150, 400], [0, 400]]);
+// 10 px per mm and a target width equal to the drawing's: 1 px is 1 unit, the
+// drawing centred on (200, 200), y up. The angle is fixed because the auto
+// angle is read off the POINTS, and a point said twice is one more of them.
+const sewnTo = (shape, fabricId, extra) => DG.buildQualityDesign(
+  [{ rgb: [0, 0, 0], shapes: [Object.assign({ tierOverride: "fill", angleOverride: 0 }, shape)] }],
+  Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: 40, darkOnTop: false, underlay: true },
+    fabricId ? { fabric: FABRICS.getFabric(fabricId) } : {}, extra || {}));
+
+test("offsetRing: a ring that says its first point again at the end is moved as the same ring said once", () => {
+  const rings = { "a box": boxPx(0, 0, 400, 400), "an L": lShape(), "a 24-gon": roundPx(200, 200, 200, 24) };
+  for (const [name, open] of Object.entries(rings)) {
+    for (const wound of [open, open.slice().reverse()]) {
+      for (const outward of [true, false]) {
+        assert.deepStrictEqual(DG.offsetRing(closedRing(wound), 6, outward), DG.offsetRing(wound, 6, outward),
+          name + (wound === open ? "" : ", wound the other way") + (outward ? ", grown" : ", shrunk"));
+      }
+    }
+  }
+  // The thing itself: every corner of the box 6 px out on both axes. The first
+  // corner used to come back twice, at (0, -18) and at (-6, 0).
+  const grown = DG.offsetRing(closedRing(boxPx(0, 0, 400, 400)), 6, true);
+  assert.strictEqual(grown.length, 4);
+  boxPx(-6, -6, 406, 406).forEach((want, i) => {
+    assert.ok(Math.hypot(grown[i].x - want.x, grown[i].y - want.y) < 1e-9, "corner " + i + " at " + JSON.stringify(grown[i]));
+  });
+});
+
+test("offsetRing: a point said twice running anywhere in the ring is one corner", () => {
+  const open = lShape(), want = DG.offsetRing(open, 6, true);
+  const again = (p) => ({ x: p.x, y: p.y });
+  for (let i = 0; i < open.length; i++) {
+    const twice = open.slice(0, i + 1).concat([again(open[i])], open.slice(i + 1));
+    assert.deepStrictEqual(DG.offsetRing(twice, 6, true), want, "corner " + i + " said twice");
+  }
+  assert.deepStrictEqual(DG.offsetRing(closedRing(closedRing(open)), 6, true), want, "the first point said three times");
+  assert.deepStrictEqual(DG.offsetRing(open.flatMap((p) => [p, again(p)]), 6, true), want, "every corner said twice");
+  // A closing point that was COMPUTED rarely lands exactly on the first: a
+  // hair off it is the same corner, not an edge with a direction of its own.
+  const hair = open.concat([{ x: open[0].x + 1e-12, y: open[0].y - 1e-12 }]);
+  assert.deepStrictEqual(DG.offsetRing(hair, 6, true), want, "closed to within a hair");
+});
+
+test("offsetRing: a ring with fewer than three corners once the repeats are out is handed back as it was", () => {
+  // Nothing to grow: no area, so no outward side. (The builder never sends
+  // one -- a shape with no area is dropped before its fill -- but the function
+  // is exported.)
+  const a = { x: 0, y: 0 }, b = { x: 10, y: 0 };
+  for (const flat of [[a, a, b, b], [a, b, b], [a, a, a]]) {
+    assert.deepStrictEqual(DG.offsetRing(flat, 2, true), flat);
+    assert.deepStrictEqual(DG.offsetRing(flat, 2, false), flat);
+  }
+});
+
+test("buildQualityDesign: under a fabric preset a closed outline gets the fill the same outline gets open", () => {
+  // The audit's measure: a 40 mm box, left chest, terry. As five points its
+  // fill reached 21.8 mm above the centre at the first corner; as four, 20.6
+  // (the box's 20 and terry's 0.6).
+  const terry = fillRunsOf(sewnTo({ outer: closedRing(boxPx(0, 0, 400, 400)), holes: [] }, "terry_towel")).flat().filter((s) => s.type === "stitch");
+  assert.ok(terry.length > 1000, "the box is filled");
+  assert.strictEqual(Math.max(...terry.map((s) => s.y)), 206, "the top of the fill is 0.6 mm above the box and no more");
+  for (const open of [boxPx(0, 0, 400, 400), lShape(), roundPx(200, 200, 200, 24)]) {
+    for (const f of FABRICS.FABRICS) {
+      assert.deepStrictEqual(fillRunsOf(sewnTo({ outer: closedRing(open), holes: [] }, f.id)), fillRunsOf(sewnTo({ outer: open, holes: [] }, f.id)),
+        open.length + " corners on " + f.id);
+    }
+  }
+});
+
+test("buildQualityDesign: and a closed hole is shrunk as the same hole is open", () => {
+  // A 20 mm hole in the 40 mm box. Terry's fill goes 0.6 mm into it on every
+  // side: in units, to 94 from the centre. The wedge took it 1.8 mm in along
+  // the top of the hole, from the first corner.
+  const outer = boxPx(0, 0, 400, 400), hole = boxPx(100, 100, 300, 300);
+  const terry = fillRunsOf(sewnTo({ outer, holes: [closedRing(hole)] }, "terry_towel")).flat().filter((s) => s.type === "stitch");
+  assert.ok(terry.length > 1000, "the box is filled");
+  assert.strictEqual(terry.filter((s) => Math.abs(s.x) < 93 && Math.abs(s.y) < 93).length, 0, "no fill stitch past the hole's compensation");
+  for (const f of FABRICS.FABRICS) {
+    for (const [name, shape] of [["the hole closed", { outer, holes: [closedRing(hole)] }], ["both closed", { outer: closedRing(outer), holes: [closedRing(hole)] }]]) {
+      assert.deepStrictEqual(fillRunsOf(sewnTo(shape, f.id)), fillRunsOf(sewnTo({ outer, holes: [hole] }, f.id)), name + " on " + f.id);
+    }
+  }
+});
+
+test("fillColumns: a closed ring's edge run lies where the same ring's does open", () => {
+  // With the flag the edge run of a shape with a hole or an inside corner is
+  // sewn on the ring moved 0.2 mm into the filled side (edgeRunRing), which is
+  // offsetRing again: the first corner of a closed ring went 0.6 mm in instead.
+  // With that gone the whole stream is the open ring's, fabric or none.
+  const outer = boxPx(0, 0, 400, 400), hole = boxPx(100, 100, 300, 300);
+  const cases = [
+    ["an L", { outer: closedRing(lShape()), holes: [] }, { outer: lShape(), holes: [] }],
+    ["a box with a hole", { outer: closedRing(outer), holes: [closedRing(hole)] }, { outer, holes: [hole] }],
+  ];
+  for (const [name, closed, open] of cases) {
+    for (const fabricId of [null].concat(FABRICS.FABRICS.map((f) => f.id))) {
+      assert.deepStrictEqual(sewnTo(closed, fabricId, { fillColumns: true }).stitches, sewnTo(open, fabricId, { fillColumns: true }).stitches,
+        name + " on " + (fabricId || "no fabric"));
+    }
+  }
+});
+
 test("buildQualityDesign: underlay style controls underlay stitch volume", () => {
   const outer = sq(0, 0, 100);
   const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, satinMaxWidthMm: 3, underlay: true };
