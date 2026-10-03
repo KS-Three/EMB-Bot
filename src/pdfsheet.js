@@ -277,6 +277,23 @@ const deps =
     cursorY += 0.15;
 
     // Ordered thread list.
+    //
+    // The heading, its caption and the chart line travel WITH the first row.
+    // Only the rows had a page break, so this block was drawn wherever the
+    // stats ended -- and the stats grew: the hooping rows, then the quote's
+    // bobbin, cost and machine-time lines, each feature green on its own.
+    // Measured 2026-10-02 with real jsPDF on the merge of the two: "Chart:"
+    // at y = 10.63 in, inside the bottom margin, under any hoop note; and on
+    // every full sheet the heading at the foot of page one with all of its
+    // rows on page two. The block is 0.22 + 0.18 (+ 0.2 for the chart line)
+    // of cursor before the first row, which then needs ROW_H of its own.
+    const swatchSize = 0.16;
+    const ROW_H = 0.22;
+    const headBlockIn = 0.22 + 0.18 + (options.chartLabel ? 0.2 : 0) + (colors.length ? ROW_H : 0);
+    if (cursorY + headBlockIn > PAGE_H_IN - MARGIN_IN) {
+      doc.addPage();
+      cursorY = MARGIN_IN + 0.25;
+    }
     doc.setFontSize(12);
     doc.setFont(undefined, "bold");
     doc.text("Thread Sequence", MARGIN_IN, cursorY);
@@ -314,8 +331,6 @@ const deps =
       doc.text("Chart: " + options.chartLabel, MARGIN_IN, cursorY);
       cursorY += 0.2;
     }
-    const swatchSize = 0.16;
-    const ROW_H = 0.22;
     for (let i = 0; i < colors.length; i++) {
       // BEFORE the row, not after it. Checking afterwards did both halves of
       // the defect at once: it drew a row that did not fit (at worst past the

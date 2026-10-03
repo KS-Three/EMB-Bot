@@ -765,3 +765,51 @@ test("an unknown garment states nothing rather than guessing", () => {
   // The run time needs no garment, so it survives.
   expect(strings.some((s) => s.startsWith("Run time:"))).toBe(true);
 });
+
+// --- the full sheet: every optional line at once (2026-10-02) ----------------
+//
+// The off-the-paper sweep above passes `sew: { trims, threadM }` and no
+// garment, so it never met what two later features put between the render and
+// the thread list: the hooping advice (three rows for any garment we ship) and
+// the quote (bobbin, thread cost, machine time). Each landed green against it.
+// Together they are five more lines, and only the thread ROWS had a page
+// break. Measured with real jsPDF on the merge of the two: "Chart: ..." at
+// y = 10.63 in, inside the bottom margin, whenever a hoop note was printed —
+// and on every full sheet the "Thread Sequence" heading sat at the foot of
+// page one with all of its rows on page two.
+const FULL_META = {
+  garmentId: "left_chest",
+  hoop: { label: "8×8 in", widthMm: 200, heightMm: 200 },
+  chartLabel: "Isacord Polyester 40",
+  sew: { trims: 16, stops: 20, threadM: 7.1, spm: 850, machineLabel: "SmartStitch S-1501" },
+  quoteLines: [
+    "Thread cost: $0.01 (7.1 m of a $8.00 / 5,000 m cone)",
+    "Machine time: $2.50 (10 min at $15.00/hr)",
+  ],
+};
+
+function fullSheet(n, hoopNote) {
+  const colors = Array.from({ length: n }, (_, i) => ({ r: i * 6, g: 40, b: 90, name: "Thread " + (i + 1) }));
+  return buildWith(baseDesign({ colors, colorCount: n }), Object.assign({}, FULL_META, { hoopNote }));
+}
+
+test("with every optional line on, nothing is drawn past the bottom margin", () => {
+  for (const n of COLOUR_COUNTS) {
+    for (const hoopNote of HOOP_NOTES) {
+      expect({ n, noteLen: hoopNote.length, offPage: drawsBelowMargin(fullSheet(n, hoopNote)) })
+        .toEqual({ n, noteLen: hoopNote.length, offPage: [] });
+    }
+  }
+});
+
+test("the thread-sequence heading is never left on a page without its first row", () => {
+  for (const n of COLOUR_COUNTS) {
+    for (const hoopNote of HOOP_NOTES) {
+      const doc = fullSheet(n, hoopNote);
+      const head = doc.texts.find((t) => t.str === "Thread Sequence");
+      const first = doc.texts.find((t) => t.str === "1. Thread 1");
+      expect({ n, noteLen: hoopNote.length, headPage: head.page })
+        .toEqual({ n, noteLen: hoopNote.length, headPage: first.page });
+    }
+  }
+});
