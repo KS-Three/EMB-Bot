@@ -1277,8 +1277,8 @@ test("buildQualityDesign: thin hole + large pull comp does not produce runaway f
 // last once along the other, and the corner between them became a wedge.
 // Under a fabric preset the fill is sewn to the offset rings, so the wedge was
 // sewn: on terry (0.6 mm), 1.8 mm outside a 40 mm box at its first corner.
-// Found by the independent audit of the island fix (PR #613), which grows an
-// island from its corners said once and left the outline and the holes alone.
+// Found by the independent audit of the island fix (PR #613). It is older
+// than every flag and it is every ring's: the outline, a hole, an island.
 const closedRing = (r) => r.concat([{ x: r[0].x, y: r[0].y }]);
 const fillRunsOf = (d) => d.runs.filter((s) => s.kind === "fill").map((s) => d.stitches.slice(s.i0, s.i1 + 1));
 const lShape = () => ring([[0, 0], [400, 0], [400, 150], [150, 150], [150, 400], [0, 400]]);
@@ -1361,6 +1361,29 @@ test("buildQualityDesign: and a closed hole is shrunk as the same hole is open",
   for (const f of FABRICS.FABRICS) {
     for (const [name, shape] of [["the hole closed", { outer, holes: [closedRing(hole)] }], ["both closed", { outer: closedRing(outer), holes: [closedRing(hole)] }]]) {
       assert.deepStrictEqual(fillRunsOf(sewnTo(shape, f.id)), fillRunsOf(sewnTo({ outer, holes: [hole] }, f.id)), name + " on " + f.id);
+    }
+  }
+});
+
+test("buildQualityDesign: and a closed island is grown as the same island is open", () => {
+  // A ring inside a hole is filled ground and grows, as the outline does: an
+  // 8 mm island in a 24 mm hole in the 40 mm box. On terry its fill is sewn to
+  // 4.6 mm from the centre on every side. The wedge took it to 5.7 at the
+  // island's first corner, into the moat.
+  const outer = boxPx(0, 0, 400, 400), hole = boxPx(80, 80, 320, 320), island = boxPx(160, 160, 240, 240);
+  const terry = fillRunsOf(sewnTo({ outer, holes: [hole, closedRing(island)] }, "terry_towel")).flat().filter((s) => s.type === "stitch");
+  const onIsland = terry.filter((s) => Math.abs(s.x) < 100 && Math.abs(s.y) < 100);   // the band round the moat starts at 114
+  assert.ok(onIsland.length > 100, "the island is filled");
+  // (the island's last row lies where the shape's rows fall: within one of them of 46, never past it)
+  const top = Math.max(...onIsland.map((s) => Math.abs(s.y)));
+  assert.ok(top > 43 && top <= 46, "the island's fill is 0.6 mm past its ring and no more: " + top);
+  const cases = [
+    ["the island closed", [hole, closedRing(island)], [hole, island]],
+    ["island and hole closed, the island listed first", [closedRing(island), closedRing(hole)], [island, hole]],
+  ];
+  for (const f of FABRICS.FABRICS) {
+    for (const [name, closed, open] of cases) {
+      assert.deepStrictEqual(fillRunsOf(sewnTo({ outer, holes: closed }, f.id)), fillRunsOf(sewnTo({ outer, holes: open }, f.id)), name + " on " + f.id);
     }
   }
 });
