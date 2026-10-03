@@ -2174,6 +2174,7 @@ test("no translated warning speaks engine, and this is the tripwire that keeps i
     "SHAPES_LEFT_UNSEWN", "BACKGROUND_ABSENT", "TONAL_REGIONS_SPLIT",
     "DUPLICATE_CONE_LAYERS_MERGED", "BORDER_SEAM_SHARED",
     "PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE", "PHOTO_FACE_PRIORS_UNAVAILABLE",
+    "SMALL_LETTERING_AS_BEAN",
   ];
   // Words that mean something to whoever wrote the engine and nothing to
   // whoever uploaded a logo. Each one was actually printed to a customer
@@ -2223,6 +2224,21 @@ test("what asks for something is separated from what merely happened", async () 
     expect(SILENT_WARNINGS.has(code), `${code} is both silenced and promoted`)
       .toBe(false);
   }
+});
+
+test("fine lettering sewn as bean is a note that asks for nothing", async () => {
+  stubStorage({});
+  const { ATTENTION_WARNINGS, SILENT_WARNINGS, describeWarnings } = await import("./digitizer.js");
+  // Kent 2026-10-02: "We shouldn't have to warn the user of anything." The
+  // engine took the path; the line says what it did and nothing more.
+  expect(ATTENTION_WARNINGS.has("SMALL_LETTERING_AS_BEAN")).toBe(false);
+  expect(SILENT_WARNINGS.has("SMALL_LETTERING_AS_BEAN")).toBe(false);
+  const [one] = describeWarnings([{ code: "SMALL_LETTERING_AS_BEAN", message: "ENGINE PROSE", count: 8, words: 1 }]);
+  expect(one.text).toContain("Fine lettering sews as a running stitch");
+  expect(one.text).not.toContain("ENGINE PROSE");
+  const [two] = describeWarnings([{ code: "SMALL_LETTERING_AS_BEAN", message: "x", count: 20, words: 2 }]);
+  expect(two.text).toContain("2 lines of fine lettering");
+  expect(two.text).not.toMatch(/bigger|larger|upload|replace/i);
 });
 
 test("an unlisted code is a NOTE, deliberately, and is still shown", async () => {
