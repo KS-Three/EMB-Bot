@@ -27,7 +27,13 @@ redirects, plain `git add/commit/status/show` from that cwd. What does not:
 `$'…'` strings, quoted variables, `cd x && …`. Use the Grep/Read tools for
 anything pattern-shaped. And a helper script run BY PATH from the scratchpad
 gets its own directory on `sys.path`, not the cwd — `sys.path.insert(0,
-os.getcwd())` first, or `import digitizer_core` fails.
+os.getcwd())` first, or `import digitizer_core` fails. **In a SUBAGENT the cwd
+does not persist** — it resets every call — and heredocs are refused outright;
+`python -m pytest digitizer/tests/…` from the worktree root is what worked
+there. **A background command is killed at its `timeout` (max 10 min); a
+foreground one that overruns is moved to the background and gets 30.** Neither
+fits a full digitizer suite on this laptop, so run the files a change can
+reach and let CI's required `digitizer` job be the full run.
 
 **The venv path that works.** Worktrees have no `.venv`
 ([[worktree-venv-and-baselines]]); the main checkout's interpreter by its

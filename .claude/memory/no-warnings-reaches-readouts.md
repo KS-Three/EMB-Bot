@@ -8,8 +8,16 @@ metadata:
 Defect 46 (edge smoothness invisible to preflight) was first designed as an
 always-on `info` row in the Studio's Quality report — no threshold, no score
 cost, "just a readout". Shown that design against his 2026-10-02 ruling, Kent
-picked **metrics only** (2026-10-03): three numbers in `report["metrics"]`,
-nothing rendered.
+picked **metrics only** (2026-10-03): numbers in `report["metrics"]`
+(`edge_wobble_<tier>_<stat>_mm`), nothing rendered.
+
+**And a metric still has to be honest to the tools that read it.** The first
+build exported one POOLED figure; the engine's run tier reads exactly 0, so
+the pool moved with tier mix (enthusiast: satin p95 0.247, pooled 0.186). Per
+tier fixed it. The same review caught the docs closing defect 46 on a
+docstring read halfway: Law 37's quantity is `curve_fidelity.roughness_deg`,
+not edge deviation, and it is still offline. Read the whole docstring, and
+check this index — it already said "read `roughness_deg` per design".
 
 **Why:** his words were about a low-resolution warning, but the principle is
 the tool's job — "identify the image it's being given and follow a path to

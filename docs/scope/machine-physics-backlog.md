@@ -20,7 +20,7 @@ intact — rather than spending a permanent number on all thirteen, or on none.
 | Playbook row | MASTER_SCOPE defect |
 |---|---|
 | 3 — `assumed_backing` per preset | **45** — **CLOSED 2026-09-20** |
-| 17 — monotonic smoothness score | **46** — **BUILT AS METRICS 2026-10-03** |
+| 17 — monotonic smoothness score | **46** — half built 2026-10-03, still open |
 | 9 — overlap angle- and fabric-conditional | **47** |
 | 6 — speed model + `TRIM_COST` | **48** — **CLOSED 2026-09-20** |
 
@@ -68,7 +68,7 @@ others absent · **Not built** = no implementation on `main`.
 | 14 | 35 | preflight — small-text battery | Desk-safe | **Partial** | Built: `LETTERING_TOO_SMALL` at `MIN_LETTER_EXTENT_MM = 4.0` (the law's own floor), `LETTERING_ILLEGIBLE` with `LEGIBILITY_WARN`/`_BLOCK`, underlay stripped below threshold (`stage7_sequence.py:1913`, `underlay_style="none" if small`), and — 2026-09-30 — the counters flag as `SATIN_GAPS_TIGHT`: a satin shape's own gaps (between two strokes, or a counter) under 2 × pull + thread, 1.0 mm on pique rather than the row's 0.8, one warn per design with the width at which the shape's tightest tenth clears (scope-history 2026-09-30). Missing: trims-per-word enforcement — zero hits. |
 | 15 | 31 | preflight — satin clamps < 1 mm run, > 8 mm split | Desk-safe | **Built, at different numbers — both ways** | Under-width → 3-pass bean run (`HAIRLINE_STROKES_AS_RUN`, `_bean_along`, `BEAN_PASSES = 3`) but at `SATIN_MIN_CROSS_MM = 0.5`, so 0.5–1.0 mm strokes still satin where the law says run. Split at `SPLIT_SATIN_ABOVE_MM = 5.0`, TIGHTER than the law's 8 mm — and corpus-derived (its comment carries the 36-file split-fraction table), so the divergence is evidence-backed, not drift. |
 | 16 | 36, 38 | preflight — cost card on every output | Desk-safe | **Partial** | `app/src/lib/estimate.js` gives stitches, thread changes, trims and thread metres; `COLOR_STOPS_HEAVY` fires past `COLOR_STOPS_MAX = 10` (the law's "warn if > needle count"). Missing: estimated runtime and trim cost — both need row 6's speed model first. |
-| 17 | 37 | preflight — monotonic smoothness score | Desk-safe | **Built 2026-10-03, as metrics only** (was: Partial — built, but not where the row puts it) | **2026-10-03:** one of the four instruments reaches preflight — `edge_wobble`, whose measurement moved to `digitizer_core/edge_wobble.py` and rides out as `edge_wobble_p95_mm` / `_std_mm` / `_max_mm`. Still no CODE, and that is the ruling, not a gap: no finding, no deduction (Law 37's "no cutoff"; Kent, 2026-10-02, on not warning the customer). `edge_smoothness` needs a registered render and `curve_fidelity` is a paired measure by its own docstring, so neither can be a per-design metric as built. **The audit as written 2026-09-20:** The score exists as offline instruments (`tools/edge_smoothness.py`, `curve_fidelity.py`, `edge_wobble.py`, `curve_tiers.py`) and is monotonic with no cutoff, as the law demands. It does NOT reach preflight: no smoothness/roughness/churn code among preflight's 24 codes or `warnings_codes.py`'s 58. `edge_smoothness.py`'s own docstring is the proof — *"`preflight` graded `logo_whitebg` **A 100**"* on a design Kent calls not smooth, and `becker_marine_logo` B 76 where he calls the edges jagged. (Both clauses moved here from MASTER_SCOPE defect 46 on 2026-09-29, for the word budget.) |
+| 17 | 37 | preflight — monotonic smoothness score | Desk-safe | **Partial — edge deviation reaches preflight (2026-10-03); the row's own quantity does not** | **2026-10-03:** `edge_wobble`'s measurement moved to `digitizer_core/edge_wobble.py` and rides out of preflight as metrics, per tier (`edge_wobble_{satin,border,fill,line}_{p95,std,max}_mm`). That is positional deviation from the outline, in mm. **The row asks for "direction-change churn per mm"**, which is `curve_fidelity`'s `roughness_deg` — it reads `plan.iter_runs()` alone and its docstring calls it "the number to read per design" — and that one is still offline. `edge_smoothness` needs a thread render registered to the artwork. Still no CODE in either list, and that is the ruling, not a gap: no finding, no deduction (Law 37's "no cutoff"; Kent, 2026-10-02, on not warning the customer). **The audit as written 2026-09-20:** The score exists as offline instruments (`tools/edge_smoothness.py`, `curve_fidelity.py`, `edge_wobble.py`, `curve_tiers.py`) and is monotonic with no cutoff, as the law demands. It does NOT reach preflight: no smoothness/roughness/churn code among preflight's 24 codes or `warnings_codes.py`'s 58. `edge_smoothness.py`'s own docstring is the proof — *"`preflight` graded `logo_whitebg` **A 100**"* on a design Kent calls not smooth, and `becker_marine_logo` B 76 where he calls the edges jagged. (Both clauses moved here from MASTER_SCOPE defect 46 on 2026-09-29, for the word budget.) |
 
 **Tally: 1 built as specced (13, via the field note's revision), 1 built at
 divergent numbers (15), 2 built but gated off (7, 8), 8 partial (4, 5, 6, 10,
@@ -79,9 +79,10 @@ bundle), so the standing tally is 4 built, 2 gated, 7 partial, 4 not built —
 and Part 3's backing, topper and runtime lines closed with them. Rows 17 and 9
 remain open as defects 46 and 47.
 
-**Updated 2026-10-03:** row **17 is BUILT, as metrics only** (defect 46,
-closed), so the standing tally is 5 built, 2 gated, 6 partial, 4 not built.
-Row 9 remains open as defect 47.
+**Updated 2026-10-03:** row 17 moved but did not close — preflight now reports
+edge deviation as metrics, and the direction-change score the row names is
+still offline. The tally stands at 4 built, 2 gated, 7 partial, 4 not built;
+rows 17 and 9 remain open as defects 46 and 47.
 
 ### What the buildability column says
 
@@ -149,7 +150,8 @@ that matters.
    `curve_turn_deg = 15.0` is a stage-4 vertex-refinement threshold on input
    geometry. Law 37 asks for a monotonic smoothness score on the stitch path,
    with no cutoff. The real score exists in `tools/`, and does not reach
-   preflight. (It does since 2026-10-03, as metrics — see row 17.)
+   preflight. (One of them does since 2026-10-03, and not the one this row
+   names — see row 17.)
 3. **Rows 12 and 14 were scored Built; both are Partial.** Each has two
    sub-items with zero implementation (auto-oppose + auto-hole; counters +
    trims-per-word).

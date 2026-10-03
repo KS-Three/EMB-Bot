@@ -17553,7 +17553,7 @@ in five lies on a stitch under 0.3 mm (lettering under 1%).
 Not sewn. Flip is Kent's: "Waiting on Kent" 23.
 *(built 2026-10-03 — `docs/lock-stitches-2026-10-03.md`, `tools/lock-stitch-census.mjs`)*
 
-## 2026-10-03 — Edge wobble reaches preflight as metrics and judges nothing (defect 46, closed)
+## 2026-10-03 — Edge deviation reaches preflight as per-tier metrics and judges nothing (defect 46, half built)
 
 **Defect 46 as it stood, 2026-09-20 to 2026-10-03:** *"The smoothness score
 exists and preflight cannot see it. Law 37 wants a monotonic direction-change
@@ -17564,16 +17564,28 @@ smoothness code appears among preflight's 24 codes or `warnings_codes.py`'s
 
 **What was built.** `edge_wobble`'s measurement moved from `tools/` into
 `digitizer_core/edge_wobble.py` — 311 lines, compared line for line against
-the file they left — and `run_preflight` reports `edge_wobble_p95_mm`,
-`edge_wobble_std_mm` and `edge_wobble_max_mm`, read against the regions' own
-polygons. None on a bare plan, None when no edge series is long enough to
-read. The tool keeps its CLI and renders and imports the rest.
+the file they left — and `run_preflight` reports it per tier:
+`edge_wobble_{satin,border,fill,line}_{p95,std,max}_mm`, read against the
+regions' own polygons. None on a bare plan, None for a tier the design does
+not sew, None when no series is long enough to read. The tool keeps its CLI
+and renders and imports the rest.
 
-**Why one instrument of four.** `edge_wobble` is the only one that reads what
-preflight already holds (the regions' polygons and the plan). `edge_smoothness`
-needs a thread render registered to the artwork; `curve_fidelity`'s docstring
-says its absolute number "is not a grade" and is a paired measure;
-`curve_tiers` is a diff between two runs.
+**Why per tier.** The first build exported the instrument's pooled figure. The
+engine's run tier sews a shape's own outline vertices, so it reads exactly 0,
+and the pool is diluted by however many run points the design has:
+`enthusiast_logo` reads satin p95 0.247 mm and pooled 0.186, with 624 run
+points at 0.000. A change that moved shapes between satin and run would have
+read as edges improving. Found in review, before the PR.
+
+**What this is not, and a correction to this entry's own first draft.** Law
+37's row asks for "direction-change churn per mm". That is
+`tools/curve_fidelity.py`'s `roughness_deg`, which reads `plan.iter_runs()`
+alone and whose docstring calls it "the number to read per design". The first
+draft said `edge_wobble` was the only instrument preflight's inputs could
+feed, called `curve_fidelity` a paired-only measure, and closed defect 46.
+All three were wrong; the review read the docstring through to line 179. What
+shipped is positional deviation from the outline. Defect 46 stays open for the
+direction-change half.
 
 **Why metrics and nothing else — three calls of Kent's.** 2026-10-01: a
 readout, the grade unchanged. 2026-10-02, in the bean-letters session: *"We
@@ -17583,25 +17595,45 @@ metrics only. So there is no finding, no sentence and no Studio change, and
 the grade is blind to edges by ruling. Law 37 agrees from the other side: no
 cutoff exists to invent.
 
-**Readings.** Default config on the 2026-10-01 tree, tool and preflight being
-the same function:
+**Readings, per tier.** p95 / std, mm, default config. The first two rows are
+the lane's tree at `b30626b5`; Becker and drone are the tool's own output two
+days earlier, which is the same function:
 
-| fixture | p95 mm | std mm | max mm | wobble s | preflight s |
-|---|---|---|---|---|---|
-| `logo_whitebg` | 0.038 | 0.022 | 0.14 | 0.03 | 2.8 |
-| `enthusiast_logo` (93 mm, left chest) | 0.186 | 0.083 | 0.91 | 0.08 | 11.6 |
-| `becker_marine_logo` | 0.217 | 0.107 | 0.90 | 0.18 | 15.7 |
-| `drone_render` | 0.127 | 0.064 | 0.82 | 0.54 | 17.6 |
-| `photo_dof_meadow` (80 mm, 10-03, a lane with no rembg venv) | 0.120 | 0.063 | 0.72 | 0.35 | 5.2 |
+| fixture | satin | fill | line |
+|---|---|---|---|
+| `logo_whitebg` | 0.047 / 0.021 | 0.025 / 0.022 | 0.000 / 0.000 |
+| `enthusiast_logo` (93 mm, left chest) | 0.247 / 0.109 | 0.000 / 0.007 | 0.000 / 0.000 |
+| `becker_marine_logo` (10-01) | 0.218 / 0.107 | 0.201 / 0.114 | — |
+| `drone_render` (10-01) | 0.142 / 0.073 | 0.149 / 0.071 | 0.000 / 0.000 |
 
-The synthetic control reads clean and Becker roughest, which is the order of
-Kent's complaints; that is five fixtures and not a validation. The number has
-still not met his eye.
+Satin max: whitebg 0.06 mm, enthusiast 0.91. The synthetic control reads clean
+and the two real logos rough, which is the order of Kent's complaints; that is
+four fixtures and not a validation. The number has still not met his eye.
+
+**Cost, and three changes to the moved code.** The review measured the plain
+form as rings × points: a shape with hundreds of holes took seconds, in a
+check that runs on every job. Three changes, each compared against the
+pre-change output on `logo_whitebg`, `enthusiast_logo` and a 36-hole plate
+whose points include exact ties between two rings — identical, every key:
+preflight skips the unsewn-outline walk it never read (`unsewn=False`); the
+polygon is prepared before `contains`; and the nearest ring is asked of an
+`STRtree`, ties going to the lowest index as `argmin` sends them, with only
+the rings a run reaches visited afterwards.
+
+| holes | points | before, s | after, s |
+|---|---|---|---|
+| 25 | 1,400 | 0.08 | 0.05 |
+| 100 | 5,600 | 0.77 | 0.21 |
+| 400 | 22,397 | 9.05 | 1.36 |
+
+On real work it was never the cost: whitebg 0.07 s, enthusiast 0.14–0.20 s,
+`photo_dof_meadow` 0.35 s of a 5.2 s preflight (that one before the speed-up,
+in a lane with no rembg venv).
 
 **What it does not do.** It changes no grade (`test_it_judges_nothing` scores
 one rough plan with its outline and without, and was watched failing against
 an injected finding). It is skipped by `corpus_scorecard.diff` until the
-baseline is recaptured, because that diff reads only keys both sides hold. A
-shade band's runs carry a derived shape id and are not measured, the same as
-in the tool.
-*(built 2026-10-03 — `tests/test_edge_wobble_metrics.py`, 8; `digitizer_core/edge_wobble.py`)*
+baseline is recaptured, because that diff reads only keys both sides hold, so
+today no tool reads these keys. A shade band's runs carry a derived shape id
+and are not measured, the same as in the tool.
+*(built 2026-10-03 — `tests/test_edge_wobble_metrics.py`, 13; `digitizer_core/edge_wobble.py`)*
