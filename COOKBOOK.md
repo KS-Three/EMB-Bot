@@ -1032,7 +1032,11 @@ sews nothing and cuts the smallest shape that contains it.
     drawn badge or U does it all the time. Ask the ground test both ways
     round on whole-number shapes ("whole-number shapes" in the same file),
     and sweep every preset in `FABRICS.FABRICS`: terry sews its fill upward,
-    and that was the direction a third audit found wrong.
+    and that was the direction a third audit found wrong. Draw notches
+    exactly twice a preset's pull compensation wide as well (4 to 12 px at
+    10 px per mm): the outline the fill is sewn to closes one to a slit, and
+    no sweep had one until an audit drew it (2026-10-03, "a move of no
+    length").
 
   To SEE thread rather than penetrations, run
   `node tools/fill-columns-sheet.mjs`: it draws four manual-lane shapes off
@@ -1062,6 +1066,12 @@ sews nothing and cuts the smallest shape that contains it.
   `node tools/fill-stagger-census.mjs` prints the numbers and, with
   `--sheet out.svg`, draws every hole. No Studio caller passes the flag; the
   flip is Kent's ("Waiting on Kent" 24).
+  The lettering builder's own fill (`satinplay.fillFromGeom`) is NOT
+  staggered and does not ship: it runs only under `wideColumnFill`, off
+  since 2026-09-11. Whatever flips that passes `stagger`, `minStitch` and
+  `splitTol` there, the two lengths in the layout's units: final mm,
+  divided by the fit scale, times `pxPerMm`, as `fillStitchMm` beside them
+  already is.
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 

@@ -461,7 +461,10 @@ about the facts.
    4 mm across the fill. Python's fill does the same. **Not sewn from this
    lane**; the honest choices are flip now, or sew one square and look for
    the dashes. A flip is `fillStagger: true` at `generate.js`'s three shape
-   call sites and a re-pin of every shape snapshot.
+   call sites and a re-pin of every shape snapshot. Lettering has no fill to
+   stagger as shipped: a wide letter's fill (`satinplay.js`) sews only under
+   `wideColumnFill`, off since 09-11 (8,500 Studio lettering builds, no fill
+   row), and takes the stagger in whatever change flips that.
    *(measured 2026-10-03 — [`docs/renders/fill-stagger-2026-10-03/`](docs/renders/fill-stagger-2026-10-03/README.md))*
 
 ## Cross-cutting issues

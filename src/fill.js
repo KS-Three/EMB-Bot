@@ -40,6 +40,41 @@
   const COLUMN_OVERLAP_EPS = 1e-6;   // pure touching is a corner, not a passage
   const ON_EDGE_EPS = 1e-6;
 
+  // The rows the columns are cut from: the scanlines' own, without the spans
+  // that have NO LENGTH.
+  //
+  // A scanline that runs exactly through a corner pointing up the rows finds
+  // both of that corner's edges (the half-open rule) and pairs them. The first
+  // scanline sits on the topmost point, so any shape whose top is a single
+  // corner has such a span; so does a drawing on whole numbers, wherever a
+  // corner lands on a row. The plain walk sews it on its way past, two
+  // penetrations in one hole, and always has. As a COLUMN it is joined to
+  // nothing (`overlaps`), so the walk travelled to it like any other, and cut
+  // to it when it was left for last with no way round: a cut, two penetrations
+  // in one hole, and the end of the pass. 18 such threads in a 12,880-design
+  // sweep (the audit of the lock stitches, 2026-10-03).
+  //
+  // It sews no thread and joins no two columns, so it is left out, and a
+  // scanline with nothing else on it is absent like an empty one. (The Python
+  // engine's `_row_spans` does the same: `g.length <= 0`.) "No length" is
+  // `overlaps`' own measure: a span no longer than that can be the neighbour
+  // of nothing, and the corner's two edges do not always meet to the last bit.
+  //
+  // Not this: two spans that TOUCH (a scanline exactly along the wall of a
+  // hole, through a corner of one, or across a slit). Each has a length and
+  // is a column. It is the move from one to the other that has none, and
+  // that is `sewTo`'s.
+  function spansWithLength(rows) {
+    const out = [];
+    for (const row of rows) {
+      const keep = [];
+      row.spans.forEach((sp, si) => { if (sp[1] - sp[0] > COLUMN_OVERLAP_EPS) keep.push(si); });
+      if (keep.length === row.spans.length) out.push(row);
+      else if (keep.length) out.push({ ri: row.ri, y: row.y, spans: keep.map((si) => row.spans[si]), spanEdges: row.spanEdges && keep.map((si) => row.spanEdges[si]) });
+    }
+    return out;
+  }
+
   // rows: [{ ri, y, spans: [[x0, x1], ...], spanEdges: [[e0, e1], ...] }] in
   // scanline order, empty scanlines absent. -> { columns, above }: each column
   // is [{ ri, y, x0, x1, e0, e1 }, ...] top-down (e0, e1: the edge each end of
@@ -346,6 +381,7 @@
   const RING_TRIES = 8;   // how many of the nearest starts are tried round a ring
   const START_TRIES = 8;  // how many of the nearest corners a pass may start from
   function sewColumns(cols, above, geo, o) {
+    if (!cols.length) return [];   // every span of the pass was a point (spansWithLength)
     const edges = geo.edges, maxStitch = o.maxStitch, tol = o.tol, pitch = o.pitch, cosP = o.cosP, sinP = o.sinP;
     const tooLong = (d) => !!(maxStitch && maxStitch > 0 && d > maxStitch);
     const dist = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
@@ -371,8 +407,23 @@
       frame.trim = true;
       out.push(frame, rotate(p, cosP, sinP));
     };
+    // A move of NO LENGTH lays no stitch: the needle is already there. Two
+    // spans of one scanline can meet at a point -- the scanline runs along a
+    // wall of a hole or a notch that a quarter turn left a hair off level, or
+    // through a corner of one, or across a notch the pull compensation has
+    // closed to a slit -- and the move from the end of one column to the
+    // start of the other is then to the point the walk is on. So is the first
+    // move of a pass that landed on a corner of the very column it begins
+    // with, and so can be one leg of a way through the columns' corners
+    // (webRoute). Each was a second penetration of one hole: 159 on 8,255
+    // designs, and along a slit one to every row that crosses it. "The same
+    // point" is to within ON_EDGE_EPS, as it is round a ring: in 73 of those
+    // 159 the two corners differed in their last bits. (A row is never that
+    // short: spansWithLength. And `cutTo` puts a plain point on its own frame
+    // move on purpose; it does not come this way.)
     const sewTo = (a, b) => {
       const dx = b.x - a.x, dy = b.y - a.y, dist = Math.hypot(dx, dy);
+      if (dist <= ON_EDGE_EPS) return;
       if (tooLong(dist)) {
         const steps = Math.ceil(dist / maxStitch);
         for (let s = 1; s < steps; s++) out.push(rotate({ x: a.x + dx * s / steps, y: a.y + dy * s / steps }, cosP, sinP));
@@ -1070,7 +1121,7 @@
         else if (under === ON_RIM && floated(d)) rimTurn[i] = true;
       }
       if (!plain) {
-        const cut = cutColumns(rowSpans);
+        const cut = cutColumns(spansWithLength(rowSpans));
         splitAtOpenTurns(cut, ground, tol);
         const budget = opts.travelBudget > 0 ? opts.travelBudget : (maxStitch > 0 ? 5 * maxStitch : Infinity);
         // the walk works in the rotated frame; the caller's `clear` does not
