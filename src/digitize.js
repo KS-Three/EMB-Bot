@@ -65,6 +65,20 @@
   const TIE_STITCH_MM = 0.8;
   const TIE_STITCHES = 3;
 
+  // Row stagger for a cover fill (`fillStagger`, built OFF) —
+  // `machine.FILL_STAGGERS` rows to a cycle, and `machine.MIN_STITCH_MM`
+  // between a row's end and the first needle hole after it. The Python fill's
+  // own two numbers, hand-ported like the pair above and held by the same wire
+  // test. The grid's pitch is NOT ported: it is this lane's own stitch length
+  // (`maxStitchMm`, 4), where the Python fill's is `FILL_STITCH_MM`, 3. See
+  // fill.js, "ROW STAGGER".
+  const FILL_STAGGERS = 4;
+  const MIN_STITCH_MM = 1.0;
+  // How far over a stitch a step along a row may be before it is cut in two —
+  // `stitches.SPLIT_TOLERANCE_MM`, a micron. The wire test reads plain
+  // decimals and cannot see this one; test/fill-stagger.test.js holds it.
+  const SPLIT_TOLERANCE_MM = 1e-6;
+
   // A lock stitch at `at`, laid along the path toward `toward` — the exact
   // shape of `stitches.tie_run`, including the two rules its docstring earns:
   //
@@ -531,7 +545,7 @@
   }
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
-  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns }
+  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger }
   // (buildLetteringDesign additionally takes `splitSatin` and
   // `wideColumnFill` — the two wide-column answers, both default off; see
   // satinfont.js's constant block.)
@@ -702,6 +716,14 @@
     //    DRAWN (shrunk, it folds through itself), so there the fill covers no
     //    further at all, and the underlay went straight across a 1 mm slot.
     const fillColumns = !!o.fillColumns;
+    // `fillStagger` (default off): a shape's COVER fill puts the needle holes
+    // between each row's ends on one grid, shifted row by row, where each row
+    // now cuts itself evenly and the holes line up from row to row (fill.js,
+    // "ROW STAGGER"). The underlay passes are left as they are: their rows are
+    // 2 mm and more apart and lie under the cover, and the Python engine does
+    // not stagger them either (`_underlay_paths`, staggers=1). Off, nothing
+    // reads it and every stitch is unchanged.
+    const staggerOpts = o.fillStagger ? { stagger: FILL_STAGGERS, minStitch: MIN_STITCH_MM * pxPerFinalMm, splitTol: SPLIT_TOLERANCE_MM * pxPerFinalMm } : null;
     // The rings a FILL is sewn to: the shape's own, or under a fabric preset
     // the pull-compensated ones (grow the outer, shrink the holes), so it sews
     // to true size on stretchy cloth. No-fabric fills stay unoffset.
@@ -1025,7 +1047,7 @@
             for (const q of poly) { if (q.x < bx0) bx0 = q.x; if (q.x > bx1) bx1 = q.x; if (q.y < by0) by0 = q.y; if (q.y > by1) by1 = q.y; }
             const wMm = (bx1 - bx0) * mmPerPxFinal, hMm = (by1 - by0) * mmPerPxFinal;
             const largeFill = wMm > centerOutMinMm && hMm > centerOutMinMm;
-            pts = fillmod.tatamiFill(fillRings, Object.assign({ rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true, centerOut: largeFill, columns: fillColumns, openTol: rowPx }, entryOf(runs))); nFill++;
+            pts = fillmod.tatamiFill(fillRings, Object.assign({ rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true, centerOut: largeFill, columns: fillColumns, openTol: rowPx }, staggerOpts, entryOf(runs))); nFill++;
             if (largeFill && !pts.columnWalk) nCenterOut++;   // the column walk is not center-out
           }
         } catch (e) { pts = []; }

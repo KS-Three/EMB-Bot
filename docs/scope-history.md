@@ -17552,3 +17552,57 @@ in five lies on a stitch under 0.3 mm (lettering under 1%).
 
 Not sewn. Flip is Kent's: "Waiting on Kent" 23.
 *(built 2026-10-03 — `docs/lock-stitches-2026-10-03.md`, `tools/lock-stitch-census.mjs`)*
+
+## 2026-10-03 — The browser fill's needle holes stood in line from row to row; `fillStagger` built OFF (quality review 2026-09-08 §4)
+
+The review's second cheap browser-lane defect has two halves. The connector
+sewn across a counter closed behind `fillColumns` (two entries up). The other
+half is the stagger: `src/fill.js` cuts every row into equal stitches from
+the row's own end, so two rows of one length are cut at the same places.
+Measured on ten manual-lane designs under every preset, 94.3% of the holes
+between a row's ends have a hole of the next row within 0.3 mm, and 86.5%
+are the head of three in a line. It is not only squares: 90% on a 30 mm
+circle, 56% on a star.
+
+`fillStagger` puts those holes on the Python fill's grid: a stitch apart,
+shifted row by row through a cycle of four in the order 0, 2, 1, 3
+(`_stagger_slots`), a point kept only when it is 1 mm from both ends of the
+row (`MIN_STITCH_MM`), a step left longer than a stitch cut in equal parts.
+The cover fill only, both walks. A row's ends, the turns, the travel and the
+cuts do not move: with the holes between the ends taken out, the staggered
+walk is the shipped one, point for point. After: 7.5% with a hole under them
+(the halved steps, which the rule itself lands near the next row's grid
+point) and 6 holes of 148,477 at the head of three in a line. Stitches
++6.9%, 4.70 a row to 5.12; the shortest stitch along a row 2 mm to 1 mm;
+cuts 176 and 176.
+
+The port was to be exact where it can be checked: on 32,000 random rows the
+holes `tatamiFill` returns equalled the Python fill's (`_row_points`, then
+`split_long_moves`) to the last bit. **Its own audit held nine claims of
+eleven and failed that one.** The proof had sorted each row and sewn every
+row left to right, and Python cuts a long step from the end the thread comes
+from: six rows of 39,979 were one ulp off, all sewn right to left. And the
+tolerance on "longer than a stitch" was taken from Python in spirit, not in
+size: Python's is a micron, the port's was a billionth of a stitch, and in
+the band between them one row of 12.2 million was halved here only. Both
+are now Python's (`splitTol`, the builder's `SPLIT_TOLERANCE_MM`), and the
+second proof is in thread order with rows aimed at the tolerance: 51,760
+rows, 345,858 penetrations, equal to the bit, where the audited commit
+fails 997 of the same rows.
+
+The audit failed a second claim, "no stitch under the shortest is added":
+true at the default, false for a builder asked for a stitch under 2 mm
+(29,852 stitches under 1 mm became 64,004). That is a limit of the rule, not
+a slip in the port: a step between one stitch and one stitch plus 1 mm is
+halved. My answer, taking the shortest as half a stitch there, failed the
+audit's second look: a halved step was never under half a stitch, so the
+floor did not move, and the lower clearance made a third more short stitches
+(45,552 against 34,458). It was taken out and the limit is stated instead.
+And the audit asked where the 7.5% are, which I had written off as
+scattered: 95.6% sit 1.5 to 2.6 mm from a row's end, so along a straight
+edge they are a pair of holes every four rows, a line of dashes beside the
+edge. Python's fill has it too. It is kept, and stated for the flip. The
+second look held every other claim about the fixes.
+
+Not sewn from this lane. Flip is Kent's: "Waiting on Kent" 24.
+*(built 2026-10-03 — `docs/renders/fill-stagger-2026-10-03/`, `tools/fill-stagger-census.mjs`)*
