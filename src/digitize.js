@@ -545,13 +545,20 @@
   // edges of one upright wall all sit at one value, each is tried against all
   // the rest, and an island said in that many points took half a second.
   // `box`: only the edges that enter it.
+  //
+  // The reach is a ROUNDED number, so it is widened by a hair at both ends.
+  // A wall running exactly ACROSS the slant has every point at one place
+  // along it, and a corner touching that wall could round to just outside its
+  // reach: never tried against it, a hole touching another's wall read as an
+  // island inside it. The hair costs a few more pairs tried, and those are
+  // then judged exactly.
   function sweptEdges(ring, box) {
     const slant = 0.6180339887, n = ring.length, edges = [];
     for (let i = 0; i < n; i++) {
       const p = ring[i], q = ring[(i + 1) % n];
       if (box && (Math.max(p.x, q.x) < box.x0 || Math.min(p.x, q.x) > box.x1 || Math.max(p.y, q.y) < box.y0 || Math.min(p.y, q.y) > box.y1)) continue;
-      const up = p.x + slant * p.y, uq = q.x + slant * q.y;
-      edges.push({ i, p, q, lo: Math.min(up, uq), hi: Math.max(up, uq) });
+      const up = p.x + slant * p.y, uq = q.x + slant * q.y, hair = 1e-9 * (1 + Math.max(Math.abs(up), Math.abs(uq)));
+      edges.push({ i, p, q, lo: Math.min(up, uq) - hair, hi: Math.max(up, uq) + hair });
     }
     return edges.sort((e, f) => e.lo - f.lo);
   }
@@ -608,16 +615,17 @@
   // -> one true/false per ring. (`groupRingsIntoShapes` hands a bullseye over
   // as the outline plus [hole, island]; so may any direct caller.)
   //
-  // A ring with NO AREA to speak of is no island, whatever it lies in: three
-  // points in a line, or a hair off one, lying in a cut-out. There is no
-  // ground in it to fill, and grown by a compensation it became a sliver a
-  // millimetre wide, sewn in the middle of the hole. (1e-6 px2: what
-  // fillRingsOf has always called a ring that has collapsed.)
+  // A ring too THIN to hold thread is no island, whatever it lies in: three
+  // points in a line lying in a cut-out, or a hairline. `stepPx` is one step
+  // of the needle (0.1 mm, in px), and a ring narrower than that -- its area
+  // over half its perimeter -- has no ground the needle can address. Grown by
+  // a compensation it became a band a millimetre wide, sewn in the middle of
+  // the hole; left alone, it is what it always was.
   //
   // The `fillColumns` edge run (underlayRuns) asks its own, older question, of
   // one corner of the ring. The two agree on every ring that is wholly inside
   // another, and it is left as it is so that nothing it sews moves.
-  function islandsAmong(holes) {
+  function islandsAmong(holes, stepPx) {
     const depth = holes.map(() => 0);
     if (holes.length > 1) {
       const boxes = holes.map(ringBox);
@@ -642,7 +650,7 @@
         open.push(i);
       }
     }
-    return depth.map((n, i) => n % 2 === 1 && Math.abs(signedArea(holes[i])) >= 1e-6);
+    return depth.map((n, i) => n % 2 === 1 && 2 * polyArea(holes[i]) / polyPerim(holes[i]) >= stepPx);
   }
 
   // Group a flat list of rings (e.g. glyph contours) into shapes with holes:
@@ -1062,7 +1070,7 @@
         // area at all (three of them 4 mm apart in a 40 mm box do), and a
         // shape with no area is dropped. (The perimeter is every ring's,
         // island or hole.)
-        const islands = islandsAmong(holes);
+        const islands = islandsAmong(holes, pxPerFinalMm / units.DST_UNITS_PER_MM);
         const outerArea = polyArea(poly), holeArea = holes.reduce((a, hh, i) => a + (islands[i] ? -polyArea(hh) : polyArea(hh)), 0);
         const area = Math.max(0, outerArea - holeArea), perim = polyPerim(poly) + holes.reduce((a, hh) => a + polyPerim(hh), 0);
         if (area <= 0 || perim <= 0) { dropOutline(poly); continue; }

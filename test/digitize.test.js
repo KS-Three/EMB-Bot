@@ -926,6 +926,50 @@ test("buildQualityDesign: a ring with no area inside a hole is not an island to 
   }
 });
 
+test("buildQualityDesign: a ring thinner than the needle can address is no island either", () => {
+  // The second cure put "no area" at a float (1e-6 px2), and the audit marked
+  // the spot: a ring 6 mm long and 4e-8 px wide was an island still, grown to
+  // 6 x 1.2 mm and filled. The needle moves in steps of 0.1 mm. A ring
+  // narrower than one step (its area over half its perimeter) holds no thread
+  // to compensate, and is left as it always was.
+  const fabric = FABRICS.getFabric("terry_towel");
+  // 6 mm long and 0.05 mm wide: as drawn it holds one fill row at most, grown it held nine
+  const shape = level({ outer: boxPx(0, 0, 240, 240), holes: [boxPx(60, 60, 180, 180), boxPx(90, 119.75, 150, 120.25)] });
+  bothWalks((fillColumns, walk) => {
+    const d = drawn(shape, 240, { fabric, fillColumns });
+    const rows = new Set();   // the fill rows with a stitch more than 1 mm inside the cut-out
+    for (const run of d.runs) {
+      if (run.kind !== "fill") continue;
+      for (let i = run.i0; i <= run.i1; i++) if (d.stitches[i].type === "stitch" && Math.abs(d.stitches[i].x) < 50 && Math.abs(d.stitches[i].y) < 50) rows.add(d.stitches[i].y);
+    }
+    assert.ok(rows.size <= 1, "fill rows in the cut-out" + walk + ": " + rows.size);
+  });
+});
+
+test("buildQualityDesign: a hole touching another's wall is not inside it, whichever way the wall runs", () => {
+  // Rings that meet are not nested, and a corner ON a wall meets it. The
+  // meeting test sweeps its edges along a slanted axis, and the audit found
+  // the one wall that hid from it: a wall running exactly across that slant
+  // has every point at one place along it, to the last bit of a float, and a
+  // corner touching it could round to just outside. Never tried against the
+  // wall, the touching ring read as INSIDE it: an island, and both rings were
+  // sewn as drawn where both had always been shrunk (3 of 31,200 exact
+  // touches in the auditor's search). The same ring pushed a millionth of a
+  // px THROUGH the wall plainly crosses it, and has to sew the same.
+  //
+  // (Rows forced level, or the engine's own angle turns with the ring's
+  // millionth. And the old walk only: with `fillColumns` the edge run asks
+  // its own question of that one corner, and a corner on a wall is where it
+  // has no answer.)
+  const fabric = FABRICS.getFabric("terry_towel");
+  const wall = ring([[284.5494909398258, 450.4658115329221], [796.5494909398258, 450.4658115329221], [717.4411403862257, 578.4658115329221], [205.44114038622575, 578.4658115329221]]);
+  const touching = [[244.99531566302576, 514.4658115329221], [334.59531566302576, 490.1458115329221], [404.99531566302574, 514.4658115329221], [334.59531566302576, 538.7858115329221]];
+  const through = touching.map(([x, y], i) => (i === 0 ? [x - 1e-6, y] : [x, y]));
+  const build = (pts) => drawn(level({ outer: boxPx(165, 410, 837, 619), holes: [wall, ring(pts)] }), 672, { fabric, fillColumns: false });
+  assert.ok(build(through).stitchCount > 2000, "the design sews");
+  assert.deepStrictEqual(build(touching).stitches, build(through).stitches, "touching sews as crossing does");
+});
+
 test("buildQualityDesign: two holes that cross are still two holes", () => {
   // An island is a ring wholly inside a hole. Two cut-outs that overlap, or
   // one laid across the notch of another, are not that, whichever corner of
