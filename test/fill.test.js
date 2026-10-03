@@ -952,6 +952,114 @@ test("columns: a pass whose every span is a point sews nothing", () => {
   assert.deepStrictEqual(fill.tatamiFill([crown], Object.assign({ from: { x:0, y:30 }, clear: () => true }, opts)), []);
 });
 
+// --- a move of no length (what the corner fix left, 2026-10-03) ---------------
+//
+// Not a span of no length: a MOVE of none. Two spans of one scanline can meet
+// at a point, with a gap of no width between them:
+//  - the scanline runs along a wall of a hole or a notch that a quarter turn
+//    has left a hair off level, and finds the wall's corner twice;
+//  - it runs through a corner of one;
+//  - it crosses a notch that HAS no width: one exactly twice the pull
+//    compensation wide, which the outline the fill is sewn to closes to a slit.
+// Each span has a length and is rightly a column. The walk went from the end
+// of one to the start of the other, which is the point the needle is already
+// on, and put it down there again: two penetrations in one hole. 152 times on
+// 8,255 designs, and 7 more where a pass LANDED on a corner of the very column
+// it then began with and "moved" to it. Along a slit it is once a row: 81 of
+// one design's 649 stitches. No cut beside any of them, and no stub.
+
+// What is left when the second penetration is gone: the first is still on
+// the point, both spans of that scanline (`row`: the coordinate it holds
+// fixed) are sewn from `lo` to `hi` through it, and nothing has taken the
+// move's place -- no stitch from the point before it straight to the one after.
+const sewnThrough = (pts, corner, row, lo, hi, maxStitch, label) => {
+  const along = row === "y" ? "x" : "y";
+  const on = pts.filter((p) => !p.travel && !p.trim && Math.abs(p[row] - corner[row]) < 1e-6).map((p) => p[along]);
+  assert.ok(on.some((v) => Math.abs(v - corner[along]) < 1e-6), label + ": no penetration is left on the point the two spans share");
+  assert.ok(Math.abs(Math.min(...on) - lo) < 1e-6 && Math.abs(Math.max(...on) - hi) < 1e-6, label + ": the scanline through it is sewn " + Math.min(...on) + ".." + Math.max(...on));
+  noLongStitch(pts, maxStitch, label);
+};
+
+test("columns: the move between two columns that touch at a point lays no stitch", () => {
+  // The house and its window, rows upright and 20 apart: the scanline at
+  // x = 200 runs along the window's right-hand wall, which the quarter turn
+  // leaves 3e-14 off level. It finds the wall's top corner twice: as the end
+  // of the span above the window, and as the start of the one down the wall.
+  const pts = fill.tatamiFill([HOUSE, HOUSE_HOLE], { rowSpacing:20, angleDeg:90, maxStitch:40, markConnectors:true, columns:true, openTol:1.5 });
+  assert.ok(pts.columnWalk, "the fixture: a holed shape is sewn by the column walk");
+  assert.deepStrictEqual(doubled(pts), [], "two penetrations in one hole");
+  sewnThrough(pts, { x:200, y:150 }, "x", 40, 300, 40, "the wall's corner");
+  assert.strictEqual(cutsOf(pts), 0);
+});
+
+test("columns: nor where the two ends are one point only to within rounding", () => {
+  // A square with a three-cornered hole. Rows level, on whole numbers: the
+  // scanline at y = 30 passes exactly through the hole's top corner, and the
+  // two spans end on the same two numbers. Turned half round or a quarter,
+  // the scanline misses a corner by 1e-14 and the spans end that far apart:
+  // not the same numbers, and the same hole. (A rule that asks for the same
+  // numbers leaves 73 of the 159.)
+  const hole = [{x:50,y:30},{x:70,y:60},{x:30,y:60}];
+  for (const [angleDeg, maxStitch, corner, row] of [[0, 8, { x:50, y:30 }, "y"], [180, 40, { x:50, y:30 }, "y"], [90, 40, { x:30, y:60 }, "x"]]) {
+    const pts = fill.tatamiFill([SQ, hole], { rowSpacing:10, angleDeg, maxStitch, markConnectors:true, columns:true, openTol:1.5 });
+    assert.ok(pts.columnWalk, "the fixture: a holed shape is sewn by the column walk");
+    assert.deepStrictEqual(doubled(pts), [], "angle " + angleDeg);
+    sewnThrough(pts, corner, row, 0, 100, maxStitch, "angle " + angleDeg);
+    assert.strictEqual(cutsOf(pts), 0, "angle " + angleDeg);
+  }
+});
+
+test("columns: nor across a notch of no width, where every row crosses it", () => {
+  // A square with a slit down from its top edge: the two walls of a notch on
+  // one line, which is what the fill is handed when a notch is exactly twice
+  // the pull compensation wide (12 px under terry). A row that crosses it
+  // finds both walls at one point. Crossed on the slant, that point moves
+  // along from row to row, no span lines up one to one with a span of the
+  // next row, and every row is two columns of a single row that meet on the
+  // slit. Six rows cross it here, and six holes were sewn twice. (Found by
+  // the independent re-measure of this fix: an H under terry, 81 of its 649
+  // stitches.)
+  const slit = [{x:0,y:0},{x:50,y:0},{x:50,y:60},{x:50,y:0},{x:100,y:0},{x:100,y:100},{x:0,y:100}];
+  for (const angleDeg of [45, 135]) {
+    const pts = fill.tatamiFill([slit], { rowSpacing:7, angleDeg, maxStitch:40, markConnectors:true, columns:true, openTol:1.5 });
+    assert.ok(pts.columnWalk, "the fixture: rows that cross the slit fork");
+    assert.deepStrictEqual(doubled(pts), [], "angle " + angleDeg);
+    // and each of the six rows still has its penetration on the slit
+    const on = pts.filter((p) => !p.travel && !p.trim && Math.abs(p.x - 50) < 1e-6 && p.y > 1e-6 && p.y < 60 - 1e-6);
+    assert.strictEqual(new Set(on.map((p) => Math.round(p.y * 1e6))).size, 6, "angle " + angleDeg + ": rows with a penetration on the slit");
+    noLongStitch(pts, 40, "angle " + angleDeg);
+    assert.strictEqual(cutsOf(pts), 0, "angle " + angleDeg);
+  }
+});
+
+test("columns: a pass that lands on a corner of its own first column sews that corner once", () => {
+  // When the thread can float to no corner the walk could start from, the pass
+  // lands on the nearest corner it CAN float to and travels from there. Where
+  // that corner belongs to a column the walk may begin with, the nearest start
+  // is the corner itself: a move of no length, and the landing sewn twice.
+  // Two passes in 2,758 from the generator below, its numbers rounded to
+  // three places and each pass told where the thread is (a corner of the
+  // shape, where an edge run leaves it). These are those two.
+  const P = ([x, y]) => ({ x, y });
+  const star = [[92.392, 140.815], [59.965, 158.123], [46.233, 132.872], [33.021, 108.748], [50.875, 85.393], [60.3, 66.022], [83.545, 65.409], [98.436, 37.816], [114.257, 65.68], [146.511, 55.954], [159.831, 78.882], [144.614, 103.558], [151.611, 128.092], [140.497, 152.89], [111.179, 146.776]].map(P);
+  const steps = [[0, 15.675], [70.353, 15.675], [70.353, 9.118], [91.574, 9.118], [91.574, 3.429], [129.653, 3.429], [129.653, 28.015], [157.364, 28.015], [157.364, 7.201], [173.721, 7.201], [173.721, 92.313], [157.364, 92.313], [157.364, 88.897], [129.653, 88.897], [129.653, 75.482], [91.574, 75.482], [91.574, 97.182], [70.353, 97.182], [70.353, 98.744], [0, 98.744]].map(P);
+  const cases = [
+    [star, { rowSpacing: 2.5, angleDeg: 30, maxStitch: 12, openTol: 1 }, { x: 60.3, y: 66.022 }],
+    [steps, { rowSpacing: 5, angleDeg: 59.255, maxStitch: 8, openTol: 5 }, { x: 91.574, y: 97.182 }],
+  ];
+  for (const [shape, o, from] of cases) {
+    const test = fill.openGroundTest([shape]);
+    const clear = (a, b) => !test(a, b, o.openTol, 0, o.maxStitch);
+    const pts = fill.tatamiFill([shape], Object.assign({ markConnectors: true, columns: true, from, clear }, o));
+    const label = "rows at " + o.angleDeg;
+    assert.ok(pts.columnWalk, label + ": the fixture is sewn by the column walk");
+    // the float in is left uncut, so the hole sewn twice was in mid-thread
+    assert.ok(clear(from, pts[0]), label + ": the pass begins where the thread can float to");
+    assert.deepStrictEqual(doubled(pts), [], label);
+    assert.strictEqual(cutsOf(pts), 0, label);
+  }
+});
+
 // --- shapes nobody chose -------------------------------------------------------
 //
 // Every fixture above was drawn by whoever wrote the code it tests, and that

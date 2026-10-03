@@ -755,12 +755,11 @@ test("fillColumns: the tip of a holed shape gets one penetration at most, not tw
   // The lattice underlays of terry and fleece run at 45 degrees and did the
   // same at the eaves, which are the top of THEIR rows.
   //
-  // (The window is kept off the underlay's rows on purpose. A wall that lies
-  // exactly on one -- x = 200 under the cap preset's rows 2 mm apart -- makes
-  // two spans that TOUCH at the wall's corner; the move from one to the other
-  // has no length, and that is still two penetrations in one hole. Another
-  // thing, seen and not changed: the render README.)
-  const house = { outer: ring([[150, 0], [300, 120], [300, 300], [0, 300], [0, 120]]), holes: [boxPx(95, 150, 195, 250)], angleOverride: 0 };
+  // (The window's walls lie ON the underlay's rows: x = 200 is one of the cap
+  // preset's, 2 mm apart. Two spans meet at that wall's corner and the move
+  // from one to the other has no length, which was a second penetration of
+  // (50, 0) until such a move laid no stitch: test/fill.test.js has it bare.)
+  const house = { outer: ring([[150, 0], [300, 120], [300, 300], [0, 300], [0, 120]]), holes: [boxPx(100, 150, 200, 250)], angleOverride: 0 };
   for (const fabric of [null].concat(FABRICS.FABRICS)) {
     for (const underlay of [false, true]) {
       const label = (fabric ? fabric.id : "no fabric") + ", underlay " + underlay;

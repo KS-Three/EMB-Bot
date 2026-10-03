@@ -61,8 +61,9 @@
   // of nothing, and the corner's two edges do not always meet to the last bit.
   //
   // Not this: two spans that TOUCH (a scanline exactly along the wall of a
-  // hole). Each has a length and is a column; the move from one to the other
-  // has none, and is still sewn.
+  // hole, through a corner of one, or across a slit). Each has a length and
+  // is a column. It is the move from one to the other that has none, and
+  // that is `sewTo`'s.
   function spansWithLength(rows) {
     const out = [];
     for (const row of rows) {
@@ -406,8 +407,23 @@
       frame.trim = true;
       out.push(frame, rotate(p, cosP, sinP));
     };
+    // A move of NO LENGTH lays no stitch: the needle is already there. Two
+    // spans of one scanline can meet at a point -- the scanline runs along a
+    // wall of a hole or a notch that a quarter turn left a hair off level, or
+    // through a corner of one, or across a notch the pull compensation has
+    // closed to a slit -- and the move from the end of one column to the
+    // start of the other is then to the point the walk is on. So is the first
+    // move of a pass that landed on a corner of the very column it begins
+    // with, and so can be one leg of a way through the columns' corners
+    // (webRoute). Each was a second penetration of one hole: 159 on 8,255
+    // designs, and along a slit one to every row that crosses it. "The same
+    // point" is to within ON_EDGE_EPS, as it is round a ring: in 73 of those
+    // 159 the two corners differed in their last bits. (A row is never that
+    // short: spansWithLength. And `cutTo` puts a plain point on its own frame
+    // move on purpose; it does not come this way.)
     const sewTo = (a, b) => {
       const dx = b.x - a.x, dy = b.y - a.y, dist = Math.hypot(dx, dy);
+      if (dist <= ON_EDGE_EPS) return;
       if (tooLong(dist)) {
         const steps = Math.ceil(dist / maxStitch);
         for (let s = 1; s < steps; s++) out.push(rotate({ x: a.x + dx * s / steps, y: a.y + dy * s / steps }, cosP, sinP));
