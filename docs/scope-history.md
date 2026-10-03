@@ -17508,12 +17508,22 @@ Both latent: the flag is off and no caller passes it.
 
 One function now, `applyTies`, for both builders, run on the finished record
 stream (DST units). A thread is the records between two cuts, locked on its
-first and last sewn stitch by `tieRun`'s bounce put straight after its
+first and last penetration by `tieRun`'s bounce put straight after its
 anchor: Python's sequence at both ends. Lettering after: median leg 0.80 mm,
 no hole doubled, the same stitch counts to the stitch (+3.31%, +8.00%), the
 untied stream identical on 85 of 85 fonts. Shapes: 144 locks on eleven
 designs with `fillColumns` off and on, +1.02% stitches in all, +0.09% to
-+6.04% by design. 24 rules mutated, 23 caught by a test, one equivalent.
++6.04% by design. 32 rules mutated, 31 caught by a test, one equivalent.
+
+**Its own audit held eleven claims and failed the rule, twice.** First it
+locked a thread on its first and last "two stitch records in a row"; a row
+shorter than a stitch is one record after a float, so 6.1% of tie-offs on
+shapes with `fillColumns` off sat more than 4 mm of thread before the cut,
+the worst 371 mm. Moved to the thread's last penetration, the lock was laid
+along the float: 285 of 37,082 with their inner point in open ground, on a
+frame 0.8 mm into the hole. Laid back along the row the stitch closed: 21.
+What is kept as Python has it, and stated for the flip: on shapes one lock
+in five lies on a stitch under 0.3 mm (lettering under 1%).
 
 Not sewn. Flip is Kent's: "Waiting on Kent" 23.
 *(built 2026-10-03 — `docs/lock-stitches-2026-10-03.md`, `tools/lock-stitch-census.mjs`)*

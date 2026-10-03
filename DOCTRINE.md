@@ -5631,6 +5631,25 @@ millimetres.
   a, b, a, b as well: a pattern search reported a quarter more locks than
   there were, with legs of 3 mm.
 
+**What the new rule's own audit added (same day).** Eleven claims held and
+the rule did not. It locked a thread on its first and last "two stitch
+records in a row", and a record is not a stitch: a row shorter than a stitch
+is ONE record after a float, because the float lands on its start. So a
+thread ending in a float and a short row had its lock up-thread, and 6.1% of
+tie-offs on shapes sat more than 4 mm before the cut they guard, one of them
+371 mm. Moved to the thread's real end, the lock was then laid along the
+float, and on a frame its inner point was 0.8 mm into the hole: 285 of 37,082
+locks. Laid back along the row the stitch closed: 21.
+
+- **State a rule about thread in terms of thread.** "Two stitch records in a
+  row" is a fact about the encoding. Ask what the needle and the thread do.
+- **Measure a new flag with the OTHER flags off.** Both faults showed only
+  with `fillColumns` off, where threads end in floats. Every design the
+  feature had been measured on ended its threads on real sewing.
+- **A fix is a new rule and gets the same audit.** The second version was
+  wrong in a way the first was not.
+*(measured 2026-10-03 — `docs/lock-stitches-2026-10-03.md`, "What an independent audit found")*
+
 ## When a fix lands, sweep the INSTRUMENTS built to test it (2026-09-14)
 
 The DST axis and colour-change fixes landed 2026-09-08 and the code was swept

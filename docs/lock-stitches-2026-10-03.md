@@ -56,21 +56,36 @@ nothing else.
 - **A thread is the records between two cuts.** A `trim` cuts. A `color`
   cuts. A `jump` does not: the question is whether the thread starts or ends
   here, not whether the needle lifted.
-- **Each thread is locked on its first sewn stitch and on its last.** A sewn
-  stitch is two penetrations in a row in two places. The lock is `tieRun`'s
-  bounce laid along that stitch, put straight after its anchor. That is the
-  sequence Python sews at both ends.
-- **A lock never reaches past the stitch it lies on.** On a stitch shorter
-  than 0.8 mm the leg is the stitch. Python's rule.
-- **A thread that sews no stitch gets no lock.** One lone penetration has
-  nothing to hold.
-- **A lock belongs to the run it protects.** Its records sit inside that
-  run's span in `design.runs`.
+- **Each thread is locked at its ends: on its first penetration and on its
+  last.** The lock is `tieRun`'s bounce, put straight after its anchor. That
+  is the sequence Python sews at both ends.
+- **The bounce is laid toward the nearest other place the frame goes.** That
+  is the next stitch, nearly always, and then the lock lies on that stitch.
+- **A thread's end can be one stitch with a float beside it.** A row shorter
+  than a stitch is a single record after a float or a cut, because the frame
+  lands on its start. The lock is then laid back along that row, toward where
+  the frame was just before the stitch. Along the float is the last choice: a
+  float can cross a hole.
+- **A lock never reaches past the place it is laid toward.** On a stitch
+  shorter than 0.8 mm the leg is the stitch. Python's rule.
+- **A thread that goes down in one place only gets no lock.** It sews
+  nothing.
+- **A lock sits in the span its anchor is in** (`design.runs`), so it belongs
+  to the run it protects. Ten shipped fonts give their own runs no span, and
+  there the locks have none either.
 
 Asking the stream is what makes the shape lane possible at all. A fill has a
 cut in the middle of it (center-out's, or the column walk's), a run can open
 with a float, and the first penetration after a cut is not always the first
 point of anything.
+
+**Where a lock sits is an audit's doing.** The first version locked a thread
+on its first and last "two stitch records in a row". Where a thread ended in
+a float and one stitch, that was up-thread, and the tail hung loose behind
+the lock: 6.1% of tie-offs in shape designs with `fillColumns` off, by as
+much as 371 mm of thread. A lock belongs where the thread ends. The second
+version put it there and laid it along the float, which on a frame was
+0.8 mm into the hole. The third lays it back along the row.
 
 ## What it costs on shapes
 
@@ -97,18 +112,62 @@ eleven)*
 - **Locks: `2 + 2 × cuts`, four stitches each.** The percentage is a statement
   about how many pieces a design is in, not about locks. One 40 mm square
   pays 0.5%. Twelve dots pay 6%.
+- **Over 9,869 audited shape designs: +1.2% stitches on average**, +1.0% on
+  the median design, under +2.3% on nine in ten, +9.6% at worst. With
+  `fillColumns` on: +0.9%, +0.5%, +2.0%, +14.4%.
+- **Lettering varies more than the two texts above show.** Over 2,490 builds
+  (85 fonts, 31 sizes and options) the median is +5.1%, the mean +9.1%, nine
+  in ten are under +24%, and the worst is +87%: a small design in many pieces.
 - **No cut is added.** A lock bounces between a penetration that was already
-  there and a point on the stitch beside it.
+  there and a point on the way to the next place the frame goes.
 - **`fillColumns` and this work together.** Fewer cuts, fewer locks.
+
+## What an independent audit found
+
+An agent with its own reader, written from the rule as stated and handed the
+claims as claims. Three rounds.
+
+- **What held from the first:** flag off identical to the commit before and
+  to `main` on 12,880 shape designs (and the same 12,880 with `fillColumns`
+  on) and 2,635 lettering builds; the before and after table above,
+  re-derived; no trim, jump or colour change added; no hole doubled; the
+  design's size unmoved; 200,015 random streams without a throw or a lost
+  record.
+- **What did not: where a lock sits.** The first rule locked a thread on its
+  first and last "two stitch records in a row". 6.1% of tie-offs on shapes
+  with `fillColumns` off were more than 4 mm of thread before the cut they
+  guard, the worst 371 mm. Now: none, in any set.
+- **And then where it points.** Laid along a float, 285 locks of 37,082 put
+  their inner point in ground the shape does not cover, up to 0.91 mm into a
+  hole. Laid back along the row: 21, the deepest 0.65 mm. Those 21 are one
+  kind: a fill that opens on a row of no length (two penetrations in one
+  hole) and then floats, so there is no row for the lock to lie along.
+- **One claim of mine was wrong.** "A lock is always inside a span" fails for
+  ten shipped fonts whose own runs carry no span at all.
+
+*(measured 2026-10-03 — the auditor's sweeps; the engine's tied stream
+equalled its own, record for record, in 29,050 builds)*
 
 ## Seen, not changed
 
-- **A lock on a short stitch is a short lock.** 9 of the 144 locks on the
-  shapes above are under 0.75 mm, the shortest 0.10 mm: the thread starts on
-  the tiny first row at a tip, or on a dot. On lettering it is 108 of 2,272
-  (`KENT`) and 1,646 of 5,132 (18 characters): narrow columns. `min(leg, d)`
-  is Python's rule, and moving one lane without the other would be a new
-  number.
+- **A lock on a short stitch is a short lock, and on shapes that is one lock
+  in five.** Under 0.3 mm: 9,021 of 47,812 locks with `fillColumns` off,
+  7,570 of 31,088 with it on, nearly all in the fill, where a thread ends on
+  the tiny last row at a tip or a curve. Five penetrations inside 0.3 mm.
+  Lettering: 911 of 123,888. `min(leg, d)` is Python's rule, it never
+  overshoots, and moving one lane without the other would be a new number.
+  The audit's advice, and mine: **sew one before flipping the default for
+  shapes.**
+- **With `fillColumns` off a thread can end on a stitch that crosses a gap.**
+  The engine sews across any gap narrower than a stitch. 734 locks lie on
+  such a stitch, and so have their inner point in open ground too (to
+  0.85 mm). The flag removes the stitch, and the lock with it.
+- **In lettering, 1,959 locks lie along a needle-down connector**, 348 of
+  them under 0.3 mm. A connector is sewn thread, so the lock holds where it
+  is long enough.
+- **With `fillColumns` on, 18 threads in 12,880 designs are two penetrations
+  in one hole**, at a tooth tip, cut to and cut from. They sew nothing and
+  get no lock. The stub is the column walk's, and is flagged as its own task.
 - **The untied lettering stream already has doubled holes**: 9,093 across the
   85 fonts on `KENT`. Where a needle-down connector ends on a run's first
   point, that point is pushed twice. Not caused by locks, and the same with
@@ -118,16 +177,16 @@ eleven)*
 
 ## Safety
 
-- **Off is byte-identical.** Lettering: the untied stream is the same record
-  for record on 85 of 85 fonts, three texts. Shapes: every engine test that
-  existed passes unchanged, and a guard holds `ties: false` equal to no flag,
-  spans included.
+- **Off is byte-identical.** The audit hashed it: 0 of 12,880 shape designs
+  and 0 of 2,635 lettering builds differ from `main`. In the suite, every
+  engine test that existed passes unchanged, and a guard holds `ties: false`
+  equal to no flag, spans included.
 - **Take the locks out and the design is the untied one**, record for record.
   That is a test.
-- **Mutation check: 24 rules broken one at a time, 23 caught by a test.** The
+- **Mutation check: 32 rules broken one at a time, 31 caught by a test.** The
   one survivor is not a defect: measuring the design's size from the tied or
-  the untied stream gives the same answer, because a lock never moves the
-  box, and that is itself a test.
+  the untied stream gives the same answer, because in every build a lock
+  leaves the box alone, and that is itself a test.
 
 ## What a flip needs
 
@@ -146,7 +205,10 @@ For: the Python lane ties every block and always has. An untied file is a
 real defect on a real garment, and a machine's own auto-tie may be all that
 hides it.
 
-Against: 3% to 8% more stitches on lettering, 0.1% to 6% on shapes, and
-locks no one has sewn. A candidate for the sew-out card, not a desk decision.
+Against: 3% to 8% more stitches on lettering as a whole (far more on a small
+design in many pieces), about 1% on shapes, and locks no one has sewn. On
+shapes one lock in five is five penetrations inside 0.3 mm. A candidate for
+the sew-out card, not a desk decision. Lettering could flip without shapes:
+its short locks are under 1%.
 
 MASTER_SCOPE "Waiting on Kent" 23.

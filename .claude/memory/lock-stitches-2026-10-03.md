@@ -26,10 +26,18 @@ Both latent: flag off, no caller.
 **What is built (OFF).** `applyTies(stitches, spans)` in `src/digitize.js`,
 one post-pass for both builders on the finished stream (DST units, leg 8). A
 thread is the records between two cuts (`trim`, `color`); a `jump` is not a
-cut. Locked on its first and last SEWN stitch; a lone penetration gets none.
-Spans are remapped and a lock stays in its run's span. Cost: lettering +3.3%
-to +8.0% stitches (unchanged from 09-14), shapes +0.1% to +6%. Doc:
-`docs/lock-stitches-2026-10-03.md`. Tool: `tools/lock-stitch-census.mjs`.
+cut. Locked on its first and last PENETRATION, laid toward the next stitch,
+or (a lone stitch beside a float) back along the row it closed. A thread
+that goes down in one place gets none. Spans are remapped and a lock stays
+in its anchor's span. Cost: lettering +3.3% to +8.0% stitches (unchanged
+from 09-14), shapes about +1%. Doc: `docs/lock-stitches-2026-10-03.md`.
+Tool: `tools/lock-stitch-census.mjs`.
+
+**Its own audit failed the rule twice.** "Two stitch records in a row" put
+6.1% of shape tie-offs up-thread from the cut (worst 371 mm): a short row
+after a float is one record. Then a lock laid along a float went 0.8 mm into
+a hole (285 of 37,082). Both only with `fillColumns` off. Kept as Python has
+it and left for the flip: on shapes one lock in five is under 0.3 mm.
 
 **Why:** Kent's flip ("Waiting on Kent" 23), and a sew-out card candidate:
 the 0.8 mm and three legs are `machine.py`'s and unsewn there too.
@@ -46,5 +54,7 @@ the 0.8 mm and three legs are `machine.py`'s and unsewn there too.
   ("a, b, a, b") also matches a font's own triple run.
 - Scoping a second half means measuring the first half. The lettering port
   was merged, tested and documented, and wrong.
+- State a rule about thread in terms of thread, not of records, and measure
+  a new flag with the OTHER flags off. A fix is a new rule: audit it again.
 
 Related: [[fill-columns-2026-10-03]], [[check-shipped-before-building-2026-09-29]].

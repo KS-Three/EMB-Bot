@@ -431,10 +431,14 @@ about the facts.
    has. The 09-14 question was never queued here, and its lock was wrong: a
    leg of 0.8 pixels, 0.1 to 0.5 mm in practice. Now one rule for both
    builders, at 0.8 mm. Cost: lettering +3% (four letters) to +8% (a line of
-   text) stitches; shapes +0.1% to +6%, by how many pieces a design is in. No
-   cut is added. **Not sewn**, and neither are `machine.py`'s 0.8 mm and three
-   legs: a candidate for the sew-out card. A flip is `ties: true` at
-   `generate.js`'s four call sites and a re-pin of every snapshot.
+   text) stitches; shapes about +1%, by how many pieces a design is in. No
+   cut is added. **On shapes one lock in five lands on a stitch under 0.3 mm**
+   (a fill's last row at a tip): five penetrations inside 0.3 mm. That is
+   Python's rule too, and the audit's advice is to sew one first; lettering,
+   under 1%, could flip alone. **Not sewn**, and neither are `machine.py`'s
+   0.8 mm and three legs: a candidate for the sew-out card. A flip is
+   `ties: true` at `generate.js`'s four call sites and a re-pin of every
+   snapshot.
    *(measured 2026-10-03 — [`docs/lock-stitches-2026-10-03.md`](docs/lock-stitches-2026-10-03.md))*
 
 ## Cross-cutting issues
