@@ -561,15 +561,21 @@ test("columns: dropping a landing that led nowhere never costs a cut", () => {
   // which began at the corner nearest the LANDING: on a spiral it cost two
   // cuts where the stray stitch had cost one. The walk is the same one now,
   // without the stitch: counted with the caller's cut on the float in, no
-  // more cuts than with the landing kept (1 on the spiral, 4 on the comb).
+  // more cuts than with the landing kept (1 on the spiral, 5 on the comb).
   // (The build before sewed this comb with 2, by sewing across two of its
   // mouths: the ground test's own fault, above. So the mouths are asked too.)
+  // (And the comb was 4, with the landing or without, while its far corner
+  // was a column: a span of no length, below. At 135 degrees that corner is
+  // the top of the rows. From the second tooth the walk ran to it round the
+  // outline and back to the first tooth, 1,636 of thread, because the budget
+  // for a way round is four times the straight line and that corner was 390
+  // off. The move it was avoiding is 30 long and 442 round: a cut.)
   const ring = (pts) => pts.map(([x, y]) => ({ x, y }));
   const spiral = ring([[0, 0], [300, 0], [300, 300], [0, 300], [0, 60], [45, 60], [45, 255], [255, 255], [255, 45], [90, 45], [90, 210], [210, 210], [210, 90], [135, 90], [135, 165], [165, 165], [165, 135], [150, 135], [150, 120], [180, 120], [180, 180], [120, 180], [120, 75], [225, 75], [225, 225], [75, 225], [75, 30], [270, 30], [270, 270], [30, 270], [30, 45], [0, 45]]);
   const comb = ring([[0, 0], [24, 0], [24, 210], [39, 210], [39, 0], [63, 0], [63, 210], [78, 210], [78, 0], [102, 0], [102, 210], [117, 210], [117, 0], [141, 0], [141, 210], [156, 210], [156, 0], [180, 0], [180, 210], [195, 210], [195, 0], [219, 0], [219, 210], [234, 210], [234, 0], [258, 0], [258, 210], [273, 210], [273, 0], [297, 0], [297, 300], [0, 300]]);
   const cases = [
     [spiral, { rowSpacing: 19.0984, angleDeg: 85.9219, from: { x: 248.908, y: 111.981 } }, 1],
-    [comb, { rowSpacing: 25.9604, angleDeg: 135, from: { x: 219, y: 0 } }, 4],
+    [comb, { rowSpacing: 25.9604, angleDeg: 135, from: { x: 219, y: 0 } }, 5],
   ];
   for (const [shape, o, withTheLanding] of cases) {
     const test = fill.openGroundTest([shape]);
@@ -820,6 +826,132 @@ test("columns: a run along a strip's side does not cut across a corner of the ed
   assert.ok(deepest <= 0.3 * 1.2, "deepest thread in open ground: " + deepest.toFixed(3));
 });
 
+// --- what the audit of the lock stitches found (2026-10-03, PR #609) ----------
+//
+// A scanline that passes exactly through a corner pointing up the rows finds
+// both of that corner's edges and pairs them: a span of no length. The first
+// scanline always sits on the topmost point, so any shape whose top is a
+// single corner has one, and so does a drawing on whole numbers wherever a
+// corner lands on a row. The column walk made a column of it, travelled to it
+// like any other, and "sewed" it: two penetrations in one hole. Left for last
+// with no way round, it was cut to: a cut, two penetrations, the end of the
+// pass. 18 such threads in 12,880 designs.
+
+// Two penetrations, one after the other, in one hole.
+const doubled = (pts) => {
+  const at = [];
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    if (a.travel || a.trim || b.travel || b.trim) continue;
+    if (Math.hypot(b.x - a.x, b.y - a.y) < 1e-6) at.push([Math.round(b.x * 1e3) / 1e3, Math.round(b.y * 1e3) / 1e3]);
+  }
+  return at;
+};
+// The threads of a pass: what is sewn between one cut and the next.
+const threadsOf = (pts) => {
+  const out = [[]];
+  for (const p of pts) {
+    if (p.trim) { out.push([]); continue; }
+    if (!p.travel) out[out.length - 1].push(p);
+  }
+  return out.filter((t) => t.length);
+};
+const inOneHole = (t) => t.every((p) => Math.hypot(p.x - t[0].x, p.y - t[0].y) < 1e-6);
+
+const HOUSE = [{x:150,y:0},{x:300,y:120},{x:300,y:300},{x:0,y:300},{x:0,y:120}];
+const HOUSE_HOLE = [{x:100,y:150},{x:200,y:150},{x:200,y:250},{x:100,y:250}];
+
+test("columns: the tip of a holed shape is not sewn as a row of its own", () => {
+  // A house with a window, rows level: the first scanline is the point of the
+  // roof. The walk began there with two penetrations in the tip.
+  const clear = (a, b) => !fill.crossesOpenGround(a, b, [HOUSE, HOUSE_HOLE], PITCH, 0);
+  for (const from of [null, { x:150, y:0 }, { x:0, y:300 }, { x:300, y:300 }]) {
+    const pts = fill.tatamiFill([HOUSE, HOUSE_HOLE], Object.assign({}, COLS, from ? { from, clear } : {}));
+    assert.ok(pts.columnWalk, "the fixture: a holed shape is sewn by the column walk");
+    assert.deepStrictEqual(doubled(pts), [], "from " + JSON.stringify(from));
+    assert.strictEqual(cutsOf(pts), 0, "from " + JSON.stringify(from));
+    // and the first row that HAS a length is still sewn from end to end
+    const xs = pts.filter((p) => !p.travel && !p.trim && Math.abs(p.y - 1) < 1e-6).map((p) => p.x);
+    assert.ok(Math.abs(Math.min(...xs) - 148.75) < 1e-6 && Math.abs(Math.max(...xs) - 151.25) < 1e-6, "row 1 sewn " + Math.min(...xs) + ".." + Math.max(...xs));
+  }
+});
+
+test("columns: nor is a corner part-way down, on a row that has a real span beside it", () => {
+  // Two peaks, the second 10 lower, drawn on whole numbers: the scanline at
+  // y = 10 runs through the first peak and exactly through the second one's
+  // tip. Nothing waits for a span of no length and it waits for nothing, so
+  // the walk went there whenever it was nearest, and sewed it.
+  const crown = [{x:0,y:60},{x:20,y:0},{x:40,y:40},{x:60,y:10},{x:80,y:60}];
+  for (const angleDeg of [0, 180]) {
+    const pts = fill.tatamiFill([crown], Object.assign({}, COLS, { angleDeg }));
+    assert.ok(pts.columnWalk, "the fixture: the valley forks the rows");
+    assert.deepStrictEqual(doubled(pts), [], "angle " + angleDeg);
+    // (a box of the open ground between the peaks: still nothing across it)
+    assert.deepStrictEqual(threadThrough(pts, { x0:36, y0:12, x1:46, y1:30 }), { sewn:0, floats:0 }, "angle " + angleDeg);
+  }
+});
+
+test("columns: a corner on a scanline is not cut to", () => {
+  // The audit's own comb, as its fill pass is called: rows along the teeth,
+  // 1.5 apart. No row of it forks. But x = 210 and x = 73.5 are a whole number
+  // of rows from the right-hand edge, so two scanlines run exactly along the
+  // side of a tooth, and each finds that tooth's top corner as a span of no
+  // length beside the spine's. When everything else was sewn the walk
+  // travelled to one of them and cut to the other: a cut, two penetrations
+  // in one hole, and the end of the pass.
+  const comb = [[0,0],[28,0],[28,245],[45.5,245],[45.5,0],[73.5,0],[73.5,245],[91,245],[91,0],[119,0],[119,245],[136.5,245],[136.5,0],[164.5,0],[164.5,245],[182,245],[182,0],[210,0],[210,245],[227.5,245],[227.5,0],[255.5,0],[255.5,245],[273,245],[273,0],[301,0],[301,245],[318.5,245],[318.5,0],[346.5,0],[346.5,350],[0,350]].map(([x, y]) => ({ x, y }));
+  const opts = { rowSpacing:1.5, angleDeg:90, maxStitch:40, markConnectors:true, columns:true, openTol:1.5 };
+  const clear = (a, b) => !fill.crossesOpenGround(a, b, [comb], 1.5, 0, 40);
+  for (const from of [null, { x:346.5, y:350 }, { x:0, y:0 }, { x:173, y:350 }]) {
+    const pts = fill.tatamiFill([comb], Object.assign({}, opts, from ? { from, clear } : {}));
+    const stubs = threadsOf(pts).filter(inOneHole);
+    assert.deepStrictEqual(stubs.map((t) => [t.length, t[0].x, t[0].y]), [], "threads that never leave one hole, from " + JSON.stringify(from));
+    assert.deepStrictEqual(doubled(pts), [], "from " + JSON.stringify(from));
+    assert.strictEqual(cutsOf(pts), 0, "from " + JSON.stringify(from));
+  }
+});
+
+test("columns: a row with a length, however short, is still a row", () => {
+  // What is left out is a span of NO length, not a short one. Here the second
+  // peak's tip is a hundredth ABOVE the scanline at y = 10, so that row
+  // crosses the peak: a span 0.0107 long, and sewn from end to end like any
+  // other. (Left out as well, with anything under half a unit: a mutation of
+  // the rule that every other test here passed.)
+  const crown = [{x:0,y:60},{x:20,y:0},{x:40,y:40},{x:60,y:9.99},{x:80,y:60}];
+  const pts = fill.tatamiFill([crown], COLS);
+  const xs = pts.filter((p) => !p.travel && !p.trim && Math.abs(p.y - 10) < 1e-6 && p.x > 59.9 && p.x < 60.1).map((p) => p.x).sort((a, b) => a - b);
+  assert.ok(xs.length >= 2 && Math.abs(xs[0] - 59.993336) < 1e-5 && Math.abs(xs[xs.length - 1] - 60.003999) < 1e-5, "the short row is sewn " + JSON.stringify(xs));
+});
+
+test("columns: the span beside a corner keeps its own two edges", () => {
+  // The low peak on the LEFT, and rows 10 apart: the scanline at y = 10 finds
+  // the low tip first and the tall peak's span after it. Each span carries
+  // the two edges its ends sit on, which is how the walk finds its way round
+  // a ring. Leave the corner out and not its pair of edges, and that pair
+  // passes to the span beside it: the way from the top of the tall peak to
+  // the low one -- down one side of the valley and up the other -- is then
+  // sewn straight across, up to 15 deep. (Another mutation that passed.)
+  const crown = [{x:0,y:60},{x:20,y:10},{x:40,y:40},{x:60,y:0},{x:80,y:60}];
+  const under = { rowSpacing:10, angleDeg:0, maxStitch:8, markConnectors:true, columns:true, openTol:1 };
+  const clear = (a, b) => !fill.crossesOpenGround(a, b, [crown], 1, 0, 8);
+  for (const from of [{ x:0, y:60 }, { x:80, y:60 }, { x:40, y:60 }]) {
+    const pts = fill.tatamiFill([crown], Object.assign({ from, clear }, under));
+    assert.deepStrictEqual(threadThrough(pts, { x0:35, y0:12, x1:44, y1:29 }, 1), { sewn:0, floats:0 }, "from " + JSON.stringify(from));
+    assert.strictEqual(cutsOf(pts), 0, "from " + JSON.stringify(from));
+  }
+});
+
+test("columns: a pass whose every span is a point sews nothing", () => {
+  // Two peaks of one height and rows further apart than the shape is tall:
+  // the one scanline there is touches both tips and nothing else. The walk
+  // ran round the outline from one tip to the other to put two penetrations
+  // in each.
+  const crown = [{x:0,y:30},{x:25,y:0},{x:50,y:20},{x:75,y:0},{x:100,y:30}];
+  const opts = { rowSpacing:40, angleDeg:0, maxStitch:8, markConnectors:true, columns:true, openTol:1 };
+  assert.deepStrictEqual(fill.tatamiFill([crown], opts), []);
+  assert.deepStrictEqual(fill.tatamiFill([crown], Object.assign({ from: { x:0, y:30 }, clear: () => true }, opts)), []);
+});
+
 // --- shapes nobody chose -------------------------------------------------------
 //
 // Every fixture above was drawn by whoever wrote the code it tests, and that
@@ -885,6 +1017,9 @@ test("columns: 150 shapes nobody chose -- no thread in open ground, no float off
     const edges = edgesOf(polys);
     const pts = fill.tatamiFill(polys, opts);
     cuts += cutsOf(pts);
+    // the column walk puts no two penetrations in one hole. (The plain walk
+    // does, at a tip, and is left as it is.) A star's top is always a tip.
+    if (pts.columnWalk) assert.deepStrictEqual(doubled(pts), [], label + ": two penetrations in one hole");
     for (let i = 1; i < pts.length; i++) {
       const a = pts[i - 1], b = pts[i];
       assert.ok(isFinite(b.x) && isFinite(b.y), label);

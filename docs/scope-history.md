@@ -17648,3 +17648,74 @@ stagger with it. `fillFromGeom` would pass `stagger`, `minStitch` and
 `splitTol`, the two lengths divided by the fit scale as the stitch length
 beside them already is.
 *(measured 2026-10-03 — throwaway scripts over `src/fonts/bin`; `tools/long-stitch-census.mjs`)*
+
+## 2026-10-03 — `fillColumns`: a corner lying on a scanline was a column, and was cut to (the lock-stitch audit's finding)
+
+**18 threads in 12,880 designs were a stub**: a cut, two penetrations in one
+hole, the end of the design. The independent audit of the lock stitches found
+them on designs built with `fillColumns` on and handed them over as their own
+task.
+
+**The cause was wider than the report.** A scanline that passes exactly
+through a corner pointing up the rows finds both of that corner's edges (the
+half-open rule) and pairs them: a span of no length. The first scanline sits
+on the topmost point, so a shape whose top is a single corner has one. But
+the audit's comb had its two part-way down, at rows 91 and 182 of its fill:
+x = 210 and x = 73.5 are a whole number of 1.5 px rows from the edge, and a
+quarter turn leaves a tooth's wall 3e-14 off level, which is enough to make
+its top corner a tip. `cutColumns` made each a column, since it overlaps
+nothing, and the walk travelled to it and sewed it, or cut to it when it was
+left for last. The Python engine's `_row_spans` has always left such a span
+out (`g.length <= 0`); the port of `_columns` came without that half. Now
+`spansWithLength` cuts the columns from the rows without it, by `overlaps`'
+own measure (the two edges of a corner do not always meet to the last bit),
+and a pass left with nothing sews nothing. The plain walk is not touched: it
+sews the tip twice, flag on or off, and never cuts for it.
+
+**Measured**, both engines side by side on 8,255 designs (4,095 drawn on
+whole numbers, 4,160 random; seven presets and none), flag on:
+
+| | before | after |
+|---|---|---|
+| stub threads | 106, on 66 designs | 0 |
+| a doubled point in a pass the column walk sews | 11,797 | 159 |
+| cuts | 2,354 | 2,196 |
+| stitches | 19,301,027 | 19,242,860 |
+| float length | 292 m | 318 m |
+
+Flag off or absent, 8,255 of 8,255 are byte-identical, before the merge of
+#609 and after it. No design has more thread off the cover. On 9,000 seeded
+direct fills the suite's random-shape assertions all hold, a doubled point
+falls from 7,348 of 8,226 column walks to none, and the cuts are the same
+shape for shape.
+
+**The corner had been doing work nobody gave it**, which is why 6,550 of the
+7,269 column-walk designs changed and not only the 66:
+
+- **It was a waypoint.** A way round may be four times the straight line, so
+  a far corner licensed a long trip: a comb at 135° ran 1,636 px round its
+  own outline to that corner and back, to make a move of 30. That move is a
+  cut now, and one existing test's bound went 4 → 5, measured with the
+  landing it is about and without. 27 designs gain one cut; 125 lose cuts.
+- **It was "well placed".** A pass takes the starting corner that leaves the
+  walk best placed for its next move, and one stitch to the corner of no
+  length counted. Without it a pass floats further to start (float length
+  +9%) and travels less (142 m less sewn thread).
+
+**Mutated seven ways. Two mutants passed every test** until one was written
+for each: a rule that also dropped rows under half a unit, and one that left
+a span out but not its pair of edges, so that the way round a valley was sewn
+straight across it, 15 deep. One mutant is the same engine.
+
+**Left:** a move of no length between two columns that touch is still sewn
+(159, on 121 designs: a scanline exactly along a hole's wall); a short
+lattice-underlay row at a comb's tooth can still be a thread of one stitch
+(52, on 24, where 94 were); and the plain walk's doubled tip. The sheet and
+both tables that carry `fillColumns`-on numbers were re-run: two of the
+sheet's four shapes and 19 of the cost table's 32 rows moved by a few
+stitches, the stress shape under terry went 34 → 28 cuts and about twice as
+slow, and three rows of the lock-stitch census moved.
+
+Off, nothing moves: engine 668 passed. Not sewn. Flip is still Kent's:
+defect 52, "Waiting on Kent" 22.
+*(fixed 2026-10-03 — `test/fill.test.js`, `test/digitize.test.js`; `docs/renders/fill-columns-2026-10-03/README.md`, "A corner on a scanline")*
