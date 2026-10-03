@@ -811,6 +811,10 @@
   // engine's defect 25: which rows were halved turned on the row angle's
   // cosine).
   const STAGGER_EPS = 1e-9;
+  // The longest cycle. The table of slots is built whole, so a cycle is not
+  // whatever number it is handed; and at any row pitch 64 rows without two
+  // alike is past anything a cycle is for.
+  const STAGGER_MAX = 64;
   function staggeredRow(a, b, phase, stitch, minStitch) {
     const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
     const min = Math.max(minStitch || 0, stitch * STAGGER_EPS);
@@ -895,7 +899,7 @@
     // The row stagger: the holes between the ends of the row a -> b. A row's
     // number is read off its height, so it is the same row whichever walk
     // sews it and in whatever order.
-    const stagger = opts.stagger > 0 && maxStitch > 0 ? Math.floor(opts.stagger) : 0;
+    const stagger = opts.stagger > 0 && maxStitch > 0 ? Math.min(Math.floor(opts.stagger), STAGGER_MAX) : 0;
     const slots = stagger ? staggerSlots(stagger) : null;
     const rowHoles = !stagger ? null : (a, b) => {
       const ri = Math.round((a.y - minY) / rowSpacing);

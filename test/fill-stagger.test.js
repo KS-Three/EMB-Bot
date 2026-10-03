@@ -278,6 +278,35 @@ test("stagger: off, zero and absent are one fill, and the shortest stitch alone 
   }
 });
 
+test("stagger: a cycle is 64 rows at most, whatever is asked for", () => {
+  // the table of slots is built whole; a number with nine noughts would be built too
+  const asked = fill.tatamiFill(RECT, base({ stagger: 3e6, minStitch: MIN }));
+  assert.deepStrictEqual(asked, fill.tatamiFill(RECT, base({ stagger: 64, minStitch: MIN })));
+  assert.deepStrictEqual(fill.tatamiFill(RECT, base({ stagger: 1e9, minStitch: MIN })), asked);
+  assert.deepStrictEqual(fill.tatamiFill(RECT, base({ stagger: Infinity, minStitch: MIN })), asked);
+});
+
+test("stagger: a cycle given as a fraction or as text is the whole number in it", () => {
+  const four = fill.tatamiFill(RECT, base(ON));
+  assert.deepStrictEqual(fill.tatamiFill(RECT, base({ stagger: 4.9, minStitch: MIN })), four);
+  assert.deepStrictEqual(fill.tatamiFill(RECT, base({ stagger: "4", minStitch: MIN })), four);
+  // under one row there is no cycle, and nothing is staggered
+  assert.deepStrictEqual(fill.tatamiFill(RECT, base({ stagger: 0.5, minStitch: MIN })), fill.tatamiFill(RECT, base()));
+  assert.deepStrictEqual(fill.tatamiFill(RECT, base({ stagger: -4, minStitch: MIN })), fill.tatamiFill(RECT, base()));
+  assert.deepStrictEqual(fill.tatamiFill(RECT, base({ stagger: NaN, minStitch: MIN })), fill.tatamiFill(RECT, base()));
+});
+
+test("stagger: a shortest stitch that is no length still never doubles a hole", () => {
+  // nothing, a negative, not a number: a grid point is kept unless it IS the end
+  for (const minStitch of [undefined, 0, -1, NaN]) {
+    const pts = fill.tatamiFill(RECT, base({ stagger: 4, minStitch }));
+    for (const d of stitchLengths(pts)) assert.ok(d > 1e-6, "minStitch " + minStitch + ": a stitch of no length");
+    const rows = holesOf(pts, RECT, PITCH, 0);
+    // a row whose slot is 0 has a grid point ON each end of this rectangle, and it is not sewn twice
+    assert.deepStrictEqual(allHoles(rows[0]).map((x) => Math.round(x)), [4, 8, 12, 16, 20, 24, 28, 32, 36], "minStitch " + minStitch);
+  }
+});
+
 test("stagger: a fill with no stitch length has nothing to stagger", () => {
   const opts = { rowSpacing: PITCH, angleDeg: 0 };
   assert.deepStrictEqual(fill.tatamiFill(RECT, Object.assign({}, opts, ON)), fill.tatamiFill(RECT, opts));

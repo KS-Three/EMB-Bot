@@ -74,10 +74,11 @@ function rowsOf(pass) {
   return rows;
 }
 function measure(passes) {
-  const m = { holes: 0, pairs: 0, threes: 0, steps: 0, shortest: Infinity, longest: 0, under2: 0 };
+  const m = { holes: 0, pairs: 0, threes: 0, steps: 0, shortest: Infinity, longest: 0, under2: 0, spans: 0 };
   for (const pass of passes) {
     const rows = rowsOf(pass);
     for (let ri = 0; ri < rows.length; ri++) {
+      m.spans += rows[ri].spans.length;
       const next = ri + 1 < rows.length ? rows[ri + 1].holes : [], after = ri + 2 < rows.length ? rows[ri + 2].holes : [];
       for (const h of rows[ri].holes) {
         m.holes++;
@@ -160,8 +161,8 @@ for (const [name, widthMm, regions] of DESIGNS) {
 }
 
 console.log("\nEvery design above under every preset (and none), by walk:\n");
-console.log("| `fillColumns` | builds | holes off | with one under it: off | on | three in a line: off | on | stitches | cuts off | on | shortest stitch along a row: off | on | under 2 mm: off | on |");
-console.log("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+console.log("| `fillColumns` | builds | holes off | on | with one under it: off | on | three in a line: off | on | stitches | stitches a row: off | on | cuts off | on | shortest stitch along a row: off | on | under 2 mm: off | on |");
+console.log("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
 const presets = [null].concat(FAB.FABRICS.map((f) => f.id));
 for (const fillColumns of [false, true]) {
   const tot = { builds: 0, sOff: 0, sOn: 0, cOff: 0, cOn: 0 }, A = [], B = [];
@@ -173,7 +174,8 @@ for (const fillColumns of [false, true]) {
     if (off.design.widthMM !== on.design.widthMM || off.design.heightMM !== on.design.heightMM) throw new Error("the stagger moved the design's edge");
   }
   const a = measure(A), b = measure(B);
-  console.log(`| ${fillColumns ? "on" : "off"} | ${tot.builds} | ${a.holes.toLocaleString()} | ${share(a.pairs, a.holes)} | ${share(b.pairs, b.holes)} | ${share(a.threes, a.holes)} | ${share(b.threes, b.holes)} | ${more(tot.sOn, tot.sOff)} | ${tot.cOff} | ${tot.cOn} | ${mmOf(a.shortest)} mm | ${mmOf(b.shortest)} mm | ${share(a.under2, a.steps)} | ${share(b.under2, b.steps)} |`);
+  const aRow = ((a.holes + a.spans) / a.spans).toFixed(2), bRow = ((b.holes + b.spans) / b.spans).toFixed(2);
+  console.log(`| ${fillColumns ? "on" : "off"} | ${tot.builds} | ${a.holes.toLocaleString()} | ${b.holes.toLocaleString()} | ${share(a.pairs, a.holes)} | ${share(b.pairs, b.holes)} | ${share(a.threes, a.holes)} | ${share(b.threes, b.holes)} (${b.threes}) | ${more(tot.sOn, tot.sOff)} | ${aRow} | ${bRow} | ${tot.cOff} | ${tot.cOn} | ${mmOf(a.shortest)} mm | ${mmOf(b.shortest)} mm | ${share(a.under2, a.steps)} | ${share(b.under2, b.steps)} |`);
 }
 
 // ---- the picture ----------------------------------------------------------
