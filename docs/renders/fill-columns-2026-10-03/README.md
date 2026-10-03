@@ -273,7 +273,8 @@ Option off or absent, all 8,255 are byte for byte what they were. 6,550 of
 the 7,269 designs with a pass the column walk sews changed in some stitch.
 On the fill itself, 9,000 seeded shapes: a doubled point in 7,348 of 8,226
 column walks before and in none after, with the cuts the same shape for
-shape.
+shape. With `ties` on as well, the same 8,255 carry 20,902 locks where they
+carried 21,006, and 2,442 of them on a stitch under 0.3 mm where 2,790 were.
 
 *(measured 2026-10-03 — both engines side by side on one sweep;
 `test/fill.test.js`, `test/digitize.test.js`, "found by the audit of the

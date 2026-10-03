@@ -896,8 +896,9 @@ test("columns: a corner on a scanline is not cut to", () => {
   // 1.5 apart. No row of it forks. But x = 210 and x = 73.5 are a whole number
   // of rows from the right-hand edge, so two scanlines run exactly along the
   // side of a tooth, and each finds that tooth's top corner as a span of no
-  // length beside the spine's. Each was cut to and sewn: a cut, two
-  // penetrations in one hole, and the next cut or the end.
+  // length beside the spine's. When everything else was sewn the walk
+  // travelled to one of them and cut to the other: a cut, two penetrations
+  // in one hole, and the end of the pass.
   const comb = [[0,0],[28,0],[28,245],[45.5,245],[45.5,0],[73.5,0],[73.5,245],[91,245],[91,0],[119,0],[119,245],[136.5,245],[136.5,0],[164.5,0],[164.5,245],[182,245],[182,0],[210,0],[210,245],[227.5,245],[227.5,0],[255.5,0],[255.5,245],[273,245],[273,0],[301,0],[301,245],[318.5,245],[318.5,0],[346.5,0],[346.5,350],[0,350]].map(([x, y]) => ({ x, y }));
   const opts = { rowSpacing:1.5, angleDeg:90, maxStitch:40, markConnectors:true, columns:true, openTol:1.5 };
   const clear = (a, b) => !fill.crossesOpenGround(a, b, [comb], 1.5, 0, 40);

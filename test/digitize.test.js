@@ -742,8 +742,8 @@ test("fillColumns: no cut is made to reach a corner that only happens to lie on 
   assert.deepStrictEqual(doubledAt(d), [], "two penetrations in one hole");
   // and the thread still stays out of the gaps between the teeth
   assert.deepStrictEqual(openGroundMm(d, comb, 0.3), { sewn: 0, floats: 0 });
-  // (without the flag the plain walk passes through the same two corners, and
-  // doubles them, but never cuts for one: the fixture is the flag's own)
+  // (without the flag the plain walk meets the same two corners on its way and
+  // never cuts for one: the stub is the flag's own)
   const off = drawn(comb, 346.5, { fillColumns: false });
   assert.deepStrictEqual(threadsOf(off).filter((t) => holesOf(t) < 2), []);
 });
