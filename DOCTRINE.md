@@ -8190,7 +8190,13 @@ were three views, and two of them could not see the defect.
   that is under a thread's width. At an underlay's 2 to 2.5 mm it is a stitch
   through the hole: 12.2 mm sewn 1.71 mm inside a cut-out, in the first build.
   **A tolerance that guards open ground is ONE number for the shape, owned by
-  the caller** (`openTol`: the fill's pitch, or its pull compensation).
+  the caller** (`openTol`: the fill's pitch).
+- **And the ground is MEASURED, never "the outline plus a number".** The
+  second build let an underlay go "as deep as the pull compensation, since
+  the fill covers that far". A hole thinner than twice the compensation folds
+  when shrunk and is sewn as drawn, so there the fill covered nothing, and the
+  underlay went straight across a 1 mm slot. Hand each pass the rings the fill
+  is actually sewn to (`ground`).
 - **A box drawn well inside the hole measures the middle of the hole.** The
   first build's tests sat 1.5 mm inside each rim, on two shapes, and all
   twenty passed while thread lay 1.7 mm in on a third. An independent audit
@@ -8227,5 +8233,36 @@ were three views, and two of them could not see the defect.
   every plain row turn is too long to sew; in the second the engine rightly
   treats the hole as closed. Every real caller has pitch far under stitch
   far under hole.
+
+**What the second audit added** (it failed the rebuild four ways):
+
+- **A length on cloth must not depend on the drawing's resolution.** The edge
+  run's inset was "2 px, at most 0.6 mm": 0.2 mm at the Studio's 10 px per
+  mm, 0.6 mm on a design enlarged five times, and for a hole that is INTO the
+  hole. Every test ran at 10 px per mm. Sweep the scale (2, 10, 40).
+- **Keeping thread out of a hole by cutting it is the cheap answer, and the
+  cuts are the cost.** The rebuild cost 35 to 122 cuts on a 36-hole badge and
+  its own table said 42: measured on one drawing, at one row angle, with the
+  holes in one order. Count cuts BY WHERE THEY ARE (fill, underlay, between
+  runs), at the angle the engine picks AND at one it does not, and keep the
+  drawing in the tool (`tools/fill-columns-sheet.mjs` prints the table). The
+  engine's own angle for a symmetric shape is numerical noise: 82° for a
+  square with nine round holes.
+- **"None in 255 designs" is a statement about 255 designs.** The README said
+  a float between two runs never merely grazed the rim. The audit found 306
+  on 239 of 8,278.
+- **Code removed as unreachable by argument was reachable.** One random shape
+  in 3,000 went 1.4 deep on a tolerance of 1. An argument about geometry is a
+  hypothesis; run the random shapes before AND after
+  (`test/fill.test.js`, "shapes nobody chose"), and mutate each new rule to
+  see that some test dies.
+- **Travel along a traced curve puts a stitch on every vertex** unless it is
+  thinned: 2,561 stitches under 0.3 mm in one underlay. When a change adds
+  travel, count the short stitches as well as the cuts.
+- **Profile before optimizing.** A 36-hole design took 3.9 s, and the guess
+  was the sampling. It was two other things: asking what ground a move runs
+  over when the move lies on a ring's own edge (always the rim), and asking
+  again about every start further along a row already found blocked. Then a
+  grid of edges. 2,025 holes: from 94 s to 1.3.
 *(measured 2026-10-03 — `test/fill.test.js`, `test/digitize.test.js`,
 `tools/fill-columns-sheet.mjs`; MASTER_SCOPE defect 52; scope-history 10-03)*

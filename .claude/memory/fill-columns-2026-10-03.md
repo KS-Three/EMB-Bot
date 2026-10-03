@@ -1,6 +1,6 @@
 ---
 name: fill-columns-2026-10-03
-description: "2026-10-03 — the browser (JS) fill laid thread across every hole and notch, unseen by its test and by the preview; `fillColumns` built OFF (Kent's flip); the first build passed 20 tests and failed an independent audit three ways; what the cuts cost and where"
+description: "2026-10-03 — the browser (JS) fill laid thread across every hole and notch, unseen by its test and by the preview; `fillColumns` built OFF (Kent's flip, not sewn); three builds, the first two failed independent audits; what it costs and what each failure taught"
 metadata:
   type: project
 ---
@@ -19,55 +19,57 @@ one. Quality review 2026-09-08 §4 had named it; nobody owned it; cut-outs
 and a float has none. `src/render.js` draws no jumps, so the Studio preview
 shows a clean hole.
 
-**What was built (OFF).** `tatamiFill({ columns: true, openTol })`: a port of
-`stage6_fill._columns`, each column its own boustrophedon, a level finished
-before the walk descends. Every move (to the next column, a row turn, between
-two runs of a shape) is asked what ground it runs over (`groundUnder`).
-Inside the fill: it may float. On the rim, outside but no deeper than
-`openTol`: sewn, never floated. Deeper: cut. `buildQualityDesign({
-fillColumns })` applies it to FILL shapes only. Sheet and cost tables:
-`docs/renders/fill-columns-2026-10-03/`.
+**What is built (OFF).** `tatamiFill({ columns: true })`: a port of
+`stage6_fill._columns`. Every move of every pass of a fill shape is asked
+what ground it runs over (`groundUnder`), the ground being what the FILL
+covers. On it: may float. On the rim, no deeper than a fill row: sewn. Deeper:
+the thread goes round (the hole's own edge; in by a strip's far end; the
+shortest way through the columns' corners) and is cut only with no way round.
+`buildQualityDesign({ fillColumns })` applies it to FILL shapes only. Sheet
+and cost tables: `docs/renders/fill-columns-2026-10-03/`.
 
-**The first build was wrong and green.** Twenty tests passed. An independent
-audit (own clipper, 11,724 fills, 1,980 designs) found: underlay rows 2 mm
-apart sewing 1.7 mm inside a cut-out, because "under one pitch" was the
-pass's OWN pitch; a T left to the old walk because no row of it forks; and a
-plain square gaining a cut because the test was against the true outline, not
-the pull-compensated one the fill covers. It also priced the cuts (a 36-hole
-badge 1 → 79–143), which is what led to the level-first order.
+**Three builds, two failed audits.**
 
-**The rebuild missed one more, also green.** Depth was the wrong single
-question: the turn at the step of a T runs along the step's edge, under a
-fill row out, and the plain walk FLOATS it (6–28 mm, 35 of 165 notched
-designs). Found by re-measuring floats and sewn thread separately, against
-the exact pull-compensated rings (`DG.offsetRing`), before asking for the
-re-audit. Now 16,550 → 0 over 255 designs.
+1. Twenty tests passed. An independent audit (own clipper, 11,724 fills)
+   found underlay rows 1.7 mm inside a cut-out ("under one pitch" was the
+   pass's OWN pitch), a T left to the old walk, and a plain square gaining a
+   cut (tested against the true outline, not the pull-compensated one).
+2. The rebuild cut instead of crossing. A second audit found it sewing across
+   a 1 mm slot (the tolerance was "the pull compensation", but a thin hole is
+   not shrunk), edge runs 0.6 mm inside holes on enlarged designs (an inset
+   in px), 306 rim-grazing floats, and 35 to 122 cuts on a 36-hole badge with
+   2,025 holes taking 94 s. Its own cost table had said 42.
+3. This one travels. 255 designs: floats off the fill's ground 16,550 → 0,
+   designs with thread deeper than a fill row off it 242 → 0, the badge's
+   cuts 1 → 0 on every preset at any angle. Stitches +1% to +14%.
 
-**Why:** routing only, no physical constant, so no gate — but it moves every
-browser-lane design with a hole or notch, and it costs cuts: one per ROW of
-holes in the fill, about one per hole in an edge-run underlay, one per strip
-in a tatami underlay (that badge: 42 on pique, 76–94 elsewhere). No cut in
-the JS lanes is locked. Kent's flip: MASTER_SCOPE defect 52, Waiting on Kent
-22.
+**Why:** routing, so no gate, but it moves every browser-lane design with a
+hole or a notch, and it has NOT been sewn. Kent's flip: MASTER_SCOPE defect
+52, Waiting on Kent 22.
 
 **How to apply:**
 
-- Before flipping for hole-heavy art, build travel that follows a hole's
-  EDGE (Python: `_ring_route`); it removes most underlay cuts. Row stagger is
-  the other unbuilt half.
 - A change to stitch geometry gets an independent re-measure before it is
-  armed, with the claims handed over as claims. The repo's
-  `stitch-geometry-auditor` brief is the template. Tests written beside the
-  code share its blind spots: mine boxed the middle of the hole.
+  armed, with the claims handed over as claims, and again after a rebuild.
+  Tests written beside the code share its blind spots: mine boxed the middle
+  of the hole, ran at one scale, and priced cuts on one drawing at one angle.
+- The cheap way to keep thread off a place is to cut it. Count the cuts by
+  WHERE they are, at the angle the engine picks and at one it does not.
+- Run the seeded random shapes (`test/fill.test.js`, "shapes nobody chose")
+  with thousands, not the suite's 150, after any change to a rule; and mutate
+  the rule. Two rules of the third build were wrong and green: travel put a
+  stitch on every vertex of a traced curve, and a check I removed as
+  unreachable was reachable.
 - To ask "is this ground clear", walk the MOVES and measure depth from the
-  edge (`openGroundMm` in `test/digitize.test.js`), and count floats apart
-  from sewn thread (`floatsOffCover`). Skip the `end` record: it sits at the
-  origin, inside a centred hole.
-- Never `git stash` in a worktree here to compare before and after: the
-  stash stack is shared by every lane. Copy `src/` to a scratch folder.
+  edge of what the fill COVERS (`offCoverMm`, `floatsOffCover` in
+  `test/digitize.test.js`), floats apart from sewn thread. Skip the `end`
+  record: it sits at the origin, inside a centred hole.
 - `fabricForGarment()` returns a preset ID. Pass
   `getFabric(fabricForGarment(id))`, as `generate.js` does; a bare string is
   truthy and takes the fabric path with every field undefined.
+- Never `git stash` in a worktree here to compare before and after: the
+  stash stack is shared by every lane. Copy `src/` to a scratch folder. And
+  `sed -i` from Git Bash rewrites a file's line endings; use the Edit tool.
 - This came from a second, parallel session. What was needed first was not
   new work: two armed PRs stuck, three lanes only on the laptop, COOKBOOK
   still saying the DST writer was transposed. `gh pr list`, a lane sweep and

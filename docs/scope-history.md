@@ -17334,14 +17334,15 @@ whole design. No needle point inside either hole, so
 `tatamiFill({ columns })` ports `stage6_fill._columns`; `buildQualityDesign({
 fillColumns })` passes it to a fill shape's fill and its tatami underlay, and
 cuts the move between two runs of one shape when it crosses open ground. Four
-manual-lane shapes on pique, off → on (`tools/fill-columns-sheet.mjs`):
+manual-lane shapes on pique, off → on (`tools/fill-columns-sheet.mjs`), as
+the THIRD build below sews them (the second cut 4, 1, 3 and 1 times):
 
 | shape | floats | loose thread mm | cuts | stitches |
 |---|---|---|---|---|
-| badge, two cut-outs | 79 → 2 | 915 → 49 | 1 → 4 | 3,149 → 3,229 |
-| ring | 89 → 2 | 1,380 → 17 | 1 → 1 | 1,579 → 1,667 |
-| two counters | 148 → 2 | 1,248 → 23 | 1 → 3 | 1,779 → 1,936 |
-| wide U (a notch, no hole) | 121 → 1 | 1,894 → 1 | 1 → 1 | 2,092 → 2,220 |
+| badge, two cut-outs | 79 → 3 | 915 → 48 | 1 → 0 | 3,149 → 3,253 |
+| ring | 89 → 2 | 1,380 → 16 | 1 → 0 | 1,579 → 1,700 |
+| two counters | 148 → 3 | 1,248 → 40 | 1 → 0 | 1,779 → 1,957 |
+| wide U (a notch, no hole) | 121 → 1 | 1,894 → 1 | 1 → 0 | 2,092 → 2,230 |
 
 **The first build was wrong in three ways, and its own tests passed.** An
 independent audit re-measured the thread with its own clipper over 11,724
@@ -17389,13 +17390,59 @@ angles, no fabric, pique and cap), off → on:
 | designs with thread deeper than a fill row off that ground | 242 | 115 |
 | deepest | 11.0 mm | 0.64 mm |
 
-What is left with the option on is the underlay's edge run chording across
+What was left with the option on was the underlay's edge run chording across
 inside corners, the same with it off. Found by the tests on the way: an
 unforked shape at a 30° row angle has consecutive single-span rows that do
 not overlap at its pointed corners, which `_columns` rightly calls a break
 and which is not a fork; and today's engine never drops the needle on the far
-span's own start after a float, so a split row sewed from one stitch in. Off,
-nothing moves: engine 619 passed, Studio 1,587. Not built: travel along a
-hole's edge, and row stagger. Flip is Kent's; MASTER_SCOPE defect 52,
+span's own start after a float, so a split row sewed from one stitch in.
+
+**The second audit failed the rebuild too, four ways** (10,864 designs, 19,248
+direct fills; off byte-identical in 12,692 hashed outputs, plain and satin
+shapes untouched). Each came from a shape or a scale the tests did not have:
+
+- **A slot 1 mm wide was sewn across by the underlay.** Its tolerance was
+  "the pull compensation, since the fill covers that far"; but a hole thinner
+  than twice the compensation folds when shrunk and is sewn as drawn, so the
+  fill covered nothing of it. Now the ground IS what the fill covers, and
+  every pass of the shape is measured against it by one number.
+- **Enlarged, the edge run sat in the hole.** Its inset was "2 px, at most
+  0.6 mm", toward the ring's centre: 0.2 mm at 10 px per mm, 0.6 mm on a
+  design enlarged five times, into the hole, past the cover. A length on
+  cloth was a function of the drawing's resolution.
+- **306 floats between runs grazed the rim** on 239 of 8,278 designs, the case
+  the render README said never happened: it never had in the 255 it had seen.
+- **Direct calls:** the center-out reposition sewn across a notch when
+  connectors were not marked; a 0.06 slit missed under a tolerance of 0.005.
+
+It also measured what the first cost table had hidden. The table's badge was
+in nobody's repo, and its count depended on the order the holes were drawn in
+and on the row angle: one cut per ROW of holes only where the holes lined up
+with the rows, one per hole where they did not. A 36-hole badge cost 35 to
+122. And time: 2,025 holes took 25 to 94 seconds.
+
+**The third build travels instead of cutting.** The walk goes round the ring
+both ends of a move sit on; enters a strip by its far end where leaving from
+the near end would strand it; finds a way along rims and rows when stranded
+anyway; and starts each pass where the thread already is. Edge runs lie in
+the fill, keep their corners, and are taken nearest-first. The ground test
+cuts a move at its exact boundary crossings and looks at a grid of nearby
+edges, not at all of them. Same 255 designs, off → on:
+
+| | off | on |
+|---|---|---|
+| floats over 4 mm that leave the ground the fill covers | 16,550 | 0 |
+| designs with thread deeper than a fill row off that ground | 242 | 0 |
+| cuts on the 36-hole badge, any preset, any angle | 1 | 0 |
+| 2,025 holes, time | 0.1 to 0.2 s | 0.4 to 1.3 s |
+
+Two of its own rules were wrong when first written and were caught by
+measuring, not by review: a way round a traced curve put a stitch on every
+vertex (2,561 stitches under 0.3 mm in one underlay), and a check removed as
+unreachable was reachable (1 shape in 3,000 random ones, 1.4 deep on a
+tolerance of 1). A seeded 150-shape test now runs in the suite.
+
+Off, nothing moves: engine 639 passed, Studio 1,587. Not sewn. Not built: row
+stagger, and tie stitches at a cut. Flip is Kent's; MASTER_SCOPE defect 52,
 "Waiting on Kent" 22.
 *(built 2026-10-03 — renders `docs/renders/fill-columns-2026-10-03/`)*

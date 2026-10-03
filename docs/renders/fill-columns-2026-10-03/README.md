@@ -5,6 +5,8 @@ lane, sewn by `buildQualityDesign` the way `app/src/lib/generate.js` calls it
 (left chest, the pique knit preset, underlay on). Left column is the engine
 as it ships. Right column is the same call with `fillColumns: true`.
 
+Nothing here has been sewn. These are measurements of the stitch file.
+
 ## How to read it
 
 - **Blue** is sewn thread.
@@ -21,13 +23,13 @@ first place the floats are visible.
 
 | shape | floats off | floats on | cuts off | cuts on | stitches off | stitches on |
 |---|---|---|---|---|---|---|
-| Badge, two cut-outs (12 mm and 3 mm) | 79 (915 mm) | 2 (49 mm) | 1 | 4 | 3,149 | 3,229 (+2.5%) |
-| Ring (an O) | 89 (1380 mm) | 2 (17 mm) | 1 | 1 | 1,579 | 1,667 (+5.6%) |
-| Two counters (a B) | 148 (1248 mm) | 2 (23 mm) | 1 | 3 | 1,779 | 1,936 (+8.8%) |
-| Wide U (no hole at all: a notch) | 121 (1894 mm) | 1 (1 mm) | 1 | 1 | 2,092 | 2,220 (+6.1%) |
+| Badge, two cut-outs (12 mm and 3 mm) | 79 (915 mm) | 3 (48 mm) | 1 | 0 | 3,149 | 3,253 (+3.3%) |
+| Ring (an O) | 89 (1380 mm) | 2 (16 mm) | 1 | 0 | 1,579 | 1,700 (+7.7%) |
+| Two counters (a B) | 148 (1248 mm) | 3 (40 mm) | 1 | 0 | 1,779 | 1,957 (+10.0%) |
+| Wide U (no hole at all: a notch) | 121 (1894 mm) | 1 (1 mm) | 1 | 0 | 2,092 | 2,230 (+6.6%) |
 
 *(measured 2026-10-03 with `node tools/fill-columns-sheet.mjs`, which prints
-this table and writes the sheet)*
+this table and the next one and writes the sheet)*
 
 ## What to judge
 
@@ -36,25 +38,27 @@ this table and writes the sheet)*
   is not. The 3 mm cut-out in the badge is stitched shut.
 - **The wide U is the same defect with no hole in it.** Its rows run across
   the notch, so 121 floats lie over bare cloth outside the shape.
-- **On, the holes and the notch are clear.** The one or two red lines left
-  are moves between the runs of one shape (the underlay round the outside,
-  the underlay round a hole, then the fill). They stay over ground the fill
-  covers.
-- **Stitches rise 2% to 9%**, because every span of a split row now gets its
-  own first penetration; today's engine starts those spans one stitch late.
+- **On, the holes and the notch are clear, and nothing is cut.** The two or
+  three red lines left are moves between the runs of one shape (the underlay
+  round the outside, the underlay round a hole, then the fill). They lie on
+  ground the fill covers.
+- **Stitches rise 3% to 10%.** Every span of a split row now gets its own
+  first penetration (today's engine starts those spans one stitch late), and
+  the thread travels along rims instead of floating.
 
 ## What the option promises
 
-Every move a fill makes, in every tatami pass of it, is asked what ground it
-runs over, and there are three answers:
+Every move a fill shape makes, in every pass of it, is asked what ground it
+runs over. The ground is **what the fill covers**: the drawn outline, or
+under a fabric preset the pull-compensated one the fill is sewn to. There are
+three answers:
 
-- **Inside the fill.** Nothing changes. A float there ends up under the fill.
-- **On the rim:** outside the shape, but never deeper than one fill row
-  (0.15 mm). It is **sewn**, never floated. This is the turn at the step of a
-  T, an L or a tall U, which runs along the step's own edge: today's engine
-  floats it, 6 to 28 mm of loose thread that no later row covers.
+- **On that ground.** Nothing changes. A float there ends up under the fill.
+- **On the rim:** off that ground, but never deeper than one fill row
+  (0.15 mm). It is **sewn**, never floated.
 - **Open ground:** deeper than one fill row into a hole, a notch or the
-  outside. The thread is **cut**.
+  outside. The thread does not go there. It **goes round** instead, and is
+  cut only when there is no way round.
 
 Measured over 255 designs: 17 shapes (T, L, U, H, E, a plus, stairs, an
 arrow, badges and rings with one to 36 holes), five row angles including the
@@ -63,70 +67,99 @@ one the engine picks, with no fabric, pique and cap.
 | | off | on |
 |---|---|---|
 | floats longer than a stitch (4 mm) that leave the ground the fill covers | 16,550, on 239 designs | **0** |
-| designs with thread deeper than one fill row off that ground | 242 | 115, the edge run only (see "Seen, not changed") |
-| deepest such thread | 11.0 mm | 0.64 mm |
+| designs with thread deeper than one fill row off that ground | 242 | **0** |
+| deepest such thread | 11.0 mm | none |
 
-*(measured 2026-10-03 against the pull-compensated outline the fill is sewn
-to, with 0.08 mm allowed for a stitch's rounding; a throwaway sweep, of which
-the guards kept are `test/fill.test.js` and `test/digitize.test.js`,
-"fillColumns:")*
+*(measured 2026-10-03 against the rings the fill is sewn to, with 0.08 mm
+allowed for a stitch's rounding; a throwaway sweep, of which the guards kept
+are `test/fill.test.js` and `test/digitize.test.js`, "fillColumns:" and
+"columns:")*
 
-## The price is cuts, and it grows with holes
+## How it gets round a hole without a cut
 
-On these four shapes the cost is zero to three more cuts. A shape with many
-holes pays much more, and almost all of it is in the underlay, not the fill.
-One 60 mm badge with 36 holes of 4 mm, cuts off → on:
+- **Round the ring.** From one side of a hole to the other along the hole's
+  own edge, corner to corner.
+- **In by the far end.** A strip beside a hole is entered by running along
+  its own side to its far end first and sewing back, where that leaves the
+  thread beside what comes next. The run lies under the strip's own row ends.
+- **Along rims and rows**, when it is stranded: the shortest way made of
+  those two moves and of runs along a row.
+- **Each pass starts where the thread already is**, sewing from the bottom up
+  if that is where the last pass ended.
+- **The edge runs round holes** are taken nearest-first and entered at the
+  corner the thread can reach.
 
-| preset (underlay style) | cuts | of which the fill | where the rest are |
-|---|---|---|---|
-| pique, tote (edge run) | 1 → 42 | 6 | 36 between the edge runs round each hole |
-| no fabric (lattice) | 1 → 76 | 6 | 69 inside the lattice underlay |
-| cap (edge zigzag) | 1 → 94 | 6 | 52 inside the zigzag underlay, 36 between runs |
-| fleece, towel (double lattice) | 1 → 92 to 94 | 6 | the two lattice passes |
+A way round has a budget, the Python engine's: 20 mm, or four times the
+straight distance if that is more. Past it the thread is cut.
 
-*(measured 2026-10-03 — `buildQualityDesign`, same call as the sheet, garment
-and preset varied)*
+## What it costs
 
-- **The fill costs one cut per ROW of holes.** It finishes each level before
-  it descends and steps from strip to strip along a hole's own top or bottom
-  edge. Six rows of holes, six cuts.
-- **An edge-run underlay costs one per hole.** Each run ends on its own hole's
-  rim, and the straight move to the next hole crosses that hole.
-- **A tatami underlay costs one per strip.** Its rows are 2 to 2.5 mm apart,
-  so the step along the row would sit up to 2 mm inside the hole, and it is
-  cut instead.
-- **No cut in the browser lanes is locked.** Every trim here already leaves
-  two unlocked ends (quality review 2026-09-08 §4); more cuts means more of
-  them until the tie stitches are built.
+| shape | preset | rows | cuts off | cuts on | stitches | time off | time on |
+|---|---|---|---|---|---|---|---|
+| 36 square holes of 4 mm, 60 mm badge | no fabric | the engine's own angle | 1 | 0 | +1.4% | 7 ms | 21 ms |
+| 36 square holes of 4 mm, 60 mm badge | no fabric | 30° | 1 | 0 | +14.0% | 8 ms | 114 ms |
+| 36 square holes of 4 mm, 60 mm badge | pique_knit | the engine's own angle | 1 | 0 | +2.7% | 2 ms | 42 ms |
+| 36 square holes of 4 mm, 60 mm badge | pique_knit | 30° | 1 | 0 | +5.4% | 4 ms | 61 ms |
+| 36 square holes of 4 mm, 60 mm badge | structured_cap | 30° | 1 | 0 | +8.1% | 12 ms | 67 ms |
+| 36 square holes of 4 mm, 60 mm badge | terry_towel | 30° | 1 | 0 | +10.6% | 4 ms | 74 ms |
+| 36 round holes of 4 mm, 60 mm badge | pique_knit | 30° | 1 | 0 | +4.2% | 6 ms | 51 ms |
+| 36 round holes of 4 mm, 60 mm badge | terry_towel | 30° | 1 | 0 | +12.1% | 5 ms | 31 ms |
+| 196 square holes of 3 mm, 100 mm | no fabric | 30° | 1 | 0 | +9.1% | 10 ms | 305 ms |
+| 196 square holes of 3 mm, 100 mm | pique_knit | 30° | 1 | 0 | +8.1% | 12 ms | 178 ms |
+| 196 square holes of 3 mm, 100 mm | terry_towel | 30° | 1 | 0 | +12.5% | 8 ms | 269 ms |
+
+*(measured 2026-10-03 — the same tool prints all 24 rows, of which these are
+eleven; every one of the 24 has 0 in "cuts on". Times are one run on a
+laptop.)*
+
+- **Cuts: none on a holed shape in one piece.** The one cut in the "off"
+  column is center-out's own, which a forked fill no longer makes. Two places
+  a cut can remain: between two edge runs, where every straight way to the
+  next hole lies across one already sewn round (0 to 4 on a 2,025-hole stress
+  shape under pique); and on a notched shape whose rows never fork, which
+  keeps center-out's cut and may add one on the way into a pass (a T with no
+  fabric: 1 → 2).
+- **Stitches: 1% to 14% more.** Most where the rows run at an angle to a grid
+  of holes, because the thread travels more.
+- **Time: 3 to 30 times the "off" time, and still under a third of a second**
+  on these. A 2,025-hole stress shape takes 0.4 to 1.3 seconds (off: 0.1 to
+  0.2).
 - **A large fill with a hole no longer sews center-out.** A plain one still
   does, and so does a T or an L whose rows never fork.
-- **A shape with no hole pays too, where its edge folds in.** A 60 mm blob
-  with a wavy edge, traced with 720 points and with 3,000: 1 → 1 or 2 on
-  pique, 1 → 2 or 3 on cap, 1 → 6 to 10 with no fabric.
+- **Edge runs move.** On a shape with a hole or an inside corner the edge-run
+  underlay lies 0.2 mm inside the fill and keeps its corners. A shape with
+  neither keeps the edge run it has today.
+- **More thread on rims.** A way round a hole is a line of running stitch on
+  the hole's edge. In an underlay it is covered. In the fill it lies on the
+  row ends, or under them where the strip was entered by its far end.
 
 ## Not built
 
-- **Travel that follows a hole's edge.** The Python engine runs along the
-  shape's own edge, or under rows it has not sewn yet, before it cuts. That
-  would remove most of the underlay cuts above.
 - **Row stagger**, the other half of quality review 2026-09-08 §4.
+- **Tie stitches at a cut.** No cut in the browser lanes is locked (the same
+  review). With the option on there are fewer cuts to lock.
 
 ## Seen, not changed
 
 Each of these is the same with the option on or off.
 
-- **The underlay's edge run chords across inside corners.** It is a running
-  stitch round the inset outline and round each hole, it does not stop at a
-  corner, and it is not a tatami pass. Measured: 0.9 mm of stitch 0.6 mm
-  outside an L's inside corner with no fabric; 0.3 mm past the fill at the
-  corners of a 3 mm hole on pique.
 - **A row turn longer than a stitch INSIDE the shape is still a float.** In
   the fill it happens where an edge runs within two degrees of the rows, and
   it lies between two fill rows. In an underlay, with rows 2 mm apart, it is
   common, and it lies under the fill.
-- **A float between two runs is cut only when it goes deep.** One that only
-  grazed the rim would stay. None did, in the 255 designs above.
+- **In a plain fill a span can start one stitch late** after a float (199 of
+  2,022 plain fills in the second audit; 1,843 with the option off).
+- **Pull compensation can fold a thin shape.** A sliver or a pinch narrower
+  than twice the compensation is left partly unsewn by the fill itself, and
+  the underlay under it then reads as uncovered (26 of 787 such designs).
 - **The finishing outline (`outline: true`) is sewn after the fill**, so a
   float to it lies on top of the fill. No caller in the Studio passes it.
+
+## How it got here
+
+Three builds. The first passed its own tests and failed an independent audit
+three ways. The second cleared those and failed a second audit four more
+ways, and cost 35 to 122 cuts on a 36-hole badge. This is the third:
+`docs/scope-history.md`, 2026-10-03.
 
 The flip is Kent's: MASTER_SCOPE defect 52, "Waiting on Kent" 22.
