@@ -237,14 +237,20 @@ def test_marine_80_keeps_its_cover_without_the_junction_cover(monkeypatch):
       2.25 mm² — rendered, and cloth between two letter parts rather than a
       coverage-model artefact (`docs/renders/uncovered-floor-2026-09-30/`).
       They are not the cover's to fix: they are there whether it runs or not.
+
+    `satin_crown_cover` held OFF (Kent's flip, 2026-10-02): those two holes
+    ARE the crown cover's to fix, it reaches them through this same emitter,
+    and with it ON the neutralised and the real plan differ by exactly its
+    thread. This test is about the JUNCTION cover under the stack; the crown
+    cover's price is pinned in `tests/test_crown_cover.py`.
     """
     monkeypatch.setattr(s6, "_junction_cover_runs", lambda *a, **k: [])
-    cfg, result, plan = _run(FIXTURE_80, 80.2)
+    cfg, result, plan = _run(FIXTURE_80, 80.2, satin_crown_cover=False)
     assert _letter_folds(result, plan) == 0
     no_cover = _uncovered(FIXTURE_80, cfg, result, plan)
 
     monkeypatch.undo()
-    cfg2, result2, plan2 = _run(FIXTURE_80, 80.2)
+    cfg2, result2, plan2 = _run(FIXTURE_80, 80.2, satin_crown_cover=False)
     assert plan2.stats.stitch_count == plan.stats.stitch_count, \
         "the cover emits thread here now; re-derive this prediction"
     assert _uncovered(FIXTURE_80, cfg2, result2, plan2) == no_cover
