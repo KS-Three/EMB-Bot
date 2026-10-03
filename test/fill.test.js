@@ -127,12 +127,19 @@ test("centerOut default off is byte-identical to sequential", () => {
 // "no sew points laid across a hole" above can see. These read the THREAD:
 // every move from one point to the next is thread on the cloth unless the
 // point it arrives at carries `trim`.
+//
+// The claim is "no thread DEEPER THAN ONE ROW PITCH into open ground", and the
+// margin below is that pitch. Two things legitimately sit inside it: a row
+// turn round a hole's corner, and the run the walk makes along a hole's top or
+// bottom edge to get from one strip to the next, which lies on the last split
+// row -- under a pitch from the rim. On a real fill the pitch is 0.15 mm.
+const PITCH = 1;
 
-// How many moves lay thread through the open interior of an axis-aligned box.
-// `sewn` arrives at a plain point; `floats` arrives at a travel point that was
-// not cut.
+// How many moves lay thread through the open interior of an axis-aligned box,
+// taken `margin` in from its rim. `sewn` arrives at a plain point; `floats`
+// arrives at a travel point that was not cut.
 function threadThrough(pts, box, margin) {
-  const e = margin == null ? 0.25 : margin;
+  const e = margin == null ? PITCH : margin;
   const inside = (x, y) => x > box.x0 + e && x < box.x1 - e && y > box.y0 + e && y < box.y1 - e;
   let sewn = 0, floats = 0;
   for (let i = 1; i < pts.length; i++) {
@@ -151,10 +158,12 @@ function threadThrough(pts, box, margin) {
 
 const SQ = [{x:0,y:0},{x:100,y:0},{x:100,y:100},{x:0,y:100}];
 const WIDE_HOLE = [{x:20,y:20},{x:80,y:20},{x:80,y:80},{x:20,y:80}];
-// Row pitch UNDER the longest stitch, as every real caller has it (0.15 mm rows
-// against 4 mm). The other way round, a plain row turn is already too long to
-// sew and every test below would be measuring that instead.
-const COLS = { rowSpacing:5, angleDeg:0, maxStitch:8, markConnectors:true, columns:true };
+// Row pitch WELL UNDER the longest stitch, and holes well over it, as every
+// real caller has it (0.15 mm rows, 4 mm stitches, holes of millimetres). With
+// the pitch over the stitch a plain row turn is already too long to sew; with
+// a hole under two pitches the engine treats it as closed. Either way the
+// tests below would be measuring the fixture.
+const COLS = { rowSpacing:PITCH, angleDeg:0, maxStitch:8, markConnectors:true, columns:true };
 
 test("columns: no float is left across a hole wider than a stitch", () => {
   const pts = fill.tatamiFill([SQ, WIDE_HOLE], COLS);
@@ -181,14 +190,13 @@ test("columns: the hole stays clear whatever angle the rows run at", () => {
   // Real fills take their angle from the shape (PCA), so 0 is the rare case.
   // At an angle the rows meet the hole on a slant and the columns are wedges.
   //
-  // The margin is one row pitch, and that is the honest size of the claim. A
-  // row turn inside ONE column joins two row ends that sit on adjacent edges
-  // of the hole, and the chord between them clips the corner by less than the
-  // pitch -- as it always has, and as the Python engine's does. That is 0.15 mm
-  // on a real fill; here the rows are 5 apart, so it is 5.
+  // This is where the one-pitch margin is earned: a row turn inside ONE
+  // column joins two row ends that sit on adjacent edges of the hole, and the
+  // chord between them clips the corner by less than the pitch -- as it always
+  // has, and as the Python engine's does.
   for (const angleDeg of [30, 45, 90, 137]) {
     const pts = fill.tatamiFill([SQ, WIDE_HOLE], Object.assign({}, COLS, { angleDeg }));
-    assert.deepStrictEqual(threadThrough(pts, { x0:20, y0:20, x1:80, y1:80 }, COLS.rowSpacing), { sewn:0, floats:0 }, "angle " + angleDeg);
+    assert.deepStrictEqual(threadThrough(pts, { x0:20, y0:20, x1:80, y1:80 }), { sewn:0, floats:0 }, "angle " + angleDeg);
   }
 });
 
@@ -200,7 +208,7 @@ test("columns: an island inside a hole is sewn, and the moat round it stays clea
     assert.deepStrictEqual(threadThrough(pts, moat), { sewn:0, floats:0 }, "moat " + JSON.stringify(moat));
   }
   const onIsland = pts.filter((p) => !p.travel && !p.trim && p.x >= 40 && p.x <= 60 && p.y >= 40 && p.y < 60);
-  assert.ok(onIsland.length >= 8, "island rows sewn: " + onIsland.length);   // 4 rows x 2 ends at least
+  assert.ok(onIsland.length >= 40, "island rows sewn: " + onIsland.length);   // 20 rows x 2 ends at least
 });
 
 test("columns: a comb is sewn tooth by tooth, with nothing across the gaps", () => {
@@ -221,6 +229,43 @@ test("columns: a ring costs at most one cut", () => {
   assert.ok(cuts <= 1, "cuts round one hole: " + cuts);
 });
 
+test("columns: a row of holes costs one cut at most, not one per hole", () => {
+  // Three holes side by side split their rows into four strips. Taking the
+  // nearest reachable column next -- which is the band BELOW the holes --
+  // strands three of the strips, and each then needs a cut to get back to:
+  // 3 cuts measured here, 9 on the grid below, 64 to 126 on a 36-hole badge.
+  // Finishing the level first, and stepping from strip to strip along a
+  // hole's own top or bottom edge, leaves at most one: the last strip can end
+  // at the wrong end for the band below.
+  const hole = (x0) => [{x:x0,y:40},{x:x0+12,y:40},{x:x0+12,y:60},{x:x0,y:60}];
+  const pts = fill.tatamiFill([SQ, hole(14), hole(44), hole(74)], COLS);
+  const cuts = pts.filter((p) => p.trim === true).length;
+  assert.ok(cuts <= 1, "cuts round a row of three holes: " + cuts);
+  for (const x0 of [14, 44, 74]) {
+    assert.deepStrictEqual(threadThrough(pts, { x0, y0:40, x1:x0 + 12, y1:60 }), { sewn:0, floats:0 }, "hole at " + x0);
+  }
+  // The step along a hole's edge is SEWN, so it obeys the stitch length too.
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i].travel || pts[i].trim) continue;
+    const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    assert.ok(d <= 8 + 1e-6, "stitch " + d + " at " + i);
+  }
+});
+
+test("columns: a grid of holes costs a cut per ROW of holes at most", () => {
+  const grid = [SQ];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+    const x = 12 + c * 30, y = 12 + r * 30;
+    grid.push([{x, y}, {x:x + 12, y}, {x:x + 12, y:y + 12}, {x, y:y + 12}]);
+  }
+  const pts = fill.tatamiFill(grid, COLS);
+  const cuts = pts.filter((p) => p.trim === true).length;
+  assert.ok(cuts <= 3, "cuts on a 3 x 3 grid of holes: " + cuts);
+  for (const h of grid.slice(1)) {
+    assert.deepStrictEqual(threadThrough(pts, { x0:h[0].x, y0:h[0].y, x1:h[2].x, y1:h[2].y }), { sewn:0, floats:0 });
+  }
+});
+
 test("columns: the first stitch after a cut lands on the span's own start", () => {
   // A trim point is where the frame goes, not a penetration. Without a plain
   // point on the same spot the row begins one stitch late.
@@ -235,13 +280,13 @@ test("columns: the first stitch after a cut lands on the span's own start", () =
 });
 
 test("columns: every span of every row is sewn end to end, its own start included", () => {
-  // Rows at y = 0, 5, ... 95 (the scanline at 100 meets no edge). Rows 20..75
+  // Rows at y = 0, 1, ... 99 (the scanline at 100 meets no edge). Rows 20..79
   // are split by the hole into [0,20] and [80,100]; the rest run [0,100].
   // Today the far span of a split row is reached by a float, and the point the
   // float lands on is a frame move, not a penetration: that span is sewn from
-  // one stitch in (measured: [80,100] sews 84..100).
+  // one stitch in (measured with rows 5 apart: [80,100] sewed 86.7..100).
   const pts = fill.tatamiFill([SQ, WIDE_HOLE], COLS).filter((p) => !p.travel && !p.trim);
-  for (let y = 0; y <= 95; y += 5) {
+  for (let y = 0; y <= 99; y += PITCH) {
     const spans = y >= 20 && y < 80 ? [[0, 20], [80, 100]] : [[0, 100]];
     for (const [x0, x1] of spans) {
       const xs = pts.filter((p) => Math.abs(p.y - y) < 1e-6 && p.x >= x0 - 1e-6 && p.x <= x1 + 1e-6)
@@ -254,12 +299,106 @@ test("columns: every span of every row is sewn end to end, its own start include
   }
 });
 
-test("columns: a shape whose rows never fork sews exactly as it does today", () => {
-  // One column is the whole shape, so there is no join to decide and nothing
-  // may move -- center-out included, which the column walk does not do.
+test("columns: a plain shape sews exactly as it does today", () => {
+  // Every row one span and every row turn inside the shape: there is nothing
+  // to decide and nothing may move -- center-out included, which the column
+  // walk does not do. At 30 degrees the rectangle's pointed corners make
+  // consecutive rows that do not overlap, which is a column break and is not
+  // a reason to change it.
   const tall = [[{x:0,y:0},{x:40,y:0},{x:40,y:200},{x:0,y:200}]];
   for (const centerOut of [false, true]) {
     const base = { rowSpacing:10, angleDeg:30, maxStitch:12, markConnectors:true, centerOut };
     assert.deepStrictEqual(fill.tatamiFill(tall, Object.assign({ columns:true }, base)), fill.tatamiFill(tall, base));
   }
+});
+
+test("columns: rows that never fork are still cut where a row turn leaves the shape", () => {
+  // No row of a T is split, so "does any row fork" sends it down the old walk,
+  // whose turn from the bar's last row to the stem's first is a float outside
+  // the outline. Rows 10 apart, as an underlay's are, with the tolerance a
+  // fill's pitch: the turn runs 9 units outside the stem.
+  const t = [{x:0,y:0},{x:120,y:0},{x:120,y:35},{x:75,y:35},{x:75,y:120},{x:45,y:120},{x:45,y:35},{x:0,y:35}];
+  const opts = { rowSpacing:10, angleDeg:90, maxStitch:40, markConnectors:true, columns:true, openTol:1 };
+  const pts = fill.tatamiFill([t], opts);
+  // open ground either side of the stem, below the bar
+  for (const side of [{ x0:0, y0:35, x1:45, y1:120 }, { x0:75, y0:35, x1:120, y1:120 }]) {
+    assert.deepStrictEqual(threadThrough(pts, side, 1), { sewn:0, floats:0 }, JSON.stringify(side));
+  }
+});
+
+// How many FLOATS (a travel point that was not cut) leave the shape at all:
+// any point of the move outside the even-odd region and off its boundary.
+function floatsOffShape(pts, polys) {
+  const edges = [];
+  for (const poly of polys) for (let i = 0; i < poly.length; i++) edges.push([poly[i], poly[(i + 1) % poly.length]]);
+  const inside = (p) => {
+    let c = false;
+    for (const [u, v] of edges) if ((u.y > p.y) !== (v.y > p.y) && u.x + ((p.y - u.y) / (v.y - u.y)) * (v.x - u.x) > p.x) c = !c;
+    return c;
+  };
+  const onEdge = (p) => edges.some(([u, v]) => {
+    const dx = v.x - u.x, dy = v.y - u.y, l2 = dx * dx + dy * dy;
+    const t = l2 ? Math.max(0, Math.min(1, ((p.x - u.x) * dx + (p.y - u.y) * dy) / l2)) : 0;
+    return Math.hypot(p.x - (u.x + t * dx), p.y - (u.y + t * dy)) <= 1e-6;
+  });
+  let n = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    if (!b.travel || b.trim) continue;
+    let off = false;
+    for (let s = 1; s < 400 && !off; s++) {
+      const p = { x: a.x + (b.x - a.x) * s / 400, y: a.y + (b.y - a.y) * s / 400 };
+      off = !inside(p) && !onEdge(p);
+    }
+    if (off) n++;
+  }
+  return n;
+}
+
+test("columns: a row turn longer than a stitch is not floated along the outside of the shape", () => {
+  // A T with its rows along the bar. No row forks, and the turn from the bar's
+  // last row (y 30) to the stem's first (y 31) runs 40 along the bar's
+  // underside, half of it outside the outline -- by half a pitch, so it is not
+  // "deep" and the walk is left alone. But the old walk FLOATS a turn that
+  // long, and a float nothing covers is a loose thread along the edge: 28 mm
+  // of it measured on a 35 mm T. On the rim it is sewn instead.
+  const t = [{x:0,y:0},{x:100,y:0},{x:100,y:30.5},{x:60,y:30.5},{x:60,y:100},{x:40,y:100},{x:40,y:30.5},{x:0,y:30.5}];
+  for (const centerOut of [false, true]) {
+    const off = fill.tatamiFill([t], { rowSpacing:PITCH, angleDeg:0, maxStitch:8, markConnectors:true, centerOut });
+    assert.ok(floatsOffShape(off, [t]) >= 1, "the fixture must float outside without columns, centerOut " + centerOut);
+    const pts = fill.tatamiFill([t], Object.assign({}, COLS, { centerOut }));
+    assert.strictEqual(floatsOffShape(pts, [t]), 0, "centerOut " + centerOut);
+    // and what replaced the float is stitches no longer than a stitch
+    for (let i = 1; i < pts.length; i++) {
+      if (pts[i].travel || pts[i].trim) continue;
+      const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+      assert.ok(d <= 8 + 1e-6, "stitch " + d + " at " + i + ", centerOut " + centerOut);
+    }
+  }
+});
+
+test("columns: no float leaves the shape, forked or not", () => {
+  const u = [{x:0,y:0},{x:30,y:0},{x:30,y:60},{x:70,y:60},{x:70,y:0},{x:100,y:0},{x:100,y:100},{x:0,y:100}];
+  const stairs = [{x:0,y:0},{x:30,y:0},{x:30,y:30.5},{x:60,y:30.5},{x:60,y:60.5},{x:100,y:60.5},{x:100,y:100},{x:0,y:100}];
+  const cases = { ring: [SQ, WIDE_HOLE], u: [u], stairs: [stairs] };
+  for (const name of Object.keys(cases)) {
+    for (const angleDeg of [0, 90, 30]) {
+      for (const centerOut of [false, true]) {
+        const pts = fill.tatamiFill(cases[name], Object.assign({}, COLS, { angleDeg, centerOut }));
+        assert.strictEqual(floatsOffShape(pts, cases[name]), 0, name + " at " + angleDeg + ", centerOut " + centerOut);
+      }
+    }
+  }
+});
+
+test("columns: with center-out, the row turns asked about are the ones the walk makes", () => {
+  // Center-out sews its upper half from the middle UP, so its turns are the
+  // other diagonal of each pair of rows. An L with one step: taken top-down
+  // the turn at the step runs down the left edge; taken bottom-up it runs from
+  // the wide row's far end back to the narrow one, 4 units deep over open
+  // ground. Asking about the top-down turns passed it as plain.
+  const l = [{x:0,y:0},{x:35,y:0},{x:35,y:35},{x:120,y:35},{x:120,y:200},{x:0,y:200}];
+  const opts = { rowSpacing:10, angleDeg:0, maxStitch:40, markConnectors:true, columns:true, openTol:1, centerOut:true };
+  const pts = fill.tatamiFill([l], opts);
+  assert.deepStrictEqual(threadThrough(pts, { x0:35, y0:0, x1:120, y1:35 }, 1), { sewn:0, floats:0 });
 });

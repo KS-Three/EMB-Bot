@@ -229,10 +229,10 @@
       return r;
     }
     function zigzag() {
-      return [ctx.tatamiFill(rings, { rowSpacing: zigRow, angleDeg: fillAngle + 90, maxStitch, markConnectors: true, columns: !!ctx.columns })];
+      return [ctx.tatamiFill(rings, { rowSpacing: zigRow, angleDeg: fillAngle + 90, maxStitch, markConnectors: true, columns: !!ctx.columns, openTol: ctx.openTol })];
     }
     function lattice(angleOff) {
-      return [ctx.tatamiFill(rings, { rowSpacing: latticeRow, angleDeg: fillAngle + angleOff, maxStitch, markConnectors: true, columns: !!ctx.columns })];
+      return [ctx.tatamiFill(rings, { rowSpacing: latticeRow, angleDeg: fillAngle + angleOff, maxStitch, markConnectors: true, columns: !!ctx.columns, openTol: ctx.openTol })];
     }
     // Single running stitch along the shape's PCA-major axis, clipped to the
     // interior (longest contiguous inside segment through the centroid).
@@ -455,7 +455,16 @@
     // `opts.columns`). Off, nothing reads it and every stitch is unchanged.
     // A satin shape is untouched either way: its own moves are a separate
     // call (`columns` is set per shape, where `thin` is known).
+    //
+    // How deep into unfilled ground a move may lay thread is ONE number for
+    // every pass of a shape, and it is the FILL's row pitch (`rowPx`), not
+    // each pass's own: an underlay's rows are 2 to 2.5 mm apart, and "a row
+    // turn clips a corner by under one pitch" is a stitch through the hole at
+    // that size. An underlay traces the TRUE edge while the fill covers the
+    // pull-compensated one, so under a fabric preset its reach is the pull
+    // compensation where that is larger.
     const fillColumns = !!o.fillColumns;
+    const underlayOpenTolPx = Math.max(rowPx, fabric ? pullCompPx : 0);
     const underlayCtxBase = {
       pxPerFinalMm, maxStitch: maxPx, underlayStitchPx, underlayRowPx,
       runningOutline: fillmod.runningOutline, tatamiFill: fillmod.tatamiFill,
@@ -699,7 +708,7 @@
             // Fabric mode: named underlay style per shape type.
             try {
               const style = thin ? (fabric.satinUnderlay || "center_run") : (fabric.fillUnderlay || "edge_lattice");
-              const uctx = Object.assign({ fillAngle: angle, columns: fillColumns && !thin }, underlayCtxBase);
+              const uctx = Object.assign({ fillAngle: angle, columns: fillColumns && !thin, openTol: underlayOpenTolPx }, underlayCtxBase);
               for (const run of underlayRuns(shape, style, uctx)) if (run && run.length) { runs.push(run); runKinds.push("underlay"); }
             } catch (e) { /* underlay best-effort */ }
           } else {
@@ -707,7 +716,7 @@
             try {
               const inset = insetRing(poly, Math.min(2, 0.6 * pxPerFinalMm));
               runs.push(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx })); runKinds.push("underlay");
-              if (!thin) { runs.push(fillmod.tatamiFill(rings, { rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true, columns: fillColumns })); runKinds.push("underlay"); }
+              if (!thin) { runs.push(fillmod.tatamiFill(rings, { rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true, columns: fillColumns, openTol: underlayOpenTolPx })); runKinds.push("underlay"); }
             } catch (e) { /* underlay best-effort */ }
           }
         }
@@ -717,6 +726,10 @@
         // compensates internally through pullCompMm (unchanged). Underlay/outline
         // trace the TRUE edge and are never offset.
         let pts = [];
+        // The ground this shape's top stitching covers: the true rings, or the
+        // pull-compensated ones a fill is sewn to. What "open ground" is
+        // measured against when two runs of the shape are joined, below.
+        let coverRings = rings;
         try {
           if (thin) {
             // Medial-axis satin (rail-based) — clean on curves/terminals; falls
@@ -747,7 +760,8 @@
             for (const q of poly) { if (q.x < bx0) bx0 = q.x; if (q.x > bx1) bx1 = q.x; if (q.y < by0) by0 = q.y; if (q.y > by1) by1 = q.y; }
             const wMm = (bx1 - bx0) * mmPerPxFinal, hMm = (by1 - by0) * mmPerPxFinal;
             const largeFill = wMm > centerOutMinMm && hMm > centerOutMinMm;
-            pts = fillmod.tatamiFill(fillRings, { rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true, centerOut: largeFill, columns: fillColumns }); nFill++;
+            coverRings = fillRings;
+            pts = fillmod.tatamiFill(fillRings, { rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true, centerOut: largeFill, columns: fillColumns, openTol: rowPx }); nFill++;
             if (largeFill) nCenterOut++;
           }
         } catch (e) { pts = []; }
@@ -774,13 +788,18 @@
         // A shape is several runs, and the frame goes from the end of one to
         // the start of the next with the thread attached. Under the fill that
         // float is hidden; across a hole or a notch nothing ever covers it.
-        // With `fillColumns`, on a FILL shape, that move is cut when it passes
-        // over ground the shape does not fill. The slack is how far a run can
-        // start off the true edge: the underlay's inset, or the fill's pull
-        // compensation.
-        const openSlackPx = Math.max(Math.min(2, 0.6 * pxPerFinalMm), fabric ? pullCompPx : 0) + rowPx;
+        // With `fillColumns`, on a FILL shape, that move is cut when it lays
+        // thread deeper than a fill row into ground the fill does not cover.
+        // Measured against `coverRings`, NOT the true outline: the fill's
+        // first point sits a pull compensation outside the true corner, and
+        // against the true outline a plain square read as leaving itself and
+        // went from one cut to two. The slack is how far a run can start off
+        // that edge: an edge run sits inset from the true one.
+        // Not covered: `o.outline`, which no caller passes, is sewn AFTER the
+        // fill, so a float to it lies on top of the fill and is not cut.
+        const openSlackPx = Math.min(2, 0.6 * pxPerFinalMm) + rowPx;
         for (let ri = 0; ri < nonEmpty.length; ri++) {
-          if (fillColumns && !thin && ri > 0 && fillmod.crossesOpenGround(lastPx, nonEmpty[ri][0], rings, rowPx, openSlackPx)) emitTrimAtLast();
+          if (fillColumns && !thin && ri > 0 && fillmod.crossesOpenGround(lastPx, nonEmpty[ri][0], coverRings, rowPx, openSlackPx)) emitTrimAtLast();
           const spanI0 = stitches.length;
           pushRun(nonEmpty[ri]);
           pushSpan(spanI0, nonEmptyKinds[ri], shape.id);

@@ -137,6 +137,194 @@ test("fillColumns: a satin shape is sewn exactly as it is without it", () => {
   }
 });
 
+// --- what an independent audit of the first build found (2026-10-03) ---------
+//
+// The boxes above sit well inside each hole, on two shapes, and that is how
+// they passed while UNDERLAY rows -- 2 to 2.5 mm apart -- still put thread 1.7
+// to 2.2 mm into a cut-out and outside an outline. "A row turn clips a corner
+// by under one pitch" is harmless at 0.15 mm and visible at 2. These measure
+// the thing itself: mm of thread lying over ground the shape does not fill,
+// deeper than `tolMm` from every edge. 10 px/mm and a target width equal to
+// the drawing's, so the stream is the drawing's own px, centred, y flipped.
+const FABRICS = require("../src/fabrics.js");
+
+function openGroundMm(d, shape, tolMm, skipRun) {
+  // `skipRun`: leave out one run (an index into `d.runs`). The edge run under
+  // a fill is not a tatami pass and is not what the flag governs.
+  const skip = skipRun == null ? null : d.runs[skipRun];
+  const rings = [shape.outer].concat(shape.holes || []);
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const p of shape.outer) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, tol = tolMm * 10;
+  const edges = [];
+  for (const r of rings) for (let i = 0; i < r.length; i++) edges.push([r[i], r[(i + 1) % r.length]]);
+  const inside = (p) => {
+    let c = false;
+    for (const [u, v] of edges) if ((u.y > p.y) !== (v.y > p.y) && u.x + ((p.y - u.y) / (v.y - u.y)) * (v.x - u.x) > p.x) c = !c;
+    return c;
+  };
+  const nearEdge = (p) => edges.some(([u, v]) => {
+    const dx = v.x - u.x, dy = v.y - u.y, l2 = dx * dx + dy * dy;
+    const t = l2 ? Math.max(0, Math.min(1, ((p.x - u.x) * dx + (p.y - u.y) * dy) / l2)) : 0;
+    return Math.hypot(p.x - (u.x + t * dx), p.y - (u.y + t * dy)) <= tol;
+  });
+  let sewn = 0, floats = 0, attached = false, prev = null;
+  for (let i = 0; i < d.stitches.length; i++) {
+    const s = d.stitches[i];
+    if (s.type === "end") break;
+    if (s.type === "trim") { attached = false; prev = s; continue; }
+    if (prev && attached && !(skip && i > skip.i0 && i <= skip.i1)) {
+      const a = { x: prev.x + cx, y: cy - prev.y }, b = { x: s.x + cx, y: cy - s.y };
+      const len = Math.hypot(b.x - a.x, b.y - a.y), n = Math.max(1, Math.ceil(len / 0.5));
+      let open = 0;
+      for (let k = 0; k < n; k++) {
+        const p = { x: a.x + (b.x - a.x) * (k + 0.5) / n, y: a.y + (b.y - a.y) * (k + 0.5) / n };
+        if (!inside(p) && !nearEdge(p)) open += len / n;
+      }
+      if (s.type === "stitch") sewn += open; else floats += open;
+    }
+    if (s.type === "stitch") attached = true;
+    prev = s;
+  }
+  return { sewn: Math.round(sewn) / 10, floats: Math.round(floats) / 10 };
+}
+
+const drawn = (shape, widthPx, extra) => DG.buildQualityDesign(
+  [{ rgb: [0, 0, 0], shapes: [Object.assign({ tierOverride: "fill" }, shape)] }],
+  Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: widthPx / 10, darkOnTop: false, underlay: true, fillColumns: true }, extra || {}));
+const ring = (pts) => pts.map(([x, y]) => ({ x, y }));
+
+test("fillColumns: underlay rows 2 mm apart do not sew through the corner of a cut-out", () => {
+  // The cap preset's zigzag underlay. One of its rows lands on the cut-out's
+  // wall, the spans either side chain into one column, and the row turn inside
+  // that column ran 12 mm through the hole, 1.7 mm from its wall.
+  const badge = { outer: boxPx(0, 0, 400, 400), holes: [boxPx(60, 140, 180, 260), boxPx(285, 185, 315, 215)] };
+  const d = drawn(badge, 400, { garment: { id: "hat_front", widthIn: 4, heightIn: 4 }, fabric: FABRICS.getFabric("structured_cap") });
+  assert.deepStrictEqual(openGroundMm(d, badge, 1.0), { sewn: 0, floats: 0 });
+});
+
+test("fillColumns: a shape whose rows never fork still does not float outside its own outline", () => {
+  // No row of a T is split, so the first build left it to the old walk, whose
+  // turn from the bar's last underlay row to the stem's first is a 22 mm float
+  // 2 mm outside the stem. A wide U with no fabric does the same.
+  const t = { outer: ring([[0, 0], [350, 0], [350, 105], [227.5, 105], [227.5, 350], [122.5, 350], [122.5, 105], [0, 105]]), holes: [] };
+  assert.deepStrictEqual(openGroundMm(drawn(t, 350), t, 1.0), { sewn: 0, floats: 0 }, "T");
+  const u = { outer: ring([[0, 0], [140, 0], [140, 180], [300, 180], [300, 0], [440, 0], [440, 280], [0, 280]]), holes: [] };
+  assert.deepStrictEqual(openGroundMm(drawn(u, 440), u, 1.0), { sewn: 0, floats: 0 }, "wide U");
+});
+
+test("fillColumns: thread is not carried across the inside corner of an L", () => {
+  // Rows forced along the leg, so the underlay's rows run across it: the turn
+  // from the last row under the bar to the first under the leg crossed the
+  // open corner, 20 mm of float. No fabric, so no pull compensation sits
+  // outside the outline and the tolerance can be tight.
+  //
+  // Run 0 is left out: it is the EDGE run round the inset outline, a running
+  // stitch that chords across this same concave corner (0.9 mm of it, 0.6 mm
+  // out) with the flag on or off. Real, older than this flag, and not what it
+  // governs.
+  const l = { outer: ring([[0, 0], [300, 0], [300, 100], [100, 100], [100, 335], [0, 335]]), holes: [boxPx(210, 87, 250, 97)], angleOverride: 90 };
+  const d = drawn(l, 300);
+  assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "underlay", "fill"]);
+  assert.deepStrictEqual(openGroundMm(d, l, 0.3, 0), { sewn: 0, floats: 0 });
+});
+
+// How many FLOATS longer than a stitch (4 mm) leave the ground the fill
+// covers: the drawing's own rings, or under a fabric preset the
+// pull-compensated ones the fill is sewn to (rebuilt here the way
+// buildQualityDesign builds them). A float is a move made with the thread
+// attached and no penetration. 0.08 mm: a stitch is rounded to 0.1.
+function floatsOffCover(d, shape, pullMm) {
+  let rings = [shape.outer].concat(shape.holes || []);
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const p of shape.outer) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  if (pullMm > 0) {
+    const holes = rings.slice(1).map((hh) => {
+      const off = DG.offsetRing(hh, pullMm * 10, false), a0 = DG.signedArea(hh), a1 = DG.signedArea(off);
+      return (Math.sign(a0) !== Math.sign(a1) || Math.abs(a1) < 1e-6) ? hh : off;
+    });
+    rings = [DG.offsetRing(rings[0], pullMm * 10, true)].concat(holes);
+  }
+  const edges = [];
+  for (const r of rings) for (let i = 0; i < r.length; i++) edges.push([r[i], r[(i + 1) % r.length]]);
+  const inside = (p) => {
+    let c = false;
+    for (const [u, v] of edges) if ((u.y > p.y) !== (v.y > p.y) && u.x + ((p.y - u.y) / (v.y - u.y)) * (v.x - u.x) > p.x) c = !c;
+    return c;
+  };
+  const nearEdge = (p) => edges.some(([u, v]) => {
+    const dx = v.x - u.x, dy = v.y - u.y, l2 = dx * dx + dy * dy;
+    const t = l2 ? Math.max(0, Math.min(1, ((p.x - u.x) * dx + (p.y - u.y) * dy) / l2)) : 0;
+    return Math.hypot(p.x - (u.x + t * dx), p.y - (u.y + t * dy)) <= 0.8;
+  });
+  let n = 0, attached = false, prev = null, from = null;
+  for (const s of d.stitches) {
+    if (s.type === "end") break;
+    if (s.type === "trim") { attached = false; from = null; prev = s; continue; }
+    if (s.type === "jump") { if (attached && !from) from = prev; prev = s; continue; }
+    if (from) {
+      const a = { x: from.x + cx, y: cy - from.y }, b = { x: s.x + cx, y: cy - s.y };
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      if (len > 40) {
+        const k = Math.ceil(len / 0.25);
+        let off = false;
+        for (let j = 0; j < k && !off; j++) {
+          const p = { x: a.x + (b.x - a.x) * (j + 0.5) / k, y: a.y + (b.y - a.y) * (j + 0.5) / k };
+          off = !inside(p) && !nearEdge(p);
+        }
+        if (off) n++;
+      }
+      from = null;
+    }
+    attached = true;
+    prev = s;
+  }
+  return n;
+}
+
+test("fillColumns: no float longer than a stitch is left along the outside of a fill", () => {
+  // A row turn at the step of a T, an L or a U runs along the step's own
+  // edge, under one fill row outside it: not deep, so nothing is cut. But the
+  // plain walk FLOATS any turn longer than a stitch, and this one lies where
+  // no later row covers it -- a loose thread on the rim, 6 to 28 mm long, on
+  // 35 of 165 designs measured (nine of them at the angle the engine picks for
+  // the shape). With the flag it is sewn along the rim instead.
+  const shapes = {
+    T: [ring([[0, 0], [350, 0], [350, 105], [227.5, 105], [227.5, 350], [122.5, 350], [122.5, 105], [0, 105]]), 350],
+    invertedT: [ring([[122.5, 0], [227.5, 0], [227.5, 245], [350, 245], [350, 350], [0, 350], [0, 245], [122.5, 245]]), 350],
+    L: [ring([[0, 0], [100, 0], [100, 235], [300, 235], [300, 335], [0, 335]]), 300],
+    tallU: [ring([[0, 0], [100, 0], [100, 300], [200, 300], [200, 0], [300, 0], [300, 400], [0, 400]]), 300],
+    H: [ring([[0, 0], [90, 0], [90, 120], [210, 120], [210, 0], [300, 0], [300, 300], [210, 300], [210, 180], [90, 180], [90, 300], [0, 300]]), 300],
+  };
+  let without = 0;
+  for (const fabricId of [null, "pique_knit", "structured_cap"]) {
+    const fabric = fabricId ? FABRICS.getFabric(fabricId) : null;
+    const extra = fabric ? { fabric } : {};
+    for (const name of Object.keys(shapes)) {
+      for (const angleOverride of [null, 0, 90]) {
+        const shape = { outer: shapes[name][0], holes: [] };
+        if (angleOverride != null) shape.angleOverride = angleOverride;
+        const pull = fabric ? fabric.pullCompMm : 0;
+        const label = name + ", " + (fabricId || "no fabric") + ", angle " + (angleOverride == null ? "auto" : angleOverride);
+        assert.strictEqual(floatsOffCover(drawn(shape, shapes[name][1], extra), shape, pull), 0, label);
+        without += floatsOffCover(drawn(shape, shapes[name][1], Object.assign({ fillColumns: false }, extra)), shape, pull);
+      }
+    }
+  }
+  assert.ok(without >= 20, "these shapes must float outside WITHOUT the flag, or this proves nothing: " + without);
+});
+
+test("fillColumns: a plain shape under a fabric preset is sewn exactly as it is without it", () => {
+  // The cut between two runs was tested against the TRUE outline while the
+  // fill covers the pull-compensated one, so the move to the fill's first
+  // point -- a hair outside the true corner -- read as open ground and a plain
+  // square went from one cut to two.
+  const square = { outer: boxPx(0, 0, 300, 300), holes: [] };
+  const fabric = FABRICS.getFabric("pique_knit");
+  assert.deepStrictEqual(drawn(square, 300, { fabric }).stitches, drawn(square, 300, { fabric, fillColumns: false }).stitches);
+});
+
 test("fillColumns: left off, every stitch is the one it has always been", () => {
   for (const underlay of [false, true]) {
     const base = Object.assign({ underlay }, ANNULUS_OPTS);
