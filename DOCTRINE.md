@@ -8366,64 +8366,6 @@ question every move is asked):
 *(measured 2026-10-03 — `test/fill.test.js`, `test/digitize.test.js`,
 `tools/fill-columns-sheet.mjs`; MASTER_SCOPE defect 52; scope-history 10-03)*
 
-## A proof holds for what it was given: "equal to the last bit" was true of the rows I made (2026-10-03)
-
-Row stagger for the browser fill is a port, so the claim was the strongest
-there is: on 32,000 random rows the JS needle holes equal the Python fill's
-to the last bit. An independent audit failed it twice. Neither failure was
-in the comparison. Both were in what the comparison was fed.
-
-- **It sorted each row and sewed every row left to right.** The Python
-  engine cuts a step longer than a stitch along the PATH, from the end the
-  thread comes from, and counted from the two ends the same midpoint is not
-  always the same double. Six rows of 39,979 were one ulp off, all sewn
-  right to left. Compare a thing in the order it is made, not in the order
-  that is easy to compare.
-- **Its random rows never landed where the two rules part.** Python cuts a
-  step only when it is over a stitch by more than a micron; the port cut at
-  a billionth of a stitch. No random row of mine fell in the band between
-  them, and the audit's builder sweep hit it once in 12.2 million rows. A
-  generator has to be AIMED: for every threshold a rule has, write the cases
-  a hair either side of it.
-- **The second proof had to fail the old code.** In thread order, with the
-  band and the audit's literals in it, the fixed code is equal to the bit on
-  51,760 rows. Run on the commit the audit read, the same cases fail 997
-  rows and are one ulp off on 126. A proof that has not been seen to fail
-  the known-wrong version has not been shown to see anything.
-
-Two more from the same audit, both a lesson this file already had
-("None is a rate with its denominator left off", one entry up) and both
-made again within the day:
-
-- **"0.0%" was six.** The table rounded the holes still at the head of three
-  in a line to nothing, and I wrote "no hole". Print the count beside any
-  rate that reads as none; the lesson does not apply itself.
-- **A mechanism is not a place.** I explained the 7.5% of holes that still
-  have one under them ("a halved step lands by the next row's grid point,
-  once, with nothing above or below it") and took the explanation for an
-  answer. The auditor asked WHERE: 95.6% sit 1.5 to 2.6 mm from a row's end,
-  so along a straight edge they are a pair every four rows, a line of
-  dashes beside the edge. True of each pair, and not what the person
-  deciding the flip needs to see. Plot the remainder, or at least measure
-  where it lies, before calling it scattered.
-
-And one from the audit's second look, at the fixes:
-
-- **A fix whose own test passes before the fix is not for that.** The audit
-  found the stagger adding stitches under the 1 mm floor when a builder asks
-  for a stitch under 2 mm. I took the floor as half a stitch there and wrote
-  the test: "no stitch along a row is under half a stitch". It passed with
-  the change and WITHOUT it, and I kept the change and reasoned about what
-  it restored. The second look measured it: a halved step was never under
-  half a stitch, so the floor had not moved, and the lower clearance made a
-  third more short stitches (45,552 against 34,458). A limit of a rule is
-  stated, not patched. And when the test for a fix is green before the fix,
-  stop: either the test asks the wrong thing or the fix does nothing.
-
-*(measured 2026-10-03 — `test/fill-stagger.test.js`,
-`tools/fill-stagger-census.mjs`; `docs/renders/fill-stagger-2026-10-03/`;
-MASTER_SCOPE "Waiting on Kent" 24; scope-history 10-03)*
-
 ## 2026-10-03 — The built-OFF sitting: one flip, one flag voted down for its weight, and one that was never waiting
 
 Kent asked for one labelled page for every finished flag with no verdict and
@@ -8503,3 +8445,61 @@ judged all 19 pairs the same day (`docs/eye-pairs-2026-10-03/`).
 *(ruled, judged and measured 2026-10-03 — `docs/eye-pairs-2026-10-03/kent-notes.json`;
 `tests/test_satin_cap_recentre.py`, `tests/test_junction_stack.py`,
 `tests/test_lettering_coverage_regression.py`)*
+
+## A proof holds for what it was given: "equal to the last bit" was true of the rows I made (2026-10-03)
+
+Row stagger for the browser fill is a port, so the claim was the strongest
+there is: on 32,000 random rows the JS needle holes equal the Python fill's
+to the last bit. An independent audit failed it twice. Neither failure was
+in the comparison. Both were in what the comparison was fed.
+
+- **It sorted each row and sewed every row left to right.** The Python
+  engine cuts a step longer than a stitch along the PATH, from the end the
+  thread comes from, and counted from the two ends the same midpoint is not
+  always the same double. Six rows of 39,979 were one ulp off, all sewn
+  right to left. Compare a thing in the order it is made, not in the order
+  that is easy to compare.
+- **Its random rows never landed where the two rules part.** Python cuts a
+  step only when it is over a stitch by more than a micron; the port cut at
+  a billionth of a stitch. No random row of mine fell in the band between
+  them, and the audit's builder sweep hit it once in 12.2 million rows. A
+  generator has to be AIMED: for every threshold a rule has, write the cases
+  a hair either side of it.
+- **The second proof had to fail the old code.** In thread order, with the
+  band and the audit's literals in it, the fixed code is equal to the bit on
+  51,760 rows. Run on the commit the audit read, the same cases fail 997
+  rows and are one ulp off on 126. A proof that has not been seen to fail
+  the known-wrong version has not been shown to see anything.
+
+Two more from the same audit, both a lesson this file already had
+("None is a rate with its denominator left off", one entry up) and both
+made again within the day:
+
+- **"0.0%" was six.** The table rounded the holes still at the head of three
+  in a line to nothing, and I wrote "no hole". Print the count beside any
+  rate that reads as none; the lesson does not apply itself.
+- **A mechanism is not a place.** I explained the 7.5% of holes that still
+  have one under them ("a halved step lands by the next row's grid point,
+  once, with nothing above or below it") and took the explanation for an
+  answer. The auditor asked WHERE: 95.6% sit 1.5 to 2.6 mm from a row's end,
+  so along a straight edge they are a pair every four rows, a line of
+  dashes beside the edge. True of each pair, and not what the person
+  deciding the flip needs to see. Plot the remainder, or at least measure
+  where it lies, before calling it scattered.
+
+And one from the audit's second look, at the fixes:
+
+- **A fix whose own test passes before the fix is not for that.** The audit
+  found the stagger adding stitches under the 1 mm floor when a builder asks
+  for a stitch under 2 mm. I took the floor as half a stitch there and wrote
+  the test: "no stitch along a row is under half a stitch". It passed with
+  the change and WITHOUT it, and I kept the change and reasoned about what
+  it restored. The second look measured it: a halved step was never under
+  half a stitch, so the floor had not moved, and the lower clearance made a
+  third more short stitches (45,552 against 34,458). A limit of a rule is
+  stated, not patched. And when the test for a fix is green before the fix,
+  stop: either the test asks the wrong thing or the fix does nothing.
+
+*(measured 2026-10-03 — `test/fill-stagger.test.js`,
+`tools/fill-stagger-census.mjs`; `docs/renders/fill-stagger-2026-10-03/`;
+MASTER_SCOPE "Waiting on Kent" 24; scope-history 10-03)*
