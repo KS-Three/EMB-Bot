@@ -325,6 +325,113 @@ test("fillColumns: a plain shape under a fabric preset is sewn exactly as it is 
   assert.deepStrictEqual(drawn(square, 300, { fabric }).stitches, drawn(square, 300, { fabric, fillColumns: false }).stitches);
 });
 
+// --- what the cuts cost, and getting them back -------------------------------
+//
+// Where a design's cuts are: inside the fill, inside an underlay run, or
+// between two runs of the shape.
+function cutsBy(d) {
+  const out = { all: 0, fill: 0, underlay: 0, between: 0 };
+  d.stitches.forEach((s, i) => {
+    if (s.type !== "trim") return;
+    out.all++;
+    const run = d.runs.find((r) => i > r.i0 && i <= r.i1);
+    if (run) out[run.kind === "fill" ? "fill" : "underlay"]++; else out.between++;
+  });
+  return out;
+}
+
+test("fillColumns: the edge runs round the holes are entered where the thread already is", () => {
+  // An edge-run underlay sews a ring round each hole. Each ring began at its
+  // own first corner and stopped a stitch short of it, so the move to the next
+  // ring started part-way down a hole's side and crossed that hole: one cut
+  // per hole (36 on a 36-hole badge, on the preset a left chest uses). Taken
+  // nearest-first, entered at the corner the thread is nearest to and closed
+  // back onto that corner, the move runs along the hole's own edge instead.
+  const fabric = FABRICS.getFabric("pique_knit");
+  const row = { outer: boxPx(0, 0, 400, 400), holes: [boxPx(40, 180, 80, 220), boxPx(130, 180, 170, 220), boxPx(230, 180, 270, 220), boxPx(320, 180, 360, 220)], angleOverride: 0 };
+  assert.deepStrictEqual(cutsBy(drawn(row, 400, { fabric })).between, 0, "a row of four holes");
+  const holes = [];
+  for (let r = 0; r < 6; r++) for (let c = 0; c < 6; c++) holes.push(boxPx(40 + c * 95, 40 + r * 95, 80 + c * 95, 80 + r * 95));
+  const badge = { outer: boxPx(0, 0, 600, 600), holes, angleOverride: 0 };
+  const d = drawn(badge, 600, { fabric });
+  assert.ok(cutsBy(d).between <= 3, "36 holes: " + JSON.stringify(cutsBy(d)));
+  // and no cut was traded for a float: none in a hole, none off the fill
+  assert.strictEqual(openGroundMm(d, badge, 0.5).floats, 0);
+  assert.strictEqual(floatsOffCover(d, badge, fabric.pullCompMm), 0);
+  // every hole still gets its ring: 37 edge runs, then the fill
+  assert.deepStrictEqual(d.runs.map((r) => r.kind).join(" ").replace(/(underlay ?)+/, (m) => m.trim().split(" ").length + "u "), "37u fill");
+});
+
+const roundPx = (cx, cy, r, n) => Array.from({ length: n }, (_, i) => ({ x: cx + r * Math.cos(2 * Math.PI * i / n), y: cy + r * Math.sin(2 * Math.PI * i / n) }));
+const eachCase = (shapes, fn) => {
+  for (const fabricId of [null, "pique_knit", "structured_cap"]) {
+    const fabric = fabricId ? FABRICS.getFabric(fabricId) : null;
+    for (const name of Object.keys(shapes)) {
+      for (const angleOverride of [null, 0, 30, 82]) {
+        const shape = Object.assign({}, shapes[name][0]);
+        if (angleOverride != null) shape.angleOverride = angleOverride;
+        const label = name + ", " + (fabricId || "no fabric") + ", angle " + (angleOverride == null ? "auto" : angleOverride);
+        fn(shape, shapes[name][1], fabric, label);
+      }
+    }
+  }
+};
+
+test("fillColumns: a shape with holes, in one piece, is sewn without a cut inside any pass", () => {
+  // The first rebuild kept thread out of holes by cutting it: 35 to 122 cuts
+  // on a 36-hole badge, depending on the preset and on the angle the rows
+  // happened to run at, and nothing in this lane locks a cut. With the walk
+  // able to go round a ring, enter a strip from its far end, find a way along
+  // rims and rows when it is stranded, and start each pass where the thread
+  // already is, no pass of a holed shape in one piece needs one.
+  //
+  // What can remain is a cut BETWEEN two edge runs, where every straight way
+  // to the hole still to be sewn round lies across one already done. Of these
+  // 48 designs it happens on the nine round holes under the cap preset: one
+  // cut, at each of the four angles, since edge runs do not turn with the rows.
+  const holes = [];
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) holes.push(boxPx(40 + c * 95, 40 + r * 95, 80 + c * 95, 80 + r * 95));
+  const round = [];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) round.push(roundPx(100 + c * 150, 100 + r * 150, 35, 24));
+  let between = 0;
+  eachCase({
+    badge16: [{ outer: boxPx(0, 0, 410, 410), holes }, 410],
+    B: [{ outer: boxPx(0, 0, 260, 360), holes: [boxPx(70, 50, 190, 140), boxPx(70, 210, 190, 310)] }, 260],
+    annulus: [{ outer: roundPx(200, 200, 200, 64), holes: [roundPx(200, 200, 110, 48)] }, 400],
+    nineRound: [{ outer: boxPx(0, 0, 500, 500), holes: round }, 500],
+  }, (shape, widthPx, fabric, label) => {
+    const d = drawn(shape, widthPx, fabric ? { fabric } : {});
+    const cuts = cutsBy(d);
+    assert.deepStrictEqual({ fill: cuts.fill, underlay: cuts.underlay }, { fill: 0, underlay: 0 }, label);
+    assert.ok(cuts.between <= 1, label + " " + JSON.stringify(cuts));
+    between += cuts.between;
+    // and no cut was traded for a float: checked at the angle the engine picks
+    if (shape.angleOverride == null) {
+      assert.strictEqual(openGroundMm(d, shape, 0.7).floats, 0, label);
+      assert.strictEqual(floatsOffCover(d, shape, fabric ? fabric.pullCompMm : 0), 0, label);
+    }
+  });
+  assert.ok(between <= 4, "cuts between runs, all 48 designs: " + between);
+});
+
+test("fillColumns: a notched shape is not cut inside its underlay, and its fill only where center-out cuts", () => {
+  // Rows that never fork keep the walk they have always had, center-out and
+  // its one cut included. What the flag may add to such a shape is a cut on
+  // the way INTO a pass, where that float would have crossed the notch.
+  eachCase({
+    T: [{ outer: ring([[0, 0], [350, 0], [350, 105], [227.5, 105], [227.5, 350], [122.5, 350], [122.5, 105], [0, 105]]), holes: [] }, 350],
+    L: [{ outer: ring([[0, 0], [100, 0], [100, 235], [300, 235], [300, 335], [0, 335]]), holes: [] }, 300],
+    U: [{ outer: ring([[0, 0], [140, 0], [140, 180], [300, 180], [300, 0], [440, 0], [440, 280], [0, 280]]), holes: [] }, 440],
+    E: [{ outer: ring([[0, 0], [260, 0], [260, 60], [80, 60], [80, 130], [220, 130], [220, 190], [80, 190], [80, 260], [260, 260], [260, 320], [0, 320]]), holes: [] }, 260],
+  }, (shape, widthPx, fabric, label) => {
+    const d = drawn(shape, widthPx, fabric ? { fabric } : {});
+    const cuts = cutsBy(d);
+    assert.strictEqual(cuts.underlay, 0, label + " " + JSON.stringify(cuts));
+    assert.ok(cuts.fill <= 1 && cuts.between <= 2, label + " " + JSON.stringify(cuts));
+    assert.strictEqual(floatsOffCover(d, shape, fabric ? fabric.pullCompMm : 0), 0, label);
+  });
+});
+
 test("fillColumns: left off, every stitch is the one it has always been", () => {
   for (const underlay of [false, true]) {
     const base = Object.assign({ underlay }, ANNULUS_OPTS);

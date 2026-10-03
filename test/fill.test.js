@@ -268,10 +268,12 @@ test("columns: a grid of holes costs a cut per ROW of holes at most", () => {
 
 test("columns: the first stitch after a cut lands on the span's own start", () => {
   // A trim point is where the frame goes, not a penetration. Without a plain
-  // point on the same spot the row begins one stitch late.
-  const pts = fill.tatamiFill([SQ, WIDE_HOLE], COLS);
+  // point on the same spot the row begins one stitch late. Two squares that
+  // do not touch: nothing but a cut gets from one to the other.
+  const far = [{x:200,y:0},{x:260,y:0},{x:260,y:60},{x:200,y:60}];
+  const pts = fill.tatamiFill([SQ, far], COLS);
   const cutAt = pts.map((p, i) => (p.trim ? i : -1)).filter((i) => i >= 0);
-  assert.ok(cutAt.length > 0, "this ring needs a cut; without one the test proves nothing");
+  assert.ok(cutAt.length > 0, "two separate shapes need a cut; without one the test proves nothing");
   for (const i of cutAt) {
     const next = pts[i + 1];
     assert.ok(next && !next.trim && !next.travel, "point after the cut at " + i + " is not a plain stitch");
@@ -401,4 +403,118 @@ test("columns: with center-out, the row turns asked about are the ones the walk 
   const opts = { rowSpacing:10, angleDeg:0, maxStitch:40, markConnectors:true, columns:true, openTol:1, centerOut:true };
   const pts = fill.tatamiFill([l], opts);
   assert.deepStrictEqual(threadThrough(pts, { x0:35, y0:0, x1:120, y1:35 }, 1), { sewn:0, floats:0 });
+});
+
+// --- travel: getting the cuts back -------------------------------------------
+//
+// A cut leaves two thread ends, and nothing in the browser lanes locks them.
+// The walk above cut whenever the next column could not be reached by one
+// stitch or a run along the row. Measured on the first rebuild: one cut per
+// HOLE in the fill wherever the holes did not line up with the rows (nine
+// round holes at the angle the engine picks: nine), and one per strip in an
+// underlay, whose rows are too far apart for the run along the row to stay on
+// the hole's rim (a 36-hole badge at 30 degrees: 59 to 105 cuts).
+const cutsOf = (pts) => pts.filter((p) => p.trim === true).length;
+const noLongStitch = (pts, max, label) => {
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i].travel || pts[i].trim) continue;
+    const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    assert.ok(d <= max + 1e-6, label + ": stitch " + d + " at " + i);
+  }
+};
+
+test("columns: a hole costs no cut -- the last strip is entered from its far end", () => {
+  // The band above, a strip either side of the hole, the band below. Sewn
+  // down one strip and up the other, the walk ends at the TOP of the second
+  // strip with the band below still to sew. Run along that strip's own edge
+  // to its top first, and sewn back DOWN, it ends beside the band instead.
+  // The run lies on the strip's edge, under the ends of its own rows.
+  for (const angleDeg of [0, 30, 45, 90, 137]) {
+    const pts = fill.tatamiFill([SQ, WIDE_HOLE], Object.assign({}, COLS, { angleDeg }));
+    assert.strictEqual(cutsOf(pts), 0, "angle " + angleDeg);
+    assert.deepStrictEqual(threadThrough(pts, { x0:20, y0:20, x1:80, y1:80 }), { sewn:0, floats:0 }, "angle " + angleDeg);
+    assert.strictEqual(floatsOffShape(pts, [SQ, WIDE_HOLE]), 0, "angle " + angleDeg);
+    noLongStitch(pts, 8, "angle " + angleDeg);
+  }
+});
+
+test("columns: holes cost no cut whether or not they line up with the rows", () => {
+  const grid = [SQ];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+    const x = 12 + c * 30, y = 12 + r * 30;
+    grid.push([{x, y}, {x:x + 12, y}, {x:x + 12, y:y + 12}, {x, y:y + 12}]);
+  }
+  for (const angleDeg of [0, 15, 30, 60]) {
+    const pts = fill.tatamiFill(grid, Object.assign({}, COLS, { angleDeg }));
+    assert.strictEqual(cutsOf(pts), 0, "angle " + angleDeg);
+    for (const h of grid.slice(1)) {
+      assert.deepStrictEqual(threadThrough(pts, { x0:h[0].x, y0:h[0].y, x1:h[2].x, y1:h[2].y }), { sewn:0, floats:0 }, "angle " + angleDeg);
+    }
+    assert.strictEqual(floatsOffShape(pts, grid), 0, "angle " + angleDeg);
+    noLongStitch(pts, 8, "angle " + angleDeg);
+  }
+});
+
+test("columns: rows far apart go round a hole's rim -- not through it, and not by a cut", () => {
+  // An underlay: rows 5 apart, allowed 1 into open ground. The run along the
+  // row to the next strip would lie up to 5 inside the hole, so the first
+  // rebuild cut there, once per strip. The hole's own edge is the way round.
+  const under = { rowSpacing:5, angleDeg:0, maxStitch:8, markConnectors:true, columns:true, openTol:1 };
+  const hole = (x0) => [{x:x0,y:40},{x:x0+12,y:40},{x:x0+12,y:62},{x:x0,y:62}];
+  const cases = { ring: [SQ, WIDE_HOLE], row: [SQ, hole(14), hole(44), hole(74)] };
+  for (const name of Object.keys(cases)) {
+    for (const angleDeg of [0, 90, 30]) {
+      const pts = fill.tatamiFill(cases[name], Object.assign({}, under, { angleDeg }));
+      assert.strictEqual(cutsOf(pts), 0, name + " at " + angleDeg);
+      for (const h of cases[name].slice(1)) {
+        assert.deepStrictEqual(threadThrough(pts, { x0:h[0].x, y0:h[0].y, x1:h[2].x, y1:h[2].y }, 1), { sewn:0, floats:0 }, name + " at " + angleDeg);
+      }
+      assert.strictEqual(floatsOffShape(pts, cases[name]), 0, name + " at " + angleDeg);
+      noLongStitch(pts, 8, name + " at " + angleDeg);
+    }
+  }
+});
+
+test("columns: the way round an edge has a budget, and past it the thread is cut", () => {
+  // A slit 3 thick and 90 deep, cut in from the right edge between two rows
+  // that are 5 apart. The turn from one row to the next is 5 long and crosses
+  // the slit's mouth; the way round the slit's edge is 185. The budget is the
+  // larger of `travelBudget` and four times the straight line (as the Python
+  // engine's is): 185 of travel to save one cut is over 40, and under 2000.
+  const slit = [{x:0,y:0},{x:100,y:0},{x:100,y:51},{x:10,y:51},{x:10,y:54},{x:100,y:54},{x:100,y:100},{x:0,y:100}];
+  const under = { rowSpacing:5, angleDeg:0, maxStitch:8, markConnectors:true, columns:true, openTol:1 };
+  const tight = fill.tatamiFill([slit], Object.assign({}, under, { travelBudget: 40 }));
+  const loose = fill.tatamiFill([slit], Object.assign({}, under, { travelBudget: 2000 }));
+  assert.strictEqual(cutsOf(tight), 1, "tight budget");
+  assert.strictEqual(cutsOf(loose), 0, "loose budget");
+  for (const pts of [tight, loose]) {
+    assert.deepStrictEqual(threadThrough(pts, { x0:10, y0:51, x1:100, y1:54 }, 1), { sewn:0, floats:0 });
+    noLongStitch(pts, 8, "slit");
+  }
+});
+
+test("columns: told where the thread is, the walk starts from a corner it can reach without a cut", () => {
+  // A pass begins with a float from wherever the last one ended, and the
+  // caller cuts that float if it crosses a hole. The walk always began at the
+  // top left, so a pass entered from below the hole cost a cut before its
+  // first stitch. `from` is where the thread is; `clear(a, b)` is the caller's
+  // own test of a float. From the bottom edge the walk sews bottom-up.
+  const shape = [SQ, WIDE_HOLE];
+  const clear = (a, b) => !fill.crossesOpenGround(a, b, shape, PITCH, 0);
+  for (const from of [{ x:50, y:100 }, { x:100, y:90 }, { x:0, y:0 }, { x:50, y:0 }]) {
+    assert.strictEqual(clear(from, fill.tatamiFill(shape, COLS)[0]), from.y < 20, "the fixture: only from above is the old start clear");
+    const pts = fill.tatamiFill(shape, Object.assign({}, COLS, { from, clear }));
+    assert.ok(clear(from, pts[0]), "from " + JSON.stringify(from) + " it starts at " + JSON.stringify({ x: pts[0].x, y: pts[0].y }));
+    assert.strictEqual(cutsOf(pts), 0, "from " + JSON.stringify(from));
+    assert.deepStrictEqual(threadThrough(pts, { x0:20, y0:20, x1:80, y1:80 }), { sewn:0, floats:0 });
+    // and every row is still sewn end to end
+    const sewn = pts.filter((p) => !p.travel && !p.trim);
+    for (let y = 0; y <= 99; y += 7) {
+      const spans = y >= 20 && y < 80 ? [[0, 20], [80, 100]] : [[0, 100]];
+      for (const [x0, x1] of spans) {
+        const xs = sewn.filter((p) => Math.abs(p.y - y) < 1e-6 && p.x >= x0 - 1e-6 && p.x <= x1 + 1e-6).map((p) => p.x);
+        assert.ok(Math.abs(Math.min(...xs) - x0) < 1e-6 && Math.abs(Math.max(...xs) - x1) < 1e-6, "row " + y + " span " + x0 + ".." + x1);
+      }
+    }
+  }
 });
