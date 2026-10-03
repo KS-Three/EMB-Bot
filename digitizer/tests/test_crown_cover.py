@@ -56,13 +56,14 @@ def _sew(art, width_mm, **kw):
     return cfg, result, plan_stitches(result, cfg)
 
 
-def test_the_flag_is_built_off():
-    """Built OFF (Kent's §7.4). It is flipped on the corpus table AND
-    `lost_frac`, never on coverage alone — the 2026-09-30 apex widening
-    closed its hole and was retracted the same day for spending 0.0088 of
-    `lost_frac` on overshoot."""
-    assert PipelineConfig().satin_crown_cover is False
-    assert PipelineConfig(satin_crown_cover=True).satin_crown_cover is True
+def test_the_flag_is_on_by_default():
+    """Built OFF (Kent's §7.4), flipped ON 2026-10-02 (Kent's call) on the
+    corpus table AND `lost_frac`, never on coverage alone — the 2026-09-30
+    apex widening closed its hole and was retracted the same day for
+    spending 0.0088 of `lost_frac` on overshoot. False is the pre-flip
+    engine, pinned beside it below."""
+    assert PipelineConfig().satin_crown_cover is True
+    assert PipelineConfig(satin_crown_cover=False).satin_crown_cover is False
 
 
 def test_the_two_filters_refuse_a_seam_and_an_outline():
@@ -119,7 +120,7 @@ def test_on_the_word_it_closes_the_crowns_and_holds_lost_frac():
     """
     from tools.dropped_elements import analyse_design
 
-    cfg_off, res_off, p_off = _sew(MARINE_127, 127.4)
+    cfg_off, res_off, p_off = _sew(MARINE_127, 127.4, satin_crown_cover=False)
     cfg_on, res_on, p_on = _sew(MARINE_127, 127.4, satin_crown_cover=True)
     m_off = run_preflight(res_off, p_off, cfg_off, image=str(MARINE_127))["metrics"]
     m_on = run_preflight(res_on, p_on, cfg_on, image=str(MARINE_127))["metrics"]

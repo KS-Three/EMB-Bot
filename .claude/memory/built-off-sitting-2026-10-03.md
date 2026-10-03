@@ -1,6 +1,6 @@
 ---
 name: built-off-sitting-2026-10-03
-description: 2026-10-03 — one page for the built-OFF flags with no verdict; a flag listed as "waiting on Kent" was already the shipped engine; the artifact republish was refused and the page was served locally instead
+description: 2026-10-03 — one page for the built-OFF flags with no verdict; a flag listed as "waiting on Kent" was already the shipped engine; the artifact republish was refused twice before it went through, and how to avoid both
 metadata:
   type: project
 ---
@@ -28,12 +28,15 @@ sitting page for the four built-OFF flags" (`cap_recentre`, `patch_junctions`,
   ON was a local commit in another lane; it was cherry-picked as a render-only
   top commit and dropped before the PR. The envelope's ruling had been
   confounded by `satin_tip_caps` exactly this way.
-- **The republish can be refused.** In auto permission mode the `Artifact`
-  publish to the labelled page's URL was denied as a data-sharing upload.
-  Do not route around it; it is Kent's to allow. The page still works from a
-  local server (`python -m http.server --directory <gallery>` through a
-  temporary `.claude/launch.json` entry, reverted after): verdicts go to the
-  browser's storage and *Save notes* exports them as JSON.
+- **The republish can be refused, twice over.** In auto permission mode the
+  `Artifact` publish to the labelled page's URL was denied as a data-sharing
+  upload. Do not route around it; ask Kent (he allowed it at once). Then a
+  Read rule refused the images because the gallery sat in a temp directory:
+  build or copy it to the lane's `digitizer/eye_pairs_out/gallery/`
+  (gitignored, inside the session folder) and publish from there. To drive
+  the page first, serve the gallery over localhost (`python -m http.server
+  --directory <gallery>` through a temporary `.claude/launch.json` entry,
+  reverted after); a `file://` tab cannot be scripted.
 - **Kent's box, four render lanes beside another session's full suite:** 48
   arm-runs took 84 minutes; a run 2 to 12.5 minutes. Budget ninety.
 - **The memory junction reads the MAIN checkout's working tree.** It was 77
