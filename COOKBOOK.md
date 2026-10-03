@@ -1032,7 +1032,11 @@ sews nothing and cuts the smallest shape that contains it.
     drawn badge or U does it all the time. Ask the ground test both ways
     round on whole-number shapes ("whole-number shapes" in the same file),
     and sweep every preset in `FABRICS.FABRICS`: terry sews its fill upward,
-    and that was the direction a third audit found wrong.
+    and that was the direction a third audit found wrong. Draw notches
+    exactly twice a preset's pull compensation wide as well (4 to 12 px at
+    10 px per mm): the outline the fill is sewn to closes one to a slit, and
+    no sweep had one until an audit drew it (2026-10-03, "a move of no
+    length").
 
   To SEE thread rather than penetrations, run
   `node tools/fill-columns-sheet.mjs`: it draws four manual-lane shapes off
@@ -1047,6 +1051,27 @@ sews nothing and cuts the smallest shape that contains it.
   the flag; the flip is Kent's ("Waiting on Kent" 23).
   `node tools/lock-stitch-census.mjs` prints what a lock costs and how long
   its legs really are, on every shipped font and eleven shapes.
+- **Row stagger is built OFF for the shape builder (2026-10-03).**
+  `fillStagger: true` on `buildQualityDesign` puts the cover fill's needle
+  holes on one grid shifted row by row (`tatamiFill`'s `stagger`, `minStitch`
+  and `splitTol`): the Python fill's rule, row for row. `stagger` is a NUMBER
+  of rows; `true` is no stagger. It moves only the holes BETWEEN a row's two
+  ends. To check a change to it, take those out and compare with the flag
+  off ("the same walk" in `test/fill-stagger.test.js`). Count holes in line
+  across THREE rows, not two: a halved step sits near the next row's grid
+  point by the rule itself, which along a straight edge is a line of dashes
+  and is stated for the flip. To check it against Python, compare rows in
+  the order the thread runs and aim rows a hair either side of a stitch: a
+  sorted comparison of random rows passed while two things were wrong.
+  `node tools/fill-stagger-census.mjs` prints the numbers and, with
+  `--sheet out.svg`, draws every hole. No Studio caller passes the flag; the
+  flip is Kent's ("Waiting on Kent" 24).
+  The lettering builder's own fill (`satinplay.fillFromGeom`) is NOT
+  staggered and does not ship: it runs only under `wideColumnFill`, off
+  since 2026-09-11. Whatever flips that passes `stagger`, `minStitch` and
+  `splitTol` there, the two lengths in the layout's units: final mm,
+  divided by the fit scale, times `pxPerMm`, as `fillStitchMm` beside them
+  already is.
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 

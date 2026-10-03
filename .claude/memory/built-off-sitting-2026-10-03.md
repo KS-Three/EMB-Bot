@@ -18,6 +18,14 @@ sitting page for the four built-OFF flags" (`cap_recentre`, `patch_junctions`,
   same setting as its part C: off and on were one design on 8 of 8 logos. A
   test file had said so since the flip. One `--render --arms <arm>` on two
   logos would have shown it; so would a grep for where the flag is consumed.
+- **Kent judged all 19 the same day, no ruling set** (`kent-notes.json`).
+  `bean_letters` at 1.0: 0 after, 5 before, 1 both bad — "little worms",
+  "aren't thick enough"; stays OFF, and the open question is the line's
+  weight on the same path. `cap_recentre`: after on becker and tires (the two
+  the locator boxed), never before; the flip is his. `split_off`: no
+  difference. **Do not tell him which side of a pair looks better before he
+  has judged it:** this session called gaulke's bean side "clean line
+  letters" and his note on it was "to skinny and not clean".
 - **Two of four flags had no pair on a real logo** (`patch_junctions`,
   `keep_counters`). An arm that is identical everywhere keeps its head on the
   page; say why in its table caption rather than leave a bare zero.
@@ -44,6 +52,14 @@ sitting page for the four built-OFF flags" (`cap_recentre`, `patch_junctions`,
   session loaded a stale index. Fast-forward it at session start; a note
   written through the junction is uncommitted until someone lands it, so
   write notes in the lane that carries the PR.
+- **The CLAUDE.md a session is handed is that stale checkout's too, and it
+  cost a false finding.** The loaded copy said MASTER_SCOPE has an 800-line
+  budget; `main` had said 27,000 words since 2026-09-14, with
+  `tests/test_scope_budget.py` enforcing it. This session told Kent the file
+  was over budget with no guard, three times and in a PR body, before the
+  `update-master-scope` skill contradicted it. Before reporting that a
+  documented rule is broken, read the rule on `origin/main` and grep for the
+  test that already enforces it.
 
 Related: [[second-sitting-eleven-flags-2026-09-28]],
 [[flag-before-after-2026-09-18]], [[bridge-border-and-script-2026-09-30]],
