@@ -383,6 +383,13 @@
       let p = from;
       for (const q of pts) { sewTo(p, q); p = q; }
     };
+    // A row of the fill, end to end. With `o.rowHoles` the holes between its
+    // ends are the caller's (the row stagger); without, it is cut like any move.
+    const sewRow = (a, b) => {
+      if (!o.rowHoles) return sewTo(a, b);
+      for (const h of o.rowHoles(a, b)) out.push(rotate(h, cosP, sinP));
+      out.push(rotate(b, cosP, sinP));
+    };
 
     // The way from a to b round the ring both sit on, the shorter way: the
     // ring's own corners, so that no corner is cut (stage6_fill `_ring_route`).
@@ -749,11 +756,79 @@
       // Odd i runs along a row, inside by construction. Even i is the turn to
       // this column's next row, and never deep: a column is cut in two where
       // it would be (splitAtOpenTurns).
-      for (let i = 1; i < key.length; i++) sewTo(key[i - 1], key[i]);
+      for (let i = 1; i < key.length; i++) (i % 2 ? sewRow : sewTo)(key[i - 1], key[i]);
       cur = key[key.length - 1];
       curNode = { ci: m.ci, c: exitCorner(m.ci, pick.j) };
     }
     return out;
+  }
+
+  // ROW STAGGER (`opts.stagger`, default off).
+  //
+  // Cut evenly from its own end, every row of a shape with straight sides puts
+  // its needle holes straight under the holes of the row before, and light
+  // runs down the line they make: the mark of a naive scanline fill
+  // (stage6_fill's docstring; quality review 2026-09-08, section 4). With
+  // `stagger` the holes BETWEEN a row's two ends sit on one grid for the whole
+  // fill instead, a stitch apart, shifted row by row through a cycle of
+  // `stagger` rows. A port of `_stagger_slots` and `_row_points_at_phase`, and
+  // of the `split_long_moves` the Python fill then runs over its rows.
+  //
+  // Which slot each row of the cycle takes: the row's number with its bits
+  // reversed, ranked (a van der Corput order). 4 -> [0, 2, 1, 3]. Not 0, 1, 2,
+  // 3: a shift that walks one notch a row lines the holes up along a diagonal,
+  // and the channel is still there, tilted.
+  function staggerSlots(n) {
+    n = Math.max(1, Math.floor(n) || 1);
+    if (n === 1) return [0];
+    const bits = Math.max(1, 32 - Math.clz32(n - 1));
+    const rev = (i) => {
+      let r = 0;
+      for (let b = 0; b < bits; b++) if (i & (1 << b)) r |= 1 << (bits - 1 - b);
+      return r;
+    };
+    const slots = new Array(n);
+    Array.from({ length: n }, (_, i) => i).sort((p, q) => rev(p) - rev(q) || p - q)
+      .forEach((row, slot) => { slots[row] = slot; });
+    return slots;
+  }
+
+  // The holes between the two ends of one row, a -> b, in the rows' frame.
+  // `phase` is the row's shift along the grid, `stitch` the grid's pitch, and
+  // `minStitch` how near an end a grid point may be and still be sewn.
+  //  - The two ends stay where they are, on the outline. That is the edge.
+  //  - A grid point is kept only when it is a real stitch from BOTH ends. The
+  //    grid is the fill's and not the row's, so the first point inside a row
+  //    is any fraction of a stitch past the edge, and kept it would put the
+  //    needle down beside the hole it has just made.
+  //  - Skipping one can leave a step longer than a stitch. That step is cut
+  //    into equal parts, as every move longer than a stitch is.
+  //  - A row with no room for a point that clears both ends is the one stitch
+  //    between them, as it was.
+  // NOT ported: a row shorter than `machine.TINY_STITCH_MM` collapsing to its
+  // middle. That moves a row's ends, and the walks are built on them.
+  // A step a few ulp over a stitch is a stitch, not two halves (the Python
+  // engine's defect 25: which rows were halved turned on the row angle's
+  // cosine).
+  const STAGGER_EPS = 1e-9;
+  function staggeredRow(a, b, phase, stitch, minStitch) {
+    const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
+    const min = Math.max(minStitch || 0, stitch * STAGGER_EPS);
+    const xs = [x0];
+    if (x1 - x0 >= 2 * min) {
+      for (let x = Math.ceil((x0 - phase) / stitch) * stitch + phase; x < x1; x += stitch) {
+        if (x - xs[xs.length - 1] >= min && x1 - x >= min) xs.push(x);
+      }
+    }
+    xs.push(x1);
+    const holes = [];
+    for (let k = 1; k < xs.length; k++) {
+      const d = xs[k] - xs[k - 1], steps = Math.ceil(d / stitch - STAGGER_EPS);
+      for (let s = 1; s < steps; s++) holes.push(xs[k - 1] + (d * s) / steps);
+      if (k + 1 < xs.length) holes.push(xs[k]);
+    }
+    if (a.x > b.x) holes.reverse();
+    return holes.map((x) => ({ x, y: a.y }));
   }
 
   // Tatami scan-line fill across one or more polygons.
@@ -773,6 +848,11 @@
   //   that question, when they are not `polygons` themselves. An underlay is
   //   given the rings the FILL is sewn to.
   //   `from`, `clear`, `travelBudget` (with `columns`): see sewColumns.
+  //   `stagger` (default off), `minStitch`: the row stagger above. `stagger` is
+  //   the rows in a cycle, the grid's pitch is `maxStitch`, and `minStitch` (in
+  //   the polygons' units) is the shortest stitch a row may open or close on.
+  //   Either walk, any row order: a row's holes turn on its place among the
+  //   scanlines and on nothing else.
   function tatamiFill(polygons, opts) {
     const rowSpacing = opts.rowSpacing;
     const angleDeg = opts.angleDeg || 0;
@@ -811,6 +891,16 @@
     }
 
     if (!isFinite(minY) || !isFinite(maxY)) return [];
+
+    // The row stagger: the holes between the ends of the row a -> b. A row's
+    // number is read off its height, so it is the same row whichever walk
+    // sews it and in whatever order.
+    const stagger = opts.stagger > 0 && maxStitch > 0 ? Math.floor(opts.stagger) : 0;
+    const slots = stagger ? staggerSlots(stagger) : null;
+    const rowHoles = !stagger ? null : (a, b) => {
+      const ri = Math.round((a.y - minY) / rowSpacing);
+      return staggeredRow(a, b, (slots[ri % stagger] / stagger) * maxStitch, maxStitch, opts.minStitch);
+    };
 
     // Collect ordered span endpoints (in rotated space) following the
     // boustrophedon path across all rows. Points are grouped per emitted row so
@@ -954,7 +1044,7 @@
         const from = opts.from ? rotate(opts.from, cosN, sinN) : null;
         const clear = opts.clear ? ((a, b) => opts.clear(rotate(a, cosP, sinP), rotate(b, cosP, sinP))) : null;
         const walked = sewColumns(cut.columns, cut.above, { edges: ground, rings, ringOf, posOf },
-          { maxStitch, tol, pitch: rowSpacing, cosP, sinP, budget, from, clear });
+          { maxStitch, tol, pitch: rowSpacing, cosP, sinP, budget, from, clear, rowHoles });
         // for a caller that counts which walk it got (center-out is the other one)
         Object.defineProperty(walked, "columnWalk", { value: true });
         return walked;
@@ -987,7 +1077,10 @@
         out.push(p);
         continue;
       }
-      if (maxStitch && maxStitch > 0 && dist > maxStitch) {
+      if (rowHoles && !isConnector) {
+        // a row, staggered: its holes are the grid's, not an even division
+        for (const h of rowHoles(a, b)) out.push(rotate(h, cosP, sinP));
+      } else if (maxStitch && maxStitch > 0 && dist > maxStitch) {
         const steps = Math.ceil(dist / maxStitch);
         for (let s = 1; s < steps; s++) {
           const t = s / steps;
@@ -1072,5 +1165,6 @@
     pcaAngleDeg,
     crossesOpenGround,
     openGroundTest,
+    staggerSlots,
   };
 });
