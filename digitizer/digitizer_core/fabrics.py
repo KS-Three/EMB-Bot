@@ -20,8 +20,9 @@ class Fabric:
     label: str
     pull_comp_mm: float
     fill_underlay: str
-    satin_underlay: str      # unused until build step 4; carried so the table
-                             # stays in step with the browser engine's
+    satin_underlay: str      # read by stage7_sequence's satin underlay choice
+                             # (a photo design overrides it); kept in step with
+                             # the browser engine's table
     density_adjust: float
     trim_at_mm: float
     notes: str
