@@ -21,7 +21,7 @@ const deps =
   const { mmToInch } = deps.units;
   const { renderStitches } = deps.render;
   const { hoopingAdvice, hoopingLine } = deps.fabrics;
-  const { sewTimeMin, PLAN_SPM } = deps.sewtime;
+  const { sewTimeMin, PLAN_SPM, bobbinM } = deps.sewtime;
 
   const PAGE_W_IN = 8.5;
   const PAGE_H_IN = 11;
@@ -207,14 +207,42 @@ const deps =
     // The BASIS is printed beside the figure, not left implied: these are
     // trade constants the playbook rates "medium confidence", and a bare
     // number on a sheet an operator schedules from would read as measured.
-    const runMin = sewTimeMin(
-      stitchCount,
-      options.sew && typeof options.sew.trims === "number" ? options.sew.trims : 0
-    );
+    //
+    // 2026-10-01: charged per STOP when the caller counted them (a colour
+    // stop the thread was not already cut for is a stop too — estimate.js
+    // `sewFacts`), at the operator's own running speed when they have given
+    // one, and naming their machine. A caller that passes none of the three
+    // gets the line it always got.
+    const sew = options.sew || {};
+    const stops =
+      typeof sew.stops === "number" ? sew.stops : typeof sew.trims === "number" ? sew.trims : 0;
+    const spm = typeof sew.spm === "number" && sew.spm > 0 ? sew.spm : PLAN_SPM;
+    const runMin = sewTimeMin(stitchCount, stops, spm);
     if (runMin !== null) {
       statsLines.push(
-        "Run time: ~" + runMin + " min at " + PLAN_SPM + " spm (incl. trims)"
+        "Run time: ~" + runMin + " min" +
+          (sew.machineLabel ? " on your " + sew.machineLabel : "") +
+          " at " + spm.toLocaleString("en-US") + " spm (incl. trims)"
       );
+    }
+    // Under-thread, on the thread maker's rule and saying so — same wording
+    // as the screen's row. A share of the thread metres, so it prints only
+    // where the "Thread:" line above did.
+    const bobbin = typeof sew.threadM === "number" && sew.threadM > 0 ? bobbinM(sew.threadM) : null;
+    if (bobbin !== null) {
+      statsLines.push(
+        "Bobbin: " + (bobbin < 0.05 ? "under 0.1" : "~" + bobbin.toFixed(1)) +
+          " m (3/5 of top thread)"
+      );
+    }
+    // The dollar lines, when the operator has entered prices. Passed in
+    // already worded (the Studio's `sewSummary` rows) rather than recomputed:
+    // the prices live in the Studio's storage, and two documents about one
+    // design must not phrase the same fact differently.
+    if (Array.isArray(options.quoteLines)) {
+      for (const line of options.quoteLines) {
+        if (typeof line === "string" && line) statsLines.push(line);
+      }
     }
 
     // What the DIGITIZER assumed the operator would hoop.
@@ -249,6 +277,23 @@ const deps =
     cursorY += 0.15;
 
     // Ordered thread list.
+    //
+    // The heading, its caption and the chart line travel WITH the first row.
+    // Only the rows had a page break, so this block was drawn wherever the
+    // stats ended -- and the stats grew: the hooping rows, then the quote's
+    // bobbin, cost and machine-time lines, each feature green on its own.
+    // Measured 2026-10-02 with real jsPDF on the merge of the two: "Chart:"
+    // at y = 10.63 in, inside the bottom margin, under any hoop note; and on
+    // every full sheet the heading at the foot of page one with all of its
+    // rows on page two. The block is 0.22 + 0.18 (+ 0.2 for the chart line)
+    // of cursor before the first row, which then needs ROW_H of its own.
+    const swatchSize = 0.16;
+    const ROW_H = 0.22;
+    const headBlockIn = 0.22 + 0.18 + (options.chartLabel ? 0.2 : 0) + (colors.length ? ROW_H : 0);
+    if (cursorY + headBlockIn > PAGE_H_IN - MARGIN_IN) {
+      doc.addPage();
+      cursorY = MARGIN_IN + 0.25;
+    }
     doc.setFontSize(12);
     doc.setFont(undefined, "bold");
     doc.text("Thread Sequence", MARGIN_IN, cursorY);
@@ -286,8 +331,6 @@ const deps =
       doc.text("Chart: " + options.chartLabel, MARGIN_IN, cursorY);
       cursorY += 0.2;
     }
-    const swatchSize = 0.16;
-    const ROW_H = 0.22;
     for (let i = 0; i < colors.length; i++) {
       // BEFORE the row, not after it. Checking afterwards did both halves of
       // the defect at once: it drew a row that did not fit (at worst past the

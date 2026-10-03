@@ -686,6 +686,23 @@ garment gets no card. Trade categories, not sew-out constants: nothing reads
 them for stitches. *(confirmed 2026-10-01 — `test/fabrics.test.js`,
 `app/src/lib/hooping.spec.js`, `e2e/configurator-smoke.spec.js`; DOCTRINE)*
 
+**The review sheet and worksheet quote the job on the operator's own terms.**
+"Quote settings" on the Download sheet (`app/src/lib/quote.js`, one
+`embstudio:quote` record per browser — Kent's ruling, not per project) holds a
+machine, a running speed, a cone price and length, and an hourly rate; every
+field is optional and an empty one drops its row. Run time is charged per STOP
+(a colour stop the thread was not cut for counts; it cost nothing before), at
+the typed speed for the needle and the plan rate for the stops, and names the
+machine. Bobbin prints as 3/5 of the top-thread metres — Kent's ruling, after
+Madeira's 3 m per 1,000 stitches read 4.0 m beside 2.5 m of top thread on
+lettering. One profile ships, the SmartStitch S-1501 (15 needles, 1,200 spm
+nameplate used only as a ceiling on the typed speed); its source is a brand
+storefront, not a datasheet. Planning figures throughout — nothing here was
+timed on a machine, and no maker publishes trim or colour-change seconds, so
+a change is costed as a trim. Not built: per-machine re-sequencing, a bobbin
+price, needle-count warnings, the service lane's own run time.
+*(confirmed 2026-10-01 — `quote.spec.js`, `estimate.spec.js`, `pdfsheet.spec.js`, and the rows read in the running app)*
+
 **What holds it at Medium:** fabric-preset accuracy is gated on the controlled
 sew-out CARD, which has not been sewn — the one physical out so far (2026-09-01)
 was a single uncontrolled icon. See Cross-cutting issues.

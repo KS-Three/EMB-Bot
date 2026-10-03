@@ -8100,3 +8100,27 @@ sources the gain is inside the noise (two of five logos down), and a blurred
 synthetic (`logo_whitebg` at 5 px/mm) pays 12 → 21 trims.
 *(measured 2026-09-30 — `docs/fine-detail-work-grid-2026-09-30.md`;
 `tools/lowres_detail.py`; `tests/test_work_grid.py`)*
+
+## A per-1,000-stitches rule prices the stitch COUNT; our thread figure prices the PATH — the bobbin outran the needle (2026-10-01)
+
+The quote's bobbin row first shipped on Madeira's published rule, "approximately
+3m per 1000 stitches", basis printed, which Kent had approved. Run in the app
+on a "FRITSCH" lettering design it read **4.0 m of bobbin beside 2.5 m of top
+thread**. The rule says "for standard length stitches" (~4 mm); satin lettering
+is short ones, and `sewFacts` walks the real path, so the two figures sat on
+different bases side by side. Unit tests pinned the arithmetic and could not see
+it — the fixture there read 39.0 m against 1.8 m and passed.
+
+**Kent's ruling the same day:** bobbin is a SHARE of our own top-thread metres,
+3/5 (Madeira's 3 m to 5 m), printed as "(3/5 of top thread)". Derived — no
+maker states a ratio, and Coats' pair (2.3 / 6.0) gives 0.38 — so it is the
+generous end, and it is a planning figure. Metres, not "bobbin changes": a
+piece is almost never a whole bobbin and capacity varies by maker and colour.
+
+**What to do with it:** before printing any per-1,000-stitches trade figure
+(thread budget, bobbin, the $1-3 billing rule in law 36) next to a figure this
+repo measures from geometry, put both on one real lettering design and read
+them together. Two more of Kent's calls that day, so nobody re-asks: quote
+inputs are ONE record per browser, not per project; and machine profiles are
+per MODEL, S-1501 first, everyone else types a speed.
+*(ruled 2026-10-01 — `src/sewtime.js`, `app/src/lib/quote.js`)*

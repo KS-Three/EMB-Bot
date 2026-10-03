@@ -63,7 +63,7 @@ test("a design with nothing sewn states no facts at all", async () => {
   expect(sewSummary({ widthMM: 0, heightMM: 0, stitches: [{ x: 0, y: 0, type: "end" }] })).toEqual([]);
   expect(sewSummary({ stitches: [] })).toEqual([]);
   expect(sewSummary(null)).toEqual([]);
-  expect(sewFacts(null)).toEqual({ stitches: 0, threadChanges: 0, trims: 0, pathMm: 0, threadM: null });
+  expect(sewFacts(null)).toEqual({ stitches: 0, threadChanges: 0, trims: 0, stops: 0, pathMm: 0, threadM: null });
 });
 
 test("without the engine's factor there is NO metres row, not a wrong one", async () => {
@@ -82,6 +82,7 @@ test("without the engine's factor there is NO metres row, not a wrong one", asyn
     // "Run time" survives a missing thread factor on purpose: it is derived
     // from stitches and trims, which are still known. Only the thread
     // estimate depends on the factor, and only it is withheld.
+    // (Bobbin is a share of the thread figure, so it goes with it.)
     expect(sewSummary(D).map((r) => r.label)).toEqual(["Size", "Stitches", "Run time", "Thread changes", "Trims"]);
   } finally {
     EMB.THREAD_LENGTH_FACTOR = real;
@@ -95,8 +96,103 @@ test("the rows read in the order an operator uses them", async () => {
   // times they have to touch it, how much thread"). D is 7 stitches and 1
   // trim: 7 + 120 = 127 equivalents, well under a minute, so it floors to the
   // "~1 min" that stops a real job reading as "nothing to do".
-  expect(sewSummary(D).map((r) => r.label)).toEqual(["Size", "Stitches", "Run time", "Thread changes", "Trims", "Thread"]);
-  expect(sewSummary(D).map((r) => r.value)).toEqual(["30 × 10 mm", "7", "~1 min at 650 spm", "1", "1", "0.1 m (estimate)"]);
+  expect(sewSummary(D).map((r) => r.label)).toEqual(["Size", "Stitches", "Run time", "Thread changes", "Trims", "Thread", "Bobbin"]);
+  expect(sewSummary(D).map((r) => r.value)).toEqual([
+    "30 × 10 mm", "7", "~1 min at 650 spm", "1", "1", "0.1 m (estimate)",
+    "under 0.1 m (3/5 of top thread)",
+  ]);
+});
+
+// --- the quote (2026-10-01) --------------------------------------------------
+
+// 13,000 sewn stitches in two colours. `cutFirst` puts a trim in front of the
+// colour change, the way both of our engines write one.
+function twoColour(cutFirst) {
+  const stitches = [];
+  for (let i = 0; i < 6500; i++) stitches.push({ x: i, y: 0, type: "stitch" });
+  if (cutFirst) stitches.push({ x: 0, y: 0, type: "trim" });
+  stitches.push({ x: 0, y: 0, type: "color" });
+  for (let i = 0; i < 6500; i++) stitches.push({ x: i, y: 10, type: "stitch" });
+  return { widthMM: 100, heightMM: 50, stitches };
+}
+
+test("a colour change is one stop, whether or not the file cut for it first", async () => {
+  const { sewFacts } = await import("./estimate.js");
+  // Our engines: trim, then colour. One stop, not two.
+  expect(sewFacts(twoColour(true))).toMatchObject({ trims: 1, threadChanges: 1, stops: 1 });
+  // An imported file with a bare colour stop: no trim to clip, still a stop.
+  // This is the one that used to cost no time at all.
+  expect(sewFacts(twoColour(false))).toMatchObject({ trims: 0, threadChanges: 1, stops: 1 });
+  // D has one trim and one bare colour change.
+  expect(sewFacts(D).stops).toBe(2);
+});
+
+test("a bare colour stop now costs run time", async () => {
+  const { sewSummary } = await import("./estimate.js");
+  const stitches = [];
+  for (let i = 0; i < 6400; i++) stitches.push({ x: i, y: 0, type: "stitch" });
+  const none = sewSummary({ widthMM: 1, heightMM: 1, stitches });
+  // 6,400 / 650 = 9.85 -> 10. Five bare colour stops: + 600 / 650 -> 10.77 -> 11.
+  const withStops = stitches.slice();
+  for (let k = 0; k < 5; k++) {
+    withStops.push({ x: 0, y: 0, type: "color" }, { x: 0, y: 0, type: "stitch" });
+  }
+  const some = sewSummary({ widthMM: 1, heightMM: 1, stitches: withStops });
+  expect(none.find((r) => r.label === "Run time").value).toBe("~10 min at 650 spm");
+  expect(some.find((r) => r.label === "Run time").value).toBe("~11 min at 650 spm");
+});
+
+test("the operator's machine and speed are named in the run time", async () => {
+  const { sewSummary } = await import("./estimate.js");
+  const rows = sewSummary(twoColour(true), { profileId: "smartstitch_s1501", spm: 1000 });
+  // 13,000 / 1,000 = 13 min of needle, + one stop at the plan rate's ~11 s.
+  expect(rows.find((r) => r.label === "Run time").value)
+    .toBe("~13 min on your SmartStitch S-1501 at 1,000 spm");
+  // A machine with no typed speed is still quoted at the plan rate — the
+  // nameplate is a ceiling, never the basis.
+  const plan = sewSummary(twoColour(true), { profileId: "smartstitch_s1501" });
+  expect(plan.find((r) => r.label === "Run time").value)
+    .toBe("~20 min on your SmartStitch S-1501 at 650 spm");
+});
+
+test("bobbin metres print with the rule that produced them", async () => {
+  const { sewSummary } = await import("./estimate.js");
+  // 1.755 m of top thread x 3/5. The first version of this row used the
+  // maker's 3 m per 1,000 stitches and read 39.0 m here — twenty times the
+  // top thread, on a fixture of 0.1 mm stitches.
+  const rows = sewSummary(twoColour(true));
+  expect(rows.find((r) => r.label === "Bobbin").value).toBe("~1.1 m (3/5 of top thread)");
+  expect(rows.map((r) => r.label).indexOf("Bobbin")).toBe(rows.map((r) => r.label).indexOf("Thread") + 1);
+});
+
+test("no price entered, no dollar row — and each row needs only its own inputs", async () => {
+  const { sewSummary } = await import("./estimate.js");
+  const labels = (q) => sewSummary(twoColour(true), q).map((r) => r.label);
+  expect(labels()).not.toContain("Thread cost");
+  expect(labels()).not.toContain("Machine time");
+  expect(labels({ conePrice: 8 })).not.toContain("Thread cost"); // cone length missing
+  expect(labels({ hourRate: 30 })).toContain("Machine time");
+  expect(labels({ hourRate: 30 })).not.toContain("Thread cost");
+  expect(labels({ conePrice: 8, coneM: 5000 })).toContain("Thread cost");
+});
+
+test("the dollar rows show their working", async () => {
+  const { sewSummary, sewFacts } = await import("./estimate.js");
+  const d = twoColour(true);
+  const rows = sewSummary(d, { conePrice: 8, coneM: 5000, hourRate: 30 });
+  // The fixture's stitches are 0.1 mm apart, so it is 1.8 m of thread: a
+  // fraction of a cent, which must not print as "$0.00".
+  expect(sewFacts(d).threadM).toBeCloseTo(1.755, 2);
+  expect(rows.find((r) => r.label === "Thread cost").value)
+    .toBe("under $0.01 (1.8 m of a $8.00 / 5,000 m cone)");
+  // 20 min at $30/hr.
+  expect(rows.find((r) => r.label === "Machine time").value).toBe("$10.00 (20 min at $30.00/hr)");
+});
+
+test("every quote row label is one sewSummary can actually produce", async () => {
+  const { sewSummary, QUOTE_ROW_LABELS } = await import("./estimate.js");
+  const labels = sewSummary(twoColour(true), { conePrice: 8, coneM: 5000, hourRate: 30 }).map((r) => r.label);
+  for (const l of QUOTE_ROW_LABELS) expect(labels).toContain(l);
 });
 
 test("a single-colour design reports no thread change, and zero trims IS reported", async () => {

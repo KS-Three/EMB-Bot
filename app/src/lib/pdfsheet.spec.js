@@ -699,6 +699,52 @@ test("run time still prints when the design was never walked for trims", () => {
   expect(strings).toContain("Run time: ~7 min at 650 spm (incl. trims)");
 });
 
+// --- the quote on paper (2026-10-01) -----------------------------------------
+
+test("run time names the operator's machine and the speed they run it at", () => {
+  // 4,321 / 850 = 5.08 min of needle, + 6 stops x 120 / 650 = 1.11 -> 6.
+  const strings = sheetStrings(
+    baseDesign(),
+    metaFor("left_chest", {
+      sew: { trims: 6, stops: 6, threadM: 4.2, spm: 850, machineLabel: "SmartStitch S-1501" },
+    })
+  );
+  expect(strings).toContain("Run time: ~6 min on your SmartStitch S-1501 at 850 spm (incl. trims)");
+});
+
+test("run time is charged per stop when the caller counted stops", () => {
+  // Same design, same six trims — and four colour stops the thread was not
+  // cut for. 4,321 + 10 x 120 = 5,521 / 650 = 8.49 -> 8; six alone is 7.75
+  // -> 8 too, so use enough stops to cross a minute: 14 -> 6,001 / 650 = 9.2.
+  const strings = sheetStrings(
+    baseDesign(),
+    metaFor("left_chest", { sew: { trims: 6, stops: 14, threadM: 4.2 } })
+  );
+  expect(strings).toContain("Run time: ~9 min at 650 spm (incl. trims)");
+});
+
+test("bobbin metres print with the rule that produced them", () => {
+  // 4.2 m of top thread x 3/5 = 2.52 m.
+  const strings = sheetStrings(
+    baseDesign(),
+    metaFor("left_chest", { sew: { trims: 6, threadM: 4.2 } })
+  );
+  expect(strings).toContain("Bobbin: ~2.5 m (3/5 of top thread)");
+  // No thread figure, no bobbin figure: it is a share of that number.
+  const bare = sheetStrings(baseDesign(), metaFor("left_chest"));
+  expect(bare.some((s) => s.startsWith("Bobbin:"))).toBe(false);
+});
+
+test("dollar lines print only when the caller hands them over", () => {
+  const without = sheetStrings(baseDesign(), metaFor("left_chest"));
+  expect(without.some((s) => s.includes("$"))).toBe(false);
+  const withQuote = sheetStrings(
+    baseDesign(),
+    metaFor("left_chest", { quoteLines: ["Thread cost: $0.01 (4.2 m of a $8.00 / 5,000 m cone)", ""] })
+  );
+  expect(withQuote).toContain("Thread cost: $0.01 (4.2 m of a $8.00 / 5,000 m cone)");
+});
+
 test("the thread sequence says these numbers are the operator's to set", () => {
   const strings = sheetStrings(baseDesign(), metaFor("left_chest"));
   // DST carries no colour data at all, so the ordinal beside each cone is
@@ -718,4 +764,52 @@ test("an unknown garment states nothing rather than guessing", () => {
   expect(strings.some((s) => s.startsWith("Needle:"))).toBe(false);
   // The run time needs no garment, so it survives.
   expect(strings.some((s) => s.startsWith("Run time:"))).toBe(true);
+});
+
+// --- the full sheet: every optional line at once (2026-10-02) ----------------
+//
+// The off-the-paper sweep above passes `sew: { trims, threadM }` and no
+// garment, so it never met what two later features put between the render and
+// the thread list: the hooping advice (three rows for any garment we ship) and
+// the quote (bobbin, thread cost, machine time). Each landed green against it.
+// Together they are five more lines, and only the thread ROWS had a page
+// break. Measured with real jsPDF on the merge of the two: "Chart: ..." at
+// y = 10.63 in, inside the bottom margin, whenever a hoop note was printed —
+// and on every full sheet the "Thread Sequence" heading sat at the foot of
+// page one with all of its rows on page two.
+const FULL_META = {
+  garmentId: "left_chest",
+  hoop: { label: "8×8 in", widthMm: 200, heightMm: 200 },
+  chartLabel: "Isacord Polyester 40",
+  sew: { trims: 16, stops: 20, threadM: 7.1, spm: 850, machineLabel: "SmartStitch S-1501" },
+  quoteLines: [
+    "Thread cost: $0.01 (7.1 m of a $8.00 / 5,000 m cone)",
+    "Machine time: $2.50 (10 min at $15.00/hr)",
+  ],
+};
+
+function fullSheet(n, hoopNote) {
+  const colors = Array.from({ length: n }, (_, i) => ({ r: i * 6, g: 40, b: 90, name: "Thread " + (i + 1) }));
+  return buildWith(baseDesign({ colors, colorCount: n }), Object.assign({}, FULL_META, { hoopNote }));
+}
+
+test("with every optional line on, nothing is drawn past the bottom margin", () => {
+  for (const n of COLOUR_COUNTS) {
+    for (const hoopNote of HOOP_NOTES) {
+      expect({ n, noteLen: hoopNote.length, offPage: drawsBelowMargin(fullSheet(n, hoopNote)) })
+        .toEqual({ n, noteLen: hoopNote.length, offPage: [] });
+    }
+  }
+});
+
+test("the thread-sequence heading is never left on a page without its first row", () => {
+  for (const n of COLOUR_COUNTS) {
+    for (const hoopNote of HOOP_NOTES) {
+      const doc = fullSheet(n, hoopNote);
+      const head = doc.texts.find((t) => t.str === "Thread Sequence");
+      const first = doc.texts.find((t) => t.str === "1. Thread 1");
+      expect({ n, noteLen: hoopNote.length, headPage: head.page })
+        .toEqual({ n, noteLen: hoopNote.length, headPage: first.page });
+    }
+  }
 });
