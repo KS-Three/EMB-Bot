@@ -7305,6 +7305,16 @@ fix is theirs, not the engine's: pin `photo_prep_background_removal=False`
 where the premise is about something else. Filed as #553, not folded into
 the flip PR.
 
+**Correction 2026-10-02, when #553 was closed: the pin is `photo_prep=False`,
+not the cutout flag.** `photo_prep_background_removal=False` with prep still
+on is an explicit request for prep WITHOUT the cutout. That route is the most
+expensive arm on the acceptance sheet (`test_background_removal` §8), and
+neither machine was running it. CI's cutout is requested but unavailable, and
+since 2026-08-25 that skips prep entirely. `test_an_unavailable_cutout_falls_
+back_to_no_prep_at_all` asserts that this is the same geometry as
+`photo_prep=False`. So `photo_prep=False` is the pin that makes a machine with
+the venv measure exactly what CI measures. The four now carry it.
+
 ## Under rail comp the walk's target sat a half-width off the web, and the census named it (2026-09-29)
 
 The flip's MARINE trims (9 → 22) were first blamed on the artwork
