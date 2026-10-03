@@ -1534,8 +1534,16 @@ class PipelineConfig:
     # thread within 0.5 mm). The cause-side twin of
     # `satin_rails_follow_edge`, which reaches the same corners by letting
     # each rail chase its edge and roughens the rails to do it. Numbers:
-    # DOCTRINE 2026-09-19. False is byte-identical.
-    satin_cap_recentre: bool = False
+    # DOCTRINE 2026-09-19.
+    #
+    # FLIPPED ON 2026-10-03 (Kent's ruling, on his labelled sitting of that
+    # day, `docs/eye-pairs-2026-10-03/`): after on becker and tires -- the two
+    # logos where the change locator found it -- no difference on four, both
+    # bad on two, before on none; eight logos 84,475 -> 84,460 stitches and
+    # 455 -> 454 trims. Small by its own record: of Becker's 44 free ends 7
+    # carry a fork and 3 pass the guards. False is the pre-flip engine, byte
+    # for byte.
+    satin_cap_recentre: bool = True
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster
