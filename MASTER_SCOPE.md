@@ -372,12 +372,13 @@ about the facts.
 18. **OPEN: a COLD photo digitize is ~90 s and `fill_travel_under_cover` is ~58% of it.** The 2026-09-17 memo fixed the RE-stitch (79.3 → 44.6 s); the first digitize still pays the flag in full. Three ways out, all Kent's: flip it off (costs stitches, re-exposes the travel it hides), optimise `_reorder_for_cover` (golden-pinned — a win must be byte-identical), or accept it. **Do not re-derive the numbers** — method, noise floor, per-flag table and three INERT flags are in the doc. *(measured 2026-09-17 — `docs/flag-runtime-bills-2026-09-12.md`)*
 
 19. **One built-OFF satin flag is waiting on a call: `satin_cap_recentre`**
-   (the surviving cap fork — Latent 5, built 2026-09-22), drawn for the
-   2026-10-03 sitting beside `bean_letters` (21) and `split_off`.
-   `satin_patch_junctions = "satin"` is NOT one: `satin_junction_stack` has
+   (the surviving cap fork — Latent 5, built 2026-09-22). **Judged 2026-10-03,
+   not yet ruled:** after on becker and tires, the two logos where it shows;
+   no difference on four, both bad on two, before on none. The flip is Kent's.
+   `satin_patch_junctions = "satin"` is NOT waiting: `satin_junction_stack` has
    sewn that cover as its part C since 2026-09-19, so off and on are one design
    (8 of 8 logos identical). `satin_walk_cursor_reach_mm` stays parked for cloth
-   (Kent 2026-09-20). *(corrected 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`)*
+   (Kent 2026-09-20). *(confirmed 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`)*
 
 20. **Paired ground truth costs money or it does not exist.** No free source
    ships artwork PLUS a professional's stitch file of the same design, and the
@@ -396,16 +397,16 @@ about the facts.
    mode yields a different file from the one the review screen showed.
    *(found 2026-09-13 — `digitizer/tests/test_manual.py`)*
 
-21. **Flip `bean_letter_max_stroke_mm` to 1.0 — NEW 2026-10-02, built OFF.**
-   Small traced lettering sews as bean runs along the skeleton of its SOURCE
-   INK instead of satin blobs. Renders OFF above ON:
-   `docs/renders/bean-letters-2026-10-02/`. What to judge: bridge's
-   RESTAURANT reads R-E-S-T but both A's sew as a Y; Golke's thin line goes
-   clean, its bold line is untouched; **HOTEL FREMONT's main wordmark goes
-   bean at 80 mm** (0.67 mm strokes, the rule as ruled — it loses its slab
-   serifs). A lower line or a height cap is the cure if that is not wanted.
-   Gate 1: a 3-pass bean on knit stays `pending sew-out`.
-   *(built 2026-10-02 — spec `docs/superpowers/specs/2026-10-02-bean-letters-design.md`)*
+21. **`bean_letter_max_stroke_mm` at 1.0 — JUDGED 2026-10-03, stays OFF.**
+   Small traced lettering sewn as bean runs along the skeleton of its SOURCE
+   INK instead of satin blobs. On the labelled page Kent put today's satin
+   ahead on five of six logos and called bridge both bad; his reason is the
+   line's WEIGHT — *"little worms"*, *"aren't thick enough"*, *"to skinny"* —
+   while granting fremont's path reads cleaner. Open, and his: a heavier line
+   on the same path, or drop it. The render draws three passes as one thread,
+   so "too thin" is not yet separated from the picture (`suspected`); gate 1
+   holds a 3-pass bean on knit as `pending sew-out`.
+   *(judged 2026-10-03 — `docs/eye-pairs-2026-10-03/kent-notes.json`)*
 22. **Flip `fillColumns` on for the browser lanes — NEW 2026-10-03, built OFF.**
    Defect 52: a manual fill lays a float (or a stitch) across every cut-out
    on every row. To see it on a design of your own, turn on **Jumps** in the

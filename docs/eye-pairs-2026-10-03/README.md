@@ -6,7 +6,8 @@ waiting on his eye. Four were asked for — `satin_cap_recentre`,
 — and `split_off` rides with them, because the page it would replace
 (`back-1001`, built 2026-10-01) holds five `split_off` pairs and no verdict.
 
-**Published 2026-10-03, no verdicts yet.** Republished to
+**Published and judged 2026-10-03** — all 19 pairs, no ruling set; see
+"Outcome" at the end. Republished to
 `https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp` (version 10) after being
 driven in a browser from a local server (19 pairs, five arm heads, five
 tables, no console error). The first attempt was refused by the session's
@@ -103,3 +104,45 @@ box beside another session's full digitizer suite a run took 2 to 12.5
 minutes (mean 5.7), and the four lanes 84 minutes of wall clock.
 
 *(measured and published 2026-10-03 — Windows, Kent's box)*
+
+## Outcome — Kent's sitting, 2026-10-03 (all 19 judged, no ruling)
+
+Judged in seven minutes, 16:29Z to 16:36Z. Every verdict and note, verbatim:
+`kent-notes.json`. He set no per-arm ruling on the page.
+
+| arm | after better | before better | no difference | both bad |
+|---|---|---|---|---|
+| `bean_letters` | 0 | 5 | 0 | 1 |
+| `cap_recentre` | 2 | 0 | 4 | 2 |
+| `split_off` | 0 | 0 | 4 | 1 |
+
+- **`bean_letters` at 1.0 reads worse than today's satin, and his word for
+  why is weight.** drone, enthusiast, fremont, gaulke and golden_tee
+  *before*; bridge *both bad*. His notes: *"very thin and they don't look
+  like the actual letters"* (bridge), *"little worms"* (enthusiast), *"to
+  skinny and not clean"* (gaulke), *"cleaner in the after, but they aren't
+  thick enough"* (fremont), *"inconsistant and not uniform stitch
+  patterning"* (drone), *"hard to tell what one is better here"*
+  (golden_tee, still *before*). Fremont's note is the useful one: the path
+  along the source ink read cleaner, the line on it read too light. The flag
+  stays OFF. The session that drew the page had called gaulke's after-side
+  "clean line letters" before he looked; his eye said the opposite, which is
+  the reason the page takes his verdict and not a description.
+- **`cap_recentre`: after on the two logos where it does anything he can
+  see, no difference or both bad everywhere else, never before.** becker
+  (*"Th "E" and "N" is slightly cleaner on the after"*) and tires (*"The "T"
+  is slightly cleaner on the after"*) are exactly the two pairs the change
+  locator boxed. It costs 15 stitches fewer and one trim fewer across the
+  eight. The flip is his and he has not made it.
+- **`split_off`: no difference on four, both bad on becker.** As with
+  `split_7mm` on the texture sitting, the thread render gives him nothing to
+  see; it is a gate-1 question and cloth answers it, not this page.
+- **Three logos drew a *both bad*:** bridge (twice), gaulke, becker. No
+  flag here is what is wrong with them.
+
+One thing the bean verdict cannot separate *(suspected, not measured)*: the
+renderer draws each stitch at one thread's width, so three passes laid along
+one path draw as a single line. On cloth a three-pass bean builds up; on the
+page it cannot. "Too thin" may be the construction, the picture of it, or
+both, and gate 1 already holds a three-pass bean on knit as `pending
+sew-out`. Before the letters are rebuilt heavier, find out which.
