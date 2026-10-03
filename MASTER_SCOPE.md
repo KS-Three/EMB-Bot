@@ -290,7 +290,7 @@ here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art; human faces TABLED pending a more capable tier *(Kent, 2026-08-25)* |
 | 2. Font library & lettering | Implemented — 85 fonts, satin + bean/running + cross-stitch, LTR + Hebrew RTL | High (tech) / High (compliance). Zero stunted glyphs since the 2026-08-22 transform fix; the guards now assert their own coverage |
-| 3. Studio app / configurator | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — the 2026-09-01 icon was uncontrolled, so the card still gates this). Held at Medium by that gate alone. **The wizard is gone (2026-09-30, PR #585)** — one panel, a summary bar, a Download sheet; spec `docs/superpowers/specs/2026-09-30-studio-configurator-design.md`, PRs 3–4 pending. **PR 2 (#586): the garment tiles are a Polo/Hat/Tee pill row with a More › menu, and Studio gains an Original view that is registered on the stitches only for browser-traced art, NOT yet for the service's digitized lane (open: the service must return the art's content box)** *(built and driven 2026-09-30 — `GarmentPicker.spec.js`, `configurator-smoke.spec.js`)*. **Every display-layer defect this area has had came from DRIVING the app, none from reading it** — three sweeps, detail in the area doc and defect 42. The preview renders thread as a lit cylinder at physical width, eye-tuned not sew-verified; the customer can crop to the logo before the run *(2026-09-28)* |
+| 3. Studio app / configurator | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — the 2026-09-01 icon was uncontrolled, so the card still gates this). Held at Medium by that gate alone. **The wizard is gone (2026-09-30, PR #585)** — one panel, a summary bar, a Download sheet; spec `docs/superpowers/specs/2026-09-30-studio-configurator-design.md`, PR 3 (progressive disclosure) is what remains. **PR 4 (theme, branch `claude/configurator-theme`, landed before PR 3 by Kent's call): white page, one `--fill` neutral for controls, 13 px type, a 44 px top bar with an `EMB·BOT` wordmark, plain hovers no longer use accent or tint (at rest accent/tint stay on the CTA, selection, links, focus, the in-flow hint banner, the font-licence badge, the quality grade and the digitize/manual panels' control borders), type is 400/500 with 600 only on the summary bar's figures and the wordmark (base headings and `b`/`strong` are 500); every TEXT NODE in the top bar, the panel (empty and text-design states), the garment menu, the Download sheet and the My designs drawer is held to WCAG AA by a computed-colour spec, 0 failures across ~130 elements (it does not measure field values/placeholders, hover/focus states, the stage, the digitize/image/manual panels, tooltips or popovers), spec §6's sheet slide was not built, so the panel is restyled but still long** *(built and driven 2026-10-01 — `theme.css`, `theme-contrast.spec.js`)*. **PR 2 (#586): the garment tiles are a Polo/Hat/Tee pill row with a More › menu, and Studio gains an Original view that is registered on the stitches only for browser-traced art, NOT yet for the service's digitized lane (open: the service must return the art's content box)** *(built and driven 2026-09-30 — `GarmentPicker.spec.js`, `configurator-smoke.spec.js`)*. **Every display-layer defect this area has had came from DRIVING the app, none from reading it** — three sweeps, detail in the area doc and defect 42. The preview renders thread as a lit cylinder at physical width, eye-tuned not sew-verified; the customer can crop to the logo before the run *(2026-09-28)* |
 | 4. Export formats | Implemented | Varies by format — see below |
 | 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Every interaction was driven in a real browser against a live service. Manual draw mode traces over the uploaded artwork; right-click places a curved node |
 
@@ -336,21 +336,15 @@ about the facts.
 6. **The `scratch_corpus/` 37 files.** Gitignored; cloud checkouts are empty
    but all 37 are present on Kent's machine (confirmed 2026-08-17), so a local
    session can run the corpus legs today. Blocks cloud-side M2/M3 only.
-7. **26 glyphs that sew nothing, in 6 shipped fonts — SPLIT IN TWO 2026-08-28,
-   diagnosed from the shipped `.embf` binaries alone** (user-facing half
-   already closed — the Studio says "This font can't stitch …"). 20 are
-   `stripRunParamsIfSatin` taking runs-only glyphs' params; 6 are a GATE 1
-   refusal (no authored run length upstream — defaulting one is refused by
-   `test/run-fonts.test.js:44`). Full per-font diagnosis: area 2 doc,
-   "stripRunParamsIfSatin". **Still open, one grep not a session:** count
-   `running_stitch_length_mm` in `<ink-stitch>/src/roaring_twenties_KOR/
-   ltr.svg`. **It has to be a LOCAL session** — that path is inside
-   `scratch_ink/`, which is gitignored and absent from a cloud checkout
-   (confirmed 2026-09-06), the same way item 6 blocks the corpus legs. **>0** → the narrow fix (scope the strip to glyphs WITH columns)
-   revives the 20 — Kent's call, since inking those glyphs changes the bbox
-   auto-scaling of any text containing `+ - / < = > \ _ ¯ °`. **0** → all 26
-   are the same gate-1 case and this closes permanently.
-   *(measured 2026-08-28 — `.embf` decode; detail: area 2)*
+7. **RESOLVED 2026-09-15 — of the 26 glyphs that sewed nothing, the 20
+   `roaring_twenties_KOR`/`_small` ones sew again; 6 stay a GATE 1 refusal.**
+   The grep came back >0 on all twenty. Kent ruled 2026-09-13 to revive them,
+   and `stripRunParamsIfSatin` now strips only glyphs that carry satin
+   columns. The rebuild landed 2026-09-15. The other 6 (`western_light`,
+   `ondulamarif_*`) have no authored run length upstream, and defaulting one
+   is refused by `test/run-fonts.test.js:44`. This item read "still open"
+   until 2026-10-02.
+   *(resolved 2026-09-15 — `test/font-dead-glyphs.test.js`; detail: area 2)*
 10. **RESOLVED 2026-08-25 — Studio typography: "tighter and more editorial."** Kent's standing direction; new UI is set to it, not re-litigated. *(area doc)*
 
 11. **RESOLVED 2026-09-02 (Kent's call) — `cfg.is_photographic` is reachable from the UI.** Detection remains open as defect 15. *(confirmed 2026-09-07; correction in DOCTRINE)*
@@ -444,8 +438,10 @@ successful only: `digitizer` **min 31.2 / p50 51.0 / max 59.0**; `studio-e2e`
 5.5; `studio` 0.9; `engine` 0.5. A fifth, `art-fidelity-baseline`, is
 push-to-`main`-only and gates nothing.
 
-**Budget an hour per PR; read a 50-minute `digitizer` job as normal.** Medians
-keep climbing, so treat every number here as drifting and spend one `curl` on
+**Budget eighty minutes per PR, and read a 75-minute `digitizer` job as
+normal.** The record is 75.9 minutes, green, on #575 (2026-09-30); CLAUDE.md
+footgun 7 carries the trail. Medians keep climbing, so treat every number
+here as drifting and spend one `curl` on
 `/actions/runs/<id>/jobs` before calling a job stuck. Superseded figures and
 the climb: scope-history.
 
@@ -685,6 +681,23 @@ and terry, sharp on other wovens and caps, with its basis beside it; an unknown
 garment gets no card. Trade categories, not sew-out constants: nothing reads
 them for stitches. *(confirmed 2026-10-01 — `test/fabrics.test.js`,
 `app/src/lib/hooping.spec.js`, `e2e/configurator-smoke.spec.js`; DOCTRINE)*
+
+**The review sheet and worksheet quote the job on the operator's own terms.**
+"Quote settings" on the Download sheet (`app/src/lib/quote.js`, one
+`embstudio:quote` record per browser — Kent's ruling, not per project) holds a
+machine, a running speed, a cone price and length, and an hourly rate; every
+field is optional and an empty one drops its row. Run time is charged per STOP
+(a colour stop the thread was not cut for counts; it cost nothing before), at
+the typed speed for the needle and the plan rate for the stops, and names the
+machine. Bobbin prints as 3/5 of the top-thread metres — Kent's ruling, after
+Madeira's 3 m per 1,000 stitches read 4.0 m beside 2.5 m of top thread on
+lettering. One profile ships, the SmartStitch S-1501 (15 needles, 1,200 spm
+nameplate used only as a ceiling on the typed speed); its source is a brand
+storefront, not a datasheet. Planning figures throughout — nothing here was
+timed on a machine, and no maker publishes trim or colour-change seconds, so
+a change is costed as a trim. Not built: per-machine re-sequencing, a bobbin
+price, needle-count warnings, the service lane's own run time.
+*(confirmed 2026-10-01 — `quote.spec.js`, `estimate.spec.js`, `pdfsheet.spec.js`, and the rows read in the running app)*
 
 **What holds it at Medium:** fabric-preset accuracy is gated on the controlled
 sew-out CARD, which has not been sewn — the one physical out so far (2026-09-01)

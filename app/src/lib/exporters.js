@@ -1,7 +1,8 @@
 import { EMB } from "./emb.js";
 import { renderRealistic } from "./preview.js";
 import { exportViaService } from "./digitizer.js";
-import { sewFacts } from "./estimate.js";
+import { sewFacts, sewSummary } from "./estimate.js";
+import { loadQuote, profileById } from "./quote.js";
 
 export function exportDesign(design, format) {
   switch (format) {
@@ -141,7 +142,16 @@ export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoop
   // `app/public/engine/`), and duplicating the walk is how two numbers for
   // one design start to drift.
   const facts = sewFacts(design);
+  // The operator's quote inputs, read from the same storage the Download
+  // sheet edits, so the sheet on paper quotes what the screen just did. The
+  // dollar lines are the screen's own rows, reworded only by a colon.
+  const quote = loadQuote();
+  const profile = profileById(quote.profileId);
+  const quoteLines = sewSummary(design, quote)
+    .filter((r) => r.label === "Thread cost" || r.label === "Machine time")
+    .map((r) => r.label + ": " + r.value);
   EMB.buildWorksheetPDF(design, {
+    quoteLines,
     garmentLabel: garment.label || "",
     // The id as well as the label: the sheet resolves the fabric preset from
     // it to state the backing class and whether the goods want a topper. A
@@ -149,7 +159,13 @@ export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoop
     // first is what left the sheet guessing stabilizer from a stitch count.
     garmentId: garment.id || "",
     hoop: hoop ? { label: hoop.label, widthMm: hoop.widthMm, heightMm: hoop.heightMm } : null,
-    sew: { trims: facts.trims, threadM: facts.threadM },
+    sew: {
+      trims: facts.trims,
+      threadM: facts.threadM,
+      stops: facts.stops,
+      spm: quote.spm,
+      machineLabel: profile ? profile.label : "",
+    },
     // Whose thread numbering the sheet's codes belong to. The caller has
     // already snapped every colour to this chart's nearest cone, so the
     // label and the codes come from one palette object and cannot name

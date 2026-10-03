@@ -5675,6 +5675,36 @@ changes nothing.** The control above was run in parallel and still matched
 byte-for-byte, so the pipeline may be fanned out to make a 52-row sweep
 affordable without putting the numbers in question.
 
+**Addendum 2026-10-02: Linux on Kent's laptop is not that Linux.** The same
+control was run under WSL2 on the Windows box (Ubuntu 24.04, `python3.12`,
+the pinned `requirements.txt`, apt `tesseract-ocr` 5.3.4, no
+`rembg_isolated/venv`): all 52 rows at `2c60cd87`, the baseline's own
+`captured_at_commit`, against the baseline `origin/main` carries.
+
+- **The OCR half reproduces.** 47 of 52 rows are identical leaf for leaf,
+  and every legibility row is among them, including the five designs whose
+  OCR moved on Windows on 09-15.
+- **`photo/photo_grass_macro.png` does not.** left_chest score 10 → 22,
+  `TRIM_HEAVY:warn` gone, `link_thread_mm` 0.6 → 1.7,
+  `uncovered_total_mm2` 407.8 → 432.2; hat_front `uncovered_total_mm2`
+  460.2 → 499.2. The tool reports both rows and exits 0, since no grade
+  fell and no block finding appeared. `link_thread_mm` 1.7 is the value
+  Windows gave for that row on 09-15.
+- **Three more rows move under the noise floor:** `region_blobs` (both
+  garments) and `repro_gradient_white_icon` hat_front, by two stitches in
+  about twenty thousand or 0.001 of `same_hole_fraction`.
+- **The drift is deterministic and its cause is not found.** The five rows
+  came out byte-identical across two serial runs, a 6-worker pool, 8 / 4 /
+  1 cores, and with AVX2 and FMA disabled in numpy and OpenCV. What is
+  left is the machine (Ryzen 7 4700U) or a library those switches do not
+  reach; neither was tested.
+
+**So "capture on Linux" means cloud Linux or CI, not WSL on this laptop.**
+The box is still worth using for a `diff` whose OCR rows can be trusted,
+with `photo_grass_macro` ignored; the recipe is COOKBOOK "The WSL scorecard
+box on Kent's laptop". *(measured 2026-10-02 — WSL 3.0.1, kernel
+6.18.40.1; one machine, one commit)*
+
 ## A cost measured at one width is not a cost (2026-09-12)
 
 `cfg.edge_cap="bean"` was flipped ON 2026-09-11 on `+5.9–26.3%, median +13.4%`
@@ -8100,3 +8130,27 @@ sources the gain is inside the noise (two of five logos down), and a blurred
 synthetic (`logo_whitebg` at 5 px/mm) pays 12 → 21 trims.
 *(measured 2026-09-30 — `docs/fine-detail-work-grid-2026-09-30.md`;
 `tools/lowres_detail.py`; `tests/test_work_grid.py`)*
+
+## A per-1,000-stitches rule prices the stitch COUNT; our thread figure prices the PATH — the bobbin outran the needle (2026-10-01)
+
+The quote's bobbin row first shipped on Madeira's published rule, "approximately
+3m per 1000 stitches", basis printed, which Kent had approved. Run in the app
+on a "FRITSCH" lettering design it read **4.0 m of bobbin beside 2.5 m of top
+thread**. The rule says "for standard length stitches" (~4 mm); satin lettering
+is short ones, and `sewFacts` walks the real path, so the two figures sat on
+different bases side by side. Unit tests pinned the arithmetic and could not see
+it — the fixture there read 39.0 m against 1.8 m and passed.
+
+**Kent's ruling the same day:** bobbin is a SHARE of our own top-thread metres,
+3/5 (Madeira's 3 m to 5 m), printed as "(3/5 of top thread)". Derived — no
+maker states a ratio, and Coats' pair (2.3 / 6.0) gives 0.38 — so it is the
+generous end, and it is a planning figure. Metres, not "bobbin changes": a
+piece is almost never a whole bobbin and capacity varies by maker and colour.
+
+**What to do with it:** before printing any per-1,000-stitches trade figure
+(thread budget, bobbin, the $1-3 billing rule in law 36) next to a figure this
+repo measures from geometry, put both on one real lettering design and read
+them together. Two more of Kent's calls that day, so nobody re-asks: quote
+inputs are ONE record per browser, not per project; and machine profiles are
+per MODEL, S-1501 first, everyone else types a speed.
+*(ruled 2026-10-01 — `src/sewtime.js`, `app/src/lib/quote.js`)*

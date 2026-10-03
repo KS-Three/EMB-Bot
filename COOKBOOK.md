@@ -1197,31 +1197,31 @@ don't push for it.
 
 ## Known bugs (unresolved, not accepted — Kent's call on the fix)
 
-- **DST axis transposition — the WRITER half only, since 2026-09-07.**
-  EMB-Bot's own DST codec was transposed vs. the Tajima/pyembroidery standard
-  on both sides — confirmed via 4 independent sources + a clean-room decode.
-  Browser DST round-trips correctly against itself, which is why it shipped
-  undetected; every existing EMB-Bot DST is affected, so fixing the writer
-  means a migration path for old files.
+**None open as of 2026-10-02.** Every entry below is fixed and is kept for its
+trail. Put a new unresolved bug at the top, above this line's date.
 
-  **`src/dstimport.js` is FIXED** (PR #404): third-party DST now decodes
-  through `decodeDSTStandard`, so an imported file lands the right way round
-  instead of mirrored. That half needed no migration — nothing this app wrote
-  goes through it.
+- **DST axis transposition — FIXED 2026-09-08, both halves. The phantom end
+  stitch is FIXED too (#415).** EMB-Bot's own DST codec was transposed
+  against the Tajima/pyembroidery standard in both directions. Four
+  independent sources and a clean-room decode confirmed it. It shipped
+  undetected because browser DST round-tripped correctly against itself.
+  - The importer went standard first, in PR #404.
+  - The writer followed in `bca5a504`. `encodeRecord` is now byte-identical
+    to `pystitch.DstWriter.encode_record`, and `decodeDSTStandard` is a plain
+    alias of `decodeDST`.
+  - The phantom end stitch was the `end` record written as a move.
+    `src/dst.js` now stops at `if (st.type === "end") break;`.
 
-  **`src/dst.js`, the writer, is still transposed and still Kent's call.** It
-  also carries a second defect found the same day: a **phantom end stitch**,
-  because the `end` record's coordinates are written as a move, so every DST
-  this product has ever produced has one extra stitch past the design's last.
-  One line fixes it (`if (st.type === "end") break;`) and it changes the bytes
-  of every file, which is the same call as the transposition.
+  **Do not "fix" either half back.** This entry kept saying the writer was
+  "still transposed and still Kent's call" for weeks after it was fixed. A
+  stale instruction like that is how `crossval-stitch-formats.mjs` came to
+  tell its reader to un-fix the axis (memory,
+  `stale-diagnostics-and-two-flips-2026-09-13`).
 
-  What IS safe to hand out today: a project made only of auto-digitized
-  images exports DST through the service, and that path is correct —
-  measured 2026-09-07 at 80.3 x 16.7 mm in dst, pes and jef alike, all three
-  2,187 stitches, all three carrying the colour stop. The Download step says
-  so in those words. See `dst-codec-axis-discrepancy` in Kent's memory,
-  `docs/dst-axis-verdict-2026-07-31.md`, and scope-history 09-07.
+  **One thing stays true:** a `.dst` that EMB-Bot wrote BEFORE the fix is in
+  the old dialect and re-imports transposed. Nothing repairs old files. The
+  full trail is in CLAUDE.md footgun #1, `dst-codec-axis-discrepancy` in
+  memory, and `docs/dst-axis-verdict-2026-07-31.md`.
 - **Gradient-class designs fragment before blend treatment** — **FIXED
   2026-08-03**, same-day follow-up session. `gradient` class still segments
   via plain k-means (23 regions on the repro fixture, unchanged), but every
@@ -1586,6 +1586,86 @@ correction). Two rules stop a repeat:
    -- digitizer/digitizer_core` shows landed pipeline commits, any grade
    comparison against the baseline is comparing against a stale ruler —
    say so wherever the comparison is quoted.
+
+### The WSL scorecard box on Kent's laptop (2026-10-02)
+
+Kent's Windows laptop carries a WSL2 Ubuntu 24.04 distro built to match the
+CI `digitizer` job: `python3.12` (3.12.3), the pinned `requirements.txt`,
+apt `tesseract-ocr` 5.3.4, no `rembg_isolated/venv`. Claude Code does not
+run inside it; a Windows session calls in with `wsl`.
+
+**What it is for.** A scorecard `diff` whose OCR and legibility rows read
+the way CI's do, without waiting on a cloud routine. Windows cannot give
+that (DOCTRINE, the 2026-09-15 platform entry).
+
+**What it is not for.** Capturing a baseline, a golden, or any grade that
+gets quoted. `photo/photo_grass_macro.png` scores differently on this box
+on both garments with no engine change, so its two rows are the machine's
+and not the engine's (DOCTRINE, same entry, the 2026-10-02 addendum).
+Captures stay on cloud Linux or CI.
+
+**Layout, all inside the distro's own filesystem:**
+
+- `/root/EMB-Bot` is a plain clone of `origin`. Use it to fetch and to cut
+  worktrees. Do not develop in it: nothing under `/root` is backed up and
+  no Windows checkout can see its branches.
+- `/root/emb-control` is a detached worktree at `2c60cd87`, the commit the
+  current baseline was captured at. Its `digitizer/.venv` is the box's one
+  venv. Its `corpus_scorecard_baseline.json` is overwritten with
+  `origin/main`'s copy on purpose (the control compares that commit to
+  that file), so the tree reads dirty.
+- The distro has no Linux user, only root. `-u root` is not optional.
+
+**Scoring a branch.** Put the commands in a script and run the script; see
+the quoting trap below.
+
+```bash
+# run as: wsl -d Ubuntu-24.04 -u root -- bash /mnt/c/path/to/script.sh
+cd /root/EMB-Bot && git fetch origin
+git worktree add --detach /root/wt-NAME origin/BRANCH
+cd /root/wt-NAME/digitizer
+/root/emb-control/digitizer/.venv/bin/python tools/corpus_scorecard.py diff \
+    > /root/NAME.log 2>&1; echo "EXIT=$?" >> /root/NAME.log
+git -C /root/EMB-Bot worktree remove /root/wt-NAME
+```
+
+The borrowed interpreter works because the tool puts its own tree on
+`sys.path` *(verified 2026-10-02 — a fresh worktree at `5c99b460` imported
+`digitizer_core` from itself, not from the control tree)*. Rebuild the venv
+only when `requirements.txt` moves: `python3.12 -m venv .venv`, then
+`.venv/bin/pip install -r requirements.txt`. `uvloop` installs on Linux,
+so nothing is filtered out the way it is on Windows.
+
+**Budget 35 minutes for the plain tool.** `diff` is serial and took 34.4
+minutes for the 52 rows. `/root/scorecard_pool.py` on the box scores the
+same rows in a 6-worker pool in 18.0 minutes, then prints the tool's own
+`diff` and a zero-tolerance leaf comparison beside it; run it with the same
+interpreter from the worktree's `digitizer/`. The two reported the same
+movers, line for line. *(measured 2026-10-02 — both at `2c60cd87`)*
+
+**Reading the result.**
+
+- Read the log from Windows at
+  `\\wsl.localhost\Ubuntu-24.04\root\NAME.log`, or copy it to `/mnt/c/...`.
+- `photo_grass_macro` on either garment: ignore. Stitch counts two off on
+  `region_blobs` or `repro_gradient_white_icon`: also the box.
+- Rule 2 above still applies. A `diff` at a commit past the baseline's
+  `captured_at_commit` shows every pipeline change landed since, and those
+  are not the box's either. To judge one change, score its base and its
+  head and compare the two logs.
+
+**Traps, each hit while setting it up:**
+
+- **PowerShell to `wsl` to `bash -c` mangles `$` and nested quotes.** A
+  `sed` range and a `python -c` both failed that way. A script file run by
+  path has no quoting to lose.
+- **`wslpath` handed a Windows path through PowerShell drops the
+  backslashes.** Write the `/mnt/c/...` form yourself.
+- **Work under `/root`, never under `/mnt/c`.** The Windows drive is slow
+  from inside WSL and the Windows venvs are not Linux venvs.
+- **The VM holds its RAM until it idles out.** `wsl --shutdown` when done.
+- **`wsl --unregister Ubuntu-24.04` deletes the distro and everything in
+  `/root` with no confirmation.** That is the uninstall, not a reset.
 
 ### The eye-pairs reveal gallery (2026-09-17)
 
