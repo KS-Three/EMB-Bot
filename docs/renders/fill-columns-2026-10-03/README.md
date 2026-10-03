@@ -307,15 +307,121 @@ lock stitches")*
 
 **What it leaves**, with the option on:
 
-- **Two columns that touch at a point.** A scanline that runs exactly along
-  the wall of a hole or a notch makes two spans that touch at the wall's
-  corner. The move from one to the other has no length and is sewn all the
-  same: two penetrations in one hole, in the middle of a thread. 152 of the
-  159 above. The other 7 are a pass that lands on a corner of the very
-  column it then begins with. No cut, and no stub.
+- **Two columns that touch at a point: the 159 above.** The move from one to
+  the other has no length and was sewn all the same: two penetrations in
+  one hole. Gone since, with what else made them: "A move of no length",
+  below.
 - **A thread of one stitch.** A short row of a lattice underlay at the tip
   of a comb's tooth can still be cut to and cut from: 52 on 24 designs, all
   under fleece or terry, 0.7 to 2.5 mm long (94 on 42 before). Eight designs
   gained one, with the cut above.
+
+## A move of no length
+
+What the section above left: on 121 of the same 8,255 designs a pass the
+column walk sews put two penetrations on one point, 159 times. Traced in a
+copy of the engine, every one was a stitch to the point the needle was
+already on.
+
+**152 were the move between two spans of one scanline that meet at a
+point**, with a gap of no width between them. Each span has a length and is
+rightly a column. The move from the end of one to the start of the other
+has none. Three things make such a pair:
+
+- **A wall on a scanline: 136.** The scanline runs along a wall of a hole or
+  a notch that a quarter turn has left a hair off level (3e-14 px on a 10 mm
+  wall), and finds the wall's corner twice.
+- **A corner on a scanline: 15.** The top of a round hole, the inside corner
+  of a star.
+- **A notch of no width: 1 here, and far the most where it happens.** A
+  notch exactly twice the pull compensation wide (1.2 mm under terry) is
+  closed to a slit by the outline the fill is sewn to. Every row that
+  crosses the slit is two spans that meet on it, so the hole was doubled
+  once a ROW: 81 of the 649 stitches of an H under terry, 680 on one comb
+  under fleece. I had read this one as a corner. The independent re-measure
+  told them apart.
+
+**7 were a pass landing on its own first column.** When the thread can
+float to no corner a pass could start from, it lands on the nearest corner
+it can reach and travels from there. Its first move was then to the corner
+it stood on.
+
+128 of the 159 were in the fill and 31 in an underlay. None had a cut beside
+it, and none made a stub.
+
+**In 73 of the 159 the two points were not the same numbers.** They differ
+in their last digits, by 2e-12 px at most: a scanline misses a corner by a
+rounding error, or two edges do not meet to the last bit. A rule that asked
+for equal numbers would have left them. "The same point" is the measure the
+walk already uses round a ring: a millionth of a pixel.
+
+Now a move of no length lays no stitch (`sewTo`, `src/fill.js`): the needle
+is already there. Before and after, on those 8,255 designs, option on:
+
+| | before | after |
+|---|---|---|
+| two penetrations on one point, in a pass the column walk sews | 159, on 121 designs | **0** |
+| stitches | 19,242,860 | 19,242,701 |
+| cuts | 2,196 | 2,196 |
+| sewn thread | 57,630 m | 57,630 m |
+| float length | 318 m | 318 m |
+
+**Nothing else moves.** Read record by record, each new stitch file is the
+old one with those penetrations taken out, 159 in all, and no other
+difference. Option off or absent, all 8,255 are byte for byte what they
+were. No cut or stitch count in either table above changes, nor the sheet,
+nor the lock-stitch census (both tools re-run on both engines). With `ties`
+on, the 121 designs carry the same 276 locks on the same legs.
+
+**A drawing on whole numbers does it far more often than that sweep says.**
+A second one, 240 shapes drawn on whole numbers only (combs, T, L, U, E, H,
+staircases, badges with square holes, houses) as 8,400 designs: 1,727 on
+278 designs before and none after. 1,420 of them lay along slits, on ten
+combs whose gaps are twice fleece's pull compensation, and 6 were one leg
+of a longer way through the columns' corners, not a move of their own: the
+rule sits where a stitch is laid, so it has them too. Cuts 3,869 and 3,869.
+
+*(measured 2026-10-03 — both engines side by side; `test/fill.test.js` "a
+move of no length", `test/digitize.test.js`)*
+
+**The independent re-measure** built 49,920 designs of its own: 780
+drawings, 22 families on whole numbers and 120 random, spread over the four
+quarter turns, under all seven presets and none, with its own generator and
+its own reader. Option absent and option false: identical on every one.
+Option on: 1,474 such penetrations in 56,760 column-walk passes before and
+none after, cuts 7,140 and 7,140, each new file the old one with those
+records taken out. It corrected three things I had claimed:
+
+- **The notch of no width**, above: 581 of its 1,474.
+- **"On the spot of the one before it" is true before rounding, not always
+  in the file.** Two points 1e-14 px apart can fall either side of a 0.1 mm
+  boundary. In 18 of its 1,474 the old file had a stitch one unit long
+  there. It is gone all the same.
+- **One of the 1,474 was at the very end of its design**, not in
+  mid-thread. No cut beside it either.
+
+*(measured 2026-10-03 — an agent handed the claims as claims; its three
+counter-examples rebuilt here)*
+
+**What is still two stitches on one point**, with the option on. None of it
+is new, and none of it is a move:
+
+- **A stitch shorter than the file's unit: the larger part of what is
+  left.** Two penetrations a real distance apart, up to 0.14 mm, that the
+  0.1 mm file rounds onto one point: 2,689 on the 8,255 designs, 2,621 of
+  them in a column walk. The re-measure counts 15,566 on its own designs,
+  nearly all a row shorter than 0.1 mm at a tip or a sliver, and a machine
+  cannot tell one from the 159. "A row with a length, however short, is
+  still a row" is the rule that keeps them.
+- **The plain walk's doubled point**: 1,094 on the 8,255 ("Seen, not
+  changed").
+- **A thread of one stitch**, as above: 52 on 24 designs.
+
+With the option OFF the same 8,255 designs carry 16,575 such records where
+the option on now leaves 3,783: the plain walk sews every span and every
+move of no length it meets (12,344), and has its own short stitches (4,231).
+
+*(measured 2026-10-03 — the fixed engine, each record traced to the run it
+came from)*
 
 The flip is Kent's: MASTER_SCOPE defect 52, "Waiting on Kent" 22.

@@ -17677,3 +17677,69 @@ slow, and three rows of the lock-stitch census moved.
 Off, nothing moves: engine 668 passed. Not sewn. Flip is still Kent's:
 defect 52, "Waiting on Kent" 22.
 *(fixed 2026-10-03 — `test/fill.test.js`, `test/digitize.test.js`; `docs/renders/fill-columns-2026-10-03/README.md`, "A corner on a scanline")*
+
+## 2026-10-03 — `fillColumns`: a move of no length laid a stitch (what the corner fix left)
+
+**159 times on 121 of 8,255 designs** a pass the column walk sews still put
+two penetrations on one point, after the corner fix above. Checked before
+anything was changed: the engine as merged with `main` gives that sweep's
+"after" column to the stitch, and a probe in a copy of it traced all 159 to
+one call, the move to the next column, sewn to the point the needle was
+already on.
+
+**152 are two spans of one scanline that meet at a point.** Each has a
+length and is rightly a column; the move between them has none. 136 are a
+wall of a hole or a notch that a quarter turn leaves 3e-14 off level, 15 a
+corner on a scanline, and 1 a notch exactly twice the pull compensation
+wide, which the outline the fill is sewn to closes to a slit. **7 are a
+pass that lands on a corner of the very column it begins with.** No cut
+beside any, no stub. In 73 the two points differ in their last digits, so
+the rule is not "the same numbers": `sewTo` lays no stitch when the move is
+no longer than `ON_EDGE_EPS`, the walk's own measure round a ring. One line.
+
+**Measured**, both engines side by side on the same 8,255, flag on:
+
+| | before | after |
+|---|---|---|
+| a doubled point in a pass the column walk sews | 159, on 121 | 0 |
+| stitches | 19,242,860 | 19,242,701 |
+| cuts | 2,196 | 2,196 |
+| float length | 318 m | 318 m |
+
+Each new file is the old one with those 159 records taken out and nothing
+else, read record by record. Flag off or absent, 8,255 of 8,255 are
+byte-identical. The sheet, both cost tables and the lock-stitch census were
+re-run and no number moved. A second sweep of 240 shapes drawn on whole
+numbers only, 8,400 designs: 1,727 on 278 before, none after, cuts 3,869
+and 3,869. The suite's seeded shapes by hand, 9,000 of three seeds, each
+sewn told nothing and told where the thread is: every assertion holds, the
+cuts are the same shape for shape, and there was ONE doubled point in
+16,452 column walks before. Random shapes do not find this. Whole numbers
+do.
+
+**Mutated eleven ways: eight die, three are the same engine** (identical on
+8,400 designs). "Only the same numbers are the same point" died on one test
+alone, written for it.
+
+**The independent re-measure held the fix and failed three of my
+sentences.** 49,920 designs of its own, 312,000 builds: flag off identical
+on all; 1,474 doubled points before and none after; cuts 7,140 and 7,140.
+But 581 of its 1,474 were a cause I had filed under "corner": rows CROSSING
+a notch closed to a slit, where the hole is doubled once a row (81 of an
+H's 649 stitches under terry; 1,420 of my own 1,727, on ten combs under
+fleece). 18 of the records taken out were one unit from the one before
+them, not on it: two points 1e-14 apart either side of a 0.1 mm boundary.
+And one was at the very end of its design. All three were rebuilt here, and
+the slit has a test.
+
+**Left, and larger than what was fixed:** a stitch shorter than the file's
+unit still rounds onto the point before it. 2,689 on the 8,255 with the
+flag on (15,566 on the audit's designs, nearly all a row under 0.1 mm at a
+tip or a sliver), and a machine cannot tell one from the 159. The plain
+walk keeps its doubled point (1,094), and a thread of one stitch is where
+it was (52, on 24). With the flag OFF the same 8,255 carry 16,575 such
+records; on, 3,783.
+
+Off, nothing moves: engine 693 passed. Not sewn. Flip is still Kent's:
+defect 52, "Waiting on Kent" 22.
+*(fixed 2026-10-03 — `test/fill.test.js` "a move of no length", `test/digitize.test.js`; `docs/renders/fill-columns-2026-10-03/README.md`, "A move of no length")*
