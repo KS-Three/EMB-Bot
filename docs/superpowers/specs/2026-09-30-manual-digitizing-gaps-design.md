@@ -268,7 +268,7 @@ Rejected: refusing the edit outright the way the digitized lane's
 clamping over refusing on this surface.
 
 **Known residue, deliberately left** (ruling 3, the half not taken):
-`shapesToRegions:588` still drops an invalid shape SILENTLY, with no message
+`shapesToRegions:697` still drops an invalid shape SILENTLY, with no message
 anywhere. A self-crossing hand-drawn shape vanishes from the stitch-out today
 and still will. The clamp means editing cannot cause it; drawing and import
 still can.
@@ -408,8 +408,8 @@ this plan papers over.
 "is this a sewable closed ring". It becomes two rules: closed as today; open
 needs ≥2 points, total length over a floor, and self-crossing is *allowed*
 (a signature crosses itself). Every caller of `isValidShape` has to say which
-it means — `shapesToRegions:588`, `ManualPanel`'s draft gating,
-`lib/flow.js:22`, `fieldNodeEdit.js:165`'s bbox.
+it means — `shapesToRegions:697`, `ManualPanel`'s draft gating,
+`lib/flow.js:22`, `fieldNodeEdit.js:222`'s bbox.
 
 ## 8. Tests
 
