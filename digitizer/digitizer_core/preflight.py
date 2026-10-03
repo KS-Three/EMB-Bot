@@ -3668,6 +3668,12 @@ def _edge_wobble_metrics(result: PipelineResult | None,
 
     None without the regions (no outline to measure against), and None when
     no edge series is long enough to read -- never 0.0, which is a clean edge.
+
+    A shade band's runs are NOT read: they carry a derived id
+    (`_owning_region_id`), and the instrument pairs a run with a polygon by
+    equality. Left that way on purpose -- it is the tool's own reading, so a
+    number here is the number the docs quote; mapping the bands in is a
+    change to the measurement, with its own evidence to bring.
     """
     if result is None:
         return {f"edge_{k}": None for k in _EDGE_WOBBLE_KEYS}

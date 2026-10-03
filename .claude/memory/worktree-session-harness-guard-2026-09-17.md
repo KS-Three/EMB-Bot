@@ -16,6 +16,19 @@ is computed at runtime"), `cmd //c …`, and multi-line heredoc commits
 prefixed with `cd`. Plain `git …` from the persisted cwd works, and so does
 an UNQUOTED path with no spaces.
 
+**"Git-adjacent" is nearly every command here, because `digitizer` contains
+the letters `git`** (re-measured 2026-10-03, `edge-wobble-metrics`). The
+refusal text is always *"names git in a form too complex to verify"*, and it
+fired on commands with no git in them at all: `cd digitizer && <python> …`
+with a quoted `"$S/log"`, a `grep` that also read `../.gitattributes`, and a
+`grep -c $'\r' digitizer_core/…`. What passes: `cd digitizer` ALONE as its own
+call (the cwd persists), then unquoted space-free paths, `;` chains, plain
+redirects, plain `git add/commit/status/show` from that cwd. What does not:
+`$'…'` strings, quoted variables, `cd x && …`. Use the Grep/Read tools for
+anything pattern-shaped. And a helper script run BY PATH from the scratchpad
+gets its own directory on `sys.path`, not the cwd — `sys.path.insert(0,
+os.getcwd())` first, or `import digitizer_core` fails.
+
 **The venv path that works.** Worktrees have no `.venv`
 ([[worktree-venv-and-baselines]]); the main checkout's interpreter by its
 8.3 short name has no space and passes the guard:

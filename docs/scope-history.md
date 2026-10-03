@@ -17527,3 +17527,56 @@ in five lies on a stitch under 0.3 mm (lettering under 1%).
 
 Not sewn. Flip is Kent's: "Waiting on Kent" 23.
 *(built 2026-10-03 — `docs/lock-stitches-2026-10-03.md`, `tools/lock-stitch-census.mjs`)*
+
+## 2026-10-03 — Edge wobble reaches preflight as metrics and judges nothing (defect 46, closed)
+
+**Defect 46 as it stood, 2026-09-20 to 2026-10-03:** *"The smoothness score
+exists and preflight cannot see it. Law 37 wants a monotonic direction-change
+score with no cutoff; `tools/edge_smoothness.py`, `curve_fidelity.py`,
+`edge_wobble.py` and `curve_tiers.py` are exactly that — offline. No
+smoothness code appears among preflight's 24 codes or `warnings_codes.py`'s
+58, so the grade a customer sees is blind to Kent's most frequent complaint."*
+
+**What was built.** `edge_wobble`'s measurement moved from `tools/` into
+`digitizer_core/edge_wobble.py` — 311 lines, compared line for line against
+the file they left — and `run_preflight` reports `edge_wobble_p95_mm`,
+`edge_wobble_std_mm` and `edge_wobble_max_mm`, read against the regions' own
+polygons. None on a bare plan, None when no edge series is long enough to
+read. The tool keeps its CLI and renders and imports the rest.
+
+**Why one instrument of four.** `edge_wobble` is the only one that reads what
+preflight already holds (the regions' polygons and the plan). `edge_smoothness`
+needs a thread render registered to the artwork; `curve_fidelity`'s docstring
+says its absolute number "is not a grade" and is a paired measure;
+`curve_tiers` is a diff between two runs.
+
+**Why metrics and nothing else — three calls of Kent's.** 2026-10-01: a
+readout, the grade unchanged. 2026-10-02, in the bean-letters session: *"We
+shouldn't have to warn the user of anything."* 2026-10-03, shown that the
+first design's always-on row in the Quality report was that same thing:
+metrics only. So there is no finding, no sentence and no Studio change, and
+the grade is blind to edges by ruling. Law 37 agrees from the other side: no
+cutoff exists to invent.
+
+**Readings.** Default config on the 2026-10-01 tree, tool and preflight being
+the same function:
+
+| fixture | p95 mm | std mm | max mm | wobble s | preflight s |
+|---|---|---|---|---|---|
+| `logo_whitebg` | 0.038 | 0.022 | 0.14 | 0.03 | 2.8 |
+| `enthusiast_logo` (93 mm, left chest) | 0.186 | 0.083 | 0.91 | 0.08 | 11.6 |
+| `becker_marine_logo` | 0.217 | 0.107 | 0.90 | 0.18 | 15.7 |
+| `drone_render` | 0.127 | 0.064 | 0.82 | 0.54 | 17.6 |
+| `photo_dof_meadow` (80 mm, 10-03, a lane with no rembg venv) | 0.120 | 0.063 | 0.72 | 0.35 | 5.2 |
+
+The synthetic control reads clean and Becker roughest, which is the order of
+Kent's complaints; that is five fixtures and not a validation. The number has
+still not met his eye.
+
+**What it does not do.** It changes no grade (`test_it_judges_nothing` scores
+one rough plan with its outline and without, and was watched failing against
+an injected finding). It is skipped by `corpus_scorecard.diff` until the
+baseline is recaptured, because that diff reads only keys both sides hold. A
+shade band's runs carry a derived shape id and are not measured, the same as
+in the tool.
+*(built 2026-10-03 — `tests/test_edge_wobble_metrics.py`, 8; `digitizer_core/edge_wobble.py`)*
