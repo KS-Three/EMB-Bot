@@ -41,8 +41,11 @@ lettering builder's fill is not staggered and does not ship either
 **Its audit held nine claims of eleven.** Failed: "equal to the last bit"
 (my proof sorted rows and sewed them all left to right, and never aimed a
 row at the tolerance) and "no stitch under the shortest is added" (false for
-a builder asked for a stitch under 2 mm). Both fixed; the second proof is in
-thread order, 51,760 rows, and fails the audited commit on 997.
+a builder asked for a stitch under 2 mm). The first is fixed; the second
+proof is in thread order, 51,760 rows, and fails the audited commit on 997.
+The second is a limit of the rule and is stated as one: my patch for it
+(the shortest taken as half a stitch) failed the audit's second look, moved
+no floor, made a third more short stitches, and was taken out.
 
 **How to apply:**
 
@@ -52,6 +55,9 @@ thread order, 51,760 rows, and fails the audited commit on 997.
 - A mechanism is not a place. I explained the 7.5% and stopped; the auditor
   asked where they are and found the line of dashes. Measure where a
   remainder lies before calling it scattered.
+- When the test for a fix is green BEFORE the fix, stop. Mine was ("no stitch
+  under half a stitch"), I kept the fix anyway, and it was no fix. A limit
+  of a rule is stated, not patched.
 - Count a channel across THREE rows. Two in a line is the rule (a halved
   step lands by the next row's grid point); three is the defect.
 - Print the count before writing "none". The table said 0.0%; it was 6.

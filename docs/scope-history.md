@@ -17592,12 +17592,17 @@ fails 997 of the same rows.
 
 The audit failed a second claim, "no stitch under the shortest is added":
 true at the default, false for a builder asked for a stitch under 2 mm
-(29,852 stitches under 1 mm became 64,004). The shortest is now never taken
-as more than half a stitch. And it asked where the 7.5% are, which I had
-written off as scattered: 95.6% sit 1.5 to 2.6 mm from a row's end, so along
-a straight edge they are a pair of holes every four rows, a line of dashes
-beside the edge. Python's fill has it too. It is kept, and stated for the
-flip.
+(29,852 stitches under 1 mm became 64,004). That is a limit of the rule, not
+a slip in the port: a step between one stitch and one stitch plus 1 mm is
+halved. My answer, taking the shortest as half a stitch there, failed the
+audit's second look: a halved step was never under half a stitch, so the
+floor did not move, and the lower clearance made a third more short stitches
+(45,552 against 34,458). It was taken out and the limit is stated instead.
+And the audit asked where the 7.5% are, which I had written off as
+scattered: 95.6% sit 1.5 to 2.6 mm from a row's end, so along a straight
+edge they are a pair of holes every four rows, a line of dashes beside the
+edge. Python's fill has it too. It is kept, and stated for the flip. The
+second look held every other claim about the fixes.
 
 Not sewn from this lane. Flip is Kent's: "Waiting on Kent" 24.
 *(built 2026-10-03 — `docs/renders/fill-stagger-2026-10-03/`, `tools/fill-stagger-census.mjs`)*
