@@ -449,13 +449,17 @@ about the facts.
    shipped beside staggered: `docs/renders/fill-stagger-2026-10-03/`. The
    flag puts the holes on the Python fill's shifted grid instead; 6 holes in
    148,477 still head three in a line. Row for row it is the Python rule
-   (32,000 random rows, equal to the bit). Cost: +7% stitches (+2% on a plain
-   square, +12% on a design in small pieces) and stitches down to 1 mm where
-   a row meets the edge (2 mm today). No cut, no float and no edge moves.
-   **Not sewn from this lane.** A flip is `fillStagger: true` at
-   `generate.js`'s three shape call sites and a re-pin of every shape
-   snapshot. Not covered: the fill under a letter too wide for satin
-   (`satinplay.js`).
+   (51,760 rows in thread order, equal to the bit, after an audit failed the
+   first proof). Cost: +7% stitches (+2% on a plain square, +12% on a design
+   in small pieces) and stitches down to 1 mm where a row meets the edge
+   (2 mm today). No cut, no float and no edge moves. **What it leaves: a
+   line of dashes.** A first or last step over a stitch is halved, and the
+   half lands by the next row's grid hole: a pair of holes every four rows,
+   about 2 mm inside a straight edge, where today there is a solid line every
+   4 mm across the fill. Python's fill does the same. **Not sewn from this
+   lane**; the honest choices are flip now, or sew one square and look for
+   the dashes. A flip is `fillStagger: true` at `generate.js`'s three shape
+   call sites and a re-pin of every shape snapshot.
    *(measured 2026-10-03 — [`docs/renders/fill-stagger-2026-10-03/`](docs/renders/fill-stagger-2026-10-03/README.md))*
 
 ## Cross-cutting issues

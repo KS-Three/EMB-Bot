@@ -17576,12 +17576,28 @@ point) and 6 holes of 148,477 at the head of three in a line. Stitches
 +6.9%, 4.70 a row to 5.12; the shortest stitch along a row 2 mm to 1 mm;
 cuts 176 and 176.
 
-The port is exact where it can be checked: on 32,000 random rows the holes
-`tatamiFill` returns equal the Python fill's (`_row_points`, then
-`split_long_moves`) to the last bit. Two things were taken from what the
-Python engine had already paid for instead of being found again: the slot
-order, and a tolerance on "longer than a stitch" (its defect 25 halved 8 to
-10% of a fill's stitches on float dust).
+The port was to be exact where it can be checked: on 32,000 random rows the
+holes `tatamiFill` returns equalled the Python fill's (`_row_points`, then
+`split_long_moves`) to the last bit. **Its own audit held nine claims of
+eleven and failed that one.** The proof had sorted each row and sewn every
+row left to right, and Python cuts a long step from the end the thread comes
+from: six rows of 39,979 were one ulp off, all sewn right to left. And the
+tolerance on "longer than a stitch" was taken from Python in spirit, not in
+size: Python's is a micron, the port's was a billionth of a stitch, and in
+the band between them one row of 12.2 million was halved here only. Both
+are now Python's (`splitTol`, the builder's `SPLIT_TOLERANCE_MM`), and the
+second proof is in thread order with rows aimed at the tolerance: 51,760
+rows, 345,858 penetrations, equal to the bit, where the audited commit
+fails 997 of the same rows.
+
+The audit failed a second claim, "no stitch under the shortest is added":
+true at the default, false for a builder asked for a stitch under 2 mm
+(29,852 stitches under 1 mm became 64,004). The shortest is now never taken
+as more than half a stitch. And it asked where the 7.5% are, which I had
+written off as scattered: 95.6% sit 1.5 to 2.6 mm from a row's end, so along
+a straight edge they are a pair of holes every four rows, a line of dashes
+beside the edge. Python's fill has it too. It is kept, and stated for the
+flip.
 
 Not sewn from this lane. Flip is Kent's: "Waiting on Kent" 24.
 *(built 2026-10-03 — `docs/renders/fill-stagger-2026-10-03/`, `tools/fill-stagger-census.mjs`)*
