@@ -26,7 +26,9 @@ on the page; `split_off` is on it under this sitting's tag.
 to its own lane when these were drawn. It is in the base on purpose: the
 envelope's ruling was given on pairs drawn without `satin_tip_caps` and had
 to be re-read once that shipped. If the crown cover lands changed, or does
-not land, these pairs are re-rendered. What it moves on its own: becker
+not land, these pairs are re-rendered. **It landed the same day as #608, the
+same one-file change to `config.py`, so the base these pairs were drawn on is
+`main` as shipped.** What it moves on its own: becker
 9,662 → 9,715 stitches, enthusiast 2,474 → 2,486.
 
 Eight logos at the Studio's defaults (`REAL_ART` less `screenshot`, less
