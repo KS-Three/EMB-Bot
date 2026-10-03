@@ -85,6 +85,15 @@ ARMS: dict[str, dict] = {
     # there: a centre run and a ladder zigzag under every one; the pro's
     # crosshatch is denser, not different in kind.)
     "split_off": {"split_satin": False},
+    # The built-OFF sitting (2026-10-03): the flags that sat finished and
+    # unjudged -- MASTER_SCOPE "Waiting on Kent" 19 and 21, and #602. One
+    # page for all of them, `patch_junctions` above with them for its second
+    # look: his 09-18 and 09-28 verdicts on it predate rail comp, under which
+    # BECKER's C bowl sews as the cover's fill and this is the other
+    # construction. `bean_letters` sews at 1.0, the value Kent picked.
+    "cap_recentre": {"satin_cap_recentre": True},
+    "keep_counters": {"keep_counters": True},
+    "bean_letters": {"bean_letter_max_stroke_mm": 1.0},
 }
 
 

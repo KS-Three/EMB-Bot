@@ -208,6 +208,29 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "envelope reached. The envelope's coverage against its texture, on the "
         "letters. Say in your own words what 'flow' and 'structured' mean on a "
         "satin letter -- that note is worth more than the verdict."),
+    "cap_recentre": (
+        "satin_cap_recentre=True",
+        "A satin stroke's flat end is rebuilt square where its spine ends in a "
+        "surviving cap fork: today such an end tapers to a point at one corner "
+        "and leaves the other corner bare. The cause-side twin of the rail "
+        "reach, which gets to the same corners by letting each rail chase its "
+        "edge. Look at the ends of stems and bars."),
+    "keep_counters": (
+        "keep_counters=True",
+        "A letter's counter on a COLOURED ground stays a hole: today a counter "
+        "under the small-shape floor is absorbed into the letter around it and "
+        "the letter sews as one bar. It cannot read a counter the image has "
+        "already closed (bridge's JPEG), and it puts no ground thread in the "
+        "hole."),
+    "bean_letters": (
+        "bean_letter_max_stroke_mm=1.0",
+        "Small lettering whose INK strokes are under 1.0 mm sews as three-pass "
+        "bean runs along the skeleton of its source ink instead of as satin "
+        "blobs, and the ground under it sews through. Its own listed prices, "
+        "measured at 80 mm: bridge's RESTAURANT reads R-E-S-T with both A's as "
+        "a Y, and HOTEL FREMONT's main wordmark goes bean and loses its slab "
+        "serifs. The 1.0 mm line is a gate-1 number set without cloth: the page "
+        "says which reads right, only cloth says which sews right."),
 }
 
 # Arms that left the pending table because they SHIPPED. A sitting rendered
