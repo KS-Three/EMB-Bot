@@ -906,19 +906,24 @@ test("buildQualityDesign: a ring with no area inside a hole is not an island to 
   // Three points in a line, lying in a cut-out. It is wholly inside a hole,
   // so by the count it is an island; grown by the compensation it became a
   // sliver 1.2 mm wide and was FILLED, in the middle of the hole. A ring with
-  // no area has no ground to compensate, and is left as drawn, as it always
-  // was (the rule a hole that folds when shrunk has always had).
+  // no area is no island: it is what it always was, to every reader.
+  //
+  // And "no area" is not "exactly none". The audit's re-check moved the
+  // middle point a millionth of a micron off the line, and that ring was
+  // grown and filled again: the first cure had asked for the float to be 0.
   const fabric = FABRICS.getFabric("terry_towel");
-  const shape = level({ outer: boxPx(0, 0, 240, 240), holes: [boxPx(60, 60, 180, 180), ring([[90, 120], [120, 120], [150, 120]])] });
-  bothWalks((fillColumns, walk) => {
-    const d = drawn(shape, 240, { fabric, fillColumns });
-    let inHole = 0;   // fill stitches more than 1 mm inside the cut-out
-    for (const run of d.runs) {
-      if (run.kind !== "fill") continue;
-      for (let i = run.i0; i <= run.i1; i++) if (d.stitches[i].type === "stitch" && Math.abs(d.stitches[i].x) < 50 && Math.abs(d.stitches[i].y) < 50) inHole++;
-    }
-    assert.strictEqual(inHole, 0, "fill stitches in the cut-out" + walk);
-  });
+  for (const [name, line] of [["three points in a line", [[90, 120], [120, 120], [150, 120]]], ["a hair off the line", [[90, 120], [120, 120.000000001], [150, 120]]]]) {
+    const shape = level({ outer: boxPx(0, 0, 240, 240), holes: [boxPx(60, 60, 180, 180), ring(line)] });
+    bothWalks((fillColumns, walk) => {
+      const d = drawn(shape, 240, { fabric, fillColumns });
+      let inHole = 0;   // fill stitches more than 1 mm inside the cut-out
+      for (const run of d.runs) {
+        if (run.kind !== "fill") continue;
+        for (let i = run.i0; i <= run.i1; i++) if (d.stitches[i].type === "stitch" && Math.abs(d.stitches[i].x) < 50 && Math.abs(d.stitches[i].y) < 50) inHole++;
+      }
+      assert.strictEqual(inHole, 0, name + ": fill stitches in the cut-out" + walk);
+    });
+  }
 });
 
 test("buildQualityDesign: two holes that cross are still two holes", () => {

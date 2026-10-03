@@ -537,46 +537,65 @@
     for (const q of ring) { if (q.x < x0) x0 = q.x; if (q.x > x1) x1 = q.x; if (q.y < y0) y0 = q.y; if (q.y > y1) y1 = q.y; }
     return { x0, y0, x1, y1 };
   }
+  // A ring's edges for the two meeting tests below, in the order a line swept
+  // across the drawing comes to them: each with its reach, `lo` to `hi`, along
+  // a SLANTED axis. Two edges that meet overlap along any axis, so an edge is
+  // tried only against the ones still under the line. Slanted, because a
+  // drawing's walls run straight up and straight across: along x, the 4,000
+  // edges of one upright wall all sit at one value, each is tried against all
+  // the rest, and an island said in that many points took half a second.
+  // `box`: only the edges that enter it.
+  function sweptEdges(ring, box) {
+    const slant = 0.6180339887, n = ring.length, edges = [];
+    for (let i = 0; i < n; i++) {
+      const p = ring[i], q = ring[(i + 1) % n];
+      if (box && (Math.max(p.x, q.x) < box.x0 || Math.min(p.x, q.x) > box.x1 || Math.max(p.y, q.y) < box.y0 || Math.min(p.y, q.y) > box.y1)) continue;
+      const up = p.x + slant * p.y, uq = q.x + slant * q.y;
+      edges.push({ i, p, q, lo: Math.min(up, uq), hi: Math.max(up, uq) });
+    }
+    return edges.sort((e, f) => e.lo - f.lo);
+  }
   // How ring a lies against ring b: wholly "inside" it, "around" it, "apart"
   // from it, or the two "meet" (an edge of one crosses or touches an edge of
   // the other). `boxA`, `boxB`: their ringBox. Two rings can only meet inside
   // the box both reach into, so rings nowhere near each other -- the holes of
   // a badge -- cost one comparison, and only the edges that enter that box
-  // are tried against each other.
+  // are tried at all.
   function ringsLie(a, b, boxA, boxB) {
-    const x0 = Math.max(boxA.x0, boxB.x0), y0 = Math.max(boxA.y0, boxB.y0), x1 = Math.min(boxA.x1, boxB.x1), y1 = Math.min(boxA.y1, boxB.y1);
-    if (x0 > x1 || y0 > y1) return "apart";
-    const entering = (ring) => {
-      const edges = [];
-      for (let i = 0; i < ring.length; i++) {
-        const p = ring[i], q = ring[(i + 1) % ring.length];
-        if (Math.max(p.x, q.x) >= x0 && Math.min(p.x, q.x) <= x1 && Math.max(p.y, q.y) >= y0 && Math.min(p.y, q.y) <= y1) edges.push([p, q]);
-      }
-      return edges;
-    };
-    const ea = entering(a), eb = ea.length ? entering(b) : [];
-    for (const [p, q] of ea) for (const [u, v] of eb) if (segmentsMeet(p, q, u, v)) return "meet";
+    const both = { x0: Math.max(boxA.x0, boxB.x0), y0: Math.max(boxA.y0, boxB.y0), x1: Math.min(boxA.x1, boxB.x1), y1: Math.min(boxA.y1, boxB.y1) };
+    if (both.x0 > both.x1 || both.y0 > both.y1) return "apart";
+    const ea = sweptEdges(a, both), eb = ea.length ? sweptEdges(b, both) : [];
+    // the two lists merged: each edge against the other ring's edges still under the line
+    let ia = 0, ib = 0, openA = [], openB = [];
+    while (ia < ea.length || ib < eb.length) {
+      const fromA = ib >= eb.length || (ia < ea.length && ea[ia].lo <= eb[ib].lo);
+      const e = fromA ? ea[ia++] : eb[ib++];
+      const under = (fromA ? openB : openA).filter((f) => f.hi >= e.lo);
+      if (fromA) openB = under; else openA = under;
+      for (const f of under) if (segmentsMeet(e.p, e.q, f.p, f.q)) return "meet";
+      (fromA ? openA : openB).push(e);
+    }
     if (pointInPoly(a[0], b)) return "inside";
     return pointInPoly(b[0], a) ? "around" : "apart";
   }
   // A ring's corners with no point said twice running (a ring handed over
-  // closed says its first point again at the end).
+  // closed says its first point again at the end; to within a billionth of a
+  // px, since a closing point that was computed rarely lands exactly).
   function distinctCorners(ring) {
-    return ring.filter((p, i) => { const q = ring[(i + 1) % ring.length]; return p.x !== q.x || p.y !== q.y; });
+    return ring.filter((p, i) => { const q = ring[(i + 1) % ring.length]; return Math.abs(p.x - q.x) > 1e-9 || Math.abs(p.y - q.y) > 1e-9; });
   }
-  // Does a ring cross or touch ITSELF: two edges that are not neighbours
-  // meeting? Edges are tried only against those whose reach in x overlaps
-  // theirs, so a ring of thousands of short edges costs little.
+  // Does a ring cross or touch ITSELF: two edges that are not neighbours meeting?
   function crossesItself(ring) {
-    const pts = distinctCorners(ring), n = pts.length, edges = [];
-    for (let i = 0; i < n; i++) { const p = pts[i], q = pts[(i + 1) % n]; edges.push({ i, p, q, lo: Math.min(p.x, q.x), hi: Math.max(p.x, q.x) }); }
-    edges.sort((e, f) => e.lo - f.lo);
-    for (let a = 0; a < n; a++) {
-      for (let b = a + 1; b < n && edges[b].lo <= edges[a].hi; b++) {
-        const apart = Math.abs(edges[a].i - edges[b].i);
+    const pts = distinctCorners(ring), n = pts.length;
+    let open = [];
+    for (const e of sweptEdges(pts)) {
+      open = open.filter((f) => f.hi >= e.lo);
+      for (const f of open) {
+        const apart = Math.abs(e.i - f.i);
         if (apart === 1 || apart === n - 1) continue;   // neighbours share a corner
-        if (segmentsMeet(edges[a].p, edges[a].q, edges[b].p, edges[b].q)) return true;
+        if (segmentsMeet(e.p, e.q, f.p, f.q)) return true;
       }
+      open.push(e);
     }
     return false;
   }
@@ -588,6 +607,12 @@
   // one another: two cut-outs that overlap are two holes, as they always were.
   // -> one true/false per ring. (`groupRingsIntoShapes` hands a bullseye over
   // as the outline plus [hole, island]; so may any direct caller.)
+  //
+  // A ring with NO AREA to speak of is no island, whatever it lies in: three
+  // points in a line, or a hair off one, lying in a cut-out. There is no
+  // ground in it to fill, and grown by a compensation it became a sliver a
+  // millimetre wide, sewn in the middle of the hole. (1e-6 px2: what
+  // fillRingsOf has always called a ring that has collapsed.)
   //
   // The `fillColumns` edge run (underlayRuns) asks its own, older question, of
   // one corner of the ring. The two agree on every ring that is wholly inside
@@ -617,7 +642,7 @@
         open.push(i);
       }
     }
-    return depth.map((n) => n % 2 === 1);
+    return depth.map((n, i) => n % 2 === 1 && Math.abs(signedArea(holes[i])) >= 1e-6);
   }
 
   // Group a flat list of rings (e.g. glyph contours) into shapes with holes:
@@ -837,13 +862,10 @@
       // can't prevent. Per hole: if the inset flips signed-area sign vs
       // the original (winding inverted) or its area is ~0 (collapsed),
       // discard the offset and keep the ORIGINAL hole ring.
-      // An island is held to the same test, which for it asks one thing: a
-      // ring with no area (three points in a line, lying in a cut-out) has no
-      // ground to grow, and is left as drawn, as it always was. And an island
-      // is grown from its corners said ONCE: said twice running, as a ring
-      // handed over closed says its first, a corner gets a wedge three times
-      // the compensation long from the offset (which the outline and the
-      // holes of such a ring have always had, and still have).
+      // An island is grown from its corners said ONCE: said twice running, as
+      // a ring handed over closed says its first, a corner gets a wedge three
+      // times the compensation long from the offset (which the outline and
+      // the holes of such a ring have always had, and still have).
       const moved = holes.map((hh, i) => {
         const off = islands[i] ? offsetRing(distinctCorners(hh), pullCompPx, true) : offsetRing(hh, pullCompPx, false);
         const a0 = signedArea(hh), a1 = signedArea(off);
