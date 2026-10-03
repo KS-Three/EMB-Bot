@@ -1421,7 +1421,13 @@ class PipelineConfig:
     # apex widening closed its hole and was retracted the same day for
     # spending 0.0088 of `lost_frac` on overshoot, and a cover that spills
     # thread outside the artwork fails for exactly that reason.
-    satin_crown_cover: bool = False
+    #
+    # FLIPPED ON 2026-10-02 (Kent's call), on exactly that evidence: MARINE
+    # 127.4 11 -> 1 hole (22.9 -> 1.5 mm2) at +2.6% stitches, `lost_frac`
+    # 0.1800 -> 0.1730; corpus holes 20 -> 10 with `lost_frac` never rising.
+    # False is the pre-flip engine, byte for byte; tests whose numbers were
+    # read on it hold it OFF (`tests/conftest.py`, PRE_FLIP).
+    satin_crown_cover: bool = True
     satin_tip_caps: bool = True
     # The lettering yardstick's trims gap, read with a per-trim census
     # (2026-09-19, scope-history): traced MARINE at 80 mm sews 13 trims
