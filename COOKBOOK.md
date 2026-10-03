@@ -1009,9 +1009,10 @@ sews nothing and cuts the smallest shape that contains it.
   JS fill goes from one span of a split row straight to the next, so every
   row lays a float (or, under 4 mm, a stitch) across the hole, and the
   preview cannot show it because `render.js` draws no jumps. The cure is
-  built OFF: `buildQualityDesign({ fillColumns: true })` sews a forked shape
-  column by column (`fill.js` `opts.columns`, a port of the Python
-  `_columns`) and cuts instead of crossing. None of `generate.js`'s three
+  built OFF: `buildQualityDesign({ fillColumns: true })` sews a forked FILL
+  shape column by column (`fill.js` `opts.columns`, a port of the Python
+  `_columns`) and cuts instead of crossing. A satin shape is untouched by
+  it; its own underlay-to-satin move is a separate call. None of `generate.js`'s three
   callers passes it; the flip is Kent's (MASTER_SCOPE defect 52). To SEE
   thread rather than penetrations, run `node tools/fill-columns-sheet.mjs`:
   it draws four manual-lane shapes off beside on, floats in red.

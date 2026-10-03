@@ -449,15 +449,17 @@
     const underlayRowPx = Math.max(PX_LOOP_EPS, 2.5 * pxPerFinalMm);
     const pullCompPx = pullCompMm * pxPerFinalMm; // fill pull-comp offset (px)
     // Shared context for named underlay styles (used only in fabric mode).
-    // `fillColumns` (default off): every tatami pass of a shape whose rows
-    // fork -- the fill and the underlay under it -- is sewn column by column,
-    // so no thread is carried across a hole or a notch (fill.js,
+    // `fillColumns` (default off): every tatami pass of a FILL shape whose
+    // rows fork -- the fill and the underlay under it -- is sewn column by
+    // column, so no thread is carried across a hole or a notch (fill.js,
     // `opts.columns`). Off, nothing reads it and every stitch is unchanged.
+    // A satin shape is untouched either way: its own moves are a separate
+    // call (`columns` is set per shape, where `thin` is known).
     const fillColumns = !!o.fillColumns;
     const underlayCtxBase = {
       pxPerFinalMm, maxStitch: maxPx, underlayStitchPx, underlayRowPx,
       runningOutline: fillmod.runningOutline, tatamiFill: fillmod.tatamiFill,
-      insetRing, pcaAngleDeg, columns: fillColumns,
+      insetRing, pcaAngleDeg,
     };
 
     // Trim policy: trim before any travel longer than trimAtMm (FINAL mm).
@@ -697,7 +699,7 @@
             // Fabric mode: named underlay style per shape type.
             try {
               const style = thin ? (fabric.satinUnderlay || "center_run") : (fabric.fillUnderlay || "edge_lattice");
-              const uctx = Object.assign({ fillAngle: angle }, underlayCtxBase);
+              const uctx = Object.assign({ fillAngle: angle, columns: fillColumns && !thin }, underlayCtxBase);
               for (const run of underlayRuns(shape, style, uctx)) if (run && run.length) { runs.push(run); runKinds.push("underlay"); }
             } catch (e) { /* underlay best-effort */ }
           } else {
@@ -772,12 +774,13 @@
         // A shape is several runs, and the frame goes from the end of one to
         // the start of the next with the thread attached. Under the fill that
         // float is hidden; across a hole or a notch nothing ever covers it.
-        // With `fillColumns` that move is cut when it passes over ground the
-        // shape does not fill. The slack is how far a run can start off the
-        // true edge: the underlay's inset, or the fill's pull compensation.
+        // With `fillColumns`, on a FILL shape, that move is cut when it passes
+        // over ground the shape does not fill. The slack is how far a run can
+        // start off the true edge: the underlay's inset, or the fill's pull
+        // compensation.
         const openSlackPx = Math.max(Math.min(2, 0.6 * pxPerFinalMm), fabric ? pullCompPx : 0) + rowPx;
         for (let ri = 0; ri < nonEmpty.length; ri++) {
-          if (fillColumns && ri > 0 && fillmod.crossesOpenGround(lastPx, nonEmpty[ri][0], rings, rowPx, openSlackPx)) emitTrimAtLast();
+          if (fillColumns && !thin && ri > 0 && fillmod.crossesOpenGround(lastPx, nonEmpty[ri][0], rings, rowPx, openSlackPx)) emitTrimAtLast();
           const spanI0 = stitches.length;
           pushRun(nonEmpty[ri]);
           pushSpan(spanI0, nonEmptyKinds[ri], shape.id);

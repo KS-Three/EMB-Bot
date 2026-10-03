@@ -123,6 +123,20 @@ test("fillColumns: nor is it carried across the open mouth of a U", () => {
   assert.deepStrictEqual(threadAcrossBox(d, { x0: -60, y0: -50, x1: 60, y1: 180 }), { sewn: 0, floats: 0 });
 });
 
+test("fillColumns: a satin shape is sewn exactly as it is without it", () => {
+  // The flag is about FILLS. A thin C forced satin has the same kind of move
+  // (its underlay ends on one arm, the satin starts on the other), and cutting
+  // that is a separate call with its own bill on satin-heavy art. Three
+  // underlay styles, because two of them lay tatami rows that fork.
+  const c = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 20 }, { x: 20, y: 20 }, { x: 20, y: 180 }, { x: 200, y: 180 }, { x: 200, y: 200 }, { x: 0, y: 200 }];
+  for (const satinUnderlay of ["edge_run", "zigzag", "edge_zigzag"]) {
+    const build = (fillColumns) => DG.buildQualityDesign(
+      [{ rgb: [0, 0, 0], shapes: [{ outer: c, holes: [], tierOverride: "satin" }] }],
+      { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: 20, darkOnTop: false, underlay: true, fabric: fab({ satinUnderlay }), fillColumns });
+    assert.deepStrictEqual(build(true).stitches, build(false).stitches, "satin underlay " + satinUnderlay);
+  }
+});
+
 test("fillColumns: left off, every stitch is the one it has always been", () => {
   for (const underlay of [false, true]) {
     const base = Object.assign({ underlay }, ANNULUS_OPTS);
