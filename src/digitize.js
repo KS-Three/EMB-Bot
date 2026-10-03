@@ -229,10 +229,10 @@
       return r;
     }
     function zigzag() {
-      return [ctx.tatamiFill(rings, { rowSpacing: zigRow, angleDeg: fillAngle + 90, maxStitch, markConnectors: true })];
+      return [ctx.tatamiFill(rings, { rowSpacing: zigRow, angleDeg: fillAngle + 90, maxStitch, markConnectors: true, columns: !!ctx.columns })];
     }
     function lattice(angleOff) {
-      return [ctx.tatamiFill(rings, { rowSpacing: latticeRow, angleDeg: fillAngle + angleOff, maxStitch, markConnectors: true })];
+      return [ctx.tatamiFill(rings, { rowSpacing: latticeRow, angleDeg: fillAngle + angleOff, maxStitch, markConnectors: true, columns: !!ctx.columns })];
     }
     // Single running stitch along the shape's PCA-major axis, clipped to the
     // interior (longest contiguous inside segment through the centroid).
@@ -296,7 +296,7 @@
   }
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
-  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides }
+  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns }
   // (buildLetteringDesign additionally takes `splitSatin` and
   // `wideColumnFill` — the two wide-column answers, both default off; see
   // satinfont.js's constant block.)
@@ -449,10 +449,15 @@
     const underlayRowPx = Math.max(PX_LOOP_EPS, 2.5 * pxPerFinalMm);
     const pullCompPx = pullCompMm * pxPerFinalMm; // fill pull-comp offset (px)
     // Shared context for named underlay styles (used only in fabric mode).
+    // `fillColumns` (default off): every tatami pass of a shape whose rows
+    // fork -- the fill and the underlay under it -- is sewn column by column,
+    // so no thread is carried across a hole or a notch (fill.js,
+    // `opts.columns`). Off, nothing reads it and every stitch is unchanged.
+    const fillColumns = !!o.fillColumns;
     const underlayCtxBase = {
       pxPerFinalMm, maxStitch: maxPx, underlayStitchPx, underlayRowPx,
       runningOutline: fillmod.runningOutline, tatamiFill: fillmod.tatamiFill,
-      insetRing, pcaAngleDeg,
+      insetRing, pcaAngleDeg, columns: fillColumns,
     };
 
     // Trim policy: trim before any travel longer than trimAtMm (FINAL mm).
@@ -700,7 +705,7 @@
             try {
               const inset = insetRing(poly, Math.min(2, 0.6 * pxPerFinalMm));
               runs.push(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx })); runKinds.push("underlay");
-              if (!thin) { runs.push(fillmod.tatamiFill(rings, { rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true })); runKinds.push("underlay"); }
+              if (!thin) { runs.push(fillmod.tatamiFill(rings, { rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true, columns: fillColumns })); runKinds.push("underlay"); }
             } catch (e) { /* underlay best-effort */ }
           }
         }
@@ -740,7 +745,7 @@
             for (const q of poly) { if (q.x < bx0) bx0 = q.x; if (q.x > bx1) bx1 = q.x; if (q.y < by0) by0 = q.y; if (q.y > by1) by1 = q.y; }
             const wMm = (bx1 - bx0) * mmPerPxFinal, hMm = (by1 - by0) * mmPerPxFinal;
             const largeFill = wMm > centerOutMinMm && hMm > centerOutMinMm;
-            pts = fillmod.tatamiFill(fillRings, { rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true, centerOut: largeFill }); nFill++;
+            pts = fillmod.tatamiFill(fillRings, { rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true, centerOut: largeFill, columns: fillColumns }); nFill++;
             if (largeFill) nCenterOut++;
           }
         } catch (e) { pts = []; }
@@ -764,7 +769,15 @@
           if (d > trimAtPx) emitTrimAtLast(); // long travel → trim at last pos before jump
         }
         justChangedColor = false; // only the first shape after a color change is exempt
+        // A shape is several runs, and the frame goes from the end of one to
+        // the start of the next with the thread attached. Under the fill that
+        // float is hidden; across a hole or a notch nothing ever covers it.
+        // With `fillColumns` that move is cut when it passes over ground the
+        // shape does not fill. The slack is how far a run can start off the
+        // true edge: the underlay's inset, or the fill's pull compensation.
+        const openSlackPx = Math.max(Math.min(2, 0.6 * pxPerFinalMm), fabric ? pullCompPx : 0) + rowPx;
         for (let ri = 0; ri < nonEmpty.length; ri++) {
+          if (fillColumns && ri > 0 && fillmod.crossesOpenGround(lastPx, nonEmpty[ri][0], rings, rowPx, openSlackPx)) emitTrimAtLast();
           const spanI0 = stitches.length;
           pushRun(nonEmpty[ri]);
           pushSpan(spanI0, nonEmptyKinds[ri], shape.id);

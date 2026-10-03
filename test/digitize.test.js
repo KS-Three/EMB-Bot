@@ -39,6 +39,99 @@ test("buildQualityDesign: annulus keeps hole empty (no sew points inside)", () =
   assert.strictEqual(inHole.length, 0, "sew stitches inside hole: " + inHole.length);
 });
 
+// --- opts.fillColumns: the hole stays empty of THREAD, not only of needle ----
+//
+// The test above counts penetrations inside the hole and has always passed.
+// What it cannot see is the thread between two penetrations either side of
+// it: today every fill row crosses the hole, as a float when the hole is wider
+// than a stitch and as a stitch when it is not (fill.js, `opts.columns`).
+
+// Thread laid through the open interior of a centred square, read off the
+// stream the encoders get. A move lays thread unless the thread has been cut
+// since the last penetration.
+function threadAcross(d, half) {
+  return threadAcrossBox(d, { x0: -half, y0: -half, x1: half, y1: half });
+}
+
+// The same reading through any box, in design units (0.1 mm, centred, y up).
+function threadAcrossBox(d, b) {
+  const inside = (x, y) => x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1;
+  let sewn = 0, floats = 0, cut = true, prev = null;
+  for (const s of d.stitches) {
+    if (s.type === "end") break;   // the sentinel at the origin is not a move (dst.js stops on it)
+    if (s.type === "trim") { cut = true; prev = s; continue; }
+    if (prev && !cut) {
+      let hit = false;
+      for (let k = 1; k < 40 && !hit; k++) hit = inside(prev.x + (s.x - prev.x) * k / 40, prev.y + (s.y - prev.y) * k / 40);
+      if (hit) { if (s.type === "stitch") sewn++; else floats++; }
+    }
+    if (s.type === "stitch") cut = false;
+    prev = s;
+  }
+  return { sewn, floats };
+}
+
+// The annulus of the test above: hole edges land near +-305 units, so 290 is
+// well inside it.
+const ANNULUS = [{ rgb: [10, 10, 10], shapes: [{ outer: sq(0, 0, 100), holes: [sq(20, 20, 60)] }] }];
+const ANNULUS_OPTS = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, satinMaxWidthMm: 3 };
+
+test("fillColumns: a fill lays no thread across its hole", () => {
+  const d = DG.buildQualityDesign(ANNULUS, Object.assign({ underlay: false, fillColumns: true }, ANNULUS_OPTS));
+  assert.ok(d.stitches.filter((s) => s.type === "stitch").length > 100);
+  assert.deepStrictEqual(threadAcross(d, 290), { sewn: 0, floats: 0 });
+});
+
+test("fillColumns: the underlay under a holed fill stays out of the hole too", () => {
+  // Both underlay routes that lay tatami rows: the no-fabric lattice, and a
+  // fabric preset's named style. A float there is the worst kind -- it is the
+  // one thread in the hole nothing will ever cover.
+  for (const extra of [{}, { fabric: fab({ fillUnderlay: "double_lattice", pullCompMm: 0 }) }, { fabric: fab({ fillUnderlay: "edge_zigzag", pullCompMm: 0 }) }]) {
+    const d = DG.buildQualityDesign(ANNULUS, Object.assign({ underlay: true, fillColumns: true }, ANNULUS_OPTS, extra));
+    assert.deepStrictEqual(threadAcross(d, 290), { sewn: 0, floats: 0 },
+      "underlay route: " + (extra.fabric ? extra.fabric.fillUnderlay : "no fabric"));
+  }
+});
+
+// A shape is several RUNS -- an underlay round the outside, one round each
+// hole, then the fill -- and the frame moves from the end of one to the start
+// of the next with the thread still attached. Under the fill that float is
+// hidden. Across a hole, or across the mouth of a U, nothing ever covers it.
+// 10 px/mm and a target width equal to the drawing's, so 1 px is 1 unit and
+// the boxes below are the drawing's own, centred, y flipped.
+const MANUAL = (widthMm) => ({ garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: widthMm,
+  darkOnTop: false, underlay: true, fabric: fab({ fillUnderlay: "edge_run" }) });
+const boxPx = (x0, y0, x1, y1) => [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+
+test("fillColumns: the move between two runs of one shape is cut where it would cross a hole", () => {
+  // 26 x 36 mm with two counters. Centre (130, 180); each hole box is taken
+  // 1 mm in from its rim, because the fill's pull comp and the hole's own
+  // edge run both legitimately sit just inside it.
+  const shape = { outer: boxPx(0, 0, 260, 360), holes: [boxPx(80, 60, 180, 140), boxPx(80, 200, 200, 300)], tierOverride: "fill" };
+  const d = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [shape] }], Object.assign({ fillColumns: true }, MANUAL(26)));
+  assert.deepStrictEqual(threadAcrossBox(d, { x0: -40, y0: 50, x1: 40, y1: 110 }), { sewn: 0, floats: 0 }, "upper counter");
+  assert.deepStrictEqual(threadAcrossBox(d, { x0: -40, y0: -110, x1: 60, y1: -30 }), { sewn: 0, floats: 0 }, "lower counter");
+});
+
+test("fillColumns: nor is it carried across the open mouth of a U", () => {
+  // 36 x 36 mm, a 14 mm notch 24 mm deep from the top edge. Centre (180, 180).
+  // The outline is drawn from the RIGHT arm's corner, so the edge run under
+  // the fill ends there while the fill begins on the left arm: the move
+  // between them is straight across the mouth.
+  const u = { outer: [{ x: 250, y: 0 }, { x: 360, y: 0 }, { x: 360, y: 360 }, { x: 0, y: 360 }, { x: 0, y: 0 }, { x: 110, y: 0 }, { x: 110, y: 240 }, { x: 250, y: 240 }], holes: [], tierOverride: "fill" };
+  const d = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [u] }], Object.assign({ fillColumns: true }, MANUAL(36)));
+  assert.deepStrictEqual(threadAcrossBox(d, { x0: -60, y0: -50, x1: 60, y1: 180 }), { sewn: 0, floats: 0 });
+});
+
+test("fillColumns: left off, every stitch is the one it has always been", () => {
+  for (const underlay of [false, true]) {
+    const base = Object.assign({ underlay }, ANNULUS_OPTS);
+    assert.deepStrictEqual(
+      DG.buildQualityDesign(ANNULUS, Object.assign({ fillColumns: false }, base)).stitches,
+      DG.buildQualityDesign(ANNULUS, base).stitches);
+  }
+});
+
 test("buildQualityDesign: thin solid bar goes satin, branched shape goes fill", () => {
   // thin bar 200x8 px at pxPerMm 8 → ~1mm wide final (fits 4in garment, scale>1 but still thin)
   const bar = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 8 }, { x: 0, y: 8 }];

@@ -118,3 +118,148 @@ test("centerOut default off is byte-identical to sequential", () => {
   const b = fill.tatamiFill(tall, Object.assign({ centerOut:false }, opts));
   assert.deepStrictEqual(a, b, "centerOut:false must equal no-option");
 });
+
+// --- opts.columns: no thread across a hole or a notch ------------------------
+//
+// Measured 2026-10-02 on a 40 mm manual fill with two cut-outs: 76 untrimmed
+// floats across the 12 mm one (912 mm of thread) and 20 stitches sewn straight
+// across the 3 mm one. The needle never lands inside either, which is all
+// "no sew points laid across a hole" above can see. These read the THREAD:
+// every move from one point to the next is thread on the cloth unless the
+// point it arrives at carries `trim`.
+
+// How many moves lay thread through the open interior of an axis-aligned box.
+// `sewn` arrives at a plain point; `floats` arrives at a travel point that was
+// not cut.
+function threadThrough(pts, box, margin) {
+  const e = margin == null ? 0.25 : margin;
+  const inside = (x, y) => x > box.x0 + e && x < box.x1 - e && y > box.y0 + e && y < box.y1 - e;
+  let sewn = 0, floats = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    if (b.trim) continue;
+    let hit = false;
+    for (let s = 1; s < 40 && !hit; s++) {
+      const t = s / 40;
+      hit = inside(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
+    }
+    if (!hit) continue;
+    if (b.travel) floats++; else sewn++;
+  }
+  return { sewn, floats };
+}
+
+const SQ = [{x:0,y:0},{x:100,y:0},{x:100,y:100},{x:0,y:100}];
+const WIDE_HOLE = [{x:20,y:20},{x:80,y:20},{x:80,y:80},{x:20,y:80}];
+// Row pitch UNDER the longest stitch, as every real caller has it (0.15 mm rows
+// against 4 mm). The other way round, a plain row turn is already too long to
+// sew and every test below would be measuring that instead.
+const COLS = { rowSpacing:5, angleDeg:0, maxStitch:8, markConnectors:true, columns:true };
+
+test("columns: no float is left across a hole wider than a stitch", () => {
+  const pts = fill.tatamiFill([SQ, WIDE_HOLE], COLS);
+  assert.deepStrictEqual(threadThrough(pts, { x0:20, y0:20, x1:80, y1:80 }), { sewn:0, floats:0 });
+});
+
+test("columns: a hole narrower than a stitch is not sewn across", () => {
+  // 3 wide against maxStitch 8: today the connector is short enough to be a
+  // plain stitch, so the hole is closed with thread on every row.
+  const slot = [{x:48,y:20},{x:51,y:20},{x:51,y:80},{x:48,y:80}];
+  const pts = fill.tatamiFill([SQ, slot], COLS);
+  assert.deepStrictEqual(threadThrough(pts, { x0:48, y0:20, x1:51, y1:80 }), { sewn:0, floats:0 });
+});
+
+test("columns: no thread is carried across the open mouth of a U", () => {
+  // Not a hole at all: a notch from the top edge. The rows fork into two arms
+  // and the move between them runs over bare cloth outside the shape.
+  const u = [{x:0,y:0},{x:30,y:0},{x:30,y:60},{x:70,y:60},{x:70,y:0},{x:100,y:0},{x:100,y:100},{x:0,y:100}];
+  const pts = fill.tatamiFill([u], COLS);
+  assert.deepStrictEqual(threadThrough(pts, { x0:30, y0:0, x1:70, y1:60 }), { sewn:0, floats:0 });
+});
+
+test("columns: the hole stays clear whatever angle the rows run at", () => {
+  // Real fills take their angle from the shape (PCA), so 0 is the rare case.
+  // At an angle the rows meet the hole on a slant and the columns are wedges.
+  //
+  // The margin is one row pitch, and that is the honest size of the claim. A
+  // row turn inside ONE column joins two row ends that sit on adjacent edges
+  // of the hole, and the chord between them clips the corner by less than the
+  // pitch -- as it always has, and as the Python engine's does. That is 0.15 mm
+  // on a real fill; here the rows are 5 apart, so it is 5.
+  for (const angleDeg of [30, 45, 90, 137]) {
+    const pts = fill.tatamiFill([SQ, WIDE_HOLE], Object.assign({}, COLS, { angleDeg }));
+    assert.deepStrictEqual(threadThrough(pts, { x0:20, y0:20, x1:80, y1:80 }, COLS.rowSpacing), { sewn:0, floats:0 }, "angle " + angleDeg);
+  }
+});
+
+test("columns: an island inside a hole is sewn, and the moat round it stays clear", () => {
+  // Even-odd: outer, hole, island. Rows through the middle have THREE spans.
+  const island = [{x:40,y:40},{x:60,y:40},{x:60,y:60},{x:40,y:60}];
+  const pts = fill.tatamiFill([SQ, WIDE_HOLE, island], COLS);
+  for (const moat of [{ x0:20, y0:20, x1:40, y1:80 }, { x0:60, y0:20, x1:80, y1:80 }, { x0:40, y0:20, x1:60, y1:40 }, { x0:40, y0:60, x1:60, y1:80 }]) {
+    assert.deepStrictEqual(threadThrough(pts, moat), { sewn:0, floats:0 }, "moat " + JSON.stringify(moat));
+  }
+  const onIsland = pts.filter((p) => !p.travel && !p.trim && p.x >= 40 && p.x <= 60 && p.y >= 40 && p.y < 60);
+  assert.ok(onIsland.length >= 8, "island rows sewn: " + onIsland.length);   // 4 rows x 2 ends at least
+});
+
+test("columns: a comb is sewn tooth by tooth, with nothing across the gaps", () => {
+  // Three teeth off one spine: two notches, each 15 wide and 60 deep.
+  const comb = [{x:0,y:0},{x:20,y:0},{x:20,y:60},{x:35,y:60},{x:35,y:0},{x:55,y:0},{x:55,y:60},{x:70,y:60},{x:70,y:0},{x:90,y:0},{x:90,y:100},{x:0,y:100}];
+  const pts = fill.tatamiFill([comb], COLS);
+  for (const gap of [{ x0:20, y0:0, x1:35, y1:60 }, { x0:55, y0:0, x1:70, y1:60 }]) {
+    assert.deepStrictEqual(threadThrough(pts, gap), { sewn:0, floats:0 }, "gap " + JSON.stringify(gap));
+  }
+});
+
+test("columns: a ring costs at most one cut", () => {
+  // Four columns round a hole. Three joins are next-row moves along the outer
+  // edge; the last has to get past the hole and is cut. Trimming every
+  // hole-crossing would pass the three tests above and cost a cut per row.
+  const pts = fill.tatamiFill([SQ, WIDE_HOLE], COLS);
+  const cuts = pts.filter((p) => p.trim === true).length;
+  assert.ok(cuts <= 1, "cuts round one hole: " + cuts);
+});
+
+test("columns: the first stitch after a cut lands on the span's own start", () => {
+  // A trim point is where the frame goes, not a penetration. Without a plain
+  // point on the same spot the row begins one stitch late.
+  const pts = fill.tatamiFill([SQ, WIDE_HOLE], COLS);
+  const cutAt = pts.map((p, i) => (p.trim ? i : -1)).filter((i) => i >= 0);
+  assert.ok(cutAt.length > 0, "this ring needs a cut; without one the test proves nothing");
+  for (const i of cutAt) {
+    const next = pts[i + 1];
+    assert.ok(next && !next.trim && !next.travel, "point after the cut at " + i + " is not a plain stitch");
+    assert.deepStrictEqual({ x: next.x, y: next.y }, { x: pts[i].x, y: pts[i].y });
+  }
+});
+
+test("columns: every span of every row is sewn end to end, its own start included", () => {
+  // Rows at y = 0, 5, ... 95 (the scanline at 100 meets no edge). Rows 20..75
+  // are split by the hole into [0,20] and [80,100]; the rest run [0,100].
+  // Today the far span of a split row is reached by a float, and the point the
+  // float lands on is a frame move, not a penetration: that span is sewn from
+  // one stitch in (measured: [80,100] sews 84..100).
+  const pts = fill.tatamiFill([SQ, WIDE_HOLE], COLS).filter((p) => !p.travel && !p.trim);
+  for (let y = 0; y <= 95; y += 5) {
+    const spans = y >= 20 && y < 80 ? [[0, 20], [80, 100]] : [[0, 100]];
+    for (const [x0, x1] of spans) {
+      const xs = pts.filter((p) => Math.abs(p.y - y) < 1e-6 && p.x >= x0 - 1e-6 && p.x <= x1 + 1e-6)
+        .map((p) => p.x).sort((a, b) => a - b);
+      assert.ok(xs.length >= 2, "row " + y + " span " + x0 + ".." + x1 + " has no stitches");
+      assert.ok(Math.abs(xs[0] - x0) < 1e-6 && Math.abs(xs[xs.length - 1] - x1) < 1e-6,
+        "row " + y + " span " + x0 + ".." + x1 + " sewn only " + xs[0] + ".." + xs[xs.length - 1]);
+      for (let i = 1; i < xs.length; i++) assert.ok(xs[i] - xs[i - 1] <= 8 + 1e-6, "row " + y + " gap " + (xs[i] - xs[i - 1]));
+    }
+  }
+});
+
+test("columns: a shape whose rows never fork sews exactly as it does today", () => {
+  // One column is the whole shape, so there is no join to decide and nothing
+  // may move -- center-out included, which the column walk does not do.
+  const tall = [[{x:0,y:0},{x:40,y:0},{x:40,y:200},{x:0,y:200}]];
+  for (const centerOut of [false, true]) {
+    const base = { rowSpacing:10, angleDeg:30, maxStitch:12, markConnectors:true, centerOut };
+    assert.deepStrictEqual(fill.tatamiFill(tall, Object.assign({ columns:true }, base)), fill.tatamiFill(tall, base));
+  }
+});
