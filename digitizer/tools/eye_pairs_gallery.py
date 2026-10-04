@@ -203,13 +203,6 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "envelope reached. The envelope's coverage against its texture, on the "
         "letters. Say in your own words what 'flow' and 'structured' mean on a "
         "satin letter -- that note is worth more than the verdict."),
-    "cap_recentre": (
-        "satin_cap_recentre=True",
-        "A satin stroke's flat end is rebuilt square where its spine ends in a "
-        "surviving cap fork: today such an end tapers to a point at one corner "
-        "and leaves the other corner bare. The cause-side twin of the rail "
-        "reach, which gets to the same corners by letting each rail chase its "
-        "edge. Look at the ends of stems and bars."),
     "keep_counters": (
         "keep_counters=True",
         "A letter's counter on a COLOURED ground stays a hole: today a counter "
@@ -251,6 +244,13 @@ RETIRED_ARM_INTENT: dict[str, tuple[str, str]] = {
         "satin column sewn first, under the arms. Already the engine as "
         "shipped: the junction stack sews this cover as its part C, so the "
         "flag off and the flag on are one design. Nothing to rule."),
+    "cap_recentre": (
+        "satin_cap_recentre=True (shipped ON 2026-10-03)",
+        "A satin stroke's flat end is rebuilt square where its spine ends in a "
+        "surviving cap fork, where it used to taper to a point at one corner "
+        "and leave the other bare. Kent flipped it on after the 2026-10-03 "
+        "sitting (2 after -- becker and tires, the two the locator boxed -- "
+        "0 before)."),
 }
 
 
