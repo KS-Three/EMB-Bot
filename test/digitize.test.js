@@ -1325,13 +1325,26 @@ test("offsetRing: a point said twice running anywhere in the ring is one corner"
 });
 
 test("offsetRing: a ring with fewer than three corners once the repeats are out is handed back as it was", () => {
-  // Nothing to grow: no area, so no outward side. (The builder never sends
-  // one -- a shape with no area is dropped before its fill -- but the function
-  // is exported.)
+  // Nothing to grow: no area, so no outward side. (An outline like this never
+  // gets as far as its fill, a shape with no area being dropped first. A ring
+  // in `holes` can, as an island: three points, two of them the same.)
   const a = { x: 0, y: 0 }, b = { x: 10, y: 0 };
   for (const flat of [[a, a, b, b], [a, b, b], [a, a, a]]) {
     assert.deepStrictEqual(DG.offsetRing(flat, 2, true), flat);
     assert.deepStrictEqual(DG.offsetRing(flat, 2, false), flat);
+  }
+});
+
+test("offsetRing: a short edge is still an edge", () => {
+  // What is taken out is a point said TWICE, to within rounding. A corner a
+  // third of a pixel from the next one is a corner: the basic shapes' own
+  // rings come that close (0.35 px), and a ring that says no point twice has
+  // to come back point for point. (Widen the tolerance and every other test
+  // here still passes: this is the one that holds it.)
+  const box = boxPx(0, 0, 400, 400);
+  for (const gap of [1e-6, 1e-3, 0.3]) {
+    const chamfered = [{ x: gap, y: 0 }].concat(box.slice(1), [{ x: 0, y: gap }]);   // the first corner, cut off by `gap`
+    assert.strictEqual(DG.offsetRing(chamfered, 6, true).length, 5, "a chamfer of " + gap + " px keeps both its corners");
   }
 });
 
@@ -1341,7 +1354,9 @@ test("buildQualityDesign: under a fabric preset a closed outline gets the fill t
   // (the box's 20 and terry's 0.6).
   const terry = fillRunsOf(sewnTo({ outer: closedRing(boxPx(0, 0, 400, 400)), holes: [] }, "terry_towel")).flat().filter((s) => s.type === "stitch");
   assert.ok(terry.length > 1000, "the box is filled");
-  assert.strictEqual(Math.max(...terry.map((s) => s.y)), 206, "the top of the fill is 0.6 mm above the box and no more");
+  // (within a row of 206, the box's 200 and terry's 6, and never past it)
+  const top = Math.max(...terry.map((s) => s.y));
+  assert.ok(top > 203 && top <= 206, "the top of the fill is 0.6 mm above the box and no more: " + top);
   for (const open of [boxPx(0, 0, 400, 400), lShape(), roundPx(200, 200, 200, 24)]) {
     for (const f of FABRICS.FABRICS) {
       assert.deepStrictEqual(fillRunsOf(sewnTo({ outer: closedRing(open), holes: [] }, f.id)), fillRunsOf(sewnTo({ outer: open, holes: [] }, f.id)),
@@ -1392,7 +1407,9 @@ test("fillColumns: a closed ring's edge run lies where the same ring's does open
   // With the flag the edge run of a shape with a hole or an inside corner is
   // sewn on the ring moved 0.2 mm into the filled side (edgeRunRing), which is
   // offsetRing again: the first corner of a closed ring went 0.6 mm in instead.
-  // With that gone the whole stream is the open ring's, fabric or none.
+  // With that gone these two come out stitch for stitch as they do open,
+  // fabric or none. (Not every closed ring does: see the next test, and the
+  // angle is fixed here.)
   const outer = boxPx(0, 0, 400, 400), hole = boxPx(100, 100, 300, 300);
   const cases = [
     ["an L", { outer: closedRing(lShape()), holes: [] }, { outer: lShape(), holes: [] }],
@@ -1402,6 +1419,25 @@ test("fillColumns: a closed ring's edge run lies where the same ring's does open
     for (const fabricId of [null].concat(FABRICS.FABRICS.map((f) => f.id))) {
       assert.deepStrictEqual(sewnTo(closed, fabricId, { fillColumns: true }).stitches, sewnTo(open, fabricId, { fillColumns: true }).stitches,
         name + " on " + (fabricId || "no fabric"));
+    }
+  }
+});
+
+test("fillColumns: a ring closed at its only inside corner still has an inside corner", () => {
+  // Which path the edge run takes is asked of the ring (isConvexRing), corner
+  // by corner, and a corner with a side of no length was stepped over. Closed
+  // AT its one inside corner, an arrowhead read as convex: its edge run went
+  // toward the centroid as a convex ring's does, which for a ring that is not
+  // convex can leave the drawing, and every run after it began somewhere
+  // else. Found by the audit of the wedge fix, which had made the other path
+  // right and could not reach it.
+  const arrow = ring([[100, 200], [0, 400], [0, 0], [300, 0], [300, 400]]);   // 30 mm, the notch first
+  const again = (p) => ({ x: p.x, y: p.y });
+  const said = [["closed at the notch", closedRing(arrow)], ["every corner said twice", arrow.flatMap((p) => [p, again(p)])]];
+  for (const [name, outer] of said) {
+    for (const fabricId of [null, "pique_knit", "terry_towel"]) {
+      assert.deepStrictEqual(sewnTo({ outer, holes: [] }, fabricId, { fillColumns: true, targetWidthMm: 30 }).stitches,
+        sewnTo({ outer: arrow, holes: [] }, fabricId, { fillColumns: true, targetWidthMm: 30 }).stitches, name + " on " + (fabricId || "no fabric"));
     }
   }
 });

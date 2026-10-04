@@ -1,10 +1,10 @@
 // A ring handed over CLOSED says its first point again at the end. What that
 // does to buildQualityDesign, who hands one over, and what does not move.
 //
-//   node tools/closed-ring-census.mjs [srcDir]                   the three tables
-//   node tools/closed-ring-census.mjs [srcDir] --art             ... and every PNG fixture through the image lane
+//   node tools/closed-ring-census.mjs [srcDir]                   the four tables
+//   node tools/closed-ring-census.mjs [srcDir] --art             ... and every other PNG fixture once through the image lane
 //   node tools/closed-ring-census.mjs [srcDir] --hash out.json   a hash of every output on rings that say no point twice
-//   node tools/closed-ring-census.mjs --compare a.json b.json    do two such files agree
+//   node tools/closed-ring-census.mjs --compare a.json b.json    do two such files agree, and were they two engines
 //
 // srcDir: the engine to measure (default: this checkout's src). Point it at
 // another checkout to measure that one, which is how every "before" in
@@ -25,6 +25,10 @@
 //    "Fill" is the fill runs; "stream" is every record.
 // 3. WHO HANDS ONE OVER: the Studio's own generateElement, with the builder
 //    watched for the rings it is given. Three lanes reach it.
+// 4. THE NEAR REPEAT, which the fix does NOT reach (MASTER_SCOPE defect 55):
+//    a hand-drawn shape finished with a double-click whose second click lands
+//    more than half a canvas pixel from the first. ManualPanel keeps it as an
+//    anchor; the short edge to it doubles back and gets the same clamp.
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -39,6 +43,10 @@ const opt = (name) => { const i = args.indexOf(name); return i < 0 ? null : args
 
 if (opt("--compare")) {
   const [a, b] = opt("--compare").map((f) => JSON.parse(readFileSync(resolve(f), "utf8")));
+  const made = [a, b].map((o) => { const e = o.__engine || { src: "(not recorded)", sha: "" }; delete o.__engine; return e; });
+  made.forEach((e, i) => console.log(`${i ? "b" : "a"}: engine ${e.sha || "?"} at ${e.src}`));
+  // Two files from ONE engine agree by construction, and that proves nothing.
+  if (made[0].sha && made[0].sha === made[1].sha) { console.log("BOTH FILES WERE MADE BY THE SAME ENGINE: nothing has been compared."); process.exit(2); }
   const keys = Object.keys(a), differ = keys.filter((k) => a[k] !== b[k]), missing = keys.filter((k) => !(k in b)).length + Object.keys(b).filter((k) => !(k in a)).length;
   console.log(`${keys.length} outputs, ${new Set(Object.values(a)).size} distinct; in one file only: ${missing}; DIFFERENT: ${differ.length}`);
   for (const k of differ.slice(0, 20)) console.log("  " + k);
@@ -48,13 +56,16 @@ if (opt("--compare")) {
 const SRC = resolve(args[0] && !args[0].startsWith("--") ? args[0] : join(ROOT, "src"));
 // the Studio's own list and order (app/src/lib/emb.js), less the two that draw
 globalThis.window = globalThis;
-for (const f of ["units", "sewtime", "garments", "fabrics", "fill", "geometry", "quantize", "flatten", "satin", "satinplay", "crossfill", "satinfont", "fontbin", "svgpath", "svgimport", "dst", "dstimport", "exp", "pes", "svgexport", "stitchModel", "digitize"]) require(join(SRC, f + ".js"));
+const ENGINE_FILES = ["units", "sewtime", "garments", "fabrics", "fill", "geometry", "quantize", "flatten", "satin", "satinplay", "crossfill", "satinfont", "fontbin", "svgpath", "svgimport", "dst", "dstimport", "exp", "pes", "svgexport", "stitchModel", "digitize"];
+for (const f of ENGINE_FILES) require(join(SRC, f + ".js"));
+// which engine this is: its files' text, line endings aside
+const ENGINE = { src: SRC, sha: createHash("sha256").update(ENGINE_FILES.map((f) => readFileSync(join(SRC, f + ".js"), "utf8").replace(/\r\n/g, "\n")).join("\0")).digest("hex").slice(0, 16) };
 const EMB = globalThis.EMB;
 const lib = (f) => import(pathToFileURL(join(ROOT, "app", "src", "lib", f)).href);
 const { generateElement } = await lib("generate.js");
 const { flattenRGBA, WORK_MAX_PX, ALPHA_CUTOFF } = await lib("flatten.js");
 const { flatToRegions } = await lib("imageRegions.js");
-const { shapesToRegions, shapeIssues, flattenShape } = await lib("manualShapes.js");
+const { shapesToRegions, shapeIssues, flattenShape, isValidShape, isDuplicateOfLast, isNearStart } = await lib("manualShapes.js");
 const { shapePresetPoints } = await lib("shapePresets.js");
 const { traceShapesFromRGBA } = await lib("manualTrace.js");
 const build = EMB.buildQualityDesign;
@@ -70,7 +81,7 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
 const sha = (s) => createHash("sha256").update(s).digest("hex").slice(0, 24);
 const widthOf = (regions) => { let a = Infinity, b = -Infinity; for (const r of regions) for (const s of r.shapes) for (const q of s.outer) { a = Math.min(a, q.x); b = Math.max(b, q.x); } return b - a; };
 // a point said twice running, as the engine reads it (distinctCorners: 1e-9 px on both axes)
-const repeats = (r) => r.filter((p, i) => { const q = r[(i + 1) % r.length]; return Math.abs(p.x - q.x) <= 1e-9 && Math.abs(p.y - q.y) <= 1e-9; }).length;
+const repeats = (r) => r.filter((p, i) => { const q = r[(i + 1) % r.length]; return !(Math.abs(p.x - q.x) > 1e-9 || Math.abs(p.y - q.y) > 1e-9); }).length;
 const shortestEdge = (r) => Math.min(...r.map((p, i) => Math.hypot(p.x - r[(i + 1) % r.length].x, p.y - r[(i + 1) % r.length].y)));
 
 // The repo's own artwork at the Studio's working size (ImagePanel.prepRGBA).
@@ -209,12 +220,14 @@ if (opt("--hash")) {
       }
     }
   });
+  const n = Object.keys(out).length;
+  out.__engine = ENGINE;
   writeFileSync(resolve(opt("--hash")[0]), JSON.stringify(out));
-  console.log(`${Object.keys(out).length} outputs of ${all.length} designs hashed (none and ${PRESETS.length} presets; fillColumns absent, off, on) -> ${opt("--hash")[0]}`);
+  console.log(`engine ${ENGINE.sha} at ${SRC}\n${n} outputs of ${all.length} designs hashed (none and ${PRESETS.length} presets; fillColumns absent, off, on) -> ${opt("--hash")[0]}`);
   process.exit(0);
 }
 
-console.log(`engine: ${SRC}\n`);
+console.log(`engine ${ENGINE.sha} at ${SRC}\n`);
 
 // ---- 1. the wedge ---------------------------------------------------------------
 {
@@ -264,10 +277,12 @@ function furthestFrom(a, b) {
   const all = designs();
   const groups = {};
   for (const d of all) for (const fabricId of [null].concat(PRESETS)) for (const cols of [false, true]) {
-    const g = groups[`${fabricId ? "a preset" : "no fabric"}, fillColumns ${cols ? "on" : "absent"}`] ||= { n: 0, fill: 0, stream: 0, near: 0, far: 0, worst: "" };
+    const g = groups[`${fabricId ? "a preset" : "no fabric"}, fillColumns ${cols ? "on" : "absent"}`] ||= { n: 0, fill: 0, order: 0, stream: 0, near: 0, far: 0, worst: "" };
     const c = made(d, fabricId, cols ? { fillColumns: true } : {}, "closed"), o = made(d, fabricId, cols ? { fillColumns: true } : {}, "open");
     g.n++;
+    // the same fill runs whatever order a colour's shapes came in; then, the order
     if (runsHash(runsOf(c, "fill")) !== runsHash(runsOf(o, "fill"))) g.fill++;
+    else if (JSON.stringify(runsOf(c, "fill")) !== JSON.stringify(runsOf(o, "fill"))) g.order++;
     if (sha(JSON.stringify(c.stitches)) === sha(JSON.stringify(o.stitches))) continue;
     g.stream++;
     // what is left once the fill is the same: the underlay, read off the points
@@ -276,8 +291,8 @@ function furthestFrom(a, b) {
     if (u > g.far) { g.far = u; g.worst = `${d.name}, ${fabricId || "no fabric"}`; }
   }
   console.log(`\n2. CLOSED AGAINST OPEN: ${all.length} designs, every ring closed, against the same design open\n`);
-  console.log("| | outputs | fill differs | stream differs | of those, underlay within 0.2 mm of the open one's | underlay furthest, mm |\n|---|---|---|---|---|---|");
-  for (const [name, g] of Object.entries(groups)) console.log(`| ${name} | ${g.n} | ${g.fill} | ${g.stream} | ${g.near} | ${g.far.toFixed(1)} (${g.worst}) |`);
+  console.log("| | outputs | fill differs | same fills, another order | stream differs | of those, underlay within 0.2 mm of the open one's | underlay furthest, mm |\n|---|---|---|---|---|---|---|");
+  for (const [name, g] of Object.entries(groups)) console.log(`| ${name} | ${g.n} | ${g.fill} | ${g.order} | ${g.stream} | ${g.near} | ${g.far.toFixed(1)} (${g.worst}) |`);
 }
 
 // ---- 3. who hands one over ------------------------------------------------------
@@ -302,33 +317,55 @@ function furthestFrom(a, b) {
     for (let points = 3; points <= 12; points++) for (const innerRatio of [0.15, 0.3, 0.45, 0.6, 0.9]) shape("star", { points, innerRatio });
   }
 
+  // Hand-drawn: what the lane does with a shape whose own points repeat. A
+  // row is one drawing, or sixteen (the last point set `gap` px from the
+  // first, in sixteen directions): how many the lane takes as valid, and of
+  // the rings the builder is then given, how many the ENGINE reads as saying
+  // a point twice (1e-9 px).
   const sq = box(100, 100, 300, 300), fill = { curves: {}, stitchType: "fill", colorRgb: [0, 0, 0] };
+  const near = (gap) => Array.from({ length: 16 }, (_, k) => [{ id: "s1", ...fill, points: sq.concat([P(100 + gap * Math.cos(k * Math.PI / 8 + 0.2), 100 + gap * Math.sin(k * Math.PI / 8 + 0.2))]) }]);
   const drawn = {
-    "a box, open": [{ id: "s1", ...fill, points: sq }],
-    "the box closed": [{ id: "s1", ...fill, points: closed(sq) }],
-    "the box, a middle corner said twice": [{ id: "s1", ...fill, points: [sq[0], sq[1], P(300, 100), sq[2], sq[3]] }],
-    "the box closed, its closing side curved": [{ id: "s1", ...fill, points: closed(sq), curves: { 3: P(60, 200) } }],
-    "the box closed to within 1e-12 px": [{ id: "s1", ...fill, points: sq.concat([P(100 + 1e-12, 100 - 1e-12)]) }],
-    "an open box with a closed cut-out": [{ id: "s1", ...fill, points: sq }, { id: "s2", ...fill, points: closed(box(150, 150, 250, 250)), cutOut: true }],
+    "a box, open": [[{ id: "s1", ...fill, points: sq }]],
+    "the box closed": [[{ id: "s1", ...fill, points: closed(sq) }]],
+    "the box, a middle corner said twice": [[{ id: "s1", ...fill, points: [sq[0], sq[1], P(300, 100), sq[2], sq[3]] }]],
+    "the box closed, its closing side curved": [[{ id: "s1", ...fill, points: closed(sq), curves: { 3: P(60, 200) } }]],
+    "an open box with a closed cut-out": [[{ id: "s1", ...fill, points: sq }, { id: "s2", ...fill, points: closed(box(150, 150, 250, 250)), cutOut: true }]],
+    "the box closed to within 1e-12 px": near(1e-12),
+    "the box closed to within 1e-10 px": near(1e-10),
+    "the box closed to within 1e-6 px": near(1e-6),
   };
   const rows = [];
-  for (const [name, shapes] of Object.entries(drawn)) {
-    lane = "hand-drawn (the six cases)"; last = null;
-    generateElement({ ...base, id: "m", type: "manual", shapes }, garments[0], {});
-    const said = shapes.map((s) => shapeIssues(flattenShape(s.points, s.curves, true))[0] || "valid").join("; ");
-    rows.push(`| ${name} | ${said} | ${last ? last.length + " ring" + (last.length > 1 ? "s" : "") + ", " + last.filter(Boolean).length + " with a repeat" : "not called"} |`);
+  for (const [name, drawings] of Object.entries(drawn)) {
+    let valid = 0, rings = 0, twice = 0;
+    for (const shapes of drawings) {
+      lane = "hand-drawn (the cases below)"; last = null;
+      generateElement({ ...base, id: "m", type: "manual", shapes }, garments[0], {});
+      if (shapes.every((s) => !shapeIssues(flattenShape(s.points, s.curves, true)).length)) valid++;
+      if (last) { rings += last.length; twice += last.filter(Boolean).length; }
+    }
+    rows.push(`| ${name} | ${drawings.length} | ${valid} | ${rings} | ${twice} |`);
   }
+  delete tally["hand-drawn (the cases below)"];   // made to repeat, not what the lane makes: they have their own table
 
-  const pngs = opt("--art") ? ["", "photo"].flatMap((sub) => readdirSync(join(ART_DIR, sub)).filter((f) => f.endsWith(".png")).map((f) => (sub ? sub + "/" : "") + f))
-    : ["becker_marine_logo.png", "logo_alpha.png", "logo_whitebg.png", "ribbon_curve.png", "photo/enthusiast_logo.png", "photo/region_blobs.png", "photo/summit_badge.png"].filter((f) => existsSync(join(ART_DIR, f)));
-  for (const rel of pngs) {
+  const full = ["becker_marine_logo.png", "logo_alpha.png", "logo_whitebg.png", "ribbon_curve.png", "photo/enthusiast_logo.png", "photo/region_blobs.png", "photo/summit_badge.png"].filter((f) => existsSync(join(ART_DIR, f)));
+  for (const rel of full) {
     const a = art(rel);
-    lane = "image lane, the repo's artwork";
+    lane = "image lane, seven PNG fixtures, 2 4 and 8 colours, background kept and removed";
     for (const nColors of [2, 4, 8]) for (const removeBg of [false, true]) generateElement({ ...base, id: "i", type: "image", threadRgb: {} }, garments[nColors % 3], { flats: { i: flattenRGBA(a.rgba.slice(), a.w, a.h, { nColors, removeBg }) } });
-    lane = "trace import, the same artwork";
+    lane = "trace import, the same seven";
     const traced = traceShapesFromRGBA(a.rgba.slice(), a.w, a.h, {});
     const shapes = Array.isArray(traced) ? traced : traced.shapes || [];
     if (shapes.length) generateElement({ ...base, id: "t", type: "manual", shapes }, garments[0], {});
+  }
+  if (opt("--art")) {
+    // every other PNG fixture, photographs too: once, at four colours (six
+    // flattens and a trace of each photograph is an hour and a half)
+    lane = "image lane, every other PNG fixture, 4 colours";
+    for (const rel of ["", "photo"].flatMap((sub) => readdirSync(join(ART_DIR, sub)).filter((f) => f.endsWith(".png")).map((f) => (sub ? sub + "/" : "") + f))) {
+      if (full.includes(rel)) continue;
+      const a = art(rel);
+      generateElement({ ...base, id: "i", type: "image", threadRgb: {} }, garments[0], { flats: { i: flattenRGBA(a.rgba.slice(), a.w, a.h, { nColors: 4, removeBg: false }) } });
+    }
   }
   lane = "image lane, 400 noise maps with no smoothing";
   const rnd = lcg(12345);
@@ -338,6 +375,57 @@ function furthestFrom(a, b) {
   console.log("\n3. WHO HANDS ONE OVER: the rings generateElement gives the builder\n");
   console.log("| lane | calls | with a preset | rings | rings that say a point twice | shortest edge px |\n|---|---|---|---|---|---|");
   for (const [name, t] of Object.entries(tally)) console.log(`| ${name} | ${t.calls} | ${t.withFabric} | ${t.rings} | ${t.closed} | ${t.shortest.toFixed(2)} |`);
-  console.log(`\n(${pngs.length} PNG fixtures${opt("--art") ? "" : "; --art for all of them"})\n\nA hand-drawn shape that says a point twice:\n\n| drawn | shapeIssues | the builder |\n|---|---|---|`);
+  console.log("\nA hand-drawn shape whose own points repeat:\n\n| drawn | drawings | taken as valid | rings the builder is given | of those, said twice as the engine reads it |\n|---|---|---|---|---|");
   for (const r of rows) console.log(r);
+}
+
+// ---- 4. the near repeat: a double-click that slips -------------------------------
+{
+  // ManualPanel.onCanvasClick, as it takes clicks: one within 10 px of the
+  // first anchor finishes the shape, one within 0.5 px of the last is dropped,
+  // any other is an anchor. Then dblclick -> finishShape, which keeps the
+  // shape if isValidShape says so.
+  const drawnBy = (clicks) => {
+    let draft = [];
+    for (const c of clicks) {
+      if (draft.length >= 2 && isNearStart(draft, c.x, c.y)) break;
+      if (isDuplicateOfLast(draft, c.x, c.y)) continue;
+      draft = [...draft, c];
+    }
+    return draft;
+  };
+  const toSeg = (p, u, v) => { const dx = v.x - u.x, dy = v.y - u.y, l2 = dx * dx + dy * dy, t = l2 ? Math.max(0, Math.min(1, ((p.x - u.x) * dx + (p.y - u.y) * dy) / l2)) : 0; return Math.hypot(p.x - (u.x + t * dx), p.y - (u.y + t * dy)); };
+  const within = (pt, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a.y > pt.y) !== (b.y > pt.y) && pt.x < (b.x - a.x) * (pt.y - a.y) / (b.y - a.y) + a.x) c = !c; } return c; };
+  // mm of FILL past the ring AS DRAWN, every anchor of it, at the worst; the
+  // options are generate.js's own for a hand-drawn shape, 40 mm wide
+  const past = (points, fabricId) => {
+    const { regions, pxPerMm } = shapesToRegions([{ id: "s1", points, curves: {}, stitchType: "fill", colorRgb: [0, 0, 0] }]);
+    const d = build(regions, { garment: EMB.getGarment("left_chest"), fabric: EMB.getFabric(fabricId), pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: 40, offsetXMm: 0, offsetYMm: 0 });
+    let worst = 0;
+    for (const s of runsOf(d, "fill").flat()) {
+      if (s.type !== "stitch") continue;
+      const p = { x: d.fit.cxPx + (s.x / 10 - d.fit.offsetXMm) / d.fit.mmPerPx, y: d.fit.cyPx - (s.y / 10 - d.fit.offsetYMm) / d.fit.mmPerPx };
+      if (within(p, points)) continue;
+      worst = Math.max(worst, Math.min(...points.map((u, i) => toSeg(p, u, points[(i + 1) % points.length]))) * d.fit.mmPerPx);
+    }
+    return worst;
+  };
+  const corners = box(100, 100, 300, 300);   // the fourth click is the double-click's first
+  const clean = drawnBy(corners.concat([P(100.2, 300.3)])), slipped = drawnBy(corners.concat([P(99.8, 300.98)]));
+  console.log("\n4. THE NEAR REPEAT (not fixed here): a box finished with a double-click, mm of fill past the ring as drawn\n");
+  console.log(`A second click 0.36 px off is dropped (${clean.length} anchors). One 1 px off is kept (${slipped.length} anchors, valid: ${isValidShape(flattenShape(slipped, {}, true))}).\n`);
+  console.log("| preset | pull comp mm | clean double-click | second click 1 px off | 80 slips of 0.6 to 3 px, 16 directions: refused as crossing | kept as an anchor | of those, over 0.15 mm further out than clean | worst |\n|---|---|---|---|---|---|---|---|");
+  for (const f of PRESETS) {
+    const base = past(clean, f);
+    let refused = 0, kept = 0, over = 0, worst = 0;
+    for (const mag of [0.6, 1, 1.5, 2, 3]) for (let k = 0; k < 16; k++) {
+      const pts = drawnBy(corners.concat([P(100 + mag * Math.cos(k * Math.PI / 8 + 0.2), 300 + mag * Math.sin(k * Math.PI / 8 + 0.2))]));
+      if (!isValidShape(flattenShape(pts, {}, true))) { refused++; continue; }
+      kept++;
+      const w = past(pts, f);
+      if (w - base > 0.15) over++;
+      worst = Math.max(worst, w);
+    }
+    console.log(`| ${f} | ${EMB.getFabric(f).pullCompMm} | ${base.toFixed(2)} | ${past(slipped, f).toFixed(2)} | ${refused} | ${kept} | ${over} | ${worst.toFixed(2)} |`);
+  }
 }

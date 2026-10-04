@@ -305,6 +305,11 @@
   // times the distance -- which made a wedge of the corner. A ring that says
   // no point twice is moved exactly as it always was; one with fewer than
   // three corners left has no outward side and is handed back as it came.
+  //
+  // "Twice" is to within rounding and no further. A point that is only NEAR
+  // the next one is a corner with a short edge, and where that edge doubles
+  // back -- the second click of a double-click, a pixel off the first -- it
+  // still gets the whole clamp (MASTER_SCOPE defect 55, open).
   function offsetRing(ring, dPx, outward) {
     const copy = ring ? ring.map((q) => ({ x: q.x, y: q.y })) : [];
     if (copy.length < 3 || !(Math.abs(dPx) > 1e-9)) return copy;
@@ -367,8 +372,11 @@
   }
   // A shape with no hole and no inside corner. Its edge run cannot leave it
   // -- a chord of a convex ring is inside the ring -- so `fillColumns` leaves
-  // that run exactly as it is without the flag.
-  function isConvexRing(ring) {
+  // that run exactly as it is without the flag. Asked of the corners said
+  // once: a corner with a side of no length has no turn to read and was
+  // stepped over, so a ring closed AT its one inside corner read as convex.
+  function isConvexRing(drawn) {
+    const ring = distinctCorners(drawn);
     let sign = 0;
     for (let i = 0; i < ring.length; i++) {
       const a = ring[i], b = ring[(i + 1) % ring.length], c = ring[(i + 2) % ring.length];
