@@ -133,6 +133,7 @@ from .stage6_satin import strip_splits
 from .stage6_scanline import SCANLINE_LEVEL_STRIDES, SCANLINE_ROW_MM
 from .stage6_streamline import (STREAMLINE_D_SEP_DARK_MM,
                                 STREAMLINE_D_SEP_LIGHT_MM)
+from . import curve_fidelity as _curve_fidelity
 from . import edge_wobble as _edge_wobble
 from . import legibility as _legibility
 from .stitches import StitchPlan
@@ -3704,6 +3705,39 @@ def _edge_wobble_metrics(result: PipelineResult | None,
     return out
 
 
+def _curve_roughness_metrics(plan: StitchPlan) -> dict:
+    """Is a curve sewn as a curve, or as a polygon -- as NUMBERS only.
+
+    Law 37's own quantity, direction change along the stitch path, and the
+    second of Kent's two smoothness complaints ("lines/circles are not smooth
+    like the photo"). `curve_fidelity.measure` over the plan's visible traces.
+    The path is the whole input, so a bare plan is read like any other.
+
+    Five keys, because the instrument says to read them together: a move in
+    `curve_roughness_deg` means nothing when the traces or vertices under it
+    moved (`tools/curve_fidelity.py`, "Reading a paired arm without fooling
+    yourself"). And it cannot read intent -- a logo that IS a 20-gon and a
+    circle polygonised to one are the same path -- so this compares a design
+    with itself across engine changes, which is what `corpus_scorecard.diff`
+    does, and is never a grade. No finding and no deduction, on the rulings
+    `_edge_wobble_metrics` records.
+
+    A refusal (nothing curved to measure) is None, not the tool's NaN: the
+    service serialises with `allow_nan=False`.
+    """
+    row = _curve_fidelity.measure(
+        [p for _kind, _shape, p in _curve_fidelity.traces(plan)])
+
+    def number(v: float) -> float | None:
+        return None if v != v else v
+
+    return {"curve_roughness_deg": number(row["roughness_deg"]),
+            "curve_turn_gini": number(row["turn_gini"]),
+            "curve_vertices": row["curve_vertices"],
+            "curve_corner_vertices": row["corner_vertices"],
+            "curve_traces": row["traces"]}
+
+
 def run_preflight(result: PipelineResult, plan: StitchPlan,
                   cfg: PipelineConfig | None = None,
                   image=None) -> dict:
@@ -3857,6 +3891,7 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     metrics["stitch_count"] = plan.stats.stitch_count
     metrics.update(_tiny_step_metrics(plan))
     metrics.update(_edge_wobble_metrics(result, plan))
+    metrics.update(_curve_roughness_metrics(plan))
 
     # Last, over the finished list: it tags findings, it does not make any.
     _tag_break_risk(findings, plan, result)
