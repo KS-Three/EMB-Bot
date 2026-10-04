@@ -17990,7 +17990,7 @@ lane), and a walk whose cut count turns on its first column.
 
 Off, nothing moves. Not sewn. Flip is still Kent's: defect 52, "Waiting on
 Kent" 22.
-*(measured 2026-10-03 — an independent agent with its own reader; four of its drawings rebuilt on `main`; `docs/renders/fill-columns-2026-10-03/README.md`, "A corner on a scanline")*
+*(measured 2026-10-03 — an independent agent with its own reader; five of its drawings rebuilt on `main` and given in `docs/renders/fill-columns-2026-10-03/README.md`, "A corner on a scanline")*
 
 ## 2026-10-03 — Two stitches in one hole: the browser fill's stitches under the file's unit, and `dedupeHoles` (measured, then built OFF)
 
