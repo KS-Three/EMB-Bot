@@ -103,8 +103,12 @@ invisible. Put detail in the note, never in this file.
 - [Row stagger for the browser fill](fill-stagger-2026-10-03.md) — JS fill cut rows evenly: 94% of holes sat under the row before's. `fillStagger` built OFF, Python's grid row for row, +7% stitches. Count a channel over three rows; print the count, not "none"
 - [Next work comes from main, not handoffs](next-work-from-main-not-handoffs.md) — Kent: "don't base your work around previous sessions"; answer "what's next" from ROADMAP/PRODUCT/MASTER_SCOPE on origin/main; re-read this index after a pause
 - [No warnings reaches readouts](no-warnings-reaches-readouts.md) — Kent's 10-02 ruling covers always-on info rows too: defect 46 shipped as preflight METRICS only (`edge_wobble_*`, `curve_*`), nothing shown to the customer
-- [Memory outside the repo](memory-outside-the-repo.md) — sessions rooted in `.claude-work` write memory to a folder this repo never sees; four notes snapshotted here 10-03. A folder check reads session cwds, not names
+- [Memory outside the repo](memory-outside-the-repo.md) — sessions rooted in `.claude-work` write memory to a folder this repo never sees; seven notes snapshotted here by 10-04. A folder check reads session cwds, not names
 - [Parallel agent with the embot](parallel-agent-with-embot.md) — SNAPSHOT: audit before a PR is OPEN, not just before arming; never `git stash` in a lane; a stacked PR targets main and says so
 - [Browser fill lane state](embot-browser-fill-lane-state.md) — SNAPSHOT 10-03: #606/#609/#611 built OFF, flips Kent's; island fix #613 merged PRE-audit, cures in #620; cleanup only Kent can run
 - [Handover numbers and stacked branches](embot-handover-numbers-and-stacked-branches.md) — SNAPSHOT: reproduce a handed-over number with its own script; a PR can merge at an older head than its session's branch
-- [Sub-unit stitches lane](embot-sub-unit-stitches-lane.md) — SNAPSHOT 10-03: two stitch records on one point; `claude/sub-unit-stitches` local-only; rule choice put to Kent, do not build without his pick
+- [Sub-unit stitches lane](embot-sub-unit-stitches-lane.md) — SNAPSHOT 10-04: `dedupeHoles` built OFF (#623), Kent's "new flag, every run"; never look through a jump: three jumps are a cut in a DST
+- [Wrong-root sessions, global guards](wrong-root-sessions-and-global-guards-2026-10-04.md) — sessions rooted outside the repo ran with no project hooks; `embot-guards-global.js` covers them. A silent hook leaves no trace
+- [Closed-ring lane](embot-closed-ring-lane.md) — SNAPSHOT: #621 `offsetRing` on a repeated point, #625 stacked on it; defect 55's offset half is Kent's call
+- [Star-walk lane](embot-star-walk-lane.md) — SNAPSHOT: #624 ends `skeletonEdges`' endless walk; defect 57's cure order waits on Kent
+- [Build what was priced](build-what-was-priced.md) — SNAPSHOT: after Kent picks a priced option, build exactly that
