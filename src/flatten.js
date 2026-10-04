@@ -62,8 +62,10 @@
 
   // Label 4-connected components of equal index (transparent excluded) via an
   // iterative flood fill. Returns { label:Int32Array(-1 for transparent),
-  // sizes:number[], count:number }.
-  function labelComponents(grid, w, h) {
+  // sizes:number[], count:number }. One walk over the whole image, counted in
+  // `stats.imageWalks` when a caller hands `stats` over.
+  function labelComponents(grid, w, h, stats) {
+    if (stats) stats.imageWalks += 1;
     const n = w * h;
     const label = new Int32Array(n).fill(-1);
     const sizes = [];
@@ -95,7 +97,9 @@
   // Most common non-transparent index among the 4-neighbors that lie OUTSIDE the
   // given component. Ties resolve to the lowest index. Returns -1 when the
   // component has no valid neighbor (fully surrounded by transparent/border).
-  function majorityNeighbor(grid, label, comp, w, h) {
+  // One walk over the whole image to find the component's pixels.
+  function majorityNeighbor(grid, label, comp, w, h, stats) {
+    if (stats) stats.imageWalks += 1;
     const n = w * h;
     const votes = new Map();
     for (let i = 0; i < n; i++) {
@@ -130,10 +134,15 @@
   // absorb merges a component into an existing neighboring component, strictly
   // reducing the total component count, and stuck components (only
   // transparent/border neighbors) are skipped rather than retried forever.
-  function absorbSmallRegions(indices, w, h, minPx) {
+  //
+  // `opts.stats`, when given as { absorbed: 0, imageWalks: 0 }, is counted
+  // into: components absorbed, and walks over the whole image. It changes
+  // nothing that is returned.
+  function absorbSmallRegions(indices, w, h, minPx, opts) {
+    const stats = (opts && opts.stats) || null;
     const cur = Uint8Array.from(indices);
     for (;;) {
-      const { label, sizes, count } = labelComponents(cur, w, h);
+      const { label, sizes, count } = labelComponents(cur, w, h, stats);
       // Candidate components under the threshold, smallest first.
       const candidates = [];
       for (let c = 0; c < count; c++) if (sizes[c] < minPx) candidates.push(c);
@@ -142,12 +151,13 @@
       let chosen = -1;
       let target = -1;
       for (const c of candidates) {
-        const maj = majorityNeighbor(cur, label, c, w, h);
+        const maj = majorityNeighbor(cur, label, c, w, h, stats);
         if (maj !== -1) { chosen = c; target = maj; break; }
       }
       if (chosen === -1) break; // nothing absorbable remains
 
       for (let i = 0; i < cur.length; i++) if (label[i] === chosen) cur[i] = target;
+      if (stats) { stats.imageWalks += 1; stats.absorbed += 1; }
     }
     return cur;
   }

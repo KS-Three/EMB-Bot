@@ -128,6 +128,19 @@ test("absorbSmallRegions: many scattered specks all absorb and it terminates", (
   assert.strictEqual(count(out, 0), w * h);
 });
 
+test("absorbSmallRegions: handed `stats`, it counts what it absorbed and its walks over the whole image", () => {
+  const w = 9, h = 5;
+  const idx = new Uint8Array(w * h).fill(0);
+  idx[2 * w + 1] = 1; idx[2 * w + 2] = 1; // island of 1 (2px)
+  idx[2 * w + 6] = 2; idx[2 * w + 7] = 2; // island of 2 (2px)
+  const stats = { absorbed: 0, imageWalks: 0 };
+  const out = FL.absorbSmallRegions(idx, w, h, 5, { stats });
+  assert.strictEqual(stats.absorbed, 2);
+  assert.ok(stats.imageWalks >= 1, `walked the image ${stats.imageWalks} times`);
+  // Counting changes nothing it returns.
+  assert.deepStrictEqual(out, FL.absorbSmallRegions(idx, w, h, 5));
+});
+
 // ---------------------------------------------------------------------------
 // mergeColors
 // ---------------------------------------------------------------------------
