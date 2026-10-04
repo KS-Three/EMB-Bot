@@ -18008,7 +18008,7 @@ It came from #617 as a count. Here it was measured by a reader of its own,
 | the 49,920 of #617's audit | 76,483 on 36,183 | 21,136 on 13,189, its 15,566 among them |
 
 What they are, on the sweep with every flag absent: 12,072 are a scanline
-through a corner, mostly the plain walk's first, which sits on the shape's
+through a corner, 11,837 of them a pass's first, which sits on the shape's
 topmost point; 272 are two spans meeting at a point. The short ones are 2,700
 moves across a gap under the unit wide, 1,366 rows at a tip, 112 lone rows,
 36 turns (fleece and terry only) and 17 waists. The audit's "15,518 along a

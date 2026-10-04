@@ -311,7 +311,7 @@ function whatMadeIt(fr, a, b, unitPx) {
     const row = spans.find((s) => (Math.abs(s[0] - A.x) < NEAR && Math.abs(s[1] - B.x) < NEAR) || (Math.abs(s[1] - A.x) < NEAR && Math.abs(s[0] - B.x) < NEAR));
     if (row) {
       const len = row[1] - row[0];
-      if (len <= SAME_PX) return { cls: "corner", rows: 1 };
+      if (len <= SAME_PX) return { cls: "corner", rows: 1, first: ka === 0 };
       // how far the narrow strip this row is in runs each way, and what ends it
       const narrow = Math.SQRT2 * unitPx;
       const over = (p, q) => Math.min(p[1], q[1]) - Math.max(p[0], q[0]) > SAME_PX;
@@ -414,6 +414,7 @@ function readDesign(des, passes, t, where) {
       bump(t, `walk/${walk}/${exact ? "exact" : "short"}`);
       bump(t, `kind/${span.kind}/${walk}`);
       bump(t, `why/${walk}/${why.cls}`);
+      if (why.first) bump(t, "corner on the pass's first scanline");
       bump(t, `why+kind/${walk}/${span.kind}/${why.cls}`);
       bump(t, `fabric/${where.fabric}/pairs/${exact ? "exact" : "short"}`);
       bump(t, `set/${where.set}/pairs`);
@@ -540,6 +541,7 @@ if (PART) {
       ["  column walk, exact", ...both((t) => num(t.n["walk/column/exact"]))],
       ["  column walk, short", ...both((t) => num(t.n["walk/column/short"]))],
       ["  outside a tatami pass", ...both((t) => num(t.n["pairs outside a tatami pass"]))],
+      ["  a corner on a pass's first scanline", ...both((t) => num(t.n["corner on the pass's first scanline"]))],
       ["one hole twice with only a jump between", ...both((t) => num(t.n["over a jump"]))],
       ["  of them, the frame went away and came back", ...both((t) => num(t.n["over a jump that moved"]))],
       ["passes: plain walk", ...both((t) => num(t.n["passes/plain"]))],

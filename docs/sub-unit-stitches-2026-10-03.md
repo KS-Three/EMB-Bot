@@ -67,8 +67,9 @@ fill.
 
 - **Corner is the plain walk's, and is most of what ships.** Its first
   scanline sits on the shape's topmost point, so a shape whose top is a
-  corner gets a doubled hole there in every pass: 5,687 of the sweep's 12,072
-  are in underlay. The column walk has left these out since #616.
+  corner gets a doubled hole there in every pass: 11,837 of the sweep's
+  12,072 are on a pass's first scanline, and 5,687 are in underlay. The
+  column walk has left these out since #616.
 - **A tip is one or two rows deep** on the sweep, and up to six in the
   Studio lanes.
 - **A gap is not a row.** It is the move from the end of one span to the
