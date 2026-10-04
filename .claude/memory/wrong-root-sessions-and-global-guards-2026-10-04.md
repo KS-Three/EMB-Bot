@@ -37,7 +37,7 @@ command runs (20 Bash calls, `library-filter` and `break-risk`, 10-01/02).
 under PreToolUse `Bash|PowerShell`. It reads the guard list from the primary
 checkout's `.claude/settings.json` and runs the guards from its `.claude/hooks/`
 — no copy of any rule — and stays out where the project's own copy is healthy.
-Tests: `node --test` on `embot-guards-global.test.mjs` beside it (17). The
+Tests: `node --test` on `embot-guards-global.test.mjs` beside it (18). The
 pre-change settings are at `~/.claude/settings.json.bak-2026-10-03-pre-embot-guards`.
 CLAUDE.md footgun 4 carries the numbers.
 
@@ -75,9 +75,20 @@ file, `git fetch` and look for it on every lane, not only on `main`:
   catches were scratchpad cleanups. The guard wants to look at the TARGET.
 - `.claude-work` cannot simply be deleted: `~/.claude/settings.json`'s
   statusLine runs `.claude-work\statusline.ps1`.
-- The CLI profile folders (`~\claude\claude-personal`, `~\claude\claude-work`)
-  have no hooks in their `settings.json`, so `claude-personal.cmd` sessions get
-  no global hook of any kind.
+- The work CLI profile (`~\claude\claude-work`) has no hooks in its
+  `settings.json`. Unused since 2026-09-18; Kent left it.
+
+**The personal CLI profile, 2026-10-04 (Kent's pick).** `claude-personal.cmd`
+sets `CLAUDE_CONFIG_DIR` to `~\claude\claude-personal` and starts in the
+`Claude Personal\` container, so its sessions had neither project hooks nor
+any global one, and it was in use (16 transcripts in 14 days). It now carries
+the same hooks block as `~/.claude/settings.json` (backup beside it,
+`settings.json.bak-2026-10-04-pre-hooks`). Proof it loads there: one headless
+`claude -p` turn with `CLAUDE_CONFIG_DIR` set, whose transcript records
+`PreToolUse:PowerShell` running the guard hook and the gates arriving. A
+global hook belongs to ONE profile's settings file; each profile needs its
+own copy of the block. That profile's statusLine points at a script that no
+longer exists (`.claude-personal\plugins\cache\caveman\...`); not fixed.
 
 Related: [[worktree-session-harness-guard-2026-09-17]],
 [[concurrent-session-designed-the-same-tool-2026-09-17]],
