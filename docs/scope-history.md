@@ -18243,8 +18243,16 @@ Flag not passed, the engine and `main` at `f887e27d` give one stream on all
 16,575 to 0 on the sweep and 39,948 to 0 in the Studio lanes; 7,097 and
 7,518 designs change, each by those stitches and nothing else, and none any
 other way; cuts unchanged on every design, in the stream and as a DST reader
-finds them. Eleven tests, each seen to fail; fourteen mutants, fourteen die.
-Engine 712 passed.
+finds them.
+
+The same agent then re-measured the rule as built, on 22,292 designs: all
+ten claims hold. Flag absent or `false`, the whole result is `main`'s, ties
+off and on; flag on, 256,374 seconds to 0 and the stream is the old one less
+those; the stitch after each of 680,021 jumps, cuts and colour changes is
+laid; written as DST, EXP and PES and read back, cuts are the same in count
+and place. It found one mutant the eleven tests missed, a float that goes
+nowhere keeping the hole; its fixture is the twelfth test. Twelve tests,
+each seen to fail; fifteen mutants, fifteen die. Engine 713 passed.
 
 Not sewn. No Studio caller passes it, and the lettering builder has no such
 rule. Flip is Kent's: "Waiting on Kent" 25.

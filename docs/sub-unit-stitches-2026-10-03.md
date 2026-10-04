@@ -216,15 +216,16 @@ On `main` at `f887e27d` with the rule added, against `main` itself:
 
 Every stitch taken out is a pair: 18,424,406 less 16,575 is 18,407,831.
 
-- **Tests first.** Eleven in `test/digitize.test.js`, each seen to fail:
+- **Tests first.** Twelve in `test/digitize.test.js`, each seen to fail:
   on the engine before the rule, on the first build, or on a mutant.
-- **Fourteen mutants, fourteen die**: the rule without the flag, the flag
+- **Fifteen mutants, fifteen die**: the rule without the flag, the flag
   read backwards, a cut inside a run that keeps the hole or becomes it, a
-  float that keeps the hole or becomes it, a hole that outlives its run, a
-  run's own jump taken for a hole, the same x or the same y taken for the
-  same point, a hole never moved on, a hole never noted, a stitch left out
-  that forgets the hole, and a record taken out after the spans were written.
-- **Engine suite** 712 passed. **Doc guards** 76 passed.
+  float that keeps the hole, becomes it, or keeps it only when the float goes
+  nowhere, a hole that outlives its run, a run's own jump taken for a hole,
+  the same x or the same y taken for the same point, a hole never moved on, a
+  hole never noted, a stitch left out that forgets the hole, and a record
+  taken out after the spans were written.
+- **Engine suite** 713 passed. **Doc guards** 76 passed.
 
 **What the independent re-measure changed.** The first build asked the
 thread and not the frame: it looked through jumps, so it also took out the
@@ -236,6 +237,28 @@ rule: looking through a jump can leave a run with no stitch, its jump beside
 the next, and a float out and back of 12 mm each way is already three jump
 records, a cut, after which the stitch is what holds the thread. It also
 found five mutants no test caught; they have tests now.
+
+**Its second look, at the rule as built** (2026-10-04, 22,292 designs: its
+first set, 300 with an island in a hole, 300 forked and pointed satins). All
+ten claims hold.
+
+- Flag absent, or `false`: the whole result is `main`'s on every design, with
+  `ties` off and on.
+- Flag on: 256,374 seconds to 0, and the stream is the old one less those,
+  record for record.
+- 680,021 jumps, cuts and colour changes are followed by a stitch, and that
+  stitch is laid every time.
+- Spans, counts and the 129,042 locks: unchanged.
+- Written as DST, EXP and PES and read back: the cuts are the same in count
+  and place, and every run of jump records is the same byte for byte.
+- Left doubled on its set with the flag on: 3,523, each with a jump between
+  the two. 2,114 are a run's opening jump that goes nowhere, 1,372 a frame
+  that went away and came back, 37 a float inside a run that goes nowhere.
+- One mutant passed the eleven tests: a float that goes nowhere keeping the
+  hole. Its fixture, a three-point needle forced to satin, is the twelfth
+  test.
+
+Neither look used a real machine or a third-party reader.
 
 *(measured 2026-10-03 and 2026-10-04, `node tools/sub-unit-stitch-census.mjs
 --on dedupeHoles=true --off dedupeHoles=true --against <main's src>`)*

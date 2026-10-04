@@ -3020,6 +3020,21 @@ test("dedupeHoles: the stitch after a float is laid, even on the point the float
   assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)));
 });
 
+test("dedupeHoles: the stitch after a float is laid, even when the float went nowhere", () => {
+  // A three-point needle forced to satin, with no pull compensation. At the
+  // tip the column floats to a point that rounds onto the one it left and sews
+  // there: a stitch, a jump and a stitch, all three on one point. The stitch
+  // after the float is the first of its thread and stays; the two after it are
+  // seconds. Found by the independent re-measure, 2026-10-04: no other test
+  // here holds a float that does not move.
+  const outer = [[0, 108.1], [144.9, 0], [6.9, 116.8]].map(([x, y]) => ({ x, y }));
+  const build = (extra) => _holeRun({ outer, tierOverride: "satin" }, 5.8, Object.assign({ pxPerMm: 25, pullCompMm: 0, underlay: false, satinSpacingMm: 0.3 }, extra));
+  const off = build(), on = build({ dedupeHoles: true });
+  assert.strictEqual(_show(off.stitches.slice(-6)), "s26,21 j26,21 s26,21 s26,21 s26,21 e0,0", "fixture: a stitch, a float that goes nowhere, and three stitches on its point");
+  assert.strictEqual(_show(on.stitches.slice(-4)), "s26,21 j26,21 s26,21 e0,0");
+  assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)));
+});
+
 test("dedupeHoles: a cut inside a run starts a new thread too", () => {
   // The column walk cuts to reach an island, and lays a stitch on the very
   // point it cut to: the record before that stitch is the cut, not a stitch.
