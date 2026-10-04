@@ -566,12 +566,41 @@
     const usedDir = new Set();  // directed first-steps already walked
     const seen = new Set();     // every skeleton pixel covered by an edge
 
+    // GOING ROUND IN CIRCLES. Three pixels that all touch each other (the
+    // corner of an L, a one-pixel hook on the end of a line) are none of them
+    // a node, and a walk that steps in among them with nothing unwalked ahead
+    // goes round them for ever. Until 2026-10-03 only the guard stopped it,
+    // one step for every cell of the grid, and the edge it handed back was
+    // that long: a 20 mm star off the Studio's shape tool sewed 48,645
+    // stitches, the 24 mm one 128,239.
+    //
+    // Where a step leads depends on the pixel it leaves, the pixel it lands
+    // on, and which pixels have been walked. So a step taken a second time
+    // with nothing new walked in between will be taken a third time, and for
+    // ever. `circling()` is asked before every step and says when that has
+    // happened. It says nothing of a walk that would have ended by itself, so
+    // every edge that ended before ends where it did.
+    const circling = () => {
+      const taken = new Map();  // step -> how many pixels were walked when it was last taken
+      return (cx, cy, nx, ny) => {
+        const step = id(cx, cy) * w * h + id(nx, ny);
+        if (taken.get(step) === seen.size) return true;
+        taken.set(step, seen.size);
+        return false;
+      };
+    };
+
     // Walk from node (sx,sy) toward neighbor (fx,fy) until the next node. At a
     // staircase pixel with two forward candidates prefer the unvisited one so we
-    // don't ping-pong; mark every pixel seen.
+    // don't ping-pong; mark every pixel seen. A walk that will never reach a
+    // node (see `circling`) is the edge as far as it went before it first came
+    // back onto its own pixels.
     const walk = (sx, sy, fx, fy) => {
       const path = [[sx, sy], [fx, fy]];
       seen.add(id(sx, sy)); seen.add(id(fx, fy));
+      const own = new Set([id(sx, sy), id(fx, fy)]);  // the pixels of this walk
+      const round = circling();
+      let turned = 0;  // how long the path was when the walk first stepped back onto itself
       let px = sx, py = sy, cx = fx, cy = fy, guard = 0;
       while (guard++ < w * h) {
         if (isNode(cx, cy)) break;
@@ -579,8 +608,10 @@
         if (!cand.length) break;
         let nx = cand[0][0], ny = cand[0][1];
         for (const [a, b] of cand) if (!seen.has(id(a, b))) { nx = a; ny = b; break; }
+        if (round(cx, cy, nx, ny)) { path.length = turned; break; }
+        if (!turned && own.has(id(nx, ny))) turned = path.length;
         px = cx; py = cy; cx = nx; cy = ny;
-        path.push([cx, cy]); seen.add(id(cx, cy));
+        path.push([cx, cy]); seen.add(id(cx, cy)); own.add(id(cx, cy));
       }
       return path;
     };
@@ -599,13 +630,16 @@
     }
     // Pure cycles (O, 0, counters, closed bowls) contain no node, so the scan
     // above never touched them. Walk each remaining loop as a CLOSED stroke:
-    // no free ends → no terminal trim, rails close back on themselves.
+    // no free ends → no terminal trim, rails close back on themselves. A walk
+    // that will never come back to (x, y) (see `circling`) has found no loop,
+    // and lays nothing: it started on a pixel the walks above stepped past.
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       if (!skel[id(x, y)] || seen.has(id(x, y))) continue;
       const start = nbrs(x, y);
       if (start.length !== 2) continue; // not part of a clean loop
       const path = [[x, y]]; seen.add(id(x, y));
-      let px = x, py = y, cx = start[0][0], cy = start[0][1], guard = 0;
+      const round = circling();
+      let px = x, py = y, cx = start[0][0], cy = start[0][1], guard = 0, loop = true;
       while (guard++ < w * h) {
         if (cx === x && cy === y) break; // closed the loop
         path.push([cx, cy]); seen.add(id(cx, cy));
@@ -613,8 +647,10 @@
         if (!cand.length) break;
         let nx = cand[0][0], ny = cand[0][1];
         for (const [a, b] of cand) if (!seen.has(id(a, b)) || (a === x && b === y)) { nx = a; ny = b; break; }
+        if (round(cx, cy, nx, ny)) { loop = false; break; }
         px = cx; py = cy; cx = nx; cy = ny;
       }
+      if (!loop) continue;
       path.push([x, y]); // close ring explicitly
       if (path.length >= 5) edges.push({ pts: path, freeStart: false, freeEnd: false, closed: true });
     }
