@@ -18530,3 +18530,85 @@ out by the shrink can cross the hole beside it (2 of 1,500 random trees).
 
 Engine 714 passed. Not sewn.
 *(fixed 2026-10-03 — `islandsAmong`, `sweptEdges`, `fillRingsOf` in `src/digitize.js`; `test/digitize.test.js`)*
+
+## 2026-10-03 — Two stitches in one hole: the browser fill's stitches under the file's unit, and `dedupeHoles` (measured, then built OFF)
+
+The builder rounds every point to 0.1 mm, so two penetrations nearer than
+that become two `stitch` records on one point, and the writers keep the
+record: `00 00 03` in a DST, read back by pystitch as a stitch on the spot.
+It came from #617 as a count. Here it was measured by a reader of its own,
+`tools/sub-unit-stitch-census.mjs`, and by a second one, an instrumented
+`pushRun` in a scratch copy. Both give the handover's figures to the stitch.
+
+| designs | flag absent (what ships) | `fillColumns` on, after #617 |
+|---|---|---|
+| the 8,255 of the #616 and #617 sweep | 16,575 pairs on 7,097 designs: 12,344 one point before rounding, 4,231 not | 3,783 on 2,553: 1,094, then 2,621 in column-walk passes and 68 in plain |
+| 8,270 from the Studio's own shape lanes | 16,399 in tatami passes, 23,549 in satin | 7,791 and 23,549 |
+| the 49,920 of #617's audit | 76,483 on 36,183 | 21,136 on 13,189, its 15,566 among them |
+
+What they are, on the sweep with every flag absent: 12,072 are a scanline
+through a corner, 11,837 of them a pass's first, which sits on the shape's
+topmost point; 272 are two spans meeting at a point. The short ones are 2,700
+moves across a gap under the unit wide, 1,366 rows at a tip, 112 lone rows,
+36 turns (fleece and terry only) and 17 waists. The audit's "15,518 along a
+row" is 11,561 rows and 3,957 gap moves. No strip two rows long is narrow
+from end to end in any set. 21,205 of the satin pairs are one preset star,
+which sews 48,645 stitches at 20 mm and is flagged as its own task.
+
+Python drops a span of no length, makes a row under 0.5 mm one penetration,
+and drops a penetration within 0.01 mm of the one before it at the record
+stream. Machines differ: Barudan, Ricoma, Brother, ZSK and Dahao delete the
+record as shipped; Happy keeps it; no filter was found for Tajima, whose
+manual says to correct the data. Nothing was sewn.
+
+Three rules were priced on scratch copies of the #617 engine. A column-walk
+pass that lays no second stitch in a hole: 3,783 to 1,162, each stream the
+old one less those records, cuts unchanged. Leaving such a row out of the
+columns: 3,783 to 1,894, and 1,328 designs change some other way. No run
+laying one, behind a new flag: 16,575 to 0 and 3,783 to 0, again records
+taken out and nothing else. The choice was put to Kent, and he took the
+last.
+
+It is built as `dedupeHoles` on `buildQualityDesign`, OFF by default: no run
+lays a stitch straight after a stitch on the same point. Only that. After a
+jump or a cut the stitch is laid, whatever point it is on. One place,
+`pushRun`; nothing in `fill.js`.
+
+The first build was wider and was wrong to be. It asked the thread and not
+the frame, looking through jumps, so it also took out the first stitch of a
+run that begins where the last one ended, and the stitch a satin column lays
+when it floats away and comes back. An independent re-measure (a separate
+agent, its own generator and reader, 22,167 designs) held every claim made
+of that build, and one remark in it undid the extension: a DST has no cut,
+the writer lays three jump records for one, and a reader takes any three
+jumps in a row for one. Looking through a jump can leave a run with no
+stitch and its jump beside the next. So the doubled holes with a jump
+between the two stay: 15 on the sweep, 61 in the Studio lanes. The same
+audit named five mutants no test caught; each has a test now.
+
+Flag not passed, the engine and `main` at `f887e27d` give one stream on all
+16,525 designs of the two sets, with `fillColumns` absent and on. Flag on:
+16,575 to 0 on the sweep and 39,948 to 0 in the Studio lanes; 7,097 and
+7,518 designs change, each by those stitches and nothing else, and none any
+other way; cuts unchanged on every design, in the stream and as a DST reader
+finds them.
+
+The same agent then re-measured the rule as built, on 22,292 designs: all
+ten claims hold. Flag absent or `false`, the whole result is `main`'s, ties
+off and on; flag on, 256,374 seconds to 0 and the stream is the old one less
+those; the stitch after each of 680,021 jumps, cuts and colour changes is
+laid; written as DST, EXP and PES and read back, cuts are the same in count
+and place. It found one mutant the eleven tests missed, a float that goes
+nowhere keeping the hole; its fixture is the twelfth test. Twelve tests,
+each seen to fail; fifteen mutants, fifteen die. Engine 713 passed.
+
+Measured again after merging `main` at `227cdd9e` (the star's satin fixed in
+#624, the islands in #620): flag not passed, still `main`'s stream on all
+16,525 designs, both arms. The Studio lanes hold 16,772 pairs now and 8,164
+with `fillColumns`, the pairs outside tatami passes having fallen from 23,549
+to 373; with the flag 0 and 0, and 7,526 and 4,360 designs change by those
+stitches and nothing else. The sweep is unchanged. Engine 788 passed.
+
+Not sewn. No Studio caller passes it, and the lettering builder has no such
+rule. Flip is Kent's: "Waiting on Kent" 25.
+*(measured and built 2026-10-03 and 2026-10-04 — `docs/sub-unit-stitches-2026-10-03.md`, `tools/sub-unit-stitch-census.mjs`, `test/digitize.test.js` "dedupeHoles")*
