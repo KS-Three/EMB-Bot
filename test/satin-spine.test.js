@@ -81,7 +81,8 @@ const longestStitchMm = (d) => {
 
 test("a 30 x 3 mm bar off the shape tool is sewn 30 x 3 mm, and no stitch is longer than it is tall", async () => {
   // Before: reported 30.3 x 4.2 mm, with one stitch 30.2 mm long. Pique's
-  // pull compensation is 0.3 mm and widens the crosses by that, no more.
+  // pull compensation is 0.3 mm and widens the crosses by that, no more
+  // (0.15 mm a side, each rounded to the file's 0.1 mm: 3.4 mm sewn).
   const d = await studioShape("rect", { heightMm: 3, cornerRadiusMm: 0 }, 30);
   assert.strictEqual(d._debug.nSatin, 1);
   assert.ok(longestStitchMm(d) < 3.5, `longest stitch ${longestStitchMm(d).toFixed(1)} mm on a bar 3 mm tall`);

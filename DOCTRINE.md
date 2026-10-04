@@ -8552,3 +8552,39 @@ round-ended bars and 273 of 612 image-lane designs besides.
 *(measured 2026-10-03 — `tools/satin-walk-census.mjs`,
 `test/satin-walk.test.js`; MASTER_SCOPE defects 56 and 57; scope-history
 10-03)*
+
+## What a figure counts is part of the figure: whose thread, and which costs were never taken (2026-10-04)
+
+Kent chose a cure for the browser's satin on three sentences: bars sew to
+their drawn size with no long stitch, logos keep or gain cover with far
+fewer stitches, and nearly every satin shape moves. He chose it and it was
+built as priced. Two of its costs were not in what he was shown, and one of
+those sentences was true only of the measure it was taken with.
+
+- **Cover has to say whose thread.** The measure drew every stitch of a
+  design and asked how much of each shape lay under thread. In a picture a
+  ground fill runs under small shapes, so a dot whose own satin had thinned
+  still read 100%. By any thread, 5 of 196 satin shapes lost over 2 points;
+  by their own, 41. A share "under thread" of a shape that lies on another
+  is partly the other's.
+- **Price an option on every measure the instrument has, and name the ones
+  it has not.** Needle-up travel was not measured before the choice. A
+  satin bar's underlay now ends at the far end from where its column starts,
+  a move as long as the bar, where the wrong skeleton had happened to start
+  beside the underlay's end. It was a red line on the first sheet drawn.
+  Draw the option before offering it, and say what was not taken.
+- **A cause read off a picture is a description of the picture.** The 10-03
+  record said a bar's spine "runs down the end's own edge into a corner".
+  The spine was the bar's top edge and its left edge; the picture is the
+  same either way. What settled it was changing one thing, a spare cell on
+  the grid, and reading the skeleton's own two ends.
+- **Hash the corpus before counting it.** "Nine logos, 241 satin shapes":
+  two of the nine files are one picture under two names. Eight, and 196.
+- **Before a path is made right, list what falls off it.** With a true
+  skeleton a small square or dot has no stroke, and lands on a fallback
+  older than the code that was fixed, with its own end margin. The wrong
+  skeleton had been sewing those twice over (10-03's last rule, again):
+  count what takes the fallback before and after.
+
+*(measured 2026-10-04 — `tools/satin-walk-census.mjs --cover`, `--images`;
+MASTER_SCOPE defect 57; scope-history 10-04)*
