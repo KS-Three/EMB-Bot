@@ -1,0 +1,37 @@
+---
+name: parallel-agent-with-embot
+description: "What Kent means by 'another agent working in parallel with the embot, no questions' — and the order of work that paid off on 2026-10-02"
+metadata:
+  node_type: memory
+  type: feedback
+  originSessionId: 48764755-5f8b-4d8e-835d-f1f15e939f2e
+  modified: 2026-10-03T22:40:56.142Z
+---
+
+> **Snapshot, copied 2026-10-03 (evening) from outside the repo.** Sessions rooted in
+> `C:\Users\EE-LT-11030\.claude-work` keep their memory in
+> `~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, which is not this
+> folder: nothing written there rides a PR or reaches a session rooted in EMB-Bot.
+> The original was still being edited when this was taken, so check a fact here
+> before acting on it. See [[memory-outside-the-repo]].
+
+Kent asked (2026-10-02): "get another agent working in parallel with the embot, no questions. just read the documents and execute what's needed." "The embot" was a LIVE peer session ("Emb bot next steps", same `.claude-work` cwd) building a lane in EMB-Bot; this session was the parallel agent.
+
+**Why:** he runs several EMB-Bot sessions at once and wants throughput without being interviewed; the repo's own docs (ROADMAP gates, CLAUDE.md, MASTER_SCOPE) carry the rules, so reading them replaces asking.
+
+**How to apply:**
+- First `ListAgents` + read the peer's transcript (`list_events`) to learn its lane, then pick work that cannot collide. What was actually needed was not new features: red/conflicted PRs with auto-merge armed (`gh pr list` → DIRTY / failing), stranded lanes (pushed or local-only, no PR), and stale docs that steer sessions wrong.
+- Split ownership explicitly with `SendMessage` to the peer when a PR is shared (it had been told by Kent to fix the same PR).
+- Kent-only decisions (flag flips, scope, phase, merging) still are not taken; list them at the end instead of asking mid-work.
+- Laptop limits that bit: C: had ~2.8 GB free, and a peer's `pytest -n 4` shows only 2 processes matching "pytest" — its xdist workers do not, so count by the controller, not by process name.
+- Never `git stash` in an EMB-Bot worktree, even for a one-minute before/after probe: the stash stack is shared by every lane (other sessions' stashes sat right under mine, 2026-10-03). Copy `src/` to the scratchpad and mutate the copy.
+- A feature of mine that changes stitch geometry gets an independent audit agent BEFORE auto-merge is armed, claims handed over as claims. On `fillColumns` (PR #606) the first build passed 20 tests and failed the audit three ways; then my own re-measure of the rebuild found a fourth. Re-measure with a different question (floats vs depth) before calling a rebuild done.
+- "Before auto-merge is armed" is not enough: the audit has to report, and its findings be fixed and pushed, BEFORE the PR is open and ready for review. On PR #613 (island fix, 2026-10-03) I opened it ready with the audit still running and held three rounds of fixes locally to push once. Main moved, the shared account merged main into the branch and armed auto-merge, and the pre-audit build merged at 16:11 local with the three faults the audit then found (one a slowdown on the default path). The fixes needed a follow-up PR. Open such a PR as DRAFT, first line saying why, until the audit's findings are in it; and push fixes as they land, never batch them behind an open PR. (That a ready PR here can be armed by any session on the shared account at any time is my reading of what happened; nobody told me so.) Second time the same day, PR #616 (`fillColumns` corner fix): opened ready with its audit running; the audit came back NOT clean (two claims failed) and the turn ended without telling Kent; three hours later the shared account merged main into the branch and armed #616 and #617 one second apart, and #617, cut from #616's branch, merged with #616's commits inside it. Correction had to be a docs PR (#618). So also: when an audit agent reports, relay its verdict to Kent in that same turn, before anything else, even if the report arrives as a hand-back with nothing asked.
+- A scratch copy of EMB-Bot `src/` drags 74 MB of `src/fonts` with it. Five probe copies cost 370 MB on a disk with 2 GB free (2026-10-03). Copy only the `.js` files, or delete the `fonts` copy straight away.
+- Removing a worktree or deleting a branch (`git worktree remove`, `git branch -d`, `git push --delete`) is refused by the auto-mode permission check here even for a lane this session made and that is fully merged elsewhere. Do not retry or route round it: verify it is clean and contained, then hand Kent the command. Hand it over only once it is safe to run, never as a "run this later" block: on 2026-10-03 I put the three cleanup commands for an OPEN PR's lane in fenced blocks (the app gives those a Run button) under the words "after #615 merges", and within a minute the head branch was gone, #615 was closed un-merged and the session was archived (`auto_archive_on_close`). While a PR is open, name the cleanup in prose and give the runnable blocks after the merge is confirmed. Recovery that worked: the commit object survives locally, so `git worktree add <path> -b <branch> <sha>`, push that same SHA, `gh pr reopen <n>`, then merge main and push. (That the Run buttons were the cause is my inference from the timing; GitHub's event log shows only `head_ref_deleted` by the shared account.)
+- Two open PRs that each APPEND a dated entry to `docs/scope-history.md` conflict with each other every time (keep-both merge). `git merge-tree --write-tree <a> <b>` shows it without touching any working tree; check it and the MASTER_SCOPE word budget of the merged result before arming, since each PR can pass alone.
+- A task chip's premise can be wrong about what ships. Before building, run the product's own call (the Studio's options, `app/src/lib/generate.js`) and count how often the path fires. The lettering fill a chip wanted staggered fired 0 times in 8,500 builds: it sat behind `wideColumnFill`, which Kent had ruled off. The chip's own stop clause made stopping the right result, and Kent then picked "stop, fix the record" over building under a dark flag (2026-10-03).
+- A PR stacked on a peer's unmerged PR has to target `main` (EMB-Bot has `delete_branch_on_merge` false, so a PR based on the peer's branch never retargets itself), and it then carries the peer's commits. Do not arm it until the peer's PR is in main, or it lands their change by another door; say so in the first line of the PR body (PR #615 on #611). This is my reading of Kent's audit-before-arming rule, not a ruling of his.
+- After telling a peer something is wrong in its open PR, `git fetch` its branch before fixing it yourself. On 2026-10-03 the peer corrected the same sentences within 15 minutes of my message and my docs commit had to be rebased over its.
+
+Related: [[claude-folder-layout]]; in-repo memory `concurrent-session-designed-the-same-tool-2026-09-17`.
