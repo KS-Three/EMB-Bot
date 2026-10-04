@@ -378,6 +378,25 @@
   // back. That run is laid before the column and lies under the ends of the
   // column's own rows. It is the half of "travel under rows still to sew"
   // that needs no knowledge of anything but the column itself.
+  //
+  // WHERE THE WALK ENDS. A pass ends with a float as well: to wherever the
+  // next run begins, and the caller cuts that one too if it crosses open
+  // ground. The walk asked where the thread was and never where it had to go
+  // next, and ended wherever its last column did: 2,261 cuts on 45,416
+  // designs lay on the float from an underlay it had sewn into a pass that
+  // begins at a point of its own. Told where the thread goes next (`o.to`,
+  // with `o.clear`, the caller's own test of a float), that float is the
+  // walk's last move:
+  //   - it leaves its LAST column by a corner the thread can float on from.
+  //     The look one move ahead does it: with nothing left to sew, leaving
+  //     where that float would be cut is a cut, and the other three corners
+  //     cost a run laid under the column's own rows, as for any column;
+  //   - and where no corner of that column will do, the thread TRAVELS ON
+  //     from where the pass ends, through the columns' corners (the last
+  //     resort, with its budget), to the nearest corner that will. That
+  //     travel is laid OVER the pass, so `to` is for a pass that something
+  //     will be sewn over: an underlay.
+  // Told nothing, a pass ends where its last column ends, as it always has.
   const RING_TRIES = 8;   // how many of the nearest starts are tried round a ring
   const START_TRIES = 8;  // how many of the nearest corners a pass may start from
   function sewColumns(cols, above, geo, o) {
@@ -534,15 +553,20 @@
       return best || { ci: all[0].ci, j: all[0].j, how: "cut", route: [start(all[0])] };
     };
 
+    // Can the thread float on from p to where the caller says it goes next,
+    // uncut? (Told nothing, from anywhere.) See "where the walk ends".
+    const leaves = (p) => !o.to || !o.clear || o.clear(p, o.to);
+
     // What leaving column `ci` at `exit` would cost the NEXT move: 0 a stitch
-    // or a run (or nothing is left to sew), 1 the way round a ring, 2 a cut.
+    // or a run, 1 the way round a ring, 2 a cut. With nothing left to sew the
+    // next move is the float out of the pass: 0, or 2 where it would be cut.
     // The move it found is kept: it is the very move the walk makes next.
     const done = cols.map(() => false);
     let waits = above;         // what each column waits for: see "where the walk starts"
     let planned = new Map();   // exit point -> the move from it
     const afterwards = (ci, exit) => {
       const rest = remaining.filter((c) => c !== ci);
-      if (!rest.length) return 0;
+      if (!rest.length) return leaves(exit) ? 0 : 2;
       let ready = rest.filter((c) => waits[c].every((a) => done[a] || a === ci));
       if (!ready.length) ready = rest;
       const move = moveTo(exit, ready);
@@ -637,13 +661,17 @@
       }
       return adj;
     };
-    const webRoute = (from, ready) => {
+    // `ready`: the columns the way may end on, at any corner. With `wanted`,
+    // only at a corner it says yes to (the walk's last move asks for one the
+    // thread can float on from).
+    const webRoute = (from, ready, wanted) => {
       if (!web) web = buildWeb();
       const here = cornerOf(from.ci, from.c);
       const allowed = (ci, c) => Math.max(o.budget, 4 * dist(here, cornerOf(ci, c)));
       let cap = 0;
       for (const ci of ready) for (const c of [0, 1, 2, 3]) cap = Math.max(cap, allowed(ci, c));
       const goal = new Set(ready), N = cols.length * 4;
+      const ends = wanted ? (ci, c) => goal.has(ci) && wanted(ci, c) : (ci) => goal.has(ci);
       const best = new Array(N).fill(Infinity), via = new Array(N).fill(null), seen = new Array(N).fill(false);
       best[from.ci * 4 + from.c] = 0;
       // The nearest corner not yet settled comes off a heap of [distance,
@@ -687,7 +715,7 @@
         }
         if (u < 0 || best[u] > cap) return null;
         const ci = u >> 2, c = u & 3;
-        if (goal.has(ci)) {
+        if (ends(ci, c)) {
           if (best[u] > allowed(ci, c)) return null;
           const route = [];
           for (let k = u; via[k]; k = via[k].from) route.unshift(...via[k].pts);
@@ -811,6 +839,19 @@
       cur = key[key.length - 1];
       curNode = { ci: m.ci, c: exitCorner(m.ci, pick.j) };
     }
+    // The last move: the float out of the pass. Where it would be cut, the
+    // thread travels on to the nearest corner it would not be cut from, if
+    // there is a way there within the budget. See "where the walk ends".
+    if (!leaves(cur)) {
+      const asked = new Map();   // a corner is asked once: the question is a walk of a float over the shape
+      const will = (ci, c) => {
+        const k = ci * 4 + c;
+        if (!asked.has(k)) asked.set(k, leaves(cornerOf(ci, c)));
+        return asked.get(k);
+      };
+      const way = webRoute(curNode, cols.map((_, ci) => ci), will);
+      if (way) sewAlong(cur, way.route);
+    }
     return out;
   }
 
@@ -928,7 +969,13 @@
   //   `ground` (with `columns`): the polygons that count as filled ground for
   //   that question, when they are not `polygons` themselves. An underlay is
   //   given the rings the FILL is sewn to.
-  //   `from`, `clear`, `travelBudget` (with `columns`): see sewColumns.
+  //   `from`, `to`, `clear`, `travelBudget` (with `columns`): see sewColumns.
+  //   `plainOnly` (with `columns`): the pass where the plain walk sews it,
+  //   and null where the column walk does. A plain pass begins at a point of
+  //   its own and is the same pass wherever the thread is, so a caller can
+  //   build it FIRST and tell the pass before it where the thread goes next
+  //   (`to`). The column walk starts where the thread can reach, so it
+  //   cannot be built ahead: it is left for the caller to build in its turn.
   //   `stagger` (default off), `minStitch`, `splitTol`: the row stagger above.
   //   `stagger` is the rows in a cycle, a NUMBER (a flag or text is no
   //   stagger); the grid's pitch is `maxStitch`; `minStitch` and `splitTol`
@@ -1121,14 +1168,16 @@
         else if (under === ON_RIM && floated(d)) rimTurn[i] = true;
       }
       if (!plain) {
+        if (opts.plainOnly) return null;
         const cut = cutColumns(spansWithLength(rowSpans));
         splitAtOpenTurns(cut, ground, tol);
         const budget = opts.travelBudget > 0 ? opts.travelBudget : (maxStitch > 0 ? 5 * maxStitch : Infinity);
         // the walk works in the rotated frame; the caller's `clear` does not
         const from = opts.from ? rotate(opts.from, cosN, sinN) : null;
+        const to = opts.to ? rotate(opts.to, cosN, sinN) : null;
         const clear = opts.clear ? ((a, b) => opts.clear(rotate(a, cosP, sinP), rotate(b, cosP, sinP))) : null;
         const walked = sewColumns(cut.columns, cut.above, { edges: ground, rings, ringOf, posOf },
-          { maxStitch, tol, pitch: rowSpacing, cosP, sinP, budget, from, clear, rowHoles });
+          { maxStitch, tol, pitch: rowSpacing, cosP, sinP, budget, from, to, clear, rowHoles });
         // for a caller that counts which walk it got (center-out is the other one)
         Object.defineProperty(walked, "columnWalk", { value: true });
         return walked;

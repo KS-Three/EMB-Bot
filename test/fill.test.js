@@ -529,6 +529,115 @@ test("columns: told where the thread is, the walk starts from a corner it can re
   }
 });
 
+// A U with its mouth at the top: two arms 30 wide and 60 tall on a base 40
+// tall. Its rows at pitch 1: y = 0..59 are the two arms, y = 60..99 the base.
+const U_SHAPE = [{x:0,y:0},{x:30,y:0},{x:30,y:60},{x:70,y:60},{x:70,y:0},{x:100,y:0},{x:100,y:100},{x:0,y:100}];
+const U_MOUTH = { x0:30, y0:0, x1:70, y1:60 };
+// every row of the U sewn end to end, each of its spans
+const uRowsSewn = (pts, label) => {
+  const sewn = pts.filter((p) => !p.travel && !p.trim);
+  for (let y = 0; y <= 99; y += 3) {
+    for (const [x0, x1] of (y < 60 ? [[0, 30], [70, 100]] : [[0, 100]])) {
+      const xs = sewn.filter((p) => Math.abs(p.y - y) < 1e-6 && p.x >= x0 - 1e-6 && p.x <= x1 + 1e-6).map((p) => p.x);
+      assert.ok(Math.abs(Math.min(...xs) - x0) < 1e-6 && Math.abs(Math.max(...xs) - x1) < 1e-6, label + ": row " + y + " span " + x0 + ".." + x1);
+    }
+  }
+};
+const at = (p) => "(" + p.x + ", " + p.y + ")";
+
+test("columns: told where the thread goes next, the walk leaves its last column by a corner it can float there from", () => {
+  // A pass ENDS with a float as well: to wherever the next run begins, and the
+  // caller cuts that one too if it crosses open ground. The walk asked where
+  // the thread was and never where it had to go, so it ended wherever its last
+  // column happened to end. `to` is where the thread goes next.
+  //
+  // Sewn from its top left, the U ends on its base, at the bottom right. A
+  // float from there to a point in the LEFT arm crosses the mouth. Told so,
+  // the walk enters the base by its other top corner -- one run along the
+  // base's own first row, laid before the base and under it -- and ends at the
+  // bottom left instead.
+  const ground = fill.openGroundTest([U_SHAPE]);
+  const clear = (a, b) => !ground(a, b, PITCH, 0, 8);
+  const to = { x:15, y:30 };
+  const untold = fill.tatamiFill([U_SHAPE], Object.assign({}, COLS, { clear }));
+  assert.strictEqual(clear(untold[untold.length - 1], to), false, "the fixture: told nothing, the pass ends where that float must be cut, at " + at(untold[untold.length - 1]));
+  const pts = fill.tatamiFill([U_SHAPE], Object.assign({}, COLS, { clear, to }));
+  assert.ok(clear(pts[pts.length - 1], to), "it ends at " + at(pts[pts.length - 1]));
+  assert.strictEqual(cutsOf(pts), 0);
+  assert.deepStrictEqual(threadThrough(pts, U_MOUTH), { sewn:0, floats:0 });
+  assert.strictEqual(floatsOffShape(pts, [U_SHAPE]), 0);
+  noLongStitch(pts, 8, "the U");
+  uRowsSewn(pts, "told where it goes next");
+  // It is the same walk up to its last column: only how the base is entered moves.
+  const last = untold.findIndex((p, i) => p.x !== pts[i].x || p.y !== pts[i].y);
+  assert.ok(untold[last].y >= 60, "the two walks part at " + at(untold[last]) + ", which is not on the base");
+  // A `to` the pass already ends within reach of changes nothing.
+  assert.deepStrictEqual(fill.tatamiFill([U_SHAPE], Object.assign({}, COLS, { clear, to: { x:85, y:30 } })), untold);
+});
+
+test("columns: and where no corner of its last column will do, the thread travels on to one that will", () => {
+  // The same U sewn from the bottom left: the base, the left arm, and last the
+  // right arm, ending at its top. The next run begins at the top of the LEFT
+  // arm, and the thread can float there from no corner of the right arm: the
+  // mouth is in the way. So the pass does not stop on its last row. The thread
+  // travels on as it would to a column still to sew -- down the arm's side and
+  // along the mouth's own edge -- to the nearest corner the float is clear
+  // from, and the caller's cut is not made.
+  //
+  // (That travel is laid OVER the pass, so `to` is for a pass that something
+  // will be sewn over: an underlay.)
+  const ground = fill.openGroundTest([U_SHAPE]);
+  const clear = (a, b) => !ground(a, b, PITCH, 0, 8);
+  const from = { x:0, y:100 }, to = { x:15, y:5 };
+  const untold = fill.tatamiFill([U_SHAPE], Object.assign({}, COLS, { from, clear }));
+  const end = untold[untold.length - 1];
+  assert.ok(end.x >= 70 && end.y < 1, "the fixture: told nothing, the pass ends at the top of the right arm, at " + at(end));
+  for (const corner of [{ x:70, y:0 }, { x:100, y:0 }, { x:70, y:59 }, { x:100, y:59 }]) {
+    assert.strictEqual(clear(corner, to), false, "the fixture: no corner of the right arm can float to the left arm's top, " + at(corner));
+  }
+  const pts = fill.tatamiFill([U_SHAPE], Object.assign({}, COLS, { from, clear, to }));
+  assert.ok(clear(pts[pts.length - 1], to), "it ends at " + at(pts[pts.length - 1]));
+  assert.strictEqual(cutsOf(pts), 0);
+  // the pass itself is the one it was: the travel is added on its end
+  assert.deepStrictEqual(pts.slice(0, untold.length), untold.slice());
+  assert.ok(pts.length > untold.length);
+  // and the travel is a way ROUND: sewn, no stitch too long, nothing through the mouth
+  for (const p of pts.slice(untold.length)) assert.ok(!p.travel && !p.trim, "the travel is sewn");
+  assert.deepStrictEqual(threadThrough(pts, U_MOUTH), { sewn:0, floats:0 });
+  assert.strictEqual(floatsOffShape(pts, [U_SHAPE]), 0);
+  noLongStitch(pts, 8, "the U, travelling on");
+  uRowsSewn(pts, "travelling on");
+  // With no `clear` there is no float to ask about, and `to` alone moves nothing.
+  assert.deepStrictEqual(fill.tatamiFill([U_SHAPE], Object.assign({}, COLS, { to })), fill.tatamiFill([U_SHAPE], COLS));
+});
+
+test("columns: `plainOnly` gives the pass where the plain walk sews it, and nothing where the column walk does", () => {
+  // To tell a pass where the thread goes next, a caller has to know where the
+  // NEXT pass begins before that one is sewn. A pass the plain walk sews
+  // begins at a point of its own and is the same pass wherever the thread is,
+  // so it can be built first. A pass the column walk sews starts where the
+  // thread can reach, and cannot. `plainOnly` asks which this is.
+  const l = [{x:0,y:0},{x:100,y:0},{x:100,y:35},{x:35,y:35},{x:35,y:100},{x:0,y:100}];
+  const clear = (a, b) => !fill.crossesOpenGround(a, b, [l], PITCH, 0);
+  for (const centerOut of [false, true]) {
+    const o = Object.assign({}, COLS, { centerOut });
+    const plain = fill.tatamiFill([l], Object.assign({ plainOnly: true }, o));
+    assert.ok(plain && plain.length > 100 && !plain.columnWalk, "an L under rows 1 apart is the plain walk's");
+    assert.deepStrictEqual(plain, fill.tatamiFill([l], o), "and it is the pass it would have been");
+    // where the thread is, and where it goes next, move nothing in it
+    assert.deepStrictEqual(plain, fill.tatamiFill([l], Object.assign({ from: { x:35, y:100 }, to: { x:100, y:0 }, clear }, o)));
+    assert.strictEqual(fill.tatamiFill([SQ, WIDE_HOLE], Object.assign({ plainOnly: true }, o)), null, "a holed square is the column walk's");
+  }
+  // No row of a T forks, but under rows 10 apart its turn at the step goes
+  // deep, and that is the column walk's too ("rows that never fork", above).
+  const t = [{x:0,y:0},{x:120,y:0},{x:120,y:35},{x:75,y:35},{x:75,y:120},{x:45,y:120},{x:45,y:35},{x:0,y:35}];
+  const under = { rowSpacing:10, angleDeg:90, maxStitch:40, markConnectors:true, columns:true, openTol:1 };
+  assert.ok(fill.tatamiFill([t], under).columnWalk, "the fixture: this T is sewn by the column walk");
+  assert.strictEqual(fill.tatamiFill([t], Object.assign({ plainOnly: true }, under)), null, "a T under rows 10 apart");
+  // a shape with no rows at all is a pass of nothing, not a refusal
+  assert.deepStrictEqual(fill.tatamiFill([[]], Object.assign({ plainOnly: true }, COLS)), []);
+});
+
 test("columns: a pass does not land, take one stitch, and cut", () => {
   // When the thread can float to no corner the walk could start from, it lands
   // on the nearest corner of any column and travels from there. But where the

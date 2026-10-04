@@ -980,6 +980,69 @@ test("fillColumns: the tip of a holed shape gets one penetration at most, not tw
   }
 });
 
+// --- where a pass ends (2026-10-03, after the corner fix's re-measure) ---------
+//
+// The move between two runs of a shape is cut where it leaves the ground the
+// fill covers. Each tatami pass was told where the thread was, and never
+// where it had to go next: an underlay sewn by the column walk ended wherever
+// its last column ended, and when the run after it begins at a point of its
+// own -- a fill or a lattice pass the plain walk sews -- the float between
+// them was cut. 2,261 such cuts on 45,416 designs (the re-measure's own
+// drawings, option on): the most of any kind the walk could do anything about.
+// With the corner fix 388 of those designs gained a cut, 330 of the 404 here.
+//
+// A pass the plain walk sews begins where it begins, wherever the thread is.
+// So it is BUILT first, and the pass before it is told (`to`, fill.js "where
+// the walk ends"; test/fill.test.js has it bare).
+
+test("fillColumns: an underlay ends where the thread can float on to the pass after it", () => {
+  const cases = {
+    // The re-measure's own drawing. The cap preset's zigzag ended on a barb
+    // of the arrow, and the fill begins at the middle of its tail.
+    "an arrow, the cap preset's zigzag": [ring([[300, 120], [180, 240], [180, 168], [0, 168], [0, 72], [180, 72], [180, 0]]), 300, "structured_cap", null],
+    // Two lattice passes, and the fill after them.
+    "an L under terry, rows at 45": [ring([[240, 0], [240, 60], [60, 60], [60, 180], [0, 180], [0, 0]]), 240, "terry_towel", 45],
+    // No preset: the one tatami underlay, across the fill's rows.
+    "a T, no preset, rows level": [ring([[0, 0], [240, 0], [240, 60], [150, 60], [150, 240], [90, 240], [90, 60], [0, 60]]), 240, null, 0],
+    // The FIRST lattice pass into the second, which is the one the plain walk sews here.
+    "two tips under terry, rows at 135": [ring([[0, 300], [25, 0], [50, 280], [75, 0], [100, 300]]), 100, "terry_towel", 135],
+  };
+  for (const name of Object.keys(cases)) {
+    const [outer, widthPx, fabricId, angleOverride] = cases[name];
+    const fabric = fabricId ? FABRICS.getFabric(fabricId) : null, pull = fabric ? fabric.pullCompMm : 0;
+    const shape = { outer, holes: [] };
+    if (angleOverride != null) shape.angleOverride = angleOverride;
+    const d = drawn(shape, widthPx, fabric ? { fabric } : {});
+    const cuts = cutsBy(d);
+    assert.strictEqual(cuts.between, 0, name + ": " + JSON.stringify(cuts));
+    assert.strictEqual(cuts.underlay, 0, name + ": " + JSON.stringify(cuts));
+    assert.ok(cuts.fill <= 1, name + ": only center-out's own cut is left, " + JSON.stringify(cuts));
+    // and the cut was not traded for thread off the fill
+    assert.deepStrictEqual(offCoverMm(d, shape, pull, 0.15), { sewn: 0, floats: 0 }, name);
+    assert.strictEqual(floatsOffCover(d, shape, pull), 0, name);
+    // every run is still there, in the order it was
+    const kinds = d.runs.map((r) => r.kind).join(" ");
+    assert.ok(/^(underlay )+fill$/.test(kinds), name + ": " + kinds);
+  }
+});
+
+test("fillColumns: a fill the plain walk sews is the fill it was, built before its underlay or after", () => {
+  // Building the fill first must not move a stitch of it: where the plain walk
+  // begins and what it sews do not turn on where the thread is. The fill of
+  // each drawing above, record for record, against the same fill with the
+  // option off -- where nothing is built first -- on a shape whose plain fill
+  // the option leaves alone (no turn of it runs outside the shape).
+  const fillOf = (d) => { const r = d.runs.find((x) => x.kind === "fill"); return d.stitches.slice(r.i0, r.i1 + 1); };
+  const l = { outer: ring([[240, 0], [240, 60], [60, 60], [60, 180], [0, 180], [0, 0]]), holes: [], angleOverride: 45 };
+  for (const fabricId of [null, "structured_cap", "terry_towel", "fleece_sweatshirt"]) {
+    const extra = fabricId ? { fabric: FABRICS.getFabric(fabricId) } : {};
+    const on = drawn(l, 240, extra), off = drawn(l, 240, Object.assign({ fillColumns: false }, extra));
+    assert.deepStrictEqual(fillOf(on), fillOf(off), fabricId || "no preset");
+    assert.strictEqual(on._debug.nFill, 1);
+    assert.strictEqual(on._debug.nCenterOut, off._debug.nCenterOut, fabricId || "no preset");
+  }
+});
+
 test("buildQualityDesign: thin solid bar goes satin, branched shape goes fill", () => {
   // thin bar 200x8 px at pxPerMm 8 → ~1mm wide final (fits 4in garment, scale>1 but still thin)
   const bar = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 8 }, { x: 0, y: 8 }];
