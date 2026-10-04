@@ -17881,7 +17881,7 @@ Off, nothing moves: engine 693 passed. Not sewn. Flip is still Kent's:
 defect 52, "Waiting on Kent" 22.
 *(fixed 2026-10-03 — `test/fill.test.js` "a move of no length", `test/digitize.test.js`; `docs/renders/fill-columns-2026-10-03/README.md`, "A move of no length")*
 
-## 2026-10-03 — Two stitches in one hole: the browser fill's stitches under the file's unit (measured; no stitch changed)
+## 2026-10-03 — Two stitches in one hole: the browser fill's stitches under the file's unit, and `dedupeHoles` (measured, then built OFF)
 
 The builder rounds every point to 0.1 mm, so two penetrations nearer than
 that become two `stitch` records on one point, and the writers keep the
@@ -17916,5 +17916,25 @@ pass that lays no second stitch in a hole: 3,783 to 1,162, each stream the
 old one less those records, cuts unchanged. Leaving such a row out of the
 columns: 3,783 to 1,894, and 1,328 designs change some other way. No run
 laying one, behind a new flag: 16,575 to 0 and 3,783 to 0, again records
-taken out and nothing else. The choice was put to Kent.
-*(measured 2026-10-03 — `docs/sub-unit-stitches-2026-10-03.md`, `tools/sub-unit-stitch-census.mjs`)*
+taken out and nothing else. The choice was put to Kent, and he took the
+last.
+
+It is built as `dedupeHoles` on `buildQualityDesign`, OFF by default: no run
+lays a stitch on the point its thread's last stitch is on. It is asked of the
+thread and not of the frame. A jump lays nothing, so a run that begins where
+the last one ended no longer sews that point twice, and neither does a satin
+column that floats away and comes back (59 in the Studio lanes, found by the
+census after the first build kept them). A cut ends the thread, and the
+stitch after it is always laid. One place, `pushRun`; nothing in `fill.js`.
+
+Flag not passed, the engine and `main` at `f887e27d` give one stream on all
+16,525 designs of the two sets, with `fillColumns` absent and on. Flag on:
+16,575 to 0 on the sweep and 39,948 to 0 in the Studio lanes; 7,100 and
+7,539 designs change, each by those stitches and nothing else, and none any
+other way; cuts 8,175 and 7,028 before and after. Eight tests, four watched
+failing first and four seen to fail on a mutant; ten mutants, ten die.
+Engine 709 passed.
+
+Not sewn. No Studio caller passes it, and the lettering builder has no such
+rule. Flip is Kent's: "Waiting on Kent" 25.
+*(measured and built 2026-10-03 — `docs/sub-unit-stitches-2026-10-03.md`, `tools/sub-unit-stitch-census.mjs`, `test/digitize.test.js` "dedupeHoles")*

@@ -2854,3 +2854,151 @@ test("underlayRuns: a 3-point hole gets its own edge run and joins the lattice's
   // and the floor still drops a degenerate 2-point "hole"
   assert.strictEqual(DG.underlayRuns({ outer: sq, holes: [tri.slice(0, 2)] }, "edge_run", ctx).length, 1);
 });
+
+// --- dedupeHoles: no second stitch in the hole the needle is in (2026-10-03) --
+//
+// The builder rounds every point to the stitch file's unit, 0.1 mm, so two
+// penetrations nearer than that can become two `stitch` records on one point:
+// a scanline through a corner, a row at a tip, the move across the mouth of a
+// notch. The writers keep such a record, so the needle goes down twice in one
+// hole (docs/sub-unit-stitches-2026-10-03.md: 16,575 of them on 8,255 designs
+// with every flag absent). `dedupeHoles: true` lays the first and not the
+// second, in every run of the shape builder. Built OFF.
+const _holeStar = [[180, 0], [227, 115], [351, 124], [256, 205], [286, 326], [180, 260], [74, 326], [104, 205], [9, 124], [133, 115]].map(([x, y]) => ({ x, y }));
+const _holeTaper = [{ x: 0, y: 0 }, { x: 300, y: 10 }, { x: 0, y: 20 }];
+const _holeRun = (shape, widthMm, extra) => DG.buildQualityDesign(
+  [{ rgb: [0, 0, 0], shapes: [Object.assign({ holes: [] }, shape)] }],
+  Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: widthMm, darkOnTop: false }, extra));
+// Each a design that, with the flag off, puts two stitches on one point in the
+// kind of run named: [name, the run kind the pair is in, how it is built].
+const _holeCases = [
+  ["plain walk, fill and underlay", "fill", (extra) => _holeRun({ outer: _holeStar, tierOverride: "fill" }, 34.2, extra)],
+  ["plain walk under a preset", "fill", (extra) => _holeRun({ outer: _holeStar, tierOverride: "fill" }, 34.2, Object.assign({ fabric: FABRICS.getFabric("pique_knit") }, extra))],
+  ["column walk under a preset", "fill", (extra) => _holeRun({ outer: _holeStar, holes: [sq(160, 160, 40)], tierOverride: "fill" }, 34.2, Object.assign({ fabric: FABRICS.getFabric("terry_towel"), fillColumns: true }, extra))],
+  ["satin", "satin", (extra) => _holeRun({ outer: _holeTaper, tierOverride: "satin" }, 30, extra)],
+];
+// The stitches on a point the stitch before them is on, by the kind of run.
+const _secondByKind = (d) => {
+  const out = {};
+  for (const r of d.runs) {
+    for (let i = r.i0 + 1; i <= r.i1; i++) {
+      if (d.stitches[i].type === "stitch" && d.stitches[i - 1].type === "stitch" && _same(d.stitches[i], d.stitches[i - 1])) out[r.kind] = (out[r.kind] || 0) + 1;
+    }
+  }
+  return out;
+};
+// What the flag is to leave of a stream, written out here and not asked of
+// the builder: every record but a stitch on the point this thread's last
+// stitch is on. A jump lays nothing and changes nothing; a cut ends the thread.
+const _withoutSecond = (stitches) => {
+  const out = [];
+  let hole = null;
+  for (const s of stitches) {
+    if (s.type === "stitch") {
+      if (hole && _same(hole, s)) continue;
+      hole = s;
+    } else if (s.type !== "jump") hole = null;
+    out.push(s);
+  }
+  return out;
+};
+const _records = (stitches) => stitches.map((s) => `${s.x},${s.y},${s.type}`).join(";");
+// Two squares; the second's first row begins on the corner the first's last
+// row ends on, (35, -34) in the file. One colour: the frame does not move
+// between them and the thread is not cut. Two colours: it is cut there.
+const _holeSquares = (twoColours, extra) => {
+  const a = { outer: sq(0, 0, 100), holes: [], tierOverride: "fill", angleOverride: 0 };
+  const b = { outer: [{ x: 100, y: 99 }, { x: 130, y: 99 }, { x: 130, y: 130 }, { x: 100, y: 130 }], holes: [], tierOverride: "fill", angleOverride: 0 };
+  const regions = twoColours ? [{ rgb: [0, 0, 0], shapes: [a] }, { rgb: [200, 0, 0], shapes: [b] }] : [{ rgb: [0, 0, 0], shapes: [a, b] }];
+  return DG.buildQualityDesign(regions, Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: 13, darkOnTop: false, underlay: false }, extra));
+};
+
+test("dedupeHoles: OFF by default, and the flag off is byte-identical to omitting it", () => {
+  for (const [name, kind, build] of _holeCases) {
+    const omitted = build(), off = build({ dedupeHoles: false });
+    assert.strictEqual(_fingerprint(off), _fingerprint(omitted), name);
+    assert.deepStrictEqual(off.runs, omitted.runs, name);
+    assert.ok(_secondByKind(omitted)[kind] > 0, `fixture, ${name}: left off, a ${kind} run has two stitches on one point`);
+  }
+});
+
+test("dedupeHoles: ON, no run lays two stitches in a row on one point", () => {
+  for (const [name, , build] of _holeCases) {
+    const on = build({ dedupeHoles: true });
+    assert.deepStrictEqual(_secondByKind(on), {}, name);
+    assert.strictEqual(_zeroLength(on), 0, name);
+  }
+});
+
+test("dedupeHoles: the stream is the one without it less those stitches, and nothing else moves", () => {
+  for (const [name, , build] of _holeCases) {
+    const off = build(), on = build({ dedupeHoles: true });
+    assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)), name);
+    assert.ok(on.stitches.length < off.stitches.length, name);
+    for (const k of ["trim", "jump", "color", "end"]) assert.strictEqual(_count(on, k), _count(off, k), `${name}: the flag must take out no ${k}`);
+    assert.strictEqual(on.stitchCount, _count(on, "stitch"), `${name}: the design's stitch count is the stream's`);
+  }
+});
+
+test("dedupeHoles: every run still has its span, and the spans still hold every stitch", () => {
+  for (const [name, , build] of _holeCases) {
+    const off = build(), on = build({ dedupeHoles: true });
+    assert.deepStrictEqual(on.runs.map((r) => r.kind), off.runs.map((r) => r.kind), name);
+    let covered = 0, next = 0;
+    for (const r of on.runs) {
+      assert.ok(r.i0 >= next && r.i1 >= r.i0, `${name}: spans in order, none inside another`);
+      assert.strictEqual(on.stitches[r.i0].type, "jump", `${name}: a span opens on its run's jump`);
+      for (let i = r.i0; i <= r.i1; i++) if (on.stitches[i].type === "stitch") covered++;
+      next = r.i1 + 1;
+    }
+    assert.strictEqual(covered, _count(on, "stitch"), name);
+  }
+});
+
+test("dedupeHoles: a run that begins where the last one ended lays no second stitch there", () => {
+  // Not two stitch records in a row: the second run's own jump is between
+  // them. A jump lays nothing, so the thread's last stitch is still that one.
+  const off = _holeSquares(false), on = _holeSquares(false, { dedupeHoles: true });
+  const seam = (d) => _show(d.stitches.slice(d.runs[1].i0 - 1, d.runs[1].i0 + 3));
+  assert.strictEqual(seam(off), "s35,-34 j35,-34 s35,-34 s65,-34", "fixture: off, the corner is sewn twice");
+  assert.strictEqual(seam(on), "s35,-34 j35,-34 s65,-34 s65,-35");
+  assert.strictEqual(_count(off, "stitch") - _count(on, "stitch"), 1, "and that is the one record taken out");
+  assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)));
+});
+
+test("dedupeHoles: a float lays nothing either, and the stitch back on the point the thread left is not laid", () => {
+  // A three-armed star forced to satin: the column floats 9 mm across to the
+  // next arm and comes back to sew where it was. The frame has been away; the
+  // thread has been nowhere, so that stitch is the second in its hole.
+  const star = [];
+  for (let i = 0; i < 6; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 3, r = i % 2 ? 30 : 100;
+    star.push({ x: Math.round(100 + r * Math.cos(a)), y: Math.round(100 + r * Math.sin(a)) });
+  }
+  const build = (extra) => _holeRun({ outer: star, tierOverride: "satin" }, 17.4, Object.assign({ underlay: false }, extra));
+  const off = build(), on = build({ dedupeHoles: true });
+  const k = off.stitches.findIndex((s, i, st) => i >= 2 && s.type === "stitch" && st[i - 1].type === "jump" && !_same(s, st[i - 1]) && st[i - 2].type === "stitch" && _same(s, st[i - 2]));
+  assert.ok(k >= 2, "fixture: off, a stitch, a float away, and a stitch back on the same point");
+  assert.strictEqual(_show(off.stitches.slice(k - 2, k + 2)), "s-46,-30 j46,-30 s-46,-30 s-42,-26", "fixture");
+  assert.strictEqual(_show(on.stitches.slice(k - 2, k + 1)), "s-46,-30 j46,-30 s-42,-26");
+  assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)));
+});
+
+test("dedupeHoles: a cut starts a new thread, and its first stitch is laid even on the spot", () => {
+  // The same two squares in two colours. The thread is cut on the corner, and
+  // the stitch after the cut is what holds the new thread: it stays.
+  const off = _holeSquares(true), on = _holeSquares(true, { dedupeHoles: true });
+  const seam = (d) => _show(d.stitches.slice(d.runs[1].i0 - 3, d.runs[1].i0 + 2));
+  assert.strictEqual(seam(off), "s35,-34 t35,-34 c35,-34 j35,-34 s35,-34", "fixture");
+  assert.strictEqual(seam(on), seam(off));
+  assert.strictEqual(_fingerprint(on), _fingerprint(off), "nothing in this design is a second stitch");
+});
+
+test("dedupeHoles: with ties, every lock is still laid and none of them doubles a hole", () => {
+  const star = (extra) => _holeRun({ outer: _holeStar, tierOverride: "fill" }, 34.2, extra);
+  const tied = star({ ties: true }), both = star({ ties: true, dedupeHoles: true });
+  assert.ok(tied._debug.nTies >= 2 && _zeroLength(tied) > 0, "fixture: locks, and stitches on one point");
+  assert.strictEqual(both._debug.nTies, tied._debug.nTies, "a lock for every thread end, as without the flag");
+  assert.strictEqual(_lockLegs(both).length, both._debug.nTies);
+  assert.strictEqual(_zeroLength(both), 0);
+});

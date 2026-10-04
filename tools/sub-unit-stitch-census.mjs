@@ -15,7 +15,8 @@
 //
 // Every design is built twice: with every flag ABSENT (what ships), and ON
 // (`fillColumns: true`). `--on` and `--off` add builder options to one arm,
-// which is how a rule behind a new flag is priced beside the engine as it is.
+// which is how a rule behind a flag is priced beside the engine as it is:
+// `--on dedupeHoles=true --off dedupeHoles=true` is the builder's own rule.
 //
 // THE ENGINE IS NOT TOUCHED. `tatamiFill` is wrapped, so each pass is seen as
 // the fill module handed it over, in the drawing's own units and before any
@@ -343,28 +344,43 @@ function readDesign(des, passes, t, where) {
   let inStream = 0;
   for (let i = 1; i < st.length; i++) if (same(i)) inStream++;
   bump(t, "cuts", st.filter((s) => s.type === "trim").length);
-  // The same hole twice with a jump that goes nowhere between the two: the
-  // last stitch of one run, and the first of the next when it begins on that
-  // spot. Not a pair as defined above, and counted apart.
+  // The same hole twice with only jumps between the two: the last stitch of
+  // one run, and the first of the next when it begins on that spot (every run
+  // opens with a jump). Not a pair as defined above, and counted apart.
   for (let i = 2; i < st.length; i++) {
     if (st[i].type !== "stitch" || st[i - 1].type !== "jump") continue;
-    let j = i - 1;
-    while (j > 0 && st[j].type === "jump" && st[j].x === st[i].x && st[j].y === st[i].y) j--;
-    if (st[j].type === "stitch" && st[j].x === st[i].x && st[j].y === st[i].y) bump(t, "over a jump");
+    let j = i - 1, moved = false;
+    while (j > 0 && st[j].type === "jump") { if (st[j].x !== st[i].x || st[j].y !== st[i].y) moved = true; j--; }
+    if (st[j].type !== "stitch" || st[j].x !== st[i].x || st[j].y !== st[i].y) continue;
+    bump(t, "over a jump");
+    if (moved) bump(t, "over a jump that moved");
+    if (PAIRS_OUT) {
+      const span = spans.find((r) => i >= r.i0 && i <= r.i1) || {};
+      t.pairs.push({ i: where.i, arm: where.arm, cls: moved ? "over a float" : "over a jump", kind: span.kind, at: i, records: st.slice(j, i + 2).map((r) => `${r.type[0]}${r.x},${r.y}`).join(" "), fabric: where.fabric, name: where.name });
+    }
   }
   // Each pass to its span: one jump, then a record a point, every point within
   // half a unit of its record. -> the record index of each point, or null.
   // A point with NO record is allowed in one case only, and said (-1): a
-  // stitch that would have been the second in the hole the needle is in. That
-  // is what a builder with a rule against them leaves out.
+  // stitch on the point this thread's last stitch is on. That is what a
+  // builder with a rule against them (`dedupeHoles`) leaves out.
   const live = passes.filter((p) => p.pts.length);
   const fits = (q, r) => Math.abs((q.x - fit.cxPx) * fit.mmPerPx * 10 + fit.offsetXMm * 10 - r.x) <= 0.5 + 1e-6 && Math.abs((fit.cyPx - q.y) * fit.mmPerPx * 10 + fit.offsetYMm * 10 - r.y) <= 0.5 + 1e-6;
   const recordsOf = (pass, span) => {
     if (pass.pts.length < span.i1 - span.i0) return null;
     const at = [];
-    let i = span.i0 + 1, laid = -1;
+    // this thread's last stitch as the pass begins: jumps lay nothing, a cut
+    // ends the thread
+    let j = span.i0;
+    while (j > 0 && st[j].type === "jump") j--;
+    let i = span.i0 + 1, laid = st[j].type === "stitch" ? j : -1;
     for (const q of pass.pts) {
-      if (i <= span.i1 && fits(q, st[i])) { laid = st[i].type === "stitch" ? i : -1; at.push(i++); continue; }
+      if (i <= span.i1 && fits(q, st[i])) {
+        if (st[i].type === "stitch") laid = i;
+        else if (st[i].type !== "jump") laid = -1;
+        at.push(i++);
+        continue;
+      }
       if (laid < 0 || q.travel || q.trim || !fits(q, st[laid])) return null;
       at.push(-1);
     }
@@ -421,14 +437,26 @@ function readDesign(des, passes, t, where) {
 }
 
 // How this engine's stream differs from the other engine's for one design.
-// "second stitches only": take every stitch that repeats the stitch before it
-// out of both, and they are one stream; and this engine has no record the
-// other lacks. So nothing moved, was added or was reordered.
+// "second stitches only": take every stitch on the point its thread's last
+// stitch is on out of both, and they are one stream; and this engine has no
+// record the other lacks. So nothing moved, was added or was reordered. A jump
+// lays nothing and changes nothing; a cut ends the thread.
 function against(mine, theirs) {
   const key = (st) => st.map((s) => `${s.type},${s.x},${s.y}`);
   const a = key(mine), b = key(theirs);
   if (a.length === b.length && a.every((v, i) => v === b[i])) return "the same";
-  const once = (st) => st.filter((s, i) => !(i > 0 && s.type === "stitch" && st[i - 1].type === "stitch" && s.x === st[i - 1].x && s.y === st[i - 1].y));
+  const once = (st) => {
+    const out = [];
+    let hole = null;
+    for (const s of st) {
+      if (s.type === "stitch") {
+        if (hole && hole.x === s.x && hole.y === s.y) continue;
+        hole = s;
+      } else if (s.type !== "jump") hole = null;
+      out.push(s);
+    }
+    return out;
+  };
   const a1 = key(once(mine)), b1 = key(once(theirs));
   if (mine.length < theirs.length && a1.length === b1.length && a1.every((v, i) => v === b1[i])) return "second stitches only";
   return "something else";
@@ -512,7 +540,8 @@ if (PART) {
       ["  column walk, exact", ...both((t) => num(t.n["walk/column/exact"]))],
       ["  column walk, short", ...both((t) => num(t.n["walk/column/short"]))],
       ["  outside a tatami pass", ...both((t) => num(t.n["pairs outside a tatami pass"]))],
-      ["one hole twice over a jump that goes nowhere", ...both((t) => num(t.n["over a jump"]))],
+      ["one hole twice with only a jump between", ...both((t) => num(t.n["over a jump"]))],
+      ["  of them, the frame went away and came back", ...both((t) => num(t.n["over a jump that moved"]))],
       ["passes: plain walk", ...both((t) => num(t.n["passes/plain"]))],
       ["passes: column walk", ...both((t) => num(t.n["passes/column"]))],
       ["passes not found in the stream", ...both((t) => num(t.n["passes not found in the stream"]))],

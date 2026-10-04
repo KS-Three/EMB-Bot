@@ -1072,14 +1072,21 @@ sews nothing and cuts the smallest shape that contains it.
   `splitTol` there, the two lengths in the layout's units: final mm,
   divided by the fit scale, times `pxPerMm`, as `fillStitchMm` beside them
   already is.
-- **Two stitch records on one point are counted, not yet ruled on
+- **No second stitch in one hole is built OFF for the shape builder
   (2026-10-03).** The builder rounds to 0.1 mm, so a row at a tip, a move
   across the mouth of a notch, or a scanline through a corner can put two
-  `stitch` records on one point: the needle twice in one hole, with every
-  flag absent too. `node tools/sub-unit-stitch-census.mjs [srcDir]` counts
-  them on two sets of designs and says what made each, and `--against
-  <other src>` says whether two engines' streams differ only by such
-  records. The figures and the choices: `docs/sub-unit-stitches-2026-10-03.md`.
+  `stitch` records on one point: the needle twice in one hole, in what
+  ships. `dedupeHoles: true` on `buildQualityDesign` lays the first and not
+  the second. It is ONE place, `pushRun` in `src/digitize.js`, and it asks
+  the thread, not the frame: a jump lays nothing and changes nothing, a cut
+  (`cutAt`) ends the thread and the stitch after it is always laid. Put a
+  new trim record through `cutAt`, or the stitch after it can be dropped.
+  `node tools/sub-unit-stitch-census.mjs [srcDir]` counts the pairs on two
+  sets of designs and says what made each; `--on dedupeHoles=true --off
+  dedupeHoles=true` runs it with the flag, and `--against <other src>` says
+  whether two engines' streams differ only by such stitches. No Studio
+  caller passes the flag; the flip is Kent's ("Waiting on Kent" 25). The
+  lettering builder has no such rule. `docs/sub-unit-stitches-2026-10-03.md`.
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 
