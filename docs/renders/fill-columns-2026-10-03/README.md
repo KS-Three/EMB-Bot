@@ -395,9 +395,37 @@ What did not:
   column walk sews. A pass that is ONE point is a plain walk and still
   returns its two penetrations.
 
-*(measured 2026-10-03 — an agent handed the claims as claims; four of its
+*(measured 2026-10-03 — an agent handed the claims as claims; five of its
 drawings rebuilt here on `main` as it stands, where they give the same
 threads)*
+
+**Those five drawings**, for whoever takes up what is left. Points in px;
+each built as `test/digitize.test.js`'s `drawn()` builds one (left chest, 10
+px per mm, the target width the drawing's own, underlay on, the option on).
+"Threads" is the penetrations between one cut and the next.
+
+```
+1. terry_towel, the engine's own angle. The audit's comb, 3% narrower.
+   A stub: a row 0.44 px long, alone in its column. Threads [360, 2 in one hole, 464, 1441, 1435].
+[[0,0],[27.15,0],[27.15,253.45],[44.12,253.45],[44.12,0],[71.26,0],[71.26,253.45],[88.23,253.45],[88.23,0],[115.38,0],[115.38,253.45],[132.35,253.45],[132.35,0],[159.5,0],[159.5,253.45],[176.46,253.45],[176.46,0],[203.61,0],[203.61,253.45],[220.58,253.45],[220.58,0],[247.73,0],[247.73,253.45],[264.7,253.45],[264.7,0],[291.84,0],[291.84,253.45],[308.81,253.45],[308.81,0],[335.96,0],[335.96,362.07],[0,362.07]]
+
+2. terry_towel, the engine's own angle. Three teeth pointing down.
+   No cut before, two now, with a stub. Threads [102, 2 in one hole, 1384].
+   (The digits matter: with 91.55 and 99.7 the engine's angle changes sign and there is no stub.)
+[[0,333],[41.7,333],[41.7,89.78],[49.85,89.78],[49.85,333],[91.55000000000001,333],[91.55000000000001,89.78],[99.70000000000002,89.78],[99.7,333],[141.4,333],[141.4,0],[0,0]]
+
+3. terry_towel, angleOverride 61.3. Four teeth to the right.
+   No cut before, three now. Threads [315, 3, 3, 1756].
+[[321.56,0],[321.56,11.42],[70.94,11.42],[70.94,30.17],[321.56,30.17],[321.56,41.59],[70.94,41.59],[70.94,60.34],[321.56,60.34],[321.56,71.76],[70.94,71.76],[70.94,90.51],[321.56,90.51],[321.56,101.93],[0,101.93],[0,0]]
+
+4. structured_cap, the engine's own angle. An arrow.
+   One cut before, two now, and 27.5 mm more thread: the underlay ends at the barb, and the float into the fill is cut.
+[[300,120],[180,240],[180,168],[0,168],[0,72],[180,72],[180,0]]
+
+5. structured_cap, angleOverride 61.3. The audit's comb ("no cut is made to reach a corner", test/digitize.test.js) with each point [x, y] turned to [350 - y, x].
+   Six threads of two penetrations one after the other, each cut to and cut from, from rows 1.28 to 0.21 px long; the last two in one hole.
+   The same six before the fix and after it. Threads now [269, 2, 2, 2, 2, 2 in one hole, 2 in one hole, 4674].
+```
 
 ## A move of no length
 
