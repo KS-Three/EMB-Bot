@@ -170,9 +170,12 @@ equalled its own, record for record, in 29,050 builds)*
 - **With `fillColumns` on, 18 threads in 12,880 designs were two penetrations
   in one hole**, at a tooth tip, cut to and cut from. They sewed nothing and
   got no lock. The stub was the column walk's: a corner lying exactly on a
-  scanline was a column of its own. It is left out since (fixed the same
-  day: [`renders/fill-columns-2026-10-03/`](renders/fill-columns-2026-10-03/README.md),
-  "A corner on a scanline").
+  scanline was a column of its own. It is left out since
+  ([`renders/fill-columns-2026-10-03/`](renders/fill-columns-2026-10-03/README.md),
+  "A corner on a scanline"), which takes most of them and not all: a row
+  shorter than the file's unit, alone in its column, is still cut to and cut
+  from. The re-measure of that fix counts 17 such threads on 45,416 designs
+  where there were 731.
 - **The untied lettering stream already has doubled holes**: 9,093 across the
   85 fonts on `KENT`. Where a needle-down connector ends on a run's first
   point, that point is pushed twice. Not caused by locks, and the same with
