@@ -74,12 +74,13 @@ at all. That is not hypothetical: a session read `enthusiast`'s 0.3006 as lost
 coverage and set out to recover artwork that was never uncovered
 (`tools/rail_edge.py --bare` does not move across the change it blamed).
 
-## TWO MEASUREMENT BIASES, both recorded and NEITHER fixed (Kent, 2026-09-20)
+## THREE MEASUREMENT BIASES, all recorded and NONE fixed (Kent, 2026-09-20; the third 2026-10-03)
 
-Fixing either renumbers every pinned `lost_frac` in the repo, including a
-`xfail(strict=True)` on `main`, so both are written down and left alone. Read
-`uncovered_elements` / `uncovered_ink_frac` when you need a number that does
-not ride on them.
+Fixing any of them renumbers every pinned `lost_frac` in the repo, so all
+three are written down and left alone. Read `uncovered_elements` /
+`uncovered_ink_frac` when you need a number that does not ride on the first
+two; NOTHING here is free of the third, so read `shift_x_mm` / `shift_y_mm`
+beside any two readings you are about to compare.
 
 **1. The opening sits exactly on a fabric constant.** `left_chest` ->
 `pique_knit`, `pull_comp_mm` 0.30; `stage5_overlap` buffers every shape by it
@@ -102,6 +103,29 @@ Measured 2026-09-20 with only that one argument corrected: `enthusiast`
 `tests/test_lettering_coverage_regression.py` asserts under `xfail(strict=True)`
 -- so fixing this alone turns that test RED without the residual being closed.
 `uncovered_elements` reads 0 either way.
+
+**3. The alignment is a 0.4 mm grid, searched from two CENTRED fields.**
+`artfidelity_self.register` centres the thread field and the artwork on one
+canvas and tries translations in `SHIFT_STEP_MM` = 0.4 mm steps, keeping the
+best IoU. Two things follow, both measured 2026-10-03 on `enthusiast` at 80 mm:
+
+  * The reading depends on which grid step wins far more than on the engine.
+    One design, alignment forced instead of searched: 0.1636 at (+0.1, +0.2),
+    0.2573 at (0.0, +0.4), 0.3226 at (+0.4, +0.4). The headline's 0.26 is the
+    second of those, a step 0.2 mm from the best one-pixel alignment.
+  * A change at the design's EDGE moves the centre, and the centre picks the
+    step. `satin_cap_recentre` shortens this design by 0.2 mm at its right end
+    (80.5 -> 80.3). The centred thread field moves 0.1 mm, the search snaps
+    from (0.0, +0.4) to (+0.4, +0.4), and the headline reads 0.2573 -> 0.2819
+    -- while at every physically matched alignment the flag reads LOWER
+    (0.2573 -> 0.2481, 0.1636 -> 0.1555, 0.1737 -> 0.1623). The other seven
+    logos keep their width and do not move.
+
+So before reading a `lost_frac` delta as spill, compare the two rows'
+`widthMM` and `shift_*`: if either changed, the delta is the grid until a
+forced-alignment read says otherwise. `tests/test_lettering_coverage_regression.py`
+carries a second guard at a one-pixel step for this reason, and its headline
+bar was re-pinned once, attributed to exactly this (Kent, 2026-10-03).
 
 ## Segment the disagreement, not the artwork
 

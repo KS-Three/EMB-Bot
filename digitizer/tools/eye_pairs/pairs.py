@@ -93,7 +93,8 @@ ARMS: dict[str, dict] = {
     # unjudged -- MASTER_SCOPE "Waiting on Kent" 19 and 21, and #602 -- on
     # one page, with `split_off` above carried over from its own unjudged
     # sitting. `bean_letters` sews at 1.0, the value Kent picked.
-    "cap_recentre": {"satin_cap_recentre": True},
+    # `cap_recentre` was the third; it shipped ON off that sitting the same
+    # day (2 after, 0 before), so it is the base now and no longer an arm.
     "keep_counters": {"keep_counters": True},
     "bean_letters": {"bean_letter_max_stroke_mm": 1.0},
 }
