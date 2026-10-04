@@ -5,15 +5,16 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 48764755-5f8b-4d8e-835d-f1f15e939f2e
-  modified: 2026-10-03T22:40:56.142Z
+  modified: 2026-10-04T03:21:15.628Z
 ---
 
-> **Snapshot, copied 2026-10-03 (evening) from outside the repo.** Sessions rooted in
+> **Snapshot, first copied 2026-10-03 (evening) and refreshed 2026-10-04 (morning) from outside the repo.** Sessions rooted in
 > `C:\Users\EE-LT-11030\.claude-work` keep their memory in
 > `~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, which is not this
 > folder: nothing written there rides a PR or reaches a session rooted in EMB-Bot.
-> The original was still being edited when this was taken, so check a fact here
-> before acting on it. See [[memory-outside-the-repo]].
+> The original may still be edited by the session that wrote it, so check a fact here
+> before acting on it. PRs it names, at this copy: #606, #611, #613, #615, #617, #618 merged; #616 closed unmerged; #621 open.
+> See [[memory-outside-the-repo]].
 
 Kent asked (2026-10-02): "get another agent working in parallel with the embot, no questions. just read the documents and execute what's needed." "The embot" was a LIVE peer session ("Emb bot next steps", same `.claude-work` cwd) building a lane in EMB-Bot; this session was the parallel agent.
 
@@ -32,6 +33,7 @@ Kent asked (2026-10-02): "get another agent working in parallel with the embot, 
 - Two open PRs that each APPEND a dated entry to `docs/scope-history.md` conflict with each other every time (keep-both merge). `git merge-tree --write-tree <a> <b>` shows it without touching any working tree; check it and the MASTER_SCOPE word budget of the merged result before arming, since each PR can pass alone.
 - A task chip's premise can be wrong about what ships. Before building, run the product's own call (the Studio's options, `app/src/lib/generate.js`) and count how often the path fires. The lettering fill a chip wanted staggered fired 0 times in 8,500 builds: it sat behind `wideColumnFill`, which Kent had ruled off. The chip's own stop clause made stopping the right result, and Kent then picked "stop, fix the record" over building under a dark flag (2026-10-03).
 - A PR stacked on a peer's unmerged PR has to target `main` (EMB-Bot has `delete_branch_on_merge` false, so a PR based on the peer's branch never retargets itself), and it then carries the peer's commits. Do not arm it until the peer's PR is in main, or it lands their change by another door; say so in the first line of the PR body (PR #615 on #611). This is my reading of Kent's audit-before-arming rule, not a ruling of his.
+- A reach check ("does any lane hand the engine X?") has to sweep NEAR-X and the UI's own gestures, not only exact X, and its conclusion is labelled by the input class actually tested. On 2026-10-03 (PR #621, `offsetRing` on a ring that repeats a point) my census counted exact repeats, found 0 in 24,985 rings, and I wrote "no customer's file carries the wedge". The independent audit found the same 3x mitre from a point merely near the next: a double-click whose second click slips more than 0.5 canvas px is kept as an anchor by `ManualPanel.onCanvasClick`. Read the event handlers and their epsilons; a made-up hand case with 200 px edges proves nothing about a slip. (My own lesson; Kent has not ruled on it.) A census tool's `--hash` must also record WHICH engine it hashed, or a forgotten argument compares an engine with itself.
 - After telling a peer something is wrong in its open PR, `git fetch` its branch before fixing it yourself. On 2026-10-03 the peer corrected the same sentences within 15 minutes of my message and my docs commit had to be rebased over its.
 
 Related: [[claude-folder-layout]]; in-repo memory `concurrent-session-designed-the-same-tool-2026-09-17`.
