@@ -23,10 +23,16 @@ eight in the family. They reached the repo by absolute path, so:
 - no project CLAUDE.md unless read by hand;
 - their auto-memory went to
   `~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, mixed with
-  work notes. Five EMB-Bot lane notes sit there (`embot-browser-fill-lane-state`,
-  `embot-closed-ring-lane`, `embot-handover-numbers-and-stacked-branches`,
-  `embot-sub-unit-stitches-lane`, `parallel-agent-with-embot`). Kent has not
-  ruled on moving them; this repo is public, so that is his call.
+  work notes. Kent's call 2026-10-04: review them, then bring the EMB-Bot ones
+  in. Seven were imported that day as SNAPSHOTS, each marked as one, bodies
+  byte for byte ([[parallel-agent-with-embot]],
+  [[embot-browser-fill-lane-state]],
+  [[embot-handover-numbers-and-stacked-branches]], [[embot-closed-ring-lane]],
+  [[embot-sub-unit-stitches-lane]], [[embot-star-walk-lane]],
+  [[build-what-was-priced]]). The sources were copied, not moved: the sessions
+  that wrote them are still running and still writing there, so that folder is
+  where a newer version of any of the seven will be. The work notes stayed;
+  they are not this repo's and one holds an account identifier.
 
 No damage was found: of about 3,500 shell commands none matched the replace
 guard, and three bare `git add -A .` ran inside one lane's `digitizer/`.

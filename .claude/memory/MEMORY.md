@@ -101,3 +101,10 @@ invisible. Put detail in the note, never in this file.
 - [Lock stitches, both JS builders](lock-stitches-2026-10-03.md) — `ties` built OFF for shapes too; the 09-14 lettering lock was 0.8 PIXELS a leg (0.1–0.5 mm) and doubled a hole. Measure a length in the output's units, at two resolutions
 - [Row stagger for the browser fill](fill-stagger-2026-10-03.md) — JS fill cut rows evenly: 94% of holes sat under the row before's. `fillStagger` built OFF, Python's grid row for row, +7% stitches. Count a channel over three rows; print the count, not "none"
 - [Wrong-root sessions, global guards](wrong-root-sessions-and-global-guards-2026-10-04.md) — eight sessions rooted in `.claude-work` ran without project hooks; `embot-guards-global.js` covers them. `list_events` hides tool args; a silent hook leaves no trace
+- [Parallel agent with the embot](parallel-agent-with-embot.md) — "no questions" = read the docs, take non-colliding work, split by SendMessage; audit BEFORE opening ready; never `git stash` in a lane
+- [Browser fill lane state](embot-browser-fill-lane-state.md) — snapshot 10-03: #606/#609/#611 built OFF, flips are Kent's (queue 22–24); #613 merged pre-audit, cures in #620
+- [Handover numbers, stacked branches](embot-handover-numbers-and-stacked-branches.md) — reproduce a handed-over number with its own script; grep `origin/main` before trusting "PR N merged"; a stacked PR targets main, unarmed
+- [Closed-ring lane](embot-closed-ring-lane.md) — #621 `offsetRing` on a repeated point, #625 stacked on it; defect 55's offset half is Kent's call; `distinctCorners` lands twice with #620
+- [Sub-unit stitches lane](embot-sub-unit-stitches-lane.md) — `dedupeHoles` built OFF (#623), Kent's "new flag, every run"; never look through a jump: three jumps are a cut in a DST
+- [Star-walk lane](embot-star-walk-lane.md) — #624 ends `skeletonEdges`' endless walk (48,645 → 729 stitches); defect 57's cure order waits on Kent (26)
+- [Build what was priced](build-what-was-priced.md) — after Kent picks a priced option, build exactly that; a wider rule is a new unpriced change
