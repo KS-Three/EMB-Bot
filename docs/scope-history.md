@@ -17965,3 +17965,50 @@ baseline is recaptured, because that diff reads only keys both sides hold, so
 today no tool reads these keys. A shade band's runs carry a derived shape id
 and are not measured, the same as in the tool.
 *(built 2026-10-03 — `tests/test_edge_wobble_metrics.py`, 13; `digitizer_core/edge_wobble.py`)*
+
+## 2026-10-03 — Curve roughness reaches preflight as metrics: Law 37's own score, and defect 46 closes
+
+The half the entry above left open. Law 37's row asks for "direction-change
+churn per mm"; `tools/curve_fidelity.py` has read exactly that off
+`plan.iter_runs()` since 2026-08-27. Kent's pick, the same evening: wire it,
+metrics only.
+
+**What was built.** The measurement — `traces`, `turns`, `gini`, `measure`
+and their four constants, 111 lines — moved into
+`digitizer_core/curve_fidelity.py`, compared line for line against the file
+they left. The tool keeps its CLI, its docstring and the ranking floor, and
+re-exports what `curve_tiers.py`, `edge_truth_ladder.py` and its own tests
+import. `run_preflight` reports five keys: `curve_roughness_deg`,
+`curve_turn_gini`, `curve_vertices`, `curve_corner_vertices`, `curve_traces`.
+It needs no regions, so a bare plan is read like any other.
+
+**Why five.** The tool's own docstring: read the trace and vertex counts
+beside every delta and distrust a comparison where they moved. A scorecard
+diff that showed roughness alone would repeat the mistake that section was
+written about.
+
+**A refusal is None.** The tool answers NaN when nothing curved is left to
+measure (a square, a straight line). The service serialises with
+`allow_nan=False`, so NaN would have been a 500 on every design made only of
+straight edges.
+
+**Readings** (the lane's tree at `b30626b5`, default config):
+
+| fixture | roughness, deg | gini | traces | curve vertices | corners | cost, s |
+|---|---|---|---|---|---|---|
+| `logo_whitebg` | 3.76 | 0.688 | 7 | 1,247 | 80 | 0.001 |
+| `enthusiast_logo` (93 mm, left chest) | 8.91 | 0.643 | 71 | 1,459 | 451 | 0.005 |
+
+**What it does not do, in the instrument's own words.** It cannot read
+intent: a logo that IS a 20-gon and a circle polygonised to one are the same
+path, so the number compares a design with itself across engine changes and
+is never a grade. It saturates and then reverses on coarse polygons (40-gon
+4.28, 20-gon 4.15, 12-gon 4.01), so it detects and cannot rank. Its
+resolution is bounded by stitch length. A many-pointed star is its standing
+false positive. And like the edge keys, nothing reads it until
+`corpus_scorecard`'s baseline is recaptured.
+
+It changes no grade: `test_it_judges_nothing` scores one polygon with the
+metric and with it removed, and was watched failing against an injected
+`warn`.
+*(built 2026-10-03 — `tests/test_curve_roughness_metrics.py`, 8; `digitizer_core/curve_fidelity.py`)*
