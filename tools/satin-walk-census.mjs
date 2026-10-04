@@ -8,6 +8,9 @@
 //   node tools/satin-walk-census.mjs --garments all        every garment (ten times the work)
 //   node tools/satin-walk-census.mjs --ratios 15:90:1      the Studio's own 1% ratio step
 //   node tools/satin-walk-census.mjs --kind rect           bars: nine heights by five corner radii
+//   node tools/satin-walk-census.mjs --kind arc [--satin]  curved strokes as a user draws them: arcs 2 and 3 mm wide,
+//                                                          sweeping 60 to 330 degrees, turned eight ways; --satin
+//                                                          is the user's own choice of satin (the classifier is not asked)
 //   node tools/satin-walk-census.mjs --against <root>      build the same designs with another tree's
 //                                                          engine (its src/ and app/src/lib) and say which differ
 //   node tools/satin-walk-census.mjs --walks               count, per design, the walks of `skeletonEdges`
@@ -123,19 +126,28 @@ async function engine(root, counted) {
   };
 }
 const fabricOf = (E, garmentId) => E.FAB.getFabric(E.FAB.fabricForGarment(garmentId));
+// A CURVED STROKE as a user draws one: an arc `w` mm wide whose outer edge has radius `R`, sweeping
+// `sweep` degrees, the mouth of the C turned to `turn`.
+function arcPoints(E, { R, w, turn }, sweep) {
+  const PX = E.manual.PX_PER_MM, cx = E.manual.CANVAS_W / 2, cy = E.manual.CANVAS_H / 2;
+  const a0 = turn + (360 - sweep) / 2, a1 = turn + 360 - (360 - sweep) / 2, n = Math.max(12, Math.round(sweep / 6));
+  const arc = (r, p, q) => Array.from({ length: n + 1 }, (_, i) => { const a = (p + (q - p) * i / n) * Math.PI / 180; return { x: cx + PX * r * Math.cos(a), y: cy + PX * r * Math.sin(a) }; });
+  return [...arc(R, a0, a1), ...arc(R - w, a1, a0)];
+}
 function build(E, kind, params, sizeMm, garmentId) {
-  const points = E.presets.shapePresetPoints(kind, params, sizeMm);
+  // (an arc's "size" is its sweep, and it is sewn at the size it is drawn)
+  const points = kind === "arc" ? arcPoints(E, params, sizeMm) : E.presets.shapePresetPoints(kind, params, sizeMm);
   const { regions, pxPerMm } = E.manual.shapesToRegions([
-    { id: "shape", points, curves: {}, stitchType: "auto", colorRgb: [20, 20, 20], angleDeg: null },
+    { id: "shape", points, curves: {}, stitchType: kind === "arc" && flag("--satin") ? "satin" : "auto", colorRgb: [20, 20, 20], angleDeg: null },
   ]);
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const p of points) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
   globalThis.__walksAtGuard = 0;
   const t0 = Date.now();
   const design = E.DG.buildQualityDesign(regions, {
     garment: E.GAR.getGarment(garmentId), fabric: fabricOf(E, garmentId), pxPerMm,
-    darkOnTop: false, underlay: true, targetWidthMm: sizeMm, offsetXMm: 0, offsetYMm: 0,
+    darkOnTop: false, underlay: true, targetWidthMm: kind === "arc" ? (x1 - x0) / pxPerMm : sizeMm, offsetXMm: 0, offsetYMm: 0,
   });
-  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-  for (const p of points) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
   return { design, ms: Date.now() - t0, walksAtGuard: globalThis.__walksAtGuard, ringWmm: (x1 - x0) / pxPerMm, ringHmm: (y1 - y0) / pxPerMm };
 }
 const digestOf = (design) => {
@@ -271,17 +283,27 @@ function shapesOf(design) {
   return outlines.map((o, si) => {
     let bx0 = Infinity, bx1 = -Infinity, by0 = Infinity, by1 = -Infinity;
     for (const p of o.points) { bx0 = Math.min(bx0, p[0]); bx1 = Math.max(bx1, p[0]); by0 = Math.min(by0, p[1]); by1 = Math.max(by1, p[1]); }
-    let far = 0;
-    if (own[si].tier === "satin") for (const s of own[si].pts) {
-      const x = s.x / 10, y = s.y / 10;
-      if (inside(x, y, o.points)) continue;
+    const outBy = (x, y) => {   // how far outside the outline a point lies, 0 inside it
+      if (inside(x, y, o.points)) return 0;
       let d = Infinity;
       for (let i = 0; i < o.points.length; i++) d = Math.min(d, toSeg(x, y, o.points[i], o.points[(i + 1) % o.points.length]));
-      if (d > far) far = d;
+      return d;
+    };
+    let far = 0, open = 0, openMm = 0, openLongest = 0;
+    if (own[si].tier === "satin") {
+      for (const s of own[si].pts) far = Math.max(far, outBy(s.x / 10, s.y / 10));
+      // THREAD OVER OPEN GROUND: a stitch of the shape whose middle lies more than a thread's width outside it
+      // (across the mouth of a C, from one arm of a star to the next)
+      for (const i of own[si].sewn) {
+        const ax = st[i - 1].x / 10, ay = st[i - 1].y / 10, bx = st[i].x / 10, by = st[i].y / 10;
+        const len = Math.hypot(bx - ax, by - ay);
+        if (!(len > 0) || outBy((ax + bx) / 2, (ay + by) / 2) <= THREAD_MM) continue;
+        open++; openMm += len; if (len > openLongest) openLongest = len;
+      }
     }
     return { id: o.id, tier: own[si].tier || (o.dropped ? "dropped" : "none"), areaMm2: area[si] * CELL_MM * CELL_MM, wMm: bx1 - bx0, hMm: by1 - by0,
              box: [bx0, by0, bx1, by1], cover: area[si] ? under[si] / area[si] : null, coverOwn: area[si] ? underOwn[si] / area[si] : null,
-             far, upMm: own[si].up, stitches: own[si].stitches, digest: own[si].h.digest("hex") };
+             far, open, openMm, openLongest, upMm: own[si].up, stitches: own[si].stitches, digest: own[si].h.digest("hex") };
   });
 }
 
@@ -489,7 +511,8 @@ if (flag("--images")) {
 
 const kind = opt("--kind", "star");
 const garmentIds = opt("--garments", "left_chest") === "all" ? here.GAR.GARMENTS.map((g) => g.id) : opt("--garments", "left_chest").split(",");
-const sizes = range(opt("--sizes", "10:100:1"));
+const sizes = range(opt("--sizes", kind === "arc" ? "60:330:30" : "10:100:1"));
+const unit = kind === "arc" ? "deg" : "mm";
 const bags = [];
 if (kind === "star") {
   const P = here.presets;
@@ -499,6 +522,9 @@ if (kind === "star") {
 } else if (kind === "rect") {
   for (const heightMm of [1, 2, 3, 4, 6, 10, 20, 30, 60]) for (const cornerRadiusMm of [0, 0.5, 1.5, 5, 30])
     bags.push({ name: `${heightMm} mm tall, corner radius ${cornerRadiusMm}`, params: { heightMm, cornerRadiusMm } });
+} else if (kind === "arc") {
+  for (const R of [8, 12]) for (const w of [2, 3]) for (const turn of [0, 45, 90, 135, 180, 225, 270, 315])
+    bags.push({ name: `arc ${w} mm wide, radius ${R}, turned ${turn}`, params: { R, w, turn } });
 } else bags.push({ name: kind, params: {} });
 
 const rows = [];
@@ -516,16 +542,16 @@ for (const g of garmentIds) for (const bag of bags) {
     }
     // cover is measured where either tree sews satin (a fill both trees sew alike is not measured)
     if (flag("--cover") && (row.tier === "satin" || (o && row.other.tier === "satin"))) {
-      const s = shapesOf(b.design)[0];
-      row.cover = s.cover; row.far = s.far;
-      if (o) { const t = shapesOf(o.design)[0]; row.other.cover = t.cover; row.other.far = t.far; }
+      const take = (to, s) => Object.assign(to, { cover: s.cover, far: s.far, open: s.open, openMm: s.openMm, openLongest: s.openLongest });
+      take(row, shapesOf(b.design)[0]);
+      if (o) take(row.other, shapesOf(o.design)[0]);
     }
     series.push(row); rows.push(row);
   }
   // out of line, within this star on this garment (and the same for the other tree's builds)
   const judge = (of) => {
     // (a bar's height is fixed and its size is its length: a fill bar grows with its size too, not the square)
-    const linear = (r) => of(r).tier === "satin" || kind === "rect";
+    const linear = (r) => of(r).tier === "satin" || kind === "rect" || kind === "arc";
     const norm = (i) => linear(series[i]) ? of(series[i]).stitches / series[i].size : of(series[i]).stitches / (series[i].size * series[i].size);
     series.forEach((r, i) => {
       const near = [];
@@ -547,8 +573,8 @@ const off = rows.filter((r) => r.times > 2 || r.times < 0.5);
 console.log(`\nOUT OF LINE with their neighbours in size: ${off.length} designs (${off.filter((r) => r.times > 2).length} over twice, ${off.filter((r) => r.times < 0.5).length} under half)`);
 const byBag = new Map();
 for (const r of off) { const k = r.bag; if (!byBag.has(k)) byBag.set(k, new Map()); const m = byBag.get(k); if (!m.has(r.size)) m.set(r.size, []); m.get(r.size).push(r); }
-for (const [name, bySize] of byBag) console.log(`  ${name}: ` + [...bySize].map(([size, l]) => `${size} mm ${Math.min(...l.map((r) => r.stitches))}${l.length > 1 ? ".." + Math.max(...l.map((r) => r.stitches)) : ""} (x${Math.max(...l.map((r) => r.times)).toFixed(1)})`).join(", "));
-if (flag("--list")) for (const r of off) console.log(`    ${r.g} ${r.bag} ${r.size} mm: ${r.stitches} stitches, its neighbours predict ${r.expected}, ${r.tier}`);
+for (const [name, bySize] of byBag) console.log(`  ${name}: ` + [...bySize].map(([size, l]) => `${size} ${unit} ${Math.min(...l.map((r) => r.stitches))}${l.length > 1 ? ".." + Math.max(...l.map((r) => r.stitches)) : ""} (x${Math.max(...l.map((r) => r.times)).toFixed(1)})`).join(", "));
+if (flag("--list")) for (const r of off) console.log(`    ${r.g} ${r.bag} ${r.size} ${unit}: ${r.stitches} stitches, its neighbours predict ${r.expected}, ${r.tier}`);
 // where the hoop does not scale the design down
 const fits = (r) => { const hoop = here.GAR.getGarment(r.g); return r.ringWmm < hoop.widthIn * 25.4 - 0.01 && r.ringHmm < hoop.heightIn * 25.4 - 0.01; };
 // the satin designs of one tree (`of` picks the tree's own measures off a row), told under a label
@@ -578,6 +604,8 @@ function satinLines(label, of) {
     const c = sat.map((r) => of(r).cover), f = sat.map((r) => of(r).far);
     console.log(`${label}SATIN, share of the drawn shape under thread: least ${pct(Math.min(...c))}, one in ten under ${pct(quantile(c, 0.1))}, median ${pct(quantile(c, 0.5))}; under 90%: ${sat.filter((r) => of(r).cover < 0.9).length} of ${sat.length}`);
     console.log(`${label}SATIN, needle farthest outside the drawn shape: median ${quantile(f, 0.5).toFixed(2)} mm, one in ten over ${quantile(f, 0.9).toFixed(2)} mm, most ${Math.max(...f).toFixed(2)} mm`);
+    const og = sat.filter((r) => of(r).open > 0);
+    console.log(`${label}SATIN, thread over open ground (a stitch whose middle is over a thread's width outside the drawn shape): in ${og.length} of ${sat.length} designs, ${og.reduce((a, r) => a + of(r).open, 0)} stitches, ${og.reduce((a, r) => a + of(r).openMm, 0).toFixed(0)} mm in all, the longest ${Math.max(0, ...og.map((r) => of(r).openLongest)).toFixed(1)} mm`);
   }
 }
 console.log("");
@@ -592,7 +620,7 @@ if (there) {
   const satinThere = rows.filter((r) => r.other.tier === "satin");
   const still = satinThere.filter((r) => r.other.digest === r.digest);
   console.log(`  satin there ${satinThere.length}: moved ${satinThere.length - still.length}, the same ${still.length}` +
-              (still.length && still.length <= 40 ? ": " + still.map((r) => `${r.g} ${r.bag} ${r.size} mm (${r.stitches} stitches)`).join("; ") : ""));
+              (still.length && still.length <= 40 ? ": " + still.map((r) => `${r.g} ${r.bag} ${r.size} ${unit} (${r.stitches} stitches)`).join("; ") : ""));
   if (flag("--dst")) {
     const byFile = rows.filter((r) => r.other.dst !== r.dst);
     console.log(`  by the bytes of the DST file each tree writes: the same ${rows.length - byFile.length}, moved ${byFile.length}; moved by one measure and not by the other: ${rows.filter((r) => (r.other.dst !== r.dst) !== (r.other.digest !== r.digest)).length}`);
@@ -612,10 +640,10 @@ if (there) {
   if (flag("--cover")) {
     const both = rows.filter((r) => r.cover != null && r.other.cover != null), d = (r) => r.cover - r.other.cover;
     console.log(`  share under thread, here minus there, over the ${both.length} designs satin in either tree: down over 2 points ${both.filter((r) => d(r) < -0.02).length}, over 10 points ${both.filter((r) => d(r) < -0.1).length}; up over 2 points ${both.filter((r) => d(r) > 0.02).length}, over 10 points ${both.filter((r) => d(r) > 0.1).length}`);
-    const line = (r) => `    ${r.g} ${r.bag} ${r.size} mm: ${(100 * r.other.cover).toFixed(0)}% -> ${(100 * r.cover).toFixed(0)}% under thread, ${r.other.stitches} -> ${r.stitches} stitches`;
+    const line = (r) => `    ${r.g} ${r.bag} ${r.size} ${unit}: ${(100 * r.other.cover).toFixed(0)}% -> ${(100 * r.cover).toFixed(0)}% under thread, ${r.other.stitches} -> ${r.stitches} stitches`;
     const down = both.filter((r) => d(r) < -0.02).sort((p, q) => d(p) - d(q)), up = both.filter((r) => d(r) > 0.02).sort((p, q) => d(q) - d(p));
     if (down.length) console.log("  the designs that lose over 2 points, worst first:\n" + down.slice(0, flag("--list") ? down.length : 10).map(line).join("\n"));
     if (up.length) console.log("  the designs that gain over 2 points, best first:\n" + up.slice(0, flag("--list") ? up.length : 10).map(line).join("\n"));
   }
-  if (flag("--list")) for (const r of moved) console.log(`    ${r.g} ${r.bag} ${r.size} mm: ${r.other.stitches} -> ${r.stitches} stitches, ${r.other.wMm.toFixed(1)} x ${r.other.hMm.toFixed(1)} -> ${r.wMm.toFixed(1)} x ${r.hMm.toFixed(1)} mm`);
+  if (flag("--list")) for (const r of moved) console.log(`    ${r.g} ${r.bag} ${r.size} ${unit}: ${r.other.stitches} -> ${r.stitches} stitches, ${r.other.wMm.toFixed(1)} x ${r.other.hMm.toFixed(1)} -> ${r.wMm.toFixed(1)} x ${r.hMm.toFixed(1)} mm`);
 }

@@ -162,10 +162,11 @@ All from `tools/satin-walk-census.mjs`, each against the tree before.
 - **Pictures** (`--images`): eight corpus logos at their own size and at
   40 mm, 408 shapes. All 196 satin shapes move. Not one of the 212 fills'
   own stitch records does. Under their own thread 99 satin shapes gain over
-  2 points (48 over 10) and 41 lose over 2 (16 over 10, every one a dot or a
-  square under 3.5 mm that was sewn about three times over before). Satin
-  shapes under 90%: 69 before, 39 now; the least covered 17% before, 70%
-  now.
+  2 points (48 over 10) and 41 lose over 2. The 16 that lose over 10 are all
+  under 3.5 mm: thirteen small squares of `black_ground_holes` that had been
+  sewn three and four times over (25 stitches to 6, 65 to 20) and three
+  2 mm shapes of `logo_gaulke_roofing`. Satin shapes under 90%: 69 before,
+  39 now; the least covered 17% before, 70% now.
 
 Live status: MASTER_SCOPE defect 57 and "Waiting on Kent" 26. The cause, what
 moves and the independent re-measure: `docs/scope-history.md`, the entry of
