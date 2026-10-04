@@ -731,19 +731,20 @@ test("columns: a walk that comes out cut is walked again from the other first co
   // ahead. What it costs turns on its FIRST column, and nothing in the rule
   // says which first column is the better one. (When a corner that was no
   // column stopped being one, 855 of 45,416 designs lost cuts and 388 gained
-  // them: the corner fix's independent re-measure.) So a walk that comes out
-  // with a cut -- inside it, on the float in, or on the float out -- is walked
-  // again from each of the other first columns the thread can float to,
-  // nearest first, and the walk with the fewest cuts is kept: the first of
-  // them, on a tie.
+  // them: the corner fix, on its re-measure's own designs.) So a walk that
+  // comes out with a cut -- inside it, on the float in, or on the float out
+  // -- is walked again from each of the other first columns the thread can
+  // float to, nearest first, and the walk with the fewest cuts is kept: the
+  // first of them, on a tie.
   const P = ([x, y]) => ({ x, y });
   const threads = (pts) => { const t = [0]; for (const p of pts) { if (p.trim) t.push(0); if (!p.travel) t[t.length - 1]++; } return t; };
 
   // The re-measure's own drawing: four teeth 1.1 mm wide pointing right, under
   // terry's second lattice pass, rows 2.5 mm apart at 16.3 degrees. Thirteen
-  // columns, eleven of them a single row. Begun at the corner nearest the
+  // columns, twelve of them a single row. Begun at the corner nearest the
   // thread, the walk strands three of them and cuts three times: threads of
-  // 72, 3, 3 and 3 penetrations. Begun at the next column along, it is one.
+  // 72, 3, 3 and 3 penetrations. Begun at the next first column the thread
+  // can float to, and sewn downward, it is one thread.
   const teeth = [[321.56, 0], [321.56, 11.42], [70.94, 11.42], [70.94, 30.17], [321.56, 30.17], [321.56, 41.59], [70.94, 41.59], [70.94, 60.34], [321.56, 60.34], [321.56, 71.76], [70.94, 71.76], [70.94, 90.51], [321.56, 90.51], [321.56, 101.93], [0, 101.93], [0, 0]].map(P);
   // the ground the fill covers under terry: that outline grown by 0.6 mm
   const cover = [[327.56, -6], [327.56, 17.42], [76.94, 17.42], [76.94, 24.17], [327.56, 24.17], [327.56, 47.59], [76.94, 47.59], [76.94, 54.34], [327.56, 54.34], [327.56, 77.76], [76.94, 77.76], [76.94, 84.51], [327.56, 84.51], [327.56, 107.93], [-6, 107.93], [-6, -6]].map(P);
@@ -768,9 +769,9 @@ test("columns: a walk that comes out cut is walked again from the other first co
   // The comb of the test above. The thread is on the tip of a tooth, and of the
   // corners a walk could begin at, none of the eight nearest can be floated
   // to: the dropped landing left the caller's cut and four more, each for a
-  // thread of two penetrations at a tooth's tip. A ninth corner, at the far
-  // end of the spine, CAN be floated to, straight down the tooth; it was never
-  // looked for. From there the comb is one thread.
+  // thread of two penetrations at a tooth's tip. A corner further off, on the
+  // foot of the spine below that same tooth, CAN be floated to, straight down
+  // the tooth; it was never looked for. From there the comb is one thread.
   {
     const comb = [[0, 0], [24, 0], [24, 210], [39, 210], [39, 0], [63, 0], [63, 210], [78, 210], [78, 0], [102, 0], [102, 210], [117, 210], [117, 0], [141, 0], [141, 210], [156, 210], [156, 0], [180, 0], [180, 210], [195, 210], [195, 0], [219, 0], [219, 210], [234, 210], [234, 0], [258, 0], [258, 210], [273, 210], [273, 0], [297, 0], [297, 300], [0, 300]].map(P);
     const ground = fill.openGroundTest([comb]);

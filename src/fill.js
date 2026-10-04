@@ -891,14 +891,15 @@
     // and nothing in the rule says which first column is the better one: when
     // a corner that had been a column stopped being one, the order of every
     // pass changed from its first column on, 855 of 45,416 designs lost cuts
-    // and 388 gained them, up to four (the corner fix's independent
-    // re-measure). So a walk that comes out with a cut -- inside it, on the
+    // and 388 gained them, up to four (the corner fix, on its re-measure's
+    // own designs). So a walk that comes out with a cut -- inside it, on the
     // float in, or on the float out -- is walked AGAIN from each of the other
     // first columns the thread can float to, nearest first, FIRST_TRIES of
     // them at most, and the walk with the fewest cuts is kept: the first of
     // them, on a tie. A walk with no cut is the walk it always was, and so is
-    // a pass told nothing of where the thread is. (Eight is enough: with no
-    // limit at all, one cut fewer on 9,084 designs.)
+    // a pass told nothing of where the thread is. (Why eight: on 9,084
+    // designs four tries leave 18 cuts, on three combs, that eight do not;
+    // and with no limit at all not one design differs.)
     let best = sewFrom(null);
     if (best.cuts && starts) {
       const way = (c) => (c.deps === above ? "d" : "u") + c.ci;   // a first column, and whether the walk runs down or up

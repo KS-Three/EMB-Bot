@@ -414,7 +414,14 @@ about the facts.
    overall and up to 37%. The price is the travel that replaces the floats:
    up to nine lines of thread on the worst millimetre of a rim (three on
    average, 1.3 today), and in one holed fill in six more than 5 mm of it
-   across rows already sewn. A comb can gain cuts (1 → 5). Besides: a forked
+   across rows already sewn. A comb can gain cuts (1 → 5). Since then each
+   underlay pass is told where the thread goes next and a walk that comes
+   out cut is walked again: on 45,416 designs the option's cuts go 14,190 →
+   11,246 (25,922 with it off), fewer on 2,520 and more on none, and 2,442
+   designs have more cuts with it than without where 4,717 had (the worst,
+   none → 8). Most of what a walk could still save is the float from an
+   edge run into a plain fill (2,342), not built *(measured 2026-10-04 —
+   the README's "Where a pass ends")*. Besides: a forked
    large fill is no longer center-out, and on a shape with a hole or an
    inside corner the edge-run underlay sits 0.2 mm inside the fill with its
    corners kept (the one length named: it is what the shipped engine gives at

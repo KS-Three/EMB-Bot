@@ -93,6 +93,20 @@ hole or a notch, and it has NOT been sewn. Kent's flip: MASTER_SCOPE defect
   new work: two armed PRs stuck, three lanes only on the laptop, COOKBOOK
   still saying the DST writer was transposed. `gh pr list`, a lane sweep and
   a stale-claim pass come before features.
+- Before changing how thread is routed, count the cuts by WHERE they are:
+  inside a pass, on the float into it, on the float out, and what kind of
+  run is either side. Two fixes went to the walk's inside; the most of any
+  kind (2,261 of 14,190) was the float OUT of an underlay into a plain fill,
+  which nothing asked about, and telling the pass where the thread goes next
+  took it to 13 (2026-10-04). The next most, edge run into plain fill
+  (2,342), is not the walk's at all and is still there.
+- A greedy walk's result turns on where it starts. Walking it again from the
+  other starts, only when it comes out cut, and keeping the fewest cuts,
+  moved no design that did not lose a cut. Count the caller's cuts too (the
+  float in, the float out), or a cut is moved and called saved.
+- Run ALL of `node --test`, not the files being changed: a stagger test and
+  a census tool wrapped `tatamiFill` and took a new null-returning question
+  for a pass. Green on two files, red on the suite.
 
 Related: [[orphan-lane-sweep-2026-09-30]],
 [[concurrent-session-designed-the-same-tool-2026-09-17]],

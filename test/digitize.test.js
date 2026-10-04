@@ -1100,8 +1100,8 @@ test("fillColumns: a comb whose second lattice pass needs the FIFTH other first 
   // slant. Walked from the nearest first column it is cut twelve times, and
   // so it is from each of the next four, which all sew upward from one tooth
   // or another. The fifth sews downward from the first column of all, and is
-  // cut once. (On a sweep of 9,084 designs four tries left 18 cuts that
-  // eight do not, and no limit at all found one more.)
+  // cut once. (On a sweep of 9,084 designs four tries left 18 cuts, on three
+  // combs, that eight do not; with no limit at all not one design differs.)
   const comb = [];
   for (let k = 0; k < 12; k++) comb.push([0, 30 * k], [0, 30 * k + 15], [k < 11 ? 300 : 360, 30 * k + 15], ...(k < 11 ? [[300, 30 * k + 30]] : []));
   comb.push([360, 0]);

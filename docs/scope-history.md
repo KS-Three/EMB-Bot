@@ -17991,3 +17991,95 @@ lane), and a walk whose cut count turns on its first column.
 Off, nothing moves. Not sewn. Flip is still Kent's: defect 52, "Waiting on
 Kent" 22.
 *(measured 2026-10-03 — an independent agent with its own reader; five of its drawings rebuilt on `main` and given in `docs/renders/fill-columns-2026-10-03/README.md`, "A corner on a scanline")*
+
+## 2026-10-04 — `fillColumns`: a pass is told where the thread goes next, and a walk that comes out cut is walked again (what the re-measure left open)
+
+**The re-measure's finding, checked first.** Its three drawings give on
+`main` what it said (the arrow 1 cut → 2, four teeth 0 → 3, three teeth
+0 → 2). Its 45,416 designs rebuilt with its generator: 15,125 cuts before
+the corner fix, 14,190 on `main` (its 14,249 less 59 on the bullseye, which
+the island fix moved since), 388 designs with more cuts, 404 cuts.
+
+**Then every cut of `main` counted by where it is**, by the run before it
+and the run after. Of 14,190: 7,298 are center-out's own; 2,342 are on the
+float from an edge run into a plain fill; **2,261 on the float from an
+underlay the column walk sewed into a pass the plain walk sews**; 902 inside
+a column walk; 242 on the float into one; 834 between shapes; 182 between
+edge runs; 129 between two plain walks. A pass was told where the thread
+was and never where it had to go next.
+
+**Built, both behind the option:**
+
+1. **A pass is told where the thread goes next** (`to`). A pass the plain
+   walk sews begins where it begins, so the builder builds it first
+   (`plainOnly`) and tells the pass before it: the fill before its underlay,
+   the second lattice pass before the first. The column walk leaves its
+   last column by a corner the thread can float on from (the look one move
+   ahead, which had counted "nothing left to sew" as free); where no corner
+   of that column will do, the thread travels on through the columns'
+   corners, inside the budget, to the nearest that will. Over the underlay,
+   under the fill.
+2. **A walk that comes out cut is walked again** from each of the other
+   first columns the thread can float to, nearest first, eight at most, and
+   the walk with the fewest cuts is kept, the first on a tie. The cuts
+   counted are the ones inside it and the builder's two, on the float in and
+   on the float out.
+
+**Measured** on those 45,416, option on, `main`'s engine beside this one:
+
+| | `main` | 1 alone | 1 and 2 |
+|---|---|---|---|
+| cuts | 14,190 | 11,942 | 11,246 |
+| on the float from a column walk into a plain walk | 2,261 | 13 | 13 |
+| inside a column walk | 902 | 902 | 378 |
+| on the float into a column walk | 242 | 242 | 70 |
+| designs with fewer cuts / with more | | 2,230 / 0 | 2,520 / 0 |
+| threads of fewer than four penetrations | 306 | 298 | 24 |
+| sewn thread | 136,667 m | 136,699 m | 136,702 m |
+| float length | 740.8 m | 776.0 m | 782.1 m |
+
+The 2,520 designs with fewer cuts are the only designs whose stitches
+moved. Option off or absent, all 45,416 are byte for byte `main`'s. A
+second sweep drawn for this, 223 drawings on whole numbers and halves as
+10,704 designs under all seven presets and none: cuts 3,340 → 2,787, fewer
+on 534, more on none, off identical. The suite's seeded shapes by hand,
+15,000 of five seeds, each sewn four ways: every assertion holds, told
+nothing every pass is `main`'s, and no pass costs more cuts than `main`'s
+on the same call. The re-measure's five drawings: threads [102, 2 in one
+hole, 1384] → [1484], [315, 3, 3, 1756] → [2092], [121, 429, 430] →
+[552, 430], and its comb turned, [269, 2, 2, 2, 2, 2, 2, 4674] → [4940]. Its
+first keeps its stub.
+
+**Cost:** 35 m of thread in 136,667 (0 to 67.5 mm on a design the first rule
+changes, 13 on the median); a float where each of 2,420 cuts was, on the
+cover and under the fill; 1.15 times the build time on the 2,781 designs
+with a cut the walk could do something about (21 times on the worst, 21 →
+155 ms), 1.05 on a sample of the rest, and on the tool's stress shape
+nothing the noise of a busy laptop does not hide, but for one row walked
+again for nothing (1.05 to 1.37 times). The
+sheet and its four rows are the same; one row of the cost table moved (the
+stress shape under terry, 28 cuts → 19); the lock-stitch and stagger
+censuses print the same numbers.
+
+**One thing the suite caught and my two test files had not:** a stagger test
+and the stagger census wrap `tatamiFill` to watch the passes, and took the
+builder's new question (`plainOnly`, answered null) for a pass. Both now
+pass over it.
+
+**Mutated 25 ways: 23 die, two are the same engine** (a plain fill built
+twice). Four passed every test until tests were written for them, two of
+those four changing nothing on 45,416 designs: a spiral was drawn to show
+them.
+
+**Left:** 378 cuts inside a column walk and 70 into one, which no first
+column cures (with no limit on the tries not one design of 9,084 differs;
+with four, 18 more cuts on three combs); 13
+from a column walk into a plain walk; the stub; and **2,342 on the float
+from an EDGE RUN into a plain fill, untouched and now the most of any kind a
+walk could do something about**, 398 of the 1,110 under the preset a left
+chest uses. An edge run is a closed ring and could begin where the pass
+after it can be floated to. Not built here.
+
+Off, nothing moves: engine 712 passed. Not sewn. Flip is still Kent's:
+defect 52, "Waiting on Kent" 22.
+*(built 2026-10-04 — `src/fill.js` `sewColumns` "where the walk ends" and "which column first", `src/digitize.js`; `test/fill.test.js`, `test/digitize.test.js`; `docs/renders/fill-columns-2026-10-03/README.md`, "Where a pass ends, and which column it begins with")*

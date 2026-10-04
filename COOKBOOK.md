@@ -1014,7 +1014,7 @@ sews nothing and cuts the smallest shape that contains it.
   `_columns`) and goes ROUND a hole instead of crossing it. A satin shape is
   untouched by it, and so is a fill with no hole and no inside corner. None
   of `generate.js`'s three callers passes it; the flip is Kent's (MASTER_SCOPE
-  defect 52). It has not been sewn. Five things to know before touching it:
+  defect 52). It has not been sewn. Seven things to know before touching it:
   - Every move is asked what ground it runs over (`groundUnder`): on the
     ground it may float, on the rim it is sewn, deeper than `openTol` into
     open ground it must go round or be cut.
@@ -1037,6 +1037,21 @@ sews nothing and cuts the smallest shape that contains it.
     10 px per mm): the outline the fill is sewn to closes one to a slit, and
     no sweep had one until an audit drew it (2026-10-03, "a move of no
     length").
+  - A pass has two ends and is told both: where the thread is (`from`) and,
+    when the run after it begins at a point of its own, where it goes next
+    (`to`). A pass the plain walk sews is that kind, so the builder builds it
+    FIRST (`plainOnly`) and sews it in its turn. Anything that wraps
+    `tatamiFill` to watch the passes therefore sees a QUESTION now and then,
+    answered null, and a fill built before its underlay. A stagger test and
+    the stagger census took the question for a pass, and only the whole
+    suite showed it: run all of `node --test`, not the two files you are in.
+  - A walk that comes out cut is walked again from the other first columns
+    (`sewFrom`, eight at most) and the walk with the fewest cuts is kept. So
+    before touching the walk, count the cuts by WHERE they are: inside a
+    pass, on the float into it, on the float out of it, and what kind of run
+    is on either side. The most of any kind left is not the walk's at all:
+    the float from an EDGE RUN into a plain fill (2026-10-04, "where a pass
+    ends").
 
   To SEE thread rather than penetrations, run
   `node tools/fill-columns-sheet.mjs`: it draws four manual-lane shapes off
