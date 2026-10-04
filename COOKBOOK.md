@@ -1046,12 +1046,21 @@ sews nothing and cuts the smallest shape that contains it.
     the stagger census took the question for a pass, and only the whole
     suite showed it: run all of `node --test`, not the two files you are in.
   - A walk that comes out cut is walked again from the other first columns
-    (`sewFrom`, eight at most) and the walk with the fewest cuts is kept. So
+    (`sewFrom`, eight at most) and the better walk is kept: fewer cuts, and
+    no more threads of fewer than four penetrations between two of them. So
     before touching the walk, count the cuts by WHERE they are: inside a
     pass, on the float into it, on the float out of it, and what kind of run
     is on either side. The most of any kind left is not the walk's at all:
-    the float from an EDGE RUN into a plain fill (2026-10-04, "where a pass
+    the float from an EDGE RUN into a plain walk (2026-10-04, "where a pass
     ends").
+  - Count more than cuts, and sweep shapes the last sweep did not have. By
+    cuts alone a walk saved a cut by stranding a row, one stitch cut to and
+    cut from, and 56,120 designs of combs, badges and letters showed none:
+    the re-measure's mazes did. The same re-measure found a comb of 100
+    teeth with 615 cuts where no option has 1, and a pass of 2,003 columns
+    walked nine times for nothing. Mazes, spirals and combs of 24 teeth and
+    more belong in the sweep, and so do a pass's short threads, the thread
+    it sews, and the time it takes.
 
   To SEE thread rather than penetrations, run
   `node tools/fill-columns-sheet.mjs`: it draws four manual-lane shapes off

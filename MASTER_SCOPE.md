@@ -418,9 +418,15 @@ about the facts.
    out cut is walked again: on 45,416 designs the option's cuts go 14,190 →
    11,246 (25,922 with it off), fewer on 2,520 and more on none, and 2,442
    designs have more cuts with it than without where 4,717 had (the worst,
-   none → 8). Most of what a walk could still save is the float from an
-   edge run into a plain fill (2,342), not built *(measured 2026-10-04 —
-   the README's "Where a pass ends")*. Besides: a forked
+   none → 8). Each cut saved is a float under the fill instead, 17 mm long
+   on average. Its re-measure found what those designs lack: a comb of 24
+   teeth or more keeps tens to hundreds of cuts where no option has one
+   (100 teeth: 615); a big pass that stays cut is walked nine times, a
+   build two to three times as long; and a fill walked again can put more
+   travel on show for the cut it saves. Most of what a walk could still
+   save there is the float from an edge run into a plain walk (2,342), not
+   built *(measured 2026-10-04 — the README's "Where a pass ends")*.
+   Besides: a forked
    large fill is no longer center-out, and on a shape with a hole or an
    inside corner the edge-run underlay sits 0.2 mm inside the fill with its
    corners kept (the one length named: it is what the shipped engine gives at

@@ -96,14 +96,25 @@ hole or a notch, and it has NOT been sewn. Kent's flip: MASTER_SCOPE defect
 - Before changing how thread is routed, count the cuts by WHERE they are:
   inside a pass, on the float into it, on the float out, and what kind of
   run is either side. Two fixes went to the walk's inside; the most of any
-  kind (2,261 of 14,190) was the float OUT of an underlay into a plain fill,
-  which nothing asked about, and telling the pass where the thread goes next
-  took it to 13 (2026-10-04). The next most, edge run into plain fill
-  (2,342), is not the walk's at all and is still there.
+  kind (2,261 of 14,190) was the float OUT of an underlay into a pass the
+  plain walk sews, which nothing asked about, and telling the pass where the
+  thread goes next
+  took it to 13 (2026-10-04). The next most, edge run into a plain walk
+  (2,342: 1,680 a fill, 662 an underlay pass), is not the walk's at all and
+  is still there.
 - A greedy walk's result turns on where it starts. Walking it again from the
   other starts, only when it comes out cut, and keeping the fewest cuts,
-  moved no design that did not lose a cut. Count the caller's cuts too (the
-  float in, the float out), or a cut is moved and called saved.
+  moved no design of two sweeps that did not lose a cut. Count the caller's
+  cuts too (the float in, the float out), or a cut is moved and called saved.
+- "No design of my sweeps" was not "no design". Its re-measure drew mazes,
+  spirals and long combs, which 56,120 designs of combs, badges and letters
+  did not have, and found: a walk that saved a cut by stranding a row (one
+  stitch, cut to and cut from), so a walk is now judged by its short threads
+  as well; 615 cuts on a 100-tooth comb that no option sews with 1 (the
+  good walks begin at an END of the pass, and the tries are nearest first:
+  not built); a pass of 2,003 columns walked nine times for nothing; and a
+  fill that lays 404 mm more travel to save one cut. When a rule keeps "the
+  best" of several walks, say what best does NOT count, and sweep for it.
 - Run ALL of `node --test`, not the files being changed: a stagger test and
   a census tool wrapped `tatamiFill` and took a new null-returning question
   for a pass. Green on two files, red on the suite.
