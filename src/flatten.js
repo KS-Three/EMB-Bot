@@ -94,46 +94,21 @@
     return { label, sizes, count };
   }
 
-  // Most common non-transparent index among the 4-neighbors that lie OUTSIDE the
-  // given component. Ties resolve to the lowest index. Returns -1 when the
-  // component has no valid neighbor (fully surrounded by transparent/border).
-  // One walk over the whole image to find the component's pixels.
-  function majorityNeighbor(grid, label, comp, w, h, stats) {
-    if (stats) stats.imageWalks += 1;
-    const n = w * h;
-    const votes = new Map();
-    for (let i = 0; i < n; i++) {
-      if (label[i] !== comp) continue;
-      const px = i % w;
-      const py = (i / w) | 0;
-      const check = (q) => {
-        if (label[q] === comp) return; // inside the component
-        const v = grid[q];
-        if (v === TRANSPARENT_INDEX) return;
-        votes.set(v, (votes.get(v) || 0) + 1);
-      };
-      if (px > 0) check(i - 1);
-      if (px < w - 1) check(i + 1);
-      if (py > 0) check(i - w);
-      if (py < h - 1) check(i + w);
-    }
-    let best = -1;
-    let bestCount = -1;
-    for (const [v, c] of votes) {
-      if (c > bestCount || (c === bestCount && v < best)) {
-        bestCount = c;
-        best = v;
-      }
-    }
-    return best;
-  }
-
   // Repeatedly absorb the smallest sub-threshold component into its majority
-  // neighboring index. Re-labels after each absorb so a just-absorbed speck can
-  // join and grow a neighbor for a later, bigger absorb. Terminates: every
+  // neighboring index: the most common non-transparent index among the
+  // 4-neighbors outside it, ties to the lowest index. Smallest first, and of
+  // two the same size the one a raster scan meets first, so a just-absorbed
+  // speck can join and grow a neighbor for a later, bigger absorb. A component
+  // with only transparent/border neighbors stays as it is. Terminates: every
   // absorb merges a component into an existing neighboring component, strictly
-  // reducing the total component count, and stuck components (only
-  // transparent/border neighbors) are skipped rather than retried forever.
+  // reducing the total component count.
+  //
+  // The image is labelled ONCE. After that each component keeps its own pixels
+  // (a linked list), its size and its first pixel; an absorb joins the lists
+  // of the components it merges, and a heap hands over the smallest. The rule
+  // above used to be run by labelling the whole image again after every
+  // absorb; `test/flatten.test.js` keeps that version word for word and holds
+  // this one to its output.
   //
   // `opts.stats`, when given as { absorbed: 0, imageWalks: 0 }, is counted
   // into: components absorbed, and walks over the whole image. It changes
@@ -141,23 +116,125 @@
   function absorbSmallRegions(indices, w, h, minPx, opts) {
     const stats = (opts && opts.stats) || null;
     const cur = Uint8Array.from(indices);
-    for (;;) {
-      const { label, sizes, count } = labelComponents(cur, w, h, stats);
-      // Candidate components under the threshold, smallest first.
-      const candidates = [];
-      for (let c = 0; c < count; c++) if (sizes[c] < minPx) candidates.push(c);
-      candidates.sort((a, b) => sizes[a] - sizes[b]);
+    const n = w * h;
+    const { label, sizes, count } = labelComponents(cur, w, h, stats);
 
-      let chosen = -1;
-      let target = -1;
-      for (const c of candidates) {
-        const maj = majorityNeighbor(cur, label, c, w, h, stats);
-        if (maj !== -1) { chosen = c; target = maj; break; }
+    // Each component's pixels as a linked list in raster order, so a list
+    // starts at its component's first pixel.
+    const next = new Int32Array(n).fill(-1);
+    const head = new Int32Array(count).fill(-1);
+    const tail = new Int32Array(count);
+    if (stats) stats.imageWalks += 1;
+    for (let p = 0; p < n; p++) {
+      const c = label[p];
+      if (c === -1) continue;
+      if (head[c] === -1) head[c] = p;
+      else next[tail[c]] = p;
+      tail[c] = p;
+    }
+    const size = Int32Array.from(sizes);
+    const first = Int32Array.from(head);
+
+    // `label` is never rewritten. A component taken into another points at it
+    // through `parent`, and is itself only while it is its own parent.
+    const parent = new Int32Array(count);
+    for (let c = 0; c < count; c++) parent[c] = c;
+    const rootOf = (c) => {
+      while (parent[c] !== c) { parent[c] = parent[parent[c]]; c = parent[c]; }
+      return c;
+    };
+
+    // The candidates in a min-heap: smallest first, of two the same size the
+    // one whose first pixel comes first, which is the order a fresh labelling
+    // would number them in. Only the component just taken out ever grows, so
+    // nothing changes rank while it waits, and no component waits twice.
+    const heap = new Int32Array(count);
+    let waiting = 0;
+    const ahead = (a, b) => size[a] < size[b] || (size[a] === size[b] && first[a] < first[b]);
+    const put = (c) => {
+      let i = waiting++;
+      while (i > 0) {
+        const up = (i - 1) >> 1;
+        if (!ahead(c, heap[up])) break;
+        heap[i] = heap[up];
+        i = up;
       }
-      if (chosen === -1) break; // nothing absorbable remains
+      heap[i] = c;
+    };
+    const take = () => {
+      const top = heap[0];
+      const c = heap[--waiting];
+      let i = 0;
+      for (;;) {
+        let kid = 2 * i + 1;
+        if (kid >= waiting) break;
+        if (kid + 1 < waiting && ahead(heap[kid + 1], heap[kid])) kid++;
+        if (!ahead(heap[kid], c)) break;
+        heap[i] = heap[kid];
+        i = kid;
+      }
+      heap[i] = c;
+      return top;
+    };
+    for (let c = 0; c < count; c++) if (size[c] < minPx) put(c);
 
-      for (let i = 0; i < cur.length; i++) if (label[i] === chosen) cur[i] = target;
-      if (stats) { stats.imageWalks += 1; stats.absorbed += 1; }
+    const votes = new Int32Array(256);
+    const voted = [];
+    let self = -1; // the component in hand
+    let own = 0; // its index
+    let target = -1; // the index it is absorbed into
+    const vote = (q) => {
+      const v = cur[q];
+      // A neighbor of its own index is inside it: components are maximal.
+      if (v === own || v === TRANSPARENT_INDEX) return;
+      if (votes[v]++ === 0) voted.push(v);
+    };
+    const join = (q) => {
+      if (cur[q] !== target) return;
+      const other = rootOf(label[q]);
+      if (other === self) return;
+      parent[other] = self;
+      size[self] += size[other];
+      if (first[other] < first[self]) first[self] = first[other];
+      next[tail[self]] = head[other];
+      tail[self] = tail[other];
+    };
+    const around = (p, visit) => {
+      const px = p % w;
+      const py = (p / w) | 0;
+      if (px > 0) visit(p - 1);
+      if (px < w - 1) visit(p + 1);
+      if (py > 0) visit(p - w);
+      if (py < h - 1) visit(p + w);
+    };
+
+    while (waiting > 0) {
+      self = take();
+      if (parent[self] !== self) continue; // taken into a neighbor while it waited
+
+      own = cur[head[self]];
+      for (let p = head[self]; p !== -1; p = next[p]) around(p, vote);
+      target = -1;
+      let most = 0;
+      for (const v of voted) {
+        if (votes[v] > most || (votes[v] === most && v < target)) { most = votes[v]; target = v; }
+        votes[v] = 0;
+      }
+      voted.length = 0;
+      // Only transparent/border beside it. Nothing can ever arrive there, so
+      // it is not asked again.
+      if (target === -1) continue;
+
+      // Repaint it and take in every neighboring component of its new index.
+      // Their pixels join the list after `last`, where this walk stops.
+      const last = tail[self];
+      for (let p = head[self]; ; p = next[p]) {
+        cur[p] = target;
+        around(p, join);
+        if (p === last) break;
+      }
+      if (stats) stats.absorbed += 1;
+      if (size[self] < minPx) put(self);
     }
     return cur;
   }
