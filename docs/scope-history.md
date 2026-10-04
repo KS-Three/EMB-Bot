@@ -18123,3 +18123,62 @@ It changes no grade: `test_it_judges_nothing` scores one polygon with the
 metric and with it removed, and was watched failing against an injected
 `warn`.
 *(built 2026-10-03 — `tests/test_curve_roughness_metrics.py`, 8; `digitizer_core/curve_fidelity.py`)*
+
+
+## 2026-10-04 — Scorecard baseline recaptured at `6e0cb943`: 48 of 52 rows moved over 50 commits, five fell a band, and the band-crossing step is the grader's on all five
+
+**Why.** PR #619 added 17 metric keys to `run_preflight` that judge nothing
+(`edge_wobble_{satin,border,fill,line}_{p95,std,max}_mm`, `curve_roughness_deg`
+with `curve_turn_gini`, `curve_vertices`, `curve_corner_vertices`,
+`curve_traces`). `corpus_scorecard.diff` reads only keys both sides hold, so
+until the baseline carried them no tool read them. The ruler was `2c60cd87`
+(2026-09-16); 50 first-parent commits had touched `digitizer_core` since.
+
+**Where, and the controls.** Cloud Linux only — `python3.12`, pinned
+`requirements.txt`, `tesseract-ocr` 5.3.4, no `rembg_isolated/venv` — never the
+WSL box (COOKBOOK). All 52 rows re-scored at `2c60cd87` first and reproduced the
+stored baseline leaf for leaf. The tool's own serial `diff` at `aa7f934` and at
+`6e0cb943` printed the same 576 lines (exit 1), so #619's keys moved nothing
+anywhere; the serial `capture` matches a 3-worker pool's rows on every common
+leaf; HEAD replayed against the new file reads `no drift`.
+
+**What moved.** 48 of 52 rows by the tool's rule (the other four under its 5 %
+floor — `uncovered_wanted_mm2` rose on all 52). Grades A/B/C/D/F 7/13/12/6/14 →
+6/14/11/8/13. `SATIN_GAPS_TIGHT:warn` 0 → 10, `ARTWORK_UNCOVERED:warn` 6 → 14,
+`STITCHES_TOO_SHORT:warn` 18 → 5, `THREAD_MATCH_POOR:block` 34 → 26. 721 leaves
+changed on pre-existing keys; 26 keys are new to the file (17 from #619, 4 from
+#572, 3 from #573, 2 from #597).
+
+| row | old → new | the path, by PR |
+|---|---|---|
+| `logo_script_tires.png @ 80mm/hat_front` | A 100 → **B 88** | #573 A 100 → B 88 (+`SATIN_GAPS_TIGHT:warn`) |
+| `photo/photo_chrome_specular.png @ 80mm/hat_front` | B 88 → **C 64** | #554 B 88 → B 76 (+`STITCHES_TOO_SHORT:warn`); #561 B 76 → C 64 (+`LETTERING_TOO_SMALL:warn`); #578 C 64 → B 76 (−`STITCHES_TOO_SHORT:warn`); #572 B 76 → C 64 (+`ARTWORK_UNCOVERED:warn`) |
+| `photo/photo_chrome_specular.png @ 80mm/left_chest` | C 64 → **D 52** | #572 C 64 → D 52 (+`ARTWORK_UNCOVERED:warn`) |
+| `photo/photo_scene_stub.png @ 80mm/hat_front` | B 76 → **D 52** | #573 B 76 → C 64 (+`SATIN_GAPS_TIGHT:warn`); #572 C 64 → D 52 (+`ARTWORK_UNCOVERED:warn`) |
+| `photo/photo_scene_stub.png @ 80mm/left_chest` | C 64 → **D 52** | #520 C 64 → B 76 (−`ARTWORK_UNCOVERED:warn`); #573 B 76 → C 64 (+`SATIN_GAPS_TIGHT:warn`); #572 C 64 → D 52 (+`ARTWORK_UNCOVERED:warn`) |
+| `photo/logo_hotel_fremont.webp @ 80mm/hat_front` | C 64 → **B 88** | #554 C 64 → B 76 (−`STITCHES_TOO_SHORT:warn`); #589 B 76 → B 88 (−`LETTERING_ILLEGIBLE:warn`) |
+| `photo/logo_hotel_fremont.webp @ 80mm/left_chest` | C 64 → **B 76** | #554 C 64 → B 76 (−`STITCHES_TOO_SHORT:warn`) |
+| `photo/photo_grass_macro.png @ 80mm/hat_front` | F 22 → **D 46** | #516 F 22 → F 10 (+`TRIM_HEAVY:warn`); #520 F 10 → F 22 (−`TRIM_HEAVY:warn`); #554 F 22 → D 46 (−`LETTERING_TOO_SMALL:warn`, −`STITCHES_TOO_SHORT:warn`) |
+| `photo/photo_subject_stub.png @ 80mm/hat_front` | D 58 → **C 70** | #572 D 58 → C 70 (−`ARTWORK_UNCOVERED:warn`) |
+| `photo/photo_subject_stub.png @ 80mm/left_chest` | D 58 → **C 70** | #572 D 58 → C 70 (−`ARTWORK_UNCOVERED:warn`) |
+
+**Every mover attributed, by bisection over the 51 trees** — 387 change
+points, 1,176 single-row evaluations, 23 commits moved a row, 27 moved none, one
+interval (`hotel_fremont` hat_front across #518–#528) reads as gradual drift.
+**The step that crosses a band line is an instrument on all five falls:**
+#572 (the uncovered check sees holes) and #573 (`SATIN_GAPS_TIGHT`) left
+`stitch_count` byte-identical on every row they moved. #572 is also why
+`photo_subject_stub` rose two bands — its 956 mm² "uncovered" sat inside a
+hole. `photo_chrome_specular` hat_front also carries geometry: #554 and #561
+took it 88 → 64 (`LETTERING_TOO_SMALL` from #561 stays), #578 gave 12 back.
+The geometry flips net upward: #554 (rail comp ON, 38 rows) lifts
+`hotel_fremont` C → B on both garments and `grass_macro` F → D; #559 (tip
+caps) 33 rows, #516 (lettering construction) 32, #520 (junction stack) 30,
+#561 25, #537 22, #558 21, #521 19, #589 18 — metrics, few scores. Whether a
+check that fires on ten rows should cost a band is Kent's to weigh.
+
+**What it does not settle.** Neither new number has met Kent's eye; the
+recapture makes them visible to `diff`, nothing more. The WSL box's control
+worktree still sits at `2c60cd87` and must be re-cut at `6e0cb943` before its
+next `diff` means anything.
+*(measured 2026-10-04 — `docs/scorecard-baseline-attribution-2026-10-04.md`, its appendices A–C; PR #627)*
