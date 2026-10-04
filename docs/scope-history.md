@@ -18530,3 +18530,166 @@ out by the shrink can cross the hole beside it (2 of 1,500 random trees).
 
 Engine 714 passed. Not sewn.
 *(fixed 2026-10-03 — `islandsAmong`, `sweptEdges`, `fillRingsOf` in `src/digitize.js`; `test/digitize.test.js`)*
+
+## 2026-10-04 — The Studio's flatten froze the tab on a photograph: `absorbSmallRegions` walked the whole image for every speck (fixed; no pixel of any flat changes)
+
+**The finding, 2026-10-03.** A session running the Studio's image lane over
+the testdata images found that `absorbSmallRegions` did not return within a
+minute on `photo_chrome_specular.png` with the background removed, nor on
+`photo_subject_stub.png` at 6 colours. It is the fourth step of the Studio's
+own flatten (`app/src/lib/flatten.js`: `knockoutBackground` if asked,
+`medianCut`, `modeFilter` twice, `absorbSmallRegions` at 0.05% of the image)
+and it runs on the main thread when a customer uploads an image and picks
+"Artwork". Nobody had waited to see whether it ends.
+
+**It ends. Measured first**, on the engine as it was at `aa7f9343` with
+counters added and nothing else, each image cut to the Studio's 480 px:
+
+| | chrome_specular, background removed, 4 colours | the same at 2 colours | subject_stub, 6 colours |
+|---|---|---|---|
+| size | 403 x 480 | 403 x 480 | 480 x 312 |
+| components at the start | 4,395 | 4,092 | 18,699 |
+| under the threshold | 4,362 (under 97 px) | 4,081 (under 97 px) | 18,644 (under 75 px) |
+| of those, islands with only transparent beside them | 3,994 | 3,994 | 0 |
+| absorbs | 356 | 87 | 14,994 |
+| labellings of the whole image | 357 | 88 | 14,995 |
+| neighbour counts, each one a walk over the whole image | 1,149,216 | 304,323 | 14,994 |
+| walks over the whole image in all | 1,149,929 | 304,498 | 44,983 |
+| processor time of the one call | 10.9 min | 3.6 min | 1.9 min |
+| the same call now | 24 ms | 16 ms | 156 ms |
+
+The three steps before it took 7, 435 and 86 ms on the first.
+
+**Two costs, and the one the finding did not name is the larger.** The loop
+labelled the whole image afresh after every absorb: that is the right-hand
+column, a labelling, a neighbour count and a repaint for each of 14,994
+specks. And it asked each candidate for its neighbours by walking the whole
+image to find that candidate's pixels. `knockoutBackground` is a colour key,
+not a flood from the border: on a photograph it takes near-white pixels out
+wherever they are and leaves thousands of islands with nothing but
+transparent beside them (2,743 of the 3,994 here are a single pixel). Such
+an island can never be absorbed. It is also the smallest thing in the image,
+so it stood first in line, and it was asked again in EVERY pass: 3,994 walks
+over the image before each of 356 absorbs.
+
+**The extent**: every PNG under `digitizer/testdata` and
+`digitizer/testdata/photo` (25) at 2, 4 and 6 colours, with and without
+background removal, 150 settings.
+
+| processor time of the one call, old loop | settings | of them with the background removed |
+|---|---|---|
+| under 0.1 s | 68 | 37 |
+| 0.1 to 1 s | 35 | 6 |
+| 1 to 10 s | 21 | 11 |
+| 10 s to 1 min | 11 | 7 |
+| 1 to 10 min | 8 | 7 |
+| 10 min to 1 h | 4 | 4 |
+| over 1 h | 3 | 3 |
+
+All 150 calls: 8.57 hours of processor time and 62,262,173 walks over an
+image. Every one over a minute:
+
+| image | colours | background | components | under the threshold | islands | absorbs | walks before | processor time before | after |
+|---|---|---|---|---|---|---|---|---|---|
+| photo_grass_macro | 6 | removed | 14,050 | 13,897 | 4,905 | 6,519 | 22,019,236 | 2.88 h | 62 ms |
+| photo_grass_macro | 4 | removed | 13,981 | 13,833 | 4,915 | 6,451 | 22,262,593 | 2.84 h | 61 ms |
+| photo_grass_macro | 2 | removed | 8,845 | 8,770 | 5,425 | 2,254 | 7,670,245 | 1.19 h | 39 ms |
+| photo_owl_pale | 4 | removed | 4,511 | 4,275 | 787 | 3,206 | 2,089,114 | 20.4 min | 33 ms |
+| photo_owl_pale | 6 | removed | 4,261 | 4,097 | 787 | 3,145 | 2,071,932 | 20.2 min | 32 ms |
+| photo_chrome_specular | 6 | removed | 4,771 | 4,711 | 3,992 | 696 | 2,200,846 | 17.8 min | 34 ms |
+| photo_chrome_specular | 4 | removed | 4,395 | 4,362 | 3,994 | 356 | 1,149,929 | 10.9 min | 24 ms |
+| photo_sunset_backlit | 6 | removed | 2,355 | 2,334 | 1,774 | 555 | 884,542 | 6.3 min | 16 ms |
+| photo_chrome_specular | 2 | removed | 4,092 | 4,081 | 3,994 | 87 | 304,498 | 3.6 min | 16 ms |
+| photo_dof_meadow | 6 | removed | 1,585 | 1,532 | 904 | 521 | 387,445 | 3.3 min | 11 ms |
+| photo_sunset_backlit | 4 | removed | 1,950 | 1,945 | 1,774 | 163 | 244,657 | 2.3 min | 10 ms |
+| photo_subject_stub | 6 | removed | 19,046 | 18,994 | 0 | 15,310 | 45,931 | 2.1 min | 92 ms |
+| photo_subject_stub | 6 | kept | 18,699 | 18,644 | 0 | 14,994 | 44,983 | 1.9 min | 156 ms |
+| summit_badge | 6 | removed | 858 | 834 | 518 | 296 | 85,580 | 1.1 min | 9 ms |
+| photo_subject_stub | 4 | removed | 12,190 | 11,953 | 0 | 9,377 | 28,132 | 1.1 min | 69 ms |
+
+("Islands" are counted at the start; an absorb can make more.) Fifteen of the
+150 take over a minute: fourteen with the background removed, and
+`photo_subject_stub` at 6 colours without. With the background kept, nothing
+that is not a photograph took 4 s. With it removed a badge and a logo took up
+to a minute (`summit_badge` 65 s, `logo_gaulke_roofing` 30 s), and a
+photograph took over a minute on 13 of its 21 settings. No suite showed it:
+their images are a few hundred pixels.
+
+**What changed.** The image is labelled once. Each component then keeps its
+own pixels (a linked list), its size and its first pixel; an absorb joins the
+lists of the components it merges; a component taken into another points at
+it; a heap hands over the smallest. An island with no neighbour is asked
+once and never again, because nothing can ever arrive beside it. Two walks
+over the image, whatever is in it.
+
+**No pixel moves**, and that was the condition: which component goes into
+which neighbour, and in what order, had to stay as it was (smallest first; of
+two the same size the one a raster scan meets first; into the index most of
+its outside neighbours carry; of two with the same votes the lower).
+
+- The sha256 of the returned indices is the same before and after on 150 of
+  150 settings, and so is the number of absorbs (102,625 in all).
+- The ORDER is the same and not only the result. The old loop wrote the hash
+  of its grid at every checkpoint of every run long enough to have one: the
+  new code's grid after the same number of absorbs is the same at 756 of 756
+  checkpoints over 27 runs. And the number of neighbour counts the old loop
+  makes depends on how many islands stand ahead of each component it
+  absorbs: worked out from the new code's order, it is the old loop's own
+  count on all 150.
+- A second corpus the suite does not use: 20,000 generated images (noise,
+  blobs, stripes, rings, blocks, islands in a transparent sea; up to 60 x 60
+  and 250 indices; thresholds from 0 to no limit), 394,765 absorbs, the
+  untouched `origin/main` engine against this one: no image differs.
+- The three `photo_grass_macro` settings with the background removed needed
+  1.2, 2.8 and 2.9 hours of processor time on the old loop, on a laptop that
+  sleeps after 45 idle minutes. They were run in stretches side by side (2,
+  6 and 6): the old loop keeps nothing between passes but the grid, so each
+  stretch was started from the grid the new code has after that many
+  absorbs, and each ended, by hash, on the very grid the next stretch
+  started from. The chain holds on all three and the stretches' counts add
+  up to the predicted ones. The same method on two settings that had also
+  been run whole gave the same counts and the same hash.
+
+**After**, same laptop, same day: the 150 calls take 2.0 s between them
+(median of seven runs each), the slowest 156 ms. The flatten's slow step on a
+photograph is now `medianCut` (0.2 to 1.5 s on the seven photographs, 0.6 s
+at the median), which this does not touch.
+Built to be as bad as it can be for the new code, at the Studio's largest
+size (a 480 x 480 checkerboard, raw noise in 6 and in 250 colours: every
+pixel its own component, over 100,000 absorbs), it takes 0.7 to 2.2 s.
+
+**In a browser**, the Studio's own `flattenRGBA` on its main thread, the same
+photograph resampled by the canvas as ImagePanel does it (403 x 480, 4
+colours, background removed): 287 to 490 ms for the whole flatten over five
+runs, 10 to 19 ms of it in this step. The old engine's step on the same
+pixels, in a worker beside it: 7 min 15 s, and the same grid.
+
+**Tests** (`test/flatten.test.js`). Watched red on the old loop: 400 specks
+cost 1,201 walks over the image against 4 for one speck, and ten specks cost
+361 against 31 once thirty islands that can never be absorbed stand in the
+image. Each is 2 now. The old loop is kept in the test file word for word as
+the definition of the order, and 600 seeded images and 175 grids where
+everything ties come out as it leaves them. Seventeen rules of the new code
+changed one at a time in a copy: none passes the file (two never come back).
+`opts.stats` ({ absorbed, imageWalks }) is how the walks are counted; absent,
+nothing changes. `node tools/flatten-census.mjs` prints these tables for
+whatever engine it is pointed at.
+
+**Read the times as this laptop's, busy.** They are processor time of the one
+call; the clock ran two to four times that, with other sessions sweeping on
+the same eight cores, and the laptop slept through parts of the long runs
+(each was checkpointed and taken up again). The image is resampled by
+`tools/png.mjs`'s box average in Node and by the canvas in the browser, so
+the two see slightly different pixels: 356 absorbs in Node, 317 in the
+browser.
+
+**Seen and not touched.** The islands are still in the flat: by the rule they
+stay, and on `photo_chrome_specular` with the background removed that is
+3,994 specks in the preview. `flatToRegions` drops shapes under 0.04% of the
+image when it traces, so they are not sewn. Whether background removal on a
+photograph should leave them at all is a question about `knockoutBackground`,
+not about this.
+
+No stitch of any design moves: the flat the image lane traces is the same
+array, byte for byte.
+*(measured and fixed 2026-10-04 — `tools/flatten-census.mjs` (its "before" is commit `4e486f62`), `test/flatten.test.js`; the sweep's own scripts were the session's and are not in the repo)*
