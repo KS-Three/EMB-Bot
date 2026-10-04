@@ -368,9 +368,10 @@
   // underlayStitchPx, underlayRowPx, runningOutline, tatamiFill, insetRing,
   // pcaAngleDeg }. Styles: none | edge_run | center_run | zigzag | edge_zigzag |
   // edge_lattice | double_lattice.
-  // With `fillColumns`: also { columns, openTol, clear(a, b), to } -- `clear`
-  // says whether a float from a to b would be left uncut, and `to` is where
-  // the fill begins, when that is known before the underlay is sewn.
+  // With `fillColumns`: also { columns, openTol, clear(a, b), to() } -- `clear`
+  // says whether a float from a to b would be left uncut, and `to()` gives
+  // where the fill begins, or null when that is not known before the
+  // underlay is sewn.
   function underlayRuns(shape, styleName, ctx) {
     const style = styleName || "none";
     if (style === "none") return [];
@@ -472,10 +473,12 @@
     // float to uncut, instead of always from the top left. And where the
     // thread goes next (`to`: where the run after it begins, when that is
     // known before this pass is sewn), so that it ends where the thread can
-    // float on from. `ctx.to` is where the fill begins, when the caller knows.
+    // float on from. `fillStart()` is where the fill begins, when the caller
+    // can say: asked only by the pass that is sewn last before it.
     const entry = (from, to) => (ctx.columns ? { columns: true, openTol: ctx.openTol, ground: ctx.ground || undefined, from: from || undefined, to: to || undefined, clear: ctx.clear || undefined } : {});
+    const fillStart = () => (ctx.columns && ctx.to ? ctx.to() : null);
     function zigzag(from) {
-      return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: zigRow, angleDeg: fillAngle + 90, maxStitch, markConnectors: true }, entry(from, ctx.to)))];
+      return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: zigRow, angleDeg: fillAngle + 90, maxStitch, markConnectors: true }, entry(from, fillStart())))];
     }
     function lattice(angleOff, from, to, plainOnly) {
       return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: latticeRow, angleDeg: fillAngle + angleOff, maxStitch, markConnectors: true }, entry(from, to), plainOnly ? { plainOnly: true } : {}))];
@@ -487,7 +490,7 @@
       const edge = edgeRun();
       const ahead = ctx.columns ? lattice(-45, null, null, true)[0] : null;
       const runs = edge.concat(lattice(45, endOfRuns(edge), ahead ? ahead[0] : null));
-      return runs.concat(ahead ? [ahead] : lattice(-45, endOfRuns(runs), ctx.to));
+      return runs.concat(ahead ? [ahead] : lattice(-45, endOfRuns(runs), fillStart()));
     }
     const then = (runs, next) => runs.concat(next(endOfRuns(runs)));
     // Single running stitch along the shape's PCA-major axis, clipped to the
@@ -516,9 +519,9 @@
       case "center_run": return centerRun();
       case "zigzag": return zigzag(null);
       case "edge_zigzag": return then(edgeRun(), zigzag);
-      case "edge_lattice": return then(edgeRun(), (from) => lattice(90, from, ctx.to));
+      case "edge_lattice": return then(edgeRun(), (from) => lattice(90, from, fillStart()));
       case "double_lattice": return doubleLattice();
-      default: return then(edgeRun(), (from) => lattice(90, from, ctx.to));
+      default: return then(edgeRun(), (from) => lattice(90, from, fillStart()));
     }
   }
 
@@ -1124,17 +1127,25 @@
         };
         // With `fillColumns`: a fill the plain walk sews begins at a point of
         // its own, wherever the thread is, and what it sews does not turn on
-        // that either. So it is built HERE, before the underlay, and the
-        // underlay is told where it begins: an underlay pass the column walk
-        // sews then ends where the thread can float on to it (fill.js, "where
-        // the walk ends"). A fill the column walk sews is built in its turn,
-        // told where the thread is, and the underlay before it is told nothing.
-        let fillAhead = null;
-        if (clearFloat) {
-          try { fillAhead = sewFill({ plainOnly: true }); } catch (e) { fillAhead = null; }
-          if (fillAhead && !fillAhead.pts) fillAhead = null;
-        }
-        const fillStart = fillAhead && fillAhead.pts.length ? fillAhead.pts[0] : null;
+        // that either. So it is built BEFORE the underlay, and the underlay is
+        // told where it begins: an underlay pass the column walk sews then
+        // ends where the thread can float on to it (fill.js, "where the walk
+        // ends"). A fill the column walk sews is built in its turn, told
+        // where the thread is, and the underlay before it is told nothing.
+        //
+        // It is built ahead only when a tatami pass of the underlay asks
+        // (`fillStart`). An underlay that is an edge run alone has no use for
+        // the answer, and finding out is a pass over the fill's rows.
+        let fillAhead;   // not asked yet; then the fill built ahead, or null where it is the column walk's
+        const fillStart = () => {
+          if (fillAhead === undefined) {
+            fillAhead = null;
+            if (clearFloat) {
+              try { const ahead = sewFill({ plainOnly: true }); if (ahead.pts) fillAhead = ahead; } catch (e) { fillAhead = null; }
+            }
+          }
+          return fillAhead && fillAhead.pts.length ? fillAhead.pts[0] : null;
+        };
         if (useUnderlay) {
           if (fabric) {
             // Fabric mode: named underlay style per shape type.
@@ -1155,7 +1166,7 @@
                 runs.push(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx })); runKinds.push("underlay");
               }
               // (no `ground` here: with no fabric the fill is sewn to these same rings)
-              if (!thin) { runs.push(fillmod.tatamiFill(rings, Object.assign({ rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true, columns: fillColumns, openTol: rowPx }, entryOf(runs, fillStart)))); runKinds.push("underlay"); }
+              if (!thin) { runs.push(fillmod.tatamiFill(rings, Object.assign({ rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true, columns: fillColumns, openTol: rowPx }, entryOf(runs, fillStart())))); runKinds.push("underlay"); }
             } catch (e) { /* underlay best-effort */ }
           }
         }

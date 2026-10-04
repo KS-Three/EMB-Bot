@@ -399,6 +399,7 @@
   // Told nothing, a pass ends where its last column ends, as it always has.
   const RING_TRIES = 8;   // how many of the nearest starts are tried round a ring
   const START_TRIES = 8;  // how many of the nearest corners a pass may start from
+  const FIRST_TRIES = 8;  // how many other first columns a walk that comes out cut is walked from
   function sewColumns(cols, above, geo, o) {
     if (!cols.length) return [];   // every span of the pass was a point (spansWithLength)
     const edges = geo.edges, maxStitch = o.maxStitch, tol = o.tol, pitch = o.pitch, cosP = o.cosP, sinP = o.sinP;
@@ -418,13 +419,16 @@
       return key;
     };
     const variants = cols.map((c) => [walk(c, false, false), walk(c, false, true), walk(c, true, false), walk(c, true, true)]);
-    const remaining = cols.map((_, i) => i);   // creation order: highest first, then leftmost
-    const out = [];
+    // The walk being made: the columns still to sew, the points laid, and the
+    // cuts among them. A pass can be walked more than once ("which column
+    // first", below), so each walk sets these afresh (sewFrom).
+    let remaining, out, cuts;
     const cutTo = (p) => {
       const frame = rotate(p, cosP, sinP);
       frame.travel = true;
       frame.trim = true;
       out.push(frame, rotate(p, cosP, sinP));
+      cuts++;
     };
     // A move of NO LENGTH lays no stitch: the needle is already there. Two
     // spans of one scanline can meet at a point -- the scanline runs along a
@@ -561,9 +565,10 @@
     // or a run, 1 the way round a ring, 2 a cut. With nothing left to sew the
     // next move is the float out of the pass: 0, or 2 where it would be cut.
     // The move it found is kept: it is the very move the walk makes next.
-    const done = cols.map(() => false);
-    let waits = above;         // what each column waits for: see "where the walk starts"
-    let planned = new Map();   // exit point -> the move from it
+    // (Of the walk being made, like `remaining`: which columns are sewn, what
+    // each waits for -- see "where the walk starts" -- and the moves kept,
+    // exit point -> the move from it.)
+    let done, waits, planned;
     const afterwards = (ci, exit) => {
       const rest = remaining.filter((c) => c !== ci);
       if (!rest.length) return leaves(exit) ? 0 : 2;
@@ -752,107 +757,162 @@
     //
     // Only the nearest are asked: START_TRIES starts, then twice that many
     // corners of any column. A corner the thread could float to further off
-    // than those is not looked for, and the caller cuts (third audit: on a
-    // thin eight-pointed star the one such corner was the farthest of 64).
-    let first = null, cur = null, curNode = null, unlanded = null;
+    // than those is not looked for (third audit: on a thin eight-pointed star
+    // the one such corner was the farthest of 64) -- not by the first walk. A
+    // walk that comes out cut looks further: "which column first", below.
+    let starts = null;            // every corner a walk may start at, nearest the thread first
+    const floatsTo = new Map();   // a corner is asked once: the question is a walk of a float over the shape
+    const reaches = (ci, j) => {
+      if (!o.clear) return true;
+      const k = ci * 4 + j;
+      if (!floatsTo.has(k)) floatsTo.set(k, o.clear(o.from, cornerOf(ci, j)));
+      return floatsTo.get(k);
+    };
     if (o.from) {
-      const below = cols.map(() => []);
+      const all = cols.map((_, ci) => ci), below = cols.map(() => []);
       above.forEach((ups, ci) => ups.forEach((u) => below[u].push(ci)));
-      const cands = [];
+      starts = [];
       for (const deps of [above, below]) {
-        let free = remaining.filter((ci) => !deps[ci].length);
-        if (!free.length) free = remaining;
-        for (const ci of free) for (const j of [0, 1, 2, 3]) cands.push({ deps, ci, j, d: dist(o.from, cornerOf(ci, j)) });
+        let free = all.filter((ci) => !deps[ci].length);
+        if (!free.length) free = all;
+        for (const ci of free) for (const j of [0, 1, 2, 3]) starts.push({ deps, ci, j, d: dist(o.from, cornerOf(ci, j)) });
       }
-      const nearer = (p, q) => p.d - q.d || (p.deps === above ? 0 : 1) - (q.deps === above ? 0 : 1) || p.ci - q.ci || p.j - q.j;
-      cands.sort(nearer);
-      const clear = (ci, j) => !o.clear || o.clear(o.from, cornerOf(ci, j));
-      const hit = cands.slice(0, START_TRIES).find((c) => clear(c.ci, c.j));
-      const at = hit || cands[0];
-      waits = at.deps;
-      const others = [0, 1, 2, 3].filter((j) => j !== at.j && (!hit || clear(at.ci, j)))
-        .sort((p, q) => dist(o.from, cornerOf(at.ci, p)) - dist(o.from, cornerOf(at.ci, q)) || p - q);
-      first = { ci: at.ci, order: [at.j].concat(others) };
-      if (!hit) {
-        const any = [];
-        cols.forEach((_, ci) => [0, 1, 2, 3].forEach((j) => any.push({ ci, j, d: dist(o.from, cornerOf(ci, j)) })));
-        const landing = any.sort((p, q) => p.d - q.d || p.ci - q.ci || p.j - q.j).slice(0, 2 * START_TRIES).find((c) => clear(c.ci, c.j));
-        if (landing) {
-          cur = cornerOf(landing.ci, landing.j);
-          curNode = { ci: landing.ci, c: landing.j };
-          out.push(rotate(cur, cosP, sinP));
-          unlanded = first;
-          first = null;
-        }
-      }
+      starts.sort((p, q) => p.d - q.d || (p.deps === above ? 0 : 1) - (q.deps === above ? 0 : 1) || p.ci - q.ci || p.j - q.j);
     }
 
-    while (remaining.length) {
-      // every column it waits for is sewn (the first waits for none)
-      let ready = remaining.filter((ci) => waits[ci].every((a) => done[a]));
-      if (!ready.length) ready = remaining;
-      const startAt = first ? first.ci : ready[0];
-      let m = !cur ? { ci: startAt, j: first ? first.order[0] : 0, how: "start", route: [] }
-        : (planned.get(cur) || moveTo(cur, ready));
-      if (m.how === "cut") m = webRoute(curNode, ready) || m;
-      // Landed, and the only way on is a cut: the landing was one stray
-      // penetration. The pass starts where that cut was going instead, so it
-      // is the same walk without the stitch, and the cut is the caller's, on
-      // the float in. (Not at the walk's own nearest start: that is another
-      // walk, and it cost a cut more on 4 of the 12 passes this fired on.)
-      if (m.how === "cut" && unlanded) {
-        out.length = 0;
-        m = { ci: m.ci, j: m.j, how: "start", route: [] };
-      }
-      unlanded = null;
+    // ONE WALK of the pass. `given`: the start to take, one of `starts` that
+    // the thread can float to. Given none, the walk takes its own, as above.
+    // -> { out, cuts, began }: the points; the cuts they cost, the caller's
+    // on the float in and on the float out among them; and the start taken,
+    // if it was one the thread can float to.
+    const sewFrom = (given) => {
+      remaining = cols.map((_, i) => i);   // creation order: highest first, then leftmost
+      out = [];
+      cuts = 0;
+      done = cols.map(() => false);
+      waits = above;
       planned = new Map();
-      const exitOf = (j) => variants[m.ci][j][variants[m.ci][j].length - 1];
-      // Which corner to sew from. Arriving by a cut (or first of all) any of
-      // the four is free -- first of all, any the thread can float to; arriving
-      // by thread, the other three cost a run laid under the column's own
-      // rows. Taken in that order of cost, the first that leaves the walk best
-      // placed for the move after this column.
-      const landed = m.how === "cut" || m.how === "start";
-      const order = (m.how === "start" && first) ? first.order
-        : landed ? [0, 1, 2, 3].sort((p, q) => (cur ? dist(cur, variants[m.ci][p][0]) - dist(cur, variants[m.ci][q][0]) : 0) || p - q)
-        : [m.j, m.j ^ 1, m.j ^ 2, m.j ^ 3];
-      let pick = null;
-      for (const j of order) {
-        const cost = afterwards(m.ci, exitOf(j));
-        if (pick && cost >= pick.cost) continue;
-        pick = { j, cost, pre: landed ? [] : preRun(m.ci, m.j, j) };
-        if (cost === 0) break;
+      let first = null, cur = null, curNode = null, unlanded = null;
+      let hit = null, entered = null;   // `entered`: the first point of the pass
+      if (starts) {
+        hit = given || starts.slice(0, START_TRIES).find((c) => reaches(c.ci, c.j)) || null;
+        const at = hit || starts[0];
+        waits = at.deps;
+        const others = [0, 1, 2, 3].filter((j) => j !== at.j && (!hit || reaches(at.ci, j)))
+          .sort((p, q) => dist(o.from, cornerOf(at.ci, p)) - dist(o.from, cornerOf(at.ci, q)) || p - q);
+        first = { ci: at.ci, order: [at.j].concat(others) };
+        if (!hit) {
+          const any = [];
+          cols.forEach((_, ci) => [0, 1, 2, 3].forEach((j) => any.push({ ci, j, d: dist(o.from, cornerOf(ci, j)) })));
+          const landing = any.sort((p, q) => p.d - q.d || p.ci - q.ci || p.j - q.j).slice(0, 2 * START_TRIES).find((c) => reaches(c.ci, c.j));
+          if (landing) {
+            cur = entered = cornerOf(landing.ci, landing.j);
+            curNode = { ci: landing.ci, c: landing.j };
+            out.push(rotate(cur, cosP, sinP));
+            unlanded = first;
+            first = null;
+          }
+        }
       }
-      const key = variants[m.ci][pick.j];
-      remaining.splice(remaining.indexOf(m.ci), 1);
-      done[m.ci] = true;
-      if (landed) {
-        if (m.how === "cut") cutTo(key[0]); else out.push(rotate(key[0], cosP, sinP));
-      } else {
-        sewAlong(cur, m.route);
-        sewAlong(variants[m.ci][m.j][0], pick.pre);
+
+      while (remaining.length) {
+        // every column it waits for is sewn (the first waits for none)
+        let ready = remaining.filter((ci) => waits[ci].every((a) => done[a]));
+        if (!ready.length) ready = remaining;
+        const startAt = first ? first.ci : ready[0];
+        let m = !cur ? { ci: startAt, j: first ? first.order[0] : 0, how: "start", route: [] }
+          : (planned.get(cur) || moveTo(cur, ready));
+        if (m.how === "cut") m = webRoute(curNode, ready) || m;
+        // Landed, and the only way on is a cut: the landing was one stray
+        // penetration. The pass starts where that cut was going instead, so it
+        // is the same walk without the stitch, and the cut is the caller's, on
+        // the float in. (Not at the walk's own nearest start: that is another
+        // walk, and it cost a cut more on 4 of the 12 passes this fired on.)
+        if (m.how === "cut" && unlanded) {
+          out.length = 0;
+          entered = null;
+          m = { ci: m.ci, j: m.j, how: "start", route: [] };
+        }
+        unlanded = null;
+        planned = new Map();
+        const exitOf = (j) => variants[m.ci][j][variants[m.ci][j].length - 1];
+        // Which corner to sew from. Arriving by a cut (or first of all) any of
+        // the four is free -- first of all, any the thread can float to;
+        // arriving by thread, the other three cost a run laid under the
+        // column's own rows. Taken in that order of cost, the first that
+        // leaves the walk best placed for the move after this column.
+        const landed = m.how === "cut" || m.how === "start";
+        const order = (m.how === "start" && first) ? first.order
+          : landed ? [0, 1, 2, 3].sort((p, q) => (cur ? dist(cur, variants[m.ci][p][0]) - dist(cur, variants[m.ci][q][0]) : 0) || p - q)
+          : [m.j, m.j ^ 1, m.j ^ 2, m.j ^ 3];
+        let pick = null;
+        for (const j of order) {
+          const cost = afterwards(m.ci, exitOf(j));
+          if (pick && cost >= pick.cost) continue;
+          pick = { j, cost, pre: landed ? [] : preRun(m.ci, m.j, j) };
+          if (cost === 0) break;
+        }
+        const key = variants[m.ci][pick.j];
+        remaining.splice(remaining.indexOf(m.ci), 1);
+        done[m.ci] = true;
+        if (landed) {
+          if (m.how === "cut") cutTo(key[0]); else out.push(rotate(key[0], cosP, sinP));
+          if (!entered) entered = key[0];
+        } else {
+          sewAlong(cur, m.route);
+          sewAlong(variants[m.ci][m.j][0], pick.pre);
+        }
+        // Odd i runs along a row, inside by construction. Even i is the turn
+        // to this column's next row, and never deep: a column is cut in two
+        // where it would be (splitAtOpenTurns).
+        for (let i = 1; i < key.length; i++) (i % 2 ? sewRow : sewTo)(key[i - 1], key[i]);
+        cur = key[key.length - 1];
+        curNode = { ci: m.ci, c: exitCorner(m.ci, pick.j) };
       }
-      // Odd i runs along a row, inside by construction. Even i is the turn to
-      // this column's next row, and never deep: a column is cut in two where
-      // it would be (splitAtOpenTurns).
-      for (let i = 1; i < key.length; i++) (i % 2 ? sewRow : sewTo)(key[i - 1], key[i]);
-      cur = key[key.length - 1];
-      curNode = { ci: m.ci, c: exitCorner(m.ci, pick.j) };
+      // The last move: the float out of the pass. Where it would be cut, the
+      // thread travels on to the nearest corner it would not be cut from, if
+      // there is a way there within the budget. See "where the walk ends".
+      if (!leaves(cur)) {
+        const asked = new Map();   // a corner is asked once, as in `reaches`
+        const will = (ci, c) => {
+          const k = ci * 4 + c;
+          if (!asked.has(k)) asked.set(k, leaves(cornerOf(ci, c)));
+          return asked.get(k);
+        };
+        const way = webRoute(curNode, cols.map((_, ci) => ci), will);
+        if (way) sewAlong(cur, way.route); else cuts++;   // the caller's, on the float out
+      }
+      if (o.from && o.clear && !o.clear(o.from, entered)) cuts++;   // the caller's, on the float in
+      return { out, cuts, began: hit };
+    };
+
+    // WHICH COLUMN FIRST. The walk is greedy: the nearest column it can
+    // reach, looking one move ahead. What it costs turns on its first column,
+    // and nothing in the rule says which first column is the better one: when
+    // a corner that had been a column stopped being one, the order of every
+    // pass changed from its first column on, 855 of 45,416 designs lost cuts
+    // and 388 gained them, up to four (the corner fix's independent
+    // re-measure). So a walk that comes out with a cut -- inside it, on the
+    // float in, or on the float out -- is walked AGAIN from each of the other
+    // first columns the thread can float to, nearest first, FIRST_TRIES of
+    // them at most, and the walk with the fewest cuts is kept: the first of
+    // them, on a tie. A walk with no cut is the walk it always was, and so is
+    // a pass told nothing of where the thread is. (Eight is enough: with no
+    // limit at all, one cut fewer on 9,084 designs.)
+    let best = sewFrom(null);
+    if (best.cuts && starts) {
+      const way = (c) => (c.deps === above ? "d" : "u") + c.ci;   // a first column, and whether the walk runs down or up
+      const tried = new Set(best.began ? [way(best.began)] : []);
+      let tries = 0;
+      for (const c of starts) {
+        if (tried.has(way(c)) || !reaches(c.ci, c.j)) continue;
+        tried.add(way(c));
+        const again = sewFrom(c);
+        if (again.cuts < best.cuts) best = again;
+        if (!best.cuts || ++tries === FIRST_TRIES) break;
+      }
     }
-    // The last move: the float out of the pass. Where it would be cut, the
-    // thread travels on to the nearest corner it would not be cut from, if
-    // there is a way there within the budget. See "where the walk ends".
-    if (!leaves(cur)) {
-      const asked = new Map();   // a corner is asked once: the question is a walk of a float over the shape
-      const will = (ci, c) => {
-        const k = ci * 4 + c;
-        if (!asked.has(k)) asked.set(k, leaves(cornerOf(ci, c)));
-        return asked.get(k);
-      };
-      const way = webRoute(curNode, cols.map((_, ci) => ci), will);
-      if (way) sewAlong(cur, way.route);
-    }
-    return out;
+    return best.out;
   }
 
   // ROW STAGGER (`opts.stagger`, default off).

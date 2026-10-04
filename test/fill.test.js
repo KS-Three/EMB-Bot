@@ -700,6 +700,153 @@ test("columns: dropping a landing that led nowhere never costs a cut", () => {
   }
 });
 
+// The thread a pass lays along its scanlines against the length of its rows'
+// spans: -> { want, got }. Every row sewn end to end is got >= want.
+function rowThread(pts, polys, angleDeg, pitch) {
+  const th = (angleDeg * Math.PI) / 180, cn = Math.cos(-th), sn = Math.sin(-th);
+  const rot = (p) => ({ x: p.x * cn - p.y * sn, y: p.x * sn + p.y * cn });
+  const turned = [];
+  for (const poly of polys) for (let i = 0; i < poly.length; i++) turned.push([rot(poly[i]), rot(poly[(i + 1) % poly.length])]);
+  let minY = Infinity, maxY = -Infinity, want = 0, got = 0;
+  for (const [u] of turned) { minY = Math.min(minY, u.y); maxY = Math.max(maxY, u.y); }
+  for (let y = minY; y <= maxY + 1e-9; y += pitch) {
+    const xs = [];
+    for (const [u, v] of turned) {
+      if (u.y === v.y) continue;
+      if (y >= Math.min(u.y, v.y) && y < Math.max(u.y, v.y)) xs.push(u.x + ((y - u.y) / (v.y - u.y)) * (v.x - u.x));
+    }
+    xs.sort((p, q) => p - q);
+    for (let i = 0; i + 1 < xs.length; i += 2) want += xs[i + 1] - xs[i];
+  }
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i].travel || pts[i].trim) continue;
+    const a = rot(pts[i - 1]), b = rot(pts[i]);
+    if (Math.abs(a.y - b.y) < 1e-6) got += Math.abs(b.x - a.x);
+  }
+  return { want, got };
+}
+
+test("columns: a walk that comes out cut is walked again from the other first columns the thread can float to", () => {
+  // The walk is greedy: the nearest column it can reach, looking one move
+  // ahead. What it costs turns on its FIRST column, and nothing in the rule
+  // says which first column is the better one. (When a corner that was no
+  // column stopped being one, 855 of 45,416 designs lost cuts and 388 gained
+  // them: the corner fix's independent re-measure.) So a walk that comes out
+  // with a cut -- inside it, on the float in, or on the float out -- is walked
+  // again from each of the other first columns the thread can float to,
+  // nearest first, and the walk with the fewest cuts is kept: the first of
+  // them, on a tie.
+  const P = ([x, y]) => ({ x, y });
+  const threads = (pts) => { const t = [0]; for (const p of pts) { if (p.trim) t.push(0); if (!p.travel) t[t.length - 1]++; } return t; };
+
+  // The re-measure's own drawing: four teeth 1.1 mm wide pointing right, under
+  // terry's second lattice pass, rows 2.5 mm apart at 16.3 degrees. Thirteen
+  // columns, eleven of them a single row. Begun at the corner nearest the
+  // thread, the walk strands three of them and cuts three times: threads of
+  // 72, 3, 3 and 3 penetrations. Begun at the next column along, it is one.
+  const teeth = [[321.56, 0], [321.56, 11.42], [70.94, 11.42], [70.94, 30.17], [321.56, 30.17], [321.56, 41.59], [70.94, 41.59], [70.94, 60.34], [321.56, 60.34], [321.56, 71.76], [70.94, 71.76], [70.94, 90.51], [321.56, 90.51], [321.56, 101.93], [0, 101.93], [0, 0]].map(P);
+  // the ground the fill covers under terry: that outline grown by 0.6 mm
+  const cover = [[327.56, -6], [327.56, 17.42], [76.94, 17.42], [76.94, 24.17], [327.56, 24.17], [327.56, 47.59], [76.94, 47.59], [76.94, 54.34], [327.56, 54.34], [327.56, 77.76], [76.94, 77.76], [76.94, 84.51], [327.56, 84.51], [327.56, 107.93], [-6, 107.93], [-6, -6]].map(P);
+  {
+    const ground = fill.openGroundTest([cover]);
+    const clear = (a, b) => !ground(a, b, 1.275, 0, 40);
+    const from = { x: 12.756, y: 0 };
+    const pts = fill.tatamiFill([teeth], { rowSpacing: 25, angleDeg: 16.3, maxStitch: 40, markConnectors: true, columns: true, openTol: 1.275, ground: [cover], from, clear });
+    assert.ok(pts.columnWalk);
+    assert.deepStrictEqual(threads(pts), [pts.length], "one thread: " + JSON.stringify(threads(pts)));
+    assert.ok(clear(from, pts[0]), "the pass begins where the thread can float to, at " + at(pts[0]));
+    // nothing was traded for it: every row sewn, no stitch too long, no thread in the gaps between the teeth
+    const rows = rowThread(pts, [teeth], 16.3, 25);
+    assert.ok(rows.got >= rows.want - 1e-3 * rows.want, "rows sewn " + rows.got.toFixed(1) + " of " + rows.want.toFixed(1));
+    noLongStitch(pts, 40, "four teeth");
+    for (const y0 of [17.42, 47.59, 77.76]) {
+      assert.deepStrictEqual(threadThrough(pts, { x0: 76.94, y0, x1: 340, y1: y0 + 6.75 }, 1.275), { sewn: 0, floats: 0 }, "the gap at y " + y0);
+    }
+    assert.strictEqual(floatsOffShape(pts, [cover]), 0);
+  }
+
+  // The comb of the test above. The thread is on the tip of a tooth, and of the
+  // corners a walk could begin at, none of the eight nearest can be floated
+  // to: the dropped landing left the caller's cut and four more, each for a
+  // thread of two penetrations at a tooth's tip. A ninth corner, at the far
+  // end of the spine, CAN be floated to, straight down the tooth; it was never
+  // looked for. From there the comb is one thread.
+  {
+    const comb = [[0, 0], [24, 0], [24, 210], [39, 210], [39, 0], [63, 0], [63, 210], [78, 210], [78, 0], [102, 0], [102, 210], [117, 210], [117, 0], [141, 0], [141, 210], [156, 210], [156, 0], [180, 0], [180, 210], [195, 210], [195, 0], [219, 0], [219, 210], [234, 210], [234, 0], [258, 0], [258, 210], [273, 210], [273, 0], [297, 0], [297, 300], [0, 300]].map(P);
+    const ground = fill.openGroundTest([comb]);
+    const clear = (a, b) => !ground(a, b, 1.5, 0, 40);
+    const from = { x: 219, y: 0 };
+    const pts = fill.tatamiFill([comb], { rowSpacing: 25.9604, angleDeg: 135, maxStitch: 40, markConnectors: true, columns: true, openTol: 1.5, from, clear });
+    assert.deepStrictEqual(threads(pts), [pts.length], "one thread: " + JSON.stringify(threads(pts)));
+    assert.ok(clear(from, pts[0]), "the pass begins where the thread can float to, at " + at(pts[0]));
+    const rows = rowThread(pts, [comb], 135, 25.9604);
+    assert.ok(rows.got >= rows.want - 1e-3 * rows.want, "rows sewn " + rows.got.toFixed(1) + " of " + rows.want.toFixed(1));
+    noLongStitch(pts, 40, "the comb");
+    for (const x0 of [24, 63, 102, 141, 180, 219, 258]) {
+      assert.deepStrictEqual(threadThrough(pts, { x0, y0: -5, x1: x0 + 15, y1: 210 }, 1.5), { sewn: 0, floats: 0 }, "the mouth at x " + x0);
+    }
+  }
+});
+
+// A spiral: one corridor 30 to 45 wide, wound three times round to its heart.
+// The way from one end to the other is long, and the straight line is short.
+const SPIRAL = [[0, 0], [300, 0], [300, 300], [0, 300], [0, 60], [45, 60], [45, 255], [255, 255], [255, 45], [90, 45], [90, 210], [210, 210], [210, 90], [135, 90], [135, 165], [165, 165], [165, 135], [150, 135], [150, 120], [180, 120], [180, 180], [120, 180], [120, 75], [225, 75], [225, 225], [75, 225], [75, 30], [270, 30], [270, 270], [30, 270], [30, 45], [0, 45]].map(([x, y]) => ({ x, y }));
+const SPIRAL_ROWS = { rowSpacing: 20, angleDeg: 0, maxStitch: 40, markConnectors: true, columns: true, openTol: 1.5 };
+const spiralClear = () => { const ground = fill.openGroundTest([SPIRAL]); return (a, b) => !ground(a, b, 1.5, 0, 40); };
+
+test("columns: the travel on has the budget every way round has", () => {
+  // Sewn from its outer corner, a pass over the spiral ends at its heart. The
+  // run after it begins at the far outer corner: 135 away, through three
+  // walls. The nearest corner the thread could float there from is over 1,000
+  // of travel back along the corridor, which is not a way round but a second
+  // pass. The budget -- five stitches, or four times the straight line to the
+  // corner it is making for -- refuses it: the pass ends where it ended, and
+  // the cut is the caller's.
+  const clear = spiralClear(), from = { x:0, y:0 }, to = { x:300, y:300 };
+  const untold = fill.tatamiFill([SPIRAL], Object.assign({ from, clear }, SPIRAL_ROWS));
+  const pts = fill.tatamiFill([SPIRAL], Object.assign({ from, to, clear }, SPIRAL_ROWS));
+  assert.strictEqual(clear(pts[pts.length - 1], to), false, "the fixture: the float out is one the caller cuts");
+  assert.deepStrictEqual(pts, untold, "with no way on inside the budget, the pass is the one told nothing of where it goes");
+  // Given the budget, it goes: the same pass, and then the travel.
+  const roomy = { travelBudget: 5000 };
+  const short = fill.tatamiFill([SPIRAL], Object.assign({ from, clear }, SPIRAL_ROWS, roomy));
+  const far = fill.tatamiFill([SPIRAL], Object.assign({ from, to, clear }, SPIRAL_ROWS, roomy));
+  assert.ok(clear(far[far.length - 1], to), "it ends at " + at(far[far.length - 1]));
+  assert.deepStrictEqual(far.slice(0, short.length), short.slice());
+  let travel = 0;
+  for (let i = short.length; i < far.length; i++) travel += Math.hypot(far[i].x - far[i - 1].x, far[i].y - far[i - 1].y);
+  assert.ok(travel > 1000, "the fixture: the way on is long, " + travel.toFixed(0));
+  assert.strictEqual(cutsOf(far), 0);
+  assert.strictEqual(floatsOffShape(far, [SPIRAL]), 0);
+  noLongStitch(far, 40, "the spiral");
+});
+
+test("columns: the cut on the float out is one of the cuts a walk is judged by, and on a tie the first walk is kept", () => {
+  // The spiral again, the thread at its other outer corner, and the run after
+  // the pass beginning at the first. Walked from the nearest first column the
+  // pass has one cut inside it and ends where the thread can float on. Walked
+  // from the other it has none inside -- and ends at the heart of the spiral,
+  // where the float out must be cut and no way on is inside the budget. One
+  // cut each. Left out of the count, the caller's cut would make the second
+  // walk look free, and it would be taken: a cut moved, not saved. Counted,
+  // the two tie, and the first walk is the one kept.
+  const clear = spiralClear(), from = { x:300, y:300 }, to = { x:0, y:0 };
+  const pts = fill.tatamiFill([SPIRAL], Object.assign({ from, to, clear }, SPIRAL_ROWS));
+  assert.ok(clear(pts[pts.length - 1], to), "it ends at " + at(pts[pts.length - 1]));
+  assert.strictEqual(cutsOf(pts), 1);
+  assert.ok(clear(from, pts[0]));
+  // Told nothing of where it goes, the second walk IS the one with no cut, and is taken.
+  const untold = fill.tatamiFill([SPIRAL], Object.assign({ from, clear }, SPIRAL_ROWS));
+  assert.strictEqual(cutsOf(untold), 0);
+  assert.strictEqual(clear(untold[untold.length - 1], to), false, "the fixture: that walk ends where the float out would be cut");
+  for (const walk of [pts, untold]) {
+    const rows = rowThread(walk, [SPIRAL], 0, 20);
+    assert.ok(rows.got >= rows.want - 1e-3 * rows.want, "rows sewn " + rows.got.toFixed(1) + " of " + rows.want.toFixed(1));
+    assert.strictEqual(floatsOffShape(walk, [SPIRAL]), 0);
+    noLongStitch(walk, 40, "the spiral");
+  }
+});
+
 test("columns: the run to a strip's far end is laid BEFORE the strip, under its own row ends", () => {
   // Either way the hole costs no cut: run up the strip's side first and sew
   // back down, or sew up it and then find a way back down its side. The
