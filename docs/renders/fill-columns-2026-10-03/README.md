@@ -229,8 +229,10 @@ Each of these is the same with the option on or off.
 - **A plain fill whose top is a single corner starts with two penetrations
   in that corner.** The first scanline passes through it and finds a span of
   no length, and the plain walk sews what it finds: 1,094 times in 8,255
-  designs built with the option on. It never cuts for one. (The column walk
-  leaves that span out: "A corner on a scanline", below.)
+  designs built with the option on. The walk never cuts for one. The builder
+  can, either side of a pass that is nothing else: 14 combs 1.8 mm across,
+  under fleece and terry, in the re-measure. (The column walk leaves that
+  span out: "A corner on a scanline", below.)
 
 ## How it got here
 
@@ -272,7 +274,7 @@ random; all seven presets and none), option on:
 
 | | before | after |
 |---|---|---|
-| threads that never leave one hole | 106, on 66 designs | **0** |
+| threads that never leave one hole | 106, on 66 designs | 0 on this sweep; not none (the re-measure, below) |
 | two penetrations on one point, in a pass the column walk sews | 11,797, on 6,597 designs | 159, on 121 |
 | cuts | 2,354 | 2,196 |
 | stitches | 19,301,027 | 19,242,860 |
@@ -293,7 +295,8 @@ lock stitches")*
 
 **What it costs:**
 
-- **A cut more on 27 designs, one each; fewer on 125.** On 8, combs under
+- **On this sweep, a cut more on 27 designs, one each; fewer on 125.**
+  (Elsewhere a design can gain several: the re-measure, below.) On 8, combs under
   fleece and terry, it is inside an underlay: the walk had travelled 109 mm
   through that corner to the next tooth, which the budget allows when the
   corner is far enough off (four times the straight line). The move that
@@ -325,7 +328,110 @@ lock stitches")*
 - **A thread of one stitch.** A short row of a lattice underlay at the tip
   of a comb's tooth can still be cut to and cut from: 52 on 24 designs, all
   under fleece or terry, 0.7 to 2.5 mm long (94 on 42 before). Eight designs
-  gained one, with the cut above.
+  gained one, with the cut above. (On this sweep. Other presets and shorter
+  ones: the re-measure, below.)
+
+**The independent re-measure came back after this had merged**, and it held
+the rule and failed two things this section says. (The change reached `main`
+inside #617, which was cut from its branch.) An agent with its own generator
+and its own reader built 45,416 designs and a second 10,000 on other seeds:
+combs of sixteen sizes in four orientations, T, L, U, E, H, staircases,
+badges, tip-topped shapes, random stars and blobs, under all seven presets
+and none, at 10, 2 and 40 px per mm. And 23,980 direct fills.
+
+What held:
+
+- **Option absent, and option false: identical on all 55,416**, and on
+  10,994 direct fills without `columns`.
+- **The plain walk is untouched:** a design whose every pass is a plain walk
+  is the same with the option on too, 9,703 of 9,703. The stitches changed on
+  exactly the 30,498 designs with a span of no length in a column walk.
+- **No column walk sews a row of no length:** 68,412 before, none after.
+- **No span with a length is left unsewn:** none in 60,753 column-walk passes,
+  28,897 of whose spans are under half a pixel long.
+- **No new thread off the cover:** no float over 4 mm leaves it, and no design
+  gains more than 0.07 mm of thread deeper than a fill row off it.
+- **Cuts fall, 15,125 → 14,249**, stitches by 0.43%, and the option builds 9%
+  faster over the sweep.
+
+What did not:
+
+- **The stub is narrowed, not closed.** Threads that never leave one hole:
+  731 on 304 designs → 17 on 16, and 31 → 22 on the second sweep. Eight
+  designs have one now and had none before. Each is a row WITH a length, but
+  under the file's rounding step: 0.44 px on the audit's own comb drawn 3%
+  narrower. Alone in its column, in a tatami underlay, it is cut to, sewn as
+  two penetrations the file rounds into one hole, and cut from. The rule
+  here leaves out a span of NO length; "a row with a length, however short,
+  is still a row" keeps this one. None is in a fill pass, and none under the
+  four presets whose underlay is an edge run. It is the next section's "a
+  stitch shorter than the file's unit".
+- **A design can gain several cuts, not one.** Fewer on 814 designs, more on
+  388; 13 gain two to four, and 15 on the second sweep gain two to seven.
+  Three teeth 4 mm wide under terry: no cut → two, with a stub. Four teeth
+  under terry with rows at 61.3°: none → three. Only with a tatami underlay:
+  no design of 19,097 under pique, jersey, canvas or woven gains one, and
+  none of 6,483 with underlay off. Of the 404 cuts gained, 330 are on the
+  float into a plain walk, 34 on the float into a column walk, 34 inside one
+  and 6 on the float into an edge run. 26 of the 388 sew more thread, not
+  less (33 mm at most).
+- **Why, traced on two of its drawings.** The walk takes the nearest column it
+  can reach and looks one move ahead. A corner of no length was somewhere it
+  could always go next, so with it gone the order of a pass changes from its
+  first column on: for the better on twice as many designs as for the worse,
+  and nothing in the rule says which. On the three teeth the old engine's
+  "no cut" was 292 mm more thread, 99 mm of it travel round the outline in
+  the fill itself, to seven corners of no length.
+- **A thread of one stitch is not only fleece and terry:** 27 under no preset
+  and 8 under the cap preset, 0.1 to 3.3 mm long, 32 of them under 0.5 mm.
+  249 on 99 designs → 234 on 92; on the second sweep 807 → 837.
+- **The floats: 7.6% longer, and 16.2% on the second sweep**, every one over
+  4 mm on the cover. It tested the reason I first gave (the corner filling
+  the list of nearest starts) and found it wrong: widening that list in the
+  old engine moves float length 1.3%. The reason above, the look-ahead, is
+  the one its numbers fit.
+- **Closer to the edge of the promise.** Thread 0.15 to 0.22 mm off the
+  cover, as the file rounds it: 9,850 → 10,404 mm, more on 398 designs. The
+  walk now sews along a row exactly one pitch outside an edge in places it
+  did not: within "never deeper than one fill row", and nearer to it.
+- **On the fill itself** its 7,954 column walks went 3,395 → 3,386 cuts, four
+  calls differing, where this page's 9,000 seeded shapes were the same shape
+  for shape.
+- **"A pass whose every span is a point sews nothing"** is true of a pass the
+  column walk sews. A pass that is ONE point is a plain walk and still
+  returns its two penetrations.
+
+*(measured 2026-10-03 — an agent handed the claims as claims; five of its
+drawings rebuilt here on `main` as it stands, where they give the same
+threads)*
+
+**Those five drawings**, for whoever takes up what is left. Points in px;
+each built as `test/digitize.test.js`'s `drawn()` builds one (left chest, 10
+px per mm, the target width the drawing's own, underlay on, the option on).
+"Threads" is the penetrations between one cut and the next.
+
+```
+1. terry_towel, the engine's own angle. The audit's comb, 3% narrower.
+   A stub: a row 0.44 px long, alone in its column. Threads [360, 2 in one hole, 464, 1441, 1435].
+[[0,0],[27.15,0],[27.15,253.45],[44.12,253.45],[44.12,0],[71.26,0],[71.26,253.45],[88.23,253.45],[88.23,0],[115.38,0],[115.38,253.45],[132.35,253.45],[132.35,0],[159.5,0],[159.5,253.45],[176.46,253.45],[176.46,0],[203.61,0],[203.61,253.45],[220.58,253.45],[220.58,0],[247.73,0],[247.73,253.45],[264.7,253.45],[264.7,0],[291.84,0],[291.84,253.45],[308.81,253.45],[308.81,0],[335.96,0],[335.96,362.07],[0,362.07]]
+
+2. terry_towel, the engine's own angle. Three teeth pointing down.
+   No cut before, two now, with a stub. Threads [102, 2 in one hole, 1384].
+   (The digits matter: with 91.55 and 99.7 the engine's angle changes sign and there is no stub.)
+[[0,333],[41.7,333],[41.7,89.78],[49.85,89.78],[49.85,333],[91.55000000000001,333],[91.55000000000001,89.78],[99.70000000000002,89.78],[99.7,333],[141.4,333],[141.4,0],[0,0]]
+
+3. terry_towel, angleOverride 61.3. Four teeth to the right.
+   No cut before, three now. Threads [315, 3, 3, 1756].
+[[321.56,0],[321.56,11.42],[70.94,11.42],[70.94,30.17],[321.56,30.17],[321.56,41.59],[70.94,41.59],[70.94,60.34],[321.56,60.34],[321.56,71.76],[70.94,71.76],[70.94,90.51],[321.56,90.51],[321.56,101.93],[0,101.93],[0,0]]
+
+4. structured_cap, the engine's own angle. An arrow.
+   One cut before, two now, and 27.5 mm more thread: the underlay ends at the barb, and the float into the fill is cut.
+[[300,120],[180,240],[180,168],[0,168],[0,72],[180,72],[180,0]]
+
+5. structured_cap, angleOverride 61.3. The audit's comb ("no cut is made to reach a corner", test/digitize.test.js) with each point [x, y] turned to [350 - y, x].
+   Six threads of two penetrations one after the other, each cut to and cut from, from rows 1.28 to 0.21 px long; the last two in one hole.
+   The same six before the fix and after it. Threads now [269, 2, 2, 2, 2, 2 in one hole, 2 in one hole, 4674].
+```
 
 ## A move of no length
 

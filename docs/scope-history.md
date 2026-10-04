@@ -17755,6 +17755,58 @@ again.
 Engine 668 passed. Not sewn.
 *(fixed 2026-10-03 — `islandsAmong`, `fillRingsOf` in `src/digitize.js`; `test/digitize.test.js`)*
 
+## 2026-10-03 — `satin_cap_recentre` ON by default (Kent's flip), and the guard it tripped was reading its own alignment grid
+
+Flipped on his labelled sitting of the day (`docs/eye-pairs-2026-10-03/`): 19
+pairs judged, `cap_recentre` *after* on becker and tires, the two the change
+locator boxed, *no difference* on four, *both bad* on two, *before* on none.
+Eight logos at the Studio's defaults, `main` with the crown cover on:
+84,475 -> 84,460 stitches, 455 -> 454 trims. Off against on, measured on
+Windows: `logo_whitebg`, `logo_alpha` and `bg_uncertain` identical to the
+stitch; enthusiast at 93 mm 3,149 -> 3,147, becker at 80 mm 6,563 -> 6,557, at
+100 mm 9,715 -> 9,702. No golden moved.
+
+What the flip moved in the suite: one test. CI's Linux run on the flip alone
+read 1 failed, 3,153 passed, 6 skipped, 7 xfailed in 1h15m39s, and the one was
+`test_lettering_coverage_has_not_regressed_since_the_rail_change`: enthusiast
+at 80 mm, `lost_frac` 0.2573 -> 0.2819 against a 0.26 bar. A full suite was
+not run on Kent's laptop; two other sessions each had one running.
+
+That number is not spill. The flag takes this design from 80.5 to 80.3 mm
+wide at its right end; `artfidelity_self.register` centres the stitches and
+the artwork and searches translation on a 0.4 mm grid; the centre moved
+0.1 mm and the search snapped from (0.0, +0.4) to (+0.4, +0.4). The sitting's
+kept designs, the instrument unchanged except that `register` was forced:
+
+| alignment, mm | flag off | flag on |
+|---|---|---|
+| searched on the 0.4 grid | 0.2573 at (0.0, +0.4) | 0.2819 at (+0.4, +0.4) |
+| forced, physically matched to the row above's flag-off | 0.2573 | 0.2481 |
+| searched at 0.1 (one pixel), window 1.2 | 0.1636 at (+0.1, +0.2) | 0.1555 at (+0.2, +0.2) |
+| forced, one pixel on from that | 0.1737 | 0.1623 |
+| forced (+0.4, +0.4) against its match (+0.5, +0.4) | 0.3226 | 0.3389 |
+
+The other seven logos keep their width and their alignment: on the grid
+becker 0.0229 -> 0.0230, tires 0.0784 -> 0.0799, golden_tee 0.4557 -> 0.4558,
+gaulke, bridge, drone and fremont unchanged to four places. A one-pixel
+search is not uniformly lower and is not a truer instrument (tires 0.0784 on
+the grid, 0.1018 at one pixel; fremont 0.0322 and 0.1002): it maximises IoU,
+not this number.
+
+Kent's rulings, in order: flip ON; then, with the red guard in front of him,
+a spill guard on the flag; then, with the table above, the bar re-pinned
+0.26 -> 0.29 attributed, the grid recorded as `dropped_elements`' third bias,
+and a second guard at a one-pixel alignment. That guard reads 0.1555 against
+a 0.17 bar, and `satin_rails_follow_edge=True`, the fixture's known
+spill-maker, reads 0.2173 there (0.3328 on the grid), which a test pins. The
+module's other readings on the flipped tree: overshoot 0.2819, bare 6.29%,
+uncovered 1.91%, inside bars that did not move.
+
+The session recommended the flip as nearly free on stitches and trims with
+the 0.2573 -> 0.2819 row in its own render table, and found it from CI.
+*(flipped and measured 2026-10-03 — `tests/test_satin_cap_recentre.py`,
+`tests/test_lettering_coverage_regression.py`, `tools/dropped_elements.py`)*
+
 ## 2026-10-03 — `fillColumns`: a corner lying on a scanline was a column, and was cut to (the lock-stitch audit's finding)
 
 **18 threads in 12,880 designs were a stub**: a cut, two penetrations in one
@@ -17892,12 +17944,263 @@ Off, nothing moves: engine 693 passed. Not sewn. Flip is still Kent's:
 defect 52, "Waiting on Kent" 22.
 *(fixed 2026-10-03 — `test/fill.test.js` "a move of no length", `test/digitize.test.js`; `docs/renders/fill-columns-2026-10-03/README.md`, "A move of no length")*
 
-## 2026-10-03 — The island fix after its audit: a ring too thin to be one, an island that crossed itself, a touch the sweep missed, and the time
+## 2026-10-03 — The corner fix's independent re-measure: the rule held, two of its claims did not, and it had already merged
 
-The island entry of this date ("A ring inside a hole is an island") was
+**It landed before its audit was read.** The corner fix (two entries up) was
+PR #616, left unarmed until its independent re-measure was in. #617 was cut
+from its branch, both were armed, and #617 merged with #616's four commits
+inside it. The re-measure had come back hours earlier, not clean, and had not
+been relayed. Nothing a customer gets moved: `fillColumns` is off. What
+moved is what `main` SAYS about it, and this entry and the render README's
+section are the correction.
+
+**What held**, on 45,416 designs of the auditor's own and a second 10,000,
+and 23,980 direct fills: flag absent and flag false identical on every one;
+a design whose passes are all plain walks identical with the flag on too
+(9,703); no column walk sews a row of no length (68,412 before); no span
+with a length left unsewn; no float over 4 mm off the cover and no design
+with more than 0.07 mm more thread past it; cuts 15,125 → 14,249, stitches
+−0.43%.
+
+**What did not:**
+
+- **"No thread is a stub."** 731 on 304 designs → 17 on 16, and 31 → 22 on
+  the second sweep; eight designs have one now and had none. Each is a row
+  WITH a length under the file's rounding step (0.44 px on the audit's own
+  comb drawn 3% narrower), alone in its column in a tatami underlay: cut to,
+  two penetrations the file rounds into one hole, cut from. My own sweep
+  went from 106 to none: it has no row that short left alone and cut to.
+- **"No design gains more than one cut."** 13 gain two to four, 15 on the
+  second sweep two to seven; fewer on 814, more on 388. Three teeth under
+  terry go from no cut to two with a stub, four teeth at 61.3° from none to
+  three. Only with a tatami underlay: none of 19,097 designs under the four
+  edge-run presets, none of 6,483 with underlay off. 330 of the 404 gained
+  cuts are on the float into a plain walk, not where I had looked.
+
+**Why a rule about one span moves a whole pass**, traced on two of the
+auditor's drawings: the walk takes the nearest column it can reach and looks
+one move ahead, and a corner of no length was somewhere it could always go
+next. Without it the order changes from the first column on. On the three
+teeth the old engine's "no cut" was a 318 px trip through the corners to the
+far corner of no length before the first row, and in the fill itself 99 mm
+of travel round the outline to seven more: 292 mm more thread for two cuts
+fewer. Better on twice as many designs as worse, and decided by nothing in
+the rule.
+
+**Also corrected:** threads of one stitch are not only fleece and terry (27
+under no preset, 8 under the cap preset, from 0.1 mm); the plain walk's
+doubled tip can have a cut either side of it, made by the builder (14 combs
+1.8 mm across); floats are 7.6% and 16.2% longer on its sweeps, and the
+reason I first gave for that was tested and is wrong (the look-ahead is
+right); and thread 0.15 to 0.22 mm off the cover rose 5.6%, inside the
+promise and nearer its edge.
+
+**Open, and not this rule's to close:** a row shorter than the file's unit
+that is cut to and cut from (the weighing of sub-0.1 mm stitches is its own
+lane), and a walk whose cut count turns on its first column.
+
+Off, nothing moves. Not sewn. Flip is still Kent's: defect 52, "Waiting on
+Kent" 22.
+*(measured 2026-10-03 — an independent agent with its own reader; five of its drawings rebuilt on `main` and given in `docs/renders/fill-columns-2026-10-03/README.md`, "A corner on a scanline")*
+
+## 2026-10-03 — Edge deviation reaches preflight as per-tier metrics and judges nothing (defect 46, half built)
+
+**Defect 46 as it stood, 2026-09-20 to 2026-10-03:** *"The smoothness score
+exists and preflight cannot see it. Law 37 wants a monotonic direction-change
+score with no cutoff; `tools/edge_smoothness.py`, `curve_fidelity.py`,
+`edge_wobble.py` and `curve_tiers.py` are exactly that — offline. No
+smoothness code appears among preflight's 24 codes or `warnings_codes.py`'s
+58, so the grade a customer sees is blind to Kent's most frequent complaint."*
+
+**What was built.** `edge_wobble`'s measurement moved from `tools/` into
+`digitizer_core/edge_wobble.py` — 311 lines, compared line for line against
+the file they left — and `run_preflight` reports it per tier:
+`edge_wobble_{satin,border,fill,line}_{p95,std,max}_mm`, read against the
+regions' own polygons. None on a bare plan, None for a tier the design does
+not sew, None when no series is long enough to read. The tool keeps its CLI
+and renders and imports the rest.
+
+**Why per tier.** The first build exported the instrument's pooled figure. The
+engine's run tier sews a shape's own outline vertices, so it reads exactly 0,
+and the pool is diluted by however many run points the design has:
+`enthusiast_logo` reads satin p95 0.247 mm and pooled 0.186, with 624 run
+points at 0.000. A change that moved shapes between satin and run would have
+read as edges improving. Found in review, before the PR.
+
+**What this is not, and a correction to this entry's own first draft.** Law
+37's row asks for "direction-change churn per mm". That is
+`tools/curve_fidelity.py`'s `roughness_deg`, which reads `plan.iter_runs()`
+alone and whose docstring calls it "the number to read per design". The first
+draft said `edge_wobble` was the only instrument preflight's inputs could
+feed, called `curve_fidelity` a paired-only measure, and closed defect 46.
+All three were wrong; the review read the docstring through to line 179. What
+shipped is positional deviation from the outline. Defect 46 stays open for the
+direction-change half.
+
+**Why metrics and nothing else — three calls of Kent's.** 2026-10-01: a
+readout, the grade unchanged. 2026-10-02, in the bean-letters session: *"We
+shouldn't have to warn the user of anything."* 2026-10-03, shown that the
+first design's always-on row in the Quality report was that same thing:
+metrics only. So there is no finding, no sentence and no Studio change, and
+the grade is blind to edges by ruling. Law 37 agrees from the other side: no
+cutoff exists to invent.
+
+**Readings, per tier.** p95 / std, mm, default config. The first two rows are
+the lane's tree at `b30626b5`; Becker and drone are the tool's own output two
+days earlier, which is the same function:
+
+| fixture | satin | fill | line |
+|---|---|---|---|
+| `logo_whitebg` | 0.047 / 0.021 | 0.025 / 0.022 | 0.000 / 0.000 |
+| `enthusiast_logo` (93 mm, left chest) | 0.247 / 0.109 | 0.000 / 0.007 | 0.000 / 0.000 |
+| `becker_marine_logo` (10-01) | 0.218 / 0.107 | 0.201 / 0.114 | — |
+| `drone_render` (10-01) | 0.142 / 0.073 | 0.149 / 0.071 | 0.000 / 0.000 |
+
+Satin max: whitebg 0.06 mm, enthusiast 0.91. The synthetic control reads clean
+and the two real logos rough, which is the order of Kent's complaints; that is
+four fixtures and not a validation. The number has still not met his eye.
+
+**Cost, and three changes to the moved code.** The review measured the plain
+form as rings × points: a shape with hundreds of holes took seconds, in a
+check that runs on every job. Three changes, each compared against the
+pre-change output on `logo_whitebg`, `enthusiast_logo` and a 36-hole plate
+whose points include exact ties between two rings — identical, every key:
+preflight skips the unsewn-outline walk it never read (`unsewn=False`); the
+polygon is prepared before `contains`; and the nearest ring is asked of an
+`STRtree`, ties going to the lowest index as `argmin` sends them, with only
+the rings a run reaches visited afterwards.
+
+| holes | points | before, s | after, s |
+|---|---|---|---|
+| 25 | 1,400 | 0.08 | 0.05 |
+| 100 | 5,600 | 0.77 | 0.21 |
+| 400 | 22,397 | 9.05 | 1.36 |
+
+On real work it was never the cost: whitebg 0.07 s, enthusiast 0.14–0.20 s,
+`photo_dof_meadow` 0.35 s of a 5.2 s preflight (that one before the speed-up,
+in a lane with no rembg venv).
+
+**What it does not do.** It changes no grade (`test_it_judges_nothing` scores
+one rough plan with its outline and without, and was watched failing against
+an injected finding). It is skipped by `corpus_scorecard.diff` until the
+baseline is recaptured, because that diff reads only keys both sides hold, so
+today no tool reads these keys. A shade band's runs carry a derived shape id
+and are not measured, the same as in the tool.
+*(built 2026-10-03 — `tests/test_edge_wobble_metrics.py`, 13; `digitizer_core/edge_wobble.py`)*
+
+## 2026-10-03 — Curve roughness reaches preflight as metrics: Law 37's own score, and defect 46 closes
+
+The half the entry above left open. Law 37's row asks for "direction-change
+churn per mm"; `tools/curve_fidelity.py` has read exactly that off
+`plan.iter_runs()` since 2026-08-27. Kent's pick, the same evening: wire it,
+metrics only.
+
+**What was built.** The measurement — `traces`, `turns`, `gini`, `measure`
+and their four constants, 111 lines — moved into
+`digitizer_core/curve_fidelity.py`, compared line for line against the file
+they left. The tool keeps its CLI, its docstring and the ranking floor, and
+re-exports what `curve_tiers.py`, `edge_truth_ladder.py` and its own tests
+import. `run_preflight` reports five keys: `curve_roughness_deg`,
+`curve_turn_gini`, `curve_vertices`, `curve_corner_vertices`, `curve_traces`.
+It needs no regions, so a bare plan is read like any other.
+
+**Why five.** The tool's own docstring: read the trace and vertex counts
+beside every delta and distrust a comparison where they moved. A scorecard
+diff that showed roughness alone would repeat the mistake that section was
+written about.
+
+**A refusal is None.** The tool answers NaN when nothing curved is left to
+measure (a square, a straight line). The service serialises with
+`allow_nan=False`, so NaN would have been a 500 on every design made only of
+straight edges.
+
+**Readings** (the lane's tree at `b30626b5`, default config):
+
+| fixture | roughness, deg | gini | traces | curve vertices | corners | cost, s |
+|---|---|---|---|---|---|---|
+| `logo_whitebg` | 3.76 | 0.688 | 7 | 1,247 | 80 | 0.001 |
+| `enthusiast_logo` (93 mm, left chest) | 8.91 | 0.643 | 71 | 1,459 | 451 | 0.005 |
+
+**What it does not do, in the instrument's own words.** It cannot read
+intent: a logo that IS a 20-gon and a circle polygonised to one are the same
+path, so the number compares a design with itself across engine changes and
+is never a grade. It saturates and then reverses on coarse polygons (40-gon
+4.28, 20-gon 4.15, 12-gon 4.01), so it detects and cannot rank. Its
+resolution is bounded by stitch length. A many-pointed star is its standing
+false positive. And like the edge keys, nothing reads it until
+`corpus_scorecard`'s baseline is recaptured.
+
+It changes no grade: `test_it_judges_nothing` scores one polygon with the
+metric and with it removed, and was watched failing against an injected
+`warn`.
+*(built 2026-10-03 — `tests/test_curve_roughness_metrics.py`, 8; `digitizer_core/curve_fidelity.py`)*
+
+
+## 2026-10-04 — Scorecard baseline recaptured at `6e0cb943`: 48 of 52 rows moved over 50 commits, five fell a band, and the band-crossing step is the grader's on all five
+
+**Why.** PR #619 added 17 metric keys to `run_preflight` that judge nothing
+(`edge_wobble_{satin,border,fill,line}_{p95,std,max}_mm`, `curve_roughness_deg`
+with `curve_turn_gini`, `curve_vertices`, `curve_corner_vertices`,
+`curve_traces`). `corpus_scorecard.diff` reads only keys both sides hold, so
+until the baseline carried them no tool read them. The ruler was `2c60cd87`
+(2026-09-16); 50 first-parent commits had touched `digitizer_core` since.
+
+**Where, and the controls.** Cloud Linux only — `python3.12`, pinned
+`requirements.txt`, `tesseract-ocr` 5.3.4, no `rembg_isolated/venv` — never the
+WSL box (COOKBOOK). All 52 rows re-scored at `2c60cd87` first and reproduced the
+stored baseline leaf for leaf. The tool's own serial `diff` at `aa7f934` and at
+`6e0cb943` printed the same 576 lines (exit 1), so #619's keys moved nothing
+anywhere; the serial `capture` matches a 3-worker pool's rows on every common
+leaf; HEAD replayed against the new file reads `no drift`.
+
+**What moved.** 48 of 52 rows by the tool's rule (the other four under its 5 %
+floor — `uncovered_wanted_mm2` rose on all 52). Grades A/B/C/D/F 7/13/12/6/14 →
+6/14/11/8/13. `SATIN_GAPS_TIGHT:warn` 0 → 10, `ARTWORK_UNCOVERED:warn` 6 → 14,
+`STITCHES_TOO_SHORT:warn` 18 → 5, `THREAD_MATCH_POOR:block` 34 → 26. 721 leaves
+changed on pre-existing keys; 26 keys are new to the file (17 from #619, 4 from
+#572, 3 from #573, 2 from #597).
+
+| row | old → new | the path, by PR |
+|---|---|---|
+| `logo_script_tires.png @ 80mm/hat_front` | A 100 → **B 88** | #573 A 100 → B 88 (+`SATIN_GAPS_TIGHT:warn`) |
+| `photo/photo_chrome_specular.png @ 80mm/hat_front` | B 88 → **C 64** | #554 B 88 → B 76 (+`STITCHES_TOO_SHORT:warn`); #561 B 76 → C 64 (+`LETTERING_TOO_SMALL:warn`); #578 C 64 → B 76 (−`STITCHES_TOO_SHORT:warn`); #572 B 76 → C 64 (+`ARTWORK_UNCOVERED:warn`) |
+| `photo/photo_chrome_specular.png @ 80mm/left_chest` | C 64 → **D 52** | #572 C 64 → D 52 (+`ARTWORK_UNCOVERED:warn`) |
+| `photo/photo_scene_stub.png @ 80mm/hat_front` | B 76 → **D 52** | #573 B 76 → C 64 (+`SATIN_GAPS_TIGHT:warn`); #572 C 64 → D 52 (+`ARTWORK_UNCOVERED:warn`) |
+| `photo/photo_scene_stub.png @ 80mm/left_chest` | C 64 → **D 52** | #520 C 64 → B 76 (−`ARTWORK_UNCOVERED:warn`); #573 B 76 → C 64 (+`SATIN_GAPS_TIGHT:warn`); #572 C 64 → D 52 (+`ARTWORK_UNCOVERED:warn`) |
+| `photo/logo_hotel_fremont.webp @ 80mm/hat_front` | C 64 → **B 88** | #554 C 64 → B 76 (−`STITCHES_TOO_SHORT:warn`); #589 B 76 → B 88 (−`LETTERING_ILLEGIBLE:warn`) |
+| `photo/logo_hotel_fremont.webp @ 80mm/left_chest` | C 64 → **B 76** | #554 C 64 → B 76 (−`STITCHES_TOO_SHORT:warn`) |
+| `photo/photo_grass_macro.png @ 80mm/hat_front` | F 22 → **D 46** | #516 F 22 → F 10 (+`TRIM_HEAVY:warn`); #520 F 10 → F 22 (−`TRIM_HEAVY:warn`); #554 F 22 → D 46 (−`LETTERING_TOO_SMALL:warn`, −`STITCHES_TOO_SHORT:warn`) |
+| `photo/photo_subject_stub.png @ 80mm/hat_front` | D 58 → **C 70** | #572 D 58 → C 70 (−`ARTWORK_UNCOVERED:warn`) |
+| `photo/photo_subject_stub.png @ 80mm/left_chest` | D 58 → **C 70** | #572 D 58 → C 70 (−`ARTWORK_UNCOVERED:warn`) |
+
+**Every mover attributed, by bisection over the 51 trees** — 387 change
+points, 1,176 single-row evaluations, 23 commits moved a row, 27 moved none, one
+interval (`hotel_fremont` hat_front across #518–#528) reads as gradual drift.
+**The step that crosses a band line is an instrument on all five falls:**
+#572 (the uncovered check sees holes) and #573 (`SATIN_GAPS_TIGHT`) left
+`stitch_count` byte-identical on every row they moved. #572 is also why
+`photo_subject_stub` rose two bands — its 956 mm² "uncovered" sat inside a
+hole. `photo_chrome_specular` hat_front also carries geometry: #554 and #561
+took it 88 → 64 (`LETTERING_TOO_SMALL` from #561 stays), #578 gave 12 back.
+The geometry flips net upward: #554 (rail comp ON, 38 rows) lifts
+`hotel_fremont` C → B on both garments and `grass_macro` F → D; #559 (tip
+caps) 33 rows, #516 (lettering construction) 32, #520 (junction stack) 30,
+#561 25, #537 22, #558 21, #521 19, #589 18 — metrics, few scores. Whether a
+check that fires on ten rows should cost a band is Kent's to weigh.
+
+**What it does not settle.** Neither new number has met Kent's eye; the
+recapture makes them visible to `diff`, nothing more. The WSL box's control
+worktree still sits at `2c60cd87` and must be re-cut at `6e0cb943` before its
+next `diff` means anything.
+*(measured 2026-10-04 — `docs/scorecard-baseline-attribution-2026-10-04.md`, its appendices A–C; PR #627)*
+
+## 2026-10-04 — The island fix after its audit: a ring too thin to be one, an island that crossed itself, a touch the sweep missed, and the time
+
+The island entry of 2026-10-03 ("A ring inside a hole is an island") was
 merged, as #613, with its first build while an independent audit of it was
 still running, and the audit failed that build three ways. From 16:11 local
-until this landed, `main` carried all three.
+that day until this landed, `main` carried all three. (Audited, cured and
+measured on 2026-10-03; it waited a night on a conflict in this file.)
 The auditor was handed the claims as claims and read the stitches with its
 own exact arithmetic; its three re-checks then found each cure short once.
 

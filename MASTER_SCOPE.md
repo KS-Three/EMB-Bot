@@ -193,8 +193,6 @@ needle-breakage signal. ~~No off switch for photo classes~~ — stale when writt
 
 43. **The numbers chain agrees end to end, and is MEASURED rather than argued.** Canvas caption, review recap, PDF worksheet and the downloaded DST read back by `pystitch` all give one set of figures on a mixed design, and the simulator counter agrees at both ends. It can be stated as fact only because each link was DRIVEN rather than reasoned from a shared code path — which is the part worth keeping. The figures: scope-history 09-08. *(measured 2026-09-08)*
 
-46. **The smoothness score exists and preflight cannot see it.** Law 37 wants a monotonic direction-change score with no cutoff; `tools/edge_smoothness.py`, `curve_fidelity.py`, `edge_wobble.py` and `curve_tiers.py` are exactly that — offline. No smoothness code appears among preflight's 24 codes or `warnings_codes.py`'s 58, so the grade a customer sees is blind to Kent's most frequent complaint. Desk-safe and the cheapest row on the list: the instrument is built, the output ships, nothing connects them. **Not to be confused with `curve_turn_deg`**, which an earlier read scored as this. Evidence: [backlog](docs/scope/machine-physics-backlog.md). *(confirmed 2026-09-20 — playbook row 17)*
-
 47. **`overlap_mm` is one scalar at 0.25 mm, against a law that wants 1.0–2.0.** Law 26 asks 1.0 mm where parallel stitch directions meet on wovens, 1.5–2.0 on knits/fleece and ~0 near-perpendicular; `config.py:918` is angle-blind, fabric-blind and sits under the law's own 0.8 mm close-up threshold, and no forbid-gap rule exists. Most of it is desk-safe and buildable now — only the knit value is gated. Detail: [backlog](docs/scope/machine-physics-backlog.md). *(confirmed 2026-09-20 — playbook row 9)*
 
 
@@ -218,6 +216,7 @@ DOCTRINE 2026-09-14.
 36. "This font can't stitch «Р», «у», «с». Try a different font" was a dead end — FIXED 2026-09-07. Measured over all 85 `.embf`: 3 fonts cover Cyrillic, 3 Greek, 2 Hebrew, none Japanese/Korean/Arabic; the message now names one that can. Full text: scope-history 09-30.
 44. satin borders sat a median 1.4–1.9 mm INSIDE every abutting colour (14 of 17 bordered shapes on the 80 mm icon) — FIXED 2026-09-09 on Kent's ruling that the colour sewn on top owns a shared seam (`_owned_by_later`, `border_runs(omit=…)`; 33,292 → 30,420 st, trims 34 → 30). Standing ruling: DOCTRINE. Full text: scope-history 09-29.
 45. no preset declared its assumed stabilizer; backing was guessed from stitch count — RESOLVED 2026-09-20 (`Fabric.assumed_backing` / `needs_topper`, both engines; the worksheet prints both). Playbook law 33.
+46. the smoothness scores existed only offline and preflight could not see them — BUILT 2026-10-03 AS METRICS, both halves: Law 37's direction-change score (`curve_roughness_deg`, read with `curve_turn_gini`, `curve_vertices`, `curve_corner_vertices`, `curve_traces`) and edge deviation per tier (`edge_wobble_{satin,border,fill,line}_{p95,std,max}_mm`). No finding, no deduction, nothing in the Studio, so the GRADE stays blind to both on purpose: Law 37 forbids a cutoff, and Kent ruled 2026-10-02 that the tool does not warn the customer about what it should fix. Baseline recaptured 2026-10-04 at `6e0cb943`, every row carrying all 17 keys, so `corpus_scorecard.diff` reports their drift from the next change on. Still true: neither number has met Kent's eye; roughness cannot read intent, so it compares a design with itself and is never a grade; `edge_smoothness` stays offline. Not `curve_turn_deg`, which an earlier read scored as this. Playbook law 37; `tests/test_curve_roughness_metrics.py`, `tests/test_edge_wobble_metrics.py`; scope-history 10-03.
 48. no machine-time model, so nothing quoted a runtime — RESOLVED 2026-09-20 (`machine.PLAN_SPM` 650, `TRIM_COST_STITCHES` 120; the worksheet prints "Run time ~N min … incl. trims"). Playbook laws 36/38.
 53. a ring inside a hole of its own shape (an ISLAND, carried in `holes`) was a second hole to the BROWSER builder — FIXED 2026-10-03 (`islandsAmong`, `digitize.js`). Nested rings whose areas summed to the outline's sewed NOTHING (a 40 mm box, rings 4 and 8 mm in); a preset's pull compensation SHRANK an island (terry: its fill 0.6 mm small a side, the underlay showing round it). An island now grows as the outline does, or is sewn as drawn where growing would bring it against the ring beside it or across itself; a ring thinner than one needle step (0.1 mm) is no island. **Exported stitches change for island shapes and no others**; neither lane the Studio builds through makes one (`groupRingsIntoShapes` and direct callers do). Older than `fillColumns`, the same with it off or on. Independently audited, four passes; what a thin moat costs is in the full text. `test/digitize.test.js`. Full text: scope-history 10-03.
 41. the review screen quoted a sew-out's cost on one lane and nothing on the other — FIXED 2026-09-07 (`lib/estimate.js`, browser-side only when the service said nothing). Full text: scope-history 09-20.
@@ -264,16 +263,14 @@ one concealed it; entry 2 is a flag that LEFT this list unnoticed for two weeks.
    read `garment_id` for ORDER; the browser engine did. **DO NOT FLIP:**
    only the cost is measured, and it is heavy. *(measured 2026-09-19 — DOCTRINE)*
 
-5. **`satin_cap_recentre` — built OFF 2026-09-22, and it is a flip waiting on
-   a call, not a parked idea.** A free end whose spine tail is a surviving CAP
-   FORK is cut at the kink and rebuilt square: today, on a stem with one edge
-   leaning three degrees, one fork survives the pruner, the column tapers to a
-   point at that corner and the other corner sews **1.11 mm bare**. Found from
-   the OUTLINE side (`edge_wobble`'s `unsewn`: Becker, **32.6 mm** of outline
-   with no thread within 0.5 mm). The cause-side twin of
-   `satin_rails_follow_edge`, which reaches the same corners by roughening the
-   rails and is measured NOT the lever. False is byte-identical.
-   *(confirmed 2026-09-29 — `config.py:1260`; numbers DOCTRINE 2026-09-19)*
+5. **`satin_cap_recentre` — ON since 2026-10-03 (Kent's flip, on his labelled
+   sitting); it left this list and keeps its number.** A free end whose spine
+   tail is a surviving CAP FORK is cut at the kink and rebuilt square, where
+   on a stem with one edge leaning three degrees the column tapered to a point
+   at one corner and left the other bare. The cause-side twin of
+   `satin_rails_follow_edge`. Small by its own record, and a wash on the flat
+   end of a curved column. False is the pre-flip engine, byte for byte.
+   *(flipped 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`; numbers DOCTRINE 2026-09-19)*
 
 *(added 2026-08-17 — `docs/project-review-2026-08-16.md` §1.6: chaining was absent
 here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
@@ -373,14 +370,11 @@ about the facts.
 
 18. **OPEN: a COLD photo digitize is ~90 s and `fill_travel_under_cover` is ~58% of it.** The 2026-09-17 memo fixed the RE-stitch (79.3 → 44.6 s); the first digitize still pays the flag in full. Three ways out, all Kent's: flip it off (costs stitches, re-exposes the travel it hides), optimise `_reorder_for_cover` (golden-pinned — a win must be byte-identical), or accept it. **Do not re-derive the numbers** — method, noise floor, per-flag table and three INERT flags are in the doc. *(measured 2026-09-17 — `docs/flag-runtime-bills-2026-09-12.md`)*
 
-19. **One built-OFF satin flag is waiting on a call: `satin_cap_recentre`**
-   (the surviving cap fork — Latent 5, built 2026-09-22). **Judged 2026-10-03,
-   not yet ruled:** after on becker and tires, the two logos where it shows;
-   no difference on four, both bad on two, before on none. The flip is Kent's.
-   `satin_patch_junctions = "satin"` is NOT waiting: `satin_junction_stack` has
-   sewn that cover as its part C since 2026-09-19, so off and on are one design
-   (8 of 8 logos identical). `satin_walk_cursor_reach_mm` stays parked for cloth
-   (Kent 2026-09-20). *(confirmed 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`)*
+19. **RESOLVED 2026-10-03 — `satin_cap_recentre` is ON** (Kent's ruling in chat,
+   on his sitting: after on becker and tires, before on none; Latent 5).
+   `satin_patch_junctions = "satin"` was never waiting — the junction stack's
+   part C since 2026-09-19 — and `satin_walk_cursor_reach_mm` stays parked for
+   cloth (Kent 2026-09-20). *(flipped 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`)*
 
 20. **Paired ground truth costs money or it does not exist.** No free source
    ships artwork PLUS a professional's stitch file of the same design, and the
@@ -557,8 +551,12 @@ over 26 fixtures x 2, aggregating preflight's score. REPORTING, not a CI gate;
 detail: [area 1](docs/scope/1-auto-digitizing-quality.md). **The 2026-08-12
 baseline was SOUND — 38/38 rows re-scored exactly, every mover real** and
 attributed before the 2026-09-02 recapture (duplicate fixture dropped, commit
-stamped).
-*(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
+stamped). **Recaptured 2026-10-04 at `6e0cb943`** on cloud Linux after 50
+pipeline commits: 48 of 52 rows moved, five fell a band, every mover attributed
+by bisection over the 51 trees; the step that crosses a band line is a new
+preflight check on all five falls (#572, #573), not a stitch
+([notes](docs/scorecard-baseline-attribution-2026-10-04.md), scope-history 10-04).
+*(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md); 2026-10-04 — [notes](docs/scorecard-baseline-attribution-2026-10-04.md))*
 
 **The corpus is half-present, and its real-artwork half keeps contradicting the
 synthetics** — six of seven real customer logos route to GRADIENT at stage 0, so
@@ -611,8 +609,9 @@ became defects **45–48**; the remaining desk-safe gaps stay in the backlog doc
 with their buildability column intact. **Two closed the same day** — 45 (row 3,
 `assumed_backing`) and 48 (row 6, `PLAN_SPM`/`TRIM_COST_STITCHES`) shipped in
 the operator bundle, which also closed Part 3's backing, topper and runtime
-lines. **46 and 47 are still open** and still desk-safe.
-*(audited 2026-09-20 — code read, `origin/main` 1ac731cd)*
+lines. **46 closed 2026-10-03** (row 17, as preflight metrics); **47 is still
+open** and still desk-safe.
+*(audited 2026-09-20 — code read, `origin/main` 1ac731cd; 46 built 2026-10-03)*
 
 ---
 
