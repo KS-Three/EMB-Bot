@@ -144,7 +144,7 @@ test("absorbSmallRegions: handed `stats`, it counts what it absorbed and its wal
 // --- the work it does, counted without a clock ------------------------------
 //
 // The Studio runs this on the main thread, on whatever a customer uploads. A
-// photograph cut to a few colours hands it thousands of specks, and with the
+// photograph cut to a few colors hands it thousands of specks, and with the
 // background removed thousands of islands with nothing but transparent beside
 // them. Neither may cost a walk over the whole image apiece.
 
@@ -187,11 +187,11 @@ test("absorbSmallRegions: an island that can never be absorbed is not asked agai
 //
 // absorbSmallRegions as the engine ran it until 2026-10-04, word for word:
 // label the whole image, take the smallest component under the threshold that
-// has a neighbour to vote for (of two the same size, the one a raster scan
-// meets first), repaint it in the index most of its outside neighbours carry
+// has a neighbor to vote for (of two the same size, the one a raster scan
+// meets first), repaint it in the index most of its outside neighbors carry
 // (of two with the same votes, the lower), and start again from a fresh
 // labelling. That is the DEFINITION of which component goes into which
-// neighbour and in what order. The engine reaches the same grid without
+// neighbor and in what order. The engine reaches the same grid without
 // labelling again, and this is what holds it to that.
 
 function absorbSlowly(indices, w, h, minPx) {
@@ -287,11 +287,11 @@ test("absorbSmallRegions: 600 images nobody chose come out as the slow rule leav
   let absorbedSomething = 0;
   for (let n = 0; n < 600; n++) {
     const w = 1 + Math.floor(rnd() * 18), h = 1 + Math.floor(rnd() * 18);
-    const colours = 1 + Math.floor(rnd() * 6);
+    const colors = 1 + Math.floor(rnd() * 6);
     const holes = pick([0, 0, 0.1, 0.35, 0.6]); // share of transparent pixels
     const idx = new Uint8Array(w * h);
-    for (let i = 0; i < idx.length; i++) idx[i] = rnd() < holes ? T : Math.floor(rnd() * colours);
-    // Noise alone is all specks. Let pixels copy a neighbour for a few rounds
+    for (let i = 0; i < idx.length; i++) idx[i] = rnd() < holes ? T : Math.floor(rnd() * colors);
+    // Noise alone is all specks. Let pixels copy a neighbor for a few rounds
     // and components of every size appear, with ragged edges between them.
     for (let round = Math.floor(rnd() * 4) * w * h; round > 0; round--) {
       const x = Math.floor(rnd() * w), y = Math.floor(rnd() * h);
@@ -304,7 +304,7 @@ test("absorbSmallRegions: 600 images nobody chose come out as the slow rule leav
     const stats = { absorbed: 0, imageWalks: 0 };
     const got = FL.absorbSmallRegions(idx, w, h, minPx, { stats });
     const where = parting(got, want, w);
-    assert.strictEqual(where, null, `image ${n} (${w} x ${h}, ${colours} colours, minPx ${minPx}): ${where}`);
+    assert.strictEqual(where, null, `image ${n} (${w} x ${h}, ${colors} colors, minPx ${minPx}): ${where}`);
     if (stats.absorbed) absorbedSomething++;
   }
   // The sweep is not allowed to pass by absorbing nothing.
@@ -313,7 +313,7 @@ test("absorbSmallRegions: 600 images nobody chose come out as the slow rule leav
 
 test("absorbSmallRegions: grids where everything ties come out as the slow rule leaves them", () => {
   // Every pixel its own component and every vote level: the order is all ties
-  // (which speck goes first, which neighbour takes it), so this is where a
+  // (which speck goes first, which neighbor takes it), so this is where a
   // different order shows.
   const patterns = {
     checker: (x, y) => (x + y) % 2,
