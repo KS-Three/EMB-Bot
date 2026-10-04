@@ -69,6 +69,11 @@ seven covered routes. The diagonal blind spot, on the benchmark fixture,
 the same day it was named. **A fixture set that is byte-identical at 80 mm
 is not evidence at 93 mm** — the benchmark's pitch is the one to run.
 
+**Update 2026-09-03 (recorded here 2026-10-04): `satin_house_fourfold` is ON.**
+Kent flipped it once pass 1 of the stitch-angle rule took the benchmark back
+from 4.62 to 4.09/1k; `config.py` defaults it `True`. See
+[[stitch-angle-convention-2026-09-03]].
+
 **Measured on drone_render:** the four regions that gained an angle are
 **T, H, E, R of THERMAL** — the letters Kent called "not clean" on
 2026-08-26, whose deformed H no instrument could see. Rendered: coherent 45°

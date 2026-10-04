@@ -36,6 +36,9 @@ need Kent's own call on their own merits:
 
 - **The DST codec fix** (now queue item 2). Re-orienting the table changes
   every DST EMB-Bot has ever written. See [[dst-codec-axis-discrepancy]].
+  **Update 2026-10-04: RESOLVED 2026-09-08 without a sew-out** — a reference
+  implementation plus a render settled it, so gate 1 never applied (see
+  [[dst-codec-axis-discrepancy]]). Only `split_tonal_regions` remains parked.
 - **`split_tonal_regions`** (now item 3). Merged but default-OFF; costs +74%
   stitches. Was "parked until the sew-out" (2026-08-12) — that parking is now
   indefinite, which is a different thing from resolved.

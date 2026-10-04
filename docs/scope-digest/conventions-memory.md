@@ -55,7 +55,7 @@ sam2_isolated/, rembg_isolated/, testdata/inbox/), all `.claude/memory/`, all
 
 Hooks — all `PreToolUse` on `Bash|PowerShell`, from `.claude/settings.json`:
 - `block-powershell-replace.js` — DENIES any command combining `-replace` with `Set-Content`/`Out-File`/`Add-Content`.
-- `block-worktree-mutation.js` — DENIES `rm`/`rmdir`/`del`/`mv`/`Remove-Item`/`Move-Item` targeting `.claude/worktrees/`.
+- `block-worktree-mutation.js` — DENIES `rm`/`rmdir`/`rd`/`del`/`mv`/`Remove-Item`/`Move-Item`/`git worktree remove`/`git clean`/`find -delete`/`xargs rm` whose RESOLVED target is the `.claude/worktrees/` dir, a lane root, inside a lane the command is not running in, or a directory holding the lanes; own-lane deletes allowed by default; an unresolvable target fails closed only when the text names `.claude/worktrees/` (since 2026-10-04; `test/worktree-guard.test.js`; replay: `tools/replay-worktree-guard.mjs`).
 - `warn-git-add-a.js` — warns (does not block) on `git add -A`/`--all`/`.`, printing `git status --short`.
 - `nudge-cookbook-stale.js` — on `git commit`, informational nudge once 20+ commits to `src/`, `digitizer/`, `app/src` have landed since COOKBOOK.md last changed.
 - Hooks do NOT auto-apply inside nested worktrees — copy `.claude/settings.json` into `.claude/worktrees/<name>/.claude/` (CLAUDE.md §4).

@@ -17725,16 +17725,27 @@ its own crossing test. Eight mutations of the fix (the old area, the old
 shrink, no guard, the hole not put back, depth without parity, one corner,
 every corner, the edge run's old bug) each fail a test in
 `test/digitize.test.js`, and each new test was watched failing on
-`origin/main` first. With `fillColumns` on, a bullseye under terry is cut 4
-times where it was 6. The island question costs a build of 2,025 holes about
-40 ms (40 to 77 in one run, 58 to 95 in another) and one of 196 nothing that
-shows.
+`origin/main` first. (Seven of the eight: "two holes that cross are still
+two holes" pins what main already did, and was watched failing under two
+wrong ways of telling an island. The audit caught the sentence.) With
+`fillColumns` on, a bullseye under terry is cut 4 times where it was 6. The
+island question costs a build of 2,025 holes about 40 ms (40 to 77 in one
+run, 58 to 95 in another) and one of 196 nothing that shows. (And several
+times a build's whole time on forty 400-point cut-outs side by side, which
+this entry did not measure. The audit did; it costs nothing now.)
 
 **Exported stitches change for island shapes, and for no others.** No Studio
 lane hands one over: `imageRegions.js` traces each blob with its own holes,
 `svgimport.js` splits rings by depth, and `resolveCutOuts` refuses a cut-out
 inside or across another. `groupRingsIntoShapes` (`tools/run-text.mjs`,
-`run-hat-text.mjs`, `glyph-satin.mjs`) and direct callers do.
+`run-hat-text.mjs`, `glyph-satin.mjs`) and direct callers do. (SVG import is
+not a lane the app builds through: `parseSVG` has no caller in it. And "for
+no others" was wrong of this build by one kind of shape, a ring with no
+area lying in a cut-out. Both from the audit.)
+
+**This build was merged, as #613, before its independent audit reported.**
+What the audit found in it, and what was changed for it, is the entry "The
+island fix after its audit", below.
 
 Left as they are: `underlayRuns`' `center_run` keeps off every ring in
 `holes` (no preset gives a fill that style), and the 29 island designs the
@@ -18396,3 +18407,126 @@ run without background removal.
 Engine 709 passed, eight of them new (`test/satin-walk.test.js`; the same
 file fails six on `f887e27d`); Studio 1,587 passed. Not sewn.
 *(fixed 2026-10-03 — `skeletonEdges` in `src/satin.js`; `test/satin-walk.test.js`; `tools/satin-walk-census.mjs`; `docs/renders/star-walk-2026-10-03/README.md`)*
+
+## 2026-10-04 — The island fix after its audit: a ring too thin to be one, an island that crossed itself, a touch the sweep missed, and the time
+
+The island entry of 2026-10-03 ("A ring inside a hole is an island") was
+merged, as #613, with its first build while an independent audit of it was
+still running, and the audit failed that build three ways. From 16:11 local
+that day until this landed, `main` carried all three. (Audited, cured and
+measured on 2026-10-03; it waited a night on a conflict in this file.)
+The auditor was handed the claims as claims and read the stitches with its
+own exact arithmetic; its three re-checks then found each cure short once.
+
+**What held from the start.** No island, no change: 11,131 of its own builds
+byte-identical to the engine before #613, 213 shapes by 47 option sets among
+them. Nested rings always sew: 0 dropped of 4,812, where the engine before
+had dropped 22 of its 129 shapes and 651 of 1,500 random trees. No island's
+ring met another ring in 4,398 preset builds, and the terry moat table read
+exactly.
+
+**What did not, in the build that merged:**
+
+- **A ring with no area lying in a cut-out was FILLED.** Three points in a
+  line are wholly inside the hole, so by the count an island; grown, they
+  became a sliver, and 34 mm of fill thread was sewn in the middle of the
+  hole. Worse than before #613, on 85 of 188 such builds.
+- **An island with a slit of its own crossed ITSELF grown.** The guard asked
+  only about other rings. 92 of 1,806 builds, the ground on each bank of a
+  0.1 mm slit bare by 0.5 mm on terry. Better than before #613, and not
+  right. (An outline with such a slit has always done that, and still does.)
+- **Time, on shapes with NO island.** Every ring was tried against every
+  other: 2,025 holes cost 42 to 77 ms more, and forty 400-point cut-outs
+  with overlapping boxes went from 424 to 910 ms on the auditor's run and
+  from 61 to 473 on mine. The image lane builds through this.
+
+**The cures, and what the re-checks did to them.**
+
+- **The time.** A ring inside another has its box inside the other's, and
+  the rings are taken left to right, so a shape with no island pays nothing:
+  2,025 holes 31 / 30 / 47 ms against 28 / 30 / 47 before #613 (no fabric,
+  pique, terry; least of 30), the forty cut-outs 61 against 61.
+- **An island that would cross itself grown is sewn as drawn**, like one
+  that would meet the ring beside it. The first re-check found the test for
+  it slow where a drawing is straightest: it tried an edge against every
+  edge sharing its reach in x, the 4,000 edges of an upright wall share one,
+  and an island said in 16,000 points took 1,031 ms against 109. Both
+  meeting tests now sweep their edges along a slanted axis (two 4,000-point
+  circles 1 mm apart: 835 ms before the sweep, 23 after, 18 before #613).
+  The second re-check found the sweep could miss a touch on a wall running
+  EXACTLY across its slant, an edge's reach being a rounded number: a hole
+  touching another's wall read as an island inside it, 3 of 31,200 exact
+  touches. The reach is widened by a hair.
+- **A ring too thin to hold thread is no island.** The first cure asked for
+  an area of exactly none, and a ring a hair off a line (float area 3e-8
+  px²) was still grown and filled. The second put the line at a float, and
+  the auditor marked the spot: a ring 6 mm long and 4e-8 px wide was an
+  island still. The line is the needle's step now, 0.1 mm, against the
+  ring's area over half its perimeter; narrower, a ring is left exactly as
+  the engine before #613 left it.
+- **An island is grown from its corners said once.** A ring handed over
+  CLOSED, its first point said again, gets a wedge three compensations long
+  from the offset at that corner. The outline and the holes of such a ring
+  have always had it, and still do (older; its own task).
+
+The third re-check held all three of its claims: where rings meet, the sweep
+never answers otherwise than trying every pair would (180,000 trials, and
+21,778 more far from the origin); every ring thinner than a step lying in a
+hole is byte-identical to the engine before #613 (884 builds); and nothing
+else sewn moved.
+
+**What the rule costs, as the audit priced it:**
+
+- **Just over a step, the moat is closed in the stitches.** Drawn 1.21 or
+  1.23 mm on terry, the band's last needle point and the island's first land
+  on the same spot, row after row (0.61 and 0.63 the same). That is what the
+  compensation asks for, and what a HOLE that much wider than twice it has
+  always got. A floor under it would be a number about cloth, which no
+  sew-out has given (ROADMAP gate 1), so none is invented here.
+- **The moat table is for walls that run side by side.** The offset mitres
+  a corner, up to three times the compensation, so a pointed island is put
+  back sooner than twice (a star's tip 2.0 mm from the wall on fleece, 0.5
+  mm: put back whole, moat sewn 1.5), and where it does grow its tip is sewn
+  up to 2.7 compensations past the drawing, as an outline's always was.
+- **A ring that has to stay is sewn as drawn on every side.** One tight spot
+  takes its compensation everywhere.
+- **The thin end is a step too, and under it nothing is mended.** The width
+  that makes an island reads a hairline a little under what it is and a
+  square at half its side: a 6 mm hairline is an island from 0.102 mm wide,
+  a square from 0.2 mm across. At the line the sewn result jumps: on terry a
+  hairline 0.1016 mm wide is sewn as drawn (10 mm of thread), one 0.1017 mm
+  wide grown to 1.3 mm (104 mm). Under the line a ring is treated as it was
+  before #613, that engine's own fault included: a ring smaller than twice
+  the compensation is turned inside out by the shrink (a 0.15 mm square
+  becomes a 1.05 mm one, and 0.4 mm from its hole's wall it crosses that
+  wall). Older, the same for any tiny hole, and not touched here.
+- **With `fillColumns` on, a thin moat costs cuts.** Over 749 pairs the
+  total falls 2,837 to 2,213, but 19 rose, all moats of 0.3 to 0.6 mm, the
+  worst 1 to 7: before #613 the island's fill sat shrunk against the hole's
+  wall and the thread was carried over.
+
+**Measured**, hashes of the whole design:
+
+| | result |
+|---|---|
+| against the engine before #613 (`2d77b388`): 19,536 designs with NO island (106 shapes, 60 of them seeded, and a three-colour design; no fabric and all seven presets; 23 option sets; holes that overlap, touch, repeat or stray, rings with no area or thinner than a needle step, rings handed over closed) | all byte-identical |
+| against `main` with #613 (`f887e27d`): the same designs | 18,409 identical; the 1,127 that differ are seven shapes, each with a ring in a hole that has no area or is thinner than a needle step, under a preset: sewn again as before #613 |
+| against `main` with #613: 2,392 island designs | 1,923 identical; the 469 that differ are three shapes: an island with a slit of its own, a bullseye handed over as closed rings, and a hairline island under a needle step wide |
+| 150 seeded island shapes, 7 presets, both walks: built nothing; drawn ground with no fill thread within a row of it | 0 of 2,100; 0 of 168,000 points (before #613: 840, and 154 designs) |
+
+Eleven mutations of the fix (the old area, the old shrink, no guard, the
+hole not put back, an island that crosses itself grown anyway, a thin ring
+counted as an island, the sweep's reach not widened, depth without parity,
+one corner, every corner, the edge run's old bug) each fail a test in
+`test/digitize.test.js`. Five tests are added to #613's eight: 24 seeded
+island shapes whose drawn ground must all be sewn, and one for each thing
+above. Asked of one corner, as #606's edge run asks, 1,127 of the 19,536
+no-island designs move (686 with the flag off); the edge run still keeps its
+own test, since given this one it moved 560 flag-on designs on ten malformed
+shapes.
+
+Also found, older than #613 and left as it is: a tiny hole turned inside
+out by the shrink can cross the hole beside it (2 of 1,500 random trees).
+
+Engine 714 passed. Not sewn.
+*(fixed 2026-10-03 — `islandsAmong`, `sweptEdges`, `fillRingsOf` in `src/digitize.js`; `test/digitize.test.js`)*
