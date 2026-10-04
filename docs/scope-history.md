@@ -17725,16 +17725,27 @@ its own crossing test. Eight mutations of the fix (the old area, the old
 shrink, no guard, the hole not put back, depth without parity, one corner,
 every corner, the edge run's old bug) each fail a test in
 `test/digitize.test.js`, and each new test was watched failing on
-`origin/main` first. With `fillColumns` on, a bullseye under terry is cut 4
-times where it was 6. The island question costs a build of 2,025 holes about
-40 ms (40 to 77 in one run, 58 to 95 in another) and one of 196 nothing that
-shows.
+`origin/main` first. (Seven of the eight: "two holes that cross are still
+two holes" pins what main already did, and was watched failing under two
+wrong ways of telling an island. The audit caught the sentence.) With
+`fillColumns` on, a bullseye under terry is cut 4 times where it was 6. The
+island question costs a build of 2,025 holes about 40 ms (40 to 77 in one
+run, 58 to 95 in another) and one of 196 nothing that shows. (And several
+times a build's whole time on forty 400-point cut-outs side by side, which
+this entry did not measure. The audit did; it costs nothing now.)
 
 **Exported stitches change for island shapes, and for no others.** No Studio
 lane hands one over: `imageRegions.js` traces each blob with its own holes,
 `svgimport.js` splits rings by depth, and `resolveCutOuts` refuses a cut-out
 inside or across another. `groupRingsIntoShapes` (`tools/run-text.mjs`,
-`run-hat-text.mjs`, `glyph-satin.mjs`) and direct callers do.
+`run-hat-text.mjs`, `glyph-satin.mjs`) and direct callers do. (SVG import is
+not a lane the app builds through: `parseSVG` has no caller in it. And "for
+no others" was wrong of this build by one kind of shape, a ring with no
+area lying in a cut-out. Both from the audit.)
+
+**This build was merged, as #613, before its independent audit reported.**
+What the audit found in it, and what was changed for it, is the entry "The
+island fix after its audit", below.
 
 Left as they are: `underlayRuns`' `center_run` keeps off every ring in
 `holes` (no preset gives a fill that style), and the 29 island designs the
@@ -18182,6 +18193,343 @@ recapture makes them visible to `diff`, nothing more. The WSL box's control
 worktree still sits at `2c60cd87` and must be re-cut at `6e0cb943` before its
 next `diff` means anything.
 *(measured 2026-10-04 — `docs/scorecard-baseline-attribution-2026-10-04.md`, its appendices A–C; PR #627)*
+
+## 2026-10-03 — A 20 mm star off the shape tool sewed 48,645 stitches: a walk in the browser's skeleton tracer never ended (fixed), and what the same sweep found standing
+
+Found while counting stitch records on one point: a star the Studio's own
+controls make (12 points, inner ratio 0.15, the two ends of its sliders)
+sewed as ONE satin shape with 48,645 stitches in 17 mm, 2,174 of them on
+the point before. Measured on `origin/main` at `f887e27d`, built as
+`generate.js` builds a `shape` element, left chest:
+
+| star | stitches before | now |
+|---|---|---|
+| 12 points, 0.15, 12 mm | 444 | 444 |
+| 12 points, 0.15, 18 mm | 713 | 713 |
+| 12 points, 0.15, 19 / 20 / 21 / 22 mm | 45,867 / 48,645 / 51,464 / 40,212 | 771 / 729 / 848 / 1,308 |
+| 12 points, 0.15, 23 mm | 999 | 999 |
+| 12 points, 0.15, 24 / 25 mm | 128,239 / 120,627 | 873 / 1,015 |
+| 12 points, 0.15, 30 mm | 1,377 | 1,401 |
+| 8 points, 0.15, 20 mm | 592 | 592 |
+| 12 points, 0.3, 20 mm | 1,009 | 1,073 |
+
+It was never one size. **The first test for "out of line with its
+neighbours" compared a design with the three sizes either side, and read
+the 20 mm star as normal: 19 and 21 mm had run away too.** The count is now
+divided by what size alone explains (satin grows with the size, a fill with
+its square) and compared with the median over the ten sizes either side.
+
+**The sweep.** Points 3 to 12, ratio 0.15 to 0.90 by 0.05, 10 to 100 mm by
+1 mm, all ten garments: 145,600 designs, 15,312 of them satin. Out of line
+by more than twice: 180 designs, which is 18 stars on every garment. Thirteen
+are 12-point (0.15 at 19, 20, 21, 22, 24, 25 mm; 0.20 at 15, 16, 17; 0.25 at
+13, 14; 0.30 at 11, 12): 13,017 to 150,937 stitches, 20 to 116 times their
+neighbours. Five are small (5 points 0.40 at 17 mm; 6 points 0.35 at 10,
+0.40 at 10 and 15, 0.45 at 15): 788 to 2,240, 2.1 to 3.6 times. At the
+ratio slider's own 1% step, left chest, 69,160 designs: 69 over twice, 44 of
+them over 10,000 stitches.
+
+**The cause, in the order the star meets it.**
+
+1. `buildQualityDesign` calls it satin. Its width as 2 x area / perimeter is
+   0.45 mm, under the 3.0 mm line. The branch guard splits the outline at
+   its two farthest points and asks whether the halves are alike and whether
+   rungs between them stay inside. A star with an even number of points
+   splits tip to opposite tip into two equal halves, and every rung's
+   midpoint falls on the axis between them. So twelve arms pass as one
+   column.
+2. `medialSatin` thins it to a skeleton (984 pixels on a 183 x 183 grid)
+   and `skeletonEdges` walks each edge from a node until the next node. A
+   node is a pixel with one neighbour, or with three arms. **Three pixels
+   that all touch each other are none of them a node.** A walk that steps in
+   among them with nothing unwalked ahead takes the first neighbour that is
+   not the one it came from, and goes round. The loop is
+   `while (guard++ < w * h)`, and the guard was all that stopped it: eight
+   edges came back with 33,491 points each, over 6 to 64 pixels.
+3. `ringToSpines` sorts edges longest first and keeps 24. All eight were
+   kept.
+4. `railSatinFromSpine` smooths a spine with three passes of a three-point
+   average and lays a cross every 0.4 mm. Four of the eight went round THREE
+   pixels, and a three-point average of a three-pixel circle is its centre:
+   those spines had no length and sewed nothing. The other four shuttled
+   along a run of nine pixels and more, which the smoothing does not fold: a
+   spine 4.16 m long each, 11,992 to 12,006 points each, 47,986 of the
+   design's 48,666.
+
+**Why 20 mm and not 12 or 30.** At 12 mm no walk reaches the guard. At
+30 mm three edges do, all on three-pixel circles, all folded: that star
+sewed 1,377 stitches where it now sews 1,401. Of the 1,684 star rings in
+the sweep that reach satin, **432 had a walk at the guard** (the ring scan
+too, on 77 of them). In 13 a spine survived the smoothing, 1.0 to 4.8 m of
+it, and those are the thirteen stars above. On the 6-point 0.40 star at 10
+and 15 mm it was the ring scan's walks, a lap of the arms each before they
+went round. The other 417 were out of line in nothing but time: the guard
+is a step for every grid cell, the grid is up to 260 x 260, and the designs
+that moved took a median 2.6 s to build and up to 12.3 s. The Studio
+rebuilds on every frame of a drag.
+
+The smallest skeletons that do it, found by trying every connected one to
+seven pixels: four pixels for the node walk (a line with a one-pixel hook),
+six for the ring scan (a line hooked at both ends).
+
+**The fix** is in `skeletonEdges` and nowhere else. Where a step leads
+depends on the pixel it leaves, the pixel it lands on and which pixels have
+been walked, so a step taken twice with nothing new walked in between will
+be taken for ever. `circling()` says when that has happened. A node walk
+then keeps the path it had before it first came back onto itself. A ring
+walk that will never return to its start has found no ring and lays
+nothing. A walk that ended by itself is not touched, and no number was
+added.
+
+**What moves, and nothing else.** A design moves only where a walk in it
+ran to the guard:
+
+- Stars, the sweep: 4,038 of 145,600 move, every one satin, on 432 stars.
+  None moved without a walk at the guard, and here none with one stayed
+  (not so everywhere: the re-measure below). The other 141,562 are the
+  same to the stitch, all 130,288 fills among them; no tier changes. The 130 designs over 10,000 stitches are now 1,599 at
+  most. The rest GAIN a few (median +76, at most +344): a folded edge
+  still took one of the 24 places, so a real stroke was dropped for each
+  (twelve of the 24 on the 26 mm star).
+- Stars at 1% steps, left chest: 1,747 of 69,160.
+- Bars: 329 of 4,095 on left chest (3,524 of 43,200 over ten garments and
+  down to 5 mm), every one a thin bar with round ends, whose skeleton ends
+  in the hook. A 73 x 3 mm one was sewn 72.7 x 10.3 mm, two stitches
+  leaving its end, and is now 72.4 x 3.6. No sharp-cornered bar moves, and
+  no circle or heart from 5 mm, the Studio's smallest, up.
+- The image lane, the Studio's own flatten on 20 of the `testdata` images
+  (the photographs only in part: see the end), 612 designs: 273 move, the
+  273 with a walk at the guard, and none gains a stitch. `enthusiast_logo` at four colours on left chest 3,570 to 3,309;
+  drone 17,074 to 17,027; Gaulke 11,471 to 11,363; a photograph of grass
+  109,204 to 50,024.
+- A drawn shape set to satin: a near-round 30 mm one took 39.6 s and 3,339
+  stitches, and takes 0.2 s and 130.
+
+Stitch records on the point before them, over the 4,038: 144,860 before,
+5,615 now. No walk reaches the guard on any of the 1,684 rings now, and
+the counter that says so was shown live by switching the rule off in a
+copy: 16 on the 20 mm star, as before. (It first read 0 because the line it
+is inserted beside had changed and it was never inserted. It throws now.)
+
+**The 17.1 mm is not this.** The 20 mm star is reported 17.1 x 17.1 mm
+before and after. A satin star stops short of its tips, by a median 1.2 mm
+and up to 10.8 mm across the sweep.
+
+**The independent re-measure held the fix and failed three of my
+sentences.** A separate agent, its own scripts, 34,000 designs of its own
+off my grid (half-millimetre sizes, other ratios, three garments, shapes
+down to 1 mm), 21,424 of them written to `.dst` files and read back with
+pystitch:
+
+- Held: the star's numbers to the stitch; no fill moves (0 of 6,264 files);
+  no tier changes; nothing moved without a walk at the guard, in any set;
+  no walk reaches the guard after, and its own control (the rule switched
+  off in a copy) brought 6,900 of them back in the same 1,359 designs.
+- **"A walk at the guard means the design moves" is not so.** It held for
+  every star (1,359) and every bar (746) and failed on 15 small shapes: 5
+  of 521 tiny ones and 10 of 140 hand-made ellipses had such a walk and
+  came out the same to the byte. The rule runs one way: a design moves ONLY
+  IF a walk reached the guard.
+- **"No circle or heart moves" was true from 2.5 mm.** A 1 mm circle and
+  hearts of 1.25 to 2.25 mm move; the Studio's floor is 5 mm, so the shape
+  tool cannot make them. A drawn heart set to satin moves at 17, 22 and
+  28.5 mm.
+- **"The bars that move get better" was written from two pictures.** It
+  rastered the stitches of all 726 moved bars against their outlines.
+  Thread outside the outline fell (needle points over 0.6 mm out: 215 to 6,
+  the farthest 7.0 mm to 0.7). But 60 short ones lost cover, 24 of them by
+  more than 30 points, every one 8 mm wide or less.
+
+**What it costs: the knot was covering small round shapes.** Where a
+skeleton has no node, every edge was a walk at the guard, and the knot they
+sewed covered the shape. A 6 mm near-round star sewed 377 stitches and is
+now 25, one column across itself as the 6 mm circle is (a test). Smaller is
+worse. A round-cornered 2 x 2 mm square went from 39 stitches and 99%
+covered to 4 stitches in a line and 28%, where the 2 mm circle, which never
+had such a walk, sews 13: a ring of six pixels is the only edge left, and it
+keeps `ringToSpines` from taking the longest path instead. A 2 x 4 mm one:
+118 stitches and 86% to 8 and 46%. In the shape tool's range, 5 mm and up,
+the largest are a 5.5 mm 11-point star at ratio 0.9 (88% to 52%: seven
+rings and no column) and a 6 mm 3-point one (96% to 73%); near-round shapes
+of 5 to 6.5 mm lose 4 to 13 points and bars 5.5 to 8 mm long 3 to 9. On
+nine of the
+`testdata` logos through the image lane (241 satin shapes at two sizes) the
+largest loss is 3 points, on one shape that lost four stitches in ten. I
+tried the other rule for a ring walk that never closes (keep what it walked
+over pixels nothing had walked, as an open edge): the 2 mm square came to 9
+stitches, and the 6 mm star fell from 5.2 mm across to 2.9, because an edge
+of any kind stops the longest path being taken. Not built. The cure is the
+ring's (below).
+
+**Left, measured, and larger than what was fixed.** None of it is touched:
+
+- **Rings in a shape with no hole.** Three stars are still out of line on
+  every garment (5 points 0.40 at 17 mm, x2.1; 6 points 0.35 at 10, x2.2;
+  0.45 at 15, x3.3, 1,812 stitches for about 550), and 19 at 1% steps. No
+  walk ran away. The ring scan starts on a pixel the node walks stepped
+  past, goes round arms they already laid, comes back to its start and
+  calls that a ring. 126 of the 1,684 rings have one. It is also what
+  leaves a 2 mm round shape with four stitches (above): no shape without a
+  hole has a ring in it, and an edge that is not one stops the longest path
+  being taken.
+- **Pixels laid twice.** Reading each ring's edges against its own mask:
+  a median 72 layings too many for every 100 skeleton pixels. A walk
+  prefers an unwalked pixel and takes a walked one when there is none. The
+  Python port stopped that with a consumed set (DOCTRINE 2026-09-09: "the
+  browser engine's `skeletonEdges` ... still has both cases").
+- **More than 24 edges.** 870 of the 1,684 rings; the emitter keeps 24.
+- **A stitch as long as the star.** Every satin star has a stitch over
+  3 mm. The median longest is 21.1 mm, eight in ten are over 12.1 mm (one
+  DST record) and the longest is 98.5 mm. A cross is cast from the spine
+  until it meets the outline, and from a station by the centre the outline
+  it meets is far down another arm: the 78 mm 10-point star's longest runs
+  72.5 mm, from 33 mm out on one arm to the tip of the arm opposite.
+- **A stitch as long as the bar.** 185 of the 276 sharp-cornered satin bars
+  on left chest. The spine does not stop at the bar's end: its last points
+  run down the end's own edge into a corner, the last crosses turn with
+  them, and the last of all runs the length of the bar (30.2 mm on a
+  30 x 3 mm one). Their sewn height is a median 1.6 mm over the drawn one
+  and up to 10.5 mm.
+- **Five points sit on the line.** The branch guard's ratio for a 5-point
+  star is 1.5 exactly, against a test of "over 1.5", so the last bit of a
+  float decides: at ratio 0.40 it comes out 4.4e-16 over at 13 and 14 mm
+  (fill) and at or under at 10, 11, 12, 15, 16 and 17 (satin). 50 designs
+  in the sweep have a tier that differs from the size either side.
+
+Renders of the star, the bar and three of these:
+`docs/renders/star-walk-2026-10-03/`. Besides, and nothing to do with
+satin: the Studio's flatten did not return within a minute on two
+photographs in that image run (`absorbSmallRegions` labels the whole image
+again for every speck it absorbs). The run stopped at the second, so the
+five images after it in the folder are not in it, and its photographs were
+run without background removal.
+
+Engine 709 passed, eight of them new (`test/satin-walk.test.js`; the same
+file fails six on `f887e27d`); Studio 1,587 passed. Not sewn.
+*(fixed 2026-10-03 — `skeletonEdges` in `src/satin.js`; `test/satin-walk.test.js`; `tools/satin-walk-census.mjs`; `docs/renders/star-walk-2026-10-03/README.md`)*
+
+## 2026-10-04 — The island fix after its audit: a ring too thin to be one, an island that crossed itself, a touch the sweep missed, and the time
+
+The island entry of 2026-10-03 ("A ring inside a hole is an island") was
+merged, as #613, with its first build while an independent audit of it was
+still running, and the audit failed that build three ways. From 16:11 local
+that day until this landed, `main` carried all three. (Audited, cured and
+measured on 2026-10-03; it waited a night on a conflict in this file.)
+The auditor was handed the claims as claims and read the stitches with its
+own exact arithmetic; its three re-checks then found each cure short once.
+
+**What held from the start.** No island, no change: 11,131 of its own builds
+byte-identical to the engine before #613, 213 shapes by 47 option sets among
+them. Nested rings always sew: 0 dropped of 4,812, where the engine before
+had dropped 22 of its 129 shapes and 651 of 1,500 random trees. No island's
+ring met another ring in 4,398 preset builds, and the terry moat table read
+exactly.
+
+**What did not, in the build that merged:**
+
+- **A ring with no area lying in a cut-out was FILLED.** Three points in a
+  line are wholly inside the hole, so by the count an island; grown, they
+  became a sliver, and 34 mm of fill thread was sewn in the middle of the
+  hole. Worse than before #613, on 85 of 188 such builds.
+- **An island with a slit of its own crossed ITSELF grown.** The guard asked
+  only about other rings. 92 of 1,806 builds, the ground on each bank of a
+  0.1 mm slit bare by 0.5 mm on terry. Better than before #613, and not
+  right. (An outline with such a slit has always done that, and still does.)
+- **Time, on shapes with NO island.** Every ring was tried against every
+  other: 2,025 holes cost 42 to 77 ms more, and forty 400-point cut-outs
+  with overlapping boxes went from 424 to 910 ms on the auditor's run and
+  from 61 to 473 on mine. The image lane builds through this.
+
+**The cures, and what the re-checks did to them.**
+
+- **The time.** A ring inside another has its box inside the other's, and
+  the rings are taken left to right, so a shape with no island pays nothing:
+  2,025 holes 31 / 30 / 47 ms against 28 / 30 / 47 before #613 (no fabric,
+  pique, terry; least of 30), the forty cut-outs 61 against 61.
+- **An island that would cross itself grown is sewn as drawn**, like one
+  that would meet the ring beside it. The first re-check found the test for
+  it slow where a drawing is straightest: it tried an edge against every
+  edge sharing its reach in x, the 4,000 edges of an upright wall share one,
+  and an island said in 16,000 points took 1,031 ms against 109. Both
+  meeting tests now sweep their edges along a slanted axis (two 4,000-point
+  circles 1 mm apart: 835 ms before the sweep, 23 after, 18 before #613).
+  The second re-check found the sweep could miss a touch on a wall running
+  EXACTLY across its slant, an edge's reach being a rounded number: a hole
+  touching another's wall read as an island inside it, 3 of 31,200 exact
+  touches. The reach is widened by a hair.
+- **A ring too thin to hold thread is no island.** The first cure asked for
+  an area of exactly none, and a ring a hair off a line (float area 3e-8
+  px²) was still grown and filled. The second put the line at a float, and
+  the auditor marked the spot: a ring 6 mm long and 4e-8 px wide was an
+  island still. The line is the needle's step now, 0.1 mm, against the
+  ring's area over half its perimeter; narrower, a ring is left exactly as
+  the engine before #613 left it.
+- **An island is grown from its corners said once.** A ring handed over
+  CLOSED, its first point said again, gets a wedge three compensations long
+  from the offset at that corner. The outline and the holes of such a ring
+  have always had it, and still do (older; its own task).
+
+The third re-check held all three of its claims: where rings meet, the sweep
+never answers otherwise than trying every pair would (180,000 trials, and
+21,778 more far from the origin); every ring thinner than a step lying in a
+hole is byte-identical to the engine before #613 (884 builds); and nothing
+else sewn moved.
+
+**What the rule costs, as the audit priced it:**
+
+- **Just over a step, the moat is closed in the stitches.** Drawn 1.21 or
+  1.23 mm on terry, the band's last needle point and the island's first land
+  on the same spot, row after row (0.61 and 0.63 the same). That is what the
+  compensation asks for, and what a HOLE that much wider than twice it has
+  always got. A floor under it would be a number about cloth, which no
+  sew-out has given (ROADMAP gate 1), so none is invented here.
+- **The moat table is for walls that run side by side.** The offset mitres
+  a corner, up to three times the compensation, so a pointed island is put
+  back sooner than twice (a star's tip 2.0 mm from the wall on fleece, 0.5
+  mm: put back whole, moat sewn 1.5), and where it does grow its tip is sewn
+  up to 2.7 compensations past the drawing, as an outline's always was.
+- **A ring that has to stay is sewn as drawn on every side.** One tight spot
+  takes its compensation everywhere.
+- **The thin end is a step too, and under it nothing is mended.** The width
+  that makes an island reads a hairline a little under what it is and a
+  square at half its side: a 6 mm hairline is an island from 0.102 mm wide,
+  a square from 0.2 mm across. At the line the sewn result jumps: on terry a
+  hairline 0.1016 mm wide is sewn as drawn (10 mm of thread), one 0.1017 mm
+  wide grown to 1.3 mm (104 mm). Under the line a ring is treated as it was
+  before #613, that engine's own fault included: a ring smaller than twice
+  the compensation is turned inside out by the shrink (a 0.15 mm square
+  becomes a 1.05 mm one, and 0.4 mm from its hole's wall it crosses that
+  wall). Older, the same for any tiny hole, and not touched here.
+- **With `fillColumns` on, a thin moat costs cuts.** Over 749 pairs the
+  total falls 2,837 to 2,213, but 19 rose, all moats of 0.3 to 0.6 mm, the
+  worst 1 to 7: before #613 the island's fill sat shrunk against the hole's
+  wall and the thread was carried over.
+
+**Measured**, hashes of the whole design:
+
+| | result |
+|---|---|
+| against the engine before #613 (`2d77b388`): 19,536 designs with NO island (106 shapes, 60 of them seeded, and a three-colour design; no fabric and all seven presets; 23 option sets; holes that overlap, touch, repeat or stray, rings with no area or thinner than a needle step, rings handed over closed) | all byte-identical |
+| against `main` with #613 (`f887e27d`): the same designs | 18,409 identical; the 1,127 that differ are seven shapes, each with a ring in a hole that has no area or is thinner than a needle step, under a preset: sewn again as before #613 |
+| against `main` with #613: 2,392 island designs | 1,923 identical; the 469 that differ are three shapes: an island with a slit of its own, a bullseye handed over as closed rings, and a hairline island under a needle step wide |
+| 150 seeded island shapes, 7 presets, both walks: built nothing; drawn ground with no fill thread within a row of it | 0 of 2,100; 0 of 168,000 points (before #613: 840, and 154 designs) |
+
+Eleven mutations of the fix (the old area, the old shrink, no guard, the
+hole not put back, an island that crosses itself grown anyway, a thin ring
+counted as an island, the sweep's reach not widened, depth without parity,
+one corner, every corner, the edge run's old bug) each fail a test in
+`test/digitize.test.js`. Five tests are added to #613's eight: 24 seeded
+island shapes whose drawn ground must all be sewn, and one for each thing
+above. Asked of one corner, as #606's edge run asks, 1,127 of the 19,536
+no-island designs move (686 with the flag off); the edge run still keeps its
+own test, since given this one it moved 560 flag-on designs on ten malformed
+shapes.
+
+Also found, older than #613 and left as it is: a tiny hole turned inside
+out by the shrink can cross the hole beside it (2 of 1,500 random trees).
+
+Engine 714 passed. Not sewn.
+*(fixed 2026-10-03 — `islandsAmong`, `sweptEdges`, `fillRingsOf` in `src/digitize.js`; `test/digitize.test.js`)*
 
 ## 2026-10-03 — Two stitches in one hole: the browser fill's stitches under the file's unit, and `dedupeHoles` (measured, then built OFF)
 
