@@ -21,10 +21,12 @@ SPEC_ARMS = ["per_stroke", "polygon_axis", "area_weighted",
              "design_angle", "rails_follow_edge", "wide_columns",
              "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827",
              "ref_0930am", "split_7mm", "rails_symmetric", "pro_file", "split_off",
-             "cap_recentre", "keep_counters", "bean_letters"]
+             "keep_counters", "bean_letters"]
 # `rail_comp` shipped ON 2026-09-28 and left the table (docs/kent-review-2026-09-28.md);
 # `rail_envelope` shipped ON 2026-09-30 and left it (docs/eye-pairs-2026-09-30/).
-# The last three joined 2026-10-03: the built-OFF flags waiting on Kent's eye.
+# The last two joined 2026-10-03 with `cap_recentre`, the built-OFF flags
+# waiting on Kent's eye; `cap_recentre` shipped ON off that sitting the same
+# day and left again (docs/eye-pairs-2026-10-03/).
 # `patch_junctions` left the same day with no flip of its own: it was already
 # the shipped engine (`satin_junction_stack`'s part C, ON 2026-09-19).
 SPEC_METRICS = {
@@ -686,6 +688,10 @@ def test_a_shipped_arm_is_still_named_on_an_old_sitting():
     assert "patch_junctions" not in g.ARM_INTENT
     change, intent = g.arm_intent("patch_junctions")
     assert change.startswith('satin_patch_junctions="satin"') and "shipped" in change and intent
+    # cap_recentre shipped ON 2026-10-03, off the sitting it was drawn for.
+    assert "cap_recentre" not in g.ARM_INTENT
+    change, intent = g.arm_intent("cap_recentre")
+    assert change.startswith("satin_cap_recentre=True") and "shipped" in change and intent
     assert g.arm_intent("per_stroke") == g.ARM_INTENT["per_stroke"]
     assert g.arm_intent("nope") == ("nope", "")
     assert g.arm_intent(None) == ("", "")

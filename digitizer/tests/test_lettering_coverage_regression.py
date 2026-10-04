@@ -129,6 +129,19 @@ crosses at the wordmark's junctions).
 DOCTRINE 2026-09-28 carries the measurement. The bare bar is re-pinned with that attributed
 (`BARE_BAR`), not raised quietly; the number Kent's flip bought on the
 headline is recorded in `LOST_FRAC_TODAY`.
+
+**2026-10-03: the headline moved with NO spill behind it, and that is the
+day this file learned what its alignment costs.** `satin_cap_recentre` went
+ON (Kent's flip) and the headline read 0.2573 -> 0.2819, over the bar. A
+spill guard on the flag was asked for and never built, because there was
+nothing to guard: the flag shortens this design by 0.2 mm at its right edge,
+the instrument centres the stitches before searching alignment on a 0.4 mm
+grid, and the search snapped a whole step sideways. Held at one physical
+alignment the flag reads lower every time. So the headline bar was re-pinned
+once, attributed (`LOST_FRAC_BAR`), and a second guard at a one-pixel
+alignment was added at the bottom of this file with a test that it still
+sees real spill. `tools/dropped_elements.py` records the grid as its third
+measurement bias.
 """
 from __future__ import annotations
 
@@ -149,10 +162,23 @@ WIDTH_MM = 80.0
 GARMENT = "left_chest"
 
 # Measured on the 2026-09-02 engine (e2aa965d), the last commit before the
-# rail change, on this machine: lost_frac 0.2509. The bar carries ~4% of
-# headroom over it so that ordinary churn does not flap the test, and sits
-# far below today's 0.3006 — the failure is not marginal.
-LOST_FRAC_BAR = 0.26
+# rail change, on this machine: lost_frac 0.2509. The bar carried ~4% of
+# headroom over it (0.26) so that ordinary churn does not flap the test.
+#
+# RE-PINNED ONCE, 2026-10-03, by Kent's ruling, and ATTRIBUTED rather than
+# earned: 0.26 -> 0.29. `satin_cap_recentre` went ON that day (his flip, on
+# his own sitting) and this number read 0.2573 -> 0.2819 with no spill behind
+# it. The flag shortens this design by 0.2 mm at its right end; the
+# instrument centres the thread field before it searches alignment on a
+# 0.4 mm grid, so the search snapped from (0.0, +0.4) to (+0.4, +0.4) and
+# scored the whole wordmark 0.3 mm from where it had scored it before. With
+# the alignment held physically equal the flag reads LOWER on all three
+# pairs tried: 0.2573 -> 0.2481, 0.1636 -> 0.1555, 0.1737 -> 0.1623
+# (`tools/dropped_elements.py`, measurement bias 3). The new bar is the new
+# grid reading with ~3% of headroom, and `LOST_FRAC_FINE_BAR` below is the
+# guard that does not ride on the grid.
+LOST_FRAC_BAR_BEFORE_1003 = 0.26
+LOST_FRAC_BAR = 0.29
 
 # Today's measured value, recorded so a future reader can tell a PARTIAL cure
 # from a full one rather than reading a bare pass/fail. 0.3006 was the shipped
@@ -165,6 +191,9 @@ LOST_FRAC_AFTER_0920 = 0.2748
 # rails, not the polygon. Under the bar for the first time since 768de79e --
 # and see the module docstring and `BARE_TODAY` for what it traded.
 LOST_FRAC_TODAY = 0.2565
+# 2026-10-03, `satin_cap_recentre` ON by default (Kent's flip): the grid
+# reading, and why it is not spill, are told at `LOST_FRAC_BAR` above.
+LOST_FRAC_AFTER_1003 = 0.2819
 
 
 def test_lettering_coverage_has_not_regressed_since_the_rail_change():
@@ -204,8 +233,16 @@ def test_lettering_coverage_has_not_regressed_since_the_rail_change():
         f"disagrees with its artwork over {lost_frac:.4f} of its ink against a "
         f"{LOST_FRAC_BAR} bar (the 2026-09-02 engine measured 0.2509; the "
         f"engine measured {LOST_FRAC_WHEN_WRITTEN} when this test was written, "
-        f"{LOST_FRAC_AFTER_0920} after the two 2026-09-20 fixes and "
-        f"{LOST_FRAC_TODAY} with the pull on the rails, 2026-09-29).\n"
+        f"{LOST_FRAC_AFTER_0920} after the two 2026-09-20 fixes, "
+        f"{LOST_FRAC_TODAY} with the pull on the rails, 2026-09-29, and "
+        f"{LOST_FRAC_AFTER_1003} on 2026-10-03 when a 0.2 mm change at the "
+        f"design's edge moved the instrument's 0.4 mm alignment grid -- the "
+        f"one time this bar moved, {LOST_FRAC_BAR_BEFORE_1003} -> "
+        f"{LOST_FRAC_BAR}, by Kent's ruling).\n"
+        f"BEFORE READING THIS AS SPILL, compare `widthMM` and `shift_x_mm` / "
+        f"`shift_y_mm` with the last green run: if either moved, this is the "
+        f"grid until `test_the_headline_holds_at_one_pixel_registration` "
+        f"says otherwise.\n"
         f"Bisected to 768de79e — see this module's docstring. The rails moved "
         f"onto the nearest boundary crossing to kill jitter, and the letters "
         f"now sew about 0.3 mm FATTER than drawn.\n"
@@ -275,6 +312,12 @@ def test_lettering_coverage_has_not_regressed_since_the_rail_change():
 # new reading so the NEXT unattributed narrowing still fails; the old pair
 # is kept beside it so the price stays legible. Reverting the flag gives
 # every number here back (measured OFF on the same tree, same day).
+#
+# Re-read 2026-10-03 with `satin_cap_recentre` ON (Kent's flip): overshoot
+# 0.2819, bare 6.29%, uncovered 1.91%, all inside the bars below, which do
+# not move. The overshoot and uncovered readings ride the same alignment
+# grid as the headline (told at `LOST_FRAC_BAR`); at the alignment the old
+# readings were taken at they are 0.2481 and 1.29%.
 OVERSHOOT_TODAY = 0.2565
 OVERSHOOT_BAR = 0.29
 BARE_BEFORE_RAIL_COMP = 0.0627     # and its bar was 0.068
@@ -287,14 +330,20 @@ UNCOVERED_FRAC_BAR = 0.02
 
 
 @functools.lru_cache(maxsize=1)
-def _measured():
-    """One pipeline run shared by the three guards below (~35 s).
+def _run():
+    """One pipeline run shared by the guards below (~35 s).
 
-    The xfail above deliberately keeps its OWN run: it is main's guard,
-    and a cache shared with it would couple the two.
+    The headline test above deliberately keeps its OWN run: it is main's
+    guard, and a cache shared with it would couple the two.
     """
     cfg = base_cfg(WIDTH_MM, GARMENT)
     gen, result, plan, design = digitize_once(FIXTURE, cfg)
+    return cfg, gen, result, plan, design
+
+
+@functools.lru_cache(maxsize=1)
+def _measured():
+    cfg, gen, result, plan, design = _run()
     row = features_full(FIXTURE, cfg, gen, result, plan, design)
     polys = {r.shape_id: r.polygon for r in result.regions}
     num, den = bare_area(polys, plan)
@@ -356,3 +405,75 @@ def test_the_columns_do_not_get_narrower_to_pay_for_it():
         f"before).\nSomething bought a narrower column by "
         f"dropping artwork. Read `tools/rail_edge.py enthusiast becker "
         f"--bare` and its jitter line together before concluding anything.")
+
+
+# --------------------------------------------------------------------------
+# THE SAME HEADLINE AT A ONE-PIXEL ALIGNMENT (added 2026-10-03, Kent's ruling)
+#
+# Every reading above is taken at whichever step of a 0.4 mm grid the
+# instrument's registration lands on, and that step is chosen from the CENTRE
+# of the stitches (`tools/dropped_elements.py`, measurement bias 3). So a
+# change at the design's EDGE can move the headline with no thread behind
+# it, and on 2026-10-03 one did: `satin_cap_recentre` took this design from
+# 80.5 to 80.3 mm wide and the headline from 0.2573 to 0.2819, while at every
+# physically matched alignment the flag read LOWER.
+#
+# This reads the shipped design with the search step at one pixel (0.1 mm at
+# `RES`), inside +-1.2 mm. It is NOT a truer number -- the opening still sits
+# on the pull-comp pedestal, and a one-pixel step still has neighbours
+# (0.1555 at (+0.2, +0.2), 0.1623 one pixel over) -- but a 0.2 mm change in
+# width cannot move it 0.3 mm, which is the failure it exists for. The bar
+# clears that one-pixel neighbour and little more.
+#
+# It has teeth, measured the same day on the same tree: this fixture's known
+# spill-maker, `satin_rails_follow_edge=True`, reads 0.2173 here (0.3328 on
+# the grid), and the test below pins that it still does.
+FINE_STEP_MM = 0.1
+FINE_WINDOW_MM = 1.2
+LOST_FRAC_FINE_TODAY = 0.1555
+LOST_FRAC_FINE_BEFORE_1003 = 0.1636     # `satin_cap_recentre` off, same tree
+LOST_FRAC_FINE_BAR = 0.17
+
+
+def _fine(design, monkeypatch) -> dict:
+    """`dropped_elements` on `design` with the registration search at one
+    pixel. The two constants are read by `artfidelity_self.register` at call
+    time, and `monkeypatch` puts them back."""
+    import tools.artfidelity_self as afs
+    from tools.dropped_elements import analyse_design
+
+    monkeypatch.setattr(afs, "SHIFT_STEP_MM", FINE_STEP_MM)
+    monkeypatch.setattr(afs, "SHIFT_MM", FINE_WINDOW_MM)
+    return analyse_design(FIXTURE, design)
+
+
+def test_the_headline_holds_at_one_pixel_registration(monkeypatch):
+    """The guard that does not ride on the alignment grid."""
+    fine = _fine(_run()[-1], monkeypatch)
+    assert fine["lost_frac"] <= LOST_FRAC_FINE_BAR, (
+        f"{FIXTURE.name} at {WIDTH_MM:g} mm disagrees with its artwork over "
+        f"{fine['lost_frac']:.4f} of its ink at a one-pixel registration, "
+        f"against a {LOST_FRAC_FINE_BAR} bar (reading {LOST_FRAC_FINE_TODAY} "
+        f"on 2026-10-03, {LOST_FRAC_FINE_BEFORE_1003} before "
+        f"`satin_cap_recentre` went on); aligned at "
+        f"({fine['shift_x_mm']:+.1f}, {fine['shift_y_mm']:+.1f}) mm.\n"
+        f"Unlike the headline above this cannot be moved by the 0.4 mm grid, "
+        f"so read it as SPILL: thread standing further outside the letters. "
+        f"Do NOT raise the bar to make this pass.")
+
+
+def test_the_one_pixel_guard_still_sees_spill(monkeypatch):
+    """A guard that cannot fail is not one. `satin_rails_follow_edge=True`
+    pushes each rail out to its own edge and is this fixture's measured
+    spill-maker (the headline test's docstring); at one pixel it must still
+    read over the bar, or the bar is guarding nothing."""
+    cfg = base_cfg(WIDTH_MM, GARMENT, satin_rails_follow_edge=True)
+    _gen, _result, _plan, design = digitize_once(FIXTURE, cfg)
+    fine = _fine(design, monkeypatch)
+    assert fine["lost_frac"] > LOST_FRAC_FINE_BAR + 0.02, (
+        f"`satin_rails_follow_edge=True` reads {fine['lost_frac']:.4f} at a "
+        f"one-pixel registration (0.2173 on 2026-10-03), which no longer "
+        f"clears the {LOST_FRAC_FINE_BAR} bar by a margin. Either the flag "
+        f"stopped spilling, or the fine guard stopped seeing it: find out "
+        f"which before trusting `test_the_headline_holds_at_one_pixel_"
+        f"registration` again.")

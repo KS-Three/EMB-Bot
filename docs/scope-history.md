@@ -17744,6 +17744,58 @@ again.
 Engine 668 passed. Not sewn.
 *(fixed 2026-10-03 — `islandsAmong`, `fillRingsOf` in `src/digitize.js`; `test/digitize.test.js`)*
 
+## 2026-10-03 — `satin_cap_recentre` ON by default (Kent's flip), and the guard it tripped was reading its own alignment grid
+
+Flipped on his labelled sitting of the day (`docs/eye-pairs-2026-10-03/`): 19
+pairs judged, `cap_recentre` *after* on becker and tires, the two the change
+locator boxed, *no difference* on four, *both bad* on two, *before* on none.
+Eight logos at the Studio's defaults, `main` with the crown cover on:
+84,475 -> 84,460 stitches, 455 -> 454 trims. Off against on, measured on
+Windows: `logo_whitebg`, `logo_alpha` and `bg_uncertain` identical to the
+stitch; enthusiast at 93 mm 3,149 -> 3,147, becker at 80 mm 6,563 -> 6,557, at
+100 mm 9,715 -> 9,702. No golden moved.
+
+What the flip moved in the suite: one test. CI's Linux run on the flip alone
+read 1 failed, 3,153 passed, 6 skipped, 7 xfailed in 1h15m39s, and the one was
+`test_lettering_coverage_has_not_regressed_since_the_rail_change`: enthusiast
+at 80 mm, `lost_frac` 0.2573 -> 0.2819 against a 0.26 bar. A full suite was
+not run on Kent's laptop; two other sessions each had one running.
+
+That number is not spill. The flag takes this design from 80.5 to 80.3 mm
+wide at its right end; `artfidelity_self.register` centres the stitches and
+the artwork and searches translation on a 0.4 mm grid; the centre moved
+0.1 mm and the search snapped from (0.0, +0.4) to (+0.4, +0.4). The sitting's
+kept designs, the instrument unchanged except that `register` was forced:
+
+| alignment, mm | flag off | flag on |
+|---|---|---|
+| searched on the 0.4 grid | 0.2573 at (0.0, +0.4) | 0.2819 at (+0.4, +0.4) |
+| forced, physically matched to the row above's flag-off | 0.2573 | 0.2481 |
+| searched at 0.1 (one pixel), window 1.2 | 0.1636 at (+0.1, +0.2) | 0.1555 at (+0.2, +0.2) |
+| forced, one pixel on from that | 0.1737 | 0.1623 |
+| forced (+0.4, +0.4) against its match (+0.5, +0.4) | 0.3226 | 0.3389 |
+
+The other seven logos keep their width and their alignment: on the grid
+becker 0.0229 -> 0.0230, tires 0.0784 -> 0.0799, golden_tee 0.4557 -> 0.4558,
+gaulke, bridge, drone and fremont unchanged to four places. A one-pixel
+search is not uniformly lower and is not a truer instrument (tires 0.0784 on
+the grid, 0.1018 at one pixel; fremont 0.0322 and 0.1002): it maximises IoU,
+not this number.
+
+Kent's rulings, in order: flip ON; then, with the red guard in front of him,
+a spill guard on the flag; then, with the table above, the bar re-pinned
+0.26 -> 0.29 attributed, the grid recorded as `dropped_elements`' third bias,
+and a second guard at a one-pixel alignment. That guard reads 0.1555 against
+a 0.17 bar, and `satin_rails_follow_edge=True`, the fixture's known
+spill-maker, reads 0.2173 there (0.3328 on the grid), which a test pins. The
+module's other readings on the flipped tree: overshoot 0.2819, bare 6.29%,
+uncovered 1.91%, inside bars that did not move.
+
+The session recommended the flip as nearly free on stitches and trims with
+the 0.2573 -> 0.2819 row in its own render table, and found it from CI.
+*(flipped and measured 2026-10-03 — `tests/test_satin_cap_recentre.py`,
+`tests/test_lettering_coverage_regression.py`, `tools/dropped_elements.py`)*
+
 ## 2026-10-03 — `fillColumns`: a corner lying on a scanline was a column, and was cut to (the lock-stitch audit's finding)
 
 **18 threads in 12,880 designs were a stub**: a cut, two penetrations in one
@@ -17880,3 +17932,62 @@ records; on, 3,783.
 Off, nothing moves: engine 693 passed. Not sewn. Flip is still Kent's:
 defect 52, "Waiting on Kent" 22.
 *(fixed 2026-10-03 — `test/fill.test.js` "a move of no length", `test/digitize.test.js`; `docs/renders/fill-columns-2026-10-03/README.md`, "A move of no length")*
+
+## 2026-10-03 — The corner fix's independent re-measure: the rule held, two of its claims did not, and it had already merged
+
+**It landed before its audit was read.** The corner fix (two entries up) was
+PR #616, left unarmed until its independent re-measure was in. #617 was cut
+from its branch, both were armed, and #617 merged with #616's four commits
+inside it. The re-measure had come back hours earlier, not clean, and had not
+been relayed. Nothing a customer gets moved: `fillColumns` is off. What
+moved is what `main` SAYS about it, and this entry and the render README's
+section are the correction.
+
+**What held**, on 45,416 designs of the auditor's own and a second 10,000,
+and 23,980 direct fills: flag absent and flag false identical on every one;
+a design whose passes are all plain walks identical with the flag on too
+(9,703); no column walk sews a row of no length (68,412 before); no span
+with a length left unsewn; no float over 4 mm off the cover and no design
+with more than 0.07 mm more thread past it; cuts 15,125 → 14,249, stitches
+−0.43%.
+
+**What did not:**
+
+- **"No thread is a stub."** 731 on 304 designs → 17 on 16, and 31 → 22 on
+  the second sweep; eight designs have one now and had none. Each is a row
+  WITH a length under the file's rounding step (0.44 px on the audit's own
+  comb drawn 3% narrower), alone in its column in a tatami underlay: cut to,
+  two penetrations the file rounds into one hole, cut from. My own sweep
+  went from 106 to none: it has no row that short left alone and cut to.
+- **"No design gains more than one cut."** 13 gain two to four, 15 on the
+  second sweep two to seven; fewer on 814, more on 388. Three teeth under
+  terry go from no cut to two with a stub, four teeth at 61.3° from none to
+  three. Only with a tatami underlay: none of 19,097 designs under the four
+  edge-run presets, none of 6,483 with underlay off. 330 of the 404 gained
+  cuts are on the float into a plain walk, not where I had looked.
+
+**Why a rule about one span moves a whole pass**, traced on two of the
+auditor's drawings: the walk takes the nearest column it can reach and looks
+one move ahead, and a corner of no length was somewhere it could always go
+next. Without it the order changes from the first column on. On the three
+teeth the old engine's "no cut" was a 318 px trip through the corners to the
+far corner of no length before the first row, and in the fill itself 99 mm
+of travel round the outline to seven more: 292 mm more thread for two cuts
+fewer. Better on twice as many designs as worse, and decided by nothing in
+the rule.
+
+**Also corrected:** threads of one stitch are not only fleece and terry (27
+under no preset, 8 under the cap preset, from 0.1 mm); the plain walk's
+doubled tip can have a cut either side of it, made by the builder (14 combs
+1.8 mm across); floats are 7.6% and 16.2% longer on its sweeps, and the
+reason I first gave for that was tested and is wrong (the look-ahead is
+right); and thread 0.15 to 0.22 mm off the cover rose 5.6%, inside the
+promise and nearer its edge.
+
+**Open, and not this rule's to close:** a row shorter than the file's unit
+that is cut to and cut from (the weighing of sub-0.1 mm stitches is its own
+lane), and a walk whose cut count turns on its first column.
+
+Off, nothing moves. Not sewn. Flip is still Kent's: defect 52, "Waiting on
+Kent" 22.
+*(measured 2026-10-03 — an independent agent with its own reader; five of its drawings rebuilt on `main` and given in `docs/renders/fill-columns-2026-10-03/README.md`, "A corner on a scanline")*
