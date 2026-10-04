@@ -553,8 +553,10 @@ baseline was SOUND — 38/38 rows re-scored exactly, every mover real** and
 attributed before the 2026-09-02 recapture (duplicate fixture dropped, commit
 stamped). **Recaptured 2026-10-04 at `6e0cb943`** on cloud Linux after 50
 pipeline commits: 48 of 52 rows moved, five fell a band, every mover attributed
-by bisection over the 51 trees (scope-history 10-04).
-*(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md); 2026-10-04 — scope-history)*
+by bisection over the 51 trees; the step that crosses a band line is a new
+preflight check on all five falls (#572, #573), not a stitch
+([notes](docs/scorecard-baseline-attribution-2026-10-04.md), scope-history 10-04).
+*(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md); 2026-10-04 — [notes](docs/scorecard-baseline-attribution-2026-10-04.md))*
 
 **The corpus is half-present, and its real-artwork half keeps contradicting the
 synthetics** — six of seven real customer logos route to GRADIENT at stage 0, so
