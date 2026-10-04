@@ -478,6 +478,26 @@
       const s0 = trimStart ? trim : 0, s1 = trimEnd ? L0 - trim : L0;
       if (s1 - s0 > 2 * trim) spine = subChainByArc(spine, s0, s1);
     }
+    // A FREE END RUNS OUT TO THE OUTLINE. A skeleton stops short of the end of
+    // the stroke it is the skeleton of: about half the stroke's width short of
+    // a square end, and the trim above takes a little more. Left there, a
+    // 30 mm bar is sewn 28 mm long, 1 mm of it bare at each end. So the spine
+    // is carried on from a free end, along its own direction over its last
+    // half-width, to where it meets the outline. A junction end is left alone.
+    const runOut = (atStart) => {
+      const n = spine.length; if (n < 2) return;
+      const end = atStart ? spine[0] : spine[n - 1];
+      const L = chainLength(spine), back = Math.min(L, Math.max(halfWidthPx, 1));
+      const seg = atStart ? subChainByArc(spine, 0, back) : subChainByArc(spine, L - back, L);
+      const from = atStart ? seg[seg.length - 1] : seg[0];
+      let dx = end.x - from.x, dy = end.y - from.y; const dl = Math.hypot(dx, dy); if (!(dl > EPS)) return;
+      dx /= dl; dy /= dl;
+      const hit = rayContoursHit(contours, end.x, end.y, dx, dy);
+      if (!hit) return;
+      if (atStart) spine.unshift(hit); else spine.push(hit);
+    };
+    if (trimStart) runOut(true);
+    if (trimEnd) runOut(false);
     const denom = spacingMm * pxPerMm;
     const stepPx = denom > 0 ? denom : 4;
     const spineLen = chainLength(spine);
@@ -674,6 +694,14 @@
     if (!(dim > EPS)) return { strokes: [], contours, halfWidthPx: 0 };
 
     const gscale = Math.min(1.5, 260 / dim);
+    // THE GRID'S MARGIN. `thin` never deletes a pixel on the grid's own border
+    // (its loops run 1 .. n-2), so a shape laid against a border keeps that
+    // whole row or column. The bottom and right have always had spare cells
+    // (the `+ 3` below). The top and left had none until 2026-10-04: the top
+    // row and the left column of every shape were never thinned, and a plain
+    // bar's skeleton was its top edge and its left edge, an L, not its centre
+    // line. One empty cell on those two sides, and the origin moved with it.
+    const margin = 1 / gscale; minX -= margin; minY -= margin;
     const gw = Math.ceil((maxX - minX) * gscale) + 3, gh = Math.ceil((maxY - minY) * gscale) + 3;
     // Net ribbon half-width (outer area minus counters) over total wall length.
     const netArea = Math.max(0, ringArea(ring) - holes.reduce((s, h) => s + ringArea(h), 0));

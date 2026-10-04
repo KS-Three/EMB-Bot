@@ -155,12 +155,18 @@ test("a small round shape whose ring walks all ran away is sewn once, across its
 });
 
 test("a star none of whose walks ran to the guard sews exactly what it sewed", async () => {
-  // Counts measured on origin/main at f887e27d, before the walk was touched.
-  // (Not every star beside the 20 mm one qualifies: the 30 mm one and the
-  // ratio-0.3 one had walks at the guard too, whose edges the emitter's
-  // smoothing happened to fold to a point, and those two do move.)
-  assert.strictEqual((await studioStar(12, 0.15, 12)).stitchCount, 444);
-  assert.strictEqual((await studioStar(12, 0.15, 18)).stitchCount, 713);
-  assert.strictEqual((await studioStar(12, 0.15, 23)).stitchCount, 999);
-  assert.strictEqual((await studioStar(8, 0.15, 20)).stitchCount, 592);
+  // On origin/main at f887e27d, before the walk was touched, these four sewed
+  // 444, 713, 999 and 592 stitches, and the walk fix left all four alone:
+  // that was this test. (Not every star beside the 20 mm one qualifies: the
+  // 30 mm one and the ratio-0.3 one had walks at the guard too, whose edges
+  // the emitter's smoothing happened to fold to a point, and those two do
+  // move.)
+  //
+  // The spine change of 2026-10-04 (a spare cell on the grid's top and left,
+  // and a free end run out to the outline: test/satin-spine.test.js) moves
+  // every satin star, these four with it. The counts below are theirs since.
+  assert.strictEqual((await studioStar(12, 0.15, 12)).stitchCount, 490);
+  assert.strictEqual((await studioStar(12, 0.15, 18)).stitchCount, 725);
+  assert.strictEqual((await studioStar(12, 0.15, 23)).stitchCount, 1037);
+  assert.strictEqual((await studioStar(8, 0.15, 20)).stitchCount, 602);
 });
