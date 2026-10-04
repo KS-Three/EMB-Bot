@@ -285,13 +285,6 @@
     });
   }
 
-  // A ring's corners with no point said twice running (a ring handed over
-  // closed says its first point again at the end; to within a billionth of a
-  // px, since a closing point that was computed rarely lands exactly).
-  function distinctCorners(ring) {
-    return ring.filter((p, i) => { const q = ring[(i + 1) % ring.length]; return Math.abs(p.x - q.x) > 1e-9 || Math.abs(p.y - q.y) > 1e-9; });
-  }
-
   // Offset a polygon ring by `dPx` along per-vertex OUTWARD normals (miter join).
   // outward=true grows the ring, outward=false shrinks it — correct regardless of
   // winding (signed area picks the outward sense). Miter displacement is clamped
@@ -563,27 +556,74 @@
     for (const q of ring) { if (q.x < x0) x0 = q.x; if (q.x > x1) x1 = q.x; if (q.y < y0) y0 = q.y; if (q.y > y1) y1 = q.y; }
     return { x0, y0, x1, y1 };
   }
+  // A ring's edges for the two meeting tests below, in the order a line swept
+  // across the drawing comes to them: each with its reach, `lo` to `hi`, along
+  // a SLANTED axis. Two edges that meet overlap along any axis, so an edge is
+  // tried only against the ones still under the line. Slanted, because a
+  // drawing's walls run straight up and straight across: along x, the 4,000
+  // edges of one upright wall all sit at one value, each is tried against all
+  // the rest, and an island said in that many points took half a second.
+  // `box`: only the edges that enter it.
+  //
+  // The reach is a ROUNDED number, so it is widened by a hair at both ends.
+  // A wall running exactly ACROSS the slant has every point at one place
+  // along it, and a corner touching that wall could round to just outside its
+  // reach: never tried against it, a hole touching another's wall read as an
+  // island inside it. The hair costs a few more pairs tried, and those are
+  // then judged exactly.
+  function sweptEdges(ring, box) {
+    const slant = 0.6180339887, n = ring.length, edges = [];
+    for (let i = 0; i < n; i++) {
+      const p = ring[i], q = ring[(i + 1) % n];
+      if (box && (Math.max(p.x, q.x) < box.x0 || Math.min(p.x, q.x) > box.x1 || Math.max(p.y, q.y) < box.y0 || Math.min(p.y, q.y) > box.y1)) continue;
+      const up = p.x + slant * p.y, uq = q.x + slant * q.y, hair = 1e-9 * (1 + Math.max(Math.abs(up), Math.abs(uq)));
+      edges.push({ i, p, q, lo: Math.min(up, uq) - hair, hi: Math.max(up, uq) + hair });
+    }
+    return edges.sort((e, f) => e.lo - f.lo);
+  }
   // How ring a lies against ring b: wholly "inside" it, "around" it, "apart"
   // from it, or the two "meet" (an edge of one crosses or touches an edge of
   // the other). `boxA`, `boxB`: their ringBox. Two rings can only meet inside
   // the box both reach into, so rings nowhere near each other -- the holes of
   // a badge -- cost one comparison, and only the edges that enter that box
-  // are tried against each other.
+  // are tried at all.
   function ringsLie(a, b, boxA, boxB) {
-    const x0 = Math.max(boxA.x0, boxB.x0), y0 = Math.max(boxA.y0, boxB.y0), x1 = Math.min(boxA.x1, boxB.x1), y1 = Math.min(boxA.y1, boxB.y1);
-    if (x0 > x1 || y0 > y1) return "apart";
-    const entering = (ring) => {
-      const edges = [];
-      for (let i = 0; i < ring.length; i++) {
-        const p = ring[i], q = ring[(i + 1) % ring.length];
-        if (Math.max(p.x, q.x) >= x0 && Math.min(p.x, q.x) <= x1 && Math.max(p.y, q.y) >= y0 && Math.min(p.y, q.y) <= y1) edges.push([p, q]);
-      }
-      return edges;
-    };
-    const ea = entering(a), eb = ea.length ? entering(b) : [];
-    for (const [p, q] of ea) for (const [u, v] of eb) if (segmentsMeet(p, q, u, v)) return "meet";
+    const both = { x0: Math.max(boxA.x0, boxB.x0), y0: Math.max(boxA.y0, boxB.y0), x1: Math.min(boxA.x1, boxB.x1), y1: Math.min(boxA.y1, boxB.y1) };
+    if (both.x0 > both.x1 || both.y0 > both.y1) return "apart";
+    const ea = sweptEdges(a, both), eb = ea.length ? sweptEdges(b, both) : [];
+    // the two lists merged: each edge against the other ring's edges still under the line
+    let ia = 0, ib = 0, openA = [], openB = [];
+    while (ia < ea.length || ib < eb.length) {
+      const fromA = ib >= eb.length || (ia < ea.length && ea[ia].lo <= eb[ib].lo);
+      const e = fromA ? ea[ia++] : eb[ib++];
+      const under = (fromA ? openB : openA).filter((f) => f.hi >= e.lo);
+      if (fromA) openB = under; else openA = under;
+      for (const f of under) if (segmentsMeet(e.p, e.q, f.p, f.q)) return "meet";
+      (fromA ? openA : openB).push(e);
+    }
     if (pointInPoly(a[0], b)) return "inside";
     return pointInPoly(b[0], a) ? "around" : "apart";
+  }
+  // A ring's corners with no point said twice running (a ring handed over
+  // closed says its first point again at the end; to within a billionth of a
+  // px, since a closing point that was computed rarely lands exactly).
+  function distinctCorners(ring) {
+    return ring.filter((p, i) => { const q = ring[(i + 1) % ring.length]; return Math.abs(p.x - q.x) > 1e-9 || Math.abs(p.y - q.y) > 1e-9; });
+  }
+  // Does a ring cross or touch ITSELF: two edges that are not neighbours meeting?
+  function crossesItself(ring) {
+    const pts = distinctCorners(ring), n = pts.length;
+    let open = [];
+    for (const e of sweptEdges(pts)) {
+      open = open.filter((f) => f.hi >= e.lo);
+      for (const f of open) {
+        const apart = Math.abs(e.i - f.i);
+        if (apart === 1 || apart === n - 1) continue;   // neighbours share a corner
+        if (segmentsMeet(e.p, e.q, f.p, f.q)) return true;
+      }
+      open.push(e);
+    }
+    return false;
   }
   // Which rings of a shape's `holes` are ISLANDS. `holes` carries every ring
   // inside the outline, and the fill is even-odd: a ring inside a hole is
@@ -594,22 +634,42 @@
   // -> one true/false per ring. (`groupRingsIntoShapes` hands a bullseye over
   // as the outline plus [hole, island]; so may any direct caller.)
   //
+  // A ring too THIN to hold thread is no island, whatever it lies in: three
+  // points in a line lying in a cut-out, or a hairline. `stepPx` is one step
+  // of the needle (0.1 mm, in px), and a ring narrower than that -- its area
+  // over half its perimeter -- has no ground the needle can address. Grown by
+  // a compensation it became a band a millimetre wide, sewn in the middle of
+  // the hole; left alone, it is what it always was.
+  //
   // The `fillColumns` edge run (underlayRuns) asks its own, older question, of
   // one corner of the ring. The two agree on every ring that is wholly inside
   // another, and it is left as it is so that nothing it sews moves.
-  function islandsAmong(holes) {
+  function islandsAmong(holes, stepPx) {
     const depth = holes.map(() => 0);
     if (holes.length > 1) {
       const boxes = holes.map(ringBox);
-      for (let i = 0; i < holes.length; i++) {
-        for (let j = i + 1; j < holes.length; j++) {
+      const boxed = (a, b) => a.x0 >= b.x0 && a.x1 <= b.x1 && a.y0 >= b.y0 && a.y1 <= b.y1;
+      // This is asked of EVERY shape with two rings or more, and nearly none
+      // has an island, so it has to cost nothing. The rings are taken left to
+      // right; `open` holds those begun whose box has not ended yet, and only
+      // they can hold, or lie in, the next. (Every pair against every pair,
+      // 2,025 holes cost a build 40 ms.)
+      let open = [];
+      for (const i of holes.map((_, k) => k).sort((p, q) => boxes[p].x0 - boxes[q].x0)) {
+        open = open.filter((j) => boxes[j].x1 >= boxes[i].x0);
+        for (const j of open) {
+          // A ring inside another has its box inside the other's. (Forty long
+          // cut-outs side by side, their boxes all overlapping, cost a second
+          // and more with their edges tried against each other instead.)
+          if (!boxed(boxes[i], boxes[j]) && !boxed(boxes[j], boxes[i])) continue;
           const lie = ringsLie(holes[i], holes[j], boxes[i], boxes[j]);
           if (lie === "inside") depth[i]++;
           else if (lie === "around") depth[j]++;
         }
+        open.push(i);
       }
     }
-    return depth.map((n) => n % 2 === 1);
+    return depth.map((n, i) => n % 2 === 1 && 2 * polyArea(holes[i]) / polyPerim(holes[i]) >= stepPx);
   }
 
   // Group a flat list of rings (e.g. glyph contours) into shapes with holes:
@@ -829,28 +889,30 @@
       // can't prevent. Per hole: if the inset flips signed-area sign vs
       // the original (winding inverted) or its area is ~0 (collapsed),
       // discard the offset and keep the ORIGINAL hole ring.
+      // (Every ring is moved from its corners said ONCE, the outline and a
+      // hole as much as an island: offsetRing sees to that itself.)
       const moved = holes.map((hh, i) => {
-        if (islands[i]) return offsetRing(hh, pullCompPx, true);
-        const off = offsetRing(hh, pullCompPx, false);
+        const off = offsetRing(hh, pullCompPx, islands[i]);
         const a0 = signedArea(hh), a1 = signedArea(off);
         if (Math.sign(a0) !== Math.sign(a1) || Math.abs(a1) < 1e-6) return hh;
         return off;
       });
       // An island grown and the wall of the hole round it shrunk move TOWARD
-      // each other, and so do two islands in one hole. Where the ground
-      // between them is not more than twice the compensation the two rings
-      // cross, and crossed rings are a fill sewn where neither was drawn. So,
-      // as with the thin hole above, a ring that cannot be moved is sewn AS
-      // DRAWN: an island that, grown, no longer lies against every other ring
-      // the way it was drawn; and then any hole that, shrunk, still meets
-      // such an island as drawn. (Putting a ring back never brings two
-      // together: an island put back is smaller, a hole put back is larger.)
+      // each other, and so do two islands in one hole, and the two banks of a
+      // slit in an island. Where the ground between is not more than twice
+      // the compensation the rings cross, and crossed rings are a fill sewn
+      // where neither was drawn. So, as with the thin hole above, a ring that
+      // cannot be moved is sewn AS DRAWN: an island that, grown, crosses
+      // itself or no longer lies against every other ring the way it was
+      // drawn; and then any hole that, shrunk, still meets such an island as
+      // drawn. (Putting a ring back never brings two together: an island put
+      // back is smaller, a hole put back is larger.)
       if (islands.some(Boolean)) {
         const all = holes.map((_, i) => i), drawnBox = holes.map(ringBox), movedBox = moved.map(ringBox);
         // the rings that ring i, where it has been moved to, no longer lies against as it was drawn
         const upset = (i) => all.filter((j) => j !== i && ringsLie(moved[i], moved[j], movedBox[i], movedBox[j]) !== ringsLie(holes[i], holes[j], drawnBox[i], drawnBox[j]));
         const putBack = (i) => { moved[i] = holes[i]; movedBox[i] = drawnBox[i]; };
-        const stuck = all.filter((i) => islands[i] && upset(i).length);
+        const stuck = all.filter((i) => islands[i] && moved[i] !== holes[i] && (crossesItself(moved[i]) || upset(i).length));
         stuck.forEach(putBack);
         for (const i of stuck) upset(i).forEach(putBack);
       }
@@ -1021,10 +1083,11 @@
         // Hole floor is 3 too, for the reason in the shapes0 comment above: it was missed when the outer floor was relaxed.
         const holes = (shape.holes || []).filter((hh) => hh && hh.length >= 3);
         // An island's area is ground the shape FILLS, so it is added back, not
-        // taken off a second time: subtracted, three nested rings came to no
-        // area at all and the whole shape was dropped. (The perimeter is every
-        // ring's, island or hole.)
-        const islands = islandsAmong(holes);
+        // taken off a second time. Subtracted, nested rings could come to no
+        // area at all (three of them 4 mm apart in a 40 mm box do), and a
+        // shape with no area is dropped. (The perimeter is every ring's,
+        // island or hole.)
+        const islands = islandsAmong(holes, pxPerFinalMm / units.DST_UNITS_PER_MM);
         const outerArea = polyArea(poly), holeArea = holes.reduce((a, hh, i) => a + (islands[i] ? -polyArea(hh) : polyArea(hh)), 0);
         const area = Math.max(0, outerArea - holeArea), perim = polyPerim(poly) + holes.reduce((a, hh) => a + polyPerim(hh), 0);
         if (area <= 0 || perim <= 0) { dropOutline(poly); continue; }

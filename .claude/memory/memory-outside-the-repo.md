@@ -20,10 +20,18 @@ profile's config folder — because their project folder is named
   session rooted in EMB-Bot. Four EMB-Bot notes were there; snapshots are now
   here ([[parallel-agent-with-embot]], [[embot-browser-fill-lane-state]],
   [[embot-handover-numbers-and-stacked-branches]], [[embot-sub-unit-stitches-lane]]).
+  By the morning of 2026-10-04 there were seven: the first and last of those
+  four had moved on and were refreshed, and three were new
+  ([[embot-closed-ring-lane]], [[embot-star-walk-lane]],
+  [[build-what-was-priced]]). Kent's call that day was "review, then bring in";
+  each was read for anything a public repo should not carry, and none was found.
+  The folder's work notes are not this repo's and stay there.
 - Loose files: `.claude-work\emb-bot-bean-probe\` (8 probe renders) — copied,
   hash-verified, to `Claude Personal\Embroidery\Archive\emb-bot-bean-probe-2026-10-02\`.
 - Those sessions also do not load this repo's CLAUDE.md, settings or hooks on
-  their own (CLAUDE.md, footgun 4).
+  their own (CLAUDE.md, footgun 4). Since 2026-10-04 a global hook applies the
+  repo's shell guards to them anyway:
+  [[wrong-root-sessions-and-global-guards-2026-10-04]].
 
 **Why:** where a session is rooted is a launch habit, and only Kent changes
 it. Until he does, new notes keep landing there and the snapshots here age.
