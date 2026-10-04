@@ -53,7 +53,7 @@ climb, does not name a lane); it reaches a lane only if `$UNKNOWN` is exactly
 `.claude/worktrees`. Heredoc bodies are judged as commands, so writing a
 script that contains a lane deletion is denied (conservative, rare).
 
-**Own lane — Kent's call.** Default `allow`: a target inside a lane passes
+**Own lane — Kent's ruling 2026-10-04: `allow`.** A target inside a lane passes
 when the command runs inside that same lane (payload cwd, or a `cd` in the
 same command — a wrong-root session proves intent by `cd`-ing in first; its
 absolute-path deletes inside a lane are denied with a reason saying so). Lane

@@ -38,10 +38,10 @@
 //           cwd that neither climbs (`..`) nor names a lane: the only way
 //           that reaches a lane is a cwd that is exactly `.claude/worktrees`.
 //
-// OWN_LANE — Kent's call (PR body, 2026-10-04): what to do with a target that
+// OWN_LANE — Kent's ruling 2026-10-04 (PR #629): what to do with a target that
 // sits INSIDE a lane when the command is running inside that same lane
 // (payload cwd or a `cd` earlier in the command).
-//   'allow'      the default: a session cleaning its own lane (`rm vt.log`,
+//   'allow'      Kent's pick, the default: a session cleaning its own lane (`rm vt.log`,
 //                `rm -rf redcheck`) is routine; the lane root stays denied.
 //   'files-only' allow when the target is an existing file; deny a directory.
 //   'deny'       deny everything under .claude/worktrees/ regardless of cwd.
