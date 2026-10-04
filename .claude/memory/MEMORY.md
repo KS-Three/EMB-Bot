@@ -38,6 +38,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Does the yardstick agree with Kent's eye?](../../docs/yardstick-vs-kents-eye-2026-08-28.md) — phase-1 exit question, NOT settled (n = 6). Element COUNT matches his judgement, AREA does not
 - [The first physical stitch-out](first-physical-sewout-2026-09-01.md) — Instagram icon sewn, 6/10. Density UNSETTLED — two readings disagree 2x; quote only `tools/fill_pitch.py`
 - [Worktree add with empty var wipes cwd](worktree-add-empty-var-wipes-cwd.md) — `git worktree add` with an EMPTY path var, run inside a lane, wipes the checkout; commits survive
+- [Worktree guard judges targets](worktree-guard-judges-targets-2026-10-04.md) — the rm/mv guard resolves each verb's path (cwd, cd, VAR=, ~, /c/) and denies lane roots, other lanes, ancestors; own-lane deletes allowed (Kent 10-04); replay tool measures it
 - [Worktree venv and baselines](worktree-venv-and-baselines.md) — worktrees have NO `.venv` — run main's python, cwd in the worktree; main is NEVER a baseline
 - [The baseline was sound, and a shallow clone said otherwise](baseline-attribution-and-studio-ui-2026-09-02.md) — RETRACTED: a SHALLOW clone misattributed the capture; 38/38 rows reproduce. Check `--is-shallow-repository`
 - [Hotel Fremont fine details](hotel-fremont-fine-details-2026-09-02.md) — house angle NOT FIRING: slab serifs cancel in doubled-angle space, the 4th wrong-population case; fix is four-fold
