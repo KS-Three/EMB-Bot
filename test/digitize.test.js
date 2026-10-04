@@ -1048,8 +1048,9 @@ test("fillColumns: the re-measure's two combs are one thread each -- a pass that
   // GAINING cuts, and more than one. Neither is a float between two passes:
   // the walk itself strands a column. What a walk costs turns on its first
   // column, so a pass that comes out with a cut is walked again from the other
-  // first columns the thread can float to, and the walk with the fewest cuts
-  // is kept (fill.js, "which column first"; test/fill.test.js has it bare).
+  // first columns the thread can float to, and the better walk is kept: here,
+  // the one with no cut (fill.js, "which column first"; test/fill.test.js has
+  // it bare).
   const fabric = FABRICS.getFabric("terry_towel"), pull = fabric.pullCompMm;
   const cases = {
     // No cut before the corner fix and three after it, all inside the second
@@ -1112,6 +1113,43 @@ test("fillColumns: a comb whose second lattice pass needs the FIFTH other first 
   assert.deepStrictEqual(cutsBy(d), { all: 1, fill: 0, underlay: 1, between: 0 });
   assert.deepStrictEqual(offCoverMm(d, shape, fabric.pullCompMm, 0.15), { sewn: 0, floats: 0 });
   assert.strictEqual(floatsOffCover(d, shape, fabric.pullCompMm), 0);
+});
+
+test("fillColumns: a pass walked again is not left with a one-stitch thread for the cut it saves", () => {
+  // What the independent re-measure of "where a pass ends" found (2026-10-04).
+  // Its maze, a corridor 1.4 mm wide wound through a block 15 mm by 22 mm,
+  // under fleece. The first lattice pass comes out with three cuts; walked
+  // again it came out with two, and between them one row: a thread of two
+  // penetrations, cut to and cut from. A stitch like that holds nothing, so
+  // the cut it "saved" bought an underlay row that is as good as not sewn.
+  // A walk is judged by its cuts and by its threads of fewer than four
+  // penetrations (fill.js, "which column first"; test/fill.test.js has it bare).
+  const maze = ring([[0, 0], [41.81, 0], [41.81, 13.69], [13.69, 13.69], [13.69, 27.84], [55.96, 27.84], [55.96, 0], [125.61, 0], [125.61, 27.84], [139.76, 27.84], [139.76, 0], [153.73, 0], [153.73, 41.53], [111.92, 41.53], [111.92, 13.69], [97.77, 13.69], [97.77, 99.54], [55.96, 99.54], [55.96, 85.85], [83.8, 85.85], [83.8, 71.7], [41.81, 71.7], [41.81, 143.86], [55.96, 143.86], [55.96, 116.02], [97.77, 116.02], [97.77, 143.86], [111.92, 143.86], [111.92, 85.85], [139.76, 85.85], [139.76, 71.7], [111.92, 71.7], [111.92, 58.01], [153.73, 58.01], [153.73, 99.54], [125.61, 99.54], [125.61, 157.55], [83.8, 157.55], [83.8, 129.71], [69.65, 129.71], [69.65, 157.55], [27.84, 157.55], [27.84, 58.01], [83.8, 58.01], [83.8, 13.69], [69.65, 13.69], [69.65, 41.53], [13.69, 41.53], [13.69, 201.87], [27.84, 201.87], [27.84, 174.03], [125.61, 174.03], [125.61, 201.87], [139.76, 201.87], [139.76, 116.02], [153.73, 116.02], [153.73, 215.56], [55.96, 215.56], [55.96, 201.87], [111.92, 201.87], [111.92, 187.72], [41.81, 187.72], [41.81, 215.56], [0, 215.56]]);
+  const fleece = FABRICS.getFabric("fleece_sweatshirt");
+  for (const angleOverride of [0, 90]) {
+    const shape = { outer: maze, holes: [], angleOverride };
+    const d = drawn(shape, 153.73, { fabric: fleece });
+    const lens = threadsOf(d).map((t) => t.length), name = "the maze, rows at " + angleOverride;
+    assert.deepStrictEqual(lens.filter((n) => n < 4), [], name + ": threads " + JSON.stringify(lens));
+    assert.strictEqual(cutsBy(d).all, 3, name + ": the first walk's three, " + JSON.stringify(lens));
+    assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "underlay", "underlay", "fill"], name);
+    assert.strictEqual(floatsOffCover(d, shape, fleece.pullCompMm), 0, name);
+  }
+  // And of two walks with as many cuts, the one with fewer such threads.
+  // Eight teeth 1 mm wide and 20 mm long under terry (the corner fix's
+  // re-measure, its `pcomb-229`): seven cuts either way, and the first
+  // lattice pass kept a walk with a thread of two penetrations in it where a
+  // later walk, cut as often, has none.
+  const comb = [];
+  for (let k = 0; k < 8; k++) comb.push([16.71 * k, 278.11], [16.71 * k + 9.58, 278.11], ...(k < 7 ? [[16.71 * k + 9.58, 72.96], [16.71 * (k + 1), 72.96]] : []));
+  comb.push([126.55, 0], [0, 0]);
+  const terry = FABRICS.getFabric("terry_towel");
+  const shape = { outer: ring(comb), holes: [] };
+  const d = drawn(shape, 126.55, { fabric: terry });
+  const lens = threadsOf(d).map((t) => t.length);
+  assert.deepStrictEqual(lens.filter((n) => n < 4), [], "eight teeth: threads " + JSON.stringify(lens));
+  assert.strictEqual(cutsBy(d).all, 7, "eight teeth: " + JSON.stringify(lens));
+  assert.strictEqual(floatsOffCover(d, shape, terry.pullCompMm), 0);
 });
 
 test("buildQualityDesign: thin solid bar goes satin, branched shape goes fill", () => {

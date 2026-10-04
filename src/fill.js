@@ -400,6 +400,7 @@
   const RING_TRIES = 8;   // how many of the nearest starts are tried round a ring
   const START_TRIES = 8;  // how many of the nearest corners a pass may start from
   const FIRST_TRIES = 8;  // how many other first columns a walk that comes out cut is walked from
+  const SHORT_THREAD = 4; // a thread of fewer penetrations than this, a cut at each end, holds nothing
   function sewColumns(cols, above, geo, o) {
     if (!cols.length) return [];   // every span of the pass was a point (spansWithLength)
     const edges = geo.edges, maxStitch = o.maxStitch, tol = o.tol, pitch = o.pitch, cosP = o.cosP, sinP = o.sinP;
@@ -782,9 +783,10 @@
 
     // ONE WALK of the pass. `given`: the start to take, one of `starts` that
     // the thread can float to. Given none, the walk takes its own, as above.
-    // -> { out, cuts, began }: the points; the cuts they cost, the caller's
-    // on the float in and on the float out among them; and the start taken,
-    // if it was one the thread can float to.
+    // -> { out, cuts, short, began }: the points; the cuts they cost, the
+    // caller's on the float in and on the float out among them; the threads
+    // between two of the walk's own cuts that are too short to hold; and the
+    // start taken, if it was one the thread can float to.
     const sewFrom = (given) => {
       remaining = cols.map((_, i) => i);   // creation order: highest first, then leftmost
       out = [];
@@ -883,7 +885,16 @@
         if (way) sewAlong(cur, way.route); else cuts++;   // the caller's, on the float out
       }
       if (o.from && o.clear && !o.clear(o.from, entered)) cuts++;   // the caller's, on the float in
-      return { out, cuts, began: hit };
+      // Its threads that are too short to hold: the ones between two of its
+      // own cuts. (Its first thread joins whatever was sewn before the pass,
+      // and its last whatever is sewn after.)
+      let short = 0, n = -1;   // n: the penetrations since the walk's last cut; -1 before its first
+      for (const p of out) {
+        if (!p.trim) { if (n >= 0) n++; continue; }
+        if (n >= 0 && n < SHORT_THREAD) short++;
+        n = 0;
+      }
+      return { out, cuts, short, began: hit };
     };
 
     // WHICH COLUMN FIRST. The walk is greedy: the nearest column it can
@@ -895,11 +906,27 @@
     // own designs). So a walk that comes out with a cut -- inside it, on the
     // float in, or on the float out -- is walked AGAIN from each of the other
     // first columns the thread can float to, nearest first, FIRST_TRIES of
-    // them at most, and the walk with the fewest cuts is kept: the first of
-    // them, on a tie. A walk with no cut is the walk it always was, and so is
-    // a pass told nothing of where the thread is. (Why eight: on 9,084
-    // designs four tries leave 18 cuts, on three combs, that eight do not;
-    // and with no limit at all not one design differs.)
+    // them at most, and the better walk is kept.
+    //
+    // BETTER is by two counts: a walk's cuts, and its threads of fewer than
+    // SHORT_THREAD penetrations between two of them. Such a thread is a row
+    // or two with a cut at each end. It holds nothing, so the row is as good
+    // as not sewn and the cuts that fence it bought nothing: a walk that
+    // saves a cut by stranding one more row has saved none. (By cuts alone,
+    // 3 of 9,860 mazes, spirals and islands lost a cut and gained a thread of
+    // two penetrations: this rule's own re-measure, 2026-10-04.) A later walk
+    // takes the place of the best so far if it has fewer cuts and no more
+    // such threads, or as many cuts and fewer such threads. Otherwise the
+    // earlier one stands: on a tie, the first. A walk with no cut is the walk
+    // it always was, and so is a pass told nothing of where the thread is.
+    //
+    // (Why eight: on 9,084 designs four tries leave 18 cuts, on three combs,
+    // that eight do not, and with no limit at all not one of them differs.
+    // Eight are NOT enough for a comb of 24 teeth or more -- the walks that
+    // do it begin at an end of the pass, which is far down a list that is
+    // nearest first -- and a pass that stays cut is walked nine times for
+    // nothing: both in docs/renders/fill-columns-2026-10-03, "what it
+    // leaves".)
     let best = sewFrom(null);
     if (best.cuts && starts) {
       const way = (c) => (c.deps === above ? "d" : "u") + c.ci;   // a first column, and whether the walk runs down or up
@@ -909,7 +936,7 @@
         if (tried.has(way(c)) || !reaches(c.ci, c.j)) continue;
         tried.add(way(c));
         const again = sewFrom(c);
-        if (again.cuts < best.cuts) best = again;
+        if (again.cuts < best.cuts ? again.short <= best.short : again.cuts === best.cuts && again.short < best.short) best = again;
         if (!best.cuts || ++tries === FIRST_TRIES) break;
       }
     }

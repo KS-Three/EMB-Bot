@@ -734,8 +734,9 @@ test("columns: a walk that comes out cut is walked again from the other first co
   // them: the corner fix, on its re-measure's own designs.) So a walk that
   // comes out with a cut -- inside it, on the float in, or on the float out
   // -- is walked again from each of the other first columns the thread can
-  // float to, nearest first, and the walk with the fewest cuts is kept: the
-  // first of them, on a tie.
+  // float to, nearest first, and the better walk is kept: the one with fewer
+  // cuts here, and the first on a tie. (What else a walk is judged by: the
+  // three tests after the spiral's, below.)
   const P = ([x, y]) => ({ x, y });
   const threads = (pts) => { const t = [0]; for (const p of pts) { if (p.trim) t.push(0); if (!p.travel) t[t.length - 1]++; } return t; };
 
@@ -846,6 +847,137 @@ test("columns: the cut on the float out is one of the cuts a walk is judged by, 
     assert.strictEqual(floatsOffShape(walk, [SPIRAL]), 0);
     noLongStitch(walk, 40, "the spiral");
   }
+});
+
+// The penetrations of each thread of a pass. A cut of the walk ends one thread
+// and begins the next; the first joins whatever was sewn before the pass and
+// the last whatever is sewn after it, where the caller does not cut.
+const threadsIn = (pts) => { const t = [0]; for (const p of pts) { if (p.trim) t.push(0); if (!p.travel) t[t.length - 1]++; } return t; };
+
+// A maze: one corridor 1.4 mm wide wound through a block 15 mm by 22 mm (the
+// independent re-measure of "where a pass ends", 2026-10-04: its `hmaze-16`).
+// And the ground the fill covers under fleece: that outline grown by 0.5 mm.
+const MAZE = [[0, 0], [41.81, 0], [41.81, 13.69], [13.69, 13.69], [13.69, 27.84], [55.96, 27.84], [55.96, 0], [125.61, 0], [125.61, 27.84], [139.76, 27.84], [139.76, 0], [153.73, 0], [153.73, 41.53], [111.92, 41.53], [111.92, 13.69], [97.77, 13.69], [97.77, 99.54], [55.96, 99.54], [55.96, 85.85], [83.8, 85.85], [83.8, 71.7], [41.81, 71.7], [41.81, 143.86], [55.96, 143.86], [55.96, 116.02], [97.77, 116.02], [97.77, 143.86], [111.92, 143.86], [111.92, 85.85], [139.76, 85.85], [139.76, 71.7], [111.92, 71.7], [111.92, 58.01], [153.73, 58.01], [153.73, 99.54], [125.61, 99.54], [125.61, 157.55], [83.8, 157.55], [83.8, 129.71], [69.65, 129.71], [69.65, 157.55], [27.84, 157.55], [27.84, 58.01], [83.8, 58.01], [83.8, 13.69], [69.65, 13.69], [69.65, 41.53], [13.69, 41.53], [13.69, 201.87], [27.84, 201.87], [27.84, 174.03], [125.61, 174.03], [125.61, 201.87], [139.76, 201.87], [139.76, 116.02], [153.73, 116.02], [153.73, 215.56], [55.96, 215.56], [55.96, 201.87], [111.92, 201.87], [111.92, 187.72], [41.81, 187.72], [41.81, 215.56], [0, 215.56]].map(([x, y]) => ({ x, y }));
+const MAZE_COVER = [[-5, -5], [46.81, -5], [46.81, 18.69], [18.69, 18.69], [18.69, 22.84], [50.96, 22.84], [50.96, -5], [130.61, -5], [130.61, 22.84], [134.76, 22.84], [134.76, -5], [158.73, -5], [158.73, 46.53], [106.92, 46.53], [106.92, 18.69], [102.77, 18.69], [102.77, 104.54], [50.96, 104.54], [50.96, 80.85], [78.8, 80.85], [78.8, 76.7], [46.81, 76.7], [46.81, 138.86], [50.96, 138.86], [50.96, 111.02], [102.77, 111.02], [102.77, 138.86], [106.92, 138.86], [106.92, 80.85], [134.76, 80.85], [134.76, 76.7], [106.92, 76.7], [106.92, 53.01], [158.73, 53.01], [158.73, 104.54], [130.61, 104.54], [130.61, 162.55], [78.8, 162.55], [78.8, 134.71], [74.65, 134.71], [74.65, 162.55], [22.84, 162.55], [22.84, 53.01], [78.8, 53.01], [78.8, 18.69], [74.65, 18.69], [74.65, 46.53], [18.69, 46.53], [18.69, 196.87], [22.84, 196.87], [22.84, 169.03], [130.61, 169.03], [130.61, 196.87], [134.76, 196.87], [134.76, 111.02], [158.73, 111.02], [158.73, 220.56], [50.96, 220.56], [50.96, 196.87], [106.92, 196.87], [106.92, 192.72], [46.81, 192.72], [46.81, 220.56], [-5, 220.56]].map(([x, y]) => ({ x, y }));
+// Fleece's first lattice pass over it: rows 2.5 mm apart at 45 degrees, the
+// thread at the end of the edge run.
+const mazePass = (extra) => {
+  const ground = fill.openGroundTest([MAZE_COVER]);
+  const clear = (a, b) => !ground(a, b, 1.35, 0, 40);
+  const opts = Object.assign({ rowSpacing: 25, angleDeg: 45, maxStitch: 40, markConnectors: true, columns: true, openTol: 1.35, ground: [MAZE_COVER], from: { x: 2, y: 2 }, clear }, extra);
+  const pts = fill.tatamiFill([MAZE], opts);
+  assert.ok(pts.columnWalk);
+  // whichever walk is kept, nothing is traded for it
+  const rows = rowThread(pts, [MAZE], 45, 25);
+  assert.ok(rows.got >= rows.want - 1e-3 * rows.want, "rows sewn " + rows.got.toFixed(1) + " of " + rows.want.toFixed(1));
+  noLongStitch(pts, opts.maxStitch, "the maze");
+  assert.strictEqual(floatsOffShape(pts, [MAZE_COVER]), 0);
+  return pts;
+};
+
+test("columns: a walk with a cut fewer is not kept if it has a thread of fewer than four penetrations more", () => {
+  // Walked from the nearest first column the pass is cut three times: threads
+  // of 102, 35, 4 and 6 penetrations. Walked again from another it is cut
+  // twice -- and between those two cuts lies ONE row 1.1 mm long: threads of
+  // 143, 2 and 2. A thread of two penetrations is a stitch with a cut at each
+  // end. It holds nothing; the row it was to sew is as good as not sewn, and
+  // the two cuts that fence it are no cut saved. (The re-measure found it: of
+  // 2,000 mazes and spirals, 2 had lost a cut and gained such a thread.) So a
+  // walk is judged by its cuts AND by the threads of fewer than four
+  // penetrations between two of them, and a later walk is kept only if it is
+  // worse in neither.
+  const short = (pts) => threadsIn(pts).slice(1, -1).filter((n) => n < 4);
+  {
+    const pts = mazePass();
+    assert.deepStrictEqual(short(pts), [], "threads " + JSON.stringify(threadsIn(pts)));
+    assert.strictEqual(cutsOf(pts), 3, "the first walk's three: " + JSON.stringify(threadsIn(pts)));
+  }
+  // FEWER THAN FOUR. With a stitch of 1 mm at most that row is two stitches,
+  // and the thread three penetrations: not kept either. (The budget of a way
+  // round is five stitches; held at what it was, so that the walks are the
+  // same walks.)
+  {
+    const pts = mazePass({ maxStitch: 10, travelBudget: 200 });
+    assert.deepStrictEqual(short(pts), [], "threads " + JSON.stringify(threadsIn(pts)));
+    assert.strictEqual(cutsOf(pts), 3, "threads " + JSON.stringify(threadsIn(pts)));
+  }
+  // And with a stitch of 0.5 mm it is three stitches, four penetrations: a
+  // thread that is not counted, and the walk with the cut fewer is kept.
+  {
+    const pts = mazePass({ maxStitch: 5, travelBudget: 200 });
+    assert.strictEqual(cutsOf(pts), 2, "threads " + JSON.stringify(threadsIn(pts)));
+    assert.deepStrictEqual(threadsIn(pts).slice(1, -1), [4]);
+  }
+});
+
+test("columns: a pass's first thread and its last are not counted, however short: they join what is sewn before and after", () => {
+  // The threads counted are the ones between two cuts of the walk. Its last
+  // thread runs on into whatever is sewn next, by a float the caller cuts or
+  // does not, which the walk cannot know; and its first comes from whatever
+  // was sewn before.
+  //
+  // The maze, the thread at (0.2, 14.6) mm. The first walk is cut three times
+  // and ENDS with a thread of two penetrations: 60, 56, 64 and 2. A later one
+  // is cut three times and ends with six: 102, 35, 4 and 6. Neither has a
+  // short thread between two cuts, so they tie and the first is kept.
+  // (Counted, that last thread made things worse where it was measured: of
+  // 2,172 mazes, spirals and islands whose walks are walked again, 22 came
+  // out differently, with 9 more threads of fewer than four penetrations
+  // among them and as many cuts.)
+  {
+    const pts = mazePass({ from: { x: 2, y: 146 } });
+    assert.deepStrictEqual(threadsIn(pts), [60, 56, 64, 2]);
+  }
+  // A band 5 to 6 mm wide folded five times, the slits between its folds
+  // 1.2 mm (the re-measure's `hsnake-30`), and the cap preset's zigzag: rows
+  // 2 mm apart at 225 degrees, the ground the fill covers 0.4 mm wider. The
+  // first walk BEGINS with a thread of two penetrations, which the float in
+  // joins to the edge run before it, and is cut once: 2 and 414. Another is
+  // cut once as well: 208 and 248. A tie, and the first is kept.
+  {
+    const P = ([x, y]) => ({ x, y });
+    const snake = [[0, 0], [660.71, 0], [660.71, 108.63], [107.51, 108.63], [107.51, 120.94], [660.71, 120.94], [660.71, 229.57], [107.51, 229.57], [107.51, 241.88], [660.71, 241.88], [660.71, 290.04], [0, 290.04], [0, 181.41], [553.2, 181.41], [553.2, 169.1], [0, 169.1], [0, 60.47], [553.2, 60.47], [553.2, 48.16], [0, 48.16]].map(P);
+    const cover = [[-4, -4], [664.71, -4], [664.71, 112.63], [111.51, 112.63], [111.51, 116.94], [664.71, 116.94], [664.71, 233.57], [111.51, 233.57], [111.51, 237.88], [664.71, 237.88], [664.71, 294.04], [-4, 294.04], [-4, 177.41], [549.2, 177.41], [549.2, 173.1], [-4, 173.1], [-4, 56.47], [549.2, 56.47], [549.2, 52.16], [-4, 52.16]].map(P);
+    const ground = fill.openGroundTest([cover]);
+    const clear = (a, b) => !ground(a, b, 1.5, 0, 40);
+    const from = { x: 2, y: 2 };
+    const pts = fill.tatamiFill([snake], { rowSpacing: 20, angleDeg: 225, maxStitch: 40, markConnectors: true, columns: true, openTol: 1.5, ground: [cover], from, clear });
+    assert.ok(pts.columnWalk);
+    assert.deepStrictEqual(threadsIn(pts), [2, 414]);
+    assert.ok(clear(from, pts[0]), "the float in is not cut: those two penetrations are the edge run's thread, at " + at(pts[0]));
+    const rows = rowThread(pts, [snake], 225, 20);
+    assert.ok(rows.got >= rows.want - 1e-3 * rows.want, "rows sewn " + rows.got.toFixed(1) + " of " + rows.want.toFixed(1));
+    noLongStitch(pts, 40, "the band");
+    assert.strictEqual(floatsOffShape(pts, [cover]), 0);
+  }
+});
+
+test("columns: of two walks with as many cuts, the one with fewer threads of fewer than four penetrations is kept", () => {
+  // Six teeth 0.8 mm wide and 16 mm long on a spine, 0.9 mm apart: terry's
+  // second lattice pass, rows 2.5 mm apart at 45 degrees (the corner fix's
+  // re-measure: its `pcomb-280`). Walked from the nearest first column it is
+  // cut seven times. Walked again, the first walk that does better is cut
+  // three times and has a row of two penetrations between two of its cuts:
+  // threads of 63, 15, 2 and 15. A later one is cut three times as well and
+  // has none: 15, 33, 18 and 8. Counting cuts alone the two tie and the first
+  // was kept. A walk with as many cuts and fewer such threads is the better.
+  const P = ([x, y]) => ({ x, y });
+  const comb = [[0, 222.24], [8.1, 222.24], [8.1, 63.63], [16.74, 63.63], [16.74, 222.24], [24.84, 222.24], [24.84, 63.63], [33.48, 63.63], [33.48, 222.24], [41.58, 222.24], [41.58, 63.63], [50.22, 63.63], [50.22, 222.24], [58.32, 222.24], [58.32, 63.63], [66.96, 63.63], [66.96, 222.24], [75.06, 222.24], [75.06, 63.63], [83.7, 63.63], [83.7, 222.24], [91.8, 222.24], [91.8, 0], [0, 0]].map(P);
+  // the ground the fill covers under terry: that outline grown by 0.6 mm
+  const cover = [[-6, 228.24], [14.1, 228.24], [14.1, 69.63], [10.74, 69.63], [10.74, 228.24], [30.84, 228.24], [30.84, 69.63], [27.48, 69.63], [27.48, 228.24], [47.58, 228.24], [47.58, 69.63], [44.22, 69.63], [44.22, 228.24], [64.32, 228.24], [64.32, 69.63], [60.96, 69.63], [60.96, 228.24], [81.06, 228.24], [81.06, 69.63], [77.7, 69.63], [77.7, 228.24], [97.8, 228.24], [97.8, -6], [-6, -6]].map(P);
+  const ground = fill.openGroundTest([cover]);
+  const clear = (a, b) => !ground(a, b, 1.275, 0, 40);
+  const from = { x: 91.8, y: 150 };
+  const pts = fill.tatamiFill([comb], { rowSpacing: 25, angleDeg: 45, maxStitch: 40, markConnectors: true, columns: true, openTol: 1.275, ground: [cover], from, clear });
+  assert.ok(pts.columnWalk);
+  assert.strictEqual(cutsOf(pts), 3, "threads " + JSON.stringify(threadsIn(pts)));
+  assert.deepStrictEqual(threadsIn(pts).slice(1, -1).filter((n) => n < 4), [], "threads " + JSON.stringify(threadsIn(pts)));
+  assert.ok(clear(from, pts[0]), "the pass begins where the thread can float to, at " + at(pts[0]));
+  // nothing was traded for it: every row sewn, no stitch too long, no thread in the gaps between the teeth
+  const rows = rowThread(pts, [comb], 45, 25);
+  assert.ok(rows.got >= rows.want - 1e-3 * rows.want, "rows sewn " + rows.got.toFixed(1) + " of " + rows.want.toFixed(1));
+  noLongStitch(pts, 40, "six teeth");
+  assert.strictEqual(floatsOffShape(pts, [cover]), 0);
 });
 
 test("columns: the run to a strip's far end is laid BEFORE the strip, under its own row ends", () => {
