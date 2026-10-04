@@ -264,16 +264,14 @@ one concealed it; entry 2 is a flag that LEFT this list unnoticed for two weeks.
    read `garment_id` for ORDER; the browser engine did. **DO NOT FLIP:**
    only the cost is measured, and it is heavy. *(measured 2026-09-19 — DOCTRINE)*
 
-5. **`satin_cap_recentre` — built OFF 2026-09-22, and it is a flip waiting on
-   a call, not a parked idea.** A free end whose spine tail is a surviving CAP
-   FORK is cut at the kink and rebuilt square: today, on a stem with one edge
-   leaning three degrees, one fork survives the pruner, the column tapers to a
-   point at that corner and the other corner sews **1.11 mm bare**. Found from
-   the OUTLINE side (`edge_wobble`'s `unsewn`: Becker, **32.6 mm** of outline
-   with no thread within 0.5 mm). The cause-side twin of
-   `satin_rails_follow_edge`, which reaches the same corners by roughening the
-   rails and is measured NOT the lever. False is byte-identical.
-   *(confirmed 2026-09-29 — `config.py:1260`; numbers DOCTRINE 2026-09-19)*
+5. **`satin_cap_recentre` — ON since 2026-10-03 (Kent's flip, on his labelled
+   sitting); it left this list and keeps its number.** A free end whose spine
+   tail is a surviving CAP FORK is cut at the kink and rebuilt square, where
+   on a stem with one edge leaning three degrees the column tapered to a point
+   at one corner and left the other bare. The cause-side twin of
+   `satin_rails_follow_edge`. Small by its own record, and a wash on the flat
+   end of a curved column. False is the pre-flip engine, byte for byte.
+   *(flipped 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`; numbers DOCTRINE 2026-09-19)*
 
 *(added 2026-08-17 — `docs/project-review-2026-08-16.md` §1.6: chaining was absent
 here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
@@ -373,14 +371,11 @@ about the facts.
 
 18. **OPEN: a COLD photo digitize is ~90 s and `fill_travel_under_cover` is ~58% of it.** The 2026-09-17 memo fixed the RE-stitch (79.3 → 44.6 s); the first digitize still pays the flag in full. Three ways out, all Kent's: flip it off (costs stitches, re-exposes the travel it hides), optimise `_reorder_for_cover` (golden-pinned — a win must be byte-identical), or accept it. **Do not re-derive the numbers** — method, noise floor, per-flag table and three INERT flags are in the doc. *(measured 2026-09-17 — `docs/flag-runtime-bills-2026-09-12.md`)*
 
-19. **One built-OFF satin flag is waiting on a call: `satin_cap_recentre`**
-   (the surviving cap fork — Latent 5, built 2026-09-22). **Judged 2026-10-03,
-   not yet ruled:** after on becker and tires, the two logos where it shows;
-   no difference on four, both bad on two, before on none. The flip is Kent's.
-   `satin_patch_junctions = "satin"` is NOT waiting: `satin_junction_stack` has
-   sewn that cover as its part C since 2026-09-19, so off and on are one design
-   (8 of 8 logos identical). `satin_walk_cursor_reach_mm` stays parked for cloth
-   (Kent 2026-09-20). *(confirmed 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`)*
+19. **RESOLVED 2026-10-03 — `satin_cap_recentre` is ON** (Kent's ruling in chat,
+   on his sitting: after on becker and tires, before on none; Latent 5).
+   `satin_patch_junctions = "satin"` was never waiting — the junction stack's
+   part C since 2026-09-19 — and `satin_walk_cursor_reach_mm` stays parked for
+   cloth (Kent 2026-09-20). *(flipped 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`)*
 
 20. **Paired ground truth costs money or it does not exist.** No free source
    ships artwork PLUS a professional's stitch file of the same design, and the
