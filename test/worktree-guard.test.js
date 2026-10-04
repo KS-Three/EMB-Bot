@@ -69,6 +69,31 @@ const CASES = [
   ["fp: sudo rm of /tmp while echoing the worktrees path",
     "Bash", GB, `sudo rm -rf /tmp/foo && echo .claude/worktrees/`, false],
 
+  // ---- the three shapes the 2026-10-04 replay over real transcripts left
+  // (issue #633): a modifier on a known variable, an assignment on the same
+  // line as `do`/`then`, and commit-message prose in a heredoc. Every real
+  // instance targeted the session's scratchpad.
+  ["fp A: ${S:?}/${d:?} over scratch dirs, the lane named for a later find",
+    "Bash", WRONG_ROOT, `S="/c/Users/EE-LT-11030/AppData/Local/Temp/claude/scratchpad"; for d in src-noside src-norim; do rm -r "\${S:?}/\${d:?}/fonts"; done; find "${LANE}/src/fonts" -type f | wc -l`, false],
+  ["fp A: ${S:-/tmp}/x with S set in the same command",
+    "Bash", WRONG_ROOT, `S="/c/Users/EE-LT-11030/AppData/Local/Temp/claude/scratchpad"; cd "${LANE}" && rm -rf "\${S:-/tmp}/x"`, false],
+  ["fp A: ${HOME:?} comes from the hook's own environment",
+    "Bash", WRONG_ROOT, `cd "${LANE}" && rm -rf "\${HOME:?}/scratch/x"`, false],
+  ["fp A+B: ${pr%%:*} from a loop value, d assigned after do",
+    "Bash", WRONG_ROOT, `cd "${LANE}" && W="/c/Users/EE-LT-11030/AppData/Local/Temp/claude/scratchpad" && for pr in 620:claude/a 621:claude/b; do n=\${pr%%:*}; b=\${pr##*:}; d="$W/union-$n"; rm -rf "$d"; mkdir -p "$d/src"; done`, false],
+  ["fp B: an assignment after then",
+    "Bash", WRONG_ROOT, `W="/c/Users/EE-LT-11030/AppData/Local/Temp/claude/scratchpad"; cd "${LANE}" && if true; then d="$W/x"; rm -rf "$d"; fi`, false],
+  ["fp C: a commit-message heredoc whose line begins with 'move ('",
+    "Bash", WRONG_ROOT, `cd "${LANE}" && git add a.js && git commit -q -F - <<'EOF'\nRecords for the walk\n\nmove (4,038 of 145,600 swept stars, 329 of 4,095 bars, 273 of 612\nimage-lane designs) and what was measured\nEOF\ngit log --oneline -1`, false],
+  // ---- and the rails those fixes must not loosen --------------------------
+  ["tp: ${L:?} resolves to the lane it names", "Bash", GB, `L="${LANE}"; rm -rf "\${L:?}"`, true, "lane root"],
+  ["tp: an unknown variable keeps failing closed even with a default word", "Bash", GB, `cd "${LANE}" && rm -rf "\${OUT:-/tmp/x}"`, true, "failing closed"],
+  ["tp: a trim that lands on the lane root", "Bash", GB, `P="${LANE}/sub/dir"; rm -rf "\${P%/sub/*}"`, true, "lane root"],
+  ["tp: a bracket pattern in a trim stays unresolvable", "Bash", GB, `P="/tmp/x"; cd "${LANE}" && rm -rf "\${P%%[/]x}"`, true, "failing closed"],
+  ["tp: a lane root assigned after do", "Bash", GB, `L="${LANE}"; for i in 1; do d="$L"; rm -rf "$d"; done`, true, "lane root"],
+  ["tp: a heredoc line with a real $OUT still fails closed", "Bash", GB, `cd "${LANE}" && cat > run.sh <<'EOF'\nrm -rf "$OUT"\nEOF`, true, "failing closed"],
+  ["tp: a heredoc fed to bash that deletes a lane", "Bash", GB, `bash <<'EOF'\nrm -rf "${LANE}"\nEOF`, true, "lane root"],
+
   // ---- true positives: the lane itself -----------------------------------
   ["tp: rm -rf of a lane by absolute Git Bash path", "Bash", GB, `rm -rf "${LANE}"`, true, "manual-holes"],
   ["tp: rm -rf of a lane by relative path from the primary", "Bash", WIN, `rm -rf .claude/worktrees/manual-holes`, true, "lane root"],

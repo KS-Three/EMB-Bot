@@ -19,8 +19,13 @@
 //   paths   resolved against the effective cwd: the hook payload's `cwd`,
 //           updated by `cd`/`pushd`/`Set-Location` and `git -C` earlier in the
 //           same command; `VAR=…`, `export`, `$name = …`, `for v in …` earlier
-//           in the command; `~`, `$HOME`, `$PWD`, `$env:X` and the hook's own
-//           environment; Git Bash `/c/…`, WSL `/mnt/c/…`, `C:\…`, globs.
+//           in the command (an assignment after `do`/`then` included); `~`,
+//           `$HOME`, `$PWD`, `$env:X` and the hook's own environment; Git Bash
+//           `/c/…`, WSL `/mnt/c/…`, `C:\…`, globs. `${X:?}`, `${X:-w}`, `${X:=w}`
+//           read as X when X is known; `${X%%pat}`/`${X##pat}` trim a known X
+//           by a plain glob; every other `${…}` form stays unresolvable.
+//           Heredoc body lines are judged as commands, but a target there
+//           that begins with `(` is prose (a commit message), not a path.
 //   deny    (1) the `.claude/worktrees` directory itself or a glob over it;
 //           (2) a lane root (`.claude/worktrees/<name>`), or `rm -rf .`/`*`
 //               inside one;
@@ -150,10 +155,10 @@ function lex(text, dialect, out) {
   // Commands found inside `$(…)`, backticks, PS subexpressions and heredoc
   // bodies run in their own scope: a `cd` or assignment there never reaches
   // the enclosing command's cwd or variables.
-  const nested = (inner) => {
-    out.push({ type: 'open' });
+  const nested = (inner, heredoc) => {
+    out.push(heredoc ? { type: 'open', heredoc: true } : { type: 'open' });
     lex(inner, dialect, out);
-    out.push({ type: 'close' });
+    out.push(heredoc ? { type: 'close', heredoc: true } : { type: 'close' });
   };
 
   const readVar = () => {
@@ -162,9 +167,15 @@ function lex(text, dialect, out) {
     if (text[i] === '{') {
       i++;
       const inner = readBalanced('{', '}');
-      m = /^([A-Za-z_][A-Za-z0-9_:]*)/.exec(inner);
-      if (m && /^[A-Za-z_][A-Za-z0-9_:]*(:[-=?+].*|)$/.test(inner)) push({ var: m[1], raw: '${' + inner + '}' });
-      else push({ sub: true, raw: '${' + inner + '}' });
+      const raw = '${' + inner + '}';
+      // a bash name, or a PowerShell scope:name (`env:PATH`, `script:x`), then any modifier
+      m = /^([A-Za-z_][A-Za-z0-9_]*(?::[A-Za-z_][A-Za-z0-9_]*)?)([\s\S]*)$/.exec(inner);
+      const rest = m ? m[2] : null;
+      if (!m) push({ sub: true, raw });
+      else if (rest === '') push({ var: m[1], raw });
+      else if (/^:?[-=?]/.test(rest)) push({ var: m[1], raw, op: rest[0] === ':' ? rest[1] : rest[0] }); // ${X:?} ${X:-w} ${X:=w}: X itself when X is known (replay 2026-10-04, shape A)
+      else if (/^(##?|%%?)/.test(rest)) { const t = /^(##?|%%?)([\s\S]*)$/.exec(rest); push({ var: m[1], raw, trim: t[1], pattern: t[2] }); } // ${X%%pat} ${X##pat}: X trimmed, when X and the pattern are plain
+      else push({ sub: true, raw }); // ${X:+w} ${X/a/b} ${X^^} ${X:1:2} ${#X} ${!X}: never resolved
       return;
     }
     if (text[i] === '(') {
@@ -191,7 +202,7 @@ function lex(text, dialect, out) {
         const line = text.slice(i, eol).replace(/\r$/, '');
         i = eol + 1;
         if (line.replace(/^\t+/, '') === delim) break;
-        nested(line); // body lines are judged as commands, one at a time, in their own scope
+        nested(line, true); // body lines are judged as commands, one at a time, in their own scope, flagged so prose can be told from a target
       }
     }
     if (i > n) i = n;
@@ -360,15 +371,42 @@ function tokenValue(tok, state) {
     if (typeof p === 'string') vals = [p];
     else if (p.home) { const h = homeDir(state.env); if (h == null) return { unresolvable: true }; vals = [h]; }
     else if (p.var) {
+      // `${X:?}`, `${X:-w}`, `${X:=w}` expand to X whenever X is set; the hook
+      // only ever substitutes a value it KNOWS, so an unknown X stays
+      // unresolvable even when a default word is written beside it — a value
+      // set in an earlier tool call must keep failing closed as before.
       const v = lookupVar(p.var, state);
       if (v === undefined || v === null) return { unresolvable: true };
       vals = Array.isArray(v) ? v : [v];
+      if (p.trim) {
+        vals = vals.map((s) => trimPattern(String(s), p.trim, p.pattern));
+        if (vals.some((s) => s === null)) return { unresolvable: true };
+      }
     } else return { unresolvable: true };
     const next = [];
     for (const t of texts) for (const v of vals) next.push(t + v);
     texts = next.slice(0, 64);
   }
   return texts.length === 1 ? { text: texts[0] } : { multi: texts };
+}
+
+// `${value%pat}` `${value%%pat}` `${value#pat}` `${value##pat}` for a plain glob
+// pattern (literal text, `*`, `?`): the shortest/longest suffix or prefix that
+// matches is removed. Anything fancier (brackets, quotes, a nested `$`) → null,
+// which the caller reads as unresolvable.
+function trimPattern(value, kind, pattern) {
+  if (/[\[\]$`\\'"{}]/.test(pattern)) return null;
+  const re = new RegExp('^(?:' + pattern.split('').map((ch) => ch === '*' ? '.*' : ch === '?' ? '.' : ch.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&')).join('') + ')$');
+  const longest = kind.length === 2;
+  const n = value.length;
+  if (kind[0] === '%') { // suffix: the earliest start is the longest suffix
+    const starts = longest ? [...Array(n + 1).keys()] : [...Array(n + 1).keys()].reverse();
+    for (const i of starts) if (re.test(value.slice(i))) return value.slice(0, i);
+    return value;
+  }
+  const ends = longest ? [...Array(n + 1).keys()].reverse() : [...Array(n + 1).keys()]; // prefix: the latest end is the longest prefix
+  for (const j of ends) if (re.test(value.slice(0, j))) return value.slice(j);
+  return value;
 }
 
 function lookupVar(name, state) {
@@ -515,6 +553,14 @@ function judgeTarget(tok, role, state, verb, findings, opts) {
   const v = tokenValue(tok, state);
   const raw = tok.raw;
   if (v.unresolvable) {
+    if (state.heredoc && state.dialect === 'bash' && raw.startsWith('(')) {
+      // A heredoc body line such as a commit message's `move (4,038 of 145,600
+      // swept stars, …)`: an unquoted `(` can never begin a bash path, so this
+      // is prose, not a target (replay 2026-10-04, shape C). `$X`, `$(…)` and
+      // backticks in a heredoc still fail closed below.
+      findings.push({ verb, raw, resolved: null, status: 'prose', deny: false, rule: null, why: null });
+      return;
+    }
     findings.push({ verb, raw, resolved: null, status: 'unresolvable', deny: state.namesWorktrees, rule: state.namesWorktrees ? 'unresolvable' : null, why: state.namesWorktrees ? `${verb} ${raw}: cannot resolve that path from this command, and the command names .claude/worktrees/ — failing closed` : null });
     return;
   }
@@ -584,6 +630,11 @@ function evalCommand(words, state, findings, dialect, depth) {
   depth = depth || 0;
   if (depth > 6 || !words.length) return;
   words = words.slice();
+
+  // bash reserved words that prefix a command: `do rm …`, `then rm …`, `if rm …`.
+  // Stripped BEFORE the assignments below, so `do d="$W/x"` registers `d`
+  // (replay 2026-10-04, shape B: it used to read as a command named `do`).
+  while (words.length && !words[0].quoted && RESERVED.has(words[0].raw)) words.shift();
 
   // leading bash assignments: NAME=value NAME2=value cmd …
   while (words.length) {
@@ -851,8 +902,8 @@ function assignFromToken(name, tok, prefixLen, state) {
 function evalItems(items, state, findings, dialect, depth) {
   const stack = [];
   for (const it of items) {
-    if (it.type === 'open') { stack.push(cloneState(state)); continue; }
-    if (it.type === 'close') { const s = stack.pop(); if (s) { state.cwd = s.cwd; state.vars = s.vars; } continue; }
+    if (it.type === 'open') { stack.push(cloneState(state)); if (it.heredoc) state.heredoc = (state.heredoc || 0) + 1; continue; }
+    if (it.type === 'close') { const s = stack.pop(); if (s) { state.cwd = s.cwd; state.vars = s.vars; } if (it.heredoc) state.heredoc = Math.max(0, (state.heredoc || 0) - 1); continue; }
     try { evalCommand(it.words, state, findings, dialect, depth); } catch (e) { findings.push({ verb: '?', raw: '?', resolved: null, status: 'error', deny: state.namesWorktrees && OLD_DESTRUCTIVE.test(state.text), rule: 'parse-error', why: 'guard could not parse this command: ' + (e && e.message) }); }
   }
 }
@@ -871,6 +922,8 @@ function judge(payload, opts) {
     vars: new Map(),
     env,
     text: cmd,
+    dialect,
+    heredoc: 0,
     namesWorktrees: WORKTREES_TEXT.test(cmd),
   };
   const findings = [];
