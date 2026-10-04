@@ -875,6 +875,101 @@ test("buildQualityDesign: two islands too near each other to grow are both sewn 
   });
 });
 
+// --- what an independent audit of the island fix found (2026-10-03) -----------
+//
+// Its claims were handed over as claims and read with the auditor's own
+// clipper. Two of the three things below are the fix reaching further than it
+// should; the third is its cost on a shape with no island at all, and has no
+// test here because it is a time (islandsAmong, the box test).
+
+test("buildQualityDesign: an island that would cross ITSELF grown is sewn as drawn", () => {
+  // An island with a slit of its own, 0.1 mm wide. Grown, the slit's two
+  // walls pass each other, and a ring that crosses itself is a fill with a
+  // gap where neither wall was drawn: on terry 0.5 mm of the island bare on
+  // each bank of the slit. (An outline with such a slit has always done that,
+  // and still does.) The guard asked only whether an island met ANOTHER ring.
+  const fabric = FABRICS.getFabric("terry_towel");
+  const slit = ring([[130, 130], [199.5, 130], [199.5, 230], [200.5, 230], [200.5, 130], [270, 130], [270, 270], [130, 270]]);
+  const shape = level({ outer: boxPx(0, 0, 400, 400), holes: [boxPx(80, 80, 320, 320), slit] });
+  bothWalks((fillColumns, walk) => {
+    const xs = fillOnMiddleRows(drawn(shape, 400, { fabric, fillColumns }), 400);
+    assert.strictEqual(lastIn(xs, 0, 100), 86, "the hole's wall, shrunk as ever" + walk);
+    assert.strictEqual(firstIn(xs, 100, 150), 130, "the island's outer edge, as drawn" + walk);
+    // (the banks are drawn at 199.5 and 200.5, and a stitch is rounded to 0.1 mm)
+    assert.ok(Math.abs(lastIn(xs, 150, 200.4) - 199.5) <= 0.5, "the slit's left bank is sewn" + walk + ": " + lastIn(xs, 150, 200.4));
+    assert.ok(Math.abs(firstIn(xs, 200.4, 250) - 200.5) <= 0.5, "and its right bank" + walk + ": " + firstIn(xs, 200.4, 250));
+    assert.strictEqual(lastIn(xs, 250, 300), 270, "the island's far edge" + walk);
+  });
+});
+
+test("buildQualityDesign: a ring with no area inside a hole is not an island to grow", () => {
+  // Three points in a line, lying in a cut-out. It is wholly inside a hole,
+  // so by the count it is an island; grown by the compensation it became a
+  // sliver 1.2 mm wide and was FILLED, in the middle of the hole. A ring with
+  // no area is no island: it is what it always was, to every reader.
+  //
+  // And "no area" is not "exactly none". The audit's re-check moved the
+  // middle point a millionth of a micron off the line, and that ring was
+  // grown and filled again: the first cure had asked for the float to be 0.
+  const fabric = FABRICS.getFabric("terry_towel");
+  for (const [name, line] of [["three points in a line", [[90, 120], [120, 120], [150, 120]]], ["a hair off the line", [[90, 120], [120, 120.000000001], [150, 120]]]]) {
+    const shape = level({ outer: boxPx(0, 0, 240, 240), holes: [boxPx(60, 60, 180, 180), ring(line)] });
+    bothWalks((fillColumns, walk) => {
+      const d = drawn(shape, 240, { fabric, fillColumns });
+      let inHole = 0;   // fill stitches more than 1 mm inside the cut-out
+      for (const run of d.runs) {
+        if (run.kind !== "fill") continue;
+        for (let i = run.i0; i <= run.i1; i++) if (d.stitches[i].type === "stitch" && Math.abs(d.stitches[i].x) < 50 && Math.abs(d.stitches[i].y) < 50) inHole++;
+      }
+      assert.strictEqual(inHole, 0, name + ": fill stitches in the cut-out" + walk);
+    });
+  }
+});
+
+test("buildQualityDesign: a ring thinner than the needle can address is no island either", () => {
+  // The second cure put "no area" at a float (1e-6 px2), and the audit marked
+  // the spot: a ring 6 mm long and 4e-8 px wide was an island still, grown to
+  // 6 x 1.2 mm and filled. The needle moves in steps of 0.1 mm. A ring
+  // narrower than one step (its area over half its perimeter) holds no thread
+  // to compensate, and is left as it always was.
+  const fabric = FABRICS.getFabric("terry_towel");
+  // 6 mm long and 0.05 mm wide: as drawn it holds one fill row at most, grown it held nine
+  const shape = level({ outer: boxPx(0, 0, 240, 240), holes: [boxPx(60, 60, 180, 180), boxPx(90, 119.75, 150, 120.25)] });
+  bothWalks((fillColumns, walk) => {
+    const d = drawn(shape, 240, { fabric, fillColumns });
+    const rows = new Set();   // the fill rows with a stitch more than 1 mm inside the cut-out
+    for (const run of d.runs) {
+      if (run.kind !== "fill") continue;
+      for (let i = run.i0; i <= run.i1; i++) if (d.stitches[i].type === "stitch" && Math.abs(d.stitches[i].x) < 50 && Math.abs(d.stitches[i].y) < 50) rows.add(d.stitches[i].y);
+    }
+    assert.ok(rows.size <= 1, "fill rows in the cut-out" + walk + ": " + rows.size);
+  });
+});
+
+test("buildQualityDesign: a hole touching another's wall is not inside it, whichever way the wall runs", () => {
+  // Rings that meet are not nested, and a corner ON a wall meets it. The
+  // meeting test sweeps its edges along a slanted axis, and the audit found
+  // the one wall that hid from it: a wall running exactly across that slant
+  // has every point at one place along it, to the last bit of a float, and a
+  // corner touching it could round to just outside. Never tried against the
+  // wall, the touching ring read as INSIDE it: an island, and both rings were
+  // sewn as drawn where both had always been shrunk (3 of 31,200 exact
+  // touches in the auditor's search). The same ring pushed a millionth of a
+  // px THROUGH the wall plainly crosses it, and has to sew the same.
+  //
+  // (Rows forced level, or the engine's own angle turns with the ring's
+  // millionth. And the old walk only: with `fillColumns` the edge run asks
+  // its own question of that one corner, and a corner on a wall is where it
+  // has no answer.)
+  const fabric = FABRICS.getFabric("terry_towel");
+  const wall = ring([[284.5494909398258, 450.4658115329221], [796.5494909398258, 450.4658115329221], [717.4411403862257, 578.4658115329221], [205.44114038622575, 578.4658115329221]]);
+  const touching = [[244.99531566302576, 514.4658115329221], [334.59531566302576, 490.1458115329221], [404.99531566302574, 514.4658115329221], [334.59531566302576, 538.7858115329221]];
+  const through = touching.map(([x, y], i) => (i === 0 ? [x - 1e-6, y] : [x, y]));
+  const build = (pts) => drawn(level({ outer: boxPx(165, 410, 837, 619), holes: [wall, ring(pts)] }), 672, { fabric, fillColumns: false });
+  assert.ok(build(through).stitchCount > 2000, "the design sews");
+  assert.deepStrictEqual(build(touching).stitches, build(through).stitches, "touching sews as crossing does");
+});
+
 test("buildQualityDesign: two holes that cross are still two holes", () => {
   // An island is a ring wholly inside a hole. Two cut-outs that overlap, or
   // one laid across the notch of another, are not that, whichever corner of
@@ -896,6 +991,79 @@ test("buildQualityDesign: two holes that cross are still two holes", () => {
     assert.strictEqual(firstIn(xs, 100, 140), 126, "across: the box's wall, shrunk" + walk);
     assert.strictEqual(lastIn(xs, 140, 200), 154, "across: the U's inner wall" + walk);
   });
+});
+
+test("buildQualityDesign: island shapes nobody chose leave no drawn ground unsewn", () => {
+  // The tests above are concentric boxes. These are seeded: an outline (a box,
+  // a round, a blob), a hole in it, and in the hole either rings nested one
+  // inside the next or two or three islands side by side, with gaps from a
+  // hair to several mm. One question, asked of the STITCHES with nothing of
+  // the engine's: is every part of the drawn ground within a row of fill
+  // thread? Shrunk, an island's rim was not; grown with no thought for the
+  // ring beside it, a hair-thin moat ate into both its banks.
+  const rnd = (seed) => { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+  const shapeOf = (seed) => {
+    const r = rnd(seed), about = (pts, k) => pts.map((p) => ({ x: 200 + (p.x - 200) * k, y: 200 + (p.y - 200) * k }));
+    const kind = r(), n = 7 + Math.floor(r() * 9);
+    const outer = kind < 0.35 ? boxPx(0, 0, 400, 400) : kind < 0.6 ? roundPx(200, 200, 200, 12 + Math.floor(r() * 36))
+      : Array.from({ length: n }, (_, i) => { const k = 0.8 + 0.2 * r(); return { x: 200 + 200 * k * Math.cos(2 * Math.PI * i / n), y: 200 + 200 * k * Math.sin(2 * Math.PI * i / n) }; });
+    // a gap, px: a third of them a hair (under any preset's compensation), a third under twice terry's, a third wide
+    const gap = () => { const u = r(); return u < 0.33 ? 1 + 2 * r() : u < 0.66 ? 6 + 6 * r() : 14 + 40 * r(); };
+    let k = 0.55 + 0.3 * r();
+    const holes = [about(outer, k)];
+    if (r() < 0.6) {
+      for (let deep = 1 + Math.floor(r() * 3); deep > 0 && k > 0.2; deep--) { k -= gap() / 200; holes.push(about(outer, k)); }
+    } else {
+      const half = 200 * k * 0.55, count = 2 + Math.floor(r() * 2), g = gap(), w = (2 * half - g * (count - 1)) / count, h = half * (0.5 + 0.8 * r());
+      for (let i = 0; i < count && w > 12; i++) {
+        const x0 = 200 - half + i * (w + g);
+        holes.push(r() < 0.5 ? boxPx(x0, 200 - h / 2, x0 + w, 200 + h / 2) : roundPx(x0 + w / 2, 200, Math.min(w, h) / 2, 8 + Math.floor(r() * 16)));
+      }
+    }
+    return { outer, holes: holes.map((ring) => (r() < 0.4 ? ring.slice().reverse() : ring)).reverse() };
+  };
+  const toSegment = (p, u, v) => {
+    const dx = v.x - u.x, dy = v.y - u.y, l2 = dx * dx + dy * dy;
+    const t = l2 ? Math.max(0, Math.min(1, ((p.x - u.x) * dx + (p.y - u.y) * dy) / l2)) : 0;
+    return Math.hypot(p.x - (u.x + t * dx), p.y - (u.y + t * dy));
+  };
+  for (let seed = 1; seed <= 24; seed++) {
+    const shape = shapeOf(seed);
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const p of shape.outer) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
+    const edges = [];
+    for (const r of [shape.outer].concat(shape.holes)) for (let i = 0; i < r.length; i++) edges.push([r[i], r[(i + 1) % r.length]]);
+    // drawn ground, on a 3 px grid, more than 0.1 mm in from every edge
+    const ground = [];
+    for (let y = y0 + 1.5; y < y1; y += 3) for (let x = x0 + 1.5; x < x1; x += 3) {
+      const p = { x, y };
+      let inside = false;
+      for (const [u, v] of edges) if ((u.y > y) !== (v.y > y) && u.x + ((y - u.y) / (v.y - u.y)) * (v.x - u.x) > x) inside = !inside;
+      if (inside && !edges.some(([u, v]) => toSegment(p, u, v) <= 1)) ground.push(p);
+    }
+    const asked = ground.filter((_, i) => i % Math.ceil(ground.length / 200) === 0);
+    for (const fabricId of ["terry_towel", "pique_knit"]) {
+      const fabric = FABRICS.getFabric(fabricId), label = "seed " + seed + ", " + fabricId;
+      // the drawing's own width, so that a px is a stitch unit as in every test here
+      const d = drawn(shape, x1 - x0, { fabric, fillColumns: false });
+      assert.strictEqual(d.shapeOutlines[0].dropped, false, label);
+      const sewn = [];
+      for (const run of d.runs) {
+        if (run.kind !== "fill") continue;
+        let prev = null;
+        for (let i = run.i0; i <= run.i1; i++) {
+          const s = d.stitches[i];
+          if (s.type === "trim") { prev = null; continue; }
+          const p = { x: s.x + (x0 + x1) / 2, y: (y0 + y1) / 2 - s.y };
+          if (s.type === "stitch" && prev) sewn.push([prev, p]);
+          prev = p;
+        }
+      }
+      const reach = 1.5 * fabric.densityAdjust + 1;   // a fill row, and a stitch's rounding
+      const bare = asked.filter((p) => !sewn.some(([u, v]) => toSegment(p, u, v) <= reach));
+      assert.strictEqual(bare.length, 0, label + ": " + bare.length + " of " + asked.length + " points of drawn ground have no fill thread within a row, the first at " + JSON.stringify(bare[0]));
+    }
+  }
 });
 
 test("fillColumns: left off, every stitch is the one it has always been", () => {

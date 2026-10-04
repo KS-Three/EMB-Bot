@@ -41,7 +41,11 @@ measurement used by most mechanical machines."
 **Why:** the engine is right on satin and 2× light on fill — that asymmetry
 explains thin-looking fills without implicating the satin work.
 
-**How to apply:** do NOT change `FILL_ROW_MM` on analysis. Block 2 of the
+**How to apply:** do NOT change `FILL_ROW_MM` on analysis. **(Superseded
+2026-09-03: Kent ruled it 0.40 → 0.15 on sew-out and pro-file evidence, and
+`machine.py` keeps the old value as `FILL_ROW_MM_BEFORE_2026_09_03`; the
+measurement above stands, the hold-at-0.40 advice does not — see
+[[fill-row-ruling-2026-09-03]].)** Block 2 of the
 existing sew-out card (`docs/sewout-card-2026-07-31.md`) tests 0.40 vs 0.20 vs
 interleaved two-pass and predates the law — it is now the decisive experiment.
 Halving the pitch and interleaving two passes at 0.40 give the same coverage but
