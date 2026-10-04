@@ -351,6 +351,8 @@ function shapeSpec(spec) {
   const part = spec.split(":"), kind = part[0];
   if (kind === "star") return { kind, params: { points: +part[1], innerRatio: +part[2] }, size: +part[3], garmentId: part[4] || "left_chest" };
   if (kind === "rect") return { kind, params: { heightMm: +part[1], cornerRadiusMm: +part[2] }, size: +part[3], garmentId: part[4] || "left_chest" };
+  // "arc:<radius>:<width>:<sweep>:<turn>" (with --satin, as the user's own choice of satin)
+  if (kind === "arc") return { kind, params: { R: +part[1], w: +part[2], turn: +part[4] || 0 }, size: +part[3], garmentId: part[5] || "left_chest" };
   return { kind, params: {}, size: +part[part.length > 3 ? 3 : 1], garmentId: (part.length > 3 ? part[4] : part[2]) || "left_chest" };
 }
 function render(E, spec, outPng) {
