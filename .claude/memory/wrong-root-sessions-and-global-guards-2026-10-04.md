@@ -21,18 +21,8 @@ eight in the family. They reached the repo by absolute path, so:
 - no project settings: none of the four PreToolUse guards, no roadmap gates
   (the global SessionStart hook walks up from the root and finds no ROADMAP.md);
 - no project CLAUDE.md unless read by hand;
-- their auto-memory went to
-  `~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, mixed with
-  work notes. Kent's call 2026-10-04: review them, then bring the EMB-Bot ones
-  in. Seven were imported that day as SNAPSHOTS, each marked as one, bodies
-  byte for byte ([[parallel-agent-with-embot]],
-  [[embot-browser-fill-lane-state]],
-  [[embot-handover-numbers-and-stacked-branches]], [[embot-closed-ring-lane]],
-  [[embot-sub-unit-stitches-lane]], [[embot-star-walk-lane]],
-  [[build-what-was-priced]]). The sources were copied, not moved: the sessions
-  that wrote them are still running and still writing there, so that folder is
-  where a newer version of any of the seven will be. The work notes stayed;
-  they are not this repo's and one holds an account identifier.
+- their auto-memory went to another project's memory folder. That half, and
+  the seven notes snapshotted in from it, is [[memory-outside-the-repo]].
 
 No damage was found: of about 3,500 shell commands none matched the replace
 guard, and three bare `git add -A .` ran inside one lane's `digitizer/`.
@@ -66,6 +56,16 @@ CLAUDE.md footgun 4 carries the numbers.
 - Editing `~/.claude/settings.json` reaches RUNNING sessions: the new hook
   fired in other sessions about twenty seconds after the edit. A broken global
   hook is therefore broken everywhere at once; pipe-test before wiring.
+
+**What this session got wrong, so the next one does not.** It asked Kent what
+to do with "five notes nobody in the repo can see" and then imported seven,
+while four of them were already snapshotted in an OPEN PR (#619, from a
+session rooted in the repo that had found the same split the day before).
+That PR merged first and the import had to be redone around it. The session
+list had been read; the open PRs' diffs had not. Before proposing to add a
+file, `git fetch` and look for it on every lane, not only on `main`:
+`git log --all --oneline -- <path>`. Same class as
+[[concurrent-session-designed-the-same-tool-2026-09-17]].
 
 **Open, not done:**
 

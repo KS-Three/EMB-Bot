@@ -2,10 +2,19 @@
 name: parallel-agent-with-embot
 description: "What Kent means by 'another agent working in parallel with the embot, no questions' — and the order of work that paid off on 2026-10-02"
 metadata:
+  node_type: memory
   type: feedback
+  originSessionId: 48764755-5f8b-4d8e-835d-f1f15e939f2e
+  modified: 2026-10-04T03:21:15.628Z
 ---
 
-*Imported 2026-10-04 as a SNAPSHOT from the memory folder of sessions rooted outside this repo (`~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, session `48764755-5f8b-4d8e-835d-f1f15e939f2e`, last written 2026-10-04T03:21:15.628Z); see [[wrong-root-sessions-and-global-guards-2026-10-04]]. The source may have moved on since. "I" below is the session that wrote it. PR states re-checked at import: #606, #611, #613, #615, #617 and #618 merged; #616 closed unmerged; #621 open.*
+> **Snapshot, first copied 2026-10-03 (evening) and refreshed 2026-10-04 (morning) from outside the repo.** Sessions rooted in
+> `C:\Users\EE-LT-11030\.claude-work` keep their memory in
+> `~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, which is not this
+> folder: nothing written there rides a PR or reaches a session rooted in EMB-Bot.
+> The original may still be edited by the session that wrote it, so check a fact here
+> before acting on it. PRs it names, at this copy: #606, #611, #613, #615, #617, #618 merged; #616 closed unmerged; #621 open.
+> See [[memory-outside-the-repo]].
 
 Kent asked (2026-10-02): "get another agent working in parallel with the embot, no questions. just read the documents and execute what's needed." "The embot" was a LIVE peer session ("Emb bot next steps", same `.claude-work` cwd) building a lane in EMB-Bot; this session was the parallel agent.
 

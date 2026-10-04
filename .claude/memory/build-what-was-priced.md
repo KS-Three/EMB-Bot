@@ -2,10 +2,19 @@
 name: build-what-was-priced
 description: "After Kent picks an option I measured and priced, build that option exactly; an \"improvement\" beyond it is a new, unpriced change"
 metadata:
+  node_type: memory
   type: feedback
+  originSessionId: 7bdbbefa-2143-4bb4-9273-639fbbfd6546
+  modified: 2026-10-04T05:32:29.532Z
 ---
 
-*Imported 2026-10-04 as a SNAPSHOT from the memory folder of sessions rooted outside this repo (`~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, session `7bdbbefa-2143-4bb4-9273-639fbbfd6546`, last written 2026-10-04T05:32:29.532Z); see [[wrong-root-sessions-and-global-guards-2026-10-04]]. The source may have moved on since. "I" below is the session that wrote it. PR states re-checked at import: #623 open, not armed.*
+> **Snapshot, copied 2026-10-04 (morning) from outside the repo.** Sessions rooted in
+> `C:\Users\EE-LT-11030\.claude-work` keep their memory in
+> `~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, which is not this
+> folder: nothing written there rides a PR or reaches a session rooted in EMB-Bot.
+> The original may still be edited by the session that wrote it, so check a fact here
+> before acting on it. PRs it names, at this copy: #623 open, not armed.
+> See [[memory-outside-the-repo]].
 
 When I put priced options to Kent and he picks one, the thing to build is the thing that was measured, no wider. This is my own lesson from 2026-10-03/04 (EMB-Bot PR #623, [[embot-sub-unit-stitches-lane]]), not something Kent said.
 

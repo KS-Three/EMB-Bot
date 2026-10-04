@@ -2,10 +2,18 @@
 name: embot-browser-fill-lane-state
 description: "State of the EMB-Bot browser-engine lane the parallel agent worked 2026-10-02/03 — PR #606 fillColumns and #609 lock stitches (merged), #611 row stagger (open, audit re-check), what waits on Kent"
 metadata:
+  node_type: memory
   type: project
+  originSessionId: 48764755-5f8b-4d8e-835d-f1f15e939f2e
+  modified: 2026-10-03T23:28:04.399Z
 ---
 
-*Imported 2026-10-04 as a SNAPSHOT from the memory folder of sessions rooted outside this repo (`~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, session `48764755-5f8b-4d8e-835d-f1f15e939f2e`, last written 2026-10-03T23:28:04.399Z); see [[wrong-root-sessions-and-global-guards-2026-10-04]]. The source may have moved on since. "I" below is the session that wrote it. PR states re-checked at import: #606, #609, #611, #613, #615, #617 and #618 merged; #616 closed unmerged; #620 open with auto-merge armed.*
+> **Snapshot, copied 2026-10-03 (evening) from outside the repo.** Sessions rooted in
+> `C:\Users\EE-LT-11030\.claude-work` keep their memory in
+> `~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, which is not this
+> folder: nothing written there rides a PR or reaches a session rooted in EMB-Bot.
+> The original was still being edited when this was taken, so check a fact here
+> before acting on it. See [[memory-outside-the-repo]].
 
 EMB-Bot (`C:\Users\EE-LT-11030\Claude Personal\EMB-Bot`, repo KS-Three/EMB-Bot, PUBLIC). The parallel agent's lane on 2026-10-02/03 was the BROWSER (JS) stitch engine, `src/fill.js` and `src/digitize.js`. See [[parallel-agent-with-embot]] for how the lane was chosen.
 

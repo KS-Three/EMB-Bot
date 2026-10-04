@@ -2,10 +2,19 @@
 name: embot-closed-ring-lane
 description: "EMB-Bot PRs #621 (offsetRing on a ring that repeats a point) and #625 (double-click gesture, stacked on it); defect 55's offset half still waits on Kent"
 metadata:
+  node_type: memory
   type: project
+  originSessionId: bbcdacb6-2052-49c0-b440-803a17a0c9c3
+  modified: 2026-10-04T04:44:26.503Z
 ---
 
-*Imported 2026-10-04 as a SNAPSHOT from the memory folder of sessions rooted outside this repo (`~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, session `bbcdacb6-2052-49c0-b440-803a17a0c9c3`, last written 2026-10-04T04:44:26.503Z); see [[wrong-root-sessions-and-global-guards-2026-10-04]]. The source may have moved on since. "I" below is the session that wrote it. PR states re-checked at import: #621 and #625 both open, neither armed.*
+> **Snapshot, copied 2026-10-04 (morning) from outside the repo.** Sessions rooted in
+> `C:\Users\EE-LT-11030\.claude-work` keep their memory in
+> `~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, which is not this
+> folder: nothing written there rides a PR or reaches a session rooted in EMB-Bot.
+> The original may still be edited by the session that wrote it, so check a fact here
+> before acting on it. PRs it names, at this copy: #621 and #625 open, neither armed; #620 open, armed.
+> See [[memory-outside-the-repo]].
 
 EMB-Bot lane worked 2026-10-03. One worktree, `.claude\worktrees\offset-ring-closed`, holds BOTH branches (it is checked out on the second; `app/node_modules` was copied into it, 162 MB). See [[embot-browser-fill-lane-state]] for the neighbouring lanes and [[parallel-agent-with-embot]] for the reach-check lesson this lane cost.
 

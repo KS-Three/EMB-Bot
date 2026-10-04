@@ -2,10 +2,18 @@
 name: embot-handover-numbers-and-stacked-branches
 description: "Where an earlier session's sweep scripts live (to reproduce handed-over numbers exactly), and how a branch built on an UNMERGED EMB-Bot PR is opened"
 metadata:
+  node_type: memory
   type: reference
+  originSessionId: 392bc7c8-f62c-4ca4-8244-b73b46ad9065
+  modified: 2026-10-03T23:23:38.265Z
 ---
 
-*Imported 2026-10-04 as a SNAPSHOT from the memory folder of sessions rooted outside this repo (`~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, session `392bc7c8-f62c-4ca4-8244-b73b46ad9065`, last written 2026-10-03T23:23:38.265Z); see [[wrong-root-sessions-and-global-guards-2026-10-04]]. The source may have moved on since. "I" below is the session that wrote it. PR states re-checked at import: #617 merged; #616 closed unmerged; #620 open with auto-merge armed.*
+> **Snapshot, copied 2026-10-03 (evening) from outside the repo.** Sessions rooted in
+> `C:\Users\EE-LT-11030\.claude-work` keep their memory in
+> `~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, which is not this
+> folder: nothing written there rides a PR or reaches a session rooted in EMB-Bot.
+> The original was still being edited when this was taken, so check a fact here
+> before acting on it. See [[memory-outside-the-repo]].
 
 Two things that shaped an EMB-Bot handover task on 2026-10-03 (PR #617, built on the unmerged #616). Both are my own reading of the machine and the repo, not rulings of Kent's.
 

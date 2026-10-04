@@ -133,6 +133,8 @@ from .stage6_satin import strip_splits
 from .stage6_scanline import SCANLINE_LEVEL_STRIDES, SCANLINE_ROW_MM
 from .stage6_streamline import (STREAMLINE_D_SEP_DARK_MM,
                                 STREAMLINE_D_SEP_LIGHT_MM)
+from . import curve_fidelity as _curve_fidelity
+from . import edge_wobble as _edge_wobble
 from . import legibility as _legibility
 from .stitches import StitchPlan
 from .textcluster import (LETTER_MAX_HEIGHT_MM, LETTER_MIN_HEIGHT_MM,
@@ -3644,6 +3646,98 @@ def _tiny_step_metrics(plan: StitchPlan) -> dict:
             "tiny_step_fraction": round(tiny / total, 3) if total else None}
 
 
+_EDGE_WOBBLE_TIERS = ("satin", "border", "fill", "line")
+_EDGE_WOBBLE_STATS = ("p95_mm", "std_mm", "max_mm")
+
+
+def _edge_wobble_metrics(result: PipelineResult | None,
+                         plan: StitchPlan) -> dict:
+    """How far the sewn edge wanders about its own outline, as NUMBERS only.
+
+    Kent's most frequent complaint is "right shapes, bad edges", and until
+    2026-10-03 nothing in this report could see it: `logo_whitebg` and a logo
+    he calls jagged were graded without either number moving on the edge
+    (MASTER_SCOPE defect 46). The instrument is `edge_wobble.analyse_plan`,
+    read against the regions' own polygons.
+
+    **Per tier, never pooled.** The engine's run tier sews a shape's own
+    outline vertices and reads exactly 0, so one pooled figure moves when
+    shapes change tier and no rail has moved: `enthusiast_logo` reads satin
+    p95 0.247 mm and pooled 0.186, a quarter of the defect gone to 624 run
+    points at 0.000. Each tier the instrument reads -- satin rails, border
+    rails, fill row ends, run and bean lines -- reports its own three numbers.
+
+    No finding and no deduction, on two rulings. Law 37: score smoothness
+    monotonically and invent no cutoff -- the satin tier reads 0.07-0.11 mm
+    std on every real logo with every defence on, so a line would fire on all
+    of them or none. And Kent, 2026-10-02: the tool is not to warn the
+    customer about what it should fix. These ride out so a change that moves
+    the edge shows in `corpus_scorecard.diff`; like `raw_score`, they are
+    inert there until the baseline is recaptured.
+
+    This is edge DEVIATION, in mm. It is not Law 37's own quantity, which is
+    direction change along the path (`tools/curve_fidelity.py`'s
+    `roughness_deg`) and is still offline.
+
+    None without the regions (no outline to measure against), None for a tier
+    the design does not sew, and None when no series is long enough to read.
+    A None is never a clean edge; a tier that reads 0.0 was measured.
+
+    A shade band's runs are NOT read: they carry a derived id
+    (`_owning_region_id`), and the instrument pairs a run with a polygon by
+    equality. Left that way on purpose -- it is the tool's own reading, so a
+    number here is the number the docs quote; mapping the bands in is a
+    change to the measurement, with its own evidence to bring.
+    """
+    out = {f"edge_wobble_{t}_{s}": None
+           for t in _EDGE_WOBBLE_TIERS for s in _EDGE_WOBBLE_STATS}
+    if result is None:
+        return out
+    # No region is built without a polygon today. Skipped rather than trusted:
+    # a number that judges nothing must not be what fails a finished design.
+    row = _edge_wobble.analyse_plan(
+        {r.shape_id: r.polygon for r in result.regions if r.polygon is not None},
+        plan, unsewn=False)
+    for tier in _EDGE_WOBBLE_TIERS:
+        for stat in _EDGE_WOBBLE_STATS:
+            if tier in row["by_tier"]:
+                out[f"edge_wobble_{tier}_{stat}"] = row["by_tier"][tier][f"wobble_{stat}"]
+    return out
+
+
+def _curve_roughness_metrics(plan: StitchPlan) -> dict:
+    """Is a curve sewn as a curve, or as a polygon -- as NUMBERS only.
+
+    Law 37's own quantity, direction change along the stitch path, and the
+    second of Kent's two smoothness complaints ("lines/circles are not smooth
+    like the photo"). `curve_fidelity.measure` over the plan's visible traces.
+    The path is the whole input, so a bare plan is read like any other.
+
+    Five keys, because the instrument says to read them together: a move in
+    `curve_roughness_deg` means nothing when the traces or vertices under it
+    moved (`tools/curve_fidelity.py`, "Reading a paired arm without fooling
+    yourself"). And it cannot read intent -- a logo that IS a 20-gon and a
+    circle polygonised to one are the same path -- so this compares a design
+    with itself across engine changes, which is what `corpus_scorecard.diff`
+    does, and is never a grade. No finding and no deduction, on the rulings
+    `_edge_wobble_metrics` records.
+
+    A refusal (nothing curved to measure) is None, not the tool's NaN: the
+    service serialises with `allow_nan=False`.
+    """
+    row = _curve_fidelity.measure(
+        [p for _kind, _shape, p in _curve_fidelity.traces(plan)])
+
+    def number(v: float) -> float | None:
+        return None if v != v else v
+
+    return {"curve_roughness_deg": number(row["roughness_deg"]),
+            "curve_turn_gini": number(row["turn_gini"]),
+            "curve_vertices": row["curve_vertices"],
+            "curve_corner_vertices": row["corner_vertices"],
+            "curve_traces": row["traces"]}
+
+
 def run_preflight(result: PipelineResult, plan: StitchPlan,
                   cfg: PipelineConfig | None = None,
                   image=None) -> dict:
@@ -3796,6 +3890,8 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
 
     metrics["stitch_count"] = plan.stats.stitch_count
     metrics.update(_tiny_step_metrics(plan))
+    metrics.update(_edge_wobble_metrics(result, plan))
+    metrics.update(_curve_roughness_metrics(plan))
 
     # Last, over the finished list: it tags findings, it does not make any.
     _tag_break_risk(findings, plan, result)

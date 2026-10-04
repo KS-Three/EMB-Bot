@@ -2,10 +2,19 @@
 name: embot-sub-unit-stitches-lane
 description: "EMB-Bot lane \"two stitch records on one point\" — Kent chose a new flag; `dedupeHoles` built OFF, PR #623 open (2026-10-04); rule deliberately narrow (never looks through a jump); flip is \"Waiting on Kent\" 25"
 metadata:
+  node_type: memory
   type: project
+  originSessionId: 7bdbbefa-2143-4bb4-9273-639fbbfd6546
+  modified: 2026-10-04T05:31:48.670Z
 ---
 
-*Imported 2026-10-04 as a SNAPSHOT from the memory folder of sessions rooted outside this repo (`~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, session `7bdbbefa-2143-4bb4-9273-639fbbfd6546`, last written 2026-10-04T05:31:48.670Z); see [[wrong-root-sessions-and-global-guards-2026-10-04]]. The source may have moved on since. "I" below is the session that wrote it. PR states re-checked at import: #623 open, not armed.*
+> **Snapshot, first copied 2026-10-03 (evening) and refreshed 2026-10-04 (morning) from outside the repo.** Sessions rooted in
+> `C:\Users\EE-LT-11030\.claude-work` keep their memory in
+> `~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, which is not this
+> folder: nothing written there rides a PR or reaches a session rooted in EMB-Bot.
+> The original may still be edited by the session that wrote it, so check a fact here
+> before acting on it. PRs it names, at this copy: #623 open, not armed.
+> See [[memory-outside-the-repo]].
 
 EMB-Bot, task handed over from PR #617: the browser shape builder rounds to 0.1 mm, so two penetrations nearer than that become two `stitch` records on one point. See [[embot-browser-fill-lane-state]] and [[embot-handover-numbers-and-stacked-branches]].
 

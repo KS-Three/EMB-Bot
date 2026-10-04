@@ -2,10 +2,19 @@
 name: embot-star-walk-lane
 description: "EMB-Bot star/satin-walk lane — PR #624 (skeletonEdges walk that never ended) armed 2026-10-03; defect 57 (browser medial satin) open, cure order put to Kent, do not build without his pick"
 metadata:
+  node_type: memory
   type: project
+  originSessionId: a3870e6b-5bc4-4f5b-8f00-ff8f6c5432dc
+  modified: 2026-10-04T04:44:29.994Z
 ---
 
-*Imported 2026-10-04 as a SNAPSHOT from the memory folder of sessions rooted outside this repo (`~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, session `a3870e6b-5bc4-4f5b-8f00-ff8f6c5432dc`, last written 2026-10-04T04:44:29.994Z); see [[wrong-root-sessions-and-global-guards-2026-10-04]]. The source may have moved on since. "I" below is the session that wrote it. PR states re-checked at import: #624 open with auto-merge armed.*
+> **Snapshot, copied 2026-10-04 (morning) from outside the repo.** Sessions rooted in
+> `C:\Users\EE-LT-11030\.claude-work` keep their memory in
+> `~/.claude/projects/C--Users-EE-LT-11030--claude-work/memory/`, which is not this
+> folder: nothing written there rides a PR or reaches a session rooted in EMB-Bot.
+> The original may still be edited by the session that wrote it, so check a fact here
+> before acting on it. PRs it names, at this copy: #624 open, armed.
+> See [[memory-outside-the-repo]].
 
 Lane: branch `claude/star-satin-runaway`, worktree `.claude/worktrees/star-satin-runaway`, [KS-Three/EMB-Bot#624](https://github.com/KS-Three/EMB-Bot/pull/624). Opened and armed (merge method "merge") 2026-10-03 after an independent re-measure; merging is Kent's / auto-merge.
 
