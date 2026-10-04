@@ -79,3 +79,43 @@ heredoc that wrote the smoke corpus.
 target; text matching turns every mention of the protected path into a
 denial, and the denials land on the sessions that mention it most — the ones
 working carefully by absolute path.
+
+**The replay happened, 2026-10-04 evening — on Kent's laptop, driven from a
+cloud session.** A Remote Control session rooted in the repo on his machine
+ran it (reached with `send_message` from the claude-code-remote MCP; it
+answered in its own reply text because the bridge has no cloud-bound send).
+`--since 2026-10-01 --recursive`, 5,021 shell calls: old rule **74**
+denials, new guard **9**. The 9: three `git worktree remove <lane>` from the
+repo root (true positives — Kent keeps those denied, a session hands lane
+removal to him), three `SCR="$(cygpath -u '…')" && … rm -rf "$SCR/base2"`
+inside a lane (the documented substitution residual; the target was the
+scratchpad), three false positives. The 69 newly allowed, from the guard's
+own per-row findings: 50 scratchpad deletes, 11 with no destructive command
+at all (the old regex matched `rm`/`mv` inside JavaScript, prose, a filename,
+or `git rm`), 7 own-lane temp files, 1 `.git/worktrees/<lane>/index.lock`.
+Nothing newly allowed touched a lane root or another session's lane.
+`git reset --hard` and `git rm` inside a lane are judged by neither guard;
+Kent's call: out of scope. Full tables: the comment on PR #629.
+
+**The three false-positive shapes, fixed the same evening (issue #633):**
+
+- **A — a modifier on a variable the guard knew.** `${S:?}` lexed as the
+  name `S:` (the name class held `:` for PowerShell's `env:X`), and
+  `${pr%%:*}` / `${pr##*:}` were opaque substitutions. Now `${X:?}`,
+  `${X:-w}`, `${X:=w}` read as X when X is known and `%`/`%%`/`#`/`##` trim a
+  known X by a plain glob. An UNKNOWN X stays unresolvable even beside a
+  default word — substituting the default would let a lane set in an earlier
+  tool call through, which the old guard caught.
+- **B — an assignment on the same line as `do`/`then`.** The leading
+  `NAME=value` loop ran before the reserved words were stripped, so
+  `do d="$W/x"; rm -rf "$d"` read as a command named `do`, lost the
+  assignment, and `$d` failed closed. The strip now comes first. (The same
+  assignment on its own line always worked.)
+- **C — commit-message prose in a heredoc.** `git commit -F - <<'EOF'` with a
+  wrapped line `move (4,038 of 145,600 swept stars, …` was lexed as the verb
+  `move` with the paren group as its target. Heredoc body lines stay judged
+  as commands (a heredoc fed to `bash` can delete a lane), but inside a bash
+  heredoc an unresolvable target that begins with `(` — never a path — is
+  now `status: 'prose'`. `$X`, `$(…)` and backticks in a heredoc still fail
+  closed, so `rm "$WHAT" is gone` in a commit message would still deny; a
+  known residual, not measured in any real call.
