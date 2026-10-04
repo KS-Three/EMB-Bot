@@ -131,6 +131,29 @@ test("a 6-point star at inner ratio 0.40 sews in line with its size at 15 mm (th
   assert.deepStrictEqual(bad.filter((line) => line.startsWith("15 mm")), []);
 });
 
+test("a small round shape whose ring walks all ran away is sewn once, across itself", async () => {
+  // Found by the independent re-measure: where the skeleton has no node at
+  // all, every edge was a ring walk at the guard. A 6 mm near-round star
+  // (12 points, ratio 0.9) sewed 377 stitches, a knot fifteen deep. With no
+  // edge left, ringToSpines takes the skeleton's longest path, and the shape
+  // is one column across itself, as the 6 mm circle beside it is.
+  const { shapePresetPoints } = await lib("shapePresets.js");
+  const { shapesToRegions } = await lib("manualShapes.js");
+  const build = (kind, params) => {
+    const { regions, pxPerMm } = shapesToRegions([
+      { id: "shape", points: shapePresetPoints(kind, params, 6), curves: {}, stitchType: "auto", colorRgb: [20, 20, 20], angleDeg: null },
+    ]);
+    return digitize.buildQualityDesign(regions, {
+      garment: garments.getGarment("left_chest"), fabric: fabrics.getFabric(fabrics.fabricForGarment("left_chest")), pxPerMm,
+      darkOnTop: false, underlay: true, targetWidthMm: 6, offsetXMm: 0, offsetYMm: 0,
+    });
+  };
+  const blob = build("star", { points: 12, innerRatio: 0.9 }), circle = build("circle", {});
+  assert.strictEqual(blob._debug.nSatin, 1);
+  assert.ok(blob.stitchCount < 2 * circle.stitchCount, `${blob.stitchCount} stitches; the 6 mm circle sews ${circle.stitchCount}`);
+  assert.ok(blob.widthMM > 3 && blob.heightMM > 3, `sewn ${blob.widthMM.toFixed(1)} x ${blob.heightMM.toFixed(1)} mm of a 6 mm shape`);
+});
+
 test("a star none of whose walks ran to the guard sews exactly what it sewed", async () => {
   // Counts measured on origin/main at f887e27d, before the walk was touched.
   // (Not every star beside the 20 mm one qualifies: the 30 mm one and the

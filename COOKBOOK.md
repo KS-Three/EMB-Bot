@@ -1083,10 +1083,13 @@ sews nothing and cuts the smallest shape that contains it.
   - It reached every lane that calls `medialSatin`, not stars: thin
     round-ended bars and 273 of 612 image-lane designs moved too. Sweep
     every caller before saying which designs a change moves.
-  - The walks still step onto pixels another edge has: a pixel is laid a
-    median 1.7 times, and "rings" are found in shapes with no hole. That,
+  - The walks still step onto pixels another edge has: a median 72 layings
+    too many for every 100 skeleton pixels on the shape tool's stars, and
+    "rings" are found in shapes with no hole. That,
     and a stitch as long as the star or the bar, are MASTER_SCOPE defect
     57, untouched. The Python port's cure for the first is a consumed set.
+    The knot had also been COVERING small round shapes: a 2 mm one now sews
+    four stitches, because such a ring is its only edge.
   - `node tools/satin-walk-census.mjs` builds what the shape tool builds and
     says which designs sew out of line with their neighbours in size;
     `--against <tree>` says which designs differ from another engine's,

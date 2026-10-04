@@ -8540,6 +8540,14 @@ round-ended bars and 273 of 612 image-lane designs besides.
   checks, and was wrong: 329 of 4,095 bars move. The function has three
   callers in the Studio; the claim was true of none of them until each had
   been run.
+- **"Better" is a measurement, and of every design that moves.** "The bars
+  that move get better" was written from two pictures of long ones. The
+  independent re-measure drew the stitches of all 726 over their outlines:
+  thread outside the outline fell, and 60 short bars LOST cover, 24 by more
+  than 30 points, because the knot that was taken out had been covering
+  them. A round shape 2 mm across went from 39 stitches to 4. Removing a
+  defect removes whatever it was doing by accident; measure the claim's own
+  noun on all of them before writing the adjective.
 
 *(measured 2026-10-03 — `tools/satin-walk-census.mjs`,
 `test/satin-walk.test.js`; MASTER_SCOPE defects 56 and 57; scope-history

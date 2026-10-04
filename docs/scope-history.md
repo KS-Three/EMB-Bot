@@ -18079,25 +18079,25 @@ walk that will never return to its start has found no ring and lays
 nothing. A walk that ended by itself is not touched, and no number was
 added.
 
-**What moves, and nothing else.** A design moves exactly when a walk in it
+**What moves, and nothing else.** A design moves only where a walk in it
 ran to the guard:
 
 - Stars, the sweep: 4,038 of 145,600 move, every one satin, on 432 stars.
-  None moved without a walk at the guard and none with one stayed. The
-  other 141,562 are the same to the stitch, all 130,288 fills among them;
-  no tier changes. The 130 designs over 10,000 stitches are now 1,599 at
+  None moved without a walk at the guard, and here none with one stayed
+  (not so everywhere: the re-measure below). The other 141,562 are the
+  same to the stitch, all 130,288 fills among them; no tier changes. The 130 designs over 10,000 stitches are now 1,599 at
   most. The rest GAIN a few (median +76, at most +344): a folded edge
   still took one of the 24 places, so a real stroke was dropped for each
   (twelve of the 24 on the 26 mm star).
 - Stars at 1% steps, left chest: 1,747 of 69,160.
 - Bars: 329 of 4,095 on left chest (3,524 of 43,200 over ten garments and
   down to 5 mm), every one a thin bar with round ends, whose skeleton ends
-  in the hook. A
-  73 x 3 mm one was sewn 72.7 x 10.3 mm, two stitches leaving its end, and
-  is now 72.4 x 3.6. No sharp-cornered bar, circle or heart moves.
-- The image lane, the Studio's own flatten on 20 of the `testdata` images,
-  612 designs: 273 move, the 273 with a walk at the guard, and none gains a
-  stitch. `enthusiast_logo` at four colours on left chest 3,570 to 3,309;
+  in the hook. A 73 x 3 mm one was sewn 72.7 x 10.3 mm, two stitches
+  leaving its end, and is now 72.4 x 3.6. No sharp-cornered bar moves, and
+  no circle or heart from 5 mm, the Studio's smallest, up.
+- The image lane, the Studio's own flatten on 20 of the `testdata` images
+  (the photographs only in part: see the end), 612 designs: 273 move, the
+  273 with a walk at the guard, and none gains a stitch. `enthusiast_logo` at four colours on left chest 3,570 to 3,309;
   drone 17,074 to 17,027; Gaulke 11,471 to 11,363; a photograph of grass
   109,204 to 50,024.
 - A drawn shape set to satin: a near-round 30 mm one took 39.6 s and 3,339
@@ -18113,6 +18113,52 @@ is inserted beside had changed and it was never inserted. It throws now.)
 before and after. A satin star stops short of its tips, by a median 1.2 mm
 and up to 10.8 mm across the sweep.
 
+**The independent re-measure held the fix and failed three of my
+sentences.** A separate agent, its own scripts, 34,000 designs of its own
+off my grid (half-millimetre sizes, other ratios, three garments, shapes
+down to 1 mm), 21,424 of them written to `.dst` files and read back with
+pystitch:
+
+- Held: the star's numbers to the stitch; no fill moves (0 of 6,264 files);
+  no tier changes; nothing moved without a walk at the guard, in any set;
+  no walk reaches the guard after, and its own control (the rule switched
+  off in a copy) brought 6,900 of them back in the same 1,359 designs.
+- **"A walk at the guard means the design moves" is not so.** It held for
+  every star (1,359) and every bar (746) and failed on 15 small shapes: 5
+  of 521 tiny ones and 10 of 140 hand-made ellipses had such a walk and
+  came out the same to the byte. The rule runs one way: a design moves ONLY
+  IF a walk reached the guard.
+- **"No circle or heart moves" was true from 2.5 mm.** A 1 mm circle and
+  hearts of 1.25 to 2.25 mm move; the Studio's floor is 5 mm, so the shape
+  tool cannot make them. A drawn heart set to satin moves at 17, 22 and
+  28.5 mm.
+- **"The bars that move get better" was written from two pictures.** It
+  rastered the stitches of all 726 moved bars against their outlines.
+  Thread outside the outline fell (needle points over 0.6 mm out: 215 to 6,
+  the farthest 7.0 mm to 0.7). But 60 short ones lost cover, 24 of them by
+  more than 30 points, every one 8 mm wide or less.
+
+**What it costs: the knot was covering small round shapes.** Where a
+skeleton has no node, every edge was a walk at the guard, and the knot they
+sewed covered the shape. A 6 mm near-round star sewed 377 stitches and is
+now 25, one column across itself as the 6 mm circle is (a test). Smaller is
+worse. A round-cornered 2 x 2 mm square went from 39 stitches and 99%
+covered to 4 stitches in a line and 28%, where the 2 mm circle, which never
+had such a walk, sews 13: a ring of six pixels is the only edge left, and it
+keeps `ringToSpines` from taking the longest path instead. A 2 x 4 mm one:
+118 stitches and 86% to 8 and 46%. In the shape tool's range, 5 mm and up,
+the largest are a 5.5 mm 11-point star at ratio 0.9 (88% to 52%: seven
+rings and no column) and a 6 mm 3-point one (96% to 73%); near-round shapes
+of 5 to 6.5 mm lose 4 to 13 points and bars 5.5 to 8 mm long 3 to 9. On
+nine of the
+`testdata` logos through the image lane (241 satin shapes at two sizes) the
+largest loss is 3 points, on one shape that lost four stitches in ten. I
+tried the other rule for a ring walk that never closes (keep what it walked
+over pixels nothing had walked, as an open edge): the 2 mm square came to 9
+stitches, and the 6 mm star fell from 5.2 mm across to 2.9, because an edge
+of any kind stops the longest path being taken. Not built. The cure is the
+ring's (below).
+
 **Left, measured, and larger than what was fixed.** None of it is touched:
 
 - **Rings in a shape with no hole.** Three stars are still out of line on
@@ -18120,9 +18166,12 @@ and up to 10.8 mm across the sweep.
   0.45 at 15, x3.3, 1,812 stitches for about 550), and 19 at 1% steps. No
   walk ran away. The ring scan starts on a pixel the node walks stepped
   past, goes round arms they already laid, comes back to its start and
-  calls that a ring. 126 of the 1,684 rings have one.
+  calls that a ring. 126 of the 1,684 rings have one. It is also what
+  leaves a 2 mm round shape with four stitches (above): no shape without a
+  hole has a ring in it, and an edge that is not one stops the longest path
+  being taken.
 - **Pixels laid twice.** Reading each ring's edges against its own mask:
-  for every 100 skeleton pixels, a median 72 are laid a second time. A walk
+  a median 72 layings too many for every 100 skeleton pixels. A walk
   prefers an unwalked pixel and takes a walked one when there is none. The
   Python port stopped that with a consumed set (DOCTRINE 2026-09-09: "the
   browser engine's `skeletonEdges` ... still has both cases").
@@ -18147,10 +18196,12 @@ and up to 10.8 mm across the sweep.
 
 Renders of the star, the bar and three of these:
 `docs/renders/star-walk-2026-10-03/`. Besides, and nothing to do with
-satin: the Studio's flatten took minutes on two photographs in that image
-run (`absorbSmallRegions` labels the whole image again for every speck it
-absorbs), so they were left out of it.
+satin: the Studio's flatten did not return within a minute on two
+photographs in that image run (`absorbSmallRegions` labels the whole image
+again for every speck it absorbs). The run stopped at the second, so the
+five images after it in the folder are not in it, and its photographs were
+run without background removal.
 
-Engine 708 passed, seven of them new (`test/satin-walk.test.js`; the same
-file fails five on `f887e27d`); Studio 1,587 passed. Not sewn.
+Engine 709 passed, eight of them new (`test/satin-walk.test.js`; the same
+file fails six on `f887e27d`); Studio 1,587 passed. Not sewn.
 *(fixed 2026-10-03 — `skeletonEdges` in `src/satin.js`; `test/satin-walk.test.js`; `tools/satin-walk-census.mjs`; `docs/renders/star-walk-2026-10-03/README.md`)*

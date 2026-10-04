@@ -36,6 +36,17 @@ that is a different defect and is still there (below).
 28 mm long and reaching 7 mm below it. After, every cross is inside the
 outline.
 
+## What the fix costs
+
+The knot had been covering small round shapes. There is no picture of it
+here; the numbers are the independent re-measure's, which drew every moved
+design's stitches over its outline. A 6 mm near-round star: 377 stitches
+before, 25 now, one column across itself. A round-cornered 2 x 2 mm square:
+39 stitches and 99% covered before, 4 stitches and 28% now. In the shape
+tool's own range (5 mm and up) the largest loss is a 5.5 mm 11-point star at
+ratio 0.9, 88% to 52%. On nine `testdata` logos through the image lane the
+largest is 3 points, on one shape.
+
 ## What the same sweep found and this change does not touch
 
 These three are as they sew on `origin/main` and as they sew now.
