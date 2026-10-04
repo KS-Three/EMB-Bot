@@ -308,8 +308,9 @@
   //
   // "Twice" is to within rounding and no further. A point that is only NEAR
   // the next one is a corner with a short edge, and where that edge doubles
-  // back -- the second click of a double-click, a pixel off the first -- it
-  // still gets the whole clamp (MASTER_SCOPE defect 55, open).
+  // back -- an anchor a pixel from the last, as a double-click that slipped
+  // used to leave -- it still gets the whole clamp (MASTER_SCOPE defect 55:
+  // the gesture is cured, this is not).
   function offsetRing(ring, dPx, outward) {
     const copy = ring ? ring.map((q) => ({ x: q.x, y: q.y })) : [];
     if (copy.length < 3 || !(Math.abs(dPx) > 1e-9)) return copy;
