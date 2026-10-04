@@ -18031,21 +18031,30 @@ taken out and nothing else. The choice was put to Kent, and he took the
 last.
 
 It is built as `dedupeHoles` on `buildQualityDesign`, OFF by default: no run
-lays a stitch on the point its thread's last stitch is on. It is asked of the
-thread and not of the frame. A jump lays nothing, so a run that begins where
-the last one ended no longer sews that point twice, and neither does a satin
-column that floats away and comes back (59 in the Studio lanes, found by the
-census after the first build kept them). A cut ends the thread, and the
-stitch after it is always laid. One place, `pushRun`; nothing in `fill.js`.
+lays a stitch straight after a stitch on the same point. Only that. After a
+jump or a cut the stitch is laid, whatever point it is on. One place,
+`pushRun`; nothing in `fill.js`.
+
+The first build was wider and was wrong to be. It asked the thread and not
+the frame, looking through jumps, so it also took out the first stitch of a
+run that begins where the last one ended, and the stitch a satin column lays
+when it floats away and comes back. An independent re-measure (a separate
+agent, its own generator and reader, 22,167 designs) held every claim made
+of that build, and one remark in it undid the extension: a DST has no cut,
+the writer lays three jump records for one, and a reader takes any three
+jumps in a row for one. Looking through a jump can leave a run with no
+stitch and its jump beside the next. So the doubled holes with a jump
+between the two stay: 15 on the sweep, 61 in the Studio lanes. The same
+audit named five mutants no test caught; each has a test now.
 
 Flag not passed, the engine and `main` at `f887e27d` give one stream on all
 16,525 designs of the two sets, with `fillColumns` absent and on. Flag on:
-16,575 to 0 on the sweep and 39,948 to 0 in the Studio lanes; 7,100 and
-7,539 designs change, each by those stitches and nothing else, and none any
-other way; cuts 8,175 and 7,028 before and after. Eight tests, four watched
-failing first and four seen to fail on a mutant; ten mutants, ten die.
-Engine 709 passed.
+16,575 to 0 on the sweep and 39,948 to 0 in the Studio lanes; 7,097 and
+7,518 designs change, each by those stitches and nothing else, and none any
+other way; cuts unchanged on every design, in the stream and as a DST reader
+finds them. Eleven tests, each seen to fail; fourteen mutants, fourteen die.
+Engine 712 passed.
 
 Not sewn. No Studio caller passes it, and the lettering builder has no such
 rule. Flip is Kent's: "Waiting on Kent" 25.
-*(measured and built 2026-10-03 — `docs/sub-unit-stitches-2026-10-03.md`, `tools/sub-unit-stitch-census.mjs`, `test/digitize.test.js` "dedupeHoles")*
+*(measured and built 2026-10-03 and 2026-10-04 — `docs/sub-unit-stitches-2026-10-03.md`, `tools/sub-unit-stitch-census.mjs`, `test/digitize.test.js` "dedupeHoles")*

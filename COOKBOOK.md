@@ -1077,10 +1077,13 @@ sews nothing and cuts the smallest shape that contains it.
   across the mouth of a notch, or a scanline through a corner can put two
   `stitch` records on one point: the needle twice in one hole, in what
   ships. `dedupeHoles: true` on `buildQualityDesign` lays the first and not
-  the second. It is ONE place, `pushRun` in `src/digitize.js`, and it asks
-  the thread, not the frame: a jump lays nothing and changes nothing, a cut
-  (`cutAt`) ends the thread and the stitch after it is always laid. Put a
-  new trim record through `cutAt`, or the stitch after it can be dropped.
+  the second. It is ONE place, `pushRun` in `src/digitize.js`, and it is
+  narrow on purpose: only a stitch whose record comes straight after a
+  stitch on its point is left out. After a jump or a cut the stitch is laid,
+  whatever point it is on. Do not widen it to look through jumps. A cut is
+  written as three jump records (`dst.js`), so a stitch taken out from
+  between two jumps can leave a reader a cut nobody made; the first build
+  did look through them, and an independent audit's remark caught it.
   `node tools/sub-unit-stitch-census.mjs [srcDir]` counts the pairs on two
   sets of designs and says what made each; `--on dedupeHoles=true --off
   dedupeHoles=true` runs it with the flag, and `--against <other src>` says

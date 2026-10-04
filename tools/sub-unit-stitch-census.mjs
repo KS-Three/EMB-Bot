@@ -83,6 +83,12 @@ const FAB = require(join(SRC, "fabrics.js"));
 const FILL = require(join(SRC, "fill.js"));
 const GAR = require(join(SRC, "garments.js"));
 const DG_OTHER = AGAINST ? require(join(resolve(AGAINST), "digitize.js")) : null;
+// What a MACHINE cuts is not the stream's `trim` records alone. A DST has no
+// trim: the writer lays three jump records, and a reader takes any three jumps
+// in a row for a cut (dst.js, dstimport.js). So a design is also written and
+// read back, and its cuts counted as the reader finds them.
+const DST = require(join(SRC, "dst.js")), DSTIN = require(join(SRC, "dstimport.js"));
+const cutsInTheFile = (des) => DSTIN.decodeDST(DST.encodeDST(des)).trimCount;
 
 // every tatami pass of the design being built, as the fill module returned it
 let PASSES = [];
@@ -362,22 +368,17 @@ function readDesign(des, passes, t, where) {
   // Each pass to its span: one jump, then a record a point, every point within
   // half a unit of its record. -> the record index of each point, or null.
   // A point with NO record is allowed in one case only, and said (-1): a
-  // stitch on the point this thread's last stitch is on. That is what a
-  // builder with a rule against them (`dedupeHoles`) leaves out.
+  // stitch on the point of the stitch that is the record before it. That is
+  // what a builder with a rule against them (`dedupeHoles`) leaves out.
   const live = passes.filter((p) => p.pts.length);
   const fits = (q, r) => Math.abs((q.x - fit.cxPx) * fit.mmPerPx * 10 + fit.offsetXMm * 10 - r.x) <= 0.5 + 1e-6 && Math.abs((fit.cyPx - q.y) * fit.mmPerPx * 10 + fit.offsetYMm * 10 - r.y) <= 0.5 + 1e-6;
   const recordsOf = (pass, span) => {
     if (pass.pts.length < span.i1 - span.i0) return null;
     const at = [];
-    // this thread's last stitch as the pass begins: jumps lay nothing, a cut
-    // ends the thread
-    let j = span.i0;
-    while (j > 0 && st[j].type === "jump") j--;
-    let i = span.i0 + 1, laid = st[j].type === "stitch" ? j : -1;
+    let i = span.i0 + 1, laid = -1;   // the last record, when it is a stitch
     for (const q of pass.pts) {
       if (i <= span.i1 && fits(q, st[i])) {
-        if (st[i].type === "stitch") laid = i;
-        else if (st[i].type !== "jump") laid = -1;
+        laid = st[i].type === "stitch" ? i : -1;
         at.push(i++);
         continue;
       }
@@ -438,10 +439,10 @@ function readDesign(des, passes, t, where) {
 }
 
 // How this engine's stream differs from the other engine's for one design.
-// "second stitches only": take every stitch on the point its thread's last
-// stitch is on out of both, and they are one stream; and this engine has no
-// record the other lacks. So nothing moved, was added or was reordered. A jump
-// lays nothing and changes nothing; a cut ends the thread.
+// "second stitches only": take every stitch on the point of the stitch that
+// is the record before it out of both, and they are one stream; and this
+// engine has no record the other lacks. So nothing moved, was added or was
+// reordered, and no jump or cut was touched.
 function against(mine, theirs) {
   const key = (st) => st.map((s) => `${s.type},${s.x},${s.y}`);
   const a = key(mine), b = key(theirs);
@@ -450,10 +451,9 @@ function against(mine, theirs) {
     const out = [];
     let hole = null;
     for (const s of st) {
-      if (s.type === "stitch") {
-        if (hole && hole.x === s.x && hole.y === s.y) continue;
-        hole = s;
-      } else if (s.type !== "jump") hole = null;
+      if (s.type !== "stitch") hole = null;
+      else if (hole && hole.x === s.x && hole.y === s.y) continue;
+      else hole = s;
       out.push(s);
     }
     return out;
@@ -485,7 +485,13 @@ async function runPart(part, parts) {
           PASSES = [];
           const des = corpus.build(d, ARMS[arm]);
           readDesign(des, PASSES, res[arm], Object.assign({ i, arm, name: d.name }, corpus.tag(d)));
-          if (DG_OTHER) bump(res[arm], `against/${against(des.stitches, corpus.build(d, ARMS[arm], DG_OTHER).stitches)}`);
+          const inFile = cutsInTheFile(des);
+          bump(res[arm], "cuts in the file", inFile);
+          if (DG_OTHER) {
+            const other = corpus.build(d, ARMS[arm], DG_OTHER);
+            bump(res[arm], `against/${against(des.stitches, other.stitches)}`);
+            if (cutsInTheFile(other) !== inFile) bump(res[arm], "against/cuts in the file differ");
+          }
         } catch (e) { res.errors++; if (res.errors <= 3) console.error(`${name} ${i} ${arm}: ${e && e.stack || e}`); }
       }
     });
@@ -549,7 +555,8 @@ if (PART) {
       ["passes not found in the stream", ...both((t) => num(t.n["passes not found in the stream"]))],
       ["second stitches the builder left out", ...both((t) => num((t.n["left out/plain"] || 0) + (t.n["left out/column"] || 0)))],
       ["cuts", ...both((t) => num(t.n.cuts))],
-      ...(AGAINST ? ["the same", "second stitches only", "something else"].map((k) => [`against the other engine: ${k}`, ...both((t) => num(t.n[`against/${k}`]))]) : []),
+      ["cuts as a DST reader finds them", ...both((t) => num(t.n["cuts in the file"]))],
+      ...(AGAINST ? ["the same", "second stitches only", "something else", "cuts in the file differ"].map((k) => [`against the other engine: ${k}`, ...both((t) => num(t.n[`against/${k}`]))]) : []),
       ["longest short stitch, mm", ...both((t) => Math.max(t.max["longest/plain"] || 0, t.max["longest/column"] || 0).toFixed(4))],
     ]);
     for (const [arm, t] of [["flag absent", c.absent], ["fillColumns on", c.on]]) {

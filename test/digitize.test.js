@@ -2864,6 +2864,12 @@ test("underlayRuns: a 3-point hole gets its own edge run and joins the lattice's
 // hole (docs/sub-unit-stitches-2026-10-03.md: 16,575 of them on 8,255 designs
 // with every flag absent). `dedupeHoles: true` lays the first and not the
 // second, in every run of the shape builder. Built OFF.
+//
+// "The second" is a stitch whose record comes straight after a stitch on the
+// same point, and nothing wider. After a jump or a cut the stitch is laid,
+// whatever point it is on: a writer lays a cut as three jump records, so a
+// reader takes three jumps in a row for one, and taking the stitch out from
+// between two jumps could make a cut that was not there.
 const _holeStar = [[180, 0], [227, 115], [351, 124], [256, 205], [286, 326], [180, 260], [74, 326], [104, 205], [9, 124], [133, 115]].map(([x, y]) => ({ x, y }));
 const _holeTaper = [{ x: 0, y: 0 }, { x: 300, y: 10 }, { x: 0, y: 20 }];
 const _holeRun = (shape, widthMm, extra) => DG.buildQualityDesign(
@@ -2888,16 +2894,15 @@ const _secondByKind = (d) => {
   return out;
 };
 // What the flag is to leave of a stream, written out here and not asked of
-// the builder: every record but a stitch on the point this thread's last
-// stitch is on. A jump lays nothing and changes nothing; a cut ends the thread.
+// the builder: every record but a stitch on the point of the stitch that is
+// the record before it. Three on one point leave one.
 const _withoutSecond = (stitches) => {
   const out = [];
   let hole = null;
   for (const s of stitches) {
-    if (s.type === "stitch") {
-      if (hole && _same(hole, s)) continue;
-      hole = s;
-    } else if (s.type !== "jump") hole = null;
+    if (s.type !== "stitch") hole = null;
+    else if (hole && _same(hole, s)) continue;
+    else hole = s;
     out.push(s);
   }
   return out;
@@ -2948,6 +2953,7 @@ test("dedupeHoles: every run still has its span, and the spans still hold every 
     for (const r of on.runs) {
       assert.ok(r.i0 >= next && r.i1 >= r.i0, `${name}: spans in order, none inside another`);
       assert.strictEqual(on.stitches[r.i0].type, "jump", `${name}: a span opens on its run's jump`);
+      assert.strictEqual(on.stitches[r.i0 + 1].type, "stitch", `${name}: and the run's first stitch follows it`);
       for (let i = r.i0; i <= r.i1; i++) if (on.stitches[i].type === "stitch") covered++;
       next = r.i1 + 1;
     }
@@ -2955,21 +2961,37 @@ test("dedupeHoles: every run still has its span, and the spans still hold every 
   }
 });
 
-test("dedupeHoles: a run that begins where the last one ended lays no second stitch there", () => {
-  // Not two stitch records in a row: the second run's own jump is between
-  // them. A jump lays nothing, so the thread's last stitch is still that one.
-  const off = _holeSquares(false), on = _holeSquares(false, { dedupeHoles: true });
-  const seam = (d) => _show(d.stitches.slice(d.runs[1].i0 - 1, d.runs[1].i0 + 3));
-  assert.strictEqual(seam(off), "s35,-34 j35,-34 s35,-34 s65,-34", "fixture: off, the corner is sewn twice");
-  assert.strictEqual(seam(on), "s35,-34 j35,-34 s65,-34 s65,-35");
-  assert.strictEqual(_count(off, "stitch") - _count(on, "stitch"), 1, "and that is the one record taken out");
+test("dedupeHoles: three stitches in a row on one point leave one", () => {
+  // A triangle and a second ring that share the triangle's top corner. The
+  // first scanline finds the corner twice, a span of no length, and then the
+  // span that starts on it: the corner is sewn three times.
+  const shape = {
+    outer: [{ x: 100, y: 0 }, { x: 150, y: 100 }, { x: 50, y: 100 }],
+    holes: [[{ x: 100, y: 0 }, { x: 180, y: 0 }, { x: 180, y: 50 }, { x: 130, y: 50 }]],
+    tierOverride: "fill", angleOverride: 0,
+  };
+  const off = _holeRun(shape, 10, { underlay: false }), on = _holeRun(shape, 10, { underlay: false, dedupeHoles: true });
+  assert.strictEqual(_show(off.stitches.slice(0, 5)), "j0,50 s0,50 s0,50 s0,50 s40,50", "fixture");
+  assert.strictEqual(_show(on.stitches.slice(0, 3)), "j0,50 s0,50 s40,50");
   assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)));
 });
 
-test("dedupeHoles: a float lays nothing either, and the stitch back on the point the thread left is not laid", () => {
+test("dedupeHoles: a run's first stitch is laid even where the last run ended", () => {
+  // The corner is sewn twice, with the second run's own jump between the two.
+  // That stitch stays: taken out, a run that laid nothing would leave its jump
+  // beside the next run's, and jumps in a row are how a file says "cut".
+  const off = _holeSquares(false), on = _holeSquares(false, { dedupeHoles: true });
+  const seam = (d) => _show(d.stitches.slice(d.runs[1].i0 - 1, d.runs[1].i0 + 3));
+  assert.strictEqual(seam(off), "s35,-34 j35,-34 s35,-34 s65,-34", "fixture: the corner twice, a jump between");
+  assert.strictEqual(seam(on), seam(off));
+  assert.strictEqual(_fingerprint(on), _fingerprint(off), "nothing in this design is a second stitch");
+});
+
+test("dedupeHoles: the stitch after a float is laid, even back on the point the thread left", () => {
   // A three-armed star forced to satin: the column floats 9 mm across to the
-  // next arm and comes back to sew where it was. The frame has been away; the
-  // thread has been nowhere, so that stitch is the second in its hole.
+  // next arm and comes back to sew where it was. A float that long is two
+  // jump records and the way back a third, which a machine takes for a cut;
+  // the stitch after it would then be what holds the thread.
   const star = [];
   for (let i = 0; i < 6; i++) {
     const a = -Math.PI / 2 + (i * Math.PI) / 3, r = i % 2 ? 30 : 100;
@@ -2977,11 +2999,47 @@ test("dedupeHoles: a float lays nothing either, and the stitch back on the point
   }
   const build = (extra) => _holeRun({ outer: star, tierOverride: "satin" }, 17.4, Object.assign({ underlay: false }, extra));
   const off = build(), on = build({ dedupeHoles: true });
-  const k = off.stitches.findIndex((s, i, st) => i >= 2 && s.type === "stitch" && st[i - 1].type === "jump" && !_same(s, st[i - 1]) && st[i - 2].type === "stitch" && _same(s, st[i - 2]));
-  assert.ok(k >= 2, "fixture: off, a stitch, a float away, and a stitch back on the same point");
-  assert.strictEqual(_show(off.stitches.slice(k - 2, k + 2)), "s-46,-30 j46,-30 s-46,-30 s-42,-26", "fixture");
-  assert.strictEqual(_show(on.stitches.slice(k - 2, k + 1)), "s-46,-30 j46,-30 s-42,-26");
+  const back = (d) => d.stitches.findIndex((s, i, st) => i >= 2 && s.type === "stitch" && st[i - 1].type === "jump" && !_same(s, st[i - 1]) && st[i - 2].type === "stitch" && _same(s, st[i - 2]));
+  assert.ok(back(off) >= 2, "fixture: a stitch, a float away, and a stitch back on the same point");
+  assert.strictEqual(_show(off.stitches.slice(back(off) - 2, back(off) + 2)), "s-46,-30 j46,-30 s-46,-30 s-42,-26", "fixture");
+  assert.ok(back(on) >= 2, "with the flag the stitch back is still there");
+  assert.strictEqual(_show(on.stitches.slice(back(on) - 2, back(on) + 2)), "s-46,-30 j46,-30 s-46,-30 s-42,-26");
   assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)));
+});
+
+test("dedupeHoles: the stitch after a float is laid, even on the point the float went to", () => {
+  // A prong and a spike on one bar. The row just under the spike's tip is
+  // 0.004 mm long and is reached by a float from the prong: the float's point
+  // and the stitch after it are one point of the file. That stitch is the
+  // only penetration the row gets, and the record before it is a jump.
+  const outer = [[0, 0], [30, 0], [30, 60], [100, 60], [110, 2.9], [120, 60], [120, 80], [0, 80]].map(([x, y]) => ({ x, y }));
+  const build = (extra) => _holeRun({ outer, tierOverride: "fill", angleOverride: 0 }, 12, Object.assign({ underlay: false }, extra));
+  const off = build(), on = build({ dedupeHoles: true });
+  assert.strictEqual(_show(off.stitches.slice(6, 11)), "s-30,37 j50,37 s50,37 s50,36 s50,36", "fixture: a float, a stitch on its point, and the next row sewn twice on one point");
+  assert.strictEqual(_show(on.stitches.slice(6, 10)), "s-30,37 j50,37 s50,37 s50,36");
+  assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)));
+});
+
+test("dedupeHoles: a cut inside a run starts a new thread too", () => {
+  // The column walk cuts to reach an island, and lays a stitch on the very
+  // point it cut to: the record before that stitch is the cut, not a stitch.
+  const box = (x0, y0, x1, y1) => [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+  const island = (extra) => _holeRun({ outer: box(0, 0, 80, 80), holes: [box(20, 20, 60, 60), box(30, 30, 50, 50)], tierOverride: "fill", angleOverride: 0 },
+    8, Object.assign({ underlay: false, fillColumns: true }, extra));
+  const cut = (d) => d.stitches.findIndex((s) => s.type === "trim");
+  const off = island(), on = island({ dedupeHoles: true });
+  assert.strictEqual(_show(off.stitches.slice(cut(off) - 1, cut(off) + 3)), "s40,-39 t10,-9 s10,-9 s-10,-9", "fixture: a cut, and a stitch on the cut point");
+  assert.strictEqual(_show(on.stitches.slice(cut(on) - 1, cut(on) + 3)), "s40,-39 t10,-9 s10,-9 s-10,-9");
+  // And where the cut lands on the point the thread has just left: a moat
+  // under the unit wide, rows 0.02 mm apart. Stitch, cut, stitch, one point.
+  const moat = (extra) => _holeRun({ outer: box(0, 0, 109.68, 109.68), holes: [box(48.37, 44.72, 94.05, 90.91), box(48.97, 45.32, 93.6, 90.51)], tierOverride: "fill", angleOverride: 90 },
+    10.968, Object.assign({ underlay: false, fillColumns: true, fillRowMm: 0.02 }, extra));
+  const spot = (d) => d.stitches.findIndex((s, i, st) => s.type === "trim" && i > 0 && i + 1 < st.length && st[i - 1].type === "stitch" && st[i + 1].type === "stitch" && _same(st[i - 1], st[i + 1]));
+  const offMoat = moat(), onMoat = moat({ dedupeHoles: true });
+  assert.ok(spot(offMoat) > 0, "fixture: a cut with a stitch on one point either side of it");
+  assert.strictEqual(_show(offMoat.stitches.slice(spot(offMoat) - 1, spot(offMoat) + 2)), "s39,10 t39,10 s39,10", "fixture");
+  assert.ok(spot(onMoat) > 0, "with the flag the stitch after that cut is still there");
+  assert.strictEqual(_records(onMoat.stitches), _records(_withoutSecond(offMoat.stitches)));
 });
 
 test("dedupeHoles: a cut starts a new thread, and its first stitch is laid even on the spot", () => {

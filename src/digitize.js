@@ -788,8 +788,8 @@
     // not stagger them either (`_underlay_paths`, staggers=1). Off, nothing
     // reads it and every stitch is unchanged.
     const staggerOpts = o.fillStagger ? { stagger: FILL_STAGGERS, minStitch: MIN_STITCH_MM * pxPerFinalMm, splitTol: SPLIT_TOLERANCE_MM * pxPerFinalMm } : null;
-    // `dedupeHoles` (default off): no run lays a stitch on the point its
-    // thread's last stitch is on.
+    // `dedupeHoles` (default off): no run lays a stitch straight after a
+    // stitch on the same point.
     //
     // `T` rounds to the stitch file's unit, 0.1 mm, so two penetrations nearer
     // than that can land on one point: a scanline through a corner, a row at a
@@ -801,12 +801,15 @@
     // (`stitches.iter_machine_commands`), with "the same point of the file"
     // where that has 0.01 mm: no length is chosen here.
     //
-    // It is asked of the THREAD, not of the frame: was this thread's last
-    // penetration on this point. A jump lays nothing, so it changes nothing,
-    // and every run opens with one: a run that begins where the last one ended
-    // would sew that point twice. A cut (a trim, and so a colour change) ends
-    // the thread, and the stitch after it is what holds the new one, wherever
-    // it lands. Off, the hole is never noted and every stitch is unchanged.
+    // ONLY a stitch whose record comes straight after a stitch on its point
+    // is left out. After a jump or a cut the stitch is laid, whatever point
+    // it is on. A cut's first stitch is what holds the new thread. And a jump
+    // keeps a stitch on either side of it: a cut is written as three jump
+    // records (dst.js), so a run that laid nothing would leave its jump
+    // beside the next run's, and a reader could take that for a cut nobody
+    // made. The price is the doubled hole with a jump between the two, a run
+    // that begins where the last one ended: 15 on those 8,255 designs.
+    // Off, nothing is noted and every stitch is unchanged.
     const dedupeHoles = !!o.dedupeHoles;
     // The rings a FILL is sewn to: the shape's own, or under a fabric preset
     // the pull-compensated ones (grow the outer, shrink the holes), so it sews
@@ -876,24 +879,18 @@
     let lastPx = { x: cx, y: cy }; // last emitted point in px; origin = design center (DST 0,0)
     let started = false;           // no trim before the very first stitch of the design
     let justChangedColor = false;  // color change already cut the thread; skip the next per-shape travel-trim
-    let hole = null;               // with `dedupeHoles`: where this thread last went down, or null after a cut
 
-    // A cut: the thread ends here, and the next one has been through no hole.
-    function cutAt(d) {
-      stitches.push({ x: d.x, y: d.y, type: "trim" });
-      nTrims++;
-      hole = null;
-    }
     function pushRun(pts) {
       if (!pts || !pts.length) return;
       const f = T(pts[0]);
       stitches.push({ x: f.x, y: f.y, type: "jump" });
+      let hole = null;   // with `dedupeHoles`: the stitch the last record laid, when the last record is a stitch
       for (const q of pts) {
         const d = T(q);
         // A point tagged q.trim (the center-out sweep-to-sweep reposition) emits
         // a trim so the long float is cut, not left as a bare needle-up jump.
-        if (q.trim) cutAt(d);
-        else if (q.travel) stitches.push({ x: d.x, y: d.y, type: "jump" });
+        if (q.trim) { stitches.push({ x: d.x, y: d.y, type: "trim" }); nTrims++; hole = null; }
+        else if (q.travel) { stitches.push({ x: d.x, y: d.y, type: "jump" }); hole = null; }
         else if (hole === null || hole.x !== d.x || hole.y !== d.y) {
           stitches.push({ x: d.x, y: d.y, type: "stitch" });
           if (dedupeHoles) hole = d;
@@ -925,7 +922,9 @@
     // Emit a trim command at the current (last) position — zero-travel; the
     // following jump carries the machine to the next shape.
     function emitTrimAtLast() {
-      cutAt(T(lastPx));
+      const tp = T(lastPx);
+      stitches.push({ x: tp.x, y: tp.y, type: "trim" });
+      nTrims++;
     }
 
     // Order a color block's shapes: cap center-out (unchanged, takes precedence),

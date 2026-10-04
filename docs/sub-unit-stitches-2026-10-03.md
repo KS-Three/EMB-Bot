@@ -179,16 +179,18 @@ it out of a design a customer downloads.
 
 ## What was built
 
-`dedupeHoles: true` on `buildQualityDesign`: no run lays a stitch on the
-point its thread's last stitch is on. Fill, underlay, satin and edge run,
-either walk. OFF by default, and no Studio caller passes it.
+`dedupeHoles: true` on `buildQualityDesign`: no run lays a stitch straight
+after a stitch on the same point. Fill, underlay, satin and edge run, either
+walk. OFF by default, and no Studio caller passes it.
 
-- **It is asked of the thread, not of the frame.** A jump lays nothing, so
-  the stitch after one is weighed against the stitch before it. That takes
-  in the run that begins where the last one ended, and the satin column that
-  floats away and comes back. A cut ends the thread: the first stitch after
-  a trim or a colour change is laid wherever it lands, because it is what
-  holds the new thread.
+- **It is narrow on purpose.** Only a stitch whose record comes straight
+  after a stitch on its point is left out. After a jump or a cut the stitch
+  is laid, whatever point it is on.
+- **Why not look through a jump.** A DST has no cut: the writer lays three
+  jump records, and a reader takes any three jumps in a row for one
+  (`dst.js`, `dstimport.js`). Take the stitch out from between two jumps and
+  they stand side by side. So the doubled holes with a jump between the two
+  stay: 15 on the sweep and 61 in the Studio lanes.
 - **It lives in `pushRun`** (`src/digitize.js`), the one place that knows
   the rounding. Nothing in `fill.js` changed.
 - **Locks are not thinned.** `ties` is applied to the finished stream, after
@@ -201,33 +203,42 @@ On `main` at `f887e27d` with the rule added, against `main` itself:
 |---|---|---|
 | flag not passed: designs whose stream is `main`'s | 8,255, and 8,255 with `fillColumns` on | 8,270, and 8,270 |
 | `dedupeHoles` alone: pairs | 16,575 to 0 | 39,948 to 0 |
-| one hole twice with only a jump between | 15 to 0 | 61 to 0 |
-| stitches | 18,424,406 to 18,407,816 | 61,318,824 to 61,278,815 |
-| designs that change, each by those stitches and nothing else | 7,100 | 7,539 |
+| stitches | 18,424,406 to 18,407,831 | 61,318,824 to 61,278,876 |
+| designs that change, each by those stitches and nothing else | 7,097 | 7,518 |
 | designs that change some other way | 0 | 0 |
-| cuts | 8,175, unchanged | 7,028, unchanged |
+| cuts, in the stream and as a DST reader finds them | unchanged on every design | unchanged on every design |
+| one hole twice with only a jump between, left | 15 | 61 |
 | with `fillColumns` too: pairs | 3,783 to 0 | 31,340 to 0 |
-| one hole twice with only a jump between | 58 to 0 | 66 to 0 |
-| designs that change, by those stitches and nothing else | 2,589 | 4,374 |
+| designs that change, by those stitches and nothing else | 2,553 | 4,352 |
 | designs that change some other way | 0 | 0 |
-| cuts | 2,177, unchanged | 2,686, unchanged |
+| cuts, both ways | unchanged on every design | unchanged on every design |
+| one hole twice with only a jump between, left | 58 | 66 |
 
-Every stitch taken out is counted in the first two rows of its block:
-18,424,406 less 16,575 less 15 is 18,407,816.
+Every stitch taken out is a pair: 18,424,406 less 16,575 is 18,407,831.
 
-- **Tests first.** Eight in `test/digitize.test.js`. Four were watched
-  failing before the rule existed. The other four hold with or without it,
-  and each was seen to fail on a mutant of the rule.
-- **Ten mutants, ten die**: the rule without the flag, the flag read
-  backwards, a cut that does not end the thread, a jump or a float that
-  does, the same x or the same y taken as the same point, a hole never moved
-  on, a hole never noted, and a record taken out after the spans were
-  written. The float was caught by the census before a test: that mutant is
-  the engine on every design of the sweep and differs on 52 of the Studio's.
-- **Engine suite** 709 passed. **Doc guards** 76 passed.
+- **Tests first.** Eleven in `test/digitize.test.js`, each seen to fail:
+  on the engine before the rule, on the first build, or on a mutant.
+- **Fourteen mutants, fourteen die**: the rule without the flag, the flag
+  read backwards, a cut inside a run that keeps the hole or becomes it, a
+  float that keeps the hole or becomes it, a hole that outlives its run, a
+  run's own jump taken for a hole, the same x or the same y taken for the
+  same point, a hole never moved on, a hole never noted, a stitch left out
+  that forgets the hole, and a record taken out after the spans were written.
+- **Engine suite** 712 passed. **Doc guards** 76 passed.
 
-*(measured 2026-10-03, `node tools/sub-unit-stitch-census.mjs --on
-dedupeHoles=true --off dedupeHoles=true --against <main's src>`)*
+**What the independent re-measure changed.** The first build asked the
+thread and not the frame: it looked through jumps, so it also took out the
+stitch of a run that begins where the last one ended, and the stitch a satin
+column lays when it floats away and comes back. A separate agent, with its
+own generator and reader, held every claim on 22,167 designs. Its remark
+that the writer makes a cut out of three jump records is what narrowed the
+rule: looking through a jump can leave a run with no stitch, its jump beside
+the next, and a float out and back of 12 mm each way is already three jump
+records, a cut, after which the stitch is what holds the thread. It also
+found five mutants no test caught; they have tests now.
+
+*(measured 2026-10-03 and 2026-10-04, `node tools/sub-unit-stitch-census.mjs
+--on dedupeHoles=true --off dedupeHoles=true --against <main's src>`)*
 
 ## Seen on the way, not this note's
 
