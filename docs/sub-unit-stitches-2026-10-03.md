@@ -1,7 +1,7 @@
 # Two stitches in one hole: the browser fill's stitches under the file's unit (2026-10-03)
 
-It measures a finding handed over from PR #617 and sets out the choices.
-**Kent chose the same day: choice 4.** It is built as `dedupeHoles` on
+This note measures a finding handed over from PR #617 and sets out the
+choices. **Kent chose the same day: choice 4.** It is built as `dedupeHoles` on
 `buildQualityDesign`, OFF by default, so no stitch changes until he flips it
 ("Waiting on Kent" 25). What follows is what was put to him; what was built
 is at the end.
