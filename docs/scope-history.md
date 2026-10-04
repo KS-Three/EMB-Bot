@@ -18602,6 +18602,13 @@ and place. It found one mutant the eleven tests missed, a float that goes
 nowhere keeping the hole; its fixture is the twelfth test. Twelve tests,
 each seen to fail; fifteen mutants, fifteen die. Engine 713 passed.
 
+Measured again after merging `main` at `227cdd9e` (the star's satin fixed in
+#624, the islands in #620): flag not passed, still `main`'s stream on all
+16,525 designs, both arms. The Studio lanes hold 16,772 pairs now and 8,164
+with `fillColumns`, the pairs outside tatami passes having fallen from 23,549
+to 373; with the flag 0 and 0, and 7,526 and 4,360 designs change by those
+stitches and nothing else. The sweep is unchanged. Engine 788 passed.
+
 Not sewn. No Studio caller passes it, and the lettering builder has no such
 rule. Flip is Kent's: "Waiting on Kent" 25.
 *(measured and built 2026-10-03 and 2026-10-04 — `docs/sub-unit-stitches-2026-10-03.md`, `tools/sub-unit-stitch-census.mjs`, `test/digitize.test.js` "dedupeHoles")*

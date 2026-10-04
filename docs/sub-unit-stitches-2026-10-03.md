@@ -216,6 +216,15 @@ On `main` at `f887e27d` with the rule added, against `main` itself:
 
 Every stitch taken out is a pair: 18,424,406 less 16,575 is 18,407,831.
 
+**Measured again on `main` at `227cdd9e`**, which by then had the preset
+star's satin fixed (#624) and the island fixes (#620). Flag not passed: still
+`main`'s stream on all 16,525 designs, with `fillColumns` absent and on. The
+sweep's numbers are the ones above. The Studio lanes hold fewer pairs now,
+16,772 and 8,164 with `fillColumns`, because the pairs outside tatami passes
+fell from 23,549 to 373. With the flag: 0 and 0; 7,526 and 4,360 designs
+change, each by those stitches and nothing else (60,695,036 less 16,772 is
+60,678,264); none changes any other way; cuts unchanged, both ways.
+
 - **Tests first.** Twelve in `test/digitize.test.js`, each seen to fail:
   on the engine before the rule, on the first build, or on a mutant.
 - **Fifteen mutants, fifteen die**: the rule without the flag, the flag
@@ -225,7 +234,8 @@ Every stitch taken out is a pair: 18,424,406 less 16,575 is 18,407,831.
   the same x or the same y taken for the same point, a hole never moved on, a
   hole never noted, a stitch left out that forgets the hole, and a record
   taken out after the spans were written.
-- **Engine suite** 713 passed. **Doc guards** 76 passed.
+- **Engine suite** 713 passed, and 788 after merging `main` at `227cdd9e`.
+  **Doc guards** 76 passed.
 
 **What the independent re-measure changed.** The first build asked the
 thread and not the frame: it looked through jumps, so it also took out the
