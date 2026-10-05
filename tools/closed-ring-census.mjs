@@ -26,9 +26,11 @@
 // 3. WHO HANDS ONE OVER: the Studio's own generateElement, with the builder
 //    watched for the rings it is given. Three lanes reach it.
 // 4. THE NEAR REPEAT, which the fix does NOT reach (MASTER_SCOPE defect 55):
-//    a hand-drawn shape finished with a double-click whose second click lands
-//    more than half a canvas pixel from the first. ManualPanel keeps it as an
-//    anchor; the short edge to it doubles back and gets the same clamp.
+//    a hand-drawn shape with an anchor a pixel or two from the one before it.
+//    The short edge doubles back and gets the same clamp. Until 2026-10-03 a
+//    double-click whose second click slipped more than half a canvas pixel
+//    left one (ManualPanel now lets that click go by); a shape saved before
+//    then still carries it, and two anchors dragged together make another.
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -379,12 +381,15 @@ function furthestFrom(a, b) {
   for (const r of rows) console.log(r);
 }
 
-// ---- 4. the near repeat: a double-click that slips -------------------------------
+// ---- 4. the near repeat: an anchor a pixel or two from the last ------------------
 {
-  // ManualPanel.onCanvasClick, as it takes clicks: one within 10 px of the
-  // first anchor finishes the shape, one within 0.5 px of the last is dropped,
-  // any other is an anchor. Then dblclick -> finishShape, which keeps the
-  // shape if isValidShape says so.
+  // The anchors a run of clicks left BEFORE 2026-10-03, when the second click
+  // of a double-click was a click like any other: one within 10 px of the
+  // first anchor finished the shape, one within 0.5 px of the last was
+  // dropped, any other was an anchor. Then dblclick -> finishShape, which
+  // keeps the shape if isValidShape says so. (ManualPanel.onCanvasClick now
+  // lets that second click go by, so it makes no new one; these are the
+  // shapes already saved.)
   const drawnBy = (clicks) => {
     let draft = [];
     for (const c of clicks) {
@@ -412,8 +417,8 @@ function furthestFrom(a, b) {
   };
   const corners = box(100, 100, 300, 300);   // the fourth click is the double-click's first
   const clean = drawnBy(corners.concat([P(100.2, 300.3)])), slipped = drawnBy(corners.concat([P(99.8, 300.98)]));
-  console.log("\n4. THE NEAR REPEAT (not fixed here): a box finished with a double-click, mm of fill past the ring as drawn\n");
-  console.log(`A second click 0.36 px off is dropped (${clean.length} anchors). One 1 px off is kept (${slipped.length} anchors, valid: ${isValidShape(flattenShape(slipped, {}, true))}).\n`);
+  console.log("\n4. THE NEAR REPEAT (the offset is not changed): a box whose last anchor is a slipped second click, mm of fill past the ring as drawn\n");
+  console.log(`As clicks were taken before 2026-10-03: a second click 0.36 px off was dropped (${clean.length} anchors), one 1 px off was kept (${slipped.length} anchors, valid: ${isValidShape(flattenShape(slipped, {}, true))}).\n`);
   console.log("| preset | pull comp mm | clean double-click | second click 1 px off | 80 slips of 0.6 to 3 px, 16 directions: refused as crossing | kept as an anchor | of those, over 0.15 mm further out than clean | worst |\n|---|---|---|---|---|---|---|---|");
   for (const f of PRESETS) {
     const base = past(clean, f);

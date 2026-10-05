@@ -1327,25 +1327,30 @@ don't push for it.
 
 ## Known bugs (unresolved, not accepted — Kent's call on the fix)
 
-- **A hand-drawn shape finished with a double-click that slips sews a spike at
-  that corner — OPEN, found 2026-10-03 (MASTER_SCOPE defect 55).** A
-  double-click is two clicks and then a `dblclick`. `ManualPanel.onCanvasClick`
-  drops the second click only when it lands within 0.5 canvas px of the first
-  (`DUP_POINT_EPS_PX`); a pixel off, it is kept as an anchor, and
-  `onCanvasDblClick`'s own comment ("already drops it") is the assumption that
-  fails. The short edge to that anchor doubles back, and `offsetRing` gives its
-  end the whole mitre clamp, three times the pull compensation. On terry a
-  40 mm box is filled 1.73 mm past the drawn ring there, where a clean corner
-  has 0.85; one slip in four is refused as crossing instead, and the
-  double-click finishes nothing. It is NOT the closed-ring wedge fixed the same
-  day (that is a point said twice to within rounding, and no Studio lane sends
-  one), though it is the same function and the same clamp. Two cures, and the
-  choice is Kent's: the gesture (new shapes only), or the offset (every saved
-  shape, and every sharp corner under a preset moves). `node
-  tools/closed-ring-census.mjs`, table 4.
+- **A hand-drawn shape with an anchor a pixel from the last one sews a spike
+  at that corner — the gesture that made them is FIXED 2026-10-03, the offset
+  is NOT (MASTER_SCOPE defect 55).** The short edge to such an anchor doubles
+  back, and `offsetRing` gives its end the whole mitre clamp, three times the
+  pull compensation: on terry a 40 mm box is filled 1.73 mm past the drawn
+  ring there, where a clean corner has 0.85. They came from a double-click,
+  which is two clicks and then a `dblclick`: the second click was taken as an
+  anchor unless it landed within 0.5 canvas px of the first
+  (`DUP_POINT_EPS_PX`), and one slip in four was refused as crossing instead,
+  so the double-click finished nothing. `ManualPanel.onCanvasClick` now lets
+  a click with `detail` 2 go by (the field reads `detail` for its own
+  double-click too), so no new shape gets one. **Still open:** a shape saved
+  before then keeps its anchor and its spike, and two anchors dragged to one
+  hoop corner make another. Curing those means the offset (a bevel past the
+  clamp), which moves every sharp corner under a preset: Kent's call, not
+  built. It is NOT the closed-ring wedge fixed the same day (that is a point
+  said twice to within rounding, and no Studio lane sends one), though it is
+  the same function and the same clamp. `node tools/closed-ring-census.mjs`,
+  table 4; `app/e2e/manual-double-click.spec.js` drives the gesture in a
+  real browser.
 
-**One open as of 2026-10-03, above.** Every entry below this line is fixed and
-is kept for its trail. Put a new unresolved bug at the top, above this line.
+**One open as of 2026-10-03, above (its offset half).** Every entry below this
+line is fixed and is kept for its trail. Put a new unresolved bug at the top,
+above this line.
 
 - **DST axis transposition — FIXED 2026-09-08, both halves. The phantom end
   stitch is FIXED too (#415).** EMB-Bot's own DST codec was transposed
