@@ -903,7 +903,7 @@ PDF sheet (`src/render.js`) and the SVG export draw the same width since
 thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.spec.js`)*
 
 **Thread lighting is unverified against real thread** — eye-tuned, and the one physical out (2026-09-01) cannot settle it: its colours were random operator threading, so DOCTRINE bars grading colour from it at all. Treat the look as a preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
-**Uploading artwork is the whole interaction** — the run starts on upload and the panel states what the art was read as, with the override a one-click correction to that sentence; `detail_layer` sits on that row only where the art is tonal. Engine routing unchanged (ROADMAP gate 2). *(confirmed 2026-08-30 — e2e `digitize-auto-start.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
+**Upload file, then Auto Digitize Image** — the file browser opens first, nothing runs until the button, and any later change turns it transparent until pressed again; the panel states what the art was read as; `detail_layer` sits on that row only where the art is tonal. Engine routing unchanged (ROADMAP gate 2). *(confirmed 2026-10-05 — e2e `digitize-auto-start.spec.js`, browser; [area doc](docs/scope/3-studio-app-wizard.md))*
 
 **The hoop you picked is drawn, and the export gate reads the thread's own extent** (`hoopTransform`, `DownloadStep`: confirm, not block; PNG and PDF ungated). **Open:** four of ten garment presets have placement boxes larger than the 200 mm biggest hoop, so the gate fires on shipped presets — whether auto-fit should cap is Kent's. *(measured 2026-09-04/07 — `preview.spec.js`, `DownloadStep.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
 
@@ -1016,7 +1016,7 @@ slightly off the artwork — a bug that reads as an inaccurate *tracer*.
 and indigo respectively. Ember's gesture and colour vocabulary, matched
 deliberately. The default bow takes its side from the turn the path is making,
 so a run of curved nodes arcs instead of scalloping. Backspace mid-draft takes
-back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)* **The border is on the canvas too:** right-click a recognised shape for **Add border** / **Remove border**, and the restitch starts at once. *(confirmed 2026-09-09/2026-09-17 — `borderMenu.spec.js`, `e2e/field-border-menu.spec.js`; detail in the area doc)*
+back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)* **The border is on the canvas too:** right-click a recognised shape for **Add border** / **Remove border**; it sews on the next run. *(confirmed 2026-09-09/2026-10-05 — `borderMenu.spec.js`, `e2e/field-border-menu.spec.js`; detail in the area doc)*
 
 **Click a shape, edit it there — both lanes (2026-09-29, Kent's ask).** A click on an auto-digitized shape opens `ShapePopover` with its Layers-row controls; on a hand-drawn shape, Fill/Satin, colour, angle and Delete; on a preset, its colour. A hand-drawn shape's anchors and curve handles edit on the field too; the side canvas only draws. *(confirmed 2026-09-29 — `e2e/field-shape-popover.spec.js`, `e2e/field-node-edit.spec.js`; detail in the area doc)*
 

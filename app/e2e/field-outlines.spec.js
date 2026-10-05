@@ -18,7 +18,7 @@
 // (each e2e spec here duplicates that boilerplate rather than importing it,
 // matching this directory's own convention).
 import { test, expect } from "@playwright/test";
-import { pickGarment } from "./helpers.js";
+import { pickGarment, uploadArtwork } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -115,10 +115,7 @@ async function overlayPixels(page) {
 async function digitize(page) {
   await page.goto("/");
   await pickGarment(page, "Tote");
-  await page.getByRole("button", { name: "Artwork" }).click();
-  // No Digitize click: choosing the file starts the run (DigitizePanel's
-  // sourcePng watcher).
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   await page.waitForTimeout(1200); // let the field settle after the result lands
 }

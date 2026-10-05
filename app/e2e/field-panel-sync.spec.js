@@ -12,7 +12,7 @@
 // same way e2e/field-outlines.spec.js runs (its service bootstrap is copied
 // here rather than shared so each file stays runnable on its own).
 import { test, expect } from "@playwright/test";
-import { pickGarment } from "./helpers.js";
+import { pickGarment, uploadArtwork } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -112,8 +112,7 @@ async function overlayPixels(page) {
 async function digitize(page) {
   await page.goto("/");
   await pickGarment(page, "Tote");
-  await page.getByRole("button", { name: "Artwork" }).click();
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   await page.waitForTimeout(1200);
   // The rows live on the Shapes tab, behind the closed-by-default "Edit

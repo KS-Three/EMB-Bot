@@ -38,7 +38,7 @@
 // file intentionally duplicates that boilerplate rather than importing it --
 // each e2e spec here is self-contained, matching that file's own convention).
 import { test, expect } from "@playwright/test";
-import { pickGarment } from "./helpers.js";
+import { pickGarment, uploadArtwork } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -137,12 +137,8 @@ test("split editor: cut one shape into two through the real service, then undo",
   await page.goto("/");
 
   await pickGarment(page, "Tote");
-  await page.getByRole("button", { name: "Artwork" }).click();
 
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
-  // No Digitize click: choosing the file starts the run (DigitizePanel's
-  // sourcePng watcher). The button reads "Digitize again" by the time a
-  // result exists, so clicking an exact "Digitize" here would hang.
+  await uploadArtwork(page, ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   await openShapeRows(page);
 
@@ -188,12 +184,8 @@ test("merge selection: picking shapes of two different colors shows the same-col
   await page.goto("/");
 
   await pickGarment(page, "Tote");
-  await page.getByRole("button", { name: "Artwork" }).click();
 
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
-  // No Digitize click: choosing the file starts the run (DigitizePanel's
-  // sourcePng watcher). The button reads "Digitize again" by the time a
-  // result exists, so clicking an exact "Digitize" here would hang.
+  await uploadArtwork(page, ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   await openShapeRows(page);
 

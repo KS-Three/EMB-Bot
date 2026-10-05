@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import { flattenRGBA, flatToRGBA, flatShares, mergeFlat, WORK_MAX_PX, ALPHA_CUTOFF, MIN_SWATCH_SHARE } from "../lib/flatten.js";
   import { loadImage, rasterSize, isVectorFile, UNREADABLE } from "../lib/rasterize.js";
   import ThreadPicker from "./ThreadPicker.svelte";
@@ -119,9 +119,23 @@
     flattenFrom(workImage, element.nColors, element.removeBg);
   }
 
+  // A file picked before this element existed (App.onArtFile) — the
+  // service-down half of the same "Upload file" flow DigitizePanel has.
+  export let pendingFile = null;
+  onMount(() => {
+    if (!pendingFile) return;
+    const file = pendingFile;
+    d("fileconsumed");
+    ingestFile(file);
+  });
+
   async function onFileChange(e) {
     const file = e.target.files && e.target.files[0];
-    if (!file) return;
+    if (file) await ingestFile(file);
+    e.target.value = ""; // allow re-selecting the same file later
+  }
+
+  async function ingestFile(file) {
     error = "";
     busy = true;
     // Set BEFORE the first workSize() call — prepRGBA and encodeWorkPng both
@@ -159,7 +173,6 @@
       flattenFrom(null, element.nColors, element.removeBg);
     } finally {
       busy = false;
-      e.target.value = ""; // allow re-selecting the same file later
     }
   }
 

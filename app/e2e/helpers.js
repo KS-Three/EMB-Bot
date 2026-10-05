@@ -43,3 +43,26 @@ export async function closeDownload(page) {
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Download" })).toHaveCount(0);
 }
+
+// Artwork goes in file-first (Kent 2026-10-05): "Upload file" and the Artwork
+// tile open the OS file browser through one hidden input, and the element is
+// only added once a file comes back. Setting the input's files is that same
+// path minus the dialog. NOTHING digitizes on its own any more, so `run`
+// presses "Auto Digitize Image" — pass `run: false` for the browser's own
+// flatten lane (service unreachable), which has no such button, or to assert
+// on the loaded-but-unrun state.
+export async function uploadArtwork(page, file, { run = true } = {}) {
+  await page.getByTestId("art-file").setInputFiles(file);
+  if (!run) return;
+  await runDigitize(page);
+}
+
+// Press the one control that starts a digitize, and wait for the run to
+// have actually started so a caller polling for the RESULT cannot read the
+// previous one.
+export async function runDigitize(page) {
+  const run = page.locator(".dgp-run");
+  await expect(run).toBeEnabled({ timeout: 30_000 });
+  await expect(run).toHaveText("Auto Digitize Image");
+  await run.click();
+}

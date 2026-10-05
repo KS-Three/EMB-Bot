@@ -45,7 +45,7 @@
 // from 2026-08-10 to -13 (tile-locator break), which is why the premise
 // loss went unnoticed.
 import { test, expect } from "@playwright/test";
-import { pickGarment } from "./helpers.js";
+import { pickGarment, uploadArtwork } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -157,12 +157,8 @@ test("BACKGROUND_ENCLOSED: enclosed icon linework is held out by default and res
 
   // ---- reach the digitize panel (same route as the other digitize specs) --
   await pickGarment(page, "Tote");
-  await page.getByRole("button", { name: "Artwork" }).click();
 
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_SINGLE_PNG);
-  // No Digitize click: choosing the file starts the run (DigitizePanel's
-  // sourcePng watcher). The button reads "Digitize again" by the time a
-  // result exists, so clicking an exact "Digitize" here would hang.
+  await uploadArtwork(page, ART_SINGLE_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   await openShapeRows(page);
 
@@ -225,12 +221,8 @@ test("BACKGROUND_ENCLOSED: the banner's 'Sew all' bulk-restores every enclosed r
   await page.goto("/");
 
   await pickGarment(page, "Tote");
-  await page.getByRole("button", { name: "Artwork" }).click();
 
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_BULK_PNG);
-  // No Digitize click: choosing the file starts the run (DigitizePanel's
-  // sourcePng watcher). The button reads "Digitize again" by the time a
-  // result exists, so clicking an exact "Digitize" here would hang.
+  await uploadArtwork(page, ART_BULK_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   await openShapeRows(page);
 

@@ -15,9 +15,9 @@
 // needs a real (or mocked) digitizer service and is already covered by real
 // Playwright e2e specs (`app/e2e/digitize-stale-edits.spec.js`). Every test
 // below starts from an element that already has a `result`/`review` (as if
-// a job already ran) and never touches `element.params`, so the "re-digitize
-// automatically when params change" reactive statement never fires and no
-// network call happens.
+// a job already ran). Nothing in the panel starts a run on its own (the
+// "nothing runs until Auto Digitize Image is pressed" block below pins that),
+// so no network call happens unless a test presses the button.
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { render, fireEvent, waitFor } from "@testing-library/svelte";
 import "@testing-library/jest-dom/vitest";
@@ -932,12 +932,20 @@ describe("the Edit shapes disclosure", () => {
   });
 });
 
-describe("auto-restitch on shape edits", () => {
-  // `digitize` is the network call runDigitize makes; counting it is how we
-  // observe a restitch without a service.
-  let calls;
+describe("nothing runs until Auto Digitize Image is pressed", () => {
+  // Kent, 2026-10-05: the button is the only thing that starts a run, and it
+  // goes transparent when the result on the canvas is behind the settings.
+  // This block replaces "auto-restitch on shape edits" and "a moved crop box
+  // restitches" (his 2026-08-13 / 08-30 rulings, both reversed that day).
+  //
+  // `digitize` is the network call runDigitize makes; counting it is how a
+  // run is observed without a service.
+  let cfgs;
+  let releases;
+  const RESULT = { stitches: [], colors: [], stitchCount: 0, colorCount: 0, name: "t", widthMM: 50, heightMM: 40 };
   beforeEach(() => {
-    calls = [];
+    cfgs = [];
+    releases = [];
     vi.useFakeTimers();
   });
   afterEach(() => {
@@ -945,145 +953,184 @@ describe("auto-restitch on shape edits", () => {
     vi.restoreAllMocks();
   });
 
-  async function panelWithService(shapes, extra = {}) {
+  // `hold` keeps each run open until its release is called, so a test can
+  // act while one is genuinely in flight.
+  async function panel(extra = {}, { shapes = [], hold = false } = {}) {
     const mod = await import("../lib/digitizer.js");
-    vi.spyOn(mod, "digitize").mockImplementation(async () => {
-      calls.push(Date.now());
-      return null;   // runDigitize bails on a null job before patching
+    vi.spyOn(mod, "digitize").mockImplementation((_img, cfg) => {
+      cfgs.push(cfg);
+      const job = { design: { ...RESULT }, warnings: [], review: null, stats: null, preflight: null };
+      if (!hold) return Promise.resolve(job);
+      return new Promise((resolve) => releases.push(() => resolve(job)));
     });
     const patches = [];
     const utils = render(Harness, {
       props: {
-        element: baseElement(shapes, {
-          // Enough of a real design for the panel's own stats line to render;
-          // these tests are about the debounce, not the readout.
-          result: { stitches: [], colors: [], stitchCount: 0, colorCount: 0,
-                    name: 'test', widthMM: 50, heightMM: 40 },
-          ...extra,
-        }),
+        element: baseElement(shapes, { result: { ...RESULT }, ...extra }),
         health: { ok: true },
         onPatch: (d) => patches.push(d),
       },
     });
-    openLayers(utils);   // these tests drive a per-shape control; see openLayers
-    return { ...utils, patches };
+    if (shapes.length) openLayers(utils);
+    const run = () => utils.container.querySelector(".dgp-run");
+    return { ...utils, patches, run };
   }
+  const settle = () => vi.advanceTimersByTimeAsync(5000);
 
-  test("a shape edit does NOT restitch immediately", async () => {
-    const { getByLabelText } = await panelWithService([shapeRow("s1")]);
-    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
-    vi.advanceTimersByTime(1500);
-    expect(calls).toHaveLength(0);
+  test("a design that just loaded is current: solid button, nothing running", async () => {
+    const { run, queryByTestId } = await panel({ crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 } });
+    await settle();
+    expect(cfgs).toHaveLength(0);
+    expect(run()).toHaveTextContent("Auto Digitize Image");
+    expect(run()).not.toHaveClass("dgp-run-stale");
+    expect(queryByTestId("digitize-stale")).toBeNull();
   });
 
-  test("it restitches once the user stops editing", async () => {
-    const { getByLabelText } = await panelWithService([shapeRow("s1")]);
-    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
-    vi.advanceTimersByTime(2500);
-    await Promise.resolve();
-    expect(calls.length).toBeGreaterThanOrEqual(1);
+  test("new artwork does NOT digitize itself — it waits, solid, for the button", async () => {
+    const health = { ok: true };
+    const utils = await panel({ sourcePng: null, result: null, review: null });
+    await utils.rerender({
+      element: baseElement([], { sourcePng: "data:image/png;base64,BBBB", result: null, review: null }),
+      health,
+    });
+    await settle();
+    expect(cfgs).toHaveLength(0);
+    expect(utils.run()).toHaveTextContent("Auto Digitize Image");
+    expect(utils.run()).toBeEnabled();
+    expect(utils.run()).not.toHaveClass("dgp-run-stale");
   });
 
-  // A border is not a drag. It is picked from a menu or a select, it is
-  // complete the moment it is picked, and there is no second half coming — so
-  // the two seconds the debounce spends waiting for the user to "stop editing"
-  // are two seconds of a canvas that has not acknowledged the click. The
-  // canvas's own right-click Add/Remove border writes this same field
-  // (shapeOverrides[sid].border, via the same elupdate path), which is where
-  // the wait was most visible: you click a menu item and nothing happens.
-  test("a BORDER change restitches immediately — no idle pause to wait out", async () => {
-    const { getByLabelText } = await panelWithService([shapeRow("s1")]);
-    await fireEvent.change(getByLabelText(/^Border \u2014 /), { target: { value: "auto" } });
-    vi.advanceTimersByTime(0);        // the 0 ms hop off the reactive tick
-    await Promise.resolve();
-    expect(calls.length).toBeGreaterThanOrEqual(1);
+  test("pressing it starts exactly one run", async () => {
+    const { run } = await panel({ result: null, review: null });
+    await fireEvent.click(run());
+    await settle();
+    expect(cfgs).toHaveLength(1);
   });
 
-  // The armed line must not FLASH on the path that never waits. A border
-  // schedules at 0 ms, and a 0 ms timeout is a macrotask — it fires after
-  // Svelte has already flushed the DOM — so arming it "briefly" would paint
-  // "restitching when you stop editing" for a frame on every border toggle,
-  // about an edit that is not waiting for anything. The fix is to not arm at
-  // all when there is no pause, which is also what makes the comment on that
-  // block true.
-  test("a border change never shows the armed line, not even for a frame", async () => {
-    const { getByLabelText, queryByText } = await panelWithService([shapeRow("s1")]);
-    await fireEvent.change(getByLabelText(/^Border \u2014 /), { target: { value: "auto" } });
+  test("a setting changed after a run starts NOTHING and turns the button transparent", async () => {
+    const { run, getByLabelText, getByTestId } = await panel();
+    await fireEvent.click(getByLabelText(/Satin for thin shapes/));
+    await settle();
+    expect(cfgs).toHaveLength(0);
+    expect(run()).toHaveClass("dgp-run-stale");
+    expect(run()).toHaveTextContent("Auto Digitize Image");
+    expect(getByTestId("digitize-stale")).toHaveTextContent(/press Auto Digitize Image/);
+  });
+
+  test("putting the setting back makes it solid again — no run was ever needed", async () => {
+    const { run, getByLabelText } = await panel();
+    await fireEvent.click(getByLabelText(/Satin for thin shapes/));
+    expect(run()).toHaveClass("dgp-run-stale");
+    await fireEvent.click(getByLabelText(/Satin for thin shapes/));
+    expect(run()).not.toHaveClass("dgp-run-stale");
+    await settle();
+    expect(cfgs).toHaveLength(0);
+  });
+
+  test("a shape edit starts nothing and turns it transparent", async () => {
+    const { run, getByLabelText } = await panel({}, { shapes: [shapeRow("s1")] });
+    await fireEvent.change(getByLabelText(/^Stitch type — /), { target: { value: "satin" } });
+    await settle();
+    expect(cfgs).toHaveLength(0);
+    expect(run()).toHaveClass("dgp-run-stale");
+  });
+
+  // A border used to be the one edit with no pause at all. It waits for the
+  // button like everything else now.
+  test("a border change starts nothing either", async () => {
+    const { run, getByLabelText } = await panel({}, { shapes: [shapeRow("s1")] });
+    await fireEvent.change(getByLabelText(/^Border — /), { target: { value: "auto" } });
+    await settle();
+    expect(cfgs).toHaveLength(0);
+    expect(run()).toHaveClass("dgp-run-stale");
+  });
+
+  test("a moved crop box starts nothing and turns it transparent", async () => {
+    const { run, getByRole } = await panel({ crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 } });
+    await fireEvent.click(getByRole("button", { name: "Use whole image" }));
+    await settle();
+    expect(cfgs).toHaveLength(0);
+    expect(run()).toHaveClass("dgp-run-stale");
+  });
+
+  test("the old armed line and its Restitch now button are gone", async () => {
+    const { getByLabelText, queryByText } = await panel({}, { shapes: [shapeRow("s1")] });
+    await fireEvent.change(getByLabelText(/^Stitch type — /), { target: { value: "satin" } });
     expect(queryByText("Restitch now")).toBeNull();
+    expect(queryByText(/restitching when you stop editing/)).toBeNull();
   });
 
-  // The narrowness is the safety property: if "border" could ever be returned
-  // for a change that also moved a boundary, a drag would take the fast path
-  // and queue a full stage 0-7 run behind every nudge. This is that guard at
-  // the panel level rather than on the pure function.
-  test("a stitch-type change still waits — the fast path is borders ONLY", async () => {
-    const { getByLabelText } = await panelWithService([shapeRow("s1")]);
-    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
-    vi.advanceTimersByTime(0);
-    await Promise.resolve();
-    expect(calls).toHaveLength(0);
-    vi.advanceTimersByTime(2500);
-    await Promise.resolve();
-    expect(calls.length).toBeGreaterThanOrEqual(1);
+  test("pressing the transparent button runs once WITH the change, and comes back solid", async () => {
+    const { run, getByLabelText, patches } = await panel();
+    const before = !!baseElement().params.satin;
+    await fireEvent.click(getByLabelText(/Satin for thin shapes/));
+    await fireEvent.click(run());
+    await settle();
+    expect(cfgs).toHaveLength(1);
+    expect(cfgs[0].satin).toBe(!before);
+    expect(patches[patches.length - 1].patch.appliedConfig).toMatch(/^[0-9a-f]{8}$/);
+    expect(run()).not.toHaveClass("dgp-run-stale");
+    expect(run()).toHaveTextContent("Auto Digitize Image");
   });
 
-  // "Restitch now" skips the remaining pause for the edits that still have
-  // one. Before it, the only way to not wait was to press "Digitize again",
-  // which ran immediately AND left the armed timer to fire a second identical
-  // run behind it — 10-14 s of service time on a photograph, for nothing.
-  test("\"Restitch now\" runs once, and cancels the pending timer rather than doubling", async () => {
-    const { getByLabelText, findByText } = await panelWithService([shapeRow("s1")]);
-    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
-    const now = await findByText("Restitch now");
-    await fireEvent.click(now);
-    await Promise.resolve();
-    expect(calls).toHaveLength(1);
-    // The armed timer must be gone, not merely beaten to it.
-    vi.advanceTimersByTime(5000);
-    await Promise.resolve();
-    expect(calls).toHaveLength(1);
+  test("a change made WHILE a run is in flight is not in it: one run, and transparent when it lands", async () => {
+    const { run, getByLabelText } = await panel({}, { hold: true });
+    await fireEvent.click(run());
+    await vi.advanceTimersByTimeAsync(0);
+    expect(cfgs).toHaveLength(1);
+    expect(run()).toBeDisabled();
+    expect(run()).toHaveTextContent("Digitizing…");
+    await fireEvent.click(getByLabelText(/Satin for thin shapes/));
+    releases[0]();
+    await settle();
+    expect(cfgs).toHaveLength(1);       // no automatic second run behind it
+    expect(run()).toBeEnabled();
+    expect(run()).toHaveClass("dgp-run-stale");
   });
 
-  // The armed window is what the button lives in, and it has to close again —
-  // a control offering to hurry a restitch that already ran is a dead control.
-  test("the armed line appears only while a restitch is waiting", async () => {
-    const { getByLabelText, queryByText } = await panelWithService([shapeRow("s1")]);
-    expect(queryByText("Restitch now")).toBeNull();
-    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
-    expect(queryByText("Restitch now")).not.toBeNull();
-    vi.advanceTimersByTime(2500);
-    await Promise.resolve();
-    expect(queryByText("Restitch now")).toBeNull();
+  // ContentStep remounts the panel per selection. The key is on the element
+  // so an unapplied change survives clicking another element and back.
+  test("an unapplied change survives a remount", async () => {
+    const mod = await import("../lib/digitizer.js");
+    const applied = mod.configKey(mod.buildDigitizeConfig(baseElement(), {}));
+    const { run } = await panel({
+      appliedConfig: applied,
+      params: { ...DEFAULT_DIGITIZE_PARAMS, target_width_mm: 123 },
+    });
+    expect(run()).toHaveClass("dgp-run-stale");
   });
+});
 
-  // Pressing "Digitize again" during the pause was reachable before any of
-  // this and ran TWICE: once on the click, once more when the armed timer fired
-  // behind it with the same edits in it. On a photograph that is a second
-  // 10-14 s run for nothing. Starting a run of any kind now disarms the
-  // pending one, because either way that run carries the current edits.
-  test("pressing Digitize again during the pause does not run twice", async () => {
-    const { getByLabelText, getByRole } = await panelWithService([shapeRow("s1")]);
-    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
-    await fireEvent.click(getByRole("button", { name: "Digitize again" }));
-    await Promise.resolve();
-    expect(calls).toHaveLength(1);
-    vi.advanceTimersByTime(5000);
-    await Promise.resolve();
-    expect(calls).toHaveLength(1);
+describe("a file picked before the element existed", () => {
+  beforeEach(() => {
+    fakeStore.clear();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage() {} });
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,AAAA");
+    loadImageResult = () => Promise.resolve({ width: 1400, height: 316 });
   });
+  afterEach(() => vi.restoreAllMocks());
 
-  test("rapid edits collapse into ONE restitch, not one per edit", async () => {
-    // The whole point of the debounce: ten adjustments cost one 10-second
-    // run, not ten queued behind each other.
-    const { getByLabelText } = await panelWithService([shapeRow("s1")]);
-    for (const v of ["satin", "fill", "satin", "fill"]) {
-      await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: v } });
-      vi.advanceTimersByTime(300);
-    }
-    expect(calls).toHaveLength(0);       // still inside the idle window
-    vi.advanceTimersByTime(2500);
-    await Promise.resolve();
-    expect(calls.length).toBeLessThanOrEqual(1);
+  test("is ingested on mount, reported consumed, and does not start a run", async () => {
+    const mod = await import("../lib/digitizer.js");
+    const runs = [];
+    vi.spyOn(mod, "digitize").mockImplementation(async () => { runs.push(1); return null; });
+    const patches = [];
+    let consumed = 0;
+    const { container } = render(Harness, {
+      props: {
+        element: baseElement([], { sourcePng: null, result: null, review: null }),
+        health: { ok: true },
+        pendingFile: new File([new Uint8Array([1, 2, 3])], "picked.png", { type: "image/png" }),
+        onFileConsumed: () => { consumed += 1; },
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    await waitFor(() => expect(patches.length).toBeGreaterThanOrEqual(1));
+    expect(consumed).toBe(1);
+    expect(patches[0].patch.sourcePng).toBe("AAAA");
+    expect(patches[0].patch.name).toBe("picked.png");
+    await waitFor(() => expect(container.querySelector(".dgp-run")).toBeEnabled());
+    expect(runs).toHaveLength(0);
   });
 });
 
@@ -1334,124 +1381,6 @@ describe("the upload proposes a crop", () => {
   });
 });
 
-describe("a moved crop box restitches", () => {
-  let calls;
-  beforeEach(() => {
-    calls = [];
-    vi.useFakeTimers();
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.restoreAllMocks();
-  });
-
-  async function panel(extra) {
-    const mod = await import("../lib/digitizer.js");
-    vi.spyOn(mod, "digitize").mockImplementation(async () => {
-      calls.push(1);
-      return null;
-    });
-    return render(Harness, {
-      props: {
-        element: baseElement([], {
-          result: { stitches: [], colors: [], stitchCount: 0, colorCount: 0, name: "t", widthMM: 50, heightMM: 40 },
-          crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 },
-          ...extra,
-        }),
-        health: { ok: true },
-      },
-    });
-  }
-
-  test("changing the crop with a result in hand arms a restitch after the idle pause", async () => {
-    const { getByRole, queryByText } = await panel();
-    await fireEvent.click(getByRole("button", { name: "Use whole image" }));
-    vi.advanceTimersByTime(1500);
-    expect(calls).toHaveLength(0);
-    expect(queryByText("Restitch now")).not.toBeNull();
-    vi.advanceTimersByTime(1000);
-    await Promise.resolve();
-    expect(calls.length).toBeGreaterThanOrEqual(1);
-  });
-
-  // The upload's patch is simulated by a rerender that sets `sourcePng` and
-  // `crop` together, which is what onFile's single patch does. `digitize` is
-  // held open so the first run is genuinely in flight when the box moves.
-  async function inFlightPanel() {
-    const mod = await import("../lib/digitizer.js");
-    const cfgs = [];
-    const releases = [];
-    vi.spyOn(mod, "digitize").mockImplementation((_img, cfg) => {
-      cfgs.push(cfg);
-      return new Promise((resolve) => releases.push(() => resolve(null)));
-    });
-    const health = { ok: true };
-    const utils = render(Harness, {
-      props: { element: baseElement([], { sourcePng: null, result: null, review: null, crop: null }), health },
-    });
-    await utils.rerender({
-      element: baseElement([], {
-        sourcePng: "data:image/png;base64,BBBB",
-        result: null,
-        review: null,
-        crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 },
-      }),
-      health,
-    });
-    await vi.advanceTimersByTimeAsync(0);
-    return { ...utils, cfgs, releases };
-  }
-
-  test("the upload's own patch (new art + proposal together) starts exactly one run", async () => {
-    const { cfgs, releases } = await inFlightPanel();
-    expect(cfgs).toHaveLength(1);
-    expect(cfgs[0].crop).toEqual([0.2, 0.2, 0.8, 0.8]);
-    releases[0]();
-    await vi.advanceTimersByTimeAsync(5000);
-    expect(cfgs).toHaveLength(1);
-  });
-
-  test("a crop moved while the first run is in flight reruns once after it, with the moved crop", async () => {
-    const { getByRole, cfgs, releases } = await inFlightPanel();
-    expect(cfgs).toHaveLength(1);
-    await fireEvent.click(getByRole("button", { name: "Use whole image" }));
-    // Let the idle pause elapse while the first run is still open: the timer
-    // hits runDigitize's in-flight guard and becomes a rerun request.
-    await vi.advanceTimersByTimeAsync(2500);
-    expect(cfgs).toHaveLength(1);
-    releases[0]();
-    await vi.advanceTimersByTimeAsync(0);
-    expect(cfgs).toHaveLength(2);
-    // Full frame is omitted from the config entirely (buildDigitizeConfig).
-    expect(cfgs[1].crop).toBeUndefined();
-    releases[1]();
-    await vi.advanceTimersByTimeAsync(5000);
-    expect(cfgs).toHaveLength(2);
-  });
-
-  test("mounting with a crop already set arms nothing -- only a CHANGE does", async () => {
-    // A saved project reopening with a crop must not restitch on arrival.
-    const { queryByText } = await panel();
-    await vi.advanceTimersByTimeAsync(5000);
-    expect(calls).toHaveLength(0);
-    expect(queryByText("Restitch now")).toBeNull();
-  });
-
-  test("a crop moved in flight whose pause outlasts the first run still reruns exactly once", async () => {
-    const { getByRole, cfgs, releases } = await inFlightPanel();
-    await fireEvent.click(getByRole("button", { name: "Use whole image" }));
-    releases[0]();
-    await vi.advanceTimersByTimeAsync(0);
-    expect(cfgs).toHaveLength(1);
-    await vi.advanceTimersByTimeAsync(2500);
-    expect(cfgs).toHaveLength(2);
-    expect(cfgs[1].crop).toBeUndefined();
-    releases[1]();
-    await vi.advanceTimersByTimeAsync(5000);
-    expect(cfgs).toHaveLength(2);
-  });
-});
-
 describe("the crop box's drag floor tracks the preview raster", () => {
   // The service refuses a crop under 16 px on either axis. On a 100 x 100
   // preview that is 16%, far above CropBox's own 2% default.
@@ -1562,7 +1491,7 @@ describe("the upload stores the file and a digitize sends it", () => {
         health: { ok: true, limits: LIMITS },
       },
     });
-    await fireEvent.click(getByRole("button", { name: /^Digitize( again)?$/ }));
+    await fireEvent.click(getByRole("button", { name: "Auto Digitize Image" }));
     await waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0]).toEqual({ bytes, type: "image/webp", name: "logo.webp" });
     expect(queryByTestId("source-note")).toBeNull();
@@ -1570,7 +1499,7 @@ describe("the upload stores the file and a digitize sends it", () => {
     // Cleared site data, another browser: the original is gone. The preview
     // goes up (the pre-2026-09-20 result) and the panel says which one this is.
     fakeStore.clear();
-    await fireEvent.click(getByRole("button", { name: /^Digitize( again)?$/ }));
+    await fireEvent.click(getByRole("button", { name: "Auto Digitize Image" }));
     await waitFor(() => expect(sent).toHaveLength(2));
     expect(sent[1]).toBe("data:image/png;base64,AAAA");
     expect(await findByTestId("source-note")).toHaveTextContent(/original file is no longer stored/);

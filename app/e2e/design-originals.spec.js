@@ -16,7 +16,7 @@
 // record never carried the bytes, and — with the digitizer service up — the
 // re-digitize request carries the file itself.
 import { test, expect } from "@playwright/test";
-import { startStudio, pickGarment } from "./helpers.js";
+import { startStudio, pickGarment, uploadArtwork } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
@@ -135,11 +135,10 @@ function storedLength(page, key) {
   );
 }
 
-async function uploadArtwork(page) {
+async function uploadOriginal(page) {
   await startStudio(page);
   await pickGarment(page, "Tote");
-  await page.getByRole("button", { name: "Artwork" }).click();
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG, { run: false });
   // The panel stores the file before it patches the element; wait for the
   // record rather than for a digitize, which needs the service.
   await expect.poll(() => storedLength(page, ART_KEY), { timeout: 30_000 }).toBe(ART.length);
@@ -188,7 +187,7 @@ async function importFile(page, filename, text) {
 // ---- the tests -----------------------------------------------------------------
 
 test("the export carries the uploaded file byte for byte, beside the project and outside the registry", async ({ page }) => {
-  await uploadArtwork(page);
+  await uploadOriginal(page);
   const { filename, json } = await exportCurrent(page);
 
   expect(filename).toBe("enthusiast-logo.embproj");
@@ -215,7 +214,7 @@ test("the export carries the uploaded file byte for byte, beside the project and
 });
 
 test("imported on a wiped browser, the original is back in the store under its content key", async ({ page }) => {
-  await uploadArtwork(page);
+  await uploadOriginal(page);
   const { filename, text, json } = await exportCurrent(page);
 
   await wipeBrowser(page);
@@ -244,7 +243,7 @@ test("a re-digitize after the import sends the file itself, not the preview", as
   test.skip(!serviceUp, skipReason);
   test.setTimeout(300_000);
 
-  await uploadArtwork(page);
+  await uploadOriginal(page);
   const { filename, text } = await exportCurrent(page);
   await wipeBrowser(page);
   await importFile(page, filename, text);
@@ -267,7 +266,7 @@ test("a re-digitize after the import sends the file itself, not the preview", as
     };
   });
 
-  const run = page.getByRole("button", { name: /^Digitize( again)?$/ });
+  const run = page.getByRole("button", { name: "Auto Digitize Image" });
   await expect(run).toBeEnabled({ timeout: 30_000 });
   await run.click();
   await expect.poll(() => page.evaluate(() => window.__digitizeSends.length), { timeout: 30_000 }).toBe(1);

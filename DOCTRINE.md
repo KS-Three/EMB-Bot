@@ -8552,3 +8552,32 @@ round-ended bars and 273 of 612 image-lane designs besides.
 *(measured 2026-10-03 — `tools/satin-walk-census.mjs`,
 `test/satin-walk.test.js`; MASTER_SCOPE defects 56 and 57; scope-history
 10-03)*
+
+## 2026-10-05 — Kent's ruling: the button starts every digitize; nothing runs on its own
+
+**Reverses two of his own rulings**, both of which had made the Studio start
+runs by itself: 2026-08-13 (a shape edit restitches after a 2 s pause) and
+2026-08-30 (uploading the image IS the run, PR #296). Asked which of three
+trigger models he wanted, with the catch of each stated, he picked "button
+only" over "button first, edits auto" — after first picking the other and
+asking to be asked again.
+
+What he asked for, in his words: "Change 'upload logo' to 'upload file' and
+when I select it, a file browser pops up. When I select 'Auto Digitize Image'
+that should begin the digitizing process. If I modify anything on the
+digitized version 'auto digitized' should be transparent so I know I need to
+select 'Auto Digitize' again."
+
+- **The rule:** a file loads and waits. `.dgp-run` is the run. Any change to
+  what a digitize would SEND — settings, crop, shape edits, borders, garment
+  — leaves the stitches where they are and turns the button transparent.
+  Solid before the first run and whenever the result is current (his pick).
+- **Do not re-add an automatic run to "help".** The 08-30 half that stands is
+  the other one: the Studio asks nothing about what the art is.
+- **What it costs, knowingly:** the canvas shows stitches that are behind the
+  outline after a drag, until the button is pressed. The stale note and the
+  dimmed border readout say so.
+
+*(built and driven 2026-10-05 — `DigitizePanel.spec.js` "nothing runs until
+Auto Digitize Image is pressed", e2e `digitize-auto-start.spec.js`;
+COOKBOOK "Nothing in `DigitizePanel` starts a run")*
