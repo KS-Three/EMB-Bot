@@ -287,6 +287,15 @@
       suppressNextClick = false;
       return;
     }
+    // The second click of a double-click is not a click of its own: the
+    // browser counts it (`detail` is 2), and the `dblclick` that follows
+    // finishes the shape. Taken as a click it was an anchor wherever the
+    // pointer had slipped to between the two -- dropped as a duplicate within
+    // DUP_POINT_EPS_PX, KEPT a pixel off, a short edge doubling back that the
+    // fill's pull compensation then put a spike on (MASTER_SCOPE defect 55)
+    // -- or, when the first click had just closed the shape, the first point
+    // of a draft nobody meant to start.
+    if (e.detail > 1) return;
     const pt = canvasPointFromEvent(e);
     // A click on empty canvas while nothing's mid-draft selects whatever
     // finished shape is under it, instead of starting a new draft on top of
@@ -367,11 +376,11 @@
     draft = next;
   }
 
-  // A double-click is two `click` events THEN one `dblclick`. The second
-  // click lands on (or within DUP_POINT_EPS_PX of) the same point as the
-  // first, so onCanvasClick's duplicate-consecutive-point dedupe already
-  // drops it before this handler ever runs — nothing extra to undo here,
-  // just finish with whatever's in the draft.
+  // A double-click is two `click` events THEN one `dblclick`. onCanvasClick
+  // takes the first and lets the second go by (`detail` 2), wherever it
+  // landed, so there is nothing extra to undo here: finish with whatever's
+  // in the draft. (This used to lean on the duplicate-point dedupe, which
+  // only drops a second click within half a pixel of the first.)
   function onCanvasDblClick() {
     finishShape();
   }
