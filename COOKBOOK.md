@@ -1096,6 +1096,31 @@ sews nothing and cuts the smallest shape that contains it.
   `splitTol` there, the two lengths in the layout's units: final mm,
   divided by the fit scale, times `pxPerMm`, as `fillStitchMm` beside them
   already is.
+- **The browser's satin tracer can no longer walk for ever (2026-10-03), and
+  that is all that changed in it.** `skeletonEdges` in `src/satin.js` walks
+  skeleton pixels from a node to the next node, under a guard of one step
+  per grid cell. Three pixels that all touch are no node; a walk went round
+  them until the guard ran out, and the satin emitter sewed what came back
+  (a 20 mm star off the shape tool: 48,645 stitches). `circling()` ends such
+  a walk, and a walk that ended by itself is untouched. Three things to know
+  before touching it:
+  - It reached every lane that calls `medialSatin`, not stars: thin
+    round-ended bars and 273 of 612 image-lane designs moved too. Sweep
+    every caller before saying which designs a change moves.
+  - The walks still step onto pixels another edge has: a median 72 layings
+    too many for every 100 skeleton pixels on the shape tool's stars, and
+    "rings" are found in shapes with no hole. That,
+    and a stitch as long as the star or the bar, are MASTER_SCOPE defect
+    57, untouched. The Python port's cure for the first is a consumed set.
+    The knot had also been COVERING small round shapes: a 2 mm one now sews
+    four stitches, because such a ring is its only edge.
+  - `node tools/satin-walk-census.mjs` builds what the shape tool builds and
+    says which designs sew out of line with their neighbours in size;
+    `--against <tree>` says which designs differ from another engine's,
+    `--walks` counts the walks that only the guard stopped, `--kind rect`
+    does bars, `--render` draws one from its DST bytes. A counter it cannot
+    insert is an error: the first version read "0 walks at the guard" on a
+    file whose loop it had not found.
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 

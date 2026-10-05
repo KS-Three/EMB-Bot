@@ -8503,3 +8503,52 @@ And one from the audit's second look, at the fixes:
 *(measured 2026-10-03 — `test/fill-stagger.test.js`,
 `tools/fill-stagger-census.mjs`; `docs/renders/fill-stagger-2026-10-03/`;
 MASTER_SCOPE "Waiting on Kent" 24; scope-history 10-03)*
+
+## A guard is not an end: what only its guard stops comes back the size of the guard, and a later step can hide it (2026-10-03)
+
+The browser's `skeletonEdges` walked skeleton pixels under
+`while (guard++ < w * h)`. The guard was read as "this cannot loop for
+ever", which was true, and nobody asked what a walk that REACHED it handed
+back: an edge with a point for every cell of the grid, put first by a
+longest-first sort and sewn by the satin emitter. A 20 mm star off the shape
+tool came out at 48,645 stitches, a 24 mm one at 128,239.
+
+Of the 1,684 star rings the shape tool sends to satin, 432 had such a walk.
+**In 417 of them it showed in nothing but time**: the emitter smooths a
+spine with a three-point average, a walk going round three pixels averages
+to their centre, and a spine with no length sews nothing. Only where the
+circle was longer than three pixels did anything show, so the defect looked
+like one star at one size when it was a quarter of them, and thin
+round-ended bars and 273 of 612 image-lane designs besides.
+
+- **A loop with a guard has two exits. Count the second.** Put a counter on
+  the guard's exit and run the corpus. A guard nothing reaches is free; one
+  that something reaches is returning a result nobody designed.
+- **"Out of line with its neighbours" has to survive its neighbours being
+  out of line too.** The first test compared a design with the three sizes
+  either side. The star had run away at 19, 20, 21 and 22 mm, and the test
+  passed all four. Divide by what size alone explains, and take the median
+  over a window wider than any band you would believe.
+- **A counter inserted beside a line of text counts nothing once the line
+  has changed.** After the fix the census read "0 walks at the guard": the
+  loop's last line was different and the counter had never been inserted.
+  A missing anchor is an error now, and the counter was shown live by
+  switching the new rule off in a copy (16 walks on the 20 mm star, as
+  before the fix).
+- **Say which designs move only after every caller has been swept.** "The
+  other shapes do not move" was written from the star sweep and three spot
+  checks, and was wrong: 329 of 4,095 bars move. The function has three
+  callers in the Studio; the claim was true of none of them until each had
+  been run.
+- **"Better" is a measurement, and of every design that moves.** "The bars
+  that move get better" was written from two pictures of long ones. The
+  independent re-measure drew the stitches of all 726 over their outlines:
+  thread outside the outline fell, and 60 short bars LOST cover, 24 by more
+  than 30 points, because the knot that was taken out had been covering
+  them. A round shape 2 mm across went from 39 stitches to 4. Removing a
+  defect removes whatever it was doing by accident; measure the claim's own
+  noun on all of them before writing the adjective.
+
+*(measured 2026-10-03 — `tools/satin-walk-census.mjs`,
+`test/satin-walk.test.js`; MASTER_SCOPE defects 56 and 57; scope-history
+10-03)*
