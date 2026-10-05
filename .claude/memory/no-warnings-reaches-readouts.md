@@ -17,7 +17,11 @@ the pool moved with tier mix (enthusiast: satin p95 0.247, pooled 0.186). Per
 tier fixed it. The same review caught the docs closing defect 46 on a
 docstring read halfway: Law 37's quantity is `curve_fidelity.roughness_deg`,
 not edge deviation, and it is still offline. Read the whole docstring, and
-check this index — it already said "read `roughness_deg` per design".
+check this index — it already said "read `roughness_deg` per design". Later
+the same evening the curve half shipped the same way (`curve_roughness_deg`,
+`curve_turn_gini`, `curve_vertices`, `curve_corner_vertices`, `curve_traces`;
+commit 84fb94a5), so defect 46 is metrics-only on both halves;
+`edge_smoothness` is what stays offline.
 
 **Why:** his words were about a low-resolution warning, but the principle is
 the tool's job — "identify the image it's being given and follow a path to
