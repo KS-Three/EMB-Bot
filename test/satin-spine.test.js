@@ -99,6 +99,61 @@ test("a round-ended bar is sewn end to end too, with no stitch longer than it is
   }
 });
 
+// ---- a curved stroke, and the walk that traces it -------------------------
+//
+// The two rules above were measured on the shape tool's shapes and on logos,
+// and an independent re-measure then drew a C by hand and set it to satin:
+// 447 stitches on main, 6,047 with the two rules, the mouth of the C sewn
+// solid. Two causes. `skeletonEdges` stepped into the corner filler of a
+// staircase and ended its edge there, and the pixels it left were walked as
+// "rings" and closed with a chord across the mouth (the wrong skeleton had
+// been hiding it: its border row and column gave every curve real nodes).
+// And a cross cast from an end run out ONTO the outline can leave the stroke
+// through its end and land on the far side of the mouth.
+
+test("skeletonEdges walks a staircase past its corner filler: one edge, end to end", () => {
+  // (4,2) is the filler: it touches (4,1), (5,1) and (3,2) and leads nowhere.
+  // The walk from (6,1) took it before (2,3), came back to (6,1) the way it
+  // went, and the stroke was laid twice: once out and back, once in full
+  // from the other end.
+  const rows = ["........", "....###.", "...##...", ".##.....", "........"];
+  const h = rows.length, w = rows[0].length, mask = new Uint8Array(w * h);
+  rows.forEach((row, y) => { for (let x = 0; x < w; x++) if (row[x] === "#") mask[y * w + x] = 1; });
+  const edges = satin.skeletonEdges(mask, w, h);
+  assert.deepStrictEqual(edges.map((e) => e.pts), [[[6, 1], [5, 1], [4, 1], [3, 2], [2, 3], [1, 3]]]);
+  assert.ok(edges[0].freeStart && edges[0].freeEnd && !edges[0].closed);
+});
+
+// An arc `w` mm wide whose outer edge has radius `R`, sweeping `sweep` degrees,
+// the mouth of the C turned to `turn`: drawn by hand and set to satin.
+async function studioArc(R, w, sweep, turn) {
+  const { shapesToRegions, PX_PER_MM, CANVAS_W, CANVAS_H } = await lib("manualShapes.js");
+  const a0 = turn + (360 - sweep) / 2, a1 = turn + 360 - (360 - sweep) / 2, n = Math.max(12, Math.round(sweep / 6));
+  const arc = (r, p, q) => Array.from({ length: n + 1 }, (_, i) => {
+    const a = (p + (q - p) * i / n) * Math.PI / 180;
+    return { x: CANVAS_W / 2 + PX_PER_MM * r * Math.cos(a), y: CANVAS_H / 2 + PX_PER_MM * r * Math.sin(a) };
+  });
+  const points = [...arc(R, a0, a1), ...arc(R - w, a1, a0)];
+  const xs = points.map((p) => p.x);
+  const { regions, pxPerMm } = shapesToRegions([{ id: "shape", points, curves: {}, stitchType: "satin", colorRgb: [20, 20, 20], angleDeg: null }]);
+  return digitize.buildQualityDesign(regions, {
+    garment: garments.getGarment("left_chest"), fabric: fabrics.getFabric(fabrics.fabricForGarment("left_chest")), pxPerMm,
+    darkOnTop: false, underlay: true, targetWidthMm: (Math.max(...xs) - Math.min(...xs)) / pxPerMm, offsetXMm: 0, offsetYMm: 0,
+  });
+}
+
+test("a C drawn by hand and set to satin is one column, end to end: nothing is sewn across its mouth", async () => {
+  for (const [R, w, sweep, turn] of [[12, 3, 330, 270], [12, 3, 270, 0], [8, 3, 300, 315]]) {
+    const d = await studioArc(R, w, sweep, turn), name = `${sweep} degrees of radius ${R}`;
+    assert.strictEqual(d._debug.nSatin, 1);
+    // one cross every 0.4 mm of its centre line is two stitch records, and an underlay under them
+    const centreLineMm = (R - w / 2) * sweep * Math.PI / 180;
+    assert.ok(d.stitchCount < 1.5 * 2 * centreLineMm / 0.4, `${name}: ${d.stitchCount} stitches on ${centreLineMm.toFixed(0)} mm of stroke`);
+    // a cross is the stroke's width and its pull compensation; a stitch much longer does not lie across the stroke
+    assert.ok(longestStitchMm(d) < w + 2, `${name}: a stitch ${longestStitchMm(d).toFixed(1)} mm long on a stroke ${w} mm wide`);
+  }
+});
+
 test("a fill is not touched: the shape tool's default rectangle sews what it sewed", async () => {
   // 50 x 30 mm is a fill; medialSatin never sees it. Counted on f887e27d.
   const d = await studioShape("rect", { heightMm: 30, cornerRadiusMm: 0 }, 50);

@@ -57,8 +57,13 @@ test("skeletonEdges: a ring walk that never comes back to where it began has fou
     ".......",
   ]);
   const edges = satin.skeletonEdges(mask, w, h);
-  assert.deepStrictEqual(edges.map((e) => e.pts.length), [],
-    "a walk that did not close is not a closed edge");
+  assert.deepStrictEqual(edges.filter((e) => e.closed), [], "a walk that did not close is not a closed edge");
+  // Since 2026-10-04 (one pixel, one edge) such a walk is not thrown away
+  // either: it is an OPEN stroke, with the ends its pixels have. Neither end
+  // of this one is an end pixel, so the emitter neither trims it nor runs it
+  // out. ((4,2), the far hook's filler, is left unwalked.)
+  assert.deepStrictEqual(edges.map((e) => e.pts), [[[4, 1], [3, 2], [2, 2], [1, 2], [1, 3]]]);
+  assert.ok(!edges[0].freeStart && !edges[0].freeEnd);
 });
 
 test("skeletonEdges still walks a ring with no node as one closed edge", () => {
@@ -163,10 +168,12 @@ test("a star none of whose walks ran to the guard sews exactly what it sewed", a
   // move.)
   //
   // The spine change of 2026-10-04 (a spare cell on the grid's top and left,
-  // and a free end run out to the outline: test/satin-spine.test.js) moves
-  // every satin star, these four with it. The counts below are theirs since.
-  assert.strictEqual((await studioStar(12, 0.15, 12)).stitchCount, 490);
-  assert.strictEqual((await studioStar(12, 0.15, 18)).stitchCount, 725);
-  assert.strictEqual((await studioStar(12, 0.15, 23)).stitchCount, 1037);
-  assert.strictEqual((await studioStar(8, 0.15, 20)).stitchCount, 602);
+  // a free end run out to the outline, and one pixel to one edge:
+  // test/satin-spine.test.js) moves every satin star, these four with it.
+  // They sew a third fewer stitches: no arm is laid twice. The counts below
+  // are theirs since.
+  assert.strictEqual((await studioStar(12, 0.15, 12)).stitchCount, 295);
+  assert.strictEqual((await studioStar(12, 0.15, 18)).stitchCount, 453);
+  assert.strictEqual((await studioStar(12, 0.15, 23)).stitchCount, 645);
+  assert.strictEqual((await studioStar(8, 0.15, 20)).stitchCount, 390);
 });
