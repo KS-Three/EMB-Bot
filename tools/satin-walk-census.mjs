@@ -8,6 +8,8 @@
 //   node tools/satin-walk-census.mjs --garments all        every garment (ten times the work)
 //   node tools/satin-walk-census.mjs --ratios 15:90:1      the Studio's own 1% ratio step
 //   node tools/satin-walk-census.mjs --kind rect           bars: nine heights by five corner radii
+//   node tools/satin-walk-census.mjs --kind joint [--satin] strokes that meet, as a user draws them: an L, a T and a plus
+//                                                          turned every 5 degrees from 0 to 90 (45 is the exact diagonal)
 //   node tools/satin-walk-census.mjs --kind arc [--satin]  curved strokes as a user draws them: arcs 2 and 3 mm wide,
 //                                                          sweeping 60 to 330 degrees, turned eight ways; --satin
 //                                                          is the user's own choice of satin (the classifier is not asked)
@@ -136,11 +138,25 @@ function arcPoints(E, { R, w, turn }, sweep) {
   const arc = (r, p, q) => Array.from({ length: n + 1 }, (_, i) => { const a = (p + (q - p) * i / n) * Math.PI / 180; return { x: cx + PX * r * Math.cos(a), y: cy + PX * r * Math.sin(a) }; });
   return [...arc(R, a0, a1), ...arc(R - w, a1, a0)];
 }
+// STROKES THAT MEET, drawn by hand and turned: an L, a T or a plus whose arms are `arm` mm wide and
+// `size` mm long, turned `turn` degrees about its own middle.
+function jointPoints(E, { shape, arm: a, size: s }, turn) {
+  const PX = E.manual.PX_PER_MM, cx = E.manual.CANVAS_W / 2, cy = E.manual.CANVAS_H / 2, h = a / 2, e = s / 2;
+  const pts = shape === "L" ? [[0, 0], [a, 0], [a, s - a], [s, s - a], [s, s], [0, s]]
+    : shape === "T" ? [[-e, 0], [e, 0], [e, a], [h, a], [h, s], [-h, s], [-h, a], [-e, a]]
+    : [[-h, -e], [h, -e], [h, -h], [e, -h], [e, h], [h, h], [h, e], [-h, e], [-h, h], [-e, h], [-e, -h], [-h, -h]];
+  const c = Math.cos(turn * Math.PI / 180), sn = Math.sin(turn * Math.PI / 180);
+  const r = pts.map(([x, y]) => [x * c - y * sn, x * sn + y * c]);
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const [x, y] of r) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  return r.map(([x, y]) => ({ x: cx + (x - (x0 + x1) / 2) * PX, y: cy + (y - (y0 + y1) / 2) * PX }));
+}
+const DRAWN = { arc: arcPoints, joint: jointPoints };   // the kinds a user draws: their "size" is a sweep or a turn
 function build(E, kind, params, sizeMm, garmentId) {
-  // (an arc's "size" is its sweep, and it is sewn at the size it is drawn)
-  const points = kind === "arc" ? arcPoints(E, params, sizeMm) : E.presets.shapePresetPoints(kind, params, sizeMm);
+  // (a drawn stroke is sewn at the size it is drawn)
+  const points = DRAWN[kind] ? DRAWN[kind](E, params, sizeMm) : E.presets.shapePresetPoints(kind, params, sizeMm);
   const { regions, pxPerMm } = E.manual.shapesToRegions([
-    { id: "shape", points, curves: {}, stitchType: kind === "arc" && flag("--satin") ? "satin" : "auto", colorRgb: [20, 20, 20], angleDeg: null },
+    { id: "shape", points, curves: {}, stitchType: DRAWN[kind] && flag("--satin") ? "satin" : "auto", colorRgb: [20, 20, 20], angleDeg: null },
   ]);
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
   for (const p of points) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
@@ -148,7 +164,7 @@ function build(E, kind, params, sizeMm, garmentId) {
   const t0 = Date.now();
   const design = E.DG.buildQualityDesign(regions, {
     garment: E.GAR.getGarment(garmentId), fabric: fabricOf(E, garmentId), pxPerMm,
-    darkOnTop: false, underlay: true, targetWidthMm: kind === "arc" ? (x1 - x0) / pxPerMm : sizeMm, offsetXMm: 0, offsetYMm: 0,
+    darkOnTop: false, underlay: true, targetWidthMm: DRAWN[kind] ? (x1 - x0) / pxPerMm : sizeMm, offsetXMm: 0, offsetYMm: 0,
   });
   return { design, ms: Date.now() - t0, walksAtGuard: globalThis.__walksAtGuard, ringWmm: (x1 - x0) / pxPerMm, ringHmm: (y1 - y0) / pxPerMm };
 }
@@ -355,6 +371,8 @@ function shapeSpec(spec) {
   if (kind === "rect") return { kind, params: { heightMm: +part[1], cornerRadiusMm: +part[2] }, size: +part[3], garmentId: part[4] || "left_chest" };
   // "arc:<radius>:<width>:<sweep>:<turn>" (with --satin, as the user's own choice of satin)
   if (kind === "arc") return { kind, params: { R: +part[1], w: +part[2], turn: +part[4] || 0 }, size: +part[3], garmentId: part[5] || "left_chest" };
+  // "joint:<L, T or plus>:<arm width>:<size>:<turn>"
+  if (kind === "joint") return { kind, params: { shape: part[1], arm: +part[2], size: +part[3] }, size: +part[4] || 0, garmentId: part[5] || "left_chest" };
   return { kind, params: {}, size: +part[part.length > 3 ? 3 : 1], garmentId: (part.length > 3 ? part[4] : part[2]) || "left_chest" };
 }
 function render(E, spec, outPng) {
@@ -515,8 +533,8 @@ if (flag("--images")) {
 
 const kind = opt("--kind", "star");
 const garmentIds = opt("--garments", "left_chest") === "all" ? here.GAR.GARMENTS.map((g) => g.id) : opt("--garments", "left_chest").split(",");
-const sizes = range(opt("--sizes", kind === "arc" ? "60:330:30" : "10:100:1"));
-const unit = kind === "arc" ? "deg" : "mm";
+const sizes = range(opt("--sizes", kind === "arc" ? "60:330:30" : kind === "joint" ? "0:90:5" : "10:100:1"));
+const unit = kind === "arc" || kind === "joint" ? "deg" : "mm";
 const bags = [];
 if (kind === "star") {
   const P = here.presets;
@@ -526,6 +544,9 @@ if (kind === "star") {
 } else if (kind === "rect") {
   for (const heightMm of [1, 2, 3, 4, 6, 10, 20, 30, 60]) for (const cornerRadiusMm of [0, 0.5, 1.5, 5, 30])
     bags.push({ name: `${heightMm} mm tall, corner radius ${cornerRadiusMm}`, params: { heightMm, cornerRadiusMm } });
+} else if (kind === "joint") {
+  for (const [shape, arm, size] of [["L", 1, 15], ["L", 1.5, 10], ["T", 1, 10], ["T", 0.75, 15], ["plus", 1, 15]])
+    bags.push({ name: `${shape} ${size} mm, arms ${arm} mm wide, turned`, params: { shape, arm, size } });
 } else if (kind === "arc") {
   for (const R of [8, 12]) for (const w of [2, 3]) for (const turn of [0, 45, 90, 135, 180, 225, 270, 315])
     bags.push({ name: `arc ${w} mm wide, radius ${R}, turned ${turn}`, params: { R, w, turn } });
@@ -556,14 +577,16 @@ for (const g of garmentIds) for (const bag of bags) {
   const judge = (of) => {
     // (a bar's height is fixed and its size is its length: a fill bar grows with its size too, not the square)
     const linear = (r) => of(r).tier === "satin" || kind === "rect" || kind === "arc";
-    const norm = (i) => linear(series[i]) ? of(series[i]).stitches / series[i].size : of(series[i]).stitches / (series[i].size * series[i].size);
+    // (a shape that is only turned is the same size at every turn)
+    const grows = (r) => kind === "joint" ? 1 : linear(r) ? r.size : r.size * r.size;
+    const norm = (i) => of(series[i]).stitches / grows(series[i]);
     series.forEach((r, i) => {
       const near = [];
       for (let j = Math.max(0, i - 10); j <= Math.min(series.length - 1, i + 10); j++) if (j !== i && of(series[j]).tier === of(r).tier) near.push(norm(j));
       if (near.length < 3) return;
       const mid = median(near);
       of(r).times = mid > 0 ? norm(i) / mid : 1;
-      of(r).expected = Math.round(mid * (linear(r) ? r.size : r.size * r.size));
+      of(r).expected = Math.round(mid * grows(r));
     });
   };
   judge((r) => r);
