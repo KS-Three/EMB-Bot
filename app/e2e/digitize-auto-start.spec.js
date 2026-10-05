@@ -1,28 +1,24 @@
-// End-to-end proof that uploading artwork is the WHOLE interaction: the run
-// starts on its own, and the panel then says in plain words what it made of
-// the art.
+// End-to-end proof of the upload flow as Kent re-ruled it on 2026-10-05:
 //
-// Kent, 2026-08-30: "the photo upload is very confusing -- choose flat work,
-// real photo etc. IDK what ANY of that even means, can't we just upload a
-// photo/image and the tool AUTOMATICALLY recognizes what needs to be done?"
-// It always classified the art itself (stage 0); Studio just asked anyway,
-// with a "This is a photo" checkbox sitting in the params list and a Digitize
-// button the user had to find. This spec pins the two halves of that fix:
+//   "Upload file" -> the OS file browser -> the file loads and NOTHING runs
+//   -> "Auto Digitize Image" starts the run -> any later change turns that
+//   button transparent until it is pressed again.
 //
-//   * upload -> stitches, with NO Digitize click anywhere in the test, and
-//   * a reading row that names what stage 0 decided, with the correction for
-//     that reading (and only that one) beside it.
+// THE FILE KEEPS ITS OLD NAME on purpose. It was written for his 2026-08-30
+// ruling -- upload IS the run, no Digitize click anywhere -- and DOCTRINE and
+// MASTER_SCOPE cite it by this name. That half is reversed; the other half
+// of that ruling stands and is still pinned here: the Studio asks nothing
+// about what the art is, and a reading row says what stage 0 decided.
 //
-// Deliberately NOT a component test: DigitizePanel.spec.js covers the row's
-// states off canned warnings, but it renders with `health: null` and never
-// runs a job, so it cannot see a real classification arrive or prove that
-// nothing had to be clicked to get one. That is exactly what regressed here.
+// Deliberately NOT a component test: DigitizePanel.spec.js covers the button's
+// states off a mocked `digitize`, but it cannot see a real file chooser open,
+// a real classification arrive, or a real run NOT start.
 //
 // Same service bootstrap and skip posture as digitize-stale-edits.spec.js:
 // reuse a running service, start one from a venv if there isn't one, and SKIP
 // (never fail) on a machine with no digitizer venv.
 import { test, expect } from "@playwright/test";
-import { startStudio, typeText, pickGarment, openDownload } from "./helpers.js";
+import { startStudio, typeText, pickGarment, openDownload, uploadArtwork } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -110,41 +106,74 @@ test.afterAll(() => {
   if (serviceProc) serviceProc.kill("SIGTERM");
 });
 
-test("uploading artwork digitizes it on its own, and the panel says what it read", async ({ page }) => {
+test("Upload file opens the file browser; cancelling adds nothing, choosing adds the artwork", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  await startStudio(page);
+  const rows = page.locator(".elrow");
+  const before = await rows.count();
+
+  // The button opens the OS dialog directly -- no empty element first.
+  let chooserPromise = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Upload file" }).click();
+  let chooser = await chooserPromise;
+  expect(chooser.isMultiple()).toBe(false);
+  await expect(rows).toHaveCount(before);
+  // Cancelled: nothing was added.
+  await chooser.setFiles([]);
+  await expect(rows).toHaveCount(before);
+
+  // The Artwork tile is the same door.
+  chooserPromise = page.waitForEvent("filechooser");
+  await page.locator(".eladd-row button", { hasText: "Artwork" }).click();
+  chooser = await chooserPromise;
+  await chooser.setFiles(ART_PNG);
+  await expect(rows).toHaveCount(before + 1);
+  await expect(page.locator(".dgp-run")).toHaveText("Auto Digitize Image");
+});
+
+test("a file loads without digitizing; the button runs it, and goes transparent when a setting changes", async ({ page }) => {
   test.skip(!serviceUp, skipReason);
   test.setTimeout(300_000);
 
   await startStudio(page);
-
-  // ---- reach the digitize panel (same route as the wizard smoke test) ----
   await pickGarment(page, "Tote");
-  // Health-gated tile: it appearing IS the live assertion that the app sees
-  // the real service, which is also what arms the upload watcher below.
-  await page.getByRole("button", { name: "Artwork" }).click();
 
-  // Nothing has been uploaded, so nothing is claimed about the art yet -- and
-  // the empty state must not be asking the user to classify it either.
-  await expect(page.locator(".dgp-read")).toHaveCount(0);
-  await expect(page.getByText(/Drop in any image/)).toBeVisible();
-
-  // ---- the whole interaction: choose a file ------------------------------
-  // Armed BEFORE the upload: the run starts on its own the moment the file
-  // lands. Playwright's `request.postDataBuffer()` is null for a multipart
-  // body carrying a Blob, so the config part is read off the FormData in
-  // the page instead, by wrapping fetch for the one POST that matters.
+  // Playwright's `request.postDataBuffer()` is null for a multipart body
+  // carrying a Blob, so the config part is read off the FormData in the page
+  // instead, by wrapping fetch for the one POST that matters. Counted too:
+  // "nothing ran" is a claim about requests, not about what the panel shows.
   await page.evaluate(() => {
     const real = window.fetch;
+    window.__digitizePosts = 0;
     window.fetch = async (url, init) => {
       if (String(url).endsWith("/digitize") && init && init.body instanceof FormData) {
+        window.__digitizePosts += 1;
         window.__digitizeConfig = init.body.get("config");
       }
       return real(url, init);
     };
   });
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  const posts = () => page.evaluate(() => window.__digitizePosts);
 
-  // No Digitize click. Stitches arrive anyway.
+  // ---- the file lands, and waits ------------------------------------------
+  await uploadArtwork(page, ART_PNG, { run: false });
+  const run = page.locator(".dgp-run");
+  await expect(run).toBeEnabled();
+  await expect(run).toHaveText("Auto Digitize Image");
+  await expect(run).not.toHaveClass(/dgp-run-stale/);
+  await page.waitForTimeout(2500);   // longer than the old 2 s restitch pause
+  expect(await posts()).toBe(0);
+  await expect(page.locator(".dgp-stats")).toHaveCount(0);
+  // Nothing is claimed about the art before it has been read.
+  await expect(page.locator(".dgp-read")).toHaveCount(0);
+
+  // ---- the button is the run ----------------------------------------------
+  await run.click();
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
+  expect(await posts()).toBe(1);
+  await expect(run).toHaveText("Auto Digitize Image");
+  await expect(run).not.toHaveClass(/dgp-run-stale/);
+  await expect(page.getByTestId("digitize-stale")).toHaveCount(0);
 
   // ---- and the panel states what stage 0 made of it ----------------------
   const read = page.locator(".dgp-read");
@@ -171,6 +200,29 @@ test("uploading artwork digitizes it on its own, and the panel says what it read
   expect(sent.faces_route_flat).toBe(true);
   expect(sent).not.toHaveProperty("forced_class");
   expect(sent).not.toHaveProperty("is_photographic");
+
+  // ---- change something: transparent, stitches untouched, no request ------
+  const statsBefore = await page.locator(".dgp-stats").innerText();
+  const width = page.getByLabel("Design width");
+  await width.fill("50");
+  await width.blur();
+  await expect(run).toHaveClass(/dgp-run-stale/);
+  await expect(page.getByTestId("digitize-stale")).toBeVisible();
+  // Off the button first: the pointer is still where the last click left it,
+  // and the hover state carries a faint tint.
+  await page.mouse.move(0, 0);
+  expect(await run.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+  await page.waitForTimeout(2500);
+  expect(await posts()).toBe(1);
+  await expect(page.locator(".dgp-stats")).toHaveText(statsBefore);
+
+  // ---- press it again: one more run, with the change in it, solid again ---
+  await run.click();
+  await expect(page.locator(".dgp-stats")).not.toHaveText(statsBefore, { timeout: 120_000 });
+  expect(await posts()).toBe(2);
+  expect(JSON.parse(await page.evaluate(() => window.__digitizeConfig)).target_width_mm).toBe(50);
+  await expect(run).not.toHaveClass(/dgp-run-stale/);
+  await expect(page.getByTestId("digitize-stale")).toHaveCount(0);
 });
 
 test("JEF downloads a real file through the service — the format with no browser encoder", async ({ page }) => {
@@ -185,8 +237,7 @@ test("JEF downloads a real file through the service — the format with no brows
   // rather than beside the other download tests in wizard-smoke.spec.js,
   // which deliberately has no service bootstrap.
   await startStudio(page);
-  await page.getByRole("button", { name: "Artwork" }).click();
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
 
   await openDownload(page);
@@ -239,8 +290,7 @@ test("a vector logo is rendered at the work size, not at the browser's default",
   // absence can pass for any reason, and the colour count is the thing the
   // customer pays for. Two is what the artwork has.
   await startStudio(page);
-  await page.getByRole("button", { name: "Artwork" }).click();
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_SVG);
+  await uploadArtwork(page, ART_SVG);
 
   const stats = page.locator(".dgp-stats");
   await expect(stats).toBeVisible({ timeout: 120_000 });

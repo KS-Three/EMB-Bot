@@ -2465,3 +2465,23 @@ test("stitchWidthGroupRows: the word's members with the row first; a lone shape 
   expect(stitchWidthGroupRows(rows, d).map((r) => r.id)).toEqual(["d"]);
   expect(stitchWidthGroupRows(rows, null)).toEqual([]);
 });
+
+// The run button compares this against element.appliedConfig to know the
+// stitches on the canvas are behind the settings (Kent 2026-10-05).
+test("configKey moves with anything a digitize would send, and only with that", async () => {
+  const { buildDigitizeConfig, configKey } = await import("./digitizer.js");
+  const el = { params: { target_width_mm: 80, max_colors: 6, satin: true }, shapeOverrides: {}, deletedShapeIds: [] };
+  const key = (e, p = {}) => configKey(buildDigitizeConfig(e, p));
+  const base = key(el);
+  expect(base).toMatch(/^[0-9a-f]{8}$/);
+  expect(key({ ...el })).toBe(base);
+  expect(key({ ...el, params: { ...el.params, target_width_mm: 81 } })).not.toBe(base);
+  expect(key({ ...el, crop: { x0: 0.1, y0: 0, x1: 1, y1: 1 } })).not.toBe(base);
+  expect(key({ ...el, shapeOverrides: { s1: { border: "auto" } } })).not.toBe(base);
+  expect(key({ ...el, deletedShapeIds: ["s1"] })).not.toBe(base);
+  expect(key(el, { garmentId: "tote" })).not.toBe(base);
+  // Not sent, so not a reason to digitize again: where it sits, what it is called.
+  expect(key({ ...el, name: "other.png", offsetXMm: 12, rotationDeg: 30 })).toBe(base);
+  // A full-frame crop is the same request as no crop.
+  expect(key({ ...el, crop: { x0: 0, y0: 0, x1: 1, y1: 1 } })).toBe(base);
+});

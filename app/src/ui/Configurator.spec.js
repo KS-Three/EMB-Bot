@@ -17,7 +17,7 @@ test("the start control dispatches addelement with text or artwork", async () =>
   const onAdd = vi.fn();
   render(Harness, { onAdd });
   await fireEvent.click(screen.getByRole("button", { name: "Add text" }));
-  await fireEvent.click(screen.getByRole("button", { name: "Upload logo" }));
+  await fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
   expect(onAdd.mock.calls.map((c) => c[0].detail)).toEqual(["text", "artwork"]);
 });
 

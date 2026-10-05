@@ -423,6 +423,25 @@ export function editsKey(edits) {
   ]);
 }
 
+// Short identity for a whole digitize config (buildDigitizeConfig's output):
+// stored as element.appliedConfig when a result lands and compared against
+// the config the element would send NOW, which is how the panel knows the
+// stitches on the canvas are behind the settings (Kent 2026-10-05: nothing
+// re-runs on its own any more, so the run button has to say when it is
+// needed). A hash rather than the JSON because a config carries every
+// boundary override — up to 500 points a shape — and the element is saved
+// with the project. FNV-1a, 32 bits: a collision would only leave the button
+// solid after one particular edit, and the next edit clears it.
+export function configKey(cfg) {
+  const s = JSON.stringify(cfg || {});
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
 // ---- how urgently does a change want stitching? (restitch pacing) ----------
 //
 // Every shape edit lands in the same place — `shape_overrides` — so the
