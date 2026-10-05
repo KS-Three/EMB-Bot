@@ -1194,12 +1194,13 @@ test("fillColumns: an underlay ends where the thread can float on to the pass af
   }
 });
 
-test("fillColumns: a fill the plain walk sews is the fill it was, built before its underlay or after", () => {
-  // Building the fill first must not move a stitch of it: where the plain walk
-  // begins and what it sews do not turn on where the thread is. The fill of
-  // each drawing above, record for record, against the same fill with the
-  // option off -- where nothing is built first -- on a shape whose plain fill
-  // the option leaves alone (no turn of it runs outside the shape).
+test("fillColumns: a fill the plain walk sews is the fill it was, asked where it begins or not", () => {
+  // The underlay asks where the fill begins before the fill is sewn, and the
+  // asking must not move a stitch of it: where the plain walk begins and what
+  // it sews do not turn on where the thread is. The fill of each drawing
+  // above, record for record, against the same fill with the option off --
+  // where nothing is asked -- on a shape whose plain fill the option leaves
+  // alone (no turn of it runs outside the shape).
   const fillOf = (d) => { const r = d.runs.find((x) => x.kind === "fill"); return d.stitches.slice(r.i0, r.i1 + 1); };
   const l = { outer: ring([[240, 0], [240, 60], [60, 60], [60, 180], [0, 180], [0, 0]]), holes: [], angleOverride: 45 };
   for (const fabricId of [null, "structured_cap", "terry_towel", "fleece_sweatshirt"]) {

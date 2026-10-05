@@ -108,14 +108,12 @@ function measure(passes) {
 }
 // Build, and keep every cover pass the builder asks the fill module for. The
 // builder looks `tatamiFill` up when it calls it; the cover pass is the one
-// that is told whether to sew center-out. (With `fillColumns` the builder
-// also ASKS whether the cover is the plain walk's, `plainOnly`: an answer of
-// null is no pass.)
+// that is told whether to sew center-out.
 function build(regions, widthMm, fabricId, extra) {
   const real = FILL.tatamiFill, cover = [];
   FILL.tatamiFill = (polys, opts) => {
     const pts = real(polys, opts);
-    if (pts && "centerOut" in opts) cover.push({ polys, opts, pts });
+    if ("centerOut" in opts) cover.push({ polys, opts, pts });
     return pts;
   };
   try {

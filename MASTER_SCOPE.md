@@ -419,19 +419,16 @@ about the facts.
    overall and up to 37%. The price is the travel that replaces the floats:
    up to nine lines of thread on the worst millimetre of a rim (three on
    average, 1.3 today), and in one holed fill in six more than 5 mm of it
-   across rows already sewn. A comb can gain cuts (1 → 5). Since then each
-   underlay pass is told where the thread goes next and a walk that comes
-   out cut is walked again: on 45,416 designs the option's cuts go 14,190 →
-   11,246 (25,922 with it off), fewer on 2,520 and more on none, and 2,442
-   designs have more cuts with it than without where 4,717 had (the worst,
-   none → 8). Each cut saved is a float under the fill instead, 17 mm long
-   on average. Its re-measure found what those designs lack: a comb of 24
-   teeth or more keeps tens to hundreds of cuts where no option has one
-   (100 teeth: 615); a big pass that stays cut is walked nine times, a
-   build two to three times as long; and a fill walked again can put more
-   travel on show for the cut it saves. Most of what a walk could still
-   save there is the float from an edge run into a plain walk (2,342), not
-   built *(measured 2026-10-04 — the README's "Where a pass ends")*.
+   across rows already sewn. A comb can gain cuts (1 → 5). Since then an
+   underlay pass is told where the thread goes next and a cut walk is
+   walked again: on 45,416 designs its cuts go 14,190 → 11,246, fewer on
+   2,520, more on none (a maze outside them gains two); 2,442 designs have
+   more cuts with it than without (4,717 before). A cut saved is a float,
+   and over 24.2 mm a DST machine cuts it anyway: cuts in the file 19,782 →
+   17,182, more on 9. Not cured: combs of 24 teeth or more (100 teeth: 615
+   cuts, 1 without), a cut pass walked nine times, travel on show, the
+   float from an edge run into a plain walk (2,342)
+   *(measured 2026-10-05 — the README's "Where a pass ends")*.
    Besides: a forked
    large fill is no longer center-out, and on a shape with a hole or an
    inside corner the edge-run underlay sits 0.2 mm inside the fill with its

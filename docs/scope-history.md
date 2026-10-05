@@ -19225,3 +19225,50 @@ different from what it was, on `main` or here.
 Off, nothing moves: engine 816 passed, merged (801 on `main`, 15 new). Not
 sewn. Flip is still Kent's: defect 52, "Waiting on Kent" 22.
 *(built 2026-10-04 — `src/fill.js` `sewColumns` "where the walk ends" and "which column first", `src/digitize.js`; `test/fill.test.js`, `test/digitize.test.js`; `docs/renders/fill-columns-2026-10-03/README.md`, "Where a pass ends, and which column it begins with")*
+
+## 2026-10-05 — `fillColumns`: a code review of the entry above found a broken tool (fixed: `fill.plainStart`), a design with more cuts than `main`, and cuts the file keeps (both open)
+
+Kent asked for a code review of the 2026-10-04 change before anything was
+armed. Ten readers of the diff found what the re-measure, which checked the
+claims, had no claim to check.
+
+**Fixed. A tool on `main` was broken by it.** The builder learned where a
+plain pass begins through an option of `tatamiFill` (`plainOnly`) that
+answered null for a column walk and had the pass built before its turn.
+Three tools wrap `tatamiFill` to watch the passes. Two were patched on
+2026-10-04. The third, `tools/sub-unit-stitch-census.mjs`, runs in no test:
+on the Studio's 8,270 designs 2,261 builds failed (`TypeError`, reading
+`length` of null) and 2,454 passes were not found in the stream. The
+question is a function of its own now, `fill.plainStart(polygons, opts)`:
+the first point of the pass where the plain walk sews it, null where the
+column walk does. `tatamiFill` answers every call with a pass, once for each
+pass and in the order they are sewn, and the two patched files are `main`'s
+again. The tool: no build fails and no pass is missing. **Not a stitch
+moves:** the three sweeps built again, 65,980 designs with the option on,
+each the stream it was; option off or absent, the same on the 56,120 of the
+first two. Engine 830 passed.
+
+**Open. A design with more cuts than `main`, option on.** A maze of 64
+points under fleece, rows at 165: 1 trim → 3, and a thread of three
+penetrations; rows at 15: 3 → 4. A lattice pass walked again ends
+elsewhere, and the pass after it, a column walk, pays. "More on none" was
+true of the 45,416 designs and is not a rule.
+
+**Open. A trim record saved is not always a cut saved in the file.** A
+float over 24.2 mm on an axis is three jump records or more in a DST, which
+a reader counts as a cut. On the 45,416: trim records 14,190 → 11,246, cuts
+in the file 19,782 → 17,182; of the 2,520 designs with fewer trim records
+the file has fewer cuts on 2,248, as many on 263, more on 9 (each 1 → 2,
+combs under fleece and terry). Whether the walk's float test should count a
+float the file cuts turns on `cutFloats` (PR #639, built OFF) and is Kent's.
+
+Also raised by the review, each by one reader with its own measurement and
+not checked a second time, and not built: a short first or last thread fenced by
+the caller's own cut is not counted; a fill walked again can move its cut to
+the float into the next shape; the travel on can sew about 100 mm to reach a
+float the file cuts anyway; and whether four penetrations for "a thread that
+holds" is a ROADMAP gate 1 number is Kent's to rule.
+
+Not sewn. Built OFF, no Studio caller passes it. Flip is still Kent's:
+defect 52, "Waiting on Kent" 22.
+*(measured and built 2026-10-05 — `src/fill.js` `plainStart`, `src/digitize.js`; `test/fill.test.js`; `tools/sub-unit-stitch-census.mjs --corpus studio` on the engine before and after; `docs/renders/fill-columns-2026-10-03/README.md`, "A code review after the re-measure")*

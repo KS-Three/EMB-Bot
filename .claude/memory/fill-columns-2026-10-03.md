@@ -96,12 +96,11 @@ hole or a notch, and it has NOT been sewn. Kent's flip: MASTER_SCOPE defect
 - Before changing how thread is routed, count the cuts by WHERE they are:
   inside a pass, on the float into it, on the float out, and what kind of
   run is either side. Two fixes went to the walk's inside; the most of any
-  kind (2,261 of 14,190) was the float OUT of an underlay into a pass the
-  plain walk sews, which nothing asked about, and telling the pass where the
-  thread goes next
-  took it to 13 (2026-10-04). The next most, edge run into a plain walk
-  (2,342: 1,680 a fill, 662 an underlay pass), is not the walk's at all and
-  is still there.
+  kind a walk could cure (2,261 of 14,190) was the float OUT of an underlay
+  into a pass the plain walk sews, which nothing asked about, and telling
+  the pass where the thread goes next took it to 13 (2026-10-04). A kind
+  larger still, edge run into a plain walk (2,342: 1,680 a fill, 662 an
+  underlay pass), is not the walk's at all and is still there.
 - A greedy walk's result turns on where it starts. Walking it again from the
   other starts, only when it comes out cut, and keeping the fewest cuts,
   moved no design of two sweeps that did not lose a cut. Count the caller's
@@ -112,12 +111,29 @@ hole or a notch, and it has NOT been sewn. Kent's flip: MASTER_SCOPE defect
   stitch, cut to and cut from), so a walk is now judged by its short threads
   as well; 615 cuts on a 100-tooth comb that no option sews with 1 (the
   good walks begin at an END of the pass, and the tries are nearest first:
-  not built); a pass of 2,003 columns walked nine times for nothing; and a
+  not built); that comb's passes walked nine times for nothing; and a
   fill that lays 404 mm more travel to save one cut. When a rule keeps "the
   best" of several walks, say what best does NOT count, and sweep for it.
-- Run ALL of `node --test`, not the files being changed: a stagger test and
-  a census tool wrapped `tatamiFill` and took a new null-returning question
-  for a pass. Green on two files, red on the suite.
+- Do not ask a question through the function that does the work. The
+  builder first learned where a plain pass begins by an option that made
+  `tatamiFill` answer null and by building the pass before its turn. Three
+  tools wrap `tatamiFill` to watch the passes. Two took the null for a pass
+  (green on two files, red on the suite: run ALL of `node --test`); the
+  third, `tools/sub-unit-stitch-census.mjs`, runs in no test, threw on the
+  null and paired passes by the order of the calls, and it took a code
+  review to find it (2026-10-05). The question is `fill.plainStart` now.
+  Before changing what a function returns or when it is called, grep for
+  what assigns over it (`tatamiFill = `) in `tools/` as well as `test/`.
+- A trim record saved is not a cut saved in the file. The DST writer lays a
+  move over 24.2 mm as three or more jump records and a reader counts that
+  as a cut. Count both: on the 45,416 designs the trim records fell by
+  2,944, the file's cuts by 2,600, and nine designs have MORE cuts in the
+  file though none has more trim records (2026-10-05).
+- An audit and a code review find different things. The audit re-measured
+  the claims with its own reader and held them; ten reviewers reading the
+  diff then found a broken tool no claim was about, and a design with more
+  cuts than `main` (a maze under fleece, rows at 165: 1 → 3) that 65,980
+  swept designs did not have. Ask for both before arming.
 
 Related: [[orphan-lane-sweep-2026-09-30]],
 [[concurrent-session-designed-the-same-tool-2026-09-17]],

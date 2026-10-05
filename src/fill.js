@@ -1058,12 +1058,6 @@
   //   that question, when they are not `polygons` themselves. An underlay is
   //   given the rings the FILL is sewn to.
   //   `from`, `to`, `clear`, `travelBudget` (with `columns`): see sewColumns.
-  //   `plainOnly` (with `columns`): the pass where the plain walk sews it,
-  //   and null where the column walk does. A plain pass begins at a point of
-  //   its own and is the same pass wherever the thread is, so a caller can
-  //   build it FIRST and tell the pass before it where the thread goes next
-  //   (`to`). The column walk starts where the thread can reach, so it
-  //   cannot be built ahead: it is left for the caller to build in its turn.
   //   `stagger` (default off), `minStitch`, `splitTol`: the row stagger above.
   //   `stagger` is the rows in a cycle, a NUMBER (a flag or text is no
   //   stagger); the grid's pitch is `maxStitch`; `minStitch` and `splitTol`
@@ -1072,6 +1066,29 @@
   //   Either walk, any row order: a row's holes turn on its place among the
   //   scanlines and on nothing else.
   function tatamiFill(polygons, opts) {
+    return tatami(polygons, opts, false);
+  }
+
+  // Where `tatamiFill(polygons, opts)` would BEGIN the pass, where the plain
+  // walk sews it: its first point. null where the column walk sews it, and
+  // where there is nothing to sew.
+  //
+  // A plain pass begins at a point of its own and is the same pass wherever
+  // the thread is, so a caller can ask this BEFORE the pass that is sewn
+  // ahead of it, and tell that pass where the thread goes next (`to`). The
+  // column walk starts where the thread can reach: it has no such point.
+  //
+  // It is its own function and not an option of `tatamiFill`, which answers
+  // every call with a pass and is called once for each pass, in the order
+  // they are sewn. (It was an option, `plainOnly`, that made `tatamiFill`
+  // answer null and had a pass built before its turn; three tools that watch
+  // `tatamiFill` to count passes each had to be taught about it, and the
+  // third was found broken by a review.)
+  function plainStart(polygons, opts) {
+    return tatami(polygons, opts, true);
+  }
+
+  function tatami(polygons, opts, startOnly) {
     const rowSpacing = opts.rowSpacing;
     const angleDeg = opts.angleDeg || 0;
     const maxStitch = opts.maxStitch;
@@ -1108,7 +1125,7 @@
       rings.push(rp);
     }
 
-    if (!isFinite(minY) || !isFinite(maxY)) return [];
+    if (!isFinite(minY) || !isFinite(maxY)) return startOnly ? null : [];
 
     // The row stagger: the holes between the ends of the row a -> b. A row's
     // number is read off its height, so it is the same row whichever walk
@@ -1256,7 +1273,7 @@
         else if (under === ON_RIM && floated(d)) rimTurn[i] = true;
       }
       if (!plain) {
-        if (opts.plainOnly) return null;
+        if (startOnly) return null;
         const cut = cutColumns(spansWithLength(rowSpans));
         splitAtOpenTurns(cut, ground, tol);
         const budget = opts.travelBudget > 0 ? opts.travelBudget : (maxStitch > 0 ? 5 * maxStitch : Infinity);
@@ -1280,6 +1297,7 @@
     // travel), which may legally cross a hole. Long connectors are then
     // emitted as a single point tagged {travel:true} — needle-up move, not
     // sewn — instead of being densified into fake stitches across the gap.
+    if (startOnly) return key.length ? rotate(key[0], cosP, sinP) : null;
     const out = [];
     if (key.length === 0) return out;
     out.push(rotate(key[0], cosP, sinP));
@@ -1381,6 +1399,7 @@
 
   return {
     tatamiFill,
+    plainStart,
     runningOutline,
     huggingOutline,
     pcaAngleDeg,

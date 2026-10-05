@@ -1014,7 +1014,7 @@ sews nothing and cuts the smallest shape that contains it.
   `_columns`) and goes ROUND a hole instead of crossing it. A satin shape is
   untouched by it, and so is a fill with no hole and no inside corner. None
   of `generate.js`'s three callers passes it; the flip is Kent's (MASTER_SCOPE
-  defect 52). It has not been sewn. Seven things to know before touching it:
+  defect 52). It has not been sewn. Eight things to know before touching it:
   - Every move is asked what ground it runs over (`groundUnder`): on the
     ground it may float, on the rim it is sewn, deeper than `openTol` into
     open ground it must go round or be cut.
@@ -1039,12 +1039,17 @@ sews nothing and cuts the smallest shape that contains it.
     length").
   - A pass has two ends and is told both: where the thread is (`from`) and,
     when the run after it begins at a point of its own, where it goes next
-    (`to`). A pass the plain walk sews is that kind, so the builder builds it
-    FIRST (`plainOnly`) and sews it in its turn. Anything that wraps
-    `tatamiFill` to watch the passes therefore sees a QUESTION now and then,
-    answered null, and a fill built before its underlay. A stagger test and
-    the stagger census took the question for a pass, and only the whole
-    suite showed it: run all of `node --test`, not the two files you are in.
+    (`to`). A pass the plain walk sews is that kind, and the builder asks
+    where it begins with a function of its own, `fill.plainStart`. Do NOT
+    ask a question through `tatamiFill`. It was first an option that made
+    `tatamiFill` answer null and had the pass built before its turn, and
+    three tools wrap `tatamiFill` to watch the passes: each took the null
+    for a pass, or the order of the calls for the order of the sewing. Two
+    were patched; a review found the third throwing
+    (`tools/sub-unit-stitch-census.mjs`, 2026-10-05). Before changing what
+    `tatamiFill` returns or when it is called, grep `tatamiFill = ` in
+    `tools/` and `test/`, and run all of `node --test`, not the two files
+    you are in.
   - A walk that comes out cut is walked again from the other first columns
     (`sewFrom`, eight at most) and the better walk is kept: fewer cuts, and
     no more threads of fewer than four penetrations between two of them. So
@@ -1057,8 +1062,8 @@ sews nothing and cuts the smallest shape that contains it.
     cuts alone a walk saved a cut by stranding a row, one stitch cut to and
     cut from, and 56,120 designs of combs, badges and letters showed none:
     the re-measure's mazes did. The same re-measure found a comb of 100
-    teeth with 615 cuts where no option has 1, and a pass of 2,003 columns
-    walked nine times for nothing. Mazes, spirals and combs of 24 teeth and
+    teeth with 615 cuts where no option has 1, its passes walked nine times
+    for nothing (5.0 s → 18.5 s). Mazes, spirals and combs of 24 teeth and
     more belong in the sweep, and so do a pass's short threads, the thread
     it sews, and the time it takes.
 

@@ -805,11 +805,15 @@ many cuts"; `test/digitize.test.js` "not left with a one-stitch thread")*
   tool's own 32 rows are on an 8 in garment, where that stress shape under
   terry is 28 cuts → 19 and no slower; as a whole they came to 1.01, 1.05
   and 0.88 times `main`'s on three runs.
-- **Anything that watches `tatamiFill` sees a question now and then.** The
-  builder asks whether a pass is the plain walk's (`plainOnly`), and the
-  answer for a column walk is null. A stagger test and the stagger census
-  took that for a pass; both now pass over it, and the census prints what it
-  printed.
+- **The builder asks where a plain pass begins with a function of its own,
+  `fill.plainStart`** (2026-10-05; see the code review, below). It was
+  first an option of `tatamiFill` (`plainOnly`) that answered null for a
+  column walk and had the pass built before its turn, and three tools wrap
+  `tatamiFill` to watch the passes. A stagger test and the stagger census
+  took the null for a pass and were patched; the third was found broken by
+  the review. `tatamiFill` answers every call with a pass again, once for
+  each pass and in the order they are sewn, and the two patched files are
+  `main`'s again.
 
 **What it leaves**, option on:
 
@@ -883,5 +887,38 @@ absent the merged engine is `main`'s on all 56,120 of the first two.
 *(measured 2026-10-04 — `node tools/fill-columns-sheet.mjs`,
 `tools/lock-stitch-census.mjs`, `tools/fill-stagger-census.mjs`, each on both
 engines)*
+
+**A code review after the re-measure (2026-10-05) found three things no
+sweep above had.** One is fixed here. Two are not, and "more on none" above
+is a count of those 45,416 designs and not a rule.
+
+1. **A tool on `main` was broken by it. Fixed.**
+   `tools/sub-unit-stitch-census.mjs` wraps `tatamiFill` too, runs in no
+   test, threw on the `plainOnly` null and paired passes to spans by the
+   order of the calls: on the Studio's 8,270 designs, 2,261 builds failed
+   and 2,454 passes were not found in the stream. With `fill.plainStart`,
+   none and none. Not a stitch moves by it: the three sweeps built again,
+   65,980 designs with the option on, each the stream it was, and with the
+   option off or absent on all 56,120 of the first two.
+2. **A design with MORE cuts than `main`, option on. Not cured.** A maze of
+   64 points under fleece, rows at 165: 1 trim → 3, and a thread of three
+   penetrations; rows at 15: 3 → 4. The first lattice pass is walked again
+   and ends elsewhere, and the second, a column walk begun from there, is
+   cut where `main`'s is not. A walk is judged by its own pass ("the pass
+   after", above).
+3. **A trim record saved is not always a cut saved in the file. Not
+   cured.** The DST writer lays a float over 24.2 mm on an axis as three
+   jump records or more, and a reader of the file counts that as a cut. On
+   the 45,416: trim records 14,190 → 11,246, cuts in the file 19,782 →
+   17,182. Of the 2,520 designs with fewer trim records the file has fewer
+   cuts on 2,248, as many on 263 and MORE on 9 (each 1 → 2, combs under
+   fleece and terry). Three teeth pointing down under terry: 2 trim records
+   → 0, and 2 cuts in the file either way.
+
+*(measured 2026-10-05 — the tool itself on this branch's engine before the
+fix and after; the maze and the teeth built on `main` at 546ae759 and
+here; the file's cuts read back from the DST of every design at 35b2a8b6
+against `main` at 4fb4fcd4, and this engine is 35b2a8b6's stitch for
+stitch)*
 
 The flip is Kent's: MASTER_SCOPE defect 52, "Waiting on Kent" 22.

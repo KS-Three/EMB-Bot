@@ -611,31 +611,42 @@ test("columns: and where no corner of its last column will do, the thread travel
   assert.deepStrictEqual(fill.tatamiFill([U_SHAPE], Object.assign({}, COLS, { to })), fill.tatamiFill([U_SHAPE], COLS));
 });
 
-test("columns: `plainOnly` gives the pass where the plain walk sews it, and nothing where the column walk does", () => {
+test("columns: `plainStart` says where a pass begins if the plain walk sews it, and nothing where the column walk does", () => {
   // To tell a pass where the thread goes next, a caller has to know where the
   // NEXT pass begins before that one is sewn. A pass the plain walk sews
   // begins at a point of its own and is the same pass wherever the thread is,
-  // so it can be built first. A pass the column walk sews starts where the
-  // thread can reach, and cannot. `plainOnly` asks which this is.
+  // so where it begins can be asked ahead. A pass the column walk sews starts
+  // where the thread can reach, and has no such point. `plainStart` answers
+  // that and sews nothing: `tatamiFill` is still called once for each pass,
+  // in the order the passes are sewn, and always answers with a pass.
   const l = [{x:0,y:0},{x:100,y:0},{x:100,y:35},{x:35,y:35},{x:35,y:100},{x:0,y:100}];
   const clear = (a, b) => !fill.crossesOpenGround(a, b, [l], PITCH, 0);
   for (const centerOut of [false, true]) {
     const o = Object.assign({}, COLS, { centerOut });
-    const plain = fill.tatamiFill([l], Object.assign({ plainOnly: true }, o));
-    assert.ok(plain && plain.length > 100 && !plain.columnWalk, "an L under rows 1 apart is the plain walk's");
-    assert.deepStrictEqual(plain, fill.tatamiFill([l], o), "and it is the pass it would have been");
+    const plain = fill.tatamiFill([l], o);
+    assert.ok(plain.length > 100 && !plain.columnWalk, "an L under rows 1 apart is the plain walk's");
+    assert.deepStrictEqual(fill.plainStart([l], o), plain[0], "where it begins");
     // where the thread is, and where it goes next, move nothing in it
-    assert.deepStrictEqual(plain, fill.tatamiFill([l], Object.assign({ from: { x:35, y:100 }, to: { x:100, y:0 }, clear }, o)));
-    assert.strictEqual(fill.tatamiFill([SQ, WIDE_HOLE], Object.assign({ plainOnly: true }, o)), null, "a holed square is the column walk's");
+    const told = Object.assign({ from: { x:35, y:100 }, to: { x:100, y:0 }, clear }, o);
+    assert.deepStrictEqual(fill.tatamiFill([l], told), plain);
+    assert.deepStrictEqual(fill.plainStart([l], told), plain[0]);
+    assert.ok(fill.tatamiFill([SQ, WIDE_HOLE], o).columnWalk, "the fixture: a holed square is the column walk's");
+    assert.strictEqual(fill.plainStart([SQ, WIDE_HOLE], o), null, "and has no point of its own to begin at");
   }
   // No row of a T forks, but under rows 10 apart its turn at the step goes
   // deep, and that is the column walk's too ("rows that never fork", above).
   const t = [{x:0,y:0},{x:120,y:0},{x:120,y:35},{x:75,y:35},{x:75,y:120},{x:45,y:120},{x:45,y:35},{x:0,y:35}];
   const under = { rowSpacing:10, angleDeg:90, maxStitch:40, markConnectors:true, columns:true, openTol:1 };
   assert.ok(fill.tatamiFill([t], under).columnWalk, "the fixture: this T is sewn by the column walk");
-  assert.strictEqual(fill.tatamiFill([t], Object.assign({ plainOnly: true }, under)), null, "a T under rows 10 apart");
-  // a shape with no rows at all is a pass of nothing, not a refusal
-  assert.deepStrictEqual(fill.tatamiFill([[]], Object.assign({ plainOnly: true }, COLS)), []);
+  assert.strictEqual(fill.plainStart([t], under), null, "a T under rows 10 apart");
+  // Without `columns` every pass is the plain walk's, the holed square's too.
+  const old = Object.assign({}, COLS, { columns: false });
+  assert.deepStrictEqual(fill.plainStart([SQ, WIDE_HOLE], old), fill.tatamiFill([SQ, WIDE_HOLE], old)[0]);
+  // A shape with no rows at all begins nowhere, and is a pass of nothing.
+  assert.strictEqual(fill.plainStart([[]], COLS), null);
+  assert.deepStrictEqual(fill.tatamiFill([[]], COLS), []);
+  // And the question is not an option of `tatamiFill`: asked that way, a pass comes back.
+  assert.ok(Array.isArray(fill.tatamiFill([SQ, WIDE_HOLE], Object.assign({ plainOnly: true }, COLS))));
 });
 
 test("columns: a pass does not land, take one stitch, and cut", () => {

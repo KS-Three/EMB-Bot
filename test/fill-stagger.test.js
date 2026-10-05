@@ -398,12 +398,10 @@ const build = (extra) => DG.buildQualityDesign(
    { rgb: [200, 30, 30], shapes: [{ outer: rect(0, 400, 250, 250), holes: [], tierOverride: "fill" }] }],
   Object.assign({ garment: { widthIn: 6, heightIn: 6 }, pxPerMm: 10, darkOnTop: false, underlay: true }, extra || {}));
 // Every tatami pass the builder asks the fill module for, with what it asked
-// and what it got. The builder looks the function up when it calls it. (With
-// `fillColumns` it also ASKS whether a pass is the plain walk's, `plainOnly`:
-// an answer of null is no pass, and nothing is sewn by it.)
+// and what it got. The builder looks the function up when it calls it.
 function passes(extra) {
   const real = fill.tatamiFill, seen = [];
-  fill.tatamiFill = (polys, opts) => { const pts = real(polys, opts); if (pts) seen.push({ polys, opts, pts }); return pts; };
+  fill.tatamiFill = (polys, opts) => { const pts = real(polys, opts); seen.push({ polys, opts, pts }); return pts; };
   try { return { design: build(extra), seen }; } finally { fill.tatamiFill = real; }
 }
 
