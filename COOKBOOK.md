@@ -1760,8 +1760,9 @@ Captures stay on cloud Linux or CI.
   no Windows checkout can see its branches.
 - `/root/emb-control` is a detached worktree at `2c60cd87`, the commit the
   baseline was captured at when the box was built. **The baseline moved to
-  `6e0cb943` on 2026-10-04** — re-cut the control there before the next
-  `diff`, or its rows compare the wrong commit to the file. Its `digitizer/.venv` is the box's one
+  `6e0cb943` on 2026-10-04 and to `d000e370` on 2026-10-05** — re-cut the
+  control at the file's own `captured_at_commit` before the next `diff`, or
+  its rows compare the wrong commit to the file. Its `digitizer/.venv` is the box's one
   venv. Its `corpus_scorecard_baseline.json` is overwritten with
   `origin/main`'s copy on purpose (the control compares that commit to
   that file), so the tree reads dirty.

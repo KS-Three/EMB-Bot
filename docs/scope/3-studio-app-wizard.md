@@ -583,6 +583,9 @@ so its "Make it bigger" sets `target_width_mm` to that width (capped at
 parameter and lets the larger target win, so the jump and a 25% step from
 `LETTERING_TOO_SMALL` on the same run never show twice; a payload with no
 named width takes the 25% step. The finding's own words are on the tooltip.
+The finding is `info` since 2026-10-05 (Kent's call, issue #630) — the chip
+keys on the code, not the severity, so it still offers the jump; only the
+12-point deduction is gone.
 What the jump promises is exactly what the finding does: that shape clears;
 the design can segment new small shapes at the larger size (bridge at
 140 mm cleared its script and fired on nothing with the 6 mm floor). Spec:

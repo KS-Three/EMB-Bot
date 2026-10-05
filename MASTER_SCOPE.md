@@ -601,7 +601,10 @@ pipeline commits: 48 of 52 rows moved, five fell a band, every mover attributed
 by bisection over the 51 trees; the step that crosses a band line is a new
 preflight check on all five falls (#572, #573), not a stitch
 ([notes](docs/scorecard-baseline-attribution-2026-10-04.md), scope-history 10-04).
-*(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md); 2026-10-04 — [notes](docs/scorecard-baseline-attribution-2026-10-04.md))*
+**Recaptured again 2026-10-05 at `d000e370`** after Kent made both checks
+`info` (#630): 21 rows moved, every one of them those two findings, 12 rose a
+band, no other leaf moved (scope-history 10-05).
+*(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md); 2026-10-04 — [notes](docs/scorecard-baseline-attribution-2026-10-04.md); 2026-10-05 — scope-history)*
 
 **The corpus is half-present, and its real-artwork half keeps contradicting the
 synthetics** — six of seven real customer logos route to GRADIENT at stage 0, so
@@ -904,7 +907,7 @@ thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.
 
 **The hoop you picked is drawn, and the export gate reads the thread's own extent** (`hoopTransform`, `DownloadStep`: confirm, not block; PNG and PDF ungated). **Open:** four of ten garment presets have placement boxes larger than the 200 mm biggest hoop, so the gate fires on shipped presets — whether auto-fit should cap is Kent's. *(measured 2026-09-04/07 — `preview.spec.js`, `DownloadStep.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
 
-**The digitize panel states what changed and offers the fix** — a delta against `priorRun`, and `COLOR_STOPS_HEAVY` / `LETTERING_TOO_SMALL` / `STITCHES_TOO_SHORT` as one-click chips offered AFTER the run (Kent's call). The "Make it bigger" chips are a partial remedy, left for Kent: DOCTRINE. **`SATIN_GAPS_TIGHT`'s chip jumps to the width the finding names (2026-09-30, Kent's pick):** its headline shape's `clear_width_mm`, capped at 400, one button per parameter with the larger target winning over the 25% step — a claim about that shape, never the design. *(confirmed 2026-09-02, chip 2026-09-30; [area doc](docs/scope/3-studio-app-wizard.md))*
+**The digitize panel states what changed and offers the fix** — a delta against `priorRun`, and `COLOR_STOPS_HEAVY` / `LETTERING_TOO_SMALL` / `STITCHES_TOO_SHORT` as one-click chips offered AFTER the run (Kent's call). The "Make it bigger" chips are a partial remedy, left for Kent: DOCTRINE. **`SATIN_GAPS_TIGHT`'s chip jumps to the width the finding names (2026-09-30, Kent's pick):** its headline shape's `clear_width_mm`, capped at 400, one button per parameter with the larger target winning over the 25% step — a claim about that shape, never the design. **`SATIN_GAPS_TIGHT` and `ARTWORK_UNCOVERED` are `info` since 2026-10-05 (Kent's call, issue #630): sentence, `extra` and chip stay, the grade is blind to both — the 2026-10-04 recapture had bisected all five band falls onto their 12 points while neither moved a stitch.** *(confirmed 2026-09-02, chip 2026-09-30; [area doc](docs/scope/3-studio-app-wizard.md))*
 
 **`cfg.border` reaches its own default** — `null` = unset, key omitted, panel says "automatic". *(confirmed 2026-09-02)*
 
