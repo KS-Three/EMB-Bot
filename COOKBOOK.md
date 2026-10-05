@@ -2028,6 +2028,15 @@ and controllable to the user.
     pair `FILL_ROW_MM`/`SATIN_SPACING_MM`. It asserts AGREEMENT, never a
     value — the numbers themselves are gate 1.
   - `flatten.js` — medianCut → modeFilter → absorbSmallRegions pipeline.
+    `absorbSmallRegions` labels the image ONCE and then keeps each
+    component's pixels itself (2026-10-04). Before that it labelled the whole
+    image again after every absorb, and the Studio's tab froze for minutes on
+    a photograph. The old loop is kept word for word in
+    `test/flatten.test.js` as the definition of what is absorbed into what and
+    in which order: change the engine's version and that file says whether a
+    pixel moved. `node tools/flatten-census.mjs` prints what the Studio's own
+    flatten costs on every testdata PNG, step by step, and with `--hashes` the
+    hash of what it returns, to diff two engines.
   - `fonts/` — pre-digitized font library: `manifest.json` (85
     shipping fonts — recount it, the number drifts) + `bin/*.embf` binaries
     + `.LICENSE.txt` sidecars, parsed offline from Ink/Stitch's open-source
