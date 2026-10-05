@@ -266,6 +266,9 @@ def test_the_satin_cover_clears_the_graders_finding_with_no_tatami():
     rep_off = run_preflight(r_off, p_off, off, image=BECKER)
     f_off = [x for x in rep_off["findings"] if x["code"] == "ARTWORK_UNCOVERED"]
     assert f_off, "the fixture stopped exhibiting the defect these tests are about"
+    # Kent's call 2026-10-05 (issue #630): the finding stays, the grade is
+    # blind to it -- `info`, which `_DEDUCT` bills nothing.
+    assert all(x["severity"] == "info" for x in f_off)
     shapes_off = {s["shape_id"]: s["missing_mm2"] for s in f_off[0]["extra"]["shapes"]}
     on = _cfg(satin_patch_junctions="satin")
     r_on, p_on = digitize(BECKER, on)
