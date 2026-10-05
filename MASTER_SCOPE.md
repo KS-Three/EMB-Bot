@@ -507,20 +507,16 @@ about the facts.
    *(measured 2026-10-03 — defect 57; [`docs/renders/star-walk-2026-10-03/`](docs/renders/star-walk-2026-10-03/README.md))*
 27. **Flip `cutFloats` on for the browser shape lanes — NEW 2026-10-04,
    built OFF.** A DST has no cut: the writer lays three jump records for
-   one, and also for any float over 24.2 mm, so a machine set to cut at
-   three (as the manuals read ship; Barudan at two) cuts where the stream
-   has only a jump. `ties` lays no lock there, and the sheet's trim count
-   and run time leave it out. 109,561 such cuts on 8,270 Studio shapes as
-   shipped and 280 a design in the image lane, nearly all the plain walk's
-   floats across holes; `fillColumns` (22) takes away 94% and 99%. The flag
-   puts a `trim` in the stream at each one left. No stitch moves, and the
+   one, and for any float over 24.2 mm too, so a machine cuts where the
+   stream has only a jump. No lock from `ties`, and not in the sheet's trim
+   count. 109,561 such cuts on 8,270 Studio shapes as shipped, 280 a design
+   in the image lane; `fillColumns` (22) takes away 94% and 99%. The flag
+   puts a `trim` in the stream at each one left. No stitch moves and the
    DST's cuts are the ones a machine already makes; EXP and PES gain them
-   as real cuts (0.84 and 1.8 a design with `fillColumns`) and `ties` then
-   locks them (0.09% more stitches). **Flip it after 22, not before:**
-   before, it writes hundreds of cuts a design into the stream, and with
-   `ties` 12% more stitches in the image lane. **Not sewn.** A flip is
+   (0.84 and 1.8 a design). **Flip it after 22:** before, it writes
+   hundreds of cuts a design into the stream. **Not sewn.** A flip is
    `cutFloats: true` at `generate.js`'s three shape call sites and a re-pin
-   of every shape snapshot. Lettering has none.
+   of every shape snapshot.
    *(measured 2026-10-04 — [`docs/dst-float-cuts-2026-10-04.md`](docs/dst-float-cuts-2026-10-04.md))*
 
 ## Cross-cutting issues
