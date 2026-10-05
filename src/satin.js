@@ -329,6 +329,20 @@
   }
 
   // Zhang–Suen thinning to a 1px skeleton (in place; returns the same array).
+  //
+  // Two departures from the textbook, both 2026-10-04:
+  //  - A pixel with only two neighbours is KEPT (Lü and Wang's change: `nb < 3`
+  //    where Zhang and Suen have `nb < 2`). The textbook deletes the end pixel
+  //    of a line two pixels wide on the anti-diagonal, then the next, and eats
+  //    the whole line: a 30 mm bar turned 135 degrees thinned to one pixel, and
+  //    an arm of an L turned 45 degrees was left unsewn. (Until that day the
+  //    grid's own border pixels, which the loops below never visit, had been
+  //    anchoring such a line whenever it touched them.)
+  //  - That change keeps the corners of every staircase, so they are taken out
+  //    afterwards: a pixel with two edge-neighbours that meet at a corner, and
+  //    nothing on the three cells opposite, joins nothing its neighbours do not
+  //    already join. Two passes, two corners each, so that the two pixels of a
+  //    two-wide step are never both taken.
   function thin(mask, w, h) {
     const P = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : mask[y * w + x];
     let changed = true, guard = 0;
@@ -341,7 +355,7 @@
           const p2 = P(x, y - 1), p3 = P(x + 1, y - 1), p4 = P(x + 1, y), p5 = P(x + 1, y + 1),
             p6 = P(x, y + 1), p7 = P(x - 1, y + 1), p8 = P(x - 1, y), p9 = P(x - 1, y - 1);
           const nb = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
-          if (nb < 2 || nb > 6) continue;
+          if (nb < 3 || nb > 6) continue;
           const seq = [p2, p3, p4, p5, p6, p7, p8, p9, p2];
           let A = 0; for (let k = 0; k < 8; k++) if (seq[k] === 0 && seq[k + 1] === 1) A++;
           if (A !== 1) continue;
@@ -351,6 +365,19 @@
         }
         if (del.length) { changed = true; for (const d of del) mask[d] = 0; }
       }
+    }
+    for (let pass = 0; pass < 2; pass++) {
+      const del = [];
+      for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+        if (!mask[y * w + x]) continue;
+        const p2 = P(x, y - 1), p3 = P(x + 1, y - 1), p4 = P(x + 1, y), p5 = P(x + 1, y + 1),
+          p6 = P(x, y + 1), p7 = P(x - 1, y + 1), p8 = P(x - 1, y), p9 = P(x - 1, y - 1);
+        const corner = pass === 0
+          ? (p2 && p4 && !p6 && !p7 && !p8) || (p2 && p8 && !p4 && !p5 && !p6)
+          : (p6 && p8 && !p2 && !p3 && !p4) || (p6 && p4 && !p2 && !p9 && !p8);
+        if (corner) del.push(y * w + x);
+      }
+      for (const d of del) mask[d] = 0;
     }
     return mask;
   }

@@ -154,6 +154,70 @@ test("a C drawn by hand and set to satin is one column, end to end: nothing is s
   }
 });
 
+// ---- thinning, on the diagonal --------------------------------------------
+//
+// The second re-measure turned an L exactly 45 degrees: one arm bare. `thin`
+// was textbook Zhang-Suen, which deletes the end pixel of a line two pixels
+// wide on the anti-diagonal, then the next, and so eats the whole line. The
+// grid's border pixels had been anchoring it.
+
+// a bar `wMm` x `lMm` at 6 px per mm, turned about (300, 300)
+function turnedBar(wMm, lMm, deg) {
+  const c = Math.cos(deg * Math.PI / 180), s = Math.sin(deg * Math.PI / 180), w = wMm * 6, l = lMm * 6;
+  return [[-l / 2, -w / 2], [l / 2, -w / 2], [l / 2, w / 2], [-l / 2, w / 2]].map(([x, y]) => ({ x: 300 + x * c - y * s, y: 300 + x * s + y * c }));
+}
+// the skeleton of a ring, on the grid `ringToSpines` lays it on (its scale, a spare cell on every side)
+function skeletonOf(ring) {
+  const xs = ring.map((p) => p.x), ys = ring.map((p) => p.y);
+  const scale = Math.min(1.5, 260 / Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)));
+  const minX = Math.min(...xs) - 1 / scale, minY = Math.min(...ys) - 1 / scale;
+  const w = Math.ceil((Math.max(...xs) - minX) * scale) + 3, h = Math.ceil((Math.max(...ys) - minY) * scale) + 3;
+  const mask = satin.thin(satin.rasterize([ring], scale, minX, minY, w, h), w, h);
+  const on = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (mask[y * w + x]) on.push([x, y]);
+  const neighbours = (p) => on.filter((q) => q !== p && Math.abs(q[0] - p[0]) <= 1 && Math.abs(q[1] - p[1]) <= 1).length;
+  return { on, neighbours, scale };
+}
+
+test("thin leaves a bar on either diagonal its skeleton: it does not eat the line from its end", () => {
+  for (const deg of [45, 135]) {
+    const { on, scale } = skeletonOf(turnedBar(2, 30, deg));
+    const xs = on.map((p) => p[0]), span = on.length ? (Math.max(...xs) - Math.min(...xs)) / scale : 0;
+    // a 180 px bar on a diagonal spans 127 px across, less a bar's width at its two ends
+    assert.ok(span > 110, `turned ${deg}: the skeleton spans ${span.toFixed(0)} px across, ${on.length} pixels in all`);
+  }
+});
+
+test("thin leaves a skeleton one pixel wide: the corners of its staircases are taken out", () => {
+  // A pixel of a line has two neighbours; a staircase corner has three or
+  // four. What is left with more than two is the fork at each end of the
+  // bar, where the skeleton runs into its corners (the spur pass takes
+  // those): a handful. With the corners kept, a bar turned 20 degrees had
+  // 287 such pixels in 323.
+  for (const deg of [0, 20, 45, 70, 135]) {
+    const { on, neighbours } = skeletonOf(turnedBar(2, 30, deg));
+    const thick = on.filter((p) => neighbours(p) > 2).length;
+    assert.ok(thick * 20 < on.length, `turned ${deg}: ${thick} of ${on.length} skeleton pixels touch more than two others`);
+  }
+});
+
+test("an L turned exactly 45 degrees is sewn along both arms", () => {
+  // 15 x 15 mm, arms 1 mm wide at 12 px per mm, as the re-measure drew it
+  const c = Math.SQRT1_2, PX = 6, a = 2, s = 30;
+  const turned = [[0, 0], [a, 0], [a, s - a], [s, s - a], [s, s], [0, s]].map(([x, y]) => [x * c - y * c, x * c + y * c]);
+  const ring = turned.map(([x, y]) => ({ x: 300 + x * PX, y: 200 + y * PX }));
+  const pts = satin.medialSatin(ring, { spacingMm: 0.4, pxPerMm: 12, pullCompMm: 0 });
+  const centres = [];
+  for (let i = 0; i + 1 < pts.length; i += 2) centres.push({ x: (pts[i].x + pts[i + 1].x) / 2, y: (pts[i].y + pts[i + 1].y) / 2 });
+  // the middle of each arm, on its centre line
+  const mid = (p, q) => ({ x: 300 + (p[0] + q[0]) / 2 * PX, y: 200 + (p[1] + q[1]) / 2 * PX });
+  const arms = { "the arm from the corner up": mid(turned[0], turned[2]), "the arm along the foot": mid(turned[3], turned[5]) };
+  for (const [name, m] of Object.entries(arms)) {
+    const nearest = Math.min(...centres.map((q) => Math.hypot(q.x - m.x, q.y - m.y)));
+    assert.ok(nearest < 6, `${name}: the nearest cross is ${(nearest / 12).toFixed(1)} mm from its middle`);
+  }
+});
+
 test("a fill is not touched: the shape tool's default rectangle sews what it sewed", async () => {
   // 50 x 30 mm is a fill; medialSatin never sees it. Counted on f887e27d.
   const d = await studioShape("rect", { heightMm: 30, cornerRadiusMm: 0 }, 50);

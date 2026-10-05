@@ -1460,7 +1460,12 @@ test("buildQualityDesign: fabric densityAdjust loosens fill (fewer stitches)", (
 test("buildQualityDesign: fabric trimAtMm gates a mid-distance travel trim", () => {
   const base = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, densityMm: 0.5, underlay: false, satinMaxWidthMm: 1 };
   const anchor = { outer: sq(0, 0, 700), holes: [] };
-  const shapes = [anchor, { outer: sq(760, 340, 16), holes: [] }, { outer: sq(800, 340, 16), holes: [] }];
+  // The second dot sits below the first, 3.80 mm of travel from it: between
+  // the two thresholds. (Until 2026-10-04 it sat beside it at x 800, where
+  // the travel was 4.88 mm, a hair under the upper one, and the satin change
+  // of that day sews that dot from its other corner: 7.28. Here it is 3.80
+  // before that change and after.)
+  const shapes = [anchor, { outer: sq(760, 340, 16), holes: [] }, { outer: sq(760, 388, 16), holes: [] }];
   const region = [{ rgb: [0, 0, 0], shapes }];
   const t3 = DG.buildQualityDesign(region, Object.assign({ fabric: fab({ trimAtMm: 3.0, fillUnderlay: "none", satinUnderlay: "none" }) }, base))._debug.nTrims;
   const t5 = DG.buildQualityDesign(region, Object.assign({ fabric: fab({ trimAtMm: 5.0, fillUnderlay: "none", satinUnderlay: "none" }) }, base))._debug.nTrims;

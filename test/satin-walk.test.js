@@ -168,12 +168,12 @@ test("a star none of whose walks ran to the guard sews exactly what it sewed", a
   // move.)
   //
   // The spine change of 2026-10-04 (a spare cell on the grid's top and left,
-  // a free end run out to the outline, and one pixel to one edge:
-  // test/satin-spine.test.js) moves every satin star, these four with it.
-  // They sew a third fewer stitches: no arm is laid twice. The counts below
-  // are theirs since.
-  assert.strictEqual((await studioStar(12, 0.15, 12)).stitchCount, 295);
-  assert.strictEqual((await studioStar(12, 0.15, 18)).stitchCount, 453);
-  assert.strictEqual((await studioStar(12, 0.15, 23)).stitchCount, 645);
+  // a thinning that keeps a diagonal, one pixel to one edge, and a free end
+  // run out to the outline: test/satin-spine.test.js) moves every satin
+  // star, these four with it. They sew a third fewer stitches. The counts
+  // below are theirs since.
+  assert.strictEqual((await studioStar(12, 0.15, 12)).stitchCount, 297);
+  assert.strictEqual((await studioStar(12, 0.15, 18)).stitchCount, 456);
+  assert.strictEqual((await studioStar(12, 0.15, 23)).stitchCount, 644);
   assert.strictEqual((await studioStar(8, 0.15, 20)).stitchCount, 390);
 });
