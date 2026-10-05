@@ -18612,3 +18612,175 @@ stitches and nothing else. The sweep is unchanged. Engine 788 passed.
 Not sewn. No Studio caller passes it, and the lettering builder has no such
 rule. Flip is Kent's: "Waiting on Kent" 25.
 *(measured and built 2026-10-03 and 2026-10-04 — `docs/sub-unit-stitches-2026-10-03.md`, `tools/sub-unit-stitch-census.mjs`, `test/digitize.test.js` "dedupeHoles")*
+
+## 2026-10-03 — A ring handed over closed got a wedge from `offsetRing`, and under a preset the wedge was sewn (browser builder, fixed; the near repeat it does not reach is defect 55, open)
+
+Found by the independent audit of the island fix (#613) and left there. A
+ring may say its first point again at the end: `[p0, p1, ..., pn, p0]`. The
+repeat is an edge of no length. It has no direction and so no normal, and
+`offsetRing` (`digitize.js`) gave each of its two ends the normal of the one
+real edge beside it: the first was moved along one by THREE times the
+distance (the mitre clamp), the last along the other by once. The corner
+between them became a wedge. Older than every flag.
+
+**Where it was sewn.** `offsetRing` has two callers. Under a fabric preset
+the fill is sewn to the pull-compensated rings (`fillRingsOf`): the outline
+grown, a hole shrunk, an island grown. With `fillColumns`, preset or none,
+the edge run of a shape with a hole or an inside corner lies on the ring
+moved 0.2 mm into the fill (`edgeRunRing`), and its first corner went 0.6 mm
+in. With no preset and no flag nothing is offset, and nothing was wrong.
+Measured on `origin/main` at `aa7f9343` (its engine is `f887e27d`'s, file for
+file), 10 px per mm, left chest: mm of fill past the drawn edge at its
+furthest, on a 40 mm box and on an 8 mm island in a 24 mm hole in it.
+
+| preset | pull comp | outline closed, before | now | open | island closed, before | now | open |
+|---|---|---|---|---|---|---|---|
+| structured_cap | 0.4 | 1.2 | 0.4 | 0.4 | 1.1 | 0.4 | 0.4 |
+| pique_knit | 0.3 | 0.9 | 0.3 | 0.3 | 0.9 | 0.3 | 0.3 |
+| jersey_tee | 0.35 | 1.1 | 0.4 | 0.4 | 1.1 | 0.3 | 0.3 |
+| fleece_sweatshirt | 0.5 | 1.5 | 0.5 | 0.5 | 1.4 | 0.5 | 0.5 |
+| canvas_tote | 0.2 | 0.6 | 0.2 | 0.2 | 0.6 | 0.2 | 0.2 |
+| terry_towel | 0.6 | 1.8 | 0.6 | 0.6 | 1.7 | 0.5 | 0.5 |
+| woven_dress | 0.2 | 0.6 | 0.2 | 0.2 | 0.6 | 0.2 | 0.2 |
+
+(The island's rows fall where the shape's do, so its last row is up to one
+row short of the ring.) A closed hole had the wedge inward: on terry, 16
+fill stitches past a 20 mm hole's compensation, now none. The island's
+column is there because the island fix as merged (#613 at `61ec4daa`) grows
+an island with `offsetRing` as it stood. The commits that grow one from its
+corners said once came after the merge and are in #620.
+
+**The fix.** `offsetRing` moves the ring's corners said ONCE
+(`distinctCorners`: a point equal to the one after it is dropped, round the
+ring, to within 1e-9 px on both axes). A closed ring comes back as the same
+ring open does, one point shorter. One with fewer than three corners left
+has no outward side and is handed back as it came. A ring that says no point
+twice gets the same arithmetic on the same points. `isConvexRing` reads the
+same corners (see the audit, below). The tolerance is rounding and nothing
+more. A box closed a millionth of a pixel off its first point is not a
+repeat: that hair is an edge with a direction, and its two ends still go
+where the direction sends them, up to the clamp (defect 55, in small).
+
+**What moves and what does not** (`tools/closed-ring-census.mjs`, run on
+both engines). 151 designs: 33 drawn by hand, 60 seeded, and the Studio's
+own lanes' rings (40 basic shapes, 4 hand-drawn with curves and cut-outs, 14
+from the image lane).
+
+- **Rings that say no point twice: nothing.** 4,536 outputs, no fabric and
+  all seven presets, `fillColumns` absent, off and on, and on a quarter of
+  the designs no underlay, `ties`, `fillStagger` and a cap. A hash of
+  everything the builder returns: 2,560 distinct, none different.
+- **Every ring closed, against the same design open** (the angle fixed, see
+  below). Outputs whose fill runs differ from the open design's:
+
+| | outputs | before | now |
+|---|---|---|---|
+| no fabric, flag absent | 151 | 0 | 0 |
+| no fabric, `fillColumns` on | 151 | 17 | 0 |
+| a preset, flag absent | 1,057 | 1,008 | 0 |
+| a preset, `fillColumns` on | 1,057 | 1,008 | 0 |
+
+  (The 49 that did not differ are seven shapes sewn as satin, which have no
+  fill. The 17 have no preset: with the flag a fill is entered from where
+  the run before it ends, and that run was the wedged edge run.)
+
+**Who hands one over: no Studio lane hands over an EXACT repeat.**
+`generateElement` run for real, the builder watched for the rings it is
+given, every call with a preset. Basic shapes: 3,975 rings, each kind across
+its sizes and settings, none (`shapePresets.dedupeRing` takes a repeat out,
+at the wrap too). The image lane: 642 rings from seven of the repo's PNG
+fixtures at 2, 4 and 8 colours with and without background removal, and
+20,304 from 400 noise maps with no smoothing, none; the tracer steps one px
+a point and stops before it says its start again. Trace import: 64 rings,
+none. A hand-drawn shape whose points repeat exactly, closed or mid-ring, is
+refused by `isValidShape` as "This shape crosses itself." and the builder is
+not called; a closed cut-out cuts nothing. (That refusal is its own
+behaviour, older than this, and is not changed. It gives out below anything
+a pointer can draw: closed to within 1e-10 px, 12 of 16 directions are
+taken as valid, and the engine reads those as repeats.) Two things in `src/`
+do hand them over, and nothing in the Studio calls either: `parseSVG`
+returns a closed ring for every circle, ellipse and rounded rect and for a
+path that ends on its start, and `fonts.js` `pathToPolygons` keeps a closing
+point (its two tool scripts pass no fabric).
+
+**The near repeat, which this does not reach: defect 55, open.** The record
+first said that no file made in the Studio carries the wedge. That is true
+of a point said twice and false of the wedge. A point merely NEAR the next
+is a corner with a short edge, and where that edge doubles back `offsetRing`
+gives its end the same clamp. The hand-drawn lane makes one: a double-click
+is two clicks and a `dblclick`, and `ManualPanel.onCanvasClick` drops the
+second click only within 0.5 canvas px of the first. A 40 mm box, the fourth
+corner double-clicked, mm of fill past the ring as drawn (all its anchors);
+then 80 slips of 0.6 to 3 px in 16 directions, of which 20 are refused as
+crossing (the double-click finishes nothing) and 60 kept as a fifth anchor:
+
+| preset | pull comp | clean double-click | second click 1 px off | of the 60 kept, over 0.15 mm further out than clean | worst |
+|---|---|---|---|---|---|
+| structured_cap | 0.4 | 0.57 | 1.13 | 27 | 1.20 |
+| pique_knit | 0.3 | 0.42 | 0.73 | 24 | 0.91 |
+| jersey_tee | 0.35 | 0.42 | 1.03 | 29 | 1.06 |
+| fleece_sweatshirt | 0.5 | 0.71 | 1.44 | 30 | 1.51 |
+| canvas_tote | 0.2 | 0.28 | 0.43 | 19 | 0.62 |
+| terry_towel | 0.6 | 0.85 | 1.73 | 30 | 1.81 |
+| woven_dress | 0.2 | 0.28 | 0.43 | 19 | 0.62 |
+
+The same on the engine before and after: the cure is not here. Where it
+belongs is Kent's call (MASTER_SCOPE defect 55): the gesture, which mends
+new shapes only, or the offset, which mends saved ones and moves every sharp
+corner under a preset.
+
+**Left, and measured.** A closed ring is still not the open ring everywhere.
+With the fill the same, the whole stream still differs from the open
+design's on 842 of the 1,057 under a preset (234 with `fillColumns` on) and
+on 118 of 151 with none (35). Three readers take the POINTS, and a point
+said twice is one more of them: the centroid the edge run is drawn toward
+(`insetRing`: every shape's without the flag, and with it a shape's with no
+hole and no inside corner) and a colour's shapes are ordered by
+(`orderShapes`), and the points' own axis (`pcaAngleDeg`), which sets the
+auto angle and a satin shape's centre run. On 700 of the 842 the underlay is
+within 0.2 mm of the open design's. The furthest is 12.8 mm: an
+eight-pointed star sewn as satin, where one axis is as good as another, and
+its centre run took a different one. On 28 of the 1,057 the fills are the
+same and come in another order. None of this is `offsetRing`, none moved
+with this change, and no Studio lane reaches it. The cure would be in one
+place, at the builder's door, and would move a closed ring's stitches with
+no preset too: not done here.
+
+**The independent audit held the fix and failed five of my sentences.** Its
+own corpora: on rings with no repeat, 22 million `offsetRing` calls and
+12,365 builder outputs, none different; every exact repeat it tried (closed,
+first point twice at the start, a middle point twice), 8,448 outputs, the
+fill the open ring's; 1,536 closed-ring outputs with no preset and no flag,
+unmoved; 853,296 traced rings through the simplifier at four tolerances,
+none saying a point twice. What it failed:
+
+- "No Studio lane hands one over, so no customer's file carries the wedge."
+  True of an exact repeat only. The slipped double-click is its finding, and
+  so is the hoop: 14 of 30 edits that drag two neighbouring anchors to one
+  hoop corner wedged (its measure, not re-run here).
+- "A closed ring's edge run lies where the open ring's does, with
+  `fillColumns`." Not for a ring closed AT its only inside corner.
+  `isConvexRing` stepped over a corner with a side of no length, so that
+  ring read as convex and its edge run went toward the centroid (0.1 mm
+  outside an L, by its measure), with every run after it starting somewhere
+  else. Re-measured on 90 one-notch shapes, each closed at its notch, with a
+  probe that was not kept: all 2,160 streams differed and 373 fills; with
+  `isConvexRing` reading the corners said once, none. Fixed here, and an
+  arrowhead closed at its notch is the test.
+- "Three readers", and "what differs is the underlay". There was a fourth
+  (above), and the order of a colour's shapes moves too.
+- The direct callers: `parseSVG` was not named.
+- "A closing point that was computed rarely lands exactly." The tolerance
+  covers rounding, not a ring nearly closed.
+
+And two things about the proof. No test held the tolerance from above:
+widened to half a pixel, every test still passed. One does now ("a short
+edge is still an edge"). The tool's `--hash` did not say which engine it had
+hashed, so a forgotten argument compared an engine with itself and found
+nothing: it records the engine now, and `--compare` refuses two files from
+one.
+
+Nine tests; the seven for the wedge and the one for the inside corner each
+watched fail first, the short-edge one watched die under three wider
+tolerances. Not sewn.
+*(fixed 2026-10-03 — `tools/closed-ring-census.mjs`; `test/digitize.test.js`, "a ring handed over CLOSED"; one independent audit)*
