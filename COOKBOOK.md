@@ -1121,6 +1121,24 @@ sews nothing and cuts the smallest shape that contains it.
     does bars, `--render` draws one from its DST bytes. A counter it cannot
     insert is an error: the first version read "0 walks at the guard" on a
     file whose loop it had not found.
+- **No second stitch in one hole is built OFF for the shape builder
+  (2026-10-03).** The builder rounds to 0.1 mm, so a row at a tip, a move
+  across the mouth of a notch, or a scanline through a corner can put two
+  `stitch` records on one point: the needle twice in one hole, in what
+  ships. `dedupeHoles: true` on `buildQualityDesign` lays the first and not
+  the second. It is ONE place, `pushRun` in `src/digitize.js`, and it is
+  narrow on purpose: only a stitch whose record comes straight after a
+  stitch on its point is left out. After a jump or a cut the stitch is laid,
+  whatever point it is on. Do not widen it to look through jumps. A cut is
+  written as three jump records (`dst.js`), so a stitch taken out from
+  between two jumps can leave a reader a cut nobody made; the first build
+  did look through them, and an independent audit's remark caught it.
+  `node tools/sub-unit-stitch-census.mjs [srcDir]` counts the pairs on two
+  sets of designs and says what made each; `--on dedupeHoles=true --off
+  dedupeHoles=true` runs it with the flag, and `--against <other src>` says
+  whether two engines' streams differ only by such stitches. No Studio
+  caller passes the flag; the flip is Kent's ("Waiting on Kent" 25). The
+  lettering builder has no such rule. `docs/sub-unit-stitches-2026-10-03.md`.
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 
