@@ -1131,6 +1131,26 @@ sews nothing and cuts the smallest shape that contains it.
   whether two engines' streams differ only by such stitches. No Studio
   caller passes the flag; the flip is Kent's ("Waiting on Kent" 25). The
   lettering builder has no such rule. `docs/sub-unit-stitches-2026-10-03.md`.
+- **A ring may arrive CLOSED, and three readers still take its points
+  (2026-10-03).** `[p0, ..., pn, p0]`: the first point said again at the end.
+  `offsetRing` moves the corners said ONCE (`distinctCorners`) and
+  `isConvexRing` reads them, so the fill's pull compensation and the
+  `fillColumns` edge run are the open ring's. Three things are still read off
+  the POINTS, and a point said twice is one more of them: the auto stitch
+  angle and a satin shape's centre run (`pcaAngleDeg`), and the edge run that
+  is drawn toward the centroid and the order of a colour's shapes
+  (`insetRing`, `orderShapes`). That edge run is every shape's without
+  `fillColumns`, and with it a shape's with no hole and no inside corner. No
+  Studio lane sends an exact repeat: the tracer and the basic shapes never say
+  a point twice, and a hand-drawn shape that does is refused as crossing
+  itself. `parseSVG` (every circle, ellipse and rounded rect) and `src/fonts.js`
+  `pathToPolygons` DO; nothing in the Studio calls them, and a lane that will
+  should take the repeat off before the builder. "Twice" is to within rounding
+  (1e-9 px). A point merely NEAR the next is a corner, and the open bug at the
+  top of "Known bugs" is what one does. `node tools/closed-ring-census.mjs`
+  prints the wedge, closed against open, what each lane hands over, and the
+  near repeat; `--hash` and `--compare` are the before and after of an engine
+  change on rings that say no point twice.
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 
@@ -1323,8 +1343,25 @@ don't push for it.
 
 ## Known bugs (unresolved, not accepted — Kent's call on the fix)
 
-**None open as of 2026-10-02.** Every entry below is fixed and is kept for its
-trail. Put a new unresolved bug at the top, above this line's date.
+- **A hand-drawn shape finished with a double-click that slips sews a spike at
+  that corner — OPEN, found 2026-10-03 (MASTER_SCOPE defect 55).** A
+  double-click is two clicks and then a `dblclick`. `ManualPanel.onCanvasClick`
+  drops the second click only when it lands within 0.5 canvas px of the first
+  (`DUP_POINT_EPS_PX`); a pixel off, it is kept as an anchor, and
+  `onCanvasDblClick`'s own comment ("already drops it") is the assumption that
+  fails. The short edge to that anchor doubles back, and `offsetRing` gives its
+  end the whole mitre clamp, three times the pull compensation. On terry a
+  40 mm box is filled 1.73 mm past the drawn ring there, where a clean corner
+  has 0.85; one slip in four is refused as crossing instead, and the
+  double-click finishes nothing. It is NOT the closed-ring wedge fixed the same
+  day (that is a point said twice to within rounding, and no Studio lane sends
+  one), though it is the same function and the same clamp. Two cures, and the
+  choice is Kent's: the gesture (new shapes only), or the offset (every saved
+  shape, and every sharp corner under a preset moves). `node
+  tools/closed-ring-census.mjs`, table 4.
+
+**One open as of 2026-10-03, above.** Every entry below this line is fixed and
+is kept for its trail. Put a new unresolved bug at the top, above this line.
 
 - **DST axis transposition — FIXED 2026-09-08, both halves. The phantom end
   stitch is FIXED too (#415).** EMB-Bot's own DST codec was transposed
