@@ -18613,6 +18613,460 @@ Not sewn. No Studio caller passes it, and the lettering builder has no such
 rule. Flip is Kent's: "Waiting on Kent" 25.
 *(measured and built 2026-10-03 and 2026-10-04 — `docs/sub-unit-stitches-2026-10-03.md`, `tools/sub-unit-stitch-census.mjs`, `test/digitize.test.js` "dedupeHoles")*
 
+## 2026-10-03 — A ring handed over closed got a wedge from `offsetRing`, and under a preset the wedge was sewn (browser builder, fixed; the near repeat it does not reach is defect 55, open)
+
+Found by the independent audit of the island fix (#613) and left there. A
+ring may say its first point again at the end: `[p0, p1, ..., pn, p0]`. The
+repeat is an edge of no length. It has no direction and so no normal, and
+`offsetRing` (`digitize.js`) gave each of its two ends the normal of the one
+real edge beside it: the first was moved along one by THREE times the
+distance (the mitre clamp), the last along the other by once. The corner
+between them became a wedge. Older than every flag.
+
+**Where it was sewn.** `offsetRing` has two callers. Under a fabric preset
+the fill is sewn to the pull-compensated rings (`fillRingsOf`): the outline
+grown, a hole shrunk, an island grown. With `fillColumns`, preset or none,
+the edge run of a shape with a hole or an inside corner lies on the ring
+moved 0.2 mm into the fill (`edgeRunRing`), and its first corner went 0.6 mm
+in. With no preset and no flag nothing is offset, and nothing was wrong.
+Measured on `origin/main` at `aa7f9343` (its engine is `f887e27d`'s, file for
+file), 10 px per mm, left chest: mm of fill past the drawn edge at its
+furthest, on a 40 mm box and on an 8 mm island in a 24 mm hole in it.
+
+| preset | pull comp | outline closed, before | now | open | island closed, before | now | open |
+|---|---|---|---|---|---|---|---|
+| structured_cap | 0.4 | 1.2 | 0.4 | 0.4 | 1.1 | 0.4 | 0.4 |
+| pique_knit | 0.3 | 0.9 | 0.3 | 0.3 | 0.9 | 0.3 | 0.3 |
+| jersey_tee | 0.35 | 1.1 | 0.4 | 0.4 | 1.1 | 0.3 | 0.3 |
+| fleece_sweatshirt | 0.5 | 1.5 | 0.5 | 0.5 | 1.4 | 0.5 | 0.5 |
+| canvas_tote | 0.2 | 0.6 | 0.2 | 0.2 | 0.6 | 0.2 | 0.2 |
+| terry_towel | 0.6 | 1.8 | 0.6 | 0.6 | 1.7 | 0.5 | 0.5 |
+| woven_dress | 0.2 | 0.6 | 0.2 | 0.2 | 0.6 | 0.2 | 0.2 |
+
+(The island's rows fall where the shape's do, so its last row is up to one
+row short of the ring.) A closed hole had the wedge inward: on terry, 16
+fill stitches past a 20 mm hole's compensation, now none. The island's
+column is there because the island fix as merged (#613 at `61ec4daa`) grows
+an island with `offsetRing` as it stood. The commits that grow one from its
+corners said once came after the merge and are in #620.
+
+**The fix.** `offsetRing` moves the ring's corners said ONCE
+(`distinctCorners`: a point equal to the one after it is dropped, round the
+ring, to within 1e-9 px on both axes). A closed ring comes back as the same
+ring open does, one point shorter. One with fewer than three corners left
+has no outward side and is handed back as it came. A ring that says no point
+twice gets the same arithmetic on the same points. `isConvexRing` reads the
+same corners (see the audit, below). The tolerance is rounding and nothing
+more. A box closed a millionth of a pixel off its first point is not a
+repeat: that hair is an edge with a direction, and its two ends still go
+where the direction sends them, up to the clamp (defect 55, in small).
+
+**What moves and what does not** (`tools/closed-ring-census.mjs`, run on
+both engines). 151 designs: 33 drawn by hand, 60 seeded, and the Studio's
+own lanes' rings (40 basic shapes, 4 hand-drawn with curves and cut-outs, 14
+from the image lane).
+
+- **Rings that say no point twice: nothing.** 4,536 outputs, no fabric and
+  all seven presets, `fillColumns` absent, off and on, and on a quarter of
+  the designs no underlay, `ties`, `fillStagger` and a cap. A hash of
+  everything the builder returns: 2,560 distinct, none different.
+- **Every ring closed, against the same design open** (the angle fixed, see
+  below). Outputs whose fill runs differ from the open design's:
+
+| | outputs | before | now |
+|---|---|---|---|
+| no fabric, flag absent | 151 | 0 | 0 |
+| no fabric, `fillColumns` on | 151 | 17 | 0 |
+| a preset, flag absent | 1,057 | 1,008 | 0 |
+| a preset, `fillColumns` on | 1,057 | 1,008 | 0 |
+
+  (The 49 that did not differ are seven shapes sewn as satin, which have no
+  fill. The 17 have no preset: with the flag a fill is entered from where
+  the run before it ends, and that run was the wedged edge run.)
+
+**Who hands one over: no Studio lane hands over an EXACT repeat.**
+`generateElement` run for real, the builder watched for the rings it is
+given, every call with a preset. Basic shapes: 3,975 rings, each kind across
+its sizes and settings, none (`shapePresets.dedupeRing` takes a repeat out,
+at the wrap too). The image lane: 642 rings from seven of the repo's PNG
+fixtures at 2, 4 and 8 colours with and without background removal, and
+20,304 from 400 noise maps with no smoothing, none; the tracer steps one px
+a point and stops before it says its start again. Trace import: 64 rings,
+none. A hand-drawn shape whose points repeat exactly, closed or mid-ring, is
+refused by `isValidShape` as "This shape crosses itself." and the builder is
+not called; a closed cut-out cuts nothing. (That refusal is its own
+behaviour, older than this, and is not changed. It gives out below anything
+a pointer can draw: closed to within 1e-10 px, 12 of 16 directions are
+taken as valid, and the engine reads those as repeats.) Two things in `src/`
+do hand them over, and nothing in the Studio calls either: `parseSVG`
+returns a closed ring for every circle, ellipse and rounded rect and for a
+path that ends on its start, and `fonts.js` `pathToPolygons` keeps a closing
+point (its two tool scripts pass no fabric).
+
+**The near repeat, which this does not reach: defect 55, open.** The record
+first said that no file made in the Studio carries the wedge. That is true
+of a point said twice and false of the wedge. A point merely NEAR the next
+is a corner with a short edge, and where that edge doubles back `offsetRing`
+gives its end the same clamp. The hand-drawn lane makes one: a double-click
+is two clicks and a `dblclick`, and `ManualPanel.onCanvasClick` drops the
+second click only within 0.5 canvas px of the first. A 40 mm box, the fourth
+corner double-clicked, mm of fill past the ring as drawn (all its anchors);
+then 80 slips of 0.6 to 3 px in 16 directions, of which 20 are refused as
+crossing (the double-click finishes nothing) and 60 kept as a fifth anchor:
+
+| preset | pull comp | clean double-click | second click 1 px off | of the 60 kept, over 0.15 mm further out than clean | worst |
+|---|---|---|---|---|---|
+| structured_cap | 0.4 | 0.57 | 1.13 | 27 | 1.20 |
+| pique_knit | 0.3 | 0.42 | 0.73 | 24 | 0.91 |
+| jersey_tee | 0.35 | 0.42 | 1.03 | 29 | 1.06 |
+| fleece_sweatshirt | 0.5 | 0.71 | 1.44 | 30 | 1.51 |
+| canvas_tote | 0.2 | 0.28 | 0.43 | 19 | 0.62 |
+| terry_towel | 0.6 | 0.85 | 1.73 | 30 | 1.81 |
+| woven_dress | 0.2 | 0.28 | 0.43 | 19 | 0.62 |
+
+The same on the engine before and after: the cure is not here. Where it
+belongs is Kent's call (MASTER_SCOPE defect 55): the gesture, which mends
+new shapes only, or the offset, which mends saved ones and moves every sharp
+corner under a preset.
+
+**Left, and measured.** A closed ring is still not the open ring everywhere.
+With the fill the same, the whole stream still differs from the open
+design's on 842 of the 1,057 under a preset (234 with `fillColumns` on) and
+on 118 of 151 with none (35). Three readers take the POINTS, and a point
+said twice is one more of them: the centroid the edge run is drawn toward
+(`insetRing`: every shape's without the flag, and with it a shape's with no
+hole and no inside corner) and a colour's shapes are ordered by
+(`orderShapes`), and the points' own axis (`pcaAngleDeg`), which sets the
+auto angle and a satin shape's centre run. On 700 of the 842 the underlay is
+within 0.2 mm of the open design's. The furthest is 12.8 mm: an
+eight-pointed star sewn as satin, where one axis is as good as another, and
+its centre run took a different one. On 28 of the 1,057 the fills are the
+same and come in another order. None of this is `offsetRing`, none moved
+with this change, and no Studio lane reaches it. The cure would be in one
+place, at the builder's door, and would move a closed ring's stitches with
+no preset too: not done here.
+
+**The independent audit held the fix and failed five of my sentences.** Its
+own corpora: on rings with no repeat, 22 million `offsetRing` calls and
+12,365 builder outputs, none different; every exact repeat it tried (closed,
+first point twice at the start, a middle point twice), 8,448 outputs, the
+fill the open ring's; 1,536 closed-ring outputs with no preset and no flag,
+unmoved; 853,296 traced rings through the simplifier at four tolerances,
+none saying a point twice. What it failed:
+
+- "No Studio lane hands one over, so no customer's file carries the wedge."
+  True of an exact repeat only. The slipped double-click is its finding, and
+  so is the hoop: 14 of 30 edits that drag two neighbouring anchors to one
+  hoop corner wedged (its measure, not re-run here).
+- "A closed ring's edge run lies where the open ring's does, with
+  `fillColumns`." Not for a ring closed AT its only inside corner.
+  `isConvexRing` stepped over a corner with a side of no length, so that
+  ring read as convex and its edge run went toward the centroid (0.1 mm
+  outside an L, by its measure), with every run after it starting somewhere
+  else. Re-measured on 90 one-notch shapes, each closed at its notch, with a
+  probe that was not kept: all 2,160 streams differed and 373 fills; with
+  `isConvexRing` reading the corners said once, none. Fixed here, and an
+  arrowhead closed at its notch is the test.
+- "Three readers", and "what differs is the underlay". There was a fourth
+  (above), and the order of a colour's shapes moves too.
+- The direct callers: `parseSVG` was not named.
+- "A closing point that was computed rarely lands exactly." The tolerance
+  covers rounding, not a ring nearly closed.
+
+And two things about the proof. No test held the tolerance from above:
+widened to half a pixel, every test still passed. One does now ("a short
+edge is still an edge"). The tool's `--hash` did not say which engine it had
+hashed, so a forgotten argument compared an engine with itself and found
+nothing: it records the engine now, and `--compare` refuses two files from
+one.
+
+Nine tests; the seven for the wedge and the one for the inside corner each
+watched fail first, the short-edge one watched die under three wider
+tolerances. Not sewn.
+*(fixed 2026-10-03 — `tools/closed-ring-census.mjs`; `test/digitize.test.js`, "a ring handed over CLOSED"; one independent audit)*
+
+## 2026-10-03 — The second click of a double-click was an anchor wherever the pointer had slipped to: defect 55's gesture, fixed (Kent's pick); the offset is not
+
+The entry above ends with a choice put to Kent: cure defect 55 at the
+gesture or at the offset. He picked the gesture. This is that.
+
+**What it was.** A double-click is two `click` events and then a `dblclick`.
+The side canvas (`ManualPanel.onCanvasClick`) took both clicks as clicks and
+leaned on its duplicate-point guard to drop the second, and that guard is
+half a canvas pixel wide (`DUP_POINT_EPS_PX`). `onCanvasDblClick` said so in
+its own comment: the second click "lands on (or within DUP_POINT_EPS_PX of)
+the same point as the first". A pointer moves more than that between two
+clicks. Two things followed:
+
+- **A slipped anchor.** The second click, a pixel off, became an anchor a
+  pixel from the last one, and the shape was saved with it. Under a fabric
+  preset `offsetRing` put the whole mitre clamp on the short edge that
+  doubles back (the table in the entry above: terry, 1.73 mm of fill past
+  the drawn ring where a clean corner has 0.85). Or the slip made the ring
+  cross itself, `finishShape` refused it, and the double-click finished
+  nothing.
+- **A draft nobody started.** Double-clicked ON the start point, the first
+  click closed the shape and the second was a first click again: outside the
+  shape just made, or anywhere in Hole mode, it left a draft of one point for
+  the next click to carry on from.
+
+**The fix.** A click with `detail` over 1 is the second click of a
+double-click, by the browser's own count, and `onCanvasClick` lets it go by.
+The field canvas already reads `detail` for its own double-click (an anchor
+put in on an edge). The duplicate-point guard stays for what it is for.
+
+**Measured.** In a real browser (Playwright, the mouse pressed once on the
+fourth corner and then pressed with a click count of two a pixel or two
+away), four slips, the shape read back as the app saved it:
+
+| second click, screen px off the first | before | now |
+|---|---|---|
+| 0, 0 | 4 anchors | 4 anchors |
+| -1, +1 | 5 anchors | 4 anchors |
+| +1, +2 | no shape: refused as crossing | 4 anchors |
+| -2, -1 | 5 anchors | 4 anchors |
+
+At component level the same two failures, each watched fail first: a
+second click 1 px off kept as a fifth anchor, and "Undo point" left live
+after a double-click on the start point.
+
+**What it does not do.** It makes no new slipped anchor and mends no old
+one: a shape saved before this keeps its anchor and its spike, and two
+anchors dragged to one hoop corner still make another (the audit's measure
+in the entry above). Curing those is the offset (a bevel past the clamp),
+which moves every sharp corner under a preset. Not built; Kent's call.
+MASTER_SCOPE defect 55 says both halves.
+
+No engine code moves (a comment in `digitize.js`). Not sewn.
+*(fixed 2026-10-03 — `app/src/ui/ManualPanel.spec.js`, "the second click of a double-click"; `app/e2e/manual-double-click.spec.js`)*
+
+## 2026-10-05 — `SATIN_GAPS_TIGHT` and `ARTWORK_UNCOVERED` become `info` (Kent's call, issue #630), and the scorecard ruler moves to `d000e370`
+
+**The ruling.** The 2026-10-04 recapture bisected all five band falls since
+09-16 onto two preflight checks — #572's hole-aware `ARTWORK_UNCOVERED` and
+#573's `SATIN_GAPS_TIGHT` — that moved no stitch on any row they touched.
+Issue #630 put the cost in front of Kent with six options and the grade table
+each gives; he picked **both to `info`**: the finding, its `extra` (the Studio's
+"Make it bigger" chip reads it and keys on the code, not the severity), and
+every metric both publish stay; `_DEDUCT` bills info 0, so the grade is blind
+to them, as it is to edge wobble and curve roughness (defect 46). Two rulings
+sat behind it: 10-02, *"We shouldn't have to warn the user of anything"*, and
+10-03, defect 46 closed as metrics only. Both checks had been his picks on
+09-30; the recapture is what showed their price.
+
+**What changed in code.** Two severity strings, `"warn"` → `"info"`
+(`preflight.py`, the two `finding(...)` calls). Nothing else: no threshold,
+no metric, no message. `test_satin_gaps_tight_judges_nothing` pins it (the
+finding present, `raw_score` equal to every OTHER finding's deductions); the
+three `ARTWORK_UNCOVERED` tests that asserted `warn` assert `info`; the Becker
+junction-flag test asserts it too.
+
+**The recapture, diff-then-capture at `d000e370` on cloud Linux** (the CI
+`digitizer` job's environment; the 10-04 ruler `6e0cb943` as the control).
+The tool's own serial `diff`: **21 rows moved, every one of them a row
+carrying one or both findings, and on every one the only lines are the
+finding string (`:warn` resolved, `:info` appeared), `raw_score` and the
+score/grade that follow — no stitch, coverage or trim metric moved on any
+row.** 31 rows reproduced the 10-04 ruler leaf for leaf. Grades
+A/B/C/D/F 6/14/11/8/13 → **9/18/7/6/12**; 12 rows rose a band, none
+fell, `diff` exited 0. One cause, measured not inferred: `d000e370` is
+the only commit touching `digitizer_core` between the rulers.
+
+| row | grade | score | the finding(s) that stopped billing |
+|---|---|---|---|
+| `photo/enthusiast_logo.png @ 80mm/left_chest` | unchanged | 76 → 88 | `ARTWORK_UNCOVERED` |
+| `photo/photo_chrome_specular.png @ 80mm/left_chest` | D → C | 52 → 64 | `ARTWORK_UNCOVERED` |
+| `photo/photo_chrome_specular.png @ 80mm/hat_front` | C → B | 64 → 76 | `ARTWORK_UNCOVERED` |
+| `photo/photo_dof_meadow.png @ 80mm/left_chest` | C → B | 64 → 76 | `ARTWORK_UNCOVERED` |
+| `photo/photo_dof_meadow.png @ 80mm/hat_front` | C → B | 64 → 76 | `ARTWORK_UNCOVERED` |
+| `photo/photo_grass_macro.png @ 80mm/left_chest` | F → D | 34 → 46 | `ARTWORK_UNCOVERED` |
+| `photo/photo_grass_macro.png @ 80mm/hat_front` | unchanged | 46 → 58 | `ARTWORK_UNCOVERED` |
+| `photo/photo_scene_stub.png @ 80mm/left_chest` | D → B | 52 → 76 | `ARTWORK_UNCOVERED`, `SATIN_GAPS_TIGHT` |
+| `photo/photo_scene_stub.png @ 80mm/hat_front` | D → B | 52 → 76 | `ARTWORK_UNCOVERED`, `SATIN_GAPS_TIGHT` |
+| `photo/photo_sunset_backlit.png @ 80mm/left_chest` | B → A | 88 → 100 | `ARTWORK_UNCOVERED` |
+| `photo/photo_sunset_backlit.png @ 80mm/hat_front` | unchanged | 76 → 88 | `ARTWORK_UNCOVERED` |
+| `becker_marine_logo.png @ 80mm/left_chest` | unchanged | 76 → 88 | `ARTWORK_UNCOVERED` |
+| `becker_marine_logo.png @ 80mm/hat_front` | unchanged | 76 → 88 | `ARTWORK_UNCOVERED` |
+| `logo_script_tires.png @ 80mm/left_chest` | B → A | 88 → 100 | `SATIN_GAPS_TIGHT` |
+| `logo_script_tires.png @ 80mm/hat_front` | B → A | 88 → 100 | `SATIN_GAPS_TIGHT` |
+| `photo/logo_bridge_bar.jpg @ 80mm/left_chest` | unchanged | 0 unchanged, raw -98 → -86 | `SATIN_GAPS_TIGHT` |
+| `photo/logo_bridge_bar.jpg @ 80mm/hat_front` | unchanged | 0 unchanged, raw -86 → -74 | `SATIN_GAPS_TIGHT` |
+| `photo/logo_gaulke_roofing.png @ 80mm/left_chest` | C → B | 64 → 76 | `SATIN_GAPS_TIGHT` |
+| `photo/logo_gaulke_roofing.png @ 80mm/hat_front` | C → B | 64 → 76 | `SATIN_GAPS_TIGHT` |
+| `photo/logo_golden_tee.jpg @ 80mm/left_chest` | unchanged | 0 unchanged, raw -62 → -50 | `SATIN_GAPS_TIGHT` |
+| `photo/logo_golden_tee.jpg @ 80mm/hat_front` | unchanged | 0 unchanged, raw -74 → -50 | `ARTWORK_UNCOVERED`, `SATIN_GAPS_TIGHT` |
+
+**What it does not settle.** Whether a check that only size can cure should
+show at all is still Kent's; `info` keeps the sentence and the chip. The
+`_UNCOVERED_MIN_PATCH_MM2` floor of 1.0 mm² was adjudicated on logos and never
+on the photo lane — unchanged here, and now costs nothing, so the question is
+open rather than urgent. The WSL box's control worktree must be re-cut at
+`d000e370` before its next `diff`.
+*(measured 2026-10-05 — `tools/corpus_scorecard.py diff` then `capture` at `d000e370`; PR #638, issue #630)*
+
+## 2026-10-04 — The Studio's flatten froze the tab on a photograph: `absorbSmallRegions` walked the whole image for every speck (fixed; no pixel of any flat changes)
+
+**The finding, 2026-10-03.** A session running the Studio's image lane over
+the testdata images found that `absorbSmallRegions` did not return within a
+minute on `photo_chrome_specular.png` with the background removed, nor on
+`photo_subject_stub.png` at 6 colours. It is the fourth step of the Studio's
+own flatten (`app/src/lib/flatten.js`: `knockoutBackground` if asked,
+`medianCut`, `modeFilter` twice, `absorbSmallRegions` at 0.05% of the image)
+and it runs on the main thread when a customer uploads an image and picks
+"Artwork". Nobody had waited to see whether it ends.
+
+**It ends. Measured first**, on the engine as it was at `aa7f9343` with
+counters added and nothing else, each image cut to the Studio's 480 px:
+
+| | chrome_specular, background removed, 4 colours | the same at 2 colours | subject_stub, 6 colours |
+|---|---|---|---|
+| size | 403 x 480 | 403 x 480 | 480 x 312 |
+| components at the start | 4,395 | 4,092 | 18,699 |
+| under the threshold | 4,362 (under 97 px) | 4,081 (under 97 px) | 18,644 (under 75 px) |
+| of those, islands with only transparent beside them | 3,994 | 3,994 | 0 |
+| absorbs | 356 | 87 | 14,994 |
+| labellings of the whole image | 357 | 88 | 14,995 |
+| neighbour counts, each one a walk over the whole image | 1,149,216 | 304,323 | 14,994 |
+| walks over the whole image in all | 1,149,929 | 304,498 | 44,983 |
+| processor time of the one call | 10.9 min | 3.6 min | 1.9 min |
+| the same call now | 24 ms | 16 ms | 156 ms |
+
+The three steps before it took 7, 435 and 86 ms on the first.
+
+**Two costs, and the one the finding did not name is the larger.** The loop
+labelled the whole image afresh after every absorb: that is the right-hand
+column, a labelling, a neighbour count and a repaint for each of 14,994
+specks. And it asked each candidate for its neighbours by walking the whole
+image to find that candidate's pixels. `knockoutBackground` is a colour key,
+not a flood from the border: on a photograph it takes near-white pixels out
+wherever they are and leaves thousands of islands with nothing but
+transparent beside them (2,743 of the 3,994 here are a single pixel). Such
+an island can never be absorbed. It is also the smallest thing in the image,
+so it stood first in line, and it was asked again in EVERY pass: 3,994 walks
+over the image before each of 356 absorbs.
+
+**The extent**: every PNG under `digitizer/testdata` and
+`digitizer/testdata/photo` (25) at 2, 4 and 6 colours, with and without
+background removal, 150 settings.
+
+| processor time of the one call, old loop | settings | of them with the background removed |
+|---|---|---|
+| under 0.1 s | 68 | 37 |
+| 0.1 to 1 s | 35 | 6 |
+| 1 to 10 s | 21 | 11 |
+| 10 s to 1 min | 11 | 7 |
+| 1 to 10 min | 8 | 7 |
+| 10 min to 1 h | 4 | 4 |
+| over 1 h | 3 | 3 |
+
+All 150 calls: 8.57 hours of processor time and 62,262,173 walks over an
+image. Every one over a minute:
+
+| image | colours | background | components | under the threshold | islands | absorbs | walks before | processor time before | after |
+|---|---|---|---|---|---|---|---|---|---|
+| photo_grass_macro | 6 | removed | 14,050 | 13,897 | 4,905 | 6,519 | 22,019,236 | 2.88 h | 62 ms |
+| photo_grass_macro | 4 | removed | 13,981 | 13,833 | 4,915 | 6,451 | 22,262,593 | 2.84 h | 61 ms |
+| photo_grass_macro | 2 | removed | 8,845 | 8,770 | 5,425 | 2,254 | 7,670,245 | 1.19 h | 39 ms |
+| photo_owl_pale | 4 | removed | 4,511 | 4,275 | 787 | 3,206 | 2,089,114 | 20.4 min | 33 ms |
+| photo_owl_pale | 6 | removed | 4,261 | 4,097 | 787 | 3,145 | 2,071,932 | 20.2 min | 32 ms |
+| photo_chrome_specular | 6 | removed | 4,771 | 4,711 | 3,992 | 696 | 2,200,846 | 17.8 min | 34 ms |
+| photo_chrome_specular | 4 | removed | 4,395 | 4,362 | 3,994 | 356 | 1,149,929 | 10.9 min | 24 ms |
+| photo_sunset_backlit | 6 | removed | 2,355 | 2,334 | 1,774 | 555 | 884,542 | 6.3 min | 16 ms |
+| photo_chrome_specular | 2 | removed | 4,092 | 4,081 | 3,994 | 87 | 304,498 | 3.6 min | 16 ms |
+| photo_dof_meadow | 6 | removed | 1,585 | 1,532 | 904 | 521 | 387,445 | 3.3 min | 11 ms |
+| photo_sunset_backlit | 4 | removed | 1,950 | 1,945 | 1,774 | 163 | 244,657 | 2.3 min | 10 ms |
+| photo_subject_stub | 6 | removed | 19,046 | 18,994 | 0 | 15,310 | 45,931 | 2.1 min | 92 ms |
+| photo_subject_stub | 6 | kept | 18,699 | 18,644 | 0 | 14,994 | 44,983 | 1.9 min | 156 ms |
+| summit_badge | 6 | removed | 858 | 834 | 518 | 296 | 85,580 | 1.1 min | 9 ms |
+| photo_subject_stub | 4 | removed | 12,190 | 11,953 | 0 | 9,377 | 28,132 | 1.1 min | 69 ms |
+
+("Islands" are counted at the start; an absorb can make more.) Fifteen of the
+150 take over a minute: fourteen with the background removed, and
+`photo_subject_stub` at 6 colours without. With the background kept, nothing
+that is not a photograph took 4 s. With it removed a badge and a logo took up
+to a minute (`summit_badge` 65 s, `logo_gaulke_roofing` 30 s), and a
+photograph took over a minute on 13 of its 21 settings. No suite showed it:
+their images are a few hundred pixels.
+
+**What changed.** The image is labelled once. Each component then keeps its
+own pixels (a linked list), its size and its first pixel; an absorb joins the
+lists of the components it merges; a component taken into another points at
+it; a heap hands over the smallest. An island with no neighbour is asked
+once and never again, because nothing can ever arrive beside it. Two walks
+over the image, whatever is in it.
+
+**No pixel moves**, and that was the condition: which component goes into
+which neighbour, and in what order, had to stay as it was (smallest first; of
+two the same size the one a raster scan meets first; into the index most of
+its outside neighbours carry; of two with the same votes the lower).
+
+- The sha256 of the returned indices is the same before and after on 150 of
+  150 settings, and so is the number of absorbs (102,625 in all).
+- The ORDER is the same and not only the result. The old loop wrote the hash
+  of its grid at every checkpoint of every run long enough to have one: the
+  new code's grid after the same number of absorbs is the same at 756 of 756
+  checkpoints over 27 runs. And the number of neighbour counts the old loop
+  makes depends on how many islands stand ahead of each component it
+  absorbs: worked out from the new code's order, it is the old loop's own
+  count on all 150.
+- A second corpus the suite does not use: 20,000 generated images (noise,
+  blobs, stripes, rings, blocks, islands in a transparent sea; up to 60 x 60
+  and 250 indices; thresholds from 0 to no limit), 394,765 absorbs, the
+  untouched `origin/main` engine against this one: no image differs.
+- The three `photo_grass_macro` settings with the background removed needed
+  1.2, 2.8 and 2.9 hours of processor time on the old loop, on a laptop that
+  sleeps after 45 idle minutes. They were run in stretches side by side (2,
+  6 and 6): the old loop keeps nothing between passes but the grid, so each
+  stretch was started from the grid the new code has after that many
+  absorbs, and each ended, by hash, on the very grid the next stretch
+  started from. The chain holds on all three and the stretches' counts add
+  up to the predicted ones. The same method on two settings that had also
+  been run whole gave the same counts and the same hash.
+
+**After**, same laptop, same day: the 150 calls take 2.0 s between them
+(median of seven runs each), the slowest 156 ms. The flatten's slow step on a
+photograph is now `medianCut` (0.2 to 1.5 s on the seven photographs, 0.6 s
+at the median), which this does not touch.
+Built to be as bad as it can be for the new code, at the Studio's largest
+size (a 480 x 480 checkerboard, raw noise in 6 and in 250 colours: every
+pixel its own component, over 100,000 absorbs), it takes 0.7 to 2.2 s.
+
+**In a browser**, the Studio's own `flattenRGBA` on its main thread, the same
+photograph resampled by the canvas as ImagePanel does it (403 x 480, 4
+colours, background removed): 287 to 490 ms for the whole flatten over five
+runs, 10 to 19 ms of it in this step. The old engine's step on the same
+pixels, in a worker beside it: 7 min 15 s, and the same grid.
+
+**Tests** (`test/flatten.test.js`). Watched red on the old loop: 400 specks
+cost 1,201 walks over the image against 4 for one speck, and ten specks cost
+361 against 31 once thirty islands that can never be absorbed stand in the
+image. Each is 2 now. The old loop is kept in the test file word for word as
+the definition of the order, and 600 seeded images and 175 grids where
+everything ties come out as it leaves them. Seventeen rules of the new code
+changed one at a time in a copy: none passes the file (two never come back).
+`opts.stats` ({ absorbed, imageWalks }) is how the walks are counted; absent,
+nothing changes. `node tools/flatten-census.mjs` prints these tables for
+whatever engine it is pointed at.
+
+**Read the times as this laptop's, busy.** They are processor time of the one
+call; the clock ran two to four times that, with other sessions sweeping on
+the same eight cores, and the laptop slept through parts of the long runs
+(each was checkpointed and taken up again). The image is resampled by
+`tools/png.mjs`'s box average in Node and by the canvas in the browser, so
+the two see slightly different pixels: 356 absorbs in Node, 317 in the
+browser.
+
+**Seen and not touched.** The islands are still in the flat: by the rule they
+stay, and on `photo_chrome_specular` with the background removed that is
+3,994 specks in the preview. `flatToRegions` drops shapes under 0.04% of the
+image when it traces, so they are not sewn. Whether background removal on a
+photograph should leave them at all is a question about `knockoutBackground`,
+not about this.
+
+No stitch of any design moves: the flat the image lane traces is the same
+array, byte for byte.
+*(measured and fixed 2026-10-04 — `tools/flatten-census.mjs` (its "before" is commit `4e486f62`), `test/flatten.test.js`; the sweep's own scripts were the session's and are not in the repo)*
+
 ## 2026-10-04 — `fillColumns`: a pass is told where the thread goes next, and a walk that comes out cut is walked again (what the re-measure left open)
 
 **The re-measure's finding, checked first.** Its three drawings give on

@@ -1139,6 +1139,26 @@ sews nothing and cuts the smallest shape that contains it.
   whether two engines' streams differ only by such stitches. No Studio
   caller passes the flag; the flip is Kent's ("Waiting on Kent" 25). The
   lettering builder has no such rule. `docs/sub-unit-stitches-2026-10-03.md`.
+- **A ring may arrive CLOSED, and three readers still take its points
+  (2026-10-03).** `[p0, ..., pn, p0]`: the first point said again at the end.
+  `offsetRing` moves the corners said ONCE (`distinctCorners`) and
+  `isConvexRing` reads them, so the fill's pull compensation and the
+  `fillColumns` edge run are the open ring's. Three things are still read off
+  the POINTS, and a point said twice is one more of them: the auto stitch
+  angle and a satin shape's centre run (`pcaAngleDeg`), and the edge run that
+  is drawn toward the centroid and the order of a colour's shapes
+  (`insetRing`, `orderShapes`). That edge run is every shape's without
+  `fillColumns`, and with it a shape's with no hole and no inside corner. No
+  Studio lane sends an exact repeat: the tracer and the basic shapes never say
+  a point twice, and a hand-drawn shape that does is refused as crossing
+  itself. `parseSVG` (every circle, ellipse and rounded rect) and `src/fonts.js`
+  `pathToPolygons` DO; nothing in the Studio calls them, and a lane that will
+  should take the repeat off before the builder. "Twice" is to within rounding
+  (1e-9 px). A point merely NEAR the next is a corner, and the open bug at the
+  top of "Known bugs" is what one does. `node tools/closed-ring-census.mjs`
+  prints the wedge, closed against open, what each lane hands over, and the
+  near repeat; `--hash` and `--compare` are the before and after of an engine
+  change on rings that say no point twice.
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 
@@ -1331,8 +1351,30 @@ don't push for it.
 
 ## Known bugs (unresolved, not accepted — Kent's call on the fix)
 
-**None open as of 2026-10-02.** Every entry below is fixed and is kept for its
-trail. Put a new unresolved bug at the top, above this line's date.
+- **A hand-drawn shape with an anchor a pixel from the last one sews a spike
+  at that corner — the gesture that made them is FIXED 2026-10-03, the offset
+  is NOT (MASTER_SCOPE defect 55).** The short edge to such an anchor doubles
+  back, and `offsetRing` gives its end the whole mitre clamp, three times the
+  pull compensation: on terry a 40 mm box is filled 1.73 mm past the drawn
+  ring there, where a clean corner has 0.85. They came from a double-click,
+  which is two clicks and then a `dblclick`: the second click was taken as an
+  anchor unless it landed within 0.5 canvas px of the first
+  (`DUP_POINT_EPS_PX`), and one slip in four was refused as crossing instead,
+  so the double-click finished nothing. `ManualPanel.onCanvasClick` now lets
+  a click with `detail` 2 go by (the field reads `detail` for its own
+  double-click too), so no new shape gets one. **Still open:** a shape saved
+  before then keeps its anchor and its spike, and two anchors dragged to one
+  hoop corner make another. Curing those means the offset (a bevel past the
+  clamp), which moves every sharp corner under a preset: Kent's call, not
+  built. It is NOT the closed-ring wedge fixed the same day (that is a point
+  said twice to within rounding, and no Studio lane sends one), though it is
+  the same function and the same clamp. `node tools/closed-ring-census.mjs`,
+  table 4; `app/e2e/manual-double-click.spec.js` drives the gesture in a
+  real browser.
+
+**One open as of 2026-10-03, above (its offset half).** Every entry below this
+line is fixed and is kept for its trail. Put a new unresolved bug at the top,
+above this line.
 
 - **DST axis transposition — FIXED 2026-09-08, both halves. The phantom end
   stitch is FIXED too (#415).** EMB-Bot's own DST codec was transposed
@@ -1742,8 +1784,9 @@ Captures stay on cloud Linux or CI.
   no Windows checkout can see its branches.
 - `/root/emb-control` is a detached worktree at `2c60cd87`, the commit the
   baseline was captured at when the box was built. **The baseline moved to
-  `6e0cb943` on 2026-10-04** — re-cut the control there before the next
-  `diff`, or its rows compare the wrong commit to the file. Its `digitizer/.venv` is the box's one
+  `6e0cb943` on 2026-10-04 and to `d000e370` on 2026-10-05** — re-cut the
+  control at the file's own `captured_at_commit` before the next `diff`, or
+  its rows compare the wrong commit to the file. Its `digitizer/.venv` is the box's one
   venv. Its `corpus_scorecard_baseline.json` is overwritten with
   `origin/main`'s copy on purpose (the control compares that commit to
   that file), so the tree reads dirty.
@@ -2009,6 +2052,15 @@ and controllable to the user.
     pair `FILL_ROW_MM`/`SATIN_SPACING_MM`. It asserts AGREEMENT, never a
     value — the numbers themselves are gate 1.
   - `flatten.js` — medianCut → modeFilter → absorbSmallRegions pipeline.
+    `absorbSmallRegions` labels the image ONCE and then keeps each
+    component's pixels itself (2026-10-04). Before that it labelled the whole
+    image again after every absorb, and the Studio's tab froze for minutes on
+    a photograph. The old loop is kept word for word in
+    `test/flatten.test.js` as the definition of what is absorbed into what and
+    in which order: change the engine's version and that file says whether a
+    pixel moved. `node tools/flatten-census.mjs` prints what the Studio's own
+    flatten costs on every testdata PNG, step by step, and with `--hashes` the
+    hash of what it returns, to diff two engines.
   - `fonts/` — pre-digitized font library: `manifest.json` (85
     shipping fonts — recount it, the number drifts) + `bin/*.embf` binaries
     + `.LICENSE.txt` sidecars, parsed offline from Ink/Stitch's open-source

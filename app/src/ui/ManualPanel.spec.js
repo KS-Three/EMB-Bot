@@ -130,6 +130,44 @@ describe("drawing a shape via clicks", () => {
     expect(patches[0].patch.shapes[0].points).toHaveLength(3); // not 4
   });
 
+  test("the second click of a double-click is no anchor, however far the pointer slipped", async () => {
+    // The pointer moves between the two clicks of a double-click. Only a
+    // second click within DUP_POINT_EPS_PX (0.5 px) of the first was dropped;
+    // a pixel off, it was kept as an anchor a pixel from the last one. That
+    // short edge doubles back, and under a fabric preset the fill's pull
+    // compensation put a spike on it: 1.73 mm past the drawn corner on terry
+    // where a clean one has 0.85 (MASTER_SCOPE defect 55). The browser says
+    // which click it is: `detail` is 2 on the second.
+    const { canvas, patches } = renderPanel();
+    await clickAt(canvas, 100, 100);
+    await clickAt(canvas, 300, 100);
+    await clickAt(canvas, 300, 300);
+    await fireEvent.click(canvas, { clientX: 100, clientY: 300, detail: 1 });
+    await fireEvent.click(canvas, { clientX: 99.8, clientY: 300.98, detail: 2 }); // a pixel off
+    await fireEvent.dblClick(canvas, { clientX: 99.8, clientY: 300.98, detail: 2 });
+
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes[0].points).toEqual([{ x: 100, y: 100 }, { x: 300, y: 100 }, { x: 300, y: 300 }, { x: 100, y: 300 }]);
+  });
+
+  test("nor does it start a new shape when the first click has just finished one", async () => {
+    // A click on the start point closes the shape. Double-clicked there, the
+    // second click was a first click again: outside the shape just made, it
+    // left a draft of one point behind for the next click to carry on from.
+    const { canvas, patches, getByRole } = renderPanel();
+    const [p0, p1, p2] = tri();
+    await clickAt(canvas, p0.x, p0.y);
+    await clickAt(canvas, p1.x, p1.y);
+    await clickAt(canvas, p2.x, p2.y);
+    await fireEvent.click(canvas, { clientX: p0.x - 3, clientY: p0.y - 3, detail: 1 }); // near the start: finishes
+    await fireEvent.click(canvas, { clientX: p0.x - 3, clientY: p0.y - 3, detail: 2 });
+    await fireEvent.dblClick(canvas, { clientX: p0.x - 3, clientY: p0.y - 3, detail: 2 });
+
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.shapes[0].points).toHaveLength(3);
+    expect(getByRole("button", { name: "Undo point" })).toBeDisabled(); // no draft left
+  });
+
   test("a self-intersecting draft surfaces the rejection message and Finish stays disabled", async () => {
     const { canvas, container, getByRole } = renderPanel();
     // Same bowtie shape as manualShapes.spec.js's own BOWTIE fixture (the

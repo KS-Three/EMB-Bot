@@ -1,7 +1,7 @@
 {
  "becker_marine_logo.png @ 80mm/hat_front": {
   "findings": [
-   "ARTWORK_UNCOVERED:warn",
+   "ARTWORK_UNCOVERED:info",
    "TRIM_HEAVY:warn"
   ],
   "grade": "B",
@@ -48,7 +48,7 @@
    "link_thread_mm": 0.0,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 76,
+   "raw_score": 88,
    "same_hole_fraction": 0.043,
    "satin_advance_mm": 0.416,
    "satin_gaps_judged": 2,
@@ -86,11 +86,11 @@
    "uncovered_wanted_mm2": 1419.4,
    "uncovered_worst_mm2": 1.7
   },
-  "score": 76
+  "score": 88
  },
  "becker_marine_logo.png @ 80mm/left_chest": {
   "findings": [
-   "ARTWORK_UNCOVERED:warn",
+   "ARTWORK_UNCOVERED:info",
    "TRIM_HEAVY:warn"
   ],
   "grade": "B",
@@ -137,7 +137,7 @@
    "link_thread_mm": 0.0,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 76,
+   "raw_score": 88,
    "same_hole_fraction": 0.044,
    "satin_advance_mm": 0.418,
    "satin_gaps_judged": 2,
@@ -175,7 +175,7 @@
    "uncovered_wanted_mm2": 1415.4,
    "uncovered_worst_mm2": 3.4
   },
-  "score": 76
+  "score": 88
  },
  "bg_uncertain.png @ 80mm/hat_front": {
   "findings": [
@@ -327,8 +327,8 @@
   },
   "score": 88
  },
- "captured_at_commit": "6e0cb943aea745d8c0ebe9f81cf2cc628def9e86",
- "captured_date": "2026-10-04",
+ "captured_at_commit": "d000e3702a68d43ad58e726c86ff493a66dda055",
+ "captured_date": "2026-10-05",
  "logo_alpha.png @ 80mm/hat_front": {
   "findings": [],
   "grade": "A",
@@ -483,9 +483,9 @@
  },
  "logo_script_tires.png @ 80mm/hat_front": {
   "findings": [
-   "SATIN_GAPS_TIGHT:warn"
+   "SATIN_GAPS_TIGHT:info"
   ],
-  "grade": "B",
+  "grade": "A",
   "metrics": {
    "class_override_detected_class": null,
    "color_changes": 0,
@@ -529,7 +529,7 @@
    "link_thread_mm": 0.0,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 88,
+   "raw_score": 100,
    "same_hole_fraction": 0.021,
    "satin_advance_mm": 0.415,
    "satin_gaps_judged": 3,
@@ -562,13 +562,13 @@
    "uncovered_wanted_mm2": 737.6,
    "uncovered_worst_mm2": 0.1
   },
-  "score": 88
+  "score": 100
  },
  "logo_script_tires.png @ 80mm/left_chest": {
   "findings": [
-   "SATIN_GAPS_TIGHT:warn"
+   "SATIN_GAPS_TIGHT:info"
   ],
-  "grade": "B",
+  "grade": "A",
   "metrics": {
    "class_override_detected_class": null,
    "color_changes": 0,
@@ -612,7 +612,7 @@
    "link_thread_mm": 0.0,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 88,
+   "raw_score": 100,
    "same_hole_fraction": 0.02,
    "satin_advance_mm": 0.413,
    "satin_gaps_judged": 3,
@@ -645,7 +645,7 @@
    "uncovered_wanted_mm2": 736.6,
    "uncovered_worst_mm2": 0.1
   },
-  "score": 88
+  "score": 100
  },
  "logo_whitebg.png @ 80mm/hat_front": {
   "findings": [],
@@ -1088,7 +1088,7 @@
  },
  "photo/enthusiast_logo.png @ 80mm/left_chest": {
   "findings": [
-   "ARTWORK_UNCOVERED:warn",
+   "ARTWORK_UNCOVERED:info",
    "TRIM_HEAVY:warn"
   ],
   "grade": "B",
@@ -1135,7 +1135,7 @@
    "link_thread_mm": 0.0,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 76,
+   "raw_score": 88,
    "same_hole_fraction": 0.106,
    "satin_advance_mm": 0.419,
    "satin_gaps_judged": 2,
@@ -1173,7 +1173,7 @@
    "uncovered_wanted_mm2": 381.9,
    "uncovered_worst_mm2": 1.0
   },
-  "score": 76
+  "score": 88
  },
  "photo/fur_ramp.png @ 80mm/hat_front": {
   "findings": [
@@ -1637,7 +1637,7 @@
   "findings": [
    "COLOR_STOPS_HEAVY:warn",
    "LETTERING_TOO_SMALL:warn",
-   "SATIN_GAPS_TIGHT:warn",
+   "SATIN_GAPS_TIGHT:info",
    "THREAD_MATCH_POOR:block",
    "THREAD_MATCH_POOR:block",
    "THREAD_MATCH_POOR:block",
@@ -1691,7 +1691,7 @@
    "link_thread_mm": 4.7,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": -86,
+   "raw_score": -74,
    "same_hole_fraction": 0.063,
    "satin_advance_mm": 0.417,
    "satin_gaps_judged": 10,
@@ -1732,7 +1732,7 @@
   "findings": [
    "COLOR_STOPS_HEAVY:warn",
    "LETTERING_TOO_SMALL:warn",
-   "SATIN_GAPS_TIGHT:warn",
+   "SATIN_GAPS_TIGHT:info",
    "STITCHES_TOO_SHORT:warn",
    "THREAD_MATCH_POOR:block",
    "THREAD_MATCH_POOR:block",
@@ -1787,7 +1787,7 @@
    "link_thread_mm": 5.0,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": -98,
+   "raw_score": -86,
    "same_hole_fraction": 0.069,
    "satin_advance_mm": 0.417,
    "satin_gaps_judged": 10,
@@ -1830,10 +1830,10 @@
  "photo/logo_gaulke_roofing.png @ 80mm/hat_front": {
   "findings": [
    "LETTERING_TOO_SMALL:warn",
-   "SATIN_GAPS_TIGHT:warn",
+   "SATIN_GAPS_TIGHT:info",
    "TRIM_HEAVY:warn"
   ],
-  "grade": "C",
+  "grade": "B",
   "metrics": {
    "class_override_detected_class": null,
    "color_changes": 2,
@@ -1877,7 +1877,7 @@
    "link_thread_mm": 0.4,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 64,
+   "raw_score": 76,
    "same_hole_fraction": 0.055,
    "satin_advance_mm": 0.427,
    "satin_gaps_judged": 2,
@@ -1915,15 +1915,15 @@
    "uncovered_wanted_mm2": 670.9,
    "uncovered_worst_mm2": 0.4
   },
-  "score": 64
+  "score": 76
  },
  "photo/logo_gaulke_roofing.png @ 80mm/left_chest": {
   "findings": [
    "LETTERING_TOO_SMALL:warn",
-   "SATIN_GAPS_TIGHT:warn",
+   "SATIN_GAPS_TIGHT:info",
    "TRIM_HEAVY:warn"
   ],
-  "grade": "C",
+  "grade": "B",
   "metrics": {
    "class_override_detected_class": null,
    "color_changes": 2,
@@ -1967,7 +1967,7 @@
    "link_thread_mm": 0.2,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 64,
+   "raw_score": 76,
    "same_hole_fraction": 0.066,
    "satin_advance_mm": 0.427,
    "satin_gaps_judged": 2,
@@ -2005,14 +2005,14 @@
    "uncovered_wanted_mm2": 681.5,
    "uncovered_worst_mm2": 0.3
   },
-  "score": 64
+  "score": 76
  },
  "photo/logo_golden_tee.jpg @ 80mm/hat_front": {
   "findings": [
-   "ARTWORK_UNCOVERED:warn",
+   "ARTWORK_UNCOVERED:info",
    "COLOR_STOPS_HEAVY:warn",
    "LETTERING_TOO_SMALL:warn",
-   "SATIN_GAPS_TIGHT:warn",
+   "SATIN_GAPS_TIGHT:info",
    "THREAD_MATCH_POOR:block",
    "THREAD_MATCH_POOR:warn",
    "THREAD_MATCH_POOR:warn",
@@ -2067,7 +2067,7 @@
    "link_thread_mm": 0.0,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": -74,
+   "raw_score": -50,
    "same_hole_fraction": 0.059,
    "satin_advance_mm": 0.423,
    "satin_gaps_judged": 17,
@@ -2111,7 +2111,7 @@
   "findings": [
    "COLOR_STOPS_HEAVY:warn",
    "LETTERING_TOO_SMALL:warn",
-   "SATIN_GAPS_TIGHT:warn",
+   "SATIN_GAPS_TIGHT:info",
    "THREAD_MATCH_POOR:block",
    "THREAD_MATCH_POOR:warn",
    "THREAD_MATCH_POOR:warn",
@@ -2166,7 +2166,7 @@
    "link_thread_mm": 0.4,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": -62,
+   "raw_score": -50,
    "same_hole_fraction": 0.065,
    "satin_advance_mm": 0.422,
    "satin_gaps_judged": 17,
@@ -2364,12 +2364,12 @@
  },
  "photo/photo_chrome_specular.png @ 80mm/hat_front": {
   "findings": [
-   "ARTWORK_UNCOVERED:warn",
+   "ARTWORK_UNCOVERED:info",
    "LETTERING_TOO_SMALL:warn",
    "PHOTO_RESOLUTION_LOW:warn",
    "STABILIZER_CUTAWAY:info"
   ],
-  "grade": "C",
+  "grade": "B",
   "metrics": {
    "class_override_detected_class": null,
    "color_changes": 8,
@@ -2413,7 +2413,7 @@
    "link_thread_mm": 0.0,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 64,
+   "raw_score": 76,
    "same_hole_fraction": 0.044,
    "satin_advance_mm": 0.451,
    "satin_gaps_judged": 1,
@@ -2443,17 +2443,17 @@
    "uncovered_wanted_mm2": 7874.0,
    "uncovered_worst_mm2": 89.9
   },
-  "score": 64
+  "score": 76
  },
  "photo/photo_chrome_specular.png @ 80mm/left_chest": {
   "findings": [
-   "ARTWORK_UNCOVERED:warn",
+   "ARTWORK_UNCOVERED:info",
    "LETTERING_TOO_SMALL:warn",
    "PHOTO_RESOLUTION_LOW:warn",
    "STABILIZER_CUTAWAY:info",
    "STITCHES_TOO_SHORT:warn"
   ],
-  "grade": "D",
+  "grade": "C",
   "metrics": {
    "class_override_detected_class": null,
    "color_changes": 8,
@@ -2497,7 +2497,7 @@
    "link_thread_mm": 0.0,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 52,
+   "raw_score": 64,
    "same_hole_fraction": 0.043,
    "satin_advance_mm": 0.445,
    "satin_gaps_judged": 1,
@@ -2529,15 +2529,15 @@
    "uncovered_wanted_mm2": 7824.2,
    "uncovered_worst_mm2": 65.8
   },
-  "score": 52
+  "score": 64
  },
  "photo/photo_dof_meadow.png @ 80mm/hat_front": {
   "findings": [
-   "ARTWORK_UNCOVERED:warn",
+   "ARTWORK_UNCOVERED:info",
    "LETTERING_TOO_SMALL:warn",
    "PHOTO_RESOLUTION_LOW:warn"
   ],
-  "grade": "C",
+  "grade": "B",
   "metrics": {
    "class_override_detected_class": null,
    "color_changes": 5,
@@ -2581,7 +2581,7 @@
    "link_thread_mm": 0.4,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 64,
+   "raw_score": 76,
    "same_hole_fraction": 0.065,
    "satin_advance_mm": 0.459,
    "satin_gaps_judged": 1,
@@ -2615,15 +2615,15 @@
    "uncovered_wanted_mm2": 4473.7,
    "uncovered_worst_mm2": 43.6
   },
-  "score": 64
+  "score": 76
  },
  "photo/photo_dof_meadow.png @ 80mm/left_chest": {
   "findings": [
-   "ARTWORK_UNCOVERED:warn",
+   "ARTWORK_UNCOVERED:info",
    "LETTERING_TOO_SMALL:warn",
    "PHOTO_RESOLUTION_LOW:warn"
   ],
-  "grade": "C",
+  "grade": "B",
   "metrics": {
    "class_override_detected_class": null,
    "color_changes": 5,
@@ -2667,7 +2667,7 @@
    "link_thread_mm": 0.3,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 64,
+   "raw_score": 76,
    "same_hole_fraction": 0.067,
    "satin_advance_mm": 0.446,
    "satin_gaps_judged": 1,
@@ -2700,11 +2700,11 @@
    "uncovered_wanted_mm2": 4452.2,
    "uncovered_worst_mm2": 44.9
   },
-  "score": 64
+  "score": 76
  },
  "photo/photo_grass_macro.png @ 80mm/hat_front": {
   "findings": [
-   "ARTWORK_UNCOVERED:warn",
+   "ARTWORK_UNCOVERED:info",
    "GROUND_SEWN:block",
    "PHOTO_RESOLUTION_LOW:warn"
   ],
@@ -2752,7 +2752,7 @@
    "link_thread_mm": 0.4,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 46,
+   "raw_score": 58,
    "same_hole_fraction": 0.02,
    "satin_advance_mm": 0.444,
    "satin_gaps_judged": 0,
@@ -2790,16 +2790,16 @@
    "uncovered_wanted_mm2": 4965.4,
    "uncovered_worst_mm2": 135.3
   },
-  "score": 46
+  "score": 58
  },
  "photo/photo_grass_macro.png @ 80mm/left_chest": {
   "findings": [
-   "ARTWORK_UNCOVERED:warn",
+   "ARTWORK_UNCOVERED:info",
    "GROUND_SEWN:block",
    "PHOTO_RESOLUTION_LOW:warn",
    "TRIM_HEAVY:warn"
   ],
-  "grade": "F",
+  "grade": "D",
   "metrics": {
    "class_override_detected_class": null,
    "color_changes": 2,
@@ -2843,7 +2843,7 @@
    "link_thread_mm": 0.6,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 34,
+   "raw_score": 46,
    "same_hole_fraction": 0.025,
    "satin_advance_mm": 0.442,
    "satin_gaps_judged": 0,
@@ -2881,7 +2881,7 @@
    "uncovered_wanted_mm2": 4945.2,
    "uncovered_worst_mm2": 111.4
   },
-  "score": 34
+  "score": 46
  },
  "photo/photo_owl_pale.png @ 80mm/hat_front": {
   "findings": [
@@ -3045,12 +3045,12 @@
  },
  "photo/photo_scene_stub.png @ 80mm/hat_front": {
   "findings": [
-   "ARTWORK_UNCOVERED:warn",
+   "ARTWORK_UNCOVERED:info",
    "LETTERING_TOO_SMALL:warn",
-   "SATIN_GAPS_TIGHT:warn",
+   "SATIN_GAPS_TIGHT:info",
    "TRIM_HEAVY:warn"
   ],
-  "grade": "D",
+  "grade": "B",
   "metrics": {
    "class_override_detected_class": null,
    "color_changes": 5,
@@ -3094,7 +3094,7 @@
    "link_thread_mm": 0.0,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 52,
+   "raw_score": 76,
    "same_hole_fraction": 0.057,
    "satin_advance_mm": 0.442,
    "satin_gaps_judged": 7,
@@ -3132,16 +3132,16 @@
    "uncovered_wanted_mm2": 4388.8,
    "uncovered_worst_mm2": 97.7
   },
-  "score": 52
+  "score": 76
  },
  "photo/photo_scene_stub.png @ 80mm/left_chest": {
   "findings": [
-   "ARTWORK_UNCOVERED:warn",
+   "ARTWORK_UNCOVERED:info",
    "LETTERING_TOO_SMALL:warn",
-   "SATIN_GAPS_TIGHT:warn",
+   "SATIN_GAPS_TIGHT:info",
    "TRIM_HEAVY:warn"
   ],
-  "grade": "D",
+  "grade": "B",
   "metrics": {
    "class_override_detected_class": null,
    "color_changes": 5,
@@ -3185,7 +3185,7 @@
    "link_thread_mm": 0.2,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 52,
+   "raw_score": 76,
    "same_hole_fraction": 0.059,
    "satin_advance_mm": 0.439,
    "satin_gaps_judged": 7,
@@ -3223,7 +3223,7 @@
    "uncovered_wanted_mm2": 4354.6,
    "uncovered_worst_mm2": 94.6
   },
-  "score": 52
+  "score": 76
  },
  "photo/photo_subject_stub.png @ 80mm/hat_front": {
   "findings": [
@@ -3403,7 +3403,7 @@
  },
  "photo/photo_sunset_backlit.png @ 80mm/hat_front": {
   "findings": [
-   "ARTWORK_UNCOVERED:warn",
+   "ARTWORK_UNCOVERED:info",
    "STABILIZER_CUTAWAY:info",
    "STITCHES_TOO_SHORT:warn"
   ],
@@ -3451,7 +3451,7 @@
    "link_thread_mm": 0.0,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 76,
+   "raw_score": 88,
    "same_hole_fraction": 0.055,
    "satin_advance_mm": 0.447,
    "satin_gaps_judged": 0,
@@ -3489,14 +3489,14 @@
    "uncovered_wanted_mm2": 5024.2,
    "uncovered_worst_mm2": 23.5
   },
-  "score": 76
+  "score": 88
  },
  "photo/photo_sunset_backlit.png @ 80mm/left_chest": {
   "findings": [
-   "ARTWORK_UNCOVERED:warn",
+   "ARTWORK_UNCOVERED:info",
    "STABILIZER_CUTAWAY:info"
   ],
-  "grade": "B",
+  "grade": "A",
   "metrics": {
    "class_override_detected_class": null,
    "color_changes": 5,
@@ -3540,7 +3540,7 @@
    "link_thread_mm": 0.0,
    "link_uncovered_max_mm": 0.0,
    "link_uncovered_mm": 0.0,
-   "raw_score": 88,
+   "raw_score": 100,
    "same_hole_fraction": 0.057,
    "satin_advance_mm": 0.445,
    "satin_gaps_judged": 0,
@@ -3577,7 +3577,7 @@
    "uncovered_wanted_mm2": 5009.7,
    "uncovered_worst_mm2": 43.2
   },
-  "score": 88
+  "score": 100
  },
  "photo/region_blobs.png @ 80mm/hat_front": {
   "findings": [

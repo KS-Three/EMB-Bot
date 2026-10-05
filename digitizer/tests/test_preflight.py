@@ -29,6 +29,7 @@ from digitizer_core.pipeline import (BackgroundInfo, PipelineResult, digitize,
                                      fabric_for, plan_stitches)
 from digitizer_core.regions import Region
 from digitizer_core.preflight import (
+    _DEDUCT,
     ARTWORK_UNCOVERED,
     CLASS_OVERRIDE_TECHNIQUE_MISMATCH,
     COLOR_STOPS_HEAVY,
@@ -645,6 +646,26 @@ def test_a_word_whose_gaps_are_under_the_close_is_flagged_with_the_width_that_cl
     assert abs(row["clear_width_mm"] - (x1 - x0) * close / row["gap_p10_mm"]) <= 1
     assert "clears that at about" in flagged[0]["message"]
     assert report["metrics"]["satin_gaps_tight_shapes"] == 1
+
+
+def test_satin_gaps_tight_judges_nothing():
+    """Kent's call 2026-10-05 (issue #630), after the 2026-10-04 scorecard
+    recapture bisected the finding's 12 points onto two band falls that moved
+    no stitch: the finding, its `extra` (the Studio chip reads it) and the
+    metrics stay, and the grade is blind to it. `raw_score` is the unclamped
+    sum of `_DEDUCT` over every finding, so the finding's share of it must be
+    exactly the sum WITHOUT it."""
+    close = _close_mm()
+    gap = round(0.8 * close, 2)
+    plan = _plan(_satin_column(30, width_mm=2.5, spacing_mm=0.4))
+    report = run_preflight(_result_with(_word(gap)), plan, cfg())
+    flagged = [f for f in report["findings"] if f["code"] == SATIN_GAPS_TIGHT]
+    assert flagged, "the fixture stopped exhibiting the gaps this test is about"
+    assert all(f["severity"] == "info" for f in flagged)
+    assert _DEDUCT["info"] == 0
+    without = sum(_DEDUCT[f["severity"]] for f in report["findings"]
+                  if f["code"] != SATIN_GAPS_TIGHT)
+    assert report["metrics"]["raw_score"] == 100 - without
 
 
 def test_a_word_whose_gaps_clear_the_close_is_judged_and_not_flagged():
@@ -2141,7 +2162,7 @@ def test_a_dropped_limb_is_reported_and_names_its_shape(monkeypatch):
 
     found = _uncovered(report)
     assert found is not None, "the dropped tab must be reported"
-    assert found["severity"] == "warn"
+    assert found["severity"] == "info"     # Kent 2026-10-05 (#630): reported, not billed
     ids = {s["shape_id"] for s in found["extra"]["shapes"]}
     assert "S041897f7" in ids, f"expected the left bracket, got {ids}"
     assert report["metrics"]["uncovered_worst_mm2"] >= 5.0
@@ -2213,7 +2234,7 @@ def test_the_letter_apex_is_reported_now_that_the_erosion_is_gone():
 
     found = _uncovered(report)
     assert found is not None, "the apex is invisible again"
-    assert found["severity"] == "warn"           # a warn, never a block
+    assert found["severity"] == "info"           # info since 2026-10-05 (#630); was a warn, never a block
     # Measured 2026-09-30: 27 patches, 2 holes, worst 1.56 mm2 (the apex) and
     # 1.00 mm2 (a gap between two letters). Rendered before this landed:
     # docs/renders/uncovered-floor-2026-09-30/enthusiast.png
@@ -2418,7 +2439,7 @@ def test_a_bare_patch_inside_a_blend_region_is_found_and_named():
     report = run_preflight(result, plan_, c, image=art)
     found = _uncovered(report)
     assert found is not None, f"dropping {victim} must leave bare artwork"
-    assert found["severity"] == "warn"
+    assert found["severity"] == "info"     # Kent 2026-10-05 (#630): reported, not billed
     # Attribution is to the region a person can go look at, not the band.
     ids = {s["shape_id"] for s in found["extra"]["shapes"]}
     assert region.shape_id in ids, f"expected the ramp region, got {ids}"
