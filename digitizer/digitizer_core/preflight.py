@@ -554,8 +554,18 @@ _UNCOVERED_MIN_FILL = 0.15
 # fixtures is a narrow base, and the margins are 1.5-2x, not the two orders
 # of magnitude `_COVERAGE_MIN_PATCH_MM2` earned. Each one refuses a NAMED
 # false-positive class with a committed guard behind it rather than a number
-# that happened to work, which is the most that can be claimed. It stays a
-# warn, never a block.
+# that happened to work, which is the most that can be claimed. It was a
+# warn, never a block, from 2026-08-20 to 2026-10-04.
+#
+# **`info` since 2026-10-05 -- Kent's call on issue #630.** The 2026-10-04
+# scorecard recapture bisected every mover between the 09-16 and 10-04
+# rulers and found this check's 12 points crossing a band line on three
+# photo-lane rows (`photo_chrome_specular` both garments for 2.1 and 2.3 mm2
+# holes, `photo_scene_stub` both) while moving no stitch anywhere -- the
+# 1.0 mm2 floor was adjudicated on nine logos and never on the photo lane.
+# Kent made it `info`: the finding, its `extra`, the metrics below and the
+# Studio sentence all stay; `_DEDUCT` bills it nothing, so the grade is
+# blind to it, as it is to edge wobble and curve roughness (defect 46).
 _UNCOVERED_MIN_PATCH_MM2 = 1.0
 # How many patch areas ride out in the metrics, largest first. Twelve is
 # enough to read the shoulder of every corpus fixture measured 2026-09-30
@@ -1898,9 +1908,14 @@ def _tight_gap_findings(result: PipelineResult, plan: StitchPlan,
     polygon the engine draws at that size (bridge at 140 mm: the script
     clears and nothing fires; under a 3 mm floor four small shapes segmented
     anew at that scale fired instead).
-    One warn per design, whatever the count -- the same bill as
-    LETTERING_TOO_SMALL, which this extends (the counters-under-the-close
-    flag of the small-text battery, machine-physics backlog row 14)."""
+    One finding per design, whatever the count. `info` since 2026-10-05
+    (Kent's call, issue #630): it billed 12 points as a warn from 09-30 to
+    10-04, and the 2026-10-04 scorecard recapture showed those 12 crossing a
+    band line on `logo_script_tires` and `photo_scene_stub` while moving no
+    stitch. The sentence, the `extra` the Studio's "Make it bigger" chip
+    reads, and the metrics stay; the grade is blind to it. It extends
+    LETTERING_TOO_SMALL (the counters-under-the-close flag of the small-text
+    battery, machine-physics backlog row 14), which still bills a warn."""
     fabric = fabric_for(cfg)
     pull = max(0.0, float(fabric.pull_comp_mm))
     thread = float(machine.COVERAGE_THREAD_W_MM)
@@ -1963,7 +1978,7 @@ def _tight_gap_findings(result: PipelineResult, plan: StitchPlan,
     if worst["clear_width_mm"]:
         msg += (f" Its tightest tenth of gap clears that at about {worst['clear_width_mm']:.0f} mm "
                 f"of design width.")
-    return [finding(SATIN_GAPS_TIGHT, "warn", msg, count=n, judged=judged,
+    return [finding(SATIN_GAPS_TIGHT, "info", msg, count=n, judged=judged,
                     close_mm=round(close_mm, 2), pull_mm=round(pull, 2), thread_mm=round(thread, 2),
                     fabric=fabric.label, design_width_mm=round(design_w, 1),
                     worst_shape_id=worst["shape_id"], worst_tight_frac=worst["tight_frac"],
@@ -2948,7 +2963,7 @@ def _uncovered_findings(p, result: PipelineResult, plan: StitchPlan
     noun = "shape" if n_sh == 1 else "shapes"
     return [finding(
         ARTWORK_UNCOVERED,
-        "warn",
+        "info",
         f"{total:.0f} mm2 of artwork across {n_sh} {noun} is claimed by a "
         f"shape the design sews, but no thread lands on it (largest bare "
         f"patch {worst:.0f} mm2). A limb or corner is missing from the "

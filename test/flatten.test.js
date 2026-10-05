@@ -128,6 +128,214 @@ test("absorbSmallRegions: many scattered specks all absorb and it terminates", (
   assert.strictEqual(count(out, 0), w * h);
 });
 
+test("absorbSmallRegions: handed `stats`, it counts what it absorbed and its walks over the whole image", () => {
+  const w = 9, h = 5;
+  const idx = new Uint8Array(w * h).fill(0);
+  idx[2 * w + 1] = 1; idx[2 * w + 2] = 1; // island of 1 (2px)
+  idx[2 * w + 6] = 2; idx[2 * w + 7] = 2; // island of 2 (2px)
+  const stats = { absorbed: 0, imageWalks: 0 };
+  const out = FL.absorbSmallRegions(idx, w, h, 5, { stats });
+  assert.strictEqual(stats.absorbed, 2);
+  assert.ok(stats.imageWalks >= 1, `walked the image ${stats.imageWalks} times`);
+  // Counting changes nothing it returns.
+  assert.deepStrictEqual(out, FL.absorbSmallRegions(idx, w, h, 5));
+});
+
+// --- the work it does, counted without a clock ------------------------------
+//
+// The Studio runs this on the main thread, on whatever a customer uploads. A
+// photograph cut to a few colors hands it thousands of specks, and with the
+// background removed thousands of islands with nothing but transparent beside
+// them. Neither may cost a walk over the whole image apiece.
+
+function walked(idx, w, h, minPx) {
+  const stats = { absorbed: 0, imageWalks: 0 };
+  FL.absorbSmallRegions(idx, w, h, minPx, { stats });
+  return stats;
+}
+
+test("absorbSmallRegions: 400 specks cost no more walks over the image than one", () => {
+  const w = 60, h = 60;
+  const one = new Uint8Array(w * h).fill(0);
+  one[1 * w + 1] = 1;
+  const many = new Uint8Array(w * h).fill(0);
+  for (let y = 1; y < h; y += 3) for (let x = 1; x < w; x += 3) many[y * w + x] = 1; // 20 x 20 of them
+  const a = walked(one, w, h, 5), b = walked(many, w, h, 5);
+  assert.strictEqual(a.absorbed, 1);
+  assert.strictEqual(b.absorbed, 400);
+  assert.strictEqual(b.imageWalks, a.imageWalks);
+});
+
+test("absorbSmallRegions: an island that can never be absorbed is not asked again at every absorb", () => {
+  // Transparent ground. On the left a 20 x 24 block of 0 holding ten 2px specks
+  // of 1. On the right, in the second image only, thirty 1px islands of 2 with
+  // transparent all round: smaller than every speck, so first in line each time.
+  const w = 40, h = 24;
+  const bare = new Uint8Array(w * h).fill(T);
+  for (let y = 0; y < h; y++) for (let x = 0; x < 20; x++) bare[y * w + x] = 0;
+  for (let k = 0; k < 10; k++) { bare[(2 + 2 * k) * w + 2] = 1; bare[(2 + 2 * k) * w + 3] = 1; }
+  const islands = Uint8Array.from(bare);
+  for (let j = 0; j < 5; j++) for (let i = 0; i < 6; i++) islands[(1 + 2 * j) * w + 22 + 2 * i] = 2;
+  const a = walked(bare, w, h, 5), b = walked(islands, w, h, 5);
+  assert.strictEqual(a.absorbed, 10);
+  assert.strictEqual(b.absorbed, 10);
+  assert.strictEqual(count(FL.absorbSmallRegions(islands, w, h, 5), 2), 30); // and they are still there
+  assert.strictEqual(b.imageWalks, a.imageWalks);
+});
+
+// --- against the rule written the slow way ----------------------------------
+//
+// absorbSmallRegions as the engine ran it until 2026-10-04, word for word:
+// label the whole image, take the smallest component under the threshold that
+// has a neighbor to vote for (of two the same size, the one a raster scan
+// meets first), repaint it in the index most of its outside neighbors carry
+// (of two with the same votes, the lower), and start again from a fresh
+// labelling. That is the DEFINITION of which component goes into which
+// neighbor and in what order. The engine reaches the same grid without
+// labelling again, and this is what holds it to that.
+
+function absorbSlowly(indices, w, h, minPx) {
+  const labelComponents = (grid) => {
+    const n = w * h;
+    const label = new Int32Array(n).fill(-1);
+    const sizes = [];
+    const stack = [];
+    let count = 0;
+    for (let start = 0; start < n; start++) {
+      if (grid[start] === T || label[start] !== -1) continue;
+      const val = grid[start];
+      const id = count++;
+      label[start] = id;
+      stack.length = 0;
+      stack.push(start);
+      let size = 0;
+      while (stack.length) {
+        const p = stack.pop();
+        size++;
+        const px = p % w;
+        const py = (p / w) | 0;
+        if (px > 0 && label[p - 1] === -1 && grid[p - 1] === val) { label[p - 1] = id; stack.push(p - 1); }
+        if (px < w - 1 && label[p + 1] === -1 && grid[p + 1] === val) { label[p + 1] = id; stack.push(p + 1); }
+        if (py > 0 && label[p - w] === -1 && grid[p - w] === val) { label[p - w] = id; stack.push(p - w); }
+        if (py < h - 1 && label[p + w] === -1 && grid[p + w] === val) { label[p + w] = id; stack.push(p + w); }
+      }
+      sizes.push(size);
+    }
+    return { label, sizes, count };
+  };
+  const majorityNeighbor = (grid, label, comp) => {
+    const n = w * h;
+    const votes = new Map();
+    for (let i = 0; i < n; i++) {
+      if (label[i] !== comp) continue;
+      const px = i % w;
+      const py = (i / w) | 0;
+      const check = (q) => {
+        if (label[q] === comp) return; // inside the component
+        const v = grid[q];
+        if (v === T) return;
+        votes.set(v, (votes.get(v) || 0) + 1);
+      };
+      if (px > 0) check(i - 1);
+      if (px < w - 1) check(i + 1);
+      if (py > 0) check(i - w);
+      if (py < h - 1) check(i + w);
+    }
+    let best = -1;
+    let bestCount = -1;
+    for (const [v, c] of votes) {
+      if (c > bestCount || (c === bestCount && v < best)) {
+        bestCount = c;
+        best = v;
+      }
+    }
+    return best;
+  };
+  const cur = Uint8Array.from(indices);
+  for (;;) {
+    const { label, sizes, count } = labelComponents(cur);
+    const candidates = [];
+    for (let c = 0; c < count; c++) if (sizes[c] < minPx) candidates.push(c);
+    candidates.sort((a, b) => sizes[a] - sizes[b]);
+
+    let chosen = -1;
+    let target = -1;
+    for (const c of candidates) {
+      const maj = majorityNeighbor(cur, label, c);
+      if (maj !== -1) { chosen = c; target = maj; break; }
+    }
+    if (chosen === -1) break;
+
+    for (let i = 0; i < cur.length; i++) if (label[i] === chosen) cur[i] = target;
+  }
+  return cur;
+}
+
+// The first pixel where two grids part, as text for a failure message.
+function parting(got, want, w) {
+  if (got.length !== want.length) return `length ${got.length}, wanted ${want.length}`;
+  for (let i = 0; i < want.length; i++) {
+    if (got[i] !== want[i]) return `pixel (${i % w}, ${(i / w) | 0}) is ${got[i]}, the slow rule leaves ${want[i]}`;
+  }
+  return null;
+}
+
+test("absorbSmallRegions: 600 images nobody chose come out as the slow rule leaves them", () => {
+  let seed = 20261004;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const pick = (xs) => xs[Math.floor(rnd() * xs.length)];
+  let absorbedSomething = 0;
+  for (let n = 0; n < 600; n++) {
+    const w = 1 + Math.floor(rnd() * 18), h = 1 + Math.floor(rnd() * 18);
+    const colors = 1 + Math.floor(rnd() * 6);
+    const holes = pick([0, 0, 0.1, 0.35, 0.6]); // share of transparent pixels
+    const idx = new Uint8Array(w * h);
+    for (let i = 0; i < idx.length; i++) idx[i] = rnd() < holes ? T : Math.floor(rnd() * colors);
+    // Noise alone is all specks. Let pixels copy a neighbor for a few rounds
+    // and components of every size appear, with ragged edges between them.
+    for (let round = Math.floor(rnd() * 4) * w * h; round > 0; round--) {
+      const x = Math.floor(rnd() * w), y = Math.floor(rnd() * h);
+      const x2 = Math.min(w - 1, Math.max(0, x + pick([-1, 0, 1]))), y2 = Math.min(h - 1, Math.max(0, y + pick([-1, 0, 1])));
+      idx[y * w + x] = idx[y2 * w + x2];
+    }
+    const minPx = pick([0, 1, 2, 2, 2.5, 3, 3, 4, 6, 10, 25, w * h + 1]);
+
+    const want = absorbSlowly(idx, w, h, minPx);
+    const stats = { absorbed: 0, imageWalks: 0 };
+    const got = FL.absorbSmallRegions(idx, w, h, minPx, { stats });
+    const where = parting(got, want, w);
+    assert.strictEqual(where, null, `image ${n} (${w} x ${h}, ${colors} colors, minPx ${minPx}): ${where}`);
+    if (stats.absorbed) absorbedSomething++;
+  }
+  // The sweep is not allowed to pass by absorbing nothing.
+  assert.ok(absorbedSomething >= 350, `only ${absorbedSomething} of 600 images had anything absorbed`);
+});
+
+test("absorbSmallRegions: grids where everything ties come out as the slow rule leaves them", () => {
+  // Every pixel its own component and every vote level: the order is all ties
+  // (which speck goes first, which neighbor takes it), so this is where a
+  // different order shows.
+  const patterns = {
+    checker: (x, y) => (x + y) % 2,
+    "three in a diagonal": (x, y) => (x + 2 * y) % 3,
+    "four in a knight's move": (x, y) => (x + 2 * y) % 4,
+    "five across": (x, y) => (2 * x + y) % 5,
+    stripes: (x, y) => y % 3,
+    "checker with holes": (x, y) => ((x * 7 + y * 3) % 5 === 0 ? T : (x + y) % 2),
+    "islands in a transparent sea": (x, y) => (x % 3 === 2 || y % 3 === 2 ? T : (x + y) % 3),
+  };
+  for (const [name, at] of Object.entries(patterns)) {
+    for (const [w, h] of [[1, 9], [9, 1], [7, 7], [12, 9], [16, 16]]) {
+      const idx = new Uint8Array(w * h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) idx[y * w + x] = at(x, y);
+      for (const minPx of [2, 3, 5, 12, w * h + 1]) {
+        const where = parting(FL.absorbSmallRegions(idx, w, h, minPx), absorbSlowly(idx, w, h, minPx), w);
+        assert.strictEqual(where, null, `${name}, ${w} x ${h}, minPx ${minPx}: ${where}`);
+      }
+    }
+  }
+});
+
 // ---------------------------------------------------------------------------
 // mergeColors
 // ---------------------------------------------------------------------------

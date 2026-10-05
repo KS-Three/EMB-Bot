@@ -1776,8 +1776,9 @@ Captures stay on cloud Linux or CI.
   no Windows checkout can see its branches.
 - `/root/emb-control` is a detached worktree at `2c60cd87`, the commit the
   baseline was captured at when the box was built. **The baseline moved to
-  `6e0cb943` on 2026-10-04** — re-cut the control there before the next
-  `diff`, or its rows compare the wrong commit to the file. Its `digitizer/.venv` is the box's one
+  `6e0cb943` on 2026-10-04 and to `d000e370` on 2026-10-05** — re-cut the
+  control at the file's own `captured_at_commit` before the next `diff`, or
+  its rows compare the wrong commit to the file. Its `digitizer/.venv` is the box's one
   venv. Its `corpus_scorecard_baseline.json` is overwritten with
   `origin/main`'s copy on purpose (the control compares that commit to
   that file), so the tree reads dirty.
@@ -2043,6 +2044,15 @@ and controllable to the user.
     pair `FILL_ROW_MM`/`SATIN_SPACING_MM`. It asserts AGREEMENT, never a
     value — the numbers themselves are gate 1.
   - `flatten.js` — medianCut → modeFilter → absorbSmallRegions pipeline.
+    `absorbSmallRegions` labels the image ONCE and then keeps each
+    component's pixels itself (2026-10-04). Before that it labelled the whole
+    image again after every absorb, and the Studio's tab froze for minutes on
+    a photograph. The old loop is kept word for word in
+    `test/flatten.test.js` as the definition of what is absorbed into what and
+    in which order: change the engine's version and that file says whether a
+    pixel moved. `node tools/flatten-census.mjs` prints what the Studio's own
+    flatten costs on every testdata PNG, step by step, and with `--hashes` the
+    hash of what it returns, to diff two engines.
   - `fonts/` — pre-digitized font library: `manifest.json` (85
     shipping fonts — recount it, the number drifts) + `bin/*.embf` binaries
     + `.LICENSE.txt` sidecars, parsed offline from Ink/Stitch's open-source

@@ -1903,6 +1903,10 @@ spot that let it score clean is now closed. `digitizer_core/preflight.py`'s
 `_uncovered_findings`, wired into `run_preflight` alongside the other
 artwork-dependent checks (skipped, metrics `None`, when called without an
 image — same contract as the thread-match check).
+**`info` since 2026-10-05 (Kent's call, issue #630):** the 2026-10-04 scorecard
+recapture bisected its 12 points onto three photo-lane band falls (2.1–2.3 mm²
+holes on `photo_chrome_specular`) while it moved no stitch; the finding, its
+`extra` and the `uncovered_*` metrics stay, the grade is blind to it.
 
 **Ground truth is `polygon ∩ ink`, and both halves are load-bearing** — each
 alone produces a false-positive class the other kills, both found by testing

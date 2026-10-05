@@ -283,7 +283,15 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    **One did — 75.9 minutes (1h 15m 56s) on PR #575, 2026-09-30, green**,
    on a diff that touched only `.claude/skills/`, so the job's length is the
    suite's, not the change's. **Budget eighty**, read seventy-five as normal,
-   and still spend the `curl` before calling anything stuck. (A fifth job,
+   and still spend the `curl` before calling anything stuck.
+   **Passed by three seconds — 76.0 minutes (1h 15m 59s) on PR #631,
+   2026-10-04, green**, on a one-line `CLAUDE.md` change. It was not alone:
+   the eight successful jobs that followed it that evening read 40.0 / 53.9 /
+   42.1 / 51.7 / 57.6 / 71.8 / 75.5 / 53.4 in start order (job start and
+   completion stamps from `/actions/runs/<id>/jobs`), so three of nine sat
+   above seventy and the top is a band now, not one outlier. Eighty still
+   holds; read anything under it as normal, and the `curl` still comes
+   before any verdict. (A fifth job,
    `art-fidelity-baseline`, is push-to-`main`-only and `continue-on-error` — it
    never appears on a PR and gates nothing.)
 
