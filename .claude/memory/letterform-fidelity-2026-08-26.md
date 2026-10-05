@@ -127,6 +127,9 @@ convention**:
 He is right, and it is structural:
 
 - **`satin_shape()` takes no angle argument at all** (`stage6_satin.py:2339`).
+  **Superseded the same day (recorded 2026-10-04):** `satin_shape(angle_deg=...)`
+  landed on 2026-08-26 and was wired as the lettering house angle in PRs
+  #282/#283 — see [[thresholds-on-the-wrong-population-2026-08-28]].
 - Every cross angle is derived *solely* from that shape's own spine tangent —
   `atan2(b.y - a.y, b.x - a.x) + pi/2` at `stage6_satin.py:1241`, unwrapped and
   smoothed six times. Correct for one isolated stroke; it means **each letter,
