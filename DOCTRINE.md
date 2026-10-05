@@ -8553,13 +8553,29 @@ round-ended bars and 273 of 612 image-lane designs besides.
 `test/satin-walk.test.js`; MASTER_SCOPE defects 56 and 57; scope-history
 10-03)*
 
-## What a figure counts is part of the figure: whose thread, and which costs were never taken (2026-10-04)
+## What a figure counts is part of the figure, and a census of the shapes at hand is not a census of the lane (2026-10-04)
 
 Kent chose a cure for the browser's satin on three sentences: bars sew to
 their drawn size with no long stitch, logos keep or gain cover with far
 fewer stitches, and nearly every satin shape moves. He chose it and it was
-built as priced. Two of its costs were not in what he was shown, and one of
-those sentences was true only of the measure it was taken with.
+built as priced. Two of its costs were not in what he was shown, one of
+those sentences was true only of the measure it was taken with, and the
+build failed its independent re-measure on a shape no census of mine held.
+
+- **Measure what the code is handed, not what is to hand.** Every census
+  was a preset shape or a logo. `medialSatin` also sews whatever a user
+  draws and sets to satin. The re-measure drew a C: 447 stitches on main,
+  6,047 on the change, the mouth sewn solid, with the suite green and five
+  census grids clean. Before a change to a function is called measured,
+  give it the plainest input each of its lanes can be handed and the others
+  cannot (here, one curve), and leave the auditor free to choose its own.
+- **A wrong part can be holding up another.** The skeleton's border pixels
+  had been giving every curve real nodes, and the old walk's faults (a walk
+  that ends in a staircase's corner filler, a leftover closed with a chord)
+  did not show on curves while they were there. Putting the skeleton right
+  made curved strokes worse until the walk was put right too. When a fix
+  changes what the next stage is given, measure that stage on its new
+  input before the fix is called done.
 
 - **Cover has to say whose thread.** The measure drew every stitch of a
   design and asked how much of each shape lay under thread. In a picture a

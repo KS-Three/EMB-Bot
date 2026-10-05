@@ -69,7 +69,9 @@
 // under `while (guard++ < w * h)`. `--walks` loads a copy of the tree's
 // engine with one counter line after each of the two loops (the text it is
 // inserted beside is checked, so a tree whose walk has been rewritten fails
-// here rather than counting nothing).
+// here rather than counting nothing). From 2026-10-04 the walk is one pixel
+// to one edge and cannot reach its guard: `--walks` is for the trees before,
+// through `--against`, and refuses this one.
 //
 // The pre-change tree for the 2026-10-03 fix is `git archive f887e27d src
 // app/package.json app/src/lib | tar -x -C <dir>`. Its runaway designs take
