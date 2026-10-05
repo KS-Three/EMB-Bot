@@ -18753,11 +18753,11 @@ about**, 398 of the 1,110 under the preset a left chest uses. An edge run is
 a closed ring and could begin where the pass after it can be floated to. Not
 built here.
 
-`main` moved while this was measured (c11d2c1c → ada9f0ea, the island cures
-and the star's satin walk among 39 commits). Merged, and the three sweeps
-built again on both: of 65,980 designs not one is a stitch different from
-what it was, on `main` or here.
+`main` moved while this was measured (c11d2c1c → 4fb4fcd4: the island cures,
+the star's satin walk and `dedupeHoles` among 53 commits). Merged, and the
+three sweeps built again on both: of 65,980 designs not one is a stitch
+different from what it was, on `main` or here.
 
-Off, nothing moves: engine 716 passed before the merge. Not sewn. Flip is
-still Kent's: defect 52, "Waiting on Kent" 22.
+Off, nothing moves: engine 816 passed, merged (801 on `main`, 15 new). Not
+sewn. Flip is still Kent's: defect 52, "Waiting on Kent" 22.
 *(built 2026-10-04 — `src/fill.js` `sewColumns` "where the walk ends" and "which column first", `src/digitize.js`; `test/fill.test.js`, `test/digitize.test.js`; `docs/renders/fill-columns-2026-10-03/README.md`, "Where a pass ends, and which column it begins with")*

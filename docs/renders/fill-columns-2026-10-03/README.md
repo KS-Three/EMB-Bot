@@ -860,11 +860,11 @@ The sheet is byte for byte the same, and so are its four rows; one row of
 the cost table moved (above). The lock-stitch census and the stagger census
 print the same numbers on `main`'s engine and on this one.
 
-**`main` moved while this was measured** (c11d2c1c → ada9f0ea: the island
-cures and the star's satin walk among 39 commits). Merged, and all three
-sweeps built again on both: of 65,980 designs not one is a stitch different
-from what it was, on `main` or here, and option off or absent the merged
-engine is `main`'s on all 56,120 of the first two.
+**`main` moved while this was measured** (c11d2c1c → 4fb4fcd4: the island
+cures, the star's satin walk and `dedupeHoles` among 53 commits). Merged,
+and all three sweeps built again on both: of 65,980 designs not one is a
+stitch different from what it was, on `main` or here, and option off or
+absent the merged engine is `main`'s on all 56,120 of the first two.
 
 *(measured 2026-10-04 — `node tools/fill-columns-sheet.mjs`,
 `tools/lock-stitch-census.mjs`, `tools/fill-stagger-census.mjs`, each on both
