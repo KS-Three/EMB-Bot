@@ -733,6 +733,20 @@ budget and never in a fill; the floats; the five drawings.
   12 from an edge run into a column walk's fill, 60 inside one). Both are
   put right below.
 
+*Re-checked by the same agent once the second count was built:* every claim
+about it held on its own reader. Option off or absent, identical on 68,724
+designs. The 45,416 differ from the engine it first read in three designs
+(two combs under terry), each with the cuts it had. On 29,400 direct calls
+told where the thread is and not where it goes, no pass has more cuts than
+`main`'s and none has more short threads between its own cuts (two had).
+No design of 78,584 has more cuts than on `main`, and one gains a short
+thread (the one above). **What the second count costs**, by its reading:
+where it keeps a walk for its threads and saves no cut (11 of the 9,860), a
+fill's travel rises 1.4 to 1.8 mm and one float under the fill goes from
+2.3 mm to 17.7 mm; and on the two combs it moved in the 45,416 the floats
+under the fill are longer (5.0 mm in all on `main`, 29.4 mm before the
+count, 46.1 mm now; and 2.2, 6.4 and 21.9 mm). All on the cover.
+
 *(the re-measure's report, relayed to Kent 2026-10-04; its drawings rebuilt
 here with my reader; `test/fill.test.js` "a walk with a cut fewer is not
 kept", "its first thread and its last are not counted", "of two walks with as
@@ -766,9 +780,9 @@ many cuts"; `test/digitize.test.js` "not left with a one-stitch thread")*
   (the worst fill 4.8 mm → 24.4 mm). Its worst trade: a maze under terry,
   one cut saved for 404 mm more thread in the fill (travel 410 mm → 829 mm,
   125 stitches). Nothing in the rule says what a cut is worth in travel:
-  the budget of a way round is asked of each move, not of a walk. (Read on
-  the engine before the second count, which moved three underlay passes of
-  the 45,416.)
+  the budget of a way round is asked of each move, not of a walk. (Read
+  again after the second count: the same, but for 16 mm more along the rim
+  on the three designs that count moved.)
 - **More thread along the rim.** The runs under a last column, the travel on
   and a fill's travel all lie along it: by the re-measure, the rim with six
   or more lines of thread on it 34.3 m → 36.4 m (+5.9%), the worst

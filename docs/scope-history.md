@@ -18707,6 +18707,16 @@ drawings. **Did not hold:**
   of them an underlay pass, 1,680 a fill), and under the four edge-run
   presets 72 other cuts remain.
 
+**Re-checked by the same agent once the second count was built: every claim
+about it held.** Off and absent identical on 68,724 designs; three designs
+of the 45,416 differ from the engine it first read, each with the cuts it
+had; on 29,400 direct calls told where the thread is, no pass has more cuts
+than `main`'s and none more short threads between its own cuts (two had);
+no design of 78,584 has more cuts than on `main`. What the second count
+costs, by its reading: longer floats under the fill on the designs it moves
+(on one comb 5.0 mm in all on `main`, 29.4 mm before the count, 46.1 mm
+now), all on the cover.
+
 **Cost:** 35 m of thread in 136,667 (0 to 67.5 mm on a design the first rule
 changes, 13 on the median); a float where each of 2,420 cuts was, on the
 cover and under the fill, and not a short one (the longest float of a

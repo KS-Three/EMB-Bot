@@ -921,9 +921,9 @@ test("columns: a pass's first thread and its last are not counted, however short
   // is cut three times and ends with six: 102, 35, 4 and 6. Neither has a
   // short thread between two cuts, so they tie and the first is kept.
   // (Counted, that last thread made things worse where it was measured: of
-  // 2,172 mazes, spirals and islands whose walks are walked again, 22 came
-  // out differently, with 9 more threads of fewer than four penetrations
-  // among them and as many cuts.)
+  // the re-measure's 9,860 mazes, spirals and islands, 22 came out
+  // differently, with 9 more threads of fewer than four penetrations among
+  // them and as many cuts.)
   {
     const pts = mazePass({ from: { x: 2, y: 146 } });
     assert.deepStrictEqual(threadsIn(pts), [60, 56, 64, 2]);
