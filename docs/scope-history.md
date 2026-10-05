@@ -18785,6 +18785,61 @@ watched fail first, the short-edge one watched die under three wider
 tolerances. Not sewn.
 *(fixed 2026-10-03 — `tools/closed-ring-census.mjs`; `test/digitize.test.js`, "a ring handed over CLOSED"; one independent audit)*
 
+## 2026-10-03 — The second click of a double-click was an anchor wherever the pointer had slipped to: defect 55's gesture, fixed (Kent's pick); the offset is not
+
+The entry above ends with a choice put to Kent: cure defect 55 at the
+gesture or at the offset. He picked the gesture. This is that.
+
+**What it was.** A double-click is two `click` events and then a `dblclick`.
+The side canvas (`ManualPanel.onCanvasClick`) took both clicks as clicks and
+leaned on its duplicate-point guard to drop the second, and that guard is
+half a canvas pixel wide (`DUP_POINT_EPS_PX`). `onCanvasDblClick` said so in
+its own comment: the second click "lands on (or within DUP_POINT_EPS_PX of)
+the same point as the first". A pointer moves more than that between two
+clicks. Two things followed:
+
+- **A slipped anchor.** The second click, a pixel off, became an anchor a
+  pixel from the last one, and the shape was saved with it. Under a fabric
+  preset `offsetRing` put the whole mitre clamp on the short edge that
+  doubles back (the table in the entry above: terry, 1.73 mm of fill past
+  the drawn ring where a clean corner has 0.85). Or the slip made the ring
+  cross itself, `finishShape` refused it, and the double-click finished
+  nothing.
+- **A draft nobody started.** Double-clicked ON the start point, the first
+  click closed the shape and the second was a first click again: outside the
+  shape just made, or anywhere in Hole mode, it left a draft of one point for
+  the next click to carry on from.
+
+**The fix.** A click with `detail` over 1 is the second click of a
+double-click, by the browser's own count, and `onCanvasClick` lets it go by.
+The field canvas already reads `detail` for its own double-click (an anchor
+put in on an edge). The duplicate-point guard stays for what it is for.
+
+**Measured.** In a real browser (Playwright, the mouse pressed once on the
+fourth corner and then pressed with a click count of two a pixel or two
+away), four slips, the shape read back as the app saved it:
+
+| second click, screen px off the first | before | now |
+|---|---|---|
+| 0, 0 | 4 anchors | 4 anchors |
+| -1, +1 | 5 anchors | 4 anchors |
+| +1, +2 | no shape: refused as crossing | 4 anchors |
+| -2, -1 | 5 anchors | 4 anchors |
+
+At component level the same two failures, each watched fail first: a
+second click 1 px off kept as a fifth anchor, and "Undo point" left live
+after a double-click on the start point.
+
+**What it does not do.** It makes no new slipped anchor and mends no old
+one: a shape saved before this keeps its anchor and its spike, and two
+anchors dragged to one hoop corner still make another (the audit's measure
+in the entry above). Curing those is the offset (a bevel past the clamp),
+which moves every sharp corner under a preset. Not built; Kent's call.
+MASTER_SCOPE defect 55 says both halves.
+
+No engine code moves (a comment in `digitize.js`). Not sewn.
+*(fixed 2026-10-03 — `app/src/ui/ManualPanel.spec.js`, "the second click of a double-click"; `app/e2e/manual-double-click.spec.js`)*
+
 ## 2026-10-04 — The Studio's flatten froze the tab on a photograph: `absorbSmallRegions` walked the whole image for every speck (fixed; no pixel of any flat changes)
 
 **The finding, 2026-10-03.** A session running the Studio's image lane over
