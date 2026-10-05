@@ -508,15 +508,11 @@ about the facts.
 27. **Flip `cutFloats` on for the browser shape lanes — NEW 2026-10-04,
    built OFF.** A DST has no cut: the writer lays three jump records for
    one, and for any float over 24.2 mm too, so a machine cuts where the
-   stream has only a jump. No lock from `ties`, and not in the sheet's trim
-   count. 109,561 such cuts on 8,270 Studio shapes as shipped, 280 a design
-   in the image lane; `fillColumns` (22) takes away 94% and 99%. The flag
-   puts a `trim` in the stream at each one left. No stitch moves and the
-   DST's cuts are the ones a machine already makes; EXP and PES gain them
-   (0.84 and 1.8 a design). **Flip it after 22:** before, it writes
-   hundreds of cuts a design into the stream. **Not sewn.** A flip is
-   `cutFloats: true` at `generate.js`'s three shape call sites and a re-pin
-   of every shape snapshot.
+   stream has only a jump, with no lock from `ties`: 109,561 times on 8,270
+   Studio shapes, 94% of them gone with `fillColumns` (22). The flag puts a
+   `trim` in the stream at each. No stitch moves. **Flip it after 22.**
+   **Not sewn.** A flip is `cutFloats: true` at `generate.js`'s three shape
+   call sites and a re-pin of every shape snapshot.
    *(measured 2026-10-04 — [`docs/dst-float-cuts-2026-10-04.md`](docs/dst-float-cuts-2026-10-04.md))*
 
 ## Cross-cutting issues
