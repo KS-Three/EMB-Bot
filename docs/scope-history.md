@@ -18612,3 +18612,67 @@ stitches and nothing else. The sweep is unchanged. Engine 788 passed.
 Not sewn. No Studio caller passes it, and the lettering builder has no such
 rule. Flip is Kent's: "Waiting on Kent" 25.
 *(measured and built 2026-10-03 and 2026-10-04 — `docs/sub-unit-stitches-2026-10-03.md`, `tools/sub-unit-stitch-census.mjs`, `test/digitize.test.js` "dedupeHoles")*
+
+## 2026-10-05 — `SATIN_GAPS_TIGHT` and `ARTWORK_UNCOVERED` become `info` (Kent's call, issue #630), and the scorecard ruler moves to `d000e370`
+
+**The ruling.** The 2026-10-04 recapture bisected all five band falls since
+09-16 onto two preflight checks — #572's hole-aware `ARTWORK_UNCOVERED` and
+#573's `SATIN_GAPS_TIGHT` — that moved no stitch on any row they touched.
+Issue #630 put the cost in front of Kent with six options and the grade table
+each gives; he picked **both to `info`**: the finding, its `extra` (the Studio's
+"Make it bigger" chip reads it and keys on the code, not the severity), and
+every metric both publish stay; `_DEDUCT` bills info 0, so the grade is blind
+to them, as it is to edge wobble and curve roughness (defect 46). Two rulings
+sat behind it: 10-02, *"We shouldn't have to warn the user of anything"*, and
+10-03, defect 46 closed as metrics only. Both checks had been his picks on
+09-30; the recapture is what showed their price.
+
+**What changed in code.** Two severity strings, `"warn"` → `"info"`
+(`preflight.py`, the two `finding(...)` calls). Nothing else: no threshold,
+no metric, no message. `test_satin_gaps_tight_judges_nothing` pins it (the
+finding present, `raw_score` equal to every OTHER finding's deductions); the
+three `ARTWORK_UNCOVERED` tests that asserted `warn` assert `info`; the Becker
+junction-flag test asserts it too.
+
+**The recapture, diff-then-capture at `d000e370` on cloud Linux** (the CI
+`digitizer` job's environment; the 10-04 ruler `6e0cb943` as the control).
+The tool's own serial `diff`: **21 rows moved, every one of them a row
+carrying one or both findings, and on every one the only lines are the
+finding string (`:warn` resolved, `:info` appeared), `raw_score` and the
+score/grade that follow — no stitch, coverage or trim metric moved on any
+row.** 31 rows reproduced the 10-04 ruler leaf for leaf. Grades
+A/B/C/D/F 6/14/11/8/13 → **9/18/7/6/12**; 12 rows rose a band, none
+fell, `diff` exited 0. One cause, measured not inferred: `d000e370` is
+the only commit touching `digitizer_core` between the rulers.
+
+| row | grade | score | the finding(s) that stopped billing |
+|---|---|---|---|
+| `photo/enthusiast_logo.png @ 80mm/left_chest` | unchanged | 76 → 88 | `ARTWORK_UNCOVERED` |
+| `photo/photo_chrome_specular.png @ 80mm/left_chest` | D → C | 52 → 64 | `ARTWORK_UNCOVERED` |
+| `photo/photo_chrome_specular.png @ 80mm/hat_front` | C → B | 64 → 76 | `ARTWORK_UNCOVERED` |
+| `photo/photo_dof_meadow.png @ 80mm/left_chest` | C → B | 64 → 76 | `ARTWORK_UNCOVERED` |
+| `photo/photo_dof_meadow.png @ 80mm/hat_front` | C → B | 64 → 76 | `ARTWORK_UNCOVERED` |
+| `photo/photo_grass_macro.png @ 80mm/left_chest` | F → D | 34 → 46 | `ARTWORK_UNCOVERED` |
+| `photo/photo_grass_macro.png @ 80mm/hat_front` | unchanged | 46 → 58 | `ARTWORK_UNCOVERED` |
+| `photo/photo_scene_stub.png @ 80mm/left_chest` | D → B | 52 → 76 | `ARTWORK_UNCOVERED`, `SATIN_GAPS_TIGHT` |
+| `photo/photo_scene_stub.png @ 80mm/hat_front` | D → B | 52 → 76 | `ARTWORK_UNCOVERED`, `SATIN_GAPS_TIGHT` |
+| `photo/photo_sunset_backlit.png @ 80mm/left_chest` | B → A | 88 → 100 | `ARTWORK_UNCOVERED` |
+| `photo/photo_sunset_backlit.png @ 80mm/hat_front` | unchanged | 76 → 88 | `ARTWORK_UNCOVERED` |
+| `becker_marine_logo.png @ 80mm/left_chest` | unchanged | 76 → 88 | `ARTWORK_UNCOVERED` |
+| `becker_marine_logo.png @ 80mm/hat_front` | unchanged | 76 → 88 | `ARTWORK_UNCOVERED` |
+| `logo_script_tires.png @ 80mm/left_chest` | B → A | 88 → 100 | `SATIN_GAPS_TIGHT` |
+| `logo_script_tires.png @ 80mm/hat_front` | B → A | 88 → 100 | `SATIN_GAPS_TIGHT` |
+| `photo/logo_bridge_bar.jpg @ 80mm/left_chest` | unchanged | 0 unchanged, raw -98 → -86 | `SATIN_GAPS_TIGHT` |
+| `photo/logo_bridge_bar.jpg @ 80mm/hat_front` | unchanged | 0 unchanged, raw -86 → -74 | `SATIN_GAPS_TIGHT` |
+| `photo/logo_gaulke_roofing.png @ 80mm/left_chest` | C → B | 64 → 76 | `SATIN_GAPS_TIGHT` |
+| `photo/logo_gaulke_roofing.png @ 80mm/hat_front` | C → B | 64 → 76 | `SATIN_GAPS_TIGHT` |
+| `photo/logo_golden_tee.jpg @ 80mm/left_chest` | unchanged | 0 unchanged, raw -62 → -50 | `SATIN_GAPS_TIGHT` |
+| `photo/logo_golden_tee.jpg @ 80mm/hat_front` | unchanged | 0 unchanged, raw -74 → -50 | `ARTWORK_UNCOVERED`, `SATIN_GAPS_TIGHT` |
+
+**What it does not settle.** Whether a check that only size can cure should
+show at all is still Kent's; `info` keeps the sentence and the chip. The
+`_UNCOVERED_MIN_PATCH_MM2` floor of 1.0 mm² was adjudicated on logos and never
+on the photo lane — unchanged here, and now costs nothing, so the question is
+open rather than urgent. The WSL box's control worktree must be re-cut at
+`d000e370` before its next `diff`.
+*(measured 2026-10-05 — `tools/corpus_scorecard.py diff` then `capture` at `d000e370`; PR #638, issue #630)*

@@ -598,7 +598,10 @@ pipeline commits: 48 of 52 rows moved, five fell a band, every mover attributed
 by bisection over the 51 trees; the step that crosses a band line is a new
 preflight check on all five falls (#572, #573), not a stitch
 ([notes](docs/scorecard-baseline-attribution-2026-10-04.md), scope-history 10-04).
-*(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md); 2026-10-04 — [notes](docs/scorecard-baseline-attribution-2026-10-04.md))*
+**Recaptured again 2026-10-05 at `d000e370`** after Kent made both checks
+`info` (#630): 21 rows moved, every one of them those two findings, 12 rose a
+band, no other leaf moved (scope-history 10-05).
+*(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md); 2026-10-04 — [notes](docs/scorecard-baseline-attribution-2026-10-04.md); 2026-10-05 — scope-history)*
 
 **The corpus is half-present, and its real-artwork half keeps contradicting the
 synthetics** — six of seven real customer logos route to GRADIENT at stage 0, so
