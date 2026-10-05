@@ -6,6 +6,9 @@
 //        [--pystitch python [--sample N] [--tmp dir]]
 //
 // srcDir: the engine to measure (default: this checkout's src).
+// --set:  the Studio's shape lanes, its lettering, its image lane (all three
+//         when none is named), or a set file: tools/file-cut-sweep-set.mjs
+//         is the sweep of PR 616 and PR 617.
 // --on:   beside each arm of a set, the same arm with this builder option on.
 // --every: every K-th design only, for a quick look.
 // --against: build every design with a second engine too and say how the

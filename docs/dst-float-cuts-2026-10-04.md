@@ -1,7 +1,10 @@
 # A DST machine cuts where the builder only floated (2026-10-04)
 
 This note measures a finding handed over from PR #623 and sets out the
-choices. **Nothing is built. The choice is Kent's**, and is at the end.
+choices. **Kent chose the same day: choice 2.** It is built as `cutFloats` on
+`buildQualityDesign`, OFF by default, so no file changes until he flips it
+("Waiting on Kent" 27). What follows is what was put to him; what was built
+is at the end.
 
 ## What it is
 
@@ -126,7 +129,7 @@ row, which is any float over 12.1 mm: 121,101 more in the Studio's shapes as
 shipped and 5,671 with `fillColumns`; 39,646 and 554 in the image lane.
 
 *(measured 2026-10-04 on `main` at `227cdd9e`,
-`node tools/file-cut-census.mjs --set <sweep set> --set shapes --set image`)*
+`node tools/file-cut-census.mjs --set tools/file-cut-sweep-set.mjs --set shapes --set image --set lettering`)*
 
 ## What the Python engine does
 
@@ -232,7 +235,7 @@ Studio's shapes and then the image lane.
 - **Not offered: sewing the way** from the underlay to the fill instead of
   floating. Not measured.
 
-## What is recommended
+## What was recommended
 
 Choice 2, built OFF like `fillColumns`, `ties`, `fillStagger` and
 `dedupeHoles`, and flipped after `fillColumns`.
@@ -244,6 +247,71 @@ lane. The cure for that is the flip already waiting, `fillColumns`. What is
 left is one or two a design, and on its own that is a nitpick. But it is
 exactly where `ties` cannot reach, the stream would say what the machine
 does, and it moves no stitch.
+
+## What was built
+
+`cutFloats: true` on `buildQualityDesign`: one pass over the finished stream,
+before the locks (`cutLongFloats` in `src/digitize.js`). OFF by default, and
+no Studio caller passes it.
+
+- **A float** is the jump records between two stitches of one thread. Where
+  the writer would lay three or more jump records in a row for it, the stream
+  gets a `trim`.
+- **The count is the writer's own**, asked of it (`dst.jumpRecords`), not
+  worked out from a length. The move to the stitch after the float counts:
+  after a jump the writer lays a long move to a stitch as jump records up to
+  its last.
+- **Inside a run** the float's first jump becomes the `trim`. **At a run's
+  opening jump** a `trim` on the spot goes in before it, so the run still
+  opens on its jump and the cut is in no span.
+- **No thread, no cut**: the stream's first move, a move after a cut or a
+  colour change, and a float that ends in a cut are left.
+- **Floats of two records are left**, as priced.
+- **Not the lettering builder**, which has none to cut.
+
+The engine merged with `main` at `4fb4fcd4`, against that `main`:
+
+| | the sweep, 8,255 | the Studio's shapes, 8,270 | the image lane, 252 |
+|---|---|---|---|
+| flag not passed: designs whose stream and spans are `main`'s | 8,255, and 8,255 with `fillColumns` | 8,270, and 8,270 | 252, and 252 |
+| `cutFloats` alone: cuts nobody asked for | 12,346 to 0 | 109,561 to 0 | 70,435 to 0 |
+| `trim` records in the stream | 8,175 to 20,521 | 7,028 to 116,589 | 2,844 to 73,279 |
+| designs that change, each by cuts put in and nothing else | 4,460 | 4,805 | 183 |
+| designs that change some other way | 0 | 0 | 0 |
+| cuts in the DST, as its reader finds them | 21,340 before and after | 120,959 before and after | 73,491 before and after |
+| stitches | 18,424,406 before and after | 60,695,036 before and after | 4,513,269 before and after |
+| with `fillColumns` too: cuts nobody asked for | 2,064 to 0 | 6,956 to 0 | 451 to 0 |
+| designs that change, by cuts put in and nothing else | 1,685 | 3,544 | 107 |
+| designs that change some other way | 0 | 0 | 0 |
+| cuts in the DST | 5,060 before and after | 14,016 before and after | 3,216 before and after |
+
+Every cut put in is one the count above found: 8,175 and 12,346 is 20,521.
+
+The lettering builder's 765 designs are `main`'s with the flag and without
+it. Against the scratch engine the choices were priced on: the same stream
+and spans on every fourth design of the three sets (4,195 designs, in all
+four arms), and every count of the full run is that engine's.
+
+- **Tests first.** Fifteen in `test/digitize.test.js` and two for
+  `jumpRecords` in `test/encoder-split.test.js`, each seen to fail: on the
+  engine before the rule, or on a mutant.
+- **Twenty-two mutants, twenty-two die**: the flag read backwards, the rule
+  without the flag, cuts not counted, a cut at two records and at four, the
+  move to the stitch after left out or counted whole, a float cut that ends
+  in a cut or ends the stream, a float cut with no thread on it, a run's
+  opening jump made the trim itself, every cut put in before its float, the
+  cut before a run counted into the run or put where the jump lands, spans
+  not moved or half moved, the cut inside a run put where the float ends or
+  keeping its jump, only the first float cut, a float measured from its
+  second record, and `jumpRecords` wrong two ways.
+- **Engine suite** 818 passed. **Doc guards** 76 passed.
+
+**The independent re-measure** (a separate agent, with its own generator and
+its own readers of the files) is running as this is written. The PR is not
+armed until it reports, and its result goes here.
+
+*(measured 2026-10-04, `node tools/file-cut-census.mjs --set tools/file-cut-sweep-set.mjs
+--set shapes --set image --on cutFloats --against <main's src>`)*
 
 ## Seen on the way, not this note's
 
@@ -257,15 +325,14 @@ does, and it moves no stitch.
 ## To reproduce
 
 ```bash
-node tools/file-cut-census.mjs                      # this checkout: shapes, lettering, image
-node tools/file-cut-census.mjs <src> --set shapes   # another engine
-node tools/file-cut-census.mjs --on <flag>          # beside each arm, the arm with a builder option on
-node tools/file-cut-census.mjs --keep <dir>         # a run that picks up where it was cut short
-node tools/file-cut-census.mjs --pystitch <python>  # pystitch's count beside this reader's
+node tools/file-cut-census.mjs                                     # this checkout: shapes, lettering, image
+node tools/file-cut-census.mjs --set tools/file-cut-sweep-set.mjs  # the sweep of #616 and #617
+node tools/file-cut-census.mjs <src> --set shapes                  # another engine
+node tools/file-cut-census.mjs --on cutFloats                      # beside each arm, the arm with the flag on
+node tools/file-cut-census.mjs --on cutFloats --against <src>      # and how each stream differs from another engine's
+node tools/file-cut-census.mjs --keep <dir>                        # a run that picks up where it was cut short
+node tools/file-cut-census.mjs --pystitch <python>                 # pystitch's count beside this reader's
 ```
-
-The sweep is a set file round the #616 and #617 generator; it is in this
-session's scratchpad and not in the repo.
 
 Manuals: [Brother PR680W](https://download.brother.com/welcome/doch102285/884t23_om01en.pdf) (pages 109 and 110),
 [Barudan BEXS](https://www.barudan.co.uk/wp-content/uploads/2020/09/BEXS-Instruction-manual_en.pdf) (machine conditions 2 and 3),

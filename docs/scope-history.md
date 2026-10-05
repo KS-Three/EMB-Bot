@@ -18612,3 +18612,74 @@ stitches and nothing else. The sweep is unchanged. Engine 788 passed.
 Not sewn. No Studio caller passes it, and the lettering builder has no such
 rule. Flip is Kent's: "Waiting on Kent" 25.
 *(measured and built 2026-10-03 and 2026-10-04 — `docs/sub-unit-stitches-2026-10-03.md`, `tools/sub-unit-stitch-census.mjs`, `test/digitize.test.js` "dedupeHoles")*
+
+## 2026-10-04 — A DST machine cuts where the builder only floated: three jump records are a cut, and `cutFloats` (measured, then built OFF)
+
+A DST has no cut. `dst.js` writes a `trim` as three or more jump records and
+any needle-up move over 12.1 mm an axis as several, so a float over 24.2 mm
+is three jump records and a machine set to cut at three cuts there. The
+builder wrote no `trim`: `ties` lays no lock, and the trim count and the run
+time on the sheet leave it out. Handed over from #623's census.
+
+Counted with a second reader (`tools/file-cut-census.mjs`: each design
+written by each of the three writers, read back from the format, every
+record lined up with the stream's). The handover's four rows reproduce on
+the engine at `f887e27d`: 8,175 trims and 21,340 cuts on the sweep, 2,177 and
+5,060 with `fillColumns`; 7,028 and 120,912 on the Studio's shapes, 2,686 and
+13,969. pystitch makes the same TRIMs of the same files on all 498 designs
+sampled.
+
+On `main` at `227cdd9e`, cuts nobody asked for:
+
+| | as shipped | with `fillColumns` |
+|---|---|---|
+| the sweep, 8,255 | 12,346 in 4,460 designs | 2,064 in 1,685 |
+| the Studio's shapes, 8,270 | 109,561 in 4,805 | 6,956 in 3,544 |
+| the image lane, 252 | 70,435 in 183 | 451 in 107 |
+| lettering, 765 | 0 | |
+
+Nearly all as shipped are the plain walk's float from one fill row to the
+next across a hole (defect 52): 93,226 of the Studio's. What `fillColumns`
+leaves is the move from one underlay pass to the next or to the fill, and a
+satin column that floats to another arm. None are between shapes, where the
+builder already cuts over `trimAtMm`. With `ties`, 219,122 thread ends at
+such cuts in the Studio's shapes and 303 locked. At the sheet's 11 s a trim,
+2.5 minutes a Studio design and 52 an image design that it does not show.
+
+Python never floats that far: every needle-up move over the fabric's 3 to 4
+mm is a TRIM in its stream, with a lock either side. The manuals read cut at
+three jumps as shipped (Brother, Happy, Ricoma, Dahao, SWF; ZSK and Tajima
+show 3), and Barudan at two. Nothing was sewn.
+
+Four choices were priced and put to Kent: leave it; the builder cuts where
+the writer lays three jumps, behind a new flag; the writer keeps a float
+under three records where it can, which reaches 862 of the Studio's 109,561;
+count them on the sheet. He took the second.
+
+It is built as `cutFloats` on `buildQualityDesign`, OFF by default: one pass
+over the finished stream, before the locks (`cutLongFloats`). A float is the
+jump records between two stitches of one thread. Where the writer would lay
+three or more in a row for it, counting the move to the stitch after, the
+stream gets a `trim`: the float's first jump inside a run, a `trim` on the
+spot before a run's opening jump. The count is asked of the writer
+(`dst.jumpRecords`). A float with no thread on it is left.
+
+Flag not passed, the engine merged with `main` at `4fb4fcd4` and that `main`
+give one stream and one set of spans on all 16,777 designs of the three sets,
+with `fillColumns` absent and on, and on the 765 lettering designs. Flag on:
+cuts nobody asked for go 12,346, 109,561 and 70,435 to 0, and 2,064, 6,956
+and 451 to 0 with `fillColumns`. 4,460, 4,805 and 183 designs change (1,685,
+3,544 and 107), each by cuts put in and nothing else, and none any other
+way. No stitch is added or lost, and the DST's cuts are the ones its reader
+found before. The streams are those of the scratch engine the choice was
+priced on, on every fourth design. Seventeen tests, each seen to fail on the
+engine before the rule or on a mutant; 22 mutants, 22 die. Engine 818
+passed.
+
+An independent re-measure (a separate agent, its own generator and readers)
+is running as this is written; the PR is not armed until it reports.
+
+Not sewn. No Studio caller passes it. Flip is Kent's: "Waiting on Kent" 27,
+and it belongs after `fillColumns`: before, it writes hundreds of cuts a
+design into the stream, and with `ties` 12% more stitches in the image lane.
+*(measured and built 2026-10-04 — `docs/dst-float-cuts-2026-10-04.md`, `tools/file-cut-census.mjs`, `test/digitize.test.js` "cutFloats")*
