@@ -676,7 +676,7 @@
   }
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
-  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger }
+  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, dedupeHoles }
   // (buildLetteringDesign additionally takes `splitSatin` and
   // `wideColumnFill` — the two wide-column answers, both default off; see
   // satinfont.js's constant block.)
@@ -855,6 +855,29 @@
     // not stagger them either (`_underlay_paths`, staggers=1). Off, nothing
     // reads it and every stitch is unchanged.
     const staggerOpts = o.fillStagger ? { stagger: FILL_STAGGERS, minStitch: MIN_STITCH_MM * pxPerFinalMm, splitTol: SPLIT_TOLERANCE_MM * pxPerFinalMm } : null;
+    // `dedupeHoles` (default off): no run lays a stitch straight after a
+    // stitch on the same point.
+    //
+    // `T` rounds to the stitch file's unit, 0.1 mm, so two penetrations nearer
+    // than that can land on one point: a scanline through a corner, a row at a
+    // tip, the move across the mouth of a notch, the cross of a satin column
+    // narrowed to nothing. The writers keep a stitch of no length, so the
+    // needle goes down twice in one hole: 16,575 times on 8,255 designs with
+    // every flag absent (docs/sub-unit-stitches-2026-10-03.md). With the flag
+    // the first is laid and the second is not. It is the Python engine's rule
+    // (`stitches.iter_machine_commands`), with "the same point of the file"
+    // where that has 0.01 mm: no length is chosen here.
+    //
+    // ONLY a stitch whose record comes straight after a stitch on its point
+    // is left out. After a jump or a cut the stitch is laid, whatever point
+    // it is on. A cut's first stitch is what holds the new thread. And a jump
+    // keeps a stitch on either side of it: a cut is written as three jump
+    // records (dst.js), so a run that laid nothing would leave its jump
+    // beside the next run's, and a reader could take that for a cut nobody
+    // made. The price is the doubled hole with a jump between the two, a run
+    // that begins where the last one ended: 15 on those 8,255 designs.
+    // Off, nothing is noted and every stitch is unchanged.
+    const dedupeHoles = !!o.dedupeHoles;
     // The rings a FILL is sewn to: the shape's own, or under a fabric preset
     // the pull-compensated ones (grow the outer, shrink the holes), so it sews
     // to true size on stretchy cloth. No-fabric fills stay unoffset.
@@ -932,12 +955,17 @@
       if (!pts || !pts.length) return;
       const f = T(pts[0]);
       stitches.push({ x: f.x, y: f.y, type: "jump" });
+      let hole = null;   // with `dedupeHoles`: the stitch the last record laid, when the last record is a stitch
       for (const q of pts) {
         const d = T(q);
         // A point tagged q.trim (the center-out sweep-to-sweep reposition) emits
         // a trim so the long float is cut, not left as a bare needle-up jump.
-        if (q.trim) { stitches.push({ x: d.x, y: d.y, type: "trim" }); nTrims++; }
-        else stitches.push({ x: d.x, y: d.y, type: q.travel ? "jump" : "stitch" });
+        if (q.trim) { stitches.push({ x: d.x, y: d.y, type: "trim" }); nTrims++; hole = null; }
+        else if (q.travel) { stitches.push({ x: d.x, y: d.y, type: "jump" }); hole = null; }
+        else if (hole === null || hole.x !== d.x || hole.y !== d.y) {
+          stitches.push({ x: d.x, y: d.y, type: "stitch" });
+          if (dedupeHoles) hole = d;
+        }
       }
       lastPx = pts[pts.length - 1];
     }
