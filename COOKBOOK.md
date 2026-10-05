@@ -1051,6 +1051,22 @@ sews nothing and cuts the smallest shape that contains it.
   the flag; the flip is Kent's ("Waiting on Kent" 23).
   `node tools/lock-stitch-census.mjs` prints what a lock costs and how long
   its legs really are, on every shipped font and eleven shapes.
+- **Cutting long floats is built OFF for the shape builder (2026-10-04).**
+  A DST has no cut. `dst.js` lays three jump records for a `trim`, and also
+  for any float over 24.2 mm, so a machine cuts where the stream has only a
+  jump, and `ties` lays no lock there. `cutFloats: true` on
+  `buildQualityDesign` puts the `trim` in the stream: one pass,
+  `cutLongFloats` in `src/digitize.js`, over the finished stream and before
+  `applyTies`. How many records a move takes is asked of the writer
+  (`dst.jumpRecords`); do not work it out from a length. The move to the
+  stitch AFTER a float counts, since the writer lays it as jumps up to its
+  last record. A float with no thread on it is left: after a cut, after a
+  colour change, at the start. To check any change to what is written, read
+  the FILE: `node tools/file-cut-census.mjs` writes every design with the
+  three writers, reads each back with its own readers and says what every
+  run of three jumps was; `--against <src>` says whether two engines differ
+  by cuts put in and nothing else. No Studio caller passes the flag; the
+  flip is Kent's ("Waiting on Kent" 27) and belongs after `fillColumns`.
 - **Row stagger is built OFF for the shape builder (2026-10-03).**
   `fillStagger: true` on `buildQualityDesign` puts the cover fill's needle
   holes on one grid shifted row by row (`tatamiFill`'s `stagger`, `minStitch`
