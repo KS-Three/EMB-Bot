@@ -23,6 +23,21 @@ Research: `docs/underlay-research-2026-10-05.md`. Two causes, both real.
    that came from an unvalidated scratch classifier — validate before
    arguing from it.
 
+**The audit settled cause 2's evidence** (`docs/underlay-audit-2026-10-05.md`):
+on a classifier validated against 154 ground-truth fills, 34 of 36 large
+commissioned fills carry the pass (8 of 9 folders; one house style), 4 of 35
+in the third-party corpus law 26 came from. Pitch 0.98, stitch 3.99, 89°, 16%
+of the top thread, and he mostly skips the edge run. Law 26's instrument
+"lived in scratchpad" and is LOST — an instrument a ruling rests on belongs
+in the repo. Kent then picked `cross_tatami`: that pass as an underlay style,
+a picker choice in both engines, in no preset.
+
+**Read your own output with the instrument that read the pro's.** The unit
+tests were green and the first DST read back at 2.0 mm stitches:
+`stitch_shape` re-split underlay at 2.5 mm. On real logos ours still reads
+median 2.4 mm and 5–12% thread against his 3.99 and 16% (lettering cuts rows;
+1.0 mm inset; largest-piece-only) — say so before anyone calls it his recipe.
+
 **How to apply:** flag 1 alone will not change what Kent sees in a fill's
 interior on a left chest; say so before he flips it. The Studio preview and
 eye-pairs sheets draw underlay UNDER the top thread, so underlay is invisible

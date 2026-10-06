@@ -113,4 +113,4 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Closed-ring lane](embot-closed-ring-lane.md) — SNAPSHOT: #621 `offsetRing` on a repeated point, #625 stacked on it; defect 55's offset half is Kent's call
 - [Star-walk lane](embot-star-walk-lane.md) — SNAPSHOT: #624 ends `skeletonEdges`' endless walk; defect 57's cure order waits on Kent
 - [Build what was priced](build-what-was-priced.md) — SNAPSHOT: after Kent picks a priced option, build exactly that
-- [Underlay under fills](underlay-under-fills-2026-10-05.md) — Kent was right: gradient-class fills sewed with ZERO underlay (`blend_fallback_underlay`, built OFF) and knit fills get an edge run only (law 26, his ruling). Preview cannot show underlay
+- [Underlay under fills](underlay-under-fills-2026-10-05.md) — Kent was right: gradient fills sewed with ZERO underlay; his pro sews a crossing pass, built as `cross_tatami`, in no preset. Law 26's instrument is lost. Preview cannot show underlay

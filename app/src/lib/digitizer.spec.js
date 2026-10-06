@@ -709,6 +709,19 @@ test("canonicalShapeEdits accepts a valid underlay_style, rejects an unknown one
   });
 });
 
+test("canonicalShapeEdits sends cross_tatami, and both pickers offer it", async () => {
+  // The crossing pass read off Kent's commissioned files
+  // (docs/underlay-audit-2026-10-05.md). A choice in the picker; no preset.
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const { SHAPE_UNDERLAYS } = await import("./shapePopover.js");
+  const el = digitizedElement({ shapeOverrides: { Scross: { underlay_style: "cross_tatami" } } });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: { Scross: { underlay_style: "cross_tatami" } },
+  });
+  expect(SHAPE_UNDERLAYS.map((u) => u.value)).toContain("cross_tatami");
+});
+
 // ---- boundary_override (contract v1.4; the boundary editor) ----------------
 //
 // The shallow half of the contract this file can check without a live

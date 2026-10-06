@@ -220,7 +220,7 @@ _BORDER_VALUES = {"off", "auto", "bean"}
 # fabrics.py's own vocabulary, verbatim (mirrored in digitizer_service.app's
 # copy, which 400s the wire before this ever raises).
 _UNDERLAY_VALUES = {"none", "edge_run", "center_run", "edge_zigzag", "edge_lattice",
-                    "double_lattice", "zigzag"}
+                    "double_lattice", "zigzag", "cross_tatami"}
 
 # `boundary_override` (contract v1.4): a hand-edited polygon replacing a
 # shape's exterior ring outright, holes carried over unchanged from the
