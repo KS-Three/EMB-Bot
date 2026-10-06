@@ -329,6 +329,7 @@
       fabricRgb: project && project.fabricRgb,
       weave: true,
       surround: surroundColor(),
+      grid: gridColors(),
       view,
     });
   }
@@ -341,6 +342,19 @@
     if (typeof document === "undefined") return "#22252c";
     const v = getComputedStyle(document.documentElement).getPropertyValue("--surround").trim();
     return v || "#22252c";
+  }
+
+  // Work bed + measuring grid, read off theme tokens (fallbacks are the token
+  // values) so the canvas and the CSS can never drift.
+  function gridColors() {
+    const cs = typeof document === "undefined" ? null : getComputedStyle(document.documentElement);
+    const tok = (name, fb) => (cs && cs.getPropertyValue(name).trim()) || fb;
+    return {
+      bed: tok("--field-bed", "#7b8190"),
+      minor: tok("--field-grid-minor", "rgba(255,255,255,0.10)"),
+      major: tok("--field-grid-major", "rgba(255,255,255,0.22)"),
+      label: tok("--surround-muted", "#a3a9b6"),
+    };
   }
 
   function accentColor() {
@@ -1847,6 +1861,7 @@
       fabricRgb: project.fabricRgb,
       weave: true,
       surround: surroundColor(),
+      grid: gridColors(),
       view,
       showJumps,
       showTrims,
@@ -1883,6 +1898,7 @@
         fabricRgb: project.fabricRgb,
         weave: true,
         surround: surroundColor(),
+        grid: gridColors(),
         view,
         showJumps,
         showTrims,
