@@ -8581,3 +8581,52 @@ select 'Auto Digitize' again."
 *(built and driven 2026-10-05 — `DigitizePanel.spec.js` "nothing runs until
 Auto Digitize Image is pressed", e2e `digitize-auto-start.spec.js`;
 COOKBOOK "Nothing in `DigitizePanel` starts a run")*
+
+## A small shape on a low-resolution logo has no pixel of its own ink (2026-10-05)
+
+An open lead, with one retraction inside it. Started from an outside review's
+claim that the whole-image class is the photo lane's design flaw; the
+measurement moved the problem somewhere else.
+
+- **Forced flat is not an escape hatch for real logos.** Eleven of fifteen
+  real-art fixtures route `gradient` (the 09-11 entry above says why), and on
+  the six of those whose sheets were read — `logo_mfab_lc`, both `logo_toat`,
+  `logo_golke_roofing`, `drone_render`, `logo_bridge_bar` — `forced_class="flat"`
+  sews worse: `logo_toat_machine` 6,541 → 17,143 stitches with its border in
+  dashes, Bridge Bar a white ring round the wheel. It rescued the Instagram
+  icon and that is the whole of its record. Do not offer it as the general
+  cure. *(measured 2026-10-05 — scope-history 2026-10-05; five sheets rendered
+  and not read)*
+- **`robust_region_colour` does not reach a small shape, because the median is
+  anti-aliasing too.** `logo_mfab_lc` is 148 × 389 px, 4.71 px/mm at 80 mm: its
+  white linework is 27 regions, 139.5 mm², every one ≤ 0.6 mm wide (~2.4
+  source px), mean grey 150–207, yet the 90th percentile is ≥ 235 on 112 mm² of
+  it. The palette is handed a grey nobody drew and rightly buys it: 6 cones,
+  2,718 grey stitches, 30 white. The 09-10 fix was for a BIG region with
+  inclusions; this is the other end of the same seam.
+- **A halo and a stroke want opposite treatment, and nothing yet tells them
+  apart.** `tools/stroke_colour_probe.py` gives a region ≤ 4 source px wide
+  with a wide grey span its light or dark end: `logo_golke_roofing` 5 cones →
+  2 for 27.8 mm² rewritten, `logo_mfab_lc` white 30 → 1,859 stitches (909
+  left in off-shades), `logo_toat_beanie` not cured, the ramps unmoved — and
+  Bridge Bar's teal 227 → 1,882, because its thin bands are JPEG ringing and
+  the rule repaints what `dissolve_phantom_blends` should fold. The two
+  together are untested. **Do not build the rule alone.**
+- **`dissolve_phantom_blends` DOES fold a band that borders enclosed ground**
+  — 7 of 10 on `logo_mfab_lc`, 60 of 63 on `logo_toat_beanie`. The opposite
+  was this session's first hypothesis, read off the comment at the page-mask
+  branch; a spy on the function refuted it. On these logos the flag alone
+  takes toat 6 → 4 cones, golke 5 → 4, mfab 6 → 6; turning `keep_thin_strokes`
+  off moves one cone on golke and none elsewhere.
+- **RETRACTED the same day: "no per-region rule works; width is the wrong
+  discriminator."** Two scratch copies of the probe chose a region's side
+  differently — mean ≥ 128 in one, mean ≥ the midpoint of its own range in the
+  other — and nine logos run on the second were read as a verdict on the
+  width gate. It was caught only because the committed tool would not
+  reproduce the first probe's golke 5 → 2. **Before a probe's result is
+  written down, reproduce it with the tool that will be committed, and give
+  every choice the probe makes a named flag** — the 09-11 rule ("commit the
+  probe, even an ugly one") is also the check on the probe.
+
+*(measured 2026-10-05 — `tools/stroke_colour_probe.py`, defaults; tables in
+scope-history 2026-10-05)*
