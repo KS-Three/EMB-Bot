@@ -469,21 +469,13 @@ about the facts.
    row), and takes the stagger in whatever change flips that.
    *(measured 2026-10-03 — [`docs/renders/fill-stagger-2026-10-03/`](docs/renders/fill-stagger-2026-10-03/README.md))*
 25. **Flip `dedupeHoles` on for the browser shape lanes — NEW 2026-10-03,
-   built OFF.** The shape builder rounds every point to the file's 0.1 mm,
-   so two penetrations nearer than that become two stitch records on one
-   point, and the writers keep the record: the needle twice in one hole.
-   About two a design in what ships (16,575 on 8,255 designs), at corners,
-   tips and the mouths of notches; a slot a hair wider than twice the pull
-   compensation makes a line of them, 212 in one design. The flag lays the
-   first and not the second, in every run. Each stream is the old one less
-   those records: no stitch, cut or order moves. It is the Python stream's
-   own rule with the file's grid in place of a length, so no gate applies.
-   Machines differ on the record: Barudan, Ricoma, Brother, ZSK and Dahao
-   delete it as shipped, Happy keeps it, and no filter was found for Tajima,
-   whose manual says to correct the data. **Not sewn.** A flip is
+   built OFF.** The shape builder rounds to the file's 0.1 mm, so two
+   penetrations nearer than that become two stitch records on one point:
+   the needle twice in one hole, about two a design in what ships (16,575
+   on 8,255). The flag lays the first and not the second; no other record
+   moves. Machines differ on the record. **Not sewn.** A flip is
    `dedupeHoles: true` at `generate.js`'s three shape call sites and a re-pin
-   of every shape snapshot. Lettering has its own (9,093 on `KENT` across
-   the fonts) and no flag yet.
+   of every shape snapshot. Lettering has its own and no flag yet.
    *(measured 2026-10-03 — [`docs/sub-unit-stitches-2026-10-03.md`](docs/sub-unit-stitches-2026-10-03.md))*
 26. **Which cure for defect 57 first — NEW 2026-10-03, nothing built.** The
    browser's satin on a thin bar, a star or a drawn shape set to satin lays
@@ -511,6 +503,14 @@ about the facts.
    (OFF) and `cross_tatami` (a picker choice, your digitizer's crossing
    pass): the flip and the knit presets are yours. **Not sewn.**
    *(measured 2026-10-05 — [`docs/underlay-audit-2026-10-05.md`](docs/underlay-audit-2026-10-05.md))*
+28. **Flip `cutFloats` on for the browser shape lanes — NEW 2026-10-04,
+   built OFF.** A DST has no cut: the writer lays three jump records for
+   one, and for any float over 24.2 mm too, so a machine cuts where the
+   stream has only a jump, with no lock from `ties`: 109,561 times on 8,270
+   Studio shapes, 94% of them gone with `fillColumns` (22). The flag puts a
+   `trim` in the stream at each. No stitch moves. **Flip it after 22.**
+   **Not sewn.** Flipped as 25 is.
+   *(measured 2026-10-04 — [`docs/dst-float-cuts-2026-10-04.md`](docs/dst-float-cuts-2026-10-04.md))*
 
 ## Cross-cutting issues
 

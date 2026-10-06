@@ -118,3 +118,39 @@ test("dst: a long diagonal stitch sews along the line a reader can see", () => {
     assert.ok(best < 1, `stitch (${px},${py}) is ${best.toFixed(1)} units off every drawn segment`);
   }
 });
+
+// --- jumpRecords: how many records a needle-up move is written in (2026-10-04) ---
+//
+// Three jump records in a row are a cut to a machine, so the shape builder
+// asks the writer before it floats (`cutFloats`, src/digitize.js). The answer
+// has to be the writer's own count, or the builder cuts where the file has
+// two jumps and floats where it has three.
+const { jumpRecords } = require("../src/dst.js");
+
+test("jumpRecords: one record for each 12.1 mm an axis, and never none", () => {
+  for (const [dx, dy, n] of [[0, 0, 1], [121, 0, 1], [-121, 121, 1], [122, 0, 2], [0, -242, 2], [243, 0, 3], [300, 0, 3], [-100, 363, 3], [364, 10, 4]]) {
+    assert.strictEqual(jumpRecords(dx, dy), n, `${dx},${dy}`);
+    assert.strictEqual(jumpRecords(dx, dy), dstSplit(dx, dy, 121, 1).length, `${dx},${dy}: the split's own count`);
+  }
+});
+
+test("jumpRecords: it is the number of jump records encodeDST writes for that jump", () => {
+  for (const [dx, dy] of [[0, 0], [121, 0], [122, 0], [242, 242], [243, 0], [500, -300]]) {
+    const bytes = encodeDST({ stitches: [{ x: 0, y: 0, type: "stitch" }, { x: dx, y: dy, type: "jump" }, { x: dx, y: dy, type: "stitch" }, { x: 0, y: 0, type: "end" }], colors: [] });
+    let jumps = 0;
+    for (let i = 512; i + 2 < bytes.length; i += 3) if ((bytes[i + 2] & 0xc3) === 0x83) jumps++;
+    assert.strictEqual(jumps, jumpRecords(dx, dy), `${dx},${dy}`);
+  }
+});
+
+test("jumpRecords: the writer's count for long moves too", () => {
+  // Past five records as well: the first two tests stop at 50 mm, and an edit
+  // that miscounted only beyond that passed them (the re-measure's D05).
+  for (const [dx, dy] of [[605, 0], [606, 0], [726, 0], [727, 0], [0, -1210], [4000, -3999], [-2500, 1300]]) {
+    const bytes = encodeDST({ stitches: [{ x: 0, y: 0, type: "stitch" }, { x: dx, y: dy, type: "jump" }, { x: dx, y: dy, type: "stitch" }, { x: 0, y: 0, type: "end" }], colors: [] });
+    let jumps = 0;
+    for (let i = 512; i + 2 < bytes.length; i += 3) if ((bytes[i + 2] & 0xc3) === 0x83) jumps++;
+    assert.strictEqual(jumpRecords(dx, dy), jumps, `${dx},${dy}`);
+    assert.strictEqual(jumps, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 121), `${dx},${dy}: one record for each 12.1 mm of the longer axis`);
+  }
+});

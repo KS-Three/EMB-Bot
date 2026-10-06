@@ -13,6 +13,7 @@
   const fillmod = _node ? dep("./fill.js") : root.EMB;
   const satinmod = _node ? dep("./satin.js") : root.EMB;
   const satinfontmod = _node ? dep("./satinfont.js") : root.EMB;
+  const dstmod = _node ? dep("./dst.js") : root.EMB;
 
   // Physical constants this engine shares with the Python digitizer
   // (`digitizer/digitizer_core/machine.py`). fabrics.py's rule: until a
@@ -217,6 +218,66 @@
     });
     for (const sp of spans || []) { sp.i0 = start[sp.i0]; sp.i1 = end[sp.i1]; }
     return { stitches: out, nTies: toward.size };
+  }
+
+  // Cut every float the DST writer would lay as three or more jump records in
+  // a row (`cutFloats: true` on the shape builder, default off).
+  //
+  // A DST has no cut. dst.js writes a `trim` as three or more jump records,
+  // which a machine set to cut at three reads as one, and it writes any
+  // needle-up move over 12.1 mm an axis as several. So a float over 24.2 mm
+  // is three jump records too. The machine cuts there and nothing downstream
+  // knows: `applyTies` goes by `trim` records, and so do the trim count and
+  // the run time on the sheet (docs/dst-float-cuts-2026-10-04.md: 109,561
+  // such cuts on 8,270 Studio shapes with every flag absent, and 219,122
+  // thread ends that `ties` leaves loose). This puts the `trim` in the stream
+  // wherever the writer would lay three. No stitch moves, and the cuts in the
+  // DST are the ones it already had.
+  //
+  // A FLOAT is the jump records between two stitches of one thread. How many
+  // records the writer lays for it is asked of the writer (`jumpRecords`), and
+  // the move to the stitch after counts: after a jump the writer lays a long
+  // move to a stitch as jump records up to its last. A float that follows a
+  // cut or a colour change, or opens the stream, has no thread on it and is
+  // left; so is one that ends in a cut.
+  //
+  //   inside a run:          the float's first jump becomes the `trim`, as
+  //                          center-out's own cut is written;
+  //   a run's opening jump:  a `trim` on the spot goes in before it, as
+  //                          between shapes, so the run still opens on its
+  //                          jump and the cut is in no span.
+  //
+  // Three is not a length chosen here. It is the writer's own number for a
+  // cut (`splitTrim`), and the one seven of the eight controller manuals read
+  // ship or show. A Barudan ships at two, and its two-record floats are left.
+  //
+  // -> how many cuts were made. `stitches` and `spans` are changed in place;
+  // with nothing to cut, neither is touched.
+  function cutLongFloats(stitches, spans) {
+    const opens = new Set((spans || []).map((sp) => sp.i0));
+    const records = (from, to) => dstmod.jumpRecords(to.x - from.x, to.y - from.y);
+    const out = [], at = new Array(stitches.length);
+    let made = 0;
+    for (let i = 0; i < stitches.length; i++) {
+      const s = stitches[i];
+      at[i] = out.length;
+      if (s.type !== "jump" || i === 0 || stitches[i - 1].type !== "stitch") { out.push(s); continue; }
+      let j = i, n = 0;
+      for (; j < stitches.length && stitches[j].type === "jump"; j++) n += records(stitches[j - 1], stitches[j]);
+      const next = stitches[j];
+      if (!next || next.type !== "stitch" || n + records(stitches[j - 1], next) - 1 < 3) { out.push(s); continue; }
+      made++;
+      if (opens.has(i)) {
+        out.push({ x: stitches[i - 1].x, y: stitches[i - 1].y, type: "trim" });
+        at[i] = out.length;
+        out.push(s);
+      } else out.push({ x: s.x, y: s.y, type: "trim" });
+    }
+    if (!made) return 0;
+    for (const sp of spans || []) { sp.i0 = at[sp.i0]; sp.i1 = at[sp.i1]; }
+    stitches.length = 0;
+    for (const s of out) stitches.push(s);
+    return made;
   }
 
   // The size of a design is the size of its THREAD — measured from the records
@@ -703,7 +764,7 @@
   }
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
-  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, dedupeHoles }
+  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, dedupeHoles, cutFloats }
   // (buildLetteringDesign additionally takes `splitSatin` and
   // `wideColumnFill` — the two wide-column answers, both default off; see
   // satinfont.js's constant block.)
@@ -1310,6 +1371,12 @@
         started = true;
       }
     }
+    // `cutFloats` (default off): a float the DST writer would lay as three or
+    // more jump records is a cut to a machine, so it becomes one in the stream
+    // too (cutLongFloats). Asked of the finished stream and before the locks,
+    // so that `ties` holds each end it makes. Off, nothing reads the stream
+    // here and every record is unchanged.
+    if (o.cutFloats) nTrims += cutLongFloats(stitches, spans);
     stitches.push({ x: 0, y: 0, type: "end" });
     // Lock stitches, OFF by default (`ties`, 2026-10-03): until now this
     // builder tied nothing, on any lane it serves -- manual draw, basic shapes,
@@ -1715,5 +1782,7 @@
   // outside its artwork), so it gets a test that can actually reach it.
   // `applyTies` likewise: which records it calls a cut, and what it does with
   // a thread that sews nothing, are asked of streams written out by hand.
-  return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns, tieRun, applyTies, FILL_ROW_MM, SATIN_SPACING_MM, THREAD_LENGTH_FACTOR, TIE_STITCH_MM, TIE_STITCHES };
+  // `cutLongFloats` too: a float of several jumps, and one with no thread on
+  // it, are cases no small design makes on its own.
+  return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns, tieRun, applyTies, cutLongFloats, FILL_ROW_MM, SATIN_SPACING_MM, THREAD_LENGTH_FACTOR, TIE_STITCH_MM, TIE_STITCHES };
 });
