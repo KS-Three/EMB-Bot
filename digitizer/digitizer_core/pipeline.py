@@ -165,6 +165,12 @@ class PipelineResult:
     px_per_mm: float
     design_size_mm: tuple[float, float]
     warnings: list[dict] = field(default_factory=list)
+    # Where the sewn artwork sits in the image the pipeline was handed (after
+    # the customer's crop), as fractions [x0, y0, x1, y1] of its width/height.
+    # The design's mm origin is this box's centre, so a client can lay the
+    # original upload back over the stitches. Fractions, not px: stage 1's
+    # upscale scales the image and the box together. None on a hand-built result.
+    art_box_frac: tuple[float, float, float, float] | None = None
     segmenter: str = "classical"
     debug_dir: Path | None = None
     # Only populated when stage 0 classifies this design "gradient" — the
@@ -1342,6 +1348,8 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         ),
         px_per_mm=p.px_per_mm,
         design_size_mm=design,
+        art_box_frac=(x0 / p.rgb.shape[1], y0 / p.rgb.shape[0],
+                      x1 / p.rgb.shape[1], y1 / p.rgb.shape[0]),
         warnings=merge_warnings(
             [*gen.classification_warnings, *prep_own_warnings, *prep_warnings,
              *gen.quant_warnings, *gen.small_warnings, *vec_warnings,

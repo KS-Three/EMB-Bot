@@ -660,6 +660,11 @@ def _review_payload(result, plan=None) -> dict:
         "palette": result.palette,
         "design_size_mm": list(result.design_size_mm),
         "px_per_mm": result.px_per_mm,
+        # Where the sewn art sits in the (cropped) upload, as fractions
+        # [x0, y0, x1, y1] — lets the Studio's Original view register the
+        # picture on its stitches. Absent when the result is hand-built.
+        "art_box": (list(result.art_box_frac)
+                    if getattr(result, "art_box_frac", None) else None),
         "segmenter": result.segmenter,
         "background": {
             "detected": result.background.detected,

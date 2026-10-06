@@ -4,7 +4,7 @@
   import { ensureFonts, loadCoverage, loadManifest } from "../lib/fontLoader.js";
   import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
-  import { hasOriginal, loadOriginal, fitRect, placeByContent, flatContentBox } from "../lib/originalImage.js";
+  import { hasOriginal, loadOriginal, fitRect, placeByContent, flatContentBox, digitizedContentBox } from "../lib/originalImage.js";
   import { pickScaleBar } from "../lib/scalebar.js";
   import { tip } from "../lib/tip.js";
   import { designToStrands, strandStitchOrdinals } from "../lib/strands.js";
@@ -1470,11 +1470,11 @@
   //    then drops specks and caps shapes per colour. Fitting
   //    the whole frame instead shrank and shifted the art (measured
   //    2026-09-30: a 23x20 px stitched square drawn back at 12x12).
-  //  - `digitized` (service): the result keeps no source-px origin — the
-  //    pipeline's art_bbox position inside its (cropped, resized) working
-  //    image never reaches the client, only its size via px_per_mm — so there
-  //    is no exact mapping and none is guessed: the whole image is fitted into
-  //    the placement box instead.
+  //  - `digitized` (service): the review carries `artBox`, the pipeline's
+  //    art_bbox as fractions of its (cropped) working image; with the crop
+  //    that gives the content box in source px. A review saved before the
+  //    service sent it has none, and falls back to fitting the whole image
+  //    into the placement box.
   // Either way the draw is clipped to the hoop, so a frame larger than its
   // content cannot spill onto the surround.
   let originalToken = 0;
@@ -1511,7 +1511,11 @@
         }
         if (!at) at = fitRect(iw, ih, rect);
       } else {
-        at = fitRect(iw, ih, placement);
+        // Digitized: the service's art box (fractions of the cropped upload)
+        // registers the picture on its stitches; without it (a result saved
+        // before the box existed) the whole image fits the placement box.
+        const cb = digitizedContentBox(iw, ih, el.review && el.review.artBox, el.crop);
+        at = (cb && placeByContent(iw, ih, cb, rect)) || fitRect(iw, ih, placement);
       }
       if (!at) return;
       const ctx = canvas.getContext("2d");
