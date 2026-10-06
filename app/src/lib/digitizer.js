@@ -294,7 +294,7 @@ const SHAPE_BORDERS = new Set(["off", "auto", "bean"]);
 // ignores it (see digitizer_core/config.py's shape_overrides docstring).
 const SHAPE_UNDERLAYS = new Set([
   "none", "edge_run", "center_run", "edge_zigzag", "edge_lattice",
-  "double_lattice", "zigzag",
+  "double_lattice", "zigzag", "cross_tatami",
 ]);
 // `boundary_override` (contract v1.4) point-count bounds — mirrored, verbatim,
 // from `digitizer_service.app`'s `_MIN_BOUNDARY_POINTS`/`_MAX_BOUNDARY_POINTS`.

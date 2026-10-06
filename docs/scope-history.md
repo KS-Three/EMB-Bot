@@ -19147,3 +19147,43 @@ underlay-only renders: `docs/renders/blend-fallback-underlay-2026-10-05/`.
 **What it does not do.** On every preset but cap, fleece and towel the style
 is `edge_run`, so ON a fill gains its perimeter walk and its interior is
 still empty. Not sewn.
+
+## 2026-10-05 — `cross_tatami`: the commissioned files' crossing pass as an underlay style (a choice, in no preset), and law 26's instrument is gone
+
+**The audit.** Kent picked "validate the pro evidence first" before ruling on
+the knit preset. An independent audit (`docs/underlay-audit-2026-10-05.md`)
+built 154 ground-truth fills with our own engine, found the research note's
+classifier under-counting (18 of 62 known crossing passes), corrected a copy
+to 62 of 62 with no false positive, and ran it on every readable professional
+file: a crossing sparse pass under 34 of 36 large fills in the commissioned
+set (8 of 9 folders), 4 of 35 in the third-party corpus law 26 was mostly
+drawn from. Row pitch p50 0.98 mm, stitch 3.99 mm, angle 89°, 16% of the top
+fill's thread; an edge run in at most 11 of 34. Law 26's own instrument
+"lived in scratchpad" and no longer exists.
+
+**The change (Kent's pick: the pass alone, no edge variant).** A new
+underlay style, `cross_tatami`: one tatami pass at the fill angle + 90, rows
+`UNDERLAY_CROSS_ROW_MM` 1.0, stitches `UNDERLAY_CROSS_STITCH_MM` 4.0, no edge
+run. Python (`stage6_fill._underlay_paths`), the browser engine
+(`src/digitize.js underlayRuns`), both whitelists, and the Studio's two
+per-shape pickers ("Crossing pass (pro)"). No fabric preset names it, so
+every default plan is unchanged. The two constants are the professional's and
+are not sewn by us — gate 1's evidence class is the one `FILL_ROW_MM` was
+ruled on.
+
+**A defect the instrument caught in the build.** Reading our own DST back
+with the audit's classifier gave pitch 1.0 and stitch 2.0: `stitch_shape`
+re-split every underlay path at the lattice's 2.5 mm. The unit tests, which
+read `_underlay_paths`, were green. Fixed and pinned.
+
+**Measured** (80 mm, both arms with `blend_fallback_underlay` ON): Fremont
+stitches 13,779 → 14,388, trims 43 → 39; Bridge Bar 18,083 → 18,507, trims
+98 → 113; drone 19,283 → 19,846, trims 131 → 139. Read back: a crossing pass
+at 0.99–1.00 mm and 88.5–90°, but median stitch 2.4–2.5 mm and 5–12% of the
+top thread against his 3.99 and 16% — lettering cuts the rows short, and the
+1.0 mm inset and the largest-piece-only rule keep thread out.
+`docs/renders/cross-tatami-underlay-2026-10-05/`.
+
+**The browser pass is not inset**, as the browser's lattice is not; Python's
+is, by 1.0 mm. Engine 816, Studio 1590,
+`tests/test_cross_tatami_underlay.py` 12.

@@ -1620,6 +1620,46 @@ test("buildQualityDesign: underlay style controls underlay stitch volume", () =>
   assert.ok(dbl > edge, "double_lattice emits more underlay than edge_run: " + dbl + " > " + edge);
 });
 
+test("cross_tatami underlay: one sparse pass across the fill, 1 mm rows, 4 mm stitches, no edge run", () => {
+  // The recipe read off Kent's commissioned files (docs/underlay-audit-2026-10-05.md),
+  // the Python engine's `cross_tatami` in the browser. A choice, not a default:
+  // no preset in src/fabrics.js names it.
+  assert.ok(FABRICS.FABRICS.every((f) => f.fillUnderlay !== "cross_tatami" && f.satinUnderlay !== "cross_tatami"));
+  const box = { outer: boxPx(0, 0, 400, 300), holes: [], angleOverride: 0 };
+  const build = (fillUnderlay) => drawn(box, 400, { fillColumns: false, fabric: fab({ fillUnderlay, pullCompMm: 0 }) });
+  const d = build("cross_tatami");
+  // edge_lattice is an edge walk and then a pass: two underlay runs. This is the pass alone.
+  assert.deepStrictEqual(build("edge_lattice").runs.map((r) => r.kind), ["underlay", "underlay", "fill"]);
+  assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "fill"]);
+  const segs = (kind) => {
+    const out = [];
+    for (const run of d.runs) {
+      if (run.kind !== kind) continue;
+      for (let i = run.i0 + 1; i <= run.i1; i++) {
+        const a = d.stitches[i - 1], b = d.stitches[i];
+        if (b.type !== "stitch") continue;
+        const dx = (b.x - a.x) / 10, dy = (b.y - a.y) / 10;   // 0.1 mm units
+        out.push({ len: Math.hypot(dx, dy), dir: ((Math.round(Math.atan2(dy, dx) * 180 / Math.PI) % 180) + 180) % 180, x: a.x / 10, y: a.y / 10 });
+      }
+    }
+    return out;
+  };
+  const dominant = (list) => {
+    const n = {};
+    for (const s of list) if (s.len > 1.5) n[s.dir] = (n[s.dir] || 0) + 1;
+    return +Object.keys(n).sort((p, q) => n[q] - n[p])[0];
+  };
+  const under = segs("underlay"), fillDir = dominant(segs("fill")), underDir = dominant(under);
+  assert.strictEqual(Math.abs(fillDir - underDir), 90, "fill rows at " + fillDir + ", pass rows at " + underDir);
+  const longest = Math.max(...under.map((s) => s.len));
+  assert.ok(longest <= 4.0 + 0.15 && longest > 3.0, "longest underlay stitch " + longest + " mm");
+  const across = underDir === 90 ? "x" : "y";
+  const rows = [...new Set(under.filter((s) => s.dir === underDir && s.len > 1.5).map((s) => Math.round(s[across] * 10) / 10))].sort((p, q) => p - q);
+  assert.ok(rows.length > 20, "rows: " + rows.length);
+  const gaps = rows.slice(1).map((r, i) => r - rows[i]);
+  assert.ok(gaps.every((g) => Math.abs(g - 1.0) < 0.15), "row gaps " + JSON.stringify(gaps.slice(0, 8)));
+});
+
 test("buildQualityDesign: fabric densityAdjust loosens fill (fewer stitches)", () => {
   // large square + pxPerMm 8 keeps row spacing above the 0.8px floor so the
   // density multiplier actually changes the row count.
