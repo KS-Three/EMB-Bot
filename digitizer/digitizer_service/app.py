@@ -172,7 +172,7 @@ _BORDER_VALUES = {"off", "auto", "bean"}
 # wire — so this validates it as a 400 instead of a shape quietly getting the
 # wrong underlay.
 _UNDERLAY_VALUES = {"none", "edge_run", "center_run", "edge_zigzag", "edge_lattice",
-                    "double_lattice", "zigzag"}
+                    "double_lattice", "zigzag", "cross_tatami"}
 # `boundary_override` (contract v1.4) point-count bounds — mirrored,
 # verbatim, in `digitizer_core.regions`'s own copy (the defense-in-depth
 # check for any caller that isn't this service). This layer also pre-checks
@@ -660,6 +660,11 @@ def _review_payload(result, plan=None) -> dict:
         "palette": result.palette,
         "design_size_mm": list(result.design_size_mm),
         "px_per_mm": result.px_per_mm,
+        # Where the sewn art sits in the (cropped) upload, as fractions
+        # [x0, y0, x1, y1] — lets the Studio's Original view register the
+        # picture on its stitches. Absent when the result is hand-built.
+        "art_box": (list(result.art_box_frac)
+                    if getattr(result, "art_box_frac", None) else None),
         "segmenter": result.segmenter,
         "background": {
             "detected": result.background.detected,

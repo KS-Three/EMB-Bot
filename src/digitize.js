@@ -386,7 +386,7 @@
   // of runs (each becomes one pushRun). ctx: { fillAngle, pxPerFinalMm, maxStitch,
   // underlayStitchPx, underlayRowPx, runningOutline, tatamiFill, insetRing,
   // pcaAngleDeg }. Styles: none | edge_run | center_run | zigzag | edge_zigzag |
-  // edge_lattice | double_lattice.
+  // edge_lattice | double_lattice | cross_tatami.
   // With `fillColumns`: also { columns, openTol, clear(a, b), to() } -- `clear`
   // says whether a float from a to b would be left uncut, and `to()` gives
   // where the fill begins, or null when that is not known before the
@@ -507,6 +507,13 @@
     // begins at a point of its own, wherever the thread is (fill.js,
     // `plainStart`). null where the column walk sews it.
     const latticeStart = (angleOff) => (ctx.columns && ctx.plainStart ? ctx.plainStart(rings, Object.assign(latticeOpts(angleOff), entry(null, null))) : null);
+    // `cross_tatami`: the crossing pass alone, at the pitch and stitch read off
+    // Kent's commissioned files (docs/underlay-audit-2026-10-05.md; the Python
+    // engine's UNDERLAY_CROSS_ROW_MM / UNDERLAY_CROSS_STITCH_MM). Not sewn by us.
+    function crossPass(from) {
+      const row = Math.max(0.02, 1.0 * pxPerFinalMm), stitch = Math.max(0.02, 4.0 * pxPerFinalMm);
+      return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: row, angleDeg: fillAngle + 90, maxStitch: stitch, markConnectors: true }, entry(from, fillStart())))];
+    }
     const then = (runs, next) => runs.concat(next(endOfRuns(runs)));
     // Two lattice passes. With `columns`, the first is told where the second
     // begins, where that is known; and a second that the column walk sews is
@@ -544,6 +551,7 @@
       case "edge_zigzag": return then(edgeRun(), zigzag);
       case "edge_lattice": return then(edgeRun(), (from) => lattice(90, from, fillStart()));
       case "double_lattice": return doubleLattice();
+      case "cross_tatami": return crossPass(null);
       default: return then(edgeRun(), (from) => lattice(90, from, fillStart()));
     }
   }

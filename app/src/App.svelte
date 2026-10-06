@@ -667,11 +667,35 @@
   // pipeline to classify anything, so it becomes an `image` — the browser
   // engine's own flatten-and-sew lane, which needs no service. Same tile,
   // same upload, no question asked of the user either way.
+  //
+  // Artwork starts with the FILE, not with an empty element (Kent
+  // 2026-10-05: "when I select it, a file browser pops up"). The click opens
+  // the OS file browser through one hidden input (`artInput`, in the markup
+  // beside the panel); the element is only added once a file comes back, so
+  // a cancelled dialog leaves nothing behind. Every caller of "artwork" --
+  // the panel's Upload file button, the Artwork tile, the field's menu --
+  // arrives here, and all of them are click handlers, which is what lets
+  // `.click()` open a dialog at all.
+  let artInput;
+  // { id, file }: the picked File on its way to the new element's panel,
+  // which ingests it on mount and fires "fileconsumed" to clear it.
+  let pendingArtFile = null;
+
+  function onArtFile(e) {
+    const file = e.currentTarget.files && e.currentTarget.files[0];
+    e.currentTarget.value = ""; // re-picking the same file must re-fire change
+    if (!file) return;
+    project = addElement(project, resolveArtworkType(digitizerHealth), hoopWidthMm(project));
+    pendingArtFile = { id: project.selectedId, file };
+    persist();
+  }
+
   function onAddElement(type) {
-    const resolved = type === "artwork"
-      ? resolveArtworkType(digitizerHealth)
-      : type;
-    project = addElement(project, resolved, hoopWidthMm(project));
+    if (type === "artwork") {
+      if (artInput) artInput.click();
+      return;
+    }
+    project = addElement(project, type, hoopWidthMm(project));
     // addElement selects the new element, and its editor is always on
     // screen now — the configurator panel shows the Design section at all
     // times — so the field's right-click menu can no longer create an
@@ -1237,6 +1261,16 @@
     <!-- inert while the Download sheet covers it: the sheet is modal, so
          Tab must not walk into the panel hidden underneath. -->
     <div class="panel-main" inert={sheetOpen}>
+    <input
+      bind:this={artInput}
+      class="art-file"
+      data-testid="art-file"
+      aria-label="Upload file"
+      type="file"
+      accept="image/png,image/jpeg,image/webp,image/*"
+      hidden
+      on:change={onArtFile}
+    />
     <Configurator
       {subtitle}
       {sewFacts}
@@ -1266,6 +1300,8 @@
           on:select={(e) => onSelect(e.detail)}
           on:toggleselect={(e) => onToggleSelect(e.detail)}
           on:addelement={(e) => onAddElement(e.detail)}
+          pendingFile={pendingArtFile}
+          on:fileconsumed={() => (pendingArtFile = null)}
           on:converttotext={(e) => onConvertClusterToText(e.detail)}
           on:removeelement={(e) => onRemoveElement(e.detail)}
           on:image={(e) => onImage(project.selectedId, e.detail)}

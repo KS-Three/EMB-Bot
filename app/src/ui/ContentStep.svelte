@@ -46,6 +46,10 @@
   // A shape selected on the field ({ elementId, shapeId, n }, App's
   // runtime state) — forwarded to the matching element's ManualPanel only.
   export let fieldShapeSelect = null;
+  // { id, file } — a file picked before its element existed (App.onArtFile).
+  // Handed only to the panel of the element it was picked for.
+  export let pendingFile = null;
+  $: pendingFor = (id) => (pendingFile && pendingFile.id === id ? pendingFile.file : null);
   const d = createEventDispatcher();
 
   // ---- Task 5 (Slice 5): the real element manager --------------------------
@@ -130,7 +134,10 @@
       return element.dstBase64 ? `File · ${truncate(element.name || "design.dst", 18)}` : "File · empty";
     }
     if (element.type === "digitized") {
-      return element.result ? `Digitized · ${truncate(element.name || "artwork", 18)}` : "Digitized · empty";
+      if (element.result) return `Digitized · ${truncate(element.name || "artwork", 18)}`;
+      // A file can now sit loaded and unrun (nothing digitizes on its own),
+      // and "empty" would be wrong about a row with artwork in it.
+      return element.sourcePng ? `Not digitized · ${truncate(element.name || "artwork", 14)}` : "Digitized · empty";
     }
     if (element.type === "manual") {
       const n = (element.shapes || []).length;
@@ -307,6 +314,8 @@
         health={digitizerHealth}
         {hoverShapeId}
         {selectedShapeId}
+        pendingFile={pendingFor(el.id)}
+        on:fileconsumed={() => d("fileconsumed")}
         on:shapehover={(e) => d("shapehover", e.detail)}
         on:shapeselect={(e) => d("shapeselect", e.detail)}
         on:elupdate={(e) => d("elupdate", e.detail)}
@@ -319,6 +328,8 @@
         element={el}
         {workImage}
         {flat}
+        pendingFile={pendingFor(el.id)}
+        on:fileconsumed={() => d("fileconsumed")}
         on:elupdate={(e) => d("elupdate", e.detail)}
         on:image={(e) => d("image", e.detail)}
         on:flat={(e) => d("flat", e.detail)}

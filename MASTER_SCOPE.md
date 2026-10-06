@@ -16,7 +16,7 @@ at the bottom for the authority model behind the confidence ratings.
 (**42.5**, not the older ~70) and the metric's own **75-84** pro-vs-pro ceiling.
 Its code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-10-03. **This file is current state only, under a
+**Last updated:** 2026-10-05. **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
 on 2026-09-14). Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
@@ -204,6 +204,8 @@ needle-breakage signal. ~~No off switch for photo classes~~ — stale when writt
 55. **A hand-drawn shape with an anchor a pixel from the last one sews a spike at that corner, under every preset — THE GESTURE THAT MADE THEM IS CURED 2026-10-03 (Kent's pick); the offset is not, so saved shapes keep theirs.** Found by the audit of defect 54's fix. A double-click is two clicks and a `dblclick`, and `ManualPanel.onCanvasClick` took the second as an anchor unless it landed within 0.5 canvas px of the first (`DUP_POINT_EPS_PX`): a slip of a pixel left an anchor a pixel from the last. The short edge to it doubles back, and the BROWSER builder's `offsetRing` gives its end the whole mitre clamp, three times the pull compensation: defect 54's wedge, from a NEAR repeat, which 54's cure (1e-9 px, rounding) does not reach and should not. A 40 mm box whose second click was 1 px off: fill **1.73 mm past the drawn ring on terry, where a clean corner has 0.85**; cap 1.13 against 0.57; pique 0.73 against 0.42. Of 80 slips of 0.6 to 3 px, 20 were refused as crossing (the double-click finished nothing) and 60 kept; on terry 30 of the 60 sew over 0.15 mm further out than a clean corner, at worst 1.81 mm. **Cured at the gesture:** the second click of a double-click (`detail` 2) is no click of its own, however far the pointer slipped. In a real browser three slips of four went wrong before and none does now. **Still open:** a shape saved before the cure keeps its anchor and its spike, and two anchors dragged to one hoop corner make another (the audit's measure, not re-run here). Curing those means the offset (a bevel past the clamp), which moves every sharp corner under a preset: not built, and Kent's call. *(measured 2026-10-03 — `tools/closed-ring-census.mjs` table 4; `app/src/ui/ManualPanel.spec.js`, `app/e2e/manual-double-click.spec.js`; scope-history 10-03)*
 
 57. **The BROWSER's medial satin lays a stitch as long as the shape, and sews strokes twice — MEASURED 2026-10-03 on the Studio's own shapes, NOT fixed (which cure first is "Waiting on Kent" 26).** Found by the sweep that found defect 56, and standing after it. **A star:** every satin star the shape tool makes has a stitch over 3 mm; the longest is a median 21 mm, eight in ten over 12.1 mm (one DST record), up to 98.5 mm, laid from one arm to another across the centre. The branch guard is what sends it there: an even-pointed star splits tip to tip into equal halves whose rung midpoints sit on the axis, so twelve arms pass as ONE column (15,312 of the 145,600 designs swept are satin). **A bar:** 185 of 276 sharp-cornered satin bars on left chest carry a stitch at least nine tenths the bar's length: the spine runs on down the end's edge into a corner and the last crosses turn with it. **Twice:** the edges lay a median 72 pixels too many for every 100 the skeleton has, and the ring scan finds "rings" in shapes with no hole (126 of 1,684 star rings); three stars and 24 round-cornered bars still sew 2 to 3.7 times their neighbours in size, and such a ring is all a 2 mm round shape sews (four stitches, 28% covered, where the 2 mm circle sews 13). Also: a satin star stops a median 1.2 mm short of its tips (up to 10.8 mm; the 20 mm star's "17.1 mm" is this); the emitter keeps 24 edges where 870 of the 1,684 rings have more; and a 5-point star's tier turns on the last bit of a float (the guard's ratio is exactly 1.5 against "over 1.5"). **Reach:** every lane that hands a shape to `medialSatin`: basic shapes (a thin bar, a small or needle star), a drawn shape set to satin, the image lane's thin shapes. The tool's defaults (50 mm) are fills and are not in it. **Why it is not one fix:** three causes and three cures, and a fourth cure that would cover two of them (how long a cross may be) is a number no geometry settles. Not sewn. Pictures: [`docs/renders/star-walk-2026-10-03/`](docs/renders/star-walk-2026-10-03/). *(measured 2026-10-03 — `tools/satin-walk-census.mjs`; scope-history 10-03)*
+
+58. **Black-and-white logos sew in four to six cones — the palette is handed anti-alias grey for every small shape. OPEN LEAD, nothing built.** At ~5 source px/mm a thin stroke has almost no pixel of its own ink, so `robust_region_colour` cannot help; `logo_mfab_lc` sews 2,718 grey stitches and 30 white. A probe cures `logo_golke_roofing` (5 → 2) and harms Bridge Bar, whose thin bands are defect 27's halo; the pair is untested. Whether to build is Kent's. *(measured 2026-10-05 — `tools/stroke_colour_probe.py`; DOCTRINE 2026-10-05)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -515,6 +517,10 @@ about the facts.
    A limit on how long a cross may be would cover the star and the bar at
    once and is NOT offered: it is a number, and gate 1's.
    *(measured 2026-10-03 — defect 57; [`docs/renders/star-walk-2026-10-03/`](docs/renders/star-walk-2026-10-03/README.md))*
+27. **Underlay under fills — NEW 2026-10-05.** `blend_fallback_underlay`
+   (OFF) and `cross_tatami` (a picker choice, your digitizer's crossing
+   pass): the flip and the knit presets are yours. **Not sewn.**
+   *(measured 2026-10-05 — [`docs/underlay-audit-2026-10-05.md`](docs/underlay-audit-2026-10-05.md))*
 
 ## Cross-cutting issues
 
@@ -913,7 +919,7 @@ PDF sheet (`src/render.js`) and the SVG export draw the same width since
 thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.spec.js`)*
 
 **Thread lighting is unverified against real thread** — eye-tuned, and the one physical out (2026-09-01) cannot settle it: its colours were random operator threading, so DOCTRINE bars grading colour from it at all. Treat the look as a preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
-**Uploading artwork is the whole interaction** — the run starts on upload and the panel states what the art was read as, with the override a one-click correction to that sentence; `detail_layer` sits on that row only where the art is tonal. Engine routing unchanged (ROADMAP gate 2). *(confirmed 2026-08-30 — e2e `digitize-auto-start.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
+**Upload file, then Auto Digitize Image** — the file browser opens first, nothing runs until the button, and any later change turns it transparent until pressed again; the panel states what the art was read as; `detail_layer` sits on that row only where the art is tonal. Engine routing unchanged (ROADMAP gate 2). *(confirmed 2026-10-05 — e2e `digitize-auto-start.spec.js`, browser; [area doc](docs/scope/3-studio-app-wizard.md))*
 
 **The hoop you picked is drawn, and the export gate reads the thread's own extent** (`hoopTransform`, `DownloadStep`: confirm, not block; PNG and PDF ungated). **Open:** four of ten garment presets have placement boxes larger than the 200 mm biggest hoop, so the gate fires on shipped presets — whether auto-fit should cap is Kent's. *(measured 2026-09-04/07 — `preview.spec.js`, `DownloadStep.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
 
@@ -1026,7 +1032,7 @@ slightly off the artwork — a bug that reads as an inaccurate *tracer*.
 and indigo respectively. Ember's gesture and colour vocabulary, matched
 deliberately. The default bow takes its side from the turn the path is making,
 so a run of curved nodes arcs instead of scalloping. Backspace mid-draft takes
-back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)* **The border is on the canvas too:** right-click a recognised shape for **Add border** / **Remove border**, and the restitch starts at once. *(confirmed 2026-09-09/2026-09-17 — `borderMenu.spec.js`, `e2e/field-border-menu.spec.js`; detail in the area doc)*
+back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)* **The border is on the canvas too:** right-click a recognised shape for **Add border** / **Remove border**; it sews on the next run. *(confirmed 2026-09-09/2026-10-05 — `borderMenu.spec.js`, `e2e/field-border-menu.spec.js`; detail in the area doc)*
 
 **Click a shape, edit it there — both lanes (2026-09-29, Kent's ask).** A click on an auto-digitized shape opens `ShapePopover` with its Layers-row controls; on a hand-drawn shape, Fill/Satin, colour, angle and Delete; on a preset, its colour. A hand-drawn shape's anchors and curve handles edit on the field too; the side canvas only draws. *(confirmed 2026-09-29 — `e2e/field-shape-popover.spec.js`, `e2e/field-node-edit.spec.js`; detail in the area doc)*
 

@@ -6,7 +6,7 @@ digitized here and one built there would need different tuning on the same
 garment. When a sew-out moves a number, move it in both places.
 
 Underlay ids: none | edge_run | center_run | edge_zigzag | edge_lattice |
-double_lattice | zigzag
+double_lattice | zigzag | cross_tatami
 """
 from __future__ import annotations
 

@@ -29,7 +29,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { statSync } from "node:fs";
-import { startStudio, typeText, pickGarment, pickTemplate, openDownload, closeDownload } from "./helpers.js";
+import { startStudio, typeText, pickGarment, pickTemplate, openDownload, closeDownload, uploadArtwork } from "./helpers.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Same fixture digitize-stale-edits.spec.js uses (see that file's own
@@ -173,9 +173,8 @@ test("configurator: image content path -> sheet reflects it -> download", async 
   // health probe is blocked above so that routing is deterministic — without
   // it this spec's result would depend on whether a sibling spec's service
   // happened to be running, since Playwright runs the files in parallel.
-  await page.getByRole("button", { name: "Artwork", exact: true }).click();
 
-  await page.locator(".uploadbox input[type=file]").setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG, { run: false });
   // Real processed state, not just "the input accepted a file": the panel's
   // flatten pipeline ran and produced a palette preview, and that flowed all
   // the way up into stitchable content (same hasStitches gates the original
@@ -457,8 +456,7 @@ test("artwork uploaded with the digitizer offline survives a page refresh", asyn
   await startStudio(page);
 
   await pickGarment(page, "Tote");
-  await page.getByRole("button", { name: "Artwork" }).click();
-  await page.locator("input[type=file]").first().setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG, { run: false });
 
   const caption = page.locator("span.stats");
   await expect(caption).toBeVisible({ timeout: 60_000 });
@@ -515,8 +513,7 @@ test("the review recap names every element, not just the selected one", async ({
 
   await typeText(page, "FRITSCH'S");
 
-  await page.getByRole("button", { name: "Artwork" }).click();
-  await page.locator("input[type=file]").first().setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG, { run: false });
   await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
 
   await openDownload(page);
@@ -612,7 +609,7 @@ test("every control in the configurator has an accessible name", async ({ page }
   await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
   expect(await unnamedControls(page), "configurator").toEqual([]);
 
-  await page.getByRole("button", { name: "Artwork", exact: true }).click();
+  await uploadArtwork(page, ART_PNG, { run: false });
   expect(await unnamedControls(page), "configurator, artwork").toEqual([]);
 
   await openDownload(page);
@@ -724,8 +721,7 @@ test("Original view swaps the thread for the uploaded artwork, and any edit swap
   await typeText(page, "ABC");
   await expect(orig).toBeDisabled();
 
-  await page.getByRole("button", { name: "Artwork" }).click();
-  await page.locator("input[type=file]").first().setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG, { run: false });
   await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
   await expect(orig).toBeEnabled();
 

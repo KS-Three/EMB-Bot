@@ -745,6 +745,18 @@ UNDERLAY_ZIGZAG_MM = 2.0     # row spacing, zigzag underlay (fill's lattice
                               # SATIN_ZIGZAG_PITCH_MM below)
 UNDERLAY_LATTICE_MM = 2.5    # row spacing, lattice underlay
 
+# The `cross_tatami` underlay style (2026-10-05): one sparse tatami pass at
+# the fill angle + 90, no edge run. Both numbers are read off Kent's
+# commissioned files, not derived and NOT SEWN BY US: 34 large fills, row
+# pitch p10/p50/p90 0.94/0.98/0.99 mm, stitch 3.51/3.99/4.02 mm, angle to the
+# top fill 88/89/90 degrees, 16% of the top fill's thread
+# (`docs/underlay-audit-2026-10-05.md`). Gate 1's evidence class is the one
+# `FILL_ROW_MM` was ruled on: a professional's files as sewn on garments.
+# No fabric preset names the style, so these reach a stitch only when a
+# design or a shape asks for it.
+UNDERLAY_CROSS_ROW_MM = 1.0
+UNDERLAY_CROSS_STITCH_MM = 4.0
+
 # Satin's own zigzag-underlay pitch (corpus law 23, docs/corpus-laws-round3-
 # 2026-08-01.md). Deliberately a separate constant from UNDERLAY_ZIGZAG_MM:
 # that one is shared with fill's lattice underlay (stage6_fill.py), and the
