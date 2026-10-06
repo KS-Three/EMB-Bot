@@ -1062,8 +1062,13 @@ export function reviewFromJob(review, blocks = null) {
   const brandId = (palette.length && palette[0].brand_id) || null;
   const byNumber = new Map(palette.map((p) => [p.number, p.rgb]));
   const cones = Array.isArray(blocks) ? blocks : [];
+  const ab = review.art_box;
   return {
     brandId,
+    // Where the sewn art sits in the cropped upload, fractions [x0,y0,x1,y1]
+    // — what the Original view needs to lay the picture over its stitches.
+    // null on a service or saved review that predates it.
+    artBox: Array.isArray(ab) && ab.length === 4 && ab.every((v) => Number.isFinite(v)) ? ab : null,
     shapes: review.shapes.map((s) => ({
       id: s.shape_id,
       threadIndex: s.thread_index,

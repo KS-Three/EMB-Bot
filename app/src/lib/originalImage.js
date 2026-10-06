@@ -36,6 +36,21 @@ export function placeByContent(imgW, imgH, content, rect) {
   return { x: cx - content.x * s, y: cy - content.y * s, w: imgW * s, h: imgH * s };
 }
 
+// The digitized lane's content box, in the 1,200-px preview's own px. The
+// service reports where the sewn art sits as fractions of the image it was
+// handed — the customer's crop of the upload — so the crop (fractions of the
+// whole frame, or absent) maps it back to the whole frame. Null when the
+// review carries no box (a saved element from before the service sent one).
+export function digitizedContentBox(imgW, imgH, artBox, crop) {
+  if (!(imgW > 0) || !(imgH > 0) || !Array.isArray(artBox) || artBox.length !== 4) return null;
+  const [a0, b0, a1, b1] = artBox;
+  const c = crop && crop.x1 > crop.x0 && crop.y1 > crop.y0 ? crop : { x0: 0, y0: 0, x1: 1, y1: 1 };
+  const cw = c.x1 - c.x0, ch = c.y1 - c.y0;
+  const w = (a1 - a0) * cw * imgW, h = (b1 - b0) * ch * imgH;
+  if (!(w > 0) || !(h > 0)) return null;
+  return { x: (c.x0 + a0 * cw) * imgW, y: (c.y0 + b0 * ch) * imgH, w, h };
+}
+
 // The browser lane's content box: the bbox of every flattened pixel that is
 // NOT the engine's transparent index (quantize.js TRANSPARENT_INDEX, 255 —
 // knocked-out background and alpha-cut pixels). These are the pixels
