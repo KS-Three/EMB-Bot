@@ -13,6 +13,26 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-06 — the stroke-colour rule and `dissolve_phantom_blends` together, nine gradient logos
+
+`tools/stroke_colour_probe.py --dissolve` (span ≥ 60, ≤ 4 source px, side absolute; both arms with the dissolve on), read with the 2026-10-05 rows below for the other two arms. Cones, stitches:
+
+| fixture | base | rule alone | dissolve alone | both | rewritten under dissolve, regions / mm² |
+|---|---|---|---|---|---|
+| golke | 5, 4,706 | 2, 4,674 | 4, 4,247 | 3, 4,247 | 3 / 20.8 |
+| toat_beanie | 6, 6,600 | 6, 6,567 | 4, 5,930 | 5, 5,970 | 18 / 58.2 |
+| mfab_lc | 6, 10,944 | 6, 10,916 | 6, 11,044 | 5, 11,127 | 28 / 156.7 |
+| bridge | 6, 17,744 | 6, 17,692 | 6, 19,666 | 6, 17,075 | 23 / 287.5 |
+| gaulke | 2, 4,205 | 2, 4,205 | 2, 4,555 | 2, 4,555 | 3 / 23.8 |
+| drone | 6, 18,975 | 6, 18,952 | 6, 18,975 | 6, 18,952 | 9 / 21.6 |
+| golden_tee | 6, 8,476 | 6, 8,476 | 6, 8,467 | 6, 8,467 | 0 / 0 |
+| fremont | 3, 20,023 | 3, 20,023 | 3, 20,023 | 3, 20,023 | 0 / 0 |
+| fremont_patch | 3, 16,692 | 3, 16,692 | 3, 16,597 | 3, 16,597 | 3 / 10.4 |
+
+Per colour, dissolve alone → both: bridge teal (`#339999` + `#4b787d`) 607 → 2,304, grey (`#7f7f7f` + `#d6d6d8`) 4,488 → 1,781, black 6,695 → 5,104; mfab_lc white 134 → 2,108, grey 2,922 → 951; golke light grey 257 → 316 (`#d6d6d8`), no white; toat_beanie gains `#000000` 371 and `#ffffff` 83; gaulke's 480 grey stitches become `#f5f5fa`. Renders read: bridge, toat_beanie, mfab_lc, golke. Kent's Windows box, main checkout at `cf9f89f1` plus another session's uncommitted edits.
+
+---
+
 **Last updated:** 2026-10-05 — auto class vs forced flat on fifteen real logos, and where the grey cones on black-and-white art come from
 
 **Class at the Studio's config (6 colours; widths per `tools/thin_strokes.REAL_ART`, `testdata/art` at 80 mm):** `gradient` 11 — fremont, fremont_patch, bridge, golden_tee, gaulke, golke, drone, screenshot, mfab_lc, toat_beanie, toat_machine; `flat` 2 — becker, enthusiast; `photo_scene` 2 — tires, mfab_hat. The two Instagram files did not run (job stopped at its time limit).
@@ -19321,6 +19341,94 @@ Not sewn. Built OFF, no Studio caller passes it. Flip is still Kent's:
 defect 52, "Waiting on Kent" 22.
 *(measured and built 2026-10-05 — `src/fill.js` `plainStart`, `src/digitize.js`; `test/fill.test.js`; `tools/sub-unit-stitch-census.mjs --corpus studio` on the engine before and after; `docs/renders/fill-columns-2026-10-03/README.md`, "A code review after the re-measure")*
 
+## 2026-10-04 — A DST machine cuts where the builder only floated: three jump records are a cut, and `cutFloats` (measured, then built OFF)
+
+A DST has no cut. `dst.js` writes a `trim` as three or more jump records and
+any needle-up move over 12.1 mm an axis as several, so a float over 24.2 mm
+is three jump records and a machine set to cut at three cuts there. The
+builder wrote no `trim`: `ties` lays no lock, and the trim count and the run
+time on the sheet leave it out. Handed over from #623's census.
+
+Counted with a second reader (`tools/file-cut-census.mjs`: each design
+written by each of the three writers, read back from the format, every
+record lined up with the stream's). The handover's four rows reproduce on
+the engine at `f887e27d`: 8,175 trims and 21,340 cuts on the sweep, 2,177 and
+5,060 with `fillColumns`; 7,028 and 120,912 on the Studio's shapes, 2,686 and
+13,969. pystitch makes the same TRIMs of the same files on all 498 designs
+sampled.
+
+On `main` at `227cdd9e`, cuts nobody asked for:
+
+| | as shipped | with `fillColumns` |
+|---|---|---|
+| the sweep, 8,255 | 12,346 in 4,460 designs | 2,064 in 1,685 |
+| the Studio's shapes, 8,270 | 109,561 in 4,805 | 6,956 in 3,544 |
+| the image lane, 252 | 70,435 in 183 | 451 in 107 |
+| lettering, 765 | 0 | |
+
+Nearly all as shipped are the plain walk's float from one fill row to the
+next across a hole (defect 52): 93,226 of the Studio's. What `fillColumns`
+leaves is the move from one underlay pass to the next or to the fill, and a
+satin column that floats to another arm. None are between shapes, where the
+builder already cuts over `trimAtMm`. With `ties`, 219,122 thread ends at
+such cuts in the Studio's shapes and 303 locked. At the sheet's 11 s a trim,
+2.5 minutes a Studio design and 52 an image design that it does not show.
+
+Python never floats that far: every needle-up move over the fabric's 3 to 4
+mm is a TRIM in its stream, with a lock either side. The manuals read cut at
+three jumps as shipped (Brother, Happy, Ricoma, Dahao, SWF; ZSK and Tajima
+show 3), and Barudan at two. Nothing was sewn.
+
+Four choices were priced and put to Kent: leave it; the builder cuts where
+the writer lays three jumps, behind a new flag; the writer keeps a float
+under three records where it can, which reaches 862 of the Studio's 109,561;
+count them on the sheet. He took the second.
+
+It is built as `cutFloats` on `buildQualityDesign`, OFF by default: one pass
+over the finished stream, before the locks (`cutLongFloats`). A float is the
+jump records between two stitches of one thread. Where the writer would lay
+three or more in a row for it, counting the move to the stitch after, the
+stream gets a `trim`: the float's first jump inside a run, a `trim` on the
+spot before a run's opening jump. The count is asked of the writer
+(`dst.jumpRecords`). A float with no thread on it is left.
+
+Flag not passed, the engine merged with `main` at `4fb4fcd4` and that `main`
+give one stream and one set of spans on all 16,777 designs of the three sets,
+with `fillColumns` absent and on, and on the 765 lettering designs. Flag on:
+cuts nobody asked for go 12,346, 109,561 and 70,435 to 0, and 2,064, 6,956
+and 451 to 0 with `fillColumns`. 4,460, 4,805 and 183 designs change (1,685,
+3,544 and 107), each by cuts put in and nothing else, and none any other
+way. No stitch is added or lost, and the DST's cuts are the ones its reader
+found before. The streams are those of the scratch engine the choice was
+priced on, on every fourth design. Seventeen tests, each seen to fail on the
+engine before the rule or on a mutant; 22 mutants, 22 die. Engine 818
+passed.
+
+The independent re-measure (a separate agent, its own generators and its own
+readers of the three formats; 3,940 designs, 15,736 pairs of files, 220,000
+streams written by hand) held ten of twelve claims: flag absent is the engine
+before the change, no float of three jump records is left unmarked in any
+file, and the stream differs by cuts put in and nothing else (792,391 cuts).
+Two of this lane's claims did not stand. "The frame goes the same way" was
+wrong as worded: a float whose first jump is one or two records is laid as
+three once it is the `trim`, so the frame stops at other points along the
+same line (2,385 cuts; no stitch moves); the note says so now and a test
+pins it. And the flag is not free: 3 to 50 ms a build, 20% to 55% of a
+plain fill's, because the pass copies the stream. Twelve of its 56 mutants
+passed the seventeen tests; each has a test now. Twenty-five tests, 34
+mutants, 34 die. It also found that a lettering design can have such a
+float if `trimAtMm` is set past 24.2 mm, which the lettering builder leaves;
+and that the flag shows threads of one penetration, cut on both sides, which
+a DST machine makes today.
+
+Auto-merge was armed on the PR by another session on 2026-10-06 before that
+report existed, and was taken off again the same hour.
+
+Not sewn. No Studio caller passes it. Flip is Kent's: "Waiting on Kent" 28,
+and it belongs after `fillColumns`: before, it writes hundreds of cuts a
+design into the stream, and with `ties` 12% more stitches in the image lane.
+*(measured and built 2026-10-04 — `docs/dst-float-cuts-2026-10-04.md`, `tools/file-cut-census.mjs`, `test/digitize.test.js` "cutFloats")*
+
 ## 2026-10-05 — A gradient-class design sewed every fill with no underlay: `blend_fallback_underlay`, built OFF (Kent's pick off the underlay research)
 
 **What Kent saw.** Stitching going "straight into the fill layers" on several
@@ -19393,3 +19501,22 @@ top thread against his 3.99 and 16% — lettering cuts the rows short, and the
 **The browser pass is not inset**, as the browser's lattice is not; Python's
 is, by 1.0 mm. Engine 816, Studio 1590,
 `tests/test_cross_tatami_underlay.py` 12.
+
+## 2026-10-06 — The underlay audit's classifier is in the repo: `tools/pro_fill_underlay.py`
+
+Kent's pick after `cross_tatami`: commit the instrument. Corpus law 26's
+"lived in scratchpad" and was gone when the commissioned files disagreed with
+it, so nobody could say what it had measured. This one reads what is sewn
+under each fill of a bare DST or PES — a crossing, diagonal or parallel
+sparse pass, a run only, or nothing — with the pass's pitch, stitch, angle
+and share of the top thread. Its docstring carries the method, the
+validation (154 ground-truth fills: 62 of 62 crossing passes, no false
+positive) and the limits.
+
+`tests/test_pro_fill_underlay.py`, 31: each engine style read for what it is
+on DST and PES; the professional's constants found and measured, 0.75 mm
+included; the five adversarial cases that must not read as underlay; two
+fills in one colour judged apart; and the five tracked Becker DSTs — 10
+fills, 10 crossing passes, pitch 0.94–0.99 mm, stitch 3.99 mm, 15.3–17.1% of
+the top thread. Setting the sparse bar back to the research note's 0.9 mm
+fails the 0.75 mm case, as it should. No engine change.
