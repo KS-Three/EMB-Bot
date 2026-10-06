@@ -614,7 +614,8 @@ def _band_clip(poly: Polygon, model: RampModel, t_lo: float, t_hi: float) -> lis
 def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
                start_near: tuple[float, float] | None = None,
                *, polygon: Polygon | None = None,
-               row_mm: float | None = None, stitch_mm: float | None = None
+               row_mm: float | None = None, stitch_mm: float | None = None,
+               underlay_style: str = "none"
                ) -> tuple[list[StitchRun], dict]:
     """Ramp region -> (stitches, report). Same `(runs, report)` contract as
     `stage6_fill.stitch_shape` and its other siblings, so stage 7 sequencing
@@ -647,6 +648,12 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     at 0.135 mm and every blend band at 0.150, an 11% lighter gradient on
     the one fabric class that needs the opposite. None keeps the machine
     defaults, so every existing caller and test is byte-identical.
+
+    `underlay_style` is the style stage 7 resolved for this shape, the one
+    it hands tatami and contour. It is sewn only under
+    `cfg.blend_fallback_underlay`, and only on the fallback path below — a
+    region that sews as ordinary full-density tatami. Ramp bands stay bare
+    (see the flag's comment in `config.py`).
 
     `start_near` is where the needle already is — the same contract every
     other tier takes from stage 7's picking loop. Until 2026-08-31 this tier
@@ -712,7 +719,9 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
         runs, report = stitch_shape(
             sew_poly, region.shape_id, angle_deg=source_pixels.design_row_angle_deg,
             row_mm=row, stitch_mm=stitch,
-            underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
+            underlay_style=(underlay_style if cfg.blend_fallback_underlay
+                            else "none"),
+            trim_at_mm=machine.TRIM_AT_MM,
             start_near=start_near, under_cover=cfg.fill_travel_under_cover,
             cut_bridges=cfg.fill_bridge_cut,
         )

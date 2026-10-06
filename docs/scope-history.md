@@ -19066,3 +19066,36 @@ not about this.
 No stitch of any design moves: the flat the image lane traces is the same
 array, byte for byte.
 *(measured and fixed 2026-10-04 — `tools/flatten-census.mjs` (its "before" is commit `4e486f62`), `test/flatten.test.js`; the sweep's own scripts were the session's and are not in the repo)*
+
+## 2026-10-05 — A gradient-class design sewed every fill with no underlay: `blend_fallback_underlay`, built OFF (Kent's pick off the underlay research)
+
+**What Kent saw.** Stitching going "straight into the fill layers" on several
+images, with nothing beneath it. The research
+(`docs/underlay-research-2026-10-05.md`) found two causes. This entry is the
+first; the second — one perimeter walk and no interior pass under a knit
+fill, corpus law 26 — is his ruling and is not touched.
+
+**The cause.** Stage 7 routes every auto-tier fill of a design classed
+`gradient` through `stage6_blend.blend_fill`. That function sewed
+`underlay_style="none"` on both of its paths and was never handed the style
+stage 7 resolves for tatami and contour, so the fabric preset, the
+design-wide `underlay_style` and the Studio's per-shape control all did
+nothing there. Nearly every real region takes its fallback path — ordinary
+full-density tatami — and sewed bare.
+
+**The change.** `cfg.blend_fallback_underlay`, default False. Stage 7 now
+hands `blend_fill` the resolved style; under the flag the fallback path sews
+it. The ramp-band path stays bare: Wilcom and mySewnet both say no underlay
+under a variable-density blend (research §4). No constant is added or moved,
+so gate 1 does not apply; it is not a tier, so neither does gate 3.
+
+**Measured** (nine `REAL_ART` logos, 80 mm, `838c3451` plus the change): the
+three that do not class gradient are plan-identical OFF and ON. The six that
+do: bare fills 33 of 33 → 5 of 33, stitches 70,639 → 71,827 (+1.7%), trims
+423 → 421 (Fremont 37 → 43, drone 139 → 131). Per-case table and
+underlay-only renders: `docs/renders/blend-fallback-underlay-2026-10-05/`.
+`tests/test_blend_fallback_underlay.py`, 10.
+
+**What it does not do.** On every preset but cap, fleece and towel the style
+is `edge_run`, so ON a fill gains its perimeter walk and its interior is
+still empty. Not sewn.
