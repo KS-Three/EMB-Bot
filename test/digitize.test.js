@@ -3704,3 +3704,107 @@ test("cutLongFloats: a stream with nothing to cut is left the very array it was"
   assert.strictEqual(stitches.length, 4);
   assert.strictEqual(stitches[0], first);
 });
+
+// --- cutFloats: what the independent re-measure's mutants got past (2026-10-06) --
+//
+// Twelve edits to the rule passed every test above: the rule narrowed to some
+// builds and not others, a long float or a far stitch left out, a record with
+// a key too many, the lettering builder taught the flag. Each has a test here
+// that the edit fails. And the claim the re-measure broke is pinned as it
+// really is: in the DST the stitches are the same, but a float of one or two
+// jump records that becomes the `trim` is laid as three.
+const _cfParse = (text) => text.split(" ").map((w) => { const [x, y] = w.slice(1).split(",").map(Number); return _rec({ s: "stitch", j: "jump", t: "trim", c: "color", e: "end" }[w[0]], x, y); });
+const _cfBarMm = (wMm, hMm, extra) => DG.buildQualityDesign(
+  [{ rgb: [0, 0, 0], shapes: [{ outer: _cfPts([[0, 0], [wMm * 10, 0], [wMm * 10, hMm * 10], [0, hMm * 10]]), holes: [], tierOverride: "fill" }] }],
+  Object.assign({ garment: { id: "full_back", widthIn: 12, heightIn: 12 }, pxPerMm: 10, targetWidthMm: wMm, darkOnTop: false, underlay: true }, extra));
+// Built without the flag the design has such floats; with it, none, and one more cut for each.
+const _cfBothWays = (build, name) => {
+  const off = build({}), on = build({ cutFloats: true });
+  assert.ok(_cfLong(off).length > 0, `fixture: ${name} has such a float without the flag`);
+  assert.strictEqual(_cfLong(on).length, 0, `${name}: a float is left`);
+  assert.strictEqual(on._debug.nTrims, off._debug.nTrims + _cfLong(off).length, name);
+};
+// The DST's records, read from the file: where each lands and whether it is a jump.
+const _cfFileRecords = (d) => {
+  const bytes = _cfDst.encodeDST(d), out = [];
+  const bit = (b, m, v) => (b & m ? v : 0);
+  let x = 0, y = 0;
+  for (let i = 512; i + 2 < bytes.length; i += 3) {
+    const b0 = bytes[i], b1 = bytes[i + 1], b2 = bytes[i + 2];
+    if ((b2 & 0xf3) === 0xf3) break;
+    x += bit(b0, 0x01, 1) - bit(b0, 0x02, 1) + bit(b0, 0x04, 9) - bit(b0, 0x08, 9) + bit(b1, 0x01, 3) - bit(b1, 0x02, 3) + bit(b1, 0x04, 27) - bit(b1, 0x08, 27) + bit(b2, 0x04, 81) - bit(b2, 0x08, 81);
+    y += bit(b0, 0x80, 1) - bit(b0, 0x40, 1) + bit(b0, 0x20, 9) - bit(b0, 0x10, 9) + bit(b1, 0x80, 3) - bit(b1, 0x40, 3) + bit(b1, 0x20, 27) - bit(b1, 0x10, 27) + bit(b2, 0x20, 81) - bit(b2, 0x10, 81);
+    out.push({ x, y, jump: (b2 & 0xc3) === 0x83 });
+  }
+  return out;
+};
+
+test("cutFloats: it cuts whatever else is asked of the build", () => {
+  _cfBothWays((x) => _cfBarMm(60, 15, Object.assign({ fillColumns: true }, x)), "the column walk");
+  // a bar 120 x 40 mm with a hole 35 mm wide, rows along it, under a fabric preset
+  _cfBothWays((x) => DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: _cfPts([[0, 0], [1200, 0], [1200, 400], [0, 400]]), holes: [_cfPts([[400, 100], [750, 100], [750, 300], [400, 300]])], angleOverride: 0 }] }],
+    Object.assign({ garment: { id: "full_back", widthIn: 12, heightIn: 12 }, pxPerMm: 10, targetWidthMm: 120, darkOnTop: false, underlay: true, fabric: FABRICS.getFabric("pique_knit") }, x)), "a fabric preset");
+  _cfBothWays((x) => _cfBarMm(60, 15, Object.assign({ garment: { id: "hat_front", widthIn: 5, heightIn: 2.25 } }, x)), "a cap");
+  _cfBothWays((x) => _cfBarMm(60, 15, Object.assign({ outline: true }, x)), "a finishing outline");
+  assert.ok(_cfBarMm(100, 100).stitches.length > 10000, "fixture: a design of over 10,000 records");
+  _cfBothWays((x) => _cfBarMm(100, 100, x), "a design of over 10,000 records");
+});
+
+test("cutFloats: a float of ten jump records and more is cut like any other", () => {
+  const most = Math.max(..._cfFloats(_cfBarMm(150, 15).stitches).map((f) => f.records));
+  assert.ok(most >= 10, `fixture: a float of ten jump records, got ${most}`);
+  _cfBothWays((x) => _cfBarMm(150, 15, x), "a 150 mm bar");
+});
+
+test("cutFloats: the caller's options are left as they were, and work twice", () => {
+  const o = { garment: { id: "full_back", widthIn: 12, heightIn: 12 }, pxPerMm: 10, targetWidthMm: 60, darkOnTop: false, underlay: true, cutFloats: true };
+  const was = JSON.stringify(o);
+  const regions = () => [{ rgb: [0, 0, 0], shapes: [{ outer: _cfPts([[0, 0], [600, 0], [600, 150], [0, 150]]), holes: [], tierOverride: "fill" }] }];
+  const a = DG.buildQualityDesign(regions(), o), b = DG.buildQualityDesign(regions(), o);
+  assert.strictEqual(JSON.stringify(o), was);
+  assert.strictEqual(_fingerprint(b), _fingerprint(a));
+  assert.strictEqual(_cfLong(b).length, 0);
+});
+
+test("cutFloats: the lettering builder does not read it, even where it has such a float", () => {
+  // Lettering cuts every hop over `trimAtMm` itself, so it has no such float
+  // unless that is set past 24.2 mm. Given one, the flag still does nothing
+  // there: the lettering builder has no such rule.
+  const o = { garment: { id: "full_back", widthIn: 12, heightIn: 12 }, pxPerMm: 8, targetWidthMm: 250, trimAtMm: 1000 };
+  const off = DG.buildLetteringDesign(_tieFont(), "I I", o), on = DG.buildLetteringDesign(_tieFont(), "I I", Object.assign({}, o, { cutFloats: true }));
+  assert.ok(_cfLong(off).length > 0, "fixture: lettering with a float of three jump records");
+  assert.deepStrictEqual(on, off);
+});
+
+test("cutLongFloats: a float of five jumps is cut once, and the stitch after may be any distance off", () => {
+  let got = _cfHand("s0,0 j100,0 j200,0 j300,0 j400,0 s400,0");
+  assert.deepStrictEqual([got.made, got.text], [1, "s0,0 t100,0 j200,0 j300,0 j400,0 s400,0"]);
+  // one jump record, then 39 mm to the stitch: three jump records and the stitch
+  got = _cfHand("s0,0 j10,0 s400,0");
+  assert.deepStrictEqual([got.made, got.text], [1, "s0,0 t10,0 s400,0"]);
+});
+
+test("cutLongFloats: a new trim is a plain record, x y type and nothing more", () => {
+  const stitches = _cfParse("j0,0 s0,0 s10,0 j300,0 s300,0 s310,0 j600,0 s640,0");
+  DG.cutLongFloats(stitches, [{ i0: 0, i1: 2 }, { i0: 3, i1: 7 }]);
+  assert.deepStrictEqual(stitches[3], { x: 10, y: 0, type: "trim" }, "the one put in before a run's opening jump");
+  assert.deepStrictEqual(stitches[7], { x: 600, y: 0, type: "trim" }, "the jump inside a run, turned");
+  assert.ok(_cfBar({ cutFloats: true }).stitches.every((s) => Object.keys(s).join() === "x,y,type"));
+});
+
+test("cutFloats: in the DST every stitch is where it was, and a short float made the trim is laid as three records", () => {
+  // The star's column floats two jump records out and sews a jump record and
+  // a stitch back. As a `trim` the writer lays the float as three records, so
+  // the frame stops at thirds of the same line and not at its half. Every
+  // stitch record lands where it did; the file is three jump records longer.
+  const off = _cfFileRecords(_cfStar()), on = _cfFileRecords(_cfStar({ cutFloats: true }));
+  const sewn = (recs) => recs.filter((r) => !r.jump).map((r) => `${r.x},${r.y}`).join(" ");
+  assert.strictEqual(sewn(on), sewn(off));
+  assert.strictEqual(on.length - off.length, 3, "three floats of two records, each laid as three");
+  const stops = (recs) => new Set(recs.filter((r) => r.jump).map((r) => `${r.x},${r.y}`));
+  const onlyOn = [...stops(on)].filter((p) => !stops(off).has(p)), onlyOff = [...stops(off)].filter((p) => !stops(on).has(p));
+  assert.deepStrictEqual([onlyOn.length, onlyOff.length], [6, 3], "the frame stops at thirds where it stopped at the half");
+  // a float that was three records already is the same bytes as a trim: the prongs' file does not change
+  assert.deepStrictEqual(_cfFileRecords(_cfProngs(300, { cutFloats: true })), _cfFileRecords(_cfProngs(300)));
+});

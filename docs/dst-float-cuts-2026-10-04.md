@@ -293,10 +293,12 @@ it. Against the scratch engine the choices were priced on: the same stream
 and spans on every fourth design of the three sets (4,195 designs, in all
 four arms), and every count of the full run is that engine's.
 
-- **Tests first.** Fifteen in `test/digitize.test.js` and two for
+- **Tests first.** Twenty-two in `test/digitize.test.js` and three for
   `jumpRecords` in `test/encoder-split.test.js`, each seen to fail: on the
-  engine before the rule, or on a mutant.
-- **Twenty-two mutants, twenty-two die**: the flag read backwards, the rule
+  engine before the rule, or on a mutant. Eight of them came from the
+  re-measure below.
+- **Thirty-four mutants, thirty-four die.** This lane's twenty-two: the
+  flag read backwards, the rule
   without the flag, cuts not counted, a cut at two records and at four, the
   move to the stitch after left out or counted whole, a float cut that ends
   in a cut or ends the stream, a float cut with no thread on it, a run's
@@ -304,12 +306,50 @@ four arms), and every count of the full run is that engine's.
   cut before a run counted into the run or put where the jump lands, spans
   not moved or half moved, the cut inside a run put where the float ends or
   keeping its jump, only the first float cut, a float measured from its
-  second record, and `jumpRecords` wrong two ways.
-- **Engine suite** 818 passed. **Doc guards** 76 passed.
+  second record, and `jumpRecords` wrong two ways. And the re-measure's
+  twelve, below.
+- **Engine suite** 841 passed, merged with `main` at `30a21236`. **Doc
+  guards** 76 passed.
 
-**The independent re-measure** (a separate agent, with its own generator and
-its own readers of the files) is running as this is written. The PR is not
-armed until it reports, and its result goes here.
+**The independent re-measure** (a separate agent; its own three generators;
+its own readers of DST, EXP and PES written from the formats, which agree
+with pystitch on 84 files). 3,940 designs built eight ways, 15,736 pairs of
+files with the flag off and on, 220,000 streams written by hand, 600
+lettering designs.
+
+- **Ten of twelve claims hold.** Flag absent, or any falsy spelling: the
+  whole result is the engine's before the change (63,040 comparisons). No
+  run of three jump records is left in a file that is not at a `trim`,
+  before the first stitch or straight after a colour change (834,711 runs).
+  The stream differs by cuts put in and nothing else, one for each such
+  float (792,391 cuts). Which floats, where the cut goes, the spans, the
+  counts, the locks under `ties`, and `jumpRecords` against the writer on
+  11.7 million moves: all as claimed.
+- **One claim was wrong as worded**, and is put right above. This note said
+  the frame "goes the same way". Where a float whose first jump is one or
+  two records becomes the `trim`, the writer lays three, so the frame stops
+  at other points along the same line: 2,385 of the 792,391 cuts. No stop
+  is a unit off the line and every stitch record is the same. A test pins
+  it now.
+- **One claim does not hold: the cost.** The brief said the flag adds no
+  time worth the name. It adds 3 to 50 ms a build, which is 20% to 55% of a
+  plain fill's build, because the pass copies the stream. Timed on a loaded
+  machine. Nothing when the flag is absent.
+- **Twelve of its 56 mutants passed the seventeen tests** this lane had: the
+  rule narrowed to builds without a fabric, a cap, an outline or the column
+  walk, or under 10,000 records; a float of ten records or a far stitch left
+  out; a later jump of a float asked again; a trim with a key too many; the
+  options changed by the build; lettering taught the flag; `jumpRecords`
+  miscounting past 60 mm. Each has a test now, from its fixtures.
+- **Lettering can have such a float**, but only with `trimAtMm` set past
+  24.2 mm (56 of its 600 designs, none as shipped). The lettering builder
+  leaves it: it has no such rule.
+- **Seen by it, in no claim.** After a cut inside a plain-walk run the next
+  stitch is a median 3.6 mm on, so the lock `ties` lays sits that far in
+  from the row's end. And the flag shows threads of ONE penetration, cut on
+  both sides: 3% of the threads in its main set. A DST machine makes those
+  today, and no lock can hold one.
+- **Not checked by it**: a machine, the Studio's own designs, a browser.
 
 *(measured 2026-10-04, `node tools/file-cut-census.mjs --set tools/file-cut-sweep-set.mjs
 --set shapes --set image --on cutFloats --against <main's src>`)*

@@ -19178,8 +19178,25 @@ priced on, on every fourth design. Seventeen tests, each seen to fail on the
 engine before the rule or on a mutant; 22 mutants, 22 die. Engine 818
 passed.
 
-An independent re-measure (a separate agent, its own generator and readers)
-is running as this is written; the PR is not armed until it reports.
+The independent re-measure (a separate agent, its own generators and its own
+readers of the three formats; 3,940 designs, 15,736 pairs of files, 220,000
+streams written by hand) held ten of twelve claims: flag absent is the engine
+before the change, no float of three jump records is left unmarked in any
+file, and the stream differs by cuts put in and nothing else (792,391 cuts).
+Two of this lane's claims did not stand. "The frame goes the same way" was
+wrong as worded: a float whose first jump is one or two records is laid as
+three once it is the `trim`, so the frame stops at other points along the
+same line (2,385 cuts; no stitch moves); the note says so now and a test
+pins it. And the flag is not free: 3 to 50 ms a build, 20% to 55% of a
+plain fill's, because the pass copies the stream. Twelve of its 56 mutants
+passed the seventeen tests; each has a test now. Twenty-five tests, 34
+mutants, 34 die. It also found that a lettering design can have such a
+float if `trimAtMm` is set past 24.2 mm, which the lettering builder leaves;
+and that the flag shows threads of one penetration, cut on both sides, which
+a DST machine makes today.
+
+Auto-merge was armed on the PR by another session on 2026-10-06 before that
+report existed, and was taken off again the same hour.
 
 Not sewn. No Studio caller passes it. Flip is Kent's: "Waiting on Kent" 28,
 and it belongs after `fillColumns`: before, it writes hundreds of cuts a

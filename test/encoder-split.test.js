@@ -142,3 +142,15 @@ test("jumpRecords: it is the number of jump records encodeDST writes for that ju
     assert.strictEqual(jumps, jumpRecords(dx, dy), `${dx},${dy}`);
   }
 });
+
+test("jumpRecords: the writer's count for long moves too", () => {
+  // Past five records as well: the first two tests stop at 50 mm, and an edit
+  // that miscounted only beyond that passed them (the re-measure's D05).
+  for (const [dx, dy] of [[605, 0], [606, 0], [726, 0], [727, 0], [0, -1210], [4000, -3999], [-2500, 1300]]) {
+    const bytes = encodeDST({ stitches: [{ x: 0, y: 0, type: "stitch" }, { x: dx, y: dy, type: "jump" }, { x: dx, y: dy, type: "stitch" }, { x: 0, y: 0, type: "end" }], colors: [] });
+    let jumps = 0;
+    for (let i = 512; i + 2 < bytes.length; i += 3) if ((bytes[i + 2] & 0xc3) === 0x83) jumps++;
+    assert.strictEqual(jumpRecords(dx, dy), jumps, `${dx},${dy}`);
+    assert.strictEqual(jumps, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 121), `${dx},${dy}: one record for each 12.1 mm of the longer axis`);
+  }
+});
