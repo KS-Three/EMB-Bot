@@ -19181,7 +19181,7 @@ passed.
 An independent re-measure (a separate agent, its own generator and readers)
 is running as this is written; the PR is not armed until it reports.
 
-Not sewn. No Studio caller passes it. Flip is Kent's: "Waiting on Kent" 27,
+Not sewn. No Studio caller passes it. Flip is Kent's: "Waiting on Kent" 28,
 and it belongs after `fillColumns`: before, it writes hundreds of cuts a
 design into the stream, and with `ties` 12% more stitches in the image lane.
 *(measured and built 2026-10-04 — `docs/dst-float-cuts-2026-10-04.md`, `tools/file-cut-census.mjs`, `test/digitize.test.js` "cutFloats")*

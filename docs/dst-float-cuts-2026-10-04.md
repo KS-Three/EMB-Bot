@@ -219,10 +219,11 @@ Studio's shapes and then the image lane.
 - **What 2 does to the files**, on 414 Studio designs: every stitch and
   colour record is the same and in the same order in all that get a cut (253
   as shipped, 178 with `fillColumns`). The DST's cuts are the ones a machine
-  already makes (120,959 before and after) and the frame goes the same way.
-  The file gains jump records: three of no length for each cut put in before
-  a run, as every trim between shapes has today, and one where a float of
-  two records becomes the `trim`.
+  already makes (120,959 before and after) and the frame travels the same
+  lines. The file gains jump records: three of no length for each cut put in
+  before a run, as every trim between shapes has today. And where a float
+  whose first jump is one or two records becomes the `trim`, the writer lays
+  it as three, so the frame stops at other points along that line.
 - **2 belongs after `fillColumns`.** Before it, it writes into the stream
   the hundreds of cuts the plain walk's floats already are on a DST machine,
   and `ties` would then lock each one.
