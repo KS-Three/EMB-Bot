@@ -507,14 +507,10 @@ about the facts.
    A limit on how long a cross may be would cover the star and the bar at
    once and is NOT offered: it is a number, and gate 1's.
    *(measured 2026-10-03 — defect 57; [`docs/renders/star-walk-2026-10-03/`](docs/renders/star-walk-2026-10-03/README.md))*
-27. **Underlay under fills — NEW 2026-10-05, two things built, neither a
-   default.** `blend_fallback_underlay` (OFF): a gradient-class design sewed
-   every fill bare; ON, six logos: bare fills 33/33 → 5/33, stitches +1.7%.
-   `cross_tatami` (a picker choice, in no preset): your digitizer's crossing
-   pass, 1.0 mm rows, 4 mm stitches, in 34 of his 36 large fills; Bridge Bar
-   pays 15 trims. Yours: the flip, and whether knit presets take the pass
-   (law 26 says no; its instrument is lost). **Not sewn.**
-   *(measured 2026-10-05 — [`docs/underlay-audit-2026-10-05.md`](docs/underlay-audit-2026-10-05.md), [`docs/renders/cross-tatami-underlay-2026-10-05/`](docs/renders/cross-tatami-underlay-2026-10-05/README.md), [`docs/renders/blend-fallback-underlay-2026-10-05/`](docs/renders/blend-fallback-underlay-2026-10-05/README.md))*
+27. **Underlay under fills — NEW 2026-10-05.** `blend_fallback_underlay`
+   (OFF) and `cross_tatami` (a picker choice, your digitizer's crossing
+   pass): the flip and the knit presets are yours. **Not sewn.**
+   *(measured 2026-10-05 — [`docs/underlay-audit-2026-10-05.md`](docs/underlay-audit-2026-10-05.md))*
 
 ## Cross-cutting issues
 
