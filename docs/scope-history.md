@@ -13,6 +13,54 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-05 — auto class vs forced flat on fifteen real logos, and where the grey cones on black-and-white art come from
+
+**Class at the Studio's config (6 colours; widths per `tools/thin_strokes.REAL_ART`, `testdata/art` at 80 mm):** `gradient` 11 — fremont, fremont_patch, bridge, golden_tee, gaulke, golke, drone, screenshot, mfab_lc, toat_beanie, toat_machine; `flat` 2 — becker, enthusiast; `photo_scene` 2 — tires, mfab_hat. The two Instagram files did not run (job stopped at its time limit).
+
+**Auto vs `forced_class="flat"`, the gradient eleven:**
+
+| fixture | auto st / cones / trims per 1000 | forced flat |
+|---|---|---|
+| fremont | 20,023 / 3 / 2.85 | 20,531 / 3 / 3.02 |
+| bridge | 17,744 / 6 / 5.47 | 22,328 / 6 / 7.21 |
+| golden_tee | 8,476 / 6 / 5.19 | 10,370 / 6 / 7.33 |
+| gaulke | 4,205 / 2 / 7.85 | 4,164 / 1 / 6.96 |
+| drone | 18,975 / 6 / 7.27 | 26,592 / 6 / 8.05 |
+| screenshot | 7,949 / 6 / 8.68 | 11,216 / 6 / 12.48 |
+| golke | 4,706 / 5 / 7.22 | 6,645 / 2 / 8.88 |
+| fremont_patch | 16,692 / 3 / 2.58 | 18,669 / 3 / 4.12 |
+| mfab_lc | 10,944 / 6 / 7.58 | 10,542 / 2 / 7.59 |
+| toat_beanie | 6,600 / 6 / 6.97 | 8,413 / 2 / 9.98 |
+| toat_machine | 6,541 / 6 / 6.12 | 17,143 / 3 / 15.40 |
+
+Sheets read: mfab_lc, both toat, golke, drone, bridge — forced flat worse on each. Not read: fremont, fremont_patch, golden_tee, gaulke, screenshot.
+
+**Cones on three black-and-white logos, four arms (cones, stitches):**
+
+| fixture | base | `dissolve_phantom_blends` ON | `keep_thin_strokes` OFF | both |
+|---|---|---|---|---|
+| toat_beanie | 6, 6,600 | 4, 5,930 | 6, 6,402 | 4, 5,563 |
+| golke | 5, 4,706 | 4, 4,247 | 4, 4,686 | 4, 4,247 |
+| mfab_lc | 6, 10,944 | 6, 11,044 | 6, 10,900 | 6, 10,870 |
+
+**`tools/stroke_colour_probe.py`, defaults (span ≥ 60, ≤ 4 source px, side absolute), base → probe:**
+
+| fixture | source px/mm | cones | stitches | rewritten regions / mm² |
+|---|---|---|---|---|
+| drone | 9.61 | 6 → 6 | 18,975 → 18,952 | 9 / 21.6 |
+| golden_tee | 21.81 | 6 → 6 | 8,476 → 8,476 | 0 / 0 |
+| bridge | 3.49 | 6 → 6 | 17,744 → 17,692 | 23 / 269.0 |
+| fremont | 27.03 | 3 → 3 | 20,023 → 20,023 | 0 / 0 |
+| gaulke | 14.01 | 2 → 2 | 4,205 → 4,205 | 4 / 10.1 |
+| fremont_patch | 4.64 | 3 → 3 | 16,692 → 16,692 | 3 / 10.4 |
+| golke | 5.59 | 5 → 2 | 4,706 → 4,674 | 7 / 27.8 |
+| mfab_lc | 4.71 | 6 → 6 | 10,944 → 10,916 | 29 / 143.8 |
+| toat_beanie | 4.62 | 6 → 6 | 6,600 → 6,567 | 32 / 89.2 |
+
+Per colour: golke probe `#000000` 4,142, `#ffffff` 532; mfab_lc grey 2,718 → 909 with white 30 → 1,859; bridge `#4b787d` 227 → 1,882 and `#7f7f7f` 3,991 → 0 with `#d6d6d8` 1,692 arriving. No renders were made for this run. Run on Kent's Windows box, main checkout at `cf9f89f1` plus another session's uncommitted `art_box_frac` field in `pipeline.py`; base rows were identical across four runs that day.
+
+---
+
 **Last updated:** 2026-09-20 — the previewer measured against the file it hands the customer, and the split-path defect that found
 
 **Three lanes, driven through the shipped Studio headless, download captured,
