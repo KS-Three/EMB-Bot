@@ -18,14 +18,28 @@ sitting page for the four built-OFF flags" (`cap_recentre`, `patch_junctions`,
   same setting as its part C: off and on were one design on 8 of 8 logos. A
   test file had said so since the flip. One `--render --arms <arm>` on two
   logos would have shown it; so would a grep for where the flag is consumed.
-- **Kent judged all 19 the same day, no ruling set** (`kent-notes.json`).
+- **Kent judged all 19 the same day** (`kent-notes.json`).
   `bean_letters` at 1.0: 0 after, 5 before, 1 both bad — "little worms",
   "aren't thick enough"; stays OFF, and the open question is the line's
   weight on the same path. `cap_recentre`: after on becker and tires (the two
-  the locator boxed), never before; the flip is his. `split_off`: no
+  the locator boxed), never before; **he flipped it ON in chat the same day**,
+  asked with his own tally in front of him. `split_off`: no
   difference. **Do not tell him which side of a pair looks better before he
   has judged it:** this session called gaulke's bean side "clean line
   letters" and his note on it was "to skinny and not clean".
+- **Price a flag on its fidelity rows before recommending the flip.** This
+  session called `cap_recentre` "nearly free" on stitches and trims; its own
+  `features.json` had enthusiast's `lost_frac` at 0.2573 → 0.2819, which CI
+  found after Kent had ruled (`test_lettering_coverage_regression`, bar
+  0.26). Read `lost_frac`, `lost_elements`, `uncovered_ink_frac` for every
+  arm and run that guard first.
+- **A `lost_frac` jump beside a changed `widthMM` or `shift_x_mm` is the
+  instrument's 0.4 mm alignment grid, not spill.** `register` centres the
+  stitches then searches in 0.4 mm steps; a 0.2 mm change at the design's
+  edge flipped the step. Force the alignment (`dropped_elements.register`
+  patched) before guarding the engine: matched, the flag read LOWER. Kent
+  re-pinned the bar 0.26 → 0.29 attributed and a one-pixel guard was added
+  (0.1555, bar 0.17). Bias 3 in `tools/dropped_elements.py`, not fixed.
 - **Two of four flags had no pair on a real logo** (`patch_junctions`,
   `keep_counters`). An arm that is identical everywhere keeps its head on the
   page; say why in its table caption rather than leave a bare zero.

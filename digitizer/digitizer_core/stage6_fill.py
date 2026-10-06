@@ -1370,9 +1370,11 @@ def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
             out.append([(p.x, p.y) for p in pts])
         return out
 
-    def lattice(offset_deg: float, row_mm: float) -> list[list[tuple[float, float]]]:
+    def lattice(offset_deg: float, row_mm: float,
+                stitch_mm: float = machine.UNDERLAY_STITCH_MM
+                ) -> list[list[tuple[float, float]]]:
         return _fill_paths(inner, angle_deg + offset_deg, row_mm,
-                           machine.UNDERLAY_STITCH_MM, staggers=1,
+                           stitch_mm, staggers=1,
                            start_near=start_near)
 
     def center_run() -> list[list[tuple[float, float]]]:
@@ -1404,6 +1406,11 @@ def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
     if style == "double_lattice":
         return (edge_run() + lattice(45, machine.UNDERLAY_LATTICE_MM)
                 + lattice(-45, machine.UNDERLAY_LATTICE_MM))
+    if style == "cross_tatami":
+        # The commissioned files' recipe: the crossing pass alone, at their
+        # pitch and stitch (see the constants). No edge run on purpose.
+        return lattice(90, machine.UNDERLAY_CROSS_ROW_MM,
+                       machine.UNDERLAY_CROSS_STITCH_MM)
     # edge_lattice and anything unrecognised
     return edge_run() + lattice(90, machine.UNDERLAY_LATTICE_MM)
 
@@ -1540,8 +1547,12 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                 footprint = LineString(pts).simplify(row_mm / 2.0).buffer(row_mm)
                 sewn = footprint if sewn is None else sewn.union(footprint)
 
+    # `cross_tatami` is laid at its own, longer stitch; split at the
+    # lattice's 2.5 mm every 4 mm stitch of it came out as two of 2 mm.
     emit(_underlay_paths(poly, underlay_style, angle, start_near),
-         stitches.UNDERLAY, machine.UNDERLAY_STITCH_MM)
+         stitches.UNDERLAY,
+         machine.UNDERLAY_CROSS_STITCH_MM if underlay_style == "cross_tatami"
+         else machine.UNDERLAY_STITCH_MM)
     # The fill picks up where the underlay put the needle down — otherwise it
     # starts at the shape's top-left corner and the first travel of the fill is
     # a haul back across everything the underlay just laid.

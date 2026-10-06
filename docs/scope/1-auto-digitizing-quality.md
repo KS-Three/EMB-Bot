@@ -1903,6 +1903,10 @@ spot that let it score clean is now closed. `digitizer_core/preflight.py`'s
 `_uncovered_findings`, wired into `run_preflight` alongside the other
 artwork-dependent checks (skipped, metrics `None`, when called without an
 image — same contract as the thread-match check).
+**`info` since 2026-10-05 (Kent's call, issue #630):** the 2026-10-04 scorecard
+recapture bisected its 12 points onto three photo-lane band falls (2.1–2.3 mm²
+holes on `photo_chrome_specular`) while it moved no stitch; the finding, its
+`extra` and the `uncovered_*` metrics stay, the grade is blind to it.
 
 **Ground truth is `polygon ∩ ink`, and both halves are load-bearing** — each
 alone produces a false-positive class the other kills, both found by testing
@@ -3650,7 +3654,10 @@ what stitches → outline cannot see, and what Kent's *"you missed quite a few"*
 was. Whole-design pages with every mark on a lettered grid: `*_all.png` in the
 same render folder. Blind still: bean-tier small text, and outline vs artwork.
 
-**`cfg.satin_cap_recentre` — BUILT, DEFAULT OFF, Kent's flip (2026-09-19).** A
+**`cfg.satin_cap_recentre` — ON since 2026-10-03 (Kent's flip, on his labelled
+sitting: after on becker and tires, before on none —
+`docs/eye-pairs-2026-10-03/`). Built 2026-09-19; what follows was measured
+then, with the flag off as the default.** A
 free end whose spine tail is a surviving cap fork is cut at the kink and
 rebuilt square. Bare outline Becker 32.6 → 29.3 mm, Enthusiast 2.2 → 0.8,
 Gaulke unchanged; satin wobble not worsened (Becker std 0.097 → 0.094), where

@@ -1534,8 +1534,24 @@ class PipelineConfig:
     # thread within 0.5 mm). The cause-side twin of
     # `satin_rails_follow_edge`, which reaches the same corners by letting
     # each rail chase its edge and roughens the rails to do it. Numbers:
-    # DOCTRINE 2026-09-19. False is byte-identical.
-    satin_cap_recentre: bool = False
+    # DOCTRINE 2026-09-19.
+    #
+    # FLIPPED ON 2026-10-03 (Kent's ruling, on his labelled sitting of that
+    # day, `docs/eye-pairs-2026-10-03/`): after on becker and tires -- the two
+    # logos where the change locator found it -- no difference on four, both
+    # bad on two, before on none; eight logos 84,475 -> 84,460 stitches and
+    # 455 -> 454 trims. Small by its own record: of Becker's 44 free ends 7
+    # carry a fork and 3 pass the guards. False is the pre-flip engine, byte
+    # for byte.
+    #
+    # What it does to the fidelity headline is NOT what the headline says.
+    # On enthusiast at 80 mm `lost_frac` reads 0.2573 -> 0.2819, and that is
+    # the instrument: the flag shortens the design 0.2 mm at its right edge
+    # and the 0.4 mm alignment grid snaps a step. At one physical alignment
+    # it reads lower (0.2573 -> 0.2481; 0.1636 -> 0.1555 at one pixel). Kent
+    # re-pinned that bar, attributed, the same day
+    # (`tests/test_lettering_coverage_regression.py`).
+    satin_cap_recentre: bool = True
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster
@@ -1924,6 +1940,24 @@ class PipelineConfig:
     # 2026-09-19, "the exposed travel legs" and its two addenda;
     # `tests/test_fill_bridge_cut.py`.
     fill_bridge_cut: bool = True
+
+    # Underlay under a gradient-class design's ordinary fills (2026-10-05,
+    # built OFF — Kent's flip). Stage 7 routes every auto-tier fill of a
+    # design classed "gradient" through `stage6_blend.blend_fill`, which
+    # sewed `underlay_style="none"` on both of its paths and was never handed
+    # the style stage 7 resolves for every other fill tier (the fabric
+    # preset's `fill_underlay`, `underlay_style`, the per-shape override). So
+    # on such a design no fill had any underlay, not even the edge run, and
+    # the three controls did nothing: 10 of 14 real-art fixtures, 100% of
+    # their fill area (`docs/underlay-research-2026-10-05.md` §2).
+    # True: the FALLBACK path — a region that is not a ramp and sews as
+    # full-density tatami, which is nearly every real region — sews the
+    # resolved style. The ramp-band path stays bare on purpose: Wilcom and
+    # mySewnet both say no underlay under a variable-density blend (§4).
+    # No constant is added; the style and its spacings are the ones the flat
+    # lane already sews. False is byte-identical to the engine before it.
+    # `tests/test_blend_fallback_underlay.py`.
+    blend_fallback_underlay: bool = False
 
     # Task A2 (2026-08-14, tools/pro_parity): the corpus's professional
     # SOLID fill elements sew at roughly double a single ordinary pass's

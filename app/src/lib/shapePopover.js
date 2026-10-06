@@ -52,6 +52,7 @@ export const SHAPE_UNDERLAYS = [
   { value: "edge_zigzag", label: "Edge + zigzag" },
   { value: "double_lattice", label: "Double lattice" },
   { value: "zigzag", label: "Zigzag" },
+  { value: "cross_tatami", label: "Crossing pass (pro)" },
 ];
 
 // The design-level border's name in the "Design (…)" option — DigitizePanel's

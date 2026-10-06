@@ -16,7 +16,7 @@ at the bottom for the authority model behind the confidence ratings.
 (**42.5**, not the older ~70) and the metric's own **75-84** pro-vs-pro ceiling.
 Its code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-10-03. **This file is current state only, under a
+**Last updated:** 2026-10-06. **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
 on 2026-09-14). Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
@@ -193,8 +193,6 @@ needle-breakage signal. ~~No off switch for photo classes~~ — stale when writt
 
 43. **The numbers chain agrees end to end, and is MEASURED rather than argued.** Canvas caption, review recap, PDF worksheet and the downloaded DST read back by `pystitch` all give one set of figures on a mixed design, and the simulator counter agrees at both ends. It can be stated as fact only because each link was DRIVEN rather than reasoned from a shared code path — which is the part worth keeping. The figures: scope-history 09-08. *(measured 2026-09-08)*
 
-46. **The smoothness score exists and preflight cannot see it.** Law 37 wants a monotonic direction-change score with no cutoff; `tools/edge_smoothness.py`, `curve_fidelity.py`, `edge_wobble.py` and `curve_tiers.py` are exactly that — offline. No smoothness code appears among preflight's 24 codes or `warnings_codes.py`'s 58, so the grade a customer sees is blind to Kent's most frequent complaint. Desk-safe and the cheapest row on the list: the instrument is built, the output ships, nothing connects them. **Not to be confused with `curve_turn_deg`**, which an earlier read scored as this. Evidence: [backlog](docs/scope/machine-physics-backlog.md). *(confirmed 2026-09-20 — playbook row 17)*
-
 47. **`overlap_mm` is one scalar at 0.25 mm, against a law that wants 1.0–2.0.** Law 26 asks 1.0 mm where parallel stitch directions meet on wovens, 1.5–2.0 on knits/fleece and ~0 near-perpendicular; `config.py:918` is angle-blind, fabric-blind and sits under the law's own 0.8 mm close-up threshold, and no forbid-gap rule exists. Most of it is desk-safe and buildable now — only the knit value is gated. Detail: [backlog](docs/scope/machine-physics-backlog.md). *(confirmed 2026-09-20 — playbook row 9)*
 
 
@@ -202,6 +200,12 @@ needle-breakage signal. ~~No off switch for photo classes~~ — stale when writt
 50. **`satin_lettering_split` leaves holes at the crowns of curved letters — CLOSED behind `cfg.satin_crown_cover`, built OFF 2026-09-30, ON BY DEFAULT since Kent's flip 2026-10-02.** MARINE 127.4: the split sews the word in 7,168 stitches with **11 holes / 22.9 mm²** where fill leaves none. It is still a NET WIN — `lost_frac` 0.2688 fill against 0.1800 split — so this was never a case for reverting the flip. **The crowns are not in any column:** five rail and pitch arms are refuted (the envelope inert, `follow_edge=True` 2 of 11, the width smoother deleted 0 of 11, pitch halved 1 of 11 for +1,567 stitches) and every arm that moved one made `lost_frac` worse. The strokes' union leaves wedges no stroke claims, 4 of 11 at a node between sub-strokes. **The cure is the junction cover with its junction gate removed and `ARTWORK_UNCOVERED`'s own thresholds** (Kent's ruling, design doc §7: a cover, all satin shapes). ON: MARINE 127 **11 → 1 hole**, 22.9 → 1.5 mm², +2.6% stitches, `lost_frac` 0.1800 → **0.1730**; corpus holes **20 → 10** with `lost_frac` never rising and golden_tee **1.4% cheaper**; the four fixtures with no holes find no wedge at all. **Flip is Kent's.** *(measured 2026-09-30 — `tests/test_crown_cover.py`; scope-history 09-30)*
 51. **Low-resolution line art lost its fine detail at the TRACER'S GRID, not in the file — FIXED, `cfg.work_px_per_mm` ON at 8.0 (Kent's flip 2026-10-01, on renders: full-size file best, this grid second, the old grid third on every logo; None = the engine before it).** Kent's ask: bridge's "RESTAURANT" completely missing. A source under `min_px_per_mm` was enlarged to 4 px/mm and traced there; a 0.7–1.4 mm stroke is then 3–5 px, the gradient lane's superpixels hold ink and ground both, and the RAG merge — which compares MEAN colours at 26 dE00 and whose two protections are gated at 1,000 px — swallowed the letters (bridge: 67 of 81 mm² of teal held by SEEDS, **39** after the merge, six blobs sewn). The same file on a 5–10 px/mm grid keeps 64–67. Stage 1 traces line art on the working grid and `min_px_per_mm` keeps only the `INPUT_LOW_RESOLUTION` warning; photo classes keep the source line; a 2,800 px side bounds it. **Not bridge's alone:** real logos downsampled to 5 px/mm and scored against their own full-resolution digitization recover fine ink **0.64 → 0.84** on average (ENTHUSIAST 0.25 → 0.90, its tagline; Fremont's "THE"; Golke's second line), and nothing in the corpus could have shown it — bridge was the only gradient logo under 5 px/mm. **Costs:** trims rise toward the full-resolution file's own count; a blurred synthetic (`logo_whitebg` at 5 px/mm) pays 12 → 21 trims; sources at 6.5 px/mm gain little (two of five logos down). **Still open, and a different defect:** the recovered letters are 3.25–4.5 mm and each sews as ONE satin bar — present, not legible letter by letter; that is `LETTERING_TOO_SMALL`'s size question. **Not robust:** the result moves with small changes to the foreground mask (a smoother mask sent bridge's words to a grey-green cone and cost ENTHUSIAST 0.90 → 0.70), and 43 tests read on the old grid hold it (`conftest.source_line_grid`), a few of them real costs on 6–7 px/mm synthetics (the radial ramp sews 2 regions for 1). **Open, Kent's:** his verdict also says the SOURCE is the bigger lever, and `INPUT_LOW_RESOLUTION` only fires under 4 px/mm — the 5 px/mm files on his page lost to their full-size selves unwarned. Detail: `docs/fine-detail-work-grid-2026-09-30.md`. *(measured 2026-10-01 — `tools/lowres_detail.py`; `tests/test_work_grid.py`)*
 52. **A fill in the BROWSER engine carries thread across every hole and every notch — CLOSED behind `fillColumns`, built OFF 2026-10-03 (Kent's flip pending).** The JS tatami walk goes from one span of a split row straight to the next: a float over a long gap, a STITCH over a short one. A 40 mm manual fill with two cut-outs: **76 untrimmed floats across the 12 mm one (912 mm of thread), 20 stitches sewn across the 3 mm one.** **Two things hid it:** the engine's test counts needle points in the hole, and a float has none; the Studio draws jumps only with its Jumps toggle on. (Quality review 2026-09-08 §4; drawable since #591.) **The cure:** rows cut into monotone columns (`fill.js`, a port of the Python `_columns`), and every move of every pass of the shape asked what ground it runs over, the ground being what the FILL covers. On it: unchanged. Off it by no more than a fill row (0.15 mm): sewn, never floated. Deeper: the thread goes ROUND — along the hole's own edge, or in by a strip's far end under that strip's own rows — and is cut only where there is no way round. **Audited** on 9,869 designs (three scales, all seven presets): floats that leave the fill's ground **1,154,992 → 0**; designs with thread deeper than a fill row off it **8,581 → 36**, none of the 36 across a hole. **Cost:** cuts fall from 0.89 a design to 0.25, though 3% of holed shapes keep one and a comb can gain four; stitches +3.3%, at worst +37%; the travel shows, with up to nine lines of thread on a rim's worst millimetre and over 5 mm across sewn rows in one holed fill in six; a forked large fill loses center-out; the edge run of a shape with a hole or an inside corner moves 0.2 mm inside the fill. A shape with neither is untouched, and so are satin shapes. **Not sewn: no sew-out exists.** **Three builds, three independent audits**, each failing the build before it. **Reaches** the fill shapes of every `buildQualityDesign` caller: manual, basic shapes, the image lane. **Not built:** row stagger (tie stitches: "Waiting on Kent" 23). **Flip is Kent's**; the sheet, the cost tables and what was seen but not changed: [`docs/renders/fill-columns-2026-10-03/`](docs/renders/fill-columns-2026-10-03/). *(measured 2026-10-03 — `tools/fill-columns-sheet.mjs`; `test/fill.test.js`, `test/digitize.test.js`; three independent audits, scope-history 10-03)*
+
+55. **A hand-drawn shape with an anchor a pixel from the last one sews a spike at that corner, under every preset — THE GESTURE THAT MADE THEM IS CURED 2026-10-03 (Kent's pick); the offset is not, so saved shapes keep theirs.** Found by the audit of defect 54's fix. A double-click is two clicks and a `dblclick`, and `ManualPanel.onCanvasClick` took the second as an anchor unless it landed within 0.5 canvas px of the first (`DUP_POINT_EPS_PX`): a slip of a pixel left an anchor a pixel from the last. The short edge to it doubles back, and the BROWSER builder's `offsetRing` gives its end the whole mitre clamp, three times the pull compensation: defect 54's wedge, from a NEAR repeat, which 54's cure (1e-9 px, rounding) does not reach and should not. A 40 mm box whose second click was 1 px off: fill **1.73 mm past the drawn ring on terry, where a clean corner has 0.85**; cap 1.13 against 0.57; pique 0.73 against 0.42. Of 80 slips of 0.6 to 3 px, 20 were refused as crossing (the double-click finished nothing) and 60 kept; on terry 30 of the 60 sew over 0.15 mm further out than a clean corner, at worst 1.81 mm. **Cured at the gesture:** the second click of a double-click (`detail` 2) is no click of its own, however far the pointer slipped. In a real browser three slips of four went wrong before and none does now. **Still open:** a shape saved before the cure keeps its anchor and its spike, and two anchors dragged to one hoop corner make another (the audit's measure, not re-run here). Curing those means the offset (a bevel past the clamp), which moves every sharp corner under a preset: not built, and Kent's call. *(measured 2026-10-03 — `tools/closed-ring-census.mjs` table 4; `app/src/ui/ManualPanel.spec.js`, `app/e2e/manual-double-click.spec.js`; scope-history 10-03)*
+
+57. **The BROWSER's medial satin lays a stitch as long as the shape, and sews strokes twice — MEASURED 2026-10-03 on the Studio's own shapes, NOT fixed (which cure first is "Waiting on Kent" 26).** Found by the sweep that found defect 56, and standing after it. **A star:** every satin star the shape tool makes has a stitch over 3 mm; the longest is a median 21 mm, eight in ten over 12.1 mm (one DST record), up to 98.5 mm, laid from one arm to another across the centre. The branch guard is what sends it there: an even-pointed star splits tip to tip into equal halves whose rung midpoints sit on the axis, so twelve arms pass as ONE column (15,312 of the 145,600 designs swept are satin). **A bar:** 185 of 276 sharp-cornered satin bars on left chest carry a stitch at least nine tenths the bar's length: the spine runs on down the end's edge into a corner and the last crosses turn with it. **Twice:** the edges lay a median 72 pixels too many for every 100 the skeleton has, and the ring scan finds "rings" in shapes with no hole (126 of 1,684 star rings); three stars and 24 round-cornered bars still sew 2 to 3.7 times their neighbours in size, and such a ring is all a 2 mm round shape sews (four stitches, 28% covered, where the 2 mm circle sews 13). Also: a satin star stops a median 1.2 mm short of its tips (up to 10.8 mm; the 20 mm star's "17.1 mm" is this); the emitter keeps 24 edges where 870 of the 1,684 rings have more; and a 5-point star's tier turns on the last bit of a float (the guard's ratio is exactly 1.5 against "over 1.5"). **Reach:** every lane that hands a shape to `medialSatin`: basic shapes (a thin bar, a small or needle star), a drawn shape set to satin, the image lane's thin shapes. The tool's defaults (50 mm) are fills and are not in it. **Why it is not one fix:** three causes and three cures, and a fourth cure that would cover two of them (how long a cross may be) is a number no geometry settles. Not sewn. Pictures: [`docs/renders/star-walk-2026-10-03/`](docs/renders/star-walk-2026-10-03/). *(measured 2026-10-03 — `tools/satin-walk-census.mjs`; scope-history 10-03)*
+
+58. **Black-and-white logos sew in four to six cones — the palette is handed anti-alias grey for every small shape. OPEN LEAD, nothing built.** At ~5 source px/mm a thin stroke has almost no pixel of its own ink, so `robust_region_colour` cannot help; `logo_mfab_lc` sews 2,718 grey stitches and 30 white. A probe cures `logo_golke_roofing` (5 → 2) and harms Bridge Bar, whose thin bands are defect 27's halo; the pair fails (2026-10-06). Whether to build is Kent's. *(measured 2026-10-06 — `tools/stroke_colour_probe.py`; DOCTRINE 2026-10-05)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -218,9 +222,13 @@ DOCTRINE 2026-09-14.
 36. "This font can't stitch «Р», «у», «с». Try a different font" was a dead end — FIXED 2026-09-07. Measured over all 85 `.embf`: 3 fonts cover Cyrillic, 3 Greek, 2 Hebrew, none Japanese/Korean/Arabic; the message now names one that can. Full text: scope-history 09-30.
 44. satin borders sat a median 1.4–1.9 mm INSIDE every abutting colour (14 of 17 bordered shapes on the 80 mm icon) — FIXED 2026-09-09 on Kent's ruling that the colour sewn on top owns a shared seam (`_owned_by_later`, `border_runs(omit=…)`; 33,292 → 30,420 st, trims 34 → 30). Standing ruling: DOCTRINE. Full text: scope-history 09-29.
 45. no preset declared its assumed stabilizer; backing was guessed from stitch count — RESOLVED 2026-09-20 (`Fabric.assumed_backing` / `needs_topper`, both engines; the worksheet prints both). Playbook law 33.
+46. the smoothness scores existed only offline and preflight could not see them — BUILT 2026-10-03 AS METRICS, both halves: Law 37's direction-change score (`curve_roughness_deg`, read with `curve_turn_gini`, `curve_vertices`, `curve_corner_vertices`, `curve_traces`) and edge deviation per tier (`edge_wobble_{satin,border,fill,line}_{p95,std,max}_mm`). No finding, no deduction, nothing in the Studio, so the GRADE stays blind to both on purpose: Law 37 forbids a cutoff, and Kent ruled 2026-10-02 that the tool does not warn the customer about what it should fix. Baseline recaptured 2026-10-04 at `6e0cb943`, every row carrying all 17 keys, so `corpus_scorecard.diff` reports their drift from the next change on. Still true: neither number has met Kent's eye; roughness cannot read intent, so it compares a design with itself and is never a grade; `edge_smoothness` stays offline. Not `curve_turn_deg`, which an earlier read scored as this. Playbook law 37; `tests/test_curve_roughness_metrics.py`, `tests/test_edge_wobble_metrics.py`; scope-history 10-03.
 48. no machine-time model, so nothing quoted a runtime — RESOLVED 2026-09-20 (`machine.PLAN_SPM` 650, `TRIM_COST_STITCHES` 120; the worksheet prints "Run time ~N min … incl. trims"). Playbook laws 36/38.
+53. a ring inside a hole of its own shape (an ISLAND, carried in `holes`) was a second hole to the BROWSER builder — FIXED 2026-10-03 (`islandsAmong`, `digitize.js`). Nested rings whose areas summed to the outline's sewed NOTHING (a 40 mm box, rings 4 and 8 mm in); a preset's pull compensation SHRANK an island (terry: its fill 0.6 mm small a side, the underlay showing round it). An island now grows as the outline does, or is sewn as drawn where growing would bring it against the ring beside it or across itself; a ring thinner than one needle step (0.1 mm) is no island. **Exported stitches change for island shapes and no others**; neither lane the Studio builds through makes one (`groupRingsIntoShapes` and direct callers do). Older than `fillColumns`, the same with it off or on. Independently audited, four passes; what a thin moat costs is in the full text. `test/digitize.test.js`. Full text: scope-history 10-03.
+56. a walk in the BROWSER's skeleton tracer never ended, and the satin emitter sewed what only its guard had stopped — FIXED 2026-10-03 (`circling` in `skeletonEdges`, `satin.js`). A 20 mm star off the shape tool sewed 48,645 stitches and a 24 mm one 128,239; a design took up to 12 s to build. Three skeleton pixels that all touch are no node, so a walk went round them for `w * h` steps. **Exported stitches change only where a walk reached the guard**: 4,038 of 145,600 swept stars, 329 of 4,095 bars, 273 of 612 image-lane designs; no fill moves (an independent re-measure on 34,000 designs of its own: none moved without one). **Its cost:** the knot had been covering small round shapes, and a 2 mm one now sews four stitches. What the sweep found standing is defect 57. `test/satin-walk.test.js`. Full text: scope-history 10-03.
 41. the review screen quoted a sew-out's cost on one lane and nothing on the other — FIXED 2026-09-07 (`lib/estimate.js`, browser-side only when the service said nothing). Full text: scope-history 09-20.
 42. five buyer-visible Studio-screen defects, all found by driving the app — ALL FIXED 2026-09-08 (#416/#417/#418). Full text: scope-history 09-20. Still the evidence for At-a-glance area 3's "driving, not reading" note.
+54. a ring that says a point TWICE running (handed over CLOSED: its first point again at the end) got a WEDGE from the BROWSER builder's `offsetRing` — FIXED 2026-10-03 (`distinctCorners`, `digitize.js`: the corners said once are what `offsetRing` moves and what `isConvexRing` reads). The repeat is an edge of no length; its two ends were each moved along one neighbour's normal, the first by three times the distance. Under a preset the fill is sewn to the moved rings, so the wedge was sewn: a 40 mm box on terry was filled 1.8 mm outside the drawing at its first corner, where 0.6 is right; a closed hole and a closed island the same, and with `fillColumns` the edge run. **Exported stitches change for a ring that says a point twice, under a preset or with `fillColumns`, and for no other** (4,536 outputs on rings that do not: identical). **No Studio lane hands over an EXACT repeat**: none in 24,985 rings from basic shapes, the image lane and trace import, and a hand-drawn one is refused as crossing itself. `parseSVG` and `fonts.js` do hand them over, and nothing in the Studio calls either. **A NEAR repeat is another matter and was in the Studio's reach: defect 55 (its gesture cured, its offset open).** Older than every flag. Left: the auto angle, a satin shape's centre run, the edge run drawn toward the centroid and the order of a colour's shapes are read off the POINTS, so a closed ring's underlay still differs. Independently audited: the fix held, five sentences of its record did not and are corrected. `tools/closed-ring-census.mjs`, `test/digitize.test.js`. Full text: scope-history 10-03.
 3. 14 jump-trims on an 80mm design — RETIRED 2026-09-01 (Kent) as UNREPRODUCIBLE. Do NOT read the 08-31 repro as a regression (DOCTRINE 09-14). Live concern: defect 4.
 7. satin dropped a bracket's tab on `enthusiast_logo` (`_prune_spurs`) — RESOLVED 2026-08-21.
 8. build-font dropped SVG transforms on four fonts — RESOLVED 2026-08-22.
@@ -263,16 +271,14 @@ one concealed it; entry 2 is a flag that LEFT this list unnoticed for two weeks.
    read `garment_id` for ORDER; the browser engine did. **DO NOT FLIP:**
    only the cost is measured, and it is heavy. *(measured 2026-09-19 — DOCTRINE)*
 
-5. **`satin_cap_recentre` — built OFF 2026-09-22, and it is a flip waiting on
-   a call, not a parked idea.** A free end whose spine tail is a surviving CAP
-   FORK is cut at the kink and rebuilt square: today, on a stem with one edge
-   leaning three degrees, one fork survives the pruner, the column tapers to a
-   point at that corner and the other corner sews **1.11 mm bare**. Found from
-   the OUTLINE side (`edge_wobble`'s `unsewn`: Becker, **32.6 mm** of outline
-   with no thread within 0.5 mm). The cause-side twin of
-   `satin_rails_follow_edge`, which reaches the same corners by roughening the
-   rails and is measured NOT the lever. False is byte-identical.
-   *(confirmed 2026-09-29 — `config.py:1260`; numbers DOCTRINE 2026-09-19)*
+5. **`satin_cap_recentre` — ON since 2026-10-03 (Kent's flip, on his labelled
+   sitting); it left this list and keeps its number.** A free end whose spine
+   tail is a surviving CAP FORK is cut at the kink and rebuilt square, where
+   on a stem with one edge leaning three degrees the column tapered to a point
+   at one corner and left the other bare. The cause-side twin of
+   `satin_rails_follow_edge`. Small by its own record, and a wash on the flat
+   end of a curved column. False is the pre-flip engine, byte for byte.
+   *(flipped 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`; numbers DOCTRINE 2026-09-19)*
 
 *(added 2026-08-17 — `docs/project-review-2026-08-16.md` §1.6: chaining was absent
 here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
@@ -372,14 +378,11 @@ about the facts.
 
 18. **OPEN: a COLD photo digitize is ~90 s and `fill_travel_under_cover` is ~58% of it.** The 2026-09-17 memo fixed the RE-stitch (79.3 → 44.6 s); the first digitize still pays the flag in full. Three ways out, all Kent's: flip it off (costs stitches, re-exposes the travel it hides), optimise `_reorder_for_cover` (golden-pinned — a win must be byte-identical), or accept it. **Do not re-derive the numbers** — method, noise floor, per-flag table and three INERT flags are in the doc. *(measured 2026-09-17 — `docs/flag-runtime-bills-2026-09-12.md`)*
 
-19. **One built-OFF satin flag is waiting on a call: `satin_cap_recentre`**
-   (the surviving cap fork — Latent 5, built 2026-09-22). **Judged 2026-10-03,
-   not yet ruled:** after on becker and tires, the two logos where it shows;
-   no difference on four, both bad on two, before on none. The flip is Kent's.
-   `satin_patch_junctions = "satin"` is NOT waiting: `satin_junction_stack` has
-   sewn that cover as its part C since 2026-09-19, so off and on are one design
-   (8 of 8 logos identical). `satin_walk_cursor_reach_mm` stays parked for cloth
-   (Kent 2026-09-20). *(confirmed 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`)*
+19. **RESOLVED 2026-10-03 — `satin_cap_recentre` is ON** (Kent's ruling in chat,
+   on his sitting: after on becker and tires, before on none; Latent 5).
+   `satin_patch_junctions = "satin"` was never waiting — the junction stack's
+   part C since 2026-09-19 — and `satin_walk_cursor_reach_mm` stays parked for
+   cloth (Kent 2026-09-20). *(flipped 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`)*
 
 20. **Paired ground truth costs money or it does not exist.** No free source
    ships artwork PLUS a professional's stitch file of the same design, and the
@@ -465,6 +468,49 @@ about the facts.
    `wideColumnFill`, off since 09-11 (8,500 Studio lettering builds, no fill
    row), and takes the stagger in whatever change flips that.
    *(measured 2026-10-03 — [`docs/renders/fill-stagger-2026-10-03/`](docs/renders/fill-stagger-2026-10-03/README.md))*
+25. **Flip `dedupeHoles` on for the browser shape lanes — NEW 2026-10-03,
+   built OFF.** The shape builder rounds to the file's 0.1 mm, so two
+   penetrations nearer than that become two stitch records on one point:
+   the needle twice in one hole, about two a design in what ships (16,575
+   on 8,255). The flag lays the first and not the second; no other record
+   moves. Machines differ on the record. **Not sewn.** A flip is
+   `dedupeHoles: true` at `generate.js`'s three shape call sites and a re-pin
+   of every shape snapshot. Lettering has its own and no flag yet.
+   *(measured 2026-10-03 — [`docs/sub-unit-stitches-2026-10-03.md`](docs/sub-unit-stitches-2026-10-03.md))*
+26. **Which cure for defect 57 first — NEW 2026-10-03, nothing built.** The
+   browser's satin on a thin bar, a star or a drawn shape set to satin lays
+   a stitch as long as the shape and sews strokes twice. Three cures, each
+   its own change with its own before and after:
+   - **The bar's end.** End the spine where the bar ends instead of in its
+     corner, so the last crosses stay across it. The most ordinary shape (an
+     underline) and the plainest picture (`standing-bar-30x3.png`). Whether
+     it takes a number is not known until it is tried: the trim that exists
+     is half the stroke's half-width, and the Python engine drops these
+     corner forks by a rule of its own that could be ported.
+   - **The star's tier.** Have the branch guard ask whether the whole rung
+     stays inside the shape, not its midpoint. No new number. Not built or
+     measured: it would send most of the 15,312 satin stars in the sweep to
+     fill, trading stitches 20 mm long for fill rows under a millimetre on a
+     needle arm, which nothing has sewn. It wants your eye on a render.
+   - **One pixel, one edge.** Port the Python tracer's consumed set, so no
+     pixel is laid twice and no ring is found in a shape with no hole. No
+     new number; it would move most satin designs in all three browser lanes
+     (1,407 of the 1,684 star rings have an edge that goes back over itself).
+   A limit on how long a cross may be would cover the star and the bar at
+   once and is NOT offered: it is a number, and gate 1's.
+   *(measured 2026-10-03 — defect 57; [`docs/renders/star-walk-2026-10-03/`](docs/renders/star-walk-2026-10-03/README.md))*
+27. **Underlay under fills — NEW 2026-10-05.** `blend_fallback_underlay`
+   (OFF) and `cross_tatami` (a picker choice, your digitizer's crossing
+   pass): the flip and the knit presets are yours. **Not sewn.**
+   *(measured 2026-10-05 — [`docs/underlay-audit-2026-10-05.md`](docs/underlay-audit-2026-10-05.md))*
+28. **Flip `cutFloats` on for the browser shape lanes — NEW 2026-10-04,
+   built OFF.** A DST has no cut: the writer lays three jump records for
+   one, and for any float over 24.2 mm too, so a machine cuts where the
+   stream has only a jump, with no lock from `ties`: 109,561 times on 8,270
+   Studio shapes, 94% of them gone with `fillColumns` (22). The flag puts a
+   `trim` in the stream at each. No stitch moves. **Flip it after 22.**
+   **Not sewn.** Flipped as 25 is.
+   *(measured 2026-10-04 — [`docs/dst-float-cuts-2026-10-04.md`](docs/dst-float-cuts-2026-10-04.md))*
 
 ## Cross-cutting issues
 
@@ -556,8 +602,15 @@ over 26 fixtures x 2, aggregating preflight's score. REPORTING, not a CI gate;
 detail: [area 1](docs/scope/1-auto-digitizing-quality.md). **The 2026-08-12
 baseline was SOUND — 38/38 rows re-scored exactly, every mover real** and
 attributed before the 2026-09-02 recapture (duplicate fixture dropped, commit
-stamped).
-*(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
+stamped). **Recaptured 2026-10-04 at `6e0cb943`** on cloud Linux after 50
+pipeline commits: 48 of 52 rows moved, five fell a band, every mover attributed
+by bisection over the 51 trees; the step that crosses a band line is a new
+preflight check on all five falls (#572, #573), not a stitch
+([notes](docs/scorecard-baseline-attribution-2026-10-04.md), scope-history 10-04).
+**Recaptured again 2026-10-05 at `d000e370`** after Kent made both checks
+`info` (#630): 21 rows moved, every one of them those two findings, 12 rose a
+band, no other leaf moved (scope-history 10-05).
+*(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md); 2026-10-04 — [notes](docs/scorecard-baseline-attribution-2026-10-04.md); 2026-10-05 — scope-history)*
 
 **The corpus is half-present, and its real-artwork half keeps contradicting the
 synthetics** — six of seven real customer logos route to GRADIENT at stage 0, so
@@ -610,8 +663,9 @@ became defects **45–48**; the remaining desk-safe gaps stay in the backlog doc
 with their buildability column intact. **Two closed the same day** — 45 (row 3,
 `assumed_backing`) and 48 (row 6, `PLAN_SPM`/`TRIM_COST_STITCHES`) shipped in
 the operator bundle, which also closed Part 3's backing, topper and runtime
-lines. **46 and 47 are still open** and still desk-safe.
-*(audited 2026-09-20 — code read, `origin/main` 1ac731cd)*
+lines. **46 closed 2026-10-03** (row 17, as preflight metrics); **47 is still
+open** and still desk-safe.
+*(audited 2026-09-20 — code read, `origin/main` 1ac731cd; 46 built 2026-10-03)*
 
 ---
 
@@ -855,11 +909,11 @@ PDF sheet (`src/render.js`) and the SVG export draw the same width since
 thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.spec.js`)*
 
 **Thread lighting is unverified against real thread** — eye-tuned, and the one physical out (2026-09-01) cannot settle it: its colours were random operator threading, so DOCTRINE bars grading colour from it at all. Treat the look as a preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
-**Uploading artwork is the whole interaction** — the run starts on upload and the panel states what the art was read as, with the override a one-click correction to that sentence; `detail_layer` sits on that row only where the art is tonal. Engine routing unchanged (ROADMAP gate 2). *(confirmed 2026-08-30 — e2e `digitize-auto-start.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
+**Upload file, then Auto Digitize Image** — the file browser opens first, nothing runs until the button, and any later change turns it transparent until pressed again; the panel states what the art was read as; `detail_layer` sits on that row only where the art is tonal. Engine routing unchanged (ROADMAP gate 2). *(confirmed 2026-10-05 — e2e `digitize-auto-start.spec.js`, browser; [area doc](docs/scope/3-studio-app-wizard.md))*
 
 **The hoop you picked is drawn, and the export gate reads the thread's own extent** (`hoopTransform`, `DownloadStep`: confirm, not block; PNG and PDF ungated). **Open:** four of ten garment presets have placement boxes larger than the 200 mm biggest hoop, so the gate fires on shipped presets — whether auto-fit should cap is Kent's. *(measured 2026-09-04/07 — `preview.spec.js`, `DownloadStep.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
 
-**The digitize panel states what changed and offers the fix** — a delta against `priorRun`, and `COLOR_STOPS_HEAVY` / `LETTERING_TOO_SMALL` / `STITCHES_TOO_SHORT` as one-click chips offered AFTER the run (Kent's call). The "Make it bigger" chips are a partial remedy, left for Kent: DOCTRINE. **`SATIN_GAPS_TIGHT`'s chip jumps to the width the finding names (2026-09-30, Kent's pick):** its headline shape's `clear_width_mm`, capped at 400, one button per parameter with the larger target winning over the 25% step — a claim about that shape, never the design. *(confirmed 2026-09-02, chip 2026-09-30; [area doc](docs/scope/3-studio-app-wizard.md))*
+**The digitize panel states what changed and offers the fix** — a delta against `priorRun`, and `COLOR_STOPS_HEAVY` / `LETTERING_TOO_SMALL` / `STITCHES_TOO_SHORT` as one-click chips offered AFTER the run (Kent's call). The "Make it bigger" chips are a partial remedy, left for Kent: DOCTRINE. **`SATIN_GAPS_TIGHT`'s chip jumps to the width the finding names (2026-09-30, Kent's pick):** its headline shape's `clear_width_mm`, capped at 400, one button per parameter with the larger target winning over the 25% step — a claim about that shape, never the design. **`SATIN_GAPS_TIGHT` and `ARTWORK_UNCOVERED` are `info` since 2026-10-05 (Kent's call, issue #630): sentence, `extra` and chip stay, the grade is blind to both — the 2026-10-04 recapture had bisected all five band falls onto their 12 points while neither moved a stitch.** *(confirmed 2026-09-02, chip 2026-09-30; [area doc](docs/scope/3-studio-app-wizard.md))*
 
 **`cfg.border` reaches its own default** — `null` = unset, key omitted, panel says "automatic". *(confirmed 2026-09-02)*
 
@@ -968,7 +1022,7 @@ slightly off the artwork — a bug that reads as an inaccurate *tracer*.
 and indigo respectively. Ember's gesture and colour vocabulary, matched
 deliberately. The default bow takes its side from the turn the path is making,
 so a run of curved nodes arcs instead of scalloping. Backspace mid-draft takes
-back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)* **The border is on the canvas too:** right-click a recognised shape for **Add border** / **Remove border**, and the restitch starts at once. *(confirmed 2026-09-09/2026-09-17 — `borderMenu.spec.js`, `e2e/field-border-menu.spec.js`; detail in the area doc)*
+back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)* **The border is on the canvas too:** right-click a recognised shape for **Add border** / **Remove border**; it sews on the next run. *(confirmed 2026-09-09/2026-10-05 — `borderMenu.spec.js`, `e2e/field-border-menu.spec.js`; detail in the area doc)*
 
 **Click a shape, edit it there — both lanes (2026-09-29, Kent's ask).** A click on an auto-digitized shape opens `ShapePopover` with its Layers-row controls; on a hand-drawn shape, Fill/Satin, colour, angle and Delete; on a preset, its colour. A hand-drawn shape's anchors and curve handles edit on the field too; the side canvas only draws. *(confirmed 2026-09-29 — `e2e/field-shape-popover.spec.js`, `e2e/field-node-edit.spec.js`; detail in the area doc)*
 

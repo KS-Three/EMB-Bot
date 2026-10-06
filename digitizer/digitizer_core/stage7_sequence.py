@@ -2472,9 +2472,13 @@ def sequence(
                 # read the machine constants directly, so a fabric preset or
                 # a per-job override moved every fill on a design EXCEPT its
                 # gradient regions.
+                # The underlay style had the same hole (2026-10-05): this
+                # tier was never handed it. Sewn only under
+                # `cfg.blend_fallback_underlay`, on the fallback path.
                 runs, report = blend_fill(p.region, source_pixels, cfg,
                                           start_near=entry, polygon=p.polygon,
-                                          row_mm=row_mm, stitch_mm=stitch_mm)
+                                          row_mm=row_mm, stitch_mm=stitch_mm,
+                                          underlay_style=eff_underlay_style)
             elif contour:
                 runs, report = contour_fill(
                     p.polygon,

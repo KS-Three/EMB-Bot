@@ -8366,6 +8366,86 @@ question every move is asked):
 *(measured 2026-10-03 — `test/fill.test.js`, `test/digitize.test.js`,
 `tools/fill-columns-sheet.mjs`; MASTER_SCOPE defect 52; scope-history 10-03)*
 
+## 2026-10-03 — The built-OFF sitting: one flip, one flag voted down for its weight, and one that was never waiting
+
+Kent asked for one labelled page for every finished flag with no verdict and
+judged all 19 pairs the same day (`docs/eye-pairs-2026-10-03/`).
+
+**Rulings.**
+
+- **`satin_cap_recentre` is ON** (Kent, in chat, on that sitting): *after* on
+  becker and tires — the two pairs the change locator boxed — and *before* on
+  none. `False` is the pre-flip engine.
+- **The enthusiast headline bar moved once, 0.26 → 0.29, attributed** (Kent,
+  the same day). The flip took `lost_frac` 0.2573 → 0.2819 on that fixture
+  with no spill behind it — the instrument's alignment grid, below — and he
+  ruled the bar re-pinned with that written beside it and a second guard
+  added at a one-pixel alignment (0.1555, bar 0.17). The fine guard is the
+  one to read as spill.
+- **`bean_letter_max_stroke_mm` stays OFF.** Today's satin read better on five
+  of six logos and bridge was *both bad*. His reason is the line's WEIGHT —
+  *"little worms"*, *"aren't thick enough"*, *"to skinny and not clean"* —
+  and he granted that fremont's path reads cleaner. So the path along the
+  source ink is not what he voted down; a three-pass bean on it is. Do not
+  re-offer the flag at 1.0 on the same renders.
+- **`split_off` and `keep_counters` drew nothing to rule on**: no difference
+  to his eye, and no real logo moves, respectively.
+
+**What to do differently.**
+
+- **Render a flag against shipped before writing that it waits on Kent.**
+  `satin_patch_junctions="satin"` was written into MASTER_SCOPE's decision
+  queue as a flip call on 2026-09-30, eleven days after
+  `satin_junction_stack`'s part C had made it the base (2026-09-19), and sat
+  there until this sitting. Off and on were one design on 8 of 8 logos, and a
+  test file had said why all along. A decision queue entry costs Kent's
+  attention; one arm-run on two logos costs minutes.
+- **Do not tell him which side of a pair wins before he has judged it.** The
+  session that drew the page described gaulke's bean side as "clean line
+  letters" in chat; his note on that pair was *"to skinny and not clean"*.
+  Say what changed and what it costs. The verdict is the thing being asked for.
+- **The renderer draws three bean passes as one thread** (`suspected`, read
+  from `stitchviz`, not measured): each stitch is drawn at one thread's width,
+  so passes laid on one path cover the same pixels. "Too thin" on the page is
+  therefore not yet separated from the picture of a bean. Settle that before
+  a heavier construction is built — and gate 1 already holds a three-pass
+  bean on knit as `pending sew-out`.
+- **Price a flag on its fidelity rows before recommending the flip, not on
+  stitches and trims alone.** The session recommended this flip as "nearly
+  free" — fifteen stitches and one trim — with enthusiast's 0.2573 → 0.2819
+  sitting in its own render table, and learned it from CI after Kent had
+  ruled. `features.json` carries `lost_frac`, `lost_elements` and
+  `uncovered_ink_frac` for every arm; read them, and run the guard a flip is
+  most likely to trip (`tests/test_lettering_coverage_regression.py`) before
+  asking for the ruling.
+- **A `lost_frac` delta beside a changed `widthMM` or `shift_x_mm` is the
+  alignment grid until a forced-alignment read says otherwise.**
+  `artfidelity_self.register` centres the stitches and the artwork and
+  searches translation in 0.4 mm steps, on an instrument whose opening is
+  0.5 mm. On enthusiast one design reads 0.1636, 0.2573 or 0.3226 depending
+  only on the step, and a 0.2 mm change at the design's right edge moved the
+  step. Held at one physical alignment the flag read LOWER on all three pairs
+  tried (0.2573 → 0.2481, 0.1636 → 0.1555, 0.1737 → 0.1623). A spill guard on
+  the flag was approved and not built, because there was no spill: measure
+  the instrument before guarding the engine against its reading.
+  `tools/dropped_elements.py` records it as bias 3; not fixed, because fixing
+  it renumbers every pinned fidelity figure in the repo. One earlier call
+  rests on a smaller move of this same reading and was NOT re-measured here:
+  the apex widening retracted on 2026-09-30 for 0.2573 → 0.2661 (defect 49).
+  Nobody recorded its `shift_*`. The crown cover closed that hole another
+  way, so nothing waits on it — but do not cite that retraction as proof the
+  widening spilled.
+- **A session's CLAUDE.md is the main checkout's working-tree copy.** With
+  that checkout 77 commits behind, this session was handed "an 800-line
+  budget" for MASTER_SCOPE and reported the file over it, with no guard,
+  three times and in a PR body. The budget had been 27,000 words since
+  2026-09-14 and `tests/test_scope_budget.py` enforces it. Before reporting
+  that a documented rule is broken, read the rule on `origin/main` and grep
+  for the test that already holds it.
+*(ruled, judged and measured 2026-10-03 — `docs/eye-pairs-2026-10-03/kent-notes.json`;
+`tests/test_satin_cap_recentre.py`, `tests/test_junction_stack.py`,
+`tests/test_lettering_coverage_regression.py`)*
+
 ## A proof holds for what it was given: "equal to the last bit" was true of the rows I made (2026-10-03)
 
 Row stagger for the browser fill is a port, so the claim was the strongest
@@ -8423,3 +8503,147 @@ And one from the audit's second look, at the fixes:
 *(measured 2026-10-03 — `test/fill-stagger.test.js`,
 `tools/fill-stagger-census.mjs`; `docs/renders/fill-stagger-2026-10-03/`;
 MASTER_SCOPE "Waiting on Kent" 24; scope-history 10-03)*
+
+## A guard is not an end: what only its guard stops comes back the size of the guard, and a later step can hide it (2026-10-03)
+
+The browser's `skeletonEdges` walked skeleton pixels under
+`while (guard++ < w * h)`. The guard was read as "this cannot loop for
+ever", which was true, and nobody asked what a walk that REACHED it handed
+back: an edge with a point for every cell of the grid, put first by a
+longest-first sort and sewn by the satin emitter. A 20 mm star off the shape
+tool came out at 48,645 stitches, a 24 mm one at 128,239.
+
+Of the 1,684 star rings the shape tool sends to satin, 432 had such a walk.
+**In 417 of them it showed in nothing but time**: the emitter smooths a
+spine with a three-point average, a walk going round three pixels averages
+to their centre, and a spine with no length sews nothing. Only where the
+circle was longer than three pixels did anything show, so the defect looked
+like one star at one size when it was a quarter of them, and thin
+round-ended bars and 273 of 612 image-lane designs besides.
+
+- **A loop with a guard has two exits. Count the second.** Put a counter on
+  the guard's exit and run the corpus. A guard nothing reaches is free; one
+  that something reaches is returning a result nobody designed.
+- **"Out of line with its neighbours" has to survive its neighbours being
+  out of line too.** The first test compared a design with the three sizes
+  either side. The star had run away at 19, 20, 21 and 22 mm, and the test
+  passed all four. Divide by what size alone explains, and take the median
+  over a window wider than any band you would believe.
+- **A counter inserted beside a line of text counts nothing once the line
+  has changed.** After the fix the census read "0 walks at the guard": the
+  loop's last line was different and the counter had never been inserted.
+  A missing anchor is an error now, and the counter was shown live by
+  switching the new rule off in a copy (16 walks on the 20 mm star, as
+  before the fix).
+- **Say which designs move only after every caller has been swept.** "The
+  other shapes do not move" was written from the star sweep and three spot
+  checks, and was wrong: 329 of 4,095 bars move. The function has three
+  callers in the Studio; the claim was true of none of them until each had
+  been run.
+- **"Better" is a measurement, and of every design that moves.** "The bars
+  that move get better" was written from two pictures of long ones. The
+  independent re-measure drew the stitches of all 726 over their outlines:
+  thread outside the outline fell, and 60 short bars LOST cover, 24 by more
+  than 30 points, because the knot that was taken out had been covering
+  them. A round shape 2 mm across went from 39 stitches to 4. Removing a
+  defect removes whatever it was doing by accident; measure the claim's own
+  noun on all of them before writing the adjective.
+
+*(measured 2026-10-03 — `tools/satin-walk-census.mjs`,
+`test/satin-walk.test.js`; MASTER_SCOPE defects 56 and 57; scope-history
+10-03)*
+
+## 2026-10-05 — Kent's ruling: the button starts every digitize; nothing runs on its own
+
+**Reverses two of his own rulings**, both of which had made the Studio start
+runs by itself: 2026-08-13 (a shape edit restitches after a 2 s pause) and
+2026-08-30 (uploading the image IS the run, PR #296). Asked which of three
+trigger models he wanted, with the catch of each stated, he picked "button
+only" over "button first, edits auto" — after first picking the other and
+asking to be asked again.
+
+What he asked for, in his words: "Change 'upload logo' to 'upload file' and
+when I select it, a file browser pops up. When I select 'Auto Digitize Image'
+that should begin the digitizing process. If I modify anything on the
+digitized version 'auto digitized' should be transparent so I know I need to
+select 'Auto Digitize' again."
+
+- **The rule:** a file loads and waits. `.dgp-run` is the run. Any change to
+  what a digitize would SEND — settings, crop, shape edits, borders, garment
+  — leaves the stitches where they are and turns the button transparent.
+  Solid before the first run and whenever the result is current (his pick).
+- **Do not re-add an automatic run to "help".** The 08-30 half that stands is
+  the other one: the Studio asks nothing about what the art is.
+- **What it costs, knowingly:** the canvas shows stitches that are behind the
+  outline after a drag, until the button is pressed. The stale note and the
+  dimmed border readout say so.
+
+*(built and driven 2026-10-05 — `DigitizePanel.spec.js` "nothing runs until
+Auto Digitize Image is pressed", e2e `digitize-auto-start.spec.js`;
+COOKBOOK "Nothing in `DigitizePanel` starts a run")*
+
+## A small shape on a low-resolution logo has no pixel of its own ink (2026-10-05)
+
+An open lead, with one retraction inside it. Started from an outside review's
+claim that the whole-image class is the photo lane's design flaw; the
+measurement moved the problem somewhere else.
+
+- **Forced flat is not an escape hatch for real logos.** Eleven of fifteen
+  real-art fixtures route `gradient` (the 09-11 entry above says why), and on
+  the six of those whose sheets were read — `logo_mfab_lc`, both `logo_toat`,
+  `logo_golke_roofing`, `drone_render`, `logo_bridge_bar` — `forced_class="flat"`
+  sews worse: `logo_toat_machine` 6,541 → 17,143 stitches with its border in
+  dashes, Bridge Bar a white ring round the wheel. It rescued the Instagram
+  icon and that is the whole of its record. Do not offer it as the general
+  cure. *(measured 2026-10-05 — scope-history 2026-10-05; five sheets rendered
+  and not read)*
+- **`robust_region_colour` does not reach a small shape, because the median is
+  anti-aliasing too.** `logo_mfab_lc` is 148 × 389 px, 4.71 px/mm at 80 mm: its
+  white linework is 27 regions, 139.5 mm², every one ≤ 0.6 mm wide (~2.4
+  source px), mean grey 150–207, yet the 90th percentile is ≥ 235 on 112 mm² of
+  it. The palette is handed a grey nobody drew and rightly buys it: 6 cones,
+  2,718 grey stitches, 30 white. The 09-10 fix was for a BIG region with
+  inclusions; this is the other end of the same seam.
+- **A halo and a stroke want opposite treatment, and nothing yet tells them
+  apart.** `tools/stroke_colour_probe.py` gives a region ≤ 4 source px wide
+  with a wide grey span its light or dark end: `logo_golke_roofing` 5 cones →
+  2 for 27.8 mm² rewritten, `logo_mfab_lc` white 30 → 1,859 stitches (909
+  left in off-shades), `logo_toat_beanie` not cured, the ramps unmoved — and
+  Bridge Bar's teal 227 → 1,882, because its thin bands are JPEG ringing and
+  the rule repaints what `dissolve_phantom_blends` should fold. **Do not
+  build the rule alone** — and not with the dissolve either; see the last
+  bullet.
+- **`dissolve_phantom_blends` DOES fold a band that borders enclosed ground**
+  — 7 of 10 on `logo_mfab_lc`, 60 of 63 on `logo_toat_beanie`. The opposite
+  was this session's first hypothesis, read off the comment at the page-mask
+  branch; a spy on the function refuted it. On these logos the flag alone
+  takes toat 6 → 4 cones, golke 5 → 4, mfab 6 → 6; turning `keep_thin_strokes`
+  off moves one cone on golke and none elsewhere.
+- **RETRACTED the same day: "no per-region rule works; width is the wrong
+  discriminator."** Two scratch copies of the probe chose a region's side
+  differently — mean ≥ 128 in one, mean ≥ the midpoint of its own range in the
+  other — and nine logos run on the second were read as a verdict on the
+  width gate. It was caught only because the committed tool would not
+  reproduce the first probe's golke 5 → 2. **Before a probe's result is
+  written down, reproduce it with the tool that will be committed, and give
+  every choice the probe makes a named flag** — the 09-11 rule ("commit the
+  probe, even an ugly one") is also the check on the probe.
+
+- **The rule and the dissolve do not combine (2026-10-06).** The hope was
+  that the dissolve folds Bridge Bar's ringing before the rule can repaint
+  it. It does not: with both on, teal is 607 → 2,304 stitches and sits on the
+  black ring in the render. And the two interfere where each worked alone —
+  cones as base / rule / dissolve / both: `logo_golke_roofing` 5 / **2** / 4 /
+  3 (the dissolve moves the region set, the rule then reaches 3 regions
+  instead of 7 and the roof lines sew light grey), `logo_toat_beanie` 6 / 6 /
+  **4** / 5 (the rule turns a few bars pure black beside off-black
+  lettering), `logo_mfab_lc` 6 / 6 / 6 / **5**. Three logos, three different
+  best arms. **What is missing is not a second flag but a per-region test
+  that tells a halo band from a drawn stroke; until one exists, neither
+  default should move on this evidence.** Not chased: the dissolve alone left
+  Bridge Bar 4,488 grey stitches at the Studio's six colours, against defect
+  27's record of five greys in six removed.
+
+*(measured 2026-10-05 and 10-06 — `tools/stroke_colour_probe.py`, defaults,
+`--dissolve` for the last bullet; tables in scope-history 2026-10-05 and
+2026-10-06)*

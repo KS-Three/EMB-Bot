@@ -321,24 +321,16 @@ async function smoke() {
   if (await digitizerUp()) {
     log("lane 2: artwork auto-digitize (service is up)");
     await page.goto(BASE + "/", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: "Logo patch", exact: false }).first().click();
     const fixture = join(REPO, "app/e2e/fixtures/enthusiast_logo.png");
-    await page.setInputFiles("input[type=file]", fixture);
-    // NOTHING IS CLICKED HERE, deliberately. PR #296 ("uploading the image is
-    // the whole interaction", Kent 2026-08-30) made the upload itself start
-    // the run: DigitizePanel watches `element.sourcePng` and calls
-    // `runDigitize` as soon as it changes, provided `health` is truthy.
-    // `app/e2e/digitize-auto-start.spec.js` pins exactly that, with no
-    // Digitize click anywhere in it.
-    //
-    // This used to wait for a button with the exact text "Digitize" and click
-    // it, which now hangs the full 30s and then throws. The button was NOT
-    // deleted — it is still the way back in when the service is offline, or
-    // when the user re-picks the identical file — but its label is transient:
-    //   pending ? "Digitizing…" : element.result ? "Digitize again" : "Digitize"
-    // With the service up, the auto-start flips `pending` true before the
-    // wait can see it, so exact "Digitize" never appears. Waiting on the
-    // caption is the honest check: it proves stitches actually landed.
+    // File first, then the button (Kent 2026-10-05). "Upload file" opens the
+    // OS file browser through ONE hidden input and the element is only added
+    // once a file comes back; setting that input's files is the same path
+    // minus the dialog. Nothing digitizes on its own any more, so the run is
+    // an explicit click on `.dgp-run` ("Auto Digitize Image") -- located by
+    // class because the chip "Digitized · …" also matches the word.
+    // `app/e2e/digitize-auto-start.spec.js` pins all of it.
+    await page.setInputFiles('[data-testid="art-file"]', fixture);
+    await page.locator(".dgp-run:not([disabled])").click({ timeout: 30000 });
     const artCap = await waitCaption(120000);
     shots.push(await shot("artwork-digitize"));
     results.push(`  artwork lane: ${artCap || "NO STITCH CAPTION"}`);

@@ -766,20 +766,22 @@ hand-rolling it in JS.
   and canvas tools", not "Canvas tools" — an e2e that right-clicks ON a
   digitized shape and expects the plain name will not find it.
 
-- **A border edit restitches at 0 ms; every other shape edit keeps the 2 s
-  pause (2026-09-17).** `DigitizePanel`'s restitch scheduler asks
-  `editKind(prevEdits, nextEdits)` (`lib/digitizer.js`) what moved, because
-  every shape edit lands in the same `shape_overrides` object and WHERE the
-  change is cannot tell a dragged outline from a menu pick. It answers
-  `"border"` only when EVERY difference is a border value — narrow on purpose,
-  so it can never swallow a boundary and put a full stage 0-7 run behind every
-  nudge. **Two traps if you touch this:** the 0 ms path must still go through
-  `setTimeout`, since the scheduler runs inside a reactive statement and
-  `runDigitize` patches the element (a direct call re-enters mid-flush); and it
-  must NOT set the armed flag, because a 0 ms timeout is a macrotask that fires
-  after Svelte has flushed, so arming it paints the "waiting" line for a frame
-  on every border toggle. Starting a run of any kind disarms a pending one —
-  without that, "Digitize again" during the pause runs twice.
+- **Nothing in `DigitizePanel` starts a run except `.dgp-run` ("Auto Digitize
+  Image") and "Apply layer changes" (Kent 2026-10-05).** The four watchers
+  that used to run on their own are gone: new artwork, params, the crop box,
+  and shape edits behind a 2 s pause (with a 0 ms fast path for borders,
+  `editKind`, which is still exported and no longer called by the panel).
+  What replaced them is one comparison: `configKey(buildDigitizeConfig(el,
+  project))` against `element.appliedConfig`, written from the SUBMITTED
+  config when a result lands. Unequal means the stitches are behind the
+  settings, and the button goes transparent (`dgp-run-stale`). **Two things
+  to keep if you touch it:** the key lives on the element, not in the
+  component, because `ContentStep` remounts the panel per selection; and a
+  project saved before the field existed has a result and no key, which the
+  panel takes as current as it loads. **Artwork is added file-first:**
+  `App.onAddElement("artwork")` clicks one hidden input
+  (`[data-testid="art-file"]`) and only adds the element once a file comes
+  back, handing it to the new panel as `pendingFile`.
 
 - **`digitizer/` cites its own docs relative to the package root**, i.e.
   bare `docs/dt-classifier-spike-2026-08-02.md` meaning
@@ -1032,7 +1034,11 @@ sews nothing and cuts the smallest shape that contains it.
     drawn badge or U does it all the time. Ask the ground test both ways
     round on whole-number shapes ("whole-number shapes" in the same file),
     and sweep every preset in `FABRICS.FABRICS`: terry sews its fill upward,
-    and that was the direction a third audit found wrong.
+    and that was the direction a third audit found wrong. Draw notches
+    exactly twice a preset's pull compensation wide as well (4 to 12 px at
+    10 px per mm): the outline the fill is sewn to closes one to a slit, and
+    no sweep had one until an audit drew it (2026-10-03, "a move of no
+    length").
 
   To SEE thread rather than penetrations, run
   `node tools/fill-columns-sheet.mjs`: it draws four manual-lane shapes off
@@ -1047,6 +1053,22 @@ sews nothing and cuts the smallest shape that contains it.
   the flag; the flip is Kent's ("Waiting on Kent" 23).
   `node tools/lock-stitch-census.mjs` prints what a lock costs and how long
   its legs really are, on every shipped font and eleven shapes.
+- **Cutting long floats is built OFF for the shape builder (2026-10-04).**
+  A DST has no cut. `dst.js` lays three jump records for a `trim`, and also
+  for any float over 24.2 mm, so a machine cuts where the stream has only a
+  jump, and `ties` lays no lock there. `cutFloats: true` on
+  `buildQualityDesign` puts the `trim` in the stream: one pass,
+  `cutLongFloats` in `src/digitize.js`, over the finished stream and before
+  `applyTies`. How many records a move takes is asked of the writer
+  (`dst.jumpRecords`); do not work it out from a length. The move to the
+  stitch AFTER a float counts, since the writer lays it as jumps up to its
+  last record. A float with no thread on it is left: after a cut, after a
+  colour change, at the start. To check any change to what is written, read
+  the FILE: `node tools/file-cut-census.mjs` writes every design with the
+  three writers, reads each back with its own readers and says what every
+  run of three jumps was; `--against <src>` says whether two engines differ
+  by cuts put in and nothing else. No Studio caller passes the flag; the
+  flip is Kent's ("Waiting on Kent" 28) and belongs after `fillColumns`.
 - **Row stagger is built OFF for the shape builder (2026-10-03).**
   `fillStagger: true` on `buildQualityDesign` puts the cover fill's needle
   holes on one grid shifted row by row (`tatamiFill`'s `stagger`, `minStitch`
@@ -1068,6 +1090,69 @@ sews nothing and cuts the smallest shape that contains it.
   `splitTol` there, the two lengths in the layout's units: final mm,
   divided by the fit scale, times `pxPerMm`, as `fillStitchMm` beside them
   already is.
+- **The browser's satin tracer can no longer walk for ever (2026-10-03), and
+  that is all that changed in it.** `skeletonEdges` in `src/satin.js` walks
+  skeleton pixels from a node to the next node, under a guard of one step
+  per grid cell. Three pixels that all touch are no node; a walk went round
+  them until the guard ran out, and the satin emitter sewed what came back
+  (a 20 mm star off the shape tool: 48,645 stitches). `circling()` ends such
+  a walk, and a walk that ended by itself is untouched. Three things to know
+  before touching it:
+  - It reached every lane that calls `medialSatin`, not stars: thin
+    round-ended bars and 273 of 612 image-lane designs moved too. Sweep
+    every caller before saying which designs a change moves.
+  - The walks still step onto pixels another edge has: a median 72 layings
+    too many for every 100 skeleton pixels on the shape tool's stars, and
+    "rings" are found in shapes with no hole. That,
+    and a stitch as long as the star or the bar, are MASTER_SCOPE defect
+    57, untouched. The Python port's cure for the first is a consumed set.
+    The knot had also been COVERING small round shapes: a 2 mm one now sews
+    four stitches, because such a ring is its only edge.
+  - `node tools/satin-walk-census.mjs` builds what the shape tool builds and
+    says which designs sew out of line with their neighbours in size;
+    `--against <tree>` says which designs differ from another engine's,
+    `--walks` counts the walks that only the guard stopped, `--kind rect`
+    does bars, `--render` draws one from its DST bytes. A counter it cannot
+    insert is an error: the first version read "0 walks at the guard" on a
+    file whose loop it had not found.
+- **No second stitch in one hole is built OFF for the shape builder
+  (2026-10-03).** The builder rounds to 0.1 mm, so a row at a tip, a move
+  across the mouth of a notch, or a scanline through a corner can put two
+  `stitch` records on one point: the needle twice in one hole, in what
+  ships. `dedupeHoles: true` on `buildQualityDesign` lays the first and not
+  the second. It is ONE place, `pushRun` in `src/digitize.js`, and it is
+  narrow on purpose: only a stitch whose record comes straight after a
+  stitch on its point is left out. After a jump or a cut the stitch is laid,
+  whatever point it is on. Do not widen it to look through jumps. A cut is
+  written as three jump records (`dst.js`), so a stitch taken out from
+  between two jumps can leave a reader a cut nobody made; the first build
+  did look through them, and an independent audit's remark caught it.
+  `node tools/sub-unit-stitch-census.mjs [srcDir]` counts the pairs on two
+  sets of designs and says what made each; `--on dedupeHoles=true --off
+  dedupeHoles=true` runs it with the flag, and `--against <other src>` says
+  whether two engines' streams differ only by such stitches. No Studio
+  caller passes the flag; the flip is Kent's ("Waiting on Kent" 25). The
+  lettering builder has no such rule. `docs/sub-unit-stitches-2026-10-03.md`.
+- **A ring may arrive CLOSED, and three readers still take its points
+  (2026-10-03).** `[p0, ..., pn, p0]`: the first point said again at the end.
+  `offsetRing` moves the corners said ONCE (`distinctCorners`) and
+  `isConvexRing` reads them, so the fill's pull compensation and the
+  `fillColumns` edge run are the open ring's. Three things are still read off
+  the POINTS, and a point said twice is one more of them: the auto stitch
+  angle and a satin shape's centre run (`pcaAngleDeg`), and the edge run that
+  is drawn toward the centroid and the order of a colour's shapes
+  (`insetRing`, `orderShapes`). That edge run is every shape's without
+  `fillColumns`, and with it a shape's with no hole and no inside corner. No
+  Studio lane sends an exact repeat: the tracer and the basic shapes never say
+  a point twice, and a hand-drawn shape that does is refused as crossing
+  itself. `parseSVG` (every circle, ellipse and rounded rect) and `src/fonts.js`
+  `pathToPolygons` DO; nothing in the Studio calls them, and a lane that will
+  should take the repeat off before the builder. "Twice" is to within rounding
+  (1e-9 px). A point merely NEAR the next is a corner, and the open bug at the
+  top of "Known bugs" is what one does. `node tools/closed-ring-census.mjs`
+  prints the wedge, closed against open, what each lane hands over, and the
+  near repeat; `--hash` and `--compare` are the before and after of an engine
+  change on rings that say no point twice.
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 
@@ -1260,8 +1345,30 @@ don't push for it.
 
 ## Known bugs (unresolved, not accepted — Kent's call on the fix)
 
-**None open as of 2026-10-02.** Every entry below is fixed and is kept for its
-trail. Put a new unresolved bug at the top, above this line's date.
+- **A hand-drawn shape with an anchor a pixel from the last one sews a spike
+  at that corner — the gesture that made them is FIXED 2026-10-03, the offset
+  is NOT (MASTER_SCOPE defect 55).** The short edge to such an anchor doubles
+  back, and `offsetRing` gives its end the whole mitre clamp, three times the
+  pull compensation: on terry a 40 mm box is filled 1.73 mm past the drawn
+  ring there, where a clean corner has 0.85. They came from a double-click,
+  which is two clicks and then a `dblclick`: the second click was taken as an
+  anchor unless it landed within 0.5 canvas px of the first
+  (`DUP_POINT_EPS_PX`), and one slip in four was refused as crossing instead,
+  so the double-click finished nothing. `ManualPanel.onCanvasClick` now lets
+  a click with `detail` 2 go by (the field reads `detail` for its own
+  double-click too), so no new shape gets one. **Still open:** a shape saved
+  before then keeps its anchor and its spike, and two anchors dragged to one
+  hoop corner make another. Curing those means the offset (a bevel past the
+  clamp), which moves every sharp corner under a preset: Kent's call, not
+  built. It is NOT the closed-ring wedge fixed the same day (that is a point
+  said twice to within rounding, and no Studio lane sends one), though it is
+  the same function and the same clamp. `node tools/closed-ring-census.mjs`,
+  table 4; `app/e2e/manual-double-click.spec.js` drives the gesture in a
+  real browser.
+
+**One open as of 2026-10-03, above (its offset half).** Every entry below this
+line is fixed and is kept for its trail. Put a new unresolved bug at the top,
+above this line.
 
 - **DST axis transposition — FIXED 2026-09-08, both halves. The phantom end
   stitch is FIXED too (#415).** EMB-Bot's own DST codec was transposed
@@ -1670,7 +1777,10 @@ Captures stay on cloud Linux or CI.
   worktrees. Do not develop in it: nothing under `/root` is backed up and
   no Windows checkout can see its branches.
 - `/root/emb-control` is a detached worktree at `2c60cd87`, the commit the
-  current baseline was captured at. Its `digitizer/.venv` is the box's one
+  baseline was captured at when the box was built. **The baseline moved to
+  `6e0cb943` on 2026-10-04 and to `d000e370` on 2026-10-05** — re-cut the
+  control at the file's own `captured_at_commit` before the next `diff`, or
+  its rows compare the wrong commit to the file. Its `digitizer/.venv` is the box's one
   venv. Its `corpus_scorecard_baseline.json` is overwritten with
   `origin/main`'s copy on purpose (the control compares that commit to
   that file), so the tree reads dirty.
@@ -1936,6 +2046,15 @@ and controllable to the user.
     pair `FILL_ROW_MM`/`SATIN_SPACING_MM`. It asserts AGREEMENT, never a
     value — the numbers themselves are gate 1.
   - `flatten.js` — medianCut → modeFilter → absorbSmallRegions pipeline.
+    `absorbSmallRegions` labels the image ONCE and then keeps each
+    component's pixels itself (2026-10-04). Before that it labelled the whole
+    image again after every absorb, and the Studio's tab froze for minutes on
+    a photograph. The old loop is kept word for word in
+    `test/flatten.test.js` as the definition of what is absorbed into what and
+    in which order: change the engine's version and that file says whether a
+    pixel moved. `node tools/flatten-census.mjs` prints what the Studio's own
+    flatten costs on every testdata PNG, step by step, and with `--hashes` the
+    hash of what it returns, to diff two engines.
   - `fonts/` — pre-digitized font library: `manifest.json` (85
     shipping fonts — recount it, the number drifts) + `bin/*.embf` binaries
     + `.LICENSE.txt` sidecars, parsed offline from Ink/Stitch's open-source
