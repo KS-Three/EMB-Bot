@@ -1513,6 +1513,139 @@ def _cap_thread(silhouette, sewn: list[PlannedRegion],
     return min(frontage, key=lambda ti: (-round(frontage[ti], 6), ti))
 
 
+# A cap stretch shorter than this (path mm) folds into the stretch before it
+# rather than sewing a colour change of its own: the nearest-edge vote flips
+# back and forth within a millimetre of a junction, and a cone swap for a
+# crumb costs more than the mismatch it cures.
+_CAP_PIECE_MIN_MM = 4.0
+
+
+def _cap_piece_id(pts, taken: set[str]) -> str:
+    """`cap:<x>:<y>` -- the stretch's midpoint along its own path, plan mm
+    rounded to 1 mm. Geometry only (never the thread), so recolouring a
+    stretch does not rename it; a clash takes `-2`, `-3`... in path order."""
+    half = sum(math.dist(a, b) for a, b in zip(pts, pts[1:])) / 2.0
+    run = 0.0
+    mid = pts[0]
+    for a, b in zip(pts, pts[1:]):
+        seg = math.dist(a, b)
+        if run + seg >= half:
+            f = (half - run) / seg if seg > 0 else 0.0
+            mid = (a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f)
+            break
+        run += seg
+    base = f"{stitches.CAP_PIECE_PREFIX}{round(mid[0])}:{round(mid[1])}"
+    pid, n = base, 1
+    while pid in taken:
+        n += 1
+        pid = f"{base}-{n}"
+    taken.add(pid)
+    return pid
+
+
+def _cap_follow_pieces(runs, sewn: list[PlannedRegion], cfg: PipelineConfig):
+    """Split the cap's runs into stretches, each tagged with the thread of the
+    sewn region whose edge it stands against.
+
+    -> list of (thread_index, StitchRun, was_split), in path order, or None
+    when there is nothing to vote with (the caller then keeps the single
+    block). Each stretch repeats the boundary point it shares with the next so
+    the cap stays one unbroken line across a colour change. `_cap_thread`
+    answers one cone for the whole ring, which is right for a one-colour edge
+    and wrong wherever the silhouette passes a second colour.
+
+    Every stretch carries a `cap:` id (`_cap_piece_id`) and is editable like a
+    shape: the id in `cfg.deleted_shape_ids` drops it, and a `thread_index` on
+    `cfg.shape_overrides[id]` sews it in that cone instead. Edits are applied
+    AFTER the split, so recolouring one stretch never moves another's seam.
+    """
+    bounds = [p.polygon.boundary for p in sewn]
+    threads = [p.region.thread_index for p in sewn]
+    if not bounds:
+        return None
+    try:
+        tree = shapely.STRtree(bounds)
+    except Exception:
+        return None
+
+    def seg_thread(a, b):
+        try:
+            seg = LineString([a, b])
+            if seg.length <= 0:
+                return None
+            idx = tree.nearest(seg.interpolate(0.5, normalized=True))
+        except Exception:
+            return None
+        return threads[int(idx)] if idx is not None else None
+
+    deleted = set(cfg.deleted_shape_ids or ())
+    overrides = cfg.shape_overrides or {}
+    chart_len = len(chart_for(cfg))
+    taken: set[str] = set()
+    out = []
+    for r in runs or ():
+        pts = list(getattr(r, "points", ()) or ())
+        if len(pts) < 2:
+            continue
+        labels = [seg_thread(a, b) for a, b in zip(pts, pts[1:])]
+        # Segments with no verdict take the one before (or after, at the start).
+        last = next((t for t in labels if t is not None), None)
+        for i, t in enumerate(labels):
+            if t is None:
+                labels[i] = last
+            else:
+                last = t
+        # Contiguous spans [start, end) of equal label.
+        spans = []
+        for i, t in enumerate(labels):
+            if spans and spans[-1][2] == t:
+                spans[-1][1] = i + 1
+            else:
+                spans.append([i, i + 1, t])
+
+        def span_mm(sp):
+            return sum(math.dist(pts[k], pts[k + 1]) for k in range(sp[0], sp[1]))
+
+        # Fold short spans into the previous one (the first folds forward).
+        merged = []
+        for sp in spans:
+            if merged and span_mm(sp) < _CAP_PIECE_MIN_MM:
+                merged[-1][1] = sp[1]
+            else:
+                merged.append(list(sp))
+        if len(merged) > 1 and span_mm(merged[0]) < _CAP_PIECE_MIN_MM:
+            merged[1][0] = merged[0][0]
+            merged.pop(0)
+        # Folding can leave neighbours with equal labels.
+        joined = []
+        for sp in merged:
+            if joined and joined[-1][2] == sp[2]:
+                joined[-1][1] = sp[1]
+            else:
+                joined.append(sp)
+        for k, (i0, i1, t) in enumerate(joined):
+            seg_pts = pts[i0:i1 + 1]
+            split = len(joined) > 1
+            pid = _cap_piece_id(seg_pts, taken)
+            if pid in deleted:
+                continue
+            ov = (overrides.get(pid) or {}).get("thread_index")
+            if isinstance(ov, int) and not isinstance(ov, bool) and 0 <= ov < chart_len:
+                t = ov
+            if split:
+                # The first stretch of a run starts where the run did, so it
+                # keeps the emitter's lift/cut; later ones start mid-ring.
+                piece = StitchRun(points=seg_pts, kind=r.kind,
+                                  jump=r.jump if k == 0 else True,
+                                  trim=r.trim if k == 0 else True,
+                                  shape_id=r.shape_id, role=r.role, piece=pid)
+            else:
+                r.piece = pid
+                piece = r
+            out.append((t, piece, split and k > 0))
+    return out
+
+
 def _border_seam_warning(seams: list[tuple[str, str, float]]) -> dict | None:
     """`BORDER_SEAM_SHARED`, built from the seams `_owned_by_later` handed to
     a later-sewn shape — or `None` when no two bordered shapes shared one.
@@ -2749,12 +2882,32 @@ def sequence(
             # the detail layer below and every artwork block above get.
             c_runs[0].jump = True
             c_runs[0].trim = True
-            _apply_ties(c_runs)
+            # Per-stretch colour (cfg.edge_cap_follow_adjacent): decided on
+            # the bare runs, BEFORE ties, so each block's ties are laid on its
+            # own run ends. A one-colour edge is still one block, its runs the
+            # emitter's own, so that case sews exactly what it did before.
+            c_blocks = None
+            if cfg.edge_cap_follow_adjacent:
+                _pieces = _cap_follow_pieces(c_runs, cap_sewn, cfg)
+                if _pieces is not None:
+                    c_blocks = {}
+                    for t, piece, _mid in _pieces:
+                        c_blocks.setdefault(t, []).append((piece, _mid))
+            if c_blocks is None:
+                _apply_ties(c_runs)
+            else:
+                for _items in c_blocks.values():
+                    _items[0][0].jump = True
+                    _items[0][0].trim = True
+                    _apply_ties([it[0] for it in _items])
             # The bill, always. See EDGE_CAP_APPLIED: the cost is not
             # predictable from the design's size, it scales with how
             # fragmented the silhouette is, so the only honest thing is to
             # measure it on THIS design and say so.
-            _cap_st = sum(len(r.points) for r in c_runs)
+            _cap_st = sum(len(r.points)
+                          for r in (c_runs if c_blocks is None else
+                                    [it[0] for its in c_blocks.values()
+                                     for it in its]))
             # The artwork's own stitches: every block so far, the cap not yet
             # among them. (Identical to the post-append
             # `sum(...) - _cap_st` this replaced — `StitchBlock.stitch_count`
@@ -2768,19 +2921,42 @@ def sequence(
             if not cap_dropped:
                 jumps += c_report["jumps"]
                 cap_lightened = c_report["bean_loops"]
-                c_index = _cap_thread(silhouette, cap_sewn,
-                                      cap_sewn[0].region.thread_index,
-                                      runs=c_runs)
-                c_thread = chart_for(cfg)[c_index]
-                blocks.append(
-                    StitchBlock(
-                        thread_index=c_index,
-                        thread_number=c_thread.number,
-                        rgb=tuple(c_thread.rgb),
-                        runs=c_runs,
+                if c_blocks is not None:
+                    chart = chart_for(cfg)
+                    for c_index, _items in c_blocks.items():
+                        _runs = [it[0] for it in _items]
+                        # A stretch cut from the middle of a ring lifts to
+                        # reach it; cut the thread only when the hop is long.
+                        for k in range(1, len(_items)):
+                            if _items[k][1]:
+                                _runs[k].jump = True
+                                _runs[k].trim = (math.dist(
+                                    _runs[k - 1].points[-1], _runs[k].points[0])
+                                    >= trim_at)
+                        c_thread = chart[c_index]
+                        blocks.append(
+                            StitchBlock(
+                                thread_index=c_index,
+                                thread_number=c_thread.number,
+                                rgb=tuple(c_thread.rgb),
+                                runs=_runs,
+                            )
+                        )
+                        cursor = _runs[-1].points[-1]
+                else:
+                    c_index = _cap_thread(silhouette, cap_sewn,
+                                          cap_sewn[0].region.thread_index,
+                                          runs=c_runs)
+                    c_thread = chart_for(cfg)[c_index]
+                    blocks.append(
+                        StitchBlock(
+                            thread_index=c_index,
+                            thread_number=c_thread.number,
+                            rgb=tuple(c_thread.rgb),
+                            runs=c_runs,
+                        )
                     )
-                )
-                cursor = c_runs[-1].points[-1]
+                    cursor = c_runs[-1].points[-1]
             cap_cost = {
                 "style": cap_style,
                 "stitches": _cap_st,

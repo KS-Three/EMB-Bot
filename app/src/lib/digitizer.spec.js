@@ -2335,6 +2335,19 @@ describe("editKind (restitch pacing)", () => {
     expect(editKind(removed, none)).toBe("border");
   });
 
+  it("reads a deletion, and its undo, as 'delete' — and a delete beside a drag as 'other'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const none = await edits(el({}));
+    const gone = await edits(digitizedElement({ deletedShapeIds: ["s1"] }));
+    expect(editKind(none, gone)).toBe("delete");
+    expect(editKind(gone, none)).toBe("delete");
+    const both = await edits(digitizedElement({
+      deletedShapeIds: ["s1"],
+      shapeOverrides: { s2: { boundary_override: ring() } },
+    }));
+    expect(editKind(none, both)).toBe("other");
+  });
+
   it("reads borders on SEVERAL shapes at once as 'border'", async () => {
     const { editKind } = await import("./digitizer.js");
     const a = await edits(el({ s1: { border: "auto" } }));
@@ -2375,7 +2388,9 @@ describe("editKind (restitch pacing)", () => {
     expect(editKind(base, await edits(el({ s1: { underlay_style: "edge_run" } })))).toBe("other");
     expect(editKind(base, await edits(el({ s1: { thread_index: 3 } })))).toBe("other");
     expect(editKind(base, await edits(el({ s1: { fill_angle_deg: 45 } })))).toBe("other");
-    expect(editKind(base, await edits(digitizedElement({ deletedShapeIds: ["s1"] })))).toBe("other");
+    // A bare delete left this list on 2026-10-06 (Kent: deleting a shape
+    // "pinwheels") — it is the 'delete' kind above, and the canvas hides the
+    // shape at once while the restitch runs.
     expect(editKind(base, await edits(digitizedElement({ mergeGroups: [["s1", "s2"]] })))).toBe("other");
   });
 

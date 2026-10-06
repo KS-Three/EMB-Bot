@@ -282,7 +282,10 @@ def test_the_ceiling_does_not_fire_on_a_design_that_honestly_costs_a_quarter(wid
     """
     plan = _run(WHITEBG, width)
     bill = _bill(plan)
-    assert 20.0 < bill["percent"] < 27.0, bill["percent"]
+    # Ceiling 27 -> 28 on 2026-10-06: the cap now sews each stretch in the
+    # thread beside it (`edge_cap_follow_adjacent`), and every colour seam
+    # repeats one boundary point, so this design reads 27.0 where it read 26.3.
+    assert 20.0 < bill["percent"] < 28.0, bill["percent"]
     assert bill["over_budget"] is False
     assert _over(plan) is None
     assert bill["percent"] < EDGE_CAP_BUDGET_PCT / 1.4, (

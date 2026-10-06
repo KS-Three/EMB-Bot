@@ -22,6 +22,7 @@
     shapeBorderState } from "../lib/borderMenu.js";
   import { boundaryIssues, canonicalShapeEdits, editsKey } from "../lib/digitizer.js";
   import { popoverModel, popoverPatch, recolorPatch } from "../lib/shapePopover.js";
+  import { capOutlinesMm, isCapPieceId } from "../lib/capPieces.js";
   import { resolveCutOuts } from "../lib/manualShapes.js";
   import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, refitShapesPatch, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT } from "../lib/fieldNodeEdit.js";
   import Hint from "./Hint.svelte";
@@ -854,7 +855,13 @@
     if (el.type === "digitized") {
       const rows = digitizedRows(el);
       if (!rows || !pe.bboxMm) return null;
-      return { rows, mm: shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el)) };
+      return {
+        rows,
+        mm: shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el)),
+        // The silhouette cap, one open polyline per stretch: selectable like a
+        // shape (see lib/capPieces.js), never editable as one.
+        caps: capOutlinesMm(el, pe.design),
+      };
     }
     const mm = designOutlinesInFieldMm(pe.design);
     // A cut-out emits no region, so the engine has no outline for it: the
@@ -891,7 +898,25 @@
         cutOut: !!o.cutOut,
       })),
       mmById: new Map(src.mm.map((o) => [o.id, o.points])),
+      caps: (src.caps || []).map((o) => ({
+        id: o.id,
+        open: true,
+        points: o.points.map(([x, y]) => {
+          const c = renderResult.toCanvas(x, y);
+          return [c.x, c.y];
+        }),
+      })),
     };
+  }
+
+  // The cap stretch under the pointer, if any. A stretch rides the silhouette,
+  // which is also the outer shape's own outline, so a press on that edge picks
+  // the stretch — except when the outer shape is already selected and the press
+  // is on one of ITS nodes, which keeps node editing reachable.
+  function capHitAt(edit, p) {
+    const hidden = hiddenShapeIds(edit.el, edit.rows);
+    const live = (edit.caps || []).filter((o) => !hidden.has(o.id));
+    return live.length ? hitOverlay(live, p.x, p.y) : null;
   }
 
   function editableOutlinesPx() {
@@ -1389,9 +1414,36 @@
         }
       }
       ctx.restore();
+      drawCapOutline(ctx, el, src.caps || [], hidden);
     }
 
     if (stillPulsing) schedulePulseFrame();
+  }
+
+  // The selected cap stretch (and the one under a Layers hover) — a cased
+  // open line, amber when selected, like a shape's outline but with no ring
+  // and no nodes. Idle stretches stay undrawn; the stitching is its own cue.
+  function drawCapOutline(ctx, el, caps, hidden) {
+    for (const o of caps) {
+      if (hidden.has(o.id)) continue;
+      const editing = el.id === selectedShapeElId && o.id === selectedShapeId;
+      if (!editing) continue;
+      const pts = o.points.map(([x, y]) => renderResult.toCanvas(x, y));
+      if (pts.length < 2) continue;
+      ctx.save();
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.strokeStyle = "rgba(10, 22, 30, 0.6)";
+      ctx.lineWidth = 5.2;
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(255, 214, 64, 0.95)";
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   // The selected hand-drawn shape's AUTHORED geometry: the quadratic outline
@@ -2655,7 +2707,11 @@
         }
       }
       // Hidden and deleted shapes are not drawn, so they are not grabbable.
-      const hit = hitOverlay(liveOutlinesPx(edit), p.x, p.y);
+      const shapeHit = hitOverlay(liveOutlinesPx(edit), p.x, p.y);
+      const capHit = capHitAt(edit, p);
+      const onOwnNode = !!shapeHit && shapeHit.kind === "node"
+        && shapeHit.shapeId === selectedShapeId && edit.el.id === selectedShapeElId;
+      const hit = capHit && !onOwnNode ? capHit : shapeHit;
       if (hit) {
         // First click on a shape selects it and stops there — no geometry
         // moves until you have said which shape you mean. On the manual and
@@ -2665,7 +2721,8 @@
         // The popover waits for the RELEASE (endDrag's click test): a press
         // that turns into a drag opens nothing. Capture so the release
         // reaches endDrag even if it lands off the canvas.
-        if (hit.shapeId !== selectedShapeId || edit.el.id !== selectedShapeElId || edit.el.type !== "digitized") {
+        if (hit.shapeId !== selectedShapeId || edit.el.id !== selectedShapeElId || edit.el.type !== "digitized"
+            || isCapPieceId(hit.shapeId)) {
           selectedShapeId = hit.shapeId;
           selectedShapeElId = edit.el.id;
           shapeEditError = "";

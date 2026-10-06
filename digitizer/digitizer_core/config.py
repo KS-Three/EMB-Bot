@@ -2375,6 +2375,15 @@ class PipelineConfig:
     # `drone_render` reads bean +6.4% against satin +6.9%, because the gate
     # removes the crumbs before either emitter's loop floor has to.
     edge_cap: str = "bean"
+    # Whether the cap sews each stretch of the edge in the thread of the shape
+    # it stands against (Kent 2026-10-06: the bean outline on the Instagram
+    # icon did not follow the colour beside it) rather than the whole ring in
+    # the one cone that owns the most of it. Costs a colour change per extra
+    # thread the cap touches, so a gradient logo sews its cap in several
+    # blocks; stretches shorter than `stage7_sequence._CAP_PIECE_MIN_MM` fold
+    # into their neighbour so a junction never flickers. False restores the
+    # single block.
+    edge_cap_follow_adjacent: bool = True
     # What a cap whose bill clears `stage6_border.EDGE_CAP_BUDGET_PCT` (40%
     # of the artwork's own stitches) does about it. "warn" — the default and
     # the shipped behaviour — moves NO stitch: the plan is exactly the plan

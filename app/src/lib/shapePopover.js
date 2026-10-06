@@ -9,6 +9,7 @@
 // (the one async dependency, the thread chart, is injected).
 import { loadPalette, nearestInList } from "./threads.js";
 import { resolveCutOuts, manualShapeName, withCutOut } from "./manualShapes.js";
+import { isCapPieceId, capPieceRow } from "./capPieces.js";
 
 const LANES = new Set(["digitized", "manual", "shape"]);
 
@@ -129,6 +130,20 @@ export function popoverModel({ element, shapeId }) {
   }
 
   // digitized
+  // A stretch of the silhouette cap is not a review row: it has a colour and
+  // it can go, and nothing else (no tier, angle, underlay or border).
+  if (isCapPieceId(shapeId)) {
+    if ((element.deletedShapeIds || []).includes(shapeId)) return null;
+    const cap = capPieceRow(element, shapeId);
+    if (!cap) return null;
+    return {
+      lane, shapeId, name: "Edge stitch",
+      rows: [
+        { key: "color", kind: "thread", rgb: cap.rgb },
+        { key: "delete", kind: "action", label: "Delete edge stitch", danger: true },
+      ],
+    };
+  }
   const rows = (element.review && element.review.shapes) || [];
   const row = rows.find((r) => r && r.id === shapeId);
   if (!row) return null;
