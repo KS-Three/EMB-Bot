@@ -46,6 +46,11 @@
   --surround-muted: #a3a9b6;
   --surround-warn: #f2b27a;
   --surround-danger: #ff9d8f;
+  /* Field work bed (inside the hoop) and its measuring grid: 10 mm minor,
+     50 mm major. Mid-grey so black and white thread both read on it. */
+  --field-bed: #7b8190;
+  --field-grid-minor: rgba(255, 255, 255, 0.10);
+  --field-grid-major: rgba(255, 255, 255, 0.22);
 
   /* Single confident accent: indigo family. */
   --accent: #4f46e5;
@@ -569,6 +574,37 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   min-height: 0;
   background: var(--surface);
   border-left: 1px solid var(--border);
+
+  /* Dark control surface, to match the field it sits beside (2026-10-06, Kent:
+     "match the theme"). Done as a TOKEN scope, not per-component overrides:
+     every control in the panel and the Download sheet already reads these, so
+     redefining them here re-skins the lot and nothing outside .panel moves.
+     The accent keeps its value (white ink on it still clears AA); only its
+     tint ground flips. */
+  --ink: #dde0e8;
+  --muted: #a6acb9;
+  --bg: #2d313a;
+  --fill: #383d48;
+  --surface: #2d313a;
+  --surface-fade: rgba(45, 49, 58, 0);
+  --border: #444a57;
+  --tint: #272c58;
+  --tint-border: #4f58a8;
+  --danger: #ff9d8f;
+  --danger-hover: #ffb4a8;
+  --warn: #f2b27a;
+  --warn-bg: #3d2f22;
+  --checker-1: #383d48;
+  --checker-2: #30343e;
+  /* Indigo at --accent (#4f46e5) is 2.1:1 on this ground, so text-in-accent
+     (links, the checked garment) failed AA. A lighter indigo with dark ink on
+     accent fills (Download, selection) clears it everywhere in the panel. */
+  --accent: #9096ff;
+  --accent-dark: #7b82f5;
+  --accent-ink: #11131a;
+  --shadow-color: 0, 0, 0;
+  color-scheme: dark; /* UA textareas, selects, scrollbars follow */
+  color: var(--ink);
 }
 
 /* Wraps the Configurator (body + summary bar) so it can be made `inert`
@@ -1312,6 +1348,8 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
    below. */
 .hooptile-mm { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
 .hooptile.sel .hooptile-mm { color: var(--surround-muted); }
+/* The panel flips --ink light, so the selected segment's ground is light too. */
+.panel .hooptile.sel .hooptile-mm { color: #4a505c; }
 
 .hooptile-chip {
   font-size: var(--fs-2xs);
