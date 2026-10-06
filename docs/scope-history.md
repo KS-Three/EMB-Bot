@@ -13,6 +13,26 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-06 — the stroke-colour rule and `dissolve_phantom_blends` together, nine gradient logos
+
+`tools/stroke_colour_probe.py --dissolve` (span ≥ 60, ≤ 4 source px, side absolute; both arms with the dissolve on), read with the 2026-10-05 rows below for the other two arms. Cones, stitches:
+
+| fixture | base | rule alone | dissolve alone | both | rewritten under dissolve, regions / mm² |
+|---|---|---|---|---|---|
+| golke | 5, 4,706 | 2, 4,674 | 4, 4,247 | 3, 4,247 | 3 / 20.8 |
+| toat_beanie | 6, 6,600 | 6, 6,567 | 4, 5,930 | 5, 5,970 | 18 / 58.2 |
+| mfab_lc | 6, 10,944 | 6, 10,916 | 6, 11,044 | 5, 11,127 | 28 / 156.7 |
+| bridge | 6, 17,744 | 6, 17,692 | 6, 19,666 | 6, 17,075 | 23 / 287.5 |
+| gaulke | 2, 4,205 | 2, 4,205 | 2, 4,555 | 2, 4,555 | 3 / 23.8 |
+| drone | 6, 18,975 | 6, 18,952 | 6, 18,975 | 6, 18,952 | 9 / 21.6 |
+| golden_tee | 6, 8,476 | 6, 8,476 | 6, 8,467 | 6, 8,467 | 0 / 0 |
+| fremont | 3, 20,023 | 3, 20,023 | 3, 20,023 | 3, 20,023 | 0 / 0 |
+| fremont_patch | 3, 16,692 | 3, 16,692 | 3, 16,597 | 3, 16,597 | 3 / 10.4 |
+
+Per colour, dissolve alone → both: bridge teal (`#339999` + `#4b787d`) 607 → 2,304, grey (`#7f7f7f` + `#d6d6d8`) 4,488 → 1,781, black 6,695 → 5,104; mfab_lc white 134 → 2,108, grey 2,922 → 951; golke light grey 257 → 316 (`#d6d6d8`), no white; toat_beanie gains `#000000` 371 and `#ffffff` 83; gaulke's 480 grey stitches become `#f5f5fa`. Renders read: bridge, toat_beanie, mfab_lc, golke. Kent's Windows box, main checkout at `cf9f89f1` plus another session's uncommitted edits.
+
+---
+
 **Last updated:** 2026-10-05 — auto class vs forced flat on fifteen real logos, and where the grey cones on black-and-white art come from
 
 **Class at the Studio's config (6 colours; widths per `tools/thin_strokes.REAL_ART`, `testdata/art` at 80 mm):** `gradient` 11 — fremont, fremont_patch, bridge, golden_tee, gaulke, golke, drone, screenshot, mfab_lc, toat_beanie, toat_machine; `flat` 2 — becker, enthusiast; `photo_scene` 2 — tires, mfab_hat. The two Instagram files did not run (job stopped at its time limit).

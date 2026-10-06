@@ -25,8 +25,13 @@ rewriting 27.8 mm2; `logo_mfab_lc` white 30 -> 1,859 stitches with 909 left
 in off-shades; `logo_toat_beanie` not cured; `drone_render`,
 `logo_golden_tee` and both Fremonts unmoved; and `logo_bridge_bar` WORSE —
 teal 227 -> 1,882 stitches — because its thin bands are JPEG ringing, and a
-halo wants dissolving where a stroke wants its ink. The rule plus
-`cfg.dissolve_phantom_blends` is untested.
+halo wants dissolving where a stroke wants its ink.
+
+THE RULE PLUS `cfg.dissolve_phantom_blends` (`--dissolve`, measured
+2026-10-06) does not combine. Cones as base / rule / dissolve / both: golke
+5 / 2 / 4 / 3, toat_beanie 6 / 6 / 4 / 5, mfab_lc 6 / 6 / 6 / 5, bridge 6 in
+every arm with the teal still painted. Each logo wants a different arm, so
+neither is the other's missing half.
 
 `--side` exists because the choice it names once changed silently between
 two scratch copies of this probe, and a whole nine-logo run was read as "the
@@ -39,6 +44,7 @@ and changes nothing in the engine.
     .venv/bin/python -m tools.stroke_colour_probe                    # nine gradient logos
     .venv/bin/python -m tools.stroke_colour_probe --fixture art/logo_mfab_lc.png
     .venv/bin/python -m tools.stroke_colour_probe --max-src-px 0     # no width gate
+    .venv/bin/python -m tools.stroke_colour_probe --dissolve --render build/stroke_pair
     .venv/bin/python -m tools.stroke_colour_probe --json build/stroke_colour.json
 """
 from __future__ import annotations
@@ -112,7 +118,8 @@ def _blocks(design: dict) -> list[tuple[str, int]]:
 
 
 def run(art: Path, width_mm: float, garment: str, *, probe: bool,
-        span: float, max_src_px: float, side: str = "absolute") -> dict:
+        span: float, max_src_px: float, side: str = "absolute",
+        cfg_kw: dict | None = None) -> dict:
     """Digitize `art` at the Studio's config, with or without the rule."""
     seen: dict = {"wide": [], "regions": 0}
     orig = s2.kept_masks_to_quant
@@ -140,7 +147,8 @@ def run(art: Path, width_mm: float, garment: str, *, probe: bool,
 
     s2.kept_masks_to_quant = patched
     try:
-        gen, _result, _plan, design = digitize_once(art, base_cfg(width_mm, garment))
+        gen, _result, _plan, design = digitize_once(
+            art, base_cfg(width_mm, garment, **(cfg_kw or {})))
     finally:
         s2.kept_masks_to_quant = orig
     blocks = _blocks(design)
@@ -156,6 +164,7 @@ def run(art: Path, width_mm: float, garment: str, *, probe: bool,
         "hit": len(hit),
         "hit_mm2": round(sum(f["area_mm2"] for f in hit), 1),
         "features": seen["wide"],
+        "design": design,
     }
 
 
@@ -173,13 +182,20 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--side", choices=("absolute", "relative"), default="absolute",
                     help="which end a region takes: light when its mean grey is >= 128 "
                          "(absolute), or >= the midpoint of its own p10..p90 (relative)")
+    ap.add_argument("--dissolve", action="store_true",
+                    help="run BOTH arms with cfg.dissolve_phantom_blends on, so the "
+                         "table reads dissolve alone -> dissolve plus the rule")
+    ap.add_argument("--render", type=Path, default=None,
+                    help="directory for base | probe thread renders, one PNG per fixture")
     ap.add_argument("--json", type=Path, default=None)
     args = ap.parse_args(argv)
 
     names = args.fixture or list(FIXTURES)
     print(f"rule: p10..p90 span >= {args.span:g}, "
           f"width <= {args.max_src_px:g} source px" + (" (no gate)" if args.max_src_px <= 0 else "")
-          + f", side {args.side}")
+          + f", side {args.side}"
+          + (", dissolve_phantom_blends ON in both arms" if args.dissolve else ""))
+    cfg_kw = {"dissolve_phantom_blends": True} if args.dissolve else {}
     print("| fixture (class) | cones base → probe | stitches base → probe "
           "| wide-span regions / mm² | rewritten / mm² |")
     print("|---|---|---|---|---|")
@@ -187,9 +203,23 @@ def main(argv: list[str]) -> int:
     for name in names:
         width_mm, garment = FIXTURES.get(name, (80.0, "left_chest"))
         rows = [run(TESTDATA / name, width_mm, garment, probe=on,
-                    span=args.span, max_src_px=args.max_src_px, side=args.side)
+                    span=args.span, max_src_px=args.max_src_px, side=args.side,
+                    cfg_kw=cfg_kw)
                 for on in (False, True)]
         base, probe = rows
+        designs = [row.pop("design") for row in rows]
+        if args.render:
+            from digitizer_core.stitchviz import render_design
+            args.render.mkdir(parents=True, exist_ok=True)
+            pans = []
+            for d in designs:
+                img = render_design(d)
+                k = 700.0 / img.shape[0]
+                pans.append(cv2.resize(img, (max(1, int(img.shape[1] * k)), 700),
+                                       interpolation=cv2.INTER_AREA))
+            gap = np.full((700, 12, 3), 255, np.uint8)
+            cv2.imwrite(str(args.render / f"{Path(name).stem}.png"),
+                        np.hstack([pans[0], gap, pans[1]]))
         out[name] = {"base": base, "probe": probe}
         print(f"| `{Path(name).stem}` ({base['class']}) | {base['cones']} → {probe['cones']} "
               f"| {base['stitches']} → {probe['stitches']} "

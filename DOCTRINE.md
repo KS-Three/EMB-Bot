@@ -8610,8 +8610,9 @@ measurement moved the problem somewhere else.
   2 for 27.8 mm² rewritten, `logo_mfab_lc` white 30 → 1,859 stitches (909
   left in off-shades), `logo_toat_beanie` not cured, the ramps unmoved — and
   Bridge Bar's teal 227 → 1,882, because its thin bands are JPEG ringing and
-  the rule repaints what `dissolve_phantom_blends` should fold. The two
-  together are untested. **Do not build the rule alone.**
+  the rule repaints what `dissolve_phantom_blends` should fold. **Do not
+  build the rule alone** — and not with the dissolve either; see the last
+  bullet.
 - **`dissolve_phantom_blends` DOES fold a band that borders enclosed ground**
   — 7 of 10 on `logo_mfab_lc`, 60 of 63 on `logo_toat_beanie`. The opposite
   was this session's first hypothesis, read off the comment at the page-mask
@@ -8628,5 +8629,21 @@ measurement moved the problem somewhere else.
   every choice the probe makes a named flag** — the 09-11 rule ("commit the
   probe, even an ugly one") is also the check on the probe.
 
-*(measured 2026-10-05 — `tools/stroke_colour_probe.py`, defaults; tables in
-scope-history 2026-10-05)*
+- **The rule and the dissolve do not combine (2026-10-06).** The hope was
+  that the dissolve folds Bridge Bar's ringing before the rule can repaint
+  it. It does not: with both on, teal is 607 → 2,304 stitches and sits on the
+  black ring in the render. And the two interfere where each worked alone —
+  cones as base / rule / dissolve / both: `logo_golke_roofing` 5 / **2** / 4 /
+  3 (the dissolve moves the region set, the rule then reaches 3 regions
+  instead of 7 and the roof lines sew light grey), `logo_toat_beanie` 6 / 6 /
+  **4** / 5 (the rule turns a few bars pure black beside off-black
+  lettering), `logo_mfab_lc` 6 / 6 / 6 / **5**. Three logos, three different
+  best arms. **What is missing is not a second flag but a per-region test
+  that tells a halo band from a drawn stroke; until one exists, neither
+  default should move on this evidence.** Not chased: the dissolve alone left
+  Bridge Bar 4,488 grey stitches at the Studio's six colours, against defect
+  27's record of five greys in six removed.
+
+*(measured 2026-10-05 and 10-06 — `tools/stroke_colour_probe.py`, defaults,
+`--dissolve` for the last bullet; tables in scope-history 2026-10-05 and
+2026-10-06)*
