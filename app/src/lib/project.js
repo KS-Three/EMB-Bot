@@ -219,6 +219,12 @@ export function defaultDigitizedElement(id) {
     shapeOverrides: {},
     deletedShapeIds: [],
     appliedEdits: null,
+    // digitizer.js configKey of the WHOLE config the current result was
+    // digitized with — params, crop, garment and edits together. The run
+    // button goes transparent when the element no longer matches it. null
+    // before a first run and on a project saved before 2026-10-05, which
+    // the panel reads as "current as loaded".
+    appliedConfig: null,
     preflight: null,
     stats: null,
     // The numbers the PREVIOUS digitize produced, captured the moment a new

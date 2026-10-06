@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher, onDestroy, tick } from "svelte";
+  import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
   import { tip } from "../lib/tip.js";
@@ -12,6 +12,7 @@
     ATTENTION_WARNINGS,
     canonicalShapeEdits,
     editsKey,
+    configKey,
     reviewFromJob,
     reconcileReview,
     reorderWithinLayer,
@@ -29,7 +30,6 @@
     textClusterMembers,
     textClusterSeed,
     remapBlockColors,
-    editKind,
     stitchWidthGroupRows,
     STITCH_WIDTH_MIN_MM,
     STITCH_WIDTH_MAX_MM,
@@ -53,9 +53,10 @@
   // The element stores the source image (processing size, PNG base64), the
   // digitizing params (service field names), and the BAKED result Design —
   // see project.js's defaultDigitizedElement. This panel owns the review
-  // loop: upload -> params -> Digitize -> poll -> result lands on the
-  // element; a param change with a result in hand re-digitizes automatically
-  // (the service's job cache makes an unchanged re-ask free).
+  // loop: upload -> params -> "Auto Digitize Image" -> poll -> result lands
+  // on the element. Nothing runs on its own (Kent 2026-10-05): every run is
+  // that button, and it goes transparent whenever the element has moved on
+  // from the config the result on the canvas was digitized with.
   export let element;
   export let project; // garmentId rides into the config (fabric preset service-side)
   export let health = null; // /health payload or null; App owns the probe
@@ -67,6 +68,11 @@
   // which App routes to the field.
   export let hoverShapeId = null;
   export let selectedShapeId = null;
+  // A file picked BEFORE this element existed: "Upload file" opens the OS
+  // file browser first and App only adds the element once something is
+  // chosen, so the File arrives here as a prop and is ingested on mount.
+  // "fileconsumed" tells App to drop it, so a remount cannot ingest it twice.
+  export let pendingFile = null;
 
   const d = createEventDispatcher();
 
@@ -91,7 +97,6 @@
   let error = "";
   let phase = "idle"; // idle | submitting | queued | running
   let fileBusy = false;
-  let rerunWanted = false;
   let destroyed = false;
   onDestroy(() => {
     destroyed = true;
@@ -103,10 +108,20 @@
 
   // ---- upload ---------------------------------------------------------------
 
-  async function onFile(e) {
+  function onFile(e) {
     const file = e.currentTarget.files && e.currentTarget.files[0];
     e.currentTarget.value = ""; // re-selecting the same file must re-fire change
-    if (!file) return;
+    if (file) ingestFile(file);
+  }
+
+  onMount(() => {
+    if (!pendingFile) return;
+    const file = pendingFile;
+    d("fileconsumed");
+    ingestFile(file);
+  });
+
+  async function ingestFile(file) {
     error = "";
     fileBusy = true;
     try {
@@ -162,7 +177,7 @@
       patch({
         sourcePng: b64, sourceFile, crop, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
         review: null, shapeOverrides: {}, deletedShapeIds: [], appliedEdits: null,
-        mergeGroups: [], splitLines: {},
+        appliedConfig: null, mergeGroups: [], splitLines: {},
       });
     } catch (err) {
       error = String((err && err.message) || err);
@@ -411,20 +426,9 @@
   }
 
   async function runDigitize(el) {
-    if (!el.sourcePng || !health) return;
-    // An armed restitch is now redundant whichever way this call goes: either
-    // it runs below with the current edits in it, or the in-flight guard sets
-    // `rerunWanted` and it runs straight after with the same edits. Letting
-    // the timer survive would put a second identical run behind this one —
-    // 10-14 s of service time on a photograph, for nothing. (Reachable before
-    // this by pressing "Digitize again" during the pause.)
-    clearTimeout(restitchTimer);
-    restitchTimer = 0;
-    restitchArmed = false;
-    if (phase !== "idle") {
-      rerunWanted = true; // a change landed mid-flight; run again after
-      return;
-    }
+    // The button is disabled while a run is in flight, and "Apply layer
+    // changes" with it, so a second call can only be a stray one.
+    if (!el.sourcePng || !health || phase !== "idle") return;
     error = "";
     phase = "submitting";
     try {
@@ -481,150 +485,40 @@
           merge_shape_ids: cfg.merge_shape_ids,
           split_shapes: cfg.split_shapes,
         }),
+        // From the SUBMITTED cfg for the same reason: a setting changed while
+        // this run was in flight is not in these stitches, and the button
+        // has to come back transparent for it.
+        appliedConfig: configKey(cfg),
       });
     } catch (err) {
       if (!destroyed) error = String((err && err.message) || err);
     } finally {
-      if (!destroyed) {
-        phase = "idle";
-        if (rerunWanted) {
-          rerunWanted = false;
-          runDigitize(element);
-        }
-      }
+      if (!destroyed) phase = "idle";
     }
   }
 
-  // Param changes re-digitize automatically once the artwork's first run is
-  // under way or done (the review loop). Same prev-value guard pattern as
-  // ImagePanel's re-flatten.
+  // NOTHING RE-RUNS ON ITS OWN (Kent's ruling 2026-10-05, replacing his
+  // 2026-08-13 "shape edits restitch after a pause" and 2026-08-30 "new
+  // artwork digitizes itself"). Four watchers used to live here -- params,
+  // a new `sourcePng`, shape edits behind a 2 s debounce, and the crop box --
+  // each starting a run. Every run is now the "Auto Digitize Image" button,
+  // and what those watchers knew is one comparison instead: the config this
+  // element would send NOW against the one its result was digitized with.
   //
-  // `phase !== "idle"` is in that test, not just `element.result`, because the
-  // upload now starts a run by itself: a param changed while that FIRST run is
-  // still in flight would otherwise land in the window where no result exists
-  // yet and no watcher fires again, and be silently dropped -- the design
-  // would sit showing stitches at a width the user had already changed.
-  // runDigitize's own in-flight guard turns this into `rerunWanted`, so the
-  // new params re-run once the first job returns rather than racing it.
-  // (Before the upload auto-started, that window could not be reached: nothing
-  // ran until the user pressed Digitize.)
-  let prevParamsJson = JSON.stringify(element.params);
-  $: {
-    const now = JSON.stringify(element.params);
-    if (now !== prevParamsJson) {
-      prevParamsJson = now;
-      if (element.result || phase !== "idle") runDigitize(element);
-    }
-  }
+  // `appliedConfig` is on the element, not in this component, because
+  // ContentStep remounts the panel per selection: a local flag would forget
+  // an unapplied change the moment the user clicked another element and back.
+  // A project saved before the field existed has a result and no key; it is
+  // taken as current as it loads (`mountKey`), since there is nothing to
+  // compare it with and a saved design opening "out of date" would be a lie.
+  // `hasPendingEdits` (below, off `appliedEdits`) still catches that
+  // project's unapplied shape edits.
+  const mountKey = configKey(buildDigitizeConfig(element, project));
+  $: currentKey = configKey(buildDigitizeConfig(element, project));
+  $: stale =
+    !!element.result &&
+    (currentKey !== (element.appliedConfig || mountKey) || hasPendingEdits);
 
-  // New artwork digitizes ITSELF. Every other change in this panel already
-  // re-runs on its own once a result exists; the first run was the single
-  // thing left that the user had to ask for by hand, which meant uploading an
-  // image and then hunting for a button to make anything happen. Stage 0 reads
-  // the artwork without being told what it is, so there is nothing to collect
-  // before starting (Kent 2026-08-30 -- see the artRead block above).
-  //
-  // Watches `sourcePng` rather than firing at the end of onFile because the
-  // patch travels up to App and comes back down as a new `element` prop:
-  // calling runDigitize inside onFile would submit the element as it was
-  // BEFORE the upload -- on a first upload, one with no image at all. Same
-  // prev-value guard pattern as the two watchers above, so it stays quiet on
-  // mount (a saved project re-opening must not re-digitize itself) and fires
-  // only on a genuine change of artwork.
-  //
-  // Known edge, left alone on purpose: re-picking the IDENTICAL file re-encodes
-  // to the identical base64, so this sees no change and does not fire. The
-  // patch has already cleared the old result, so the panel simply sits at the
-  // Digitize button -- one click, in the one case where the user asked for the
-  // artwork they already had. Detecting it would mean a serial the element
-  // does not need, and a watcher that fires before the new `element` has
-  // arrived would digitize the PREVIOUS art, which is the worse failure.
-  let prevSourcePng = element.sourcePng;
-  $: {
-    if (element.sourcePng !== prevSourcePng) {
-      prevSourcePng = element.sourcePng;
-      // `health` gates it exactly as runDigitize's own guard would: with no
-      // service running, the offline panel is the honest answer and the
-      // Digitize button stays the way back in.
-      if (element.sourcePng && health) runDigitize(element);
-    }
-  }
-
-  // Shape edits restitch on their own, after a pause (Kent's call,
-  // 2026-08-13). Before this, a hand edit on the canvas moved the outline and
-  // left the stitches where they were until "Apply layer changes" was pressed
-  // — correct, but it made the canvas editor feel like it was drawing on a
-  // photograph rather than editing a design.
-  //
-  // Debounced rather than immediate because a restitch costs real time and a
-  // drag produces many edits a second: waiting for the user to STOP means ten
-  // adjustments cost one run, not ten.
-  //
-  // RE-MEASURED 2026-09-17, at customer defaults, because the figures that
-  // used to sit here sent a session down a dead end. They said "0.65s on
-  // simple line art but ~10-14s on a real photograph, with no useful cache
-  // (the job key folds shape_overrides into the config, so every edit is a
-  // guaranteed miss)" — true when written on 2026-08-13, and wrong NINE DAYS
-  // LATER when the stage 0-4 generation cache landed. A shape edit HITS that
-  // cache: `generation_key` strips the four review-edit keys, so only the
-  // tail re-runs, and the "10-14s" describes a full run nobody pays any more.
-  //
-  // What a shape edit actually costs (finish_generation + plan_stitches):
-  //   five logo fixtures      0.95 - 3.61 s
-  //   owl_kent (photograph)   44.6 s, of which ~97% is plan_stitches
-  //
-  // So the pause is what stops a DRAG queueing runs; it is not standing in
-  // front of a ten-second wait on ordinary line art. Treat both numbers as
-  // dated measurements, not facts — the trail, the per-flag bisect and the
-  // fill-reorder memo that took the photograph from 79.3 s are in
-  // `docs/flag-runtime-bills-2026-09-12.md`.
-  const RESTITCH_IDLE_MS = 2000;
-  let restitchTimer = 0;
-  // Armed = a restitch is scheduled and has not started. Its own flag rather
-  // than `restitchTimer !== 0` because the timer id is a number Svelte has no
-  // reason to treat as interesting, and the "Restitch now" control has to
-  // appear and disappear with it.
-  let restitchArmed = false;
-  let prevEdits = canonicalShapeEdits(element);
-  let prevEditsKey = editsKey(prevEdits);
-  $: {
-    const edits = canonicalShapeEdits(element);
-    const k = editsKey(edits);
-    if (k !== prevEditsKey) {
-      // WHAT moved decides how long to wait — see editKind in digitizer.js.
-      // A border is complete the moment it is picked, so it starts stitching
-      // on the click instead of two seconds after it; everything else keeps
-      // the pause it already had (a drag needs it, and Kent's 2026-08-13
-      // ruling covers the rest).
-      const kind = editKind(prevEdits, edits);
-      prevEdits = edits;
-      prevEditsKey = k;
-      // `health` gates it: with no service there is nothing to restitch to,
-      // and the existing "saved with the design, applied next time you
-      // digitize" branch already covers that honestly.
-      if (element.result && health) {
-        scheduleRestitch(kind === "border" ? 0 : RESTITCH_IDLE_MS);
-      }
-    }
-  }
-
-  // A moved crop box changes what the service would digitize, so it restitches
-  // after the same idle pause a shape edit uses (and lights the same armed
-  // state).
-  //
-  // Two windows, the same two the params watcher above handles:
-  //  - The upload's own patch sets a fresh proposal AND a new `sourcePng` in
-  //    one go. That tick is skipped (`sameArt` is false): the sourcePng
-  //    watcher above starts the one and only digitize for a new upload, with
-  //    that crop already in its config.
-  //  - The box moved while that FIRST run is still in flight -- the likeliest
-  //    moment a customer drags it, since the box appears the instant the file
-  //    lands. `result` is still null then, so gating on it alone dropped the
-  //    move silently: the run returned with the proposal's crop and nothing
-  //    marked it stale. `phase !== "idle"` catches it; when the timer fires,
-  //    runDigitize's in-flight guard turns it into `rerunWanted` (or, if the
-  //    first run already returned, it simply runs), so exactly one rerun
-  //    follows with the moved crop.
   // The crop box's drag floor, sized to the raster it shows. The service
   // refuses a crop under `digitizer_core/crop.py` MIN_CROP_PX (16) on either
   // axis, and CropBox's own 2% is under that on any preview narrower than
@@ -639,56 +533,6 @@
     return Math.min(0.5, Math.max(0.02, CROP_MIN_PX / Math.min(dim.width, dim.height)));
   })();
 
-  let prevCropJson = JSON.stringify(element.crop ?? null);
-  let prevCropSrc = element.sourcePng;
-  $: {
-    const now = JSON.stringify(element.crop ?? null);
-    const sameArt = element.sourcePng === prevCropSrc;
-    prevCropSrc = element.sourcePng;
-    if (now !== prevCropJson) {
-      prevCropJson = now;
-      if (sameArt && element.sourcePng && health && (element.result || phase !== "idle")) {
-        scheduleRestitch(RESTITCH_IDLE_MS);
-      }
-    }
-  }
-
-  // Still a timeout at 0 ms rather than a direct call: this runs inside a
-  // reactive statement, and runDigitize patches the element, so calling it
-  // here would re-enter the block mid-flush. A zero-delay timeout puts the run
-  // on the next tick, where every other caller already starts it.
-  function scheduleRestitch(delayMs) {
-    const wait = delayMs == null ? RESTITCH_IDLE_MS : delayMs;
-    clearTimeout(restitchTimer);
-    // Armed only when there is a pause to be armed THROUGH. A 0 ms timeout is
-    // a macrotask, so it fires after Svelte has flushed the DOM — arming it
-    // "just for a moment" paints "restitching when you stop editing" for a
-    // frame on every border toggle, about an edit that is not waiting for
-    // anything. Measured, not reasoned: the test above this behaviour failed
-    // before this line read `wait > 0`.
-    restitchArmed = wait > 0;
-    restitchTimer = setTimeout(() => {
-      restitchTimer = 0;
-      restitchArmed = false;
-      runDigitize(element);
-    }, wait);
-  }
-
-  // "Restitch now" — skip the remaining pause. Only reachable while a restitch
-  // is armed, so it never starts a run the scheduler was not already going to
-  // start; it just stops making the user wait out a pause they have finished
-  // with. (A drag is the case this is for: the pause is right by default, and
-  // wrong the moment you know you are done.)
-  function restitchNow() {
-    if (!restitchArmed) return;
-    clearTimeout(restitchTimer);
-    restitchTimer = 0;
-    restitchArmed = false;
-    runDigitize(element);
-  }
-
-  onDestroy(() => clearTimeout(restitchTimer));
-
   function setParam(key, value) {
     patch({ params: { ...element.params, [key]: value } });
   }
@@ -696,12 +540,10 @@
   // ---- derived view state ---------------------------------------------------
 
   $: pending = phase !== "idle";
-  // A run in flight OR one armed and waiting out its pause. Both mean the same
-  // thing to anything READING the stitch plan — what is on the canvas is the
-  // previous request — and the armed window used to be unmarked, so a dragged
-  // outline sat for two seconds with the readouts silently describing the
-  // design the user had just changed.
-  $: restitching = pending || restitchArmed;
+  // A run in flight OR a change the button has not been pressed for. Both
+  // mean the same thing to anything READING the stitch plan — what is on the
+  // canvas is the previous request.
+  $: restitching = pending || stale;
   $: statusLine =
     phase === "running" ? "Digitizing your art…" :
     phase === "queued" ? "Waiting for the digitizer — another job is running…" :
@@ -972,6 +814,7 @@
     { value: "edge_zigzag", label: "Edge + zigzag" },
     { value: "double_lattice", label: "Double lattice" },
     { value: "zigzag", label: "Zigzag" },
+    { value: "cross_tatami", label: "Crossing pass (pro)" },
   ];
 
   $: overrides = element.shapeOverrides || {};
@@ -1871,7 +1714,7 @@
 <div class="digipanel">
   <label class="dgp-upload">
     <span class="dgp-upload-btn" class:dgp-upload-cta={!element.sourcePng}
-      >{element.sourcePng ? "Replace artwork…" : "Auto Digitize Image"}</span
+      >{element.sourcePng ? "Replace file…" : "Upload file"}</span
     >
     <input type="file" accept="image/png,image/jpeg,image/webp,image/*" on:change={onFile} disabled={fileBusy} />
   </label>
@@ -1892,8 +1735,8 @@
 
   {#if !element.sourcePng}
     <p class="dgp-note">
-      Drop in any image — a logo, a mark, lettering, a photo. It reads the artwork itself,
-      picks how to sew it, and starts as soon as the file lands; afterwards it says what it
+      Drop in any image — a logo, a mark, lettering, a photo. Then press Auto Digitize
+      Image: it reads the artwork itself and picks how to sew it; afterwards it says what it
       made of the art so you can correct it if it read it wrong. Solid-color art still sews
       best — photos and gradients are newer ground and come back rougher. A bigger image sews
       sharper than a small one, and a PNG with a transparent background and sharp,
@@ -1919,6 +1762,32 @@
         <p class="dgp-cmd">Start it: <code>python -m digitizer_service</code> in the digitizer folder.</p>
         <button type="button" class="dgp-check" on:click={() => d("checkservice")}>Check again</button>
       </div>
+    {/if}
+
+    <!-- Above the settings, not under them: nothing runs until this is
+         pressed, and under seven controls it sat below the fold at 1440x900
+         with a freshly uploaded file and no sign of what to do next. -->
+    <!-- The ONE way a run starts. Solid before the first run and while the
+         result matches the settings; transparent once anything it was
+         digitized with has changed (Kent 2026-10-05: "so I know I need to
+         select Auto Digitize again"). The sentence under it says the same
+         thing in words, because an outline alone tells a screen reader
+         nothing and tells a first-time user very little. -->
+    <button
+      type="button"
+      class="dgp-run"
+      class:dgp-run-stale={stale && !pending}
+      data-stale={stale ? "true" : "false"}
+      disabled={pending || !health}
+      on:click={() => runDigitize(element)}
+    >
+      {pending ? "Digitizing…" : "Auto Digitize Image"}
+    </button>
+    {#if statusLine}<p class="dgp-status" role="status">{statusLine}</p>{/if}
+    {#if stale && !pending && health}
+      <p class="dgp-status" role="status" data-testid="digitize-stale">
+        Changed since the last run — press Auto Digitize Image to restitch.
+      </p>
     {/if}
 
     <div class="dgp-params">
@@ -2049,7 +1918,7 @@
             <span title={edgeCap.title}>{edgeCapLine}</span>
           </p>
           {#if restitching}
-            <p class="dgp-bnote">Restitching — these read the previous stitch plan.</p>
+            <p class="dgp-bnote">{pending ? "Restitching — these" : "These"} read the previous stitch plan.</p>
           {/if}
         </div>
       {/if}
@@ -2105,30 +1974,6 @@
           </label>
         {/if}
       </div>
-    {/if}
-
-    <button
-      type="button"
-      class="dgp-run"
-      disabled={pending || !health}
-      on:click={() => runDigitize(element)}
-    >
-      {pending ? "Digitizing…" : element.result ? "Digitize again" : "Digitize"}
-    </button>
-    {#if statusLine}<p class="dgp-status" role="status">{statusLine}</p>{/if}
-    <!-- The armed window: an edit has landed and its restitch is waiting out
-         the pause. A border never gets here — it schedules at 0 ms and is
-         never armed at all, deliberately, so this line cannot flash for an
-         edit that is not waiting for anything — so this is the OTHER edits: a
-         dragged outline above all, where the pause is right by default and
-         wrong the moment you know you are finished. That is what the button is
-         for: before it, the only way to skip the wait was to stop trusting it
-         and press "Digitize again", which queued a second identical run. -->
-    {#if restitchArmed}
-      <p class="dgp-status dgp-armed" role="status">
-        <span>Change saved — restitching when you stop editing.</span>
-        <button type="button" class="dgp-now" on:click={restitchNow}>Restitch now</button>
-      </p>
     {/if}
 
     {#if element.result}
@@ -2934,7 +2779,6 @@
               >
                 {pending ? "Digitizing…" : "Apply layer changes"}
               </button>
-              <p class="dgp-note">Restitching on its own in a moment — or apply now.</p>
             {:else}
               <p class="dgp-queued">
                 The digitizer isn't running — these layer changes are saved with the design and
@@ -2944,7 +2788,7 @@
           {/if}
         </div>
       {:else if health}
-        <p class="dgp-note">Digitize again to get an editable layer list for this result.</p>
+        <p class="dgp-note">Press Auto Digitize Image again to get an editable layer list for this result.</p>
       {/if}
       {/if}
 
@@ -3126,6 +2970,15 @@
     border-color: var(--accent-dark, #4338ca);
   }
   .dgp-run:disabled { opacity: 0.6; cursor: default; }
+  /* Out of date: the fill goes, the outline and the label keep the accent. */
+  .dgp-run.dgp-run-stale {
+    background: transparent;
+    color: var(--accent, #4f46e5);
+  }
+  .dgp-run.dgp-run-stale:hover:not(:disabled) {
+    background: var(--tint, rgba(79, 70, 229, 0.08));
+    border-color: var(--accent, #4f46e5);
+  }
   .dgp-status { font-size: var(--fs-xs, 12px); color: var(--muted, #667); margin: 6px 0 0; }
   .dgp-error { font-size: var(--fs-xs, 12px); color: var(--danger, #b3261e); margin: 6px 0 0; }
   .dgp-fixes {
@@ -3437,18 +3290,6 @@
     background: var(--fill);
   }
   .dgp-borders-stale { opacity: 0.6; }
-  .dgp-armed { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-  .dgp-now {
-    font: inherit;
-    font-size: 0.85em;
-    padding: 0.15rem 0.5rem;
-    border: 1px solid currentColor;
-    border-radius: 3px;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-  }
-  .dgp-now:hover { background: rgba(127, 127, 127, 0.18); }
   .dgp-bline {
     margin: 0;
     font-size: var(--fs-xs);

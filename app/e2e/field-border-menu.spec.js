@@ -13,7 +13,7 @@
 // (each e2e spec here duplicates that boilerplate rather than importing it,
 // matching this directory's own convention).
 import { test, expect } from "@playwright/test";
-import { pickGarment } from "./helpers.js";
+import { pickGarment, uploadArtwork, runDigitize } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -96,10 +96,7 @@ test.afterAll(() => {
 async function digitize(page) {
   await page.goto("/");
   await pickGarment(page, "Tote");
-  await page.getByRole("button", { name: "Artwork" }).click();
-  // No Digitize click: choosing the file starts the run (DigitizePanel's
-  // sourcePng watcher).
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   await page.waitForTimeout(1200); // let the field settle after the result lands
 }
@@ -189,14 +186,12 @@ test("right-click a shape: Add border reaches the panel's select and the stitch-
 
   // The same field the panel's own Border select edits.
   await expect.poll(() => borderSelectValues(page), { timeout: 10_000 }).toContain("auto");
-  // ...and the design restitches on its own: the stats line changes (a satin
-  // border on a square is hundreds of stitches). A border no longer waits out
-  // the 2 s idle pause the other shape edits keep — it is complete the moment
-  // it is picked, so it schedules at once (editKind in lib/digitizer.js).
-  // MEASURED against the live service 2026-09-17, by sampling this very line
-  // in a tight loop after the click: 5,944 stitches at 140 ms, 6,073 at
-  // 357 ms. The poll's timeout is generous because the restitch is a full
-  // stage 0-7 run on an unknown machine, not because anything pauses first.
+  // ...and the design restitches once the run button is pressed: the stats
+  // line changes (a satin border on a square is hundreds of stitches). Until
+  // then the button is transparent and the stitches are the old ones.
+  await expect(page.locator(".dgp-run")).toHaveClass(/dgp-run-stale/);
+  expect(await page.locator(".dgp-stats").innerText()).toBe(statsBefore);
+  await runDigitize(page);
   await expect.poll(() => page.locator(".dgp-stats").innerText(), { timeout: 120_000 }).not.toBe(statsBefore);
 
   // Right-click INSIDE the same square (just below its top edge): the border

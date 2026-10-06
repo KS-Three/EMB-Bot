@@ -766,20 +766,22 @@ hand-rolling it in JS.
   and canvas tools", not "Canvas tools" — an e2e that right-clicks ON a
   digitized shape and expects the plain name will not find it.
 
-- **A border edit restitches at 0 ms; every other shape edit keeps the 2 s
-  pause (2026-09-17).** `DigitizePanel`'s restitch scheduler asks
-  `editKind(prevEdits, nextEdits)` (`lib/digitizer.js`) what moved, because
-  every shape edit lands in the same `shape_overrides` object and WHERE the
-  change is cannot tell a dragged outline from a menu pick. It answers
-  `"border"` only when EVERY difference is a border value — narrow on purpose,
-  so it can never swallow a boundary and put a full stage 0-7 run behind every
-  nudge. **Two traps if you touch this:** the 0 ms path must still go through
-  `setTimeout`, since the scheduler runs inside a reactive statement and
-  `runDigitize` patches the element (a direct call re-enters mid-flush); and it
-  must NOT set the armed flag, because a 0 ms timeout is a macrotask that fires
-  after Svelte has flushed, so arming it paints the "waiting" line for a frame
-  on every border toggle. Starting a run of any kind disarms a pending one —
-  without that, "Digitize again" during the pause runs twice.
+- **Nothing in `DigitizePanel` starts a run except `.dgp-run` ("Auto Digitize
+  Image") and "Apply layer changes" (Kent 2026-10-05).** The four watchers
+  that used to run on their own are gone: new artwork, params, the crop box,
+  and shape edits behind a 2 s pause (with a 0 ms fast path for borders,
+  `editKind`, which is still exported and no longer called by the panel).
+  What replaced them is one comparison: `configKey(buildDigitizeConfig(el,
+  project))` against `element.appliedConfig`, written from the SUBMITTED
+  config when a result lands. Unequal means the stitches are behind the
+  settings, and the button goes transparent (`dgp-run-stale`). **Two things
+  to keep if you touch it:** the key lives on the element, not in the
+  component, because `ContentStep` remounts the panel per selection; and a
+  project saved before the field existed has a result and no key, which the
+  panel takes as current as it loads. **Artwork is added file-first:**
+  `App.onAddElement("artwork")` clicks one hidden input
+  (`[data-testid="art-file"]`) and only adds the element once a file comes
+  back, handing it to the new panel as `pendingFile`.
 
 - **`digitizer/` cites its own docs relative to the package root**, i.e.
   bare `docs/dt-classifier-spike-2026-08-02.md` meaning
@@ -1066,7 +1068,7 @@ sews nothing and cuts the smallest shape that contains it.
   three writers, reads each back with its own readers and says what every
   run of three jumps was; `--against <src>` says whether two engines differ
   by cuts put in and nothing else. No Studio caller passes the flag; the
-  flip is Kent's ("Waiting on Kent" 27) and belongs after `fillColumns`.
+  flip is Kent's ("Waiting on Kent" 28) and belongs after `fillColumns`.
 - **Row stagger is built OFF for the shape builder (2026-10-03).**
   `fillStagger: true` on `buildQualityDesign` puts the cover fill's needle
   holes on one grid shifted row by row (`tatamiFill`'s `stagger`, `minStitch`

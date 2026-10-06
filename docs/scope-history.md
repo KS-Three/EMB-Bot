@@ -13,6 +13,54 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-05 — auto class vs forced flat on fifteen real logos, and where the grey cones on black-and-white art come from
+
+**Class at the Studio's config (6 colours; widths per `tools/thin_strokes.REAL_ART`, `testdata/art` at 80 mm):** `gradient` 11 — fremont, fremont_patch, bridge, golden_tee, gaulke, golke, drone, screenshot, mfab_lc, toat_beanie, toat_machine; `flat` 2 — becker, enthusiast; `photo_scene` 2 — tires, mfab_hat. The two Instagram files did not run (job stopped at its time limit).
+
+**Auto vs `forced_class="flat"`, the gradient eleven:**
+
+| fixture | auto st / cones / trims per 1000 | forced flat |
+|---|---|---|
+| fremont | 20,023 / 3 / 2.85 | 20,531 / 3 / 3.02 |
+| bridge | 17,744 / 6 / 5.47 | 22,328 / 6 / 7.21 |
+| golden_tee | 8,476 / 6 / 5.19 | 10,370 / 6 / 7.33 |
+| gaulke | 4,205 / 2 / 7.85 | 4,164 / 1 / 6.96 |
+| drone | 18,975 / 6 / 7.27 | 26,592 / 6 / 8.05 |
+| screenshot | 7,949 / 6 / 8.68 | 11,216 / 6 / 12.48 |
+| golke | 4,706 / 5 / 7.22 | 6,645 / 2 / 8.88 |
+| fremont_patch | 16,692 / 3 / 2.58 | 18,669 / 3 / 4.12 |
+| mfab_lc | 10,944 / 6 / 7.58 | 10,542 / 2 / 7.59 |
+| toat_beanie | 6,600 / 6 / 6.97 | 8,413 / 2 / 9.98 |
+| toat_machine | 6,541 / 6 / 6.12 | 17,143 / 3 / 15.40 |
+
+Sheets read: mfab_lc, both toat, golke, drone, bridge — forced flat worse on each. Not read: fremont, fremont_patch, golden_tee, gaulke, screenshot.
+
+**Cones on three black-and-white logos, four arms (cones, stitches):**
+
+| fixture | base | `dissolve_phantom_blends` ON | `keep_thin_strokes` OFF | both |
+|---|---|---|---|---|
+| toat_beanie | 6, 6,600 | 4, 5,930 | 6, 6,402 | 4, 5,563 |
+| golke | 5, 4,706 | 4, 4,247 | 4, 4,686 | 4, 4,247 |
+| mfab_lc | 6, 10,944 | 6, 11,044 | 6, 10,900 | 6, 10,870 |
+
+**`tools/stroke_colour_probe.py`, defaults (span ≥ 60, ≤ 4 source px, side absolute), base → probe:**
+
+| fixture | source px/mm | cones | stitches | rewritten regions / mm² |
+|---|---|---|---|---|
+| drone | 9.61 | 6 → 6 | 18,975 → 18,952 | 9 / 21.6 |
+| golden_tee | 21.81 | 6 → 6 | 8,476 → 8,476 | 0 / 0 |
+| bridge | 3.49 | 6 → 6 | 17,744 → 17,692 | 23 / 269.0 |
+| fremont | 27.03 | 3 → 3 | 20,023 → 20,023 | 0 / 0 |
+| gaulke | 14.01 | 2 → 2 | 4,205 → 4,205 | 4 / 10.1 |
+| fremont_patch | 4.64 | 3 → 3 | 16,692 → 16,692 | 3 / 10.4 |
+| golke | 5.59 | 5 → 2 | 4,706 → 4,674 | 7 / 27.8 |
+| mfab_lc | 4.71 | 6 → 6 | 10,944 → 10,916 | 29 / 143.8 |
+| toat_beanie | 4.62 | 6 → 6 | 6,600 → 6,567 | 32 / 89.2 |
+
+Per colour: golke probe `#000000` 4,142, `#ffffff` 532; mfab_lc grey 2,718 → 909 with white 30 → 1,859; bridge `#4b787d` 227 → 1,882 and `#7f7f7f` 3,991 → 0 with `#d6d6d8` 1,692 arriving. No renders were made for this run. Run on Kent's Windows box, main checkout at `cf9f89f1` plus another session's uncommitted `art_box_frac` field in `pipeline.py`; base rows were identical across four runs that day.
+
+---
+
 **Last updated:** 2026-09-20 — the previewer measured against the file it hands the customer, and the split-path defect that found
 
 **Three lanes, driven through the shipped Studio headless, download captured,
@@ -19137,3 +19185,76 @@ Not sewn. No Studio caller passes it. Flip is Kent's: "Waiting on Kent" 27,
 and it belongs after `fillColumns`: before, it writes hundreds of cuts a
 design into the stream, and with `ties` 12% more stitches in the image lane.
 *(measured and built 2026-10-04 — `docs/dst-float-cuts-2026-10-04.md`, `tools/file-cut-census.mjs`, `test/digitize.test.js` "cutFloats")*
+
+## 2026-10-05 — A gradient-class design sewed every fill with no underlay: `blend_fallback_underlay`, built OFF (Kent's pick off the underlay research)
+
+**What Kent saw.** Stitching going "straight into the fill layers" on several
+images, with nothing beneath it. The research
+(`docs/underlay-research-2026-10-05.md`) found two causes. This entry is the
+first; the second — one perimeter walk and no interior pass under a knit
+fill, corpus law 26 — is his ruling and is not touched.
+
+**The cause.** Stage 7 routes every auto-tier fill of a design classed
+`gradient` through `stage6_blend.blend_fill`. That function sewed
+`underlay_style="none"` on both of its paths and was never handed the style
+stage 7 resolves for tatami and contour, so the fabric preset, the
+design-wide `underlay_style` and the Studio's per-shape control all did
+nothing there. Nearly every real region takes its fallback path — ordinary
+full-density tatami — and sewed bare.
+
+**The change.** `cfg.blend_fallback_underlay`, default False. Stage 7 now
+hands `blend_fill` the resolved style; under the flag the fallback path sews
+it. The ramp-band path stays bare: Wilcom and mySewnet both say no underlay
+under a variable-density blend (research §4). No constant is added or moved,
+so gate 1 does not apply; it is not a tier, so neither does gate 3.
+
+**Measured** (nine `REAL_ART` logos, 80 mm, `838c3451` plus the change): the
+three that do not class gradient are plan-identical OFF and ON. The six that
+do: bare fills 33 of 33 → 5 of 33, stitches 70,639 → 71,827 (+1.7%), trims
+423 → 421 (Fremont 37 → 43, drone 139 → 131). Per-case table and
+underlay-only renders: `docs/renders/blend-fallback-underlay-2026-10-05/`.
+`tests/test_blend_fallback_underlay.py`, 10.
+
+**What it does not do.** On every preset but cap, fleece and towel the style
+is `edge_run`, so ON a fill gains its perimeter walk and its interior is
+still empty. Not sewn.
+
+## 2026-10-05 — `cross_tatami`: the commissioned files' crossing pass as an underlay style (a choice, in no preset), and law 26's instrument is gone
+
+**The audit.** Kent picked "validate the pro evidence first" before ruling on
+the knit preset. An independent audit (`docs/underlay-audit-2026-10-05.md`)
+built 154 ground-truth fills with our own engine, found the research note's
+classifier under-counting (18 of 62 known crossing passes), corrected a copy
+to 62 of 62 with no false positive, and ran it on every readable professional
+file: a crossing sparse pass under 34 of 36 large fills in the commissioned
+set (8 of 9 folders), 4 of 35 in the third-party corpus law 26 was mostly
+drawn from. Row pitch p50 0.98 mm, stitch 3.99 mm, angle 89°, 16% of the top
+fill's thread; an edge run in at most 11 of 34. Law 26's own instrument
+"lived in scratchpad" and no longer exists.
+
+**The change (Kent's pick: the pass alone, no edge variant).** A new
+underlay style, `cross_tatami`: one tatami pass at the fill angle + 90, rows
+`UNDERLAY_CROSS_ROW_MM` 1.0, stitches `UNDERLAY_CROSS_STITCH_MM` 4.0, no edge
+run. Python (`stage6_fill._underlay_paths`), the browser engine
+(`src/digitize.js underlayRuns`), both whitelists, and the Studio's two
+per-shape pickers ("Crossing pass (pro)"). No fabric preset names it, so
+every default plan is unchanged. The two constants are the professional's and
+are not sewn by us — gate 1's evidence class is the one `FILL_ROW_MM` was
+ruled on.
+
+**A defect the instrument caught in the build.** Reading our own DST back
+with the audit's classifier gave pitch 1.0 and stitch 2.0: `stitch_shape`
+re-split every underlay path at the lattice's 2.5 mm. The unit tests, which
+read `_underlay_paths`, were green. Fixed and pinned.
+
+**Measured** (80 mm, both arms with `blend_fallback_underlay` ON): Fremont
+stitches 13,779 → 14,388, trims 43 → 39; Bridge Bar 18,083 → 18,507, trims
+98 → 113; drone 19,283 → 19,846, trims 131 → 139. Read back: a crossing pass
+at 0.99–1.00 mm and 88.5–90°, but median stitch 2.4–2.5 mm and 5–12% of the
+top thread against his 3.99 and 16% — lettering cuts the rows short, and the
+1.0 mm inset and the largest-piece-only rule keep thread out.
+`docs/renders/cross-tatami-underlay-2026-10-05/`.
+
+**The browser pass is not inset**, as the browser's lattice is not; Python's
+is, by 1.0 mm. Engine 816, Studio 1590,
+`tests/test_cross_tatami_underlay.py` 12.

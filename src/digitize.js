@@ -447,7 +447,7 @@
   // of runs (each becomes one pushRun). ctx: { fillAngle, pxPerFinalMm, maxStitch,
   // underlayStitchPx, underlayRowPx, runningOutline, tatamiFill, insetRing,
   // pcaAngleDeg }. Styles: none | edge_run | center_run | zigzag | edge_zigzag |
-  // edge_lattice | double_lattice.
+  // edge_lattice | double_lattice | cross_tatami.
   // With `fillColumns`: also { columns, openTol, clear(a, b) } -- `clear` says
   // whether a float from a to b would be left uncut.
   function underlayRuns(shape, styleName, ctx) {
@@ -556,6 +556,13 @@
     function lattice(angleOff, from) {
       return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: latticeRow, angleDeg: fillAngle + angleOff, maxStitch, markConnectors: true }, entry(from)))];
     }
+    // `cross_tatami`: the crossing pass alone, at the pitch and stitch read off
+    // Kent's commissioned files (docs/underlay-audit-2026-10-05.md; the Python
+    // engine's UNDERLAY_CROSS_ROW_MM / UNDERLAY_CROSS_STITCH_MM). Not sewn by us.
+    function crossPass(from) {
+      const row = Math.max(0.02, 1.0 * pxPerFinalMm), stitch = Math.max(0.02, 4.0 * pxPerFinalMm);
+      return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: row, angleDeg: fillAngle + 90, maxStitch: stitch, markConnectors: true }, entry(from)))];
+    }
     const then = (runs, next) => runs.concat(next(endOfRuns(runs)));
     // Single running stitch along the shape's PCA-major axis, clipped to the
     // interior (longest contiguous inside segment through the centroid).
@@ -585,6 +592,7 @@
       case "edge_zigzag": return then(edgeRun(), zigzag);
       case "edge_lattice": return then(edgeRun(), (from) => lattice(90, from));
       case "double_lattice": return then(then(edgeRun(), (from) => lattice(45, from)), (from) => lattice(-45, from));
+      case "cross_tatami": return crossPass(null);
       default: return then(edgeRun(), (from) => lattice(90, from));
     }
   }

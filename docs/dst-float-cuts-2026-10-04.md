@@ -3,7 +3,7 @@
 This note measures a finding handed over from PR #623 and sets out the
 choices. **Kent chose the same day: choice 2.** It is built as `cutFloats` on
 `buildQualityDesign`, OFF by default, so no file changes until he flips it
-("Waiting on Kent" 27). What follows is what was put to him; what was built
+("Waiting on Kent" 28). What follows is what was put to him; what was built
 is at the end.
 
 ## What it is
