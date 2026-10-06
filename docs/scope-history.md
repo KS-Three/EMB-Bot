@@ -19187,3 +19187,22 @@ top thread against his 3.99 and 16% — lettering cuts the rows short, and the
 **The browser pass is not inset**, as the browser's lattice is not; Python's
 is, by 1.0 mm. Engine 816, Studio 1590,
 `tests/test_cross_tatami_underlay.py` 12.
+
+## 2026-10-06 — The underlay audit's classifier is in the repo: `tools/pro_fill_underlay.py`
+
+Kent's pick after `cross_tatami`: commit the instrument. Corpus law 26's
+"lived in scratchpad" and was gone when the commissioned files disagreed with
+it, so nobody could say what it had measured. This one reads what is sewn
+under each fill of a bare DST or PES — a crossing, diagonal or parallel
+sparse pass, a run only, or nothing — with the pass's pitch, stitch, angle
+and share of the top thread. Its docstring carries the method, the
+validation (154 ground-truth fills: 62 of 62 crossing passes, no false
+positive) and the limits.
+
+`tests/test_pro_fill_underlay.py`, 31: each engine style read for what it is
+on DST and PES; the professional's constants found and measured, 0.75 mm
+included; the five adversarial cases that must not read as underlay; two
+fills in one colour judged apart; and the five tracked Becker DSTs — 10
+fills, 10 crossing passes, pitch 0.94–0.99 mm, stitch 3.99 mm, 15.3–17.1% of
+the top thread. Setting the sparse bar back to the research note's 0.9 mm
+fails the 0.75 mm case, as it should. No engine change.
