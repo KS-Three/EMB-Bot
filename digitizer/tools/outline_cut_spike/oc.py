@@ -551,6 +551,71 @@ def spine_column(piece, W):
     return out if len(out) >= 3 else None
 
 
+def _sew(pc, cut_lines, W):
+    """-> (stitches, rails, axis) for one piece."""
+    u = straight_axis(pc, W, cut_lines) if not pc.interiors else None
+    st = scan_column(pc, u) if u else None
+    r = None
+    if st is None:
+        r = rails(pc, cut_lines, W)
+        st = zigzag(*r) if r else None
+    return st, r, u
+
+
+def _overlong(st, pc, W):
+    """-> (length in stitches far longer than the stroke is wide, total length).
+    A piece that is one stroke has none; a piece that is still two strokes
+    sews across both, and that is how it shows."""
+    if not st:
+        return 0.0, 0.0
+    thr = 1.6 * W
+    P = np.array(st)
+    L = np.hypot(*(P[1:] - P[:-1]).T)
+    return float(L[L > thr].sum()), float(L.sum())
+
+
+REFINE_TRIGGER = 0.12      # share of thread in over-long stitches that says "this is not one stroke"
+REFINE_GAIN = 0.6          # a second-look cut must take that share down to this fraction of itself
+
+
+def _refine(pc, cut_lines, W, depth):
+    """yield (piece, cut lines, new cuts). The junction rules missed a cut
+    wherever a piece still sews over-long; look again at that piece's own
+    concave corners and keep the one cut that most reduces it."""
+    st, _, _ = _sew(pc, cut_lines, W)
+    long0, tot0 = _overlong(st, pc, W)
+    if depth >= 3 or tot0 <= 0 or long0 / tot0 < REFINE_TRIGGER:
+        yield pc, cut_lines, []
+        return
+    rf, _ = corners(pc, W)
+    best = None
+    for r in _cluster(rf, 0.25 * W):
+        p = r["p"]
+        for dvec in (r["d_in"], (-r["d_out"][0], -r["d_out"][1]), r["bis"]):
+            q = _ray_hit(pc, p, dvec, 2.4 * W, r["bis"])
+            if q is None:
+                continue
+            L = math.hypot(q[0] - p[0], q[1] - p[1])
+            if L < 0.25 * W:
+                continue
+            cut = (p, q, "again", L)
+            subs = split(pc, [cut])
+            if len(subs) < 2 or min(g.area for g in subs) < 0.4 * W * W:
+                continue
+            lines = cut_lines + [LineString([p, q])]
+            score = sum(_overlong(_sew(g, lines, W)[0], g, W)[0] for g in subs)
+            if best is None or score < best[0]:
+                best = (score, cut, subs, lines)
+    if best is None or best[0] > REFINE_GAIN * long0:
+        yield pc, cut_lines, []
+        return
+    first = True
+    for g in best[2]:
+        for sub, lines, extra in _refine(g, best[3], W, depth + 1):
+            yield sub, lines, ([best[1]] if first else []) + extra
+            first = False
+
+
 def letter_columns(poly):
     W = stroke_width(poly)
     # a pinhole is the trace, not a counter
@@ -574,11 +639,8 @@ def letter_columns(poly):
     cut_lines = [LineString([a, b]) for a, b, _, _ in cuts]
     cols = []
     for pc in pieces:
-        u = straight_axis(pc, W, cut_lines) if not pc.interiors else None
-        st = scan_column(pc, u) if u else None
-        r = None
-        if st is None:
-            r = rails(pc, cut_lines, W)
-            st = zigzag(*r) if r else None
-        cols.append(dict(piece=pc, rails=r, stitches=st, axis=u))
+        for sub, lines, extra in _refine(pc, cut_lines, W, 0):
+            cuts = cuts + extra
+            st, r, u = _sew(sub, lines, W)
+            cols.append(dict(piece=sub, rails=r, stitches=st, axis=u))
     return dict(poly=poly, W=W, cuts=cuts, reflex=reflex, convex=convex, cols=cols)

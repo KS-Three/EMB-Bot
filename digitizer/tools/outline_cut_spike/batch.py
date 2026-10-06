@@ -72,7 +72,7 @@ for name in names:
                 seg = LineString([p, q])
                 l_tot += seg.length
                 l_out += seg.length - seg.intersection(safe).length      # thread over bare ground or a counter
-                if seg.length > max(2.5 * pw, 1.6 * res["W"]):
+                if seg.length > 1.6 * res["W"]:
                     l_long += seg.length                                  # a stitch far longer than the stroke is wide
             bad = (0, 0, 255)
             pts = np.array([px(p) for p in c["stitches"]], np.int32)

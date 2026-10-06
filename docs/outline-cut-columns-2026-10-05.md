@@ -134,6 +134,46 @@ Failure classes, largest first:
 Also still wrong: Gaulke's first S (its trace is a blob at the top, and two
 lumps pair as a false through cut), one N in Fremont, stubby ends.
 
+## The second look (2026-10-06)
+
+Failure class 1 above, taken on. After the junction rules, any piece that
+still sews more than 12% of its thread in over-long stitches is looked at
+again (`_refine`): every concave corner of that piece offers three cuts (each
+edge continued, and the bisector), each is tried, and the one that leaves the
+least over-long thread is kept if it takes it below 60% of what it was. Up to
+three deep. No scrap under 0.4 W^2.
+
+**The yardstick had to change, and that makes the two tables not comparable.**
+"Over-long" was first measured against the piece's OWN width (2.5 x). A
+compound piece is wide by its own measure, so the check passed exactly the
+letters it existed to catch: with that yardstick the run read Becker 11/11 and
+0.1% over-long while MARINE's N and E were, on the sheet, still fanned and
+unchanged. It is now 1.6 x the LETTER's stroke width, in both the trigger and
+the check.
+
+| Logo | Clean | Over-long stitches | (first table) |
+|---|---|---|---|
+| Becker | 6/11 | 9.5% | 9/11, 23.9% |
+| Gaulke | 27/39 | 5.2% | 30/39, 5.9% |
+| Drone | 20/22 | 0.2% | 19/22, 7.4% |
+| Enthusiast | 17/24 | 0.6% | 21/24, 0.6% |
+| Fremont | 16/32 | 2.1% | 21/32, 3.2% |
+| Bridge | 4/8 | 21.5% | 5/8, 3.1% |
+
+Read the over-long column, not the clean count: the count fell because the
+check got stricter, not because the letters got worse. On the Becker sheet
+(looked at): MARINE's N is now left stem, diagonal, right stem; its E is three
+pieces instead of one fan; all six MARINE letters pass. All five failures are
+the outlined BECKER band letters, whose traced outlines are lumps. Bridge got
+worse (21.5%): its blobs now get cut, and cutting a blob does not make it a
+letter. The stricter yardstick also flags slab-serif bars that are honestly
+wider than the letter's mean stroke, so some Fremont and Enthusiast failures
+are the check, not the construction. Those sheets were NOT looked at after
+this change.
+
+The lesson is the repo's usual one: a check that is tuned on the thing it
+measures passes it. The sheet caught this; the number did not.
+
 ## Tried and backed out
 
 - Close/open buffering of the outline to remove notches: wrecked the M's crotch.
@@ -195,6 +235,8 @@ PY="C:/Users/EE-LT-11030/Claude Personal/EMB-Bot/digitizer/.venv/Scripts/python.
   `scratch_kent/`.
 - `MAR_three_way.png` and `INDUSTRIES_three_way.png`: engine / spike / pro.
 
-Next, in order: (1) the missed cuts of failure class 1; (2) look at every sheet;
+Next, in order: (1) look at every sheet after the second look, Fremont and
+Enthusiast first, and decide whether the 1.6 W yardstick is flagging real
+faults or honest serif bars; (2) the E as stem plus three arms, not three slabs;
 (3) rerun on current-main polygons; (4) wire into stage 6 default-OFF with
 underlay and sequencing; (5) labelled pairs for Kent.
