@@ -296,7 +296,7 @@ the lane; not published by this session).
 |---|---|---|---|
 | becker | **changed** | 10 of 11 letters refit; 9702 -> 10217 stitches at 100 mm | 3: (0.39, 0.69) 0.08x0.10 — MARINE; (0.71, 0.86) 0.09x0.13 — MARINE's right; (0.02, 0.69) 0.04x0.13 — the M's left |
 | bridge | **changed** | 8 of 8 blobs refit; 17744 -> 17817 | 3: (0.53, 0.63) 0.20x0.12, (0.37, 0.63) 0.10x0.15, (0.47, 0.67) 0.06x0.12 — the teal band |
-| gaulke | identical | the corpus's gaulke is `photo/logo_gaulke_roofing.png`, 1284 x 2778 px at 80 mm — a source pixel under the working grid, so the gate passes it through; the spike's 36-of-38 refit was `art/logo_golke_roofing.png`, 607 px at 95.2 mm (0.21 mm pixels). Two uploads of one logo, and only the coarse one is touched: the gate working on a fourth real file | none |
+| gaulke | identical | the corpus's gaulke is `photo/logo_gaulke_roofing.png`, 1284 x 2778 px at 80 mm: 14.0 px/mm, a 0.071 mm source pixel equal to the working grid's, cap 0.054 < 0.071, so the gate passes all 39 tagged letters through (`pass:grid`, measured 2026-10-07 ON through `build_generation`); the spike's 36-of-38 refit was `art/logo_golke_roofing.png`, 607 px at 95.2 mm (0.21 mm pixels). Two uploads of one logo, and only the coarse one is touched: the gate working on a fourth real file | none |
 | drone | identical | gated (0.10 mm source px, grid 0.10) | none |
 | enthusiast | identical | gated (0.07 mm) | none |
 | fremont | identical | gated (0.04 mm) | none |
