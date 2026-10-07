@@ -55,15 +55,20 @@ def _runs(join_square):
     return runs
 
 
-def test_the_fixture_fans_off_and_the_flag_is_off_by_default():
-    """OFF is the shipped joiner, and on it the E's arms DO fan -- the
-    reading the flag exists to move. Pinned so the fixture cannot quietly
-    stop reproducing the defect (a rounded copy of this polygon already
-    does not)."""
+def test_the_fixture_fans_off_and_the_default_is_on():
+    """`join_square=False` is the pre-flip joiner, and on it the E's arms DO
+    fan -- the reading the flag exists to move. Pinned so the fixture cannot
+    quietly stop reproducing the defect (a rounded copy of this polygon
+    already does not). The default is ON since 2026-10-06, Kent's call."""
+    from digitizer_core import PipelineConfig
     poly, art, kw = _fixture()
-    off, _ = satin_shape(poly, "S1", art_poly=art, **kw)
-    dflt, _ = satin_shape(poly, "S1", art_poly=art, join_square=False, **kw)
-    assert [r.points for r in off] == [r.points for r in dflt]
+    off, _ = satin_shape(poly, "S1", art_poly=art, join_square=False, **kw)
+    dflt, _ = satin_shape(poly, "S1", art_poly=art, **kw)
+    # the FUNCTION default stays False (every direct caller keeps the
+    # pre-flip joiner); the CONFIG default is what stage 7 passes, and it is
+    # True since the flip
+    assert [r.points for r in dflt] == [r.points for r in off]
+    assert PipelineConfig().satin_join_square is True
     events, columns = fan_ends([r.points for r in off if r.kind == "satin"])
     assert columns >= 4
     assert events >= 2, f"the E no longer fans OFF ({events} fan ends over {columns} columns)"

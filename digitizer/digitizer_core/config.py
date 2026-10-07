@@ -1622,11 +1622,16 @@ class PipelineConfig:
     # stretch 1.5-4 half-widths from the corner, the bent samples replaced,
     # the apex projected onto the line), so the owner's column runs square
     # through the butting member's width to the cap and the butting member
-    # starts square under it -- the pro's construction. Built OFF: the join
-    # members move on every letter with a slab or an L, so the goldens
-    # re-capture on the flip, and the render is Kent's to judge first.
+    # starts square under it -- the pro's construction. Built OFF the same
+    # day because the join members move on every letter with a slab or an L,
+    # so the goldens re-capture on the flip, and the render was Kent's to
+    # judge first. **FLIPPED ON 2026-10-06, Kent's call, on the renders**
+    # (`docs/renders/join-square-2026-10-06/`): Fremont at 80 mm re-planned
+    # from the same stages, stitches and trims identical (13,742 / 34), fan
+    # ends 7 -> 5 over 36 columns, the E 2 -> 0, the T's bar square across
+    # both hanging ends. False is the pre-flip joiner, byte for byte.
     # Tests: `tests/test_join_corner_straight.py`.
-    satin_join_square: bool = False
+    satin_join_square: bool = True
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
