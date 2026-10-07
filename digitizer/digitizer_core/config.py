@@ -1579,6 +1579,26 @@ class PipelineConfig:
     # and the sew-out still owed. False is the symmetric model, byte for
     # byte what shipped before; True stays parked.
     satin_rails_follow_edge: bool | str = "envelope"
+    # Station a satin column's BODY along its OUTER rail (2026-10-06, Kent's
+    # pick after the Hotel Fremont deep dive; `.claude/memory/
+    # lettering-thickness-fremont-2026-10-06.md`). Stations are spaced along
+    # the spine, so on a bend the outer rail opens to 1.3x the pitch before
+    # `_rail_points`' refinement fires, and its inner-rail crowding clamp then
+    # refuses the insertion: Fremont's O sewed its outer rail at 0.53 mm
+    # against the pro's 0.33, and that gap is where the ragged edge Kent
+    # called "wobbly" concentrates (silhouette hair 1.62 vs the pro's 1.33).
+    # ON, a body whose outer-rail advances average over the pitch is
+    # re-stationed evenly along the outer rail by the refinement's own
+    # interpolation; the inner rail then crowds on a tight bend and
+    # `_short_stitch_guard` retracts every other inner penetration -- the
+    # professional construction (the pro's O: 22% short crosses). A straight
+    # bar is byte-identical either way (its outer rail is its spine). Built
+    # OFF: it moves stitches on every curved satin shape, so the goldens
+    # re-capture on the flip, and the price is Kent's to see on a render
+    # first -- the Fremont O's 43 crosses become 54 (`satin_shape` direct,
+    # rail comp 0.3: outer pitch 0.50 -> 0.39), the 2.5 mm test ring 138 ->
+    # 168 stations. Tests: `tests/test_outer_rail_pitch.py`.
+    satin_outer_rail_pitch: bool = False
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the

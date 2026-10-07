@@ -19520,3 +19520,67 @@ fills in one colour judged apart; and the five tracked Becker DSTs — 10
 fills, 10 crossing passes, pitch 0.94–0.99 mm, stitch 3.99 mm, 15.3–17.1% of
 the top thread. Setting the sparse bar back to the research note's 0.9 mm
 fails the 0.75 mm case, as it should. No engine change.
+
+## 2026-10-06 — Hotel Fremont's letters are the pro's width; the curve's outer rail was not: `satin_outer_rail_pitch`, built OFF
+
+Kent: *"the lettering is wobbly, not clean and just very inconsistent ... the
+letters are waaaay thicker than they should be."* Measured on `main`
+cf9f89f1, the Studio's own job and `digitize()` direct, identical; full
+record `.claude/memory/lettering-thickness-fremont-2026-10-06.md`.
+
+**Width, in the file (`satin_columns._crosses`, HOTEL FREMONT band):** ours
+at 80 mm pique sews a **1.23 mm** median column on a 0.76 mm artwork stroke;
+the pro's own Wilcom DST of the same logo sews **1.40** on 0.81 at 92.5 mm,
+and the same 1.40 on its cap file. Scaled, equal: both ~1.7x the artwork,
+~0.3 mm per side, which is Wilcom's documented per-side pull compensation
+and what `_push_rails` applies. The pro's DST uploaded to the Studio as a
+design file renders HOTEL FREMONT at the same bold weight as ours
+(`fremont_studio_ours_vs_pro.png`, sent to Kent): the preview draws the
+compensated column plus 0.4 mm thread, and nothing simulated the pull. The
+Studio half of the answer is PR `claude/sewn-width-preview` (a "Sewn width"
+view toggle); the Original view's mis-scale on the digitize lane had been
+fixed by #643 the day before.
+
+**What IS worse than the pro, by instrument (ours 80 mm vs pro at matched
+scale):** silhouette hair (raw perimeter over a 0.5 mm-smoothed one) **1.49
+per letter vs 1.21**, concentrated on curves and diagonals; rail jitter and
+stem lean equal or better; bare artwork 0.1%; trims 7 across 12 letters
+against the pro's 12 sequences; per-letter width CV 0.04–0.07 vs 0.08. On
+the first O the pro's **outer rail steps 0.33 mm, ours 0.53** (inner 0.19 vs
+0.38): stations sat evenly along the SPINE, the bend opened the outer rail
+to 1.3x the pitch before `_rail_points`' refinement fired, and its inner-rail
+crowding clamp then refused the insertion (a 0.38 mm inner interval cannot
+split over the guard threshold). No single interval can be fixed in place
+(a 0.53 mm interval splits to 0.26, under the guard, which then retracts
+the OUTER rail).
+
+**Built: `cfg.satin_outer_rail_pitch`, DEFAULT OFF.** ON, a column body
+whose outer-rail advances average over the pitch (lean-corrected, 2% slack)
+is re-stationed evenly along its outer rail by the refinement's own
+interpolation; the inner rail then crowds and `_short_stitch_guard` retracts
+every other inner penetration — the pro's construction (its O: 22% short
+crosses). A body landing within 5% of the guard threshold takes one more
+station so the guard fires on every other station rather than wherever
+float noise puts an interval a hair under it (measured: that flicker read
+5.9° on the archetype spray pin; regular, 5.5°, the crosses themselves
+2.3–2.5° apart). Cap and taper zones and any body already at pitch keep
+the per-interval rule verbatim; OFF is byte-identical (pinned). ON:
+- `satin_shape` on the Fremont O polygon, rail comp 0.3: 43 → 54 crosses,
+  outer pitch **0.50 → 0.39**; the 2.5 mm test ring 138 → 168 stations,
+  0.46 → 0.40.
+- Fremont at 80 mm through the pipeline: letter crosses 1,080 → 1,182
+  (+9%), design 13,606 → 13,742 stitches (+1.0%), trims and jumps
+  unchanged; per-letter hair **1.49 → 1.39** (O 1.60 → 1.48; pro 1.21).
+  Render `fremont_HOTE_off_above_on_below.png`: the O's outer edge tightens,
+  the straight letters do not move.
+- `tests/test_outer_rail_pitch.py` (7): outer pitch on the Fremont ring,
+  the inner rail short-stitched and regular, the rail-comp geometry, OFF
+  byte-identity, and the two archetype pins re-read ON (spray ≤ 6.0 for
+  the lean-leg alternation; the hole-side rail read at its on-rail
+  quartile).
+
+**Not done, named:** the serif and junction fans (the E's arms, the T's
+bar) are the other half of "not clean" and are untouched; the per-fabric
+pull table (0.2–0.6 per side) against the pro's flat 0.3 on twill and cap
+is a gate-1 question; MASTER_SCOPE sits 14 words under its budget, so this
+flag's entry there is owed with a cut Kent chooses.

@@ -2048,6 +2048,7 @@ def sequence(
                     spacing_mm=satin_spacing_mm,
                     angle_deg=satin_angle_deg,
                     rails_follow_edge=cfg.satin_rails_follow_edge,
+                    outer_rail_pitch=cfg.satin_outer_rail_pitch,
                     patch_junctions=cfg.satin_patch_junctions,
                     crown_cover=cfg.satin_crown_cover,
                     polygon_axis=cfg.satin_polygon_axis,
