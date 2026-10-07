@@ -90,15 +90,16 @@ for (const f of ["units.js", "sewtime.js", "garments.js", "fabrics.js", "fill.js
 const DG = require(join(SRC, "digitize.js"));
 const FAB = require(join(SRC, "fabrics.js")), GAR = require(join(SRC, "garments.js")), BIN = require(join(SRC, "fontbin.js"));
 const WRITE = { dst: require(join(SRC, "dst.js")).encodeDST, exp: require(join(SRC, "exp.js")).encodeEXP, pes: require(join(SRC, "pes.js")).encodePES };
+// The other engine: its builders and its three writers. Every file of it
+// also writes itself onto the global the app's modules read, so the engine
+// measured is put back there once the other one is loaded. (Until 2026-10-07
+// it was not, and with --against the app's modules ran on the other engine's
+// fill, satin and digitize; no count of a run whose two engines agree in
+// those files moves.)
+const MINE = AGAINST ? Object.assign({}, globalThis.EMB) : null;
 const OTHER = AGAINST ? require(join(resolve(AGAINST), "digitize.js")) : null;
-// The other engine's writers. Each also writes itself onto the global the
-// app's modules read, so what was there is put back.
-const OTHER_WRITE = AGAINST ? (() => {
-  const mine = Object.assign({}, globalThis.EMB), dir = resolve(AGAINST);
-  const w = { dst: require(join(dir, "dst.js")).encodeDST, exp: require(join(dir, "exp.js")).encodeEXP, pes: require(join(dir, "pes.js")).encodePES };
-  Object.assign(globalThis.EMB, mine);
-  return w;
-})() : null;
+const OTHER_WRITE = AGAINST ? { dst: require(join(resolve(AGAINST), "dst.js")).encodeDST, exp: require(join(resolve(AGAINST), "exp.js")).encodeEXP, pes: require(join(resolve(AGAINST), "pes.js")).encodePES } : null;
+if (MINE) Object.assign(globalThis.EMB, MINE);
 const lib = (f) => import(pathToFileURL(join(ROOT, "app", "src", "lib", f)).href);
 
 // ---- the three files, read from their formats ------------------------------

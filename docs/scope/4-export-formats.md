@@ -59,12 +59,12 @@ lettering or manual shapes downloads through the browser encoders.
   record away is reached by jump records up to the last, which is the stitch.
   `encodeEXP` laid that whole move as stitches, so its file held needle holes
   the DST and the PES of the same design had not: as shipped, on most drawn
-  shapes set to satin, on the shape tool's thin-armed stars, and on any
-  imported stitch file that opens with a stitch. The split points did not move and no stitch record is longer than
-  before; a design with no such stitch is byte-identical. A file exported
-  before the fix keeps its holes. *(measured 2026-10-07 —
-  `tools/file-cut-census.mjs`, crossval's `travel` fixture; scope-history
-  10-07)*
+  shapes set to satin, on the shape tool's thin-armed stars, and on an
+  imported stitch file that opens with a stitch. The split points did not
+  move and no stitch record is longer than before; a design with no such
+  stitch is byte-identical. A file exported before the fix keeps its holes.
+  *(measured 2026-10-07 — `tools/file-cut-census.mjs`, crossval's `travel`
+  fixture; scope-history 10-07)*
 - **PES: Medium-High**, upgraded from Low this pass. README's own
   "best-effort — reverse-engineered" framing still applies to the format's
   general maturity, but the specific defects PR #18 found — the 5-byte

@@ -19757,13 +19757,15 @@ medial satin floats to another arm of the shape and sews back where it was
 (defect 57), `s-91,-3 j93,1 s-101,0` on a 20 mm four-point star. On the way
 back the EXP put the needle down. A T, an L, a plus, a Y, an H, an E and an
 arrow drawn by hand and set to satin each have such a stitch at every size
-from 30 to 80 mm (most from 20); a straight bar has none, and no fill has
-one. Up to 394 holes in one design; the longest such move is 335.5 mm. All
-285 presets are stars of 4, 6, 8 or 12 points with thin arms (inner ratio
-0.15 to 0.6); no star of 3 or 5 points, no circle, heart or rectangle, and
-not the tool's default star (5 points, 0.45). The lettering builder cannot
-make one: every jump lands on its run's first point and the first stitch is
-laid there.
+from 30 to 80 mm (most from 20); a thin straight bar has none, and no fill
+has one. The drawn lane's three sizes are 25 mm, 60 mm and the size the
+garment's placement gives; the last carries 26,998 of the 38,920 holes, the
+394 in one design and the longest such move, 335.5 mm, both on a full back.
+All 285 presets are stars of 4, 6, 8 or 12 points with thin arms (inner
+ratio 0.15 to 0.6). The set's stars have 3, 4, 5, 6, 8 or 12 points: none of
+3 or 5 has one, nor any circle, heart or rectangle, nor the tool's default
+star (5 points, 0.45). The lettering builder cannot make one: every jump
+lands on its run's first point and the first stitch is laid there.
 
 **A stitch file.** Every builder opens a run with a jump. A stitch file need
 not: its first record can be a stitch, and the importer then centres the
@@ -19814,21 +19816,22 @@ and the drawn shapes set to satin, 73,543 designs.
 - No stitch record of any EXP carries more than 12.1 mm an axis, before or
   after.
 - `dst.js` and `pes.js` are not touched: every DST and PES is the same bytes
-  (counted by the tool's `--against` on the satin and import sets, 5,670
-  designs).
+  (counted by the committed tool's `--against` on 23,479 designs, which
+  also finds the EXP's bytes changed on the designs with such a stitch and
+  on no other).
 
 A file exported before the fix keeps its holes.
 
 **Tests, written first.** Nine in `test/exp.test.js`: `dst.test.js`'s four
 chain tests re-aimed at this file's bytes, as `pes.test.js` re-aimed them;
 the finding's stream to the record; travel into a run as jumps that land
-exactly and stay on the line; no stitch record over 12.1 mm; the EXP's holes
-against the DST's on 306 streams, 300 of them drawn at random with every
-kind of record; and `main`'s bytes for a design the rule does not reach. Six
-fail on `main`'s writer and three pass on it by design. A `travel` fixture
-in the crossval harness, read by pystitch from all three files: 17 stitches
-from `main`'s EXP of the 8-stitch design, 8 now, in four tests. 21 mutants
-of the rule, 21 die.
+exactly and stay on the line; no stitch record over 12.1 mm; the EXP against
+the DST on 414 streams, 400 of them drawn at random with every kind of
+record; and `main`'s bytes for a design the rule does not reach. Six fail on
+`main`'s writer and three pass on it by design. A `travel` fixture in the
+crossval harness, read by pystitch from all three files: 17 stitches from
+`main`'s EXP of the 8-stitch design, 8 now, in four tests. 32 mutants of the
+writer, 32 die.
 
 **Instruments.** `tools/file-cut-census.mjs` now counts the stitches that
 follow travel from over a record away, by what they follow, and the needle
@@ -19846,6 +19849,53 @@ each file: [`docs/renders/exp-travel-2026-10-07/`](renders/exp-travel-2026-10-07
 The table's rows come from two readers that agree: a scratch census with its
 own readers of the three formats, and the committed tool's, on `main`'s
 engine extracted from `32b0dd3f`.
+
+**The independent re-measure** (a second agent: its own readers of the
+three formats, checked against pystitch hole for hole; its own designs,
+built through `generateAll`; 37,919 designs and 80,000 random streams) could
+not break the writer. The EXP's holes are the DST's, in the same order, on
+every design and stream; the bytes change on exactly the designs with such a
+stitch (6,648 of its 37,919); each changed file is the old one record for
+record, 72,357 records turned, the longest stitch record 121 before and
+after. Every row of the table above reproduced to the digit. What it
+corrected:
+
+- **Tests.** Four mutants passed the first set of tests. A jump that moves
+  nothing kept the chain, which brings the defect back where one stroke of a
+  satin ends on the point the next begins (17 of its 491 satin designs).
+  Travel over 100 mm was sewn (no test travelled more than 93 mm; the product
+  lays 335). Travel's last record ran to 127, and a TRIM was written before
+  long travel: both leave the holes where they are, so a test of holes alone
+  is blind to them. Beside them, three older behaviours no test held: where
+  a colour change leaves the needle, two colour changes in a row, a record
+  of no type. Each has a test now, the random streams carry jumps on the
+  spot, moves of 35 cm, colour changes that carry a move and records of no
+  type, and every stream is checked for the length of its stitch records,
+  its trims, its colour changes and where it ends, not only its holes. 32
+  mutants, nine of them the re-measure's, 32 die.
+- **Stars.** Its own stars of 7, 9, 10 and 11 points have such a stitch too
+  (4, 16, 124 and 46 of 704 each), up to 36 holes in one design; none at 3 or
+  5 points, none at an inner ratio of 0.65 or more.
+- **Bars.** 16 of its 120 straight bars set to satin have one: fat bars
+  (1:2 to 1:8) drawn at 30 degrees.
+- **Imports.** 3 of 66 placements of a file that opens with a stitch have
+  none: the first stitch lies within 12.1 mm of the hoop's middle. A file
+  that opens with a colour change, or whose colour change carries a move,
+  has one "after a colour change" with no second element.
+- **Digitized.** The table's row is one fixture. It ran the Python pipeline
+  on seven logos: 343 placements, none.
+- **How long.** A draft of the DOCTRINE entry said "for a month". The writer
+  has split every stitch into stitches since it was written, 2026-07-22.
+- **The tool.** With `--against`, the other engine's `digitize.js` left its
+  own modules on the global the app's modules read (an older line). The
+  engine measured is put back now; no count here moves, the two engines
+  being the same in those files.
+
+It did not run the Studio suite, the Python suite or the sweep set, and its
+opinion on the one judgement in the fix (the last record of travel at 121,
+where `pes.js` and #477's words would also allow EXP's 127) is that 121 is
+not wrong and is the conservative reading, and that the choice is Kent's to
+name.
 
 **Seen, not touched.**
 

@@ -13,8 +13,9 @@
 // half of `shapes()` in tools/file-cut-census.mjs, copied whole (the cut-outs
 // and the fill angle are drawn and thrown away, so that the random numbers
 // fall as they do there). Each is built as generate.js builds a `manual`
-// element, at the three sizes and on the six garments of that lane, with its
-// stitch type "satin" and without its cut-outs, which would make it a fill.
+// element, at the three sizes of that lane (fitted to the garment's placement,
+// 25 mm and 60 mm) and on its six garments, with its stitch type "satin" and
+// without its cut-outs, which would make it a fill.
 import { join, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 

@@ -158,14 +158,15 @@
       // change or the start of the file is TRAVEL — there is nothing to sew
       // between where the needle was and where the run begins.
       //
-      // This file split on `isJump` alone until 2026-10-07, so every stitch
-      // record split into stitches, and a stitch more than one record from
-      // where travel ended put the needle down along the way. Its own comment
-      // here read "same shape as pes.js's `chained ? ... : ...`" all the
-      // while, and crossval's `long` fixture said both encoders "must keep
-      // splitting that as jumps": the rule was meant, and never written,
-      // because no fixture laid such a move and EXP has no importer whose
-      // tests would have caught it as dstimport's caught dst.js's.
+      // This file split on `isJump` alone from the day it was written
+      // (2026-07-22) until 2026-10-07, so every stitch record split into
+      // stitches, and a stitch more than one record from where travel ended
+      // put the needle down along the way. From 2026-09-13 its own comment
+      // here read "same shape as pes.js's `chained ? ... : ...`", and
+      // crossval's `long` fixture said both encoders "must keep splitting
+      // that as jumps": the rule was meant, and never written, because no
+      // fixture laid such a move and EXP has no importer whose tests would
+      // have caught it as dstimport's caught dst.js's.
       //
       // One stream, three files, found 2026-10-06 by the independent
       // re-measure of `cutFloats` (records read back from each):
@@ -175,7 +176,7 @@
       //   pes  J0 S0 S30 J200 S200 S30
       // It shipped: wherever the browser's satin floats to a far arm and sews
       // back where it was (most drawn shapes set to satin, the shape tool's
-      // thin-armed stars), and any imported stitch file whose first record is
+      // thin-armed stars), and an imported stitch file whose first record is
       // a stitch, which sewed a line from the middle of the hoop to where the
       // design starts. `tools/file-cut-census.mjs` counts them;
       // `docs/scope-history.md` 2026-10-07 has the numbers.

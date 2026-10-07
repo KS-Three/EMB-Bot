@@ -3665,13 +3665,13 @@ flattery. Anything unlisted raises `NotInManifest`.
   over a line that tested `isJump`, and crossval's `long` fixture said both
   encoders "must keep splitting that as jumps". Nothing failed because nothing
   could: that fixture's travel-in is zero units long, and DST's naive version
-  had been caught by its IMPORTER's test, which EXP has none of. So for a
-  month the EXP of a design put the needle down along moves its DST and PES
-  travel: as shipped, on 2,455 of 2,700 drawn shapes set to satin and 285 of
-  2,870 of the shape tool's presets (wherever the browser's satin floats to a
-  far arm and sews back), and on any imported stitch file whose first record
-  is a stitch, where it sewed a line from the middle of the hoop to where the
-  design starts. **A rule N encoders share is tested by ONE fixture run
+  had been caught by its IMPORTER's test, which EXP has none of. So from the
+  day it was written (2026-07-22) the EXP of a design put the needle down
+  along moves its DST and PES travel: as shipped, on 2,455 of 2,700 designs
+  of a drawn shape set to satin and 285 of 2,870 of the shape tool's presets
+  (wherever the browser's satin floats to a far arm and sews back), and on an
+  imported stitch file whose first record is a stitch, where it sewed a line
+  from the middle of the hoop to where the design starts. **A rule N encoders share is tested by ONE fixture run
   through all N and compared file against file — not by N comments that say
   "same as the other one".** crossval's `travel` fixture and
   `tools/file-cut-census.mjs`'s hole-by-hole rows are that now. **And a census

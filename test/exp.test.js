@@ -142,6 +142,12 @@ test("the move to the FIRST stitch is travel, however far", () => {
   const d = { stitches: stream("s400,500 s450,500"), colors: BLACK };
   assert.strictEqual(sewn(d), 2);
   assert.deepStrictEqual(holesOf(expRecords(d)), [[400, 500], [450, 500]]);
+  // However far: 39 cm from the origin, and 33.5 cm from where a jump landed,
+  // the longest such move a shipped lane was seen to lay (a float across a
+  // drawn shape set to satin, on a full back).
+  assert.deepStrictEqual(holesOf(expRecords({ stitches: stream("s3000,-2500 s3050,-2500"), colors: BLACK })), [[3000, -2500], [3050, -2500]]);
+  assert.deepStrictEqual(holesOf(expRecords({ stitches: stream("j0,0 s0,0 j1500,-900 s-1855,-900 s-1855,-870"), colors: BLACK })),
+    [[0, 0], [-1855, -900], [-1855, -870]]);
 });
 
 test("a trim and a colour change both cut the chain", () => {
@@ -167,6 +173,16 @@ test("a stitch far from where a JUMP landed is travelled to, as the DST and the 
   // far arm and sews back where it was (a four-point star, 20 mm).
   const star = { stitches: stream("j-93,2 s-93,2 j98,0 s-98,0 s-98,30"), colors: BLACK };
   assert.deepStrictEqual(holesOf(expRecords(star)), [[-93, 2], [-98, 0], [-98, 30]], "no needle hole in the middle of the star");
+  // A jump that moves nothing cuts the chain like any other: the satin lays
+  // one where a stroke ends on the point the next begins, and the stitch
+  // after it can be far. (Found by the independent re-measure: a writer that
+  // let such a jump keep the chain passed every test here and sewed again.)
+  const onTheSpot = expRecords({ stitches: stream("j0,0 s0,0 s30,0 j30,0 s430,0"), colors: BLACK });
+  assert.deepStrictEqual(holesOf(onTheSpot), [[0, 0], [30, 0], [430, 0]]);
+  assert.deepStrictEqual(onTheSpot.map((r) => r.kind[0].toUpperCase() + r.dx).join(" "), "J0 S0 S30 J0 J100 J100 J100 S100");
+  for (const cut of ["t30,0", "c30,0", "j30,0 j30,0"]) {
+    assert.deepStrictEqual(holesOf(expRecords({ stitches: stream(`j0,0 s0,0 s30,0 ${cut} s430,0`), colors: BLACK })), [[0, 0], [30, 0], [430, 0]], cut);
+  }
 });
 
 test("travel into a run is jumps up to its last record, and lands exactly", () => {
@@ -229,44 +245,78 @@ test("the EXP puts the needle down where the DST does", () => {
     "j0,0 s0,0 s30,0 t30,0 s430,-260 s460,-260",
     "j0,0 s0,0 s30,0 t30,0 c30,0 s-900,700 s-900,650",
     "j0,0 s0,0 s300,0 j310,0 s310,250 s310,-250",
+    // a jump, a trim and a colour change that move nothing, then a far stitch
+    "j0,0 s0,0 s30,0 j30,0 s430,0",
+    "j0,0 s0,0 s30,0 t30,0 t30,0 s430,0",
+    "j0,0 s0,0 s30,0 c30,0 c30,0 s-430,0",
+    // a colour change that carries a move, as a stitch file's can: the DST
+    // lays the move in the colour record, the EXP in the stitch after it
+    "j0,0 s0,0 s30,0 c200,-150 s230,-150 s260,-150",
+    "c300,300 s300,300 s330,300 c-200,0 s700,0",
+    // a record of no type is a stitch to all three writers
+    "j0,0 s0,0 u300,0 u300,40 j600,40 u900,40",
+    // 33.5 cm and 39 cm of travel
+    "j0,0 s0,0 j1500,-900 s-1855,-900 s-1855,-870",
+    "s3000,-2500 s3050,-2500 t3050,-2500 s-900,1400",
   ];
-  // And streams nobody chose: every kind of record, near and far.
+  // And streams nobody chose: every kind of record, near, far and on the spot.
   let seed = 20261006;
   const rnd = () => { seed = (Math.imul(seed, 1103515245) + 12345) >>> 0; return seed / 4294967296; };
-  for (let t = 0; t < 300; t++) {
+  for (let t = 0; t < 400; t++) {
     const recs = [];
     let x = 0, y = 0;
     for (let k = 4 + Math.floor(rnd() * 20); k > 0; k--) {
-      const far = rnd() < 0.35, reach = far ? 600 : 60;
-      x += Math.round((rnd() - 0.5) * 2 * reach); y += Math.round((rnd() - 0.5) * 2 * reach);
-      const p = rnd(), kind = p < 0.6 ? "s" : p < 0.8 ? "j" : p < 0.92 ? "t" : "c";
-      // A colour change stands where the needle is, as every builder lays it.
-      if (kind === "c") { const last = recs.length ? recs[recs.length - 1].slice(1) : "0,0"; recs.push("c" + last); [x, y] = last.split(",").map(Number); }
-      else recs.push(`${kind}${x},${y}`);
+      const q = rnd(), reach = q < 0.1 ? 0 : q < 0.65 ? 60 : q < 0.95 ? 600 : 3500;
+      const p = rnd(), kind = p < 0.57 ? "s" : p < 0.6 ? "u" : p < 0.8 ? "j" : p < 0.92 ? "t" : "c";
+      // A colour change stands where the needle is, as every builder lays
+      // it, three times in four; the fourth carries a move.
+      if (kind !== "c" || rnd() < 0.25) { x += Math.round((rnd() - 0.5) * 2 * reach); y += Math.round((rnd() - 0.5) * 2 * reach); }
+      recs.push(`${kind}${x},${y}`);
     }
     drawn.push(recs.join(" "));
   }
   // A stitch that follows travel and lies more than a record (121 an axis)
-  // from where the needle stands: what the rule is about.
+  // from where the needle stands: what the rule is about. The place is kept
+  // as this writer keeps it: a colour change moves nothing.
+  const sews = (s) => s.type === "stitch" || s.type === undefined;
   const farAfterTravel = (st) => {
-    let x = 0, y = 0, lastWasStitch = false, n = 0;
+    let x = 0, y = 0, lastWasStitch = false, n = 0, longest = 0;
     for (const s of st) {
-      if (s.type === "stitch" && !lastWasStitch && Math.max(Math.abs(s.x - x), Math.abs(s.y - y)) > 121) n++;
-      lastWasStitch = s.type === "stitch";
+      if (s.type === "color") { lastWasStitch = false; continue; }
+      const reach = Math.max(Math.abs(s.x - x), Math.abs(s.y - y));
+      if (sews(s) && !lastWasStitch && reach > 121) { n++; longest = Math.max(longest, reach); }
+      lastWasStitch = sews(s);
       x = s.x; y = s.y;
     }
-    return n;
+    return { n, longest };
   };
-  let travelled = 0, splitSewn = 0;
+  let travelled = 0, splitSewn = 0, onTheSpot = 0, longest = 0;
   for (const text of drawn) {
     const d = { stitches: stream(text), colors: BLACK };
-    const holes = holesOf(expRecords(d));
+    const recs = expRecords(d), holes = holesOf(recs);
     assert.deepStrictEqual(holes, dstHoles(d), text);
-    if (farAfterTravel(d.stitches)) travelled++;
-    if (holes.length > d.stitches.filter((s) => s.type === "stitch").length) splitSewn++;
+    // Equal holes are not the whole of it: a writer that cut the thread
+    // before long travel, or laid travel's last record at the format's 127,
+    // puts the needle down in the same places.
+    for (const r of recs) {
+      const reach = Math.max(Math.abs(r.dx), Math.abs(r.dy));
+      assert.ok(reach <= (r.kind === "stitch" ? 121 : 127), `${text}: a ${r.kind} record of (${r.dx},${r.dy})`);
+    }
+    for (const [kind, type] of [["trim", "trim"], ["color", "color"]]) {
+      assert.strictEqual(recs.filter((r) => r.kind === kind).length, d.stitches.filter((s) => s.type === type).length, `${text}: ${kind} records`);
+    }
+    const end = recs.reduce((a, r) => [a[0] + r.dx, a[1] + r.dy], [0, 0]), last = d.stitches.filter((s) => s.type !== "color").pop();
+    assert.deepStrictEqual(end, last ? [last.x, last.y] : [0, 0], `${text}: where the file ends`);
+    const far = farAfterTravel(d.stitches);
+    if (far.n) travelled++;
+    longest = Math.max(longest, far.longest);
+    if (holes.length > d.stitches.filter(sews).length) splitSewn++;
+    if (d.stitches.some((s, i) => i > 0 && s.type === "jump" && s.x === d.stitches[i - 1].x && s.y === d.stitches[i - 1].y)) onTheSpot++;
   }
-  assert.ok(travelled > 100, `only ${travelled} streams have a far stitch after travel`);
-  assert.ok(splitSewn > 100, `only ${splitSewn} streams split a sewn move, which must stay sewn`);
+  assert.ok(travelled > 150, `only ${travelled} streams have a far stitch after travel`);
+  assert.ok(splitSewn > 150, `only ${splitSewn} streams split a sewn move, which must stay sewn`);
+  assert.ok(onTheSpot > 50, `only ${onTheSpot} streams have a jump that moves nothing`);
+  assert.ok(longest > 3000, `the longest travel into a run is ${longest} units; the product lays 3,355`);
 });
 
 test("a design with no stitch more than a record from where travel ended is byte-identical to before", () => {
