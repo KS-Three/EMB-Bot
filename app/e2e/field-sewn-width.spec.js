@@ -17,7 +17,7 @@
 // e2e spec here duplicates that boilerplate rather than importing it,
 // matching this directory's own convention).
 import { test, expect } from "@playwright/test";
-import { pickGarment, uploadArtwork } from "./helpers.js";
+import { startStudio, uploadArtwork } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -95,35 +95,37 @@ test.afterAll(() => {
   if (serviceProc) serviceProc.kill("SIGTERM");
 });
 
-// Pixels the thread covers, straight off the live canvas: anything that is
-// not the fabric. The fabric is read from the canvas's own corner (inside the
-// hoop but outside the design), so the count does not depend on which swatch
-// the garment picked; a loose per-channel distance absorbs the weave.
-async function threadPixels(page) {
+// Dark pixels straight off the live canvas: the lettering fixture sews in
+// dark thread on a light fabric, and the surround outside the hoop is dark
+// too but never changes, so the DIFFERENCE between two readings is thread
+// and only thread. `snapshot` keeps the current bitmap on the page;
+// `darkAndChanged` reads how many pixels are dark now and how many differ
+// from that snapshot.
+async function snapshot(page) {
+  await page.evaluate(() => {
+    const c = document.querySelector(".hoop canvas");
+    window.__sewnSnap = c.getContext("2d").getImageData(0, 0, c.width, c.height).data.slice();
+  });
+}
+
+async function darkAndChanged(page) {
   return page.evaluate(() => {
     const c = document.querySelector(".hoop canvas");
     const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
-    // a fabric sample: the median of a small patch 12 px in from the top-left
-    // of the hoop's inside, which the design never reaches at fit zoom
-    const sx = Math.floor(c.width * 0.3), sy = Math.floor(c.height * 0.12);
-    const rs = [], gs = [], bs = [];
-    for (let y = sy; y < sy + 6; y++) for (let x = sx; x < sx + 6; x++) {
-      const i = (y * c.width + x) * 4;
-      rs.push(d[i]); gs.push(d[i + 1]); bs.push(d[i + 2]);
-    }
-    const med = (a) => a.sort((p, q) => p - q)[Math.floor(a.length / 2)];
-    const fr = med(rs), fg = med(gs), fb = med(bs);
-    let n = 0;
+    const s = window.__sewnSnap;
+    let dark = 0, changed = 0;
     for (let i = 0; i < d.length; i += 4) {
-      if (Math.abs(d[i] - fr) + Math.abs(d[i + 1] - fg) + Math.abs(d[i + 2] - fb) > 90) n++;
+      if (d[i] + d[i + 1] + d[i + 2] < 240) dark++;
+      if (s && (Math.abs(d[i] - s[i]) + Math.abs(d[i + 1] - s[i + 1]) + Math.abs(d[i + 2] - s[i + 2]) > 60)) changed++;
     }
-    return n;
+    return { dark, changed };
   });
 }
 
 async function digitize(page) {
-  await page.goto("/");
-  await pickGarment(page, "Polo");
+  // The default garment is Left Chest (pique knit, 0.3 mm a side), which is
+  // the pull the assertions below are sized for.
+  await startStudio(page);
   await uploadArtwork(page, ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 180_000 });
   await page.waitForTimeout(1200); // let the field settle after the result lands
@@ -142,24 +144,35 @@ test("sewn width is off by default, narrows the satin on, and the file is untouc
   const caption = await page.locator("span.stats").innerText();
   expect(caption).toMatch(/stitches/);
 
-  const off = await threadPixels(page);
-  expect(off).toBeGreaterThan(1000);
+  // Zoom in on the lettering: at fit zoom a millimetre is four pixels and a
+  // 0.3 mm step per rail is under the thread's own line floor, so the view
+  // barely changes on screen (223 pixels measured). Four steps in, it is a
+  // measurable region of the canvas.
+  const zoomIn = page.locator('button[aria-label="Zoom in"]');
+  for (let i = 0; i < 4; i++) await zoomIn.click();
+  await page.waitForTimeout(800);
+  await snapshot(page);
+  const off = await darkAndChanged(page);
+  expect(off.dark).toBeGreaterThan(1000);
+  expect(off.changed).toBe(0);
 
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
-  // Pique knit is 0.3 mm a side: a 1 mm satin column draws 0.6 mm narrower,
-  // so the thread covers measurably less fabric. The bound is loose on
-  // purpose — the fixture's satin share and the zoom set the exact figure.
-  await expect.poll(async () => await threadPixels(page), { timeout: 10_000 })
-    .toBeLessThan(off * 0.97);
+  // Pique knit is 0.3 mm a side: a 1 mm satin column draws 0.6 mm narrower.
+  // Thread pixels go, nothing comes: the canvas changes by at least a few
+  // hundred pixels and the dark count falls. Loose on purpose — the
+  // fixture's satin share and the zoom set the exact figure.
+  await expect.poll(async () => (await darkAndChanged(page)).changed, { timeout: 10_000 })
+    .toBeGreaterThan(300);
+  expect((await darkAndChanged(page)).dark).toBeLessThan(off.dark);
   // a view: the design's own numbers do not move
   expect(await page.locator("span.stats").innerText()).toBe(caption);
 
-  // and back off again restores the file's view, to the pixel budget of a
-  // repaint (the realistic render is deterministic for one design and view)
+  // and back off again restores the file's view, pixel for pixel: the
+  // realistic render is deterministic for one design and view
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
-  await expect.poll(async () => await threadPixels(page), { timeout: 10_000 })
-    .toBeGreaterThan(off * 0.995);
+  await expect.poll(async () => (await darkAndChanged(page)).changed, { timeout: 10_000 })
+    .toBe(0);
   expect(await page.locator("span.stats").innerText()).toBe(caption);
 });
