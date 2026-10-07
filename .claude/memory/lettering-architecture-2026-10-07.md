@@ -86,5 +86,13 @@ nothing else is odd -- paired, it goes even and the T's stem doubled and its
 bar split (caught by the reviewer agent, not by the tests). Only where half a
 stroke >= tuck: on 0.96 mm strokes the reorder cost six entry trims for a
 sliver. MARINE 8 -> 7, enthusiast 14 -> 12, gaulke 23 -> 26, Fremont 22.
-Next: slanted terminals cut short, then Kent's pairs.
+Slanted terminals (fifth step) and the
+yardstick that found them: BARE ARTWORK (polygon inset 0.15 minus 0.3 mm thread
+round every satin cross) -- the straight scan dropped whole segments (an N's
+diagonal, 2.1 mm2) and that now counts as over-long so the second look cuts;
+`_fan_ends` fans a slanted end from the SCAN (crosses under 0.85 of the median
+= the slant; a rail-walking version swept a fan across a B); the curved path's
+free ends are not squared any more so DTW fans the tip. A symmetric shrink (round cap) stays
+square; a fan is all or nothing. MARINE bare 3.6 -> 3.0%, Fremont 2.7 -> 0.7%. The E is still three slabs (the ext rule takes the
+slot's LONGER edge into the body): the next cut item. Then Kent's pairs.
 

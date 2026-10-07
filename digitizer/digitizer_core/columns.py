@@ -99,6 +99,7 @@ class Column:
     width_mm: float                     # the letter's mean stroke width
     rail_a: list[tuple[float, float]] = field(default_factory=list)
     rail_b: list[tuple[float, float]] = field(default_factory=list)
+    dropped_mm: float = 0.0             # scanline length a straight scan left unstationed
 
     @property
     def start(self) -> tuple[float, float]:
@@ -113,7 +114,7 @@ class Column:
     def reversed(self) -> "Column":
         return Column(stations=self.stations[::-1], piece=self.piece, kind=self.kind,
                       axis=self.axis, width_mm=self.width_mm,
-                      rail_a=self.rail_a[::-1], rail_b=self.rail_b[::-1])
+                      rail_a=self.rail_a[::-1], rail_b=self.rail_b[::-1], dropped_mm=self.dropped_mm)
 
 
 def is_lettering(region) -> bool:
