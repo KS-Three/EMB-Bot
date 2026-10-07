@@ -13,6 +13,31 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-07 — lettering as Columns: `cfg.lettering_columns` built OFF, the outline-cut spike wired as a Column object and a first construction engine
+
+Kent's picks on `docs/lettering-architecture-rd-2026-10-07.md` (PR #655): port the glyph construction to Python, build the outline-cut Columns first. Built the same day on lane `claude/sleepy-hopper-jhpasn`: `digitizer_core/outline_cut.py` (the spike's cut rules, thresholds and DTW rail pairing unchanged, emitting `columns.Column` STATIONS instead of stitches), `digitizer_core/columns.py` (the Column object; `column_runs`: `_push_rails` per side on the artwork polygon, the `SATIN_MIN_CROSS_MM` floor, the column-wide split comb, a centre underlay where the letter clears `SATIN_UNDERLAY_MIN_EXTENT_MM`, nearest-next order from the needle's real position, the satin tier's sew-or-jump link rule), a stage 7 hook ahead of `classify_ribbon` for any shape either tagger calls lettering (`text_candidate` or the new `lettering_group` tag the house pass writes), and the matching `_sews_satin` branch so stage 5 keeps the artwork polygon. `lettering_columns` arm in `tools/eye_pairs`. Tests: `tests/test_lettering_columns.py` (13). OFF is byte-identical (pinned on Becker at 100 mm).
+
+OFF -> ON through `digitize()` at corpus sizes, `max_colors=6`, the lettering shapes only (either tag):
+
+| fixture | letters | satin runs | trims on letters | letter stitches | design stitches / trims |
+|---|---|---|---|---|---|
+| becker 100 mm | 6 MARINE | 34 -> 22 | 42 -> **8** (six are the letters' entries) | 4,709 -> 1,629 | 10,347 / 64 -> 7,248 / 30 |
+| gaulke 80 mm | 39 | 81 -> 91 | 27 -> 23 | 2,521 -> 1,301 | 4,583 / 34 -> 3,205 / 29 |
+| enthusiast 80 mm | 25 | 23 -> 26 | 13 -> 14 | 1,971 -> 1,272 | 2,614 / 15 -> 1,782 / 17 |
+| fremont 92.5 mm patch | 93 (both tags) | 57 -> 74 | 17 -> 22 | 4,111 -> 3,408 | 20,177 / 58 -> 19,421 / 64 |
+
+Letter stitches fall by a third to two thirds because the skeleton tier lays a zigzag underlay under every stroke and the lane a centre walk, and because a letter's columns no longer overlap each other at the junctions (Becker MAR was 48% sewn twice on 10-05). Density per rail is the same 0.4 mm in both.
+
+**The Euler walk landed the same evening (Kent's pick, second step):** columns are the edges of a span graph (ends merged into nodes within 1.3 stroke widths, `routeGlyph`'s radius; a column end landing mid-stroke on another column cuts it into spans; an end stub whose both ends fall in one node rides with its neighbour), each component made Eulerian by duplicating spans along shortest paths between odd nodes and walked by Hierholzer from the node nearest the needle; a span sews satin on its last visit and a 2 mm underpath on earlier ones; a hop between legs goes through the junction and a hop inside the letter up to two stroke widths is sewn, not jumped; components are taken in the order the needle meets them. Before the walk (nearest-next order, measured first): becker 17 runs / 14 trims, gaulke 85 / 23, enthusiast 22 / **22**, fremont 68 / **38** -- every column hop that left the letter was a jump. Satin RUN counts rise under the walk because a column crossed by another is sewn as two spans. **Two more rules landed after it, the same evening (Kent's third pick, the E/F and bowl cuts):** the second-look refinement reads concave corners down to 30 deg on a piece already proven over-long (a 146 px E's slots round off under the junction rules' 55; Becker's E body one fan -> two cuts; lowering the junction rules' own threshold was measured over 184 lettering shapes and changes nothing, 247/246/245 cuts at 55/45/35), and the engine's own `_short_stitch_guard` runs on every column's stations (ENTHUSIAST's S converged every outer cross of each curl on one inner needle hole, 7 shared holes per rail -> 0: the pro's S, outer rail dense and inner rail short-stitched). The S is not a cut problem; the bowls of Becker's outlined band letters are the sibling lane's blob class, not touched.
+
+Renders `docs/renders/lettering-columns-2026-10-07/`: MARINE's M is two stems and two diagonals, the A legs and crossbar, the R stem, bowl and leg, the N stem-diagonal-stem, each one column at one angle; the E's body still fans (one uncut piece) and ENTHUSIAST's S fans (an uncut double bowl). Fremont's trims still sit above the base: its slab serifs cut into more pieces than the skeleton makes strokes (57 -> 79 columns) and a serif stub's hop reads as a jump.
+
+Three traps met, and a fourth on the way out: the engine's satin spacing is ONE cross per `SATIN_SPACING_MM` with the rails alternating -- the spike stationed every 0.2 mm and the first wiring doubled every stitch count (gaulke 2,521 -> 4,163 before the fix); a station is ONE penetration (a_0, b_1, a_2 ...), the cross being the thread between consecutive stations -- the first wiring put both ends of every station down and sewed boxes at double density again (caught on a render of one S, not by any count); with an underlay the column sews back over it, so the needle ends at the column's START (the walk now lays the centre underlay out AND back, so the needle is where the satin starts); and **a push to a branch whose PR is auto-merge-armed and `dirty` against `main` is refused by GitHub with a bare `Internal Server Error`** on every retry -- disabling auto-merge let the same push through at once, and it re-armed after. Next on the lane: junction overlap between a butting column and the one it butts, the slanted terminal the squared rail ends cut short (Fremont's serifs, the S's tips), then Kent's labelled pairs. The flip is his.
+
+**The junction tuck landed the same night (Kent's pick, fourth step; PR after #655):** `_span_graph` now reports every junction (a column END landing mid-stroke on another column); after the walk, a butting column whose satin leg is emitted BEFORE the later half of the stroke it meets is extended into that stroke by the satin tier's own `_JUNCTION_TUCK_MM` (0.4) plus the pull, capped at half a stroke width, so the stroke sewn later covers the seam; one emitted AFTER is a plain butt, extended only to the cut line (a cut piece's last station sat up to a pitch short of it, so even the butt gains a station). To get the pro's order the walk STARTS at a butting column's free end when one is odd and within `trim_at_mm` of the needle, and the postman pairs such a node only when nothing else is odd (paired, it goes even and cannot start the trail: the first wiring doubled a T's stem and split its bar). Both rules apply only where the stroke has room for the whole tuck (half a stroke >= 0.4 + pull): on gaulke's 0.96 mm strokes the reorder bought a sliver and cost six entry trims. Measured, the lane before the tuck -> with it, letter trims: becker 8 -> **7**, enthusiast 14 -> **12**, gaulke 23 -> 26 (the extended ends move the hop into the next letter past 3 mm on three letters), Fremont 22 -> 22; letter stitches +13 / -5 / +53 / +34; junctions / tucks per fixture 61 / 8, 20 / 5, 61 / 16, 63 / 19 (the rest are plain butts). Render `becker_100mm_marine_tuck.jpg`. Known: where the junction splits the through column and one half is already sewn, the tuck straddles the cut and half of it lies on the sewn half (an H's bar under one stem's upper half only); the reviewer's call and mine is that this beats an exposed seam, Kent's to overrule. Next on the lane: the slanted terminal, then the pairs.
+
+---
+
 **Last updated:** 2026-10-06 — the stroke-colour rule and `dissolve_phantom_blends` together, nine gradient logos
 
 `tools/stroke_colour_probe.py --dissolve` (span ≥ 60, ≤ 4 source px, side absolute; both arms with the dissolve on), read with the 2026-10-05 rows below for the other two arms. Cones, stitches:
@@ -19654,6 +19679,298 @@ dropped, the arm capped over the slab's width with the terminal fan — where
 the pro sews the slab as its own column; the H's and N's junction ends. The
 flip waits on Kent's look at the renders; the join members move on every
 letter with a slab or an L, so goldens re-capture then.
+## 2026-10-06 — Letterform priors: a low-res letter made letter-shaped before construction, built OFF
+
+Kent's pick after the outline-cut spike named its own ceiling ("the letter
+is not letter-shaped before construction starts"). Spike, then option A
+the same day: `digitizer_core/letterform_priors.py` behind
+`PipelineConfig.letterform_priors_k` (None = off, never imported; 0.75 the
+measured value), inserted after the tagger's redraw and before the OCR
+read, the house angle and the stitch-width measurement. Each text-tagged
+letter of a word is refit to lines and arcs under the word's stem direction,
+width modes (facing edges across ink) and baseline, every move capped at
+k source pixels against the traced samples, a letter the primitives do not
+explain on more than 10% of its outline refused untouched, and a word
+passed through byte-identical when the cap is under the working grid's
+pixel — so only an upload stage 1 upscaled is ever touched.
+
+At k 0.75 on the seven real-art logos: Becker 10 of 11 letters refit, bridge
+8 of 8, gaulke (held out from every threshold) 36 of 38; drone, enthusiast
+and fremont byte-identical and re-planned identically. Primitives per letter
+−13 to −32%, stem spread within a word −32 to −65%. Against the pro's Becker
+file the centred IoU moved −0.0008 on average (neutral; his sharp corners and
+straight arms set the arc rules: a line first, an arc only over three chords
+turning one way). Price on today's satin: Becker +506 stitches, +11 trims
+(R/A/E gain 2–4 columns at the sharpened junctions) for bare 4.33 → 2.65%;
+gaulke −18 stitches, −1 trim. The outline-cut check clears the right way on
+all three (Becker 9.3 → 6.2%, bridge 21.3 → 17.3%, gaulke 5.2 → 3.1%).
+Bridge's eight "letters" are segmentation blobs and refit to cleaner blobs.
+The k sweep: 1.0 opens the gate on every logo and moves away from the pro
+(−0.0062); 0.5 gates gaulke too. Found in passing: the outline-cut spike's
+`oc.letter_columns` is not deterministic (4 of 6 fremont letters). OFF proof:
+the OFF run on the wired tree hashes every Becker region identically to the
+d4c521ec run (`c8fe028706f69cce`). `docs/letterform-priors-2026-10-06.md`;
+`tests/test_letterform_priors.py` 15 (3 real-fixture, env-gated). Judged on
+the labelled thread pairs, arm `letterform_priors`.
+
+**Moved here from MASTER_SCOPE "Waiting on Kent" 0, as it stood before the
+2026-10-02 flip:** `satin_lettering_split`'s crowns, NEW 2026-09-30 —
+re-framed the same day, downward. MARINE at 127.4 mm reads 0 holes as fill
+and 11 holes / 22.9 mm² as split satin. But `lost_frac`, the metric that
+killed the apex widening, reads 0.2688 fill against 0.1800 split — the split
+is a third better, because fill spills more thread outside the artwork than
+the split leaves bare. So not a case for reverting or gating the flip; a
+case for closing 11 crowns without spending that advantage. Neither built
+rail cure does it (the envelope is inert on them, `True` costs `lost_frac`),
+and the mechanism is a decomposition gap — the strokes' union leaves wedges
+no stroke claims. Construction: `docs/superpowers/plans/2026-09-30-crown-cover.md` §7.
+
+## 2026-10-07 — The EXP writer sewed where the other two files travel: the chain rule, in the third encoder
+
+A stitch that follows travel (a jump, a cut, a colour change, the start of
+the file) and lies more than one record from where the needle stands is
+reached by travel. `dst.js` has laid that move as jump records up to its
+last, the stitch, since 2026-09-07 and `pes.js` since 2026-09-12 (the chain
+rule). `exp.js` split EVERY stitch record into stitches, so its file put the
+needle down along the way. Found on 2026-10-06 by the independent re-measure
+of `cutFloats` (#639), outside that PR.
+
+One stream through the three writers of `main` at `32b0dd3f`, each file read
+back record by record:
+
+```
+j0,0 s0,0 s30,0 j230,0 s430,0 s460,0      (units of 0.1 mm)
+DST  J0 S0 S30 J100 J100 J100 S100 S30
+EXP  J0 S0 S30 J100 J100 S100 S100 S30     a needle hole at x=330
+PES  J0 S0 S30 J200 S200 S30
+```
+
+pystitch reads 4, 5 and 4 stitches from them. The same on `main` after a cut
+(three holes along a 40 mm move), after a colour change, and where the
+file's first record is a stitch away from the origin (three along 50 mm).
+
+**An omission, not a choice.** `exp.js` was the encoder `dst.js` was matched
+to on 2026-09-07 ("a stitch splits into stitches"); the second half of the
+rule went into `dst.js` that day because `test/dstimport.test.js` failed
+without it, and EXP has no importer. When EXP got its 12.1 mm ceiling on
+2026-09-13 its comment, and that commit's message, said "the same `chained ?
+… : …` shape pes.js uses" over a line that tested `isJump`. crossval's `long`
+fixture said both encoders "must keep splitting that as jumps", with a
+travel-in of zero length that could not show whether they did. DOCTRINE's
+chain rule names no exception. No ruling, test or comment asks an EXP to sew
+such a move.
+
+**How often, as shipped.** On `main` at `32b0dd3f`, every design written by
+the three writers and the three files compared hole by hole:
+
+| lane | designs | with such a stitch | such stitches | needle holes the EXP has and the DST has not |
+|---|---|---|---|---|
+| a drawn shape set to satin | 2,700 | 2,455 | 10,578 | 38,920 |
+| the shape tool's presets | 2,870 | 285 | 1,512 | 2,141 |
+| a drawn shape set to fill | 5,400 | 0 | 0 | 0 |
+| the image lane | 252 | 2 | 2 | 3 |
+| lettering | 765 | 0 | 0 | 0 |
+| a stitch file imported (42 files, 48 placements each) | 2,016 | 91 | 91 | 259 |
+| two elements of one project | 909 | 48 | 48 | 182 |
+| the service's digitized fixture | 45 | 0 | 0 | 0 |
+
+The DST and the PES agree on the count of holes in every design, and no hole
+of the DST is missing from the EXP.
+
+**Satin.** The first, second and fourth rows are one thing: the browser's
+medial satin floats to another arm of the shape and sews back where it was
+(defect 57), `s-91,-3 j93,1 s-101,0` on a 20 mm four-point star. On the way
+back the EXP put the needle down. A T, an L, a plus, a Y, an H, an E and an
+arrow drawn by hand and set to satin each have such a stitch at every size
+from 30 to 80 mm (most from 20); a thin straight bar has none, and no fill
+has one. The drawn lane's three sizes are 25 mm, 60 mm and the size the
+garment's placement gives; the last carries 26,998 of the 38,920 holes, the
+394 in one design and the longest such move, 335.5 mm, both on a full back.
+All 285 presets are stars of 4, 6, 8 or 12 points with thin arms (inner
+ratio 0.15 to 0.6). The set's stars have 3, 4, 5, 6, 8 or 12 points: none of
+3 or 5 has one, nor any circle, heart or rectangle, nor the tool's default
+star (5 points, 0.45). The lettering builder cannot make one: every jump
+lands on its run's first point and the first stitch is laid there.
+
+**A stitch file.** Every builder opens a run with a jump. A stitch file need
+not: its first record can be a stitch, and the importer then centres the
+design and moves it to its place, so the stream's first record is a stitch
+far from the origin the writers start at. The EXP sewed a line from the
+middle of the hoop to the design's first stitch, up to 194.7 mm here. As a
+project's second element the same file follows the splice's cut and colour
+change, and the EXP sewed from where the first element ended. Two of the 42
+files open with a stitch: `test/fixtures/standard-tajima.dst` (written by
+pystitch) and one of the 36 kept outside the repo; the 40 others open with
+jump records. 85 of the 91 are that; the other 6 are placements made larger,
+where a stitch after a colour change then lay over 12.1 mm away.
+
+**With `cutFloats` on** (built OFF, "Waiting on Kent" 28) 1,091 of the
+presets' 1,512 such stitches follow a cut instead of a jump: `main`'s EXP
+would have cut the thread and then sewn along the travel.
+
+**The fix** is the kind of the records before the last, and nothing else. A
+move is split where it was split: a stitch at 121 units an axis, a jump at
+127. The records before the last are stitches when the move continues a sewn
+run and jumps when it does not; a trim, a colour change and the start of the
+file cut the chain, as in the other two. So travel into a run is the records
+`dst.js` lays for it, and no stitch record is longer than before. `pes.js`
+lets the last record of such a move run to PEC's whole reach; that was not
+copied, because a stitch record over 12.1 mm is a kind of record no EXP has
+held since 2026-09-13 and whether a machine takes one is not a question a
+writer settles (gate 1). 352 of the 12,231 as-shipped stitches lie 12.2 to
+12.7 mm from where travel ended and are the only ones whose last record the
+two readings would write differently: a jump and a stitch here, one stitch
+record there.
+
+**Which files change, and the proof that no other does.** Every design
+written by `main`'s EXP writer and by the new one: the census's shapes,
+image designs and sweep under four arms (as shipped, `fillColumns`,
+`cutFloats`, both), lettering, the imports, the pairs, the digitized fixture
+and the drawn shapes set to satin, 73,543 designs.
+
+- The EXP's bytes differ on 3,742, every one a design with at least one such
+  stitch, and are the same on the other 69,801, none of which has one. As
+  shipped: 23,212 designs, 2,881 change, 20,331 do not.
+- Each changed file is the old file record for record, the same moves in
+  the same order, with stitch records turned into jump records where they
+  stand: 47,937 of them, which is the count of holes the old EXPs had and
+  their DSTs had not. A file grows two bytes for each. Trims and colour
+  changes are untouched and every file ends where it ended.
+- After it the EXP has the DST's holes in every design, none more and none
+  fewer, each point as often as the DST has it.
+- No stitch record of any EXP carries more than 12.1 mm an axis, before or
+  after.
+- `dst.js` and `pes.js` are not touched: every DST and PES is the same bytes
+  (counted by the committed tool's `--against` on 23,479 designs, which
+  also finds the EXP's bytes changed on the designs with such a stitch and
+  on no other).
+
+A file exported before the fix keeps its holes.
+
+**Tests, written first.** Nine in `test/exp.test.js`: `dst.test.js`'s four
+chain tests re-aimed at this file's bytes, as `pes.test.js` re-aimed them;
+the finding's stream to the record; travel into a run as jumps that land
+exactly and stay on the line; no stitch record over 12.1 mm; the EXP against
+the DST on 420 streams, 406 of them drawn at random with every kind of
+record; and `main`'s bytes for a design the rule does not reach. Six fail on
+`main`'s writer and three pass on it by design. A `travel` fixture in the
+crossval harness, read by pystitch from all three files: 17 stitches from
+`main`'s EXP of the 8-stitch design, 8 now, in four tests. 36 mutants of the
+writer, 36 die.
+
+**Instruments.** `tools/file-cut-census.mjs` now counts the stitches that
+follow travel from over a record away, by what they follow, and the needle
+holes of each file, the EXP's against the DST's hole by hole; `--against`
+says for each of the three files whether two engines write the same bytes.
+Its old rows are unchanged (compared row for row with `main`'s tool on a
+sample). Two sets for the lanes its own three leave out, and they are the
+two that carried this: `tools/file-cut-satin-set.mjs` (the census's own 150
+drawn shapes, set to satin; its "manual" lane is all fills) and
+`tools/file-cut-import-set.mjs` (imports, pairs, the digitized fixture; the
+repo's six stitch files, and `FILE_CUT_DST_DIRS` for files kept outside it).
+`tools/travel-sheet.mjs` draws four such designs from what pystitch reads of
+each file: [`docs/renders/exp-travel-2026-10-07/`](renders/exp-travel-2026-10-07/).
+
+The table's rows come from two readers that agree: a scratch census with its
+own readers of the three formats, and the committed tool's, on `main`'s
+engine extracted from `32b0dd3f`.
+
+**The independent re-measure** (a second agent: its own readers of the
+three formats, checked against pystitch hole for hole; its own designs,
+built through `generateAll`; 37,919 designs and 80,000 random streams) could
+not break the writer. The EXP's holes are the DST's, in the same order, on
+every design and stream; the bytes change on exactly the designs with such a
+stitch (6,648 of its 37,919); each changed file is the old one record for
+record, 72,357 records turned, the longest stitch record 121 before and
+after. Every row of the table above reproduced to the digit. What it
+corrected:
+
+- **Tests.** Four mutants passed the first set of tests. A jump that moves
+  nothing kept the chain, which brings the defect back where one stroke of a
+  satin ends on the point the next begins (17 of the 491 satin designs it
+  sampled).
+  Travel over 100 mm was sewn (no test travelled more than 93 mm; the product
+  lays 335). Travel's last record ran to 127, and a TRIM was written before
+  long travel: both leave the holes where they are, so a test of holes alone
+  is blind to them. Beside them, three older behaviours no test held: where
+  a colour change leaves the needle, two colour changes in a row, a record
+  of no type. Each has a test now, the random streams carry jumps on the
+  spot, moves of 35 cm, colour changes that carry a move and records of no
+  type, and every stream is checked for the length of its stitch records,
+  its trims, its colour changes and where it ends, not only its holes. A
+  second round on those tests: every survivor of its first that changes a
+  file died, and of fourteen new mutants four lived, none a slip of the rule
+  (the old rule from a stream's 65th record on, where no test stream was 30
+  long; a jump laid between two sewn stitches, which moves no hole and takes
+  the thread from between two; a record more for the same hole). The tests
+  now carry six streams of 400 records and compare the thread between the
+  holes with the DST's. 36 mutants, thirteen of them the re-measure's, 36
+  die.
+- **Stars.** Its own stars of 7, 9, 10 and 11 points have such a stitch too
+  (4, 16, 124 and 46 of 704 each), up to 36 holes in one design; none at 3 or
+  5 points, none at an inner ratio of 0.65 or more.
+- **Bars.** 16 of its 120 straight bars set to satin have one: fat bars
+  (1:2 to 1:8) drawn at 30 degrees.
+- **Imports.** 3 of 66 placements of a file that opens with a stitch have
+  none: the first stitch lies within 12.1 mm of the hoop's middle. A file
+  that opens with a colour change, or whose colour change carries a move,
+  can have one "after a colour change" with no second element.
+- **Digitized.** The table's row is one fixture. It ran the Python pipeline
+  on seven logos: 343 placements, none.
+- **How long.** The DOCTRINE entry as first committed on this branch said
+  "for a month". The writer has split every stitch into stitches since it
+  was written, 2026-07-22.
+- **The tool.** With `--against`, the other engine's `digitize.js` left its
+  own modules on the global the app's modules read (an older line). The
+  engine measured is put back now; no count here moves, the two engines
+  being the same in those files.
+
+It did not run the Studio suite, the Python suite, the sweep set or the
+four-arm total, ran the committed tool's functions cut from its source and
+not the tool, and did not look at the sheet's T row. Its
+opinion on the one judgement in the fix (the last record of travel at 121,
+where `pes.js` and #477's words would also allow EXP's 127) is that 121 is
+not wrong and is the conservative reading, and that the choice is Kent's to
+name.
+
+**Seen, not touched.**
+
+- The float itself. The satin still floats to a far arm and back (defect
+  57); in all three files it is travel now, and a DST machine cuts there
+  (`cutFloats`).
+- Where a SEWN move over 12.1 mm is split, the PES writer's split point can
+  sit 0.1 mm from the other two's: it splits with y pointing down, and a half
+  rounds the other way. 417 of 29,297 holes on the digitized fixture's 45
+  placements, never more than one unit.
+- `pes.js` writes the last record of travel into a run as one stitch record
+  of any length up to 204.7 mm (`J200 S200` above). That is its 2026-09-12
+  shape, not looked at here.
+- `MASTER_SCOPE.md` is not edited: nothing it says changed, and it is within
+  a few words of its budget.
+
+## 2026-10-07 — `letterform_priors_k` ON at 0.75: Kent's ruling on the labelled thread pairs
+
+Fourteen arm-runs on seven logos, two pairs changed (becker, bridge), five
+identical by the grid gate or for want of tagged text — the corpus's gaulke
+is the 14 px/mm photo file, all 39 letters `pass:grid`. Kent: becker *after*,
+job done *yes*, *the "N" was better before - everything else was better
+after*; bridge *both bad*. Ruled in chat: flip, log the N. Defect 59 is the
+N: a clean 13-vertex refit outline whose sharpened wedge today's stage 6
+sews as a fan (5 → 8 satin runs, 687 → 1,162 stitches on the letter). The
+OFF path stays (None), pinned byte-identical with an explicit None.
+`docs/eye-pairs-2026-10-07/kent-notes.json`;
+`docs/letterform-priors-2026-10-06.md`, "Sitting 2026-10-07".
+
+**Moved here from MASTER_SCOPE "Waiting on Kent" 7 (resolved 2026-09-15),
+for the word budget:** of the 26 glyphs that sewed nothing, the 20
+`roaring_twenties_KOR`/`_small` ones sew again; 6 stay a GATE 1 refusal.
+The grep came back >0 on all twenty. Kent ruled 2026-09-13 to revive them,
+and `stripRunParamsIfSatin` now strips only glyphs that carry satin
+columns. The rebuild landed 2026-09-15. The other 6 (`western_light`,
+`ondulamarif_*`) have no authored run length upstream, and defaulting one
+is refused by `test/run-fonts.test.js:44`. The item read "still open" until
+2026-10-02. *(`test/font-dead-glyphs.test.js`; detail: area 2)*
+
 
 **Flipped ON the same evening (Kent, on the renders; efcb21e2).** The
 goldens did not move: `flat_lane_golden.json`'s five keys are byte-identical

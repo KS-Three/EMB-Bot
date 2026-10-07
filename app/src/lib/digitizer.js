@@ -30,6 +30,7 @@
 
 import { loadPreferredPaletteId } from "./threads.js";
 import { DEFAULT_DIGITIZE_PARAMS } from "./project.js";
+import { owningShapeId, EDGE_CAP_ROLE } from "./borderMenu.js";
 
 // The service binds 127.0.0.1:8721 by default (digitizer_service/__main__.py).
 // The localStorage override is a dev/ops seam — e.g. a second instance on
@@ -495,9 +496,13 @@ function withoutBorders(edits) {
 export function editKind(prevEdits, nextEdits) {
   if (editsKey(prevEdits) === editsKey(nextEdits)) return "none";
   // Identical once the borders are taken out = borders were all that moved.
-  return editsKey(withoutBorders(prevEdits)) === editsKey(withoutBorders(nextEdits))
-    ? "border"
-    : "other";
+  if (editsKey(withoutBorders(prevEdits)) === editsKey(withoutBorders(nextEdits))) return "border";
+  // A deletion (or its undo) is a click that is complete when made, like a
+  // border — and since the canvas now hides the shape at once, the pause
+  // buys nothing but a longer wait for the real plan.
+  const noDeletes = (e) => ({ ...(e || {}), deleted_shape_ids: [] });
+  if (editsKey(noDeletes(prevEdits)) === editsKey(noDeletes(nextEdits))) return "delete";
+  return "other";
 }
 
 // Within-layer sew-order reorder (contract v1.2, the Layers panel's up/down
@@ -1311,6 +1316,13 @@ export function decodedFromDesign(design) {
     else if (s.type === "color") colorChanges++;
   }
   if (!stitchCount) return null;
+  // A design pruned optimistically (pruneDeletedShapes) keeps the frame of the
+  // design it was cut from, so deleting a shape does not re-centre and rescale
+  // everything left behind it.
+  const fr = design.frame;
+  if (fr && [fr.minX, fr.maxX, fr.minY, fr.maxY].every(Number.isFinite)) {
+    minX = fr.minX; maxX = fr.maxX; minY = fr.minY; maxY = fr.maxY;
+  }
   const cx = Math.round((minX + maxX) / 2);
   const cy = Math.round((minY + maxY) / 2);
   for (const s of stitches) {
@@ -1340,6 +1352,97 @@ export function decodedFromDesign(design) {
   const onlyTailEnd = src.length === stitches.length + 1 && src[src.length - 1] && src[src.length - 1].type === "end";
   if (Array.isArray(design.runs) && (src.length === stitches.length || onlyTailEnd)) out.runs = design.runs;
   return out;
+}
+
+// ---- optimistic delete ------------------------------------------------------
+//
+// A deleted shape used to stay fully sewn on the canvas until the restitch
+// landed (a pause, then a service round trip), so the click looked ignored.
+// `design.runs` says which stitches belong to which shape, so the pending
+// deletion can be shown at once: drop those stitches from the design the
+// canvas draws. The real restitch still runs and replaces this result; this
+// is only the preview in the gap, never what is exported.
+//
+// A removed shape leaves the cap alone (it belongs to the whole silhouette,
+// and only the service can say which stretches still stand in open air); a
+// removed cap stretch (`cap:` id) takes just that stretch.
+export function pruneDeletedShapes(design, deletedIds, knownIds) {
+  if (!design || !Array.isArray(design.runs) || !Array.isArray(design.stitches)) return design;
+  const del = new Set(deletedIds || []);
+  if (!del.size) return design;
+  const known = new Set([...(knownIds || []), ...del]);
+  const src = design.stitches;
+  const drop = new Uint8Array(src.length);
+  const gone = new Set();
+  design.runs.forEach((r, ri) => {
+    if (!r) return;
+    if (r.role === EDGE_CAP_ROLE || r.shape === "__edge_cap__") {
+      // One stretch of the cap goes when ITS id is named; the rest stay.
+      if (!r.piece || !del.has(r.piece)) return;
+    } else if (!del.has(owningShapeId(r.shape, known))) {
+      return;
+    }
+    gone.add(ri);
+    for (let i = Math.max(0, r.i0); i <= r.i1 && i < src.length; i++) drop[i] = 1;
+  });
+  if (!gone.size) return design;
+  // Frame of the UNPRUNED design — see decodedFromDesign.
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const st of src) {
+    if (st.type !== "stitch") continue;
+    if (st.x < minX) minX = st.x;
+    if (st.x > maxX) maxX = st.x;
+    if (st.y < minY) minY = st.y;
+    if (st.y > maxY) maxY = st.y;
+  }
+  const shift = new Int32Array(src.length + 1);
+  const stitches = [];
+  for (let i = 0; i < src.length; i++) {
+    shift[i] = stitches.length;
+    if (!drop[i]) stitches.push(src[i]);
+  }
+  shift[src.length] = stitches.length;
+  const runs = [];
+  design.runs.forEach((r, ri) => {
+    if (gone.has(ri)) return;
+    runs.push({ ...r, i0: shift[r.i0], i1: shift[r.i1 + 1] - 1 });
+  });
+  return { ...design, stitches, runs, frame: { minX, maxX, minY, maxY } };
+}
+
+// Deletions the current result does not know about yet: in the element's
+// deletedShapeIds, not in the list the result was digitized with.
+export function pendingDeletedIds(element) {
+  const now = (element && element.deletedShapeIds) || [];
+  if (!now.length) return [];
+  let applied = [];
+  try {
+    const parsed = JSON.parse((element && element.appliedEdits) || "null");
+    if (Array.isArray(parsed) && Array.isArray(parsed[0])) applied = parsed[0];
+  } catch {
+    applied = [];
+  }
+  const have = new Set(applied);
+  return now.filter((id) => !have.has(id));
+}
+
+const prunedCache = new WeakMap();
+// The result the canvas should draw for an element: its own, less any
+// deletion still waiting on its restitch. Cached per result + pending set so a
+// drag regenerating every frame keeps hitting decodedFromDesignCached.
+export function displayResult(element) {
+  const result = element && element.result;
+  if (!result) return result;
+  const pending = pendingDeletedIds(element);
+  if (!pending.length) return result;
+  const key = pending.join("|");
+  let hit = prunedCache.get(result);
+  if (!hit || hit.key !== key) {
+    const known = ((element.review && element.review.shapes) || []).map((r) => r && r.id);
+    hit = { key, design: pruneDeletedShapes(result, pending, known) };
+    prunedCache.set(result, hit);
+  }
+  return hit.design;
 }
 
 // Per-frame regen cache (drag/resize regenerate every element per frame —

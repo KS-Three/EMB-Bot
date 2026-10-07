@@ -59,6 +59,9 @@ ARMS: dict[str, dict] = {
     # is the base now and no longer an arm.
     "wide_columns": {"wide_columns": True},
     "lettering_column": {"lettering_min_column_mm": 1.0},
+    # Lettering as Columns (2026-10-07): the outline-cut construction, built
+    # OFF; the labelled pairs are the flip's evidence.
+    "lettering_columns": {"lettering_columns": True},
     "phantom_dissolve": {"dissolve_phantom_blends": True},
     "directional_comp": {"directional_comp": True},
     REF_ARM: {"__ref__": REF_COMMIT},
@@ -97,6 +100,13 @@ ARMS: dict[str, dict] = {
     # day (2 after, 0 before), so it is the base now and no longer an arm.
     "keep_counters": {"keep_counters": True},
     "bean_letters": {"bean_letter_max_stroke_mm": 1.0},
+    # Letterform priors (2026-10-06, Kent's option A after the spike): a
+    # low-resolution upload's lettering refit to lines and arcs under the
+    # word's stem direction, widths and baseline, every move capped at 0.75
+    # source pixels. Only an upscaled upload is touched (becker, bridge,
+    # gaulke); drone, enthusiast and fremont are byte-identical and keep
+    # their head on the page as identical, which is the point of go/no-go 1.
+    "letterform_priors": {"letterform_priors_k": 0.75},
 }
 
 

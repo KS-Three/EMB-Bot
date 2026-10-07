@@ -811,6 +811,20 @@ def build_generation(
     regularize_text_clusters(regions, p, min_column_mm=cfg.lettering_min_column_mm,
                              pull_mm=fabric_for(cfg).pull_comp_mm)
 
+    # Letterform priors (2026-10-06, `cfg.letterform_priors_k`, DEFAULT None):
+    # refit each text-tagged letter of a low-resolution upload to lines and
+    # arcs under the word's shared stem direction, widths and baseline,
+    # moving nothing further than k source pixels. Here, after the tagger
+    # and the rescued-door redraw have run and BEFORE the OCR read, the house
+    # angle and the stitch-width measurement, so every later reading of a
+    # letter sees the polygon that will sew. Imported inside the branch on
+    # purpose: off, the module never loads and this step is byte-identical
+    # (`tests/test_letterform_priors.py` pins both).
+    if cfg.letterform_priors_k and p.input_px_per_mm > 0.0 and p.px_per_mm > 0.0:
+        from .letterform_priors import apply_letterform_priors
+        apply_letterform_priors(regions, src_px_mm=1.0 / p.input_px_per_mm,
+                                grid_px_mm=1.0 / p.px_per_mm, k=cfg.letterform_priors_k)
+
     # OCR-suggested text (Studio "Convert to text" entry point): a read-only,
     # additive per-member OCR read of each tagged member's FINAL polygon —
     # runs after regularization for the same "computed fact reflects this

@@ -3,6 +3,7 @@
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
   import { tip } from "../lib/tip.js";
+  import { isCapPieceId } from "../lib/capPieces.js";
   import {
     buildDigitizeConfig,
     digitize,
@@ -823,7 +824,7 @@
   $: orderedShapes = sortShapes(reviewShapes, overrides);
   $: knownIds = new Set(reviewShapes.map((s) => s.id));
   $: unmatchedCount = new Set(
-    [...Object.keys(overrides), ...deletedIds].filter((sid) => !knownIds.has(sid))
+    [...Object.keys(overrides), ...deletedIds].filter((sid) => !knownIds.has(sid) && !isCapPieceId(sid))
   ).size;
   // Pending = the element's canonical edits differ from the ones the current
   // result was digitized with. Canonical on both sides, so a toggled-then-
@@ -1251,10 +1252,10 @@
   // silently dropping a user's edit is the one thing this panel never does.
   function clearUnmatched() {
     const keep = {};
-    for (const sid of Object.keys(overrides)) if (knownIds.has(sid)) keep[sid] = overrides[sid];
+    for (const sid of Object.keys(overrides)) if (knownIds.has(sid) || isCapPieceId(sid)) keep[sid] = overrides[sid];
     patch({
       shapeOverrides: keep,
-      deletedShapeIds: deletedIds.filter((sid) => knownIds.has(sid)),
+      deletedShapeIds: deletedIds.filter((sid) => knownIds.has(sid) || isCapPieceId(sid)),
     });
   }
 

@@ -3657,6 +3657,32 @@ flattery. Anything unlisted raises `NotInManifest`.
   mutation-checked — forcing `chained` true fails the travel tests, and
   raising the bar back to 2047 fails the split tests.
 
+  **And `exp.js` never had it — found 2026-10-06, fixed 2026-10-07.** This
+  entry was closed with two of the three encoders carrying the rule. `exp.js`
+  was the one `dst.js` had been matched to ("a stitch splits into stitches"),
+  so it kept the naive half and split EVERY stitch record into stitches. From
+  2026-09-13 its own comment read "same shape as pes.js's `chained ? … : …`"
+  over a line that tested `isJump`, and crossval's `long` fixture said both
+  encoders "must keep splitting that as jumps". Nothing failed because nothing
+  could: that fixture's travel-in is zero units long, and DST's naive version
+  had been caught by its IMPORTER's test, which EXP has none of. So from the
+  day it was written (2026-07-22) the EXP of a design put the needle down
+  along moves its DST and PES travel: as shipped, on 2,455 of 2,700 designs
+  of a drawn shape set to satin and 285 of 2,870 of the shape tool's presets
+  (wherever the browser's satin floats to a far arm and sews back), and on an
+  imported stitch file whose first record is a stitch, where it sewed a line
+  from the middle of the hoop to where the design starts. **A rule N encoders share is tested by ONE fixture run
+  through all N and compared file against file — not by N comments that say
+  "same as the other one".** crossval's `travel` fixture and
+  `tools/file-cut-census.mjs`'s hole-by-hole rows are that now. **And a census
+  counts the designs its sets hold, not the product's:** the two lanes that
+  carried this were in none of them. The "manual" lane is all fills, so a
+  drawn shape set to satin was never built; and every builder opens a run
+  with a jump where a stitch file need not, so no set's stream opened with a
+  stitch (`tools/file-cut-satin-set.mjs`, `tools/file-cut-import-set.mjs`).
+  Before quoting a lane as clean, read what its set builds. *(measured
+  2026-10-07 — scope-history 10-07)*
+
   **The safety property is a measurement, not an argument.** The DST of all 85
   shipped fonts at left-chest size hashes
   `e24e181fc8dd89aae12221fe21ab889197a501d0dd3ec59291f8e5d1c591dc9f` both
@@ -8682,3 +8708,18 @@ curves — the O's outer rail stepping 0.53 mm against the pro's 0.33 — which
 is `claude/satin-outer-rail-pitch`'s. The lean-leg alternation that regular
 short stitches produce reads as "spray" on a cross-to-next-cross metric;
 read the crosses and the leans apart before calling a column sprayed.
+
+## 2026-10-07 — `letterform_priors_k` ruled ON at 0.75 on the labelled page; the N it costs is the construction's, not the outline's
+
+Kent on the thread pairs: becker *after* (*the "N" was better before -
+everything else was better after*), bridge *both bad*; ruled in chat: flip,
+log the N. What it costs: Becker +506 stitches and +11 trims (R / A / E
+each 2–4 more columns at their sharpened junctions) for satin bare 4.33 →
+2.65%; only an upload stage 1 upscaled is touched, the rest byte-identical.
+The N owed is defect 59: the refit outline is 13 clean vertices and stage 6
+fans its sharpened wedge (5 → 8 satin runs, 687 → 1,162 stitches on one
+letter) — rendered before it was written down, because "the N was better
+before" reads as an outline fault and is not one. **A cleaner outline can
+sew worse on today's satin: price a lettering outline change on the
+decomposition it feeds, and attribute a fan to the construction by drawing
+the outline under it.** *(measured 2026-10-07 — `docs/letterform-priors-2026-10-06.md`, "Sitting 2026-10-07")*

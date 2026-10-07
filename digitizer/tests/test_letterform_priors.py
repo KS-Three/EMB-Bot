@@ -1,11 +1,19 @@
-"""The pure-geometry half of the letterform-priors spike
-(`tools/letterform_priors_spike/fit.py`): the tolerance cap, the grid gate's
-byte-identical pass-through, line and arc fits on synthetic stems and
-bowls, per-letter refusal, and a pinched counter kept open. No engine run,
-no fixture, no client artwork."""
+"""Letterform priors (`digitizer_core/letterform_priors.py`, behind
+`PipelineConfig.letterform_priors_k`: None is off, 0.75 the default since
+Kent's ruling of 2026-10-07).
+
+The pure-geometry half: the tolerance cap, the grid gate's byte-identical
+pass-through, line and arc fits on synthetic stems and bowls, per-letter
+refusal, a pinched counter kept open. Then the wiring: OFF never imports
+the module and is byte-identical; ON refits a synthetic low-resolution
+letter through `digitize()` and leaves a clean synthetic one byte-identical;
+a compound letter is refused untouched. The real-fixture identity check
+(drone / enthusiast / fremont ON == OFF) runs only under
+`EMB_SLOW_TESTS=1`: it is three to four minutes of engine time."""
 from __future__ import annotations
 
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -14,9 +22,9 @@ import pytest
 from shapely.geometry import LineString, Point, Polygon
 
 HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parent / "tools" / "letterform_priors_spike"))
+sys.path.insert(0, str(HERE.parent))
 
-import fit  # noqa: E402
+from digitizer_core import letterform_priors as fit  # noqa: E402
 
 PX = 0.66          # Becker's source pixel at 95.7 mm
 GRID = 1 / 6.06    # the working grid that run traced it on
@@ -179,3 +187,159 @@ def test_wkb_hash_is_deterministic_and_sensitive():
     b = Polygon([[0, 0], [1, 0], [1, 1.001], [0, 1]])
     assert fit.polygon_wkb_hash({"x": a, "y": b}) == fit.polygon_wkb_hash({"y": b, "x": a})
     assert fit.polygon_wkb_hash({"x": a}) != fit.polygon_wkb_hash({"x": b})
+
+
+# ---------------------------------------------------------------- wiring
+def _regions_hash(result) -> str:
+    return fit.polygon_wkb_hash({r.shape_id: r.polygon for r in result.regions})
+
+
+def _letters_png(tmp_path: Path, px_per_letter: int, name: str) -> Path:
+    """A line of four block letters (I, L, T and an O with a counter) drawn
+    at `px_per_letter` pixels of cap height and anti-aliased: at 24 px the
+    engine upscales it (a low-resolution upload), at 160 px it does not."""
+    from PIL import Image, ImageDraw
+    s = px_per_letter / 16.0                      # 16 "units" of cap height
+    w = int(80 * s) + 16
+    h = int(28 * s) + 16
+    im = Image.new("RGB", (w * 4, h * 4), "white")
+    dr = ImageDraw.Draw(im)
+
+    def rect(x0, y0, x1, y1):
+        dr.rectangle([8 * 4 + x0 * s * 4, 8 * 4 + y0 * s * 4, 8 * 4 + x1 * s * 4, 8 * 4 + y1 * s * 4],
+                     fill="black")
+    rect(2, 4, 6, 20)                           # I
+    rect(12, 4, 16, 20); rect(12, 16, 24, 20)   # L
+    rect(30, 4, 44, 8); rect(35, 4, 39, 20)     # T
+    cx, cy, r = 60 * s * 4 + 32, 12 * s * 4 + 32, 8 * s * 4
+    dr.ellipse([cx - r, cy - r, cx + r, cy + r], fill="black")
+    dr.ellipse([cx - r / 2, cy - r / 2, cx + r / 2, cy + r / 2], fill="white")   # O
+    im = im.resize((w, h), Image.LANCZOS)       # the anti-aliased edge a real file has
+    out = tmp_path / f"{name}.png"
+    im.save(out)
+    return out
+
+
+def _cfg(**kw):
+    """OFF unless told otherwise: the flag defaults ON since Kent's ruling of
+    2026-10-07, so every OFF arm here passes None explicitly."""
+    from digitizer_core import PipelineConfig
+    kw.setdefault("letterform_priors_k", None)
+    return PipelineConfig(target_width_mm=60.0, garment_id="left_chest", max_colors=6, **kw)
+
+
+def test_off_path_never_imports_the_module_and_the_default_is_kents(tmp_path):
+    """None is the pre-flag engine: the pipeline imports `letterform_priors`
+    inside the flag's branch only, and an OFF run leaves it out of
+    `sys.modules`. The default is 0.75 since Kent's ruling (2026-10-07)."""
+    import ast
+    from digitizer_core import PipelineConfig
+    from digitizer_core.pipeline import run_stages
+
+    assert PipelineConfig().letterform_priors_k == 0.75
+    src = HERE.parent / "digitizer_core" / "pipeline.py"
+    tree = ast.parse(src.read_text(encoding="utf-8"))
+    top = [n for n in ast.walk(tree)
+           if isinstance(n, ast.ImportFrom) and n.module == "letterform_priors" and n.col_offset == 0]
+    assert not top, "letterform_priors must be imported inside the flag's branch, not at module level"
+    sys.modules.pop("digitizer_core.letterform_priors", None)
+    result = run_stages(str(_letters_png(tmp_path, 24, "lowres")), _cfg())
+    assert "digitizer_core.letterform_priors" not in sys.modules
+    assert not any("letterform_prior" in r.meta for r in result.regions)
+    sys.modules["digitizer_core.letterform_priors"] = fit     # this module's own import
+
+
+def test_on_refits_a_low_resolution_letter_through_the_pipeline(tmp_path):
+    """A 24 px cap height at 60 mm is a 1.6 mm source pixel: the engine
+    upscales it, the cap (1.2 mm) is over the grid pixel, and the tagged
+    letters come out refit with the outcome on their meta and their ids kept."""
+    from digitizer_core.pipeline import run_stages
+    png = str(_letters_png(tmp_path, 24, "lowres"))
+    off = run_stages(png, _cfg())
+    on = run_stages(png, _cfg(letterform_priors_k=0.75))
+    tagged = [r for r in on.regions if r.meta.get("text_candidate")]
+    assert len(tagged) >= 3, "the synthetic line was not tagged as lettering"
+    outcomes = {r.shape_id: r.meta.get("letterform_prior") for r in tagged}
+    assert all(v for v in outcomes.values()), outcomes
+    assert any(v == "refit" for v in outcomes.values()), outcomes
+    assert {r.shape_id for r in on.regions} == {r.shape_id for r in off.regions}
+    assert _regions_hash(on) != _regions_hash(off)
+    off_by_id = {r.shape_id: r for r in off.regions}
+    for r in tagged:
+        before = off_by_id[r.shape_id].polygon
+        if r.meta["letterform_prior"] == "refit":
+            assert r.polygon.wkb != before.wkb
+            assert len(r.polygon.interiors) == len(before.interiors)
+            # the same ink, and nowhere further from the trace than the cap
+            # (the ink spans ~99 px at 60 mm: a 0.6 mm source px, cap 0.45;
+            # 1.2 mm is a loose bound on it. An arc written at 0.02 mm chord
+            # error has MORE vertices than a coarse trace, so vertex counts
+            # say nothing.)
+            assert abs(r.polygon.area - before.area) < 0.15 * before.area
+            assert _two_way_max(before, r.polygon, step=0.1) <= 1.2
+        else:
+            assert r.polygon.wkb == before.wkb
+
+
+def test_on_leaves_a_clean_upload_byte_identical(tmp_path):
+    """160 px of cap height at 60 mm is a 0.24 mm source pixel, finer than
+    the engine's grid: the gate passes the word through and the whole region
+    list hashes the same with the flag on and off."""
+    from digitizer_core.pipeline import run_stages
+    png = str(_letters_png(tmp_path, 160, "clean"))
+    off = run_stages(png, _cfg())
+    on = run_stages(png, _cfg(letterform_priors_k=0.75))
+    assert any(r.meta.get("text_candidate") for r in on.regions)
+    assert _regions_hash(on) == _regions_hash(off)
+    assert {r.meta.get("letterform_prior") for r in on.regions if r.meta.get("text_candidate")} == {"pass:grid"}
+
+
+def test_a_compound_blob_is_refused_and_left_as_traced():
+    """Two letters fused into one wobbly region: no line or arc explains it
+    within the cap, the fit refuses, and `apply` leaves the polygon alone
+    while still naming the outcome."""
+    from digitizer_core.regions import Region
+    rng = np.random.default_rng(11)
+    t = np.linspace(0, 2 * math.pi, 90, endpoint=False)
+    r = 6.0 + 2.0 * np.cos(3 * t) + rng.uniform(-3 * TOL, 3 * TOL, len(t))
+    blob = Polygon(np.column_stack([r * np.cos(t), r * np.sin(t)]))
+    if not blob.is_valid:
+        blob = blob.buffer(0)
+    regions = []
+    for i, dx in enumerate((0.0, 18.0, 36.0)):
+        poly = Polygon([[dx, 0], [dx + 4.8, 0], [dx + 4.8, 16], [dx, 16]])
+        regions.append(Region(shape_id=f"S{i}", polygon=poly, thread_index=0, thread_number="",
+                              area_mm2=poly.area,
+                              meta={"text_candidate": True, "text_cluster_id": "T1"}))
+    from shapely.affinity import translate
+    blob = translate(blob, 54.0, 8.0)
+    regions.append(Region(shape_id="Sblob", polygon=blob, thread_index=0, thread_number="",
+                          area_mm2=blob.area, meta={"text_candidate": True, "text_cluster_id": "T1"}))
+    before = blob.wkb
+    fit.apply_letterform_priors(regions, src_px_mm=PX, grid_px_mm=GRID, k=K)
+    blob_region = next(r for r in regions if r.shape_id == "Sblob")
+    assert blob_region.meta["letterform_prior"].startswith(("refused:", "refit"))
+    if blob_region.meta["letterform_prior"].startswith("refused:"):
+        assert blob_region.polygon.wkb == before
+    assert all(r.meta.get("letterform_prior") for r in regions)
+
+
+@pytest.mark.skipif(not os.environ.get("EMB_SLOW_TESTS"),
+                    reason="three to four minutes of engine time; EMB_SLOW_TESTS=1 runs it")
+@pytest.mark.parametrize("rel,width,garment", [
+    ("photo/drone_render.png", 80.0, "left_chest"),
+    ("photo/enthusiast_logo.png", 100.0, "left_chest"),
+    ("photo/logo_hotel_fremont.webp", 92.5, "patch"),
+])
+def test_clean_real_uploads_are_byte_identical_on(rel, width, garment):
+    """Go/no-go 1 on the real fixtures: a source finer than the working grid
+    is gated, so ON equals OFF to the byte on every region."""
+    from digitizer_core import PipelineConfig
+    from digitizer_core.pipeline import run_stages
+    src = str(HERE.parent / "testdata" / rel)
+    kw = dict(target_width_mm=width, garment_id=garment, max_colors=6)
+    off = run_stages(src, PipelineConfig(letterform_priors_k=None, **kw))
+    on = run_stages(src, PipelineConfig(letterform_priors_k=0.75, **kw))
+    assert _regions_hash(on) == _regions_hash(off)
+    tagged = {r.meta.get("letterform_prior") for r in on.regions if r.meta.get("letterform_prior")}
+    assert tagged <= {"pass:grid"}, tagged
