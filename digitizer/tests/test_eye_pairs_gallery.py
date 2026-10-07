@@ -21,7 +21,9 @@ SPEC_ARMS = ["per_stroke", "polygon_axis", "area_weighted",
              "design_angle", "rails_follow_edge", "wide_columns",
              "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827",
              "ref_0930am", "split_7mm", "rails_symmetric", "pro_file", "split_off",
-             "keep_counters", "bean_letters"]
+             "keep_counters", "bean_letters", "letterform_priors"]
+# `letterform_priors` joined 2026-10-06, Kent's option A after the spike
+# (docs/letterform-priors-2026-10-06.md): built OFF, judged on thread pairs.
 # `rail_comp` shipped ON 2026-09-28 and left the table (docs/kent-review-2026-09-28.md);
 # `rail_envelope` shipped ON 2026-09-30 and left it (docs/eye-pairs-2026-09-30/).
 # The last two joined 2026-10-03 with `cap_recentre`, the built-OFF flags

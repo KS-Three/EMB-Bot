@@ -1,13 +1,50 @@
 # Letterform priors: refit a low-res letter to lines and arcs before construction (2026-10-06)
 
-**Status: spike only.** Nothing is wired into the pipeline, nothing is sewable,
-no default changed, no stage-6 edit. The code is five standalone files in
-`digitizer/tools/letterform_priors_spike/` on lane `claude/letterform-priors`
-(cut from `origin/main` at `d4c521ec`); the engine imports none of them. The
-inputs (`<logo>.pkl`, `<logo>.result.pkl`), every sheet and every batch JSON
-live in `scratch_letterform_priors/` in that worktree, gitignored and NOT
+**Status: built, wired DEFAULT OFF (Kent's option A, 2026-10-06), judged on
+thread pairs.** The geometry and the word prior are
+`digitizer/digitizer_core/letterform_priors.py`; the pipeline runs them only
+when `PipelineConfig.letterform_priors_k` is set (None by default: the module
+is never imported, the output byte-identical — see "The wiring" below for
+the proof). No default changed, no stage-6 edit, nothing sewn. The spike's
+tools in `digitizer/tools/letterform_priors_spike/` (run, refit, pro, sheet,
+batch) import the engine module — one copy of the code. The inputs
+(`<logo>.pkl`, `<logo>.result.pkl`), every sheet and every batch JSON live in
+`scratch_letterform_priors/` in the lane's worktree, gitignored and NOT
 backed up: they hold client artwork and this repo is public. `run.py`
-regenerates the inputs (about 25 minutes for all seven).
+regenerates the inputs (about 7 minutes for all seven on Kent's box).
+
+## The wiring (2026-10-06, after the spike)
+
+- **Flag:** `PipelineConfig.letterform_priors_k: float | None = None`. The
+  value is k, the cap in source pixels; 0.75 is the measured one. None is
+  off. The config docstring carries the why, the measurements, the price
+  and the held-out fixture.
+- **Insert point:** `pipeline.build_generation`, after `detect_text_clusters`
+  and `regularize_text_clusters` (the tagger and the rescued-door redraw)
+  and BEFORE `ocr_suggest_text`, `set_lettering_house_angle` and
+  `measure_stitch_widths`, so the OCR read, the house angle (`satin_house_
+  from_line` / `satin_house_anchor`) and the width measurement all see the
+  polygon that will sew. `src_px_mm = 1 / Prep.input_px_per_mm`,
+  `grid_px_mm = 1 / Prep.px_per_mm`. Text-tagged members only; a refused
+  letter untouched; `shape_id` and `meta` preserved; the outcome written to
+  `meta["letterform_prior"]` as `refit`, `pass:grid` or `refused:<why>`.
+- **OFF is byte-identical, proved two ways:** the module is imported inside
+  the flag's branch only (an AST check pins it, and an OFF run leaves it out
+  of `sys.modules`); and the OFF run on the wired tree hashes every Becker
+  region's WKB identically to the pre-wiring `d4c521ec` run
+  (`c8fe028706f69cce`, 17 regions, measured 2026-10-06).
+- **Tests** (`tests/test_letterform_priors.py`, 15): the eight geometry tests
+  above; OFF never imports; ON refits a synthetic 24-px line of letters
+  through `run_stages` (ids kept, outcomes on meta, every refit within the
+  cap of its trace); a 160-px synthetic line is byte-identical ON; a fused
+  blob is refused untouched; and drone / enthusiast / fremont ON == OFF on
+  the real fixtures, env-gated (`EMB_SLOW_TESTS=1`) because it is minutes of
+  engine time.
+- **Eye pairs:** arm `letterform_priors` (`letterform_priors_k=0.75`) in
+  `tools/eye_pairs/pairs.py` and the gallery's `ARM_INTENT`; rendered on
+  becker, bridge, gaulke, drone, enthusiast, fremont and tires against this
+  lane's shipped defaults (no `rembg_isolated/venv` in a worktree, so tires
+  is prepped the same way on both sides). Results below under "The pairs".
 
 Brief: `docs/superpowers/specs/2026-10-06-letterform-priors-design.md`
 (Kent's pick 2026-10-06). Sibling: `docs/outline-cut-columns-2026-10-05.md`
@@ -290,12 +327,13 @@ drops on bridge and gaulke.
 
 ## Not built
 
-Pipeline wiring; a stem/hairline pair from a bimodal width histogram (the
-clustering allows two modes, no fixture produced two); counter-opening as a
-rule of its own (the self-intersection repair is what stands in for it);
-anything for script lettering (not text-tagged, ruled out), the tube-letter
-width floor (ROADMAP gate 1) or halo strands (defect C). No sew-out, no
-Studio surface, no labelled pairs for Kent yet.
+A stem/hairline pair from a bimodal width histogram (the clustering allows
+two modes, no fixture produced two); counter-opening as a rule of its own
+(the self-intersection repair is what stands in for it); anything for
+script lettering (not text-tagged, ruled out), the tube-letter width floor
+(ROADMAP gate 1) or halo strands (defect C); a Studio surface for the flag;
+a warning that reads `meta["letterform_prior"]`. No sew-out. The wiring and
+the labelled thread pairs are built (see "The wiring" and "The pairs").
 
 ## Caveats
 

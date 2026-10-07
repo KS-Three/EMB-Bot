@@ -251,6 +251,18 @@ RETIRED_ARM_INTENT: dict[str, tuple[str, str]] = {
         "and leave the other bare. Kent flipped it on after the 2026-10-03 "
         "sitting (2 after -- becker and tires, the two the locator boxed -- "
         "0 before)."),
+    "letterform_priors": (
+        "letterform_priors_k=0.75 (built OFF 2026-10-06)",
+        "A low-resolution upload's lettering is refit to straight segments and "
+        "circular arcs under the word's own stem direction, stroke widths and "
+        "baseline before anything is constructed, every vertex moved at most "
+        "0.75 of a source pixel and a letter the lines and arcs do not explain "
+        "left as traced. Only an upload the engine upscaled is touched: becker "
+        "(0.66 mm pixels), bridge (0.29) and gaulke (0.21). Drone, enthusiast "
+        "and fremont are byte-identical by design -- that identity is the "
+        "flag's first promise, not a failure to act -- and tires has no tagged "
+        "lettering. On today's satin the refit sews becker with more columns "
+        "and trims (55 -> 66) for less bare cloth."),
 }
 
 
