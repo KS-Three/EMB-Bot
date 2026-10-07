@@ -3,7 +3,7 @@ import { flatToRegions } from "./imageRegions.js";
 import { shapesToRegions } from "./manualShapes.js";
 import { shapePresetPoints, DEFAULT_SHAPE_SIZE_MM } from "./shapePresets.js";
 import { combineDesigns, bboxMmFromStitches } from "./combine.js";
-import { decodedFromDesignCached, digitizedBlockColors } from "./digitizer.js";
+import { decodedFromDesignCached, digitizedBlockColors, displayResult } from "./digitizer.js";
 
 // Generates a single element's Design, or null if the element isn't ready
 // to sew yet (empty text / no flattened image state). Throws only on real
@@ -88,7 +88,7 @@ export function generateElement(element, garment, runtime) {
     // and supplies the service's real thread palette as block colors, with
     // the user's per-block overrides on top.
     if (!element.result) return null;
-    const decoded = decodedFromDesignCached(element.result);
+    const decoded = decodedFromDesignCached(displayResult(element));
     if (!decoded) return null;
     return EMB.buildImportedDesign(decoded, {
       garment,
