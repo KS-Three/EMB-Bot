@@ -32,8 +32,11 @@ not on `main` is `digitizer/tools/outline_cut_spike/oc.py` from lane
 > letters: Becker MARINE 42 -> 8 (six are entries), gaulke 27 -> 23,
 > enthusiast 13 -> 14, Fremont 17 -> 22 (slab serifs cut into more
 > pieces); letter stitches fall by a third to two thirds (no zigzag
-> underlay, no columns overlapping at junctions). Still open: junction
-> overlap, slanted terminals cut short. Renders
+> underlay, no columns overlapping at junctions). The junction tuck
+> followed the same night (fourth step: a butting column sewn first runs
+> under the stroke it meets by 0.4 mm + pull; MARINE 8 -> 7 trims,
+> enthusiast 14 -> 12, gaulke 23 -> 26). Still open: slanted terminals
+> cut short. Renders
 > `docs/renders/lettering-columns-2026-10-07/`; tests
 > `tests/test_lettering_columns.py` (16); scope-history 2026-10-07.
 

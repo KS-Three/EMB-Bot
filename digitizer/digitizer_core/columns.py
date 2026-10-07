@@ -41,9 +41,16 @@ What this carries (each rule is the font engine's, `src/satinfont.js`
   is a stitch, a long one or one over bare fabric a jump, a jump past
   `trim_at_mm` a trim).
 
-NOT yet: junction overlap between a butting column and the one it butts,
-short stitches on the inside of a bend, tie stitches, an edge-walk underlay
-for tall caps. Every one of those is a Column consumer and goes here.
+- **the junction tuck** (Kent's pick 2026-10-07, fourth step): a column
+  that butts another mid-stroke -- the M's diagonal on its stem, the T's
+  stem on its bar -- and sews BEFORE it is extended under it by the satin
+  tier's own `_JUNCTION_TUCK_MM` plus the pull, capped at half a stroke,
+  so the stroke sewn later covers the seam instead of meeting it at a line
+  of needle holes. A butting column that sews AFTER the one it butts stays
+  square: an overlap on top is a lump, not a tuck.
+
+NOT yet: short stitches on the inside of a bend, tie stitches, an edge-walk
+underlay for tall caps. Every one of those is a Column consumer and goes here.
 """
 from __future__ import annotations
 
@@ -71,6 +78,9 @@ _CONNECTOR_WIDTHS = 2.0
 # A junction closer than this fraction of a column's length to one of its
 # ends IS that end, not a mid-stroke cut (routeGlyph: 0.06 / 0.94).
 _END_FRAC = 0.06
+# The tuck never reaches past the middle of the stroke it goes under: the
+# other side of that stroke is bare fabric or the next junction.
+_TUCK_MAX_WIDTHS = 0.5
 # The running underpath under a later column: the font engine's 2 mm step.
 _UNDERPATH_STEP_MM = 2.0
 # Centre-walk underlay: step and end inset (satinfont.js UNDERLAY_*).
@@ -161,23 +171,78 @@ def _centre_underlay(mids) -> list[tuple[float, float]] | None:
     return path + path[-2::-1]
 
 
+def _tuck_stations(col: Column, end: int, through: Polygon, tuck_mm: float,
+                   max_reach_mm: float, pitch_mm: float, poly_link):
+    """Stations continuing `col` past the given end (0 or -1) into the piece
+    it butts: one per `pitch_mm`, in order away from the column, until the
+    cut line plus `tuck_mm` is reached (0 for a plain butt), never more
+    than `max_reach_mm` past the cut, and stopping at the first cross the
+    letter does not cover. The last station of a cut piece sits up to a
+    pitch short of the cut, so even a plain butt usually gains a station."""
+    sts = col.stations if end == 0 else col.stations[::-1]
+    (a0, b0), (a1, b1) = sts[0], sts[1]
+    m0 = ((a0[0] + b0[0]) / 2, (a0[1] + b0[1]) / 2)
+    m1 = ((a1[0] + b1[0]) / 2, (a1[1] + b1[1]) / 2)
+    L = math.dist(m0, m1)
+    if L < 1e-9:
+        return []
+    d = ((m0[0] - m1[0]) / L, (m0[1] - m1[1]) / L)
+    reach = 4.0 * col.width_mm
+    ray = LineString([m0, (m0[0] + d[0] * reach, m0[1] + d[1] * reach)])
+    if through.covers(ray.interpolate(0.0)):
+        gap = 0.0
+    else:
+        gap = min((math.dist(m0, g) for g in _coords(ray.intersection(through.boundary))), default=reach)
+    if gap >= reach:
+        return []
+    out = []
+    k = 1
+    while True:
+        sh = k * pitch_mm
+        if sh - pitch_mm - gap >= tuck_mm - 1e-9:      # the previous station already reached
+            break
+        if sh - gap > max_reach_mm + 1e-9:            # never past the middle of the stroke
+            break
+        a = (a0[0] + d[0] * sh, a0[1] + d[1] * sh)
+        b = (b0[0] + d[0] * sh, b0[1] + d[1] * sh)
+        if not poly_link.covers(LineString([a, b])):
+            break
+        out.append((a, b))
+        k += 1
+    return out
+
+
+def _coords(geom):
+    if geom.is_empty:
+        return []
+    if hasattr(geom, "geoms"):
+        return [c for g in geom.geoms for c in _coords(g)]
+    return list(geom.coords)
+
+
 # ---------------------------------------------------------------- the walk
 
 def _span_graph(columns: list[Column], merge_r: float):
-    """Columns -> (nodes, spans). A span is a stretch of one column between
-    two station indices, with its two node ids; a column is cut where
-    another column's END lands on its centreline away from its own ends."""
+    """Columns -> (nodes, spans, junctions). A span is a stretch of one
+    column between two station indices, with its two node ids; a column is
+    cut where another column's END lands on its centreline away from its
+    own ends, and each such landing is a junction (the butting column and
+    end, the through column and the station it lands on)."""
     mids = [_mids(c.stations) for c in columns]
-    ends = [m[0] for m in mids] + [m[-1] for m in mids]
+    ends = [(cj, 0, m[0]) for cj, m in enumerate(mids)] + [(cj, -1, m[-1]) for cj, m in enumerate(mids)]
     cuts_per: list[list[int]] = []
-    for m in mids:
+    junctions: list[dict] = []      # butting column `ci`/`end` meets `through` at station `k`
+    for ci, m in enumerate(mids):
         n = len(m)
         idx = {0, n - 1}
         lo, hi = _END_FRAC * (n - 1), (1 - _END_FRAC) * (n - 1)
-        for p in ends:
+        for cj, end, p in ends:
+            if cj == ci:
+                continue
             best = min(range(n), key=lambda k: math.dist(m[k], p))
             if math.dist(m[best], p) <= merge_r and lo < best < hi:
                 idx.add(best)
+                junctions.append(dict(ci=cj, end=end, through=ci, k=best))
         cuts = sorted(idx)
         uniq = [cuts[0]]
         for k in cuts[1:]:
@@ -212,13 +277,20 @@ def _span_graph(columns: list[Column], merge_r: float):
             own[-2]["i1"], own[-2]["nb"] = own[-1]["i1"], own[-1]["nb"]
             own.pop()
         spans.extend(own)
-    return nodes, spans
+    return nodes, spans, junctions
 
 
-def _euler_trail(nodes, spans, start_near):
+def _euler_trail(nodes, spans, start_near, prefer=frozenset(), prefer_within_mm=math.inf):
     """Chinese-postman duplication plus Hierholzer, per component.
     -> list of components, each a list of (span index, from node, to node)
-    in walk order; components ordered nearest-first from `start_near`."""
+    in walk order; components ordered nearest-first from `start_near`.
+    `prefer` names nodes to START a trail from when they are odd -- the free
+    ends of butting columns, so the stem of a T is sewn before the bar it
+    goes under: the trail's endpoints are the odd nodes left unpaired, and
+    the pairing below consumes every other odd node first. A preferred
+    start farther than `prefer_within_mm` from the needle is not taken:
+    on 4 mm caps it turned the entry hop into a trim on 7 of 39 letters
+    (gaulke 23 -> 30) for a tuck the letter is too small to show."""
     adj: list[list[tuple[int, int]]] = [[] for _ in nodes]     # (instance id, to)
     inst: list[tuple[int, int, int]] = []                        # (span, a, b)
 
@@ -249,24 +321,34 @@ def _euler_trail(nodes, spans, start_near):
 
     def trail(cnodes, cursor):
         deg = {i: len(adj[i]) for i in cnodes}
-        odd = [i for i in cnodes if deg[i] % 2 == 1]
+        rank = sorted(cnodes, key=lambda i: i in prefer)       # preferred nodes last
+        odd = [i for i in rank if deg[i] % 2 == 1]
         guard = 0
         while len(odd) > 2 and guard < 200:
             guard += 1
             u = odd[0]
             prev_n, prev_i, seen = {}, {}, {u}
             q = deque([u])
-            tgt = -1
+            tgt, fallback = -1, -1
             while q:
                 x = q.popleft()
                 if x != u and deg[x] % 2 == 1:
-                    tgt = x
-                    break
+                    # a preferred node is paired only when nothing else is
+                    # odd: paired, it goes even and can no longer start the
+                    # trail (a T's junction paired with the stem's foot
+                    # doubled the stem and split the bar in two)
+                    if x not in prefer:
+                        tgt = x
+                        break
+                    if fallback < 0:
+                        fallback = x
                 for iid, v in adj[x]:
                     if v not in seen:
                         seen.add(v)
                         prev_n[v], prev_i[v] = x, iid
                         q.append(v)
+            if tgt < 0:
+                tgt = fallback
             if tgt < 0:
                 break
             x = tgt
@@ -277,9 +359,13 @@ def _euler_trail(nodes, spans, start_near):
                 deg[x] += 1
                 deg[p] += 1
                 x = p
-            odd = [i for i in cnodes if deg[i] % 2 == 1]
+            odd = [i for i in rank if deg[i] % 2 == 1]
         pool = odd if odd else cnodes
-        start = min(pool) if cursor is None else min(pool, key=lambda i: math.dist(nodes[i], cursor))
+        if cursor is None:
+            start = min(pool, key=lambda i: (i not in prefer, i))
+        else:
+            near = [i for i in pool if i in prefer and math.dist(nodes[i], cursor) <= prefer_within_mm]
+            start = min(near or pool, key=lambda i: math.dist(nodes[i], cursor))
         used: set[int] = set()
         ptr = {i: 0 for i in cnodes}
         stack, edge_stack, circuit = [start], [], []
@@ -333,12 +419,12 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
     column census stage 7 copies into the plan's counters."""
-    from .stage6_satin import (_comb_thresholds, _push_rails, _short_stitch_guard,   # same package,
-                               _split_points)                                        # same rules
+    from .stage6_satin import (_JUNCTION_TUCK_MM, _comb_thresholds, _push_rails,   # same package,
+                               _short_stitch_guard, _split_points)                  # same rules
 
     report = {"too_thin": False, "jumps": 0, "empty": False,
               "columns": 0, "columns_unsewn": 0, "thin_crosses": 0, "stations": 0,
-              "spans": 0, "underpath_mm": 0.0}
+              "spans": 0, "underpath_mm": 0.0, "junctions": 0, "tucks": 0}
     above = split_above_mm if split_above_mm is not None else machine.SPLIT_SATIN_ABOVE_MM
 
     # 1. Each column's stations as the fabric will get them: pushed on the
@@ -373,14 +459,36 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     # 2. The span graph and the walk.
     W = sorted(c.width_mm for c in ready)[len(ready) // 2]
     merge_r = _MERGE_WIDTHS * W + _MERGE_PAD_MM + pull_mm
-    nodes, spans = _span_graph(ready, merge_r)
-    components = _euler_trail(nodes, spans, start_near)
+    nodes, spans, junctions = _span_graph(ready, merge_r)
+    report["junctions"] = len(junctions)
+    # The free end of a butting column (its other end, when nothing else
+    # meets it there) is where its component's walk should start -- when
+    # the stroke has room for the whole tuck. Where the half-stroke cap
+    # already truncates it (gaulke's 0.96 mm strokes at 0.3 pull) the
+    # reorder bought a sliver and cost six entry trims over 39 letters.
+    tuck_mm = min(_JUNCTION_TUCK_MM + pull_mm, _TUCK_MAX_WIDTHS * W)
+    roomy = _TUCK_MAX_WIDTHS * W >= _JUNCTION_TUCK_MM + pull_mm
+    touch: dict[int, int] = {}
+    for sp in spans:
+        touch[sp["na"]] = touch.get(sp["na"], 0) + 1
+        touch[sp["nb"]] = touch.get(sp["nb"], 0) + 1
+    prefer: set[int] = set()
+    for j in junctions if roomy else ():
+        n = len(ready[j["ci"]].stations)
+        free_idx = n - 1 if j["end"] == 0 else 0
+        for sp in spans:
+            if sp["ci"] != j["ci"]:
+                continue
+            for key, idx in (("na", sp["i0"]), ("nb", sp["i1"])):
+                if idx == free_idx and touch.get(sp[key], 0) == 1:
+                    prefer.add(sp[key])
+    components = _euler_trail(nodes, spans, start_near, frozenset(prefer), trim_at_mm)
 
     # 3. Emit: the last visit of a span sews satin, earlier visits run under it.
     #    (`poly_link` is the sew-or-jump rule's polygon, see step 4; the
     #    connector below asks it the same question one leg early.)
     poly_link = poly.buffer(0.1 + pull_mm)
-    runs: list[StitchRun] = []
+    all_legs: list[dict] = []       # ci, sat, i0, i1 in traversal order (i0 may be > i1)
     for circuit in components:
         seen: set[int] = set()
         is_satin = [False] * len(circuit)
@@ -390,7 +498,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 seen.add(si)
                 is_satin[k] = True
         # collapse contiguous visits of one column, same type, same direction
-        legs: list[dict] = []       # ci, sat, i0, i1 in traversal order (i0 may be > i1)
+        legs: list[dict] = []
         for k, (si, frm, _to) in enumerate(circuit):
             s = spans[si]
             fwd = frm == s["na"] or s["na"] == s["nb"]      # a ring's self-loop walks forward
@@ -399,43 +507,76 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
             if prev and prev["ci"] == s["ci"] and prev["sat"] == is_satin[k] and prev["i1"] == i0:
                 prev["i1"] = i1
             else:
-                legs.append(dict(ci=s["ci"], sat=is_satin[k], i0=i0, i1=i1))
-        for leg in legs:
-            col = ready[leg["ci"]]
-            lo, hi = min(leg["i0"], leg["i1"]), max(leg["i0"], leg["i1"])
-            sts = col.stations[lo:hi + 1]
-            if leg["i1"] < leg["i0"]:
-                sts = sts[::-1]
-            mids = _mids(sts)
-            # The walk is continuous along CENTRELINES; a zigzag ends on a
-            # rail. From that rail point to the next leg's first penetration
-            # the straight hop can cut the outer corner of a mitre and read
-            # as a jump, so the hop goes through the junction: a connector
-            # run to this leg's first centre point, inside the letter.
-            if runs and runs[-1].shape_id == shape_id:
-                tail = runs[-1].points[-1]
-                hop = math.dist(tail, mids[0])
-                if (machine.TINY_STITCH_MM <= hop <= max(trim_at_mm, _CONNECTOR_WIDTHS * W)
-                        and poly_link.covers(LineString([tail, mids[0]]))):
-                    runs.append(StitchRun(points=_walk_points([tail, mids[0]], _UNDERPATH_STEP_MM),
-                                          kind=stitches.TRAVEL, shape_id=shape_id))
-                # else a real gap: the link rule in step 4 decides
-            if leg["sat"]:
-                report["spans"] += 1
-                if underlay_style != "none":
-                    ul = _centre_underlay(mids)
-                    if ul is not None:
-                        runs.append(StitchRun(points=ul, kind=stitches.UNDERLAY, shape_id=shape_id))
-                pts = _satin_points(sts, above, _comb_thresholds, _split_points)
-                if len(pts) >= 4:
-                    runs.append(StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id))
-                    continue
-            # an underpath (an earlier visit), or a satin span too short to
-            # sew: the needle still has to reach the far end, under later thread
-            path = _walk_points(mids, _UNDERPATH_STEP_MM)
-            if len(path) >= 2:
-                runs.append(StitchRun(points=path, kind=stitches.TRAVEL, shape_id=shape_id))
-                report["underpath_mm"] += LineString(path).length
+                legs.append(dict(ci=s["ci"], sat=is_satin[k], i0=i0, i1=i1, head=[], tail=[]))
+        all_legs.extend(legs)
+    # The junction tuck: a butting column that sews BEFORE the column it
+    # butts runs on under it, so the later stroke covers the seam. Decided on
+    # the satin order the walk produced -- sewn after, it stays square.
+    for j in junctions:
+        n = len(ready[j["ci"]].stations)
+        end_idx = 0 if j["end"] == 0 else n - 1
+        mine = [k for k, lg in enumerate(all_legs) if lg["sat"] and lg["ci"] == j["ci"]
+                and min(lg["i0"], lg["i1"]) <= end_idx <= max(lg["i0"], lg["i1"])]
+        theirs = [k for k, lg in enumerate(all_legs) if lg["sat"] and lg["ci"] == j["through"]
+                  and min(lg["i0"], lg["i1"]) <= j["k"] <= max(lg["i0"], lg["i1"])]
+        if not mine or not theirs:
+            continue
+        # Sewn before the stroke it meets (before the later of that stroke's
+        # halves when the junction splits it): go under it by the tuck.
+        # Sewn after: a plain butt, up to the cut line and no further.
+        before = mine[0] < max(theirs)
+        ext = _tuck_stations(ready[j["ci"]], j["end"], ready[j["through"]].piece,
+                             tuck_mm if before else 0.0, _TUCK_MAX_WIDTHS * W,
+                             spacing_mm, poly_link)
+        if not ext:
+            continue
+        if before:
+            report["tucks"] += 1
+        leg = all_legs[mine[0]]
+        at_start = (leg["i0"] <= leg["i1"]) == (j["end"] == 0)      # the end in traversal terms
+        if at_start:
+            leg["head"] = ext[::-1]
+        else:
+            leg["tail"] = ext
+    runs: list[StitchRun] = []
+    for leg in all_legs:
+        col = ready[leg["ci"]]
+        lo, hi = min(leg["i0"], leg["i1"]), max(leg["i0"], leg["i1"])
+        sts = col.stations[lo:hi + 1]
+        if leg["i1"] < leg["i0"]:
+            sts = sts[::-1]
+        if leg["sat"]:
+            sts = leg["head"] + sts + leg["tail"]
+        mids = _mids(sts)
+        # The walk is continuous along CENTRELINES; a zigzag ends on a
+        # rail. From that rail point to the next leg's first penetration
+        # the straight hop can cut the outer corner of a mitre and read
+        # as a jump, so the hop goes through the junction: a connector
+        # run to this leg's first centre point, inside the letter.
+        if runs and runs[-1].shape_id == shape_id:
+            tail = runs[-1].points[-1]
+            hop = math.dist(tail, mids[0])
+            if (machine.TINY_STITCH_MM <= hop <= max(trim_at_mm, _CONNECTOR_WIDTHS * W)
+                    and poly_link.covers(LineString([tail, mids[0]]))):
+                runs.append(StitchRun(points=_walk_points([tail, mids[0]], _UNDERPATH_STEP_MM),
+                                      kind=stitches.TRAVEL, shape_id=shape_id))
+            # else a real gap: the link rule in step 4 decides
+        if leg["sat"]:
+            report["spans"] += 1
+            if underlay_style != "none":
+                ul = _centre_underlay(mids)
+                if ul is not None:
+                    runs.append(StitchRun(points=ul, kind=stitches.UNDERLAY, shape_id=shape_id))
+            pts = _satin_points(sts, above, _comb_thresholds, _split_points)
+            if len(pts) >= 4:
+                runs.append(StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id))
+                continue
+        # an underpath (an earlier visit), or a satin span too short to
+        # sew: the needle still has to reach the far end, under later thread
+        path = _walk_points(mids, _UNDERPATH_STEP_MM)
+        if len(path) >= 2:
+            runs.append(StitchRun(points=path, kind=stitches.TRAVEL, shape_id=shape_id))
+            report["underpath_mm"] += LineString(path).length
     if not any(r.kind == stitches.SATIN for r in runs):
         report["empty"] = True
         return [], report
