@@ -144,21 +144,25 @@ def _walk_points(path, step_mm: float) -> list[tuple[float, float]]:
 
 def _satin_points(stations, split_above_mm: float, comb_thresholds, split_points):
     """Stations in traversal order -> the zigzag's penetrations, split comb on.
-    ONE penetration per station, rails alternating (a_0, b_1, a_2, ...): a
-    cross is the thread from one station's penetration to the next's, and
-    consecutive crosses sit one station apart -- the engine's satin
-    (`_resample_by_pitch`) and the spike's `zigzag`. The first wiring put
-    both ends of every station down and sewed boxes at double density."""
+    BOTH ends of every station, the engine's flat zigzag (`satin_stroke`:
+    A1, B1, A2, B2, ...): the needle crosses from a_i to b_i and crosses
+    back from b_i to a_(i+1), so each rail gets a penetration every station,
+    one `SATIN_SPACING_MM` apart -- what the satin tier lays on the same
+    stem (MARINE's I: 0.40 mm per rail). The 10-07 wiring put ONE end down
+    per station, rails alternating, and sewed every rail at 0.80 mm, half
+    the engine's density; it had read the spike's 0.2 mm stations with both
+    ends down (double density, boxes) as the ends being the error rather
+    than the pitch."""
     legs = [math.dist(a, b) for a, b in stations]
     thr = comb_thresholds(legs, split_above_mm)
     pts: list[tuple[float, float]] = []
     for i, (a, b) in enumerate(stations):
-        pt = a if i % 2 == 0 else b
-        if pts:
-            if math.dist(pts[-1], pt) < stitches.SAME_POINT_MM:
-                continue
-            pts.extend(split_points(pts[-1], pt, i, thr[i] if i < len(thr) else split_above_mm))
-        pts.append(pt)
+        for pt in (a, b):
+            if pts:
+                if math.dist(pts[-1], pt) < stitches.SAME_POINT_MM:
+                    continue
+                pts.extend(split_points(pts[-1], pt, i, thr[i] if i < len(thr) else split_above_mm))
+            pts.append(pt)
     return pts
 
 
@@ -609,9 +613,10 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct."""
     from .outline_cut import letter_columns
 
-    # One station per `spacing_mm` along the rail, rails alternating: the
-    # engine's own meaning of satin spacing (`_resample_by_pitch`). The spike
-    # stationed at half that and sewed every letter twice as dense.
+    # One station per `spacing_mm` along the rail, both ends of each sewn:
+    # the engine's own meaning of satin spacing (a needle every `spacing_mm`
+    # on EACH rail). The spike stationed at half that with both ends down
+    # and sewed every letter twice as dense.
     cut = letter_columns(poly, pitch_mm=spacing_mm)
     runs, report = column_runs(cut.columns, cut.poly, shape_id, trim_at_mm=trim_at_mm,
                                spacing_mm=spacing_mm, split_above_mm=split_above_mm,

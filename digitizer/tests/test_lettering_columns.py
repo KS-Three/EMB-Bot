@@ -261,6 +261,27 @@ def test_two_separate_stems_are_two_components_joined_by_one_jump():
     assert abs(end1[1] - start2[1]) < 1.0
 
 
+# --------------------------------------------------------------- density
+
+def test_each_rail_gets_a_needle_every_satin_spacing():
+    """The engine's satin puts a penetration every SATIN_SPACING_MM on EACH
+    rail (the flat zigzag A1, B1, A2, B2: both ends of every station).
+    MARINE's I measured 0.40 mm per rail under the satin tier and 0.80 under
+    the lane's first wiring, which put one end down per station. Pinned on
+    a plain stem: both rails at the spacing, within a tenth."""
+    stem = _rect(0, 0, 2, 12)
+    runs, _ = lettering_columns_shape(stem, "stem", trim_at_mm=3.0)
+    pts = [p for r in runs if r.kind == stitches.SATIN for p in r.points]
+    left = sorted(p[1] for p in pts if p[0] < 0.5)
+    right = sorted(p[1] for p in pts if p[0] > 1.5)
+    for rail in (left, right):
+        gaps = [b - a for a, b in zip(rail, rail[1:])]
+        gaps = [g for g in gaps if g > 1e-6]
+        med = sorted(gaps)[len(gaps) // 2]
+        assert abs(med - machine.SATIN_SPACING_MM) < 0.1 * machine.SATIN_SPACING_MM
+        assert len(rail) >= 12 / machine.SATIN_SPACING_MM * 0.9
+
+
 # ---------------------------------------------------- slanted terminals
 
 def _sewn(runs, r=0.3):
