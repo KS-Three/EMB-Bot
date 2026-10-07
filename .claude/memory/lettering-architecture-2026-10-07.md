@@ -55,3 +55,21 @@ without cutting. `plan.stats` is a property, not a method. The design dict's
 stitches are in 0.1 mm units. Keep `_lettering_groups` and `text_candidate`
 apart in your head until L1 merges them: enthusiast's wordmark is only in the
 first, its subline only in the second.
+
+**L4 BUILT the same day, OFF: `cfg.lettering_columns`.** `outline_cut.py`
+(the spike, emitting `columns.Column` stations instead of stitches) +
+`columns.py` (Column, `column_runs`: `_push_rails` per side, cross floor,
+`_comb_thresholds`/`_split_points`, centre underlay, nearest-next from the
+needle's REAL position, the satin tier's link rule) + a stage 7 hook ahead
+of the classifier gated on `is_lettering` (= `text_candidate` OR the new
+`lettering_group` tag the house pass now writes) + `_sews_satin` branch so
+stage 5 keeps the artwork polygon. Becker MARINE letters 34 runs / 42 trims
+-> 17 / 14; enthusiast 13 -> 22 trims and Fremont 17 -> 38 WITHOUT the
+Euler walk. Two traps: the engine's satin spacing is ONE cross per 0.4 mm
+(the spike stationed at 0.2 and doubled every count); with an underlay the
+needle ends at the column's START, so order from the last emitted point,
+not from `col.end`. The local flat-lane golden on enthusiast is red on
+main's engine too (one of the three standing reds). Next on this lane: the
+Euler walk across a letter's columns, the E/F stem-plus-arms cut, the bowl
+rule (the S), junction overlap, then Kent's pairs.
+
