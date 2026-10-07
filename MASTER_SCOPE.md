@@ -207,7 +207,7 @@ needle-breakage signal. ~~No off switch for photo classes~~ — stale when writt
 
 58. **Black-and-white logos sew in four to six cones — the palette is handed anti-alias grey for every small shape. OPEN LEAD, nothing built.** At ~5 source px/mm a thin stroke has almost no pixel of its own ink, so `robust_region_colour` cannot help; `logo_mfab_lc` sews 2,718 grey stitches and 30 white. A probe cures `logo_golke_roofing` (5 → 2) and harms Bridge Bar, whose thin bands are defect 27's halo; the pair fails (2026-10-06). Whether to build is Kent's. *(measured 2026-10-06 — `tools/stroke_colour_probe.py`; DOCTRINE 2026-10-05)*
 
-59. **Today's satin decomposition fans a sharp lettering junction — Becker's N under `letterform_priors` (ON 2026-10-07), OPEN.** The refit N's outline is the cleaner of the two (13 vertices against 40), and stage 6 sews its sharpened lower wedge as a fan of long crosses with loose ends at the foot, plus a second fan upper-left: 5 → 8 satin runs, 687 → 1,162 stitches on one letter at 100 mm *(measured 2026-10-07 — `docs/letterform-priors-2026-10-06.md`, "Sitting 2026-10-07", the OFF/ON stroke render)*. Kent, verbatim: *the "N" was better before - everything else was better after* *(ruled 2026-10-07 — `docs/eye-pairs-2026-10-07/kent-notes.json`)*. **The lever is the junction / column construction, not the refit:** the outline-cut spike's "compound piece fanned" class on a cleaner wedge; that lane cuts an N into stem / diagonal / stem and cannot fan it *(confirmed 2026-10-07 — the outline drawn under the crosses has no wedge the fan traces)*. Word-wide price: Becker +506 stitches, +11 trims for satin bare 4.33 → 2.65%. Not sewn.
+59. **Today's satin decomposition fans a sharp lettering junction — Becker's N under `letterform_priors` (ON 2026-10-07), OPEN.** The refit N's outline is the cleaner of the two (13 vertices against 40); stage 6 sews its sharpened lower wedge as a fan of long crosses with loose ends at the foot: 5 → 8 satin runs, 687 → 1,162 stitches on one letter *(measured 2026-10-07 — `docs/letterform-priors-2026-10-06.md`, "Sitting 2026-10-07")*. Kent, verbatim: *the "N" was better before - everything else was better after* *(ruled 2026-10-07 — `docs/eye-pairs-2026-10-07/kent-notes.json`)*. **The lever is the junction / column construction, not the refit** — the outline-cut spike's "compound piece fanned" class; that lane cuts an N into stem / diagonal / stem and cannot fan it *(confirmed 2026-10-07 — the outline drawn under the crosses has no wedge the fan traces)*. Not sewn.
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -320,7 +320,7 @@ about the facts.
 **Also open, same category — so this queue is not a half-truth. All predate
 2026-08-14 except where noted:**
 
-0. **RESOLVED 2026-10-02 — Kent flipped `satin_crown_cover` ON** (scope-history 10-02). The question as it stood (the split's 11 crowns, `lost_frac` 0.2688 fill against 0.1800 split, a decomposition gap) is in scope-history 2026-10-06. Defect 50.
+0. **RESOLVED 2026-10-02 — Kent flipped `satin_crown_cover` ON** (scope-history 10-02; the question as it stood: scope-history 2026-10-06). Defect 50.
 
 2. **RESOLVED 2026-09-08 — the DST codec is fixed, both directions**, and never needed the call; retired from gate 1 the same day. *(DOCTRINE 2026-09-07/08; ROADMAP gate 1)*
 3. **RESOLVED 2026-08-19, ratified 2026-09-02 — `split_tonal_regions` is ON for photo classes** (`effective_split_tonal`). Cost: defect 20.
@@ -336,7 +336,7 @@ about the facts.
    session can run the corpus legs today. Blocks cloud-side M2/M3 only.
 7. **RESOLVED 2026-09-15 — of the 26 glyphs that sewed nothing, the 20
    `roaring_twenties_KOR`/`_small` ones sew again; 6 stay a GATE 1 refusal.**
-   How, and which six, is in scope-history 2026-10-07 (moved there for budget).
+   Detail: scope-history 2026-10-07.
    *(resolved 2026-09-15 — `test/font-dead-glyphs.test.js`; detail: area 2)*
 10. **RESOLVED 2026-08-25 — Studio typography: "tighter and more editorial."** Kent's standing direction; new UI is set to it, not re-litigated. *(area doc)*
 
