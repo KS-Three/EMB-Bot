@@ -19654,3 +19654,56 @@ dropped, the arm capped over the slab's width with the terminal fan — where
 the pro sews the slab as its own column; the H's and N's junction ends. The
 flip waits on Kent's look at the renders; the join members move on every
 letter with a slab or an L, so goldens re-capture then.
+
+**Flipped ON the same evening (Kent, on the renders; efcb21e2).** The
+goldens did not move: `flat_lane_golden.json`'s five keys are byte-identical
+with the flag on (no synthetic fixture has a join corner the straightening
+reaches), so no re-capture. The full suite with it on is in PR #653's body.
+
+## 2026-10-07 — T-shaped slabs as their own column: `satin_slab_serifs`, built OFF
+
+Kent's pick after the join-square flip: *"T-shaped slabs: own column, not a
+cap."* Renders in `docs/renders/slab-serifs-2026-10-07/`; tests
+`tests/test_slab_serifs.py` (5) on two captured letters.
+
+**The first census was on the wrong polygon.** `satin_shape` re-enters
+itself on `_close_seams(poly)`, and the skeleton it sews from is that
+closed polygon's; a direct `extract_strokes` on the stage-5 polygon reads
+a different medial axis (the M's feet 148°/139° between halves, both
+dropped as stubs) and a defect the shipped engine does not have (on the
+real path the M's halves meet near 180° and weld). The rule was rebuilt
+against a census of `plan_stitches` on the pickled 80 mm result, OFF and
+ON, logging every slab decision with its angles.
+
+**What a slab is, measured.** Two short free arms at a stem's node, each
+within 35° of square to the stem and at least 120° apart (`_slab_pair`).
+The angle between the arms alone does not do it: a cap's I-beam reads
+90–98° (forks 45° off the axis) but an L-corner's surviving twig beside
+its hanging slab reads 125–135°, and a first cut at 120° between the arms
+kept that twig, held the corner's node open and broke the join-square
+fold at every E, F and T-bar corner into a capped bar plus 1 mm tucked
+slab pieces (8 letters moved, +32 hops). The twig is 40° off square and
+the perpendicular test rejects it; with both tests exactly three letters
+move.
+
+**Two mechanisms, two fixtures.** (1) The T's foot halves run into the
+foot's corners, so neither tip was exposed by a pruned fork and the twig
+rule erased the pair as an I-beam: the stem ended free on the baseline
+and 0.48 mm² of the foot's bottom millimetre sewed bare
+(`testdata/fremont_T_slab_foot.json`). ON `_prune_spurs` keeps a slab pair
+and the merge welds it: a 2.5 mm column of seven crosses, 0.02 mm² bare.
+(2) The N's left foot halves survived the rule but meet at 144°, which
+`satin_junction_stack`'s 30° weld refuses; one half fell to the stub
+filter and the foot sewed as a half-column, and its top-right serif
+(148°) as two half-columns (`testdata/fremont_N_slab_foot.json`). ON
+`_merge_through_junctions` welds a slab pair whatever its turn. The R's
+stem, which bent into its foot's right half, ends square with the foot
+its own column. Fremont at 80 mm: **13,746 → 13,780 stitches, 34 trims
+both ways**; every other letter byte-identical.
+
+**Not moved, named:** the E's and F's middle arms — the T-shaped slabs the
+2026-10-06 entry named — do not change: their protrusions are a fraction
+of a stroke width and the skeleton grows no half into them, so there is
+no pair to keep. The feet's crosses lean ~30° under the house angle's
+lean cap where the pro's feet sew square; that is the lean rule's, not
+this flag's. OFF byte-identical (pinned). The flip is Kent's.

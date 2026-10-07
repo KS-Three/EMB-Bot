@@ -1632,6 +1632,28 @@ class PipelineConfig:
     # both hanging ends. False is the pre-flip joiner, byte for byte.
     # Tests: `tests/test_join_corner_straight.py`.
     satin_join_square: bool = True
+    # A slab serif's axis is its own column, not a cap (2026-10-07, Kent's
+    # pick after the join-square flip: "T-shaped slabs: own column, not a
+    # cap"). A slab across a stem's end (a foot, a T-shaped terminal) puts
+    # its medial axis through the stem's node in BOTH directions, as two
+    # short free arms -- the same silhouette as a square cap's I-beam, which
+    # the 2026-09-19 twig rule erases. Two ways that lost the slab on Hotel
+    # Fremont at 80 mm: the T's foot halves run into the foot's corners, so
+    # the twig rule took them for an I-beam and the foot sewed as the stem's
+    # terminal fan (0.48 mm2 of its bottom millimetre bare); the N's survived
+    # the rule but meet at 144 deg, which `satin_junction_stack`'s 30 deg weld
+    # refuses, so one half fell to the stub filter and the foot sewed as a
+    # half column. ON, a pair that is square to the stem and leaves the node
+    # in opposite directions (`_slab_pair`: within 35 deg of square, at
+    # least 120 apart) is kept by `_prune_spurs` and welded by
+    # `_merge_through_junctions` whatever its turn, into the slab's own
+    # free-ended stroke; the stem stays a T's stem under it. A cap's forks
+    # (45 deg off the axis) and a corner twig beside a hanging slab (40 off
+    # square) are not pairs, so the join-square fold at the E's and T's
+    # L-corners is untouched. Fremont ON: three letters move (T, N, R), the
+    # design +34 stitches. Built OFF; the render is Kent's to judge.
+    # Tests: `tests/test_slab_serifs.py`.
+    satin_slab_serifs: bool = False
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
