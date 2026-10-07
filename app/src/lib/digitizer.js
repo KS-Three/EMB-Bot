@@ -1317,7 +1317,7 @@ export function decodedFromDesign(design) {
     s.x -= cx;
     s.y -= cy;
   }
-  return {
+  const out = {
     stitches,
     stitchCount,
     jumpCount,
@@ -1327,6 +1327,19 @@ export function decodedFromDesign(design) {
     heightMM: (maxY - minY) / 10,
     label: design.name || "",
   };
+  // The run spans ride along (2026-10-06). `buildImportedDesign` has carried
+  // `decoded.runs` since #492 — "live for anything handed to this builder
+  // that was planned rather than decoded" — and this is the one planned
+  // design that reaches it, yet the spans were dropped here, so no digitized
+  // design ever reached the canvas with its kinds: the realistic render's
+  // satin/fill styling and the Sewn width view (strands.js) both key off
+  // them. The indices stay valid because the only record stripped above is
+  // the trailing `end` (adapter.py appends it last); a design whose `end`
+  // sat anywhere else would shift every span after it, so that one keeps
+  // its spans off rather than wrong.
+  const onlyTailEnd = src.length === stitches.length + 1 && src[src.length - 1] && src[src.length - 1].type === "end";
+  if (Array.isArray(design.runs) && (src.length === stitches.length || onlyTailEnd)) out.runs = design.runs;
+  return out;
 }
 
 // Per-frame regen cache (drag/resize regenerate every element per frame —
