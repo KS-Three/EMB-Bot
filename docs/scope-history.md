@@ -19735,3 +19735,13 @@ sews as a fan (5 → 8 satin runs, 687 → 1,162 stitches on the letter). The
 OFF path stays (None), pinned byte-identical with an explicit None.
 `docs/eye-pairs-2026-10-07/kent-notes.json`;
 `docs/letterform-priors-2026-10-06.md`, "Sitting 2026-10-07".
+
+**Moved here from MASTER_SCOPE "Waiting on Kent" 7 (resolved 2026-09-15),
+for the word budget:** of the 26 glyphs that sewed nothing, the 20
+`roaring_twenties_KOR`/`_small` ones sew again; 6 stay a GATE 1 refusal.
+The grep came back >0 on all twenty. Kent ruled 2026-09-13 to revive them,
+and `stripRunParamsIfSatin` now strips only glyphs that carry satin
+columns. The rebuild landed 2026-09-15. The other 6 (`western_light`,
+`ondulamarif_*`) have no authored run length upstream, and defaulting one
+is refused by `test/run-fonts.test.js:44`. The item read "still open" until
+2026-10-02. *(`test/font-dead-glyphs.test.js`; detail: area 2)*
