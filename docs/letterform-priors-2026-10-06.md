@@ -124,13 +124,13 @@ was set.** Nothing from the engine was changed; `_lettering_groups`,
 | becker | 0.660 | 0.495 | 11 | 10 / 0 / 1 | no (expected) | 20.2 -> 17.5 | 4.06 -> 2.67 | 0.415 -> 0.381 | 0.089 -> 0.091 |
 | bridge | 0.287 | 0.215 | 8 | 8 / 0 / 0 | no (expected) | 13.0 -> 10.3 | 5.93 -> 2.08 | 0.429 -> 0.422 | 0.249 -> 0.253 |
 | gaulke (held out) | 0.213 | 0.160 | 38 | 36 / 0 / 2 | no (expected) | 15.8 -> 10.8 | 2.79 -> 1.90 | 0.309 -> 0.312 | 0.221 -> 0.214 |
-| drone | 0.104 | 0.078 | 20 | 0 / 20 / 0 | **yes** | - | - | - | - |
+| drone | 0.104 | 0.078 | 22 | 0 / 22 / 0 | **yes** | - | - | - | - |
 | enthusiast | 0.073 | 0.055 | 24 | 0 / 24 / 0 | **yes** | - | - | - | - |
-| fremont | 0.037 | 0.028 | 30 | 0 / 30 / 0 | **yes** | - | - | - | - |
+| fremont | 0.037 | 0.028 | 32 | 0 / 32 / 0 | **yes** | - | - | - | - |
 | tires | 0.094 | - | 0 | - | yes (no text) | - | - | - | - |
 
-"Letters" is text-tagged shapes the grouping reached (drone 22 tagged, 20
-grouped; fremont 32 / 30; gaulke 39 / 38). Primitives before = the DP chord
+"Letters" is text-tagged shapes the grouping reached (gaulke 39 tagged, 38
+grouped; the rest all of them). Primitives before = the DP chord
 count the trace needs at the same cap; after = lines + arcs + pass-through.
 Stem spread = length-weighted std of the stem-family (within 12 deg) line
 angles within a word, averaged over words. Width CV per letter is
@@ -209,10 +209,18 @@ polygons).**
 | gaulke refit | 7120 | 55 | 2944 | 0.075 / 0.156 | 7.94 | 3.1% | 30/38 |
 | drone (gated), both arms | 18975 | 139 | 2784 | 0.093 / 0.175 | 4.53 | 0.2% | 20/22 |
 | enthusiast (gated), both arms | 3420 | 17 | 2444 | 0.086 / 0.167 | 6.81 | 0.6% | 17/24 |
+| fremont (gated), both arms | same | same | same | 0.029 / same | 7.83 | 2.2% -> 2.1% | |
 
-Drone and enthusiast re-plan identically on both arms (the same stitch
-count, wobble and bare area to the last digit), which is the byte-identity
-of go/no-go 1 seen from the other end of the pipeline.
+Drone, enthusiast and fremont re-plan identically on both arms (the same
+stitch count, wobble and bare area to the last digit), which is the
+byte-identity of go/no-go 1 seen from the other end of the pipeline. The
+one number that moved on fremont, outline-cut 2.2 -> 2.1%, moved on
+IDENTICAL polygons: **the sibling's `oc.letter_columns` is not
+deterministic** — three calls on one fremont letter gave two different
+stitch sets on 4 of the 6 letters tried (`M`, `R`, `E`, `E`; `H` and `N`
+stable). That is a finding for the outline-cut lane (its `build_shape_field`
+call or a set iteration, not looked into here), and it puts a noise floor
+of about 0.1 point under every outline-cut column above.
 
 The outline-cut numbers are this lane's re-implementation of the sibling's
 check (shapely coverage at 0.4 mm thread, not its 30 px/mm raster); compare
