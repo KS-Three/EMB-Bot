@@ -88,3 +88,18 @@ every serif corner a 90° turn), so read lean against the local rail normal;
 and a synthetic L does not fan at all — the fixture had to be the real E,
 byte for byte (a 3-dp rounding decomposes differently). T-shaped slabs
 (the E's middle arm) are a cap by the twig rule and stay a fan: next.
+
+**Where this sits (written 2026-10-06 late, for a session resuming after a
+context clear):** #650 (outer-rail pitch, ON) MERGED. #651 (Sewn width
+toggle) open, auto-merge armed, CI re-running after the aria-label rename
+("Show columns as sewn" — `getByLabel('Width')` matched the old name).
+#653 (`satin_join_square`) open on lane `.claude/worktrees/serif-junction-fans`,
+auto-merge armed, **flipped ON by Kent**; owed: the full suite with it on,
+WSL golden re-capture against the pre-flip tip 4ee5ec5f (recipe: the
+wsl_recapture.sh pattern in this session — worktrees under /root, venv
+/root/emb-control/digitizer/.venv, `recapture_flat_lane_key.py
+--pre-change-tree`, `MSYS_NO_PATHCONV=1`), and any pins that move. Then
+Kent's next pick: T-shaped slabs (the E's and F's middle arms) as their own
+column instead of the twig rule's cap — census first. Main checkout holds
+ANOTHER session's uncommitted memory note (letterform-priors-lane); do not
+pull or touch it.
