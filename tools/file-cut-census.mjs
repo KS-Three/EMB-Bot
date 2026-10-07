@@ -14,7 +14,8 @@
 // --against: build every design with a second engine too and say how the
 //         two streams differ: not at all, by cuts put in and nothing else (a
 //         jump turned into a trim where it stands, or a trim on the spot
-//         before a jump), or some other way.
+//         before a jump), or some other way; and whether the three files each
+//         engine writes for it are the same bytes.
 // --keep: the work is cut into N parts (48) and each finished part is kept in
 //         this folder, so a run that is cut short picks up where it stopped.
 //         One folder per set of arguments: a part is not checked against them.
@@ -46,6 +47,15 @@
 // TWO jump records in a row are counted beside them: some machines cut at two
 // as shipped (docs/dst-float-cuts-2026-10-04.md), and any move over 12.1 mm
 // is two.
+//
+// WHERE THE NEEDLE GOES DOWN is read off the three files too, and compared
+// hole by hole. A stitch that FOLLOWS travel (a jump, a cut, a colour change,
+// the start of the file) and lies more than one record from where the needle
+// stands is travelled to: jump records up to the last, which is the stitch
+// (the chain rule, src/dst.js). The EXP writer had no such rule until
+// 2026-10-07 and laid the whole move as stitches, so its file had needle
+// holes the other two had not. Such stitches are counted in the stream; the
+// holes are counted in each file.
 //
 // `--pystitch`: a third-party reader's count beside this one's, on a sample.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, renameSync } from "node:fs";
@@ -80,7 +90,16 @@ for (const f of ["units.js", "sewtime.js", "garments.js", "fabrics.js", "fill.js
 const DG = require(join(SRC, "digitize.js"));
 const FAB = require(join(SRC, "fabrics.js")), GAR = require(join(SRC, "garments.js")), BIN = require(join(SRC, "fontbin.js"));
 const WRITE = { dst: require(join(SRC, "dst.js")).encodeDST, exp: require(join(SRC, "exp.js")).encodeEXP, pes: require(join(SRC, "pes.js")).encodePES };
+// The other engine: its builders and its three writers. Every file of it
+// also writes itself onto the global the app's modules read, so the engine
+// measured is put back there once the other one is loaded. (Until 2026-10-07
+// it was not, and with --against the app's modules ran on the other engine's
+// fill, satin and digitize; no count of a run whose two engines agree in
+// those files moves.)
+const MINE = AGAINST ? Object.assign({}, globalThis.EMB) : null;
 const OTHER = AGAINST ? require(join(resolve(AGAINST), "digitize.js")) : null;
+const OTHER_WRITE = AGAINST ? { dst: require(join(resolve(AGAINST), "dst.js")).encodeDST, exp: require(join(resolve(AGAINST), "exp.js")).encodeEXP, pes: require(join(resolve(AGAINST), "pes.js")).encodePES } : null;
+if (MINE) Object.assign(globalThis.EMB, MINE);
 const lib = (f) => import(pathToFileURL(join(ROOT, "app", "src", "lib", f)).href);
 
 // ---- the three files, read from their formats ------------------------------
@@ -180,6 +199,40 @@ const UNASKED = ["between two runs of one shape", "between shapes", "inside a ru
 const WHATS = ["trim", "after colour", "start", ...UNASKED];
 // The fewest records a move can be written in: 12.1 mm an axis each.
 const fewest = (dx, dy) => Math.max(1, Math.ceil(Math.abs(dx) / 121), Math.ceil(Math.abs(dy) / 121));
+// The stitches that FOLLOW travel and lie more than one record from where
+// the needle stands, each with what it follows. The place is kept as the EXP
+// and PES writers keep it: a colour change moves nothing.
+function farAfterTravel(st) {
+  const out = [];
+  let x = 0, y = 0, lastWasStitch = false, after = "the start of the file";
+  for (let i = 0; i < st.length && st[i].type !== "end"; i++) {
+    const s = st[i];
+    if (s.type === "color") { lastWasStitch = false; after = "a colour change"; continue; }
+    const tx = s.x | 0, ty = s.y | 0;
+    if (s.type !== "stitch") { lastWasStitch = false; after = s.type === "trim" ? "a cut" : "a jump"; }
+    else {
+      if (!lastWasStitch && fewest(tx - x, ty - y) > 1) out.push({ i, after, mm: Math.hypot(tx - x, ty - y) / 10 });
+      lastWasStitch = true;
+    }
+    x = tx; y = ty;
+  }
+  return out;
+}
+const AFTERS = ["a jump", "a cut", "a colour change", "the start of the file"];
+// Where a file's stitch records land, in order; and those of `a` that `b`
+// has not (each hole of `b` answers for one of `a`).
+function holesOf(recs) {
+  const out = [];
+  let x = 0, y = 0;
+  for (const r of recs) { x += r.dx; y += r.dy; if (r.kind === "stitch") out.push(x + "," + y); }
+  return out;
+}
+function notIn(a, b) {
+  const left = new Map();
+  for (const k of b) left.set(k, (left.get(k) || 0) + 1);
+  return a.filter((k) => { const n = left.get(k) || 0; if (n) left.set(k, n - 1); return !n; });
+}
+const sameBytes = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
 
 // One design: its stream, its three files, and what each cut in the DST was.
 // -> the cuts nobody asked for: [{ before, after }], stream indices of the
@@ -211,10 +264,12 @@ function readDesign(des, t, where) {
   };
   const stitchBefore = (i) => { for (let j = i - 1; j >= 0; j--) if (st[j].type === "stitch") return j; return -1; };
   const stitchAfter = (i) => { for (let j = i + 1; j < st.length; j++) if (st[j].type === "stitch") return j; return -1; };
-  const unasked = [];
+  const unasked = [], holes = {};
   let twos = 0;
   for (const fmt of ["dst", "exp", "pes"]) {
     const recs = READ[fmt](WRITE[fmt](des)), own = owners(st, recs, fmt);
+    holes[fmt] = holesOf(recs);
+    bump(t, `${fmt}/needle holes`, holes[fmt].length);
     bump(t, `${fmt}/trim records`, recs.filter((r) => r.kind === "trim").length);
     bump(t, `${fmt}/jump records`, recs.filter((r) => r.kind === "jump").length);
     for (let a = 0; a < recs.length;) {
@@ -255,6 +310,16 @@ function readDesign(des, t, where) {
       unasked.push({ before, after });
     }
   }
+  // The stitches that follow travel from more than a record away, and what
+  // the files made of the move to each.
+  const far = farAfterTravel(st), extra = notIn(holes.exp, holes.dst).length;
+  bump(t, "travel/far stitches", far.length); bump(t, `lane/${where.lane}/far stitches after travel`, far.length);
+  for (const f of far) { bump(t, `travel/after ${f.after}`); peak(t, "longest move to a stitch after travel, mm", f.mm); }
+  if (far.length) { bump(t, "travel/designs with one"); bump(t, `lane/${where.lane}/designs with a far stitch after travel`); }
+  bump(t, "exp/needle holes the DST has not", extra); bump(t, `lane/${where.lane}/EXP holes the DST has not`, extra);
+  bump(t, "dst/needle holes the EXP has not", notIn(holes.dst, holes.exp).length);
+  if (extra) bump(t, "exp/designs with a needle hole the DST has not");
+  peak(t, "most EXP holes the DST has not, in one design", extra);
   if (unasked.length) { bump(t, "designs with a cut nobody asked for"); bump(t, `lane/${where.lane}/designs with a cut nobody asked for`); }
   if (unasked.length + twos) bump(t, "designs with one at two");
   peak(t, "most in one design", unasked.length);
@@ -406,6 +471,14 @@ async function runPart(part, parts) {
               : cuts > 0 && spans && stitchesOnly(was) === stitchesOnly(des) && (des.runs || []).every((r) => des.stitches[r.i0].type === "jump") ? "cuts put in and nothing else" : "something else";
             bump(res[arm], `against/${how}`);
             if (cuts > 0) bump(res[arm], "against/cuts put in", cuts);
+            // The file each engine writes for its own build of the design.
+            const hasFar = farAfterTravel(des.stitches).length > 0;
+            for (const fmt of ["dst", "exp", "pes"]) {
+              const same = sameBytes(WRITE[fmt](des), OTHER_WRITE[fmt](was));
+              bump(res[arm], `against/${fmt} file: ${same ? "the same bytes" : "other bytes"}`);
+              if (!same && hasFar) bump(res[arm], `against/${fmt} file: other bytes, a far stitch after travel`);
+              if (same && hasFar) bump(res[arm], `against/${fmt} file: the same bytes, a far stitch after travel`);
+            }
             if (how === "something else" && (res[arm].n["against/something else"] || 0) <= 2) console.error(`${name} ${i} ${arm}: differs from the other engine some other way`);
           }
           const tied = set.build(d, Object.assign({ ties: true }, set.arms[arm])), tiedTally = tally();
@@ -514,7 +587,22 @@ if (PART) {
       ["EXP: runs of three jumps or more", ...col((t) => num(t.n["exp/runs of three jumps or more"]))],
       ["PES: trim records", ...col((t) => num(t.n["pes/trim records"]))],
       ["PES: runs of three jumps or more", ...col((t) => num(t.n["pes/runs of three jumps or more"]))],
+      ["stitches that follow travel from over 12.1 mm away", ...col((t) => num(t.n["travel/far stitches"]))],
+      ...AFTERS.map((k) => [`  after ${k}`, ...col((t) => num(t.n[`travel/after ${k}`]))]),
+      ["  designs with such a stitch", ...col((t) => num(t.n["travel/designs with one"]))],
+      ["  longest move to one, mm", ...col((t) => (t.max["longest move to a stitch after travel, mm"] || 0).toFixed(1))],
+      ...["dst", "exp", "pes"].map((f) => [`needle holes in the ${f.toUpperCase()}`, ...col((t) => num(t.n[`${f}/needle holes`]))]),
+      ["needle holes the EXP has and the DST has not", ...col((t) => num(t.n["exp/needle holes the DST has not"]))],
+      ["  designs with one", ...col((t) => num(t.n["exp/designs with a needle hole the DST has not"]))],
+      ["  most in one design", ...col((t) => num(t.max["most EXP holes the DST has not, in one design"]))],
+      ["needle holes the DST has and the EXP has not", ...col((t) => num(t.n["dst/needle holes the EXP has not"]))],
       ...(AGAINST ? ["the same", "cuts put in and nothing else", "something else"].map((k) => [`against the other engine: ${k}`, ...col((t) => num(t.n[`against/${k}`]))]).concat([["  cuts put in", ...col((t) => num(t.n["against/cuts put in"]))]]) : []),
+      ...(AGAINST ? ["dst", "exp", "pes"].flatMap((f) => [
+        [`against the other engine, the ${f.toUpperCase()} file: the same bytes`, ...col((t) => num(t.n[`against/${f} file: the same bytes`]))],
+        ["  of them, designs with a far stitch after travel", ...col((t) => num(t.n[`against/${f} file: the same bytes, a far stitch after travel`]))],
+        ["  other bytes", ...col((t) => num(t.n[`against/${f} file: other bytes`]))],
+        ["  of them, designs with a far stitch after travel", ...col((t) => num(t.n[`against/${f} file: other bytes, a far stitch after travel`]))],
+      ]) : []),
       ["with ties: stitches", ...col((t) => num(t.n["ties/stitches"]))],
       ["with ties: locks", ...col((t) => num(t.n["ties/locks"]))],
       ["with ties: thread ends at a cut nobody asked for", ...col((t) => num(t.n["ties/thread ends at a cut nobody asked for"]))],
@@ -524,7 +612,7 @@ if (PART) {
       const t = all[name][arm];
       const lanes = [...new Set(Object.keys(t.n).filter((k) => k.startsWith("lane/")).map((k) => k.split("/")[1]))];
       console.log(`\n  -- ${arm}: by lane --`);
-      table([["lane", "designs", "with one", "trims", "cuts in the DST", "nobody asked for"]].concat(lanes.map((l) => [l, num(t.n[`lane/${l}/designs`]), num(t.n[`lane/${l}/designs with a cut nobody asked for`]), num(t.n[`lane/${l}/trims in the stream`]), num(t.n[`lane/${l}/cuts in the DST`]), num(t.n[`lane/${l}/cuts nobody asked for`])])));
+      table([["lane", "designs", "with one", "trims", "cuts in the DST", "nobody asked for", "far stitches after travel", "designs with one", "EXP holes the DST has not"]].concat(lanes.map((l) => [l, num(t.n[`lane/${l}/designs`]), num(t.n[`lane/${l}/designs with a cut nobody asked for`]), num(t.n[`lane/${l}/trims in the stream`]), num(t.n[`lane/${l}/cuts in the DST`]), num(t.n[`lane/${l}/cuts nobody asked for`]), num(t.n[`lane/${l}/far stitches after travel`]), num(t.n[`lane/${l}/designs with a far stitch after travel`]), num(t.n[`lane/${l}/EXP holes the DST has not`])])));
       const joins = Object.keys(t.n).filter((k) => k.startsWith("joins/")).sort((a, b) => t.n[b] - t.n[a]);
       if (joins.length) {
         console.log(`  -- ${arm}: what the float joins --`);
