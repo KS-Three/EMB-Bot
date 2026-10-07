@@ -91,14 +91,15 @@ def test_ring_under_rail_comp_keeps_the_outer_pitch():
 
 
 def test_off_is_byte_identical_and_a_straight_bar_is_unchanged_on():
-    """OFF is the shipped emitter: the flag's default path is the verbatim
-    per-interval rule. And ON, a straight bar is the floor case: its outer
-    rail IS its spine and its stations already sit at the pitch, so
-    re-stationing along the rail lands exactly where they were."""
-    off, _ = satin_shape(BAR, "S1", underlay_style="none", trim_at_mm=3.0)
-    dflt, _ = satin_shape(BAR, "S1", underlay_style="none", trim_at_mm=3.0, outer_rail_pitch=False)
+    """OFF is the pre-flip emitter: `outer_rail_pitch=False` is the verbatim
+    per-interval rule (the default is ON since 2026-10-06, Kent's call). And
+    ON, a straight bar is the floor case: its outer rail IS its spine and
+    its stations already sit at the pitch, so re-stationing along the rail
+    lands exactly where they were -- OFF and ON agree on it to the byte."""
+    off, _ = satin_shape(BAR, "S1", underlay_style="none", trim_at_mm=3.0, outer_rail_pitch=False)
+    dflt, _ = satin_shape(BAR, "S1", underlay_style="none", trim_at_mm=3.0)
     on, _ = satin_shape(BAR, "S1", underlay_style="none", trim_at_mm=3.0, outer_rail_pitch=True)
-    assert [r.points for r in off] == [r.points for r in dflt]
+    assert [r.points for r in dflt] == [r.points for r in on]
     assert [r.points for r in off] == [r.points for r in on]
     satin = [r for r in on if r.kind == "satin"]
     assert len(satin) == 1
@@ -108,9 +109,9 @@ def test_off_is_byte_identical_and_a_straight_bar_is_unchanged_on():
     body = sorted(adv)[len(adv) // 10: -len(adv) // 10]
     assert max(body) - min(body) < 0.02, "a straight bar's stations are no longer even"
     assert abs(np.median(body) - machine.SATIN_SPACING_MM) < 0.03
-    # and the shipped ring is what it was: 0.46 on the outer rail, no short stitches
+    # and the pre-flip ring is what it was: 0.46 on the outer rail, no short stitches
     outer_off = []
-    for r in [r for r in satin_shape(O_RING, "S1", underlay_style="none", trim_at_mm=3.0)[0] if r.kind == "satin"]:
+    for r in [r for r in satin_shape(O_RING, "S1", underlay_style="none", trim_at_mm=3.0, outer_rail_pitch=False)[0] if r.kind == "satin"]:
         p = r.points
         for rail in (p[0::2], p[1::2]):
             outer_off += [math.dist(a, b) for a, b in zip(rail, rail[1:]) if math.hypot(*a) > 8.75 and math.dist(a, b) > 0.03]

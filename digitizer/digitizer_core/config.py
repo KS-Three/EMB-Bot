@@ -1593,12 +1593,22 @@ class PipelineConfig:
     # `_short_stitch_guard` retracts every other inner penetration -- the
     # professional construction (the pro's O: 22% short crosses). A straight
     # bar is byte-identical either way (its outer rail is its spine). Built
-    # OFF: it moves stitches on every curved satin shape, so the goldens
-    # re-capture on the flip, and the price is Kent's to see on a render
-    # first -- the Fremont O's 43 crosses become 54 (`satin_shape` direct,
+    # OFF on 2026-10-06 because it moves stitches on every curved satin
+    # shape, so the goldens re-capture on the flip, and the price was Kent's
+    # to see on a render first -- the Fremont O's 43 crosses become 54 (`satin_shape` direct,
     # rail comp 0.3: outer pitch 0.50 -> 0.39), the 2.5 mm test ring 138 ->
     # 168 stations. Tests: `tests/test_outer_rail_pitch.py`.
-    satin_outer_rail_pitch: bool = False
+    # **FLIPPED ON 2026-10-06, Kent's call, on the render and the price:**
+    # Fremont at 80 mm +1.0% stitches, trims unchanged, per-letter silhouette
+    # hair 1.49 -> 1.39 (the pro 1.21). The flip moved 19 tests, every one
+    # read and re-pinned in that PR: 12 goldens (the flat lane, stage 2 and
+    # push-comp byte-identity keys, re-captured on Linux), the lettering
+    # coverage pins (`lost_frac` / `overshoot_frac` read every short stitch's
+    # retracted end as thread inside the artwork), the MARINE junction-stack
+    # and rail-comp trims ceilings, the tip-caps end-coverage read and the
+    # shape-overrides byte-identity key. False is the pre-flip emitter,
+    # byte for byte.
+    satin_outer_rail_pitch: bool = True
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
