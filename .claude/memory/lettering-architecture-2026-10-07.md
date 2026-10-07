@@ -63,17 +63,20 @@ first, its subline only in the second.
 needle's REAL position, the satin tier's link rule) + a stage 7 hook ahead
 of the classifier gated on `is_lettering` (= `text_candidate` OR the new
 `lettering_group` tag the house pass now writes) + `_sews_satin` branch so
-stage 5 keeps the artwork polygon. Becker MARINE letters 42 -> 9 trims WITH the
+stage 5 keeps the artwork polygon. Becker MARINE letters 42 -> 8 trims WITH the
 Euler walk (routeGlyph ported: span graph, postman duplication, Hierholzer,
 last visit satin / earlier underpath, hops through the junction, in-letter
 hops up to 2 W sewn); without it enthusiast went 13 -> 22 and Fremont
-17 -> 38, with it 13 -> 11 and 17 -> 22. Two traps: the engine's satin spacing is ONE cross per 0.4 mm
-(the spike stationed at 0.2 and doubled every count); with an underlay the
+17 -> 38, with it 13 -> 11 and 17 -> 22. Three traps: the engine's satin spacing is ONE cross per 0.4 mm
+(the spike stationed at 0.2 and doubled every count); a station is ONE
+penetration, rails alternating (both ends down = boxes at double density,
+caught only on a render of one S); with an underlay the
 needle ends at the column's START, so order from the last emitted point,
 not from `col.end`. The local flat-lane golden on enthusiast is red on
 main's engine too (one of the three standing reds). GitHub refuses a push to a branch whose
 PR is auto-merge-armed AND dirty against main with a bare Internal Server
-Error; disable auto-merge, push, re-arm. Next on this lane: the E/F
-stem-plus-arms cut, the bowl rule (the S), junction overlap, then Kent's
-pairs.
+Error; disable auto-merge, push, re-arm. The E/F cut is the second look
+reading 30-degree corners; the S was never a cut problem but shared needle
+holes (the engine's `_short_stitch_guard`, now on every column). Next:
+junction overlap, slanted terminals cut short, then Kent's pairs.
 

@@ -23,15 +23,18 @@ not on `main` is `digitizer/tools/outline_cut_spike/oc.py` from lane
 > **BUILT the same day, default-OFF: `cfg.lettering_columns`**
 > (`digitizer_core/outline_cut.py`, the spike ported to emit Columns;
 > `digitizer_core/columns.py`, the Column object and its construction
-> engine: rail pull comp, cross floor, split comb, centre underlay, and the
-> **Euler walk** across a letter's columns, Kent's second pick the same
-> evening; the stage 7 hook ahead of the classifier; the
+> engine ported from `routeGlyph`: rail pull comp, cross floor, split comb,
+> centre underlay, short stitches on inside bends, and the **Euler walk**
+> across a letter's columns; the second look at a fanning piece reads
+> 30-degree corners; the stage 7 hook ahead of the classifier; the
 > `lettering_columns` eye-pairs arm). Measured OFF -> ON through
 > `digitize()` at corpus sizes, lettering shapes only, trims on the
-> letters: Becker MARINE 42 -> 9 (six are entries), gaulke 27 -> 25,
-> enthusiast 13 -> 11, Fremont 17 -> 22 (slab serifs cut into more pieces).
-> The E's body and the S still fan (the stem-plus-arms and bowl cut rules,
-> next). Renders `docs/renders/lettering-columns-2026-10-07/`; tests
+> letters: Becker MARINE 42 -> 8 (six are entries), gaulke 27 -> 23,
+> enthusiast 13 -> 14, Fremont 17 -> 22 (slab serifs cut into more
+> pieces); letter stitches fall by a third to two thirds (no zigzag
+> underlay, no columns overlapping at junctions). Still open: junction
+> overlap, slanted terminals cut short. Renders
+> `docs/renders/lettering-columns-2026-10-07/`; tests
 > `tests/test_lettering_columns.py` (16); scope-history 2026-10-07.
 
 ## 1. The answer in one paragraph
