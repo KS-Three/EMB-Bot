@@ -98,6 +98,25 @@ class RingFit:
     coords: np.ndarray          # the rebuilt ring, frame coords, closed
     unexplained_mm: float
     length_mm: float
+    S: np.ndarray | None = None      # the source samples the primitives index
+    own: np.ndarray | None = None    # which primitive wrote each rebuilt vertex
+
+    def revert_near(self, pt: np.ndarray, radius: float, tol: float) -> bool:
+        """Put every primitive that wrote a vertex within `radius` of `pt`
+        back to the trace verbatim and rebuild. True when something moved."""
+        if self.S is None or self.own is None:
+            return False
+        near = np.hypot(*(self.coords[:-1] - pt).T) <= radius
+        hit = {int(k) for k in self.own[near] if self.prims[int(k)].kind != "pass"}
+        if not hit:
+            return False
+        for k in hit:
+            p = self.prims[k]
+            p.kind = "pass"
+            p.snapped = None
+            self.unexplained_mm += float(LineString(_samples_of(self.S, p.i0, p.i1)).length)
+        self.coords, self.own = _rebuild(self.S, self.prims, tol)
+        return True
 
 
 @dataclass
@@ -805,7 +824,40 @@ def fit_ring(coords: np.ndarray, prior: WordPrior, u: np.ndarray, v: np.ndarray,
             unexplained += float(LineString(_samples_of(S, p.i0, p.i1)).length)
         if bad:
             R, own = _rebuild(S, prims, tol)
-    return RingFit(prims=prims, coords=R, unexplained_mm=unexplained, length_mm=length)
+    return RingFit(prims=prims, coords=R, unexplained_mm=unexplained, length_mm=length, S=S, own=own)
+
+
+def letter_lean_deg(coords: np.ndarray, stem_deg: float, tol: float,
+                    window_deg: float = 15.0) -> float | None:
+    """How far this letter's own stems lean off `stem_deg`: the length-
+    weighted MEDIAN offset of its DP chords within `window_deg` of that
+    direction, or None when it has no such chord. The median, not the
+    mean: a slanted terminal (Becker's E arms are cut at an angle) is a
+    short chord inside the window and a mean read that E as leaning 8.7
+    deg on a straight word. Resolution-independent where the engine's
+    skeleton instrument is not: chords are millimetres long, skeleton
+    steps are pixels."""
+    S = densify_ring(coords, sample_step(tol))
+    lines = _initial_lines(S, dp_closed(S, tol))
+    votes: list[tuple[float, float]] = []
+    for p in lines:
+        d = p.p1 - p.p0
+        L = float(np.hypot(*d))
+        if L < 1e-9:
+            continue
+        off = angle_diff_axial(math.degrees(math.atan2(d[1], d[0])), stem_deg)
+        if abs(off) <= window_deg:
+            votes.append((off, L))
+    if not votes:
+        return None
+    votes.sort()
+    half = sum(w for _o, w in votes) / 2.0
+    acc = 0.0
+    for off, w in votes:
+        acc += w
+        if acc >= half:
+            return off
+    return votes[-1][0]
 
 
 def _stem_angles(prims: list[Prim], stem_deg: float) -> list[tuple[float, float]]:
@@ -836,6 +888,14 @@ def _cap_check(src_rings: list[np.ndarray], out_rings: list[np.ndarray], tol: fl
         ds.append(np.array([la.distance(Point(p)) for p in Sb]))
     d = np.concatenate(ds) if ds else np.zeros(1)
     return float(d.max()), float(np.percentile(d, 95))
+
+
+def _invalid_point(poly) -> np.ndarray | None:
+    """Where shapely says a polygon is invalid, as (x, y), or None."""
+    import re
+    from shapely.validation import explain_validity
+    m = re.search(r"\[(-?[\d.eE+-]+) (-?[\d.eE+-]+)\]", explain_validity(poly) or "")
+    return np.array([float(m.group(1)), float(m.group(2))]) if m else None
 
 
 def fit_letter(poly: Polygon, prior: WordPrior) -> FitResult:
@@ -882,21 +942,40 @@ def fit_letter(poly: Polygon, prior: WordPrior) -> FitResult:
         return FitResult("refused", f"error:{type(e).__name__}", poly,
                          before_n_prims=before_n, before_stem_angles=before_stems)
     total_len = sum(f.length_mm for f in fits) or 1.0
+    base: dict = dict(before_n_prims=before_n, before_stem_angles=before_stems, rings=fits)
+
+    def assemble():
+        rings = [from_frame(f.coords, u, v) for f in fits]
+        try:
+            return rings, Polygon(rings[0], rings[1:])
+        except Exception:                                    # noqa: BLE001
+            return rings, None
+
+    out_rings_xy, new = assemble()
+    # A ring that crosses itself (a notch or counter the snaps pinched shut:
+    # "counters keep their opening") is repaired where it crosses: the
+    # primitives that wrote the vertices round the crossing go back to the
+    # trace, that ring is rebuilt, and the polygon is tried again.
+    for _round in range(2):
+        if new is not None and new.is_valid and not new.is_empty and new.geom_type == "Polygon":
+            break
+        pt = _invalid_point(new) if new is not None else None
+        if pt is None:
+            break
+        fpt = to_frame(np.array([pt]), u, v)[0]
+        if not any(f.revert_near(fpt, 2.0 * tol, tol) for f in fits):
+            break
+        out_rings_xy, new = assemble()
     unexplained = sum(f.unexplained_mm for f in fits) / total_len
     n_line = sum(1 for f in fits for p in f.prims if p.kind == "line")
     n_arc = sum(1 for f in fits for p in f.prims if p.kind == "arc")
     n_pass = sum(1 for f in fits for p in f.prims if p.kind == "pass")
     stems = [a for f in fits for a in _stem_angles(f.prims, fprior.stem_deg)]
-    base = dict(before_n_prims=before_n, before_stem_angles=before_stems, rings=fits,
-                unexplained_share=unexplained, n_line=n_line, n_arc=n_arc, n_pass=n_pass,
+    base.update(unexplained_share=unexplained, n_line=n_line, n_arc=n_arc, n_pass=n_pass,
                 stem_angles=stems)
     if unexplained > UNEXPLAINED_MAX:
         return FitResult("refused", "unexplained", poly, **base)
-    try:
-        new = Polygon(out_rings_xy[0], out_rings_xy[1:])
-    except Exception:                                        # noqa: BLE001
-        return FitResult("refused", "invalid", poly, **base)
-    if new.is_empty or not new.is_valid or new.geom_type != "Polygon":
+    if new is None or new.is_empty or not new.is_valid or new.geom_type != "Polygon":
         return FitResult("refused", "invalid", poly, **base)
     if len(new.interiors) != len(poly.interiors):
         return FitResult("refused", "holes", poly, **base)
