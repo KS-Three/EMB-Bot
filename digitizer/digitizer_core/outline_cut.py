@@ -46,6 +46,7 @@ _RAIL_STEP_MM = 0.08     # densification of an outline arc before pairing
 _DTW_STEP_MM = 0.1       # resampling step of the two rails for the matching
 REFINE_TRIGGER = 0.12    # share of thread in over-long crosses that says "two strokes"
 REFINE_GAIN = 0.6        # a second-look cut must take that share to this fraction
+REFINE_REFLEX_DEG = 30.0 # the second look reads softer concave corners than the junction rules
 
 
 def _unit(v):
@@ -74,7 +75,7 @@ def _run_len(c, i, step):
     return L
 
 
-def corners(poly: Polygon, W: float):
+def corners(poly: Polygon, W: float, reflex_deg: float = REFLEX_DEG):
     """-> (reflex, convex) corner records: p, d_in, d_out, bis, turn, len_in,
     len_out. A corner is turn gathered over W/8 of outline, so a chamfered or
     two-vertex corner counts once and a curve's vertices do not."""
@@ -108,7 +109,7 @@ def corners(poly: Polygon, W: float):
                 k = (k + 1) % n
                 idx.append(k)
             tot = abs(sum(turn[j] for j in idx))
-            if tot < min(REFLEX_DEG, CONVEX_DEG):
+            if tot < min(reflex_deg, CONVEX_DEG):
                 continue
             if max(idx, key=lambda j: (abs(turn[j]), -j)) != i:   # one corner per stretch: its sharpest vertex
                 continue
@@ -122,7 +123,7 @@ def corners(poly: Polygon, W: float):
             if solid_in_wedge:
                 if tot >= CONVEX_DEG:
                     convex.append(rec)
-            elif tot >= REFLEX_DEG:
+            elif tot >= reflex_deg:
                 reflex.append(rec)
     return reflex, convex
 
@@ -623,7 +624,12 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int):
     if depth >= 3 or tot0 <= 0 or long0 / tot0 < REFINE_TRIGGER:
         yield pc, cut_lines, []
         return
-    rf, _ = corners(pc, W)
+    # Softer corners than the junction rules read (REFLEX_DEG): a low-res
+    # E's slots round off under 55 deg and the body sewed as one fan (Becker
+    # at 146 px: one corner at 55, four at 35). The piece has already
+    # proven itself over-long, so a soft corner here is a junction, not a
+    # bend -- and the cut still has to earn REFINE_GAIN.
+    rf, _ = corners(pc, W, reflex_deg=REFINE_REFLEX_DEG)
     best = None
     for r in _cluster(rf, 0.25 * W):
         p = r["p"]

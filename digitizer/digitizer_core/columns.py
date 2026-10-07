@@ -132,17 +132,22 @@ def _walk_points(path, step_mm: float) -> list[tuple[float, float]]:
 
 
 def _satin_points(stations, split_above_mm: float, comb_thresholds, split_points):
-    """Stations in traversal order -> the zigzag's penetrations, split comb on."""
+    """Stations in traversal order -> the zigzag's penetrations, split comb on.
+    ONE penetration per station, rails alternating (a_0, b_1, a_2, ...): a
+    cross is the thread from one station's penetration to the next's, and
+    consecutive crosses sit one station apart -- the engine's satin
+    (`_resample_by_pitch`) and the spike's `zigzag`. The first wiring put
+    both ends of every station down and sewed boxes at double density."""
     legs = [math.dist(a, b) for a, b in stations]
     thr = comb_thresholds(legs, split_above_mm)
     pts: list[tuple[float, float]] = []
     for i, (a, b) in enumerate(stations):
-        near, far = (a, b) if i % 2 == 0 else (b, a)
-        if pts and math.dist(pts[-1], near) < stitches.SAME_POINT_MM:
-            pts.pop()
-        pts.append(near)
-        pts.extend(split_points(near, far, i, thr[i] if i < len(thr) else split_above_mm))
-        pts.append(far)
+        pt = a if i % 2 == 0 else b
+        if pts:
+            if math.dist(pts[-1], pt) < stitches.SAME_POINT_MM:
+                continue
+            pts.extend(split_points(pts[-1], pt, i, thr[i] if i < len(thr) else split_above_mm))
+        pts.append(pt)
     return pts
 
 
