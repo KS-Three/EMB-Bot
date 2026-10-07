@@ -19584,3 +19584,24 @@ bar) are the other half of "not clean" and are untouched; the per-fabric
 pull table (0.2–0.6 per side) against the pro's flat 0.3 on twill and cap
 is a gate-1 question; MASTER_SCOPE sits 14 words under its budget, so this
 flag's entry there is owed with a cut Kent chooses.
+
+**FLIPPED ON the same day, Kent's call (PR #650), on the render and the
+price.** The flip moved 19 tests under the full suite with the flag forced
+on. Taken one by one: the flat-lane goldens `ribbon_curve` (991 → 1009
+coords) and `logo_whitebg` (4581 → 4585) re-captured with the pre-change
+proof — on Kent's WSL Ubuntu box, not CI's runner, because the session's
+token lacked the `workflow` scope the temporary re-capture workflow needs,
+so CI's `digitizer` job judges whether ubuntu-latest agrees; `logo_alpha`
+byte-identical there and on Windows and left alone; the push-comp tuples
+re-pinned the same way
+(`towel` stays un-re-pinned for its standing reason, its flipped tuple
+recorded); `test_satin`'s O-ring spray bar 5.0 → 6.0 and its hole-side pin
+read at the on-rail quartile, both for the short stitches; the tip-caps
+stitch ceiling 2,520 → 2,620 (ENTHUSIAST 2,474 → 2,614, the flip's +5.7%,
+trims and end bare unchanged). **Two pins are NOT re-pinned and sit with
+Kent:** `test_lettering_coverage_regression`'s `lost_frac` and
+`overshoot_frac` read ENTHUSIAST at 0.2908 against the 0.29 bar Kent set on
+2026-10-03 (0.2819 before the flip) — the denser outer rail closes the
+0.4 mm ribbon's scallops along the pushed rail, which the overshoot
+instrument counts as thread outside the artwork; the test's own text
+forbids raising its bar without his ruling.

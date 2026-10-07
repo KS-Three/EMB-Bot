@@ -312,11 +312,23 @@ def rail_overhang(art: Polygon, pts) -> float:
 # machine (that test green there, 2026-09-29); `towel` stays un-re-pinned for
 # the standing reason, and the fixed engine gives
 # ("94412583a538b4d421b8", 6187, 19154) here.
+#
+# RE-PINNED 2026-10-06 for `satin_outer_rail_pitch` ON (Kent's call): the
+# ribbon's curved body is stationed along its OUTER rail now, 991 -> 1009
+# penetrations on both garments (the same +18 the flat-lane golden records),
+# and whitebg's single curved satin gains four (4581 -> 4585, the flat-lane
+# golden's +4). Captured on Kent's WSL Ubuntu 24.04 box (`requirements.txt`
+# pins, tesseract present), where this test at the pre-flip tree (1c0a7df5)
+# passed the three re-pinned keys -- the machine reproduced them byte-for-byte
+# on the old engine first -- and Windows computes the same three tuples on
+# the flipped engine. `towel` stays un-re-pinned for the standing reason, and
+# the flipped engine gives ("ce303ab42ac5ae737d68", 6191, 19166) on that
+# box, recorded for whoever re-pins it where it reproduces.
 GOLDEN_FLAG_OFF = {
-    ("logo_whitebg.png", "left_chest"): ("4f4bfa09c27d011be7bb", 4581, 14336),
+    ("logo_whitebg.png", "left_chest"): ("37bdb841df3bccef5b4a", 4585, 14348),
     ("logo_whitebg.png", "towel"): ("98c918e7c1576e46f623", 3258, 10349),
-    ("ribbon_curve.png", "left_chest"): ("4b87ae5794c312193e9c", 991, 3497),
-    ("ribbon_curve.png", "hat_front"): ("58849b92914232dc6c06", 991, 3497),
+    ("ribbon_curve.png", "left_chest"): ("a3aa105ceb07b50a4449", 1009, 3551),
+    ("ribbon_curve.png", "hat_front"): ("7b36d4ad1a17536e23b8", 1009, 3551),
 }
 
 

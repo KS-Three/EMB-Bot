@@ -68,3 +68,11 @@ Scripts (session scratchpad, not committed): `measure_fremont.py`,
 `pro_band.py`, `rail_jitter.py`, `render_raw.py`. Related:
 [[letterform-fidelity-2026-08-26]], [[rail-wobble-is-the-models-floor-2026-09-21]],
 [[lost-frac-is-two-metrics-2026-09-20]], [[hotel-fremont-fine-details-2026-09-02]].
+
+**Kent flipped `satin_outer_rail_pitch` ON the same day** (PR #650). Price
+in the suite: 19 movers, all re-pinned with their mechanism except the two
+lettering coverage bars (0.2908 vs Kent's 0.29) — the denser outer rail
+closes the overshoot instrument's ribbon scallops, +0.009 of ink, and that
+bar is his to move. Goldens re-captured on the WSL box with the pre-change
+proof because the token had no `workflow` scope for CI's re-capture job; CI
+judges. On Windows the suite stays at its standing three reds.
