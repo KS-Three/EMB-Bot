@@ -1148,6 +1148,179 @@ test("fillColumns: the tip of a holed shape gets one penetration at most, not tw
   }
 });
 
+// --- where a pass ends (2026-10-03, after the corner fix's re-measure) ---------
+//
+// The move between two runs of a shape is cut where it leaves the ground the
+// fill covers. Each tatami pass was told where the thread was, and never
+// where it had to go next: an underlay sewn by the column walk ended wherever
+// its last column ended, and when the run after it begins at a point of its
+// own -- a fill or a lattice pass the plain walk sews -- the float between
+// them was cut. 2,261 such cuts on 45,416 designs (the re-measure's own
+// drawings, option on): the most of any kind the walk could do anything about.
+// With the corner fix 388 of those designs gained a cut, 330 of the 404 here.
+//
+// A pass the plain walk sews begins where it begins, wherever the thread is.
+// So it is BUILT first, and the pass before it is told (`to`, fill.js "where
+// the walk ends"; test/fill.test.js has it bare).
+
+test("fillColumns: an underlay ends where the thread can float on to the pass after it", () => {
+  const cases = {
+    // The re-measure's own drawing. The cap preset's zigzag ended on a barb
+    // of the arrow, and the fill begins at the middle of its tail.
+    "an arrow, the cap preset's zigzag": [ring([[300, 120], [180, 240], [180, 168], [0, 168], [0, 72], [180, 72], [180, 0]]), 300, "structured_cap", null],
+    // Two lattice passes, and the fill after them.
+    "an L under terry, rows at 45": [ring([[240, 0], [240, 60], [60, 60], [60, 180], [0, 180], [0, 0]]), 240, "terry_towel", 45],
+    // No preset: the one tatami underlay, across the fill's rows.
+    "a T, no preset, rows level": [ring([[0, 0], [240, 0], [240, 60], [150, 60], [150, 240], [90, 240], [90, 60], [0, 60]]), 240, null, 0],
+    // The FIRST lattice pass into the second, which is the one the plain walk sews here.
+    "two tips under terry, rows at 135": [ring([[0, 300], [25, 0], [50, 280], [75, 0], [100, 300]]), 100, "terry_towel", 135],
+  };
+  for (const name of Object.keys(cases)) {
+    const [outer, widthPx, fabricId, angleOverride] = cases[name];
+    const fabric = fabricId ? FABRICS.getFabric(fabricId) : null, pull = fabric ? fabric.pullCompMm : 0;
+    const shape = { outer, holes: [] };
+    if (angleOverride != null) shape.angleOverride = angleOverride;
+    const d = drawn(shape, widthPx, fabric ? { fabric } : {});
+    const cuts = cutsBy(d);
+    assert.strictEqual(cuts.between, 0, name + ": " + JSON.stringify(cuts));
+    assert.strictEqual(cuts.underlay, 0, name + ": " + JSON.stringify(cuts));
+    assert.ok(cuts.fill <= 1, name + ": only center-out's own cut is left, " + JSON.stringify(cuts));
+    // and the cut was not traded for thread off the fill
+    assert.deepStrictEqual(offCoverMm(d, shape, pull, 0.15), { sewn: 0, floats: 0 }, name);
+    assert.strictEqual(floatsOffCover(d, shape, pull), 0, name);
+    // every run is still there, in the order it was
+    const kinds = d.runs.map((r) => r.kind).join(" ");
+    assert.ok(/^(underlay )+fill$/.test(kinds), name + ": " + kinds);
+  }
+});
+
+test("fillColumns: a fill the plain walk sews is the fill it was, asked where it begins or not", () => {
+  // The underlay asks where the fill begins before the fill is sewn, and the
+  // asking must not move a stitch of it: where the plain walk begins and what
+  // it sews do not turn on where the thread is. The fill of each drawing
+  // above, record for record, against the same fill with the option off --
+  // where nothing is asked -- on a shape whose plain fill the option leaves
+  // alone (no turn of it runs outside the shape).
+  const fillOf = (d) => { const r = d.runs.find((x) => x.kind === "fill"); return d.stitches.slice(r.i0, r.i1 + 1); };
+  const l = { outer: ring([[240, 0], [240, 60], [60, 60], [60, 180], [0, 180], [0, 0]]), holes: [], angleOverride: 45 };
+  for (const fabricId of [null, "structured_cap", "terry_towel", "fleece_sweatshirt"]) {
+    const extra = fabricId ? { fabric: FABRICS.getFabric(fabricId) } : {};
+    const on = drawn(l, 240, extra), off = drawn(l, 240, Object.assign({ fillColumns: false }, extra));
+    assert.deepStrictEqual(fillOf(on), fillOf(off), fabricId || "no preset");
+    assert.strictEqual(on._debug.nFill, 1);
+    assert.strictEqual(on._debug.nCenterOut, off._debug.nCenterOut, fabricId || "no preset");
+  }
+});
+
+test("fillColumns: the re-measure's two combs are one thread each -- a pass that comes out cut is walked again", () => {
+  // The two drawings on which the corner fix's re-measure showed a design
+  // GAINING cuts, and more than one. Neither is a float between two passes:
+  // the walk itself strands a column. What a walk costs turns on its first
+  // column, so a pass that comes out with a cut is walked again from the other
+  // first columns the thread can float to, and the better walk is kept: here,
+  // the one with no cut (fill.js, "which column first"; test/fill.test.js has
+  // it bare).
+  const fabric = FABRICS.getFabric("terry_towel"), pull = fabric.pullCompMm;
+  const cases = {
+    // No cut before the corner fix and three after it, all inside the second
+    // lattice pass: threads of 315, 3, 3 and 1,756 penetrations.
+    "four teeth 1.1 mm wide, rows at 61.3": [{ outer: ring([[321.56, 0], [321.56, 11.42], [70.94, 11.42], [70.94, 30.17], [321.56, 30.17], [321.56, 41.59], [70.94, 41.59], [70.94, 60.34], [321.56, 60.34], [321.56, 71.76], [70.94, 71.76], [70.94, 90.51], [321.56, 90.51], [321.56, 101.93], [0, 101.93], [0, 0]]), holes: [], angleOverride: 61.3 }, 321.56],
+    // None before and two after: one on the float into the first lattice pass,
+    // one inside it, and between them a thread of two penetrations. (Before,
+    // "no cut" was 292 mm more thread, 99 mm of it travel round the outline.)
+    "three teeth 4 mm wide pointing down": [{ outer: ring([[0, 333], [41.7, 333], [41.7, 89.78], [49.85, 89.78], [49.85, 333], [91.55000000000001, 333], [91.55000000000001, 89.78], [99.70000000000002, 89.78], [99.7, 333], [141.4, 333], [141.4, 0], [0, 0]]), holes: [] }, 141.4],
+  };
+  for (const name of Object.keys(cases)) {
+    const [shape, widthPx] = cases[name];
+    const d = drawn(shape, widthPx, { fabric });
+    assert.deepStrictEqual(cutsBy(d), { all: 0, fill: 0, underlay: 0, between: 0 }, name);
+    assert.deepStrictEqual(threadsOf(d).map((t) => t.length), [d.stitchCount], name + ": one thread");
+    // and no cut was traded for thread off the fill
+    assert.deepStrictEqual(offCoverMm(d, shape, pull, 0.15), { sewn: 0, floats: 0 }, name);
+    assert.strictEqual(floatsOffCover(d, shape, pull), 0, name);
+    assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "underlay", "underlay", "fill"], name);
+  }
+});
+
+test("fillColumns: the float into a fill is not cut where a start further off can be floated to", () => {
+  // The preset a left chest uses has no tatami underlay: an edge run, then
+  // the fill. An eight-pointed star with its rows upright. The edge run ends
+  // on the star's top point, and the corners the fill's walk could begin at
+  // are out on the side points: of the eight nearest the thread can float to
+  // none, an inside corner of the star being in the way of each. The walk
+  // began at the nearest all the same, and the builder cut. A corner further
+  // off, across the body, CAN be floated to. A walk that comes out cut is
+  // walked again from the starts it had not looked at, and the cut on the
+  // float in is one of the cuts it counts.
+  const star = { outer: ring([[150, 0], [178.5, 80.5], [256, 44], [219.5, 121.5], [300, 150], [219.5, 178.5], [256, 256], [178.5, 219.5], [150, 300], [121.5, 219.5], [44, 256], [80.5, 178.5], [0, 150], [80.5, 121.5], [44, 44], [121.5, 80.5]]), holes: [], angleOverride: 90 };
+  for (const fabricId of ["pique_knit", "canvas_tote"]) {
+    const fabric = FABRICS.getFabric(fabricId);
+    const d = drawn(star, 300, { fabric });
+    assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "fill"], fabricId);
+    assert.deepStrictEqual(cutsBy(d), { all: 0, fill: 0, underlay: 0, between: 0 }, fabricId);
+    assert.deepStrictEqual(offCoverMm(d, star, fabric.pullCompMm, 0.15), { sewn: 0, floats: 0 }, fabricId);
+    assert.strictEqual(floatsOffCover(d, star, fabric.pullCompMm), 0, fabricId);
+  }
+});
+
+test("fillColumns: a comb whose second lattice pass needs the FIFTH other first column", () => {
+  // Why a walk that comes out cut is walked from eight other first columns
+  // and not from one or two. Twelve teeth 1.5 mm wide and 30 mm long under
+  // fleece, rows at 61.3: the second lattice pass crosses every tooth on a
+  // slant. Walked from the nearest first column it is cut twelve times, and
+  // so it is from each of the next four, which all sew upward from one tooth
+  // or another. The fifth sews downward from the first column of all, and is
+  // cut once. (On a sweep of 9,084 designs four tries left 18 cuts, on three
+  // combs, that eight do not; with no limit at all not one design differs.)
+  const comb = [];
+  for (let k = 0; k < 12; k++) comb.push([0, 30 * k], [0, 30 * k + 15], [k < 11 ? 300 : 360, 30 * k + 15], ...(k < 11 ? [[300, 30 * k + 30]] : []));
+  comb.push([360, 0]);
+  const shape = { outer: ring(comb), holes: [], angleOverride: 61.3 };
+  const fabric = FABRICS.getFabric("fleece_sweatshirt");
+  const d = drawn(shape, 360, { fabric });
+  assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "underlay", "underlay", "fill"]);
+  assert.deepStrictEqual(cutsBy(d), { all: 1, fill: 0, underlay: 1, between: 0 });
+  assert.deepStrictEqual(offCoverMm(d, shape, fabric.pullCompMm, 0.15), { sewn: 0, floats: 0 });
+  assert.strictEqual(floatsOffCover(d, shape, fabric.pullCompMm), 0);
+});
+
+test("fillColumns: a pass walked again is not left with a one-stitch thread for the cut it saves", () => {
+  // What the independent re-measure of "where a pass ends" found (2026-10-04).
+  // Its maze, a corridor 1.4 mm wide wound through a block 15 mm by 22 mm,
+  // under fleece. The first lattice pass comes out with three cuts; walked
+  // again it came out with two, and between them one row: a thread of two
+  // penetrations, cut to and cut from. A stitch like that holds nothing, so
+  // the cut it "saved" bought an underlay row that is as good as not sewn.
+  // A walk is judged by its cuts and by its threads of fewer than four
+  // penetrations (fill.js, "which column first"; test/fill.test.js has it bare).
+  const maze = ring([[0, 0], [41.81, 0], [41.81, 13.69], [13.69, 13.69], [13.69, 27.84], [55.96, 27.84], [55.96, 0], [125.61, 0], [125.61, 27.84], [139.76, 27.84], [139.76, 0], [153.73, 0], [153.73, 41.53], [111.92, 41.53], [111.92, 13.69], [97.77, 13.69], [97.77, 99.54], [55.96, 99.54], [55.96, 85.85], [83.8, 85.85], [83.8, 71.7], [41.81, 71.7], [41.81, 143.86], [55.96, 143.86], [55.96, 116.02], [97.77, 116.02], [97.77, 143.86], [111.92, 143.86], [111.92, 85.85], [139.76, 85.85], [139.76, 71.7], [111.92, 71.7], [111.92, 58.01], [153.73, 58.01], [153.73, 99.54], [125.61, 99.54], [125.61, 157.55], [83.8, 157.55], [83.8, 129.71], [69.65, 129.71], [69.65, 157.55], [27.84, 157.55], [27.84, 58.01], [83.8, 58.01], [83.8, 13.69], [69.65, 13.69], [69.65, 41.53], [13.69, 41.53], [13.69, 201.87], [27.84, 201.87], [27.84, 174.03], [125.61, 174.03], [125.61, 201.87], [139.76, 201.87], [139.76, 116.02], [153.73, 116.02], [153.73, 215.56], [55.96, 215.56], [55.96, 201.87], [111.92, 201.87], [111.92, 187.72], [41.81, 187.72], [41.81, 215.56], [0, 215.56]]);
+  const fleece = FABRICS.getFabric("fleece_sweatshirt");
+  for (const angleOverride of [0, 90]) {
+    const shape = { outer: maze, holes: [], angleOverride };
+    const d = drawn(shape, 153.73, { fabric: fleece });
+    const lens = threadsOf(d).map((t) => t.length), name = "the maze, rows at " + angleOverride;
+    assert.deepStrictEqual(lens.filter((n) => n < 4), [], name + ": threads " + JSON.stringify(lens));
+    assert.strictEqual(cutsBy(d).all, 3, name + ": the first walk's three, " + JSON.stringify(lens));
+    assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "underlay", "underlay", "fill"], name);
+    assert.strictEqual(floatsOffCover(d, shape, fleece.pullCompMm), 0, name);
+  }
+  // And of two walks with as many cuts, the one with fewer such threads.
+  // Eight teeth 1 mm wide and 20 mm long under terry (the corner fix's
+  // re-measure, its `pcomb-229`): seven cuts either way, and the first
+  // lattice pass kept a walk with a thread of two penetrations in it where a
+  // later walk, cut as often, has none.
+  const comb = [];
+  for (let k = 0; k < 8; k++) comb.push([16.71 * k, 278.11], [16.71 * k + 9.58, 278.11], ...(k < 7 ? [[16.71 * k + 9.58, 72.96], [16.71 * (k + 1), 72.96]] : []));
+  comb.push([126.55, 0], [0, 0]);
+  const terry = FABRICS.getFabric("terry_towel");
+  const shape = { outer: ring(comb), holes: [] };
+  const d = drawn(shape, 126.55, { fabric: terry });
+  const lens = threadsOf(d).map((t) => t.length);
+  assert.deepStrictEqual(lens.filter((n) => n < 4), [], "eight teeth: threads " + JSON.stringify(lens));
+  assert.strictEqual(cutsBy(d).all, 7, "eight teeth: " + JSON.stringify(lens));
+  assert.strictEqual(floatsOffCover(d, shape, terry.pullCompMm), 0);
+});
+
 test("buildQualityDesign: thin solid bar goes satin, branched shape goes fill", () => {
   // thin bar 200x8 px at pxPerMm 8 → ~1mm wide final (fits 4in garment, scale>1 but still thin)
   const bar = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 8 }, { x: 0, y: 8 }];

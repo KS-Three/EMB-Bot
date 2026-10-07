@@ -116,6 +116,11 @@ _FOLD_FRAC = 0.7
 # two rails run parallel instead of tracking every wobble in the boundary.
 _WIDTH_MEDIAN_WINDOW = 5
 _WIDTH_SMOOTH_PASSES = 4
+# A column body whose outer-rail advances average no more than this over the
+# pitch keeps the per-interval refinement (and so stays byte-identical); over
+# it, the body is re-stationed evenly along its outer rail. 2% is float dust
+# plus the rail-offset ripple a straight bar shows, never a bend (2026-10-06).
+_OUTER_RAIL_SLACK = 0.02
 # `satin_rails_follow_edge="envelope"` (2026-09-30): a far rail extends past
 # the symmetric width only to the conservative ENVELOPE of its own edge --
 # the running minimum of its median-filtered ray profile over +-this many
@@ -2549,6 +2554,7 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                  spacing_mm: float = machine.SATIN_SPACING_MM,
                  angle_deg: float | None = None,
                  follow_edge: bool = False,
+                 outer_rail: bool = False,
                  max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
                  fold_guard: bool = False,
                  rail_comp_mm: float = 0.0,
@@ -2958,7 +2964,10 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     # what already works.
     ref_a: list = [rail_a[0]]
     ref_b: list = [rail_b[0]]
-    for i in range(1, n):
+
+    def interval(i: int) -> tuple[bool, bool, float, float]:
+        """(in_taper, near_cap, outer-rail advance, pitch) for the interval
+        between proven stations i-1 and i."""
         # Only refine intervals that are genuinely over-wide: at exactly one
         # spacing, adv/SPACING is 1.0 plus float dust and a bare ceil() doubled
         # EVERY interval of a straight bar (measured: 120 crosses where 60
@@ -2982,10 +2991,67 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         # stations to, not the bare spacing. Lean 0 divides by exactly 1.0.
         pitch = spacing_mm / max(math.cos(0.5 * (leans[i - 1] + leans[i])),
                                  _LEAN_COS_FLOOR)
+        return in_taper, near_cap, adv, pitch
+
+    def station(i: int, t: float, in_taper: bool) -> None:
+        """One station at fraction `t` of interval i, interpolated between
+        the two PROVEN stations the way the per-interval refinement has
+        always interpolated its inserted ones (the chord on each rail where
+        it lies in the artwork, the ladder where it does not)."""
+        ok_a = ok_b = False
+        qa = qb = None
+        if in_taper:
+            # A taper-zone station is placed on the discrete ladder, so
+            # a station cast from the spine between two of them lands
+            # wherever its own factor fits -- not evenly between its
+            # neighbours. On ribbon_curve's head the pieces of a 1.05 mm
+            # interval came out 0.51 / 0.37 / 0.20 mm: the last one under
+            # the guard, which pulled that cross 0.6 mm and read back as
+            # a 0.82 mm same-rail step (found by the flip of
+            # `subpixel_edges`, whose tip sits one station shorter;
+            # 2026-09-09). The inserted penetrations are interpolated
+            # between the two PROVEN penetrations on each rail instead:
+            # even along the rail by construction, and the crosses ramp
+            # between their neighbours' crosses. The chord between two
+            # rail points on a straight or convex edge lies in the
+            # artwork (tested with the same micron `inside` the body
+            # uses -- two points ON an edge put their chord an ulp
+            # either side of it); where an edge is concave and it does
+            # not, that side falls back to the ladder, as before.
+            qa = (rail_a[i - 1][0] * (1 - t) + rail_a[i][0] * t,
+                  rail_a[i - 1][1] * (1 - t) + rail_a[i][1] * t)
+            qb = (rail_b[i - 1][0] * (1 - t) + rail_b[i][0] * t,
+                  rail_b[i - 1][1] * (1 - t) + rail_b[i][1] * t)
+            ok_a, ok_b = inside.covers(SPoint(qa)), inside.covers(SPoint(qb))
+            if ok_a and ok_b:
+                ref_a.append(qa)
+                ref_b.append(qb)
+                return
+        px = spine[i - 1][0] * (1 - t) + spine[i][0] * t
+        py = spine[i - 1][1] * (1 - t) + spine[i][1] * t
+        ang = angles[i - 1] * (1 - t) + angles[i] * t   # unwrapped: lerp-safe
+        nx, ny = math.cos(ang), math.sin(ang)
+        if in_taper:
+            wa = wb = width[i - 1] * (1 - t) + width[i] * t
+            ref_a.append(qa if ok_a else place(px, py, nx, ny, wa, False))
+            ref_b.append(qb if ok_b else place(px, py, -nx, -ny, wb, False))
+            return
+        wa = off_a[i - 1] * (1 - t) + off_a[i] * t
+        wb = off_b[i - 1] * (1 - t) + off_b[i] * t
+        ref_a.append(place(px, py, nx, ny, wa))
+        ref_b.append(place(px, py, -nx, -ny, wb))
+
+    def refine_interval(i: int, in_taper: bool, near_cap: bool, adv: float, pitch: float) -> None:
+        """The per-interval rule, verbatim: it still governs the cap zone, the
+        taper zones and any stroke that already sits at the pitch -- all the
+        places whose trades were priced on this exact code (2026-09-09 and
+        2026-09-20 below). Only a column BODY whose outer rail runs over the
+        pitch on average leaves this rule for the even re-stationing in the
+        caller."""
         if near_cap or adv <= pitch * 1.3:
             ref_a.append(rail_a[i])
             ref_b.append(rail_b[i])
-            continue
+            return
         m = int(math.ceil(adv / pitch))
         # The pieces must stay ABOVE the guard threshold: a bare ceil splits a
         # 0.53 mm interval into 0.26 mm halves, `_short_stitch_guard` fires on
@@ -3034,49 +3100,88 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         else:
             m = min(m, m_clear)
         for j in range(1, m):
-            t = j / m
-            if in_taper:
-                # A taper-zone station is placed on the discrete ladder, so
-                # a station cast from the spine between two of them lands
-                # wherever its own factor fits -- not evenly between its
-                # neighbours. On ribbon_curve's head the pieces of a 1.05 mm
-                # interval came out 0.51 / 0.37 / 0.20 mm: the last one under
-                # the guard, which pulled that cross 0.6 mm and read back as
-                # a 0.82 mm same-rail step (found by the flip of
-                # `subpixel_edges`, whose tip sits one station shorter;
-                # 2026-09-09). The inserted penetrations are interpolated
-                # between the two PROVEN penetrations on each rail instead:
-                # even along the rail by construction, and the crosses ramp
-                # between their neighbours' crosses. The chord between two
-                # rail points on a straight or convex edge lies in the
-                # artwork (tested with the same micron `inside` the body
-                # uses -- two points ON an edge put their chord an ulp
-                # either side of it); where an edge is concave and it does
-                # not, that side falls back to the ladder, as before.
-                qa = (rail_a[i - 1][0] * (1 - t) + rail_a[i][0] * t,
-                      rail_a[i - 1][1] * (1 - t) + rail_a[i][1] * t)
-                qb = (rail_b[i - 1][0] * (1 - t) + rail_b[i][0] * t,
-                      rail_b[i - 1][1] * (1 - t) + rail_b[i][1] * t)
-                ok_a, ok_b = inside.covers(SPoint(qa)), inside.covers(SPoint(qb))
-                if ok_a and ok_b:
-                    ref_a.append(qa)
-                    ref_b.append(qb)
-                    continue
-            px = spine[i - 1][0] * (1 - t) + spine[i][0] * t
-            py = spine[i - 1][1] * (1 - t) + spine[i][1] * t
-            ang = angles[i - 1] * (1 - t) + angles[i] * t   # unwrapped: lerp-safe
-            nx, ny = math.cos(ang), math.sin(ang)
-            if in_taper:
-                wa = wb = width[i - 1] * (1 - t) + width[i] * t
-                ref_a.append(qa if ok_a else place(px, py, nx, ny, wa, False))
-                ref_b.append(qb if ok_b else place(px, py, -nx, -ny, wb, False))
-                continue
-            wa = off_a[i - 1] * (1 - t) + off_a[i] * t
-            wb = off_b[i - 1] * (1 - t) + off_b[i] * t
-            ref_a.append(place(px, py, nx, ny, wa))
-            ref_b.append(place(px, py, -nx, -ny, wb))
+            station(i, j / m, in_taper)
         ref_a.append(rail_a[i])
         ref_b.append(rail_b[i])
+
+    # --- the body of a column is stationed along its OUTER rail -------------
+    #
+    # Measured 2026-10-06 on Hotel Fremont's O (1.2 mm wide on a 2.95 mm outer
+    # radius, the pro's file beside it): the pro's outer rail steps 0.33 mm
+    # between penetrations and short-stitches the inner; ours stepped 0.53 --
+    # the stations sat evenly along the SPINE, the bend opened the outer rail
+    # to 1.3x the pitch before the band above let the refinement fire, and
+    # the inner-rail clamp then refused the insertion it asked for (the
+    # inner interval, 0.38 mm, could not take a split over the guard
+    # threshold). No single interval can be fixed in place: a 0.53 mm
+    # interval splits to 0.26 mm halves, under the guard, which then retracts
+    # alternate OUTER penetrations -- the wrong rail of a curve. So the body
+    # is re-stationed as a whole: its intervals' outer-rail advances are
+    # summed in pitch units (lean-corrected, as `pitch` is), the count of
+    # stations that holds the outer rail at or under the pitch is chosen for
+    # the whole run, and the stations are placed evenly along the outer rail
+    # by the same interpolation the inserted stations always used. The inner
+    # rail then crowds where the bend is tight, and `_short_stitch_guard`
+    # retracts every other inner penetration -- which IS the professional
+    # construction (the pro's O: 22% short crosses, inner on-rail pitch
+    # 0.38). A body already at the pitch on average (every straight bar: its
+    # outer rail is its spine, its stations already sit at the spacing) keeps
+    # the per-interval rule and is byte-identical to before.
+    i = 1
+    while i < n:
+        in_taper, near_cap, adv, pitch = interval(i)
+        if near_cap or in_taper:
+            refine_interval(i, in_taper, near_cap, adv, pitch)
+            i += 1
+            continue
+        j = i
+        units: list[float] = []
+        ivals: list[tuple[bool, bool, float, float]] = []
+        while j < n:
+            tj, cj, aj, pj = interval(j)
+            if tj or cj:
+                break
+            units.append(aj / pj)
+            ivals.append((tj, cj, aj, pj))
+            j += 1
+        count = len(units)
+        total = sum(units)
+        if not outer_rail or total <= count * (1.0 + _OUTER_RAIL_SLACK):
+            # OFF (`cfg.satin_outer_rail_pitch`, default False): every body
+            # interval takes the per-interval rule, byte for byte what shipped.
+            for k in range(count):
+                refine_interval(i + k, *ivals[k])
+        else:
+            n_st = max(count, int(math.ceil(total - 1e-9)))
+            # The inner rail of the same group, at that count: if it lands
+            # within 5% of the short-stitch threshold the guard would fire
+            # on whichever intervals float noise puts a hair under it --
+            # alternate crosses retracted here and there, which the spray
+            # pin reads as 5.9 deg on the 2.5 mm test ring. Dense enough that
+            # it fires on EVERY other station is the professional
+            # construction and reads even; so the count steps up past the
+            # band. Costs stations only on rings whose inner rail would
+            # have sat on the threshold.
+            inner_total = sum(min(math.dist(rail_a[k - 1], rail_a[k]),
+                                  math.dist(rail_b[k - 1], rail_b[k]))
+                              for k in range(i, j))
+            guard = machine.SATIN_SHORT_STITCH_AT_MM
+            if n_st > 0 and 0.95 * guard <= inner_total / n_st < 1.05 * guard:
+                n_st = int(math.ceil(inner_total / (0.95 * guard) - 1e-9))
+            cum = [0.0]
+            for u in units:
+                cum.append(cum[-1] + u)
+            k = 0
+            for s_ in range(1, n_st):
+                pos = s_ * total / n_st
+                while k + 1 < count and cum[k + 1] <= pos:
+                    k += 1
+                u = units[k]
+                t = (pos - cum[k]) / u if u > 1e-12 else 0.0
+                station(i + k, min(max(t, 0.0), 1.0), False)
+            ref_a.append(rail_a[j - 1])
+            ref_b.append(rail_b[j - 1])
+        i = j
     if rail_comp_mm > 0:
         ref_a, ref_b = _push_rails(ref_a, ref_b, poly, rail_comp_mm, rail_comp_floor_mm)
     return ref_a, ref_b
@@ -3775,6 +3880,80 @@ def _member_corridor(piece: list[tuple[float, float]], from_start: bool,
     return sorted(vals)[len(vals) // 2] or half_mm
 
 
+
+# A join member's spine keeps the medial axis's own bend at the corner: an
+# L's skeleton turns over about one half-width on each side of the apex, so
+# the samples nearest the corner already point diagonally. Everything the
+# column does with them follows that diagonal -- `_cross_angles` reads the
+# tangent there, `_extend_to_cap`'s back-chord reads it -- and the owner's
+# last four or five crosses fan into the butting member (Hotel Fremont's E
+# arms into their slab serifs, the T's bar into its hanging ends; Kent,
+# 2026-10-06). The pro sews the arm square to the slab's far edge and the
+# slab square to the arm. So, under `join_square`, a member's spine is made
+# straight up to the corner: its direction is read over its own straight
+# stretch, the bent samples are replaced by that line, and the corner end is
+# the apex projected onto it. `_extend_to_cap` then runs the owner's column
+# out along its own axis, through the butting member's width, to the cap.
+_STRAIGHT_FROM_HALVES = 1.5    # the straight stretch starts this far from the corner ...
+_STRAIGHT_TO_HALVES = 4.0      # ... and reaches this far (or the member's end)
+_BEND_TOL_HALVES = 0.2         # a sample this close to the line is already straight
+
+
+def _straighten_member_end(piece: list[tuple[float, float]], at_end: bool,
+                           half_mm: float) -> list[tuple[float, float]]:
+    """`piece` with its corner end (the last point if `at_end`, else the
+    first) laid on the member's own straight line. A member shorter than
+    the straight stretch, or one whose stretch does not fit a line, is
+    returned as it is."""
+    if half_mm <= 0 or len(piece) < 4:
+        return piece
+    pts = list(piece) if at_end else list(reversed(piece))
+    cum = [0.0]
+    for a, b in zip(pts, pts[1:]):
+        cum.append(cum[-1] + math.dist(a, b))
+    total = cum[-1]
+    lo, hi = _STRAIGHT_FROM_HALVES * half_mm, _STRAIGHT_TO_HALVES * half_mm
+    if total < lo + 0.5 * half_mm:
+        return piece
+    # distance from the corner end, along the spine
+    ref = [p for p, c in zip(pts, cum) if lo <= total - c <= hi]
+    if len(ref) < 3:
+        return piece
+    arr = np.asarray(ref, float)
+    cen = arr.mean(axis=0)
+    _, sv, vt = np.linalg.svd(arr - cen)
+    if sv[0] <= 1e-9 or (len(sv) > 1 and sv[1] > 0.35 * sv[0]):
+        return piece                      # the stretch is not a line: a bend, leave it
+    u = vt[0]
+    # orient u toward the corner end
+    if (np.asarray(pts[-1]) - cen) @ u < 0:
+        u = -u
+    nrm = np.array([-u[1], u[0]])
+    tol = _BEND_TOL_HALVES * half_mm
+    # the first sample, walking in from the corner, that sits on the line
+    q = None
+    for i in range(len(pts) - 1, -1, -1):
+        if total - cum[i] < lo:
+            continue                      # the bend zone itself; keep walking in
+        if abs((np.asarray(pts[i]) - cen) @ nrm) <= tol:
+            q = i
+            break
+    if q is None or q >= len(pts) - 1:
+        return piece
+    # the corner end: the apex projected onto the line, never behind pts[q]
+    base = np.asarray(pts[q], float)
+    t_end = float((np.asarray(pts[-1], float) - base) @ u)
+    if t_end <= 0.0:
+        return piece
+    spacing = max(1e-6, total / max(1, len(pts) - 1))
+    steps = max(1, int(round(t_end / spacing)))
+    # plain floats: a numpy scalar that rode a spine point into a stitch
+    # would reach the service's JSON export, which cannot serialise it
+    straight = [(float(base[0] + u[0] * (t_end * j / steps)), float(base[1] + u[1] * (t_end * j / steps)))
+                for j in range(1, steps + 1)]
+    out = pts[:q + 1] + straight
+    return out if at_end else list(reversed(out))
+
 def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   field: _WidthField | None, split_above_mm: float | None,
                   end_cutback_mm: float, spacing_mm: float,
@@ -3783,6 +3962,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   art_poly: Polygon | None = None,
                   hairline_floor_mm: float = 0.0,
                   rails_follow_edge: bool = False,
+                  outer_rail_pitch: bool = False,
+                  join_square: bool = False,
                   max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
                   fold_guard: bool = False,
                   rail_comp_mm: float = 0.0,
@@ -3812,6 +3993,11 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
         piece = pts[s0:s1 + 1]
         if len(piece) < 2:
             continue
+        if join_square:
+            if m > 0:
+                piece = _straighten_member_end(piece, False, half_mm)
+            if m < len(edges_) - 2:
+                piece = _straighten_member_end(piece, True, half_mm)
         if m == 0:
             free_s, capped_s, tuck_s = stroke.free_start, stroke.capped_start, stroke.tuck_under_start
         elif owners[m - 1]:                    # the member before owns
@@ -3839,7 +4025,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
         pts_m = satin_stroke(poly, member, half_mm, field, split_above_mm,
                              end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                              art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
-                             rails_follow_edge=rails_follow_edge,
+                             rails_follow_edge=rails_follow_edge, outer_rail_pitch=outer_rail_pitch, join_square=join_square,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
@@ -3883,6 +4069,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  art_poly: Polygon | None = None,
                  hairline_floor_mm: float = 0.0,
                  rails_follow_edge: bool = False,
+                  outer_rail_pitch: bool = False,
+                  join_square: bool = False,
                  max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
                  fold_guard: bool = False,
                  rail_comp_mm: float = 0.0,
@@ -3946,7 +4134,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
         return _satin_joined(poly, stroke, half_mm, field, split_above_mm,
                              end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                              art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
-                             rails_follow_edge=rails_follow_edge,
+                             rails_follow_edge=rails_follow_edge, outer_rail_pitch=outer_rail_pitch, join_square=join_square,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
@@ -4101,7 +4289,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
         if max(leans) > 1e-6:
             spine = _resample_by_pitch(spine, leans, spacing_mm)
     rail_a, rail_b = _rail_points(poly, spine, stroke.closed, half_mm, field,
-                                  spacing_mm, angle_deg, follow_edge=rails_follow_edge,
+                                  spacing_mm, angle_deg, follow_edge=rails_follow_edge, outer_rail=outer_rail_pitch,
                                   max_width_mm=max_width_mm, fold_guard=fold_guard,
                                   rail_comp_mm=rail_comp_mm,
                                   rail_comp_floor_mm=rail_comp_floor_mm,
@@ -5349,6 +5537,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 angle_deg: float | None = None,
                 art_poly: Polygon | None = None,
                 rails_follow_edge: bool = False,
+                  outer_rail_pitch: bool = False,
+                  join_square: bool = False,
                 hairline_floor_mm: float = 0.0,
                 patch_junctions: bool | str = False,
                 crown_cover: bool = False,
@@ -5520,7 +5710,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
         satin_stroke(poly, st, half_mm, field, split_above_mm,
                      end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                      art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
-                     rails_follow_edge=rails_follow_edge,
+                     rails_follow_edge=rails_follow_edge, outer_rail_pitch=outer_rail_pitch, join_square=join_square,
                      max_width_mm=max_width_mm, fold_guard=fold_guard,
                      rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                      junction_stack=junction_stack, cap_recentre=cap_recentre,

@@ -448,8 +448,10 @@
   // underlayStitchPx, underlayRowPx, runningOutline, tatamiFill, insetRing,
   // pcaAngleDeg }. Styles: none | edge_run | center_run | zigzag | edge_zigzag |
   // edge_lattice | double_lattice | cross_tatami.
-  // With `fillColumns`: also { columns, openTol, clear(a, b) } -- `clear` says
-  // whether a float from a to b would be left uncut.
+  // With `fillColumns`: also { columns, openTol, clear(a, b), to() } -- `clear`
+  // says whether a float from a to b would be left uncut, and `to()` gives
+  // where the fill begins, or null when that is not known before the
+  // underlay is sewn.
   function underlayRuns(shape, styleName, ctx) {
     const style = styleName || "none";
     if (style === "none") return [];
@@ -548,22 +550,40 @@
     }
     // With `columns`, a tatami pass is told where the thread is (`from`: the
     // end of the run before it) so that it starts from a corner the thread can
-    // float to uncut, instead of always from the top left.
-    const entry = (from) => (ctx.columns ? { columns: true, openTol: ctx.openTol, ground: ctx.ground || undefined, from: from || undefined, clear: ctx.clear || undefined } : {});
+    // float to uncut, instead of always from the top left. And where the
+    // thread goes next (`to`: where the run after it begins, when that is
+    // known before this pass is sewn), so that it ends where the thread can
+    // float on from. `fillStart()` is where the fill begins, when the caller
+    // can say: asked only by the pass that is sewn last before it.
+    const entry = (from, to) => (ctx.columns ? { columns: true, openTol: ctx.openTol, ground: ctx.ground || undefined, from: from || undefined, to: to || undefined, clear: ctx.clear || undefined } : {});
+    const fillStart = () => (ctx.columns && ctx.to ? ctx.to() : null);
     function zigzag(from) {
-      return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: zigRow, angleDeg: fillAngle + 90, maxStitch, markConnectors: true }, entry(from)))];
+      return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: zigRow, angleDeg: fillAngle + 90, maxStitch, markConnectors: true }, entry(from, fillStart())))];
     }
-    function lattice(angleOff, from) {
-      return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: latticeRow, angleDeg: fillAngle + angleOff, maxStitch, markConnectors: true }, entry(from)))];
+    const latticeOpts = (angleOff) => ({ rowSpacing: latticeRow, angleDeg: fillAngle + angleOff, maxStitch, markConnectors: true });
+    function lattice(angleOff, from, to) {
+      return [ctx.tatamiFill(rings, Object.assign(latticeOpts(angleOff), entry(from, to)))];
     }
+    // Where a lattice pass begins, where the plain walk sews it: such a pass
+    // begins at a point of its own, wherever the thread is (fill.js,
+    // `plainStart`). null where the column walk sews it.
+    const latticeStart = (angleOff) => (ctx.columns && ctx.plainStart ? ctx.plainStart(rings, Object.assign(latticeOpts(angleOff), entry(null, null))) : null);
     // `cross_tatami`: the crossing pass alone, at the pitch and stitch read off
     // Kent's commissioned files (docs/underlay-audit-2026-10-05.md; the Python
     // engine's UNDERLAY_CROSS_ROW_MM / UNDERLAY_CROSS_STITCH_MM). Not sewn by us.
     function crossPass(from) {
       const row = Math.max(0.02, 1.0 * pxPerFinalMm), stitch = Math.max(0.02, 4.0 * pxPerFinalMm);
-      return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: row, angleDeg: fillAngle + 90, maxStitch: stitch, markConnectors: true }, entry(from)))];
+      return [ctx.tatamiFill(rings, Object.assign({ rowSpacing: row, angleDeg: fillAngle + 90, maxStitch: stitch, markConnectors: true }, entry(from, fillStart())))];
     }
     const then = (runs, next) => runs.concat(next(endOfRuns(runs)));
+    // Two lattice passes. With `columns`, the first is told where the second
+    // begins, where that is known; and a second that the column walk sews is
+    // told where the fill does.
+    function doubleLattice() {
+      const second = latticeStart(-45);
+      const runs = then(edgeRun(), (from) => lattice(45, from, second));
+      return then(runs, (from) => lattice(-45, from, second ? null : fillStart()));
+    }
     // Single running stitch along the shape's PCA-major axis, clipped to the
     // interior (longest contiguous inside segment through the centroid).
     function centerRun() {
@@ -590,10 +610,10 @@
       case "center_run": return centerRun();
       case "zigzag": return zigzag(null);
       case "edge_zigzag": return then(edgeRun(), zigzag);
-      case "edge_lattice": return then(edgeRun(), (from) => lattice(90, from));
-      case "double_lattice": return then(then(edgeRun(), (from) => lattice(45, from)), (from) => lattice(-45, from));
+      case "edge_lattice": return then(edgeRun(), (from) => lattice(90, from, fillStart()));
+      case "double_lattice": return doubleLattice();
       case "cross_tatami": return crossPass(null);
-      default: return then(edgeRun(), (from) => lattice(90, from));
+      default: return then(edgeRun(), (from) => lattice(90, from, fillStart()));
     }
   }
 
@@ -1013,7 +1033,7 @@
     const edgeInsetPx = EDGE_RUN_INSET_MM * pxPerFinalMm;   // with `fillColumns`
     const underlayCtxBase = {
       pxPerFinalMm, maxStitch: maxPx, underlayStitchPx, underlayRowPx,
-      runningOutline: fillmod.runningOutline, tatamiFill: fillmod.tatamiFill,
+      runningOutline: fillmod.runningOutline, tatamiFill: fillmod.tatamiFill, plainStart: fillmod.plainStart,
       huggingOutline: fillmod.huggingOutline, edgeInsetPx,
       insetRing, pcaAngleDeg,
     };
@@ -1261,6 +1281,19 @@
         // Nothing here is re-derived or guessed.
         const runs = [];
         const runKinds = [];
+        // The cover fill of a FILL shape: the rings it is sewn to, and what the
+        // pass is asked before what it is told (entryOf). Worked out once.
+        let plan = null;
+        const fillPlan = () => {
+          if (plan) return plan;
+          const fillRings = fillRingsOf(poly, holes, rings, islands);
+          // Large-fill center-out: qualify by this shape's final-mm bbox.
+          let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+          for (const q of poly) { if (q.x < bx0) bx0 = q.x; if (q.x > bx1) bx1 = q.x; if (q.y < by0) by0 = q.y; if (q.y > by1) by1 = q.y; }
+          const wMm = (bx1 - bx0) * mmPerPxFinal, hMm = (by1 - by0) * mmPerPxFinal;
+          const largeFill = wMm > centerOutMinMm && hMm > centerOutMinMm;
+          return (plan = { fillRings, largeFill, opts: Object.assign({ rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true, centerOut: largeFill, columns: fillColumns, openTol: rowPx }, staggerOpts) });
+        };
         // With `fillColumns`, on a FILL shape: would a float from a to b be
         // left uncut? Asked while the underlay is still being ordered, so it
         // needs the ground the fill WILL cover, before the fill is built.
@@ -1269,23 +1302,48 @@
         let clearFloat = null, cover = null, mustCut = null;
         if (fillColumns && !thin) {
           cover = rings;
-          try { cover = fillRingsOf(poly, holes, rings, islands); } catch (e) { cover = rings; }
+          try { cover = fillPlan().fillRings; } catch (e) { cover = rings; }
           const crosses = fillmod.openGroundTest(cover);
           mustCut = (a, b) => crosses(a, b, rowPx, 0, maxPx);
           clearFloat = (a, b) => !mustCut(a, b);
         }
-        // What a tatami pass of this shape is told about where the thread is:
-        // the end of the run before it. Nothing, without the flag.
-        const entryOf = (before) => {
-          const from = clearFloat ? endOfRuns(before) : null;
-          return from ? { from, clear: clearFloat } : {};
+        // What a tatami pass of this shape is told: where the thread is (the
+        // end of the run before it) and, when that is known, where it goes
+        // next (`to`). Nothing, without the flag.
+        const entryOf = (before, to) => {
+          if (!clearFloat) return {};
+          const told = {}, from = endOfRuns(before);
+          if (from) told.from = from;
+          if (to) told.to = to;
+          return (from || to) ? Object.assign(told, { clear: clearFloat }) : {};
+        };
+        // With `fillColumns`: where the fill begins, where the plain walk sews
+        // it. Such a fill begins at a point of its own, wherever the thread
+        // is (fill.js, `plainStart`), so the underlay can be told BEFORE the
+        // fill is sewn: an underlay pass the column walk sews then ends where
+        // the thread can float on to it (fill.js, "where the walk ends").
+        // null for a fill the column walk sews: it is told where the thread
+        // is in its turn, and the underlay before it is told nothing.
+        //
+        // Worked out only when a tatami pass of the underlay asks, and once.
+        // An underlay that is an edge run alone has no use for the answer,
+        // and finding out is a pass over the fill's rows.
+        let fillBegins;   // not asked yet
+        const fillStart = () => {
+          if (fillBegins === undefined) {
+            fillBegins = null;
+            if (clearFloat) {
+              try { fillBegins = fillmod.plainStart(fillPlan().fillRings, fillPlan().opts); } catch (e) { /* the fill fails in its turn, as it did */ }
+            }
+          }
+          return fillBegins;
         };
         if (useUnderlay) {
           if (fabric) {
             // Fabric mode: named underlay style per shape type.
             try {
               const style = thin ? (fabric.satinUnderlay || "center_run") : (fabric.fillUnderlay || "edge_lattice");
-              const uctx = Object.assign({ fillAngle: angle, columns: fillColumns && !thin, openTol: rowPx, ground: cover, clear: clearFloat }, underlayCtxBase);
+              const uctx = Object.assign({ fillAngle: angle, columns: fillColumns && !thin, openTol: rowPx, ground: cover, clear: clearFloat, to: fillStart }, underlayCtxBase);
               for (const run of underlayRuns(shape, style, uctx)) if (run && run.length) { runs.push(run); runKinds.push("underlay"); }
             } catch (e) { /* underlay best-effort */ }
           } else {
@@ -1300,7 +1358,7 @@
                 runs.push(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx })); runKinds.push("underlay");
               }
               // (no `ground` here: with no fabric the fill is sewn to these same rings)
-              if (!thin) { runs.push(fillmod.tatamiFill(rings, Object.assign({ rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true, columns: fillColumns, openTol: rowPx }, entryOf(runs)))); runKinds.push("underlay"); }
+              if (!thin) { runs.push(fillmod.tatamiFill(rings, Object.assign({ rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true, columns: fillColumns, openTol: rowPx }, entryOf(runs, fillStart())))); runKinds.push("underlay"); }
             } catch (e) { /* underlay best-effort */ }
           }
         }
@@ -1319,14 +1377,9 @@
             nSatin++;
           }
           else {
-            const fillRings = fillRingsOf(poly, holes, rings, islands);
-            // Large-fill center-out: qualify by this shape's final-mm bbox.
-            let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
-            for (const q of poly) { if (q.x < bx0) bx0 = q.x; if (q.x > bx1) bx1 = q.x; if (q.y < by0) by0 = q.y; if (q.y > by1) by1 = q.y; }
-            const wMm = (bx1 - bx0) * mmPerPxFinal, hMm = (by1 - by0) * mmPerPxFinal;
-            const largeFill = wMm > centerOutMinMm && hMm > centerOutMinMm;
-            pts = fillmod.tatamiFill(fillRings, Object.assign({ rowSpacing: rowPx, angleDeg: angle, maxStitch: maxPx, markConnectors: true, centerOut: largeFill, columns: fillColumns, openTol: rowPx }, staggerOpts, entryOf(runs))); nFill++;
-            if (largeFill && !pts.columnWalk) nCenterOut++;   // the column walk is not center-out
+            const f = fillPlan();
+            pts = fillmod.tatamiFill(f.fillRings, Object.assign({}, f.opts, entryOf(runs))); nFill++;
+            if (f.largeFill && !pts.columnWalk) nCenterOut++;   // the column walk is not center-out
           }
         } catch (e) { pts = []; }
         runs.push(pts); runKinds.push(thin ? "satin" : "fill");

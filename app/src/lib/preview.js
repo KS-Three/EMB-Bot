@@ -1,4 +1,4 @@
-import { designToStrands, jumpTrimMarks } from "./strands.js";
+import { designToStrands, jumpTrimMarks, shrinkSatinStrands } from "./strands.js";
 
 // ---- Fabric contrast helpers (Slice 8 Task 2, B7) --------------------------
 // Perceived brightness (ITU-R BT.709 relative-luminance weights), normalized
@@ -698,7 +698,37 @@ export function drawHoopOutline(ctx, t, fabricRgb, opts) {
   ctx.restore();
 }
 
+// Measuring grid across the whole canvas, anchored on the hoop centre so a
+// line always passes through it: minor every 10 mm, major every 50 mm. Minor
+// lines drop out when zoomed so far out they would read as a tint.
+export function drawGrid(ctx, cw, ch, pxPerMm, ox, oy, g) {
+  const minor = 10 * pxPerMm;
+  if (!(minor > 0)) return;
+  const draw = (step, color, width) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    for (let x = ox - Math.ceil(ox / step) * step; x <= cw; x += step) {
+      const px = Math.round(x) + 0.5;
+      ctx.moveTo(px, 0); ctx.lineTo(px, ch);
+    }
+    for (let y = oy - Math.ceil(oy / step) * step; y <= ch; y += step) {
+      const py = Math.round(y) + 0.5;
+      ctx.moveTo(0, py); ctx.lineTo(cw, py);
+    }
+    ctx.stroke();
+  };
+  ctx.save();
+  if (minor >= 6) draw(minor, g.minor, 1);
+  draw(minor * 5, g.major, 1);
+  ctx.restore();
+}
+
 // opts:
+//   grid          { bed, minor, major, label } CSS colours. With a hoop, paints
+//                  a work bed inside the hoop plus drawGrid() across the canvas
+//                  INSTEAD of fabric/weave/surround fill, and draws only the
+//                  real hoop ring (no garment box) with a size label.
 //   fabric        CSS color string bg fill (FontSelect/exportPNG's existing
 //                  contract -- stays working, B5).
 //   fabricRgb      [r,g,b] bg fill; WINS over `fabric` when both given (B5).
@@ -788,7 +818,19 @@ export function renderRealistic(canvas, design, opts) {
     : null;
   const outerT = hooped && t.realWmm ? { ...viewedT, hoopWmm: t.realWmm, hoopHmm: t.realHmm } : viewedT;
 
-  if (surrounded) {
+  if (hooped && o.grid) {
+    // Studio field: a neutral work bed + measuring grid instead of fabric.
+    // Fabric colour and weave are not drawn at all; the hoop ring below is the
+    // only frame, so it is the size reference.
+    const r = hoopRectPx(outerT);
+    ctx.save();
+    roundRectPath(ctx, r.x, r.y, r.w, r.h, r.r);
+    ctx.clip();
+    ctx.fillStyle = o.grid.bed;
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.restore();
+    drawGrid(ctx, cw, ch, pxPerMm, outerT.ox, outerT.oy, o.grid);
+  } else if (surrounded) {
     // Fabric only INSIDE the hoop (the real one when it is known, else the
     // placement box standing in for it): the canvas outside the ring stays
     // the surround, so the fabric colour reads against a neutral instead of
@@ -812,7 +854,19 @@ export function renderRealistic(canvas, design, opts) {
     // t.ox/t.oy run through the SAME TX/TY used for strands below, so the
     // outline is always drawn at the current view's scale/position -- one
     // shared transform, not a second parallel calculation (B4).
-    if (t.realWmm) {
+    if (o.grid) {
+      // One frame only, drawn light-on-dark, plus its size as a label.
+      drawHoopOutline(ctx, outerT, [0, 0, 0]);
+      const hp = o.hoop.hoop;
+      const label = hp && hp.label ? `${hp.label} hoop` : `${Math.round(outerT.hoopWmm)} × ${Math.round(outerT.hoopHmm)} mm`;
+      const r = hoopRectPx(outerT);
+      ctx.save();
+      ctx.font = "11px ui-monospace, SFMono-Regular, Consolas, monospace";
+      ctx.fillStyle = o.grid.label;
+      ctx.textBaseline = "bottom";
+      ctx.fillText(label, r.x + 2, r.y - 6);
+      ctx.restore();
+    } else if (t.realWmm) {
       // The real hoop FIRST, so the placement box reads as sitting inside it
       // rather than the other way round -- and so a caller that passes no hoop
       // leaves this module's stroke order, which one spec asserts by index,
@@ -838,6 +892,11 @@ export function renderRealistic(canvas, design, opts) {
   // finish), so scrubbing/playing renders the design exactly as the machine
   // would sew it. undefined/null = draw everything (every existing caller).
   if (o.limitStrands != null) strands = strands.slice(0, Math.max(0, o.limitStrands));
+  // Sewn width (2026-10-06): `sewnPullMm` > 0 draws every satin strand with
+  // that much pull compensation taken back off each end — the column at the
+  // width the cloth will show, not the width the file carries. See
+  // strands.js's shrinkSatinStrands; a view only, nothing in the design moves.
+  if (o.sewnPullMm > 0) strands = shrinkSatinStrands(strands, o.sewnPullMm);
   // Thread width is PHYSICAL (THREAD_WIDTH_MM), with a px floor so a thread
   // stays visible in the small font/template previews where pxPerMm is tiny.
   const threadMm = o.threadWidthMm != null ? o.threadWidthMm : THREAD_WIDTH_MM;

@@ -8647,3 +8647,38 @@ measurement moved the problem somewhere else.
 *(measured 2026-10-05 and 10-06 — `tools/stroke_colour_probe.py`, defaults,
 `--dissolve` for the last bullet; tables in scope-history 2026-10-05 and
 2026-10-06)*
+
+
+## A preview shows the file, and the file is wider than the cloth: load the reference file in the same viewer before blaming the engine for weight (2026-10-06)
+
+Kent, on Hotel Fremont in the Studio: *"the letters are waaaay thicker than
+they should be."* Every width instrument said the file was at the pro's
+width — ours 1.23 mm on a 0.76 mm artwork stroke at 80 mm, the pro's own
+Wilcom DST of the same logo 1.40 on 0.81 at 92.5, the same 1.40 on his cap
+file — and the screen still said "way too thick", because the screen was
+showing both files honestly: a satin column is cut wider than its artwork
+by the fabric's pull compensation on each rail (0.3 mm per side on pique,
+Wilcom's documented per-side figure), and the canvas drew that column plus
+the 0.4 mm thread. Nothing simulated the pull. Kent had only ever seen the
+pro's file on cloth.
+
+**The test that settled it cost ten minutes:** the pro's DST uploaded to the
+Studio as a design file, same zoom, rendered HOTEL FREMONT at the same bold
+weight as ours (`docs/renders/` has none; the composite went to Kent as
+`fremont_studio_ours_vs_pro.png`). **Rule:** when a complaint is about
+WEIGHT, render the reference file in the same viewer first. The two cures
+that followed are both views: the "Sewn width" toggle (`lib/sewnWidth.js`,
+each satin strand loses the pull at each end — the rail stepping back in by
+what `_push_rails` gave it; fills and runs untouched; a model of the fabric,
+not a sew-out) and #643's Original-view registration on the stitched
+rectangle, without which the flip the help text recommends compared a logo
+drawn 30% larger than its stitches.
+
+**What the instruments found that the eye called "wobbly":** not rail
+jitter (ours 0.025 mm median deviation to the pro's 0.041) and not stem lean
+(9.5° to 8.1°, and a symmetric zigzag's inherent lean is atan(pitch / 2w),
+which alone explains most of either), but silhouette hair concentrated on
+curves — the O's outer rail stepping 0.53 mm against the pro's 0.33 — which
+is `claude/satin-outer-rail-pitch`'s. The lean-leg alternation that regular
+short stitches produce reads as "spray" on a cross-to-next-cross metric;
+read the crosses and the leans apart before calling a column sprayed.

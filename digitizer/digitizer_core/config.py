@@ -819,6 +819,47 @@ class PipelineConfig:
     # 1.0 mm column fills the counters (scope-history 09-09), which is why
     # this stays None until a glyph-height gate exists.
     lettering_min_column_mm: float | None = None
+    # Letterform priors (`letterform_priors.apply_letterform_priors`,
+    # 2026-10-06): refit every text-tagged letter of a line of lettering to
+    # straight segments and circular arcs under parameters the word shares
+    # -- stem direction from the house line and slant, stroke-width modes
+    # measured across ink, baseline and cap line -- with every vertex move
+    # capped at THIS VALUE times the source image's pixel at the design size
+    # (`1 / Prep.input_px_per_mm`), checked against the traced samples at
+    # every step. None (the default) is OFF: the module is never imported
+    # and the output is byte-identical. The value is k; 0.75 is the measured
+    # one.
+    #
+    # Why: Kent, 2026-10-05, lettering "looks like worms"; the outline-cut
+    # spike's own ceiling was "the letter is not letter-shaped before
+    # construction starts" on a low-resolution upload (Becker is 146 px wide,
+    # 0.66 mm per source pixel at 95.7 mm). A professional tracing that blur
+    # draws straight stems, true arcs, one width. The cap is what keeps the
+    # customer's font: the fit may not invent what the raster could not have
+    # carried. A word passes through untouched when the cap is under the
+    # engine's working-grid pixel (`1 / Prep.px_per_mm`) -- on a source finer
+    # than the grid the grid IS the source pixel, so only an upload stage 1
+    # upscaled is ever touched, and a letter the primitives do not explain
+    # within the cap on more than 10% of its outline is refused untouched.
+    # Per-letter outcome in `Region.meta["letterform_prior"]`.
+    #
+    # Measured (`docs/letterform-priors-2026-10-06.md`, k = 0.75): drone,
+    # enthusiast and fremont byte-identical (gated); Becker 10 of 11 letters
+    # refit, bridge 8 of 8, gaulke 36 of 38; primitives per letter -13 to
+    # -32%, stem-angle spread within a word -32 to -65%; against the pro's
+    # Becker file the centred IoU moves -0.0008 on average (neutral; his
+    # shape -- sharp corners, straight arms -- set the arc rules). The k
+    # sweep: 1.0 opens the gate on every logo and moves away from the pro
+    # (-0.0062), 0.5 gates gaulke too. **The price, today's stage 6:** Becker
+    # +506 stitches and +11 trims (55 -> 66; R / A / E gain 2-4 satin runs
+    # each at the sharpened junctions) for satin bare area 4.33 -> 2.65%;
+    # gaulke neutral (-18 stitches, -1 trim). The outline-cut spike's
+    # over-long check clears the right way on all three (Becker 9.3 -> 6.2%,
+    # bridge 21.3 -> 17.3%, gaulke 5.2 -> 3.1%). Bridge's letters are
+    # segmentation blobs and stay blobs. k and every rule were set on Becker
+    # and bridge; gaulke was held out. OFF until Kent judges the labelled
+    # thread pairs (`tools/eye_pairs`, arm `letterform_priors`).
+    letterform_priors_k: float | None = None
     # Even out stitch widths automatically (`stitchwidth.apply_stitch_widths`,
     # 2026-09-29): a letter more than 15% off its word's weight is offset to
     # the word's median, and `lettering_min_column_mm` (when set) reaches
@@ -1579,6 +1620,54 @@ class PipelineConfig:
     # and the sew-out still owed. False is the symmetric model, byte for
     # byte what shipped before; True stays parked.
     satin_rails_follow_edge: bool | str = "envelope"
+    # Station a satin column's BODY along its OUTER rail (2026-10-06, Kent's
+    # pick after the Hotel Fremont deep dive; `.claude/memory/
+    # lettering-thickness-fremont-2026-10-06.md`). Stations are spaced along
+    # the spine, so on a bend the outer rail opens to 1.3x the pitch before
+    # `_rail_points`' refinement fires, and its inner-rail crowding clamp then
+    # refuses the insertion: Fremont's O sewed its outer rail at 0.53 mm
+    # against the pro's 0.33, and that gap is where the ragged edge Kent
+    # called "wobbly" concentrates (silhouette hair 1.62 vs the pro's 1.33).
+    # ON, a body whose outer-rail advances average over the pitch is
+    # re-stationed evenly along the outer rail by the refinement's own
+    # interpolation; the inner rail then crowds on a tight bend and
+    # `_short_stitch_guard` retracts every other inner penetration -- the
+    # professional construction (the pro's O: 22% short crosses). A straight
+    # bar is byte-identical either way (its outer rail is its spine). Built
+    # OFF on 2026-10-06 because it moves stitches on every curved satin
+    # shape, so the goldens re-capture on the flip, and the price was Kent's
+    # to see on a render first -- the Fremont O's 43 crosses become 54 (`satin_shape` direct,
+    # rail comp 0.3: outer pitch 0.50 -> 0.39), the 2.5 mm test ring 138 ->
+    # 168 stations. Tests: `tests/test_outer_rail_pitch.py`.
+    # **FLIPPED ON 2026-10-06, Kent's call, on the render and the price:**
+    # Fremont at 80 mm +1.0% stitches, trims unchanged, per-letter silhouette
+    # hair 1.49 -> 1.39 (the pro 1.21). The flip moved 19 tests, every one
+    # read and re-pinned in that PR: 12 goldens (the flat lane, stage 2 and
+    # push-comp byte-identity keys, re-captured on Linux), the lettering
+    # coverage pins (`lost_frac` / `overshoot_frac` read every short stitch's
+    # retracted end as thread inside the artwork), the MARINE junction-stack
+    # and rail-comp trims ceilings, the tip-caps end-coverage read and the
+    # shape-overrides byte-identity key. False is the pre-flip emitter,
+    # byte for byte.
+    satin_outer_rail_pitch: bool = True
+    # A join corner's members sew SQUARE to it (2026-10-06, the serif and
+    # junction fans; Kent's "start on" after the Hotel Fremont deep dive).
+    # `_split_sharp_corners` already cuts an E's arm from its hanging slab
+    # serif and the arm owns the corner, but the member's spine kept the
+    # medial axis's own bend -- an L's skeleton turns over about one
+    # half-width each side of the apex -- so the owner's last four or five
+    # crosses leaned up to 45 deg into the slab and the slab's first crosses
+    # leaned back (Fremont's E arms, the T's bar ends, the L's foot). ON,
+    # `_satin_joined` lays each member's corner end on the member's own
+    # straight line (`_straighten_member_end`: direction read over the
+    # stretch 1.5-4 half-widths from the corner, the bent samples replaced,
+    # the apex projected onto the line), so the owner's column runs square
+    # through the butting member's width to the cap and the butting member
+    # starts square under it -- the pro's construction. Built OFF: the join
+    # members move on every letter with a slab or an L, so the goldens
+    # re-capture on the flip, and the render is Kent's to judge first.
+    # Tests: `tests/test_join_corner_straight.py`.
+    satin_join_square: bool = False
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the

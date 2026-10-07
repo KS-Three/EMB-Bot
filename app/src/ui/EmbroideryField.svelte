@@ -8,6 +8,7 @@
   import { pickScaleBar } from "../lib/scalebar.js";
   import { tip } from "../lib/tip.js";
   import { designToStrands, strandStitchOrdinals } from "../lib/strands.js";
+  import { sewnPullFor, hasSatinSpans } from "../lib/sewnWidth.js";
   import { advanceIndex, clampIndex, nextSpeed } from "../lib/simulate.js";
   import { EMB } from "../lib/emb.js";
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
@@ -148,6 +149,17 @@
   // dashed needle-up travel lines and X markers at trims.
   let showJumps = false;
   let showTrims = false;
+  // Sewn width (2026-10-06): satin columns drawn with the fabric's pull
+  // compensation taken back off, the width the cloth shows rather than the
+  // width the file carries. A view toggle like jumps/trims — nothing in the
+  // design moves. The pull is the project's garment preset with its profile,
+  // the same number the service compensated with (lib/sewnWidth.js). Only a
+  // design with satin spans has anything for it to act on, so the toggle is
+  // disabled otherwise rather than silently doing nothing.
+  let sewnWidthView = false;
+  function toggleSewnWidth() { sewnWidthView = !sewnWidthView; scheduleViewRepaint(); }
+  $: sewnPullMm = sewnWidthView ? sewnPullFor(project) : 0;
+  $: canSewnWidth = !!(lastGenerateResult && lastGenerateResult.combined && hasSatinSpans(lastGenerateResult.combined)) && sewnPullFor(project) > 0;
   function toggleJumps() { showJumps = !showJumps; scheduleViewRepaint(); }
   function toggleTrims() { showTrims = !showTrims; scheduleViewRepaint(); }
   // Every shape of a digitized element used to be outlined in cyan, with a
@@ -330,6 +342,7 @@
       fabricRgb: project && project.fabricRgb,
       weave: true,
       surround: surroundColor(),
+      grid: gridColors(),
       view,
     });
   }
@@ -342,6 +355,19 @@
     if (typeof document === "undefined") return "#22252c";
     const v = getComputedStyle(document.documentElement).getPropertyValue("--surround").trim();
     return v || "#22252c";
+  }
+
+  // Work bed + measuring grid, read off theme tokens (fallbacks are the token
+  // values) so the canvas and the CSS can never drift.
+  function gridColors() {
+    const cs = typeof document === "undefined" ? null : getComputedStyle(document.documentElement);
+    const tok = (name, fb) => (cs && cs.getPropertyValue(name).trim()) || fb;
+    return {
+      bed: tok("--field-bed", "#7b8190"),
+      minor: tok("--field-grid-minor", "rgba(255,255,255,0.10)"),
+      major: tok("--field-grid-major", "rgba(255,255,255,0.22)"),
+      label: tok("--surround-muted", "#a3a9b6"),
+    };
   }
 
   function accentColor() {
@@ -1897,10 +1923,12 @@
       fabricRgb: project.fabricRgb,
       weave: true,
       surround: surroundColor(),
+      grid: gridColors(),
       view,
       showJumps,
       showTrims,
       threadStyle: realisticView ? "realistic" : "flat",
+      sewnPullMm,
     });
     hasDesign = true;
 
@@ -1933,10 +1961,12 @@
         fabricRgb: project.fabricRgb,
         weave: true,
         surround: surroundColor(),
+        grid: gridColors(),
         view,
         showJumps,
         showTrims,
         threadStyle: realisticView ? "realistic" : "flat",
+        sewnPullMm,
         // While simulating, every repaint (zoom/pan included) draws only the
         // sewn-so-far prefix -- otherwise a mid-playback wheel event would
         // flash the finished design.
@@ -3391,6 +3421,16 @@
         aria-label="Show trims"
         use:tip={"trims"}
       ><Icon name="scissors" /><span class="zoomlabel">Trims</span></button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle zoomlabelled"
+        class:simon={sewnWidthView}
+        on:click={toggleSewnWidth}
+        disabled={!hasDesign || !canSewnWidth}
+        aria-pressed={sewnWidthView}
+        aria-label="Show columns as sewn"
+        use:tip={"sewnWidth"}
+      ><Icon name="nodes" /><span class="zoomlabel">Sewn width</span></button>
       <span class="zoomsep" aria-hidden="true"></span>
       <button
         type="button"
