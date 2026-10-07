@@ -1,0 +1,32 @@
+{
+  "sitting": "2026-10-07",
+  "page": "labelled before | after, arm letterform_priors (letterform_priors_k=0.75), base = this lane's shipped defaults at REAL_ART sizes; rendered on commit 95c7eb07's engine, digitizer/eye_pairs_out/gallery/",
+  "ruling": {
+    "verdict": "flip_on",
+    "value": "letterform_priors_k=0.75",
+    "given": "in chat, 2026-10-07 (no ruling doc on the page)",
+    "owed": "the N: logged as MASTER_SCOPE defect 59 (a stage-6 fan at the sharpened junction, not the refit outline)"
+  },
+  "pairs": [
+    {
+      "fixture": "becker",
+      "verdict": "after",
+      "did_the_flag_do_what_it_claims": "yes",
+      "note": "the \"N\" was better before - everything else was better after"
+    },
+    {
+      "fixture": "bridge",
+      "verdict": "both_bad",
+      "did_the_flag_do_what_it_claims": null,
+      "note": null
+    }
+  ],
+  "identical_not_shown": ["drone", "enthusiast", "fremont", "gaulke", "tires"],
+  "identical_why": {
+    "drone": "gated: 0.104 mm source pixel, cap under the working grid",
+    "enthusiast": "gated: 0.073 mm",
+    "fremont": "gated: 0.037 mm",
+    "gaulke": "gated: the corpus's photo/logo_gaulke_roofing.png is 14.0 px/mm (0.071 mm pixel = the grid's), all 39 tagged letters pass:grid",
+    "tires": "no text-tagged lettering (script)"
+  }
+}

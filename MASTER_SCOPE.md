@@ -207,6 +207,8 @@ needle-breakage signal. ~~No off switch for photo classes~~ — stale when writt
 
 58. **Black-and-white logos sew in four to six cones — the palette is handed anti-alias grey for every small shape. OPEN LEAD, nothing built.** At ~5 source px/mm a thin stroke has almost no pixel of its own ink, so `robust_region_colour` cannot help; `logo_mfab_lc` sews 2,718 grey stitches and 30 white. A probe cures `logo_golke_roofing` (5 → 2) and harms Bridge Bar, whose thin bands are defect 27's halo; the pair fails (2026-10-06). Whether to build is Kent's. *(measured 2026-10-06 — `tools/stroke_colour_probe.py`; DOCTRINE 2026-10-05)*
 
+59. **Today's satin decomposition fans a sharp lettering junction — Becker's N under `letterform_priors` (ON 2026-10-07), OPEN, the N Kent owes a fix.** The refit N's outline is the cleaner of the two (13 vertices: two straight stems and one straight diagonal, against 40 on the trace), and stage 6 sews its sharpened lower wedge, where the diagonal meets the right stem, as a fan of long crosses radiating from the corner with loose ends at the foot, and a second fan at the upper-left: 5 → 8 satin runs, 687 → 1,162 stitches on that one letter at 100 mm, longest step 9.1 → 11.7 mm *(measured 2026-10-07 — `scratch_letterform_priors/sheets/becker_N_strokes_off_on.png`, the ON and OFF runs through `plan_stitches`)*. Kent's note on the labelled page, verbatim: *the "N" was better before - everything else was better after* *(ruled 2026-10-07 — `docs/eye-pairs-2026-10-07/kent-notes.json`)*. **The lever is the junction / column construction, not the refit:** this is the outline-cut spike's "compound piece fanned" class (`docs/outline-cut-columns-2026-10-05.md`, failure class 1), produced by the rail model's decomposition on a cleaner wedge; that lane cuts an N into stem / diagonal / stem and cannot fan it *(confirmed 2026-10-07 — the same crop with the refit outline drawn: the outline has no wedge the fan could be tracing)*. Across the word the price is the flag's listed one: Becker +506 stitches and +11 trims, R / A / E each gaining 2–4 columns at their sharpened junctions, for satin bare 4.33 → 2.65% *(measured 2026-10-07 — `docs/letterform-priors-2026-10-06.md`, "The pairs")*. Not sewn.
+
 ### Closed — kept numbered, because ten other docs cite them by number
 
 Full text: [`docs/scope-history.md`](docs/scope-history.md). Pointers, not status. **One entry per line — `scope_budget.py` parses
@@ -503,16 +505,15 @@ about the facts.
    `trim` in the stream at each. No stitch moves. **Flip it after 22.**
    **Not sewn.** Flipped as 25 is.
    *(measured 2026-10-04 — [`docs/dst-float-cuts-2026-10-04.md`](docs/dst-float-cuts-2026-10-04.md))*
-29. **`letterform_priors_k` — NEW 2026-10-06, built OFF, judged on the labelled
-   thread pairs (arm `letterform_priors`, k 0.75).** A low-resolution upload's
-   lettering refit to lines and arcs under the word's stem direction, widths
-   and baseline before construction, no vertex moved past 0.75 source pixels,
-   a letter the primitives do not explain left as traced. Touches only an
-   upscaled upload: Becker 10 of 11 letters, bridge 8 of 8, gaulke 36 of 38;
-   drone, enthusiast and fremont byte-identical. Price on today's satin:
-   Becker +506 stitches, +11 trims for bare 4.33 → 2.65%; gaulke neutral.
-   Bridge's letters are segmentation blobs and stay blobs. **Not sewn.**
-   *(measured 2026-10-06 — [`docs/letterform-priors-2026-10-06.md`](docs/letterform-priors-2026-10-06.md); `tests/test_letterform_priors.py`)*
+29. **RESOLVED 2026-10-07 — Kent flipped `letterform_priors_k` ON at 0.75** on the
+   labelled thread pairs (becker "after", job done "yes"; bridge "both bad"),
+   with the N logged as defect 59. A low-resolution upload's lettering is
+   refit to lines and arcs under the word's stem direction, widths and
+   baseline before construction; touches only an upscaled upload (Becker 10
+   of 11 letters, bridge 8 of 8); drone, enthusiast, fremont and the corpus's
+   photo gaulke byte-identical. Price: Becker +506 stitches, +11 trims for
+   bare 4.33 → 2.65%. **Not sewn.**
+   *(ruled 2026-10-07 — `docs/eye-pairs-2026-10-07/kent-notes.json`; [`docs/letterform-priors-2026-10-06.md`](docs/letterform-priors-2026-10-06.md))*
 
 ## Cross-cutting issues
 

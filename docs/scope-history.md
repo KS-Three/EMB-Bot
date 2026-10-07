@@ -19722,3 +19722,16 @@ case for closing 11 crowns without spending that advantage. Neither built
 rail cure does it (the envelope is inert on them, `True` costs `lost_frac`),
 and the mechanism is a decomposition gap — the strokes' union leaves wedges
 no stroke claims. Construction: `docs/superpowers/plans/2026-09-30-crown-cover.md` §7.
+
+## 2026-10-07 — `letterform_priors_k` ON at 0.75: Kent's ruling on the labelled thread pairs
+
+Fourteen arm-runs on seven logos, two pairs changed (becker, bridge), five
+identical by the grid gate or for want of tagged text — the corpus's gaulke
+is the 14 px/mm photo file, all 39 letters `pass:grid`. Kent: becker *after*,
+job done *yes*, *the "N" was better before - everything else was better
+after*; bridge *both bad*. Ruled in chat: flip, log the N. Defect 59 is the
+N: a clean 13-vertex refit outline whose sharpened wedge today's stage 6
+sews as a fan (5 → 8 satin runs, 687 → 1,162 stitches on the letter). The
+OFF path stays (None), pinned byte-identical with an explicit None.
+`docs/eye-pairs-2026-10-07/kent-notes.json`;
+`docs/letterform-priors-2026-10-06.md`, "Sitting 2026-10-07".

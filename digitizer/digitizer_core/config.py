@@ -826,9 +826,9 @@ class PipelineConfig:
     # measured across ink, baseline and cap line -- with every vertex move
     # capped at THIS VALUE times the source image's pixel at the design size
     # (`1 / Prep.input_px_per_mm`), checked against the traced samples at
-    # every step. None (the default) is OFF: the module is never imported
-    # and the output is byte-identical. The value is k; 0.75 is the measured
-    # one.
+    # every step. None is OFF: the module is never imported and the output
+    # is byte-identical to the pre-flag engine. The value is k; 0.75 is the
+    # measured one, and the default since Kent's ruling below.
     #
     # Why: Kent, 2026-10-05, lettering "looks like worms"; the outline-cut
     # spike's own ceiling was "the letter is not letter-shaped before
@@ -857,9 +857,20 @@ class PipelineConfig:
     # over-long check clears the right way on all three (Becker 9.3 -> 6.2%,
     # bridge 21.3 -> 17.3%, gaulke 5.2 -> 3.1%). Bridge's letters are
     # segmentation blobs and stay blobs. k and every rule were set on Becker
-    # and bridge; gaulke was held out. OFF until Kent judges the labelled
-    # thread pairs (`tools/eye_pairs`, arm `letterform_priors`).
-    letterform_priors_k: float | None = None
+    # and bridge; gaulke was held out.
+    #
+    # **ON at 0.75 -- Kent's ruling in chat, 2026-10-07, on the labelled
+    # thread pairs** (`docs/eye-pairs-2026-10-07/kent-notes.json`): becker
+    # "after", job done "yes" -- *the "N" was better before - everything
+    # else was better after*; bridge "both bad". The N is logged as defect
+    # 59: the refit N's outline is the cleaner of the two (13 vertices,
+    # straight stems and diagonal), and today's stage-6 decomposition sews
+    # its sharpened wedge as a fan of long crosses (5 -> 8 satin runs, 687 ->
+    # 1,162 stitches on that letter at 100 mm) -- the construction's defect,
+    # not the outline's; the outline-cut lane's N is stem / diagonal / stem.
+    # None keeps the OFF path, byte-identical to the pre-flag engine
+    # (`tests/test_letterform_priors.py` pins it with an explicit None).
+    letterform_priors_k: float | None = 0.75
     # Even out stitch widths automatically (`stitchwidth.apply_stitch_widths`,
     # 2026-09-29): a letter more than 15% off its word's weight is offset to
     # the word's median, and `lettering_min_column_mm` (when set) reaches
