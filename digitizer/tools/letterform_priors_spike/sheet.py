@@ -22,6 +22,7 @@ from PIL import Image
 PX_PER_MM = 18
 PAD_MM = 1.5
 MAX_PANEL_PX = 720
+MIN_PANEL_PX = 260
 GUTTER = 8
 LABEL_H = 22
 
@@ -113,6 +114,8 @@ def letter_row(d: dict, art: np.ndarray, row, pro_poly=None, px_per_mm: float = 
     big = max(box[2] - box[0], box[3] - box[1]) * s
     if big > MAX_PANEL_PX:
         s = MAX_PANEL_PX / max(box[2] - box[0], box[3] - box[1])
+    elif big < MIN_PANEL_PX:                     # a 5 mm letter still gets a panel to judge
+        s = MIN_PANEL_PX / max(box[2] - box[0], box[3] - box[1])
     x0, y0 = box[0], box[1]
     f = row.fit
     panels = []
