@@ -219,6 +219,18 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "a Y, and HOTEL FREMONT's main wordmark goes bean and loses its slab "
         "serifs. The 1.0 mm line is a gate-1 number set without cloth: the page "
         "says which reads right, only cloth says which sews right."),
+    "letterform_priors": (
+        "letterform_priors_k=0.75 (built OFF 2026-10-06)",
+        "A low-resolution upload's lettering is refit to straight segments and "
+        "circular arcs under the word's own stem direction, stroke widths and "
+        "baseline before anything is constructed, every vertex moved at most "
+        "0.75 of a source pixel and a letter the lines and arcs do not explain "
+        "left as traced. Only an upload the engine upscaled is touched: becker "
+        "(0.66 mm pixels), bridge (0.29) and gaulke (0.21). Drone, enthusiast "
+        "and fremont are byte-identical by design -- that identity is the "
+        "flag's first promise, not a failure to act -- and tires has no tagged "
+        "lettering. On today's satin the refit sews becker with more columns "
+        "and trims (55 -> 66) for less bare cloth."),
 }
 
 # Arms that left the pending table because they SHIPPED. A sitting rendered
