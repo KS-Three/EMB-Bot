@@ -19947,3 +19947,15 @@ name.
   shape, not looked at here.
 - `MASTER_SCOPE.md` is not edited: nothing it says changed, and it is within
   a few words of its budget.
+
+## 2026-10-07 — EXP travel's last record stays at 12.1 mm: Kent's pick
+
+The entry above left one judgement to Kent. The last record of travel into
+a run is a stitch record; #656 keeps it at 12.1 mm an axis, the records
+`dst.js` lays, where `pes.js`'s shape and #477's words ("travel is
+untouched") would also allow EXP's own 12.7 mm. The difference is a jump and
+a stitch against one stitch record on 352 of 12,231 shipped stitches. Put to
+him with both priced, the day #656 merged: **keep 12.1 mm.** No EXP gains a
+stitch record longer than any it has held since 2026-09-13, and whether a
+machine takes a longer one stays unsewn. The comment in `src/exp.js` carries
+the pick; no code changes with it.
