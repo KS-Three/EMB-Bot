@@ -228,13 +228,23 @@ test("the EXP puts the needle down where the DST does", () => {
   // The DST's records, read with the importer's own bit table.
   const { decodeDelta } = require("../src/dstimport.js");
   const dst = require("../src/dst.js");
-  const dstHoles = (design) => {
+  const dstRecords = (design) => {
     const bytes = dst.encodeDST(design), out = [];
-    let x = 0, y = 0;
     for (let i = 512; i + 2 < bytes.length && bytes[i + 2] !== 0xf3; i += 3) {
-      const [dx, dy] = decodeDelta(bytes[i], bytes[i + 1], bytes[i + 2]);
-      x += dx; y += dy;
-      if (!(bytes[i + 2] & 0xc0)) out.push([x, y]);
+      const [dx, dy] = decodeDelta(bytes[i], bytes[i + 1], bytes[i + 2]), flags = bytes[i + 2] & 0xc0;
+      out.push({ kind: flags === 0xc0 ? "color" : flags ? "jump" : "stitch", dx, dy });
+    }
+    return out;
+  };
+  // The thread a reader sees: from one needle hole to the next when nothing
+  // stands between their two records.
+  const threadOf = (records) => {
+    const out = [];
+    let x = 0, y = 0, sewing = false;
+    for (const r of records) {
+      if (r.kind === "stitch" && sewing) out.push(`${x},${y}>${x + r.dx},${y + r.dy}`);
+      x += r.dx; y += r.dy;
+      sewing = r.kind === "stitch";
     }
     return out;
   };
@@ -275,6 +285,18 @@ test("the EXP puts the needle down where the DST does", () => {
     }
     drawn.push(recs.join(" "));
   }
+  // And six as long as a small design: a rule that held only for a stream's
+  // first records would pass every stream above.
+  for (let t = 0; t < 6; t++) {
+    const recs = [];
+    let x = 0, y = 0;
+    for (let k = 400; k > 0; k--) {
+      const q = rnd(), reach = q < 0.05 ? 0 : q < 0.8 ? 40 : 500, p = rnd();
+      x += Math.round((rnd() - 0.5) * 2 * reach); y += Math.round((rnd() - 0.5) * 2 * reach);
+      recs.push(`${p < 0.8 ? "s" : p < 0.93 ? "j" : "t"}${x},${y}`);
+    }
+    drawn.push(recs.join(" "));
+  }
   // A stitch that follows travel and lies more than a record (121 an axis)
   // from where the needle stands: what the rule is about. The place is kept
   // as this writer keeps it: a colour change moves nothing.
@@ -290,14 +312,32 @@ test("the EXP puts the needle down where the DST does", () => {
     }
     return { n, longest };
   };
+  // The stitches a stream lays where this writer's needle already stands.
+  const sewnOnTheSpot = (st) => {
+    let x = 0, y = 0, n = 0;
+    for (const s of st) {
+      if (s.type === "color") continue;
+      if (sews(s) && s.x === x && s.y === y) n++;
+      x = s.x; y = s.y;
+    }
+    return n;
+  };
   let travelled = 0, splitSewn = 0, onTheSpot = 0, longest = 0;
   for (const text of drawn) {
     const d = { stitches: stream(text), colors: BLACK };
-    const recs = expRecords(d), holes = holesOf(recs);
-    assert.deepStrictEqual(holes, dstHoles(d), text);
-    // Equal holes are not the whole of it: a writer that cut the thread
-    // before long travel, or laid travel's last record at the format's 127,
-    // puts the needle down in the same places.
+    const recs = expRecords(d), holes = holesOf(recs), theirs = dstRecords(d);
+    assert.deepStrictEqual(holes, holesOf(theirs), text.slice(0, 400));
+    // Equal holes are not the whole of it. A jump laid between two sewn
+    // stitches leaves both holes and takes the thread from between them;
+    // a writer that cut the thread before long travel, or laid travel's
+    // last record at the format's 127, puts the needle down in the same
+    // places too.
+    assert.deepStrictEqual(threadOf(recs), threadOf(theirs), text.slice(0, 400) + ": the thread between the holes");
+    // And travel ends ON its stitch: not a jump to the place and a stitch
+    // record of no length there, which is one record more for the same hole.
+    // (Counted against the stream, not the DST: a colour change that carries
+    // a move is where the two files lay the same stitch differently.)
+    assert.strictEqual(recs.filter((r) => r.kind === "stitch" && !r.dx && !r.dy).length, sewnOnTheSpot(d.stitches), text.slice(0, 400) + ": stitch records of no length");
     for (const r of recs) {
       const reach = Math.max(Math.abs(r.dx), Math.abs(r.dy));
       assert.ok(reach <= (r.kind === "stitch" ? 121 : 127), `${text}: a ${r.kind} record of (${r.dx},${r.dy})`);
