@@ -8708,3 +8708,18 @@ curves — the O's outer rail stepping 0.53 mm against the pro's 0.33 — which
 is `claude/satin-outer-rail-pitch`'s. The lean-leg alternation that regular
 short stitches produce reads as "spray" on a cross-to-next-cross metric;
 read the crosses and the leans apart before calling a column sprayed.
+
+## 2026-10-07 — `letterform_priors_k` ruled ON at 0.75 on the labelled page; the N it costs is the construction's, not the outline's
+
+Kent on the thread pairs: becker *after* (*the "N" was better before -
+everything else was better after*), bridge *both bad*; ruled in chat: flip,
+log the N. What it costs: Becker +506 stitches and +11 trims (R / A / E
+each 2–4 more columns at their sharpened junctions) for satin bare 4.33 →
+2.65%; only an upload stage 1 upscaled is touched, the rest byte-identical.
+The N owed is defect 59: the refit outline is 13 clean vertices and stage 6
+fans its sharpened wedge (5 → 8 satin runs, 687 → 1,162 stitches on one
+letter) — rendered before it was written down, because "the N was better
+before" reads as an outline fault and is not one. **A cleaner outline can
+sew worse on today's satin: price a lettering outline change on the
+decomposition it feeds, and attribute a fan to the construction by drawing
+the outline under it.** *(measured 2026-10-07 — `docs/letterform-priors-2026-10-06.md`, "Sitting 2026-10-07")*
