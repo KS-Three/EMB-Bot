@@ -671,7 +671,7 @@ class LetterCut:
         self.unsewn = unsewn
 
 
-def letter_columns(poly: Polygon, pitch_mm: float = 0.2) -> LetterCut:
+def letter_columns(poly: Polygon, pitch_mm: float = 0.4) -> LetterCut:
     """A letter polygon -> its stroke Columns. `pitch_mm` is the progress
     between consecutive stations along the moving rail -- the satin spacing
     itself (`machine.SATIN_SPACING_MM`): a station is one cross, and the

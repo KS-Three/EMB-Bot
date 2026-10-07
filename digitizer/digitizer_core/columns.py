@@ -333,7 +333,8 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
     column census stage 7 copies into the plan's counters."""
-    from .stage6_satin import _comb_thresholds, _push_rails, _split_points   # same package, same rules
+    from .stage6_satin import (_comb_thresholds, _push_rails, _short_stitch_guard,   # same package,
+                               _split_points)                                        # same rules
 
     report = {"too_thin": False, "jumps": 0, "empty": False,
               "columns": 0, "columns_unsewn": 0, "thin_crosses": 0, "stations": 0,
@@ -348,7 +349,15 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         b_pts = [b for _, b in col.stations]
         if pull_mm > 0:
             a_pts, b_pts = _push_rails(a_pts, b_pts, poly, pull_mm, pull_floor_mm)
-        kept = [(a, b) for a, b in zip(a_pts, b_pts) if math.dist(a, b) >= min_cross_mm]
+        # Short stitches on the inside of a bend (`satinplay.js` pullShort;
+        # the engine's own guard): where a rail's penetrations bunch up
+        # under SATIN_SHORT_STITCH_AT_MM -- the inner rail of an S's curl is
+        # a single point every outer cross converges on -- every other cross
+        # is pulled back toward the outer rail, so the inside stops re-entering
+        # one needle hole. The pro's S: the outer rail dense, the inner rail
+        # short-stitched (lettering-thickness-fremont-2026-10-06).
+        guarded = _short_stitch_guard(a_pts, b_pts)
+        kept = [(a, b) for a, b in guarded if math.dist(a, b) >= min_cross_mm]
         report["thin_crosses"] += len(col.stations) - len(kept)
         if len(kept) < 3:
             report["columns_unsewn"] += 1
