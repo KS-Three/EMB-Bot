@@ -559,6 +559,56 @@ test("generateElement: manual sizeMm target scales the design width, same rule t
   expect(d.widthMM).toBeLessThanOrEqual(40 + 1.5);
 });
 
+// Kent's call 2026-10-07 (MASTER_SCOPE defect 52, "Waiting on Kent" 22): the
+// manual lane passes `fillColumns`, so a fill lays no thread across a cut-out
+// the user drew. The same regions through the engine WITHOUT the flag cross
+// it on every row -- that half is what proves the reading below can see a
+// crossing at all, and the image and basic-shape lanes still sew that way.
+test("generateElement: a manual fill lays no thread across its cut-out (fillColumns, manual lane only)", async () => {
+  const { generateElement, fabricInForce } = await import("./generate.js");
+  const { defaultManualElement, defaultManualShape } = await import("./project.js");
+  const { shapesToRegions } = await import("./manualShapes.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const outer = {
+    ...defaultManualShape("s1"), stitchType: "fill",
+    points: [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 300 }, { x: 0, y: 300 }],
+  };
+  const hole = {
+    ...defaultManualShape("s2"), cutOut: true,
+    points: [{ x: 100, y: 100 }, { x: 200, y: 100 }, { x: 200, y: 200 }, { x: 100, y: 200 }],
+  };
+  const el = { ...defaultManualElement("e1"), shapes: [outer, hole], sizeMm: 40, underlay: true };
+  // Thread laid through the middle half of the hole: a move counts unless the
+  // thread was cut since the last penetration (the `end` sentinel is no move).
+  const across = (d) => {
+    const xs = d.stitches.filter((s) => s.type === "stitch").map((s) => s.x);
+    const ys = d.stitches.filter((s) => s.type === "stitch").map((s) => s.y);
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+    const r = (Math.max(...xs) - Math.min(...xs)) / 12;   // the hole is a third of the width; this is half of it
+    const inside = (x, y) => Math.abs(x - cx) < r && Math.abs(y - cy) < r;
+    let n = 0, cut = true, prev = null;
+    for (const s of d.stitches) {
+      if (s.type === "end") break;
+      if (s.type === "trim") { cut = true; prev = s; continue; }
+      if (prev && !cut) for (let k = 1; k < 40; k++) if (inside(prev.x + (s.x - prev.x) * k / 40, prev.y + (s.y - prev.y) * k / 40)) { n++; break; }
+      if (s.type === "stitch") cut = false;
+      prev = s;
+    }
+    return n;
+  };
+  const d = generateElement(el, garment, {});
+  expect(d.stitchCount).toBeGreaterThan(100);
+  expect(across(d)).toBe(0);
+  const { regions, pxPerMm } = shapesToRegions(el.shapes);
+  // The manual branch's own call, with only the flag left out.
+  const fabric = fabricInForce(garment.id, undefined);
+  const call = { garment, fabric, pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: 40, offsetXMm: 0, offsetYMm: 0 };
+  const on = EMB.buildQualityDesign(regions, { ...call, fillColumns: true });
+  expect(on.stitches).toEqual(d.stitches);
+  expect(across(EMB.buildQualityDesign(regions, call))).toBeGreaterThan(10);
+});
+
 test("generateAll combines a manual shape element with a text element into one multi-color design", async () => {
   const { generateAll } = await import("./generate.js");
   const { defaultManualElement, defaultManualShape } = await import("./project.js");
