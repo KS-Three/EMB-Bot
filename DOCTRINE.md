@@ -3667,18 +3667,21 @@ flattery. Anything unlisted raises `NotInManifest`.
   could: that fixture's travel-in is zero units long, and DST's naive version
   had been caught by its IMPORTER's test, which EXP has none of. So for a
   month the EXP of a design put the needle down along moves its DST and PES
-  travel: as shipped, on 285 of 2,870 of the shape tool's preset designs (the
-  thin-armed stars, whose satin floats to a far arm and sews back), and on
-  any imported stitch file whose first record is a stitch, where it sewed a
-  line from the middle of the hoop to where the design starts. **A rule N
-  encoders share is tested by ONE fixture run through all N and compared file
-  against file — not by N comments that say "same as the other one".**
-  crossval's `travel` fixture and `tools/file-cut-census.mjs`'s hole-by-hole
-  rows are that now. **And a census of the builders' streams cannot see a
-  stream no builder writes:** every builder opens a run with a jump, a stitch
-  file need not, which is why the worse half hid until an import was written
-  three ways (`tools/file-cut-import-set.mjs`). *(measured 2026-10-07 —
-  scope-history 10-07)*
+  travel: as shipped, on 2,455 of 2,700 drawn shapes set to satin and 285 of
+  2,870 of the shape tool's presets (wherever the browser's satin floats to a
+  far arm and sews back), and on any imported stitch file whose first record
+  is a stitch, where it sewed a line from the middle of the hoop to where the
+  design starts. **A rule N encoders share is tested by ONE fixture run
+  through all N and compared file against file — not by N comments that say
+  "same as the other one".** crossval's `travel` fixture and
+  `tools/file-cut-census.mjs`'s hole-by-hole rows are that now. **And a census
+  counts the designs its sets hold, not the product's:** the two lanes that
+  carried this were in none of them. The "manual" lane is all fills, so a
+  drawn shape set to satin was never built; and every builder opens a run
+  with a jump where a stitch file need not, so no set's stream opened with a
+  stitch (`tools/file-cut-satin-set.mjs`, `tools/file-cut-import-set.mjs`).
+  Before quoting a lane as clean, read what its set builds. *(measured
+  2026-10-07 — scope-history 10-07)*
 
   **The safety property is a measurement, not an argument.** The DST of all 85
   shipped fonts at left-chest size hashes

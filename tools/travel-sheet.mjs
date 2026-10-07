@@ -3,17 +3,18 @@
 //
 //   node tools/travel-sheet.mjs out.svg [--against otherSrc]
 //
-// Three designs whose stream holds a stitch that FOLLOWS travel from more than
+// Four designs whose stream holds a stitch that FOLLOWS travel from more than
 // one record away (the chain rule, src/dst.js):
-//   a thin four-point star off the shape tool, whose satin floats to a far arm
-//     and sews back where it was;
+//   a hand-drawn T set to satin and a thin four-point star off the shape
+//     tool, whose satin floats to a far arm and sews back where it was;
 //   a stitch file whose first record is a stitch, imported and placed off the
 //     middle of the hoop;
 //   lettering, then that stitch file as the project's second element.
 // Each is written as DST, PES and EXP, read back by pystitch
 // (tools/crossval_decode.py) and drawn: thread, in blue, between two stitches
 // in a row; a grey dashed line for every other move; a dot for each needle
-// hole; a red ring round a hole the DST of the same design has not.
+// hole; a red ring round a hole the DST of the same design has not (none of
+// its holes on it or within 0.1 mm).
 //
 // --against: a fourth panel, the EXP as another engine's writer lays it. The
 // writer before 2026-10-07 is the one to see: it sewed along such a move.
@@ -55,6 +56,12 @@ const star = (() => {
   const { regions, pxPerMm } = shapesToRegions([{ id: "shape", points: shapePresetPoints("star", { points: 4, innerRatio: 0.15 }, 20), curves: {}, stitchType: "auto", colorRgb: [20, 20, 20], angleDeg: null }]);
   return DG.buildQualityDesign(regions, { garment: chest, fabric: EMB.getFabric(EMB.fabricForGarment(chest.id)), pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: 20, offsetXMm: 0, offsetYMm: 0 });
 })();
+// A T as a person draws one on the side canvas, its stitch type set to Satin.
+const drawnT = (() => {
+  const points = [[100, 60], [300, 60], [300, 100], [220, 100], [220, 260], [180, 260], [180, 100], [100, 100]].map(([x, y]) => ({ x, y }));
+  const { regions, pxPerMm } = shapesToRegions([{ id: "s", points, curves: {}, stitchType: "satin", colorRgb: [20, 20, 20], angleDeg: null }]);
+  return DG.buildQualityDesign(regions, { garment: chest, fabric: EMB.getFabric(EMB.fabricForGarment(chest.id)), pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: 40, offsetXMm: 0, offsetYMm: 0 });
+})();
 const file = EMB.decodeDSTStandard(new Uint8Array(readFileSync(join(ROOT, "test", "fixtures", "standard-tajima.dst"))));
 const placed = EMB.buildImportedDesign(file, { garment: chest, offsetXMm: 30, offsetYMm: -20, blockColors: {} });
 const fonts = JSON.parse(readFileSync(join(SRC, "fonts", "manifest.json"), "utf8")).fonts;
@@ -62,6 +69,7 @@ const font = EMB.decodeFontBin(readFileSync(join(SRC, "fonts", "bin", fonts[0].k
 const text = DG.buildLetteringDesign(font, "KENT", { garment: chest, pxPerMm: 8, underlay: true, rgb: [20, 20, 20], colorRanges: [], weightPreset: "normal", slantDeg: 0, targetWidthMm: 40, offsetXMm: 0, offsetYMm: 15, letterSpacingMm: 0, arcDeg: 0, rotationDeg: 0, align: "center" });
 const pair = combineDesigns([text, EMB.buildImportedDesign(file, { garment: chest, offsetXMm: 0, offsetYMm: -15, blockColors: {} })]);
 const DESIGNS = [
+  ["A hand-drawn T set to satin, 40 mm", drawnT],
   ["A four-point star, 20 mm, off the shape tool", star],
   ["A stitch file that opens with a stitch, placed 30 mm right of the hoop's middle and 20 mm down", placed],
   ["Lettering, then that stitch file as the second element", pair],
@@ -90,9 +98,15 @@ try {
     });
     const dst = new Map();
     for (const h of panels[0].holes) dst.set(h.x + "," + h.y, (dst.get(h.x + "," + h.y) || 0) + 1);
+    // A hole the DST has not: none of the DST's is on it or one unit (0.1 mm)
+    // from it. The unit is the PES writer's: where a SEWN move over 12.1 mm
+    // is split, its split point can sit one unit from the other two's (it
+    // splits with y pointing down, and a half rounds the other way).
     for (const p of panels) {
       const left = new Map(dst);
-      p.extra = p.holes.filter((h) => { const k = h.x + "," + h.y, n = left.get(k) || 0; if (n) left.set(k, n - 1); return !n; });
+      const take = (k) => { const n = left.get(k) || 0; if (n) left.set(k, n - 1); return n > 0; };
+      p.extra = p.holes.filter((h) => !take(h.x + "," + h.y));
+      p.extra = p.extra.filter((h) => ![-1, 0, 1].some((dx) => [-1, 0, 1].some((dy) => take((h.x + dx) + "," + (h.y + dy)))));
     }
     rows.push({ title, panels, stream: sewn.length });
   });
@@ -141,7 +155,7 @@ for (const row of rows) {
 const width = W * rows[0].panels.length;
 const legend = [
   "Each file as pystitch reads it. Blue: thread between two stitches in a row. Grey, dashed: every other move. Dot: a needle hole.",
-  "Red ring: a hole the DST of the same design has not (in a PES, a split point 0.1 mm from the DST's). Open circle: where the file starts.",
+  "Red ring: a hole with no hole of the same design's DST on it or within 0.1 mm of it. Open circle: where the file starts.",
 ].map((line, i) => `<text x="8" y="${y0 + 14 + 16 * i}" ${C}>${esc(line)}</text>`).join("\n");
 writeFileSync(resolve(OUT), `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${y0 + 42}" width="${width}" height="${y0 + 42}" font-family="Arial, Helvetica, sans-serif">
 <rect width="${width}" height="${y0 + 42}" fill="#ffffff"/>

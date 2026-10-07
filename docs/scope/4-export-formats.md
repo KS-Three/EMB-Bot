@@ -58,9 +58,9 @@ lettering or manual shapes downloads through the browser encoders.
   (a jump, a cut, a colour change, the start of the file) from more than one
   record away is reached by jump records up to the last, which is the stitch.
   `encodeEXP` laid that whole move as stitches, so its file held needle holes
-  the DST and the PES of the same design had not: as shipped, on the shape
-  tool's thin-armed stars and on any imported stitch file that opens with a
-  stitch. The split points did not move and no stitch record is longer than
+  the DST and the PES of the same design had not: as shipped, on most drawn
+  shapes set to satin, on the shape tool's thin-armed stars, and on any
+  imported stitch file that opens with a stitch. The split points did not move and no stitch record is longer than
   before; a design with no such stitch is byte-identical. A file exported
   before the fix keeps its holes. *(measured 2026-10-07 —
   `tools/file-cut-census.mjs`, crossval's `travel` fixture; scope-history

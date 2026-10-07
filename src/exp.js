@@ -173,11 +173,12 @@
       //   dst  J0 S0 S30 J100 J100 J100 S100 S30
       //   exp  J0 S0 S30 J100 J100 S100 S100 S30   <- a needle hole at x=330
       //   pes  J0 S0 S30 J200 S200 S30
-      // It shipped: the shape tool's thin-armed stars (the satin floats to a
-      // far arm and sews back where it was), and any imported stitch file
-      // whose first record is a stitch, which sewed a line from the middle of
-      // the hoop to where the design starts. `tools/file-cut-census.mjs`
-      // counts them; `docs/scope-history.md` 2026-10-07 has the numbers.
+      // It shipped: wherever the browser's satin floats to a far arm and sews
+      // back where it was (most drawn shapes set to satin, the shape tool's
+      // thin-armed stars), and any imported stitch file whose first record is
+      // a stitch, which sewed a line from the middle of the hoop to where the
+      // design starts. `tools/file-cut-census.mjs` counts them;
+      // `docs/scope-history.md` 2026-10-07 has the numbers.
       //
       // WHERE a move is split has not changed, only WHAT the records before
       // the last are. A jump splits at the RECORD limit. A stitch splits at

@@ -19654,3 +19654,165 @@ dropped, the arm capped over the slab's width with the terminal fan — where
 the pro sews the slab as its own column; the H's and N's junction ends. The
 flip waits on Kent's look at the renders; the join members move on every
 letter with a slab or an L, so goldens re-capture then.
+
+## 2026-10-07 — The EXP writer sewed where the other two files travel: the chain rule, in the third encoder
+
+A stitch that follows travel (a jump, a cut, a colour change, the start of
+the file) and lies more than one record from where the needle stands is
+reached by travel. `dst.js` has laid that move as jump records up to its
+last, the stitch, since 2026-09-07 and `pes.js` since 2026-09-12 (the chain
+rule). `exp.js` split EVERY stitch record into stitches, so its file put the
+needle down along the way. Found on 2026-10-06 by the independent re-measure
+of `cutFloats` (#639), outside that PR.
+
+One stream through the three writers of `main` at `32b0dd3f`, each file read
+back record by record:
+
+```
+j0,0 s0,0 s30,0 j230,0 s430,0 s460,0      (units of 0.1 mm)
+DST  J0 S0 S30 J100 J100 J100 S100 S30
+EXP  J0 S0 S30 J100 J100 S100 S100 S30     a needle hole at x=330
+PES  J0 S0 S30 J200 S200 S30
+```
+
+pystitch reads 4, 5 and 4 stitches from them. The same on `main` after a cut
+(three holes along a 40 mm move), after a colour change, and where the
+file's first record is a stitch away from the origin (three along 50 mm).
+
+**An omission, not a choice.** `exp.js` was the encoder `dst.js` was matched
+to on 2026-09-07 ("a stitch splits into stitches"); the second half of the
+rule went into `dst.js` that day because `test/dstimport.test.js` failed
+without it, and EXP has no importer. When EXP got its 12.1 mm ceiling on
+2026-09-13 its comment, and that commit's message, said "the same `chained ?
+… : …` shape pes.js uses" over a line that tested `isJump`. crossval's `long`
+fixture said both encoders "must keep splitting that as jumps", with a
+travel-in of zero length that could not show whether they did. DOCTRINE's
+chain rule names no exception. No ruling, test or comment asks an EXP to sew
+such a move.
+
+**How often, as shipped.** On `main` at `32b0dd3f`, every design written by
+the three writers and the three files compared hole by hole:
+
+| lane | designs | with such a stitch | such stitches | needle holes the EXP has and the DST has not |
+|---|---|---|---|---|
+| a drawn shape set to satin | 2,700 | 2,455 | 10,578 | 38,920 |
+| the shape tool's presets | 2,870 | 285 | 1,512 | 2,141 |
+| a drawn shape set to fill | 5,400 | 0 | 0 | 0 |
+| the image lane | 252 | 2 | 2 | 3 |
+| lettering | 765 | 0 | 0 | 0 |
+| a stitch file imported (42 files, 48 placements each) | 2,016 | 91 | 91 | 259 |
+| two elements of one project | 909 | 48 | 48 | 182 |
+| the service's digitized fixture | 45 | 0 | 0 | 0 |
+
+The DST and the PES agree on the count of holes in every design, and no hole
+of the DST is missing from the EXP.
+
+**Satin.** The first, second and fourth rows are one thing: the browser's
+medial satin floats to another arm of the shape and sews back where it was
+(defect 57), `s-91,-3 j93,1 s-101,0` on a 20 mm four-point star. On the way
+back the EXP put the needle down. A T, an L, a plus, a Y, an H, an E and an
+arrow drawn by hand and set to satin each have such a stitch at every size
+from 30 to 80 mm (most from 20); a straight bar has none, and no fill has
+one. Up to 394 holes in one design; the longest such move is 335.5 mm. All
+285 presets are stars of 4, 6, 8 or 12 points with thin arms (inner ratio
+0.15 to 0.6); no star of 3 or 5 points, no circle, heart or rectangle, and
+not the tool's default star (5 points, 0.45). The lettering builder cannot
+make one: every jump lands on its run's first point and the first stitch is
+laid there.
+
+**A stitch file.** Every builder opens a run with a jump. A stitch file need
+not: its first record can be a stitch, and the importer then centres the
+design and moves it to its place, so the stream's first record is a stitch
+far from the origin the writers start at. The EXP sewed a line from the
+middle of the hoop to the design's first stitch, up to 194.7 mm here. As a
+project's second element the same file follows the splice's cut and colour
+change, and the EXP sewed from where the first element ended. Two of the 42
+files open with a stitch: `test/fixtures/standard-tajima.dst` (written by
+pystitch) and one of the 36 kept outside the repo; the 40 others open with
+jump records. 85 of the 91 are that; the other 6 are placements made larger,
+where a stitch after a colour change then lay over 12.1 mm away.
+
+**With `cutFloats` on** (built OFF, "Waiting on Kent" 28) 1,091 of the
+presets' 1,512 such stitches follow a cut instead of a jump: `main`'s EXP
+would have cut the thread and then sewn along the travel.
+
+**The fix** is the kind of the records before the last, and nothing else. A
+move is split where it was split: a stitch at 121 units an axis, a jump at
+127. The records before the last are stitches when the move continues a sewn
+run and jumps when it does not; a trim, a colour change and the start of the
+file cut the chain, as in the other two. So travel into a run is the records
+`dst.js` lays for it, and no stitch record is longer than before. `pes.js`
+lets the last record of such a move run to PEC's whole reach; that was not
+copied, because a stitch record over 12.1 mm is a kind of record no EXP has
+held since 2026-09-13 and whether a machine takes one is not a question a
+writer settles (gate 1). 352 of the 12,231 as-shipped stitches lie 12.2 to
+12.7 mm from where travel ended and are the only ones whose last record the
+two readings would write differently: a jump and a stitch here, one stitch
+record there.
+
+**Which files change, and the proof that no other does.** Every design
+written by `main`'s EXP writer and by the new one: the census's shapes,
+image designs and sweep under four arms (as shipped, `fillColumns`,
+`cutFloats`, both), lettering, the imports, the pairs, the digitized fixture
+and the drawn shapes set to satin, 73,543 designs.
+
+- The EXP's bytes differ on 3,742, every one a design with at least one such
+  stitch, and are the same on the other 69,801, none of which has one. As
+  shipped: 23,212 designs, 2,881 change, 20,331 do not.
+- Each changed file is the old file record for record, the same moves in
+  the same order, with stitch records turned into jump records where they
+  stand: 47,937 of them, which is the count of holes the old EXPs had and
+  their DSTs had not. A file grows two bytes for each. Trims and colour
+  changes are untouched and every file ends where it ended.
+- After it the EXP has the DST's holes in every design, none more and none
+  fewer, each point as often as the DST has it.
+- No stitch record of any EXP carries more than 12.1 mm an axis, before or
+  after.
+- `dst.js` and `pes.js` are not touched: every DST and PES is the same bytes
+  (counted by the tool's `--against` on the satin and import sets, 5,670
+  designs).
+
+A file exported before the fix keeps its holes.
+
+**Tests, written first.** Nine in `test/exp.test.js`: `dst.test.js`'s four
+chain tests re-aimed at this file's bytes, as `pes.test.js` re-aimed them;
+the finding's stream to the record; travel into a run as jumps that land
+exactly and stay on the line; no stitch record over 12.1 mm; the EXP's holes
+against the DST's on 306 streams, 300 of them drawn at random with every
+kind of record; and `main`'s bytes for a design the rule does not reach. Six
+fail on `main`'s writer and three pass on it by design. A `travel` fixture
+in the crossval harness, read by pystitch from all three files: 17 stitches
+from `main`'s EXP of the 8-stitch design, 8 now, in four tests. 21 mutants
+of the rule, 21 die.
+
+**Instruments.** `tools/file-cut-census.mjs` now counts the stitches that
+follow travel from over a record away, by what they follow, and the needle
+holes of each file, the EXP's against the DST's hole by hole; `--against`
+says for each of the three files whether two engines write the same bytes.
+Its old rows are unchanged (compared row for row with `main`'s tool on a
+sample). Two sets for the lanes its own three leave out, and they are the
+two that carried this: `tools/file-cut-satin-set.mjs` (the census's own 150
+drawn shapes, set to satin; its "manual" lane is all fills) and
+`tools/file-cut-import-set.mjs` (imports, pairs, the digitized fixture; the
+repo's six stitch files, and `FILE_CUT_DST_DIRS` for files kept outside it).
+`tools/travel-sheet.mjs` draws four such designs from what pystitch reads of
+each file: [`docs/renders/exp-travel-2026-10-07/`](renders/exp-travel-2026-10-07/).
+
+The table's rows come from two readers that agree: a scratch census with its
+own readers of the three formats, and the committed tool's, on `main`'s
+engine extracted from `32b0dd3f`.
+
+**Seen, not touched.**
+
+- The float itself. The satin still floats to a far arm and back (defect
+  57); in all three files it is travel now, and a DST machine cuts there
+  (`cutFloats`).
+- Where a SEWN move over 12.1 mm is split, the PES writer's split point can
+  sit 0.1 mm from the other two's: it splits with y pointing down, and a half
+  rounds the other way. 417 of 29,297 holes on the digitized fixture's 45
+  placements, never more than one unit.
+- `pes.js` writes the last record of travel into a run as one stitch record
+  of any length up to 204.7 mm (`J200 S200` above). That is its 2026-09-12
+  shape, not looked at here.
+- `MASTER_SCOPE.md` is not edited: nothing it says changed, and it is within
+  a few words of its budget.

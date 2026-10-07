@@ -2115,9 +2115,12 @@ and controllable to the user.
     that the other two had not. Check a change to one writer against the
     other two at the FILE: `node tools/file-cut-census.mjs` counts the three
     files' needle holes hole by hole, `--against <src>` says which designs'
-    files change, and `--set tools/file-cut-import-set.mjs` adds the lanes
-    whose stream can OPEN with a stitch (an imported stitch file, alone or
-    as a project's second element), which no builder's stream does.
+    files change. Its own three sets leave two lanes out, and they are the
+    two that mattered here: `--set tools/file-cut-satin-set.mjs` is a drawn
+    shape SET TO SATIN (the "manual" lane is all fills), and `--set
+    tools/file-cut-import-set.mjs` the lanes whose stream can OPEN with a
+    stitch (an imported stitch file, alone or as a project's second
+    element), which no builder's stream does.
 - **`app/src/`** — Svelte 5 Studio. `App.svelte` + `ui/` (steps/components) +
   `lib/` (non-DOM logic, each paired with a `.spec.js`): `project.js` (data
   model, v2 = `{version,garmentId,selectedId,elements:[...]}`), `generate.js`
