@@ -1,11 +1,12 @@
 # Letterform priors: refit a low-res letter to lines and arcs before construction (2026-10-06)
 
-**Status: built, wired DEFAULT OFF (Kent's option A, 2026-10-06), judged on
-thread pairs.** The geometry and the word prior are
+**Status: built, wired, and ON at k = 0.75 since Kent's ruling of
+2026-10-07 on the labelled thread pairs** (see "Sitting 2026-10-07" below;
+the N he named is defect 59). The geometry and the word prior are
 `digitizer/digitizer_core/letterform_priors.py`; the pipeline runs them only
-when `PipelineConfig.letterform_priors_k` is set (None by default: the module
-is never imported, the output byte-identical — see "The wiring" below for
-the proof). No default changed, no stage-6 edit, nothing sewn. The spike's
+when `PipelineConfig.letterform_priors_k` is set (None is off: the module
+is never imported, the output byte-identical to the pre-flag engine — see
+"The wiring" below for the proof). No stage-6 edit, nothing sewn. The spike's
 tools in `digitizer/tools/letterform_priors_spike/` (run, refit, pro, sheet,
 batch) import the engine module — one copy of the code. The inputs
 (`<logo>.pkl`, `<logo>.result.pkl`), every sheet and every batch JSON live in
@@ -321,6 +322,35 @@ price.py`, measured 2026-10-07 at the spike's sizes; satin bare % from
 | drone / enthusiast / fremont / tires | identical | identical | identical | identical | pass:grid / none |
 
 The same table rides under the arm's head on the page (`--tables`).
+
+## Sitting 2026-10-07 (Kent, on the labelled page)
+
+Verdicts from the page's store (`docs/eye-pairs-2026-10-07/kent-notes.json`):
+
+| fixture | verdict | did the flag do what it claims | note, verbatim |
+|---|---|---|---|
+| becker | after | yes | *the "N" was better before - everything else was better after* |
+| bridge | both bad | — | — |
+
+**Ruling, in chat, 2026-10-07: flip `letterform_priors` ON at k = 0.75, and
+log the N as a defect.** `PipelineConfig.letterform_priors_k` defaults to
+0.75 from this PR; None keeps the OFF path, and the byte-identical tests now
+pass it explicitly.
+
+**What the N is** (`scratch_letterform_priors/sheets/becker_N_strokes_off_
+on.png`: the N's satin crosses over its polygon, OFF and ON at the page's
+100 mm). The refit outline is the cleaner of the two — 13 vertices, two
+straight stems and one straight diagonal, against 40 on the trace. What
+changed is the construction on it: today's stage 6 sews the sharpened lower
+wedge, where the diagonal meets the right stem, as a fan of long crosses
+radiating from the corner with loose ends at the foot, and a second fan at
+the upper-left; 5 → 8 satin runs, 687 → 1,162 stitches on that one letter,
+longest step 9.1 → 11.7 mm. The OFF N's blunter wedge was sewn in five runs
+square to their strokes. So the fan is the satin decomposition's answer to
+a cleaner wedge — the outline-cut spike's "compound piece fanned" class
+(its failure class 1) — and the lever is the junction / column construction
+(that lane cuts an N into stem / diagonal / stem and cannot fan it), not the
+refit. Logged as MASTER_SCOPE defect 59.
 
 ## Failure classes, largest first
 

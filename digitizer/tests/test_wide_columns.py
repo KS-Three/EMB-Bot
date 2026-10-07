@@ -138,9 +138,16 @@ def _becker_coverage(monkeypatch, guard: bool) -> tuple[float, float]:
     # the symmetric model here for the same reason as the rails: the reading
     # stays on the engine it was made on, and a cap that the envelope fills
     # past the line is the open question above, not this test's.
+    # ... and a SIXTH, 2026-10-07: `letterform_priors_k` ON at 0.75 (Kent's
+    # ruling on its labelled sitting) refits Becker's letters to lines and
+    # arcs before construction, and at 114 mm the guarded reading on the
+    # refit letters is 7.72 -- over the line, on the N's sharpened junction
+    # that today's decomposition sews as a fan (MASTER_SCOPE defect 59),
+    # which is not the bend this guard caps. Held OFF here, same rule.
     cfg = PipelineConfig(target_width_mm=_FOLD_WIDTH_MM, wide_columns=True,
                          satin_corner_twigs=False, satin_junction_stack=False,
-                         satin_rail_comp=False, satin_rails_follow_edge=False)
+                         satin_rail_comp=False, satin_rails_follow_edge=False,
+                         letterform_priors_k=None)
     result, plan = digitize(art, cfg)
     m = run_preflight(result, plan, cfg, image=art)["metrics"]
     return float(m["coverage_max"]), float(m["uncovered_worst_mm2"])

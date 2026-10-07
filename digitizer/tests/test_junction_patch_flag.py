@@ -45,6 +45,13 @@ def _cfg(**kw) -> PipelineConfig:
     # in scope-history's flip addendum; this file pins the patch mechanism
     # on the polygons it was measured on.
     kw.setdefault("subpixel_edges_upscaled", False)
+    # `letterform_priors_k` held OFF for the same reason (ON at 0.75 since
+    # Kent's 2026-10-07 ruling): the refit letters have no bare crotch for
+    # the patch to find -- with the default ON all three patch tests read
+    # "the tatami patch stopped firing on this fixture" (2026-10-07). The
+    # patch is pinned on the staircase polygons it was measured on; the
+    # refit's own price is MASTER_SCOPE 29 / defect 59.
+    kw.setdefault("letterform_priors_k", None)
     # `satin_rails_follow_edge` held at the symmetric model since the envelope
     # went ON (2026-09-30, Kent's ruling on its labelled sitting): the far
     # rail's reach into the crotch takes three stitches off the satin cover's

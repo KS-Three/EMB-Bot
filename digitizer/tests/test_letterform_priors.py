@@ -1,5 +1,6 @@
 """Letterform priors (`digitizer_core/letterform_priors.py`, behind
-`PipelineConfig.letterform_priors_k`, default None).
+`PipelineConfig.letterform_priors_k`: None is off, 0.75 the default since
+Kent's ruling of 2026-10-07).
 
 The pure-geometry half: the tolerance cap, the grid gate's byte-identical
 pass-through, line and arc fits on synthetic stems and bowls, per-letter
@@ -220,19 +221,22 @@ def _letters_png(tmp_path: Path, px_per_letter: int, name: str) -> Path:
 
 
 def _cfg(**kw):
+    """OFF unless told otherwise: the flag defaults ON since Kent's ruling of
+    2026-10-07, so every OFF arm here passes None explicitly."""
     from digitizer_core import PipelineConfig
+    kw.setdefault("letterform_priors_k", None)
     return PipelineConfig(target_width_mm=60.0, garment_id="left_chest", max_colors=6, **kw)
 
 
-def test_off_is_the_default_and_never_imports_the_module(tmp_path):
-    """OFF is the shipped engine: the pipeline imports `letterform_priors`
+def test_off_path_never_imports_the_module_and_the_default_is_kents(tmp_path):
+    """None is the pre-flag engine: the pipeline imports `letterform_priors`
     inside the flag's branch only, and an OFF run leaves it out of
-    `sys.modules`."""
+    `sys.modules`. The default is 0.75 since Kent's ruling (2026-10-07)."""
     import ast
     from digitizer_core import PipelineConfig
     from digitizer_core.pipeline import run_stages
 
-    assert PipelineConfig().letterform_priors_k is None
+    assert PipelineConfig().letterform_priors_k == 0.75
     src = HERE.parent / "digitizer_core" / "pipeline.py"
     tree = ast.parse(src.read_text(encoding="utf-8"))
     top = [n for n in ast.walk(tree)
@@ -334,7 +338,7 @@ def test_clean_real_uploads_are_byte_identical_on(rel, width, garment):
     from digitizer_core.pipeline import run_stages
     src = str(HERE.parent / "testdata" / rel)
     kw = dict(target_width_mm=width, garment_id=garment, max_colors=6)
-    off = run_stages(src, PipelineConfig(**kw))
+    off = run_stages(src, PipelineConfig(letterform_priors_k=None, **kw))
     on = run_stages(src, PipelineConfig(letterform_priors_k=0.75, **kw))
     assert _regions_hash(on) == _regions_hash(off)
     tagged = {r.meta.get("letterform_prior") for r in on.regions if r.meta.get("letterform_prior")}

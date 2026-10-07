@@ -19948,12 +19948,35 @@ name.
 - `MASTER_SCOPE.md` is not edited: nothing it says changed, and it is within
   a few words of its budget.
 
+## 2026-10-07 — `letterform_priors_k` ON at 0.75: Kent's ruling on the labelled thread pairs
+
+Fourteen arm-runs on seven logos, two pairs changed (becker, bridge), five
+identical by the grid gate or for want of tagged text — the corpus's gaulke
+is the 14 px/mm photo file, all 39 letters `pass:grid`. Kent: becker *after*,
+job done *yes*, *the "N" was better before - everything else was better
+after*; bridge *both bad*. Ruled in chat: flip, log the N. Defect 59 is the
+N: a clean 13-vertex refit outline whose sharpened wedge today's stage 6
+sews as a fan (5 → 8 satin runs, 687 → 1,162 stitches on the letter). The
+OFF path stays (None), pinned byte-identical with an explicit None.
+`docs/eye-pairs-2026-10-07/kent-notes.json`;
+`docs/letterform-priors-2026-10-06.md`, "Sitting 2026-10-07".
+
+**Moved here from MASTER_SCOPE "Waiting on Kent" 7 (resolved 2026-09-15),
+for the word budget:** of the 26 glyphs that sewed nothing, the 20
+`roaring_twenties_KOR`/`_small` ones sew again; 6 stay a GATE 1 refusal.
+The grep came back >0 on all twenty. Kent ruled 2026-09-13 to revive them,
+and `stripRunParamsIfSatin` now strips only glyphs that carry satin
+columns. The rebuild landed 2026-09-15. The other 6 (`western_light`,
+`ondulamarif_*`) have no authored run length upstream, and defaulting one
+is refused by `test/run-fonts.test.js:44`. The item read "still open" until
+2026-10-02. *(`test/font-dead-glyphs.test.js`; detail: area 2)*
+
 ## 2026-10-07 — EXP travel's last record stays at 12.1 mm: Kent's pick
 
-The entry above left one judgement to Kent. The last record of travel into
-a run is a stitch record; #656 keeps it at 12.1 mm an axis, the records
-`dst.js` lays, where `pes.js`'s shape and #477's words ("travel is
-untouched") would also allow EXP's own 12.7 mm. The difference is a jump and
+The EXP chain-rule entry of this date (#656) left one judgement to Kent. The
+last record of travel into a run is a stitch record; #656 keeps it at 12.1
+mm an axis, the records `dst.js` lays, where `pes.js`'s shape and #477's
+words ("travel is untouched") would also allow EXP's own 12.7 mm. The difference is a jump and
 a stitch against one stitch record on 352 of 12,231 shipped stitches. Put to
 him with both priced, the day #656 merged: **keep 12.1 mm.** No EXP gains a
 stitch record longer than any it has held since 2026-09-13, and whether a
