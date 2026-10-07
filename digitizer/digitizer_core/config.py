@@ -1682,8 +1682,19 @@ class PipelineConfig:
     # from the same stages, stitches and trims identical (13,742 / 34), fan
     # ends 7 -> 5 over 36 columns, the E 2 -> 0, the T's bar square across
     # both hanging ends. False is the pre-flip joiner, byte for byte.
-    # Tests: `tests/test_join_corner_straight.py`.
-    satin_join_square: bool = True
+    # Tests: `tests/test_join_corner_straight.py` (the behaviour tests pass
+    # the flag explicitly, so they read the same whatever this default is).
+    # **HELD OFF 2026-10-07, Kent's ruling, by its own guards:** merged with
+    # current main and run on the lettering set, ON loses one artwork
+    # element of at least 1 mm2 of the ENTHUSIAST wordmark (`tests/test_
+    # lettering_coverage_regression.py::test_no_element_of_the_wordmark_goes_
+    # unsewn`, a fixture that had never lost one) and tips three sibling
+    # bars: that fixture's fine `lost_frac` 0.1702 against 0.17, the
+    # tip-caps end bare 10.53 against 9.5 mm2, a rail-comp mid-rail hole of
+    # 1.24 against 0.55 mm2 -- all four green with the flag off on the same
+    # tree. The flip returns as its own PR once the lost element is named
+    # and either fixed or ruled.
+    satin_join_square: bool = False
     # A slab serif's axis is its own column, not a cap (2026-10-07, Kent's
     # pick after the join-square flip: "T-shaped slabs: own column, not a
     # cap"). A slab across a stem's end (a foot, a T-shaped terminal) puts

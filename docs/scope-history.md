@@ -20024,3 +20024,7 @@ of a stroke width and the skeleton grows no half into them, so there is
 no pair to keep. The feet's crosses lean ~30° under the house angle's
 lean cap where the pro's feet sew square; that is the lean rule's, not
 this flag's. OFF byte-identical (pinned). The flip is Kent's.
+
+**Moved here from MASTER_SCOPE "Waiting on Kent" 15 (resolved 2026-09-12), for the word budget (2026-10-07):**
+15. **RESOLVED 2026-09-12 — the wizard's steps are browser history entries** (`lib/stepHistory.js`). The anti-trap rule IS the design and survives here: **the first step REPLACES the entry the browser already has, only a step after it pushes**, so Back from step 1 still leaves the Studio. Not routing — no URL reaches `pushState`. *(`app/src/App.stepHistory.spec.js`, with a source guard against a bare `step = ...`)* **Superseded 2026-09-30:** there are no step entries; the Download sheet is the one history entry, and Back closes it.
+
