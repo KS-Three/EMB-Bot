@@ -1615,6 +1615,18 @@ flattery. Anything unlisted raises `NotInManifest`.
 
 ## Gotchas — cost someone a session once
 
+- **Satin density is a needle every `SATIN_SPACING_MM` on EACH rail — count
+  needles per rail, never total stitches between tiers.** The engine's flat
+  zigzag is A1, B1, A2, B2: both ends of every station, stations the spacing
+  apart. The Column lane's first wiring put one end down per station, rails
+  alternating, and sewed every letter at HALF the satin tier's density for a
+  day; it had compared total letter stitch counts against a tier that also
+  lays a zigzag underlay, read the real density as a doubling, and halved it.
+  Measured on MARINE's I: 0.40 mm per rail under the satin tier, 0.80 under
+  the lane, 0.40 after the fix. A thread-width coverage yardstick does not
+  catch it either way at 0.3 mm thread. *(found 2026-10-07 by the desktop
+  sitting agent counting crosses on the N; fixed in PR #660)*
+
 - **Adding an engine file means FOUR lists, and only three were documented —
   now guarded.** `src/*.js` files are plain scripts sharing one
   `globalThis.EMB`, and the load order lives in `app/scripts/copy-engine.mjs`
