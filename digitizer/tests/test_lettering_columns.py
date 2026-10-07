@@ -32,6 +32,7 @@ from pathlib import Path
 
 import pytest
 from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, machine, stitches
 from digitizer_core.columns import Column, column_runs, lettering_columns_shape
@@ -167,7 +168,50 @@ def test_shape_entry_point_reports_the_cut():
     L = _rect(0, 0, 2, 12).union(_rect(0, 10, 8, 12))
     runs, report = lettering_columns_shape(L, "s", trim_at_mm=3.0)
     assert report["cuts"] == 1 and report["columns"] == 2 and not report["empty"]
-    assert {r.kind for r in runs} == {stitches.SATIN}
+    assert {r.kind for r in runs} <= {stitches.SATIN, stitches.TRAVEL}
+    assert sum(r.kind == stitches.SATIN for r in runs) == 2
+
+
+# --------------------------------------------------------------- the walk
+
+def _jumps(runs):
+    return [r for r in runs if r.jump]
+
+
+def test_an_h_walks_as_one_component_with_no_jump_inside_the_letter():
+    """Two stems and a bar: the bar's ends land mid-stroke on both stems, so
+    the span graph is one component with four odd nodes; the postman
+    duplicates one span (walked as an underpath) and the trail sews every
+    span once as satin with the needle never leaving the letter."""
+    H = _rect(0, 0, 2, 12).union(_rect(8, 0, 10, 12)).union(_rect(0, 5, 10, 7))
+    runs, report = lettering_columns_shape(H, "h", trim_at_mm=3.0, start_near=(1, 0))
+    assert not report["empty"] and report["columns"] == 3
+    sat = [r for r in runs if r.kind == stitches.SATIN]
+    assert sum(len(r.points) for r in sat) > 0
+    assert _jumps(runs) == []                 # one continuous walk
+    # the whole letter is sewn: every column's piece is under some satin run
+    sewn = unary_union([LineString(r.points).buffer(0.25) for r in sat])
+    assert sewn.covers(H.buffer(-0.3))
+    # the duplicated span is walked as an underpath, not sewn twice as satin
+    assert any(r.kind == stitches.TRAVEL for r in runs)
+
+
+def test_a_t_walks_bar_then_stem_without_a_jump():
+    T = _rect(4, 0, 6, 12).union(_rect(0, 0, 10, 2))
+    runs, report = lettering_columns_shape(T, "t", trim_at_mm=3.0, start_near=(0, 0))
+    assert report["columns"] == 2 and _jumps(runs) == []
+
+
+def test_two_separate_stems_are_two_components_joined_by_one_jump():
+    a = letter_columns(_rect(0, 0, 2, 12)).columns[0]
+    b = letter_columns(_rect(6, 0, 8, 12)).columns[0]
+    poly = _rect(0, 0, 2, 12).union(_rect(6, 0, 8, 12))
+    runs, report = column_runs([a, b], poly, "s", trim_at_mm=3.0, start_near=(1, 0))
+    sat = [r for r in runs if r.kind == stitches.SATIN]
+    assert len(sat) == 2 and report["jumps"] == 1
+    # the second component is entered at the end nearer where the first finished
+    end1, start2 = sat[0].points[-1], sat[1].points[0]
+    assert abs(end1[1] - start2[1]) < 1.0
 
 
 # ------------------------------------------------------------- end to end
