@@ -22,19 +22,17 @@ not on `main` is `digitizer/tools/outline_cut_spike/oc.py` from lane
 >
 > **BUILT the same day, default-OFF: `cfg.lettering_columns`**
 > (`digitizer_core/outline_cut.py`, the spike ported to emit Columns;
-> `digitizer_core/columns.py`, the Column object and its first construction
-> engine: rail pull comp, cross floor, split comb, centre underlay,
-> nearest-next order; the stage 7 hook ahead of the classifier; the
+> `digitizer_core/columns.py`, the Column object and its construction
+> engine: rail pull comp, cross floor, split comb, centre underlay, and the
+> **Euler walk** across a letter's columns, Kent's second pick the same
+> evening; the stage 7 hook ahead of the classifier; the
 > `lettering_columns` eye-pairs arm). Measured OFF -> ON through
-> `digitize()` at corpus sizes, lettering shapes only: Becker MARINE 34
-> satin runs / 42 trims / 4,709 stitches -> 17 / 14 / 2,216; gaulke 81 /
-> 27 / 2,521 -> 85 / 23 / 2,170; enthusiast 23 / 13 / 1,971 -> 22 / 22 /
-> 1,696; Fremont 57 / 17 / 4,111 -> 68 / 38 / 3,982. The trims that rise
-> are the missing Euler walk (every column hop that leaves the letter
-> trims) and, on Fremont, slab serifs cut into more pieces; the S fans (an
-> uncut double bowl, L4's bowl rule). Renders
-> `docs/renders/lettering-columns-2026-10-07/`; tests
-> `tests/test_lettering_columns.py` (13); scope-history 2026-10-07.
+> `digitize()` at corpus sizes, lettering shapes only, trims on the
+> letters: Becker MARINE 42 -> 9 (six are entries), gaulke 27 -> 25,
+> enthusiast 13 -> 11, Fremont 17 -> 22 (slab serifs cut into more pieces).
+> The E's body and the S still fan (the stem-plus-arms and bowl cut rules,
+> next). Renders `docs/renders/lettering-columns-2026-10-07/`; tests
+> `tests/test_lettering_columns.py` (16); scope-history 2026-10-07.
 
 ## 1. The answer in one paragraph
 
