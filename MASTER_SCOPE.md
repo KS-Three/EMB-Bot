@@ -16,7 +16,7 @@ at the bottom for the authority model behind the confidence ratings.
 (**42.5**, not the older ~70) and the metric's own **75-84** pro-vs-pro ceiling.
 Its code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-10-06. **This file is current state only, under a
+**Last updated:** 2026-10-07. **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
 on 2026-09-14). Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
@@ -318,19 +318,7 @@ about the facts.
 **Also open, same category — so this queue is not a half-truth. All predate
 2026-08-14 except where noted:**
 
-0. **RESOLVED 2026-10-02 — Kent flipped `satin_crown_cover` ON** (scope-history 10-02). What follows is the question as it stood.
-   **`satin_lettering_split`'s crowns, NEW 2026-09-30 and the freshest item
-   here — RE-FRAMED the same day, downward.** MARINE at 127.4 mm reads 0
-   holes as fill and 11 holes / 22.9 mm² as split satin. But `lost_frac`,
-   the metric that killed the apex widening, reads **0.2688 fill against
-   0.1800 split** — the split is a third better, because fill spills more
-   thread outside the artwork than the split leaves bare. So this is NOT a
-   case for reverting or gating the flip; it is a case for closing 11 crowns
-   without spending that advantage. Neither built rail cure does it (the
-   envelope is inert on them, `True` costs `lost_frac`), and the mechanism
-   is a DECOMPOSITION gap — the strokes' union leaves wedges no stroke
-   claims. The construction is designed and waits on you:
-   `docs/superpowers/plans/2026-09-30-crown-cover.md` §7. Defect 50.
+0. **RESOLVED 2026-10-02 — Kent flipped `satin_crown_cover` ON** (scope-history 10-02). The question as it stood (the split's 11 crowns, `lost_frac` 0.2688 fill against 0.1800 split, a decomposition gap) is in scope-history 2026-10-06. Defect 50.
 
 2. **RESOLVED 2026-09-08 — the DST codec is fixed, both directions**, and never needed the call; retired from gate 1 the same day. *(DOCTRINE 2026-09-07/08; ROADMAP gate 1)*
 3. **RESOLVED 2026-08-19, ratified 2026-09-02 — `split_tonal_regions` is ON for photo classes** (`effective_split_tonal`). Cost: defect 20.
@@ -515,6 +503,16 @@ about the facts.
    `trim` in the stream at each. No stitch moves. **Flip it after 22.**
    **Not sewn.** Flipped as 25 is.
    *(measured 2026-10-04 — [`docs/dst-float-cuts-2026-10-04.md`](docs/dst-float-cuts-2026-10-04.md))*
+29. **`letterform_priors_k` — NEW 2026-10-06, built OFF, judged on the labelled
+   thread pairs (arm `letterform_priors`, k 0.75).** A low-resolution upload's
+   lettering refit to lines and arcs under the word's stem direction, widths
+   and baseline before construction, no vertex moved past 0.75 source pixels,
+   a letter the primitives do not explain left as traced. Touches only an
+   upscaled upload: Becker 10 of 11 letters, bridge 8 of 8, gaulke 36 of 38;
+   drone, enthusiast and fremont byte-identical. Price on today's satin:
+   Becker +506 stitches, +11 trims for bare 4.33 → 2.65%; gaulke neutral.
+   Bridge's letters are segmentation blobs and stay blobs. **Not sewn.**
+   *(measured 2026-10-06 — [`docs/letterform-priors-2026-10-06.md`](docs/letterform-priors-2026-10-06.md); `tests/test_letterform_priors.py`)*
 
 ## Cross-cutting issues
 
