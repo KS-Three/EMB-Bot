@@ -8724,6 +8724,23 @@ sew worse on today's satin: price a lettering outline change on the
 decomposition it feeds, and attribute a fan to the construction by drawing
 the outline under it.** *(measured 2026-10-07 — `docs/letterform-priors-2026-10-06.md`, "Sitting 2026-10-07")*
 
+## 2026-10-07 — The N fan is the tip gate reading a three-arm junction as a tip; measured four ways and left unbuilt
+
+Defect 59 diagnosed with the engine's own gate, not by reading code:
+`_is_tip_end` (`satin_tip_caps`, reach 1.6 sewn half-widths, set on the A's
+apex and on raster corner balls) calls three of the refit N's five junction
+ends tips — the neighbouring stroke's far edge at 4.56–4.81 mm along the end
+tangent, reach 4.84 — where the trace's five read as meetings; `_extend_to_
+cap` then runs each arm through the other stroke and the crosses fan. Two
+rules. **Ask the four arms before building: the fan is byte-identical under
+`satin_join_square` and gone under `lettering_columns` (becker 56 → 0
+over-long crosses), so a tier fix was not built — "a fix nobody will sew".**
+**An instrument's bar is a threshold on a population too:** the outline-cut
+spike's 1.6 W over-long bar read gaulke's thirty-nine 1 mm letters as 35 fan
+letters under every arm — the fabric's 0.3 mm pull per side, not a fan;
+`tools/fan_census.py` reads 1.6 x (W + 2 pull). *(measured 2026-10-07 —
+`docs/n-fan-2026-10-07.md`)*
+
 ## 2026-10-07 — A flip Kent made on renders was held by its guards: `satin_join_square` ON loses an ENTHUSIAST element
 
 Kent flipped `satin_join_square` ON on 2026-10-06 on Fremont renders (stitches
