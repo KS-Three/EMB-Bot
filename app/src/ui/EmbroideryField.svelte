@@ -3350,7 +3350,7 @@
         on:click={toggleSewnWidth}
         disabled={!hasDesign || !canSewnWidth}
         aria-pressed={sewnWidthView}
-        aria-label="Show sewn width"
+        aria-label="Show columns as sewn"
         use:tip={"sewnWidth"}
       ><Icon name="nodes" /><span class="zoomlabel">Sewn width</span></button>
       <span class="zoomsep" aria-hidden="true"></span>

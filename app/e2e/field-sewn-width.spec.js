@@ -138,7 +138,7 @@ test("sewn width is off by default, narrows the satin on, and the file is untouc
   await page.setViewportSize({ width: 1440, height: 900 });
   await digitize(page);
 
-  const toggle = page.locator('.zoomctl button[aria-label="Show sewn width"]');
+  const toggle = page.locator('.zoomctl button[aria-label="Show columns as sewn"]');
   await expect(toggle).toBeEnabled();
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
   const caption = await page.locator("span.stats").innerText();
