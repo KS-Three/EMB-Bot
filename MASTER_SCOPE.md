@@ -488,9 +488,9 @@ about the facts.
    A limit on how long a cross may be would cover the star and the bar at
    once and is NOT offered: it is a number, and gate 1's.
    *(measured 2026-10-03 — defect 57; [`docs/renders/star-walk-2026-10-03/`](docs/renders/star-walk-2026-10-03/README.md))*
-27. **Underlay under fills — NEW 2026-10-05.** `blend_fallback_underlay`
-   (OFF) and `cross_tatami` (a picker choice, your digitizer's crossing
-   pass): the flip and the knit presets are yours. **Not sewn.**
+27. **Underlay under fills.** `blend_fallback_underlay` flipped ON
+   *(ruled 2026-10-07 — scope-history 10-07)*; `cross_tatami` is a picker
+   choice. The knit presets stay yours. **Not sewn.**
    *(measured 2026-10-05 — [`docs/underlay-audit-2026-10-05.md`](docs/underlay-audit-2026-10-05.md))*
 28. **Flip `cutFloats` on for the browser shape lanes — NEW 2026-10-04,
    built OFF.** A DST has no cut: the writer lays three jump records for

@@ -19970,3 +19970,25 @@ columns. The rebuild landed 2026-09-15. The other 6 (`western_light`,
 `ondulamarif_*`) have no authored run length upstream, and defaulting one
 is refused by `test/run-fonts.test.js:44`. The item read "still open" until
 2026-10-02. *(`test/font-dead-glyphs.test.js`; detail: area 2)*
+
+## 2026-10-07 — `blend_fallback_underlay` ON by default: Kent's ruling
+
+Kent flipped the flag built OFF on 2026-10-05 (entry above). Default
+`True`; `False` stays the byte-identical path to the engine before it. The
+measurement it was flipped on is the 10-05 table: six gradient-class real
+logos, bare fills 33 of 33 → 5 of 33, stitches +1.7%, trims 423 → 421
+(Fremont pays six, 37 → 43). Re-read on the default config the day of the
+flip, Gaulke Roofing (80 mm, `left_chest`): bare fills 3 → 0, +7 stitches,
+trims 34 → 32, 41 underlay stitches under fills — the 10-05 deltas exactly,
+on absolute counts that moved with `main`.
+`docs/renders/blend-fallback-underlay-on-2026-10-07/`.
+
+On every preset but cap, fleece and towel the style is `edge_run`, so a
+knit fill gains its perimeter walk and its interior is still empty; the
+interior pass is corpus law 26 and a separate gate-1 item, not touched.
+One pin moved: the owl's adjacency check in
+`tests/test_merge_adjacent_same_thread.py` now holds the flag OFF — the
+underlay changes stage 7's order (`17, 155, 17` → `17, 17, 155`), same
+blocks, no new split. Targeted run (72 files: stage 6/7, blend, gradient,
+goldens): 1,205 passed, 5 xfailed, the three named platform goldens red
+and the owl pin, since fixed. Not sewn.
