@@ -47,7 +47,7 @@ L1 one tagger/word model → L2 letterform priors (wired OFF on
 policy per WORD (floor value gate-1) → L4 outline-cut emitting Columns
 (+ E-as-stem-plus-arms, bowl rules) → L5 the font engine's construction
 (port `routeGlyph` rules to Python, or play Columns back in the Studio —
-Kent's pick). Font ID stays dead; no learned SR. Order: L4+L5, L1, L2
+**Kent picked (a) port to Python, and L4 outline-cut Columns as the next lane, 2026-10-07**). Font ID stays dead; no learned SR. Order: L4+L5, L1, L2
 order, L3 mechanism, C.
 
 **Traps met:** `MASTER_SCOPE.md` is 14 words under budget — do not add to it

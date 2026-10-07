@@ -12,6 +12,14 @@ recorded in §2 so it can be redone); the one piece of code run here that is
 not on `main` is `digitizer/tools/outline_cut_spike/oc.py` from lane
 `claude/outline-cut-columns`, untouched.
 
+> **OUTCOME — Kent's picks, 2026-10-07, on this report:** L5 is **option
+> (a), port the glyph rules to Python** (a `columns.py` that stage 7 calls for
+> lettering-lane shapes; `/export` and the scorecard keep seeing lettering).
+> The next lane builds **L4, outline-cut Columns** first: the Column object,
+> the E-as-stem-plus-arms and bowl cut rules, wired default-OFF, labelled
+> pairs on MARINE and the nine logos. L1, L2's order, L3's mechanism and C
+> follow in the §6 order.
+
 ## 1. The answer in one paragraph
 
 The engine has no lettering construction. A letter is traced as a generic
