@@ -3880,6 +3880,80 @@ def _member_corridor(piece: list[tuple[float, float]], from_start: bool,
     return sorted(vals)[len(vals) // 2] or half_mm
 
 
+
+# A join member's spine keeps the medial axis's own bend at the corner: an
+# L's skeleton turns over about one half-width on each side of the apex, so
+# the samples nearest the corner already point diagonally. Everything the
+# column does with them follows that diagonal -- `_cross_angles` reads the
+# tangent there, `_extend_to_cap`'s back-chord reads it -- and the owner's
+# last four or five crosses fan into the butting member (Hotel Fremont's E
+# arms into their slab serifs, the T's bar into its hanging ends; Kent,
+# 2026-10-06). The pro sews the arm square to the slab's far edge and the
+# slab square to the arm. So, under `join_square`, a member's spine is made
+# straight up to the corner: its direction is read over its own straight
+# stretch, the bent samples are replaced by that line, and the corner end is
+# the apex projected onto it. `_extend_to_cap` then runs the owner's column
+# out along its own axis, through the butting member's width, to the cap.
+_STRAIGHT_FROM_HALVES = 1.5    # the straight stretch starts this far from the corner ...
+_STRAIGHT_TO_HALVES = 4.0      # ... and reaches this far (or the member's end)
+_BEND_TOL_HALVES = 0.2         # a sample this close to the line is already straight
+
+
+def _straighten_member_end(piece: list[tuple[float, float]], at_end: bool,
+                           half_mm: float) -> list[tuple[float, float]]:
+    """`piece` with its corner end (the last point if `at_end`, else the
+    first) laid on the member's own straight line. A member shorter than
+    the straight stretch, or one whose stretch does not fit a line, is
+    returned as it is."""
+    if half_mm <= 0 or len(piece) < 4:
+        return piece
+    pts = list(piece) if at_end else list(reversed(piece))
+    cum = [0.0]
+    for a, b in zip(pts, pts[1:]):
+        cum.append(cum[-1] + math.dist(a, b))
+    total = cum[-1]
+    lo, hi = _STRAIGHT_FROM_HALVES * half_mm, _STRAIGHT_TO_HALVES * half_mm
+    if total < lo + 0.5 * half_mm:
+        return piece
+    # distance from the corner end, along the spine
+    ref = [p for p, c in zip(pts, cum) if lo <= total - c <= hi]
+    if len(ref) < 3:
+        return piece
+    arr = np.asarray(ref, float)
+    cen = arr.mean(axis=0)
+    _, sv, vt = np.linalg.svd(arr - cen)
+    if sv[0] <= 1e-9 or (len(sv) > 1 and sv[1] > 0.35 * sv[0]):
+        return piece                      # the stretch is not a line: a bend, leave it
+    u = vt[0]
+    # orient u toward the corner end
+    if (np.asarray(pts[-1]) - cen) @ u < 0:
+        u = -u
+    nrm = np.array([-u[1], u[0]])
+    tol = _BEND_TOL_HALVES * half_mm
+    # the first sample, walking in from the corner, that sits on the line
+    q = None
+    for i in range(len(pts) - 1, -1, -1):
+        if total - cum[i] < lo:
+            continue                      # the bend zone itself; keep walking in
+        if abs((np.asarray(pts[i]) - cen) @ nrm) <= tol:
+            q = i
+            break
+    if q is None or q >= len(pts) - 1:
+        return piece
+    # the corner end: the apex projected onto the line, never behind pts[q]
+    base = np.asarray(pts[q], float)
+    t_end = float((np.asarray(pts[-1], float) - base) @ u)
+    if t_end <= 0.0:
+        return piece
+    spacing = max(1e-6, total / max(1, len(pts) - 1))
+    steps = max(1, int(round(t_end / spacing)))
+    # plain floats: a numpy scalar that rode a spine point into a stitch
+    # would reach the service's JSON export, which cannot serialise it
+    straight = [(float(base[0] + u[0] * (t_end * j / steps)), float(base[1] + u[1] * (t_end * j / steps)))
+                for j in range(1, steps + 1)]
+    out = pts[:q + 1] + straight
+    return out if at_end else list(reversed(out))
+
 def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   field: _WidthField | None, split_above_mm: float | None,
                   end_cutback_mm: float, spacing_mm: float,
@@ -3889,6 +3963,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   hairline_floor_mm: float = 0.0,
                   rails_follow_edge: bool = False,
                   outer_rail_pitch: bool = False,
+                  join_square: bool = False,
                   max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
                   fold_guard: bool = False,
                   rail_comp_mm: float = 0.0,
@@ -3918,6 +3993,11 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
         piece = pts[s0:s1 + 1]
         if len(piece) < 2:
             continue
+        if join_square:
+            if m > 0:
+                piece = _straighten_member_end(piece, False, half_mm)
+            if m < len(edges_) - 2:
+                piece = _straighten_member_end(piece, True, half_mm)
         if m == 0:
             free_s, capped_s, tuck_s = stroke.free_start, stroke.capped_start, stroke.tuck_under_start
         elif owners[m - 1]:                    # the member before owns
@@ -3945,7 +4025,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
         pts_m = satin_stroke(poly, member, half_mm, field, split_above_mm,
                              end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                              art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
-                             rails_follow_edge=rails_follow_edge, outer_rail_pitch=outer_rail_pitch,
+                             rails_follow_edge=rails_follow_edge, outer_rail_pitch=outer_rail_pitch, join_square=join_square,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
@@ -3990,6 +4070,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  hairline_floor_mm: float = 0.0,
                  rails_follow_edge: bool = False,
                   outer_rail_pitch: bool = False,
+                  join_square: bool = False,
                  max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
                  fold_guard: bool = False,
                  rail_comp_mm: float = 0.0,
@@ -4053,7 +4134,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
         return _satin_joined(poly, stroke, half_mm, field, split_above_mm,
                              end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                              art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
-                             rails_follow_edge=rails_follow_edge, outer_rail_pitch=outer_rail_pitch,
+                             rails_follow_edge=rails_follow_edge, outer_rail_pitch=outer_rail_pitch, join_square=join_square,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
@@ -5457,6 +5538,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 art_poly: Polygon | None = None,
                 rails_follow_edge: bool = False,
                   outer_rail_pitch: bool = False,
+                  join_square: bool = False,
                 hairline_floor_mm: float = 0.0,
                 patch_junctions: bool | str = False,
                 crown_cover: bool = False,
@@ -5628,7 +5710,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
         satin_stroke(poly, st, half_mm, field, split_above_mm,
                      end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                      art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
-                     rails_follow_edge=rails_follow_edge, outer_rail_pitch=outer_rail_pitch,
+                     rails_follow_edge=rails_follow_edge, outer_rail_pitch=outer_rail_pitch, join_square=join_square,
                      max_width_mm=max_width_mm, fold_guard=fold_guard,
                      rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                      junction_stack=junction_stack, cap_recentre=cap_recentre,

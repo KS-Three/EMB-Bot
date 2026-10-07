@@ -25,6 +25,10 @@ session's scratchpad so the next person re-measures instead of re-deriving:
            silhouette opened and closed by 0.5 mm, per letter: what the eye
            calls ragged. Ours 1.49 to the pro's 1.21 on Fremont, concentrated
            on curves (the outer-rail pitch, `cfg.satin_outer_rail_pitch`).
+  fans     a column whose crosses in its last 1.5 mm of rail lean more than
+           20 deg over its middle ones -- the serif and junction fans, an
+           arm's crosses turning into its slab (`cfg.satin_join_square`).
+           Ours 7 over 36 columns on Fremont at 80 mm, the pro's 5 over 63.
 
 The letter band is given as fractions of the artwork's height (the Fremont
 default is HOTEL FREMONT's); the pro file's band is the same fractions of
@@ -150,6 +154,69 @@ def cross_lean(seqs):
     return np.asarray(out)
 
 
+def _short_columns(pts, min_crosses=6):
+    if len(pts) < min_crosses + 2:
+        return []
+    a, b, c = pts[:-2], pts[1:-1], pts[2:]
+    ac = c - a
+    lac = np.hypot(*ac.T)
+    area2 = ac[:, 0] * (a[:, 1] - b[:, 1]) - (a[:, 0] - b[:, 0]) * ac[:, 1]
+    signed = np.where(lac > 1e-9, area2 / np.maximum(lac, 1e-9), 0.0)
+    lu, lv = np.hypot(*(b - a).T), np.hypot(*(c - b).T)
+    ok = (lu >= MIN_LEG_MM) & (lv >= MIN_LEG_MM) & (lu <= 12) & (lv <= 12) & (np.abs(signed) >= 0.45)
+    side = np.sign(signed)
+    segs = []
+    i = 0
+    while i < len(ok):
+        if not ok[i]:
+            i += 1
+            continue
+        j = i + 1
+        while j < len(ok) and ok[j] and side[j] == -side[j - 1]:
+            j += 1
+        if j - i >= min_crosses:
+            segs.append((i, j + 2))
+        i = j
+    return segs
+
+
+def fan_ends(seqs, end_mm=1.5, excess_deg=20.0):
+    """-> (fan ends, columns): per sustained column, whether the crosses in
+    its first or last `end_mm` of rail lean more than `excess_deg` over the
+    median lean of its middle."""
+    events = columns = 0
+    for s in seqs:
+        pts = np.asarray(s, float)
+        # a letter's arm is ten to sixteen crosses, under `column_segments`'
+        # window-sized minimum, so the columns are cut here with the same
+        # alternation rule and a six-cross floor
+        for i, j in _short_columns(pts):
+            seg = pts[i:j]
+            lean = []
+            cum = 0.0
+            for k in range(2, len(seg) - 3):
+                cross = seg[k + 1] - seg[k]
+                rail = seg[k + 2] - seg[k - 2]
+                cl, rl = np.hypot(*cross), np.hypot(*rail)
+                if k >= 4:
+                    cum += math.dist(seg[k], seg[k - 2]) / 2
+                if cl < 0.5 or rl < 1e-6:
+                    continue
+                lean.append((cum, math.degrees(math.asin(min(1.0, abs(cross @ rail) / (cl * rl))))))
+            if len(lean) < 6:
+                continue
+            columns += 1
+            total = lean[-1][0]
+            mid = [l for c, l in lean if end_mm <= c <= total - end_mm]
+            if not mid:
+                continue
+            m = float(np.median(mid))
+            for part in ([l for c, l in lean if c < end_mm], [l for c, l in lean if c > total - end_mm]):
+                if part and max(part) - m > excess_deg:
+                    events += 1
+    return events, columns
+
+
 def hair_per_letter(seqs, x0, x1, y0, y1, px=40):
     import cv2
     img = np.zeros((int((y1 - y0) * px), int((x1 - x0) * px)), np.uint8)
@@ -273,8 +340,9 @@ def main():
     l = cross_lean(satin_seqs)
     h = hair_per_letter(sil_seqs, -W / 2 - 1, W / 2 + 1, band[0] - 1, band[1] + 1)
     print(f"  all crosses: med {np.median(w):.2f} p10 {np.percentile(w, 10):.2f} p90 {np.percentile(w, 90):.2f} (n {len(w)})")
+    fe, fc = fan_ends(satin_seqs)
     print(f"  rail jitter |dev| med {np.median(j):.3f} p90 {np.percentile(j, 90):.3f} mm; lean med {np.median(l):.1f} p90 {np.percentile(l, 90):.1f} deg; "
-          f"hair per letter mean {np.mean(h):.2f} ({' '.join(f'{v:.2f}' for v in h)})")
+          f"hair per letter mean {np.mean(h):.2f} ({' '.join(f'{v:.2f}' for v in h)}); fan ends {fe} over {fc} columns")
     if a.pro:
         seqs, ws, pband, pW, pH = pro(a.pro, a.pro_colour, a.band)
         k = a.width / pW
@@ -284,8 +352,9 @@ def main():
         print(f"pro: {Path(a.pro).name}, {pW:.1f} x {pH:.1f} mm, band {pband[0]:.1f}..{pband[1]:.1f}; scaled to {a.width} mm for hair")
         print(f"  crosses: med {np.median(ws):.2f} p10 {np.percentile(ws, 10):.2f} p90 {np.percentile(ws, 90):.2f} (n {len(ws)}); "
               f">= 1.0 mm med {np.median(ws[ws >= 1.0]):.2f}; share under 1.0 {100 * (ws < 1.0).mean():.0f}% (short stitches)")
+        fe, fc = fan_ends(seqs)
         print(f"  rail jitter |dev| med {np.median(j):.3f} p90 {np.percentile(j, 90):.3f} mm; lean med {np.median(l):.1f} p90 {np.percentile(l, 90):.1f} deg; "
-              f"hair per letter mean {np.mean(h):.2f} ({' '.join(f'{v:.2f}' for v in h)})")
+              f"hair per letter mean {np.mean(h):.2f} ({' '.join(f'{v:.2f}' for v in h)}); fan ends {fe} over {fc} columns")
 
 
 if __name__ == "__main__":

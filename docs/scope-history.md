@@ -19607,3 +19607,50 @@ thread outside the artwork, and the test's own text forbids raising its bar
 without his ruling. **Ruled the same day: 0.30, with that reason**, the
 second attributed raise of that bar; the test now says a third is the
 instrument asking to be rebuilt.
+
+## 2026-10-06 — The serif and junction fans: `satin_join_square`, built OFF
+
+Kent: *"start on the serif and junction fans."* The other half of Hotel
+Fremont's "not clean" (the deep dive earlier that day). Renders in
+`docs/renders/join-square-2026-10-06/`.
+
+**Mechanism, measured on the pipeline's own call** (the E's `satin_shape`
+kwargs captured from stage 7 and replayed standalone, byte-identical):
+`_split_sharp_corners` already cuts each arm from its hanging slab serif at
+the artwork corner (turn 59°) and the arm owns it (`corners=[(47, True)]`),
+so the join IS there. The fan came after the cut: an L's medial axis bends
+over about one half-width each side of the apex, the owner member's spine
+kept those bent samples, and under the wordmark's house angle (180°) the
+last four or five crosses leaned up to 45° into the slab, with the slab's
+first crosses leaning back. A clean synthetic L does not fan at all (its
+last crosses read 1–4° off square): the fan needs the house angle and a
+real raster skeleton, which is why the test fixture is the E itself,
+byte for byte (`testdata/fremont_E_join_corner.json`; a 3-dp rounding of
+the same polygon decomposes differently, 122 points for 116).
+
+**Built: `cfg.satin_join_square`, DEFAULT OFF.** `_satin_joined` lays each
+member's corner end on the member's own straight line
+(`_straighten_member_end`: direction fitted over the stretch 1.5–4
+half-widths from the corner, the bent samples replaced, the apex projected
+onto the line); `_extend_to_cap`'s back-chord then reads a straight
+direction and the owner's column runs square through the butting member's
+width to the cap. A member too short to carry a straight stretch keeps its
+spine. OFF byte-identical (pinned). ON, Fremont at 80 mm re-planned from
+the same stages 1–4: **stitches and trims identical, 13,742 / 34**; fan
+ends (`tools/letter_band.fan_ends`, a column whose crosses in its last
+1.5 mm lean >20° over its middle) **7 → 5 over 36 columns, the E 2 → 0**;
+the T's bar square across both hanging ends. The five that remain are ring
+seams (the two O's) and junction ends (H, N) — not join corners.
+
+**The instrument that was wrong first:** a turn-rate count read 4 fans on
+ours and 45 on the pro, because the pro sews a whole letter as one needle
+path and every serif-to-stem corner is a 90° turn inside it. Lean against
+the LOCAL rail normal at a column's ends is the reading that separates a
+fan from a turn.
+
+**Not done, named:** a T-shaped slab (the E's and F's middle arms protrude
+above and below) is a cap by the 2026-09-19 twig rule — both short arms
+dropped, the arm capped over the slab's width with the terminal fan — where
+the pro sews the slab as its own column; the H's and N's junction ends. The
+flip waits on Kent's look at the renders; the join members move on every
+letter with a slab or an L, so goldens re-capture then.

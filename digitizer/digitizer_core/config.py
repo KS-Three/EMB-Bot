@@ -1609,6 +1609,24 @@ class PipelineConfig:
     # shape-overrides byte-identity key. False is the pre-flip emitter,
     # byte for byte.
     satin_outer_rail_pitch: bool = True
+    # A join corner's members sew SQUARE to it (2026-10-06, the serif and
+    # junction fans; Kent's "start on" after the Hotel Fremont deep dive).
+    # `_split_sharp_corners` already cuts an E's arm from its hanging slab
+    # serif and the arm owns the corner, but the member's spine kept the
+    # medial axis's own bend -- an L's skeleton turns over about one
+    # half-width each side of the apex -- so the owner's last four or five
+    # crosses leaned up to 45 deg into the slab and the slab's first crosses
+    # leaned back (Fremont's E arms, the T's bar ends, the L's foot). ON,
+    # `_satin_joined` lays each member's corner end on the member's own
+    # straight line (`_straighten_member_end`: direction read over the
+    # stretch 1.5-4 half-widths from the corner, the bent samples replaced,
+    # the apex projected onto the line), so the owner's column runs square
+    # through the butting member's width to the cap and the butting member
+    # starts square under it -- the pro's construction. Built OFF: the join
+    # members move on every letter with a slab or an L, so the goldens
+    # re-capture on the flip, and the render is Kent's to judge first.
+    # Tests: `tests/test_join_corner_straight.py`.
+    satin_join_square: bool = False
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the

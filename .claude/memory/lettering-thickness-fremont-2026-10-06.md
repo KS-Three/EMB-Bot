@@ -77,3 +77,14 @@ raised both to 0.30 with that reason, the bar's second attributed move, and
 the test says a third means rebuilding the instrument. Goldens re-captured on the WSL box with the pre-change
 proof because the token had no `workflow` scope for CI's re-capture job; CI
 judges. On Windows the suite stays at its standing three reds.
+
+**The serif fans, same day (`satin_join_square`, built OFF, lane
+`claude/serif-junction-fans`).** The join was already there — the arm owns
+its slab's corner — and the fan was the owner's bent spine samples under
+the house angle. Straightening each member's corner end on its own line:
+Fremont fan ends 7 → 5 (E 2 → 0), stitches and trims identical. Two traps:
+a turn-rate fan count read the PRO at 45 (its letters are one needle path,
+every serif corner a 90° turn), so read lean against the local rail normal;
+and a synthetic L does not fan at all — the fixture had to be the real E,
+byte for byte (a 3-dp rounding decomposes differently). T-shaped slabs
+(the E's middle arm) are a cap by the twig rule and stay a fan: next.
