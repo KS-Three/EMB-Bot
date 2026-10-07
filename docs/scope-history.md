@@ -19598,10 +19598,12 @@ re-pinned the same way
 recorded); `test_satin`'s O-ring spray bar 5.0 → 6.0 and its hole-side pin
 read at the on-rail quartile, both for the short stitches; the tip-caps
 stitch ceiling 2,520 → 2,620 (ENTHUSIAST 2,474 → 2,614, the flip's +5.7%,
-trims and end bare unchanged). **Two pins are NOT re-pinned and sit with
-Kent:** `test_lettering_coverage_regression`'s `lost_frac` and
-`overshoot_frac` read ENTHUSIAST at 0.2908 against the 0.29 bar Kent set on
-2026-10-03 (0.2819 before the flip) — the denser outer rail closes the
-0.4 mm ribbon's scallops along the pushed rail, which the overshoot
-instrument counts as thread outside the artwork; the test's own text
-forbids raising its bar without his ruling.
+trims and end bare unchanged). **Two pins went to Kent:**
+`test_lettering_coverage_regression`'s `lost_frac` and `overshoot_frac`
+read ENTHUSIAST at 0.2908 against the 0.29 bar he set on 2026-10-03 (0.2819
+before the flip) — the denser outer rail closes the 0.4 mm ribbon's
+scallops along the pushed rail, which the overshoot instrument counts as
+thread outside the artwork, and the test's own text forbids raising its bar
+without his ruling. **Ruled the same day: 0.30, with that reason**, the
+second attributed raise of that bar; the test now says a third is the
+instrument asking to be rebuilt.

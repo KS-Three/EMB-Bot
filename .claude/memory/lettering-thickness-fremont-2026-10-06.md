@@ -72,7 +72,8 @@ Scripts (session scratchpad, not committed): `measure_fremont.py`,
 **Kent flipped `satin_outer_rail_pitch` ON the same day** (PR #650). Price
 in the suite: 19 movers, all re-pinned with their mechanism except the two
 lettering coverage bars (0.2908 vs Kent's 0.29) — the denser outer rail
-closes the overshoot instrument's ribbon scallops, +0.009 of ink, and that
-bar is his to move. Goldens re-captured on the WSL box with the pre-change
+closes the overshoot instrument's ribbon scallops, +0.009 of ink; Kent
+raised both to 0.30 with that reason, the bar's second attributed move, and
+the test says a third means rebuilding the instrument. Goldens re-captured on the WSL box with the pre-change
 proof because the token had no `workflow` scope for CI's re-capture job; CI
 judges. On Windows the suite stays at its standing three reds.
