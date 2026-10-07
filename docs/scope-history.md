@@ -19974,3 +19974,15 @@ columns. The rebuild landed 2026-09-15. The other 6 (`western_light`,
 `ondulamarif_*`) have no authored run length upstream, and defaulting one
 is refused by `test/run-fonts.test.js:44`. The item read "still open" until
 2026-10-02. *(`test/font-dead-glyphs.test.js`; detail: area 2)*
+
+## 2026-10-07 — EXP travel's last record stays at 12.1 mm: Kent's pick
+
+The EXP chain-rule entry of this date (#656) left one judgement to Kent. The
+last record of travel into a run is a stitch record; #656 keeps it at 12.1
+mm an axis, the records `dst.js` lays, where `pes.js`'s shape and #477's
+words ("travel is untouched") would also allow EXP's own 12.7 mm. The difference is a jump and
+a stitch against one stitch record on 352 of 12,231 shipped stitches. Put to
+him with both priced, the day #656 merged: **keep 12.1 mm.** No EXP gains a
+stitch record longer than any it has held since 2026-09-13, and whether a
+machine takes a longer one stays unsewn. The comment in `src/exp.js` carries
+the pick; no code changes with it.
