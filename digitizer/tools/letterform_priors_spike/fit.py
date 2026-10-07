@@ -39,7 +39,6 @@ from dataclasses import dataclass, field
 
 import numpy as np
 from shapely.geometry import LinearRing, LineString, Point, Polygon
-from shapely.ops import unary_union
 
 # --- knobs (every one is listed in the write-up with what it was set on) ----
 K_DEFAULT = 0.75          # cap = K * source pixel (the brief's starting point)

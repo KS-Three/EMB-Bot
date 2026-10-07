@@ -27,7 +27,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pystitch
-from shapely.geometry import LineString, MultiPolygon, Point, Polygon
+from shapely.geometry import LineString, MultiPolygon, Polygon
 from shapely.ops import unary_union
 
 THREAD_MM = 0.4

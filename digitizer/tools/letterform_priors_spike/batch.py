@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import copy
 import json
-import math
 import os
 import pickle
 import sys
@@ -43,7 +42,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(HERE))
 SCRATCH = Path(os.environ.get("LETTERFORM_SCRATCH", ROOT.parent / "scratch_letterform_priors"))
 
-from refit import apply, refit_logo, regions_from, source_px_mm, summarize  # noqa: E402
+from refit import apply, refit_logo, source_px_mm, summarize              # noqa: E402
 from fit import K_DEFAULT, polygon_wkb_hash                                  # noqa: E402
 
 LOGOS = ["becker", "bridge", "gaulke", "drone", "enthusiast", "fremont", "tires"]
