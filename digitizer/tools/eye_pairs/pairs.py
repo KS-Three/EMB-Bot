@@ -59,6 +59,9 @@ ARMS: dict[str, dict] = {
     # is the base now and no longer an arm.
     "wide_columns": {"wide_columns": True},
     "lettering_column": {"lettering_min_column_mm": 1.0},
+    # Lettering as Columns (2026-10-07): the outline-cut construction, built
+    # OFF; the labelled pairs are the flip's evidence.
+    "lettering_columns": {"lettering_columns": True},
     "phantom_dissolve": {"dissolve_phantom_blends": True},
     "directional_comp": {"directional_comp": True},
     REF_ARM: {"__ref__": REF_COMMIT},

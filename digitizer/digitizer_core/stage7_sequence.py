@@ -63,6 +63,7 @@ from .beanletters import BEAN_LETTER_KEY
 from .stage5_overlap import PlannedRegion, widened_lettering
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
+from .columns import is_lettering, lettering_columns_shape
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
@@ -303,6 +304,8 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
         return True
     if tier == "auto" and region.meta.get(BEAN_LETTER_KEY):
         return False        # a bean letter (`beanletters.tag_bean_letters`): runs, not columns
+    if tier == "auto" and cfg.lettering_columns and cfg.satin and is_lettering(region):
+        return True         # a Column letter (`cfg.lettering_columns`): satin on its artwork outline
     satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm)
     return (tier == "auto" and cfg.satin
             and classify_ribbon(region.polygon, satin_max_mm,
@@ -1958,6 +1961,28 @@ def sequence(
                     return runs, report, False
                 tier = "auto"
                 outline_tried = True
+            # Lettering as Columns (`cfg.lettering_columns`, 2026-10-07): a
+            # text-tagged shape is cut along its ARTWORK outline into stroke
+            # pieces and sewn as rail-on-outline Columns (`columns.py`),
+            # ahead of the classifier -- a letter is columns by definition,
+            # the same rule `satin_lettering_split` already applies to the
+            # width ceiling. Pull lands on the rails (the artwork polygon
+            # was kept in stage 5 because `_sews_satin` says so). "auto"
+            # only; a letter the cut cannot construct falls through to the
+            # ladder below, the contract every rung has.
+            if (tier == "auto" and cfg.lettering_columns and cfg.satin
+                    and is_lettering(p.region)):
+                _ax0, _ay0, _ax1, _ay1 = p.region.polygon.bounds
+                _small = max(_ax1 - _ax0, _ay1 - _ay0) < machine.SATIN_UNDERLAY_MIN_EXTENT_MM
+                runs, report = lettering_columns_shape(
+                    p.region.polygon, p.shape_id, trim_at_mm=trim_at,
+                    spacing_mm=satin_spacing_mm, split_above_mm=split_above,
+                    pull_mm=fabric.pull_comp_mm, pull_floor_mm=cfg.min_detail_mm,
+                    underlay_style="none" if _small else satin_underlay,
+                    start_near=entry)
+                if not report["empty"]:
+                    report["lettering_columns"] = 1
+                    return runs, report, False
             # Satin or fill is decided per shape, not per design: one logo
             # routinely holds both a big filled emblem and thin satin lettering.
             # Classified on the ARTWORK polygon, not the stage-5 grown one —

@@ -13,6 +13,25 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-07 — lettering as Columns: `cfg.lettering_columns` built OFF, the outline-cut spike wired as a Column object and a first construction engine
+
+Kent's picks on `docs/lettering-architecture-rd-2026-10-07.md` (PR #655): port the glyph construction to Python, build the outline-cut Columns first. Built the same day on lane `claude/sleepy-hopper-jhpasn`: `digitizer_core/outline_cut.py` (the spike's cut rules, thresholds and DTW rail pairing unchanged, emitting `columns.Column` STATIONS instead of stitches), `digitizer_core/columns.py` (the Column object; `column_runs`: `_push_rails` per side on the artwork polygon, the `SATIN_MIN_CROSS_MM` floor, the column-wide split comb, a centre underlay where the letter clears `SATIN_UNDERLAY_MIN_EXTENT_MM`, nearest-next order from the needle's real position, the satin tier's sew-or-jump link rule), a stage 7 hook ahead of `classify_ribbon` for any shape either tagger calls lettering (`text_candidate` or the new `lettering_group` tag the house pass writes), and the matching `_sews_satin` branch so stage 5 keeps the artwork polygon. `lettering_columns` arm in `tools/eye_pairs`. Tests: `tests/test_lettering_columns.py` (13). OFF is byte-identical (pinned on Becker at 100 mm).
+
+OFF -> ON through `digitize()` at corpus sizes, `max_colors=6`, the lettering shapes only (either tag):
+
+| fixture | letters | satin runs | trims on letters | letter stitches | design stitches / trims |
+|---|---|---|---|---|---|
+| becker 100 mm | 6 MARINE | 34 -> **17** | 42 -> **14** | 4,709 -> 2,216 | 10,347 / 64 -> 7,854 / 36 |
+| gaulke 80 mm | 39 | 81 -> 85 | 27 -> 23 | 2,521 -> 2,170 | 4,583 / 34 -> 4,121 / 29 |
+| enthusiast 80 mm | 25 | 23 -> 22 | 13 -> **22** | 1,971 -> 1,696 | 2,614 / 15 -> 2,225 / 25 |
+| fremont 92.5 mm patch | 93 (both tags) | 57 -> 68 | 17 -> **38** | 4,111 -> 3,982 | 20,177 / 58 -> 20,051 / 78 |
+
+Renders `docs/renders/lettering-columns-2026-10-07/`: MARINE's M is two stems and two diagonals, the A legs and crossbar, the R stem, bowl and leg, the N stem-diagonal-stem, each one column at one angle; the E's body still fans (one uncut piece), and ENTHUSIAST's S fans (an uncut double bowl). Enthusiast's and Fremont's trims RISE because there is no Euler walk yet (Fremont's slab serifs also cut into more pieces than the skeleton makes strokes, 57 -> 68 columns): a hop between two of a letter's columns that leaves the letter is a jump, and past 3 mm a trim.
+
+Two traps met: the engine's satin spacing is ONE cross per `SATIN_SPACING_MM` with the rails alternating — the spike stationed every 0.2 mm and the first wiring doubled every stitch count (gaulke 2,521 -> 4,163 before the fix); and with an underlay the column sews back over it, so the needle ends at the column's START and the next column must be picked from the last emitted point, not from the column's far end. Next on the lane, in order: the Euler walk across a letter's columns (`satinfont.js` `routeGlyph`, the 41-vs-3 lever), the E/F as stem plus arms, the bowl rule, junction overlap, short stitches on inside bends; then Kent's labelled pairs. The flip is his.
+
+---
+
 **Last updated:** 2026-10-06 — the stroke-colour rule and `dissolve_phantom_blends` together, nine gradient logos
 
 `tools/stroke_colour_probe.py --dissolve` (span ≥ 60, ≤ 4 source px, side absolute; both arms with the dissolve on), read with the 2026-10-05 rows below for the other two arms. Cones, stitches:
