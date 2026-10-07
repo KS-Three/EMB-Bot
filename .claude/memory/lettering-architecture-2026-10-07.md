@@ -77,6 +77,14 @@ main's engine too (one of the three standing reds). GitHub refuses a push to a b
 PR is auto-merge-armed AND dirty against main with a bare Internal Server
 Error; disable auto-merge, push, re-arm. The E/F cut is the second look
 reading 30-degree corners; the S was never a cut problem but shared needle
-holes (the engine's `_short_stitch_guard`, now on every column). Next:
-junction overlap, slanted terminals cut short, then Kent's pairs.
+holes (the engine's `_short_stitch_guard`, now on every column). The junction tuck
+(fourth step): a butting column sewn BEFORE the stroke it meets runs under it
+by stage6's `_JUNCTION_TUCK_MM` + pull, capped at half a stroke; sewn after,
+a plain butt to the cut line. The walk starts at a butting column's free end
+(within trim_at of the needle) and the postman never pairs that node unless
+nothing else is odd -- paired, it goes even and the T's stem doubled and its
+bar split (caught by the reviewer agent, not by the tests). Only where half a
+stroke >= tuck: on 0.96 mm strokes the reorder cost six entry trims for a
+sliver. MARINE 8 -> 7, enthusiast 14 -> 12, gaulke 23 -> 26, Fremont 22.
+Next: slanted terminals cut short, then Kent's pairs.
 

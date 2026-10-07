@@ -205,6 +205,49 @@ def test_a_t_walks_bar_then_stem_without_a_jump():
     assert report["columns"] == 2 and _jumps(runs) == []
 
 
+# ------------------------------------------------------ the junction tuck
+
+def test_a_t_sews_its_stem_first_and_tucks_it_under_the_bar():
+    """The stem butts the bar mid-stroke: the walk starts at the stem's free
+    end so the stem is sewn before the bar, and its satin runs on under the
+    bar by the satin tier's junction tuck -- the bar then covers the seam.
+    The bar is one unbroken satin run, not two halves meeting at the stem."""
+    T = _rect(4, 0, 6, 12).union(_rect(0, 0, 10, 2))
+    cut = letter_columns(T)
+    # the needle within trim of the stem's foot, the columns in either
+    # order: the postman must not pair the junction with the foot (that
+    # doubled the stem and split the bar when the stem was column 0)
+    for cols in (cut.columns, cut.columns[::-1]):
+        runs, report = column_runs(cols, cut.poly, "t", trim_at_mm=3.0, start_near=(5, 12))
+        assert report["junctions"] == 1 and report["tucks"] == 1
+        sat = [r for r in runs if r.kind == stitches.SATIN]
+        assert len(sat) == 2
+        stem, bar = sat
+        assert max(y for _, y in stem.points) > 10 and max(y for _, y in bar.points) <= 2.0
+        assert min(y for _, y in stem.points) <= 2.0 - 0.3      # under the bar by the tuck
+        assert min(y for _, y in stem.points) >= 1.0             # never past the bar's middle
+        assert max(x for x, _ in bar.points) - min(x for x, _ in bar.points) > 9
+
+
+def test_a_butt_sewn_after_its_stroke_reaches_the_cut_and_stops():
+    """An H's bar has no free end, so it may sew after a stem it butts: that
+    end is a plain butt, extended to the cut line (its last station sat up
+    to a pitch short of it) and no further than one pitch past it."""
+    H = _rect(0, 0, 2, 12).union(_rect(8, 0, 10, 12)).union(_rect(0, 5, 10, 7))
+    runs, report = lettering_columns_shape(H, "h", trim_at_mm=3.0, start_near=(1, 0))
+    assert report["junctions"] == 2
+    sat = [r for r in runs if r.kind == stitches.SATIN]
+    bar = [r for r in sat if max(x for x, _ in r.points) - min(x for x, _ in r.points) > 4]
+    assert len(bar) == 1
+    xs = [x for x, _ in bar[0].points]
+    # the stems' inner edges are x = 2 and x = 8: both bar ends reach them,
+    # the butt by less than a pitch, the tuck by no more than half a stem
+    assert report["tucks"] == 1
+    assert min(xs) <= 2.0 and max(xs) >= 8.0
+    assert min(xs) >= 2.0 - 0.4 and max(xs) <= 8.0 + 1.0
+    assert all(H.buffer(0.11).covers(Point(p)) for p in bar[0].points)
+
+
 def test_two_separate_stems_are_two_components_joined_by_one_jump():
     a = letter_columns(_rect(0, 0, 2, 12)).columns[0]
     b = letter_columns(_rect(6, 0, 8, 12)).columns[0]
