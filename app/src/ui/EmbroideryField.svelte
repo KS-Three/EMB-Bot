@@ -909,10 +909,8 @@
     };
   }
 
-  // The cap stretch under the pointer, if any. A stretch rides the silhouette,
-  // which is also the outer shape's own outline, so a press on that edge picks
-  // the stretch — except when the outer shape is already selected and the press
-  // is on one of ITS nodes, which keeps node editing reachable.
+  // The cap stretch under the pointer, if any (see the press handler for how
+  // it shares an edge with the outer shape's own outline).
   function capHitAt(edit, p) {
     const hidden = hiddenShapeIds(edit.el, edit.rows);
     const live = (edit.caps || []).filter((o) => !hidden.has(o.id));
@@ -2709,9 +2707,16 @@
       // Hidden and deleted shapes are not drawn, so they are not grabbable.
       const shapeHit = hitOverlay(liveOutlinesPx(edit), p.x, p.y);
       const capHit = capHitAt(edit, p);
-      const onOwnNode = !!shapeHit && shapeHit.kind === "node"
-        && shapeHit.shapeId === selectedShapeId && edit.el.id === selectedShapeElId;
-      const hit = capHit && !onOwnNode ? capHit : shapeHit;
+      // The cap rides the silhouette, which is also the outer shape's outline,
+      // so one press spot can mean either. The shape wins first (a press on an
+      // outline has always selected its shape); pressing the same spot again,
+      // with that shape already selected, selects the cap stretch instead, and
+      // the next press goes back to the shape. Nodes and double-click stay the
+      // shape's, so node editing is untouched.
+      const ownShape = !!shapeHit && shapeHit.shapeId === selectedShapeId
+        && edit.el.id === selectedShapeElId;
+      const wantsCap = !!capHit && (!shapeHit || (ownShape && shapeHit.kind !== "node" && !(e.detail >= 2)));
+      const hit = wantsCap ? capHit : shapeHit;
       if (hit) {
         // First click on a shape selects it and stops there — no geometry
         // moves until you have said which shape you mean. On the manual and
