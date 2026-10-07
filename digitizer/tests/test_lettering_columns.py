@@ -31,12 +31,13 @@ import math
 from pathlib import Path
 
 import pytest
-from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, machine, stitches
 from digitizer_core.columns import Column, column_runs, lettering_columns_shape
-from digitizer_core.outline_cut import letter_columns, stroke_width
+from digitizer_core.outline_cut import (REFINE_TRIGGER, _overlong, build_column, letter_columns,
+                                        stroke_width)
 from digitizer_core.pipeline import digitize
 
 TESTDATA = Path(__file__).resolve().parents[1] / "testdata"
@@ -258,6 +259,84 @@ def test_two_separate_stems_are_two_components_joined_by_one_jump():
     # the second component is entered at the end nearer where the first finished
     end1, start2 = sat[0].points[-1], sat[1].points[0]
     assert abs(end1[1] - start2[1]) < 1.0
+
+
+# ---------------------------------------------------- slanted terminals
+
+def _sewn(runs, r=0.3):
+    return unary_union([LineString(x.points).buffer(r) for x in runs if x.kind == stitches.SATIN])
+
+
+def test_a_straight_arm_fans_its_slanted_end():
+    """An arm whose free end is cut on a slant (Becker's E arms): crosses
+    square to the axis stop where the slant begins and the tip used to sew
+    bare. Now the last square cross pivots on the shorter rail's end and
+    fans along the slant to the tip."""
+    arm = Polygon([(0, 0), (10, 0), (12, 2), (0, 2)])
+    col = letter_columns(arm).columns[0]
+    assert col.kind == "straight"
+    runs, _ = lettering_columns_shape(arm, "arm", trim_at_mm=3.0)
+    tip = Polygon([(10, 0), (12, 2), (10, 2)]).buffer(-0.2)
+    assert tip.difference(_sewn(runs)).area < 0.05 * tip.area
+    # the fan's crosses all share the shorter rail's end as their pivot
+    fan = [st for st in col.stations if st[0][0] > 10.0 + 1e-6 or st[1][0] > 10.0 + 1e-6]
+    assert len(fan) >= 3 and all(math.dist(st[0], (10, 0)) < 0.5 for st in fan)
+
+
+def test_a_curved_piece_keeps_its_slanted_tip():
+    """A quarter-circle band whose end is cut on a slant: the spike squared
+    a free end by cutting the longer rail back to the shorter, which left
+    every slanted tip short. Unsquared, the DTW pairing fans the longer
+    rail, and the last cross lies on the slant itself."""
+    import numpy as np
+    a0 = math.atan2(1.0, 6.0)
+    outer = [(6 * math.cos(t), 6 * math.sin(t)) for t in np.linspace(a0, math.pi / 2, 40)]
+    inner = [(4 * math.cos(t), 4 * math.sin(t)) for t in np.linspace(math.pi / 2, 0, 40)]
+    band = Polygon(outer + inner)                    # the closing edge IS the slant
+    assert band.is_valid
+    col = letter_columns(band).columns[0]
+    assert col.kind == "curved"
+    runs, _ = lettering_columns_shape(band, "band", trim_at_mm=3.0)
+    tip = band.buffer(-0.15).intersection(box(3.5, -1, 7, 1.5))
+    assert tip.difference(_sewn(runs)).area < 0.05 * tip.area
+    last = col.stations[-1] if col.stations[-1][0][1] < col.stations[0][0][1] else col.stations[0]
+    slant = LineString([(4, 0), outer[0]])
+    assert slant.distance(Point(last[0])) < 0.15 and slant.distance(Point(last[1])) < 0.15
+
+
+def test_a_round_cap_stays_square():
+    """A symmetric shrink (a round cap, a taper) draws both sides in alike
+    and is not a slant: it keeps the scan's square crosses rather than
+    fanning from one arbitrary side."""
+    import numpy as np
+    cap = [(1 + math.cos(t), 10 + math.sin(t)) for t in np.linspace(math.pi, 0, 24)]
+    stem = Polygon([(0, 0), (2, 0)] + cap)
+    col = letter_columns(stem).columns[0]
+    assert col.kind == "straight"
+    xs = {round(a[0], 3) for a, _ in col.stations} | {round(b[0], 3) for _, b in col.stations}
+    # no shared pivot: no x value is hit by more than three station ends
+    from collections import Counter
+    ends = Counter(tuple(round(v, 3) for v in p) for st in col.stations for p in st)
+    assert max(ends.values()) <= 2
+
+
+def test_an_uncut_n_reports_the_diagonal_it_cannot_scan():
+    """Stem and diagonal left as one piece scan as one upright column: each
+    scanline meets the piece twice and only the longer segment is
+    stationed. The rest is reported as dropped length and counts as
+    over-long, so the second look cuts the piece instead of sewing the
+    diagonal only where it happens to be the longer segment (Fremont's N,
+    2.1 mm2 bare)."""
+    N = Polygon([(0, 0), (1, 0), (1, 5.5), (4, 0), (5, 0), (5, 8), (4, 8), (4, 2.5), (1, 8), (0, 8)])
+    W = stroke_width(N)
+    col = build_column(N, [], W, 0.4)
+    assert col is not None and col.kind == "straight"
+    assert col.dropped_mm > 10.0
+    long_mm, total_mm = _overlong(col, W)
+    assert long_mm / total_mm > REFINE_TRIGGER
+    runs, report = lettering_columns_shape(N, "n", trim_at_mm=3.0)
+    inner = N.buffer(-0.15)
+    assert inner.difference(_sewn(runs)).area < 0.03 * inner.area
 
 
 # ------------------------------------------------------------- end to end
