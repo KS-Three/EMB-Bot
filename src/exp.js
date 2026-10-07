@@ -96,6 +96,11 @@
 
     let lastX = 0;
     let lastY = 0;
+    // Whether the previous EMITTED record laid thread — the chain rule the
+    // oversized-move split below needs, identical to encodeDST's and
+    // pecEncodeStitches'. Starts false: the file's first move is travel to
+    // wherever the design begins.
+    let lastWasStitch = false;
 
     for (let i = 0; i < stitches.length; i++) {
       const st = stitches[i];
@@ -119,6 +124,7 @@
       if (st.type === "color") {
         records.push(colorRecord());
         // Color-change control record carries no positional delta.
+        lastWasStitch = false; // a colour change cuts the chain
         continue;
       }
 
@@ -136,6 +142,7 @@
         }
         lastX = targetX;
         lastY = targetY;
+        lastWasStitch = false; // a trim cuts the chain
         continue;
       }
 
@@ -144,13 +151,56 @@
       const dx = targetX - lastX;
       const dy = targetY - lastY;
 
-      // Travel splits at the RECORD limit; a sewn move splits at the
-      // SEWABILITY ceiling, which is lower. Same shape as pes.js's
-      // `chained ? PEC_MAX_SEWN_DELTA : PEC_MAX_DELTA`.
+      // THE CHAIN RULE (dst.js's encodeDST and pes.js's pecEncodeStitches,
+      // same words, same reason). A move splits into STITCHES only when it
+      // CONTINUES a sewn run: this record is a stitch AND the last emitted one
+      // was. The move to the FIRST stitch after a jump, a trim, a colour
+      // change or the start of the file is TRAVEL — there is nothing to sew
+      // between where the needle was and where the run begins.
+      //
+      // This file split on `isJump` alone until 2026-10-07, so every stitch
+      // record split into stitches, and a stitch more than one record from
+      // where travel ended put the needle down along the way. Its own comment
+      // here read "same shape as pes.js's `chained ? ... : ...`" all the
+      // while, and crossval's `long` fixture said both encoders "must keep
+      // splitting that as jumps": the rule was meant, and never written,
+      // because no fixture laid such a move and EXP has no importer whose
+      // tests would have caught it as dstimport's caught dst.js's.
+      //
+      // One stream, three files, found 2026-10-06 by the independent
+      // re-measure of `cutFloats` (records read back from each):
+      //   j0,0 s0,0 s30,0 j230,0 s430,0 s460,0
+      //   dst  J0 S0 S30 J100 J100 J100 S100 S30
+      //   exp  J0 S0 S30 J100 J100 S100 S100 S30   <- a needle hole at x=330
+      //   pes  J0 S0 S30 J200 S200 S30
+      // It shipped: the shape tool's thin-armed stars (the satin floats to a
+      // far arm and sews back where it was), and any imported stitch file
+      // whose first record is a stitch, which sewed a line from the middle of
+      // the hoop to where the design starts. `tools/file-cut-census.mjs`
+      // counts them; `docs/scope-history.md` 2026-10-07 has the numbers.
+      //
+      // WHERE a move is split has not changed, only WHAT the records before
+      // the last are. A jump splits at the RECORD limit. A stitch splits at
+      // the SEWABILITY ceiling whether it continues a run or ends travel, so
+      // travel into a run is the records dst.js lays for it, and no stitch
+      // record of an EXP carries more than 12.1 mm an axis — none has since
+      // 2026-09-13, and whether a machine takes a longer one after a jump is
+      // not this file's to settle (ROADMAP gate 1). pes.js lets that last
+      // record run to PEC's whole reach; that is its own ruling, not copied.
+      //
+      // The LAST step carries the record's real kind; the ones before it are
+      // stitches when the move continues a sewn run and jumps when it does
+      // not. One step when the move fits, so a design with no stitch more
+      // than a record from where travel ended is byte-identical.
+      const chained = !isJump && lastWasStitch;
       const limit = isJump ? MAX_DELTA : EXP_MAX_SEWN_DELTA;
-      for (const [sx, sy] of splitSteps(dx, dy, limit, 1)) {
-        records.push(isJump ? jumpRecord(sx, sy) : stitchRecord(sx, sy));
+      const steps = splitSteps(dx, dy, limit, 1);
+      for (let k = 0; k < steps.length - 1; k++) {
+        records.push(chained ? stitchRecord(steps[k][0], steps[k][1]) : jumpRecord(steps[k][0], steps[k][1]));
       }
+      const last = steps[steps.length - 1];
+      records.push(isJump ? jumpRecord(last[0], last[1]) : stitchRecord(last[0], last[1]));
+      lastWasStitch = !isJump;
       lastX = targetX;
       lastY = targetY;
     }
