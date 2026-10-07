@@ -3947,7 +3947,10 @@ def _straighten_member_end(piece: list[tuple[float, float]], at_end: bool,
         return piece
     spacing = max(1e-6, total / max(1, len(pts) - 1))
     steps = max(1, int(round(t_end / spacing)))
-    straight = [tuple(base + u * (t_end * j / steps)) for j in range(1, steps + 1)]
+    # plain floats: a numpy scalar that rode a spine point into a stitch
+    # would reach the service's JSON export, which cannot serialise it
+    straight = [(float(base[0] + u[0] * (t_end * j / steps)), float(base[1] + u[1] * (t_end * j / steps)))
+                for j in range(1, steps + 1)]
     out = pts[:q + 1] + straight
     return out if at_end else list(reversed(out))
 
