@@ -1,4 +1,4 @@
-import { designToStrands, jumpTrimMarks } from "./strands.js";
+import { designToStrands, jumpTrimMarks, shrinkSatinStrands } from "./strands.js";
 
 // ---- Fabric contrast helpers (Slice 8 Task 2, B7) --------------------------
 // Perceived brightness (ITU-R BT.709 relative-luminance weights), normalized
@@ -892,6 +892,11 @@ export function renderRealistic(canvas, design, opts) {
   // finish), so scrubbing/playing renders the design exactly as the machine
   // would sew it. undefined/null = draw everything (every existing caller).
   if (o.limitStrands != null) strands = strands.slice(0, Math.max(0, o.limitStrands));
+  // Sewn width (2026-10-06): `sewnPullMm` > 0 draws every satin strand with
+  // that much pull compensation taken back off each end — the column at the
+  // width the cloth will show, not the width the file carries. See
+  // strands.js's shrinkSatinStrands; a view only, nothing in the design moves.
+  if (o.sewnPullMm > 0) strands = shrinkSatinStrands(strands, o.sewnPullMm);
   // Thread width is PHYSICAL (THREAD_WIDTH_MM), with a px floor so a thread
   // stays visible in the small font/template previews where pxPerMm is tiny.
   const threadMm = o.threadWidthMm != null ? o.threadWidthMm : THREAD_WIDTH_MM;
