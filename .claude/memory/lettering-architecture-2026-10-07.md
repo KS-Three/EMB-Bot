@@ -67,10 +67,8 @@ stage 5 keeps the artwork polygon. Becker MARINE letters 42 -> 8 trims WITH the
 Euler walk (routeGlyph ported: span graph, postman duplication, Hierholzer,
 last visit satin / earlier underpath, hops through the junction, in-letter
 hops up to 2 W sewn); without it enthusiast went 13 -> 22 and Fremont
-17 -> 38, with it 13 -> 11 and 17 -> 22. Three traps: the engine's satin spacing is ONE cross per 0.4 mm
-(the spike stationed at 0.2 and doubled every count); a station is ONE
-penetration, rails alternating (both ends down = boxes at double density,
-caught only on a render of one S); with an underlay the
+17 -> 38, with it 13 -> 11 and 17 -> 22. Three traps (the first two CORRECTED below: stations 0.4 apart with BOTH ends
+down is the engine's density; the spike's 0.2 with both ends was the double); with an underlay the
 needle ends at the column's START, so order from the last emitted point,
 not from `col.end`. The local flat-lane golden on enthusiast is red on
 main's engine too (one of the three standing reds). GitHub refuses a push to a branch whose
@@ -86,5 +84,19 @@ nothing else is odd -- paired, it goes even and the T's stem doubled and its
 bar split (caught by the reviewer agent, not by the tests). Only where half a
 stroke >= tuck: on 0.96 mm strokes the reorder cost six entry trims for a
 sliver. MARINE 8 -> 7, enthusiast 14 -> 12, gaulke 23 -> 26, Fremont 22.
-Next: slanted terminals cut short, then Kent's pairs.
+Slanted terminals (fifth step) and the
+yardstick that found them: BARE ARTWORK (polygon inset 0.15 minus 0.3 mm thread
+round every satin cross) -- the straight scan dropped whole segments (an N's
+diagonal, 2.1 mm2) and that now counts as over-long so the second look cuts;
+`_fan_ends` fans a slanted end from the SCAN (crosses under 0.85 of the median
+= the slant; a rail-walking version swept a fan across a B); the curved path's
+free ends are not squared any more so DTW fans the tip. A symmetric shrink (round cap) stays
+square; a fan is all or nothing. DENSITY CORRECTION the same night: the lane
+sewed one end per station = 0.80 mm per rail, HALF the satin tier's 0.40 (the
+engine's zigzag is A1,B1,A2,B2, both ends, stations 0.4 apart); the 'one
+penetration per station' trap above was wrong. Full density: becker letters
+4,709 -> 3,095 (not 1,629), trims 42 -> 8. Count needles per rail, never
+totals across tiers. At 0.15 mm thread the terminals still hold: MARINE bare
+3.1 -> 2.7%, Fremont 2.0 -> 0.6%. The E is still three slabs (the ext rule takes the
+slot's LONGER edge into the body): the next cut item. Then Kent's pairs.
 

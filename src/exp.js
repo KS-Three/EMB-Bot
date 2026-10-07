@@ -189,6 +189,7 @@
       // 2026-09-13, and whether a machine takes a longer one after a jump is
       // not this file's to settle (ROADMAP gate 1). pes.js lets that last
       // record run to PEC's whole reach; that is its own ruling, not copied.
+      // Kent's pick, 2026-10-07, with EXP's own 12.7 mm put to him: keep 12.1.
       //
       // The LAST step carries the record's real kind; the ones before it are
       // stitches when the move continues a sewn run and jumps when it does

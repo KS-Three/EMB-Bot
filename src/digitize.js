@@ -937,7 +937,8 @@
     const underlayRowPx = Math.max(PX_LOOP_EPS, 2.5 * pxPerFinalMm);
     const pullCompPx = pullCompMm * pxPerFinalMm; // fill pull-comp offset (px)
     // Shared context for named underlay styles (used only in fabric mode).
-    // `fillColumns` (default off): every tatami pass of a FILL shape whose
+    // `fillColumns` (default off; the Studio's MANUAL lane passes it ON since
+    // 2026-10-07, Kent's call -- app/src/lib/generate.js): every tatami pass of a FILL shape whose
     // rows fork -- the fill and the underlay under it -- is sewn column by
     // column, so no thread is carried across a hole or a notch (fill.js,
     // `opts.columns`). Off, nothing reads it and every stitch is unchanged.

@@ -1007,16 +1007,19 @@ sews nothing and cuts the smallest shape that contains it.
 - On the side canvas, **Hole mode's click always draws**; Shape mode's click
   inside a finished shape selects it. That asymmetry is deliberate — a hole
   starts inside a shape.
-- **A cut-out is clear of the needle, not yet of thread (2026-10-03).** The
+- **A cut-out is clear of the needle (2026-10-03), and of thread in the manual
+  lane since 2026-10-07.** Without `fillColumns` the
   JS fill goes from one span of a split row straight to the next, so every
   row lays a float (or, under 4 mm, a stitch) across the hole. The Studio's
   field shows it only with its **Jumps** toggle on, which is off by default.
-  The cure is built OFF: `buildQualityDesign({ fillColumns: true })` sews a forked FILL
+  The cure, OFF by engine default: `buildQualityDesign({ fillColumns: true })` sews a forked FILL
   shape column by column (`fill.js` `opts.columns`, a port of the Python
   `_columns`) and goes ROUND a hole instead of crossing it. A satin shape is
-  untouched by it, and so is a fill with no hole and no inside corner. None
-  of `generate.js`'s three callers passes it; the flip is Kent's (MASTER_SCOPE
-  defect 52). It has not been sewn. Eight things to know before touching it:
+  untouched by it, and so is a fill with no hole and no inside corner. Of
+  `generate.js`'s three callers only the MANUAL branch passes it (Kent's
+  call 2026-10-07; `generate.spec.js` pins it with a cut-out); basic shapes
+  and the image lane do not, and their flip is Kent's (MASTER_SCOPE defect
+  52, "Waiting on Kent" 22). It has not been sewn. Eight things to know before touching it:
   - Every move is asked what ground it runs over (`groundUnder`): on the
     ground it may float, on the rim it is sewn, deeper than `openTol` into
     open ground it must go round or be cut.
