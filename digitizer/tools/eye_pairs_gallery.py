@@ -147,6 +147,12 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "lettering_min_column_mm=1.0",
         "Widen sub-floor lettering to a 1.0 mm sewable column instead of the "
         "bean run; known to fill counters at a 2.2 mm cap height."),
+    "lettering_columns": (
+        "lettering_columns=True",
+        "Sew each text-tagged letter as Columns cut from its own outline (one "
+        "column per stroke, rails on the outline, pull on the rails) instead of "
+        "the skeleton's slabs; no Euler walk yet, so trims between a letter's "
+        "columns are nearest-next."),
     "phantom_dissolve": (
         "dissolve_phantom_blends=True",
         "Dissolve JPEG ringing colours on the photo/gradient lane, so a logo's "

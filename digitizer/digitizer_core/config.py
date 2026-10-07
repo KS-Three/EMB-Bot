@@ -1668,6 +1668,23 @@ class PipelineConfig:
     # re-capture on the flip, and the render is Kent's to judge first.
     # Tests: `tests/test_join_corner_straight.py`.
     satin_join_square: bool = False
+    # Lettering as Columns (`digitizer_core/outline_cut.py`,
+    # `digitizer_core/columns.py`; the lettering-lane architecture,
+    # `docs/lettering-architecture-rd-2026-10-07.md` §5 L4/L5, Kent's pick
+    # 2026-10-07). ON, a text-tagged shape (`meta.text_candidate`) skips the
+    # skeleton satin tier: its ARTWORK outline is cut into stroke pieces at
+    # its concave corners (through-cuts, mitres, edge extensions, the
+    # second-look refinement), each piece's rails are stretches of the
+    # outline itself, and the pieces sew as Columns with the fabric's pull
+    # on the rails, the cross floor, the split comb and a centre underlay.
+    # That is the construction every commercial letter builder uses; the
+    # shipped tier casts rails from a smoothed skeleton and sews one letter
+    # as several slabs (Becker MARINE: 6-9 columns and 7-9 trims a letter,
+    # measured 2026-10-07). Built OFF: the order between a letter's columns
+    # is nearest-next (no Euler walk yet), junction overlap and short
+    # stitches are not built, and the renders are Kent's to judge first.
+    # Off, byte-identical. Tests: `tests/test_lettering_columns.py`.
+    lettering_columns: bool = False
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the

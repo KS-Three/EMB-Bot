@@ -1,0 +1,266 @@
+"""`cfg.lettering_columns` -- lettering as Columns cut from the letter's own
+outline (`digitizer_core/outline_cut.py`, `digitizer_core/columns.py`; the
+lettering-lane architecture, `docs/lettering-architecture-rd-2026-10-07.md`
+§5 L4/L5, Kent's picks 2026-10-07).
+
+Contracts pinned:
+
+- the flag is built OFF, and OFF is byte-identical: the stage 7 hook and
+  the `_sews_satin` branch are both behind the flag, so a run with the
+  flag unset and one with it set False produce the same plan on a real
+  lettering fixture, point for point;
+- the cut is the construction the spike settled on synthetic letters: an I
+  is one straight column, an L cuts once into two straight columns, a T
+  cuts its stem from its bar, an O is one ring column whose rails are the
+  outer ring and the counter;
+- the Column engine honours the rules it claims: every station's ends sit
+  on the piece's outline before the push and a pull outside it after, a
+  cross under the floor is dropped and counted, a column's runs are linked
+  by the satin tier's sew-or-jump rule, and the nearest-next order enters
+  a column at the end nearer the needle;
+- ON, through `digitize()` on Becker at 100 mm, every text-tagged MARINE
+  letter sews satin runs from this lane (the plan counter says so), no
+  letter sews a fill run, and the letters' satin runs and trims both fall
+  against the skeleton tier -- the numbers the R&D report measured
+  (34 runs / 42 trims -> 17 / 15 on 2026-10-07) are pinned as bounds, not
+  as exact values, because the cut moves with the trace.
+"""
+from __future__ import annotations
+
+import math
+from pathlib import Path
+
+import pytest
+from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import unary_union
+
+from digitizer_core import PipelineConfig, machine, stitches
+from digitizer_core.columns import Column, column_runs, lettering_columns_shape
+from digitizer_core.outline_cut import letter_columns, stroke_width
+from digitizer_core.pipeline import digitize
+
+TESTDATA = Path(__file__).resolve().parents[1] / "testdata"
+BECKER = TESTDATA / "becker_marine_logo.png"
+
+
+def _rect(x0, y0, x1, y1):
+    return Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+
+
+def test_flag_is_built_off():
+    assert PipelineConfig().lettering_columns is False
+
+
+# ---------------------------------------------------------------- the cut
+
+def test_an_i_is_one_straight_column():
+    cut = letter_columns(_rect(0, 0, 2, 12))
+    assert cut.cuts == []
+    assert len(cut.columns) == 1 and not cut.unsewn
+    col = cut.columns[0]
+    assert col.kind == "straight"
+    assert abs(abs(col.axis[1]) - 1.0) < 1e-6          # upright
+    assert len(col.stations) >= 3
+    for a, b in col.stations:
+        assert abs(math.dist(a, b) - 2.0) < 0.05        # every cross spans the stem
+
+
+def test_an_l_cuts_once_into_two_straight_columns():
+    # stem 2 x 12, foot 8 x 2
+    L = _rect(0, 0, 2, 12).union(_rect(0, 10, 8, 12))
+    cut = letter_columns(L)
+    assert len(cut.cuts) == 1
+    assert len(cut.columns) == 2 and not cut.unsewn
+    axes = sorted(abs(c.axis[1]) for c in cut.columns)
+    assert axes[0] < 0.01 and axes[1] > 0.99             # one along x, one along y
+    # the pieces tile the letter
+    area = sum(c.piece.area for c in cut.columns)
+    assert abs(area - cut.poly.area) < 0.2
+
+
+def test_a_t_cuts_its_stem_from_its_bar():
+    T = _rect(4, 0, 6, 12).union(_rect(0, 0, 10, 2))
+    cut = letter_columns(T)
+    assert len(cut.columns) == 2 and not cut.unsewn
+    kinds = {c.kind for c in cut.columns}
+    assert kinds == {"straight"}
+    # the bar's column runs along x, the stem's along y
+    assert sorted(abs(c.axis[1]) for c in cut.columns)[0] < 0.01
+
+
+def test_an_o_is_one_ring_column_between_outline_and_counter():
+    outer = Point(0, 0).buffer(6, 64)
+    O = Polygon(outer.exterior.coords, [Point(0, 0).buffer(3.5, 64).exterior.coords])
+    cut = letter_columns(O)
+    assert cut.cuts == []
+    assert len(cut.columns) == 1 and not cut.unsewn
+    col = cut.columns[0]
+    assert col.kind == "ring"
+    ext, hole = cut.poly.exterior, cut.poly.interiors[0]
+    for a, b in col.stations:
+        da, db = ext.distance(Point(a)), hole.distance(Point(b))
+        assert min(da, ext.distance(Point(b))) < 0.15 and min(db, hole.distance(Point(a))) < 0.15
+
+
+def test_stations_sit_on_the_outline_and_pitch_follows_spacing():
+    poly = _rect(0, 0, 3, 20)
+    cut = letter_columns(poly, pitch_mm=0.2)
+    col = cut.columns[0]
+    for a, b in col.stations:
+        assert poly.exterior.distance(Point(a)) < 1e-6 and poly.exterior.distance(Point(b)) < 1e-6
+    ys = sorted(a[1] for a, _ in col.stations)
+    gaps = [q - p for p, q in zip(ys, ys[1:])]
+    assert all(abs(g - 0.2) < 1e-6 for g in gaps)
+
+
+# -------------------------------------------------------------- the engine
+
+def test_pull_lands_on_the_rails_and_the_floor_drops_a_cross():
+    poly = _rect(0, 0, 2, 12)
+    cut = letter_columns(poly)
+    runs, report = column_runs(cut.columns, cut.poly, "s", trim_at_mm=3.0, pull_mm=0.3)
+    assert not report["empty"] and report["columns"] == 1
+    sat = [r for r in runs if r.kind == stitches.SATIN]
+    assert len(sat) == 1
+    xs = sorted({round(p[0], 3) for p in sat[0].points})
+    assert xs[0] == pytest.approx(-0.3, abs=1e-6) and xs[-1] == pytest.approx(2.3, abs=1e-6)
+    # a column narrower than the cross floor sews nothing, and says so
+    thin = Column(stations=[((0, y), (0.3, y)) for y in (0.0, 0.5, 1.0, 1.5)],
+                  piece=_rect(0, 0, 0.3, 2), kind="straight", axis=(0, 1), width_mm=0.3)
+    runs2, rep2 = column_runs([thin], _rect(0, 0, 0.3, 2), "s", trim_at_mm=3.0)
+    assert rep2["empty"] and rep2["thin_crosses"] == 4 and rep2["columns_unsewn"] == 1
+
+
+def test_underlay_precedes_its_column_and_the_column_sews_back_over_it():
+    poly = _rect(0, 0, 2, 12)
+    cut = letter_columns(poly)
+    runs, report = column_runs(cut.columns, cut.poly, "s", trim_at_mm=3.0, underlay_style="center")
+    assert [r.kind for r in runs] == [stitches.UNDERLAY, stitches.SATIN]
+    ul, sat = runs
+    assert not sat.jump                                  # the hop is inside the letter and short
+    assert math.dist(ul.points[-1], sat.points[0]) < 3.0
+    assert all(abs(p[0] - 1.0) < 1e-6 for p in ul.points)   # centre run down the stem
+
+
+def test_nearest_next_enters_the_second_column_at_its_near_end():
+    # two separate stems side by side: the needle finishes stem 1 at its top
+    # and must start stem 2 at ITS top, not travel to its bottom.
+    a = letter_columns(_rect(0, 0, 2, 12)).columns[0]
+    b = letter_columns(_rect(4, 0, 6, 12)).columns[0]
+    runs, _ = column_runs([a, b], _rect(0, 0, 6, 12), "s", trim_at_mm=3.0, start_near=(1, 0))
+    sat = [r for r in runs if r.kind == stitches.SATIN]
+    assert len(sat) == 2
+    end1, start2 = sat[0].points[-1], sat[1].points[0]
+    assert abs(end1[1] - start2[1]) < 1.0
+
+
+def test_split_comb_breaks_a_wide_cross():
+    poly = _rect(0, 0, 8, 20)
+    cut = letter_columns(poly)
+    runs, _ = column_runs(cut.columns, cut.poly, "s", trim_at_mm=3.0,
+                          split_above_mm=machine.SPLIT_SATIN_ABOVE_MM)
+    sat = [r for r in runs if r.kind == stitches.SATIN][0]
+    longest = max(math.dist(p, q) for p, q in zip(sat.points, sat.points[1:]))
+    assert longest < machine.SPLIT_SATIN_ABOVE_MM
+
+
+def test_shape_entry_point_reports_the_cut():
+    L = _rect(0, 0, 2, 12).union(_rect(0, 10, 8, 12))
+    runs, report = lettering_columns_shape(L, "s", trim_at_mm=3.0)
+    assert report["cuts"] == 1 and report["columns"] == 2 and not report["empty"]
+    assert {r.kind for r in runs} <= {stitches.SATIN, stitches.TRAVEL}
+    assert sum(r.kind == stitches.SATIN for r in runs) == 2
+
+
+# --------------------------------------------------------------- the walk
+
+def _jumps(runs):
+    return [r for r in runs if r.jump]
+
+
+def test_an_h_walks_as_one_component_with_no_jump_inside_the_letter():
+    """Two stems and a bar: the bar's ends land mid-stroke on both stems, so
+    the span graph is one component with four odd nodes; the postman
+    duplicates one span (walked as an underpath) and the trail sews every
+    span once as satin with the needle never leaving the letter."""
+    H = _rect(0, 0, 2, 12).union(_rect(8, 0, 10, 12)).union(_rect(0, 5, 10, 7))
+    runs, report = lettering_columns_shape(H, "h", trim_at_mm=3.0, start_near=(1, 0))
+    assert not report["empty"] and report["columns"] == 3
+    sat = [r for r in runs if r.kind == stitches.SATIN]
+    assert sum(len(r.points) for r in sat) > 0
+    assert _jumps(runs) == []                 # one continuous walk
+    # the whole letter is sewn: the zigzags, as 0.4 mm thread, cover the
+    # letter inside its own edge (the triangles between adjacent crosses at
+    # the rails are the zigzag's own, not a missing span)
+    sewn = unary_union([LineString(r.points).buffer(0.3) for r in sat])
+    inner = H.buffer(-0.3)
+    assert sewn.intersection(inner).area >= 0.97 * inner.area
+    # the duplicated span is walked as an underpath, not sewn twice as satin
+    assert any(r.kind == stitches.TRAVEL for r in runs)
+
+
+def test_a_t_walks_bar_then_stem_without_a_jump():
+    T = _rect(4, 0, 6, 12).union(_rect(0, 0, 10, 2))
+    runs, report = lettering_columns_shape(T, "t", trim_at_mm=3.0, start_near=(0, 0))
+    assert report["columns"] == 2 and _jumps(runs) == []
+
+
+def test_two_separate_stems_are_two_components_joined_by_one_jump():
+    a = letter_columns(_rect(0, 0, 2, 12)).columns[0]
+    b = letter_columns(_rect(6, 0, 8, 12)).columns[0]
+    poly = _rect(0, 0, 2, 12).union(_rect(6, 0, 8, 12))
+    runs, report = column_runs([a, b], poly, "s", trim_at_mm=3.0, start_near=(1, 0))
+    sat = [r for r in runs if r.kind == stitches.SATIN]
+    assert len(sat) == 2 and report["jumps"] == 1
+    # the second component is entered at the end nearer where the first finished
+    end1, start2 = sat[0].points[-1], sat[1].points[0]
+    assert abs(end1[1] - start2[1]) < 1.0
+
+
+# ------------------------------------------------------------- end to end
+
+def _plan_points(plan):
+    return [(b.thread_index, r.kind, r.jump, r.trim, tuple(r.points))
+            for b in plan.blocks for r in b.runs]
+
+
+def _letter_census(result, plan):
+    ids = {r.shape_id for r in result.regions if r.meta.get("text_candidate")}
+    satin = trims = fills = 0
+    for b in plan.blocks:
+        for r in b.runs:
+            if r.shape_id not in ids:
+                continue
+            satin += r.kind == stitches.SATIN
+            fills += r.kind == stitches.FILL
+            trims += bool(r.trim)
+    return ids, satin, trims, fills
+
+
+@pytest.fixture(scope="module")
+def becker_off():
+    cfg = PipelineConfig(target_width_mm=100.0, garment_id="left_chest", max_colors=6)
+    return digitize(str(BECKER), cfg)
+
+
+def test_off_is_byte_identical(becker_off):
+    cfg = PipelineConfig(target_width_mm=100.0, garment_id="left_chest", max_colors=6,
+                         lettering_columns=False)
+    _, plan = digitize(str(BECKER), cfg)
+    assert _plan_points(plan) == _plan_points(becker_off[1])
+
+
+def test_on_every_marine_letter_sews_columns_with_fewer_runs_and_trims(becker_off):
+    cfg = PipelineConfig(target_width_mm=100.0, garment_id="left_chest", max_colors=6,
+                         lettering_columns=True)
+    result, plan = digitize(str(BECKER), cfg)
+    ids_on, satin_on, trims_on, fills_on = _letter_census(result, plan)
+    ids_off, satin_off, trims_off, fills_off = _letter_census(*becker_off)
+    assert ids_on == ids_off and len(ids_on) >= 6
+    assert fills_on == 0
+    # every MARINE letter (the six that sew; the band's five are holes of the
+    # band and sew nothing on either arm) carries satin from this lane
+    sewn = {r.shape_id for b in plan.blocks for r in b.runs if r.kind == stitches.SATIN}
+    assert len(sewn & ids_on) == 6
+    assert satin_on < satin_off and trims_on < trims_off
+    assert satin_on <= 24 and trims_on <= 24       # 17 / 15 measured 2026-10-07; 34 / 42 off
