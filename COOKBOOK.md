@@ -2106,7 +2106,21 @@ and controllable to the user.
     (`test/crossval-stitch-formats.test.js`, revived 2026-08-21 after the
     2026-08-11 pystitch swap left it silently skipping — the repo's only
     automated third-party format check; CI runs it loud, see "Running
-    things").
+    things"). **All three share ONE rule for a move too long for a record
+    (the chain rule, `dst.js`):** it is sewn, split into stitches at 12.1 mm
+    an axis, only when it CONTINUES a sewn run; the move to a stitch that
+    follows a jump, a cut, a colour change or the start of the file is
+    travel, laid as jumps up to its last record. `exp.js` took it last
+    (2026-10-07): until then its file had needle holes along such a move
+    that the other two had not. Check a change to one writer against the
+    other two at the FILE: `node tools/file-cut-census.mjs` counts the three
+    files' needle holes hole by hole, `--against <src>` says which designs'
+    files change. Its own three sets leave two lanes out, and they are the
+    two that mattered here: `--set tools/file-cut-satin-set.mjs` is a drawn
+    shape SET TO SATIN (the "manual" lane is all fills), and `--set
+    tools/file-cut-import-set.mjs` the lanes whose stream can OPEN with a
+    stitch (an imported stitch file, alone or as a project's second
+    element), which no builder's stream does.
 - **`app/src/`** — Svelte 5 Studio. `App.svelte` + `ui/` (steps/components) +
   `lib/` (non-DOM logic, each paired with a `.spec.js`): `project.js` (data
   model, v2 = `{version,garmentId,selectedId,elements:[...]}`), `generate.js`

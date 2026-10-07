@@ -294,3 +294,41 @@ test("crossval: PES splits it too, at the imported 121 (FIXED 2026-09-12)", asyn
   assert.strictEqual(r.decodedJumps, 1, "one leading travel-in jump, and no thread turned into travel");
   assert.strictEqual(r.decodedTrims, 0);
 });
+
+// ---- a stitch that FOLLOWS travel -----------------------------------------
+//
+// The mirror of the `long` fixture. There the over-length move sits between
+// two stitches and must be SEWN; in the `travel` fixture every over-length
+// move ends on a stitch that follows a jump, a cut, a colour change or the
+// start of the file, and must be TRAVELLED: the needle goes down at its end
+// and nowhere on the way.
+//
+// dst.js has done so since 2026-09-07 and pes.js since 2026-09-12. exp.js had
+// no chain rule and split every stitch record into stitches, so a standard
+// reader saw 17 stitches in this 8-stitch design: nine needle holes along
+// moves the other two files travel. Found 2026-10-06 by the independent
+// re-measure of `cutFloats`; fixed 2026-10-07.
+
+for (const fmt of ["dst", "pes", "exp"]) {
+  test(`crossval: ${fmt.toUpperCase()} travels to a stitch that follows travel, however far`, async (t) => {
+    await ensureRun();
+    const r = skipOrGet(t, fmt + ".travel");
+    if (!r) return;
+    assert.strictEqual(r.decodedStitches, r.expectedStitches, "the needle goes down where the design says and nowhere else");
+    assert.strictEqual(r.fit.transform, "identity");
+    assert.ok(r.fit.rms < 0.5, "and every stitch is where the design put it, rms=" + r.fit.rms);
+    assert.strictEqual(r.decodedColorChanges, 1);
+    // No two stitches of the design are more than a record apart, so nothing
+    // a reader sees sewn may be longer than the longest of them (30 units).
+    assert.strictEqual(r.longestSewnUnits, 30, "no thread laid along a move that is travel");
+  });
+}
+
+test("crossval: the three files of the travel fixture hold the same stitches", async (t) => {
+  await ensureRun();
+  const exp = skipOrGet(t, "exp.travel");
+  if (!exp) return;
+  const dst = run.results["dst.travel"], pes = run.results["pes.travel"];
+  assert.strictEqual(exp.decodedStitches, dst.decodedStitches);
+  assert.strictEqual(exp.decodedStitches, pes.decodedStitches);
+});
