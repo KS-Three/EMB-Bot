@@ -1,5 +1,5 @@
 import { test, expect, vi } from "vitest";
-import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, threadLayers, threadLodLayers, layerSubsetForCount, drawThreads, kindStyle, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM } from "./preview.js";
+import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, drawGrid, renderRealistic, threadLayers, threadLodLayers, layerSubsetForCount, drawThreads, kindStyle, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM } from "./preview.js";
 // ONE import line, deliberately. Three had accumulated here -- each bad merge
 // of this file stacked another partial copy on top rather than reconciling the
 // list, so the same seven names were declared three times over. esbuild
@@ -1145,4 +1145,25 @@ test("a role does NOT raise a run that is underneath by nature — a border's br
   // ...while the stitching that FORMS the border does stand proud.
   expect(kindStyle("border", "border").raised).toBe(true);
   expect(kindStyle("travel", "border").raised).toBe(false);
+});
+
+
+const rec = () => {
+  const calls = [];
+  const ctx = new Proxy({}, { get: (_, k) => (k === "calls" ? calls : (...a) => { calls.push([k, ...a]); }), set: () => true });
+  return { ctx, calls };
+};
+const g = { minor: "m", major: "M" };
+
+test("draws minor then major lines through the hoop centre", () => {
+  const { ctx, calls } = rec();
+  drawGrid(ctx, 200, 200, 2, 100, 100, g); // 10 mm = 20 px
+  expect(calls.filter((c) => c[0] === "stroke").length).toBe(2);
+  expect(calls.some((c) => c[0] === "moveTo" && c[1] === 100.5)).toBe(true);
+});
+
+test("drops minor lines when zoomed far out", () => {
+  const { ctx, calls } = rec();
+  drawGrid(ctx, 200, 200, 0.2, 100, 100, g); // 10 mm = 2 px
+  expect(calls.filter((c) => c[0] === "stroke").length).toBe(1);
 });

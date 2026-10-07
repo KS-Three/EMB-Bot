@@ -755,6 +755,31 @@ _ROUTABLE_PROBE_LIMIT = 40
 _TRIM_STITCH_EQUIVALENT = 25.0
 
 
+# `LineString(path).simplify(row_mm / 2).buffer(row_mm)` is the footprint a
+# sewn path leaves, and the covered-routing scorers ask for the SAME path's
+# footprint again on every order they price: `_order_cost` runs ~36 times per
+# fill shape and each run re-buffered every path (935 buffers, 11 s of a 22 s
+# restitch on the Instagram icon). Shapely geometries are immutable, so one
+# is shared. Keyed on the exact point tuple (a reversed path is a different
+# key on purpose: its buffer is the same set but not the same vertex order,
+# and the union that follows is order-sensitive in the last digit).
+_FOOTPRINT_MAX = 4096
+_FOOTPRINT_CACHE: "OrderedDict[tuple, object]" = OrderedDict()
+
+
+def _footprint(path, row_mm: float):
+    key = (row_mm, tuple(path))
+    hit = _FOOTPRINT_CACHE.get(key)
+    if hit is not None:
+        _FOOTPRINT_CACHE.move_to_end(key)
+        return hit
+    fp = LineString(path).simplify(row_mm / 2.0).buffer(row_mm)
+    _FOOTPRINT_CACHE[key] = fp
+    while len(_FOOTPRINT_CACHE) > _FOOTPRINT_MAX:
+        _FOOTPRINT_CACHE.popitem(last=False)
+    return fp
+
+
 def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
                 slack: Polygon, entry: tuple[float, float] | None,
                 trim_at_mm: float, row_mm: float | None = None,
@@ -818,7 +843,7 @@ def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
                     exposed_mm += max(0.0, _exposed_mm([cur] + bridge, sewn)
                                       - _EXPOSED_TOLERANCE_MM)
         if row_mm is not None and len(path) > 1:
-            footprint = LineString(path).simplify(row_mm / 2.0).buffer(row_mm)
+            footprint = _footprint(path, row_mm)
             sewn = footprint if sewn is None else sewn.union(footprint)
         cur = path[-1]
     return cuts, float(travel_stitches), exposed_mm / machine.TRAVEL_STITCH_MM
@@ -1160,7 +1185,7 @@ def _reorder_for_cover(paths: list[list[tuple[float, float]]], poly: Polygon,
             flipped.add(j)
         path = paths[j][::-1] if flip else paths[j]
         if len(path) > 1:
-            footprint = LineString(path).simplify(row_mm / 2.0).buffer(row_mm)
+            footprint = _footprint(path, row_mm)
             sewn = footprint if sewn is None else sewn.union(footprint)
         cur = path[-1]
         remaining.discard(j)
@@ -1531,7 +1556,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                     runs.append(StitchRun(points=pts, kind=kind, jump=True,
                                           trim=d > trim_at_mm, shape_id=shape_id))
                     if under_cover and kind == stitches.FILL and len(pts) > 1:
-                        footprint = LineString(pts).simplify(row_mm / 2.0).buffer(row_mm)
+                        footprint = _footprint(pts, row_mm)
                         sewn = footprint if sewn is None else sewn.union(footprint)
                     continue
                 # The bridge starts where the last run ended and finishes where
@@ -1544,7 +1569,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                                           shape_id=shape_id))
             runs.append(StitchRun(points=pts, kind=kind, shape_id=shape_id))
             if under_cover and kind == stitches.FILL and len(pts) > 1:
-                footprint = LineString(pts).simplify(row_mm / 2.0).buffer(row_mm)
+                footprint = _footprint(pts, row_mm)
                 sewn = footprint if sewn is None else sewn.union(footprint)
 
     # `cross_tatami` is laid at its own, longer stitch; split at the
