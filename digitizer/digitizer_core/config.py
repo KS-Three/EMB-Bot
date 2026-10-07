@@ -819,6 +819,47 @@ class PipelineConfig:
     # 1.0 mm column fills the counters (scope-history 09-09), which is why
     # this stays None until a glyph-height gate exists.
     lettering_min_column_mm: float | None = None
+    # Letterform priors (`letterform_priors.apply_letterform_priors`,
+    # 2026-10-06): refit every text-tagged letter of a line of lettering to
+    # straight segments and circular arcs under parameters the word shares
+    # -- stem direction from the house line and slant, stroke-width modes
+    # measured across ink, baseline and cap line -- with every vertex move
+    # capped at THIS VALUE times the source image's pixel at the design size
+    # (`1 / Prep.input_px_per_mm`), checked against the traced samples at
+    # every step. None (the default) is OFF: the module is never imported
+    # and the output is byte-identical. The value is k; 0.75 is the measured
+    # one.
+    #
+    # Why: Kent, 2026-10-05, lettering "looks like worms"; the outline-cut
+    # spike's own ceiling was "the letter is not letter-shaped before
+    # construction starts" on a low-resolution upload (Becker is 146 px wide,
+    # 0.66 mm per source pixel at 95.7 mm). A professional tracing that blur
+    # draws straight stems, true arcs, one width. The cap is what keeps the
+    # customer's font: the fit may not invent what the raster could not have
+    # carried. A word passes through untouched when the cap is under the
+    # engine's working-grid pixel (`1 / Prep.px_per_mm`) -- on a source finer
+    # than the grid the grid IS the source pixel, so only an upload stage 1
+    # upscaled is ever touched, and a letter the primitives do not explain
+    # within the cap on more than 10% of its outline is refused untouched.
+    # Per-letter outcome in `Region.meta["letterform_prior"]`.
+    #
+    # Measured (`docs/letterform-priors-2026-10-06.md`, k = 0.75): drone,
+    # enthusiast and fremont byte-identical (gated); Becker 10 of 11 letters
+    # refit, bridge 8 of 8, gaulke 36 of 38; primitives per letter -13 to
+    # -32%, stem-angle spread within a word -32 to -65%; against the pro's
+    # Becker file the centred IoU moves -0.0008 on average (neutral; his
+    # shape -- sharp corners, straight arms -- set the arc rules). The k
+    # sweep: 1.0 opens the gate on every logo and moves away from the pro
+    # (-0.0062), 0.5 gates gaulke too. **The price, today's stage 6:** Becker
+    # +506 stitches and +11 trims (55 -> 66; R / A / E gain 2-4 satin runs
+    # each at the sharpened junctions) for satin bare area 4.33 -> 2.65%;
+    # gaulke neutral (-18 stitches, -1 trim). The outline-cut spike's
+    # over-long check clears the right way on all three (Becker 9.3 -> 6.2%,
+    # bridge 21.3 -> 17.3%, gaulke 5.2 -> 3.1%). Bridge's letters are
+    # segmentation blobs and stay blobs. k and every rule were set on Becker
+    # and bridge; gaulke was held out. OFF until Kent judges the labelled
+    # thread pairs (`tools/eye_pairs`, arm `letterform_priors`).
+    letterform_priors_k: float | None = None
     # Even out stitch widths automatically (`stitchwidth.apply_stitch_widths`,
     # 2026-09-29): a letter more than 15% off its word's weight is offset to
     # the word's median, and `lettering_min_column_mm` (when set) reaches

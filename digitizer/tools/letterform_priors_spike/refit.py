@@ -1,48 +1,33 @@
-"""Apply the letterform fit to one saved run: group the lettering the way
-the engine does (`textcluster._lettering_groups`), read each word's line
-and slant with the engine's own house instruments, build the word prior,
-refit every text-tagged member, and hand back per-letter results.
+"""Apply the letterform fit to one saved run (the dict `run.py` pickled) and
+hand back per-letter rows the sheets and `batch.py` read.
 
-`refit_logo(d)` takes the dict `run.py` pickled; `refit_regions(regions,
-src_px_mm, grid_px_mm, k)` is the piece that would be wired into stage 4/5
-if Kent picks that. Neither mutates the regions it is given: the refit
-polygons come back in the result rows, and `apply(regions, rows)` writes
-them in.
+The fit, the grouping and the word prior live in the engine
+(`digitizer_core.letterform_priors`, behind `PipelineConfig.
+letterform_priors_k`); this module only adds what the spike's instruments
+want on top of an outcome -- the skeleton width statistics before and
+after -- and the `apply` that writes accepted refits into a region list the
+way the pipeline does.
 """
 from __future__ import annotations
 
-import math
 import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]        # digitizer/
-sys.path.insert(0, str(ROOT))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 SCRATCH = Path(os.environ.get("LETTERFORM_SCRATCH", ROOT.parent / "scratch_letterform_priors"))
 
+import numpy as np                                                      # noqa: E402
 from shapely.geometry import Polygon                                    # noqa: E402
 
+from digitizer_core.letterform_priors import (                         # noqa: E402,F401
+    ARCH_LEAN_SPREAD_DEG, K_DEFAULT, SLANT_DISAGREE_DEG, FitResult, LetterOutcome, WordPrior,
+    plan_letterform_priors)
 from digitizer_core.regions import Region                               # noqa: E402
-from digitizer_core.textcluster import (                               # noqa: E402
-    _house_chains, _lettering_groups, _line_of_text_deg, _skeleton_stroke_stats,
-    _stem_slant_deg)
-
-import numpy as np                                                      # noqa: E402
-
-from fit import (FitResult, K_DEFAULT, WordPrior, fit_letter,          # noqa: E402
-                 letter_lean_deg, letter_prior, word_prior)
-
-# A word whose letters' stem leans (each read by `textcluster._stem_slant_deg`
-# on that letter alone) spread more than this is arched: each letter then
-# gets its own line of text. Set on Becker's two words -- MARINE's six leans
-# agree within 2 deg, the arched BECKER's spread past 20 -- and nothing
-# else; gaulke was held out.
-ARCH_LEAN_SPREAD_DEG = 6.0
-# The engine's `_stem_slant_deg` reads its slant off 4-px skeleton chords
-# and gave 0 on Fremont's italic word where the DP chords read 12.8 deg;
-# past this disagreement the chord reading is the word's slant.
-SLANT_DISAGREE_DEG = 3.0
+from digitizer_core.textcluster import _skeleton_stroke_stats          # noqa: E402
 
 
 @dataclass
@@ -66,8 +51,7 @@ class LetterRow:
 
 def source_px_mm(d: dict) -> float:
     """The source image's pixel at the design size: the design width over
-    the pixels the art box spans (the art box is what stage 1 scales to the
-    target width, so a transparent margin does not shrink the pixel)."""
+    the pixels the art box spans (what `Prep.input_px_per_mm` inverts)."""
     iw = d["image_size"][0]
     fx = d.get("art_box_frac")
     span = (fx[2] - fx[0]) if fx else 1.0
@@ -88,101 +72,31 @@ def _width_stats(poly: Polygon):
 
 
 def refit_regions(regions: list[Region], src_px_mm: float, grid_px_mm: float,
-                  k: float = K_DEFAULT, *, text_only: bool = True,
-                  measure_widths: bool = True) -> list[LetterRow]:
+                  k: float = K_DEFAULT, *, measure_widths: bool = True) -> list[LetterRow]:
+    """The engine's plan for these regions, as rows with the width
+    instrument's reading before and after. Nothing is written back."""
     rows: list[LetterRow] = []
-    groups = _lettering_groups(regions)
-    # Text the house pass does not group (bridge: 8 tagged letters, 0
-    # groups -- `_lettering_groups`' size / aspect links are stricter than
-    # the tagger's) still forms a word by the tagger's own cluster id.
-    seen = {r.shape_id for g in groups for r in g}
-    by_cluster: dict[str, list[Region]] = {}
-    for r in regions:
-        cid = r.meta.get("text_cluster_id")
-        if cid and r.meta.get("text_candidate") and r.shape_id not in seen:
-            by_cluster.setdefault(cid, []).append(r)
-    groups += [g for g in by_cluster.values() if len(g) >= 2]
-    for wi, members in enumerate(groups):
-        letters = [r for r in members if (r.meta.get("text_candidate") or not text_only)]
-        if not letters:
-            continue
-        line = _line_of_text_deg(members)
-        if line is None:
-            line = 0.0
-        slant = _stem_slant_deg(_house_chains(members), line)
-        # the word's stroke width from the engine's own instrument
-        halfs = [s.mean_mm for s in (_skeleton_stroke_stats(r) for r in members) if s is not None]
-        width_hint = 2.0 * float(np.median(halfs)) if halfs else None
-        # An arched word: each letter is upright on its own piece of the arc,
-        # so its stems lean by a different amount. Each letter's lean is read
-        # off its own DP chords (`letter_lean_deg`; the engine's skeleton
-        # instrument `_stem_slant_deg` quantises to the raster's 4-px chords
-        # and read 0.7 deg on every band letter of Becker, which lean up to
-        # ~8). When the leans spread more than ARCH_LEAN_SPREAD_DEG the word
-        # is arched and each letter gets its own line of text (its stems -
-        # 90), with no shared baseline / cap line.
-        tol = k * src_px_mm
-        # Leans are read against the line's normal (slant 0), so the word's
-        # slant and each letter's lean come from one reading.
-        normal = (line + 90.0) % 180.0
-        leans = [letter_lean_deg(np.asarray(r.polygon.exterior.coords, float), normal, tol)
-                 for r in letters]
-        known = [x for x in leans if x is not None]
-        # The word slant: the engine's `_stem_slant_deg` first; when the
-        # chord reading's median disagrees by more than SLANT_DISAGREE_DEG
-        # (Fremont's italic word: engine 0, chords 12.8) the chord reading
-        # wins, and the choice is recorded on every row of the word.
-        slant_chords = float(np.median(known)) if known else None
-        slant_source = "engine"
-        if slant_chords is not None and (slant is None or abs(slant - slant_chords) > SLANT_DISAGREE_DEG):
-            slant, slant_source = slant_chords, "chords"
-        slant = slant or 0.0
-        line_degs = None
-        arched = False
-        if len(known) >= 4:
-            core = sorted(known)
-            trim = max(1, int(len(core) * 0.2))
-            core = core[trim:-trim]
-            if core and (core[-1] - core[0]) > ARCH_LEAN_SPREAD_DEG:
-                arched = True
-        if arched:
-            # an arch's lean is linear in position along the line; a robust
-            # line through (position, lean) gives each letter its lean with a
-            # diagonal-letter misread (an A's legs) voted down
-            u = np.array([math.cos(math.radians(line)), math.sin(math.radians(line))])
-            pos = np.array([float(np.array([r.polygon.centroid.x, r.polygon.centroid.y]) @ u) for r in letters])
-            pts = [(p, x) for p, x in zip(pos, leans) if x is not None]
-            slopes = [(x2 - x1) / (p2 - p1) for i, (p1, x1) in enumerate(pts)
-                      for (p2, x2) in pts[i + 1:] if abs(p2 - p1) > 1e-6]
-            b = float(np.median(slopes)) if slopes else 0.0
-            a = float(np.median([x - b * p for p, x in pts]))
-            line_degs = [(line + (a + b * p) - slant) % 180.0 for p in pos]
-        prior = word_prior([r.polygon for r in letters], line, slant, src_px_mm, grid_px_mm, k,
-                           line_degs=line_degs, width_hint_mm=width_hint)
-        prior_note = dict(slant_source=slant_source, slant_engine=slant if slant_source == "engine" else None,
-                          slant_chords=slant_chords, arched=arched, leans=leans)
-        for li, r in enumerate(letters):
-            lp = letter_prior(prior, line_degs[li]) if line_degs is not None else prior
-            res = fit_letter(r.polygon, lp)
-            mb = cb = ma = ca = None
-            if measure_widths:
-                mb, cb = _width_stats(r.polygon)
-                ma, ca = (_width_stats(res.polygon) if res.status == "refit" else (mb, cb))
-            rows.append(LetterRow(wi, r.shape_id, r.meta.get("ocr_char"), r.polygon, res, lp,
-                                  cb, ca, mb, ma, dict(prior_note)))
+    for o in plan_letterform_priors(regions, src_px_mm, grid_px_mm, k):
+        mb = cb = ma = ca = None
+        if measure_widths:
+            mb, cb = _width_stats(o.traced)
+            ma, ca = (_width_stats(o.refit) if o.fit.status == "refit" else (mb, cb))
+        rows.append(LetterRow(o.word, o.shape_id, o.char, o.traced, o.fit, o.prior,
+                              cb, ca, mb, ma, dict(o.note)))
     return rows
 
 
 def apply(regions: list[Region], rows: list[LetterRow]) -> int:
-    """Write the accepted refits into `regions` (same shape_id, same meta,
-    plus `letterform_refit` naming what happened). Returns how many moved."""
+    """Write the accepted refits into `regions` exactly as the pipeline's
+    `apply_letterform_priors` does (same shape_id, same meta, plus
+    `letterform_prior`). Returns how many moved."""
     by_id = {row.shape_id: row for row in rows}
     n = 0
     for r in regions:
         row = by_id.get(r.shape_id)
         if row is None:
             continue
-        r.meta["letterform_refit"] = row.fit.status + (":" + row.fit.reason if row.fit.reason else "")
+        r.meta["letterform_prior"] = row.fit.status + (":" + row.fit.reason if row.fit.reason else "")
         if row.fit.status == "refit":
             r.polygon = row.fit.polygon
             r.area_mm2 = row.fit.polygon.area
@@ -197,7 +111,6 @@ def refit_logo(d: dict, k: float = K_DEFAULT, **kw) -> tuple[list[Region], list[
 
 
 def summarize(rows: list[LetterRow]) -> dict:
-    import numpy as np
     out = dict(letters=len(rows), refit=0, passed=0, refused=0, reasons={})
     for row in rows:
         f = row.fit

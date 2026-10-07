@@ -1,13 +1,50 @@
 # Letterform priors: refit a low-res letter to lines and arcs before construction (2026-10-06)
 
-**Status: spike only.** Nothing is wired into the pipeline, nothing is sewable,
-no default changed, no stage-6 edit. The code is five standalone files in
-`digitizer/tools/letterform_priors_spike/` on lane `claude/letterform-priors`
-(cut from `origin/main` at `d4c521ec`); the engine imports none of them. The
-inputs (`<logo>.pkl`, `<logo>.result.pkl`), every sheet and every batch JSON
-live in `scratch_letterform_priors/` in that worktree, gitignored and NOT
+**Status: built, wired DEFAULT OFF (Kent's option A, 2026-10-06), judged on
+thread pairs.** The geometry and the word prior are
+`digitizer/digitizer_core/letterform_priors.py`; the pipeline runs them only
+when `PipelineConfig.letterform_priors_k` is set (None by default: the module
+is never imported, the output byte-identical — see "The wiring" below for
+the proof). No default changed, no stage-6 edit, nothing sewn. The spike's
+tools in `digitizer/tools/letterform_priors_spike/` (run, refit, pro, sheet,
+batch) import the engine module — one copy of the code. The inputs
+(`<logo>.pkl`, `<logo>.result.pkl`), every sheet and every batch JSON live in
+`scratch_letterform_priors/` in the lane's worktree, gitignored and NOT
 backed up: they hold client artwork and this repo is public. `run.py`
-regenerates the inputs (about 25 minutes for all seven).
+regenerates the inputs (about 7 minutes for all seven on Kent's box).
+
+## The wiring (2026-10-06, after the spike)
+
+- **Flag:** `PipelineConfig.letterform_priors_k: float | None = None`. The
+  value is k, the cap in source pixels; 0.75 is the measured one. None is
+  off. The config docstring carries the why, the measurements, the price
+  and the held-out fixture.
+- **Insert point:** `pipeline.build_generation`, after `detect_text_clusters`
+  and `regularize_text_clusters` (the tagger and the rescued-door redraw)
+  and BEFORE `ocr_suggest_text`, `set_lettering_house_angle` and
+  `measure_stitch_widths`, so the OCR read, the house angle (`satin_house_
+  from_line` / `satin_house_anchor`) and the width measurement all see the
+  polygon that will sew. `src_px_mm = 1 / Prep.input_px_per_mm`,
+  `grid_px_mm = 1 / Prep.px_per_mm`. Text-tagged members only; a refused
+  letter untouched; `shape_id` and `meta` preserved; the outcome written to
+  `meta["letterform_prior"]` as `refit`, `pass:grid` or `refused:<why>`.
+- **OFF is byte-identical, proved two ways:** the module is imported inside
+  the flag's branch only (an AST check pins it, and an OFF run leaves it out
+  of `sys.modules`); and the OFF run on the wired tree hashes every Becker
+  region's WKB identically to the pre-wiring `d4c521ec` run
+  (`c8fe028706f69cce`, 17 regions, measured 2026-10-06).
+- **Tests** (`tests/test_letterform_priors.py`, 15): the eight geometry tests
+  above; OFF never imports; ON refits a synthetic 24-px line of letters
+  through `run_stages` (ids kept, outcomes on meta, every refit within the
+  cap of its trace); a 160-px synthetic line is byte-identical ON; a fused
+  blob is refused untouched; and drone / enthusiast / fremont ON == OFF on
+  the real fixtures, env-gated (`EMB_SLOW_TESTS=1`) because it is minutes of
+  engine time.
+- **Eye pairs:** arm `letterform_priors` (`letterform_priors_k=0.75`) in
+  `tools/eye_pairs/pairs.py` and the gallery's `ARM_INTENT`; rendered on
+  becker, bridge, gaulke, drone, enthusiast, fremont and tires against this
+  lane's shipped defaults (no `rembg_isolated/venv` in a worktree, so tires
+  is prepped the same way on both sides). Results below under "The pairs".
 
 Brief: `docs/superpowers/specs/2026-10-06-letterform-priors-design.md`
 (Kent's pick 2026-10-06). Sibling: `docs/outline-cut-columns-2026-10-05.md`
@@ -239,6 +276,52 @@ wobble std is unchanged everywhere (it is the rail model's floor,
 `rail-wobble-is-the-models-floor-2026-09-21`, not the outline's); its p95
 drops on bridge and gaulke.
 
+## The pairs (2026-10-07, thread, for Kent's sitting)
+
+`python -m tools.eye_pairs --render --fixtures becker,bridge,gaulke,drone,
+enthusiast,fremont,tires --arms letterform_priors`, then `--pair`, then
+`python -m tools.eye_pairs_gallery --labelled --tables <price table>`, all
+on this lane (commit 95c7eb07's engine for every render: the one process
+started 22:25 on 10-06 and every engine file's last edit precedes it; the
+laptop slept overnight, so the run took eleven wall-hours for about forty
+CPU-minutes). Base = this lane's shipped defaults at the corpus's own sizes
+(`REAL_ART`: becker 100 mm, bridge 80, gaulke 80 — NOT the spike's 95.7 /
+80 / 95.2). A worktree has no `rembg_isolated/venv`, so tires was prepped
+without the cutout on BOTH sides — the same lane, no confound. 14 arm-runs,
+11 blind pairs; the labelled page: **2 changed, 5 identical, 0 failed**,
+gallery at `digitizer/eye_pairs_out/gallery/index.html` (gitignored, in
+the lane; not published by this session).
+
+| fixture | pair | why | locator boxes (fractions of the render) |
+|---|---|---|---|
+| becker | **changed** | 10 of 11 letters refit; 9702 -> 10217 stitches at 100 mm | 3: (0.39, 0.69) 0.08x0.10 — MARINE; (0.71, 0.86) 0.09x0.13 — MARINE's right; (0.02, 0.69) 0.04x0.13 — the M's left |
+| bridge | **changed** | 8 of 8 blobs refit; 17744 -> 17817 | 3: (0.53, 0.63) 0.20x0.12, (0.37, 0.63) 0.10x0.15, (0.47, 0.67) 0.06x0.12 — the teal band |
+| gaulke | identical | the corpus's gaulke is `photo/logo_gaulke_roofing.png`, 1284 x 2778 px at 80 mm: 14.0 px/mm, a 0.071 mm source pixel equal to the working grid's, cap 0.054 < 0.071, so the gate passes all 39 tagged letters through (`pass:grid`, measured 2026-10-07 ON through `build_generation`); the spike's 36-of-38 refit was `art/logo_golke_roofing.png`, 607 px at 95.2 mm (0.21 mm pixels). Two uploads of one logo, and only the coarse one is touched: the gate working on a fourth real file | none |
+| drone | identical | gated (0.10 mm source px, grid 0.10) | none |
+| enthusiast | identical | gated (0.07 mm) | none |
+| fremont | identical | gated (0.04 mm) | none |
+| tires | identical | no text-tagged lettering (script) | none |
+
+The identical arms keep their head on the page with the reason in the
+caption (the gallery's `ARM_INTENT` entry says so): that identity is the
+flag's first promise, go/no-go 1, not a failure to act. **No verdict is
+offered here on which side of becker or bridge looks better; that is the
+sitting's.**
+
+**Price, OFF -> ON through the wired path** (`scratch_letterform_priors/
+price.py`, measured 2026-10-07 at the spike's sizes; satin bare % from
+`rail_edge.bare_area` on the text shapes at 0.4 mm thread, wobble from
+`edge_wobble.analyse_plan`, satin tier):
+
+| logo | stitches | trims | satin bare % | satin wobble std mm | letters |
+|---|---|---|---|---|---|
+| becker (95.7 mm) | 9173 -> 9679 | 55 -> 66 | 4.33 -> 2.65 | 0.172 -> 0.178 | refit 10, refused 1 |
+| bridge (80) | 17744 -> 17817 | 98 -> 102 | 9.70 -> 10.76 | 0.082 -> 0.086 | refit 8 |
+| gaulke art (95.2) | 7138 -> 7120 | 56 -> 55 | 8.06 -> 8.05 | 0.080 -> 0.080 | refit 36, refused 2 |
+| drone / enthusiast / fremont / tires | identical | identical | identical | identical | pass:grid / none |
+
+The same table rides under the arm's head on the page (`--tables`).
+
 ## Failure classes, largest first
 
 1. **Bridge is lost two stages earlier, and a refit cannot find it.** Its 8
@@ -290,12 +373,13 @@ drops on bridge and gaulke.
 
 ## Not built
 
-Pipeline wiring; a stem/hairline pair from a bimodal width histogram (the
-clustering allows two modes, no fixture produced two); counter-opening as a
-rule of its own (the self-intersection repair is what stands in for it);
-anything for script lettering (not text-tagged, ruled out), the tube-letter
-width floor (ROADMAP gate 1) or halo strands (defect C). No sew-out, no
-Studio surface, no labelled pairs for Kent yet.
+A stem/hairline pair from a bimodal width histogram (the clustering allows
+two modes, no fixture produced two); counter-opening as a rule of its own
+(the self-intersection repair is what stands in for it); anything for
+script lettering (not text-tagged, ruled out), the tube-letter width floor
+(ROADMAP gate 1) or halo strands (defect C); a Studio surface for the flag;
+a warning that reads `meta["letterform_prior"]`. No sew-out. The wiring and
+the labelled thread pairs are built (see "The wiring" and "The pairs").
 
 ## Caveats
 
@@ -336,6 +420,13 @@ PY="C:/Users/EE-LT-11030/Claude Personal/EMB-Bot/digitizer/.venv/Scripts/python.
 "$PY" batch.py --sheets --tag full75            # + stages 5-7 both arms, outline-cut, per-word sheets (~15 min)
 "$PY" batch.py --k 0.5 --no-downstream --no-oc  # the k sweep
 cd ../.. && "$PY" -m pytest -q tests/test_letterform_priors.py
+EMB_SLOW_TESTS=1 "$PY" -m pytest -q tests/test_letterform_priors.py   # + the three real-fixture identity checks
+# the flag itself, on any image:
+"$PY" -c "from digitizer_core import PipelineConfig, digitize; digitize('testdata/becker_marine_logo.png', PipelineConfig(target_width_mm=95.7, garment_id='left_chest', letterform_priors_k=0.75))"
+# the thread pairs for a sitting (base + the arm, seven logos, ~40 CPU-minutes), then the labelled page:
+"$PY" -m tools.eye_pairs --render --fixtures becker,bridge,gaulke,drone,enthusiast,fremont,tires --arms letterform_priors
+"$PY" -m tools.eye_pairs --pair
+"$PY" -m tools.eye_pairs_gallery --labelled --tables ../scratch_letterform_priors/tables_letterform.json
 ```
 
 - `fit.py` the geometry (`word_prior`, `fit_letter`, `polygon_wkb_hash`);

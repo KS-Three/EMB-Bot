@@ -19673,3 +19673,48 @@ dropped, the arm capped over the slab's width with the terminal fan — where
 the pro sews the slab as its own column; the H's and N's junction ends. The
 flip waits on Kent's look at the renders; the join members move on every
 letter with a slab or an L, so goldens re-capture then.
+## 2026-10-06 — Letterform priors: a low-res letter made letter-shaped before construction, built OFF
+
+Kent's pick after the outline-cut spike named its own ceiling ("the letter
+is not letter-shaped before construction starts"). Spike, then option A
+the same day: `digitizer_core/letterform_priors.py` behind
+`PipelineConfig.letterform_priors_k` (None = off, never imported; 0.75 the
+measured value), inserted after the tagger's redraw and before the OCR
+read, the house angle and the stitch-width measurement. Each text-tagged
+letter of a word is refit to lines and arcs under the word's stem direction,
+width modes (facing edges across ink) and baseline, every move capped at
+k source pixels against the traced samples, a letter the primitives do not
+explain on more than 10% of its outline refused untouched, and a word
+passed through byte-identical when the cap is under the working grid's
+pixel — so only an upload stage 1 upscaled is ever touched.
+
+At k 0.75 on the seven real-art logos: Becker 10 of 11 letters refit, bridge
+8 of 8, gaulke (held out from every threshold) 36 of 38; drone, enthusiast
+and fremont byte-identical and re-planned identically. Primitives per letter
+−13 to −32%, stem spread within a word −32 to −65%. Against the pro's Becker
+file the centred IoU moved −0.0008 on average (neutral; his sharp corners and
+straight arms set the arc rules: a line first, an arc only over three chords
+turning one way). Price on today's satin: Becker +506 stitches, +11 trims
+(R/A/E gain 2–4 columns at the sharpened junctions) for bare 4.33 → 2.65%;
+gaulke −18 stitches, −1 trim. The outline-cut check clears the right way on
+all three (Becker 9.3 → 6.2%, bridge 21.3 → 17.3%, gaulke 5.2 → 3.1%).
+Bridge's eight "letters" are segmentation blobs and refit to cleaner blobs.
+The k sweep: 1.0 opens the gate on every logo and moves away from the pro
+(−0.0062); 0.5 gates gaulke too. Found in passing: the outline-cut spike's
+`oc.letter_columns` is not deterministic (4 of 6 fremont letters). OFF proof:
+the OFF run on the wired tree hashes every Becker region identically to the
+d4c521ec run (`c8fe028706f69cce`). `docs/letterform-priors-2026-10-06.md`;
+`tests/test_letterform_priors.py` 15 (3 real-fixture, env-gated). Judged on
+the labelled thread pairs, arm `letterform_priors`.
+
+**Moved here from MASTER_SCOPE "Waiting on Kent" 0, as it stood before the
+2026-10-02 flip:** `satin_lettering_split`'s crowns, NEW 2026-09-30 —
+re-framed the same day, downward. MARINE at 127.4 mm reads 0 holes as fill
+and 11 holes / 22.9 mm² as split satin. But `lost_frac`, the metric that
+killed the apex widening, reads 0.2688 fill against 0.1800 split — the split
+is a third better, because fill spills more thread outside the artwork than
+the split leaves bare. So not a case for reverting or gating the flip; a
+case for closing 11 crowns without spending that advantage. Neither built
+rail cure does it (the envelope is inert on them, `True` costs `lost_frac`),
+and the mechanism is a decomposition gap — the strokes' union leaves wedges
+no stroke claims. Construction: `docs/superpowers/plans/2026-09-30-crown-cover.md` §7.

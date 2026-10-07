@@ -100,6 +100,13 @@ ARMS: dict[str, dict] = {
     # day (2 after, 0 before), so it is the base now and no longer an arm.
     "keep_counters": {"keep_counters": True},
     "bean_letters": {"bean_letter_max_stroke_mm": 1.0},
+    # Letterform priors (2026-10-06, Kent's option A after the spike): a
+    # low-resolution upload's lettering refit to lines and arcs under the
+    # word's stem direction, widths and baseline, every move capped at 0.75
+    # source pixels. Only an upscaled upload is touched (becker, bridge,
+    # gaulke); drone, enthusiast and fremont are byte-identical and keep
+    # their head on the page as identical, which is the point of go/no-go 1.
+    "letterform_priors": {"letterform_priors_k": 0.75},
 }
 
 
