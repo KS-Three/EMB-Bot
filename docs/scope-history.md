@@ -40,6 +40,8 @@ Three traps met, and a fourth on the way out: the engine's satin spacing is ONE 
 
 **CORRECTION the same night, the lane's density (PR #660 before merge).** The desktop sitting agent measured Becker's N under Columns at about 0.7 mm between crosses and said so; measured here on MARINE's I, the satin tier puts a needle every **0.40 mm on each rail** and the lane put one every **0.80**: the engine's flat zigzag is A1, B1, A2, B2 -- BOTH ends of every station, stations `SATIN_SPACING_MM` apart -- and the 10-07 wiring put ONE end down per station, rails alternating. The "trap" recorded above (a station is one penetration) was the wrong half of a right observation: the spike's 0.2 mm stations WITH both ends down were double density, and the fix was the pitch, not the ends. `_satin_points` now sews both ends of every station (I: 0.40 per rail, 48 and 42 penetrations). **Everything measured on the lane before this point was at half density**, and three claims move: letter stitches OFF -> ON at corpus sizes are now becker 4,709 -> **3,095** (not 1,629; still fewer: no zigzag underlay, no junction sewn twice), enthusiast 1,971 -> 1,768, gaulke 2,521 -> 2,447, Fremont 4,111 -> 4,222 (more: the serifs and the diagonal it now sews); design stitches becker 10,347 -> 8,717, enthusiast 2,614 -> 2,280, gaulke 4,583 -> 4,348, Fremont 20,177 -> 20,247; trims on letters at full density becker 42 -> 8, enthusiast 13 -> 13, gaulke 27 -> 21, Fremont 17 -> 21. The bare-artwork yardstick at 0.3 mm thread was mostly reading the half-density gaps (it saturates at 0.0-0.1% at full density); at **0.15 mm** thread, full density, the terminal rules still hold: becker 3.14% -> **2.71%**, enthusiast 1.23 -> **0.97**, gaulke 0.74 -> 0.72, Fremont 1.97 -> **0.56** (main's cutter against this PR's, same density). Pinned: `test_each_rail_gets_a_needle_every_satin_spacing`. The lesson for DOCTRINE: a density claim is settled by counting needles per rail against the tier it replaces, never by comparing total stitch counts between tiers that lay different underlays.
 
+**Kent's pairs drawn (PR after #660), and the lane was nondeterministic.** `outline_cut._spine_ends` called `skimage.medial_axis` without `rng`, the only unseeded call in the engine, so ties broke from OS entropy: golden_tee ON 8,312 / 8,318 / 8,319 / 8,315 stitches over four runs; seeded `rng=0`, one hash over three. Pinned on the source (`test_every_engine_medial_axis_call_is_seeded`). The labelled pairs, drawn after the fix on eight logos (`docs/eye-pairs-2026-10-07/`, price by the new `tools/eye_pairs_price.py`): 7 pairs, tires identical; letters' own trims becker 42 -> 8, gaulke 32 -> 25, enthusiast 14 -> 15, Fremont 18 -> 23, drone 34 -> 37; lost_frac up on six of seven (golden_tee +0.024), enthusiast down. Flag OFF; the E/F slabs remain on the page.
+
 ---
 
 **Last updated:** 2026-10-06 — the stroke-colour rule and `dissolve_phantom_blends` together, nine gradient logos
@@ -19975,6 +19977,64 @@ columns. The rebuild landed 2026-09-15. The other 6 (`western_light`,
 is refused by `test/run-fonts.test.js:44`. The item read "still open" until
 2026-10-02. *(`test/font-dead-glyphs.test.js`; detail: area 2)*
 
+
+**Flipped ON the same evening (Kent, on the renders; efcb21e2).** The
+goldens did not move: `flat_lane_golden.json`'s five keys are byte-identical
+with the flag on (no synthetic fixture has a join corner the straightening
+reaches), so no re-capture. The full suite with it on is in PR #653's body.
+
+## 2026-10-07 — T-shaped slabs as their own column: `satin_slab_serifs`, built OFF
+
+Kent's pick after the join-square flip: *"T-shaped slabs: own column, not a
+cap."* Renders in `docs/renders/slab-serifs-2026-10-07/`; tests
+`tests/test_slab_serifs.py` (5) on two captured letters.
+
+**The first census was on the wrong polygon.** `satin_shape` re-enters
+itself on `_close_seams(poly)`, and the skeleton it sews from is that
+closed polygon's; a direct `extract_strokes` on the stage-5 polygon reads
+a different medial axis (the M's feet 148°/139° between halves, both
+dropped as stubs) and a defect the shipped engine does not have (on the
+real path the M's halves meet near 180° and weld). The rule was rebuilt
+against a census of `plan_stitches` on the pickled 80 mm result, OFF and
+ON, logging every slab decision with its angles.
+
+**What a slab is, measured.** Two short free arms at a stem's node, each
+within 35° of square to the stem and at least 120° apart (`_slab_pair`).
+The angle between the arms alone does not do it: a cap's I-beam reads
+90–98° (forks 45° off the axis) but an L-corner's surviving twig beside
+its hanging slab reads 125–135°, and a first cut at 120° between the arms
+kept that twig, held the corner's node open and broke the join-square
+fold at every E, F and T-bar corner into a capped bar plus 1 mm tucked
+slab pieces (8 letters moved, +32 hops). The twig is 40° off square and
+the perpendicular test rejects it; with both tests exactly three letters
+move.
+
+**Two mechanisms, two fixtures.** (1) The T's foot halves run into the
+foot's corners, so neither tip was exposed by a pruned fork and the twig
+rule erased the pair as an I-beam: the stem ended free on the baseline
+and 0.48 mm² of the foot's bottom millimetre sewed bare
+(`testdata/fremont_T_slab_foot.json`). ON `_prune_spurs` keeps a slab pair
+and the merge welds it: a 2.5 mm column of seven crosses, 0.02 mm² bare.
+(2) The N's left foot halves survived the rule but meet at 144°, which
+`satin_junction_stack`'s 30° weld refuses; one half fell to the stub
+filter and the foot sewed as a half-column, and its top-right serif
+(148°) as two half-columns (`testdata/fremont_N_slab_foot.json`). ON
+`_merge_through_junctions` welds a slab pair whatever its turn. The R's
+stem, which bent into its foot's right half, ends square with the foot
+its own column. Fremont at 80 mm: **13,746 → 13,780 stitches, 34 trims
+both ways**; every other letter byte-identical.
+
+**Not moved, named:** the E's and F's middle arms — the T-shaped slabs the
+2026-10-06 entry named — do not change: their protrusions are a fraction
+of a stroke width and the skeleton grows no half into them, so there is
+no pair to keep. The feet's crosses lean ~30° under the house angle's
+lean cap where the pro's feet sew square; that is the lean rule's, not
+this flag's. OFF byte-identical (pinned). The flip is Kent's.
+
+**Moved here from MASTER_SCOPE "Waiting on Kent" 15 (resolved 2026-09-12), for the word budget (2026-10-07):**
+15. **RESOLVED 2026-09-12 — the wizard's steps are browser history entries** (`lib/stepHistory.js`). The anti-trap rule IS the design and survives here: **the first step REPLACES the entry the browser already has, only a step after it pushes**, so Back from step 1 still leaves the Studio. Not routing — no URL reaches `pushState`. *(`app/src/App.stepHistory.spec.js`, with a source guard against a bare `step = ...`)* **Superseded 2026-09-30:** there are no step entries; the Download sheet is the one history entry, and Back closes it.
+
+
 ## 2026-10-07 — EXP travel's last record stays at 12.1 mm: Kent's pick
 
 The EXP chain-rule entry of this date (#656) left one judgement to Kent. The
@@ -19986,3 +20046,9 @@ him with both priced, the day #656 merged: **keep 12.1 mm.** No EXP gains a
 stitch record longer than any it has held since 2026-09-13, and whether a
 machine takes a longer one stays unsewn. The comment in `src/exp.js` carries
 the pick; no code changes with it.
+
+**Moved here from MASTER_SCOPE live defects 38 and 40 (both FIXED 2026-09-07), for the word budget (2026-10-07):**
+
+38. **The simulator counted in a different unit from the caption right under it — FIXED 2026-09-07.** The stitch simulator is driven by STRANDS (the segment between two consecutive stitches, which is what actually paints), and its counter showed that raw index: **"1289 stitches · 102×12 mm" under the canvas and "1280 / 1280" in the simulator bar**, both visible at once, nine apart on a design with nine runs. Both numbers were correct measurements of different things and only one carried a unit — the same family as defect 34, one screen over. **FIXED**: `strandStitchOrdinals` (strands.js) maps each strand to the stitch number it ends at, computed once per run, so the counter reads *"1289 / 1289 stitches"*. The animation still runs on strands. **The total is the LAST ORDINAL, not `design.stitchCount`** — a run of a single stitch paints no segment, so the simulator must never claim to have drawn it; the fixture has 0 such runs, and the tests cover one that does. `strands.spec.js` (5), e2e (1, plus the format pin in `field-chrome.spec.js` updated with its reason). *(found by watching the simulator run 2026-09-07)*
+
+40. **"Size up for crisp letters" was advice the DEFAULT design cannot take — FIXED 2026-09-07.** Lettering is fit by WIDTH, so for a fixed character count the cap height is proportional to the design width: measured with `medium_font` on left_chest's 101.6 mm placement box, every design at that same width, *"WIDE DESIGN TEXT HERE"* gives a **4.33 mm** cap, *"SHORTER TEXT"* **7.16**, *"ABC"* **30.03**. An auto-fit design (`sizeMm` null — the default, and what every quick start produces) is ALREADY at that box, so "size up" is the one thing the customer cannot do, and the levers that remain — fewer characters, a bolder font, a bigger placement — went unnamed. `letteringNote` now takes `atWidthCap` and swaps only the advice clause: at the cap the thin-lettering finding reads *"…already the full width of the placement, so fewer characters or a bigger placement is what makes them crisper"* and the hairline finding keeps "bolder font" (still true) and drops "size up". Below the cap both are unchanged — "size up" IS the fix there, verified in the app at W 2.60 in. **Read off the REQUEST (`sizeMm`), not the sewn width**: since defect 34 the sewn extent is slightly past the box by construction, so comparing it to the box would read "capped" for every design. The two findings that are not about size (cap under the floor; a lone hairline span, which reports what the engine DID) are untouched, and that is asserted. `generate.spec.js` (3). *(measured 2026-09-07)*

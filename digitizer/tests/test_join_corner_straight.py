@@ -55,80 +55,38 @@ def _runs(join_square):
     return runs
 
 
-def test_the_fixture_fans_off_and_the_flag_is_off_by_default():
-    """OFF is the shipped joiner, and on it the E's arms DO fan -- the
-    reading the flag exists to move. Pinned so the fixture cannot quietly
-    stop reproducing the defect (a rounded copy of this polygon already
-    does not)."""
+def test_the_fixture_fans_off_and_the_flag_is_on():
+    """`join_square=False` is the pre-flip joiner, and on it the E's arms DO
+    fan -- the reading the flag exists to move. Pinned so the fixture cannot
+    quietly stop reproducing the defect (a rounded copy of this polygon
+    already does not). Every behaviour test here passes the flag
+    explicitly, so the config default can move without touching them: ON
+    2026-10-06 (Kent's call on renders), HELD OFF 2026-10-07 by its guards
+    (an ENTHUSIAST element lost), ON again the same day with the bend cap
+    (`test_join_corner_bend_cap.py`; the config docstring has the story)."""
+    from digitizer_core import PipelineConfig
     poly, art, kw = _fixture()
-    off, _ = satin_shape(poly, "S1", art_poly=art, **kw)
-    dflt, _ = satin_shape(poly, "S1", art_poly=art, join_square=False, **kw)
-    assert [r.points for r in off] == [r.points for r in dflt]
+    off, _ = satin_shape(poly, "S1", art_poly=art, join_square=False, **kw)
+    dflt, _ = satin_shape(poly, "S1", art_poly=art, **kw)
+    # the FUNCTION default stays False (every direct caller keeps the
+    # pre-flip joiner), whatever the config default is
+    assert [r.points for r in dflt] == [r.points for r in off]
+    assert PipelineConfig().satin_join_square is True
     events, columns = fan_ends([r.points for r in off if r.kind == "satin"])
     assert columns >= 4
     assert events >= 2, f"the E no longer fans OFF ({events} fan ends over {columns} columns)"
 
 
-def _middle_arm(runs):
-    """The E's middle arm: the one satin run lying wholly in the letter's
-    middle band (the arms and the stem all reach its top or bottom)."""
-    mid = [r for r in runs if r.kind == "satin" and all(abs(y) < 1.2 for _x, y in r.points)]
-    assert len(mid) == 1
-    return mid[0].points
-
-
-def _square_legs(points):
-    """(x, deg mod 180) of every other cross of a run -- one leg kind of the
-    zigzag, the one whose median runs nearest square (90 deg) across this
-    horizontal arm; the other kind is the return leg, leaning forward."""
-    legs = []
-    for k in range(0, len(points) - 1):
-        (ax, ay), (bx, by) = points[k], points[k + 1]
-        legs.append((0.5 * (ax + bx), math.degrees(math.atan2(by - ay, bx - ax)) % 180.0))
-    kinds = [legs[0::2], legs[1::2]]
-    return min(kinds, key=lambda ks: abs(sorted(a for _x, a in ks)[len(ks) // 2] - 90.0))
-
-
 def test_on_the_arms_sew_square_to_their_slabs():
     runs = _runs(True)
     events, columns = fan_ends([r.points for r in runs if r.kind == "satin"])
-    # The three corner columns. The middle arm is a fourth column OFF, but
-    # ON its body carries guard-pulled crosses (below) that break the strict
-    # side-alternation `fan_ends`' column cutter needs, so it is read on its
-    # own in the next test.
-    assert columns >= 3
+    assert columns >= 4
     assert events == 0, f"{events} fan ends over {columns} columns with join_square on"
-    # and at the corners it is a change of WHERE the crosses point, not of
-    # how many: each corner run keeps its penetration count (measured
-    # 2026-10-06, re-read 2026-10-08)
+    # and it is a change of WHERE the crosses point, not of how many: the
+    # same 116 satin penetrations either way (measured 2026-10-06)
     off = _runs(False)
-    corner = lambda rs: sorted(len(r.points) for r in rs if r.kind == "satin" and r.points
-                               is not None and not all(abs(y) < 1.2 for _x, y in r.points))
-    assert corner(runs) == corner(off)
-
-
-def test_on_the_middle_arm_ends_square_at_its_cap():
-    """The middle arm is no corner: it ends in a chamfered square cap whose
-    corner its skeleton hooks into, and OFF its square legs turn from 90 deg
-    to 57 over the last half millimetre. ON (`_free_end_reading`: a square
-    cap) its end is laid on the arm's line and every square leg holds within
-    10 deg of the middle's. The price, pinned so it is seen: one more
-    station (+2 penetrations), and three guard-pulled crosses mid-arm -- not
-    this flag's mechanism but `satin_outer_rail_pitch` re-stationing a
-    straight 3 mm body whose stations sit 3% over the pitch (PR body)."""
-    x_end = max(x for x, _y in _middle_arm(_runs(False)))
-    for flag, worst in ((False, 25.0), (True, 10.0)):
-        legs = _square_legs(_middle_arm(_runs(flag)))
-        body = sorted(a for x, a in legs if x < x_end - 1.0)
-        ref = body[len(body) // 2]
-        tip = [a for x, a in legs if x >= x_end - 0.5]
-        turn = max(min(abs(a - ref), 180.0 - abs(a - ref)) for a in tip)
-        if flag:
-            assert turn <= worst, f"ON the middle arm's end still turns {turn:.1f} deg"
-        else:
-            assert turn >= worst, f"OFF the middle arm's end no longer fans ({turn:.1f} deg)"
-    n = lambda rs: len(_middle_arm(rs))
-    assert n(_runs(False)) <= n(_runs(True)) <= n(_runs(False)) + 2
+    assert sum(len(r.points) for r in runs if r.kind == "satin") == \
+        sum(len(r.points) for r in off if r.kind == "satin")
 
 
 def test_the_slab_corners_stay_covered():

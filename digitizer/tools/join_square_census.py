@@ -1,30 +1,29 @@
 #!/usr/bin/env python
-"""`cfg.satin_join_square` OFF against ON, per real lettering logo: fan ends,
-stitches, trims, and a render of every letter the flag moves (2026-10-08).
+"""`cfg.satin_free_end_square` on top of the shipped default
+(`satin_join_square` ON since #666), beside `satin_slab_serifs`, per real
+lettering logo: fan ends, bare artwork, bare corners, stitches, trims, and a
+render of every letter an arm moves (2026-10-08).
 
-Built for Kent's flip decision. The flag's only evidence had been Hotel
-Fremont (fan ends 7 -> 5 by `letter_band.fan_ends`); this reads it on the
-rest of the corpus with the same instruments, plus the one that sees the
-fans `fan_ends` cannot (`letter_band.splay_ends`: a splayed end breaks the
-side-alternation `fan_ends`' column cutter needs, so the worst fans were
-never in its count).
+Four arms, each a `plan_stitches` of the SAME `PipelineResult` -- stages 0-6
+run once per logo and only stage 7 reads these flags -- so every difference
+is the flags':
 
-Stages 0-6 run ONCE per logo -- stage 7 is the flag's only reader
-(`stage7_sequence` -> `satin_shape(join_square=...)`) -- and `plan_stitches`
-runs twice on the same `PipelineResult`, so the two arms see the identical
-regions and every difference is the flag's.
+  base        the shipped default (join_square ON, the two others OFF)
+  free_end    + `satin_free_end_square`
+  slab        + `satin_slab_serifs` (the skeleton-level route to a slab's
+              own column, built OFF in #663)
+  both        + both
 
 Per text-candidate letter (`meta.text_candidate`), over its satin runs:
 
   fan     `letter_band.fan_ends`   -- lean vs the local rail, sustained columns
   splay   `letter_band.splay_ends` -- absolute cross direction, column grown
           back over the crosses `fan_ends` drops
-  bare    the letter's artwork left uncovered by its own thread, mm2 --
-          the other price side: a slab's wings are owned by nobody, so a
-          fan into them was their only thread
-  short   crosses under `SHORT_CROSS_MM` -- the price side: a straightened
-          spine re-stations its column, and a short cross is where the
-          short-stitch guard pulled a penetration (see the PR body)
+  bare    the letter's artwork uncovered by its own thread, mm2
+  corner  the part of `bare` within `CORNER_R_MM` of a convex outline corner
+          turning `CORNER_TURN_DEG` or more -- where a fan, a slab's wing or
+          a square cap's face is sewn or not
+  short   crosses under `SHORT_CROSS_MM` (guard-pulled penetrations)
 
 and the whole design's stitch count and trims from `plan.stats`.
 
@@ -33,9 +32,8 @@ and the whole design's stitch count and trims from `plan.stats`.
 
 `--out` (default `scratch_join_square/` at the repo root, gitignored by the
 `scratch_*` pattern -- the renders hold client artwork) gets
-`join_square_census.json` and `<case>_letters.png`: every letter whose fan,
-splay or short count moved, OFF on the left and ON on the right, satin
-crosses drawn over the artwork outline.
+`join_square_census.json` and `<case>_letters.png`: every letter an arm
+moves, the four arms side by side.
 """
 from __future__ import annotations
 
@@ -66,6 +64,11 @@ from tools.thin_strokes import corpus_cases                    # noqa: E402
 # A cross this short in a lettering column is a guard-pulled penetration or a
 # pinch, not a body cross: the lettering on the corpus is 0.6 mm and up wide.
 SHORT_CROSS_MM = 0.6
+CORNER_R_MM = 0.8
+CORNER_TURN_DEG = 45.0
+ARMS = {"base": {}, "free_end": {"satin_free_end_square": True},
+        "slab": {"satin_slab_serifs": True},
+        "both": {"satin_free_end_square": True, "satin_slab_serifs": True}}
 # The corpus logos that carry text-tagged letters (fan_census.ORDER less
 # bridge, whose eight tagged shapes are segmentation blobs, not letters).
 DEFAULT = ["fremont", "becker", "gaulke", "enthusiast", "tires", "drone"]
@@ -80,16 +83,40 @@ def short_crosses(seqs) -> int:
     return sum(1 for s in seqs for a, b in zip(s, s[1:]) if math.dist(a, b) < SHORT_CROSS_MM)
 
 
-def bare_mm2(plan, region) -> float:
-    """The letter's artwork left uncovered by its own thread (satin, underlay
-    and runs, each line at the coverage thread width)."""
+def corner_zone(poly):
+    """Discs of `CORNER_R_MM` at the outline's convex corners."""
+    from shapely.geometry import Point
+    discs = []
+    for ring, outer in [(poly.exterior, True), *((r, False) for r in poly.interiors)]:
+        pts = list(ring.coords)[:-1]
+        n = len(pts)
+        ccw = ring.is_ccw
+        for i in range(n):
+            a, b, c = np.asarray(pts[i - 1]), np.asarray(pts[i]), np.asarray(pts[(i + 1) % n])
+            u, v = b - a, c - b
+            if np.hypot(*u) < 1e-9 or np.hypot(*v) < 1e-9:
+                continue
+            turn = math.degrees(math.atan2(u[0] * v[1] - u[1] * v[0], u @ v))
+            convex = (turn > 0) == (ccw == outer)
+            if convex and abs(turn) >= CORNER_TURN_DEG:
+                discs.append(Point(*b).buffer(CORNER_R_MM))
+    return unary_union(discs) if discs else None
+
+
+def bare_of(plan, region) -> tuple[float, float]:
+    """(bare, bare at corners) mm2: the letter's artwork left uncovered by its
+    own thread (satin, underlay and runs, each line at the coverage thread
+    width), and the part of it in `corner_zone`."""
     lines = [LineString(run.points).buffer(machine.COVERAGE_THREAD_W_MM / 2)
              for _b, run in plan.iter_runs()
              if run.shape_id == region.shape_id and run.kind in ("satin", "underlay", "run")
              and len(run.points) > 1]
-    if not lines:
-        return float(region.polygon.area)
-    return float(region.polygon.difference(unary_union(lines)).area)
+    bare = region.polygon.difference(unary_union(lines)) if lines else region.polygon
+    zone = corner_zone(region.polygon)
+    return float(bare.area), float(bare.intersection(zone).area) if zone is not None else 0.0
+
+
+KEYS = ("fan", "columns", "splay", "splay_columns", "short", "points", "bare", "corner")
 
 
 def read(plan, letters) -> dict:
@@ -98,11 +125,11 @@ def read(plan, letters) -> dict:
         seqs = satin_of(plan, r.shape_id)
         fe, fc = fan_ends(seqs)
         se, sc = splay_ends(seqs)
+        bare, corner = bare_of(plan, r)
         per[r.shape_id] = dict(fan=fe, columns=fc, splay=se, splay_columns=sc,
                                short=short_crosses(seqs), points=sum(len(s) for s in seqs),
-                               bare=round(bare_mm2(plan, r), 3))
-    tot = {k: sum(v[k] for v in per.values())
-           for k in ("fan", "columns", "splay", "splay_columns", "short", "points", "bare")}
+                               bare=round(bare, 3), corner=round(corner, 3))
+    tot = {k: sum(v[k] for v in per.values()) for k in KEYS}
     return dict(per=per, total=tot, stitches=plan.stats.stitch_count, trims=plan.stats.trims)
 
 
@@ -151,34 +178,32 @@ def main(argv: list[str] | None = None) -> int:
         res = run_stages(path, base)
         letters = sorted([r for r in res.regions if r.meta.get("text_candidate")],
                          key=lambda r: (round(r.polygon.bounds[1]), r.polygon.bounds[0]))
-        plans = {}
-        for arm, on in (("off", False), ("on", True)):
-            cfg = PipelineConfig(target_width_mm=width, garment_id=garment, max_colors=6,
-                                 satin_join_square=on)
-            plans[arm] = plan_stitches(res, cfg)
+        plans = {arm: plan_stitches(res, PipelineConfig(target_width_mm=width, garment_id=garment,
+                                                        max_colors=6, **kw))
+                 for arm, kw in ARMS.items()}
         rep = {arm: read(plans[arm], letters) for arm in plans}
         rep["letters"] = len(letters)
         rep["secs"] = round(time.time() - t)
         rep["width_mm"], rep["garment"] = width, garment
         report[name] = rep
-        o, n = rep["off"], rep["on"]
-        print(f"{name:10} letters {len(letters):2}  fan {o['total']['fan']}/{o['total']['columns']} -> "
-              f"{n['total']['fan']}/{n['total']['columns']}  splay {o['total']['splay']}/{o['total']['splay_columns']} -> "
-              f"{n['total']['splay']}/{n['total']['splay_columns']}  short {o['total']['short']} -> {n['total']['short']}  "
-              f"bare {o['total']['bare']:.2f} -> {n['total']['bare']:.2f} mm2  "
-              f"stitches {o['stitches']} -> {n['stitches']}  trims {o['trims']} -> {n['trims']}  {rep['secs']}s",
-              flush=True)
-        moved = [r for r in letters
-                 if any(o["per"][r.shape_id][k] != n["per"][r.shape_id][k] for k in ("fan", "splay", "short"))
-                 or abs(o["per"][r.shape_id]["bare"] - n["per"][r.shape_id]["bare"]) > 0.05]
+        print(f"{name} at {width:g} mm / {garment}: {len(letters)} letters, {rep['secs']}s", flush=True)
+        for arm in plans:
+            e = rep[arm]
+            print(f"  {arm:9} fan {e['total']['fan']:3}/{e['total']['columns']:<3} "
+                  f"splay {e['total']['splay']:3}/{e['total']['splay_columns']:<3} "
+                  f"bare {e['total']['bare']:7.2f} corner {e['total']['corner']:6.2f} mm2  "
+                  f"short {e['total']['short']:3}  stitches {e['stitches']:6}  trims {e['trims']}", flush=True)
+        b0 = rep["base"]["per"]
+        moved = [r for r in letters if any(
+            abs(rep[arm]["per"][r.shape_id]["bare"] - b0[r.shape_id]["bare"]) > 0.05
+            or rep[arm]["per"][r.shape_id]["splay"] != b0[r.shape_id]["splay"] for arm in plans if arm != "base")]
         if moved:
             import cv2
             rows = []
             for r in moved:
-                po, pn = o["per"][r.shape_id], n["per"][r.shape_id]
-                rows.append(render(r, [
-                    (f"OFF fan {po['fan']} splay {po['splay']} short {po['short']} bare {po['bare']:.2f}", plans["off"]),
-                    (f"ON  fan {pn['fan']} splay {pn['splay']} short {pn['short']} bare {pn['bare']:.2f}", plans["on"])]))
+                rows.append(render(r, [(f"{arm} splay {rep[arm]['per'][r.shape_id]['splay']} "
+                                        f"bare {rep[arm]['per'][r.shape_id]['bare']:.2f}", plans[arm])
+                                       for arm in plans]))
             Wm = max(p.shape[1] for p in rows)
             sheet = np.vstack([np.hstack([p, np.full((p.shape[0], Wm - p.shape[1], 3), 255, np.uint8)])
                                for p in rows])

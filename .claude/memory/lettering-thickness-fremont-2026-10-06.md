@@ -89,14 +89,28 @@ and a synthetic L does not fan at all — the fixture had to be the real E,
 byte for byte (a 3-dp rounding decomposes differently). T-shaped slabs
 (the E's middle arm) are a cap by the twig rule and stay a fan: next.
 
-**Correction and follow-up, 2026-10-08 (lane `claude/join-square-tslab`).**
-The E's middle arm is NOT a T-slab: at 80 mm it ends in a chamfered square
-cap whose corner its spine hooks into (render). The real T-slabs are the H's
-feet, the T's base and serifs off a bar's free end. The flag now covers
-both: a hooked square cap is laid square, and a slab is sewn as its own
-column (`_free_end_reading`, `_attach_slabs`; fixture
-`testdata/fremont_H_slab_feet.json`). Fremont 80 mm left_chest: bare letter
-artwork 3.20 → 0.91 mm2, fan ends 18 → 13, trims equal. The flag is still
-HELD: the corner half costs bare on becker, gaulke, enthusiast, drone, and
-enthusiast trims 15 → 19 — that is the next lever. See DOCTRINE 2026-10-08.
+**Where this sits (2026-10-07 morning):** #650 (outer-rail pitch, ON)
+MERGED. #651 (Sewn width toggle) open, auto-merge armed. #653
+(`satin_join_square` ON + `satin_slab_serifs` built OFF) open on lane
+`.claude/worktrees/serif-junction-fans`, auto-merge armed; the join-square
+flip moved no golden (byte-identical, no WSL re-capture needed); the full
+ON suite ran overnight (`sf_suite_on.log` in the session scratchpad) and
+its movers are the owed read. Kent's flip on the slab flag is the next
+prompt; the E's and F's middle arms (which the 10-06 entry named as the
+T-slab case) do NOT move under it — their slabs are too small to grow a
+skeleton half — so if he wants those, it is a different construction.
+**Trap that cost half a session:** `satin_shape` skeletonises
+`_close_seams(poly)`, not `poly` — probe strokes through `satin_shape` (or
+on the closed polygon), never with a bare `extract_strokes` on a stage-5
+polygon; the M fixture built that way reproduced a defect the shipped
+engine does not have. Main checkout holds ANOTHER session's uncommitted
+memory note (letterform-priors-lane); do not pull or touch it.
+
+**Follow-up, 2026-10-08 (lane `claude/join-square-tslab`).** The E's
+middle arm at 80 mm is not a slab at all: it ends in a chamfered square cap
+whose corner its spine hooks into (render). Built OFF as its own flag,
+`satin_free_end_square`: a hooked square free end is laid square, and a slab
+off a free end is sewn as its own column (`_free_end_reading`,
+`_attach_slabs`; fixture `testdata/fremont_H_slab_feet.json`). Numbers on
+top of the join-square default: the PR's census. See DOCTRINE 2026-10-08.
 

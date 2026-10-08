@@ -291,7 +291,11 @@ def _spine_ends(piece: Polygon):
     cv2.fillPoly(m, [to_px(piece.exterior.coords)], 1)
     for r in piece.interiors:
         cv2.fillPoly(m, [to_px(r.coords)], 0)
-    sk, dist = medial_axis(m.astype(bool), return_distance=True)
+    # rng=0 as everywhere else in the engine (stage6_satin, shapefield): with
+    # rng=None skimage breaks ties from OS entropy, and the lane sewed a
+    # different design on every run (golden_tee 8,312 / 8,318 / 8,319 /
+    # 8,315 stitches, four runs, 2026-10-07).
+    sk, dist = medial_axis(m.astype(bool), return_distance=True, rng=0)
     ys, xs = np.nonzero(sk)
     if len(xs) < 2:
         return None
