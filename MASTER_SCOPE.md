@@ -408,7 +408,10 @@ about the facts.
    6.0 → 52.1 m, builds up to 1.8 s. **Kent's standing ask:** the next ten
    digitized images shown to him carry the off/on float picture
    (`tools/fill-columns-image-sheet.mjs`; memory
-   `fill-columns-float-pictures-2026-10-08`). **None of it is sewn.**
+   `fill-columns-float-pictures-2026-10-08`). **The price, taken apart
+   (HOLD, no change):** 56% of it is the floats' landings now sewn; four
+   cheaper walks tried, each no gain, new floats, or 7.7× the cuts
+   (`docs/renders/fill-columns-lanes-2026-10-08/price.md`). **None of it is sewn.**
    `cutFloats` (28) follows this.
    *(measured 2026-10-08 — `docs/renders/fill-columns-lanes-2026-10-08/`;
    `generate.js`, `generate.spec.js` star and counter tests)*
