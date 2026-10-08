@@ -424,6 +424,30 @@ export function editsKey(edits) {
   ]);
 }
 
+// A corner drag on the field SCALES a digitized design's baked stitches
+// (generate.js hands `sizeMm` to buildImportedDesign, the same path a .dst
+// import rides), so the stitch count stays put while the area moves:
+// 80 -> 62 mm keeps all 8,764 of logo_golden_tee's stitches on 0.6x the
+// area, 1.66x the thread per square mm. Since Kent's 2026-10-05 ruling
+// nothing re-runs on its own, so the drag has to READ as a design-width
+// change the Auto Digitize button is behind, exactly like typing a new
+// Design width -- this is the width that drag asks for, or null when the
+// design is at its digitized size (within RESIZE_TOLERANCE, the panel's
+// long-standing 2% note threshold, so a hand's jitter is not a change).
+//
+// `nativeWidthMm` is the result's width as drawn at the element's current
+// rotation (DigitizePanel's rotatedWidth), the same frame `sizeMm` is in;
+// the ratio is applied to the width the result was DIGITIZED at, so the
+// pull-comp margin a run adds is not compounded into the next target.
+export const RESIZE_TOLERANCE = 0.02;
+export function resizedTargetWidth(element, nativeWidthMm) {
+  if (!element || !element.result || !(element.sizeMm > 0) || !(nativeWidthMm > 0)) return null;
+  const f = element.sizeMm / nativeWidthMm;
+  if (Math.abs(f - 1) <= RESIZE_TOLERANCE) return null;
+  const base = { ...DEFAULT_DIGITIZE_PARAMS, ...(element.params || {}) }.target_width_mm || 80;
+  return Math.min(400, Math.max(10, Math.round(base * f * 10) / 10));
+}
+
 // Short identity for a whole digitize config (buildDigitizeConfig's output):
 // stored as element.appliedConfig when a result lands and compared against
 // the config the element would send NOW, which is how the panel knows the
