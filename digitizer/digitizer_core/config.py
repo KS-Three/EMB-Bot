@@ -1754,6 +1754,26 @@ class PipelineConfig:
     # stitches are not built, and the renders are Kent's to judge first.
     # Off, byte-identical. Tests: `tests/test_lettering_columns.py`.
     lettering_columns: bool = False
+    # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
+    # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
+    # failure E). ON, `words.tag_words` finds each line of lettering once --
+    # one door, one size / weight / ink link, rows split, rope-like pattern
+    # elements removed -- and the lettering readers downstream of it take
+    # their groups from it: `columns.is_lettering` (the Column lane), the
+    # satin split's ceiling and the cap-skip cover (`text_candidate` before),
+    # the bean-letter word and the shared stitch width (`text_cluster_id`
+    # before), the house angle (`_lettering_groups` before) and the
+    # letterform priors (both before; under the flag it refits every word
+    # member). The rescued-glyph redraw (`regularize_text_clusters`, which
+    # also widens under `lettering_min_column_mm`) keeps the text cluster
+    # on purpose, as do the Studio's text badge and the OCR read. Scored
+    # against hand labels on eight real logos (`tools/word_tagger_eval.py`,
+    # 2026-10-08): detection kappa level with the text cluster's and above
+    # the house group's and the Column lane's either-reading; line grouping
+    # ARI 0.99 where both old taggers read 0.65 (gaulke's and the
+    # screenshot's two lines were one group in each). Off, nothing calls it
+    # and every reader is byte-identical. Tests: `tests/test_words.py`.
+    lettering_words: bool = False
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
