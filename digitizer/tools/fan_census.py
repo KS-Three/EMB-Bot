@@ -55,6 +55,7 @@ from digitizer_core import PipelineConfig                      # noqa: E402
 from digitizer_core.pipeline import plan_stitches, run_stages  # noqa: E402
 from digitizer_core.stage6_satin import strip_splits           # noqa: E402
 from digitizer_core.stitches import strip_ties                 # noqa: E402
+from tools.bare_anatomy import components                      # noqa: E402
 from tools.thin_strokes import corpus_cases                    # noqa: E402
 
 FAN_LEN = 1.6
@@ -66,6 +67,10 @@ ARMS: dict[str, dict] = {
     "join_square": {"satin_join_square": True},
     "columns": {"lettering_columns": True},
     "both": {"satin_join_square": True, "lettering_columns": True},
+    # defect 59's cure (2026-10-08): a tip must land on a convex corner
+    "corner_gate": {"satin_tip_corner_gate": True},
+    # the null gate, for what the corner gate keeps: no tip caps at all
+    "tipcaps_off": {"satin_tip_caps": False},
 }
 ORDER = ["becker", "bridge", "gaulke", "drone", "enthusiast", "fremont", "tires"]
 
@@ -185,6 +190,14 @@ def main(argv: list[str] | None = None) -> int:
             long_letters = sum(1 for s in rows if s["long_share"] > 0.05 and s["long_crosses"] >= 3)
             fan_letters = sum(1 for s in rows if s["fan_share"] > 0.05 and s["fan_crosses"] >= 3)
             tot = sum(s["thread"] for s in rows)
+            # Bare artwork carrying NO thread of any kind (`all_thread`: the
+            # satin-only reading over-reports where underlay covers), over
+            # every satin shape and over the text-tagged ones -- the price a
+            # gate that caps fewer ends pays, read beside what it buys.
+            comps = components({r.shape_id: r.polygon for r in res.regions}, plan, all_thread=True)
+            text_ids = {r.shape_id for r in letters}
+            bare = sum(c[0] for c in comps)
+            bare_text = sum(c[0] for c in comps if c[3] in text_ids)
             report[name][arm] = dict(
                 letters=len(rows), long_letters=long_letters, fan_letters=fan_letters,
                 long_crosses=sum(s["long_crosses"] for s in rows),
@@ -192,11 +205,13 @@ def main(argv: list[str] | None = None) -> int:
                 long_share=sum(s["long_share"] * s["thread"] for s in rows) / tot if tot else 0.0,
                 fan_share=sum(s["fan_share"] * s["thread"] for s in rows) / tot if tot else 0.0,
                 stitches=plan.stats.stitch_count, trims=plan.stats.trims,
+                bare_mm2=round(bare, 2), bare_text_mm2=round(bare_text, 2),
                 kinds=dict(kinds_all), per=rows, secs=round(time.time() - t))
             e = report[name][arm]
             print(f"{name:10} {arm:11} letters {e['letters']:2} long-letters {e['long_letters']:2} "
                   f"long {e['long_crosses']:4} ({e['long_share']:.1%}) fan-letters {e['fan_letters']:2} "
                   f"fan {e['fan_crosses']:4} ({e['fan_share']:.1%}) st {e['stitches']} trims {e['trims']} "
+                  f"bare {e['bare_mm2']:.1f} (text {e['bare_text_mm2']:.1f}) mm2 "
                   f"{e['secs']}s", flush=True)
             if a.render_n and name == "becker":
                 n = marine_n(res)

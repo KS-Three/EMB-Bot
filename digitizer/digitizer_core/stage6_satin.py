@@ -3218,6 +3218,75 @@ def _is_tip_end(spine: list, poly: Polygon, half_sewn: float, at_start: bool) ->
     return not ray.intersection(poly.boundary).is_empty
 
 
+# `cfg.satin_tip_corner_gate` (2026-10-08, MASTER_SCOPE defect 59): a tip end
+# is one whose ray lands where the OUTLINE CLOSES ROUND IT -- the interior
+# angle of the boundary at the hit, read over one sewn half-width of outline
+# either side, at most this. A taper's apex reads its own angle (the drone's
+# convex tips 71-148 deg); a ray that drove through a neighbouring stroke
+# lands on that stroke's far WALL (180) or in a concave notch between two
+# strokes (over 180). Census of every end `_is_tip_end` called a tip on
+# becker, enthusiast, drone, fremont and gaulke at their corpus widths
+# (2026-10-08, `docs/n-fan-cure-2026-10-08.md`): Becker's N reads 180 at all
+# three of its tips, the M 278-297, the E 180; every logo leaves a gap
+# somewhere in 152-164, and 160 sits in all of them.
+_TIP_CORNER_MAX_DEG = 160.0
+
+
+def _tip_lands_on_corner(spine: list, poly: Polygon, half_sewn: float,
+                         at_start: bool) -> bool:
+    """-> True if the ray `_is_tip_end` casts lands on a CONVEX corner of
+    the outline (interior angle <= `_TIP_CORNER_MAX_DEG`): the artwork
+    closes round the end, a tapered tip. False on a straight wall or in a
+    concave notch -- the end MEETS another stroke there, and capping it runs
+    the arm through that stroke (defect 59's N, M and E fans).
+
+    The angle is read at the nearest hit, between the two boundary points
+    one sewn half-width of arc either side of it, and taken on the ink's
+    side: the chord between those points is inside the shape at a convex
+    corner and outside it at a concave one. No hit inside the reach is no
+    tip, the same answer `_is_tip_end` gives.
+    """
+    pts = list(reversed(spine)) if at_start else list(spine)
+    if len(pts) < 2 or half_sewn <= 0:
+        return False
+    tip, prev = pts[-1], pts[-2]
+    d = math.dist(prev, tip)
+    if d < 1e-9:
+        return False
+    ux, uy = (tip[0] - prev[0]) / d, (tip[1] - prev[1]) / d
+    reach = half_sewn * _TIP_REACH_HALVES
+    start = SPoint(tip)
+    ray = LineString([tip, (tip[0] + ux * reach, tip[1] + uy * reach)])
+    best = None
+    for ring in [poly.exterior, *poly.interiors]:
+        hit = ray.intersection(ring)
+        if hit.is_empty:
+            continue
+        for g in getattr(hit, "geoms", [hit]):
+            for c in g.coords:
+                dist = start.distance(SPoint(c))
+                if best is None or dist < best[0]:
+                    best = (dist, ring, SPoint(c))
+    if best is None:
+        return False
+    _dist, ring, h = best
+    length = ring.length
+    at = ring.project(h)
+    a = ring.interpolate((at - half_sewn) % length)
+    b = ring.interpolate((at + half_sewn) % length)
+    hp = ring.interpolate(at)
+    v1 = (a.x - hp.x, a.y - hp.y)
+    v2 = (b.x - hp.x, b.y - hp.y)
+    n1, n2 = math.hypot(*v1), math.hypot(*v2)
+    if n1 < 1e-9 or n2 < 1e-9:
+        return False
+    cos = max(-1.0, min(1.0, (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)))
+    angle = math.degrees(math.acos(cos))
+    if not poly.covers(SPoint((a.x + b.x) / 2, (a.y + b.y) / 2)):
+        angle = 360.0 - angle
+    return angle <= _TIP_CORNER_MAX_DEG
+
+
 def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
                 floor_mm: float) -> tuple[list, list]:
     """Move every real cross's two rails outward along the cross by `pull_mm`
@@ -3971,6 +4040,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   junction_stack: bool = False,
                   cap_recentre: bool = False,
                   tip_caps: bool = False,
+                  tip_corner_gate: bool = False,
                   siblings: list | None = None) -> list[tuple[float, float]]:
     """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
     separate columns and laid end to end in chain order.
@@ -4029,7 +4099,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
-                             tip_caps=tip_caps, siblings=member_sibs)
+                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, siblings=member_sibs)
         above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
         if parts is not None and len(parts) > n_before and n_before > n_start_joined:
             # The join stays ONE stroke in `parts` as well: this member's
@@ -4078,6 +4148,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  junction_stack: bool = False,
                  cap_recentre: bool = False,
                  tip_caps: bool = False,
+                 tip_corner_gate: bool = False,
                  siblings: list | None = None) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
 
@@ -4138,7 +4209,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
-                             tip_caps=tip_caps, siblings=siblings)
+                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, siblings=siblings)
 
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
@@ -4214,8 +4285,13 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
             # a cap by construction, and the tuck below then pulls the arm
             # back further still. Cap it the way a free end is capped, and
             # take no trim here.
+            # `tip_corner_gate` (defect 59) also asks where the ray lands: on
+            # a convex corner of the outline the end is a taper; on a wall or
+            # in a notch it MEETS a stroke, and falls through to the tuck.
             if (tip_caps and under is None
-                    and _is_tip_end(spine, poly, half_sewn, at_start)):
+                    and _is_tip_end(spine, poly, half_sewn, at_start)
+                    and (not tip_corner_gate
+                         or _tip_lands_on_corner(spine, poly, half_sewn, at_start))):
                 if at_start:
                     tip_start = True
                 else:
@@ -5555,6 +5631,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 walk_cursor_reach_mm: float = 0.0,
                 cap_recentre: bool = False,
                 tip_caps: bool = False,
+                tip_corner_gate: bool = False,
                 _seams_closed: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
@@ -5714,7 +5791,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                      max_width_mm=max_width_mm, fold_guard=fold_guard,
                      rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                      junction_stack=junction_stack, cap_recentre=cap_recentre,
-                     tip_caps=tip_caps, siblings=siblings)
+                     tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, siblings=siblings)
         mixed = len(parts) > 1
         for kind, pts, piece, at_start, at_end in parts:
             if kind == stitches.SATIN and len(pts) < 4:

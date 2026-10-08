@@ -1498,6 +1498,20 @@ class PipelineConfig:
     # read on it hold it OFF (`tests/conftest.py`, PRE_FLIP).
     satin_crown_cover: bool = True
     satin_tip_caps: bool = True
+    # `satin_tip_corner_gate` (2026-10-08, MASTER_SCOPE defect 59 -- Becker's
+    # N, M and E fanning under `letterform_priors`). The tip test above reads
+    # only whether the boundary is within reach along the end's tangent; at
+    # a refit letter's sharp junction the neighbouring stroke's far edge is
+    # (the N: 4.56-4.81 mm against a 4.84 mm reach), the end is capped, and
+    # `_extend_to_cap` runs the arm THROUGH that stroke -- crosses up to
+    # 2.2 W, rotating with the spine's bend. ON, a tip must also land on a
+    # convex corner of the outline (`_tip_lands_on_corner`): an apex closes
+    # round its end, a meeting ends on a wall or in a notch. The census
+    # behind the threshold and the corpus price (coverage for the fan) are
+    # in `docs/n-fan-cure-2026-10-08.md`. Built OFF: it moves junction ends
+    # on every logo, not only the fan letters, and the render is Kent's.
+    # Off, byte-identical. Tests: `tests/test_satin_tip_corner_gate.py`.
+    satin_tip_corner_gate: bool = False
     # The lettering yardstick's trims gap, read with a per-trim census
     # (2026-09-19, scope-history): traced MARINE at 80 mm sews 13 trims
     # against the typed word's 3, and across the nine logos the lettering
