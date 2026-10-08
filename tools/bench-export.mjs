@@ -1,6 +1,7 @@
 // Times DST / PES / EXP export of a ~50k-stitch design and prints a SHA-256 of
 // each output, so a speed change can be shown byte-identical:
 //   node tools/bench-export.mjs [stitches=50000] [runs=7]
+import "./_help.mjs";
 import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
 const require = createRequire(import.meta.url);
