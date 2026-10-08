@@ -800,6 +800,43 @@ def _merge_adjacent_same_thread(blocks: list[StitchBlock],
     return out
 
 
+# The most stitches `cfg.satin_mid_entry` will spend to save one cut -- the
+# exchange rate `tools/trim_exchange_sweep.py` scores ordering changes at.
+_MID_ENTRY_MAX_STITCHES = 25
+
+
+def _satin_mid_entry(runs: list[StitchRun], cursor: tuple[float, float],
+                     trim_at: float) -> list[StitchRun]:
+    """Reach a satin column's start along its own centreline (cfg.satin_mid_entry).
+
+    -> `runs`, with a TRAVEL run prepended when the needle at `cursor` is over
+    `trim_at` from the first satin run's start but within it of a centreline
+    station (the midpoint of two consecutive satin points, which alternate
+    rails). The travel walks the stations back to the start at the travel
+    pitch; the satin then sews rail to rail over every stitch of it, so the
+    thread is under this shape's own top cover by construction. Anything else
+    -- an underlay first, a column already in reach, nothing in reach, a walk
+    dearer than `_MID_ENTRY_MAX_STITCHES` -- returns `runs` unchanged.
+    """
+    if not runs or runs[0].kind != stitches.SATIN or len(runs[0].points) < 4:
+        return runs
+    pts = runs[0].points
+    if math.dist(cursor, pts[0]) <= trim_at:
+        return runs
+    mids = [((pts[k][0] + pts[k + 1][0]) / 2, (pts[k][1] + pts[k + 1][1]) / 2)
+            for k in range(len(pts) - 1)]
+    j = min(range(len(mids)), key=lambda k: (math.dist(cursor, mids[k]), k))
+    if math.dist(cursor, mids[j]) > trim_at:
+        return runs
+    walk = [mids[j]]
+    for q in mids[j - 1::-1] if j else ():
+        if math.dist(walk[-1], q) >= machine.TRAVEL_STITCH_MM or q == mids[0]:
+            walk.extend(_densify(walk[-1], q, machine.TRAVEL_STITCH_MM))
+    if len(walk) > _MID_ENTRY_MAX_STITCHES:
+        return runs
+    return [StitchRun(walk, kind=stitches.TRAVEL, shape_id=runs[0].shape_id)] + runs
+
+
 def _within_margin(a, b, margin_mm: float) -> bool:
     """Is `a` within `margin_mm` of `b`? Bounding boxes first.
 
@@ -2772,6 +2809,8 @@ def sequence(
             if report["empty"] or not runs:
                 empty += 1
                 continue
+            if cfg.satin_mid_entry and cursor is not None:
+                runs = _satin_mid_entry(runs, cursor, trim_at)
             if cursor is not None:
                 d = math.dist(cursor, runs[0].points[0])
                 if d >= TINY_STITCH_MM:
