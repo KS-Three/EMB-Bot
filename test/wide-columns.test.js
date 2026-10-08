@@ -280,7 +280,7 @@ test("a RUN font's authored pitch is a length on the fabric, not on the layout",
   const { n, worstAx } = overRecord(d);
   assert.strictEqual(n, 0, "not one sewn segment past a DST record");
   assert.ok(worstAx <= 4.1, `worst sewn segment ${worstAx} mm`);
-  assert.strictEqual(d.stitchCount, 560, "92 before the frame was fixed");
+  assert.strictEqual(d.stitchCount, 559, "92 before the frame was fixed; 560 before the connector stopped doubling a run's first stitch (2026-10-08)");
 });
 
 test("and it is wrong shrinking too, which is what makes it a units bug", () => {

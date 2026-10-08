@@ -1,5 +1,6 @@
 // Render satinFromRails on a synthetic curved+tapered column to validate the
 // rail+rung playback. Draws rails (gray), rungs (green), crosses (blue).
+import "./_help.mjs";
 import fs from "node:fs";
 import { createRequire } from "module";
 import { encodePNG } from "./png.mjs";

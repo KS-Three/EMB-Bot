@@ -1,4 +1,5 @@
 // Full text pipeline in Node: font TTF -> textToRegions -> buildQualityDesign -> DST.
+import "./_help.mjs";
 import { createRequire } from "module";
 import fs from "node:fs";
 const require = createRequire(import.meta.url);

@@ -15,6 +15,7 @@
 // since the last penetration, so a `jump` that follows a stitch is a float on
 // the cloth. That is the thing the engine's own test could not see: it counts
 // needle points inside a hole, and a float has none.
+import "./_help.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";

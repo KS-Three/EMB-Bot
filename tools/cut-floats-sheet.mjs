@@ -28,6 +28,7 @@
 // NEW THREAD: a sewn or floated segment in the "on" stream that is not in the
 // "off" one. `cutFloats` moves no stitch, so anything here would be thread
 // laid where none was before -- including travel over sewn rows.
+import "./_help.mjs";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);

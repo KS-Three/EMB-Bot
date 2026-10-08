@@ -115,8 +115,8 @@
               <!-- Full license text is REQUIRED reading distance from the
                    credit (OFL condition 2 / CC notice duties) — link the
                    local stand-alone copy, not the upstream repo. -->
-              <a href={line.licenseHref} target="_blank" rel="noopener" class="fc-link">license</a>
-              <a href={line.binHref} download class="fc-link">font data</a>
+              <a href={line.licenseHref} target="_blank" rel="noopener" class="fc-link" aria-label={"License for " + line.name}>license</a>
+              <a href={line.binHref} download class="fc-link" aria-label={"Font data for " + line.name}>font data</a>
             </li>
           {/each}
         </ul>

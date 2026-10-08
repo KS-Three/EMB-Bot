@@ -18,6 +18,7 @@
 //
 // --against: a fourth panel, the EXP as another engine's writer lays it. The
 // writer before 2026-10-07 is the one to see: it sewed along such a move.
+import "./_help.mjs";
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";

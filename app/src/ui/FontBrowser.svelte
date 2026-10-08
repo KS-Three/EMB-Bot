@@ -19,7 +19,8 @@
   import { createEventDispatcher, onMount } from "svelte";
   import { EMB } from "../lib/emb.js";
   import { renderRealistic } from "../lib/preview.js";
-  import { loadManifest, ensureFont } from "../lib/fontLoader.js";
+  import { loadManifest, ensureFont, loadCoverage } from "../lib/fontLoader.js";
+  import { fontsCovering } from "../lib/fontCoverage.js";
   import { filterFonts, sizeBand } from "../lib/fontFilter.js";
   import Icon from "./Icon.svelte";
 
@@ -40,7 +41,24 @@
   loadManifest().then((m) => { fonts = m.fonts; }).catch(() => { manifestFailed = true; });
 
   $: groups = ["All", ...GROUP_CANON.filter((g) => fonts.some((f) => f.group === g))];
-  $: shown = filterFonts(fonts, query, group);
+
+  // Script coverage: which fonts can stitch EVERY character of the text the
+  // customer already typed. Without this, a Russian or Greek name meant
+  // opening up to 85 tiles and clicking blind ("This font can't stitch...").
+  // Null until the (lazy, 16 KB) index loads; a failed load leaves the browser
+  // exactly as it was.
+  let coverage = null;
+  let fitOnly = false;
+  loadCoverage().then((c) => { coverage = c; });
+  $: fitKeys = coverage && (currentText || "").trim() ? new Set(fontsCovering(currentText, coverage)) : null;
+  // Only worth a control when it separates the library: if every font fits
+  // there is nothing to filter, and if none does the chip would just empty
+  // the grid (the message below says that instead).
+  $: canFilterFit = !!fitKeys && fitKeys.size > 0 && fitKeys.size < fonts.length;
+  $: noneFit = !!fitKeys && fonts.length > 0 && fitKeys.size === 0;
+  $: if (!canFilterFit) fitOnly = false;
+  $: shown = filterFonts(fonts, query, group).filter((f) => !(fitOnly && fitKeys) || fitKeys.has(f.key));
+  const misfit = (f) => !!fitKeys && fitKeys.size > 0 && !fitKeys.has(f.key);
   $: selectedName = (fonts.find((f) => f.key === selected) || {}).name || selected || "";
 
   // Live "your text" tile rendering -- ONLY for fonts already decoded. The
@@ -183,7 +201,19 @@
             on:click={() => (group = g)}
           >{g}</button>
         {/each}
+        {#if canFilterFit}
+          <button
+            type="button"
+            class="fb-chip fb-fit"
+            class:active={fitOnly}
+            aria-pressed={fitOnly}
+            on:click={() => (fitOnly = !fitOnly)}
+          >Fits your text ({fitKeys.size})</button>
+        {/if}
       </div>
+      {#if noneFit}
+        <p class="fb-note">No font in this library can stitch every character in your text.</p>
+      {/if}
     </div>
 
     <div class="fb-body">
@@ -192,7 +222,7 @@
       {:else if fonts.length === 0}
         <p class="fb-empty">Loading…</p>
       {:else if shown.length === 0}
-        <p class="fb-empty">{query ? `No fonts match "${query}".` : "No fonts in this group."}</p>
+        <p class="fb-empty">{query ? `No fonts match "${query}".` : fitOnly ? "No fonts in this group fit your text." : "No fonts in this group."}</p>
       {:else}
         <div class="fb-grid">
           {#each shown as f (f.key)}
@@ -200,6 +230,7 @@
               type="button"
               class="fb-tile"
               class:sel={f.key === selected}
+              class:misfit={misfit(f)}
               aria-pressed={selected === f.key}
               data-key={f.key}
               on:click={() => pick(f.key)}
@@ -217,6 +248,9 @@
                 {/if}
               </span>
               <span class="fb-tile-name">{f.name}</span>
+              {#if misfit(f)}
+                <span class="fb-tile-warn">Can’t stitch all your text</span>
+              {/if}
               {#if bestAt(f)}
                 <span class="fb-tile-band">{bestAt(f)}</span>
               {/if}
@@ -357,5 +391,8 @@
   .fb-tile-noimg { font-size: var(--fs-sm); color: var(--muted); letter-spacing: var(--tracking-slight, 0.02em); }
 
   .fb-tile-name { font-size: var(--fs-sm); font-weight: var(--fw-medium, 500); color: var(--ink); }
+  .fb-note { margin: 0; font-size: var(--fs-sm); color: var(--muted); }
+  .fb-tile.misfit .fb-tile-img { opacity: 0.45; }
+  .fb-tile-warn { font-size: var(--fs-xs); color: var(--muted); font-style: italic; }
   .fb-tile-band { font-size: var(--fs-xs); color: var(--muted); }
 </style>
