@@ -1,4 +1,5 @@
-"""`blend_fallback_underlay` (2026-10-05, built OFF): a gradient-class design's
+"""`blend_fallback_underlay` (2026-10-05, built OFF; ON by default since
+2026-10-07, Kent's ruling): a gradient-class design's
 fills that sew as ordinary full-density tatami — `blend_fill`'s fallback, the
 path nearly every real region takes — get the underlay style stage 7 resolved
 for every other fill tier, instead of the hardcoded "none". True ramp bands
@@ -49,13 +50,14 @@ def _kinds(runs) -> list[str]:
     return [r.kind for r in runs]
 
 
-def test_the_flag_is_off_by_default():
-    assert PipelineConfig().blend_fallback_underlay is False
+def test_the_flag_is_on_by_default():
+    assert PipelineConfig().blend_fallback_underlay is True
 
 
 def test_off_the_fallback_sews_bare_whatever_style_it_is_handed():
     region, source = _noise_fallback()
-    runs, _ = blend_fill(region, source, PipelineConfig(),
+    runs, _ = blend_fill(region, source,
+                         PipelineConfig(blend_fallback_underlay=False),
                          underlay_style="edge_run")
     assert stitches.UNDERLAY not in _kinds(runs)
     assert ([r.points for r in runs]
@@ -92,7 +94,8 @@ def test_on_true_ramp_bands_stay_bare():
     """Wilcom and mySewnet both say no underlay under a variable-density
     blend; the band path is not touched."""
     region, source = _linear_region(), _linear_source()
-    off, off_report = blend_fill(region, source, PipelineConfig(),
+    off, off_report = blend_fill(region, source,
+                                 PipelineConfig(blend_fallback_underlay=False),
                                  underlay_style="edge_lattice")
     on, on_report = blend_fill(region, source,
                                PipelineConfig(blend_fallback_underlay=True),
@@ -143,7 +146,8 @@ def test_stage7_hands_the_blend_tier_the_fabrics_fill_underlay(monkeypatch):
 
 
 def test_off_end_to_end_the_gradient_lane_has_no_fill_underlay(monkeypatch):
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+                         blend_fallback_underlay=False)
     plan, _handed, fallback_ids = _blend_calls(monkeypatch, cfg)
     assert fallback_ids
     assert _underlay_stitches(plan, fallback_ids) == 0
