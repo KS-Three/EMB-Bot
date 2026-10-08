@@ -174,6 +174,15 @@ export function generateElement(element, garment, runtime) {
       // pass it. Price: +3.3% stitches mean (up to +37%), travel along rims
       // in place of floats. Not sewn.
       fillColumns: true,
+      // 2026-10-08, sequenced after `fillColumns` (MASTER_SCOPE "Waiting on
+      // Kent" 28): a float the DST writer lays as three or more jump records
+      // IS a cut on a DST machine, so the stream says so with a `trim` there.
+      // No stitch moves; the trim count, the run time and `ties` then see the
+      // cut the machine makes. EXP and PES, which have a cut of their own,
+      // gain it too (a float under the fill becomes a cut there). Engine
+      // default stays off; the image and basic-shape lanes do not pass it.
+      // docs/cut-floats-manual-2026-10-08.md. Not sewn.
+      cutFloats: true,
       underlay: element.underlay,
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,
