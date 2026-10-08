@@ -20078,3 +20078,6 @@ drone +2 trims on its changed shapes; golden_tee's lost_frac 0.4466 → 0.4699,
 the tee's shaft (a false-positive word, tagged by both old taggers too)
 taking a different house angle. The page cannot show the Column-lane
 combination a flip would change. `docs/eye-pairs-2026-10-08/`.
+**Kent's verdict on the Column-lane sitting (2026-10-08, chat): AFTER is
+better** — `lettering_words` is the Column lane's tagger when that lane
+flips; both stay OFF. `docs/eye-pairs-2026-10-08/kent-notes.json`.

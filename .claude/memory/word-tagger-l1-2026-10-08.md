@@ -42,3 +42,5 @@ Second sitting `words-columns-1008` (base `lettering_columns=true`, new
 `eye_pairs --render --base`): enthusiast's shield STAR stops being sewn as
 Column slabs (house-group false positive) -- the visible win; lost_frac
 0.2896 -> 0.3090 against the coverage test's 0.29 bar; drone +3 trims.
+**Kent 2026-10-08: AFTER is better** on that sitting -- L1 rides with the
+Column lane's flip. Both flags OFF until then. Next: L2 on claude/lettering-l2.

@@ -80,6 +80,11 @@ container, python 3.12)*
 
 ## Second sitting: the same flag under the Column lane (`words-columns-1008`)
 
+**Kent's verdict, 2026-10-08 in chat: AFTER is better** (`kent-notes.json`).
+lettering_words is the Column lane's tagger whenever that lane flips. Both
+flags stay OFF; the price he took is enthusiast's lost_frac 0.29 → 0.31
+(against its coverage-test bar) and drone's +3 trims.
+
 Kent picked this one after the first sitting, on 2026-10-08. **BEFORE is
 not shipped here.** Both sides run `lettering_columns=True`, the Column
 lane, built OFF. AFTER adds `lettering_words=True`, so the lane's
