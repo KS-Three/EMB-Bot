@@ -434,12 +434,10 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
   // block, never before: dropping it earlier could merge the two blocks
   // either side of an all-off-screen colour, which changes z-order.
   //
-  // The LIT view is deliberately not culled. The same cull there changed
-  // pixels -- byte-compared in Chromium, CPU and GPU canvas alike -- even
-  // though each layer subset on its own ([0..3], or the dashed [4]) compared
-  // identical. Cause not isolated; until it is, the lit view draws every
-  // strand. No clip, no culling (every caller but renderRealistic, and every
-  // spec).
+  // The LIT view is not culled per strand: the same cull there changed
+  // pixels, because the rasterizer anti-aliases a path by its whole geometry
+  // (see the off-screen skip below, which drops only whole lit buckets).
+  // No clip, no culling (every caller but renderRealistic, and every spec).
   const clip = flat && o.clip ? o.clip : null;
   const m = 2 * lw + 4;
   const cx0 = clip ? clip.x0 - m : 0, cy0 = clip ? clip.y0 - m : 0;
@@ -582,9 +580,30 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
     let b = Math.floor((((ang % Math.PI) + Math.PI) % Math.PI) / (Math.PI / DIR_BUCKETS));
     if (b >= DIR_BUCKETS) b = DIR_BUCKETS - 1;
     let bucket = grp.buckets.get(b);
-    if (!bucket) { bucket = { bucket: b, items: [] }; grp.buckets.set(b, bucket); }
+    if (!bucket) { bucket = { bucket: b, items: [], x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity }; grp.buckets.set(b, bucket); }
     bucket.items.push(p);
+    if (p.X0 < bucket.x0) bucket.x0 = p.X0; if (p.X1 < bucket.x0) bucket.x0 = p.X1;
+    if (p.X0 > bucket.x1) bucket.x1 = p.X0; if (p.X1 > bucket.x1) bucket.x1 = p.X1;
+    if (p.Y0 < bucket.y0) bucket.y0 = p.Y0; if (p.Y1 < bucket.y0) bucket.y0 = p.Y1;
+    if (p.Y0 > bucket.y1) bucket.y1 = p.Y0; if (p.Y1 > bucket.y1) bucket.y1 = p.Y1;
   }
+
+  // Off-screen skip (LIT view, 2026-10-08), whole stroke() calls only. A
+  // bucket whose every strand lies outside `o.clip` (canvas px) by more than
+  // anything a layer paints past its endpoints (offset <= 0.41 lw, half-width
+  // and round cap <= 0.5 lw; the margin is 2 lw + 4 px) touches no pixel, so
+  // skipping it is pixel-exact by construction.
+  //
+  // It is deliberately NOT a per-strand cull. Chromium's rasterizer
+  // anti-aliases a path according to the WHOLE path's geometry: one subpath
+  // far off-canvas measurably moves the on-screen pixels of the rest of the
+  // same stroke() (Chromium 1194, CPU and GPU canvas alike). Dropping strands
+  // from a path that still draws therefore changed ~15k pixels at 5x zoom,
+  // and even keeping the path's bounds intact left 28-55 pixels off by 1-2
+  // levels. That is why PR #712's per-strand lit cull did not hold.
+  const litClip = o.clip || null;
+  const cm = 2 * lw + 4;
+  const offClip = (b) => !!litClip && (b.x1 < litClip.x0 - cm || b.x0 > litClip.x1 + cm || b.y1 < litClip.y0 - cm || b.y0 > litClip.y1 + cm);
 
   // Indices preferred; a count goes through layerSubsetForCount so it can
   // never drop the true colour (see that function for the bug it replaces).
@@ -603,6 +622,7 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
       if (st.raised && grp.items) strokeShadow(ctx, grp.items, lw, st);
       const profiles = [];
       for (const b of grp.buckets.values()) {
+        if (offClip(b)) continue;
         const angle = (b.bucket + 0.5) * (Math.PI / DIR_BUCKETS);
         profiles.push({ b, nx: -Math.sin(angle), ny: Math.cos(angle), layers: threadLayers(blk.rgb, angle, slw, st) });
       }

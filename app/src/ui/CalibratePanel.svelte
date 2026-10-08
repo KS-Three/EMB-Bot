@@ -100,7 +100,7 @@
       >{busyFormat === f ? "Building…" : f.toUpperCase()}</button>
     {/each}
   </div>
-  {#if cardMsg}<p class="calib-msg" data-testid="card-msg">{cardMsg}</p>{/if}
+  {#if cardMsg}<p class="calib-msg" data-testid="card-msg" role="status">{cardMsg}</p>{/if}
   <p class="calib-note">
     The first download builds the card and takes a few seconds. It fits a 5×7 hoop
     ({preset.assumedBacking === "tearaway" ? "tear-away" : preset.assumedBacking === "cap_buckram" ? "the cap's own buckram" : "cutaway"} backing{preset.needsTopper ? ", water-soluble topper" : ""}), and sews seven colours — any colours.

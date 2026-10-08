@@ -1593,6 +1593,15 @@ class PipelineConfig:
     # OFF on the same call). False is the walk as shipped before it, byte
     # for byte, and `tests/test_trim_levers.py` pins both sides.
     satin_exit_toward_next: bool = True
+    # `satin_mid_entry` (BUILT OFF 2026-10-08): when the needle stops within
+    # the fabric's trim distance of a satin column's MIDDLE but over it from
+    # the column's start, walk a travel run up the column's own centreline
+    # to the start instead of cutting -- the satin sewn next lies over every
+    # stitch of it. Only a shape whose first run is satin (no underlay ahead
+    # of it), and only when the walk costs at most 25 stitches, the
+    # trim_exchange_sweep exchange rate. Measured on the nine real-art logos
+    # (`tools/trim_census.py`, the `entry` bucket): see the PR that added it.
+    satin_mid_entry: bool = False
     # How far off the travel web the needle may sit and still walk to the
     # next stroke, in mm; 0 = off, and off the radius IS `trim_at` (3.0,
     # `machine.TRIM_AT_MM`), which is what shipped before 2026-09-20.
@@ -2906,6 +2915,16 @@ class PipelineConfig:
     # one contact sheet; NOT a shipped default, and flipping it into one is
     # an eyeball-loop verdict, not an optimisation.
     blend_speckle_r2_override: float | None = None
+    # The OTHER candidate the same §1 measurement named: measure speckle on
+    # the fit's RESIDUAL, blurred to stitch scale, instead of on the raw tone
+    # (stage6_blend._residual_speckle_ratio). Where the override above lets
+    # every well-fit region through, this still rejects a region whose
+    # unexplained tone has structure a stitch could show (a second ramp, an
+    # edge, a blob) and passes one whose residual is only pixel-scale grain.
+    # False (the default) is byte-identical shipped behaviour. Like the
+    # override it changes what sews on gradient art, so flipping it is an
+    # eyeball-loop verdict on a contact sheet, not an engineering default.
+    blend_speckle_residual: bool = False
     # None = fill_row_mm (or the machine default). Contour rings are the same
     # 0.40 mm apart as tatami rows; this exists so the ring tier can be opened
     # up independently, which is what "best used for open fills with low stitch
@@ -2969,6 +2988,18 @@ class PipelineConfig:
     # **Flipping it ON is Kent's call.** The render is at
     # docs/renders/satin-per-stroke-2026-09-06/.
     satin_per_stroke: bool = False
+    # Defect 5, one misroute class: a shape lying INSIDE a satin border's
+    # outline routes FILL, DEFAULT OFF. The pro convention is a filled body
+    # with a satin edge; we satined the body too. On becker_marine_logo the
+    # BECKER letters sit inside the black outline band, which is satin, and
+    # the pro tatamis every one of them while satining MARINE's solid
+    # letters of the same stroke width -- so no width or aspect threshold
+    # separates them (and defect 26's thresholds are a measured negative),
+    # but containment does: all eight bodies read 1.00 inside the band's
+    # outline, all eight MARINE shapes 0.00. Off, the pass never runs.
+    # Measured 2026-10-08 against the four committed Becker pro files,
+    # chance-corrected only: `tests/test_fill_inside_satin_border.py`.
+    fill_inside_satin_border: bool = False
     # Read the satin skeleton from the POLYGON instead of thinning a raster
     # of it (`digitizer_core/polygon_axis.py`), DEFAULT OFF and byte-identical
     # off -- off, that module is never imported.

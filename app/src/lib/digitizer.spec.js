@@ -2218,6 +2218,12 @@ test("no translated warning speaks engine, and this is the tripwire that keeps i
     "DUPLICATE_CONE_LAYERS_MERGED", "BORDER_SEAM_SHARED",
     "PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE", "PHOTO_FACE_PRIORS_UNAVAILABLE",
     "SMALL_LETTERING_AS_BEAN",
+    "CLASSIFICATION_SEED_UNSTABLE", "CONTOUR_RING_UNREACHABLE",
+    "CONTOUR_DIRECTIONAL_COMP_UNSEWN", "EDGE_CAP_OVER_BUDGET",
+    "APPLIQUE_NO_FABRIC_VISIBLE", "APPLIQUE_CUTTING_LINE_SUPPRESSED",
+    "APPLIQUE_FORCED_PRE_CUT", "APPLIQUE_COVER_MARGINAL",
+    "APPLIQUE_PIECES_OVERLAP", "APPLIQUE_STEP_EMPTY",
+    "APPLIQUE_COVER_WIDTH_CLAMPED", "APPLIQUE_PRECUT_TOO_NARROW",
   ];
   // Words that mean something to whoever wrote the engine and nothing to
   // whoever uploaded a logo. Each one was actually printed to a customer
