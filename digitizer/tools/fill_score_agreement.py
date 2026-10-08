@@ -21,7 +21,18 @@ the final column order, prices it with `_order_cost` exactly as
            does -- in travel stitches
 
 A shape AGREES when all three match to 1e-6. Nothing in the engine is
-changed; the wrappers live in this process only.
+changed; the wrappers live in this process only. A shape with no run before
+its fill (no underlay, the first shape a call sews) is priced from no entry,
+as `emit` lays no bridge into its first column.
+
+## What it found (2026-10-08, the nine logos at 80 mm, max_colors 6)
+
+The only disagreement is one-point "columns": `_fill_paths` returns them,
+`emit` skips them (`len(pts) < 2`), and `_order_cost` routed travel to each
+and on from it. Pricing the same order without them reproduces the sewn
+travel and exposure on every disagreeing shape. `cfg.fill_order_sewn_paths`
+drops them before either reorder; with it ON every fill shape agrees.
+Numbers: the PR that added this tool, and `tests/test_fill_sewn_paths.py`.
 
     .venv/bin/python tools/fill_score_agreement.py [case ...] [--width MM]
                                                    [--set KEY=VALUE ...]
