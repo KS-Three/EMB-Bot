@@ -21,12 +21,72 @@
       "note": null
     }
   ],
-  "identical_not_shown": ["drone", "enthusiast", "fremont", "gaulke", "tires"],
+  "identical_not_shown": [
+    "drone",
+    "enthusiast",
+    "fremont",
+    "gaulke",
+    "tires"
+  ],
   "identical_why": {
     "drone": "gated: 0.104 mm source pixel, cap under the working grid",
     "enthusiast": "gated: 0.073 mm",
     "fremont": "gated: 0.037 mm",
     "gaulke": "gated: the corpus's photo/logo_gaulke_roofing.png is 14.0 px/mm (0.071 mm pixel = the grid's), all 39 tagged letters pass:grid",
     "tires": "no text-tagged lettering (script)"
+  },
+  "columns_sitting": {
+    "sitting": "2026-10-07, labelled before | after, arm lettering_columns",
+    "page": "rendered on origin/main + PR #660's 1cbef252 cherry-picked (2a87ba89), one commit BEFORE 1782fbea: its Columns side sewed one end per station, every rail at 0.80 mm against the satin tier's 0.40 (tools/satin_pitch.py: outer-rail median 0.80-0.84 mm on all six lettered logos)",
+    "ruling": {
+      "verdict": "needs_work",
+      "note": "The comparison could be skewed because of the varying stitch density.",
+      "given": "on the page, 2026-10-07",
+      "owed": "equal pitch on both sides, then a redraw: sitting tag density-1007"
+    },
+    "pairs": [
+      {
+        "fixture": "becker",
+        "verdict": "after",
+        "did_the_flag_do_what_it_claims": "yes",
+        "note": "The stitch columns did it's job but the stitch density is VERy different between the two. the before stitch density is better."
+      },
+      {
+        "fixture": "drone",
+        "verdict": "after",
+        "did_the_flag_do_what_it_claims": "yes",
+        "note": "Letter's look nice, hard to tell with the preview and not being able to tell stitch density. but the patterning is clean."
+      },
+      {
+        "fixture": "enthusiast",
+        "verdict": "both_bad",
+        "did_the_flag_do_what_it_claims": null,
+        "note": "the stitch density looks better on the before, but the lettering recognition / outline MIGHT be better on the after"
+      },
+      {
+        "fixture": "fremont",
+        "verdict": "before",
+        "did_the_flag_do_what_it_claims": null,
+        "note": "The stitch density is so different between the two, it's hard to give a solid answer"
+      },
+      {
+        "fixture": "gaulke",
+        "verdict": "both_bad",
+        "did_the_flag_do_what_it_claims": null,
+        "note": "Stitch desnity is so different between the two, it's hard to tell...."
+      },
+      {
+        "fixture": "bridge",
+        "verdict": "both_bad",
+        "did_the_flag_do_what_it_claims": null,
+        "note": null
+      }
+    ],
+    "identical_not_shown": [
+      "tires"
+    ],
+    "identical_why": {
+      "tires": "no text-tagged lettering (script)"
+    }
   }
 }

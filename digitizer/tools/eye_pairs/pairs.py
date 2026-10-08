@@ -107,6 +107,10 @@ ARMS: dict[str, dict] = {
     # gaulke); drone, enthusiast and fremont are byte-identical and keep
     # their head on the page as identical, which is the point of go/no-go 1.
     "letterform_priors": {"letterform_priors_k": 0.75},
+    # L1, one lettering tagger (2026-10-08, built OFF; Kent picked the
+    # pairs): every lettering reader groups by one word model instead of
+    # the text cluster or the house group (`digitizer_core/words.py`).
+    "lettering_words": {"lettering_words": True},
 }
 
 
