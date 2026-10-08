@@ -18,6 +18,30 @@ test("running outline spaces points", () => {
   assert.ok(pts.length >= 16); // perimeter 400 / 25
 });
 
+test("running outline closes on its start point when the perimeter is not a whole number of steps", () => {
+  // A 104 px square at 25 px steps: perimeter 416, 16 whole steps and 16 px
+  // over. The walk used to stop there, 16 px short of where it began -- an
+  // edge-run underlay open by up to one stitch at its start corner.
+  const sq = (s) => [{x:0,y:0},{x:s,y:0},{x:s,y:s},{x:0,y:s}];
+  const gap = (p) => Math.hypot(p[p.length-1].x - p[0].x, p[p.length-1].y - p[0].y);
+  const long = fill.runningOutline(sq(104), { stitchLen:25 });
+  assert.ok(gap(long) < 1e-9, "16 px over: ends on its start, gap " + gap(long));
+  assert.strictEqual(long.length, 18, "the 16 px remainder (>= half a step) gets its own closing stitch");
+  // 101 px: 4 px over. That remainder is too short to sew on its own, so the
+  // last point moves onto the start: no stitch under half a step is added.
+  const short = fill.runningOutline(sq(101), { stitchLen:25 });
+  assert.ok(gap(short) < 1e-9, "4 px over: ends on its start, gap " + gap(short));
+  assert.strictEqual(short.length, 17);
+  for (const p of [long, short]) for (let i = 1; i < p.length; i++) {
+    const d = Math.hypot(p[i].x - p[i-1].x, p[i].y - p[i-1].y);
+    assert.ok(d >= 12.5 - 1e-9 && d <= 37.5 + 1e-9, "stitch " + i + " is " + d);
+  }
+  // A ring that already closes on a whole step is untouched.
+  const exact = fill.runningOutline(sq(100), { stitchLen:25 });
+  assert.strictEqual(exact.length, 17);
+  assert.ok(gap(exact) < 1e-9);
+});
+
 test("markConnectors: no sew points laid across a hole", () => {
   // annulus: outer 100x100, hole 20..80 (even-odd)
   const outer = [{x:0,y:0},{x:100,y:0},{x:100,y:100},{x:0,y:100}];
