@@ -649,6 +649,29 @@ test("drawThreads draws BLOCK-major: a later colour covers an earlier one, and a
   ]);
 });
 
+test("lit view skips a whole off-clip bucket, never part of one -- the on-canvas strokes are untouched", () => {
+  // Per-strand culling inside a path that still draws changes Chromium's
+  // anti-aliasing of the rest of that path (measured 2026-10-08), so the only
+  // pixel-exact skip is a whole stroke() whose every strand is off the clip.
+  const RED = [200, 10, 10], BLUE = [10, 10, 200];
+  const strands = [
+    { x0: 10, y0: 10, x1: 50, y1: 10, rgb: RED, kind: "stitch" },       // on canvas
+    { x0: 5000, y0: 10, x1: 5040, y1: 10, rgb: BLUE, kind: "stitch" },  // far right
+    { x0: 10, y0: 20, x1: 50, y1: 20, rgb: RED, kind: "stitch" },       // on canvas
+    { x0: -900, y0: 20, x1: 60, y1: 20, rgb: RED, kind: "stitch" },     // crosses the edge
+  ];
+  const clip = { x0: 0, y0: 0, x1: 100, y1: 100 };
+  const noClip = makeCtxSpy();
+  drawThreads(noClip, strands, (x) => x, (y) => y, 8, { layers: [TRUE_COLOUR_LAYER] });
+  const clipped = makeCtxSpy();
+  drawThreads(clipped, strands, (x) => x, (y) => y, 8, { layers: [TRUE_COLOUR_LAYER], clip });
+  const colours = (c) => c.strokeStyleLog.filter((x) => /^rgb\(/.test(x));
+  expect(colours(noClip)).toEqual(["rgb(200,10,10)", "rgb(10,10,200)", "rgb(200,10,10)"]);
+  // The blue block is entirely off-clip and goes; both red blocks stay, the
+  // edge-crossing strand with them.
+  expect(colours(clipped)).toEqual(["rgb(200,10,10)", "rgb(200,10,10)"]);
+});
+
 test("FLAT view agrees with the lit view about sew order — a recurring colour is its own block there too", () => {
   // The flat path used to key its buckets by RGB alone, so the third strand
   // below was merged back into the first block and drawn BEFORE the blue it

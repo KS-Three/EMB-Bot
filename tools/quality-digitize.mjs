@@ -1,5 +1,6 @@
 // Node prototype of the quality auto-digitize pipeline. Logs per-stage timing
 // so hangs are localized. Writes scratch_new.dst + scratch_new_colors.json.
+import "./_help.mjs";
 import { createRequire } from "module";
 import fs from "node:fs";
 import { decodePNG, downscale } from "./png.mjs";

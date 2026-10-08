@@ -6,7 +6,7 @@ import {
   defaultDigitizedElement,
   DEFAULT_DIGITIZE_PARAMS,
   update,
-  addElement,
+  addElement, withoutBlankStarter,
   addSeededTextElement,
   removeElement,
   selectElement,
@@ -887,4 +887,23 @@ test("deriveProjectName survives junk elements without throwing", () => {
 
 test("UNTITLED_NAME is the placeholder the whole app agrees on", () => {
   expect(UNTITLED_NAME).toBe("Untitled design");
+});
+
+test("withoutBlankStarter: art onto a fresh design replaces its empty text box and is seeded as the first element", () => {
+  const fresh = defaultProject();
+  const q = addElement(withoutBlankStarter(fresh), "image", 100);
+  expect(q.elements).toHaveLength(1);
+  expect(q.elements[0].type).toBe("image");
+  expect(q.elements[0].sizeMm).toBe(null); // factory default = fit the placement, not 0.4 × hoop
+  expect(q.elements[0].offsetYMm).toBe(0);
+  expect(q.selectedIds).toEqual([q.selectedId]);
+});
+
+test("withoutBlankStarter leaves typed text, and any multi-element design, alone", () => {
+  const typed = updateElement(defaultProject(), "e1", { text: "Ann" });
+  expect(withoutBlankStarter(typed)).toBe(typed);
+  const two = addElement(defaultProject(), "text", 100);
+  expect(withoutBlankStarter(two)).toBe(two);
+  const spaces = updateElement(defaultProject(), "e1", { text: "  " });
+  expect(withoutBlankStarter(spaces).elements).toHaveLength(0);
 });

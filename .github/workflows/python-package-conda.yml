@@ -159,6 +159,14 @@ jobs:
     # Deselecting exactly these three keeps CI green AND meaningful: any NEW
     # golden break still fails the job. The standing rule survives -- if any of
     # these three ever passes here, remove its deselect and find out why.
+    #
+    # 2026-10-08: TWO now. The towel row was re-pinned and its deselect
+    # removed -- its mismatch was a stale pin, not numerics (three machines,
+    # AVX-512 and forced-AVX2 dispatch alike, compute the re-pinned tuple;
+    # see GOLDEN_FLAG_OFF in tests/test_pushcomp.py). The two enthusiast_logo
+    # rows stay: that key is ALSO engine-stale (30 of 31 areas moved under
+    # the subpixel_edges flip), so no tolerance revives it without a capture
+    # on this runner.
     name: digitizer shard ${{ matrix.shard }}/6
     runs-on: ubuntu-latest
     strategy:
@@ -200,6 +208,11 @@ jobs:
       # identical, including the deselects below. Nothing in the suite
       # writes to a shared path (fixtures are read-only, every test that writes
       # uses tmp_path), so worker isolation is real rather than assumed.
+      # `--dist loadgroup --no-loadscope-reorder`: tests that share a module
+      # fixture or a memoized pipeline run go to ONE worker, everything else
+      # spreads test by test, heaviest first. tests/_xdist_groups.py has the
+      # rules and the measurement (shard 1/6: 389 s -> 248 s with the thread
+      # setting below). Same tests, same count -- only placement changes.
       # The three --deselect lines below are explained ONCE, in this job's
       # header comment: what they are, why they fail, why they are not
       # re-captured, and the measurement that cut the list from five to three.
@@ -230,10 +243,22 @@ jobs:
         env:
           DIGITIZER_SHARD: ${{ matrix.shard }}/6
           DIGITIZER_SHARD_MANIFEST: shard-manifest.json
+          # One native thread per xdist worker. `-n auto` already puts a
+          # worker on each of the runner's four cores; left alone, OpenCV and
+          # OpenBLAS each start four threads PER WORKER and the sixteen fight
+          # over four cores. Measured 2026-10-08 on shard 1/6, same tree,
+          # 4-core box: 389 s -> 357 s from this alone. Any pinned result that
+          # depended on the thread count would fail here, not pass quietly;
+          # the fixture-sweep tools (tools/thread_match_floor.py) have always
+          # run single-threaded.
+          OMP_NUM_THREADS: '1'
+          OPENBLAS_NUM_THREADS: '1'
+          MKL_NUM_THREADS: '1'
+          OPENCV_FOR_THREADS_NUM: '1'
         run: >
           python -m pytest tests/ -q -n auto
+          --dist loadgroup --no-loadscope-reorder
           --junitxml=junit.xml
-          --deselect "tests/test_pushcomp.py::test_flag_off_is_byte_identical_to_the_shipped_engine[logo_whitebg.png-towel]"
           --deselect "tests/test_flat_lane_byte_identical.py::test_flat_lane_is_byte_identical_to_the_pre_change_golden[photo/enthusiast_logo.png]"
           --deselect "tests/test_stage2_photo_segment.py::test_flat_and_gradient_lanes_still_match_golden_after_photo_dispatch[photo/enthusiast_logo.png]"
       # The manifest is what the `digitizer` job checks coverage against; the
@@ -333,26 +358,55 @@ jobs:
       # in the digitizer job (text-cluster-convert.spec.js drives that UI).
       - name: Install system dependencies (Tesseract OCR)
         run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+      # Cache the venv itself (not just pip's wheel cache): the install step
+      # below then only verifies. Same path as before, so the bootstrap probe
+      # and the editable install resolve identically.
+      - name: Cache the digitizer venv
+        uses: actions/cache@v4
+        with:
+          path: digitizer/.venv
+          key: e2e-venv-${{ runner.os }}-py312-${{ hashFiles('digitizer/requirements.txt', 'digitizer/pyproject.toml') }}
       - name: Build the digitizer venv the e2e bootstrap looks for
         working-directory: digitizer
         run: |
-          python -m venv .venv
+          [ -x .venv/bin/python ] || python -m venv .venv
           .venv/bin/pip install -r requirements.txt
           .venv/bin/pip install -e '.[service]'
       - name: Install
         working-directory: app
         run: npm ci
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}
       - name: Install Playwright Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
         working-directory: app
         run: npx playwright install --with-deps chromium
-      # --workers=1: the five service-gated specs share one service on :8721
-      # and each file's afterAll kills it when that file finishes — under
-      # parallel workers one file's teardown races another file's mid-test
-      # requests (observed locally: red at 4 workers, green solo). Serial is
-      # bounded by the specs' own timeouts and removes the race entirely.
-      - name: Playwright e2e
+      - name: Install Playwright system libraries (browser cached)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
         working-directory: app
-        run: npx playwright test --workers=1 --reporter=list,json
+        run: npx playwright install-deps chromium
+      # The specs that talk to the shared digitizer service on :8721 (every
+      # file naming SERVICE_URL) stay serial: each file's afterAll kills that
+      # one service, so under parallel workers one file's teardown races
+      # another file's mid-test requests (observed locally: red at 4 workers,
+      # green solo). Every OTHER spec is service-free and runs on 4 workers.
+      # Together the two steps run every spec file exactly once.
+      - name: Playwright e2e (service-free specs, parallel)
+        working-directory: app
+        run: |
+          FILES=$(grep -L SERVICE_URL e2e/*.spec.js | tr '\n' ' ')
+          npx playwright test --workers=4 --reporter=list,json $FILES
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: results-parallel.json
+      - name: Playwright e2e (digitizer-service specs, serial)
+        working-directory: app
+        run: |
+          FILES=$(grep -l SERVICE_URL e2e/*.spec.js | tr '\n' ' ')
+          npx playwright test --workers=1 --reporter=list,json $FILES
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: results.json
       # The digitize-* specs SKIP (not fail) when the service bootstrap can't
@@ -363,7 +417,7 @@ jobs:
       - name: Fail if any spec skipped
         working-directory: app
         run: |
-          node -e "const s=require('./results.json').stats; console.log(JSON.stringify(s)); if(s.skipped>0){console.error(s.skipped+' spec(s) skipped — the service bootstrap failed; read the skip reasons in the list output above'); process.exit(1)}"
+          node -e "let t=0,k=0; for(const f of ['./results-parallel.json','./results.json']){const s=require(f).stats; console.log(f,JSON.stringify(s)); t+=s.expected+s.unexpected+s.flaky; k+=s.skipped} if(k>0){const s={skipped:k};console.error(s.skipped+' spec(s) skipped — the service bootstrap failed; read the skip reasons in the list output above'); process.exit(1)}"
 
   art-fidelity-baseline:
     # REPORT-ONLY. Runs tools/artfidelity_self.py over the tracked fixture set

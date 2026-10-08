@@ -94,7 +94,8 @@ def main() -> None:
             raise SystemExit(f'duplicate brand id "{brand_id}" from {path.name}')
         seen.add(brand_id)
 
-        entries = parse_gpl(path.read_text(encoding="utf-8"))
+        # Mirrors build-threads.mjs: a verbatim repeated row adds nothing.
+        entries = list(dict.fromkeys(parse_gpl(path.read_text(encoding="utf-8"))))
         if len(entries) < MIN_ENTRIES:
             raise SystemExit(f"{path.name}: parsed only {len(entries)} entries — format change?")
 
@@ -122,4 +123,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    import sys as _sys
+    if {"-h", "--help"} & set(_sys.argv[1:]):
+        _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        print(__doc__ or "No usage text; see the source.")
+        raise SystemExit(0)
     main()

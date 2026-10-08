@@ -14,6 +14,7 @@
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
+  import { fabricContrastNote } from "../lib/colorMatch.js";
   import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
   import {
     appliedBorders,
@@ -30,6 +31,7 @@
   import Pinwheel from "./Pinwheel.svelte";
   import { digitizeBusy } from "../lib/digitizeBusy.js";
   import Icon from "./Icon.svelte";
+  import { prefersReducedMotion } from "../lib/reducedMotion.js";
   import ShapePopover from "./ShapePopover.svelte";
 
   // Task 4 (Slice 5): the field now renders every element in the project
@@ -118,6 +120,13 @@
   // The one-click line break offered beside a thin-lettering note: the
   // element to patch and its text over two lines, or null.
   let twoLinesFix = null;
+  // Thread vs garment colour. The canvas shows a neutral work bed, not the
+  // fabric (#648), so this caption note is the only place a design that will
+  // vanish into its garment says so. Reactive on the cached result so picking
+  // a fabric swatch updates it without a regenerate.
+  $: contrastNote = lastGenerateResult
+    ? fabricContrastNote(lastGenerateResult.combined && lastGenerateResult.combined.colors, project && project.fabricRgb)
+    : "";
 
   // Result of the last renderRealistic() call — { toCanvas, scale, designBBoxMm } —
   // kept around so pointer handlers and the selection overlay can hit-test /
@@ -1331,10 +1340,12 @@
       if (!outlines.length) continue;
 
       const started = pulses.startedAt(el.id);
-      const pulse = started == null ? 0 : pulseAt(now - started);
+      // Reduced motion: the outline pulse is pure animation, so it never plays.
+      const reduced = prefersReducedMotion();
+      const pulse = started == null || reduced ? 0 : pulseAt(now - started);
       // The wave touches 0 between beats, so "still in the window" is read
       // off the fade, not the beat.
-      const fade = started == null ? 0 : pulseFadeAt(now - started);
+      const fade = started == null || reduced ? 0 : pulseFadeAt(now - started);
       if (fade > 0) stillPulsing = true;
 
       // Hidden shapes stay out of the drawing but stayed IN the transform, so
@@ -2068,9 +2079,16 @@
     originalView = false;
     originalToken++;
     simActive = true;
-    simIndex = 0;
     simSpeed = 1;
-    simPlay();
+    if (prefersReducedMotion()) {
+      // No autoplay: show the finished design; Play still replays on request.
+      simIndex = simTotal;
+      simPlaying = false;
+      repaintView();
+    } else {
+      simIndex = 0;
+      simPlay();
+    }
   }
 
   function stopSim() {
@@ -3511,6 +3529,6 @@
     <!-- &nbsp; before each separator, not a plain space: Svelte strips leading
          whitespace inside an element, so " · " rendered as "…hoop· This font".
          Pre-existing on the two older warnings; visible on all three now. -->
-    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{#if letterNote}<span class="warn">&nbsp;· {letterNote}</span>{#if twoLinesFix}&nbsp;<button type="button" class="twolines" on:click={() => dispatch("elupdate", { id: twoLinesFix.id, patch: { text: twoLinesFix.text } })}>Put on two lines</button>{/if}{/if}{/if}
+    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{#if letterNote}<span class="warn">&nbsp;· {letterNote}</span>{#if twoLinesFix}&nbsp;<button type="button" class="twolines" on:click={() => dispatch("elupdate", { id: twoLinesFix.id, patch: { text: twoLinesFix.text } })}>Put on two lines</button>{/if}{/if}{#if contrastNote}<span class="warn" data-testid="contrast-note">&nbsp;· {contrastNote}</span>{/if}{/if}
   </div>
 </div>

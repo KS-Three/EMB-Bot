@@ -1014,6 +1014,14 @@ class PipelineConfig:
     # low-resolution regime the flag declines. Quality case unaffected; the
     # clock is now on the record. *(docs/flag-runtime-bills-2026-09-12.md)*
     curve_turn_deg: float | None = 15.0
+    # The run tier's outline with its curve vertices cut before it is
+    # sampled (`stage6_border._soften_ring`; MASTER_SCOPE defect 46, Law 37's
+    # direction-change score). Built OFF 2026-10-08: it moves only
+    # `curve_roughness_deg` on the run tier, measured in the PR that added
+    # it, and no render has met Kent's eye. Corners >= CORNER_DEG are kept;
+    # the cut stays inside `simplify_tol_mm`'s default. False is today's
+    # path, byte for byte.
+    run_soft_vertices: bool = False
     # Sub-pixel, anti-alias-aware contour vertices (`digitizer_core/
     # subpixel.py`; plan `docs/superpowers/plans/2026-09-08-subpixel-edges.md`
     # §3, PR 2). Stage 4 traces the LABEL mask, so every vertex it hands
@@ -1158,6 +1166,22 @@ class PipelineConfig:
     # How far a color extends underneath the color that sews after it. Enough
     # to survive fabric pull, small enough never to read as a color error.
     overlap_mm: float = 0.25
+    # Law 26 (machine-physics playbook row 9, MASTER_SCOPE defect 47): a join
+    # between two FILLS whose rows run parallel opens under pull — both
+    # shapes shrink along the same axis, away from the seam — and wants
+    # 1.0 mm of underlap on wovens; near-perpendicular, the later layer's
+    # rows bridge the seam and ~0 will do. True gives each fill->fill seam
+    # `overlap_mm + (overlap_parallel_mm - overlap_mm) * |cos(angle between
+    # the two fills' rows)|`: 1.0 mm parallel, `overlap_mm` perpendicular,
+    # never less than today. Satin on either side keeps `overlap_mm` (a
+    # column's stitch direction is its own normal, not one angle). False is
+    # the engine before it, byte for byte. Built OFF 2026-10-08: whether it
+    # closes the seam line on cloth is the sew-out's question (card block 6).
+    overlap_by_angle: bool = False
+    # The parallel-join underlap `overlap_by_angle` grows to. 1.0 is the
+    # law's WOVEN figure, verbatim; its knit 1.5–2.0 is sew-out-gated
+    # (ROADMAP gate 1), so knits get the woven floor, never less than today.
+    overlap_parallel_mm: float = 1.0
     # Stage 5's hole hold, read for what is actually IN the hole. A hole the
     # shell's pull growth would shrink under `min_detail_mm²` is held open at
     # its original size — right for a counter, wrong for a hole a LATER
@@ -1569,6 +1593,15 @@ class PipelineConfig:
     # OFF on the same call). False is the walk as shipped before it, byte
     # for byte, and `tests/test_trim_levers.py` pins both sides.
     satin_exit_toward_next: bool = True
+    # `satin_mid_entry` (BUILT OFF 2026-10-08): when the needle stops within
+    # the fabric's trim distance of a satin column's MIDDLE but over it from
+    # the column's start, walk a travel run up the column's own centreline
+    # to the start instead of cutting -- the satin sewn next lies over every
+    # stitch of it. Only a shape whose first run is satin (no underlay ahead
+    # of it), and only when the walk costs at most 25 stitches, the
+    # trim_exchange_sweep exchange rate. Measured on the nine real-art logos
+    # (`tools/trim_census.py`, the `entry` bucket): see the PR that added it.
+    satin_mid_entry: bool = False
     # How far off the travel web the needle may sit and still walk to the
     # next stroke, in mm; 0 = off, and off the radius IS `trim_at` (3.0,
     # `machine.TRIM_AT_MM`), which is what shipped before 2026-09-20.
@@ -1789,8 +1822,30 @@ class PipelineConfig:
     # square) are not pairs, so the join-square fold at the E's and T's
     # L-corners is untouched. Fremont ON: three letters move (T, N, R), the
     # design +34 stitches. Built OFF; the render is Kent's to judge.
-    # Tests: `tests/test_slab_serifs.py`.
-    satin_slab_serifs: bool = False
+    # Tests: `tests/test_slab_serifs.py`. **FLIPPED ON 2026-10-08, Kent's
+    # call, TOGETHER with `satin_free_end_square` below** on the four-arm
+    # render (`tools/join_square_census.py fremont --width 80 --garment
+    # left_chest`): both ON, Fremont at 80 mm bare letter artwork 3.20 ->
+    # 0.84 mm2, fan ends 16 -> 9, +137 stitches, trims 38 -> 39.
+    satin_slab_serifs: bool = True
+    # A plain FREE END lands square too (2026-10-08, built OFF). The corner
+    # join above straightens only `Stroke.corners` members; an arm's free end
+    # whose spine hooks into a corner of its square cap (Fremont's E middle
+    # arm at 80 mm: square legs 90 -> 57 deg over its last 0.5 mm) still
+    # fans, and a slab hanging off a free end whose wings `_prune_spurs`
+    # drops as a cap I-beam (the H's, M's, N's and T's feet at 80 mm) was
+    # sewn only by that fan. ON, `_free_end_reading` reads the artwork across
+    # the arm's line at its cap face: a hooked square cap is laid on the
+    # line, and a slab is sewn as its own short column joined to the arm
+    # (`_slab_spine`, `_attach_slabs`, cut against strokes that already own
+    # it -- so a slab `satin_slab_serifs` has made a stroke is left to it).
+    # Gated to arms (6 half-widths), tight lines and square cap faces, each
+    # gate found by a corpus render (Becker's N, the U's, Enthusiast's S).
+    # Measured: `tools/join_square_census.py`; tests
+    # `tests/test_join_slab_square.py`. **FLIPPED ON 2026-10-08, Kent's call,
+    # together with `satin_slab_serifs`** (see there); False is the 10-07
+    # free end, byte for byte.
+    satin_free_end_square: bool = True
     # Lettering as Columns (`digitizer_core/outline_cut.py`,
     # `digitizer_core/columns.py`; the lettering-lane architecture,
     # `docs/lettering-architecture-rd-2026-10-07.md` §5 L4/L5, Kent's pick
@@ -1828,6 +1883,32 @@ class PipelineConfig:
     # screenshot's two lines were one group in each). Off, nothing calls it
     # and every reader is byte-identical. Tests: `tests/test_words.py`.
     lettering_words: bool = False
+    # ONE TIER PER WORD (L3 of the lettering lane, mechanism only;
+    # `words.assign_word_tiers`). Needs `lettering_words`; without it there
+    # are no words and nothing changes. ON, a word's tier is decided once
+    # from its stroke width instead of per letter from each shape's own area
+    # (the run tier) and width (`classify_ribbon`): satin when the stroke
+    # carries `machine.SATIN_MIN_CROSS_MM` (and is under the design's satin
+    # ceiling: over it the per-shape classifier decides, so the word only
+    # PROMOTES a letter onto satin), the run tier when it does not, and --
+    # only when `lettering_min_column_mm` is set -- "widened", every member
+    # offset to that floor (compared in sewn width) and sewn satin. With
+    # `bean_letter_max_stroke_mm` set, the whole word goes bean or none of
+    # it does. The floor and the bean line are cloth values (ROADMAP gate
+    # 1) and stay the existing flags' values; this sets no constant.
+    # Measured 2026-10-08 (`tools/word_tiers.py --words`, enthusiast /
+    # fremont / gaulke / drone / screenshot): 34 of 130 detected word-lines
+    # split their letters across tiers at 60-120 mm today; at 60 / 80 / 100
+    # mm, 18 of 62 OFF and 0 of 62 with this and `lettering_words` ON. That
+    # counts CONSISTENCY, not quality: a word under 0.5 mm goes to the run
+    # tier's outline (failure B's tube letters) until the floor is set.
+    # Under `lettering_columns` a "run" word takes the run tier ahead of
+    # the Column lane; a "satin" word that the satin tier cannot sew falls
+    # to the run outline, never to a sub-millimetre fill. With satin off the
+    # area rescue stands. A review tier override still wins. Off,
+    # byte-identical.
+    # Tests: `tests/test_word_tiers.py`.
+    lettering_word_tiers: bool = False
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
@@ -2189,6 +2270,23 @@ class PipelineConfig:
     # 2026-09-19, "the exposed travel legs" and its two addenda;
     # `tests/test_fill_bridge_cut.py`.
     fill_bridge_cut: bool = True
+
+    # The fill column-order scorer prices only what `emit` sews (2026-10-08,
+    # built OFF). `_fill_paths` returns one-point "columns" that `emit`
+    # skips, and `stage6_fill._order_cost` routed travel to each one and on
+    # from it, so `_reorder_for_fewer_cuts` and `_reorder_for_cover` chose
+    # the column order against bridges that are never sewn. The DOCTRINE
+    # entry of 2026-09-11 says "`_order_cost` and `emit` can disagree about
+    # what an order will sew"; `tools/fill_score_agreement.py` found these
+    # phantoms are the only disagreement on the nine logos at 80 mm, and
+    # True drops them before either reorder runs. Within a shape the same
+    # penetrations are sewn and the column order moves; the shape's EXIT can
+    # move too, where `_fill_paths` ended on a phantom (both reorders pin the
+    # last path, and OFF pinned one `emit` never sews), so the next shape's
+    # entry -- and the design's stitch count -- can change. False is
+    # byte-identical to the engine before it. Defect 21's residual;
+    # `tests/test_fill_sewn_paths.py`.
+    fill_order_sewn_paths: bool = False
 
     # Underlay under a gradient-class design's ordinary fills. Built OFF
     # 2026-10-05; ON since 2026-10-07 by Kent's ruling, because OFF a
@@ -2674,6 +2772,18 @@ class PipelineConfig:
     # into their neighbour so a junction never flickers. False restores the
     # single block.
     edge_cap_follow_adjacent: bool = True
+    # DEFAULT OFF, byte-identical off. On, a cone's cap stretches sew at the
+    # end of that cone's LAST artwork block instead of in a block of their
+    # own after all the artwork, when no later artwork block sews within half
+    # a border width of any of them (`stage7_sequence._cap_fold_host`). The
+    # same thread ends up on top of the same artwork rows, one machine stop
+    # fewer per folded cone (where two cones' stretches meet end to end, which
+    # bean lies on top can flip). Built for the photo/tonal spec's open stop
+    # count (Kent 2026-08-24: "68-78 stops a portrait is too many"): the
+    # follow-adjacent cap above adds one stop per cone its stretches touch,
+    # almost always a cone the artwork already sewed (a stretch recoloured
+    # to a cone with no artwork has no host and keeps its own block).
+    edge_cap_fold_into_colour: bool = False
     # What a cap whose bill clears `stage6_border.EDGE_CAP_BUDGET_PCT` (40%
     # of the artwork's own stitches) does about it. "warn" — the default and
     # the shipped behaviour — moves NO stitch: the plan is exactly the plan
@@ -2796,6 +2906,16 @@ class PipelineConfig:
     # one contact sheet; NOT a shipped default, and flipping it into one is
     # an eyeball-loop verdict, not an optimisation.
     blend_speckle_r2_override: float | None = None
+    # The OTHER candidate the same §1 measurement named: measure speckle on
+    # the fit's RESIDUAL, blurred to stitch scale, instead of on the raw tone
+    # (stage6_blend._residual_speckle_ratio). Where the override above lets
+    # every well-fit region through, this still rejects a region whose
+    # unexplained tone has structure a stitch could show (a second ramp, an
+    # edge, a blob) and passes one whose residual is only pixel-scale grain.
+    # False (the default) is byte-identical shipped behaviour. Like the
+    # override it changes what sews on gradient art, so flipping it is an
+    # eyeball-loop verdict on a contact sheet, not an engineering default.
+    blend_speckle_residual: bool = False
     # None = fill_row_mm (or the machine default). Contour rings are the same
     # 0.40 mm apart as tatami rows; this exists so the ring tier can be opened
     # up independently, which is what "best used for open fills with low stitch

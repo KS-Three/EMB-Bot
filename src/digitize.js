@@ -1818,7 +1818,13 @@
         const gap = Math.hypot(start.x - lastPt.x, start.y - lastPt.y);
         const steps = Math.max(1, Math.ceil(gap / maxStepPx));
         const ti0 = stitches.length;
-        for (let s = 1; s <= steps; s++) { const t = s / steps; const d = T({ x: lastPt.x + (start.x - lastPt.x) * t, y: lastPt.y + (start.y - lastPt.y) * t }); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
+        // The connector stops one step short: its last step lands on `start`,
+        // which the run below lays as its own first stitch. Laying it here too
+        // put the needle down twice in that hole at every needle-down run
+        // boundary (docs/lock-stitches-2026-10-03.md: 9,093 on KENT across the
+        // 85 fonts). Only the record pushed twice goes; a connector point that
+        // merely rounds onto its neighbour is `dedupeHoles`' question, not this.
+        for (let s = 1; s < steps; s++) { const t = s / steps; const d = T({ x: lastPt.x + (start.x - lastPt.x) * t, y: lastPt.y + (start.y - lastPt.y) * t }); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
         // These connector stitches are needle-DOWN travel, not stitching — the
         // renderer de-emphasises them so they stop reading as part of a glyph.
         pushSpan(ti0, "travel", run.charIdx);
