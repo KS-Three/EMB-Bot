@@ -97,8 +97,13 @@ engine's zigzag is A1,B1,A2,B2, both ends, stations 0.4 apart); the 'one
 penetration per station' trap above was wrong. Full density: becker letters
 4,709 -> 3,095 (not 1,629), trims 42 -> 8. Count needles per rail, never
 totals across tiers. At 0.15 mm thread the terminals still hold: MARINE bare
-3.1 -> 2.7%, Fremont 2.0 -> 0.6%. The E is still three slabs (the ext rule takes the
-slot's LONGER edge into the body): the next cut item. Then Kent's pairs.
+3.1 -> 2.7%, Fremont 2.0 -> 0.6%. E/F stem cut 10-08: slot backs = depth
+peaks along each hull pocket's outline (one pocket holds both slots when the
+middle arm is short); guards: solid between backs (M's V), piece behind <=1.6 W
+(MARINE's M read as an E on its side). Five E's, long crosses 4 -> 0, trims
+unchanged. TRAP: outline_cut's medial_axis was unseeded (random ties, same
+letter cut differently in one process); rng=0 now, like every other caller.
+An A/B that moves untouched shapes is noise first. Next: Kent's pairs.
 
 **Kent's pairs DRAWN (after #660, ahead of the E cut on the caller's word):**
 `docs/eye-pairs-2026-10-07/` -- 7 pairs + tires identical, sitting tag
@@ -110,3 +115,5 @@ run); fixed and AST-pinned for every engine call. Becker letter trims
 42 -> 8; lost_frac up on six of seven logos. Not published; the E is still
 three slabs on the page.
 
+**L1 BUILT 2026-10-08, OFF: `cfg.lettering_words`** -- see
+`word-tagger-l1-2026-10-08`. Under it `is_lettering` reads `word_id` only.

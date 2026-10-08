@@ -7,6 +7,9 @@ import pytest
 
 from digitizer_core import PipelineConfig, run_stages
 
+# CI sharding (DIGITIZER_SHARD=k/n); a no-op when unset. See tests/_ci_shard.py.
+from tests._ci_shard import pytest_collection_modifyitems  # noqa: F401
+
 
 # SESSION-scoped, and shared by every module that needs a client. It must not
 # be per-module, and that is not a style preference -- a per-module client

@@ -1505,6 +1505,119 @@ above this line.
   repro fixture now disable the guards explicitly (`repro_cfg` in
   `tests/test_enclosed_background.py`).
 
+## How-to: sharded CI, per-lane fill options, and the recent flags (2026-10-07/08)
+
+Practical recipes only. What is built, ON or measured lives in MASTER_SCOPE;
+the reasoning lives in the code comments named below.
+
+### Sharded digitizer CI (PR #669)
+
+- **Shape.** `digitizer shard 1/6 … 6/6` (matrix job `digitizer-shard`) each
+  run `pytest -n auto` on their own runner; the required check named
+  `digitizer` is an aggregator that `needs` them, runs `if: always()`, and
+  goes green only if every shard succeeded AND
+  `digitizer/tools/ci_shard_check.py` proves the shards' manifests are one per
+  shard, identical collected lists, pairwise disjoint selections, together the
+  whole suite. A red shard, a missing shard or a dropped test all fail it.
+- **Assignment.** `digitizer/tests/_ci_shard.py` (hooked from `conftest.py`)
+  gives whole test FILES to shards, longest first onto the lightest shard,
+  weighted by `digitizer/tests/.shard_durations.json` (per-file seconds). Whole
+  files, so module-scoped fixtures are computed once. A file missing from the
+  JSON gets the median, so a new test file needs no refresh.
+- **Run one shard locally** (inert unless the variable is set; a plain
+  `pytest` still runs everything):
+
+  ```bash
+  cd digitizer
+  DIGITIZER_SHARD=2/6 DIGITIZER_SHARD_MANIFEST=/tmp/m2.json \
+    .venv/bin/python -m pytest tests/ -q -n auto > log 2>&1; echo "EXIT=$?" >> log
+  ```
+
+  Add CI's three `--deselect` node IDs (workflow file) to reproduce its
+  exact selection. Run the aggregator's check on a folder of manifests with
+  `python digitizer/tools/ci_shard_check.py <dir>`.
+- **Changing the shard count** means editing the matrix list, the job name and
+  the `DIGITIZER_SHARD: k/6` denominator together.
+- **Refresh `.shard_durations.json`** when one shard keeps running far longer
+  than the rest (stale numbers cost balance, never coverage). Download the
+  `digitizer-shard-*` artifacts of one green run (each holds `junit.xml`) and:
+
+  ```bash
+  cd digitizer
+  python tools/ci_shard_durations.py shard-1/junit.xml shard-2/junit.xml … shard-6/junit.xml
+  ```
+
+  It rewrites the JSON in place; commit it. Relative weights are what matter,
+  so a local `--junitxml` also works.
+- **Trap.** The plugin pops `DIGITIZER_SHARD`/`DIGITIZER_SHARD_MANIFEST` from
+  the environment when it runs, so a child `pytest` (e.g. `test_doc_claims.py`
+  collects in a subprocess) sees the whole suite. Don't re-add them to a child.
+
+### Per-lane fill options in `app/src/lib/generate.js`
+
+`generateElement` passes engine options per lane; the engine defaults stay
+OFF, so a lane opts in by passing the key to `EMB.buildQualityDesign`:
+
+- **`fillColumns: true`** — a fill is sewn column by column so no thread
+  crosses a cut-out or notch. Passed by the **manual lane only**; the image
+  lane and the basic-shape lane deliberately omit it (comments in the file say
+  so). To turn it on for another lane add `fillColumns: true` to that lane's
+  call and update the lane's comment. Test: `app/src/lib/generate.spec.js`
+  ("a manual fill lays no thread across its cut-out").
+- **`cutFloats: true`** (`src/digitize.js`, default off) — a float the DST
+  writer would lay as three or more jump records becomes a real `trim` in the
+  stream (and so gets ties). No Studio lane passes it yet; try it from a Node
+  script, or with `--on cutFloats` below.
+- The "Design file" (imported) lane reads `displayResult(element)` from
+  `digitizer.js` rather than `element.result`.
+
+### Digitizer flags touched 2026-10-05..08 (all `PipelineConfig` fields)
+
+Check the live default before relying on this list:
+`grep -n "<flag>: " digitizer/digitizer_core/config.py`.
+
+- **`blend_fallback_underlay`** (gradient-class designs): the non-ramp
+  fallback path of `stage6_blend.blend_fill` sews the resolved underlay
+  style instead of none. The ramp-band path stays bare on purpose. Default
+  as of main `a8aafc5` reads **`False`** in `config.py`; if a PR flips it,
+  `tests/test_blend_fallback_underlay.py` is the guard.
+- **`satin_join_square`** (default **True**): square the join corners of
+  satin members. Capped by `_STRAIGHT_MAX_MOVE_HALVES = 0.6`
+  (`stage6_satin.py`): a member whose apex sits further than 0.6 half-widths
+  off its fitted line keeps its pre-flip spine (a bend is not a corner).
+  Tune the constant, not the flag, if a bowl loses its wedge. Tests:
+  `tests/test_join_corner_straight.py`, `tests/test_join_corner_bend_cap.py`.
+- **`letterform_priors_k`** (default 0.75), `satin_slab_serifs` (OFF),
+  `lettering_columns` (OFF): see their comments in `config.py`.
+
+**Determinism rule for `medial_axis`.** Always call
+`skimage.morphology.medial_axis(..., rng=0)`. With the default `rng=None`
+skimage breaks ties from OS entropy and the lane sews a different design on
+every run (golden_tee gave 8,312 / 8,318 / 8,319 / 8,315 stitches).
+`stage6_satin`, `shapefield` and `outline_cut` already pass it; any new
+caller must. Spot-check a new call site by running the same input twice in
+separate processes and diffing the stitch streams.
+
+### New `tools/` scripts (engine, run from repo root)
+
+- `node tools/file-cut-census.mjs [srcDir] [--set shapes|lettering|image|<set-file>] [--on flag[=value]] [--every K] [--jobs N] [--json out] [--keep dir] [--against otherSrc]`
+  — what a machine CUTS, read off the written PES/EXP/DST rather than the
+  builder's stream; `--against` diffs two engines. Set files:
+  `tools/file-cut-sweep-set.mjs` (the 8,255-design sweep),
+  `file-cut-satin-set.mjs` (hand-drawn shapes set to satin),
+  `file-cut-import-set.mjs` (imported stitch files and `combineDesigns` pairs).
+  `--every 10` is the quick look.
+- `node tools/travel-sheet.mjs out.svg [--against otherSrc]` — draws four
+  designs (satin T, thin star, imported file, lettering + import) from what a
+  third-party reader makes of each file: needle-down, sewn and travelled.
+- `node tools/crossval-stitch-formats.mjs` — the cross-validation harness
+  behind `node --test`'s format tests; needs a venv with `pystitch`.
+- `digitizer/tools/` additions (each has a docstring with usage):
+  `ci_shard_check.py`, `ci_shard_durations.py` (above); `fan_census.py`,
+  `n_fan_spies.py`, `letter_band.py` (letter-fan / lettering measurements);
+  `eye_pairs_price.py`, `eye_pairs_gallery.py` (labelled thread pairs for
+  Kent's sitting); `letterform_priors_spike/` (the refit spike).
+
 ## Running things
 
 Pass counts are gone from this section on purpose — the counts-are-gone
@@ -1528,8 +1641,10 @@ command block.
 
 **CI now exists.** `.github/workflows/python-package-conda.yml` (PR #37
 rewrote Kent's initial stock conda template to run the three commands
-below for real) runs on every push and pull request — **four** jobs, engine
-/ studio / digitizer / studio-e2e, the digitizer job deselecting **three**
+below for real) runs on every push and pull request — **four** required
+checks, engine / studio / digitizer / studio-e2e (since 2026-10-08 `digitizer`
+is an aggregator over six `digitizer shard k/6` jobs — "Sharded digitizer CI"
+below), each shard deselecting **three**
 golden tests by node ID (CI's OWN list, not the same set that fails on
 Kent's Windows machine — see the failure classes below). It was five until
 2026-08-22, when the remove-and-see check below was finally run. Every PR needs its

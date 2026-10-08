@@ -117,13 +117,15 @@ class Column:
                       rail_a=self.rail_a[::-1], rail_b=self.rail_b[::-1], dropped_mm=self.dropped_mm)
 
 
-def is_lettering(region) -> bool:
-    """Does the lane take this shape? Either tagger says lettering: the text
-    cluster (`textcluster.tag`, `text_candidate`) or the house-angle group
-    (`set_lettering_house_angle`, `lettering_group`). The two disagree on
-    real logos and merging them is the architecture's L1; until then the
-    lane reads both."""
+def is_lettering(region, cfg=None) -> bool:
+    """Does the lane take this shape? Under `cfg.lettering_words` the one
+    tagger's word (`words.tag_words`, `word_id`, L1). Off, either old
+    tagger: the text cluster (`textcluster.tag`, `text_candidate`) or the
+    house-angle group (`set_lettering_house_angle`, `lettering_group`),
+    which disagree on real logos (`tools/word_tagger_eval.py`)."""
     m = region.meta or {}
+    if getattr(cfg, "lettering_words", False):
+        return bool(m.get("word_id"))
     return bool(m.get("text_candidate") or m.get("lettering_group"))
 
 
@@ -285,7 +287,8 @@ def _span_graph(columns: list[Column], merge_r: float):
     return nodes, spans, junctions
 
 
-def _euler_trail(nodes, spans, start_near, prefer=frozenset(), prefer_within_mm=math.inf):
+def _euler_trail(nodes, spans, start_near, prefer=frozenset(), prefer_within_mm=math.inf,
+                 end_near=None):
     """Chinese-postman duplication plus Hierholzer, per component.
     -> list of components, each a list of (span index, from node, to node)
     in walk order; components ordered nearest-first from `start_near`.
@@ -324,20 +327,43 @@ def _euler_trail(nodes, spans, start_near, prefer=frozenset(), prefer_within_mm=
                     q.append(v)
         comps.append(members)
 
-    def trail(cnodes, cursor):
+    def trail(cnodes, cursor, exit_to=None):
         deg = {i: len(adj[i]) for i in cnodes}
         rank = sorted(cnodes, key=lambda i: i in prefer)       # preferred nodes last
         odd = [i for i in rank if deg[i] % 2 == 1]
+        # `end_near` on the LAST component (the satin tier's
+        # `satin_exit_toward_next`, ported): the trail's two ends are chosen
+        # together -- the start nearest the needle (a butting column's free
+        # end within reach, when there is one, for the tuck), the end nearest
+        # where the needle goes next -- and kept out of the pairing, so
+        # Hierholzer from the start finishes at the end. Without it the walk
+        # ended wherever the pairing left it and the hop into the next letter
+        # was a trim (Fremont's entry trims 15 -> 21 under the lane).
+        reserved = None
+        if exit_to is not None and cursor is not None and len(odd) >= 2:
+            near_pref = [i for i in odd if i in prefer
+                         and math.dist(nodes[i], cursor) <= prefer_within_mm]
+            starts = near_pref or odd
+            # never trade the hop IN for the hop out: a start the needle can
+            # sew to (within the trim distance, or no farther than the nearest
+            # start) -- unguarded, drone's inside-letter trims rose 4 -> 6
+            d0 = min(math.dist(cursor, nodes[i]) for i in starts)
+            starts = [i for i in starts
+                      if math.dist(cursor, nodes[i]) <= max(prefer_within_mm, d0 + 1e-9)]
+            reserved = min(((a, b) for a in starts for b in odd if a != b),
+                           key=lambda ab: (math.dist(cursor, nodes[ab[0]])
+                                           + math.dist(nodes[ab[1]], exit_to), ab))
+        free = lambda: [i for i in odd if reserved is None or i not in reserved]
         guard = 0
-        while len(odd) > 2 and guard < 200:
+        while len(free()) > (0 if reserved else 2) and guard < 200:
             guard += 1
-            u = odd[0]
+            u = free()[0]
             prev_n, prev_i, seen = {}, {}, {u}
             q = deque([u])
             tgt, fallback = -1, -1
             while q:
                 x = q.popleft()
-                if x != u and deg[x] % 2 == 1:
+                if x != u and deg[x] % 2 == 1 and (reserved is None or x not in reserved):
                     # a preferred node is paired only when nothing else is
                     # odd: paired, it goes even and can no longer start the
                     # trail (a T's junction paired with the stem's foot
@@ -366,7 +392,16 @@ def _euler_trail(nodes, spans, start_near, prefer=frozenset(), prefer_within_mm=
                 x = p
             odd = [i for i in rank if deg[i] % 2 == 1]
         pool = odd if odd else cnodes
-        if cursor is None:
+        if reserved is not None:
+            start = reserved[0]
+        elif exit_to is not None and cursor is not None and not odd:
+            # a closed web ends where it starts: one node pays both hops
+            # (within the same reach as above)
+            d0 = min(math.dist(cursor, nodes[i]) for i in cnodes)
+            ok = [i for i in cnodes if math.dist(cursor, nodes[i]) <= max(prefer_within_mm, d0 + 1e-9)]
+            start = min(ok, key=lambda i: (math.dist(cursor, nodes[i])
+                                           + math.dist(nodes[i], exit_to), i))
+        elif cursor is None:
             start = min(pool, key=lambda i: (i not in prefer, i))
         else:
             near = [i for i in pool if i in prefer and math.dist(nodes[i], cursor) <= prefer_within_mm]
@@ -402,7 +437,7 @@ def _euler_trail(nodes, spans, start_near, prefer=frozenset(), prefer_within_mm=
         else:
             pick = min(left, key=lambda c: min(math.dist(nodes[i], cursor) for i in c))
         left.remove(pick)
-        circuit = trail(pick, cursor)
+        circuit = trail(pick, cursor, end_near if not left else None)
         if circuit:
             out.append(circuit)
             cursor = nodes[circuit[-1][2]]
@@ -420,6 +455,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 underlay_style: str = "none",
                 start_near: tuple[float, float] | None = None,
                 min_cross_mm: float = machine.SATIN_MIN_CROSS_MM,
+                end_near: tuple[float, float] | None = None,
                 ) -> tuple[list[StitchRun], dict]:
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
@@ -487,7 +523,8 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
             for key, idx in (("na", sp["i0"]), ("nb", sp["i1"])):
                 if idx == free_idx and touch.get(sp[key], 0) == 1:
                     prefer.add(sp[key])
-    components = _euler_trail(nodes, spans, start_near, frozenset(prefer), trim_at_mm)
+    components = _euler_trail(nodes, spans, start_near, frozenset(prefer), trim_at_mm,
+                              end_near=end_near)
 
     # 3. Emit: the last visit of a span sews satin, earlier visits run under it.
     #    (`poly_link` is the sew-or-jump rule's polygon, see step 4; the
@@ -608,6 +645,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             pull_mm: float = 0.0, pull_floor_mm: float = 0.0,
                             underlay_style: str = "none",
                             start_near: tuple[float, float] | None = None,
+                            end_near: tuple[float, float] | None = None,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct."""
@@ -621,7 +659,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     runs, report = column_runs(cut.columns, cut.poly, shape_id, trim_at_mm=trim_at_mm,
                                spacing_mm=spacing_mm, split_above_mm=split_above_mm,
                                pull_mm=pull_mm, pull_floor_mm=pull_floor_mm,
-                               underlay_style=underlay_style, start_near=start_near)
+                               underlay_style=underlay_style, start_near=start_near,
+                               end_near=end_near)
     report["cuts"] = len(cut.cuts)
     report["columns_unsewn"] += len(cut.unsewn)
     return runs, report

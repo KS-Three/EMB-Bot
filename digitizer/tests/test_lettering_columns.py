@@ -261,6 +261,85 @@ def test_two_separate_stems_are_two_components_joined_by_one_jump():
     assert abs(end1[1] - start2[1]) < 1.0
 
 
+def test_the_walk_ends_toward_the_next_shape():
+    """An H has four free stem ends; the postman pairs two and the trail runs
+    between the other two. Stage 7 hands every shape the point where the
+    next shape starts (`cfg.satin_exit_toward_next`, the satin tier's rule
+    since 09-19), and the walk reserves its two ends for it: start nearest
+    the needle, end nearest the next shape. Without it the walk ended where
+    the pairing left it and the hop into the next letter was a trim
+    (Fremont's entry trims rose 15 -> 21 under the lane)."""
+    H = _rect(0, 0, 2, 12).union(_rect(8, 0, 10, 12)).union(_rect(0, 5, 10, 7))
+    for nxt, corner in (((9, -0.5), (9, 0)), ((1, 12.5), (1, 12)), ((9, 12.5), (9, 12))):
+        runs, report = lettering_columns_shape(H, "h", trim_at_mm=3.0, start_near=(1, -0.5), end_near=nxt)
+        assert _jumps(runs) == []
+        assert math.dist(runs[-1].points[-1], corner) < 1.5, nxt
+
+
+# ------------------------------------------------------- the E/F stem cut
+
+def _rounded_e():
+    """A bold E whose slot ends are ROUNDED, as a traced E at 146 px is: the
+    junction rules find at most one corner on it. Stem 0..4, arms to x = 12
+    (the middle one to 10, short of the hull), slots 2 tall."""
+    stem = _rect(0, 0, 4, 14)
+    arms = [_rect(4, 0, 12, 4), _rect(4, 5.5, 10, 8.5), _rect(4, 10, 12, 14)]
+    e = unary_union([stem] + arms)
+    # round the slot ends: fill a small fillet at each inner corner
+    fillets = [Point(4.5, y).buffer(0.6) for y in (4.5, 5.0, 9.0, 9.5)]
+    return unary_union([e] + fillets).buffer(0.0)
+
+
+def test_an_e_is_cut_into_a_stem_and_its_arms():
+    """The slot backs are depth peaks along the hull pocket's outline, and
+    the line through them is the stem's inner edge: three cuts, one per arm
+    root, and the stem is ONE straight column running the letter's height.
+    Without this the E sewed as three horizontal slabs, each a fanning L."""
+    from digitizer_core.outline_cut import slot_cuts
+    E = _rounded_e()
+    cut = letter_columns(E)
+    slots = [c for c in cut.cuts if c[2] == "slot"]
+    assert len(slots) == 3
+    assert all(abs(c[0][0] - c[1][0]) < 0.3 for c in slots)          # all on one upright line
+    tall = [c for c in cut.columns if c.piece.bounds[3] - c.piece.bounds[1] > 12]
+    assert len(tall) == 1 and tall[0].kind == "straight"
+    assert tall[0].piece.bounds[2] < 6                               # the stem, not stem + arm
+    assert len(cut.columns) == 4
+    W = cut.W
+    assert all(math.dist(a, b) <= 1.6 * W for c in cut.columns for a, b in c.stations)
+
+
+def test_no_stem_cut_on_an_m_a_c_or_a_t():
+    """One peak per pocket (C, T), or two whose line crosses a notch or
+    leaves more than a stroke behind it (an M's bottom pocket reads as an
+    E on its side): no slot cut."""
+    from digitizer_core.outline_cut import slot_cuts
+    M = Polygon([(0, 0), (2, 0), (5, 4), (8, 0), (10, 0), (10, 12), (8, 12), (8, 4.5),
+                 (5, 8.5), (2, 4.5), (2, 12), (0, 12)])
+    C = Point(0, 0).buffer(6).difference(Point(0, 0).buffer(4)).difference(_rect(2, -2, 7, 2))
+    T = _rect(4, 0, 6, 12).union(_rect(0, 0, 10, 2))
+    for name, shape in (("M", M), ("C", C), ("T", T)):
+        cuts, _ = slot_cuts(shape, stroke_width(shape))
+        assert cuts == [], name
+
+
+def test_the_same_letter_cuts_the_same_every_time():
+    """The spine is skimage's medial axis, which breaks ties with a random
+    generator unless seeded; unseeded, an open ring cut twelve times in one
+    process gave two different station sets (and a gaulke letter moved
+    0.013 mm between calls). Every other medial_axis call in the engine
+    passes rng=0; so does this one now."""
+    import hashlib
+    arc = Point(0, 0).buffer(6).difference(Point(0, 0).buffer(4)).difference(
+        Polygon([(0, 0), (9, -1), (9, 4)]))
+
+    def h(cut):
+        return hashlib.md5(repr([[(tuple(map(float, a)), tuple(map(float, b))) for a, b in c.stations]
+                                 for c in cut.columns]).encode()).hexdigest()
+
+    assert len({h(letter_columns(arc)) for _ in range(12)}) == 1
+
+
 # --------------------------------------------------------------- density
 
 def test_each_rail_gets_a_needle_every_satin_spacing():
@@ -330,8 +409,9 @@ def test_a_round_cap_stays_square():
     and is not a slant: it keeps the scan's square crosses rather than
     fanning from one arbitrary side."""
     import numpy as np
-    cap = [(1 + math.cos(t), 10 + math.sin(t)) for t in np.linspace(math.pi, 0, 24)]
-    stem = Polygon([(0, 0), (2, 0)] + cap)
+    cap = [(1 + math.cos(t), 10 + math.sin(t)) for t in np.linspace(0, math.pi, 24)]
+    stem = Polygon([(0, 0), (2, 0)] + cap)            # (2, 10) round the cap to (0, 10)
+    assert stem.is_valid
     col = letter_columns(stem).columns[0]
     assert col.kind == "straight"
     xs = {round(a[0], 3) for a, _ in col.stations} | {round(b[0], 3) for _, b in col.stations}
@@ -428,3 +508,76 @@ def test_every_engine_medial_axis_call_is_seeded():
                     and not any(k.arg == "rng" for k in node.keywords)):
                 unseeded.append(f"{f.name}:{node.lineno}")
     assert unseeded == []
+
+# ------------------------------------------- pitch: the satin tier's, as sewn
+#
+# Kent's Columns sitting (2026-10-07) came back "needs work": *"the
+# comparison could be skewed because of the varying stitch density."* Its
+# Columns side was drawn one commit before 1782fbea, at one end per station
+# (0.80 mm per rail). These pin the three things that make a pair against the
+# skeleton tier a fair one: the same pitch on the same stem, the fabric's
+# scaling carried through, and the OUTER rail held at pitch round a bend.
+
+def _satin_pts(runs):
+    return [p for r in runs if r.kind == stitches.SATIN for p in r.points]
+
+
+def test_a_stem_sews_at_the_skeleton_tiers_pitch():
+    from digitizer_core.stage6_satin import satin_shape
+    from tools.satin_pitch import rail_steps
+    stem = _rect(0, 0, 2, 16)
+    med = {}
+    for name, runs in (("columns", lettering_columns_shape(stem, "s", trim_at_mm=3.0)[0]),
+                       ("skeleton", satin_shape(stem, "s", trim_at_mm=3.0, underlay_style="none")[0])):
+        outer = [s for r in runs if r.kind == stitches.SATIN and len(r.points) >= 6
+                 for s in rail_steps(r.points)[0]]
+        assert len(outer) >= 20, (name, len(outer))
+        med[name] = sorted(outer)[len(outer) // 2]
+    assert abs(med["columns"] - med["skeleton"]) < 0.05 * machine.SATIN_SPACING_MM, med
+    assert abs(med["columns"] - machine.SATIN_SPACING_MM) < 0.1 * machine.SATIN_SPACING_MM, med
+
+
+def test_the_fabrics_spacing_reaches_the_rails():
+    """Stage 7 hands the lane `SATIN_SPACING_MM x density_adjust`, the value
+    `_rail_points` receives; a towel's 0.85 must tighten a Column's rails as
+    it tightens a skeleton column's."""
+    from tools.satin_pitch import rail_steps
+    stem = _rect(0, 0, 2, 16)
+    for spacing in (0.34, 0.40, 0.48):
+        runs, _ = lettering_columns_shape(stem, "s", trim_at_mm=3.0, spacing_mm=spacing)
+        outer = [s for r in runs if r.kind == stitches.SATIN for s in rail_steps(r.points)[0]]
+        med = sorted(outer)[len(outer) // 2]
+        assert abs(med - spacing) < 0.1 * spacing, (spacing, med)
+
+
+def test_a_bend_holds_the_outer_rail_at_pitch():
+    """Round a ring the outer rail is 1.7x the inner: the pitch is held on
+    the OUTSIDE (the stretch that would show cloth), and the inside takes the
+    shorter steps."""
+    outer_r, inner_r = 6.0, 3.5
+    O = Polygon(Point(0, 0).buffer(outer_r, 96).exterior.coords,
+                [Point(0, 0).buffer(inner_r, 96).exterior.coords])
+    runs, _ = lettering_columns_shape(O, "o", trim_at_mm=3.0)
+    pts = _satin_pts(runs)
+    def arc_gaps(lo, hi, r):
+        ang = sorted(math.atan2(y, x) for x, y in pts if lo < math.hypot(x, y) < hi)
+        return [(b - a) * r for a, b in zip(ang, ang[1:]) if (b - a) * r > 1e-3]
+    out_g, in_g = arc_gaps(outer_r - 0.15, outer_r + 0.15, outer_r), arc_gaps(inner_r - 0.15, inner_r + 0.15, inner_r)
+    assert len(out_g) > 60
+    med_out, med_in = sorted(out_g)[len(out_g) // 2], sorted(in_g)[len(in_g) // 2]
+    assert abs(med_out - machine.SATIN_SPACING_MM) < 0.1 * machine.SATIN_SPACING_MM, med_out
+    assert sorted(out_g)[int(0.95 * len(out_g))] < 1.5 * machine.SATIN_SPACING_MM
+    assert med_in < med_out
+
+
+def test_the_pitch_instrument_reads_a_flat_zigzag_and_a_half_density_one():
+    """`tools/satin_pitch.rail_steps` on the two wirings Kent's first Columns
+    sitting compared without knowing: both ends of each station (0.40 mm per
+    rail) and one end per station, rails alternating (0.80)."""
+    from tools.satin_pitch import rail_steps
+    full = [p for k in range(30) for p in ((0.0, 0.4 * k), (2.0, 0.4 * k))]
+    half = [((0.0 if k % 2 == 0 else 2.0), 0.4 * k) for k in range(60)]
+    for pts, want in ((full, 0.4), (half, 0.8)):
+        outer, inner = rail_steps(pts)
+        assert len(outer) >= 25
+        assert all(abs(s - want) < 1e-9 for s in outer + inner), (want, outer[:3])
