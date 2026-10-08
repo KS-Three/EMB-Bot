@@ -10,6 +10,7 @@
   import QuoteSettings from "./QuoteSettings.svelte";
   import Icon from "./Icon.svelte";
   export let project;
+  export let designName = "";
   export let runtime;
   export let digitizerHealth = null;
   export let summaryRows = [];
@@ -65,5 +66,5 @@
   <QuoteSettings {quote} on:change={(e) => d("quote", e.detail)} />
   <HoopingCard rows={hoopingRows} />
   <QualityReport entries={qualityEntries} partial={qualityPartial} on:locate={(e) => d("locate", e.detail)} />
-  <DownloadStep {project} {runtime} {digitizerHealth} on:credits={(e) => d("credits", e.detail)} />
+  <DownloadStep {project} {designName} {runtime} {digitizerHealth} on:credits={(e) => d("credits", e.detail)} />
 </div>

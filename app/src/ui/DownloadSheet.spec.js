@@ -9,6 +9,7 @@ vi.mock("../lib/generate.js", () => ({
   generateAll: () => ({ combined: { widthMM: 50, heightMM: 50, colors: [], blocks: [] } }),
 }));
 vi.mock("../lib/exporters.js", () => ({
+  exportFileName: (name, ext) => `${name || "design"}.${ext}`,
   exportDesignPreferService: async (design, format) => ({
     bytes: new Uint8Array([1, 2, 3]), filename: `design.${format}`, mime: "application/octet-stream", via: "browser",
   }),
