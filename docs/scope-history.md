@@ -20046,3 +20046,19 @@ him with both priced, the day #656 merged: **keep 12.1 mm.** No EXP gains a
 stitch record longer than any it has held since 2026-09-13, and whether a
 machine takes a longer one stays unsewn. The comment in `src/exp.js` carries
 the pick; no code changes with it.
+
+## 2026-10-08 — `fillColumns` measured on the shape and image lanes: shapes ON, image held
+
+The foreman lane Kent approved this day ("Waiting on Kent" 22, after #662
+turned it on for manual only). `tools/fill-columns-lanes.mjs` builds every
+basic-shape preset at 20/50/100 mm on three garments (63 designs) and 14
+real logos at 2/4/6 colours on three garments (126), off and on, as
+`generate.js` does; its control reproduces the 10-03 sheet's badge to the
+stitch. **Shapes:** floats off the fill 3,118 → 25, none new; cuts 60 → 33;
+stitches +1.8% (worst +16.2%, an 8-point thin star); circles and rectangles
+byte-identical — flipped ON in the shape branch, guarded by a star test
+that reads 47 off-fill floats with the flag dropped. **Image:** floats
+188,952 → 484, none new; cuts 3,714 → 3,208; but stitches +10.4%, over
++10% on 76 of 126 and +29.7% at worst, travel over sewn rows 6.0 → 52.1 m,
+builds up to 1.8 s — held OFF at the ~10% bar, Kent's to take. Tables:
+`docs/renders/fill-columns-lanes-2026-10-08/`. Not sewn.

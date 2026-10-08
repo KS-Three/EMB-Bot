@@ -119,11 +119,12 @@ export function generateElement(element, garment, runtime) {
     return EMB.buildQualityDesign(regions, {
       garment, fabric, pxPerMm, satinMaxWidthMm: 3.0,
       underlay: element.underlay,
-      // `fillColumns` stays OFF here (engine default) on purpose, 2026-10-07:
-      // Kent flipped it for the MANUAL lane first (MASTER_SCOPE defect 52,
-      // "Waiting on Kent" 22). Nothing about the image lane is wrong with it
-      // on; it is unsewn and costs travel and stitches, so it is staged one
-      // lane at a time and this lane waits its turn.
+      // `fillColumns` stays OFF here (engine default), measured 2026-10-08
+      // (MASTER_SCOPE "Waiting on Kent" 22, `tools/fill-columns-lanes.mjs`):
+      // on 14 real logos it clears the floats (188,952 off the fill -> 484,
+      // none new) but costs +10.4% stitches, over +10% on 76 of 126 designs
+      // and +29.7% at worst, ten times the travel over sewn rows and up to
+      // 1.8 s a build. That is past the bar the manual and shape lanes met.
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,
       offsetYMm: element.offsetYMm || 0,
@@ -169,10 +170,10 @@ export function generateElement(element, garment, runtime) {
       // a fill's rows are sewn column by column so no thread is carried
       // across a cut-out or a notch. Without it every row floats (or, under
       // 4 mm, STITCHES) across every hole the user drew. Manual is the lane
-      // where a customer draws holes on purpose, so it flips first; the
-      // engine default stays off and the image and basic-shape lanes do not
-      // pass it. Price: +3.3% stitches mean (up to +37%), travel along rims
-      // in place of floats. Not sewn.
+      // where a customer draws holes on purpose, so it flipped first; the
+      // engine default stays off. Price: +3.3% stitches mean (up to +37%),
+      // travel along rims in place of floats. Not sewn. The shape branch
+      // below passes it too (2026-10-08); the image branch does not.
       fillColumns: true,
       underlay: element.underlay,
       targetWidthMm: element.sizeMm || undefined,
@@ -210,10 +211,14 @@ export function generateElement(element, garment, runtime) {
       // can be stacked, and the two branches drifting apart is precisely how
       // the manual one ended up wrong.
       darkOnTop: false,
-      // `fillColumns` stays OFF here (engine default) on purpose, 2026-10-07:
-      // Kent flipped it for the MANUAL lane first (defect 52, "Waiting on
-      // Kent" 22); this lane follows once that one has been looked at. A
-      // star or heart preset has notches it changes, and none of it is sewn.
+      // Rows sewn column by column, as the manual branch does (MASTER_SCOPE
+      // defect 52, "Waiting on Kent" 22), 2026-10-08: a star's or a heart's
+      // rows otherwise float across every notch. Measured on every preset at
+      // 20, 50 and 100 mm on three garments (`tools/fill-columns-lanes.mjs`):
+      // floats off the fill 3,118 -> 25 (none new), cuts 60 -> 33, stitches
+      // +1.8%; a circle or rectangle is byte-identical; the worst is an
+      // 8-point star with thin tips at +16%. Not sewn.
+      fillColumns: true,
       underlay: element.underlay,
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,
