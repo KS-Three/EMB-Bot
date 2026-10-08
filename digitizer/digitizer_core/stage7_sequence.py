@@ -3016,6 +3016,7 @@ def sequence(
             trim_at_mm=trim_at,
             width_mm=cfg.border_width_mm,
             omit=cap_omit,
+            walk_covered=cfg.edge_cap_walk_covered,
         )
         # What the gate actually saved on THIS design, measured — the number
         # whose absence let a +58.7% bill read like a +13% one. Computed only
@@ -3150,6 +3151,8 @@ def sequence(
                 "budget_pct": EDGE_CAP_BUDGET_PCT,
                 "dropped": cap_dropped,
             }
+            if cfg.edge_cap_walk_covered:
+                cap_cost["walked"] = c_report["walked"]
         else:
             cap_empty_style = cap_style
 

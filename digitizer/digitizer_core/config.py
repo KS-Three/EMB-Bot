@@ -2423,6 +2423,16 @@ class PipelineConfig:
     #   True  -> split every class.
     #   False -> split nothing, photo classes INCLUDED. This is the new one.
     split_tonal_regions: bool | None = None
+    # Defect 20's cure, BUILT 2026-10-08, DEFAULT OFF (the flip is Kent's).
+    # When the tonal split is in force, `digitize` also plans the design
+    # whole and keeps the split only if it puts no more fabric past
+    # `machine.COVERAGE_BLOCK_UNITS` (the 3.5-fill-layer ceiling, sew-out
+    # gated, unchanged) than the whole design does. Measured on the real owl
+    # (`owl_kent.jpg`, split forced): cells at or past the ceiling 28 split
+    # against 5 whole, peak 9.57 against 4.00 fill layers, 70% of that
+    # thread satin. Costs a second generation, only when the split is on.
+    # `tools/tonal_stack_hist.py` prints the stacked-layer histogram.
+    tonal_split_ceiling: bool = False
     # DEFAULT ON since 2026-08-24 — Kent's quality call, made from the fresh
     # 32-job acceptance sheet (4 photos x 8 arms) exactly as spec decision 1
     # requires: the eyeball loop, not a scorecard, settles tonal work. Was
@@ -2840,6 +2850,17 @@ class PipelineConfig:
     # uncovered area unchanged on all nine). False is the pre-flip cap byte
     # for byte.
     edge_cap_skip_lettering: bool = True
+    # Walk the covered stretch between two cap arcs (MASTER_SCOPE defect 19's
+    # trim bill; built 2026-10-08, DEFAULT OFF). The gate splits a ring into
+    # arcs wherever something linear already sews the edge, and the needle
+    # LIFTS over each covered stretch — a jump, and a trim past `trim_at_mm`.
+    # True sews that stretch instead, one pass at bean stations on top of the
+    # stitching that covers it, when every station of the walk stands on that
+    # cover and it costs no more than `machine.TRIM_COST_STITCHES` stitches
+    # (the engine's own price of a trim — no new constant). Same ring only;
+    # bean style only (`border_runs` owns satin's arcs). False is the shipped
+    # cap byte for byte.
+    edge_cap_walk_covered: bool = False
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth
@@ -2989,6 +3010,18 @@ class PipelineConfig:
     # **Flipping it ON is Kent's call.** The render is at
     # docs/renders/satin-per-stroke-2026-09-06/.
     satin_per_stroke: bool = False
+    # Defect 5, one misroute class: a shape lying INSIDE a satin border's
+    # outline routes FILL, DEFAULT OFF. The pro convention is a filled body
+    # with a satin edge; we satined the body too. On becker_marine_logo the
+    # BECKER letters sit inside the black outline band, which is satin, and
+    # the pro tatamis every one of them while satining MARINE's solid
+    # letters of the same stroke width -- so no width or aspect threshold
+    # separates them (and defect 26's thresholds are a measured negative),
+    # but containment does: all eight bodies read 1.00 inside the band's
+    # outline, all eight MARINE shapes 0.00. Off, the pass never runs.
+    # Measured 2026-10-08 against the four committed Becker pro files,
+    # chance-corrected only: `tests/test_fill_inside_satin_border.py`.
+    fill_inside_satin_border: bool = False
     # Read the satin skeleton from the POLYGON instead of thinning a raster
     # of it (`digitizer_core/polygon_axis.py`), DEFAULT OFF and byte-identical
     # off -- off, that module is never imported.

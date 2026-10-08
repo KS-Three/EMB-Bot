@@ -1,5 +1,5 @@
-import { expect, test } from "vitest";
-import { originalDataUrl, fitRect, hasOriginal, placeByContent, flatContentBox, digitizedContentBox } from "./originalImage.js";
+import { expect, test, vi } from "vitest";
+import { originalDataUrl, fitRect, hasOriginal, placeByContent, flatContentBox, digitizedContentBox, loadOriginal, ORIGINAL_CACHE_MAX } from "./originalImage.js";
 
 test("the content box, not the frame, is fitted to the rect", () => {
   // 200x100 image whose art is the middle half: the image is drawn at twice
@@ -80,4 +80,23 @@ test("digitizedContentBox maps the service's art fractions back through the crop
   // No box (an older saved review), or a degenerate one: no registration.
   expect(digitizedContentBox(1000, 500, null, null)).toBeNull();
   expect(digitizedContentBox(1000, 500, [0.5, 0.5, 0.5, 0.9], null)).toBeNull();
+});
+
+test("loadOriginal keeps a bounded cache: a repeat is the same decode, the oldest upload is evicted", async () => {
+  let decodes = 0;
+  vi.stubGlobal("Image", class {
+    set src(_) { decodes++; queueMicrotask(() => this.onload && this.onload()); }
+  });
+  try {
+    const png = (i) => "iVBORw0KGgo" + i;
+    const first = loadOriginal(png(0));
+    expect(loadOriginal(png(0))).toBe(first);
+    expect(decodes).toBe(1);
+    for (let i = 1; i <= ORIGINAL_CACHE_MAX; i++) loadOriginal(png(i));
+    expect(decodes).toBe(ORIGINAL_CACHE_MAX + 1);
+    loadOriginal(png(0)); // evicted by the ninth distinct image: decodes again
+    expect(decodes).toBe(ORIGINAL_CACHE_MAX + 2);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
