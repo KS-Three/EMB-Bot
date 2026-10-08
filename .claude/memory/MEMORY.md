@@ -116,4 +116,4 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Underlay under fills](underlay-under-fills-2026-10-05.md) — Kent was right: gradient fills sewed with ZERO underlay; his pro sews a crossing pass, built as `cross_tatami`, in no preset. Law 26's instrument is lost. Preview cannot show underlay
 - [Fremont letters are not thicker than the pro's](lettering-thickness-fremont-2026-10-06.md) — file width = pro's (1.23 vs 1.40 scaled); the pro's DST in the Studio renders the SAME weight; Original view mis-scaled; real gap: curve outer rail 0.53 vs 0.33
 - [Lettering architecture R&D](lettering-architecture-2026-10-07.md) — five failures by letter size; patchwork is the skeleton-rail MODEL (pros put rails on the OUTLINE); Column lane OFF: cut + Euler walk + tuck + end fans; density = BOTH station ends
-- [N fan cure](n-fan-cure-2026-10-08.md) — defect 59 built OFF as `satin_tip_corner_gate` (tip must land on a convex corner); degree gate refuted; ON ≈ tip caps off (+8.2 mm² bare, becker over-long 56→28)
+- [N fan cure](n-fan-cure-2026-10-08.md) — `satin_tip_corner_gate` OFF: tip = convex corner; ≈ tip caps off; degree gate refuted

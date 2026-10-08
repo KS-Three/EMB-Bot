@@ -8766,10 +8766,11 @@ landing on that stroke's far wall. What tells a taper from a meeting is where
 the ray lands. A taper ends on a convex corner. A meeting ends on a wall
 (180°) or in a notch (over 180°). The N's three tips read 180, 180, 180 and
 the M's 278–297. Built OFF as `satin_tip_corner_gate` (interior angle ≤ 160°,
-set in a gap that every logo leaves somewhere in 152–164°). Becker's
+read where the corner actually is: the review found a wall hit beside a corner
+reading as convex, and correcting it cut the kept ends 16 → 3). Becker's
 over-long crosses go 56 → 28, the N's fan is gone in the render, and bare
-rises 8.2 mm² over seven logos. **It lands within 0.4 mm² of
-`satin_tip_caps=False` on every logo. So the coverage tip caps bought was
+rises 8.4 mm² over seven logos. **It is identical to
+`satin_tip_caps=False` on five logos and within 0.2 mm² on the other two. So the coverage tip caps bought was
 bought at meetings, and the fan is its price. Price a gate on the population
 it actually fires on, not the one it was named for.** *(measured 2026-10-08 —
 `docs/n-fan-cure-2026-10-08.md`, `tools/tip_corner_census.py`)*
