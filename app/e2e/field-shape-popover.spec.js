@@ -302,12 +302,14 @@ test("two preset circles: selecting one highlights only that one, and switching 
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
   // Switch to A from its element row. The shape selection belonged to B, so
-  // it drops: nothing is amber, and a Delete on the canvas touches nothing.
+  // it drops: nothing is amber, and a Delete on the canvas touches no SHAPE.
+  // A has been selected as an ELEMENT by the row click, so Delete removes that
+  // element (Kent 2026-10-08) — one circle goes, the other stays.
   await page.locator(".elrow", { hasText: "Circle" }).first().click();
   await expect.poll(() => columnRuns(page, "amber")).toHaveLength(0);
   await cv.focus();
   await page.keyboard.press("Delete");
-  await expect(page.locator(".elrow", { hasText: "Circle" })).toHaveCount(2);
+  await expect(page.locator(".elrow", { hasText: "Circle" })).toHaveCount(1);
   await expect.poll(() => columnRuns(page, "amber")).toHaveLength(0);
 });
 

@@ -141,7 +141,7 @@ sit outside construction:
 |---|---|---|---|
 | A | **patchwork** — several columns per letter at unrelated angles, 7–9 trims a letter | stage 6 construction model (skeleton-derived rails) | every satin letter over ~5 mm: becker, enthusiast wordmark, drone, fremont HOTEL FREMONT |
 | B | **tube letters** — caps under ~4 mm sewn as a bean round the outline | tier policy: `routes_to_run`, `classify_ribbon`'s width floor, no column floor (gate 1) | fremont taglines, enthusiast subline, bridge's BAR & RESTAURANT |
-| C | **halo strands** — anti-alias colours quantised to their own thin regions and sewn on top of one-colour text | stage 2/3, `dissolve_phantom_blends` OFF | gaulke, bridge, drone (23–30% of gaulke's text stitches per the 10-05 census) |
+| C | **halo strands** — anti-alias colours quantised to their own thin regions and sewn on top of one-colour text | stage 2/3, `dissolve_phantom_blends` OFF | gaulke, bridge, drone (23–30% of gaulke's text stitches per the 10-05 census — **stale: 0% on gaulke, ≤ 4.4% anywhere on the 2026-10-08 engine**, `docs/text-halo-2026-10-08.md`) |
 | D | **blob letterforms** — the trace is faithful to a 0.5–0.7 mm pixel ramp, so the letter is not letter-shaped before construction | stage 1/4 on coarse uploads | becker (0.68 mm/px), bridge (0.2 mm/px on 2 mm caps), the `art/` copies of gaulke and fremont |
 | E | **two taggers** — `text_candidate` (textcluster `tag`) and `_lettering_groups` (house angle) disagree; the split flag reads one, the house angle the other, the priors spike both | textcluster.py | enthusiast's wordmark is a house group, its subline the text cluster; gaulke's 39 letters were not a cluster at all on 09-16 |
 
@@ -361,7 +361,7 @@ close to the typed numbers (3 trims, 0.63 concentration on MARINE 80 mm).
 **C — halo strands,** independent of the lane: a text-scoped version of
 `dissolve_phantom_blends` that assigns a thin region inside a word's box
 to the nearer of the word's ink or ground. Measurable on gaulke
-(23–30% of text stitches) with no cloth question.
+(23–30% of text stitches) with no cloth question. **Corrected 2026-10-08:** that figure was measured on an engine 135 commits old; re-measured, gaulke's text is 0% halo and the real slivers left are 1–4.4% of a word's stitches (`docs/text-halo-2026-10-08.md`). Kent moved the lane to L3 (chat, 2026-10-08).
 
 ### What this does NOT propose
 

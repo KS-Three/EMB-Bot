@@ -18,7 +18,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+import os
 import threading
+import time
 import traceback
 
 from .errors import customer_message, raw as raw_error
@@ -38,6 +41,35 @@ ERROR = "error"
 # process meant to run all day.
 MAX_CACHED = 32
 
+# A job running longer than this is reported as failed. Python cannot stop a
+# thread, so the work itself runs on and its result is thrown away — this is
+# what the customer sees, not a reclaimed CPU. A healthy job is tens of
+# seconds; this is a runaway guard, not a performance budget.
+JOB_TIMEOUT_S = 600.0
+
+# Jobs submitted but not finished — queued, running, and timed-out work still
+# holding the worker. Each one keeps its decoded raster (up to 2800^2 x 3
+# bytes) and its upload alive in a closure, so an unbounded queue is an
+# unbounded heap. Past this the submit is refused with 503 instead.
+MAX_INFLIGHT = 4
+
+TIMED_OUT = ("That design took too long to digitize and was stopped. Try a "
+             "smaller or simpler image, or crop to just the logo.")
+
+log = logging.getLogger("digitizer_service")
+
+
+class Busy(Exception):
+    """`JobRegistry.submit` refused: MAX_INFLIGHT jobs already in flight."""
+
+
+def show_tracebacks() -> bool:
+    """Tracebacks ride on a failed job's `detail` only on a tokenless
+    (loopback, developer) service. Once `EMBBOT_SERVICE_TOKEN` is set the
+    service is reachable by someone else, and a stack trace names files, line
+    numbers and library versions — it goes to the log instead."""
+    return not os.environ.get("EMBBOT_SERVICE_TOKEN")
+
 
 @dataclass
 class Job:
@@ -47,6 +79,7 @@ class Job:
     result: dict | None = None
     error: str | None = None
     detail: str | None = None
+    started: float | None = None
     _future: Future | None = field(default=None, repr=False)
 
     def public(self) -> dict:
@@ -140,24 +173,45 @@ class GenerationCache:
 
 
 class JobRegistry:
-    def __init__(self, workers: int = 1):
+    def __init__(self, workers: int = 1, timeout_s: float = JOB_TIMEOUT_S,
+                 max_inflight: int = MAX_INFLIGHT):
         self._lock = threading.Lock()
         self._jobs: OrderedDict[str, Job] = OrderedDict()
         self._by_key: dict[str, str] = {}
+        self.timeout_s = timeout_s
+        self.max_inflight = max_inflight
+        self._inflight = 0
         self._pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="digitize")
+
+    def _cached_locked(self, key: str) -> Job | None:
+        job = self._jobs.get(self._by_key.get(key, ""))
+        if job is not None:
+            self._expire_locked(job)
+            if job.state != ERROR:
+                return job
+        return None
+
+    def admits(self, key: str) -> bool:
+        """Would `submit(key, ...)` be accepted right now? Lets a route refuse
+        BEFORE paying for a decode; `submit` re-checks under the lock."""
+        with self._lock:
+            return (self._cached_locked(key) is not None
+                    or self._inflight < self.max_inflight)
 
     def submit(self, key: str, work: Callable[[], dict]) -> tuple[Job, bool]:
         """-> (job, was_cached). A cached hit is any prior job for this key that
-        has not failed; a failed one is discarded so a retry actually retries."""
+        has not failed; a failed one is discarded so a retry actually retries.
+        Raises `Busy` when the work would be new and MAX_INFLIGHT is reached."""
         with self._lock:
-            existing_id = self._by_key.get(key)
-            if existing_id:
-                job = self._jobs.get(existing_id)
-                if job is not None and job.state != ERROR:
-                    self._jobs.move_to_end(job.id)
-                    return job, job.state == DONE
-                # Failed or evicted: drop the mapping and fall through to a rerun.
-                self._by_key.pop(key, None)
+            job = self._cached_locked(key)
+            if job is not None:
+                self._jobs.move_to_end(job.id)
+                return job, job.state == DONE
+            # Failed or evicted: drop the mapping and fall through to a rerun.
+            self._by_key.pop(key, None)
+            if self._inflight >= self.max_inflight:
+                raise Busy()
+            self._inflight += 1
 
             job = Job(id=uuid.uuid4().hex, key=key)
             self._jobs[job.id] = job
@@ -167,10 +221,15 @@ class JobRegistry:
         def run() -> dict:
             with self._lock:
                 job.state = RUNNING
+                job.started = time.monotonic()
             try:
                 result = work()
             except Exception as exc:                      # noqa: BLE001
+                log.exception("digitize job %s failed", job.id)
                 with self._lock:
+                    self._inflight -= 1
+                    if job.state == ERROR:                # timed out already
+                        raise
                     job.state = ERROR
                     # `error` is the line the Studio throws at the user
                     # (digitizer.js: `throw new Error(job.error)`), so it is
@@ -178,10 +237,14 @@ class JobRegistry:
                     # alongside the traceback — a developer reading a job now
                     # sees strictly more than before. See errors.py.
                     job.error = customer_message(exc)
-                    job.detail = (raw_error(exc) + "\n"
-                                  + traceback.format_exc(limit=8))
+                    job.detail = raw_error(exc)
+                    if show_tracebacks():
+                        job.detail += "\n" + traceback.format_exc(limit=8)
                 raise
             with self._lock:
+                self._inflight -= 1
+                if job.state == ERROR:                    # timed out: discard
+                    return result
                 job.result = result
                 job.state = DONE
             return result
@@ -193,8 +256,19 @@ class JobRegistry:
         with self._lock:
             job = self._jobs.get(job_id)
             if job is not None:
+                self._expire_locked(job)
                 self._jobs.move_to_end(job_id)  # touch: recently-read stays warm
             return job
+
+    def _expire_locked(self, job: Job) -> None:
+        """Fail a RUNNING job past `timeout_s`. Checked lazily on read — the
+        poll is the only place anyone is waiting for the answer."""
+        if (job.state == RUNNING and job.started is not None
+                and time.monotonic() - job.started > self.timeout_s):
+            log.warning("digitize job %s passed %.0fs; reported failed", job.id, self.timeout_s)
+            job.state = ERROR
+            job.error = TIMED_OUT
+            job.detail = f"TimeoutError: still running after {self.timeout_s:.0f}s"
 
     def _evict_locked(self) -> None:
         while len(self._jobs) > MAX_CACHED:
@@ -213,7 +287,7 @@ class JobRegistry:
             states: dict[str, int] = {}
             for j in self._jobs.values():
                 states[j.state] = states.get(j.state, 0) + 1
-            return {"jobs": len(self._jobs), "states": states}
+            return {"jobs": len(self._jobs), "states": states, "inflight": self._inflight}
 
     def shutdown(self) -> None:
         self._pool.shutdown(wait=False, cancel_futures=True)

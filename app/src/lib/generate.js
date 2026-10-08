@@ -119,11 +119,13 @@ export function generateElement(element, garment, runtime) {
     return EMB.buildQualityDesign(regions, {
       garment, fabric, pxPerMm, satinMaxWidthMm: 3.0,
       underlay: element.underlay,
-      // `fillColumns` stays OFF here (engine default) on purpose, 2026-10-07:
-      // Kent flipped it for the MANUAL lane first (MASTER_SCOPE defect 52,
-      // "Waiting on Kent" 22). Nothing about the image lane is wrong with it
-      // on; it is unsewn and costs travel and stitches, so it is staged one
-      // lane at a time and this lane waits its turn.
+      // Rows sewn column by column, as the manual and shape branches do --
+      // Kent's call 2026-10-08 (MASTER_SCOPE "Waiting on Kent" 22), made with
+      // the price in front of him (`tools/fill-columns-lanes.mjs`, 14 real
+      // logos): floats off the fill 188,952 -> 484, none new, cuts -14%; but
+      // stitches +10.4% (over +10% on 76 of 126 designs, +29.7% at worst),
+      // ten times the travel over sewn rows, up to 1.8 s a build. Not sewn.
+      fillColumns: true,
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,
       offsetYMm: element.offsetYMm || 0,
@@ -169,10 +171,10 @@ export function generateElement(element, garment, runtime) {
       // a fill's rows are sewn column by column so no thread is carried
       // across a cut-out or a notch. Without it every row floats (or, under
       // 4 mm, STITCHES) across every hole the user drew. Manual is the lane
-      // where a customer draws holes on purpose, so it flips first; the
-      // engine default stays off and the image and basic-shape lanes do not
-      // pass it. Price: +3.3% stitches mean (up to +37%), travel along rims
-      // in place of floats. Not sewn.
+      // where a customer draws holes on purpose, so it flipped first; the
+      // engine default stays off. Price: +3.3% stitches mean (up to +37%),
+      // travel along rims in place of floats. Not sewn. The shape and image
+      // branches pass it too since 2026-10-08.
       fillColumns: true,
       // 2026-10-08, sequenced after `fillColumns` (MASTER_SCOPE "Waiting on
       // Kent" 28): a float the DST writer lays as three or more jump records
@@ -219,10 +221,14 @@ export function generateElement(element, garment, runtime) {
       // can be stacked, and the two branches drifting apart is precisely how
       // the manual one ended up wrong.
       darkOnTop: false,
-      // `fillColumns` stays OFF here (engine default) on purpose, 2026-10-07:
-      // Kent flipped it for the MANUAL lane first (defect 52, "Waiting on
-      // Kent" 22); this lane follows once that one has been looked at. A
-      // star or heart preset has notches it changes, and none of it is sewn.
+      // Rows sewn column by column, as the manual branch does (MASTER_SCOPE
+      // defect 52, "Waiting on Kent" 22), 2026-10-08: a star's or a heart's
+      // rows otherwise float across every notch. Measured on every preset at
+      // 20, 50 and 100 mm on three garments (`tools/fill-columns-lanes.mjs`):
+      // floats off the fill 3,118 -> 25 (none new), cuts 60 -> 33, stitches
+      // +1.8%; a circle or rectangle is byte-identical; the worst is an
+      // 8-point star with thin tips at +16%. Not sewn.
+      fillColumns: true,
       underlay: element.underlay,
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,
@@ -289,6 +295,25 @@ export function generateElement(element, garment, runtime) {
 // "size up for crisp letters" on a design already at the cap is advice the
 // customer cannot take — the levers that remain are fewer characters, a bolder
 // font, or a bigger placement.
+// The line-break lever as one click. letteringNote's own measurements show line
+// breaks are the fix a customer does not think of, and the Studio's text box
+// reads as a one-line field — measured 2026-10-08 at 1440x900: "Fritsch's
+// Stitches" auto-fit to left chest sews 102x7 mm with 93% of its strokes under
+// 1 mm; the same words over two lines sew 102x35 mm and the warning clears.
+// Splits a one-line text at the space nearest its middle; null when there is
+// no space to break at or the text already has more than one line.
+export function splitIntoTwoLines(text) {
+  if (typeof text !== "string" || text.includes("\n")) return null;
+  const t = text.trim();
+  const mid = t.length / 2;
+  let best = -1;
+  for (let i = 0; i < t.length; i++) {
+    if (t[i] === " " && (best < 0 || Math.abs(i - mid) < Math.abs(best - mid))) best = i;
+  }
+  if (best < 0) return null;
+  return `${t.slice(0, best).trimEnd()}\n${t.slice(best + 1).trimStart()}`;
+}
+
 export function letteringNote(l, opts = {}) {
   if (!l || !(l.strokeMm > 0)) return "";
   const share = (mm) => mm / l.strokeMm;
