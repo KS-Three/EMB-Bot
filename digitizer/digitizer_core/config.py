@@ -1158,6 +1158,22 @@ class PipelineConfig:
     # How far a color extends underneath the color that sews after it. Enough
     # to survive fabric pull, small enough never to read as a color error.
     overlap_mm: float = 0.25
+    # Law 26 (machine-physics playbook row 9, MASTER_SCOPE defect 47): a join
+    # between two FILLS whose rows run parallel opens under pull — both
+    # shapes shrink along the same axis, away from the seam — and wants
+    # 1.0 mm of underlap on wovens; near-perpendicular, the later layer's
+    # rows bridge the seam and ~0 will do. True gives each fill->fill seam
+    # `overlap_mm + (overlap_parallel_mm - overlap_mm) * |cos(angle between
+    # the two fills' rows)|`: 1.0 mm parallel, `overlap_mm` perpendicular,
+    # never less than today. Satin on either side keeps `overlap_mm` (a
+    # column's stitch direction is its own normal, not one angle). False is
+    # the engine before it, byte for byte. Built OFF 2026-10-08: whether it
+    # closes the seam line on cloth is the sew-out's question (card block 6).
+    overlap_by_angle: bool = False
+    # The parallel-join underlap `overlap_by_angle` grows to. 1.0 is the
+    # law's WOVEN figure, verbatim; its knit 1.5–2.0 is sew-out-gated
+    # (ROADMAP gate 1), so knits get the woven floor, never less than today.
+    overlap_parallel_mm: float = 1.0
     # Stage 5's hole hold, read for what is actually IN the hole. A hole the
     # shell's pull growth would shrink under `min_detail_mm²` is held open at
     # its original size — right for a counter, wrong for a hole a LATER
