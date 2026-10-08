@@ -1715,6 +1715,22 @@ class PipelineConfig:
     # half-widths off the line. Tests: `tests/test_join_corner_bend_cap.py`;
     # the trail is `docs/join-square-enthusiast-2026-10-07.md`.
     satin_join_square: bool = True
+    # The T-junction half of the join-square fan (2026-10-08, built OFF). A
+    # stroke's end at a branch NODE -- the E's and F's middle arm where it
+    # meets the stem, a T's stem under its bar -- is not a Goldman corner, so
+    # `satin_join_square` never reads it, and the medial axis's bend into the
+    # node fans the arm's last crosses. ON, each such end is laid on the
+    # stroke's own straight line before the junction trim, with the corner
+    # path's own bend cap (`_square_junction_ends` -> `_straighten_member_end`).
+    # Text-tagged shapes only (`meta.text_candidate`): on every shape it cost
+    # Becker 607 stitches, letters-only 555, most of them cross-hatch at the
+    # N and E junctions. Free ends and corner members' inner ends are
+    # untouched. Measured ON vs OFF (splay ends / bare letter mm2): Fremont
+    # 80 mm 35 -> 34 / 3.20 -> 3.18; Becker 11 -> 8 / +0.93 (the N's
+    # diagonal, +0.71); ENTHUSIAST 28 -> 23 / -0.17; drone 43 -> 39 / +0.16.
+    # Built OFF; the render is Kent's. Off, byte-identical.
+    # Tests: `tests/test_junction_square.py`.
+    satin_junction_square: bool = False
     # A slab serif's axis is its own column, not a cap (2026-10-07, Kent's
     # pick after the join-square flip: "T-shaped slabs: own column, not a
     # cap"). A slab across a stem's end (a foot, a T-shaped terminal) puts
