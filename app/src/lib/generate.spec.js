@@ -609,6 +609,91 @@ test("generateElement: a manual fill lays no thread across its cut-out (fillColu
   expect(across(EMB.buildQualityDesign(regions, call))).toBeGreaterThan(10);
 });
 
+// Floats (moves with the thread attached) that run more than 0.8 mm outside
+// every drawn shape of a design (`shapeOutlines`, mm, holes cut out): past
+// any preset's pull compensation, so over a hole, a notch or bare cloth.
+function floatsOffTheFill(d) {
+  const shapes = d.shapeOutlines.filter((o) => !o.dropped);
+  const inRing = (x, y, ring) => {
+    let c = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
+    }
+    return c;
+  };
+  const inside = (x, y) => shapes.some((o) => inRing(x, y, o.points) && !(o.holes || []).some((h) => inRing(x, y, h)));
+  const rings = shapes.flatMap((o) => [o.points].concat(o.holes || []));
+  const edge = (x, y) => Math.min(...rings.flatMap((ring) => ring.map(([ax, ay], i) => {
+    const [bx, by] = ring[(i + 1) % ring.length], dx = bx - ax, dy = by - ay;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)));
+    return Math.hypot(x - ax - t * dx, y - ay - t * dy);
+  })));
+  let n = 0, attached = false, prev = null;
+  for (const s of d.stitches) {
+    if (s.type === "end") break;
+    if (s.type === "trim" || s.type === "color") { attached = false; prev = s; continue; }
+    if (s.type === "jump" && attached && prev) {
+      for (let k = 1; k < 20; k++) {
+        const x = (prev.x + ((s.x - prev.x) * k) / 20) / 10, y = (prev.y + ((s.y - prev.y) * k) / 20) / 10;
+        if (!inside(x, y) && edge(x, y) > 0.8) { n++; break; }
+      }
+    }
+    if (s.type === "stitch") attached = true;
+    prev = s;
+  }
+  return n;
+}
+
+// 2026-10-08 ("Waiting on Kent" 22): the basic-shape lane passes
+// `fillColumns` too, so a star's rows no longer float across its notches. The
+// same regions through the engine without the flag do, on most rows -- that
+// half proves the reading can see a float leave the shape at all.
+test("generateElement: a star preset lays no float across its notches (fillColumns, shape lane)", async () => {
+  const { generateElement, fabricInForce } = await import("./generate.js");
+  const { defaultShapeElement } = await import("./project.js");
+  const { shapePresetPoints } = await import("./shapePresets.js");
+  const { shapesToRegions } = await import("./manualShapes.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const el = { ...defaultShapeElement("e1"), kind: "star", params: {}, sizeMm: 50, underlay: true };
+  const d = generateElement(el, garment, {});
+  expect(d.stitchCount).toBeGreaterThan(1000);
+  expect(floatsOffTheFill(d)).toBe(0);
+  // The shape branch's own call, with only the flag left out.
+  const { regions, pxPerMm } = shapesToRegions([
+    { id: "shape", points: shapePresetPoints("star", {}, 50), curves: {}, stitchType: "auto", colorRgb: el.colorRgb, angleDeg: null },
+  ]);
+  const call = { garment, fabric: fabricInForce(garment.id, undefined), pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: 50, offsetXMm: 0, offsetYMm: 0 };
+  expect(EMB.buildQualityDesign(regions, { ...call, fillColumns: true }).stitches).toEqual(d.stitches);
+  expect(floatsOffTheFill(EMB.buildQualityDesign(regions, call))).toBeGreaterThan(20);
+});
+
+// Kent's call 2026-10-08 ("Waiting on Kent" 22), with its price measured
+// (+10.4% stitches over 14 real logos): the image lane passes `fillColumns`
+// too, so a traced logo's counter is not crossed by a float on every row.
+test("generateElement: an image fill lays no float across its counter (fillColumns, image lane)", async () => {
+  const { generateElement, fabricInForce } = await import("./generate.js");
+  const { defaultImageElement } = await import("./project.js");
+  const { flatToRegions } = await import("./imageRegions.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  // One colour, a 100 px square with a 40 px counter; 255 is transparent.
+  const w = 120, h = 120, indices = new Uint8Array(w * h).fill(255);
+  for (let y = 10; y < 110; y++) for (let x = 10; x < 110; x++) if (x < 40 || x >= 80 || y < 40 || y >= 80) indices[y * w + x] = 0;
+  const flat = { palette: [[30, 60, 90]], indices, w, h };
+  const el = { ...defaultImageElement("e1"), underlay: true };
+  const d = generateElement(el, garment, { flats: { e1: flat } });
+  expect(d.stitchCount).toBeGreaterThan(1000);
+  expect(d.shapeOutlines[0].holes.length).toBe(1);
+  expect(floatsOffTheFill(d)).toBe(0);
+  // The image branch's own call, with only the flag left out.
+  const { regions, pxPerMm } = flatToRegions(flat, { threadRgb: el.threadRgb });
+  const call = { garment, fabric: fabricInForce(garment.id, undefined), pxPerMm, satinMaxWidthMm: 3.0, underlay: true, targetWidthMm: undefined, offsetXMm: 0, offsetYMm: 0 };
+  expect(EMB.buildQualityDesign(regions, { ...call, fillColumns: true }).stitches).toEqual(d.stitches);
+  expect(floatsOffTheFill(EMB.buildQualityDesign(regions, call))).toBeGreaterThan(20);
+});
+
 // 2026-10-08 (MASTER_SCOPE "Waiting on Kent" 28, after `fillColumns`): the
 // manual lane passes `cutFloats`, so a float the DST writer lays as three or
 // more jump records -- a cut on a DST machine -- has a `trim` in the stream.
