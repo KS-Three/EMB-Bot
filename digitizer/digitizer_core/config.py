@@ -1158,6 +1158,21 @@ class PipelineConfig:
     # How far a color extends underneath the color that sews after it. Enough
     # to survive fabric pull, small enough never to read as a color error.
     overlap_mm: float = 0.25
+    # Stage 5's hole hold, read for what is actually IN the hole. A hole the
+    # shell's pull growth would shrink under `min_detail_mm²` is held open at
+    # its original size — right for a counter, wrong for a hole a LATER
+    # stitched colour fills: holding it strips the ground's pull and its
+    # `overlap_mm` tongue from the whole seam round that piece, a butt joint
+    # with nothing under it (MASTER_SCOPE defect 6 "Seams": "a hole held open
+    # at the detail floor gets no tongue"). True holds open only the BARE part
+    # of the hole — what no later stitched shape covers — and only the bare
+    # pieces at or over the same `min_detail_mm²` floor the hole itself is
+    # judged by. Any bare piece under that floor is released -- the slivers
+    # between a piece and its hole, and a small real opening beside a piece
+    # alike -- so it takes the ground's growth and the piece gets its tongue,
+    # as every un-held seam already does. No new constant. False is the engine before it, byte for byte.
+    # Measured 2026-10-08: `docs/held-hole-tongue-2026-10-08.md`.
+    held_hole_bare_only: bool = False
     # Directional pull/push compensation (Laws 22-24). False is the shipped
     # behaviour: one isotropic `buffer(pull)` outward in every direction, which
     # is right on average and wrong everywhere specific — no major package does
@@ -1507,6 +1522,20 @@ class PipelineConfig:
     # read on it hold it OFF (`tests/conftest.py`, PRE_FLIP).
     satin_crown_cover: bool = True
     satin_tip_caps: bool = True
+    # `satin_tip_corner_gate` (2026-10-08, MASTER_SCOPE defect 59 -- Becker's
+    # N, M and E fanning under `letterform_priors`). The tip test above reads
+    # only whether the boundary is within reach along the end's tangent; at
+    # a refit letter's sharp junction the neighbouring stroke's far edge is
+    # (the N: 4.56-4.81 mm against a 4.84 mm reach), the end is capped, and
+    # `_extend_to_cap` runs the arm THROUGH that stroke -- crosses up to
+    # 2.2 W, rotating with the spine's bend. ON, a tip must also land on a
+    # convex corner of the outline (`_tip_lands_on_corner`): an apex closes
+    # round its end, a meeting ends on a wall or in a notch. The census
+    # behind the threshold and the corpus price (coverage for the fan) are
+    # in `docs/n-fan-cure-2026-10-08.md`. Built OFF: it moves junction ends
+    # on every logo, not only the fan letters, and the render is Kent's.
+    # Off, byte-identical. Tests: `tests/test_satin_tip_corner_gate.py`.
+    satin_tip_corner_gate: bool = False
     # The lettering yardstick's trims gap, read with a per-trim census
     # (2026-09-19, scope-history): traced MARINE at 80 mm sews 13 trims
     # against the typed word's 3, and across the nine logos the lettering
@@ -1724,6 +1753,22 @@ class PipelineConfig:
     # half-widths off the line. Tests: `tests/test_join_corner_bend_cap.py`;
     # the trail is `docs/join-square-enthusiast-2026-10-07.md`.
     satin_join_square: bool = True
+    # The T-junction half of the join-square fan (2026-10-08, built OFF). A
+    # stroke's end at a branch NODE -- the E's and F's middle arm where it
+    # meets the stem, a T's stem under its bar -- is not a Goldman corner, so
+    # `satin_join_square` never reads it, and the medial axis's bend into the
+    # node fans the arm's last crosses. ON, each such end is laid on the
+    # stroke's own straight line before the junction trim, with the corner
+    # path's own bend cap (`_square_junction_ends` -> `_straighten_member_end`).
+    # Text-tagged shapes only (`meta.text_candidate`): on every shape it cost
+    # Becker 607 stitches, letters-only 555, most of them cross-hatch at the
+    # N and E junctions. Free ends and corner members' inner ends are
+    # untouched. Measured ON vs OFF (splay ends / bare letter mm2): Fremont
+    # 80 mm 35 -> 34 / 3.20 -> 3.18; Becker 11 -> 8 / +0.93 (the N's
+    # diagonal, +0.71); ENTHUSIAST 28 -> 23 / -0.17; drone 43 -> 39 / +0.16.
+    # Built OFF; the render is Kent's. Off, byte-identical.
+    # Tests: `tests/test_junction_square.py`.
+    satin_junction_square: bool = False
     # A slab serif's axis is its own column, not a cap (2026-10-07, Kent's
     # pick after the join-square flip: "T-shaped slabs: own column, not a
     # cap"). A slab across a stem's end (a foot, a T-shaped terminal) puts
