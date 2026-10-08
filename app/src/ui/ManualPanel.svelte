@@ -1323,6 +1323,9 @@
     margin-left: auto;
     border: 1px solid #d8d5cd;
     background: #fff;
+    /* Set with the background: unset, the dark theme's light button ink
+       made this white on white (e2e manual-trace-backdrop). */
+    color: #444;
     border-radius: 5px;
     padding: 0.2rem 0.55rem;
     cursor: pointer;
