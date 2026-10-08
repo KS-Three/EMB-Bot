@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
+  import { assignColorRange } from "../lib/colorRangeAssign.js";
 
   // Per-letter color ranges editor (Font editing abilities Round 1).
   // Owns none of the actual <textarea> -- TextStep.svelte owns that DOM node
@@ -18,8 +19,7 @@
 
   function addRange(rgb) {
     if (!selection) return;
-    const next = [...colorRanges, { startIdx: selection.start, endIdx: selection.end, colorRgb: rgb }];
-    d("change", next);
+    d("change", assignColorRange(colorRanges, selection.start, selection.end, rgb));
   }
   function removeRange(i) {
     const next = colorRanges.filter((_, idx) => idx !== i);
