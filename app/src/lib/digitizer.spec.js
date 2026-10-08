@@ -2543,3 +2543,31 @@ test("configKey moves with anything a digitize would send, and only with that", 
   // A full-frame crop is the same request as no crop.
   expect(key({ ...el, crop: { x0: 0, y0: 0, x1: 1, y1: 1 } })).toBe(base);
 });
+
+// A corner drag on the field scales baked stitches; resizedTargetWidth is the
+// Design width that drag asks for (DigitizePanel reads it as a pending change).
+describe("resizedTargetWidth", () => {
+  const el = (extra) => ({ result: { stitches: [] }, params: { target_width_mm: 80 }, sizeMm: null, ...extra });
+  it("is null when nothing was dragged, or the design is at its digitized size", async () => {
+    const { resizedTargetWidth } = await import("./digitizer.js");
+    expect(resizedTargetWidth(el({}), 80)).toBeNull();
+    expect(resizedTargetWidth(el({ sizeMm: 80 }), 80)).toBeNull();
+    expect(resizedTargetWidth(el({ sizeMm: 81.5 }), 80)).toBeNull();   // within 2%: jitter, not a change
+    expect(resizedTargetWidth(el({ sizeMm: 60, result: null }), 80)).toBeNull();
+    expect(resizedTargetWidth(el({ sizeMm: 60 }), 0)).toBeNull();
+  });
+  it("scales the width the design was DIGITIZED at, not the drawn width", async () => {
+    const { resizedTargetWidth } = await import("./digitizer.js");
+    expect(resizedTargetWidth(el({ sizeMm: 62 }), 80)).toBe(62);
+    // A result drawn 80.6 wide from an 80 mm target (pull-comp margin): the
+    // ratio lands on the target, so the margin does not compound per run.
+    expect(resizedTargetWidth(el({ sizeMm: 40.3 }), 80.6)).toBe(40);
+    // Rotated 90: sizeMm and the native width are both the drawn (height) axis.
+    expect(resizedTargetWidth(el({ sizeMm: 20 }), 40)).toBe(40);
+  });
+  it("stays inside the Design width field's own 10–400 mm range", async () => {
+    const { resizedTargetWidth } = await import("./digitizer.js");
+    expect(resizedTargetWidth(el({ sizeMm: 5 }), 80)).toBe(10);
+    expect(resizedTargetWidth(el({ sizeMm: 900 }), 80)).toBe(400);
+  });
+});

@@ -13,6 +13,30 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-08 — defect 58: `cfg.two_tone_snap` built OFF, eleven fixtures
+
+`tools/two_tone_probe.py` at the Studio's config (6 colours), `two_tone_snap` OFF → ON, foreground detection and `fold_fringe` (after the review). Cloud container, `main` at `b7d63ae` plus this change.
+
+| fixture | cones | stitches | trims |
+|---|---|---|---|
+| golke | 5 → 2 | 5,000 → 4,463 | 32 → 29 |
+| mfab_lc | 6 → 2 | 10,903 → 9,631 | 75 → 51 |
+| mfab_hat | 6 → 2 | 9,272 → 8,089 | 50 → 43 |
+| toat_beanie | 6 → 2 | 7,034 → 6,504 | 48 → 35 |
+| toat_machine | 6 → 2 | 6,825 → 6,625 | 40 → 30 |
+| gaulke | 2 → 1 | 4,583 → 4,498 | 33 → 30 |
+| tires | 1 → 1 | 2,870 → 2,732 | 6 → 7 |
+| black_ground_holes | 1 → 1 | 7,640 → 7,640 | 39 → 39 |
+| screenshot (gate refuses: chroma) | 6 → 6 | 8,341 → 8,341 | 69 → 69 |
+| bridge (gate refuses) | 6 → 6 | 18,493 → 18,493 | 101 → 101 |
+| fremont (gate refuses) | 3 → 3 | 20,177 → 20,177 | 57 → 57 |
+
+Per colour: mfab_lc OFF black 8,138, greys 2,729, white 36 → ON black 8,133, white 1,498. golke OFF black 4,421, greys 555, white 24 → ON black 4,346, white 117. toat_beanie OFF `#312e2f` 4,378, `#282821` 1,157, four greys 1,499 → ON `#312e2f` 6,278, white 226. Renders (OFF | ON) read for golke, mfab_lc, toat_machine: mfab's linework reads white instead of four greys; toat loses its grey bars and keeps a few white edge slivers; golke's white roof lines are gone (folded into the background with the outer halo), where OFF sewed them grey.
+
+The first build (detect over the whole canvas, no fold, `native_rgb` snapped) read golke 5,000 → 6,079 stitches and 32 → 38 trims; the review's re-measure without the `native_rgb` snap read 5,175 and 43. Neither ships.
+
+---
+
 **Last updated:** 2026-10-07 — lettering as Columns: `cfg.lettering_columns` built OFF, the outline-cut spike wired as a Column object and a first construction engine
 
 Kent's picks on `docs/lettering-architecture-rd-2026-10-07.md` (PR #655): port the glyph construction to Python, build the outline-cut Columns first. Built the same day on lane `claude/sleepy-hopper-jhpasn`: `digitizer_core/outline_cut.py` (the spike's cut rules, thresholds and DTW rail pairing unchanged, emitting `columns.Column` STATIONS instead of stitches), `digitizer_core/columns.py` (the Column object; `column_runs`: `_push_rails` per side on the artwork polygon, the `SATIN_MIN_CROSS_MM` floor, the column-wide split comb, a centre underlay where the letter clears `SATIN_UNDERLAY_MIN_EXTENT_MM`, nearest-next order from the needle's real position, the satin tier's sew-or-jump link rule), a stage 7 hook ahead of `classify_ribbon` for any shape either tagger calls lettering (`text_candidate` or the new `lettering_group` tag the house pass writes), and the matching `_sews_satin` branch so stage 5 keeps the artwork polygon. `lettering_columns` arm in `tools/eye_pairs`. Tests: `tests/test_lettering_columns.py` (13). OFF is byte-identical (pinned on Becker at 100 mm).
@@ -20051,8 +20075,59 @@ stitch record longer than any it has held since 2026-09-13, and whether a
 machine takes a longer one stays unsewn. The comment in `src/exp.js` carries
 the pick; no code changes with it.
 
+## 2026-10-07 — `blend_fallback_underlay` ON by default: Kent's ruling
+
+Kent flipped the flag built OFF on 2026-10-05 (entry above). Default
+`True`; `False` stays the byte-identical path to the engine before it. The
+measurement it was flipped on is the 10-05 table: six gradient-class real
+logos, bare fills 33 of 33 → 5 of 33, stitches +1.7%, trims 423 → 421
+(Fremont pays six, 37 → 43). Re-read on the default config the day of the
+flip, Gaulke Roofing (80 mm, `left_chest`): bare fills 3 → 0, +7 stitches,
+trims 34 → 32, 41 underlay stitches under fills — the 10-05 deltas exactly,
+on absolute counts that moved with `main`.
+`docs/renders/blend-fallback-underlay-on-2026-10-07/`.
+
+On every preset but cap, fleece and towel the style is `edge_run`, so a
+knit fill gains its perimeter walk and its interior is still empty; the
+interior pass is corpus law 26 and a separate gate-1 item, not touched.
+One pin moved: the owl's adjacency check in
+`tests/test_merge_adjacent_same_thread.py` now holds the flag OFF — the
+underlay changes stage 7's order (`17, 155, 17` → `17, 17, 155`), same
+blocks, no new split. Targeted run (72 files: stage 6/7, blend, gradient,
+goldens): 1,205 passed, 5 xfailed, the three named platform goldens red
+and the owl pin, since fixed. Not sewn.
+
 **Moved here from MASTER_SCOPE live defects 38 and 40 (both FIXED 2026-09-07), for the word budget (2026-10-07):**
 
 38. **The simulator counted in a different unit from the caption right under it — FIXED 2026-09-07.** The stitch simulator is driven by STRANDS (the segment between two consecutive stitches, which is what actually paints), and its counter showed that raw index: **"1289 stitches · 102×12 mm" under the canvas and "1280 / 1280" in the simulator bar**, both visible at once, nine apart on a design with nine runs. Both numbers were correct measurements of different things and only one carried a unit — the same family as defect 34, one screen over. **FIXED**: `strandStitchOrdinals` (strands.js) maps each strand to the stitch number it ends at, computed once per run, so the counter reads *"1289 / 1289 stitches"*. The animation still runs on strands. **The total is the LAST ORDINAL, not `design.stitchCount`** — a run of a single stitch paints no segment, so the simulator must never claim to have drawn it; the fixture has 0 such runs, and the tests cover one that does. `strands.spec.js` (5), e2e (1, plus the format pin in `field-chrome.spec.js` updated with its reason). *(found by watching the simulator run 2026-09-07)*
 
 40. **"Size up for crisp letters" was advice the DEFAULT design cannot take — FIXED 2026-09-07.** Lettering is fit by WIDTH, so for a fixed character count the cap height is proportional to the design width: measured with `medium_font` on left_chest's 101.6 mm placement box, every design at that same width, *"WIDE DESIGN TEXT HERE"* gives a **4.33 mm** cap, *"SHORTER TEXT"* **7.16**, *"ABC"* **30.03**. An auto-fit design (`sizeMm` null — the default, and what every quick start produces) is ALREADY at that box, so "size up" is the one thing the customer cannot do, and the levers that remain — fewer characters, a bolder font, a bigger placement — went unnamed. `letteringNote` now takes `atWidthCap` and swaps only the advice clause: at the cap the thin-lettering finding reads *"…already the full width of the placement, so fewer characters or a bigger placement is what makes them crisper"* and the hairline finding keeps "bolder font" (still true) and drops "size up". Below the cap both are unchanged — "size up" IS the fix there, verified in the app at W 2.60 in. **Read off the REQUEST (`sizeMm`), not the sewn width**: since defect 34 the sewn extent is slightly past the box by construction, so comparing it to the box would read "capped" for every design. The two findings that are not about size (cap under the floor; a lone hairline span, which reports what the engine DID) are untouched, and that is asserted. `generate.spec.js` (3). *(measured 2026-09-07)*
+
+## 2026-10-08 — L1, one lettering tagger, BUILT OFF (`cfg.lettering_words`)
+
+`digitizer_core/words.py`: one door, the text cluster's link, rows split at
+the widest gap across the line, congruent-pattern elements (rope twists)
+removed before words form. Under the flag the lettering readers group by
+`word_id`; the rescued redraw (`regularize_text_clusters`) keeps the text
+cluster on purpose. Scored on hand labels of eight real logos
+(`tools/word_tagger_eval.py`, `testdata/lettering_truth.json`): pooled
+detection kappa **0.907** [0.833, 0.945] against the text cluster's 0.881,
+the house group's 0.616 and the Column lane's either-reading 0.637 (paired
+bootstrap: level with the first, above the other two); line ARI **0.99**
+against 0.65 (moved by gaulke and the screenshot alone). Constants fitted
+in-sample; the CV screen is 0.03 over the
+highest letter. ON vs OFF through `digitize()`: three logos byte-identical,
+six within 0.4% of stitches, drone two trims more (139 → 141).
+`docs/word-tagger-2026-10-08/README.md`.
+
+## 2026-10-08 — L1's pairs drawn (`lettering_words`, sitting `words-1008`)
+
+Kent picked the pairs when L1 closed. Eight logos, 5 pairs, 3 identical
+(becker, gaulke, tires). The flag barely moves stitches on shipped flags:
+drone +2 trims on its changed shapes; golden_tee's lost_frac 0.4466 → 0.4699,
+the tee's shaft (a false-positive word, tagged by both old taggers too)
+taking a different house angle. The page cannot show the Column-lane
+combination a flip would change. `docs/eye-pairs-2026-10-08/`.
+**Kent's verdict on the Column-lane sitting (2026-10-08, chat): AFTER is
+better** — `lettering_words` is the Column lane's tagger when that lane
+flips; both stay OFF. `docs/eye-pairs-2026-10-08/kent-notes.json`.
