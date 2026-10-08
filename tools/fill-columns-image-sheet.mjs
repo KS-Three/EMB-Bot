@@ -16,6 +16,7 @@
 // attached), an orange dot is a cut. The caption under each half counts
 // floats, the floats that leave the fill (over 0.8 mm outside every drawn
 // shape: a counter, a notch, bare cloth), cuts and stitches.
+import "./_help.mjs";
 import { writeFileSync } from "node:fs";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
