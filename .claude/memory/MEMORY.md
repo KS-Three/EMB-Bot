@@ -117,3 +117,4 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Fremont letters are not thicker than the pro's](lettering-thickness-fremont-2026-10-06.md) — file width = pro's (1.23 vs 1.40 scaled); the pro's DST in the Studio renders the SAME weight; Original view mis-scaled; real gap: curve outer rail 0.53 vs 0.33
 - [Lettering architecture R&D](lettering-architecture-2026-10-07.md) — five failures by letter size; patchwork is the skeleton-rail MODEL (pros put rails on the OUTLINE); Column lane OFF: cut + Euler walk + tuck + end fans; density = BOTH station ends
 - [L1 one tagger](word-tagger-l1-2026-10-08.md) — BUILT OFF `cfg.lettering_words`; kappa 0.907 level with text cluster 0.881, above either 0.637 (in-sample); line ARI 0.99 vs 0.65; Kent: AFTER better under the Column lane (10-08)
+- [N fan cure](n-fan-cure-2026-10-08.md) — `satin_tip_corner_gate` OFF: tip = convex corner; ≈ tip caps off; degree gate refuted

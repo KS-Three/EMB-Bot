@@ -48,6 +48,7 @@
     shapeBorderState } from "../lib/borderMenu.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
   import { loadImage, rasterSize, isVectorFile, uploadPlan, pngDimensionsFromBase64 } from "../lib/rasterize.js";
+  import { friendlyError } from "../lib/friendlyError.js";
   import CropBox from "./CropBox.svelte";
   import { proposeCrop } from "../lib/cropProposal.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
@@ -183,7 +184,7 @@
         appliedConfig: null, mergeGroups: [], splitLines: {},
       });
     } catch (err) {
-      error = String((err && err.message) || err);
+      error = friendlyError(err, "upload");
     } finally {
       fileBusy = false;
     }
@@ -499,7 +500,7 @@
         ...resizeLanding(el, element, resizeTarget),
       });
     } catch (err) {
-      if (!destroyed) error = String((err && err.message) || err);
+      if (!destroyed) error = friendlyError(err, "digitize");
     } finally {
       if (!destroyed) phase = "idle";
     }
