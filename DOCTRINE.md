@@ -1615,6 +1615,18 @@ flattery. Anything unlisted raises `NotInManifest`.
 
 ## Gotchas — cost someone a session once
 
+- **Satin density is a needle every `SATIN_SPACING_MM` on EACH rail — count
+  needles per rail, never total stitches between tiers.** The engine's flat
+  zigzag is A1, B1, A2, B2: both ends of every station, stations the spacing
+  apart. The Column lane's first wiring put one end down per station, rails
+  alternating, and sewed every letter at HALF the satin tier's density for a
+  day; it had compared total letter stitch counts against a tier that also
+  lays a zigzag underlay, read the real density as a doubling, and halved it.
+  Measured on MARINE's I: 0.40 mm per rail under the satin tier, 0.80 under
+  the lane, 0.40 after the fix. A thread-width coverage yardstick does not
+  catch it either way at 0.3 mm thread. *(found 2026-10-07 by the desktop
+  sitting agent counting crosses on the N; fixed in PR #660)*
+
 - **Adding an engine file means FOUR lists, and only three were documented —
   now guarded.** `src/*.js` files are plain scripts sharing one
   `globalThis.EMB`, and the load order lives in `app/scripts/copy-engine.mjs`
@@ -8723,3 +8735,33 @@ before" reads as an outline fault and is not one. **A cleaner outline can
 sew worse on today's satin: price a lettering outline change on the
 decomposition it feeds, and attribute a fan to the construction by drawing
 the outline under it.** *(measured 2026-10-07 — `docs/letterform-priors-2026-10-06.md`, "Sitting 2026-10-07")*
+
+## 2026-10-07 — The N fan is the tip gate reading a three-arm junction as a tip; measured four ways and left unbuilt
+
+Defect 59 diagnosed with the engine's own gate, not by reading code:
+`_is_tip_end` (`satin_tip_caps`, reach 1.6 sewn half-widths, set on the A's
+apex and on raster corner balls) calls three of the refit N's five junction
+ends tips — the neighbouring stroke's far edge at 4.56–4.81 mm along the end
+tangent, reach 4.84 — where the trace's five read as meetings; `_extend_to_
+cap` then runs each arm through the other stroke and the crosses fan. Two
+rules. **Ask the four arms before building: the fan is byte-identical under
+`satin_join_square` and gone under `lettering_columns` (becker 56 → 0
+over-long crosses), so a tier fix was not built — "a fix nobody will sew".**
+**An instrument's bar is a threshold on a population too:** the outline-cut
+spike's 1.6 W over-long bar read gaulke's thirty-nine 1 mm letters as 35 fan
+letters under every arm — the fabric's 0.3 mm pull per side, not a fan;
+`tools/fan_census.py` reads 1.6 x (W + 2 pull). *(measured 2026-10-07 —
+`docs/n-fan-2026-10-07.md`)*
+
+## 2026-10-07 — A flip Kent made on renders was held by its guards: `satin_join_square` ON loses an ENTHUSIAST element
+
+Kent flipped `satin_join_square` ON on 2026-10-06 on Fremont renders (stitches
+and trims identical, fan ends 7 → 5). Merged with main and run on the lettering
+set, ON loses one ≥ 1 mm² element of the ENTHUSIAST wordmark — a fixture that
+had never lost one — and tips three sibling bars (fine `lost_frac` 0.1702 /
+0.17, tip-cap end bare 10.53 / 9.5 mm², a rail-comp mid-rail hole 1.24 / 0.55);
+with the flag off on the same tree all four are green. Kent held the flip the
+same day. **The guards did their job: a render shows the fixture it was made
+on, a guard reads the corpus. Run the lettering guard set before a flip's PR
+opens, and when a flip tips a bar with Kent's ruling on it, that is a finding
+to name, not a pin to move.** *(measured 2026-10-07 — PR #663)*

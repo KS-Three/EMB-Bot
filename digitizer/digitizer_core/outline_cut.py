@@ -46,7 +46,7 @@ _RAIL_STEP_MM = 0.08     # densification of an outline arc before pairing
 _DTW_STEP_MM = 0.1       # resampling step of the two rails for the matching
 REFINE_TRIGGER = 0.12    # share of thread in over-long crosses that says "two strokes"
 REFINE_GAIN = 0.6        # a second-look cut must take that share to this fraction
-REFINE_REFLEX_DEG = 30.0 # the second look reads softer concave corners than the junction rules
+REFINE_REFLEX_DEG = 30.0        # the second look reads softer concave corners than the junction rules
 
 
 def _unit(v):
@@ -291,7 +291,11 @@ def _spine_ends(piece: Polygon):
     cv2.fillPoly(m, [to_px(piece.exterior.coords)], 1)
     for r in piece.interiors:
         cv2.fillPoly(m, [to_px(r.coords)], 0)
-    sk, dist = medial_axis(m.astype(bool), return_distance=True)
+    # rng=0 as everywhere else in the engine (stage6_satin, shapefield): with
+    # rng=None skimage breaks ties from OS entropy, and the lane sewed a
+    # different design on every run (golden_tee 8,312 / 8,318 / 8,319 /
+    # 8,315 stitches, four runs, 2026-10-07).
+    sk, dist = medial_axis(m.astype(bool), return_distance=True, rng=0)
     ys, xs = np.nonzero(sk)
     if len(xs) < 2:
         return None
@@ -420,31 +424,11 @@ def rails(piece: Polygon, cut_lines, W: float):
     A = trim(trim(A, d0, c0, True), d1, c1, False)
     B = trim(trim(B, d0, c0, True), d1, c1, False)
 
-    def square(A, B, dvec, is_cut, from_start):
-        if is_cut is not None:
-            return A, B
-        a = A if from_start else A[::-1]
-        b = B if from_start else B[::-1]
-        if len(a) < 3 or len(b) < 3:
-            return A, B
-        # dvec points out of the piece at this end; keep the rail that reaches less far, cut the other back to it
-
-        def reach(p):
-            return p[0] * dvec[0] + p[1] * dvec[1]
-
-        lim = min(reach(a[0]), reach(b[0]))
-
-        def back(r):
-            i = 0
-            while i < len(r) - 3 and reach(r[i]) > lim + 0.04:
-                i += 1
-            return r[i:]
-
-        a, b = back(a), back(b)
-        return (a, b) if from_start else (a[::-1], b[::-1])
-
-    A, B = square(A, B, d0, c0, True)
-    A, B = square(A, B, d1, c1, False)
+    # A free end is NOT squared (the spike's `square` cut the longer rail
+    # back to the shorter's reach): a slanted terminal is the longer rail
+    # running on past the shorter, and the DTW pairing below fans it, the
+    # last cross lying on the slant. Squaring left the S's tips and every
+    # slanted cap short (Becker's E arms 9.4 -> 3.5 mm2 bare without it).
     if len(A) < 3 or len(B) < 3:
         return None
     return A, B
@@ -544,13 +528,20 @@ def straight_axis(piece: Polygon, W: float, cut_lines=()):
     return (float(u[0]), float(u[1]))
 
 
-def scan_stations(piece: Polygon, u, pitch_mm: float) -> list[tuple[tuple, tuple]] | None:
+def scan_stations(piece: Polygon, u, pitch_mm: float):
     """Crosses square to axis u, each end ON the piece's outline, one every
-    `pitch_mm` along the axis. -> [(pa, pb), ...] or None."""
+    `pitch_mm` along the axis. -> ([(pa, pb), ...], dropped_mm) or None.
+    A scanline that meets the piece in more than one segment stations the
+    longest and reports the rest as `dropped_mm`: an N whose stem and
+    diagonal were never cut apart scanned as one upright column and sewed
+    the diagonal only where it was the longer segment (Fremont, 2.1 mm2
+    bare of a 6.7 mm2 diagonal). The refinement reads dropped length as
+    over-long and cuts the piece."""
     n = (-u[1], u[0])
     cs = np.array(piece.exterior.coords)
     t = cs @ np.array(u)
     out = []
+    dropped = 0.0
     for tt in np.arange(t.min() + pitch_mm / 2, t.max(), pitch_mm):
         o = (u[0] * tt, u[1] * tt)
         hit = LineString([(o[0] - n[0] * 200, o[1] - n[1] * 200),
@@ -559,11 +550,12 @@ def scan_stations(piece: Polygon, u, pitch_mm: float) -> list[tuple[tuple, tuple
         if not segs:
             continue
         g = max(segs, key=lambda g: g.length)
+        dropped += sum(h.length for h in segs) - g.length
         p, q = g.coords[0], g.coords[-1]
         if (p[0] * n[0] + p[1] * n[1]) > (q[0] * n[0] + q[1] * n[1]):
             p, q = q, p
         out.append((tuple(p), tuple(q)))
-    return out if len(out) >= 3 else None
+    return (out, dropped) if len(out) >= 3 else None
 
 
 def _straight_rails(piece: Polygon, u):
@@ -585,16 +577,88 @@ def _straight_rails(piece: Polygon, u):
     return (a, b) if side(a) <= side(b) else (b, a)
 
 
+def _fan_ends(st, piece: Polygon, u, pitch_mm: float, W: float):
+    """Stations square to the axis shrink toward a slanted end: past the
+    shorter side's corner the scan sees only the chord between the slant
+    and the longer side, and those crosses fall under the floor, so the
+    tip sews bare (Becker's E arms, every mitred diagonal). The pro fans
+    the end: the last full cross pivots on its slant-side end and sweeps
+    along the longer side to the tip, the final cross lying on the slant
+    itself. Read off the scan, not the outline (a traced outline's jaggies
+    are each off-axis and a rail-walking rule swept a fan across a whole
+    letter): the shrinking crosses are the ones under 0.85 of the median,
+    their far ends are the fan's targets, and the piece's extreme point
+    along the axis is the tip. Only within 1.6 W of the last full cross
+    (a terminal, not a taper), and only crosses the piece covers. The
+    shared pivot is what `_short_stitch_guard` is for."""
+    if len(st) < 4:
+        return st
+    n = (-u[1], u[0])
+
+    def proj(p):
+        return p[0] * u[0] + p[1] * u[1]
+
+    def projn(p):
+        return p[0] * n[0] + p[1] * n[1]
+
+    def mid(s):
+        return ((s[0][0] + s[1][0]) / 2, (s[0][1] + s[1][1]) / 2)
+
+    lengths = [math.dist(a, b) for a, b in st]
+    med = sorted(lengths)[len(lengths) // 2]
+    verts = list(piece.exterior.coords)
+    cover = piece.buffer(0.05)
+    for end in (1, -1):
+        order = st if end > 0 else st[::-1]            # order[-1] is this end's last station
+        k = len(order) - 1
+        shrink = []
+        while k > 0 and math.dist(*order[k]) < 0.85 * med:
+            shrink.append(order[k])
+            k -= 1
+        if not shrink or k < 1:
+            continue
+        full = order[k]
+        tip = max(verts, key=proj) if end > 0 else min(verts, key=proj)
+        if abs(proj(tip) - proj(mid(full))) > 1.6 * W:
+            continue
+        near = shrink[0]                                # the shrinking cross nearest the tip
+        move_a = abs(projn(near[0]) - projn(full[0]))
+        move_b = abs(projn(near[1]) - projn(full[1]))
+        # a slant draws ONE side in; a round cap or a taper draws both in
+        # alike and stays square (fanning it from one side would turn every
+        # round terminal lopsided for no bare cloth saved)
+        if max(move_a, move_b) < 2.0 * min(move_a, move_b):
+            continue
+        slant_a = move_a > move_b
+        P = full[0] if slant_a else full[1]
+        targets = [(s[1] if slant_a else s[0]) for s in reversed(shrink)]
+        if math.dist(targets[-1], tip) > 0.5 * pitch_mm:
+            targets.append(tip)
+        fan = []
+        for q in targets:
+            if math.dist(P, q) < 1e-6 or not cover.covers(LineString([P, q])):
+                break                                   # a chord the piece does not cover: no fan here
+            fan.append((P, q) if slant_a else (q, P))
+        if len(fan) < len(targets):
+            continue                                    # keep the scan's own crosses, all of them
+        new = order[:k + 1] + fan
+        st = new if end > 0 else new[::-1]
+    return st
+
+
 def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float) -> Column | None:
     """One piece -> its Column, or None when neither construction fits it."""
     if not piece.interiors:
         u = straight_axis(piece, W, cut_lines)
         if u is not None:
-            st = scan_stations(piece, u, pitch_mm)
-            if st:
+            sc = scan_stations(piece, u, pitch_mm)
+            if sc:
+                st, dropped = sc
                 rr = _straight_rails(piece, u)
+                st = _fan_ends(st, piece, u, pitch_mm, W)
                 return Column(stations=st, piece=piece, kind="straight", axis=u,
-                              width_mm=W, rail_a=rr[0] if rr else [], rail_b=rr[1] if rr else [])
+                              width_mm=W, rail_a=rr[0] if rr else [], rail_b=rr[1] if rr else [],
+                              dropped_mm=dropped)
     r = rails(piece, cut_lines, W)
     if r is None:
         return None
@@ -613,7 +677,9 @@ def _overlong(col: Column | None, W: float):
         return 0.0, 0.0
     thr = 1.6 * W
     L = np.array([math.dist(a, b) for a, b in col.stations])
-    return float(L[L > thr].sum()), float(L.sum())
+    # scanline length the straight scan left unstationed is stroke the
+    # column does not sew: it counts as over-long, the same symptom
+    return float(L[L > thr].sum()) + col.dropped_mm, float(L.sum()) + col.dropped_mm
 
 
 def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int):
