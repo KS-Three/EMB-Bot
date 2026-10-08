@@ -118,6 +118,8 @@ test("every text element in the chrome reads at WCAG AA against its own ground",
   await closeDownload(page);
 
   await page.getByRole("button", { name: /^My designs/ }).click();
+  // The drawer is a lazy chunk; wait for it before measuring.
+  await page.locator(".drawer").waitFor();
   const drawer = await sweep(page, ".drawer");
   expect(drawer.checked, ".drawer: nothing was measured").toBeGreaterThan(0);
   collect(".drawer", drawer);
