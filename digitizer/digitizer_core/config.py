@@ -1593,6 +1593,15 @@ class PipelineConfig:
     # OFF on the same call). False is the walk as shipped before it, byte
     # for byte, and `tests/test_trim_levers.py` pins both sides.
     satin_exit_toward_next: bool = True
+    # `satin_mid_entry` (BUILT OFF 2026-10-08): when the needle stops within
+    # the fabric's trim distance of a satin column's MIDDLE but over it from
+    # the column's start, walk a travel run up the column's own centreline
+    # to the start instead of cutting -- the satin sewn next lies over every
+    # stitch of it. Only a shape whose first run is satin (no underlay ahead
+    # of it), and only when the walk costs at most 25 stitches, the
+    # trim_exchange_sweep exchange rate. Measured on the nine real-art logos
+    # (`tools/trim_census.py`, the `entry` bucket): see the PR that added it.
+    satin_mid_entry: bool = False
     # How far off the travel web the needle may sit and still walk to the
     # next stroke, in mm; 0 = off, and off the radius IS `trim_at` (3.0,
     # `machine.TRIM_AT_MM`), which is what shipped before 2026-09-20.
