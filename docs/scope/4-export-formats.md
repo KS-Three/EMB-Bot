@@ -25,8 +25,9 @@ lettering or manual shapes downloads through the browser encoders.
 
 **Confidence — varies by format, not one score:**
 - **DST:** split by path. Browser DST is Medium as Studio's sewn-and-shipping
-  default; Low if treated as verified-correct-orientation in the abstract —
-  see the cross-cutting DST item, this is the same bug. Python `/export` DST
+  default; the axis bug that made it Low in the abstract is FIXED
+  (2026-09-08, see below) — it is read-back verified, not yet sewn.
+  *(confirmed 2026-10-08 — `src/dst.js`, `test/crossval-stitch-formats.test.js`)* Python `/export` DST
   (pyembroidery, standard-conformant) is Medium-High by spec, not yet
   sew-verified itself.
 - **EXP: Medium-High**, upgraded from Medium-Low this pass. The PR #18
@@ -46,9 +47,9 @@ lettering or manual shapes downloads through the browser encoders.
   encoder already stopped at `"end"` the same way; `encodeEXP` now does too
   (`if (st.type === "end") break;`, matching `pes.js`'s exact pattern).
   Harness re-run: `exp.notrim`/`exp.full` both now read `expected 15, decoded
-  15` (was `decoded 16`). DST carries the identical underlying gap and is
-  deliberately left alone (Kent's call, migration risk — see the cross-
-  cutting section) — EXP has no importer anywhere in this codebase, so
+  15` (was `decoded 16`). DST carried the identical gap and was fixed
+  2026-09-08 (`if (st.type === "end") break;` in `src/dst.js`; *confirmed
+  2026-10-08 — src/dst.js*) — EXP has no importer anywhere in this codebase, so
   fixing it here carries none of that risk, same low-risk read the original
   PES/EXP fix got. Not raised all the way to High since this is
   cross-validated against pyembroidery, not a real machine/software sew or
@@ -130,22 +131,23 @@ lettering or manual shapes downloads through the browser encoders.
   High, since this is still automated-inspection rather than a human/visual
   check of the rendered page.
 
-**Open issues:** DST axis bug (cross-cutting, see above) — unchanged, still
-Kent's call, `src/dst.js` deliberately untouched by the PES/EXP fix below.
+**Open issues:** the DST axis bug is **FIXED 2026-09-08** (see the "verified by
+PICTURE" section below; *confirmed 2026-10-08 — src/dst.js*); this paragraph
+predates it and its "still Kent's call" wording is stale.
 PES/EXP's own cross-validation findings (PR #18) are **fixed as of
 2026-08-05** (PR #58, `pes-exp-byte-framing-fix` — see the cross-cutting section
 above and this file's "Last updated" entry for the full before/after): PES
 no longer decodes as garbage in standard readers, and EXP no longer aborts
 at the first trim. The "end"-record extra-stitch quirk EXP used to share
 with DST is **also fixed as of 2026-08-06** — see the EXP bullet above;
-DST keeps its own copy of the same gap, deliberately, Kent's call.
+DST's copy of the same gap was fixed 2026-09-08 too (*confirmed 2026-10-08 — src/dst.js*).
 Remaining, explicitly-accepted gaps: nearest-chart colour mapping isn't a
 lossless round-trip (64 fixed PEC chart colors); and no real Brother-machine
 load or PE-Design open has happened yet — only pyembroidery
 cross-validation.
 
-**Next step:** for DST, same as the cross-cutting item — a third-party
-sew-out/read settles the axis question. For PES/EXP, the verdict memo's own
+**Next step:** for DST, the axis question is closed by the 2026-09-08 fix and
+picture render; what remains is a real-machine sew-out (ROADMAP gate 1). For PES/EXP, the verdict memo's own
 closing line: a real Brother-machine load (or PE-Design open) of a
 harness-clean PES file, to confirm machine behavior matches the
 cross-validation, not just pyembroidery agreement. Separately, not
@@ -228,6 +230,13 @@ downloadable outputs now read correctly to something other than EMB-Bot. The
 PDF worksheet was broken and is fixed — see area 3.
 
 ## The service writes ten formats and the Studio offers four (2026-09-08)
+
+**Superseded in part (confirmed 2026-10-08 — `app/src/lib/exporters.js`
+`SERVICE_ONLY_FORMATS = {jef, xxx, vp3}`, `DownloadStep.svelte`): Kent made the
+scope call 2026-09-12 and XXX (Singer) and VP3 (Husqvarna Viking / Pfaff) now
+ship as service-only buttons, so the Studio offers six machine formats. PEC and
+U01 are still not offered; the heading and the "unoffered" labels below are the
+2026-09-08 snapshot.**
 
 **Three more brands are one button away, with zero backend work.** The service's
 `FORMATS` table declares ten; `DownloadStep.svelte` offers **DST, PES, EXP, JEF**
@@ -317,3 +326,74 @@ design, and the case for it is a firmware claim.
 
 Pinned by `digitizer/tests/test_jef_hoop_code.py` (10 tests); if it goes red
 pystitch fixed it — drop the test and this section.
+
+## Every format, on real designs, read back and drawn (2026-10-08)
+
+`tools/export-audit.mjs` drives the Studio's own `generateAll` on twelve projects
+— two basic shapes, a three-shape manual drawing, three lettering designs (one
+colour, per-letter colour, arced script), a Full Back text + shape layout,
+three real logos through the digitizer's stage chain at Studio defaults, one
+of them enlarged to 250 mm, and a third-party becker DST imported — writes each
+through the browser DST/EXP/PES and the service `/export` body (DST, PES, EXP,
+JEF, XXX, VP3, plus unshipped PEC and U01), decodes all 132 files with pystitch
+and draws each beside the preview's strands. Renders:
+`docs/export-audit-2026-10-08/`. *(measured 2026-10-08 — export-audit)*
+
+**Agrees everywhere:** orientation (identity on all 132), sewn extents (within
+0.1 mm), colour-change count (U01 as needle changes), and stitch count, apart
+from splits. Every browser file matches the model on stitches, colour changes
+and trims (DST trims aside, below), with no stray thread.
+
+**Fixed (two commits, each with a test that fails without it):**
+
+- **Service: an over-length sewn move left as travel or as one long stitch.**
+  pystitch's encoder sent it as jumps (DST, EXP, JEF, XXX, U01: thread the
+  design sews, written needle-up) or left it whole (PES, PEC: one 40.9 mm
+  stitch). The browser split it into stitches at 121 units since 09-07/09-12.
+  `formats.write` now applies the same split and chain rule; a design with
+  nothing over the bar, the calibration card included, is byte-identical.
+  Reached by purely digitized designs, the service route, once enlarged. Pin:
+  `digitizer/tests/test_export_long_stitch.py`.
+- **Browser PES: black lettering asked for green thread.** `nearestPecIndex`
+  ranked the Brother chart by RGB distance, which put the default lettering
+  colour (20,20,20) on Deep Green (dE00 16.0) with Black (dE00 3.7) in the same
+  chart. Now CIEDE2000, the repo's cone metric everywhere else. Pin:
+  `test/pes.test.js`.
+  **The trade-off, measured:** on Golke, a light grey (214,214,216) moved from
+  Linen (dE00 6.33) to White (dE00 5.80), the cone the next block already
+  uses. The file still stops five times, but pystitch reads it as 4 changes
+  and 1 STOP on the same cone. Two design colours a 64-cone chart cannot tell
+  apart now collapse onto one cone in a different place than they did before.
+
+**Ruled by Kent the same day, and fixed (one commit each, tests in
+`digitizer/tests/test_export_cuts.py`):**
+
+- **Service PES/PEC cut at EVERY jump.** pystitch's `PecWriter` wrote each
+  jump after the first as a trim-jump (flag `0x20`), dropped the TRIM itself,
+  and put the needle down at a jump's landing. A design's floats became cuts:
+  61 against the design's 32 on Golke, 119 against 51 on Hotel Fremont.
+  Ruling: match the browser, which writes a jump as `0x10` and a cut as a
+  zero-length `0x20`. `formats.write` swaps in that encoder for its own
+  PES/PEC writes only.
+- **Service JEF wrote no trim commands.** `JefWriter` defaults `trims=False`,
+  so a cut was in the file only if a machine inferred one from a long move:
+  22 read back against the design's 32 on Golke. Ruling: write them, three
+  zero moves per cut (`trim_at` 3, the convention pystitch's reader cites for
+  a Janome MC400E). What a given Janome does with them is still gate 1.
+
+**Still open:**
+
+- **VP3 has no jump record**, so pystitch writes travel as stitches: one 98.8 mm
+  along an axis on the Full Back layout. Whether a Husqvarna/Pfaff sews or
+  skips a long `80 01` stitch is a machine question; Kent's call 2026-10-08 was
+  to note it and wait for a sew-out (gate 1).
+- **Service PES/PEC/JEF snap colour with pystitch's own metric** (not yet put
+  to Kent), so the two
+  PES routes can name different cones for one colour (near-black: Black in the
+  browser now, dark brown in the service).
+
+**Format conventions, not disagreements:** a DST travel of three or more jump
+records reads as a cut (the convention `cutFloats` already plans around), and
+pystitch's DST reader absorbs a trim placed directly after a colour change or
+before the first stitch (becker: 11 read against 14, identical from both
+encoders). JEF readers infer cuts from moves over 3 mm.
