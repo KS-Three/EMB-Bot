@@ -143,7 +143,7 @@ def test_tables_match_the_yardstick_package_when_it_is_here():
     assert set(yp.ARMS) == set(g.ARM_INTENT)
     assert {a for a, kw in yp.ARMS.items() if "__ref__" in kw} == set(g.REF_ARMS)
     assert {a for a, kw in yp.ARMS.items() if "__file__" in kw} == set(g.FILE_ARMS)
-    assert yp.EXCLUDED_FIXTURES == g.EXCLUDED_FIXTURES == frozenset({"screenshot"})
+    assert yp.EXCLUDED_FIXTURES == g.EXCLUDED_FIXTURES == frozenset({"screenshot", "gaulke"})
     assert {m: d for m, d in ya.METRICS.items() if d != "none"} == g.METRIC_BETTER
 
 
