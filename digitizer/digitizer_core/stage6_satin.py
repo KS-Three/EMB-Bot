@@ -1473,7 +1473,8 @@ def _cluster_junctions(edges: list[dict], max_len_px: float,
 
 def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0,
                              scale: float = 1.0,
-                             weld_max_dot: float | None = None) -> list[dict]:
+                             weld_max_dot: float | None = None,
+                             slab_arm_max_px: float | None = None) -> list[dict]:
     """Join skeleton edges that run straight through a branch node.
 
     The skeleton of a T is three edges meeting at one node — but the BAR is one
@@ -1514,6 +1515,19 @@ def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0
     `weld_max_dot` replaces `_WELD_MAX_DOT` as the weld's admission
     (`satin_junction_stack`: `_STACK_WELD_MAX_DOT`, a 30 deg turn); None is
     the shipped threshold, byte-identical.
+
+    `slab_arm_max_px` (`satin_slab_serifs`, 2026-10-07): at a THREE-arm node
+    whose two free arms are each shorter than this, square to the third
+    arm and leaving the node in opposite directions (`_slab_pair`), those
+    two are the halves of a slab serif's own axis and are welded whatever
+    the turn between them -- a half rises into the stem's junction over
+    its last pixels, so tip to tip the pair can read a turn the stack's
+    30 deg limit refuses. On Fremont's real path the halves that reach
+    here read 150-161 deg and the stack welds them anyway; the rule's work
+    is done in `_prune_spurs`, which keeps a slab's halves where the cap
+    rule took them for an I-beam (the T's foot). The third arm is a T's
+    stem as before: it ends at the node and clears the blob there. None is
+    the shipped pairing.
     """
     weld_limit = _WELD_MAX_DOT if weld_max_dot is None else weld_max_dot
     corners = dt_mm is not None and half_mm > 0
@@ -1581,6 +1595,23 @@ def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0
     tucks: dict[tuple[int, bool], float] = {}
     for node, arms in incident.items():
         degree = len(arms)
+        if slab_arm_max_px is not None and degree == 3:
+            halves = []
+            for ei, es in arms:
+                e = edges[ei]
+                if not (e["free_end"] if es else e["free_start"]):
+                    continue
+                if sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:])) >= slab_arm_max_px:
+                    continue
+                halves.append(((ei, es), e["pts"][-1] if es else e["pts"][0]))
+            stem = [a for a in arms if a not in [h[0] for h in halves]]
+            if len(halves) == 2 and len(stem) == 1 and \
+                    _slab_pair(node, _arm_reach(edges[stem[0][0]], node, int(round(slab_arm_max_px / _CAP_ARM_MAX_SPURS))),
+                               halves[0][1], halves[1][1]):
+                welded.add(halves[0][0])
+                welded.add(halves[1][0])
+                joins.append((halves[0][0], halves[1][0]))
+                arms = [a for a in arms if a not in (halves[0][0], halves[1][0])]
         # Keep pairing while a through-pair remains: an X crossing has FOUR
         # arms and two of the pairs run straight through each other.
         while len(arms) >= 2:
@@ -1718,6 +1749,61 @@ def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0
 #   * anything else keeps today's rule (a short free arm is a spur).
 # Behind `cfg.satin_corner_twigs`; off, the function is what it was.
 _CAP_ARM_MAX_SPURS = 1.5
+# Two short free arms leaving one node at least this far apart are the two
+# halves of a SLAB SERIF's axis (a foot or a T-shaped terminal: the slab
+# runs across the stem's end and its medial axis leaves the node both
+# ways), not a cap's I-beam (two corner diagonals, a right angle apart).
+# Behind `cfg.satin_slab_serifs`. Read by `_slab_pair`, tip to tip through
+# the node. Fremont at 80 mm on the real path (seam-closed polygons,
+# 2026-10-07): the T's foot 161, the H's four terminals 150-161; cap
+# I-beams 90-98.
+_SLAB_ARMS_MIN_DEG = 120.0
+# ... and each half leaves the node within this of SQUARE to the stem. The
+# angle between the two arms alone does not separate a slab from an
+# L-CORNER whose twig survived beside the hanging slab (the E's arms, the
+# F's, the T's bar: twig and slab 125-135 deg apart), and that twig held
+# the corner's node open against the fold-and-split construction
+# `satin_join_square` sews. A slab's halves are both square to the stem
+# (the T's foot: 23 and 4 deg off); a corner twig is 45 off, a cap's forks
+# 45 off.
+_SLAB_PERP_TOL_DEG = 35.0
+
+
+def _arms_angle_deg(node: tuple[int, int], tip_a: tuple[int, int],
+                    tip_b: tuple[int, int]) -> float:
+    """The angle at `node` between the arm ending at `tip_a` and the arm
+    ending at `tip_b`, each read as the chord from the node to its tip --
+    the whole arm, not its last pixels, which at a slab rise into the stem's
+    junction. 0 when either chord has no length."""
+    va = (tip_a[0] - node[0], tip_a[1] - node[1])
+    vb = (tip_b[0] - node[0], tip_b[1] - node[1])
+    na, nb = math.hypot(*va), math.hypot(*vb)
+    if na < 1e-9 or nb < 1e-9:
+        return 0.0
+    cos = (va[0] * vb[0] + va[1] * vb[1]) / (na * nb)
+    return math.degrees(math.acos(max(-1.0, min(1.0, cos))))
+
+
+def _arm_reach(edge: dict, at_node: tuple[int, int], n_px: int) -> tuple[int, int]:
+    """The pixel `n_px` steps along `edge` from its end at `at_node` (or
+    its far end, on a shorter edge): the point a chord from the node reads
+    the arm's direction to."""
+    pts = edge["pts"] if edge["pts"][0] == at_node else list(reversed(edge["pts"]))
+    return pts[min(max(1, n_px), len(pts) - 1)]
+
+
+def _slab_pair(node: tuple[int, int], stem_reach: tuple[int, int],
+               tip_a: tuple[int, int], tip_b: tuple[int, int]) -> bool:
+    """Are the two short free arms at `node` (tips `tip_a`, `tip_b`) the
+    halves of a slab serif's axis across the stem whose chord from the node
+    reaches `stem_reach`? Both square to the stem within
+    `_SLAB_PERP_TOL_DEG`, and `_SLAB_ARMS_MIN_DEG` apart from each other."""
+    if _arms_angle_deg(node, tip_a, tip_b) < _SLAB_ARMS_MIN_DEG:
+        return False
+    for tip in (tip_a, tip_b):
+        if abs(_arms_angle_deg(node, stem_reach, tip) - 90.0) > _SLAB_PERP_TOL_DEG:
+            return False
+    return True
 
 
 def _node_key(px: tuple[int, int]) -> tuple[int, int]:
@@ -1725,7 +1811,7 @@ def _node_key(px: tuple[int, int]) -> tuple[int, int]:
 
 
 def _prune_spurs(mask: np.ndarray, spur_len_px: float, *,
-                 corner_twigs: bool = False) -> None:
+                 corner_twigs: bool = False, slab_serifs: bool = False) -> None:
     """Erase short dead-end twigs in place, keeping their branch node.
 
     `corner_twigs` (plan step 3, see `_CAP_ARM_MAX_SPURS`): a node's two
@@ -1756,15 +1842,35 @@ def _prune_spurs(mask: np.ndarray, spur_len_px: float, *,
         # that is not free sits on a node pixel; two edges meet where those
         # pixels coincide (or touch, on a clique).
         arms: dict[tuple[int, int], list[tuple[int, float, bool]]] = {}
+        tips: dict[int, tuple[int, int]] = {}
         if corner_twigs:
             for i, e in enumerate(edges):
                 if e["closed"]:
                     continue
                 length = sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:]))
                 spur = (e["free_start"] != e["free_end"]) and length < spur_len_px * _CAP_ARM_MAX_SPURS
+                if spur:
+                    tips[i] = e["pts"][0] if e["free_start"] else e["pts"][-1]
                 for end, free in ((e["pts"][0], e["free_start"]), (e["pts"][-1], e["free_end"])):
                     if not free:
                         arms.setdefault(_node_key(end), []).append((i, length, spur))
+
+        def slab_halves(node: tuple[int, int], short_free: list, longer: list) -> bool:
+            """`slab_serifs`: the two short free arms at `node` are the two
+            halves of a slab serif's own axis -- square to the one longer
+            arm, the stem, and leaving the node in opposite directions
+            (`_slab_pair`) -- and not a square cap's I-beam nor a corner
+            twig beside a hanging slab. A half whose tip this function
+            itself exposed never reaches the cap rule, so this decides
+            only a half that still ends where the skeleton ended (the T's
+            foot on Fremont, whose halves run into the foot's corners)."""
+            if not slab_serifs or len(short_free) != 2 or len(longer) != 1:
+                return False
+            ta, tb = tips.get(short_free[0][0]), tips.get(short_free[1][0])
+            if ta is None or tb is None:
+                return False
+            reach = _arm_reach(edges[longer[0][0]], node, int(round(spur_len_px)))
+            return _slab_pair(node, reach, ta, tb)
         for i, e in enumerate(edges):
             if e["closed"] or (e["free_start"] == e["free_end"]):
                 continue  # spur = exactly one free end
@@ -1777,6 +1883,9 @@ def _prune_spurs(mask: np.ndarray, spur_len_px: float, *,
                 here = arms.get(_node_key(keep), [])
                 short_free = [a for a in here if a[2]]
                 longer = [a for a in here if not a[2]]
+                if len(short_free) == 2 and i in {a[0] for a in short_free} and longer \
+                        and slab_halves(_node_key(keep), short_free, longer):
+                    continue                # a slab serif's axis: both halves stay, the merge welds them
                 if len(short_free) == 2 and i in {a[0] for a in short_free} and longer:
                     pass                    # a cap's I-beam: both arms go
                 elif length >= spur_len_px:
@@ -2064,6 +2173,7 @@ def extract_strokes(poly: Polygon, *,
                      polygon_axis: bool = False,
                      corner_twigs: bool = False,
                      junction_stack: bool = False,
+                     slab_serifs: bool = False,
                      ) -> tuple[list[Stroke], float, _WidthField | None]:
     """-> (strokes in mm, mean half-width in mm, local width field).
 
@@ -2133,8 +2243,9 @@ def extract_strokes(poly: Polygon, *,
     # one under rail-side comp (see `half_extra_mm`), the skeleton's own
     # otherwise -- identical arithmetic at 0.0.
     len_px = half_px + max(0.0, half_extra_mm) * scale
+    spur_len_px = max(3.0, len_px * 1.6)
     if not polygon_axis:
-        _prune_spurs(skel_mask, max(3.0, len_px * 1.6), corner_twigs=corner_twigs)
+        _prune_spurs(skel_mask, spur_len_px, corner_twigs=corner_twigs, slab_serifs=slab_serifs)
     if not skel_mask.any():
         return [], half_px / scale, field
 
@@ -2151,7 +2262,9 @@ def extract_strokes(poly: Polygon, *,
         max(_JUNCTION_CLUSTER_MIN_PX, _JUNCTION_CLUSTER_HALFWIDTHS * len_px),
         dt_mm)
     for e in _merge_through_junctions(edges, dt_mm, half_px / scale, scale,
-                                      weld_max_dot=_STACK_WELD_MAX_DOT if junction_stack else None):
+                                      weld_max_dot=_STACK_WELD_MAX_DOT if junction_stack else None,
+                                      slab_arm_max_px=(spur_len_px * _CAP_ARM_MAX_SPURS
+                                                       if slab_serifs else None)):
         length = sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:]))
         # "Free" here means free in the SKELETON — a corner end re-flagged by
         # `_merge_through_junctions` is still a chain between two branch nodes
@@ -5539,6 +5652,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 rails_follow_edge: bool = False,
                   outer_rail_pitch: bool = False,
                   join_square: bool = False,
+                slab_serifs: bool = False,
                 hairline_floor_mm: float = 0.0,
                 patch_junctions: bool | str = False,
                 crown_cover: bool = False,
@@ -5678,7 +5792,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                                               polygon_axis=polygon_axis,
                                               half_extra_mm=rail_comp_mm,
                                               corner_twigs=corner_twigs,
-                                              junction_stack=junction_stack)
+                                              junction_stack=junction_stack, slab_serifs=slab_serifs)
     if not strokes:
         report["empty"] = True
         return [], report

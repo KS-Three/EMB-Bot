@@ -88,3 +88,20 @@ every serif corner a 90° turn), so read lean against the local rail normal;
 and a synthetic L does not fan at all — the fixture had to be the real E,
 byte for byte (a 3-dp rounding decomposes differently). T-shaped slabs
 (the E's middle arm) are a cap by the twig rule and stay a fan: next.
+
+**Where this sits (2026-10-07 morning):** #650 (outer-rail pitch, ON)
+MERGED. #651 (Sewn width toggle) open, auto-merge armed. #653
+(`satin_join_square` ON + `satin_slab_serifs` built OFF) open on lane
+`.claude/worktrees/serif-junction-fans`, auto-merge armed; the join-square
+flip moved no golden (byte-identical, no WSL re-capture needed); the full
+ON suite ran overnight (`sf_suite_on.log` in the session scratchpad) and
+its movers are the owed read. Kent's flip on the slab flag is the next
+prompt; the E's and F's middle arms (which the 10-06 entry named as the
+T-slab case) do NOT move under it — their slabs are too small to grow a
+skeleton half — so if he wants those, it is a different construction.
+**Trap that cost half a session:** `satin_shape` skeletonises
+`_close_seams(poly)`, not `poly` — probe strokes through `satin_shape` (or
+on the closed polygon), never with a bare `extract_strokes` on a stage-5
+polygon; the M fixture built that way reproduced a defect the shipped
+engine does not have. Main checkout holds ANOTHER session's uncommitted
+memory note (letterform-priors-lane); do not pull or touch it.
