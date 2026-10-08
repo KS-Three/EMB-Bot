@@ -22,7 +22,6 @@ import pytest
 
 fastapi = pytest.importorskip("fastapi", reason="service extra not installed")
 from fastapi import Body, FastAPI  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
 
 import digitizer_service.app  # noqa: E402,F401
 from digitizer_service.guards import BodyLimit, Deadline  # noqa: E402
@@ -58,29 +57,29 @@ def _guarded_app(limit: int = 1000, seconds: float = 0.3) -> FastAPI:
 
 # --- request size -----------------------------------------------------------
 
-def test_declared_oversize_body_is_a_413_before_the_route_runs():
-    c = TestClient(_guarded_app(limit=1000))
+def test_declared_oversize_body_is_a_413_before_the_route_runs(make_client):
+    c = make_client(_guarded_app(limit=1000))
     r = c.post("/echo", content=b"{" + b" " * 2000 + b"}",
                headers={"content-type": "application/json"})
     assert r.status_code == 413
     assert "Export it smaller" in r.json()["detail"]
 
 
-def test_chunked_oversize_body_is_cut_off_at_the_budget():
+def test_chunked_oversize_body_is_cut_off_at_the_budget(make_client):
     # No Content-Length: the body is counted as it streams.
     def chunks():
         yield b'{"a": "'
         for _ in range(50):
             yield b"x" * 100
         yield b'"}'
-    c = TestClient(_guarded_app(limit=1000))
+    c = make_client(_guarded_app(limit=1000))
     r = c.post("/echo", content=chunks(), headers={"content-type": "application/json"})
     assert r.status_code == 413
     assert "over the limit" in r.json()["detail"]
 
 
-def test_a_body_under_the_budget_is_untouched():
-    c = TestClient(_guarded_app(limit=1000))
+def test_a_body_under_the_budget_is_untouched(make_client):
+    c = make_client(_guarded_app(limit=1000))
     assert c.post("/echo", json={"a": 1, "b": 2}).json() == {"keys": 2}
 
 
@@ -93,8 +92,8 @@ def test_upload_routes_name_the_file_limit_not_the_framing_budget():
 # --- request deadline -------------------------------------------------------
 
 @pytest.mark.parametrize("path", ["/slow-sync", "/slow-async"])
-def test_a_request_past_its_deadline_is_a_504_without_waiting_for_it(path):
-    c = TestClient(_guarded_app(seconds=0.3))
+def test_a_request_past_its_deadline_is_a_504_without_waiting_for_it(make_client, path):
+    c = make_client(_guarded_app(seconds=0.3))
     t0 = time.monotonic()
     r = c.get(path)
     assert r.status_code == 504
@@ -106,12 +105,11 @@ def test_a_request_past_its_deadline_is_a_504_without_waiting_for_it(path):
 
 # --- no stack traces in responses -------------------------------------------
 
-def test_an_unhandled_error_is_a_500_sentence_with_no_trace(monkeypatch):
+def test_an_unhandled_error_is_a_500_sentence_with_no_trace(make_client, monkeypatch):
     def boom(*_a, **_k):
         raise RuntimeError("secret detail at /srv/digitizer_core/adapter.py:123")
     monkeypatch.setattr(service, "design_to_pattern", boom)
-    # Not a context manager: exiting one runs the shared app's shutdown.
-    c = TestClient(service.app, raise_server_exceptions=False)
+    c = make_client(service.app, raise_server_exceptions=False)
     r = c.post("/export", json={"design": {"stitches": [{"x": 0, "y": 0, "type": "stitch"}]}})
     assert r.status_code == 500
     body = r.text
