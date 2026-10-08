@@ -21,9 +21,14 @@ the final column order, prices it with `_order_cost` exactly as
            does -- in travel stitches
 
 A shape AGREES when all three match to 1e-6. Nothing in the engine is
-changed; the wrappers live in this process only. A shape with no run before
-its fill (no underlay, the first shape a call sews) is priced from no entry,
-as `emit` lays no bridge into its first column.
+changed; the wrappers live in this process only.
+
+One deliberate difference from `_reorder_for_cover`: a shape with no run
+before its fill (no underlay -- the blend bands -- and the first shape a call
+sews) is priced from NO entry here, where the reorders are handed
+`start_near`. That entry hop is the jump between two shapes; stage 7 sews it,
+`emit` never does, so it is excluded from the comparison on purpose rather
+than counted as a disagreement in every such shape.
 
 ## What it found (2026-10-08, the nine logos at 80 mm, max_colors 6)
 

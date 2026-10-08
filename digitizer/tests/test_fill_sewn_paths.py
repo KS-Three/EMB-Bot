@@ -80,7 +80,9 @@ def _scored(runs, order):
 
 
 def _fill_points(runs):
-    return sorted(p for r in runs if r.kind == stitches.FILL for p in r.points)
+    # Rounded: a reversed path can land a coordinate one float step away.
+    return sorted((round(x, 9), round(y, 9))
+                  for r in runs if r.kind == stitches.FILL for x, y in r.points)
 
 
 def test_the_fixture_carries_phantom_columns():

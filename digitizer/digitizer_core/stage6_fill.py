@@ -1459,8 +1459,12 @@ def _sewn_paths(paths: list[list[tuple[float, float]]]
     shape whose scored (cuts, travel, exposed) differed from what `emit` sewed
     carried phantoms -- 16 of Golden Tee's 47 field paths, 38 of Bridge Bar's
     214 -- and pricing the same order without them reproduces the sewn travel
-    and exposure exactly. Dropping them here sews the same penetrations; only
-    the ORDER the two reorders pick can change, now chosen on what is sewn.
+    and exposure exactly. Dropping them here sews the same penetrations; the
+    ORDER the two reorders pick can change, now chosen on what is sewn. So can
+    the shape's exit: both reorders pin the LAST path to hold the exit still,
+    and when that was a phantom they pinned a point the needle never reaches,
+    leaving the real exit wherever the reorder put the last real path. Here
+    the last real path is pinned instead, which is what that pin is for.
     """
     return [p for p in paths if len(p) >= 2]
 

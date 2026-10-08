@@ -2153,9 +2153,12 @@ class PipelineConfig:
     # entry of 2026-09-11 says "`_order_cost` and `emit` can disagree about
     # what an order will sew"; `tools/fill_score_agreement.py` found these
     # phantoms are the only disagreement on the nine logos at 80 mm, and
-    # True drops them before either reorder runs. The same penetrations are
-    # sewn; only the column order moves. False is byte-identical to the
-    # engine before it. Defect 21's residual; `tests/test_fill_sewn_paths.py`.
+    # True drops them before either reorder runs. Within a shape the same
+    # penetrations are sewn and the column order moves; the shape's EXIT can
+    # move too, where `_fill_paths` ended on a phantom (both reorders pin the
+    # last path, and OFF pinned one `emit` never sews), so the next shape's
+    # entry -- and the design's stitch count -- can change. False is
+    # byte-identical to the engine before it. Defect 21's residual; `tests/test_fill_sewn_paths.py`.
     fill_order_sewn_paths: bool = False
 
     # Underlay under a gradient-class design's ordinary fills (2026-10-05,

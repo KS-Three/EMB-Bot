@@ -1,7 +1,10 @@
-"""OFF vs ON thread render, exposed fill-travel legs (exact > 0.1 mm) circled red."""
+"""OFF vs ON thread render, exposed fill-travel legs (exact > 0.1 mm) drawn red.
+
+    digitizer/.venv/bin/python docs/renders/fill-order-sewn-paths-2026-10-08/render_pair.py screenshot <out-dir>
+"""
 import sys
 from pathlib import Path
-ROOT = Path('/home/user/EMB-Bot/digitizer'); sys.path[:0] = [str(ROOT), str(ROOT / 'tools')]
+ROOT = Path(__file__).resolve().parents[3] / 'digitizer'; sys.path[:0] = [str(ROOT), str(ROOT / 'tools')]
 import cv2, numpy as np
 import travel_legs as tl                      # wraps StitchRun before the pipeline import
 from digitizer_core import PipelineConfig, stitches
