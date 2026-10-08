@@ -3,6 +3,7 @@
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
   import { tip } from "../lib/tip.js";
+  import { markDigitizeBusy } from "../lib/digitizeBusy.js";
   import { isCapPieceId } from "../lib/capPieces.js";
   import {
     buildDigitizeConfig,
@@ -47,6 +48,7 @@
     shapeBorderState } from "../lib/borderMenu.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
   import { loadImage, rasterSize, isVectorFile, uploadPlan, pngDimensionsFromBase64 } from "../lib/rasterize.js";
+  import { friendlyError } from "../lib/friendlyError.js";
   import CropBox from "./CropBox.svelte";
   import { proposeCrop } from "../lib/cropProposal.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
@@ -182,7 +184,7 @@
         appliedConfig: null, mergeGroups: [], splitLines: {},
       });
     } catch (err) {
-      error = String((err && err.message) || err);
+      error = friendlyError(err, "upload");
     } finally {
       fileBusy = false;
     }
@@ -498,7 +500,7 @@
         ...resizeLanding(el, element, resizeTarget),
       });
     } catch (err) {
-      if (!destroyed) error = String((err && err.message) || err);
+      if (!destroyed) error = friendlyError(err, "digitize");
     } finally {
       if (!destroyed) phase = "idle";
     }
@@ -551,6 +553,17 @@
   // ---- derived view state ---------------------------------------------------
 
   $: pending = phase !== "idle";
+  // The field shows the pinwheel while this run is in flight (lib/digitizeBusy).
+  // Keyed by the element the panel is showing; a switch to another element
+  // mid-run clears the old id rather than leaving its pinwheel up.
+  let busyId = null;
+  $: {
+    const id = element && element.id;
+    if (busyId != null && busyId !== id) markDigitizeBusy(busyId, false);
+    busyId = id;
+    markDigitizeBusy(id, pending);
+  }
+  onDestroy(() => markDigitizeBusy(busyId, false));
   // A run in flight OR a change the button has not been pressed for. Both
   // mean the same thing to anything READING the stitch plan — what is on the
   // canvas is the previous request.

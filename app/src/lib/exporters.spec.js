@@ -146,11 +146,14 @@ test("JEF surfaces a customer-readable error when the service is down, and never
   const { exportDesignPreferService, exportDesign } = await import("./exporters.js");
   const exportViaServiceFn = async () => { throw new Error("fetch failed"); };
   await expect(exportDesignPreferService(design, "jef", { preferService: true, exportViaServiceFn }))
-    .rejects.toThrow(/JEF is written by the digitizer service/);
-  // The cause rides along rather than being swallowed — "it isn't answering"
-  // without saying what happened is the message this replaces.
+    .rejects.toThrow(/JEF file because the digitizer service isn’t answering.*Start it/);
+  // The message says what to DO; fetch's own words ("fetch failed") are not
+  // shown to the customer (2026-10-08).
   await expect(exportDesignPreferService(design, "jef", { exportViaServiceFn }))
-    .rejects.toThrow(/fetch failed/);
+    .rejects.not.toThrow(/fetch failed/);
+  // A service that answers with a sentence keeps its cause.
+  await expect(exportDesignPreferService(design, "jef", { exportViaServiceFn: async () => { throw new Error("That design has no stitches to write."); } }))
+    .rejects.toThrow(/no stitches to write/);
   // And what the fallback WOULD have said, which is why it must not run.
   expect(() => exportDesign(design, "jef")).toThrow(/Unknown format: jef/);
 });
@@ -202,9 +205,9 @@ for (const [fmt, brand] of [["xxx", "Singer"], ["vp3", "Husqvarna Viking / Pfaff
     // wrapper serves three of them now, and "the digitizer service isn't
     // answering" alone does not say which download failed.
     await expect(exportDesignPreferService(design, fmt, { preferService: true, exportViaServiceFn }))
-      .rejects.toThrow(new RegExp(`${FMT} is written by the digitizer service`));
+      .rejects.toThrow(new RegExp(`${FMT} file because the digitizer service isn’t answering`));
     await expect(exportDesignPreferService(design, fmt, { exportViaServiceFn }))
-      .rejects.toThrow(/fetch failed/);
+      .rejects.not.toThrow(/fetch failed/);
     // And what the fallback WOULD have said, which is why it must not run.
     expect(() => exportDesign(design, fmt)).toThrow(new RegExp(`Unknown format: ${fmt}`));
   });
