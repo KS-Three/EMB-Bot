@@ -512,8 +512,8 @@ about the facts.
    75 → 52 trims, 6 → 3 colours; moves every B&W logo's regions);
    `satin_tip_corner_gate` (defect 59, #677; Becker trims 60 → 59; shifts
    junction ends on every logo); `lettering_columns` + `lettering_words`
-   (Becker 10,975 → 8,682 stitches, trims 60 → 29; no Euler walk or junction
-   overlap yet, and 31 stands); the image lane's cuts-vs-stitches patch (#697
+   (Becker 10,975 → 8,682 stitches, trims 60 → 29; the Euler walk and junction
+   tuck are in since 10-07, and 31 stands); the image lane's cuts-vs-stitches patch (#697
    candidate C: summit_badge −4% stitches for 38 → 1,219 cuts; only a sew-out
    prices a cut against a stitch). *(measured 2026-10-08 — PR #786,
    `docs/renders/off-flags-2026-10-08/`; `digitizer/tools/off_flags_sheet.py`)*

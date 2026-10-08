@@ -49,8 +49,12 @@ What this carries (each rule is the font engine's, `src/satinfont.js`
   of needle holes. A butting column that sews AFTER the one it butts stays
   square: an overlap on top is a lump, not a tuck.
 
-NOT yet: short stitches on the inside of a bend, tie stitches, an edge-walk
-underlay for tall caps. Every one of those is a Column consumer and goes here.
+- **the buried hop** (2026-10-08): a hop between runs that the link rule
+  would cut is sewn when it can run inside the letter with no more of it
+  left on top than a hop that rule already sews; the rest lies on ground a
+  later satin leg covers.
+
+NOT yet: tie stitches, an edge-walk underlay for tall caps. Every one of those is a Column consumer and goes here.
 """
 from __future__ import annotations
 
@@ -59,7 +63,7 @@ from collections import deque
 from dataclasses import dataclass, field
 
 from shapely.geometry import LineString, Point, Polygon
-from shapely.ops import nearest_points, substring
+from shapely.ops import nearest_points, substring, unary_union
 
 from . import machine, stitches
 from .stitches import StitchRun
@@ -646,7 +650,9 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         else:
             leg["tail"] = ext
     runs: list[StitchRun] = []
-    for leg in all_legs:
+    run_leg: list[int] = []         # the leg each run belongs to, for step 4
+    sewn: dict[int, Polygon] = {}   # leg -> the ground its satin covers
+    for li, leg in enumerate(all_legs):
         col = ready[leg["ci"]]
         lo, hi = min(leg["i0"], leg["i1"]), max(leg["i0"], leg["i1"])
         sts = col.stations[lo:hi + 1]
@@ -677,6 +683,8 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
             pts = _satin_points(sts, above, _comb_thresholds, _split_points)
             if len(pts) >= 4:
                 runs.append(StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id))
+                run_leg.extend([li] * (len(runs) - len(run_leg)))
+                sewn[li] = Polygon([a for a, _ in sts] + [b for _, b in sts][::-1]).buffer(0)
                 continue
         # an underpath (an earlier visit), or a satin span too short to
         # sew: the needle still has to reach the far end, under later thread
@@ -684,6 +692,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         if len(path) >= 2:
             runs.append(StitchRun(points=path, kind=stitches.TRAVEL, shape_id=shape_id))
             report["underpath_mm"] += LineString(path).length
+        run_leg.extend([li] * (len(runs) - len(run_leg)))
     if not any(r.kind == stitches.SATIN for r in runs):
         report["empty"] = True
         return [], report
@@ -712,22 +721,43 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 if path is not None:
                     runs.insert(0, StitchRun(points=_walk_points(path, _UNDERPATH_STEP_MM),
                                              kind=stitches.TRAVEL, shape_id=shape_id))
+                    run_leg.insert(0, -1)
                     report["entry_walk_mm"] = LineString(path).length
     # 4. Link consecutive runs: the satin tier's own sew-or-jump rule, verbatim
     #    (`satin_shape`'s tail). Under rail comp the rails sit a pull outside
     #    the artwork and a hop that ends on one is still inside the column.
+    #    A hop the rule would cut is sewn after all when it can run inside
+    #    the letter -- straight, or along the centrelines -- with no more of
+    #    it left on top than a hop the rule already sews (`allow`): the rest
+    #    lies on ground a later satin leg buries. Drone's five inside-letter
+    #    trims were hops of 3.1-4.0 mm against an `allow` of 3.0-3.4, four of
+    #    them wholly inside the letter (2026-10-08).
     allow = max(trim_at_mm, _CONNECTOR_WIDTHS * W)
-    for prev_run, cur in zip(runs, runs[1:]):
+    linked: list[StitchRun] = runs[:1]
+    for k in range(1, len(runs)):
+        prev_run, cur = runs[k - 1], runs[k]
         a, b = prev_run.points[-1], cur.points[0]
         d = math.dist(a, b)
-        if d < machine.TINY_STITCH_MM:
+        if d < machine.TINY_STITCH_MM or (d <= allow and poly_link.covers(LineString([a, b]))):
+            linked.append(cur)      # needle-down inside the letter, under thread sewn later
             continue
-        if d <= allow and poly_link.covers(LineString([a, b])):
-            continue        # needle-down inside the letter, under thread sewn later
+        path = ([a, b] if poly_link.covers(LineString([a, b]))
+                else _inside_path(ready, nodes, spans, a, b, _CONNECTOR_WIDTHS * W, poly_link))
+        later = [g for li, g in sewn.items() if li >= run_leg[k]]
+        if path is not None and later:
+            line = LineString(path)
+            if line.difference(unary_union(later)).length <= allow:
+                linked.append(StitchRun(points=_walk_points(path, _UNDERPATH_STEP_MM),
+                                        kind=stitches.TRAVEL, shape_id=shape_id))
+                linked.append(cur)
+                report["hops_buried"] = report.get("hops_buried", 0) + 1
+                report["underpath_mm"] += line.length
+                continue
         cur.jump = True
         cur.trim = d > trim_at_mm
         report["jumps"] += 1
-    return runs, report
+        linked.append(cur)
+    return linked, report
 
 
 def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,

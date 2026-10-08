@@ -306,6 +306,36 @@ def test_the_walk_in_goes_round_a_bend():
     assert math.dist(first.points[-1], runs[1].points[0]) < machine.TINY_STITCH_MM + 1e-6
 
 
+def test_a_hop_inside_the_letter_is_sewn_when_later_satin_buries_it():
+    """A blocky 4: the walk leaves one stroke and the next leg starts further
+    off than the connector reaches (two stroke widths), so the link rule cut
+    the thread inside the letter. The hop is sewn instead when it can run
+    inside the letter with no more of it on top than a hop the rule already
+    sews -- the rest is ground a later satin leg covers (drone: five
+    inside-letter trims, hops of 3.1-4.0 mm, 2026-10-08)."""
+    w, h, s = 1.4, 8.0, 8.0 / 12
+    four = unary_union([_rect(4 * s, 0, 4 * s + w, h), _rect(0, h / 3, 6 * s, h / 3 + w),
+                        _rect(0, h / 3, w, h)])
+    runs, report = lettering_columns_shape(four, "4", trim_at_mm=3.0,
+                                           start_near=(-1, 8), end_near=(-1, 0))
+    assert report["columns"] == 3 and report["hops_buried"] == 1
+    assert _jumps(runs) == []
+    allow = max(3.0, 2.0 * w)
+    for k in range(1, len(runs)):
+        hop = math.dist(runs[k - 1].points[-1], runs[k].points[0])
+        assert hop < machine.TINY_STITCH_MM + 1e-6 or hop <= allow
+    # every travel stays inside the letter, and what a later satin run does
+    # not cover of it is no longer than that reach
+    for k, r in enumerate(runs):
+        if r.kind != stitches.TRAVEL:
+            continue
+        line = LineString(r.points)
+        assert four.buffer(0.2).covers(line)
+        later = unary_union([LineString(q.points).buffer(0.3) for q in runs[k + 1:]
+                             if q.kind == stitches.SATIN] or [Point(99, 99)])
+        assert line.difference(later).length <= allow
+
+
 # ------------------------------------------------------- the E/F stem cut
 
 def _rounded_e():
