@@ -221,8 +221,7 @@ test("configurator: image content path -> sheet reflects it -> download", async 
   // changes` is the whole design, so a name beside this logo reads Colors 2
   // against Thread changes 2 (one text colour + two image colours = three
   // blocks) and both are right. Measured 2026-09-08. This project carries only
-  // the artwork, because the starter's empty text element is not sewable and
-  // `designSummary` lists only what sews.
+  // the artwork: the upload replaced the starter's empty text element.
   const summaryRow = async (label) => {
     const dd = page.locator(".sheet dl.summary div").filter({ has: page.locator(`dt:text-is("${label}")`) }).locator("dd");
     await expect(dd).toHaveCount(1);
@@ -247,10 +246,12 @@ test("configurator: image content path -> sheet reflects it -> download", async 
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "DST", exact: true }).click();
-  // NO confirm here, deliberately: the imported PNG does not fill the
-  // placement box the way auto-fit lettering does, so this design fits the
-  // 8x8 hoop and downloads in one click. The contrast with the text path
-  // above is the gate working -- it fires on the design, not on the garment.
+  // The confirm fires here too since 2026-10-08. The PNG used to skip it only
+  // because it was seeded as a SECOND element beside the fresh design's empty
+  // text box, at 40% of the hoop; it now replaces that box and auto-fits the
+  // placement exactly as lettering does (art-first-size.spec.js), so on a
+  // tote it exceeds the 8x8 hoop by the same construction as the text path.
+  await confirmOversizeExport(page, "DST");
   const download = await downloadPromise;
 
   expect(download.suggestedFilename()).toBe("design.dst");

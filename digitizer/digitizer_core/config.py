@@ -1014,6 +1014,14 @@ class PipelineConfig:
     # low-resolution regime the flag declines. Quality case unaffected; the
     # clock is now on the record. *(docs/flag-runtime-bills-2026-09-12.md)*
     curve_turn_deg: float | None = 15.0
+    # The run tier's outline with its curve vertices cut before it is
+    # sampled (`stage6_border._soften_ring`; MASTER_SCOPE defect 46, Law 37's
+    # direction-change score). Built OFF 2026-10-08: it moves only
+    # `curve_roughness_deg` on the run tier, measured in the PR that added
+    # it, and no render has met Kent's eye. Corners >= CORNER_DEG are kept;
+    # the cut stays inside `simplify_tol_mm`'s default. False is today's
+    # path, byte for byte.
+    run_soft_vertices: bool = False
     # Sub-pixel, anti-alias-aware contour vertices (`digitizer_core/
     # subpixel.py`; plan `docs/superpowers/plans/2026-09-08-subpixel-edges.md`
     # §3, PR 2). Stage 4 traces the LABEL mask, so every vertex it hands
@@ -1158,6 +1166,22 @@ class PipelineConfig:
     # How far a color extends underneath the color that sews after it. Enough
     # to survive fabric pull, small enough never to read as a color error.
     overlap_mm: float = 0.25
+    # Law 26 (machine-physics playbook row 9, MASTER_SCOPE defect 47): a join
+    # between two FILLS whose rows run parallel opens under pull — both
+    # shapes shrink along the same axis, away from the seam — and wants
+    # 1.0 mm of underlap on wovens; near-perpendicular, the later layer's
+    # rows bridge the seam and ~0 will do. True gives each fill->fill seam
+    # `overlap_mm + (overlap_parallel_mm - overlap_mm) * |cos(angle between
+    # the two fills' rows)|`: 1.0 mm parallel, `overlap_mm` perpendicular,
+    # never less than today. Satin on either side keeps `overlap_mm` (a
+    # column's stitch direction is its own normal, not one angle). False is
+    # the engine before it, byte for byte. Built OFF 2026-10-08: whether it
+    # closes the seam line on cloth is the sew-out's question (card block 6).
+    overlap_by_angle: bool = False
+    # The parallel-join underlap `overlap_by_angle` grows to. 1.0 is the
+    # law's WOVEN figure, verbatim; its knit 1.5–2.0 is sew-out-gated
+    # (ROADMAP gate 1), so knits get the woven floor, never less than today.
+    overlap_parallel_mm: float = 1.0
     # Stage 5's hole hold, read for what is actually IN the hole. A hole the
     # shell's pull growth would shrink under `min_detail_mm²` is held open at
     # its original size — right for a counter, wrong for a hole a LATER
@@ -1850,6 +1874,32 @@ class PipelineConfig:
     # screenshot's two lines were one group in each). Off, nothing calls it
     # and every reader is byte-identical. Tests: `tests/test_words.py`.
     lettering_words: bool = False
+    # ONE TIER PER WORD (L3 of the lettering lane, mechanism only;
+    # `words.assign_word_tiers`). Needs `lettering_words`; without it there
+    # are no words and nothing changes. ON, a word's tier is decided once
+    # from its stroke width instead of per letter from each shape's own area
+    # (the run tier) and width (`classify_ribbon`): satin when the stroke
+    # carries `machine.SATIN_MIN_CROSS_MM` (and is under the design's satin
+    # ceiling: over it the per-shape classifier decides, so the word only
+    # PROMOTES a letter onto satin), the run tier when it does not, and --
+    # only when `lettering_min_column_mm` is set -- "widened", every member
+    # offset to that floor (compared in sewn width) and sewn satin. With
+    # `bean_letter_max_stroke_mm` set, the whole word goes bean or none of
+    # it does. The floor and the bean line are cloth values (ROADMAP gate
+    # 1) and stay the existing flags' values; this sets no constant.
+    # Measured 2026-10-08 (`tools/word_tiers.py --words`, enthusiast /
+    # fremont / gaulke / drone / screenshot): 34 of 130 detected word-lines
+    # split their letters across tiers at 60-120 mm today; at 60 / 80 / 100
+    # mm, 18 of 62 OFF and 0 of 62 with this and `lettering_words` ON. That
+    # counts CONSISTENCY, not quality: a word under 0.5 mm goes to the run
+    # tier's outline (failure B's tube letters) until the floor is set.
+    # Under `lettering_columns` a "run" word takes the run tier ahead of
+    # the Column lane; a "satin" word that the satin tier cannot sew falls
+    # to the run outline, never to a sub-millimetre fill. With satin off the
+    # area rescue stands. A review tier override still wins. Off,
+    # byte-identical.
+    # Tests: `tests/test_word_tiers.py`.
+    lettering_word_tiers: bool = False
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
