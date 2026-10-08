@@ -120,7 +120,7 @@ export const THREAD_BRAND_INDEX = [
  {
   "id": "dmc",
   "label": "DMC",
-  "count": 458
+  "count": 456
  },
  {
   "id": "embroidex",
@@ -135,7 +135,7 @@ export const THREAD_BRAND_INDEX = [
  {
   "id": "fil-tec-glide",
   "label": "Fil-Tec Glide",
-  "count": 213
+  "count": 212
  },
  {
   "id": "fufu-polyester",
@@ -260,7 +260,7 @@ export const THREAD_BRAND_INDEX = [
  {
   "id": "robison-anton",
   "label": "Robison-Anton Polyester 40",
-  "count": 452
+  "count": 447
  },
  {
   "id": "robison-anton-rayon",

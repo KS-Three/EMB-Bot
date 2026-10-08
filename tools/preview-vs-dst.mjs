@@ -41,6 +41,7 @@
 // Python resolution is the crossval harness's: $EMB_CROSSVAL_PYTHON, else the
 // digitizer venv, else python3 on PATH. Pinning test:
 // test/preview-vs-dst.test.js
+import "./_help.mjs";
 import { createRequire } from "module";
 import fs from "node:fs";
 import os from "node:os";

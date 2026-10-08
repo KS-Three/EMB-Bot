@@ -105,3 +105,12 @@ on the closed polygon), never with a bare `extract_strokes` on a stage-5
 polygon; the M fixture built that way reproduced a defect the shipped
 engine does not have. Main checkout holds ANOTHER session's uncommitted
 memory note (letterform-priors-lane); do not pull or touch it.
+
+**Follow-up, 2026-10-08 (lane `claude/join-square-tslab`).** The E's
+middle arm at 80 mm is not a slab at all: it ends in a chamfered square cap
+whose corner its spine hooks into (render). Built OFF as its own flag,
+`satin_free_end_square`: a hooked square free end is laid square, and a slab
+off a free end is sewn as its own column (`_free_end_reading`,
+`_attach_slabs`; fixture `testdata/fremont_H_slab_feet.json`). Numbers on
+top of the join-square default: the PR's census. See DOCTRINE 2026-10-08.
+

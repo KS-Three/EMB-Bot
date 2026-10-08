@@ -25,6 +25,11 @@ nothing scores tonal gradation, so "scores better with the tier off" is not
 "looks better with the tier off". That gap is phase 1's exit condition, not a
 verdict on the tier, and the tier is Kent's ratified spec decision 2.
 """
+import sys as _sys
+if {"-h", "--help"} & set(_sys.argv[1:]):
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    print(__doc__ or "No usage text; see the source.")
+    raise SystemExit(0)
 import pathlib
 
 from digitizer_core import PipelineConfig

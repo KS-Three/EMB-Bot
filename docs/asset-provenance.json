@@ -1,0 +1,816 @@
+{
+ "about": "Provenance manifest for every image/stitch file under digitizer/testdata, app/e2e/fixtures, app/src/lib/fixtures, app/public, test/fixtures and docs/renders. Checked by test/asset-provenance.test.js. `status` is a recorded claim, not a licence grant. review:true marks entries Kent has not settled. Add a row when you add a file. docs/renders is forgiving: new render directories fall under a catch-all and a per-directory entry may be deleted with its directory; every other root is strict.",
+ "statuses": [
+  "synthetic",
+  "kent-owned",
+  "client-cleared-by-kent",
+  "third-party-cleared-by-kent",
+  "licensed-font-fixture",
+  "derived-render",
+  "real-art-clearance-unrecorded",
+  "unknown"
+ ],
+ "entries": [
+  {
+   "path": "digitizer/testdata/logo_whitebg.png",
+   "status": "synthetic",
+   "source": "Generated synthetic logo (make_test_logo.py / classifier-lens table)",
+   "basis": "docs/classifier-lens-2026-08-04.md"
+  },
+  {
+   "path": "digitizer/testdata/logo_alpha.png",
+   "status": "synthetic",
+   "source": "Generated synthetic logo (make_test_logo.py / classifier-lens table)",
+   "basis": "docs/classifier-lens-2026-08-04.md"
+  },
+  {
+   "path": "digitizer/testdata/ribbon_curve.png",
+   "status": "synthetic",
+   "source": "Generated synthetic logo (make_test_logo.py / classifier-lens table)",
+   "basis": "docs/classifier-lens-2026-08-04.md"
+  },
+  {
+   "path": "digitizer/testdata/bg_uncertain.png",
+   "status": "synthetic",
+   "source": "Generated synthetic logo (make_test_logo.py / classifier-lens table)",
+   "basis": "docs/classifier-lens-2026-08-04.md"
+  },
+  {
+   "path": "digitizer/testdata/black_ground_holes.png",
+   "status": "synthetic",
+   "source": "digitizer/tools/make_black_ground_fixture.py",
+   "basis": "script in repo"
+  },
+  {
+   "path": "digitizer/testdata/photo/gradient_ramp_linear.png",
+   "status": "synthetic",
+   "source": "digitizer/tools/make_gradient_fixture.py",
+   "basis": "generator script in repo"
+  },
+  {
+   "path": "digitizer/testdata/photo/gradient_ramp_radial.png",
+   "status": "synthetic",
+   "source": "digitizer/tools/make_gradient_fixture.py",
+   "basis": "generator script in repo"
+  },
+  {
+   "path": "digitizer/testdata/photo/photo_scene_stub.png",
+   "status": "synthetic",
+   "source": "digitizer/tools/make_photo_stub_fixtures.py",
+   "basis": "generator script in repo"
+  },
+  {
+   "path": "digitizer/testdata/photo/photo_subject_stub.png",
+   "status": "synthetic",
+   "source": "digitizer/tools/make_photo_stub_fixtures.py",
+   "basis": "generator script in repo"
+  },
+  {
+   "path": "digitizer/testdata/photo/region_blobs.png",
+   "status": "synthetic",
+   "source": "digitizer/tools/make_photo_region_fixture.py",
+   "basis": "generator script in repo"
+  },
+  {
+   "path": "digitizer/testdata/photo/fur_ramp.png",
+   "status": "synthetic",
+   "source": "digitizer/tools/make_palette_fixture.py",
+   "basis": "generator script in repo"
+  },
+  {
+   "path": "digitizer/testdata/photo/photo_chrome_specular.png",
+   "status": "synthetic",
+   "source": "digitizer/tools/make_photo_fixtures.py",
+   "basis": "generator script in repo"
+  },
+  {
+   "path": "digitizer/testdata/photo/photo_dof_meadow.png",
+   "status": "synthetic",
+   "source": "digitizer/tools/make_photo_fixtures.py",
+   "basis": "generator script in repo"
+  },
+  {
+   "path": "digitizer/testdata/photo/photo_grass_macro.png",
+   "status": "synthetic",
+   "source": "digitizer/tools/make_photo_fixtures.py",
+   "basis": "generator script in repo"
+  },
+  {
+   "path": "digitizer/testdata/photo/photo_owl_pale.png",
+   "status": "synthetic",
+   "source": "digitizer/tools/make_photo_fixtures.py",
+   "basis": "generator script in repo"
+  },
+  {
+   "path": "digitizer/testdata/photo/photo_sunset_backlit.png",
+   "status": "synthetic",
+   "source": "digitizer/tools/make_photo_fixtures.py",
+   "basis": "generator script in repo"
+  },
+  {
+   "path": "digitizer/testdata/photo/tight_crop_pale_subject.png",
+   "status": "synthetic",
+   "source": "digitizer/tools/make_tight_crop_fixture.py",
+   "basis": "generator script in repo"
+  },
+  {
+   "path": "digitizer/testdata/photo/summit_badge.png",
+   "status": "synthetic",
+   "source": "Described as synthetic in stage-0 / colour-bundle docs; generator not identified",
+   "basis": "docs/colour-bundle-decision-2026-09-10.md",
+   "review": true
+  },
+  {
+   "path": "digitizer/testdata/photo/repro_gradient_white_icon.png",
+   "status": "synthetic",
+   "source": "Synthetic reproduction of an icon Kent supplied",
+   "basis": "digitizer/testdata/photo/acceptance/README.md"
+  },
+  {
+   "path": "digitizer/testdata/photo/enthusiast_logo.png",
+   "status": "kent-owned",
+   "source": "Kent's real production logo",
+   "basis": "classifier-lens table; inventory docs/testdata-inventory.md (PR #705)"
+  },
+  {
+   "path": "app/e2e/fixtures/enthusiast_logo.png",
+   "status": "kent-owned",
+   "source": "Copy of digitizer/testdata/photo/enthusiast_logo.png (Kent's logo)",
+   "basis": "docs/testdata-inventory.md (PR #705)"
+  },
+  {
+   "path": "digitizer/testdata/photo/owl_kent.jpg",
+   "status": "kent-owned",
+   "source": "Kent's photograph; cleared as corpus fixture 2026-08-12",
+   "basis": "docs/scope-history.md"
+  },
+  {
+   "path": "digitizer/testdata/photo/drone_render.png",
+   "status": "kent-owned",
+   "source": "Real production art (the one real tonal artwork)",
+   "basis": "COOKBOOK; stage0-signal-decision; docs/testdata-inventory.md (PR #705)"
+  },
+  {
+   "path": "digitizer/testdata/photo/logo_drone_thermal_badge.png",
+   "status": "kent-owned",
+   "source": "Byte-identical duplicate of drone_render.png",
+   "basis": "inventory docs/testdata-inventory.md (PR #705)"
+  },
+  {
+   "path": "digitizer/testdata/becker_marine_logo.png",
+   "status": "client-cleared-by-kent",
+   "source": "Becker client artwork; Kent cleared becker comparison assets 2026-08-14",
+   "basis": "digitizer/testdata/inbox/README.md"
+  },
+  {
+   "prefix_ext": "digitizer/testdata/reference/*.dst",
+   "status": "third-party-cleared-by-kent",
+   "source": "Third-party commercial digitizer's stitch file (becker); comparison only",
+   "basis": "Kent clearance 2026-08-14, inbox/README.md"
+  },
+  {
+   "prefix_ext": "digitizer/testdata/reference/*.pes",
+   "status": "third-party-cleared-by-kent",
+   "source": "Third-party commercial digitizer's stitch file (becker); comparison only",
+   "basis": "Kent clearance 2026-08-14, inbox/README.md"
+  },
+  {
+   "prefix_ext": "digitizer/testdata/reference/*.jpg",
+   "status": "third-party-cleared-by-kent",
+   "source": "Vendor preview render of the pro's stitches (not artwork)",
+   "basis": "blockcensus.py INPUT PROVENANCE; md5-identical to delivery zip"
+  },
+  {
+   "path": "digitizer/testdata/logo_script_tires.png",
+   "status": "real-art-clearance-unrecorded",
+   "source": "Real logo (blockcensus.py: 'genuine committed artwork')",
+   "basis": "docs/testdata-inventory.md (PR #705)",
+   "review": true
+  },
+  {
+   "path": "digitizer/testdata/photo/logo_hotel_fremont.webp",
+   "status": "real-art-clearance-unrecorded",
+   "source": "Real Hotel Fremont logo (thin_strokes.REAL_ART)",
+   "basis": "docs/testdata-inventory.md (PR #705)",
+   "review": true
+  },
+  {
+   "path": "digitizer/testdata/photo/logo_bridge_bar.jpg",
+   "status": "real-art-clearance-unrecorded",
+   "source": "Real bar logo (thin_strokes.REAL_ART)",
+   "basis": "docs/testdata-inventory.md (PR #705)",
+   "review": true
+  },
+  {
+   "path": "digitizer/testdata/photo/logo_golden_tee.jpg",
+   "status": "real-art-clearance-unrecorded",
+   "source": "Real logo, arrived after 2026-08 stage-0 spec",
+   "basis": "docs/testdata-inventory.md (PR #705)",
+   "review": true
+  },
+  {
+   "path": "digitizer/testdata/photo/logo_gaulke_roofing.png",
+   "status": "real-art-clearance-unrecorded",
+   "source": "Real roofing logo (thin_strokes.REAL_ART)",
+   "basis": "docs/testdata-inventory.md (PR #705)",
+   "review": true
+  },
+  {
+   "path": "digitizer/testdata/photo/screenshot_phone_ui_golke.jpg",
+   "status": "real-art-clearance-unrecorded",
+   "source": "Real phone-UI screenshot of a logo, arrived after 2026-08 stage-0 spec",
+   "basis": "docs/testdata-inventory.md (PR #705)",
+   "review": true
+  },
+  {
+   "path": "digitizer/testdata/art/logo_golke_roofing.png",
+   "status": "unknown",
+   "source": "No provenance recorded beyond filename (likely client logos)",
+   "basis": "docs/testdata-inventory.md (PR #705)",
+   "review": true
+  },
+  {
+   "path": "digitizer/testdata/art/logo_hotel_fremont_patch.png",
+   "status": "unknown",
+   "source": "No provenance recorded beyond filename (likely client logos)",
+   "basis": "docs/testdata-inventory.md (PR #705)",
+   "review": true
+  },
+  {
+   "path": "digitizer/testdata/art/logo_mfab_hat.png",
+   "status": "unknown",
+   "source": "No provenance recorded beyond filename (likely client logos)",
+   "basis": "docs/testdata-inventory.md (PR #705)",
+   "review": true
+  },
+  {
+   "path": "digitizer/testdata/art/logo_mfab_lc.png",
+   "status": "unknown",
+   "source": "No provenance recorded beyond filename (likely client logos)",
+   "basis": "docs/testdata-inventory.md (PR #705)",
+   "review": true
+  },
+  {
+   "path": "digitizer/testdata/art/logo_toat_beanie.png",
+   "status": "unknown",
+   "source": "No provenance recorded beyond filename (likely client logos)",
+   "basis": "docs/testdata-inventory.md (PR #705)",
+   "review": true
+  },
+  {
+   "path": "digitizer/testdata/art/logo_toat_machine.png",
+   "status": "unknown",
+   "source": "No provenance recorded beyond filename (likely client logos)",
+   "basis": "docs/testdata-inventory.md (PR #705)",
+   "review": true
+  },
+  {
+   "path": "app/e2e/fixtures/two-squares.png",
+   "status": "synthetic",
+   "source": "Synthetic e2e upload fixture",
+   "basis": "docs/testdata-inventory.md (PR #705)"
+  },
+  {
+   "path": "app/e2e/fixtures/trace-holes-and-colors.png",
+   "status": "synthetic",
+   "source": "Synthetic e2e upload fixture",
+   "basis": "docs/testdata-inventory.md (PR #705)"
+  },
+  {
+   "path": "app/e2e/fixtures/vector_logo.svg",
+   "status": "synthetic",
+   "source": "Synthetic e2e upload fixture",
+   "basis": "docs/testdata-inventory.md (PR #705)"
+  },
+  {
+   "path": "app/e2e/fixtures/contrast-palette.png",
+   "status": "synthetic",
+   "source": "Synthetic colour-swatch palette for the artwork swatch-label contrast e2e (PR #708)",
+   "basis": "added with app/e2e swatch contrast spec"
+  },
+  {
+   "path": "app/src/lib/fixtures/asym_source.png",
+   "status": "synthetic",
+   "source": "Synthetic orientation fixture (black bar, red square, white bg)",
+   "basis": "digitized-asym.json _generated note"
+  },
+  {
+   "path": "test/fixtures/standard-tajima.dst",
+   "status": "synthetic",
+   "source": "Written by pystitch via digitizer/tools/make_standard_dst_fixture.py",
+   "basis": "generator in repo"
+  },
+  {
+   "path": "test/fixtures/fonts/scinotation/ltr.svg",
+   "status": "licensed-font-fixture",
+   "source": "Ink/Stitch-format SVG font fixture; licence in sibling LICENSE",
+   "basis": "test/fixtures/fonts/scinotation/LICENSE"
+  },
+  {
+   "path": "test/fixtures/fonts/transforms/ltr.svg",
+   "status": "licensed-font-fixture",
+   "source": "Ink/Stitch-format SVG font fixture; licence in sibling LICENSE",
+   "basis": "test/fixtures/fonts/transforms/LICENSE"
+  },
+  {
+   "path": "app/public/favicon.svg",
+   "status": "synthetic",
+   "source": "EMB-Bot app favicon (project asset)",
+   "basis": "app/public"
+  },
+  {
+   "prefix": "docs/renders/apex-verdict-2026-09-30/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; no fixture named in filenames",
+   "basis": "docs/renders/apex-verdict-2026-09-30 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/area-weighted-promotions-2026-09-16/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont, enthusiast, drone",
+   "basis": "docs/renders/area-weighted-promotions-2026-09-16 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/bean-letters-2026-10-02/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont, enthusiast, bridge, screenshot",
+   "basis": "docs/renders/bean-letters-2026-10-02 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/blend-fallback-underlay-2026-10-05/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont, drone, bridge",
+   "basis": "docs/renders/blend-fallback-underlay-2026-10-05 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/blend-fallback-underlay-on-2026-10-07/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: gaulke",
+   "basis": "docs/renders/blend-fallback-underlay-on-2026-10-07 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/blend-pullcomp-2026-09-04/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; no fixture named in filenames",
+   "basis": "docs/renders/blend-pullcomp-2026-09-04 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/bridge-phantom-2026-09-30/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: bridge",
+   "basis": "docs/renders/bridge-phantom-2026-09-30 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/cap-order-2026-09-19/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, gaulke, tires",
+   "basis": "docs/renders/cap-order-2026-09-19 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/color-cap-2026-09-07/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: drone, bridge",
+   "basis": "docs/renders/color-cap-2026-09-07 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/colour-bundle-2026-09-10/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: gaulke, golke, drone, tires, bridge, golden, summit, screenshot",
+   "basis": "docs/renders/colour-bundle-2026-09-10 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/column-tier-2026-09-09/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont, enthusiast",
+   "basis": "docs/renders/column-tier-2026-09-09 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/cross-tatami-underlay-2026-10-05/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont, drone, bridge",
+   "basis": "docs/renders/cross-tatami-underlay-2026-10-05 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/design-direction-2026-09-09/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, bridge",
+   "basis": "docs/renders/design-direction-2026-09-09 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/edge-cap-cliff-2026-09-12/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker",
+   "basis": "docs/renders/edge-cap-cliff-2026-09-12 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/edge-wobble-2026-09-19/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, gaulke, enthusiast",
+   "basis": "docs/renders/edge-wobble-2026-09-19 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/enclosed-by-garment-2026-09-10/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: gaulke, golden",
+   "basis": "docs/renders/enclosed-by-garment-2026-09-10 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/envelope-escapes-2026-09-30/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, golden",
+   "basis": "docs/renders/envelope-escapes-2026-09-30 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/envelope-teeth-2026-09-30/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker",
+   "basis": "docs/renders/envelope-teeth-2026-09-30 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/exp-travel-2026-10-07/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; no fixture named in filenames",
+   "basis": "docs/renders/exp-travel-2026-10-07 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/feathered-seams-2026-09-04/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; no fixture named in filenames",
+   "basis": "docs/renders/feathered-seams-2026-09-04 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/field-bar-fit-2026-10-08/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; no fixture named in filenames",
+   "basis": "docs/renders/field-bar-fit-2026-10-08 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/field-resize-2026-10-08/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; no fixture named in filenames",
+   "basis": "docs/renders/field-resize-2026-10-08 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/fill-bridge-cut-2026-09-19/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, fremont, bridge, screenshot",
+   "basis": "docs/renders/fill-bridge-cut-2026-09-19 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/fill-columns-2026-10-03/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; no fixture named in filenames",
+   "basis": "docs/renders/fill-columns-2026-10-03 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/fill-stagger-2026-10-03/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; no fixture named in filenames",
+   "basis": "docs/renders/fill-stagger-2026-10-03 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/fine-detail-work-grid-2026-09-30/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, fremont, enthusiast, bridge, screenshot",
+   "basis": "docs/renders/fine-detail-work-grid-2026-09-30 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/fine-lettering-2026-09-03/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, fremont, owl, drone",
+   "basis": "docs/renders/fine-lettering-2026-09-03 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/flip-sheet-2026-09-06/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, gaulke, bridge",
+   "basis": "docs/renders/flip-sheet-2026-09-06 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/gradient-ruling-2026-09-04/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; no fixture named in filenames",
+   "basis": "docs/renders/gradient-ruling-2026-09-04 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/halo-dissolve-2026-09-04/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: bridge",
+   "basis": "docs/renders/halo-dissolve-2026-09-04 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/join-square-2026-10-06/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont",
+   "basis": "docs/renders/join-square-2026-10-06 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/join-square-enthusiast-2026-10-07/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: enthusiast",
+   "basis": "docs/renders/join-square-enthusiast-2026-10-07 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/junction-bare-2026-09-06/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker",
+   "basis": "docs/renders/junction-bare-2026-09-06 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/junction-blobs-2026-09-09/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker",
+   "basis": "docs/renders/junction-blobs-2026-09-09 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/junction-clustering-2026-09-09/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker",
+   "basis": "docs/renders/junction-clustering-2026-09-09 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/junction-construction-2026-09-19/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker",
+   "basis": "docs/renders/junction-construction-2026-09-19 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/junction-cover-2026-09-09/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker",
+   "basis": "docs/renders/junction-cover-2026-09-09 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/keep-counters-2026-10-02/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: bridge",
+   "basis": "docs/renders/keep-counters-2026-10-02 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/kent-review-2026-09-03/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, fremont, bridge",
+   "basis": "docs/renders/kent-review-2026-09-03 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/legibility-2026-09-08/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont, gaulke",
+   "basis": "docs/renders/legibility-2026-09-08 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/legibility-2026-09-10/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont, golke, drone, bridge, screenshot",
+   "basis": "docs/renders/legibility-2026-09-10 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/lettering-anchor-2026-09-19/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, fremont, enthusiast, drone",
+   "basis": "docs/renders/lettering-anchor-2026-09-19 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/lettering-columns-2026-10-07/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, gaulke, enthusiast",
+   "basis": "docs/renders/lettering-columns-2026-10-07 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/lettering-corners-2026-09-19/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, drone",
+   "basis": "docs/renders/lettering-corners-2026-09-19 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/lettering-edge-cap-2026-09-19/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker",
+   "basis": "docs/renders/lettering-edge-cap-2026-09-19 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/lettering-euler-2026-09-19/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, enthusiast",
+   "basis": "docs/renders/lettering-euler-2026-09-19 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/lettering-rd-2026-10-07/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, fremont, gaulke, enthusiast",
+   "basis": "docs/renders/lettering-rd-2026-10-07 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/lettering-route-2026-09-19/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: enthusiast",
+   "basis": "docs/renders/lettering-route-2026-09-19 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/lettering-split-2026-09-19/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker",
+   "basis": "docs/renders/lettering-split-2026-09-19 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/native-ramp-2026-09-18/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker",
+   "basis": "docs/renders/native-ramp-2026-09-18 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/outer-rail-pitch-2026-10-06/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont",
+   "basis": "docs/renders/outer-rail-pitch-2026-10-06 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/polygon-axis-2026-09-16/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont, drone",
+   "basis": "docs/renders/polygon-axis-2026-09-16 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/polygon-axis-modes-2026-09-16/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: drone",
+   "basis": "docs/renders/polygon-axis-modes-2026-09-16 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/radial-design-ramp-2026-09-04/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; no fixture named in filenames",
+   "basis": "docs/renders/radial-design-ramp-2026-09-04 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/rail-comp-2026-09-09/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, enthusiast, drone",
+   "basis": "docs/renders/rail-comp-2026-09-09 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/rail-comp-bare-anatomy-2026-09-29/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: enthusiast",
+   "basis": "docs/renders/rail-comp-bare-anatomy-2026-09-29 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/rail-comp-junctions-2026-09-29/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, owl",
+   "basis": "docs/renders/rail-comp-junctions-2026-09-29 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/rail-comp-seams-2026-09-29/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: golden",
+   "basis": "docs/renders/rail-comp-seams-2026-09-29 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/rail-envelope-2026-09-30/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, golden",
+   "basis": "docs/renders/rail-envelope-2026-09-30 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/region-colour-2026-09-10/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: drone, bridge, golden",
+   "basis": "docs/renders/region-colour-2026-09-10 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/satin-hole-raster-2026-09-04/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; no fixture named in filenames",
+   "basis": "docs/renders/satin-hole-raster-2026-09-04 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/satin-per-stroke-2026-09-06/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker",
+   "basis": "docs/renders/satin-per-stroke-2026-09-06 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/sewout-reader-2026-09-30/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; no fixture named in filenames",
+   "basis": "docs/renders/sewout-reader-2026-09-30 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/slab-serifs-2026-10-07/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont",
+   "basis": "docs/renders/slab-serifs-2026-10-07 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/small-shape-resnap-2026-09-06/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: golke, screenshot",
+   "basis": "docs/renders/small-shape-resnap-2026-09-06 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/split-comb-2026-09-30/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker",
+   "basis": "docs/renders/split-comb-2026-09-30 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/star-walk-2026-10-03/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; no fixture named in filenames",
+   "basis": "docs/renders/star-walk-2026-10-03 (dir name dated; inputs are the fixtures above)"
+  },
+  {
+   "prefix": "docs/renders/subpixel-flip-2026-09-09/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont, enthusiast",
+   "basis": "docs/renders/subpixel-flip-2026-09-09 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/thin-strokes-2026-09-13/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont, gaulke, golke, drone, bridge, golden",
+   "basis": "docs/renders/thin-strokes-2026-09-13 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/travel-legs-2026-09-19/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, fremont, bridge",
+   "basis": "docs/renders/travel-legs-2026-09-19 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/uncovered-floor-2026-09-30/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, enthusiast, drone, golden",
+   "basis": "docs/renders/uncovered-floor-2026-09-30 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/wide-columns-2026-09-09/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker",
+   "basis": "docs/renders/wide-columns-2026-09-09 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures (catch-all for new render directories)",
+   "basis": "docs/renders is output, not input; add a per-directory entry above only to flag real/client art",
+   "catchall": true
+  }
+ ]
+}

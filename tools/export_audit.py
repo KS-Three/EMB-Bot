@@ -92,6 +92,11 @@ def render(spec_path: str, out: str) -> None:
 
 
 if __name__ == "__main__":
+    import sys as _sys
+    if {"-h", "--help"} & set(_sys.argv[1:]):
+        _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        print(__doc__ or "No usage text; see the source.")
+        raise SystemExit(0)
     cmd, args = sys.argv[1], sys.argv[2:]
     if cmd == "write":
         write(args[0], args[1], args[2:])

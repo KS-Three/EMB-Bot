@@ -32,6 +32,7 @@
 //    double-click whose second click slipped more than half a canvas pixel
 //    left one (ManualPanel now lets that click go by); a shape saved before
 //    then still carries it, and two anchors dragged together make another.
+import "./_help.mjs";
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";

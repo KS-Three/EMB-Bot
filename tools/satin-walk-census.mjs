@@ -41,6 +41,7 @@
 // The pre-change tree for the 2026-10-03 fix is `git archive f887e27d src
 // app/package.json app/src/lib | tar -x -C <dir>`. Its runaway designs take
 // seconds each (the default grid about an hour there); narrow the grid.
+import "./_help.mjs";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";

@@ -421,3 +421,12 @@ test("exportPNG handles aspect ratio guard (zero height treated as 1mm)", async 
     globalThis.document.createElement = originalCreateElement;
   }
 });
+
+test("exportFileName slugs the design name and falls back to design", async () => {
+  const { exportFileName } = await import("./exporters.js");
+  expect(exportFileName("Fritsch's Stitches: Hat #2", "dst")).toBe("fritsch-s-stitches-hat-2.dst");
+  expect(exportFileName("  ---  ", "pes")).toBe("design.pes");
+  expect(exportFileName("", "exp")).toBe("design.exp");
+  expect(exportFileName("Ünï/cödé\\..", "dst")).toBe("n-c-d.dst");
+  expect(exportFileName("a".repeat(200), "dst")).toBe("a".repeat(60) + ".dst");
+});
