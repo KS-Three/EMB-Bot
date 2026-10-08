@@ -1125,12 +1125,19 @@ class LetterOutcome:
         return self.fit.status + (":" + self.fit.reason if self.fit.reason else "")
 
 
-def lettering_words(regions) -> list[list]:
+def lettering_words(regions, words: bool = False) -> list[list]:
     """The lines of lettering to refit: `textcluster._lettering_groups` (the
     house pass's groups), plus -- for text-tagged letters that pass leaves
     out -- the tagger's own `text_cluster_id`. Bridge's 8 tagged blobs form
     no `_lettering_groups` group at all (its size/aspect links are stricter
-    than the tagger's) and reach the fit only through the cluster id."""
+    than the tagger's) and reach the fit only through the cluster id.
+
+    `words` (`cfg.lettering_words`): the one tagger's words are the lines
+    (`words.tag_words` ran first), every member a letter, and nothing
+    else is read -- no words, nothing to refit."""
+    if words:
+        from .words import word_groups
+        return word_groups(regions)
     from .textcluster import _lettering_groups
     groups = _lettering_groups(regions)
     seen = {r.shape_id for g in groups for r in g}
@@ -1143,7 +1150,7 @@ def lettering_words(regions) -> list[list]:
 
 
 def plan_letterform_priors(regions, src_px_mm: float, grid_px_mm: float,
-                           k: float = K_DEFAULT) -> list[LetterOutcome]:
+                           k: float = K_DEFAULT, words: bool = False) -> list[LetterOutcome]:
     """Every text-tagged member of every word, fitted; nothing written back.
     `src_px_mm` is the source image's pixel at the design size
     (`1 / Prep.input_px_per_mm`), `grid_px_mm` the working grid's
@@ -1152,8 +1159,8 @@ def plan_letterform_priors(regions, src_px_mm: float, grid_px_mm: float,
     from .textcluster import (_house_chains, _line_of_text_deg, _skeleton_stroke_stats,
                               _stem_slant_deg)
     out: list[LetterOutcome] = []
-    for wi, members in enumerate(lettering_words(regions)):
-        letters = [r for r in members if r.meta.get("text_candidate")]
+    for wi, members in enumerate(lettering_words(regions, words)):
+        letters = members if words else [r for r in members if r.meta.get("text_candidate")]
         if not letters:
             continue
         line = _line_of_text_deg(members)
@@ -1208,12 +1215,12 @@ def plan_letterform_priors(regions, src_px_mm: float, grid_px_mm: float,
 
 
 def apply_letterform_priors(regions, src_px_mm: float, grid_px_mm: float,
-                            k: float = K_DEFAULT) -> list[LetterOutcome]:
+                            k: float = K_DEFAULT, words: bool = False) -> list[LetterOutcome]:
     """The pipeline's call: fit, then write every accepted refit into its
     region (same `shape_id`, same `meta` plus `letterform_prior`), leaving a
     passed or refused letter's polygon exactly as it was. Returns the
     outcomes for whoever wants the detail (the spike's sheets, a test)."""
-    outcomes = plan_letterform_priors(regions, src_px_mm, grid_px_mm, k)
+    outcomes = plan_letterform_priors(regions, src_px_mm, grid_px_mm, k, words)
     by_id = {o.shape_id: o for o in outcomes}
     for r in regions:
         o = by_id.get(r.shape_id)

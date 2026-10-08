@@ -1,0 +1,133 @@
+{
+ "lettering_words": {
+  "caption": "The price the pictures cannot show, counted from the designs that drew these pairs: shipped → flag where they differ, one figure where they do not. 'Changed shapes' are the shapes whose runs differ; 'their trims' are trims into them. Nothing here says which side is better.",
+  "columns": [
+   "fixture",
+   "on the page",
+   "stitches",
+   "trims",
+   "colour changes",
+   "cones",
+   "changed shapes",
+   "their stitches",
+   "their trims",
+   "uncovered ink",
+   "lost_frac",
+   "ragged mm"
+  ],
+  "rows": [
+   [
+    "becker",
+    "identical",
+    "10,975",
+    "60",
+    "1",
+    "1",
+    "0",
+    "0",
+    "0",
+    "6.00%",
+    "0.0250",
+    "0.180"
+   ],
+   [
+    "bridge",
+    "pair",
+    "18,487 → 18,475",
+    "101",
+    "6",
+    "6",
+    "9",
+    "565 → 553",
+    "9",
+    "0.17%",
+    "0.2207 → 0.2199",
+    "0.218"
+   ],
+   [
+    "drone",
+    "pair",
+    "19,345",
+    "138 → 140",
+    "9",
+    "6",
+    "9",
+    "1,069",
+    "6 → 8",
+    "0.33% → 0.34%",
+    "0.0986 → 0.0976",
+    "0.184"
+   ],
+   [
+    "enthusiast",
+    "pair",
+    "2,612 → 2,602",
+    "14",
+    "2",
+    "2",
+    "9",
+    "1,021 → 1,011",
+    "6",
+    "1.85% → 1.94%",
+    "0.2934 → 0.2906",
+    "0.199 → 0.198"
+   ],
+   [
+    "fremont",
+    "pair",
+    "20,175",
+    "57",
+    "3",
+    "3",
+    "4",
+    "438",
+    "1",
+    "0.00%",
+    "0.0303",
+    "0.092"
+   ],
+   [
+    "gaulke",
+    "identical",
+    "4,569",
+    "33",
+    "2",
+    "2",
+    "0",
+    "0",
+    "0",
+    "94.74%",
+    "0.9811",
+    "0.281"
+   ],
+   [
+    "golden_tee",
+    "pair",
+    "8,933 → 8,968",
+    "44",
+    "9",
+    "6",
+    "7",
+    "2,854 → 2,889",
+    "9",
+    "0.18% → 0.17%",
+    "0.4466 → 0.4699",
+    "0.166 → 0.167"
+   ],
+   [
+    "tires",
+    "identical",
+    "2,864",
+    "6",
+    "0",
+    "1",
+    "0",
+    "0",
+    "0",
+    "0.01%",
+    "0.1074",
+    "0.114"
+   ]
+  ]
+ }
+}
