@@ -37,6 +37,7 @@ implementation and therefore no conflict.
 from __future__ import annotations
 
 import io
+import math
 
 import pystitch
 
@@ -117,11 +118,76 @@ def supported() -> list[dict]:
     return [{"format": k, **v} for k, v in FORMATS.items()]
 
 
+# The repo's sewability bar: one DST record (`src/dst.js` MAX_DELTA). Kent's
+# 2026-09-12 ruling made it the bar for every format, PES included.
+SEWN_BAR = 121
+
+
+def _split_steps(dx: int, dy: int, limit: int) -> list[tuple[int, int]]:
+    """`splitSteps` from src/dst.js, line for line: n steps along the straight
+    line, rounding the RUNNING total so the sum is exact and every landing
+    point sits within half a unit of the line; one more step if two adjacent
+    roundings land a step at limit+1."""
+    n = max(1, -(-abs(dx) // limit), -(-abs(dy) // limit))
+    while True:
+        steps, ax, ay = [], 0, 0
+        for i in range(1, n + 1):
+            # JS Math.round: half rounds UP, not to even.
+            sx = int(math.floor(dx * i / n + 0.5)) - ax
+            sy = int(math.floor(dy * i / n + 0.5)) - ay
+            if abs(sx) > limit or abs(sy) > limit:
+                break
+            steps.append((sx, sy))
+            ax += sx
+            ay += sy
+        else:
+            return steps
+        n += 1
+
+
+def split_sewn_moves(pattern: pystitch.EmbPattern, bar: int = SEWN_BAR) -> pystitch.EmbPattern:
+    """Split every over-length SEWN move into stitches, the browser's rule.
+
+    A STITCH that directly follows a STITCH and lies more than `bar` units
+    away on either axis is preceded by intermediate STITCH records along the
+    line. Anything else — the first stitch of the file, or one after a jump,
+    a cut or a colour change — is travel-in and is left for pystitch's own
+    jump-then-needle. This is `encodeDST`'s chain rule (src/dst.js).
+
+    Left to pystitch, an over-length sewn move became JUMPS in DST, EXP, JEF,
+    XXX and U01 (thread the design sews, sent as travel) and one long stitch
+    in PES and PEC (a move no machine sews) — found by
+    tools/export-audit.mjs, 2026-10-08. A pattern with nothing over the bar
+    is returned as it came, so its bytes do not change.
+    """
+    out, prev, changed = [], None, False
+    for x, y, cmd in pattern.stitches:
+        c = cmd & pystitch.COMMAND_MASK
+        if c == pystitch.STITCH and prev is not None:
+            dx, dy = int(round(x - prev[0])), int(round(y - prev[1]))
+            if abs(dx) > bar or abs(dy) > bar:
+                px, py = prev
+                for sx, sy in _split_steps(dx, dy, bar)[:-1]:
+                    px, py = px + sx, py + sy
+                    out.append([px, py, cmd])
+                changed = True
+        out.append([x, y, cmd])
+        prev = (x, y) if c == pystitch.STITCH else None
+    if not changed:
+        return pattern
+    split = pystitch.EmbPattern()
+    split.threadlist = list(pattern.threadlist)
+    split.extras = dict(pattern.extras)
+    split.stitches = out
+    return split
+
+
 def write(pattern: pystitch.EmbPattern, fmt: str) -> bytes:
     fmt = fmt.lower().lstrip(".")
     writer = _WRITERS.get(fmt)
     if writer is None:
         raise KeyError(fmt)
     buf = io.BytesIO()
-    writer(pattern, buf)
+    # SVG is a proof, not a machine file: it draws the design's own segments.
+    writer(pattern if fmt == "svg" else split_sewn_moves(pattern), buf)
     return buf.getvalue()
