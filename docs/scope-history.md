@@ -20132,16 +20132,3 @@ to him carry the off/on float picture (`tools/fill-columns-image-sheet.mjs`;
 the first, becker at left chest: 1,113 floats off the fill → 0, cuts 14 →
 11, stitches +18.2%). Guarded by a traced-counter test that reads 351
 off-fill floats with the flag dropped. "Waiting on Kent" 22 resolved.
-
-**Later the same day: the image lane's price taken apart — HOLD, no engine
-change.** Asked by the foreman to cut the +10.3% without bringing floats
-back. `tools/fill-columns-price.mjs` (42 designs, 4 colours): of +115,770
-stitches, 64,478 (56%) are the span starts that were float landings off and
-are sewn on — the floats taken away, not overhead; the other 51,292 (4.6%),
-two-thirds in the underlay, whose 2–2.5 mm column walks break traced art
-into short columns. Four candidate walks measured through
-`fill-columns-lanes.mjs --src`: rounding deep turns +10.2%; underlay floats
-over covered ground +9.6% but off-fill floats 151 → 407; a checked plain
-underlay walk +7.3% but cuts 1,072 → 8,268 (going round instead: +16.4%); a
-one-sided edge-run hug −444 stitches. Patches kept in
-`docs/renders/fill-columns-lanes-2026-10-08/candidates/`; none shipped.
