@@ -218,6 +218,15 @@ class PipelineConfig:
     # region set on every gradient-class design, so it waits on Kent's
     # look at a render, not on a green suite.
     dissolve_phantom_blends: bool = False
+    # Defect 58: a black-and-white logo sews four to six cones, because thin
+    # strokes on a low-resolution source are mostly anti-alias grey. ON, a
+    # raster `two_tone.detect` reads as two inks (achromatic, two modes, no
+    # grey plateau) is thresholded to those two inks right after stage 1, so
+    # no region ever sees the grey. Per IMAGE, which is why it leaves
+    # `logo_bridge_bar.jpg`'s ringing alone where the per-region stroke rule
+    # did not (DOCTRINE 2026-10-05). OFF by default: it moves the region set
+    # on every black-and-white logo, so it waits on Kent's look at a render.
+    two_tone_snap: bool = False
     # Make the gradient lane's region edges follow the PIXELS rather than the
     # SEEDS superpixels they are built from
     # (`stage2_photo_segment.snap_region_edges`). Measured 2026-09-30 on
@@ -1769,6 +1778,26 @@ class PipelineConfig:
     # stitches are not built, and the renders are Kent's to judge first.
     # Off, byte-identical. Tests: `tests/test_lettering_columns.py`.
     lettering_columns: bool = False
+    # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
+    # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
+    # failure E). ON, `words.tag_words` finds each line of lettering once --
+    # one door, one size / weight / ink link, rows split, rope-like pattern
+    # elements removed -- and the lettering readers downstream of it take
+    # their groups from it: `columns.is_lettering` (the Column lane), the
+    # satin split's ceiling and the cap-skip cover (`text_candidate` before),
+    # the bean-letter word and the shared stitch width (`text_cluster_id`
+    # before), the house angle (`_lettering_groups` before) and the
+    # letterform priors (both before; under the flag it refits every word
+    # member). The rescued-glyph redraw (`regularize_text_clusters`, which
+    # also widens under `lettering_min_column_mm`) keeps the text cluster
+    # on purpose, as do the Studio's text badge and the OCR read. Scored
+    # against hand labels on eight real logos (`tools/word_tagger_eval.py`,
+    # 2026-10-08): detection kappa level with the text cluster's and above
+    # the house group's and the Column lane's either-reading; line grouping
+    # ARI 0.99 where both old taggers read 0.65 (gaulke's and the
+    # screenshot's two lines were one group in each). Off, nothing calls it
+    # and every reader is byte-identical. Tests: `tests/test_words.py`.
+    lettering_words: bool = False
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the

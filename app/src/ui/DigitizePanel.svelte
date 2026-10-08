@@ -14,6 +14,7 @@
     canonicalShapeEdits,
     editsKey,
     configKey,
+    resizedTargetWidth,
     reviewFromJob,
     reconcileReview,
     reorderWithinLayer,
@@ -433,7 +434,11 @@
     error = "";
     phase = "submitting";
     try {
-      const cfg = buildDigitizeConfig(el, project);
+      // A field resize is a Design width change (resizedTargetWidth): the
+      // run digitizes at the dragged width, and the landing patch below
+      // makes that the design's own width instead of a scale on top of it.
+      const resizeTarget = resizedTargetWidth(el, nativeWidthOf(el));
+      const cfg = buildDigitizeConfig(withTargetWidth(el, resizeTarget), project);
       // The preview path is synchronous here on purpose: it is the
       // pre-2026-09-20 flow tick for tick, so nothing about restitch timing
       // moved for an element with no stored original.
@@ -490,6 +495,7 @@
         // this run was in flight is not in these stitches, and the button
         // has to come back transparent for it.
         appliedConfig: configKey(cfg),
+        ...resizeLanding(el, element, resizeTarget),
       });
     } catch (err) {
       if (!destroyed) error = String((err && err.message) || err);
@@ -515,7 +521,11 @@
   // `hasPendingEdits` (below, off `appliedEdits`) still catches that
   // project's unapplied shape edits.
   const mountKey = configKey(buildDigitizeConfig(element, project));
-  $: currentKey = configKey(buildDigitizeConfig(element, project));
+  // Read against the width a field resize asks for (resizedTargetWidth), so
+  // a corner drag turns the button transparent like a typed Design width.
+  // `mountKey` stays on the raw element: a project saved resized and never
+  // re-run opens transparent, which is the truth about its stitches.
+  $: currentKey = configKey(buildDigitizeConfig(withTargetWidth(element, resizeTarget), project));
   $: stale =
     !!element.result &&
     (currentKey !== (element.appliedConfig || mountKey) || hasPendingEdits);
@@ -663,12 +673,15 @@
 
   // Resize honesty (Kent's rule, same as DesignPanel): the field's resize
   // handles SCALE baked stitches, they don't re-digitize — density changes
-  // with size. Unlike a .dst import, here the fix is one click away:
-  // re-digitize at the resized width.
+  // with size. Unlike a .dst import, here the fix is the run button: the
+  // dragged width IS the design width until the next run (resizedTargetWidth),
+  // so the button goes transparent, Design width shows it, and a run lands
+  // the stitches at it.
   $: rotation = element.rotationDeg || 0;
   $: nativeWidthNow = rotatedWidth(decoded, rotation);
   $: scaleFactor = decoded && element.sizeMm ? element.sizeMm / Math.max(0.1, nativeWidthNow) : 1;
-  $: resized = Math.abs(scaleFactor - 1) > 0.02;
+  $: resizeTarget = resizedTargetWidth(element, decoded ? nativeWidthNow : 0);
+  $: resized = resizeTarget != null;
 
   function rotatedWidth(dec, deg) {
     if (!dec) return 0.1;
@@ -679,12 +692,40 @@
     return Math.abs(dec.widthMM * Math.cos(rad)) + Math.abs(dec.heightMM * Math.sin(rad));
   }
 
-  // "Re-digitize at N mm": make the dragged size the new digitize target.
-  // The params patch triggers the auto re-run; sizeMm clears in the same
-  // patch so the fresh native-size stitches aren't immediately re-scaled.
-  function redigitizeAtSize(el) {
-    const target = Math.round(el.sizeMm * 10) / 10;
-    patch({ params: { ...el.params, target_width_mm: target }, sizeMm: null });
+  // The same width for any element, not only the one on screen — runDigitize
+  // is handed the element it was clicked for.
+  function nativeWidthOf(el) {
+    const dec = el && el.result ? decodedFromDesignCached(el.result) : null;
+    return dec ? rotatedWidth(dec, el.rotationDeg || 0) : 0;
+  }
+
+  function withTargetWidth(el, target) {
+    return target == null ? el : { ...el, params: { ...el.params, target_width_mm: target } };
+  }
+
+  // What a landing run writes for a resize it was sent with. Until
+  // 2026-10-08 "Re-digitize at N mm" cleared `sizeMm` and set the width and
+  // waited for an automatic re-run the 2026-10-05 ruling had removed: the
+  // design jumped BACK to its old size on the canvas and nothing ran. Now the
+  // run itself carries the width, and only on landing does the scale go.
+  // Compared against the live element so an edit made mid-flight survives: a
+  // newly typed width is kept, and a second drag keeps its scale (re-read
+  // against the new result, so the button stays transparent for it).
+  function resizeLanding(sent, live, target) {
+    if (target == null) return {};
+    const out = {};
+    const sentW = sent.params && sent.params.target_width_mm;
+    const liveW = live.params && live.params.target_width_mm;
+    if (sentW === liveW) out.params = { ...live.params, target_width_mm: target };
+    if (live.sizeMm === sent.sizeMm) out.sizeMm = null;
+    return out;
+  }
+
+  // A typed width replaces a dragged one: the scale goes with it, or the drag
+  // would keep overriding the number in the box.
+  function setDesignWidth(v) {
+    if (resized) patch({ params: { ...element.params, target_width_mm: v }, sizeMm: null });
+    else setParam("target_width_mm", v);
   }
 
   // Same explicit-argument pattern as DesignPanel's blockRgb.
@@ -1787,7 +1828,12 @@
     {#if statusLine}<p class="dgp-status" role="status">{statusLine}</p>{/if}
     {#if stale && !pending && health}
       <p class="dgp-status" role="status" data-testid="digitize-stale">
-        Changed since the last run — press Auto Digitize Image to restitch.
+        {#if resized}
+          Resized to {resizeTarget.toFixed(0)} mm — the stitches are only scaled until you press
+          Auto Digitize Image to restitch at that width.
+        {:else}
+          Changed since the last run — press Auto Digitize Image to restitch.
+        {/if}
       </p>
     {/if}
 
@@ -1806,8 +1852,8 @@
           min="10"
           max="400"
           step="1"
-          value={element.params.target_width_mm}
-          on:change={(e) => setParam("target_width_mm", Math.max(10, parseFloat(e.currentTarget.value) || 80))}
+          value={resizeTarget ?? element.params.target_width_mm}
+          on:change={(e) => setDesignWidth(Math.min(400, Math.max(10, parseFloat(e.currentTarget.value) || 80)))}
         />
         <span class="dgp-unit">mm</span>
       </label>
@@ -2081,9 +2127,9 @@
           type="button"
           class="dgp-resizefix"
           disabled={pending || !health}
-          on:click={() => redigitizeAtSize(element)}
+          on:click={() => runDigitize(element)}
         >
-          Re-digitize at {element.sizeMm.toFixed(0)} mm
+          Re-digitize at {resizeTarget.toFixed(0)} mm
         </button>
       {/if}
       {/if}
