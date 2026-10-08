@@ -19991,13 +19991,15 @@ the pick; no code changes with it.
 
 `digitizer_core/words.py`: one door, the text cluster's link, rows split at
 the widest gap across the line, congruent-pattern elements (rope twists)
-removed before words form. Under the flag every stitch-affecting lettering
-reader groups by `word_id`. Scored on hand labels of eight real logos
+removed before words form. Under the flag the lettering readers group by
+`word_id`; the rescued redraw (`regularize_text_clusters`) keeps the text
+cluster on purpose. Scored on hand labels of eight real logos
 (`tools/word_tagger_eval.py`, `testdata/lettering_truth.json`): pooled
 detection kappa **0.907** [0.833, 0.945] against the text cluster's 0.881,
 the house group's 0.616 and the Column lane's either-reading 0.637 (paired
 bootstrap: level with the first, above the other two); line ARI **0.99**
-against 0.65. Constants fitted in-sample; the CV screen is 0.03 over the
+against 0.65 (moved by gaulke and the screenshot alone). Constants fitted
+in-sample; the CV screen is 0.03 over the
 highest letter. ON vs OFF through `digitize()`: three logos byte-identical,
 six within 0.4% of stitches, drone one trim fewer.
 `docs/word-tagger-2026-10-08/README.md`.

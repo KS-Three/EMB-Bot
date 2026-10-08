@@ -1700,13 +1700,15 @@ class PipelineConfig:
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
     # failure E). ON, `words.tag_words` finds each line of lettering once --
     # one door, one size / weight / ink link, rows split, rope-like pattern
-    # elements removed -- and every stitch-affecting lettering reader takes
-    # its groups from it: `columns.is_lettering` (the Column lane), the
+    # elements removed -- and the lettering readers downstream of it take
+    # their groups from it: `columns.is_lettering` (the Column lane), the
     # satin split's ceiling and the cap-skip cover (`text_candidate` before),
     # the bean-letter word and the shared stitch width (`text_cluster_id`
     # before), the house angle (`_lettering_groups` before) and the
-    # letterform priors (both before). The Studio's text badge, the OCR
-    # read and the rescued-glyph redraw keep the text cluster. Scored
+    # letterform priors (both before; under the flag it refits every word
+    # member). The rescued-glyph redraw (`regularize_text_clusters`, which
+    # also widens under `lettering_min_column_mm`) keeps the text cluster
+    # on purpose, as do the Studio's text badge and the OCR read. Scored
     # against hand labels on eight real logos (`tools/word_tagger_eval.py`,
     # 2026-10-08): detection kappa level with the text cluster's and above
     # the house group's and the Column lane's either-reading; line grouping

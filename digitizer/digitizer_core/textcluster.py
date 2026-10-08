@@ -1842,7 +1842,9 @@ def set_lettering_house_angle(regions: list[Region], p: Prep, *,
         # the two taggers disagree on real logos (ENTHUSIAST's wordmark is a
         # house group and not a text cluster; its subline the reverse --
         # failure E of `docs/lettering-architecture-rd-2026-10-07.md`).
-        # Metadata only; no stitch reads it unless that flag is on.
+        # Metadata only; no stitch reads it unless that flag is on. Under
+        # `cfg.lettering_words` the groups ARE the words and `is_lettering`
+        # reads `word_id`, not this key.
         for r in members:
             r.meta.setdefault("lettering_group", True)
         angle = _cluster_house_angle_deg(members, fourfold=fourfold,

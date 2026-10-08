@@ -19,8 +19,8 @@ determinism, not tagging.
   `textcluster._linked`, unchanged.
 - **Rows split.** A linked component that sits in two rows is cut at the
   widest gap across its line of text, when that gap is over 0.75 of a cap.
-- **Patterns out.** A candidate congruent with five or more others in its
-  component is dropped before words form. Congruent means IoU ≥ 0.8 after
+- **Patterns out.** A candidate congruent with five or more others within
+  five of its own heights is dropped before words form. Congruent means IoU ≥ 0.8 after
   normalising for position, scale, rotation and mirror. Rope twists and
   border beads are dropped this way. The rest re-link without them.
 - **The word model.** Each word carries its members in reading order, the
@@ -28,7 +28,7 @@ determinism, not tagging.
   cap height, the stroke width and its spread, and the baseline. The OCR
   string is joined from the per-member read.
 
-**Under the flag, every reader that changes stitches groups by the word:**
+**Under the flag, these readers group by the word:**
 
 | Reader | Grouped before by | Under the flag |
 |---|---|---|
@@ -40,9 +40,18 @@ determinism, not tagging.
 | House angle | `_lettering_groups` | word |
 | Letterform priors | both | word |
 
-The Studio's text badge, Convert-to-text, the OCR read, the rescued-glyph
-redraw and the legibility warning keep the text cluster. They do not
-change stitches, and the redraw's evidence is the rescued population only.
+**One reader that changes stitches keeps the text cluster on purpose:**
+`regularize_text_clusters`. It runs before the tagger and redraws rescued
+members, widening them too when `lettering_min_column_mm` is set, and its
+evidence is the rescued population only. So with that floor set, a word
+member outside the text cluster (Fremont's P and A) is not widened. The
+Studio's text badge, Convert-to-text, the OCR read and the legibility
+warning also keep the text cluster; they do not change stitches.
+
+**The letterform priors refit every word member under the flag**, not only
+`text_candidate` members. That includes the tagger's own false positives
+(two rope twists, three drone scenery pieces, gaulke's window panes). The
+fit's own gates may refuse them; gaulke reads byte-identical ON.
 
 ## How it was scored (ROADMAP gate 4: chance-corrected only)
 
@@ -112,7 +121,10 @@ The full numbers are in `scores.json`.
 - **The Column lane's reading improves most.** It reads either tagger
   today, and on Fremont and the screenshot that carries the house group's
   false positives.
-- **Grouping is the clearest win.** Gaulke's two lines and the
+- **Grouping is the clearest win, on two fixtures.** ARI is only defined
+  where a fixture has two or more lines both sides found, and the mean
+  moves on gaulke and the screenshot alone (0 → 1); no interval is given.
+  Gaulke's two lines and the
   screenshot's two lines were each one group in both old taggers (ARI ≈ 0).
   The row split gives each line its own word. Fremont's EST and 1895 were
   two text clusters and are one line now.
@@ -146,8 +158,18 @@ The full numbers are in `scores.json`.
   ARI stays at 0.99–1.0 throughout.
 - **Labels are one person's eye on one render each.** No inter-rater
   agreement exists.
-- **A word spelling one glyph six times** would have that glyph dropped as
-  a pattern. The worst labelled case is four I's.
+- **The pattern test treats glyphs as congruent under rotation, mirror and
+  scale**, so b/d/p/q, n/u, M/W, 6/9 and plain bars are each one shape. It
+  counts twins only within five heights, so a letter repeated across a
+  lockup survives (MILLION DOLLAR BILLS' six L's: pinned by a test), but
+  six of one such family within five heights of each other would be
+  dropped. The worst labelled case is four I's.
+- **A component under six members is never split into rows**, so a short
+  stack ("EST" over "INC") stays one word, and a stack taller than it is
+  wide reads its principal axis vertical and does not split either.
+- **Reading order:** a line steeper than 45° reads top to bottom whichever
+  way its letters face. Nothing reads the order or the baseline for
+  stitches yet; L2 and L3 will.
 
 ## What the flag does to stitches (through `digitize()`, defaults otherwise)
 
@@ -166,9 +188,7 @@ skip and the priors now reading the word. Every change is ≤ 0.4% of
 stitches. Nothing was rendered for Kent: the flag is a grouping change
 whose quality claim is the score above, not a look.
 
-This run predates one fix: reading order on a line read at about 180°.
-That fix changes `word_index` and the baseline only. No stitch reader uses
-the order: the house angle's line and slant readings are order-free.
+Re-run on the final code (after the review's fixes), 2026-10-08.
 
 ## Reproduce
 

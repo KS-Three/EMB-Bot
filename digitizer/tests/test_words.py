@@ -134,6 +134,18 @@ def test_letters_spelled_up_to_four_times_are_not_a_pattern():
     assert {s for w in detect_words(regions) for s in _ids(w)} == {r.shape_id for r in regions}
 
 
+def test_a_letter_repeated_across_a_lockup_is_not_a_pattern():
+    """MILLION DOLLAR BILLS spells six L's. Counted over the whole linked
+    component they are five twins each; within the pattern reach a letter
+    only sees its own neighbourhood (review finding 2026-10-08)."""
+    phrase = "HILLTEF ULLHEFT ILLUTEH"
+    regions = [_region(f"p{i:02d}", _glyph(ch, i * 3.8, 0.0))
+               for i, ch in enumerate(phrase) if ch != " "]
+    assert sum(ch == "L" for ch in phrase) == 6
+    assert _pattern_ids(_candidates(regions)) == set()
+    assert {s for w in detect_words(regions) for s in _ids(w)} == {r.shape_id for r in regions}
+
+
 def test_two_inks_are_two_words():
     chart = threads.CHART
     far = next(j for j in range(1, 50) if float(chart.delta_e(0, j)) > 20.0)
@@ -189,6 +201,33 @@ def test_readers_follow_the_flag():
     r.meta["word_id"] = "WDy"
     assert is_text(r, on) and word_key(r, on) == "WDy" and is_lettering(r, on)
     assert is_lettering(r) and is_lettering(r, None)     # no cfg: the old reading
+
+
+def test_stitch_width_groups_by_word_under_the_flag():
+    from digitizer_core.stitchwidth import GROUP_KEY, measure_stitch_widths
+    regions = _text("a", "HELT")
+    tag_words(regions)
+    regions[0].meta["text_cluster_id"] = "TCother"
+    measure_stitch_widths(regions, satin_max=6.5, words=True)
+    assert {r.meta.get(GROUP_KEY) for r in regions} == {regions[0].meta["word_id"]}
+    measure_stitch_widths(regions, satin_max=6.5)
+    assert regions[0].meta.get(GROUP_KEY) == "TCother"
+    assert all(GROUP_KEY not in r.meta for r in regions[1:])
+
+
+def test_satin_split_ceiling_reads_the_word_under_the_flag():
+    import math
+    from digitizer_core.stage7_sequence import _satin_ceiling_for
+    r = _region("a", box(0, 0, 1, 4))
+    r.meta["word_id"] = "WDx"
+    off, on = PipelineConfig(satin_lettering_split=True), PipelineConfig(
+        satin_lettering_split=True, lettering_words=True)
+    assert _satin_ceiling_for(r, on, 5.0)[0] == math.inf
+    assert _satin_ceiling_for(r, off, 5.0)[0] == 5.0
+    r.meta.update({"text_candidate": True})
+    del r.meta["word_id"]
+    assert _satin_ceiling_for(r, off, 5.0)[0] == math.inf
+    assert _satin_ceiling_for(r, on, 5.0)[0] == 5.0
 
 
 # ------------------------------------------------------------------ end to end

@@ -21,6 +21,7 @@ import numpy as np
 
 from .config import PipelineConfig
 from .ink_path import read_cluster_ink
+from .words import word_key
 
 BEAN_LETTER_KEY = "bean_letter_spines"
 # A weight group smaller than this is a few fused letters, not a second line.
@@ -60,7 +61,6 @@ def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
     line = cfg.bean_letter_max_stroke_mm
     if line is None or p is None:
         return 0
-    from .words import word_key        # late: words imports textcluster
     clusters: dict[str, list] = {}
     for r in regions:
         cid = word_key(r, cfg)

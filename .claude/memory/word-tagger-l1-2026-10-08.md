@@ -8,9 +8,11 @@ metadata:
 # L1, one tagger (2026-10-08)
 
 **Built:** `digitizer_core/words.py`, `cfg.lettering_words` default OFF. Under
-the flag every stitch-affecting lettering reader groups by `word_id`
-(is_lettering, satin split, cap skip, bean word, stitch width, house angle,
-priors). Studio badge / OCR / rescued redraw / legibility keep the text cluster.
+the flag the lettering readers group by `word_id` (is_lettering, satin
+split, cap skip, bean word, stitch width, house angle, priors -- which then
+refit every word member). The rescued redraw keeps the text cluster on
+purpose. Kappa is LEVEL with the text cluster (paired CI spans 0); constants
+fitted in-sample; ARI gain is two fixtures. Studio badge / OCR / rescued redraw / legibility keep the text cluster.
 Doc: `docs/word-tagger-2026-10-08/README.md`.
 
 **Instrument:** `tools/word_tagger_eval.py` + `testdata/lettering_truth.json`
@@ -21,8 +23,9 @@ reported STALE, never scored -- re-label it by drawing regions with indices.
 **What moved the score, in order:** (1) a row split across the line (gaulke
 and screenshot: two lines were ONE group in both old taggers, ARI 0);
 (2) the pattern test -- Hu-moment "diversity" did NOT work (rope 0.96 vs
-BECKER 0.91), congruent-twin COUNT does (rope median 23-25 twins at IoU 0.8,
-letters max 3); (3) CV screen 0.60 (fitted, thin: highest letter 0.57).
+BECKER 0.91), congruent-twin COUNT within 5 heights does (rope median 10-14,
+letters max 3; counted over the whole component it would drop a lockup's
+repeated letters -- reviewer caught it); (3) CV screen 0.60 (fitted, thin: highest letter 0.57).
 
 **Traps:** a line angle is an axis: 179.9 deg reversed reading order until
 the direction was oriented rightward. Cap height off centroids reads ~3% high

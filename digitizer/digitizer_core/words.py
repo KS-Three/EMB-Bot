@@ -9,10 +9,15 @@ every lettering flag read one or the other or both -- the split flag the
 first, the house angle the second, the Column lane both.
 
 `tag_words` is the one reading, and under `cfg.lettering_words` (default
-OFF) every stitch-affecting lettering reader takes its groups from it:
+OFF) the lettering readers downstream of it take their groups from it:
 `columns.is_lettering`, the satin split's ceiling, the cap-skip cover, the
 bean-letter word, the shared stitch width, the house angle and the
-letterform priors. OFF, nothing calls it and nothing reads `word_id`.
+letterform priors. ONE stitch-affecting reader keeps the text cluster on
+purpose: `regularize_text_clusters`, which runs before this and redraws
+rescued members (and widens them under `lettering_min_column_mm`), because
+its evidence is the rescued population only. OFF, `tag_words` is never
+called and no `word_*` key is written; `is_text` / `word_key` then answer
+exactly what each reader asked before.
 
 Not a third set of rules. It is the two taggers' common geometry with the
 gates that each one got wrong on the labelled logos replaced:
@@ -104,12 +109,20 @@ LINE_GAP_FRAC = 0.75
 # rope twists have a median 23-25 congruent twins each at 0.8, and the most
 # any labelled letter has is 3 (the four I's of PLOWING DIVISION).
 CONGRUENT_IOU = 0.8
-# A candidate with at least this many congruent twins among the candidates
-# it links with is a pattern element and leaves before words are formed.
-# 5 sits above every labelled letter (3) -- a word spelling one glyph six
-# times is the first thing this would miss -- and far below the rope's
-# median.
+# A candidate with at least this many congruent twins NEAR it is a pattern
+# element and leaves before words are formed. 5 sits above every labelled
+# letter (3) and far below the rope's median.
 PATTERN_MIN_TWINS = 5
+# "Near" is within this many of the candidate's own heights, centre to
+# centre. A lockup repeats a LETTER across its words and lines (MILLION
+# DOLLAR BILLS: six L's; congruence also pairs b/d/p/q, n/u, M/W, 6/9 and
+# plain bars), and counted over the whole linked component those would be
+# dropped as a pattern -- review finding 2026-10-08. A rope repeats its
+# twist at well under a height's pitch: within 5 heights Fremont's twists
+# have a median 10-14 twins (2.5 heights: 4-8, too few), and no labelled
+# letter more than 3. The labelled score is the same at 4, 5, 6 and 8
+# heights (`tools/word_tagger_eval.py`); 5 is the middle of that plateau.
+PATTERN_REACH_HEIGHTS = 5.0
 
 
 @dataclass
@@ -225,9 +238,10 @@ def _congruent(a, b) -> bool:
 
 def _pattern_ids(cands: list[_Candidate]) -> set[str]:
     """Shape ids of the candidates with `PATTERN_MIN_TWINS` or more
-    congruent twins in `cands`. Pairs whose box aspect ratios differ by
-    more than a quarter are not compared (they cannot reach the IoU), which
-    is what keeps a 120-twist rope to seconds."""
+    congruent twins in `cands` within `PATTERN_REACH_HEIGHTS` of their own
+    height. Pairs whose box aspect ratios differ by more than a quarter are
+    not compared (they cannot reach the IoU), which is what keeps a
+    120-twist rope to seconds."""
     norm = [_normalised(c.region) for c in cands]
     asp = [max(c.width_mm, c.height_mm) / max(min(c.width_mm, c.height_mm), 1e-9)
            for c in cands]
@@ -241,9 +255,13 @@ def _pattern_ids(cands: list[_Candidate]) -> set[str]:
             lo, hi = sorted((asp[i], asp[j]))
             if hi > 1.25 * lo:
                 continue
-            if _congruent(norm[i], norm[j]):
-                twins[i] += 1
-                twins[j] += 1
+            d = math.hypot(cands[i].cx - cands[j].cx, cands[i].cy - cands[j].cy)
+            near_i = d <= PATTERN_REACH_HEIGHTS * cands[i].height_mm
+            near_j = d <= PATTERN_REACH_HEIGHTS * cands[j].height_mm
+            if not (near_i or near_j) or not _congruent(norm[i], norm[j]):
+                continue
+            twins[i] += near_i
+            twins[j] += near_j
     return {c.region.shape_id for c, n in zip(cands, twins) if n >= PATTERN_MIN_TWINS}
 
 
@@ -252,10 +270,16 @@ def _describe(members: list[Region], cands: list[_Candidate]) -> Word:
     ux, uy = ((math.cos(math.radians(line)), math.sin(math.radians(line)))
               if line is not None else (1.0, 0.0))
     # A line angle is an axis (mod 180): 179.9 and -0.1 are the same line.
-    # Read it left to right (top to bottom when vertical), so the order is
-    # reading order and +normal points down the y-down page -- the side
-    # the baseline is on for upright text.
-    if ux < -1e-9 or (abs(ux) <= 1e-9 and uy < 0):
+    # Read a line nearer horizontal left to right and one nearer vertical
+    # top to bottom, so the order is reading order and, for upright text,
+    # +normal points down the y-down page -- the baseline's side. The two
+    # rules meet at 45 deg, not at 90, so a near-vertical line (89 vs 91)
+    # keeps one direction. A line steeper than 45 deg reads top to bottom
+    # whichever way its letters face; nothing reads the order for stitches.
+    if abs(ux) >= abs(uy):
+        if ux < 0:
+            ux, uy = -ux, -uy
+    elif uy < 0:
         ux, uy = -ux, -uy
     nx, ny = -uy, ux
     # reading order along the line; a tie (stacked glyphs) by shape id

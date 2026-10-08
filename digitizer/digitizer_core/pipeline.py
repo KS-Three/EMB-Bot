@@ -817,7 +817,7 @@ def build_generation(
     # it instead of by the text cluster or the house group. Here, on the
     # polygons the regularizer left and before the priors refit, because the
     # priors, the house angle and the stitch widths all read its groups.
-    # Imported inside the branch: off, the module never loads.
+    # Off, `tag_words` is never called and no `word_*` key is written.
     if cfg.lettering_words:
         from .words import tag_words
         tag_words(regions, chart=chart_for(cfg))
