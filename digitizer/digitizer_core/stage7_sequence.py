@@ -1546,6 +1546,39 @@ def _cap_piece_id(pts, taken: set[str]) -> str:
     return pid
 
 
+def _cap_fold_host(blocks: list[StitchBlock], n_art: int, c_index: int,
+                   cap_runs: list[StitchRun], clear_mm: float):
+    """-> the artwork block a cone's cap stretches can sew at the end of, or
+    None (`cfg.edge_cap_fold_into_colour`).
+
+    The host is the LAST artwork block in that cone, and only when no artwork
+    block after it sews a needle-down stitch within `clear_mm` of any of the
+    stretches. When nothing later touches the stretch, sewing it at the end
+    of its own colour leaves the same thread on top of the same rows as
+    sewing it in a block of its own at the very end; the difference is one
+    fewer machine stop. A cone with any touched stretch keeps its own block
+    for ALL of its stretches: a partial fold moves stitches and saves no stop.
+    Cap stretches of other cones are not "later artwork": they meet this
+    cone's stretches end to end on the ring, they do not lie over them.
+    """
+    host_i = next((i for i in range(n_art - 1, -1, -1)
+                   if blocks[i].thread_index == c_index and blocks[i].runs
+                   and blocks[i].step is None), None)
+    if host_i is None:
+        return None
+    later = [LineString(r.points) for b in blocks[host_i + 1:n_art]
+             for r in b.runs if len(r.points) >= 2]
+    if later:
+        tree = shapely.STRtree(later)
+        for r in cap_runs:
+            if len(r.points) < 2:
+                continue
+            reach = LineString(r.points).buffer(clear_mm)
+            if len(tree.query(reach, predicate="intersects")):
+                return None
+    return blocks[host_i]
+
+
 def _cap_follow_pieces(runs, sewn: list[PlannedRegion], cfg: PipelineConfig):
     """Split the cap's runs into stretches, each tagged with the thread of the
     sewn region whose edge it stands against.
@@ -2955,6 +2988,9 @@ def sequence(
                 cap_lightened = c_report["bean_loops"]
                 if c_blocks is not None:
                     chart = chart_for(cfg)
+                    n_art = len(blocks)
+                    fold_clear = (cfg.border_width_mm
+                                  or machine.BORDER_WIDTH_MM) / 2.0
                     for c_index, _items in c_blocks.items():
                         _runs = [it[0] for it in _items]
                         # A stretch cut from the middle of a ring lifts to
@@ -2965,6 +3001,14 @@ def sequence(
                                 _runs[k].trim = (math.dist(
                                     _runs[k - 1].points[-1], _runs[k].points[0])
                                     >= trim_at)
+                        host = (_cap_fold_host(blocks, n_art, c_index, _runs,
+                                               fold_clear)
+                                if cfg.edge_cap_fold_into_colour else None)
+                        if host is not None:
+                            # Already jump + trim + tied as a block start;
+                            # it stays exactly that, one stop earlier.
+                            host.runs.extend(_runs)
+                            continue
                         c_thread = chart[c_index]
                         blocks.append(
                             StitchBlock(
@@ -2975,6 +3019,10 @@ def sequence(
                             )
                         )
                         cursor = _runs[-1].points[-1]
+                    # A fold can extend the LAST artwork block, so read where
+                    # the needle really stands rather than the last append.
+                    if cfg.edge_cap_fold_into_colour:
+                        cursor = blocks[-1].runs[-1].points[-1]
                 else:
                     c_index = _cap_thread(silhouette, cap_sewn,
                                           cap_sewn[0].region.thread_index,
