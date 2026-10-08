@@ -159,6 +159,14 @@ jobs:
     # Deselecting exactly these three keeps CI green AND meaningful: any NEW
     # golden break still fails the job. The standing rule survives -- if any of
     # these three ever passes here, remove its deselect and find out why.
+    #
+    # 2026-10-08: TWO now. The towel row was re-pinned and its deselect
+    # removed -- its mismatch was a stale pin, not numerics (three machines,
+    # AVX-512 and forced-AVX2 dispatch alike, compute the re-pinned tuple;
+    # see GOLDEN_FLAG_OFF in tests/test_pushcomp.py). The two enthusiast_logo
+    # rows stay: that key is ALSO engine-stale (30 of 31 areas moved under
+    # the subpixel_edges flip), so no tolerance revives it without a capture
+    # on this runner.
     name: digitizer shard ${{ matrix.shard }}/6
     runs-on: ubuntu-latest
     strategy:
@@ -251,7 +259,6 @@ jobs:
           python -m pytest tests/ -q -n auto
           --dist loadgroup --no-loadscope-reorder
           --junitxml=junit.xml
-          --deselect "tests/test_pushcomp.py::test_flag_off_is_byte_identical_to_the_shipped_engine[logo_whitebg.png-towel]"
           --deselect "tests/test_flat_lane_byte_identical.py::test_flat_lane_is_byte_identical_to_the_pre_change_golden[photo/enthusiast_logo.png]"
           --deselect "tests/test_stage2_photo_segment.py::test_flat_and_gradient_lanes_still_match_golden_after_photo_dispatch[photo/enthusiast_logo.png]"
       # The manifest is what the `digitizer` job checks coverage against; the
