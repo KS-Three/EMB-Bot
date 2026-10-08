@@ -1100,10 +1100,12 @@ sews nothing and cuts the smallest shape that contains it.
   the FILE: `node tools/file-cut-census.mjs` writes every design with the
   three writers, reads each back with its own readers and says what every
   run of three jumps was; `--against <src>` says whether two engines differ
-  by cuts put in and nothing else. Only the MANUAL branch of `generate.js`
-  passes it (2026-10-08, after `fillColumns`; `generate.spec.js` pins it on
-  a plain square); basic shapes and the image lane do not ("Waiting on
-  Kent" 28, `docs/cut-floats-manual-2026-10-08.md`).
+  by cuts put in and nothing else. The MANUAL and basic-shape branches of
+  `generate.js` pass it (2026-10-08, after `fillColumns`; `generate.spec.js`
+  pins it on a plain manual square, the default circle and a 12-point star;
+  `node tools/cut-floats-shapes-sheet.mjs` prints the per-family preset
+  table); the image lane does not ("Waiting on Kent" 28,
+  `docs/cut-floats-manual-2026-10-08.md`, `docs/cut-floats-shapes-2026-10-08.md`).
 - **Row stagger is built OFF for the shape builder (2026-10-03).**
   `fillStagger: true` on `buildQualityDesign` puts the cover fill's needle
   holes on one grid shifted row by row (`tatamiFill`'s `stagger`, `minStitch`
