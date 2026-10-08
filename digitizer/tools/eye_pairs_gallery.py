@@ -242,6 +242,15 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "flag's first promise, not a failure to act -- and tires has no tagged "
         "lettering. On today's satin the refit sews becker with more columns "
         "and trims (55 -> 66) for less bare cloth."),
+    "lettering_words": (
+        "lettering_words=True (built OFF 2026-10-08)",
+        "One lettering tagger instead of two: each line of lettering is found "
+        "once, and the house angle, the satin split, the cap skip, the stitch "
+        "width and the letterform priors all read that word. It finds the "
+        "letters about as well as the text cluster does and splits two lines "
+        "the old taggers merged (gaulke, the screenshot). On today's shipped "
+        "flags the stitches barely move (0.4% at most); its real use is the "
+        "lanes that read it next."),
 }
 
 # Arms that left the pending table because they SHIPPED. A sitting rendered
