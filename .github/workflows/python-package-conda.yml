@@ -93,7 +93,21 @@ jobs:
         working-directory: app
         run: npx vitest run
 
-  digitizer:
+  digitizer-shard:
+    # The Python pipeline suite, split across SHARDS parallel runners. The
+    # required check is the `digitizer` job further down, which needs every
+    # shard -- see its comment for what it proves.
+    #
+    # WHY SHARDS. Measured 2026-10-08 over three green main runs: the job took
+    # 72-78 minutes and 71.5-77.5 of that was the test step -- checkout,
+    # Tesseract, pip and lint together are about one minute, so caching had
+    # nothing left to win. The runner is 4 cores and `-n auto` already uses all
+    # four. The only lever left was more runners. Each shard keeps `-n auto`
+    # on its own four cores; tests/_ci_shard.py assigns whole FILES to shards
+    # (module-scoped fixtures stay computed once) balanced on
+    # tests/.shard_durations.json. Changing SHARDS means changing the matrix
+    # list and the `DIGITIZER_SHARD` denominator together.
+    #
     # The Python pipeline suite. Deps are pinned in digitizer/requirements.txt
     # (frozen from the working venv — the k-means/golden tests are pinned to
     # exact library behavior, so exact versions matter). `python -m pytest`
@@ -142,7 +156,14 @@ jobs:
     # Deselecting exactly these three keeps CI green AND meaningful: any NEW
     # golden break still fails the job. The standing rule survives -- if any of
     # these three ever passes here, remove its deselect and find out why.
+    name: digitizer shard ${{ matrix.shard }}/6
     runs-on: ubuntu-latest
+    strategy:
+      # Every shard runs to the end even when one goes red, so a failing PR
+      # shows ALL its failures at once rather than one shard's worth.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -159,7 +180,9 @@ jobs:
       - name: Install
         working-directory: digitizer
         run: pip install -r requirements.txt
+      # Once, not six times: shard 1 carries it.
       - name: Lint (syntax errors / undefined names only, per the original template)
+        if: matrix.shard == 1
         working-directory: digitizer
         run: |
           pip install flake8
@@ -201,11 +224,58 @@ jobs:
           cat /proc/meminfo | head -1
       - name: Digitizer tests
         working-directory: digitizer
+        env:
+          DIGITIZER_SHARD: ${{ matrix.shard }}/6
+          DIGITIZER_SHARD_MANIFEST: shard-manifest.json
         run: >
           python -m pytest tests/ -q -n auto
+          --junitxml=junit.xml
           --deselect "tests/test_pushcomp.py::test_flag_off_is_byte_identical_to_the_shipped_engine[logo_whitebg.png-towel]"
           --deselect "tests/test_flat_lane_byte_identical.py::test_flat_lane_is_byte_identical_to_the_pre_change_golden[photo/enthusiast_logo.png]"
           --deselect "tests/test_stage2_photo_segment.py::test_flat_and_gradient_lanes_still_match_golden_after_photo_dispatch[photo/enthusiast_logo.png]"
+      # The manifest is what the `digitizer` job checks coverage against; the
+      # JUnit XML is what tools/ci_shard_durations.py rebalances from.
+      - name: Upload shard manifest and timings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: digitizer-shard-${{ matrix.shard }}
+          path: |
+            digitizer/shard-manifest.json
+            digitizer/junit.xml
+          if-no-files-found: warn
+
+  digitizer:
+    # THE REQUIRED CHECK. Branch protection requires a check named exactly
+    # `digitizer`; since 2026-10-08 this is that check, and it still means
+    # "every test ran and passed":
+    #   1. `if: always()` -- it runs even when a shard failed, was cancelled
+    #      or was skipped, so it reports red instead of a skipped `digitizer`
+    #      (a skipped required check would satisfy nothing, but red is the
+    #      honest answer).
+    #   2. It fails unless EVERY shard's result is `success`.
+    #   3. tools/ci_shard_check.py fails unless the shards' manifests prove
+    #      one shard each for 1..6, identical collected lists, and selections
+    #      that are disjoint and add up to exactly that collected list.
+    # Stdlib python only, no install: seconds after the last shard.
+    needs: digitizer-shard
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every shard succeeded
+        run: |
+          echo "digitizer-shard result: ${{ needs.digitizer-shard.result }}"
+          test "${{ needs.digitizer-shard.result }}" = success
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: digitizer/tools/ci_shard_check.py
+          sparse-checkout-cone-mode: false
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digitizer-shard-*
+          path: shards
+      - name: The shards together ran the whole suite, once
+        run: python3 digitizer/tools/ci_shard_check.py shards
 
   studio-e2e:
     # The real-browser Playwright suite (app/e2e). COOKBOOK's hard-won lesson:
