@@ -442,3 +442,46 @@ jobs:
           name: artfid-baseline-${{ github.sha }}
           path: digitizer/artfid-baseline.csv
           if-no-files-found: warn
+
+  # REPORT-ONLY, push-to-main-only. Times Auto Digitize per tracked fixture
+  # (digitizer/tools/bench_digitize.py) and uploads JSON + markdown. Same
+  # posture as art-fidelity-baseline: never on a PR, never required, and
+  # continue-on-error so it cannot turn a green main red. Timings are only
+  # comparable between runs on this same runner class.
+  bench-digitize:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: digitizer/requirements.txt
+      - name: Install system dependencies (Tesseract OCR)
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+      - name: Install
+        working-directory: digitizer
+        run: pip install -r requirements.txt
+      - name: Time Auto Digitize per fixture
+        working-directory: digitizer
+        run: python -m tools.bench_digitize --json bench-digitize.json --md bench-digitize.md
+      - name: Publish the table to the run summary
+        if: always()
+        working-directory: digitizer
+        run: |
+          {
+            echo '## Auto Digitize timing (report-only)'
+            echo
+            cat bench-digitize.md || echo '(no table — the run did not finish)'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the timings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-digitize-${{ github.sha }}
+          path: |
+            digitizer/bench-digitize.json
+            digitizer/bench-digitize.md
+          if-no-files-found: warn
