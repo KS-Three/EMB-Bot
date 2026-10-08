@@ -1101,6 +1101,96 @@ describe("nothing runs until Auto Digitize Image is pressed", () => {
   });
 });
 
+// ---- a corner drag on the field is a Design width change -------------------
+//
+// The field's corner handles SCALE the baked stitches (generate.js passes
+// `sizeMm` to buildImportedDesign). Measured in the running Studio 2026-10-08
+// on logo_golden_tee.jpg: dragged 80 -> 62 mm, the caption still read 8,764
+// stitches — 1.66x the thread per mm² — while the Auto Digitize button stayed
+// SOLID, Design width still said 80, and the only word about it sat under the
+// fold. Its "Re-digitize at 62 mm" button then put the design BACK at 80 mm
+// and ran nothing: it cleared the scale and waited for the automatic re-run
+// Kent's 2026-10-05 ruling removed.
+describe("a resize on the field", () => {
+  let cfgs;
+  // 80 x 40 mm as digitized (0.1 mm units), so a sizeMm of 60 is a 75% drag.
+  const RESULT = {
+    stitches: [{ x: 0, y: 0, type: "stitch" }, { x: 800, y: 400, type: "stitch" }],
+    colors: [], stitchCount: 2, colorCount: 1, name: "t", widthMM: 80, heightMM: 40,
+  };
+  beforeEach(() => { cfgs = []; vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+
+  async function panel(extra = {}) {
+    const mod = await import("../lib/digitizer.js");
+    const applied = mod.configKey(mod.buildDigitizeConfig(baseElement([], { result: RESULT }), {}));
+    vi.spyOn(mod, "digitize").mockImplementation((_img, cfg) => {
+      cfgs.push(cfg);
+      return Promise.resolve({ design: { ...RESULT }, warnings: [], review: null, stats: null, preflight: null });
+    });
+    const patches = [];
+    const utils = render(Harness, {
+      props: {
+        element: baseElement([], { result: RESULT, appliedConfig: applied, ...extra }),
+        health: { ok: true },
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    const run = () => utils.container.querySelector(".dgp-run");
+    const width = () => utils.getByLabelText(/Design width/);
+    return { ...utils, patches, run, width };
+  }
+  const settle = () => vi.advanceTimersByTimeAsync(5000);
+
+  test("at its digitized size the design is current", async () => {
+    const { run, width } = await panel({ sizeMm: 80 });
+    expect(run()).not.toHaveClass("dgp-run-stale");
+    expect(width()).toHaveValue(80);
+  });
+
+  test("a drag turns the button transparent, says so, and Design width shows the dragged width", async () => {
+    const { run, width, getByTestId } = await panel({ sizeMm: 60 });
+    await settle();
+    expect(cfgs).toHaveLength(0);                       // still nothing runs on its own
+    expect(run()).toHaveClass("dgp-run-stale");
+    expect(width()).toHaveValue(60);
+    expect(getByTestId("digitize-stale")).toHaveTextContent(/Resized to 60 mm/);
+  });
+
+  test("Auto Digitize Image runs AT the dragged width and the scale goes on landing", async () => {
+    const { run, patches } = await panel({ sizeMm: 60 });
+    await fireEvent.click(run());
+    await settle();
+    expect(cfgs).toHaveLength(1);
+    expect(cfgs[0].target_width_mm).toBe(60);
+    const last = patches[patches.length - 1].patch;
+    expect(last.sizeMm).toBeNull();
+    expect(last.params.target_width_mm).toBe(60);
+    expect(run()).not.toHaveClass("dgp-run-stale");
+  });
+
+  test("Re-digitize at N mm RUNS, and never puts the design back at its old size first", async () => {
+    const { getByRole, patches } = await panel({ sizeMm: 60 });
+    await fireEvent.click(getByRole("button", { name: "Re-digitize at 60 mm" }));
+    await settle();
+    expect(cfgs).toHaveLength(1);
+    expect(cfgs[0].target_width_mm).toBe(60);
+    // The one patch is the landing: no earlier patch dropped the scale while
+    // the old 80 mm stitches were still the result.
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch.result).toBeTruthy();
+    expect(patches[0].patch.sizeMm).toBeNull();
+  });
+
+  test("a typed width replaces the dragged one", async () => {
+    const { width, patches } = await panel({ sizeMm: 60 });
+    await fireEvent.change(width(), { target: { value: "70" } });
+    const last = patches[patches.length - 1].patch;
+    expect(last.params.target_width_mm).toBe(70);
+    expect(last.sizeMm).toBeNull();
+  });
+});
+
 describe("a file picked before the element existed", () => {
   beforeEach(() => {
     fakeStore.clear();
