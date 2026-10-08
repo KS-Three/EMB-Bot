@@ -21,7 +21,7 @@ from digitizer_core import PipelineConfig, get_fabric, machine
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage7_sequence import _cap_fold_host, sequence
-from digitizer_core.stitches import StitchBlock, StitchRun
+from digitizer_core.stitches import StitchBlock, StitchPlan, StitchRun
 from digitizer_core.threads import CHART
 
 FAB = get_fabric("pique_knit")
@@ -49,6 +49,10 @@ def is_cap(r) -> bool:
     return r.shape_id == "__edge_cap__"
 
 
+def stats(plan):
+    return StitchPlan(blocks=plan.blocks, palette=[]).stats
+
+
 def points(blocks) -> Counter:
     return Counter(p for b in blocks for r in b.runs for p in r.points)
 
@@ -66,11 +70,14 @@ def test_the_default_is_off():
     assert PipelineConfig().edge_cap_fold_into_colour is False
 
 
-def test_off_is_the_shipped_plan():
-    a = plan_for(APART)
-    b = plan_for(APART, edge_cap_fold_into_colour=False)
-    assert [(x.thread_index, [r.points for r in x.runs]) for x in a.blocks] == \
-           [(x.thread_index, [r.points for r in x.runs]) for x in b.blocks]
+def test_off_every_cap_run_sits_in_a_cap_only_block_after_the_artwork():
+    """The shipped structure the flag departs from, pinned on both fixtures."""
+    for regions in (APART, ABUT):
+        blocks = plan_for(regions).blocks
+        kinds = [all(is_cap(r) for r in b.runs if r.points) for b in blocks]
+        first = kinds.index(True)
+        assert all(kinds[first:]) and not any(kinds[:first])
+        assert not any(is_cap(r) for b in blocks[:first] for r in b.runs)
 
 
 def test_untouched_stretches_fold_and_save_every_cap_stop():
@@ -87,12 +94,29 @@ def test_untouched_stretches_fold_and_save_every_cap_stop():
 
 
 def test_it_reorders_and_never_adds_or_removes_a_stitch_or_a_cut():
-    for regions in (APART, ABUT):
+    """Counted off the emitted machine stream (`StitchPlan.stats`), the one
+    the file is encoded from: the same stitches, the same trims, and exactly
+    one colour change fewer per folded cone."""
+    for regions, folded in ((APART, 2), (ABUT, 1)):
         off = plan_for(regions)
         on = plan_for(regions, edge_cap_fold_into_colour=True)
         assert points(on.blocks) == points(off.blocks)
-        trims = lambda p: sum(r.trim for b in p.blocks for r in b.runs)  # noqa: E731
-        assert trims(on) == trims(off)
+        s_off, s_on = stats(off), stats(on)
+        assert s_on.stitch_count == s_off.stitch_count
+        assert s_on.trims == s_off.trims
+        assert s_on.color_changes == s_off.color_changes - folded
+
+
+def test_the_service_does_not_call_a_host_block_the_design_edge():
+    """`design_edge` means "no review shape behind this block"; a host block
+    sews its own shapes and the cap, so it is not that row."""
+    from digitizer_service.app import _block_shape_ids, _is_edge_cap
+    on = plan_for(APART, edge_cap_fold_into_colour=True)
+    for b in on.blocks:
+        assert not _is_edge_cap(b)
+        assert _block_shape_ids(b)
+    off = plan_for(APART)
+    assert [_is_edge_cap(b) for b in off.blocks] == [False, False, True, True]
 
 
 def test_a_stretch_something_later_sews_near_keeps_its_own_block():

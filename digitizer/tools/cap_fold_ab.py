@@ -19,8 +19,10 @@ Per (fixture, route), OFF vs ON:
                             px/mm) whose colour changes by more than 8/255
                             in any channel -- what the reorder costs on the
                             picture, where a cap now sits under something
-                            it used to sit over. Zero by construction when
-                            the clearance test holds; measured, not assumed.
+                            it used to sit over. Artwork rows cannot move
+                            (the clearance test); where two cones' cap
+                            stretches meet end to end, which one lies on top
+                            can flip, so this is small, not zero.
 
 Writes OFF/ON renders to --out (gitignored debug_out by default) for the
 fixtures named in --render.

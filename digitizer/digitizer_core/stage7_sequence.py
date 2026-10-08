@@ -1558,8 +1558,11 @@ def _cap_fold_host(blocks: list[StitchBlock], n_art: int, c_index: int,
     sewing it in a block of its own at the very end; the difference is one
     fewer machine stop. A cone with any touched stretch keeps its own block
     for ALL of its stretches: a partial fold moves stitches and saves no stop.
-    Cap stretches of other cones are not "later artwork": they meet this
-    cone's stretches end to end on the ring, they do not lie over them.
+    Cap stretches of other cones are not "later artwork" -- appended or
+    already folded into a later host: they meet this cone's stretches end to
+    end on the ring, they do not lie over them. Which end lies on top at such
+    a junction can flip with the fold (a millimetre or two of bean, measured
+    by `tools/cap_fold_ab.py`'s diff_px); artwork rows cannot.
     """
     host_i = next((i for i in range(n_art - 1, -1, -1)
                    if blocks[i].thread_index == c_index and blocks[i].runs
@@ -1567,7 +1570,8 @@ def _cap_fold_host(blocks: list[StitchBlock], n_art: int, c_index: int,
     if host_i is None:
         return None
     later = [LineString(r.points) for b in blocks[host_i + 1:n_art]
-             for r in b.runs if len(r.points) >= 2]
+             for r in b.runs
+             if len(r.points) >= 2 and r.shape_id != "__edge_cap__"]
     if later:
         tree = shapely.STRtree(later)
         for r in cap_runs:
@@ -2884,6 +2888,9 @@ def sequence(
     # has already run and will not fold this one in; that is deliberate,
     # not an oversight — the merge pass reasons about artwork groups, and
     # the cap is a design-level pass whose own boundary is meaningful.
+    # (`cfg.edge_cap_fold_into_colour`, default off, is the one exception: it
+    # sews a cone's stretches inside that cone's last artwork block when
+    # nothing later comes near them -- `_cap_fold_host`.)
     cap_style = str(cfg.edge_cap or "none").lower()
     cap_lightened = 0
     cap_empty_style = ""
@@ -3008,6 +3015,8 @@ def sequence(
                             # Already jump + trim + tied as a block start;
                             # it stays exactly that, one stop earlier.
                             host.runs.extend(_runs)
+                            if host is blocks[-1]:
+                                cursor = _runs[-1].points[-1]
                             continue
                         c_thread = chart[c_index]
                         blocks.append(
@@ -3019,10 +3028,6 @@ def sequence(
                             )
                         )
                         cursor = _runs[-1].points[-1]
-                    # A fold can extend the LAST artwork block, so read where
-                    # the needle really stands rather than the last append.
-                    if cfg.edge_cap_fold_into_colour:
-                        cursor = blocks[-1].runs[-1].points[-1]
                 else:
                     c_index = _cap_thread(silhouette, cap_sewn,
                                           cap_sewn[0].region.thread_index,
