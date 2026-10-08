@@ -485,6 +485,13 @@ def build_generation(
         if tt is not None:
             p.rgb = two_tone.snap(p.rgb, tt)
             p.bg_mask = two_tone.fold_fringe(p.rgb, tt, p.bg_mask, p.bg_rgb)
+            # A thin white line drawn between the inks is background-coloured
+            # and open to the background, so the flood and the fold take it;
+            # as bare fabric it is too narrow to stay open. Sew it light.
+            lines = two_tone.keep_lines(p.bg_mask, p.px_per_mm)
+            if lines.any():
+                p.rgb[lines] = np.asarray(tt.light, dtype=p.rgb.dtype)
+                p.bg_mask = p.bg_mask & ~lines
             if p.enclosed_mask is not None:
                 p.enclosed_mask = p.enclosed_mask & ~p.bg_mask
                 if not p.enclosed_mask.any():
