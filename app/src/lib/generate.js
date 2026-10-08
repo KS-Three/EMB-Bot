@@ -295,6 +295,25 @@ export function generateElement(element, garment, runtime) {
 // "size up for crisp letters" on a design already at the cap is advice the
 // customer cannot take — the levers that remain are fewer characters, a bolder
 // font, or a bigger placement.
+// The line-break lever as one click. letteringNote's own measurements show line
+// breaks are the fix a customer does not think of, and the Studio's text box
+// reads as a one-line field — measured 2026-10-08 at 1440x900: "Fritsch's
+// Stitches" auto-fit to left chest sews 102x7 mm with 93% of its strokes under
+// 1 mm; the same words over two lines sew 102x35 mm and the warning clears.
+// Splits a one-line text at the space nearest its middle; null when there is
+// no space to break at or the text already has more than one line.
+export function splitIntoTwoLines(text) {
+  if (typeof text !== "string" || text.includes("\n")) return null;
+  const t = text.trim();
+  const mid = t.length / 2;
+  let best = -1;
+  for (let i = 0; i < t.length; i++) {
+    if (t[i] === " " && (best < 0 || Math.abs(i - mid) < Math.abs(best - mid))) best = i;
+  }
+  if (best < 0) return null;
+  return `${t.slice(0, best).trimEnd()}\n${t.slice(best + 1).trimStart()}`;
+}
+
 export function letteringNote(l, opts = {}) {
   if (!l || !(l.strokeMm > 0)) return "";
   const share = (mm) => mm / l.strokeMm;
