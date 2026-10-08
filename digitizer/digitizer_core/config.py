@@ -1014,6 +1014,14 @@ class PipelineConfig:
     # low-resolution regime the flag declines. Quality case unaffected; the
     # clock is now on the record. *(docs/flag-runtime-bills-2026-09-12.md)*
     curve_turn_deg: float | None = 15.0
+    # The run tier's outline with its curve vertices cut before it is
+    # sampled (`stage6_border._soften_ring`; MASTER_SCOPE defect 46, Law 37's
+    # direction-change score). Built OFF 2026-10-08: it moves only
+    # `curve_roughness_deg` on the run tier, measured in the PR that added
+    # it, and no render has met Kent's eye. Corners >= CORNER_DEG are kept;
+    # the cut stays inside `simplify_tol_mm`'s default. False is today's
+    # path, byte for byte.
+    run_soft_vertices: bool = False
     # Sub-pixel, anti-alias-aware contour vertices (`digitizer_core/
     # subpixel.py`; plan `docs/superpowers/plans/2026-09-08-subpixel-edges.md`
     # §3, PR 2). Stage 4 traces the LABEL mask, so every vertex it hands
