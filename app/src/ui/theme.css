@@ -1083,7 +1083,11 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   position: relative;
   align-self: stretch;
   display: flex;
-  justify-content: center;
+  /* `safe`: if the bar is ever wider than the field again, it overflows to
+     the right only, so Zoom out stays on screen instead of past the left
+     edge where nothing can reach it. */
+  justify-content: safe center;
+  container: fieldbars / inline-size;
 }
 
 .simbar {
@@ -1139,7 +1143,16 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
 .zoomlabelled { width: auto; padding: 0 var(--space-2); gap: 6px; font-size: var(--fs-xs); font-weight: var(--fw-medium); }
 .zoomlabel { white-space: nowrap; }
 .zoomsep { width: 1px; height: 18px; margin-inline: var(--space-1); background: var(--border); }
-@media (max-width: 1280px) {
+/* Keyed to the BAR's width, not the viewport's (2026-10-08). This was
+   `@media (max-width: 1280px)`, written for a 400px panel; the panel widens
+   to 460px from 1400px up, and the bar gained the Original segment, so from
+   1281px to ~1500px — 1366 and 1440 laptops among them — the labelled bar
+   ran ~30-70px wider than the field. Centred, it spilled off BOTH ends:
+   Zoom out half-hidden on the left, Auto-snap on the right, neither
+   scrollable. The labelled bar measures ~960px with a 90px scale bar and the
+   rule can reach 120px, so labels go below 1020px of bar. `.fieldbars` is
+   the container (theme.css, above). e2e/field-chrome.spec.js pins it. */
+@container fieldbars (max-width: 1020px) {
   .zoomlabel { display: none; }
   .zoomlabelled { padding: 0; width: 28px; }
 }
