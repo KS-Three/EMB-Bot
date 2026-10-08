@@ -218,6 +218,15 @@ class PipelineConfig:
     # region set on every gradient-class design, so it waits on Kent's
     # look at a render, not on a green suite.
     dissolve_phantom_blends: bool = False
+    # Defect 58: a black-and-white logo sews four to six cones, because thin
+    # strokes on a low-resolution source are mostly anti-alias grey. ON, a
+    # raster `two_tone.detect` reads as two inks (achromatic, two modes, no
+    # grey plateau) is thresholded to those two inks right after stage 1, so
+    # no region ever sees the grey. Per IMAGE, which is why it leaves
+    # `logo_bridge_bar.jpg`'s ringing alone where the per-region stroke rule
+    # did not (DOCTRINE 2026-10-05). OFF by default: it moves the region set
+    # on every black-and-white logo, so it waits on Kent's look at a render.
+    two_tone_snap: bool = False
     # Make the gradient lane's region edges follow the PIXELS rather than the
     # SEEDS superpixels they are built from
     # (`stage2_photo_segment.snap_region_edges`). Measured 2026-09-30 on

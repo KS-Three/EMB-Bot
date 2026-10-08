@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 from shapely.geometry import Polygon
 
-from . import debugviz
+from . import debugviz, two_tone
 from .config import PipelineConfig
 from .fabrics import Fabric, apply_profile, fabric_for_garment, get_fabric
 from .machine import FILL_ROW_MM, satin_ceiling_mm
@@ -467,6 +467,16 @@ def build_generation(
                 detail=signals.why,
             )
         )
+
+    # Stage 1.3 — two-tone snap (`cfg.two_tone_snap`, defect 58). Before any
+    # region former, so every lane reads two inks; never on a detected
+    # photograph, whose greys are its picture.
+    if cfg.two_tone_snap and not detected_photographic:
+        tt = two_tone.detect(p.rgb)
+        if tt is not None:
+            p.rgb = two_tone.snap(p.rgb, tt)
+            if p.native_rgb is not None:
+                p.native_rgb = two_tone.snap(p.native_rgb, tt)
 
     # Stage 1.5 — photo prep (plan §2 rows 3-4; build step 3 first slice).
     # DOUBLE-gated: the opt-in flag AND a photo classification, so neither

@@ -8752,3 +8752,38 @@ spike's 1.6 W over-long bar read gaulke's thirty-nine 1 mm letters as 35 fan
 letters under every arm — the fabric's 0.3 mm pull per side, not a fan;
 `tools/fan_census.py` reads 1.6 x (W + 2 pull). *(measured 2026-10-07 —
 `docs/n-fan-2026-10-07.md`)*
+
+## 2026-10-08 — On black-and-white art the halo-vs-stroke question has a per-IMAGE answer: `cfg.two_tone_snap`, built OFF
+
+The 10-05/10-06 entry above ended on "what is missing is a per-region test
+that tells a halo band from a drawn stroke". For two-tone art no such test is
+needed: when the image has two inks, every grey in it is a mix of those two,
+stroke and halo alike, so the raster can be thresholded before any region
+exists. The per-region rule's one casualty, `logo_bridge_bar.jpg`, is colour
+art and never reaches the snap.
+
+- **The gate is three tests on stage 1's raster** (`digitizer_core/two_tone.py`):
+  < 0.5% of pixels with chroma > 40, two grey modes ≥ 150 apart, and no 8-level
+  bin in the middle 60% between them holding > 0.8% of pixels. The last is the
+  one that matters: anti-alias grey spreads thin across the ramp, a drawn grey
+  stacks in one bin. Over every image in `testdata/`, `testdata/art`,
+  `testdata/photo` it fires on the seven B&W logos (max bin 0.0027-0.0064),
+  the tires script and one synthetic B&W fixture, and nothing else; the
+  nearest refusal is `logo_hotel_fremont_patch` at 0.0109, and the Fremont
+  webp — achromatic, but its rope is a real grey — reads 0.0326.
+- **Cones, OFF → ON:** golke 5 → 2, mfab_lc 6 → 2, mfab_hat 6 → 2, toat_beanie
+  6 → 2, toat_machine 6 → 2, screenshot 6 → 2, gaulke 2 → 1 (its 57 grey
+  stitches gone); Bridge Bar and Fremont byte-identical (the gate refuses).
+  mfab_lc's white linework sews white: 36 → 1,907 stitches.
+- **What it costs, read off the renders:** golke 5,000 → 6,079 stitches. The
+  snapped RASTER keeps the white roof lines between the black bands; they are
+  sub-pixel at the source (5.6 px/mm) and the region floor then drops most of
+  the right-hand one into black, where before it sewed as a wider grey band.
+  Grey there was wrong; black there loses a drawn line. The other logos
+  shed stitches and trims (toat_beanie 48 → 33 trims).
+- **Not a stage-0 recalibration** (ROADMAP gate 2): the class is untouched;
+  only the raster every lane reads changes, and only on a two-tone image.
+
+*(measured 2026-10-08 — `tools/two_tone_probe.py --detect` and default mode,
+renders read for golke, mfab_lc, toat_beanie; scope-history 2026-10-08)*
+
