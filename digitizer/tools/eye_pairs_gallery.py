@@ -151,8 +151,13 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "lettering_columns=True",
         "Sew each text-tagged letter as Columns cut from its own outline (one "
         "column per stroke, rails on the outline, pull on the rails) instead of "
-        "the skeleton's slabs; no Euler walk yet, so trims between a letter's "
-        "columns are nearest-next."),
+        "the skeleton's slabs, sewn the way a font glyph is: an Euler walk "
+        "across a letter's columns (earlier visits run underpath, the last "
+        "sews satin), a butting stroke tucked under the stroke it meets, "
+        "slanted ends fanned, both rails needled every 0.40 mm. Built OFF "
+        "2026-10-07; only text-tagged shapes change, so a logo with no tagged "
+        "lettering is identical. Known open: an E or F body still sews as "
+        "three slabs, not a stem plus arms."),
     "phantom_dissolve": (
         "dissolve_phantom_blends=True",
         "Dissolve JPEG ringing colours on the photo/gradient lane, so a logo's "
