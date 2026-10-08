@@ -35,7 +35,7 @@
 //
 // Usage:
 //   node tools/export-audit.mjs [--json] [--renders DIR] [--keep DIR]
-//        [--logos a.png,b.png] [--only name,name]
+//        [--logos a.png,b.png] [--logo-json FILE] [--only name,name]
 //
 // Python: the crossval harness's resolution ($EMB_CROSSVAL_PYTHON, then the
 // digitizer venv). The digitized designs need the full digitizer deps; with
@@ -196,6 +196,16 @@ function blockThreads(d) {
   return out;
 }
 
+function longestAxis(records) {
+  let prev = null, worst = 0;
+  for (const [x, y, cmd] of records) {
+    if (cmd !== "STITCH") { prev = null; continue; }
+    if (prev) worst = Math.max(worst, Math.abs(x - prev[0]), Math.abs(y - prev[1]));
+    prev = [x, y];
+  }
+  return worst;
+}
+
 function rgbDist(a, b) {
   return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 }
@@ -238,11 +248,13 @@ export function readerFacts(design, d, model) {
     worstBlockColorDist: worstColor,
     sizeMm: xs.length ? [+((Math.max(...xs) - Math.min(...xs)) / U).toFixed(1), +((Math.max(...ys) - Math.min(...ys)) / U).toFixed(1)] : null,
     longestSewnMm: +(longestSewnSegment(d.stitches) / U).toFixed(1),
+    // Per axis, which is what a record limits: a 121 x 121 diagonal is 17.1 mm
+    // long and still one DST record.
+    longestSewnAxisMm: +(longestAxis(d.stitches) / U).toFixed(1),
     threadMm: +(threadUnits(segs) / U).toFixed(1),
-    // A strided sample: off-identity transforms miss every grid ring and fall
-    // back to a full scan, which is quadratic on a 25k-stitch design. 1500
-    // segments spread across the file decide an orientation just as well.
-    orientation: orientationFit(previewSegs, segs.filter((_, i) => i % Math.ceil(segs.length / 1500) === 0)).best,
+    // Strided: an off-identity transform falls back to a full scan per point,
+    // which is quadratic on a 25k-stitch design. ~1500 segments decide it.
+    orientation: orientationFit(previewSegs, segs, Math.max(1, Math.ceil(segs.length / 1500))).best,
     strayMm: +((maxStrayUnits(aligned, previewSegs) || 0) / U).toFixed(2),
     missedMm: +((maxStrayUnits(previewSegs, aligned) || 0) / U).toFixed(2),
   };
@@ -256,15 +268,19 @@ export function flags(model, r, fmt) {
   // A split adds stitches (a long move laid as several); it never removes one.
   if (r.stitches < model.stitches) f.push(`lost ${model.stitches - r.stitches} stitches`);
   if (r.colorChanges !== model.colorChanges && !(fmt === "u01")) f.push(`colour changes ${r.colorChanges} vs ${model.colorChanges}`);
-  if (fmt === "u01" && r.colorChanges + r.stops !== model.colorChanges) f.push(`colour stops ${r.colorChanges + r.stops} vs ${model.colorChanges}`);
+  // U01 changes thread with NEEDLE_SET (pystitch command 9; crossval_decode
+  // names it CMD_9), one to set the first needle and one per change.
+  if (fmt === "u01" && Math.max(0, (r.other.CMD_9 || 0) - 1) !== model.colorChanges) f.push(`needle changes ${Math.max(0, (r.other.CMD_9 || 0) - 1)} vs ${model.colorChanges} colour changes`);
   if (r.sizeMm && (Math.abs(r.sizeMm[0] - model.sizeMm[0]) > 0.2 || Math.abs(r.sizeMm[1] - model.sizeMm[1]) > 0.2)) {
     f.push(`size ${r.sizeMm.join("x")} vs ${model.sizeMm.join("x")}`);
   }
   if (r.strayMm > 0.2) f.push(`thread strays ${r.strayMm} mm from the preview`);
   if (r.missedMm > 0.2) f.push(`preview thread missing from file by ${r.missedMm} mm`);
   if (Math.abs(r.threadMm - model.threadMm) > Math.max(1, model.threadMm * 0.002)) f.push(`sewn thread ${r.threadMm} vs ${model.threadMm} mm`);
-  if (r.longestSewnMm > 12.7) f.push(`sews a ${r.longestSewnMm} mm stitch`);
-  if (Object.keys(r.other).length) f.push(`unexpected ${JSON.stringify(r.other)}`);
+  // 12.7 mm: EXP's record, the widest of the three bars (DST 12.1).
+  if (r.longestSewnAxisMm > 12.7) f.push(`sews a stitch ${r.longestSewnAxisMm} mm along one axis`);
+  const other = Object.keys(r.other).filter((k) => !(fmt === "u01" && k === "CMD_9"));
+  if (other.length) f.push(`unexpected ${other.join(", ")}`);
   if (r.worstBlockColorDist === "missing") f.push("a sewn block has no thread");
   return f;
 }
@@ -304,7 +320,7 @@ function readerPanel(d, model) {
   return { segs, travel: travelSegments(d.stitches) };
 }
 
-export function runAudit({ python = resolvePython(), logos = null, only = null, renders = null, keepDir = null, digitize = true } = {}) {
+export function runAudit({ python = resolvePython(), logos = null, logoJson = null, only = null, renders = null, keepDir = null, digitize = true } = {}) {
   if (!python) throw new Error("No python with pystitch found (set EMB_CROSSVAL_PYTHON or create digitizer/.venv)");
   const dir = keepDir || fs.mkdtempSync(path.join(os.tmpdir(), "emb-export-audit-"));
   fs.mkdirSync(dir, { recursive: true });
@@ -312,7 +328,9 @@ export function runAudit({ python = resolvePython(), logos = null, only = null, 
   const images = digitize
     ? (logos || ["logo_golke_roofing.png", "logo_mfab_lc.png", "logo_hotel_fremont_patch.png"]).map((f) => path.isAbsolute(f) ? f : path.join(art, f))
     : [];
-  const logoDesigns = digitizeLogos(python, images, dir);
+  // --logo-json reuses a previous run's digitized designs (written to
+  // <keep>/logos.json): the digitizer is the slow half of a run.
+  const logoDesigns = logoJson ? JSON.parse(fs.readFileSync(logoJson, "utf8")) : digitizeLogos(python, images, dir);
   let projects = buildProjects(logoDesigns);
   if (only) projects = Object.fromEntries(Object.entries(projects).filter(([k]) => only.includes(k)));
 
@@ -396,6 +414,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const val = (k) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : null; };
   const out = runAudit({
     logos: val("--logos") ? val("--logos").split(",") : null,
+    logoJson: val("--logo-json"),
     only: val("--only") ? val("--only").split(",") : null,
     renders: val("--renders"),
     keepDir: val("--keep"),

@@ -261,7 +261,12 @@ const DIHEDRAL = {
 // matched exactly after aligning bounding-box minima — a translation is not an
 // orientation error, and a split segment lands on the picture's line either
 // way, so this is scored as "how much of the file lies on a drawn segment".
-export function orientationFit(previewSegs, fileSegs) {
+// `stride` scores every stride-th segment only (tools/export-audit.mjs, on
+// 25k-stitch designs where an off-identity transform falls back to a full
+// scan per point). The alignment still uses the WHOLE file's bbox: a sample's
+// own bbox is smaller, and aligning on it scores a mirror of a near-symmetric
+// design above the truth.
+export function orientationFit(previewSegs, fileSegs, stride = 1) {
   const pb = bbox(previewSegs);
   const table = {};
   if (!pb || !fileSegs.length) return { best: "none", table };
@@ -270,13 +275,15 @@ export function orientationFit(previewSegs, fileSegs) {
     const t = fileSegs.map((s) => { const a = fn(s[0], s[1]), b = fn(s[2], s[3]); return [a[0], a[1], b[0], b[1]]; });
     const tb = bbox(t);
     const dx = pb[0] - tb[0], dy = pb[1] - tb[1];
-    let on = 0;
-    for (const s of t) {
+    let on = 0, n = 0;
+    for (let i = 0; i < t.length; i += stride) {
+      const s = t[i];
       const a = nearest(s[0] + dx, s[1] + dy, previewSegs, g);
       const b = nearest(s[2] + dx, s[3] + dy, previewSegs, g);
       if (a < 1 && b < 1) on++;
+      n++;
     }
-    table[name] = +(on / t.length).toFixed(6);
+    table[name] = +(on / n).toFixed(6);
   }
   // "none" rather than the first key when nothing fits: `sort` is stable, so a
   // table of zeros would hand back `identity` — the reassuring answer — for a
