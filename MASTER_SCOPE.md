@@ -409,7 +409,7 @@ about the facts.
    digitized images shown to him carry the off/on float picture
    (`tools/fill-columns-image-sheet.mjs`; memory
    `fill-columns-float-pictures-2026-10-08`). **None of it is sewn.**
-   `cutFloats` (28) follows this.
+   `cutFloats` (28) is on in manual (#672).
    *(measured 2026-10-08 — `docs/renders/fill-columns-lanes-2026-10-08/`;
    `generate.js`, `generate.spec.js` star and counter tests)*
 23. **Flip `ties` on for the browser lanes — NEW 2026-10-03, built OFF in
@@ -485,14 +485,12 @@ about the facts.
    (OFF) and `cross_tatami` (a picker choice, your digitizer's crossing
    pass): the flip and the knit presets are yours. **Not sewn.**
    *(measured 2026-10-05 — [`docs/underlay-audit-2026-10-05.md`](docs/underlay-audit-2026-10-05.md))*
-28. **Flip `cutFloats` on for the browser shape lanes — NEW 2026-10-04,
-   built OFF.** A DST has no cut: the writer lays three jump records for
-   one, and for any float over 24.2 mm too, so a machine cuts where the
-   stream has only a jump, with no lock from `ties`: 109,561 times on 8,270
-   Studio shapes, 94% of them gone with `fillColumns` (22). The flag puts a
-   `trim` in the stream at each. No stitch moves. **Flip it after 22.**
-   **Not sewn.** Flipped as 25 is.
-   *(measured 2026-10-04 — [`docs/dst-float-cuts-2026-10-04.md`](docs/dst-float-cuts-2026-10-04.md))*
+28. **`cutFloats` — ON for the manual lane 2026-10-08, after 22;** basic
+   shapes and the image lane pass nothing. A float a DST machine reads as a
+   cut gets a `trim`; no stitch moves. Manual, with `fillColumns`: 4,264 →
+   0 such cuts on 5,400 designs, trims +0.79 a design, which EXP and PES
+   gain as unlocked cuts while `ties` (23) is off. **Not sewn.**
+   *(measured 2026-10-08 — [`docs/cut-floats-manual-2026-10-08.md`](docs/cut-floats-manual-2026-10-08.md); `generate.spec.js`)*
 29. **RESOLVED 2026-10-07 — Kent flipped `letterform_priors_k` ON at 0.75** on the
    labelled thread pairs (becker "after", bridge "both bad"); the N is defect 59.
    *(ruled 2026-10-07 — `docs/eye-pairs-2026-10-07/kent-notes.json`; [`docs/letterform-priors-2026-10-06.md`](docs/letterform-priors-2026-10-06.md))*
