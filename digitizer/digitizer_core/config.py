@@ -1174,6 +1174,21 @@ class PipelineConfig:
     # law's WOVEN figure, verbatim; its knit 1.5–2.0 is sew-out-gated
     # (ROADMAP gate 1), so knits get the woven floor, never less than today.
     overlap_parallel_mm: float = 1.0
+    # Stage 5's hole hold, read for what is actually IN the hole. A hole the
+    # shell's pull growth would shrink under `min_detail_mm²` is held open at
+    # its original size — right for a counter, wrong for a hole a LATER
+    # stitched colour fills: holding it strips the ground's pull and its
+    # `overlap_mm` tongue from the whole seam round that piece, a butt joint
+    # with nothing under it (MASTER_SCOPE defect 6 "Seams": "a hole held open
+    # at the detail floor gets no tongue"). True holds open only the BARE part
+    # of the hole — what no later stitched shape covers — and only the bare
+    # pieces at or over the same `min_detail_mm²` floor the hole itself is
+    # judged by. Any bare piece under that floor is released -- the slivers
+    # between a piece and its hole, and a small real opening beside a piece
+    # alike -- so it takes the ground's growth and the piece gets its tongue,
+    # as every un-held seam already does. No new constant. False is the engine before it, byte for byte.
+    # Measured 2026-10-08: `docs/held-hole-tongue-2026-10-08.md`.
+    held_hole_bare_only: bool = False
     # Directional pull/push compensation (Laws 22-24). False is the shipped
     # behaviour: one isotropic `buffer(pull)` outward in every direction, which
     # is right on average and wrong everywhere specific — no major package does
@@ -1740,6 +1755,22 @@ class PipelineConfig:
     # half-widths off the line. Tests: `tests/test_join_corner_bend_cap.py`;
     # the trail is `docs/join-square-enthusiast-2026-10-07.md`.
     satin_join_square: bool = True
+    # The T-junction half of the join-square fan (2026-10-08, built OFF). A
+    # stroke's end at a branch NODE -- the E's and F's middle arm where it
+    # meets the stem, a T's stem under its bar -- is not a Goldman corner, so
+    # `satin_join_square` never reads it, and the medial axis's bend into the
+    # node fans the arm's last crosses. ON, each such end is laid on the
+    # stroke's own straight line before the junction trim, with the corner
+    # path's own bend cap (`_square_junction_ends` -> `_straighten_member_end`).
+    # Text-tagged shapes only (`meta.text_candidate`): on every shape it cost
+    # Becker 607 stitches, letters-only 555, most of them cross-hatch at the
+    # N and E junctions. Free ends and corner members' inner ends are
+    # untouched. Measured ON vs OFF (splay ends / bare letter mm2): Fremont
+    # 80 mm 35 -> 34 / 3.20 -> 3.18; Becker 11 -> 8 / +0.93 (the N's
+    # diagonal, +0.71); ENTHUSIAST 28 -> 23 / -0.17; drone 43 -> 39 / +0.16.
+    # Built OFF; the render is Kent's. Off, byte-identical.
+    # Tests: `tests/test_junction_square.py`.
+    satin_junction_square: bool = False
     # A slab serif's axis is its own column, not a cap (2026-10-07, Kent's
     # pick after the join-square flip: "T-shaped slabs: own column, not a
     # cap"). A slab across a stem's end (a foot, a T-shaped terminal) puts
@@ -2161,8 +2192,15 @@ class PipelineConfig:
     # `tests/test_fill_bridge_cut.py`.
     fill_bridge_cut: bool = True
 
-    # Underlay under a gradient-class design's ordinary fills (2026-10-05,
-    # built OFF — Kent's flip). Stage 7 routes every auto-tier fill of a
+    # Underlay under a gradient-class design's ordinary fills. Built OFF
+    # 2026-10-05; ON since 2026-10-07 by Kent's ruling, because OFF a
+    # gradient-class design sewed every fill with no underlay at all. Measured
+    # when built (six real gradient logos, 80 mm): bare fills 33/33 -> 5/33
+    # for +1.7% stitches, trims 423 -> 421 (Fremont pays +6). On the knit
+    # presets the style is `edge_run`, so a fill gains only its perimeter
+    # walk; the interior pass is a separate gate-1 item (corpus law 26) and
+    # is not changed here. `docs/renders/blend-fallback-underlay-2026-10-05/`.
+    # Stage 7 routes every auto-tier fill of a
     # design classed "gradient" through `stage6_blend.blend_fill`, which
     # sewed `underlay_style="none"` on both of its paths and was never handed
     # the style stage 7 resolves for every other fill tier (the fabric
@@ -2177,7 +2215,7 @@ class PipelineConfig:
     # No constant is added; the style and its spacings are the ones the flat
     # lane already sews. False is byte-identical to the engine before it.
     # `tests/test_blend_fallback_underlay.py`.
-    blend_fallback_underlay: bool = False
+    blend_fallback_underlay: bool = True
 
     # Task A2 (2026-08-14, tools/pro_parity): the corpus's professional
     # SOLID fill elements sew at roughly double a single ordinary pass's
