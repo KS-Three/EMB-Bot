@@ -21,6 +21,7 @@ import numpy as np
 
 from .config import PipelineConfig
 from .ink_path import read_cluster_ink
+from .words import word_key
 
 BEAN_LETTER_KEY = "bean_letter_spines"
 # A weight group smaller than this is a few fused letters, not a second line.
@@ -62,7 +63,7 @@ def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
         return 0
     clusters: dict[str, list] = {}
     for r in regions:
-        cid = r.meta.get("text_cluster_id")
+        cid = word_key(r, cfg)
         if (cid and r.meta.get("stitched", True)
                 and str(r.meta.get("tier", "auto")).lower() == "auto"):
             clusters.setdefault(cid, []).append(r)

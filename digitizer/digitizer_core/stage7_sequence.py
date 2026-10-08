@@ -64,6 +64,7 @@ from .stage5_overlap import PlannedRegion, widened_lettering
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
 from .columns import is_lettering, lettering_columns_shape
+from .words import is_text, word_key
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
@@ -235,7 +236,7 @@ def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float
     2026-09-19: split, never fill, for lettering). One helper, so the
     borders-last predicate, the classifier call and the emitter agree on
     what a letter is admitted at."""
-    if cfg.satin_lettering_split and region.meta.get("text_candidate"):
+    if cfg.satin_lettering_split and is_text(region, cfg):
         return math.inf, True, True
     return satin_max_mm, cfg.satin_per_stroke, bool(cfg.wide_columns)
 
@@ -304,7 +305,7 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
         return True
     if tier == "auto" and region.meta.get(BEAN_LETTER_KEY):
         return False        # a bean letter (`beanletters.tag_bean_letters`): runs, not columns
-    if tier == "auto" and cfg.lettering_columns and cfg.satin and is_lettering(region):
+    if tier == "auto" and cfg.lettering_columns and cfg.satin and is_lettering(region, cfg):
         return True         # a Column letter (`cfg.lettering_columns`): satin on its artwork outline
     satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm)
     return (tier == "auto" and cfg.satin
@@ -1313,7 +1314,7 @@ def _sewn_linear_cover(blocks: list[StitchBlock]):
 
 
 def _satin_lettering_cover(cap_sewn: list[PlannedRegion],
-                           blocks: list[StitchBlock]):
+                           blocks: list[StitchBlock], cfg=None):
     """The outlines the cap leaves alone under `cfg.edge_cap_skip_lettering`
     (lettering construction plan step 5, 2026-09-19): every text-cluster
     member that sewed as SATIN, as the polygon it sewed -- the same
@@ -1338,7 +1339,7 @@ def _satin_lettering_cover(cap_sewn: list[PlannedRegion],
             elif r.kind == stitches.FILL:
                 fill_ids.add(r.shape_id)
     polys = [p.polygon for p in cap_sewn
-             if p.region.meta.get("text_candidate")
+             if is_text(p.region, cfg)
              and p.shape_id in satin_ids and p.shape_id not in fill_ids
              and p.polygon is not None and not p.polygon.is_empty]
     if not polys:
@@ -2120,7 +2121,7 @@ def sequence(
                                            entry=entry, trim_at_mm=trim_at)
                 if not report["empty"]:
                     report["bean_letter"] = 1
-                    report["bean_word"] = p.region.meta.get("text_cluster_id")
+                    report["bean_word"] = word_key(p.region, cfg)
                     return runs, report, False
             outline_tried = False
             if routes_to_run(p, tier):
@@ -2141,7 +2142,7 @@ def sequence(
             # only; a letter the cut cannot construct falls through to the
             # ladder below, the contract every rung has.
             if (tier == "auto" and cfg.lettering_columns and cfg.satin
-                    and is_lettering(p.region)):
+                    and is_lettering(p.region, cfg)):
                 _ax0, _ay0, _ax1, _ay1 = p.region.polygon.bounds
                 _small = max(_ax1 - _ax0, _ay1 - _ay0) < machine.SATIN_UNDERLAY_MIN_EXTENT_MM
                 runs, report = lettering_columns_shape(
@@ -2149,7 +2150,8 @@ def sequence(
                     spacing_mm=satin_spacing_mm, split_above_mm=split_above,
                     pull_mm=fabric.pull_comp_mm, pull_floor_mm=cfg.min_detail_mm,
                     underlay_style="none" if _small else satin_underlay,
-                    start_near=entry)
+                    start_near=entry,
+                    end_near=exit_near if cfg.satin_exit_toward_next else None)
                 if not report["empty"]:
                     report["lettering_columns"] = 1
                     return runs, report, False
@@ -2925,7 +2927,7 @@ def sequence(
         # The gate's published saving and cover then include it, which is
         # what they measure: what the cap was told not to sew.
         if cfg.edge_cap_skip_lettering:
-            _letters = _satin_lettering_cover(cap_sewn, blocks)
+            _letters = _satin_lettering_cover(cap_sewn, blocks, cfg)
             if _letters is not None:
                 cap_omit = (_letters if cap_omit is None
                             else unary_union([cap_omit, _letters]))
