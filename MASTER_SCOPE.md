@@ -501,6 +501,10 @@ about the facts.
    59. Touches only an upscaled upload; price Becker +506 stitches, +11 trims
    for bare 4.33 → 2.65%. **Not sewn.**
    *(ruled 2026-10-07 — `docs/eye-pairs-2026-10-07/kent-notes.json`; [`docs/letterform-priors-2026-10-06.md`](docs/letterform-priors-2026-10-06.md))*
+31. **`lettering_columns` — first sitting ruled NEEDS WORK 2026-10-07, redrawn at equal pitch.**
+   The page's Columns side sewed 0.80 mm per rail (drawn before 1782fbea);
+   on `main` both sides read 0.40–0.52. Sitting `density-1007` is his. OFF.
+   *(measured 2026-10-07 — `tools/satin_pitch.py`; `docs/eye-pairs-2026-10-07/kent-notes.json`)*
 
 ## Cross-cutting issues
 
