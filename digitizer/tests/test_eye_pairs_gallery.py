@@ -22,7 +22,8 @@ SPEC_ARMS = ["per_stroke", "polygon_axis", "area_weighted",
              "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827",
              "ref_0930am", "split_7mm", "rails_symmetric", "pro_file", "split_off",
              "keep_counters", "bean_letters", "letterform_priors", "lettering_columns",
-             "lettering_words"]
+             "lettering_words", "columns_words"]
+# `columns_words` joined 2026-10-08: the Column lane's flip sitting, both flags.
 # `letterform_priors` joined 2026-10-06, Kent's option A after the spike
 # (docs/letterform-priors-2026-10-06.md): built OFF, judged on thread pairs.
 # `lettering_columns` joined 2026-10-07: the outline-cut Column lane, built OFF.
