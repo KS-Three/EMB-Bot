@@ -185,8 +185,14 @@ test("crossval: PES thread palette maps design colors to nearest Brother chart e
   // nearest-match scheme, not a bug. The fixture's red (200,30,30) and blue
   // (30,60,200) now decode as the Brother chart's nearest actual Red/Blue
   // entries instead of two unrelated dark blues.
+  //
+  // The blue moved 2026-10-08, when nearestPecIndex switched from RGB distance
+  // to CIEDE2000 (the repo's cone metric everywhere else): #0b3d91 is dE00
+  // 8.46 from the design's blue, #0a55a3 was 11.30 (both checked against
+  // skimage). The same change stopped near-black lettering exporting as Deep
+  // Green — see test/pes.test.js.
   assert.strictEqual(r.threads.length, 2);
-  assert.deepStrictEqual(r.threads, ["#ed171f", "#0a55a3"]);
+  assert.deepStrictEqual(r.threads, ["#ed171f", "#0b3d91"]);
 });
 
 // ---- a stitch too long to SEW --------------------------------------------
