@@ -25,8 +25,10 @@ BASE = "base"
 # screen, not artwork a customer would send, and three sittings of verdicts on
 # it were all "both bad" or "disregard". It stays in `REAL_ART` for the
 # instruments (the corpus tables still count it); the render and the labelled
-# page skip it.
-EXCLUDED_FIXTURES = frozenset({"screenshot"})
+# page skip it. Gaulke joined it on the full-density Columns sitting of
+# 2026-10-08: "This image sucks, I wouldn't use this image in a comparison
+# going forward" -- a low-quality upload, judged "both bad" twice.
+EXCLUDED_FIXTURES = frozenset({"screenshot", "gaulke"})
 REF_ARM = "ref_0827"
 # `main` on 2026-08-27, the engine Kent's fourteen notes and his "60%" describe.
 REF_COMMIT = "25da2fe"
