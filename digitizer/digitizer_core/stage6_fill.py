@@ -1362,7 +1362,8 @@ def _density_fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_m
 
 
 def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
-                    start_near: tuple[float, float] | None = None
+                    start_near: tuple[float, float] | None = None,
+                    all_pieces: bool = False,
                     ) -> list[list[tuple[float, float]]]:
     """Underlay runs for one shape, in the named style.
 
@@ -1372,16 +1373,51 @@ def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
 
     `start_near` is where the needle already is. A closed edge walk may begin
     anywhere on its ring, so it begins at the point nearest the needle.
+
+    The inset can split a shape at any neck narrower than twice
+    `UNDERLAY_INSET_MM`. By default only the LARGEST piece gets underlay and
+    every other piece sews its top stitching straight onto bare fabric --
+    Becker's chest logo, 88 mm2 of 1,152 (7.6%). `all_pieces`
+    (`PipelineConfig.underlay_all_pieces`, built OFF 2026-10-08) underlays
+    every piece, nearest-first from the needle, each starting where the last
+    one ended. A secondary piece smaller than one underlay stitch square
+    (`UNDERLAY_STITCH_MM` squared) is left bare: on Fremont thirteen such
+    slivers held 3.5 mm2 between them and cost fourteen trims.
     """
     if style == "none":
         return []
-    inner = poly.buffer(-machine.UNDERLAY_INSET_MM)
-    if inner.is_empty:
+    inset = poly.buffer(-machine.UNDERLAY_INSET_MM)
+    if inset.is_empty:
         return []
-    if inner.geom_type == "MultiPolygon":
-        inner = max(inner.geoms, key=lambda g: g.area)
-    if inner.geom_type != "Polygon":
+    pieces = [g for g in getattr(inset, "geoms", [inset])
+              if g.geom_type == "Polygon" and not g.is_empty]
+    if not pieces:
         return []
+    if not all_pieces:
+        return _underlay_piece(max(pieces, key=lambda g: g.area), style,
+                               angle_deg, start_near)
+    biggest = max(pieces, key=lambda g: g.area)
+    pieces = [g for g in pieces
+              if g is biggest or g.area >= machine.UNDERLAY_STITCH_MM ** 2]
+    out: list[list[tuple[float, float]]] = []
+    here = start_near
+    while pieces:
+        if here is None:
+            nxt = max(pieces, key=lambda g: g.area)
+        else:
+            nxt = min(pieces, key=lambda g: g.distance(Point(here)))
+        pieces.remove(nxt)
+        got = _underlay_piece(nxt, style, angle_deg, here)
+        if got:
+            out.extend(got)
+            here = got[-1][-1]
+    return out
+
+
+def _underlay_piece(inner: Polygon, style: str, angle_deg: float,
+                    start_near: tuple[float, float] | None
+                    ) -> list[list[tuple[float, float]]]:
+    """`_underlay_paths` for one already-inset piece."""
 
     def edge_run() -> list[list[tuple[float, float]]]:
         out = []
@@ -1479,6 +1515,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  row_phase_mm: float = 0.0,
                  keep_row=None,
                  cut_bridges: bool = False,
+                 underlay_all_pieces: bool = False,
                  sewn_paths_only: bool = False,
                  ) -> tuple[list[StitchRun], dict]:
     """One shape -> its runs, in sew order (underlay first), plus a small report.
@@ -1611,7 +1648,8 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
 
     # `cross_tatami` is laid at its own, longer stitch; split at the
     # lattice's 2.5 mm every 4 mm stitch of it came out as two of 2 mm.
-    emit(_underlay_paths(poly, underlay_style, angle, start_near),
+    emit(_underlay_paths(poly, underlay_style, angle, start_near,
+                         all_pieces=underlay_all_pieces),
          stitches.UNDERLAY,
          machine.UNDERLAY_CROSS_STITCH_MM if underlay_style == "cross_tatami"
          else machine.UNDERLAY_STITCH_MM)
