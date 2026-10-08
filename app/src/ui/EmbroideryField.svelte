@@ -14,6 +14,7 @@
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
+  import { fabricContrastNote } from "../lib/colorMatch.js";
   import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
   import {
     appliedBorders,
@@ -115,6 +116,13 @@
   // hairline strokes sewn as run, columns under 1 mm) — per element like the
   // 5 mm warn, because the fix is that element's size or font.
   let letterNote = "";
+  // Thread vs garment colour. The canvas shows a neutral work bed, not the
+  // fabric (#648), so this caption note is the only place a design that will
+  // vanish into its garment says so. Reactive on the cached result so picking
+  // a fabric swatch updates it without a regenerate.
+  $: contrastNote = lastGenerateResult
+    ? fabricContrastNote(lastGenerateResult.combined && lastGenerateResult.combined.colors, project && project.fabricRgb)
+    : "";
 
   // Result of the last renderRealistic() call — { toCanvas, scale, designBBoxMm } —
   // kept around so pointer handlers and the selection overlay can hit-test /
@@ -3501,6 +3509,6 @@
     <!-- &nbsp; before each separator, not a plain space: Svelte strips leading
          whitespace inside an element, so " · " rendered as "…hoop· This font".
          Pre-existing on the two older warnings; visible on all three now. -->
-    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{#if letterNote}<span class="warn">&nbsp;· {letterNote}</span>{/if}{/if}
+    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{#if letterNote}<span class="warn">&nbsp;· {letterNote}</span>{/if}{#if contrastNote}<span class="warn" data-testid="contrast-note">&nbsp;· {contrastNote}</span>{/if}{/if}
   </div>
 </div>
