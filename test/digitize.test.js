@@ -3466,7 +3466,13 @@ test("underlayRuns: a 3-point hole gets its own edge run and joins the lattice's
 // reader takes three jumps in a row for one, and taking the stitch out from
 // between two jumps could make a cut that was not there.
 const _holeStar = [[180, 0], [227, 115], [351, 124], [256, 205], [286, 326], [180, 260], [74, 326], [104, 205], [9, 124], [133, 115]].map(([x, y]) => ({ x, y }));
-const _holeTaper = [{ x: 0, y: 0 }, { x: 300, y: 10 }, { x: 0, y: 20 }];
+// A three-armed star; forced to satin it lays two stitches on one point. (The
+// 300 x 20 taper this was until 2026-10-08 did it only through the medial
+// axis sticking to the grid's edge, fixed then.)
+const _holeTri = [0, 1, 2, 3, 4, 5].map((i) => {
+  const a = -Math.PI / 2 + (i * Math.PI) / 3, r = i % 2 ? 30 : 100;
+  return { x: Math.round(100 + r * Math.cos(a)), y: Math.round(100 + r * Math.sin(a)) };
+});
 const _holeRun = (shape, widthMm, extra) => DG.buildQualityDesign(
   [{ rgb: [0, 0, 0], shapes: [Object.assign({ holes: [] }, shape)] }],
   Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: widthMm, darkOnTop: false }, extra));
@@ -3476,7 +3482,7 @@ const _holeCases = [
   ["plain walk, fill and underlay", "fill", (extra) => _holeRun({ outer: _holeStar, tierOverride: "fill" }, 34.2, extra)],
   ["plain walk under a preset", "fill", (extra) => _holeRun({ outer: _holeStar, tierOverride: "fill" }, 34.2, Object.assign({ fabric: FABRICS.getFabric("pique_knit") }, extra))],
   ["column walk under a preset", "fill", (extra) => _holeRun({ outer: _holeStar, holes: [sq(160, 160, 40)], tierOverride: "fill" }, 34.2, Object.assign({ fabric: FABRICS.getFabric("terry_towel"), fillColumns: true }, extra))],
-  ["satin", "satin", (extra) => _holeRun({ outer: _holeTaper, tierOverride: "satin" }, 30, extra)],
+  ["satin", "satin", (extra) => _holeRun({ outer: _holeTri, tierOverride: "satin" }, 10, extra)],
 ];
 // The stitches on a point the stitch before them is on, by the kind of run.
 const _secondByKind = (d) => {
@@ -3596,9 +3602,9 @@ test("dedupeHoles: the stitch after a float is laid, even back on the point the 
   const off = build(), on = build({ dedupeHoles: true });
   const back = (d) => d.stitches.findIndex((s, i, st) => i >= 2 && s.type === "stitch" && st[i - 1].type === "jump" && !_same(s, st[i - 1]) && st[i - 2].type === "stitch" && _same(s, st[i - 2]));
   assert.ok(back(off) >= 2, "fixture: a stitch, a float away, and a stitch back on the same point");
-  assert.strictEqual(_show(off.stitches.slice(back(off) - 2, back(off) + 2)), "s-46,-30 j46,-30 s-46,-30 s-42,-26", "fixture");
+  assert.strictEqual(_show(off.stitches.slice(back(off) - 2, back(off) + 2)), "s4,67 j-4,67 s4,67 s5,63", "fixture");
   assert.ok(back(on) >= 2, "with the flag the stitch back is still there");
-  assert.strictEqual(_show(on.stitches.slice(back(on) - 2, back(on) + 2)), "s-46,-30 j46,-30 s-46,-30 s-42,-26");
+  assert.strictEqual(_show(on.stitches.slice(back(on) - 2, back(on) + 2)), "s4,67 j-4,67 s4,67 s5,63");
   assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)));
 });
 
@@ -3616,17 +3622,21 @@ test("dedupeHoles: the stitch after a float is laid, even on the point the float
 });
 
 test("dedupeHoles: the stitch after a float is laid, even when the float went nowhere", () => {
-  // A three-point needle forced to satin, with no pull compensation. At the
+  // A three-point needle forced to satin, with no pull compensation. Near the
   // tip the column floats to a point that rounds onto the one it left and sews
-  // there: a stitch, a jump and a stitch, all three on one point. The stitch
-  // after the float is the first of its thread and stays; the two after it are
+  // there: a stitch, a jump and a stitch, all on one point. The stitch after
+  // the float is the first of its thread and stays; the ones after it are
   // seconds. Found by the independent re-measure, 2026-10-04: no other test
-  // here holds a float that does not move.
-  const outer = [[0, 108.1], [144.9, 0], [6.9, 116.8]].map(([x, y]) => ({ x, y }));
+  // here holds a float that does not move. (Re-found 2026-10-08 when the
+  // medial-axis skeleton stopped sticking to the grid edge: the 6.9 needle no
+  // longer floats nowhere; this 5.6 one does.)
+  const outer = [[0, 108.1], [144.9, 0], [5.6, 116.8]].map(([x, y]) => ({ x, y }));
   const build = (extra) => _holeRun({ outer, tierOverride: "satin" }, 5.8, Object.assign({ pxPerMm: 25, pullCompMm: 0, underlay: false, satinSpacingMm: 0.3 }, extra));
   const off = build(), on = build({ dedupeHoles: true });
-  assert.strictEqual(_show(off.stitches.slice(-6)), "s26,21 j26,21 s26,21 s26,21 s26,21 e0,0", "fixture: a stitch, a float that goes nowhere, and three stitches on its point");
-  assert.strictEqual(_show(on.stitches.slice(-4)), "s26,21 j26,21 s26,21 e0,0");
+  const nowhere = (d) => d.stitches.findIndex((x, i, st) => i > 0 && x.type === "jump" && st[i - 1].type === "stitch" && _same(x, st[i - 1]));
+  const k0 = nowhere(off), k1 = nowhere(on);
+  assert.strictEqual(_show(off.stitches.slice(k0 - 1, k0 + 5)), "s26,21 j26,21 s26,21 s26,21 s26,21 j27,22", "fixture: a stitch, a float that goes nowhere, and three stitches on its point");
+  assert.strictEqual(_show(on.stitches.slice(k1 - 1, k1 + 3)), "s26,21 j26,21 s26,21 j27,22");
   assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)));
 });
 
@@ -3810,12 +3820,12 @@ test("cutFloats: the move to the stitch after the float counts, as the writer la
   // after it is 20 mm back the other way: the writer lays that move as a jump
   // record and a stitch. Three jumps in a row.
   const off = _cfStar(), on = _cfStar({ cutFloats: true });
-  assert.strictEqual(_show(off.stitches.slice(92, 95)), "s-93,2 j98,0 s-98,0", "fixture");
-  assert.deepStrictEqual([_cfDst.jumpRecords(98 + 93, 0 - 2), _cfDst.jumpRecords(-98 - 98, 0)], [2, 2], "fixture: two records out, and two back of which the last is the stitch");
-  assert.strictEqual(_show(on.stitches.slice(92, 95)), "s-93,2 t98,0 s-98,0");
+  assert.strictEqual(_show(off.stitches.slice(94, 97)), "s-94,-2 j98,0 s-98,0", "fixture");
+  assert.deepStrictEqual([_cfDst.jumpRecords(98 + 94, 0 + 2), _cfDst.jumpRecords(-98 - 98, 0)], [2, 2], "fixture: two records out, and two back of which the last is the stitch");
+  assert.strictEqual(_show(on.stitches.slice(94, 97)), "s-94,-2 t98,0 s-98,0");
   // one record out and two back is two jumps in a row: left
-  assert.strictEqual(_show(off.stitches.slice(236, 239)), "s-2,-93 j98,0 s-98,0", "fixture");
-  assert.strictEqual(_show(on.stitches.slice(236, 239)), "s-2,-93 j98,0 s-98,0");
+  assert.strictEqual(_show(off.stitches.slice(238, 241)), "s-2,-94 j98,0 s-98,0", "fixture");
+  assert.strictEqual(_show(on.stitches.slice(238, 241)), "s-2,-94 j98,0 s-98,0");
   assert.strictEqual(_count(on, "trim") - _count(off, "trim"), 3);
 });
 
