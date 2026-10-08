@@ -430,6 +430,7 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
       - uses: actions/setup-python@v5
+        id: py
         with:
           python-version: '3.12'
           cache: pip
@@ -445,11 +446,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: digitizer/.venv
-          key: e2e-venv-${{ runner.os }}-py312-${{ hashFiles('digitizer/requirements.txt', 'digitizer/pyproject.toml') }}
+          key: e2e-venv-${{ runner.os }}-py${{ steps.py.outputs.python-version }}-${{ hashFiles('digitizer/requirements.txt', 'digitizer/pyproject.toml') }}
       - name: Build the digitizer venv the e2e bootstrap looks for
         working-directory: digitizer
         run: |
-          [ -x .venv/bin/python ] || python -m venv .venv
+          # A venv cached under an older 3.12.x points at an interpreter the
+          # runner no longer has (dangling .venv/bin/python): rebuild it.
+          .venv/bin/python -c '' 2>/dev/null || python -m venv --clear .venv
           .venv/bin/pip install -r requirements.txt
           .venv/bin/pip install -e '.[service]'
       - name: Install
