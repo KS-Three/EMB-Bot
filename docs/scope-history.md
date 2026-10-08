@@ -20062,3 +20062,10 @@ that reads 47 off-fill floats with the flag dropped. **Image:** floats
 +10% on 76 of 126 and +29.7% at worst, travel over sewn rows 6.0 → 52.1 m,
 builds up to 1.8 s — held OFF at the ~10% bar, Kent's to take. Tables:
 `docs/renders/fill-columns-lanes-2026-10-08/`. Not sewn.
+
+**Same day, later: Kent flipped the image lane ON too.** Put to him with the
++10.4% priced, he took it, asking that the next ten digitized images shown
+to him carry the off/on float picture (`tools/fill-columns-image-sheet.mjs`;
+the first, becker at left chest: 1,113 floats off the fill → 0, cuts 14 →
+11, stitches +18.2%). Guarded by a traced-counter test that reads 351
+off-fill floats with the flag dropped. "Waiting on Kent" 22 resolved.

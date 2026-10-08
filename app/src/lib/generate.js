@@ -119,12 +119,13 @@ export function generateElement(element, garment, runtime) {
     return EMB.buildQualityDesign(regions, {
       garment, fabric, pxPerMm, satinMaxWidthMm: 3.0,
       underlay: element.underlay,
-      // `fillColumns` stays OFF here (engine default), measured 2026-10-08
-      // (MASTER_SCOPE "Waiting on Kent" 22, `tools/fill-columns-lanes.mjs`):
-      // on 14 real logos it clears the floats (188,952 off the fill -> 484,
-      // none new) but costs +10.4% stitches, over +10% on 76 of 126 designs
-      // and +29.7% at worst, ten times the travel over sewn rows and up to
-      // 1.8 s a build. That is past the bar the manual and shape lanes met.
+      // Rows sewn column by column, as the manual and shape branches do --
+      // Kent's call 2026-10-08 (MASTER_SCOPE "Waiting on Kent" 22), made with
+      // the price in front of him (`tools/fill-columns-lanes.mjs`, 14 real
+      // logos): floats off the fill 188,952 -> 484, none new, cuts -14%; but
+      // stitches +10.4% (over +10% on 76 of 126 designs, +29.7% at worst),
+      // ten times the travel over sewn rows, up to 1.8 s a build. Not sewn.
+      fillColumns: true,
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,
       offsetYMm: element.offsetYMm || 0,
@@ -172,8 +173,8 @@ export function generateElement(element, garment, runtime) {
       // 4 mm, STITCHES) across every hole the user drew. Manual is the lane
       // where a customer draws holes on purpose, so it flipped first; the
       // engine default stays off. Price: +3.3% stitches mean (up to +37%),
-      // travel along rims in place of floats. Not sewn. The shape branch
-      // below passes it too (2026-10-08); the image branch does not.
+      // travel along rims in place of floats. Not sewn. The shape and image
+      // branches pass it too since 2026-10-08.
       fillColumns: true,
       underlay: element.underlay,
       targetWidthMm: element.sizeMm || undefined,

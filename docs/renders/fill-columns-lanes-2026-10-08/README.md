@@ -13,7 +13,7 @@ stream the encoders are handed.
 | lane | floats off the fill | new floats off the fill | cuts | stitches (mean / worst) | verdict |
 |---|---|---|---|---|---|
 | basic shapes (63 designs) | 3,118 → 25 | none | 60 → 33 | +1.8% / +16.2% | **ON** (`generate.js` shape branch) |
-| image, real logos (126 designs) | 188,952 → 484 | none | 3,714 → 3,208 | **+10.4%** / **+29.7%** | **OFF**, Kent's call |
+| image, real logos (126 designs) | 188,952 → 484 | none | 3,714 → 3,208 | **+10.4%** / **+29.7%** | **ON**, Kent's call with this price in front of him |
 
 - **Shapes: flipped.** The circle and both rectangles are byte-identical
   (no notch, no hole). The heart and every star lose their notch floats and
@@ -25,14 +25,19 @@ stream the encoders are handed.
   at most. Guard: `generate.spec.js`, "a star preset lays no float across its
   notches" (47 off-fill floats with the flag dropped from the shape branch,
   0 with it).
-- **Image: held OFF.** The floats go just as cleanly, and no design gains a
-  float or a deeper one. But the stitch bill is past the ~10% bar on real
-  art: +10.4% across the lane, over +10% on **76 of 126** designs, and
-  +29.7% on `summit_badge` at full back. Thread laid over rows already sewn
-  goes from 6.0 m to 52.1 m across the set (68 mm of it on the face of a fill,
-  the rest on the rims), the worst millimetre of rim gains lines on 66 designs
-  (becker 7 → 18, script tires 6 → 15, summit 22 → 36), and one build takes
-  1.8 s (off: 88 ms). Left for Kent: accept that, or sew a holed logo first.
+- **Image: ON, by Kent's call.** The floats go just as cleanly, and no
+  design gains a float or a deeper one. But the stitch bill is past the ~10%
+  bar this lane was measured against: +10.4% across the lane, over +10% on
+  **76 of 126** designs, and +29.7% on `summit_badge` at full back. Thread
+  laid over rows already sewn goes from 6.0 m to 52.1 m across the set (68 mm
+  of it on the face of a fill, the rest on the rims), the worst millimetre of
+  rim gains lines on 66 designs (becker 7 → 18, script tires 6 → 15, summit
+  22 → 36), and one build takes 1.8 s (off: 88 ms). The lane was held OFF on
+  that bar and put to Kent; he flipped it the same day, asking that **the next
+  ten digitized images shown to him carry the off/on float picture** —
+  `node tools/fill-columns-image-sheet.mjs <png> [out.svg]` draws it. Guard:
+  `generate.spec.js`, "an image fill lays no float across its counter" (351
+  off-fill floats with the flag dropped from the image branch, 0 with it).
 
 ## How each column is measured
 
