@@ -2210,6 +2210,8 @@ def sequence(
                     rails_follow_edge=cfg.satin_rails_follow_edge,
                     outer_rail_pitch=cfg.satin_outer_rail_pitch,
                     join_square=cfg.satin_join_square,
+                    junction_square=(cfg.satin_junction_square
+                                     and bool(p.region.meta.get("text_candidate"))),
                     slab_serifs=cfg.satin_slab_serifs,
                     patch_junctions=cfg.satin_patch_junctions,
                     crown_cover=cfg.satin_crown_cover,
@@ -2222,6 +2224,7 @@ def sequence(
                     walk_cursor_reach_mm=cfg.satin_walk_cursor_reach_mm,
                     cap_recentre=cfg.satin_cap_recentre,
                     tip_caps=cfg.satin_tip_caps,
+                    tip_corner_gate=cfg.satin_tip_corner_gate,
                     # The ceiling the classifier admitted at is the one the
                     # emitter sews at — one number, threaded, never two
                     # constants (DOCTRINE 2026-09-02). The fold guard rides
