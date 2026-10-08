@@ -105,8 +105,11 @@ jobs:
     # four. The only lever left was more runners. Each shard keeps `-n auto`
     # on its own four cores; tests/_ci_shard.py assigns whole FILES to shards
     # (module-scoped fixtures stay computed once) balanced on
-    # tests/.shard_durations.json. Changing SHARDS means changing the matrix
-    # list and the `DIGITIZER_SHARD` denominator together.
+    # tests/.shard_durations.json (per-file seconds from this job's own JUnit
+    # artifacts; refresh with tools/ci_shard_durations.py when one shard
+    # starts running visibly long -- staleness costs balance, never coverage).
+    # Changing SHARDS means changing the matrix list and the `DIGITIZER_SHARD`
+    # denominator together.
     #
     # The Python pipeline suite. Deps are pinned in digitizer/requirements.txt
     # (frozen from the working venv — the k-means/golden tests are pinned to
@@ -240,6 +243,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: digitizer-shard-${{ matrix.shard }}
+          # Re-running one failed shard re-uploads under the same name; without
+          # this, v4 refuses the duplicate and the re-run goes red on upload.
+          overwrite: true
           path: |
             digitizer/shard-manifest.json
             digitizer/junit.xml

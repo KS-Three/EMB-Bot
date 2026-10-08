@@ -57,6 +57,14 @@ def pytest_collection_modifyitems(config, items):
     if not spec:
         return
     k, n = _parse(spec)
+    manifest = os.environ.get("DIGITIZER_SHARD_MANIFEST")
+    # Consumed here, so no CHILD process inherits them. tests/test_doc_claims.py
+    # runs its own `pytest --collect-only`; with these still set, that child
+    # collected only this shard's files (quietly narrowing its count check)
+    # and, lacking the CLI's --deselects, overwrote this shard's manifest
+    # with 3 extra ids -- the aggregator's first red, PR #669.
+    os.environ.pop("DIGITIZER_SHARD", None)
+    os.environ.pop("DIGITIZER_SHARD_MANIFEST", None)
     durations = json.loads(DURATIONS.read_text()) if DURATIONS.exists() else {}
     files = {item.nodeid.split("::", 1)[0] for item in items}
     shard_of = assign(files, n, durations)
@@ -68,7 +76,6 @@ def pytest_collection_modifyitems(config, items):
 
     # Under xdist every worker collects; one manifest is enough (gw0, or the
     # lone process without -n).
-    manifest = os.environ.get("DIGITIZER_SHARD_MANIFEST")
     worker = getattr(config, "workerinput", {}).get("workerid")
     if manifest and worker in (None, "gw0"):
         Path(manifest).write_text(json.dumps(
