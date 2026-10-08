@@ -133,6 +133,37 @@ def detect(rgb: np.ndarray, fg: np.ndarray | None = None) -> TwoTone | None:
                    plateau=round(st["plateau"], 2))
 
 
+def apply(p) -> bool:
+    """Stage 1.3 on a stage-1 `Prep`, in place: detect on the foreground,
+    snap `p.rgb`, fold the snapped halo into `p.bg_mask`, hand the thin
+    drawn lines back as light ink (`keep_lines`), and trim `enclosed_mask`
+    to what is still foreground. True when the snap fired.
+
+    One function because two callers must agree on every pixel: the
+    pipeline, and preflight's thread grader, which re-reads stage 1 and
+    would otherwise judge each thread against the anti-alias grey the snap
+    removed (2026-10-08: White blocked on golke at dE 14.6 and gaulke 33.9
+    under the lines `keep_lines` widens). `native_rgb`, `raw_rgb`, `bg_rgb`
+    and `bg_edge_rgb` are left alone (pipeline.py, stage 1.3)."""
+    tt = detect(p.rgb, ~p.bg_mask)
+    if tt is None:
+        return False
+    p.rgb = snap(p.rgb, tt)
+    p.bg_mask = fold_fringe(p.rgb, tt, p.bg_mask, p.bg_rgb)
+    # A thin white line drawn between the inks is background-coloured and
+    # open to the background, so the flood and the fold take it; as bare
+    # fabric it is too narrow to stay open. Sew it light.
+    lines = keep_lines(p.bg_mask, p.px_per_mm)
+    if lines.any():
+        p.rgb[lines] = np.asarray(tt.light, dtype=p.rgb.dtype)
+        p.bg_mask = p.bg_mask & ~lines
+    if p.enclosed_mask is not None:
+        p.enclosed_mask = p.enclosed_mask & ~p.bg_mask
+        if not p.enclosed_mask.any():
+            p.enclosed_mask = None
+    return True
+
+
 def snap(rgb: np.ndarray, tt: TwoTone) -> np.ndarray:
     """`rgb` with every pixel replaced by the ink nearer it in grey."""
     cut = (tt.dark_grey + tt.light_grey) / 2.0

@@ -480,22 +480,11 @@ def build_generation(
     # background (`two_tone.fold_fringe`). `bg_rgb`, `bg_edge_rgb` and
     # `raw_rgb` keep their pre-snap colours on purpose: they describe the
     # file's background, which the snap does not redraw.
+    # The whole of it lives in `two_tone.apply`, which preflight's thread
+    # grader replays on its own stage-1 re-read so it judges the raster the
+    # pipeline sewed.
     if cfg.two_tone_snap and cfg.is_photographic is not True:
-        tt = two_tone.detect(p.rgb, ~p.bg_mask)
-        if tt is not None:
-            p.rgb = two_tone.snap(p.rgb, tt)
-            p.bg_mask = two_tone.fold_fringe(p.rgb, tt, p.bg_mask, p.bg_rgb)
-            # A thin white line drawn between the inks is background-coloured
-            # and open to the background, so the flood and the fold take it;
-            # as bare fabric it is too narrow to stay open. Sew it light.
-            lines = two_tone.keep_lines(p.bg_mask, p.px_per_mm)
-            if lines.any():
-                p.rgb[lines] = np.asarray(tt.light, dtype=p.rgb.dtype)
-                p.bg_mask = p.bg_mask & ~lines
-            if p.enclosed_mask is not None:
-                p.enclosed_mask = p.enclosed_mask & ~p.bg_mask
-                if not p.enclosed_mask.any():
-                    p.enclosed_mask = None
+        two_tone.apply(p)
 
     # Stage 1.5 — photo prep (plan §2 rows 3-4; build step 3 first slice).
     # DOUBLE-gated: the opt-in flag AND a photo classification, so neither

@@ -3753,6 +3753,34 @@ def _curve_roughness_metrics(plan: StitchPlan) -> dict:
             "curve_traces": row["traces"]}
 
 
+def _two_tone_view(p, plan: StitchPlan, cfg: PipelineConfig):
+    """The stage-1 re-read as the pipeline SEWED it: when `cfg.two_tone_snap`
+    fired (defect 58), a snapped copy of `p` (`two_tone.apply`, the
+    pipeline's own stage 1.3); otherwise `p` itself, untouched.
+
+    For the thread grader only. Unsnapped, it judged each thread against the
+    anti-alias grey the snap removed: White BLOCKED on golke (dE 14.6, the
+    art read 190 grey) and gaulke (33.9, 126 grey) under the thin roof lines
+    `two_tone.keep_lines` widens to the satin floor, where the art draws
+    them white (2026-10-08). The art is two inks, so two inks is the honest
+    yardstick. Every other check keeps the plain re-read.
+
+    The photograph gate is the pipeline's: a declared photograph, or stage
+    1.25's PHOTO_DETECTED on the plan (`_is_photo_class`'s re-read of the
+    same warning). Stage 0's photo CLASS is not a gate there, so it is not
+    one here (`logo_mfab_hat` snaps)."""
+    if not cfg.two_tone_snap or cfg.is_photographic is True:
+        return p
+    if cfg.is_photographic is None and any(
+            w.get("code") == _PHOTO_DETECTED for w in plan.warnings):
+        return p
+    import copy
+
+    from . import two_tone
+    q = copy.copy(p)
+    return q if two_tone.apply(q) else p
+
+
 def run_preflight(result: PipelineResult, plan: StitchPlan,
                   cfg: PipelineConfig | None = None,
                   image=None) -> dict:
@@ -3785,7 +3813,8 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
 
     worst_de: float | None = None
     if p is not None and result is not None:
-        thread_findings, worst_de = _thread_match_findings(p, result, plan, cfg)
+        thread_findings, worst_de = _thread_match_findings(
+            _two_tone_view(p, plan, cfg), result, plan, cfg)
         findings.extend(thread_findings)
     metrics["thread_match_checked"] = p is not None and result is not None
     metrics["thread_worst_delta_e"] = None if worst_de is None else round(worst_de, 1)

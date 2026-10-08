@@ -113,10 +113,10 @@ def test_white_logo_on_transparency_runs_with_the_flag_on():
     assert gen is not None
 
 
-def test_flag_off_by_default():
-    """Kent approved the flip 2026-10-08; it waits on the thread-match block
-    `keep_lines` brings to golke and gaulke (config.py's comment)."""
-    assert PipelineConfig().two_tone_snap is False
+def test_flag_on_by_default():
+    """Kent's flip 2026-10-08, once `keep_lines` and the grader's snapped
+    view cured golke's roof lines."""
+    assert PipelineConfig().two_tone_snap is True
 
 
 def _snapped_stage1(rel: str):
@@ -188,3 +188,66 @@ def test_golke_roof_sews_white_with_the_flag_on():
                                base_cfg(80.0, "left_chest", two_tone_snap=True))
     white = sum(n for c, n in _blocks(design) if c.lower() == "#ffffff")
     assert white > 400
+
+
+# --- preflight's thread grader reads the raster the pipeline sewed ----------
+
+def _preflight(rel: str, on: bool, retint=None):
+    from digitizer_core.pipeline import digitize
+    from digitizer_core.preflight import run_preflight
+
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", two_tone_snap=on)
+    result, plan = digitize(TESTDATA / rel, cfg)
+    if retint is not None:
+        retint(result, cfg)
+    return run_preflight(result, plan, cfg, image=TESTDATA / rel)
+
+
+def _thread_blocks(report) -> list[dict]:
+    return [f for f in report["findings"]
+            if f.get("code") == "THREAD_MATCH_POOR" and f.get("severity") == "block"]
+
+
+@pytest.mark.parametrize("rel", ["art/logo_golke_roofing.png", "photo/logo_gaulke_roofing.png"])
+def test_the_kept_lines_do_not_block_their_white_thread(rel):
+    """Read unsnapped, the grader saw the anti-alias grey under the lines
+    `keep_lines` widens and BLOCKED White: golke dE 14.6 (art 190 grey),
+    gaulke 33.9 (126), both blocking nothing OFF (2026-10-08). It now judges
+    the snapped raster, where those lines are the art's white."""
+    assert _thread_blocks(_preflight(rel, on=True)) == []
+
+
+def test_a_genuinely_wrong_thread_still_blocks_with_the_snap_on():
+    """The snapped yardstick is not a blindfold: sew golke's white lines in a
+    red spool and the grader still blocks it."""
+    from digitizer_core.threads import chart_for
+
+    def to_red(result, cfg):
+        chart = chart_for(cfg)
+        red = min(range(len(chart)), key=lambda i: sum(
+            (a - b) ** 2 for a, b in zip(chart[i].rgb, (200, 20, 30))))
+        white = [r for r in result.regions
+                 if min(chart[r.thread_index].rgb) > 230
+                 and not r.meta.get("enclosed_background")]
+        assert white, "fixture drift: golke's roof lines no longer sew white"
+        for r in white:
+            r.thread_index = red
+            r.thread_number = chart[red].number
+
+    blocks = _thread_blocks(_preflight("art/logo_golke_roofing.png", on=True, retint=to_red))
+    assert blocks
+    assert any(min(f["extra"]["artwork_rgb"]) > 230 for f in blocks)
+
+
+def test_the_grader_view_is_the_plain_reread_when_the_snap_is_off():
+    """Flag OFF, the thread grader is handed the very object every other check
+    reads: byte-identical by construction, not by tolerance."""
+    from digitizer_core.preflight import _two_tone_view
+    from digitizer_core import StitchPlan
+
+    p = prep(TESTDATA / "art/logo_golke_roofing.png", _cfg())
+    plan = StitchPlan(blocks=[], palette=[])
+    assert _two_tone_view(p, plan, _cfg(two_tone_snap=False)) is p
+    assert _two_tone_view(p, plan, _cfg(two_tone_snap=True, is_photographic=True)) is p
+    q = _two_tone_view(p, plan, _cfg(two_tone_snap=True))
+    assert q is not p and q.rgb is not p.rgb
