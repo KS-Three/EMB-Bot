@@ -43,7 +43,8 @@ BASE = "base"
 # restated and pinned by test. Kent, 2026-09-30, twice: screenshot is not a
 # logo to judge digitizing by. A sitting rendered before the rule still has
 # its rows; the labelled page drops them and counts them as excluded.
-EXCLUDED_FIXTURES = frozenset({"screenshot"})
+# Gaulke joined it 2026-10-08 (Kent: not a logo to compare by, going forward).
+EXCLUDED_FIXTURES = frozenset({"screenshot", "gaulke"})
 # The yardstick's `__ref__` arms: an engine snapshot run out of process, and
 # the label the page gives it (BEFORE is that engine on the left, AFTER is
 # today on the right). Restated from `tools.eye_pairs.pairs.ARMS` and pinned
