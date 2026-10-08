@@ -1056,6 +1056,12 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-m);
+  /* Below ~1150px even the icons-only bar is wider than the field (766px in
+     552px at 1000px wide), so it wraps onto a second row instead of spilling
+     off both ends. Wide screens never reach the wrap: no change there. */
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 100%;
 }
 
 .zoombtn {
