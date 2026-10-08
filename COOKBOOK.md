@@ -1085,7 +1085,7 @@ sews nothing and cuts the smallest shape that contains it.
   the flag; the flip is Kent's ("Waiting on Kent" 23).
   `node tools/lock-stitch-census.mjs` prints what a lock costs and how long
   its legs really are, on every shipped font and eleven shapes.
-- **Cutting long floats is built OFF for the shape builder (2026-10-04).**
+- **Cutting long floats is built OFF by default for the shape builder (2026-10-04).**
   A DST has no cut. `dst.js` lays three jump records for a `trim`, and also
   for any float over 24.2 mm, so a machine cuts where the stream has only a
   jump, and `ties` lays no lock there. `cutFloats: true` on
@@ -1099,8 +1099,10 @@ sews nothing and cuts the smallest shape that contains it.
   the FILE: `node tools/file-cut-census.mjs` writes every design with the
   three writers, reads each back with its own readers and says what every
   run of three jumps was; `--against <src>` says whether two engines differ
-  by cuts put in and nothing else. No Studio caller passes the flag; the
-  flip is Kent's ("Waiting on Kent" 28) and belongs after `fillColumns`.
+  by cuts put in and nothing else. Only the MANUAL branch of `generate.js`
+  passes it (2026-10-08, after `fillColumns`; `generate.spec.js` pins it on
+  a plain square); basic shapes and the image lane do not ("Waiting on
+  Kent" 28, `docs/cut-floats-manual-2026-10-08.md`).
 - **Row stagger is built OFF for the shape builder (2026-10-03).**
   `fillStagger: true` on `buildQualityDesign` puts the cover fill's needle
   holes on one grid shifted row by row (`tatamiFill`'s `stagger`, `minStitch`

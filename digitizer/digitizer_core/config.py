@@ -218,6 +218,15 @@ class PipelineConfig:
     # region set on every gradient-class design, so it waits on Kent's
     # look at a render, not on a green suite.
     dissolve_phantom_blends: bool = False
+    # Defect 58: a black-and-white logo sews four to six cones, because thin
+    # strokes on a low-resolution source are mostly anti-alias grey. ON, a
+    # raster `two_tone.detect` reads as two inks (achromatic, two modes, no
+    # grey plateau) is thresholded to those two inks right after stage 1, so
+    # no region ever sees the grey. Per IMAGE, which is why it leaves
+    # `logo_bridge_bar.jpg`'s ringing alone where the per-region stroke rule
+    # did not (DOCTRINE 2026-10-05). OFF by default: it moves the region set
+    # on every black-and-white logo, so it waits on Kent's look at a render.
+    two_tone_snap: bool = False
     # Make the gradient lane's region edges follow the PIXELS rather than the
     # SEEDS superpixels they are built from
     # (`stage2_photo_segment.snap_region_edges`). Measured 2026-09-30 on
@@ -2152,8 +2161,15 @@ class PipelineConfig:
     # `tests/test_fill_bridge_cut.py`.
     fill_bridge_cut: bool = True
 
-    # Underlay under a gradient-class design's ordinary fills (2026-10-05,
-    # built OFF — Kent's flip). Stage 7 routes every auto-tier fill of a
+    # Underlay under a gradient-class design's ordinary fills. Built OFF
+    # 2026-10-05; ON since 2026-10-07 by Kent's ruling, because OFF a
+    # gradient-class design sewed every fill with no underlay at all. Measured
+    # when built (six real gradient logos, 80 mm): bare fills 33/33 -> 5/33
+    # for +1.7% stitches, trims 423 -> 421 (Fremont pays +6). On the knit
+    # presets the style is `edge_run`, so a fill gains only its perimeter
+    # walk; the interior pass is a separate gate-1 item (corpus law 26) and
+    # is not changed here. `docs/renders/blend-fallback-underlay-2026-10-05/`.
+    # Stage 7 routes every auto-tier fill of a
     # design classed "gradient" through `stage6_blend.blend_fill`, which
     # sewed `underlay_style="none"` on both of its paths and was never handed
     # the style stage 7 resolves for every other fill tier (the fabric
@@ -2168,7 +2184,7 @@ class PipelineConfig:
     # No constant is added; the style and its spacings are the ones the flat
     # lane already sews. False is byte-identical to the engine before it.
     # `tests/test_blend_fallback_underlay.py`.
-    blend_fallback_underlay: bool = False
+    blend_fallback_underlay: bool = True
 
     # Task A2 (2026-08-14, tools/pro_parity): the corpus's professional
     # SOLID fill elements sew at roughly double a single ordinary pass's
