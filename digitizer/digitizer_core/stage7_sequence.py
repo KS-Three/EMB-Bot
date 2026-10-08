@@ -2225,6 +2225,7 @@ def sequence(
                     walk_cursor_reach_mm=cfg.satin_walk_cursor_reach_mm,
                     cap_recentre=cfg.satin_cap_recentre,
                     tip_caps=cfg.satin_tip_caps,
+                    tip_corner_gate=cfg.satin_tip_corner_gate,
                     # The ceiling the classifier admitted at is the one the
                     # emitter sews at — one number, threaded, never two
                     # constants (DOCTRINE 2026-09-02). The fold guard rides
