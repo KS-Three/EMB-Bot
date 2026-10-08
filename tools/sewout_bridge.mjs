@@ -26,6 +26,7 @@
 //
 // Usage (from the repo root):
 //   node tools/sewout_bridge.mjs [design.json] [out.dst]
+import "./_help.mjs";
 import { createRequire } from "module";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";

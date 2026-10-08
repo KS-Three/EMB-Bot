@@ -39,6 +39,7 @@
 // Verdict doc: docs/pes-crossval-verdict-2026-08-04.md
 // Pinning test: test/crossval-stitch-formats.test.js
 
+import "./_help.mjs";
 import { createRequire } from "module";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";

@@ -45,6 +45,7 @@
 // "Narrow" is under the longest row that can round onto one point, the unit
 // times the square root of two. That is the file's arithmetic, not a physical
 // constant.
+import "./_help.mjs";
 import { writeFileSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";

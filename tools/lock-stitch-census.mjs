@@ -18,6 +18,7 @@
 // A LEG IS MEASURED IN THE STREAM'S OWN UNITS, 0.1 mm, after everything the
 // builder does to a point. The lettering port of 2026-09-14 computed it in
 // pixels and no test asked what that was in millimetres.
+import "./_help.mjs";
 import { readFileSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
