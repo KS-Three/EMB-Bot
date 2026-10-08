@@ -2209,6 +2209,7 @@ def sequence(
                     rails_follow_edge=cfg.satin_rails_follow_edge,
                     outer_rail_pitch=cfg.satin_outer_rail_pitch,
                     join_square=cfg.satin_join_square,
+                    slab_serifs=cfg.satin_slab_serifs,
                     patch_junctions=cfg.satin_patch_junctions,
                     crown_cover=cfg.satin_crown_cover,
                     polygon_axis=cfg.satin_polygon_axis,

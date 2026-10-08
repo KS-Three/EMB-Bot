@@ -100,6 +100,15 @@ totals across tiers. At 0.15 mm thread the terminals still hold: MARINE bare
 3.1 -> 2.7%, Fremont 2.0 -> 0.6%. The E is still three slabs (the ext rule takes the
 slot's LONGER edge into the body): the next cut item. Then Kent's pairs.
 
+**Kent's pairs DRAWN (after #660, ahead of the E cut on the caller's word):**
+`docs/eye-pairs-2026-10-07/` -- 7 pairs + tires identical, sitting tag
+`columns-1007`, price table from the new `tools/eye_pairs_price.py`
+(whole design, the changed shapes' own stitches/trims, fidelity rows).
+Found first: `outline_cut._spine_ends` called `medial_axis` WITHOUT `rng=0`,
+so the lane was nondeterministic (golden_tee 8,311-8,319 stitches run to
+run); fixed and AST-pinned for every engine call. Becker letter trims
+42 -> 8; lost_frac up on six of seven logos. Not published; the E is still
+three slabs on the page.
 
 **L1 BUILT 2026-10-08, OFF: `cfg.lettering_words`** -- see
 `word-tagger-l1-2026-10-08`. Under it `is_lettering` reads `word_id` only.
