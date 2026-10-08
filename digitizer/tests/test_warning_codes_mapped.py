@@ -47,7 +47,8 @@ def _warning_text_keys(js: str) -> set[str]:
 
 def _silent(js: str) -> set[str]:
     m = re.search(r"SILENT_WARNINGS\s*=\s*new Set\(\[(.*?)\]\)", js, re.S)
-    return set(re.findall(r'"([^"]+)"', m.group(1)))
+    body = re.sub(r"//[^\n]*", "", m.group(1))   # comments may quote words
+    return set(re.findall(r'"([^"]+)"', body))
 
 
 def test_every_emitted_code_is_translated_or_deliberately_silent():

@@ -1630,7 +1630,7 @@ export const SILENT_WARNINGS = new Set([
   "PHOTO_PALETTE_SELECTED",
   "PALETTE_THREAD_MISMATCH",
   "PHOTO_SAM2_SEGMENTATION_UNAVAILABLE",
-  // Photo-lane "what I ran" notes. Info only, nothing for a customer to do;
+  // Photo-lane notes about what ran. Info only, nothing for a customer to do;
   // preflight reads PHOTO_FACES_DETECTED server-side, not from this list.
   "PHOTO_PREP_APPLIED", "PHOTO_FACES_DETECTED", "PHOTO_BACKGROUND_REMOVED",
   "PHOTO_BLEND_DISSOLVED", "PHOTO_SHADE_DEMAND", "PHOTO_SAM2_SEGMENTED",
