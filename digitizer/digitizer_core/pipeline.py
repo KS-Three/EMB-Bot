@@ -470,13 +470,13 @@ def build_generation(
 
     # Stage 1.3 — two-tone snap (`cfg.two_tone_snap`, defect 58). Before any
     # region former, so every lane reads two inks; never on a detected
-    # photograph, whose greys are its picture.
+    # photograph, whose greys are its picture. `p.native_rgb` is left as the
+    # source drew it: stage 4's sub-pixel edge read wants its anti-alias ramp
+    # to place each region's edge, and the ramp is real there.
     if cfg.two_tone_snap and not detected_photographic:
         tt = two_tone.detect(p.rgb)
         if tt is not None:
             p.rgb = two_tone.snap(p.rgb, tt)
-            if p.native_rgb is not None:
-                p.native_rgb = two_tone.snap(p.native_rgb, tt)
 
     # Stage 1.5 — photo prep (plan §2 rows 3-4; build step 3 first slice).
     # DOUBLE-gated: the opt-in flag AND a photo classification, so neither
