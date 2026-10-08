@@ -8785,3 +8785,44 @@ element by its shape id and a crop before choosing the cure, and census the
 candidate test over EVERY fixture's accepted cases: the first discriminator
 that parts the broken fixture from the clean one can refuse the clean cases
 everywhere else.** *(measured 2026-10-07 — `docs/join-square-enthusiast-2026-10-07.md`; `tests/test_join_corner_bend_cap.py`)*
+
+## 2026-10-08 — On black-and-white art the halo-vs-stroke question has a per-IMAGE answer: `cfg.two_tone_snap`, built OFF
+
+The 10-05/10-06 entry above ended on "what is missing is a per-region test
+that tells a halo band from a drawn stroke". For two-tone art no such test is
+needed: when the image has two inks, every grey in it is a mix of those two,
+stroke and halo alike, so the raster can be thresholded before any region
+exists. The per-region rule's one casualty, `logo_bridge_bar.jpg`, is colour
+art and never reaches the snap.
+
+- **The gate reads the FOREGROUND, not the canvas** (`digitizer_core/two_tone.py`).
+  The first build read every pixel, and the review found its shares moved
+  with the margin: a red accent at 0.36% of a padded canvas passed and
+  sewed black, and the same grey-inked art passed padded and failed cropped.
+  On the foreground the absolute plateau bin no longer separated anything
+  (golke 0.0149 against fremont_patch 0.0109), so the plateau test is
+  scale-free: the tallest 8-level mid-grey bin over their mean. Six B&W
+  logos and the tires script read 1.08-1.92; fremont_patch 2.34, the
+  Fremont webp's real grey rope 14.3. Cut at 2.1. **Read a share-of-pixels
+  threshold as a margin-dependent one until it is measured on the
+  foreground.**
+- **Snapping makes a new halo problem, which `fold_fringe` closes.** The
+  border flood stops at its tolerance, so the lighter half of the outer
+  halo snaps to background-coloured ink INSIDE the foreground and stops
+  reading as a blend: golke 1 → 12 white slivers on its outer edge before
+  the fold. Background-coloured ink connected to the background now joins
+  it. `native_rgb` is NOT snapped — stage 4's sub-pixel edge read wants its
+  real ramp.
+- **Cones, OFF → ON:** golke 5 → 2, mfab_lc 6 → 2, mfab_hat 6 → 2,
+  toat_beanie 6 → 2, toat_machine 6 → 2, gaulke 2 → 1; stitches and trims
+  fall on all six (mfab_lc 10,903 → 9,631, 75 → 51 trims). mfab_lc's white
+  linework sews white (36 → 1,498). Bridge Bar, Fremont and the golke
+  phone screenshot (its blue UI fails the chroma test) byte-identical.
+- **What it costs:** golke's thin white roof lines touch the outer
+  background, so the fold takes them with the halo and the roof sews as
+  one black mass. They had sewn grey. The fold cannot tell a drawn line
+  open to the background from a halo; on a garment the art's white IS the
+  ground, so this matches what the flood does with pure white.
+
+*(measured 2026-10-08 — `tools/two_tone_probe.py --detect` and default mode,
+renders read for golke, mfab_lc, toat_machine; scope-history 2026-10-08)*

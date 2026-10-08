@@ -13,6 +13,30 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-08 — defect 58: `cfg.two_tone_snap` built OFF, eleven fixtures
+
+`tools/two_tone_probe.py` at the Studio's config (6 colours), `two_tone_snap` OFF → ON, foreground detection and `fold_fringe` (after the review). Cloud container, `main` at `b7d63ae` plus this change.
+
+| fixture | cones | stitches | trims |
+|---|---|---|---|
+| golke | 5 → 2 | 5,000 → 4,463 | 32 → 29 |
+| mfab_lc | 6 → 2 | 10,903 → 9,631 | 75 → 51 |
+| mfab_hat | 6 → 2 | 9,272 → 8,089 | 50 → 43 |
+| toat_beanie | 6 → 2 | 7,034 → 6,504 | 48 → 35 |
+| toat_machine | 6 → 2 | 6,825 → 6,625 | 40 → 30 |
+| gaulke | 2 → 1 | 4,583 → 4,498 | 33 → 30 |
+| tires | 1 → 1 | 2,870 → 2,732 | 6 → 7 |
+| black_ground_holes | 1 → 1 | 7,640 → 7,640 | 39 → 39 |
+| screenshot (gate refuses: chroma) | 6 → 6 | 8,341 → 8,341 | 69 → 69 |
+| bridge (gate refuses) | 6 → 6 | 18,493 → 18,493 | 101 → 101 |
+| fremont (gate refuses) | 3 → 3 | 20,177 → 20,177 | 57 → 57 |
+
+Per colour: mfab_lc OFF black 8,138, greys 2,729, white 36 → ON black 8,133, white 1,498. golke OFF black 4,421, greys 555, white 24 → ON black 4,346, white 117. toat_beanie OFF `#312e2f` 4,378, `#282821` 1,157, four greys 1,499 → ON `#312e2f` 6,278, white 226. Renders (OFF | ON) read for golke, mfab_lc, toat_machine: mfab's linework reads white instead of four greys; toat loses its grey bars and keeps a few white edge slivers; golke's white roof lines are gone (folded into the background with the outer halo), where OFF sewed them grey.
+
+The first build (detect over the whole canvas, no fold, `native_rgb` snapped) read golke 5,000 → 6,079 stitches and 32 → 38 trims; the review's re-measure without the `native_rgb` snap read 5,175 and 43. Neither ships.
+
+---
+
 **Last updated:** 2026-10-07 — lettering as Columns: `cfg.lettering_columns` built OFF, the outline-cut spike wired as a Column object and a first construction engine
 
 Kent's picks on `docs/lettering-architecture-rd-2026-10-07.md` (PR #655): port the glyph construction to Python, build the outline-cut Columns first. Built the same day on lane `claude/sleepy-hopper-jhpasn`: `digitizer_core/outline_cut.py` (the spike's cut rules, thresholds and DTW rail pairing unchanged, emitting `columns.Column` STATIONS instead of stitches), `digitizer_core/columns.py` (the Column object; `column_runs`: `_push_rails` per side on the artwork polygon, the `SATIN_MIN_CROSS_MM` floor, the column-wide split comb, a centre underlay where the letter clears `SATIN_UNDERLAY_MIN_EXTENT_MM`, nearest-next order from the needle's real position, the satin tier's sew-or-jump link rule), a stage 7 hook ahead of `classify_ribbon` for any shape either tagger calls lettering (`text_candidate` or the new `lettering_group` tag the house pass writes), and the matching `_sews_satin` branch so stage 5 keeps the artwork polygon. `lettering_columns` arm in `tools/eye_pairs`. Tests: `tests/test_lettering_columns.py` (13). OFF is byte-identical (pinned on Becker at 100 mm).
