@@ -252,6 +252,14 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "the old taggers merged (gaulke, the screenshot). On today's shipped "
         "flags the stitches barely move (0.4% at most); its real use is the "
         "lanes that read it next."),
+    "columns_words": (
+        "lettering_columns=True + lettering_words=True (both built OFF)",
+        "What a flip of the Column lane would turn on: each letter the word "
+        "tagger finds is cut into strokes along its own outline and sewn as "
+        "one column per stroke, rails on the artwork's edge, walked as one "
+        "path with the travel under satin sewn later. BEFORE is shipped: the "
+        "skeleton satin tier. Letters cut less (becker 60 trims -> 28) and no "
+        "junction fans. Nothing here is sewn."),
 }
 
 # Arms that left the pending table because they SHIPPED. A sitting rendered

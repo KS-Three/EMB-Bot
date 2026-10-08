@@ -113,6 +113,10 @@ ARMS: dict[str, dict] = {
     # pairs): every lettering reader groups by one word model instead of
     # the text cluster or the house group (`digitizer_core/words.py`).
     "lettering_words": {"lettering_words": True},
+    # The flip sitting (2026-10-08, Kent's pick): the two together against
+    # shipped, which is what a flip of the Column lane would turn on -- he
+    # ruled the word tagger the lane's tagger on `words-columns-1008`.
+    "columns_words": {"lettering_columns": True, "lettering_words": True},
 }
 
 
