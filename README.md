@@ -1,168 +1,147 @@
-# EMB Bot — Embroidery Digitizer
+# EMB-Bot — Fritsch's Stitches embroidery digitizer
 
-EMB Bot is a local, browser-based auto-digitizer and lettering tool. It turns a
-logo/image or typed text into machine-embroidery stitch files, with a live
-stitch preview — no account, no subscription, everything running on your own
-machine.
+EMB-Bot is Fritsch's Stitches' tool for turning artwork or typed text into
+machine-embroidery stitch files that anyone can produce, without digitizing
+expertise. It runs locally in the browser: a guided app (garment → content →
+review → download) with a live stitch preview, no account and no subscription.
 
-The product is **EMB Bot Studio** (the `app/` folder): a guided Svelte app
-(garment → content → review → download). Stitch math and file encoding are
-hand-written JavaScript (`src/`); a Python auto-digitizing engine
-(`digitizer/`) runs behind an optional localhost service for the image
-auto-digitize path — see `digitizer/README.md`.
+> **Public repo.** Everything committed here is world-readable. Do not add
+> client artwork, customer names, third-party stitch files, credentials or
+> legal correspondence without asking first.
 
-## Quick start
+## The three parts
 
-The Studio has a live stitch preview, multi-element designs, saved projects,
-and an **85-font pre-digitized satin library** loaded on demand. Fonts are
-picked in a searchable browser (search box, Sans/Serif/Script/Display/Small
-filters, per-font recommended size ranges) whose grid uses pre-rendered
-preview images — browsing never downloads font data; only picking a font
-does. A "Font credits" screen lists every font's license and attribution,
-generated from the library manifest:
+| Part | Where | What it is |
+|---|---|---|
+| **JS engine** | `src/` (tests in `test/`) | Hand-written stitch math and file encoding: fill/satin, geometry, flatten, DST/EXP/PES writers, 85-font satin library (`src/fonts/`). Each module works as a browser `<script>` (global `EMB`) and as a CommonJS module. No npm dependencies. |
+| **Studio** | `app/` | The product UI: Svelte 5 + Vite. Loads the engine from `src/` and has no CDN runtime dependencies. |
+| **Python digitizer** | `digitizer/` | Image auto-digitizing engine (`digitizer_core/`) plus an optional FastAPI service (`digitizer_service/`, loopback only, port 8721) that the Studio uses for the image auto-digitize path. Own venv, own tests, own [README](digitizer/README.md). |
 
+Text and lettering work without the Python service; only image
+auto-digitizing needs it.
+
+## Setup and run
+
+You need **Node 22** (the engine has no dependencies; the Studio needs
+`npm install`) and **Python 3.12** for the digitizer. The only difference
+between platforms is the venv interpreter path:
+
+| | Windows | Linux / macOS |
+|---|---|---|
+| venv Python | `.venv/Scripts/python` | `.venv/bin/python` |
+
+### Digitizer (Python)
+
+```bash
+cd digitizer
+python3.12 -m venv .venv          # Windows: py -3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt   # Windows: .venv/Scripts/python
+.venv/bin/python -m digitizer_service                 # service on http://127.0.0.1:8721
 ```
+
+Build the venv with **`python3.12` explicitly**, not a bare `python3`: the
+project needs 3.12 or newer, and on 3.11 `requirements.txt` fails quietly
+(no `pystitch`), after which the engine's format cross-validation tests skip
+and still report green. Check with `.venv/bin/python -c "import pystitch"`.
+If you install with `pip install -e ".[service,dev]"` instead, keep the `dev`
+extra, which the service tests need.
+
+Always run Python through `python -m` (`python -m pytest`,
+`python -m digitizer_service`), never `python foo.py`, so the working
+directory is on `sys.path`.
+
+### Studio
+
+```bash
 cd app
-npm install   # first time only
-npm run dev   # then open http://localhost:5173
+npm install                        # first time only
+npm run dev                        # http://localhost:5173
 ```
 
-The Studio has **no CDN runtime dependencies**: jsPDF is bundled from npm,
-Inter comes via fontsource, and the satin fonts ship locally as `.embf`
-binaries. Nothing is fetched from Google Fonts or any other third-party host
-at runtime.
+`npm run dev` first copies the engine and fonts into `app/public/` and, if
+`digitizer/.venv` exists, starts the digitizer service for you (it never
+blocks if the venv is missing). On Windows, `tools/start-emb-bot.ps1` starts
+both servers in their own windows and opens the browser (`-NoDigitizer`
+skips the service).
 
-## Image mode — the flatten-first workflow
+## Run the tests
 
-Embroidery thread is flat, solid color, so the first real step (the one a human
-digitizer does by hand) is collapsing your art down to a handful of thread
-colors. EMB Bot makes that step **visible and controllable**:
+There is no root `package.json`: three independent suites, each run from its
+own directory.
 
-1. Switch to **Image** and upload a logo (PNG/JPG; PNG transparency is honored).
-   Optionally check **Remove background**.
-2. The **Flattened art** panel shows your image reduced to N colors (the
-   **Colors** slider, 2–8; the auto-digitizer's own Colors control goes to 12)
-   with cleanup — stray specks are absorbed into their surrounding color and
-   ragged edges smoothed. This preview is exactly what will stitch.
-3. Use the **swatch bar** to fix the merge: click the swatches that should be
-   one thread (e.g. three near-identical grays), then **Merge selected**.
-   **Reset colors** returns to the automatic result. Each swatch also has an
-   **angle** field (blank = auto) to force that color's stitch direction.
-4. **Download flat PNG** exports the flattened art at full resolution
-   (transparent background preserved) — useful on its own for prepping art.
-5. Pick **Garment / placement**, **Fabric** (auto-set by the garment; override
-   if needed), **Output format**, **Fill density**, and **Outline** / 
-   **Underlay** toggles.
-6. **Generate** to see the stitch simulation and stats, then **Download** the
-   stitch file or **Export PDF** for a printable worksheet.
+```bash
+node --test                        # engine, from the repo root (~1 min)
+cd app && npm test                 # Studio unit tests (vitest, ~1 min)
+cd app && npm run test:e2e         # Studio browser tests (Playwright)
+cd digitizer && .venv/bin/python -m pytest -q -n auto     # digitizer
+cd digitizer && .venv/bin/python -m pytest -q tests/test_service.py   # one file
+```
 
-## Text mode
+Notes that save a wasted session:
 
-Switch to **Text**, type your text, pick a font from the 85-font pre-digitized
-satin library, set garment/fabric/format/density, and **Generate**. Library
-fonts sew as hand-authored satin columns (adapted from the Ink/Stitch open
-embroidery font collection), not auto-traced outlines.
+- Engine and Studio suites are expected **clean**; any failure there is a
+  regression. Re-run the Studio suite solo before blaming code if the machine
+  was busy (font-decoding hooks time out under load).
+- The engine's PES/EXP/DST cross-validation tests **skip** when the digitizer
+  venv cannot import `pystitch`. A green run with skips proves less than it
+  looks.
+- A full local digitizer run is slow (budget ~45 minutes on 4 cores; ~9 on a
+  fast desktop). Start only one at a time, and redirect to a log
+  (`pytest ... > log 2>&1; echo EXIT=$? >> log`) rather than piping to
+  `tail`, which hides pytest's exit code.
+- Three golden-file digitizer tests fail on machines that did not capture the
+  golden; CI deselects them by node ID (see
+  `.github/workflows/python-package-conda.yml`). A fourth failure is a real
+  regression. OCR tests skip without the `tesseract` binary.
+- CI runs `engine`, `studio`, `studio-e2e` and a sharded `digitizer` job, all
+  required on `main`. The digitizer job takes well over 15 minutes, so three
+  green checks is not a green PR.
 
-## What the stitch engine does
+## Rebuilding the font library
 
-- **Hole-aware tracing** — rings and letter counters (O, A, D, e, o…) stitch as
-  true rings, not filled discs.
-- **Satin vs. fill** — genuinely thin shapes get satin columns; broader shapes
-  get tatami fill. The cut-off at final size is **~5 mm** through the
-  auto-digitizer and **~3 mm** through the browser engine, which is what text and
-  hand-drawn shapes use.
-- **Per-shape stitch angle** — each element's fill follows its own axis for
-  sheen and dimension; override per color in the swatch bar.
-- **Underlay** — foundation stitching under fills/satin (edge-run, lattice,
-  double-lattice, center-run, or zigzag), chosen by the fabric preset.
-- **Pull compensation** — fills and satin are grown slightly so they sew to
-  true size after the fabric distorts; amount comes from the fabric preset.
-- **Trims & sequencing** — real trim commands (so thread isn't dragged across
-  the design), nearest-neighbor shape ordering to shorten travel, color order
-  light→dark, and **center-out** sewing on caps for crown-distortion control.
+```bash
+node tools/build-embf.mjs          # needs the gitignored scratch_ink/ clone
+```
 
-### Fabric presets
-
-The **Fabric** dropdown drives pull compensation, underlay style, density, and
-trim distance. Each garment auto-selects a sensible default (hat → structured
-cap, polo → pique knit, sweatshirt → fleece, towel → terry, etc.); you can
-override it. Presets are starting points — **stitch a test on your machine and
-tell me if a fabric needs tuning**, and the preset gets adjusted. Defined in
-`src/fabrics.js`.
+Only fonts classified **verified** ship; the tier rules are in `COOKBOOK.md`.
 
 ## Outputs
 
 | Format | Machine | Notes |
 |---|---|---|
-| **.DST** | Tajima | **Primary / most reliable.** Built and tested against known-correct stitch/jump/color/trim record encodings. Default. |
-| **.EXP** | Melco | Solid, standard support (incl. trim control). |
-| **.PES** | Brother | **Best-effort** — reverse-engineered; always test-stitch before a production run. |
-| **.PNG** | — | Flat preview image of the stitch simulation. |
-| **.SVG** | — | Vector outline of the design (not a stitch file). |
-| **PDF worksheet** | — | Printable sheet: preview, placement, dimensions, stitch/color counts, numbered thread-color sequence. |
+| **.DST** | Tajima | Primary and most reliable; default. |
+| **.EXP** | Melco | Standard support, including trims. |
+| **.PES** | Brother | Best effort: reverse-engineered, always test-stitch first. |
+| **.PNG / .SVG** | n/a | Preview image / vector outline (not stitch files). |
+| **PDF worksheet** | n/a | Printable sheet with preview, dimensions, counts and thread sequence. |
 
-## Garment / placement sizes
-
-Design is scaled (aspect preserved) to fit the chosen placement box. Sizes in
-`src/garments.js`: Hat Front 5.0×2.25, Left Chest 4.0×4.0, Full Back 12×12,
-Beanie 4.5×2.5, Sleeve 3×3, Tote 8×8, Jacket Back 12×10, Patch 3.5×3.5, Towel
-6×6, Blanket 10×8 (inches). A note warns if the fitted design exceeds a typical
-~200 mm hoop.
+The digitizer service can also export other formats (JEF, PEC, VP3, XXX,
+U01); `GET /health` lists them.
 
 ## Honest limits
 
-This is a strong auto-digitizer **for clean, flat-color art** — not a
-replacement for a professional digitizer's judgment on complex or critical work.
+EMB-Bot is a strong auto-digitizer for **clean, flat-color art**, not a
+replacement for a professional digitizer on complex or critical work. Thread
+cannot do continuous tone, very small text breaks up, and fabric presets are
+starting points that need a sew-out to tune. For high-stakes jobs, check the
+file in professional software before stitching.
 
-- **Feed it flat art.** Solid colors and clear edges digitize well. Photos and
-  gradients are inherent to the *medium's* limits — thread can't do
-  continuous tone. The flatten step reduces them to poster-like color blocks;
-  simplify heavily (or provide vector/spot-color art) for a good result.
-- **Size matters.** Small stacked text (below ~4 mm cap height, common when a
-  busy logo is shrunk to a hat) falls below what thread can hold and breaks up.
-  Size the text up relative to the artwork, or drop the smallest lines.
-- **Lettering inside images is fill/satin by shape, not per-stroke satin.**
-  Whole letters fill (hole-aware); only genuinely thin strokes satin. A
-  professional would hand-build satin per stroke on fine text. (Typed text
-  from the font library doesn't have this limit — those letters *are*
-  hand-built satin columns.)
-- **PES is best-effort; fabric presets are starting points.** Verify both on
-  your machine.
-- **For commercial/high-stakes work, check the file in real digitizing
-  software** (Wilcom, Hatch) before stitching.
+## Read these next
 
-## Files & architecture
+Read the one that matches what you are about to do:
 
-- **`app/`** — EMB Bot Studio, the Svelte 5 + Vite product: `App.svelte` +
-  `ui/` (wizard steps/components) + `lib/` (non-DOM logic, each module
-  paired with a spec file). Loads the engine via `<script>` tags
-  (`app/index.html`) as the global `EMB`.
-- **`src/*.js`** — engine modules, each usable as a browser `<script>`
-  (attaching to a global `EMB`) and as a CommonJS module (Node tests):
-  units, garments, **fabrics**, fill/satin stitch engines, geometry
-  (hole-aware `traceRegions`), quantize, **flatten** (mode filter / small-region
-  absorb / manual merge), **digitize** (the quality orchestrator: satin/fill
-  classification, per-shape angle, underlay, pull comp, trims, sequencing),
-  DST/EXP/PES encoders, SVG export, stitch-model, canvas renderer, and the
-  PDF worksheet.
-- **`digitizer/`** — Python auto-digitizing engine (`digitizer_core/`) +
-  optional FastAPI service (`digitizer_service/`, loopback-only) for the
-  image auto-digitize path. Own venv, own tests, own README.
-- **`src/fonts/`** — the satin font library. `manifest.json` (per-font
-  metadata: tier, group, license id, glyph count) + `bin/*.embf`, a compact
-  binary format (quantize ×4 → per-ring delta → Int16; decoder in
-  `src/fontbin.js`) + per-font `.LICENSE.txt` sidecars, which ship with the
-  built app. The Studio fetches the manifest at boot and each font's
-  binary on first use. Rebuild after tier/source changes:
-  `node tools/build-embf.mjs` (needs `scratch_ink/` — see COOKBOOK).
-  Only fonts classified **verified** ship; see the tier rules in COOKBOOK.md.
-- **`tools/`** — see the directory itself: the build/QC/harness scripts (plus
-  `palettes/` thread-brand charts and `font-categories.json`). Highlights:
-  `build-embf.mjs` (font library rebuild), `qc-font.mjs` (font tier gate),
-  `png.mjs` + `render-dst.mjs` + `run-flatten.mjs` / `run-digitize.mjs`
-  (Node-side decode/render/pipeline harness for testing digitizing on real
-  images without a browser).
-- **`docs/superpowers/specs/`** — design specs, including the pro-stitch roadmap
-  (trims/sequencing ✓, fabric presets ✓, angles ✓, sequencing polish).
-- **`test/*.test.js`** — unit tests for every non-DOM engine module
-  (`node --test`); the Studio's own suite runs with `cd app && npm test`.
+- **[`ROADMAP.md`](ROADMAP.md)**: before proposing work. Current phase and the
+  hard gates (a gate is a refusal, not a preference).
+- **[`COOKBOOK.md`](COOKBOOK.md)**: before touching code. Architecture, how to
+  run things, working conventions, and the failure classes to expect.
+- **[`PRODUCT.md`](PRODUCT.md)**: before a scope call. Launch scope and
+  non-goals.
+- **[`DOCTRINE.md`](DOCTRINE.md)**: before proposing work. What has already
+  been decided, tried or disproved.
+- **[`MASTER_SCOPE.md`](MASTER_SCOPE.md)**: current status of every capability
+  area and how far to trust it.
+- **[`CLAUDE.md`](CLAUDE.md)**: instructions and known traps for Claude
+  sessions; worth a skim for humans too.
+- [`digitizer/README.md`](digitizer/README.md): the Python engine and service
+  in depth. [`.claude/memory/MEMORY.md`](.claude/memory/MEMORY.md): index of
+  narrative history and decisions.
