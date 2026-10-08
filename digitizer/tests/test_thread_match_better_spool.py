@@ -26,7 +26,7 @@ deliberately not taken here. `test_no_severity_moves_anywhere` is the
 load-bearing test: it fails if this ever becomes a scoring change.
 """
 
-from functools import lru_cache
+from tests._shared_cache import shared_cache
 
 import pytest
 
@@ -65,7 +65,7 @@ PHOTO = "photo/photo_dof_meadow.png"        # photo route: must be untouched
 SEVERITY = {TINY: (1, 1), BRIDGE: (2, 2), PHOTO: (0, 1)}   # (block, warn)
 
 
-@lru_cache(maxsize=None)
+@shared_cache
 def _findings(fixture: str):
     """One digitize + preflight per fixture, reused by every test here.
 

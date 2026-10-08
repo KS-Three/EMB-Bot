@@ -18,7 +18,7 @@ unsewn warnings' business) and says nothing.
 from __future__ import annotations
 
 import copy
-from functools import lru_cache
+from tests._shared_cache import shared_cache
 
 from digitizer_core import preflight as pf
 from digitizer_core.config import PipelineConfig
@@ -29,7 +29,7 @@ from .conftest import TESTDATA, requires_tesseract
 ART = TESTDATA / "photo" / "enthusiast_logo.png"
 
 
-@lru_cache(maxsize=None)
+@shared_cache
 def _enthusiast():
     """One digitize, reused; every test here only reads it (or deep-copies
     the plan before touching it)."""

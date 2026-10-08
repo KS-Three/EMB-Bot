@@ -230,6 +230,18 @@ jobs:
         env:
           DIGITIZER_SHARD: ${{ matrix.shard }}/6
           DIGITIZER_SHARD_MANIFEST: shard-manifest.json
+          # One native thread per xdist worker. `-n auto` already puts a
+          # worker on each of the runner's four cores; left alone, OpenCV and
+          # OpenBLAS each start four threads PER WORKER and the sixteen fight
+          # over four cores. Measured 2026-10-08 on shard 1/6, same tree,
+          # 4-core box: 389 s -> 357 s from this alone. Any pinned result that
+          # depended on the thread count would fail here, not pass quietly;
+          # the fixture-sweep tools (tools/thread_match_floor.py) have always
+          # run single-threaded.
+          OMP_NUM_THREADS: '1'
+          OPENBLAS_NUM_THREADS: '1'
+          MKL_NUM_THREADS: '1'
+          OPENCV_FOR_THREADS_NUM: '1'
         run: >
           python -m pytest tests/ -q -n auto
           --junitxml=junit.xml

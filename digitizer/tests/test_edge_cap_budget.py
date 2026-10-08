@@ -38,7 +38,7 @@ here over adding a test that needs a fresh width.
 """
 from __future__ import annotations
 
-from functools import lru_cache
+from tests._shared_cache import shared_cache
 
 import pytest
 
@@ -60,7 +60,7 @@ CLIFF = 88.0        # +58.7%, eight millimetres up, gate saving 72% -> 12%
 NO_GATE = 110.0     # `_sewn_linear_cover` returns None: no gate at all
 
 
-@lru_cache(maxsize=None)
+@shared_cache
 def _run(fixture: str, width: float, cap: str = "bean",
          over_budget: str = "warn", keep_thin_strokes: bool | None = None):
     """One `digitize` per (fixture, width, knobs), cached.
