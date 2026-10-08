@@ -2830,6 +2830,17 @@ class PipelineConfig:
     # uncovered area unchanged on all nine). False is the pre-flip cap byte
     # for byte.
     edge_cap_skip_lettering: bool = True
+    # Walk the covered stretch between two cap arcs (MASTER_SCOPE defect 19's
+    # trim bill; built 2026-10-08, DEFAULT OFF). The gate splits a ring into
+    # arcs wherever something linear already sews the edge, and the needle
+    # LIFTS over each covered stretch — a jump, and a trim past `trim_at_mm`.
+    # True sews that stretch instead, one pass at bean stations on top of the
+    # stitching that covers it, when every station of the walk stands on that
+    # cover and it costs no more than `machine.TRIM_COST_STITCHES` stitches
+    # (the engine's own price of a trim — no new constant). Same ring only;
+    # bean style only (`border_runs` owns satin's arcs). False is the shipped
+    # cap byte for byte.
+    edge_cap_walk_covered: bool = False
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth
