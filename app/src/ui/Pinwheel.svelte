@@ -7,10 +7,11 @@
   // Pure SVG; the motion is CSS in theme.css's Motion section (`.pinwheel`).
   // With reduced motion it throbs but does not turn.
   import { fade } from "svelte/transition";
+  import { prefersReducedMotion } from "../lib/reducedMotion.js";
   export let label = "Digitizing your art";
 </script>
 
-<div class="pinwheel" role="status" aria-label={label} data-testid="digitize-pinwheel" out:fade={{ duration: 350 }}>
+<div class="pinwheel" role="status" aria-label={label} data-testid="digitize-pinwheel" out:fade={{ duration: prefersReducedMotion() ? 0 : 350 }}>
   <svg class="pinwheel-svg" viewBox="-50 -50 100 100" aria-hidden="true" focusable="false">
     <g class="pinwheel-vanes">
       {#each [0, 90, 180, 270] as deg, i}

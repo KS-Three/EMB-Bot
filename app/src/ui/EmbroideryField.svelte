@@ -30,6 +30,7 @@
   import Pinwheel from "./Pinwheel.svelte";
   import { digitizeBusy } from "../lib/digitizeBusy.js";
   import Icon from "./Icon.svelte";
+  import { prefersReducedMotion } from "../lib/reducedMotion.js";
   import ShapePopover from "./ShapePopover.svelte";
 
   // Task 4 (Slice 5): the field now renders every element in the project
@@ -1328,10 +1329,12 @@
       if (!outlines.length) continue;
 
       const started = pulses.startedAt(el.id);
-      const pulse = started == null ? 0 : pulseAt(now - started);
+      // Reduced motion: the outline pulse is pure animation, so it never plays.
+      const reduced = prefersReducedMotion();
+      const pulse = started == null || reduced ? 0 : pulseAt(now - started);
       // The wave touches 0 between beats, so "still in the window" is read
       // off the fade, not the beat.
-      const fade = started == null ? 0 : pulseFadeAt(now - started);
+      const fade = started == null || reduced ? 0 : pulseFadeAt(now - started);
       if (fade > 0) stillPulsing = true;
 
       // Hidden shapes stay out of the drawing but stayed IN the transform, so
@@ -2058,9 +2061,16 @@
     originalView = false;
     originalToken++;
     simActive = true;
-    simIndex = 0;
     simSpeed = 1;
-    simPlay();
+    if (prefersReducedMotion()) {
+      // No autoplay: show the finished design; Play still replays on request.
+      simIndex = simTotal;
+      simPlaying = false;
+      repaintView();
+    } else {
+      simIndex = 0;
+      simPlay();
+    }
   }
 
   function stopSim() {
