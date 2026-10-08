@@ -33,8 +33,13 @@ shape covers — and only the bare pieces at or over the same `min_detail_mm²`
 floor the hole was judged by (`stage5_overlap._bare_part`). The slivers
 between a piece and its hole's edge are under the floor stage 3 drops detail
 at; the ground grows into them and reaches its tongue under the piece, as on
-every seam that was never held. A hole with no later stitched shape in it is
-held exactly as before (same polygon, byte for byte); an unstitched later
+every seam that was never held. **The test is area only**, so ANY bare piece
+under the floor is released, not just slivers: a real 0.9 × 1.8 mm opening
+beside a piece (1.62 mm²) closes to 0.72 mm² under the ground's growth, with
+no warning — the same rule stage 5 already applies to a whole hole under the
+floor, but a catch to weigh before the flip. A hole no later stitched shape overlaps — one
+that only touches its edge included — is held exactly as before (same polygon,
+byte for byte); an unstitched later
 shape is bare fabric by design and covers nothing. **No new constant** — the
 floor and the tongue are the engine's own (gate 1 clean; the tongue's DEPTH,
 `overlap_mm`, is still card block 6's to settle on cloth).
@@ -60,7 +65,10 @@ thread of any colour comes within a fill row of.
 | `logo_whitebg.png` | 0 | 0 | — | — | — | plan md5-identical | |
 
 Golke's two held holes each hold an UNSTITCHED piece (a garment-coloured
-body), so they stay held — the case the stitched-only rule exists for.
+body). `plan_stitches` drops unstitched regions before stage 5, so nothing
+later touches those holes and they stay held as before; the stitched filter
+in `later_sewn` only keeps tools that pass `result.regions` whole
+(`seam_underlap`, `sewn_compensation`) agreeing with the pipeline.
 Drone keeps four: two real bare openings (2.26 and 2.97 mm² of fabric beside
 their pieces) and two holes with nothing stitched in them.
 

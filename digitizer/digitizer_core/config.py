@@ -1158,9 +1158,10 @@ class PipelineConfig:
     # at the detail floor gets no tongue"). True holds open only the BARE part
     # of the hole — what no later stitched shape covers — and only the bare
     # pieces at or over the same `min_detail_mm²` floor the hole itself is
-    # judged by; the slivers between a piece and its hole get the ground's
-    # growth and the piece gets its tongue, as every un-held seam already
-    # does. No new constant. False is the engine before it, byte for byte.
+    # judged by. Any bare piece under that floor is released -- the slivers
+    # between a piece and its hole, and a small real opening beside a piece
+    # alike -- so it takes the ground's growth and the piece gets its tongue,
+    # as every un-held seam already does. No new constant. False is the engine before it, byte for byte.
     # Measured 2026-10-08: `docs/held-hole-tongue-2026-10-08.md`.
     held_hole_bare_only: bool = False
     # Directional pull/push compensation (Laws 22-24). False is the shipped

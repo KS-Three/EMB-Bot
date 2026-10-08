@@ -33,8 +33,8 @@ def _ground(hole: Polygon) -> Polygon:
     return Polygon(box(0, 0, 20, 20).exterior.coords, [hole.exterior.coords])
 
 
-def _run(regions, flag):
-    cfg = replace(PipelineConfig(), held_hole_bare_only=flag)
+def _run(regions, flag, **kw):
+    cfg = replace(PipelineConfig(), held_hole_bare_only=flag, **kw)
     planned, warns = resolve_overlaps(regions, FABRIC, cfg)
     by_id = {p.shape_id: p for p in planned}
     held = sum(w.get("count", 0) for w in warns if w.get("code") == "HOLE_NEARLY_CLOSED")
@@ -99,7 +99,44 @@ def test_a_bare_part_over_the_floor_stays_open_and_the_rest_gets_its_tongue():
     assert by_id["G"].polygon.intersection(piece).area > 0.3
 
 
+def test_a_later_shape_that_only_touches_the_hole_leaves_it_byte_identical():
+    # On the ground, outside the hole, sharing its right edge: no interior
+    # overlap, so the counter is held exactly as without the flag.
+    g = _region("G", _ground(HOLE), 0)
+    t = _region("T", box(10.9, 9.5, 14.0, 10.5), 1)
+    off, held_off = _run([g, t], False)
+    on, held_on = _run([g, t], True)
+    assert held_off == held_on == 1
+    assert on["G"].polygon.wkb == off["G"].polygon.wkb
+
+
+def test_two_bare_parts_over_the_floor_are_both_held_as_one_hole():
+    # A 6.0 x 1.0 hole (6.0 mm²) shrinks to 5.4 x 0.4 = 2.16 under the
+    # shell's growth: held OFF. A piece across its middle leaves two bare
+    # ends of 2.6 mm² each, both over the floor.
+    hole = box(7.0, 9.5, 13.0, 10.5)
+    piece = box(9.6, 9.5, 10.4, 10.5)                 # the middle 0.8 mm
+    left, right = box(7.0, 9.5, 9.6, 10.5), box(10.4, 9.5, 13.0, 10.5)  # 2.6 mm² each
+    g, p = _region("G", _ground(hole), 0), _region("P", piece, 1)
+    by_id, held = _run([g, p], True)
+    assert held == 1
+    for bare in (left, right):
+        assert by_id["G"].polygon.intersection(bare).area == pytest.approx(0.0, abs=1e-6)
+    assert by_id["G"].polygon.intersection(piece).area > 0.2
+
+
+def test_directional_comp_releases_the_filled_hole_too():
+    g, p = _region("G", _ground(HOLE), 0), _region("P", PIECE, 1)
+    off, held_off = _run([g, p], False, directional_comp=True)
+    on, held_on = _run([g, p], True, directional_comp=True)
+    assert (held_off, held_on) == (1, 0)
+    assert off["G"].polygon.intersection(PIECE).area == pytest.approx(0.0, abs=1e-9)
+    assert on["G"].polygon.intersection(PIECE).area > 0.0
+
+
 def test_an_unstitched_later_shape_is_bare_fabric_and_covers_nothing():
+    # `plan_stitches` drops unstitched regions before stage 5, so the pipeline
+    # never reaches this; tools that pass `result.regions` whole do.
     g = _region("G", _ground(HOLE), 0)
     p = _region("P", PIECE, 1, stitched=False)
     off, held_off = _run([g, p], False)

@@ -320,12 +320,16 @@ def _bare_part(hole: Polygon, covered, floor: float) -> list[Polygon]:
     A hole no later stitched shape touches is returned whole and untouched, so
     a true counter is held exactly as before. Otherwise only the pieces of the
     hole that nothing covers are held, and only those at or over `floor` --
-    the same `min_detail_mm²` the hole itself was judged by. A sliver between
-    a piece and the edge of its hole is under the floor stage 3 drops detail
-    at, so the ground grows into it and reaches its tongue under the piece,
-    the way every seam that was never held already does.
+    the same `min_detail_mm²` the hole itself was judged by. ANY bare piece
+    under that floor is released -- the anti-alias sliver between a piece and
+    its hole's edge, and equally a small compact opening beside the piece --
+    so the ground grows into it and reaches its tongue under the piece, the
+    way every seam that was never held already does.
     """
-    if covered is None or not hole.intersects(covered):
+    # Interiors must meet: a later shape that only TOUCHES the hole's edge
+    # (on the ground, outside the hole) covers none of it, and must leave the
+    # held polygon byte-identical to the engine without the flag.
+    if covered is None or not hole.relate_pattern(covered, "T********"):
         return [hole]
     bare = hole.difference(covered)
     if bare.is_empty:
@@ -453,17 +457,23 @@ def resolve_overlaps(
     ground_under = {k: unary_union(v).buffer(0.1) for k, v in ground_under.items()}
 
     # `cfg.held_hole_bare_only`: what later STITCHED colours cover, per
-    # layer, built only for a layer that holds a hole. An unstitched later
-    # shape is bare fabric by design, so it never counts as covering one.
+    # layer -- a suffix union like `later`, built only with the flag on. An
+    # unstitched later shape is bare fabric by design and never covers a hole;
+    # `plan_stitches` drops those before stage 5 anyway, but tools that pass
+    # `result.regions` whole (`seam_underlap`, `sewn_compensation`) do not.
     bare_only = bool(getattr(cfg, "held_hole_bare_only", False))
     sewn_after: dict[int, object] = {}
+    if bare_only:
+        running = None
+        for L in reversed(layers):
+            sewn_after[L] = running
+            mine = [sewn_footprint(o) for o in by_layer[L] if o.meta.get("stitched", True)]
+            if mine:
+                here = unary_union(mine)
+                running = here if running is None else running.union(here)
 
     def later_sewn(L: int):
-        if L not in sewn_after:
-            parts = [sewn_footprint(o) for o in regions
-                     if o.meta["layer"] > L and o.meta.get("stitched", True)]
-            sewn_after[L] = unary_union(parts) if parts else None
-        return sewn_after[L]
+        return sewn_after.get(L)
 
     planned: list[PlannedRegion] = []
     holes_held = 0

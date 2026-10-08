@@ -15,9 +15,11 @@ or over the same floor). This reads both, OFF against ON, per fixture:
   * `zero_mm`        -- PLAN: length of those pieces' seams carrying NO
                         underlap (`seam_underlap.measure`'s depth-0 pairs);
   * `tongue_sewn`    -- STITCHES: of points just inside each piece's edge
-                        (pull + overlap/2 in), the share the GROUND's own
-                        thread passes within one fill row of. DOCTRINE: prove
-                        a seam on the stitches, never on the plan;
+                        (pull + overlap/2 in, halved in turn for a piece too
+                        thin for that), the share the GROUND's own thread
+                        passes within one fill row of, over `sampled` of the
+                        pieces. DOCTRINE: prove a seam on the stitches, never
+                        on the plan;
   * `ring_bare_mm2`  -- STITCHES: area of the 0.2 mm band either side of each
                         piece's edge, inside its hole, that NO thread of any
                         colour comes within one fill row of -- the line of
@@ -74,24 +76,45 @@ def held_pieces(regions, pull: float, floor: float) -> list[tuple]:
     return out
 
 
+def _owner(run_shape_id: str) -> str:
+    """The region a run belongs to: shape ids are `S<hex>`, and every run
+    suffix (`-blend…`, underlay, …) follows a dash."""
+    return run_shape_id.split("-")[0]
+
+
 def _thread(plan, shape_ids=None):
     row = machine.FILL_ROW_MM
     lines = [LineString(r.points).buffer(row)
              for _b, r in plan.iter_runs()
              if len(r.points) > 1
-             and (shape_ids is None or r.shape_id.split("-blend")[0] in shape_ids)]
+             and (shape_ids is None or _owner(r.shape_id) in shape_ids)]
     return unary_union(lines) if lines else None
+
+
+def _inside(poly, inset: float):
+    """`poly` shrunk by `inset` -- or, for a piece thinner than twice that,
+    by half its own reach in turn until something is left, so the thinnest
+    pieces (the ones a full tongue runs right under) are sampled too."""
+    d = inset
+    while d > 0.01:
+        inner = poly.buffer(-d)
+        if not inner.is_empty:
+            return inner
+        d /= 2.0
+    return None
 
 
 def sewn(plan, pieces, inset: float) -> dict:
     """Tongue and bare ring, read off the stitches."""
     everything = _thread(plan)
     hits = total = 0
+    sampled = 0
     bare = 0.0
     for g, p, hole in pieces:
         ground = _thread(plan, {g.shape_id})
-        inner = p.polygon.buffer(-inset)
-        for part in getattr(inner, "geoms", [inner]):
+        inner = _inside(p.polygon, inset)
+        sampled += inner is not None
+        for part in getattr(inner, "geoms", [inner]) if inner is not None else []:
             if part.is_empty:
                 continue
             edge = part.exterior
@@ -106,6 +129,7 @@ def sewn(plan, pieces, inset: float) -> dict:
             ring = ring.difference(everything)
         bare += ring.area
     return {"tongue_sewn": (hits / total) if total else None,
+            "sampled": sampled,
             "ring_bare_mm2": round(bare, 3)}
 
 
@@ -164,7 +188,7 @@ def _draw(plan, piece, hole, bounds, px: float):
         if len(r.points) < 2:
             continue
         bgr = tuple(int(c) for c in reversed(b.rgb))
-        if r.shape_id.split("-")[0] == piece.shape_id:
+        if _owner(r.shape_id) == piece.shape_id:
             cv2.polylines(top, [to_px(r.points)], False, bgr, thick, cv2.LINE_AA)
             cv2.polylines(mask, [to_px(r.points)], False, 255, thick, cv2.LINE_AA)
         else:
@@ -217,7 +241,7 @@ def main(argv=None) -> int:
     if not names:
         ap.error("name an image or pass --all")
     print(f"{'fixture':34} {'pcs':>3}  {'held':>9} {'zero mm':>11} {'<0.25 mm':>13} "
-          f"{'tongue sewn':>13} {'ring bare mm2':>15} {'stitches':>13} {'trims':>9}  same")
+          f"{'tongue (n)':>17} {'ring bare mm2':>15} {'stitches':>13} {'trims':>9}  same")
     for name in names:
         path = Path(name) if Path(name).is_absolute() else TESTDATA / name
         m = measure_image(path, args.width, args.garment)
@@ -230,8 +254,9 @@ def main(argv=None) -> int:
 
         def pct(v):
             return "-" if v is None else f"{v:.0%}"
+        tongue = f"{pct(a['tongue_sewn'])}>{pct(b['tongue_sewn'])} ({b['sampled']}/{m['pieces']})"
         print(f"{name:34} {m['pieces']:>3}  {pair('held'):>9} {pair('zero_mm'):>11} "
-              f"{pair('under_025_mm'):>13} {pct(a['tongue_sewn']) + '>' + pct(b['tongue_sewn']):>13} "
+              f"{pair('under_025_mm'):>13} {tongue:>17} "
               f"{pair('ring_bare_mm2'):>15} {pair('stitches'):>13} {pair('trims'):>9}  "
               f"{'md5' if a['md5'] == b['md5'] else 'moved'}")
     return 0
