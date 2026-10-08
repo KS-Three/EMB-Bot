@@ -1,4 +1,4 @@
-import { test, expect, beforeAll, vi } from "vitest";
+import { test, expect, beforeAll, beforeEach, vi } from "vitest";
 import { createRequire } from "node:module";
 import { preloadAllFontsSync } from "./testFonts.js";
 
@@ -10,6 +10,13 @@ vi.mock("jspdf", () => ({ jsPDF: class FakeJsPDF {} }));
 vi.mock("./preview.js", () => ({
   renderRealistic: vi.fn(),
 }));
+
+// The mock is module-level shared state: without this, call counts leak
+// between tests and `toHaveBeenCalledTimes(1)` fails under --sequence.shuffle.
+beforeEach(async () => {
+  const { renderRealistic } = await import("./preview.js");
+  renderRealistic.mockClear();
+});
 
 let design;
 beforeAll(async () => {
