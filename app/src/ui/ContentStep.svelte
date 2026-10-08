@@ -3,8 +3,6 @@
   import TextStep from "./TextStep.svelte";
   import ImagePanel from "./ImagePanel.svelte";
   import DesignPanel from "./DesignPanel.svelte";
-  import DigitizePanel from "./DigitizePanel.svelte";
-  import ManualPanel from "./ManualPanel.svelte";
   import ShapePanel from "./ShapePanel.svelte";
   import SizePanel from "./SizePanel.svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
@@ -308,6 +306,7 @@
     {#if el.type === "design"}
       <DesignPanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
     {:else if el.type === "digitized"}
+     {#await import("./DigitizePanel.svelte") then { default: DigitizePanel }}
       <DigitizePanel
         element={el}
         {project}
@@ -323,6 +322,7 @@
         on:converttotext={(e) => d("converttotext", e.detail)}
         on:removeelement={(e) => d("removeelement", e.detail)}
       />
+     {/await}
     {:else if el.type === "image"}
       <ImagePanel
         element={el}
@@ -335,7 +335,9 @@
         on:flat={(e) => d("flat", e.detail)}
       />
     {:else if el.type === "manual"}
+     {#await import("./ManualPanel.svelte") then { default: ManualPanel }}
       <ManualPanel element={el} fieldSelect={fieldShapeSelect && fieldShapeSelect.elementId === el.id ? fieldShapeSelect : null} on:elupdate={(e) => d("elupdate", e.detail)} />
+     {/await}
     {:else if el.type === "shape"}
       <ShapePanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
     {:else}

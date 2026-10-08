@@ -40,10 +40,7 @@
   import GarmentStep from "./ui/GarmentStep.svelte";
   import ContentStep from "./ui/ContentStep.svelte";
   import Configurator from "./ui/Configurator.svelte";
-  import DownloadSheet from "./ui/DownloadSheet.svelte";
   import EmbroideryField from "./ui/EmbroideryField.svelte";
-  import ProjectsDrawer from "./ui/ProjectsDrawer.svelte";
-  import FontCredits from "./ui/FontCredits.svelte";
   import ShortcutsHelp from "./ui/ShortcutsHelp.svelte";
   import Icon from "./ui/Icon.svelte";
   import "./ui/theme.css";
@@ -1242,6 +1239,7 @@
 {/if}
 
 {#if drawerOpen}
+  {#await import("./ui/ProjectsDrawer.svelte") then { default: ProjectsDrawer }}
   <ProjectsDrawer
     {projects}
     {currentId}
@@ -1256,12 +1254,15 @@
     on:close={() => (drawerOpen = false)}
     notice={drawerNotice}
   />
+  {/await}
 {/if}
 
 <ShortcutsHelp />
 
 {#if creditsOpen}
-  <FontCredits on:close={() => (creditsOpen = false)} />
+  {#await import("./ui/FontCredits.svelte") then { default: FontCredits }}
+    <FontCredits on:close={() => (creditsOpen = false)} />
+  {/await}
 {/if}
 
 <div class="studio">
@@ -1344,6 +1345,7 @@
     </Configurator>
     </div>
     {#if sheetOpen}
+     {#await import("./ui/DownloadSheet.svelte") then { default: DownloadSheet }}
       <DownloadSheet
         {project}
         designName={projectName}
@@ -1360,6 +1362,7 @@
         on:locate={(e) => onLocateShape(e.detail)}
         on:credits={(e) => openCredits(e.detail)}
       />
+     {/await}
     {/if}
   </aside>
 </div>
