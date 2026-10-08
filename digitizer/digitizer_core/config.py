@@ -2201,6 +2201,15 @@ class PipelineConfig:
     # `tests/test_blend_fallback_underlay.py`.
     blend_fallback_underlay: bool = True
 
+    # Built OFF 2026-10-08. The fill underlay's 1.0 mm inset
+    # (`machine.UNDERLAY_INSET_MM`) splits a shape at any neck under 2 mm, and
+    # `stage6_fill._underlay_paths` kept only the LARGEST piece: every other
+    # piece sewed its top fill onto bare fabric. Becker's chest logo leaves
+    # 88 mm2 of 1,152 (7.6%) bare that way. True underlays every piece in the
+    # same style, nearest-first. No constant is added. False is byte-identical
+    # to the engine before it. `tests/test_underlay_all_pieces.py`.
+    underlay_all_pieces: bool = False
+
     # Task A2 (2026-08-14, tools/pro_parity): the corpus's professional
     # SOLID fill elements sew at roughly double a single ordinary pass's
     # density — see machine.FILL_DENSITY_BOOST_MIN_WIDTH_MM's own comment

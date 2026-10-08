@@ -724,6 +724,7 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
             trim_at_mm=machine.TRIM_AT_MM,
             start_near=start_near, under_cover=cfg.fill_travel_under_cover,
             cut_bridges=cfg.fill_bridge_cut,
+            underlay_all_pieces=cfg.underlay_all_pieces,
         )
         # Routed to blend, sewn flat. Stage 7 aggregates these across the
         # design so the warning the user reads can say decomposition did
