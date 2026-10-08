@@ -261,6 +261,21 @@ def test_two_separate_stems_are_two_components_joined_by_one_jump():
     assert abs(end1[1] - start2[1]) < 1.0
 
 
+def test_the_walk_ends_toward_the_next_shape():
+    """An H has four free stem ends; the postman pairs two and the trail runs
+    between the other two. Stage 7 hands every shape the point where the
+    next shape starts (`cfg.satin_exit_toward_next`, the satin tier's rule
+    since 09-19), and the walk reserves its two ends for it: start nearest
+    the needle, end nearest the next shape. Without it the walk ended where
+    the pairing left it and the hop into the next letter was a trim
+    (Fremont's entry trims rose 15 -> 21 under the lane)."""
+    H = _rect(0, 0, 2, 12).union(_rect(8, 0, 10, 12)).union(_rect(0, 5, 10, 7))
+    for nxt, corner in (((9, -0.5), (9, 0)), ((1, 12.5), (1, 12)), ((9, 12.5), (9, 12))):
+        runs, report = lettering_columns_shape(H, "h", trim_at_mm=3.0, start_near=(1, -0.5), end_near=nxt)
+        assert _jumps(runs) == []
+        assert math.dist(runs[-1].points[-1], corner) < 1.5, nxt
+
+
 # ------------------------------------------------------- the E/F stem cut
 
 def _rounded_e():
