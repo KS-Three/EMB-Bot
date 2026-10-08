@@ -209,3 +209,26 @@ test("a design whose stitches all fit a record is byte-identical to before", () 
   // and left. It is not harmless where the sentinel sits somewhere else.
   assert.strictEqual((bytes.length - 512) / 3, 5);
 });
+
+// ST is the number of 3-byte body records, END included. The reference values
+// are pystitch.DstWriter's (3 stitches -> ST 4, 4 records); the old
+// `stitches.length` matched only a design carrying an {type:"end"} sentinel.
+const stField = (out) => Number(Buffer.from(out.slice(0, 512)).toString("latin1").match(/ST:(\d{7})\r/)[1]);
+const S = (x, y, type = "stitch") => ({ type, x, y });
+test("header ST counts every body record including END, with or without a sentinel", () => {
+  const body = [S(10, 10), S(20, 20), S(30, 30)];
+  for (const stitches of [body, [...body, S(30, 30, "end")]]) {
+    const out = dst.encodeDST({ stitches, colors: [{}] });
+    assert.strictEqual(stField(out), (out.length - 512) / 3);
+    assert.strictEqual(stField(out), 4);
+  }
+});
+test("header ST counts trim jumps and split-move records, not design stitches", () => {
+  for (const stitches of [
+    [S(10, 10), S(50, 10, "trim"), S(60, 10), S(60, 10, "end")],
+    [S(0, 0, "jump"), S(10, 0), S(400, 0), S(400, 0, "end")],
+  ]) {
+    const out = dst.encodeDST({ stitches, colors: [{}] });
+    assert.strictEqual(stField(out), (out.length - 512) / 3);
+  }
+});
