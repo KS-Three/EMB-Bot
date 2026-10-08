@@ -55,15 +55,15 @@ def _runs(join_square):
     return runs
 
 
-def test_the_fixture_fans_off_and_the_flag_is_held_off():
+def test_the_fixture_fans_off_and_the_flag_is_on():
     """`join_square=False` is the pre-flip joiner, and on it the E's arms DO
     fan -- the reading the flag exists to move. Pinned so the fixture cannot
     quietly stop reproducing the defect (a rounded copy of this polygon
     already does not). Every behaviour test here passes the flag
     explicitly, so the config default can move without touching them: ON
     2026-10-06 (Kent's call on renders), HELD OFF 2026-10-07 by its guards
-    (an ENTHUSIAST element lost, three sibling bars tipped -- the config
-    docstring has the four readings)."""
+    (an ENTHUSIAST element lost), ON again the same day with the bend cap
+    (`test_join_corner_bend_cap.py`; the config docstring has the story)."""
     from digitizer_core import PipelineConfig
     poly, art, kw = _fixture()
     off, _ = satin_shape(poly, "S1", art_poly=art, join_square=False, **kw)
@@ -71,7 +71,7 @@ def test_the_fixture_fans_off_and_the_flag_is_held_off():
     # the FUNCTION default stays False (every direct caller keeps the
     # pre-flip joiner), whatever the config default is
     assert [r.points for r in dflt] == [r.points for r in off]
-    assert PipelineConfig().satin_join_square is False
+    assert PipelineConfig().satin_join_square is True
     events, columns = fan_ends([r.points for r in off if r.kind == "satin"])
     assert columns >= 4
     assert events >= 2, f"the E no longer fans OFF ({events} fan ends over {columns} columns)"
