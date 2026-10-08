@@ -501,10 +501,35 @@ def test_every_engine_medial_axis_call_is_seeded():
 
     core = Path(__file__).resolve().parents[1] / "digitizer_core"
     unseeded = []
-    for f in sorted(core.glob("*.py")):
-        for node in ast.walk(ast.parse(f.read_text(encoding="utf-8"))):
+    for f in sorted(core.rglob("*.py")):          # subpackages (calibration/) too
+        tree = ast.parse(f.read_text(encoding="utf-8"))
+        # `from skimage.morphology import medial_axis as ma` renames the callee
+        names = {"medial_axis"}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                names |= {a.asname for a in node.names if a.name == "medial_axis" and a.asname}
+        for node in ast.walk(tree):
             if (isinstance(node, ast.Call)
-                    and getattr(node.func, "id", getattr(node.func, "attr", None)) == "medial_axis"
-                    and not any(k.arg == "rng" for k in node.keywords)):
-                unseeded.append(f"{f.name}:{node.lineno}")
+                    and getattr(node.func, "id", getattr(node.func, "attr", None)) in names):
+                seeded = any(k.arg == "rng" and not (isinstance(k.value, ast.Constant)
+                                                     and k.value.value is None)
+                             for k in node.keywords)
+                if not seeded:
+                    unseeded.append(f"{f.relative_to(core)}:{node.lineno}")
     assert unseeded == []
+
+
+def test_columns_on_golden_tee_is_deterministic_end_to_end():
+    """Run the whole pipeline twice with `lettering_columns` ON and compare the
+    sewn result. The source pin above catches the unseeded call; this catches
+    any OTHER nondeterminism that reaches the plan (golden_tee varied by 7
+    stitches over four runs before the seeding fix)."""
+    from tools.flip_sheet import _stitch_digest
+
+    cfg = PipelineConfig(target_width_mm=100.0, garment_id="left_chest", max_colors=6,
+                         lettering_columns=True)
+    src = str(TESTDATA / "photo" / "logo_golden_tee.jpg")
+    _, a = digitize(src, cfg)
+    _, b = digitize(src, cfg)
+    assert _stitch_digest(a) == _stitch_digest(b)
+    assert _plan_points(a) == _plan_points(b)
