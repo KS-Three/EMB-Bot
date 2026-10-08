@@ -34,6 +34,7 @@
 //
 // Nothing here has been sewn: these are measurements of the stitch stream the
 // encoders are handed.
+import "./_help.mjs";
 import { writeFileSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
