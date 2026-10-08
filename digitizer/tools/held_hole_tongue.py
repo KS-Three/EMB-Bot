@@ -146,7 +146,8 @@ def measure_image(image: Path, width_mm: float, garment: str | None) -> dict:
 
 def _draw(plan, piece, hole, bounds, px: float):
     """One close-up: fabric, every run in its thread's colour at about a
-    40-weight thread's width, the piece's artwork edge as a thin red line."""
+    40-weight thread's width -- the piece's own runs at 35% so the ground's
+    thread under it shows -- and the piece's artwork edge as a red line."""
     import cv2
     import numpy as np
     x0, y0, x1, y1 = bounds
@@ -157,20 +158,28 @@ def _draw(plan, piece, hole, bounds, px: float):
         return np.array([[(x - x0) * px, (y - y0) * px] for x, y in pts],
                         np.int32).reshape(-1, 1, 2)
     thick = max(1, int(round(0.35 * px)))
+    top = img.copy()
+    mask = np.zeros((h, w), np.uint8)
     for b, r in plan.iter_runs():
         if len(r.points) < 2:
             continue
         bgr = tuple(int(c) for c in reversed(b.rgb))
-        cv2.polylines(img, [to_px(r.points)], False, bgr, thick, cv2.LINE_AA)
-    for ring in (piece.polygon.exterior, hole.exterior):
-        colour = (40, 40, 230) if ring is piece.polygon.exterior else (230, 120, 40)
-        cv2.polylines(img, [to_px(ring.coords)], True, colour, 1, cv2.LINE_AA)
+        if r.shape_id.split("-")[0] == piece.shape_id:
+            cv2.polylines(top, [to_px(r.points)], False, bgr, thick, cv2.LINE_AA)
+            cv2.polylines(mask, [to_px(r.points)], False, 255, thick, cv2.LINE_AA)
+        else:
+            cv2.polylines(img, [to_px(r.points)], False, bgr, thick, cv2.LINE_AA)
+            cv2.polylines(top, [to_px(r.points)], False, bgr, thick, cv2.LINE_AA)
+    a = (mask[..., None].astype(np.float32) / 255.0) * 0.35
+    img = (img * (1 - a) + top * a).astype(np.uint8)
+    cv2.polylines(img, [to_px(piece.polygon.exterior.coords)], True, (30, 30, 235), 1,
+                  cv2.LINE_AA)
     return img
 
 
 def render(m: dict, out_png: Path, px: float = 60.0, limit: int = 4) -> None:
     """OFF | ON for up to `limit` pieces, stacked: thread as sewn, the piece's
-    artwork edge red, its hole's edge blue."""
+    own thread see-through, its artwork edge red."""
     import cv2
     import numpy as np
     rows = []

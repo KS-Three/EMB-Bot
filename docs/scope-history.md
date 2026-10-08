@@ -20046,3 +20046,8 @@ him with both priced, the day #656 merged: **keep 12.1 mm.** No EXP gains a
 stitch record longer than any it has held since 2026-09-13, and whether a
 machine takes a longer one stays unsewn. The comment in `src/exp.js` carries
 the pick; no code changes with it.
+
+## 2026-10-08 — moved from MASTER_SCOPE for the word budget
+
+**Moved here from MASTER_SCOPE live defect 38 (fixed 2026-09-07), verbatim:**
+38. **The simulator counted in a different unit from the caption right under it — FIXED 2026-09-07.** The stitch simulator is driven by STRANDS (the segment between two consecutive stitches, which is what actually paints), and its counter showed that raw index: **"1289 stitches · 102×12 mm" under the canvas and "1280 / 1280" in the simulator bar**, both visible at once, nine apart on a design with nine runs. Both numbers were correct measurements of different things and only one carried a unit — the same family as defect 34, one screen over. **FIXED**: `strandStitchOrdinals` (strands.js) maps each strand to the stitch number it ends at, computed once per run, so the counter reads *"1289 / 1289 stitches"*. The animation still runs on strands. **The total is the LAST ORDINAL, not `design.stitchCount`** — a run of a single stitch paints no segment, so the simulator must never claim to have drawn it; the fixture has 0 such runs, and the tests cover one that does. `strands.spec.js` (5), e2e (1, plus the format pin in `field-chrome.spec.js` updated with its reason). *(found by watching the simulator run 2026-09-07)*
