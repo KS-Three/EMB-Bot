@@ -387,11 +387,12 @@ export function layerSubsetForCount(n) {
   return [0, 1, 2, 3, 4];
 }
 
-// One black drop-shadow path for a set of strands that share a style. The
+// One black drop-shadow path for a set of strands that share a style. `items`
+// are drawThreads' projected records ({ s, X0, Y0, X1, Y1 }, canvas px). The
 // neutral style reproduces the original single pre-pass EXACTLY: `* 1` is
 // exact in IEEE754 and the alpha is rounded back onto 0.22, so the emitted
 // strokeStyle string, lineWidth and offsets are bit-for-bit what they were.
-function strokeShadow(ctx, items, SX, SY, lw, st) {
+function strokeShadow(ctx, items, lw, st) {
   if (!items.length) return;
   const slw = styleWidth(lw, st);
   const off = (slw * 0.18 + 0.5) * st.shadow;
@@ -403,9 +404,9 @@ function strokeShadow(ctx, items, SX, SY, lw, st) {
   ctx.strokeStyle = `rgba(0,0,0,${alpha})`;
   ctx.lineWidth = slw * 1.04;
   ctx.beginPath();
-  for (const s of items) {
-    ctx.moveTo(SX(s.x0) + sx, SY(s.y0) + sy);
-    ctx.lineTo(SX(s.x1) + sx, SY(s.y1) + sy);
+  for (const p of items) {
+    ctx.moveTo(p.X0 + sx, p.Y0 + sy);
+    ctx.lineTo(p.X1 + sx, p.Y1 + sy);
   }
   ctx.stroke();
 }
@@ -418,6 +419,34 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
   const flat = !!o.flat;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+
+  // Each strand is projected to canvas px ONCE, here, instead of once per
+  // layer (the lit path strokes every strand five or six times). The values
+  // are the same SX/SY results, so every coordinate handed to the canvas is
+  // bit-for-bit what it was.
+  //
+  // `o.clip` ({ x0, y0, x1, y1 }, canvas px) culls a strand whose whole drawn
+  // footprint lies outside that box -- in the FLAT view only. Measured
+  // 2026-10-08 on a 22.8k-stitch design: ~80% of a zoom/pan frame is the
+  // browser rasterizing stroke paths, most of them off-screen once zoomed
+  // in. The margin (2 lw + 4 px) is wider than anything a strand paints past
+  // its endpoints. The cull happens AFTER a strand is assigned to its colour
+  // block, never before: dropping it earlier could merge the two blocks
+  // either side of an all-off-screen colour, which changes z-order.
+  //
+  // The LIT view is not culled per strand: the same cull there changed
+  // pixels, because the rasterizer anti-aliases a path by its whole geometry
+  // (see the off-screen skip below, which drops only whole lit buckets).
+  // No clip, no culling (every caller but renderRealistic, and every spec).
+  const clip = flat && o.clip ? o.clip : null;
+  const m = 2 * lw + 4;
+  const cx0 = clip ? clip.x0 - m : 0, cy0 = clip ? clip.y0 - m : 0;
+  const cx1 = clip ? clip.x1 + m : 0, cy1 = clip ? clip.y1 + m : 0;
+  const project = (s) => {
+    const X0 = SX(s.x0), Y0 = SY(s.y0), X1 = SX(s.x1), Y1 = SY(s.y1);
+    const off = !!clip && ((X0 < cx0 && X1 < cx0) || (X0 > cx1 && X1 > cx1) || (Y0 < cy0 && Y1 < cy0) || (Y0 > cy1 && Y1 > cy1));
+    return { s, X0, Y0, X1, Y1, off };
+  };
 
   // FLAT view: one solid stroke per colour, at the same physical width, and
   // nothing else — no shadow, no cylinder shading, no sheen. This is the
@@ -446,16 +475,18 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
         blocks.push(curFlat);
       }
       prevFlatRgb = rgb;
-      curFlat.items.push(s);
+      const p = project(s);
+      if (!p.off) curFlat.items.push(p);
     }
     ctx.setLineDash([]);
     ctx.lineWidth = lw;
     for (const c of blocks) {
+      if (!c.items.length) continue;
       ctx.strokeStyle = `rgb(${c.rgb[0]},${c.rgb[1]},${c.rgb[2]})`;
       ctx.beginPath();
-      for (const s of c.items) {
-        ctx.moveTo(SX(s.x0), SY(s.y0));
-        ctx.lineTo(SX(s.x1), SY(s.y1));
+      for (const p of c.items) {
+        ctx.moveTo(p.X0, p.Y0);
+        ctx.lineTo(p.X1, p.Y1);
       }
       ctx.stroke();
     }
@@ -480,18 +511,20 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
   // slightly, where one path over the same crossing would not. That is the
   // correct direction (two layers of thread do cast more shadow than one) and
   // it cannot arise at all in the single-class fallback.
+  const proj = strands.map(project);
   const shadowGroups = new Map();
-  for (const s of strands) {
-    const st = styleForStrand(s);
+  for (let i = 0; i < strands.length; i++) {
+    const p = proj[i];
+    const st = styleForStrand(strands[i]);
     if (st.raised) continue;
     let g = shadowGroups.get(st.key);
     if (!g) { g = { style: st, items: [] }; shadowGroups.set(st.key, g); }
-    g.items.push(s);
+    g.items.push(p);
   }
   const shadowOrder = shadowGroups.size > 1
     ? Array.from(shadowGroups.values()).sort((a, b) => a.style.z - b.style.z)
     : Array.from(shadowGroups.values());
-  for (const g of shadowOrder) strokeShadow(ctx, g.items, SX, SY, lw, g.style);
+  for (const g of shadowOrder) strokeShadow(ctx, g.items, lw, g.style);
 
   // Group into colour BLOCKS first, then by direction inside each block.
   //
@@ -526,32 +559,33 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
   const blocks = [];
   let curBlock = null;
   let prevRgb = null;
-  for (const s of strands) {
+  for (let i = 0; i < strands.length; i++) {
+    const s = strands[i];
     const rgb = s.rgb;
     if (!curBlock || !prevRgb || rgb[0] !== prevRgb[0] || rgb[1] !== prevRgb[1] || rgb[2] !== prevRgb[2]) {
       curBlock = { rgb, groups: new Map() };
       blocks.push(curBlock);
     }
     prevRgb = rgb;
+    const p = proj[i];
     const st = styleForStrand(s);
     let grp = curBlock.groups.get(st.key);
     if (!grp) { grp = { style: st, buckets: new Map(), items: null }; curBlock.groups.set(st.key, grp); }
     // Raised groups keep a flat list too: their shadow is drawn as one path
     // right before they are, and that path needs the strands in sew order
     // rather than scattered across direction buckets.
-    if (st.raised) { if (!grp.items) grp.items = []; grp.items.push(s); }
-    const X0 = SX(s.x0), Y0 = SY(s.y0), X1 = SX(s.x1), Y1 = SY(s.y1);
-    const ang = Math.atan2(Y1 - Y0, X1 - X0);
+    if (st.raised) { if (!grp.items) grp.items = []; grp.items.push(p); }
+    const ang = Math.atan2(p.Y1 - p.Y0, p.X1 - p.X0);
     // Modulo PI, then quantized: a strand and its reverse share a bucket.
     let b = Math.floor((((ang % Math.PI) + Math.PI) % Math.PI) / (Math.PI / DIR_BUCKETS));
     if (b >= DIR_BUCKETS) b = DIR_BUCKETS - 1;
     let bucket = grp.buckets.get(b);
     if (!bucket) { bucket = { bucket: b, items: [], x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity }; grp.buckets.set(b, bucket); }
-    bucket.items.push(s);
-    if (X0 < bucket.x0) bucket.x0 = X0; if (X1 < bucket.x0) bucket.x0 = X1;
-    if (X0 > bucket.x1) bucket.x1 = X0; if (X1 > bucket.x1) bucket.x1 = X1;
-    if (Y0 < bucket.y0) bucket.y0 = Y0; if (Y1 < bucket.y0) bucket.y0 = Y1;
-    if (Y0 > bucket.y1) bucket.y1 = Y0; if (Y1 > bucket.y1) bucket.y1 = Y1;
+    bucket.items.push(p);
+    if (p.X0 < bucket.x0) bucket.x0 = p.X0; if (p.X1 < bucket.x0) bucket.x0 = p.X1;
+    if (p.X0 > bucket.x1) bucket.x1 = p.X0; if (p.X1 > bucket.x1) bucket.x1 = p.X1;
+    if (p.Y0 < bucket.y0) bucket.y0 = p.Y0; if (p.Y1 < bucket.y0) bucket.y0 = p.Y1;
+    if (p.Y0 > bucket.y1) bucket.y1 = p.Y0; if (p.Y1 > bucket.y1) bucket.y1 = p.Y1;
   }
 
   // Off-screen skip (LIT view, 2026-10-08), whole stroke() calls only. A
@@ -567,9 +601,9 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
   // from a path that still draws therefore changed ~15k pixels at 5x zoom,
   // and even keeping the path's bounds intact left 28-55 pixels off by 1-2
   // levels. That is why PR #712's per-strand lit cull did not hold.
-  const clip = o.clip || null;
+  const litClip = o.clip || null;
   const cm = 2 * lw + 4;
-  const offClip = (b) => !!clip && (b.x1 < clip.x0 - cm || b.x0 > clip.x1 + cm || b.y1 < clip.y0 - cm || b.y0 > clip.y1 + cm);
+  const offClip = (b) => !!litClip && (b.x1 < litClip.x0 - cm || b.x0 > litClip.x1 + cm || b.y1 < litClip.y0 - cm || b.y0 > litClip.y1 + cm);
 
   // Indices preferred; a count goes through layerSubsetForCount so it can
   // never drop the true colour (see that function for the bug it replaces).
@@ -585,7 +619,7 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
       const st = grp.style;
       const slw = styleWidth(lw, st);
       // A raised group casts its shadow here, onto whatever is already drawn.
-      if (st.raised && grp.items) strokeShadow(ctx, grp.items, SX, SY, lw, st);
+      if (st.raised && grp.items) strokeShadow(ctx, grp.items, lw, st);
       const profiles = [];
       for (const b of grp.buckets.values()) {
         if (offClip(b)) continue;
@@ -601,9 +635,9 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
           if (L.dash) ctx.setLineDash(L.dash); else ctx.setLineDash([]);
           const ox = p.nx * L.offset, oy = p.ny * L.offset;
           ctx.beginPath();
-          for (const s of p.b.items) {
-            ctx.moveTo(SX(s.x0) + ox, SY(s.y0) + oy);
-            ctx.lineTo(SX(s.x1) + ox, SY(s.y1) + oy);
+          for (const q of p.b.items) {
+            ctx.moveTo(q.X0 + ox, q.Y0 + oy);
+            ctx.lineTo(q.X1 + ox, q.Y1 + oy);
           }
           ctx.stroke();
         }
