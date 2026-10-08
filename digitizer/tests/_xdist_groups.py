@@ -34,6 +34,11 @@ t=0 instead of landing last and setting the tail. Run with
 ``--no-loadscope-reorder`` so xdist keeps this order rather than its own
 by-test-count one.
 
+MEASURED 2026-10-08, same file lists, 4-core box, with the workflow's
+one-native-thread-per-worker setting: shard 1/6 389 s (``load``) -> 248 s,
+shard 3/6 506 s -> 447 s. Shard 3 gains least because one memo file
+(`test_bind_resnap_all_classes.py`) stays whole and is most of a worker.
+
 Grouping changes WHERE a test runs, never WHETHER: every collected test is
 still scheduled exactly once, and the `digitizer` aggregator's manifest
 check still proves the shards together ran the whole suite.
