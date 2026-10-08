@@ -773,10 +773,10 @@
    "review": true
   },
   {
-   "prefix": "docs/renders/two-tone-flip-2026-10-08/",
+   "prefix": "docs/renders/two-tone-lines-2026-10-08/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: golke, gaulke, mfab, toat",
-   "basis": "docs/renders/two-tone-flip-2026-10-08 (dir name dated; inputs are the fixtures above)",
+   "basis": "docs/renders/two-tone-lines-2026-10-08 (dir name dated; inputs are the fixtures above)",
    "review": true
   },
   {

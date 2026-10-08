@@ -224,11 +224,14 @@ class PipelineConfig:
     # grey plateau) is thresholded to those two inks right after stage 1, so
     # no region ever sees the grey. Per IMAGE, which is why it leaves
     # `logo_bridge_bar.jpg`'s ringing alone where the per-region stroke rule
-    # did not (DOCTRINE 2026-10-05). Built OFF; ON by Kent's flip 2026-10-08
-    # on OFF/ON renders of every two-tone fixture, after `two_tone.keep_lines`
-    # cured the one regression (golke's white roof lines sewed as one black
-    # mass). False is the off-switch.
-    two_tone_snap: bool = True
+    # did not (DOCTRINE 2026-10-05). OFF by default: it moves the region set
+    # on every black-and-white logo, so it waits on Kent's look at a render.
+    # `two_tone.keep_lines` (2026-10-08) cured the render regression (golke's
+    # white roof lines sewed as one black mass), but the lines it keeps are
+    # widened to the satin floor, and the thread-match grader, reading the
+    # customer's unsnapped pixels under them, now BLOCKS White on golke
+    # (dE 14.6) and gaulke (33.9), which block nothing OFF. Still OFF for that.
+    two_tone_snap: bool = False
     # Make the gradient lane's region edges follow the PIXELS rather than the
     # SEEDS superpixels they are built from
     # (`stage2_photo_segment.snap_region_edges`). Measured 2026-09-30 on

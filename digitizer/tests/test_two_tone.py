@@ -113,9 +113,10 @@ def test_white_logo_on_transparency_runs_with_the_flag_on():
     assert gen is not None
 
 
-def test_flag_on_by_default():
-    """Kent's flip 2026-10-08, after `keep_lines` cured golke's roof lines."""
-    assert PipelineConfig().two_tone_snap is True
+def test_flag_off_by_default():
+    """Kent approved the flip 2026-10-08; it waits on the thread-match block
+    `keep_lines` brings to golke and gaulke (config.py's comment)."""
+    assert PipelineConfig().two_tone_snap is False
 
 
 def _snapped_stage1(rel: str):
