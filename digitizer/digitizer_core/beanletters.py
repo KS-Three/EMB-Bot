@@ -70,7 +70,14 @@ def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
     tagged = 0
     for members in clusters.values():
         inks = read_cluster_ink(p, members)
-        goes = weight_groups([i.stroke_mm for i in inks], float(line))
+        if cfg.lettering_word_tiers:
+            # L3: one tier per word -- the whole word goes bean or none of
+            # it does, on the median of its members' ink.
+            known = [i.stroke_mm for i in inks if i.stroke_mm is not None]
+            whole = bool(known) and float(np.median(known)) < float(line)
+            goes = [whole and i.stroke_mm is not None for i in inks]
+        else:
+            goes = weight_groups([i.stroke_mm for i in inks], float(line))
         for r, ink, go in zip(members, inks, goes):
             if ink.stroke_mm is not None:
                 r.meta["ink_stroke_mm"] = round(ink.stroke_mm, 3)
