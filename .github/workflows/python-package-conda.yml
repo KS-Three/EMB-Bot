@@ -200,6 +200,11 @@ jobs:
       # identical, including the deselects below. Nothing in the suite
       # writes to a shared path (fixtures are read-only, every test that writes
       # uses tmp_path), so worker isolation is real rather than assumed.
+      # `--dist loadgroup --no-loadscope-reorder`: tests that share a module
+      # fixture or a memoized pipeline run go to ONE worker, everything else
+      # spreads test by test, heaviest first. tests/_xdist_groups.py has the
+      # rules and the measurement (shard 1/6: 389 s -> 248 s with the thread
+      # setting below). Same tests, same count -- only placement changes.
       # The three --deselect lines below are explained ONCE, in this job's
       # header comment: what they are, why they fail, why they are not
       # re-captured, and the measurement that cut the list from five to three.
@@ -230,8 +235,21 @@ jobs:
         env:
           DIGITIZER_SHARD: ${{ matrix.shard }}/6
           DIGITIZER_SHARD_MANIFEST: shard-manifest.json
+          # One native thread per xdist worker. `-n auto` already puts a
+          # worker on each of the runner's four cores; left alone, OpenCV and
+          # OpenBLAS each start four threads PER WORKER and the sixteen fight
+          # over four cores. Measured 2026-10-08 on shard 1/6, same tree,
+          # 4-core box: 389 s -> 357 s from this alone. Any pinned result that
+          # depended on the thread count would fail here, not pass quietly;
+          # the fixture-sweep tools (tools/thread_match_floor.py) have always
+          # run single-threaded.
+          OMP_NUM_THREADS: '1'
+          OPENBLAS_NUM_THREADS: '1'
+          MKL_NUM_THREADS: '1'
+          OPENCV_FOR_THREADS_NUM: '1'
         run: >
           python -m pytest tests/ -q -n auto
+          --dist loadgroup --no-loadscope-reorder
           --junitxml=junit.xml
           --deselect "tests/test_pushcomp.py::test_flag_off_is_byte_identical_to_the_shipped_engine[logo_whitebg.png-towel]"
           --deselect "tests/test_flat_lane_byte_identical.py::test_flat_lane_is_byte_identical_to_the_pre_change_golden[photo/enthusiast_logo.png]"
@@ -256,18 +274,40 @@ jobs:
     # `digitizer`; since 2026-10-08 this is that check, and it still means
     # "every test ran and passed":
     #   1. `if: always()` -- it runs even when a shard failed, was cancelled
-    #      or was skipped, so it reports red instead of a skipped `digitizer`
-    #      (a skipped required check would satisfy nothing, but red is the
-    #      honest answer).
-    #   2. It fails unless EVERY shard's result is `success`.
-    #   3. tools/ci_shard_check.py fails unless the shards' manifests prove
+    #      or was skipped. NOT `!cancelled()`: a job skipped by its `if:`
+    #      reports a required check as PASSING, so a head run cancelled once
+    #      engine/studio/studio-e2e were green would let auto-merge fire with
+    #      the digitizer tests unfinished.
+    #   2. A CANCELLED shard set (a superseded run under cancel-in-progress, or
+    #      a manual cancel) force-cancels this run, so `digitizer` ends
+    #      `cancelled` -- which blocks merge exactly as the single job's
+    #      cancellation did -- instead of a fake red. Before this, every
+    #      superseded push left a red `digitizer` behind (runs 37720996814 and
+    #      37720277164, PRs #678/#682). If the force-cancel cannot land (a fork
+    #      PR's read-only token), the step still fails: closed, never green.
+    #   3. Otherwise it fails unless EVERY shard's result is `success`.
+    #   4. tools/ci_shard_check.py fails unless the shards' manifests prove
     #      one shard each for 1..6, identical collected lists, and selections
     #      that are disjoint and add up to exactly that collected list.
     # Stdlib python only, no install: seconds after the last shard.
     needs: digitizer-shard
     if: always()
     runs-on: ubuntu-latest
+    permissions:
+      actions: write   # force-cancel of this run, step below
+      contents: read
     steps:
+      - name: A cancelled run ends cancelled, not red
+        if: needs.digitizer-shard.result == 'cancelled'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -sS -X POST -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/force-cancel"
+          sleep 120
+          echo "force-cancel did not stop this job; failing closed"
+          exit 1
       - name: Every shard succeeded
         run: |
           echo "digitizer-shard result: ${{ needs.digitizer-shard.result }}"
@@ -311,26 +351,55 @@ jobs:
       # in the digitizer job (text-cluster-convert.spec.js drives that UI).
       - name: Install system dependencies (Tesseract OCR)
         run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+      # Cache the venv itself (not just pip's wheel cache): the install step
+      # below then only verifies. Same path as before, so the bootstrap probe
+      # and the editable install resolve identically.
+      - name: Cache the digitizer venv
+        uses: actions/cache@v4
+        with:
+          path: digitizer/.venv
+          key: e2e-venv-${{ runner.os }}-py312-${{ hashFiles('digitizer/requirements.txt', 'digitizer/pyproject.toml') }}
       - name: Build the digitizer venv the e2e bootstrap looks for
         working-directory: digitizer
         run: |
-          python -m venv .venv
+          [ -x .venv/bin/python ] || python -m venv .venv
           .venv/bin/pip install -r requirements.txt
           .venv/bin/pip install -e '.[service]'
       - name: Install
         working-directory: app
         run: npm ci
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}
       - name: Install Playwright Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
         working-directory: app
         run: npx playwright install --with-deps chromium
-      # --workers=1: the five service-gated specs share one service on :8721
-      # and each file's afterAll kills it when that file finishes — under
-      # parallel workers one file's teardown races another file's mid-test
-      # requests (observed locally: red at 4 workers, green solo). Serial is
-      # bounded by the specs' own timeouts and removes the race entirely.
-      - name: Playwright e2e
+      - name: Install Playwright system libraries (browser cached)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
         working-directory: app
-        run: npx playwright test --workers=1 --reporter=list,json
+        run: npx playwright install-deps chromium
+      # The specs that talk to the shared digitizer service on :8721 (every
+      # file naming SERVICE_URL) stay serial: each file's afterAll kills that
+      # one service, so under parallel workers one file's teardown races
+      # another file's mid-test requests (observed locally: red at 4 workers,
+      # green solo). Every OTHER spec is service-free and runs on 4 workers.
+      # Together the two steps run every spec file exactly once.
+      - name: Playwright e2e (service-free specs, parallel)
+        working-directory: app
+        run: |
+          FILES=$(grep -L SERVICE_URL e2e/*.spec.js | tr '\n' ' ')
+          npx playwright test --workers=4 --reporter=list,json $FILES
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: results-parallel.json
+      - name: Playwright e2e (digitizer-service specs, serial)
+        working-directory: app
+        run: |
+          FILES=$(grep -l SERVICE_URL e2e/*.spec.js | tr '\n' ' ')
+          npx playwright test --workers=1 --reporter=list,json $FILES
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: results.json
       # The digitize-* specs SKIP (not fail) when the service bootstrap can't
@@ -341,7 +410,7 @@ jobs:
       - name: Fail if any spec skipped
         working-directory: app
         run: |
-          node -e "const s=require('./results.json').stats; console.log(JSON.stringify(s)); if(s.skipped>0){console.error(s.skipped+' spec(s) skipped — the service bootstrap failed; read the skip reasons in the list output above'); process.exit(1)}"
+          node -e "let t=0,k=0; for(const f of ['./results-parallel.json','./results.json']){const s=require(f).stats; console.log(f,JSON.stringify(s)); t+=s.expected+s.unexpected+s.flaky; k+=s.skipped} if(k>0){const s={skipped:k};console.error(s.skipped+' spec(s) skipped — the service bootstrap failed; read the skip reasons in the list output above'); process.exit(1)}"
 
   art-fidelity-baseline:
     # REPORT-ONLY. Runs tools/artfidelity_self.py over the tracked fixture set
@@ -412,4 +481,47 @@ jobs:
         with:
           name: artfid-baseline-${{ github.sha }}
           path: digitizer/artfid-baseline.csv
+          if-no-files-found: warn
+
+  # REPORT-ONLY, push-to-main-only. Times Auto Digitize per tracked fixture
+  # (digitizer/tools/bench_digitize.py) and uploads JSON + markdown. Same
+  # posture as art-fidelity-baseline: never on a PR, never required, and
+  # continue-on-error so it cannot turn a green main red. Timings are only
+  # comparable between runs on this same runner class.
+  bench-digitize:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: digitizer/requirements.txt
+      - name: Install system dependencies (Tesseract OCR)
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+      - name: Install
+        working-directory: digitizer
+        run: pip install -r requirements.txt
+      - name: Time Auto Digitize per fixture
+        working-directory: digitizer
+        run: python -m tools.bench_digitize --json bench-digitize.json --md bench-digitize.md
+      - name: Publish the table to the run summary
+        if: always()
+        working-directory: digitizer
+        run: |
+          {
+            echo '## Auto Digitize timing (report-only)'
+            echo
+            cat bench-digitize.md || echo '(no table — the run did not finish)'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the timings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-digitize-${{ github.sha }}
+          path: |
+            digitizer/bench-digitize.json
+            digitizer/bench-digitize.md
           if-no-files-found: warn

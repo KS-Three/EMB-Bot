@@ -468,6 +468,20 @@ export function addElement(project, type, hoopWmm) {
   return { ...project, elements: [...project.elements, el], selectedId: id, selectedIds: [id] };
 }
 
+// Every new project opens on one EMPTY text element — the box the customer
+// types into. A customer who uploads artwork instead never typed anything,
+// yet addElement counted that blank box as "the first element", so the art
+// was seeded as a second one: 0.4 × hoop wide (42 mm in a 5×7, where text
+// auto-fits to ~102 mm) and staggered 10 mm up, beside a "Text · empty" row
+// that sews nothing. Returns the project with that untouched starter
+// dropped, so the next addElement treats the art as the first element.
+// Anything else — typed text, more than one element — is returned as is.
+export function withoutBlankStarter(project) {
+  const els = project.elements;
+  if (els.length !== 1 || els[0].type !== "text" || (els[0].text || "").trim()) return project;
+  return { ...project, elements: [], selectedId: null, selectedIds: [] };
+}
+
 // Adds a new "text" element SEEDED from a partial patch (`seed`) — a sibling
 // to addElement, not a replacement: addElement's signature/behavior are left
 // untouched because other callers depend on them. Used by the "convert text

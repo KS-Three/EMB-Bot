@@ -26,8 +26,19 @@
   let el = null;
   onMount(() => { if (el) el.focus(); });
 
+  // aria-modal is only true if Tab cannot leave: wrap between the sheet's
+  // first and last focusable controls (same pattern as FontCredits).
   function onKey(e) {
-    if (e.key === "Escape") { e.stopPropagation(); d("close"); }
+    if (e.key === "Escape") { e.stopPropagation(); d("close"); return; }
+    if (e.key !== "Tab" || !el) return;
+    const els = Array.from(el.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )).filter((n) => n.offsetParent !== null);
+    if (!els.length) return;
+    const first = els[0], last = els[els.length - 1];
+    const a = document.activeElement;
+    if (e.shiftKey && (a === first || a === el || !el.contains(a))) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (a === last || !el.contains(a))) { e.preventDefault(); first.focus(); }
   }
 </script>
 

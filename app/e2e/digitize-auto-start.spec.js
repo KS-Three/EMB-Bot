@@ -127,7 +127,10 @@ test("Upload file opens the file browser; cancelling adds nothing, choosing adds
   await page.locator(".eladd-row button", { hasText: "Artwork" }).click();
   chooser = await chooserPromise;
   await chooser.setFiles(ART_PNG);
-  await expect(rows).toHaveCount(before + 1);
+  // A fresh design's only row is its empty text box, which the art REPLACES
+  // (art-first-size.spec.js) — so the count holds and the row is the art.
+  await expect(rows).toHaveCount(before);
+  await expect(rows.filter({ hasText: "Text · empty" })).toHaveCount(0);
   await expect(page.locator(".dgp-run")).toHaveText("Auto Digitize Image");
 });
 
