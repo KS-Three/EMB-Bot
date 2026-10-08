@@ -34,3 +34,7 @@ the direction was oriented rightward. Cap height off centroids reads ~3% high
 
 **Still misses:** connected script (one region is not a group), bridge's arc
 blobs, gaulke's window panes (mirror pairs, 1 twin each). Flip is Kent's.
+
+**Pairs drawn same day** (`docs/eye-pairs-2026-10-08/`, `lettering_words` arm,
+sitting `words-1008`): 5 pairs, 3 identical; golden_tee's tee shaft turns
+(false-positive word). Page gitignored, built locally per the README recipe.

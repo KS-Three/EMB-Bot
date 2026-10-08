@@ -20069,3 +20069,12 @@ in-sample; the CV screen is 0.03 over the
 highest letter. ON vs OFF through `digitize()`: three logos byte-identical,
 six within 0.4% of stitches, drone two trims more (139 → 141).
 `docs/word-tagger-2026-10-08/README.md`.
+
+## 2026-10-08 — L1's pairs drawn (`lettering_words`, sitting `words-1008`)
+
+Kent picked the pairs when L1 closed. Eight logos, 5 pairs, 3 identical
+(becker, gaulke, tires). The flag barely moves stitches on shipped flags:
+drone +2 trims on its changed shapes; golden_tee's lost_frac 0.4466 → 0.4699,
+the tee's shaft (a false-positive word, tagged by both old taggers too)
+taking a different house angle. The page cannot show the Column-lane
+combination a flip would change. `docs/eye-pairs-2026-10-08/`.
