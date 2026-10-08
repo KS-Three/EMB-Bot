@@ -290,6 +290,22 @@ def test_the_walk_starts_at_the_near_edge():
     assert math.dist(first.points[0], (-1, 6)) < math.dist(runs[1].points[0], (-1, 6))
 
 
+def test_the_walk_in_goes_round_a_bend():
+    """Arriving under a U, the near edge is the bottom of the bowl and the
+    walk starts at an arm's top: the straight run between them crosses the
+    hollow. The walk-in follows the centrelines instead, every leg inside
+    the letter (Fremont: three lane-only entry trims, 2026-10-08)."""
+    u = unary_union([_rect(0, 0, 10, 2), _rect(0, 0, 2, 10), _rect(8, 0, 10, 10)])
+    cursor = (5, -1.5)
+    runs, report = lettering_columns_shape(u, "u", trim_at_mm=3.0, start_near=cursor)
+    first = runs[0]
+    assert first.kind == stitches.TRAVEL
+    assert report["entry_walk_mm"] > 5
+    assert math.dist(cursor, first.points[0]) < 2
+    assert u.buffer(0.1).covers(LineString(first.points))
+    assert math.dist(first.points[-1], runs[1].points[0]) < machine.TINY_STITCH_MM + 1e-6
+
+
 # ------------------------------------------------------- the E/F stem cut
 
 def _rounded_e():

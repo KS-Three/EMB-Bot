@@ -230,6 +230,68 @@ def _coords(geom):
     return list(geom.coords)
 
 
+def _inside_path(columns: list[Column], nodes, spans, a, b, reach_mm: float,
+                 inside: Polygon) -> list[tuple[float, float]] | None:
+    """The shortest way from `a` to `b` along the columns' centrelines (the
+    walk's own graph: consecutive station midpoints, joined at span nodes),
+    stepping on and off within `reach_mm` where that step stays `inside`.
+    None when either point cannot step on, or the two are not connected."""
+    import heapq
+
+    mids = [_mids(c.stations) for c in columns]
+    vid = {}
+    pts: list[tuple[float, float]] = []
+
+    def v(key, p):
+        if key not in vid:
+            vid[key] = len(pts)
+            pts.append(p)
+        return vid[key]
+
+    adj: dict[int, list[tuple[int, float]]] = {}
+
+    def link(i, j):
+        w = math.dist(pts[i], pts[j])
+        adj.setdefault(i, []).append((j, w))
+        adj.setdefault(j, []).append((i, w))
+
+    for ci, m in enumerate(mids):
+        for k in range(1, len(m)):
+            link(v((ci, k - 1), m[k - 1]), v((ci, k), m[k]))
+    for s in spans:
+        for key, idx in (("na", s["i0"]), ("nb", s["i1"])):
+            link(v(("n", s[key]), nodes[s[key]]), v((s["ci"], idx), mids[s["ci"]][idx]))
+    ia, ib = v("a", a), v("b", b)
+    for end in (ia, ib):
+        p = pts[end]
+        near = sorted(range(len(pts) - 2), key=lambda i: math.dist(pts[i], p))[:8]
+        for i in near:
+            if (math.dist(pts[i], p) <= reach_mm
+                    and inside.covers(LineString([p, pts[i]]))):
+                link(end, i)
+        if end not in adj:
+            return None
+    dist, prev, heap = {ia: 0.0}, {}, [(0.0, ia)]
+    while heap:
+        d, u = heapq.heappop(heap)
+        if u == ib:
+            break
+        if d > dist.get(u, math.inf):
+            continue
+        for w_, c in adj.get(u, ()):
+            nd = d + c
+            if nd < dist.get(w_, math.inf):
+                dist[w_], prev[w_] = nd, u
+                heapq.heappush(heap, (nd, w_))
+    if ib not in dist:
+        return None
+    path, u = [pts[ib]], ib
+    while u != ia:
+        u = prev[u]
+        path.append(pts[u])
+    return path[::-1]
+
+
 # ---------------------------------------------------------------- the walk
 
 def _span_graph(columns: list[Column], merge_r: float):
@@ -640,11 +702,17 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         if not inner.is_empty:
             e = nearest_points(inner, Point(start_near))[0].coords[0]
             if (math.dist(start_near, e) + machine.TINY_STITCH_MM < math.dist(start_near, f)
-                    and math.dist(e, f) >= machine.TINY_STITCH_MM
-                    and poly_link.covers(LineString([e, f]))):
-                runs.insert(0, StitchRun(points=_walk_points([e, f], _UNDERPATH_STEP_MM),
-                                         kind=stitches.TRAVEL, shape_id=shape_id))
-                report["entry_walk_mm"] = math.dist(e, f)
+                    and math.dist(e, f) >= machine.TINY_STITCH_MM):
+                # Straight where it stays inside; otherwise along the
+                # centrelines (the start is round a bend from the near edge
+                # -- 3 of Fremont's 4 lane-only entry trims, 2026-10-08).
+                path = ([e, f] if poly_link.covers(LineString([e, f]))
+                        else _inside_path(ready, nodes, spans, e, f,
+                                          _CONNECTOR_WIDTHS * W, poly_link))
+                if path is not None:
+                    runs.insert(0, StitchRun(points=_walk_points(path, _UNDERPATH_STEP_MM),
+                                             kind=stitches.TRAVEL, shape_id=shape_id))
+                    report["entry_walk_mm"] = LineString(path).length
     # 4. Link consecutive runs: the satin tier's own sew-or-jump rule, verbatim
     #    (`satin_shape`'s tail). Under rail comp the rails sit a pull outside
     #    the artwork and a hop that ends on one is still inside the column.
