@@ -8785,25 +8785,3 @@ element by its shape id and a crop before choosing the cure, and census the
 candidate test over EVERY fixture's accepted cases: the first discriminator
 that parts the broken fixture from the clean one can refuse the clean cases
 everywhere else.** *(measured 2026-10-07 — `docs/join-square-enthusiast-2026-10-07.md`; `tests/test_join_corner_bend_cap.py`)*
-
-## 2026-10-08 — The N fan's cure: a tip must land on a convex corner; the degree gate it was promised is `tip_caps=False` in disguise
-
-The 10-07 diagnosis named the fix as "do not ask the tip test at a node of
-three arms". Measured before building, the rule fails: every end the test is
-asked about on becker and enthusiast sits at a node of three or more arms,
-because a node of two always has an owner and a tuck and never reaches the
-test. Hit distance, hit-to-DT ratio and arm length did not separate the N
-either. Drawing every tip ray over the letters did. Nearly all of them are
-**meetings**: a stem, bar or diagonal driven through the stroke it meets,
-landing on that stroke's far wall. What tells a taper from a meeting is where
-the ray lands. A taper ends on a convex corner. A meeting ends on a wall
-(180°) or in a notch (over 180°). The N's three tips read 180, 180, 180 and
-the M's 278–297. Built OFF as `satin_tip_corner_gate` (interior angle ≤ 160°,
-read where the corner actually is: the review found a wall hit beside a corner
-reading as convex, and correcting it cut the kept ends 16 → 3). Becker's
-over-long crosses go 56 → 28, the N's fan is gone in the render, and bare
-rises 8.4 mm² over seven logos. **It is identical to
-`satin_tip_caps=False` on five logos and within 0.2 mm² on the other two. So the coverage tip caps bought was
-bought at meetings, and the fan is its price. Price a gate on the population
-it actually fires on, not the one it was named for.** *(measured 2026-10-08 —
-`docs/n-fan-cure-2026-10-08.md`, `tools/tip_corner_census.py`)*
