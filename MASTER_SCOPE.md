@@ -500,13 +500,11 @@ about the facts.
    after its guards held Kent's 10-06 flip for one lost ENTHUSIAST element
    (defect 60, fixed the same day). *(measured 2026-10-07 — PR #663, the flip PR; DOCTRINE 2026-10-07)*
 
-31. **Flip `satin_free_end_square` — NEW 2026-10-08, built OFF; HOLD for a
-   render pick.** A hooked square free end lands square; a foot or T slab is
-   sewn as its own column. On today's default, Fremont 80 mm: bare letter
-   artwork 3.20 → 0.91 mm² (corners 3.01 → 0.78), fan ends 16 → 13, trims
-   equal; `satin_slab_serifs` 1.49 mm², fan 8; both 0.84, fan 9, trims +1.
-   Becker, enthusiast, drone, gaulke within 0.1 mm². Not sewn.
-   *(measured 2026-10-08 — `tools/join_square_census.py`)*
+31. **RESOLVED 2026-10-08 — Kent flipped `satin_free_end_square` AND
+   `satin_slab_serifs` ON** on the four-arm render. A hooked square free end
+   lands square; a foot or T slab is sewn as its own column. Fremont 80 mm:
+   bare letter artwork 3.20 → 0.84 mm², fan ends 16 → 9, +137 stitches,
+   trims 38 → 39. Not sewn. *(measured 2026-10-08 — `tools/join_square_census.py`)*
 
 ## Cross-cutting issues
 

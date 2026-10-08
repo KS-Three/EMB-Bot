@@ -1735,8 +1735,12 @@ class PipelineConfig:
     # square) are not pairs, so the join-square fold at the E's and T's
     # L-corners is untouched. Fremont ON: three letters move (T, N, R), the
     # design +34 stitches. Built OFF; the render is Kent's to judge.
-    # Tests: `tests/test_slab_serifs.py`.
-    satin_slab_serifs: bool = False
+    # Tests: `tests/test_slab_serifs.py`. **FLIPPED ON 2026-10-08, Kent's
+    # call, TOGETHER with `satin_free_end_square` below** on the four-arm
+    # render (`tools/join_square_census.py fremont --width 80 --garment
+    # left_chest`): both ON, Fremont at 80 mm bare letter artwork 3.20 ->
+    # 0.84 mm2, fan ends 16 -> 9, +137 stitches, trims 38 -> 39.
+    satin_slab_serifs: bool = True
     # A plain FREE END lands square too (2026-10-08, built OFF). The corner
     # join above straightens only `Stroke.corners` members; an arm's free end
     # whose spine hooks into a corner of its square cap (Fremont's E middle
@@ -1751,8 +1755,10 @@ class PipelineConfig:
     # Gated to arms (6 half-widths), tight lines and square cap faces, each
     # gate found by a corpus render (Becker's N, the U's, Enthusiast's S).
     # Measured: `tools/join_square_census.py`; tests
-    # `tests/test_join_slab_square.py`.
-    satin_free_end_square: bool = False
+    # `tests/test_join_slab_square.py`. **FLIPPED ON 2026-10-08, Kent's call,
+    # together with `satin_slab_serifs`** (see there); False is the 10-07
+    # free end, byte for byte.
+    satin_free_end_square: bool = True
     # Lettering as Columns (`digitizer_core/outline_cut.py`,
     # `digitizer_core/columns.py`; the lettering-lane architecture,
     # `docs/lettering-architecture-rd-2026-10-07.md` §5 L4/L5, Kent's pick

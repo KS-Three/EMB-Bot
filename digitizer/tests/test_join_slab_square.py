@@ -85,14 +85,16 @@ def _near(angles, target, tol=5.0):
 
 
 def test_off_is_the_default_and_the_left_foot_is_bare_and_fanned():
-    """OFF is the default (the byte-for-byte pin against the shipped joiner
-    is the goldens in the full suite), and on it the H's left foot
-    is the defect: half a square millimetre of its slab bare, and no cross
+    """The function default is OFF and the config default ON (Kent's flip
+    2026-10-08, with `satin_slab_serifs`); OFF, the H's left foot is the
+    defect: half a square millimetre of its slab bare, and no cross
     in it square to the stem or to the slab -- the stem's end fans in."""
     poly, art, kw = _fixture()
     dflt, _ = satin_shape(poly, "S1", art_poly=art, join_square=True, **kw)
     off = _runs(False)
     assert [r.points for r in dflt] == [r.points for r in off]
+    from digitizer_core import PipelineConfig
+    assert PipelineConfig().satin_free_end_square is True
     left, _right, zone = _feet()
     assert _bare(off, left) >= 0.4, f"the fixture's left foot is no longer bare OFF ({_bare(off, left):.3f} mm2)"
     angles = _foot_cross_angles(off, zone)
