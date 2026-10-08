@@ -113,10 +113,9 @@ def test_white_logo_on_transparency_runs_with_the_flag_on():
     assert gen is not None
 
 
-def test_flag_on_by_default():
-    """Kent's flip 2026-10-08, once `keep_lines` and the grader's snapped
-    view cured golke's roof lines."""
-    assert PipelineConfig().two_tone_snap is True
+def test_flag_off_by_default():
+    """Approved 2026-10-08; held OFF on the halo-premise tests (config.py)."""
+    assert PipelineConfig().two_tone_snap is False
 
 
 def _snapped_stage1(rel: str):

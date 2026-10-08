@@ -224,13 +224,15 @@ class PipelineConfig:
     # grey plateau) is thresholded to those two inks right after stage 1, so
     # no region ever sees the grey. Per IMAGE, which is why it leaves
     # `logo_bridge_bar.jpg`'s ringing alone where the per-region stroke rule
-    # did not (DOCTRINE 2026-10-05). Built OFF; ON by Kent's flip 2026-10-08
-    # ("Fix the roof-line bug, then flip"), on OFF/ON renders of every
-    # two-tone fixture, once `two_tone.keep_lines` kept golke's white roof
-    # lines (they sewed as one black mass) and preflight's thread grader read
-    # the snapped raster (`preflight._two_tone_view`; unsnapped, it blocked
-    # White under those lines). False is the off-switch.
-    two_tone_snap: bool = True
+    # did not (DOCTRINE 2026-10-05). OFF by default. Kent approved the flip
+    # 2026-10-08 ("Fix the roof-line bug, then flip"): `two_tone.keep_lines`
+    # keeps golke's white roof lines (they sewed as one black mass) and
+    # preflight's thread grader reads the snapped raster
+    # (`preflight._two_tone_view`; unsnapped, it blocked White under those
+    # lines). What still holds it OFF: about eight thread-match/resnap tests
+    # whose premise is gaulke's grey halo, which the snap removes; each needs
+    # pinning to OFF or re-deriving, which is re-pinning guards.
+    two_tone_snap: bool = False
     # Make the gradient lane's region edges follow the PIXELS rather than the
     # SEEDS superpixels they are built from
     # (`stage2_photo_segment.snap_region_edges`). Measured 2026-09-30 on

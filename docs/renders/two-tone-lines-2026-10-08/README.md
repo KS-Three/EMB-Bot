@@ -1,8 +1,9 @@
 # two_tone_snap OFF vs ON, with `keep_lines` (2026-10-08)
 
-**The flag stays OFF.** These renders are equal or better ON on every fixture, but the lines
-`two_tone.keep_lines` keeps make preflight BLOCK White on golke (dE 14.6) and gaulke (33.9):
-the thread-match grader reads the unsnapped source under a line widened to the satin floor.
+**The flag stays OFF.** These renders are equal or better ON on every fixture. The thread-match
+block the kept lines first caused (White on golke dE 14.6, gaulke 33.9, the grader reading the
+unsnapped source) is cured by `preflight._two_tone_view`. What holds the flip is about eight
+thread-match/resnap tests whose premise is gaulke's grey halo, which the snap removes.
 
 OFF left, ON right, one PNG per fixture, drawn by `digitizer/tools/two_tone_probe.py --render`
 (`digitizer_core.stitchviz.render_design`) at the Studio's config (80 mm, left_chest, 6 colours),
