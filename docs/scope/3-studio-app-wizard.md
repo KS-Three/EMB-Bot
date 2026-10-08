@@ -954,3 +954,32 @@ thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.
 
 **Thread lighting is unverified against real thread** — eye-tuned, and the one physical out (2026-09-01) cannot settle it: its colours were random operator threading, so DOCTRINE bars grading colour from it at all. Treat the look as a preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
 
+
+### A corner drag on a digitized design is a Design width change (2026-10-08)
+
+**The defect, measured in the running Studio on `logo_golden_tee.jpg`:** the
+field's corner handles SCALE a digitized design's baked stitches
+(`generate.js` hands `sizeMm` to `buildImportedDesign`, the `.dst` import
+path). Dragged 80 → 62 mm, the caption read **8,764 stitches · 62×52 mm** —
+every stitch of the 80 mm run on 0.6× the area, **1.66× the thread per mm²**,
+which is what makes a patch stiff and breaks needles. The Auto Digitize button
+stayed solid, Design width still read 80, and the one sentence about it
+("Resized to 77% …") sat in the Settings tab below the fold at 1440×960. Its
+button, **"Re-digitize at 62 mm", put the design back at 80 mm and ran
+nothing**: it cleared `sizeMm`, set the width, and waited for the automatic
+re-run that Kent's 2026-10-05 ruling ("nothing re-runs on its own") had
+removed, so its own comment had been false for three days.
+
+**The fix (Kent's two rules kept: resize honesty, and the button as the only
+run):** `resizedTargetWidth` (`lib/digitizer.js`) reads a drag beyond the
+panel's existing 2% threshold as the Design width it asks for (the ratio
+applied to the width the result was DIGITIZED at, so pull-comp margin does
+not compound). The panel compares THAT config against the applied one, so the
+button goes transparent, the stale line says "Resized to 62 mm — the stitches
+are only scaled until you press Auto Digitize Image", and Design width shows
+61.9. A run sends the dragged width and its landing patch drops the scale in
+the same step: **6,246 stitches · 62×52 mm**, button solid. "Re-digitize at
+N mm" is now that same run. A typed width replaces a dragged one.
+Renders: `docs/renders/field-resize-2026-10-08/`.
+*(fixed 2026-10-08 — `DigitizePanel.spec.js` "a resize on the field" (4 of 5
+fail on the old panel), `digitizer.spec.js` "resizedTargetWidth")*

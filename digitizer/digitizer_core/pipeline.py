@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 from shapely.geometry import Polygon
 
-from . import debugviz
+from . import debugviz, two_tone
 from .config import PipelineConfig
 from .fabrics import Fabric, apply_profile, fabric_for_garment, get_fabric
 from .machine import FILL_ROW_MM, satin_ceiling_mm
@@ -468,6 +468,28 @@ def build_generation(
             )
         )
 
+    # Stage 1.3 — two-tone snap (`cfg.two_tone_snap`, defect 58). Before any
+    # region former, so every lane reads two inks. Never on a photograph,
+    # declared or detected (`cfg.is_photographic` carries both by now), whose
+    # greys are its picture; a logo stage 0 merely CLASSES photo_scene
+    # (`logo_mfab_hat`) still snaps. Detection reads the foreground only, so
+    # the margin round the art cannot dilute a colour accent under the gate.
+    # `p.native_rgb` is left as the source drew it: stage 4's sub-pixel edge
+    # read wants its anti-alias ramp, and the ramp is real there. The
+    # snapped halo the border flood stopped short of is folded into the
+    # background (`two_tone.fold_fringe`). `bg_rgb`, `bg_edge_rgb` and
+    # `raw_rgb` keep their pre-snap colours on purpose: they describe the
+    # file's background, which the snap does not redraw.
+    if cfg.two_tone_snap and cfg.is_photographic is not True:
+        tt = two_tone.detect(p.rgb, ~p.bg_mask)
+        if tt is not None:
+            p.rgb = two_tone.snap(p.rgb, tt)
+            p.bg_mask = two_tone.fold_fringe(p.rgb, tt, p.bg_mask, p.bg_rgb)
+            if p.enclosed_mask is not None:
+                p.enclosed_mask = p.enclosed_mask & ~p.bg_mask
+                if not p.enclosed_mask.any():
+                    p.enclosed_mask = None
+
     # Stage 1.5 — photo prep (plan §2 rows 3-4; build step 3 first slice).
     # DOUBLE-gated: the opt-in flag AND a photo classification, so neither
     # the default config nor a photo-classified design under default config
@@ -811,6 +833,17 @@ def build_generation(
     regularize_text_clusters(regions, p, min_column_mm=cfg.lettering_min_column_mm,
                              pull_mm=fabric_for(cfg).pull_comp_mm)
 
+    # ONE lettering tagger (`cfg.lettering_words`, default OFF; L1 of the
+    # lettering lane, `words.py`): each line of lettering found once, and
+    # every stitch-affecting lettering reader below and in stage 7 groups by
+    # it instead of by the text cluster or the house group. Here, on the
+    # polygons the regularizer left and before the priors refit, because the
+    # priors, the house angle and the stitch widths all read its groups.
+    # Off, `tag_words` is never called and no `word_*` key is written.
+    if cfg.lettering_words:
+        from .words import tag_words
+        tag_words(regions, chart=chart_for(cfg))
+
     # Letterform priors (2026-10-06, `cfg.letterform_priors_k`, DEFAULT None):
     # refit each text-tagged letter of a low-resolution upload to lines and
     # arcs under the word's shared stem direction, widths and baseline,
@@ -823,7 +856,8 @@ def build_generation(
     if cfg.letterform_priors_k and p.input_px_per_mm > 0.0 and p.px_per_mm > 0.0:
         from .letterform_priors import apply_letterform_priors
         apply_letterform_priors(regions, src_px_mm=1.0 / p.input_px_per_mm,
-                                grid_px_mm=1.0 / p.px_per_mm, k=cfg.letterform_priors_k)
+                                grid_px_mm=1.0 / p.px_per_mm, k=cfg.letterform_priors_k,
+                                words=cfg.lettering_words)
 
     # OCR-suggested text (Studio "Convert to text" entry point): a read-only,
     # additive per-member OCR read of each tagged member's FINAL polygon —
@@ -832,6 +866,9 @@ def build_generation(
     # feeds back into detection/regularization/geometry itself. See
     # `textcluster.py`'s module docstring, "OCR-suggested text" section.
     ocr_suggest_text(regions, p)
+    if cfg.lettering_words:
+        from .words import word_ocr_text
+        word_ocr_text(regions)
 
     # The house angle (Step 6): one angle per LINE OF LETTERING, applied to
     # both the satin and fill tiers, so a wordmark's letters agree instead of
@@ -842,16 +879,21 @@ def build_generation(
     # `ocr_suggest_text` does. Metadata only, and only where the strokes carry
     # a direction that clears a chance-corrected significance test: everything
     # else keeps today's behaviour byte-identical.
+    house_groups = None
+    if cfg.lettering_words:
+        from .words import word_groups
+        house_groups = word_groups(regions)
     set_lettering_house_angle(regions, p, fourfold=cfg.satin_house_fourfold,
                               from_line=cfg.satin_house_from_line,
-                              anchor=cfg.satin_house_anchor)
+                              anchor=cfg.satin_house_anchor, groups=house_groups)
 
     # Stitch width (2026-09-29, `stitchwidth.py`): what column each shape
     # measures, and the one width a detected word's letters will share.
     # Metadata only, read off the FINAL polygons for the same reason the two
     # passes above are; the geometry moves in `finish_generation`, where the
     # review override and the fabric's pull are known.
-    measure_stitch_widths(regions, satin_max=satin_ceiling_mm(cfg))
+    measure_stitch_widths(regions, satin_max=satin_ceiling_mm(cfg),
+                          words=cfg.lettering_words)
 
     # Gradient class: the one shared fill-row angle for the whole design
     # (2026-08-03 angle-fragmentation fix) — the design ramp's row angle when
@@ -1032,7 +1074,8 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     apply_stitch_widths(regions, pull_mm=fabric_for(cfg).pull_comp_mm,
                         floor_sewn_mm=cfg.lettering_min_column_mm,
                         auto=cfg.stitch_width_auto,
-                        satin_max=satin_ceiling_mm(cfg))
+                        satin_max=satin_ceiling_mm(cfg),
+                        words=cfg.lettering_words)
     # Bean letters (`cfg.bean_letter_max_stroke_mm`, default None): read each
     # text cluster's INK and hand the small ones their bean paths. Here, not
     # in `build_generation`: it needs the review edits' `stitched` and `tier`
