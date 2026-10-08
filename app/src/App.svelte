@@ -44,6 +44,7 @@
   import EmbroideryField from "./ui/EmbroideryField.svelte";
   import ProjectsDrawer from "./ui/ProjectsDrawer.svelte";
   import FontCredits from "./ui/FontCredits.svelte";
+  import ShortcutsHelp from "./ui/ShortcutsHelp.svelte";
   import Icon from "./ui/Icon.svelte";
   import "./ui/theme.css";
 
@@ -1230,6 +1231,8 @@
     notice={drawerNotice}
   />
 {/if}
+
+<ShortcutsHelp />
 
 {#if creditsOpen}
   <FontCredits on:close={() => (creditsOpen = false)} />
