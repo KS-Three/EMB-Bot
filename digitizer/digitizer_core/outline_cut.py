@@ -46,6 +46,7 @@ _RAIL_STEP_MM = 0.08     # densification of an outline arc before pairing
 _DTW_STEP_MM = 0.1       # resampling step of the two rails for the matching
 REFINE_TRIGGER = 0.12    # share of thread in over-long crosses that says "two strokes"
 REFINE_GAIN = 0.6        # a second-look cut must take that share to this fraction
+_SLOT_STEP_MM = 0.1           # outline walk step for the slot backs
 REFINE_REFLEX_DEG = 30.0        # the second look reads softer concave corners than the junction rules
 
 
@@ -263,6 +264,113 @@ def find_cuts(poly: Polygon, W: float):
             continue
         kept.append(cu)
     return [k[:4] for k in kept], reflex, convex
+
+
+def _depth_peaks(depth, W: float) -> list[int]:
+    """Indices of depth maxima at least W deep, each standing 0.5 W above
+    the lowest point between it and the previous kept peak (a plateau, or
+    a ripple on one wall, is one peak)."""
+    peaks: list[int] = []
+    for i in range(1, len(depth) - 1):
+        if depth[i] < W or depth[i] < depth[i - 1] or depth[i] < depth[i + 1]:
+            continue
+        if peaks and min(depth[peaks[-1]:i + 1]) > max(depth[peaks[-1]], depth[i]) - 0.5 * W:
+            if depth[i] > depth[peaks[-1]]:
+                peaks[-1] = i
+            continue
+        peaks.append(i)
+    return peaks
+
+
+def slot_cuts(poly: Polygon, W: float):
+    """-> (cuts, stem lines). The stem of an E or an F, read off the slots between
+    its arms. Each pocket of the convex hull is walked along the letter's
+    outline; the depth peaks (from the pocket's mouth) are the slot backs,
+    and two or more backs lined up parallel to the mouth (within 20 deg)
+    are points on the stem's inner edge. The stretches of that line inside
+    the letter are the arms' roots, and each one between 0.3 W and 2.5 W
+    is a cut: stem on one side, arms on the other.
+
+    Why not the corner rules: a traced E at 146 px rounds its slot ends, so
+    the junction rules find one 55-deg corner at most and `ext` carries the
+    slot's LONGER edge into the body -- three horizontal slabs, each a
+    fanning L (Becker's E, 2026-10-07). The pro's E is a stem and three
+    arms. One pocket can hold both slots when the middle arm stops short
+    of the hull, which is why the backs are depth peaks along the outline
+    and not one deepest point per pocket. A C, an S, a K or a T has one
+    peak per pocket and gets nothing here."""
+    cuts, stems = [], []
+    if not poly.is_valid:
+        return cuts, stems
+    hull = poly.convex_hull
+    pockets = hull.difference(poly)
+    for pk in getattr(pockets, "geoms", [pockets]):
+        if pk.geom_type != "Polygon" or pk.area < 0.5 * W * W:
+            continue
+        ring = pk.exterior
+        mo = ring.intersection(hull.exterior)
+        ms = [g for g in getattr(mo, "geoms", [mo]) if g.geom_type == "LineString" and g.length > 0.05]
+        if not ms:
+            continue
+        m = max(ms, key=lambda g: g.length)
+        a, b = m.coords[0], m.coords[-1]
+        mouth = LineString([a, b])
+        dense = [ring.interpolate(t).coords[0] for t in np.arange(0, ring.length, _SLOT_STEP_MM)]
+        on_mouth = [m.distance(Point(p)) < 0.02 for p in dense]
+        if not any(on_mouth) or all(on_mouth):
+            continue
+        k0 = on_mouth.index(True)
+        while on_mouth[k0 % len(dense)]:
+            k0 += 1
+        k0 %= len(dense)
+        dense, on_mouth = dense[k0:] + dense[:k0], on_mouth[k0:] + on_mouth[:k0]
+        pts = [p for p, h in zip(dense, on_mouth) if not h]
+        depth = [mouth.distance(Point(p)) for p in pts]
+        backs = [pts[i] for i in _depth_peaks(depth, W)]
+        if len(backs) < 2:
+            continue
+        t = _unit((b[0] - a[0], b[1] - a[1]))
+        if any(abs(_unit((q[0] - p[0], q[1] - p[1]))[0] * t[0]
+                   + _unit((q[0] - p[0], q[1] - p[1]))[1] * t[1]) < math.cos(math.radians(20))
+               for p, q in zip(backs, backs[1:])):
+            continue
+        # between consecutive backs the line crosses an arm's root, solid all
+        # the way: an M's bottom pocket also has two peaks (the legs' inner
+        # tops) but the line between them crosses the V's notch
+        cover = poly.buffer(0.05)
+        if not all(cover.covers(LineString([p, q])) for p, q in zip(backs, backs[1:])):
+            continue
+        u = _unit((backs[-1][0] - backs[0][0], backs[-1][1] - backs[0][1]))
+        far = 4 * W + math.dist(backs[0], backs[-1])
+        chord = LineString([(backs[0][0] - u[0] * far, backs[0][1] - u[1] * far),
+                            (backs[-1][0] + u[0] * far, backs[-1][1] + u[1] * far)])
+        inside = chord.intersection(poly)
+        found = []
+        for g in getattr(inside, "geoms", [inside]):
+            if g.is_empty or g.geom_type != "LineString":
+                continue
+            if 0.3 * W <= g.length <= 2.5 * W:
+                found.append((g.coords[0], g.coords[-1], "slot", g.length))
+        if len(found) < 2:
+            continue
+        # The piece behind the line must BE a stem: one stroke running along
+        # the line, no wider than a stroke. MARINE's M has three peaks in a
+        # row along its bottom pocket and read as an E on its side; behind
+        # that line is the M's whole top (both stems, the V's notch).
+        pieces = split(poly, found)
+        lines = [LineString([a2, b2]) for a2, b2, _, _ in found]
+        behind = [g for g in pieces
+                  if all(g.buffer(0.05).intersection(ln).length > 0.5 * ln.length for ln in lines)]
+        if len(behind) != 1:
+            continue
+        stem = behind[0]
+        n = (-u[1], u[0])
+        P = np.array(stem.exterior.coords)
+        if np.ptp(P @ np.array(n)) > 1.6 * W:
+            continue
+        cuts.extend(found)
+        stems.append(chord)
+    return cuts, stems
 
 
 def split(poly: Polygon, cuts) -> list[Polygon]:
@@ -751,6 +859,24 @@ def letter_columns(poly: Polygon, pitch_mm: float = 0.4) -> LetterCut:
         return LetterCut(poly, W, [], [], [])
     W = stroke_width(poly)
     cuts, _reflex, _convex = find_cuts(poly, W)
+    # An E or an F: the stem line through its slot backs replaces every
+    # junction-rule cut that ends on that line (those slice the stem
+    # crosswise) or crosses it.
+    scuts, stems = slot_cuts(poly, W)
+    if scuts:
+        slines = [LineString([a, b]) for a, b, _, _ in scuts]
+
+        def clashes(c):
+            # a junction cut that starts or ends ON the stem line slices the
+            # stem crosswise (the band E's slot corners), and one that
+            # crosses it splits an arm from its root
+            ln = LineString([c[0], c[1]])
+            if any(st.distance(Point(c[0])) < 0.35 * W or st.distance(Point(c[1])) < 0.35 * W
+                   for st in stems):
+                return True
+            return any(ln.crosses(sl) for sl in slines)
+
+        cuts = [c for c in cuts if not clashes(c)] + scuts
     pieces = split(poly, cuts)
     # a cut that only shaves off a scrap is not a junction: take it back out
     while cuts:

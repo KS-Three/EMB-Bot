@@ -2113,7 +2113,8 @@ def sequence(
                     spacing_mm=satin_spacing_mm, split_above_mm=split_above,
                     pull_mm=fabric.pull_comp_mm, pull_floor_mm=cfg.min_detail_mm,
                     underlay_style="none" if _small else satin_underlay,
-                    start_near=entry)
+                    start_near=entry,
+                    end_near=exit_near if cfg.satin_exit_toward_next else None)
                 if not report["empty"]:
                     report["lettering_columns"] = 1
                     return runs, report, False

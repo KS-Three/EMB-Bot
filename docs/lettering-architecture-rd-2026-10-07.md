@@ -40,8 +40,10 @@ not on `main` is `digitizer/tools/outline_cut_spike/oc.py` from lane
 > bare artwork at 0.15 mm thread on MARINE 3.1% -> 2.7%, Fremont 2.0% ->
 > 0.6%). The lane sewed at HALF the satin tier's density until the same
 > night (one end per station; now both, 0.40 mm per rail), so letter
-> stitches OFF -> ON read becker 4,709 -> 3,095, not 1,629. Still open:
-> the E/F body cut (stem plus arms, not slabs). Renders
+> stitches OFF -> ON read becker 4,709 -> 3,095, not 1,629. The E/F stem
+> cut followed on 10-08 (slot backs as depth peaks along the hull pocket;
+> five E's, over-long crosses 4 -> 0) with the spine's medial axis seeded
+> (it broke ties at random). Next: Kent's labelled pairs. Renders
 > `docs/renders/lettering-columns-2026-10-07/`; tests
 > `tests/test_lettering_columns.py` (16); scope-history 2026-10-07.
 
