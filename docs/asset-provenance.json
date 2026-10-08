@@ -283,6 +283,12 @@
    "basis": "docs/testdata-inventory.md (PR #705)"
   },
   {
+   "path": "app/e2e/fixtures/contrast-palette.png",
+   "status": "synthetic",
+   "source": "Synthetic colour-swatch palette for the artwork swatch-label contrast e2e (PR #708)",
+   "basis": "added with app/e2e swatch contrast spec"
+  },
+  {
    "path": "app/src/lib/fixtures/asym_source.png",
    "status": "synthetic",
    "source": "Synthetic orientation fixture (black bar, red square, white bg)",
