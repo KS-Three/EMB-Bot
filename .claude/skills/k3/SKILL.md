@@ -103,6 +103,20 @@ going") — that is the authority they're asking for. If Kent ruled directly in 
   (conflicts) / TRIAGE (CI logs) / SHEPHERD (orphaned PRs), each owning PR number mod N = K
   so none overlap; they push only to branches whose owner session is idle >20 min.
 
+## 5b. Director + managers (past ~100 workers)
+
+When the fleet is too big for one foreman, become **director** and hire two Opus manager
+sessions (Kent approved this 2026-10-08), split by area so no PR has two owners:
+**A** = digitizer/** + JS engine (src/**, root test/**); **B** = Studio app/**, e2e,
+.github/**, docs/skills PRs, plus watching special workers (CI speed, contact sheets).
+Each manager runs its own `send_later` 30-min cycle: map PR->owner session, ping owners of
+dirty/truly-red heads, respawn orphans on the same branch, keep PRs armed, re-task finished
+workers as NEW sessions, and refill its area only while open PRs < 40 (<=10 per cycle).
+Managers write no code, push nothing, and message the director only for Kent's decisions,
+main red, unrecoverable orphans, or gate questions. Brief: templates.md "Manager brief".
+The director then drops its own sweep to an hourly liveness check (managers alive? main
+green?) and stops running stewards itself.
+
 ## 6. Throughput limits (say so when Kent asks for more)
 
 CI concurrency is the real ceiling: each PR fans out ~9 jobs. Past ~40 open PRs, new
