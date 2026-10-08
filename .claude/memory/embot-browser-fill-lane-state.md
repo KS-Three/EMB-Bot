@@ -32,3 +32,5 @@ EMB-Bot (`C:\Users\EE-LT-11030\Claude Personal\EMB-Bot`, repo KS-Three/EMB-Bot, 
 - Cleanup the permission check refused and Kent must run himself: `git worktree remove .claude/worktrees/fill-edge-travel`, `git branch -d claude/fill-edge-travel`, `git push origin --delete claude/fill-edge-travel` (clean, pushed, fully contained in `claude/fill-columns`).
 - #606 and the peer's #608 both append to `docs/scope-history.md`; whichever lands second needs a keep-both merge (peer session was told).
 - The Studio CAN show floats: the field's Jumps toggle (off by default). Seven of my own documents said it could not until I grepped the app.
+
+**2026-10-08: `fillColumns` ON in all three Studio lanes** (PR #673): basic shapes on the measured win, the image lane on Kent's call at +10.4% stitches. Evidence `docs/renders/fill-columns-lanes-2026-10-08/`; his standing ask is `fill-columns-float-pictures-2026-10-08`.
