@@ -20001,5 +20001,5 @@ bootstrap: level with the first, above the other two); line ARI **0.99**
 against 0.65 (moved by gaulke and the screenshot alone). Constants fitted
 in-sample; the CV screen is 0.03 over the
 highest letter. ON vs OFF through `digitize()`: three logos byte-identical,
-six within 0.4% of stitches, drone one trim fewer.
+six within 0.4% of stitches, drone two trims more (139 → 141).
 `docs/word-tagger-2026-10-08/README.md`.

@@ -180,12 +180,12 @@ The full numbers are in `scores.json`.
 | fremont | 20,177 / 58 | 20,177 / 58 (points move) |
 | bridge | 18,493 / 102 | 18,479 / 102 |
 | golden_tee | 8,941 / 45 | 8,972 / 45 |
-| drone | 19,353 / 139 | 19,334 / 138 |
+| drone | 19,353 / 139 | 19,355 / 141 |
 | screenshot | 8,341 / 70 | 8,363 / 70 |
 
 The ON changes come through the house angle, the satin split, the cap
 skip and the priors now reading the word. Every change is ≤ 0.4% of
-stitches. Nothing was rendered for Kent: the flag is a grouping change
+stitches; drone pays two more trims (139 → 141). Nothing was rendered for Kent: the flag is a grouping change
 whose quality claim is the score above, not a look.
 
 Re-run on the final code (after the review's fixes), 2026-10-08.
