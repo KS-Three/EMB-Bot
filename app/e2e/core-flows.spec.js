@@ -130,11 +130,9 @@ test("zoom in and out across the whole range; the buttons stop at each end", asy
 });
 
 test("zoom reaches 800%", async ({ page }) => {
-  // REGRESSION reported by Kent 2026-10-08: "can't zoom to 800%". On main the
-  // field stops at 400% (EmbroideryField.svelte MAX_ZOOM = 4). Another lane
-  // owns the fix; when it lands this test passes, Playwright reports the
-  // unexpected pass, and that PR deletes this line.
-  test.fail();
+  // Regression guard: Kent reported 2026-10-08 "can't zoom to 800%"; fixed in
+  // 8a153b5a, which left the test.fail() marker in place and so turned the
+  // e2e red with an unexpected pass.
   await lettering(page);
   for (let i = 0; i < 20 && (await zoomIn(page).isEnabled()); i++) await zoomIn(page).click();
   expect(parseInt(await zoomPct(page).innerText(), 10)).toBeGreaterThanOrEqual(800);
