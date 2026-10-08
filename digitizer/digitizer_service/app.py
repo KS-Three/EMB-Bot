@@ -40,7 +40,7 @@ from digitizer_core.stage0_classify import CLASSES
 from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
 from digitizer_core.stitchwidth import review_block, validate_override_mm
 
-from . import formats
+from . import formats, schemas
 from .jobs import DONE, GenerationCache, JobRegistry, content_key, generation_key
 
 # 0.5.0 -> 0.6.0, 2026-09-15: `design.runs`, the run-span index, is now on
@@ -831,7 +831,8 @@ def _block_shape_ids(block, region_ids: set[str] | None = None) -> list[str]:
     return seen
 
 
-@app.get("/health")
+@app.get("/health", summary="Service status and limits", response_model=None,
+         responses={200: {"model": schemas.Health}})
 def health() -> dict:
     return {
         "status": "ok",
@@ -847,7 +848,11 @@ def health() -> dict:
     }
 
 
-@app.post("/digitize", status_code=202)
+@app.post("/digitize", status_code=202, summary="Submit artwork for digitizing",
+          responses={202: {"model": schemas.JobSubmitted, "description": "Job accepted (or replayed)."},
+                     400: schemas.error("No image, undecodable image, or invalid `config`."),
+                     413: schemas.error("Upload over the byte or pixel limit."),
+                     **schemas.UNAUTHORIZED})
 async def start_digitize(
     image: UploadFile = File(...),
     config: str | None = Form(None),
@@ -934,9 +939,13 @@ async def start_digitize(
 MAX_MANUAL_SHAPES = 2000
 
 
-@app.post("/digitize-manual", status_code=202)
+@app.post("/digitize-manual", status_code=202, summary="Submit hand-authored shapes",
+          responses={202: {"model": schemas.JobSubmitted, "description": "Job accepted (or replayed)."},
+                     400: schemas.error("Malformed payload, shape, or config."),
+                     413: schemas.error("Too many shapes."),
+                     **schemas.UNAUTHORIZED})
 async def start_digitize_manual(
-    payload: dict = Body(...),
+    payload: dict = Body(..., examples=[schemas.MANUAL_EXAMPLE]),
     x_embbot_token: str | None = Header(None),
 ) -> dict:
     """Hand-authored shapes in — no image, stages 1-4 skipped entirely — a
@@ -1022,7 +1031,9 @@ async def start_digitize_manual(
     return {"job_id": job.id, "state": job.state, "cached": cached}
 
 
-@app.get("/jobs/{job_id}")
+@app.get("/jobs/{job_id}", summary="Poll a job", response_model=None,
+         responses={200: {"model": schemas.JobStatus},
+                    404: schemas.error("Unknown or evicted job."), **schemas.UNAUTHORIZED})
 def job_status(job_id: str, x_embbot_token: str | None = Header(None)) -> dict:
     _require_token(x_embbot_token)
     job = registry.get(job_id)
@@ -1041,7 +1052,8 @@ def job_status(job_id: str, x_embbot_token: str | None = Header(None)) -> dict:
 # cached for the process — every download and every read uses the same
 # design, which is what makes the photo comparable to the reference.
 
-@app.get("/calibration/info")
+@app.get("/calibration/info", summary="Calibration card metadata", response_model=None,
+         responses={200: {"model": schemas.OpenObject}, **schemas.UNAUTHORIZED})
 def calibration_info(x_embbot_token: str | None = Header(None)) -> dict:
     """What the Studio can show before the card is built: hoop, marks,
     blocks, formats; size and counts once it is. Never builds."""
@@ -1051,7 +1063,11 @@ def calibration_info(x_embbot_token: str | None = Header(None)) -> dict:
     return info
 
 
-@app.get("/calibration/card")
+@app.get("/calibration/card", summary="Download the calibration card",
+         responses={200: {"description": "Machine file in the requested format.",
+                          "content": {"application/octet-stream": {}}},
+                    400: schemas.error("Unsupported format or write failure."),
+                    **schemas.UNAUTHORIZED})
 def calibration_card(
     format: str = "dst",
     x_embbot_token: str | None = Header(None),
@@ -1085,7 +1101,12 @@ def calibration_card(
     )
 
 
-@app.post("/calibration/read")
+@app.post("/calibration/read", summary="Read a photo of the sewn card", response_model=None,
+          responses={200: {"model": schemas.OpenObject},
+                     400: schemas.error("No photo, or it cannot be decoded."),
+                     413: schemas.error("Photo over the byte or pixel limit."),
+                     422: schemas.error("Card not found in the photo."),
+                     **schemas.UNAUTHORIZED})
 async def calibration_read(
     photo: UploadFile = File(...),
     garment_id: str | None = Form(None),
@@ -1115,9 +1136,13 @@ async def calibration_read(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@app.post("/export")
+@app.post("/export", summary="Write a design as a machine file",
+          responses={200: {"description": "Machine file; size and convention in `X-*` headers.",
+                           "content": {"application/octet-stream": {}}},
+                     400: schemas.error("Invalid design, unsupported format, or write failure."),
+                     **schemas.UNAUTHORIZED})
 def export(
-    payload: dict = Body(...),
+    payload: dict = Body(..., examples=[schemas.EXPORT_EXAMPLE]),
     x_embbot_token: str | None = Header(None),
 ) -> Response:
     """Any EMB-Bot design in, a machine file out.
