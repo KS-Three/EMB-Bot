@@ -8048,6 +8048,15 @@ No screenshot.
 fifteen characters at most; `tools.eye_pairs.pairs.EXCLUDED_FIXTURES`
 keeps it off the page.)
 
+## 2026-10-08 — Kent: gaulke is not a logo to compare by either
+
+No gaulke on the comparison page.
+
+(His note on the full-density Columns sitting: "This image sucks, I
+wouldn't use this image in a comparison going forward." Judged "both bad"
+on both Columns sittings. `EXCLUDED_FIXTURES` keeps it off the page; it
+stays in `REAL_ART` for the instruments.)
+
 ## 2026-10-01 — The page cannot separate the pro's 7 mm split style from the comb, and cloth is not asked until the eye has a difference
 
 **Measured negative.** Raw satin crosses to about 7 mm (the pro's own
