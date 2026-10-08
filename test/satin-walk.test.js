@@ -159,8 +159,11 @@ test("a star none of whose walks ran to the guard sews exactly what it sewed", a
   // (Not every star beside the 20 mm one qualifies: the 30 mm one and the
   // ratio-0.3 one had walks at the guard too, whose edges the emitter's
   // smoothing happened to fold to a point, and those two do move.)
-  assert.strictEqual((await studioStar(12, 0.15, 12)).stitchCount, 444);
-  assert.strictEqual((await studioStar(12, 0.15, 18)).stitchCount, 713);
-  assert.strictEqual((await studioStar(12, 0.15, 23)).stitchCount, 999);
-  assert.strictEqual((await studioStar(8, 0.15, 20)).stitchCount, 592);
+  // Re-pinned 2026-10-08 when the skeleton stopped sticking to the grid's top
+  // row and left column (`ringToSpines`): 444 / 713 / 999 / 592 before. The
+  // walk is not what moved them; every medial-axis satin moved.
+  assert.strictEqual((await studioStar(12, 0.15, 12)).stitchCount, 462);
+  assert.strictEqual((await studioStar(12, 0.15, 18)).stitchCount, 751);
+  assert.strictEqual((await studioStar(12, 0.15, 23)).stitchCount, 1025);
+  assert.strictEqual((await studioStar(8, 0.15, 20)).stitchCount, 594);
 });
