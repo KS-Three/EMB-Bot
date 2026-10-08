@@ -1015,7 +1015,16 @@
           unsupportedAt.push([charIdx, ch]);
           penX += (g.adv || font.advDefault); prev = null; continue;
         }
-        if (prev != null && font.kerning) { const k = font.kerning[prev + ch]; if (k) penX += k; }
+        // Ink/Stitch kerning semantics (lib/lettering/font.py): the pair key is
+        // "A V" (space-separated; older fonts concatenate "AV", tried second),
+        // and the value is SUBTRACTED from the advance — a positive AV pulls
+        // the letters together. Looking up only "AV" missed every pair in 58
+        // of the 66 kerned fonts, and adding the value pushed the kerned pairs
+        // of the rest apart instead of together.
+        if (prev != null && font.kerning) {
+          const k = font.kerning[prev + " " + ch] ?? font.kerning[prev + ch];
+          if (k) penX -= k;
+        }
         glyphs.push({ g, ox: penX, charIdx });
         penX += g.adv + lsUnits;
         prev = ch;
