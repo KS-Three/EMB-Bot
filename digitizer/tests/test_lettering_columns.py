@@ -533,3 +533,77 @@ def test_columns_on_golden_tee_is_deterministic_end_to_end():
     _, b = digitize(src, cfg)
     assert _stitch_digest(a) == _stitch_digest(b)
     assert _plan_points(a) == _plan_points(b)
+
+
+# ------------------------------------------- pitch: the satin tier's, as sewn
+#
+# Kent's Columns sitting (2026-10-07) came back "needs work": *"the
+# comparison could be skewed because of the varying stitch density."* Its
+# Columns side was drawn one commit before 1782fbea, at one end per station
+# (0.80 mm per rail). These pin the three things that make a pair against the
+# skeleton tier a fair one: the same pitch on the same stem, the fabric's
+# scaling carried through, and the OUTER rail held at pitch round a bend.
+
+def _satin_pts(runs):
+    return [p for r in runs if r.kind == stitches.SATIN for p in r.points]
+
+
+def test_a_stem_sews_at_the_skeleton_tiers_pitch():
+    from digitizer_core.stage6_satin import satin_shape
+    from tools.satin_pitch import rail_steps
+    stem = _rect(0, 0, 2, 16)
+    med = {}
+    for name, runs in (("columns", lettering_columns_shape(stem, "s", trim_at_mm=3.0)[0]),
+                       ("skeleton", satin_shape(stem, "s", trim_at_mm=3.0, underlay_style="none")[0])):
+        outer = [s for r in runs if r.kind == stitches.SATIN and len(r.points) >= 6
+                 for s in rail_steps(r.points)[0]]
+        assert len(outer) >= 20, (name, len(outer))
+        med[name] = sorted(outer)[len(outer) // 2]
+    assert abs(med["columns"] - med["skeleton"]) < 0.05 * machine.SATIN_SPACING_MM, med
+    assert abs(med["columns"] - machine.SATIN_SPACING_MM) < 0.1 * machine.SATIN_SPACING_MM, med
+
+
+def test_the_fabrics_spacing_reaches_the_rails():
+    """Stage 7 hands the lane `SATIN_SPACING_MM x density_adjust`, the value
+    `_rail_points` receives; a towel's 0.85 must tighten a Column's rails as
+    it tightens a skeleton column's."""
+    from tools.satin_pitch import rail_steps
+    stem = _rect(0, 0, 2, 16)
+    for spacing in (0.34, 0.40, 0.48):
+        runs, _ = lettering_columns_shape(stem, "s", trim_at_mm=3.0, spacing_mm=spacing)
+        outer = [s for r in runs if r.kind == stitches.SATIN for s in rail_steps(r.points)[0]]
+        med = sorted(outer)[len(outer) // 2]
+        assert abs(med - spacing) < 0.1 * spacing, (spacing, med)
+
+
+def test_a_bend_holds_the_outer_rail_at_pitch():
+    """Round a ring the outer rail is 1.7x the inner: the pitch is held on
+    the OUTSIDE (the stretch that would show cloth), and the inside takes the
+    shorter steps."""
+    outer_r, inner_r = 6.0, 3.5
+    O = Polygon(Point(0, 0).buffer(outer_r, 96).exterior.coords,
+                [Point(0, 0).buffer(inner_r, 96).exterior.coords])
+    runs, _ = lettering_columns_shape(O, "o", trim_at_mm=3.0)
+    pts = _satin_pts(runs)
+    def arc_gaps(lo, hi, r):
+        ang = sorted(math.atan2(y, x) for x, y in pts if lo < math.hypot(x, y) < hi)
+        return [(b - a) * r for a, b in zip(ang, ang[1:]) if (b - a) * r > 1e-3]
+    out_g, in_g = arc_gaps(outer_r - 0.15, outer_r + 0.15, outer_r), arc_gaps(inner_r - 0.15, inner_r + 0.15, inner_r)
+    assert len(out_g) > 60
+    med_out, med_in = sorted(out_g)[len(out_g) // 2], sorted(in_g)[len(in_g) // 2]
+    assert abs(med_out - machine.SATIN_SPACING_MM) < 0.1 * machine.SATIN_SPACING_MM, med_out
+    assert sorted(out_g)[int(0.95 * len(out_g))] < 1.5 * machine.SATIN_SPACING_MM
+    assert med_in < med_out
+
+
+def test_the_pitch_instrument_reads_a_flat_zigzag_and_a_half_density_one():
+    """`tools/satin_pitch.rail_steps` on the two wirings Kent's first Columns
+    sitting compared without knowing: both ends of each station (0.40 mm per
+    rail) and one end per station, rails alternating (0.80)."""
+    from tools.satin_pitch import rail_steps
+    full = [p for k in range(30) for p in ((0.0, 0.4 * k), (2.0, 0.4 * k))]
+    half = [((0.0 if k % 2 == 0 else 2.0), 0.4 * k) for k in range(60)]
+    for pts, want in ((full, 0.4), (half, 0.8)):
+        outer, inner = rail_steps(pts)
+        assert len(outer) >= 25
+        assert all(abs(s - want) < 1e-9 for s in outer + inner), (want, outer[:3])
