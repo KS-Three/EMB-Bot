@@ -2320,9 +2320,11 @@ def sequence(
                     end_near=exit_near if cfg.satin_exit_toward_next else None,
                     underlay_on_column=cfg.satin_underlay_on_column,
                     walk_cursor_reach_mm=cfg.satin_walk_cursor_reach_mm,
+                    hop_under_column=cfg.satin_hop_under_column,
                     cap_recentre=cfg.satin_cap_recentre,
                     tip_caps=cfg.satin_tip_caps,
                     tip_corner_gate=cfg.satin_tip_corner_gate,
+                    hairline_tier=cfg.satin_hairline_tier,
                     # The ceiling the classifier admitted at is the one the
                     # emitter sews at — one number, threaded, never two
                     # constants (DOCTRINE 2026-09-02). The fold guard rides
@@ -3015,6 +3017,7 @@ def sequence(
             trim_at_mm=trim_at,
             width_mm=cfg.border_width_mm,
             omit=cap_omit,
+            walk_covered=cfg.edge_cap_walk_covered,
         )
         # What the gate actually saved on THIS design, measured — the number
         # whose absence let a +58.7% bill read like a +13% one. Computed only
@@ -3149,6 +3152,8 @@ def sequence(
                 "budget_pct": EDGE_CAP_BUDGET_PCT,
                 "dropped": cap_dropped,
             }
+            if cfg.edge_cap_walk_covered:
+                cap_cost["walked"] = c_report["walked"]
         else:
             cap_empty_style = cap_style
 

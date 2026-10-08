@@ -186,6 +186,14 @@ _SPLIT_TURN_DEG = 90.0
 _JOIN_TURN_DEG = 45.0
 _CORNER_BOUNDARY_TURN_DEG = 45.0
 _CORNER_BOUNDARY_WINDOW_MM = 1.0
+
+# A HAIRLINE column: under the minimum cross plus the 20% the rails lose to
+# the nearer-hit symmetry and `place` (about 0.6 mm). One name for the line
+# `_split_sharp_corners` has drawn since 2026-09-03 (no join on a hairline)
+# and the stroke-level tier reads (`_hairline_tier_stretch`) -- an existing
+# expression named, not a new floor.
+_HAIRLINE_COLUMN_MM = 1.2 * machine.SATIN_MIN_CROSS_MM
+
 # A free end is a TAPERED TIP (not a square cap) when the ray-measured
 # corridor ONE STATION IN is already narrower than this fraction of the
 # stroke's half-width. Square caps read 0.85-0.94 there (BAR 0.851 is the
@@ -2054,7 +2062,7 @@ def _split_sharp_corners(strokes: list[Stroke], half_mm: float,
         # 3.4 mm^2 squiggle on drone_render into four satin points and 79%
         # bare fabric (2026-09-03). Below this width the fold rule alone
         # runs; the lettering the join exists for is 0.7 mm and up.
-        joinable = 2.0 * half_mm >= 1.2 * machine.SATIN_MIN_CROSS_MM
+        joinable = 2.0 * half_mm >= _HAIRLINE_COLUMN_MM
         cuts: list[int] = []
         twigs: dict[int, str] = {}       # cut index -> the side ("start"/"end") that is a twig
         for turn, i in sorted(turns, reverse=True):
@@ -4525,6 +4533,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   cap_recentre: bool = False,
                   tip_caps: bool = False,
                   tip_corner_gate: bool = False,
+                  hairline_tier: bool = False,
                   siblings: list | None = None) -> list[tuple[float, float]]:
     """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
     separate columns and laid end to end in chain order.
@@ -4586,7 +4595,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
-                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, siblings=member_sibs,
+                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, hairline_tier=hairline_tier, siblings=member_sibs,
                              # only the joined stroke's OUTER ends are free
                              # ends to read; an owner's corner end was laid
                              # square above, on its own 4-half-width line
@@ -4641,6 +4650,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  cap_recentre: bool = False,
                  tip_caps: bool = False,
                  tip_corner_gate: bool = False,
+                 hairline_tier: bool = False,
                  siblings: list | None = None,
                  read_ends: tuple[bool, bool] = (True, True)) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
@@ -4703,7 +4713,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
-                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, siblings=siblings)
+                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, hairline_tier=hairline_tier, siblings=siblings)
 
     if free_end_square and not stroke.closed:
         # A square cap or a slab sews square to it (see `_free_end_reading`).
@@ -4974,6 +4984,11 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
         stretches = _hairline_stretches(thin, min_seg)
         if art_poly is not None and hairline_floor_mm > 0:
             stretches = _trim_to_art(stretches, rail_a, rail_b, art_poly, hairline_floor_mm)
+    if hairline_tier and parts is not None and any(thin):
+        tier = _hairline_tier_stretch(crosses, spine, rail_a, rail_b, art_poly,
+                                      hairline_floor_mm)
+        if tier is not None:
+            thin, stretches = [True] * len(crosses), [tier]
     bean_at = {i0: (i0, i1) for i0, i1 in stretches}
     in_bean = {i for i0, i1 in stretches for i in range(i0, i1 + 1)}
     last_station = len(crosses) - 1
@@ -5171,6 +5186,45 @@ def _trim_to_art(stretches: list[tuple[int, int]], rail_a: list, rail_b: list,
         if i0 <= i1:
             out.append((i0, i1))
     return out
+
+
+def _hairline_tier_stretch(crosses: list, spine: list, rail_a: list, rail_b: list,
+                           art_poly: Polygon | None,
+                           floor_mm: float) -> tuple[int, int] | None:
+    """The stroke-level hairline TIER (`cfg.satin_hairline_tier`, defect 24):
+    the whole stroke as one bean stretch, or None to keep the per-station
+    split.
+
+    The per-station split (`_hairline_stretches`) is a mechanism, not a tier:
+    a column whose crosses straddle `SATIN_MIN_CROSS_MM` -- 0.5-0.6 mm, where
+    a cross loses 20% to the rails' nearer-hit symmetry and `place` -- sews a
+    satin with dropped crosses, short thin dips hopped along the spine and
+    short surviving runs left as two-cross satin stubs. The tier reads the
+    stroke as a whole: its MEDIAN cross under `_HAIRLINE_COLUMN_MM`, the
+    width below which `_split_sharp_corners` already calls a column a
+    hairline, and the stroke sews as one bean along its spine. No new
+    number: both are existing constants.
+
+    Only where the result still sews: the stretch is trimmed to the art
+    exactly as a per-station one is (`_trim_to_art`), and must clear the run
+    tier's own length floor, two bean stitches of spine -- otherwise the
+    caller keeps today's split, so the tier never drops a cross that sews.
+    """
+    if not crosses:
+        return None
+    widths = sorted(math.dist(pa, pb) for pa, pb in crosses)
+    if widths[len(widths) // 2] >= _HAIRLINE_COLUMN_MM:
+        return None
+    stretch = [(0, len(crosses) - 1)]
+    if art_poly is not None and floor_mm > 0:
+        stretch = _trim_to_art(stretch, rail_a, rail_b, art_poly, floor_mm)
+    if not stretch:
+        return None
+    i0, i1 = stretch[0]
+    piece = spine[i0:i1 + 1]
+    if sum(math.dist(a, b) for a, b in zip(piece, piece[1:])) < 2.0 * machine.BEAN_STITCH_MM:
+        return None
+    return i0, i1
 
 
 def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
@@ -6214,9 +6268,11 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 end_near: tuple[float, float] | None = None,
                 underlay_on_column: bool = False,
                 walk_cursor_reach_mm: float = 0.0,
+                hop_under_column: bool = False,
                 cap_recentre: bool = False,
                 tip_caps: bool = False,
                 tip_corner_gate: bool = False,
+                hairline_tier: bool = False,
                 _seams_closed: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
@@ -6381,7 +6437,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                      max_width_mm=max_width_mm, fold_guard=fold_guard,
                      rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                      junction_stack=junction_stack, cap_recentre=cap_recentre,
-                     tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, siblings=siblings)
+                     tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, hairline_tier=hairline_tier, siblings=siblings)
         mixed = len(parts) > 1
         for kind, pts, piece, at_start, at_end in parts:
             if kind == stitches.SATIN and len(pts) < 4:
@@ -6687,6 +6743,16 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
             continue
         if d <= trim_at_mm and poly_link.covers(LineString([a, b])):
             continue        # needle-down: encoder sews end -> start as one stitch
+        if (hop_under_column and cur.kind == stitches.SATIN
+                and d <= 3.0 * trim_at_mm and len(cur.points) >= 2
+                and LineString(cur.points).buffer(0.3).covers(LineString([a, b]))):
+            # `satin_hop_under_column` (defect 6): the column sewn next lies
+            # over the whole hop, so sew it as buried travel rather than a
+            # cut. The hop is appended to the run BEFORE it, split at
+            # `TRAVEL_STITCH_MM`, so the column still starts where it did.
+            n = max(2, int(math.ceil(d / machine.TRAVEL_STITCH_MM)) + 1)
+            prev.points.extend(_resample([a, b], n)[1:-1])
+            continue        # the last travel stitch -> b is sewn needle-down
         cur.jump = True
         cur.trim = d > trim_at_mm
         report["jumps"] += 1

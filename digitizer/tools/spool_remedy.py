@@ -65,7 +65,10 @@ def report(fixture: str, testdata) -> tuple[int, int]:
     actionable = needs_cone = 0
     for t in loaded:
         offenders = sorted(
-            (r for r in by_thread[t] if r["delta_e"] > pf.DELTA_E_VISIBLE),
+            # Same patch floor as the check (see `thread_blocks`).
+            (r for r in by_thread[t] if r["delta_e"] > pf.DELTA_E_VISIBLE
+             and (r.get("footprint_mm2") is None
+                  or r["footprint_mm2"] >= pf._THREAD_MATCH_MIN_PATCH_MM2)),
             key=lambda r: -r["delta_e"])
         if not offenders:
             continue
@@ -86,6 +89,33 @@ def report(fixture: str, testdata) -> tuple[int, int]:
               f"({chart[t].name}): raw {top['delta_e']:.1f}, "
               f"excess {excess:.1f} — {verdict}")
     return actionable, needs_cone
+
+
+def thread_blocks(t_rows: list[dict]) -> tuple[bool, bool, dict | None,
+                                                 dict | None]:
+    """One thread's verdict under each yardstick, judged the way the shipped
+    check judges it -> (blocks on raw, blocks on excess, raw top, excess top).
+
+    Each row carries `delta_e` (raw) and `_exc` (excess over the best loaded
+    spool). A row whose graded footprint is under
+    `pf._THREAD_MATCH_MIN_PATCH_MM2` cannot set the severity — the floor
+    `_thread_match_findings` has applied since 2026-09-10 — so it is dropped
+    here before either top is taken. Until 2026-10-08 this tool took the max
+    over EVERY row, so a sub-floor shard could read as a block the check
+    itself never emits, and `--yardstick` counted blocks the scorecard does
+    not have. A row with no footprint (a caller-built row) is judged, as in
+    the check. Both tops are None when every row is sub-floor.
+    """
+    judged = [r for r in t_rows
+              if r.get("footprint_mm2") is None
+              or r["footprint_mm2"] >= pf._THREAD_MATCH_MIN_PATCH_MM2]
+    if not judged:
+        return False, False, None, None
+    raw_top = max(judged, key=lambda r: r["delta_e"])
+    exc_top = max(judged, key=lambda r: r["_exc"])
+    return (raw_top["delta_e"] > pf.DELTA_E_CLEARLY_DIFFERENT,
+            exc_top["_exc"] > pf.DELTA_E_CLEARLY_DIFFERENT,
+            raw_top, exc_top)
 
 
 def yardstick(fixture: str, testdata) -> tuple[int, int]:
@@ -140,10 +170,9 @@ def yardstick(fixture: str, testdata) -> tuple[int, int]:
                 r["_exc"] = max(0.0, r["delta_e"] - best_err)
             else:
                 r["_exc"] = 0.0
-        raw_top = max(by_thread[t], key=lambda r: r["delta_e"])
-        exc_top = max(by_thread[t], key=lambda r: r["_exc"])
-        rb = raw_top["delta_e"] > pf.DELTA_E_CLEARLY_DIFFERENT
-        eb = exc_top["_exc"] > pf.DELTA_E_CLEARLY_DIFFERENT
+        rb, eb, raw_top, exc_top = thread_blocks(by_thread[t])
+        if raw_top is None:
+            continue
         raw_blocks += rb
         exc_blocks += eb
         if rb or eb:

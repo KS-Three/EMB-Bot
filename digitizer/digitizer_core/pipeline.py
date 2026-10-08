@@ -1450,6 +1450,56 @@ def fabric_for(cfg: PipelineConfig) -> Fabric:
     return apply_profile(base, cfg.fabric_profile)
 
 
+# A body counts as inside a border when this share of its area lies within the
+# border's outer outline while at most `_BORDER_OVERLAP_MAX` of it lies on the
+# border itself. Becker reads 1.00 / <= 0.06 for every body and 0.00 for every
+# free-standing letter, so neither number sits near a decision.
+_BORDER_INSIDE_MIN = 0.9
+_BORDER_OVERLAP_MAX = 0.25
+
+
+def _fill_inside_satin_border(regions, cfg, design_class):
+    """`cfg.fill_inside_satin_border`: route a shape inside a satin border FILL.
+
+    A border is a region with holes that is itself satin (by override or by
+    `is_satin_candidate`). Every auto-tier shape that sits within its outer
+    outline, rather than on it, gets `tier = "fill"` -- on a COPY, so the
+    caller's regions are untouched and `plan_stitches` stays re-runnable --
+    which is the field every stage-5/7 reader already honours. Only `auto`
+    shapes move: a per-shape override always wins.
+    """
+    from shapely.prepared import prep
+    from .stage6_satin import is_satin_candidate
+
+    satin_max = satin_ceiling_mm(cfg)
+    auto = [r for r in regions
+            if str(r.meta.get("tier", "auto")).lower() == "auto"]
+    demote: set[str] = set()
+    for b in regions:
+        poly = b.polygon
+        if poly.geom_type != "Polygon" or not poly.interiors:
+            continue
+        outline = Polygon(poly.exterior)
+        inside = prep(outline)
+        bodies = [r for r in auto
+                  if r is not b and r.shape_id not in demote
+                  and inside.intersects(r.polygon)
+                  and r.polygon.intersection(outline).area
+                  >= _BORDER_INSIDE_MIN * r.polygon.area
+                  and r.polygon.intersection(poly).area
+                  <= _BORDER_OVERLAP_MAX * r.polygon.area]
+        if not bodies:
+            continue
+        tier = str(b.meta.get("tier", "auto")).lower()
+        if tier != "satin" and not (tier == "auto" and is_satin_candidate(
+                poly, satin_max, design_class=design_class,
+                per_stroke=cfg.satin_per_stroke)):
+            continue
+        demote.update(r.shape_id for r in bodies)
+    return [replace(r, meta={**r.meta, "tier": "fill"})
+            if r.shape_id in demote else r for r in regions]
+
+
 def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:
     """Stages 5-7: regions -> stitches. Safe to re-run on one PipelineResult."""
     cfg = cfg or PipelineConfig()
@@ -1521,6 +1571,10 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                 by_override=by_override,
             )
         )
+
+    if cfg.fill_inside_satin_border:
+        stitched_regions = _fill_inside_satin_border(
+            stitched_regions, cfg, result.design_class)
 
     planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
                                                  design_class=result.design_class)
@@ -1619,4 +1673,31 @@ def digitize(
     screen edits, and the plan a machine sews."""
     cfg = cfg or PipelineConfig()
     result = run_stages(image, cfg, segmenter)
-    return result, plan_stitches(result, cfg)
+    plan = plan_stitches(result, cfg)
+    if cfg.tonal_split_ceiling and effective_split_tonal(cfg, result.design_class):
+        # Defect 20: the split's parts stack thread past the pucker ceiling.
+        # Plan it whole too and keep whichever puts less fabric past it; a
+        # tie keeps the split, so a design the split does not overload is
+        # byte-identical to the flag being off.
+        whole_cfg = replace(cfg, split_tonal_regions=False)
+        whole = run_stages(image, whole_cfg, segmenter)
+        whole_plan = plan_stitches(whole, whole_cfg)
+        if area_past_ceiling_mm2(plan) > area_past_ceiling_mm2(whole_plan):
+            return whole, whole_plan
+    return result, plan
+
+
+def area_past_ceiling_mm2(plan: StitchPlan) -> float:
+    """Fabric area (mm2) whose coverage reaches `machine.COVERAGE_BLOCK_UNITS`.
+
+    Every cell counts, not only `DENSITY_STACKED`'s 25 mm2 patches: that
+    filter yields 0.0 mm2 on every corpus fixture (preflight's own
+    docstring), so it cannot tell a split that stacks from one that does not.
+    """
+    from . import machine, preflight   # preflight imports this module
+    got = preflight._coverage_map(plan)
+    if got is None:
+        return 0.0
+    grid, _origin = got
+    cells = int((grid >= machine.COVERAGE_BLOCK_UNITS).sum())
+    return cells * machine.COVERAGE_CELL_MM ** 2

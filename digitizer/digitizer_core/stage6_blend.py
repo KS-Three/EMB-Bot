@@ -361,6 +361,60 @@ def _speckle_ratio(crop: np.ndarray, mask: np.ndarray) -> float:
     return local_var / global_var
 
 
+# Smoothing scale for the residual speckle measure (cfg.blend_speckle_residual).
+# An image-analysis scale, not a fabric constant: it decides which part of a
+# fit's residual counts as structure the shade bands would erase (coarser than
+# this) and which is pixel-scale texture no thread renders anyway (finer). It
+# touches no fill spacing, satin floor or lock length.
+RESIDUAL_SCALE_MM = 1.0
+
+
+def _residual_speckle_ratio(crop: np.ndarray, mask: np.ndarray, x0: int, y0: int,
+                            sp: SourcePixels, kind: str,
+                            center: tuple[float, float]) -> float:
+    """Stitch-scale residual variance over global variance, inside the mask.
+
+    The candidate `docs/tonal-eng-measurements-2026-08-22.md` §1 named
+    second: measure speckle on the FIT'S RESIDUAL rather than on the raw
+    tone. The stock ratio vetoes any region whose pixels disagree with their
+    neighbours, which real-photo texture always does. This one asks the
+    question that matters for banded shades: how much of the region's tone is
+    left unexplained by the ramp AT A SCALE A STITCH COULD SHOW. Pixel-scale
+    grain is blurred out (sigma = RESIDUAL_SCALE_MM); a second ramp, an edge,
+    or a blob inside the region survives the blur and still rejects it.
+
+    Lightness is the same L* the fit itself uses. `kind` is the winning model
+    ("linear" or "radial"), refit here over every masked pixel rather than
+    the subsample, so the residual is defined everywhere the blur reads.
+    """
+    eroded = cv2.erode(mask.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
+    if eroded.sum() < 9:
+        eroded = mask
+    if eroded.sum() < 9:
+        return 0.0
+    light = rgb_to_lab(crop.reshape(-1, 3)).reshape(crop.shape[:2] + (3,))[..., 0]
+    h, w = light.shape
+    gx, gy = np.meshgrid(np.arange(w, dtype=np.float64) + x0,
+                         np.arange(h, dtype=np.float64) + y0)
+    mx = (gx - sp.origin_px[0]) / sp.px_per_mm
+    my = (gy - sp.origin_px[1]) / sp.px_per_mm
+    if kind == "linear":
+        basis = np.stack([mx, my, np.ones_like(mx)], axis=-1)
+    else:
+        basis = np.stack([np.hypot(mx - center[0], my - center[1]),
+                          np.ones_like(mx)], axis=-1)
+    coef, *_ = np.linalg.lstsq(basis[mask], light[mask], rcond=None)
+    residual = np.where(mask, light - basis @ coef, 0.0)
+    # Normalised blur: blur the masked residual and the mask alike and divide,
+    # so pixels outside the shape (zeroed) do not drag the edge toward zero.
+    sigma = max(RESIDUAL_SCALE_MM * sp.px_per_mm, 0.5)
+    num = cv2.GaussianBlur(residual, (0, 0), sigma)
+    den = cv2.GaussianBlur(mask.astype(np.float64), (0, 0), sigma)
+    smooth = num / np.maximum(den, 1e-6)
+    global_var = float(np.var(light[eroded])) + 1e-6
+    return float(np.var(smooth[eroded])) / global_var
+
+
 def _vertex_range_linear(poly: Polygon, direction: tuple[float, float]) -> tuple[float, float]:
     ux, uy = direction
     pts = list(poly.exterior.coords)
@@ -394,6 +448,7 @@ RAMP_REJECT_SPECKLED = "speckled"
 
 def detect_ramp_detail(poly: Polygon, sp: SourcePixels,
                        speckle_r2_override: float | None = None,
+                       speckle_residual: bool = False,
                        ) -> tuple[RampModel | None, str, float]:
     """-> (model or None, rejection reason, best r2 seen).
 
@@ -408,6 +463,11 @@ def detect_ramp_detail(poly: Polygon, sp: SourcePixels,
     set, a region whose best r² is at or above the bar passes the speckle
     gate regardless of its texture — the fit quality vouches for it. None,
     the default, is the shipped gate exactly.
+
+    `speckle_residual` (cfg.blend_speckle_residual): when True the speckle
+    gate reads `_residual_speckle_ratio` — the fit's stitch-scale residual —
+    instead of the raw tone's local variance. False, the default, is the
+    shipped gate exactly. The r² override, when also set, still vouches first.
     """
     mm_x, mm_y, rgb, mask, crop = _sample_pixels(poly, sp)
     if len(mm_x) < 12:
@@ -423,8 +483,17 @@ def detect_ramp_detail(poly: Polygon, sp: SourcePixels,
     if best_r2 < RAMP_R2_MIN:
         return None, RAMP_REJECT_LOW_R2, best_r2
     vouched = speckle_r2_override is not None and best_r2 >= speckle_r2_override
-    if not vouched and _speckle_ratio(crop, mask) > RAMP_SPECKLE_MAX:
-        return None, RAMP_REJECT_SPECKLED, best_r2
+    if not vouched:
+        if speckle_residual:
+            x0, y0 = _crop_and_mask(poly, sp)[2:]
+            ratio = _residual_speckle_ratio(
+                crop, mask, x0, y0, sp,
+                "linear" if r2_linear >= r2_radial else "radial",
+                (centroid.x, centroid.y))
+        else:
+            ratio = _speckle_ratio(crop, mask)
+        if ratio > RAMP_SPECKLE_MAX:
+            return None, RAMP_REJECT_SPECKLED, best_r2
 
     if r2_linear >= r2_radial:
         lo, hi = _vertex_range_linear(poly, direction)
@@ -699,7 +768,8 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
 
     model, reject, best_r2 = detect_ramp_detail(
         poly, source_pixels,
-        speckle_r2_override=cfg.blend_speckle_r2_override)
+        speckle_r2_override=cfg.blend_speckle_r2_override,
+        speckle_residual=cfg.blend_speckle_residual)
     if model is None:
         # Not a ramp (or too speckled to trust as one) — ordinary tatami,
         # the same call every other fill-classified shape gets, report and
