@@ -1536,6 +1536,16 @@ class PipelineConfig:
     # on every logo, not only the fan letters, and the render is Kent's.
     # Off, byte-identical. Tests: `tests/test_satin_tip_corner_gate.py`.
     satin_tip_corner_gate: bool = False
+    # `satin_hairline_tier` (2026-10-08, MASTER_SCOPE defect 24 -- the tier
+    # the 2026-09-03 mechanism left open). A stroke that loses crosses to
+    # `SATIN_MIN_CROSS_MM` and whose MEDIAN cross is under the hairline line
+    # `_split_sharp_corners` already draws (1.2 x that floor, ~0.6 mm) sews
+    # as ONE bean along its spine instead of a satin with dropped crosses and
+    # two-cross stubs (`stage6_satin._hairline_tier_stretch`). Both numbers
+    # exist; no new floor (gate 1). Built OFF: whether a 0.5 mm bean reads
+    # better on cloth than a stuttering 0.55 mm satin is card block 5's
+    # question. Off, byte-identical. Tests: `tests/test_satin_hairline_tier.py`.
+    satin_hairline_tier: bool = False
     # The lettering yardstick's trims gap, read with a per-trim census
     # (2026-09-19, scope-history): traced MARINE at 80 mm sews 13 trims
     # against the typed word's 3, and across the nine logos the lettering
