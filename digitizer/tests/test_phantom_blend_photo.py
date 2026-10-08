@@ -163,6 +163,35 @@ def test_a_WIDE_grey_band_survives():
     assert warns == []
 
 
+def test_an_UPSCALED_halo_is_judged_at_its_source_width():
+    """Stage 1's work grid (`cfg.work_px_per_mm`) upscales a low-res JPEG
+    before this pass, so a 3-source-pixel halo arrives 6 px wide and only
+    a third of it is one-pixel edge: the band gate fails and the dissolve
+    goes quiet (Bridge Bar @ 80 mm: 5 labels dissolved with the grid on,
+    37 with it off). `source_scale` widens the edge band to match."""
+    labels, lab_img, valid = _striped(
+        [(1, BLACK, 20), (2, GREY, 6), (3, WHITE, 20)])
+    out, _drop, warns = dissolve_phantom_blends(
+        labels, valid, lab_img, PipelineConfig(), None, 8.0)
+    assert set(np.unique(out).tolist()) == {1, 2, 3}, "1-px band: survives"
+    assert warns == []
+    out, _drop, warns = dissolve_phantom_blends(
+        labels, valid, lab_img, PipelineConfig(), None, 8.0, source_scale=2.0)
+    assert set(np.unique(out).tolist()) == {1, 3}, "source-width band: gone"
+    assert warns and warns[0]["count"] == 1
+
+
+def test_source_scale_leaves_a_WIDE_band_alone():
+    """The widened band is still a band: a stripe as wide as its
+    neighbours keeps its colour at any scale."""
+    labels, lab_img, valid = _striped(
+        [(1, BLACK, 20), (2, GREY, 20), (3, WHITE, 20)])
+    out, _drop, warns = dissolve_phantom_blends(
+        labels, valid, lab_img, PipelineConfig(), None, 8.0, source_scale=2.0)
+    assert set(np.unique(out).tolist()) == {1, 2, 3}
+    assert warns == []
+
+
 def test_a_thin_TEAL_band_survives():
     """The colour gate, at the width where the edge gate has already given
     up. This is the case that would cost real lettering."""
