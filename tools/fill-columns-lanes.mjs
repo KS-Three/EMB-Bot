@@ -2,6 +2,7 @@
 // yet: the basic-shape presets and the image lane ("Waiting on Kent" 22).
 //
 //   node tools/fill-columns-lanes.mjs [--lane control|shapes|image] [--json out.json]
+//        [--src engineDir] [--on '{"option": value}']
 //
 // Each design is built the way app/src/lib/generate.js builds it (its shape
 // and image branches, the Studio's own modules for the rings), once with the
@@ -34,26 +35,33 @@
 // Nothing here has been sewn: these are measurements of the stitch stream the
 // encoders are handed.
 import { writeFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { performance } from "node:perf_hooks";
 
 const require = createRequire(import.meta.url);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-// The app's modules find the engine on the global, as in a browser: load it in
-// the Studio's own order (app/src/lib/emb.js), less the two that draw.
-globalThis.window = globalThis;
-for (const f of ["units", "sewtime", "garments", "fabrics", "fill", "geometry", "quantize", "flatten", "satin", "satinplay", "crossfill", "satinfont", "fontbin", "svgpath", "svgimport", "dst", "dstimport", "exp", "pes", "svgexport", "stitchModel"]) require(`../src/${f}.js`);
-const DG = require("../src/digitize.js");
-const FAB = require("../src/fabrics.js");
-const GAR = require("../src/garments.js");
+
 const lib = (f) => import(pathToFileURL(join(ROOT, "app", "src", "lib", f)).href);
 
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
+// The app's modules find the engine on the global, as in a browser: load it in
+// the Studio's own order (app/src/lib/emb.js), less the two that draw.
+globalThis.window = globalThis;
+// `--src dir` measures another engine (a candidate fix) the same way.
+const SRC = opt("--src") ? resolve(opt("--src")) : join(ROOT, "src");
+for (const f of ["units", "sewtime", "garments", "fabrics", "fill", "geometry", "quantize", "flatten", "satin", "satinplay", "crossfill", "satinfont", "fontbin", "svgpath", "svgimport", "dst", "dstimport", "exp", "pes", "svgexport", "stitchModel"]) require(join(SRC, f + ".js"));
+const DG = require(join(SRC, "digitize.js"));
+const FAB = require(join(SRC, "fabrics.js"));
+const GAR = require(join(SRC, "garments.js"));
 const LANES = opt("--lane") ? [opt("--lane")] : ["control", "shapes", "image"];
 const JSON_OUT = opt("--json");
+// `--on '{"opt":true}'`: more builder options for the "on" arm, beside fillColumns.
+// `--colors 4`: the image lane at these colour counts only (a quicker look).
+const COLORS = opt("--colors") ? opt("--colors").split(",").map(Number) : [2, 4, 6];
+const ON_EXTRA = opt("--on") ? JSON.parse(opt("--on")) : {};
 
 const OFF_MM = 0.8, RIM_BAND_MM = 0.5, ROW_TOL_DEG = 8, CELL_MM = 0.25;
 
@@ -112,7 +120,7 @@ async function imageLane() {
     if (Math.max(img.width, img.height) > WORK_MAX_PX) img = downscale(img, WORK_MAX_PX);
     const w = img.width, h = img.height;
     // the Studio's default element is nColors 4, removeBg true (project.js)
-    for (const nColors of [2, 4, 6]) {
+    for (const nColors of COLORS) {
       const rgba = Uint8ClampedArray.from(img.rgba);
       for (let i = 3; i < rgba.length; i += 4) if (rgba[i] < ALPHA_CUTOFF) rgba[i] = 0;
       const reg = flatToRegions(flattenRGBA(rgba, w, h, { nColors, removeBg: true }));
@@ -292,7 +300,7 @@ for (const lane of LANES) {
     say(`${des.group} ${des.size} ${des.garment}: off`);
     const off = timed(des.build, {});
     say(`on (off ${Math.round(off.ms)} ms)`);
-    const on = timed(des.build, { fillColumns: true });
+    const on = timed(des.build, Object.assign({ fillColumns: true }, ON_EXTRA));
     say(`measure (on ${Math.round(on.ms)} ms)`);
     const same = JSON.stringify(off.d.stitches) === JSON.stringify(on.d.stitches);
     rows.push({ group: des.group, size: des.size, garment: des.garment, same, off: Object.assign(measure(off.d), { ms: off.ms }), on: Object.assign(measure(on.d), { ms: on.ms }) });
