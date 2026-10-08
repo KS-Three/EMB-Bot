@@ -241,6 +241,15 @@ def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float
     return satin_max_mm, cfg.satin_per_stroke, bool(cfg.wide_columns)
 
 
+def _word_tier(region, cfg: PipelineConfig) -> str | None:
+    """L3's per-word tier (`words.assign_word_tiers`) when
+    `cfg.lettering_word_tiers` is on, else None -- the one read every
+    stage-7 tier decision makes, so they cannot disagree."""
+    if not cfg.lettering_word_tiers:
+        return None
+    return region.meta.get("word_tier")
+
+
 def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
                 design_class: str) -> bool:
     """Will this region reach the satin tier? — the borders-last predicate.
@@ -305,6 +314,11 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
         return True
     if tier == "auto" and region.meta.get(BEAN_LETTER_KEY):
         return False        # a bean letter (`beanletters.tag_bean_letters`): runs, not columns
+    wt = _word_tier(region, cfg)
+    if tier == "auto" and wt == "run":
+        return False        # L3: the word sews on the run tier
+    if tier == "auto" and wt in ("satin", "widened") and cfg.satin:
+        return True         # L3: the word sews satin, every letter of it
     if tier == "auto" and cfg.lettering_columns and cfg.satin and is_lettering(region, cfg):
         return True         # a Column letter (`cfg.lettering_columns`): satin on its artwork outline
     satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm)
@@ -1859,6 +1873,11 @@ def sequence(
     # everything but this population); with the flag off nothing carries the
     # tag, so the ladder is byte-identical.
     def routes_to_run(pr: PlannedRegion, pr_tier: str) -> bool:
+        wt = _word_tier(pr.region, cfg)
+        if pr_tier == "auto" and wt == "run":
+            return True                 # L3: the word decided, not the shape's area
+        if pr_tier == "auto" and wt in ("satin", "widened") and cfg.satin:
+            return False                # L3: satin for the word; with satin off, the rescue stands
         return pr_tier == "run" or (pr_tier == "auto" and rescue
                                     and pr.region.polygon.area < detail_mm2
                                     and not widened_lettering(pr.region))
@@ -2089,7 +2108,8 @@ def sequence(
             outline_tried = False
             if routes_to_run(p, tier):
                 runs, report = run_outline(p.region.polygon, p.shape_id,
-                                           entry=entry, trim_at_mm=trim_at)
+                                           entry=entry, trim_at_mm=trim_at,
+                                           soft_vertices=cfg.run_soft_vertices)
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
@@ -2160,11 +2180,14 @@ def sequence(
                           and region_rides_design_ramp(p.region.polygon, source_pixels))
             if ribbon is not None and ribbon.reason == "photo_width_floor":
                 runs, report = run_outline(p.region.polygon, p.shape_id,
-                                           entry=entry, trim_at_mm=trim_at)
+                                           entry=entry, trim_at_mm=trim_at,
+                                           soft_vertices=cfg.run_soft_vertices)
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
-            if tier == "satin" or (ribbon is not None and ribbon.satin and not rides_ramp):
+            word_satin = (tier == "auto" and cfg.satin
+                          and _word_tier(p.region, cfg) in ("satin", "widened"))
+            if tier == "satin" or word_satin or (ribbon is not None and ribbon.satin and not rides_ramp):
                 # The house cross angle (2026-08-26). Per-shape intent beats
                 # the global, the same precedence border/underlay_style/
                 # fill_angle already use; None on both keeps today's output
@@ -2210,6 +2233,7 @@ def sequence(
                     rails_follow_edge=cfg.satin_rails_follow_edge,
                     outer_rail_pitch=cfg.satin_outer_rail_pitch,
                     join_square=cfg.satin_join_square,
+                    free_end_square=cfg.satin_free_end_square,
                     junction_square=(cfg.satin_junction_square
                                      and bool(p.region.meta.get("text_candidate"))),
                     slab_serifs=cfg.satin_slab_serifs,
@@ -2249,15 +2273,19 @@ def sequence(
                     report["hairline_runs"] = sum(
                         1 for r in runs if r.kind == stitches.RUN)
                     return runs, report, False
-            if tier == "auto" and not outline_tried and widened_lettering(p.region):
+            if (tier == "auto" and not outline_tried
+                    and (widened_lettering(p.region) or word_satin)):
                 # Widened lettering the satin tier declined — the classifier
                 # read no ribbon in the column, or the skeleton could not
                 # resolve one — sews what it sewed before the floor: the bean
                 # run on its artwork outline. The floor can move a glyph from
                 # run to satin and nowhere else; a 1 mm tatami is not a tier
-                # it may fall to.
+                # it may fall to. The same holds for a letter its WORD sent
+                # to satin (`cfg.lettering_word_tiers`) that the satin tier
+                # could not sew.
                 runs, report = run_outline(p.region.polygon, p.shape_id,
-                                           entry=entry, trim_at_mm=trim_at)
+                                           entry=entry, trim_at_mm=trim_at,
+                                           soft_vertices=cfg.run_soft_vertices)
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
@@ -2575,7 +2603,8 @@ def sequence(
             # sewing it as a run beats leaving a hole in the artwork.
             if rescue and not runs:
                 r_runs, r_report = run_outline(p.region.polygon, p.shape_id,
-                                               entry=entry, trim_at_mm=trim_at)
+                                               entry=entry, trim_at_mm=trim_at,
+                                               soft_vertices=cfg.run_soft_vertices)
                 if r_runs:
                     r_report["as_run"] = 1
                     return r_runs, r_report, False
