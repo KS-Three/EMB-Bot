@@ -15,16 +15,18 @@ Run it:  .venv/Scripts/python -m digitizer_service
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
+import threading
 from contextlib import asynccontextmanager
 from dataclasses import fields as dataclass_fields
 
 import cv2
 import numpy as np
-from fastapi import Body, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from shapely.geometry import Polygon
 from starlette.concurrency import run_in_threadpool
 
@@ -41,7 +43,8 @@ from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
 from digitizer_core.stitchwidth import review_block, validate_override_mm
 
 from . import formats
-from .jobs import DONE, GenerationCache, JobRegistry, content_key, generation_key
+from .guards import BodyLimit, Deadline, too_large_detail
+from .jobs import DONE, Busy, GenerationCache, JobRegistry, content_key, generation_key
 
 # 0.5.0 -> 0.6.0, 2026-09-15: `design.runs`, the run-span index, is now on
 # every `/digitize` and `/digitize-manual` response.
@@ -112,6 +115,49 @@ MAX_PIXELS = 40_000_000
 # must obey.
 DECODE_MAX_SIDE_PX = 2800
 
+# Whole-request byte budgets, enforced by `guards.BodyLimit` before a body is
+# buffered. An upload route gets the file limit plus a megabyte for the
+# multipart framing and the config field, so the route's own 413 (which names
+# the artwork's size) is still the one a near-miss sees. Everything else is
+# JSON: a 300k-stitch design is ~12 MB as `/export` JSON, so 32 MB.
+_UPLOAD_ROUTES = ("/digitize", "/calibration/read")
+MAX_JSON_BYTES = 32 * 1024 * 1024
+
+
+def _body_limit(path: str) -> tuple[int, int]:
+    if path in _UPLOAD_ROUTES:
+        return MAX_UPLOAD_BYTES + 1024 * 1024, MAX_UPLOAD_BYTES
+    return MAX_JSON_BYTES, MAX_JSON_BYTES
+
+
+# A request (not a job — `/digitize` returns 202 in well under this) that has
+# produced no response in this long is answered 504 by `guards.Deadline`.
+# Read at call time so an operator can set EMBBOT_REQUEST_TIMEOUT_S.
+REQUEST_TIMEOUT_S = 120.0
+
+
+def _request_timeout() -> float:
+    return float(os.environ.get("EMBBOT_REQUEST_TIMEOUT_S") or REQUEST_TIMEOUT_S)
+
+
+# Decodes run at submit, BEFORE the job queue, so the queue's in-flight bound
+# does not cover them: ten simultaneous uploads would be ten 40 MP decodes at
+# once. Two at a time; the rest wait in the threadpool. A threading
+# semaphore, not an asyncio one, so it is not bound to whichever event loop
+# touched it first.
+_DECODE_SLOTS = threading.BoundedSemaphore(2)
+
+
+def _decode_bounded(data: bytes) -> np.ndarray:
+    with _DECODE_SLOTS:
+        return _decode(data)
+
+
+BUSY_DETAIL = ("The digitizer is busy with other designs right now. "
+               "Try again in a minute.")
+
+log = logging.getLogger("digitizer_service")
+
 # Config keys a caller may set. Everything else on PipelineConfig is either
 # internal (debug_dir) or would let a request write to disk.
 _CONFIG_FIELDS = {f.name for f in dataclass_fields(PipelineConfig)} - {"debug_dir", "extra"}
@@ -130,6 +176,30 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Fritsch's Stitches digitizer", version=VERSION, lifespan=lifespan)
+
+# Starlette adds middleware outside-in in reverse order of these calls: CORS
+# (below) is outermost so even a 413/504 carries its headers, then the
+# deadline, then the body limit nearest the routes.
+app.add_middleware(BodyLimit, limit_for=_body_limit)
+app.add_middleware(Deadline, seconds=_request_timeout)
+
+
+@app.exception_handler(Exception)
+async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
+    """Anything a route did not turn into an HTTPException. The trace goes
+    to the log; the caller gets a sentence, never a stack."""
+    log.error("unhandled error on %s %s", request.method, request.url.path, exc_info=exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Something went wrong on our side. Please try again; "
+                           "if it keeps happening, let us know."},
+    )
+
+
+@app.exception_handler(Busy)
+async def _busy(_: Request, __: Busy) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": BUSY_DETAIL},
+                        headers={"Retry-After": "30"})
 
 # Studio runs on a localhost dev server or a localhost static host. `null`
 # (every file:// page on the machine) is deliberately not allowed.
@@ -447,6 +517,9 @@ def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
         data.pop("shape_overrides")
 
 
+MAX_TARGET_WIDTH_MM = 1000.0
+
+
 def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
     """The field-allowlist + shape-edit canonicalization shared by every
     config-carrying route. `allowed_fields` differs by route: manual
@@ -477,6 +550,20 @@ def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
     # path. Checked here so a client typo is a 400 naming the valid values,
     # rather than the ValueError `stage0_classify.classify` raises — which
     # would reach the caller as a 500.
+    # `target_width_mm` divides the raster in stage 1, so 0 was a raw
+    # ZeroDivisionError in a FAILED JOB and "wide" a ValueError, both after a
+    # 202 (PR #694's xfail); a negative width even completed. The ceiling is
+    # compute hygiene, not a hoop: stage 1 upscales toward min_px_per_mm, so
+    # an absurd width is an absurd raster.
+    if "target_width_mm" in data:
+        tw = data["target_width_mm"]
+        if not (isinstance(tw, (int, float)) and not isinstance(tw, bool)
+                and math.isfinite(tw) and 0 < tw <= MAX_TARGET_WIDTH_MM):
+            raise HTTPException(
+                status_code=400,
+                detail=f"target_width_mm must be a number of millimetres above 0 "
+                       f"and at most {MAX_TARGET_WIDTH_MM:g}.",
+            )
     # `garment_rgb` reaches `PipelineConfig` as whatever JSON carried, so a
     # malformed one (a hex string, four channels, 300) would surface as a
     # TypeError deep in `stage4_vectorize.garment_sews_enclosed` — a 500.
@@ -866,14 +953,15 @@ async def start_digitize(
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(
             status_code=413,
-            detail=f"Artwork is {len(data)//1024//1024} MB; the limit is "
-                   f"{MAX_UPLOAD_BYTES//1024//1024} MB. Export it smaller and try again.",
+            detail=too_large_detail(len(data), MAX_UPLOAD_BYTES).replace("Upload", "Artwork", 1),
         )
 
     cfg_dict = _parse_config(config)
     key = content_key(data, cfg_dict)
     gen_key = generation_key(data, cfg_dict)
-    pixels = await run_in_threadpool(_decode, data)
+    if not registry.admits(key):
+        raise Busy()
+    pixels = await run_in_threadpool(_decode_bounded, data)
 
     def work() -> dict:
         cfg = PipelineConfig(**cfg_dict)
@@ -1102,8 +1190,7 @@ async def calibration_read(
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(
             status_code=413,
-            detail=f"Photo is {len(data)//1024//1024} MB; the limit is "
-                   f"{MAX_UPLOAD_BYTES//1024//1024} MB. Export it smaller and try again.",
+            detail=too_large_detail(len(data), MAX_UPLOAD_BYTES).replace("Upload", "Photo", 1),
         )
     img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
     if img is None:
@@ -1143,7 +1230,9 @@ def export(
     try:
         pattern = design_to_pattern(design, label=label)
         data = formats.write(pattern, fmt)
-    except (KeyError, TypeError, ValueError) as exc:
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        # AttributeError: a stitch that is a bare [x, y, flag] list rather
+        # than a dict reaches the adapter's `.get` (PR #694's xfail).
         raise HTTPException(status_code=400, detail=f"could not write {fmt}: {exc}") from exc
 
     meta = formats.FORMATS[fmt]

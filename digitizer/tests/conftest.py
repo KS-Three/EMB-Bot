@@ -11,6 +11,15 @@ from digitizer_core import PipelineConfig, run_stages
 from tests._ci_shard import pytest_collection_modifyitems  # noqa: F401
 
 
+# CI scheduling (`--dist loadgroup`); a no-op otherwise. See
+# tests/_xdist_groups.py. A plugin rather than a hook here because this
+# conftest already exports the shard hook under the same name.
+def pytest_configure(config):
+    from tests import _xdist_groups
+    if not config.pluginmanager.is_registered(_xdist_groups):
+        config.pluginmanager.register(_xdist_groups, "digitizer-xdist-groups")
+
+
 # SESSION-scoped, and shared by every module that needs a client. It must not
 # be per-module, and that is not a style preference -- a per-module client
 # breaks the modules that run after it.
@@ -53,6 +62,21 @@ def client():
 
     with TestClient(app) as c:
         yield c
+
+
+# A client that is NEVER entered as a context manager, so no lifespan runs
+# and the shared app's job pool is never shut down (see `client` above).
+# For a throwaway app built inside a test, or for the shared app when a test
+# needs `raise_server_exceptions=False` to see the 500 a real server sends.
+# Lives here because `test_client_fixture_is_shared.py` allows `TestClient(`
+# calls in conftest only — that tripwire is about the lifespan, which this
+# fixture by construction never triggers.
+@pytest.fixture
+def make_client():
+    pytest.importorskip("fastapi", reason="service extra not installed")
+    from fastapi.testclient import TestClient
+
+    return lambda app, **kw: TestClient(app, **kw)
 
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
