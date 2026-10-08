@@ -1688,11 +1688,69 @@ class PipelineConfig:
     # stretch 1.5-4 half-widths from the corner, the bent samples replaced,
     # the apex projected onto the line), so the owner's column runs square
     # through the butting member's width to the cap and the butting member
-    # starts square under it -- the pro's construction. Built OFF: the join
-    # members move on every letter with a slab or an L, so the goldens
-    # re-capture on the flip, and the render is Kent's to judge first.
-    # Tests: `tests/test_join_corner_straight.py`.
-    satin_join_square: bool = False
+    # starts square under it -- the pro's construction. Built OFF the same
+    # day because the join members move on every letter with a slab or an L,
+    # so the goldens re-capture on the flip, and the render was Kent's to
+    # judge first. **FLIPPED ON 2026-10-06, Kent's call, on the renders**
+    # (`docs/renders/join-square-2026-10-06/`): Fremont at 80 mm re-planned
+    # from the same stages, stitches and trims identical (13,742 / 34), fan
+    # ends 7 -> 5 over 36 columns, the E 2 -> 0, the T's bar square across
+    # both hanging ends. False is the pre-flip joiner, byte for byte.
+    # Tests: `tests/test_join_corner_straight.py` (the behaviour tests pass
+    # the flag explicitly, so they read the same whatever this default is).
+    # **HELD OFF 2026-10-07, Kent's ruling, by its own guards:** merged with
+    # current main and run on the lettering set, ON lost one artwork
+    # element of at least 1 mm2 of the ENTHUSIAST wordmark (`tests/test_
+    # lettering_coverage_regression.py::test_no_element_of_the_wordmark_goes_
+    # unsewn`, a fixture that had never lost one) and tipped three sibling
+    # bars (that fixture's fine `lost_frac` 0.1702 / 0.17, the tip-caps end
+    # bare 10.53 / 9.5 mm2, a rail-comp mid-rail hole 1.24 / 0.55 mm2), all
+    # four green OFF on the same tree. **ON AGAIN 2026-10-07 with the apex
+    # cap, the element named (defect 60):** the S's bowl. At 80 mm
+    # (half-width 0.87 mm) a pull-comped inner bowl is a sharp reflex
+    # vertex, so the join-corner cut took each S at both bowls in BOTH
+    # arms; OFF the members' bent ends still met, ON
+    # `_straighten_member_end` projected each apex 0.80 / 0.82 mm (0.92
+    # half-widths) onto its fitted line, the ends parted and the bowl's
+    # wedge sewed bare -- one mechanism behind the element and all three
+    # bars. `_STRAIGHT_MAX_MOVE_HALVES` (0.6) keeps a member whose apex sits
+    # further off its own line than that on its pre-flip spine: a bend is
+    # not a corner. Set on the census of apex moves under the flag (p50
+    # enthusiast 0.92, Fremont 0.22, Becker 0.12 half-widths; the vertex
+    # angle was tried first and would refuse Becker's and drone's real
+    # corners too). With the cap, the seven-logo set: enthusiast is within
+    # two stitches of OFF and its four guards green; Fremont's E arms and
+    # T bar stay square (fan ends 18 -> 16 over 33 text columns either
+    # way, 10 of its 16 straightenings kept); satin bare falls on five of
+    # the six text logos against the uncapped flip (Becker 4.37 -> 2.94%,
+    # drone 3.91 -> 2.47%; Fremont +0.04 points) and trims never rise;
+    # corpus-wide the cap refuses about half the straightenings
+    # (bridge 32 of 60, gaulke 9 of 14), every one with its apex over 0.6
+    # half-widths off the line. Tests: `tests/test_join_corner_bend_cap.py`;
+    # the trail is `docs/join-square-enthusiast-2026-10-07.md`.
+    satin_join_square: bool = True
+    # A slab serif's axis is its own column, not a cap (2026-10-07, Kent's
+    # pick after the join-square flip: "T-shaped slabs: own column, not a
+    # cap"). A slab across a stem's end (a foot, a T-shaped terminal) puts
+    # its medial axis through the stem's node in BOTH directions, as two
+    # short free arms -- the same silhouette as a square cap's I-beam, which
+    # the 2026-09-19 twig rule erases. Two ways that lost the slab on Hotel
+    # Fremont at 80 mm: the T's foot halves run into the foot's corners, so
+    # the twig rule took them for an I-beam and the foot sewed as the stem's
+    # terminal fan (0.48 mm2 of its bottom millimetre bare); the N's survived
+    # the rule but meet at 144 deg, which `satin_junction_stack`'s 30 deg weld
+    # refuses, so one half fell to the stub filter and the foot sewed as a
+    # half column. ON, a pair that is square to the stem and leaves the node
+    # in opposite directions (`_slab_pair`: within 35 deg of square, at
+    # least 120 apart) is kept by `_prune_spurs` and welded by
+    # `_merge_through_junctions` whatever its turn, into the slab's own
+    # free-ended stroke; the stem stays a T's stem under it. A cap's forks
+    # (45 deg off the axis) and a corner twig beside a hanging slab (40 off
+    # square) are not pairs, so the join-square fold at the E's and T's
+    # L-corners is untouched. Fremont ON: three letters move (T, N, R), the
+    # design +34 stitches. Built OFF; the render is Kent's to judge.
+    # Tests: `tests/test_slab_serifs.py`.
+    satin_slab_serifs: bool = False
     # Lettering as Columns (`digitizer_core/outline_cut.py`,
     # `digitizer_core/columns.py`; the lettering-lane architecture,
     # `docs/lettering-architecture-rd-2026-10-07.md` §5 L4/L5, Kent's pick
