@@ -4010,6 +4010,22 @@ def _member_corridor(piece: list[tuple[float, float]], from_start: bool,
 _STRAIGHT_FROM_HALVES = 1.5    # the straight stretch starts this far from the corner ...
 _STRAIGHT_TO_HALVES = 4.0      # ... and reaches this far (or the member's end)
 _BEND_TOL_HALVES = 0.2         # a sample this close to the line is already straight
+# A member whose apex sits further off its own straight line than this many
+# half-widths is BENDING into the corner, not meeting it square, and the
+# projection would carry its end that far off the apex: on ENTHUSIAST's two
+# S's at 80 mm (half-width 0.87 mm) the join-corner cut reads each bowl as a
+# corner (a pull-comped inner bowl is a sharp reflex vertex at that size)
+# and both members' ends moved 0.80 / 0.82 mm -- 0.92 of a half-width --
+# leaving the bowl's wedge bare, the fixture's first lost element of over
+# 1 mm2 (defect 60, 2026-10-07). Measured over the seven corpus logos under
+# join_square: the apex move is p50 0.92 half-widths on enthusiast (8 of 10
+# corners over 0.5), 0.22 on Fremont (3 of 13 over 0.5), 0.12 on Becker.
+# Over this the member keeps its bend, exactly as before the flip. Set
+# between those two fixtures, not on fabric; corpus-wide it refuses about
+# half the straightenings (bridge 32 of 60, gaulke 9 of 14) and satin bare
+# falls on five of the six text logos against the uncapped flip
+# (`docs/join-square-enthusiast-2026-10-07.md`, section 6).
+_STRAIGHT_MAX_MOVE_HALVES = 0.6
 
 
 def _straighten_member_end(piece: list[tuple[float, float]], at_end: bool,
@@ -4057,6 +4073,12 @@ def _straighten_member_end(piece: list[tuple[float, float]], at_end: bool,
     base = np.asarray(pts[q], float)
     t_end = float((np.asarray(pts[-1], float) - base) @ u)
     if t_end <= 0.0:
+        return piece
+    # ... unless the projection would carry the apex further than
+    # `_STRAIGHT_MAX_MOVE_HALVES` off itself: then this is a bend read as a
+    # corner, and the member keeps its own line into it (the pre-flip spine).
+    apex = np.asarray(pts[-1], float)
+    if float(np.hypot(*(apex - (base + u * t_end)))) > _STRAIGHT_MAX_MOVE_HALVES * half_mm:
         return piece
     spacing = max(1e-6, total / max(1, len(pts) - 1))
     steps = max(1, int(round(t_end / spacing)))

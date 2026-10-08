@@ -8782,3 +8782,23 @@ differs in density is a density pair, whatever the arm is called. And when
 an engine fix lands under a drawn page, the page is stale: redraw it or
 pull it.** *(measured 2026-10-07 — `docs/eye-pairs-2026-10-07/kent-notes.json`,
 `columns_sitting`; `tests/test_lettering_columns.py`)*
+
+## 2026-10-07 — The held flip, named and fixed: a bend read as a corner, and the vertex test would have cut the wrong way
+
+The ENTHUSIAST element `satin_join_square` lost is the S's bowl. At 80 mm
+(half-width 0.87 mm) a pull-comped inner bowl is a sharp reflex vertex, so
+`_split_sharp_corners`' join rule cuts the S there in BOTH arms; OFF the two
+members' bent ends still meet, ON `_straighten_member_end` projected both
+apexes 0.80 / 0.82 mm (0.92 half-widths) onto their fitted lines, the ends
+parted and the wedge sewed bare — the element and the three sibling bars are
+one mechanism. The first cure reached for was the corner's vertex angle
+(Fremont's accepted corners peak 6–8° at one vertex, enthusiast's 60–96°),
+and the census refuted it: Becker's, gaulke's and drone's REAL corners peak
+49–91° too, so a vertex test would have refused the corners the flip exists
+for. What separates is the apex's DISPLACEMENT off its own member's line —
+p50 0.92 half-widths on enthusiast against 0.22 on Fremont and 0.12 on
+Becker — and `_STRAIGHT_MAX_MOVE_HALVES` 0.6 keeps the bend. **Name a lost
+element by its shape id and a crop before choosing the cure, and census the
+candidate test over EVERY fixture's accepted cases: the first discriminator
+that parts the broken fixture from the clean one can refuse the clean cases
+everywhere else.** *(measured 2026-10-07 — `docs/join-square-enthusiast-2026-10-07.md`; `tests/test_join_corner_bend_cap.py`)*
