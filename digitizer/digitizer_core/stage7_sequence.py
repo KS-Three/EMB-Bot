@@ -2089,7 +2089,8 @@ def sequence(
             outline_tried = False
             if routes_to_run(p, tier):
                 runs, report = run_outline(p.region.polygon, p.shape_id,
-                                           entry=entry, trim_at_mm=trim_at)
+                                           entry=entry, trim_at_mm=trim_at,
+                                           soft_vertices=cfg.run_soft_vertices)
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
@@ -2160,7 +2161,8 @@ def sequence(
                           and region_rides_design_ramp(p.region.polygon, source_pixels))
             if ribbon is not None and ribbon.reason == "photo_width_floor":
                 runs, report = run_outline(p.region.polygon, p.shape_id,
-                                           entry=entry, trim_at_mm=trim_at)
+                                           entry=entry, trim_at_mm=trim_at,
+                                           soft_vertices=cfg.run_soft_vertices)
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
@@ -2256,7 +2258,8 @@ def sequence(
                 # run to satin and nowhere else; a 1 mm tatami is not a tier
                 # it may fall to.
                 runs, report = run_outline(p.region.polygon, p.shape_id,
-                                           entry=entry, trim_at_mm=trim_at)
+                                           entry=entry, trim_at_mm=trim_at,
+                                           soft_vertices=cfg.run_soft_vertices)
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
@@ -2574,7 +2577,8 @@ def sequence(
             # sewing it as a run beats leaving a hole in the artwork.
             if rescue and not runs:
                 r_runs, r_report = run_outline(p.region.polygon, p.shape_id,
-                                               entry=entry, trim_at_mm=trim_at)
+                                               entry=entry, trim_at_mm=trim_at,
+                                               soft_vertices=cfg.run_soft_vertices)
                 if r_runs:
                     r_report["as_run"] = 1
                     return r_runs, r_report, False
