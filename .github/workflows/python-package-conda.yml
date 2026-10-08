@@ -379,7 +379,7 @@ jobs:
       - name: Build the digitizer venv the e2e bootstrap looks for
         working-directory: digitizer
         run: |
-          [ -x .venv/bin/python ] || python -m venv .venv
+          [ -x .venv/bin/python ] || python -m venv --clear .venv
           .venv/bin/pip install -r requirements.txt
           .venv/bin/pip install -e '.[service]'
       - name: Install
