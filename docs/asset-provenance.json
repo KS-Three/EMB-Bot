@@ -1,5 +1,5 @@
 {
- "about": "Provenance manifest for every image/stitch file under digitizer/testdata, app/e2e/fixtures, app/src/lib/fixtures, app/public, test/fixtures and docs/renders. Checked by test/asset-provenance.test.js. `status` is a recorded claim, not a licence grant. review:true marks entries Kent has not settled. Add a row when you add a file.",
+ "about": "Provenance manifest for every image/stitch file under digitizer/testdata, app/e2e/fixtures, app/src/lib/fixtures, app/public, test/fixtures and docs/renders. Checked by test/asset-provenance.test.js. `status` is a recorded claim, not a licence grant. review:true marks entries Kent has not settled. Add a row when you add a file. docs/renders is forgiving: new render directories fall under a catch-all and a per-directory entry may be deleted with its directory; every other root is strict.",
  "statuses": [
   "synthetic",
   "kent-owned",
@@ -798,6 +798,13 @@
    "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker",
    "basis": "docs/renders/wide-columns-2026-09-09 (dir name dated; inputs are the fixtures above)",
    "review": true
+  },
+  {
+   "prefix": "docs/renders/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures (catch-all for new render directories)",
+   "basis": "docs/renders is output, not input; add a per-directory entry above only to flag real/client art",
+   "catchall": true
   }
  ]
 }

@@ -36,7 +36,8 @@ test('every image/stitch file has a provenance entry', () => {
   assert.deepEqual(missing, [], `add these to docs/asset-provenance.json:\n${missing.join('\n')}`);
 });
 
-test('no manifest entry is stale', () => {
-  const stale = rules.filter((r) => !files.some(r.match)).map((r) => r.e.path || r.e.prefix || r.e.prefix_ext);
+test('no fixture-root manifest entry is stale', () => {
+  // docs/renders is output, so its entries may outlive a deleted directory.
+  const stale = rules.filter((r) => !(r.e.prefix || '').startsWith('docs/renders/') && !files.some(r.match)).map((r) => r.e.path || r.e.prefix || r.e.prefix_ext);
   assert.deepEqual(stale, [], 'entries matching no tracked file');
 });
