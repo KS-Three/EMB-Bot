@@ -5854,6 +5854,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 end_near: tuple[float, float] | None = None,
                 underlay_on_column: bool = False,
                 walk_cursor_reach_mm: float = 0.0,
+                hop_under_column: bool = False,
                 cap_recentre: bool = False,
                 tip_caps: bool = False,
                 tip_corner_gate: bool = False,
@@ -6324,6 +6325,16 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
             continue
         if d <= trim_at_mm and poly_link.covers(LineString([a, b])):
             continue        # needle-down: encoder sews end -> start as one stitch
+        if (hop_under_column and cur.kind == stitches.SATIN
+                and d <= 3.0 * trim_at_mm and len(cur.points) >= 2
+                and LineString(cur.points).buffer(0.3).covers(LineString([a, b]))):
+            # `satin_hop_under_column` (defect 6): the column sewn next lies
+            # over the whole hop, so sew it as buried travel rather than a
+            # cut. The hop is appended to the run BEFORE it, split at
+            # `TRAVEL_STITCH_MM`, so the column still starts where it did.
+            n = max(2, int(math.ceil(d / machine.TRAVEL_STITCH_MM)) + 1)
+            prev.points.extend(_resample([a, b], n)[1:-1])
+            continue        # the last travel stitch -> b is sewn needle-down
         cur.jump = True
         cur.trim = d > trim_at_mm
         report["jumps"] += 1

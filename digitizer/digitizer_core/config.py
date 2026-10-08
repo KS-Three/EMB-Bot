@@ -1593,6 +1593,17 @@ class PipelineConfig:
     # at the price of a leg that may be exposed on fabric; the rescued calls
     # measured a 4.1 mm median leg and a 5.64 mm median path.
     satin_walk_cursor_reach_mm: float = 0.0
+    # `satin_hop_under_column` (defect 6, built OFF 2026-10-08): inside a
+    # satin shape, the hop from a run to the COLUMN sewn right after it is
+    # sewn needle-down -- as travel stitches no longer than
+    # `TRAVEL_STITCH_MM` -- when the column's own stitches cover the whole
+    # hop, instead of being trimmed for running past `trim_at`. The column
+    # buries the travel, so no thread lies on bare fabric or on finished
+    # work. Capped at 3 x `trim_at`. Measured on the nine real-art logos
+    # (`tools/satin_islands.py`): the underlay -> own-column hop was the
+    # largest cure-able class of in-shape trims on Becker (14 of 47, 3.2 to
+    # 6.9 mm). False is the linking pass as shipped, byte for byte.
+    satin_hop_under_column: bool = False
     # `satin_underlay_on_column`: a stroke's underlay is built on its
     # column's OWN stations -- the spine after the junction trims, the
     # cap extension and the stack's run-in -- instead of the raw skeleton
