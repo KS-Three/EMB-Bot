@@ -193,12 +193,119 @@ test("geometry inside defs, clipPath or gradients does not render", () => {
   assert.deepStrictEqual(out.regions[0].rgb, [0, 0, 255]);
 });
 
-test("use references warn and are skipped", () => {
+test("use instances a defs element at its x/y offset", () => {
   const out = svg.parseSVG(svgDoc(
     '<defs><rect id="r" width="10" height="10" fill="#f00"/></defs>' +
     '<use href="#r" x="20"/>'));
+  assert.strictEqual(out.regions.length, 1);
+  const xs = out.regions[0].shapes[0].outer.map((p) => p.x);
+  assert.strictEqual(Math.min(...xs), 20);
+  assert.strictEqual(Math.max(...xs), 30);
+});
+
+test("unresolvable use references warn and are skipped", () => {
+  const out = svg.parseSVG(svgDoc('<use href="other.svg#r" x="20"/><use href="#missing"/>'));
   assert.strictEqual(out.regions.length, 0);
-  assert.ok(out.warnings.some((w) => /use|symbol/i.test(w)));
+  assert.ok(out.warnings.some((w) => /use/i.test(w)));
+});
+
+// ---------------------------------------------------------------------
+// Exporter-style documents (synthetic, written to mimic each app's output)
+// ---------------------------------------------------------------------
+
+function bbox(shape) {
+  const xs = shape.outer.map((p) => p.x), ys = shape.outer.map((p) => p.y);
+  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)].map((v) => Math.round(v * 1000) / 1000);
+}
+
+test("Illustrator style: CSS class fills in a <style> block", () => {
+  const doc = '<?xml version="1.0" encoding="utf-8"?>\n' +
+    '<!-- Generator: Adobe Illustrator 28.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->\n' +
+    '<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"\n' +
+    '\t viewBox="0 0 100 100" style="enable-background:new 0 0 100 100;" xml:space="preserve">\n' +
+    '<style type="text/css">\n\t.st0{fill:#E30613;}\n\t.st1{fill:none;stroke:#000000;stroke-miterlimit:10;}\n\t.st2,.st3{fill:#1D71B8;}\n</style>\n' +
+    '<rect x="10" y="10" class="st0" width="20" height="20"/>\n' +
+    '<circle class="st1" cx="50" cy="50" r="10"/>\n' +
+    '<polygon class="st3" points="60,60 90,60 90,90 "/>\n' +
+    '</svg>';
+  const out = svg.parseSVG(doc);
+  const colors = out.regions.map((r) => r.rgb.join(",")).sort();
+  assert.deepStrictEqual(colors, ["227,6,19", "29,113,184"]);
+});
+
+test("inline style beats a class rule, which beats the attribute", () => {
+  const out = svg.parseSVG(svgDoc(
+    '<style>.a{fill:#00ff00}</style>' +
+    '<rect class="a" fill="#ff0000" width="10" height="10"/>' +
+    '<rect class="a" style="fill:#0000ff" x="20" width="10" height="10"/>'));
+  const colors = out.regions.map((r) => r.rgb.join(",")).sort();
+  assert.deepStrictEqual(colors, ["0,0,255", "0,255,0"]);
+});
+
+test("Inkscape style: CDATA style, nested layer transforms, xlink:href clones", () => {
+  const doc = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ' +
+    'xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="100mm" height="100mm" viewBox="0 0 100 100">' +
+    '<defs id="defs2"><style id="s1"><![CDATA[ .ink { fill: #ff6600 } ]]></style></defs>' +
+    '<g inkscape:label="Layer 1" inkscape:groupmode="layer" id="layer1" transform="translate(10,0)">' +
+    '<g id="g5" transform="scale(2)">' +
+    '<path id="p1" class="ink" d="m 0,0 h 5 v 5 h -5 z"/>' +
+    '</g>' +
+    '<use xlink:href="#p1" id="use1" transform="translate(40,0)"/>' +
+    '</g></svg>';
+  const out = svg.parseSVG(doc);
+  assert.strictEqual(out.regions.length, 1);
+  const boxes = out.regions[0].shapes.map(bbox).sort((a, b) => a[0] - b[0]);
+  // Original: layer translate(10) * scale(2). Clone: layer translate(10) *
+  // translate(40) and NOT the g5 scale, since use references the raw path.
+  assert.deepStrictEqual(boxes, [[10, 0, 20, 10], [50, 0, 55, 5]]);
+});
+
+test("Figma style: clip-path group with defs clipPath imports unclipped and warns", () => {
+  const doc = '<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<g clip-path="url(#clip0_1_2)">' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M10 10H90V90H10V10ZM30 30V70H70V30H30Z" fill="#111111"/>' +
+    '</g>' +
+    '<defs><clipPath id="clip0_1_2"><rect width="100" height="100" fill="white"/></clipPath></defs>' +
+    '</svg>';
+  const out = svg.parseSVG(doc);
+  assert.strictEqual(out.regions.length, 1); // the white clip rect never renders
+  assert.deepStrictEqual(out.regions[0].rgb, [17, 17, 17]);
+  assert.strictEqual(out.regions[0].shapes.length, 1);
+  assert.strictEqual(out.regions[0].shapes[0].holes.length, 1);
+  assert.ok(out.warnings.some((w) => /clip/i.test(w)));
+});
+
+test("root fill=none (Figma) does not hide children that set their own fill", () => {
+  const out = svg.parseSVG('<svg viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect width="5" height="5" fill="#123456"/><rect x="6" width="2" height="2"/></svg>');
+  assert.strictEqual(out.regions.length, 1);
+  assert.deepStrictEqual(out.regions[0].rgb, [18, 52, 86]);
+});
+
+test("symbol instanced by use renders with the use's inherited fill", () => {
+  const out = svg.parseSVG(svgDoc(
+    '<defs><symbol id="sym"><rect width="10" height="10"/></symbol></defs>' +
+    '<use href="#sym" fill="#00ff00" x="5" y="5"/>'));
+  assert.strictEqual(out.regions.length, 1);
+  assert.deepStrictEqual(out.regions[0].rgb, [0, 255, 0]);
+  assert.deepStrictEqual(bbox(out.regions[0].shapes[0]), [5, 5, 15, 15]);
+});
+
+test("commented-out markup is ignored", () => {
+  const out = svg.parseSVG(svgDoc('<!-- <rect width="10" height="10" fill="#f00"/> --><rect width="3" height="3" fill="#00f"/>'));
+  assert.strictEqual(out.regions.length, 1);
+  assert.deepStrictEqual(out.regions[0].rgb, [0, 0, 255]);
+});
+
+test("self-referencing use does not recurse forever", () => {
+  const out = svg.parseSVG(svgDoc('<g id="loop"><rect width="2" height="2"/><use href="#loop" x="3"/></g>'));
+  assert.strictEqual(out.regions.length, 1);
+});
+
+test("strokes-only Inkscape art via class still warns about strokes", () => {
+  const out = svg.parseSVG(svgDoc('<style>.s{fill:none;stroke:#000;stroke-width:2}</style><path class="s" d="M0 0 L50 50"/>'));
+  assert.strictEqual(out.regions.length, 0);
+  assert.ok(out.warnings.some((w) => /stroke/i.test(w)));
 });
 
 test("gradient fills warn and skip the element", () => {
