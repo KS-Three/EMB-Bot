@@ -276,6 +276,20 @@ def test_the_walk_ends_toward_the_next_shape():
         assert math.dist(runs[-1].points[-1], corner) < 1.5, nxt
 
 
+def test_the_walk_starts_at_the_near_edge():
+    """A walk starts at a column end, mid-stroke. Arriving from the left of a
+    bar, the needle used to jump straight there; now the first run is a
+    travel from just inside the bar's near edge (the satin tier's entry),
+    so the hop from the previous letter is the gap, not the gap plus the
+    distance to the column's end."""
+    bar = _rect(0, 0, 10, 2)
+    runs, report = lettering_columns_shape(bar, "bar", trim_at_mm=3.0, start_near=(-1, 6))
+    first = runs[0]
+    assert first.kind == stitches.TRAVEL
+    assert bar.buffer(-0.2).covers(Point(first.points[0]))
+    assert math.dist(first.points[0], (-1, 6)) < math.dist(runs[1].points[0], (-1, 6))
+
+
 # ------------------------------------------------------- the E/F stem cut
 
 def _rounded_e():
