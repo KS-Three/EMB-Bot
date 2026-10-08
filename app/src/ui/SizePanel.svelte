@@ -153,12 +153,28 @@
     if (clampedMm !== requestedMm) target.value = fromMm(clampedMm, unit);
   }
 
+  // The field showing the capped number is not enough on its own: a customer
+  // who types a 1-inch height on a left-chest name watched "1" turn back into
+  // "0.29" with nothing saying why (2026-10-08). Height is aspect-locked to
+  // width, so a long name hits the placement's width long before any height
+  // they would ask for. Say what capped it and what would get them bigger.
+  // Cleared by the next request that fits, and whenever the garment changes.
+  let capNote = "";
+  let capGarment = project && project.garmentId;
+  $: if (project && project.garmentId !== capGarment) { capGarment = project.garmentId; capNote = ""; }
+  function noteCap(requestedMm) {
+    capNote = requestedMm > hoopWmm
+      ? `Capped at ${fromMm(hoopWmm, unit)} ${unit} wide — the most the ${alignArea} allows. For bigger letters, use fewer characters or a larger placement under Garment.`
+      : "";
+  }
+
   function onWidthChange(e) {
     const v = parseFloat(e.target.value);
     if (!Number.isFinite(v)) return;
     const mm = toMm(v, unit);
     const clamped = Math.min(hoopWmm, Math.max(MIN_SIZE_MM, mm));
     resyncIfClamped(e.target, mm, clamped);
+    noteCap(mm);
     d("update", { sizeMm: clamped });
   }
 
@@ -178,10 +194,12 @@
     // solved through the aspect ratio: show the height the clamped width
     // produces, not the one that was asked for.
     if (clamped !== wMm) e.target.value = fromMm(clamped / aspect, unit);
+    noteCap(wMm);
     d("update", { sizeMm: clamped });
   }
 
   function autoFit() {
+    capNote = "";
     d("update", { sizeMm: null, offsetXMm: 0, offsetYMm: 0 });
   }
 
@@ -263,6 +281,9 @@
       {/each}
     </div>
   </div>
+  {#if capNote}
+    <p class="capnote" role="status">{capNote}</p>
+  {/if}
   {#if warn}
     <p class="warn">Smaller than 5 mm — thread can't stitch this cleanly</p>
   {/if}
@@ -270,6 +291,7 @@
 
 <style>
   .alignrow { margin-top: 10px; }
+  .capnote { margin: 8px 0 0; font-size: var(--fs-xs, 12px); color: var(--warn-text); }
   /* Type comes from theme.css's shared section-label rule. */
   .alignlabel { display: block; margin-bottom: 4px; }
   .alignbtns { display: flex; gap: 6px; }
