@@ -220,6 +220,17 @@ export function generateElement(element, garment, runtime) {
       // +1.8%; a circle or rectangle is byte-identical; the worst is an
       // 8-point star with thin tips at +16%. Not sewn.
       fillColumns: true,
+      // 2026-10-08, after `fillColumns` (MASTER_SCOPE "Waiting on Kent" 28),
+      // as the manual branch does: a float the DST writer lays as three or
+      // more jump records IS a cut on a DST machine, so the stream says so
+      // with a `trim` there. Every preset, 7 sizes, every garment
+      // (`tools/cut-floats-shapes-sheet.mjs`, 2,870 designs): unasked DST cuts
+      // 2,799 -> 0, trims 961 -> 3,760, DST cuts and stitches unchanged, no
+      // needle point moved, no new thread. 12-point stars carry most of it
+      // (trims 2 -> 901). EXP and PES gain these cuts too, unlocked while
+      // `ties` is off. Engine default stays off.
+      // docs/cut-floats-shapes-2026-10-08.md. Not sewn.
+      cutFloats: true,
       underlay: element.underlay,
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,
