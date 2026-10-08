@@ -16,7 +16,7 @@
 //   - tooltips, the field menu, popovers, the font browser and font credits;
 //   - disabled or inert controls (exempt by WCAG).
 import { test, expect } from "@playwright/test";
-import { startStudio, typeText, openDownload, closeDownload } from "./helpers.js";
+import { startStudio, typeText, openDownload, closeDownload, uploadArtwork } from "./helpers.js";
 
 async function sweep(page, rootSelector) {
   return page.evaluate((rootSel) => {
@@ -125,4 +125,19 @@ test("every text element in the chrome reads at WCAG AA against its own ground",
   collect(".drawer", drawer);
 
   expect(all, "contrast failures").toEqual([]);
+});
+
+// The artwork palette's swatch labels sit on the ART's own colours, so they
+// are the one place a fixed label colour cannot be right for every input.
+// Axe flagged white-on-light (2026-10-08); this palette spans light, mid and
+// dark swatches so each label colour is exercised.
+test("artwork swatch labels read at WCAG AA on every swatch colour", async ({ page }) => {
+  await page.route("**/health", (r) => r.abort());
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await startStudio(page);
+  await uploadArtwork(page, "e2e/fixtures/contrast-palette.png", { run: false });
+  await expect(page.locator(".swatch").first()).toBeVisible();
+  const res = await sweep(page, ".swatches");
+  expect(res.checked, ".swatches: nothing was measured").toBeGreaterThan(0);
+  expect(res.failures, "contrast failures").toEqual([]);
 });
