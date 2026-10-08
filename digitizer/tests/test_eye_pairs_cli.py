@@ -641,13 +641,15 @@ def test_verify_finds_no_drift_on_the_synthetic_image(rendered, capsys):
 
 
 def test_the_default_corpus_leaves_out_the_excluded_fixtures(monkeypatch):
-    """Kent's rule (2026-09-30): screenshot is off the page. The default
-    corpus drops it; an explicit `cases` list is taken as given."""
+    """Kent's rule (2026-09-30): screenshot is off the page, and gaulke
+    since 2026-10-08. The default corpus drops both; an explicit `cases`
+    list is taken as given."""
     from tools.eye_pairs.pairs import EXCLUDED_FIXTURES
     seen = {}
 
     def fake_corpus():
-        return [("screenshot", "x.png", 80.0, "left_chest"), ("becker", "y.png", 100.0, "left_chest")]
+        return [("screenshot", "x.png", 80.0, "left_chest"), ("gaulke", "z.png", 80.0, "left_chest"),
+                ("becker", "y.png", 100.0, "left_chest")]
 
     def fake_sha(path):
         return "0" * 64
@@ -667,7 +669,7 @@ def test_the_default_corpus_leaves_out_the_excluded_fixtures(monkeypatch):
             cli.render(Path(td), arms={})
         except RuntimeError:
             pass
-    assert "screenshot" in EXCLUDED_FIXTURES and seen["fixtures"] == ["becker"]
+    assert {"screenshot", "gaulke"} <= EXCLUDED_FIXTURES and seen["fixtures"] == ["becker"]
 
 
 def test_a_file_arm_reads_the_design_from_the_stitch_file_and_names_its_fixtures(rendered, tmp_path):

@@ -130,8 +130,9 @@ test("zoom in and out across the whole range; the buttons stop at each end", asy
 });
 
 test("zoom reaches 800%", async ({ page }) => {
-  // Regression guard: Kent reported 2026-10-08 "can't zoom to 800%"; the cap
-  // is now MAX_ZOOM = 8 in interact.js.
+  // REGRESSION reported by Kent 2026-10-08: "can't zoom to 800%". Fixed by
+  // PR #676 (MAX_ZOOM = 8 in lib/interact.js); this was a test.fail() marker
+  // until then.
   await lettering(page);
   for (let i = 0; i < 20 && (await zoomIn(page).isEnabled()); i++) await zoomIn(page).click();
   expect(parseInt(await zoomPct(page).innerText(), 10)).toBeGreaterThanOrEqual(800);
