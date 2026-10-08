@@ -1674,6 +1674,7 @@ def dissolve_phantom_blends(
     bg_edge_rgb: np.ndarray | None,
     px_per_mm: float,
     page_mask: np.ndarray | None = None,
+    source_scale: float = 1.0,
 ) -> tuple[np.ndarray, np.ndarray | None, list[dict]]:
     """Fold every merged label that is a COLOUR BLEND of its own two sides
     into whichever side it is nearer. -> (labels, drop_mask, warnings).
@@ -1729,6 +1730,21 @@ def dissolve_phantom_blends(
     # defect 11 was about, reached by a new route. Bincounts over one flat
     # index cost the foreground, once.
     edge = _edge_mask(labels, valid)
+    # The edge band is measured in SOURCE pixels, not working ones. Stage 1
+    # resamples to `cfg.work_px_per_mm` (8.0, ON since 2026-10-01), so a
+    # 5 px/mm JPEG arrives 1.6x upscaled and its ringing, 1-2 source pixels
+    # wide, is now 2-4 working pixels: its interior stops being edge, the
+    # band gate fails, and the dissolve goes quiet. Measured on Bridge Bar at
+    # 80 mm with the grid ON: 5 labels / 26.2 mm2 dissolved against 37 /
+    # 249.3 mm2 with it off. Widening the band by the upscale factor asks
+    # the question at the resolution the halo was made at; at scale <= 1.5
+    # the radius is 1 and this is the old one-pixel band, byte for byte.
+    radius = max(1, int(round(source_scale)))
+    for d in range(2, radius + 1):
+        for dy, dx in ((d, 0), (-d, 0), (0, d), (0, -d)):
+            shifted = np.roll(labels, (dy, dx), (0, 1))
+            shifted_valid = np.roll(valid, (dy, dx), (0, 1))
+            edge |= valid & shifted_valid & (shifted != labels)
     code_v = np.searchsorted(ids, labels[valid])
     counts = np.bincount(code_v, minlength=n_ids)
     edge_counts = np.bincount(code_v[edge[valid]], minlength=n_ids)
@@ -2602,7 +2618,9 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
         merged, blend_drop, blend_warnings = dissolve_phantom_blends(
             merged, base_valid, true_lab, cfg,
             None if p.bg_from_alpha else p.bg_edge_rgb, p.px_per_mm,
-            page_mask=~valid)
+            page_mask=~valid,
+            source_scale=(p.px_per_mm / p.input_px_per_mm
+                          if p.input_px_per_mm > 0 else 1.0))
         if blend_drop is not None:
             # Page-side halo leaves the foreground before regions are cut
             # from it, so nothing downstream ever sees those pixels as
