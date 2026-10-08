@@ -524,13 +524,12 @@ about the facts.
    becomes a real problem; pinned as-is by `test/engine-service-parity.test.js`,
    which also pins defect 57's 30.3 mm bar stitch as `todo`.
    *(measured 2026-10-08 — PR #768)*
-34. **Twelve logos of unrecorded provenance in a public repo — NEW 2026-10-08.**
-   `digitizer/testdata/art/`'s six (status `unknown`) and six real logos with no
-   clearance recorded (script tires, hotel fremont, bridge bar, golden tee,
-   gaulke roofing, the golke phone screenshot); derived `docs/renders/` follow
-   them. Kent: origin, and keep or pull. A new fixture now fails CI without a
-   manifest row. *(confirmed 2026-10-08 — PR #717, `docs/asset-provenance.json`,
-   `test/asset-provenance.test.js`)*
+34. **RESOLVED 2026-10-08 — Kent ruled the twelve unrecorded logos cleared to keep**
+   (`digitizer/testdata/art/`'s six; script tires, hotel fremont, bridge bar,
+   golden tee, gaulke roofing, the golke phone screenshot). Manifest rows now
+   `client-cleared-by-kent`, review flag dropped; the derived `docs/renders/`
+   rows keep theirs. A new fixture fails CI without a manifest row.
+   *(ruled 2026-10-08 — `docs/asset-provenance.json`, `test/asset-provenance.test.js`; PR #717)*
 35. **RESOLVED 2026-10-08 — Kent flipped `satin_free_end_square` and
    `satin_slab_serifs` ON** on the four-arm render: a free end lands square, a
    foot or T slab sews as its own short column. *(ruled 2026-10-08 — PR #679)*

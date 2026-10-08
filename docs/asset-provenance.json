@@ -182,87 +182,75 @@
   },
   {
    "path": "digitizer/testdata/logo_script_tires.png",
-   "status": "real-art-clearance-unrecorded",
-   "source": "Real logo (blockcensus.py: 'genuine committed artwork')",
-   "basis": "docs/testdata-inventory.md (PR #705)",
-   "review": true
+   "status": "client-cleared-by-kent",
+   "source": "Real logo (blockcensus.py: 'genuine committed artwork'); Kent ruled cleared to keep 2026-10-08",
+   "basis": "Kent's ruling in session 2026-10-08 (PR #806 follow-up); earlier: docs/testdata-inventory.md (PR #705)"
   },
   {
    "path": "digitizer/testdata/photo/logo_hotel_fremont.webp",
-   "status": "real-art-clearance-unrecorded",
-   "source": "Real Hotel Fremont logo (thin_strokes.REAL_ART)",
-   "basis": "docs/testdata-inventory.md (PR #705)",
-   "review": true
+   "status": "client-cleared-by-kent",
+   "source": "Real Hotel Fremont logo (thin_strokes.REAL_ART); Kent ruled cleared to keep 2026-10-08",
+   "basis": "Kent's ruling in session 2026-10-08 (PR #806 follow-up); earlier: docs/testdata-inventory.md (PR #705)"
   },
   {
    "path": "digitizer/testdata/photo/logo_bridge_bar.jpg",
-   "status": "real-art-clearance-unrecorded",
-   "source": "Real bar logo (thin_strokes.REAL_ART)",
-   "basis": "docs/testdata-inventory.md (PR #705)",
-   "review": true
+   "status": "client-cleared-by-kent",
+   "source": "Real bar logo (thin_strokes.REAL_ART); Kent ruled cleared to keep 2026-10-08",
+   "basis": "Kent's ruling in session 2026-10-08 (PR #806 follow-up); earlier: docs/testdata-inventory.md (PR #705)"
   },
   {
    "path": "digitizer/testdata/photo/logo_golden_tee.jpg",
-   "status": "real-art-clearance-unrecorded",
-   "source": "Real logo, arrived after 2026-08 stage-0 spec",
-   "basis": "docs/testdata-inventory.md (PR #705)",
-   "review": true
+   "status": "client-cleared-by-kent",
+   "source": "Real logo, arrived after 2026-08 stage-0 spec; Kent ruled cleared to keep 2026-10-08",
+   "basis": "Kent's ruling in session 2026-10-08 (PR #806 follow-up); earlier: docs/testdata-inventory.md (PR #705)"
   },
   {
    "path": "digitizer/testdata/photo/logo_gaulke_roofing.png",
-   "status": "real-art-clearance-unrecorded",
-   "source": "Real roofing logo (thin_strokes.REAL_ART)",
-   "basis": "docs/testdata-inventory.md (PR #705)",
-   "review": true
+   "status": "client-cleared-by-kent",
+   "source": "Real roofing logo (thin_strokes.REAL_ART); Kent ruled cleared to keep 2026-10-08",
+   "basis": "Kent's ruling in session 2026-10-08 (PR #806 follow-up); earlier: docs/testdata-inventory.md (PR #705)"
   },
   {
    "path": "digitizer/testdata/photo/screenshot_phone_ui_golke.jpg",
-   "status": "real-art-clearance-unrecorded",
-   "source": "Real phone-UI screenshot of a logo, arrived after 2026-08 stage-0 spec",
-   "basis": "docs/testdata-inventory.md (PR #705)",
-   "review": true
+   "status": "client-cleared-by-kent",
+   "source": "Real phone-UI screenshot of a logo, arrived after 2026-08 stage-0 spec; Kent ruled cleared to keep 2026-10-08",
+   "basis": "Kent's ruling in session 2026-10-08 (PR #806 follow-up); earlier: docs/testdata-inventory.md (PR #705)"
   },
   {
    "path": "digitizer/testdata/art/logo_golke_roofing.png",
-   "status": "unknown",
-   "source": "No provenance recorded beyond filename (likely client logos)",
-   "basis": "docs/testdata-inventory.md (PR #705)",
-   "review": true
+   "status": "client-cleared-by-kent",
+   "source": "No provenance recorded beyond filename (likely client logos); Kent ruled cleared to keep 2026-10-08",
+   "basis": "Kent's ruling in session 2026-10-08 (PR #806 follow-up); earlier: docs/testdata-inventory.md (PR #705)"
   },
   {
    "path": "digitizer/testdata/art/logo_hotel_fremont_patch.png",
-   "status": "unknown",
-   "source": "No provenance recorded beyond filename (likely client logos)",
-   "basis": "docs/testdata-inventory.md (PR #705)",
-   "review": true
+   "status": "client-cleared-by-kent",
+   "source": "No provenance recorded beyond filename (likely client logos); Kent ruled cleared to keep 2026-10-08",
+   "basis": "Kent's ruling in session 2026-10-08 (PR #806 follow-up); earlier: docs/testdata-inventory.md (PR #705)"
   },
   {
    "path": "digitizer/testdata/art/logo_mfab_hat.png",
-   "status": "unknown",
-   "source": "No provenance recorded beyond filename (likely client logos)",
-   "basis": "docs/testdata-inventory.md (PR #705)",
-   "review": true
+   "status": "client-cleared-by-kent",
+   "source": "No provenance recorded beyond filename (likely client logos); Kent ruled cleared to keep 2026-10-08",
+   "basis": "Kent's ruling in session 2026-10-08 (PR #806 follow-up); earlier: docs/testdata-inventory.md (PR #705)"
   },
   {
    "path": "digitizer/testdata/art/logo_mfab_lc.png",
-   "status": "unknown",
-   "source": "No provenance recorded beyond filename (likely client logos)",
-   "basis": "docs/testdata-inventory.md (PR #705)",
-   "review": true
+   "status": "client-cleared-by-kent",
+   "source": "No provenance recorded beyond filename (likely client logos); Kent ruled cleared to keep 2026-10-08",
+   "basis": "Kent's ruling in session 2026-10-08 (PR #806 follow-up); earlier: docs/testdata-inventory.md (PR #705)"
   },
   {
    "path": "digitizer/testdata/art/logo_toat_beanie.png",
-   "status": "unknown",
-   "source": "No provenance recorded beyond filename (likely client logos)",
-   "basis": "docs/testdata-inventory.md (PR #705)",
-   "review": true
+   "status": "client-cleared-by-kent",
+   "source": "No provenance recorded beyond filename (likely client logos); Kent ruled cleared to keep 2026-10-08",
+   "basis": "Kent's ruling in session 2026-10-08 (PR #806 follow-up); earlier: docs/testdata-inventory.md (PR #705)"
   },
   {
    "path": "digitizer/testdata/art/logo_toat_machine.png",
-   "status": "unknown",
-   "source": "No provenance recorded beyond filename (likely client logos)",
-   "basis": "docs/testdata-inventory.md (PR #705)",
-   "review": true
+   "status": "client-cleared-by-kent",
+   "source": "No provenance recorded beyond filename (likely client logos); Kent ruled cleared to keep 2026-10-08",
+   "basis": "Kent's ruling in session 2026-10-08 (PR #806 follow-up); earlier: docs/testdata-inventory.md (PR #705)"
   },
   {
    "path": "app/e2e/fixtures/two-squares.png",

@@ -132,5 +132,5 @@ crash (#765), and a **provenance manifest for every image and stitch file**
    `digitizer/testdata/art/` (golke roofing, hotel fremont patch, mfab hat,
    mfab lc, toat beanie, toat machine) and six real logos with no clearance
    on file (script tires, hotel fremont, bridge bar, golden tee, gaulke
-   roofing, a phone screenshot). The repo is public. Tell us where each came
-   from and whether it may stay.
+   roofing, a phone screenshot). **Settled the same day: Kent ruled them
+   cleared to keep**; the manifest now records that.
