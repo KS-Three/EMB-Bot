@@ -79,7 +79,7 @@ test("an imported design reaches Download and exports", async ({ page }) => {
   const anyway = page.getByRole("button", { name: "Download DST anyway", exact: true });
   if (await anyway.isVisible().catch(() => false)) await anyway.click();
   const d = await dl;
-  expect(d.suggestedFilename()).toBe("design.dst");
+  expect(d.suggestedFilename()).toBe("standard-tajima.dst");
 });
 
 test("no DST caveat appears on the Download step, and DST leads", async ({ page }) => {

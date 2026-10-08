@@ -42,6 +42,7 @@ vi.mock("../lib/generate.js", () => ({
   }),
 }));
 vi.mock("../lib/exporters.js", () => ({
+  exportFileName: (name, ext) => `${name || "design"}.${ext}`,
   exportDesignPreferService: async (design, format, opts) => {
     exportCalls.push({ format, preferService: opts.preferService });
     return {

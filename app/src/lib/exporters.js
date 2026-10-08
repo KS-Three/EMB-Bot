@@ -4,6 +4,19 @@ import { exportViaService } from "./digitizer.js";
 import { sewFacts, sewSummary } from "./estimate.js";
 import { loadQuote, profileById } from "./quote.js";
 
+// "Fritsch's Stitches: Hat #2" + "dst" -> "fritsch-s-stitches-hat-2.dst".
+// Same slug rule as projectFileName (.embproj backups), so a design's backup
+// and its machine file share a stem. An empty name keeps the old "design".
+export function exportFileName(name, ext) {
+  const base = String(name || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+    .replace(/-+$/, "");
+  return (base || "design") + "." + ext;
+}
+
 export function exportDesign(design, format) {
   switch (format) {
     case "dst":

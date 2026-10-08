@@ -119,7 +119,7 @@ test("configurator: text -> download sheet -> DST", async ({ page }) => {
   await confirmOversizeExport(page, "DST");
   const download = await downloadPromise;
 
-  expect(download.suggestedFilename()).toBe("design.dst");
+  expect(download.suggestedFilename()).toBe("emb-test.dst");
   const dstPath = await download.path();
   expect(dstPath).toBeTruthy();
   const { statSync } = await import("node:fs");
@@ -253,7 +253,7 @@ test("configurator: image content path -> sheet reflects it -> download", async 
   // above is the gate working -- it fires on the design, not on the garment.
   const download = await downloadPromise;
 
-  expect(download.suggestedFilename()).toBe("design.dst");
+  expect(download.suggestedFilename()).toBe("two-squares.dst");
   const dstPath = await download.path();
   expect(dstPath).toBeTruthy();
   expect(statSync(dstPath).size).toBeGreaterThan(512);
@@ -274,7 +274,7 @@ test("configurator: PES, EXP, and PDF worksheet exports produce real files", asy
   await page.getByRole("button", { name: "PES", exact: true }).click();
   await confirmOversizeExport(page, "PES");
   const pesDownload = await pesDownloadPromise;
-  expect(pesDownload.suggestedFilename()).toBe("design.pes");
+  expect(pesDownload.suggestedFilename()).toBe("emb-test.pes");
   const pesPath = await pesDownload.path();
   expect(pesPath).toBeTruthy();
   const { readFileSync } = await import("node:fs");
@@ -290,7 +290,7 @@ test("configurator: PES, EXP, and PDF worksheet exports produce real files", asy
   await page.getByRole("button", { name: "EXP", exact: true }).click();
   await confirmOversizeExport(page, "EXP");
   const expDownload = await expDownloadPromise;
-  expect(expDownload.suggestedFilename()).toBe("design.exp");
+  expect(expDownload.suggestedFilename()).toBe("emb-test.exp");
   const expPath = await expDownload.path();
   expect(expPath).toBeTruthy();
   expect(statSync(expPath).size).toBeGreaterThan(64);

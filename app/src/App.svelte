@@ -1317,6 +1317,7 @@
     {#if sheetOpen}
       <DownloadSheet
         {project}
+        designName={projectName}
         {runtime}
         {digitizerHealth}
         {summaryRows}

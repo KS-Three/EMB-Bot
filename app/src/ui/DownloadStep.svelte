@@ -1,7 +1,7 @@
 <script>
   import { onMount, createEventDispatcher } from "svelte";
   import { generateAll } from "../lib/generate.js";
-  import { exportDesignPreferService, exportWorksheetPDF, exportPNG, isServiceOnlyFormat } from "../lib/exporters.js";
+  import { exportFileName, exportDesignPreferService, exportWorksheetPDF, exportPNG, isServiceOnlyFormat } from "../lib/exporters.js";
   import { chartIdForProject } from "../lib/designChart.js";
   import { isSewable } from "../lib/flow.js";
   import { triggerDownload } from "../lib/download.js";
@@ -34,6 +34,8 @@
     saveMachineId(machineId);
   }
   export let project;
+  // The design's display name; the exported file is named from it.
+  export let designName = "";
   // Task 4 (Slice 5): export now covers every ready element in the project
   // (generateAll's combined design), not just a single text/image design —
   // `runtime` (the per-element flattened-image map, owned by App) is needed
@@ -539,7 +541,7 @@
         label: project.name,
         preferService: isPurelyDigitized(project),
       });
-      const where = await saveOut(out);
+      const where = await saveOut({ ...out, filename: exportFileName(designName, fmt) });
       // The message still names which encoder ran -- neutral provenance, not
       // a caveat. It stopped being a caveat on 2026-09-08, when the browser
       // DST codec was put right and both warning notes came out. `where` names
@@ -595,7 +597,7 @@
       await ensureFonts(fontKeysOf(project));
       const design = buildDesign();
       const out = await exportPNG(design);
-      const where = await saveOut({ bytes: out.blob, filename: out.filename, mime: out.mime });
+      const where = await saveOut({ bytes: out.blob, filename: exportFileName(designName, "png"), mime: out.mime });
       msg = "Saved PNG" + where;
     } catch (e) {
       msg = e.message;
