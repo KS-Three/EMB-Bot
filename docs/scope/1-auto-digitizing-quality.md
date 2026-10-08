@@ -188,7 +188,7 @@ fixtures byte-identical, and **no grade or block count moves anywhere**:
 `THREAD_MATCH_POOR` blocks per thread on that thread's worst patch, so fixing
 six of a thread's shards is invisible while a seventh is bad. It fixes sewn
 colour the scorecard cannot see — a phase-1 datum, with the render at
-`docs/renders/small-shape-resnap-2026-09-06/`. Flipping it ON is Kent's.
+`docs/renders/small-shape-resnap-2026-09-06/`. Flipping it ON was Kent's (done — flipped 2026-09-10; confirmed 2026-10-08 — `digitizer/digitizer_core/config.py` `revalidate_small_shapes: bool = True`).
 
 **And a sibling correction in the check that condemns those shapes**
 (2026-09-06): `preflight._region_color_errors` scored `enclosed_background`
@@ -341,7 +341,12 @@ The corpus baseline was recaptured under the per-region yardstick in
 discusses: `drone_render.png` (both configs) — grade F, 16
 `THREAD_MATCH_POOR` findings (4 block, 12 warn), worst dE 14.1;
 `summit_badge.png` (both configs) — grade F, 7 `THREAD_MATCH_POOR` findings
-(1 block, 6 warn), worst dE 10.2. The paragraphs above stand as the record
+(1 block, 6 warn), worst dE 10.2. *(These were the `307e69d` figures; the
+baseline was recaptured 2026-10-04 and 2026-10-05 and now reads, at
+`hat_front` and `left_chest` alike, `drone_render.png` grade F with 9 `THREAD_MATCH_POOR` (3 block,
+6 warn) and `summit_badge.png` grade F with 10 (2 block, 8 warn) —
+confirmed 2026-10-08 — `digitizer/testdata/corpus_scorecard_baseline.json`,
+captured at `d000e370`.)* The paragraphs above stand as the record
 of why the change was needed.
 
 **This fix is grade-flat-or-negative by construction on the current
@@ -3613,6 +3618,8 @@ rules out redundancy without proving independence. Instrument only, no engine
 change. *(measured 2026-08-27 — PR #281;
 `docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
 
+*Update: `curve_roughness_deg` no longer stays offline — it reaches preflight as `curve_roughness*` metrics (judges nothing), alongside `edge_wobble_<tier>_*` (defect 46). (confirmed 2026-10-08 — `digitizer_core/preflight.py` `_edge_wobble_metrics`/curve-roughness metrics, commits 84fb94a5, 1d6297ed)*
+
 *Moved from MASTER_SCOPE (2026-09-19), verbatim, to make room under its word
 budget:* On Kent's four Becker artworks the two SPARSE ones measure roughest —
 complexity, not size (an earlier "small placements sew rougher" reading is
@@ -3879,6 +3886,8 @@ its thresholds are knife edges on statistics that move ~0.05–0.1 with
 boundary detail. *(measured 2026-09-03 — `docs/classifier-stability-2026-09-03.md`)*
 
 ## Rails follow the edge — `satin_rails_follow_edge`, built OFF (2026-09-03)
+
+*Update: the flag is no longer a bool-OFF — the shipped default is now the string `"envelope"` (ON since 2026-09-30, Kent's pick after #561); `False` is the symmetric model this section measured against, `True` (the per-station following measured below) stays parked. (confirmed 2026-10-08 — `digitizer/digitizer_core/config.py` `satin_rails_follow_edge`, PR #563)*
 
 Per-side rail profiles behind a flag. The 17–23% of lettering rail points
 > 0.1 mm inside the art (rail-dents record §3) are not the symmetric model:

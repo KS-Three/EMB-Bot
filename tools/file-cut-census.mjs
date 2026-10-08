@@ -58,6 +58,7 @@
 // holes are counted in each file.
 //
 // `--pystitch`: a third-party reader's count beside this one's, on a sample.
+import "./_help.mjs";
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, renameSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";

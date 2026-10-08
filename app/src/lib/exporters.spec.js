@@ -1,4 +1,4 @@
-import { test, expect, beforeAll, vi } from "vitest";
+import { test, expect, beforeAll, beforeEach, vi } from "vitest";
 import { createRequire } from "node:module";
 import { preloadAllFontsSync } from "./testFonts.js";
 
@@ -10,6 +10,13 @@ vi.mock("jspdf", () => ({ jsPDF: class FakeJsPDF {} }));
 vi.mock("./preview.js", () => ({
   renderRealistic: vi.fn(),
 }));
+
+// The mock is module-level shared state: without this, call counts leak
+// between tests and `toHaveBeenCalledTimes(1)` fails under --sequence.shuffle.
+beforeEach(async () => {
+  const { renderRealistic } = await import("./preview.js");
+  renderRealistic.mockClear();
+});
 
 let design;
 beforeAll(async () => {
@@ -420,4 +427,13 @@ test("exportPNG handles aspect ratio guard (zero height treated as 1mm)", async 
   } finally {
     globalThis.document.createElement = originalCreateElement;
   }
+});
+
+test("exportFileName slugs the design name and falls back to design", async () => {
+  const { exportFileName } = await import("./exporters.js");
+  expect(exportFileName("Fritsch's Stitches: Hat #2", "dst")).toBe("fritsch-s-stitches-hat-2.dst");
+  expect(exportFileName("  ---  ", "pes")).toBe("design.pes");
+  expect(exportFileName("", "exp")).toBe("design.exp");
+  expect(exportFileName("Ünï/cödé\\..", "dst")).toBe("n-c-d.dst");
+  expect(exportFileName("a".repeat(200), "dst")).toBe("a".repeat(60) + ".dst");
 });

@@ -392,6 +392,13 @@ def _wanted_art_width(region: Region, *, pull_mm: float,
     if measured is None:
         return None, None, False
     target, source, deliberate = float(measured), "shape", False
+    if floor_sewn_mm and region.meta.get("word_tier") == "widened":
+        # L3 (`cfg.lettering_word_tiers`): the WORD was decided under the
+        # floor, so every member takes it, auto or not -- the decision is
+        # the word's, not this pass's. Only that flag writes the key.
+        floor_art = art_width_mm(float(floor_sewn_mm), pull_mm)
+        if floor_art > target:
+            return floor_art, "floor", True
     if not auto:
         return target, source, deliberate
     auto_mm = region.meta.get(AUTO_KEY)

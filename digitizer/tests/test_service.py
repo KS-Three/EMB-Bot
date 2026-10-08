@@ -1408,7 +1408,9 @@ def test_running_jobs_are_never_evicted():
     """A burst of submissions must not orphan work in flight."""
     import threading
 
-    registry = JobRegistry(workers=1)
+    # The in-flight bound (jobs.MAX_INFLIGHT) would refuse this burst with
+    # Busy long before eviction matters; this test is about eviction.
+    registry = JobRegistry(workers=1, max_inflight=100)
     release = threading.Event()
     slow, _ = registry.submit("slow", lambda: (release.wait(10), {"ok": True})[1])
 

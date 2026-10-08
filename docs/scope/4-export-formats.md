@@ -25,8 +25,9 @@ lettering or manual shapes downloads through the browser encoders.
 
 **Confidence — varies by format, not one score:**
 - **DST:** split by path. Browser DST is Medium as Studio's sewn-and-shipping
-  default; Low if treated as verified-correct-orientation in the abstract —
-  see the cross-cutting DST item, this is the same bug. Python `/export` DST
+  default; the axis bug that made it Low in the abstract is FIXED
+  (2026-09-08, see below) — it is read-back verified, not yet sewn.
+  *(confirmed 2026-10-08 — `src/dst.js`, `test/crossval-stitch-formats.test.js`)* Python `/export` DST
   (pyembroidery, standard-conformant) is Medium-High by spec, not yet
   sew-verified itself.
 - **EXP: Medium-High**, upgraded from Medium-Low this pass. The PR #18
@@ -46,9 +47,9 @@ lettering or manual shapes downloads through the browser encoders.
   encoder already stopped at `"end"` the same way; `encodeEXP` now does too
   (`if (st.type === "end") break;`, matching `pes.js`'s exact pattern).
   Harness re-run: `exp.notrim`/`exp.full` both now read `expected 15, decoded
-  15` (was `decoded 16`). DST carries the identical underlying gap and is
-  deliberately left alone (Kent's call, migration risk — see the cross-
-  cutting section) — EXP has no importer anywhere in this codebase, so
+  15` (was `decoded 16`). DST carried the identical gap and was fixed
+  2026-09-08 (`if (st.type === "end") break;` in `src/dst.js`; *confirmed
+  2026-10-08 — src/dst.js*) — EXP has no importer anywhere in this codebase, so
   fixing it here carries none of that risk, same low-risk read the original
   PES/EXP fix got. Not raised all the way to High since this is
   cross-validated against pyembroidery, not a real machine/software sew or
@@ -130,22 +131,23 @@ lettering or manual shapes downloads through the browser encoders.
   High, since this is still automated-inspection rather than a human/visual
   check of the rendered page.
 
-**Open issues:** DST axis bug (cross-cutting, see above) — unchanged, still
-Kent's call, `src/dst.js` deliberately untouched by the PES/EXP fix below.
+**Open issues:** the DST axis bug is **FIXED 2026-09-08** (see the "verified by
+PICTURE" section below; *confirmed 2026-10-08 — src/dst.js*); this paragraph
+predates it and its "still Kent's call" wording is stale.
 PES/EXP's own cross-validation findings (PR #18) are **fixed as of
 2026-08-05** (PR #58, `pes-exp-byte-framing-fix` — see the cross-cutting section
 above and this file's "Last updated" entry for the full before/after): PES
 no longer decodes as garbage in standard readers, and EXP no longer aborts
 at the first trim. The "end"-record extra-stitch quirk EXP used to share
 with DST is **also fixed as of 2026-08-06** — see the EXP bullet above;
-DST keeps its own copy of the same gap, deliberately, Kent's call.
+DST's copy of the same gap was fixed 2026-09-08 too (*confirmed 2026-10-08 — src/dst.js*).
 Remaining, explicitly-accepted gaps: nearest-chart colour mapping isn't a
 lossless round-trip (64 fixed PEC chart colors); and no real Brother-machine
 load or PE-Design open has happened yet — only pyembroidery
 cross-validation.
 
-**Next step:** for DST, same as the cross-cutting item — a third-party
-sew-out/read settles the axis question. For PES/EXP, the verdict memo's own
+**Next step:** for DST, the axis question is closed by the 2026-09-08 fix and
+picture render; what remains is a real-machine sew-out (ROADMAP gate 1). For PES/EXP, the verdict memo's own
 closing line: a real Brother-machine load (or PE-Design open) of a
 harness-clean PES file, to confirm machine behavior matches the
 cross-validation, not just pyembroidery agreement. Separately, not
@@ -228,6 +230,13 @@ downloadable outputs now read correctly to something other than EMB-Bot. The
 PDF worksheet was broken and is fixed — see area 3.
 
 ## The service writes ten formats and the Studio offers four (2026-09-08)
+
+**Superseded in part (confirmed 2026-10-08 — `app/src/lib/exporters.js`
+`SERVICE_ONLY_FORMATS = {jef, xxx, vp3}`, `DownloadStep.svelte`): Kent made the
+scope call 2026-09-12 and XXX (Singer) and VP3 (Husqvarna Viking / Pfaff) now
+ship as service-only buttons, so the Studio offers six machine formats. PEC and
+U01 are still not offered; the heading and the "unoffered" labels below are the
+2026-09-08 snapshot.**
 
 **Three more brands are one button away, with zero backend work.** The service's
 `FORMATS` table declares ten; `DownloadStep.svelte` offers **DST, PES, EXP, JEF**

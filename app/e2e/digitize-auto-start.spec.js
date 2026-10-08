@@ -127,7 +127,10 @@ test("Upload file opens the file browser; cancelling adds nothing, choosing adds
   await page.locator(".eladd-row button", { hasText: "Artwork" }).click();
   chooser = await chooserPromise;
   await chooser.setFiles(ART_PNG);
-  await expect(rows).toHaveCount(before + 1);
+  // A fresh design's only row is its empty text box, which the art REPLACES
+  // (art-first-size.spec.js) — so the count holds and the row is the art.
+  await expect(rows).toHaveCount(before);
+  await expect(rows.filter({ hasText: "Text · empty" })).toHaveCount(0);
   await expect(page.locator(".dgp-run")).toHaveText("Auto Digitize Image");
 });
 
@@ -250,7 +253,7 @@ test("JEF downloads a real file through the service — the format with no brows
   const downloadPromise = page.waitForEvent("download");
   await jef.click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe("design.jef");
+  expect(download.suggestedFilename()).toMatch(/^[a-z0-9-]+\.jef$/);
   const jefPath = await download.path();
   const jefBytes = readFileSync(jefPath);
   expect(jefBytes.length).toBeGreaterThan(512);
@@ -266,7 +269,7 @@ test("JEF downloads a real file through the service — the format with no brows
   const dstPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "DST", exact: true }).click();
   const dst = await dstPromise;
-  expect(dst.suggestedFilename()).toBe("design.dst");
+  expect(dst.suggestedFilename()).toMatch(/^[a-z0-9-]+\.dst$/);
   expect(readFileSync(await dst.path()).equals(jefBytes)).toBe(false);
 });
 
@@ -326,7 +329,7 @@ async function jefHoopCode(page) {
   const anyway = page.getByRole("button", { name: "Download JEF anyway", exact: true });
   if (await anyway.isVisible().catch(() => false)) await anyway.click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe("design.jef");
+  expect(download.suggestedFilename()).toMatch(/^[a-z0-9-]+\.jef$/);
   return readFileSync(await download.path()).readInt32LE(JEF_HOOP_CODE_OFFSET);
 }
 

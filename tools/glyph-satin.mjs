@@ -2,6 +2,7 @@
 // -> satinFromRails playback -> render. Orders columns nearest-neighbour and
 // draws travel faintly so satin quality is what stands out.
 // Usage: TEXT=B FAMILY=Roboto SIZE=400 node tools/glyph-satin.mjs out.png
+import "./_help.mjs";
 import fs from "node:fs";
 import { createRequire } from "module";
 import { encodePNG } from "./png.mjs";
