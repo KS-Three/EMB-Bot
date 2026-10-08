@@ -20,6 +20,7 @@
 // 0.25 mm, more than 1 mm outside the preset's ring.
 // NEW THREAD: a sewn or floated segment in the "on" stream not in the "off"
 // one. `cutFloats` moves no stitch, so anything here is thread laid anew.
+import "./_help.mjs";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { join, dirname } from "node:path";
