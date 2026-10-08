@@ -1,0 +1,100 @@
+--- a/src/fill.js
++++ b/src/fill.js
+@@ -127,6 +127,36 @@
+   // that turn could only be cut: its two ends sit on different rings.
+   // (A fill's own turns are one pitch long and never deep, so only passes with
+   // rows far apart are split.) Changes `cut` in place.
++  // The shorter way round the ring a and b both sit on, its corners thinned
++  // to within tol of the ring; null on different rings or over budget.
++  function plainRingWay(rings, ringOf, posOf, a, b, budget, tol) {
++    if (a.e == null || b.e == null || ringOf[a.e] !== ringOf[b.e]) return null;
++    const ring = rings[ringOf[a.e]], n = ring.length, cum = [0];
++    for (let k = 1; k <= n; k++) cum.push(cum[k - 1] + Math.hypot(ring[k % n].x - ring[k - 1].x, ring[k % n].y - ring[k - 1].y));
++    const total = cum[n], wrap = (v) => ((v % total) + total) % total;
++    const i = posOf[a.e], j = posOf[b.e];
++    const sa = cum[i] + Math.hypot(a.x - ring[i].x, a.y - ring[i].y), sb = cum[j] + Math.hypot(b.x - ring[j].x, b.y - ring[j].y);
++    const ahead = wrap(sb - sa) <= total / 2, span = ahead ? wrap(sb - sa) : wrap(sa - sb);
++    if (span > budget) return null;
++    const pts = [];
++    for (let k = 1; k <= n; k++) {
++      const v = ahead ? (i + k) % n : (((i - k + 1) % n) + n) % n;
++      const off = ahead ? wrap(cum[v] - sa) : wrap(sa - cum[v]);
++      if (off >= span - ON_EDGE_EPS) break;
++      if (off > ON_EDGE_EPS) pts.push({ x: ring[v].x, y: ring[v].y });
++    }
++    pts.push(b);
++    const seq = [a].concat(pts), kept = [];
++    let p = 0;
++    while (p < seq.length - 1) {
++      let q = p + 1;
++      const hugs = (m2) => { for (let m = p + 1; m < m2; m++) if (distToSegment(seq[m], seq[p], seq[m2]) > tol) return false; return true; };
++      while (q + 1 < seq.length && hugs(q + 1)) q++;
++      kept.push(seq[q]); p = q;
++    }
++    return kept;
++  }
++
+   function splitAtOpenTurns(cut, edges, tol) {
+     const { columns, above } = cut;
+     const whole = columns.length;
+@@ -1174,12 +1204,14 @@
+         const rev = rowIndex % 2 === 1;
+         const ordered = rev ? spans.slice().reverse() : spans;
+         const grp = [];
+-        for (const span of ordered) {
++        const orderedEdges = rev ? spanEdges.slice().reverse() : spanEdges;
++        ordered.forEach((span, k) => {
+           const start = rev ? span[1] : span[0];
+           const end = rev ? span[0] : span[1];
+-          grp.push({ x: start, y });
+-          grp.push({ x: end, y });
+-        }
++          const se = orderedEdges[k];
++          grp.push({ x: start, y, e: rev ? se[1] : se[0] });
++          grp.push({ x: end, y, e: rev ? se[0] : se[1] });
++        });
+         rowGroups.push(grp);
+         rowSpans.push({ ri: rowIndex, y, spans, spanEdges });
+       }
+@@ -1247,7 +1279,7 @@
+     // A plain shape changes in one way: a turn longer than a stitch that runs
+     // outside the shape is sewn along the rim, where the walk below floats it.
+     const markConnectors = !!opts.markConnectors;
+-    let rimTurn = null;
++    let rimTurn = null, checked = null;
+     if (opts.columns) {
+       const tol = opts.openTol > 0 ? opts.openTol : rowSpacing;
+       const floated = (d) => !!(maxStitch && maxStitch > 0 && d > maxStitch);
+@@ -1272,6 +1304,7 @@
+         if (under === OPEN) plain = false;
+         else if (under === ON_RIM && floated(d)) rimTurn[i] = true;
+       }
++      if (!plain && globalThis.__CHECKED && rowSpacing > 1.5 * tol) { checked = { ground, tol }; plain = true; }
+       if (!plain) {
+         if (startOnly) return null;
+         const cut = cutColumns(spansWithLength(rowSpans));
+@@ -1309,6 +1342,24 @@
+       const dist = Math.hypot(dx, dy);
+       const isConnector = i % 2 === 0;
+       const isSweepBoundary = i === lowerSweepStartIdx;
++      if (checked && isConnector && dist > 2 * checked.tol) {
++        const under = groundUnder(a, b, checked.ground, checked.tol, 0, true);
++        if (under === OPEN) {
++          const way = plainRingWay(rings, ringOf, posOf, a, b, Math.max(maxStitch > 0 ? 5 * maxStitch : Infinity, 4 * dist), checked.tol);
++          if (way) {
++            let q = a;
++            for (const r of way) { const L = Math.hypot(r.x - q.x, r.y - q.y); if (maxStitch && L > maxStitch) { const st = Math.ceil(L / maxStitch); for (let s2 = 1; s2 < st; s2++) out.push(rotate({ x: q.x + (r.x - q.x) * s2 / st, y: q.y + (r.y - q.y) * s2 / st }, cosP, sinP)); } out.push(rotate(r, cosP, sinP)); q = r; }
++            continue;
++          }
++          const p = rotate(b, cosP, sinP); p.travel = true; p.trim = true; out.push(p); continue;
++        }
++        if (under === ON_RIM && maxStitch && dist > maxStitch) {
++          const steps = Math.ceil(dist / maxStitch);
++          for (let s = 1; s < steps; s++) out.push(rotate({ x: a.x + dx * s / steps, y: a.y + dy * s / steps }, cosP, sinP));
++          out.push(rotate(b, cosP, sinP));
++          continue;
++        }
++      }
+       if (markConnectors && isConnector && maxStitch && dist > maxStitch && !(rimTurn && rimTurn[i])) {
+         const p = rotate(b, cosP, sinP);
+         p.travel = true;

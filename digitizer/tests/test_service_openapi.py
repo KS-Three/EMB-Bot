@@ -46,3 +46,11 @@ def test_error_and_job_models_are_referenced():
     schema = app.openapi()
     names = set(schema["components"]["schemas"])
     assert {"ErrorBody", "JobSubmitted", "JobStatus", "Health"} <= names
+
+
+def test_hardening_responses_are_documented():
+    paths = app.openapi()["paths"]
+    assert "503" in paths["/digitize"]["post"]["responses"]
+    for path, ops in paths.items():
+        for op in ops.values():
+            assert "504" in op["responses"], path

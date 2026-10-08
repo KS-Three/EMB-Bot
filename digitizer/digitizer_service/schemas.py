@@ -103,3 +103,5 @@ def error(description: str) -> dict:
 
 
 UNAUTHORIZED = {401: error("Service has a token set and `X-EMBBOT-Token` is missing or wrong.")}
+BUSY = {503: error("The digitizer is busy with other designs; try again in a minute.")}
+TIMEOUT = {504: error("The request exceeded the service's request deadline.")}
