@@ -3,6 +3,7 @@ import { renderRealistic } from "./preview.js";
 import { exportViaService } from "./digitizer.js";
 import { sewFacts, sewSummary } from "./estimate.js";
 import { loadQuote, profileById } from "./quote.js";
+import { friendlyError } from "./friendlyError.js";
 
 // "Fritsch's Stitches: Hat #2" + "dst" -> "fritsch-s-stitches-hat-2.dst".
 // Same slug rule as projectFileName (.embproj backups), so a design's backup
@@ -125,7 +126,9 @@ export async function exportDesignPreferService(design, format, opts = {}) {
       const out = await exportViaServiceFn(design, format, label, fetchFn);
       return { ...out, via: "service" };
     } catch (e) {
-      throw new Error(`${format.toUpperCase()} is written by the digitizer service, which isn\u2019t answering — start it and try again. (${e.message})`);
+      // Keep the cause when the service gave one in words; never paste raw
+      // transport text ("Failed to fetch") after the sentence.
+      throw new Error(friendlyError(e, "export", `${format.toUpperCase()} file`));
     }
   }
   if (preferService && SERVICE_EXPORT_FORMATS.has(format)) {

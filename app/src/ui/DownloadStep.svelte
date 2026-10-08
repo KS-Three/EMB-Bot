@@ -11,6 +11,7 @@
   import { ensureFonts } from "../lib/fontLoader.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
   import { MACHINES, machineById, loadMachineId, saveMachineId } from "../lib/machines.js";
+  import { friendlyError } from "../lib/friendlyError.js";
 
   // "Your machine" (2026-09-30): the customer picks the brand on the front
   // of their machine and gets ONE download button in the format it reads,
@@ -549,7 +550,7 @@
       msg = "Saved " + fmt.toUpperCase() + where
         + (out.via === "service" ? " (digitizer service encoder)" : " (browser encoder)");
     } catch (e) {
-      msg = e.message;
+      msg = friendlyError(e, "export", fmt.toUpperCase() + " file");
     }
   }
 
@@ -586,7 +587,7 @@
       await exportWorksheetPDF(design, garment, effectiveHoop(project).hoop, palette.label, hoopExceeds);
       msg = "Worksheet saved.";
     } catch (e) {
-      msg = e.message;
+      msg = friendlyError(e, "export", "PDF worksheet");
     } finally {
       worksheetBusy = false;
     }
@@ -600,7 +601,7 @@
       const where = await saveOut({ bytes: out.blob, filename: exportFileName(designName, "png"), mime: out.mime });
       msg = "Saved PNG" + where;
     } catch (e) {
-      msg = e.message;
+      msg = friendlyError(e, "export", "PNG picture");
     }
   }
 </script>
@@ -804,7 +805,7 @@
      of their machines want, and it teaches them to distrust the ones we keep.
      If a future difference reappears, MEASURE it and write a note about that
      difference — do not restore these. -->
-<p>{msg}</p>
+<p aria-live="polite">{msg}</p>
 <p class="fontcredits-footer">
   <button type="button" class="linklike" on:click={openCredits}>Fonts: open-source — see credits</button>
 </p>
