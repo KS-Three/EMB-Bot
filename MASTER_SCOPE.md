@@ -362,9 +362,11 @@ about the facts.
 
 18. **OPEN: a COLD photo digitize is ~90 s and `fill_travel_under_cover` is ~58% of it.** The 2026-09-17 memo fixed the RE-stitch (79.3 → 44.6 s); the first digitize still pays the flag in full. Three ways out, all Kent's: flip it off (costs stitches, re-exposes the travel it hides), optimise `_reorder_for_cover` (golden-pinned — a win must be byte-identical), or accept it. **Do not re-derive the numbers** — method, noise floor, per-flag table and three INERT flags are in the doc. *(measured 2026-09-17 — `docs/flag-runtime-bills-2026-09-12.md`)*
 
-19. **RESOLVED 2026-10-03 — `satin_cap_recentre` is ON** (Kent: after on becker
-   and tires). `satin_walk_cursor_reach_mm` stays parked for cloth (Kent
-   2026-09-20). *(flipped 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`)*
+19. **RESOLVED 2026-10-03 — `satin_cap_recentre` is ON** (Kent's ruling in chat,
+   on his sitting: after on becker and tires, before on none; Latent 5).
+   `satin_patch_junctions = "satin"` was never waiting — the junction stack's
+   part C since 2026-09-19 — and `satin_walk_cursor_reach_mm` stays parked for
+   cloth (Kent 2026-09-20). *(flipped 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`)*
 
 20. **Paired ground truth costs money or it does not exist.** No free source
    ships artwork PLUS a professional's stitch file of the same design, and the
@@ -499,12 +501,6 @@ about the facts.
 30. **RESOLVED 2026-10-07 — `satin_join_square` ON again with the bend cap**
    after its guards held Kent's 10-06 flip for one lost ENTHUSIAST element
    (defect 60, fixed the same day). *(measured 2026-10-07 — PR #663, the flip PR; DOCTRINE 2026-10-07)*
-
-31. **RESOLVED 2026-10-08 — Kent flipped `satin_free_end_square` AND
-   `satin_slab_serifs` ON** on the four-arm render. A hooked square free end
-   lands square; a foot or T slab is sewn as its own column. Fremont 80 mm:
-   bare letter artwork 3.20 → 0.84 mm², fan ends 16 → 9, +137 stitches,
-   trims 38 → 39. Not sewn. *(measured 2026-10-08 — `tools/join_square_census.py`)*
 
 ## Cross-cutting issues
 

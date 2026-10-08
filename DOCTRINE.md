@@ -8785,22 +8785,3 @@ element by its shape id and a crop before choosing the cure, and census the
 candidate test over EVERY fixture's accepted cases: the first discriminator
 that parts the broken fixture from the clean one can refuse the clean cases
 everywhere else.** *(measured 2026-10-07 — `docs/join-square-enthusiast-2026-10-07.md`; `tests/test_join_corner_bend_cap.py`)*
-
-## 2026-10-08 — A fan can be the only thread a slab gets: price "square" in bare artwork, and read fans with an instrument that can see them
-
-Building `satin_free_end_square` (T-slabs, foot serifs, hooked caps), three things that
-change what the next session does. **The fan was coverage.** `_prune_spurs`
-drops a slab's two wings as a cap I-beam, so nobody owns them, and the arm's
-fan into one wing was its only thread: straightening the arm alone took
-Fremont's H feet from fanned to bare (rendered before it was measured). The
-cure was to sew the slab as its own column; the rule is **price any
-"square the crosses" change in bare artwork, not in fan counts.** **The fan
-counter could not see the worst fans.** `letter_band.fan_ends` cuts columns
-by strict side alternation, and a splayed end breaks it, so a column starts
-AFTER its fan (the E's middle arm read 0 while turning 90 → 57 deg);
-`splay_ends` grows each column back over those crosses. **Each gate came from
-a corpus render, not the fixture:** an 8 mm stem on 3 mm half-widths (Becker's
-N, 8.8 mm² bare), a U's arm fitting a line through its bowl, an S's slanted
-terminal where the fan IS the construction. Fremont alone would have shipped
-all three. *(measured 2026-10-08 — `tools/join_square_census.py`,
-`tests/test_join_slab_square.py`)*
