@@ -47,7 +47,7 @@
     indexRuns,
     shapeBorderState } from "../lib/borderMenu.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
-  import { loadImage, rasterSize, isVectorFile, uploadPlan, pngDimensionsFromBase64 } from "../lib/rasterize.js";
+  import { loadImage, rasterSize, isVectorFile, uploadPlan, downscaleForService, pngDimensionsFromBase64 } from "../lib/rasterize.js";
   import { friendlyError } from "../lib/friendlyError.js";
   import CropBox from "./CropBox.svelte";
   import { proposeCrop } from "../lib/cropProposal.js";
@@ -169,6 +169,21 @@
             const type = file.type || plan.type || "";
             await putSource(key, { bytes, type, name: file.name });
             sourceFile = { key, type, size: bytes.length, width: img.width, height: img.height };
+          }
+        } catch {
+          sourceFile = null;
+        }
+      }
+      // Over the service's byte or pixel limit: send the 2,800-px decode it
+      // would have made anyway, not the 1,200-px preview (rasterize.js).
+      if (!sourceFile && (plan.reason === "bytes" || plan.reason === "pixels") && sourceStoreAvailable()) {
+        try {
+          const lim = { max_upload_bytes: 12 * 1024 * 1024, ...((health && health.limits) || {}) };
+          const small = await downscaleForService(img, lim.max_upload_bytes);
+          if (small) {
+            const key = await sourceKeyFor(small.bytes);
+            await putSource(key, { bytes: small.bytes, type: "image/png", name: file.name });
+            sourceFile = { key, type: "image/png", size: small.bytes.length, width: small.width, height: small.height };
           }
         } catch {
           sourceFile = null;
