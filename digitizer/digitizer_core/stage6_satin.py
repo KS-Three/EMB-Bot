@@ -69,7 +69,7 @@ import numpy as np
 from shapely.geometry import LineString, Polygon
 from shapely.geometry import Point as SPoint
 from shapely.ops import unary_union
-from skimage.morphology import medial_axis
+from .fast_skimage import medial_axis  # skimage's, tables cached — byte-identical
 
 from . import machine, stitches
 from .shapefield import build_shape_field, hole_px
