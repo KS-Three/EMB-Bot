@@ -239,7 +239,10 @@ export function readerFacts(design, d, model) {
   return {
     stitches: d.counts.STITCH || 0,
     jumps: d.counts.JUMP || 0,
-    trims: d.counts.TRIM || 0,
+    // CUTS, not TRIM records: a run of consecutive TRIMs is one cut. A JEF
+    // cut is written as three zero moves (formats.py, Kent 2026-10-08) and
+    // pystitch reads back three.
+    trims: d.stitches.filter((s, i) => s[2] === "TRIM" && (i === 0 || d.stitches[i - 1][2] !== "TRIM")).length,
     colorChanges: d.counts.COLOR_CHANGE || 0,
     stops: d.counts.STOP || 0,
     other: Object.fromEntries(Object.entries(d.counts).filter(([k]) => !["STITCH", "JUMP", "TRIM", "COLOR_CHANGE", "STOP", "END"].includes(k))),

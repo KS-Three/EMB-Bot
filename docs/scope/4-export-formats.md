@@ -356,22 +356,30 @@ and trims (DST trims aside, below), with no stray thread.
   and 1 STOP on the same cone. Two design colours a 64-cone chart cannot tell
   apart now collapse onto one cone in a different place than they did before.
 
-**Reported, not decided — each turns on what a machine does, which is gate 1:**
+**Ruled by Kent the same day, and fixed (one commit each, tests in
+`digitizer/tests/test_export_cuts.py`):**
 
-- **Service PES/PEC cuts at EVERY jump.** pystitch's `PecWriter` writes each
-  jump after the first as a trim-jump (flag `0x20`) and adds a needle-down at
-  its landing. A design's floats become cuts: 61 against the design's 32 on
-  Golke, 119 against 51 on Hotel Fremont. The browser PES writes them as jumps
-  (`0x10`). Which one a Brother machine wants is a machine question.
-- **Service JEF writes no trim commands.** `JefWriter` defaults `trims=False`,
-  so a cut the design asks for is only in the file if the machine infers one
-  from a long move. pystitch reads 22 cuts against the design's 32 on Golke.
-  The one-line lever is `settings={"trims": True}` (3 zero moves per cut, the
-  convention pystitch's reader cites for a Janome MC400E).
+- **Service PES/PEC cut at EVERY jump.** pystitch's `PecWriter` wrote each
+  jump after the first as a trim-jump (flag `0x20`), dropped the TRIM itself,
+  and put the needle down at a jump's landing. A design's floats became cuts:
+  61 against the design's 32 on Golke, 119 against 51 on Hotel Fremont.
+  Ruling: match the browser, which writes a jump as `0x10` and a cut as a
+  zero-length `0x20`. `formats.write` swaps in that encoder for its own
+  PES/PEC writes only.
+- **Service JEF wrote no trim commands.** `JefWriter` defaults `trims=False`,
+  so a cut was in the file only if a machine inferred one from a long move:
+  22 read back against the design's 32 on Golke. Ruling: write them, three
+  zero moves per cut (`trim_at` 3, the convention pystitch's reader cites for
+  a Janome MC400E). What a given Janome does with them is still gate 1.
+
+**Still open:**
+
 - **VP3 has no jump record**, so pystitch writes travel as stitches: one 98.8 mm
   along an axis on the Full Back layout. Whether a Husqvarna/Pfaff sews or
-  skips a long `80 01` stitch is the same kind of question.
-- **Service PES/PEC/JEF snap colour with pystitch's own metric**, so the two
+  skips a long `80 01` stitch is a machine question; Kent's call 2026-10-08 was
+  to note it and wait for a sew-out (gate 1).
+- **Service PES/PEC/JEF snap colour with pystitch's own metric** (not yet put
+  to Kent), so the two
   PES routes can name different cones for one colour (near-black: Black in the
   browser now, dark brown in the service).
 
