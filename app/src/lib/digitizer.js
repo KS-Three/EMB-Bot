@@ -1630,6 +1630,10 @@ export const SILENT_WARNINGS = new Set([
   "PHOTO_PALETTE_SELECTED",
   "PALETTE_THREAD_MISMATCH",
   "PHOTO_SAM2_SEGMENTATION_UNAVAILABLE",
+  // Photo-lane "what I ran" notes. Info only, nothing for a customer to do;
+  // preflight reads PHOTO_FACES_DETECTED server-side, not from this list.
+  "PHOTO_PREP_APPLIED", "PHOTO_FACES_DETECTED", "PHOTO_BACKGROUND_REMOVED",
+  "PHOTO_BLEND_DISSOLVED", "PHOTO_SHADE_DEMAND", "PHOTO_SAM2_SEGMENTED",
 ]);
 
 // Of the warnings that DO reach the panel, most are the engine reporting what
@@ -1665,6 +1669,10 @@ export const ATTENTION_WARNINGS = new Set([
   "SHAPE_EDIT_UNKNOWN_ID",
   // this machine could not run a step, and cropping the art is the workaround
   "PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE", "PHOTO_FACE_PRIORS_UNAVAILABLE",
+  // the design is sewn, but something about it needs a look or a setting changed
+  "CLASSIFICATION_SEED_UNSTABLE", "CONTOUR_RING_UNREACHABLE", "EDGE_CAP_OVER_BUDGET",
+  "APPLIQUE_NO_FABRIC_VISIBLE", "APPLIQUE_PRECUT_TOO_NARROW", "APPLIQUE_PIECES_OVERLAP",
+  "APPLIQUE_STEP_EMPTY",
 ]);
 
 const WARNING_TEXT = {
@@ -1925,6 +1933,46 @@ const WARNING_TEXT = {
     plural(w.count || 0,
       "Two bordered shapes share an edge. It is outlined once, in the colour sewn on top; the shape underneath skips that stretch of its own border.",
       "{n} pairs of bordered shapes share an edge. Each is outlined once, in the colour sewn on top; the shape underneath skips that stretch of its own border."),
+  // Codes added to the map 2026-10-08 (test_warning_codes_mapped.py is the
+  // guard: a code the engine emits needs a line here or a place in
+  // SILENT_WARNINGS). Appliqué is not offered in the Studio yet, but a job
+  // that asks for it gets these, so they speak in plain words too.
+  CLASSIFICATION_SEED_UNSTABLE: () =>
+    "This artwork sits right on the line between two kinds of art, so the type shown above could have come out the other way. Check the stitch preview before you trust it.",
+  CONTOUR_RING_UNREACHABLE: (w) =>
+    plural(w.count || 0,
+      "One shape has a patch of bare fabric the contour rings couldn't reach. Check it in the stitch preview.",
+      "{n} shapes have a patch of bare fabric the contour rings couldn't reach. Check them in the stitch preview."),
+  CONTOUR_DIRECTIONAL_COMP_UNSEWN: () =>
+    "Directional compensation and contour stitching don't work together, so the compensation was applied in a direction that isn't sewn. Turn one of the two off.",
+  EDGE_CAP_OVER_BUDGET: (w) => {
+    const st = typeof w.stitches === "number" ? w.stitches.toLocaleString("en-US") : "";
+    const pc = typeof w.percent === "number" ? w.percent : "";
+    return (st && pc !== ""
+      ? `The design edge adds ${st} stitches, ${pc}% more than the rest of the design.`
+      : "The design edge adds a lot of stitches.")
+      + " It is sewn anyway. Make the design a different size, or turn the edge off, to bring that down.";
+  },
+  APPLIQUE_NO_FABRIC_VISIBLE: () =>
+    "An appliqué piece is too narrow to show any fabric, so it sews as plain stitching instead.",
+  APPLIQUE_CUTTING_LINE_SUPPRESSED: () =>
+    "An appliqué piece is too narrow to trim with scissors in the hoop, so its cutting line was left out.",
+  APPLIQUE_FORCED_PRE_CUT: () =>
+    "A hole in an appliqué piece is too small to get scissors into, so that piece has to be cut out before it goes on the hoop.",
+  APPLIQUE_COVER_MARGINAL: () =>
+    "An appliqué piece has very little room for error: a slightly crooked trim will leave raw fabric edge showing past the border stitching.",
+  APPLIQUE_PIECES_OVERLAP: (w) =>
+    plural(w.count || 0,
+      "Two appliqué pieces overlap, so their borders sew on top of each other. Move them apart, or sew them as separate pieces.",
+      "{n} pairs of appliqué pieces overlap, so their borders sew on top of each other. Move them apart, or sew them as separate pieces."),
+  APPLIQUE_STEP_EMPTY: () =>
+    "An appliqué piece couldn't be stitched and was left out.",
+  APPLIQUE_COVER_WIDTH_CLAMPED: (w) =>
+    plural(w.count || 0,
+      "One appliqué piece has a border stitched at the widest or narrowest width the machine allows, because the ideal width fell outside it. Check the border on the stitch preview.",
+      "{n} appliqué pieces have borders stitched at the widest or narrowest width the machine allows, because the ideal width fell outside it. Check the borders on the stitch preview."),
+  APPLIQUE_PRECUT_TOO_NARROW: () =>
+    "An appliqué piece is too narrow to cut out by hand before sewing. Make that piece wider, or sew it as plain stitching.",
   // The two "this machine cannot run it" seams a customer can act on. Their
   // engine messages used to interpolate a diagnostic — an absolute venv path,
   // a model path, a line of a worker's STDERR — which the panel rendered
