@@ -1,5 +1,5 @@
 <script>
-  import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, removeElement, resolveArtworkType, deriveProjectName, UNTITLED_NAME } from "./lib/project.js";
+  import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, withoutBlankStarter, removeElement, resolveArtworkType, deriveProjectName, UNTITLED_NAME } from "./lib/project.js";
   import { createHistory } from "./lib/history.js";
   import { applyTemplate } from "./lib/templates.js";
   import { onMount, tick } from "svelte";
@@ -368,9 +368,33 @@
     applyHistorySnapshot(history.redo());
   }
 
+  // Delete / Backspace on the focused embroidery field removes the SELECTED
+  // ELEMENT, the keyboard twin of the row's "Remove element" button (Kent
+  // 2026-10-08). The field owns Delete for a selected hand-drawn shape or
+  // anchor and marks the event handled (preventDefault); this runs a tick
+  // later and stands down if so, so one keypress never removes a shape AND its
+  // element. Same floor as the button: the last element stays. Only a key
+  // aimed at the field canvas counts. Ctrl+Z restores it.
+  function deleteSelectedElementFromField(e) {
+    const t = e.target;
+    if (!t || !t.matches || !t.matches(".hoop canvas")) return;
+    if (document.querySelector('[aria-label="Stitch simulator"][aria-pressed="true"]')) return;
+    setTimeout(() => {
+      if (e.defaultPrevented) return;
+      const id = project.selectedId;
+      if (!id || project.elements.length <= 1) return;
+      if (!project.elements.some((el) => el.id === id)) return;
+      onRemoveElement(id);
+    }, 0);
+  }
+
   // Ctrl/Cmd+Z and Ctrl+Y / Ctrl/Cmd+Shift+Z — skipped while a text control
   // has focus so the browser's native input-level undo stays intact.
   function onGlobalKey(e) {
+    if (e.key === "Delete" || e.key === "Backspace") {
+      deleteSelectedElementFromField(e);
+      return;
+    }
     if (!(e.ctrlKey || e.metaKey)) return;
     const t = e.target;
     const tag = t && t.tagName;
@@ -685,7 +709,9 @@
     const file = e.currentTarget.files && e.currentTarget.files[0];
     e.currentTarget.value = ""; // re-picking the same file must re-fire change
     if (!file) return;
-    project = addElement(project, resolveArtworkType(digitizerHealth), hoopWidthMm(project));
+    // Art uploaded onto a fresh design replaces its blank text box rather
+    // than landing beside it at a second element's 40%-of-hoop size.
+    project = addElement(withoutBlankStarter(project), resolveArtworkType(digitizerHealth), hoopWidthMm(project));
     pendingArtFile = { id: project.selectedId, file };
     persist();
   }

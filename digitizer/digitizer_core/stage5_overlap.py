@@ -84,6 +84,7 @@ by definition runs under another colour.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from shapely import STRtree, affinity
@@ -92,10 +93,10 @@ from shapely.ops import unary_union
 
 from .config import PipelineConfig
 from .fabrics import Fabric
-from .machine import satin_ceiling_mm
+from .machine import FILL_ROW_MM, satin_ceiling_mm
 from .regions import Region
 from .stitchwidth import column_sized
-from .stage6_fill import principal_angle_deg
+from .stage6_fill import best_fill_angle_deg, principal_angle_deg
 from .stage6_satin import is_satin_candidate
 from .warnings_codes import (
     HOLE_NEARLY_CLOSED,
@@ -314,6 +315,40 @@ def _largest_polygon(geom) -> Polygon | None:
     return max(parts, key=lambda g: g.area)
 
 
+def seam_row_angles(regions: list[Region], cfg: PipelineConfig, fabric: Fabric,
+                    design_class: str = "flat") -> dict[str, float | None]:
+    """-> {shape_id: the row angle `cfg.overlap_by_angle` reads, or None}.
+
+    Stage 7's precedence (`_fill_angle_for`): the shape's own angle, the
+    global, the design angle, the compensation axis -- and with none of
+    those, the angle stage 6 picks itself, `best_fill_angle_deg` on the
+    grown polygon at the design's row spacing, approximated here on the
+    artwork grown by the pull (the real one is what stage 5 computes). Only
+    plain tatami has one row angle; satin, another technique or a bean
+    letter is None and keeps the scalar underlap.
+    """
+    pull = max(0.0, fabric.pull_comp_mm)
+    satin_max = satin_ceiling_mm(cfg)
+    directional = bool(cfg.directional_comp) and pull > 0
+    row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
+    tatami = str(getattr(cfg, "fill_technique", "tatami") or "tatami") == "tatami"
+    out: dict[str, float | None] = {}
+    for r in regions:
+        a, is_sat = _comp_axis(r, cfg, satin_max, design_class)
+        tier = str(r.meta.get("tier", "auto")).lower()
+        if (is_sat or not tatami or tier not in ("auto", "fill")
+                or r.meta.get("bean_letter_spines")):
+            out[r.shape_id] = None
+            continue
+        explicit = (r.meta.get("fill_angle_deg") is not None
+                    or cfg.fill_angle_deg is not None
+                    or r.meta.get("design_angle_deg") is not None
+                    or directional)
+        out[r.shape_id] = (a if explicit else
+                           best_fill_angle_deg(_grow(r.polygon, pull, None), row_mm))
+    return out
+
+
 def _bare_part(hole: Polygon, covered, floor: float) -> list[Polygon]:
     """The part of a held hole that is still an opening once later colours sew.
 
@@ -396,6 +431,43 @@ def resolve_overlaps(
         return r.polygon
 
     geom_by_layer = {L: unary_union([sewn_footprint(r) for r in by_layer[L]]) for L in layers}
+
+    # `cfg.overlap_by_angle` (Law 26): each tatami fill's row angle in
+    # stage 7's precedence (`seam_row_angles`); None keeps the scalar.
+    # Off: nothing is built and the underlap below is the scalar it was.
+    parallel = max(overlap, float(getattr(cfg, "overlap_parallel_mm", overlap) or 0.0))
+    by_angle = bool(getattr(cfg, "overlap_by_angle", False)) and overlap > 0 and parallel > overlap
+    row_angle: dict[str, float | None] = {}
+    foot_regions: list[Region] = []
+    foot_tree = None
+    if by_angle:
+        row_angle = seam_row_angles(regions, cfg, fabric, design_class)
+        foot_regions = list(regions)
+        foot_tree = STRtree([sewn_footprint(r) for r in foot_regions])
+
+    def seam_overlap(a_deg: float, b_deg: float) -> float:
+        d = math.radians((a_deg - b_deg) % 180.0)
+        return overlap + (parallel - overlap) * abs(math.cos(d))
+
+    def deep_reach(r: Region, poly, L: int):
+        """The extra underlap a fill gets under each LATER fill its rows run
+        near-parallel to: the seam's own depth, clipped to that neighbour."""
+        a = row_angle.get(r.shape_id)
+        if a is None:
+            return None
+        parts = []
+        for i in foot_tree.query(poly.buffer(pull + parallel)):
+            n = foot_regions[int(i)]
+            b = row_angle.get(n.shape_id)
+            if n.meta["layer"] <= L or b is None:
+                continue
+            ov = seam_overlap(a, b)
+            if ov <= overlap + 1e-9:
+                continue
+            part = poly.buffer(pull + ov).intersection(sewn_footprint(n))
+            if not part.is_empty:
+                parts.append(part)
+        return unary_union(parts) if parts else None
 
     # Bare fabric is everything the artwork does not cover. A same-thread gap is
     # only a gap where no other colour is filling it, so the keep-apart corridor
@@ -495,6 +567,10 @@ def resolve_overlaps(
             # Extend under whatever sews later — the underlap that hides the seam.
             if overlap > 0 and later[L] is not None:
                 reach = poly.buffer(pull + overlap).intersection(later[L])
+                if by_angle:
+                    deep = deep_reach(r, poly, L)
+                    if deep is not None:
+                        reach = reach.union(deep)
                 if not reach.is_empty:
                     grown = grown.union(reach)
 
