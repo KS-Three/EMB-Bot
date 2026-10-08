@@ -77,13 +77,18 @@ test("DST header: an empty design still writes a 512-byte header and a lone end 
   assert.strictEqual(out.length, HEADER + 3);
   assert.deepStrictEqual(Array.from(out.slice(-3)), [0x00, 0x00, 0xf3]);
   const f = fields(out.slice(0, HEADER));
-  assert.strictEqual(f.ST, "0000000");
+  // ST counts the END record: pystitch writes ST 1 for an empty pattern too.
+  assert.strictEqual(f.ST, "0000001");
   assert.strictEqual(f["+X"], "00000");
 });
 
-test("DST header: ST counts the design's stitches (the end sentinel is not one)", { todo: "encodeDST sets ST from stitches.length, so the {type:'end'} sentinel inflates it by one; decodeDST of the same file reports the true count" }, () => {
-  const out = dst.encodeDST(design([S(0, 0), S(5, 0), S(10, 0), S(10, 0, "end")]));
-  assert.strictEqual(fields(out.slice(0, HEADER)).ST, "0000003");
+test("DST header: ST is the body record count, END included (pystitch convention), sentinel or not", () => {
+  const withSentinel = dst.encodeDST(design([S(0, 0), S(5, 0), S(10, 0), S(10, 0, "end")]));
+  const without = dst.encodeDST(design([S(0, 0), S(5, 0), S(10, 0)]));
+  for (const out of [withSentinel, without]) {
+    assert.strictEqual(fields(out.slice(0, HEADER)).ST, "0000004");
+    assert.strictEqual((out.length - HEADER) / 3, 4);
+  }
 });
 
 // ---- DST records ---------------------------------------------------------
