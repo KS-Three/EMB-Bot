@@ -115,8 +115,14 @@ test.describe("digitize", () => {
       "GET /jobs/j3": (r) => r.fulfill(json(200, { state: "running" })),
     });
     await loadArtwork(page);
+    // pollJob takes its t0 just before the FIRST poll. The button already reads
+    // "Digitizing" while the image is still being prepared and POSTed, so under
+    // CI load a jump made on that label lands BEFORE t0 and the 5-minute budget
+    // is never spent. Jump only once the first poll has actually been sent.
+    const firstPoll = page.waitForRequest((q) => q.url().includes("/jobs/j3"), { timeout: 30_000 });
     await runDigitize(page);
     await expect(page.locator(".dgp-run")).toHaveText(/Digitizing/, { timeout: 30_000 });
+    await firstPoll;
     await page.clock.fastForward(6 * 60 * 1000);
     const err = page.locator(".dgp-error");
     await expect(err).toContainText("Digitizing took too long", { timeout: 30_000 });
