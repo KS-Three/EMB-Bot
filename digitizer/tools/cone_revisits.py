@@ -30,13 +30,36 @@ nothing; it counts, and it prices.**
       - `resnap` some region in the block carries stage 4's
                  `thread_resnapped_de00` stamp, i.e. the cone was INVENTED
                  after quantize and no layer declares it;
-      - `plain`  neither, on EITHER block — the fold's own territory, and a
-                 survivor here would be a defect in the fold rather than a gap
-                 in its reach.
+      - `edge_cap` the block sews nothing but the design-silhouette cap
+                 (`__edge_cap__`). Stage 7 appends the cap after ALL the
+                 artwork, one block per cone its stretches stand against
+                 (`edge_cap_follow_adjacent`), so every such block repeats a
+                 cone the artwork already sewed — by design, not by a missed
+                 fold. Its own fix is `edge_cap_fold_into_colour` (PR #714);
+                 `merge_duplicate_cones` cannot see it and never could;
+      - `plain`  none of the above, on EITHER block — the fold's own
+                 territory, and a survivor here would be a defect in the fold
+                 rather than a gap in its reach.
 
     A duplicate can be both `band` and `resnap`; both are printed. `plain` is
-    the residual and never appears beside another route: a duplicate with one
-    re-snapped block and one ordinary one was caused by the re-snap.
+    the artwork residual and never appears beside another ARTWORK route: a
+    duplicate with one re-snapped block and one ordinary one was caused by the
+    re-snap. A cap block beside ONE artwork block is `edge_cap` alone; beside
+    two, the artwork's own route prints with it.
+
+## Re-measured 2026-10-08 — the cap had taken over the `plain` column
+
+Before `edge_cap` was its own route, the cap blocks (default `"bean"` since
+2026-09-01, follow-adjacent since 2026-10-06) all read `plain`, which sent a
+reader to `merge_duplicate_cones` for a survivor that is not there:
+`logo_alpha`, `logo_whitebg`, `bg_uncertain` and `region_blobs` duplicate
+ONLY through the cap (each reads clean with `edge_cap="none"`). The 09-06
+band case no longer reproduces on `region_blobs`; it does on the two
+generated ramp fixtures. Real artwork survivors remain with the cap off —
+`drone_render` 80 mm sews `1102`, `3574`, `0134`, `1305` again in four
+run-dominated blocks at the end whose regions carry layer numbers (16-23)
+past the folded palette, i.e. assigned after the fold ran. The 2026-09-06
+table below is kept as the record.
 
 ## What it found, 2026-09-06 — 26 fixtures x 2 garments
 
@@ -91,6 +114,8 @@ from digitizer_core.pipeline import digitize
 # rule for the same reason; kept separate here so this tool measures the ids
 # rather than importing the thing it is auditing.
 _DERIVED = re.compile(r"-(?:blend|shade)\d+$")
+# stage 7's design-silhouette cap (`stage7_sequence`, `silhouette_cap`).
+_EDGE_CAP = "__edge_cap__"
 
 
 def _block_routes(plan, result) -> list[set[str]]:
@@ -104,6 +129,8 @@ def _block_routes(plan, result) -> list[set[str]]:
     for b in plan.blocks:
         sids = {run.shape_id for run in b.runs if run.shape_id}
         tags = set()
+        if sids and all(s == _EDGE_CAP for s in sids):
+            tags.add("edge_cap")
         if sids and all(_DERIVED.search(s) for s in sids):
             tags.add("band")
         # A derived id is "<region>-blend2"; the owning region is the stem.
@@ -125,16 +152,24 @@ def revisits(plan, result) -> list[dict]:
         if len(idx) < 2:
             continue
         tags = set()
-        for i in idx:
-            if i < len(routes):
-                tags |= routes[i]
+        caps = [i for i in idx if i < len(routes) and "edge_cap" in routes[i]]
+        art = [i for i in idx if i not in caps]
+        if caps:
+            tags.add("edge_cap")
+        # A cap block beside ONE artwork block is the cap's duplicate alone:
+        # the artwork block's own routes (a re-snapped parent, say) did not
+        # cause it. Only a cone the ARTWORK sews twice gets artwork routes.
+        if len(art) >= 2:
+            for i in art:
+                if i < len(routes):
+                    tags |= routes[i]
+            if not tags - {"edge_cap"}:
+                tags.add("plain")
         # `plain` is the RESIDUAL for the duplicate, not a label on one block.
         # A duplicate with one re-snapped block and one ordinary one was
         # caused by the re-snap; calling it "plain,resnap" would send a reader
         # to `merge_duplicate_cones` looking for a defect that is not there,
         # because `plain` means "the fold's own territory". A test pins this.
-        if not tags:
-            tags.add("plain")
         out.append({"cone": num, "blocks": idx, "gap": idx[-1] - idx[0],
                     "route": ",".join(sorted(tags))})
     return out
