@@ -103,6 +103,7 @@ from skimage.color import deltaE_ciede2000
 from skimage import graph as skgraph
 
 from .config import PipelineConfig
+from .fast_skimage import deltaE_ciede2000_1
 from .palette import region_weight, select_palette
 from .stage1_prep import Prep
 from .stage2_quantize import Quant, _quantize_population
@@ -1077,9 +1078,15 @@ def _boundary_contrast_initial_adjust(rag) -> None:
 
 
 def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
-    da = g.nodes[dst]["mean color"].reshape(1, 3)
-    na = g.nodes[n]["mean color"].reshape(1, 3)
-    w = float(deltaE_ciede2000(da, na)[0])
+    da = g.nodes[dst]["mean color"]
+    na = g.nodes[n]["mean color"]
+    # The scalar twin of skimage's dE00 — the same float bit for bit, ~4x
+    # cheaper on one pair (`fast_skimage`). It is float64 only; skimage
+    # would compute a float32 pair in float32, so anything else goes there.
+    if da.dtype == np.float64 and na.dtype == np.float64:
+        w = deltaE_ciede2000_1(da, na)
+    else:
+        w = float(deltaE_ciede2000(da.reshape(1, 3), na.reshape(1, 3))[0])
     # The face-local threshold drop's recompute half — see
     # `_face_local_threshold`. No-face runs never set the attribute, so `w`
     # is untouched there (the pre-face-priors float, bit for bit).

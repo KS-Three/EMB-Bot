@@ -228,6 +228,22 @@ export function pulseAt(elapsedMs) {
 }
 
 /**
+ * How much of the outline overlay to show at `elapsed` ms when it is on screen
+ * ONLY because of the pulse (the Outlines toggle is off, the default since
+ * 2026-09-01). Starts at 1, falls to 0 at PULSE_MS, so the found shapes throb
+ * and then fade into the clean stitch view instead of blinking out.
+ *
+ * Why this exists: hiding outlines by default also hid the cue, so from
+ * 2026-09-01 a digitize landed with no "here is what I found" at all. Kent
+ * noticed it gone on 2026-10-08 ("my digitizing throbbing pulsating pinwheel
+ * disappeared, bring that back").
+ */
+export function pulseFadeAt(elapsedMs) {
+  if (!(elapsedMs >= 0) || elapsedMs >= PULSE_MS) return 0;
+  return 1 - elapsedMs / PULSE_MS;
+}
+
+/**
  * Decides WHEN the cue fires. Split out from the component because the rule is
  * a judgement call rather than a mechanism, and getting it wrong is invisible
  * in a screenshot.
