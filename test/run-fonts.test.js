@@ -118,7 +118,10 @@ test("bean repeats backtrack each stitch (repeats:1 => triple stitch)", () => {
 // crosses past the 5.0 mm split threshold at 40 mm. 751 -> 786, +4.7%, all of
 // it intermediate penetrations on crosses that were already too long to lie
 // flat. The other four are untouched, which is the threshold doing its job.
-const SATIN_BASELINE = { montecarlo: 1166, alchemy: 786, venezia: 997, cats: 1243, apesplit: 2475 };
+// Re-pinned 2026-10-08 (was 1166 / 786 / 997 / 1243 / 2475): a needle-down
+// connector no longer lays the next run's first stitch twice. Every stitch
+// removed was a second penetration on the point before it; nothing else moved.
+const SATIN_BASELINE = { montecarlo: 1146, alchemy: 762, venezia: 937, cats: 1187, apesplit: 2214 };
 
 // These five are committed, so the guard below should never fire. It throws on
 // CI regardless: a pinned baseline whose font has vanished is not "nothing to

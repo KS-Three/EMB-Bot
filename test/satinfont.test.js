@@ -85,7 +85,11 @@ test("buildLetteringDesign: straight 'AB' targetWidthMm 40 reports the extent it
   // missing. Nothing else in that change touches this stream — proven by
   // applying the units fix ALONE to the pre-change tree, which reproduces
   // every one of these numbers byte for byte.
-  assert.strictEqual(d.stitchCount, 703, "stitchCount frozen");
+  // 703 -> 691 on 2026-10-08: a needle-down connector's last step landed on
+  // the next run's first point and the run laid it again — twelve doubled
+  // holes in AB. The connector now stops one step short; nothing else moves
+  // (the bbox, first and last stitch below are unchanged).
+  assert.strictEqual(d.stitchCount, 691, "stitchCount frozen");
   closeTo(d.widthMM, 40.2, 0.01, "widthMM = the sewn span, 0.2 mm wider than the 40 mm asked for");
   closeTo(d.heightMM, 23.0, 0.01, "heightMM");
   // And it is the stitches' own bbox, not a second opinion about them — the
@@ -95,7 +99,7 @@ test("buildLetteringDesign: straight 'AB' targetWidthMm 40 reports the extent it
   closeTo(d.widthMM, (Math.max(...xs) - Math.min(...xs)) / 10, 1e-9, "widthMM is the stitch bbox");
   closeTo(d.heightMM, (Math.max(...ys) - Math.min(...ys)) / 10, 1e-9, "heightMM is the stitch bbox");
   const sew = d.stitches.filter((s) => s.type === "stitch");
-  assert.strictEqual(sew.length, 703);
+  assert.strictEqual(sew.length, 691);
   assert.deepStrictEqual(sew[0], { x: -56, y: -54, type: "stitch" });
   assert.deepStrictEqual(sew[sew.length - 1], { x: 142, y: 20, type: "stitch" });
 });
@@ -817,8 +821,8 @@ test("underlay ladder: default-on is a real, intended output change — pinned d
   const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40 };
   const off = DG.buildLetteringDesign(font, "AB", { ...base, underlay: false });
   const on = DG.buildLetteringDesign(font, "AB", base);
-  assert.strictEqual(off.stitchCount, 703, "underlay off: the pre-underlay-ladder number, +2 for the 2026-09-11 underpath units fix");
-  assert.strictEqual(on.stitchCount, 857, "underlay on (the default): +154 stitches, +21.9%");
+  assert.strictEqual(off.stitchCount, 691, "underlay off: the pre-underlay-ladder number, +2 for the 2026-09-11 underpath units fix, -12 for the 2026-10-08 connector double");
+  assert.strictEqual(on.stitchCount, 832, "underlay on (the default): +141 stitches, +20.4% (857 / +154 before the 2026-10-08 connector double was removed)");
   assert.strictEqual(on._debug.nTrims, off._debug.nTrims, "underlay must not add a single trim");
   closeTo(on.widthMM, off.widthMM, 1e-9, "and must not move the design bbox");
   closeTo(on.heightMM, off.heightMM, 1e-9, "or its height");
@@ -835,7 +839,8 @@ test("underlay ladder: default-on is a real, intended output change — pinned d
   // design is scaled DOWN to fit 8 mm, so the unscaled 2 mm pitch was
   // stepping 2 x sc < 2 mm on the fabric and over-stitching the travel.
   // One number, two directions, because the bug was the frame.
-  assert.strictEqual(tinyOn.stitchCount, 188);
+  // 188 -> 176 on 2026-10-08: the connector no longer doubles a run's first stitch.
+  assert.strictEqual(tinyOn.stitchCount, 176);
 });
 
 // ---- Width guards (2026-09-03): cross floor, hairline fallback, report ------
@@ -1036,4 +1041,27 @@ test("short stitches: a bowl's inside rail stops bunching (S: 43% of same-rail a
   const legacyB = SF.layoutText(font, "S", { ...SS_OPTS, crossFloor: false, shortStitch: true });
   assert.deepStrictEqual(legacyA.runs, legacyB.runs);
   assert.strictEqual(legacyA.lettering.shortStitches, 0);
+});
+
+// ---- A needle-down connector does not lay the next run's first stitch (2026-10-08)
+//
+// The connector between two runs that the router keeps needle-down stepped to
+// t = 1, which IS the next run's first point, and then the run laid that point
+// as its own first stitch: two penetrations in one hole at every such boundary
+// (docs/lock-stitches-2026-10-03.md: 9,093 on KENT across the 85 fonts). Asked
+// at the run boundary only: two stitches that merely ROUND onto one point are
+// `dedupeHoles`' question (Waiting on Kent 25), not this one.
+test("a needle-down connector stops short of the run it leads into", () => {
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40 };
+  for (const underlay of [false, true]) {
+    const d = DG.buildLetteringDesign(font, "AB", { ...base, underlay });
+    const travel = d.runs.filter((r) => r.kind === "travel");
+    assert.ok(travel.length > 0, "fixture: AB has needle-down connectors");
+    let doubled = 0;
+    for (const r of d.runs) {
+      const a = d.stitches[r.i0 - 1], b = d.stitches[r.i0];
+      if (r.i0 > 0 && a.type === "stitch" && b.type === "stitch" && a.x === b.x && a.y === b.y && d.runs.some((t) => t.kind === "travel" && t.i1 === r.i0 - 1)) doubled++;
+    }
+    assert.strictEqual(doubled, 0, `underlay ${underlay}: a run's first stitch repeats the connector's last`);
+  }
 });
