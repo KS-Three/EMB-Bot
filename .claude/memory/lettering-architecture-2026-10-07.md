@@ -105,3 +105,13 @@ unchanged. TRAP: outline_cut's medial_axis was unseeded (random ties, same
 letter cut differently in one process); rng=0 now, like every other caller.
 An A/B that moves untouched shapes is noise first. Next: Kent's pairs.
 
+**Kent's pairs DRAWN (after #660, ahead of the E cut on the caller's word):**
+`docs/eye-pairs-2026-10-07/` -- 7 pairs + tires identical, sitting tag
+`columns-1007`, price table from the new `tools/eye_pairs_price.py`
+(whole design, the changed shapes' own stitches/trims, fidelity rows).
+Found first: `outline_cut._spine_ends` called `medial_axis` WITHOUT `rng=0`,
+so the lane was nondeterministic (golden_tee 8,311-8,319 stitches run to
+run); fixed and AST-pinned for every engine call. Becker letter trims
+42 -> 8; lost_frac up on six of seven logos. Not published; the E is still
+three slabs on the page.
+

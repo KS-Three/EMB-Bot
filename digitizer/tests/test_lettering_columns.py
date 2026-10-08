@@ -472,3 +472,24 @@ def test_on_every_marine_letter_sews_columns_with_fewer_runs_and_trims(becker_of
     assert len(sewn & ids_on) == 6
     assert satin_on < satin_off and trims_on < trims_off
     assert satin_on <= 24 and trims_on <= 24       # 17 / 15 measured 2026-10-07; 34 / 42 off
+
+
+def test_every_engine_medial_axis_call_is_seeded():
+    """`skimage.morphology.medial_axis` breaks ties from OS entropy unless
+    given `rng`. `outline_cut._spine_ends` called it unseeded and the Column
+    lane sewed a different design on every run (golden_tee 8,312 / 8,318 /
+    8,319 / 8,315 stitches over four runs, 2026-10-07) -- caught because two
+    eye-pairs renders of one arm disagreed. Pinned on the source, since a
+    tie only shows on some shapes and a run-twice test can pass by luck."""
+    import ast
+    from pathlib import Path
+
+    core = Path(__file__).resolve().parents[1] / "digitizer_core"
+    unseeded = []
+    for f in sorted(core.glob("*.py")):
+        for node in ast.walk(ast.parse(f.read_text(encoding="utf-8"))):
+            if (isinstance(node, ast.Call)
+                    and getattr(node.func, "id", getattr(node.func, "attr", None)) == "medial_axis"
+                    and not any(k.arg == "rng" for k in node.keywords)):
+                unseeded.append(f"{f.name}:{node.lineno}")
+    assert unseeded == []

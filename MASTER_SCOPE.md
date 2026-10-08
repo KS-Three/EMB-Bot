@@ -357,8 +357,7 @@ about the facts.
 
 14. **RESOLVED 2026-09-12 for XXX and VP3 — Kent's scope call.** `SERVICE_ONLY_FORMATS` is `{jef, xxx, vp3}`, both with buttons; PEC and U01 stay OUT. Two rulings that still govern: **U01 is held for want of a surviving thread palette and a real Barudan reader, NOT for the two hold-reasons once recorded — both were measured wrong**, and VP3's 0.1 mm quantisation is deliberately not surfaced to the customer. Evidence is a committed harness; run it rather than re-derive it. *(`digitizer/tools/format_roundtrip.py`; PRODUCT.md item 1)*
 
-15. **RESOLVED 2026-09-12 — the wizard's steps are browser history entries** (`lib/stepHistory.js`). The anti-trap rule IS the design and survives here: **the first step REPLACES the entry the browser already has, only a step after it pushes**, so Back from step 1 still leaves the Studio. Not routing — no URL reaches `pushState`. *(`app/src/App.stepHistory.spec.js`, with a source guard against a bare `step = ...`)* **Superseded 2026-09-30:** there are no step entries; the Download sheet is the one history entry, and Back closes it.
-
+15. **RESOLVED 2026-09-12 — the wizard's steps are browser history entries** Detail: scope-history 2026-10-07 (moved for the word budget). *(resolved 2026-09-12)*
 17. **RESOLVED 2026-09-17 (Kent) — clearing a stale BORDER recovers on ONE click**, a stale BOUNDARY on two. Kept: "Clear them" is an explicit click, so nothing is dropped behind the user's back — what "recovery is explicit" protects. Do NOT gate recovery out of the fast lane to tidy this. *(`e2e/digitize-stale-edits.spec.js`)*
 
 18. **OPEN: a COLD photo digitize is ~90 s and `fill_travel_under_cover` is ~58% of it.** The 2026-09-17 memo fixed the RE-stitch (79.3 → 44.6 s); the first digitize still pays the flag in full. Three ways out, all Kent's: flip it off (costs stitches, re-exposes the travel it hides), optimise `_reorder_for_cover` (golden-pinned — a win must be byte-identical), or accept it. **Do not re-derive the numbers** — method, noise floor, per-flag table and three INERT flags are in the doc. *(measured 2026-09-17 — `docs/flag-runtime-bills-2026-09-12.md`)*
@@ -497,10 +496,12 @@ about the facts.
    **Not sewn.** Flipped as 25 is.
    *(measured 2026-10-04 — [`docs/dst-float-cuts-2026-10-04.md`](docs/dst-float-cuts-2026-10-04.md))*
 29. **RESOLVED 2026-10-07 — Kent flipped `letterform_priors_k` ON at 0.75** on the
-   labelled thread pairs (becker "after", bridge "both bad"); the N is defect
-   59. Touches only an upscaled upload; price Becker +506 stitches, +11 trims
-   for bare 4.33 → 2.65%. **Not sewn.**
+   labelled thread pairs (becker "after", bridge "both bad"); the N is defect 59.
    *(ruled 2026-10-07 — `docs/eye-pairs-2026-10-07/kent-notes.json`; [`docs/letterform-priors-2026-10-06.md`](docs/letterform-priors-2026-10-06.md))*
+30. **`satin_join_square` — ON by Kent 2026-10-06 on renders, HELD OFF
+   2026-10-07 by its guards:** an ENTHUSIAST element lost, three sibling bars
+   tipped (readings in the config docstring). Returns as its own PR with the
+   element named. *(measured 2026-10-07 — PR #663; DOCTRINE 2026-10-07)*
 
 ## Cross-cutting issues
 

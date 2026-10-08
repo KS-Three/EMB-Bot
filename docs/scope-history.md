@@ -40,7 +40,9 @@ Three traps met, and a fourth on the way out: the engine's satin spacing is ONE 
 
 **CORRECTION the same night, the lane's density (PR #660 before merge).** The desktop sitting agent measured Becker's N under Columns at about 0.7 mm between crosses and said so; measured here on MARINE's I, the satin tier puts a needle every **0.40 mm on each rail** and the lane put one every **0.80**: the engine's flat zigzag is A1, B1, A2, B2 -- BOTH ends of every station, stations `SATIN_SPACING_MM` apart -- and the 10-07 wiring put ONE end down per station, rails alternating. The "trap" recorded above (a station is one penetration) was the wrong half of a right observation: the spike's 0.2 mm stations WITH both ends down were double density, and the fix was the pitch, not the ends. `_satin_points` now sews both ends of every station (I: 0.40 per rail, 48 and 42 penetrations). **Everything measured on the lane before this point was at half density**, and three claims move: letter stitches OFF -> ON at corpus sizes are now becker 4,709 -> **3,095** (not 1,629; still fewer: no zigzag underlay, no junction sewn twice), enthusiast 1,971 -> 1,768, gaulke 2,521 -> 2,447, Fremont 4,111 -> 4,222 (more: the serifs and the diagonal it now sews); design stitches becker 10,347 -> 8,717, enthusiast 2,614 -> 2,280, gaulke 4,583 -> 4,348, Fremont 20,177 -> 20,247; trims on letters at full density becker 42 -> 8, enthusiast 13 -> 13, gaulke 27 -> 21, Fremont 17 -> 21. The bare-artwork yardstick at 0.3 mm thread was mostly reading the half-density gaps (it saturates at 0.0-0.1% at full density); at **0.15 mm** thread, full density, the terminal rules still hold: becker 3.14% -> **2.71%**, enthusiast 1.23 -> **0.97**, gaulke 0.74 -> 0.72, Fremont 1.97 -> **0.56** (main's cutter against this PR's, same density). Pinned: `test_each_rail_gets_a_needle_every_satin_spacing`. The lesson for DOCTRINE: a density claim is settled by counting needles per rail against the tier it replaces, never by comparing total stitch counts between tiers that lay different underlays.
 
-**The E/F stem cut, 2026-10-08 (Kent's pick, sixth step), and a determinism bug it found.** A traced E at 146 px rounds its slot ends, so the junction rules find one corner at most and `ext` carries the slot's LONGER edge into the body: three horizontal slabs, each a fanning L. New `outline_cut.slot_cuts`: each convex-hull pocket is walked along the letter's outline and its depth peaks (from the pocket's mouth) are the slot backs; two or more backs lined up parallel to the mouth are points on the stem's inner edge, and the stretches of that line inside the letter (0.3 to 2.5 W) are the arm-root cuts. Junction cuts that end on the stem line or cross it are dropped. Three guards, each from a measured misfire: one pocket can hold BOTH slots (the middle arm stops short of the hull), hence peaks rather than one deepest point; the line between consecutive backs must be solid (an M's bottom pocket has two peaks across its V notch); and the piece behind the line must be no wider than 1.6 W (MARINE's M has three peaks in a row along its bottom and read as an E on its side, cutting across both legs). It fires on five letters over the four fixtures, all E's: over-long crosses on those 4 -> **0**, bare artwork at 0.15 mm thread 4.41 -> 4.24 mm2, satin points 808 -> 749, jumps 2 -> 2. Becker's E: 3 slabs -> stem + 3 arms, 570 -> 509 stitches, **trims still 2** (the extra trims are the walk's, not the cut's). **The determinism bug:** the first A/B moved letters the rule never touched. `_spine_ends` called skimage's `medial_axis` without `rng=0`; it breaks ties at random, so the same letter cut twice in one process could get different stations (an open ring: two station sets in twelve cuts; a gaulke letter moved 0.013 mm). Every other `medial_axis` call in the engine is seeded. Seeded now and pinned (`test_the_same_letter_cuts_the_same_every_time`, proved to fail unseeded); it changed MARINE's M on its own (7 runs / 2 trims -> 4 / 1). Pipeline OFF -> ON at corpus sizes on today's main (#658 and #662 moved the OFF arm): letter trims becker 39 -> 8, enthusiast 13 -> 13, gaulke 27 -> 19, Fremont 17 -> 21; letter stitches 5,349 -> 3,056, 1,971 -> 1,764, 2,521 -> 2,443, 4,111 -> 4,217. Render `e_stem_cut_before_after.jpg`. Tests 23 -> 26.
+**Kent's pairs drawn (PR after #660), and the lane was nondeterministic.** `outline_cut._spine_ends` called `skimage.medial_axis` without `rng`, the only unseeded call in the engine, so ties broke from OS entropy: golden_tee ON 8,312 / 8,318 / 8,319 / 8,315 stitches over four runs; seeded `rng=0`, one hash over three. Pinned on the source (`test_every_engine_medial_axis_call_is_seeded`). The labelled pairs, drawn after the fix on eight logos (`docs/eye-pairs-2026-10-07/`, price by the new `tools/eye_pairs_price.py`): 7 pairs, tires identical; letters' own trims becker 42 -> 8, gaulke 32 -> 25, enthusiast 14 -> 15, Fremont 18 -> 23, drone 34 -> 37; lost_frac up on six of seven (golden_tee +0.024), enthusiast down. Flag OFF; the E/F slabs remain on the page.
+
+**The E/F stem cut, 2026-10-08 (Kent's pick, sixth step), and a determinism bug it found.** A traced E at 146 px rounds its slot ends, so the junction rules find one corner at most and `ext` carries the slot's LONGER edge into the body: three horizontal slabs, each a fanning L. New `outline_cut.slot_cuts`: each convex-hull pocket is walked along the letter's outline and its depth peaks (from the pocket's mouth) are the slot backs; two or more backs lined up parallel to the mouth are points on the stem's inner edge, and the stretches of that line inside the letter (0.3 to 2.5 W) are the arm-root cuts. Junction cuts that end on the stem line or cross it are dropped. Three guards, each from a measured misfire: one pocket can hold BOTH slots (the middle arm stops short of the hull), hence peaks rather than one deepest point; the line between consecutive backs must be solid (an M's bottom pocket has two peaks across its V notch); and the piece behind the line must be no wider than 1.6 W (MARINE's M has three peaks in a row along its bottom and read as an E on its side, cutting across both legs). It fires on five letters over the four fixtures, all E's: over-long crosses on those 4 -> **0**, bare artwork at 0.15 mm thread 4.41 -> 4.24 mm2, satin points 808 -> 749, jumps 2 -> 2. Becker's E: 3 slabs -> stem + 3 arms, 570 -> 509 stitches, **trims still 2** (the extra trims are the walk's, not the cut's). **The determinism bug, found here independently of the desktop session's fix above (725e86bc landed it first; same one-line change):** the first A/B moved letters the rule never touched. `_spine_ends` called skimage's `medial_axis` without `rng=0`; it breaks ties at random, so the same letter cut twice in one process could get different stations (an open ring: two station sets in twelve cuts; a gaulke letter moved 0.013 mm). Every other `medial_axis` call in the engine is seeded. Seeded now and pinned (`test_the_same_letter_cuts_the_same_every_time`, proved to fail unseeded); it changed MARINE's M on its own (7 runs / 2 trims -> 4 / 1). Pipeline OFF -> ON at corpus sizes on today's main (#658 and #662 moved the OFF arm): letter trims becker 39 -> 8, enthusiast 13 -> 13, gaulke 27 -> 19, Fremont 17 -> 21; letter stitches 5,349 -> 3,056, 1,971 -> 1,764, 2,521 -> 2,443, 4,111 -> 4,217. Render `e_stem_cut_before_after.jpg`. Tests 23 -> 26.
 
 ---
 
@@ -19976,6 +19978,64 @@ columns. The rebuild landed 2026-09-15. The other 6 (`western_light`,
 `ondulamarif_*`) have no authored run length upstream, and defaulting one
 is refused by `test/run-fonts.test.js:44`. The item read "still open" until
 2026-10-02. *(`test/font-dead-glyphs.test.js`; detail: area 2)*
+
+
+**Flipped ON the same evening (Kent, on the renders; efcb21e2).** The
+goldens did not move: `flat_lane_golden.json`'s five keys are byte-identical
+with the flag on (no synthetic fixture has a join corner the straightening
+reaches), so no re-capture. The full suite with it on is in PR #653's body.
+
+## 2026-10-07 — T-shaped slabs as their own column: `satin_slab_serifs`, built OFF
+
+Kent's pick after the join-square flip: *"T-shaped slabs: own column, not a
+cap."* Renders in `docs/renders/slab-serifs-2026-10-07/`; tests
+`tests/test_slab_serifs.py` (5) on two captured letters.
+
+**The first census was on the wrong polygon.** `satin_shape` re-enters
+itself on `_close_seams(poly)`, and the skeleton it sews from is that
+closed polygon's; a direct `extract_strokes` on the stage-5 polygon reads
+a different medial axis (the M's feet 148°/139° between halves, both
+dropped as stubs) and a defect the shipped engine does not have (on the
+real path the M's halves meet near 180° and weld). The rule was rebuilt
+against a census of `plan_stitches` on the pickled 80 mm result, OFF and
+ON, logging every slab decision with its angles.
+
+**What a slab is, measured.** Two short free arms at a stem's node, each
+within 35° of square to the stem and at least 120° apart (`_slab_pair`).
+The angle between the arms alone does not do it: a cap's I-beam reads
+90–98° (forks 45° off the axis) but an L-corner's surviving twig beside
+its hanging slab reads 125–135°, and a first cut at 120° between the arms
+kept that twig, held the corner's node open and broke the join-square
+fold at every E, F and T-bar corner into a capped bar plus 1 mm tucked
+slab pieces (8 letters moved, +32 hops). The twig is 40° off square and
+the perpendicular test rejects it; with both tests exactly three letters
+move.
+
+**Two mechanisms, two fixtures.** (1) The T's foot halves run into the
+foot's corners, so neither tip was exposed by a pruned fork and the twig
+rule erased the pair as an I-beam: the stem ended free on the baseline
+and 0.48 mm² of the foot's bottom millimetre sewed bare
+(`testdata/fremont_T_slab_foot.json`). ON `_prune_spurs` keeps a slab pair
+and the merge welds it: a 2.5 mm column of seven crosses, 0.02 mm² bare.
+(2) The N's left foot halves survived the rule but meet at 144°, which
+`satin_junction_stack`'s 30° weld refuses; one half fell to the stub
+filter and the foot sewed as a half-column, and its top-right serif
+(148°) as two half-columns (`testdata/fremont_N_slab_foot.json`). ON
+`_merge_through_junctions` welds a slab pair whatever its turn. The R's
+stem, which bent into its foot's right half, ends square with the foot
+its own column. Fremont at 80 mm: **13,746 → 13,780 stitches, 34 trims
+both ways**; every other letter byte-identical.
+
+**Not moved, named:** the E's and F's middle arms — the T-shaped slabs the
+2026-10-06 entry named — do not change: their protrusions are a fraction
+of a stroke width and the skeleton grows no half into them, so there is
+no pair to keep. The feet's crosses lean ~30° under the house angle's
+lean cap where the pro's feet sew square; that is the lean rule's, not
+this flag's. OFF byte-identical (pinned). The flip is Kent's.
+
+**Moved here from MASTER_SCOPE "Waiting on Kent" 15 (resolved 2026-09-12), for the word budget (2026-10-07):**
+15. **RESOLVED 2026-09-12 — the wizard's steps are browser history entries** (`lib/stepHistory.js`). The anti-trap rule IS the design and survives here: **the first step REPLACES the entry the browser already has, only a step after it pushes**, so Back from step 1 still leaves the Studio. Not routing — no URL reaches `pushState`. *(`app/src/App.stepHistory.spec.js`, with a source guard against a bare `step = ...`)* **Superseded 2026-09-30:** there are no step entries; the Download sheet is the one history entry, and Back closes it.
+
 
 ## 2026-10-07 — EXP travel's last record stays at 12.1 mm: Kent's pick
 
