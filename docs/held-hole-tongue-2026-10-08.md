@@ -46,19 +46,20 @@ floor and the tongue are the engine's own (gate 1 clean; the tongue's DEPTH,
 
 ## Measured, 80 mm, left chest, OFF → ON
 
-`held_hole_tongue.py --all`. *Pieces*: later stitched shapes in a hole the OFF
+`held_hole_tongue.py --all`, on the tree merged with `main` 2026-10-08. *Pieces*: later stitched shapes in a hole the OFF
 engine holds. *Tongue sewn*: of points `pull + overlap/2` inside each piece's
-edge, the share the GROUND's own thread passes within one fill row of — read
-off the stitches, per DOCTRINE ("prove a seam on the stitches"). *Ring bare*:
+edge (halved in turn for a piece too thin for that, so every piece is
+sampled — the `(n)` is pieces sampled of pieces), the share the GROUND's own
+thread passes within one fill row of — read off the stitches, per DOCTRINE ("prove a seam on the stitches"). *Ring bare*:
 the 0.2 mm band either side of each piece's edge, inside its hole, that no
 thread of any colour comes within a fill row of.
 
-| fixture | pieces | holes held | depth-0 seam mm | tongue sewn | ring bare mm² | stitches | trims |
+| fixture | pieces | holes held | depth-0 seam mm | tongue sewn (n) | ring bare mm² | stitches | trims |
 |---|---|---|---|---|---|---|---|
-| `art/logo_hotel_fremont_patch.png` | 10 | 10 → 0 | 123.5 → 0 | 0% → 100% | 1.564 → 0.0 | 16,810 → 16,118 | 59 → 52 |
-| `photo/logo_hotel_fremont.webp` | 9 | 9 → 0 | 158.2 → 0 | 0% → 100% | 0.653 → 0.0 | 13,745 → 13,196 | 35 → 33 |
-| `photo/drone_render.png` | 7 | 9 → 4 | 25.6 → 1.5 | 0% → 100% | 0.804 → 0.001 | 19,026 → 19,023 | 142 → 142 |
-| `photo/logo_bridge_bar.jpg` | 2 | 9 → 7 | 7.9 → 0 | 0% → 100% | 0.25 → 0.0 | 16,850 → 16,907 | 92 → 89 |
+| `art/logo_hotel_fremont_patch.png` | 10 | 10 → 0 | 123.5 → 0 | 0% → 100% (10/10) | 1.506 → 0.0 | 16,812 → 16,120 | 59 → 52 |
+| `photo/logo_hotel_fremont.webp` | 9 | 9 → 0 | 158.2 → 0 | 2% → 100% (9/9) | 0.597 → 0.0 | 13,745 → 13,196 | 35 → 33 |
+| `photo/drone_render.png` | 7 | 9 → 4 | 25.6 → 1.5 | 5% → 100% (7/7) | 0.804 → 0.001 | 19,028 → 19,025 | 142 → 142 |
+| `photo/logo_bridge_bar.jpg` | 2 | 9 → 7 | 7.9 → 0 | 0% → 100% (2/2) | 0.25 → 0.0 | 16,844 → 16,901 | 92 → 89 |
 | `art/logo_golke_roofing.png` | 0 | 2 → 2 | — | — | — | plan md5-identical | |
 | `photo/enthusiast_logo.png` | 0 | 0 | — | — | — | plan md5-identical | |
 | `becker_marine_logo.png` | 0 | 0 | — | — | — | plan md5-identical | |
@@ -73,7 +74,7 @@ Drone keeps four: two real bare openings (2.26 and 2.97 mm² of fabric beside
 their pieces) and two holes with nothing stitched in them.
 
 **Why Fremont gets CHEAPER.** Every stitch that moves is the ground fill's
-(6,962 → 6,303 fill points, travel 96 → 64); every letter sews byte-identical
+(6,962 → 6,303 fill points, travel 96 → 64, on the pre-merge tree); every letter sews byte-identical
 stitch counts. Ten holes broke the fill's rows into short spans with their
 own ends and connectors (`LONG_JUMPS_TRIMMED` 31 → 9); without them the rows
 run through. Cover was checked, not assumed: the ground's own fill covers
@@ -107,7 +108,7 @@ covered by the piece's own satin — not a seam.
 - **Not sewn.** Whether the ground's thread under a thin satin piece reads as
   bulk on cloth is a sew-out question (card block 6 also sets the depth).
 - **The other cost:** a released piece now sews over the ground's fill
-  (two layers where there was one). Preflight, OFF → ON, image passed so the
+  (two layers where there was one). Preflight on the pre-merge tree, OFF → ON, image passed so the
   thread check runs: score and grade unchanged on all four (Fremont patch
   88 B, webp 88 B, drone 0 F, Bridge Bar 0 F — the same findings list both
   ways), `DENSITY_STACKED` fires on none; `coverage_max` drone 8.32 → 8.83,
