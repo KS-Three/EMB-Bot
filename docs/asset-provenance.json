@@ -773,6 +773,13 @@
    "review": true
   },
   {
+   "prefix": "docs/renders/two-tone-lines-2026-10-08/",
+   "status": "derived-render",
+   "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: golke, gaulke, mfab, toat",
+   "basis": "docs/renders/two-tone-lines-2026-10-08 (dir name dated; inputs are the fixtures above)",
+   "review": true
+  },
+  {
    "prefix": "docs/renders/travel-legs-2026-09-19/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: becker, fremont, bridge",

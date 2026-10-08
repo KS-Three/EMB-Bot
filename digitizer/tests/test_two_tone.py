@@ -114,4 +114,139 @@ def test_white_logo_on_transparency_runs_with_the_flag_on():
 
 
 def test_flag_off_by_default():
+    """Approved 2026-10-08; held OFF on the halo-premise tests (config.py)."""
     assert PipelineConfig().two_tone_snap is False
+
+
+def _snapped_stage1(rel: str):
+    cfg = _cfg()
+    c = classify(TESTDATA / rel, cfg)
+    p = prep(TESTDATA / rel, cfg, design_class=c.class_)
+    tt = two_tone.detect(p.rgb, ~p.bg_mask)
+    assert tt is not None
+    snapped = two_tone.snap(p.rgb, tt)
+    bg = two_tone.fold_fringe(snapped, tt, p.bg_mask, p.bg_rgb)
+    return p, bg
+
+
+def test_golke_roof_lines_are_kept_as_lines():
+    """The roof chevron, the window cross and the zigzag under the sun are
+    white lines drawn between black shapes. Snapped, the flood and the fold
+    took them, and they sewed as one black mass (2026-10-08). `keep_lines`
+    hands them back; the lettering's gaps stay background."""
+    import cv2
+
+    p, bg = _snapped_stage1("art/logo_golke_roofing.png")
+    lines = two_tone.keep_lines(bg, p.px_per_mm)
+    n, lab, st, _ = cv2.connectedComponentsWithStats(lines.astype(np.uint8), connectivity=8)
+    spans = sorted((st[i, cv2.CC_STAT_WIDTH] / p.px_per_mm for i in range(1, n)), reverse=True)
+    # the chevron runs ~40 mm across; the window cross and two zigzag halves follow
+    assert spans and spans[0] > 35.0
+    assert len(spans) >= 4
+    # nothing in the lettering (the two text rows sit below the roof's base)
+    ys = np.nonzero(lines)[0]
+    text_top = int(0.71 * lines.shape[0])
+    assert ys.max() < text_top
+
+
+@pytest.mark.parametrize("rel", [
+    "art/logo_mfab_lc.png",
+    "art/logo_mfab_hat.png",
+    "art/logo_toat_machine.png",
+    "art/logo_toat_beanie.png",
+])
+def test_no_line_where_the_art_draws_none(rel):
+    p, bg = _snapped_stage1(rel)
+    assert not two_tone.keep_lines(bg, p.px_per_mm).any()
+
+
+def test_keep_lines_takes_a_long_channel_not_a_short_gap():
+    """Synthetic, at 8 px/mm: a 0.25 mm channel 20 mm long between two
+    black slabs is a line; a 0.5 mm gap 4 mm tall between two letters is not."""
+    ppmm = 8.0
+    bg = np.ones((200, 400), bool)
+    bg[40:80, 40:360] = False      # upper slab
+    bg[82:122, 40:360] = False     # lower slab; rows 80-81 are the channel
+    bg[150:182, 40:100] = False    # letter one
+    bg[150:182, 104:160] = False   # letter two; columns 100-103 are the gap
+    lines = two_tone.keep_lines(bg, ppmm)
+    assert lines[80, 200] and lines[81, 200]
+    assert not lines[166, 101]
+    # widened to the satin floor along its centre line, into the slabs
+    from digitizer_core.machine import SATIN_MIN_CROSS_MM
+    assert lines[:, 200].sum() >= SATIN_MIN_CROSS_MM * ppmm
+
+
+def test_golke_roof_sews_white_with_the_flag_on():
+    """End to end: the roof lines reach the stitch plan in the light ink.
+    The fold alone left 117 white stitches (2026-10-08), the roof as a mass."""
+    from tools.eye_pairs.features import base_cfg, digitize_once
+    from tools.stroke_colour_probe import _blocks
+
+    *_, design = digitize_once(TESTDATA / "art/logo_golke_roofing.png",
+                               base_cfg(80.0, "left_chest", two_tone_snap=True))
+    white = sum(n for c, n in _blocks(design) if c.lower() == "#ffffff")
+    assert white > 400
+
+
+# --- preflight's thread grader reads the raster the pipeline sewed ----------
+
+def _preflight(rel: str, on: bool, retint=None):
+    from digitizer_core.pipeline import digitize
+    from digitizer_core.preflight import run_preflight
+
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", two_tone_snap=on)
+    result, plan = digitize(TESTDATA / rel, cfg)
+    if retint is not None:
+        retint(result, cfg)
+    return run_preflight(result, plan, cfg, image=TESTDATA / rel)
+
+
+def _thread_blocks(report) -> list[dict]:
+    return [f for f in report["findings"]
+            if f.get("code") == "THREAD_MATCH_POOR" and f.get("severity") == "block"]
+
+
+@pytest.mark.parametrize("rel", ["art/logo_golke_roofing.png", "photo/logo_gaulke_roofing.png"])
+def test_the_kept_lines_do_not_block_their_white_thread(rel):
+    """Read unsnapped, the grader saw the anti-alias grey under the lines
+    `keep_lines` widens and BLOCKED White: golke dE 14.6 (art 190 grey),
+    gaulke 33.9 (126), both blocking nothing OFF (2026-10-08). It now judges
+    the snapped raster, where those lines are the art's white."""
+    assert _thread_blocks(_preflight(rel, on=True)) == []
+
+
+def test_a_genuinely_wrong_thread_still_blocks_with_the_snap_on():
+    """The snapped yardstick is not a blindfold: sew golke's white lines in a
+    red spool and the grader still blocks it."""
+    from digitizer_core.threads import chart_for
+
+    def to_red(result, cfg):
+        chart = chart_for(cfg)
+        red = min(range(len(chart)), key=lambda i: sum(
+            (a - b) ** 2 for a, b in zip(chart[i].rgb, (200, 20, 30))))
+        white = [r for r in result.regions
+                 if min(chart[r.thread_index].rgb) > 230
+                 and not r.meta.get("enclosed_background")]
+        assert white, "fixture drift: golke's roof lines no longer sew white"
+        for r in white:
+            r.thread_index = red
+            r.thread_number = chart[red].number
+
+    blocks = _thread_blocks(_preflight("art/logo_golke_roofing.png", on=True, retint=to_red))
+    assert blocks
+    assert any(min(f["extra"]["artwork_rgb"]) > 230 for f in blocks)
+
+
+def test_the_grader_view_is_the_plain_reread_when_the_snap_is_off():
+    """Flag OFF, the thread grader is handed the very object every other check
+    reads: byte-identical by construction, not by tolerance."""
+    from digitizer_core.preflight import _two_tone_view
+    from digitizer_core import StitchPlan
+
+    p = prep(TESTDATA / "art/logo_golke_roofing.png", _cfg())
+    plan = StitchPlan(blocks=[], palette=[])
+    assert _two_tone_view(p, plan, _cfg(two_tone_snap=False)) is p
+    assert _two_tone_view(p, plan, _cfg(two_tone_snap=True, is_photographic=True)) is p
+    q = _two_tone_view(p, plan, _cfg(two_tone_snap=True))
+    assert q is not p and q.rgb is not p.rgb

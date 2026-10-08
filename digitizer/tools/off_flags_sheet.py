@@ -30,7 +30,7 @@ from digitizer_core.stitchviz import DEFAULT_PX_PER_MM, UNITS_PER_MM, render_des
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 
-# flag -> (config overrides when ON, [(fixture name in REAL_ART or testdata path, width mm, garment)])
+# flag -> (config overrides when ON (each False when OFF, so a flag flipped on by default still has an OFF side), [(fixture name in REAL_ART or testdata path, width mm, garment)])
 FLAGS: dict[str, tuple[dict, list[tuple[str, float, str]]]] = {
     "two_tone_snap": ({"two_tone_snap": True}, [
         ("art/logo_mfab_lc.png", 80.0, "left_chest"),
@@ -189,7 +189,7 @@ def run_flag(flag: str, out: Path, only: list[str] | None) -> None:
             continue
         designs = []
         for on in (False, True):
-            _g, _r, _p, design = digitize_once(TESTDATA / name, base_cfg(width, garment, **(on_kw if on else {})))
+            _g, _r, _p, design = digitize_once(TESTDATA / name, base_cfg(width, garment, **(on_kw if on else {k: False for k in on_kw})))
             designs.append(design)
         img, m = sheet(flag, name, *designs, note=f"{width:g} mm, {garment}")
         stem = Path(name).stem
