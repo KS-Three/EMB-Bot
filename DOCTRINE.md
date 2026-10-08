@@ -8766,6 +8766,23 @@ on, a guard reads the corpus. Run the lettering guard set before a flip's PR
 opens, and when a flip tips a bar with Kent's ruling on it, that is a finding
 to name, not a pin to move.** *(measured 2026-10-07 — PR #663)*
 
+## 2026-10-07 — A sitting confounded by density: equalise pitch before pairing
+
+Kent's first `lettering_columns` sitting came back **needs work** — *"The
+comparison could be skewed because of the varying stitch density"* — and five
+of his six notes are about density, not construction. He was right, and it
+was the page's fault: the Columns side was rendered one commit before
+1782fbea, with one end of each station down, so every rail took a needle
+each 0.80–0.84 mm (outer-rail median, all six lettered logos) against the
+skeleton tier's 0.42–0.52. The engine fix was already on `main` when he
+looked; the pictures were not redrawn. On `main` the lane reads 0.40–0.46.
+**Before a construction pair goes to Kent, measure per-rail pitch on both
+sides (`tools/satin_pitch.py`) and put it in the caption; a pair that
+differs in density is a density pair, whatever the arm is called. And when
+an engine fix lands under a drawn page, the page is stale: redraw it or
+pull it.** *(measured 2026-10-07 — `docs/eye-pairs-2026-10-07/kent-notes.json`,
+`columns_sitting`; `tests/test_lettering_columns.py`)*
+
 ## 2026-10-07 — The held flip, named and fixed: a bend read as a corner, and the vertex test would have cut the wrong way
 
 The ENTHUSIAST element `satin_join_square` lost is the S's bowl. At 80 mm

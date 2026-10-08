@@ -502,6 +502,11 @@ about the facts.
    after its guards held Kent's 10-06 flip for one lost ENTHUSIAST element
    (defect 60, fixed the same day). *(measured 2026-10-07 — PR #663, the flip PR; DOCTRINE 2026-10-07)*
 
+31. **`lettering_columns` — first sitting ruled NEEDS WORK 2026-10-07, redrawn at equal pitch.**
+   The page's Columns side sewed 0.80 mm per rail (drawn before 1782fbea);
+   on `main` both sides read 0.40–0.52. Sitting `density-1007` is his. OFF.
+   *(measured 2026-10-07 — `tools/satin_pitch.py`; `docs/eye-pairs-2026-10-07/kent-notes.json`)*
+
 ## Cross-cutting issues
 
 Things that don't respect one capability area's boundary. Referenced from the
