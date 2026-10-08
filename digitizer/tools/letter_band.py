@@ -29,6 +29,10 @@ session's scratchpad so the next person re-measures instead of re-deriving:
            20 deg over its middle ones -- the serif and junction fans, an
            arm's crosses turning into its slab (`cfg.satin_join_square`).
            Ours 7 over 36 columns on Fremont at 80 mm, the pro's 5 over 63.
+  splay    the same question asked of the crosses `fans` cannot see -- a
+           badly splayed end breaks the side-alternation its column cutter
+           needs, so the worst fans were never in that count
+           (`splay_ends`, 2026-10-08).
 
 The letter band is given as fractions of the artwork's height (the Fremont
 default is HOTEL FREMONT's); the pro file's band is the same fractions of
@@ -217,6 +221,64 @@ def fan_ends(seqs, end_mm=1.5, excess_deg=20.0):
     return events, columns
 
 
+SPLAY_STOP_DEG = 60.0
+
+
+def splay_ends(seqs, end_mm=1.5, excess_deg=20.0):
+    """-> (splayed ends, columns): `fan_ends`' question asked of the crosses
+    `fan_ends` cannot see (2026-10-08).
+
+    A badly fanned end breaks the strict side-alternation `_short_columns`
+    cuts by, so the column it returns STARTS after the fan -- Fremont's E
+    middle arm splays from square to 57 deg over its last four crosses and
+    `fan_ends` reads it clean. And lean against the local rail misses a fan
+    whose rails turn with it. So here each column is grown back out over its
+    run, a cross at a time, while the legs are stitch-length and the cross
+    stays within `SPLAY_STOP_DEG` of the middle's direction (a butting
+    member's crosses, square to this one, stop it), and every cross is read
+    by its ABSOLUTE direction against the median of the middle crosses of
+    the same parity -- a zigzag's outbound and return legs lean differently
+    and each is compared with its own kind. An end splays when a cross in
+    its first or last `end_mm` (by cross-midpoint arc) turns more than
+    `excess_deg` from that median."""
+    events = columns = 0
+    for s in seqs:
+        pts = np.asarray(s, float)
+        if len(pts) < 3:
+            continue
+        ang = np.degrees(np.arctan2(*(pts[1:] - pts[:-1])[:, ::-1].T)) % 180.0
+        leg = np.hypot(*(pts[1:] - pts[:-1]).T)
+
+        def turn(a, b):
+            d = abs(a - b) % 180.0
+            return min(d, 180.0 - d)
+
+        for i, j in _short_columns(pts):
+            core = list(range(i, j - 1))           # cross k joins pts[k], pts[k + 1]
+            if len(core) < 6:
+                continue
+            mid_core = core[2:-2]
+            med = {par: float(np.median([ang[k] for k in mid_core if k % 2 == par] or [ang[mid_core[0]]]))
+                   for par in (0, 1)}
+            lo, hi = core[0], core[-1]
+            while lo - 1 >= 0 and MIN_LEG_MM <= leg[lo - 1] <= 12 and \
+                    turn(ang[lo - 1], med[(lo - 1) % 2]) < SPLAY_STOP_DEG:
+                lo -= 1
+            while hi + 1 < len(leg) and MIN_LEG_MM <= leg[hi + 1] <= 12 and \
+                    turn(ang[hi + 1], med[(hi + 1) % 2]) < SPLAY_STOP_DEG:
+                hi += 1
+            ks = list(range(lo, hi + 1))
+            mids = (pts[lo:hi + 1] + pts[lo + 1:hi + 2]) / 2.0
+            arc = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(mids, axis=0).T))])
+            total = arc[-1]
+            columns += 1
+            for sel in (arc < end_mm, arc > total - end_mm):
+                dev = [turn(ang[k], med[k % 2]) for k, on in zip(ks, sel) if on]
+                if dev and max(dev) > excess_deg:
+                    events += 1
+    return events, columns
+
+
 def hair_per_letter(seqs, x0, x1, y0, y1, px=40):
     import cv2
     img = np.zeros((int((y1 - y0) * px), int((x1 - x0) * px)), np.uint8)
@@ -341,8 +403,10 @@ def main():
     h = hair_per_letter(sil_seqs, -W / 2 - 1, W / 2 + 1, band[0] - 1, band[1] + 1)
     print(f"  all crosses: med {np.median(w):.2f} p10 {np.percentile(w, 10):.2f} p90 {np.percentile(w, 90):.2f} (n {len(w)})")
     fe, fc = fan_ends(satin_seqs)
+    se, sc = splay_ends(satin_seqs)
     print(f"  rail jitter |dev| med {np.median(j):.3f} p90 {np.percentile(j, 90):.3f} mm; lean med {np.median(l):.1f} p90 {np.percentile(l, 90):.1f} deg; "
-          f"hair per letter mean {np.mean(h):.2f} ({' '.join(f'{v:.2f}' for v in h)}); fan ends {fe} over {fc} columns")
+          f"hair per letter mean {np.mean(h):.2f} ({' '.join(f'{v:.2f}' for v in h)}); fan ends {fe} over {fc} columns; "
+          f"splayed ends {se} over {sc}")
     if a.pro:
         seqs, ws, pband, pW, pH = pro(a.pro, a.pro_colour, a.band)
         k = a.width / pW
