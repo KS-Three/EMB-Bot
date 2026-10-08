@@ -16,8 +16,10 @@
   // inheritance; hex/#rgb/rgb()/named colors; fill-rule evenodd and nonzero.
   //
   // NOT supported (documented so the caller can warn honestly):
-  // - <use>/<symbol> instancing, external references, CSS <style> blocks and
-  //   class selectors (only inline style="" is read)
+  // - external <use> references (same-document #id instancing IS supported,
+  //   including <symbol>; its viewBox is not applied)
+  // - CSS beyond simple .class rules in <style> blocks (no tag, id,
+  //   descendant or attribute selectors)
   // - gradients and patterns (url(#...) paints) — the element is skipped
   // - strokes (no outline expansion), markers, filters, masks, clip-paths
   // - <text> (must be converted to outlines upstream)
@@ -214,6 +216,47 @@
     return m ? m[1].trim() : null;
   }
 
+  // Collects simple `.cls { ... }` rules from every <style> block — the form
+  // Illustrator ("Style Elements" CSS) and Inkscape emit. Returns
+  // { cls: "decl;decl" }. Anything but a bare class selector is ignored.
+  function parseClassRules(text) {
+    const rules = {};
+    const STYLE_RE = /<\s*style\b[^>]*>([\s\S]*?)<\s*\/\s*style\s*>/gi;
+    let sm;
+    while ((sm = STYLE_RE.exec(text))) {
+      const css = sm[1].replace(/<!\[CDATA\[|\]\]>/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+      const RULE_RE = /([^{}]+)\{([^}]*)\}/g;
+      let rm;
+      while ((rm = RULE_RE.exec(css))) {
+        for (const sel of rm[1].split(",")) {
+          const cm = /^\s*\.([\w-]+)\s*$/.exec(sel);
+          if (cm) rules[cm[1]] = (rules[cm[1]] ? rules[cm[1]] + ";" : "") + rm[2];
+        }
+      }
+    }
+    return rules;
+  }
+
+  // Maps each element id to the [start, end) source span of that element,
+  // so <use href="#id"> can re-walk it in place.
+  function indexIdSpans(text) {
+    const spans = {};
+    const open = [];
+    const re = new RegExp(TAG_RE.source, "g");
+    let m;
+    while ((m = re.exec(text))) {
+      if (m[1] === "/") {
+        const top = open.pop();
+        if (top && top.id && !(top.id in spans)) spans[top.id] = [top.start, m.index + m[0].length];
+        continue;
+      }
+      const id = parseAttrs(m[3]).id;
+      if (m[4] === "/") { if (id && !(id in spans)) spans[id] = [m.index, m.index + m[0].length]; }
+      else open.push({ id, start: m.index });
+    }
+    return spans;
+  }
+
   function parseColor(value) {
     if (!value) return null;
     const v = String(value).trim().toLowerCase();
@@ -339,7 +382,8 @@
     const o = opts || {};
     const targetLongMm = o.targetLongMm || 50;
     const warnings = [];
-    const text = String(svgText || "");
+    // Comments can hold commented-out markup; drop them before scanning.
+    const text = String(svgText || "").replace(/<!--[\s\S]*?-->/g, "");
 
     // Root sizing: viewBox is authoritative; width/height is the fallback.
     let vbW = 0, vbH = 0;
@@ -366,70 +410,109 @@
     const TOLERANCE_MM = 0.05;
     const tolerance = TOLERANCE_MM * unitsPerMm;
 
-    // Stack of inherited state, one frame per open element.
-    const stack = [{ matrix: IDENTITY.slice(), fill: null, fillRule: "nonzero", hidden: false }];
+    const classRules = parseClassRules(text);
+    const idSpans = indexIdSpans(text);
     const byColor = new Map();
-    let sawText = false, sawStrokeOnly = false, sawUse = false, sawUnsupportedPaint = false;
+    let sawText = false, sawStrokeOnly = false, sawUse = false, sawUnsupportedPaint = false, sawClip = false;
 
-    let m;
-    TAG_RE.lastIndex = 0;
-    while ((m = TAG_RE.exec(text))) {
-      const closing = m[1] === "/";
-      const tag = m[2].toLowerCase().replace(/^.*:/, ""); // strip any namespace
-      const selfClosing = m[4] === "/";
-      if (closing) { if (stack.length > 1) stack.pop(); continue; }
-
-      const attrs = parseAttrs(m[3]);
-      const parent = stack[stack.length - 1];
-
-      let matrix = parent.matrix;
-      if (attrs.transform) matrix = multiplyMatrix(matrix, parseTransform(attrs.transform));
-
-      const styleFill = styleProp(attrs.style, "fill");
-      const rawFill = styleFill !== null ? styleFill : attrs.fill;
-      const fill = rawFill !== undefined && rawFill !== null
-        ? { value: rawFill, rgb: parseColor(rawFill) }
-        : parent.fill;
-      const fillRule = styleProp(attrs.style, "fill-rule") || attrs["fill-rule"] || parent.fillRule;
-      const hidden = parent.hidden || HIDDEN_CONTAINERS[tag] === 1;
-      const frame = { matrix, fill, fillRule, hidden };
-
-      if (tag === "text" || tag === "tspan") sawText = true;
-      if (tag === "use") sawUse = true;
-
-      const subs = hidden ? [] : primitiveToSubpaths(tag, attrs, { tolerance });
-      if (subs.length) {
-        // An explicit fill of "none" (or an unresolvable paint) means no
-        // fill; an ABSENT fill anywhere in the ancestor chain means black,
-        // per the SVG initial value.
-        const explicitNone = fill && fill.rgb === null;
-        const rgb = fill && fill.rgb ? fill.rgb : (explicitNone ? null : [0, 0, 0]);
-        if (rgb === null) {
-          if (fill && /^url\s*\(/i.test(fill.value)) sawUnsupportedPaint = true;
-          const strokeVal = styleProp(attrs.style, "stroke") || attrs.stroke;
-          if (strokeVal && strokeVal !== "none") sawStrokeOnly = true;
-        } else {
-          const rings = subs.map((s) => s.points.map((p) => applyMatrix(matrix, p)));
-          // Group THIS element's rings into shapes under its own fill-rule,
-          // then merge the shapes into the per-color region.
-          const shapes = groupIntoShapes(rings, fillRule);
-          if (shapes.length) {
-            const key = rgb.join(",");
-            if (!byColor.has(key)) byColor.set(key, { rgb, shapes: [] });
-            for (const s of shapes) byColor.get(key).shapes.push(s);
-          }
+    // Cascade: inline style beats a class rule beats the presentation
+    // attribute.
+    function prop(attrs, name) {
+      const inline = styleProp(attrs.style, name);
+      if (inline !== null) return inline;
+      if (attrs.class) {
+        for (const c of attrs.class.trim().split(/\s+/).reverse()) {
+          const v = classRules[c] ? styleProp(classRules[c], name) : null;
+          if (v !== null) return v;
         }
       }
-      // Every non-self-closing element gets a frame so its closing tag pops
-      // symmetrically (a <rect></rect> pair must not pop its parent).
-      if (!selfClosing) stack.push(frame);
+      return attrs[name] !== undefined ? attrs[name] : null;
     }
+
+    // Walks the elements in text[lo, hi) under the inherited frame `base`.
+    // An instance root (the element a <use> points at) renders even when it
+    // is a <symbol> or sits inside <defs>.
+    function walk(lo, hi, base, depth, instanceRoot) {
+      const stack = [base];
+      const re = new RegExp(TAG_RE.source, "g");
+      re.lastIndex = lo;
+      let m;
+      while ((m = re.exec(text)) && m.index < hi) {
+        const closing = m[1] === "/";
+        const tag = m[2].toLowerCase().replace(/^.*:/, ""); // strip any namespace
+        const selfClosing = m[4] === "/";
+        if (closing) { if (stack.length > 1) stack.pop(); continue; }
+
+        const attrs = parseAttrs(m[3]);
+        const parent = stack[stack.length - 1];
+
+        let matrix = parent.matrix;
+        if (attrs.transform) matrix = multiplyMatrix(matrix, parseTransform(attrs.transform));
+
+        const rawFill = prop(attrs, "fill");
+        const fill = rawFill !== null
+          ? { value: rawFill, rgb: parseColor(rawFill) }
+          : parent.fill;
+        const fillRule = prop(attrs, "fill-rule") || parent.fillRule;
+        const isRoot = instanceRoot && m.index === lo;
+        const hidden = parent.hidden || (!isRoot && HIDDEN_CONTAINERS[tag] === 1);
+        const frame = { matrix, fill, fillRule, hidden };
+
+        if (!hidden && (tag === "text" || tag === "tspan")) sawText = true;
+        if (!hidden && (attrs["clip-path"] || attrs.mask || prop(attrs, "clip-path"))) sawClip = true;
+
+        if (tag === "use" && !hidden) {
+          const href = (attrs.href || attrs["xlink:href"] || "").trim();
+          const span = href[0] === "#" ? idSpans[href.slice(1)] : null;
+          // Per spec x/y translate AFTER the use element's own transform.
+          const useM = multiplyMatrix(matrix, [1, 0, 0, 1, num(attrs, "x", 0), num(attrs, "y", 0)]);
+          if (span && depth < 8 && !(span[0] <= m.index && m.index < span[1])) {
+            walk(span[0], span[1], { matrix: useM, fill, fillRule, hidden: false }, depth + 1, true);
+          } else {
+            sawUse = true;
+          }
+        }
+
+        const subs = hidden ? [] : primitiveToSubpaths(tag, attrs, { tolerance });
+        if (subs.length) {
+          // An explicit fill of "none" (or an unresolvable paint) means no
+          // fill; an ABSENT fill anywhere in the ancestor chain means black,
+          // per the SVG initial value.
+          const explicitNone = fill && fill.rgb === null;
+          const rgb = fill && fill.rgb ? fill.rgb : (explicitNone ? null : [0, 0, 0]);
+          if (rgb === null) {
+            if (fill && /^url\s*\(/i.test(fill.value)) sawUnsupportedPaint = true;
+            const strokeVal = prop(attrs, "stroke");
+            if (strokeVal && strokeVal !== "none") sawStrokeOnly = true;
+          } else {
+            const rings = subs.map((s) => s.points.map((p) => applyMatrix(matrix, p)));
+            // Group THIS element's rings into shapes under its own fill-rule,
+            // then merge the shapes into the per-color region.
+            const shapes = groupIntoShapes(rings, fillRule);
+            if (shapes.length) {
+              const key = rgb.join(",");
+              if (!byColor.has(key)) byColor.set(key, { rgb, shapes: [] });
+              for (const s of shapes) byColor.get(key).shapes.push(s);
+            }
+          }
+        }
+        // Every non-self-closing element gets a frame so its closing tag pops
+        // symmetrically (a <rect></rect> pair must not pop its parent).
+        if (!selfClosing) stack.push(frame);
+        // An instance root's subtree ends at its own closing tag.
+      }
+    }
+
+    walk(0, text.length, { matrix: IDENTITY.slice(), fill: null, fillRule: "nonzero", hidden: false }, 0, false);
 
     if (sawText) {
       warnings.push("This file contains live text. Convert text to outlines in your design app, or it will not stitch.");
     }
     if (sawUse) {
-      warnings.push("<use> references are not supported; instanced artwork was skipped. Flatten/expand symbols before exporting.");
+      warnings.push("Some <use> references could not be resolved (external file or missing id); that instanced artwork was skipped. Flatten/expand symbols before exporting.");
+    }
+    if (sawClip) {
+      warnings.push("Clip paths and masks are ignored; clipped artwork imports unclipped. Release clipping masks before exporting if the result looks wrong.");
     }
     if (sawUnsupportedPaint) {
       warnings.push("Gradient or pattern fills are not supported; those elements were skipped. Use solid fills.");
