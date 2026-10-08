@@ -231,6 +231,12 @@ class Stroke:
     # web; only `satin_stroke` reads this, sewing the members as separate
     # columns joined end to end. See `_split_sharp_corners`.
     corners: list = _dc_field(default_factory=list)
+    # A slab's own centre line at a free end, wing to wing, the part no other
+    # stroke already sews (2026-10-08, `cfg.satin_join_square`; see
+    # `_attach_slabs`). `satin_stroke` sews it as a short column joined to
+    # this one at that end. None everywhere else.
+    slab_start: list | None = None
+    slab_end: list | None = None
 
 
 @dataclass
@@ -3899,35 +3905,54 @@ _STRAIGHT_TO_HALVES = 4.0      # ... and reaches this far (or the member's end)
 _BEND_TOL_HALVES = 0.2         # a sample this close to the line is already straight
 
 
-def _straighten_member_end(piece: list[tuple[float, float]], at_end: bool,
-                           half_mm: float) -> list[tuple[float, float]]:
-    """`piece` with its corner end (the last point if `at_end`, else the
-    first) laid on the member's own straight line. A member shorter than
-    the straight stretch, or one whose stretch does not fit a line, is
-    returned as it is."""
+def _member_axis(piece: list[tuple[float, float]], at_end: bool, half_mm: float,
+                 to_halves: float = _STRAIGHT_TO_HALVES, max_rms: float | None = None):
+    """-> (pts, cum, centre, u) for a member's own straight line, `pts`
+    oriented so its corner end is last and `u` pointing at it; None when
+    the member is shorter than the straight stretch or the stretch does not
+    fit a line (or, given `max_rms`, fits one more loosely than that)."""
     if half_mm <= 0 or len(piece) < 4:
-        return piece
+        return None
     pts = list(piece) if at_end else list(reversed(piece))
     cum = [0.0]
     for a, b in zip(pts, pts[1:]):
         cum.append(cum[-1] + math.dist(a, b))
     total = cum[-1]
-    lo, hi = _STRAIGHT_FROM_HALVES * half_mm, _STRAIGHT_TO_HALVES * half_mm
+    lo, hi = _STRAIGHT_FROM_HALVES * half_mm, to_halves * half_mm
     if total < lo + 0.5 * half_mm:
-        return piece
+        return None
     # distance from the corner end, along the spine
     ref = [p for p, c in zip(pts, cum) if lo <= total - c <= hi]
     if len(ref) < 3:
-        return piece
+        return None
     arr = np.asarray(ref, float)
     cen = arr.mean(axis=0)
     _, sv, vt = np.linalg.svd(arr - cen)
     if sv[0] <= 1e-9 or (len(sv) > 1 and sv[1] > 0.35 * sv[0]):
-        return piece                      # the stretch is not a line: a bend, leave it
+        return None                       # the stretch is not a line: a bend, leave it
+    if max_rms is not None and len(sv) > 1 and sv[1] / math.sqrt(len(ref)) > max_rms:
+        return None
     u = vt[0]
     # orient u toward the corner end
     if (np.asarray(pts[-1]) - cen) @ u < 0:
         u = -u
+    return pts, cum, cen, u
+
+
+def _straighten_member_end(piece: list[tuple[float, float]], at_end: bool,
+                           half_mm: float,
+                           to_halves: float = _STRAIGHT_TO_HALVES,
+                           max_rms: float | None = None) -> list[tuple[float, float]]:
+    """`piece` with its corner end (the last point if `at_end`, else the
+    first) laid on the member's own straight line. A member shorter than
+    the straight stretch, or one whose stretch does not fit a line, is
+    returned as it is."""
+    axis = _member_axis(piece, at_end, half_mm, to_halves, max_rms)
+    if axis is None:
+        return piece
+    pts, cum, cen, u = axis
+    total = cum[-1]
+    lo = _STRAIGHT_FROM_HALVES * half_mm
     nrm = np.array([-u[1], u[0]])
     tol = _BEND_TOL_HALVES * half_mm
     # the first sample, walking in from the corner, that sits on the line
@@ -3953,6 +3978,232 @@ def _straighten_member_end(piece: list[tuple[float, float]], at_end: bool,
                 for j in range(1, steps + 1)]
     out = pts[:q + 1] + straight
     return out if at_end else list(reversed(out))
+
+# The same fan at a plain FREE END (2026-10-08). A slab hanging both ways
+# off an arm's end -- a stem's foot serif, the H's feet, the T's base -- is
+# not a corner: `_prune_spurs` reads the slab's two short skeleton arms as a
+# cap's I-beam and takes both, so the arm is a plain stroke with a free end.
+# Its spine still hooks into one corner of the slab (or of a chamfered
+# square cap: Hotel Fremont's E middle arm at 80 mm, 0.35 mm off the arm's
+# line and ending 0.08 mm from the boundary), and the last crosses fan from
+# square to 57 deg into it. Nothing owns the slab's wings, so the fan was
+# the only thread they got: straightening the arm alone trades the fan for
+# bare wings (rendered on Fremont's H at 92.5 mm). So under `join_square`
+# a free end is read by the ARTWORK across the arm's own line within one
+# arm width of its cap face (`_free_end_reading`), in arm widths:
+#   * under `_SQUARE_END_RATIO` -- a tapered tip, left alone;
+#   * a square cap -- if the end hooks off the line it is laid on it exactly
+#     as a corner member's is (`_straighten_member_end`), and
+#     `_extend_to_cap` runs it square out to the cap face;
+#   * over `_SLAB_END_RATIO` -- a slab: the same, and the slab is sewn as its
+#     own short column along its length (`_slab_spine`, `_attach_slabs`),
+#     joined to the arm inside the one stroke the way `_satin_joined` joins
+#     corner members -- the pro's construction, arm square through to the
+#     cap and the slab square to itself.
+# Nothing is read unless the end is an ARM's (`_ARM_MIN_HALVES`), its line
+# fits tightly (`_BEND_TOL_HALVES` rms -- a U's arm otherwise fits a line
+# through its bowl and is re-laid out of its own stem), and its cap face is
+# square to it (`_FACE_SLANT_MAX_DEG`). Each of the three was found on the
+# corpus by a render: Becker's N, the Gaulke and Enthusiast U's, the S.
+# The straight stretch reaches `_SLAB_TO_HALVES` half-widths in from the end,
+# not the corner members' four: a plain stroke's last few millimetres carry
+# the raster staircase, and over four half-widths the fit tilted 6 deg on
+# the E's middle arm (2 deg over eight).
+_SQUARE_END_RATIO = 0.75
+_SLAB_END_RATIO = 1.5
+_SLAB_TO_HALVES = 8.0
+_SLAB_PROBE_MM = 0.05
+# Only an ARM -- a stroke long against its width -- is read at all. The
+# straight stretch starts 1.5 half-widths in, and `half_mm` is the shape's
+# mean: on Becker's MARINE at 100 mm (3 mm half-widths) an 8 mm stem is 2.6
+# half-widths long, so "the bend zone" was half the stem, the whole end was
+# re-laid and 8.8 mm2 of the N came out bare (2026-10-08). Fremont's arms
+# are 6 to 8 half-widths long.
+_ARM_MIN_HALVES = 6.0
+_FACE_SLANT_MAX_DEG = 30.0
+
+
+def _face_slant_deg(poly: Polygon, at, nrm, half_chord: float) -> float:
+    """How far the outline at `at` turns off the direction `nrm`, in
+    degrees (0 = the face runs along `nrm`): the chord between the outline
+    points `half_chord` either side of `at`, along the nearest ring."""
+    here = SPoint(float(at[0]), float(at[1]))
+    ring = min([poly.exterior, *poly.interiors], key=lambda r: r.distance(here))
+    s0 = ring.project(here)
+    L = ring.length
+    pa = ring.interpolate((s0 - half_chord) % L)
+    pb = ring.interpolate((s0 + half_chord) % L)
+    d = np.array([pb.x - pa.x, pb.y - pa.y])
+    n = float(np.hypot(*d))
+    if n <= 1e-9:
+        return 90.0
+    c = abs(float(d @ nrm)) / n
+    return math.degrees(math.acos(min(1.0, c)))
+
+
+def _chord_at(poly: Polygon, at, nrm, reach: float):
+    """-> (length, end, end) of the artwork along the line through `at`
+    in direction `nrm`, the piece nearest `at`; None if the line misses."""
+    line = LineString([tuple(at - nrm * reach), tuple(at + nrm * reach)]).intersection(poly)
+    pieces = [g for g in getattr(line, "geoms", [line]) if g.geom_type == "LineString" and not g.is_empty]
+    if not pieces:
+        return None
+    here = SPoint(float(at[0]), float(at[1]))
+    g = min(pieces, key=lambda g: g.distance(here))
+    if g.distance(here) > 1e-6:
+        return None
+    (x0, y0), (x1, y1) = g.coords[0], g.coords[-1]
+    return g.length, np.array([x0, y0]), np.array([x1, y1])
+
+
+def _free_end_reading(piece: list[tuple[float, float]], at_end: bool, half_mm: float,
+                      poly: Polygon, field: _WidthField | None):
+    """-> (width ratio, slab spine or None, hooked) for a free end of a plain
+    stroke, see the note above; None when the end has no straight line to
+    read. `hooked`: a sample within the bend zone sits off the line by more
+    than `_BEND_TOL_HALVES` -- an end already on its line is left as it is.
+
+    Read from the CAP FACE inward -- the arm's line run forward to the
+    boundary -- because a skeleton end sits anywhere from on the face (a
+    hooked end) to a half-width short of it (a medial axis ending where the
+    corner diagonals meet), and a probe at a fixed step back from the apex
+    lands in the slab for one and in the arm for the other (Fremont's H at
+    92.5 mm read its foot serifs as 0.83 arm widths that way). The ratio is
+    the widest artwork across the line within one arm width of the face."""
+    tol = _BEND_TOL_HALVES * half_mm
+    axis = _member_axis(piece, at_end, half_mm, _SLAB_TO_HALVES, max_rms=tol)
+    if axis is None:
+        return None
+    pts, cum, cen, u = axis
+    if cum[-1] < _ARM_MIN_HALVES * half_mm:
+        return None                     # not an arm: its "bend zone" is most of it
+    nrm = np.array([-u[1], u[0]])
+    lo = _STRAIGHT_FROM_HALVES * half_mm
+    hooked = any(abs(float((np.asarray(p, float) - cen) @ nrm)) > tol
+                 for p, c in zip(pts, cum) if cum[-1] - c < lo)
+    arm = 2.0 * _member_corridor(pts, False, field, half_mm)
+    if arm <= 0:
+        return None
+    reach = 4.0 * _SLAB_END_RATIO * arm
+    apex = cen + float((np.asarray(pts[-1], float) - cen) @ u) * u
+    start = apex - u * half_mm
+    hits = LineString([tuple(start), tuple(start + u * reach)]).intersection(poly.boundary)
+    hit_pts = [(g.x, g.y) for g in getattr(hits, "geoms", [hits]) if g.geom_type == "Point"]
+    if not hit_pts:
+        return None
+    cap = np.array(min(hit_pts, key=lambda q: math.dist(q, tuple(start))), float)
+    # The cap face must be square to the arm. An S's terminal is cut on a
+    # slant, and there the fan IS the construction -- the crosses turn to
+    # meet the cut; run square into it, the column leaves the slant's
+    # wedge bare (Enthusiast's S, 1.3 mm2, 2026-10-08). The face is read
+    # where the arm's own line meets it, as the boundary chord a quarter of
+    # an arm either side along the outline -- wide enough to step over a
+    # raster stair, narrow enough to stay off a chamfered corner (Fremont's
+    # letters carry one at every corner, and a pair of side rays read the
+    # E's square bottom cap as slanted by landing on it).
+    if _face_slant_deg(poly, cap, nrm, 0.25 * arm) > _FACE_SLANT_MAX_DEG:
+        return None
+    widths = []
+    d = _SLAB_PROBE_MM
+    while d <= arm:
+        c = _chord_at(poly, cap - u * d, nrm, reach)
+        widths.append(c[0] if c is not None else 0.0)
+        d += _SLAB_PROBE_MM
+    if not widths:
+        return None
+    ratio = max(widths) / arm
+    if ratio < _SLAB_END_RATIO:
+        return ratio, None, hooked
+    return ratio, _slab_spine(poly, cap, u, nrm, arm, reach), hooked
+
+
+def _slab_spine(poly: Polygon, cap, u, nrm, arm: float, reach: float):
+    """The slab's own centre line, wing to wing: its depth is how far back
+    from the cap face the artwork stays slab-wide, and the spine is the
+    chord at half that depth, inset half the depth at each wing -- where a
+    skeleton would end."""
+    depth, d = 0.0, _SLAB_PROBE_MM
+    while d <= reach:
+        c = _chord_at(poly, cap - u * d, nrm, reach)
+        if c is None or c[0] < _SLAB_END_RATIO * arm:
+            if depth > 0.0:
+                break
+        else:
+            depth = d
+        if d > arm and depth == 0.0:
+            break                       # the wide reading never ran from the face
+        d += _SLAB_PROBE_MM
+    if depth < 2 * _SLAB_PROBE_MM:
+        return None
+    c = _chord_at(poly, cap - u * (0.5 * depth), nrm, reach)
+    if c is None:
+        return None
+    length, p, q = c
+    inset = min(0.5 * depth, 0.25 * length)
+    p, q = p + (q - p) / length * inset, q - (q - p) / length * inset
+    n = max(2, int(math.ceil((length - 2 * inset) / 0.08)))
+    return [(float(p[0] + (q[0] - p[0]) * j / n), float(p[1] + (q[1] - p[1]) * j / n))
+            for j in range(n + 1)]
+
+
+def _attach_slabs(strokes: list[Stroke], poly: Polygon, half_mm: float,
+                  field: _WidthField | None) -> list[Stroke]:
+    """`strokes` with each plain stroke's slab ends' spines attached
+    (`Stroke.slab_start` / `slab_end`), less whatever another stroke
+    already sews: at 92.5 mm Fremont's H keeps one foot wing and its whole
+    top-left slab as strokes of their own, and a slab column over them
+    would sew those wings twice. The slab spine is cut where it runs within
+    two half-widths of any other stroke's spine (that stroke's ribbon and a
+    ribbon's worth of overlap) and the piece the arm's end sits on is kept,
+    if it is still two half-widths long.
+
+    A stroke with corners is read on its END members: their outer ends are
+    the stroke's free ends (Fremont's H at 80 mm joins each stem to its top
+    serif as a corner and leaves the foot a free end), and `_satin_joined`
+    hands the slab to that member."""
+    out: list[Stroke] = []
+    for si, st in enumerate(strokes):
+        if st.closed or not (st.free_start or st.free_end):
+            out.append(st)
+            continue
+        found: dict[bool, list] = {}
+        for at_end, free in ((False, st.free_start), (True, st.free_end)):
+            if not free:
+                continue
+            piece = st.spine
+            if st.corners:
+                piece = st.spine[st.corners[-1][0]:] if at_end else st.spine[:st.corners[0][0] + 1]
+            reading = _free_end_reading(piece, at_end, half_mm, poly, field)
+            if reading is None or reading[1] is None:
+                continue
+            slab = LineString(reading[1])
+            joint = SPoint(st.spine[-1] if at_end else st.spine[0])
+            owned = [LineString(o.spine).buffer(2.0 * half_mm)
+                     for j, o in enumerate(strokes) if j != si and len(o.spine) > 1]
+            if owned:
+                slab = slab.difference(unary_union(owned))
+            pieces = [g for g in getattr(slab, "geoms", [slab])
+                      if g.geom_type == "LineString" and not g.is_empty]
+            if not pieces:
+                continue
+            g = min(pieces, key=lambda g: g.distance(joint))
+            if g.length < 2.0 * half_mm or g.distance(joint) > 2.0 * half_mm:
+                continue
+            found[at_end] = [(float(x), float(y)) for x, y in g.coords]
+        if found:
+            st = Stroke(spine=st.spine, free_start=st.free_start, free_end=st.free_end,
+                        closed=st.closed, capped_start=st.capped_start, capped_end=st.capped_end,
+                        tuck_under_start=st.tuck_under_start, tuck_under_end=st.tuck_under_end,
+                        corners=st.corners, slab_start=found.get(False), slab_end=found.get(True))
+        out.append(st)
+    return out
+
+
+def _reverse_member(flat: list, mparts: list) -> tuple[list, list]:
+    """A member's flat points and parts, sewn the other way."""
+    return (list(reversed(flat)),
+            [(k, list(reversed(pp)), list(reversed(pc)), e, s0) for k, pp, pc, s0, e in reversed(mparts)])
+
 
 def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   field: _WidthField | None, split_above_mm: float | None,
@@ -4014,7 +4265,9 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
             tuck_e = _member_corridor(pts[s1:edges_[m + 2] + 1], True, field, half_mm)
         member = Stroke(spine=piece, free_start=free_s, free_end=free_e, closed=False,
                         capped_start=capped_s, capped_end=capped_e,
-                        tuck_under_start=tuck_s, tuck_under_end=tuck_e)
+                        tuck_under_start=tuck_s, tuck_under_end=tuck_e,
+                        slab_start=stroke.slab_start if m == 0 else None,
+                        slab_end=stroke.slab_end if m == len(edges_) - 2 else None)
         n_before = len(parts) if parts is not None else 0
         # The other members are this member's siblings too: at the corner
         # the stem's far ray escapes along the foot exactly as at a T.
@@ -4029,7 +4282,11 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
-                             tip_caps=tip_caps, siblings=member_sibs)
+                             tip_caps=tip_caps, siblings=member_sibs,
+                             # only the joined stroke's OUTER ends are free
+                             # ends to read; an owner's corner end was laid
+                             # square above, on its own 4-half-width line
+                             read_ends=(m == 0, m == len(edges_) - 2))
         above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
         if parts is not None and len(parts) > n_before and n_before > n_start_joined:
             # The join stays ONE stroke in `parts` as well: this member's
@@ -4078,7 +4335,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  junction_stack: bool = False,
                  cap_recentre: bool = False,
                  tip_caps: bool = False,
-                 siblings: list | None = None) -> list[tuple[float, float]]:
+                 siblings: list | None = None,
+                 read_ends: tuple[bool, bool] = (True, True)) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
 
     `parts` (2026-09-03), when a list is passed, additionally receives the
@@ -4139,6 +4397,87 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
                              tip_caps=tip_caps, siblings=siblings)
+
+    if join_square and not stroke.closed:
+        # A square cap or a slab sews square to it (see `_free_end_reading`).
+        raw = stroke.spine
+        for at_end, free in ((False, stroke.free_start and read_ends[0]),
+                             (True, stroke.free_end and read_ends[1])):
+            reading = _free_end_reading(raw, at_end, half_mm, poly, field) if free else None
+            # A slab-wide reading whose slab `_attach_slabs` cut away is not
+            # a cap: another stroke owns that artwork (the stem an arm runs
+            # into), or what was left was too short to sew -- straightening
+            # there is the "square arm, bare wings" trade. Only a square cap,
+            # or a slab that will be sewn, is laid square.
+            slab_kept = (stroke.slab_end if at_end else stroke.slab_start) is not None
+            if reading is not None and reading[1] is not None and not slab_kept:
+                continue
+            if reading is not None and reading[0] >= _SQUARE_END_RATIO and reading[2]:
+                raw = _straighten_member_end(raw, at_end, half_mm, _SLAB_TO_HALVES,
+                                             max_rms=_BEND_TOL_HALVES * half_mm)
+        # the slab columns themselves, wing to wing, as `_attach_slabs` cut
+        # them against the shape's other strokes
+        slabs = {at_end: sp for at_end, sp in ((False, stroke.slab_start), (True, stroke.slab_end)) if sp}
+        kw = dict(art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
+                  rails_follow_edge=rails_follow_edge, outer_rail_pitch=outer_rail_pitch,
+                  max_width_mm=max_width_mm, fold_guard=fold_guard,
+                  rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
+                  junction_stack=junction_stack, cap_recentre=cap_recentre, tip_caps=tip_caps)
+        arm = Stroke(spine=raw, free_start=stroke.free_start, free_end=stroke.free_end,
+                     closed=False, capped_start=stroke.capped_start, capped_end=stroke.capped_end,
+                     tuck_under_start=stroke.tuck_under_start, tuck_under_end=stroke.tuck_under_end)
+        members: list[tuple[list, list]] = []
+        arm_parts: list = []
+        arm_flat = satin_stroke(poly, arm, half_mm, field, split_above_mm, end_cutback_mm,
+                                spacing_mm, angle_deg, parts=arm_parts,
+                                siblings=[*(siblings or []), *slabs.values()] if siblings is not None else None,
+                                **kw)
+        if not slabs or not arm_flat:
+            if parts is not None:
+                parts.extend(arm_parts)
+            return arm_flat
+        for at_end in (False, True):
+            if at_end:
+                members.append((arm_flat, arm_parts))
+            if at_end not in slabs:
+                continue
+            sp = slabs[at_end]
+            sparts: list = []
+            sflat = satin_stroke(poly, Stroke(spine=sp, free_start=True, free_end=True, closed=False,
+                                              capped_start=True, capped_end=True),
+                                 half_mm, field, split_above_mm, end_cutback_mm, spacing_mm, angle_deg,
+                                 parts=sparts,
+                                 siblings=[*siblings, raw] if siblings is not None else None, **kw)
+            if not sflat:
+                continue
+            # the slab is entered from (or left for) the arm's end nearest it
+            joint = arm_flat[-1] if at_end else arm_flat[0]
+            near_first = math.dist(sflat[0], joint) <= math.dist(sflat[-1], joint)
+            if near_first != at_end:
+                sflat, sparts = _reverse_member(sflat, sparts)
+            members.append((sflat, sparts))
+        above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
+        out: list[tuple[float, float]] = []
+        n0 = len(parts) if parts is not None else 0
+        for flat, mparts in members:
+            if out:
+                seam = _split_points(out[-1], flat[0], 0, above)
+                if parts is not None and len(parts) > n0 and mparts and \
+                        parts[-1][0] == stitches.SATIN and mparts[0][0] == stitches.SATIN:
+                    # one stroke, one part, as `_satin_joined` keeps a corner
+                    pk, pp, pc, ps, _pe = parts[-1]
+                    k0, p0, c0, _s0, e0 = mparts[0]
+                    parts[-1] = (stitches.SATIN, pp + seam + p0, pc + c0, ps, e0)
+                    mparts = mparts[1:]
+                out.extend(seam)
+            out.extend(flat)
+            if parts is not None:
+                parts.extend(mparts)
+        if parts is not None and len(parts) > n0:
+            for j in range(n0, len(parts)):
+                kind, pp, pc, _s, _e = parts[j]
+                parts[j] = (kind, pp, pc, j == n0, j == len(parts) - 1)
+        return out
 
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
@@ -5683,6 +6022,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
         report["empty"] = True
         return [], report
     strokes = _order_strokes(strokes, start_near)
+    if join_square:
+        strokes = _attach_slabs(strokes, poly, half_mm, field)
 
     # Per stroke: its underlay, then its column, then move on. Sewing ALL the
     # underlay first meant hopping back across the whole letter to start the

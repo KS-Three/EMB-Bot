@@ -363,11 +363,9 @@ about the facts.
 
 18. **OPEN: a COLD photo digitize is ~90 s and `fill_travel_under_cover` is ~58% of it.** The 2026-09-17 memo fixed the RE-stitch (79.3 → 44.6 s); the first digitize still pays the flag in full. Three ways out, all Kent's: flip it off (costs stitches, re-exposes the travel it hides), optimise `_reorder_for_cover` (golden-pinned — a win must be byte-identical), or accept it. **Do not re-derive the numbers** — method, noise floor, per-flag table and three INERT flags are in the doc. *(measured 2026-09-17 — `docs/flag-runtime-bills-2026-09-12.md`)*
 
-19. **RESOLVED 2026-10-03 — `satin_cap_recentre` is ON** (Kent's ruling in chat,
-   on his sitting: after on becker and tires, before on none; Latent 5).
-   `satin_patch_junctions = "satin"` was never waiting — the junction stack's
-   part C since 2026-09-19 — and `satin_walk_cursor_reach_mm` stays parked for
-   cloth (Kent 2026-09-20). *(flipped 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`)*
+19. **RESOLVED 2026-10-03 — `satin_cap_recentre` is ON** (Kent: after on becker
+   and tires). `satin_walk_cursor_reach_mm` stays parked for cloth (Kent
+   2026-09-20). *(flipped 2026-10-03 — `docs/eye-pairs-2026-10-03/README.md`)*
 
 20. **Paired ground truth costs money or it does not exist.** No free source
    ships artwork PLUS a professional's stitch file of the same design, and the
@@ -501,6 +499,13 @@ about the facts.
    59. Touches only an upscaled upload; price Becker +506 stitches, +11 trims
    for bare 4.33 → 2.65%. **Not sewn.**
    *(ruled 2026-10-07 — `docs/eye-pairs-2026-10-07/kent-notes.json`; [`docs/letterform-priors-2026-10-06.md`](docs/letterform-priors-2026-10-06.md))*
+
+30. **Flip `satin_join_square` — NEW 2026-10-08, built OFF; recommended HOLD.**
+   It now also squares a hooked free end and sews a foot or T slab as its own
+   column. Fremont at 80 mm: bare letter artwork 3.20 → 0.91 mm², fan ends
+   18 → 13, trims equal. The hold is the corner half (built 10-06): bare
+   +1.3 to +2.6 mm² on becker, gaulke, enthusiast and drone; enthusiast trims
+   15 → 19. Not sewn. *(measured 2026-10-08 — `tools/join_square_census.py`)*
 
 ## Cross-cutting issues
 

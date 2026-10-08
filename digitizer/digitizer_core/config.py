@@ -1678,6 +1678,14 @@ class PipelineConfig:
     # members move on every letter with a slab or an L, so the goldens
     # re-capture on the flip, and the render is Kent's to judge first.
     # Tests: `tests/test_join_corner_straight.py`.
+    # 2026-10-08, the same flag at a plain FREE END: a square cap the spine
+    # hooks into is laid square too, and a SLAB hanging off it (an H's
+    # feet, a T's base -- `_prune_spurs` drops its wings as a cap I-beam,
+    # so the fan was their only thread) is sewn as its own short column
+    # square to itself, joined to the arm (`_free_end_reading`,
+    # `_attach_slabs`). Gated to arms, tight lines and square cap faces --
+    # each gate found by a corpus render. Measured OFF -> ON:
+    # `tools/join_square_census.py`; tests `tests/test_join_slab_square.py`.
     satin_join_square: bool = False
     # Lettering as Columns (`digitizer_core/outline_cut.py`,
     # `digitizer_core/columns.py`; the lettering-lane architecture,

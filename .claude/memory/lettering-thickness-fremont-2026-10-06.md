@@ -88,3 +88,15 @@ every serif corner a 90° turn), so read lean against the local rail normal;
 and a synthetic L does not fan at all — the fixture had to be the real E,
 byte for byte (a 3-dp rounding decomposes differently). T-shaped slabs
 (the E's middle arm) are a cap by the twig rule and stay a fan: next.
+
+**Correction and follow-up, 2026-10-08 (lane `claude/join-square-tslab`).**
+The E's middle arm is NOT a T-slab: at 80 mm it ends in a chamfered square
+cap whose corner its spine hooks into (render). The real T-slabs are the H's
+feet, the T's base and serifs off a bar's free end. The flag now covers
+both: a hooked square cap is laid square, and a slab is sewn as its own
+column (`_free_end_reading`, `_attach_slabs`; fixture
+`testdata/fremont_H_slab_feet.json`). Fremont 80 mm left_chest: bare letter
+artwork 3.20 → 0.91 mm2, fan ends 18 → 13, trims equal. The flag is still
+HELD: the corner half costs bare on becker, gaulke, enthusiast, drone, and
+enthusiast trims 15 → 19 — that is the next lever. See DOCTRINE 2026-10-08.
+
