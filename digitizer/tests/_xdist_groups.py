@@ -21,9 +21,13 @@ THE GROUPS (a test with no group is scheduled alone, as under ``load``):
   - tests that share a module-scoped fixture -- directly or through other
     fixtures -- are one group per connected set, so each such fixture is
     built once per run, on one worker, exactly as in a serial run;
-  - a file with a module-level memo (``lru_cache``/``functools.cache``) is
-    one group: what it shares is invisible to collection, so the whole file
-    stays together, as under ``loadfile``;
+  - in a file with a module-level memo (``lru_cache``/``functools.cache``),
+    what is shared is invisible to collection. Its parametrized tests are
+    grouped by their string parameters -- in this suite those are the
+    fixture names the memo is keyed on (`_case(fixture, ...)`), so each
+    fixture's runs stay on one worker -- and its other tests form one group
+    of their own. A file whose memo takes NO argument shares one thing
+    across the whole file, so it stays one group, as under ``loadfile``;
   - everything else is ungrouped.
 Scopes are then ordered heaviest-first (file duration from
 ``.shard_durations.json``, split by test count) so the long groups start at
@@ -44,6 +48,20 @@ import pytest
 
 DURATIONS = Path(__file__).with_name(".shard_durations.json")
 _MEMO = re.compile(r"lru_cache|functools\.cache\b|^@cache\b", re.M)
+# A memoized helper that takes no argument computes one shared thing for the
+# whole file, so such a file cannot be split by parameter.
+_MEMO_NOARG = re.compile(
+    r"^@(?:functools\.)?(?:lru_cache|cache)\b.*\n(?:@.*\n)*def \w+\(\s*\)", re.M)
+
+
+def _param_key(item):
+    """The string parameters of a parametrized test -- in a memo file these
+    are the fixture names the memo is keyed on -- or None."""
+    spec = getattr(item, "callspec", None)
+    if spec is None:
+        return None
+    vals = sorted(str(v) for v in spec.params.values() if isinstance(v, str))
+    return "|".join(vals) or None
 
 
 def _active(config):
@@ -71,9 +89,12 @@ def groups_for(items, sources):
         by_file.setdefault(it.nodeid.split("::", 1)[0], []).append(it)
     out = {}
     for path, its in by_file.items():
-        if _MEMO.search(sources.get(path, "")):
+        src = sources.get(path, "")
+        if _MEMO.search(src):
+            split = not _MEMO_NOARG.search(src)
             for it in its:
-                out[it.nodeid] = path
+                key = _param_key(it) if split else None
+                out[it.nodeid] = f"{path}:{key}" if key else path
             continue
         parent = {}
 

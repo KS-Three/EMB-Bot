@@ -200,6 +200,11 @@ jobs:
       # identical, including the deselects below. Nothing in the suite
       # writes to a shared path (fixtures are read-only, every test that writes
       # uses tmp_path), so worker isolation is real rather than assumed.
+      # `--dist loadgroup --no-loadscope-reorder`: tests that share a module
+      # fixture or a memoized pipeline run go to ONE worker, everything else
+      # spreads test by test, heaviest first. tests/_xdist_groups.py has the
+      # rules and the measurement (shard 1/6: 389 s -> 248 s with the thread
+      # setting below). Same tests, same count -- only placement changes.
       # The three --deselect lines below are explained ONCE, in this job's
       # header comment: what they are, why they fail, why they are not
       # re-captured, and the measurement that cut the list from five to three.
@@ -244,6 +249,7 @@ jobs:
           OPENCV_FOR_THREADS_NUM: '1'
         run: >
           python -m pytest tests/ -q -n auto
+          --dist loadgroup --no-loadscope-reorder
           --junitxml=junit.xml
           --deselect "tests/test_pushcomp.py::test_flag_off_is_byte_identical_to_the_shipped_engine[logo_whitebg.png-towel]"
           --deselect "tests/test_flat_lane_byte_identical.py::test_flat_lane_is_byte_identical_to_the_pre_change_golden[photo/enthusiast_logo.png]"
