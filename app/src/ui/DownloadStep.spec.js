@@ -88,7 +88,12 @@ beforeAll(async () => {
   ({ default: DownloadStep } = await import("./DownloadStep.svelte"));
 });
 
-beforeEach(() => { fitNote = ""; designSize = { widthMM: 50, heightMM: 50 }; });
+beforeEach(() => {
+  fitNote = ""; designSize = { widthMM: 50, heightMM: 50 };
+  // The chosen machine persists in localStorage; a test that picks one would
+  // otherwise leave later tests (order-dependent) with no primary DST button.
+  localStorage.removeItem("embstudio:machine");
+});
 
 function project(elements) {
   return { version: 2, name: "EMBBOT", garmentId: "left_chest", elements };
