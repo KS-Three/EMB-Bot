@@ -14,7 +14,7 @@
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
-  import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
+  import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
   import {
     appliedBorders,
     borderMenuItems,
@@ -568,8 +568,11 @@
     if (!project || !Array.isArray(project.elements)) return;
     const now = performance.now();
     for (const el of project.elements) {
-      if (el.type !== "digitized" || !digitizedRows(el)) continue;
-      pulses.seen(el.id, outlinePulseKey(el), now);
+      if (el.type !== "digitized") continue;
+      // An upload that has not been digitized yet is seen too, with a null
+      // key: that baseline is what makes its FIRST result a change, and so a
+      // pulse. Skipping it made the first result a silent first sighting.
+      pulses.seen(el.id, digitizedRows(el) ? outlinePulseKey(el) : null, now);
     }
     if (pulses.active(now)) schedulePulseFrame();
   }
@@ -1325,7 +1328,10 @@
 
       const started = pulses.startedAt(el.id);
       const pulse = started == null ? 0 : pulseAt(now - started);
-      if (pulse > 0) stillPulsing = true;
+      // The wave touches 0 between beats, so "still in the window" is read
+      // off the fade, not the beat.
+      const fade = started == null ? 0 : pulseFadeAt(now - started);
+      if (fade > 0) stillPulsing = true;
 
       // Hidden shapes stay out of the drawing but stayed IN the transform, so
       // toggling one off does not shift the others.
@@ -1373,7 +1379,13 @@
         // list drives this too, through App: a row's hover and click land
         // in `hoverShape` / `focusShape` above.)
         const orphan = !!(orphanCut && o.cutOut && orphanCut[o.id] == null);
-        if (!showOutlines && !editing && !hovered && !orphan) continue;
+        // A fresh result pulses whatever the toggle says, fading out as it
+        // goes: hiding the outlines by default (2026-09-01) silently hid the
+        // "we found these shapes" cue with them, and Kent asked for it back
+        // (2026-10-08).
+        const ghost = !showOutlines && !editing && !hovered && !orphan;
+        if (ghost && fade <= 0) continue;
+        ctx.globalAlpha = ghost ? fade : 1;
         // Mid node-drag the flattened ring is the STALE geometry: drawing it
         // beside the live authored outline showed two amber outlines. Idle,
         // the flattened ring stays underneath the authored one (spec §5) —

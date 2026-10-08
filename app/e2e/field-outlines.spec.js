@@ -132,8 +132,9 @@ test("the digitized preview is clean by default, and the toggle brings the outli
 
   // Default: a stitch-out, not a wireframe. Before this change the same
   // measurement on the enthusiast_logo fixture returned ~2,184 cyan pixels.
-  const off = await overlayPixels(page);
-  expect(off.cyan).toBe(0);
+  // Read AT REST: a fresh result pulses its outlines for PULSE_MS (2.6 s) and
+  // then fades out — the test below pins that half.
+  await expect.poll(async () => (await overlayPixels(page)).cyan, { timeout: 10_000 }).toBe(0);
 
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
@@ -193,4 +194,48 @@ test("the shape you click is still outlined with the toggle off", async ({ page 
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
   await expect.poll(async () => (await overlayPixels(page)).cyan, { timeout: 10_000 }).toBe(0);
   expect((await overlayPixels(page)).amber).toBeGreaterThan(20);
+});
+
+// Kent, 2026-10-08: "My digitizing throbbing pulsating pinwheel disappeared,
+// bring that back." It was this pulse: the found shapes throb when a digitize
+// lands. Hiding outlines by default (2026-09-01) hid the pulse with them, and
+// a fresh upload's first result never started it at all. This fails if the
+// cue goes missing again, or if it stops fading back to a clean canvas.
+test("a fresh digitize pulses its outlines with the toggle off, then settles clean", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await pickGarment(page, "Tote");
+  await uploadArtwork(page, ART_PNG, { run: false });
+
+  const toggle = page.locator('.zoomctl button[aria-label="Show shape outlines"]');
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+
+  // Sample the canvas from the press onward, in the page, so no beat is lost
+  // to a round trip; keep the brightest frame.
+  const peak = page.evaluate(() => new Promise((resolve) => {
+    let best = 0;
+    const t0 = performance.now();
+    function frame() {
+      const c = document.querySelector(".hoop canvas");
+      if (c && c.width) {
+        const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+        let cyan = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          if (d[i] < 90 && d[i + 1] > 140 && d[i + 2] > 180) cyan++;
+        }
+        best = Math.max(best, cyan);
+      }
+      if (best > 100 || performance.now() - t0 > 120_000) resolve(best);
+      else requestAnimationFrame(frame);
+    }
+    frame();
+  }));
+  await page.locator(".dgp-run").click();
+  expect(await peak).toBeGreaterThan(100);
+
+  // And it ends on its own: the default view is the stitch-out.
+  await expect.poll(async () => (await overlayPixels(page)).cyan, { timeout: 10_000 }).toBe(0);
 });
