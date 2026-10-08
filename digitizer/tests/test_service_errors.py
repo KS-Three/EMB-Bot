@@ -364,16 +364,11 @@ def test_export_with_a_malformed_stitch_dict_is_a_400_naming_the_format(client, 
     strict=False)
 @pytest.mark.parametrize("stitches", [[[0, 0, 0], [10, 10, 0]], ["x", "y"], [1, 2]])
 def test_export_with_non_dict_stitches_is_a_400_not_a_500(client, stitches):
-    # The TestClient re-raises server exceptions by default; the real server
-    # turns them into a 500. Build a client that behaves like the server.
-    # NOT used as a context manager: exiting `with TestClient(app)` runs the
-    # lifespan shutdown, which stops the shared job executor and breaks every
-    # later test in the process ("cannot schedule new futures after shutdown").
-    from fastapi.testclient import TestClient
-
-    from digitizer_service.app import app
-    c = TestClient(app, raise_server_exceptions=False)
-    r = c.post("/export", json={"design": {"stitches": stitches}, "format": "dst"})
+    # Today the shared client re-raises the server's AttributeError (the real
+    # server answers a bare 500); either way this does not reach the 400. Do
+    # NOT build a second TestClient here: tests/test_client_fixture_is_shared.py
+    # forbids it (its lifespan exit kills the shared job executor).
+    r = client.post("/export", json={"design": {"stitches": stitches}, "format": "dst"})
     assert r.status_code == 400
 
 
