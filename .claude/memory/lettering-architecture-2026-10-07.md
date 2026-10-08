@@ -115,3 +115,5 @@ run); fixed and AST-pinned for every engine call. Becker letter trims
 42 -> 8; lost_frac up on six of seven logos. Not published; the E is still
 three slabs on the page.
 
+**L1 BUILT 2026-10-08, OFF: `cfg.lettering_words`** -- see
+`word-tagger-l1-2026-10-08`. Under it `is_lettering` reads `word_id` only.

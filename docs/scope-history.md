@@ -20056,3 +20056,32 @@ the pick; no code changes with it.
 38. **The simulator counted in a different unit from the caption right under it — FIXED 2026-09-07.** The stitch simulator is driven by STRANDS (the segment between two consecutive stitches, which is what actually paints), and its counter showed that raw index: **"1289 stitches · 102×12 mm" under the canvas and "1280 / 1280" in the simulator bar**, both visible at once, nine apart on a design with nine runs. Both numbers were correct measurements of different things and only one carried a unit — the same family as defect 34, one screen over. **FIXED**: `strandStitchOrdinals` (strands.js) maps each strand to the stitch number it ends at, computed once per run, so the counter reads *"1289 / 1289 stitches"*. The animation still runs on strands. **The total is the LAST ORDINAL, not `design.stitchCount`** — a run of a single stitch paints no segment, so the simulator must never claim to have drawn it; the fixture has 0 such runs, and the tests cover one that does. `strands.spec.js` (5), e2e (1, plus the format pin in `field-chrome.spec.js` updated with its reason). *(found by watching the simulator run 2026-09-07)*
 
 40. **"Size up for crisp letters" was advice the DEFAULT design cannot take — FIXED 2026-09-07.** Lettering is fit by WIDTH, so for a fixed character count the cap height is proportional to the design width: measured with `medium_font` on left_chest's 101.6 mm placement box, every design at that same width, *"WIDE DESIGN TEXT HERE"* gives a **4.33 mm** cap, *"SHORTER TEXT"* **7.16**, *"ABC"* **30.03**. An auto-fit design (`sizeMm` null — the default, and what every quick start produces) is ALREADY at that box, so "size up" is the one thing the customer cannot do, and the levers that remain — fewer characters, a bolder font, a bigger placement — went unnamed. `letteringNote` now takes `atWidthCap` and swaps only the advice clause: at the cap the thin-lettering finding reads *"…already the full width of the placement, so fewer characters or a bigger placement is what makes them crisper"* and the hairline finding keeps "bolder font" (still true) and drops "size up". Below the cap both are unchanged — "size up" IS the fix there, verified in the app at W 2.60 in. **Read off the REQUEST (`sizeMm`), not the sewn width**: since defect 34 the sewn extent is slightly past the box by construction, so comparing it to the box would read "capped" for every design. The two findings that are not about size (cap under the floor; a lone hairline span, which reports what the engine DID) are untouched, and that is asserted. `generate.spec.js` (3). *(measured 2026-09-07)*
+
+## 2026-10-08 — L1, one lettering tagger, BUILT OFF (`cfg.lettering_words`)
+
+`digitizer_core/words.py`: one door, the text cluster's link, rows split at
+the widest gap across the line, congruent-pattern elements (rope twists)
+removed before words form. Under the flag the lettering readers group by
+`word_id`; the rescued redraw (`regularize_text_clusters`) keeps the text
+cluster on purpose. Scored on hand labels of eight real logos
+(`tools/word_tagger_eval.py`, `testdata/lettering_truth.json`): pooled
+detection kappa **0.907** [0.833, 0.945] against the text cluster's 0.881,
+the house group's 0.616 and the Column lane's either-reading 0.637 (paired
+bootstrap: level with the first, above the other two); line ARI **0.99**
+against 0.65 (moved by gaulke and the screenshot alone). Constants fitted
+in-sample; the CV screen is 0.03 over the
+highest letter. ON vs OFF through `digitize()`: three logos byte-identical,
+six within 0.4% of stitches, drone two trims more (139 → 141).
+`docs/word-tagger-2026-10-08/README.md`.
+
+## 2026-10-08 — L1's pairs drawn (`lettering_words`, sitting `words-1008`)
+
+Kent picked the pairs when L1 closed. Eight logos, 5 pairs, 3 identical
+(becker, gaulke, tires). The flag barely moves stitches on shipped flags:
+drone +2 trims on its changed shapes; golden_tee's lost_frac 0.4466 → 0.4699,
+the tee's shaft (a false-positive word, tagged by both old taggers too)
+taking a different house angle. The page cannot show the Column-lane
+combination a flip would change. `docs/eye-pairs-2026-10-08/`.
+**Kent's verdict on the Column-lane sitting (2026-10-08, chat): AFTER is
+better** — `lettering_words` is the Column lane's tagger when that lane
+flips; both stay OFF. `docs/eye-pairs-2026-10-08/kent-notes.json`.
