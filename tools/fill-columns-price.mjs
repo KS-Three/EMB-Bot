@@ -13,6 +13,7 @@
 // landing turned into a stitch is not overhead: it is the float being taken
 // away. What the option adds beyond the landings is the part a fix could go
 // after.
+import "./_help.mjs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
