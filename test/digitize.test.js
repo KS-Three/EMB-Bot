@@ -2648,7 +2648,7 @@ test("buildLetteringDesign: satinSpacingMm names the satin pitch; default, named
   const legacy = DG.buildLetteringDesign(font, "AB", { ...base, densityMm: 0.4 });
   assert.deepStrictEqual(dflt, named);
   assert.deepStrictEqual(dflt, legacy);
-  assert.strictEqual(dflt.stitchCount, 703, "the number satinfont.test.js pins — lettering never moved");
+  assert.strictEqual(dflt.stitchCount, 691, "the number satinfont.test.js pins — lettering never moved (703 until the connector stopped laying the run's first stitch twice, 2026-10-08)");
   // Lettering has no fill, so the fill ruling is invisible from here.
   const withFillRow = DG.buildLetteringDesign(font, "AB", { ...base, fillRowMm: 0.15 });
   assert.deepStrictEqual(withFillRow, dflt, "fillRowMm is not a lettering option and changes nothing");
