@@ -1091,9 +1091,53 @@ def _covered_walk(coords: list[tuple[float, float]],
     return out
 
 
+# `run_soft_vertices` (2026-10-08, built OFF; MASTER_SCOPE defect 46's
+# direction-change score). The run tier samples the stage-4 polygon at
+# `BEAN_STITCH_MM` of arc length, and that polygon is Douglas-Peucker output:
+# a curve arrives as straight chords meeting at shallow vertices, so the run
+# sews flat-flat-TURN — what Law 37's `curve_roughness_deg` counts. Of every
+# visible tier it measured roughest on the real-art fixtures (bridge 14.0,
+# summit 17.9, golden 12.4 deg against satin rails' 5.5-9.6). Each vertex
+# turning less than `curve_fidelity.CORNER_DEG` — a curve vertex, not an
+# intended corner — is cut into two, twice (Chaikin), the cut's sagitta held
+# under `simplify_tol_mm`'s default, so the sewn line stays within the
+# polygon's own tolerance band of it. Corners at or above CORNER_DEG are
+# kept exactly. No new constant: both numbers already exist.
+_SOFT_TOL_MM = 0.2      # == PipelineConfig.simplify_tol_mm's default
+_SOFT_PASSES = 2
+
+
+def _soften_ring(coords: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """A closed ring with its curve vertices cut, its corners untouched."""
+    from .curve_fidelity import CORNER_DEG
+    pts = [(float(x), float(y)) for x, y in coords]
+    if len(pts) > 1 and pts[0] == pts[-1]:
+        pts = pts[:-1]
+    corner = math.radians(CORNER_DEG)
+    for _ in range(_SOFT_PASSES):
+        n = len(pts)
+        if n < 3:
+            break
+        out = []
+        for i in range(n):
+            a, b, c = pts[i - 1], pts[i], pts[(i + 1) % n]
+            ux, uy, vx, vy = b[0] - a[0], b[1] - a[1], c[0] - b[0], c[1] - b[1]
+            la, lb = math.hypot(ux, uy), math.hypot(vx, vy)
+            th = abs(math.atan2(ux * vy - uy * vx, ux * vx + uy * vy)) if la > 1e-9 and lb > 1e-9 else 0.0
+            if th < 1e-6 or th >= corner:
+                out.append(b)
+                continue
+            d = min(0.25 * la, 0.25 * lb, _SOFT_TOL_MM / math.sin(th / 2))
+            out.append((b[0] - ux / la * d, b[1] - uy / la * d))
+            out.append((b[0] + vx / lb * d, b[1] + vy / lb * d))
+        pts = out
+    return pts + pts[:1]
+
+
 def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
                 trim_at_mm: float, omit=None,
                 role: str = "",
+                soft_vertices: bool = False,
                 walk_covered: bool = False) -> tuple[list[StitchRun], dict]:
     """The run tier: a shape too small to fill or satin, sewn as bean runs on
     its own outline instead of being dropped.
@@ -1131,6 +1175,9 @@ def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
     pass a role is `silhouette_cap` (`ROLE_EDGE_CAP`), which borrows this
     emitter for the design's own outline.
 
+    `soft_vertices` (`cfg.run_soft_vertices`, built OFF): see
+    `_soften_ring`. Off, the ring is sampled exactly as before.
+
     Report keys: `loops`, `jumps`, `empty` (plus `too_thin`, always False,
     so stage 7 can treat every tier's report identically), and `arcs` /
     `yielded` when `omit` split a ring.
@@ -1152,6 +1199,8 @@ def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
             length = LineString(coords).length
             if length < machine.RUN_MIN_LOOP_MM:
                 continue           # smaller than the mark the thread makes
+            if soft_vertices:
+                coords = _soften_ring(coords)
             n = max(3, int(round(length / machine.BEAN_STITCH_MM)))
             ring_pts, _total = _ring_arc_samples(coords, n)
             if not ring_pts:

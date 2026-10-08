@@ -55,6 +55,10 @@
   /* Single confident accent: indigo family. */
   --accent: #4f46e5;
   --accent-dark: #4338ca; /* hover/active */
+  /* Labels on the ART's own swatch colours. .panel flips --ink and --accent-ink,
+     so neither can be borrowed there. */
+  --swatch-ink-dark: #171a20;
+  --swatch-ink-light: #ffffff;
   --accent-ink: #ffffff; /* readable ink on top of accent (or other saturated) fills */
   --tint: #eef0ff; /* accent-tinted selection and focus background (hover is --fill) */
   --tint-border: #ccd6fb; /* accent-tinted border, pairs with --tint */
@@ -702,6 +706,12 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
 .field .stats { color: var(--surround-ink); font-variant-numeric: tabular-nums; }
 .field .err { color: var(--surround-danger); }
 .field .warn { color: var(--surround-warn); }
+/* The one-click fix beside a thin-lettering note: a link-weight button in
+   the warning's own color, so it reads as part of that sentence. */
+.field .twolines {
+  background: none; border: 0; padding: 0; font: inherit; cursor: pointer;
+  color: var(--surround-warn); text-decoration: underline; font-weight: var(--fw-medium);
+}
 
 .fieldwrap {
   display: flex;
@@ -1056,6 +1066,12 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-m);
+  /* Below ~1150px even the icons-only bar is wider than the field (766px in
+     552px at 1000px wide), so it wraps onto a second row instead of spilling
+     off both ends. Wide screens never reach the wrap: no change there. */
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 100%;
 }
 
 .zoombtn {
@@ -2269,9 +2285,9 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .swatch .pct {
   font-size: var(--fs-xs);
   font-weight: var(--fw-medium);
-  color: var(--accent-ink);
-  text-shadow: 0 1px 2px rgba(var(--shadow-color), 0.65);
+  color: var(--swatch-ink-light);
 }
+.swatch.lt .pct { color: var(--swatch-ink-dark); }
 
 .swatch-hint { color: var(--muted); font-size: var(--fs-sm); }
 
