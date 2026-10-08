@@ -74,3 +74,18 @@ def test_the_tongue_never_leaves_the_later_shape():
     later = regs[1].polygon
     outside = a.polygon.difference(regs[0].polygon.buffer(FABRIC.pull_comp_mm + 1e-6))
     assert outside.difference(later.buffer(1e-6)).area < 1e-6
+
+
+def test_no_explicit_angle_reads_the_angle_stage6_would_pick():
+    # Two equal squares with no angle anywhere: stage 6 picks one angle for
+    # both, so the seam is parallel and gets the full figure.
+    pull = FABRIC.pull_comp_mm
+    regs = _pair(None, None)
+    assert _tongue(regs, overlap_by_angle=True) == pytest.approx(pull + 1.0, abs=0.02)
+
+
+def test_another_technique_keeps_the_scalar():
+    pull = FABRIC.pull_comp_mm
+    regs = _pair(0, 0)
+    assert _tongue(regs, overlap_by_angle=True, fill_technique="contour") == pytest.approx(
+        pull + 0.25, abs=0.02)

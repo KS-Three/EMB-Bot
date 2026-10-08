@@ -93,10 +93,10 @@ from shapely.ops import unary_union
 
 from .config import PipelineConfig
 from .fabrics import Fabric
-from .machine import satin_ceiling_mm
+from .machine import FILL_ROW_MM, satin_ceiling_mm
 from .regions import Region
 from .stitchwidth import column_sized
-from .stage6_fill import principal_angle_deg
+from .stage6_fill import best_fill_angle_deg, principal_angle_deg
 from .stage6_satin import is_satin_candidate
 from .warnings_codes import (
     HOLE_NEARLY_CLOSED,
@@ -315,6 +315,40 @@ def _largest_polygon(geom) -> Polygon | None:
     return max(parts, key=lambda g: g.area)
 
 
+def seam_row_angles(regions: list[Region], cfg: PipelineConfig, fabric: Fabric,
+                    design_class: str = "flat") -> dict[str, float | None]:
+    """-> {shape_id: the row angle `cfg.overlap_by_angle` reads, or None}.
+
+    Stage 7's precedence (`_fill_angle_for`): the shape's own angle, the
+    global, the design angle, the compensation axis -- and with none of
+    those, the angle stage 6 picks itself, `best_fill_angle_deg` on the
+    grown polygon at the design's row spacing, approximated here on the
+    artwork grown by the pull (the real one is what stage 5 computes). Only
+    plain tatami has one row angle; satin, another technique or a bean
+    letter is None and keeps the scalar underlap.
+    """
+    pull = max(0.0, fabric.pull_comp_mm)
+    satin_max = satin_ceiling_mm(cfg)
+    directional = bool(cfg.directional_comp) and pull > 0
+    row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
+    tatami = str(getattr(cfg, "fill_technique", "tatami") or "tatami") == "tatami"
+    out: dict[str, float | None] = {}
+    for r in regions:
+        a, is_sat = _comp_axis(r, cfg, satin_max, design_class)
+        tier = str(r.meta.get("tier", "auto")).lower()
+        if (is_sat or not tatami or tier not in ("auto", "fill")
+                or r.meta.get("bean_letter_spines")):
+            out[r.shape_id] = None
+            continue
+        explicit = (r.meta.get("fill_angle_deg") is not None
+                    or cfg.fill_angle_deg is not None
+                    or r.meta.get("design_angle_deg") is not None
+                    or directional)
+        out[r.shape_id] = (a if explicit else
+                           best_fill_angle_deg(_grow(r.polygon, pull, None), row_mm))
+    return out
+
+
 def resolve_overlaps(
     regions: list[Region], fabric: Fabric, cfg: PipelineConfig,
     design_class: str = "flat",
@@ -374,8 +408,8 @@ def resolve_overlaps(
 
     geom_by_layer = {L: unary_union([sewn_footprint(r) for r in by_layer[L]]) for L in layers}
 
-    # `cfg.overlap_by_angle` (Law 26): each fill's row angle, read with the
-    # same call stage 7's tier and angle precedence uses; None for a satin.
+    # `cfg.overlap_by_angle` (Law 26): each tatami fill's row angle in
+    # stage 7's precedence (`seam_row_angles`); None keeps the scalar.
     # Off: nothing is built and the underlap below is the scalar it was.
     parallel = max(overlap, float(getattr(cfg, "overlap_parallel_mm", overlap) or 0.0))
     by_angle = bool(getattr(cfg, "overlap_by_angle", False)) and overlap > 0 and parallel > overlap
@@ -383,9 +417,7 @@ def resolve_overlaps(
     foot_regions: list[Region] = []
     foot_tree = None
     if by_angle:
-        for r in regions:
-            a, is_sat = _comp_axis(r, cfg, satin_max, design_class)
-            row_angle[r.shape_id] = None if is_sat else a
+        row_angle = seam_row_angles(regions, cfg, fabric, design_class)
         foot_regions = list(regions)
         foot_tree = STRtree([sewn_footprint(r) for r in foot_regions])
 

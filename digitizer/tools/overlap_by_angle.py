@@ -15,6 +15,8 @@ under 0.5 mm (`<0.5`) — the seam the cloth can show once pull opens it.
 Cost: stitches, trims and thread metres from the full plan.
 
     .venv/bin/python tools/overlap_by_angle.py            # all REAL_ART
+
+The angles are `stage5_overlap.seam_row_angles`, the ones the flag reads.
     .venv/bin/python tools/overlap_by_angle.py becker fremont
 """
 from __future__ import annotations
@@ -28,10 +30,9 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
 
 from digitizer_core import PipelineConfig  # noqa: E402
-from digitizer_core.machine import satin_ceiling_mm  # noqa: E402
 from digitizer_core.pipeline import (build_generation, fabric_for,  # noqa: E402
                                      finish_generation, plan_stitches)
-from digitizer_core.stage5_overlap import _comp_axis, resolve_overlaps  # noqa: E402
+from digitizer_core.stage5_overlap import resolve_overlaps, seam_row_angles  # noqa: E402
 from tools.seam_underlap import measure  # noqa: E402
 from tools.thin_strokes import REAL_ART, STUDIO_MAX_COLORS  # noqa: E402
 
@@ -66,11 +67,7 @@ def run(name: str) -> dict:
         result = finish_generation(gen.fork(), cfg)
         regions = [r for r in result.regions if r.meta.get("stitched", True)]
         planned, _ = resolve_overlaps(regions, fabric_for(cfg), cfg, result.design_class)
-        sm = satin_ceiling_mm(cfg)
-        angle = {}
-        for r in regions:
-            a, sat = _comp_axis(r, cfg, sm, result.design_class)
-            angle[r.shape_id] = None if sat else a
+        angle = seam_row_angles(regions, cfg, fabric_for(cfg), result.design_class)
         m = measure(regions, planned)
         parts = _split(m["pairs"], angle)
         st = plan_stitches(result, cfg).stats
@@ -88,7 +85,7 @@ def main(argv=None) -> int:
         o, i = r["off"], r["on"]
         print(f"{n:11s} {o['par'][0]:7.1f} {o['par'][1]:6.3f}->{i['par'][1]:6.3f}"
               f" {o['par'][2]:6.1f}->{i['par'][2]:6.1f}"
-              f" {o["other"][0]:6.1f}mm {o["other"][1]:6.3f}->{i['other'][1]:6.3f}"
+              f" {o['other'][0]:6.1f}mm {o['other'][1]:6.3f}->{i['other'][1]:6.3f}"
               f" {o['st']:7d}->{i['st']:7d} {o['trims']:4d}->{i['trims']:3d}"
               f" {o['m']:6.1f}->{i['m']:5.1f}", flush=True)
     return 0
