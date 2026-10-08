@@ -1881,8 +1881,10 @@ test("buildQualityDesign: no-fabric single-shape output frozen (snapshot, Phase-
   // rowPx no longer floor-clamped either). nCenterOut/large-fill sweep
   // structure is unaffected by this fix, so that invariant stays.
   assert.strictEqual(d._debug.nCenterOut, 1, "fixture shape is a large fill → center-out");
-  assert.strictEqual(d.stitches.length, 4923, "total record count frozen");
-  assert.strictEqual(d.stitchCount, 4772, "stitch count frozen (resize-density re-freeze)");
+  // +1 each (2026-10-08): the edge-run underlay now closes on its start
+  // corner instead of stopping up to one stitch short of it.
+  assert.strictEqual(d.stitches.length, 4924, "total record count frozen");
+  assert.strictEqual(d.stitchCount, 4773, "stitch count frozen (resize-density re-freeze, + the edge run's closing stitch)");
   const first20 = [
     { x: -504, y: 504, type: "jump" }, { x: -504, y: 504, type: "stitch" }, { x: -484, y: 504, type: "stitch" },
     { x: -464, y: 504, type: "stitch" }, { x: -444, y: 504, type: "stitch" }, { x: -424, y: 504, type: "stitch" },
@@ -3750,11 +3752,11 @@ test("cutFloats: a float inside a run becomes the cut where it stands", () => {
 
 test("cutFloats: at a run's opening jump the cut goes on the spot before it, outside the run", () => {
   const off = _cfBar(), on = _cfBar({ cutFloats: true });
-  assert.strictEqual(_show(off.stitches.slice(75, 78)), "s-298,64 j300,75 s300,75", "fixture: the underlay's edge run ends 60 mm from where the next pass opens");
-  assert.strictEqual(off.runs.filter((r) => r.i0 === 76).length, 1, "fixture: that jump opens a run");
-  assert.strictEqual(_show(on.stitches.slice(75, 79)), "s-298,64 t-298,64 j300,75 s300,75");
-  assert.strictEqual(on.runs.filter((r) => r.i0 === 77).length, 1, "the run opens on its jump, one record on");
-  assert.ok(!on.runs.some((r) => r.i0 <= 76 && r.i1 >= 76), "and the cut is in no run");
+  assert.strictEqual(_show(off.stitches.slice(76, 79)), "s-298,75 j300,75 s300,75", "fixture: the underlay's edge run ends 60 mm from where the next pass opens");
+  assert.strictEqual(off.runs.filter((r) => r.i0 === 77).length, 1, "fixture: that jump opens a run");
+  assert.strictEqual(_show(on.stitches.slice(76, 80)), "s-298,75 t-298,75 j300,75 s300,75");
+  assert.strictEqual(on.runs.filter((r) => r.i0 === 78).length, 1, "the run opens on its jump, one record on");
+  assert.ok(!on.runs.some((r) => r.i0 <= 77 && r.i1 >= 77), "and the cut is in no run");
   assert.strictEqual(on.stitches.length, off.stitches.length + 1);
 });
 
