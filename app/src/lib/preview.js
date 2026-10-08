@@ -540,14 +540,36 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
     // right before they are, and that path needs the strands in sew order
     // rather than scattered across direction buckets.
     if (st.raised) { if (!grp.items) grp.items = []; grp.items.push(s); }
-    const ang = Math.atan2(SY(s.y1) - SY(s.y0), SX(s.x1) - SX(s.x0));
+    const X0 = SX(s.x0), Y0 = SY(s.y0), X1 = SX(s.x1), Y1 = SY(s.y1);
+    const ang = Math.atan2(Y1 - Y0, X1 - X0);
     // Modulo PI, then quantized: a strand and its reverse share a bucket.
     let b = Math.floor((((ang % Math.PI) + Math.PI) % Math.PI) / (Math.PI / DIR_BUCKETS));
     if (b >= DIR_BUCKETS) b = DIR_BUCKETS - 1;
     let bucket = grp.buckets.get(b);
-    if (!bucket) { bucket = { bucket: b, items: [] }; grp.buckets.set(b, bucket); }
+    if (!bucket) { bucket = { bucket: b, items: [], x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity }; grp.buckets.set(b, bucket); }
     bucket.items.push(s);
+    if (X0 < bucket.x0) bucket.x0 = X0; if (X1 < bucket.x0) bucket.x0 = X1;
+    if (X0 > bucket.x1) bucket.x1 = X0; if (X1 > bucket.x1) bucket.x1 = X1;
+    if (Y0 < bucket.y0) bucket.y0 = Y0; if (Y1 < bucket.y0) bucket.y0 = Y1;
+    if (Y0 > bucket.y1) bucket.y1 = Y0; if (Y1 > bucket.y1) bucket.y1 = Y1;
   }
+
+  // Off-screen skip (LIT view, 2026-10-08), whole stroke() calls only. A
+  // bucket whose every strand lies outside `o.clip` (canvas px) by more than
+  // anything a layer paints past its endpoints (offset <= 0.41 lw, half-width
+  // and round cap <= 0.5 lw; the margin is 2 lw + 4 px) touches no pixel, so
+  // skipping it is pixel-exact by construction.
+  //
+  // It is deliberately NOT a per-strand cull. Chromium's rasterizer
+  // anti-aliases a path according to the WHOLE path's geometry: one subpath
+  // far off-canvas measurably moves the on-screen pixels of the rest of the
+  // same stroke() (Chromium 1194, CPU and GPU canvas alike). Dropping strands
+  // from a path that still draws therefore changed ~15k pixels at 5x zoom,
+  // and even keeping the path's bounds intact left 28-55 pixels off by 1-2
+  // levels. That is why PR #712's per-strand lit cull did not hold.
+  const clip = o.clip || null;
+  const cm = 2 * lw + 4;
+  const offClip = (b) => !!clip && (b.x1 < clip.x0 - cm || b.x0 > clip.x1 + cm || b.y1 < clip.y0 - cm || b.y0 > clip.y1 + cm);
 
   // Indices preferred; a count goes through layerSubsetForCount so it can
   // never drop the true colour (see that function for the bug it replaces).
@@ -566,6 +588,7 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
       if (st.raised && grp.items) strokeShadow(ctx, grp.items, SX, SY, lw, st);
       const profiles = [];
       for (const b of grp.buckets.values()) {
+        if (offClip(b)) continue;
         const angle = (b.bucket + 0.5) * (Math.PI / DIR_BUCKETS);
         profiles.push({ b, nx: -Math.sin(angle), ny: Math.cos(angle), layers: threadLayers(blk.rgb, angle, slw, st) });
       }
@@ -903,7 +926,7 @@ export function renderRealistic(canvas, design, opts) {
   const lw = Math.max(1.2, threadMm * pxPerMm);
   const layers = o.threadLayers != null ? o.threadLayers : threadLodLayers(lw, strands.length);
   // threadStyle: "realistic" (default, every existing caller) | "flat".
-  drawThreads(ctx, strands, SX, SY, lw, { layers, flat: o.threadStyle === "flat" });
+  drawThreads(ctx, strands, SX, SY, lw, { layers, flat: o.threadStyle === "flat", clip: { x0: 0, y0: 0, x1: cw, y1: ch } });
 
   // Diagnostic overlays (drawn ON TOP of thread so they're never buried):
   // showJumps -> dashed travel lines; showTrims -> an X marker per trim.
