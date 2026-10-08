@@ -11,6 +11,15 @@ from digitizer_core import PipelineConfig, run_stages
 from tests._ci_shard import pytest_collection_modifyitems  # noqa: F401
 
 
+# CI scheduling (`--dist loadgroup`); a no-op otherwise. See
+# tests/_xdist_groups.py. A plugin rather than a hook here because this
+# conftest already exports the shard hook under the same name.
+def pytest_configure(config):
+    from tests import _xdist_groups
+    if not config.pluginmanager.is_registered(_xdist_groups):
+        config.pluginmanager.register(_xdist_groups, "digitizer-xdist-groups")
+
+
 # SESSION-scoped, and shared by every module that needs a client. It must not
 # be per-module, and that is not a style preference -- a per-module client
 # breaks the modules that run after it.
