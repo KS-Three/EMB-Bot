@@ -6,8 +6,9 @@ Two modes.
 
 `--detect` runs stage 0 and stage 1 on every image under `testdata/`,
 `testdata/art/` and `testdata/photo/` and prints what `two_tone.detect`
-reads on each — chroma share, the two modes, the mid-grey share and the
-largest 8-level mid-grey bin — and whether it fires. That is the check the
+reads on each, over stage 1's FOREGROUND as the pipeline reads it — chroma
+share, the two modes, each half's share, the mid-grey share and the
+plateau (tallest 8-level mid-grey bin over their mean) — and whether it fires. That is the check the
 gate's constants were set from (2026-10-08): it must fire on every
 black-and-white logo and on nothing else.
 
@@ -38,10 +39,11 @@ from tools._console import utf8_console
 from tools.eye_pairs.features import base_cfg, digitize_once
 from tools.stroke_colour_probe import _blocks
 
-# The nine images `--detect` fires on (2026-10-08) — seven black-and-white
-# logos, the tires script and one synthetic fixture — then the
-# controls: the colour logo the per-region stroke rule harmed, and the
-# grey-and-black logo the plateau gate exists for. (path under testdata/,
+# The eight images `--detect` fires on (2026-10-08) — six black-and-white
+# logos, the tires script and one synthetic fixture — then the controls:
+# the phone screenshot of golke (refused on chroma: its blue UI), the colour
+# logo the per-region stroke rule harmed, and the grey-and-black logo the
+# plateau gate exists for. (path under testdata/,
 # width mm, garment) — sizes as `tools/thin_strokes.REAL_ART`.
 FIXTURES: dict[str, tuple[float, str]] = {
     "art/logo_golke_roofing.png": (80.0, "left_chest"),
@@ -60,21 +62,20 @@ IMAGE_EXT = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
 
 
 def detect_row(path: Path) -> dict:
+    """`two_tone.stats` and the verdict on stage 1's foreground — the same
+    pixels the pipeline's call reads."""
     cfg = base_cfg(80.0, "left_chest")
     c = classify(path, cfg)
     p = prep(path, cfg, design_class=c.class_)
-    px = p.rgb.reshape(-1, 3).astype(np.int16)
-    tt = two_tone.detect(p.rgb)
-    g = px.mean(1)
-    hist = np.bincount(g.astype(np.int32), minlength=256)
-    dark, light = int(np.argmax(hist[:128])), 128 + int(np.argmax(hist[128:]))
-    lo, hi = dark + 0.2 * (light - dark), dark + 0.8 * (light - dark)
-    mid = (g > lo) & (g < hi)
-    bins = np.bincount((g[mid] / 8).astype(np.int32), minlength=32)
+    fg = ~p.bg_mask
+    st = two_tone.stats(p.rgb, fg) or {}
+    tt = two_tone.detect(p.rgb, fg)
     return {"class": c.class_,
-            "chroma_frac": round(float(np.mean(px.max(1) - px.min(1) > two_tone.CHROMA)), 4),
-            "modes": (dark, light), "mid_frac": round(float(mid.mean()), 4),
-            "max_mid_bin": round(float(bins.max()) / len(g), 4) if mid.any() else 0.0,
+            "chroma_frac": round(st.get("chroma_frac", 0.0), 4),
+            "modes": (st.get("dark", 0), st.get("light", 0)),
+            "ink_fracs": (round(st.get("dark_frac", 0.0), 3), round(st.get("light_frac", 0.0), 3)),
+            "mid_frac": round(st.get("mid_frac", 0.0), 4),
+            "plateau": round(st.get("plateau", 0.0), 2),
             "fires": tt is not None,
             "inks": (tt.dark, tt.light) if tt else None}
 
@@ -106,19 +107,19 @@ def main(argv: list[str]) -> int:
     if args.detect:
         paths = sorted(q for d in (TESTDATA, TESTDATA / "art", TESTDATA / "photo")
                        for q in d.iterdir() if q.suffix.lower() in IMAGE_EXT)
-        print("| image | class | chroma>40 | modes | mid grey | max mid bin | fires |")
-        print("|---|---|---|---|---|---|---|")
+        print("| image | class | chroma>40 | modes | dark/light share | mid grey | plateau | fires |")
+        print("|---|---|---|---|---|---|---|---|")
         for q in paths:
             rel = q.relative_to(TESTDATA).as_posix()
             try:
                 r = detect_row(q)
             except Exception as e:  # noqa: BLE001 — a probe reports, it does not stop
-                print(f"| `{rel}` | error: {type(e).__name__} | | | | | |")
+                print(f"| `{rel}` | error: {type(e).__name__} | | | | | | |")
                 continue
             out[rel] = r
             print(f"| `{rel}` | {r['class']} | {r['chroma_frac']:.4f} | "
-                  f"{r['modes'][0]}/{r['modes'][1]} | {r['mid_frac']:.4f} | "
-                  f"{r['max_mid_bin']:.4f} | {'**yes**' if r['fires'] else 'no'} |", flush=True)
+                  f"{r['modes'][0]}/{r['modes'][1]} | {r['ink_fracs'][0]}/{r['ink_fracs'][1]} | {r['mid_frac']:.4f} | "
+                  f"{r['plateau']:.2f} | {'**yes**' if r['fires'] else 'no'} |", flush=True)
     else:
         print("| fixture | cones off → on | stitches off → on | trims off → on |")
         print("|---|---|---|---|")

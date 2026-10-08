@@ -469,14 +469,26 @@ def build_generation(
         )
 
     # Stage 1.3 — two-tone snap (`cfg.two_tone_snap`, defect 58). Before any
-    # region former, so every lane reads two inks; never on a detected
-    # photograph, whose greys are its picture. `p.native_rgb` is left as the
-    # source drew it: stage 4's sub-pixel edge read wants its anti-alias ramp
-    # to place each region's edge, and the ramp is real there.
-    if cfg.two_tone_snap and not detected_photographic:
-        tt = two_tone.detect(p.rgb)
+    # region former, so every lane reads two inks. Never on a photograph,
+    # declared or detected (`cfg.is_photographic` carries both by now), whose
+    # greys are its picture; a logo stage 0 merely CLASSES photo_scene
+    # (`logo_mfab_hat`) still snaps. Detection reads the foreground only, so
+    # the margin round the art cannot dilute a colour accent under the gate.
+    # `p.native_rgb` is left as the source drew it: stage 4's sub-pixel edge
+    # read wants its anti-alias ramp, and the ramp is real there. The
+    # snapped halo the border flood stopped short of is folded into the
+    # background (`two_tone.fold_fringe`). `bg_rgb`, `bg_edge_rgb` and
+    # `raw_rgb` keep their pre-snap colours on purpose: they describe the
+    # file's background, which the snap does not redraw.
+    if cfg.two_tone_snap and cfg.is_photographic is not True:
+        tt = two_tone.detect(p.rgb, ~p.bg_mask)
         if tt is not None:
             p.rgb = two_tone.snap(p.rgb, tt)
+            p.bg_mask = two_tone.fold_fringe(p.rgb, tt, p.bg_mask, p.bg_rgb)
+            if p.enclosed_mask is not None:
+                p.enclosed_mask = p.enclosed_mask & ~p.bg_mask
+                if not p.enclosed_mask.any():
+                    p.enclosed_mask = None
 
     # Stage 1.5 — photo prep (plan §2 rows 3-4; build step 3 first slice).
     # DOUBLE-gated: the opt-in flag AND a photo classification, so neither
