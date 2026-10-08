@@ -170,3 +170,28 @@ export function matchWord(deltaE) {
   if (deltaE < 5) return "clearly different";
   return "a different colour";
 }
+
+// Below this CIEDE2000 distance a thread reads as the same colour as the
+// garment at arm's length. UI policy, not physics, set on the Studio's own
+// swatches: Black thread on Black (0), on Navy (13), White on Natural (6) and
+// Natural on Sand (10) all fall under it; Royal on Navy (16) and White on
+// Sand (16) are the nearest pairs that clear it.
+export const FABRIC_CONTRAST_MIN = 15;
+
+// The field stopped painting the garment colour in #648 (it shows a neutral
+// work bed), so black thread on a black cap looked exactly like black thread
+// on a white polo: nothing on screen said the design would vanish. This is
+// that warning. It speaks only when EVERY colour in the design sits under
+// FABRIC_CONTRAST_MIN — one garment-coloured region in a logo is often
+// deliberate (the auto-digitizer leaves those holes unsewn on purpose), but a
+// design with no colour that stands out sews as an invisible patch. `colors`
+// is the combined design's [{ r, g, b }]; empty string when there is nothing
+// to say, so callers can `{#if}` on it like the other caption notes.
+export function fabricContrastNote(colors, fabricRgb) {
+  if (!Array.isArray(colors) || !colors.length || !Array.isArray(fabricRgb)) return "";
+  const fab = rgbToLab(fabricRgb);
+  const close = colors.every((c) => c && ciede2000(rgbToLab([c.r, c.g, c.b]), fab) < FABRIC_CONTRAST_MIN);
+  if (!close) return "";
+  const what = colors.length === 1 ? "Thread color is" : "Every thread color is";
+  return `${what} too close to the fabric color — the design will barely show; pick a contrasting thread or fabric`;
+}
