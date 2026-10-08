@@ -6,8 +6,8 @@ interior angle of the outline where its ray lands -- the reading
 Under 180 deg the outline closes round the end (a taper's apex: the drone's
 71-148); 180 is a straight wall -- the far edge of a stroke the ray drove
 through (Becker's N, all three of its tips); over 180 a concave notch between
-two strokes (the M, 278-297). Each row also carries whether the gate would
-keep it as a tip (angle <= `_TIP_CORNER_MAX_DEG`).
+two strokes (the M, 278-297). The reading is the gate's own (`stage6_satin._tip_corner_angle`), so the
+census cannot drift from what the flag does.
 
     .venv/Scripts/python tools/tip_corner_census.py [case ...] [--priors-off]
 
@@ -18,11 +18,8 @@ the way `tools/n_fan_spies.py` reads the tip verdicts. Write-up:
 from __future__ import annotations
 
 import argparse
-import math
 import sys
 from pathlib import Path
-
-from shapely.geometry import LineString, Point
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -35,39 +32,6 @@ from digitizer_core.pipeline import plan_stitches, run_stages  # noqa: E402
 from tools.thin_strokes import corpus_cases                    # noqa: E402
 
 DEFAULT = ["becker", "enthusiast", "drone", "fremont", "gaulke"]
-
-
-def angle_at_hit(spine, poly, half_sewn: float, at_start: bool) -> float | None:
-    """The outline's interior angle (ink side) at the ray's nearest hit, over
-    one sewn half-width of arc either side -- `_tip_lands_on_corner`'s reading,
-    returned instead of compared."""
-    pts = list(reversed(spine)) if at_start else list(spine)
-    tip, prev = pts[-1], pts[-2]
-    d = math.dist(prev, tip)
-    if d < 1e-9:
-        return None
-    ux, uy = (tip[0] - prev[0]) / d, (tip[1] - prev[1]) / d
-    reach = half_sewn * s6._TIP_REACH_HALVES
-    ray = LineString([tip, (tip[0] + ux * reach, tip[1] + uy * reach)])
-    best = None
-    for ring in [poly.exterior, *poly.interiors]:
-        hit = ray.intersection(ring)
-        for g in ([] if hit.is_empty else getattr(hit, "geoms", [hit])):
-            for c in g.coords:
-                dist = Point(tip).distance(Point(c))
-                if best is None or dist < best[0]:
-                    best = (dist, ring, Point(c))
-    if best is None:
-        return None
-    _d, ring, h = best
-    at, L = ring.project(h), ring.length
-    a, b, hp = ring.interpolate((at - half_sewn) % L), ring.interpolate((at + half_sewn) % L), ring.interpolate(at)
-    v1, v2 = (a.x - hp.x, a.y - hp.y), (b.x - hp.x, b.y - hp.y)
-    n1, n2 = math.hypot(*v1), math.hypot(*v2)
-    if n1 < 1e-9 or n2 < 1e-9:
-        return None
-    ang = math.degrees(math.acos(max(-1.0, min(1.0, (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)))))
-    return ang if poly.covers(Point((a.x + b.x) / 2, (a.y + b.y) / 2)) else 360.0 - ang
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -88,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
             r = orig(spine, poly, half_sewn, at_start)
             if r:
                 end = spine[0] if at_start else spine[-1]
-                rows.append((angle_at_hit(spine, poly, half_sewn, at_start), end))
+                rows.append((s6._tip_corner_angle(spine, poly, half_sewn, at_start), end))
             return r
         s6._is_tip_end = spy
         try:

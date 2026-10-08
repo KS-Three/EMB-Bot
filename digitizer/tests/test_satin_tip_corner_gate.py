@@ -74,3 +74,60 @@ def test_the_gate_reads_the_start_end_too_and_degenerate_spines_never_tip():
     # no boundary inside the reach: no tip, the same answer `_is_tip_end` gives
     bar = Polygon([(0, 0), (20, 0), (20, 4), (0, 4)])
     assert not s6._tip_lands_on_corner([(2.0, 2.0), (5.0, 2.0)], bar, 1.0, at_start=False)
+
+
+def test_a_wall_hit_beside_a_corner_is_still_a_wall():
+    """Review, 2026-10-08: a stem driven up through a 3 mm bar, its ray
+    landing on the bar's top WALL 0.3 mm short of the bar's square end. The
+    +-1 half-width window takes in the end corner and read 113 deg; the
+    corner is beside the hit, not under it, so it is a meeting."""
+    bar_and_stem = Polygon([(0, 0), (1.3, 0), (1.3, -5), (3.3, -5), (3.3, 0),
+                            (3.3, 3), (0, 3)])
+    # the stem's spine runs up x = 3.0, ending 1.5 mm under the bar's top
+    spine = [(3.0, -4.0), (3.0, 1.5)]
+    assert s6._is_tip_end(spine, bar_and_stem, 1.0, at_start=False)
+    assert s6._tip_corner_angle(spine, bar_and_stem, 1.0, at_start=False) == 180.0
+    assert not s6._tip_lands_on_corner(spine, bar_and_stem, 1.0, at_start=False)
+
+
+def test_a_multipolygon_reads_its_members_rings():
+    from shapely.geometry import MultiPolygon
+    wedge = Polygon([(0, 0), (4, 0), (2, 5.5)])
+    far = Polygon([(20, 0), (24, 0), (24, 4), (20, 4)])
+    spine = [(2.0, 1.0), (2.0, 4.0)]
+    assert s6._tip_lands_on_corner(spine, MultiPolygon([wedge, far]), 1.0, at_start=False)
+
+
+def test_the_flag_reaches_the_emitter():
+    """ENTHUSIAST at 80 mm: ON, the corner test is asked of every tip; OFF it
+    is never asked. Without this a dropped `tip_corner_gate=` anywhere on
+    the path would turn ON into OFF with the unit tests above still green."""
+    from digitizer_core.pipeline import (build_generation, finish_generation,
+                                         plan_stitches)
+    from tests.conftest import TESTDATA
+
+    calls = []
+    orig = s6._tip_lands_on_corner
+
+    def spy(*a, **k):
+        calls.append(1)
+        return orig(*a, **k)
+
+    gen = None
+    counts = {}
+    for on in (False, True):
+        cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+                             max_colors=6, satin_tip_corner_gate=on)
+        if gen is None:
+            gen = build_generation(str(TESTDATA / "photo" / "enthusiast_logo.png"), cfg)
+        result = finish_generation(gen.fork(), cfg)
+        calls.clear()
+        s6._tip_lands_on_corner = spy
+        try:
+            plan = plan_stitches(result, cfg)
+        finally:
+            s6._tip_lands_on_corner = orig
+        counts[on] = (len(calls), plan.stats.stitch_count)
+    assert counts[False][0] == 0
+    assert counts[True][0] > 0
+    assert counts[True][1] != counts[False][1]

@@ -3235,30 +3235,76 @@ _TIP_CORNER_MAX_DEG = 160.0
 def _tip_lands_on_corner(spine: list, poly: Polygon, half_sewn: float,
                          at_start: bool) -> bool:
     """-> True if the ray `_is_tip_end` casts lands on a CONVEX corner of
-    the outline (interior angle <= `_TIP_CORNER_MAX_DEG`): the artwork
-    closes round the end, a tapered tip. False on a straight wall or in a
-    concave notch -- the end MEETS another stroke there, and capping it runs
-    the arm through that stroke (defect 59's N, M and E fans).
+    the outline (`_tip_corner_angle` at most `_TIP_CORNER_MAX_DEG`): the
+    artwork closes round the end, a tapered tip. False on a straight wall or
+    in a concave notch -- the end MEETS another stroke there, and capping it
+    runs the arm through that stroke (defect 59's N, M and E fans). No hit
+    inside the reach is no tip, the same answer `_is_tip_end` gives.
+    """
+    angle = _tip_corner_angle(spine, poly, half_sewn, at_start)
+    return angle is not None and angle <= _TIP_CORNER_MAX_DEG
 
-    The angle is read at the nearest hit, between the two boundary points
-    one sewn half-width of arc either side of it, and taken on the ink's
-    side: the chord between those points is inside the shape at a convex
-    corner and outside it at a concave one. No hit inside the reach is no
-    tip, the same answer `_is_tip_end` gives.
+
+# How far along the outline the sharpest point near the hit may sit from the
+# hit itself and still be the corner the ray landed ON, in sewn half-widths.
+# A ray landing on a straight wall a little short of a stroke's end corner
+# reads that corner inside its +-1 half-width window (a 90-degree end 0.3 mm
+# from the hit read 113 on a 1 mm half-width -- review, 2026-10-08), but the
+# corner is beside the hit, not under it: that end meets a wall. A taper's
+# ray runs down the medial axis into the apex and lands on it.
+_TIP_CORNER_ON_HIT_HALVES = 0.25
+
+
+def _ring_angle(ring, poly, at: float, w: float) -> float | None:
+    """The outline's interior angle at arc position `at` of `ring`, between
+    the points `w` of arc either side, taken on the ink's side: the chord
+    between them is inside the shape at a convex corner and outside it at a
+    concave one."""
+    length = ring.length
+    if length <= 2 * w:
+        return None
+    a = ring.interpolate((at - w) % length)
+    b = ring.interpolate((at + w) % length)
+    hp = ring.interpolate(at % length)
+    v1 = (a.x - hp.x, a.y - hp.y)
+    v2 = (b.x - hp.x, b.y - hp.y)
+    n1, n2 = math.hypot(*v1), math.hypot(*v2)
+    if n1 < 1e-9 or n2 < 1e-9:
+        return None
+    cos = max(-1.0, min(1.0, (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)))
+    angle = math.degrees(math.acos(cos))
+    if not poly.covers(SPoint((a.x + b.x) / 2, (a.y + b.y) / 2)):
+        angle = 360.0 - angle
+    return angle
+
+
+def _tip_corner_angle(spine: list, poly, half_sewn: float,
+                      at_start: bool) -> float | None:
+    """The outline's interior angle (degrees, ink side) where the end's
+    tip ray lands -- what `_tip_lands_on_corner` gates on and
+    `tools/tip_corner_census.py` prints. None when there is no hit inside
+    the reach or the geometry is degenerate.
+
+    Read at the nearest hit over one sewn half-width of arc either side
+    (`_ring_angle`). When the sharpest point in that window is not AT the
+    hit (more than `_TIP_CORNER_ON_HIT_HALVES` along the outline), the
+    window caught a corner beside a wall hit and the reading is the wall's:
+    180.
     """
     pts = list(reversed(spine)) if at_start else list(spine)
     if len(pts) < 2 or half_sewn <= 0:
-        return False
+        return None
     tip, prev = pts[-1], pts[-2]
     d = math.dist(prev, tip)
     if d < 1e-9:
-        return False
+        return None
     ux, uy = (tip[0] - prev[0]) / d, (tip[1] - prev[1]) / d
     reach = half_sewn * _TIP_REACH_HALVES
     start = SPoint(tip)
     ray = LineString([tip, (tip[0] + ux * reach, tip[1] + uy * reach)])
+    rings = [r for g in getattr(poly, "geoms", [poly]) for r in (g.exterior, *g.interiors)]
     best = None
-    for ring in [poly.exterior, *poly.interiors]:
+    for ring in rings:
         hit = ray.intersection(ring)
         if hit.is_empty:
             continue
@@ -3268,23 +3314,29 @@ def _tip_lands_on_corner(spine: list, poly: Polygon, half_sewn: float,
                 if best is None or dist < best[0]:
                     best = (dist, ring, SPoint(c))
     if best is None:
-        return False
+        return None
     _dist, ring, h = best
-    length = ring.length
     at = ring.project(h)
-    a = ring.interpolate((at - half_sewn) % length)
-    b = ring.interpolate((at + half_sewn) % length)
-    hp = ring.interpolate(at)
-    v1 = (a.x - hp.x, a.y - hp.y)
-    v2 = (b.x - hp.x, b.y - hp.y)
-    n1, n2 = math.hypot(*v1), math.hypot(*v2)
-    if n1 < 1e-9 or n2 < 1e-9:
-        return False
-    cos = max(-1.0, min(1.0, (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)))
-    angle = math.degrees(math.acos(cos))
-    if not poly.covers(SPoint((a.x + b.x) / 2, (a.y + b.y) / 2)):
-        angle = 360.0 - angle
-    return angle <= _TIP_CORNER_MAX_DEG
+    w = half_sewn
+    here = _ring_angle(ring, poly, at, w)
+    if here is None:
+        return None
+    # The sharpest point within the window: the ring's own vertices there
+    # (where a corner actually is) and samples every w/8 between them.
+    length = ring.length
+    offs = [k * w / 8 for k in range(-8, 9) if k]
+    for c in ring.coords[:-1]:
+        off = (ring.project(SPoint(c)) - at + length / 2) % length - length / 2
+        if 0 < abs(off) <= w:
+            offs.append(off)
+    sharpest = (here, 0.0)
+    for off in offs:
+        ang = _ring_angle(ring, poly, at + off, w)
+        if ang is not None and ang < sharpest[0]:
+            sharpest = (ang, off)
+    if here <= _TIP_CORNER_MAX_DEG and abs(sharpest[1]) > _TIP_CORNER_ON_HIT_HALVES * half_sewn:
+        return 180.0
+    return here
 
 
 def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
