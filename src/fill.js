@@ -1362,6 +1362,18 @@
       }
       carry = segLen - (dist - stitchLen);
     }
+    // Close the ring. The walk above stops at its last whole step, `carry`
+    // short of polygon[0], so a ring whose perimeter is not a whole number of
+    // steps was left open by up to one stitch -- 2 mm of edge-run underlay
+    // missing at the start corner. A remainder of at least half a step gets
+    // its own closing stitch; a shorter one moves the last point onto
+    // polygon[0], so the closing stitch is never shorter than half a step
+    // and never longer than one and a half.
+    if (carry > EPS && out.length > 1) {
+      const first = { x: polygon[0].x, y: polygon[0].y };
+      if (carry >= stitchLen / 2 || out.length < 3) out.push(first);
+      else out[out.length - 1] = first;
+    }
     return out;
   }
 
