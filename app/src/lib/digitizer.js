@@ -1205,6 +1205,15 @@ async function httpDetail(r) {
   return "The digitizer service answered " + r.status + ".";
 }
 
+// httpDetail's sentence as an Error that remembers the status, so the Studio
+// can tell "image too large" (413) from "service fell over" (5xx) without
+// parsing prose. friendlyError.js decides what the customer reads.
+async function httpError(r) {
+  const e = new Error(await httpDetail(r));
+  e.status = r.status;
+  return e;
+}
+
 // POST /export (any EMB-Bot design -> a machine file, the pyembroidery-
 // convention path — digitizer_service/app.py's one export route for every
 // design type). Returns the same {bytes, filename, mime} shape
@@ -1220,7 +1229,7 @@ export async function exportViaService(design, format, label, fetchFn = globalTh
     body: JSON.stringify({ design, format, label }),
     signal: AbortSignal.timeout(10000),
   });
-  if (!r.ok) throw new Error(await httpDetail(r));
+  if (!r.ok) throw await httpError(r);
   const bytes = await r.blob();
   const cd = (r.headers && r.headers.get("Content-Disposition")) || "";
   const m = /filename="([^"]+)"/.exec(cd);
@@ -1247,7 +1256,7 @@ export async function startDigitize(image, config, fetchFn = globalThis.fetch) {
   }
   form.append("config", JSON.stringify(config));
   const r = await fetchFn(digitizerUrl() + "/digitize", { method: "POST", body: form });
-  if (!r.ok) throw new Error(await httpDetail(r));
+  if (!r.ok) throw await httpError(r);
   return r.json();
 }
 
@@ -1264,13 +1273,15 @@ export async function pollJob(jobId, opts = {}) {
   for (;;) {
     if (opts.isCancelled && opts.isCancelled()) return null;
     const r = await fetchFn(digitizerUrl() + "/jobs/" + jobId);
-    if (!r.ok) throw new Error(await httpDetail(r));
+    if (!r.ok) throw await httpError(r);
     const job = await r.json();
     if (job.state === "done") return job;
     if (job.state === "error") throw new Error(job.error || "Digitizing failed.");
     if (opts.onState) opts.onState(job.state);
     if (Date.now() - t0 > timeoutMs) {
-      throw new Error("Digitizing timed out. Check the service window, then digitize again.");
+      const e = new Error("Digitizing timed out. Check the service window, then digitize again.");
+      e.kind = "timeout";
+      throw e;
     }
     await new Promise((res) => setTimeout(res, intervalMs));
   }
