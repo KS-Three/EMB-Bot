@@ -2763,6 +2763,18 @@ class PipelineConfig:
     # into their neighbour so a junction never flickers. False restores the
     # single block.
     edge_cap_follow_adjacent: bool = True
+    # DEFAULT OFF, byte-identical off. On, a cone's cap stretches sew at the
+    # end of that cone's LAST artwork block instead of in a block of their
+    # own after all the artwork, when no later artwork block sews within half
+    # a border width of any of them (`stage7_sequence._cap_fold_host`). The
+    # same thread ends up on top of the same artwork rows, one machine stop
+    # fewer per folded cone (where two cones' stretches meet end to end, which
+    # bean lies on top can flip). Built for the photo/tonal spec's open stop
+    # count (Kent 2026-08-24: "68-78 stops a portrait is too many"): the
+    # follow-adjacent cap above adds one stop per cone its stretches touch,
+    # almost always a cone the artwork already sewed (a stretch recoloured
+    # to a cone with no artwork has no host and keeps its own block).
+    edge_cap_fold_into_colour: bool = False
     # What a cap whose bill clears `stage6_border.EDGE_CAP_BUDGET_PCT` (40%
     # of the artwork's own stitches) does about it. "warn" — the default and
     # the shipped behaviour — moves NO stitch: the plan is exactly the plan

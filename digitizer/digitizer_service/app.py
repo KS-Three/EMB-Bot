@@ -899,7 +899,11 @@ def _is_edge_cap(block) -> bool:
     saying so, the Sequencer would show a nameless row the user cannot map to
     anything on the canvas.
     """
-    return any(r.shape_id == _EDGE_CAP_SHAPE_ID for r in block.runs)
+    # Every sewing run, not any: `cfg.edge_cap_fold_into_colour` sews a cone's
+    # cap stretches at the end of that cone's own artwork block, and such a
+    # block has review shapes behind it.
+    sewing = [r for r in block.runs if r.points]
+    return bool(sewing) and all(r.shape_id == _EDGE_CAP_SHAPE_ID for r in sewing)
 
 
 def _block_shape_ids(block, region_ids: set[str] | None = None) -> list[str]:
