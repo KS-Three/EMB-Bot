@@ -2262,6 +2262,23 @@ class PipelineConfig:
     # `tests/test_fill_bridge_cut.py`.
     fill_bridge_cut: bool = True
 
+    # The fill column-order scorer prices only what `emit` sews (2026-10-08,
+    # built OFF). `_fill_paths` returns one-point "columns" that `emit`
+    # skips, and `stage6_fill._order_cost` routed travel to each one and on
+    # from it, so `_reorder_for_fewer_cuts` and `_reorder_for_cover` chose
+    # the column order against bridges that are never sewn. The DOCTRINE
+    # entry of 2026-09-11 says "`_order_cost` and `emit` can disagree about
+    # what an order will sew"; `tools/fill_score_agreement.py` found these
+    # phantoms are the only disagreement on the nine logos at 80 mm, and
+    # True drops them before either reorder runs. Within a shape the same
+    # penetrations are sewn and the column order moves; the shape's EXIT can
+    # move too, where `_fill_paths` ended on a phantom (both reorders pin the
+    # last path, and OFF pinned one `emit` never sews), so the next shape's
+    # entry -- and the design's stitch count -- can change. False is
+    # byte-identical to the engine before it. Defect 21's residual;
+    # `tests/test_fill_sewn_paths.py`.
+    fill_order_sewn_paths: bool = False
+
     # Underlay under a gradient-class design's ordinary fills. Built OFF
     # 2026-10-05; ON since 2026-10-07 by Kent's ruling, because OFF a
     # gradient-class design sewed every fill with no underlay at all. Measured
