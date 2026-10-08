@@ -11,7 +11,9 @@ The last bin is the pucker ceiling, `machine.COVERAGE_BLOCK_UNITS`.
 
 Real artwork only (gate 2). Both committed real tonal fixtures classify
 `gradient`, where the split is off by default, so it is FORCED here; the
-photo classes' own fixtures are synthetic stubs.
+photo classes' own fixtures are synthetic stubs. `is_photographic=True` is
+the declaration a real photograph upload carries; undeclared, the owl splits
+into 172 regions and stacks LESS split than whole (1 cell against 14).
 """
 import argparse
 import pathlib
@@ -46,7 +48,8 @@ def main(argv=None):
     for fx in a.fixtures:
         for arm, cure in (("split", False), ("split+cure", True)):
             cfg = PipelineConfig(target_width_mm=a.width_mm, garment_id="left_chest",
-                                 split_tonal_regions=True, tonal_split_ceiling=cure)
+                                 split_tonal_regions=True, tonal_split_ceiling=cure,
+                                 is_photographic=True)
             res, plan = digitize(TD / fx, cfg)
             h, peak = histogram(plan)
             assert h[-1] == round(area_past_ceiling_mm2(plan))
