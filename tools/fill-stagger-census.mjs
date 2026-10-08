@@ -17,6 +17,7 @@
 // hole of the next row that near; "three in a line" has one on each of the
 // next two rows. The second is the one to read: a long step cut in half lands
 // near the next row's grid point by the rule itself, once, and goes no further.
+import "./_help.mjs";
 import { writeFileSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

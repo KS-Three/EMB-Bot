@@ -2,6 +2,7 @@
 // (MASTER_SCOPE defect 55), sewn on terry, as an SVG: thread as sewn, the
 // ring as drawn in red. Run it once per build of src/digitize.js to compare.
 //   node tools/near-repeat-sheet.mjs <out.svg> [label]
+import "./_help.mjs";
 import { writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);

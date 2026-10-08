@@ -6,6 +6,7 @@
 //
 // Usage: node tools/check-fonts.mjs
 
+import "./_help.mjs";
 import fontsModule from "../src/fonts.js";
 
 const { FONTS } = fontsModule;

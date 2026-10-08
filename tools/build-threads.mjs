@@ -23,6 +23,7 @@
 //
 // Usage: node tools/build-threads.mjs
 // Re-run whenever a palette file in tools/palettes/ is added or updated.
+import "./_help.mjs";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";

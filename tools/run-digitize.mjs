@@ -1,4 +1,5 @@
 // Generic runner: PNG -> ColorRegions -> buildQualityDesign -> DST + colors.
+import "./_help.mjs";
 import { createRequire } from "module";
 import fs from "node:fs";
 import { decodePNG, downscale } from "./png.mjs";
