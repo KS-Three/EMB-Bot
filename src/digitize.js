@@ -1425,7 +1425,8 @@
         started = true;
       }
     }
-    // `cutFloats` (default off): a float the DST writer would lay as three or
+    // `cutFloats` (default off; the Studio's MANUAL and basic-shape lanes pass it ON since
+    // 2026-10-08 -- app/src/lib/generate.js): a float the DST writer would lay as three or
     // more jump records is a cut to a machine, so it becomes one in the stream
     // too (cutLongFloats). Asked of the finished stream and before the locks,
     // so that `ties` holds each end it makes. Off, nothing reads the stream
