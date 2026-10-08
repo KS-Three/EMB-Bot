@@ -9,22 +9,15 @@ from digitizer_core import PipelineConfig, run_stages
 
 # CI sharding (DIGITIZER_SHARD=k/n); a no-op when unset. See tests/_ci_shard.py.
 from tests._ci_shard import pytest_collection_modifyitems  # noqa: F401
-from tests import _shared_cache
 
 
-# Module fixtures computed once per run instead of once per xdist worker.
-# See tests/_shared_cache.py for what qualifies and what it promises.
+# CI scheduling (`--dist loadgroup`); a no-op otherwise. See
+# tests/_xdist_groups.py. A plugin rather than a hook here because this
+# conftest already exports the shard hook under the same name.
 def pytest_configure(config):
-    _shared_cache.configure(config)
-
-
-def pytest_unconfigure(config):
-    _shared_cache.unconfigure(config)
-
-
-@pytest.hookimpl(tryfirst=True)
-def pytest_fixture_setup(fixturedef, request):
-    return _shared_cache.fixture_setup(fixturedef, request)
+    from tests import _xdist_groups
+    if not config.pluginmanager.is_registered(_xdist_groups):
+        config.pluginmanager.register(_xdist_groups, "digitizer-xdist-groups")
 
 
 # SESSION-scoped, and shared by every module that needs a client. It must not

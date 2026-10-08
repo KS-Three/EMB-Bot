@@ -20,7 +20,7 @@ the palette handed the pass.
 """
 
 import hashlib
-from tests._shared_cache import shared_cache
+from functools import lru_cache
 from typing import NamedTuple
 
 import pytest
@@ -52,7 +52,7 @@ class _Case(NamedTuple):
     geometry: dict          # shape_id -> polygon WKT
 
 
-@shared_cache
+@lru_cache(maxsize=None)
 def _case(fixture: str, bind: bool) -> _Case:
     """One pipeline run per (fixture, flag), reused by every test.
 
@@ -95,7 +95,7 @@ def _case(fixture: str, bind: bool) -> _Case:
     )
 
 
-@shared_cache
+@lru_cache(maxsize=None)
 def _digest(fixture: str, **kw) -> tuple:
     """A pipeline run under exactly `kw`, for the shipped-engine contract."""
     cfg = _cfg(**kw)

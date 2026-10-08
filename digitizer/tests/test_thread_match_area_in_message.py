@@ -24,7 +24,7 @@ denominator gave 53.6%: a different, and better, denominator, not a drift.
 """
 
 import re
-from tests._shared_cache import shared_cache
+from functools import lru_cache
 
 import pytest
 
@@ -46,7 +46,7 @@ HOLES = "photo/logo_golden_tee.jpg"
 _SIZE = re.compile(r"(\d+\.\d{2}) mm² — (\d+\.\d{2})% of the design")
 
 
-@shared_cache
+@lru_cache(maxsize=None)
 def _report(fixture: str):
     """One digitize + preflight per fixture, reused by every test here.
 

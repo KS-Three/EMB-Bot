@@ -13,7 +13,7 @@ call). It makes the magnitude visible: `corpus_scorecard.diff` compares
 `report["metrics"]` and reports any move past 5%.
 """
 
-from tests._shared_cache import shared_cache
+from functools import lru_cache
 
 import pytest
 
@@ -27,7 +27,7 @@ FLOORED = "photo/screenshot_phone_ui_golke.jpg"   # score 0, raw -272 (-62 under
 CLEAN = "logo_alpha.png"                          # score 100, raw 100
 
 
-@shared_cache
+@lru_cache(maxsize=None)
 def _report(fixture: str):
     art = TESTDATA / fixture
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **PRE_FLIP)

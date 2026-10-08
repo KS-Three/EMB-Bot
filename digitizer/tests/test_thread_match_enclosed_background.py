@@ -32,7 +32,7 @@ TWO THINGS THIS FILE EXISTS TO STOP SOMEONE REDOING.
 """
 
 import collections
-from tests._shared_cache import shared_cache
+from functools import lru_cache
 
 import pytest
 
@@ -50,7 +50,7 @@ GAULKE = "photo/logo_gaulke_roofing.png"
 FIXTURES = [GAULKE, "photo/logo_bridge_bar.jpg", "logo_alpha.png"]
 
 
-@shared_cache
+@lru_cache(maxsize=None)
 def _digest(fixture: str):
     """One `digitize` per fixture, reused by every test in this file.
 
@@ -77,14 +77,14 @@ def _digest(fixture: str):
     return art, cfg, result, plan
 
 
-@shared_cache
+@lru_cache(maxsize=None)
 def _report(fixture: str):
     """`run_preflight` on the cached digitize — the other repeated cost here."""
     art, cfg, result, plan = _digest(fixture)
     return run_preflight(result, plan, cfg, image=art)
 
 
-@shared_cache
+@lru_cache(maxsize=None)
 def _report_unfloored(fixture: str):
     """The same report with the thread-match patch floor held at 0.
 

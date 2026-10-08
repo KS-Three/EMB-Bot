@@ -14,7 +14,7 @@ its own manual re-thread.
 Severity does not move: this is message prose plus four payload fields.
 """
 
-from tests._shared_cache import shared_cache
+from functools import lru_cache
 
 import numpy as np
 import pytest
@@ -31,7 +31,7 @@ HEAVY = "photo/logo_bridge_bar.jpg"     # 17 changes, 18 distinct cones
 QUIET = "logo_alpha.png"                # far under COLOR_STOPS_MAX
 
 
-@shared_cache
+@lru_cache(maxsize=None)
 def _run(fixture: str):
     """One digitize + preflight per fixture, reused by every test here.
     Read-only; take an uncached run if one ever needs to mutate."""

@@ -23,7 +23,7 @@ What these tests pin, in the order that matters:
 """
 
 import hashlib
-from tests._shared_cache import shared_cache
+from functools import lru_cache
 from typing import NamedTuple
 
 import pytest
@@ -69,7 +69,7 @@ class _Case(NamedTuple):
     warning: tuple | None   # (min_px, count, frozenset(ids)) or None
 
 
-@shared_cache
+@lru_cache(maxsize=None)
 def _digest(fixture: str, **kw) -> tuple:
     """A pipeline run under exactly `kw`, for the shipped-engine contract:
     no keyword at all against the four colour flags spelled out True."""
@@ -84,7 +84,7 @@ def _digest(fixture: str, **kw) -> tuple:
     return (hashlib.sha256(repr(coords).encode()).hexdigest()[:20], len(coords))
 
 
-@shared_cache
+@lru_cache(maxsize=None)
 def _case(fixture: str, small: bool) -> _Case:
     """One pipeline run per (fixture, flag), reused by every test.
 

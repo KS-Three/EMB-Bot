@@ -32,7 +32,7 @@ layers, it does not delete rows.
 """
 from __future__ import annotations
 
-from tests._shared_cache import shared_cache
+from functools import lru_cache
 
 import pytest
 from shapely.geometry import Polygon
@@ -67,7 +67,7 @@ def _cfg(**kw) -> PipelineConfig:
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 
-@shared_cache
+@lru_cache(maxsize=None)
 def _run(fixture: str, on: bool):
     """One pipeline run per (fixture, flag). Cached for the reason
     `test_resnap_mask_matches_grader` records: CI runners are 2-core and

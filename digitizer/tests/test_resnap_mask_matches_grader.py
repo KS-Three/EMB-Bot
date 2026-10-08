@@ -39,7 +39,7 @@ bridge_bar 240 -> 156. What the flag buys on gaulke is therefore the value of
 DECLINING a wrong re-snap, not of making a better one, which is what the
 tests below pin.
 """
-from tests._shared_cache import shared_cache
+from functools import lru_cache
 
 import cv2
 import numpy as np
@@ -66,7 +66,7 @@ def _cfg(**kw) -> PipelineConfig:
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 
-@shared_cache
+@lru_cache(maxsize=None)
 def _run(fixture: str, on: bool):
     """One pipeline run per (fixture, flag). Cached for the reason
     `test_bind_resnap_all_classes` records: CI runners are 2-core, so a
