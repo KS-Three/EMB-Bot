@@ -169,3 +169,29 @@ test("menus are named, and Escape closes the garment menu", async ({ page }) => 
   expect(await unnamedControls(page)).toEqual([]);
   await tools.locator("button").filter({ hasText: "Basic shape" }).click();
 });
+
+test("Delete removes the selected element from the focused field, and Ctrl+Z brings it back", async ({ page }) => {
+  await reachDesign(page);
+  const canvas = page.locator(".hoop canvas");
+  const rows = page.locator(".elrow");
+  const n0 = await rows.count();
+
+  // The last element stays (the row's Remove button is disabled at one).
+  if (n0 === 1) {
+    await canvas.focus();
+    await page.keyboard.press("Delete");
+    await page.waitForTimeout(300);
+    await expect(rows).toHaveCount(1);
+  }
+
+  await page.getByRole("button", { name: "Text", exact: true }).click();
+  await expect(rows).toHaveCount(n0 + 1);
+  await canvas.focus();
+  // history.js coalesces edits inside 500 ms; keep the delete its own step.
+  await page.waitForTimeout(700);
+  await page.keyboard.press("Delete");
+  await expect(rows).toHaveCount(n0);
+
+  await page.keyboard.press("Control+z");
+  await expect(rows).toHaveCount(n0 + 1);
+});
