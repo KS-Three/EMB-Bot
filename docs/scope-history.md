@@ -20131,3 +20131,16 @@ combination a flip would change. `docs/eye-pairs-2026-10-08/`.
 **Kent's verdict on the Column-lane sitting (2026-10-08, chat): AFTER is
 better** — `lettering_words` is the Column lane's tagger when that lane
 flips; both stay OFF. `docs/eye-pairs-2026-10-08/kent-notes.json`.
+
+## 2026-10-08 — MASTER_SCOPE headroom: area 1's lane narratives moved out
+
+MASTER_SCOPE stood at 26,901 words against its 27,000-word budget, so every
+PR touching it had to trim first. Ten dated build-and-flip narratives in
+capability area 1 — the 2026-09-04 gradient lane and satin-as-sewn, item 1's
+PR 5, the thin-stroke instruments and PR 2, `lettering_min_column_mm`, items
+4, 7, 9 and 11, and the sub-pixel ladder with PRs 2–4 — moved verbatim to
+`docs/scope/1-auto-digitizing-quality.md`, "Area 1 lanes in full — moved from
+MASTER_SCOPE (2026-10-08)". Each left its verdict, current flag state and
+pointer behind; no ruling or open question was dropped. 26,901 → 24,327
+words (`tools/scope_budget.py`). Docs only; the budget and its test are
+unchanged.
