@@ -8785,17 +8785,3 @@ element by its shape id and a crop before choosing the cure, and census the
 candidate test over EVERY fixture's accepted cases: the first discriminator
 that parts the broken fixture from the clean one can refuse the clean cases
 everywhere else.** *(measured 2026-10-07 — `docs/join-square-enthusiast-2026-10-07.md`; `tests/test_join_corner_bend_cap.py`)*
-
-## 2026-10-08 — Failure C (halo strands in text) is gone on today's engine: re-measure a billed number before building its fix
-
-The lettering plan billed C at "23–30% of the stitches in Gaulke's text are
-not black". That figure came from the outline-cut write-up, whose inputs were
-135 commits old by its own caveat, and it was carried forward twice without
-a re-measure. Kent picked C for a lane; the first step re-measured it with a
-committed instrument (`tools/text_halo.py`, the L1 hand labels as the
-text). Gaulke's text is **0%** halo. The real sub-0.5 mm slivers in a third
-thread are drone 3.3%, bridge 1.3% and the 607 px gaulke copy 4.4%;
-everything else in "not the ink" is ground or counters. Kent moved the lane
-to L3. **A number carried from a doc with an old-engine caveat is a
-hypothesis: spend the instrument run before the build.** *(measured
-2026-10-08 — `docs/text-halo-2026-10-08.md`)*
