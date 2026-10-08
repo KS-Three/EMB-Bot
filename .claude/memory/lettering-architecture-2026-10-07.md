@@ -100,3 +100,6 @@ totals across tiers. At 0.15 mm thread the terminals still hold: MARINE bare
 3.1 -> 2.7%, Fremont 2.0 -> 0.6%. The E is still three slabs (the ext rule takes the
 slot's LONGER edge into the body): the next cut item. Then Kent's pairs.
 
+
+**L1 BUILT 2026-10-08, OFF: `cfg.lettering_words`** -- see
+`word-tagger-l1-2026-10-08`. Under it `is_lettering` reads `word_id` only.

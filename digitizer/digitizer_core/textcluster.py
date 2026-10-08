@@ -1784,7 +1784,8 @@ def _cluster_house_angle_deg(members: list[Region], *,
 def set_lettering_house_angle(regions: list[Region], p: Prep, *,
                               fourfold: bool = False,
                               from_line: bool = False,
-                              anchor: bool = False) -> None:
+                              anchor: bool = False,
+                              groups: list[list[Region]] | None = None) -> None:
     """Post-regularization pass: give every member of one line of lettering
     ONE house cross angle, so its letters agree instead of each following its
     own spine tangent (`satin_angle_deg` in `Region.meta`).
@@ -1802,7 +1803,9 @@ def set_lettering_house_angle(regions: list[Region], p: Prep, *,
     `_cluster_house_angle_deg`. `anchor` (`config.satin_house_anchor`)
     puts a reading BEFORE the votes: a group with a line and stems takes
     the line plus the stems' slant, and only a group without either is
-    voted on.
+    voted on. `groups` replaces `_lettering_groups` with the caller's
+    lines of lettering (`words.word_groups` under `cfg.lettering_words`);
+    None is the house group, as before.
 
     `p` is accepted, not read, matching `detect_text_clusters` and
     `regularize_text_clusters` for the same reason: a future revision that
@@ -1833,7 +1836,7 @@ def set_lettering_house_angle(regions: list[Region], p: Prep, *,
     place in the tuple, and this pass should skip shapes carrying an
     operator-set value rather than a derived one.
     """
-    for members in _lettering_groups(regions):
+    for members in (_lettering_groups(regions) if groups is None else groups):
         # Membership itself is recorded (2026-10-07), angle or no angle:
         # `cfg.lettering_columns` reads it beside `text_candidate`, because
         # the two taggers disagree on real logos (ENTHUSIAST's wordmark is a

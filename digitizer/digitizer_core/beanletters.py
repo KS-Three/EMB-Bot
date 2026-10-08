@@ -60,9 +60,10 @@ def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
     line = cfg.bean_letter_max_stroke_mm
     if line is None or p is None:
         return 0
+    from .words import word_key        # late: words imports textcluster
     clusters: dict[str, list] = {}
     for r in regions:
-        cid = r.meta.get("text_cluster_id")
+        cid = word_key(r, cfg)
         if (cid and r.meta.get("stitched", True)
                 and str(r.meta.get("tier", "auto")).lower() == "auto"):
             clusters.setdefault(cid, []).append(r)

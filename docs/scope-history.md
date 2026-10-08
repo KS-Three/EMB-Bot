@@ -19986,3 +19986,18 @@ him with both priced, the day #656 merged: **keep 12.1 mm.** No EXP gains a
 stitch record longer than any it has held since 2026-09-13, and whether a
 machine takes a longer one stays unsewn. The comment in `src/exp.js` carries
 the pick; no code changes with it.
+
+## 2026-10-08 — L1, one lettering tagger, BUILT OFF (`cfg.lettering_words`)
+
+`digitizer_core/words.py`: one door, the text cluster's link, rows split at
+the widest gap across the line, congruent-pattern elements (rope twists)
+removed before words form. Under the flag every stitch-affecting lettering
+reader groups by `word_id`. Scored on hand labels of eight real logos
+(`tools/word_tagger_eval.py`, `testdata/lettering_truth.json`): pooled
+detection kappa **0.907** [0.833, 0.945] against the text cluster's 0.881,
+the house group's 0.616 and the Column lane's either-reading 0.637 (paired
+bootstrap: level with the first, above the other two); line ARI **0.99**
+against 0.65. Constants fitted in-sample; the CV screen is 0.03 over the
+highest letter. ON vs OFF through `digitize()`: three logos byte-identical,
+six within 0.4% of stitches, drone one trim fewer.
+`docs/word-tagger-2026-10-08/README.md`.

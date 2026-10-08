@@ -167,8 +167,8 @@ def measure_width_mm(poly: Polygon) -> float | None:
     return 2.0 * stats.mean_mm
 
 
-def _column_shaped(region: Region, satin_max: float) -> bool:
-    if region.meta.get("text_cluster_id") or is_small_shape(region.polygon):
+def _column_shaped(region: Region, satin_max: float, word_key: str = "text_cluster_id") -> bool:
+    if region.meta.get(word_key) or is_small_shape(region.polygon):
         return True
     poly = region.polygon
     if poly.length <= 0:
@@ -176,23 +176,28 @@ def _column_shaped(region: Region, satin_max: float) -> bool:
     return 2.0 * poly.area / poly.length <= _MEASURE_RIBBON_CEILINGS * satin_max
 
 
-def measure_stitch_widths(regions: list[Region], *, satin_max: float) -> None:
+def measure_stitch_widths(regions: list[Region], *, satin_max: float,
+                          words: bool = False) -> None:
     """Generation-time pass (after the text doors and the regularizer, whose
     polygons this reads): record each column-shaped region's measured width
     and, for every text cluster, the shared width its members will take.
     Metadata only — geometry moves in `apply_stitch_widths`, at finish time,
-    where the override and the fabric are known."""
+    where the override and the fabric are known.
+
+    `words` (`cfg.lettering_words`) keys a word by the one tagger's
+    `word_id` instead of the text cluster's `text_cluster_id`."""
+    key = "word_id" if words else "text_cluster_id"
     groups: dict[str, list[Region]] = {}
     for r in regions:
         for k in (MEASURED_KEY, AUTO_KEY, GROUP_KEY):
             r.meta.pop(k, None)
-        if not _column_shaped(r, satin_max):
+        if not _column_shaped(r, satin_max, key):
             continue
         w = measure_width_mm(r.polygon)
         if w is None:
             continue
         r.meta[MEASURED_KEY] = round(w, 4)
-        gid = r.meta.get("text_cluster_id")
+        gid = r.meta.get(key)
         if gid:
             r.meta[GROUP_KEY] = gid
             groups.setdefault(gid, []).append(r)
@@ -405,7 +410,8 @@ _SKIP_SOURCES = ("hand_edited_outline", "below_fabric_pull")
 def apply_stitch_widths(regions: list[Region], *, pull_mm: float,
                         floor_sewn_mm: float | None = None,
                         auto: bool = False,
-                        satin_max: float = machine.SATIN_MAX_WIDTH_MM) -> int:
+                        satin_max: float = machine.SATIN_MAX_WIDTH_MM,
+                        words: bool = False) -> int:
     """Finish-time pass (after `apply_shape_edits`, whose override this
     reads): offset every region whose wanted width differs from its measured
     one. `auto` (`cfg.stitch_width_auto`) admits the group median and the
@@ -422,7 +428,8 @@ def apply_stitch_widths(regions: list[Region], *, pull_mm: float,
         if r.meta.get("stitched") is False:
             continue
         measured = r.meta.get(MEASURED_KEY)
-        if measured is None and _column_shaped(r, satin_max):
+        if measured is None and _column_shaped(
+                r, satin_max, "word_id" if words else "text_cluster_id"):
             # A merged or split shape, minted after the measurement pass:
             # measured late so the panel can offer it the same control.
             w = measure_width_mm(r.polygon)

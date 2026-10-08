@@ -117,13 +117,15 @@ class Column:
                       rail_a=self.rail_a[::-1], rail_b=self.rail_b[::-1], dropped_mm=self.dropped_mm)
 
 
-def is_lettering(region) -> bool:
-    """Does the lane take this shape? Either tagger says lettering: the text
-    cluster (`textcluster.tag`, `text_candidate`) or the house-angle group
-    (`set_lettering_house_angle`, `lettering_group`). The two disagree on
-    real logos and merging them is the architecture's L1; until then the
-    lane reads both."""
+def is_lettering(region, cfg=None) -> bool:
+    """Does the lane take this shape? Under `cfg.lettering_words` the one
+    tagger's word (`words.tag_words`, `word_id`, L1). Off, either old
+    tagger: the text cluster (`textcluster.tag`, `text_candidate`) or the
+    house-angle group (`set_lettering_house_angle`, `lettering_group`),
+    which disagree on real logos (`tools/word_tagger_eval.py`)."""
     m = region.meta or {}
+    if getattr(cfg, "lettering_words", False):
+        return bool(m.get("word_id"))
     return bool(m.get("text_candidate") or m.get("lettering_group"))
 
 
