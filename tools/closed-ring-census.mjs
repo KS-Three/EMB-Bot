@@ -25,7 +25,8 @@
 //    "Fill" is the fill runs; "stream" is every record.
 // 3. WHO HANDS ONE OVER: the Studio's own generateElement, with the builder
 //    watched for the rings it is given. Three lanes reach it.
-// 4. THE NEAR REPEAT, which the fix does NOT reach (MASTER_SCOPE defect 55):
+// 4. THE NEAR REPEAT, which the fix of 2026-10-03 did NOT reach (MASTER_SCOPE
+//    defect 55; offsetRing drops one shorter than the offset since 2026-10-08):
 //    a hand-drawn shape with an anchor a pixel or two from the one before it.
 //    The short edge doubles back and gets the same clamp. Until 2026-10-03 a
 //    double-click whose second click slipped more than half a canvas pixel
@@ -417,7 +418,7 @@ function furthestFrom(a, b) {
   };
   const corners = box(100, 100, 300, 300);   // the fourth click is the double-click's first
   const clean = drawnBy(corners.concat([P(100.2, 300.3)])), slipped = drawnBy(corners.concat([P(99.8, 300.98)]));
-  console.log("\n4. THE NEAR REPEAT (the offset is not changed): a box whose last anchor is a slipped second click, mm of fill past the ring as drawn\n");
+  console.log("\n4. THE NEAR REPEAT (offsetRing drops a near repeat shorter than the offset since 2026-10-08): a box whose last anchor is a slipped second click, mm of fill past the ring as drawn\n");
   console.log(`As clicks were taken before 2026-10-03: a second click 0.36 px off was dropped (${clean.length} anchors), one 1 px off was kept (${slipped.length} anchors, valid: ${isValidShape(flattenShape(slipped, {}, true))}).\n`);
   console.log("| preset | pull comp mm | clean double-click | second click 1 px off | 80 slips of 0.6 to 3 px, 16 directions: refused as crossing | kept as an anchor | of those, over 0.15 mm further out than clean | worst |\n|---|---|---|---|---|---|---|---|");
   for (const f of PRESETS) {
