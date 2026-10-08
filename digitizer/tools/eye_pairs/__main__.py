@@ -135,7 +135,7 @@ def _default_ref_runner(ref: str, *, repo=None, scratch=None):
 
 
 def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
-           ref_factory=None) -> int:
+           ref_factory=None, base: dict | None = None) -> int:
     """Digitize and render every (fixture, arm); -> the number now ready.
 
     Resume-safe: a row is reused only when its `source_sha256` matches the
@@ -153,10 +153,18 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
     it unknown. That costs the ref rows alone — deliberately not a
     `FEATURES_SCHEMA` bump, which would re-digitize every flag arm too.
     Never builds pairs: that is `pair()`.
+
+    `base` (`--base k=v,...`) is PipelineConfig flags laid under EVERY flag
+    arm, `base` included, so a sitting can judge one flag on top of another
+    built-OFF one (2026-10-08: `lettering_words` over `lettering_columns`,
+    Kent's pick). Recorded as `base_flags` on every row it touched; a
+    cached row on a different base is a cache miss and re-digitizes, so one
+    directory never mixes engines. Ref and file arms do not take it.
     """
     out = Path(out)
     for sub in ("designs", "renders"):
         (out / sub).mkdir(parents=True, exist_ok=True)
+    base = dict(base or {})
     # The default corpus minus the fixtures Kent has ruled off the page
     # (`EXCLUDED_FIXTURES`); an explicit `cases` list is taken as given.
     cases = ([c for c in corpus_cases() if c[0] not in EXCLUDED_FIXTURES]
@@ -194,6 +202,8 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                         and row.get("source_sha256") == src_hash
                         and row.get("schema") == FEATURES_SCHEMA
                         and ("__ref__" not in kw or row.get("env"))
+                        and ("__ref__" in kw or "__file__" in kw
+                             or row.get("base_flags", {}) == base)
                         and dpath.exists() and rpath.exists()):
                     if not hpath.exists():
                         _write_holes(hpath, json.loads(dpath.read_text(encoding="utf-8")))
@@ -230,10 +240,12 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                         row["design_only"] = True
                         row["from_file"] = str(rel)
                     else:
-                        cfg = base_cfg(width_mm, garment, **kw)
+                        cfg = base_cfg(width_mm, garment, **{**base, **kw})
                         gen, result, plan, design = digitize_once(path, cfg)
                         row = features_full(path, cfg, gen, result, plan, design)
                         row["design_class"] = result.design_class
+                        if base:
+                            row["base_flags"] = base
                 except Exception as exc:  # noqa: BLE001 - one bad arm must not
                     # take the other hundred down; it is recorded and dropped.
                     feats.setdefault(name, {})[arm] = {"error": f"{type(exc).__name__}: {exc}"}
@@ -571,12 +583,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=OUT)
     ap.add_argument("--fixtures", help="comma-separated corpus names, e.g. becker,fremont")
     ap.add_argument("--arms", help="comma-separated arm ids")
+    ap.add_argument("--base", help="flags under every flag arm, base included, e.g. "
+                                   "lettering_columns=true (a fresh --out per base)")
     ap.add_argument("--port", type=int, default=PORT)
     ap.add_argument("--no-browser", action="store_true")
     args = ap.parse_args(argv)
     split = lambda s: [x for x in s.split(",") if x] if s else None  # noqa: E731
     if args.render:
-        render(args.out, fixtures=split(args.fixtures), only_arms=split(args.arms))
+        from tools.thin_strokes import parse_flags
+        render(args.out, fixtures=split(args.fixtures), only_arms=split(args.arms),
+               base=parse_flags(split(args.base)))
         return 0
     if args.pair:
         pair(args.out)
