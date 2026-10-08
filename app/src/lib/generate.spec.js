@@ -604,9 +604,54 @@ test("generateElement: a manual fill lays no thread across its cut-out (fillColu
   // The manual branch's own call, with only the flag left out.
   const fabric = fabricInForce(garment.id, undefined);
   const call = { garment, fabric, pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: 40, offsetXMm: 0, offsetYMm: 0 };
-  const on = EMB.buildQualityDesign(regions, { ...call, fillColumns: true });
+  const on = EMB.buildQualityDesign(regions, { ...call, fillColumns: true, cutFloats: true });
   expect(on.stitches).toEqual(d.stitches);
   expect(across(EMB.buildQualityDesign(regions, call))).toBeGreaterThan(10);
+});
+
+// 2026-10-08 (MASTER_SCOPE "Waiting on Kent" 28, after `fillColumns`): the
+// manual lane passes `cutFloats`, so a float the DST writer lays as three or
+// more jump records -- a cut on a DST machine -- has a `trim` in the stream.
+// A plain 40 mm square is the shape that keeps one with `fillColumns` on: the
+// move from the underlay to the fill crosses its face. The same call without
+// the flag leaves it a float, which is what proves the reading can see one;
+// and the two streams sew the same needle points in the same order.
+test("generateElement: a manual fill leaves no float a DST machine reads as a cut (cutFloats, manual lane only)", async () => {
+  const { generateElement, fabricInForce } = await import("./generate.js");
+  const { defaultManualElement, defaultManualShape } = await import("./project.js");
+  const { shapesToRegions } = await import("./manualShapes.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const square = {
+    ...defaultManualShape("s1"), stitchType: "fill",
+    points: [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 300 }, { x: 0, y: 300 }],
+  };
+  const el = { ...defaultManualElement("e1"), shapes: [square], sizeMm: 40, underlay: true };
+  // Floats with thread on that the writer lays as three jump records or more,
+  // counting the move to the stitch after (src/digitize.js cutLongFloats).
+  const unasked = (d) => {
+    const s = d.stitches;
+    let n = 0;
+    for (let i = 1; i < s.length; i++) {
+      if (s[i].type !== "jump" || s[i - 1].type !== "stitch") continue;
+      let j = i, recs = 0;
+      for (; j < s.length && s[j].type === "jump"; j++) recs += EMB.jumpRecords(s[j].x - s[j - 1].x, s[j].y - s[j - 1].y);
+      const next = s[j];
+      if (next && next.type === "stitch" && recs + EMB.jumpRecords(next.x - s[j - 1].x, next.y - s[j - 1].y) - 1 >= 3) n++;
+    }
+    return n;
+  };
+  const needles = (d) => d.stitches.filter((s) => s.type === "stitch").map((s) => [s.x, s.y]);
+  const d = generateElement(el, garment, {});
+  expect(d.stitchCount).toBeGreaterThan(100);
+  expect(unasked(d)).toBe(0);
+  const { regions, pxPerMm } = shapesToRegions(el.shapes);
+  const fabric = fabricInForce(garment.id, undefined);
+  const call = { garment, fabric, pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: 40, offsetXMm: 0, offsetYMm: 0, fillColumns: true };
+  const off = EMB.buildQualityDesign(regions, call);
+  expect(unasked(off)).toBeGreaterThan(0);
+  expect(needles(d)).toEqual(needles(off));
+  expect(d.stitches.filter((s) => s.type === "trim").length).toBeGreaterThan(off.stitches.filter((s) => s.type === "trim").length);
 });
 
 test("generateAll combines a manual shape element with a text element into one multi-color design", async () => {
