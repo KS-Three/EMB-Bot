@@ -62,14 +62,14 @@ from __future__ import annotations
 
 import heapq
 import math
-from dataclasses import dataclass, field as _dc_field
+from dataclasses import dataclass, field as _dc_field, replace as _dc_replace
 
 import cv2
 import numpy as np
 from shapely.geometry import LineString, Polygon
 from shapely.geometry import Point as SPoint
 from shapely.ops import unary_union
-from skimage.morphology import medial_axis
+from .fast_skimage import medial_axis  # skimage's, tables cached — byte-identical
 
 from . import machine, stitches
 from .shapefield import build_shape_field, hole_px
@@ -4089,6 +4089,42 @@ def _straighten_member_end(piece: list[tuple[float, float]], at_end: bool,
     out = pts[:q + 1] + straight
     return out if at_end else list(reversed(out))
 
+
+# `junction_square` (`cfg.satin_junction_square`, 2026-10-08, built OFF): the
+# T-junction half of the join-square fan. `join_square` straightens a
+# member's end at a Goldman CORNER (an L), but a stroke's end at a branch
+# NODE -- the E's and F's middle arm meeting the stem, any T's stem under its
+# bar -- keeps the medial axis's own bend into the node, and the trimmed
+# end's crosses read that tangent and fan across the stem (rendered
+# 2026-10-08: Fremont's E bottom arm into its foot at 80 mm, Becker's E
+# middle arm and N diagonal at 100 mm). Laid square the same way a corner
+# member's end is (`_straighten_member_end`, its bend cap included), BEFORE
+# the junction trim, so the trim and the tuck are unchanged in kind. Only a
+# stroke's own skeleton ends at a node are read -- never a free end, never a
+# corner member's inner end, which `join_square` already owns. A corner
+# stroke's spine indices are shifted with its start so its corners stay on
+# their apexes.
+def _square_junction_ends(stroke: Stroke, half_mm: float) -> Stroke:
+    """`stroke` with each end at a branch node laid on its own straight
+    line, or `stroke` itself when neither moves."""
+    if stroke.closed or half_mm <= 0 or len(stroke.spine) < 4:
+        return stroke
+    spine = list(stroke.spine)
+    corners = list(stroke.corners)
+    if not stroke.free_start:
+        stop = corners[0][0] if corners else len(spine) - 1
+        head = _straighten_member_end(spine[:stop + 1], False, half_mm)
+        shift = len(head) - (stop + 1)
+        spine = head + spine[stop + 1:]
+        corners = [(i + shift, own) for i, own in corners]
+    if not stroke.free_end:
+        start = corners[-1][0] if corners else 0
+        tail = _straighten_member_end(spine[start:], True, half_mm)
+        spine = spine[:start] + tail
+    if spine == list(stroke.spine):
+        return stroke
+    return _dc_replace(stroke, spine=spine, corners=corners)
+
 def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   field: _WidthField | None, split_above_mm: float | None,
                   end_cutback_mm: float, spacing_mm: float,
@@ -5674,6 +5710,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 rails_follow_edge: bool = False,
                   outer_rail_pitch: bool = False,
                   join_square: bool = False,
+                junction_square: bool = False,
                 slab_serifs: bool = False,
                 hairline_floor_mm: float = 0.0,
                 patch_junctions: bool | str = False,
@@ -5836,6 +5873,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # spine for each HAIRLINE stretch that does not — see `satin_stroke`'s
     # `parts`. A stroke with no hairline stretch is one satin part, its
     # points exactly the flat return, so it sews byte-for-byte as before.
+    if junction_square:
+        strokes = [_square_junction_ends(st, half_mm) for st in strokes]
     kept: list[dict] = []
     for si, st in enumerate(strokes):
         parts: list = []
