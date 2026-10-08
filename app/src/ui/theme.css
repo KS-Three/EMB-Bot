@@ -706,6 +706,12 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
 .field .stats { color: var(--surround-ink); font-variant-numeric: tabular-nums; }
 .field .err { color: var(--surround-danger); }
 .field .warn { color: var(--surround-warn); }
+/* The one-click fix beside a thin-lettering note: a link-weight button in
+   the warning's own color, so it reads as part of that sentence. */
+.field .twolines {
+  background: none; border: 0; padding: 0; font: inherit; cursor: pointer;
+  color: var(--surround-warn); text-decoration: underline; font-weight: var(--fw-medium);
+}
 
 .fieldwrap {
   display: flex;
