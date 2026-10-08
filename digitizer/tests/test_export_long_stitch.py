@@ -89,7 +89,9 @@ def test_travel_in_is_not_sewn(fmt, tmp_path):
     assert abs(total - 60) < 2, f"{fmt}: sewn thread {total:.1f}, expected only the design's own 60"
 
 
-@pytest.mark.parametrize("fmt", MACHINE)
+# Not PES/PEC: their stitch stream is our own encoder since 2026-10-08
+# (test_export_cuts.py), so pystitch's writer is no longer the reference.
+@pytest.mark.parametrize("fmt", [f for f in MACHINE if f not in ("pes", "pec")])
 def test_a_design_with_nothing_over_the_bar_is_byte_identical(fmt):
     # Against pystitch's own writer, untouched: the split adds records only
     # where a sewn move is over the bar, and this design has none.

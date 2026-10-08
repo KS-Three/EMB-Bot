@@ -38,8 +38,10 @@ from __future__ import annotations
 
 import io
 import math
+import threading
 
 import pystitch
+from pystitch import PecWriter
 
 TAJIMA_STANDARD = "tajima-standard"
 
@@ -127,6 +129,53 @@ _WRITER_SETTINGS = {
 }
 
 
+def _pec_encode_like_browser(pattern: pystitch.EmbPattern, f) -> None:
+    """PEC's stitch stream, one record per command, as `src/pes.js` writes it.
+
+    pystitch's own `PecWriter.pec_encode` writes every jump after the first
+    as a TRIM-jump (flag 0x20), ignores the TRIM command itself, and puts the
+    needle down at a jump's landing whenever the next stitch is off it on
+    both axes. So a design's floats left the service as cuts — 61 against
+    Golke's 32 — with an extra penetration at each (tools/export-audit.mjs,
+    2026-10-08). Kent's ruling the same day: the service PES matches the
+    browser's, where a jump is a jump (0x10) and a cut is a cut (0x20).
+
+    Runs on the pattern pystitch's encoder has already normalised, so long
+    moves arrive split within PEC's reach and a cut arrives as a TRIM at the
+    needle — written here as a zero-length 0x20 record, as `pes.js` writes a
+    `trim`. Colour changes are pystitch's byte for byte.
+    """
+    xx = yy = 0
+    color_two = True
+    for x, y, cmd in pattern.stitches:
+        data = cmd & pystitch.COMMAND_MASK
+        dx = int(round(x - xx))
+        dy = int(round(y - yy))
+        xx += dx
+        yy += dy
+        if data == pystitch.STITCH:
+            PecWriter.write_stitch(f, dx, dy)
+        elif data == pystitch.JUMP:
+            PecWriter.write_jump(f, dx, dy)
+        elif data == pystitch.TRIM:
+            PecWriter.write_trimjump(f, dx, dy)
+        elif data == pystitch.COLOR_CHANGE:
+            f.write(b"\xfe\xb0")
+            f.write(b"\x02" if color_two else b"\x01")
+            color_two = not color_two
+        elif data == pystitch.END:
+            f.write(b"\xff")
+            break
+
+
+# `PecWriter.write_pec_block` calls its module-level `pec_encode` by name, and
+# both PES and PEC go through it. Swapped only for the duration of one of
+# OUR writes, under a lock — the service writes from a thread pool, and
+# anything else in the process that writes PEC keeps pystitch's own.
+_PEC_LOCK = threading.Lock()
+_PEC_FORMATS = {"pes", "pec"}
+
+
 def supported() -> list[dict]:
     return [{"format": k, **v} for k, v in FORMATS.items()]
 
@@ -204,8 +253,15 @@ def write(pattern: pystitch.EmbPattern, fmt: str) -> bytes:
     # SVG is a proof, not a machine file: it draws the design's own segments.
     pattern = pattern if fmt == "svg" else split_sewn_moves(pattern)
     settings = _WRITER_SETTINGS.get(fmt)
-    if settings is None:
-        writer(pattern, buf)
+    args = (pattern, buf) if settings is None else (pattern, buf, dict(settings))
+    if fmt in _PEC_FORMATS:
+        with _PEC_LOCK:
+            original = PecWriter.pec_encode
+            PecWriter.pec_encode = _pec_encode_like_browser
+            try:
+                writer(*args)
+            finally:
+                PecWriter.pec_encode = original
     else:
-        writer(pattern, buf, dict(settings))
+        writer(*args)
     return buf.getvalue()
