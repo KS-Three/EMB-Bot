@@ -37,8 +37,11 @@ implementation and therefore no conflict.
 from __future__ import annotations
 
 import io
+import math
+import threading
 
 import pystitch
+from pystitch import PecWriter
 
 TAJIMA_STANDARD = "tajima-standard"
 
@@ -113,8 +116,132 @@ _WRITERS = {
 }
 
 
+# Per-format writer settings, where pystitch's default disagrees with the design.
+#
+# JEF: `JefWriter` defaults `trims=False` and writes NO cut command, so a cut
+# lived in the file only if a machine inferred one from a long move (22 of
+# Golke's 32 read back, tools/export-audit.mjs 2026-10-08). Kent's ruling the
+# same day: write them — three zero-length moves per cut (`trim_at` 3, the
+# writer's own default), the convention pystitch's reader cites for a Janome
+# MC400E. What a given Janome does with them is gate 1.
+_WRITER_SETTINGS = {
+    "jef": {"trims": True, "trim_at": 3},
+}
+
+
+def _pec_encode_like_browser(pattern: pystitch.EmbPattern, f) -> None:
+    """PEC's stitch stream, one record per command, as `src/pes.js` writes it.
+
+    pystitch's own `PecWriter.pec_encode` writes every jump after the first
+    as a TRIM-jump (flag 0x20), ignores the TRIM command itself, and puts the
+    needle down at a jump's landing whenever the next stitch is off it on
+    both axes. So a design's floats left the service as cuts — 61 against
+    Golke's 32 — with an extra penetration at each (tools/export-audit.mjs,
+    2026-10-08). Kent's ruling the same day: the service PES matches the
+    browser's, where a jump is a jump (0x10) and a cut is a cut (0x20).
+
+    Runs on the pattern pystitch's encoder has already normalised, so long
+    moves arrive split within PEC's reach and a cut arrives as a TRIM at the
+    needle — written here as a zero-length 0x20 record, as `pes.js` writes a
+    `trim`. Colour changes are pystitch's byte for byte.
+    """
+    xx = yy = 0
+    color_two = True
+    for x, y, cmd in pattern.stitches:
+        data = cmd & pystitch.COMMAND_MASK
+        dx = int(round(x - xx))
+        dy = int(round(y - yy))
+        xx += dx
+        yy += dy
+        if data == pystitch.STITCH:
+            PecWriter.write_stitch(f, dx, dy)
+        elif data == pystitch.JUMP:
+            PecWriter.write_jump(f, dx, dy)
+        elif data == pystitch.TRIM:
+            PecWriter.write_trimjump(f, dx, dy)
+        elif data == pystitch.COLOR_CHANGE:
+            f.write(b"\xfe\xb0")
+            f.write(b"\x02" if color_two else b"\x01")
+            color_two = not color_two
+        elif data == pystitch.END:
+            f.write(b"\xff")
+            break
+
+
+# `PecWriter.write_pec_block` calls its module-level `pec_encode` by name, and
+# both PES and PEC go through it. Swapped only for the duration of one of
+# OUR writes, under a lock — the service writes from a thread pool, and
+# anything else in the process that writes PEC keeps pystitch's own.
+_PEC_LOCK = threading.Lock()
+_PEC_FORMATS = {"pes", "pec"}
+
+
 def supported() -> list[dict]:
     return [{"format": k, **v} for k, v in FORMATS.items()]
+
+
+# The repo's sewability bar: one DST record (`src/dst.js` MAX_DELTA). Kent's
+# 2026-09-12 ruling made it the bar for every format, PES included.
+SEWN_BAR = 121
+
+
+def _split_steps(dx: int, dy: int, limit: int) -> list[tuple[int, int]]:
+    """`splitSteps` from src/dst.js, line for line: n steps along the straight
+    line, rounding the RUNNING total so the sum is exact and every landing
+    point sits within half a unit of the line; one more step if two adjacent
+    roundings land a step at limit+1."""
+    n = max(1, -(-abs(dx) // limit), -(-abs(dy) // limit))
+    while True:
+        steps, ax, ay = [], 0, 0
+        for i in range(1, n + 1):
+            # JS Math.round: half rounds UP, not to even.
+            sx = int(math.floor(dx * i / n + 0.5)) - ax
+            sy = int(math.floor(dy * i / n + 0.5)) - ay
+            if abs(sx) > limit or abs(sy) > limit:
+                break
+            steps.append((sx, sy))
+            ax += sx
+            ay += sy
+        else:
+            return steps
+        n += 1
+
+
+def split_sewn_moves(pattern: pystitch.EmbPattern, bar: int = SEWN_BAR) -> pystitch.EmbPattern:
+    """Split every over-length SEWN move into stitches, the browser's rule.
+
+    A STITCH that directly follows a STITCH and lies more than `bar` units
+    away on either axis is preceded by intermediate STITCH records along the
+    line. Anything else — the first stitch of the file, or one after a jump,
+    a cut or a colour change — is travel-in and is left for pystitch's own
+    jump-then-needle. This is `encodeDST`'s chain rule (src/dst.js).
+
+    Left to pystitch, an over-length sewn move became JUMPS in DST, EXP, JEF,
+    XXX and U01 (thread the design sews, sent as travel) and one long stitch
+    in PES and PEC (a move no machine sews) — found by
+    tools/export-audit.mjs, 2026-10-08. A pattern with nothing over the bar
+    is returned as it came, so its bytes do not change.
+    """
+    out, prev, changed = [], None, False
+    for x, y, cmd in pattern.stitches:
+        c = cmd & pystitch.COMMAND_MASK
+        if c == pystitch.STITCH and prev is not None:
+            dx, dy = int(round(x - prev[0])), int(round(y - prev[1]))
+            if abs(dx) > bar or abs(dy) > bar:
+                px, py = prev
+                for sx, sy in _split_steps(dx, dy, bar)[:-1]:
+                    px, py = px + sx, py + sy
+                    out.append([px, py, cmd])
+                changed = True
+        out.append([x, y, cmd])
+        prev = (x, y) if c == pystitch.STITCH else None
+    if not changed:
+        return pattern
+    split = pystitch.EmbPattern()
+    split.threadlist = list(pattern.threadlist)
+    split.extras = dict(pattern.extras)
+    split.stitches = out
+    return split
 
 
 def write(pattern: pystitch.EmbPattern, fmt: str) -> bytes:
@@ -123,5 +250,18 @@ def write(pattern: pystitch.EmbPattern, fmt: str) -> bytes:
     if writer is None:
         raise KeyError(fmt)
     buf = io.BytesIO()
-    writer(pattern, buf)
+    # SVG is a proof, not a machine file: it draws the design's own segments.
+    pattern = pattern if fmt == "svg" else split_sewn_moves(pattern)
+    settings = _WRITER_SETTINGS.get(fmt)
+    args = (pattern, buf) if settings is None else (pattern, buf, dict(settings))
+    if fmt in _PEC_FORMATS:
+        with _PEC_LOCK:
+            original = PecWriter.pec_encode
+            PecWriter.pec_encode = _pec_encode_like_browser
+            try:
+                writer(*args)
+            finally:
+                PecWriter.pec_encode = original
+    else:
+        writer(*args)
     return buf.getvalue()
