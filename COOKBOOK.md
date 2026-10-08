@@ -1517,20 +1517,11 @@ PES/EXP/DST cross-validation tests (`test/crossval-stitch-formats.test.js`)
 skip quietly on a machine whose digitizer venv can't import pystitch, and a
 green run with them skipped proves less than it looks (CLAUDE.md's venv
 note is the trap; under CI they throw instead of skipping, and the engine
-job installs pystitch so they run for real). Two: **a loaded box USED to
-forge Studio failures** — the specs' `preloadAllFontsSync` beforeAll decoded
-the whole 85-font, 53 MB library (~5 s of one core) in every one of the ten
-spec files that call it, four at a time, under vitest's 10 s hook timeout;
-on 2026-08-22 that failed 5 spec files under pip/pytest contention, and
-sessions took to running `npm test -- --hookTimeout=120000` by hand.
-**Fixed 2026-10-08: `app/src/lib/testFonts.js` is lazy now** — each
-`EMB.SATIN_FONTS` key is a getter that decodes that one font on first read,
-so a spec pays only for what it touches. Measured on a 4-core cloud box:
-with 12 CPU hogs running, the eager loader failed 7 spec files on the hook
-timeout and the lazy one passed all 86; idle, `npm test` went 41–43 s →
-32–34 s wall. **Do not pass `--hookTimeout` any more** — a Studio hook
-timeout today is a new regression (most likely a spec decoding the whole
-library again, e.g. via `Object.values(EMB.SATIN_FONTS)`). The
+job installs pystitch so they run for real). Two: **a loaded box forges
+Studio failures** — the specs' `preloadAllFontsSync` beforeAll decodes the
+whole 85-font library under vitest's 10s hook timeout, and on 2026-08-22 that
+failed 5 spec files under pip/pytest contention, 3 on a second loaded run,
+0 solo; re-run solo before calling a Studio red a regression. The
 digitizer's three expected failure/skip classes are documented below the
 command block.
 
