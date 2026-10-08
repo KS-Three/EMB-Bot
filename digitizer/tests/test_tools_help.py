@@ -1,4 +1,4 @@
-"""Every script in `digitizer/tools/` answers `--help` with its usage text and
+"""Every script in `digitizer/tools/` and the `.py` files in `tools/` answers `--help` with its usage text and
 exits 0, without doing the tool's work.
 
 Before this, 61 of them had a `__main__` block that ignored the flag, so
@@ -16,10 +16,13 @@ from pathlib import Path
 import pytest
 
 DIGITIZER = Path(__file__).resolve().parent.parent
-TOOLS = sorted(p for p in (DIGITIZER / "tools").glob("*.py") if p.name != "_console.py")
+TOOLS = sorted(
+    [p for p in (DIGITIZER / "tools").glob("*.py") if p.name != "_console.py"]
+    + list((DIGITIZER.parent / "tools").glob("*.py"))
+)
 
 
-@pytest.mark.parametrize("tool", TOOLS, ids=lambda p: p.name)
+@pytest.mark.parametrize("tool", TOOLS, ids=lambda p: f"{p.parent.name}/{p.name}")
 def test_tool_help_exits_zero(tool, tmp_path):
     env = dict(os.environ, PYTHONPATH=str(DIGITIZER), PYTHONIOENCODING="utf-8")
     r = subprocess.run(
