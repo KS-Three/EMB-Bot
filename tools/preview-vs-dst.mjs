@@ -133,7 +133,7 @@ export const FIXTURES = {
 // needle up. Inlined rather than parameterised, because widening it would
 // silently redefine every number below it — including the thread length that
 // is the tell for a stitch quietly demoted to travel.
-function fileSegments(records) {
+export function fileSegments(records) {
   const segs = [];
   let prev = null;
   for (const [x, y, cmd] of records) {
@@ -145,7 +145,7 @@ function fileSegments(records) {
   return segs;
 }
 
-function travelSegments(records) {
+export function travelSegments(records) {
   const out = [];
   let prev = null;
   for (const [x, y, cmd] of records) {
@@ -162,7 +162,7 @@ function travelSegments(records) {
   return out;
 }
 
-function bbox(segs) {
+export function bbox(segs) {
   if (!segs.length) return null;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const s of segs) {
@@ -172,7 +172,7 @@ function bbox(segs) {
   return [x0, y0, x1, y1];
 }
 
-function threadUnits(segs) {
+export function threadUnits(segs) {
   let t = 0;
   for (const s of segs) t += Math.hypot(s[2] - s[0], s[3] - s[1]);
   return t;
@@ -235,7 +235,7 @@ function nearest(px, py, segs, g) {
 // The worst distance from one thread path to the other, sampling each segment
 // at its ends and middle. Sub-unit rounding shows up here as ~0.05 mm; the
 // dogleg showed up as millimetres.
-function maxStrayUnits(from, to) {
+export function maxStrayUnits(from, to) {
   if (!from.length || !to.length) return null;
   const g = grid(to);
   let worst = 0;
@@ -262,7 +262,12 @@ const DIHEDRAL = {
 // matched exactly after aligning bounding-box minima — a translation is not an
 // orientation error, and a split segment lands on the picture's line either
 // way, so this is scored as "how much of the file lies on a drawn segment".
-function orientationFit(previewSegs, fileSegs) {
+// `stride` scores every stride-th segment only (tools/export-audit.mjs, on
+// 25k-stitch designs where an off-identity transform falls back to a full
+// scan per point). The alignment still uses the WHOLE file's bbox: a sample's
+// own bbox is smaller, and aligning on it scores a mirror of a near-symmetric
+// design above the truth.
+export function orientationFit(previewSegs, fileSegs, stride = 1) {
   const pb = bbox(previewSegs);
   const table = {};
   if (!pb || !fileSegs.length) return { best: "none", table };
@@ -271,13 +276,15 @@ function orientationFit(previewSegs, fileSegs) {
     const t = fileSegs.map((s) => { const a = fn(s[0], s[1]), b = fn(s[2], s[3]); return [a[0], a[1], b[0], b[1]]; });
     const tb = bbox(t);
     const dx = pb[0] - tb[0], dy = pb[1] - tb[1];
-    let on = 0;
-    for (const s of t) {
+    let on = 0, n = 0;
+    for (let i = 0; i < t.length; i += stride) {
+      const s = t[i];
       const a = nearest(s[0] + dx, s[1] + dy, previewSegs, g);
       const b = nearest(s[2] + dx, s[3] + dy, previewSegs, g);
       if (a < 1 && b < 1) on++;
+      n++;
     }
-    table[name] = +(on / t.length).toFixed(6);
+    table[name] = +(on / n).toFixed(6);
   }
   // "none" rather than the first key when nothing fits: `sort` is stable, so a
   // table of zeros would hand back `identity` — the reassuring answer — for a
