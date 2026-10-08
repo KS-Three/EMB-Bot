@@ -817,7 +817,7 @@
   }
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
-  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, dedupeHoles, cutFloats }
+  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, dedupeHoles, cutFloats, skeletonPad }
   // (buildLetteringDesign additionally takes `splitSatin` and
   // `wideColumnFill` — the two wide-column answers, both default off; see
   // satinfont.js's constant block.)
@@ -1407,7 +1407,12 @@
             // Medial-axis satin (rail-based) — clean on curves/terminals; falls
             // back to the outline-split satin internally for tiny/degenerate rings.
             const sat = satinmod.medialSatin || satinmod.satinColumn;
-            pts = sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg });
+            // `skeletonPad` (default off; defect 57): the skeleton grid gets a
+            // margin on its near side too (satin.js, ringToSpines). Off, the
+            // options object is the one it always was.
+            const satOpts = { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg };
+            if (o.skeletonPad) satOpts.skeletonPad = true;
+            pts = sat(poly, satOpts);
             nSatin++;
           }
           else {

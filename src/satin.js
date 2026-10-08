@@ -674,7 +674,17 @@
     if (!(dim > EPS)) return { strokes: [], contours, halfWidthPx: 0 };
 
     const gscale = Math.min(1.5, 260 / dim);
-    const gw = Math.ceil((maxX - minX) * gscale) + 3, gh = Math.ceil((maxY - minY) * gscale) + 3;
+    let gw = Math.ceil((maxX - minX) * gscale) + 3, gh = Math.ceil((maxY - minY) * gscale) + 3;
+    // `opts.skeletonPad` (default off; defect 57): `thin` never erodes the
+    // grid's first row or column, and the shape's own top and left edges are
+    // rasterized onto exactly those, so they survive as "skeleton" — a bar's
+    // spine runs along its top edge and down its left end, and the last
+    // crosses turn with it into one stitch as long as the bar. Off, the grid
+    // starts at the shape's corner, as it always has.
+    if (opts && opts.skeletonPad) {
+      const pad = 2; // grid pixels: one for thin's untouched border, one clear of it
+      minX -= pad / gscale; minY -= pad / gscale; gw += pad; gh += pad;
+    }
     // Net ribbon half-width (outer area minus counters) over total wall length.
     const netArea = Math.max(0, ringArea(ring) - holes.reduce((s, h) => s + ringArea(h), 0));
     const totPerim = ringPerim(ring) + holes.reduce((s, h) => s + ringPerim(h), 0);
