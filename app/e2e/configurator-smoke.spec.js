@@ -29,7 +29,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { statSync } from "node:fs";
-import { startStudio, typeText, pickGarment, pickTemplate, openDownload, closeDownload, uploadArtwork } from "./helpers.js";
+import { startStudio, typeText, pickGarment, pickTemplate, openDownload, closeDownload, uploadArtwork, watchConsole } from "./helpers.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Same fixture digitize-stale-edits.spec.js uses (see that file's own
@@ -622,14 +622,11 @@ test("a page load produces no console errors and no failed requests", async ({ p
   // bookmark showed a blank tab. `app/public/favicon.svg` (an accent tile with a
   // stitch zigzag instead of the word "EMB", which is illegible at 16 px; the
   // top bar itself now carries a plain wordmark, not that tile) settles both.
-  const problems = [];
-  page.on("console", (m) => { if (m.type() === "error") problems.push("[console] " + m.text().slice(0, 160)); });
-  page.on("pageerror", (e) => problems.push("[pageerror] " + e.message.slice(0, 160)));
-  page.on("requestfailed", (r) => problems.push("[requestfailed] " + r.url()));
+  const guard = watchConsole(page);
 
   await page.goto("/", { waitUntil: "networkidle" });
   await expect(page.getByRole("heading", { name: "Your design" })).toBeVisible();
-  expect(problems).toEqual([]);
+  guard.expectClean();
 });
 
 test("the empty canvas says how to reach the drawing tools", async ({ page }) => {
