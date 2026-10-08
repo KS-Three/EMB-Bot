@@ -132,7 +132,7 @@
     <span>Choose a photo</span>
     <input type="file" accept="image/*" on:change={onFile} />
   </label>
-  {#if busy}<p class="tfp-hint">Reading photo…</p>{/if}
+  {#if busy}<p class="tfp-hint" role="status">Reading photo…</p>{/if}
   {#if error}<p class="tfp-error" role="alert">{error}</p>{/if}
 
   {#if image}
@@ -160,11 +160,11 @@
       <p class="tfp-hint">Click the colour you want to match.</p>
     {:else}
       <div class="tfp-sampled">
-        <span class="tfp-chip" style="background: {css(sample.rgb)}"></span>
+        <span class="tfp-chip" aria-hidden="true" style="background: {css(sample.rgb)}"></span>
         <span>Sampled colour · average of {sample.count} pixels</span>
       </div>
       {#if !matches.length}
-        <p class="tfp-hint">Loading chart…</p>
+        <p class="tfp-hint" role="status">Loading chart…</p>
       {:else}
         <ol class="tfp-list" aria-label={"Nearest threads in " + chartLabel}>
           {#each matches as t (t.index)}
