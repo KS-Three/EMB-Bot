@@ -112,6 +112,18 @@ export function alignOffset(mode, designMm, hoopMm) {
   return 0;
 }
 
+// The field's zoom range: 100% is the fit-to-hoop view, and the cap is 800%
+// so a single satin column or a 0.3 mm pull step can be inspected stitch by
+// stitch. Kent asked for 800% back on 2026-10-08; the cap had been 4x since
+// Slice 8. Exported so a spec pins the cap and EmbroideryField's zoomBy()
+// clamps through the same numbers.
+export const MIN_ZOOM = 1;
+export const MAX_ZOOM = 8;
+
+export function clampZoom(zoom) {
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
+}
+
 // Clamps a view pan offset so a pan/zoom can never push the hoop entirely
 // off canvas -- the reachable travel grows with zoom (more zoomed in => more
 // slack to pan around), plus a flat 40px of slack so even at zoom===MIN_ZOOM

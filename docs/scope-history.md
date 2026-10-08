@@ -20075,6 +20075,28 @@ stitch record longer than any it has held since 2026-09-13, and whether a
 machine takes a longer one stays unsewn. The comment in `src/exp.js` carries
 the pick; no code changes with it.
 
+## 2026-10-07 — `blend_fallback_underlay` ON by default: Kent's ruling
+
+Kent flipped the flag built OFF on 2026-10-05 (entry above). Default
+`True`; `False` stays the byte-identical path to the engine before it. The
+measurement it was flipped on is the 10-05 table: six gradient-class real
+logos, bare fills 33 of 33 → 5 of 33, stitches +1.7%, trims 423 → 421
+(Fremont pays six, 37 → 43). Re-read on the default config the day of the
+flip, Gaulke Roofing (80 mm, `left_chest`): bare fills 3 → 0, +7 stitches,
+trims 34 → 32, 41 underlay stitches under fills — the 10-05 deltas exactly,
+on absolute counts that moved with `main`.
+`docs/renders/blend-fallback-underlay-on-2026-10-07/`.
+
+On every preset but cap, fleece and towel the style is `edge_run`, so a
+knit fill gains its perimeter walk and its interior is still empty; the
+interior pass is corpus law 26 and a separate gate-1 item, not touched.
+One pin moved: the owl's adjacency check in
+`tests/test_merge_adjacent_same_thread.py` now holds the flag OFF — the
+underlay changes stage 7's order (`17, 155, 17` → `17, 17, 155`), same
+blocks, no new split. Targeted run (72 files: stage 6/7, blend, gradient,
+goldens): 1,205 passed, 5 xfailed, the three named platform goldens red
+and the owl pin, since fixed. Not sewn.
+
 **Moved here from MASTER_SCOPE live defects 38 and 40 (both FIXED 2026-09-07), for the word budget (2026-10-07):**
 
 38. **The simulator counted in a different unit from the caption right under it — FIXED 2026-09-07.** The stitch simulator is driven by STRANDS (the segment between two consecutive stitches, which is what actually paints), and its counter showed that raw index: **"1289 stitches · 102×12 mm" under the canvas and "1280 / 1280" in the simulator bar**, both visible at once, nine apart on a design with nine runs. Both numbers were correct measurements of different things and only one carried a unit — the same family as defect 34, one screen over. **FIXED**: `strandStitchOrdinals` (strands.js) maps each strand to the stitch number it ends at, computed once per run, so the counter reads *"1289 / 1289 stitches"*. The animation still runs on strands. **The total is the LAST ORDINAL, not `design.stitchCount`** — a run of a single stitch paints no segment, so the simulator must never claim to have drawn it; the fixture has 0 such runs, and the tests cover one that does. `strands.spec.js` (5), e2e (1, plus the format pin in `field-chrome.spec.js` updated with its reason). *(found by watching the simulator run 2026-09-07)*
@@ -20132,3 +20154,16 @@ to him carry the off/on float picture (`tools/fill-columns-image-sheet.mjs`;
 the first, becker at left chest: 1,113 floats off the fill → 0, cuts 14 →
 11, stitches +18.2%). Guarded by a traced-counter test that reads 351
 off-fill floats with the flag dropped. "Waiting on Kent" 22 resolved.
+
+## 2026-10-08 — MASTER_SCOPE headroom: area 1's lane narratives moved out
+
+MASTER_SCOPE stood at 26,901 words against its 27,000-word budget, so every
+PR touching it had to trim first. Ten dated build-and-flip narratives in
+capability area 1 — the 2026-09-04 gradient lane and satin-as-sewn, item 1's
+PR 5, the thin-stroke instruments and PR 2, `lettering_min_column_mm`, items
+4, 7, 9 and 11, and the sub-pixel ladder with PRs 2–4 — moved verbatim to
+`docs/scope/1-auto-digitizing-quality.md`, "Area 1 lanes in full — moved from
+MASTER_SCOPE (2026-10-08)". Each left its verdict, current flag state and
+pointer behind; no ruling or open question was dropped. 26,901 → 24,327
+words (`tools/scope_budget.py`). Docs only; the budget and its test are
+unchanged.
