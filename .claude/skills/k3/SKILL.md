@@ -56,6 +56,11 @@ Then: Agent(model: haiku) → "read the file; for each line call create_session 
 one parallel batch, never without parameters) with title, source_url, outcome_branch,
 model, tags ["embot-foreman"], prompt = preamble + 'Task: ' + task; report ids."
 
+**Big waves (30+):** don't plan them yourself. One Opus agent reads ROADMAP/MASTER_SCOPE,
+lists open PRs and remote branches, and writes the task file (unique unused branches,
+~40/60 Opus/Sonnet split, no two tasks on one file, gates respected). Then split the launch
+across two Haiku agents (lines 1–30, 31–60) so neither times out mid-batch.
+
 Every task must: name what is already in flight so it isn't duplicated ("check open PRs
 first"), fit the time left, and state its done-test (PR ready-for-review, auto-merge armed).
 
@@ -88,6 +93,10 @@ going") — that is the authority they're asking for. If Kent ruled directly in 
 - **Fake reds:** a `digitizer` red whose shards are all `cancelled` is a superseded run
   (concurrency cancel), not a failure. Check the head sha before acting on any red.
 - **Two unrelated PRs red at once** → suspect shared infra (CI, main), diagnose once.
+- **Main red for everyone** (e.g. a `test.fail()` guard that turns into an "unexpected
+  pass" once the fix lands): fix it yourself in the one-line commit, in a PR you own that's
+  already armed, run that one test locally, push. Don't wait for a lane whose PR bundles
+  other work.
 - **Disarm** auto-merge on a PR that would break `main` for others (e.g. a new test that
   fails every later PR) until its owner fixes it.
 - **Support crew** for big queues: local Sonnet agents with roles REVIEWER / MEDIC
