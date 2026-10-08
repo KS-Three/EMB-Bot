@@ -34,7 +34,7 @@ import cv2
 import numpy as np
 from shapely.geometry import LinearRing, LineString, Point, Polygon
 from shapely.ops import nearest_points, polygonize, unary_union
-from skimage.morphology import medial_axis
+from .fast_skimage import medial_axis  # skimage's, tables cached — byte-identical
 
 from .columns import Column
 
