@@ -25,7 +25,14 @@ A letter is a "long letter" / "fan letter" when three or more of its crosses
 qualify and they carry over 5% of its thread. Bridge's eight tagged shapes
 are segmentation blobs, not letters, and read as fans under every arm.
 
-    .venv/Scripts/python tools/fan_census.py [case ...] [--arms shipped,join_square,columns,both]
+2026-10-08: the `corner_gate` arm (`satin_tip_corner_gate`, defect 59's cure)
+and the `tipcaps_off` reference were added, and every row now carries bare
+artwork with no thread of any kind (`bare_anatomy.components(all_thread=True)`),
+over all satin shapes and over the text-tagged ones. A gate that caps fewer
+ends pays in coverage, so its price is read beside what it buys.
+
+    .venv/Scripts/python tools/fan_census.py [case ...] [--arms shipped,join_square,columns,both,
+                                                               corner_gate,tipcaps_off]
                                              [--out DIR] [--render-n]
 
 `--out` (default `scratch_fan_census/` at the repo root, gitignored by the

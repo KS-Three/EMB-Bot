@@ -8752,3 +8752,24 @@ spike's 1.6 W over-long bar read gaulke's thirty-nine 1 mm letters as 35 fan
 letters under every arm — the fabric's 0.3 mm pull per side, not a fan;
 `tools/fan_census.py` reads 1.6 x (W + 2 pull). *(measured 2026-10-07 —
 `docs/n-fan-2026-10-07.md`)*
+
+## 2026-10-08 — The N fan's cure: a tip must land on a convex corner; the degree gate it was promised is `tip_caps=False` in disguise
+
+The 10-07 diagnosis named the fix as "do not ask the tip test at a node of
+three arms". Measured before building, the rule fails: every end the test is
+asked about on becker and enthusiast sits at a node of three or more arms,
+because a node of two always has an owner and a tuck and never reaches the
+test. Hit distance, hit-to-DT ratio and arm length did not separate the N
+either. Drawing every tip ray over the letters did. Nearly all of them are
+**meetings**: a stem, bar or diagonal driven through the stroke it meets,
+landing on that stroke's far wall. What tells a taper from a meeting is where
+the ray lands. A taper ends on a convex corner. A meeting ends on a wall
+(180°) or in a notch (over 180°). The N's three tips read 180, 180, 180 and
+the M's 278–297. Built OFF as `satin_tip_corner_gate` (interior angle ≤ 160°,
+set in a gap that every logo leaves somewhere in 152–164°). Becker's
+over-long crosses go 56 → 28, the N's fan is gone in the render, and bare
+rises 8.2 mm² over seven logos. **It lands within 0.4 mm² of
+`satin_tip_caps=False` on every logo. So the coverage tip caps bought was
+bought at meetings, and the fan is its price. Price a gate on the population
+it actually fires on, not the one it was named for.** *(measured 2026-10-08 —
+`docs/n-fan-cure-2026-10-08.md`, `tools/tip_corner_census.py`)*
