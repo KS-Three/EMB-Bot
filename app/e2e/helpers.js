@@ -66,3 +66,25 @@ export async function runDigitize(page) {
   await expect(run).toHaveText("Auto Digitize Image");
   await run.click();
 }
+
+// Console guard: collects what a customer's DevTools would show in red —
+// console errors, uncaught page errors, failed requests — so a spec can fail
+// on them. Call BEFORE the first navigation. The Studio probes the digitizer
+// service's /health on load; where no service runs (a bare sandbox) that
+// probe is refused by design and the app falls back to the browser lane, so
+// it is ignored by default. Pass `ignore` (RegExps tested against the message
+// or URL) for anything else a spec provokes on purpose.
+const SERVICE_PROBE = /127\.0\.0\.1:8721\/health/;
+export function watchConsole(page, { ignore = [] } = {}) {
+  const skip = [SERVICE_PROBE, ...ignore];
+  const quiet = (s) => skip.some((re) => re.test(s));
+  const problems = [];
+  page.on("console", (m) => {
+    if (m.type() !== "error") return;
+    const text = m.text(), url = m.location().url || "";
+    if (!quiet(text) && !quiet(url)) problems.push("[console] " + text.slice(0, 160));
+  });
+  page.on("pageerror", (e) => { if (!quiet(e.message)) problems.push("[pageerror] " + e.message.slice(0, 160)); });
+  page.on("requestfailed", (r) => { if (!quiet(r.url())) problems.push("[requestfailed] " + r.url()); });
+  return { problems, expectClean: () => expect(problems).toEqual([]) };
+}

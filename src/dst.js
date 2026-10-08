@@ -383,9 +383,17 @@
     buf.set(endRecord(), off);
     off += 3;
 
+    // ST is the count of 3-byte records in the body, the end-of-file record
+    // included -- NOT stitches.length. Measured 2026-10-08 against
+    // pystitch.DstWriter (3 stitches -> ST 4 with 4 body records; it counts
+    // the END it appends) and the Tajima convention that ST totals every
+    // record: jumps, colour changes, trim jumps, END. stitches.length was
+    // right only by accident when a {type:"end"} sentinel happened to stand
+    // in for END; with none (lettering) it was one short, and every trim
+    // (3 records) and split move (n records) was counted once.
     const header = buildHeader({
       label: (design && design.label) || "EMBBOT",
-      stitchCount: stitches.length,
+      stitchCount: records.length,
       colorCount: colors.length,
       xMin, xMax, yMin, yMax,
     });

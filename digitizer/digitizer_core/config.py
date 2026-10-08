@@ -1626,6 +1626,17 @@ class PipelineConfig:
     # at the price of a leg that may be exposed on fabric; the rescued calls
     # measured a 4.1 mm median leg and a 5.64 mm median path.
     satin_walk_cursor_reach_mm: float = 0.0
+    # `satin_hop_under_column` (defect 6, built OFF 2026-10-08): inside a
+    # satin shape, the hop from a run to the COLUMN sewn right after it is
+    # sewn needle-down -- as travel stitches no longer than
+    # `TRAVEL_STITCH_MM` -- when the column's own stitches cover the whole
+    # hop, instead of being trimmed for running past `trim_at`. The column
+    # buries the travel, so no thread lies on bare fabric or on finished
+    # work. Capped at 3 x `trim_at`. Measured on the nine real-art logos
+    # (`tools/satin_islands.py`): the underlay -> own-column hop was the
+    # largest cure-able class of in-shape trims on Becker (14 of 47, 3.2 to
+    # 6.9 mm). False is the linking pass as shipped, byte for byte.
+    satin_hop_under_column: bool = False
     # `satin_underlay_on_column`: a stroke's underlay is built on its
     # column's OWN stations -- the spine after the junction trims, the
     # cap extension and the stack's run-in -- instead of the raw skeleton
@@ -2422,6 +2433,16 @@ class PipelineConfig:
     #   True  -> split every class.
     #   False -> split nothing, photo classes INCLUDED. This is the new one.
     split_tonal_regions: bool | None = None
+    # Defect 20's cure, BUILT 2026-10-08, DEFAULT OFF (the flip is Kent's).
+    # When the tonal split is in force, `digitize` also plans the design
+    # whole and keeps the split only if it puts no more fabric past
+    # `machine.COVERAGE_BLOCK_UNITS` (the 3.5-fill-layer ceiling, sew-out
+    # gated, unchanged) than the whole design does. Measured on the real owl
+    # (`owl_kent.jpg`, split forced): cells at or past the ceiling 28 split
+    # against 5 whole, peak 9.57 against 4.00 fill layers, 70% of that
+    # thread satin. Costs a second generation, only when the split is on.
+    # `tools/tonal_stack_hist.py` prints the stacked-layer histogram.
+    tonal_split_ceiling: bool = False
     # DEFAULT ON since 2026-08-24 — Kent's quality call, made from the fresh
     # 32-job acceptance sheet (4 photos x 8 arms) exactly as spec decision 1
     # requires: the eyeball loop, not a scorecard, settles tonal work. Was
@@ -2839,6 +2860,17 @@ class PipelineConfig:
     # uncovered area unchanged on all nine). False is the pre-flip cap byte
     # for byte.
     edge_cap_skip_lettering: bool = True
+    # Walk the covered stretch between two cap arcs (MASTER_SCOPE defect 19's
+    # trim bill; built 2026-10-08, DEFAULT OFF). The gate splits a ring into
+    # arcs wherever something linear already sews the edge, and the needle
+    # LIFTS over each covered stretch — a jump, and a trim past `trim_at_mm`.
+    # True sews that stretch instead, one pass at bean stations on top of the
+    # stitching that covers it, when every station of the walk stands on that
+    # cover and it costs no more than `machine.TRIM_COST_STITCHES` stitches
+    # (the engine's own price of a trim — no new constant). Same ring only;
+    # bean style only (`border_runs` owns satin's arcs). False is the shipped
+    # cap byte for byte.
+    edge_cap_walk_covered: bool = False
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth

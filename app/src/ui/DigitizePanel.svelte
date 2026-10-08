@@ -3,7 +3,7 @@
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
   import { tip } from "../lib/tip.js";
-  import { markDigitizeBusy } from "../lib/digitizeBusy.js";
+  import { markDigitizeBusy, rememberRun, forgetRun, wasRunning } from "../lib/digitizeBusy.js";
   import { isCapPieceId } from "../lib/capPieces.js";
   import {
     buildDigitizeConfig,
@@ -450,6 +450,7 @@
     if (!el.sourcePng || !health || phase !== "idle") return;
     error = "";
     phase = "submitting";
+    rememberRun(el.id);
     try {
       // A field resize is a Design width change (resizedTargetWidth): the
       // run digitizes at the dragged width, and the landing patch below
@@ -517,7 +518,23 @@
     } catch (err) {
       if (!destroyed) error = friendlyError(err, "digitize");
     } finally {
-      if (!destroyed) phase = "idle";
+      // A torn-down panel leaves the mark for the next one to resume.
+      if (!destroyed) {
+        phase = "idle";
+        forgetRun(el.id);
+      }
+    }
+  }
+
+  // A reload or an element switch killed the last panel mid-run: join the
+  // service's job (see lib/digitizeBusy.js). Waits for the health probe; with
+  // no stored art there is nothing to send, so the mark is dropped.
+  let resumeChecked = false;
+  $: if (!resumeChecked && element && health) {
+    resumeChecked = true;
+    if (wasRunning(element.id)) {
+      if (element.sourcePng) runDigitize(element);
+      else forgetRun(element.id);
     }
   }
 

@@ -1673,4 +1673,31 @@ def digitize(
     screen edits, and the plan a machine sews."""
     cfg = cfg or PipelineConfig()
     result = run_stages(image, cfg, segmenter)
-    return result, plan_stitches(result, cfg)
+    plan = plan_stitches(result, cfg)
+    if cfg.tonal_split_ceiling and effective_split_tonal(cfg, result.design_class):
+        # Defect 20: the split's parts stack thread past the pucker ceiling.
+        # Plan it whole too and keep whichever puts less fabric past it; a
+        # tie keeps the split, so a design the split does not overload is
+        # byte-identical to the flag being off.
+        whole_cfg = replace(cfg, split_tonal_regions=False)
+        whole = run_stages(image, whole_cfg, segmenter)
+        whole_plan = plan_stitches(whole, whole_cfg)
+        if area_past_ceiling_mm2(plan) > area_past_ceiling_mm2(whole_plan):
+            return whole, whole_plan
+    return result, plan
+
+
+def area_past_ceiling_mm2(plan: StitchPlan) -> float:
+    """Fabric area (mm2) whose coverage reaches `machine.COVERAGE_BLOCK_UNITS`.
+
+    Every cell counts, not only `DENSITY_STACKED`'s 25 mm2 patches: that
+    filter yields 0.0 mm2 on every corpus fixture (preflight's own
+    docstring), so it cannot tell a split that stacks from one that does not.
+    """
+    from . import machine, preflight   # preflight imports this module
+    got = preflight._coverage_map(plan)
+    if got is None:
+        return 0.0
+    grid, _origin = got
+    cells = int((grid >= machine.COVERAGE_BLOCK_UNITS).sum())
+    return cells * machine.COVERAGE_CELL_MM ** 2

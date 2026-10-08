@@ -665,8 +665,54 @@ test("generateElement: a star preset lays no float across its notches (fillColum
     { id: "shape", points: shapePresetPoints("star", {}, 50), curves: {}, stitchType: "auto", colorRgb: el.colorRgb, angleDeg: null },
   ]);
   const call = { garment, fabric: fabricInForce(garment.id, undefined), pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: 50, offsetXMm: 0, offsetYMm: 0 };
-  expect(EMB.buildQualityDesign(regions, { ...call, fillColumns: true }).stitches).toEqual(d.stitches);
+  expect(EMB.buildQualityDesign(regions, { ...call, fillColumns: true, cutFloats: true }).stitches).toEqual(d.stitches);
   expect(floatsOffTheFill(EMB.buildQualityDesign(regions, call))).toBeGreaterThan(20);
+});
+
+// 2026-10-08 (MASTER_SCOPE "Waiting on Kent" 28, after `fillColumns`): the
+// basic-shape lane passes `cutFloats`, so a float the DST writer lays as three
+// or more jump records -- a cut on a DST machine -- has a `trim` in the
+// stream. The Studio's default shape element (a 50 mm circle) and a 20 mm
+// 12-point star each keep one with the flag off: that half proves the reading
+// can see one. The two streams sew the same needle points in the same order.
+test("generateElement: a preset shape leaves no float a DST machine reads as a cut (cutFloats, shape lane)", async () => {
+  const { generateElement, fabricInForce } = await import("./generate.js");
+  const { defaultShapeElement } = await import("./project.js");
+  const { shapePresetPoints } = await import("./shapePresets.js");
+  const { shapesToRegions } = await import("./manualShapes.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  // Floats with thread on that the writer lays as three jump records or more,
+  // counting the move to the stitch after (src/digitize.js cutLongFloats).
+  const unasked = (d) => {
+    const s = d.stitches;
+    let n = 0;
+    for (let i = 1; i < s.length; i++) {
+      if (s[i].type !== "jump" || s[i - 1].type !== "stitch") continue;
+      let j = i, recs = 0;
+      for (; j < s.length && s[j].type === "jump"; j++) recs += EMB.jumpRecords(s[j].x - s[j - 1].x, s[j].y - s[j - 1].y);
+      const next = s[j];
+      if (next && next.type === "stitch" && recs + EMB.jumpRecords(next.x - s[j - 1].x, next.y - s[j - 1].y) - 1 >= 3) n++;
+    }
+    return n;
+  };
+  const needles = (d) => d.stitches.filter((s) => s.type === "stitch").map((s) => [s.x, s.y]);
+  const trims = (d) => d.stitches.filter((s) => s.type === "trim").length;
+  for (const [kind, params, sizeMm] of [["circle", {}, 50], ["star", { points: 12 }, 20]]) {
+    const el = { ...defaultShapeElement("e1"), kind, params, sizeMm };
+    const d = generateElement(el, garment, {});
+    expect(d.stitchCount).toBeGreaterThan(500);
+    expect(unasked(d)).toBe(0);
+    // The shape branch's own call, with only `cutFloats` left out.
+    const { regions, pxPerMm } = shapesToRegions([
+      { id: "shape", points: shapePresetPoints(kind, params, sizeMm), curves: {}, stitchType: "auto", colorRgb: el.colorRgb, angleDeg: null },
+    ]);
+    const call = { garment, fabric: fabricInForce(garment.id, undefined), pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: sizeMm, offsetXMm: 0, offsetYMm: 0, fillColumns: true };
+    const off = EMB.buildQualityDesign(regions, call);
+    expect(unasked(off)).toBeGreaterThan(0);
+    expect(needles(d)).toEqual(needles(off));
+    expect(trims(d)).toBeGreaterThan(trims(off));
+  }
 });
 
 // Kent's call 2026-10-08 ("Waiting on Kent" 22), with its price measured
@@ -701,7 +747,7 @@ test("generateElement: an image fill lays no float across its counter (fillColum
 // move from the underlay to the fill crosses its face. The same call without
 // the flag leaves it a float, which is what proves the reading can see one;
 // and the two streams sew the same needle points in the same order.
-test("generateElement: a manual fill leaves no float a DST machine reads as a cut (cutFloats, manual lane only)", async () => {
+test("generateElement: a manual fill leaves no float a DST machine reads as a cut (cutFloats, manual lane)", async () => {
   const { generateElement, fabricInForce } = await import("./generate.js");
   const { defaultManualElement, defaultManualShape } = await import("./project.js");
   const { shapesToRegions } = await import("./manualShapes.js");
