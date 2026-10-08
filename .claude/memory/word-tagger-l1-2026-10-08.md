@@ -38,3 +38,7 @@ blobs, gaulke's window panes (mirror pairs, 1 twin each). Flip is Kent's.
 **Pairs drawn same day** (`docs/eye-pairs-2026-10-08/`, `lettering_words` arm,
 sitting `words-1008`): 5 pairs, 3 identical; golden_tee's tee shaft turns
 (false-positive word). Page gitignored, built locally per the README recipe.
+Second sitting `words-columns-1008` (base `lettering_columns=true`, new
+`eye_pairs --render --base`): enthusiast's shield STAR stops being sewn as
+Column slabs (house-group false positive) -- the visible win; lost_frac
+0.2896 -> 0.3090 against the coverage test's 0.29 bar; drone +3 trims.

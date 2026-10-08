@@ -77,3 +77,48 @@ python -m tools.eye_pairs_gallery --labelled --src <merged> --out <gallery> \
 **Result:** 16 arm-runs, none failed. The labelled page has 5 pairs; 3 logos
 were identical and are not shown. *(measured 2026-10-08, Linux cloud
 container, python 3.12)*
+
+## Second sitting: the same flag under the Column lane (`words-columns-1008`)
+
+Kent picked this one after the first sitting, on 2026-10-08. **BEFORE is
+not shipped here.** Both sides run `lettering_columns=True`, the Column
+lane, built OFF. AFTER adds `lettering_words=True`, so the lane's
+`is_lettering` reads the word instead of either old tagger. This is the
+combination a flip of L1 would actually change.
+
+Drawn with the new `--base` render option. It lays flags under every arm,
+base included, and records them per row as `base_flags`.
+
+**Result:** 3 pairs. Five logos are identical: becker, bridge, fremont,
+gaulke and tires.
+
+| fixture | stitches | trims | colour changes | changed shapes | their stitches | their trims | uncovered ink | lost_frac |
+|---|---|---|---|---|---|---|---|---|
+| drone | 18,806 → 18,866 | 141 → 144 | 9 | 17 | 1,854 → 1,914 | 19 → 22 | 0.40% | 0.1035 → 0.1043 |
+| enthusiast | 2,278 → 2,431 | 15 → 14 | 1 → 2 | 4 | 640 → 793 | 4 → 3 | 0.53 → 0.52% | 0.2896 → 0.3090 |
+| golden_tee | 8,311 → 8,380 | 43 | 9 | 4 | 1,237 → 1,306 | 7 | 0.28 → 0.20% | 0.4931 → 0.4690 |
+
+What the pictures show, without grading them:
+
+- **enthusiast: the shield's star.**
+  - Before, the house group called the star a letter, so the Column lane
+    cut it into crossed slabs.
+  - After, the word model does not call it lettering (it is another ink),
+    so it sews as a filled star.
+  - lost_frac rises 0.2896 → 0.3090 and the colour changes go 1 → 2.
+    `tests/test_lettering_coverage_regression.py` bars enthusiast near
+    0.29, so a flip would have to re-read that test against this picture.
+- **drone: the word model's extra letters go into the lane.**
+  - THERMAL's M, A and L, which both old taggers missed, now go to the
+    Column lane.
+  - The sight's two arcs, a text-cluster false positive, leave it.
+  - Cost: 3 more trims on the changed shapes.
+- **golden_tee:** small changes in the G and in GOLF's shading. lost_frac
+  falls 0.4931 → 0.4690.
+- **Fremont is identical.** The rope twists the house group tagged never
+  reached the lane's construction.
+
+Recipe: as above, with `--base lettering_columns=true` on every
+`--render`, a fresh `--out`, `columns/price-tables.json` as the tables, and
+`--sitting words-columns-1008`. The price table's caption on the page says
+the BEFORE is not shipped.
