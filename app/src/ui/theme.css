@@ -55,6 +55,10 @@
   /* Single confident accent: indigo family. */
   --accent: #4f46e5;
   --accent-dark: #4338ca; /* hover/active */
+  /* Labels on the ART's own swatch colours. .panel flips --ink and --accent-ink,
+     so neither can be borrowed there. */
+  --swatch-ink-dark: #171a20;
+  --swatch-ink-light: #ffffff;
   --accent-ink: #ffffff; /* readable ink on top of accent (or other saturated) fills */
   --tint: #eef0ff; /* accent-tinted selection and focus background (hover is --fill) */
   --tint-border: #ccd6fb; /* accent-tinted border, pairs with --tint */
@@ -2239,9 +2243,9 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .swatch .pct {
   font-size: var(--fs-xs);
   font-weight: var(--fw-medium);
-  color: var(--accent-ink);
-  text-shadow: 0 1px 2px rgba(var(--shadow-color), 0.65);
+  color: var(--swatch-ink-light);
 }
+.swatch.lt .pct { color: var(--swatch-ink-dark); }
 
 .swatch-hint { color: var(--muted); font-size: var(--fs-sm); }
 
