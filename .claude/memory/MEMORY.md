@@ -118,3 +118,4 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Lettering architecture R&D](lettering-architecture-2026-10-07.md) — five failures by letter size; patchwork is the skeleton-rail MODEL (pros put rails on the OUTLINE); Column lane OFF: cut + Euler walk + tuck + end fans; density = BOTH station ends
 - [L1 one tagger](word-tagger-l1-2026-10-08.md) — BUILT OFF `cfg.lettering_words`; kappa 0.907 level with text cluster 0.881, above either 0.637 (in-sample); line ARI 0.99 vs 0.65; Kent: AFTER better under the Column lane (10-08)
 - [fillColumns float pictures](fill-columns-float-pictures-2026-10-08.md) — STANDING: next 10 digitized images shown to Kent carry the off/on float sheet; count 1/10
+- [N fan cure](n-fan-cure-2026-10-08.md) — `satin_tip_corner_gate` OFF: tip = convex corner; ≈ tip caps off; degree gate refuted
