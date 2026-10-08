@@ -8762,28 +8762,34 @@ stroke and halo alike, so the raster can be thresholded before any region
 exists. The per-region rule's one casualty, `logo_bridge_bar.jpg`, is colour
 art and never reaches the snap.
 
-- **The gate is three tests on stage 1's raster** (`digitizer_core/two_tone.py`):
-  < 0.5% of pixels with chroma > 40, two grey modes ≥ 150 apart, and no 8-level
-  bin in the middle 60% between them holding > 0.8% of pixels. The last is the
-  one that matters: anti-alias grey spreads thin across the ramp, a drawn grey
-  stacks in one bin. Over every image in `testdata/`, `testdata/art`,
-  `testdata/photo` it fires on the seven B&W logos (max bin 0.0027-0.0064),
-  the tires script and one synthetic B&W fixture, and nothing else; the
-  nearest refusal is `logo_hotel_fremont_patch` at 0.0109, and the Fremont
-  webp — achromatic, but its rope is a real grey — reads 0.0326.
-- **Cones, OFF → ON:** golke 5 → 2, mfab_lc 6 → 2, mfab_hat 6 → 2, toat_beanie
-  6 → 2, toat_machine 6 → 2, screenshot 6 → 2, gaulke 2 → 1 (its 57 grey
-  stitches gone); Bridge Bar and Fremont byte-identical (the gate refuses).
-  mfab_lc's white linework sews white: 36 → 1,907 stitches.
-- **What it costs, read off the renders:** golke 5,000 → 6,079 stitches. The
-  snapped RASTER keeps the white roof lines between the black bands; they are
-  sub-pixel at the source (5.6 px/mm) and the region floor then drops most of
-  the right-hand one into black, where before it sewed as a wider grey band.
-  Grey there was wrong; black there loses a drawn line. The other logos
-  shed stitches and trims (toat_beanie 48 → 33 trims).
-- **Not a stage-0 recalibration** (ROADMAP gate 2): the class is untouched;
-  only the raster every lane reads changes, and only on a two-tone image.
+- **The gate reads the FOREGROUND, not the canvas** (`digitizer_core/two_tone.py`).
+  The first build read every pixel, and the review found its shares moved
+  with the margin: a red accent at 0.36% of a padded canvas passed and
+  sewed black, and the same grey-inked art passed padded and failed cropped.
+  On the foreground the absolute plateau bin no longer separated anything
+  (golke 0.0149 against fremont_patch 0.0109), so the plateau test is
+  scale-free: the tallest 8-level mid-grey bin over their mean. Six B&W
+  logos and the tires script read 1.08-1.92; fremont_patch 2.34, the
+  Fremont webp's real grey rope 14.3. Cut at 2.1. **Read a share-of-pixels
+  threshold as a margin-dependent one until it is measured on the
+  foreground.**
+- **Snapping makes a new halo problem, which `fold_fringe` closes.** The
+  border flood stops at its tolerance, so the lighter half of the outer
+  halo snaps to background-coloured ink INSIDE the foreground and stops
+  reading as a blend: golke 1 → 12 white slivers on its outer edge before
+  the fold. Background-coloured ink connected to the background now joins
+  it. `native_rgb` is NOT snapped — stage 4's sub-pixel edge read wants its
+  real ramp.
+- **Cones, OFF → ON:** golke 5 → 2, mfab_lc 6 → 2, mfab_hat 6 → 2,
+  toat_beanie 6 → 2, toat_machine 6 → 2, gaulke 2 → 1; stitches and trims
+  fall on all six (mfab_lc 10,903 → 9,631, 75 → 51 trims). mfab_lc's white
+  linework sews white (36 → 1,498). Bridge Bar, Fremont and the golke
+  phone screenshot (its blue UI fails the chroma test) byte-identical.
+- **What it costs:** golke's thin white roof lines touch the outer
+  background, so the fold takes them with the halo and the roof sews as
+  one black mass. They had sewn grey. The fold cannot tell a drawn line
+  open to the background from a halo; on a garment the art's white IS the
+  ground, so this matches what the flood does with pure white.
 
 *(measured 2026-10-08 — `tools/two_tone_probe.py --detect` and default mode,
-renders read for golke, mfab_lc, toat_beanie; scope-history 2026-10-08)*
-
+renders read for golke, mfab_lc, toat_machine; scope-history 2026-10-08)*
