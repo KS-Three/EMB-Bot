@@ -20,12 +20,3 @@ export function saveLocal(project) {
     localStorage.setItem(KEY, serialize(project));
   } catch (e) {}
 }
-
-export function loadLocal() {
-  try {
-    const s = localStorage.getItem(KEY);
-    return s ? deserialize(s) : null;
-  } catch (e) {
-    return null;
-  }
-}

@@ -120,3 +120,80 @@ test("adjacent cells do NOT jump — the whole point is a continuous walk", () =
   assert.strictEqual(strokes.filter((s) => s.jump).length, 0,
     "a solid block is one continuous serpentine walk with no lifts");
 });
+
+// ---- gap coverage (2026-10-08) ----
+
+test("crossStrokes: simple is two diagonals, double adds upright pair, 'double' alias works", () => {
+  const simple = CF.crossStrokes(5, 5, 4, "simple_cross");
+  assert.strictEqual(simple.length, 2);
+  assert.deepStrictEqual(simple[0], [{ x: 1, y: 1 }, { x: 9, y: 9 }]);
+  assert.deepStrictEqual(simple[1], [{ x: 9, y: 1 }, { x: 1, y: 9 }]);
+  for (const m of ["double_cross", "double"]) {
+    const d = CF.crossStrokes(5, 5, 4, m);
+    assert.strictEqual(d.length, 4, m);
+    assert.deepStrictEqual(d[2], [{ x: 1, y: 5 }, { x: 9, y: 5 }]);
+    assert.deepStrictEqual(d[3], [{ x: 5, y: 1 }, { x: 5, y: 9 }]);
+  }
+  assert.strictEqual(CF.crossStrokes(0, 0, 1, "bogus").length, 2, "unknown method falls back to simple");
+});
+
+test("insideRings: point outside and winding-sign independence", () => {
+  const cw = ring(SQUARE), ccw = ring(SQUARE).reverse();
+  assert.strictEqual(CF.insideRings([cw], 20, 20), true);
+  assert.strictEqual(CF.insideRings([ccw], 20, 20), true);
+  assert.strictEqual(CF.insideRings([cw], 50, 20), false);
+  assert.strictEqual(CF.insideRings([cw], 20, -5), false);
+  assert.strictEqual(CF.insideRings([], 1, 1), false);
+});
+
+test("detectLattice: empty / no usable edges returns null", () => {
+  assert.strictEqual(CF.detectLattice([]), null);
+  assert.strictEqual(CF.detectLattice([[[0, 0], [0.1, 0], [0.2, 0.1]]]), null,
+    "sub-MIN_EDGE noise must not produce a lattice");
+});
+
+test("detectLattice: solves phase per axis independently", () => {
+  const sx = 3, sy = 7; // different x and y origins
+  const pts = PIXEL_ART.map(([x, y]) => [x + sx, y + sy]);
+  const L = CF.detectLattice([pts]);
+  assert.strictEqual(L.step, 10);
+  const wrapped = (v, step) => Math.min(((v % step) + step) % step, step - (((v % step) + step) % step));
+  assert.ok(wrapped(L.offX - sx, 10) < 10 * 0.06 + 1e-9, `offX ${L.offX}`);
+  assert.ok(wrapped(L.offY - sy, 10) < 10 * 0.06 + 1e-9, `offY ${L.offY}`);
+  assert.ok(L.fit > 0.95);
+});
+
+test("crossFill: inset scales cross half-width", () => {
+  const full = CF.crossFill([ring(SQUARE)], LAT, {});
+  const half = CF.crossFill([ring(SQUARE)], LAT, { inset: 0.5 });
+  const w = (s) => Math.abs(s.pts[1].x - s.pts[0].x);
+  assert.strictEqual(w(full[0]), 10);
+  assert.strictEqual(w(half[0]), 5);
+});
+
+test("crossFill: firstIsJump defaults true and only the first stroke of the first cell jumps", () => {
+  const s = CF.crossFill([ring(SQUARE)], LAT, { method: "double_cross" });
+  assert.strictEqual(s[0].jump, true);
+  assert.strictEqual(s.filter((x) => x.jump).length, 1);
+  assert.ok(s.every((x) => x.kind === "cross"));
+  assert.strictEqual(s.length, 16 * 4, "4x4 cells x 4 strokes");
+});
+
+test("crossFill: lattice offset shifts cell centres", () => {
+  const s = CF.crossFill([ring(SQUARE)], { step: 10, offX: 5, offY: 5 }, {});
+  assert.ok(s.length > 0);
+  for (const st of s) {
+    const cx = (st.pts[0].x + st.pts[1].x) / 2;
+    assert.strictEqual(((cx - 5) % 10 + 10) % 10, 5, "centres sit mid-cell on the offset lattice");
+  }
+});
+
+test("crossFill: degenerate inputs return []", () => {
+  assert.deepStrictEqual(CF.crossFill(null, LAT), []);
+  assert.deepStrictEqual(CF.crossFill([], LAT), []);
+  assert.deepStrictEqual(CF.crossFill([ring(SQUARE)], null), []);
+  assert.deepStrictEqual(CF.crossFill([ring(SQUARE)], { step: 0, offX: 0, offY: 0 }), []);
+  assert.deepStrictEqual(CF.crossFill([ring(SQUARE)], { step: NaN, offX: 0, offY: 0 }), []);
+  // zero-area ring (all points collinear in x)
+  assert.deepStrictEqual(CF.crossFill([ring([[5, 0], [5, 10], [5, 0]])], LAT), []);
+});

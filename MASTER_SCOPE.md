@@ -16,7 +16,7 @@ at the bottom for the authority model behind the confidence ratings.
 (**42.5**, not the older ~70) and the metric's own **75-84** pro-vs-pro ceiling.
 Its code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-10-07. **This file is current state only, under a
+**Last updated:** 2026-10-08. **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
 on 2026-09-14). Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
@@ -409,8 +409,12 @@ about the facts.
    digitized images shown to him carry the off/on float picture
    (`tools/fill-columns-image-sheet.mjs`; memory
    `fill-columns-float-pictures-2026-10-08`). **None of it is sewn.**
-   `cutFloats` (28) is on in manual (#672).
-   *(measured 2026-10-08 — `docs/renders/fill-columns-lanes-2026-10-08/`;
+   `cutFloats` (28) is on in manual (#672). **The image lane's price, taken
+   apart — HOLD:** 56% of it is the floats' landings now sewn; four cheaper
+   walks each gave no gain, new floats, or 7.7× the cuts (candidate C is on
+   #786's sheet, item 32).
+   *(measured 2026-10-08 — PR #697, `docs/renders/fill-columns-lanes-2026-10-08/price.md`;
+   `docs/renders/fill-columns-lanes-2026-10-08/`;
    `generate.js`, `generate.spec.js` star and counter tests)*
 23. **Flip `ties` on for the browser lanes — NEW 2026-10-03, built OFF in
    both builders.** Every trim in a lettering or shape file exported from the
@@ -485,8 +489,8 @@ about the facts.
    *(ruled 2026-10-07 — scope-history 10-07)*; `cross_tatami` is a picker
    choice. The knit presets stay yours. **Not sewn.**
    *(measured 2026-10-05 — [`docs/underlay-audit-2026-10-05.md`](docs/underlay-audit-2026-10-05.md))*
-28. **`cutFloats` — ON for the manual lane 2026-10-08, after 22;** basic
-   shapes and the image lane pass nothing. A float a DST machine reads as a
+28. **`cutFloats` — ON for the manual and basic-shape lanes 2026-10-08, after 22**
+   (manual #672, basic shapes #682); the image lane passes nothing. A float a DST machine reads as a
    cut gets a `trim`; no stitch moves. Manual, with `fillColumns`: 4,264 →
    0 such cuts on 5,400 designs, trims +0.79 a design, which EXP and PES
    gain as unlocked cuts while `ties` (23) is off. **Not sewn.**
@@ -502,6 +506,34 @@ about the facts.
    The page's Columns side sewed 0.80 mm per rail (drawn before 1782fbea);
    on `main` both sides read 0.40–0.52. Sitting `density-1007` is his. OFF.
    *(measured 2026-10-07 — `tools/satin_pitch.py`; `docs/eye-pairs-2026-10-07/kent-notes.json`)*
+
+32. **Four default-OFF flags on one contact sheet — NEW 2026-10-08 (PR #786).**
+   OFF beside ON on real art, nothing sewn: `two_tone_snap` (defect 58; mfab_lc
+   75 → 52 trims, 6 → 3 colours; moves every B&W logo's regions);
+   `satin_tip_corner_gate` (defect 59, #677; Becker trims 60 → 59; shifts
+   junction ends on every logo); `lettering_columns` + `lettering_words`
+   (Becker 10,975 → 8,682 stitches, trims 60 → 29; no Euler walk or junction
+   overlap yet, and 31 stands); the image lane's cuts-vs-stitches patch (#697
+   candidate C: summit_badge −4% stitches for 38 → 1,219 cuts; only a sew-out
+   prices a cut against a stitch). *(measured 2026-10-08 — PR #786,
+   `docs/renders/off-flags-2026-10-08/`; `digitizer/tools/off_flags_sheet.py`)*
+33. **Satin pull compensation: per rail or total? — gate 1, OPEN.** The browser's
+   `pullCompMm` is the total (a 2.5 mm column sews 2.8 mm); the digitizer's
+   `pull_comp_mm` is per rail (3.1 mm). A physical constant, so a sew-out
+   settles it. Ruling relayed by the foreman 2026-10-08: leave both until it
+   becomes a real problem; pinned as-is by `test/engine-service-parity.test.js`,
+   which also pins defect 57's 30.3 mm bar stitch as `todo`.
+   *(measured 2026-10-08 — PR #768)*
+34. **Twelve logos of unrecorded provenance in a public repo — NEW 2026-10-08.**
+   `digitizer/testdata/art/`'s six (status `unknown`) and six real logos with no
+   clearance recorded (script tires, hotel fremont, bridge bar, golden tee,
+   gaulke roofing, the golke phone screenshot); derived `docs/renders/` follow
+   them. Kent: origin, and keep or pull. A new fixture now fails CI without a
+   manifest row. *(confirmed 2026-10-08 — PR #717, `docs/asset-provenance.json`,
+   `test/asset-provenance.test.js`)*
+35. **RESOLVED 2026-10-08 — Kent flipped `satin_free_end_square` and
+   `satin_slab_serifs` ON** on the four-arm render: a free end lands square, a
+   foot or T slab sews as its own short column. *(ruled 2026-10-08 — PR #679)*
 
 ## Cross-cutting issues
 
@@ -970,6 +1002,17 @@ PNG, the sheet, and DST, which stopped being the exception on 2026-09-20.
   by clamping each axis independently, so the file walked an L across a
   diagonal the preview drew straight, with every coordinate, count and extent
   still correct. *(measured 2026-09-20 — DOCTRINE 09-20; scope-history 09-20)*
+- **DST header and writer, 2026-10-08.** The header's `ST` now counts every
+  body record, END included, as pystitch does (#742); the writer is ~40x faster
+  at 50k stitches, bytes identical (#726). The two merged together broke every
+  browser DST export (`ReferenceError`) for about half an hour, until #793 —
+  `ST` is now `(off - 512) / 3`. *(confirmed 2026-10-08 — `test/dst.test.js`
+  green on main; PRs #742, #726, #793)*
+- **Export audit, 2026-10-08:** all 11 encoder routes on 12 real designs, read
+  back by pystitch; four fixes (service long stitches split, browser PES black no
+  longer green, service PES and JEF keep cuts) (#696). Service PES/PEC/JEF now
+  name each colour's CIEDE2000-nearest cone, so both PES routes ask for Black
+  for near-black (Kent's ruling, #792). *(measured 2026-10-08 — `tools/export-audit.mjs`)*
 - **EXP — Medium-High.** The 2-byte trim record (fatal to pyembroidery-convention
   readers at the first trim) and the phantom terminal end-stitch are both fixed.
   *(confirmed 2026-08-06 — PR #58)*
