@@ -2211,6 +2211,8 @@ def sequence(
                     outer_rail_pitch=cfg.satin_outer_rail_pitch,
                     join_square=cfg.satin_join_square,
                     free_end_square=cfg.satin_free_end_square,
+                    junction_square=(cfg.satin_junction_square
+                                     and bool(p.region.meta.get("text_candidate"))),
                     slab_serifs=cfg.satin_slab_serifs,
                     patch_junctions=cfg.satin_patch_junctions,
                     crown_cover=cfg.satin_crown_cover,
