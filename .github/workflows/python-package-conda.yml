@@ -36,12 +36,22 @@ on:
     branches: [main]
   pull_request:
 
-# Supersede in-flight runs for the same ref rather than racing them. Never
-# cancels on main — a merge's run is the record that main is green, and there
-# is no later run coming to replace it.
+# Supersede in-flight runs for the same PR rather than racing them. Never
+# cancels on main — a merge's run is the record that main is green.
+#
+# A main push gets a group of its OWN (keyed on run_id), not a shared one.
+# `cancel-in-progress: false` was not enough: GitHub keeps at most ONE pending
+# run per concurrency group and cancels the older pending one whenever a newer
+# one arrives, whatever cancel-in-progress says. With merges minutes apart,
+# every main run but the one holding the group was cancelled while pending --
+# measured 2026-10-08: 12 consecutive main push runs from 06:26 to 09:21 UTC
+# ended `cancelled` (one more sat queued holding the group), so main had no
+# completed run after 06:15. Cost: every
+# merge now runs the full suite on main, which is what this comment always
+# said it did.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'push' && github.run_id || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   engine:

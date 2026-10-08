@@ -87,12 +87,21 @@ export function sewFacts(design) {
 // suppressed — otherwise the commonest job, one logo, got no quote at all.
 export const QUOTE_ROW_LABELS = ["Run time", "Bobbin", "Thread cost", "Machine time"];
 
+// "102 × 15 mm (4.02 × 0.59 in)": the Size panel defaults to inches and the
+// worksheet prints both, so the Review/quote row carries both too. Inches use
+// the sheet's 2 decimals (src/units.js mmToInch = mm / 25.4); mm stay whole.
+const MM_PER_INCH = 25.4;
+export function sizeLabel(design) {
+  const w = design.widthMM, h = design.heightMM;
+  return `${w.toFixed(0)} × ${h.toFixed(0)} mm (${(w / MM_PER_INCH).toFixed(2)} × ${(h / MM_PER_INCH).toFixed(2)} in)`;
+}
+
 export function sewSummary(design, quote) {
   const q = quote || {};
   const f = sewFacts(design);
   if (!f.stitches) return [];
   const rows = [
-    { label: "Size", value: `${design.widthMM.toFixed(0)} × ${design.heightMM.toFixed(0)} mm` },
+    { label: "Size", value: sizeLabel(design) },
     { label: "Stitches", value: f.stitches.toLocaleString() },
   ];
   // How long it runs — the row this function's own header has promised since
