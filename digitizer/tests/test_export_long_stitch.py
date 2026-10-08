@@ -89,18 +89,14 @@ def test_travel_in_is_not_sewn(fmt, tmp_path):
     assert abs(total - 60) < 2, f"{fmt}: sewn thread {total:.1f}, expected only the design's own 60"
 
 
-# Not PES/PEC: their stitch stream is our own encoder since 2026-10-08
-# (test_export_cuts.py), so pystitch's writer is no longer the reference.
-@pytest.mark.parametrize("fmt", [f for f in MACHINE if f not in ("pes", "pec")])
+# Not PES/PEC/JEF: since 2026-10-08 their stitch stream (PES/PEC,
+# test_export_cuts.py) or their cone index (all three, test_export_cone.py)
+# is ours, so pystitch's writer is no longer the byte reference for them.
+@pytest.mark.parametrize("fmt", [f for f in MACHINE if f not in ("pes", "pec", "jef")])
 def test_a_design_with_nothing_over_the_bar_is_byte_identical(fmt):
     # Against pystitch's own writer, untouched: the split adds records only
     # where a sewn move is over the bar, and this design has none.
     design = _design([(0, 0), (100, 0), (100, 121), (-21, 121)], travel_in=(0, 0))
     out = io.BytesIO()
     formats._WRITERS[fmt](design_to_pattern(design), out, formats._WRITER_SETTINGS.get(fmt))
-    ours, theirs = formats.write(design_to_pattern(design), fmt), out.getvalue()
-    if fmt == "jef":
-        # JEF stamps the wall clock (YYYYMMDDHHMMSS, bytes 8-22) into its
-        # header; two writes a second apart differ there and nowhere else.
-        ours, theirs = ours[:8] + ours[22:], theirs[:8] + theirs[22:]
-    assert ours == theirs
+    assert formats.write(design_to_pattern(design), fmt) == out.getvalue()

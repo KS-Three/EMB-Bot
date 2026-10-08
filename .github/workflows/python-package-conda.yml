@@ -185,9 +185,52 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4, 5, 6]
+    permissions:
+      contents: read
+      pull-requests: read   # the scope step lists the PR's files
     steps:
       - uses: actions/checkout@v4
+      # SCOPE (Kent's call 2026-10-08). Every push (main) and every PR that
+      # touches digitizer/ or .github/ runs the whole suite, as before. A PR
+      # that touches neither cannot change what the pipeline tests exercise
+      # -- their code, pins and fixtures are all under digitizer/ -- so shard
+      # 1 runs only the "wire" tests that read outside digitizer/ (the
+      # Studio's JS, src/, fonts, docs; tools/ci_wire_tests.py has the rule)
+      # and shards 2-6 write a marker and stop. Of the last 100 PRs, 55
+      # touched neither path, and each paid ~48 runner-minutes of shards.
+      # Decided HERE, not in a separate job, so it adds no queue stage in
+      # front of the shards. Fails closed: any error listing the files means
+      # the full suite. The `digitizer` aggregator fails unless all six
+      # shards reached the same decision (tools/ci_shard_check.py).
+      - name: Scope (full suite, or the wire tests only)
+        id: scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -o pipefail
+          full=true
+          if [ "${{ github.event_name }}" = pull_request ]; then
+            if files=$(gh api --paginate "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --jq '.[].filename'); then
+              echo "$files" | sed 's/^/changed: /'
+              if [ -n "$files" ] && ! echo "$files" | grep -qE '^(digitizer|\.github)/'; then
+                full=false
+              fi
+            else
+              echo "could not list the PR's files; running the full suite"
+            fi
+          fi
+          run=$full
+          [ "${{ matrix.shard }}" = 1 ] && run=true
+          echo "full=$full" | tee -a "$GITHUB_OUTPUT"
+          echo "run=$run" | tee -a "$GITHUB_OUTPUT"
+      - name: Nothing to run on this shard (wire scope)
+        if: steps.scope.outputs.run != 'true'
+        working-directory: digitizer
+        run: |
+          echo '{"shard": ${{ matrix.shard }}, "of": 6, "scope": "wire", "skipped": true}' > shard-manifest.json
+          echo "This PR touches neither digitizer/ nor .github/: shard 1 runs the wire tests, main runs the full suite on merge."
       - uses: actions/setup-python@v5
+        if: steps.scope.outputs.run == 'true'
         with:
           python-version: '3.12'
           cache: pip
@@ -197,8 +240,10 @@ jobs:
       # Tesseract OCR for textcluster.py's OCR-suggested-text pass (Studio
       # "Convert to text") -- see digitizer/README.md "Setup".
       - name: Install system dependencies (Tesseract OCR)
+        if: steps.scope.outputs.run == 'true'
         run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
       - name: Install
+        if: steps.scope.outputs.run == 'true'
         working-directory: digitizer
         run: pip install -r requirements.txt
       # Once, not six times: shard 1 carries it.
@@ -239,6 +284,7 @@ jobs:
       # which one we drew. Three lines, seconds to run, and the next person
       # gets to answer it from the log instead of an API sweep.
       - name: Runner size (for the timing note in CLAUDE.md item 7)
+        if: steps.scope.outputs.run == 'true'
         # A diagnostic must never be able to fail the build. `python` is on
         # PATH here (setup-python ran, and `Digitizer tests` below invokes it
         # the same way), but a required check going red over an echo would be
@@ -249,6 +295,7 @@ jobs:
           python -c "import os; print('os.cpu_count:', os.cpu_count())"
           cat /proc/meminfo | head -1
       - name: Digitizer tests
+        if: steps.scope.outputs.full == 'true'
         working-directory: digitizer
         env:
           DIGITIZER_SHARD: ${{ matrix.shard }}/6
@@ -271,6 +318,24 @@ jobs:
           --junitxml=junit.xml
           --deselect "tests/test_flat_lane_byte_identical.py::test_flat_lane_is_byte_identical_to_the_pre_change_golden[photo/enthusiast_logo.png]"
           --deselect "tests/test_stage2_photo_segment.py::test_flat_and_gradient_lanes_still_match_golden_after_photo_dispatch[photo/enthusiast_logo.png]"
+      # Wire scope: shard 1 runs the subset as shard 1-of-1, so the manifest
+      # says it ran its whole (non-empty) collected list.
+      - name: Digitizer wire tests (wire scope)
+        if: steps.scope.outputs.full != 'true' && matrix.shard == 1
+        working-directory: digitizer
+        env:
+          DIGITIZER_SHARD: 1/1
+          DIGITIZER_SHARD_MANIFEST: shard-manifest.json
+          DIGITIZER_SCOPE: wire
+          OMP_NUM_THREADS: '1'
+          OPENBLAS_NUM_THREADS: '1'
+          MKL_NUM_THREADS: '1'
+          OPENCV_FOR_THREADS_NUM: '1'
+        run: |
+          set -o pipefail
+          files=$(python -m tools.ci_wire_tests)
+          echo "$files"
+          python -m pytest $files -q -n auto --dist loadgroup --no-loadscope-reorder --junitxml=junit.xml
       # The manifest is what the `digitizer` job checks coverage against; the
       # JUnit XML is what tools/ci_shard_durations.py rebalances from.
       - name: Upload shard manifest and timings
@@ -306,6 +371,11 @@ jobs:
     #   4. tools/ci_shard_check.py fails unless the shards' manifests prove
     #      one shard each for 1..6, identical collected lists, and selections
     #      that are disjoint and add up to exactly that collected list.
+    #   5. WIRE SCOPE (a PR touching neither digitizer/ nor .github/, see the
+    #      shards' Scope step): the same check instead requires all six
+    #      shards to have decided "wire", shard 1 to have run every wire test
+    #      it collected (a non-empty list), and shards 2-6 to have run
+    #      nothing. A split decision fails.
     # Stdlib python only, no install: seconds after the last shard.
     needs: digitizer-shard
     if: always()
@@ -360,6 +430,7 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
       - uses: actions/setup-python@v5
+        id: py
         with:
           python-version: '3.12'
           cache: pip
@@ -375,11 +446,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: digitizer/.venv
-          key: e2e-venv-${{ runner.os }}-py312-${{ hashFiles('digitizer/requirements.txt', 'digitizer/pyproject.toml') }}
+          key: e2e-venv-${{ runner.os }}-py${{ steps.py.outputs.python-version }}-${{ hashFiles('digitizer/requirements.txt', 'digitizer/pyproject.toml') }}
       - name: Build the digitizer venv the e2e bootstrap looks for
         working-directory: digitizer
         run: |
-          [ -x .venv/bin/python ] || python -m venv .venv
+          # A venv cached under an older 3.12.x points at an interpreter the
+          # runner no longer has (dangling .venv/bin/python): rebuild it.
+          .venv/bin/python -c '' 2>/dev/null || python -m venv --clear .venv
           .venv/bin/pip install -r requirements.txt
           .venv/bin/pip install -e '.[service]'
       - name: Install

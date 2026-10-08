@@ -65,6 +65,9 @@ def pytest_collection_modifyitems(config, items):
     # with 3 extra ids -- the aggregator's first red, PR #669.
     os.environ.pop("DIGITIZER_SHARD", None)
     os.environ.pop("DIGITIZER_SHARD_MANIFEST", None)
+    # "wire" when CI ran only tools/ci_wire_tests.py's subset (a PR that
+    # touched neither digitizer/ nor .github/); the aggregator checks it.
+    scope = os.environ.pop("DIGITIZER_SCOPE", "full")
     durations = json.loads(DURATIONS.read_text()) if DURATIONS.exists() else {}
     files = {item.nodeid.split("::", 1)[0] for item in items}
     shard_of = assign(files, n, durations)
@@ -79,5 +82,5 @@ def pytest_collection_modifyitems(config, items):
     worker = getattr(config, "workerinput", {}).get("workerid")
     if manifest and worker in (None, "gw0"):
         Path(manifest).write_text(json.dumps(
-            {"shard": k, "of": n, "collected": full,
+            {"shard": k, "of": n, "scope": scope, "collected": full,
              "selected": [it.nodeid for it in keep]}))
