@@ -8753,6 +8753,19 @@ letters under every arm — the fabric's 0.3 mm pull per side, not a fan;
 `tools/fan_census.py` reads 1.6 x (W + 2 pull). *(measured 2026-10-07 —
 `docs/n-fan-2026-10-07.md`)*
 
+## 2026-10-07 — A flip Kent made on renders was held by its guards: `satin_join_square` ON loses an ENTHUSIAST element
+
+Kent flipped `satin_join_square` ON on 2026-10-06 on Fremont renders (stitches
+and trims identical, fan ends 7 → 5). Merged with main and run on the lettering
+set, ON loses one ≥ 1 mm² element of the ENTHUSIAST wordmark — a fixture that
+had never lost one — and tips three sibling bars (fine `lost_frac` 0.1702 /
+0.17, tip-cap end bare 10.53 / 9.5 mm², a rail-comp mid-rail hole 1.24 / 0.55);
+with the flag off on the same tree all four are green. Kent held the flip the
+same day. **The guards did their job: a render shows the fixture it was made
+on, a guard reads the corpus. Run the lettering guard set before a flip's PR
+opens, and when a flip tips a bar with Kent's ruling on it, that is a finding
+to name, not a pin to move.** *(measured 2026-10-07 — PR #663)*
+
 ## 2026-10-07 — A sitting confounded by density: equalise pitch before pairing
 
 Kent's first `lettering_columns` sitting came back **needs work** — *"The
