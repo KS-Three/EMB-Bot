@@ -68,6 +68,7 @@ jobs:
     # The tests now throw rather than skip when CI is set, so this install
     # step going missing fails the build instead of going quiet again.
     runs-on: ubuntu-latest
+    timeout-minutes: 10   # ~3x the slowest success in the 2026-10-08 audit; default is 360
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -89,6 +90,7 @@ jobs:
     # they need a real browser + the live digitizer service and run in the
     # studio-e2e job below (see e2e/*.spec.js's own service-bootstrap notes).
     runs-on: ubuntu-latest
+    timeout-minutes: 10   # ~3x the slowest success in the 2026-10-08 audit; default is 360
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -179,6 +181,7 @@ jobs:
     # on this runner.
     name: digitizer shard ${{ matrix.shard }}/6
     runs-on: ubuntu-latest
+    timeout-minutes: 45   # ~3x the slowest success in the 2026-10-08 audit; default is 360
     strategy:
       # Every shard runs to the end even when one goes red, so a failing PR
       # shows ALL its failures at once rather than one shard's worth.
@@ -422,6 +425,7 @@ jobs:
     # would be the dark-suite failure mode all over again — so this job builds
     # the venv at the exact path the bootstrap probes first.
     runs-on: ubuntu-latest
+    timeout-minutes: 40   # ~3x the slowest success in the 2026-10-08 audit; default is 360
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -525,6 +529,7 @@ jobs:
     # signal about the engine.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 30   # ~3x the slowest success in the 2026-10-08 audit; default is 360
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -581,6 +586,7 @@ jobs:
   bench-digitize:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 20   # ~3x the slowest success in the 2026-10-08 audit; default is 360
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
