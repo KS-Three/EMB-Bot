@@ -3602,7 +3602,12 @@ flattery. Anything unlisted raises `NotInManifest`.
 - **One design, three encoders, three different sew-outs — because each
   invented its own answer to "this stitch is too long".** **CLOSED 2026-09-12,
   when PES joined the other two. The chain rule below is the part worth
-  keeping.** A DST record carries ±121 units per axis, an EXP record ±127, a
+  keeping.** **And there was a FOURTH encoder (2026-10-08):** the
+  service's `/export` hands the design to pystitch, which never heard the
+  ruling — DST/EXP/JEF/XXX/U01 sent the long sewn move as jumps, PES/PEC as one
+  long stitch. `formats.write` now applies the same split. A ruling about what
+  an encoder writes covers `digitizer_service/formats.py` too;
+  `tools/export-audit.mjs` checks both routes on real designs. A DST record carries ±121 units per axis, an EXP record ±127, a
   PEC record ±2047. All three encoders split an oversized move into
   intermediate records; only the choice of WHAT those intermediates are
   differed, and nobody had compared them.

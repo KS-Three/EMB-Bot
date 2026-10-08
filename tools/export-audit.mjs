@@ -267,7 +267,10 @@ export function flags(model, r, fmt) {
   if (r.orientation !== "identity") f.push(`orientation ${r.orientation}`);
   // A split adds stitches (a long move laid as several); it never removes one.
   if (r.stitches < model.stitches) f.push(`lost ${model.stitches - r.stitches} stitches`);
-  if (r.colorChanges !== model.colorChanges && !(fmt === "u01")) f.push(`colour changes ${r.colorChanges} vs ${model.colorChanges}`);
+  // A STOP is a machine stop too: pystitch reads a colour change between two
+  // blocks written with the SAME chart cone as a STOP (PES, JEF), so the file
+  // still stops there. Counted together; the table shows the split.
+  if (r.colorChanges + r.stops !== model.colorChanges && !(fmt === "u01")) f.push(`colour stops ${r.colorChanges + r.stops} vs ${model.colorChanges}`);
   // U01 changes thread with NEEDLE_SET (pystitch command 9; crossval_decode
   // names it CMD_9), one to set the first needle and one per change.
   if (fmt === "u01" && Math.max(0, (r.other.CMD_9 || 0) - 1) !== model.colorChanges) f.push(`needle changes ${Math.max(0, (r.other.CMD_9 || 0) - 1)} vs ${model.colorChanges} colour changes`);

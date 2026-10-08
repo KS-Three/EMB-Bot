@@ -317,3 +317,66 @@ design, and the case for it is a firmware claim.
 
 Pinned by `digitizer/tests/test_jef_hoop_code.py` (10 tests); if it goes red
 pystitch fixed it — drop the test and this section.
+
+## Every format, on real designs, read back and drawn (2026-10-08)
+
+`tools/export-audit.mjs` drives the Studio's own `generateAll` on twelve projects
+— two basic shapes, a three-shape manual drawing, three lettering designs (one
+colour, per-letter colour, arced script), a Full Back text + shape layout,
+three real logos through the digitizer's stage chain at Studio defaults, one
+of them enlarged to 250 mm, and a third-party becker DST imported — writes each
+through the browser DST/EXP/PES and the service `/export` body (DST, PES, EXP,
+JEF, XXX, VP3, plus unshipped PEC and U01), decodes all 132 files with pystitch
+and draws each beside the preview's strands. Renders:
+`docs/export-audit-2026-10-08/`. *(measured 2026-10-08 — export-audit)*
+
+**Agrees everywhere:** orientation (identity on all 132), sewn extents (within
+0.1 mm), colour-change count (U01 as needle changes), and stitch count, apart
+from splits. Every browser file matches the model on stitches, colour changes
+and trims (DST trims aside, below), with no stray thread.
+
+**Fixed (two commits, each with a test that fails without it):**
+
+- **Service: an over-length sewn move left as travel or as one long stitch.**
+  pystitch's encoder sent it as jumps (DST, EXP, JEF, XXX, U01: thread the
+  design sews, written needle-up) or left it whole (PES, PEC: one 40.9 mm
+  stitch). The browser split it into stitches at 121 units since 09-07/09-12.
+  `formats.write` now applies the same split and chain rule; a design with
+  nothing over the bar, the calibration card included, is byte-identical.
+  Reached by purely digitized designs, the service route, once enlarged. Pin:
+  `digitizer/tests/test_export_long_stitch.py`.
+- **Browser PES: black lettering asked for green thread.** `nearestPecIndex`
+  ranked the Brother chart by RGB distance, which put the default lettering
+  colour (20,20,20) on Deep Green (dE00 16.0) with Black (dE00 3.7) in the same
+  chart. Now CIEDE2000, the repo's cone metric everywhere else. Pin:
+  `test/pes.test.js`.
+  **The trade-off, measured:** on Golke, a light grey (214,214,216) moved from
+  Linen (dE00 6.33) to White (dE00 5.80), the cone the next block already
+  uses. The file still stops five times, but pystitch reads it as 4 changes
+  and 1 STOP on the same cone. Two design colours a 64-cone chart cannot tell
+  apart now collapse onto one cone in a different place than they did before.
+
+**Reported, not decided — each turns on what a machine does, which is gate 1:**
+
+- **Service PES/PEC cuts at EVERY jump.** pystitch's `PecWriter` writes each
+  jump after the first as a trim-jump (flag `0x20`) and adds a needle-down at
+  its landing. A design's floats become cuts: 61 against the design's 32 on
+  Golke, 119 against 51 on Hotel Fremont. The browser PES writes them as jumps
+  (`0x10`). Which one a Brother machine wants is a machine question.
+- **Service JEF writes no trim commands.** `JefWriter` defaults `trims=False`,
+  so a cut the design asks for is only in the file if the machine infers one
+  from a long move. pystitch reads 22 cuts against the design's 32 on Golke.
+  The one-line lever is `settings={"trims": True}` (3 zero moves per cut, the
+  convention pystitch's reader cites for a Janome MC400E).
+- **VP3 has no jump record**, so pystitch writes travel as stitches: one 98.8 mm
+  along an axis on the Full Back layout. Whether a Husqvarna/Pfaff sews or
+  skips a long `80 01` stitch is the same kind of question.
+- **Service PES/PEC/JEF snap colour with pystitch's own metric**, so the two
+  PES routes can name different cones for one colour (near-black: Black in the
+  browser now, dark brown in the service).
+
+**Format conventions, not disagreements:** a DST travel of three or more jump
+records reads as a cut (the convention `cutFloats` already plans around), and
+pystitch's DST reader absorbs a trim placed directly after a colour change or
+before the first stitch (becker: 11 read against 14, identical from both
+encoders). JEF readers infer cuts from moves over 3 mm.
