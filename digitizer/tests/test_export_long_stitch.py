@@ -95,5 +95,10 @@ def test_a_design_with_nothing_over_the_bar_is_byte_identical(fmt):
     # where a sewn move is over the bar, and this design has none.
     design = _design([(0, 0), (100, 0), (100, 121), (-21, 121)], travel_in=(0, 0))
     out = io.BytesIO()
-    formats._WRITERS[fmt](design_to_pattern(design), out)
-    assert formats.write(design_to_pattern(design), fmt) == out.getvalue()
+    formats._WRITERS[fmt](design_to_pattern(design), out, formats._WRITER_SETTINGS.get(fmt))
+    ours, theirs = formats.write(design_to_pattern(design), fmt), out.getvalue()
+    if fmt == "jef":
+        # JEF stamps the wall clock (YYYYMMDDHHMMSS, bytes 8-22) into its
+        # header; two writes a second apart differ there and nowhere else.
+        ours, theirs = ours[:8] + ours[22:], theirs[:8] + theirs[22:]
+    assert ours == theirs

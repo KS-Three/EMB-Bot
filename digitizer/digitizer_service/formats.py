@@ -114,6 +114,19 @@ _WRITERS = {
 }
 
 
+# Per-format writer settings, where pystitch's default disagrees with the design.
+#
+# JEF: `JefWriter` defaults `trims=False` and writes NO cut command, so a cut
+# lived in the file only if a machine inferred one from a long move (22 of
+# Golke's 32 read back, tools/export-audit.mjs 2026-10-08). Kent's ruling the
+# same day: write them — three zero-length moves per cut (`trim_at` 3, the
+# writer's own default), the convention pystitch's reader cites for a Janome
+# MC400E. What a given Janome does with them is gate 1.
+_WRITER_SETTINGS = {
+    "jef": {"trims": True, "trim_at": 3},
+}
+
+
 def supported() -> list[dict]:
     return [{"format": k, **v} for k, v in FORMATS.items()]
 
@@ -189,5 +202,10 @@ def write(pattern: pystitch.EmbPattern, fmt: str) -> bytes:
         raise KeyError(fmt)
     buf = io.BytesIO()
     # SVG is a proof, not a machine file: it draws the design's own segments.
-    writer(pattern if fmt == "svg" else split_sewn_moves(pattern), buf)
+    pattern = pattern if fmt == "svg" else split_sewn_moves(pattern)
+    settings = _WRITER_SETTINGS.get(fmt)
+    if settings is None:
+        writer(pattern, buf)
+    else:
+        writer(pattern, buf, dict(settings))
     return buf.getvalue()
