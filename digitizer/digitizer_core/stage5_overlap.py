@@ -314,6 +314,30 @@ def _largest_polygon(geom) -> Polygon | None:
     return max(parts, key=lambda g: g.area)
 
 
+def _bare_part(hole: Polygon, covered, floor: float) -> list[Polygon]:
+    """The part of a held hole that is still an opening once later colours sew.
+
+    A hole no later stitched shape touches is returned whole and untouched, so
+    a true counter is held exactly as before. Otherwise only the pieces of the
+    hole that nothing covers are held, and only those at or over `floor` --
+    the same `min_detail_mm²` the hole itself was judged by. ANY bare piece
+    under that floor is released -- the anti-alias sliver between a piece and
+    its hole's edge, and equally a small compact opening beside the piece --
+    so the ground grows into it and reaches its tongue under the piece, the
+    way every seam that was never held already does.
+    """
+    # Interiors must meet: a later shape that only TOUCHES the hole's edge
+    # (on the ground, outside the hole) covers none of it, and must leave the
+    # held polygon byte-identical to the engine without the flag.
+    if covered is None or not hole.relate_pattern(covered, "T********"):
+        return [hole]
+    bare = hole.difference(covered)
+    if bare.is_empty:
+        return []
+    parts = getattr(bare, "geoms", [bare])
+    return [g for g in parts if g.geom_type == "Polygon" and g.area >= floor]
+
+
 def resolve_overlaps(
     regions: list[Region], fabric: Fabric, cfg: PipelineConfig,
     design_class: str = "flat",
@@ -432,6 +456,25 @@ def resolve_overlaps(
             ground_under.setdefault(best.shape_id, []).append(b_.polygon)
     ground_under = {k: unary_union(v).buffer(0.1) for k, v in ground_under.items()}
 
+    # `cfg.held_hole_bare_only`: what later STITCHED colours cover, per
+    # layer -- a suffix union like `later`, built only with the flag on. An
+    # unstitched later shape is bare fabric by design and never covers a hole;
+    # `plan_stitches` drops those before stage 5 anyway, but tools that pass
+    # `result.regions` whole (`seam_underlap`, `sewn_compensation`) do not.
+    bare_only = bool(getattr(cfg, "held_hole_bare_only", False))
+    sewn_after: dict[int, object] = {}
+    if bare_only:
+        running = None
+        for L in reversed(layers):
+            sewn_after[L] = running
+            mine = [sewn_footprint(o) for o in by_layer[L] if o.meta.get("stitched", True)]
+            if mine:
+                here = unary_union(mine)
+                running = here if running is None else running.union(here)
+
+    def later_sewn(L: int):
+        return sewn_after.get(L)
+
     planned: list[PlannedRegion] = []
     holes_held = 0
     # The shapes, not just how many. A count answers "did anything go wrong";
@@ -524,6 +567,7 @@ def resolve_overlaps(
             # that closes up is lost artwork, so any hole that would fall below
             # the sewable floor is held open at its original size instead.
             held: list[Polygon] = []
+            n_holes = 0
             for ring in poly.interiors:
                 hole = Polygon(ring)
                 if hole.area < hole_floor:
@@ -531,9 +575,14 @@ def resolve_overlaps(
                 if under is not None and hole.buffer(-0.05).within(under):
                     continue           # a bean letter's hole: sewn through, on purpose
                 if _shrink(hole, pull, axis).area < hole_floor:
-                    held.append(hole)
+                    keep = (_bare_part(hole, later_sewn(L), hole_floor)
+                            if bare_only and r.meta.get("stitched", True)
+                            else [hole])
+                    if keep:
+                        held.extend(keep)
+                        n_holes += 1
             if held:
-                holes_held += len(held)
+                holes_held += n_holes
                 grown = _largest_polygon(grown.difference(unary_union(held)))
                 if grown is None or grown.is_empty:
                     lost.append(r)
