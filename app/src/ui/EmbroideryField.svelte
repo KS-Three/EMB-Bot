@@ -27,6 +27,8 @@
   import { resolveCutOuts } from "../lib/manualShapes.js";
   import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, refitShapesPatch, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT } from "../lib/fieldNodeEdit.js";
   import Hint from "./Hint.svelte";
+  import Pinwheel from "./Pinwheel.svelte";
+  import { digitizeBusy } from "../lib/digitizeBusy.js";
   import Icon from "./Icon.svelte";
   import ShapePopover from "./ShapePopover.svelte";
 
@@ -3326,7 +3328,11 @@
         on:close={closeShapePop}
       />
     {/if}
-    {#if !hasDesign && !error && hint}
+    <!-- The digitize pinwheel: only while a run is in flight, so it never
+         sits on the field at rest (e2e/field-chrome.spec.js's one-child rule
+         is measured with no run going). -->
+    {#if $digitizeBusy.size}<Pinwheel />{/if}
+    {#if !hasDesign && !error && hint && !$digitizeBusy.size}
       <p class="fieldhint" class:on-dark={project && project.fabricRgb && isDark(project.fabricRgb)}>{hint}</p>
     {/if}
   </div>

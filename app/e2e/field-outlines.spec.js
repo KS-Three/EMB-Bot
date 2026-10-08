@@ -239,3 +239,42 @@ test("a fresh digitize pulses its outlines with the toggle off, then settles cle
   // And it ends on its own: the default view is the stitch-out.
   await expect.poll(async () => (await overlayPixels(page)).cyan, { timeout: 10_000 }).toBe(0);
 });
+
+// The pinwheel (Kent, 2026-10-08, "just bring it back"): turning, throbbing
+// vanes over the field for the whole time a digitize is in flight, gone once
+// the stitches land. Fails if the indicator is missing mid-run or outstays it.
+test("the pinwheel turns over the field while a digitize runs, and goes when it lands", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await pickGarment(page, "Tote");
+  await uploadArtwork(page, ART_PNG, { run: false });
+
+  const pinwheel = page.getByTestId("digitize-pinwheel");
+  await expect(pinwheel).toHaveCount(0);
+
+  // Hold the job in flight long enough to read it: the response to the job
+  // POST is delayed, never altered, so the run itself is the real one.
+  let release;
+  const held = new Promise((r) => (release = r));
+  await page.route("**/digitize", async (route) => {
+    await held;
+    await route.continue();
+  });
+
+  await page.locator(".dgp-run").click();
+  await expect(pinwheel).toBeVisible();
+  await expect(pinwheel).toHaveAttribute("role", "status");
+  await expect(pinwheel).toHaveAttribute("aria-label", /Digitizing/);
+  // Over the field, not beside it.
+  const box = await pinwheel.locator("svg").boundingBox();
+  const field = await page.locator(".hoop canvas").boundingBox();
+  expect(box.x).toBeGreaterThan(field.x);
+  expect(box.x + box.width).toBeLessThan(field.x + field.width);
+
+  release();
+  await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
+  await expect(pinwheel).toHaveCount(0, { timeout: 5_000 });
+});
