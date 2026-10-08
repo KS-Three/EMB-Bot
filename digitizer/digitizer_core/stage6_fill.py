@@ -1440,6 +1440,31 @@ def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
     return edge_run() + lattice(90, machine.UNDERLAY_LATTICE_MM)
 
 
+def _sewn_paths(paths: list[list[tuple[float, float]]]
+                ) -> list[list[tuple[float, float]]]:
+    """The paths `emit` will actually sew: those with at least two points.
+
+    `_fill_paths` hands back one-point "columns" -- a column whose rows
+    place a single penetration between them, the sliver at a pointed tip or
+    a notch -- and `emit` skips
+    every one (`len(pts) < 2: continue`): no stitch, no bridge, and the
+    needle stays where the last real run ended. `_order_cost` did not skip
+    them. It priced a bridge TO each and then a bridge onward FROM it, so an
+    order was scored on travel that is never sewn, and a column order that
+    happened to visit a phantom between two real columns could win or lose
+    on a hop the machine never makes.
+
+    Measured 2026-10-08 (`tools/fill_score_agreement.py`, the nine logos at
+    80 mm): this is the ONLY place the scorer and the emitter disagree. Every
+    shape whose scored (cuts, travel, exposed) differed from what `emit` sewed
+    carried phantoms -- 16 of Golden Tee's 47 field paths, 38 of Bridge Bar's
+    214 -- and pricing the same order without them reproduces the sewn travel
+    and exposure exactly. Dropping them here sews the same penetrations; only
+    the ORDER the two reorders pick can change, now chosen on what is sewn.
+    """
+    return [p for p in paths if len(p) >= 2]
+
+
 def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  row_mm: float, stitch_mm: float, underlay_style: str,
                  trim_at_mm: float,
@@ -1450,6 +1475,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  row_phase_mm: float = 0.0,
                  keep_row=None,
                  cut_bridges: bool = False,
+                 sewn_paths_only: bool = False,
                  ) -> tuple[list[StitchRun], dict]:
     """One shape -> its runs, in sew order (underlay first), plus a small report.
 
@@ -1499,6 +1525,13 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     ask for it keeps exactly today's single-pass output — stage 7's plain-
     tatami fallback is the one caller that turns it on, gated by
     `PipelineConfig.fill_density_boost`.
+
+    `sewn_paths_only` (`PipelineConfig.fill_order_sewn_paths`, default OFF):
+    drop the fill's one-point paths before either reorder prices an order.
+    `emit` never sews one (`len(pts) < 2`) and its needle never moves to
+    one, but `_order_cost` routed travel to each and moved its cursor there,
+    so the order was chosen against bridges that are never sewn and against
+    hops that do not exist -- see `_sewn_paths`.
 
     Report keys: `too_thin` (nowhere wide enough for a fill), `jumps` (travel
     that had to lift the needle), `empty` (produced nothing).
@@ -1592,6 +1625,8 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
         fill_paths = _fill_paths(poly, angle, row_mm, stitch_mm,
                                  machine.FILL_STAGGERS, entry, technique=technique,
                                  row_phase_mm=row_phase_mm, keep_row=keep_row)
+    if sewn_paths_only:
+        fill_paths = _sewn_paths(fill_paths)
     # Memoized, not changed: both reorders are pure functions of this shape's
     # own inputs, so a hit returns exactly what the call would have. This is
     # the seam a review edit re-crosses for every UNCHANGED shape -- 80 of

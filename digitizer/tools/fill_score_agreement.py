@@ -43,6 +43,7 @@ from digitizer_core.pipeline import build_generation, finish_generation, plan_st
 
 _records: list[dict] = []
 _last_order: list = [None]
+_DUMP: list = [None]
 
 _orig_memoized = sf._memoized
 _orig_stitch_shape = sf.stitch_shape
@@ -99,13 +100,19 @@ def _spy_stitch_shape(poly, shape_id, **kw):
     j = first
     while j > 0 and runs[j - 1].kind == stitches.TRAVEL:
         j -= 1
-    entry = runs[j - 1].points[-1] if j > 0 else kw.get("start_near")
+    # No run before the fill (no underlay, first shape of the call): `emit`
+    # lays no bridge into its first column, so neither does the scorer here.
+    entry = runs[j - 1].points[-1] if j > 0 else None
     cut_bridges = bool(kw.get("cut_bridges"))
     scored = sf._order_cost(_last_order[0], poly, ring, slack, entry, trim_at,
                             row_mm, cut_bridges=cut_bridges)
     sewn = _sewn_figures(runs, row_mm, trim_at)
     _records.append(dict(shape=shape_id, paths=len(_last_order[0]),
                          scored=scored, sewn=sewn))
+    if _DUMP[0] and any(abs(a - b) > 1e-6 for a, b in zip(scored, sewn)):
+        import pickle
+        with open(Path(_DUMP[0]) / f"{shape_id}.pkl", "wb") as fh:
+            pickle.dump(dict(poly=poly, kw=kw, order=_last_order[0], entry=entry), fh)
     return runs, report
 
 
@@ -135,6 +142,8 @@ def main(argv: list[str]) -> None:
     for a in it:
         if a == "--width":
             width = float(next(it))
+        elif a == "--dump":
+            _DUMP[0] = next(it)
         elif a == "--set":
             k, _, v = next(it).partition("=")
             extra[k] = _value(v)
