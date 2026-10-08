@@ -378,10 +378,10 @@ and trims (DST trims aside, below), with no stray thread.
   along an axis on the Full Back layout. Whether a Husqvarna/Pfaff sews or
   skips a long `80 01` stitch is a machine question; Kent's call 2026-10-08 was
   to note it and wait for a sew-out (gate 1).
-- **Service PES/PEC/JEF snap colour with pystitch's own metric** (not yet put
-  to Kent), so the two
-  PES routes can name different cones for one colour (near-black: Black in the
-  browser now, dark brown in the service).
+- ~~Service PES/PEC/JEF snap colour with pystitch's own metric~~ — **fixed
+  2026-10-08 (Kent's ruling):** `formats.write` snaps each thread to its
+  CIEDE2000-nearest chart cone first, so both PES routes name Black for
+  near-black. Pin: `digitizer/tests/test_export_cone.py`.
 
 **Format conventions, not disagreements:** a DST travel of three or more jump
 records reads as a cut (the convention `cutFloats` already plans around), and
