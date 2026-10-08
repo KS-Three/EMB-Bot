@@ -309,13 +309,18 @@ export function hitOverlay(outlinesPx, px, py) {
   let bestEdge = null;
   for (const o of outlinesPx) {
     const pts = o.points;
-    for (let i = 0; i < pts.length; i++) {
-      const d = Math.hypot(px - pts[i][0], py - pts[i][1]);
-      if (d <= NODE_GRAB_PX) {
-        return { shapeId: o.id, kind: "node", index: i, atPx: [pts[i][0], pts[i][1]] };
+    // An OPEN outline is a stretch of thread, not a ring: it has no nodes to
+    // grab and no closing edge from its last point back to its first.
+    if (!o.open) {
+      for (let i = 0; i < pts.length; i++) {
+        const d = Math.hypot(px - pts[i][0], py - pts[i][1]);
+        if (d <= NODE_GRAB_PX) {
+          return { shapeId: o.id, kind: "node", index: i, atPx: [pts[i][0], pts[i][1]] };
+        }
       }
     }
-    for (let i = 0; i < pts.length; i++) {
+    const edges = o.open ? pts.length - 1 : pts.length;
+    for (let i = 0; i < edges; i++) {
       const a = pts[i];
       const b = pts[(i + 1) % pts.length];
       const s = distToSegment(px, py, a[0], a[1], b[0], b[1]);
@@ -340,7 +345,7 @@ export function hitShapeInterior(outlinesPx, px, py) {
   let best = null;
   for (const o of outlinesPx) {
     const pts = o.points;
-    if (!pts || pts.length < 3) continue;
+    if (o.open || !pts || pts.length < 3) continue;
     if (!pointInRing(pts, px, py)) continue;
     const area = Math.abs(ringArea(pts));
     if (!best || area < best.area) best = { shapeId: o.id, area };

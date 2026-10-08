@@ -283,7 +283,7 @@
   }
   .alignbtn.active {
     background: var(--accent, #4f46e5);
-    color: #fff;
+    color: var(--accent-ink, #fff);
     border-color: var(--accent, #4f46e5);
   }
   .alignbtn:disabled { opacity: 0.45; cursor: not-allowed; }

@@ -1615,6 +1615,18 @@ flattery. Anything unlisted raises `NotInManifest`.
 
 ## Gotchas — cost someone a session once
 
+- **Satin density is a needle every `SATIN_SPACING_MM` on EACH rail — count
+  needles per rail, never total stitches between tiers.** The engine's flat
+  zigzag is A1, B1, A2, B2: both ends of every station, stations the spacing
+  apart. The Column lane's first wiring put one end down per station, rails
+  alternating, and sewed every letter at HALF the satin tier's density for a
+  day; it had compared total letter stitch counts against a tier that also
+  lays a zigzag underlay, read the real density as a doubling, and halved it.
+  Measured on MARINE's I: 0.40 mm per rail under the satin tier, 0.80 under
+  the lane, 0.40 after the fix. A thread-width coverage yardstick does not
+  catch it either way at 0.3 mm thread. *(found 2026-10-07 by the desktop
+  sitting agent counting crosses on the N; fixed in PR #660)*
+
 - **Adding an engine file means FOUR lists, and only three were documented —
   now guarded.** `src/*.js` files are plain scripts sharing one
   `globalThis.EMB`, and the load order lives in `app/scripts/copy-engine.mjs`
@@ -3656,6 +3668,32 @@ flattery. Anything unlisted raises `NotInManifest`.
   encoder's idea of the rule and not the other's.** Both halves are
   mutation-checked — forcing `chained` true fails the travel tests, and
   raising the bar back to 2047 fails the split tests.
+
+  **And `exp.js` never had it — found 2026-10-06, fixed 2026-10-07.** This
+  entry was closed with two of the three encoders carrying the rule. `exp.js`
+  was the one `dst.js` had been matched to ("a stitch splits into stitches"),
+  so it kept the naive half and split EVERY stitch record into stitches. From
+  2026-09-13 its own comment read "same shape as pes.js's `chained ? … : …`"
+  over a line that tested `isJump`, and crossval's `long` fixture said both
+  encoders "must keep splitting that as jumps". Nothing failed because nothing
+  could: that fixture's travel-in is zero units long, and DST's naive version
+  had been caught by its IMPORTER's test, which EXP has none of. So from the
+  day it was written (2026-07-22) the EXP of a design put the needle down
+  along moves its DST and PES travel: as shipped, on 2,455 of 2,700 designs
+  of a drawn shape set to satin and 285 of 2,870 of the shape tool's presets
+  (wherever the browser's satin floats to a far arm and sews back), and on an
+  imported stitch file whose first record is a stitch, where it sewed a line
+  from the middle of the hoop to where the design starts. **A rule N encoders share is tested by ONE fixture run
+  through all N and compared file against file — not by N comments that say
+  "same as the other one".** crossval's `travel` fixture and
+  `tools/file-cut-census.mjs`'s hole-by-hole rows are that now. **And a census
+  counts the designs its sets hold, not the product's:** the two lanes that
+  carried this were in none of them. The "manual" lane is all fills, so a
+  drawn shape set to satin was never built; and every builder opens a run
+  with a jump where a stitch file need not, so no set's stream opened with a
+  stitch (`tools/file-cut-satin-set.mjs`, `tools/file-cut-import-set.mjs`).
+  Before quoting a lane as clean, read what its set builds. *(measured
+  2026-10-07 — scope-history 10-07)*
 
   **The safety property is a measurement, not an argument.** The DST of all 85
   shipped fonts at left-chest size hashes
@@ -8647,3 +8685,103 @@ measurement moved the problem somewhere else.
 *(measured 2026-10-05 and 10-06 — `tools/stroke_colour_probe.py`, defaults,
 `--dissolve` for the last bullet; tables in scope-history 2026-10-05 and
 2026-10-06)*
+
+
+## A preview shows the file, and the file is wider than the cloth: load the reference file in the same viewer before blaming the engine for weight (2026-10-06)
+
+Kent, on Hotel Fremont in the Studio: *"the letters are waaaay thicker than
+they should be."* Every width instrument said the file was at the pro's
+width — ours 1.23 mm on a 0.76 mm artwork stroke at 80 mm, the pro's own
+Wilcom DST of the same logo 1.40 on 0.81 at 92.5, the same 1.40 on his cap
+file — and the screen still said "way too thick", because the screen was
+showing both files honestly: a satin column is cut wider than its artwork
+by the fabric's pull compensation on each rail (0.3 mm per side on pique,
+Wilcom's documented per-side figure), and the canvas drew that column plus
+the 0.4 mm thread. Nothing simulated the pull. Kent had only ever seen the
+pro's file on cloth.
+
+**The test that settled it cost ten minutes:** the pro's DST uploaded to the
+Studio as a design file, same zoom, rendered HOTEL FREMONT at the same bold
+weight as ours (`docs/renders/` has none; the composite went to Kent as
+`fremont_studio_ours_vs_pro.png`). **Rule:** when a complaint is about
+WEIGHT, render the reference file in the same viewer first. The two cures
+that followed are both views: the "Sewn width" toggle (`lib/sewnWidth.js`,
+each satin strand loses the pull at each end — the rail stepping back in by
+what `_push_rails` gave it; fills and runs untouched; a model of the fabric,
+not a sew-out) and #643's Original-view registration on the stitched
+rectangle, without which the flip the help text recommends compared a logo
+drawn 30% larger than its stitches.
+
+**What the instruments found that the eye called "wobbly":** not rail
+jitter (ours 0.025 mm median deviation to the pro's 0.041) and not stem lean
+(9.5° to 8.1°, and a symmetric zigzag's inherent lean is atan(pitch / 2w),
+which alone explains most of either), but silhouette hair concentrated on
+curves — the O's outer rail stepping 0.53 mm against the pro's 0.33 — which
+is `claude/satin-outer-rail-pitch`'s. The lean-leg alternation that regular
+short stitches produce reads as "spray" on a cross-to-next-cross metric;
+read the crosses and the leans apart before calling a column sprayed.
+
+## 2026-10-07 — `letterform_priors_k` ruled ON at 0.75 on the labelled page; the N it costs is the construction's, not the outline's
+
+Kent on the thread pairs: becker *after* (*the "N" was better before -
+everything else was better after*), bridge *both bad*; ruled in chat: flip,
+log the N. What it costs: Becker +506 stitches and +11 trims (R / A / E
+each 2–4 more columns at their sharpened junctions) for satin bare 4.33 →
+2.65%; only an upload stage 1 upscaled is touched, the rest byte-identical.
+The N owed is defect 59: the refit outline is 13 clean vertices and stage 6
+fans its sharpened wedge (5 → 8 satin runs, 687 → 1,162 stitches on one
+letter) — rendered before it was written down, because "the N was better
+before" reads as an outline fault and is not one. **A cleaner outline can
+sew worse on today's satin: price a lettering outline change on the
+decomposition it feeds, and attribute a fan to the construction by drawing
+the outline under it.** *(measured 2026-10-07 — `docs/letterform-priors-2026-10-06.md`, "Sitting 2026-10-07")*
+
+## 2026-10-07 — The N fan is the tip gate reading a three-arm junction as a tip; measured four ways and left unbuilt
+
+Defect 59 diagnosed with the engine's own gate, not by reading code:
+`_is_tip_end` (`satin_tip_caps`, reach 1.6 sewn half-widths, set on the A's
+apex and on raster corner balls) calls three of the refit N's five junction
+ends tips — the neighbouring stroke's far edge at 4.56–4.81 mm along the end
+tangent, reach 4.84 — where the trace's five read as meetings; `_extend_to_
+cap` then runs each arm through the other stroke and the crosses fan. Two
+rules. **Ask the four arms before building: the fan is byte-identical under
+`satin_join_square` and gone under `lettering_columns` (becker 56 → 0
+over-long crosses), so a tier fix was not built — "a fix nobody will sew".**
+**An instrument's bar is a threshold on a population too:** the outline-cut
+spike's 1.6 W over-long bar read gaulke's thirty-nine 1 mm letters as 35 fan
+letters under every arm — the fabric's 0.3 mm pull per side, not a fan;
+`tools/fan_census.py` reads 1.6 x (W + 2 pull). *(measured 2026-10-07 —
+`docs/n-fan-2026-10-07.md`)*
+
+## 2026-10-07 — A flip Kent made on renders was held by its guards: `satin_join_square` ON loses an ENTHUSIAST element
+
+Kent flipped `satin_join_square` ON on 2026-10-06 on Fremont renders (stitches
+and trims identical, fan ends 7 → 5). Merged with main and run on the lettering
+set, ON loses one ≥ 1 mm² element of the ENTHUSIAST wordmark — a fixture that
+had never lost one — and tips three sibling bars (fine `lost_frac` 0.1702 /
+0.17, tip-cap end bare 10.53 / 9.5 mm², a rail-comp mid-rail hole 1.24 / 0.55);
+with the flag off on the same tree all four are green. Kent held the flip the
+same day. **The guards did their job: a render shows the fixture it was made
+on, a guard reads the corpus. Run the lettering guard set before a flip's PR
+opens, and when a flip tips a bar with Kent's ruling on it, that is a finding
+to name, not a pin to move.** *(measured 2026-10-07 — PR #663)*
+
+## 2026-10-07 — The held flip, named and fixed: a bend read as a corner, and the vertex test would have cut the wrong way
+
+The ENTHUSIAST element `satin_join_square` lost is the S's bowl. At 80 mm
+(half-width 0.87 mm) a pull-comped inner bowl is a sharp reflex vertex, so
+`_split_sharp_corners`' join rule cuts the S there in BOTH arms; OFF the two
+members' bent ends still meet, ON `_straighten_member_end` projected both
+apexes 0.80 / 0.82 mm (0.92 half-widths) onto their fitted lines, the ends
+parted and the wedge sewed bare — the element and the three sibling bars are
+one mechanism. The first cure reached for was the corner's vertex angle
+(Fremont's accepted corners peak 6–8° at one vertex, enthusiast's 60–96°),
+and the census refuted it: Becker's, gaulke's and drone's REAL corners peak
+49–91° too, so a vertex test would have refused the corners the flip exists
+for. What separates is the apex's DISPLACEMENT off its own member's line —
+p50 0.92 half-widths on enthusiast against 0.22 on Fremont and 0.12 on
+Becker — and `_STRAIGHT_MAX_MOVE_HALVES` 0.6 keeps the bend. **Name a lost
+element by its shape id and a crop before choosing the cure, and census the
+candidate test over EVERY fixture's accepted cases: the first discriminator
+that parts the broken fixture from the clean one can refuse the clean cases
+everywhere else.** *(measured 2026-10-07 — `docs/join-square-enthusiast-2026-10-07.md`; `tests/test_join_corner_bend_cap.py`)*

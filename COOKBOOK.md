@@ -1007,16 +1007,19 @@ sews nothing and cuts the smallest shape that contains it.
 - On the side canvas, **Hole mode's click always draws**; Shape mode's click
   inside a finished shape selects it. That asymmetry is deliberate — a hole
   starts inside a shape.
-- **A cut-out is clear of the needle, not yet of thread (2026-10-03).** The
+- **A cut-out is clear of the needle (2026-10-03), and of thread in the manual
+  lane since 2026-10-07.** Without `fillColumns` the
   JS fill goes from one span of a split row straight to the next, so every
   row lays a float (or, under 4 mm, a stitch) across the hole. The Studio's
   field shows it only with its **Jumps** toggle on, which is off by default.
-  The cure is built OFF: `buildQualityDesign({ fillColumns: true })` sews a forked FILL
+  The cure, OFF by engine default: `buildQualityDesign({ fillColumns: true })` sews a forked FILL
   shape column by column (`fill.js` `opts.columns`, a port of the Python
   `_columns`) and goes ROUND a hole instead of crossing it. A satin shape is
-  untouched by it, and so is a fill with no hole and no inside corner. None
-  of `generate.js`'s three callers passes it; the flip is Kent's (MASTER_SCOPE
-  defect 52). It has not been sewn. Five things to know before touching it:
+  untouched by it, and so is a fill with no hole and no inside corner. Of
+  `generate.js`'s three callers only the MANUAL branch passes it (Kent's
+  call 2026-10-07; `generate.spec.js` pins it with a cut-out); basic shapes
+  and the image lane do not, and their flip is Kent's (MASTER_SCOPE defect
+  52, "Waiting on Kent" 22). It has not been sewn. Eight things to know before touching it:
   - Every move is asked what ground it runs over (`groundUnder`): on the
     ground it may float, on the rim it is sewn, deeper than `openTol` into
     open ground it must go round or be cut.
@@ -1039,6 +1042,35 @@ sews nothing and cuts the smallest shape that contains it.
     10 px per mm): the outline the fill is sewn to closes one to a slit, and
     no sweep had one until an audit drew it (2026-10-03, "a move of no
     length").
+  - A pass has two ends and is told both: where the thread is (`from`) and,
+    when the run after it begins at a point of its own, where it goes next
+    (`to`). A pass the plain walk sews is that kind, and the builder asks
+    where it begins with a function of its own, `fill.plainStart`. Do NOT
+    ask a question through `tatamiFill`. It was first an option that made
+    `tatamiFill` answer null and had the pass built before its turn, and
+    three tools wrap `tatamiFill` to watch the passes: each took the null
+    for a pass, or the order of the calls for the order of the sewing. Two
+    were patched; a review found the third throwing
+    (`tools/sub-unit-stitch-census.mjs`, 2026-10-05). Before changing what
+    `tatamiFill` returns or when it is called, grep `tatamiFill = ` in
+    `tools/` and `test/`, and run all of `node --test`, not the two files
+    you are in.
+  - A walk that comes out cut is walked again from the other first columns
+    (`sewFrom`, eight at most) and the better walk is kept: fewer cuts, and
+    no more threads of fewer than four penetrations between two of them. So
+    before touching the walk, count the cuts by WHERE they are: inside a
+    pass, on the float into it, on the float out of it, and what kind of run
+    is on either side. The most of any kind left is not the walk's at all:
+    the float from an EDGE RUN into a plain walk (2026-10-04, "where a pass
+    ends").
+  - Count more than cuts, and sweep shapes the last sweep did not have. By
+    cuts alone a walk saved a cut by stranding a row, one stitch cut to and
+    cut from, and 56,120 designs of combs, badges and letters showed none:
+    the re-measure's mazes did. The same re-measure found a comb of 100
+    teeth with 615 cuts where no option has 1, its passes walked nine times
+    for nothing (5.0 s → 18.5 s). Mazes, spirals and combs of 24 teeth and
+    more belong in the sweep, and so do a pass's short threads, the thread
+    it sews, and the time it takes.
 
   To SEE thread rather than penetrations, run
   `node tools/fill-columns-sheet.mjs`: it draws four manual-lane shapes off
@@ -1053,6 +1085,22 @@ sews nothing and cuts the smallest shape that contains it.
   the flag; the flip is Kent's ("Waiting on Kent" 23).
   `node tools/lock-stitch-census.mjs` prints what a lock costs and how long
   its legs really are, on every shipped font and eleven shapes.
+- **Cutting long floats is built OFF for the shape builder (2026-10-04).**
+  A DST has no cut. `dst.js` lays three jump records for a `trim`, and also
+  for any float over 24.2 mm, so a machine cuts where the stream has only a
+  jump, and `ties` lays no lock there. `cutFloats: true` on
+  `buildQualityDesign` puts the `trim` in the stream: one pass,
+  `cutLongFloats` in `src/digitize.js`, over the finished stream and before
+  `applyTies`. How many records a move takes is asked of the writer
+  (`dst.jumpRecords`); do not work it out from a length. The move to the
+  stitch AFTER a float counts, since the writer lays it as jumps up to its
+  last record. A float with no thread on it is left: after a cut, after a
+  colour change, at the start. To check any change to what is written, read
+  the FILE: `node tools/file-cut-census.mjs` writes every design with the
+  three writers, reads each back with its own readers and says what every
+  run of three jumps was; `--against <src>` says whether two engines differ
+  by cuts put in and nothing else. No Studio caller passes the flag; the
+  flip is Kent's ("Waiting on Kent" 28) and belongs after `fillColumns`.
 - **Row stagger is built OFF for the shape builder (2026-10-03).**
   `fillStagger: true` on `buildQualityDesign` puts the cover fill's needle
   holes on one grid shifted row by row (`tatamiFill`'s `stagger`, `minStitch`
@@ -2061,7 +2109,21 @@ and controllable to the user.
     (`test/crossval-stitch-formats.test.js`, revived 2026-08-21 after the
     2026-08-11 pystitch swap left it silently skipping — the repo's only
     automated third-party format check; CI runs it loud, see "Running
-    things").
+    things"). **All three share ONE rule for a move too long for a record
+    (the chain rule, `dst.js`):** it is sewn, split into stitches at 12.1 mm
+    an axis, only when it CONTINUES a sewn run; the move to a stitch that
+    follows a jump, a cut, a colour change or the start of the file is
+    travel, laid as jumps up to its last record. `exp.js` took it last
+    (2026-10-07): until then its file had needle holes along such a move
+    that the other two had not. Check a change to one writer against the
+    other two at the FILE: `node tools/file-cut-census.mjs` counts the three
+    files' needle holes hole by hole, `--against <src>` says which designs'
+    files change. Its own three sets leave two lanes out, and they are the
+    two that mattered here: `--set tools/file-cut-satin-set.mjs` is a drawn
+    shape SET TO SATIN (the "manual" lane is all fills), and `--set
+    tools/file-cut-import-set.mjs` the lanes whose stream can OPEN with a
+    stitch (an imported stitch file, alone or as a project's second
+    element), which no builder's stream does.
 - **`app/src/`** — Svelte 5 Studio. `App.svelte` + `ui/` (steps/components) +
   `lib/` (non-DOM logic, each paired with a `.spec.js`): `project.js` (data
   model, v2 = `{version,garmentId,selectedId,elements:[...]}`), `generate.js`

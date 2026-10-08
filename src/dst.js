@@ -204,6 +204,13 @@
     return splitSteps(dx, dy, MAX_DELTA, 3);
   }
 
+  // How many records a needle-up move is written in: the count encodeDST lays
+  // for a `jump`. Three jump records in a row are a cut to a machine, so the
+  // shape builder asks before it floats (`cutFloats`, digitize.js).
+  function jumpRecords(dx, dy) {
+    return splitSteps(dx, dy, MAX_DELTA, 1).length;
+  }
+
   function encodeDST(design) {
     const stitches = (design && design.stitches) || [];
     const colors = (design && design.colors) || [];
@@ -361,5 +368,6 @@
     // fixed order with no shared module), so the test drives all three through
     // one set of cases rather than trusting them to stay in step by eye.
     splitSteps,
+    jumpRecords,
   };
 });

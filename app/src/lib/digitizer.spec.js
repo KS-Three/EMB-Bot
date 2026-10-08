@@ -1333,6 +1333,36 @@ test("decodedFromDesign strips the end record, centers on the sewn bbox, and cou
   expect(first.y).toBe(-50);
 });
 
+test("decodedFromDesign carries the run spans when only the tail end is stripped, and drops them otherwise", async () => {
+  stubStorage({});
+  const { decodedFromDesign } = await import("./digitizer.js");
+  const runs = [{ i0: 1, i1: 2, kind: "satin", shape: "S1", role: "", block: 0 }];
+  const tailEnd = {
+    stitches: [
+      { x: 0, y: 0, type: "jump" },
+      { x: 0, y: 0, type: "stitch" },
+      { x: 10, y: 0, type: "stitch" },
+      { x: 0, y: 0, type: "end" },
+    ],
+    colors: [{ r: 0, g: 0, b: 0 }],
+    runs,
+  };
+  // Spans index the final array including the interleaved records; the
+  // trailing end sits past every span, so stripping it moves nothing and
+  // the spans ride through verbatim (buildImportedDesign carries them on).
+  expect(decodedFromDesign(tailEnd).runs).toBe(runs);
+  // No end at all: nothing stripped, spans valid.
+  const noEnd = { ...tailEnd, stitches: tailEnd.stitches.slice(0, 3) };
+  expect(decodedFromDesign(noEnd).runs).toBe(runs);
+  // An end in the MIDDLE shifts every index after it: the spans stay off
+  // rather than wrong (absent means "no run information" to the renderer).
+  const midEnd = { ...tailEnd, stitches: [tailEnd.stitches[0], { x: 0, y: 0, type: "end" }, ...tailEnd.stitches.slice(1)] };
+  expect(decodedFromDesign(midEnd).runs).toBeUndefined();
+  // No spans on the design: none invented.
+  const { runs: _r, ...plain } = tailEnd;
+  expect(decodedFromDesign(plain).runs).toBeUndefined();
+});
+
 test("digitizedBlockColors defaults every block to the service palette; a user override wins per block", async () => {
   stubStorage({});
   const { digitizedBlockColors } = await import("./digitizer.js");
@@ -2348,6 +2378,19 @@ describe("editKind (restitch pacing)", () => {
     expect(editKind(removed, none)).toBe("border");
   });
 
+  it("reads a deletion, and its undo, as 'delete' — and a delete beside a drag as 'other'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const none = await edits(el({}));
+    const gone = await edits(digitizedElement({ deletedShapeIds: ["s1"] }));
+    expect(editKind(none, gone)).toBe("delete");
+    expect(editKind(gone, none)).toBe("delete");
+    const both = await edits(digitizedElement({
+      deletedShapeIds: ["s1"],
+      shapeOverrides: { s2: { boundary_override: ring() } },
+    }));
+    expect(editKind(none, both)).toBe("other");
+  });
+
   it("reads borders on SEVERAL shapes at once as 'border'", async () => {
     const { editKind } = await import("./digitizer.js");
     const a = await edits(el({ s1: { border: "auto" } }));
@@ -2388,7 +2431,9 @@ describe("editKind (restitch pacing)", () => {
     expect(editKind(base, await edits(el({ s1: { underlay_style: "edge_run" } })))).toBe("other");
     expect(editKind(base, await edits(el({ s1: { thread_index: 3 } })))).toBe("other");
     expect(editKind(base, await edits(el({ s1: { fill_angle_deg: 45 } })))).toBe("other");
-    expect(editKind(base, await edits(digitizedElement({ deletedShapeIds: ["s1"] })))).toBe("other");
+    // A bare delete left this list on 2026-10-06 (Kent: deleting a shape
+    // "pinwheels") — it is the 'delete' kind above, and the canvas hides the
+    // shape at once while the restitch runs.
     expect(editKind(base, await edits(digitizedElement({ mergeGroups: [["s1", "s2"]] })))).toBe("other");
   });
 

@@ -819,6 +819,58 @@ class PipelineConfig:
     # 1.0 mm column fills the counters (scope-history 09-09), which is why
     # this stays None until a glyph-height gate exists.
     lettering_min_column_mm: float | None = None
+    # Letterform priors (`letterform_priors.apply_letterform_priors`,
+    # 2026-10-06): refit every text-tagged letter of a line of lettering to
+    # straight segments and circular arcs under parameters the word shares
+    # -- stem direction from the house line and slant, stroke-width modes
+    # measured across ink, baseline and cap line -- with every vertex move
+    # capped at THIS VALUE times the source image's pixel at the design size
+    # (`1 / Prep.input_px_per_mm`), checked against the traced samples at
+    # every step. None is OFF: the module is never imported and the output
+    # is byte-identical to the pre-flag engine. The value is k; 0.75 is the
+    # measured one, and the default since Kent's ruling below.
+    #
+    # Why: Kent, 2026-10-05, lettering "looks like worms"; the outline-cut
+    # spike's own ceiling was "the letter is not letter-shaped before
+    # construction starts" on a low-resolution upload (Becker is 146 px wide,
+    # 0.66 mm per source pixel at 95.7 mm). A professional tracing that blur
+    # draws straight stems, true arcs, one width. The cap is what keeps the
+    # customer's font: the fit may not invent what the raster could not have
+    # carried. A word passes through untouched when the cap is under the
+    # engine's working-grid pixel (`1 / Prep.px_per_mm`) -- on a source finer
+    # than the grid the grid IS the source pixel, so only an upload stage 1
+    # upscaled is ever touched, and a letter the primitives do not explain
+    # within the cap on more than 10% of its outline is refused untouched.
+    # Per-letter outcome in `Region.meta["letterform_prior"]`.
+    #
+    # Measured (`docs/letterform-priors-2026-10-06.md`, k = 0.75): drone,
+    # enthusiast and fremont byte-identical (gated); Becker 10 of 11 letters
+    # refit, bridge 8 of 8, gaulke 36 of 38; primitives per letter -13 to
+    # -32%, stem-angle spread within a word -32 to -65%; against the pro's
+    # Becker file the centred IoU moves -0.0008 on average (neutral; his
+    # shape -- sharp corners, straight arms -- set the arc rules). The k
+    # sweep: 1.0 opens the gate on every logo and moves away from the pro
+    # (-0.0062), 0.5 gates gaulke too. **The price, today's stage 6:** Becker
+    # +506 stitches and +11 trims (55 -> 66; R / A / E gain 2-4 satin runs
+    # each at the sharpened junctions) for satin bare area 4.33 -> 2.65%;
+    # gaulke neutral (-18 stitches, -1 trim). The outline-cut spike's
+    # over-long check clears the right way on all three (Becker 9.3 -> 6.2%,
+    # bridge 21.3 -> 17.3%, gaulke 5.2 -> 3.1%). Bridge's letters are
+    # segmentation blobs and stay blobs. k and every rule were set on Becker
+    # and bridge; gaulke was held out.
+    #
+    # **ON at 0.75 -- Kent's ruling in chat, 2026-10-07, on the labelled
+    # thread pairs** (`docs/eye-pairs-2026-10-07/kent-notes.json`): becker
+    # "after", job done "yes" -- *the "N" was better before - everything
+    # else was better after*; bridge "both bad". The N is logged as defect
+    # 59: the refit N's outline is the cleaner of the two (13 vertices,
+    # straight stems and diagonal), and today's stage-6 decomposition sews
+    # its sharpened wedge as a fan of long crosses (5 -> 8 satin runs, 687 ->
+    # 1,162 stitches on that letter at 100 mm) -- the construction's defect,
+    # not the outline's; the outline-cut lane's N is stem / diagonal / stem.
+    # None keeps the OFF path, byte-identical to the pre-flag engine
+    # (`tests/test_letterform_priors.py` pins it with an explicit None).
+    letterform_priors_k: float | None = 0.75
     # Even out stitch widths automatically (`stitchwidth.apply_stitch_widths`,
     # 2026-09-29): a letter more than 15% off its word's weight is offset to
     # the word's median, and `lettering_min_column_mm` (when set) reaches
@@ -1579,6 +1631,129 @@ class PipelineConfig:
     # and the sew-out still owed. False is the symmetric model, byte for
     # byte what shipped before; True stays parked.
     satin_rails_follow_edge: bool | str = "envelope"
+    # Station a satin column's BODY along its OUTER rail (2026-10-06, Kent's
+    # pick after the Hotel Fremont deep dive; `.claude/memory/
+    # lettering-thickness-fremont-2026-10-06.md`). Stations are spaced along
+    # the spine, so on a bend the outer rail opens to 1.3x the pitch before
+    # `_rail_points`' refinement fires, and its inner-rail crowding clamp then
+    # refuses the insertion: Fremont's O sewed its outer rail at 0.53 mm
+    # against the pro's 0.33, and that gap is where the ragged edge Kent
+    # called "wobbly" concentrates (silhouette hair 1.62 vs the pro's 1.33).
+    # ON, a body whose outer-rail advances average over the pitch is
+    # re-stationed evenly along the outer rail by the refinement's own
+    # interpolation; the inner rail then crowds on a tight bend and
+    # `_short_stitch_guard` retracts every other inner penetration -- the
+    # professional construction (the pro's O: 22% short crosses). A straight
+    # bar is byte-identical either way (its outer rail is its spine). Built
+    # OFF on 2026-10-06 because it moves stitches on every curved satin
+    # shape, so the goldens re-capture on the flip, and the price was Kent's
+    # to see on a render first -- the Fremont O's 43 crosses become 54 (`satin_shape` direct,
+    # rail comp 0.3: outer pitch 0.50 -> 0.39), the 2.5 mm test ring 138 ->
+    # 168 stations. Tests: `tests/test_outer_rail_pitch.py`.
+    # **FLIPPED ON 2026-10-06, Kent's call, on the render and the price:**
+    # Fremont at 80 mm +1.0% stitches, trims unchanged, per-letter silhouette
+    # hair 1.49 -> 1.39 (the pro 1.21). The flip moved 19 tests, every one
+    # read and re-pinned in that PR: 12 goldens (the flat lane, stage 2 and
+    # push-comp byte-identity keys, re-captured on Linux), the lettering
+    # coverage pins (`lost_frac` / `overshoot_frac` read every short stitch's
+    # retracted end as thread inside the artwork), the MARINE junction-stack
+    # and rail-comp trims ceilings, the tip-caps end-coverage read and the
+    # shape-overrides byte-identity key. False is the pre-flip emitter,
+    # byte for byte.
+    satin_outer_rail_pitch: bool = True
+    # A join corner's members sew SQUARE to it (2026-10-06, the serif and
+    # junction fans; Kent's "start on" after the Hotel Fremont deep dive).
+    # `_split_sharp_corners` already cuts an E's arm from its hanging slab
+    # serif and the arm owns the corner, but the member's spine kept the
+    # medial axis's own bend -- an L's skeleton turns over about one
+    # half-width each side of the apex -- so the owner's last four or five
+    # crosses leaned up to 45 deg into the slab and the slab's first crosses
+    # leaned back (Fremont's E arms, the T's bar ends, the L's foot). ON,
+    # `_satin_joined` lays each member's corner end on the member's own
+    # straight line (`_straighten_member_end`: direction read over the
+    # stretch 1.5-4 half-widths from the corner, the bent samples replaced,
+    # the apex projected onto the line), so the owner's column runs square
+    # through the butting member's width to the cap and the butting member
+    # starts square under it -- the pro's construction. Built OFF the same
+    # day because the join members move on every letter with a slab or an L,
+    # so the goldens re-capture on the flip, and the render was Kent's to
+    # judge first. **FLIPPED ON 2026-10-06, Kent's call, on the renders**
+    # (`docs/renders/join-square-2026-10-06/`): Fremont at 80 mm re-planned
+    # from the same stages, stitches and trims identical (13,742 / 34), fan
+    # ends 7 -> 5 over 36 columns, the E 2 -> 0, the T's bar square across
+    # both hanging ends. False is the pre-flip joiner, byte for byte.
+    # Tests: `tests/test_join_corner_straight.py` (the behaviour tests pass
+    # the flag explicitly, so they read the same whatever this default is).
+    # **HELD OFF 2026-10-07, Kent's ruling, by its own guards:** merged with
+    # current main and run on the lettering set, ON lost one artwork
+    # element of at least 1 mm2 of the ENTHUSIAST wordmark (`tests/test_
+    # lettering_coverage_regression.py::test_no_element_of_the_wordmark_goes_
+    # unsewn`, a fixture that had never lost one) and tipped three sibling
+    # bars (that fixture's fine `lost_frac` 0.1702 / 0.17, the tip-caps end
+    # bare 10.53 / 9.5 mm2, a rail-comp mid-rail hole 1.24 / 0.55 mm2), all
+    # four green OFF on the same tree. **ON AGAIN 2026-10-07 with the apex
+    # cap, the element named (defect 60):** the S's bowl. At 80 mm
+    # (half-width 0.87 mm) a pull-comped inner bowl is a sharp reflex
+    # vertex, so the join-corner cut took each S at both bowls in BOTH
+    # arms; OFF the members' bent ends still met, ON
+    # `_straighten_member_end` projected each apex 0.80 / 0.82 mm (0.92
+    # half-widths) onto its fitted line, the ends parted and the bowl's
+    # wedge sewed bare -- one mechanism behind the element and all three
+    # bars. `_STRAIGHT_MAX_MOVE_HALVES` (0.6) keeps a member whose apex sits
+    # further off its own line than that on its pre-flip spine: a bend is
+    # not a corner. Set on the census of apex moves under the flag (p50
+    # enthusiast 0.92, Fremont 0.22, Becker 0.12 half-widths; the vertex
+    # angle was tried first and would refuse Becker's and drone's real
+    # corners too). With the cap, the seven-logo set: enthusiast is within
+    # two stitches of OFF and its four guards green; Fremont's E arms and
+    # T bar stay square (fan ends 18 -> 16 over 33 text columns either
+    # way, 10 of its 16 straightenings kept); satin bare falls on five of
+    # the six text logos against the uncapped flip (Becker 4.37 -> 2.94%,
+    # drone 3.91 -> 2.47%; Fremont +0.04 points) and trims never rise;
+    # corpus-wide the cap refuses about half the straightenings
+    # (bridge 32 of 60, gaulke 9 of 14), every one with its apex over 0.6
+    # half-widths off the line. Tests: `tests/test_join_corner_bend_cap.py`;
+    # the trail is `docs/join-square-enthusiast-2026-10-07.md`.
+    satin_join_square: bool = True
+    # A slab serif's axis is its own column, not a cap (2026-10-07, Kent's
+    # pick after the join-square flip: "T-shaped slabs: own column, not a
+    # cap"). A slab across a stem's end (a foot, a T-shaped terminal) puts
+    # its medial axis through the stem's node in BOTH directions, as two
+    # short free arms -- the same silhouette as a square cap's I-beam, which
+    # the 2026-09-19 twig rule erases. Two ways that lost the slab on Hotel
+    # Fremont at 80 mm: the T's foot halves run into the foot's corners, so
+    # the twig rule took them for an I-beam and the foot sewed as the stem's
+    # terminal fan (0.48 mm2 of its bottom millimetre bare); the N's survived
+    # the rule but meet at 144 deg, which `satin_junction_stack`'s 30 deg weld
+    # refuses, so one half fell to the stub filter and the foot sewed as a
+    # half column. ON, a pair that is square to the stem and leaves the node
+    # in opposite directions (`_slab_pair`: within 35 deg of square, at
+    # least 120 apart) is kept by `_prune_spurs` and welded by
+    # `_merge_through_junctions` whatever its turn, into the slab's own
+    # free-ended stroke; the stem stays a T's stem under it. A cap's forks
+    # (45 deg off the axis) and a corner twig beside a hanging slab (40 off
+    # square) are not pairs, so the join-square fold at the E's and T's
+    # L-corners is untouched. Fremont ON: three letters move (T, N, R), the
+    # design +34 stitches. Built OFF; the render is Kent's to judge.
+    # Tests: `tests/test_slab_serifs.py`.
+    satin_slab_serifs: bool = False
+    # Lettering as Columns (`digitizer_core/outline_cut.py`,
+    # `digitizer_core/columns.py`; the lettering-lane architecture,
+    # `docs/lettering-architecture-rd-2026-10-07.md` §5 L4/L5, Kent's pick
+    # 2026-10-07). ON, a text-tagged shape (`meta.text_candidate`) skips the
+    # skeleton satin tier: its ARTWORK outline is cut into stroke pieces at
+    # its concave corners (through-cuts, mitres, edge extensions, the
+    # second-look refinement), each piece's rails are stretches of the
+    # outline itself, and the pieces sew as Columns with the fabric's pull
+    # on the rails, the cross floor, the split comb and a centre underlay.
+    # That is the construction every commercial letter builder uses; the
+    # shipped tier casts rails from a smoothed skeleton and sews one letter
+    # as several slabs (Becker MARINE: 6-9 columns and 7-9 trims a letter,
+    # measured 2026-10-07). Built OFF: the order between a letter's columns
+    # is nearest-next (no Euler walk yet), junction overlap and short
+    # stitches are not built, and the renders are Kent's to judge first.
+    # Off, byte-identical. Tests: `tests/test_lettering_columns.py`.
+    lettering_columns: bool = False
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
@@ -2409,6 +2584,15 @@ class PipelineConfig:
     # `drone_render` reads bean +6.4% against satin +6.9%, because the gate
     # removes the crumbs before either emitter's loop floor has to.
     edge_cap: str = "bean"
+    # Whether the cap sews each stretch of the edge in the thread of the shape
+    # it stands against (Kent 2026-10-06: the bean outline on the Instagram
+    # icon did not follow the colour beside it) rather than the whole ring in
+    # the one cone that owns the most of it. Costs a colour change per extra
+    # thread the cap touches, so a gradient logo sews its cap in several
+    # blocks; stretches shorter than `stage7_sequence._CAP_PIECE_MIN_MM` fold
+    # into their neighbour so a junction never flickers. False restores the
+    # single block.
+    edge_cap_follow_adjacent: bool = True
     # What a cap whose bill clears `stage6_border.EDGE_CAP_BUDGET_PCT` (40%
     # of the artwork's own stitches) does about it. "warn" — the default and
     # the shipped behaviour — moves NO stitch: the plan is exactly the plan

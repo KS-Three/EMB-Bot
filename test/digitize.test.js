@@ -1148,6 +1148,179 @@ test("fillColumns: the tip of a holed shape gets one penetration at most, not tw
   }
 });
 
+// --- where a pass ends (2026-10-03, after the corner fix's re-measure) ---------
+//
+// The move between two runs of a shape is cut where it leaves the ground the
+// fill covers. Each tatami pass was told where the thread was, and never
+// where it had to go next: an underlay sewn by the column walk ended wherever
+// its last column ended, and when the run after it begins at a point of its
+// own -- a fill or a lattice pass the plain walk sews -- the float between
+// them was cut. 2,261 such cuts on 45,416 designs (the re-measure's own
+// drawings, option on): the most of any kind the walk could do anything about.
+// With the corner fix 388 of those designs gained a cut, 330 of the 404 here.
+//
+// A pass the plain walk sews begins where it begins, wherever the thread is.
+// So it is BUILT first, and the pass before it is told (`to`, fill.js "where
+// the walk ends"; test/fill.test.js has it bare).
+
+test("fillColumns: an underlay ends where the thread can float on to the pass after it", () => {
+  const cases = {
+    // The re-measure's own drawing. The cap preset's zigzag ended on a barb
+    // of the arrow, and the fill begins at the middle of its tail.
+    "an arrow, the cap preset's zigzag": [ring([[300, 120], [180, 240], [180, 168], [0, 168], [0, 72], [180, 72], [180, 0]]), 300, "structured_cap", null],
+    // Two lattice passes, and the fill after them.
+    "an L under terry, rows at 45": [ring([[240, 0], [240, 60], [60, 60], [60, 180], [0, 180], [0, 0]]), 240, "terry_towel", 45],
+    // No preset: the one tatami underlay, across the fill's rows.
+    "a T, no preset, rows level": [ring([[0, 0], [240, 0], [240, 60], [150, 60], [150, 240], [90, 240], [90, 60], [0, 60]]), 240, null, 0],
+    // The FIRST lattice pass into the second, which is the one the plain walk sews here.
+    "two tips under terry, rows at 135": [ring([[0, 300], [25, 0], [50, 280], [75, 0], [100, 300]]), 100, "terry_towel", 135],
+  };
+  for (const name of Object.keys(cases)) {
+    const [outer, widthPx, fabricId, angleOverride] = cases[name];
+    const fabric = fabricId ? FABRICS.getFabric(fabricId) : null, pull = fabric ? fabric.pullCompMm : 0;
+    const shape = { outer, holes: [] };
+    if (angleOverride != null) shape.angleOverride = angleOverride;
+    const d = drawn(shape, widthPx, fabric ? { fabric } : {});
+    const cuts = cutsBy(d);
+    assert.strictEqual(cuts.between, 0, name + ": " + JSON.stringify(cuts));
+    assert.strictEqual(cuts.underlay, 0, name + ": " + JSON.stringify(cuts));
+    assert.ok(cuts.fill <= 1, name + ": only center-out's own cut is left, " + JSON.stringify(cuts));
+    // and the cut was not traded for thread off the fill
+    assert.deepStrictEqual(offCoverMm(d, shape, pull, 0.15), { sewn: 0, floats: 0 }, name);
+    assert.strictEqual(floatsOffCover(d, shape, pull), 0, name);
+    // every run is still there, in the order it was
+    const kinds = d.runs.map((r) => r.kind).join(" ");
+    assert.ok(/^(underlay )+fill$/.test(kinds), name + ": " + kinds);
+  }
+});
+
+test("fillColumns: a fill the plain walk sews is the fill it was, asked where it begins or not", () => {
+  // The underlay asks where the fill begins before the fill is sewn, and the
+  // asking must not move a stitch of it: where the plain walk begins and what
+  // it sews do not turn on where the thread is. The fill of each drawing
+  // above, record for record, against the same fill with the option off --
+  // where nothing is asked -- on a shape whose plain fill the option leaves
+  // alone (no turn of it runs outside the shape).
+  const fillOf = (d) => { const r = d.runs.find((x) => x.kind === "fill"); return d.stitches.slice(r.i0, r.i1 + 1); };
+  const l = { outer: ring([[240, 0], [240, 60], [60, 60], [60, 180], [0, 180], [0, 0]]), holes: [], angleOverride: 45 };
+  for (const fabricId of [null, "structured_cap", "terry_towel", "fleece_sweatshirt"]) {
+    const extra = fabricId ? { fabric: FABRICS.getFabric(fabricId) } : {};
+    const on = drawn(l, 240, extra), off = drawn(l, 240, Object.assign({ fillColumns: false }, extra));
+    assert.deepStrictEqual(fillOf(on), fillOf(off), fabricId || "no preset");
+    assert.strictEqual(on._debug.nFill, 1);
+    assert.strictEqual(on._debug.nCenterOut, off._debug.nCenterOut, fabricId || "no preset");
+  }
+});
+
+test("fillColumns: the re-measure's two combs are one thread each -- a pass that comes out cut is walked again", () => {
+  // The two drawings on which the corner fix's re-measure showed a design
+  // GAINING cuts, and more than one. Neither is a float between two passes:
+  // the walk itself strands a column. What a walk costs turns on its first
+  // column, so a pass that comes out with a cut is walked again from the other
+  // first columns the thread can float to, and the better walk is kept: here,
+  // the one with no cut (fill.js, "which column first"; test/fill.test.js has
+  // it bare).
+  const fabric = FABRICS.getFabric("terry_towel"), pull = fabric.pullCompMm;
+  const cases = {
+    // No cut before the corner fix and three after it, all inside the second
+    // lattice pass: threads of 315, 3, 3 and 1,756 penetrations.
+    "four teeth 1.1 mm wide, rows at 61.3": [{ outer: ring([[321.56, 0], [321.56, 11.42], [70.94, 11.42], [70.94, 30.17], [321.56, 30.17], [321.56, 41.59], [70.94, 41.59], [70.94, 60.34], [321.56, 60.34], [321.56, 71.76], [70.94, 71.76], [70.94, 90.51], [321.56, 90.51], [321.56, 101.93], [0, 101.93], [0, 0]]), holes: [], angleOverride: 61.3 }, 321.56],
+    // None before and two after: one on the float into the first lattice pass,
+    // one inside it, and between them a thread of two penetrations. (Before,
+    // "no cut" was 292 mm more thread, 99 mm of it travel round the outline.)
+    "three teeth 4 mm wide pointing down": [{ outer: ring([[0, 333], [41.7, 333], [41.7, 89.78], [49.85, 89.78], [49.85, 333], [91.55000000000001, 333], [91.55000000000001, 89.78], [99.70000000000002, 89.78], [99.7, 333], [141.4, 333], [141.4, 0], [0, 0]]), holes: [] }, 141.4],
+  };
+  for (const name of Object.keys(cases)) {
+    const [shape, widthPx] = cases[name];
+    const d = drawn(shape, widthPx, { fabric });
+    assert.deepStrictEqual(cutsBy(d), { all: 0, fill: 0, underlay: 0, between: 0 }, name);
+    assert.deepStrictEqual(threadsOf(d).map((t) => t.length), [d.stitchCount], name + ": one thread");
+    // and no cut was traded for thread off the fill
+    assert.deepStrictEqual(offCoverMm(d, shape, pull, 0.15), { sewn: 0, floats: 0 }, name);
+    assert.strictEqual(floatsOffCover(d, shape, pull), 0, name);
+    assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "underlay", "underlay", "fill"], name);
+  }
+});
+
+test("fillColumns: the float into a fill is not cut where a start further off can be floated to", () => {
+  // The preset a left chest uses has no tatami underlay: an edge run, then
+  // the fill. An eight-pointed star with its rows upright. The edge run ends
+  // on the star's top point, and the corners the fill's walk could begin at
+  // are out on the side points: of the eight nearest the thread can float to
+  // none, an inside corner of the star being in the way of each. The walk
+  // began at the nearest all the same, and the builder cut. A corner further
+  // off, across the body, CAN be floated to. A walk that comes out cut is
+  // walked again from the starts it had not looked at, and the cut on the
+  // float in is one of the cuts it counts.
+  const star = { outer: ring([[150, 0], [178.5, 80.5], [256, 44], [219.5, 121.5], [300, 150], [219.5, 178.5], [256, 256], [178.5, 219.5], [150, 300], [121.5, 219.5], [44, 256], [80.5, 178.5], [0, 150], [80.5, 121.5], [44, 44], [121.5, 80.5]]), holes: [], angleOverride: 90 };
+  for (const fabricId of ["pique_knit", "canvas_tote"]) {
+    const fabric = FABRICS.getFabric(fabricId);
+    const d = drawn(star, 300, { fabric });
+    assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "fill"], fabricId);
+    assert.deepStrictEqual(cutsBy(d), { all: 0, fill: 0, underlay: 0, between: 0 }, fabricId);
+    assert.deepStrictEqual(offCoverMm(d, star, fabric.pullCompMm, 0.15), { sewn: 0, floats: 0 }, fabricId);
+    assert.strictEqual(floatsOffCover(d, star, fabric.pullCompMm), 0, fabricId);
+  }
+});
+
+test("fillColumns: a comb whose second lattice pass needs the FIFTH other first column", () => {
+  // Why a walk that comes out cut is walked from eight other first columns
+  // and not from one or two. Twelve teeth 1.5 mm wide and 30 mm long under
+  // fleece, rows at 61.3: the second lattice pass crosses every tooth on a
+  // slant. Walked from the nearest first column it is cut twelve times, and
+  // so it is from each of the next four, which all sew upward from one tooth
+  // or another. The fifth sews downward from the first column of all, and is
+  // cut once. (On a sweep of 9,084 designs four tries left 18 cuts, on three
+  // combs, that eight do not; with no limit at all not one design differs.)
+  const comb = [];
+  for (let k = 0; k < 12; k++) comb.push([0, 30 * k], [0, 30 * k + 15], [k < 11 ? 300 : 360, 30 * k + 15], ...(k < 11 ? [[300, 30 * k + 30]] : []));
+  comb.push([360, 0]);
+  const shape = { outer: ring(comb), holes: [], angleOverride: 61.3 };
+  const fabric = FABRICS.getFabric("fleece_sweatshirt");
+  const d = drawn(shape, 360, { fabric });
+  assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "underlay", "underlay", "fill"]);
+  assert.deepStrictEqual(cutsBy(d), { all: 1, fill: 0, underlay: 1, between: 0 });
+  assert.deepStrictEqual(offCoverMm(d, shape, fabric.pullCompMm, 0.15), { sewn: 0, floats: 0 });
+  assert.strictEqual(floatsOffCover(d, shape, fabric.pullCompMm), 0);
+});
+
+test("fillColumns: a pass walked again is not left with a one-stitch thread for the cut it saves", () => {
+  // What the independent re-measure of "where a pass ends" found (2026-10-04).
+  // Its maze, a corridor 1.4 mm wide wound through a block 15 mm by 22 mm,
+  // under fleece. The first lattice pass comes out with three cuts; walked
+  // again it came out with two, and between them one row: a thread of two
+  // penetrations, cut to and cut from. A stitch like that holds nothing, so
+  // the cut it "saved" bought an underlay row that is as good as not sewn.
+  // A walk is judged by its cuts and by its threads of fewer than four
+  // penetrations (fill.js, "which column first"; test/fill.test.js has it bare).
+  const maze = ring([[0, 0], [41.81, 0], [41.81, 13.69], [13.69, 13.69], [13.69, 27.84], [55.96, 27.84], [55.96, 0], [125.61, 0], [125.61, 27.84], [139.76, 27.84], [139.76, 0], [153.73, 0], [153.73, 41.53], [111.92, 41.53], [111.92, 13.69], [97.77, 13.69], [97.77, 99.54], [55.96, 99.54], [55.96, 85.85], [83.8, 85.85], [83.8, 71.7], [41.81, 71.7], [41.81, 143.86], [55.96, 143.86], [55.96, 116.02], [97.77, 116.02], [97.77, 143.86], [111.92, 143.86], [111.92, 85.85], [139.76, 85.85], [139.76, 71.7], [111.92, 71.7], [111.92, 58.01], [153.73, 58.01], [153.73, 99.54], [125.61, 99.54], [125.61, 157.55], [83.8, 157.55], [83.8, 129.71], [69.65, 129.71], [69.65, 157.55], [27.84, 157.55], [27.84, 58.01], [83.8, 58.01], [83.8, 13.69], [69.65, 13.69], [69.65, 41.53], [13.69, 41.53], [13.69, 201.87], [27.84, 201.87], [27.84, 174.03], [125.61, 174.03], [125.61, 201.87], [139.76, 201.87], [139.76, 116.02], [153.73, 116.02], [153.73, 215.56], [55.96, 215.56], [55.96, 201.87], [111.92, 201.87], [111.92, 187.72], [41.81, 187.72], [41.81, 215.56], [0, 215.56]]);
+  const fleece = FABRICS.getFabric("fleece_sweatshirt");
+  for (const angleOverride of [0, 90]) {
+    const shape = { outer: maze, holes: [], angleOverride };
+    const d = drawn(shape, 153.73, { fabric: fleece });
+    const lens = threadsOf(d).map((t) => t.length), name = "the maze, rows at " + angleOverride;
+    assert.deepStrictEqual(lens.filter((n) => n < 4), [], name + ": threads " + JSON.stringify(lens));
+    assert.strictEqual(cutsBy(d).all, 3, name + ": the first walk's three, " + JSON.stringify(lens));
+    assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "underlay", "underlay", "fill"], name);
+    assert.strictEqual(floatsOffCover(d, shape, fleece.pullCompMm), 0, name);
+  }
+  // And of two walks with as many cuts, the one with fewer such threads.
+  // Eight teeth 1 mm wide and 20 mm long under terry (the corner fix's
+  // re-measure, its `pcomb-229`): seven cuts either way, and the first
+  // lattice pass kept a walk with a thread of two penetrations in it where a
+  // later walk, cut as often, has none.
+  const comb = [];
+  for (let k = 0; k < 8; k++) comb.push([16.71 * k, 278.11], [16.71 * k + 9.58, 278.11], ...(k < 7 ? [[16.71 * k + 9.58, 72.96], [16.71 * (k + 1), 72.96]] : []));
+  comb.push([126.55, 0], [0, 0]);
+  const terry = FABRICS.getFabric("terry_towel");
+  const shape = { outer: ring(comb), holes: [] };
+  const d = drawn(shape, 126.55, { fabric: terry });
+  const lens = threadsOf(d).map((t) => t.length);
+  assert.deepStrictEqual(lens.filter((n) => n < 4), [], "eight teeth: threads " + JSON.stringify(lens));
+  assert.strictEqual(cutsBy(d).all, 7, "eight teeth: " + JSON.stringify(lens));
+  assert.strictEqual(floatsOffCover(d, shape, terry.pullCompMm), 0);
+});
+
 test("buildQualityDesign: thin solid bar goes satin, branched shape goes fill", () => {
   // thin bar 200x8 px at pxPerMm 8 → ~1mm wide final (fits 4in garment, scale>1 but still thin)
   const bar = [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 8 }, { x: 0, y: 8 }];
@@ -3456,4 +3629,355 @@ test("dedupeHoles: with ties, every lock is still laid and none of them doubles 
   assert.strictEqual(both._debug.nTies, tied._debug.nTies, "a lock for every thread end, as without the flag");
   assert.strictEqual(_lockLegs(both).length, both._debug.nTies);
   assert.strictEqual(_zeroLength(both), 0);
+});
+
+// --- cutFloats: the builder cuts where the DST writer would lay three jumps (2026-10-04) --
+//
+// A DST has no cut. dst.js writes a `trim` as three or more jump records, and
+// any needle-up move over 12.1 mm an axis as several. So a float over 24.2 mm
+// is three jump records too, and a machine set to cut at three cuts there
+// with no `trim` in the stream: no lock from `ties`, and nothing in the trim
+// count (docs/dst-float-cuts-2026-10-04.md: 109,561 of them on 8,270 Studio
+// shapes with every flag absent). `cutFloats: true` puts the `trim` in the
+// stream wherever the writer would lay three. It moves no stitch. Built OFF.
+const _cfDst = require("../src/dst.js");
+const { decodeDST: _cfDecode } = require("../src/dstimport.js");
+const _cfPts = (a) => a.map(([x, y]) => ({ x, y }));
+const _cfRun = (shape, widthMm, extra) => DG.buildQualityDesign(
+  [{ rgb: [0, 0, 0], shapes: [Object.assign({ holes: [] }, shape)] }],
+  Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: widthMm, darkOnTop: false }, extra));
+// Two prongs on a bar, sewn in rows: the plain walk floats from one prong to
+// the other across the gap on every row. `gap` in px, ten to the millimetre.
+const _cfProngs = (gap, extra) => _cfRun(
+  { outer: _cfPts([[0, 0], [150, 0], [150, 150], [150 + gap, 150], [150 + gap, 0], [300 + gap, 0], [300 + gap, 200], [0, 200]]), tierOverride: "fill", angleOverride: 0 },
+  (300 + gap) / 10, Object.assign({ underlay: false }, extra));
+// A bar 60 x 15 mm with its underlay: the edge run ends a bar's length from
+// where the next pass begins.
+const _cfBar = (extra) => _cfRun({ outer: _cfPts([[0, 0], [600, 0], [600, 150], [0, 150]]), tierOverride: "fill" }, 60, Object.assign({ underlay: true }, extra));
+// A four-point star 20 mm across, which the builder sews as satin: a column
+// floats to the far arm and sews back where it was.
+const _cfStar = (extra) => {
+  const star = [];
+  for (let i = 0; i < 8; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 4, r = i % 2 ? 15 : 100;
+    star.push({ x: Math.round((100 + r * Math.cos(a)) * 100) / 100, y: Math.round((100 + r * Math.sin(a)) * 100) / 100 });
+  }
+  return _cfRun({ outer: star }, 20, Object.assign({ underlay: false }, extra));
+};
+const _cfCases = [
+  ["a fill across a gap", (x) => _cfProngs(300, x)],
+  ["an underlay and its fill", _cfBar],
+  ["a satin star", _cfStar],
+  ["a fill across a gap, column walk", (x) => _cfProngs(300, Object.assign({ fillColumns: true }, x))],
+  ["a hole, two colours, three shapes", _tieShapes],
+];
+// Every float with the thread on: the jump records between two stitches, and
+// how many records the writer lays in a row for it. The move to the stitch
+// after a jump is written as jump records up to its last.
+const _cfFloats = (st) => {
+  const out = [];
+  for (let i = 1; i < st.length; i++) {
+    if (st[i].type !== "jump" || st[i - 1].type !== "stitch") continue;
+    let j = i, n = 0;
+    for (; j < st.length && st[j].type === "jump"; j++) n += _cfDst.jumpRecords(st[j].x - st[j - 1].x, st[j].y - st[j - 1].y);
+    if (!st[j] || st[j].type !== "stitch") continue;
+    out.push({ i0: i, i1: j - 1, records: n + _cfDst.jumpRecords(st[j].x - st[j - 1].x, st[j].y - st[j - 1].y) - 1 });
+  }
+  return out;
+};
+const _cfLong = (d) => _cfFloats(d.stitches).filter((f) => f.records >= 3);
+const _cfFileCuts = (d) => _cfDecode(_cfDst.encodeDST(d)).trimCount;
+
+test("cutFloats: OFF by default, and the flag off is byte-identical to omitting it", () => {
+  for (const [name, build] of _cfCases) {
+    const omitted = build(), off = build({ cutFloats: false });
+    assert.strictEqual(_fingerprint(off), _fingerprint(omitted), name);
+    assert.deepStrictEqual(off.runs, omitted.runs, name);
+  }
+  assert.strictEqual(_cfLong(_cfProngs(300)).length, 100, "fixture: every row floats 30 mm across the gap, and the flag off leaves them");
+});
+
+test("cutFloats: ON, no float is left that the writer lays as three jump records", () => {
+  for (const [name, build] of _cfCases.slice(0, 3)) assert.ok(_cfLong(build()).length > 0, `fixture: ${name} has one without the flag`);
+  for (const [name, build] of _cfCases) assert.strictEqual(_cfLong(build({ cutFloats: true })).length, 0, name);
+});
+
+test("cutFloats: the stream is the one without it with the cuts put in, and nothing else moves", () => {
+  // A cut is a jump turned into a trim where it stands, or a trim on the spot
+  // before a jump. Every other record is the same one, in the same place.
+  for (const [name, build] of _cfCases) {
+    const off = build(), on = build({ cutFloats: true });
+    const A = off.stitches, B = on.stitches;
+    let i = 0, k = 0, inPlace = 0, before = 0;
+    while (i < A.length || k < B.length) {
+      const a = A[i], b = B[k];
+      if (a && b && a.type === "jump" && b.type === "trim" && i > 0 && _same(b, A[i - 1]) && B[k + 1] && B[k + 1].type === "jump" && _same(B[k + 1], a)) { before++; k++; continue; }
+      if (a && b && a.type === "jump" && b.type === "trim" && _same(a, b)) { inPlace++; i++; k++; continue; }
+      if (a && b && a.type === b.type && _same(a, b)) { i++; k++; continue; }
+      assert.fail(`${name}: the streams part at ${i} and ${k}: ${_show(A.slice(Math.max(0, i - 1), i + 2))} | ${_show(B.slice(Math.max(0, k - 1), k + 3))}`);
+    }
+    assert.strictEqual(inPlace + before, _cfLong(off).length, `${name}: one cut for each such float`);
+    assert.strictEqual(on._debug.nTrims, off._debug.nTrims + inPlace + before, name);
+    assert.strictEqual(_count(on, "trim"), on._debug.nTrims, name);
+    assert.strictEqual(on.stitchCount, off.stitchCount, name);
+    assert.deepStrictEqual([on.widthMM, on.heightMM], [off.widthMM, off.heightMM], name);
+  }
+});
+
+test("cutFloats: every run still has its span, opening on its own jump and holding the same stitches", () => {
+  const sewn = (d, r) => d.stitches.slice(r.i0, r.i1 + 1).filter((q) => q.type === "stitch").map((q) => `${q.x},${q.y}`).join(" ");
+  for (const [name, build] of _cfCases) {
+    const off = build(), on = build({ cutFloats: true });
+    assert.strictEqual(on.runs.length, off.runs.length, name);
+    on.runs.forEach((r, n) => {
+      const was = off.runs[n];
+      assert.deepStrictEqual([r.kind, r.shape, r.role, r.block], [was.kind, was.shape, was.role, was.block], `${name}: run ${n}`);
+      assert.strictEqual(on.stitches[r.i0].type, "jump", `${name}: run ${n} opens on its jump`);
+      assert.ok(_same(on.stitches[r.i0], off.stitches[was.i0]), `${name}: run ${n} opens where it did`);
+      assert.strictEqual(sewn(on, r), sewn(off, was), `${name}: run ${n} holds the stitches it held`);
+    });
+  }
+});
+
+test("cutFloats: a float inside a run becomes the cut where it stands", () => {
+  const off = _cfProngs(300), on = _cfProngs(300, { cutFloats: true });
+  assert.strictEqual(_show(off.stitches.slice(5, 8)), "s150,0 j-150,0 s-187,0", "fixture: 30 mm across the gap, three jump records");
+  assert.strictEqual(_cfDst.jumpRecords(-300, 0), 3);
+  assert.strictEqual(_show(on.stitches.slice(5, 8)), "s150,0 t-150,0 s-187,0");
+  assert.strictEqual(on.stitches.length, off.stitches.length, "no record is added inside a run");
+  assert.strictEqual(_count(on, "trim"), _count(off, "trim") + 100);
+});
+
+test("cutFloats: at a run's opening jump the cut goes on the spot before it, outside the run", () => {
+  const off = _cfBar(), on = _cfBar({ cutFloats: true });
+  assert.strictEqual(_show(off.stitches.slice(75, 78)), "s-298,64 j300,75 s300,75", "fixture: the underlay's edge run ends 60 mm from where the next pass opens");
+  assert.strictEqual(off.runs.filter((r) => r.i0 === 76).length, 1, "fixture: that jump opens a run");
+  assert.strictEqual(_show(on.stitches.slice(75, 79)), "s-298,64 t-298,64 j300,75 s300,75");
+  assert.strictEqual(on.runs.filter((r) => r.i0 === 77).length, 1, "the run opens on its jump, one record on");
+  assert.ok(!on.runs.some((r) => r.i0 <= 76 && r.i1 >= 76), "and the cut is in no run");
+  assert.strictEqual(on.stitches.length, off.stitches.length + 1);
+});
+
+test("cutFloats: a float of two jump records is left a float", () => {
+  const off = _cfProngs(200), on = _cfProngs(200, { cutFloats: true });
+  assert.strictEqual(_show(off.stitches.slice(5, 8)), "s100,0 j-100,0 s-137,0", "fixture: 20 mm across the gap");
+  assert.strictEqual(_cfFloats(off.stitches).filter((f) => f.records === 2).length, 100, "fixture: two jump records each");
+  assert.strictEqual(_fingerprint(on), _fingerprint(off));
+});
+
+test("cutFloats: the move to the stitch after the float counts, as the writer lays it in jumps", () => {
+  // The column floats 19 mm to the far arm, two jump records, and the stitch
+  // after it is 20 mm back the other way: the writer lays that move as a jump
+  // record and a stitch. Three jumps in a row.
+  const off = _cfStar(), on = _cfStar({ cutFloats: true });
+  assert.strictEqual(_show(off.stitches.slice(92, 95)), "s-93,2 j98,0 s-98,0", "fixture");
+  assert.deepStrictEqual([_cfDst.jumpRecords(98 + 93, 0 - 2), _cfDst.jumpRecords(-98 - 98, 0)], [2, 2], "fixture: two records out, and two back of which the last is the stitch");
+  assert.strictEqual(_show(on.stitches.slice(92, 95)), "s-93,2 t98,0 s-98,0");
+  // one record out and two back is two jumps in a row: left
+  assert.strictEqual(_show(off.stitches.slice(236, 239)), "s-2,-93 j98,0 s-98,0", "fixture");
+  assert.strictEqual(_show(on.stitches.slice(236, 239)), "s-2,-93 j98,0 s-98,0");
+  assert.strictEqual(_count(on, "trim") - _count(off, "trim"), 3);
+});
+
+test("cutFloats: nothing is cut where no thread is attached", () => {
+  // The file's first move, the move after a colour change and the move after
+  // the builder's own cut are each 30 mm or more, and none has thread on it.
+  const square = (x0) => ({ outer: _cfPts([[x0, 0], [x0 + 100, 0], [x0 + 100, 100], [x0, 100]]), holes: [], tierOverride: "fill" });
+  const build = (regions) => (extra) => DG.buildQualityDesign(regions, Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: 60, darkOnTop: false, underlay: false }, extra));
+  const colours = build([{ rgb: [0, 0, 0], shapes: [square(0)] }, { rgb: [200, 0, 0], shapes: [square(500)] }]);
+  const shapes = build([{ rgb: [0, 0, 0], shapes: [square(0), square(500)] }]);
+  const k = colours().stitches.findIndex((s) => s.type === "color");
+  assert.strictEqual(_show(colours().stitches.slice(k - 2, k + 3)), "s-200,-49 t-200,-49 c-200,-49 j200,50 s200,50", "fixture: 40 mm after a colour change");
+  const t = shapes().stitches.findIndex((s) => s.type === "trim");
+  assert.strictEqual(_show(shapes().stitches.slice(t - 1, t + 3)), "s-200,-49 t-200,-49 j200,50 s200,50", "fixture: 40 mm after the builder's own cut");
+  for (const design of [colours, shapes]) {
+    const off = design(), on = design({ cutFloats: true });
+    assert.strictEqual(_show(off.stitches.slice(0, 2)), "j-300,50 s-300,50", "fixture: the file's first move is three jump records");
+    assert.strictEqual(_fingerprint(on), _fingerprint(off));
+  }
+});
+
+test("cutFloats: the cuts a DST reader finds are the ones it found before", () => {
+  // The machine already cut at each of these floats. Written and read back,
+  // the file has the cuts it had; what changes is that the stream says so.
+  for (const [name, build] of _cfCases) {
+    const off = build(), on = build({ cutFloats: true });
+    assert.strictEqual(_cfFileCuts(on), _cfFileCuts(off), name);
+  }
+  const off = _cfProngs(300), on = _cfProngs(300, { cutFloats: true });
+  assert.deepStrictEqual([_count(off, "trim"), _cfFileCuts(off)], [1, 102], "fixture: one cut asked for, 102 in the file");
+  assert.deepStrictEqual([_count(on, "trim"), _cfFileCuts(on)], [101, 102], "all but the file's first move are in the stream now");
+});
+
+test("cutFloats: with ties, the thread is locked either side of each cut", () => {
+  const tied = _cfProngs(300, { ties: true }), both = _cfProngs(300, { ties: true, cutFloats: true });
+  const threads = _threads(both);
+  assert.strictEqual(threads.length, _threads(tied).length + 100, "a hundred more threads");
+  for (const [ti, t] of threads.entries()) {
+    const ends = _sewnEnds(t);
+    assert.ok(ends, `thread ${ti} sews nothing`);
+    const a = t.slice(ends.first, ends.first + 5), z = t.slice(ends.last - 4, ends.last + 1);
+    assert.ok(_same(a[0], a[2]) && _same(a[2], a[4]) && _same(a[1], a[3]), `thread ${ti} does not open with a lock`);
+    assert.ok(_same(z[0], z[2]) && _same(z[2], z[4]) && _same(z[1], z[3]), `thread ${ti} does not close with a lock`);
+  }
+  assert.strictEqual(both._debug.nTies, 2 * threads.length);
+  assert.strictEqual(_cfLong(both).length, 0, "and the locks make no new float");
+});
+
+// `cutLongFloats` on streams written out by hand: the cases no small design
+// makes on its own. It changes `stitches` and `spans` in place and returns
+// how many cuts it made.
+const _cfHand = (text, spans) => {
+  const stitches = text.split(" ").map((w) => { const [x, y] = w.slice(1).split(",").map(Number); return _rec({ s: "stitch", j: "jump", t: "trim", c: "color", e: "end" }[w[0]], x, y); });
+  const made = DG.cutLongFloats(stitches, spans || []);
+  return { made, text: _show(stitches), spans };
+};
+
+test("cutLongFloats: a float of several jumps is cut at its first", () => {
+  // three jump records of 10 mm each: one record apiece, three in a row
+  assert.deepStrictEqual(_cfHand("s0,0 j100,0 j200,0 j300,0 s300,0"), { made: 1, text: "s0,0 t100,0 j200,0 j300,0 s300,0", spans: undefined });
+  // two of them, and a stitch on the spot: two in a row, left
+  assert.strictEqual(_cfHand("s0,0 j100,0 j200,0 s200,0").text, "s0,0 j100,0 j200,0 s200,0");
+  // two of them, and a stitch 13 mm on: its move is a jump record and a stitch
+  assert.strictEqual(_cfHand("s0,0 j100,0 j200,0 s330,0").text, "s0,0 t100,0 j200,0 s330,0");
+  // a jump that goes nowhere is a record all the same
+  assert.strictEqual(_cfHand("s0,0 j0,0 j0,0 j0,0 s0,0").text, "s0,0 t0,0 j0,0 j0,0 s0,0");
+});
+
+test("cutLongFloats: only a float between two stitches of one thread is cut", () => {
+  for (const left of [
+    "j300,0 s300,0 s310,0",                 // the stream's first move
+    "s0,0 t0,0 j300,0 s300,0",              // after a cut
+    "s0,0 t0,0 c0,0 j300,0 s300,0",         // after a colour change
+    "s0,0 j300,0 t300,0 s300,0",            // a float that ends in a cut already
+    "s0,0 j300,0 c300,0 j300,0 s300,0",     // or in a colour change
+    "s0,0 s10,0 j300,0",                    // or at the stream's end
+    "s0,0 j300,0 e0,0",
+  ]) assert.deepStrictEqual([_cfHand(left).made, _cfHand(left).text], [0, left]);
+  // and each float is asked on its own: two of them, one long
+  assert.strictEqual(_cfHand("s0,0 j200,0 s200,0 j500,0 s500,0 s510,0").text, "s0,0 j200,0 s200,0 t500,0 s500,0 s510,0");
+});
+
+test("cutLongFloats: at a run's opening jump the cut goes in before it and the spans after it move up", () => {
+  const spans = [{ i0: 0, i1: 2, kind: "underlay" }, { i0: 3, i1: 5, kind: "fill" }, { i0: 6, i1: 8, kind: "run" }];
+  const got = _cfHand("j0,0 s0,0 s10,0 j300,0 s300,0 s310,0 j320,0 s320,0 s330,0", spans);
+  assert.strictEqual(got.text, "j0,0 s0,0 s10,0 t10,0 j300,0 s300,0 s310,0 j320,0 s320,0 s330,0");
+  assert.strictEqual(got.made, 1);
+  assert.deepStrictEqual(spans.map((r) => [r.i0, r.i1]), [[0, 2], [4, 6], [7, 9]], "the cut at 3 is in no span");
+  // a float inside a span that runs on into the next span's opening jump: cut where the float starts
+  const two = [{ i0: 0, i1: 3, kind: "fill" }, { i0: 4, i1: 6, kind: "fill" }];
+  const run = _cfHand("j0,0 s0,0 s10,0 j150,0 j300,0 s300,0 s310,0", two);
+  assert.strictEqual(run.text, "j0,0 s0,0 s10,0 t150,0 j300,0 s300,0 s310,0");
+  assert.deepStrictEqual(two.map((r) => [r.i0, r.i1]), [[0, 3], [4, 6]], "no record went in, so no span moves");
+});
+
+test("cutLongFloats: a stream with nothing to cut is left the very array it was", () => {
+  const stitches = [_rec("jump", 0, 0), _rec("stitch", 0, 0), _rec("jump", 200, 0), _rec("stitch", 200, 0)], first = stitches[0];
+  assert.strictEqual(DG.cutLongFloats(stitches, []), 0);
+  assert.strictEqual(stitches.length, 4);
+  assert.strictEqual(stitches[0], first);
+});
+
+// --- cutFloats: what the independent re-measure's mutants got past (2026-10-06) --
+//
+// Twelve edits to the rule passed every test above: the rule narrowed to some
+// builds and not others, a long float or a far stitch left out, a record with
+// a key too many, the lettering builder taught the flag. Each has a test here
+// that the edit fails. And the claim the re-measure broke is pinned as it
+// really is: in the DST the stitches are the same, but a float of one or two
+// jump records that becomes the `trim` is laid as three.
+const _cfParse = (text) => text.split(" ").map((w) => { const [x, y] = w.slice(1).split(",").map(Number); return _rec({ s: "stitch", j: "jump", t: "trim", c: "color", e: "end" }[w[0]], x, y); });
+const _cfBarMm = (wMm, hMm, extra) => DG.buildQualityDesign(
+  [{ rgb: [0, 0, 0], shapes: [{ outer: _cfPts([[0, 0], [wMm * 10, 0], [wMm * 10, hMm * 10], [0, hMm * 10]]), holes: [], tierOverride: "fill" }] }],
+  Object.assign({ garment: { id: "full_back", widthIn: 12, heightIn: 12 }, pxPerMm: 10, targetWidthMm: wMm, darkOnTop: false, underlay: true }, extra));
+// Built without the flag the design has such floats; with it, none, and one more cut for each.
+const _cfBothWays = (build, name) => {
+  const off = build({}), on = build({ cutFloats: true });
+  assert.ok(_cfLong(off).length > 0, `fixture: ${name} has such a float without the flag`);
+  assert.strictEqual(_cfLong(on).length, 0, `${name}: a float is left`);
+  assert.strictEqual(on._debug.nTrims, off._debug.nTrims + _cfLong(off).length, name);
+};
+// The DST's records, read from the file: where each lands and whether it is a jump.
+const _cfFileRecords = (d) => {
+  const bytes = _cfDst.encodeDST(d), out = [];
+  const bit = (b, m, v) => (b & m ? v : 0);
+  let x = 0, y = 0;
+  for (let i = 512; i + 2 < bytes.length; i += 3) {
+    const b0 = bytes[i], b1 = bytes[i + 1], b2 = bytes[i + 2];
+    if ((b2 & 0xf3) === 0xf3) break;
+    x += bit(b0, 0x01, 1) - bit(b0, 0x02, 1) + bit(b0, 0x04, 9) - bit(b0, 0x08, 9) + bit(b1, 0x01, 3) - bit(b1, 0x02, 3) + bit(b1, 0x04, 27) - bit(b1, 0x08, 27) + bit(b2, 0x04, 81) - bit(b2, 0x08, 81);
+    y += bit(b0, 0x80, 1) - bit(b0, 0x40, 1) + bit(b0, 0x20, 9) - bit(b0, 0x10, 9) + bit(b1, 0x80, 3) - bit(b1, 0x40, 3) + bit(b1, 0x20, 27) - bit(b1, 0x10, 27) + bit(b2, 0x20, 81) - bit(b2, 0x10, 81);
+    out.push({ x, y, jump: (b2 & 0xc3) === 0x83 });
+  }
+  return out;
+};
+
+test("cutFloats: it cuts whatever else is asked of the build", () => {
+  _cfBothWays((x) => _cfBarMm(60, 15, Object.assign({ fillColumns: true }, x)), "the column walk");
+  // a bar 120 x 40 mm with a hole 35 mm wide, rows along it, under a fabric preset
+  _cfBothWays((x) => DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: _cfPts([[0, 0], [1200, 0], [1200, 400], [0, 400]]), holes: [_cfPts([[400, 100], [750, 100], [750, 300], [400, 300]])], angleOverride: 0 }] }],
+    Object.assign({ garment: { id: "full_back", widthIn: 12, heightIn: 12 }, pxPerMm: 10, targetWidthMm: 120, darkOnTop: false, underlay: true, fabric: FABRICS.getFabric("pique_knit") }, x)), "a fabric preset");
+  _cfBothWays((x) => _cfBarMm(60, 15, Object.assign({ garment: { id: "hat_front", widthIn: 5, heightIn: 2.25 } }, x)), "a cap");
+  _cfBothWays((x) => _cfBarMm(60, 15, Object.assign({ outline: true }, x)), "a finishing outline");
+  assert.ok(_cfBarMm(100, 100).stitches.length > 10000, "fixture: a design of over 10,000 records");
+  _cfBothWays((x) => _cfBarMm(100, 100, x), "a design of over 10,000 records");
+});
+
+test("cutFloats: a float of ten jump records and more is cut like any other", () => {
+  const most = Math.max(..._cfFloats(_cfBarMm(150, 15).stitches).map((f) => f.records));
+  assert.ok(most >= 10, `fixture: a float of ten jump records, got ${most}`);
+  _cfBothWays((x) => _cfBarMm(150, 15, x), "a 150 mm bar");
+});
+
+test("cutFloats: the caller's options are left as they were, and work twice", () => {
+  const o = { garment: { id: "full_back", widthIn: 12, heightIn: 12 }, pxPerMm: 10, targetWidthMm: 60, darkOnTop: false, underlay: true, cutFloats: true };
+  const was = JSON.stringify(o);
+  const regions = () => [{ rgb: [0, 0, 0], shapes: [{ outer: _cfPts([[0, 0], [600, 0], [600, 150], [0, 150]]), holes: [], tierOverride: "fill" }] }];
+  const a = DG.buildQualityDesign(regions(), o), b = DG.buildQualityDesign(regions(), o);
+  assert.strictEqual(JSON.stringify(o), was);
+  assert.strictEqual(_fingerprint(b), _fingerprint(a));
+  assert.strictEqual(_cfLong(b).length, 0);
+});
+
+test("cutFloats: the lettering builder does not read it, even where it has such a float", () => {
+  // Lettering cuts every hop over `trimAtMm` itself, so it has no such float
+  // unless that is set past 24.2 mm. Given one, the flag still does nothing
+  // there: the lettering builder has no such rule.
+  const o = { garment: { id: "full_back", widthIn: 12, heightIn: 12 }, pxPerMm: 8, targetWidthMm: 250, trimAtMm: 1000 };
+  const off = DG.buildLetteringDesign(_tieFont(), "I I", o), on = DG.buildLetteringDesign(_tieFont(), "I I", Object.assign({}, o, { cutFloats: true }));
+  assert.ok(_cfLong(off).length > 0, "fixture: lettering with a float of three jump records");
+  assert.deepStrictEqual(on, off);
+});
+
+test("cutLongFloats: a float of five jumps is cut once, and the stitch after may be any distance off", () => {
+  let got = _cfHand("s0,0 j100,0 j200,0 j300,0 j400,0 s400,0");
+  assert.deepStrictEqual([got.made, got.text], [1, "s0,0 t100,0 j200,0 j300,0 j400,0 s400,0"]);
+  // one jump record, then 39 mm to the stitch: three jump records and the stitch
+  got = _cfHand("s0,0 j10,0 s400,0");
+  assert.deepStrictEqual([got.made, got.text], [1, "s0,0 t10,0 s400,0"]);
+});
+
+test("cutLongFloats: a new trim is a plain record, x y type and nothing more", () => {
+  const stitches = _cfParse("j0,0 s0,0 s10,0 j300,0 s300,0 s310,0 j600,0 s640,0");
+  DG.cutLongFloats(stitches, [{ i0: 0, i1: 2 }, { i0: 3, i1: 7 }]);
+  assert.deepStrictEqual(stitches[3], { x: 10, y: 0, type: "trim" }, "the one put in before a run's opening jump");
+  assert.deepStrictEqual(stitches[7], { x: 600, y: 0, type: "trim" }, "the jump inside a run, turned");
+  assert.ok(_cfBar({ cutFloats: true }).stitches.every((s) => Object.keys(s).join() === "x,y,type"));
+});
+
+test("cutFloats: in the DST every stitch is where it was, and a short float made the trim is laid as three records", () => {
+  // The star's column floats two jump records out and sews a jump record and
+  // a stitch back. As a `trim` the writer lays the float as three records, so
+  // the frame stops at thirds of the same line and not at its half. Every
+  // stitch record lands where it did; the file is three jump records longer.
+  const off = _cfFileRecords(_cfStar()), on = _cfFileRecords(_cfStar({ cutFloats: true }));
+  const sewn = (recs) => recs.filter((r) => !r.jump).map((r) => `${r.x},${r.y}`).join(" ");
+  assert.strictEqual(sewn(on), sewn(off));
+  assert.strictEqual(on.length - off.length, 3, "three floats of two records, each laid as three");
+  const stops = (recs) => new Set(recs.filter((r) => r.jump).map((r) => `${r.x},${r.y}`));
+  const onlyOn = [...stops(on)].filter((p) => !stops(off).has(p)), onlyOff = [...stops(off)].filter((p) => !stops(on).has(p));
+  assert.deepStrictEqual([onlyOn.length, onlyOff.length], [6, 3], "the frame stops at thirds where it stopped at the half");
+  // a float that was three records already is the same bytes as a trim: the prongs' file does not change
+  assert.deepStrictEqual(_cfFileRecords(_cfProngs(300, { cutFloats: true })), _cfFileRecords(_cfProngs(300)));
 });

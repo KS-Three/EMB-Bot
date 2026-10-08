@@ -122,6 +122,50 @@ export function buildLongFixture() {
   };
 }
 
+// A design whose over-length moves are all TRAVEL: each ends on a stitch that
+// follows a jump, a cut, a colour change or the start of the file, and lies
+// more than one record from where the needle stands.
+//
+// The `long` fixture above keeps its travel-in at zero length, and its comment
+// said both encoders "must keep splitting that as jumps". exp.js never did:
+// it had no chain rule until 2026-10-07 and split EVERY stitch record into
+// stitches, so each of these four moves put the needle down along the way (17
+// stitches read back from an 8-stitch design). Nothing compared the three
+// files on such a move, because no fixture had one. This one does: the first
+// record is a stitch 50 mm from the origin (a stitch file imported and
+// placed), then a stitch 20 mm on from where a float landed (the shape tool's
+// satin), 40 mm from a cut on the spot, and 36 mm from a colour change (two
+// elements of one project). No two stitches are more than a record apart, so
+// a reader must see exactly the design's own.
+export function buildTravelFixture() {
+  const s = [];
+  s.push({ x: -400, y: 300, type: "stitch" });
+  s.push({ x: -370, y: 300, type: "stitch" });
+  s.push({ x: -170, y: 280, type: "jump" });
+  s.push({ x: 30, y: 260, type: "stitch" });
+  s.push({ x: 60, y: 260, type: "stitch" });
+  s.push({ x: 60, y: 260, type: "trim" });
+  s.push({ x: 60, y: -140, type: "stitch" });
+  s.push({ x: 90, y: -140, type: "stitch" });
+  s.push({ x: 90, y: -140, type: "trim" });
+  s.push({ x: 90, y: -140, type: "color" });
+  s.push({ x: 440, y: -40, type: "stitch" });
+  s.push({ x: 440, y: -10, type: "stitch" });
+  s.push({ x: 440, y: -10, type: "end" });
+  return {
+    label: "CROSSTRAVEL",
+    stitches: s,
+    colors: [
+      { r: 200, g: 30, b: 30, name: "Red" },
+      { r: 30, g: 60, b: 200, name: "Blue" },
+    ],
+    widthMM: 84,
+    heightMM: 44,
+    stitchCount: s.filter((t) => (t.type || "stitch") === "stitch").length,
+    colorCount: 2,
+  };
+}
+
 // The longest segment a reader sees SEWN — consecutive needle-down records,
 // with any other command breaking the chain. This is what says whether a
 // too-long move was laid as thread or travelled over.
@@ -246,6 +290,7 @@ export function runCrossval({ python = resolvePython(), keepDir = null } = {}) {
     full: buildFixture({ withTrim: true }),
     notrim: buildFixture({ withTrim: false }),
     long: buildLongFixture(),
+    travel: buildTravelFixture(),
   };
   const files = [];
   for (const [variant, design] of Object.entries(fixtures)) {

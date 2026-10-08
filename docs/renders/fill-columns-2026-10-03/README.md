@@ -122,15 +122,18 @@ straight distance if that is more. Past it the thread is cut.
 | 2,025 square holes of 1.2 mm, 100 mm | no fabric | 30° | 1 | 0 | +19.1% | 212 ms | 2075 ms |
 | 2,025 square holes of 1.2 mm, 100 mm | pique_knit | the engine's own angle | 1 | 4 | +20.0% | 40 ms | 1221 ms |
 | 2,025 square holes of 1.2 mm, 100 mm | structured_cap | 30° | 1 | 2 | +38.8% | 49 ms | 1580 ms |
-| 2,025 square holes of 1.2 mm, 100 mm | terry_towel | the engine's own angle | 1 | 28 | +23.1% | 51 ms | 920 ms |
+| 2,025 square holes of 1.2 mm, 100 mm | terry_towel | the engine's own angle | 1 | 19 | +22.7% | 51 ms | 920 ms |
 | 2,025 square holes of 1.2 mm, 100 mm | terry_towel | 30° | 1 | 8 | +29.8% | 71 ms | 2728 ms |
 
 *(measured 2026-10-03 — the same tool prints all 32 rows, of which these are
 fourteen. On the 36-hole and 196-hole shapes every one of the 24 rows has 0
 in "cuts on". Times are one run on a laptop. The last shape is a stress
 test, not a design. Cuts and stitches are as re-measured after "A corner on
-a scanline", below: 19 of the 32 rows moved in stitches and one in cuts. The
-two time columns are the run before it, on a quieter laptop.)*
+a scanline", below: 19 of the 32 rows moved in stitches and one in cuts. One
+row moved again with "Where a pass ends", at the foot of this page: the
+stress shape under terry at the engine's own angle, 28 cuts → 19; the other
+31 rows are what they were. The two time columns are the run before both, on
+a quieter laptop; what the change does to them is given there.)*
 
 What follows is the third audit's count on its own sweep *(measured
 2026-10-03 — 9,869 sound designs, re-checked on this build)*. It is the
@@ -540,5 +543,382 @@ move of no length it meets (12,344), and has its own short stitches (4,231).
 
 *(measured 2026-10-03 — the fixed engine, each record traced to the run it
 came from)*
+
+## Where a pass ends, and which column it begins with
+
+What the corner fix's re-measure left open: "a walk whose cut count turns on
+its first column", and 330 of the 404 cuts it gained, on the float into a
+plain walk.
+
+**Checked before anything was changed.** Its drawings give on `main` what it
+said they give: the arrow 1 cut → 2, the four teeth 0 → 3, the three teeth
+0 → 2. Its 45,416 designs, rebuilt here with its generator and read with its
+reader and with one of mine: 15,125 cuts before the corner fix and 14,190 on
+`main` (its 14,249, less 59 on its bullseye, which the island fix has moved
+since); 388 designs with more cuts, 404 cuts, 13 of them two to four; none
+under the four edge-run presets, none with underlay off. My reader puts the
+404 where its did, but for six: 330 on the float into a plain walk, 34 inside
+a column walk, 40 on the float into one (it had 34, and 6 into an edge run).
+
+**Where `main`'s cuts are**, option on, on those 45,416: by the run before
+the cut and the run after it.
+
+| the cut is | on `main` | now |
+|---|---|---|
+| inside a plain walk (center-out's own) | 7,298 | 7,298 |
+| on the float from an edge run into a plain walk | 2,342 | 2,342 |
+| on the float from a column walk into a plain walk | 2,261 | **13** |
+| inside a column walk | 902 | **378** |
+| between two shapes, or at a colour change | 834 | 834 |
+| between two edge runs | 182 | 182 |
+| on the float from an edge run into a column walk | 152 | **48** |
+| on the float from a plain walk into a plain walk | 129 | 129 |
+| on the float from a column walk into a column walk | 90 | **22** |
+| all | 14,190 | **11,246** |
+
+The third row is the one nothing asked about. A pass was told where the
+thread was and never where it had to go next, so an underlay the column walk
+sewed ended wherever its last column did, and the float from there to a fill
+that begins at a point of its own was cut.
+
+Two things are built, both behind the option.
+
+**1. A pass is told where the thread goes next.** A pass the plain walk sews
+begins where it begins, wherever the thread is, and is the same pass built
+first or last. So the builder builds it FIRST and tells the pass before it
+where it begins: the fill before its underlay, the second lattice pass before
+the first. The column walk then makes the float out its last move:
+
+- **It leaves its last column by a corner the thread can float on from.**
+  The other three corners cost a run laid under that column's own rows, as
+  they do for any column.
+- **Where no corner of that column will do, the thread travels on**: sewn,
+  through the columns' corners, to the nearest corner that will, inside the
+  budget every way round has. That travel lies over the underlay and under
+  the fill. Only an underlay is told where the thread goes; a fill is not.
+
+**2. A walk that comes out cut is walked again.** The walk takes the nearest
+column it can reach and looks one move ahead; what it costs turns on its
+first column, and nothing in the rule says which is the better one. So a
+walk with a cut (inside it, on the float in, or on the float out) is walked
+again from each of the other first columns the thread can float to, nearest
+first, eight at most, and the better walk is kept. It looks past the eight
+nearest starts, which the first walk does not. A walk with no cut is the
+walk it was.
+
+**Better is by two counts:** a walk's cuts, and its threads of fewer than
+four penetrations between two of them. Such a thread is a row or two with a
+cut at each end. It holds nothing, so the row is as good as not sewn and the
+two cuts that fence it bought nothing. A later walk takes the place of the
+best so far if it has fewer cuts and no more such threads, or as many cuts
+and fewer of them; on a tie the first stands. (The second count came from
+this section's own re-measure, below: by cuts alone a walk could save a cut
+by stranding one more row.)
+
+| option on, 45,416 designs | `main` | 1 alone | 1 and 2 |
+|---|---|---|---|
+| cuts | 14,190 | 11,942 | **11,246** |
+| designs with fewer cuts than on `main` | | 2,230 | **2,520** |
+| designs with more | | 0 | **0** |
+| threads of fewer than four penetrations | 306, on 121 designs | 298 | **21, on 21** |
+| threads that never leave one hole | 17 | 17 | 14 |
+| stitches | 54,927,142 | 54,938,773 | 54,940,111 |
+| sewn thread | 136,667 m | 136,699 m | 136,702 m |
+| floats | 89,763 | 92,011 | 92,183 |
+| float length | 740.8 m | 776.0 m | 782.2 m |
+
+**On these designs a design's stitches moved only where it lost a cut:** the
+2,520 that differ from `main` are the 2,520 with fewer, and none gained a
+thread of fewer than four penetrations (102 lost one or more). That is what
+these drawings show and not a rule: see the re-measure, below. Option off or
+absent, all 45,416 are byte for byte what they were. By preset, underlay on:
+no preset 1,690 → 1,185, cap 1,883 → 1,403, fleece 2,291 → 1,329, terry
+2,292 → 1,351; and under the four edge-run presets, where only the second
+rule has anything to do, 4,639 → 4,583 on 15,845 designs. With underlay off
+nothing moves (6,483 designs).
+
+**Nothing was traded for the cuts**, by the earlier re-measure's own reader
+on the same 45,416: floats over 4 mm that leave the cover 25 → 25; sewn
+thread deeper than 0.23 mm off it 17,053 mm → 17,053 mm, on the same 105
+designs, more on none of them; no span with a length left unsewn in a column
+walk, and no two penetrations on one point in one, before or after. Its
+count of threads of one stitch: 234 → 7.
+
+**A second sweep, drawn for this:** 223 drawings on whole numbers and halves
+(combs of sixteen sizes and four with teeth of unequal height in all four
+orientations, T, L, U, E, F, H, plus, arrows of one head and two, chevrons,
+staircases, zigzags, badges with square, round and diamond holes, rings,
+letters with counters), each under all seven presets and none, at the
+engine's own angle, 0°, 90° and two more, and once with underlay off: 10,704
+designs. Cuts 3,340 → 2,787; on the float from a column walk into a plain
+walk 511 → 0; inside a column walk 81 → 43. Fewer on 534, more on none, and
+those 534 are the only designs that changed. Threads of fewer than four
+penetrations 25 → 5. Off or absent, identical on all.
+
+**The re-measure's five drawings**, above, as threads:
+
+| | `main` | now |
+|---|---|---|
+| 1. the audit's comb, 3% narrower | [360, 2 in one hole, 464, 1441, 1435] | [360, 2 in one hole, 1912, 1435] |
+| 2. three teeth pointing down | [102, 2 in one hole, 1384] | [1484] |
+| 3. four teeth to the right | [315, 3, 3, 1756] | [2092] |
+| 4. the arrow | [121, 429, 430] | [552, 430] |
+| 5. the audit's comb turned, rows at 61.3° | [269, 2, 2, 2, 2, 2 in one hole, 2 in one hole, 4674] | [4940] |
+
+The second sews 15 mm less thread than `main` does and the third 61 mm more;
+against the engine before the corner fix, which cut neither, 307 and 64 mm
+less. The arrow's cut that is left is center-out's own. The stub in the
+first is still there.
+
+**On the fill itself**, the suite's seeded shapes by hand: 15,000 of five
+seeds, each sewn four ways (told nothing; told where the thread is; told
+that and where it goes next; told only where it goes), `main`'s fill beside
+this one. Told nothing, every pass is `main`'s point for point. Every
+assertion of the suite's test holds on every pass. No pass costs more cuts
+than `main`'s on the same call, the caller's two counted. Told where the
+thread is and where it goes next, the float out was one the caller cuts on
+6,687 of 13,732 column walks, and is on 4; the float in on 20, and is on 5.
+Every pass that changed has fewer cuts. Those shapes have no cut inside a
+walk at all, with either engine: the second rule is tested on drawings, not
+on these.
+
+*(measured 2026-10-04 — both engines side by side; `test/fill.test.js`
+"told where the thread goes next", "walked again", "the travel on has the
+budget", "one of the cuts a walk is judged by"; `test/digitize.test.js`
+"where a pass ends")*
+
+**The independent re-measure** (2026-10-04: a separate agent, its own
+generator, reader and clipper, the claims handed over as claims). Besides
+the two corpora above it drew 9,084 designs of its own (406 drawings of 20
+kinds: snakes, spirals, mazes, blobs, gears, flowers, crescents, arcs, wave
+bands, rakes, islands, slit holes, small holes, several shapes to a design),
+3,520 rows of small shapes, 3,572 mazes, spirals and islands made to find a
+design with more cuts, 96 combs, 24 large drawings, and 6,500 direct calls
+each sewn five ways.
+
+*What held, to the digit:* option off or absent, identical on every design
+of every one of those, with lock stitches and the row stagger on as well;
+the plain walk untouched (14,943 plain fills, record for record); 14,190 →
+11,246 and each row of the table above; no design with more cuts anywhere
+it looked; pass by pass never more cuts (6,249 column walks, five ways);
+nothing deeper than 0.23 mm off the cover that `main` does not have, no
+float over 4 mm off it, not one span unsewn in 11.1 million of 60,753 column
+walks, no doubled point, no stitch over 4 mm; the travel on never over its
+budget and never in a fill; the floats; the five drawings.
+
+*What did not, and what was done:*
+
+- **A walk walked again could save a cut by stranding a row.** A maze under
+  fleece went from threads of [261, 35, 4, 1724] to [302, 2, 1701]; two
+  islands in a hole from [84, 4, 10, 57, 55, 791] to [96, 2, 59, 55, 791].
+  One stitch, cut to and cut from. That is the second count above, built
+  after this finding: both drawings are `main`'s walk again. On the
+  re-measure's 9,860 mazes, spirals and islands, by my reader: 3 designs
+  gained such a thread by cuts alone, and 1 does now (below).
+- **"A design changes only by losing cuts" is these corpora, not a rule.**
+  The count a walk is judged by is its own pass's. A pass that ends
+  elsewhere starts the next one elsewhere: of those 9,860, 30 change and
+  keep their count (in 20 a pass loses a cut and the pass after it gains
+  one; in 10 the walk kept has as many cuts and fewer short threads), and
+  one loses a cut and gains a thread of two penetrations in the pass after,
+  which from where it now begins has one walk and no other. None has more
+  cuts: 7,124 → 6,135, fewer on 821. Threads of fewer than four penetrations
+  147 → 110.
+- **Time was understated**, and so was the worst case of the option against
+  no option: both under "what it costs" and "what it leaves", with its
+  numbers.
+- **Two phrases were wrong:** the 2,342 cuts on the float from an edge run
+  are into a plain walk, 662 of them an underlay pass and not a fill; and
+  they are not the only kind left under the four edge-run presets (72 more:
+  12 from an edge run into a column walk's fill, 60 inside one). Both are
+  put right below.
+
+*Re-checked by the same agent once the second count was built:* every claim
+about it held on its own reader. Option off or absent, identical on 68,724
+designs. The 45,416 differ from the engine it first read in three designs
+(two combs under terry), each with the cuts it had. On 29,400 direct calls
+told where the thread is and not where it goes, no pass has more cuts than
+`main`'s and none has more short threads between its own cuts (two had).
+No design of 78,584 has more cuts than on `main`, and one gains a short
+thread (the one above). **What the second count costs**, by its reading:
+where it keeps a walk for its threads and saves no cut (11 of the 9,860), a
+fill's travel rises 1.4 to 1.8 mm and one float under the fill goes from
+2.3 mm to 17.7 mm; and on the two combs it moved in the 45,416 the floats
+under the fill are longer (5.0 mm in all on `main`, 29.4 mm before the
+count, 46.1 mm now; and 2.2, 6.4 and 21.9 mm). All on the cover.
+
+*(the re-measure's report, relayed to Kent 2026-10-04; its drawings rebuilt
+here with my reader; `test/fill.test.js` "a walk with a cut fewer is not
+kept", "its first thread and its last are not counted", "of two walks with as
+many cuts"; `test/digitize.test.js` "not left with a one-stitch thread")*
+
+**What it costs:**
+
+- **Thread, a little.** 35 m more in 136,667 m. On the 2,230 designs the
+  first rule changes, the run under the last column and the travel on come
+  to 0 to 67.5 mm, 13 mm on the median design. With the second rule a design
+  can sew less: −189 to +241 mm on the 2,520, +12 mm on the median, more on
+  2,362 of them.
+- **A float where each cut was, and not a short one.** 2,420 more floats,
+  2,367 of them longer than a stitch: 41 m more float, 5.6%. On the 2,520
+  designs that changed, the longest float is now 18 mm on the median design,
+  under 30 mm on nine in ten, 49 mm at most (the longest on any design is
+  60 mm, as it was), and longer than `main`'s longest on 1,784 of them. Each
+  lies on ground the fill covers and ends up under it; none has been sewn.
+- **Travel over an underlay.** The travel on is laid over the rows of the
+  pass it ends, as the walk's other ways round are. It is never added to a
+  fill. The re-measure read it: 23.75 m in 1,501 passes, 1.7 to 67 mm a
+  pass, 60% of it over thread that pass had already laid, none of it deeper
+  than 0.18 mm off the cover.
+- **Travel on show, in a FILL.** A walk walked again is kept for its cuts,
+  whatever it sews to save them, and what a fill sews is on top. The
+  re-measure, on the 198 fills of the 45,416 that walking again moved:
+  travel across rows 20.07 m → 21.30 m; of that, along the rim over rows
+  already sewn, 4.62 m → 5.60 m; across the face 403 mm → 386 mm; more
+  travel on 102 fills, less on 55. On 107 fills of its own designs: 26.2 m →
+  30.0 m, over the rim 9.77 m → 11.54 m, across the face 559 mm → 646 mm
+  (the worst fill 4.8 mm → 24.4 mm). Its worst trade: a maze under terry,
+  one cut saved for 404 mm more thread in the fill (travel 410 mm → 829 mm,
+  125 stitches). Nothing in the rule says what a cut is worth in travel:
+  the budget of a way round is asked of each move, not of a walk. (Read
+  again after the second count: the same, but for 16 mm more along the rim
+  on the three designs that count moved.)
+- **More thread along the rim.** The runs under a last column, the travel on
+  and a fill's travel all lie along it: by the re-measure, the rim with six
+  or more lines of thread on it 34.3 m → 36.4 m (+5.9%), the worst
+  millimetre up on 138 designs and down on 50, at most 14 lines, as before.
+- **Time, where a walk has a cut.** A pass that comes out cut is walked up
+  to nine times, and every walk is paid for whether it is kept or not. Both
+  engines in one process, alternately, best of three, on a busy laptop. The
+  2,781 designs with a cut the walk could do something about: 1.15 times
+  `main`'s time in all, 1.19 on the median design, under 3.7 on 99 in 100,
+  and 21 times on the worst (21 ms → 155 ms). A sample of the rest, 4,260
+  designs: 1.05, which is a second pass over the fill's rows where the
+  underlay asks and the fill turns out to be the column walk's. The
+  re-measure's own timing agrees (1.20 on 927 designs, 1.05 on 1,066), and
+  on its own designs 806 of 2,110 column passes were walked again and 689 of
+  them were no better for it. **Where a big pass stays cut it is seconds.**
+  The 2,025-hole stress shape on a 4 in garment under terry (41 cuts → 35;
+  one pass of 791 columns walked nine times): 2.1 times `main`'s build here
+  (3.8 s → 7.8 s), 3 times by the re-measure. A comb of 100 teeth on a 12 in
+  back under the cap preset, 615 cuts either way: 5.0 s → 18.5 s. The sheet
+  tool's own 32 rows are on an 8 in garment, where that stress shape under
+  terry is 28 cuts → 19 and no slower; as a whole they came to 1.01, 1.05
+  and 0.88 times `main`'s on three runs.
+- **The builder asks where a plain pass begins with a function of its own,
+  `fill.plainStart`** (2026-10-05; see the code review, below). It was
+  first an option of `tatamiFill` (`plainOnly`) that answered null for a
+  column walk and had the pass built before its turn, and three tools wrap
+  `tatamiFill` to watch the passes. A stagger test and the stagger census
+  took the null for a pass and were patched; the third was found broken by
+  the review. `tatamiFill` answers every call with a pass again, once for
+  each pass and in the order they are sewn, and the two patched files are
+  `main`'s again.
+
+**What it leaves**, option on:
+
+- **378 cuts inside a column walk and 70 on the float into one.** On these
+  designs the first column is not what they turn on: walked from every first
+  column the thread can float to and not from eight, not one design of 9,084
+  differs, and the re-measure found the same on both sweeps. (From four, 18
+  more cuts, on three combs.) Under the four edge-run presets, 60 of them
+  are inside the bullseye's fill and 12 on the float into the fill of a thin
+  eight-pointed star.
+- **Long combs: tens to hundreds of cuts that no option does not have.**
+  Found by the re-measure, outside every sweep here. Teeth 1.5 to 2 mm wide
+  and 80 mm long, rows on a slant. 24 teeth under fleece: 1 cut with the
+  option off, 52 on `main`, 52 now. 30 teeth: 1, 59, 41. On a 12 in back, 60
+  teeth: 1, 230, 178; and 100 teeth under the cap preset: 1, 615, 615, with
+  600 threads of fewer than four penetrations. Eight tries are not enough
+  for them, and the walks that would do it are not on the list at all where
+  the thread cannot float to their start. Those walks begin at an END of the
+  pass: its first column sewn downward, as a pass told nothing is walked, or
+  its last sewn upward. Tried first in a copy of the engine, with the cut on
+  the float in counted where there is one: 52 → 0, 41 → 0, 178 → 0, 615 → 1,
+  and the stress shape above 35 → 27 in 0.6 of the time. **Not built here.**
+  It is a third rule: it moves 72 of the 5,642 designs a walk is walked
+  again on (5,085 cuts → 5,075, one design from none to two), and wants its
+  own tests and its own re-measure.
+- **The pass after.** A walk is judged by its own pass. Where it ends is
+  where the next pass begins, and that is not weighed: see the re-measure,
+  above (of 9,860 designs, in 20 the pass after gained the cut this one
+  lost, and in one it gained a thread of two penetrations).
+- **13 on the float from a column walk into a plain walk.** Twelve are one
+  zigzag band 0.1 and 0.3 mm thick under fleece and terry. One is a comb
+  whose fill begins on the end wall of a gap, where no corner of the
+  underlay can float to it.
+- **The float from an EDGE RUN into a plain walk: 2,342 cuts, and this
+  change does not touch it.** 1,680 are into a plain fill and 662 into an
+  underlay pass the plain walk sews. It is now the most of any kind a walk
+  could do something about, and it is the kind the preset a left chest uses
+  has: 398 of pique's 1,110. An edge run is a closed ring, sewn from
+  wherever the drawing began; it could begin where the pass after it can be
+  floated to. Not built here.
+- **129 between two plain walks.** Both ends are where they are.
+- **The stub.** A row shorter than the file's unit, alone in its column, is
+  still cut to and cut from (the first drawing above).
+- **A design can still have more cuts with the option than without:** 4,717
+  designs on `main`, 2,442 now; the worst no cut → 15 on `main`, no cut → 8
+  now. Those are the worst of these 45,416. The long combs above are far
+  worse, on `main` and now.
+
+**Mutated 34 ways: 32 die.** The other two build a plain fill twice over and
+are the same engine, stitch for stitch on 15,139 designs. Four of the first
+25 passed every test until a test was written for each: the travel on with
+no budget, the cut on the float out left out of a walk's count, the last
+walk kept on a tie and not the first, and one other first column tried and
+not eight. The first two change nothing on the 45,416 designs either. A
+spiral shows both. Nine are of the second count (cuts alone; as many cuts
+and fewer short threads not the better; a short thread one of fewer than
+three, or of five; the first thread of the pass counted as well, or the
+last): each dies. The two that count an end thread die by a test written
+for them, on drawings where that changes the walk.
+
+The sheet is byte for byte the same, and so are its four rows; one row of
+the cost table moved (above). The lock-stitch census and the stagger census
+print the same numbers on `main`'s engine and on this one.
+
+**`main` moved while this was measured** (c11d2c1c → 4fb4fcd4: the island
+cures, the star's satin walk and `dedupeHoles` among 53 commits). Merged,
+and all three sweeps built again on both: of 65,980 designs not one is a
+stitch different from what it was, on `main` or here, and option off or
+absent the merged engine is `main`'s on all 56,120 of the first two.
+
+*(measured 2026-10-04 — `node tools/fill-columns-sheet.mjs`,
+`tools/lock-stitch-census.mjs`, `tools/fill-stagger-census.mjs`, each on both
+engines)*
+
+**A code review after the re-measure (2026-10-05) found three things no
+sweep above had.** One is fixed here. Two are not, and "more on none" above
+is a count of those 45,416 designs and not a rule.
+
+1. **A tool on `main` was broken by it. Fixed.**
+   `tools/sub-unit-stitch-census.mjs` wraps `tatamiFill` too, runs in no
+   test, threw on the `plainOnly` null and paired passes to spans by the
+   order of the calls: on the Studio's 8,270 designs, 2,261 builds failed
+   and 2,454 passes were not found in the stream. With `fill.plainStart`,
+   none and none. Not a stitch moves by it: the three sweeps built again,
+   65,980 designs with the option on, each the stream it was, and with the
+   option off or absent on all 56,120 of the first two.
+2. **A design with MORE cuts than `main`, option on. Not cured.** A maze of
+   64 points under fleece, rows at 165: 1 trim → 3, and a thread of three
+   penetrations; rows at 15: 3 → 4. The first lattice pass is walked again
+   and ends elsewhere, and the second, a column walk begun from there, is
+   cut where `main`'s is not. A walk is judged by its own pass ("the pass
+   after", above).
+3. **A trim record saved is not always a cut saved in the file. Not
+   cured.** The DST writer lays a float over 24.2 mm on an axis as three
+   jump records or more, and a reader of the file counts that as a cut. On
+   the 45,416: trim records 14,190 → 11,246, cuts in the file 19,782 →
+   17,182. Of the 2,520 designs with fewer trim records the file has fewer
+   cuts on 2,248, as many on 263 and MORE on 9 (each 1 → 2, combs under
+   fleece and terry). Three teeth pointing down under terry: 2 trim records
+   → 0, and 2 cuts in the file either way.
+
+*(measured 2026-10-05 — the tool itself on this branch's engine before the
+fix and after; the maze and the teeth built on `main` at 546ae759 and
+here; the file's cuts read back from the DST of every design at 35b2a8b6
+against `main` at 4fb4fcd4, and this engine is 35b2a8b6's stitch for
+stitch)*
 
 The flip is Kent's: MASTER_SCOPE defect 52, "Waiting on Kent" 22.

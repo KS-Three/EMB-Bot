@@ -81,7 +81,8 @@ def plan_to_design(plan: StitchPlan, name: str = "Digitized design") -> dict:
            "kind": str,    # StitchRun.kind, verbatim
            "shape": str,   # StitchRun.shape_id, "" when none
            "role": str,    # "" | "border" | "edge_cap"
-           "block": int},  # index into design["colors"]
+           "block": int,   # index into design["colors"]
+           "piece": str},  # edge_cap spans only: the stretch's `cap:` id
           ...
         ]
 
@@ -188,14 +189,19 @@ def plan_to_design(plan: StitchPlan, name: str = "Digitized design") -> dict:
                 # Guarded rather than assumed: a run that emitted nothing has
                 # no span to describe, and `i1 = i0 - 1` would be an inverted
                 # range a reader would have to special-case.
-                runs.append({
+                span = {
                     "i0": i0,
                     "i1": len(stitches) - 1,
                     "kind": run.kind,
                     "shape": run.shape_id,
                     "role": run.role,
                     "block": bi,
-                })
+                }
+                if run.piece:
+                    # Only a cap stretch has one, and only then does the key
+                    # exist: every other span is byte-identical to before.
+                    span["piece"] = run.piece
+                runs.append(span)
 
     stitches.append({"x": 0, "y": 0, "type": END})
 

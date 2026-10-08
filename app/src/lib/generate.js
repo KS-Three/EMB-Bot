@@ -3,7 +3,7 @@ import { flatToRegions } from "./imageRegions.js";
 import { shapesToRegions } from "./manualShapes.js";
 import { shapePresetPoints, DEFAULT_SHAPE_SIZE_MM } from "./shapePresets.js";
 import { combineDesigns, bboxMmFromStitches } from "./combine.js";
-import { decodedFromDesignCached, digitizedBlockColors } from "./digitizer.js";
+import { decodedFromDesignCached, digitizedBlockColors, displayResult } from "./digitizer.js";
 
 // Generates a single element's Design, or null if the element isn't ready
 // to sew yet (empty text / no flattened image state). Throws only on real
@@ -88,7 +88,7 @@ export function generateElement(element, garment, runtime) {
     // and supplies the service's real thread palette as block colors, with
     // the user's per-block overrides on top.
     if (!element.result) return null;
-    const decoded = decodedFromDesignCached(element.result);
+    const decoded = decodedFromDesignCached(displayResult(element));
     if (!decoded) return null;
     return EMB.buildImportedDesign(decoded, {
       garment,
@@ -119,6 +119,11 @@ export function generateElement(element, garment, runtime) {
     return EMB.buildQualityDesign(regions, {
       garment, fabric, pxPerMm, satinMaxWidthMm: 3.0,
       underlay: element.underlay,
+      // `fillColumns` stays OFF here (engine default) on purpose, 2026-10-07:
+      // Kent flipped it for the MANUAL lane first (MASTER_SCOPE defect 52,
+      // "Waiting on Kent" 22). Nothing about the image lane is wrong with it
+      // on; it is unsewn and costs travel and stitches, so it is staged one
+      // lane at a time and this lane waits its turn.
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,
       offsetYMm: element.offsetYMm || 0,
@@ -160,6 +165,15 @@ export function generateElement(element, garment, runtime) {
       // artwork branch above); this changes what already-saved manual designs
       // sew, which is the point.
       darkOnTop: false,
+      // Kent's call 2026-10-07 (MASTER_SCOPE defect 52, "Waiting on Kent" 22):
+      // a fill's rows are sewn column by column so no thread is carried
+      // across a cut-out or a notch. Without it every row floats (or, under
+      // 4 mm, STITCHES) across every hole the user drew. Manual is the lane
+      // where a customer draws holes on purpose, so it flips first; the
+      // engine default stays off and the image and basic-shape lanes do not
+      // pass it. Price: +3.3% stitches mean (up to +37%), travel along rims
+      // in place of floats. Not sewn.
+      fillColumns: true,
       underlay: element.underlay,
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,
@@ -196,6 +210,10 @@ export function generateElement(element, garment, runtime) {
       // can be stacked, and the two branches drifting apart is precisely how
       // the manual one ended up wrong.
       darkOnTop: false,
+      // `fillColumns` stays OFF here (engine default) on purpose, 2026-10-07:
+      // Kent flipped it for the MANUAL lane first (defect 52, "Waiting on
+      // Kent" 22); this lane follows once that one has been looked at. A
+      // star or heart preset has notches it changes, and none of it is sewn.
       underlay: element.underlay,
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,
