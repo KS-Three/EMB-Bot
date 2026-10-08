@@ -92,3 +92,50 @@ def test_blend_fill_threads_the_config_field():
     _, relaxed = blend_fill(
         region, sp, PipelineConfig(blend_speckle_r2_override=RAMP_R2_MIN))
     assert relaxed["blend_shades"] >= 3, relaxed
+
+
+# --- cfg.blend_speckle_residual: speckle measured on the fit's residual ------
+# Same synthetic-mechanics licence as above (a gate's arithmetic, not stage-0
+# routing). Contract: pixel grain around a ramp passes; a second structure the
+# ramp cannot explain still rejects; False is the shipped gate.
+
+
+def _ramp_with_step_source() -> SourcePixels:
+    """A clean ramp with a 66-level dark band across part of it: stitch-scale
+    structure the linear fit leaves in its residual. The crop the polygon
+    reads is columns 80-160, so the band (100-130) sits inside it.
+
+    Note what this pins: the residual ratio is bounded by roughly 1 - r², so
+    under the shared RAMP_SPECKLE_MAX (0.35) it can only reject a fit below
+    ~0.65 whose miss is COARSE. This fixture sits at r² 0.52 on purpose."""
+    ramp = np.linspace(30, 225, 160, dtype=np.float64)[None, :, None]
+    rgb = np.broadcast_to(ramp, (120, 160, 3)).copy()
+    rgb[:, 100:130] -= 66.0
+    return SourcePixels(rgb=np.clip(rgb, 0, 255).astype(np.uint8),
+                        px_per_mm=4.0, origin_px=(80.0, 60.0))
+
+
+def test_residual_measure_passes_pixel_grain_around_a_ramp():
+    sp = _noisy_ramp_source(sigma=10.0)
+    assert detect_ramp_detail(POLY, sp)[1] == "speckled"
+    model, reason, r2 = detect_ramp_detail(POLY, sp, speckle_residual=True)
+    assert model is not None, (reason, r2)
+
+
+def test_residual_measure_still_rejects_structure_the_ramp_misses():
+    sp = _ramp_with_step_source()
+    _m, reason, r2 = detect_ramp_detail(POLY, sp, speckle_r2_override=RAMP_R2_MIN)
+    # Premise: the fit clears the floor, so the override would wave it through.
+    assert reason == "" and r2 >= RAMP_R2_MIN, (reason, r2)
+    model, reason, _ = detect_ramp_detail(POLY, sp, speckle_residual=True)
+    assert model is None and reason == "speckled"
+
+
+def test_residual_default_false_is_the_shipped_gate():
+    assert PipelineConfig().blend_speckle_residual is False
+    sp = _noisy_ramp_source(sigma=10.0)
+    assert (detect_ramp_detail(POLY, sp, speckle_residual=False)[1]
+            == detect_ramp_detail(POLY, sp)[1] == "speckled")
+    clean = _noisy_ramp_source(sigma=0.0)
+    assert (detect_ramp_detail(POLY, clean, speckle_residual=True)[0]
+            is not None)

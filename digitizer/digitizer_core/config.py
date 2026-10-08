@@ -2751,6 +2751,16 @@ class PipelineConfig:
     # one contact sheet; NOT a shipped default, and flipping it into one is
     # an eyeball-loop verdict, not an optimisation.
     blend_speckle_r2_override: float | None = None
+    # The OTHER candidate the same §1 measurement named: measure speckle on
+    # the fit's RESIDUAL, blurred to stitch scale, instead of on the raw tone
+    # (stage6_blend._residual_speckle_ratio). Where the override above lets
+    # every well-fit region through, this still rejects a region whose
+    # unexplained tone has structure a stitch could show (a second ramp, an
+    # edge, a blob) and passes one whose residual is only pixel-scale grain.
+    # False (the default) is byte-identical shipped behaviour. Like the
+    # override it changes what sews on gradient art, so flipping it is an
+    # eyeball-loop verdict on a contact sheet, not an engineering default.
+    blend_speckle_residual: bool = False
     # None = fill_row_mm (or the machine default). Contour rings are the same
     # 0.40 mm apart as tatami rows; this exists so the ring tier can be opened
     # up independently, which is what "best used for open fills with low stitch
