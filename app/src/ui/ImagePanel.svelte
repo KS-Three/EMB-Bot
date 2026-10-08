@@ -1,7 +1,8 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
   import { flattenRGBA, flatToRGBA, flatShares, mergeFlat, WORK_MAX_PX, ALPHA_CUTOFF, MIN_SWATCH_SHARE } from "../lib/flatten.js";
-  import { loadImage, rasterSize, isVectorFile, UNREADABLE } from "../lib/rasterize.js";
+  import { loadImage, rasterSize, isVectorFile } from "../lib/rasterize.js";
+  import { friendlyError } from "../lib/friendlyError.js";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
 
@@ -166,7 +167,7 @@
       d("image", prep);
       flattenFrom(prep, element.nColors, element.removeBg);
     } catch (err) {
-      error = (err && err.message) || UNREADABLE;
+      error = friendlyError(err, "upload");
       fileName = "";
       patch({ sourcePng: null, name: "" });
       d("image", null);
