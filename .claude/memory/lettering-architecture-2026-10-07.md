@@ -20,7 +20,7 @@ choke their counters. Bridge's tagline is 10–13 source px tall = 2 mm caps:
 a SIZE problem, not segmentation.
 
 **Five failures by letter size:** A patchwork (stage 6 model), B tube letters
-(tier policy + the gate-1 column floor), C halo strands (stage 2/3), D blob
+(tier policy + the gate-1 column floor), C halo strands (stage 2/3; GONE on the 10-08 engine, 0-4%, docs/text-halo-2026-10-08.md), D blob
 letterforms on 0.5–0.7 mm/px uploads (stage 1/4), E two taggers
 (`text_candidate` vs `_lettering_groups`) that the flags read inconsistently.
 
