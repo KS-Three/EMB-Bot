@@ -1665,6 +1665,44 @@ test("offsetRing: a point said twice running anywhere in the ring is one corner"
   assert.deepStrictEqual(DG.offsetRing(hair, 6, true), want, "closed to within a hair");
 });
 
+// --- a NEAR repeat: an anchor a pixel or two from the last (defect 55) ------
+//
+// A double-click whose second click slipped left an anchor a pixel from the
+// last (the gesture is cured; saved shapes keep theirs). The short edge to it
+// turns back on itself, and offsetRing gave its sharp end the whole mitre
+// clamp: on terry a 40 mm box sewed 1.73 mm past its ring where a clean corner
+// sews 0.85 (tools/closed-ring-census.mjs, table 4). An edge shorter than the
+// offset that turns back past a right angle is now dropped onto the corner
+// before it; a curve or a staircase, whose short edges turn back nowhere, is
+// moved as it always was.
+test("offsetRing: an anchor a pixel or two from the last is moved as the corner it slipped from", () => {
+  const clean = DG.offsetRing(boxPx(0, 0, 400, 400), 6, true);
+  for (const mag of [0.6, 1, 2, 4]) for (let k = 0; k < 16; k++) {
+    const a = k * Math.PI / 8 + 0.2;
+    const slipped = boxPx(0, 0, 400, 400).concat([{ x: mag * Math.cos(a), y: 400 + mag * Math.sin(a) }]);
+    // never further out than the slip itself plus the offset (the clamp let it reach 3x the offset)
+    const worst = Math.max(...DG.offsetRing(slipped, 6, true).map((p) => Math.max(-p.x, -p.y, p.x - 400, p.y - 400)));
+    assert.ok(worst <= 6 + mag + 1e-9, mag + " px at " + k + ": " + worst.toFixed(2) + " px out, the slip itself and the offset are " + (6 + mag));
+  }
+  // the 1 px slip of the census: the box exactly
+  assert.deepStrictEqual(DG.offsetRing(boxPx(0, 0, 400, 400).concat([{ x: -0.2, y: 400.98 }]), 6, true), clean);
+  // short edges that turn back nowhere are untouched: a 400-gon (3 px edges) and a staircase of 2 px right angles
+  const fine = roundPx(200, 200, 200, 400);
+  assert.strictEqual(DG.offsetRing(fine, 6, true).length, 400);
+  const stairs = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
+  for (let i = 0; i < 20; i++) stairs.push({ x: 100 - 2 * i, y: 2 * i + 2 }, { x: 98 - 2 * i, y: 2 * i + 2 });
+  assert.strictEqual(DG.offsetRing(stairs, 6, true).length, stairs.length);
+});
+
+test("defect 55: a box with a slipped anchor sews to the clean box's edge on terry", () => {
+  const extent = (d) => { const xs = d.stitches.filter((s) => s.type === "stitch").map((s) => s.x), ys = d.stitches.filter((s) => s.type === "stitch").map((s) => s.y); return [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]; };
+  const clean = sewnTo({ outer: boxPx(0, 0, 400, 400), holes: [] }, "terry_towel");
+  const slipped = sewnTo({ outer: boxPx(0, 0, 400, 400).concat([{ x: -0.2, y: 400.98 }]), holes: [] }, "terry_towel");
+  // to within a fill row's rounding (0.2 mm); before, 0.9 mm further out
+  const a = extent(slipped), b = extent(clean);
+  a.forEach((v, i) => assert.ok(Math.abs(v - b[i]) <= 2, "side " + i + ": " + v + " against " + b[i] + " (0.1 mm units)"));
+});
+
 test("offsetRing: a ring with fewer than three corners once the repeats are out is handed back as it was", () => {
   // Nothing to grow: no area, so no outward side. (An outline like this never
   // gets as far as its fill, a shape with no area being dropped first. A ring

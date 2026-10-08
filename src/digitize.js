@@ -357,19 +357,52 @@
   // has no direction and so no normal, and its two ends were each moved along
   // the one real edge beside them -- the first by the whole mitre clamp, three
   // times the distance -- which made a wedge of the corner. A ring that says
-  // no point twice is moved exactly as it always was; one with fewer than
-  // three corners left has no outward side and is handed back as it came.
+  // no point twice, and has no near repeat (below), is moved as it always
+  // was; one with fewer than three corners left has no outward side and is
+  // handed back as it came.
   //
-  // "Twice" is to within rounding and no further. A point that is only NEAR
-  // the next one is a corner with a short edge, and where that edge doubles
-  // back -- an anchor a pixel from the last, as a double-click that slipped
-  // used to leave -- it still gets the whole clamp (MASTER_SCOPE defect 55:
-  // the gesture is cured, this is not).
+  // A point only NEAR the next -- an edge shorter than the offset itself --
+  // that turns BACK at either end, past a right angle, is a near repeat: an
+  // anchor a pixel from the last, as a double-click that slipped used to
+  // leave. Its direction is noise, and moving both its ends gave the sharp
+  // one most or all of the mitre clamp, a spike twice a clean corner's
+  // (MASTER_SCOPE defect 55). Such a point is dropped and the corner before
+  // it kept (nearRepeatsDropped). An edge as long as the offset, or a short
+  // one that turns back at neither end (a curve, a staircase of right
+  // angles), is moved exactly as it always was.
   function offsetRing(ring, dPx, outward) {
     const copy = ring ? ring.map((q) => ({ x: q.x, y: q.y })) : [];
     if (copy.length < 3 || !(Math.abs(dPx) > 1e-9)) return copy;
-    const pts = distinctCorners(ring), n = pts.length;
-    if (n < 3) return copy;
+    const pts = nearRepeatsDropped(distinctCorners(ring), Math.abs(dPx));
+    if (pts.length < 3) return copy;
+    return movedCorners(pts, dPx, outward);
+  }
+  // Does the path prev -> cur -> next turn back at `cur`: more than a right angle.
+  function turnsBack(prev, cur, next) {
+    return (cur.x - prev.x) * (next.x - cur.x) + (cur.y - prev.y) * (next.y - cur.y) < 0;
+  }
+  // The corners of `pts` (said once) less each near repeat: a corner whose
+  // edge FROM the one before is shorter than `d` and turns back at either
+  // end. The earlier corner is kept. Never below three corners.
+  function nearRepeatsDropped(pts, d) {
+    let out = pts;
+    for (let changed = true; changed && out.length > 3;) {
+      changed = false;
+      const n = out.length;
+      for (let i = 0; i < n; i++) {
+        const a = out[(i - 1 + n) % n], b = out[i];
+        if (!(Math.hypot(b.x - a.x, b.y - a.y) < d)) continue;
+        if (!turnsBack(out[(i - 2 + n) % n], a, b) && !turnsBack(a, b, out[(i + 1) % n])) continue;
+        out = out.filter((_, j) => j !== i);
+        changed = true;
+        break;
+      }
+    }
+    return out;
+  }
+  // offsetRing's move of corners `pts` (said once, three or more).
+  function movedCorners(pts, dPx, outward) {
+    const n = pts.length;
     // signed area (shoelace): >0 and <0 pick opposite outward-normal senses.
     let area2 = 0;
     for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; area2 += a.x * b.y - b.x * a.y; }
