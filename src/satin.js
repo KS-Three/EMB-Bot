@@ -194,6 +194,44 @@
   // Generate zig-zag satin stitch points whose cross-stitches are PERPENDICULAR
   // to the two edges of a thin/elongated ring and FAN ALONG THE ARC on curves.
   //
+  // Short stitches on the inside of a bend (opt-in). The inner rail is
+  // shorter than the centerline, so its penetrations bunch up closer than the
+  // station spacing — measured 2026-10-08 on a 180-degree arc at 0.4 mm
+  // spacing: half the stations on a 1 mm inner radius land under 0.3 mm from
+  // the last, some in the same hole. `opts.shortStitch = { atMm, pull, maxMm }`
+  // mirrors satinplay's emitZigzag guard (callers pass satinfont's
+  // LETTERING_GUARDS SHORT_STITCH_* — this module owns no constant): on every
+  // other station a penetration under `atMm` from its rail's previous one is
+  // pulled back along the cross by `pull` of its length, at most `maxMm`, and
+  // never so far the cross drops under `opts.minCrossMm`. Absent = OFF, and
+  // the output is byte-identical to before it existed.
+  function shortStitchOf(opts) {
+    const ss = opts.shortStitch, px = opts.pxPerMm || 1;
+    if (!ss || !(ss.atMm > 0)) return null;
+    return { atPx: ss.atMm * px, pull: ss.pull == null ? 0.35 : ss.pull, maxPx: (ss.maxMm || 0) * px,
+      minCrossPx: (opts.minCrossMm || 0) * px, stats: ss.stats || null, prevA: null, prevB: null };
+  }
+  function pullShort(p, toward, ss) {
+    const cross = Math.hypot(toward.x - p.x, toward.y - p.y);
+    let f = ss.pull;
+    if (cross > EPS) {
+      if (ss.maxPx > 0) f = Math.min(f, ss.maxPx / cross);
+      f = Math.min(f, Math.max(0, 1 - 1.01 * ss.minCrossPx / cross));
+    }
+    return { x: p.x + (toward.x - p.x) * f, y: p.y + (toward.y - p.y) * f };
+  }
+  // Apply the guard to one station; returns [pA, pB] (possibly pulled).
+  function shortStitchStation(ss, t, pA, pB) {
+    if (!ss) return [pA, pB];
+    const a0 = pA, b0 = pB;
+    if (ss.prevA && t % 2 === 1) {
+      if (Math.hypot(pA.x - ss.prevA.x, pA.y - ss.prevA.y) < ss.atPx) { pA = pullShort(pA, pB, ss); if (ss.stats) ss.stats.shortStitches = (ss.stats.shortStitches || 0) + 1; }
+      if (Math.hypot(pB.x - ss.prevB.x, pB.y - ss.prevB.y) < ss.atPx) { pB = pullShort(pB, pA, ss); if (ss.stats) ss.stats.shortStitches = (ss.stats.shortStitches || 0) + 1; }
+    }
+    ss.prevA = a0; ss.prevB = b0;
+    return [pA, pB];
+  }
+
   // opts = { spacingMm, pxPerMm, pullCompMm=0 }
   //
   // Approach: build a centerline from the two rails, then at each station along
@@ -257,6 +295,7 @@
     const stations = resampleChain(Ct, steps);
 
     const offset = (pullCompMm * pxPerMm) / 2;
+    const ss = shortStitchOf(opts);
     const out = [];
     for (let t = 0; t < steps; t++) {
       const s = stations[t];
@@ -286,6 +325,7 @@
         pA = pushOut(pA, mx, my, offset);
         pB = pushOut(pB, mx, my, offset);
       }
+      if (ss) [pA, pB] = shortStitchStation(ss, t, pA, pB);
 
       // Alternate the leading edge so consecutive crosses share a side.
       if (t % 2 === 0) { out.push(pA); out.push(pB); }
@@ -520,12 +560,14 @@
     }
 
     const offset = (pullCompMm * pxPerMm) / 2;
+    const ss = shortStitchOf(opts);
     const out = [];
     for (let t = 0; t < N; t++) {
       const s = spine[t], nx = Math.cos(ang[t]), ny = Math.sin(ang[t]);
-      const pA = { x: s.x + nx * (dA[t] + offset), y: s.y + ny * (dA[t] + offset) };
-      const pB = { x: s.x - nx * (dB[t] + offset), y: s.y - ny * (dB[t] + offset) };
+      let pA = { x: s.x + nx * (dA[t] + offset), y: s.y + ny * (dA[t] + offset) };
+      let pB = { x: s.x - nx * (dB[t] + offset), y: s.y - ny * (dB[t] + offset) };
       if (Math.hypot(pA.x - pB.x, pA.y - pB.y) < 0.5) continue;
+      if (ss) [pA, pB] = shortStitchStation(ss, t, pA, pB);
       if (t % 2 === 0) { out.push(pA); out.push(pB); } else { out.push(pB); out.push(pA); }
     }
     return out;
