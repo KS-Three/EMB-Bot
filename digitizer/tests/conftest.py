@@ -64,6 +64,21 @@ def client():
         yield c
 
 
+# A client that is NEVER entered as a context manager, so no lifespan runs
+# and the shared app's job pool is never shut down (see `client` above).
+# For a throwaway app built inside a test, or for the shared app when a test
+# needs `raise_server_exceptions=False` to see the 500 a real server sends.
+# Lives here because `test_client_fixture_is_shared.py` allows `TestClient(`
+# calls in conftest only — that tripwire is about the lifespan, which this
+# fixture by construction never triggers.
+@pytest.fixture
+def make_client():
+    pytest.importorskip("fastapi", reason="service extra not installed")
+    from fastapi.testclient import TestClient
+
+    return lambda app, **kw: TestClient(app, **kw)
+
+
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 
 
