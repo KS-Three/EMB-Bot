@@ -1158,6 +1158,21 @@ class PipelineConfig:
     # How far a color extends underneath the color that sews after it. Enough
     # to survive fabric pull, small enough never to read as a color error.
     overlap_mm: float = 0.25
+    # Stage 5's hole hold, read for what is actually IN the hole. A hole the
+    # shell's pull growth would shrink under `min_detail_mm²` is held open at
+    # its original size — right for a counter, wrong for a hole a LATER
+    # stitched colour fills: holding it strips the ground's pull and its
+    # `overlap_mm` tongue from the whole seam round that piece, a butt joint
+    # with nothing under it (MASTER_SCOPE defect 6 "Seams": "a hole held open
+    # at the detail floor gets no tongue"). True holds open only the BARE part
+    # of the hole — what no later stitched shape covers — and only the bare
+    # pieces at or over the same `min_detail_mm²` floor the hole itself is
+    # judged by. Any bare piece under that floor is released -- the slivers
+    # between a piece and its hole, and a small real opening beside a piece
+    # alike -- so it takes the ground's growth and the piece gets its tongue,
+    # as every un-held seam already does. No new constant. False is the engine before it, byte for byte.
+    # Measured 2026-10-08: `docs/held-hole-tongue-2026-10-08.md`.
+    held_hole_bare_only: bool = False
     # Directional pull/push compensation (Laws 22-24). False is the shipped
     # behaviour: one isotropic `buffer(pull)` outward in every direction, which
     # is right on average and wrong everywhere specific — no major package does
