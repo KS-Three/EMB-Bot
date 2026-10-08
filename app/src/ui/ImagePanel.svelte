@@ -1,9 +1,17 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
   import { flattenRGBA, flatToRGBA, flatShares, mergeFlat, WORK_MAX_PX, ALPHA_CUTOFF, MIN_SWATCH_SHARE } from "../lib/flatten.js";
-  import { loadImage, rasterSize, isVectorFile, UNREADABLE } from "../lib/rasterize.js";
+  import { loadImage, rasterSize, isVectorFile } from "../lib/rasterize.js";
+  import { friendlyError } from "../lib/friendlyError.js";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
+  // Swatch labels sit on the ART's own colour, so one fixed label colour fails
+  // on half the palette (white on a light swatch). WCAG relative luminance:
+  // --ink beats white as the label above ~0.18.
+  const lightSwatch = (c) => {
+    const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]) > 0.18;
+  };
 
   // Element-scoped image editor (Task 5, Slice 5). Pattern (see
   // TextStep.svelte for the same convention): settings patches dispatch an
@@ -166,7 +174,7 @@
       d("image", prep);
       flattenFrom(prep, element.nColors, element.removeBg);
     } catch (err) {
-      error = (err && err.message) || UNREADABLE;
+      error = friendlyError(err, "upload");
       fileName = "";
       patch({ sourcePng: null, name: "" });
       d("image", null);
@@ -326,6 +334,7 @@
             type="button"
             class="swatch"
             class:sel={!!selected[i]}
+            class:lt={lightSwatch(c)}
             style="background: rgb({c[0]},{c[1]},{c[2]})"
             on:click={() => toggleSwatch(i)}
             title={(shares[i] * 100).toFixed(1) + "%"}
