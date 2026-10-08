@@ -674,12 +674,25 @@
     if (!(dim > EPS)) return { strokes: [], contours, halfWidthPx: 0 };
 
     const gscale = Math.min(1.5, 260 / dim);
-    const gw = Math.ceil((maxX - minX) * gscale) + 3, gh = Math.ceil((maxY - minY) * gscale) + 3;
+    let gw = Math.ceil((maxX - minX) * gscale) + 3, gh = Math.ceil((maxY - minY) * gscale) + 3;
     // Net ribbon half-width (outer area minus counters) over total wall length.
     const netArea = Math.max(0, ringArea(ring) - holes.reduce((s, h) => s + ringArea(h), 0));
     const totPerim = ringPerim(ring) + holes.reduce((s, h) => s + ringPerim(h), 0);
     const halfWidthPx = (totPerim > EPS ? (2 * netArea / totPerim) : 0) / 2;
-    const mask = thin(rasterize(contours, gscale, minX, minY, gw, gh), gw, gh);
+    // ONE empty cell above and to the left of the shape. `rasterize` puts the
+    // shape's first row and column on the grid's own edge, and `thin` never
+    // erodes an edge cell (it reads x, y from 1), so a flat top or left side
+    // stayed in the skeleton: a straight bar's spine ran along its top edge
+    // and down its left end, and the rays from those stations crossed the
+    // whole bar -- a 37.7 mm stitch on a 38 mm x 1.9 mm bar. The right and
+    // bottom already had their margin (`+ 3` above). Shifted by whole cells,
+    // so every sample sits where it did and `toWorld` reads the same points.
+    const raw = rasterize(contours, gscale, minX, minY, gw, gh);
+    const gw0 = gw;
+    gw += 1; gh += 1;
+    const padded = new Uint8Array(gw * gh);
+    for (let j = 0; j + 1 < gh; j++) for (let i = 0; i < gw0; i++) padded[(j + 1) * gw + i + 1] = raw[j * gw0 + i];
+    const mask = thin(padded, gw, gh);
     // Strip thinning SPURS — short dead-end twigs (one free end, other end on a
     // branch) that thinning grows at curvature bumps. Removing them keeps closed
     // loops (O) a single clean cycle. Only short one-free-end edges are erased,
@@ -697,7 +710,7 @@
       }
       if (!removed) break;
     }
-    const toWorld = (p) => ({ x: minX + (p[0] + 0.5) / gscale, y: minY + (p[1] + 0.5) / gscale });
+    const toWorld = (p) => ({ x: minX + (p[0] - 1 + 0.5) / gscale, y: minY + (p[1] - 1 + 0.5) / gscale });
 
     let strokes = skeletonEdges(mask, gw, gh).map((e) => ({ spine: e.pts.map(toWorld), freeStart: e.freeStart, freeEnd: e.freeEnd, closed: !!e.closed }));
     const minEdgeLen = Math.max(3, 1.2 * halfWidthPx);
@@ -709,7 +722,36 @@
     }
     strokes.sort((a, b) => chainLength(b.spine) - chainLength(a.spine));
     if (strokes.length > 24) strokes = strokes.slice(0, 24);
+    // A medial axis stops about a half-width short of a square end (the
+    // corner twigs that would reach it are pruned above), so a free end is
+    // carried on along its own heading to the outline it points at; the rail
+    // pass then trims it back as before. Without this a straight bar's column
+    // ends one stroke-width inside each end.
+    for (const st of strokes) {
+      if (st.closed || st.spine.length < 2) continue;
+      if (st.freeStart) st.spine = extendToOutline(st.spine.slice().reverse(), contours, halfWidthPx).reverse();
+      if (st.freeEnd) st.spine = extendToOutline(st.spine, contours, halfWidthPx);
+    }
     return { strokes, contours, halfWidthPx };
+  }
+
+  // Carry a chain's LAST point on along its heading (read over one half-width
+  // of arc, so a pixel step does not steer it) to the nearest wall, at most
+  // three half-widths -- an end that points nowhere near a wall stays put.
+  function extendToOutline(chain, contours, halfWidthPx) {
+    if (!(halfWidthPx > EPS)) return chain;
+    const end = chain[chain.length - 1];
+    let k = chain.length - 1, L = 0;
+    while (k > 0 && L < halfWidthPx) { L += Math.hypot(chain[k].x - chain[k - 1].x, chain[k].y - chain[k - 1].y); k--; }
+    let dx = end.x - chain[k].x, dy = end.y - chain[k].y;
+    const dl = Math.hypot(dx, dy);
+    if (!(dl > EPS)) return chain;
+    dx /= dl; dy /= dl;
+    const hit = rayContoursHit(contours, end.x, end.y, dx, dy);
+    if (!hit) return chain;
+    const d = Math.hypot(hit.x - end.x, hit.y - end.y);
+    if (!(d > EPS) || d > 3 * halfWidthPx) return chain;
+    return chain.concat([{ x: hit.x, y: hit.y }]);
   }
 
   // Satin along the medial axis (skeleton). Decomposes branched letters (B, R,
