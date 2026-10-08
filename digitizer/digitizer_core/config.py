@@ -1158,6 +1158,22 @@ class PipelineConfig:
     # How far a color extends underneath the color that sews after it. Enough
     # to survive fabric pull, small enough never to read as a color error.
     overlap_mm: float = 0.25
+    # Law 26 (machine-physics playbook row 9, MASTER_SCOPE defect 47): a join
+    # between two FILLS whose rows run parallel opens under pull — both
+    # shapes shrink along the same axis, away from the seam — and wants
+    # 1.0 mm of underlap on wovens; near-perpendicular, the later layer's
+    # rows bridge the seam and ~0 will do. True gives each fill->fill seam
+    # `overlap_mm + (overlap_parallel_mm - overlap_mm) * |cos(angle between
+    # the two fills' rows)|`: 1.0 mm parallel, `overlap_mm` perpendicular,
+    # never less than today. Satin on either side keeps `overlap_mm` (a
+    # column's stitch direction is its own normal, not one angle). False is
+    # the engine before it, byte for byte. Built OFF 2026-10-08: whether it
+    # closes the seam line on cloth is the sew-out's question (card block 6).
+    overlap_by_angle: bool = False
+    # The parallel-join underlap `overlap_by_angle` grows to. 1.0 is the
+    # law's WOVEN figure, verbatim; its knit 1.5–2.0 is sew-out-gated
+    # (ROADMAP gate 1), so knits get the woven floor, never less than today.
+    overlap_parallel_mm: float = 1.0
     # Stage 5's hole hold, read for what is actually IN the hole. A hole the
     # shell's pull growth would shrink under `min_detail_mm²` is held open at
     # its original size — right for a counter, wrong for a hole a LATER
@@ -1789,8 +1805,30 @@ class PipelineConfig:
     # square) are not pairs, so the join-square fold at the E's and T's
     # L-corners is untouched. Fremont ON: three letters move (T, N, R), the
     # design +34 stitches. Built OFF; the render is Kent's to judge.
-    # Tests: `tests/test_slab_serifs.py`.
-    satin_slab_serifs: bool = False
+    # Tests: `tests/test_slab_serifs.py`. **FLIPPED ON 2026-10-08, Kent's
+    # call, TOGETHER with `satin_free_end_square` below** on the four-arm
+    # render (`tools/join_square_census.py fremont --width 80 --garment
+    # left_chest`): both ON, Fremont at 80 mm bare letter artwork 3.20 ->
+    # 0.84 mm2, fan ends 16 -> 9, +137 stitches, trims 38 -> 39.
+    satin_slab_serifs: bool = True
+    # A plain FREE END lands square too (2026-10-08, built OFF). The corner
+    # join above straightens only `Stroke.corners` members; an arm's free end
+    # whose spine hooks into a corner of its square cap (Fremont's E middle
+    # arm at 80 mm: square legs 90 -> 57 deg over its last 0.5 mm) still
+    # fans, and a slab hanging off a free end whose wings `_prune_spurs`
+    # drops as a cap I-beam (the H's, M's, N's and T's feet at 80 mm) was
+    # sewn only by that fan. ON, `_free_end_reading` reads the artwork across
+    # the arm's line at its cap face: a hooked square cap is laid on the
+    # line, and a slab is sewn as its own short column joined to the arm
+    # (`_slab_spine`, `_attach_slabs`, cut against strokes that already own
+    # it -- so a slab `satin_slab_serifs` has made a stroke is left to it).
+    # Gated to arms (6 half-widths), tight lines and square cap faces, each
+    # gate found by a corpus render (Becker's N, the U's, Enthusiast's S).
+    # Measured: `tools/join_square_census.py`; tests
+    # `tests/test_join_slab_square.py`. **FLIPPED ON 2026-10-08, Kent's call,
+    # together with `satin_slab_serifs`** (see there); False is the 10-07
+    # free end, byte for byte.
+    satin_free_end_square: bool = True
     # Lettering as Columns (`digitizer_core/outline_cut.py`,
     # `digitizer_core/columns.py`; the lettering-lane architecture,
     # `docs/lettering-architecture-rd-2026-10-07.md` §5 L4/L5, Kent's pick
