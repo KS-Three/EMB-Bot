@@ -11,7 +11,7 @@
   import { sewnPullFor, hasSatinSpans } from "../lib/sewnWidth.js";
   import { advanceIndex, clampIndex, nextSpeed } from "../lib/simulate.js";
   import { EMB } from "../lib/emb.js";
-  import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
+  import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
   import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
@@ -140,9 +140,8 @@
   // ephemeral field-viewport UI state, not project data, and never persisted.
   // Fed to renderRealistic's `view` opt (B1: POST-VIEW contract -- see
   // preview.js) on every paint, full or view-only.
+  // Range is MIN_ZOOM..MAX_ZOOM (100%-800%), from lib/interact.js.
   let view = { zoom: 1, panX: 0, panY: 0 };
-  const MIN_ZOOM = 1;
-  const MAX_ZOOM = 4;
   let rafViewScheduled = false;
 
   // Diagnostic overlays (view-only, ephemeral — same lifecycle as zoom/pan):
@@ -2245,7 +2244,7 @@
     const ccx = cw / 2, ccy = ch / 2;
     const p = anchorPx || { x: ccx, y: ccy };
     const oldZoom = view.zoom;
-    const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, oldZoom * factor));
+    const newZoom = clampZoom(oldZoom * factor);
     if (newZoom === oldZoom) return;
     const k = newZoom / oldZoom;
     const rawPanX = (p.x - ccx) * (1 - k) + view.panX * k;
