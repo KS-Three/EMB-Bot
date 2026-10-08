@@ -323,3 +323,16 @@ test("the edge announcement names the placement that refused, not the hoop", asy
   // … and does not blame the hoop, which is not the constraint here.
   expect(msg).not.toMatch(/hoop/i);
 });
+
+// Kent, 2026-10-08: "I can't zoom in to 800% anymore". The + button must walk
+// the field all the way to 800%, then disable — not stop at 400%.
+test("zoom in reaches 800% and stops there", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await reachDesign(page);
+  const zoomIn = page.locator('.zoomctl button[aria-label="Zoom in"]');
+  const pct = page.locator(".zoomctl .zoompct");
+  await expect(pct).toHaveText("100%");
+  for (let i = 0; i < 20 && await zoomIn.isEnabled(); i++) await zoomIn.click();
+  await expect(pct).toHaveText("800%");
+  await expect(zoomIn).toBeDisabled();
+});
