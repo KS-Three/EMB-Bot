@@ -94,3 +94,63 @@ def test_without_words_the_tier_flag_changes_nothing():
     regions = [_region(f"w{i}", box(4 * i, 0, 4 * i + 3, 4)) for i in range(4)]
     assert assign_word_tiers(regions, floor_mm=None) == 0
     assert not any(WORD_TIER_KEY in r.meta for r in regions)
+
+
+# --- the emitter routes by the word (stage 7's `sequence`) -------------------
+
+def _sewn_kinds(regions, cfg) -> dict[str, set]:
+    from digitizer_core import get_fabric
+    from digitizer_core.stage5_overlap import resolve_overlaps
+    from digitizer_core.stage7_sequence import sequence
+    fab = get_fabric("pique_knit")
+    planned, _w = resolve_overlaps(regions, fab, cfg)
+    blocks, _warn = sequence(planned, fab, cfg, design_class="flat")
+    out: dict[str, set] = {r.shape_id: set() for r in regions}
+    for b in blocks:
+        for run in b.runs:
+            if run.shape_id in out:
+                out[run.shape_id].add(run.kind)
+    return out
+
+
+def _tiny_stem(sid: str, x: float, tier: str | None) -> Region:
+    """A 0.6 x 1.2 mm stem: under `min_detail_mm`^2, so the per-shape
+    ladder rescues it to the run tier by its area."""
+    meta = {"layer": 0}
+    if tier:
+        meta[WORD_TIER_KEY] = tier
+    return _region(sid, box(x, 0, x + 0.6, 1.2), meta)
+
+
+def test_the_emitter_sews_a_satin_word_satin_and_a_run_word_run():
+    from digitizer_core import stitches
+    cfg = PipelineConfig(edge_cap="none", lettering_word_tiers=True)
+    small = cfg.min_detail_mm ** 2
+    assert 0.6 * 1.2 < small, "the fixture must sit under the area rescue"
+    off = _sewn_kinds([_tiny_stem("a", 0, None)], cfg)
+    assert stitches.RUN in off["a"] and stitches.SATIN not in off["a"]
+    on = _sewn_kinds([_tiny_stem("a", 0, "satin")], cfg)
+    assert stitches.SATIN in on["a"]
+    ribbon = _region("r", box(0, 10, 30, 12), {"layer": 0, WORD_TIER_KEY: "run"})
+    ran = _sewn_kinds([ribbon], cfg)
+    assert stitches.RUN in ran["r"] and stitches.SATIN not in ran["r"]
+
+
+def test_with_satin_off_the_word_does_not_cancel_the_area_rescue():
+    """Review finding 2026-10-08: a 'satin' word under `satin=False` must
+    leave the run-tier rescue standing, not fall to a sub-millimetre fill."""
+    from digitizer_core import stitches
+    cfg = PipelineConfig(edge_cap="none", lettering_word_tiers=True, satin=False)
+    kinds = _sewn_kinds([_tiny_stem("a", 0, "satin")], cfg)
+    assert stitches.RUN in kinds["a"] and stitches.FILL not in kinds["a"]
+
+
+def test_a_word_over_the_ceiling_is_left_to_the_classifier():
+    assert word_tier(8.0, floor_mm=None, ceiling_mm=5.0) is None
+    assert word_tier(4.0, floor_mm=None, ceiling_mm=5.0) == "satin"
+
+
+def test_the_floor_is_compared_in_sewn_width():
+    # artwork 0.7 + 2 x 0.1 pull = 0.9 sewn: already over a 0.8 floor
+    assert word_tier(0.7, floor_mm=0.8, pull_mm=0.1) == "satin"
+    assert word_tier(0.5, floor_mm=0.8, pull_mm=0.1) == "widened"

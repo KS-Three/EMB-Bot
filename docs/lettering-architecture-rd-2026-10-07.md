@@ -361,7 +361,7 @@ close to the typed numbers (3 trims, 0.63 concentration on MARINE 80 mm).
 **C — halo strands,** independent of the lane: a text-scoped version of
 `dissolve_phantom_blends` that assigns a thin region inside a word's box
 to the nearer of the word's ink or ground. Measurable on gaulke
-(23–30% of text stitches) with no cloth question. **Corrected 2026-10-08:** that figure was measured on an engine 135 commits old; re-measured, gaulke's text is 0% halo and the real slivers left are 1–4% of a word's stitches (`docs/text-halo-2026-10-08.md`). Kent moved the lane to L3.
+(23–30% of text stitches) with no cloth question. **Corrected 2026-10-08:** that figure was measured on an engine 135 commits old; re-measured, gaulke's text is 0% halo and the real slivers left are 1–4.4% of a word's stitches (`docs/text-halo-2026-10-08.md`). Kent moved the lane to L3 (chat, 2026-10-08).
 
 ### What this does NOT propose
 

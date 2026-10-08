@@ -1874,8 +1874,10 @@ def sequence(
     # tag, so the ladder is byte-identical.
     def routes_to_run(pr: PlannedRegion, pr_tier: str) -> bool:
         wt = _word_tier(pr.region, cfg)
-        if pr_tier == "auto" and wt is not None:
-            return wt == "run"          # L3: the word decided, not the shape's area
+        if pr_tier == "auto" and wt == "run":
+            return True                 # L3: the word decided, not the shape's area
+        if pr_tier == "auto" and wt in ("satin", "widened") and cfg.satin:
+            return False                # L3: satin for the word; with satin off, the rescue stands
         return pr_tier == "run" or (pr_tier == "auto" and rescue
                                     and pr.region.polygon.area < detail_mm2
                                     and not widened_lettering(pr.region))
@@ -2264,13 +2266,16 @@ def sequence(
                     report["hairline_runs"] = sum(
                         1 for r in runs if r.kind == stitches.RUN)
                     return runs, report, False
-            if tier == "auto" and not outline_tried and widened_lettering(p.region):
+            if (tier == "auto" and not outline_tried
+                    and (widened_lettering(p.region) or word_satin)):
                 # Widened lettering the satin tier declined — the classifier
                 # read no ribbon in the column, or the skeleton could not
                 # resolve one — sews what it sewed before the floor: the bean
                 # run on its artwork outline. The floor can move a glyph from
                 # run to satin and nowhere else; a 1 mm tatami is not a tier
-                # it may fall to.
+                # it may fall to. The same holds for a letter its WORD sent
+                # to satin (`cfg.lettering_word_tiers`) that the satin tier
+                # could not sew.
                 runs, report = run_outline(p.region.polygon, p.shape_id,
                                            entry=entry, trim_at_mm=trim_at)
                 if not report["empty"]:

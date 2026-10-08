@@ -1788,15 +1788,25 @@ class PipelineConfig:
     # are no words and nothing changes. ON, a word's tier is decided once
     # from its stroke width instead of per letter from each shape's own area
     # (the run tier) and width (`classify_ribbon`): satin when the stroke
-    # carries `machine.SATIN_MIN_CROSS_MM`, the run tier when it does not,
-    # and -- only when `lettering_min_column_mm` is set -- "widened", every
-    # member offset to that floor and sewn satin. With
+    # carries `machine.SATIN_MIN_CROSS_MM` (and is under the design's satin
+    # ceiling: over it the per-shape classifier decides, so the word only
+    # PROMOTES a letter onto satin), the run tier when it does not, and --
+    # only when `lettering_min_column_mm` is set -- "widened", every member
+    # offset to that floor (compared in sewn width) and sewn satin. With
     # `bean_letter_max_stroke_mm` set, the whole word goes bean or none of
     # it does. The floor and the bean line are cloth values (ROADMAP gate
     # 1) and stay the existing flags' values; this sets no constant.
-    # Measured 2026-10-08 (`tools/word_tiers.py --words`, five logos at six
-    # widths): 34 of 130 detected word-lines split their letters across
-    # tiers today. A review tier override still wins. Off, byte-identical.
+    # Measured 2026-10-08 (`tools/word_tiers.py --words`, enthusiast /
+    # fremont / gaulke / drone / screenshot): 34 of 130 detected word-lines
+    # split their letters across tiers at 60-120 mm today; at 60 / 80 / 100
+    # mm, 18 of 62 OFF and 0 of 62 with this and `lettering_words` ON. That
+    # counts CONSISTENCY, not quality: a word under 0.5 mm goes to the run
+    # tier's outline (failure B's tube letters) until the floor is set.
+    # Under `lettering_columns` a "run" word takes the run tier ahead of
+    # the Column lane; a "satin" word that the satin tier cannot sew falls
+    # to the run outline, never to a sub-millimetre fill. With satin off the
+    # area rescue stands. A review tier override still wins. Off,
+    # byte-identical.
     # Tests: `tests/test_word_tiers.py`.
     lettering_word_tiers: bool = False
     # Pull compensation on the RAILS instead of the polygon (quality review

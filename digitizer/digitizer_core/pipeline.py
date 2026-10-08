@@ -845,7 +845,9 @@ def build_generation(
         tag_words(regions, chart=chart_for(cfg))
         if cfg.lettering_word_tiers:
             from .words import assign_word_tiers
-            assign_word_tiers(regions, floor_mm=cfg.lettering_min_column_mm)
+            assign_word_tiers(regions, floor_mm=cfg.lettering_min_column_mm,
+                              ceiling_mm=satin_ceiling_mm(cfg),
+                              pull_mm=fabric_for(cfg).pull_comp_mm)
 
     # Letterform priors (2026-10-06, `cfg.letterform_priors_k`, DEFAULT None):
     # refit each text-tagged letter of a low-resolution upload to lines and
