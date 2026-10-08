@@ -8,11 +8,11 @@ Four arms, each a `plan_stitches` of the SAME `PipelineResult` -- stages 0-6
 run once per logo and only stage 7 reads these flags -- so every difference
 is the flags':
 
-  base        the shipped default (join_square ON, the two others OFF)
+  base        join_square ON (the default), the two others OFF
   free_end    + `satin_free_end_square`
   slab        + `satin_slab_serifs` (the skeleton-level route to a slab's
               own column, built OFF in #663)
-  both        + both
+  both        + both (the shipped default since Kent's flip, 2026-10-08)
 
 Per text-candidate letter (`meta.text_candidate`), over its satin runs:
 
@@ -66,8 +66,11 @@ from tools.thin_strokes import corpus_cases                    # noqa: E402
 SHORT_CROSS_MM = 0.6
 CORNER_R_MM = 0.8
 CORNER_TURN_DEG = 45.0
-ARMS = {"base": {}, "free_end": {"satin_free_end_square": True},
-        "slab": {"satin_slab_serifs": True},
+# Every arm sets both flags explicitly: since Kent's flip (2026-10-08) the
+# config default is "both", and an arm that only ADDS a flag reads the same.
+ARMS = {"base": {"satin_free_end_square": False, "satin_slab_serifs": False},
+        "free_end": {"satin_free_end_square": True, "satin_slab_serifs": False},
+        "slab": {"satin_free_end_square": False, "satin_slab_serifs": True},
         "both": {"satin_free_end_square": True, "satin_slab_serifs": True}}
 # The corpus logos that carry text-tagged letters (fan_census.ORDER less
 # bridge, whose eight tagged shapes are segmentation blobs, not letters).

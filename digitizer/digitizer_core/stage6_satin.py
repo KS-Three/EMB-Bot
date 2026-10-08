@@ -4222,6 +4222,13 @@ def _free_end_reading(piece: list[tuple[float, float]], at_end: bool, half_mm: f
     arm = 2.0 * _member_corridor(pts, False, field, half_mm)
     if arm <= 0:
         return None
+    if cum[-1] < _ARM_MIN_HALVES * 0.5 * arm:
+        # ... and long against its OWN width, not just the shape's mean: a
+        # 5.7 mm column of Becker's MARINE at 127 mm reads 8.7 mean
+        # half-widths long but 5.8 of its own, and re-laid it left a
+        # compact bare corner the preflight counts as a hole (defect 50's
+        # fixture, `tests/test_crown_cover.py`, 2026-10-08)
+        return None
     reach = 4.0 * _SLAB_END_RATIO * arm
     apex = cen + float((np.asarray(pts[-1], float) - cen) @ u) * u
     start = apex - u * half_mm
