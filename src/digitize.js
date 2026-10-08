@@ -870,7 +870,23 @@
     const garment = o.garment || { widthIn: 5, heightIn: 2.25 };
 
     // filter empty; accept {shapes:[{outer,holes}]} or legacy {polygons:[ring]}
-    const regions = colorRegions.filter((r) => r && ((r.shapes && r.shapes.length) || (r.polygons && r.polygons.length)));
+    // A NaN/Infinity vertex would poison the bbox and fit scale and put NaN in
+    // every stitch; drop such vertices up front. A region whose vertices are
+    // all finite is passed through as the same object.
+    const okPt = (q) => q && Number.isFinite(q.x) && Number.isFinite(q.y);
+    const cleanRing = (ring) => (!ring || ring.every(okPt) ? ring : ring.filter(okPt));
+    const cleanRegion = (r) => {
+      if (!r) return r;
+      const shapes = r.shapes && r.shapes.map((s) => {
+        if (!s) return s;
+        const outer = cleanRing(s.outer), holes = s.holes && s.holes.map(cleanRing);
+        return outer === s.outer && (!holes || holes.every((h, i) => h === s.holes[i])) ? s : Object.assign({}, s, { outer, holes });
+      });
+      const polygons = r.polygons && r.polygons.map(cleanRing);
+      const same = (!shapes || shapes.every((s, i) => s === r.shapes[i])) && (!polygons || polygons.every((q, i) => q === r.polygons[i]));
+      return same ? r : Object.assign({}, r, { shapes, polygons });
+    };
+    const regions = colorRegions.map(cleanRegion).filter((r) => r && ((r.shapes && r.shapes.length) || (r.polygons && r.polygons.length)));
     for (const r of regions) if (!r.polygons) r.polygons = r.shapes.map((s) => s.outer);
     if (!regions.length) return { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, shapeOutlines: [], fit: null, _debug: { nSatin: 0, nFill: 0, nTrims: 0 } };
 
