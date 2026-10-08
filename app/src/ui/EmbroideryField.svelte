@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
-  import { generateAll, charList, letteringNote, emptyFieldHint } from "../lib/generate.js";
+  import { generateAll, charList, letteringNote, emptyFieldHint, splitIntoTwoLines } from "../lib/generate.js";
   import { ensureFonts, loadCoverage, loadManifest } from "../lib/fontLoader.js";
   import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
@@ -14,7 +14,7 @@
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
-  import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
+  import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, pulseFadeAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
   import {
     appliedBorders,
     borderMenuItems,
@@ -27,6 +27,8 @@
   import { resolveCutOuts } from "../lib/manualShapes.js";
   import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, refitShapesPatch, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT } from "../lib/fieldNodeEdit.js";
   import Hint from "./Hint.svelte";
+  import Pinwheel from "./Pinwheel.svelte";
+  import { digitizeBusy } from "../lib/digitizeBusy.js";
   import Icon from "./Icon.svelte";
   import ShapePopover from "./ShapePopover.svelte";
 
@@ -113,6 +115,9 @@
   // hairline strokes sewn as run, columns under 1 mm) — per element like the
   // 5 mm warn, because the fix is that element's size or font.
   let letterNote = "";
+  // The one-click line break offered beside a thin-lettering note: the
+  // element to patch and its text over two lines, or null.
+  let twoLinesFix = null;
 
   // Result of the last renderRealistic() call — { toCanvas, scale, designBBoxMm } —
   // kept around so pointer handlers and the selection overlay can hit-test /
@@ -567,8 +572,11 @@
     if (!project || !Array.isArray(project.elements)) return;
     const now = performance.now();
     for (const el of project.elements) {
-      if (el.type !== "digitized" || !digitizedRows(el)) continue;
-      pulses.seen(el.id, outlinePulseKey(el), now);
+      if (el.type !== "digitized") continue;
+      // An upload that has not been digitized yet is seen too, with a null
+      // key: that baseline is what makes its FIRST result a change, and so a
+      // pulse. Skipping it made the first result a silent first sighting.
+      pulses.seen(el.id, digitizedRows(el) ? outlinePulseKey(el) : null, now);
     }
     if (pulses.active(now)) schedulePulseFrame();
   }
@@ -1324,7 +1332,10 @@
 
       const started = pulses.startedAt(el.id);
       const pulse = started == null ? 0 : pulseAt(now - started);
-      if (pulse > 0) stillPulsing = true;
+      // The wave touches 0 between beats, so "still in the window" is read
+      // off the fade, not the beat.
+      const fade = started == null ? 0 : pulseFadeAt(now - started);
+      if (fade > 0) stillPulsing = true;
 
       // Hidden shapes stay out of the drawing but stayed IN the transform, so
       // toggling one off does not shift the others.
@@ -1372,7 +1383,13 @@
         // list drives this too, through App: a row's hover and click land
         // in `hoverShape` / `focusShape` above.)
         const orphan = !!(orphanCut && o.cutOut && orphanCut[o.id] == null);
-        if (!showOutlines && !editing && !hovered && !orphan) continue;
+        // A fresh result pulses whatever the toggle says, fading out as it
+        // goes: hiding the outlines by default (2026-09-01) silently hid the
+        // "we found these shapes" cue with them, and Kent asked for it back
+        // (2026-10-08).
+        const ghost = !showOutlines && !editing && !hovered && !orphan;
+        if (ghost && fade <= 0) continue;
+        ctx.globalAlpha = ghost ? fade : 1;
         // Mid node-drag the flattened ring is the STALE geometry: drawing it
         // beside the live authored outline showed two amber outlines. Idle,
         // the flattened ring stays underneath the authored one (spec §5) —
@@ -1660,6 +1677,7 @@
     if (!pe) {
       warn = false;
       letterNote = "";
+      twoLinesFix = null;
       dispatch("dims", null);
       return;
     }
@@ -1687,6 +1705,11 @@
     // what the customer would be editing.
     const lines = el && typeof el.text === "string" ? el.text.split("\n").length : 1;
     letterNote = letteringNote(pe.design && pe.design.lettering, { atWidthCap, lines });
+    // Only where breaking the line is the advice that helps: the design is
+    // already at the placement's width, so the letters can grow only if the
+    // line gets shorter.
+    const split = letterNote && atWidthCap && el && el.type === "text" ? splitIntoTwoLines(el.text) : null;
+    twoLinesFix = split ? { id: el.id, text: split } : null;
     // "Smaller than 5 mm" is advice about a design that IS there and is too
     // small to sew cleanly. On an element with no stitches at all it is not
     // advice, it is noise — and it sat directly in front of the message that
@@ -1817,6 +1840,7 @@
     hoopNote = "";
     unsupportedNote = "";
     letterNote = "";
+    twoLinesFix = null;
     renderResult = null;
     perElementRects = [];
     peById = {};
@@ -3313,7 +3337,11 @@
         on:close={closeShapePop}
       />
     {/if}
-    {#if !hasDesign && !error && hint}
+    <!-- The digitize pinwheel: only while a run is in flight, so it never
+         sits on the field at rest (e2e/field-chrome.spec.js's one-child rule
+         is measured with no run going). -->
+    {#if $digitizeBusy.size}<Pinwheel />{/if}
+    {#if !hasDesign && !error && hint && !$digitizeBusy.size}
       <p class="fieldhint" class:on-dark={project && project.fabricRgb && isDark(project.fabricRgb)}>{hint}</p>
     {/if}
   </div>
@@ -3483,6 +3511,6 @@
     <!-- &nbsp; before each separator, not a plain space: Svelte strips leading
          whitespace inside an element, so " · " rendered as "…hoop· This font".
          Pre-existing on the two older warnings; visible on all three now. -->
-    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{#if letterNote}<span class="warn">&nbsp;· {letterNote}</span>{/if}{/if}
+    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{#if letterNote}<span class="warn">&nbsp;· {letterNote}</span>{#if twoLinesFix}&nbsp;<button type="button" class="twolines" on:click={() => dispatch("elupdate", { id: twoLinesFix.id, patch: { text: twoLinesFix.text } })}>Put on two lines</button>{/if}{/if}{/if}
   </div>
 </div>
