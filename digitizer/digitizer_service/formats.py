@@ -40,8 +40,12 @@ import io
 import math
 import threading
 
+import numpy as np
 import pystitch
-from pystitch import PecWriter
+from pystitch import EmbThreadJef, EmbThreadPec, PecWriter
+from skimage.color import deltaE_ciede2000
+
+from digitizer_core.threads import rgb_to_lab
 
 TAJIMA_STANDARD = "tajima-standard"
 
@@ -168,6 +172,47 @@ def _pec_encode_like_browser(pattern: pystitch.EmbPattern, f) -> None:
             break
 
 
+# The fixed manufacturer chart each format names its cones from. pystitch picks
+# the index with its own metric, which sent near-black (20,20,20) to a dark
+# brown where the browser's `src/pes.js` picks Black (tools/export-audit.mjs,
+# 2026-10-08). Kent's ruling the same day: snap with CIEDE2000, the metric
+# `digitizer_core/threads.py` and `app/src/lib/colorMatch.js` already use. Each
+# thread is set to its nearest chart cone's exact colour, so whatever metric
+# pystitch then applies finds that cone at distance zero.
+_CONE_CHARTS = {"pes": EmbThreadPec, "pec": EmbThreadPec, "jef": EmbThreadJef}
+_chart_cache: dict = {}
+
+
+def _chart(fmt):
+    hit = _chart_cache.get(fmt)
+    if hit is None:
+        cones = [t for t in _CONE_CHARTS[fmt].get_thread_set() if t is not None]
+        rgb = np.array([[t.get_red(), t.get_green(), t.get_blue()] for t in cones])
+        hit = _chart_cache[fmt] = (cones, rgb_to_lab(rgb))
+    return hit
+
+
+def snap_to_cones(pattern: pystitch.EmbPattern, fmt: str) -> pystitch.EmbPattern:
+    """A copy of `pattern` whose threads are their CIEDE2000-nearest cones.
+
+    The design's own name rides along on each thread; only the colour moves.
+    The PES header therefore states the chart colour rather than the design's
+    exact RGB — the cone the machine will ask for, which is what it names.
+    """
+    cones, lab = _chart(fmt)
+    snapped = pystitch.EmbPattern()
+    snapped.stitches = pattern.stitches
+    snapped.extras = dict(pattern.extras)
+    for t in pattern.threadlist:
+        want = rgb_to_lab(np.array([[t.get_red(), t.get_green(), t.get_blue()]]))
+        cone = cones[int(np.argmin(deltaE_ciede2000(want, lab)))]
+        nt = pystitch.EmbThread()
+        nt.set_color(cone.get_red(), cone.get_green(), cone.get_blue())
+        nt.description = t.description
+        snapped.add_thread(nt)
+    return snapped
+
+
 # `PecWriter.write_pec_block` calls its module-level `pec_encode` by name, and
 # both PES and PEC go through it. Swapped only for the duration of one of
 # OUR writes, under a lock — the service writes from a thread pool, and
@@ -252,6 +297,8 @@ def write(pattern: pystitch.EmbPattern, fmt: str) -> bytes:
     buf = io.BytesIO()
     # SVG is a proof, not a machine file: it draws the design's own segments.
     pattern = pattern if fmt == "svg" else split_sewn_moves(pattern)
+    if fmt in _CONE_CHARTS:
+        pattern = snap_to_cones(pattern, fmt)
     settings = _WRITER_SETTINGS.get(fmt)
     args = (pattern, buf) if settings is None else (pattern, buf, dict(settings))
     if fmt in _PEC_FORMATS:

@@ -393,7 +393,7 @@
     // (3 records) and split move (n records) was counted once.
     const header = buildHeader({
       label: (design && design.label) || "EMBBOT",
-      stitchCount: (off - 512) / 3,
+      stitchCount: (off - 512) / 3, // body records written, END included
       colorCount: colors.length,
       xMin, xMax, yMin, yMax,
     });
