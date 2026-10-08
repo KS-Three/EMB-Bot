@@ -58,8 +58,8 @@ import math
 from collections import deque
 from dataclasses import dataclass, field
 
-from shapely.geometry import LineString, Polygon
-from shapely.ops import substring
+from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import nearest_points, substring
 
 from . import machine, stitches
 from .stitches import StitchRun
@@ -86,6 +86,9 @@ _UNDERPATH_STEP_MM = 2.0
 # Centre-walk underlay: step and end inset (satinfont.js UNDERLAY_*).
 _UNDERLAY_STEP_MM = 3.0
 _UNDERLAY_INSET_MM = 0.4
+# The walk-in lands this far inside the letter's near edge (or a quarter
+# stroke, if less): inside the satin that will cover it, clear of the edge.
+_ENTRY_INSET_MM = 0.3
 
 
 @dataclass
@@ -622,6 +625,26 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     if not any(r.kind == stitches.SATIN for r in runs):
         report["empty"] = True
         return [], report
+    # 3b. Walk in from the letter's near edge (the satin tier's entry: its
+    #     first run is a travel from where the needle arrives). A walk
+    #     starts at a column END, which sits mid-stroke, and the hop from
+    #     the previous letter straight to it crossed the 3 mm trim line on
+    #     Fremont where the gap between letters is under a millimetre (the
+    #     first stitch landed 2.5-3.7 mm in, against 1.1-1.5 under the
+    #     satin tier). The needle now lands just inside the near edge and
+    #     runs to the start under the thread sewn after it -- only where
+    #     that run stays inside the letter.
+    if start_near is not None and runs:
+        f = runs[0].points[0]
+        inner = poly.buffer(-min(_ENTRY_INSET_MM, 0.25 * W))
+        if not inner.is_empty:
+            e = nearest_points(inner, Point(start_near))[0].coords[0]
+            if (math.dist(start_near, e) + machine.TINY_STITCH_MM < math.dist(start_near, f)
+                    and math.dist(e, f) >= machine.TINY_STITCH_MM
+                    and poly_link.covers(LineString([e, f]))):
+                runs.insert(0, StitchRun(points=_walk_points([e, f], _UNDERPATH_STEP_MM),
+                                         kind=stitches.TRAVEL, shape_id=shape_id))
+                report["entry_walk_mm"] = math.dist(e, f)
     # 4. Link consecutive runs: the satin tier's own sew-or-jump rule, verbatim
     #    (`satin_shape`'s tail). Under rail comp the rails sit a pull outside
     #    the artwork and a hop that ends on one is still inside the column.

@@ -39,6 +39,9 @@ stream the encoders are handed.
   `generate.spec.js`, "an image fill lays no float across its counter" (351
   off-fill floats with the flag dropped from the image branch, 0 with it).
 
+**Can the image lane's price come down?** Taken apart and four cheaper
+walks tried, later the same day: HOLD, see [`price.md`](price.md).
+
 ## How each column is measured
 
 See the head of `tools/fill-columns-lanes.mjs`. In short:

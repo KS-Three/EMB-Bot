@@ -409,7 +409,7 @@ about the facts.
    digitized images shown to him carry the off/on float picture
    (`tools/fill-columns-image-sheet.mjs`; memory
    `fill-columns-float-pictures-2026-10-08`). **None of it is sewn.**
-   `cutFloats` (28) is on for manual too.
+   `cutFloats` (28) is on in manual (#672).
    *(measured 2026-10-08 — `docs/renders/fill-columns-lanes-2026-10-08/`;
    `generate.js`, `generate.spec.js` star and counter tests)*
 23. **Flip `ties` on for the browser lanes — NEW 2026-10-03, built OFF in

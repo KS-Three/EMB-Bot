@@ -1337,3 +1337,14 @@ test("generateAll sews a shape element under the project's calibration profile",
   // reached the browser fill emitter, not just the label.
   expect(tighter.stitchCount).toBeGreaterThan(plain.stitchCount);
 });
+
+// The one-click line break the field offers beside a thin-lettering note.
+test("splitIntoTwoLines breaks at the space nearest the middle", async () => {
+  const { splitIntoTwoLines } = await import("./generate.js");
+  expect(splitIntoTwoLines("Fritsch's Stitches")).toBe("Fritsch's\nStitches");
+  expect(splitIntoTwoLines("Joe and Mary Smith")).toBe("Joe and\nMary Smith");
+  expect(splitIntoTwoLines("  Ann  Lee ")).toBe("Ann\nLee");
+  expect(splitIntoTwoLines("Fritsch")).toBeNull();
+  expect(splitIntoTwoLines("Two\nlines already")).toBeNull();
+  expect(splitIntoTwoLines(null)).toBeNull();
+});

@@ -59,27 +59,33 @@
     return digits; // [w1, w3, w9, w27, w81]
   }
 
-  function decompose(value, weights, bytes) {
-    const digits = balancedTernaryDigits(value);
-    for (let i = 0; i < MAGNITUDES.length; i++) {
-      const d = digits[i];
-      if (d === 0) continue;
-      const [bi, mask] = weights[String(d * MAGNITUDES[i])];
-      bytes[bi] |= mask;
+  // Every legal delta (-121..121) per axis, decomposed once: [b0, b1, b2].
+  // encodeRecord used to redo the balanced-ternary split and a string-keyed
+  // weight lookup per record; at 50k stitches that was most of the export.
+  function buildAxisTable(weights) {
+    const table = new Uint8Array((2 * MAX_DELTA + 1) * 3);
+    for (let v = -MAX_DELTA; v <= MAX_DELTA; v++) {
+      const digits = balancedTernaryDigits(v);
+      const o = (v + MAX_DELTA) * 3;
+      for (let i = 0; i < MAGNITUDES.length; i++) {
+        const d = digits[i];
+        if (d === 0) continue;
+        const [bi, mask] = weights[String(d * MAGNITUDES[i])];
+        table[o + bi] |= mask;
+      }
     }
+    return table;
   }
+  const X_TABLE = buildAxisTable(X_WEIGHTS);
+  const Y_TABLE = buildAxisTable(Y_WEIGHTS);
 
-  function encodeRecord(dx, dy, flag) {
-    if (dx < -MAX_DELTA || dx > MAX_DELTA || dy < -MAX_DELTA || dy > MAX_DELTA) {
-      throw new RangeError(
-        "DST record delta out of range (-121..121): dx=" + dx + " dy=" + dy
-      );
-    }
-    const bytes = new Uint8Array(3);
-    decompose(dx, X_WEIGHTS, bytes);
-    decompose(dy, Y_WEIGHTS, bytes);
+  // Writes one record's three bytes into `buf` at `off`. Callers guarantee
+  // dx, dy are integers in range; encodeRecord is the checked public face.
+  function putRecord(buf, off, dx, dy, flag) {
+    const xo = (dx + MAX_DELTA) * 3, yo = (dy + MAX_DELTA) * 3;
+    buf[off] = X_TABLE[xo] | Y_TABLE[yo];
+    buf[off + 1] = X_TABLE[xo + 1] | Y_TABLE[yo + 1];
     // Byte2 low bits 0x03 always set for stitch/jump/color.
-    bytes[2] |= 0x03;
     // 0x83 jump, 0xC3 colour change, 0x03 plain stitch. The colour flag is
     // 0xC0 -- BOTH high bits -- not 0x40: a colour change is a jump that also
     // stops the machine, so it carries the jump bit too.
@@ -97,8 +103,18 @@
     // already reads the standard code (it tests `b2 & 0x40` BEFORE the 0x80
     // jump test, so 0xC3 lands as a colour change), so EMB-Bot's own decode of
     // its own file is byte-identical before and after.
-    if (flag === "jump") bytes[2] |= 0x80;
-    else if (flag === "color") bytes[2] |= 0xc0;
+    buf[off + 2] = (X_TABLE[xo + 2] | Y_TABLE[yo + 2] | 0x03) |
+      (flag === "jump" ? 0x80 : flag === "color" ? 0xc0 : 0);
+  }
+
+  function encodeRecord(dx, dy, flag) {
+    if (dx < -MAX_DELTA || dx > MAX_DELTA || dy < -MAX_DELTA || dy > MAX_DELTA) {
+      throw new RangeError(
+        "DST record delta out of range (-121..121): dx=" + dx + " dy=" + dy
+      );
+    }
+    const bytes = new Uint8Array(3);
+    putRecord(bytes, 0, dx, dy, flag);
     return bytes;
   }
 
@@ -214,7 +230,24 @@
   function encodeDST(design) {
     const stitches = (design && design.stitches) || [];
     const colors = (design && design.colors) || [];
-    const records = [];
+    // Records go straight into one growing buffer (3 bytes each, after the
+    // 512-byte header) instead of a Uint8Array(3) per record.
+    let buf = new Uint8Array(512 + 3 * (stitches.length + 16));
+    let off = 512;
+    const push = (dx, dy, flag) => {
+      if (off + 3 > buf.length) {
+        const bigger = new Uint8Array(buf.length * 2);
+        bigger.set(buf);
+        buf = bigger;
+      }
+      if (dx < -MAX_DELTA || dx > MAX_DELTA || dy < -MAX_DELTA || dy > MAX_DELTA) {
+        throw new RangeError(
+          "DST record delta out of range (-121..121): dx=" + dx + " dy=" + dy
+        );
+      }
+      putRecord(buf, off, dx, dy, flag);
+      off += 3;
+    };
 
     let lastX = 0;
     let lastY = 0;
@@ -266,7 +299,7 @@
       // move delta. Always emit at least 3 jumps so the machine reads a trim.
       if (st.type === "trim") {
         for (const [sx, sy] of splitTrim(targetX - lastX, targetY - lastY)) {
-          records.push(encodeRecord(sx, sy, "jump"));
+          push(sx, sy, "jump");
         }
         lastX = targetX;
         lastY = targetY;
@@ -325,20 +358,30 @@
       // One step when the move fits a record — byte-identical to the old loop
       // for every design that never splits. The LAST step carries the record's
       // real flag; the ones before it are intermediates.
-      const steps = splitSteps(targetX - lastX, targetY - lastY, MAX_DELTA, 1);
-      for (let k = 0; k < steps.length - 1; k++) {
-        records.push(encodeRecord(steps[k][0], steps[k][1], splitFlag));
-        lastX += steps[k][0];
-        lastY += steps[k][1];
+      const mx = targetX - lastX, my = targetY - lastY;
+      if (mx >= -MAX_DELTA && mx <= MAX_DELTA && my >= -MAX_DELTA && my <= MAX_DELTA) {
+        // Fits one record: splitSteps would return exactly [[mx, my]].
+        push(mx, my, flag);
+      } else {
+        const steps = splitSteps(mx, my, MAX_DELTA, 1);
+        for (let k = 0; k < steps.length - 1; k++) {
+          push(steps[k][0], steps[k][1], splitFlag);
+        }
+        const last = steps[steps.length - 1];
+        push(last[0], last[1], flag);
       }
-      const last = steps[steps.length - 1];
-      records.push(encodeRecord(last[0], last[1], flag));
       lastWasStitch = isStitch;
       lastX = targetX;
       lastY = targetY;
     }
 
-    records.push(endRecord());
+    if (off + 3 > buf.length) {
+      const bigger = new Uint8Array(off + 3);
+      bigger.set(buf.subarray(0, off));
+      buf = bigger;
+    }
+    buf.set(endRecord(), off);
+    off += 3;
 
     const header = buildHeader({
       label: (design && design.label) || "EMBBOT",
@@ -346,15 +389,9 @@
       colorCount: colors.length,
       xMin, xMax, yMin, yMax,
     });
-
-    const total = 512 + records.length * 3;
-    const out = new Uint8Array(total);
-    out.set(header, 0);
-    let off = 512;
-    for (const r of records) {
-      out.set(r, off);
-      off += 3;
-    }
+    buf.set(header, 0);
+    // Copy to an exact-length array: callers see the same buffer size as before.
+    const out = buf.slice(0, off);
     return out;
   }
 
