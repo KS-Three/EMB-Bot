@@ -1780,11 +1780,22 @@ def dissolve_phantom_blends(
         # background, enclosed pixels excluded; None reduces to the old
         # behaviour for any caller that does not have it.
         outside = (~valid) if page_mask is None else page_mask
+        page_edge = np.zeros(labels.shape, bool)
         for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             touch = valid & np.roll(outside, (dy, dx), (0, 1))
+            page_edge |= touch
             for a in np.unique(code_frame[touch]):
                 if int(a) >= 0:
                     adj[int(a)].add(_PAGE)
+        # A pixel on the PAGE is on a boundary too. `_edge_mask` counts only
+        # label-against-label contacts, so the outer band of a rim halo loses
+        # its whole page side and reads under `_PHOTO_PHANTOM_EDGE_FRAC`. On
+        # Bridge Bar that was the Whale residual: eight neutral-grey bands
+        # (L* 49-53, between the black spokes and the page) read 0.43-0.49
+        # and were never offered to the dissolve; with page contact counted
+        # they read 0.50-0.54. The page is already an endpoint above, so
+        # counting it as an edge only makes the gate agree with that.
+        edge_counts = np.bincount(code_v[(edge | page_edge)[valid]], minlength=n_ids)
 
     # Each phantom names the side of its OWN step that it is nearer, which
     # is always one of its own neighbours. The flat lane instead sends a
