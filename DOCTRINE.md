@@ -8753,6 +8753,39 @@ letters under every arm — the fabric's 0.3 mm pull per side, not a fan;
 `tools/fan_census.py` reads 1.6 x (W + 2 pull). *(measured 2026-10-07 —
 `docs/n-fan-2026-10-07.md`)*
 
+## 2026-10-07 — A flip Kent made on renders was held by its guards: `satin_join_square` ON loses an ENTHUSIAST element
+
+Kent flipped `satin_join_square` ON on 2026-10-06 on Fremont renders (stitches
+and trims identical, fan ends 7 → 5). Merged with main and run on the lettering
+set, ON loses one ≥ 1 mm² element of the ENTHUSIAST wordmark — a fixture that
+had never lost one — and tips three sibling bars (fine `lost_frac` 0.1702 /
+0.17, tip-cap end bare 10.53 / 9.5 mm², a rail-comp mid-rail hole 1.24 / 0.55);
+with the flag off on the same tree all four are green. Kent held the flip the
+same day. **The guards did their job: a render shows the fixture it was made
+on, a guard reads the corpus. Run the lettering guard set before a flip's PR
+opens, and when a flip tips a bar with Kent's ruling on it, that is a finding
+to name, not a pin to move.** *(measured 2026-10-07 — PR #663)*
+
+## 2026-10-07 — The held flip, named and fixed: a bend read as a corner, and the vertex test would have cut the wrong way
+
+The ENTHUSIAST element `satin_join_square` lost is the S's bowl. At 80 mm
+(half-width 0.87 mm) a pull-comped inner bowl is a sharp reflex vertex, so
+`_split_sharp_corners`' join rule cuts the S there in BOTH arms; OFF the two
+members' bent ends still meet, ON `_straighten_member_end` projected both
+apexes 0.80 / 0.82 mm (0.92 half-widths) onto their fitted lines, the ends
+parted and the wedge sewed bare — the element and the three sibling bars are
+one mechanism. The first cure reached for was the corner's vertex angle
+(Fremont's accepted corners peak 6–8° at one vertex, enthusiast's 60–96°),
+and the census refuted it: Becker's, gaulke's and drone's REAL corners peak
+49–91° too, so a vertex test would have refused the corners the flip exists
+for. What separates is the apex's DISPLACEMENT off its own member's line —
+p50 0.92 half-widths on enthusiast against 0.22 on Fremont and 0.12 on
+Becker — and `_STRAIGHT_MAX_MOVE_HALVES` 0.6 keeps the bend. **Name a lost
+element by its shape id and a crop before choosing the cure, and census the
+candidate test over EVERY fixture's accepted cases: the first discriminator
+that parts the broken fixture from the clean one can refuse the clean cases
+everywhere else.** *(measured 2026-10-07 — `docs/join-square-enthusiast-2026-10-07.md`; `tests/test_join_corner_bend_cap.py`)*
+
 ## 2026-10-08 — On black-and-white art the halo-vs-stroke question has a per-IMAGE answer: `cfg.two_tone_snap`, built OFF
 
 The 10-05/10-06 entry above ended on "what is missing is a per-region test
