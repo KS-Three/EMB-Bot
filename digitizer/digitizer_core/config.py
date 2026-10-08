@@ -2859,6 +2859,18 @@ class PipelineConfig:
     # **Flipping it ON is Kent's call.** The render is at
     # docs/renders/satin-per-stroke-2026-09-06/.
     satin_per_stroke: bool = False
+    # Defect 5, one misroute class: a shape lying INSIDE a satin border's
+    # outline routes FILL, DEFAULT OFF. The pro convention is a filled body
+    # with a satin edge; we satined the body too. On becker_marine_logo the
+    # BECKER letters sit inside the black outline band, which is satin, and
+    # the pro tatamis every one of them while satining MARINE's solid
+    # letters of the same stroke width -- so no width or aspect threshold
+    # separates them (and defect 26's thresholds are a measured negative),
+    # but containment does: all eight bodies read 1.00 inside the band's
+    # outline, all eight MARINE shapes 0.00. Off, the pass never runs.
+    # Measured 2026-10-08 against the four committed Becker pro files,
+    # chance-corrected only: `tests/test_fill_inside_satin_border.py`.
+    fill_inside_satin_border: bool = False
     # Read the satin skeleton from the POLYGON instead of thinning a raster
     # of it (`digitizer_core/polygon_axis.py`), DEFAULT OFF and byte-identical
     # off -- off, that module is never imported.
