@@ -84,6 +84,7 @@ by definition runs under another colour.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from shapely import STRtree, affinity
@@ -373,6 +374,45 @@ def resolve_overlaps(
 
     geom_by_layer = {L: unary_union([sewn_footprint(r) for r in by_layer[L]]) for L in layers}
 
+    # `cfg.overlap_by_angle` (Law 26): each fill's row angle, read with the
+    # same call stage 7's tier and angle precedence uses; None for a satin.
+    # Off: nothing is built and the underlap below is the scalar it was.
+    parallel = max(overlap, float(getattr(cfg, "overlap_parallel_mm", overlap) or 0.0))
+    by_angle = bool(getattr(cfg, "overlap_by_angle", False)) and overlap > 0 and parallel > overlap
+    row_angle: dict[str, float | None] = {}
+    foot_regions: list[Region] = []
+    foot_tree = None
+    if by_angle:
+        for r in regions:
+            a, is_sat = _comp_axis(r, cfg, satin_max, design_class)
+            row_angle[r.shape_id] = None if is_sat else a
+        foot_regions = list(regions)
+        foot_tree = STRtree([sewn_footprint(r) for r in foot_regions])
+
+    def seam_overlap(a_deg: float, b_deg: float) -> float:
+        d = math.radians((a_deg - b_deg) % 180.0)
+        return overlap + (parallel - overlap) * abs(math.cos(d))
+
+    def deep_reach(r: Region, poly, L: int):
+        """The extra underlap a fill gets under each LATER fill its rows run
+        near-parallel to: the seam's own depth, clipped to that neighbour."""
+        a = row_angle.get(r.shape_id)
+        if a is None:
+            return None
+        parts = []
+        for i in foot_tree.query(poly.buffer(pull + parallel)):
+            n = foot_regions[int(i)]
+            b = row_angle.get(n.shape_id)
+            if n.meta["layer"] <= L or b is None:
+                continue
+            ov = seam_overlap(a, b)
+            if ov <= overlap + 1e-9:
+                continue
+            part = poly.buffer(pull + ov).intersection(sewn_footprint(n))
+            if not part.is_empty:
+                parts.append(part)
+        return unary_union(parts) if parts else None
+
     # Bare fabric is everything the artwork does not cover. A same-thread gap is
     # only a gap where no other colour is filling it, so the keep-apart corridor
     # is carved out of this and an underlap under a later colour never qualifies.
@@ -452,6 +492,10 @@ def resolve_overlaps(
             # Extend under whatever sews later — the underlap that hides the seam.
             if overlap > 0 and later[L] is not None:
                 reach = poly.buffer(pull + overlap).intersection(later[L])
+                if by_angle:
+                    deep = deep_reach(r, poly, L)
+                    if deep is not None:
+                        reach = reach.union(deep)
                 if not reach.is_empty:
                     grown = grown.union(reach)
 
