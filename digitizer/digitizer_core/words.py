@@ -398,3 +398,50 @@ def word_ocr_text(regions: list[Region]) -> None:
         text = "".join(c if c else "?" for c in chars)
         for r in members:
             r.meta["word_ocr_text"] = text
+
+
+# --- L3: one tier per word (`cfg.lettering_word_tiers`) ----------------------
+
+WORD_TIER_KEY = "word_tier"
+
+
+def word_tier(stroke_mm: float | None, *, floor_mm: float | None) -> str | None:
+    """The tier a word of full stroke width `stroke_mm` sews on, decided
+    once for all its letters (L3 of the lettering plan):
+
+      satin    the stroke carries a satin cross (`machine.SATIN_MIN_CROSS_MM`)
+               and clears the column floor when one is set
+      widened  under the floor (`cfg.lettering_min_column_mm`), so the whole
+               word is offset to it and sews satin -- only when a floor is set
+      run      under the satin cross with no floor: the run tier's outline
+
+    The bean band (`cfg.bean_letter_max_stroke_mm`) is decided on the word's
+    source INK in `beanletters.tag_bean_letters`, which runs later and wins.
+    The floor is a cloth value (ROADMAP gate 1) and stays whatever the flag
+    says, None by default; this function sets no physical constant."""
+    from .machine import SATIN_MIN_CROSS_MM
+    if stroke_mm is None:
+        return None
+    if floor_mm and stroke_mm < floor_mm:
+        return "widened"
+    if stroke_mm < SATIN_MIN_CROSS_MM:
+        return "run"
+    return "satin"
+
+
+def assign_word_tiers(regions: list[Region], *, floor_mm: float | None) -> int:
+    """Stamp `word_tier` on every word member (`tag_words` ran first), from
+    the word's `word_stroke_mm`; -> how many members were stamped. Clears a
+    stale key on every region first. Metadata: stage 7 and the stitch-width
+    floor read it, and a review tier override still wins over it."""
+    for r in regions:
+        r.meta.pop(WORD_TIER_KEY, None)
+    n = 0
+    for members in word_groups(regions):
+        tier = word_tier(members[0].meta.get("word_stroke_mm"), floor_mm=floor_mm)
+        if tier is None:
+            continue
+        for r in members:
+            r.meta[WORD_TIER_KEY] = tier
+            n += 1
+    return n

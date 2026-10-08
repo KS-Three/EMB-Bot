@@ -241,6 +241,15 @@ def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float
     return satin_max_mm, cfg.satin_per_stroke, bool(cfg.wide_columns)
 
 
+def _word_tier(region, cfg: PipelineConfig) -> str | None:
+    """L3's per-word tier (`words.assign_word_tiers`) when
+    `cfg.lettering_word_tiers` is on, else None -- the one read every
+    stage-7 tier decision makes, so they cannot disagree."""
+    if not cfg.lettering_word_tiers:
+        return None
+    return region.meta.get("word_tier")
+
+
 def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
                 design_class: str) -> bool:
     """Will this region reach the satin tier? — the borders-last predicate.
@@ -305,6 +314,11 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
         return True
     if tier == "auto" and region.meta.get(BEAN_LETTER_KEY):
         return False        # a bean letter (`beanletters.tag_bean_letters`): runs, not columns
+    wt = _word_tier(region, cfg)
+    if tier == "auto" and wt == "run":
+        return False        # L3: the word sews on the run tier
+    if tier == "auto" and wt in ("satin", "widened") and cfg.satin:
+        return True         # L3: the word sews satin, every letter of it
     if tier == "auto" and cfg.lettering_columns and cfg.satin and is_lettering(region, cfg):
         return True         # a Column letter (`cfg.lettering_columns`): satin on its artwork outline
     satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm)
@@ -1859,6 +1873,9 @@ def sequence(
     # everything but this population); with the flag off nothing carries the
     # tag, so the ladder is byte-identical.
     def routes_to_run(pr: PlannedRegion, pr_tier: str) -> bool:
+        wt = _word_tier(pr.region, cfg)
+        if pr_tier == "auto" and wt is not None:
+            return wt == "run"          # L3: the word decided, not the shape's area
         return pr_tier == "run" or (pr_tier == "auto" and rescue
                                     and pr.region.polygon.area < detail_mm2
                                     and not widened_lettering(pr.region))
@@ -2164,7 +2181,9 @@ def sequence(
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
-            if tier == "satin" or (ribbon is not None and ribbon.satin and not rides_ramp):
+            word_satin = (tier == "auto" and cfg.satin
+                          and _word_tier(p.region, cfg) in ("satin", "widened"))
+            if tier == "satin" or word_satin or (ribbon is not None and ribbon.satin and not rides_ramp):
                 # The house cross angle (2026-08-26). Per-shape intent beats
                 # the global, the same precedence border/underlay_style/
                 # fill_angle already use; None on both keeps today's output

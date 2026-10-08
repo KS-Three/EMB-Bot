@@ -1774,6 +1774,22 @@ class PipelineConfig:
     # screenshot's two lines were one group in each). Off, nothing calls it
     # and every reader is byte-identical. Tests: `tests/test_words.py`.
     lettering_words: bool = False
+    # ONE TIER PER WORD (L3 of the lettering lane, mechanism only;
+    # `words.assign_word_tiers`). Needs `lettering_words`; without it there
+    # are no words and nothing changes. ON, a word's tier is decided once
+    # from its stroke width instead of per letter from each shape's own area
+    # (the run tier) and width (`classify_ribbon`): satin when the stroke
+    # carries `machine.SATIN_MIN_CROSS_MM`, the run tier when it does not,
+    # and -- only when `lettering_min_column_mm` is set -- "widened", every
+    # member offset to that floor and sewn satin. With
+    # `bean_letter_max_stroke_mm` set, the whole word goes bean or none of
+    # it does. The floor and the bean line are cloth values (ROADMAP gate
+    # 1) and stay the existing flags' values; this sets no constant.
+    # Measured 2026-10-08 (`tools/word_tiers.py --words`, five logos at six
+    # widths): 34 of 130 detected word-lines split their letters across
+    # tiers today. A review tier override still wins. Off, byte-identical.
+    # Tests: `tests/test_word_tiers.py`.
+    lettering_word_tiers: bool = False
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
