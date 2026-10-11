@@ -238,8 +238,14 @@
     const count = w * h;
     const whiteThreshold = 255 - tolerance;
 
+    // A fully transparent corner (alpha 0 - the same rule medianCut uses for
+    // "no ink") means the background is already keyed by alpha. Its RGB is
+    // whatever the canvas was cleared to (0,0,0), not a background colour, so
+    // sampling it would key out every near-black pixel in the mark. Skip the
+    // colour match then; the near-white rule below still applies.
+    let useCorner = sampleCorner && count > 0 && rgba[3] !== 0;
     let cornerR = 0, cornerG = 0, cornerB = 0;
-    if (sampleCorner && count > 0) {
+    if (useCorner) {
       cornerR = rgba[0];
       cornerG = rgba[1];
       cornerB = rgba[2];
@@ -252,7 +258,7 @@
       const isNearWhite = r >= whiteThreshold && g >= whiteThreshold && b >= whiteThreshold;
 
       let isNearCorner = false;
-      if (sampleCorner) {
+      if (useCorner) {
         isNearCorner =
           Math.abs(r - cornerR) <= tolerance &&
           Math.abs(g - cornerG) <= tolerance &&

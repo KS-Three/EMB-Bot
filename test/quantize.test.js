@@ -81,3 +81,69 @@ test("knockoutBackground: tolerance option and input is not mutated", () => {
 test("knockoutBackground: zero-size image returns empty", () => {
   assert.strictEqual(q.knockoutBackground(new Uint8ClampedArray(0), 0, 0).length, 0);
 });
+
+// ---- transparent corner (2026-10-11, PR #829 gate side finding) ----
+// A transparent corner used to be sampled as its COLOUR (0,0,0 for a canvas
+// cleared to transparent), so any near-black mark was keyed out with it.
+function markOnTransparent(rgb) {
+  const W = 8, H = 8, px = new Uint8ClampedArray(W * H * 4); // all 0,0,0,0
+  for (let y = 2; y < 6; y++) for (let x = 2; x < 6; x++) {
+    const o = (y * W + x) * 4;
+    px[o] = rgb[0]; px[o + 1] = rgb[1]; px[o + 2] = rgb[2]; px[o + 3] = 255;
+  }
+  return { px, W, H };
+}
+const opaqueCount = (a) => { let n = 0; for (let i = 3; i < a.length; i += 4) if (a[i] !== 0) n++; return n; };
+
+for (const [name, rgb] of [["#000000", [0, 0, 0]], ["#141414", [20, 20, 20]], ["#231F20", [35, 31, 32]], ["red", [220, 30, 30]]]) {
+  test(`knockoutBackground: ${name} mark on a transparent background survives (default options)`, () => {
+    const { px, W, H } = markOnTransparent(rgb);
+    const out = q.knockoutBackground(px, W, H);
+    assert.strictEqual(opaqueCount(out), 16, "all 16 mark pixels stay opaque");
+    assert.strictEqual(opaqueCount(px), 16, "input not mutated");
+  });
+}
+test("knockoutBackground: transparent corner still knocks out a near-white mark pixel (white rule unchanged)", () => {
+  const { px, W, H } = markOnTransparent([250, 250, 250]);
+  assert.strictEqual(opaqueCount(q.knockoutBackground(px, W, H)), 0);
+});
+test("knockoutBackground: transparent corner + black mark survives medianCut downstream", () => {
+  const { px, W, H } = markOnTransparent([0, 0, 0]);
+  const { palette } = q.medianCut(q.knockoutBackground(px, W, H), 4);
+  assert.strictEqual(palette.length, 1);
+});
+
+// Frozen copy of knockoutBackground as it was before the transparent-corner
+// change. Opaque-corner inputs must give the byte-identical result.
+function legacyKnockout(rgba, w, h, opts) {
+  const options = opts || {};
+  const tolerance = options.tolerance === undefined ? 24 : options.tolerance;
+  const sampleCorner = options.sampleCorner === undefined ? true : options.sampleCorner;
+  const out = new Uint8ClampedArray(rgba.length); out.set(rgba);
+  const count = w * h, whiteThreshold = 255 - tolerance;
+  let cR = 0, cG = 0, cB = 0;
+  if (sampleCorner && count > 0) { cR = rgba[0]; cG = rgba[1]; cB = rgba[2]; }
+  for (let i = 0; i < count; i++) {
+    const o = i * 4, r = rgba[o], g = rgba[o + 1], b = rgba[o + 2];
+    const nw = r >= whiteThreshold && g >= whiteThreshold && b >= whiteThreshold;
+    const nc = sampleCorner && Math.abs(r - cR) <= tolerance && Math.abs(g - cG) <= tolerance && Math.abs(b - cB) <= tolerance;
+    if (nw || nc) out[o + 3] = 0;
+  }
+  return out;
+}
+test("knockoutBackground: opaque-corner inputs are byte-identical to the pre-change function", () => {
+  let seed = 12345; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  const W = 16, H = 16;
+  for (const corner of [[255, 255, 255], [0, 0, 0], [10, 120, 10], [240, 240, 240], [35, 31, 32]]) {
+    const px = new Uint8ClampedArray(W * H * 4);
+    for (let i = 0; i < W * H; i++) {
+      const base = rnd() < 0.5 ? corner : [rnd() * 255, rnd() * 255, rnd() * 255];
+      px[i * 4] = base[0] + (rnd() * 8 - 4); px[i * 4 + 1] = base[1] + (rnd() * 8 - 4); px[i * 4 + 2] = base[2] + (rnd() * 8 - 4);
+      px[i * 4 + 3] = rnd() < 0.1 ? 0 : (rnd() < 0.2 ? 128 : 255);
+    }
+    px.set([corner[0], corner[1], corner[2], 255], 0); // opaque corner
+    for (const o of [undefined, {}, { tolerance: 5 }, { sampleCorner: false }]) {
+      assert.deepStrictEqual(Array.from(q.knockoutBackground(px, W, H, o)), Array.from(legacyKnockout(px, W, H, o)));
+    }
+  }
+});
