@@ -260,6 +260,21 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "path with the travel under satin sewn later. BEFORE is shipped: the "
         "skeleton satin tier. Letters cut less (becker 60 trims -> 28) and no "
         "junction fans. Nothing here is sewn."),
+    "coverage_edges": (
+        "coverage_edges=True (built OFF)",
+        "A one-ink logo with its shape in alpha, enlarged from a small file, "
+        "is outlined from the source's own soft edge instead of the enlarged "
+        "stair-stepped mask: closer to the art (median edge error about half "
+        "at 1.8 px/mm). Only becker is that kind of file; every other logo is "
+        "unchanged. BEFORE is shipped. Nothing here is sewn."),
+    "coverage_columns": (
+        "coverage_edges=True + lettering_columns=True + lettering_words=True "
+        "(all built OFF)",
+        "The coverage outline under the Column lane: the cleaner edge feeding "
+        "rails cut along the letter's own outline rather than a skeleton. "
+        "BEFORE is shipped, so this pair asks whether all three together beat "
+        "today; the 2x2 in docs/coverage-edges-under-columns-2026-10-11.md "
+        "separates the two. Nothing here is sewn."),
 }
 
 # Arms that left the pending table because they SHIPPED. A sitting rendered

@@ -224,15 +224,15 @@ class PipelineConfig:
     # grey plateau) is thresholded to those two inks right after stage 1, so
     # no region ever sees the grey. Per IMAGE, which is why it leaves
     # `logo_bridge_bar.jpg`'s ringing alone where the per-region stroke rule
-    # did not (DOCTRINE 2026-10-05). OFF by default. Kent approved the flip
-    # 2026-10-08 ("Fix the roof-line bug, then flip"): `two_tone.keep_lines`
-    # keeps golke's white roof lines (they sewed as one black mass) and
-    # preflight's thread grader reads the snapped raster
+    # did not (DOCTRINE 2026-10-05). ON by default since 2026-10-11, on Kent's
+    # approval of 2026-10-08 ("Fix the roof-line bug, then flip"):
+    # `two_tone.keep_lines` keeps golke's white roof lines (they sewed as one
+    # black mass) and preflight's thread grader reads the snapped raster
     # (`preflight._two_tone_view`; unsnapped, it blocked White under those
-    # lines). What still holds it OFF: about eight thread-match/resnap tests
-    # whose premise is gaulke's grey halo, which the snap removes; each needs
-    # pinning to OFF or re-deriving, which is re-pinning guards.
-    two_tone_snap: bool = False
+    # lines). The thread-match/resnap tests whose premise is gaulke's grey
+    # halo, which the snap removes, measure the pre-flip engine through
+    # `tests/conftest.py`'s PRE_FLIP. False is the pre-flip engine.
+    two_tone_snap: bool = True
     # Make the gradient lane's region edges follow the PIXELS rather than the
     # SEEDS superpixels they are built from
     # (`stage2_photo_segment.snap_region_edges`). Measured 2026-09-30 on
@@ -1240,6 +1240,8 @@ class PipelineConfig:
     # The parallel-join underlap `overlap_by_angle` grows to. 1.0 is the
     # law's WOVEN figure, verbatim; its knit 1.5–2.0 is sew-out-gated
     # (ROADMAP gate 1), so knits get the woven floor, never less than today.
+    # The fabric's multiplier waits on that sew-out as one named 1.0:
+    # `stage5_overlap.OVERLAP_FABRIC_FACTOR`.
     overlap_parallel_mm: float = 1.0
     # Stage 5's hole hold, read for what is actually IN the hole. A hole the
     # shell's pull growth would shrink under `min_detail_mm²` is held open at
