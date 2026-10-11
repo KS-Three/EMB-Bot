@@ -183,8 +183,11 @@ def test_off_the_word_turned_20_deg_is_further_off_still(hotel_turned):
     # With the snap ON (2026-09-30) the letters' edges are clean enough that
     # the votes land on the line by themselves here (159.1 against 160.4),
     # which is the snap's doing and not a property of the anchor being off.
+    # `two_tone_snap=False` for the same reason (2026-10-11): the word is
+    # black on white, so the two-tone snap thresholds its anti-alias grey and
+    # the votes read 172.6 against 161.2, an 11.3 deg gap, not the 25.5 here.
     group = _group(_run(hotel_turned, 80.2, satin_house_anchor=False,
-                        snap_region_edges=False))
+                        snap_region_edges=False, two_tone_snap=False))
     line = tc._line_of_text_deg(group)
     assert 15.0 < _angle_gap(line, 0.0) < 25.0, line                            # the turn happened
     assert _angle_gap(_house(group), line) > 15.0, (_house(group), line)        # 25.5 against 160.4
