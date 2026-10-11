@@ -636,6 +636,41 @@ export function groupIntoBlocks(rows, ov) {
   });
 }
 
+// Pin every sewable shape's layer to the block it sits in right now: {id:
+// layer}. A re-order that pins only the shapes it moved leaves the rest on
+// layer numbers from the PREVIOUS run, and the service renumbers layers
+// between runs whenever a tier change moves one (borders_last_layers) - the
+// pinned integers then name the wrong layers and the file sews a different
+// order than the one the customer arranged (test_manual_sew_order.py). The
+// same reason reorderWithinLayer commits a whole colour. Rows with no sew
+// position at all (effLayer 1e9) are left alone.
+export function pinSewableLayers(rows, ov) {
+  const out = {};
+  for (const r of rows) {
+    const layer = effLayer(r, ov);
+    if (layer < 1e9) out[r.id] = layer;
+  }
+  return out;
+}
+
+// Sequencer "sew this whole colour earlier/later": the layer map for the
+// whole sequence after swapping the block holding `layer` with its neighbour
+// `dir` places away (+1 later, -1 earlier), or null at either end.
+export function moveBlockLayers(rows, ov, layer, dir) {
+  const layers = groupIntoBlocks(sortShapes(rows, ov), ov).map((b) => b.layer);
+  const i = layers.indexOf(layer);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= layers.length) return null;
+  const other = layers[j];
+  const out = pinSewableLayers(rows, ov);
+  for (const r of rows) {
+    const rl = effLayer(r, ov);
+    if (rl === layer) out[r.id] = other;
+    else if (rl === other) out[r.id] = layer;
+  }
+  return out;
+}
+
 // The machine blocks a Sequencer row sews as: every cone in `blocks`
 // (`stats.blocks`, one per sewn block, in sew order) whose `shape_ids` include
 // one of the row's shapes. A plain colour layer answers with its one block; a

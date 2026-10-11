@@ -607,9 +607,47 @@ describe("Sequencer view", () => {
     expect(ov.a).toEqual({ layer: 1 });
     expect(ov.b).toEqual({ layer: 0 });
     expect(ov.c).toEqual({ layer: 0 });
-    // The third block ("d", layer 2) wasn't touched by a swap between the
-    // first two blocks.
-    expect(ov.d).toBeUndefined();
+    // The third block ("d", layer 2) does not swap, but it is PINNED where it
+    // sits: every sewable shape's layer is committed, so a later renumbering
+    // by the service cannot move it under the customer's order.
+    expect(ov.d).toEqual({ layer: 2 });
+  });
+
+  test("a block swap pins every sewable shape, and only those (not hidden or unstitched ones)", async () => {
+    // Stale-numbering case behind test_manual_sew_order.py: red/blue swap with
+    // an orange block in between and a hidden and an unstitched shape around.
+    const rows = [
+      shapeRow("red", { layer: 1, sewIndex: 0 }),
+      shapeRow("orange", { layer: 2, sewIndex: 1 }),
+      shapeRow("blue", { layer: 3, sewIndex: 2 }),
+      shapeRow("gone", { layer: 4, sewIndex: 3 }),
+      shapeRow("hole", { layer: 5, sewIndex: null, stitched: false }),
+    ];
+    const { getByRole, patches } = renderPanel(rows, { deletedShapeIds: ["gone"] });
+    await fireEvent.click(getByRole("button", { name: /Color sequence/ }));
+    const laterBtns = document.querySelectorAll('button[aria-label="Sew this color later"]');
+    await fireEvent.click(laterBtns[0]); // red past orange
+    const ov = patches[0].patch.shapeOverrides;
+    expect(ov.red).toEqual({ layer: 2 });
+    expect(ov.orange).toEqual({ layer: 1 });
+    expect(ov.blue).toEqual({ layer: 3 });
+    expect(ov.gone).toBeUndefined();
+    expect(ov.hole).toBeUndefined();
+  });
+
+  test("moving one shape across layers pins every other sewable shape's layer too", async () => {
+    const rows = [
+      shapeRow("a", { layer: 0, sewIndex: 0 }),
+      shapeRow("b", { layer: 1, sewIndex: 1 }),
+      shapeRow("c", { layer: 2, sewIndex: 2 }),
+    ];
+    const { patches } = renderPanel(rows);
+    const laterBtns = document.querySelectorAll('button[aria-label^="Sew later — "]');
+    await fireEvent.click(laterBtns[0]); // "a" past "b"'s layer (target 2)
+    const ov = patches[0].patch.shapeOverrides;
+    expect(ov.a).toEqual({ layer: 2 });
+    expect(ov.b).toEqual({ layer: 1 });
+    expect(ov.c).toEqual({ layer: 2 });
   });
 
   test("trims-per-1000 shows in the header when preflight data is present", () => {

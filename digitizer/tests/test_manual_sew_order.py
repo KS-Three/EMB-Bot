@@ -20,19 +20,28 @@ The verdict, three readings of one edit:
 2. A cold re-digitize of the same upload with the same edits (fresh job
    registry, empty generation cache: a restarted service) writes the same
    file. Holds.
-3. The file sews in the order the customer ARRANGED — FAILS. Swap the red
-   and blue blocks and set red's tier to satin, and red sews third, after
-   the orange block, not second. `borders_last_layers` (pipeline.py) moves
-   the now-satin red layer to the end and renumbers every layer between;
+3. The file sews in the order the customer ARRANGED. It did NOT while the
+   Studio pinned only the two swapped blocks: swap the red and blue blocks
+   and set red's tier to satin, and red sewed third, after the orange
+   block, not second. `borders_last_layers` (pipeline.py) moves the
+   now-satin red layer to the end and renumbers every layer between;
    `apply_layer_overrides` (regions.py, `r.meta["layer"] = int(ov["layer"])`)
    then writes the Studio's layer integers, minted in the PREVIOUS run's
-   numbering, into the new one — red lands in orange's layer, and stage 7
-   sews orange first. The review screen redraws to match the file, so the
+   numbering, into the new one — red landed in orange's layer, and stage 7
+   sewed orange first. The review screen redraws to match the file, so the
    customer is shown the lost order rather than told.
 
-Reading 3 is pinned to today's behaviour so CI stays green and a fix turns
-this red on purpose. `EMBBOT_STRICT_MANUAL_SEW_ORDER=1` asserts the order
-the customer arranged instead — the test a fix must make pass.
+   FIXED on the Studio side: `moveBlock` and `moveShape` now pin EVERY
+   sewable shape's layer (`digitizer.js` `moveBlockLayers` /
+   `pinSewableLayers`), the way `reorderWithinLayer` pins a whole colour.
+   `_move_block` below is the port of that, and the first test asserts the
+   arranged order unconditionally.
+
+The second test keeps the ENGINE half of the story pinned: a PARTIAL pin
+(only the swapped pair, the old Studio behaviour, still reachable for pieces
+made by split or merge after a reorder) is still lost. It asserts today's
+wrong order so CI stays green and an engine-side fix turns it red on purpose;
+`EMBBOT_STRICT_MANUAL_SEW_ORDER=1` asserts the arranged order there instead.
 """
 from __future__ import annotations
 
@@ -76,7 +85,7 @@ def _digitize(client, config: dict) -> dict:
 
 # --- the Studio's ordering rules, ported verbatim from app/src/lib/digitizer.js
 # (effLayer, sortShapes, effSewOrder, layerSiblings) and DigitizePanel.svelte
-# (effStitched, sewableShapes, moveBlock).
+# (effStitched, sewableShapes, moveBlockLayers / pinSewableLayers).
 
 def _rows(review: dict) -> list[dict]:
     return [{"id": s["shape_id"], "layer": s["layer"], "sewIndex": s["sew_index"],
@@ -125,6 +134,21 @@ def _shown_order(rows, ov) -> list[str]:
 
 
 def _move_block(rows, ov, layer, other):
+    """moveBlockLayers: the swap, with EVERY sewable shape's layer pinned."""
+    sew = _sewable(rows, ov)
+    pins = {r["id"]: _eff_layer(r, ov) for r in sew if _eff_layer(r, ov) < 1e9}
+    for r in sew:
+        rl = _eff_layer(r, ov)
+        if rl == layer:
+            pins[r["id"]] = other
+        elif rl == other:
+            pins[r["id"]] = layer
+    for sid, pin in pins.items():
+        ov.setdefault(sid, {})["layer"] = pin
+
+
+def _move_block_partial(rows, ov, layer, other):
+    """The pre-fix Studio: only the two swapped blocks were pinned."""
     for r in _sewable(rows, ov):
         rl = _eff_layer(r, ov)
         if rl == layer:
@@ -174,13 +198,7 @@ def _sewn_order(dst: bytes, rows) -> list[str]:
     return sorted(first, key=first.get)
 
 
-def test_a_hand_set_sew_order_reaches_the_exported_file(client, monkeypatch):
-    import importlib
-
-    from digitizer_service.jobs import JobRegistry
-    # The MODULE: `digitizer_service.app` as an attribute is the FastAPI object.
-    service = importlib.import_module("digitizer_service.app")
-
+def _fixture(client):
     auto = _digitize(client, BASE)
     rows0 = _rows(auto["review"])
     by_thread: dict[str, list[dict]] = {}
@@ -194,15 +212,30 @@ def test_a_hand_set_sew_order_reaches_the_exported_file(client, monkeypatch):
         "fixture: the big red circle is a fill that sews before blue"
     # Control: an unedited design's file sews what its review lists.
     assert _sewn_order(_export_dst(client, auto["design"]), rows0) == _shown_order(rows0, {})
+    return auto, rows0, red, blue, orange
 
-    # The customer's edits, made the way the Studio makes them.
+
+def _customer_edits(rows0, red, blue, orange, move):
+    """The customer's edits, made the way the Studio makes them."""
     ov: dict[str, dict] = {}
-    _move_block(rows0, ov, red["layer"], blue["layer"])          # Sequencer: blue first
+    move(rows0, ov, red["layer"], blue["layer"])                 # Sequencer: blue first
     ov.setdefault(orange[1]["id"], {})["sew_order"] = 0          # Layers: later orange up
     ov.setdefault(orange[0]["id"], {})["sew_order"] = 1
-    ov[red["id"]]["tier"] = "satin"                              # tier select on red
+    ov.setdefault(red["id"], {})["tier"] = "satin"               # tier select on red
     arranged = _shown_order(rows0, ov)
     assert arranged[:4] == [blue["id"], red["id"], orange[1]["id"], orange[0]["id"]]
+    return ov, arranged
+
+
+def test_a_hand_set_sew_order_reaches_the_exported_file(client, monkeypatch):
+    import importlib
+
+    from digitizer_service.jobs import JobRegistry
+    # The MODULE: `digitizer_service.app` as an attribute is the FastAPI object.
+    service = importlib.import_module("digitizer_service.app")
+
+    auto, rows0, red, blue, orange = _fixture(client)
+    ov, arranged = _customer_edits(rows0, red, blue, orange, _move_block)
 
     edited = _digitize(client, {**BASE, "shape_overrides": ov})
     rows1 = _rows(edited["review"])
@@ -227,13 +260,32 @@ def test_a_hand_set_sew_order_reaches_the_exported_file(client, monkeypatch):
     finally:
         cold_registry.shutdown()
 
-    # Reading 3: the order the customer arranged.
+    # Reading 3: the order the customer arranged. The Studio pins every
+    # sewable shape now, so the satin tier change cannot renumber the layers
+    # out from under the swap.
+    assert sewn == arranged, "the hand-set block order must reach the file"
+
+
+def test_a_partial_pin_is_still_lost_by_the_engine(client):
+    """The engine half, left as it was (fix option B in PR #820, not taken):
+    layer pins that cover only some shapes name the wrong layers once a tier
+    change renumbers them. The Studio no longer sends such pins from
+    `moveBlock` / `moveShape`, but split and merge pieces made AFTER a
+    reorder still arrive unpinned. Pinned to today's wrong order; an
+    engine-side fix turns it red on purpose."""
+    auto, rows0, red, blue, orange = _fixture(client)
+    ov, arranged = _customer_edits(rows0, red, blue, orange, _move_block_partial)
+
+    edited = _digitize(client, {**BASE, "shape_overrides": ov})
+    rows1 = _rows(edited["review"])
+    sewn = _sewn_order(_export_dst(client, edited["design"]), rows1)
+
+    assert sewn == _shown_order(rows1, ov)          # reading 1 holds regardless
     if STRICT:
-        assert sewn == arranged, "the hand-set block order must reach the file"
+        assert sewn == arranged, "a partial pin must still reach the file"
     else:
-        # PINNED DEFECT (item 16): red, swapped to sew second, sews after
-        # the orange block — the only move. A fix makes this fail; then run
-        # with EMBBOT_STRICT_MANUAL_SEW_ORDER=1 and drop this branch.
+        # PINNED DEFECT (item 16, engine half): red, swapped to sew second,
+        # sews after the orange block — the only move.
         lost = [x for x in arranged if x != red["id"]]
         lost.insert(lost.index(orange[0]["id"]) + 1, red["id"])
         assert sewn == lost, (sewn, arranged)

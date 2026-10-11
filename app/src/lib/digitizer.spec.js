@@ -1042,6 +1042,51 @@ test("groupIntoBlocks: a shape with no sewIndex at all doesn't poison its block'
   expect(blocks[0].sewIndexMax).toBeNull();
 });
 
+// ---- pinSewableLayers / moveBlockLayers (a hand re-order pins everything) --
+//
+// MASTER_SCOPE "Waiting on Kent" 16 / test_manual_sew_order.py: swap two
+// blocks, then set one block's tier to satin, and the service renumbers its
+// layers (borders_last_layers) under pins that only covered the swapped pair.
+// The Studio therefore commits the whole sequence, the way reorderWithinLayer
+// commits a whole colour.
+
+test("moveBlockLayers: swapping red and blue pins the orange block between them too", async () => {
+  stubStorage({});
+  const { moveBlockLayers, sortShapes, effLayer } = await import("./digitizer.js");
+  const rows = [
+    seqRow("red", { layer: 1, sewIndex: 0 }),
+    seqRow("orange", { layer: 2, sewIndex: 1 }),
+    seqRow("blue", { layer: 3, sewIndex: 2 }),
+  ];
+  const next = moveBlockLayers(rows, {}, 1, 1); // red later, past orange
+  expect(next).toEqual({ red: 2, orange: 1, blue: 3 });
+  // Every shape carries an explicit pin, so the displayed order is the pinned one.
+  const ov = Object.fromEntries(Object.entries(next).map(([id, layer]) => [id, { layer }]));
+  expect(sortShapes(rows, ov).map((r) => r.id)).toEqual(["orange", "red", "blue"]);
+  expect(rows.every((r) => Number.isInteger(ov[r.id].layer))).toBe(true);
+  expect(effLayer(rows[1], ov)).toBe(1);
+});
+
+test("moveBlockLayers: null at either end, and for a layer that is not a block", async () => {
+  stubStorage({});
+  const { moveBlockLayers } = await import("./digitizer.js");
+  const rows = [seqRow("a", { layer: 0 }), seqRow("b", { layer: 1, sewIndex: 1 })];
+  expect(moveBlockLayers(rows, {}, 0, -1)).toBeNull();
+  expect(moveBlockLayers(rows, {}, 1, 1)).toBeNull();
+  expect(moveBlockLayers(rows, {}, 7, 1)).toBeNull();
+});
+
+test("pinSewableLayers: commits each row's effective layer, leaves a row with no sew position alone", async () => {
+  stubStorage({});
+  const { pinSewableLayers } = await import("./digitizer.js");
+  const rows = [
+    seqRow("a", { layer: 0 }),
+    seqRow("b", { layer: 4, sewIndex: 1 }),
+    seqRow("c", { layer: null, sewIndex: null }),
+  ];
+  expect(pinSewableLayers(rows, { a: { layer: 3 } })).toEqual({ a: 3, b: 4 });
+});
+
 test("groupIntoBlocks: empty input is an empty list, not a throw", async () => {
   stubStorage({});
   const { groupIntoBlocks } = await import("./digitizer.js");
