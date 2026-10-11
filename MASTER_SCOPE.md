@@ -463,24 +463,18 @@ about the facts.
    `dedupeHoles: true` at `generate.js`'s three shape call sites and a re-pin
    of every shape snapshot. Lettering has its own and no flag yet.
    *(measured 2026-10-03 — [`docs/sub-unit-stitches-2026-10-03.md`](docs/sub-unit-stitches-2026-10-03.md))*
-26. **Defect 57's cure: your eye on the sheets — BUILT 2026-10-04, ported
-   onto `main` 2026-10-11 (PR open, NOT armed).** You picked the bar's end;
-   then "both rules" when it turned out to be the whole satin skeleton; then
-   "full cure, this branch" when the first build failed its independent
-   re-measure on a hand-drawn C. The lane was never opened as a PR. Two of
-   your three cures are in it (the bar's end; one pixel, one edge). It moves
-   every satin shape of the browser lanes and no fill. Each design before
-   and after, at one scale: `docs/renders/satin-spine-2026-10-04/` (its
-   "before" is `main` of 10-04, not of 10-08).
-   - **Arm it?** Your eye on those sheets was the condition. Bars sew to
-     their drawn size with no long stitch, a C is one column, a star's arms
-     are sewn once, and most thin logo shapes gain cover; what it costs is
-     in defect 57 and on the sheets.
-   - **The underlay's direction.** A satin bar now has a needle-up move as
-     long as itself between its centre-run underlay and its column (seven
-     garments; the three with a zigzag underlay go the other way). A cure
-     has to choose by where the underlay ends, not flip it. Not built, and
-     priced on left chest only.
+26. **Defect 57's cure — ARMED by Kent 2026-10-11 on the port's sheets (PR
+   #817); built 2026-10-04.** Two of your three cures are in it (the bar's
+   end; one pixel, one edge). It moves every satin shape of the browser
+   lanes and no fill. Against `main` of 10-11 a hand-drawn C set to satin
+   goes from 6,047 stitches with its mouth sewn solid to 304 in one column;
+   a bar gains a millimetre; a star sews a third fewer stitches. Logos,
+   joints and garments other than left chest were not drawn against 10-11.
+   Still open:
+   - **The underlay's direction.** A satin bar has a needle-up move as long
+     as itself between its centre-run underlay and its column, before the
+     cure and after it. A cure has to choose by where the underlay ends,
+     not flip it. Not built, and priced on left chest only.
    - **Round ends, small squares and dots.** The last cross of a round end
      stands up to 0.46 mm outside it, and a square or dot up to 6 mm falls
      to the outline-split column, which leaves its ends bare. A cure for
@@ -488,7 +482,7 @@ about the facts.
    - **Still open from 10-03: the star's tier.** Have the branch guard ask
      whether the whole rung stays inside the shape, not its midpoint; it
      would send most satin stars to fill, which nothing has sewn.
-   *(built 2026-10-04, ported 2026-10-11 — defect 57; [`docs/renders/satin-spine-2026-10-04/`](docs/renders/satin-spine-2026-10-04/README.md))*
+   *(ruled 2026-10-11 — defect 57; [`docs/renders/satin-spine-port-2026-10-11/`](docs/renders/satin-spine-port-2026-10-11/README.md), [`…-2026-10-04/`](docs/renders/satin-spine-2026-10-04/README.md))*
 27. **Underlay under fills.** `blend_fallback_underlay` flipped ON
    *(ruled 2026-10-07 — scope-history 10-07)*; `cross_tatami` is a picker
    choice. The knit presets stay yours. **Not sewn.**
