@@ -1136,6 +1136,26 @@ class PipelineConfig:
     # moved are named in that entry. False is the pre-flip polygon — the
     # staircase — byte for byte.
     subpixel_edges_upscaled: bool = True
+    # A resolution floor under the read above: a source whose
+    # `Prep.input_px_per_mm` is below this skips the native read and keeps
+    # the pre-flip polygon (and, with it, the curve refinement the read
+    # carries — under `_CURVE_MIN_PX_PER_MM` that pass runs only on chords
+    # the read accepted). None = today's behaviour, the read wherever stage 1
+    # upscaled, byte for byte. Why it exists: measured 2026-10-10
+    # (`docs/tracer-head-to-head-2026-10-10.md`, addendum 3) the read is the
+    # source of the Becker outline reversals — vertices turning back more
+    # than 120 degrees, 7.1 per 100 mm ON against 0.0 OFF at 1.8 px/mm — and
+    # at that resolution it bought no edge accuracy in three cases of four,
+    # while at 3 px/mm it earned its keep in three of four. The ladder at
+    # 1.8 / 3 / 5 px/mm, both settings and this floor at 3.0:
+    # `docs/subpixel-res-gate-2026-10-11.md`. Its cost, seen only in the
+    # render: below the floor Becker's outline is the 0.68 mm source-pixel
+    # staircase again (right-angle turns 26.5 -> 81.3 per 100 mm, zero
+    # reversals because a stair turns 90 degrees), which is why that doc
+    # recommends leaving it unset. A raster quantity of the
+    # source, not a sewing constant. Default None: narrowing Kent's
+    # 2026-09-18 flip is his call.
+    subpixel_edges_min_px_per_mm: float | None = None
     # The same upscaled alpha cutout, outlined from the source's alpha
     # DIRECTLY instead of repaired from the mask. The `alpha < 128` mask and
     # its NEAREST enlargement throw the ramp away and stage 4 then walks a
