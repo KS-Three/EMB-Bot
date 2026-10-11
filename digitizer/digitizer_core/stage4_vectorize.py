@@ -530,8 +530,12 @@ def vectorize(
     # source's frame, read against the source's pixels (with its alpha as a
     # fourth channel, `_native_profile_image`), and brought back up; see
     # `_native_subpixel`. Inert unless stage 1 upscaled.
+    # `subpixel_edges_min_px_per_mm`: a source delivering less than that
+    # skips the read and keeps the staircase polygon (None: no floor).
+    floor = cfg.subpixel_edges_min_px_per_mm
     native = (upscaled and bool(cfg.subpixel_edges) and bool(cfg.subpixel_edges_upscaled)
-              and p.native_rgb is not None)
+              and p.native_rgb is not None
+              and (floor is None or p.input_px_per_mm >= float(floor)))
     subpixel = bool(cfg.subpixel_edges) and (not upscaled or native)
     # `coverage_edges`: only where stage 1 enlarged an alpha source, the one
     # case whose mask is a staircase with the ramp still in the file.
