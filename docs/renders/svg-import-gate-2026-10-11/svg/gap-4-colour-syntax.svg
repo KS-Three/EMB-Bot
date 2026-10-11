@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 14" color="#0050c8">
+  <!-- every square is a pure, legal CSS colour a browser paints -->
+  <rect x="1"  y="2" width="10" height="10" fill="rgb(100%,0%,0%)"/>
+  <rect x="13" y="2" width="10" height="10" fill="hsl(120,100%,25%)"/>
+  <rect x="25" y="2" width="10" height="10" fill="crimson"/>
+  <rect x="37" y="2" width="10" height="10" fill="#ff8c00ff"/>
+  <rect x="49" y="2" width="10" height="10" fill="currentColor"/>
+  <rect x="61" y="2" width="10" height="10" fill="rgb(0 128 128)"/>
+  <rect x="73" y="2" width="10" height="10" fill="DarkGreen"/>
+  <rect x="85" y="2" width="10" height="10" fill="#f0f"/>
+</svg>
