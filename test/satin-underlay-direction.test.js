@@ -4,7 +4,7 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const satin = require("../src/satin.js");
 
-// THE UNDERLAY'S DIRECTION (defect 57, 2026-10-11; `underlayDirection`, OFF).
+// THE UNDERLAY'S DIRECTION (defect 57, 2026-10-11; `underlayDirection`; built OFF in PR #822, default ON 2026-10-11).
 //
 // A satin bar's centre-run underlay runs the bar from one end to the other,
 // and its column began wherever the medial walk began -- the same end the
@@ -41,12 +41,12 @@ test("a zigzag underlay that already ends by the column's start keeps it", async
   }
 });
 
-test("off, the stream is byte-identical to not passing the flag", async () => {
+test("the flag defaults ON: not passing it is byte-identical to underlayDirection: true, and differs from false", async () => {
   const { SHAPES, build } = await measure();
   const { shapesToRegions } = await import(pathToFileURL(path.join(__dirname, "..", "app", "src", "lib", "manualShapes.js")).href);
   for (const pts of Object.values(SHAPES)) {
-    const off = build(pts, "left_chest", false);
-    // build() always passes the key; without it at all:
+    const on = build(pts, "left_chest", true), off = build(pts, "left_chest", false);
+    // build() always passes the key; without it at all (default ON since 2026-10-11):
     const digitize = require("../src/digitize.js"), garments = require("../src/garments.js"), fabrics = require("../src/fabrics.js");
     const { regions, pxPerMm } = shapesToRegions([{ id: "shape", points: pts, curves: {}, stitchType: "satin", colorRgb: [20, 20, 20], angleDeg: null }]);
     const xs = pts.map((p) => p.x);
@@ -54,8 +54,9 @@ test("off, the stream is byte-identical to not passing the flag", async () => {
       garment: garments.getGarment("left_chest"), fabric: fabrics.getFabric(fabrics.fabricForGarment("left_chest")), pxPerMm,
       darkOnTop: false, underlay: true, targetWidthMm: (Math.max(...xs) - Math.min(...xs)) / pxPerMm, offsetXMm: 0, offsetYMm: 0,
     });
-    assert.deepStrictEqual(off.stitches, bare.stitches);
-    assert.deepStrictEqual(off.runs, bare.runs);
+    assert.deepStrictEqual(on.stitches, bare.stitches);
+    assert.deepStrictEqual(on.runs, bare.runs);
+    assert.notDeepStrictEqual(off.stitches, bare.stitches, "explicit false still gives the old order");
   }
 });
 
