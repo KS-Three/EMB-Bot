@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
-  import { generateAll, charList, letteringNote, emptyFieldHint } from "../lib/generate.js";
+  import { generateAll, charList, letteringNote, emptyFieldHint, fabricInForce } from "../lib/generate.js";
   import { ensureFonts, loadCoverage, loadManifest } from "../lib/fontLoader.js";
   import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
@@ -22,7 +22,7 @@
     shapeBorderState } from "../lib/borderMenu.js";
   import { boundaryIssues, canonicalShapeEdits, editsKey } from "../lib/digitizer.js";
   import { popoverModel, popoverPatch, recolorPatch } from "../lib/shapePopover.js";
-  import { resolveCutOuts } from "../lib/manualShapes.js";
+  import { resolveCutOuts, isColumn, shapeProblems } from "../lib/manualShapes.js";
   import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, refitShapesPatch, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT } from "../lib/fieldNodeEdit.js";
   import Hint from "./Hint.svelte";
   import Icon from "./Icon.svelte";
@@ -638,7 +638,11 @@
     const toPx = ([x, y]) => { const c = renderResult.toCanvas(x, y); return [c.x, c.y]; };
     const controls = {};
     for (const k of Object.keys(mm.controls)) controls[k] = toPx(mm.controls[k]);
-    return { anchors: mm.anchors.map(toPx), controls, handles: mm.handles.map(toPx), fit, shape };
+    const ap = { anchors: mm.anchors.map(toPx), controls, handles: mm.handles.map(toPx), fit, shape };
+    // A column's two rails (the width the spine alone does not show). Built
+    // from the same `shape` as the anchors, so mid-drag they follow the drag.
+    if (mm.rails) ap.rails = { a: mm.rails.a.map(toPx), b: mm.rails.b.map(toPx) };
+    return ap;
   }
   // Canvas px -> authored canvas px, through the frozen fit. The canvas
   // basis is read off toCanvas for the same reason pxToMmDelta does.
@@ -682,8 +686,16 @@
     if (focusedAnchor.elId !== selectedShapeElId || focusedAnchor.shapeId !== selectedShapeId) return null;
     return focusedAnchor;
   }
-  // Removes one anchor of a hand-drawn shape: the floor message at three
-  // points, else the re-fit patch. Shared by Delete and the menu item.
+  // The fewest anchors a hand-drawn shape can have, and what to say there: a
+  // closed shape needs three to enclose anything, a column's open spine two.
+  function anchorFloor(shape) {
+    return isColumn(shape) ? 2 : 3;
+  }
+  function anchorFloorMessage(shape) {
+    return isColumn(shape) ? "A column needs at least 2 points." : "A shape needs at least 3 points.";
+  }
+  // Removes one anchor of a hand-drawn shape: the floor message at the floor
+  // (per kind), else the re-fit patch. Shared by Delete and the menu item.
   function removeAnchorOf(elId, shapeId, index) {
     const el = project && (project.elements || []).find((x) => x.id === elId);
     const shape = el && manualShapeOf(el, shapeId);
@@ -696,11 +708,31 @@
       return false;
     }
     const smaller = removeAnchor(shape, index);
-    if (!smaller) { shapeEditError = "A shape needs at least 3 points."; return false; }
+    if (!smaller) { shapeEditError = anchorFloorMessage(shape); return false; }
     return commitNodeEdit(el, smaller);
   }
+  // The fabric a column's width note is quoted on — the one generateAll sews
+  // under (generate.js: the garment's preset adjusted by project.fabricProfile),
+  // so "Sews X.X mm on <label>." agrees with the stitches.
+  function popFabricOf(garmentId, fabricProfile) {
+    if (!garmentId) return null;
+    try {
+      const f = fabricInForce(garmentId, fabricProfile);
+      return f ? { label: f.label, pullCompMm: f.pullCompMm } : null;
+    } catch {
+      return null;
+    }
+  }
+  $: popFabric = popFabricOf(project && project.garmentId, project && project.fabricProfile);
+  // `peById` is named here on purpose: a column's width row reads the fit, and
+  // a `$:` only tracks what the statement itself reads — through manualFit()
+  // alone the width would stay stale after the regenerate that follows an edit.
   $: popModel = shapePop && selectedShapeId && project && selectedShapeElId === project.selectedId
-    ? popoverModel({ element: selectedShapeElement(), shapeId: selectedShapeId })
+    ? popoverModel({
+        element: selectedShapeElement(), shapeId: selectedShapeId,
+        fit: (peById[project.selectedId] && peById[project.selectedId].design && peById[project.selectedId].design.fit) || null,
+        fabric: popFabric,
+      })
     : null;
   // A shape that stopped existing (deleted, or gone in a new result) closes
   // it. Deliberately NOT closeShapePop(): nobody pressed anything here, and
@@ -772,7 +804,8 @@
     if (!el) return;
     const { key, value } = e.detail;
     const shapeId = selectedShapeId;
-    let patch = popoverPatch({ element: el, shapeId }, key, value);
+    const elFit = el.type === "manual" ? manualFit(el) : null;
+    let patch = popoverPatch({ element: el, shapeId, fit: elFit }, key, value);
     if (!patch && key === "color" && el.type === "digitized") {
       // A getter bound to THIS element's id, not to "whatever is selected":
       // the patch is rebuilt against the element as it stands once the thread
@@ -785,6 +818,20 @@
     if (!patch) {
       if (key === "color") shapeEditError = "Couldn't match that color to the job's thread chart.";
       return;
+    }
+    if (key === "widthMm" && el.type === "manual" && patch.shapes) {
+      // A column's rail ring is what the engine fits, so a new width changes
+      // the bbox: commit through the re-fit rule, like a node edit, so nothing
+      // else moves. A width the spine cannot carry (the rails fold over at a
+      // bend) is refused with the reason and the element is left as it was.
+      // shapeProblems is O(n^2) on a column — fine here, once per commit.
+      const wide = patch.shapes.find((sh) => sh && sh.id === shapeId);
+      const issues = wide ? shapeProblems(wide) : ["Nothing to fit."];
+      if (issues.length) { shapeEditError = issues[0]; return; }
+      const held = refitShapesPatch(el, elFit, patch.shapes);
+      if (held.error) { shapeEditError = held.error; return; }
+      shapeEditError = "";
+      patch = held;
     }
     if (key === "cutOut" && el.type === "manual" && patch.shapes) {
       // A cut-out emits no region, so the switch can change the bbox the engine
@@ -1403,17 +1450,35 @@
   // live shape, so the outline follows the pointer before the regenerate.
   function drawAuthoredNodes(ctx, el, shapeId) {
     const ap = authoredPxFor(el, shapeId);
-    if (!ap || ap.anchors.length < 3) return;
+    // A column is an OPEN spine: two anchors are enough, there is no closing
+    // segment (n - 1 segments, n - 1 handles), and its two rails are drawn as
+    // thin lines so the width shows while the spine is edited.
+    const open = !!ap && isColumn(ap.shape);
+    if (!ap || ap.anchors.length < (open ? 2 : 3)) return;
     const n = ap.anchors.length;
+    if (open && ap.rails) {
+      for (const rail of [ap.rails.a, ap.rails.b]) {
+        if (rail.length < 2) continue;
+        ctx.beginPath();
+        ctx.moveTo(rail[0][0], rail[0][1]);
+        for (let i = 1; i < rail.length; i++) ctx.lineTo(rail[i][0], rail[i][1]);
+        ctx.strokeStyle = "rgba(10, 22, 30, 0.45)";
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255, 214, 64, 0.8)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
     ctx.beginPath();
     ctx.moveTo(ap.anchors[0][0], ap.anchors[0][1]);
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < (open ? n - 1 : n); i++) {
       const next = ap.anchors[(i + 1) % n];
       const c = ap.controls[i];
       if (c) ctx.quadraticCurveTo(c[0], c[1], next[0], next[1]);
       else ctx.lineTo(next[0], next[1]);
     }
-    ctx.closePath();
+    if (!open) ctx.closePath();
     // A cut-out's authored outline is dashed like its idle one, including
     // mid-drag (`ap.shape` is the live drag's shape then). Dots stay solid.
     const dashed = !!(ap.shape && ap.shape.cutOut);
@@ -2271,7 +2336,7 @@
     // edges take a click (insert), which the "pointer" below already says.
     if (hoverEdit && hoverEdit.el.type === "manual" && selectedShapeId && selectedShapeElId === hoverEdit.el.id) {
       const ap = authoredPxFor(hoverEdit.el, selectedShapeId);
-      const ah = ap ? hitAuthored(ap, p.x, p.y) : null;
+      const ah = ap ? hitAuthored(ap, p.x, p.y, !isColumn(ap.shape)) : null;
       if (ah && ah.kind !== "edge") {
         canvas.style.cursor = "grab";
         return;
@@ -2356,10 +2421,10 @@
     const selEl = selectedShapeElement();
     if (selEl && selEl.type === "manual") {
       const ap = authoredPxFor(selEl, selectedShapeId);
-      const ah = ap ? hitAuthored(ap, p.x, p.y) : null;
+      const ah = ap ? hitAuthored(ap, p.x, p.y, !isColumn(ap.shape)) : null;
       if (ah && ah.kind === "anchor") {
         const model = popoverModel({ element: selEl, shapeId: selectedShapeId });
-        const atFloor = ap.shape.points.length <= 3;
+        const atFloor = ap.shape.points.length <= anchorFloor(ap.shape);
         return {
           elId: selEl.id,
           shapeId: selectedShapeId,
@@ -2369,7 +2434,7 @@
             id: "removepoint",
             label: "Remove point",
             value: null,
-            title: atFloor ? "A shape needs at least 3 points." : "Remove this point; its two edges become one.",
+            title: atFloor ? anchorFloorMessage(ap.shape) : "Remove this point; its two edges become one.",
             disabled: atFloor,
             anchor: ah.index,
           }],
@@ -2618,7 +2683,7 @@
       // on the outline falls through to the selection branch below.
       if (edit.el.type === "manual" && selectedShapeId && selectedShapeElId === edit.el.id) {
         const ap = authoredPxFor(edit.el, selectedShapeId);
-        const ah = ap ? hitAuthored(ap, p.x, p.y) : null;
+        const ah = ap ? hitAuthored(ap, p.x, p.y, !isColumn(ap.shape)) : null;
         if (ah) {
           canvas.setPointerCapture(e.pointerId);
           shapeEditError = "";
