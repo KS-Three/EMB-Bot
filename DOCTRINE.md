@@ -1229,6 +1229,34 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   `docs/corpus-laws-round3-2026-08-01.md` flags its own >7.0 mm bucket as 82%
   non-ribbon junk, so 7.0 sits on that edge.
   *(researched 2026-09-02 — wilcom.com, "Mastering Satin Stitch and Tatami Stitch")*
+- **A raster-to-vector tracer in front of the digitizer does not improve a
+  low-resolution outline. Do not evaluate one again on that hope.** vtracer
+  0.6.15 and 1.0.0a4 (which IS on PyPI — the 08-17 evaluation's "not
+  published" is stale), nine settings between them, against stage 4 on
+  golden_tee and hotel_fremont brought down to 1.8–12 px/mm and scored
+  against their own native-resolution edges: over 26 cases the tracer was
+  closer in 5, stage 4 in 13, and the largest gap either way was 0.019 mm.
+  The smooth-looking arm — a binary tracer on the source's own pixel grid —
+  was two to three times FURTHER from the edge than everything else: it
+  thresholds away the coverage ramp, the only sub-pixel information a small
+  file has. **What limits the outline is the hard mask stage 4 is handed,
+  not the tracer and not the pixel count**: the mask's own outline already
+  sits 0.10 mm out at 1.8 px/mm, and the same alpha read directly as a
+  half-coverage contour sits 0.04–0.05. That is `cfg.coverage_edges`
+  (default OFF), which is ours and needs no dependency.
+  *(measured 2026-10-10 — `docs/tracer-head-to-head-2026-10-10.md`)*
+- **A closer outline is not yet a better sew-out, and a clean synthetic is
+  the wrong place to judge an edge reader.** `coverage_edges` halves the
+  edge error on real single-ink layers at 1.8 px/mm and takes Becker's
+  outline reversals from 37 to 7 — and on a clean sharp-cornered bar the
+  shipped native read is the better polygon (0.03 mm at worst in 4 vertices
+  against 0.22: half coverage cuts across a corner, the native read fits the
+  two sides). Becker sewn both ways at 80 mm: the outer band is continuous
+  where shipped breaks it, and MARINE's letters are not better — the satin
+  decomposition was tuned on the polygons it has been given. Each reader
+  wins where the other was measured least; neither result transfers.
+  *(measured 2026-10-11 — `tests/test_coverage_edges.py`; PR body of
+  `claude/coverage-read`)*
 
 ---
 

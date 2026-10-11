@@ -1,0 +1,167 @@
+
+precision: median mm, arm edge -> truth edge (lower better)
+                                M     A0      A     B1     B2     B3
+fremont flat r1.8           0.121  0.122  0.118  0.117  0.111  0.194
+fremont flat r3             0.065  0.076  0.063  0.077  0.077  0.109
+fremont flat r5             0.036  0.074  0.033  0.046  0.048  0.072
+fremont flat r8             0.026  0.057  0.032  0.043  0.047      -
+fremont flat r12            0.018  0.038  0.020  0.032  0.033      -
+fremont gradient r1.8       0.092  0.107  0.120  0.101  0.093  0.205
+fremont gradient r3         0.048  0.066  0.059  0.062  0.062  0.125
+fremont gradient r5         0.024  0.062  0.023  0.035  0.043  0.071
+fremont gradient r8         0.022  0.056  0.030  0.040  0.047      -
+fremont gradient r12        0.017  0.034  0.018  0.032  0.033      -
+golden flat r1.8            0.092  0.118  0.109  0.092  0.092  0.147
+golden flat r3              0.053  0.073  0.062  0.055  0.057  0.141
+golden flat r5              0.036  0.059  0.045  0.042  0.044  0.087
+golden flat r8              0.024  0.045  0.039  0.040  0.043      -
+golden flat r12             0.011  0.034  0.031  0.027  0.029      -
+golden gradient r1.8        0.112  0.113  0.108  0.118  0.123  0.193
+golden gradient r3          0.056  0.067  0.051  0.065  0.065  0.172
+golden gradient r5          0.036  0.053  0.033  0.047  0.051  0.105
+golden gradient r8          0.019  0.041  0.031  0.044  0.048      -
+golden gradient r12         0.011  0.032  0.027  0.027  0.029      -
+
+precision: share of arm edge within 0.10 mm of truth (higher better)
+                                M     A0      A     B1     B2     B3
+fremont flat r1.8            39.6   42.6   43.7   42.1   46.8   25.3
+fremont flat r3              72.5   60.2   69.9   62.2   60.7   39.4
+fremont flat r5              90.9   68.4   88.7   85.3   81.9   61.1
+fremont flat r8              98.6   84.2   89.6   92.8   91.6      -
+fremont flat r12             99.5   92.8   95.7   97.8   97.0      -
+fremont gradient r1.8        52.1   47.7   43.5   49.6   53.4   21.5
+fremont gradient r3          82.3   67.8   72.2   73.7   72.2   42.1
+fremont gradient r5          88.8   79.4   93.0   88.1   84.0   61.3
+fremont gradient r8          98.4   87.3   89.9   92.7   92.9      -
+fremont gradient r12         99.5   92.6   96.1   97.1   95.3      -
+golden flat r1.8             53.0   44.3   47.1   52.7   52.4   38.5
+golden flat r3               71.4   60.9   66.2   70.8   70.2   38.3
+golden flat r5               85.4   71.9   79.6   83.2   81.8   54.6
+golden flat r8               96.2   84.0   86.4   88.7   87.1      -
+golden flat r12              93.8   86.4   87.3   92.6   92.2      -
+golden gradient r1.8         46.6   45.8   47.6   44.0   43.0   30.7
+golden gradient r3           69.2   64.5   72.1   65.3   64.5   32.7
+golden gradient r5           83.8   75.2   84.4   78.1   75.6   48.5
+golden gradient r8           97.5   86.2   89.1   89.7   86.6      -
+golden gradient r12          96.1   89.5   90.1   94.4   92.1      -
+
+recall: median mm, truth edge -> arm edge (lower better)
+                                M     A0      A     B1     B2     B3
+fremont flat r1.8           0.080  0.064  0.064  0.067  0.064  0.150
+fremont flat r3             0.048  0.048  0.045  0.048  0.045  0.105
+fremont flat r5             0.032  0.058  0.032  0.032  0.032  0.058
+fremont flat r8             0.032  0.048  0.032  0.048  0.051      -
+fremont flat r12            0.016  0.032  0.016  0.032  0.032      -
+fremont gradient r1.8       0.128  0.138  0.144  0.144  0.137  0.281
+fremont gradient r3         0.048  0.045  0.045  0.064  0.064  0.128
+fremont gradient r5         0.048  0.058  0.035  0.048  0.064  0.112
+fremont gradient r8         0.032  0.051  0.048  0.058  0.064      -
+fremont gradient r12        0.016  0.032  0.016  0.032  0.035      -
+golden flat r1.8            0.082  0.096  0.092  0.069  0.069  0.197
+golden flat r3              0.046  0.069  0.069  0.050  0.050  0.147
+golden flat r5              0.046  0.069  0.050  0.046  0.046  0.092
+golden flat r8              0.046  0.046  0.046  0.046  0.046      -
+golden flat r12             0.023  0.046  0.046  0.032  0.032      -
+golden gradient r1.8        0.115  0.096  0.101  0.115  0.115  0.220
+golden gradient r3          0.069  0.050  0.046  0.050  0.050  0.138
+golden gradient r5          0.046  0.046  0.032  0.046  0.046  0.082
+golden gradient r8          0.023  0.032  0.032  0.046  0.046      -
+golden gradient r12         0.023  0.032  0.023  0.023  0.032      -
+
+recall: 90th pct mm (lower better)
+                                M     A0      A     B1     B2     B3
+fremont flat r1.8           0.208  0.198  0.198  0.214  0.221  0.432
+fremont flat r3             0.128  0.144  0.131  0.128  0.144  0.364
+fremont flat r5             0.080  0.144  0.093  0.093  0.102  0.192
+fremont flat r8             0.083  0.128  0.128  0.137  0.134      -
+fremont flat r12            0.048  0.080  0.080  0.070  0.070      -
+fremont gradient r1.8       1.701  1.722  1.564  1.703  1.703  1.627
+fremont gradient r3         0.208  0.240  0.262  0.240  0.269  0.592
+fremont gradient r5         1.898  1.927  1.873  1.863  1.863  1.828
+fremont gradient r8         1.825  1.802  1.809  1.808  1.806      -
+fremont gradient r12        0.048  0.080  0.080  0.080  0.080      -
+golden flat r1.8            0.243  0.293  0.284  0.252  0.252  0.550
+golden flat r3              0.206  0.238  0.252  0.206  0.206  0.385
+golden flat r5              0.138  0.220  0.188  0.160  0.160  0.316
+golden flat r8              0.115  0.138  0.138  0.138  0.138      -
+golden flat r12             0.165  0.215  0.201  0.169  0.169      -
+golden gradient r1.8        0.344  0.307  0.330  0.344  0.344  0.619
+golden gradient r3          0.183  0.183  0.160  0.183  0.183  0.421
+golden gradient r5          0.138  0.128  0.115  0.138  0.142  0.298
+golden gradient r8          0.069  0.096  0.092  0.115  0.115      -
+golden gradient r12         0.069  0.096  0.096  0.092  0.092      -
+
+turning, deg per mm of boundary (lower = smoother)
+                                M     A0      A     B1     B2     B3
+becker None r1.8125          69.6   62.8   34.4   69.6   70.9   15.0
+bridge None r3.4875         396.8   29.1   38.4   49.5   49.8   34.3
+fremont flat r1.8           242.9   52.2   56.8   46.9   47.5   31.9
+fremont flat r3             264.1   49.4   59.0   55.8   57.2   34.0
+fremont flat r5             241.2   56.1   57.4   52.6   53.7   49.8
+fremont flat r8             246.1   49.1   51.4   47.5   47.9      -
+fremont flat r12            370.5   60.9   68.0   47.8   48.4      -
+fremont gradient r1.8       222.0   30.9   40.3   33.2   33.6   21.5
+fremont gradient r3         264.4   47.4   55.7   52.3   53.6   31.7
+fremont gradient r5         235.7   39.5   41.3   42.7   43.7   38.4
+fremont gradient r8         254.1   38.0   39.2   35.5   36.1      -
+fremont gradient r12        414.9   60.2   67.5   50.7   51.3      -
+golden flat r1.8            230.9   57.4   61.6   51.7   52.2   29.7
+golden flat r3              267.0   46.9   51.7   63.9   64.4   28.7
+golden flat r5              280.6   33.7   36.1   56.1   56.7   36.1
+golden flat r8              317.0   28.1   28.8   25.8   26.2      -
+golden flat r12             480.6   32.8   44.5   30.0   30.7      -
+golden gradient r1.8        214.6   48.3   54.7   53.4   54.2   20.7
+golden gradient r3          251.7   38.8   44.3   74.6   75.6   23.4
+golden gradient r5          288.6   24.3   26.9   69.9   71.0   29.4
+golden gradient r8          338.3   20.3   21.3   19.5   20.1      -
+golden gradient r12         502.4   18.6   19.9   19.4   20.1      -
+
+nodes
+                                M     A0      A     B1     B2     B3
+becker None r1.8125          1521   1548   1683   1548   2621    472
+bridge None r3.4875         19422   2050   3600   3343   3648   1656
+fremont flat r1.8           18077   3703   4185   4989   5820   1085
+fremont flat r3             17686   3080   4430   4788   5977   1718
+fremont flat r5             14194   2741   3544   3963   5172   2977
+fremont flat r8             11097   2302   3046   3142   3953      -
+fremont flat r12            19441   3491   8197   4646   5917      -
+fremont gradient r1.8        7698   1342   2064   2043   2463    649
+fremont gradient r3         12418   2571   3784   3519   4263   1391
+fremont gradient r5          8421   1621   2424   2357   3016   1737
+fremont gradient r8          8620   1608   2227   2218   2674      -
+fremont gradient r12        19298   3434   8204   4429   5042      -
+golden flat r1.8            10717   2541   2869   3272   4158    702
+golden flat r3              11552   1953   2364   3255   4208   1058
+golden flat r5              12006   1535   1881   2920   3825   1768
+golden flat r8              12823   1369   1591   1834   2316      -
+golden flat r12             18571   1664   5518   2439   3066      -
+golden gradient r1.8         6653   1651   2214   2193   2912    541
+golden gradient r3           8546   1513   2032   2934   3847    900
+golden gradient r5          10342   1123   1546   2978   3822   1339
+golden gradient r8          11722    970   1314   1323   1678      -
+golden gradient r12         17573    929   1373   1722   2164      -
+
+regions
+                                M     A0      A     B1     B2     B3
+becker None r1.8125            17     17     17     17     17     17
+bridge None r3.4875            90     72     74     74     74    166
+fremont flat r1.8             555    269    269    287    288    199
+fremont flat r3               485    139    154    251    255    166
+fremont flat r5               383    107    107    214    214    249
+fremont flat r8               162    101    101    127    127      -
+fremont flat r12              204    156    156    197    197      -
+fremont gradient r1.8          90     49     52     48     48     62
+fremont gradient r3           157    105    108    116    117    117
+fremont gradient r5            85     83     83     84     84     87
+fremont gradient r8            83     83     83     83     83      -
+fremont gradient r12          164    153    153    161    161      -
+golden flat r1.8              521    222    225    230    230    146
+golden flat r3                620    145    146    182    182    150
+golden flat r5                517    112    112    143    143    179
+golden flat r8                214    112    112    123    123      -
+golden flat r12               171    111    110    123    123      -
+golden gradient r1.8          129     63     73     84     84     72
+golden gradient r3            162     69     71     74     74     91
+golden gradient r5            180     55     55     58     59    105
+golden gradient r8             73     53     53     52     53      -
+golden gradient r12            58     40     40     44     44      -

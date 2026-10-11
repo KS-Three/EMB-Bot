@@ -1119,6 +1119,43 @@ class PipelineConfig:
     # moved are named in that entry. False is the pre-flip polygon — the
     # staircase — byte for byte.
     subpixel_edges_upscaled: bool = True
+    # The same upscaled alpha cutout, outlined from the source's alpha
+    # DIRECTLY instead of repaired from the mask. The `alpha < 128` mask and
+    # its NEAREST enlargement throw the ramp away and stage 4 then walks a
+    # staircase of source pixels, moving one vertex at a time back toward
+    # where the ramp says the edge is. ON, a region bounded by transparency
+    # all the way round takes its polygon from the half-coverage contour of
+    # the source's own alpha (marching squares, `skimage.measure.
+    # find_contours` at 127.5) — the line the mask's threshold was a
+    # one-pixel quantisation of — then the same Douglas-Peucker and the same
+    # area floors as any other region (`stage4_vectorize._coverage_parts`).
+    # Measured 2026-10-10 on the busiest single-colour layer of golden_tee
+    # and hotel_fremont at 1.8 px/mm against their own native-resolution
+    # edges (`docs/tracer-head-to-head-2026-10-10.md`, addendum): median
+    # edge error 0.09-0.12 mm for the shipped polygon, 0.04-0.05 for this
+    # one, a third of the turning and a quarter of the vertices; by 5 px/mm
+    # the two agree. On `becker_marine_logo.png` the shipped polygon's
+    # reversals (vertices turning back more than 120 degrees, which the
+    # native read above introduces: 7.1 per 100 mm of outline, 0.0 with it
+    # off) go to none.
+    # It applies to ONE class of source: a single ink with its whole shape
+    # in alpha, enlarged by stage 1 (`stage4_vectorize._one_ink_cutout`).
+    # There every edge is an alpha edge; an enclosed transparent region is
+    # read from the same contour's other side, so ink and hole share a line.
+    # What it does NOT touch: a source at its own resolution, a source with
+    # no alpha, and a cutout with a second ink in it (two colours meet along
+    # an edge alpha says nothing about) — each keeps today's polygon whole.
+    # The costs on the table: half coverage cuts across a sharp corner by a
+    # fraction of a source pixel, where the native read above fits the two
+    # sides and squares it — on a clean synthetic bar that read is the
+    # better polygon (0.03 mm at worst against 0.22), and it is real
+    # artwork, where the fit is refused more often than not, that the
+    # contour wins on; and a stroke under about one source pixel wide never
+    # reaches half coverage, exactly as it never reached the mask. No
+    # physical constant — every number is a raster quantity of the source.
+    # Default OFF and byte-identical off; no sew-out has seen it.
+    # `tests/test_coverage_edges.py`.
+    coverage_edges: bool = False
 
     # Stage 5 — sew order, underlap, pull compensation
     # Which garment/fabric the design is going on. The fabric preset supplies
