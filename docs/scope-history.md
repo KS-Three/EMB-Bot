@@ -32,6 +32,7 @@ Merged that day, with the numbers as each PR body measured them:
 - **#827** `blend_bands_share_cone` built OFF: 378 blocks / 2,214 trims OFF and ON over 52 combos, 0 differ.
 - **#828** Column lane `lost_frac` split; grid reading shipped / lane / lane + fix: becker 0.0236 / 0.0381 / 0.0364, enthusiast 0.2771 / 0.3110 / 0.3627, bridge 0.2213 / 0.2283 / 0.2283, drone 0.1003 / 0.1060 / 0.1066, fremont 0.0302 / 0.0325 / 0.0326, golden_tee 0.4501 / 0.4698 / 0.4698.
 - **#829** SVG import gate, measure only; harness ran twice identical.
+- **#831** manual lane plan 2, hand-drawn satin columns: engine `node --test` 1217 pass, 0 fail; Studio vitest 1814 green; Playwright column + cutout + node-edit 18 passed.
 
 Moved out of MASTER_SCOPE defect 57 for its 400-word cap (still true when moved): the browser satin emitter keeps 24 edges; a 5-point star's tier turns on a float's last bit.
 
