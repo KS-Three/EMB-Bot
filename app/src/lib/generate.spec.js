@@ -672,7 +672,7 @@ test("generateElement: a star preset lays no float across its notches (fillColum
 // 2026-10-08 (MASTER_SCOPE "Waiting on Kent" 28, after `fillColumns`): the
 // basic-shape lane passes `cutFloats`, so a float the DST writer lays as three
 // or more jump records -- a cut on a DST machine -- has a `trim` in the
-// stream. The Studio's default shape element (a 50 mm circle) and a 20 mm
+// stream. The Studio's default shape element (a 50 mm circle) and a 25 mm
 // 12-point star each keep one with the flag off: that half proves the reading
 // can see one. The two streams sew the same needle points in the same order.
 test("generateElement: a preset shape leaves no float a DST machine reads as a cut (cutFloats, shape lane)", async () => {
@@ -698,7 +698,9 @@ test("generateElement: a preset shape leaves no float a DST machine reads as a c
   };
   const needles = (d) => d.stitches.filter((s) => s.type === "stitch").map((s) => [s.x, s.y]);
   const trims = (d) => d.stitches.filter((s) => s.type === "trim").length;
-  for (const [kind, params, sizeMm] of [["circle", {}, 50], ["star", { points: 12 }, 20]]) {
+  // (The star was 20 mm until the spine change of 2026-10-04 reached main:
+  // that one's satin keeps no such float now. The 25 mm one keeps one.)
+  for (const [kind, params, sizeMm] of [["circle", {}, 50], ["star", { points: 12 }, 25]]) {
     const el = { ...defaultShapeElement("e1"), kind, params, sizeMm };
     const d = generateElement(el, garment, {});
     expect(d.stitchCount).toBeGreaterThan(500);
