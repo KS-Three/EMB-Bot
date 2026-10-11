@@ -12,8 +12,10 @@
     shouldScrollCanvasIntoView,
     duplicateShape, nextShapeIds,
     resolveCutOuts, manualShapeName, withCutOut,
+    PX_PER_MM, COLUMN_DEFAULT_MM, isColumn, columnIssues, shapeProblems, shapeRing,
   } from "../lib/manualShapes.js";
-  import { SATIN_CUTOUT_NOTE } from "../lib/shapePopover.js";
+  import { SATIN_CUTOUT_NOTE, columnWidthNote } from "../lib/shapePopover.js";
+  import { columnWidthMm, withColumnWidthMm, refitShapesPatch } from "../lib/fieldNodeEdit.js";
   import { traceFitRect } from "../lib/manualTrace.js";
 
   // Node colours, straight vs curved. Same vocabulary the Ember demo uses
@@ -51,6 +53,17 @@
   // replayed — an old selection would otherwise re-select its row and scroll
   // the panel into view on every remount.
   let fieldSelectSeen = fieldSelect ? fieldSelect.n : 0;
+  // The element's fit ({ mmPerPx, ... } — design.fit from its last generate)
+  // and the fabric it sews on ({ label, pullCompMm }), both optional. Read
+  // only by columns: a new column is COLUMN_DEFAULT_MM wide through this fit,
+  // and the Width row reads and writes mm through it. With no fit yet (the
+  // element has never generated) the canvas's nominal PX_PER_MM stands in.
+  export let fit = null;
+  export let fabric = null;
+  function mmFitOf(f) {
+    return f && f.mmPerPx > 0 ? f : { mmPerPx: 1 / PX_PER_MM };
+  }
+  $: mmFit = mmFitOf(fit);
   const d = createEventDispatcher();
 
   function patch(p) {
@@ -151,10 +164,12 @@
   // it repaints both; a helper that read `cut` internally would not.
   $: cut = resolveCutOuts(shapes);
 
-  // The side canvas's drawing mode (ruling 4: Shape | Hole, with Column and
-  // Line to come in plans 2 and 3). Ephemeral UI state like `draft`. A pick,
-  // not a toggle: pressing the lit one does nothing, and switching keeps the
-  // draft — the mode only decides what the NEXT finished shape is born as.
+  // The side canvas's drawing mode (ruling 4: Shape | Hole | Column, with Line
+  // to come in plan 3). Ephemeral UI state like `draft`. A pick, not a toggle:
+  // pressing the lit one does nothing, and switching keeps the draft — the
+  // mode only decides what the NEXT finished shape is born as. In Column mode
+  // the draft is an OPEN spine: a click never selects (like Hole mode) and
+  // never closes on the first point (a spine may end where it began).
   let drawMode = "shape";
   function setDrawMode(m) {
     if (drawMode !== m) drawMode = m;
@@ -171,8 +186,26 @@
   // triangle) — otherwise every fresh draft would open with "Needs at
   // least 3 points," which is just the obvious starting state, not a
   // problem to report.
-  $: draftIssues = draft.length >= 3 ? shapeIssues(draftFlat) : [];
-  $: canFinish = draft.length >= 3 && draftIssues.length === 0;
+  //
+  // A column draft is judged as the column it would become — its spine plus
+  // the width a new column gets — so "folds over itself" shows while drawing,
+  // and two points are enough.
+  $: draftColumn = drawMode === "column" ? newColumn("", draft, draftCurves, mmFit) : null;
+  $: draftIssues = draftColumn
+    ? (draft.length >= 2 ? columnIssues(draftColumn) : [])
+    : (draft.length >= 3 ? shapeIssues(draftFlat) : []);
+  $: canFinish = draft.length >= (draftColumn ? 2 : 3) && draftIssues.length === 0;
+  $: draftRing = draftColumn && draft.length >= 2 ? shapeRing(draftColumn) : [];
+
+  // A new column record: no stitchType, no angleDeg (the rails are the
+  // direction), COLUMN_DEFAULT_MM wide through the element's fit (ruling 9).
+  function newColumn(id, points, curves, f) {
+    return {
+      id, kind: "column", points, curves,
+      widthPx: COLUMN_DEFAULT_MM / mmFitOf(f).mmPerPx,
+      colorRgb: defaultManualShape(id).colorRgb,
+    };
+  }
 
   // Bring the drawing canvas into view on entry, but only when it is actually
   // clipped. Measured 2026-08-26 in a real browser: the panel opens with a
@@ -243,6 +276,15 @@
     // Computed fresh here (not read off the reactive draftFlat) so this
     // never depends on Svelte's reactive-statement flush having already run
     // by the time a caller in the same tick invokes finishShape.
+    if (drawMode === "column") {
+      const col = newColumn(nextShapeId(shapes), draft, draftCurves, fit);
+      if (columnIssues(col).length) return;
+      patch({ shapes: [...shapes, col] });
+      draft = [];
+      draftCurves = {};
+      selectedShapeId = col.id;
+      return;
+    }
     if (!isValidShape(flattenShape(draft, draftCurves, true))) return;
     const base = { ...defaultManualShape(nextShapeId(shapes)), points: draft, curves: draftCurves };
     // Hole mode: born marked. Same validity gate as any shape (a cut-out IS a
@@ -305,7 +347,8 @@
     // Hole mode never selects (ruling, 2026-10-01): a hole is drawn INSIDE a
     // shape, so its first click always lands on one, and selecting there
     // would make a hole impossible to start. updateHoverCursor agrees.
-    if (draft.length === 0 && drawMode !== "hole") {
+    // Column mode the same: a stroke is drawn over whatever it crosses.
+    if (draft.length === 0 && drawMode === "shape") {
       const hitId = hitTestShapeAt(pt.x, pt.y);
       if (hitId) {
         // A click on a shape's body selects it (PR #104). Clicking the shape
@@ -315,7 +358,7 @@
         return;
       }
     }
-    if (draft.length >= 2 && isNearStart(draft, pt.x, pt.y)) {
+    if (drawMode !== "column" && draft.length >= 2 && isNearStart(draft, pt.x, pt.y)) {
       finishShape();
       return;
     }
@@ -356,7 +399,7 @@
     if (draft.length === 0) return;
     e.preventDefault();
     const pt = canvasPointFromEvent(e);
-    if (draft.length >= 2 && isNearStart(draft, pt.x, pt.y)) {
+    if (drawMode !== "column" && draft.length >= 2 && isNearStart(draft, pt.x, pt.y)) {
       finishShape();
       return;
     }
@@ -543,7 +586,8 @@
   function hitTestShapeAt(x, y) {
     for (let i = shapes.length - 1; i >= 0; i--) {
       const s = shapes[i];
-      if (!pointInShape(flattenShape(s.points, s.curves, true), x, y)) continue;
+      // shapeRing: a closed shape's flattened ring, a column's rail ring.
+      if (!pointInShape(shapeRing(s), x, y)) continue;
       const holes = cut.holesOf[s.id] || [];
       if (holes.some((id) => pointInShape(cut.flat.get(id), x, y))) continue;
       return s.id;
@@ -652,7 +696,7 @@
       canvasEl.style.cursor = "copy";
       return;
     }
-    if (draft.length === 0 && drawMode !== "hole") {
+    if (draft.length === 0 && drawMode === "shape") {
       const hitId = hitTestShapeAt(pt.x, pt.y);
       if (hitId) {
         canvasEl.style.cursor = "pointer";
@@ -674,6 +718,45 @@
       draftCurves = commitCurve(draft, draftCurves, seg, through);
       releasePointer(e);
     }
+  }
+
+  // ---- A column's width -------------------------------------------------
+  // Shown and typed in mm through the element's fit (or the nominal scale
+  // before it has one), stored as `widthPx`. The note under it is the
+  // popover's (columnWidthNote), so the two surfaces quote one number. A
+  // width the spine cannot carry — the rails fold at a bend — is refused with
+  // the reason and nothing is written.
+  let widthError = "";
+  $: { selectedShapeId; shapes; widthError = ""; }
+  $: widthValue = selectedShape && isColumn(selectedShape) ? columnWidthMm(selectedShape, mmFit).toFixed(1) : "";
+  $: widthNote = widthError
+    ? { note: widthError, warn: true }
+    : (selectedShape && isColumn(selectedShape) ? columnWidthNote(selectedShape, mmFit, fabric) : null);
+
+  function onWidthChange(e) {
+    const input = e.currentTarget;
+    const mm = parseFloat(input.value);
+    if (!selectedShape || !isColumn(selectedShape)) return;
+    if (!(mm > 0)) { input.value = widthValue; return; }
+    const wider = withColumnWidthMm(selectedShape, mmFit, mm);
+    const issues = shapeProblems(wider);
+    if (issues.length) {
+      widthError = issues[0];
+      input.value = widthValue;
+      return;
+    }
+    // With the element's real fit the width commits through the re-fit rule,
+    // as on the hoop: the rail ring is the engine's bbox, so a wider column
+    // would otherwise re-fit the whole element and move every other shape.
+    const next = shapes.map((s) => (s.id === selectedShape.id ? { ...s, widthPx: wider.widthPx } : s));
+    const held = fit && fit.mmPerPx > 0 ? refitShapesPatch(element, fit, next) : { shapes: next };
+    if (held.error) {
+      widthError = held.error;
+      input.value = widthValue;
+      return;
+    }
+    widthError = "";
+    patch(held);
   }
 
   function onAngleInput(e) {
@@ -848,6 +931,35 @@
     if (typeof ctx.setLineDash === "function") ctx.setLineDash([]);
   }
 
+  // A column: its rail ring filled in its colour (what sews), the spine as a
+  // thin line down the middle (what was drawn), and the label at the spine's
+  // middle point, which — unlike a centroid — is always on the column.
+  function drawColumn(ctx, s, fillStyle, strokeStyle, lineWidth, labelled) {
+    const ring = shapeRing(s);
+    if (ring.length < 3) return;
+    ctx.beginPath();
+    tracePath(ctx, ring, null, true);
+    ctx.closePath();
+    ctx.fillStyle = fillStyle;
+    ctx.fill();
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+    ctx.beginPath();
+    tracePath(ctx, s.points, s.curves, false);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    if (labelled) {
+      const spine = flattenShape(s.points, s.curves, false);
+      const i = Math.floor((spine.length - 1) / 2);
+      const p = spine[i], q = spine[Math.min(i + 1, spine.length - 1)];
+      ctx.fillStyle = "#111";
+      ctx.font = "11px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("COLUMN", (p.x + q.x) / 2, (p.y + q.y) / 2);
+    }
+  }
+
   // The curves map to actually draw with: the committed map, with the
   // in-progress drag (if any) applied on top — so the curve visibly follows
   // the cursor before release.
@@ -889,7 +1001,7 @@
 
   function render(
     canvas, shapeList, draftPts, draftCrv, selectedId,
-    dragSeg, dragPoint, cutMap
+    dragSeg, dragPoint, cutMap, draftRing
   ) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -913,7 +1025,10 @@
     for (const s of shapeList) {
       const pts = s.points;
       const liveCrv = s.curves;
-      if (!isValidShape(flattenShape(pts, liveCrv, true))) continue;
+      const column = isColumn(s);
+      // A column is judged and drawn as the rail ring the engine sews; a
+      // closed shape as its own flattened ring, as it always was.
+      if (column ? shapeProblems(s).length : !isValidShape(flattenShape(pts, liveCrv, true))) continue;
       const [r, g, b] = s.colorRgb || [20, 20, 20];
       const isSel = s.id === selectedId;
       // Once something is selected, every OTHER shape de-emphasizes to the
@@ -937,6 +1052,10 @@
         continue;
       }
       const fillStyle = `rgba(${r},${g},${b},${(dimmed ? 0.18 : 0.55) * a})`;
+      if (column) {
+        drawColumn(ctx, s, fillStyle, strokeStyle, lineWidth, !dimmed);
+        continue;
+      }
       const holeIds = (cutMap && cutMap.holesOf[s.id]) || [];
       const holeRings = holeIds.map((id) => cutMap.flat.get(id));
       if (holeRings.length) drawHoledShape(ctx, pts, liveCrv, holeRings, fillStyle, strokeStyle, lineWidth);
@@ -961,6 +1080,16 @@
           ctx.fillText(s.stitchType === "satin" && !holeRings.length ? "SATIN" : "FILL", cx, cy);
         }
       }
+    }
+
+    // A column draft shows the width it will be born with, faintly, under
+    // its spine.
+    if (draftRing && draftRing.length >= 3) {
+      ctx.beginPath();
+      tracePath(ctx, draftRing, null, true);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(79,70,229,0.12)";
+      ctx.fill();
     }
 
     if (draftPts.length) {
@@ -993,7 +1122,7 @@
   // because nothing drawn depends on it.
   $: render(
     canvasEl, shapes, draft, draftCurves, selectedShapeId,
-    curveDragSeg, curveDragPoint, cut,
+    curveDragSeg, curveDragPoint, cut, draftRing,
     backdropCanvas, backdropOn, backdropOpacity, shapeAlpha
   );
 </script>
@@ -1041,7 +1170,7 @@
        language as the hoop canvas's View strip (theme.css .viewseg): one
        bordered strip, hairline-separated, the lit segment filled ink. -->
   <div class="mp-mode" role="group" aria-label="Drawing mode">
-    {#each [["shape", "Shape"], ["hole", "Hole"]] as [val, label]}
+    {#each [["shape", "Shape"], ["hole", "Hole"], ["column", "Column"]] as [val, label]}
       <button
         type="button"
         class="mp-mode-btn"
@@ -1053,6 +1182,8 @@
   </div>
   {#if drawMode === "hole"}
     <p class="mp-modehint">Draw inside a shape — it cuts that shape.</p>
+  {:else if drawMode === "column"}
+    <p class="mp-modehint">Click along the middle of the stroke, then double-click to finish.</p>
   {/if}
 
   <div class="mp-tools">
@@ -1158,6 +1289,28 @@
           disabled={selectedAlpha === 1}
         >Reset</button>
       </div>
+      {#if isColumn(selectedShape)}
+      <!-- A column: colour and width. It has no stitch type (always satin),
+           no angle (its rails are the direction) and cannot be a cut-out. -->
+      <div class="mp-row">
+        <span class="mp-label">Color</span>
+        <ThreadPicker compact rgb={selectedShape.colorRgb} on:pick={(e) => updateShape(selectedShape.id, { colorRgb: e.detail })} />
+      </div>
+      <label class="mp-row mp-width">
+        <span class="mp-label">Width</span>
+        <input
+          type="number"
+          step="0.1"
+          min="0.5"
+          value={widthValue}
+          on:change={onWidthChange}
+        />
+        <span class="mp-deg">mm</span>
+      </label>
+      {#if widthNote}
+        <p class="mp-cutnote mp-width-note" class:warn={widthNote.warn}>{widthNote.note}</p>
+      {/if}
+      {:else}
       <div class="mp-row">
         <span class="mp-label">Cut out</span>
         <!-- `mp-switch`, deliberately NOT `mp-btn`: `.mp-assign .mp-btn.active`
@@ -1212,6 +1365,7 @@
         />
         <span class="mp-deg">° (blank = auto)</span>
       </label>
+      {/if}
       {/if}
     </div>
   {/if}

@@ -94,6 +94,17 @@ function presetName(element) {
 // ---- the model --------------------------------------------------------------
 export const COLUMN_WIDE_NOTE = "Over 6.5 mm sewn — long satin stitches can snag. Consider a fill, or two columns.";
 
+// What a column's width row says under it — the popover's and the side
+// panel's assign box's, so the two can never quote different numbers:
+// `Sews X.X mm on <label>.`, or the wide warning past STITCH_WIDTH_MAX_MM.
+// null when there is no fit or no fabric to quote it on.
+export function columnWidthNote(shape, fit, fabric) {
+  if (!fabric || columnWidthMm(shape, fit) == null) return null;
+  const sewn = columnSewnMm(shape, fit, fabric.pullCompMm);
+  if (sewn > STITCH_WIDTH_MAX_MM) return { note: COLUMN_WIDE_NOTE, warn: true };
+  return { note: `Sews ${sewn.toFixed(1)} mm on ${fabric.label}.`, warn: false };
+}
+
 // `fit` and `fabric` ({ label, pullCompMm }) are optional context, read only
 // for a column's width row; every other shape ignores them.
 export function popoverModel({ element, shapeId, fit, fabric }) {
@@ -116,11 +127,8 @@ export function popoverModel({ element, shapeId, fit, fabric }) {
         value: drawn == null ? null : Math.round(drawn * 10) / 10,
         hint: "mm", step: 0.1, min: 0.5,
       };
-      if (drawn != null && fabric) {
-        const sewn = columnSewnMm(shape, fit, fabric.pullCompMm);
-        if (sewn > STITCH_WIDTH_MAX_MM) { row.note = COLUMN_WIDE_NOTE; row.warn = true; }
-        else row.note = `Sews ${sewn.toFixed(1)} mm on ${fabric.label}.`;
-      }
+      const said = columnWidthNote(shape, fit, fabric);
+      if (said) { row.note = said.note; if (said.warn) row.warn = true; }
       return { lane, shapeId, name, rows: [{ key: "color", kind: "thread", rgb: shape.colorRgb }, row, ...tail] };
     }
     if (shape.cutOut) {

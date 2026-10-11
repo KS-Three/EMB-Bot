@@ -10,6 +10,7 @@
   import Hint from "./Hint.svelte";
   import Icon from "./Icon.svelte";
   import { selectedIdsOf } from "../lib/project.js";
+  import { columnNoteFabric } from "../lib/generate.js";
   export let project;
   // Whether the "add-elements" onboarding hint should render right now --
   // App computes this (shouldShow("add-elements") + the A7 priority rule +
@@ -23,6 +24,11 @@
   // Dims of the last generated design, owned by App (from EmbroideryField's
   // "dims" event) -- passed straight through to SizePanel.
   export let designDims = null;
+  // { [elementId]: { mmPerPx } } for hand-drawn elements (App, from the
+  // field's "manualfits"), and the fabric a column's width is quoted on —
+  // both read only by ManualPanel's columns.
+  export let manualFits = null;
+  $: manualFabric = columnNoteFabric(project && project.garmentId, project && project.fabricProfile);
   // The digitizer service's /health payload, or null when it's unreachable.
   // App owns the probe (run on mount, again when the Download sheet opens,
   // and on the explicit "check again" control, which fires "checkservice");
@@ -336,7 +342,7 @@
       />
     {:else if el.type === "manual"}
      {#await import("./ManualPanel.svelte") then { default: ManualPanel }}
-      <ManualPanel element={el} fieldSelect={fieldShapeSelect && fieldShapeSelect.elementId === el.id ? fieldShapeSelect : null} on:elupdate={(e) => d("elupdate", e.detail)} />
+      <ManualPanel element={el} fit={(manualFits && manualFits[el.id]) || null} fabric={manualFabric} fieldSelect={fieldShapeSelect && fieldShapeSelect.elementId === el.id ? fieldShapeSelect : null} on:elupdate={(e) => d("elupdate", e.detail)} />
      {/await}
     {:else if el.type === "shape"}
       <ShapePanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />

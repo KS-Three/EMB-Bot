@@ -62,6 +62,20 @@ export function fabricInForce(garmentId, fabricProfile) {
   }
 }
 
+// The fabric a column's width note is quoted on — the one generateAll sews
+// under — as { label, pullCompMm }, so "Sews X.X mm on <label>." agrees with
+// the stitches. null when there is no garment or it cannot be resolved.
+// Shared by the field's popover and the side panel's assign box.
+export function columnNoteFabric(garmentId, fabricProfile) {
+  if (!garmentId) return null;
+  try {
+    const f = fabricInForce(garmentId, fabricProfile);
+    return f ? { label: f.label, pullCompMm: f.pullCompMm } : null;
+  } catch {
+    return null;
+  }
+}
+
 export function generateElement(element, garment, runtime) {
   if (!element) return null;
 

@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
-  import { generateAll, charList, letteringNote, emptyFieldHint, splitIntoTwoLines, fabricInForce } from "../lib/generate.js";
+  import { generateAll, charList, letteringNote, emptyFieldHint, splitIntoTwoLines, columnNoteFabric } from "../lib/generate.js";
   import { ensureFonts, loadCoverage, loadManifest } from "../lib/fontLoader.js";
   import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
@@ -754,19 +754,8 @@
     if (!smaller) { shapeEditError = anchorFloorMessage(shape); return false; }
     return commitNodeEdit(el, smaller);
   }
-  // The fabric a column's width note is quoted on — the one generateAll sews
-  // under (generate.js: the garment's preset adjusted by project.fabricProfile),
-  // so "Sews X.X mm on <label>." agrees with the stitches.
-  function popFabricOf(garmentId, fabricProfile) {
-    if (!garmentId) return null;
-    try {
-      const f = fabricInForce(garmentId, fabricProfile);
-      return f ? { label: f.label, pullCompMm: f.pullCompMm } : null;
-    } catch {
-      return null;
-    }
-  }
-  $: popFabric = popFabricOf(project && project.garmentId, project && project.fabricProfile);
+  // The fabric a column's width note is quoted on (generate.js).
+  $: popFabric = columnNoteFabric(project && project.garmentId, project && project.fabricProfile);
   // `peById` is named here on purpose: a column's width row reads the fit, and
   // a `$:` only tracks what the statement itself reads — through manualFit()
   // alone the width would stay stale after the regenerate that follows an edit.
@@ -1796,6 +1785,23 @@
     dispatch("dims", { widthMM, heightMM });
   }
 
+  // Each hand-drawn element's fit ({ id: { mmPerPx } }), for the side panel:
+  // a new column is 4.0 mm wide THROUGH this fit, and its Width row reads and
+  // writes mm through it. Only on a change, so a repaint that moved nothing
+  // re-renders nothing upstream.
+  let lastManualFits = "";
+  function emitManualFits(perElement) {
+    const fits = {};
+    const manual = new Set(((project && project.elements) || []).filter((x) => x && x.type === "manual").map((x) => x.id));
+    for (const pe of perElement || []) {
+      if (manual.has(pe.id) && pe.design && pe.design.fit && pe.design.fit.mmPerPx > 0) fits[pe.id] = { mmPerPx: pe.design.fit.mmPerPx };
+    }
+    const key = JSON.stringify(fits);
+    if (key === lastManualFits) return;
+    lastManualFits = key;
+    dispatch("manualfits", fits);
+  }
+
   // ---- "which font CAN stitch this" ---------------------------------------
   //
   // "This font can’t stitch «Р», «у», «с». Try a different font, or different
@@ -2040,6 +2046,7 @@
     }
 
     drawOverlay();
+    emitManualFits(result.perElement);
     emitSelectedDims(result.perElement);
     reclampAll(result.perElement);
   }

@@ -497,6 +497,9 @@
   // (and the below-5mm warning) always reflects the real current design,
   // including while the user drags the field's resize handles.
   let designDims = null;
+  // Each hand-drawn element's fit, from EmbroideryField's "manualfits" — the
+  // side panel draws columns 4.0 mm wide through it (ContentStep -> ManualPanel).
+  let manualFits = {};
 
   // A shape selected ON THE FIELD (EmbroideryField's click-to-edit popover,
   // 2026-09-29): { elementId, shapeId, n }. Runtime only — never saved.
@@ -1280,6 +1283,7 @@
       on:select={(e) => onSelect(e.detail)}
       on:toggleselect={(e) => onToggleSelect(e.detail)}
       on:dims={(e) => onDims(e.detail)}
+      on:manualfits={(e) => (manualFits = e.detail || {})}
       on:stats={(e) => onStats(e.detail)}
       on:addelement={(e) => onAddElement(e.detail)}
       on:shapeselect={(e) => { fieldShapeSelect = { ...e.detail, n: (fieldShapeSelect ? fieldShapeSelect.n : 0) + 1 }; }}
@@ -1317,6 +1321,7 @@
           flat={runtime.flats[project.selectedId]}
           {sewnColors}
           {designDims}
+          {manualFits}
           {digitizerHealth}
           {showAddElementsHint}
           hoverShapeId={panelHoverShapeId}
