@@ -61,6 +61,23 @@ run-dominated blocks at the end whose regions carry layer numbers (16-23)
 past the folded palette, i.e. assigned after the fold ran. The 2026-09-06
 table below is kept as the record.
 
+## Re-measured 2026-10-11 — the band route is EMPTY on main
+
+Built anyway, default OFF: `cfg.blend_bands_share_cone`
+(`stage7_sequence._fold_band_cones`), the band fold the 09-06 table below
+argued against. Measured before and after on today's engine, the `band`
+column is zero everywhere this tool was pointed: 0 of 52 corpus combos,
+0 of 24 extra runs (six gradient fixtures at 50 and 120 mm, OFF and ON),
+and `region_blobs` on the `PRE_FLIP` engine. A blend design here sews one
+PARENT's bands per cone; `_shade_blocks` already shares a cone within one
+parent. ON matches OFF — stitch count, trims and cone order — on every
+combo measured. The survivors
+are `edge_cap` (its own flag), `resnap` (`drone_render`, `logo_bridge_bar`)
+and `plain` (`drone_render`, `logo_golden_tee`) — none a band. To re-run
+with the flag:
+
+    .venv/bin/python -m tools.cone_revisits blend_bands_share_cone=True
+
 ## What it found, 2026-09-06 — 26 fixtures x 2 garments
 
 Reproduces MASTER_SCOPE's count exactly, and prices it:
@@ -175,9 +192,26 @@ def revisits(plan, result) -> list[dict]:
     return out
 
 
+def _overrides(argv: list[str]) -> dict:
+    """`key=value` config overrides, e.g. `blend_bands_share_cone=True`."""
+    out: dict = {}
+    for a in argv:
+        k, _, v = a.partition("=")
+        if v in ("True", "False"):
+            out[k] = v == "True"
+        else:
+            try:
+                out[k] = float(v)
+            except ValueError:
+                out[k] = v
+    return out
+
+
 def main(argv: list[str]) -> int:
     from tests.conftest import TESTDATA
     from tools.corpus_scorecard import FIXTURES, MATRIX
+
+    extra = _overrides(argv)
 
     hdr = (f"{'fixture':40} {'garment':11} {'cone':>6} {'blocks':>14} "
            f"{'gap':>4}  route")
@@ -189,7 +223,7 @@ def main(argv: list[str]) -> int:
     for fx in FIXTURES:
         for m in MATRIX:
             art = TESTDATA / fx
-            cfg = PipelineConfig(**m)
+            cfg = PipelineConfig(**{**m, **extra})
             try:
                 result, plan = digitize(art, cfg)
             except Exception as exc:                      # pragma: no cover

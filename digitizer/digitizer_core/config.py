@@ -2616,6 +2616,19 @@ class PipelineConfig:
     # behaves on cloth. Kept conservative for that reason: too large only
     # declines merges, which costs stops rather than quality.
     hoist_same_thread_margin_mm: float = 0.5
+    # Defect 18's third mechanism, its BAND half (2026-10-11): blend bands
+    # of two parent regions that snap to one cone sew as two blocks, because
+    # `_shade_blocks` only buckets a cone WITHIN one group. The hoist above
+    # declines them — a band always abuts its own parent's other shades —
+    # and that contact is the one `_fold_band_cones` may ignore: a group's
+    # block order is `_shade_blocks`' L* sort, never stage 5's plan. Every
+    # other block it jumps must clear this same margin, so no seam moves.
+    # The two parents' bands keep their order inside the shared block.
+    # Default OFF (new sequencing behaviour; the flip is Kent's). Pure
+    # sequencing, gate 1 untouched. Inert when the hoist margin is 0 or
+    # `merge_adjacent_same_thread` is off.
+    # tests/test_blend_bands_share_cone.py; corpus sweep tools/cone_revisits.py.
+    blend_bands_share_cone: bool = False
     # The UPSTREAM half of the same revisit defect (2026-08-31): a region the
     # pipeline itself re-snapped (`revalidate_threads`) joins the layer that
     # DECLARES its new cone, before stage 5 plans coverage, so one spool sews
