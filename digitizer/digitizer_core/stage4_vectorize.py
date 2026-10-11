@@ -28,7 +28,8 @@ from .config import PipelineConfig
 from .regions import Region, assign_shape_ids
 from .stage1_prep import Prep
 from .stage3_segment import RegionMask
-from .subpixel import DROP_REJECTED_RUN_MAX, drop_isolated_rejects, subpixel_contour
+from .subpixel import (DROP_REJECTED_RUN_MAX, NORMAL_STEPS, drop_folds, drop_isolated_rejects,
+                       subpixel_contour)
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (COLOR_CAP_APPLIED,
                              THREAD_RESNAPPED_AFTER_DRIFT, warn)
@@ -313,7 +314,8 @@ def _native_profile_image(p: Prep) -> np.ndarray:
 
 def _native_subpixel(raw_int: np.ndarray, lab_native: np.ndarray, mask: np.ndarray,
                      mask_origin: tuple[int, int], p: Prep,
-                     min_contrast_de: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+                     min_contrast_de: float,
+                     corner_runs: bool = False) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """`subpixel_contour` in the SOURCE's frame for a raster stage 1
     upscaled: -> (moved points in the UPSCALED frame, accepted, corner).
 
@@ -338,7 +340,7 @@ def _native_subpixel(raw_int: np.ndarray, lab_native: np.ndarray, mask: np.ndarr
     moved, accepted, corner = subpixel_contour(down, lab_native, mask, mask_origin,
                                                min_contrast_de=min_contrast_de,
                                                inside_fn=inside, step_scale=max(sx, sy),
-                                               corner_fit=True)
+                                               corner_fit=True, corner_runs=corner_runs)
     up = np.stack([(moved[:, 0] + 0.5) * sx - 0.5, (moved[:, 1] + 0.5) * sy - 0.5], axis=1)
     return up, accepted, corner
 
@@ -619,7 +621,8 @@ def vectorize(
                 return raw_int, None, None
             if native:
                 moved, accepted, corner = _native_subpixel(raw_int, lab_img, padded, (x0 - 1, y0 - 1),
-                                                           p, cfg.merge_delta_e)
+                                                           p, cfg.merge_delta_e,
+                                                           corner_runs=bool(cfg.subpixel_corner_runs))
                 # A rejected run is measured in vertices, and the trace
                 # carries `upscale` of them per source pixel.
                 run_max = int(round(DROP_REJECTED_RUN_MAX * max(p.upscale)))
@@ -628,6 +631,12 @@ def vectorize(
                                                            min_contrast_de=cfg.merge_delta_e)
                 run_max = DROP_REJECTED_RUN_MAX
             share = float(accepted.mean()) if len(accepted) else 0.0
+            if native and cfg.subpixel_corner_runs:
+                # A moved vertex that lands behind the one before it, along
+                # the trace's own direction, folds the ring: dropped here.
+                moved, accepted, corner = drop_folds(
+                    moved, accepted, corner, raw_int.astype(np.float64),
+                    max(1, int(round(NORMAL_STEPS * max(p.upscale)))))
             moved, accepted = drop_isolated_rejects(moved, accepted, protect=corner, max_run=run_max)
             return moved.astype(np.float32).reshape(-1, 1, 2), share, accepted
 

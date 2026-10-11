@@ -1,0 +1,23 @@
+16 reversal vertices on 17 regions
+ang  159.5 at (   81.6,   15.0)src  in 3.42 out 2.04 srcpx | prev: d1.9e-06 acc1 cor0 fit0 mv0.36 fitmv0.00 | at: d8.1e-06 acc1 cor0 fit0 mv0.30 fitmv0.00 | nxt: d0 acc0 cor0 fit0 mv0.00 fitmv0.00
+ang  143.3 at (  128.5,   54.0)src  in 2.16 out 0.71 srcpx | prev: d1.3e-05 acc0 cor0 fit0 mv0.43 fitmv0.43 | at: d0 acc0 cor0 fit0 mv0.00 fitmv0.00 | nxt: d4e-06 acc0 cor0 fit0 mv0.60 fitmv0.60
+ang  142.0 at (   95.6,   35.5)src  in 1.07 out 5.73 srcpx | prev: d5.8e-06 acc0 cor0 fit0 mv0.14 fitmv0.14 | at: d7.7e-06 acc1 cor1 fit1 mv0.96 fitmv0.96 | nxt: d9.6e-06 acc0 cor1 fit0 mv0.55 fitmv0.55
+ang  141.1 at (  114.3,   30.9)src  in 2.50 out 1.47 srcpx | prev: d2.1e-06 acc1 cor0 fit0 mv0.67 fitmv0.00 | at: d9e-06 acc1 cor1 fit1 mv1.15 fitmv1.15 | nxt: d1.5e-05 acc1 cor0 fit0 mv0.12 fitmv0.00
+ang  138.0 at (   45.8,   80.6)src  in 2.99 out 0.33 srcpx | prev: d9.4e-06 acc1 cor0 fit0 mv0.29 fitmv0.00 | at: d1.2e-05 acc1 cor1 fit1 mv0.88 fitmv0.88 | nxt: d3.6e-06 acc1 cor0 fit0 mv0.56 fitmv0.00
+ang  135.0 at (   96.9,    5.2)src  in 0.67 out 0.33 srcpx | prev: d8.3e-06 acc1 cor0 fit0 mv0.31 fitmv0.00 | at: d1.3e-05 acc1 cor1 fit1 mv0.20 fitmv0.20 | nxt: d7.8e-06 acc1 cor0 fit0 mv0.61 fitmv0.00
+ang  133.7 at (   51.3,   27.5)src  in 0.92 out 0.73 srcpx | prev: d5.4e-06 acc1 cor0 fit0 mv0.13 fitmv0.00 | at: d5e-06 acc1 cor0 fit0 mv0.99 fitmv0.00 | nxt: d2.7e-06 acc0 cor0 fit0 mv0.86 fitmv0.86
+ang  130.7 at (  117.6,    7.3)src  in 1.50 out 0.28 srcpx | prev: d7.6e-06 acc1 cor0 fit0 mv0.39 fitmv0.00 | at: d7.2e-06 acc1 cor1 fit1 mv1.18 fitmv1.13 | nxt: d5.6e-06 acc1 cor0 fit0 mv0.35 fitmv0.00
+ang  129.8 at (    5.0,   56.5)src  in 1.02 out 0.53 srcpx | prev: d4.2e-06 acc1 cor0 fit0 mv0.28 fitmv0.00 | at: d3.7e-06 acc1 cor1 fit1 mv0.49 fitmv0.49 | nxt: d1.1e-07 acc1 cor0 fit0 mv0.64 fitmv0.00
+ang  127.5 at (  107.1,   25.8)src  in 1.05 out 0.54 srcpx | prev: d1.5e-05 acc1 cor0 fit0 mv0.32 fitmv0.00 | at: d2.2e-06 acc1 cor1 fit0 mv0.59 fitmv0.00 | nxt: d3e-06 acc1 cor0 fit0 mv0.16 fitmv0.00
+ang  124.7 at (   72.0,   32.4)src  in 2.66 out 0.46 srcpx | prev: d9.8e-06 acc1 cor0 fit0 mv0.31 fitmv0.00 | at: d1.2e-05 acc1 cor1 fit1 mv1.08 fitmv1.08 | nxt: d4e-06 acc1 cor0 fit0 mv0.01 fitmv0.00
+ang  124.0 at (   71.8,   24.1)src  in 4.83 out 7.57 srcpx | prev: d1e-05 acc1 cor0 fit0 mv0.24 fitmv0.00 | at: d4.6e-06 acc1 cor1 fit1 mv1.55 fitmv1.55 | nxt: d1.9e-06 acc1 cor0 fit0 mv0.14 fitmv0.00
+ang  123.5 at (  112.5,   65.8)src  in 7.24 out 0.48 srcpx | prev: d1.2e-05 acc1 cor1 fit1 mv0.79 fitmv0.65 | at: d1.2e-05 acc1 cor1 fit1 mv0.68 fitmv0.35 | nxt: d1.8e-05 acc1 cor0 fit0 mv0.39 fitmv0.00
+ang  122.8 at (   33.1,   42.5)src  in 6.51 out 18.76 srcpx | prev: d8e-06 acc1 cor0 fit0 mv0.52 fitmv0.00 | at: d1.1e-06 acc1 cor1 fit1 mv1.28 fitmv1.28 | nxt: d3.3e-06 acc1 cor1 fit1 mv0.19 fitmv0.52
+ang  122.1 at (  111.5,   74.2)src  in 1.29 out 9.58 srcpx | prev: d1.8e-05 acc0 cor1 fit0 mv0.09 fitmv0.09 | at: d1.2e-05 acc1 cor0 fit0 mv0.22 fitmv0.00 | nxt: d1.1e-05 acc1 cor0 fit0 mv0.13 fitmv0.00
+ang  120.1 at (   22.9,   19.0)src  in 0.66 out 0.64 srcpx | prev: d4.5e-06 acc1 cor0 fit0 mv0.15 fitmv0.00 | at: d4.4e-06 acc1 cor1 fit1 mv0.42 fitmv0.65 | nxt: d3.2e-06 acc1 cor0 fit0 mv0.03 fitmv0.00
+  11  at: fitted corner
+   2  at: plain, plain neighbours
+   1  at: rejected vertex
+   1  at: profile-placed corner
+   1  at: plain, neighbour unread corner
+any of 3 fitted: 11  any of 3 corner-flagged: 13  of 16
