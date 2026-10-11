@@ -71,14 +71,14 @@ def test_cell_reads_one_figure_when_equal():
 def test_table_from_a_render_directory(tmp_path):
     (tmp_path / "designs").mkdir()
     for fx, arm_design in (("one", _design([A, *B_SPLIT])), ("two", _design([A, B]))):
-        (tmp_path / "designs" / f"{fx}__base.json").write_text(json.dumps(_design([A, B])))
-        (tmp_path / "designs" / f"{fx}__flag.json").write_text(json.dumps(arm_design))
+        (tmp_path / "designs" / f"{fx}__base.json").write_text(json.dumps(_design([A, B])), encoding="utf-8")
+        (tmp_path / "designs" / f"{fx}__flag.json").write_text(json.dumps(arm_design), encoding="utf-8")
     feats = {"__sources__": {}, "one": {"base": {"lost_frac": 0.1}, "flag": {"lost_frac": 0.2}},
              "two": {"base": {}, "flag": {}}, "three": {"base": {}}}
-    (tmp_path / "features.json").write_text(json.dumps(feats))
+    (tmp_path / "features.json").write_text(json.dumps(feats), encoding="utf-8")
     out = tmp_path / "t.json"
     assert ep.main([str(tmp_path), "flag", "--out", str(out)]) == 0
-    t = json.loads(out.read_text())["flag"]
+    t = json.loads(out.read_text(encoding="utf-8"))["flag"]
     assert t["columns"] == ep.COLUMNS
     rows = {r[0]: r for r in t["rows"]}
     assert set(rows) == {"one", "two"}               # three has no arm design
@@ -91,6 +91,6 @@ def test_table_from_a_render_directory(tmp_path):
 
 def test_refuses_an_arm_with_no_designs(tmp_path):
     (tmp_path / "designs").mkdir()
-    (tmp_path / "features.json").write_text(json.dumps({"__sources__": {}}))
+    (tmp_path / "features.json").write_text(json.dumps({"__sources__": {}}), encoding="utf-8")
     with pytest.raises(SystemExit):
         ep.main([str(tmp_path), "nope"])

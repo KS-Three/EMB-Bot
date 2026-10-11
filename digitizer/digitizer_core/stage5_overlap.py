@@ -115,6 +115,16 @@ from .warnings_codes import (
 # rather than routed to the run tier on its area.
 WIDENED_LETTERING_KEY = "text_cluster_widened_mm"
 
+# ROADMAP gate 1 PLACEHOLDER -- the fabric's multiplier on the parallel-join
+# underlap `cfg.overlap_by_angle` grows to (`cfg.overlap_parallel_mm`). Law
+# 26 asks 1.0 mm at a parallel join on wovens and 1.5-2.0 on knits and
+# fleece, but how much more a knit needs is a physical constant only a
+# sew-out settles (card block 6 sews the underlap rungs), so EVERY fabric
+# reads 1.0 -- the woven figure -- until one does. Do not put per-fabric
+# values here without that sew-out; when it lands this becomes a `Fabric`
+# field in `fabrics.py` beside `pull_comp_mm`.
+OVERLAP_FABRIC_FACTOR = 1.0
+
 
 def widened_lettering(region: Region) -> bool:
     """True for a shape whose polygon IS its column: a text-cluster member
@@ -435,7 +445,8 @@ def resolve_overlaps(
     # `cfg.overlap_by_angle` (Law 26): each tatami fill's row angle in
     # stage 7's precedence (`seam_row_angles`); None keeps the scalar.
     # Off: nothing is built and the underlap below is the scalar it was.
-    parallel = max(overlap, float(getattr(cfg, "overlap_parallel_mm", overlap) or 0.0))
+    parallel = max(overlap, OVERLAP_FABRIC_FACTOR
+                   * float(getattr(cfg, "overlap_parallel_mm", overlap) or 0.0))
     by_angle = bool(getattr(cfg, "overlap_by_angle", False)) and overlap > 0 and parallel > overlap
     row_angle: dict[str, float | None] = {}
     foot_regions: list[Region] = []
