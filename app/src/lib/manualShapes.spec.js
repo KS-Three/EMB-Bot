@@ -1275,10 +1275,13 @@ describe("columns: shapesToRegions", () => {
 // ---- Through the REAL engine ------------------------------------------------
 // The module above can be right about its own shapes and the engine still sew
 // nothing: bad rails are silent there. So one curved column goes all the way
-// through, and one design with no column is hashed against the value this same
-// test produced at 8ee893e1, before this module knew what a column was.
-const RECT_STITCH_COUNT_AT_8ee893e1 = 3556;
-const RECT_HASH_AT_8ee893e1 = "8077390b3c32a3fc778e0bf069243f9c7219b2ed640e916baba2f04d2136300e";
+// through, and one design with no column is hashed against the value the
+// same design produces under origin/main 431c5026's own src/digitize.js
+// (which never reads `sewAs`), re-taken 2026-10-11 after main's engine moved;
+// first pinned at 8ee893e1 (3556 stitches), before this module knew what a
+// column was.
+const RECT_STITCH_COUNT_ON_MAIN = 3557;
+const RECT_HASH_ON_MAIN = "a436fa9deac95f43a7a86d9d1dc81f7313aafd974690e870792be3dd813ca877";
 
 describe("columns: through the real engine", () => {
   let generateElement, garment;
@@ -1344,7 +1347,7 @@ describe("columns: through the real engine", () => {
 
   it("a design holding only a closed rectangle is byte-identical to before", () => {
     const d = generateElement(el([rect("s1", 100, 100, 400, 250)]), garment, {});
-    expect(d.stitchCount).toBe(RECT_STITCH_COUNT_AT_8ee893e1);
-    expect(hashOf(d)).toBe(RECT_HASH_AT_8ee893e1);
+    expect(d.stitchCount).toBe(RECT_STITCH_COUNT_ON_MAIN);
+    expect(hashOf(d)).toBe(RECT_HASH_ON_MAIN);
   });
 });
