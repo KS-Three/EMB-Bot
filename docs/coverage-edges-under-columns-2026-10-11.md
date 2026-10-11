@@ -25,7 +25,9 @@ long crosses and zero fans, and it gives the cleanest of the four crops.
 **Under outline rails the cleaner outline does help.** Against the Column
 lane alone it cuts bare MARINE satin 3.97 → 1.06 mm² and uncovered ink 4.85 →
 3.71% at 80 mm, and halves `lost_frac` at 50 mm (0.0395 → 0.0196, nearly all
-overshoot). It also takes a few trims and stitches off at both sizes. It
+overshoot). It also takes a few trims and stitches off at both sizes. At 100 mm it still
+lowers `lost` inside the lane, but both Column arms stay above shipped there.
+It
 costs a higher Hausdorff (3.1 → 3.5 mm at 80; that follows the flag in both
 lanes, so it is the flag's). At 50 mm the A's counter shrinks and the notch
 between its legs closes: the sub-pixel feature loss #818 predicted. So if
@@ -59,6 +61,24 @@ area that carries no thread of any kind.
 | coverage_edges | 7051 | 36 | 0.0238 | 0.0112 | 0.0126 | 4.50% | 0.172 | 3.50 | **28** (13 0 0 0 4 11) | 0 | 14.31 |
 | columns_words | 6161 | 24 | 0.0288 | 0.0134 | 0.0154 | 4.85% | 0.169 | 3.10 | 0 | 0 | 3.97 |
 | **coverage + columns** | 6029 | 21 | 0.0234 | 0.0101 | 0.0133 | 3.71% | 0.167 | 3.50 | 0 | 0 | 1.06 |
+
+### 100 mm (corpus size), from the eye-pairs arms
+
+The `--render` smoke run of the new arms below, plus the existing
+`columns_words` arm, gives whole-design rows at the corpus size. There is no
+fan census and no picture at this size.
+
+| arm | stitches | trims /1000 | lost | unsewn | overshoot | uncov | ragged mm | hausdorff mm |
+|---|---|---|---|---|---|---|---|---|
+| shipped | 10969 | 5.38 | 0.0236 | 0.0150 | 0.0086 | 6.00% | 0.180 | 4.1 |
+| coverage_edges | 11421 | 5.43 | 0.0280 | 0.0090 | 0.0190 | 5.62% | 0.178 | 4.5 |
+| columns_words | 8708 | 3.10 | 0.0381 | 0.0234 | 0.0147 | 6.29% | 0.183 | 4.0 |
+| **coverage + columns** | 8896 | 2.36 | 0.0342 | 0.0162 | 0.0180 | 5.81% | 0.179 | 4.5 |
+
+The direction holds at this size: inside the Column lane, the coverage outline
+lowers `lost`, unsewn ink, uncovered ink and trims. But at 100 mm both Column
+arms sit **above** shipped on `lost`, so the outline narrows the Column lane's
+gap here and does not close it.
 
 Pipeline warnings (`result.warnings`) are the same four codes in all eight
 cells. #818's `HOLE_NEARLY_CLOSED` did not appear, but this read uses the
