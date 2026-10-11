@@ -847,6 +847,32 @@
     return out.length >= 4 ? out : satinColumn(ring, opts);
   }
 
+  // A satin column turned to begin at whichever of its two ends is nearer
+  // `from` -- where the thread is when the column starts: the end of the
+  // shape's underlay (`underlayDirection`, defect 57, 2026-10-11). A centre-
+  // run underlay walks the bar end to end, and the column began at the end
+  // the underlay STARTED from: a needle-up move as long as the bar. Chosen by
+  // where the underlay ends, never flipped blind: a zigzag underlay already
+  // ends by the column's start and keeps it. The same stitches, the other
+  // way: a point flagged `travel` (entered by a jump) hands its flag to the
+  // point the jump now lands on. Returns `pts` itself when nothing changes.
+  function startNear(pts, from) {
+    if (!from || !pts || pts.length < 2) return pts;
+    const a = pts[0], b = pts[pts.length - 1];
+    if (!(Math.hypot(b.x - from.x, b.y - from.y) < Math.hypot(a.x - from.x, a.y - from.y))) return pts;
+    const n = pts.length, out = new Array(n);
+    for (let k = 0; k < n; k++) {
+      const q = pts[n - 1 - k];
+      // the move into reversed point k is the move OUT of original n-1-k
+      const jumpIn = k > 0 && !!pts[n - k].travel;
+      const p = { x: q.x, y: q.y };
+      for (const key of Object.keys(q)) if (key !== "x" && key !== "y" && key !== "travel") p[key] = q[key];
+      if (jumpIn) p.travel = true;
+      out[k] = p;
+    }
+    return out;
+  }
+
   // Like railSatinFromSpine but returns the two RAILS (+corresponding rungs)
   // for STORAGE — a pre-digitized satin column that satinplay.satinFromRails
   // plays back. Same smoothing/normal/ray logic. Trims FREE ends by ~half-width
@@ -929,6 +955,7 @@
     satinColumn,
     medialSatin,
     glyphColumns,
+    startNear,
     // internals exposed for testing/diagnostics
     rasterize,
     thin,
