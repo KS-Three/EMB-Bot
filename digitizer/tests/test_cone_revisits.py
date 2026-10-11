@@ -124,14 +124,3 @@ def test_three_blocks_of_one_cone_report_the_full_span():
     got = revisits(plan, _Result(*[_Region(f"S{c}") for c in "abxyc"]))
     assert got[0]["blocks"] == [0, 1, 4]
     assert got[0]["gap"] == 4
-
-
-def test_config_overrides_parse_bools_numbers_and_strings():
-    """`python -m tools.cone_revisits blend_bands_share_cone=True` is how the
-    band fold's corpus sweep is re-run; a bool left as the string "False"
-    would be truthy and silently measure the wrong arm."""
-    from tools.cone_revisits import _overrides
-    assert _overrides(["blend_bands_share_cone=False", "target_width_mm=50",
-                       "edge_cap=none"]) == {
-        "blend_bands_share_cone": False, "target_width_mm": 50.0,
-        "edge_cap": "none"}

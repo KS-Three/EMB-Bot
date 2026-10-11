@@ -45,6 +45,17 @@ def test_default_is_off():
     assert PipelineConfig().blend_bands_share_cone is False
 
 
+def test_the_corpus_sweep_parses_its_config_overrides():
+    """`python -m tools.cone_revisits blend_bands_share_cone=True` is how this
+    flag's corpus sweep is re-run; a bool left as the string "False" would be
+    truthy and silently measure the wrong arm."""
+    from tools.cone_revisits import _overrides
+    assert _overrides(["blend_bands_share_cone=False", "target_width_mm=50",
+                       "edge_cap=none"]) == {
+        "blend_bands_share_cone": False, "target_width_mm": 50.0,
+        "edge_cap": "none"}
+
+
 def test_a_band_crosses_its_own_parents_shades_but_the_hoist_will_not():
     """G1's cone-7 band, then G1's cone-8 band abutting both, then G2's
     cone-7 band. The hoist refuses (G2's band touches G1's cone-8 band); the
