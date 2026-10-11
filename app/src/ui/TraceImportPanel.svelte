@@ -4,7 +4,7 @@
   import { loadImage, rasterSize, isVectorFile } from "../lib/rasterize.js";
   import { friendlyError } from "../lib/friendlyError.js";
   import { traceShapesFromRGBA, rescaleTracedShapes } from "../lib/manualTrace.js";
-  import { CANVAS_W, CANVAS_H, nextShapeIds, flattenShape } from "../lib/manualShapes.js";
+  import { CANVAS_W, CANVAS_H, nextShapeIds, shapeRing } from "../lib/manualShapes.js";
 
   // Upload an image, trace it (app/src/lib/manualTrace.js, PR 1) into a
   // starting set of manual-digitizing shapes, preview the result, and let
@@ -168,7 +168,8 @@
       ctx.beginPath();
       let any = false;
       for (const m of group) {
-        const pts = flattenShape(m.points, m.curves, true);
+        // shapeRing: a closed shape's flattened ring, a column's rail ring.
+        const pts = shapeRing(m);
         if (pts.length < 2) continue;
         any = true;
         ctx.moveTo(pts[0].x, pts[0].y);
