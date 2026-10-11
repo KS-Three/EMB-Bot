@@ -13,6 +13,10 @@
   const fillmod = _node ? dep("./fill.js") : root.EMB;
   const satinmod = _node ? dep("./satin.js") : root.EMB;
   const satinfontmod = _node ? dep("./satinfont.js") : root.EMB;
+  // Rail-native satin (satinFromRails, centerRun). `satinmod` is satin.js and
+  // has neither: in the browser the shared root.EMB hides that, under Node it
+  // is a TypeError. satinplay.js loads before this file in ENGINE_FILES.
+  const satinplaymod = _node ? dep("./satinplay.js") : root.EMB;
   const dstmod = _node ? dep("./dst.js") : root.EMB;
 
   // Physical constants this engine shares with the Python digitizer
@@ -433,6 +437,36 @@
       out.push({ x: cur.x + dir * dispx, y: cur.y + dir * dispy });
     }
     return out;
+  }
+
+  // Rungs for an authored column (manual-digitizing spec §6, "Amended
+  // 2026-10-01"). With NO rungs satinplay's `correspond` pairs the two rails by
+  // whole-rail arc fraction, which is right only when both gain length at the
+  // same rate; on a column that is straight and then turns, the inside rail is
+  // shorter and every cross LEANS (measured: 24 px column, crosses to 34.7 px).
+  // When the rails carry the same point count they were emitted pair by pair
+  // (railA[i], railB[i] = the two ends of the cross at spine point i), so the
+  // interior pairs are handed over as rungs and the crosses follow them.
+  // Different counts -> no pairing to trust -> [] (arc fraction, as before).
+  //
+  // EVERY interior pair is a rung — no thinning, no spacing constant. Two
+  // thinning rules were tried and measured (2026-10-01) and both lost to this:
+  //   - "once the slower rail has advanced 24 px" left a tight bend with no
+  //     rung at all (the inside rail of a 24 px column on a 16 px bend moves
+  //     10 px through the whole turn): crosses to 28.7 px;
+  //   - "once the faster rail has advanced one column width" fixed that bend
+  //     and then skipped the pairs that mattered on a bezier column: 30.6 px
+  //     where every-pair gives 26.3.
+  // Dense rungs are safe in `correspond`: it sorts cuts by rail-A fraction,
+  // drops a rung whose rail-B anchor runs backward, and skips cuts closer than
+  // 1e-6. Their only cost is samples — each section gets at least 12 — which
+  // is linear in the rail's point count and nowhere near a concern.
+  function columnRungs(railA, railB) {
+    const n = railA ? railA.length : 0;
+    if (!railB || railB.length !== n || n < 3) return [];
+    const rungs = [];
+    for (let i = 1; i < n - 1; i++) rungs.push([railA[i], railB[i]]);
+    return rungs;
   }
 
   // How many of the nearest corners an edge run tries before it settles for a
@@ -1333,6 +1367,11 @@
         // Nothing here is re-derived or guessed.
         const runs = [];
         const runKinds = [];
+        // Authored rails, when the shape carries them (spec §6, "Amended
+        // 2026-10-01"). Null for every shape that does not — which is every
+        // shape Image and Text mode produce — so those sew exactly as before.
+        const column = (shape.sewAs && shape.sewAs.kind === "column") ? shape.sewAs : null;
+        const colRungs = column ? columnRungs(column.railA, column.railB) : [];
         // The cover fill of a FILL shape: the rings it is sewn to, and what the
         // pass is asked before what it is told (entryOf). Worked out once.
         let plan = null;
@@ -1396,7 +1435,19 @@
             try {
               const style = thin ? (fabric.satinUnderlay || "center_run") : (fabric.fillUnderlay || "edge_lattice");
               const uctx = Object.assign({ fillAngle: angle, columns: fillColumns && !thin, openTol: rowPx, ground: cover, clear: clearFloat, to: fillStart }, underlayCtxBase);
-              for (const run of underlayRuns(shape, style, uctx)) if (run && run.length) { runs.push(run); runKinds.push("underlay"); }
+              // A column's centre run follows its RAILS (spec §6, "Amended
+              // 2026-10-01", correction 2): underlayRuns' center_run is a
+              // straight line along the ring's PCA axis, which only cuts a
+              // chord across a curved column. centerRun returns ONE point
+              // list, so it is wrapped to the array-of-runs form underlayRuns
+              // returns. Step = the underlay stitch length every other style
+              // here uses; two passes (its default), so the walk ends where
+              // the satin starts. Every other style still reads `outer`.
+              const uruns = (thin && column && style === "center_run")
+                ? [satinplaymod.centerRun(column.railA, column.railB, colRungs,
+                    { pxPerMm: pxPerFinalMm, stepMm: underlayStitchPx / pxPerFinalMm })]
+                : underlayRuns(shape, style, uctx);
+              for (const run of uruns) if (run && run.length) { runs.push(run); runKinds.push("underlay"); }
             } catch (e) { /* underlay best-effort */ }
           } else {
             // No-fabric path: byte-identical to pre-Phase-2 behavior. (With
@@ -1424,8 +1475,19 @@
           if (thin) {
             // Medial-axis satin (rail-based) — clean on curves/terminals; falls
             // back to the outline-split satin internally for tiny/degenerate rings.
+            //
+            // AUTHORED RAILS (manual-digitizing spec §6, "Amended 2026-10-01"):
+            // a hand-drawn column hands over the two rails it was drawn with,
+            // so the satin is sewn between THOSE rather than between rails
+            // re-derived from the ring. Same options either way — pull comp
+            // stays inside the satin code. Reached only when `thin`, i.e.
+            // tierOverride "satin" with no hole; no split is asked for
+            // (`splitAboveMm` is deliberately not passed — ruling 5).
             const sat = satinmod.medialSatin || satinmod.satinColumn;
-            pts = sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg });
+            pts = column
+              ? satinplaymod.satinFromRails(column.railA, column.railB, colRungs,
+                  { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg })
+              : sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg });
             if (underlayDirection) pts = satinmod.startNear(pts, endOfRuns(runs));
             nSatin++;
           }
@@ -1435,6 +1497,13 @@
             if (f.largeFill && !pts.columnWalk) nCenterOut++;   // the column walk is not center-out
           }
         } catch (e) { pts = []; }
+        // A column whose rails sew no satin contributes NOTHING. centerRun
+        // still walks the midline of rails satinFromRails sews nothing between
+        // (two coincident rails: an underlay, no crosses), which left a bare
+        // centre run under a clickable outline. `runs` is this shape's own
+        // list, so dropping here discards its underlay with it. Column-only:
+        // a shape with no `sewAs` never takes this branch.
+        if (thin && column && !(pts && pts.length)) { nSatin--; dropOutline(poly); continue; }
         runs.push(pts); runKinds.push(thin ? "satin" : "fill");
         // finishing outline: running stitch along the outer edge (and holes)
         if (o.outline) {

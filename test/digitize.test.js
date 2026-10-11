@@ -3455,6 +3455,294 @@ test("underlayRuns: a 3-point hole gets its own edge run and joins the lattice's
   assert.strictEqual(DG.underlayRuns({ outer: sq, holes: [tri.slice(0, 2)] }, "edge_run", ctx).length, 1);
 });
 
+// ---- authored rails: shape.sewAs = { kind: "column", railA, railB } --------
+// Manual-digitizing spec §6, "Amended 2026-10-01". A hand-drawn satin column
+// arrives as a region whose `outer` is the rail ring (railA + reversed railB)
+// AND whose two rails are handed over as drawn. With tierOverride "satin" and
+// no holes the engine sews satin BETWEEN THOSE RAILS instead of deriving
+// rails from the polygon, and its `center_run` underlay follows them.
+// Everything else still reads `outer`. A shape with no `sewAs` is untouched.
+const SP = require("../src/satinplay.js");
+const colOpts = (extra) => Object.assign({ garment: { widthIn: 8, heightIn: 8 }, pxPerMm: 6, targetWidthMm: 50, underlay: false }, extra);
+const straightCol = () => {
+  const railA = [{ x: 0, y: 0 }, { x: 300, y: 0 }], railB = [{ x: 0, y: 24 }, { x: 300, y: 24 }];
+  return { railA, railB, outer: railA.concat(railB.slice().reverse()) };
+};
+// Quarter circle, centreline radius 200 px, 24 px wide; both rails run the same way.
+const curvedCol = () => {
+  const arc = (r) => { const a = []; for (let i = 0; i <= 32; i++) { const t = (i / 32) * Math.PI / 2; a.push({ x: r * Math.cos(t), y: r * Math.sin(t) }); } return a; };
+  const railA = arc(188), railB = arc(212);
+  return { railA, railB, outer: railA.concat(railB.slice().reverse()) };
+};
+const colDesign = (col, shapeExtra, optExtra) => DG.buildQualityDesign(
+  [{ rgb: [0, 0, 0], shapes: [Object.assign({ outer: col.outer, holes: [], id: "c1", tierOverride: "satin" }, shapeExtra)] }],
+  colOpts(optExtra));
+const colSewAs = (col) => ({ sewAs: { kind: "column", railA: col.railA, railB: col.railB } });
+// The shape's stitches of one kind, read off the run spans (a span opens with
+// pushRun's positioning jump, which is not a stitch).
+const spanStitches = (d, kind, id) => {
+  const out = [];
+  for (const sp of d.runs) if (sp.kind === kind && sp.shape === id) {
+    for (let i = sp.i0; i <= sp.i1; i++) if (d.stitches[i].type === "stitch") out.push({ x: d.stitches[i].x, y: d.stitches[i].y });
+  }
+  return out;
+};
+// The engine's own T(), rebuilt from the exported fit (10 DST units per mm).
+const fitT = (f) => (q) => ({
+  x: Math.round((q.x - f.cxPx) * f.mmPerPx * 10) + Math.round(f.offsetXMm * 10),
+  y: Math.round((f.cyPx - q.y) * f.mmPerPx * 10) + Math.round(f.offsetYMm * 10),
+});
+const xyNoNegZero = (p) => ({ x: p.x + 0, y: p.y + 0 });
+
+test("sewAs column: the satin is satinFromRails on the authored rails, point for point", () => {
+  const col = straightCol();
+  const d = colDesign(col, colSewAs(col));
+  const got = spanStitches(d, "satin", "c1");
+  // no fabric: engine defaults are satin spacing 0.4 mm, pull comp 0.2 mm, no slant
+  const want = SP.satinFromRails(col.railA, col.railB, [],
+    { spacingMm: 0.4, pxPerMm: 1 / d.fit.mmPerPx, pullCompMm: 0.2, slantDeg: 0 }).map(fitT(d.fit));
+  assert.ok(want.length > 100, "the direct call sews a real column: " + want.length);
+  assert.deepStrictEqual(got.map(xyNoNegZero), want.map(xyNoNegZero));
+  assert.strictEqual(d._debug.nSatin, 1);
+  assert.strictEqual(d._debug.nFill, 0);
+});
+
+test("sewAs column: without sewAs the same outer sews exactly what it sewed before the field existed", () => {
+  const crypto = require("node:crypto");
+  const col = straightCol();
+  const d = colDesign(col, {});
+  const hash = crypto.createHash("sha256").update(JSON.stringify(d.stitches)).digest("hex");
+  // hash re-taken 2026-10-11 from origin/main 431c5026's own src/ (which never
+  // reads `sewAs`; main's satin moved since 358d8ab8's pin); a
+  // change here means a design with no column moved, which the plan forbids.
+  assert.strictEqual(hash, "09c0b6af4f7f167aa440f754aaa8b11ea99c8b3511c9d8aaef95eaaf4f083021");
+  // a sewAs of some other kind is not a column either
+  const other = colDesign(col, { sewAs: { kind: "run", railA: col.railA, railB: col.railB } });
+  assert.deepStrictEqual(other.stitches, d.stitches);
+});
+
+test("sewAs column: a curved column's center_run underlay follows the rails and stays inside the column", () => {
+  const col = curvedCol();
+  const fabric = fab({ satinUnderlay: "center_run" });
+  const d = colDesign(col, colSewAs(col), { underlay: true, fabric });
+  const f = d.fit;
+  const toPx = (s) => ({ x: (s.x - Math.round(f.offsetXMm * 10)) / (f.mmPerPx * 10) + f.cxPx, y: f.cyPx - (s.y - Math.round(f.offsetYMm * 10)) / (f.mmPerPx * 10) });
+  const und = spanStitches(d, "underlay", "c1").map(toPx);
+  assert.ok(und.length >= 10, "a centre run was sewn along the column: " + und.length + " stitches");
+  // even-odd point-in-polygon with a 0.5 px tolerance (T() rounds to 0.1 mm)
+  const inside = (p, ring) => {
+    let c = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const a = ring[i], b = ring[j];
+      if ((a.y > p.y) !== (b.y > p.y) && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) c = !c;
+    }
+    return c;
+  };
+  const distToRing = (p, ring) => {
+    let best = Infinity;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const a = ring[j], b = ring[i], dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy;
+      const t = L2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2)) : 0;
+      best = Math.min(best, Math.hypot(p.x - (a.x + dx * t), p.y - (a.y + dy * t)));
+    }
+    return best;
+  };
+  for (const p of und) assert.ok(inside(p, col.outer) || distToRing(p, col.outer) <= 0.5, "underlay stitch outside the column: " + JSON.stringify(p));
+  // ...and it runs the column's whole length: it reaches both ends of the
+  // spine. The straight PCA line this replaces only ever cut a chord.
+  const near = (end) => Math.min(...und.map((p) => Math.hypot(p.x - end.x, p.y - end.y)));
+  assert.ok(near({ x: 200, y: 0 }) <= 6, "reaches the start of the spine: " + near({ x: 200, y: 0 }).toFixed(1) + " px away");
+  assert.ok(near({ x: 0, y: 200 }) <= 6, "reaches the end of the spine: " + near({ x: 0, y: 200 }).toFixed(1) + " px away");
+  // the other named styles still read `outer`: same stitches with or without rails
+  const edge = fab({ satinUnderlay: "edge_run" });
+  const eWith = spanStitches(colDesign(col, colSewAs(col), { underlay: true, fabric: edge }), "underlay", "c1");
+  const eWithout = spanStitches(colDesign(col, {}, { underlay: true, fabric: edge }), "underlay", "c1");
+  assert.ok(eWith.length > 0);
+  assert.deepStrictEqual(eWith, eWithout);
+});
+
+test("sewAs column: ignored when the shape has a hole or is forced to fill (sews as fill, as today)", () => {
+  const col = straightCol();
+  const hole = [{ x: 100, y: 6 }, { x: 200, y: 6 }, { x: 200, y: 18 }, { x: 100, y: 18 }];
+  for (const [name, extra] of [["hole", { holes: [hole] }], ["tierOverride fill", { tierOverride: "fill" }]]) {
+    const plain = colDesign(col, extra);
+    const withRails = colDesign(col, Object.assign({}, extra, colSewAs(col)));
+    assert.strictEqual(withRails._debug.nFill, 1, name + ": sews as fill");
+    assert.strictEqual(withRails._debug.nSatin, 0, name + ": no satin");
+    assert.deepStrictEqual(withRails.stitches, plain.stitches, name + ": identical to the same shape without sewAs");
+    // and the centre-run underlay is not taken from the rails either
+    const fabric = fab({ satinUnderlay: "center_run", fillUnderlay: "center_run" });
+    assert.deepStrictEqual(
+      colDesign(col, Object.assign({}, extra, colSewAs(col)), { underlay: true, fabric }).stitches,
+      colDesign(col, extra, { underlay: true, fabric }).stitches, name + ": underlay untouched");
+  }
+});
+
+test("sewAs column: without sewAs the fabric path (center_run underlay) is byte-identical too", () => {
+  const crypto = require("node:crypto");
+  const col = straightCol();
+  const d = colDesign(col, {}, { underlay: true, fabric: fab({ satinUnderlay: "center_run" }) });
+  assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "satin"]);
+  const hash = crypto.createHash("sha256").update(JSON.stringify(d.stitches)).digest("hex");
+  // hash produced by origin/main 431c5026's own src/ (extracted with `git
+  // archive`, 2026-10-11; first pinned from 358d8ab8), which never reads
+  // `sewAs` — not by the code under test.
+  assert.strictEqual(hash, "b854ec65ff8ce8542bb8240ac5aa1e261186b5653e8e339d206c91e75826a431");
+});
+
+test("sewAs column: rails that cannot sew contribute nothing — no bare underlay, outline dropped", () => {
+  // centerRun still walks the midline of rails satinFromRails sews nothing
+  // between (measured: two coincident rails -> 51 underlay points, 0 satin),
+  // so on the Studio's normal path — a center_run fabric with underlay on —
+  // such a shape used to sew an underlay with no satin over it and keep a
+  // clickable outline. The other cases here already sewed nothing; they are
+  // pinned so that stays true, and so they stop counting as a satin.
+  const col = straightCol();
+  const other = { outer: sq(0, 60, 80), holes: [], id: "keep", tierOverride: "fill" };
+  const opts = colOpts({ underlay: true, fabric: fab({ satinUnderlay: "center_run" }) });
+  const build = (shapes) => DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes }], opts);
+  const bad = [
+    ["zero-width (coincident rails)", { kind: "column", railA: col.railA, railB: col.railA.map((p) => ({ x: p.x, y: p.y })) }],
+    ["railB reversed", { kind: "column", railA: col.railA, railB: col.railB.slice().reverse() }],
+    ["1-point rail", { kind: "column", railA: col.railA, railB: [col.railB[0]] }],
+    ["no rails", { kind: "column" }],
+  ];
+  for (const [name, sewAs] of bad) {
+    const shape = { outer: col.outer, holes: [], id: "c1", tierOverride: "satin", sewAs };
+    const alone = build([shape]);
+    assert.strictEqual(alone.stitchCount, 0, name + ": no stitches at all");
+    assert.deepStrictEqual(alone.runs, [], name + ": no spans");
+    assert.strictEqual(alone.shapeOutlines[0].dropped, true, name + ": outline dropped");
+    assert.strictEqual(alone._debug.nSatin, 0, name + ": not counted as a satin");
+    const d = build([shape, other]);
+    assert.deepStrictEqual(d.runs.filter((r) => r.shape === "c1"), [], name + ": no span for the column beside a good shape");
+    assert.deepStrictEqual(d.shapeOutlines.map((o) => o.dropped), [true, false], name);
+    assert.ok(spanStitches(d, "fill", "keep").length > 50, name + ": the other shape still sews");
+    assert.strictEqual(d._debug.nTrims, 0, name + ": and no travel was spent on the dropped column");
+  }
+});
+
+// Cross lengths (region px) of a column's satin: stitches come in lead/trail
+// pairs, one pair per cross. pullCompMm 0 so a cross is the drawn width.
+const colCrossPx = (d) => {
+  const st = spanStitches(d, "satin", "c1"), k = 10 * d.fit.mmPerPx, out = [];
+  for (let i = 0; i + 1 < st.length; i += 2) out.push(Math.hypot(st[i + 1].x - st[i].x, st[i + 1].y - st[i].y) / k);
+  return out;
+};
+// Rails as the Studio's railsFromSpine emits them: same point count, same
+// direction, railA[i] and railB[i] the two ends of the cross at spine point i.
+// A "J": 200 px straight, then a quarter turn of spine radius 60 — the two
+// rails' lengths differ (313 vs 275 px), and not uniformly along the column.
+const jCol = () => {
+  const railA = [], railB = [];
+  for (let i = 0; i <= 4; i++) { railA.push({ x: 50 * i, y: -12 }); railB.push({ x: 50 * i, y: 12 }); }
+  for (let i = 1; i <= 15; i++) {
+    const t = -Math.PI / 2 + (i / 15) * Math.PI / 2;
+    railA.push({ x: 200 + 72 * Math.cos(t), y: 60 + 72 * Math.sin(t) });
+    railB.push({ x: 200 + 48 * Math.cos(t), y: 60 + 48 * Math.sin(t) });
+  }
+  return { railA, railB, outer: railA.concat(railB.slice().reverse()) };
+};
+
+test("sewAs column: crosses follow the rails' own index pairing, so a curved column does not lean", () => {
+  // With no rungs satinplay pairs the rails by WHOLE-rail arc fraction, which
+  // is only right when both rails gain length at the same rate. A quarter
+  // circle does (concentric arcs), so it is the control; the J does not, and
+  // its crosses leaned. Rails of equal point count are paired index to index.
+  for (const [name, col] of [["quarter circle", curvedCol()], ["J", jCol()]]) {
+    assert.strictEqual(col.railA.length, col.railB.length);
+    const cross = colCrossPx(colDesign(col, colSewAs(col), { pullCompMm: 0 }));
+    assert.ok(cross.length > 50, name + ": sewed " + cross.length + " crosses");
+    const lo = Math.min(...cross), hi = Math.max(...cross);
+    assert.ok(lo >= 24 * 0.85 && hi <= 24 * 1.15, name + ": every cross within 15% of the drawn 24 px, got " + lo.toFixed(1) + ".." + hi.toFixed(1));
+  }
+  // the centre run takes the same pairing: it stays mid-column on the J
+  const j = jCol();
+  const d = colDesign(j, colSewAs(j), { underlay: true, fabric: fab({ satinUnderlay: "center_run", pullCompMm: 0 }) });
+  assert.ok(spanStitches(d, "underlay", "c1").length >= 10);
+});
+
+// The Studio's rail construction (app/src/lib/spineRails.js), re-stated
+// minimally so the engine test imports no app code: each spine point offset by
+// +/- half the width along the normal of the averaged adjacent tangents,
+// lengthened to a miter and clamped at 2x the half-width.
+const railsOfSpine = (spine, widthPx) => {
+  const n = spine.length, half = widthPx / 2, dirs = [], railA = [], railB = [];
+  for (let i = 0; i < n - 1; i++) { const dx = spine[i + 1].x - spine[i].x, dy = spine[i + 1].y - spine[i].y, L = Math.hypot(dx, dy); dirs.push({ x: dx / L, y: dy / L }); }
+  for (let i = 0; i < n; i++) {
+    const dIn = i > 0 ? dirs[i - 1] : dirs[0], dOut = i < n - 1 ? dirs[i] : dirs[n - 2];
+    let tx = dIn.x + dOut.x, ty = dIn.y + dOut.y; const tl = Math.hypot(tx, ty); tx /= tl; ty /= tl;
+    const cosHalf = tx * dIn.x + ty * dIn.y, reach = cosHalf > 0.5 ? half / cosHalf : half * 2;
+    railA.push({ x: spine[i].x - ty * reach, y: spine[i].y + tx * reach });
+    railB.push({ x: spine[i].x + ty * reach, y: spine[i].y - tx * reach });
+  }
+  return { railA, railB, outer: railA.concat(railB.slice().reverse()) };
+};
+// A straight lead-in along +x, then an arc of spine radius `r` turning through
+// `sweepDeg`, one spine point every `stepDeg`.
+const hookSpine = (leadPx, r, sweepDeg, stepDeg, tailPx) => {
+  const spine = [{ x: 0, y: 0 }, { x: leadPx, y: 0 }];
+  let t = -Math.PI / 2;
+  for (let k = 1; k <= sweepDeg / stepDeg; k++) {
+    t = -Math.PI / 2 + (k * stepDeg * Math.PI) / 180;
+    spine.push({ x: leadPx + r * Math.cos(t), y: r + r * Math.sin(t) });
+  }
+  if (tailPx) { const l = spine[spine.length - 1]; spine.push({ x: l.x - Math.sin(t) * tailPx, y: l.y + Math.cos(t) * tailPx }); }
+  return spine;
+};
+
+test("sewAs column: a tight bend and a short hook keep their pairing (every interior pair is a rung)", () => {
+  // Width 24 px on a bend of spine radius 16: the inside rail turns on a 4 px
+  // radius and barely advances (10 px through the whole bend) while the
+  // outside one travels 73 px. Rungs kept only once the SLOWER rail had
+  // advanced 24 px left the bend with none — where the two rails' lengths
+  // differ most — and a hook under 24 px of lead-in with no rung at all.
+  // Measured before: crosses to 28.7 px (bend) and 26.7 px (hook).
+  const fixtures = [
+    ["tight bend: 60 px lead-in, r16 through 150 deg (42 px), 15 px tail", hookSpine(60, 16, 150, 10, 15)],
+    ["short hook: 15 px lead-in, r16 through 90 deg (25 px)", hookSpine(15, 16, 90, 15, 0)],
+  ];
+  for (const [name, spine] of fixtures) {
+    const col = railsOfSpine(spine, 24);
+    const cross = colCrossPx(colDesign(col, colSewAs(col), { pullCompMm: 0 }));
+    assert.ok(cross.length > 10, name + ": sewed " + cross.length + " crosses");
+    const lo = Math.min(...cross), hi = Math.max(...cross);
+    // No cross is excluded: these bends turn 10-15 deg per point, nowhere near
+    // the miter clamp. 10%, not 20%: the old spacing's worst here was 1.20x.
+    assert.ok(lo >= 24 * 0.9 && hi <= 24 * 1.1, name + ": every cross within 10% of the drawn 24 px, got " + lo.toFixed(1) + ".." + hi.toFixed(1));
+  }
+});
+
+test("sewAs column: rails with different point counts still sew (no index pairing to use)", () => {
+  const col = curvedCol();
+  const railB = col.railB.filter((_, i) => i % 2 === 0); // 17 points against 33
+  const d = colDesign({ outer: col.outer }, { sewAs: { kind: "column", railA: col.railA, railB } }, { pullCompMm: 0 });
+  const cross = colCrossPx(d);
+  assert.ok(cross.length > 50, "sewed " + cross.length + " crosses");
+  assert.strictEqual(d.shapeOutlines[0].dropped, false);
+  const want = SP.satinFromRails(col.railA, railB, [], { spacingMm: 0.4, pxPerMm: 1 / d.fit.mmPerPx, pullCompMm: 0, slantDeg: 0 }).map(fitT(d.fit));
+  assert.deepStrictEqual(spanStitches(d, "satin", "c1").map(xyNoNegZero), want.map(xyNoNegZero));
+});
+
+test("sewAs column: satinFromRails is reached through a real binding under Node", () => {
+  // The top-stitch call sits in a best-effort try/catch, so an unbound name
+  // (the spec first wrote `satinplay.satinFromRails`, which digitize.js never
+  // bound) does not throw out of buildQualityDesign: it sews NOTHING and the
+  // shape is dropped. Rails that are deliberately not the outline's own make
+  // the binding the only way to this result.
+  const outer = [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 24 }, { x: 0, y: 24 }];
+  const railA = [{ x: 60, y: 6 }, { x: 240, y: 6 }], railB = [{ x: 60, y: 18 }, { x: 240, y: 18 }];
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer, holes: [], id: "c1", tierOverride: "satin", sewAs: { kind: "column", railA, railB } }] }],
+    colOpts());
+  const got = spanStitches(d, "satin", "c1");
+  assert.ok(got.length > 50, "the column sewed (an unbound satinplay sews 0): " + got.length);
+  assert.strictEqual(d.shapeOutlines[0].dropped, false);
+  const f = d.fit, xs = got.map((s) => s.x / 10 / f.mmPerPx + f.cxPx);
+  // pull comp pushes each rail OUT, not along: the run stays between the rails' ends
+  assert.ok(Math.min(...xs) >= 59 && Math.max(...xs) <= 241, "sewn between the RAILS' ends, not the outline's: " + Math.min(...xs).toFixed(1) + ".." + Math.max(...xs).toFixed(1));
+});
+
 // --- dedupeHoles: no second stitch in the hole the needle is in (2026-10-03) --
 //
 // The builder rounds every point to the stitch file's unit, 0.1 mm, so two

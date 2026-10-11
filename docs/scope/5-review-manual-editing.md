@@ -1333,3 +1333,59 @@ inherited behaviour:
   `Shapes · N`), so an O reads "Shapes 2".
 - Deleting a parent re-homes its cut-outs by containment: delete an O drawn
   over a patch and the O's counter now cuts the patch.
+
+## 2026-10-11 — satin columns in hand-drawn shapes
+
+Plan 2 of `docs/superpowers/specs/2026-09-30-manual-digitizing-gaps-design.md`
+(§6 and its 2026-10-01 amendment; rulings 2, 5, 9, 12), plan
+`docs/superpowers/plans/2026-10-01-manual-columns.md`, branch
+`claude/manual-columns`.
+
+**What shipped.** A **Column** mode on the side canvas (`Shape | Hole |
+Column`): click along the middle of a stroke, double-click (or Enter, or
+Finish) to end it. The record is `{ id, kind: "column", points, curves,
+widthPx, colorRgb }` — an OPEN spine plus a drawn width in authored canvas
+px; no `stitchType`, no `angleDeg`, never a cut-out or a cut-out's parent.
+`railsFromSpine` (`app/src/lib/spineRails.js`) offsets the spine both ways
+with the same point count and direction, `shapesToRegions` hands the engine
+the rail ring as `outer` plus `sewAs: { kind: "column", railA, railB }`, and
+the engine sews `satinFromRails` between those rails with every interior
+rail pair as a rung, its `center_run` underlay following them too.
+`shapeRing(shape)` is the ONE ring any shape presents — engine, bbox,
+hit-testing, the placement-box guard. On the hoop a column edits open
+(n − 1 segments, no closing edge, a floor of 2 points), its rails are drawn
+beside the spine while selected, and its popover shows **Width** in mm with
+`Sews X.X mm on <fabric>.`, or past 6.5 mm sewn the warning (ruling 5) — it
+still sews. The side panel's assign box has the same Width row and note
+(`columnWidthNote`, shared). *(built 2026-10-11 — `ManualPanel.spec.js`,
+`fieldNodeEdit.spec.js`, `manualShapes.spec.js`, `test/digitize.test.js`,
+`app/e2e/manual-column.spec.js`)*
+
+**Ruling 12, proven twice.** Drawn width scales with the design; pull comp
+stays a fixed amount on top. Through the real engine (left chest, pull comp
+0.3 mm): S → drawn 2.0 / sewn 2.3 mm, 2S → 4.0 / 4.3 mm, sewn ratio 1.8696
+against a predicted 1.8696 *(measured 2026-10-01 — `fieldNodeEdit.spec.js`
+(c))*; in the running Studio, a 1.5× resize reads 1.5× the drawn width and
+the same sewn − drawn *(confirmed 2026-10-11 — `manual-column.spec.js` (c))*.
+Sewn width is drawn + pull comp ± one 0.1 mm grid step.
+
+**Three spec corrections and one found on the way.** (1) `digitize.js` had no
+`satinplay` binding. (2) A column's `center_run` is `satinplay.centerRun` on
+the rails, not the ring's straight PCA line. (3) "No rung list is needed" was
+false — with none, crosses on a curved 24 px column leaned to 38.7 px;
+every interior rail pair as a rung brings the worst to 26.3. (4) **A new
+column is 4.0 mm in the design it lands in** (ruling 9): the spec's "nominal
+6 px/mm in an empty element" made a first column across half the canvas sew
+over 6.5 mm once the element fitted it. `predictedFit` +
+`newColumnWidthPx` (`fieldNodeEdit.js`) solve for the fit it will get.
+*(fixed 2026-10-11 — `fieldNodeEdit.spec.js`, e2e (c) reads 4.0)*
+
+**Byte-identity.** A design with no column sews exactly as on main: the two
+engine pins and the Studio pin were re-taken from origin/main 431c5026's own
+`src/digitize.js`, which never reads `sewAs` *(re-pinned 2026-10-11)*.
+
+**Not built.** Taper; open runs and run ↔ column conversion (plan 3);
+auto-split of wide columns (a physical constant — gate 1); drawn two-rail
+columns. The side canvas's other edits still re-fit the element (plan 1's
+leftover); the Width row does not. The pull-comp attribution of ruling 12's
+fixed part is inferred from the pro's files, not sewn.

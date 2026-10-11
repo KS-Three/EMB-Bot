@@ -8,7 +8,9 @@
 // tell which surface an edit came from. Pure: no DOM, no Svelte, no fetch
 // (the one async dependency, the thread chart, is injected).
 import { loadPalette, nearestInList } from "./threads.js";
-import { resolveCutOuts, manualShapeName, withCutOut } from "./manualShapes.js";
+import { resolveCutOuts, manualShapeName, withCutOut, isColumn } from "./manualShapes.js";
+import { columnWidthMm, withColumnWidthMm, columnSewnMm } from "./fieldNodeEdit.js";
+import { STITCH_WIDTH_MAX_MM } from "./digitizer.js";
 import { isCapPieceId, capPieceRow } from "./capPieces.js";
 
 const LANES = new Set(["digitized", "manual", "shape"]);
@@ -90,7 +92,22 @@ function presetName(element) {
 }
 
 // ---- the model --------------------------------------------------------------
-export function popoverModel({ element, shapeId }) {
+export const COLUMN_WIDE_NOTE = "Over 6.5 mm sewn — long satin stitches can snag. Consider a fill, or two columns.";
+
+// What a column's width row says under it — the popover's and the side
+// panel's assign box's, so the two can never quote different numbers:
+// `Sews X.X mm on <label>.`, or the wide warning past STITCH_WIDTH_MAX_MM.
+// null when there is no fit or no fabric to quote it on.
+export function columnWidthNote(shape, fit, fabric) {
+  if (!fabric || columnWidthMm(shape, fit) == null) return null;
+  const sewn = columnSewnMm(shape, fit, fabric.pullCompMm);
+  if (sewn > STITCH_WIDTH_MAX_MM) return { note: COLUMN_WIDE_NOTE, warn: true };
+  return { note: `Sews ${sewn.toFixed(1)} mm on ${fabric.label}.`, warn: false };
+}
+
+// `fit` and `fabric` ({ label, pullCompMm }) are optional context, read only
+// for a column's width row; every other shape ignores them.
+export function popoverModel({ element, shapeId, fit, fabric }) {
   const lane = laneOf(element);
   if (!lane) return null;
 
@@ -103,6 +120,17 @@ export function popoverModel({ element, shapeId }) {
       { key: "editPoints", kind: "action", label: "Edit points" },
       { key: "delete", kind: "action", label: "Delete shape", danger: true },
     ];
+    if (isColumn(shape)) {
+      const drawn = columnWidthMm(shape, fit);
+      const row = {
+        key: "widthMm", kind: "number", label: "Width",
+        value: drawn == null ? null : Math.round(drawn * 10) / 10,
+        hint: "mm", step: 0.1, min: 0.5,
+      };
+      const said = columnWidthNote(shape, fit, fabric);
+      if (said) { row.note = said.note; if (said.warn) row.warn = true; }
+      return { lane, shapeId, name, rows: [{ key: "color", kind: "thread", rgb: shape.colorRgb }, row, ...tail] };
+    }
     if (shape.cutOut) {
       const parent = cut.parentOf[shape.id];
       const toggle = { key: "cutOut", kind: "toggle", label: "Cut out", value: true };
@@ -195,10 +223,18 @@ function parseAngle(v) {
 // -> the `elupdate` patch for one edit, or null when the key is not a
 // synchronous patch on this lane (an action, or a colour on the digitized
 // lane — see recolorPatch).
-export function popoverPatch({ element, shapeId }, key, value) {
+export function popoverPatch({ element, shapeId, fit }, key, value) {
   const lane = laneOf(element);
   if (!lane) return null;
   if (lane === "manual") {
+    const target = (element.shapes || []).find((s) => s && s.id === shapeId);
+    if (key === "widthMm") {
+      if (!isColumn(target) || !fit) return null;
+      const mm = typeof value === "number" ? value : parseFloat(String(value == null ? "" : value).trim());
+      if (!Number.isFinite(mm) || !(mm > 0)) return null;
+      return { shapes: element.shapes.map((s) => (s === target ? withColumnWidthMm(s, fit, mm) : s)) };
+    }
+    if (isColumn(target) && (key === "stitchType" || key === "angle" || key === "cutOut")) return null;
     switch (key) {
       case "stitchType": return manualShapePatch(element, shapeId, { stitchType: value === "satin" ? "satin" : "fill" });
       case "angle": return manualShapePatch(element, shapeId, { angleDeg: parseAngle(value) });
