@@ -1,0 +1,864 @@
+[
+  {
+    "name": "vector_logo",
+    "regions": 3,
+    "warnings": [],
+    "imported": [
+      {
+        "rgb": "#ffffff",
+        "shapes": 1,
+        "holes": 0
+      },
+      {
+        "rgb": "#0b5fa5",
+        "shapes": 2,
+        "holes": 0
+      },
+      {
+        "rgb": "#c8102e",
+        "shapes": 1,
+        "holes": 0
+      }
+    ],
+    "arms": {
+      "image": {
+        "stitches": 6918,
+        "colors": 3,
+        "widthMM": 80.6,
+        "heightMM": 32.5,
+        "sew": [
+          {
+            "rgb": "#ffffff",
+            "stitches": 4906
+          },
+          {
+            "rgb": "#0b5fa5",
+            "stitches": 1402
+          },
+          {
+            "rgb": "#c8102e",
+            "stitches": 610
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 0.2,
+          "extra": 0,
+          "missing": 0,
+          "buried": 32.3
+        }
+      },
+      "drawn": {
+        "stitches": 6918,
+        "colors": 3,
+        "widthMM": 80.6,
+        "heightMM": 32.5,
+        "sew": [
+          {
+            "rgb": "#ffffff",
+            "stitches": 4906
+          },
+          {
+            "rgb": "#0b5fa5",
+            "stitches": 1402
+          },
+          {
+            "rgb": "#c8102e",
+            "stitches": 610
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 0.2,
+          "extra": 0,
+          "missing": 0,
+          "buried": 32.3
+        }
+      },
+      "today": {
+        "stitches": 2709,
+        "colors": 2,
+        "widthMM": 80.6,
+        "heightMM": 27.2,
+        "sew": [
+          {
+            "rgb": "#0b5fa5",
+            "stitches": 1896
+          },
+          {
+            "rgb": "#c8102e",
+            "stitches": 813
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 0.3,
+          "extra": 0,
+          "missing": 67.8,
+          "buried": 0
+        }
+      }
+    }
+  },
+  {
+    "name": "favicon",
+    "regions": 1,
+    "warnings": [],
+    "imported": [
+      {
+        "rgb": "#4f46e5",
+        "shapes": 1,
+        "holes": 0
+      }
+    ],
+    "arms": {
+      "image": {
+        "stitches": 11482,
+        "colors": 1,
+        "widthMM": 80.6,
+        "heightMM": 80.6,
+        "sew": [
+          {
+            "rgb": "#4f46e5",
+            "stitches": 11482
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 14.3,
+          "extra": 0,
+          "missing": 0.1,
+          "buried": 0
+        }
+      },
+      "drawn": {
+        "stitches": 11482,
+        "colors": 1,
+        "widthMM": 80.6,
+        "heightMM": 80.6,
+        "sew": [
+          {
+            "rgb": "#4f46e5",
+            "stitches": 11482
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 14.3,
+          "extra": 0,
+          "missing": 0.1,
+          "buried": 0
+        }
+      },
+      "today": {
+        "stitches": 11212,
+        "colors": 1,
+        "widthMM": 80.6,
+        "heightMM": 80.6,
+        "sew": [
+          {
+            "rgb": "#4f46e5",
+            "stitches": 11212
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 0.3,
+          "extra": 0,
+          "missing": 14,
+          "buried": 0
+        }
+      }
+    }
+  },
+  {
+    "name": "gap-1-paint-order",
+    "regions": 2,
+    "warnings": [],
+    "imported": [
+      {
+        "rgb": "#1f3a68",
+        "shapes": 2,
+        "holes": 0
+      },
+      {
+        "rgb": "#f3e9d2",
+        "shapes": 1,
+        "holes": 0
+      }
+    ],
+    "arms": {
+      "image": {
+        "stitches": 10847,
+        "colors": 2,
+        "widthMM": 80.6,
+        "heightMM": 51.9,
+        "sew": [
+          {
+            "rgb": "#f3e9d2",
+            "stitches": 2625
+          },
+          {
+            "rgb": "#1f3a68",
+            "stitches": 8222
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 26.8,
+          "extra": 0,
+          "missing": 0,
+          "buried": 30.4
+        }
+      },
+      "drawn": {
+        "stitches": 10847,
+        "colors": 2,
+        "widthMM": 80.6,
+        "heightMM": 51.9,
+        "sew": [
+          {
+            "rgb": "#1f3a68",
+            "stitches": 8222
+          },
+          {
+            "rgb": "#f3e9d2",
+            "stitches": 2625
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 4.2,
+          "extra": 0,
+          "missing": 0,
+          "buried": 30.4
+        }
+      },
+      "today": {
+        "stitches": 9322,
+        "colors": 2,
+        "widthMM": 80.6,
+        "heightMM": 52,
+        "sew": [
+          {
+            "rgb": "#f3e9d2",
+            "stitches": 2561
+          },
+          {
+            "rgb": "#1f3a68",
+            "stitches": 6761
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 0.5,
+          "extra": 0,
+          "missing": 0,
+          "buried": 0
+        }
+      }
+    }
+  },
+  {
+    "name": "gap-2-background-and-overlap",
+    "regions": 3,
+    "warnings": [],
+    "imported": [
+      {
+        "rgb": "#ffffff",
+        "shapes": 1,
+        "holes": 0
+      },
+      {
+        "rgb": "#c8102e",
+        "shapes": 1,
+        "holes": 0
+      },
+      {
+        "rgb": "#0b5fa5",
+        "shapes": 1,
+        "holes": 0
+      }
+    ],
+    "arms": {
+      "image": {
+        "stitches": 12062,
+        "colors": 3,
+        "widthMM": 80.6,
+        "heightMM": 53.9,
+        "sew": [
+          {
+            "rgb": "#ffffff",
+            "stitches": 8052
+          },
+          {
+            "rgb": "#0b5fa5",
+            "stitches": 2242
+          },
+          {
+            "rgb": "#c8102e",
+            "stitches": 1768
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 5.6,
+          "extra": 0,
+          "missing": 0,
+          "buried": 37.3
+        }
+      },
+      "drawn": {
+        "stitches": 12062,
+        "colors": 3,
+        "widthMM": 80.6,
+        "heightMM": 53.9,
+        "sew": [
+          {
+            "rgb": "#ffffff",
+            "stitches": 8052
+          },
+          {
+            "rgb": "#c8102e",
+            "stitches": 1768
+          },
+          {
+            "rgb": "#0b5fa5",
+            "stitches": 2242
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 0.1,
+          "extra": 0,
+          "missing": 0,
+          "buried": 37.3
+        }
+      },
+      "today": {
+        "stitches": 7371,
+        "colors": 2,
+        "widthMM": 80.6,
+        "heightMM": 48.6,
+        "sew": [
+          {
+            "rgb": "#0b5fa5",
+            "stitches": 4723
+          },
+          {
+            "rgb": "#c8102e",
+            "stitches": 2648
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 0.2,
+          "extra": 0,
+          "missing": 62.6,
+          "buried": 0
+        }
+      }
+    }
+  },
+  {
+    "name": "gap-3-hidden",
+    "regions": 6,
+    "warnings": [],
+    "imported": [
+      {
+        "rgb": "#000000",
+        "shapes": 1,
+        "holes": 0
+      },
+      {
+        "rgb": "#ff0000",
+        "shapes": 1,
+        "holes": 0
+      },
+      {
+        "rgb": "#00a000",
+        "shapes": 1,
+        "holes": 0
+      },
+      {
+        "rgb": "#0000ff",
+        "shapes": 1,
+        "holes": 0
+      },
+      {
+        "rgb": "#ff8c00",
+        "shapes": 1,
+        "holes": 0
+      },
+      {
+        "rgb": "#8a2be2",
+        "shapes": 1,
+        "holes": 0
+      }
+    ],
+    "arms": {
+      "image": {
+        "stitches": 2545,
+        "colors": 6,
+        "widthMM": 80.6,
+        "heightMM": 12.4,
+        "sew": [
+          {
+            "rgb": "#8a2be2",
+            "stitches": 355
+          },
+          {
+            "rgb": "#ff8c00",
+            "stitches": 438
+          },
+          {
+            "rgb": "#ff0000",
+            "stitches": 438
+          },
+          {
+            "rgb": "#0000ff",
+            "stitches": 438
+          },
+          {
+            "rgb": "#00a000",
+            "stitches": 438
+          },
+          {
+            "rgb": "#000000",
+            "stitches": 438
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 0,
+          "extra": 484.7,
+          "missing": 0,
+          "buried": 0
+        }
+      },
+      "drawn": {
+        "stitches": 2545,
+        "colors": 6,
+        "widthMM": 80.6,
+        "heightMM": 12.4,
+        "sew": [
+          {
+            "rgb": "#000000",
+            "stitches": 438
+          },
+          {
+            "rgb": "#ff0000",
+            "stitches": 438
+          },
+          {
+            "rgb": "#00a000",
+            "stitches": 438
+          },
+          {
+            "rgb": "#0000ff",
+            "stitches": 438
+          },
+          {
+            "rgb": "#ff8c00",
+            "stitches": 438
+          },
+          {
+            "rgb": "#8a2be2",
+            "stitches": 355
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 0,
+          "extra": 484.7,
+          "missing": 0,
+          "buried": 0
+        }
+      },
+      "today": {
+        "stitches": 0
+      }
+    }
+  },
+  {
+    "name": "gap-4-colour-syntax",
+    "regions": 3,
+    "warnings": [],
+    "imported": [
+      {
+        "rgb": "#640000",
+        "shapes": 1,
+        "holes": 0
+      },
+      {
+        "rgb": "#008080",
+        "shapes": 1,
+        "holes": 0
+      },
+      {
+        "rgb": "#ff00ff",
+        "shapes": 1,
+        "holes": 0
+      }
+    ],
+    "arms": {
+      "image": {
+        "stitches": 780,
+        "colors": 3,
+        "widthMM": 80.6,
+        "heightMM": 9,
+        "sew": [
+          {
+            "rgb": "#ff00ff",
+            "stitches": 260
+          },
+          {
+            "rgb": "#008080",
+            "stitches": 260
+          },
+          {
+            "rgb": "#640000",
+            "stitches": 260
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 12.5,
+          "extra": 0,
+          "missing": 62.5,
+          "buried": 0
+        }
+      },
+      "drawn": {
+        "stitches": 780,
+        "colors": 3,
+        "widthMM": 80.6,
+        "heightMM": 9,
+        "sew": [
+          {
+            "rgb": "#640000",
+            "stitches": 260
+          },
+          {
+            "rgb": "#008080",
+            "stitches": 260
+          },
+          {
+            "rgb": "#ff00ff",
+            "stitches": 260
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 12.5,
+          "extra": 0,
+          "missing": 62.5,
+          "buried": 0
+        }
+      },
+      "today": {
+        "stitches": 2288,
+        "colors": 4,
+        "widthMM": 80.6,
+        "heightMM": 9.2,
+        "sew": [
+          {
+            "rgb": "#ff00ff",
+            "stitches": 286
+          },
+          {
+            "rgb": "#f33514",
+            "stitches": 858
+          },
+          {
+            "rgb": "#0068a4",
+            "stitches": 572
+          },
+          {
+            "rgb": "#007200",
+            "stitches": 572
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 12.5,
+          "extra": 0,
+          "missing": 0,
+          "buried": 0
+        }
+      }
+    }
+  },
+  {
+    "name": "gap-5-silent-skips",
+    "regions": 2,
+    "warnings": [],
+    "imported": [
+      {
+        "rgb": "#1f3a68",
+        "shapes": 1,
+        "holes": 0
+      },
+      {
+        "rgb": "#f2c230",
+        "shapes": 1,
+        "holes": 0
+      }
+    ],
+    "arms": {
+      "image": {
+        "stitches": 1453,
+        "colors": 2,
+        "widthMM": 80.6,
+        "heightMM": 22.2,
+        "sew": [
+          {
+            "rgb": "#f2c230",
+            "stitches": 576
+          },
+          {
+            "rgb": "#1f3a68",
+            "stitches": 877
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 6.9,
+          "extra": 0,
+          "missing": 52.9,
+          "buried": 0
+        }
+      },
+      "drawn": {
+        "stitches": 1453,
+        "colors": 2,
+        "widthMM": 80.6,
+        "heightMM": 22.2,
+        "sew": [
+          {
+            "rgb": "#1f3a68",
+            "stitches": 877
+          },
+          {
+            "rgb": "#f2c230",
+            "stitches": 576
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 6.9,
+          "extra": 0,
+          "missing": 52.9,
+          "buried": 0
+        }
+      },
+      "today": {
+        "stitches": 2989,
+        "colors": 4,
+        "widthMM": 80.6,
+        "heightMM": 20.7,
+        "sew": [
+          {
+            "rgb": "#e7bf32",
+            "stitches": 357
+          },
+          {
+            "rgb": "#7ca047",
+            "stitches": 640
+          },
+          {
+            "rgb": "#c8102e",
+            "stitches": 559
+          },
+          {
+            "rgb": "#1f3a68",
+            "stitches": 1433
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 1.9,
+          "extra": 0.9,
+          "missing": 2.2,
+          "buried": 0.1
+        }
+      }
+    }
+  },
+  {
+    "name": "real-3-banner-two-words",
+    "regions": 1,
+    "warnings": [],
+    "imported": [
+      {
+        "rgb": "#231f20",
+        "shapes": 12,
+        "holes": 11
+      }
+    ],
+    "arms": {
+      "image": {
+        "stitches": 4512,
+        "colors": 1,
+        "widthMM": 80.6,
+        "heightMM": 39.8,
+        "sew": [
+          {
+            "rgb": "#231f20",
+            "stitches": 4512
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 0,
+          "extra": 0.1,
+          "missing": 0.2,
+          "buried": 0
+        }
+      },
+      "drawn": {
+        "stitches": 4512,
+        "colors": 1,
+        "widthMM": 80.6,
+        "heightMM": 39.8,
+        "sew": [
+          {
+            "rgb": "#231f20",
+            "stitches": 4512
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 0,
+          "extra": 0.1,
+          "missing": 0.2,
+          "buried": 0
+        }
+      },
+      "today": {
+        "stitches": 4271,
+        "colors": 1,
+        "widthMM": 80.6,
+        "heightMM": 39.5,
+        "sew": [
+          {
+            "rgb": "#231f20",
+            "stitches": 4271
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 0,
+          "extra": 3.4,
+          "missing": 2,
+          "buried": 0
+        }
+      }
+    }
+  },
+  {
+    "name": "real-4-badge-multicolour",
+    "regions": 5,
+    "warnings": [],
+    "imported": [
+      {
+        "rgb": "#ffffff",
+        "shapes": 1,
+        "holes": 0
+      },
+      {
+        "rgb": "#1f3a68",
+        "shapes": 4,
+        "holes": 0
+      },
+      {
+        "rgb": "#f2c230",
+        "shapes": 1,
+        "holes": 0
+      },
+      {
+        "rgb": "#c8102e",
+        "shapes": 2,
+        "holes": 0
+      },
+      {
+        "rgb": "#2e8b57",
+        "shapes": 1,
+        "holes": 0
+      }
+    ],
+    "arms": {
+      "image": {
+        "stitches": 14800,
+        "colors": 5,
+        "widthMM": 80.6,
+        "heightMM": 53.9,
+        "sew": [
+          {
+            "rgb": "#ffffff",
+            "stitches": 8052
+          },
+          {
+            "rgb": "#f2c230",
+            "stitches": 698
+          },
+          {
+            "rgb": "#2e8b57",
+            "stitches": 1714
+          },
+          {
+            "rgb": "#c8102e",
+            "stitches": 1113
+          },
+          {
+            "rgb": "#1f3a68",
+            "stitches": 3223
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 27.7,
+          "extra": 0,
+          "missing": 0,
+          "buried": 52.5
+        }
+      },
+      "drawn": {
+        "stitches": 14800,
+        "colors": 5,
+        "widthMM": 80.6,
+        "heightMM": 53.9,
+        "sew": [
+          {
+            "rgb": "#ffffff",
+            "stitches": 8052
+          },
+          {
+            "rgb": "#1f3a68",
+            "stitches": 3223
+          },
+          {
+            "rgb": "#f2c230",
+            "stitches": 698
+          },
+          {
+            "rgb": "#c8102e",
+            "stitches": 1113
+          },
+          {
+            "rgb": "#2e8b57",
+            "stitches": 1714
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 24.3,
+          "extra": 0,
+          "missing": 0,
+          "buried": 52.5
+        }
+      },
+      "today": {
+        "stitches": 6910,
+        "colors": 3,
+        "widthMM": 80.6,
+        "heightMM": 52,
+        "sew": [
+          {
+            "rgb": "#f1c131",
+            "stitches": 831
+          },
+          {
+            "rgb": "#c7102e",
+            "stitches": 1375
+          },
+          {
+            "rgb": "#203b68",
+            "stitches": 4704
+          }
+        ],
+        "vsBrowser": {
+          "wrong_top": 1,
+          "extra": 0,
+          "missing": 56.2,
+          "buried": 0.1
+        }
+      }
+    }
+  }
+]

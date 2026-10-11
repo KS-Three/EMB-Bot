@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Drawn for the 2026-10-11 SVG import gate: an Inkscape-style multi-colour badge. Not client art. -->
+<svg width="120mm" height="80mm" viewBox="0 0 120 80" version="1.1" id="svg1"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview id="namedview1" pagecolor="#ffffff" inkscape:document-units="mm" />
+  <defs id="defs1" />
+  <g inkscape:label="Background" inkscape:groupmode="layer" id="layer1">
+    <rect style="fill:#ffffff;fill-opacity:1;stroke:none" id="rect1" width="120" height="80" x="0" y="0" />
+  </g>
+  <g inkscape:label="Badge" inkscape:groupmode="layer" id="layer2">
+    <circle style="fill:#1f3a68;fill-opacity:1;stroke:none" id="disc" cx="40" cy="40" r="30" />
+    <circle style="fill:#f2c230;fill-opacity:1;stroke:none" id="sun" cx="58" cy="22" r="14" />
+    <path style="fill:#c8102e;fill-opacity:1;stroke:none" id="wave"
+       d="M 10,48 C 25,40 35,56 50,48 S 75,40 80,48 L 80,58 L 10,58 Z" />
+    <ellipse style="fill:#1f3a68;fill-opacity:1;stroke:none" id="bird" cx="60" cy="22" rx="6" ry="2.5" />
+    <circle style="fill:none;stroke:#1f3a68;stroke-width:2;stroke-opacity:1" id="rim" cx="40" cy="40" r="34" />
+    <rect style="fill:#1f3a68;stroke:none" id="bar1" x="84" y="24" width="30" height="7" />
+    <rect style="fill:#c8102e;stroke:none" id="bar2" x="84" y="36" width="24" height="7" />
+    <rect style="fill:#1f3a68;stroke:none" id="bar3" x="84" y="48" width="30" height="7" />
+  </g>
+  <g inkscape:label="Old version (hidden)" inkscape:groupmode="layer" id="layer3" style="display:none">
+    <rect style="fill:#2e8b57;stroke:none" id="oldbar" x="84" y="10" width="30" height="60" />
+  </g>
+</svg>
