@@ -978,108 +978,6 @@ def _hoist_same_thread(blocks: list[StitchBlock], trim_at: float,
     return out
 
 
-def _is_band_block(block: StitchBlock) -> bool:
-    """Every run carries a stage-6 shade stamp: the block is blend bands."""
-    return bool(block.runs) and all(r.shade_thread_index is not None
-                                    for r in block.runs)
-
-
-def _fold_band_cones(blocks: list[StitchBlock], run_group: dict,
-                     margin_mm: float) -> list[StitchBlock]:
-    """Sew blend bands of ONE cone, built for DIFFERENT parents, in one block
-    (cfg.blend_bands_share_cone). -> new list, reordered.
-
-    `run_group` maps `id(run)` to the `nn_group_key` of the group that sewed
-    it. A block's parents are read off its runs, so a block the adjacent
-    merge already joined across two groups counts as both.
-
-    MASTER_SCOPE defect 18's third mechanism: `_shade_blocks` buckets one
-    group's bands by cone, so two bands of one parent already share a block,
-    but bands of two parents snap to the same cone in two groups and sew as
-    two blocks with other colours between. `_hoist_same_thread` cannot join
-    them, because a band block nearly always touches something it would
-    jump: its own parent's other shades, which abut it along every band
-    seam.
-
-    That contact is the one this pass is allowed to ignore. The order of one
-    group's blocks is `_shade_blocks`' dark-to-light sort by chart L*, chosen
-    after stage 5 planned coverage — stage 5 never ordered a group's bands
-    against each other, so moving a band past its own group's blocks moves
-    no planned seam. Everything else keeps `_hoist_same_thread`'s proof: the
-    moving block must not come within `margin_mm` of any block of ANOTHER
-    group that it jumps, so no `covered_by` relation, underlap tongue or
-    seam owner (Kent's 2026-09-09 ruling: the colour sewn on top owns the
-    seam) changes.
-
-    Two moves are tried for each same-cone pair A (earlier) / B (later) of
-    different parents where the mover is a band block: B up to sit right
-    after A, else A down to sit right before B. Either way A's runs sew
-    before B's, so the parents keep their order inside the shared cone.
-    Pairs across a step boundary are never joined (`nn_group_key`'s
-    contract). The caller re-runs `_merge_adjacent_same_thread` to fold the
-    adjacency this creates, then ties once.
-    """
-    if len(blocks) < 3:
-        return blocks
-    geoms = [_block_thread_geom(b) for b in blocks]
-    parents = [frozenset(run_group.get(id(r)) for r in b.runs)
-               for b in blocks]
-    order = list(range(len(blocks)))
-
-    def steps(i):
-        return {p[1] if isinstance(p, tuple) and len(p) > 1 else ""
-                for p in parents[i]}
-
-    def clear(mover: int, crossed: list[int]) -> bool:
-        g = geoms[mover]
-        if g is None:
-            return False
-        own = parents[mover]
-        for k in crossed:
-            if len(own) == 1 and None not in own and parents[k] == own:
-                continue            # its own group: an L* sort, not stage 5
-            if geoms[k] is None or _within_margin(g, geoms[k], margin_mm):
-                return False
-        return True
-
-    moved = True
-    while moved:
-        moved = False
-        for pos in range(len(order) - 1, 0, -1):
-            b = order[pos]
-            target = None
-            for k in range(pos - 1, -1, -1):
-                if blocks[order[k]].thread_index == blocks[b].thread_index:
-                    target = k
-                    break
-            if target is None or target == pos - 1:
-                continue
-            a = order[target]
-            if parents[a] == parents[b] or len(steps(a) | steps(b)) != 1:
-                continue
-            between = order[target + 1:pos]
-            if _is_band_block(blocks[b]) and clear(b, between):
-                order.insert(target + 1, order.pop(pos))
-            elif _is_band_block(blocks[a]) and clear(a, between):
-                order.insert(pos - 1, order.pop(target))
-            else:
-                continue
-            moved = True
-            break
-
-    if order == list(range(len(blocks))):
-        return blocks
-    out = [blocks[i] for i in order]
-    # A moved block's old neighbour is gone: every opener is a real cut until
-    # the adjacent merge re-asks it on distance (`_hoist_same_thread` does
-    # the same).
-    for blk in out[1:]:
-        if blk.runs:
-            blk.runs[0].jump = True
-            blk.runs[0].trim = True
-    return out
-
-
 def _shade_blocks(ordered: list[StitchRun], base_thread: int, chart,
                   trim_at: float, tie: bool = True) -> list[StitchBlock]:
     """One group's finished, chained run list -> one StitchBlock per shade,
@@ -2224,12 +2122,6 @@ def sequence(
     cap_sewn: list[PlannedRegion] = []
     merge_same_thread = bool(cfg.merge_adjacent_same_thread)
     hoist_same_thread = max(0.0, float(cfg.hoist_same_thread_margin_mm))
-    # The band fold reuses the hoist's margin as its geometry tolerance, and
-    # is off wherever the hoist is (margin 0) or the merge is.
-    band_cone_fold = (hoist_same_thread
-                      if merge_same_thread and cfg.blend_bands_share_cone
-                      else 0.0)
-    run_group: dict[int, tuple] = {}
     # Seam ownership's "still to sew" set — see `border_later`'s declaration
     # above for the predicate and its blind spots.
     for _p in planned:
@@ -3036,10 +2928,6 @@ def sequence(
         group_blocks = _shade_blocks(ordered, group[0].region.thread_index,
                                      chart_for(cfg), trim_at,
                                      tie=not merge_same_thread)
-        if band_cone_fold:
-            for _b in group_blocks:
-                for _r in _b.runs:
-                    run_group[id(_r)] = _group_key
         art_blocks.extend(group_blocks)
         cursor = group_blocks[-1].runs[-1].points[-1]
         cap_sewn.extend(sewn)
@@ -3059,12 +2947,6 @@ def sequence(
         if hoist_same_thread > 0:
             art_blocks = _hoist_same_thread(art_blocks, trim_at,
                                             hoist_same_thread)
-            art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
-        # Defect 18's band half (cfg.blend_bands_share_cone): what the hoist
-        # declined because a band touches its own parent's other shades.
-        if band_cone_fold:
-            art_blocks = _fold_band_cones(art_blocks, run_group,
-                                          band_cone_fold)
             art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
         for _b in art_blocks:
             _apply_ties(_b.runs)
