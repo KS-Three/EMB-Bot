@@ -1224,6 +1224,8 @@ class PipelineConfig:
     # The parallel-join underlap `overlap_by_angle` grows to. 1.0 is the
     # law's WOVEN figure, verbatim; its knit 1.5–2.0 is sew-out-gated
     # (ROADMAP gate 1), so knits get the woven floor, never less than today.
+    # The fabric's multiplier waits on that sew-out as one named 1.0:
+    # `stage5_overlap.OVERLAP_FABRIC_FACTOR`.
     overlap_parallel_mm: float = 1.0
     # Stage 5's hole hold, read for what is actually IN the hole. A hole the
     # shell's pull growth would shrink under `min_detail_mm²` is held open at
