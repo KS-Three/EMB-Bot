@@ -369,6 +369,20 @@
   }
 
   // Zhang–Suen thinning to a 1px skeleton (in place; returns the same array).
+  //
+  // Two departures from the textbook, both 2026-10-04:
+  //  - A pixel with only two neighbours is KEPT (Lü and Wang's change: `nb < 3`
+  //    where Zhang and Suen have `nb < 2`). The textbook deletes the end pixel
+  //    of a line two pixels wide on the anti-diagonal, then the next, and eats
+  //    the whole line: a 30 mm bar turned 135 degrees thinned to one pixel, and
+  //    an arm of an L turned 45 degrees was left unsewn. (Until that day the
+  //    grid's own border pixels, which the loops below never visit, had been
+  //    anchoring such a line whenever it touched them.)
+  //  - That change keeps the corners of every staircase, so they are taken out
+  //    afterwards: a pixel with two edge-neighbours that meet at a corner, and
+  //    nothing on the three cells opposite, joins nothing its neighbours do not
+  //    already join. Two passes, two corners each, so that the two pixels of a
+  //    two-wide step are never both taken.
   function thin(mask, w, h) {
     const P = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : mask[y * w + x];
     let changed = true, guard = 0;
@@ -381,7 +395,7 @@
           const p2 = P(x, y - 1), p3 = P(x + 1, y - 1), p4 = P(x + 1, y), p5 = P(x + 1, y + 1),
             p6 = P(x, y + 1), p7 = P(x - 1, y + 1), p8 = P(x - 1, y), p9 = P(x - 1, y - 1);
           const nb = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
-          if (nb < 2 || nb > 6) continue;
+          if (nb < 3 || nb > 6) continue;
           const seq = [p2, p3, p4, p5, p6, p7, p8, p9, p2];
           let A = 0; for (let k = 0; k < 8; k++) if (seq[k] === 0 && seq[k + 1] === 1) A++;
           if (A !== 1) continue;
@@ -391,6 +405,19 @@
         }
         if (del.length) { changed = true; for (const d of del) mask[d] = 0; }
       }
+    }
+    for (let pass = 0; pass < 2; pass++) {
+      const del = [];
+      for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+        if (!mask[y * w + x]) continue;
+        const p2 = P(x, y - 1), p3 = P(x + 1, y - 1), p4 = P(x + 1, y), p5 = P(x + 1, y + 1),
+          p6 = P(x, y + 1), p7 = P(x - 1, y + 1), p8 = P(x - 1, y), p9 = P(x - 1, y - 1);
+        const corner = pass === 0
+          ? (p2 && p4 && !p6 && !p7 && !p8) || (p2 && p8 && !p4 && !p5 && !p6)
+          : (p6 && p8 && !p2 && !p3 && !p4) || (p6 && p4 && !p2 && !p9 && !p8);
+        if (corner) del.push(y * w + x);
+      }
+      for (const d of del) mask[d] = 0;
     }
     return mask;
   }
@@ -518,6 +545,26 @@
       const s0 = trimStart ? trim : 0, s1 = trimEnd ? L0 - trim : L0;
       if (s1 - s0 > 2 * trim) spine = subChainByArc(spine, s0, s1);
     }
+    // A FREE END RUNS OUT TO THE OUTLINE. A skeleton stops short of the end of
+    // the stroke it is the skeleton of: about half the stroke's width short of
+    // a square end, and the trim above takes a little more. Left there, a
+    // 30 mm bar is sewn 28 mm long, 1 mm of it bare at each end. So the spine
+    // is carried on from a free end, along its own direction over its last
+    // half-width, to where it meets the outline. A junction end is left alone.
+    const runOut = (atStart) => {
+      const n = spine.length; if (n < 2) return false;
+      const end = atStart ? spine[0] : spine[n - 1];
+      const L = chainLength(spine), back = Math.min(L, Math.max(halfWidthPx, 1));
+      const seg = atStart ? subChainByArc(spine, 0, back) : subChainByArc(spine, L - back, L);
+      const from = atStart ? seg[seg.length - 1] : seg[0];
+      let dx = end.x - from.x, dy = end.y - from.y; const dl = Math.hypot(dx, dy); if (!(dl > EPS)) return false;
+      dx /= dl; dy /= dl;
+      const hit = rayContoursHit(contours, end.x, end.y, dx, dy);
+      if (!hit) return false;
+      if (atStart) spine.unshift(hit); else spine.push(hit);
+      return true;
+    };
+    const ranStart = trimStart && runOut(true), ranEnd = trimEnd && runOut(false);
     const denom = spacingMm * pxPerMm;
     const stepPx = denom > 0 ? denom : 4;
     const spineLen = chainLength(spine);
@@ -541,6 +588,13 @@
     const dA = new Array(N), dB = new Array(N);
     for (let t = 0; t < N; t++) {
       const s = spine[t], nx = Math.cos(ang[t]), ny = Math.sin(ang[t]);
+      // A station run out ONTO the outline has no width of its own. A ray cast
+      // from there runs along the stroke's end, and on a curved stroke it
+      // leaves through the end and lands on whatever faces it: across the
+      // mouth of a C, a stitch 20 mm long on a stroke 3 mm wide. It takes the
+      // widths of the station before it (as it always has on a bar, where the
+      // ray that leaves meets nothing).
+      if ((t === 0 && ranStart) || (t === N - 1 && ranEnd)) { dA[t] = NaN; dB[t] = NaN; continue; }
       const hp = rayContoursHit(contours, s.x, s.y, nx, ny);
       const hn = rayContoursHit(contours, s.x, s.y, -nx, -ny);
       dA[t] = hp ? Math.hypot(hp.x - s.x, hp.y - s.y) : NaN;
@@ -603,57 +657,66 @@
       return c;
     };
     const isEnd = (x, y) => nbrs(x, y).length === 1;
-    const isNode = (x, y) => isEnd(x, y) || crossing(x, y) >= 3;
+    // Node-ness depends only on the mask: computed once.
+    const node = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (skel[id(x, y)] && (isEnd(x, y) || crossing(x, y) >= 3)) node[id(x, y)] = 1;
+    const isNode = (x, y) => !!node[id(x, y)];
     const edges = [];
     const usedDir = new Set();  // directed first-steps already walked
-    const seen = new Set();     // every skeleton pixel covered by an edge
-
-    // GOING ROUND IN CIRCLES. Three pixels that all touch each other (the
-    // corner of an L, a one-pixel hook on the end of a line) are none of them
-    // a node, and a walk that steps in among them with nothing unwalked ahead
-    // goes round them for ever. Until 2026-10-03 only the guard stopped it,
-    // one step for every cell of the grid, and the edge it handed back was
-    // that long: a 20 mm star off the Studio's shape tool sewed 48,645
-    // stitches, the 24 mm one 128,239.
-    //
-    // Where a step leads depends on the pixel it leaves, the pixel it lands
-    // on, and which pixels have been walked. So a step taken a second time
-    // with nothing new walked in between will be taken a third time, and for
-    // ever. `circling()` is asked before every step and says when that has
-    // happened. It says nothing of a walk that would have ended by itself, so
-    // every edge that ended before ends where it did.
-    const circling = () => {
-      const taken = new Map();  // step -> how many pixels were walked when it was last taken
-      return (cx, cy, nx, ny) => {
-        const step = id(cx, cy) * w * h + id(nx, ny);
-        if (taken.get(step) === seen.size) return true;
-        taken.set(step, seen.size);
-        return false;
-      };
-    };
-
-    // Walk from node (sx,sy) toward neighbor (fx,fy) until the next node. At a
-    // staircase pixel with two forward candidates prefer the unvisited one so we
-    // don't ping-pong; mark every pixel seen. A walk that will never reach a
-    // node (see `circling`) is the edge as far as it went before it first came
-    // back onto its own pixels.
+    // ONE PIXEL, ONE EDGE (2026-10-04; a port of the Python tracer's walk,
+    // `_skeleton_edges` in digitizer_core/stage6_satin.py). A pixel that is
+    // not a node is consumed by the edge that walks it, and no other edge may
+    // take it. Until then a walk preferred an unwalked pixel and took a walked
+    // one when it had none, and three things followed:
+    //  - A staircase has corner fillers, pixels that touch three of the chain
+    //    and lead nowhere. A walk that took one came back the way it went and
+    //    ended on its own start, and the stroke was laid again from the other
+    //    end. Now a walk that dead-ends off a node steps back and takes the
+    //    other way; the filler is left unwalked, which is where it belongs.
+    //  - Three pixels that all touch are none of them a node, and a walk went
+    //    round them until its guard ran out (a 20 mm star: 48,645 stitches;
+    //    2026-10-03's `circling()` ended such a walk). A walk that may not
+    //    step on a consumed pixel cannot go round anything.
+    //  - What the node walks left was walked as a "ring" and CLOSED, whether
+    //    or not it came back to where it began: a chord across the mouth of a
+    //    C. A leftover walk is closed only if it comes back by itself, and
+    //    otherwise it is an open stroke with the ends its pixels have.
+    const consumed = new Uint8Array(w * h);
+    const same = (p, q) => p[0] === q[0] && p[1] === q[1];
+    const touching = (p, q) => Math.max(Math.abs(p[0] - q[0]), Math.abs(p[1] - q[1])) <= 1;
+    // How far a walk steps back from a dead end. The Python tracer's own
+    // bound, in pixels of the walk: one is the filled L-corner, a little more
+    // a clique of fillers.
+    const BACKTRACK_PX = 3;
     const walk = (sx, sy, fx, fy) => {
-      const path = [[sx, sy], [fx, fy]];
-      seen.add(id(sx, sy)); seen.add(id(fx, fy));
-      const own = new Set([id(sx, sy), id(fx, fy)]);  // the pixels of this walk
-      const round = circling();
-      let turned = 0;  // how long the path was when the walk first stepped back onto itself
-      let px = sx, py = sy, cx = fx, cy = fy, guard = 0;
-      while (guard++ < w * h) {
-        if (isNode(cx, cy)) break;
-        const cand = nbrs(cx, cy).filter(([a, b]) => !(a === px && b === py));
-        if (!cand.length) break;
-        let nx = cand[0][0], ny = cand[0][1];
-        for (const [a, b] of cand) if (!seen.has(id(a, b))) { nx = a; ny = b; break; }
-        if (round(cx, cy, nx, ny)) { path.length = turned; break; }
-        if (!turned && own.has(id(nx, ny))) turned = path.length;
-        px = cx; py = cy; cx = nx; cy = ny;
-        path.push([cx, cy]); seen.add(id(cx, cy)); own.add(id(cx, cy));
+      const start = [sx, sy], path = [start, [fx, fy]];
+      if (!isNode(fx, fy)) consumed[id(fx, fy)] = 1;
+      let prev = start, cur = path[1];
+      for (let guard = 0; guard <= w * h; guard++) {
+        if (isNode(cur[0], cur[1])) break;
+        let cand = nbrs(cur[0], cur[1]).filter((p) => !same(p, prev));
+        // a node beside the walk ends the edge now
+        const nodeNext = cand.find((p) => isNode(p[0], p[1]));
+        if (nodeNext) { path.push(nodeNext); break; }
+        cand = cand.filter((p) => !consumed[id(p[0], p[1])]);
+        // the first step out of a node leads away from it
+        if (path.length === 2 && cand.length > 1) { const away = cand.filter((p) => !touching(p, start)); if (away.length) cand = away; }
+        if (!cand.length) {
+          // a dead end on a pixel that is no node is a corner filler: step back and take the other way
+          const popped = []; let found = false;
+          while (path.length >= 3 && popped.length < BACKTRACK_PX) {
+            const q = path.pop(); popped.push(q); consumed[id(q[0], q[1])] = 0;
+            cur = path[path.length - 1]; prev = path[path.length - 2];
+            if (isNode(cur[0], cur[1])) break;
+            const alt = nbrs(cur[0], cur[1]).filter((p) => !same(p, prev) && !consumed[id(p[0], p[1])] && !isNode(p[0], p[1]) && !popped.some((r) => same(r, p)));
+            if (alt.length) { prev = cur; cur = alt[0]; path.push(cur); consumed[id(cur[0], cur[1])] = 1; found = true; break; }
+          }
+          if (found) continue;
+          for (let i = popped.length - 1; i >= 0; i--) { path.push(popped[i]); consumed[id(popped[i][0], popped[i][1])] = 1; }
+          break;
+        }
+        prev = cur; cur = cand[0];
+        path.push(cur); consumed[id(cur[0], cur[1])] = 1;
       }
       return path;
     };
@@ -662,7 +725,7 @@
       if (!skel[id(x, y)] || !isNode(x, y)) continue;
       for (const [nx, ny] of nbrs(x, y)) {
         const k = id(x, y) + ':' + id(nx, ny);
-        if (usedDir.has(k)) continue;
+        if (usedDir.has(k) || (consumed[id(nx, ny)] && !isNode(nx, ny))) continue;
         usedDir.add(k);
         const path = walk(x, y, nx, ny);
         const e = path[path.length - 1], b = path[path.length - 2];
@@ -670,31 +733,28 @@
         edges.push({ pts: path, freeStart: isEnd(x, y), freeEnd: isEnd(e[0], e[1]) });
       }
     }
-    // Pure cycles (O, 0, counters, closed bowls) contain no node, so the scan
-    // above never touched them. Walk each remaining loop as a CLOSED stroke:
-    // no free ends → no terminal trim, rails close back on themselves. A walk
-    // that will never come back to (x, y) (see `circling`) has found no loop,
-    // and lays nothing: it started on a pixel the walks above stepped past.
+    // What no node walk took: a pure cycle (O, 0, a counter) is CLOSED only if
+    // the walk comes back to where it began by itself; one that dead-ends is
+    // an open stroke.
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      if (!skel[id(x, y)] || seen.has(id(x, y))) continue;
-      const start = nbrs(x, y);
-      if (start.length !== 2) continue; // not part of a clean loop
-      const path = [[x, y]]; seen.add(id(x, y));
-      const round = circling();
-      let px = x, py = y, cx = start[0][0], cy = start[0][1], guard = 0, loop = true;
-      while (guard++ < w * h) {
-        if (cx === x && cy === y) break; // closed the loop
-        path.push([cx, cy]); seen.add(id(cx, cy));
-        const cand = nbrs(cx, cy).filter(([a, b]) => !(a === px && b === py));
+      if (!skel[id(x, y)] || consumed[id(x, y)] || isNode(x, y)) continue;
+      const ring = nbrs(x, y).filter((p) => !isNode(p[0], p[1]) && !consumed[id(p[0], p[1])]);
+      if (ring.length !== 2) continue;
+      const start = [x, y], path = [start];
+      consumed[id(x, y)] = 1;
+      let prev = start, cur = ring[0], closed = false;
+      for (let guard = 0; guard <= w * h; guard++) {
+        if (same(cur, start)) { closed = true; break; }
+        path.push(cur); consumed[id(cur[0], cur[1])] = 1;
+        const cand = nbrs(cur[0], cur[1]).filter((p) => !same(p, prev) && (same(p, start) || (!consumed[id(p[0], p[1])] && !isNode(p[0], p[1]))));
         if (!cand.length) break;
-        let nx = cand[0][0], ny = cand[0][1];
-        for (const [a, b] of cand) if (!seen.has(id(a, b)) || (a === x && b === y)) { nx = a; ny = b; break; }
-        if (round(cx, cy, nx, ny)) { loop = false; break; }
-        px = cx; py = cy; cx = nx; cy = ny;
+        prev = cur; cur = cand[0];
       }
-      if (!loop) continue;
-      path.push([x, y]); // close ring explicitly
-      if (path.length >= 5) edges.push({ pts: path, freeStart: false, freeEnd: false, closed: true });
+      if (closed && path.length >= 5) { path.push(start); edges.push({ pts: path, freeStart: false, freeEnd: false, closed: true }); }
+      else if (!closed && path.length >= 2) {
+        const e = path[path.length - 1];
+        edges.push({ pts: path, freeStart: isEnd(x, y), freeEnd: isEnd(e[0], e[1]), closed: false });
+      }
     }
     return edges;
   }
@@ -716,25 +776,20 @@
     if (!(dim > EPS)) return { strokes: [], contours, halfWidthPx: 0 };
 
     const gscale = Math.min(1.5, 260 / dim);
-    let gw = Math.ceil((maxX - minX) * gscale) + 3, gh = Math.ceil((maxY - minY) * gscale) + 3;
+    // THE GRID'S MARGIN. `thin` never deletes a pixel on the grid's own border
+    // (its loops run 1 .. n-2), so a shape laid against a border keeps that
+    // whole row or column. The bottom and right have always had spare cells
+    // (the `+ 3` below). The top and left had none until 2026-10-04: the top
+    // row and the left column of every shape were never thinned, and a plain
+    // bar's skeleton was its top edge and its left edge, an L, not its centre
+    // line. One empty cell on those two sides, and the origin moved with it.
+    const margin = 1 / gscale; minX -= margin; minY -= margin;
+    const gw = Math.ceil((maxX - minX) * gscale) + 3, gh = Math.ceil((maxY - minY) * gscale) + 3;
     // Net ribbon half-width (outer area minus counters) over total wall length.
     const netArea = Math.max(0, ringArea(ring) - holes.reduce((s, h) => s + ringArea(h), 0));
     const totPerim = ringPerim(ring) + holes.reduce((s, h) => s + ringPerim(h), 0);
     const halfWidthPx = (totPerim > EPS ? (2 * netArea / totPerim) : 0) / 2;
-    // ONE empty cell above and to the left of the shape. `rasterize` puts the
-    // shape's first row and column on the grid's own edge, and `thin` never
-    // erodes an edge cell (it reads x, y from 1), so a flat top or left side
-    // stayed in the skeleton: a straight bar's spine ran along its top edge
-    // and down its left end, and the rays from those stations crossed the
-    // whole bar -- a 37.7 mm stitch on a 38 mm x 1.9 mm bar. The right and
-    // bottom already had their margin (`+ 3` above). Shifted by whole cells,
-    // so every sample sits where it did and `toWorld` reads the same points.
-    const raw = rasterize(contours, gscale, minX, minY, gw, gh);
-    const gw0 = gw;
-    gw += 1; gh += 1;
-    const padded = new Uint8Array(gw * gh);
-    for (let j = 0; j + 1 < gh; j++) for (let i = 0; i < gw0; i++) padded[(j + 1) * gw + i + 1] = raw[j * gw0 + i];
-    const mask = thin(padded, gw, gh);
+    const mask = thin(rasterize(contours, gscale, minX, minY, gw, gh), gw, gh);
     // Strip thinning SPURS — short dead-end twigs (one free end, other end on a
     // branch) that thinning grows at curvature bumps. Removing them keeps closed
     // loops (O) a single clean cycle. Only short one-free-end edges are erased,
@@ -752,7 +807,7 @@
       }
       if (!removed) break;
     }
-    const toWorld = (p) => ({ x: minX + (p[0] - 1 + 0.5) / gscale, y: minY + (p[1] - 1 + 0.5) / gscale });
+    const toWorld = (p) => ({ x: minX + (p[0] + 0.5) / gscale, y: minY + (p[1] + 0.5) / gscale });
 
     let strokes = skeletonEdges(mask, gw, gh).map((e) => ({ spine: e.pts.map(toWorld), freeStart: e.freeStart, freeEnd: e.freeEnd, closed: !!e.closed }));
     const minEdgeLen = Math.max(3, 1.2 * halfWidthPx);
@@ -764,36 +819,7 @@
     }
     strokes.sort((a, b) => chainLength(b.spine) - chainLength(a.spine));
     if (strokes.length > 24) strokes = strokes.slice(0, 24);
-    // A medial axis stops about a half-width short of a square end (the
-    // corner twigs that would reach it are pruned above), so a free end is
-    // carried on along its own heading to the outline it points at; the rail
-    // pass then trims it back as before. Without this a straight bar's column
-    // ends one stroke-width inside each end.
-    for (const st of strokes) {
-      if (st.closed || st.spine.length < 2) continue;
-      if (st.freeStart) st.spine = extendToOutline(st.spine.slice().reverse(), contours, halfWidthPx).reverse();
-      if (st.freeEnd) st.spine = extendToOutline(st.spine, contours, halfWidthPx);
-    }
     return { strokes, contours, halfWidthPx };
-  }
-
-  // Carry a chain's LAST point on along its heading (read over one half-width
-  // of arc, so a pixel step does not steer it) to the nearest wall, at most
-  // three half-widths -- an end that points nowhere near a wall stays put.
-  function extendToOutline(chain, contours, halfWidthPx) {
-    if (!(halfWidthPx > EPS)) return chain;
-    const end = chain[chain.length - 1];
-    let k = chain.length - 1, L = 0;
-    while (k > 0 && L < halfWidthPx) { L += Math.hypot(chain[k].x - chain[k - 1].x, chain[k].y - chain[k - 1].y); k--; }
-    let dx = end.x - chain[k].x, dy = end.y - chain[k].y;
-    const dl = Math.hypot(dx, dy);
-    if (!(dl > EPS)) return chain;
-    dx /= dl; dy /= dl;
-    const hit = rayContoursHit(contours, end.x, end.y, dx, dy);
-    if (!hit) return chain;
-    const d = Math.hypot(hit.x - end.x, hit.y - end.y);
-    if (!(d > EPS) || d > 3 * halfWidthPx) return chain;
-    return chain.concat([{ x: hit.x, y: hit.y }]);
   }
 
   // Satin along the medial axis (skeleton). Decomposes branched letters (B, R,

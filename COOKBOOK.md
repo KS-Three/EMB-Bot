@@ -1132,19 +1132,20 @@ sews nothing and cuts the smallest shape that contains it.
   skeleton pixels from a node to the next node, under a guard of one step
   per grid cell. Three pixels that all touch are no node; a walk went round
   them until the guard ran out, and the satin emitter sewed what came back
-  (a 20 mm star off the shape tool: 48,645 stitches). `circling()` ends such
-  a walk, and a walk that ended by itself is untouched. Three things to know
-  before touching it:
+  (a 20 mm star off the shape tool: 48,645 stitches). A rule ended such a
+  walk and left every other one alone; it was replaced on 10-04 by one pixel
+  to one edge (next bullet), under which no walk can go round. Three things
+  to know before touching it:
   - It reached every lane that calls `medialSatin`, not stars: thin
     round-ended bars and 273 of 612 image-lane designs moved too. Sweep
     every caller before saying which designs a change moves.
-  - The walks still step onto pixels another edge has: a median 72 layings
-    too many for every 100 skeleton pixels on the shape tool's stars, and
-    "rings" are found in shapes with no hole. That,
-    and a stitch as long as the star or the bar, are MASTER_SCOPE defect
-    57, untouched. The Python port's cure for the first is a consumed set.
-    The knot had also been COVERING small round shapes: a 2 mm one now sews
-    four stitches, because such a ring is its only edge.
+  - The walks then still stepped onto pixels another edge had: a median 72
+    layings too many for every 100 skeleton pixels on the shape tool's
+    stars, and "rings" were found in shapes with no hole. Cured 10-04
+    (next bullet). A stitch as long as the star is still MASTER_SCOPE
+    defect 57.
+    The knot had also been COVERING small round shapes: a 2 mm one sewed
+    four stitches after it went.
   - `node tools/satin-walk-census.mjs` builds what the shape tool builds and
     says which designs sew out of line with their neighbours in size;
     `--against <tree>` says which designs differ from another engine's,
@@ -1190,6 +1191,41 @@ sews nothing and cuts the smallest shape that contains it.
   prints the wedge, closed against open, what each lane hands over, and the
   near repeat; `--hash` and `--compare` are the before and after of an engine
   change on rings that say no point twice.
+- **The browser satin's skeleton, its walk and its ends were put right
+  together (built 2026-10-04, on `main` from the 2026-10-11 port), and they
+  depend on each other.** `7bb83e9b` (2026-10-08) had put the first of the
+  three on `main` alone, with its own run-out (`extendToOutline`); the port
+  replaced that with this lane's. Three things in
+  `src/satin.js`:
+  - `thin` never deletes a pixel on the edge of its grid, and `ringToSpines`
+    laid shapes against the grid's top and left, so a shape's top row and
+    left column were its skeleton (a bar's was an L, and its last cross ran
+    the length of the bar). It leaves one cell there now. Rasterize nothing
+    for `thin` without an empty cell on every side.
+  - `skeletonEdges` is one pixel to one edge, a port of the Python tracer's
+    walk (`_skeleton_edges`). The wrong skeleton had been HIDING the old
+    walk's faults: with a true one, a C drawn by hand and set to satin came
+    out with its mouth sewn solid (447 stitches to 6,047) until the walk
+    was ported. Do not change one without the other's census.
+  - A free end of a spine is run on to the outline (`runOut` in
+    `railSatinFromSpine`), because a centre line stops half the stroke's
+    width short of its end; and the station that lands ON the outline
+    takes the widths of the one before it, because a ray cast from there
+    can leave through the stroke's end and cross a concavity.
+  It moves every satin shape of the browser lanes (the shape tool, drawn
+  shapes, the image lane's thin shapes) and no fill. `spineToRails` shares
+  the grid and the walk and has no run-out. What it leaves is MASTER_SCOPE
+  defect 57: a square or a dot up to 6 mm has no stroke and takes
+  `satinColumn`, which starts 12% in from each end; a bar's centre-run
+  underlay ends at the far end from where its column starts; a star's
+  centre. To measure a satin change, `tools/satin-walk-census.mjs`:
+  `--kind arc --satin` (hand-drawn curved strokes on the user's satin, the
+  census that caught the C), `--cover` (the share of each drawn shape under
+  thread, how far outside it a needle lands, thread over open ground),
+  `--images` (eight corpus logos shape by shape, a shape's OWN thread apart
+  from any thread: a ground fill runs under small shapes and hides what the
+  satin lost), `--dst` (the files' bytes), `--sheet` (designs before and
+  after at one scale).
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 
