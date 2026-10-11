@@ -84,6 +84,13 @@ direction-change score the row names, and edge deviation beside it — so the
 standing tally is 5 built, 2 gated, 6 partial, 4 not built. Defect 46 is
 closed; row 9 remains open as defect 47.
 
+**Updated 2026-10-11:** row **9 is Gated** — its angle half was built OFF on
+2026-10-08 (PR #700, `cfg.overlap_by_angle`) and the knit placeholder
+`OVERLAP_FABRIC_FACTOR` 1.0 landed in PR #823 — so the standing tally is
+5 built, 3 gated, 6 partial, 3 not built. Defect 47 stays open for the flip,
+the knit value and the perpendicular floor (card block 6) and the unbuilt
+forbid-gap rule.
+
 ### What the buildability column says
 
 Of the **5 not-built rows, only row 2 is blocked by ROADMAP gate 1** — its mm
