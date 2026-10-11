@@ -385,4 +385,12 @@ PRE_FLIP["satin_rail_comp"] = False
 # "should be there to lose"), not the flag under test getting worse. The
 # test that is ABOUT the snap is `tests/test_snap_region_edges.py`.
 PRE_FLIP["snap_region_edges"] = False
+# `two_tone_snap` joined the flipped set 2026-10-11 (defect 58, Kent's
+# approval 2026-10-08), for the reason every entry above gives. ON, a
+# black-and-white raster is thresholded to its two inks before any region
+# exists, so gaulke's grey halo -- the Silver `3971` escape, the 0.58 mm²
+# shard, the enclosed `4174` that the resnap and thread-match files take as
+# their PREMISE -- is never segmented at all. The test that is ABOUT the snap
+# is `tests/test_two_tone.py`.
+PRE_FLIP["two_tone_snap"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}
