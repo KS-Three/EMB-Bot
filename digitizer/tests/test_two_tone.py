@@ -113,9 +113,10 @@ def test_white_logo_on_transparency_runs_with_the_flag_on():
     assert gen is not None
 
 
-def test_flag_off_by_default():
-    """Approved 2026-10-08; held OFF on the halo-premise tests (config.py)."""
-    assert PipelineConfig().two_tone_snap is False
+def test_flag_on_by_default():
+    """Approved 2026-10-08, flipped ON 2026-10-11 once the halo-premise tests
+    measured the pre-flip engine (`tests/conftest.py` PRE_FLIP)."""
+    assert PipelineConfig().two_tone_snap is True
 
 
 def _snapped_stage1(rel: str):
