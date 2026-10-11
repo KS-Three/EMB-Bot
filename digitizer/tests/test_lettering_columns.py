@@ -111,7 +111,9 @@ def test_stations_sit_on_the_outline_and_pitch_follows_spacing():
         assert poly.exterior.distance(Point(a)) < 1e-6 and poly.exterior.distance(Point(b)) < 1e-6
     ys = sorted(a[1] for a, _ in col.stations)
     gaps = [q - p for p, q in zip(ys, ys[1:])]
-    assert all(abs(g - 0.2) < 1e-6 for g in gaps)
+    # both ends are square free caps, so the stations are re-laid evenly
+    # between the cap faces (`_cap_square_ends`): the pitch, never over it
+    assert all(0.2 - 0.01 < g <= 0.2 + 1e-9 for g in gaps)
 
 
 # -------------------------------------------------------------- the engine
@@ -479,6 +481,29 @@ def test_a_round_cap_stays_square():
     from collections import Counter
     ends = Counter(tuple(round(v, 3) for v in p) for st in col.stations for p in st)
     assert max(ends.values()) <= 2
+
+
+def test_a_square_free_terminal_ends_on_its_cap_face():
+    """The scan started half a pitch in and stopped up to a pitch short, so a
+    flat-topped stem ended 0.2-0.4 mm inside its artwork with no lengthwise
+    pull to cover it -- Becker's MARINE read every stem top and foot as
+    unsewn ink (2026-10-11). A square FREE end now ends on its cap face, a
+    hair inside (`CAP_INSET_MM`, the satin tier's own), with the stations
+    re-laid evenly at no more than the pitch; an end at a cut keeps the
+    scan's own last station."""
+    from digitizer_core.outline_cut import CAP_INSET_MM
+    col = letter_columns(_rect(0, 0, 2, 12)).columns[0]
+    ys = sorted(a[1] for a, _ in col.stations)
+    assert abs(ys[0] - CAP_INSET_MM) < 1e-6 and abs(ys[-1] - (12 - CAP_INSET_MM)) < 1e-6
+    gaps = [b - a for a, b in zip(ys, ys[1:])]
+    assert max(gaps) <= 0.4 + 1e-9 and min(gaps) > 0.35
+    # an L cut at the stem's side (x = 2): the foot's free toe is capped,
+    # its end at the cut keeps the scan's half pitch
+    L = unary_union([_rect(0, 0, 2, 12), _rect(0, 0, 8, 2)])
+    foot = min(letter_columns(L).columns, key=lambda c: c.piece.bounds[3])
+    xs = sorted(a[0] for a, _ in foot.stations)
+    assert abs(xs[-1] - (8 - CAP_INSET_MM)) < 1e-6
+    assert abs(xs[0] - (2 + 0.2)) < 1e-6
 
 
 def test_an_uncut_n_reports_the_diagonal_it_cannot_scan():

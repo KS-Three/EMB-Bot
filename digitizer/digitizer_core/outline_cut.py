@@ -645,25 +645,98 @@ def scan_stations(piece: Polygon, u, pitch_mm: float):
     the diagonal only where it was the longer segment (Fremont, 2.1 mm2
     bare of a 6.7 mm2 diagonal). The refinement reads dropped length as
     over-long and cuts the piece."""
-    n = (-u[1], u[0])
     cs = np.array(piece.exterior.coords)
     t = cs @ np.array(u)
     out = []
     dropped = 0.0
     for tt in np.arange(t.min() + pitch_mm / 2, t.max(), pitch_mm):
-        o = (u[0] * tt, u[1] * tt)
-        hit = LineString([(o[0] - n[0] * 200, o[1] - n[1] * 200),
-                          (o[0] + n[0] * 200, o[1] + n[1] * 200)]).intersection(piece)
-        segs = [g for g in getattr(hit, "geoms", [hit]) if g.geom_type == "LineString" and g.length > 0.05]
-        if not segs:
+        hit = _scan_cross(piece, u, tt)
+        if hit is None:
             continue
-        g = max(segs, key=lambda g: g.length)
-        dropped += sum(h.length for h in segs) - g.length
-        p, q = g.coords[0], g.coords[-1]
-        if (p[0] * n[0] + p[1] * n[1]) > (q[0] * n[0] + q[1] * n[1]):
-            p, q = q, p
-        out.append((tuple(p), tuple(q)))
+        cross, extra = hit
+        dropped += extra
+        out.append(cross)
     return (out, dropped) if len(out) >= 3 else None
+
+
+def _scan_cross(piece: Polygon, u, tt: float):
+    """The cross square to axis u at axis position tt: the longest segment
+    the scanline cuts from the piece, ordered along the normal. -> ((pa,
+    pb), length of the other segments), or None where it cuts nothing."""
+    n = (-u[1], u[0])
+    o = (u[0] * tt, u[1] * tt)
+    hit = LineString([(o[0] - n[0] * 200, o[1] - n[1] * 200),
+                      (o[0] + n[0] * 200, o[1] + n[1] * 200)]).intersection(piece)
+    segs = [g for g in getattr(hit, "geoms", [hit]) if g.geom_type == "LineString" and g.length > 0.05]
+    if not segs:
+        return None
+    g = max(segs, key=lambda g: g.length)
+    p, q = g.coords[0], g.coords[-1]
+    if (p[0] * n[0] + p[1] * n[1]) > (q[0] * n[0] + q[1] * n[1]):
+        p, q = q, p
+    return (tuple(p), tuple(q)), sum(h.length for h in segs) - g.length
+
+
+# A square terminal's last cross goes ON its cap face, this far inside it --
+# the satin tier's own terminal (`stage6_satin._CAP_INSET_MM`, `_extend_to_cap`).
+CAP_INSET_MM = 0.03
+# A cross at least this share of the column's median is full width: the end is
+# square, not a slant (`_fan_ends`' own 0.85) or a round cap.
+CAP_SQUARE_FRAC = 0.85
+# A cap face this close to a cut line is the cut, not a terminal.
+CAP_CUT_CLEAR_MM = 0.1
+
+
+def _cap_square_ends(st, piece: Polygon, u, cut_lines, pitch_mm: float):
+    """Square FREE terminals get their end cross on the cap face, the way the
+    satin tier ends a column (`_extend_to_cap`: the terminal station sits on
+    the cap, a hair inside). The scan starts half a pitch in and stops up to a
+    whole pitch short of the far end, so a flat-topped stem ended 0.2-0.4 mm
+    inside its artwork with no lengthwise pull to cover it: on Becker's MARINE
+    every stem top and foot read as unsewn ink (2026-10-11,
+    `docs/renders/columns-lost-frac-2026-10-11/`). Where an end qualifies, the
+    stations are re-laid evenly between the caps at no more than `pitch_mm`;
+    an end at a cut, a slant (left to `_fan_ends`) or a round cap keeps the
+    scan's own last station, and a column with neither end qualifying is
+    returned unchanged."""
+    if len(st) < 3:
+        return st
+    cs = np.array(piece.exterior.coords)
+    t = cs @ np.array(u)
+
+    def at(s):
+        return s[0][0] * u[0] + s[0][1] * u[1]
+
+    lengths = sorted(math.dist(a, b) for a, b in st)
+    med = lengths[len(lengths) // 2]
+
+    def cap(te: float, sign: int):
+        hit = _scan_cross(piece, u, te - sign * CAP_INSET_MM)
+        if hit is None:
+            return None
+        (a, b), _extra = hit
+        if math.dist(a, b) < CAP_SQUARE_FRAC * med:
+            return None                                   # slant or round cap
+        mid = Point((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+        if any(c.distance(mid) < CAP_CUT_CLEAR_MM for c in cut_lines):
+            return None                                   # a cut, not a terminal
+        return te - sign * CAP_INSET_MM
+
+    lo = cap(float(t.min()), -1) if math.dist(*st[0]) >= CAP_SQUARE_FRAC * med else None
+    hi = cap(float(t.max()), 1) if math.dist(*st[-1]) >= CAP_SQUARE_FRAC * med else None
+    if lo is None and hi is None:
+        return st
+    t0 = lo if lo is not None else at(st[0])
+    t1 = hi if hi is not None else at(st[-1])
+    if t1 - t0 < 2 * pitch_mm:
+        return st
+    k = int(math.ceil((t1 - t0) / pitch_mm - 1e-9))
+    out = []
+    for i in range(k + 1):
+        hit = _scan_cross(piece, u, t0 + (t1 - t0) * i / k)
+        if hit is not None:
+            out.append(hit[0])
+    return out if len(out) >= 3 else st
 
 
 def _straight_rails(piece: Polygon, u):
@@ -763,6 +836,7 @@ def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float) -> Column
             if sc:
                 st, dropped = sc
                 rr = _straight_rails(piece, u)
+                st = _cap_square_ends(st, piece, u, cut_lines, pitch_mm)
                 st = _fan_ends(st, piece, u, pitch_mm, W)
                 return Column(stations=st, piece=piece, kind="straight", axis=u,
                               width_mm=W, rail_a=rr[0] if rr else [], rail_b=rr[1] if rr else [],

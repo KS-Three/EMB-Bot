@@ -900,6 +900,8 @@
     const pullCompMm = (fabric && fabric.pullCompMm != null) ? fabric.pullCompMm
       : (o.pullCompMm == null ? 0.2 : o.pullCompMm);
     const useUnderlay = o.underlay !== false;
+    // `underlayDirection` (default OFF, defect 57): a satin column starts at the end nearer where its underlay ends (satin.js startNear).
+    const underlayDirection = !!o.underlayDirection;
     const perRegionAngle = o.perRegionAngle !== false;
     const garment = o.garment || { widthIn: 5, heightIn: 2.25 };
 
@@ -1486,6 +1488,7 @@
               ? satinplaymod.satinFromRails(column.railA, column.railB, colRungs,
                   { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg })
               : sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg });
+            if (underlayDirection) pts = satinmod.startNear(pts, endOfRuns(runs));
             nSatin++;
           }
           else {
