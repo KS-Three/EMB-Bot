@@ -1123,10 +1123,10 @@ test("a canvas straddling the fold scrolls once it is more than a tenth clipped"
 // Finish button with two points or more. Its assign box has Dim, Color and a
 // Width in mm (through the element's fit), and nothing a column cannot use.
 
-function renderColumnPanel(shapes = [], { fit = null, fabric = null } = {}) {
+function renderColumnPanel(shapes = [], { fit = null, fabric = null, garment = null } = {}) {
   const patches = [];
   const utils = render(Harness, {
-    props: { element: baseElement(shapes), fit, fabric, onPatch: (d) => patches.push(d) },
+    props: { element: baseElement(shapes), fit, fabric, garment, onPatch: (d) => patches.push(d) },
   });
   const canvas = utils.container.querySelector("canvas");
   return { ...utils, canvas, patches };
@@ -1180,6 +1180,23 @@ describe("Column mode", () => {
     await fireEvent.keyDown(canvas, { key: "Enter" });
     expect(patches).toHaveLength(1);
     expect(patches[0].patch.shapes[0].widthPx).toBeCloseTo(16, 9);
+  });
+
+  test("with the garment, a new column is sized for the fit it will GET once the element fits it", async () => {
+    // The nominal 24 px of a lone column across half the canvas fits to far
+    // more than 4.0 mm; newColumnWidthPx solves for the post-fit width.
+    const { newColumnWidthPx } = await import("../lib/fieldNodeEdit.js");
+    const garment = (await import("../lib/emb.js")).EMB.getGarment("tote");
+    const { canvas, getByRole, patches } = renderColumnPanel([], { garment });
+    await fireEvent.click(columnBtn(getByRole));
+    await clickAt(canvas, 150, 200);
+    await clickAt(canvas, 450, 200);
+    await fireEvent.keyDown(canvas, { key: "Enter" });
+    expect(patches).toHaveLength(1);
+    const s = patches[0].patch.shapes[0];
+    const want = newColumnWidthPx(baseElement([]), [], { ...s, widthPx: 0 }, garment);
+    expect(want).toBeLessThan(24);
+    expect(s.widthPx).toBeCloseTo(want, 9);
   });
 
   test("Finish is off at one point and on at two", async () => {

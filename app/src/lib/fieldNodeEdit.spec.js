@@ -8,7 +8,7 @@ import {
   pxToFieldMm, fieldMmToPx, authoredInFieldMm, hitAuthored,
   applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, clampMmToBox,
   breaksContainment, ringInsideBox, cutOutOutlinesInFieldMm, CUTOUT_HOLD_HINT, refitShapesPatch,
-  columnWidthMm, withColumnWidthMm, columnSewnMm,
+  columnWidthMm, withColumnWidthMm, columnSewnMm, predictedFit, newColumnWidthPx,
 } from "./fieldNodeEdit.js";
 import { withCutOut, shapeRing } from "./manualShapes.js";
 
@@ -565,5 +565,54 @@ describe("columns — the re-fit rule and ruling 12, through the real engine", (
     const ratio = sewn2 / sewnS;
     expect(ratio).toBeLessThan(2);
     expect(Math.abs(ratio - predicted)).toBeLessThanOrEqual(0.03);
+  });
+});
+
+// ---- a NEW column's width: 4.0 mm in the design it lands in --------------
+// Found by the e2e (2026-10-11): the first column of a fresh element was drawn
+// 24 px wide at the nominal 6 px/mm, and the element then fitted its rail ring
+// to the garment — a column across half the side canvas came out over 6.5 mm
+// and warned. predictedFit is the engine's own two-constraint fit rule, so a
+// new column is sized for the fit it will actually get (ruling 9).
+describe("predictedFit / newColumnWidthPx — sized for the fit the column will get", () => {
+  const tote = () => EMB.getGarment("tote");
+  const widthOnHoop = (element, g, id) => {
+    const d = generateElement(element, g, {});
+    return columnWidthMm(element.shapes.find((s) => s.id === id), d.fit);
+  };
+
+  test("predictedFit agrees with the engine's fit, with and without sizeMm", () => {
+    for (const g of [garment, tote()]) {
+      for (const sizeMm of [null, 40, 90, 5000]) {
+        const shapes = [rect("s1", 100, 100, 300, 300), col("c1", [{ x: 320, y: 200 }, { x: 560, y: 260 }], 20)];
+        const element = el(shapes, { sizeMm });
+        const want = generateElement(element, g, {}).fit.mmPerPx;
+        expect(predictedFit(element, shapes, g).mmPerPx).toBeCloseTo(want, 9);
+      }
+    }
+  });
+
+  test("the first column of a fresh element sews 4.0 mm drawn, not the nominal 24 px through the fit", () => {
+    const g = tote();
+    const spine = [{ x: 150, y: 200 }, { x: 450, y: 200 }];
+    const element = el([], { sizeMm: null });
+    const c = col("s1", spine, newColumnWidthPx(element, [], col("s1", spine, 0), g));
+    expect(widthOnHoop({ ...element, shapes: [c] }, g, "s1")).toBeCloseTo(4.0, 2);
+    // the old rule, for the record: 24 px through the real fit is far wider
+    expect(widthOnHoop({ ...element, shapes: [col("s1", spine, 24)] }, g, "s1")).toBeGreaterThan(6.5);
+  });
+
+  test("a column added beside existing shapes is 4.0 mm after the element re-fits to it", () => {
+    const g = tote();
+    const shapes = [rect("s1", 100, 100, 250, 250)];
+    const element = el(shapes, { sizeMm: 50 });
+    const spine = [{ x: 260, y: 120 }, { x: 560, y: 300 }];
+    const c = col("s2", spine, newColumnWidthPx(element, shapes, col("s2", spine, 0), g));
+    expect(widthOnHoop({ ...element, shapes: [...shapes, c] }, g, "s2")).toBeCloseTo(4.0, 2);
+  });
+
+  test("no garment: null, and the caller falls back", () => {
+    expect(predictedFit(el([]), [rect("s1", 0, 0, 10, 10)], null)).toBeNull();
+    expect(newColumnWidthPx(el([]), [], col("s1", [{ x: 0, y: 0 }, { x: 100, y: 0 }], 0), null)).toBeNull();
   });
 });

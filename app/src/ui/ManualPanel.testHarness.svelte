@@ -23,6 +23,7 @@
   // Forwarded to ManualPanel's `fit` / `fabric` (a column's width in mm).
   export let fit = null;
   export let fabric = null;
+  export let garment = null;
 
   function handle(e) {
     element = { ...element, ...e.detail.patch };
@@ -30,4 +31,4 @@
   }
 </script>
 
-<ManualPanel {element} {traceWorkImage} {fit} {fabric} on:elupdate={handle} />
+<ManualPanel {element} {traceWorkImage} {fit} {fabric} {garment} on:elupdate={handle} />

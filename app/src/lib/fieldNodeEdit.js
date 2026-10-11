@@ -13,7 +13,7 @@
 import {
   flattenShape, curveHandlePoint, curveControlOrNull,
   insertVertexAtSegment, nearestSegmentIndex, resolveCutOuts,
-  isColumn, shapeRing, shapeProblems, columnRails,
+  isColumn, shapeRing, shapeProblems, columnRails, PX_PER_MM, COLUMN_DEFAULT_MM,
 } from "./manualShapes.js";
 
 // shapeOverlay.js's grab radii, so a hand-drawn node feels like a digitized one.
@@ -262,6 +262,44 @@ function flatBBox(shapes) {
 // its width as geometry — `widthPx`, authored canvas px — so a resize scales it
 // with everything else. Millimetres are a VIEW through the element's fit, and
 // nothing here stores one.
+
+// The fit the engine WILL give `shapes` in `element` on `garment`, before it
+// has generated them: buildQualityDesign's own two-constraint rule (digitize.js,
+// "Explicit width override") over the bbox it is handed — the rings
+// shapesToRegions emits, i.e. flatBBox, at shapesToRegions' PX_PER_MM.
+//   no sizeMm:  scale = min(boxW / bboxW, boxH / bboxH)   (garments.fitScale)
+//   sizeMm:     scale = min(clamp(sizeMm, 1, boxW) / bboxW, boxH / bboxH)
+// In px terms that is mmPerPx = min(target / bboxWpx, boxH / bboxHpx), the
+// engine's `|| 1` (one mm) guard included. { mmPerPx } or null.
+const MM_PER_INCH = 25.4;
+export function predictedFit(element, shapes, garment) {
+  if (!garment || !(garment.widthIn > 0) || !(garment.heightIn > 0)) return null;
+  const b = flatBBox(shapes || []);
+  if (!b) return null;
+  const wPx = (b.maxX - b.minX) || PX_PER_MM, hPx = (b.maxY - b.minY) || PX_PER_MM;
+  const boxW = garment.widthIn * MM_PER_INCH, boxH = garment.heightIn * MM_PER_INCH;
+  const size = element && typeof element.sizeMm === "number" && isFinite(element.sizeMm) && element.sizeMm > 0
+    ? Math.min(Math.max(element.sizeMm, 1), boxW) : boxW;
+  return { mmPerPx: Math.min(size / wPx, boxH / hPx) };
+}
+
+// The `widthPx` that makes a NEW column `mm` wide (COLUMN_DEFAULT_MM, ruling
+// 9) in the design it lands in. The column's own rails are part of the bbox the
+// element fits, so the answer is a fixed point: width -> fit -> width. It
+// settles in a few rounds (the width moves the bbox far less than it moves
+// itself). null with no garment — the caller falls back to the fit it has.
+export function newColumnWidthPx(element, shapes, column, garment, mm = COLUMN_DEFAULT_MM) {
+  if (!isColumn(column) || !garment) return null;
+  let w = mm * PX_PER_MM;
+  for (let i = 0; i < 8; i++) {
+    const f = predictedFit(element, [...(shapes || []), { ...column, widthPx: w }], garment);
+    if (!f) return null;
+    const next = mm / f.mmPerPx;
+    if (Math.abs(next - w) < 1e-9) break;
+    w = next;
+  }
+  return w;
+}
 
 // The floor a typed width is held to. Not a sewing limit (the engine clamps
 // nothing, ruling 5) — only what keeps `widthPx` positive, so the column keeps

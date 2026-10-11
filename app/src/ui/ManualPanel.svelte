@@ -15,7 +15,7 @@
     PX_PER_MM, COLUMN_DEFAULT_MM, isColumn, columnIssues, shapeProblems, shapeRing,
   } from "../lib/manualShapes.js";
   import { SATIN_CUTOUT_NOTE, columnWidthNote } from "../lib/shapePopover.js";
-  import { columnWidthMm, withColumnWidthMm, refitShapesPatch } from "../lib/fieldNodeEdit.js";
+  import { columnWidthMm, withColumnWidthMm, refitShapesPatch, newColumnWidthPx } from "../lib/fieldNodeEdit.js";
   import { traceFitRect } from "../lib/manualTrace.js";
 
   // Node colours, straight vs curved. Same vocabulary the Ember demo uses
@@ -60,6 +60,11 @@
   // element has never generated) the canvas's nominal PX_PER_MM stands in.
   export let fit = null;
   export let fabric = null;
+  // The garment the element sews on (EMB.getGarment), optional. With it a new
+  // column is sized for the fit it will GET — its own rails are part of the
+  // bbox the element fits, so the current fit is not the one it lands in
+  // (newColumnWidthPx). Without it, the current fit or the nominal scale.
+  export let garment = null;
   function mmFitOf(f) {
     return f && f.mmPerPx > 0 ? f : { mmPerPx: 1 / PX_PER_MM };
   }
@@ -190,7 +195,7 @@
   // A column draft is judged as the column it would become — its spine plus
   // the width a new column gets — so "folds over itself" shows while drawing,
   // and two points are enough.
-  $: draftColumn = drawMode === "column" ? newColumn("", draft, draftCurves, mmFit) : null;
+  $: draftColumn = drawMode === "column" ? newColumn("", draft, draftCurves, fit, garment, shapes) : null;
   $: draftIssues = draftColumn
     ? (draft.length >= 2 ? columnIssues(draftColumn) : [])
     : (draft.length >= 3 ? shapeIssues(draftFlat) : []);
@@ -198,13 +203,16 @@
   $: draftRing = draftColumn && draft.length >= 2 ? shapeRing(draftColumn) : [];
 
   // A new column record: no stitchType, no angleDeg (the rails are the
-  // direction), COLUMN_DEFAULT_MM wide through the element's fit (ruling 9).
-  function newColumn(id, points, curves, f) {
-    return {
+  // direction), COLUMN_DEFAULT_MM wide (ruling 9) in the design it lands in.
+  function newColumn(id, points, curves, f, g, list) {
+    const col = {
       id, kind: "column", points, curves,
       widthPx: COLUMN_DEFAULT_MM / mmFitOf(f).mmPerPx,
       colorRgb: defaultManualShape(id).colorRgb,
     };
+    const solved = g && points.length >= 2 ? newColumnWidthPx(element, list, col, g) : null;
+    if (solved > 0) col.widthPx = solved;
+    return col;
   }
 
   // Bring the drawing canvas into view on entry, but only when it is actually
@@ -277,7 +285,7 @@
     // never depends on Svelte's reactive-statement flush having already run
     // by the time a caller in the same tick invokes finishShape.
     if (drawMode === "column") {
-      const col = newColumn(nextShapeId(shapes), draft, draftCurves, fit);
+      const col = newColumn(nextShapeId(shapes), draft, draftCurves, fit, garment, shapes);
       if (columnIssues(col).length) return;
       patch({ shapes: [...shapes, col] });
       draft = [];
