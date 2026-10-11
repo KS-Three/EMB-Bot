@@ -1,6 +1,6 @@
 # Satin columns in the manual lane — Implementation Plan (plan 2 of 3)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** A hand-drawn satin column: draw an open spine, it gets a width, and it sews as satin between the two rails that width implies.
 
@@ -50,15 +50,15 @@
 - Consumes: `satinplay.satinFromRails(railA, railB, rungs, opts)` and `satinplay.centerRun(railA, railB, rungs, opts)` from `src/satinplay.js` (read their signatures and what `centerRun` returns before use).
 - Produces: a region shape may carry `sewAs: { kind: "column", railA: [{x,y}...], railB: [{x,y}...] }` (region px, both rails running the same direction). With `tierOverride: "satin"` and no holes, its top stitch is `satinplaymod.satinFromRails(railA, railB, [], { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg })`, and when the underlay style in force is `center_run` its underlay is `satinplaymod.centerRun(railA, railB, [], …)` instead of `underlayRuns`' straight PCA line. Every other underlay style and everything else (outline, bbox, spans, `shapeOutlines`, trims) reads `outer` as today.
 
-- [ ] **Step 1: failing tests** (rails for a straight column: `railA` = (0,0)→(300,0), `railB` = (0,24)→(300,24); `outer` = railA + reversed railB; `pxPerMm: 6`, `targetWidthMm: 50`, garment 8×8 in):
+- [x] **Step 1: failing tests** (rails for a straight column: `railA` = (0,0)→(300,0), `railB` = (0,24)→(300,24); `outer` = railA + reversed railB; `pxPerMm: 6`, `targetWidthMm: 50`, garment 8×8 in):
   1. With `sewAs`, the design's satin stitches for the shape equal — point for point after the engine's own `T()` rounding — a direct `satinFromRails` call on the same rails with the same options (build the expectation with the engine's exported `fit` to get `pxPerFinalMm`; read how an existing test derives it).
   2. Without `sewAs`, the same `outer` with `tierOverride: "satin"` produces today's stitches — assert it is NOT equal to (1) only if they genuinely differ; the binding assertion is that removing `sewAs` reproduces the pre-change output (hash it before your change and pin the hash).
   3. A CURVED column (rails along a quarter circle, radius 200 px, width 24 px), `underlay: true`, fabric with `satinUnderlay: "center_run"`: every underlay stitch lies inside `outer` (even-odd point-in-polygon, 0.5 px tolerance). Show it FAILS before the underlay change.
   4. `sewAs` with a hole present or `tierOverride: "fill"` is ignored (sews as fill, as today).
   5. The module works under Node: `satinFromRails` is reached through a real binding (this test fails with a TypeError/ReferenceError before Step 2).
-- [ ] **Step 2: implement.** Add `const satinplaymod = _node ? dep("./satinplay.js") : root.EMB;` beside the other bindings. In the `if (thin)` top-stitch branch use the rails when `shape.sewAs && shape.sewAs.kind === "column"`. In the fabric-mode underlay branch, when `thin`, the column has rails and the style is `center_run`, push `satinplaymod.centerRun(...)`'s run(s) in the same form `underlayRuns` returns. Comment both sites with the spec section.
-- [ ] **Step 3:** `node --test` from the repo root to a log; baseline count + your tests, zero failures. `node app/scripts/copy-engine.mjs`.
-- [ ] **Step 4: commit** — `Engine: a region with authored rails sews satin between them, and its centre run follows them`.
+- [x] **Step 2: implement.** Add `const satinplaymod = _node ? dep("./satinplay.js") : root.EMB;` beside the other bindings. In the `if (thin)` top-stitch branch use the rails when `shape.sewAs && shape.sewAs.kind === "column"`. In the fabric-mode underlay branch, when `thin`, the column has rails and the style is `center_run`, push `satinplaymod.centerRun(...)`'s run(s) in the same form `underlayRuns` returns. Comment both sites with the spec section.
+- [x] **Step 3:** `node --test` from the repo root to a log; baseline count + your tests, zero failures. `node app/scripts/copy-engine.mjs`.
+- [x] **Step 4: commit** — `Engine: a region with authored rails sews satin between them, and its centre run follows them`.
 
 ---
 
@@ -80,10 +80,10 @@
   - `shapesToRegions`: a valid column emits `{ id, outer: ring, holes: [], tierOverride: "satin", angleOverride: null, sewAs: { kind: "column", railA, railB } }`; an invalid one is skipped like an invalid shape.
 - `flow.js` `isSewable`: uses `isSewableShape`.
 
-- [ ] **Step 1: failing tests.** `spineRails.spec.js`: a straight horizontal spine of length 300, width 24 → rails exactly 24 apart, ring area 7,200, both rails 2 points, same direction; a right-angle spine → the corner's miter is clamped (no rail point further than 2× half-width from its spine vertex); a curved (flattened quadratic) spine → rails have the spine's point count; zero width / one point → `null`. `manualShapes.spec.js`: `shapeRing` for both kinds; `columnIssues` for each message (a hairpin spine wider than its bend radius folds); `shapesToRegions` emits the `sewAs` region and, for shapes with no column, output deep-equal to before (pin with the existing no-cut-out fixtures); `resolveCutOuts` never picks a column as parent even when its ring contains a cut-out; `manualShapeName`; a 2-point column `isSewableShape`. `flow.spec.js`: an element holding only a valid column is sewable. `projectFile.spec.js`: a column round-trips with `kind` and `widthPx` intact, version unchanged.
-- [ ] **Step 2: implement.**
-- [ ] **Step 3:** full Studio suite (`--maxWorkers=2`) to a log; zero failures.
-- [ ] **Step 4: commit** — `manualShapes: a column is an open spine plus a width, and shapeRing says what ring any shape presents`.
+- [x] **Step 1: failing tests.** `spineRails.spec.js`: a straight horizontal spine of length 300, width 24 → rails exactly 24 apart, ring area 7,200, both rails 2 points, same direction; a right-angle spine → the corner's miter is clamped (no rail point further than 2× half-width from its spine vertex); a curved (flattened quadratic) spine → rails have the spine's point count; zero width / one point → `null`. `manualShapes.spec.js`: `shapeRing` for both kinds; `columnIssues` for each message (a hairpin spine wider than its bend radius folds); `shapesToRegions` emits the `sewAs` region and, for shapes with no column, output deep-equal to before (pin with the existing no-cut-out fixtures); `resolveCutOuts` never picks a column as parent even when its ring contains a cut-out; `manualShapeName`; a 2-point column `isSewableShape`. `flow.spec.js`: an element holding only a valid column is sewable. `projectFile.spec.js`: a column round-trips with `kind` and `widthPx` intact, version unchanged.
+- [x] **Step 2: implement.**
+- [x] **Step 3:** full Studio suite (`--maxWorkers=2`) to a log; zero failures.
+- [x] **Step 4: commit** — `manualShapes: a column is an open spine plus a width, and shapeRing says what ring any shape presents`.
 
 ---
 
@@ -100,11 +100,11 @@
 - `flatBBox`, `ringInsideBox`: via `shapeRing(shape)` — so the bbox equals the engine's (the rail ring) and the placement-box guard sees the rails.
 - `columnWidthMm(shape, fit) → number` (`widthPx × fit.mmPerPx`); `withColumnWidthMm(shape, fit, mm) → shape` (sets `widthPx = mm / fit.mmPerPx`, floor 0.1 mm); `columnSewnMm(shape, fit, pullCompMm) → number`.
 
-- [ ] **Step 1: failing tests**, including, through the REAL engine like the file's invariance tests: (a) an element with a rectangle and a column; drag one spine anchor; `editedElementPatch`; regenerate — the rectangle's outline moves by no more than the existing tolerance and `fit.mmPerPx` holds to 1e-12; (b) the same after `withColumnWidthMm` doubles the width via `refitShapesPatch` — proves the bbox uses the rail ring; (c) **ruling 12**: generate the element at `sizeMm` S and at 2S — `columnWidthMm` doubles (±0.05 mm), and the measured sewn width (max cross length among the column's satin stitches, in mm) grows by `2 × drawn + pullComp` over `drawn + pullComp`, i.e. LESS than 2×; assert the ratio is within 0.03 of that prediction for the fabric in force.
+- [x] **Step 1: failing tests**, including, through the REAL engine like the file's invariance tests: (a) an element with a rectangle and a column; drag one spine anchor; `editedElementPatch`; regenerate — the rectangle's outline moves by no more than the existing tolerance and `fit.mmPerPx` holds to 1e-12; (b) the same after `withColumnWidthMm` doubles the width via `refitShapesPatch` — proves the bbox uses the rail ring; (c) **ruling 12**: generate the element at `sizeMm` S and at 2S — `columnWidthMm` doubles (±0.05 mm), and the measured sewn width (max cross length among the column's satin stitches, in mm) grows by `2 × drawn + pullComp` over `drawn + pullComp`, i.e. LESS than 2×; assert the ratio is within 0.03 of that prediction for the fabric in force.
   Unit: `removeAnchor` bookkeeping for first / last / interior anchors with curves on every segment; floor 2 returns `null`; `hitAuthored(..., false)` never returns index n−1 for an edge or handle.
-- [ ] **Step 2: implement.**
-- [ ] **Step 3:** suite to a log; zero failures; the pre-existing invariance tests unmodified.
-- [ ] **Step 4: commit** — `fieldNodeEdit: an open spine edits like a shape, and a column's width reads and writes in mm through the fit`.
+- [x] **Step 2: implement.**
+- [x] **Step 3:** suite to a log; zero failures; the pre-existing invariance tests unmodified.
+- [x] **Step 4: commit** — `fieldNodeEdit: an open spine edits like a shape, and a column's width reads and writes in mm through the fit`.
 
 ---
 
@@ -117,7 +117,7 @@
 - `popoverPatch(ctx, "widthMm", value)` with `ctx.fit` → `{ shapes }` using `withColumnWidthMm`; `null` when `fit` is missing or the value is not a positive number. (The field re-fits it — Task 5.)
 - `ShapePopover.svelte`: a `number` row honours `row.step` / `row.min` (default step 1 as today) and commits on `change` (blur/Enter), not on every keystroke, when `row.key === "widthMm"`.
 
-- [ ] Steps: failing tests → implement → both specs + suite to a log → commit `Popover: a column shows its width in mm, what it sews at, and warns past 6.5`.
+- [x] Steps: failing tests → implement → both specs + suite to a log → commit `Popover: a column shows its width in mm, what it sews at, and warns past 6.5`.
 
 ---
 
@@ -133,8 +133,8 @@ Behaviour:
 5. Remove point: floor message for a column is `A column needs at least 2 points.`; the right-click item's at-floor test uses the per-kind floor.
 6. The drag guards use the functions Task 3 changed — no code change expected; verify the box guard now stops a column's RAIL at the placement box.
 
-- [ ] Verify: `npx vite build` (EXIT=0, no new warnings), suite, then drive it once in a browser with a throwaway script under the workspace (model on `.superpowers/sdd/2026-10-01-manual-holes/task6-drive.mjs` if that directory still exists in the sibling worktree `../manual-holes`; else on `app/e2e/manual-cutout.spec.js`'s helpers). Because Task 6 (drawing) is not built yet, seed a column by loading a project/element whose `shapes` already contains one — find how the e2e specs seed state, or use the app's own import. Check: the column sews as satin; click it → popover `Shape 1 · Column` with a width and the sews-note; set width 6.0 → caption changes, nothing else moves; drag a spine anchor; right-click an anchor → Remove point. Screenshot to the workspace; open it and say what you see.
-- [ ] Commit — `Field: a column's spine edits open, its width sets from the popover, and nothing else moves`.
+- [x] Verify: `npx vite build` (EXIT=0, no new warnings), suite, then drive it once in a browser with a throwaway script under the workspace (model on `.superpowers/sdd/2026-10-01-manual-holes/task6-drive.mjs` if that directory still exists in the sibling worktree `../manual-holes`; else on `app/e2e/manual-cutout.spec.js`'s helpers). Because Task 6 (drawing) is not built yet, seed a column by loading a project/element whose `shapes` already contains one — find how the e2e specs seed state, or use the app's own import. Check: the column sews as satin; click it → popover `Shape 1 · Column` with a width and the sews-note; set width 6.0 → caption changes, nothing else moves; drag a spine anchor; right-click an anchor → Remove point. Screenshot to the workspace; open it and say what you see.
+- [x] Commit — `Field: a column's spine edits open, its width sets from the popover, and nothing else moves`.
 
 ---
 
@@ -149,7 +149,7 @@ Behaviour:
 4. List row `Shape N · Column`; assign box for a column: Dim, Color, and a Width row (number, mm, step 0.1, with the same note as the popover via the same lib functions) — no Stitch type, Fill angle or Cut out rows. With no fit the width row shows the nominal mm.
 5. `TraceImportPanel`'s preview of existing shapes uses `shapeRing`.
 
-- [ ] Steps: failing spec tests (mode strip has three entries; 2 clicks + double-click in Column mode emits a `kind: "column"` shape with `widthPx` > 0 and no `stitchType`; near-start click adds a point; list row text; assign box rows; Shape and Hole modes' existing tests unmodified) → implement → suite + `vite build` → browser drive (draw a curved column across the canvas; see satin on the hoop; screenshot at 1440×900, open it) → commit `ManualPanel: Column mode — draw a spine, get a satin column`.
+- [x] Steps: failing spec tests (mode strip has three entries; 2 clicks + double-click in Column mode emits a `kind: "column"` shape with `widthPx` > 0 and no `stitchType`; near-start click adds a point; list row text; assign box rows; Shape and Hole modes' existing tests unmodified) → implement → suite + `vite build` → browser drive (draw a curved column across the canvas; see satin on the hoop; screenshot at 1440×900, open it) → commit `ManualPanel: Column mode — draw a spine, get a satin column`.
 
 ---
 
@@ -168,7 +168,7 @@ e2e (copy helpers from `app/e2e/manual-cutout.spec.js`; wait-for-change-then-set
 
 Docs: a dated section in the area doc (what shipped; ruling 12 with the three measured pairs and the note's path; the three spec corrections; what is not built — taper, runs, run↔column conversion, auto-split; the pull-comp attribution is unconfirmed); MASTER_SCOPE area-5 paragraph with `(verb date — source)` pointers (word budget 27,000 — check with `/c/Users/EE-LT-11030/CLAUDE~4/EMB-Bot/digitizer/.venv/Scripts/python.exe -m pytest -q tests/test_scope_budget.py` from `digitizer/`, the one Python command allowed); COOKBOOK manual-lane entry gains the column bullets (`shapeRing` is the one ring; width is `widthPx`); memory note: the width-on-resize finding (k ≈ 0.80–0.85; outline scales, a fixed ~0.3–0.55 mm does not; no clamp 0.67–11.8 mm; one digitizer; where the note is).
 
-- [ ] Commit — `e2e + docs: columns proven end to end, and ruling 12 on the record`.
+- [x] Commit — `e2e + docs: columns proven end to end, and ruling 12 on the record`.
 
 ---
 
@@ -180,3 +180,38 @@ Docs: a dated section in the area doc (what shipped; ruling 12 with the three me
 ## Not in this plan
 
 Open runs (plan 3); run ↔ column conversion; taper; auto-split of wide columns (needs a sew-out — gate 1); drawn two-rail columns; the side panel's re-fit leftovers from plan 1.
+
+## Status 2026-10-11 — every task done
+
+Finished on `claude/manual-columns` after the lane was abandoned mid-Task 5.
+Tasks 1–4 were committed in this lane on 2026-10-01 (e54423a3, 8ee893e1,
+954215ee, 8f27932a, a92e3648, 1ae7b2df, fc1607ed); Task 5's field work was
+backed up as 6b9ee6c3 and is verified by Task 7's e2e (popover width and
+note, anchor drag, the placement box, right-click Remove point on a 2-point
+floor); Task 6 is `ManualPanel: Column mode — draw a spine, get a satin
+column`; Task 7's e2e is `app/e2e/manual-column.spec.js`.
+
+Where the build departed from the text above, and why:
+
+- **A new column is sized for the fit it LANDS in, not the nominal 6 px/mm.**
+  Found by e2e (b): the first column of a fresh element, 24 px at the nominal
+  scale, was fitted with the rest of its rail ring to the garment and sewed
+  over 6.5 mm. `predictedFit` (the engine's two-constraint fit rule, pinned
+  against the real engine for two garments and four sizes) and
+  `newColumnWidthPx` (a width → fit → width fixed point) make it 4.0 mm in
+  the design; ManualPanel takes the garment from ContentStep. Without a
+  garment it falls back to the fit in hand, then the nominal scale.
+- **Task 7 (b): a wider column does not change the stitch count** — a satin's
+  count follows its length — so the test asserts the caption's height grows.
+- **Task 7 (c) scales 1.5×, not 2×**: 4.0 mm doubled is past the 6.5 mm
+  warning, whose note quotes no figure. It reads the side panel's Width row
+  (the same `columnWidthNote` the popover uses).
+- **The side panel's Width commits through `refitShapesPatch`** when the
+  element has a fit, as the spec's §6 amendment asks ("so nothing else
+  moves"); the plan's Task 6 text did not say so.
+- **Docs:** this lane did not touch `MASTER_SCOPE.md` or `COOKBOOK.md` (the
+  foreman's rule for this run); the area doc
+  `docs/scope/5-review-manual-editing.md` and the memory note carry it, and
+  the MASTER_SCOPE area-5 paragraph is left for an `update-master-scope` pass.
+- **Merging main moved three byte-identity pins** (two engine, one Studio):
+  re-taken from origin/main 431c5026's own src, which never reads `sewAs`.
