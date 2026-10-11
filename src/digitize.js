@@ -900,8 +900,8 @@
     const pullCompMm = (fabric && fabric.pullCompMm != null) ? fabric.pullCompMm
       : (o.pullCompMm == null ? 0.2 : o.pullCompMm);
     const useUnderlay = o.underlay !== false;
-    // `underlayDirection` (default OFF, defect 57): a satin column starts at the end nearer where its underlay ends (satin.js startNear).
-    const underlayDirection = !!o.underlayDirection;
+    // `underlayDirection` (default ON, Kent 2026-10-11; built OFF in PR #822; defect 57): a satin column starts at the end nearer where its underlay ends (satin.js startNear). `underlayDirection: false` restores the old order.
+    const underlayDirection = o.underlayDirection !== false;
     const perRegionAngle = o.perRegionAngle !== false;
     const garment = o.garment || { widthIn: 5, heightIn: 2.25 };
 

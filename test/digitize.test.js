@@ -3581,7 +3581,8 @@ test("sewAs column: ignored when the shape has a hole or is forced to fill (sews
 test("sewAs column: without sewAs the fabric path (center_run underlay) is byte-identical too", () => {
   const crypto = require("node:crypto");
   const col = straightCol();
-  const d = colDesign(col, {}, { underlay: true, fabric: fab({ satinUnderlay: "center_run" }) });
+  // `underlayDirection: false` pins the pre-flip stream (the flag went default ON 2026-10-11; built OFF in PR #822).
+  const d = colDesign(col, {}, { underlay: true, underlayDirection: false, fabric: fab({ satinUnderlay: "center_run" }) });
   assert.deepStrictEqual(d.runs.map((r) => r.kind), ["underlay", "satin"]);
   const hash = crypto.createHash("sha256").update(JSON.stringify(d.stitches)).digest("hex");
   // hash produced by origin/main 431c5026's own src/ (extracted with `git
