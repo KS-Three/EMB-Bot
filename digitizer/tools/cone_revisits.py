@@ -63,9 +63,10 @@ table below is kept as the record.
 
 ## Re-measured 2026-10-11 — the band route is EMPTY on main
 
-Built anyway, default OFF: `cfg.blend_bands_share_cone`
-(`stage7_sequence._fold_band_cones`), the band fold the 09-06 table below
-argued against. Measured before and after on today's engine, the `band`
+Built anyway, default OFF (PR #827), then REMOVED the same day on Kent's
+ruling because it was inert: a cfg flag and `stage7_sequence` pass that
+folded a cone's blend bands, the band fold the 09-06 table below argued
+against. Measured before and after on today's engine, the `band`
 column is zero everywhere this tool was pointed: 0 of 52 corpus combos,
 0 of 24 extra runs (six gradient fixtures at 50 and 120 mm, OFF and ON),
 and `region_blobs` on the `PRE_FLIP` engine. A blend design here sews one
@@ -73,10 +74,10 @@ PARENT's bands per cone; `_shade_blocks` already shares a cone within one
 parent. ON matches OFF — stitch count, trims and cone order — on every
 combo measured. The survivors
 are `edge_cap` (its own flag), `resnap` (`drone_render`, `logo_bridge_bar`)
-and `plain` (`drone_render`, `logo_golden_tee`) — none a band. To re-run
-with the flag:
+and `plain` (`drone_render`, `logo_golden_tee`) — none a band. The tool
+still takes `key=value` config overrides, to re-run under any field:
 
-    .venv/bin/python -m tools.cone_revisits blend_bands_share_cone=True
+    .venv/bin/python -m tools.cone_revisits edge_cap=none
 
 ## What it found, 2026-09-06 — 26 fixtures x 2 garments
 
@@ -193,7 +194,7 @@ def revisits(plan, result) -> list[dict]:
 
 
 def _overrides(argv: list[str]) -> dict:
-    """`key=value` config overrides, e.g. `blend_bands_share_cone=True`."""
+    """`key=value` config overrides, e.g. `edge_cap=none`."""
     out: dict = {}
     for a in argv:
         k, _, v = a.partition("=")
