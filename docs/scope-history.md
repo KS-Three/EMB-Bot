@@ -13,6 +13,30 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-11 — scope refresh after the 10-11 wave (PRs #817–#830)
+
+Two MASTER_SCOPE entries had sent lanes out on stale text the same day: defect 47 said "Not built" though PR #700 built its angle half OFF on 10-08 (#823 found it and added only the gate-1 fabric placeholder), and defect 18 said "4 of 52 combos" though the band route had been empty since `bind_resnap_all_classes` went ON on 09-10 (#827 found it after building the fold). Both re-stated.
+
+Merged that day, with the numbers as each PR body measured them:
+
+- **#817** defect 57's full spine cure ported onto main and merged on Kent's arming: 12-point star 20 mm 1,050 → 561 stitches; a hand-drawn C 6,047 stitches on `main` (mouth sewn solid).
+- **#818** `coverage_edges` built OFF: median edge error at 1.8 px/mm 0.121 / 0.094 → 0.053 / 0.042 mm (golden_tee / Fremont); Becker at 50 mm reversals 37 → 7, vertices 736 → 601; at 80 mm 6,843 → 7,052 stitches. Full suite on Windows that day: 3954 passed, 3 failed (two enthusiast goldens, one encoding), 38 min.
+- **#819** `test_eye_pairs_price.py` reads and writes UTF-8 explicitly; it had failed on cp1252 Windows without `PYTHONUTF8=1`. Housekeeping.
+- **#820** "Waiting on Kent" 16 triaged by `tests/test_manual_sew_order.py`: block swap + tier change lost the arranged order (`logo_whitebg` 80 mm, blue/red/orange arranged → blue/orange/red sewn). **#830** option A: Studio `npm test` 1737/1737; the pinned engine-half test kept.
+- **#821** `two_tone_snap` DEFAULT ON. Probe at 80 mm, Studio config: golke 5 → 2 cones, mfab_lc 6 → 2 (75 → 54 trims), mfab_hat 6 → 2, toat_beanie 6 → 2, toat_machine 6 → 2, gaulke 2 → 2, tires and black_ground_holes 1 → 1. Only `test_house_anchor`'s turned-word arm moved (re-pinned OFF). Goldens untouched.
+- **#822** `underlayDirection` built OFF: needle-up underlay → column on left chest 28.45 → 2.33 mm (30 × 3 bar), 49.08 → 2.33 (50 × 4 at 35°), 18.95 → 1.78 (20 × 2.5); five-bar row 231.7 → 68.3 mm; stitch delta 0. `node --test` 1207 pass, 0 fail.
+- **#823** defect 47: `OVERLAP_FABRIC_FACTOR` 1.0, four new seam-instrument tests (parallel depth 0.520 → 1.211, perpendicular 0.520 → 0.520). drone 19,644 → 19,872 stitches, trims 133 → 139; Fremont 20,819 → 20,834, trims 64 → 58 (the 10-08 trim deltas did not reproduce on 10-11's main).
+- **#824** coverage_edges × Column lane on Becker, full 2×2 tables at 50 and 80 mm in `docs/coverage-edges-under-columns-2026-10-11.md`; at 100 mm `lost` 0.0236 shipped, 0.0381 lane, 0.0342 lane + coverage.
+- **#825** `bg_structural` built OFF: summit 28.3% → 71.3% of canvas removed; 30 alpha-less fixtures' verdicts pinned OFF and ON; `photo_chrome_specular` the one verdict change.
+- **#826** `subpixel_edges_min_px_per_mm` built None; per-case table in `docs/subpixel-res-gate-2026-10-11.md`.
+- **#827** `blend_bands_share_cone` built OFF: 378 blocks / 2,214 trims OFF and ON over 52 combos, 0 differ.
+- **#828** Column lane `lost_frac` split; grid reading shipped / lane / lane + fix: becker 0.0236 / 0.0381 / 0.0364, enthusiast 0.2771 / 0.3110 / 0.3627, bridge 0.2213 / 0.2283 / 0.2283, drone 0.1003 / 0.1060 / 0.1066, fremont 0.0302 / 0.0325 / 0.0326, golden_tee 0.4501 / 0.4698 / 0.4698.
+- **#829** SVG import gate, measure only; harness ran twice identical.
+
+Moved out of MASTER_SCOPE defect 57 for its 400-word cap (still true when moved): the browser satin emitter keeps 24 edges; a 5-point star's tier turns on a float's last bit.
+
+---
+
 **Last updated:** 2026-10-08 — defect 58: `cfg.two_tone_snap` built OFF, eleven fixtures
 
 `tools/two_tone_probe.py` at the Studio's config (6 colours), `two_tone_snap` OFF → ON, foreground detection and `fold_fringe` (after the review). Cloud container, `main` at `b7d63ae` plus this change.
