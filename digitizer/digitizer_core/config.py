@@ -1156,6 +1156,29 @@ class PipelineConfig:
     # source, not a sewing constant. Default None: narrowing Kent's
     # 2026-09-18 flip is his call.
     subpixel_edges_min_px_per_mm: float | None = None
+    # The read above repaired where its outline reversals start, instead of
+    # switched off under a floor (Kent's ruling 2026-10-11: leave the floor
+    # unset, fix the corners). Diagnosed on Becker at its own 1.8 px/mm,
+    # the 10 worst reversals rendered with their flags
+    # (`docs/native-read-corners-2026-10-11.md`): the corner side-line fit
+    # ran once per flagged VERTEX, so a round turn's run of corners got a
+    # different pair of short tangents each and needled out past the arc
+    # (86 of 129 reversals beside a fitted corner); a vertex the read could
+    # not place stayed at its pixel centre, half a pixel inside every read
+    # neighbour, a notch; and neighbours read along disagreeing normals
+    # crossed. ON: one fit per corner RUN with fold, support and reach
+    # checks; an unread vertex between two reads takes their offset; a
+    # vertex landing behind its predecessor is dropped
+    # (`subpixel.CORNER_RUN_FOLD_PX`). Measured there with bare stage 4:
+    # Becker reversals 7.1 -> 0.9 per 100 mm with right-angle turns 26.5 ->
+    # 20.1 (the staircase stays gone); the four golden_tee / hotel_fremont
+    # truth cases at 1.8 / 3 / 5 px/mm lose reversals in all twelve and
+    # move median edge error by -0.004 to +0.003 mm; the synthetic
+    # ladder's rectangles keep their squared corners. Only the native read
+    # (`subpixel_edges_upscaled`) is touched. Raster quantities of the
+    # source; no sew-out has seen it. Default OFF and byte-identical off.
+    # `tests/test_subpixel_corner_runs.py`.
+    subpixel_corner_runs: bool = False
     # The same upscaled alpha cutout, outlined from the source's alpha
     # DIRECTLY instead of repaired from the mask. The `alpha < 128` mask and
     # its NEAREST enlargement throw the ramp away and stage 4 then walks a
