@@ -25,6 +25,8 @@
     layerSiblings,
     effRgb,
     groupIntoBlocks,
+    pinSewableLayers,
+    moveBlockLayers,
     machineBlocksForRows,
     boundaryIssues,
     mergeGroupIssues,
@@ -1292,7 +1294,16 @@
     if (sortShapes(reviewShapes, test).findIndex((r) => r.id === row.id) === i) {
       target = theirs + dir;
     }
-    setOverride(row.id, { layer: target });
+    // Pin every other sewable shape where it sits too (see moveBlock): a
+    // one-shape pin goes stale when the service renumbers layers.
+    const next = pinSewableLayers(sewableShapes, {
+      ...overrides,
+      [row.id]: { ...(overrides[row.id] || {}), layer: target },
+    });
+    next[row.id] = target;
+    const cur = { ...(element.shapeOverrides || {}) };
+    for (const sid of Object.keys(next)) cur[sid] = { ...(cur[sid] || {}), layer: next[sid] };
+    patch({ shapeOverrides: cur });
   }
 
   // "Sew earlier/later" WITHIN one color layer (contract v1.2): reorders the
@@ -1318,18 +1329,19 @@
   // numbers is unambiguous: each block keeps its own internal sew_order
   // untouched, only which layer integer it carries changes. One patch = one
   // undo step, the same convention every other edit in this panel follows.
+  //
+  // EVERY sewable shape's layer is committed, not just the two blocks that
+  // swapped (moveBlockLayers): a shape left on a layer number from the
+  // previous run gets renumbered under the customer's pins when a later tier
+  // change moves a layer, and the file sews a different order than the one
+  // arranged here. The catch: once ordered by hand, a later tier change no
+  // longer gets the automatic "satin sews last" move, and pieces made by
+  // split/merge afterwards come in unpinned.
   function moveBlock(layer, dir) {
-    const layers = sequencerBlocks.map((b) => b.layer);
-    const i = layers.indexOf(layer);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= layers.length) return;
-    const other = layers[j];
+    const next = moveBlockLayers(sewableShapes, overrides, layer, dir);
+    if (!next) return;
     const cur = { ...(element.shapeOverrides || {}) };
-    for (const row of sewableShapes) {
-      const rl = effLayer(row, overrides);
-      if (rl === layer) cur[row.id] = { ...(cur[row.id] || {}), layer: other };
-      else if (rl === other) cur[row.id] = { ...(cur[row.id] || {}), layer };
-    }
+    for (const sid of Object.keys(next)) cur[sid] = { ...(cur[sid] || {}), layer: next[sid] };
     patch({ shapeOverrides: cur });
   }
 
