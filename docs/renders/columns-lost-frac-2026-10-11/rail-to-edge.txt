@@ -1,0 +1,90 @@
+enthusiast off  outward E: n= 259 median -0.201 p25 -0.251
+enthusiast off  outward N: n= 213 median -0.201 p25 -0.269
+enthusiast off  outward W: n= 249 median -0.136 p25 -0.254
+enthusiast off  outward S: n= 226 median -0.100 p25 -0.230
+enthusiast off  n=  947 p5/25/50/75/95 = -0.311 -0.253 -0.157 +0.032 +0.509  out>0.35: 0.000  out>0.5: 0.000  in>0.1: 0.207  kinds={'underlay': 36, 'satin': 23, 'travel': 8, 'run': 17}
+enthusiast on   outward E: n= 224 median -0.265 p25 -0.309
+enthusiast on   outward N: n= 206 median -0.265 p25 -0.296
+enthusiast on   outward W: n= 227 median -0.303 p25 -0.321
+enthusiast on   outward S: n= 204 median -0.270 p25 -0.300
+enthusiast on   n=  861 p5/25/50/75/95 = -0.338 -0.309 -0.274 -0.193 +0.422  out>0.35: 0.009  out>0.5: 0.000  in>0.1: 0.168  kinds={'underlay': 23, 'satin': 23, 'travel': 22, 'run': 17}
+enthusiast cap  outward E: n= 237 median -0.266 p25 -0.309
+enthusiast cap  outward N: n= 208 median -0.265 p25 -0.298
+enthusiast cap  outward W: n= 237 median -0.304 p25 -0.323
+enthusiast cap  outward S: n= 209 median -0.273 p25 -0.300
+enthusiast cap  n=  891 p5/25/50/75/95 = -0.339 -0.311 -0.275 -0.198 +0.401  out>0.35: 0.009  out>0.5: 0.000  in>0.1: 0.162  kinds={'underlay': 23, 'satin': 23, 'travel': 22, 'run': 17}
+becker     off  outward E: n= 630 median -0.167 p25 -0.278
+becker     off  outward N: n= 317 median +0.093 p25 -0.255
+becker     off  outward W: n= 614 median -0.139 p25 -0.265
+becker     off  outward S: n= 269 median +0.060 p25 -0.235
+becker     off  n= 1830 p5/25/50/75/95 = -0.329 -0.265 -0.107 +0.274 +0.695  out>0.35: 0.004  out>0.5: 0.000  in>0.1: 0.353  kinds={'satin': 27, 'travel': 6, 'underlay': 38}
+becker     on   outward E: n= 477 median -0.260 p25 -0.302
+becker     on   outward N: n= 214 median +0.035 p25 -0.229
+becker     on   outward W: n= 396 median -0.292 p25 -0.316
+becker     on   outward S: n= 168 median -0.030 p25 -0.271
+becker     on   n= 1255 p5/25/50/75/95 = -0.339 -0.302 -0.260 +0.042 +0.597  out>0.35: 0.006  out>0.5: 0.000  in>0.1: 0.231  kinds={'travel': 20, 'underlay': 20, 'satin': 20}
+becker     cap  outward E: n= 482 median -0.260 p25 -0.302
+becker     cap  outward N: n= 216 median +0.021 p25 -0.229
+becker     cap  outward W: n= 400 median -0.292 p25 -0.311
+becker     cap  outward S: n= 174 median -0.019 p25 -0.270
+becker     cap  n= 1272 p5/25/50/75/95 = -0.339 -0.302 -0.260 +0.025 +0.601  out>0.35: 0.006  out>0.5: 0.000  in>0.1: 0.219  kinds={'travel': 20, 'underlay': 20, 'satin': 20}
+bridge     off  outward E: n= 139 median -0.113 p25 -0.217
+bridge     off  outward N: n=  60 median +0.045 p25 -0.087
+bridge     off  outward W: n= 170 median -0.183 p25 -0.238
+bridge     off  outward S: n= 103 median -0.130 p25 -0.210
+bridge     off  n=  472 p5/25/50/75/95 = -0.298 -0.219 -0.109 +0.131 +0.441  out>0.35: 0.002  out>0.5: 0.000  in>0.1: 0.269  kinds={'satin': 18, 'underlay': 7, 'travel': 6}
+bridge     on   outward E: n= 144 median -0.221 p25 -0.278
+bridge     on   outward N: n=  73 median -0.071 p25 -0.231
+bridge     on   outward W: n= 135 median -0.272 p25 -0.301
+bridge     on   outward S: n=  98 median -0.229 p25 -0.284
+bridge     on   n=  450 p5/25/50/75/95 = -0.327 -0.286 -0.231 +0.035 +0.473  out>0.35: 0.002  out>0.5: 0.000  in>0.1: 0.207  kinds={'satin': 19, 'travel': 20, 'underlay': 7}
+bridge     cap  outward E: n= 144 median -0.221 p25 -0.278
+bridge     cap  outward N: n=  73 median -0.071 p25 -0.231
+bridge     cap  outward W: n= 135 median -0.272 p25 -0.301
+bridge     cap  outward S: n=  98 median -0.229 p25 -0.284
+bridge     cap  n=  450 p5/25/50/75/95 = -0.327 -0.286 -0.231 +0.035 +0.473  out>0.35: 0.002  out>0.5: 0.000  in>0.1: 0.207  kinds={'satin': 19, 'travel': 20, 'underlay': 7}
+drone      off  outward E: n= 666 median -0.185 p25 -0.267
+drone      off  outward N: n= 554 median -0.212 p25 -0.271
+drone      off  outward W: n= 685 median -0.158 p25 -0.259
+drone      off  outward S: n= 595 median -0.156 p25 -0.256
+drone      off  n= 2500 p5/25/50/75/95 = -0.323 -0.262 -0.173 +0.018 +0.473  out>0.35: 0.007  out>0.5: 0.004  in>0.1: 0.185  kinds={'underlay': 64, 'satin': 67, 'travel': 20, 'run': 1}
+drone      on   outward E: n= 601 median -0.266 p25 -0.301
+drone      on   outward N: n= 558 median -0.256 p25 -0.303
+drone      on   outward W: n= 628 median -0.278 p25 -0.312
+drone      on   outward S: n= 604 median -0.256 p25 -0.305
+drone      on   n= 2391 p5/25/50/75/95 = -0.343 -0.307 -0.265 -0.059 +0.417  out>0.35: 0.006  out>0.5: 0.000  in>0.1: 0.166  kinds={'travel': 73, 'underlay': 54, 'satin': 79, 'run': 1}
+drone      cap  outward E: n= 611 median -0.266 p25 -0.301
+drone      cap  outward N: n= 565 median -0.259 p25 -0.306
+drone      cap  outward W: n= 652 median -0.278 p25 -0.311
+drone      cap  outward S: n= 611 median -0.256 p25 -0.307
+drone      cap  n= 2439 p5/25/50/75/95 = -0.343 -0.308 -0.265 -0.069 +0.418  out>0.35: 0.006  out>0.5: 0.000  in>0.1: 0.161  kinds={'travel': 78, 'underlay': 55, 'satin': 81, 'run': 1}
+fremont    off  outward E: n= 446 median -0.144 p25 -0.179
+fremont    off  outward N: n= 416 median -0.119 p25 -0.176
+fremont    off  outward W: n= 442 median -0.153 p25 -0.185
+fremont    off  outward S: n= 408 median -0.124 p25 -0.176
+fremont    off  n= 1712 p5/25/50/75/95 = -0.226 -0.181 -0.142 -0.008 +0.339  out>0.35: 0.000  out>0.5: 0.000  in>0.1: 0.144  kinds={'satin': 62, 'travel': 47, 'underlay': 37, 'run': 21}
+fremont    on   outward E: n= 407 median -0.171 p25 -0.215
+fremont    on   outward N: n= 364 median -0.164 p25 -0.202
+fremont    on   outward W: n= 437 median -0.177 p25 -0.216
+fremont    on   outward S: n= 353 median -0.163 p25 -0.200
+fremont    on   n= 1561 p5/25/50/75/95 = -0.244 -0.212 -0.170 -0.111 +0.252  out>0.35: 0.000  out>0.5: 0.000  in>0.1: 0.167  kinds={'satin': 77, 'travel': 70, 'underlay': 53, 'run': 21}
+fremont    cap  outward E: n= 417 median -0.170 p25 -0.214
+fremont    cap  outward N: n= 389 median -0.161 p25 -0.202
+fremont    cap  outward W: n= 440 median -0.177 p25 -0.216
+fremont    cap  outward S: n= 371 median -0.163 p25 -0.201
+fremont    cap  n= 1617 p5/25/50/75/95 = -0.244 -0.212 -0.169 -0.105 +0.253  out>0.35: 0.000  out>0.5: 0.000  in>0.1: 0.159  kinds={'satin': 79, 'travel': 76, 'underlay': 54, 'run': 21}
+golden_tee off  outward E: n= 421 median -0.262 p25 -0.317
+golden_tee off  outward N: n= 440 median -0.252 p25 -0.299
+golden_tee off  outward W: n= 444 median -0.267 p25 -0.616
+golden_tee off  outward S: n= 412 median -0.237 p25 -0.303
+golden_tee off  n= 1717 p5/25/50/75/95 = -0.769 -0.323 -0.253 -0.147 +0.425  out>0.35: 0.227  out>0.5: 0.194  in>0.1: 0.134  kinds={'satin': 32, 'travel': 19, 'underlay': 32}
+golden_tee on   outward E: n= 446 median -0.289 p25 -0.316
+golden_tee on   outward N: n= 403 median -0.275 p25 -0.306
+golden_tee on   outward W: n= 458 median -0.290 p25 -0.316
+golden_tee on   outward S: n= 391 median -0.285 p25 -0.315
+golden_tee on   n= 1698 p5/25/50/75/95 = -0.344 -0.314 -0.285 -0.253 +0.162  out>0.35: 0.022  out>0.5: 0.000  in>0.1: 0.068  kinds={'underlay': 27, 'satin': 29, 'travel': 25}
+golden_tee cap  outward E: n= 446 median -0.289 p25 -0.316
+golden_tee cap  outward N: n= 403 median -0.275 p25 -0.306
+golden_tee cap  outward W: n= 458 median -0.290 p25 -0.316
+golden_tee cap  outward S: n= 391 median -0.285 p25 -0.315
+golden_tee cap  n= 1698 p5/25/50/75/95 = -0.344 -0.314 -0.285 -0.253 +0.162  out>0.35: 0.022  out>0.5: 0.000  in>0.1: 0.068  kinds={'underlay': 27, 'satin': 29, 'travel': 25}
