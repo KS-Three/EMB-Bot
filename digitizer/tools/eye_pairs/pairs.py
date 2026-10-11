@@ -117,6 +117,14 @@ ARMS: dict[str, dict] = {
     # shipped, which is what a flip of the Column lane would turn on -- he
     # ruled the word tagger the lane's tagger on `words-columns-1008`.
     "columns_words": {"lettering_columns": True, "lettering_words": True},
+    # The coverage read (2026-10-11, #818's follow-ups a and c): a one-ink
+    # alpha cutout outlined from its own alpha's half-coverage contour, alone
+    # and under the Column lane -- whether the cleaner outline pays under
+    # outline rails where the skeleton tier reads messier. Only becker is
+    # that class; every other fixture is byte-identical to its own arm.
+    "coverage_edges": {"coverage_edges": True},
+    "coverage_columns": {"coverage_edges": True, "lettering_columns": True,
+                         "lettering_words": True},
 }
 
 
