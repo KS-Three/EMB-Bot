@@ -185,8 +185,14 @@ test("crossval: PES thread palette maps design colors to nearest Brother chart e
   // nearest-match scheme, not a bug. The fixture's red (200,30,30) and blue
   // (30,60,200) now decode as the Brother chart's nearest actual Red/Blue
   // entries instead of two unrelated dark blues.
+  //
+  // The blue moved 2026-10-08, when nearestPecIndex switched from RGB distance
+  // to CIEDE2000 (the repo's cone metric everywhere else): #0b3d91 is dE00
+  // 8.46 from the design's blue, #0a55a3 was 11.30 (both checked against
+  // skimage). The same change stopped near-black lettering exporting as Deep
+  // Green — see test/pes.test.js.
   assert.strictEqual(r.threads.length, 2);
-  assert.deepStrictEqual(r.threads, ["#ed171f", "#0a55a3"]);
+  assert.deepStrictEqual(r.threads, ["#ed171f", "#0b3d91"]);
 });
 
 // ---- a stitch too long to SEW --------------------------------------------
@@ -293,4 +299,42 @@ test("crossval: PES splits it too, at the imported 121 (FIXED 2026-09-12)", asyn
   // Back monogram).
   assert.strictEqual(r.decodedJumps, 1, "one leading travel-in jump, and no thread turned into travel");
   assert.strictEqual(r.decodedTrims, 0);
+});
+
+// ---- a stitch that FOLLOWS travel -----------------------------------------
+//
+// The mirror of the `long` fixture. There the over-length move sits between
+// two stitches and must be SEWN; in the `travel` fixture every over-length
+// move ends on a stitch that follows a jump, a cut, a colour change or the
+// start of the file, and must be TRAVELLED: the needle goes down at its end
+// and nowhere on the way.
+//
+// dst.js has done so since 2026-09-07 and pes.js since 2026-09-12. exp.js had
+// no chain rule and split every stitch record into stitches, so a standard
+// reader saw 17 stitches in this 8-stitch design: nine needle holes along
+// moves the other two files travel. Found 2026-10-06 by the independent
+// re-measure of `cutFloats`; fixed 2026-10-07.
+
+for (const fmt of ["dst", "pes", "exp"]) {
+  test(`crossval: ${fmt.toUpperCase()} travels to a stitch that follows travel, however far`, async (t) => {
+    await ensureRun();
+    const r = skipOrGet(t, fmt + ".travel");
+    if (!r) return;
+    assert.strictEqual(r.decodedStitches, r.expectedStitches, "the needle goes down where the design says and nowhere else");
+    assert.strictEqual(r.fit.transform, "identity");
+    assert.ok(r.fit.rms < 0.5, "and every stitch is where the design put it, rms=" + r.fit.rms);
+    assert.strictEqual(r.decodedColorChanges, 1);
+    // No two stitches of the design are more than a record apart, so nothing
+    // a reader sees sewn may be longer than the longest of them (30 units).
+    assert.strictEqual(r.longestSewnUnits, 30, "no thread laid along a move that is travel");
+  });
+}
+
+test("crossval: the three files of the travel fixture hold the same stitches", async (t) => {
+  await ensureRun();
+  const exp = skipOrGet(t, "exp.travel");
+  if (!exp) return;
+  const dst = run.results["dst.travel"], pes = run.results["pes.travel"];
+  assert.strictEqual(exp.decodedStitches, dst.decodedStitches);
+  assert.strictEqual(exp.decodedStitches, pes.decodedStitches);
 });

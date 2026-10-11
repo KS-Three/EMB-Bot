@@ -69,6 +69,11 @@ def _run(**kw):
     # against +4.8% here, while its absolute ON figure still improves. The
     # envelope's own price belongs to its own tests, not to this flag's.
     kw.setdefault("satin_rails_follow_edge", False)
+    # And `satin_crown_cover`, ON by default since Kent's 2026-10-02 flip: it
+    # sews the wedges no stroke claims, which is the uncovered area and the
+    # stitch count this file's two arms are compared on. The cover's own price
+    # is pinned in `tests/test_crown_cover.py`.
+    kw.setdefault("satin_crown_cover", False)
     cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest",
                          max_colors=6, **kw)
     gen = build_generation(str(FIXTURE), cfg)

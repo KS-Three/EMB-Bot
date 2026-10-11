@@ -1,4 +1,4 @@
-import { test, expect, beforeAll, vi } from "vitest";
+import { test, expect, beforeAll, beforeEach, vi } from "vitest";
 import { createRequire } from "node:module";
 import { preloadAllFontsSync } from "./testFonts.js";
 
@@ -10,6 +10,13 @@ vi.mock("jspdf", () => ({ jsPDF: class FakeJsPDF {} }));
 vi.mock("./preview.js", () => ({
   renderRealistic: vi.fn(),
 }));
+
+// The mock is module-level shared state: without this, call counts leak
+// between tests and `toHaveBeenCalledTimes(1)` fails under --sequence.shuffle.
+beforeEach(async () => {
+  const { renderRealistic } = await import("./preview.js");
+  renderRealistic.mockClear();
+});
 
 let design;
 beforeAll(async () => {
@@ -146,11 +153,14 @@ test("JEF surfaces a customer-readable error when the service is down, and never
   const { exportDesignPreferService, exportDesign } = await import("./exporters.js");
   const exportViaServiceFn = async () => { throw new Error("fetch failed"); };
   await expect(exportDesignPreferService(design, "jef", { preferService: true, exportViaServiceFn }))
-    .rejects.toThrow(/JEF is written by the digitizer service/);
-  // The cause rides along rather than being swallowed — "it isn't answering"
-  // without saying what happened is the message this replaces.
+    .rejects.toThrow(/JEF file because the digitizer service isn’t answering.*Start it/);
+  // The message says what to DO; fetch's own words ("fetch failed") are not
+  // shown to the customer (2026-10-08).
   await expect(exportDesignPreferService(design, "jef", { exportViaServiceFn }))
-    .rejects.toThrow(/fetch failed/);
+    .rejects.not.toThrow(/fetch failed/);
+  // A service that answers with a sentence keeps its cause.
+  await expect(exportDesignPreferService(design, "jef", { exportViaServiceFn: async () => { throw new Error("That design has no stitches to write."); } }))
+    .rejects.toThrow(/no stitches to write/);
   // And what the fallback WOULD have said, which is why it must not run.
   expect(() => exportDesign(design, "jef")).toThrow(/Unknown format: jef/);
 });
@@ -202,9 +212,9 @@ for (const [fmt, brand] of [["xxx", "Singer"], ["vp3", "Husqvarna Viking / Pfaff
     // wrapper serves three of them now, and "the digitizer service isn't
     // answering" alone does not say which download failed.
     await expect(exportDesignPreferService(design, fmt, { preferService: true, exportViaServiceFn }))
-      .rejects.toThrow(new RegExp(`${FMT} is written by the digitizer service`));
+      .rejects.toThrow(new RegExp(`${FMT} file because the digitizer service isn’t answering`));
     await expect(exportDesignPreferService(design, fmt, { exportViaServiceFn }))
-      .rejects.toThrow(/fetch failed/);
+      .rejects.not.toThrow(/fetch failed/);
     // And what the fallback WOULD have said, which is why it must not run.
     expect(() => exportDesign(design, fmt)).toThrow(new RegExp(`Unknown format: ${fmt}`));
   });
@@ -279,7 +289,13 @@ test("exportWorksheetPDF wires window.jspdf and forwards garment box (mm) to EMB
     // them drift apart without failing.
     const { sewFacts } = await import("./estimate.js");
     const facts = sewFacts(design);
-    expect(meta.sew).toEqual({ trims: facts.trims, threadM: facts.threadM });
+    // 2026-10-01: plus the stops the run time is charged for, and the
+    // operator's quote inputs — none entered here, so no speed, no machine
+    // name and no dollar lines reach the sheet.
+    expect(meta.sew).toEqual({
+      trims: facts.trims, threadM: facts.threadM, stops: facts.stops, spm: null, machineLabel: "",
+    });
+    expect(meta.quoteLines).toEqual([]);
     // Not a vacuous pass: this fixture really does sew and really does trim.
     expect(facts.trims).toBeGreaterThan(0);
     expect(facts.threadM).toBeGreaterThan(0);
@@ -411,4 +427,13 @@ test("exportPNG handles aspect ratio guard (zero height treated as 1mm)", async 
   } finally {
     globalThis.document.createElement = originalCreateElement;
   }
+});
+
+test("exportFileName slugs the design name and falls back to design", async () => {
+  const { exportFileName } = await import("./exporters.js");
+  expect(exportFileName("Fritsch's Stitches: Hat #2", "dst")).toBe("fritsch-s-stitches-hat-2.dst");
+  expect(exportFileName("  ---  ", "pes")).toBe("design.pes");
+  expect(exportFileName("", "exp")).toBe("design.exp");
+  expect(exportFileName("Ünï/cödé\\..", "dst")).toBe("n-c-d.dst");
+  expect(exportFileName("a".repeat(200), "dst")).toBe("a".repeat(60) + ".dst");
 });

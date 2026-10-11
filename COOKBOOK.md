@@ -766,20 +766,22 @@ hand-rolling it in JS.
   and canvas tools", not "Canvas tools" — an e2e that right-clicks ON a
   digitized shape and expects the plain name will not find it.
 
-- **A border edit restitches at 0 ms; every other shape edit keeps the 2 s
-  pause (2026-09-17).** `DigitizePanel`'s restitch scheduler asks
-  `editKind(prevEdits, nextEdits)` (`lib/digitizer.js`) what moved, because
-  every shape edit lands in the same `shape_overrides` object and WHERE the
-  change is cannot tell a dragged outline from a menu pick. It answers
-  `"border"` only when EVERY difference is a border value — narrow on purpose,
-  so it can never swallow a boundary and put a full stage 0-7 run behind every
-  nudge. **Two traps if you touch this:** the 0 ms path must still go through
-  `setTimeout`, since the scheduler runs inside a reactive statement and
-  `runDigitize` patches the element (a direct call re-enters mid-flush); and it
-  must NOT set the armed flag, because a 0 ms timeout is a macrotask that fires
-  after Svelte has flushed, so arming it paints the "waiting" line for a frame
-  on every border toggle. Starting a run of any kind disarms a pending one —
-  without that, "Digitize again" during the pause runs twice.
+- **Nothing in `DigitizePanel` starts a run except `.dgp-run` ("Auto Digitize
+  Image") and "Apply layer changes" (Kent 2026-10-05).** The four watchers
+  that used to run on their own are gone: new artwork, params, the crop box,
+  and shape edits behind a 2 s pause (with a 0 ms fast path for borders,
+  `editKind`, which is still exported and no longer called by the panel).
+  What replaced them is one comparison: `configKey(buildDigitizeConfig(el,
+  project))` against `element.appliedConfig`, written from the SUBMITTED
+  config when a result lands. Unequal means the stitches are behind the
+  settings, and the button goes transparent (`dgp-run-stale`). **Two things
+  to keep if you touch it:** the key lives on the element, not in the
+  component, because `ContentStep` remounts the panel per selection; and a
+  project saved before the field existed has a result and no key, which the
+  panel takes as current as it loads. **Artwork is added file-first:**
+  `App.onAddElement("artwork")` clicks one hidden input
+  (`[data-testid="art-file"]`) and only adds the element once a file comes
+  back, handing it to the new panel as `pendingFile`.
 
 - **`digitizer/` cites its own docs relative to the package root**, i.e.
   bare `docs/dt-classifier-spike-2026-08-02.md` meaning
@@ -1005,6 +1007,225 @@ sews nothing and cuts the smallest shape that contains it.
 - On the side canvas, **Hole mode's click always draws**; Shape mode's click
   inside a finished shape selects it. That asymmetry is deliberate — a hole
   starts inside a shape.
+- **A cut-out is clear of the needle (2026-10-03), and of thread in the manual
+  lane since 2026-10-07 (shapes and image since 2026-10-08).** Without `fillColumns` the
+  JS fill goes from one span of a split row straight to the next, so every
+  row lays a float (or, under 4 mm, a stitch) across the hole. The Studio's
+  field shows it only with its **Jumps** toggle on, which is off by default.
+  The cure, OFF by engine default: `buildQualityDesign({ fillColumns: true })` sews a forked FILL
+  shape column by column (`fill.js` `opts.columns`, a port of the Python
+  `_columns`) and goes ROUND a hole instead of crossing it. A satin shape is
+  untouched by it, and so is a fill with no hole and no inside corner. Of
+  `generate.js`'s three callers all pass it: MANUAL since 2026-10-07
+  (`generate.spec.js` pins it with a cut-out), basic shapes and the image
+  lane since 2026-10-08 (pinned with a star's notches and a traced counter;
+  the image lane pays +10.4% stitches on real logos, Kent's call with that
+  price measured — `tools/fill-columns-lanes.mjs`). It has not been sewn. Eight things to know before touching it:
+  - Every move is asked what ground it runs over (`groundUnder`): on the
+    ground it may float, on the rim it is sewn, deeper than `openTol` into
+    open ground it must go round or be cut.
+  - The ground is what the FILL covers. `openTol` is the fill's row pitch for
+    every pass, and an underlay is handed the fill's rings as `ground`: never
+    a pass's own pitch, never "the outline plus the pull compensation".
+  - Moves are between a column's four corners. A column that cannot make one
+    of its own turns is cut in two first (`splitAtOpenTurns`), so every hard
+    move is one `moveTo` handles: a stitch, a run along the row, round the
+    ring, or the way through the corners (`webRoute`).
+  - Change a rule, then run the seeded shapes ("shapes nobody chose" in
+    `test/fill.test.js`) with more of them than the suite carries, and mutate
+    the rule to see a test die. Two rules here were wrong and green.
+  - Random shapes never run a move along a line of their own corners, and a
+    drawn badge or U does it all the time. Ask the ground test both ways
+    round on whole-number shapes ("whole-number shapes" in the same file),
+    and sweep every preset in `FABRICS.FABRICS`: terry sews its fill upward,
+    and that was the direction a third audit found wrong. Draw notches
+    exactly twice a preset's pull compensation wide as well (4 to 12 px at
+    10 px per mm): the outline the fill is sewn to closes one to a slit, and
+    no sweep had one until an audit drew it (2026-10-03, "a move of no
+    length").
+  - A pass has two ends and is told both: where the thread is (`from`) and,
+    when the run after it begins at a point of its own, where it goes next
+    (`to`). A pass the plain walk sews is that kind, and the builder asks
+    where it begins with a function of its own, `fill.plainStart`. Do NOT
+    ask a question through `tatamiFill`. It was first an option that made
+    `tatamiFill` answer null and had the pass built before its turn, and
+    three tools wrap `tatamiFill` to watch the passes: each took the null
+    for a pass, or the order of the calls for the order of the sewing. Two
+    were patched; a review found the third throwing
+    (`tools/sub-unit-stitch-census.mjs`, 2026-10-05). Before changing what
+    `tatamiFill` returns or when it is called, grep `tatamiFill = ` in
+    `tools/` and `test/`, and run all of `node --test`, not the two files
+    you are in.
+  - A walk that comes out cut is walked again from the other first columns
+    (`sewFrom`, eight at most) and the better walk is kept: fewer cuts, and
+    no more threads of fewer than four penetrations between two of them. So
+    before touching the walk, count the cuts by WHERE they are: inside a
+    pass, on the float into it, on the float out of it, and what kind of run
+    is on either side. The most of any kind left is not the walk's at all:
+    the float from an EDGE RUN into a plain walk (2026-10-04, "where a pass
+    ends").
+  - Count more than cuts, and sweep shapes the last sweep did not have. By
+    cuts alone a walk saved a cut by stranding a row, one stitch cut to and
+    cut from, and 56,120 designs of combs, badges and letters showed none:
+    the re-measure's mazes did. The same re-measure found a comb of 100
+    teeth with 615 cuts where no option has 1, its passes walked nine times
+    for nothing (5.0 s → 18.5 s). Mazes, spirals and combs of 24 teeth and
+    more belong in the sweep, and so do a pass's short threads, the thread
+    it sews, and the time it takes.
+
+  To SEE thread rather than penetrations, run
+  `node tools/fill-columns-sheet.mjs`: it draws four manual-lane shapes off
+  beside on, floats in red, and prints the cost table. In the Studio, the
+  field's Jumps toggle draws every needle-up move as a dashed line.
+- **Lock stitches are built OFF in both JS builders (2026-10-03).**
+  `ties: true` on `buildQualityDesign` or `buildLetteringDesign` locks every
+  thread where it starts and where it is cut. It is ONE function,
+  `applyTies` in `src/digitize.js`, run on the finished record stream, which
+  is in DST units. Do not compute a lock in px: the lettering port of 09-14
+  did, and its 0.8 mm leg came out 0.1 to 0.5 mm. No Studio caller passes
+  the flag; the flip is Kent's ("Waiting on Kent" 23).
+  `node tools/lock-stitch-census.mjs` prints what a lock costs and how long
+  its legs really are, on every shipped font and eleven shapes.
+- **Cutting long floats is built OFF by default for the shape builder (2026-10-04).**
+  A DST has no cut. `dst.js` lays three jump records for a `trim`, and also
+  for any float over 24.2 mm, so a machine cuts where the stream has only a
+  jump, and `ties` lays no lock there. `cutFloats: true` on
+  `buildQualityDesign` puts the `trim` in the stream: one pass,
+  `cutLongFloats` in `src/digitize.js`, over the finished stream and before
+  `applyTies`. How many records a move takes is asked of the writer
+  (`dst.jumpRecords`); do not work it out from a length. The move to the
+  stitch AFTER a float counts, since the writer lays it as jumps up to its
+  last record. A float with no thread on it is left: after a cut, after a
+  colour change, at the start. To check any change to what is written, read
+  the FILE: `node tools/file-cut-census.mjs` writes every design with the
+  three writers, reads each back with its own readers and says what every
+  run of three jumps was; `--against <src>` says whether two engines differ
+  by cuts put in and nothing else. The MANUAL and basic-shape branches of
+  `generate.js` pass it (2026-10-08, after `fillColumns`; `generate.spec.js`
+  pins it on a plain manual square, the default circle and a 12-point star;
+  `node tools/cut-floats-shapes-sheet.mjs` prints the per-family preset
+  table); the image lane does not ("Waiting on Kent" 28,
+  `docs/cut-floats-manual-2026-10-08.md`, `docs/cut-floats-shapes-2026-10-08.md`).
+- **Row stagger is built OFF for the shape builder (2026-10-03).**
+  `fillStagger: true` on `buildQualityDesign` puts the cover fill's needle
+  holes on one grid shifted row by row (`tatamiFill`'s `stagger`, `minStitch`
+  and `splitTol`): the Python fill's rule, row for row. `stagger` is a NUMBER
+  of rows; `true` is no stagger. It moves only the holes BETWEEN a row's two
+  ends. To check a change to it, take those out and compare with the flag
+  off ("the same walk" in `test/fill-stagger.test.js`). Count holes in line
+  across THREE rows, not two: a halved step sits near the next row's grid
+  point by the rule itself, which along a straight edge is a line of dashes
+  and is stated for the flip. To check it against Python, compare rows in
+  the order the thread runs and aim rows a hair either side of a stitch: a
+  sorted comparison of random rows passed while two things were wrong.
+  `node tools/fill-stagger-census.mjs` prints the numbers and, with
+  `--sheet out.svg`, draws every hole. No Studio caller passes the flag; the
+  flip is Kent's ("Waiting on Kent" 24).
+  The lettering builder's own fill (`satinplay.fillFromGeom`) is NOT
+  staggered and does not ship: it runs only under `wideColumnFill`, off
+  since 2026-09-11. Whatever flips that passes `stagger`, `minStitch` and
+  `splitTol` there, the two lengths in the layout's units: final mm,
+  divided by the fit scale, times `pxPerMm`, as `fillStitchMm` beside them
+  already is.
+- **The browser's satin tracer can no longer walk for ever (2026-10-03), and
+  that is all that changed in it.** `skeletonEdges` in `src/satin.js` walks
+  skeleton pixels from a node to the next node, under a guard of one step
+  per grid cell. Three pixels that all touch are no node; a walk went round
+  them until the guard ran out, and the satin emitter sewed what came back
+  (a 20 mm star off the shape tool: 48,645 stitches). A rule ended such a
+  walk and left every other one alone; it was replaced on 10-04 by one pixel
+  to one edge (next bullet), under which no walk can go round. Three things
+  to know before touching it:
+  - It reached every lane that calls `medialSatin`, not stars: thin
+    round-ended bars and 273 of 612 image-lane designs moved too. Sweep
+    every caller before saying which designs a change moves.
+  - The walks then still stepped onto pixels another edge had: a median 72
+    layings too many for every 100 skeleton pixels on the shape tool's
+    stars, and "rings" were found in shapes with no hole. Cured 10-04
+    (next bullet). A stitch as long as the star is still MASTER_SCOPE
+    defect 57.
+    The knot had also been COVERING small round shapes: a 2 mm one sewed
+    four stitches after it went.
+  - `node tools/satin-walk-census.mjs` builds what the shape tool builds and
+    says which designs sew out of line with their neighbours in size;
+    `--against <tree>` says which designs differ from another engine's,
+    `--walks` counts the walks that only the guard stopped, `--kind rect`
+    does bars, `--render` draws one from its DST bytes. A counter it cannot
+    insert is an error: the first version read "0 walks at the guard" on a
+    file whose loop it had not found.
+- **No second stitch in one hole is built OFF for the shape builder
+  (2026-10-03).** The builder rounds to 0.1 mm, so a row at a tip, a move
+  across the mouth of a notch, or a scanline through a corner can put two
+  `stitch` records on one point: the needle twice in one hole, in what
+  ships. `dedupeHoles: true` on `buildQualityDesign` lays the first and not
+  the second. It is ONE place, `pushRun` in `src/digitize.js`, and it is
+  narrow on purpose: only a stitch whose record comes straight after a
+  stitch on its point is left out. After a jump or a cut the stitch is laid,
+  whatever point it is on. Do not widen it to look through jumps. A cut is
+  written as three jump records (`dst.js`), so a stitch taken out from
+  between two jumps can leave a reader a cut nobody made; the first build
+  did look through them, and an independent audit's remark caught it.
+  `node tools/sub-unit-stitch-census.mjs [srcDir]` counts the pairs on two
+  sets of designs and says what made each; `--on dedupeHoles=true --off
+  dedupeHoles=true` runs it with the flag, and `--against <other src>` says
+  whether two engines' streams differ only by such stitches. No Studio
+  caller passes the flag; the flip is Kent's ("Waiting on Kent" 25). The
+  lettering builder has no such rule. `docs/sub-unit-stitches-2026-10-03.md`.
+- **A ring may arrive CLOSED, and three readers still take its points
+  (2026-10-03).** `[p0, ..., pn, p0]`: the first point said again at the end.
+  `offsetRing` moves the corners said ONCE (`distinctCorners`) and
+  `isConvexRing` reads them, so the fill's pull compensation and the
+  `fillColumns` edge run are the open ring's. Three things are still read off
+  the POINTS, and a point said twice is one more of them: the auto stitch
+  angle and a satin shape's centre run (`pcaAngleDeg`), and the edge run that
+  is drawn toward the centroid and the order of a colour's shapes
+  (`insetRing`, `orderShapes`). That edge run is every shape's without
+  `fillColumns`, and with it a shape's with no hole and no inside corner. No
+  Studio lane sends an exact repeat: the tracer and the basic shapes never say
+  a point twice, and a hand-drawn shape that does is refused as crossing
+  itself. `parseSVG` (every circle, ellipse and rounded rect) and `src/fonts.js`
+  `pathToPolygons` DO; nothing in the Studio calls them, and a lane that will
+  should take the repeat off before the builder. "Twice" is to within rounding
+  (1e-9 px). A point merely NEAR the next is a corner, and the open bug at the
+  top of "Known bugs" is what one does. `node tools/closed-ring-census.mjs`
+  prints the wedge, closed against open, what each lane hands over, and the
+  near repeat; `--hash` and `--compare` are the before and after of an engine
+  change on rings that say no point twice.
+- **The browser satin's skeleton, its walk and its ends were put right
+  together (built 2026-10-04, on `main` from the 2026-10-11 port), and they
+  depend on each other.** `7bb83e9b` (2026-10-08) had put the first of the
+  three on `main` alone, with its own run-out (`extendToOutline`); the port
+  replaced that with this lane's. Three things in
+  `src/satin.js`:
+  - `thin` never deletes a pixel on the edge of its grid, and `ringToSpines`
+    laid shapes against the grid's top and left, so a shape's top row and
+    left column were its skeleton (a bar's was an L, and its last cross ran
+    the length of the bar). It leaves one cell there now. Rasterize nothing
+    for `thin` without an empty cell on every side.
+  - `skeletonEdges` is one pixel to one edge, a port of the Python tracer's
+    walk (`_skeleton_edges`). The wrong skeleton had been HIDING the old
+    walk's faults: with a true one, a C drawn by hand and set to satin came
+    out with its mouth sewn solid (447 stitches to 6,047) until the walk
+    was ported. Do not change one without the other's census.
+  - A free end of a spine is run on to the outline (`runOut` in
+    `railSatinFromSpine`), because a centre line stops half the stroke's
+    width short of its end; and the station that lands ON the outline
+    takes the widths of the one before it, because a ray cast from there
+    can leave through the stroke's end and cross a concavity.
+  It moves every satin shape of the browser lanes (the shape tool, drawn
+  shapes, the image lane's thin shapes) and no fill. `spineToRails` shares
+  the grid and the walk and has no run-out. What it leaves is MASTER_SCOPE
+  defect 57: a square or a dot up to 6 mm has no stroke and takes
+  `satinColumn`, which starts 12% in from each end; a bar's centre-run
+  underlay ends at the far end from where its column starts; a star's
+  centre. To measure a satin change, `tools/satin-walk-census.mjs`:
+  `--kind arc --satin` (hand-drawn curved strokes on the user's satin, the
+  census that caught the C), `--cover` (the share of each drawn shape under
+  thread, how far outside it a needle lands, thread over open ground),
+  `--images` (eight corpus logos shape by shape, a shape's OWN thread apart
+  from any thread: a ground fill runs under small shapes and hides what the
+  satin lost), `--dst` (the files' bytes), `--sheet` (designs before and
+  after at one scale).
 
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 
@@ -1197,31 +1418,53 @@ don't push for it.
 
 ## Known bugs (unresolved, not accepted — Kent's call on the fix)
 
-- **DST axis transposition — the WRITER half only, since 2026-09-07.**
-  EMB-Bot's own DST codec was transposed vs. the Tajima/pyembroidery standard
-  on both sides — confirmed via 4 independent sources + a clean-room decode.
-  Browser DST round-trips correctly against itself, which is why it shipped
-  undetected; every existing EMB-Bot DST is affected, so fixing the writer
-  means a migration path for old files.
+- **A hand-drawn shape with an anchor a pixel from the last one sews a spike
+  at that corner — the gesture that made them is FIXED 2026-10-03, the offset
+  is NOT (MASTER_SCOPE defect 55).** The short edge to such an anchor doubles
+  back, and `offsetRing` gives its end the whole mitre clamp, three times the
+  pull compensation: on terry a 40 mm box is filled 1.73 mm past the drawn
+  ring there, where a clean corner has 0.85. They came from a double-click,
+  which is two clicks and then a `dblclick`: the second click was taken as an
+  anchor unless it landed within 0.5 canvas px of the first
+  (`DUP_POINT_EPS_PX`), and one slip in four was refused as crossing instead,
+  so the double-click finished nothing. `ManualPanel.onCanvasClick` now lets
+  a click with `detail` 2 go by (the field reads `detail` for its own
+  double-click too), so no new shape gets one. **Still open:** a shape saved
+  before then keeps its anchor and its spike, and two anchors dragged to one
+  hoop corner make another. Curing those means the offset (a bevel past the
+  clamp), which moves every sharp corner under a preset: Kent's call, not
+  built. It is NOT the closed-ring wedge fixed the same day (that is a point
+  said twice to within rounding, and no Studio lane sends one), though it is
+  the same function and the same clamp. `node tools/closed-ring-census.mjs`,
+  table 4; `app/e2e/manual-double-click.spec.js` drives the gesture in a
+  real browser.
 
-  **`src/dstimport.js` is FIXED** (PR #404): third-party DST now decodes
-  through `decodeDSTStandard`, so an imported file lands the right way round
-  instead of mirrored. That half needed no migration — nothing this app wrote
-  goes through it.
+**One open as of 2026-10-03, above (its offset half).** Every entry below this
+line is fixed and is kept for its trail. Put a new unresolved bug at the top,
+above this line.
 
-  **`src/dst.js`, the writer, is still transposed and still Kent's call.** It
-  also carries a second defect found the same day: a **phantom end stitch**,
-  because the `end` record's coordinates are written as a move, so every DST
-  this product has ever produced has one extra stitch past the design's last.
-  One line fixes it (`if (st.type === "end") break;`) and it changes the bytes
-  of every file, which is the same call as the transposition.
+- **DST axis transposition — FIXED 2026-09-08, both halves. The phantom end
+  stitch is FIXED too (#415).** EMB-Bot's own DST codec was transposed
+  against the Tajima/pyembroidery standard in both directions. Four
+  independent sources and a clean-room decode confirmed it. It shipped
+  undetected because browser DST round-tripped correctly against itself.
+  - The importer went standard first, in PR #404.
+  - The writer followed in `bca5a504`. `encodeRecord` is now byte-identical
+    to `pystitch.DstWriter.encode_record`, and `decodeDSTStandard` is a plain
+    alias of `decodeDST`.
+  - The phantom end stitch was the `end` record written as a move.
+    `src/dst.js` now stops at `if (st.type === "end") break;`.
 
-  What IS safe to hand out today: a project made only of auto-digitized
-  images exports DST through the service, and that path is correct —
-  measured 2026-09-07 at 80.3 x 16.7 mm in dst, pes and jef alike, all three
-  2,187 stitches, all three carrying the colour stop. The Download step says
-  so in those words. See `dst-codec-axis-discrepancy` in Kent's memory,
-  `docs/dst-axis-verdict-2026-07-31.md`, and scope-history 09-07.
+  **Do not "fix" either half back.** This entry kept saying the writer was
+  "still transposed and still Kent's call" for weeks after it was fixed. A
+  stale instruction like that is how `crossval-stitch-formats.mjs` came to
+  tell its reader to un-fix the axis (memory,
+  `stale-diagnostics-and-two-flips-2026-09-13`).
+
+  **One thing stays true:** a `.dst` that EMB-Bot wrote BEFORE the fix is in
+  the old dialect and re-imports transposed. Nothing repairs old files. The
+  full trail is in CLAUDE.md footgun #1, `dst-codec-axis-discrepancy` in
+  memory, and `docs/dst-axis-verdict-2026-07-31.md`.
 - **Gradient-class designs fragment before blend treatment** — **FIXED
   2026-08-03**, same-day follow-up session. `gradient` class still segments
   via plain k-means (23 regions on the repro fixture, unchanged), but every
@@ -1302,6 +1545,119 @@ don't push for it.
   repro fixture now disable the guards explicitly (`repro_cfg` in
   `tests/test_enclosed_background.py`).
 
+## How-to: sharded CI, per-lane fill options, and the recent flags (2026-10-07/08)
+
+Practical recipes only. What is built, ON or measured lives in MASTER_SCOPE;
+the reasoning lives in the code comments named below.
+
+### Sharded digitizer CI (PR #669)
+
+- **Shape.** `digitizer shard 1/6 … 6/6` (matrix job `digitizer-shard`) each
+  run `pytest -n auto` on their own runner; the required check named
+  `digitizer` is an aggregator that `needs` them, runs `if: always()`, and
+  goes green only if every shard succeeded AND
+  `digitizer/tools/ci_shard_check.py` proves the shards' manifests are one per
+  shard, identical collected lists, pairwise disjoint selections, together the
+  whole suite. A red shard, a missing shard or a dropped test all fail it.
+- **Assignment.** `digitizer/tests/_ci_shard.py` (hooked from `conftest.py`)
+  gives whole test FILES to shards, longest first onto the lightest shard,
+  weighted by `digitizer/tests/.shard_durations.json` (per-file seconds). Whole
+  files, so module-scoped fixtures are computed once. A file missing from the
+  JSON gets the median, so a new test file needs no refresh.
+- **Run one shard locally** (inert unless the variable is set; a plain
+  `pytest` still runs everything):
+
+  ```bash
+  cd digitizer
+  DIGITIZER_SHARD=2/6 DIGITIZER_SHARD_MANIFEST=/tmp/m2.json \
+    .venv/bin/python -m pytest tests/ -q -n auto > log 2>&1; echo "EXIT=$?" >> log
+  ```
+
+  Add CI's three `--deselect` node IDs (workflow file) to reproduce its
+  exact selection. Run the aggregator's check on a folder of manifests with
+  `python digitizer/tools/ci_shard_check.py <dir>`.
+- **Changing the shard count** means editing the matrix list, the job name and
+  the `DIGITIZER_SHARD: k/6` denominator together.
+- **Refresh `.shard_durations.json`** when one shard keeps running far longer
+  than the rest (stale numbers cost balance, never coverage). Download the
+  `digitizer-shard-*` artifacts of one green run (each holds `junit.xml`) and:
+
+  ```bash
+  cd digitizer
+  python tools/ci_shard_durations.py shard-1/junit.xml shard-2/junit.xml … shard-6/junit.xml
+  ```
+
+  It rewrites the JSON in place; commit it. Relative weights are what matter,
+  so a local `--junitxml` also works.
+- **Trap.** The plugin pops `DIGITIZER_SHARD`/`DIGITIZER_SHARD_MANIFEST` from
+  the environment when it runs, so a child `pytest` (e.g. `test_doc_claims.py`
+  collects in a subprocess) sees the whole suite. Don't re-add them to a child.
+
+### Per-lane fill options in `app/src/lib/generate.js`
+
+`generateElement` passes engine options per lane; the engine defaults stay
+OFF, so a lane opts in by passing the key to `EMB.buildQualityDesign`:
+
+- **`fillColumns: true`** — a fill is sewn column by column so no thread
+  crosses a cut-out or notch. Passed by the **manual lane only**; the image
+  lane and the basic-shape lane deliberately omit it (comments in the file say
+  so). To turn it on for another lane add `fillColumns: true` to that lane's
+  call and update the lane's comment. Test: `app/src/lib/generate.spec.js`
+  ("a manual fill lays no thread across its cut-out").
+- **`cutFloats: true`** (`src/digitize.js`, default off) — a float the DST
+  writer would lay as three or more jump records becomes a real `trim` in the
+  stream (and so gets ties). No Studio lane passes it yet; try it from a Node
+  script, or with `--on cutFloats` below.
+- The "Design file" (imported) lane reads `displayResult(element)` from
+  `digitizer.js` rather than `element.result`.
+
+### Digitizer flags touched 2026-10-05..08 (all `PipelineConfig` fields)
+
+Check the live default before relying on this list:
+`grep -n "<flag>: " digitizer/digitizer_core/config.py`.
+
+- **`blend_fallback_underlay`** (gradient-class designs): the non-ramp
+  fallback path of `stage6_blend.blend_fill` sews the resolved underlay
+  style instead of none. The ramp-band path stays bare on purpose. Default
+  as of main `a8aafc5` reads **`False`** in `config.py`; if a PR flips it,
+  `tests/test_blend_fallback_underlay.py` is the guard.
+- **`satin_join_square`** (default **True**): square the join corners of
+  satin members. Capped by `_STRAIGHT_MAX_MOVE_HALVES = 0.6`
+  (`stage6_satin.py`): a member whose apex sits further than 0.6 half-widths
+  off its fitted line keeps its pre-flip spine (a bend is not a corner).
+  Tune the constant, not the flag, if a bowl loses its wedge. Tests:
+  `tests/test_join_corner_straight.py`, `tests/test_join_corner_bend_cap.py`.
+- **`letterform_priors_k`** (default 0.75), `satin_slab_serifs` (OFF),
+  `lettering_columns` (OFF): see their comments in `config.py`.
+
+**Determinism rule for `medial_axis`.** Always call
+`skimage.morphology.medial_axis(..., rng=0)`. With the default `rng=None`
+skimage breaks ties from OS entropy and the lane sews a different design on
+every run (golden_tee gave 8,312 / 8,318 / 8,319 / 8,315 stitches).
+`stage6_satin`, `shapefield` and `outline_cut` already pass it; any new
+caller must. Spot-check a new call site by running the same input twice in
+separate processes and diffing the stitch streams.
+
+### New `tools/` scripts (engine, run from repo root)
+
+- `node tools/file-cut-census.mjs [srcDir] [--set shapes|lettering|image|<set-file>] [--on flag[=value]] [--every K] [--jobs N] [--json out] [--keep dir] [--against otherSrc]`
+  — what a machine CUTS, read off the written PES/EXP/DST rather than the
+  builder's stream; `--against` diffs two engines. Set files:
+  `tools/file-cut-sweep-set.mjs` (the 8,255-design sweep),
+  `file-cut-satin-set.mjs` (hand-drawn shapes set to satin),
+  `file-cut-import-set.mjs` (imported stitch files and `combineDesigns` pairs).
+  `--every 10` is the quick look.
+- `node tools/travel-sheet.mjs out.svg [--against otherSrc]` — draws four
+  designs (satin T, thin star, imported file, lettering + import) from what a
+  third-party reader makes of each file: needle-down, sewn and travelled.
+- `node tools/crossval-stitch-formats.mjs` — the cross-validation harness
+  behind `node --test`'s format tests; needs a venv with `pystitch`.
+- `digitizer/tools/` additions (each has a docstring with usage):
+  `ci_shard_check.py`, `ci_shard_durations.py` (above); `fan_census.py`,
+  `n_fan_spies.py`, `letter_band.py` (letter-fan / lettering measurements);
+  `eye_pairs_price.py`, `eye_pairs_gallery.py` (labelled thread pairs for
+  Kent's sitting); `letterform_priors_spike/` (the refit spike).
+
 ## Running things
 
 Pass counts are gone from this section on purpose — the counts-are-gone
@@ -1325,8 +1681,10 @@ command block.
 
 **CI now exists.** `.github/workflows/python-package-conda.yml` (PR #37
 rewrote Kent's initial stock conda template to run the three commands
-below for real) runs on every push and pull request — **four** jobs, engine
-/ studio / digitizer / studio-e2e, the digitizer job deselecting **three**
+below for real) runs on every push and pull request — **four** required
+checks, engine / studio / digitizer / studio-e2e (since 2026-10-08 `digitizer`
+is an aggregator over six `digitizer shard k/6` jobs — "Sharded digitizer CI"
+below), each shard deselecting **three**
 golden tests by node ID (CI's OWN list, not the same set that fails on
 Kent's Windows machine — see the failure classes below). It was five until
 2026-08-22, when the remove-and-see check below was finally run. Every PR needs its
@@ -1503,33 +1861,30 @@ failures are EXPECTED:
    To re-derive this list rather than trusting it:
    `python -m pytest tests/ -q -n auto -rs 2>&1 | grep '^SKIPPED' | sed 's/:[0-9]*:/: /' | sort | uniq -c`
 
-4. **Four photo-lane tests go RED on any machine that has
-   `rembg_isolated/venv` built — and CI never does.** `test_shade_palette_
-   demand.py::test_pipeline_gate_photo_classes_only[photo_subject-...]`,
-   `test_photo_sequencing.py::test_photo_class_plan_is_depth_sorted_end_to_
-   end`, `test_merge_adjacent_same_thread.py::test_the_pipelines_own_
-   output_no_longer_needs_the_merge` and `test_is_photographic.py::test_
-   declaring_a_gradient_photograph_brings_it_inside_max_colors`. With the
-   isolated worker present, stage 1 removes the stub's and the two-square
-   image's "background" (the light square goes; both squares land on one
-   thread) and re-cuts the owl (the merge test's block order and the
-   declared-photographic report's thread-match findings both move), and
-   each test's premise moves. Proved 2026-09-29 both ways: hide the venv
-   and all four pass; link it into a worktree at the pre-change commit and
-   all four fail there too. So on a cloud box that built the venv for a
-   render (the eye-pairs page needs it for the tires cutout) these four are
-   the MACHINE's, not a regression of what you just changed — and note that
-   they are not skips: `test_background_removal`'s two tests SKIP without
-   the venv (class 3), these four FAIL with it. When you attribute a red
-   set against a pre-change worktree, give that worktree the same venv
-   state first (a symlink to `rembg_isolated/venv` will do), or the fourth
-   reads as yours. The fix is theirs
-   and small — pin `photo_prep_background_removal=False` where the premise
-   is about something else — filed as #553, not folded into an unrelated
-   PR. A fourth symptom of the same venv under a loaded 4-core
-   full run: `test_real_background_removal_on_a_real_photo` can report
-   *"rembg worker timed out after 60s"* (it passed alone in 7 s the same
-   hour) — contention, not the engine.
+4. **`rembg_isolated/venv` changes what a photo-lane test sees.** Where
+   the venv is built, stage 1 really cuts the subject out. CI never builds
+   it, so in CI the cutout is requested but unavailable, and the job skips
+   prep entirely. Until 2026-10-02 four tests went RED on every machine
+   with the venv and green in CI, although each was about something other
+   than the cutout: `test_shade_palette_demand.py::test_pipeline_gate_
+   photo_classes_only[photo_subject-...]`, `test_photo_sequencing.py::
+   test_photo_class_plan_is_depth_sorted_end_to_end`, `test_merge_
+   adjacent_same_thread.py::test_the_pipelines_own_output_no_longer_
+   needs_the_merge` and `test_is_photographic.py::test_declaring_a_
+   gradient_photograph_brings_it_inside_max_colors`. They now pin
+   `photo_prep=False` (#553), which IS CI's route:
+   `test_background_removal`'s `test_an_unavailable_cutout_falls_back_to_
+   no_prep_at_all` asserts the two produce the same geometry. **Do not pin
+   `photo_prep_background_removal=False` instead.** That runs prep without
+   the cutout, a third route neither machine takes, and the most expensive
+   arm on the acceptance sheet. **A new test that runs a photo class end to
+   end on defaults needs the same pin, unless the cutout is what it
+   tests.** When you attribute a red set against a pre-change worktree,
+   still give that worktree the same venv state first; a worktree has none.
+   One symptom remains under a loaded 4-core full run:
+   `test_real_background_removal_on_a_real_photo` can report *"rembg worker
+   timed out after 60s"*. That is contention, not the engine; it passed
+   alone in 7 s the same hour.
 
 Anything red outside classes 1 and 4 is unexplained and yours to chase, and
 any skip outside classes 2-3 is a new one — chase that too.
@@ -1586,6 +1941,89 @@ correction). Two rules stop a repeat:
    -- digitizer/digitizer_core` shows landed pipeline commits, any grade
    comparison against the baseline is comparing against a stale ruler —
    say so wherever the comparison is quoted.
+
+### The WSL scorecard box on Kent's laptop (2026-10-02)
+
+Kent's Windows laptop carries a WSL2 Ubuntu 24.04 distro built to match the
+CI `digitizer` job: `python3.12` (3.12.3), the pinned `requirements.txt`,
+apt `tesseract-ocr` 5.3.4, no `rembg_isolated/venv`. Claude Code does not
+run inside it; a Windows session calls in with `wsl`.
+
+**What it is for.** A scorecard `diff` whose OCR and legibility rows read
+the way CI's do, without waiting on a cloud routine. Windows cannot give
+that (DOCTRINE, the 2026-09-15 platform entry).
+
+**What it is not for.** Capturing a baseline, a golden, or any grade that
+gets quoted. `photo/photo_grass_macro.png` scores differently on this box
+on both garments with no engine change, so its two rows are the machine's
+and not the engine's (DOCTRINE, same entry, the 2026-10-02 addendum).
+Captures stay on cloud Linux or CI.
+
+**Layout, all inside the distro's own filesystem:**
+
+- `/root/EMB-Bot` is a plain clone of `origin`. Use it to fetch and to cut
+  worktrees. Do not develop in it: nothing under `/root` is backed up and
+  no Windows checkout can see its branches.
+- `/root/emb-control` is a detached worktree at `2c60cd87`, the commit the
+  baseline was captured at when the box was built. **The baseline moved to
+  `6e0cb943` on 2026-10-04 and to `d000e370` on 2026-10-05** — re-cut the
+  control at the file's own `captured_at_commit` before the next `diff`, or
+  its rows compare the wrong commit to the file. Its `digitizer/.venv` is the box's one
+  venv. Its `corpus_scorecard_baseline.json` is overwritten with
+  `origin/main`'s copy on purpose (the control compares that commit to
+  that file), so the tree reads dirty.
+- The distro has no Linux user, only root. `-u root` is not optional.
+
+**Scoring a branch.** Put the commands in a script and run the script; see
+the quoting trap below.
+
+```bash
+# run as: wsl -d Ubuntu-24.04 -u root -- bash /mnt/c/path/to/script.sh
+cd /root/EMB-Bot && git fetch origin
+git worktree add --detach /root/wt-NAME origin/BRANCH
+cd /root/wt-NAME/digitizer
+/root/emb-control/digitizer/.venv/bin/python tools/corpus_scorecard.py diff \
+    > /root/NAME.log 2>&1; echo "EXIT=$?" >> /root/NAME.log
+git -C /root/EMB-Bot worktree remove /root/wt-NAME
+```
+
+The borrowed interpreter works because the tool puts its own tree on
+`sys.path` *(verified 2026-10-02 — a fresh worktree at `5c99b460` imported
+`digitizer_core` from itself, not from the control tree)*. Rebuild the venv
+only when `requirements.txt` moves: `python3.12 -m venv .venv`, then
+`.venv/bin/pip install -r requirements.txt`. `uvloop` installs on Linux,
+so nothing is filtered out the way it is on Windows.
+
+**Budget 35 minutes for the plain tool.** `diff` is serial and took 34.4
+minutes for the 52 rows. `/root/scorecard_pool.py` on the box scores the
+same rows in a 6-worker pool in 18.0 minutes, then prints the tool's own
+`diff` and a zero-tolerance leaf comparison beside it; run it with the same
+interpreter from the worktree's `digitizer/`. The two reported the same
+movers, line for line. *(measured 2026-10-02 — both at `2c60cd87`)*
+
+**Reading the result.**
+
+- Read the log from Windows at
+  `\\wsl.localhost\Ubuntu-24.04\root\NAME.log`, or copy it to `/mnt/c/...`.
+- `photo_grass_macro` on either garment: ignore. Stitch counts two off on
+  `region_blobs` or `repro_gradient_white_icon`: also the box.
+- Rule 2 above still applies. A `diff` at a commit past the baseline's
+  `captured_at_commit` shows every pipeline change landed since, and those
+  are not the box's either. To judge one change, score its base and its
+  head and compare the two logs.
+
+**Traps, each hit while setting it up:**
+
+- **PowerShell to `wsl` to `bash -c` mangles `$` and nested quotes.** A
+  `sed` range and a `python -c` both failed that way. A script file run by
+  path has no quoting to lose.
+- **`wslpath` handed a Windows path through PowerShell drops the
+  backslashes.** Write the `/mnt/c/...` form yourself.
+- **Work under `/root`, never under `/mnt/c`.** The Windows drive is slow
+  from inside WSL and the Windows venvs are not Linux venvs.
+- **The VM holds its RAM until it idles out.** `wsl --shutdown` when done.
+- **`wsl --unregister Ubuntu-24.04` deletes the distro and everything in
+  `/root` with no confirmation.** That is the uninstall, not a reset.
 
 ### The eye-pairs reveal gallery (2026-09-17)
 
@@ -1796,6 +2234,15 @@ and controllable to the user.
     pair `FILL_ROW_MM`/`SATIN_SPACING_MM`. It asserts AGREEMENT, never a
     value — the numbers themselves are gate 1.
   - `flatten.js` — medianCut → modeFilter → absorbSmallRegions pipeline.
+    `absorbSmallRegions` labels the image ONCE and then keeps each
+    component's pixels itself (2026-10-04). Before that it labelled the whole
+    image again after every absorb, and the Studio's tab froze for minutes on
+    a photograph. The old loop is kept word for word in
+    `test/flatten.test.js` as the definition of what is absorbed into what and
+    in which order: change the engine's version and that file says whether a
+    pixel moved. `node tools/flatten-census.mjs` prints what the Studio's own
+    flatten costs on every testdata PNG, step by step, and with `--hashes` the
+    hash of what it returns, to diff two engines.
   - `fonts/` — pre-digitized font library: `manifest.json` (85
     shipping fonts — recount it, the number drifts) + `bin/*.embf` binaries
     + `.LICENSE.txt` sidecars, parsed offline from Ink/Stitch's open-source
@@ -1818,7 +2265,21 @@ and controllable to the user.
     (`test/crossval-stitch-formats.test.js`, revived 2026-08-21 after the
     2026-08-11 pystitch swap left it silently skipping — the repo's only
     automated third-party format check; CI runs it loud, see "Running
-    things").
+    things"). **All three share ONE rule for a move too long for a record
+    (the chain rule, `dst.js`):** it is sewn, split into stitches at 12.1 mm
+    an axis, only when it CONTINUES a sewn run; the move to a stitch that
+    follows a jump, a cut, a colour change or the start of the file is
+    travel, laid as jumps up to its last record. `exp.js` took it last
+    (2026-10-07): until then its file had needle holes along such a move
+    that the other two had not. Check a change to one writer against the
+    other two at the FILE: `node tools/file-cut-census.mjs` counts the three
+    files' needle holes hole by hole, `--against <src>` says which designs'
+    files change. Its own three sets leave two lanes out, and they are the
+    two that mattered here: `--set tools/file-cut-satin-set.mjs` is a drawn
+    shape SET TO SATIN (the "manual" lane is all fills), and `--set
+    tools/file-cut-import-set.mjs` the lanes whose stream can OPEN with a
+    stitch (an imported stitch file, alone or as a project's second
+    element), which no builder's stream does.
 - **`app/src/`** — Svelte 5 Studio. `App.svelte` + `ui/` (steps/components) +
   `lib/` (non-DOM logic, each paired with a `.spec.js`): `project.js` (data
   model, v2 = `{version,garmentId,selectedId,elements:[...]}`), `generate.js`

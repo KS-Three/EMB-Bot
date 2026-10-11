@@ -7,6 +7,7 @@
 // For those, pass an alternate sample string with --sample=<key>:<text>
 // (repeatable), e.g.:
 //   node tools/render-font-compare.mjs cats --sample=cats:cdo
+import "./_help.mjs";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";

@@ -84,6 +84,7 @@ by definition runs under another colour.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from shapely import STRtree, affinity
@@ -92,10 +93,10 @@ from shapely.ops import unary_union
 
 from .config import PipelineConfig
 from .fabrics import Fabric
-from .machine import satin_ceiling_mm
+from .machine import FILL_ROW_MM, satin_ceiling_mm
 from .regions import Region
 from .stitchwidth import column_sized
-from .stage6_fill import principal_angle_deg
+from .stage6_fill import best_fill_angle_deg, principal_angle_deg
 from .stage6_satin import is_satin_candidate
 from .warnings_codes import (
     HOLE_NEARLY_CLOSED,
@@ -314,6 +315,64 @@ def _largest_polygon(geom) -> Polygon | None:
     return max(parts, key=lambda g: g.area)
 
 
+def seam_row_angles(regions: list[Region], cfg: PipelineConfig, fabric: Fabric,
+                    design_class: str = "flat") -> dict[str, float | None]:
+    """-> {shape_id: the row angle `cfg.overlap_by_angle` reads, or None}.
+
+    Stage 7's precedence (`_fill_angle_for`): the shape's own angle, the
+    global, the design angle, the compensation axis -- and with none of
+    those, the angle stage 6 picks itself, `best_fill_angle_deg` on the
+    grown polygon at the design's row spacing, approximated here on the
+    artwork grown by the pull (the real one is what stage 5 computes). Only
+    plain tatami has one row angle; satin, another technique or a bean
+    letter is None and keeps the scalar underlap.
+    """
+    pull = max(0.0, fabric.pull_comp_mm)
+    satin_max = satin_ceiling_mm(cfg)
+    directional = bool(cfg.directional_comp) and pull > 0
+    row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
+    tatami = str(getattr(cfg, "fill_technique", "tatami") or "tatami") == "tatami"
+    out: dict[str, float | None] = {}
+    for r in regions:
+        a, is_sat = _comp_axis(r, cfg, satin_max, design_class)
+        tier = str(r.meta.get("tier", "auto")).lower()
+        if (is_sat or not tatami or tier not in ("auto", "fill")
+                or r.meta.get("bean_letter_spines")):
+            out[r.shape_id] = None
+            continue
+        explicit = (r.meta.get("fill_angle_deg") is not None
+                    or cfg.fill_angle_deg is not None
+                    or r.meta.get("design_angle_deg") is not None
+                    or directional)
+        out[r.shape_id] = (a if explicit else
+                           best_fill_angle_deg(_grow(r.polygon, pull, None), row_mm))
+    return out
+
+
+def _bare_part(hole: Polygon, covered, floor: float) -> list[Polygon]:
+    """The part of a held hole that is still an opening once later colours sew.
+
+    A hole no later stitched shape touches is returned whole and untouched, so
+    a true counter is held exactly as before. Otherwise only the pieces of the
+    hole that nothing covers are held, and only those at or over `floor` --
+    the same `min_detail_mm²` the hole itself was judged by. ANY bare piece
+    under that floor is released -- the anti-alias sliver between a piece and
+    its hole's edge, and equally a small compact opening beside the piece --
+    so the ground grows into it and reaches its tongue under the piece, the
+    way every seam that was never held already does.
+    """
+    # Interiors must meet: a later shape that only TOUCHES the hole's edge
+    # (on the ground, outside the hole) covers none of it, and must leave the
+    # held polygon byte-identical to the engine without the flag.
+    if covered is None or not hole.relate_pattern(covered, "T********"):
+        return [hole]
+    bare = hole.difference(covered)
+    if bare.is_empty:
+        return []
+    parts = getattr(bare, "geoms", [bare])
+    return [g for g in parts if g.geom_type == "Polygon" and g.area >= floor]
+
+
 def resolve_overlaps(
     regions: list[Region], fabric: Fabric, cfg: PipelineConfig,
     design_class: str = "flat",
@@ -373,6 +432,43 @@ def resolve_overlaps(
 
     geom_by_layer = {L: unary_union([sewn_footprint(r) for r in by_layer[L]]) for L in layers}
 
+    # `cfg.overlap_by_angle` (Law 26): each tatami fill's row angle in
+    # stage 7's precedence (`seam_row_angles`); None keeps the scalar.
+    # Off: nothing is built and the underlap below is the scalar it was.
+    parallel = max(overlap, float(getattr(cfg, "overlap_parallel_mm", overlap) or 0.0))
+    by_angle = bool(getattr(cfg, "overlap_by_angle", False)) and overlap > 0 and parallel > overlap
+    row_angle: dict[str, float | None] = {}
+    foot_regions: list[Region] = []
+    foot_tree = None
+    if by_angle:
+        row_angle = seam_row_angles(regions, cfg, fabric, design_class)
+        foot_regions = list(regions)
+        foot_tree = STRtree([sewn_footprint(r) for r in foot_regions])
+
+    def seam_overlap(a_deg: float, b_deg: float) -> float:
+        d = math.radians((a_deg - b_deg) % 180.0)
+        return overlap + (parallel - overlap) * abs(math.cos(d))
+
+    def deep_reach(r: Region, poly, L: int):
+        """The extra underlap a fill gets under each LATER fill its rows run
+        near-parallel to: the seam's own depth, clipped to that neighbour."""
+        a = row_angle.get(r.shape_id)
+        if a is None:
+            return None
+        parts = []
+        for i in foot_tree.query(poly.buffer(pull + parallel)):
+            n = foot_regions[int(i)]
+            b = row_angle.get(n.shape_id)
+            if n.meta["layer"] <= L or b is None:
+                continue
+            ov = seam_overlap(a, b)
+            if ov <= overlap + 1e-9:
+                continue
+            part = poly.buffer(pull + ov).intersection(sewn_footprint(n))
+            if not part.is_empty:
+                parts.append(part)
+        return unary_union(parts) if parts else None
+
     # Bare fabric is everything the artwork does not cover. A same-thread gap is
     # only a gap where no other colour is filling it, so the keep-apart corridor
     # is carved out of this and an underlap under a later colour never qualifies.
@@ -407,6 +503,50 @@ def resolve_overlaps(
         later[L] = running
         running = geom_by_layer[L] if running is None else running.union(geom_by_layer[L])
 
+    # Bean letters (`cfg.bean_letter_max_stroke_mm`): a letter sewn as a
+    # 0.4 mm line of thread along its ink no longer covers the hole its traced
+    # shape left in the ground, so the ground it stands on sews THROUGH -- the
+    # whole letter joins the one earlier shape it shares the most edge with.
+    # No tag, no entry: byte-identical.
+    ground_under: dict = {}
+    for b_ in regions:
+        if (not b_.meta.get("bean_letter_spines")
+                or str(b_.meta.get("tier", "auto")).lower() != "auto"):
+            continue
+        edge = b_.polygon.boundary
+        best, best_len = None, 0.0
+        for r_ in regions:
+            if (r_ is b_ or r_.meta["layer"] >= b_.meta["layer"]
+                    or not r_.meta.get("stitched", True)):
+                continue
+            if r_.polygon.distance(b_.polygon) > 0.1:
+                continue
+            shared = edge.intersection(r_.polygon.buffer(0.1)).length
+            if shared > best_len:
+                best, best_len = r_, shared
+        if best is not None:
+            ground_under.setdefault(best.shape_id, []).append(b_.polygon)
+    ground_under = {k: unary_union(v).buffer(0.1) for k, v in ground_under.items()}
+
+    # `cfg.held_hole_bare_only`: what later STITCHED colours cover, per
+    # layer -- a suffix union like `later`, built only with the flag on. An
+    # unstitched later shape is bare fabric by design and never covers a hole;
+    # `plan_stitches` drops those before stage 5 anyway, but tools that pass
+    # `result.regions` whole (`seam_underlap`, `sewn_compensation`) do not.
+    bare_only = bool(getattr(cfg, "held_hole_bare_only", False))
+    sewn_after: dict[int, object] = {}
+    if bare_only:
+        running = None
+        for L in reversed(layers):
+            sewn_after[L] = running
+            mine = [sewn_footprint(o) for o in by_layer[L] if o.meta.get("stitched", True)]
+            if mine:
+                here = unary_union(mine)
+                running = here if running is None else running.union(here)
+
+    def later_sewn(L: int):
+        return sewn_after.get(L)
+
     planned: list[PlannedRegion] = []
     holes_held = 0
     # The shapes, not just how many. A count answers "did anything go wrong";
@@ -427,8 +567,16 @@ def resolve_overlaps(
             # Extend under whatever sews later — the underlap that hides the seam.
             if overlap > 0 and later[L] is not None:
                 reach = poly.buffer(pull + overlap).intersection(later[L])
+                if by_angle:
+                    deep = deep_reach(r, poly, L)
+                    if deep is not None:
+                        reach = reach.union(deep)
                 if not reach.is_empty:
                     grown = grown.union(reach)
+
+            under = ground_under.get(r.shape_id)
+            if under is not None:
+                grown = grown.union(under)
 
             # Hold open the bare fabric between this shape and any neighbour on
             # the same thread. Nothing else separates them: they share a colour,
@@ -495,14 +643,22 @@ def resolve_overlaps(
             # that closes up is lost artwork, so any hole that would fall below
             # the sewable floor is held open at its original size instead.
             held: list[Polygon] = []
+            n_holes = 0
             for ring in poly.interiors:
                 hole = Polygon(ring)
                 if hole.area < hole_floor:
                     continue           # already below the floor; stage 3's call
+                if under is not None and hole.buffer(-0.05).within(under):
+                    continue           # a bean letter's hole: sewn through, on purpose
                 if _shrink(hole, pull, axis).area < hole_floor:
-                    held.append(hole)
+                    keep = (_bare_part(hole, later_sewn(L), hole_floor)
+                            if bare_only and r.meta.get("stitched", True)
+                            else [hole])
+                    if keep:
+                        held.extend(keep)
+                        n_holes += 1
             if held:
-                holes_held += len(held)
+                holes_held += n_holes
                 grown = _largest_polygon(grown.difference(unary_union(held)))
                 if grown is None or grown.is_empty:
                     lost.append(r)

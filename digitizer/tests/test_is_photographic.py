@@ -69,8 +69,15 @@ def test_declaring_a_gradient_photograph_brings_it_inside_max_colors():
     # inside max_colors undeclared too, so the defect this test documents is
     # only visible on the engine before the flip; the flag's own contract --
     # declaring applies the palette bind -- is unchanged.
-    plain = PipelineConfig(**PRE_FLIP)
-    declared = PipelineConfig(is_photographic=True, **PRE_FLIP)
+    # `photo_prep=False` pinned 2026-10-02 (#553): declaring the owl
+    # photographic also requests the subject cutout. Where `rembg_isolated/
+    # venv` exists the owl is re-cut, and the declared report keeps six
+    # THREAD_MATCH_POOR findings. That is the cutout, not the bind. CI's
+    # requested-but-unavailable cutout skips prep entirely, which is this
+    # pin's geometry (`test_background_removal.test_an_unavailable_cutout_
+    # falls_back_to_no_prep_at_all`).
+    plain = PipelineConfig(photo_prep=False, **PRE_FLIP)
+    declared = PipelineConfig(is_photographic=True, photo_prep=False, **PRE_FLIP)
 
     res_a = run_stages(OWL, plain)
     plan_a = plan_stitches(res_a, plain)

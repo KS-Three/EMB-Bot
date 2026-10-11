@@ -11,6 +11,7 @@ import { loadPalette, nearestInList } from "./threads.js";
 import { resolveCutOuts, manualShapeName, withCutOut, isColumn } from "./manualShapes.js";
 import { columnWidthMm, withColumnWidthMm, columnSewnMm } from "./fieldNodeEdit.js";
 import { STITCH_WIDTH_MAX_MM } from "./digitizer.js";
+import { isCapPieceId, capPieceRow } from "./capPieces.js";
 
 const LANES = new Set(["digitized", "manual", "shape"]);
 
@@ -53,6 +54,7 @@ export const SHAPE_UNDERLAYS = [
   { value: "edge_zigzag", label: "Edge + zigzag" },
   { value: "double_lattice", label: "Double lattice" },
   { value: "zigzag", label: "Zigzag" },
+  { value: "cross_tatami", label: "Crossing pass (pro)" },
 ];
 
 // The design-level border's name in the "Design (…)" option — DigitizePanel's
@@ -149,6 +151,20 @@ export function popoverModel({ element, shapeId, fit, fabric }) {
   }
 
   // digitized
+  // A stretch of the silhouette cap is not a review row: it has a colour and
+  // it can go, and nothing else (no tier, angle, underlay or border).
+  if (isCapPieceId(shapeId)) {
+    if ((element.deletedShapeIds || []).includes(shapeId)) return null;
+    const cap = capPieceRow(element, shapeId);
+    if (!cap) return null;
+    return {
+      lane, shapeId, name: "Edge stitch",
+      rows: [
+        { key: "color", kind: "thread", rgb: cap.rgb },
+        { key: "delete", kind: "action", label: "Delete edge stitch", danger: true },
+      ],
+    };
+  }
   const rows = (element.review && element.review.shapes) || [];
   const row = rows.find((r) => r && r.id === shapeId);
   if (!row) return null;

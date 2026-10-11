@@ -1,0 +1,19 @@
+[
+ {
+  "logo": "bridge",
+  "source_px_per_mm": 3.49,
+  "line_mm": 1.0,
+  "off": {
+   "stitches": 17724,
+   "trims": 98,
+   "bean_shapes": 0,
+   "legibility": null
+  },
+  "on": {
+   "stitches": 17529,
+   "trims": 104,
+   "bean_shapes": 8,
+   "legibility": null
+  }
+ }
+]

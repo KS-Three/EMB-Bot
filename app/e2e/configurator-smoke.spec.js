@@ -29,7 +29,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { statSync } from "node:fs";
-import { startStudio, typeText, pickGarment, pickTemplate, openDownload, closeDownload } from "./helpers.js";
+import { startStudio, typeText, pickGarment, pickTemplate, openDownload, closeDownload, uploadArtwork, watchConsole } from "./helpers.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Same fixture digitize-stale-edits.spec.js uses (see that file's own
@@ -92,6 +92,24 @@ test("configurator: text -> download sheet -> DST", async ({ page }) => {
   const summary = page.locator(".sheet dl.summary");
   await expect(summary).toContainText("Tote");
   await expect(summary).toContainText('Text — "EMB TEST"');
+  // The hooping card is its own region below the recap, fed from the garment
+  // (tote -> canvas: tearaway, sharp needle). Its rows must not wear the
+  // recap's `summary` class -- that turned every `.sheet dl.summary` locator
+  // in this suite into a strict-mode violation (PR #596) -- so it repeats the
+  // recap's row rules in its own stylesheet, and this is what catches the two
+  // drifting apart.
+  const hooping = page.getByRole("region", { name: "What to hoop" });
+  await expect(hooping).toContainText("tearaway");
+  await expect(hooping).toContainText("75/11 sharp");
+  const rowLook = (root) => root.locator("dl > div").first().evaluate((row) => {
+    const pick = (el, props) => props.map((p) => `${p}: ${getComputedStyle(el)[p]}`);
+    return [
+      ...pick(row, ["display", "justifyContent", "columnGap", "paddingTop", "paddingBottom", "borderBottom"]),
+      ...pick(row.querySelector("dt"), ["color", "marginTop"]),
+      ...pick(row.querySelector("dd"), ["fontWeight", "textAlign", "marginLeft"]),
+    ];
+  });
+  expect(await rowLook(hooping)).toEqual(await rowLook(page.locator(".sheet")));
   // A thread block was actually planned for the design (not an empty/failed
   // generate) -- the shopping-list summary the Download step exists for.
   await expect(page.locator(".threadlist .threadrow")).toHaveCount(1);
@@ -101,7 +119,7 @@ test("configurator: text -> download sheet -> DST", async ({ page }) => {
   await confirmOversizeExport(page, "DST");
   const download = await downloadPromise;
 
-  expect(download.suggestedFilename()).toBe("design.dst");
+  expect(download.suggestedFilename()).toBe("emb-test.dst");
   const dstPath = await download.path();
   expect(dstPath).toBeTruthy();
   const { statSync } = await import("node:fs");
@@ -155,9 +173,8 @@ test("configurator: image content path -> sheet reflects it -> download", async 
   // health probe is blocked above so that routing is deterministic — without
   // it this spec's result would depend on whether a sibling spec's service
   // happened to be running, since Playwright runs the files in parallel.
-  await page.getByRole("button", { name: "Artwork", exact: true }).click();
 
-  await page.locator(".uploadbox input[type=file]").setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG, { run: false });
   // Real processed state, not just "the input accepted a file": the panel's
   // flatten pipeline ran and produced a palette preview, and that flowed all
   // the way up into stitchable content (same hasStitches gates the original
@@ -204,8 +221,7 @@ test("configurator: image content path -> sheet reflects it -> download", async 
   // changes` is the whole design, so a name beside this logo reads Colors 2
   // against Thread changes 2 (one text colour + two image colours = three
   // blocks) and both are right. Measured 2026-09-08. This project carries only
-  // the artwork, because the starter's empty text element is not sewable and
-  // `designSummary` lists only what sews.
+  // the artwork: the upload replaced the starter's empty text element.
   const summaryRow = async (label) => {
     const dd = page.locator(".sheet dl.summary div").filter({ has: page.locator(`dt:text-is("${label}")`) }).locator("dd");
     await expect(dd).toHaveCount(1);
@@ -230,13 +246,15 @@ test("configurator: image content path -> sheet reflects it -> download", async 
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "DST", exact: true }).click();
-  // NO confirm here, deliberately: the imported PNG does not fill the
-  // placement box the way auto-fit lettering does, so this design fits the
-  // 8x8 hoop and downloads in one click. The contrast with the text path
-  // above is the gate working -- it fires on the design, not on the garment.
+  // The confirm fires here too since 2026-10-08. The PNG used to skip it only
+  // because it was seeded as a SECOND element beside the fresh design's empty
+  // text box, at 40% of the hoop; it now replaces that box and auto-fits the
+  // placement exactly as lettering does (art-first-size.spec.js), so on a
+  // tote it exceeds the 8x8 hoop by the same construction as the text path.
+  await confirmOversizeExport(page, "DST");
   const download = await downloadPromise;
 
-  expect(download.suggestedFilename()).toBe("design.dst");
+  expect(download.suggestedFilename()).toBe("two-squares.dst");
   const dstPath = await download.path();
   expect(dstPath).toBeTruthy();
   expect(statSync(dstPath).size).toBeGreaterThan(512);
@@ -257,7 +275,7 @@ test("configurator: PES, EXP, and PDF worksheet exports produce real files", asy
   await page.getByRole("button", { name: "PES", exact: true }).click();
   await confirmOversizeExport(page, "PES");
   const pesDownload = await pesDownloadPromise;
-  expect(pesDownload.suggestedFilename()).toBe("design.pes");
+  expect(pesDownload.suggestedFilename()).toBe("emb-test.pes");
   const pesPath = await pesDownload.path();
   expect(pesPath).toBeTruthy();
   const { readFileSync } = await import("node:fs");
@@ -273,7 +291,7 @@ test("configurator: PES, EXP, and PDF worksheet exports produce real files", asy
   await page.getByRole("button", { name: "EXP", exact: true }).click();
   await confirmOversizeExport(page, "EXP");
   const expDownload = await expDownloadPromise;
-  expect(expDownload.suggestedFilename()).toBe("design.exp");
+  expect(expDownload.suggestedFilename()).toBe("emb-test.exp");
   const expPath = await expDownload.path();
   expect(expPath).toBeTruthy();
   expect(statSync(expPath).size).toBeGreaterThan(64);
@@ -439,8 +457,7 @@ test("artwork uploaded with the digitizer offline survives a page refresh", asyn
   await startStudio(page);
 
   await pickGarment(page, "Tote");
-  await page.getByRole("button", { name: "Artwork" }).click();
-  await page.locator("input[type=file]").first().setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG, { run: false });
 
   const caption = page.locator("span.stats");
   await expect(caption).toBeVisible({ timeout: 60_000 });
@@ -497,8 +514,7 @@ test("the review recap names every element, not just the selected one", async ({
 
   await typeText(page, "FRITSCH'S");
 
-  await page.getByRole("button", { name: "Artwork" }).click();
-  await page.locator("input[type=file]").first().setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG, { run: false });
   await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
 
   await openDownload(page);
@@ -594,7 +610,7 @@ test("every control in the configurator has an accessible name", async ({ page }
   await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
   expect(await unnamedControls(page), "configurator").toEqual([]);
 
-  await page.getByRole("button", { name: "Artwork", exact: true }).click();
+  await uploadArtwork(page, ART_PNG, { run: false });
   expect(await unnamedControls(page), "configurator, artwork").toEqual([]);
 
   await openDownload(page);
@@ -604,17 +620,14 @@ test("every control in the configurator has an accessible name", async ({ page }
 test("a page load produces no console errors and no failed requests", async ({ page }) => {
   // The only one there has ever been is the /favicon.ico 404 every browser
   // makes when a page declares no icon — which is also why a customer's
-  // bookmark showed a blank tab. `app/public/favicon.svg` (the topbar's own
-  // accent tile, with a stitch zigzag instead of the word "EMB", which is
-  // illegible at 16 px) settles both.
-  const problems = [];
-  page.on("console", (m) => { if (m.type() === "error") problems.push("[console] " + m.text().slice(0, 160)); });
-  page.on("pageerror", (e) => problems.push("[pageerror] " + e.message.slice(0, 160)));
-  page.on("requestfailed", (r) => problems.push("[requestfailed] " + r.url()));
+  // bookmark showed a blank tab. `app/public/favicon.svg` (an accent tile with a
+  // stitch zigzag instead of the word "EMB", which is illegible at 16 px; the
+  // top bar itself now carries a plain wordmark, not that tile) settles both.
+  const guard = watchConsole(page);
 
   await page.goto("/", { waitUntil: "networkidle" });
   await expect(page.getByRole("heading", { name: "Your design" })).toBeVisible();
-  expect(problems).toEqual([]);
+  guard.expectClean();
 });
 
 test("the empty canvas says how to reach the drawing tools", async ({ page }) => {
@@ -706,8 +719,7 @@ test("Original view swaps the thread for the uploaded artwork, and any edit swap
   await typeText(page, "ABC");
   await expect(orig).toBeDisabled();
 
-  await page.getByRole("button", { name: "Artwork" }).click();
-  await page.locator("input[type=file]").first().setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG, { run: false });
   await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
   await expect(orig).toBeEnabled();
 

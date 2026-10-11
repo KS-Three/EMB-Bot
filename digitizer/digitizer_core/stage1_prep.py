@@ -41,7 +41,7 @@ import cv2
 import numpy as np
 
 from .alpha_edge import extend_opaque_colour, extension_applies  # noqa: F401  (re-exported: stage 1 is where it acts)
-from .config import PipelineConfig
+from .config import PipelineConfig, work_grid_px_per_mm
 from .crop import apply_crop
 from .letterbox import strip_letterbox
 from .threads import rgb_to_lab
@@ -266,7 +266,19 @@ def _border_connected(mask: np.ndarray) -> np.ndarray:
     return np.isin(labels, list(touching))
 
 
-def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
+# The longest side the working grid will enlarge a raster to — the service's
+# own `DECODE_MAX_SIDE_PX`, and for its reason: that is the size the pipeline
+# is known to carry (a 7.4 MP photograph ran a job out of memory). 8 px/mm of
+# a 400 mm jacket back is 3,200 px a side; past this the grid gives way, and
+# only the grid — what `min_px_per_mm` alone enlarges is never taken back.
+WORK_GRID_MAX_SIDE_PX = 2800
+
+
+def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
+         design_class: str | None = None) -> Prep:
+    """`design_class` is stage 0's verdict when the caller has one: it decides
+    whether the working grid applies (`config.work_grid_px_per_mm` — a
+    photograph keeps the source line). None reads as not photographic."""
     rgb, alpha = _load(image, cfg.strip_letterbox, cfg.crop)
     warnings: list[dict] = []
 
@@ -276,7 +288,7 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     # readers that want exactly that (`bg_edge_rgb` below, preflight's border
     # colour — see `extend_opaque_colour`). With the flag off nothing here
     # runs and `raw` is never read.
-    extend = extension_applies(cfg, alpha)
+    extend = extension_applies(cfg, alpha, design_class=design_class)
     raw = rgb
     if extend:
         rgb = extend_opaque_colour(rgb, alpha, cfg.alpha_edge_extend_px)
@@ -482,8 +494,17 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     native_rgb: np.ndarray | None = None
     native_alpha: np.ndarray | None = None
     upscale = (1.0, 1.0)
-    if px_per_mm < cfg.min_px_per_mm:
-        want = min(cfg.upscale_cap, cfg.min_px_per_mm / px_per_mm)
+    # Two numbers since `cfg.work_px_per_mm`: the grid a low-resolution
+    # source is traced on (`work_grid_px_per_mm`), and the line under which
+    # the SOURCE is reported as too small (`min_px_per_mm`, the warning
+    # below). With no working grid they are the same number, as they were.
+    grid = work_grid_px_per_mm(cfg, design_class)
+    if px_per_mm < grid:
+        want = min(cfg.upscale_cap, grid / px_per_mm)
+        # The pixel budget bounds the working grid's share of the
+        # enlargement only (see `WORK_GRID_MAX_SIDE_PX`).
+        line = min(cfg.upscale_cap, max(1.0, cfg.min_px_per_mm / px_per_mm))
+        want = max(line, min(want, WORK_GRID_MAX_SIDE_PX / float(max(h, w))))
         new_size = (int(round(w * want)), int(round(h * want)))
         # Kept for stage 4's native-resolution edge read (see `Prep`): the
         # source's own pixels, and the factor each axis actually got — the
@@ -497,6 +518,12 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
             # The file's own under-alpha colour, brought to the same frame
             # the same way, for the two readers that want it.
             raw = cv2.resize(raw, new_size, interpolation=cv2.INTER_LANCZOS4)
+        # NEAREST, on the working grid too. Enlarging the masks the way the
+        # picture is (bilinear, cut at one half) was measured 2026-10-01 and
+        # is NOT the better form: it cleans a synthetic's edge (the edge
+        # ladder's 400 px ribbon, 6 regions back to 1) and costs the real
+        # logos the detail the grid exists for — ENTHUSIAST's fine ink 0.90
+        # -> 0.70, golden_tee 0.78 -> 0.58, and bridge's words change cone.
         bg = (
             cv2.resize(bg.astype(np.uint8), new_size, interpolation=cv2.INTER_NEAREST) > 0
         )
@@ -529,20 +556,25 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         # Lanczos manufactures pixels, not detail: reaching the floor by
         # enlargement is exactly the case worth reporting, not the case that
         # excuses silence.
-        warnings.append(
-            warn(
-                INPUT_LOW_RESOLUTION,
-                f"The artwork supplies {input_px_per_mm:.1f} pixels per "
-                f"millimetre at {cfg.target_width_mm:.0f} mm, under the "
-                f"{cfg.min_px_per_mm:.0f} this needs. It was enlarged to fit, "
-                "which cannot add detail the file does not have — fine "
-                "features may be lost. A larger source image, or a smaller "
-                "design, is the fix.",
-                px_per_mm=round(input_px_per_mm, 2),
-                upscaled_to=round(px_per_mm, 2),
-                min_px_per_mm=cfg.min_px_per_mm,
+        #
+        # Judged against `min_px_per_mm`, not the working grid: a source
+        # between the two is enlarged for the tracer's sake and is not a file
+        # the customer needs to replace.
+        if input_px_per_mm < cfg.min_px_per_mm:
+            warnings.append(
+                warn(
+                    INPUT_LOW_RESOLUTION,
+                    f"The artwork supplies {input_px_per_mm:.1f} pixels per "
+                    f"millimetre at {cfg.target_width_mm:.0f} mm, under the "
+                    f"{cfg.min_px_per_mm:.0f} this needs. It was enlarged to fit, "
+                    "which cannot add detail the file does not have — fine "
+                    "features may be lost. A larger source image, or a smaller "
+                    "design, is the fix.",
+                    px_per_mm=round(input_px_per_mm, 2),
+                    upscaled_to=round(px_per_mm, 2),
+                    min_px_per_mm=cfg.min_px_per_mm,
+                )
             )
-        )
 
     # Color the artwork's outer anti-alias band blends toward (see Prep).
     # Measured from the background side of the boundary, so it is correct for

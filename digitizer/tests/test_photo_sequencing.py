@@ -323,8 +323,16 @@ def test_photo_class_plan_is_depth_sorted_end_to_end():
     # last in whichever cone owns most of the silhouette, which says nothing
     # about depth sorting and would break the palette/block alignment this
     # asserts (the cap's block is not a palette LAYER).
+    # `photo_prep=False` pinned 2026-10-02 (#553): where `rembg_isolated/venv`
+    # exists, stage 1 cuts the big light square away as background and both
+    # squares sew in one thread. That is the cutout's business, not depth
+    # sorting's. This pin is the route CI has always taken here: a requested
+    # but unavailable cutout skips prep entirely
+    # (`test_background_removal.test_an_unavailable_cutout_falls_back_to_no_
+    # prep_at_all`).
     result, plan = digitize(_two_square_image(), PipelineConfig(
-        target_width_mm=80.0, forced_class="photo_subject", edge_cap="none"))
+        target_width_mm=80.0, forced_class="photo_subject", edge_cap="none",
+        photo_prep=False))
     assert len(plan.blocks) >= 2
     lums = [_lum(b.rgb) for b in plan.blocks]
     assert lums == sorted(lums), "photo blocks sew dark→light"

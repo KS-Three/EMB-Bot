@@ -1,5 +1,6 @@
 // Render a single letter's satin (real glyph outline) so we can dial it in.
 // Usage: TEXT=S FAMILY=Roboto node tools/satin-letter.mjs [out.png]
+import "./_help.mjs";
 import { createRequire } from "module";
 import fs from "node:fs";
 import { encodePNG } from "./png.mjs";

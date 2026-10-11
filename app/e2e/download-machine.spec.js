@@ -35,7 +35,7 @@ test("choosing Brother gives one PES button that downloads a real file, and the 
   const downloadPromise = page.waitForEvent("download");
   await btn.click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe("design.pes");
+  expect(download.suggestedFilename()).toBe("your-name.pes");
   const p = await download.path();
   expect(statSync(p).size).toBeGreaterThan(200);
 

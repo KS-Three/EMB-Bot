@@ -83,6 +83,47 @@ export const SERVICE_DECODES = new Set(["image/png", "image/jpeg", "image/webp",
 const EXT_MIME = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", bmp: "image/bmp" };
 const DEFAULT_LIMITS = { max_upload_bytes: 12 * 1024 * 1024, max_pixels: 40_000_000 };
 
+// The long side the service decodes to (digitizer_service/app.py
+// DECODE_MAX_SIDE_PX). Pixels past it are thrown away on arrival, so a file
+// the service would refuse for size (`uploadPlan` reasons "bytes"/"pixels") is
+// downscaled to this HERE and sent instead of falling back to the 1,200-px
+// preview: same detail the service would have kept, none of the bytes.
+export const SERVICE_DECODE_MAX_PX = 2800;
+
+/**
+ * -> { w, h } to downscale an over-limit raster to, or null when it is already
+ * within SERVICE_DECODE_MAX_PX (nothing to do — a normal image is untouched).
+ */
+export function serviceDownscaleSize(img) {
+  const iw = (img && img.width) || 0;
+  const ih = (img && img.height) || 0;
+  if (Math.max(iw, ih) <= SERVICE_DECODE_MAX_PX) return null;
+  return rasterSize(img, SERVICE_DECODE_MAX_PX);
+}
+
+/**
+ * Re-encode an over-limit raster at the service's decode size, as PNG bytes.
+ * `high` smoothing is Chrome's area-style filter for a downscale (the default
+ * "low" is what cost the corpus logos trims, see uploadPlan). null when the
+ * result still exceeds `maxBytes` or the canvas cannot encode — the caller
+ * keeps the preview path.
+ */
+export async function downscaleForService(img, maxBytes, makeCanvas = () => document.createElement("canvas")) {
+  const size = serviceDownscaleSize(img);
+  if (!size) return null;
+  const cv = makeCanvas();
+  cv.width = size.w;
+  cv.height = size.h;
+  const ctx = cv.getContext("2d");
+  if (!ctx) return null;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, 0, 0, size.w, size.h);
+  const blob = await new Promise((res) => cv.toBlob(res, "image/png"));
+  if (!blob || blob.size > maxBytes) return null;
+  return { bytes: new Uint8Array(await blob.arrayBuffer()), width: size.w, height: size.h };
+}
+
 // A JPEG's pixel size from its SOF marker, or null. A phone JPEG carries its
 // rotation in EXIF: the browser applies it when decoding (createImageBitmap
 // defaults to imageOrientation "from-image"), the service does NOT —

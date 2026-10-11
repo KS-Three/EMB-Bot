@@ -17,6 +17,11 @@ agree and the difference is the whole design question:
 Run from digitizer/:  .venv/Scripts/python tools/ground_sewn_probe.py
 """
 from __future__ import annotations
+import sys as _sys
+if {"-h", "--help"} & set(_sys.argv[1:]):
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    print(__doc__ or "No usage text; see the source.")
+    raise SystemExit(0)
 
 import sys
 from pathlib import Path

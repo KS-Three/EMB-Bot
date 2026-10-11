@@ -3,8 +3,6 @@
   import TextStep from "./TextStep.svelte";
   import ImagePanel from "./ImagePanel.svelte";
   import DesignPanel from "./DesignPanel.svelte";
-  import DigitizePanel from "./DigitizePanel.svelte";
-  import ManualPanel from "./ManualPanel.svelte";
   import ShapePanel from "./ShapePanel.svelte";
   import SizePanel from "./SizePanel.svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
@@ -46,6 +44,10 @@
   // A shape selected on the field ({ elementId, shapeId, n }, App's
   // runtime state) — forwarded to the matching element's ManualPanel only.
   export let fieldShapeSelect = null;
+  // { id, file } — a file picked before its element existed (App.onArtFile).
+  // Handed only to the panel of the element it was picked for.
+  export let pendingFile = null;
+  $: pendingFor = (id) => (pendingFile && pendingFile.id === id ? pendingFile.file : null);
   const d = createEventDispatcher();
 
   // ---- Task 5 (Slice 5): the real element manager --------------------------
@@ -130,7 +132,10 @@
       return element.dstBase64 ? `File · ${truncate(element.name || "design.dst", 18)}` : "File · empty";
     }
     if (element.type === "digitized") {
-      return element.result ? `Digitized · ${truncate(element.name || "artwork", 18)}` : "Digitized · empty";
+      if (element.result) return `Digitized · ${truncate(element.name || "artwork", 18)}`;
+      // A file can now sit loaded and unrun (nothing digitizes on its own),
+      // and "empty" would be wrong about a row with artwork in it.
+      return element.sourcePng ? `Not digitized · ${truncate(element.name || "artwork", 14)}` : "Digitized · empty";
     }
     if (element.type === "manual") {
       const n = (element.shapes || []).length;
@@ -301,12 +306,15 @@
     {#if el.type === "design"}
       <DesignPanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
     {:else if el.type === "digitized"}
+     {#await import("./DigitizePanel.svelte") then { default: DigitizePanel }}
       <DigitizePanel
         element={el}
         {project}
         health={digitizerHealth}
         {hoverShapeId}
         {selectedShapeId}
+        pendingFile={pendingFor(el.id)}
+        on:fileconsumed={() => d("fileconsumed")}
         on:shapehover={(e) => d("shapehover", e.detail)}
         on:shapeselect={(e) => d("shapeselect", e.detail)}
         on:elupdate={(e) => d("elupdate", e.detail)}
@@ -314,17 +322,22 @@
         on:converttotext={(e) => d("converttotext", e.detail)}
         on:removeelement={(e) => d("removeelement", e.detail)}
       />
+     {/await}
     {:else if el.type === "image"}
       <ImagePanel
         element={el}
         {workImage}
         {flat}
+        pendingFile={pendingFor(el.id)}
+        on:fileconsumed={() => d("fileconsumed")}
         on:elupdate={(e) => d("elupdate", e.detail)}
         on:image={(e) => d("image", e.detail)}
         on:flat={(e) => d("flat", e.detail)}
       />
     {:else if el.type === "manual"}
+     {#await import("./ManualPanel.svelte") then { default: ManualPanel }}
       <ManualPanel element={el} fieldSelect={fieldShapeSelect && fieldShapeSelect.elementId === el.id ? fieldShapeSelect : null} on:elupdate={(e) => d("elupdate", e.detail)} />
+     {/await}
     {:else if el.type === "shape"}
       <ShapePanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
     {:else}
@@ -349,7 +362,10 @@
   .digitize-offline {
     font-size: var(--fs-xs, 12px);
     color: var(--muted, #667);
-    margin: 6px 0 0;
+    /* Bottom margin and line-height so the note's last line clears whatever
+       control follows it (the text box's top border) instead of touching it. */
+    line-height: 1.4;
+    margin: 6px 0 var(--space-3, 12px);
   }
   .digitize-recheck {
     border: none;

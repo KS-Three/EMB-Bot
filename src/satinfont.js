@@ -352,7 +352,13 @@
       const ax = C[i].x, ay = C[i].y, ex = C[i + 1].x - ax, ey = C[i + 1].y - ay;
       const L2 = ex * ex + ey * ey; let t = L2 > 1e-9 ? ((p.x - ax) * ex + (p.y - ay) * ey) / L2 : 0;
       if (t < 0) t = 0; else if (t > 1) t = 1;
-      const qx = ax + ex * t, qy = ay + ey * t, d = Math.hypot(p.x - qx, p.y - qy);
+      const qx = ax + ex * t, qy = ay + ey * t;
+      // Cheap reject: a segment whose squared distance is clearly past the best
+      // so far cannot win `d < bd`; only a near-tie pays for the hypot, so the
+      // winner (and every tie-break) is the one the plain loop picks.
+      const dx = p.x - qx, dy = p.y - qy;
+      if (dx * dx + dy * dy > bd * bd * (1 + 1e-9)) continue;
+      const d = Math.hypot(dx, dy);
       if (d < bd) { bd = d; bf = total > 0 ? (cum[i] + t * (cum[i + 1] - cum[i])) / total : 0; }
     }
     return { d: bd, f: bf };
@@ -1009,7 +1015,16 @@
           unsupportedAt.push([charIdx, ch]);
           penX += (g.adv || font.advDefault); prev = null; continue;
         }
-        if (prev != null && font.kerning) { const k = font.kerning[prev + ch]; if (k) penX += k; }
+        // Ink/Stitch kerning semantics (lib/lettering/font.py): the pair key is
+        // "A V" (space-separated; older fonts concatenate "AV", tried second),
+        // and the value is SUBTRACTED from the advance — a positive AV pulls
+        // the letters together. Looking up only "AV" missed every pair in 58
+        // of the 66 kerned fonts, and adding the value pushed the kerned pairs
+        // of the rest apart instead of together.
+        if (prev != null && font.kerning) {
+          const k = font.kerning[prev + " " + ch] ?? font.kerning[prev + ch];
+          if (k) penX -= k;
+        }
         glyphs.push({ g, ox: penX, charIdx });
         penX += g.adv + lsUnits;
         prev = ch;

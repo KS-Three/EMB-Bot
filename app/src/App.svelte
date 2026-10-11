@@ -1,12 +1,15 @@
 <script>
-  import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, removeElement, resolveArtworkType, deriveProjectName, UNTITLED_NAME } from "./lib/project.js";
+  import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, withoutBlankStarter, removeElement, resolveArtworkType, deriveProjectName, UNTITLED_NAME } from "./lib/project.js";
   import { createHistory } from "./lib/history.js";
   import { applyTemplate } from "./lib/templates.js";
   import { onMount, tick } from "svelte";
   import { isSewable } from "./lib/flow.js";
   import { designSummary } from "./lib/summary.js";
-  import { sewSummary } from "./lib/estimate.js";
+  import { sewSummary, QUOTE_ROW_LABELS } from "./lib/estimate.js";
+  import { loadQuote, saveQuote } from "./lib/quote.js";
+  import { hoopingRows } from "./lib/hooping.js";
   import { generateAll } from "./lib/generate.js";
+  import { ensureFonts } from "./lib/fontLoader.js";
   import { rehydrateImages } from "./lib/imageSource.js";
   import { chartIdForProject, designChartId } from "./lib/designChart.js";
   import { flattenRGBA, WORK_MAX_PX, ALPHA_CUTOFF, sewnColorCount } from "./lib/flatten.js";
@@ -24,7 +27,9 @@
     listProjects,
     isAutoNamed,
     autoNameProject,
+    setProjectFacts,
   } from "./lib/projects.js";
+  import { designFacts } from "./lib/libraryFacts.js";
   import { buildProjectFile, parseProjectFile, projectFileName } from "./lib/projectFile.js";
   import { collectSources, restoreSources } from "./lib/projectSources.js";
   import { triggerDownload } from "./lib/download.js";
@@ -35,10 +40,8 @@
   import GarmentStep from "./ui/GarmentStep.svelte";
   import ContentStep from "./ui/ContentStep.svelte";
   import Configurator from "./ui/Configurator.svelte";
-  import DownloadSheet from "./ui/DownloadSheet.svelte";
   import EmbroideryField from "./ui/EmbroideryField.svelte";
-  import ProjectsDrawer from "./ui/ProjectsDrawer.svelte";
-  import FontCredits from "./ui/FontCredits.svelte";
+  import ShortcutsHelp from "./ui/ShortcutsHelp.svelte";
   import Icon from "./ui/Icon.svelte";
   import "./ui/theme.css";
 
@@ -226,18 +229,68 @@
   // project/runtime like every other `$:` and never runs inside a render loop.
   // Never throws: it runs on every change, including while nothing is ready to
   // stitch. Feeds both the summary bar and the Download sheet's recap.
+  //
+  // `fontsTick` is a dependency only. A text element's font arrives
+  // asynchronously, and on a reload the first run of this lands before it:
+  // generateAll throws, this reads null, and nothing re-ran it — so a saved
+  // lettering project reopened to "— size — stitches" in the summary bar and
+  // no sew rows on the sheet until something was edited. Found 2026-10-01 by
+  // reloading the app mid-drive; DownloadStep has carried the same gate
+  // (`fontsReady`) for its own derivation all along.
+  //
+  // The bump lives in a function on purpose: a `$:` statement re-runs when
+  // anything it NAMES changes, so naming `fontsTick` in the statement that
+  // bumps it is a loop (it hung the page the first time this was written).
+  let fontsTick = 0;
+  function fontsArrived() { fontsTick += 1; }
+  $: fontKeyList = (project.elements || [])
+    .filter((el) => el.type === "text" && el.fontKey)
+    .map((el) => el.fontKey)
+    .join("|");
+  $: ensureFonts(fontKeyList ? fontKeyList.split("|") : []).then(fontsArrived).catch(() => {});
   $: combinedDesign = (() => {
+    fontsTick;
     try {
       return generateAll(project, runtime).combined || null;
     } catch (e) {
       return null;
     }
   })();
-  $: sewFacts = combinedDesign ? sewSummary(combinedDesign) : [];
+  // The operator's quote inputs — machine, running speed, prices. One record
+  // for this browser, not per project (Kent's ruling 2026-10-01).
+  let quote = loadQuote();
+  $: sewFacts = combinedDesign ? sewSummary(combinedDesign, quote) : [];
   // The summary bar's colour figure: SPOOLS, the customer-facing meaning of
   // "colors" here (see spoolCount in lib/digitizer.js), counted on the same
   // combined design the size and stitch figures beside it come from.
   $: colorCount = combinedDesign && sewFacts.length ? spoolCount(combinedDesign) : 0;
+
+  // ---- Library facts: what "My designs" filters on --------------------------
+  // The open design's stitches, spools and size, written to its index entry
+  // (lib/libraryFacts.js, projects.js setProjectFacts) from the SAME combined
+  // design the summary bar reads, so a row in the drawer can never disagree
+  // with the bar.
+  //
+  // Recorded here rather than inside persist(): persist runs synchronously in
+  // the event handler, before this flush, so `combinedDesign` there still
+  // describes the previous state — and a text or uploaded-image design is not
+  // generatable at all until its font or artwork has loaded, which is after
+  // any save. Being reactive is also the backfill: a design saved before facts
+  // existed is measured the first time it is opened, with no migration pass
+  // (which could not measure those two kinds anyway).
+  //
+  // A null design only CLEARS the facts when nothing in the project could
+  // sew. Otherwise it is a design still loading (or whose font failed to
+  // fetch), and wiping a good measurement over that would drop the row out of
+  // every filter until the next successful open. `image` counts as "could
+  // sew" outright: its _hasImage flag is reset on load, so isSewable says no
+  // for exactly the stretch this guard exists for.
+  function recordFacts(id, design, proj) {
+    const facts = designFacts(design, design ? spoolCount(design) : 0);
+    if (!facts && proj.elements.some((el) => el.type === "image" || isSewable(el))) return;
+    if (setProjectFacts(id, facts)) refreshProjects();
+  }
+  $: recordFacts(currentId, combinedDesign, project);
 
   // The rows the Download sheet recaps — one list, built here, so the
   // sheet is a renderer and never re-derives what the app already knows.
@@ -245,8 +298,18 @@
     { label: "Garment", value: readable(project.garmentId) },
     { label: "Hoop", value: hoopInEffect.hoop.label + (hoopInEffect.suggested ? " (suggested)" : "") },
     ...designSummary(project, sewnColors),
-    ...(qualityIsTheWholeDesign ? [] : sewFacts),
+    // When one digitized element IS the design, QualityReport states the
+    // stitches, changes, trims and thread, so those rows stay suppressed —
+    // but it has never stated a run time, bobbin or cost, and suppressing
+    // those too left the commonest job (one logo) with no quote at all.
+    ...(qualityIsTheWholeDesign
+      ? sewFacts.filter((r) => QUOTE_ROW_LABELS.includes(r.label))
+      : sewFacts),
   ];
+  // What to hoop under the combined design — stabilizer, topper, needle. The
+  // same engine function the PDF worksheet prints, so the sheet on screen and
+  // the sheet on paper cannot disagree. [] when there is no basis for advice.
+  $: hoopingAdviceRows = hoopingRows(project.garmentId, combinedDesign);
   $: subtitle = `${readable(project.garmentId)} · ${hoopInEffect.hoop.label}`;
 
   // ---- Undo/redo (Ember-audit follow-up) ------------------------------------
@@ -303,9 +366,33 @@
     applyHistorySnapshot(history.redo());
   }
 
+  // Delete / Backspace on the focused embroidery field removes the SELECTED
+  // ELEMENT, the keyboard twin of the row's "Remove element" button (Kent
+  // 2026-10-08). The field owns Delete for a selected hand-drawn shape or
+  // anchor and marks the event handled (preventDefault); this runs a tick
+  // later and stands down if so, so one keypress never removes a shape AND its
+  // element. Same floor as the button: the last element stays. Only a key
+  // aimed at the field canvas counts. Ctrl+Z restores it.
+  function deleteSelectedElementFromField(e) {
+    const t = e.target;
+    if (!t || !t.matches || !t.matches(".hoop canvas")) return;
+    if (document.querySelector('[aria-label="Stitch simulator"][aria-pressed="true"]')) return;
+    setTimeout(() => {
+      if (e.defaultPrevented) return;
+      const id = project.selectedId;
+      if (!id || project.elements.length <= 1) return;
+      if (!project.elements.some((el) => el.id === id)) return;
+      onRemoveElement(id);
+    }, 0);
+  }
+
   // Ctrl/Cmd+Z and Ctrl+Y / Ctrl/Cmd+Shift+Z — skipped while a text control
   // has focus so the browser's native input-level undo stays intact.
   function onGlobalKey(e) {
+    if (e.key === "Delete" || e.key === "Backspace") {
+      deleteSelectedElementFromField(e);
+      return;
+    }
     if (!(e.ctrlKey || e.metaKey)) return;
     const t = e.target;
     const tag = t && t.tagName;
@@ -602,11 +689,37 @@
   // pipeline to classify anything, so it becomes an `image` — the browser
   // engine's own flatten-and-sew lane, which needs no service. Same tile,
   // same upload, no question asked of the user either way.
+  //
+  // Artwork starts with the FILE, not with an empty element (Kent
+  // 2026-10-05: "when I select it, a file browser pops up"). The click opens
+  // the OS file browser through one hidden input (`artInput`, in the markup
+  // beside the panel); the element is only added once a file comes back, so
+  // a cancelled dialog leaves nothing behind. Every caller of "artwork" --
+  // the panel's Upload file button, the Artwork tile, the field's menu --
+  // arrives here, and all of them are click handlers, which is what lets
+  // `.click()` open a dialog at all.
+  let artInput;
+  // { id, file }: the picked File on its way to the new element's panel,
+  // which ingests it on mount and fires "fileconsumed" to clear it.
+  let pendingArtFile = null;
+
+  function onArtFile(e) {
+    const file = e.currentTarget.files && e.currentTarget.files[0];
+    e.currentTarget.value = ""; // re-picking the same file must re-fire change
+    if (!file) return;
+    // Art uploaded onto a fresh design replaces its blank text box rather
+    // than landing beside it at a second element's 40%-of-hoop size.
+    project = addElement(withoutBlankStarter(project), resolveArtworkType(digitizerHealth), hoopWidthMm(project));
+    pendingArtFile = { id: project.selectedId, file };
+    persist();
+  }
+
   function onAddElement(type) {
-    const resolved = type === "artwork"
-      ? resolveArtworkType(digitizerHealth)
-      : type;
-    project = addElement(project, resolved, hoopWidthMm(project));
+    if (type === "artwork") {
+      if (artInput) artInput.click();
+      return;
+    }
+    project = addElement(project, type, hoopWidthMm(project));
     // addElement selects the new element, and its editor is always on
     // screen now — the configurator panel shows the Design section at all
     // times — so the field's right-click menu can no longer create an
@@ -739,6 +852,15 @@
     // step un-clicking (the restored snapshots still carry whatever
     // selectedId they had when a real edit recorded them).
     persist(false);
+  }
+
+  // "Show on design" on a break-risk finding in the quality report. The
+  // sheet is a dialog over an inert panel, so it closes first; then the same
+  // state a Layers-row click sets puts the amber highlight on the shape.
+  function onLocateShape({ elId, shapeId }) {
+    closeSheet();
+    if (project.selectedId !== elId) onSelect(elId);
+    selectedShape = { elId, shapeId };
   }
 
   function onImage(elementId, workImage) {
@@ -1087,8 +1209,7 @@
 
 <header class="topbar">
   <div class="topbar-logo">
-    <span class="logomark" aria-hidden="true">EMB</span>
-    <span class="logo">Bot Studio</span>
+    <span class="wordmark">EMB·BOT</span>
     <span class="undoredo">
       <button type="button" class="undo-btn" disabled={!canUndo} on:click={undoEdit} title="Undo (Ctrl+Z)" aria-label="Undo"><Icon name="undo" size={16} /></button>
       <button type="button" class="undo-btn" disabled={!canRedo} on:click={redoEdit} title="Redo (Ctrl+Y)" aria-label="Redo"><Icon name="redo" size={16} /></button>
@@ -1104,9 +1225,7 @@
     <button type="button" class="mydesigns" bind:this={myDesignsBtn} on:click={() => (drawerOpen = !drawerOpen)}>
       My designs <span class="badge">{projects.length}</span>
     </button>
-    <button type="button" class="font-credits-btn" bind:this={creditsBtn} on:click={() => openCredits(creditsBtn)}>
-      Font credits
-    </button>
+    <button type="button" class="font-credits-btn" aria-label="Font credits" title="Font credits" bind:this={creditsBtn} on:click={() => openCredits(creditsBtn)}>?</button>
   </div>
 </header>
 
@@ -1120,6 +1239,7 @@
 {/if}
 
 {#if drawerOpen}
+  {#await import("./ui/ProjectsDrawer.svelte") then { default: ProjectsDrawer }}
   <ProjectsDrawer
     {projects}
     {currentId}
@@ -1134,10 +1254,15 @@
     on:close={() => (drawerOpen = false)}
     notice={drawerNotice}
   />
+  {/await}
 {/if}
 
+<ShortcutsHelp />
+
 {#if creditsOpen}
-  <FontCredits on:close={() => (creditsOpen = false)} />
+  {#await import("./ui/FontCredits.svelte") then { default: FontCredits }}
+    <FontCredits on:close={() => (creditsOpen = false)} />
+  {/await}
 {/if}
 
 <div class="studio">
@@ -1166,6 +1291,16 @@
     <!-- inert while the Download sheet covers it: the sheet is modal, so
          Tab must not walk into the panel hidden underneath. -->
     <div class="panel-main" inert={sheetOpen}>
+    <input
+      bind:this={artInput}
+      class="art-file"
+      data-testid="art-file"
+      aria-label="Upload file"
+      type="file"
+      accept="image/png,image/jpeg,image/webp,image/*"
+      hidden
+      on:change={onArtFile}
+    />
     <Configurator
       {subtitle}
       {sewFacts}
@@ -1195,6 +1330,8 @@
           on:select={(e) => onSelect(e.detail)}
           on:toggleselect={(e) => onToggleSelect(e.detail)}
           on:addelement={(e) => onAddElement(e.detail)}
+          pendingFile={pendingArtFile}
+          on:fileconsumed={() => (pendingArtFile = null)}
           on:converttotext={(e) => onConvertClusterToText(e.detail)}
           on:removeelement={(e) => onRemoveElement(e.detail)}
           on:image={(e) => onImage(project.selectedId, e.detail)}
@@ -1208,17 +1345,24 @@
     </Configurator>
     </div>
     {#if sheetOpen}
+     {#await import("./ui/DownloadSheet.svelte") then { default: DownloadSheet }}
       <DownloadSheet
         {project}
+        designName={projectName}
         {runtime}
         {digitizerHealth}
         {summaryRows}
+        hoopingRows={hoopingAdviceRows}
         {qualityEntries}
         qualityPartial={!qualityIsTheWholeDesign}
         ready={readyToStitch}
+        {quote}
+        on:quote={(e) => { quote = saveQuote(e.detail); }}
         on:close={closeSheet}
+        on:locate={(e) => onLocateShape(e.detail)}
         on:credits={(e) => openCredits(e.detail)}
       />
+     {/await}
     {/if}
   </aside>
 </div>

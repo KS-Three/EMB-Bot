@@ -20,38 +20,12 @@ const deps =
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   const { mmToInch } = deps.units;
   const { renderStitches } = deps.render;
-  const { getFabric, GARMENT_FABRIC } = deps.fabrics;
-  const { sewTimeMin, PLAN_SPM } = deps.sewtime;
-
-  // The fabric preset behind a garment id, or null when the id is not one we
-  // ship. `fabricForGarment` is NOT used here on purpose: it falls back to
-  // pique_knit for anything unknown, which is the right answer when you are
-  // about to sew and the wrong one when you are about to print advice.
-  function fabricFor(garmentId) {
-    const fabricId = garmentId ? GARMENT_FABRIC[garmentId] : null;
-    return fabricId ? getFabric(fabricId) || null : null;
-  }
-
-  // "cap_buckram" is an id, not a sentence. The sheet is read by a person.
-  function backingLabel(id) {
-    return String(id || "").replace(/_/g, " ");
-  }
+  const { hoopingAdvice, hoopingLine } = deps.fabrics;
+  const { sewTimeMin, PLAN_SPM, bobbinM } = deps.sewtime;
 
   const PAGE_W_IN = 8.5;
   const PAGE_H_IN = 11;
   const MARGIN_IN = 0.5;
-
-  // Stitch count past which the worksheet prescribes cutaway stabilizer: a
-  // design this heavy needs permanent support or it distorts when the hoop
-  // comes off. Craft rule [P — OESD, via docs/photo-digitizing-plan-
-  // 2026-07-31.md §2 row 15: "est. > 25k st -> cutaway prescription on the
-  // worksheet"]. Twin of the digitizer preflight's STABILIZER_CUTAWAY
-  // constant (digitizer/digitizer_core/preflight.py, STITCHES_CUTAWAY_MIN)
-  // — duplicated deliberately, not carelessly: the worksheet also serves
-  // designs that never pass through the digitizer service (lettering,
-  // imports, combined multi-element designs), and the combined design's
-  // stitch count is only known here. Change one and change both.
-  const CUTAWAY_STITCHES = 25000;
 
   function rgbCss(color) {
     if (!color) return [0, 0, 0];
@@ -233,14 +207,42 @@ const deps =
     // The BASIS is printed beside the figure, not left implied: these are
     // trade constants the playbook rates "medium confidence", and a bare
     // number on a sheet an operator schedules from would read as measured.
-    const runMin = sewTimeMin(
-      stitchCount,
-      options.sew && typeof options.sew.trims === "number" ? options.sew.trims : 0
-    );
+    //
+    // 2026-10-01: charged per STOP when the caller counted them (a colour
+    // stop the thread was not already cut for is a stop too — estimate.js
+    // `sewFacts`), at the operator's own running speed when they have given
+    // one, and naming their machine. A caller that passes none of the three
+    // gets the line it always got.
+    const sew = options.sew || {};
+    const stops =
+      typeof sew.stops === "number" ? sew.stops : typeof sew.trims === "number" ? sew.trims : 0;
+    const spm = typeof sew.spm === "number" && sew.spm > 0 ? sew.spm : PLAN_SPM;
+    const runMin = sewTimeMin(stitchCount, stops, spm);
     if (runMin !== null) {
       statsLines.push(
-        "Run time: ~" + runMin + " min at " + PLAN_SPM + " spm (incl. trims)"
+        "Run time: ~" + runMin + " min" +
+          (sew.machineLabel ? " on your " + sew.machineLabel : "") +
+          " at " + spm.toLocaleString("en-US") + " spm (incl. trims)"
       );
+    }
+    // Under-thread, on the thread maker's rule and saying so — same wording
+    // as the screen's row. A share of the thread metres, so it prints only
+    // where the "Thread:" line above did.
+    const bobbin = typeof sew.threadM === "number" && sew.threadM > 0 ? bobbinM(sew.threadM) : null;
+    if (bobbin !== null) {
+      statsLines.push(
+        "Bobbin: " + (bobbin < 0.05 ? "under 0.1" : "~" + bobbin.toFixed(1)) +
+          " m (3/5 of top thread)"
+      );
+    }
+    // The dollar lines, when the operator has entered prices. Passed in
+    // already worded (the Studio's `sewSummary` rows) rather than recomputed:
+    // the prices live in the Studio's storage, and two documents about one
+    // design must not phrase the same fact differently.
+    if (Array.isArray(options.quoteLines)) {
+      for (const line of options.quoteLines) {
+        if (typeof line === "string" && line) statsLines.push(line);
+      }
     }
 
     // What the DIGITIZER assumed the operator would hoop.
@@ -257,21 +259,15 @@ const deps =
     // taken. That keeps the previous behaviour as a special case instead of
     // contradicting it, and keeps this line agreeing with the digitizer
     // preflight's STABILIZER_CUTAWAY, whose own comment says to change both.
-    const fabric = fabricFor(options.garmentId);
-    if (fabric) {
-      const heavy = stitchCount > CUTAWAY_STITCHES;
-      if (heavy && fabric.assumedBacking !== "cutaway") {
-        statsLines.push(
-          "Stabilizer: cutaway (escalated - " +
-            stitchCount.toLocaleString("en-US") +
-            " stitches; tear-away releases under this much thread)"
-        );
-      } else {
-        statsLines.push("Stabilizer: " + backingLabel(fabric.assumedBacking));
-      }
-      // Stated either way. "No line" is what the sheet did before, and an
-      // operator cannot tell a considered "no topper" from an oversight.
-      statsLines.push("Topper: " + (fabric.needsTopper ? "yes" : "no"));
+    //
+    // The rule itself lives in fabrics.js `hoopingAdvice` since 2026-10-01:
+    // the Studio's hooping card states the same three rows before download,
+    // and one function is what stops the screen and the sheet disagreeing.
+    // That is also when the Needle line arrived (Kent's call, reversing the
+    // 2026-09-20 "leave needle size off" — DOCTRINE), basis printed beside it.
+    const advice = hoopingAdvice(options.garmentId, stitchCount);
+    if (advice) {
+      for (const row of advice.rows) statsLines.push(hoopingLine(row));
     }
     for (const line of statsLines) {
       doc.text(line, MARGIN_IN, cursorY);
@@ -281,6 +277,23 @@ const deps =
     cursorY += 0.15;
 
     // Ordered thread list.
+    //
+    // The heading, its caption and the chart line travel WITH the first row.
+    // Only the rows had a page break, so this block was drawn wherever the
+    // stats ended -- and the stats grew: the hooping rows, then the quote's
+    // bobbin, cost and machine-time lines, each feature green on its own.
+    // Measured 2026-10-02 with real jsPDF on the merge of the two: "Chart:"
+    // at y = 10.63 in, inside the bottom margin, under any hoop note; and on
+    // every full sheet the heading at the foot of page one with all of its
+    // rows on page two. The block is 0.22 + 0.18 (+ 0.2 for the chart line)
+    // of cursor before the first row, which then needs ROW_H of its own.
+    const swatchSize = 0.16;
+    const ROW_H = 0.22;
+    const headBlockIn = 0.22 + 0.18 + (options.chartLabel ? 0.2 : 0) + (colors.length ? ROW_H : 0);
+    if (cursorY + headBlockIn > PAGE_H_IN - MARGIN_IN) {
+      doc.addPage();
+      cursorY = MARGIN_IN + 0.25;
+    }
     doc.setFontSize(12);
     doc.setFont(undefined, "bold");
     doc.text("Thread Sequence", MARGIN_IN, cursorY);
@@ -318,8 +331,6 @@ const deps =
       doc.text("Chart: " + options.chartLabel, MARGIN_IN, cursorY);
       cursorY += 0.2;
     }
-    const swatchSize = 0.16;
-    const ROW_H = 0.22;
     for (let i = 0; i < colors.length; i++) {
       // BEFORE the row, not after it. Checking afterwards did both halves of
       // the defect at once: it drew a row that did not fit (at worst past the

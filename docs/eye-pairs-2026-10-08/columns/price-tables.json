@@ -1,0 +1,133 @@
+{
+ "lettering_words": {
+  "caption": "THIS SITTING'S BEFORE IS NOT SHIPPED: both sides run lettering_columns=True (the Column lane, built OFF); AFTER adds lettering_words=True, so the Column lane reads the one tagger's word instead of either old tagger. The price the pictures cannot show, counted from the designs that drew these pairs: shipped \u2192 flag where they differ, one figure where they do not. 'Changed shapes' are the shapes whose runs differ; 'their trims' are trims into them. Nothing here says which side is better.",
+  "columns": [
+   "fixture",
+   "on the page",
+   "stitches",
+   "trims",
+   "colour changes",
+   "cones",
+   "changed shapes",
+   "their stitches",
+   "their trims",
+   "uncovered ink",
+   "lost_frac",
+   "ragged mm"
+  ],
+  "rows": [
+   [
+    "becker",
+    "identical",
+    "8,661",
+    "29",
+    "1",
+    "1",
+    "0",
+    "0",
+    "0",
+    "6.22%",
+    "0.0356",
+    "0.182"
+   ],
+   [
+    "bridge",
+    "identical",
+    "18,509",
+    "100",
+    "6",
+    "6",
+    "0",
+    "0",
+    "0",
+    "0.17%",
+    "0.2282",
+    "0.218"
+   ],
+   [
+    "drone",
+    "pair",
+    "18,806 \u2192 18,866",
+    "141 \u2192 144",
+    "9",
+    "6",
+    "17",
+    "1,854 \u2192 1,914",
+    "19 \u2192 22",
+    "0.40%",
+    "0.1035 \u2192 0.1043",
+    "0.186 \u2192 0.185"
+   ],
+   [
+    "enthusiast",
+    "pair",
+    "2,278 \u2192 2,431",
+    "15 \u2192 14",
+    "1 \u2192 2",
+    "2",
+    "4",
+    "640 \u2192 793",
+    "4 \u2192 3",
+    "0.53% \u2192 0.52%",
+    "0.2896 \u2192 0.3090",
+    "0.177 \u2192 0.180"
+   ],
+   [
+    "fremont",
+    "identical",
+    "20,242",
+    "62",
+    "3",
+    "3",
+    "0",
+    "0",
+    "0",
+    "0.00%",
+    "0.0325",
+    "0.092"
+   ],
+   [
+    "gaulke",
+    "identical",
+    "4,349",
+    "26",
+    "2",
+    "2",
+    "0",
+    "0",
+    "0",
+    "94.73%",
+    "0.9829",
+    "0.277"
+   ],
+   [
+    "golden_tee",
+    "pair",
+    "8,311 \u2192 8,380",
+    "43",
+    "9",
+    "6",
+    "4",
+    "1,237 \u2192 1,306",
+    "7",
+    "0.28% \u2192 0.20%",
+    "0.4931 \u2192 0.4690",
+    "0.194 \u2192 0.170"
+   ],
+   [
+    "tires",
+    "identical",
+    "2,864",
+    "6",
+    "0",
+    "1",
+    "0",
+    "0",
+    "0",
+    "0.01%",
+    "0.1074",
+    "0.114"
+   ]
+  ]
+ }
+}

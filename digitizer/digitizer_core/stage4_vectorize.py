@@ -18,7 +18,9 @@ from __future__ import annotations
 import cv2
 import math
 import numpy as np
+from shapely.errors import GEOSException
 from shapely.geometry import Polygon
+from shapely.ops import unary_union
 from shapely.validation import make_valid
 
 from . import machine
@@ -341,6 +343,134 @@ def _native_subpixel(raw_int: np.ndarray, lab_native: np.ndarray, mask: np.ndarr
     return up, accepted, corner
 
 
+# `coverage_edges` applies to ONE class of source: a single ink with its
+# whole shape in alpha (`becker_marine_logo.png`: one RGB value, 256 alpha
+# levels). There every edge in the picture is an alpha edge, so the alpha
+# contour is the whole outline of every sewn region. With a second ink, two
+# colours meet along an edge alpha says nothing about, and the source is
+# left alone entirely. "One ink" is read on the fully opaque pixels, where
+# no exporter's under-alpha junk reaches: all but a hundredth of them within
+# this CIE76 distance of their median colour.
+_COVERAGE_ONE_INK_DE = 6.0
+_COVERAGE_OPAQUE_ALPHA = 250
+# The contour set is accepted only if it is the mask's shape to within these
+# area ratios; outside them the mask polygon is kept. The contour runs half
+# a source pixel outside the pixel-centre trace all the way round, so a thin
+# shape legitimately grows — the band is wide for that, and it exists to
+# catch a wrong match, not to grade the fit.
+_COVERAGE_AREA_BAND = (0.6, 1.8)
+
+
+def _one_ink_cutout(p: Prep) -> bool:
+    """Is the source a single ink with its shape in alpha — the one class
+    `coverage_edges` rewrites? See `_COVERAGE_ONE_INK_DE`."""
+    if p.native_alpha is None or p.native_rgb is None:
+        return False
+    opaque = p.native_alpha >= _COVERAGE_OPAQUE_ALPHA
+    if not opaque.any():
+        return False
+    lab = rgb_to_lab(p.native_rgb[opaque].reshape(-1, 3)).astype(np.float64)
+    spread = np.linalg.norm(lab - np.median(lab, axis=0), axis=1)
+    return float(np.percentile(spread, 99)) <= _COVERAGE_ONE_INK_DE
+
+
+def _coverage_parts(rm: RegionMask, poly: Polygon, p: Prep, eps_px: float,
+                    cx: float, cy: float, min_hole_mm2: float,
+                    curve_turn: float | None = None) -> list[Polygon] | None:
+    """`coverage_edges`: this mask's polygon(s) from the half-coverage
+    contour of the source's alpha, in mm — or None when the contour is not
+    recognisably the mask.
+
+    Only called on a one-ink alpha cutout stage 1 upscaled
+    (`_one_ink_cutout`). Everything is done on the source's own pixels in a
+    crop round the mask and carried up by cv2's half-pixel-centre rule
+    (`Prep.upscale`), the mapping `_native_subpixel` uses."""
+    from skimage.measure import find_contours  # local: only this flag needs it
+
+    alpha = p.native_alpha
+    ah, aw = alpha.shape[:2]
+    sx, sy = p.upscale
+    y0, x0 = rm.origin
+    h, w = rm.crop.shape
+
+    # Ink or hole? Most of an ink mask is opaque in the source; an enclosed
+    # transparent region (a counter, a letter body) is the other side of the
+    # same contour, so it is read from the inverted field and the two share
+    # one line instead of a contour and a staircase.
+    ys, xs = np.nonzero(rm.crop)
+    if not len(xs):
+        return None
+    xn = np.clip(np.floor((xs + x0 + 0.5) / sx).astype(int), 0, aw - 1)
+    yn = np.clip(np.floor((ys + y0 + 0.5) / sy).astype(int), 0, ah - 1)
+    is_ink = (alpha[yn, xn] >= 128).mean() >= 0.5
+
+    # The source pixels under the mask, two more each way so the ramp is
+    # whole, and one row of transparency round that so every contour closes.
+    nx0 = max(0, int(np.floor((x0 + 0.5) / sx)) - 2)
+    ny0 = max(0, int(np.floor((y0 + 0.5) / sy)) - 2)
+    nx1 = min(aw, int(np.ceil((x0 + w - 0.5) / sx)) + 3)
+    ny1 = min(ah, int(np.ceil((y0 + h - 0.5) / sy)) + 3)
+    field = alpha[ny0:ny1, nx0:nx1].astype(np.float64)
+    # The pad closes whatever runs off the crop; what that manufactures (the
+    # open background, on the inverted field) fails the overlap test below.
+    field = np.pad(field if is_ink else 255.0 - field, 1)
+
+    rings = []
+    for c in find_contours(field, 127.5):
+        # (row, col) in the padded crop -> source pixel centres -> the
+        # upscaled frame's.
+        xw = (c[:, 1] - 1 + nx0 + 0.5) * sx - 0.5
+        yw = (c[:, 0] - 1 + ny0 + 0.5) * sy - 0.5
+        raw = np.column_stack([xw, yw]).astype(np.float32)[:-1]
+        simp = cv2.approxPolyDP(raw.reshape(-1, 1, 2), eps_px, True).reshape(-1, 2)
+        if len(simp) < 3:
+            continue
+        # The same arc refinement every other ring gets, with the same
+        # near-floor lettering exemption — and every raw point counted as
+        # read, which is what a contour point is: the resolution gate
+        # exists for pixel-centre staircases, and this ring has none.
+        if curve_turn and _wide_enough_to_refine(simp, p.px_per_mm):
+            simp = _refine_curves(raw.astype(np.float64), simp.astype(np.float64), eps_px,
+                                  curve_turn, accepted=np.ones(len(raw), dtype=bool))
+        rings.append(_to_mm(simp, cx, cy, p.px_per_mm))
+    if not rings:
+        return None
+
+    # Even-odd: largest ring first, each next one cut out of or added to
+    # what is there — a hole, or an island inside a hole.
+    # A ring Douglas-Peucker left touching itself repairs to several
+    # polygons (and sometimes a stray line, which is dropped); the mask's own
+    # trace is repaired the same way before it is compared against. Any
+    # overlay GEOS still refuses hands the region back to its mask polygon —
+    # a declined rewrite, never a failed design.
+    def solid(g):
+        return g if g.is_valid else unary_union(_polygon_parts(make_valid(g)))
+
+    try:
+        geom = Polygon()
+        for r in sorted(rings, key=lambda r: -Polygon(r).area):
+            geom = geom.symmetric_difference(solid(Polygon(r)))
+        # The crop holds whatever else stands near the mask; keep what is
+        # the mask's own.
+        ref = solid(poly)
+        mine = []
+        for part in _polygon_parts(geom):
+            if part.is_empty or part.area <= 0.0:
+                continue
+            if part.intersection(ref).area < 0.5 * part.area:
+                continue
+            holes = [hole for hole in part.interiors if Polygon(hole).area >= min_hole_mm2]
+            mine.append(Polygon(part.exterior, holes))
+    except GEOSException:
+        return None
+    if not mine or ref.area <= 0.0:
+        return None
+    lo, hi = _COVERAGE_AREA_BAND
+    if not lo <= sum(m.area for m in mine) / ref.area <= hi:
+        return None
+    return mine
+
+
 def vectorize(
     region_masks: list[RegionMask],
     thread_indices: list[int],
@@ -403,6 +533,9 @@ def vectorize(
     native = (upscaled and bool(cfg.subpixel_edges) and bool(cfg.subpixel_edges_upscaled)
               and p.native_rgb is not None)
     subpixel = bool(cfg.subpixel_edges) and (not upscaled or native)
+    # `coverage_edges`: only where stage 1 enlarged an alpha source, the one
+    # case whose mask is a staircase with the ramp still in the file.
+    coverage = bool(cfg.coverage_edges) and upscaled and _one_ink_cutout(p)
     # The refinement's resolution gate (`_CURVE_MIN_PX_PER_MM`) is what keeps
     # its one-pixel floor from reading raster texture as arcs. With the
     # profile reading on, the floor is keyed to acceptance chord by chord
@@ -548,6 +681,16 @@ def vectorize(
         # region — which is what they now are.
         parts = [poly] if poly.is_valid else _polygon_parts(make_valid(poly))
 
+        # `coverage_edges`: an alpha-bounded mask takes the source's own
+        # half-coverage contour in place of everything traced above.
+        covered = False
+        if coverage:
+            from_alpha = _coverage_parts(
+                rm, poly, p, eps, cx, cy, min_area_mm2,
+                curve_turn=None if sub_detail else (cfg.curve_turn_deg or None))
+            if from_alpha:
+                parts, covered = from_alpha, True
+
         thread = chart[thread_indices[rm.layer]]
         kept = 0
         for part in parts:
@@ -566,7 +709,9 @@ def vectorize(
             meta = {"layer": rm.layer}
             if sub_detail:
                 meta["rescued_small_shape"] = True
-            if outer_share is not None:
+            if covered:
+                meta["coverage_edges"] = True
+            elif outer_share is not None:
                 meta["subpixel_accepted"] = round(outer_share, 4)
             regions.append(
                 Region(

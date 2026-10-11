@@ -1,7 +1,22 @@
 import { EMB } from "./emb.js";
 import { renderRealistic } from "./preview.js";
 import { exportViaService } from "./digitizer.js";
-import { sewFacts } from "./estimate.js";
+import { sewFacts, sewSummary } from "./estimate.js";
+import { loadQuote, profileById } from "./quote.js";
+import { friendlyError } from "./friendlyError.js";
+
+// "Fritsch's Stitches: Hat #2" + "dst" -> "fritsch-s-stitches-hat-2.dst".
+// Same slug rule as projectFileName (.embproj backups), so a design's backup
+// and its machine file share a stem. An empty name keeps the old "design".
+export function exportFileName(name, ext) {
+  const base = String(name || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+    .replace(/-+$/, "");
+  return (base || "design") + "." + ext;
+}
 
 export function exportDesign(design, format) {
   switch (format) {
@@ -111,7 +126,9 @@ export async function exportDesignPreferService(design, format, opts = {}) {
       const out = await exportViaServiceFn(design, format, label, fetchFn);
       return { ...out, via: "service" };
     } catch (e) {
-      throw new Error(`${format.toUpperCase()} is written by the digitizer service, which isn\u2019t answering — start it and try again. (${e.message})`);
+      // Keep the cause when the service gave one in words; never paste raw
+      // transport text ("Failed to fetch") after the sentence.
+      throw new Error(friendlyError(e, "export", `${format.toUpperCase()} file`));
     }
   }
   if (preferService && SERVICE_EXPORT_FORMATS.has(format)) {
@@ -141,7 +158,16 @@ export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoop
   // `app/public/engine/`), and duplicating the walk is how two numbers for
   // one design start to drift.
   const facts = sewFacts(design);
+  // The operator's quote inputs, read from the same storage the Download
+  // sheet edits, so the sheet on paper quotes what the screen just did. The
+  // dollar lines are the screen's own rows, reworded only by a colon.
+  const quote = loadQuote();
+  const profile = profileById(quote.profileId);
+  const quoteLines = sewSummary(design, quote)
+    .filter((r) => r.label === "Thread cost" || r.label === "Machine time")
+    .map((r) => r.label + ": " + r.value);
   EMB.buildWorksheetPDF(design, {
+    quoteLines,
     garmentLabel: garment.label || "",
     // The id as well as the label: the sheet resolves the fabric preset from
     // it to state the backing class and whether the goods want a topper. A
@@ -149,7 +175,13 @@ export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoop
     // first is what left the sheet guessing stabilizer from a stitch count.
     garmentId: garment.id || "",
     hoop: hoop ? { label: hoop.label, widthMm: hoop.widthMm, heightMm: hoop.heightMm } : null,
-    sew: { trims: facts.trims, threadM: facts.threadM },
+    sew: {
+      trims: facts.trims,
+      threadM: facts.threadM,
+      stops: facts.stops,
+      spm: quote.spm,
+      machineLabel: profile ? profile.label : "",
+    },
     // Whose thread numbering the sheet's codes belong to. The caller has
     // already snapped every colour to this chart's nearest cone, so the
     // label and the codes come from one palette object and cannot name

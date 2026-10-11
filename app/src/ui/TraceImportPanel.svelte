@@ -1,7 +1,8 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { WORK_MAX_PX, ALPHA_CUTOFF } from "../lib/flatten.js";
-  import { loadImage, rasterSize, isVectorFile, UNREADABLE } from "../lib/rasterize.js";
+  import { loadImage, rasterSize, isVectorFile } from "../lib/rasterize.js";
+  import { friendlyError } from "../lib/friendlyError.js";
   import { traceShapesFromRGBA, rescaleTracedShapes } from "../lib/manualTrace.js";
   import { CANVAS_W, CANVAS_H, nextShapeIds, flattenShape } from "../lib/manualShapes.js";
 
@@ -92,7 +93,7 @@
       // manual tool and was impossible while the drawing canvas was blank.
       d("image", { image: workImage });
     } catch (err) {
-      error = (err && err.message) || UNREADABLE;
+      error = friendlyError(err, "upload");
       workImage = null;
       fileName = "";
       // Deliberately does NOT clear the parent's tracing backdrop. A failed

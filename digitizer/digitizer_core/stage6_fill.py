@@ -755,6 +755,31 @@ _ROUTABLE_PROBE_LIMIT = 40
 _TRIM_STITCH_EQUIVALENT = 25.0
 
 
+# `LineString(path).simplify(row_mm / 2).buffer(row_mm)` is the footprint a
+# sewn path leaves, and the covered-routing scorers ask for the SAME path's
+# footprint again on every order they price: `_order_cost` runs ~36 times per
+# fill shape and each run re-buffered every path (935 buffers, 11 s of a 22 s
+# restitch on the Instagram icon). Shapely geometries are immutable, so one
+# is shared. Keyed on the exact point tuple (a reversed path is a different
+# key on purpose: its buffer is the same set but not the same vertex order,
+# and the union that follows is order-sensitive in the last digit).
+_FOOTPRINT_MAX = 4096
+_FOOTPRINT_CACHE: "OrderedDict[tuple, object]" = OrderedDict()
+
+
+def _footprint(path, row_mm: float):
+    key = (row_mm, tuple(path))
+    hit = _FOOTPRINT_CACHE.get(key)
+    if hit is not None:
+        _FOOTPRINT_CACHE.move_to_end(key)
+        return hit
+    fp = LineString(path).simplify(row_mm / 2.0).buffer(row_mm)
+    _FOOTPRINT_CACHE[key] = fp
+    while len(_FOOTPRINT_CACHE) > _FOOTPRINT_MAX:
+        _FOOTPRINT_CACHE.popitem(last=False)
+    return fp
+
+
 def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
                 slack: Polygon, entry: tuple[float, float] | None,
                 trim_at_mm: float, row_mm: float | None = None,
@@ -818,7 +843,7 @@ def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
                     exposed_mm += max(0.0, _exposed_mm([cur] + bridge, sewn)
                                       - _EXPOSED_TOLERANCE_MM)
         if row_mm is not None and len(path) > 1:
-            footprint = LineString(path).simplify(row_mm / 2.0).buffer(row_mm)
+            footprint = _footprint(path, row_mm)
             sewn = footprint if sewn is None else sewn.union(footprint)
         cur = path[-1]
     return cuts, float(travel_stitches), exposed_mm / machine.TRAVEL_STITCH_MM
@@ -1160,7 +1185,7 @@ def _reorder_for_cover(paths: list[list[tuple[float, float]]], poly: Polygon,
             flipped.add(j)
         path = paths[j][::-1] if flip else paths[j]
         if len(path) > 1:
-            footprint = LineString(path).simplify(row_mm / 2.0).buffer(row_mm)
+            footprint = _footprint(path, row_mm)
             sewn = footprint if sewn is None else sewn.union(footprint)
         cur = path[-1]
         remaining.discard(j)
@@ -1337,7 +1362,8 @@ def _density_fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_m
 
 
 def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
-                    start_near: tuple[float, float] | None = None
+                    start_near: tuple[float, float] | None = None,
+                    all_pieces: bool = False,
                     ) -> list[list[tuple[float, float]]]:
     """Underlay runs for one shape, in the named style.
 
@@ -1347,16 +1373,51 @@ def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
 
     `start_near` is where the needle already is. A closed edge walk may begin
     anywhere on its ring, so it begins at the point nearest the needle.
+
+    The inset can split a shape at any neck narrower than twice
+    `UNDERLAY_INSET_MM`. By default only the LARGEST piece gets underlay and
+    every other piece sews its top stitching straight onto bare fabric --
+    Becker's chest logo, 88 mm2 of 1,152 (7.6%). `all_pieces`
+    (`PipelineConfig.underlay_all_pieces`, built OFF 2026-10-08) underlays
+    every piece, nearest-first from the needle, each starting where the last
+    one ended. A secondary piece smaller than one underlay stitch square
+    (`UNDERLAY_STITCH_MM` squared) is left bare: on Fremont thirteen such
+    slivers held 3.5 mm2 between them and cost fourteen trims.
     """
     if style == "none":
         return []
-    inner = poly.buffer(-machine.UNDERLAY_INSET_MM)
-    if inner.is_empty:
+    inset = poly.buffer(-machine.UNDERLAY_INSET_MM)
+    if inset.is_empty:
         return []
-    if inner.geom_type == "MultiPolygon":
-        inner = max(inner.geoms, key=lambda g: g.area)
-    if inner.geom_type != "Polygon":
+    pieces = [g for g in getattr(inset, "geoms", [inset])
+              if g.geom_type == "Polygon" and not g.is_empty]
+    if not pieces:
         return []
+    if not all_pieces:
+        return _underlay_piece(max(pieces, key=lambda g: g.area), style,
+                               angle_deg, start_near)
+    biggest = max(pieces, key=lambda g: g.area)
+    pieces = [g for g in pieces
+              if g is biggest or g.area >= machine.UNDERLAY_STITCH_MM ** 2]
+    out: list[list[tuple[float, float]]] = []
+    here = start_near
+    while pieces:
+        if here is None:
+            nxt = max(pieces, key=lambda g: g.area)
+        else:
+            nxt = min(pieces, key=lambda g: g.distance(Point(here)))
+        pieces.remove(nxt)
+        got = _underlay_piece(nxt, style, angle_deg, here)
+        if got:
+            out.extend(got)
+            here = got[-1][-1]
+    return out
+
+
+def _underlay_piece(inner: Polygon, style: str, angle_deg: float,
+                    start_near: tuple[float, float] | None
+                    ) -> list[list[tuple[float, float]]]:
+    """`_underlay_paths` for one already-inset piece."""
 
     def edge_run() -> list[list[tuple[float, float]]]:
         out = []
@@ -1370,9 +1431,11 @@ def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
             out.append([(p.x, p.y) for p in pts])
         return out
 
-    def lattice(offset_deg: float, row_mm: float) -> list[list[tuple[float, float]]]:
+    def lattice(offset_deg: float, row_mm: float,
+                stitch_mm: float = machine.UNDERLAY_STITCH_MM
+                ) -> list[list[tuple[float, float]]]:
         return _fill_paths(inner, angle_deg + offset_deg, row_mm,
-                           machine.UNDERLAY_STITCH_MM, staggers=1,
+                           stitch_mm, staggers=1,
                            start_near=start_near)
 
     def center_run() -> list[list[tuple[float, float]]]:
@@ -1404,8 +1467,42 @@ def _underlay_paths(poly: Polygon, style: str, angle_deg: float,
     if style == "double_lattice":
         return (edge_run() + lattice(45, machine.UNDERLAY_LATTICE_MM)
                 + lattice(-45, machine.UNDERLAY_LATTICE_MM))
+    if style == "cross_tatami":
+        # The commissioned files' recipe: the crossing pass alone, at their
+        # pitch and stitch (see the constants). No edge run on purpose.
+        return lattice(90, machine.UNDERLAY_CROSS_ROW_MM,
+                       machine.UNDERLAY_CROSS_STITCH_MM)
     # edge_lattice and anything unrecognised
     return edge_run() + lattice(90, machine.UNDERLAY_LATTICE_MM)
+
+
+def _sewn_paths(paths: list[list[tuple[float, float]]]
+                ) -> list[list[tuple[float, float]]]:
+    """The paths `emit` will actually sew: those with at least two points.
+
+    `_fill_paths` hands back one-point "columns" -- a column whose rows
+    place a single penetration between them, the sliver at a pointed tip or
+    a notch -- and `emit` skips
+    every one (`len(pts) < 2: continue`): no stitch, no bridge, and the
+    needle stays where the last real run ended. `_order_cost` did not skip
+    them. It priced a bridge TO each and then a bridge onward FROM it, so an
+    order was scored on travel that is never sewn, and a column order that
+    happened to visit a phantom between two real columns could win or lose
+    on a hop the machine never makes.
+
+    Measured 2026-10-08 (`tools/fill_score_agreement.py`, the nine logos at
+    80 mm): this is the ONLY place the scorer and the emitter disagree. Every
+    shape whose scored (cuts, travel, exposed) differed from what `emit` sewed
+    carried phantoms -- 16 of Golden Tee's 47 field paths, 38 of Bridge Bar's
+    214 -- and pricing the same order without them reproduces the sewn travel
+    and exposure exactly. Dropping them here sews the same penetrations; the
+    ORDER the two reorders pick can change, now chosen on what is sewn. So can
+    the shape's exit: both reorders pin the LAST path to hold the exit still,
+    and when that was a phantom they pinned a point the needle never reaches,
+    leaving the real exit wherever the reorder put the last real path. Here
+    the last real path is pinned instead, which is what that pin is for.
+    """
+    return [p for p in paths if len(p) >= 2]
 
 
 def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
@@ -1418,6 +1515,8 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  row_phase_mm: float = 0.0,
                  keep_row=None,
                  cut_bridges: bool = False,
+                 underlay_all_pieces: bool = False,
+                 sewn_paths_only: bool = False,
                  ) -> tuple[list[StitchRun], dict]:
     """One shape -> its runs, in sew order (underlay first), plus a small report.
 
@@ -1467,6 +1566,13 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     ask for it keeps exactly today's single-pass output — stage 7's plain-
     tatami fallback is the one caller that turns it on, gated by
     `PipelineConfig.fill_density_boost`.
+
+    `sewn_paths_only` (`PipelineConfig.fill_order_sewn_paths`, default OFF):
+    drop the fill's one-point paths before either reorder prices an order.
+    `emit` never sews one (`len(pts) < 2`) and its needle never moves to
+    one, but `_order_cost` routed travel to each and moved its cursor there,
+    so the order was chosen against bridges that are never sewn and against
+    hops that do not exist -- see `_sewn_paths`.
 
     Report keys: `too_thin` (nowhere wide enough for a fill), `jumps` (travel
     that had to lift the needle), `empty` (produced nothing).
@@ -1524,7 +1630,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                     runs.append(StitchRun(points=pts, kind=kind, jump=True,
                                           trim=d > trim_at_mm, shape_id=shape_id))
                     if under_cover and kind == stitches.FILL and len(pts) > 1:
-                        footprint = LineString(pts).simplify(row_mm / 2.0).buffer(row_mm)
+                        footprint = _footprint(pts, row_mm)
                         sewn = footprint if sewn is None else sewn.union(footprint)
                     continue
                 # The bridge starts where the last run ended and finishes where
@@ -1537,11 +1643,16 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                                           shape_id=shape_id))
             runs.append(StitchRun(points=pts, kind=kind, shape_id=shape_id))
             if under_cover and kind == stitches.FILL and len(pts) > 1:
-                footprint = LineString(pts).simplify(row_mm / 2.0).buffer(row_mm)
+                footprint = _footprint(pts, row_mm)
                 sewn = footprint if sewn is None else sewn.union(footprint)
 
-    emit(_underlay_paths(poly, underlay_style, angle, start_near),
-         stitches.UNDERLAY, machine.UNDERLAY_STITCH_MM)
+    # `cross_tatami` is laid at its own, longer stitch; split at the
+    # lattice's 2.5 mm every 4 mm stitch of it came out as two of 2 mm.
+    emit(_underlay_paths(poly, underlay_style, angle, start_near,
+                         all_pieces=underlay_all_pieces),
+         stitches.UNDERLAY,
+         machine.UNDERLAY_CROSS_STITCH_MM if underlay_style == "cross_tatami"
+         else machine.UNDERLAY_STITCH_MM)
     # The fill picks up where the underlay put the needle down — otherwise it
     # starts at the shape's top-left corner and the first travel of the fill is
     # a haul back across everything the underlay just laid.
@@ -1556,6 +1667,8 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
         fill_paths = _fill_paths(poly, angle, row_mm, stitch_mm,
                                  machine.FILL_STAGGERS, entry, technique=technique,
                                  row_phase_mm=row_phase_mm, keep_row=keep_row)
+    if sewn_paths_only:
+        fill_paths = _sewn_paths(fill_paths)
     # Memoized, not changed: both reorders are pure functions of this shape's
     # own inputs, so a hit returns exactly what the call would have. This is
     # the seam a review edit re-crosses for every UNCHANGED shape -- 80 of

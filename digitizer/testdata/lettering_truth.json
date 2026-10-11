@@ -1,0 +1,291 @@
+{
+ "about": "Hand labels for tools/word_tagger_eval.py: which regions of each real logo are letters, and which line of text each is on. Keys are shape ids from build_generation at the corpus size (tools/thin_strokes.REAL_ART, max_colors 6). Labelled 2026-10-08 on main b7d63ae by drawing every region with its index over the artwork and naming the letters by eye. A line is one row of text at one size (a word space does not split it). Counters, dividers, rope twists, window panes and halo crumbs are NOT letters. 'ignore' regions are scored neither way (screenshot: the phone's status bar and title, UI glyphs under 2 mm). golden_tee is not labelled: its 3D bevel makes every letter four to six stacked slivers with no honest letter / non-letter call. A whole-word script region (tires 'ires', bridge 'Bridge') IS a letter: no tagger that groups three glyphs can find it, and the score should say so.",
+ "commit": "b7d63ae",
+ "fixtures": {
+  "becker": {
+   "lines": {
+    "MARINE": [
+     "S14230a1b",
+     "S501501b6",
+     "Sa587cbf9",
+     "Scc08b907",
+     "Sdd5f27fb",
+     "Sf1c25fcd"
+    ],
+    "BECKER": [
+     "S030953b8",
+     "S334e3a12",
+     "S4d48640b",
+     "S805585ef",
+     "Sec1f1061"
+    ]
+   }
+  },
+  "tires": {
+   "lines": {
+    "Tires": [
+     "S1f2e2d7b",
+     "S27641282",
+     "S8edf1545",
+     "Sf272c1de"
+    ]
+   }
+  },
+  "enthusiast": {
+   "lines": {
+    "ENTHUSIAST": [
+     "S6959709e",
+     "S7014db84",
+     "S71dd9d07",
+     "S7d55ed5c",
+     "S814de9bb",
+     "S90fd1f2c",
+     "Sa9b7eef9",
+     "Scd87e08f",
+     "Sd1c37da7",
+     "Se00145c9"
+    ],
+    "ENTERPRISES INC": [
+     "S0a7a203e",
+     "S5345169d",
+     "S5cfbaa1f",
+     "S67188f24",
+     "S6b648736",
+     "S72668010",
+     "S73040f57",
+     "S75ba8c4e",
+     "S988eb60c",
+     "Sacc60621",
+     "Sb06f9271",
+     "Sc07b43a1",
+     "Sdc28a8b8",
+     "Se2c735fa"
+    ]
+   }
+  },
+  "fremont": {
+   "lines": {
+    "EST 1895": [
+     "S3d895b56",
+     "S549f2371",
+     "S8093c5d6",
+     "S88c1806e",
+     "S9c2c82e9",
+     "Sc16f1a33",
+     "Sfed26d33"
+    ],
+    "THE": [
+     "S3ddcec6c",
+     "S42e426b8",
+     "S666da526"
+    ],
+    "HOTEL FREMONT": [
+     "S402cb6b3",
+     "S5467a2d3",
+     "S8079284a",
+     "S9c0c9dc7",
+     "Saef2bbe4",
+     "Sbad07f9f",
+     "Sbb420d8d",
+     "Sd4b05ae6",
+     "Se137a45a",
+     "Sec0656d0",
+     "Sf629d513",
+     "Sfacb88b7"
+    ],
+    "EAT STAY PLAY": [
+     "S050ca08b",
+     "S177d120f",
+     "S47b1a317",
+     "S5c2d8e5a",
+     "S77bf5723",
+     "S793ddbbb",
+     "S83a2afe8",
+     "Sa2e2f98e",
+     "Sb18dbd63",
+     "Sd3e6b4c8",
+     "Sfb387a73"
+    ]
+   }
+  },
+  "bridge": {
+   "lines": {
+    "Bridge": [
+     "S71ddac97"
+    ],
+    "BAR & RESTAURANT": [
+     "S2242b799",
+     "S2953082f",
+     "S2c4ea3ad",
+     "S3963a893",
+     "S4fdc326d",
+     "S5afda564",
+     "S673d856d",
+     "Sc1dfc688",
+     "Sc434b18d",
+     "Se05b0bea",
+     "Seaf63fed",
+     "Sf6fe55e0"
+    ]
+   }
+  },
+  "gaulke": {
+   "lines": {
+    "C GOLKE INDUSTRIES": [
+     "S0230f3d5",
+     "S09eb9ae3",
+     "S152127ae",
+     "S168575e5",
+     "S2ac9dc84",
+     "S340887b6",
+     "S396ab4ae",
+     "S44508e74",
+     "S5cda8b8d",
+     "S62b66dd3",
+     "S634d63cc",
+     "S682a7e69",
+     "S6d317e4d",
+     "S7a890655",
+     "Sd4acf570",
+     "Sdfc008ad"
+    ],
+    "STEEL ROOFING & SUPPLY": [
+     "S0c920d78",
+     "S1a7191f5",
+     "S2bc221f8",
+     "S2d2a0936",
+     "S2ffb8519",
+     "S3ba157e2",
+     "S410bde6c",
+     "S44974c8e",
+     "S4a2cf289",
+     "S63f04e76",
+     "S93841276",
+     "S93d1958b",
+     "S97506b61",
+     "S99ad308b",
+     "Sa8175815",
+     "Sbbd3a3df",
+     "Sc60e570f",
+     "Sd908e7f6",
+     "Se79874d5"
+    ]
+   }
+  },
+  "drone": {
+   "lines": {
+    "PRECISION": [
+     "S0a096aed",
+     "S1e345617",
+     "S24beef6d",
+     "S2af2043d",
+     "S3c4af2e7",
+     "S6dd674f6",
+     "S8438f8fc",
+     "S89cc9fe3",
+     "Sa34f3d79"
+    ],
+    "THERMAL": [
+     "S14057482",
+     "S3e7df60e",
+     "S6cc4a060",
+     "S81b4b426",
+     "S81d913c5",
+     "S84fc22b3",
+     "Sbf8a37c3"
+    ],
+    "AND DRONE": [
+     "S0d4a3c8f",
+     "S33b68606",
+     "S5403dda0",
+     "S6cb7b0da",
+     "S6d6db17f",
+     "S940673c7",
+     "S9833f682",
+     "Sa05913cd"
+    ]
+   }
+  },
+  "screenshot": {
+   "lines": {
+    "C GOLKE INDUSTRIES": [
+     "S0b58b7a7",
+     "S166a6b53",
+     "S2172088e",
+     "S46b1e67b",
+     "S5d3e6d8a",
+     "S65a20c46",
+     "S9ccbba0d",
+     "S9e674e3b",
+     "Sa4751f75",
+     "Sb0a1d70a",
+     "Sbdc54df9",
+     "Sc3669fef",
+     "Sc7cc9ce2",
+     "Sd3950c67",
+     "Se817948d",
+     "Sf869f184"
+    ],
+    "SNOW PLOWING DIVISION": [
+     "S132d02dd",
+     "S16e882d6",
+     "S2326fdac",
+     "S3cdee8e9",
+     "S3e79ef40",
+     "S4213de65",
+     "S4a9d4a9a",
+     "S4dc9c668",
+     "S593b6998",
+     "S59780e53",
+     "S6e8a2495",
+     "S7b1c5b71",
+     "S93270afb",
+     "S96bb6902",
+     "Sa4e1fd64",
+     "Sa59f1486",
+     "Sb6f776a7",
+     "Sf5074b37",
+     "Sfc8436e3"
+    ]
+   },
+   "ignore": [
+    "S14237132",
+    "S152a196e",
+    "S183908a7",
+    "S18a40f32",
+    "S1c77e186",
+    "S1d498ddc",
+    "S23d44b2d",
+    "S2650777f",
+    "S279fe95a",
+    "S2adab146",
+    "S2b23c76c",
+    "S2cb59600",
+    "S37c4a44e",
+    "S556e71fa",
+    "S5d7e5fd5",
+    "S61b3f12d",
+    "S630f31f6",
+    "S6537cb07",
+    "S726defa9",
+    "S76fa9f1c",
+    "S8dd55105",
+    "S9f674390",
+    "Sa19fff06",
+    "Sb44b770e",
+    "Sc1af17cb",
+    "Sc47d8f2a",
+    "Sc95da587",
+    "Sca8b0121",
+    "Scb6686ce",
+    "Se48b6ddb",
+    "Se7f6c58e",
+    "Se8390790",
+    "See68a70e",
+    "Seed25324",
+    "Sf663a4ed",
+    "Sf93252d9"
+   ]
+  }
+ }
+}

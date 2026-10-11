@@ -326,3 +326,77 @@ test("with no cone rows to add up, the service's own total is used", () => {
   expect(container.querySelectorAll(".qr-spool-m").length).toBe(0);
   expect(container.querySelector(".qr-bill").textContent).toMatch(/4\.0 m of thread/);
 });
+
+// ---- Thread-break risk (2026-10-01) ---------------------------------------
+// Preflight tags the findings that say thread or needles break
+// (`extra.break_risk`) and names the shapes to show (`extra.show_shape_ids`).
+// This screen groups them under their own heading and offers the one thing
+// the flat list never could: a way to SEE where. Nothing is decided here —
+// which findings are break risks is Python's call, read off the flag.
+
+function risky(over = {}) {
+  return {
+    code: "STITCHES_TOO_SHORT", severity: "warn",
+    message: "31% of satin stitches are under the 1 mm needle minimum.",
+    extra: { break_risk: true, show_shape_ids: ["Sworst", "Snext"] },
+    ...over,
+  };
+}
+
+test("break-risk findings get their own heading, ahead of the rest", () => {
+  const { container, getByText } = render(QualityReport, {
+    props: {
+      entries: [entry({
+        preflight: {
+          score: 46, grade: "D",
+          findings: [
+            { code: "TRIM_HEAVY", severity: "block", message: "Too many trims." },
+            risky(),
+          ],
+          metrics: {},
+        },
+      })],
+    },
+  });
+  expect(getByText("Thread-break risk")).toBeInTheDocument();
+  const lists = container.querySelectorAll(".qr-list");
+  expect(lists).toHaveLength(2);
+  expect(lists[0]).toHaveTextContent("needle minimum");
+  expect(lists[1]).toHaveTextContent("Too many trims.");
+  // Every finding is still exactly one row.
+  expect(container.querySelectorAll(".qr-list li")).toHaveLength(2);
+});
+
+test("with no break-risk finding there is no heading and one list", () => {
+  const { container, queryByText } = render(QualityReport, { props: { entries: [entry()] } });
+  expect(queryByText("Thread-break risk")).toBeNull();
+  expect(container.querySelectorAll(".qr-list")).toHaveLength(1);
+});
+
+test("a break risk with a shape to show offers Show on design", () => {
+  // What the click ASKS for is asserted through a real parent in
+  // DownloadSheet.spec.js (Svelte 5's mounted-instance `$on` gap).
+  const { getByRole } = render(QualityReport, {
+    props: {
+      entries: [entry({
+        preflight: { score: 88, grade: "B", findings: [risky()], metrics: {} },
+      })],
+    },
+  });
+  expect(getByRole("button", { name: "Show on design" })).toBeInTheDocument();
+});
+
+test("a break risk with no shape to show offers no button", () => {
+  const { queryByRole, getByText } = render(QualityReport, {
+    props: {
+      entries: [entry({
+        preflight: {
+          score: 100, grade: "A", metrics: {},
+          findings: [risky({ extra: { break_risk: true, show_shape_ids: [] } })],
+        },
+      })],
+    },
+  });
+  expect(getByText("Thread-break risk")).toBeInTheDocument();
+  expect(queryByRole("button", { name: "Show on design" })).toBeNull();
+});

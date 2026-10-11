@@ -212,6 +212,12 @@ SMALL_SHAPES_AS_RUN = "SMALL_SHAPES_AS_RUN"        # too small for fill or satin
 # techniques and a person looking at the review screen should know why.
 # extra: {"count": int, "shapes": int}
 HAIRLINE_STROKES_AS_RUN = "HAIRLINE_STROKES_AS_RUN"
+# `cfg.bean_letter_max_stroke_mm` (2026-10-02): lettering whose ink strokes are
+# under the line sewed as bean runs along the ink's skeleton instead of satin.
+# Info, not a problem -- Kent's ruling is that the engine takes the path and
+# says what it did, never asks the customer for a different file.
+# extra: {"count": int (shapes), "words": int (text clusters)}
+SMALL_LETTERING_AS_BEAN = "SMALL_LETTERING_AS_BEAN"
 
 # Stage 2 (photo segmentation)
 # A region owns exactly one thread, so a region whose own pixels span more

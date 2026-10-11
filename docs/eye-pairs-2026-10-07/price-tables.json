@@ -1,0 +1,133 @@
+{
+ "lettering_columns": {
+  "caption": "The price the pictures cannot show, counted from the designs that drew these pairs: shipped → flag where they differ, one figure where they do not. 'Changed shapes' are the shapes whose runs differ; 'their trims' are trims into them. Nothing here says which side is better.",
+  "columns": [
+   "fixture",
+   "on the page",
+   "stitches",
+   "trims",
+   "colour changes",
+   "cones",
+   "changed shapes",
+   "their stitches",
+   "their trims",
+   "uncovered ink",
+   "lost_frac",
+   "ragged mm"
+  ],
+  "rows": [
+   [
+    "becker",
+    "pair",
+    "10,347 → 8,721",
+    "63 → 29",
+    "1",
+    "1",
+    "6",
+    "4,709 → 3,083",
+    "42 → 8",
+    "5.80% → 5.84%",
+    "0.0241 → 0.0273",
+    "0.174 → 0.172"
+   ],
+   [
+    "bridge",
+    "pair",
+    "18,401 → 18,571",
+    "97 → 99",
+    "6",
+    "6",
+    "10",
+    "586 → 756",
+    "9 → 11",
+    "0.16%",
+    "0.2214 → 0.2311",
+    "0.218"
+   ],
+   [
+    "drone",
+    "pair",
+    "19,353 → 18,806",
+    "138 → 141",
+    "9",
+    "6",
+    "30",
+    "4,173 → 3,626",
+    "34 → 37",
+    "0.33% → 0.40%",
+    "0.0986 → 0.1035",
+    "0.185 → 0.186"
+   ],
+   [
+    "enthusiast",
+    "pair",
+    "2,614 → 2,280",
+    "14 → 15",
+    "2 → 1",
+    "2",
+    "27",
+    "2,576 → 2,242",
+    "14 → 15",
+    "1.84% → 0.53%",
+    "0.2934 → 0.2896",
+    "0.198 → 0.177"
+   ],
+   [
+    "fremont",
+    "pair",
+    "20,177 → 20,242",
+    "57 → 62",
+    "3",
+    "3",
+    "62",
+    "4,608 → 4,673",
+    "18 → 23",
+    "0.00%",
+    "0.0304 → 0.0325",
+    "0.092"
+   ],
+   [
+    "gaulke",
+    "pair",
+    "4,583 → 4,361",
+    "33 → 26",
+    "2",
+    "2",
+    "42",
+    "3,936 → 3,714",
+    "32 → 25",
+    "94.74% → 94.72%",
+    "0.9810 → 0.9828",
+    "0.281 → 0.277"
+   ],
+   [
+    "golden_tee",
+    "pair",
+    "8,941 → 8,311",
+    "44 → 43",
+    "9",
+    "6",
+    "14",
+    "5,137 → 4,507",
+    "19 → 18",
+    "0.17% → 0.28%",
+    "0.4689 → 0.4931",
+    "0.167 → 0.194"
+   ],
+   [
+    "tires",
+    "identical",
+    "2,870",
+    "6",
+    "0",
+    "1",
+    "0",
+    "0",
+    "0",
+    "0.02%",
+    "0.1061",
+    "0.115"
+   ]
+  ]
+ }
+}

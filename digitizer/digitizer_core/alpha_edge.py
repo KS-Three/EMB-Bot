@@ -10,6 +10,8 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
+from .config import work_grid_px_per_mm
+
 
 def extend_opaque_colour(rgb: np.ndarray, alpha: np.ndarray, max_px: int = 0) -> np.ndarray:
     """Every non-opaque pixel takes the RGB of its NEAREST opaque pixel; alpha
@@ -89,7 +91,8 @@ def upscale_expected(alpha: np.ndarray, target_width_mm: float, min_px_per_mm: f
     return art_w_px / float(target_width_mm) < float(min_px_per_mm)
 
 
-def extension_applies(cfg, alpha: np.ndarray | None, ignore_gate: bool = False) -> bool:
+def extension_applies(cfg, alpha: np.ndarray | None, ignore_gate: bool = False,
+                      design_class: str | None = None) -> bool:
     """The one gate both stages use: the flag, a real alpha, and — under
     `alpha_edge_extend_upscaled_only` — an upscale ahead.
 
@@ -104,5 +107,10 @@ def extension_applies(cfg, alpha: np.ndarray | None, ignore_gate: bool = False) 
     if not cfg.alpha_edge_extend or alpha is None or not (alpha < 255).any():
         return False
     if cfg.alpha_edge_extend_upscaled_only and not ignore_gate:
-        return upscale_expected(alpha, cfg.target_width_mm, cfg.min_px_per_mm)
+        # The working grid, not `min_px_per_mm`: the gate is "will the
+        # enlargement run", and under `cfg.work_px_per_mm` it runs up to there
+        # (`design_class` is stage 1's, which knows stage 0's verdict; stage 0
+        # itself asks before there is one).
+        return upscale_expected(alpha, cfg.target_width_mm,
+                                work_grid_px_per_mm(cfg, design_class))
     return True

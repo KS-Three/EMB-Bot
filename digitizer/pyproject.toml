@@ -51,6 +51,9 @@ service = [
 # against a serial run: same pass/fail set), so `-n auto` is the default in CI
 # and worth using locally too.
 dev = ["pytest>=8", "pytest-xdist>=3.5", "httpx>=0.27"]
+# Local type check of digitizer_service only (tools/typecheck_service.py).
+# Not in CI and not in `dev` on purpose: advisory, never blocks a merge.
+typecheck = ["mypy>=1.10"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -66,3 +69,11 @@ digitizer_core = ["chart_data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# Non-blocking, local-only (tools/typecheck_service.py): digitizer_service only.
+# digitizer_core is followed silently — its errors are out of scope here.
+[tool.mypy]
+python_version = "3.12"
+files = ["digitizer_service"]
+follow_imports = "silent"
+ignore_missing_imports = true

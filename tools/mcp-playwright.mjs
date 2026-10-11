@@ -18,6 +18,7 @@
 // app/package.json's @playwright/test resolves to, then verify a real launch.
 //
 // Usage (from .mcp.json): node tools/mcp-playwright.mjs
+import "./_help.mjs";
 import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 

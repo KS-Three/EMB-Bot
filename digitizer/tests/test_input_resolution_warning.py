@@ -54,7 +54,9 @@ def test_the_reported_number_is_the_SOURCE_not_the_upscale():
     w = _warning(BECKER, 100.0)
     assert w is not None
     assert w["px_per_mm"] == pytest.approx(1.45, abs=0.05), w["px_per_mm"]
-    assert w["upscaled_to"] == pytest.approx(4.0), w["upscaled_to"]
+    # 1.45 px/mm enlarged by the 4x cap: the working grid asks for 8 and the
+    # cap stops it at 5.8 (it read 4.0, the source line, before 2026-10-01).
+    assert w["upscaled_to"] == pytest.approx(5.8, abs=0.05), w["upscaled_to"]
     assert w["min_px_per_mm"] == pytest.approx(4.0)
 
 

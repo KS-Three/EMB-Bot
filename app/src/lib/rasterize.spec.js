@@ -165,3 +165,28 @@ test("pngDimensionsFromBase64 reads the IHDR size, for the crop box's drag floor
   // The panel specs' placeholder is not base64 at all: null, never a throw.
   expect(pngDimensionsFromBase64("data:image/png;base64,AAAA")).toBeNull();
 });
+
+test("leaves an image within the service's decode size alone", async () => {
+  const { serviceDownscaleSize, downscaleForService } = await import("./rasterize.js");
+  expect(serviceDownscaleSize({ width: 2800, height: 1000 })).toBeNull();
+  expect(serviceDownscaleSize({ width: 800, height: 600 })).toBeNull();
+  expect(await downscaleForService({ width: 800, height: 600 }, 1e6, () => { throw new Error("no canvas"); })).toBeNull();
+});
+test("scales the long side to 2,800 keeping the aspect ratio", async () => {
+  const { serviceDownscaleSize } = await import("./rasterize.js");
+  expect(serviceDownscaleSize({ width: 6000, height: 6000 })).toEqual({ w: 2800, h: 2800 });
+  expect(serviceDownscaleSize({ width: 9000, height: 3000 })).toEqual({ w: 2800, h: 933 });
+});
+test("returns the encoded PNG, or null when it is still over the byte limit", async () => {
+  const { downscaleForService } = await import("./rasterize.js");
+  const cv = {
+    getContext: () => ({ drawImage() {} }),
+    toBlob: (cb) => cb(new Blob([new Uint8Array(100)], { type: "image/png" })),
+  };
+  const img = { width: 6000, height: 4000 };
+  const ok = await downscaleForService(img, 1000, () => cv);
+  expect(ok.width).toBe(2800);
+  expect(ok.height).toBe(1867);
+  expect(ok.bytes.length).toBe(100);
+  expect(await downscaleForService(img, 50, () => cv)).toBeNull();
+});

@@ -13,10 +13,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.eye_pairs import __main__ as cli  # noqa: E402
 from tools.eye_pairs.pairs import BASE, append_pick, design_hash  # noqa: E402
 
-from .conftest import draw_tiny_logo  # noqa: E402
+from .conftest import draw_tiny_logo, held_on_source_line  # noqa: E402
 
 # Measured 2026-09-17 on this image: fill_angle_deg=45 changes the stitches,
 # design_angle=True does not. The second is the identical-skip rule's test.
+# That reading is the source line's (4.4 px/mm at 40 mm, traced at 4). On the
+# working grid with the enlarged-ramp blend test (2026-10-02) the same two
+# regions keep their areas and design_angle is no longer inert — 2,407
+# stitches against 2,389 — so the whole module holds the old grid: its
+# subject is the sitting's bookkeeping, and it needs an arm that does nothing.
 # TWO ref arms on different commits: review finding 6 (2026-09-17) — the
 # runner used to be memoised on "any ref built", and the analysis picked the
 # ref bucket by name.
@@ -55,6 +60,14 @@ def fingerprint(out: Path) -> dict[str, bytes]:
     that re-rendered into the shared directory would replace one."""
     return {p.relative_to(out).as_posix(): p.read_bytes()
             for p in sorted(out.rglob("*")) if p.is_file()}
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _source_line_grid_for_the_module():
+    """Module-scoped because `rendered` is: a function-scoped hold arrives
+    after the shared sitting has been digitized."""
+    with held_on_source_line():
+        yield
 
 
 @pytest.fixture(scope="module")
@@ -628,13 +641,15 @@ def test_verify_finds_no_drift_on_the_synthetic_image(rendered, capsys):
 
 
 def test_the_default_corpus_leaves_out_the_excluded_fixtures(monkeypatch):
-    """Kent's rule (2026-09-30): screenshot is off the page. The default
-    corpus drops it; an explicit `cases` list is taken as given."""
+    """Kent's rule (2026-09-30): screenshot is off the page, and gaulke
+    since 2026-10-08. The default corpus drops both; an explicit `cases`
+    list is taken as given."""
     from tools.eye_pairs.pairs import EXCLUDED_FIXTURES
     seen = {}
 
     def fake_corpus():
-        return [("screenshot", "x.png", 80.0, "left_chest"), ("becker", "y.png", 100.0, "left_chest")]
+        return [("screenshot", "x.png", 80.0, "left_chest"), ("gaulke", "z.png", 80.0, "left_chest"),
+                ("becker", "y.png", 100.0, "left_chest")]
 
     def fake_sha(path):
         return "0" * 64
@@ -654,7 +669,7 @@ def test_the_default_corpus_leaves_out_the_excluded_fixtures(monkeypatch):
             cli.render(Path(td), arms={})
         except RuntimeError:
             pass
-    assert "screenshot" in EXCLUDED_FIXTURES and seen["fixtures"] == ["becker"]
+    assert {"screenshot", "gaulke"} <= EXCLUDED_FIXTURES and seen["fixtures"] == ["becker"]
 
 
 def test_a_file_arm_reads_the_design_from_the_stitch_file_and_names_its_fixtures(rendered, tmp_path):
@@ -680,3 +695,32 @@ def test_a_file_arm_reads_the_design_from_the_stitch_file_and_names_its_fixtures
     ours = [(s["x"], s["y"]) for s in base["stitches"] if s["type"] == "stitch"]
     theirs = [(s["x"], s["y"]) for s in design["stitches"] if s["type"] == "stitch"]
     assert theirs == ours                                            # the file round-trips in our frame
+
+
+def test_a_base_reaches_every_flag_arm_and_a_new_base_is_a_cache_miss(rendered, tmp_path,
+                                                                        monkeypatch):
+    """`--base` (2026-10-08): flags laid under every flag arm, base included,
+    so one built-OFF flag can be judged on top of another. A row rendered on
+    another base must not answer from cache; ref arms do not take it."""
+    out, art, _n, _np, _seen = rendered
+    out2 = tmp_path / "out2"
+    shutil.copytree(out, out2)
+    calls = []
+    real = cli.digitize_once
+
+    def counting(image, cfg):
+        calls.append(cfg)
+        return real(image, cfg)
+
+    monkeypatch.setattr(cli, "digitize_once", counting)
+    seen: dict = {}
+    cli.render(out2, cases=[("tiny", art, 40.0, "left_chest")], arms=ARMS,
+               ref_factory=fake_factory(out2, seen), base={"stitch_width_auto": True})
+    assert len(calls) == 3 and all(c.stitch_width_auto for c in calls)
+    assert "commits" not in seen                 # the ref rows stay cached: no base for them
+    feats = json.loads((out2 / "features.json").read_text())["tiny"]
+    assert feats[BASE]["base_flags"] == {"stitch_width_auto": True}
+    calls.clear()
+    cli.render(out2, cases=[("tiny", art, 40.0, "left_chest")], arms=ARMS,
+               ref_factory=fake_factory(out2, seen), base={"stitch_width_auto": True})
+    assert calls == []                           # same base: all cache

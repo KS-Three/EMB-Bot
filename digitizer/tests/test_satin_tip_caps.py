@@ -99,6 +99,12 @@ def test_on_the_lettering_fixture_it_buys_end_coverage_for_thread():
 
     One digitize, not two — the OFF numbers are the constants above, and this
     suite already pays for an ENTHUSIAST run in `test_rail_comp.py`.
+
+    **Ceiling re-pinned 2026-10-06, `satin_outer_rail_pitch` ON (Kent's
+    call):** the wordmark's curved letters are stationed along their outer
+    rail now, 2,474 → 2,614 stitches at the same trims and end bare, so the
+    stitch ceiling moves 2,520 → 2,620. That is the flip's price on this
+    fixture (+5.7%), not the tip caps' — their own cost is unchanged.
     """
     from tools.bare_anatomy import components
 
@@ -114,5 +120,5 @@ def test_on_the_lettering_fixture_it_buys_end_coverage_for_thread():
     end_bare = sum(a for a, _h, is_end, _s in comps if is_end)
     assert end_bare <= 9.5, f"end bare rose to {end_bare:.2f} mm2 (9.18 as shipped)"
     # and the thread it costs stays inside the measured price (2,474 of 2,392)
-    assert plan.stats.stitch_count <= 2520, plan.stats.stitch_count
+    assert plan.stats.stitch_count <= 2620, plan.stats.stitch_count
     assert plan.stats.trims <= 15, plan.stats.trims

@@ -709,6 +709,19 @@ test("canonicalShapeEdits accepts a valid underlay_style, rejects an unknown one
   });
 });
 
+test("canonicalShapeEdits sends cross_tatami, and both pickers offer it", async () => {
+  // The crossing pass read off Kent's commissioned files
+  // (docs/underlay-audit-2026-10-05.md). A choice in the picker; no preset.
+  stubStorage({});
+  const { canonicalShapeEdits } = await import("./digitizer.js");
+  const { SHAPE_UNDERLAYS } = await import("./shapePopover.js");
+  const el = digitizedElement({ shapeOverrides: { Scross: { underlay_style: "cross_tatami" } } });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: { Scross: { underlay_style: "cross_tatami" } },
+  });
+  expect(SHAPE_UNDERLAYS.map((u) => u.value)).toContain("cross_tatami");
+});
+
 // ---- boundary_override (contract v1.4; the boundary editor) ----------------
 //
 // The shallow half of the contract this file can check without a live
@@ -1318,6 +1331,36 @@ test("decodedFromDesign strips the end record, centers on the sewn bbox, and cou
   const first = dec.stitches.find((s) => s.type === "stitch");
   expect(first.x).toBe(-100);
   expect(first.y).toBe(-50);
+});
+
+test("decodedFromDesign carries the run spans when only the tail end is stripped, and drops them otherwise", async () => {
+  stubStorage({});
+  const { decodedFromDesign } = await import("./digitizer.js");
+  const runs = [{ i0: 1, i1: 2, kind: "satin", shape: "S1", role: "", block: 0 }];
+  const tailEnd = {
+    stitches: [
+      { x: 0, y: 0, type: "jump" },
+      { x: 0, y: 0, type: "stitch" },
+      { x: 10, y: 0, type: "stitch" },
+      { x: 0, y: 0, type: "end" },
+    ],
+    colors: [{ r: 0, g: 0, b: 0 }],
+    runs,
+  };
+  // Spans index the final array including the interleaved records; the
+  // trailing end sits past every span, so stripping it moves nothing and
+  // the spans ride through verbatim (buildImportedDesign carries them on).
+  expect(decodedFromDesign(tailEnd).runs).toBe(runs);
+  // No end at all: nothing stripped, spans valid.
+  const noEnd = { ...tailEnd, stitches: tailEnd.stitches.slice(0, 3) };
+  expect(decodedFromDesign(noEnd).runs).toBe(runs);
+  // An end in the MIDDLE shifts every index after it: the spans stay off
+  // rather than wrong (absent means "no run information" to the renderer).
+  const midEnd = { ...tailEnd, stitches: [tailEnd.stitches[0], { x: 0, y: 0, type: "end" }, ...tailEnd.stitches.slice(1)] };
+  expect(decodedFromDesign(midEnd).runs).toBeUndefined();
+  // No spans on the design: none invented.
+  const { runs: _r, ...plain } = tailEnd;
+  expect(decodedFromDesign(plain).runs).toBeUndefined();
 });
 
 test("digitizedBlockColors defaults every block to the service palette; a user override wins per block", async () => {
@@ -2174,6 +2217,13 @@ test("no translated warning speaks engine, and this is the tripwire that keeps i
     "SHAPES_LEFT_UNSEWN", "BACKGROUND_ABSENT", "TONAL_REGIONS_SPLIT",
     "DUPLICATE_CONE_LAYERS_MERGED", "BORDER_SEAM_SHARED",
     "PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE", "PHOTO_FACE_PRIORS_UNAVAILABLE",
+    "SMALL_LETTERING_AS_BEAN",
+    "CLASSIFICATION_SEED_UNSTABLE", "CONTOUR_RING_UNREACHABLE",
+    "CONTOUR_DIRECTIONAL_COMP_UNSEWN", "EDGE_CAP_OVER_BUDGET",
+    "APPLIQUE_NO_FABRIC_VISIBLE", "APPLIQUE_CUTTING_LINE_SUPPRESSED",
+    "APPLIQUE_FORCED_PRE_CUT", "APPLIQUE_COVER_MARGINAL",
+    "APPLIQUE_PIECES_OVERLAP", "APPLIQUE_STEP_EMPTY",
+    "APPLIQUE_COVER_WIDTH_CLAMPED", "APPLIQUE_PRECUT_TOO_NARROW",
   ];
   // Words that mean something to whoever wrote the engine and nothing to
   // whoever uploaded a logo. Each one was actually printed to a customer
@@ -2223,6 +2273,21 @@ test("what asks for something is separated from what merely happened", async () 
     expect(SILENT_WARNINGS.has(code), `${code} is both silenced and promoted`)
       .toBe(false);
   }
+});
+
+test("fine lettering sewn as bean is a note that asks for nothing", async () => {
+  stubStorage({});
+  const { ATTENTION_WARNINGS, SILENT_WARNINGS, describeWarnings } = await import("./digitizer.js");
+  // Kent 2026-10-02: "We shouldn't have to warn the user of anything." The
+  // engine took the path; the line says what it did and nothing more.
+  expect(ATTENTION_WARNINGS.has("SMALL_LETTERING_AS_BEAN")).toBe(false);
+  expect(SILENT_WARNINGS.has("SMALL_LETTERING_AS_BEAN")).toBe(false);
+  const [one] = describeWarnings([{ code: "SMALL_LETTERING_AS_BEAN", message: "ENGINE PROSE", count: 8, words: 1 }]);
+  expect(one.text).toContain("Fine lettering sews as a running stitch");
+  expect(one.text).not.toContain("ENGINE PROSE");
+  const [two] = describeWarnings([{ code: "SMALL_LETTERING_AS_BEAN", message: "x", count: 20, words: 2 }]);
+  expect(two.text).toContain("2 lines of fine lettering");
+  expect(two.text).not.toMatch(/bigger|larger|upload|replace/i);
 });
 
 test("an unlisted code is a NOTE, deliberately, and is still shown", async () => {
@@ -2319,6 +2384,19 @@ describe("editKind (restitch pacing)", () => {
     expect(editKind(removed, none)).toBe("border");
   });
 
+  it("reads a deletion, and its undo, as 'delete' — and a delete beside a drag as 'other'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const none = await edits(el({}));
+    const gone = await edits(digitizedElement({ deletedShapeIds: ["s1"] }));
+    expect(editKind(none, gone)).toBe("delete");
+    expect(editKind(gone, none)).toBe("delete");
+    const both = await edits(digitizedElement({
+      deletedShapeIds: ["s1"],
+      shapeOverrides: { s2: { boundary_override: ring() } },
+    }));
+    expect(editKind(none, both)).toBe("other");
+  });
+
   it("reads borders on SEVERAL shapes at once as 'border'", async () => {
     const { editKind } = await import("./digitizer.js");
     const a = await edits(el({ s1: { border: "auto" } }));
@@ -2359,7 +2437,9 @@ describe("editKind (restitch pacing)", () => {
     expect(editKind(base, await edits(el({ s1: { underlay_style: "edge_run" } })))).toBe("other");
     expect(editKind(base, await edits(el({ s1: { thread_index: 3 } })))).toBe("other");
     expect(editKind(base, await edits(el({ s1: { fill_angle_deg: 45 } })))).toBe("other");
-    expect(editKind(base, await edits(digitizedElement({ deletedShapeIds: ["s1"] })))).toBe("other");
+    // A bare delete left this list on 2026-10-06 (Kent: deleting a shape
+    // "pinwheels") — it is the 'delete' kind above, and the canvas hides the
+    // shape at once while the restitch runs.
     expect(editKind(base, await edits(digitizedElement({ mergeGroups: [["s1", "s2"]] })))).toBe("other");
   });
 
@@ -2448,4 +2528,52 @@ test("stitchWidthGroupRows: the word's members with the row first; a lone shape 
   expect(stitchWidthGroupRows(rows, c).map((r) => r.id)).toEqual(["c"]);
   expect(stitchWidthGroupRows(rows, d).map((r) => r.id)).toEqual(["d"]);
   expect(stitchWidthGroupRows(rows, null)).toEqual([]);
+});
+
+// The run button compares this against element.appliedConfig to know the
+// stitches on the canvas are behind the settings (Kent 2026-10-05).
+test("configKey moves with anything a digitize would send, and only with that", async () => {
+  const { buildDigitizeConfig, configKey } = await import("./digitizer.js");
+  const el = { params: { target_width_mm: 80, max_colors: 6, satin: true }, shapeOverrides: {}, deletedShapeIds: [] };
+  const key = (e, p = {}) => configKey(buildDigitizeConfig(e, p));
+  const base = key(el);
+  expect(base).toMatch(/^[0-9a-f]{8}$/);
+  expect(key({ ...el })).toBe(base);
+  expect(key({ ...el, params: { ...el.params, target_width_mm: 81 } })).not.toBe(base);
+  expect(key({ ...el, crop: { x0: 0.1, y0: 0, x1: 1, y1: 1 } })).not.toBe(base);
+  expect(key({ ...el, shapeOverrides: { s1: { border: "auto" } } })).not.toBe(base);
+  expect(key({ ...el, deletedShapeIds: ["s1"] })).not.toBe(base);
+  expect(key(el, { garmentId: "tote" })).not.toBe(base);
+  // Not sent, so not a reason to digitize again: where it sits, what it is called.
+  expect(key({ ...el, name: "other.png", offsetXMm: 12, rotationDeg: 30 })).toBe(base);
+  // A full-frame crop is the same request as no crop.
+  expect(key({ ...el, crop: { x0: 0, y0: 0, x1: 1, y1: 1 } })).toBe(base);
+});
+
+// A corner drag on the field scales baked stitches; resizedTargetWidth is the
+// Design width that drag asks for (DigitizePanel reads it as a pending change).
+describe("resizedTargetWidth", () => {
+  const el = (extra) => ({ result: { stitches: [] }, params: { target_width_mm: 80 }, sizeMm: null, ...extra });
+  it("is null when nothing was dragged, or the design is at its digitized size", async () => {
+    const { resizedTargetWidth } = await import("./digitizer.js");
+    expect(resizedTargetWidth(el({}), 80)).toBeNull();
+    expect(resizedTargetWidth(el({ sizeMm: 80 }), 80)).toBeNull();
+    expect(resizedTargetWidth(el({ sizeMm: 81.5 }), 80)).toBeNull();   // within 2%: jitter, not a change
+    expect(resizedTargetWidth(el({ sizeMm: 60, result: null }), 80)).toBeNull();
+    expect(resizedTargetWidth(el({ sizeMm: 60 }), 0)).toBeNull();
+  });
+  it("scales the width the design was DIGITIZED at, not the drawn width", async () => {
+    const { resizedTargetWidth } = await import("./digitizer.js");
+    expect(resizedTargetWidth(el({ sizeMm: 62 }), 80)).toBe(62);
+    // A result drawn 80.6 wide from an 80 mm target (pull-comp margin): the
+    // ratio lands on the target, so the margin does not compound per run.
+    expect(resizedTargetWidth(el({ sizeMm: 40.3 }), 80.6)).toBe(40);
+    // Rotated 90: sizeMm and the native width are both the drawn (height) axis.
+    expect(resizedTargetWidth(el({ sizeMm: 20 }), 40)).toBe(40);
+  });
+  it("stays inside the Design width field's own 10–400 mm range", async () => {
+    const { resizedTargetWidth } = await import("./digitizer.js");
+    expect(resizedTargetWidth(el({ sizeMm: 5 }), 80)).toBe(10);
+    expect(resizedTargetWidth(el({ sizeMm: 900 }), 80)).toBe(400);
+  });
 });

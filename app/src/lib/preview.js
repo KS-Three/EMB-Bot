@@ -1,4 +1,4 @@
-import { designToStrands, jumpTrimMarks } from "./strands.js";
+import { designToStrands, jumpTrimMarks, shrinkSatinStrands } from "./strands.js";
 
 // ---- Fabric contrast helpers (Slice 8 Task 2, B7) --------------------------
 // Perceived brightness (ITU-R BT.709 relative-luminance weights), normalized
@@ -387,11 +387,12 @@ export function layerSubsetForCount(n) {
   return [0, 1, 2, 3, 4];
 }
 
-// One black drop-shadow path for a set of strands that share a style. The
+// One black drop-shadow path for a set of strands that share a style. `items`
+// are drawThreads' projected records ({ s, X0, Y0, X1, Y1 }, canvas px). The
 // neutral style reproduces the original single pre-pass EXACTLY: `* 1` is
 // exact in IEEE754 and the alpha is rounded back onto 0.22, so the emitted
 // strokeStyle string, lineWidth and offsets are bit-for-bit what they were.
-function strokeShadow(ctx, items, SX, SY, lw, st) {
+function strokeShadow(ctx, items, lw, st) {
   if (!items.length) return;
   const slw = styleWidth(lw, st);
   const off = (slw * 0.18 + 0.5) * st.shadow;
@@ -403,9 +404,9 @@ function strokeShadow(ctx, items, SX, SY, lw, st) {
   ctx.strokeStyle = `rgba(0,0,0,${alpha})`;
   ctx.lineWidth = slw * 1.04;
   ctx.beginPath();
-  for (const s of items) {
-    ctx.moveTo(SX(s.x0) + sx, SY(s.y0) + sy);
-    ctx.lineTo(SX(s.x1) + sx, SY(s.y1) + sy);
+  for (const p of items) {
+    ctx.moveTo(p.X0 + sx, p.Y0 + sy);
+    ctx.lineTo(p.X1 + sx, p.Y1 + sy);
   }
   ctx.stroke();
 }
@@ -418,6 +419,34 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
   const flat = !!o.flat;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+
+  // Each strand is projected to canvas px ONCE, here, instead of once per
+  // layer (the lit path strokes every strand five or six times). The values
+  // are the same SX/SY results, so every coordinate handed to the canvas is
+  // bit-for-bit what it was.
+  //
+  // `o.clip` ({ x0, y0, x1, y1 }, canvas px) culls a strand whose whole drawn
+  // footprint lies outside that box -- in the FLAT view only. Measured
+  // 2026-10-08 on a 22.8k-stitch design: ~80% of a zoom/pan frame is the
+  // browser rasterizing stroke paths, most of them off-screen once zoomed
+  // in. The margin (2 lw + 4 px) is wider than anything a strand paints past
+  // its endpoints. The cull happens AFTER a strand is assigned to its colour
+  // block, never before: dropping it earlier could merge the two blocks
+  // either side of an all-off-screen colour, which changes z-order.
+  //
+  // The LIT view is not culled per strand: the same cull there changed
+  // pixels, because the rasterizer anti-aliases a path by its whole geometry
+  // (see the off-screen skip below, which drops only whole lit buckets).
+  // No clip, no culling (every caller but renderRealistic, and every spec).
+  const clip = flat && o.clip ? o.clip : null;
+  const m = 2 * lw + 4;
+  const cx0 = clip ? clip.x0 - m : 0, cy0 = clip ? clip.y0 - m : 0;
+  const cx1 = clip ? clip.x1 + m : 0, cy1 = clip ? clip.y1 + m : 0;
+  const project = (s) => {
+    const X0 = SX(s.x0), Y0 = SY(s.y0), X1 = SX(s.x1), Y1 = SY(s.y1);
+    const off = !!clip && ((X0 < cx0 && X1 < cx0) || (X0 > cx1 && X1 > cx1) || (Y0 < cy0 && Y1 < cy0) || (Y0 > cy1 && Y1 > cy1));
+    return { s, X0, Y0, X1, Y1, off };
+  };
 
   // FLAT view: one solid stroke per colour, at the same physical width, and
   // nothing else — no shadow, no cylinder shading, no sheen. This is the
@@ -446,16 +475,18 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
         blocks.push(curFlat);
       }
       prevFlatRgb = rgb;
-      curFlat.items.push(s);
+      const p = project(s);
+      if (!p.off) curFlat.items.push(p);
     }
     ctx.setLineDash([]);
     ctx.lineWidth = lw;
     for (const c of blocks) {
+      if (!c.items.length) continue;
       ctx.strokeStyle = `rgb(${c.rgb[0]},${c.rgb[1]},${c.rgb[2]})`;
       ctx.beginPath();
-      for (const s of c.items) {
-        ctx.moveTo(SX(s.x0), SY(s.y0));
-        ctx.lineTo(SX(s.x1), SY(s.y1));
+      for (const p of c.items) {
+        ctx.moveTo(p.X0, p.Y0);
+        ctx.lineTo(p.X1, p.Y1);
       }
       ctx.stroke();
     }
@@ -480,18 +511,20 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
   // slightly, where one path over the same crossing would not. That is the
   // correct direction (two layers of thread do cast more shadow than one) and
   // it cannot arise at all in the single-class fallback.
+  const proj = strands.map(project);
   const shadowGroups = new Map();
-  for (const s of strands) {
-    const st = styleForStrand(s);
+  for (let i = 0; i < strands.length; i++) {
+    const p = proj[i];
+    const st = styleForStrand(strands[i]);
     if (st.raised) continue;
     let g = shadowGroups.get(st.key);
     if (!g) { g = { style: st, items: [] }; shadowGroups.set(st.key, g); }
-    g.items.push(s);
+    g.items.push(p);
   }
   const shadowOrder = shadowGroups.size > 1
     ? Array.from(shadowGroups.values()).sort((a, b) => a.style.z - b.style.z)
     : Array.from(shadowGroups.values());
-  for (const g of shadowOrder) strokeShadow(ctx, g.items, SX, SY, lw, g.style);
+  for (const g of shadowOrder) strokeShadow(ctx, g.items, lw, g.style);
 
   // Group into colour BLOCKS first, then by direction inside each block.
   //
@@ -526,28 +559,51 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
   const blocks = [];
   let curBlock = null;
   let prevRgb = null;
-  for (const s of strands) {
+  for (let i = 0; i < strands.length; i++) {
+    const s = strands[i];
     const rgb = s.rgb;
     if (!curBlock || !prevRgb || rgb[0] !== prevRgb[0] || rgb[1] !== prevRgb[1] || rgb[2] !== prevRgb[2]) {
       curBlock = { rgb, groups: new Map() };
       blocks.push(curBlock);
     }
     prevRgb = rgb;
+    const p = proj[i];
     const st = styleForStrand(s);
     let grp = curBlock.groups.get(st.key);
     if (!grp) { grp = { style: st, buckets: new Map(), items: null }; curBlock.groups.set(st.key, grp); }
     // Raised groups keep a flat list too: their shadow is drawn as one path
     // right before they are, and that path needs the strands in sew order
     // rather than scattered across direction buckets.
-    if (st.raised) { if (!grp.items) grp.items = []; grp.items.push(s); }
-    const ang = Math.atan2(SY(s.y1) - SY(s.y0), SX(s.x1) - SX(s.x0));
+    if (st.raised) { if (!grp.items) grp.items = []; grp.items.push(p); }
+    const ang = Math.atan2(p.Y1 - p.Y0, p.X1 - p.X0);
     // Modulo PI, then quantized: a strand and its reverse share a bucket.
     let b = Math.floor((((ang % Math.PI) + Math.PI) % Math.PI) / (Math.PI / DIR_BUCKETS));
     if (b >= DIR_BUCKETS) b = DIR_BUCKETS - 1;
     let bucket = grp.buckets.get(b);
-    if (!bucket) { bucket = { bucket: b, items: [] }; grp.buckets.set(b, bucket); }
-    bucket.items.push(s);
+    if (!bucket) { bucket = { bucket: b, items: [], x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity }; grp.buckets.set(b, bucket); }
+    bucket.items.push(p);
+    if (p.X0 < bucket.x0) bucket.x0 = p.X0; if (p.X1 < bucket.x0) bucket.x0 = p.X1;
+    if (p.X0 > bucket.x1) bucket.x1 = p.X0; if (p.X1 > bucket.x1) bucket.x1 = p.X1;
+    if (p.Y0 < bucket.y0) bucket.y0 = p.Y0; if (p.Y1 < bucket.y0) bucket.y0 = p.Y1;
+    if (p.Y0 > bucket.y1) bucket.y1 = p.Y0; if (p.Y1 > bucket.y1) bucket.y1 = p.Y1;
   }
+
+  // Off-screen skip (LIT view, 2026-10-08), whole stroke() calls only. A
+  // bucket whose every strand lies outside `o.clip` (canvas px) by more than
+  // anything a layer paints past its endpoints (offset <= 0.41 lw, half-width
+  // and round cap <= 0.5 lw; the margin is 2 lw + 4 px) touches no pixel, so
+  // skipping it is pixel-exact by construction.
+  //
+  // It is deliberately NOT a per-strand cull. Chromium's rasterizer
+  // anti-aliases a path according to the WHOLE path's geometry: one subpath
+  // far off-canvas measurably moves the on-screen pixels of the rest of the
+  // same stroke() (Chromium 1194, CPU and GPU canvas alike). Dropping strands
+  // from a path that still draws therefore changed ~15k pixels at 5x zoom,
+  // and even keeping the path's bounds intact left 28-55 pixels off by 1-2
+  // levels. That is why PR #712's per-strand lit cull did not hold.
+  const litClip = o.clip || null;
+  const cm = 2 * lw + 4;
+  const offClip = (b) => !!litClip && (b.x1 < litClip.x0 - cm || b.x0 > litClip.x1 + cm || b.y1 < litClip.y0 - cm || b.y0 > litClip.y1 + cm);
 
   // Indices preferred; a count goes through layerSubsetForCount so it can
   // never drop the true colour (see that function for the bug it replaces).
@@ -563,9 +619,10 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
       const st = grp.style;
       const slw = styleWidth(lw, st);
       // A raised group casts its shadow here, onto whatever is already drawn.
-      if (st.raised && grp.items) strokeShadow(ctx, grp.items, SX, SY, lw, st);
+      if (st.raised && grp.items) strokeShadow(ctx, grp.items, lw, st);
       const profiles = [];
       for (const b of grp.buckets.values()) {
+        if (offClip(b)) continue;
         const angle = (b.bucket + 0.5) * (Math.PI / DIR_BUCKETS);
         profiles.push({ b, nx: -Math.sin(angle), ny: Math.cos(angle), layers: threadLayers(blk.rgb, angle, slw, st) });
       }
@@ -578,9 +635,9 @@ export function drawThreads(ctx, strands, SX, SY, lw, opts) {
           if (L.dash) ctx.setLineDash(L.dash); else ctx.setLineDash([]);
           const ox = p.nx * L.offset, oy = p.ny * L.offset;
           ctx.beginPath();
-          for (const s of p.b.items) {
-            ctx.moveTo(SX(s.x0) + ox, SY(s.y0) + oy);
-            ctx.lineTo(SX(s.x1) + ox, SY(s.y1) + oy);
+          for (const q of p.b.items) {
+            ctx.moveTo(q.X0 + ox, q.Y0 + oy);
+            ctx.lineTo(q.X1 + ox, q.Y1 + oy);
           }
           ctx.stroke();
         }
@@ -698,7 +755,37 @@ export function drawHoopOutline(ctx, t, fabricRgb, opts) {
   ctx.restore();
 }
 
+// Measuring grid across the whole canvas, anchored on the hoop centre so a
+// line always passes through it: minor every 10 mm, major every 50 mm. Minor
+// lines drop out when zoomed so far out they would read as a tint.
+export function drawGrid(ctx, cw, ch, pxPerMm, ox, oy, g) {
+  const minor = 10 * pxPerMm;
+  if (!(minor > 0)) return;
+  const draw = (step, color, width) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    for (let x = ox - Math.ceil(ox / step) * step; x <= cw; x += step) {
+      const px = Math.round(x) + 0.5;
+      ctx.moveTo(px, 0); ctx.lineTo(px, ch);
+    }
+    for (let y = oy - Math.ceil(oy / step) * step; y <= ch; y += step) {
+      const py = Math.round(y) + 0.5;
+      ctx.moveTo(0, py); ctx.lineTo(cw, py);
+    }
+    ctx.stroke();
+  };
+  ctx.save();
+  if (minor >= 6) draw(minor, g.minor, 1);
+  draw(minor * 5, g.major, 1);
+  ctx.restore();
+}
+
 // opts:
+//   grid          { bed, minor, major, label } CSS colours. With a hoop, paints
+//                  a work bed inside the hoop plus drawGrid() across the canvas
+//                  INSTEAD of fabric/weave/surround fill, and draws only the
+//                  real hoop ring (no garment box) with a size label.
 //   fabric        CSS color string bg fill (FontSelect/exportPNG's existing
 //                  contract -- stays working, B5).
 //   fabricRgb      [r,g,b] bg fill; WINS over `fabric` when both given (B5).
@@ -788,7 +875,19 @@ export function renderRealistic(canvas, design, opts) {
     : null;
   const outerT = hooped && t.realWmm ? { ...viewedT, hoopWmm: t.realWmm, hoopHmm: t.realHmm } : viewedT;
 
-  if (surrounded) {
+  if (hooped && o.grid) {
+    // Studio field: a neutral work bed + measuring grid instead of fabric.
+    // Fabric colour and weave are not drawn at all; the hoop ring below is the
+    // only frame, so it is the size reference.
+    const r = hoopRectPx(outerT);
+    ctx.save();
+    roundRectPath(ctx, r.x, r.y, r.w, r.h, r.r);
+    ctx.clip();
+    ctx.fillStyle = o.grid.bed;
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.restore();
+    drawGrid(ctx, cw, ch, pxPerMm, outerT.ox, outerT.oy, o.grid);
+  } else if (surrounded) {
     // Fabric only INSIDE the hoop (the real one when it is known, else the
     // placement box standing in for it): the canvas outside the ring stays
     // the surround, so the fabric colour reads against a neutral instead of
@@ -812,7 +911,19 @@ export function renderRealistic(canvas, design, opts) {
     // t.ox/t.oy run through the SAME TX/TY used for strands below, so the
     // outline is always drawn at the current view's scale/position -- one
     // shared transform, not a second parallel calculation (B4).
-    if (t.realWmm) {
+    if (o.grid) {
+      // One frame only, drawn light-on-dark, plus its size as a label.
+      drawHoopOutline(ctx, outerT, [0, 0, 0]);
+      const hp = o.hoop.hoop;
+      const label = hp && hp.label ? `${hp.label} hoop` : `${Math.round(outerT.hoopWmm)} × ${Math.round(outerT.hoopHmm)} mm`;
+      const r = hoopRectPx(outerT);
+      ctx.save();
+      ctx.font = "11px ui-monospace, SFMono-Regular, Consolas, monospace";
+      ctx.fillStyle = o.grid.label;
+      ctx.textBaseline = "bottom";
+      ctx.fillText(label, r.x + 2, r.y - 6);
+      ctx.restore();
+    } else if (t.realWmm) {
       // The real hoop FIRST, so the placement box reads as sitting inside it
       // rather than the other way round -- and so a caller that passes no hoop
       // leaves this module's stroke order, which one spec asserts by index,
@@ -838,13 +949,18 @@ export function renderRealistic(canvas, design, opts) {
   // finish), so scrubbing/playing renders the design exactly as the machine
   // would sew it. undefined/null = draw everything (every existing caller).
   if (o.limitStrands != null) strands = strands.slice(0, Math.max(0, o.limitStrands));
+  // Sewn width (2026-10-06): `sewnPullMm` > 0 draws every satin strand with
+  // that much pull compensation taken back off each end — the column at the
+  // width the cloth will show, not the width the file carries. See
+  // strands.js's shrinkSatinStrands; a view only, nothing in the design moves.
+  if (o.sewnPullMm > 0) strands = shrinkSatinStrands(strands, o.sewnPullMm);
   // Thread width is PHYSICAL (THREAD_WIDTH_MM), with a px floor so a thread
   // stays visible in the small font/template previews where pxPerMm is tiny.
   const threadMm = o.threadWidthMm != null ? o.threadWidthMm : THREAD_WIDTH_MM;
   const lw = Math.max(1.2, threadMm * pxPerMm);
   const layers = o.threadLayers != null ? o.threadLayers : threadLodLayers(lw, strands.length);
   // threadStyle: "realistic" (default, every existing caller) | "flat".
-  drawThreads(ctx, strands, SX, SY, lw, { layers, flat: o.threadStyle === "flat" });
+  drawThreads(ctx, strands, SX, SY, lw, { layers, flat: o.threadStyle === "flat", clip: { x0: 0, y0: 0, x1: cw, y1: ch } });
 
   // Diagnostic overlays (drawn ON TOP of thread so they're never buried):
   // showJumps -> dashed travel lines; showTrims -> an X marker per trim.

@@ -53,6 +53,11 @@ def _run(**kw):
     # `tests/test_rail_comp.py` pins the price). The flag under test here is
     # priced on the engine it was read on; the rails' own cost is pinned there.
     kw.setdefault("satin_rail_comp", False)
+    # And without the crown cover (`satin_crown_cover`, ON since Kent's
+    # 2026-10-02 flip): the cover is thread of its own in a shape, and the
+    # trim counts this file holds its two levers to were read without it.
+    # Its price is `tests/test_crown_cover.py`'s.
+    kw.setdefault("satin_crown_cover", False)
     cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
     gen = build_generation(str(FIXTURE), cfg)
     result = finish_generation(gen.fork(), cfg)

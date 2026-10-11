@@ -2,6 +2,7 @@
 // (rails+rungs) and play it through our satinplay engine, then render — to
 // validate that Ink/Stitch's hand-authored columns + our playback = clean.
 // Usage: SVG=scratch_ink/apex_ltr.svg CH=B node tools/parse-inkstitch.mjs out.png
+import "./_help.mjs";
 import fs from "node:fs";
 import { createRequire } from "module";
 import { encodePNG } from "./png.mjs";

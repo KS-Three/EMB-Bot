@@ -13,6 +13,7 @@ import {
   migrateLegacy,
   isAutoNamed,
   autoNameProject,
+  setProjectFacts,
 } from "./projects.js";
 import { defaultProject, updateElement, UNTITLED_NAME } from "./project.js";
 
@@ -587,4 +588,84 @@ test("saveProject still reports SUCCESS when only the index write fails", () => 
   globalThis.localStorage = indexWriteFails();
   expect(saveProject(id, edited)).toBe(true);
   expect(loadProject(id).elements[0].text).toBe("SAVED");
+});
+
+// --- setProjectFacts (library filter) ---------------------------------------
+
+const FACTS = { st: 5412, col: 2, w: 76, h: 18.3 };
+
+test("setProjectFacts stores the facts on the index entry and nowhere else", () => {
+  const { id } = createProject("Measured");
+  const recordBefore = globalThis.localStorage.getItem("embstudio:p:" + id);
+  expect(setProjectFacts(id, FACTS)).toBe(true);
+  expect(listProjects().find((p) => p.id === id).facts).toEqual(FACTS);
+  expect(globalThis.localStorage.getItem("embstudio:p:" + id)).toBe(recordBefore);
+});
+
+test("setProjectFacts does not touch updatedAt -- opening an old design to measure it must not reorder the drawer", () => {
+  const { id } = createProject("Old");
+  const before = listProjects().find((p) => p.id === id).updatedAt;
+  vi.useFakeTimers();
+  try {
+    vi.setSystemTime(before + 60000);
+    setProjectFacts(id, FACTS);
+  } finally {
+    vi.useRealTimers();
+  }
+  expect(listProjects().find((p) => p.id === id).updatedAt).toBe(before);
+});
+
+test("setProjectFacts is a no-op for an unknown id -- a late measurement cannot resurrect a deleted project (A2/A10)", () => {
+  const { id } = createProject("Doomed");
+  deleteProject(id);
+  expect(setProjectFacts(id, FACTS)).toBe(false);
+  expect(listProjects()).toEqual([]);
+  expect(loadProject(id)).toBeNull();
+});
+
+test("setProjectFacts writes nothing when the facts are unchanged", () => {
+  const { id } = createProject("Same");
+  setProjectFacts(id, FACTS);
+  const setItem = vi.spyOn(globalThis.localStorage, "setItem");
+  expect(setProjectFacts(id, { ...FACTS })).toBe(false);
+  expect(setItem).not.toHaveBeenCalled();
+  // ...including "still none" on an entry that never had any.
+  const b = createProject("Blank");
+  setItem.mockClear();
+  expect(setProjectFacts(b.id, null)).toBe(false);
+  expect(setItem).not.toHaveBeenCalled();
+});
+
+test("setProjectFacts(null) removes the facts rather than storing a null", () => {
+  const { id } = createProject("Emptied");
+  setProjectFacts(id, FACTS);
+  expect(setProjectFacts(id, null)).toBe(true);
+  expect("facts" in listProjects().find((p) => p.id === id)).toBe(false);
+});
+
+test("setProjectFacts reports false and changes nothing when the index write fails", () => {
+  const { id } = createProject("Full store");
+  const store = indexWriteFails();
+  globalThis.localStorage = store;
+  expect(setProjectFacts(id, FACTS)).toBe(false);
+  expect(listProjects().find((p) => p.id === id).facts).toBeUndefined();
+});
+
+test("saveProject and renameProject keep an entry's facts", () => {
+  const { id, project } = createProject("Keeps");
+  setProjectFacts(id, FACTS);
+  saveProject(id, project);
+  renameProject(id, "Renamed");
+  expect(listProjects().find((p) => p.id === id).facts).toEqual(FACTS);
+});
+
+test("duplicateProject carries the source's facts -- the copy is the same design", () => {
+  const { id } = createProject("Original");
+  setProjectFacts(id, FACTS);
+  const dup = duplicateProject(id);
+  expect(listProjects().find((p) => p.id === dup.id).facts).toEqual(FACTS);
+  // and an unmeasured source yields an unmeasured copy, not `facts: undefined`
+  const plain = createProject("Plain");
+  const dup2 = duplicateProject(plain.id);
+  expect("facts" in listProjects().find((p) => p.id === dup2.id)).toBe(false);
 });

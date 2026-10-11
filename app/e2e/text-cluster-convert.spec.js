@@ -31,7 +31,7 @@
 // convention: "each e2e spec here is self-contained, matching that file's
 // own convention").
 import { test, expect } from "@playwright/test";
-import { startStudio, pickGarment } from "./helpers.js";
+import { startStudio, pickGarment, uploadArtwork, runDigitize } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -139,9 +139,8 @@ test("text cluster: badge appears, convert to text, undo -- through the real ser
   await startStudio(page);
 
   await pickGarment(page, "Tote");
-  await page.getByRole("button", { name: "Artwork" }).click();
 
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG, { run: false });
 
   // ---- set the documented 90mm benchmark width before digitizing ----------
   // Scoped via the label's own wrapping .dgp-param (not getByLabel -- the
@@ -156,11 +155,9 @@ test("text cluster: badge appears, convert to text, undo -- through the real ser
   await widthInput.blur();
   await expect(widthInput).toHaveValue("90");
 
-  // No Digitize click: choosing the file already started a run at the DEFAULT
-  // width, and the 90 above re-runs it (the params watcher counts an in-flight
-  // first run, so the change is not dropped into the pre-result window). Both
-  // runs write .dgp-stats, so waiting for mere visibility could read the 80mm
-  // one -- wait for the benchmark width itself.
+  // Nothing has run yet -- the file only loaded -- so this is the first and
+  // only run, at the benchmark width.
+  await runDigitize(page);
   await expect(page.locator(".dgp-stats")).toContainText(/\b90×/, { timeout: 120_000 });
   await openShapeRows(page);
 

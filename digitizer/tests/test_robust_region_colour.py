@@ -137,7 +137,11 @@ def bridge_pair():
     # `0713`, not the `6031` the loss was found as. `conftest.PRE_FLIP`'s
     # posture; not spelled as PRE_FLIP because `robust_region_colour` is
     # itself in that dict and this fixture is what prices it.
-    return (digitize(BRIDGE, _cfg(robust_region_colour=False, keep_thin_strokes=False)),
+    # `work_px_per_mm=None` on the OFF arm for the same reason (ON since
+    # 2026-10-01): traced at 8 px/mm the disc is another region again and
+    # the pre-flip arm sews `0704`.
+    return (digitize(BRIDGE, _cfg(robust_region_colour=False, keep_thin_strokes=False,
+                                  work_px_per_mm=None)),
             digitize(BRIDGE, _cfg(robust_region_colour=True)))
 
 

@@ -70,8 +70,8 @@ Screenshots → `/tmp/emb-shots/` (`--shots <dir>` to move them).
 
 ```bash
 node .claude/skills/run-emb-bot/driver.mjs repl <<'EOF'
-btn Logo patch
-upload input[type=file] app/e2e/fixtures/enthusiast_logo.png
+upload [data-testid="art-file"] app/e2e/fixtures/enthusiast_logo.png
+click .dgp-run
 eval new Promise(r=>{const t=setInterval(()=>{const m=document.querySelector('span.stats')?.innerText.match(/[\d,]+ stitches · [\d.]+×[\d.]+ mm · [^·\n]+ hoop/);if(m){clearInterval(t);r(m[0])}},1000);setTimeout(()=>{clearInterval(t);r('TIMEOUT')},120000)})
 ss my-shot
 net 8721
@@ -89,7 +89,7 @@ which never kills the REPL), so a tmux-driven caller can poll
 | `ss [name]` | screenshot → `/tmp/emb-shots/NN-name.png` |
 | `outline` | headings + every visible button/input, with labels — **use this instead of dumping HTML** |
 | `btn <label>` | click a button by text; **exact match first**, then substring; prints what it resolved and how many matched |
-| `waitbtn <label>` | wait for a button whose text is exactly this. **Not** the way to follow an `upload` — see the auto-start gotcha below |
+| `waitbtn <label>` | wait for a button whose text is exactly this |
 | `click <sel>` / `fill <sel> <v>` / `type <sel> <v>` / `press <key>` | raw Playwright |
 | `upload <sel> <path>` | real file upload, path relative to repo root |
 | `wait <sel>` / `waittext <text>` | wait for a selector / text |
@@ -260,36 +260,33 @@ Each has actually happened; check in this order.
 
 These are the ones that cost real time here.
 
-- **Do NOT click Digitize after an upload — the upload IS the run.** PR #296
-  ("uploading the image is the whole interaction", Kent 2026-08-30) made
-  DigitizePanel watch `element.sourcePng` and call `runDigitize` the moment it
-  changes, as long as the service is healthy. `upload` then
-  `waitbtn Digitize` now **hangs the full 30s and throws** — which is exactly
-  how the smoke failed on 2026-09-01, and it reads like a broken app when
-  nothing is wrong. Upload, then poll for the stitch caption:
+- **Upload, THEN press "Auto Digitize Image" — nothing runs on its own.**
+  Kent's ruling 2026-10-05, reversing PR #296 ("the upload IS the run",
+  2026-08-30) and the 2026-08-13 auto-restitch. "Upload file" (and the
+  Artwork tile) open the OS file browser through one hidden input,
+  `[data-testid="art-file"]`; the element is only added once a file comes
+  back. The file then sits loaded until `.dgp-run` is pressed:
 
   ```
-  upload input[type=file] app/e2e/fixtures/enthusiast_logo.png
+  upload [data-testid="art-file"] app/e2e/fixtures/enthusiast_logo.png
+  click .dgp-run
   eval new Promise(r=>{const t=setInterval(()=>{const m=document.querySelector('span.stats')?.innerText.match(/[\d,]+ stitches · [\d.]+×[\d.]+ mm · [^·\n]+ hoop/);if(m){clearInterval(t);r(m[0])}},1000);setTimeout(()=>{clearInterval(t);r('TIMEOUT')},120000)})
   ```
 
-  `app/e2e/digitize-auto-start.spec.js` is the authority: it proves stitches
-  land with no Digitize click anywhere in it.
+  Polling for the caption without the click waits out its whole timeout on
+  an app that is working. `app/e2e/digitize-auto-start.spec.js` is the
+  authority (the name is historical).
 
-- **The Digitize button still exists — its LABEL is what moves.** It was not
-  deleted; it is the way back in when the service is offline, or when the user
-  re-picks the identical file (that re-encodes to identical base64, so the
-  watcher sees no change). But it renders
-  `pending ? "Digitizing…" : element.result ? "Digitize again" : "Digitize"`,
-  so with the service up the auto-start flips `pending` before any wait can
-  catch the bare "Digitize". Never key a wait on that exact string.
+- **A setting, crop or shape edit after a run changes NOTHING on the canvas
+  until `.dgp-run` is pressed again.** The button carries `dgp-run-stale`
+  (transparent) and `data-stale="true"` while the stitches are behind the
+  settings. Read that before concluding an edit "did nothing".
 
-- **`btn Digitize` clicks the wrong thing if you substring-match.** Several
-  controls match "Digitize": the element chip **"Digitized · empty"** (first
-  in DOM order), **"Auto Digitize Image"**, **"Digitize again"**, and the
-  transient **"Digitize"**. Clicking the chip *succeeds* and submits nothing —
-  you then debug the service for an hour. The driver's `btn` tries exact
-  first and prints every candidate; `net 8721` confirms a POST actually left.
+- **Target `.dgp-run`, not the word "Digitize".** The element chip
+  ("Digitized · …" / "Not digitized · …") matches the word first in DOM
+  order; clicking it *succeeds* and submits nothing. The button reads "Auto
+  Digitize Image", or "Digitizing…" (disabled) mid-run. `net 8721` confirms
+  a POST actually left.
 
 - **The service rejects unknown config fields with 400.** It's
   `target_width_mm`, not `width_mm` →

@@ -21,6 +21,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "tools"))
 
 import edge_truth_ladder as el  # noqa: E402
+from tests.conftest import held_on_source_line  # noqa: E402
 
 TESTDATA = HERE.parent / "testdata"
 
@@ -85,7 +86,10 @@ def rungs(tmp_path_factory):
     work = tmp_path_factory.mktemp("ladder")
     # The pre-flip baseline the plan's criterion is stated against: the
     # flag OFF explicitly, since 2026-09-09's flip made ON the default.
-    return {w: el.measure_rung("whitebg", w, "flat", work, flag="subpixel_edges=false") for w in (400, 1600)}
+    # ...and on the pre-2026-10-01 tracing grid: the 400 px rung is 4.2 px/mm,
+    # which `work_px_per_mm` now enlarges to 8 before stage 4 ever sees it.
+    with held_on_source_line():
+        return {w: el.measure_rung("whitebg", w, "flat", work, flag="subpixel_edges=false") for w in (400, 1600)}
 
 
 def test_every_truth_shape_is_produced_and_matched_from_400_px_up(rungs):
@@ -122,6 +126,7 @@ def test_the_trace_sits_inside_the_edge_by_under_a_pixel_and_the_curves_sharpen_
         assert hi[name]["spread_mm"] < lo[name]["spread_mm"], (name, lo[name]["spread_mm"], hi[name]["spread_mm"])
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_the_ribbon_polygon_is_the_same_polygon_at_400_and_1600_px(tmp_path):
     """Douglas-Peucker at a fixed 0.2 mm makes the same polygon whatever the
     raster under it: the ribbon keeps its vertex count and its spread from

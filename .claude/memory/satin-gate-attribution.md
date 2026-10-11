@@ -9,6 +9,13 @@ Branch `claude/satin-gate-attribution`, 3 commits, **not pushed, no PR** — Ken
 call. Full trail: `docs/satin-gate-attribution-2026-08-16.md`; spec at
 `docs/superpowers/specs/2026-08-16-satin-routing-gate-attribution-design.md`.
 
+**Update 2026-10-04: SHIPPED since.** The `explained`/`elongation` promotion path
+is live in `digitizer_core/stage6_satin.py` as the `promoted_ribbon` verdict
+(`_PROMOTE_EXPLAINED_MIN` 0.80, `_PROMOTE_ELONGATION_MIN` 10.0), and
+`docs/scope-history.md` reads `promoted_ribbon` shapes off the corpus. The
+"not pushed, no PR" line above is the 2026-08-16 state; the landing commit is
+outside this clone's history, so no date is claimed here.
+
 **What was wrong.** `is_satin_candidate` was three rejection gates with no path
 back to satin (MASTER_SCOPE live defect 5). Measured on 15 real customer designs:
 **63.6% of the pro-satin ground we sew as fill is rejected by the DT REGULARITY

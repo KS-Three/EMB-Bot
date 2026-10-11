@@ -25,6 +25,7 @@
 // gzipped), which is why it is exact coverage rather than a per-script
 // summary: a font that has SOME Greek but not the letters typed would be a
 // worse answer than none.
+import "./_help.mjs";
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";

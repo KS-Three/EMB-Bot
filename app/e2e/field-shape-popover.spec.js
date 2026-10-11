@@ -4,7 +4,7 @@
 // drag. Service bootstrap and fixture copied from field-border-menu.spec.js,
 // per this directory's convention of self-contained specs.
 import { test, expect } from "@playwright/test";
-import { pickGarment } from "./helpers.js";
+import { pickGarment, uploadArtwork, runDigitize } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -302,22 +302,23 @@ test("two preset circles: selecting one highlights only that one, and switching 
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
   // Switch to A from its element row. The shape selection belonged to B, so
-  // it drops: nothing is amber, and a Delete on the canvas touches nothing.
+  // it drops: nothing is amber, and a Delete on the canvas touches no SHAPE.
+  // A has been selected as an ELEMENT by the row click, so Delete removes that
+  // element (Kent 2026-10-08) — one circle goes, the other stays.
   await page.locator(".elrow", { hasText: "Circle" }).first().click();
   await expect.poll(() => columnRuns(page, "amber")).toHaveLength(0);
   await cv.focus();
   await page.keyboard.press("Delete");
-  await expect(page.locator(".elrow", { hasText: "Circle" })).toHaveCount(2);
+  await expect(page.locator(".elrow", { hasText: "Circle" })).toHaveCount(1);
   await expect.poll(() => columnRuns(page, "amber")).toHaveLength(0);
 });
 
-test("digitized lane: click inside a square opens the Layers row's controls; Border restitches at once", async ({ page }) => {
+test("digitized lane: click inside a square opens the Layers row's controls; Border waits for the run button", async ({ page }) => {
   test.skip(!serviceUp, skipReason);
   test.setTimeout(300_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   await toContent(page);
-  await page.getByRole("button", { name: "Artwork" }).click();
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   // Settle: the baseline is the stats text three consecutive reads, 300 ms
   // apart, agree on. A fixed sleep could take it before a late restitch
@@ -339,6 +340,8 @@ test("digitized lane: click inside a square opens the Layers row's controls; Bor
   await expect(dlg.getByRole("combobox", { name: "Border" })).toHaveValue("default");
 
   await dlg.getByRole("combobox", { name: "Border" }).selectOption("auto");
+  await expect(page.locator(".dgp-run")).toHaveClass(/dgp-run-stale/);
+  await runDigitize(page);
   await expect.poll(() => page.locator(".dgp-stats").innerText(), { timeout: 120_000 }).not.toBe(before);
 
   // The panel's own Border select reads the same value.

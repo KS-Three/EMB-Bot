@@ -19,6 +19,7 @@ clears the grader's finding, and a patch never sews outside the artwork.
 """
 from __future__ import annotations
 
+import pytest
 from shapely.geometry import Point, Polygon
 
 from digitizer_core import PipelineConfig, machine, stitches
@@ -44,6 +45,13 @@ def _cfg(**kw) -> PipelineConfig:
     # in scope-history's flip addendum; this file pins the patch mechanism
     # on the polygons it was measured on.
     kw.setdefault("subpixel_edges_upscaled", False)
+    # `letterform_priors_k` held OFF for the same reason (ON at 0.75 since
+    # Kent's 2026-10-07 ruling): the refit letters have no bare crotch for
+    # the patch to find -- with the default ON all three patch tests read
+    # "the tatami patch stopped firing on this fixture" (2026-10-07). The
+    # patch is pinned on the staircase polygons it was measured on; the
+    # refit's own price is MASTER_SCOPE 29 / defect 59.
+    kw.setdefault("letterform_priors_k", None)
     # `satin_rails_follow_edge` held at the symmetric model since the envelope
     # went ON (2026-09-30, Kent's ruling on its labelled sitting): the far
     # rail's reach into the crotch takes three stitches off the satin cover's
@@ -62,6 +70,11 @@ def _cfg(**kw) -> PipelineConfig:
     # so OFF and ON would sew the same cover and this file's contrast -- the
     # cover alone against no cover -- would read nothing.
     kw.setdefault("satin_junction_stack", False)
+    # `satin_crown_cover` held OFF as well (Kent's 2026-10-02 flip): it IS this
+    # cover with the junction gate removed, on every satin shape, so with it ON
+    # the "off" arm already sews the cover and the contrast reads nothing --
+    # the same reason as the stack above.
+    kw.setdefault("satin_crown_cover", False)
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 
@@ -81,6 +94,7 @@ def test_off_is_byte_identical_on_the_fixture_the_flag_moves():
         "the default and an explicit False must be the same plan"
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_on_clears_the_graders_finding_rather_than_merely_moving_a_number():
     """Proven on the emitted stitches through the grader that reported the
     defect, not on the patch geometry this module computed for itself.
@@ -226,6 +240,7 @@ def _first_run_of(plan, shape_id: str):
     return None
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_the_satin_cover_clears_the_graders_finding_with_no_tatami():
     """Same proof as the tatami patch — through `ARTWORK_UNCOVERED` on the
     emitted stitches — plus the property that makes it a different answer:
@@ -258,6 +273,9 @@ def test_the_satin_cover_clears_the_graders_finding_with_no_tatami():
     rep_off = run_preflight(r_off, p_off, off, image=BECKER)
     f_off = [x for x in rep_off["findings"] if x["code"] == "ARTWORK_UNCOVERED"]
     assert f_off, "the fixture stopped exhibiting the defect these tests are about"
+    # Kent's call 2026-10-05 (issue #630): the finding stays, the grade is
+    # blind to it -- `info`, which `_DEDUCT` bills nothing.
+    assert all(x["severity"] == "info" for x in f_off)
     shapes_off = {s["shape_id"]: s["missing_mm2"] for s in f_off[0]["extra"]["shapes"]}
     on = _cfg(satin_patch_junctions="satin")
     r_on, p_on = digitize(BECKER, on)

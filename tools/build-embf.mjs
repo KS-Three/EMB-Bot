@@ -9,6 +9,7 @@
 //          src/fonts/manifest.json
 // Idempotent; safe to re-run. scratch_ink/ is gitignored source material —
 // the committed artifacts are the .embf files and the manifest.
+import "./_help.mjs";
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";

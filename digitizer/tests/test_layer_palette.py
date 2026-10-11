@@ -83,7 +83,12 @@ def _run(fixture: str, on: bool):
     `docs/palette-mismatch-2026-09-12.md` §1 measured it on."""
     result, plan = digitize(TESTDATA / fixture,
                             _cfg(layer_palette_from_regions=on,
-                                 keep_thin_strokes=False))
+                                 keep_thin_strokes=False,
+                                 # the tracing grid likewise at its pre-flip
+                                 # source line (ON since 2026-10-01):
+                                 # `region_blobs` is 7.15 px/mm and loses the
+                                 # unsewn base cone this file is about at 8
+                                 work_px_per_mm=None))
     return result, plan
 
 

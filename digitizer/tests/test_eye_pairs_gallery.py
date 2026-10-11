@@ -17,12 +17,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools import eye_pairs_gallery as g  # noqa: E402
 
 # Restated from the yardstick spec, sections 3.2 and 3.7 / analysis.METRICS.
-SPEC_ARMS = ["per_stroke", "patch_junctions", "polygon_axis", "area_weighted",
+SPEC_ARMS = ["per_stroke", "polygon_axis", "area_weighted",
              "design_angle", "rails_follow_edge", "wide_columns",
              "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827",
-             "ref_0930am", "split_7mm", "rails_symmetric", "pro_file", "split_off"]
+             "ref_0930am", "split_7mm", "rails_symmetric", "pro_file", "split_off",
+             "keep_counters", "bean_letters", "letterform_priors", "lettering_columns",
+             "lettering_words", "columns_words"]
+# `columns_words` joined 2026-10-08: the Column lane's flip sitting, both flags.
+# `letterform_priors` joined 2026-10-06, Kent's option A after the spike
+# (docs/letterform-priors-2026-10-06.md): built OFF, judged on thread pairs.
+# `lettering_columns` joined 2026-10-07: the outline-cut Column lane, built OFF.
+# `lettering_words` joined 2026-10-08: L1, one lettering tagger, built OFF.
 # `rail_comp` shipped ON 2026-09-28 and left the table (docs/kent-review-2026-09-28.md);
 # `rail_envelope` shipped ON 2026-09-30 and left it (docs/eye-pairs-2026-09-30/).
+# The last two joined 2026-10-03 with `cap_recentre`, the built-OFF flags
+# waiting on Kent's eye; `cap_recentre` shipped ON off that sitting the same
+# day and left again (docs/eye-pairs-2026-10-03/).
+# `patch_junctions` left the same day with no flip of its own: it was already
+# the shipped engine (`satin_junction_stack`'s part C, ON 2026-09-19).
 SPEC_METRICS = {
     "trims_per_1000": "lower", "preflight_raw_score": "higher",
     "preflight_blocks": "lower", "uncovered_total_mm2": "lower",
@@ -132,7 +144,7 @@ def test_tables_match_the_yardstick_package_when_it_is_here():
     assert set(yp.ARMS) == set(g.ARM_INTENT)
     assert {a for a, kw in yp.ARMS.items() if "__ref__" in kw} == set(g.REF_ARMS)
     assert {a for a, kw in yp.ARMS.items() if "__file__" in kw} == set(g.FILE_ARMS)
-    assert yp.EXCLUDED_FIXTURES == g.EXCLUDED_FIXTURES == frozenset({"screenshot"})
+    assert yp.EXCLUDED_FIXTURES == g.EXCLUDED_FIXTURES == frozenset({"screenshot", "gaulke"})
     assert {m: d for m, d in ya.METRICS.items() if d != "none"} == g.METRIC_BETTER
 
 
@@ -676,6 +688,16 @@ def test_a_shipped_arm_is_still_named_on_an_old_sitting():
     assert "rail_envelope" not in g.ARM_INTENT
     change, intent = g.arm_intent("rail_envelope")
     assert change.startswith('satin_rails_follow_edge="envelope"') and "shipped" in change and intent
+    # patch_junctions left 2026-10-03 without a flip: `satin_junction_stack`
+    # (ON 2026-09-19) sews the same satin cover as its part C, so the arm was
+    # identical to shipped on all eight logos, crown cover on or off.
+    assert "patch_junctions" not in g.ARM_INTENT
+    change, intent = g.arm_intent("patch_junctions")
+    assert change.startswith('satin_patch_junctions="satin"') and "shipped" in change and intent
+    # cap_recentre shipped ON 2026-10-03, off the sitting it was drawn for.
+    assert "cap_recentre" not in g.ARM_INTENT
+    change, intent = g.arm_intent("cap_recentre")
+    assert change.startswith("satin_cap_recentre=True") and "shipped" in change and intent
     assert g.arm_intent("per_stroke") == g.ARM_INTENT["per_stroke"]
     assert g.arm_intent("nope") == ("nope", "")
     assert g.arm_intent(None) == ("", "")

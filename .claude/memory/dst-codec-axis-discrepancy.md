@@ -1,6 +1,6 @@
 ---
 name: dst-codec-axis-discrepancy
-description: "EMB-Bot's JS DST codec uses a transposed bit table vs pyembroidery/the published Tajima one — unresolved, needs a sew-out to settle"
+description: "RESOLVED 2026-09-08 — EMB-Bot's JS DST codec had its nibble table transposed vs pyembroidery/the published Tajima one; fixed both directions with no sew-out (a reference implementation plus a render settled it); a pre-fix .dst re-imports mirrored"
 metadata: 
   node_type: memory
   type: project

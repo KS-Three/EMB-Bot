@@ -2,6 +2,7 @@
 import copy
 
 import numpy as np
+import pytest
 
 from digitizer_core import PipelineConfig, run_stages
 from digitizer_core.regions import match_shape_ids
@@ -127,6 +128,7 @@ def test_target_size_drives_the_output_size():
     assert 8.0 < ratio < 10.0, ratio
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_minimum_detail_is_physical_so_size_changes_what_survives():
     # min_detail_mm is a MACHINE constraint (1.5 mm), not an image constant:
     # the fixture's ~1 mm features are unsewable on a 40 mm design and
@@ -140,6 +142,7 @@ def test_minimum_detail_is_physical_so_size_changes_what_survives():
     assert any(r.thread_number == "4531" for r in big.regions)
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_simplify_tol_mm_stays_fine_across_the_real_target_width_range():
     """config.py's `simplify_tol_mm` docstring has the full measurement
     writeup (2026-08-07): a fixed 0.2 mm tolerance is already scale-invariant

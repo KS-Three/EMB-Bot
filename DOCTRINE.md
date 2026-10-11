@@ -75,6 +75,19 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   simply run different, is worse than one that stays silent. Do not "complete"
   Part 3 by adding them later without asking again.
   *(2026-09-20 — `src/pdfsheet.js`, `app/src/lib/pdfsheet.spec.js`)*
+  **Needle size came back 2026-10-01 — asked again, as the line above
+  requires, and Kent said yes; TENSION IS STILL OFF.** The condition he took
+  it on: the figure never appears without its basis ("75/11 ballpoint
+  (standard for 40wt thread)"), and it comes off the fabric preset, so it
+  stays inside the line drawn above. Law 21's split — ballpoint on knits,
+  sharp on wovens and caps — and canvas stays 75/11 against the specialty
+  table's 80/12, also his call. **Terry is the exception, his too:** woven,
+but ballpoint, so the loops are parted rather than cut. It prints on the worksheet AND on a hooping
+  card in the Download sheet, from one function (`EMB.hoopingAdvice`), so the
+  two cannot state different advice. Do not read this as licence for gram
+  targets: nothing about tension became derivable.
+  *(2026-10-01 — `src/fabrics.js`, `test/fabrics.test.js`,
+  `docs/trade-knowledge-2026-09-13.md` addendum)*
 
 - **A backing class is a garment property, not a stitch-count threshold.**
   Same ruling's mechanism, recorded because the old behaviour looks defensible
@@ -1216,6 +1229,34 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   `docs/corpus-laws-round3-2026-08-01.md` flags its own >7.0 mm bucket as 82%
   non-ribbon junk, so 7.0 sits on that edge.
   *(researched 2026-09-02 — wilcom.com, "Mastering Satin Stitch and Tatami Stitch")*
+- **A raster-to-vector tracer in front of the digitizer does not improve a
+  low-resolution outline. Do not evaluate one again on that hope.** vtracer
+  0.6.15 and 1.0.0a4 (which IS on PyPI — the 08-17 evaluation's "not
+  published" is stale), nine settings between them, against stage 4 on
+  golden_tee and hotel_fremont brought down to 1.8–12 px/mm and scored
+  against their own native-resolution edges: over 26 cases the tracer was
+  closer in 5, stage 4 in 13, and the largest gap either way was 0.019 mm.
+  The smooth-looking arm — a binary tracer on the source's own pixel grid —
+  was two to three times FURTHER from the edge than everything else: it
+  thresholds away the coverage ramp, the only sub-pixel information a small
+  file has. **What limits the outline is the hard mask stage 4 is handed,
+  not the tracer and not the pixel count**: the mask's own outline already
+  sits 0.10 mm out at 1.8 px/mm, and the same alpha read directly as a
+  half-coverage contour sits 0.04–0.05. That is `cfg.coverage_edges`
+  (default OFF), which is ours and needs no dependency.
+  *(measured 2026-10-10 — `docs/tracer-head-to-head-2026-10-10.md`)*
+- **A closer outline is not yet a better sew-out, and a clean synthetic is
+  the wrong place to judge an edge reader.** `coverage_edges` halves the
+  edge error on real single-ink layers at 1.8 px/mm and takes Becker's
+  outline reversals from 37 to 7 — and on a clean sharp-cornered bar the
+  shipped native read is the better polygon (0.03 mm at worst in 4 vertices
+  against 0.22: half coverage cuts across a corner, the native read fits the
+  two sides). Becker sewn both ways at 80 mm: the outer band is continuous
+  where shipped breaks it, and MARINE's letters are not better — the satin
+  decomposition was tuned on the polygons it has been given. Each reader
+  wins where the other was measured least; neither result transfers.
+  *(measured 2026-10-11 — `tests/test_coverage_edges.py`; PR body of
+  `claude/coverage-read`)*
 
 ---
 
@@ -1601,6 +1642,18 @@ flattery. Anything unlisted raises `NotInManifest`.
 
 
 ## Gotchas — cost someone a session once
+
+- **Satin density is a needle every `SATIN_SPACING_MM` on EACH rail — count
+  needles per rail, never total stitches between tiers.** The engine's flat
+  zigzag is A1, B1, A2, B2: both ends of every station, stations the spacing
+  apart. The Column lane's first wiring put one end down per station, rails
+  alternating, and sewed every letter at HALF the satin tier's density for a
+  day; it had compared total letter stitch counts against a tier that also
+  lays a zigzag underlay, read the real density as a doubling, and halved it.
+  Measured on MARINE's I: 0.40 mm per rail under the satin tier, 0.80 under
+  the lane, 0.40 after the fix. A thread-width coverage yardstick does not
+  catch it either way at 0.3 mm thread. *(found 2026-10-07 by the desktop
+  sitting agent counting crosses on the N; fixed in PR #660)*
 
 - **Adding an engine file means FOUR lists, and only three were documented —
   now guarded.** `src/*.js` files are plain scripts sharing one
@@ -3644,6 +3697,32 @@ flattery. Anything unlisted raises `NotInManifest`.
   mutation-checked — forcing `chained` true fails the travel tests, and
   raising the bar back to 2047 fails the split tests.
 
+  **And `exp.js` never had it — found 2026-10-06, fixed 2026-10-07.** This
+  entry was closed with two of the three encoders carrying the rule. `exp.js`
+  was the one `dst.js` had been matched to ("a stitch splits into stitches"),
+  so it kept the naive half and split EVERY stitch record into stitches. From
+  2026-09-13 its own comment read "same shape as pes.js's `chained ? … : …`"
+  over a line that tested `isJump`, and crossval's `long` fixture said both
+  encoders "must keep splitting that as jumps". Nothing failed because nothing
+  could: that fixture's travel-in is zero units long, and DST's naive version
+  had been caught by its IMPORTER's test, which EXP has none of. So from the
+  day it was written (2026-07-22) the EXP of a design put the needle down
+  along moves its DST and PES travel: as shipped, on 2,455 of 2,700 designs
+  of a drawn shape set to satin and 285 of 2,870 of the shape tool's presets
+  (wherever the browser's satin floats to a far arm and sews back), and on an
+  imported stitch file whose first record is a stitch, where it sewed a line
+  from the middle of the hoop to where the design starts. **A rule N encoders share is tested by ONE fixture run
+  through all N and compared file against file — not by N comments that say
+  "same as the other one".** crossval's `travel` fixture and
+  `tools/file-cut-census.mjs`'s hole-by-hole rows are that now. **And a census
+  counts the designs its sets hold, not the product's:** the two lanes that
+  carried this were in none of them. The "manual" lane is all fills, so a
+  drawn shape set to satin was never built; and every builder opens a run
+  with a jump where a stitch file need not, so no set's stream opened with a
+  stitch (`tools/file-cut-satin-set.mjs`, `tools/file-cut-import-set.mjs`).
+  Before quoting a lane as clean, read what its set builds. *(measured
+  2026-10-07 — scope-history 10-07)*
+
   **The safety property is a measurement, not an argument.** The DST of all 85
   shipped fonts at left-chest size hashes
   `e24e181fc8dd89aae12221fe21ab889197a501d0dd3ec59291f8e5d1c591dc9f` both
@@ -5589,6 +5668,54 @@ reachable directly rather than left to a fixture wandering into it.
 it was written for.** When a rule only triggers at a boundary, test the boundary
 directly; a corpus does not owe you an edge case.
 
+**Corrected 2026-10-03: the lock this entry describes had a leg of 0.8
+PIXELS.** `tieRun` used `TIE_STITCH_MM` as a length in its caller's units, and
+its one caller passed px. Across the 85 shipped fonts not one lock of 17,668
+reached 0.75 mm: the median was 0.30 mm on four letters and 0.10 mm on
+eighteen, and some rounded to nothing, which is four penetrations of one hole.
+Its tie-in also sat in front of the run's first stitch and doubled that hole
+(1,136 to 8,695 of them, by text). Neither reached a customer: the flag is off.
+*(measured 2026-10-03 — `tools/lock-stitch-census.mjs`, `docs/lock-stitches-2026-10-03.md`)*
+
+**What the wire test could not see.** `test_machine_wire.py` holds the VALUE
+of `TIE_STITCH_MM` equal in both trees, and it was. The defect was the UNIT at
+the call site, which no scan of constants can reach. Every tie test asserted
+counts, boxes and "no move longer than before", all true of a lock an eighth
+to a third of the intended size. Nothing asked how long a leg was in
+millimetres.
+
+**What to do with it:**
+
+- **A length on cloth is asserted in the OUTPUT's units, at two resolutions.**
+  The stream is in DST units. Measure there, at 2 and at 20 px per mm, on two
+  design sizes. This was the second pixel-for-millimetre in one week: the
+  `fillColumns` edge-run inset was "2 px", 0.2 mm at the Studio's scale and
+  0.6 mm on an enlarged design.
+- **Compute it there too when you can.** `applyTies` runs on the finished
+  stream, where a leg is 8 units and there is no scale to get wrong.
+- **Find a lock by DIFF, not by its shape.** A font's own triple run is
+  a, b, a, b as well: a pattern search reported a quarter more locks than
+  there were, with legs of 3 mm.
+
+**What the new rule's own audit added (same day).** Eleven claims held and
+the rule did not. It locked a thread on its first and last "two stitch
+records in a row", and a record is not a stitch: a row shorter than a stitch
+is ONE record after a float, because the float lands on its start. So a
+thread ending in a float and a short row had its lock up-thread, and 6.1% of
+tie-offs on shapes sat more than 4 mm before the cut they guard, one of them
+371 mm. Moved to the thread's real end, the lock was then laid along the
+float, and on a frame its inner point was 0.8 mm into the hole: 285 of 37,082
+locks. Laid back along the row the stitch closed: 21.
+
+- **State a rule about thread in terms of thread.** "Two stitch records in a
+  row" is a fact about the encoding. Ask what the needle and the thread do.
+- **Measure a new flag with the OTHER flags off.** Both faults showed only
+  with `fillColumns` off, where threads end in floats. Every design the
+  feature had been measured on ended its threads on real sewing.
+- **A fix is a new rule and gets the same audit.** The second version was
+  wrong in a way the first was not.
+*(measured 2026-10-03 — `docs/lock-stitches-2026-10-03.md`, "What an independent audit found")*
+
 ## When a fix lands, sweep the INSTRUMENTS built to test it (2026-09-14)
 
 The DST axis and colour-change fixes landed 2026-09-08 and the code was swept
@@ -5661,6 +5788,36 @@ folded into the recapture: **scoring in a 4-worker `ProcessPoolExecutor`
 changes nothing.** The control above was run in parallel and still matched
 byte-for-byte, so the pipeline may be fanned out to make a 52-row sweep
 affordable without putting the numbers in question.
+
+**Addendum 2026-10-02: Linux on Kent's laptop is not that Linux.** The same
+control was run under WSL2 on the Windows box (Ubuntu 24.04, `python3.12`,
+the pinned `requirements.txt`, apt `tesseract-ocr` 5.3.4, no
+`rembg_isolated/venv`): all 52 rows at `2c60cd87`, the baseline's own
+`captured_at_commit`, against the baseline `origin/main` carries.
+
+- **The OCR half reproduces.** 47 of 52 rows are identical leaf for leaf,
+  and every legibility row is among them, including the five designs whose
+  OCR moved on Windows on 09-15.
+- **`photo/photo_grass_macro.png` does not.** left_chest score 10 → 22,
+  `TRIM_HEAVY:warn` gone, `link_thread_mm` 0.6 → 1.7,
+  `uncovered_total_mm2` 407.8 → 432.2; hat_front `uncovered_total_mm2`
+  460.2 → 499.2. The tool reports both rows and exits 0, since no grade
+  fell and no block finding appeared. `link_thread_mm` 1.7 is the value
+  Windows gave for that row on 09-15.
+- **Three more rows move under the noise floor:** `region_blobs` (both
+  garments) and `repro_gradient_white_icon` hat_front, by two stitches in
+  about twenty thousand or 0.001 of `same_hole_fraction`.
+- **The drift is deterministic and its cause is not found.** The five rows
+  came out byte-identical across two serial runs, a 6-worker pool, 8 / 4 /
+  1 cores, and with AVX2 and FMA disabled in numpy and OpenCV. What is
+  left is the machine (Ryzen 7 4700U) or a library those switches do not
+  reach; neither was tested.
+
+**So "capture on Linux" means cloud Linux or CI, not WSL on this laptop.**
+The box is still worth using for a `diff` whose OCR rows can be trusted,
+with `photo_grass_macro` ignored; the recipe is COOKBOOK "The WSL scorecard
+box on Kent's laptop". *(measured 2026-10-02 — WSL 3.0.1, kernel
+6.18.40.1; one machine, one commit)*
 
 ## A cost measured at one width is not a cost (2026-09-12)
 
@@ -7262,6 +7419,16 @@ fix is theirs, not the engine's: pin `photo_prep_background_removal=False`
 where the premise is about something else. Filed as #553, not folded into
 the flip PR.
 
+**Correction 2026-10-02, when #553 was closed: the pin is `photo_prep=False`,
+not the cutout flag.** `photo_prep_background_removal=False` with prep still
+on is an explicit request for prep WITHOUT the cutout. That route is the most
+expensive arm on the acceptance sheet (`test_background_removal` §8), and
+neither machine was running it. CI's cutout is requested but unavailable, and
+since 2026-08-25 that skips prep entirely. `test_an_unavailable_cutout_falls_
+back_to_no_prep_at_all` asserts that this is the same geometry as
+`photo_prep=False`. So `photo_prep=False` is the pin that makes a machine with
+the venv measure exactly what CI measures. The four now carry it.
+
 ## Under rail comp the walk's target sat a half-width off the web, and the census named it (2026-09-29)
 
 The flip's MARINE trims (9 → 22) were first blamed on the artwork
@@ -7745,6 +7912,9 @@ the pixels per cap height; under about 20 the loss is segmentation, and the
 levers are the source or the size, never a stroke rule.** Size recovers this
 one at 140 mm; the dissolve and a wider palette make it worse. *(measured
 2026-09-30, `docs/renders/bridge-phantom-2026-09-30/teal-text.json`)*
+**Corrected the same day: there was a third lever, and "size recovers it"
+was the clue — the grid the engine traces on. See *When a bigger design
+brings the detail back from the SAME file*, below.**
 
 ## A rail that reaches for its far edge must first know whose edge it found (2026-09-30)
 
@@ -7906,6 +8076,15 @@ No screenshot.
 fifteen characters at most; `tools.eye_pairs.pairs.EXCLUDED_FIXTURES`
 keeps it off the page.)
 
+## 2026-10-08 — Kent: gaulke is not a logo to compare by either
+
+No gaulke on the comparison page.
+
+(His note on the full-density Columns sitting: "This image sucks, I
+wouldn't use this image in a comparison going forward." Judged "both bad"
+on both Columns sittings. `EXCLUDED_FIXTURES` keeps it off the page; it
+stays in `REAL_ART` for the instruments.)
+
 ## 2026-10-01 — The page cannot separate the pro's 7 mm split style from the comb, and cloth is not asked until the eye has a difference
 
 **Measured negative.** Raw satin crosses to about 7 mm (the pro's own
@@ -8030,3 +8209,726 @@ switch came back", above), and then asked for the snap ON as well.
 *(measured 2026-09-30/10-01 — `digitizer_core/stage2_photo_segment.py`
 `snap_region_edges`, `tests/test_snap_region_edges.py` (7),
 `conftest.PRE_FLIP`)*
+
+## When a bigger design brings the detail back from the SAME file, the loss is the engine's grid, not the artwork (2026-09-30)
+
+**A correction to *"Below the floor" is a diagnosis to earn* (above)**, which
+earned the first half and stopped. It moved bridge's teal words
+from "below the sewable floor" to "lost at segmentation, 3.5 px/mm … the
+levers are the source or the size, never a stroke rule" — and recorded, in
+the same breath, that the same 400 px JPEG brings the words back at 140 mm.
+A bigger design adds nothing to a file. What it changed was the engine's own
+raster: stage 1 enlarges a sub-floor source to `min_px_per_mm` = 4 at any
+design size, so a letter is 28 grid pixels at 140 mm and 13–18 at 80. There
+was a third lever and it was ours.
+
+Traced through stage 2, the words survive the oversegmentation (67 of 81 mm²
+of teal in teal-majority superpixels) and die in the RAG merge (39): a
+0.7–1.4 mm stroke is 3–5 px, every superpixel on the band holds ink and
+ground both, the merge compares MEANS at 26 dE00 and reads 19–23 between a
+diluted letter and a diluted ground, and both merge protections are
+size-gated above any letter. On a 5–10 px/mm grid the same file keeps 64–67.
+`cfg.work_px_per_mm` is the grid low-resolution line art is traced on (ON
+at 8 since Kent's flip, 2026-10-01); `min_px_per_mm` keeps the warning.
+
+Three rules.
+
+1. **Before writing "the source cannot carry it", re-trace the same file on
+   a finer grid at the same design size.** One config override
+   (`work_px_per_mm`), one run. If the detail returns, the artwork carried it.
+2. **One fixture in a regime is not a regime.** Bridge was the corpus's only
+   gradient logo under 5 px/mm, so its loss read as bridge's. Downsampling
+   the high-resolution logos to 5 px/mm and scoring each against its own
+   full-resolution digitization (`tools/lowres_detail.py`) found the same loss
+   on three more — ENTHUSIAST's tagline, Fremont's "THE", Golke's second line
+   — on files nobody had thought to feed it. Every constant in the gradient
+   lane was tuned at 8.4 px/mm and up; a customer's website logo is 4–6.
+3. **A pixel-denominated rule changes meaning with the raster, and the
+   resolution floor decides which raster.** The merge's 1,000 px gates,
+   `thin_ink`'s 3 px floor, a 3×3 prior: each is a different millimetre at
+   4 px/mm than where it was measured. Same family as *thresholds on the
+   wrong population*; the tell here was a floor (4) set well under the
+   population the lane was calibrated on (8.4+).
+
+What it is not: robust, or a legibility fix. Half a pixel of foreground
+(the background mask enlarged smoothly instead of NEAREST) sent bridge's
+words to a grey-green cone and took ENTHUSIAST's fine ink 0.90 → 0.70 —
+where the superpixel grid lands is part of every number here, so it was
+built OFF and flipped on RENDERS, not on the table: Kent ranked every logo
+full-size file, then this grid, then the old one. Read that ranking whole.
+The source is still the bigger lever. The letters reach the stitch tier and sew
+as one satin bar each — 3.25–4.5 mm lettering is still a size question, now
+asked of thread. And enlargement is not free everywhere: from 6.5 px/mm
+sources the gain is inside the noise (two of five logos down), and a blurred
+synthetic (`logo_whitebg` at 5 px/mm) pays 12 → 21 trims.
+*(measured 2026-09-30 — `docs/fine-detail-work-grid-2026-09-30.md`;
+`tools/lowres_detail.py`; `tests/test_work_grid.py`)*
+
+## A per-1,000-stitches rule prices the stitch COUNT; our thread figure prices the PATH — the bobbin outran the needle (2026-10-01)
+
+The quote's bobbin row first shipped on Madeira's published rule, "approximately
+3m per 1000 stitches", basis printed, which Kent had approved. Run in the app
+on a "FRITSCH" lettering design it read **4.0 m of bobbin beside 2.5 m of top
+thread**. The rule says "for standard length stitches" (~4 mm); satin lettering
+is short ones, and `sewFacts` walks the real path, so the two figures sat on
+different bases side by side. Unit tests pinned the arithmetic and could not see
+it — the fixture there read 39.0 m against 1.8 m and passed.
+
+**Kent's ruling the same day:** bobbin is a SHARE of our own top-thread metres,
+3/5 (Madeira's 3 m to 5 m), printed as "(3/5 of top thread)". Derived — no
+maker states a ratio, and Coats' pair (2.3 / 6.0) gives 0.38 — so it is the
+generous end, and it is a planning figure. Metres, not "bobbin changes": a
+piece is almost never a whole bobbin and capacity varies by maker and colour.
+
+**What to do with it:** before printing any per-1,000-stitches trade figure
+(thread budget, bobbin, the $1-3 billing rule in law 36) next to a figure this
+repo measures from geometry, put both on one real lettering design and read
+them together. Two more of Kent's calls that day, so nobody re-asks: quote
+inputs are ONE record per browser, not per project; and machine profiles are
+per MODEL, S-1501 first, everyone else types a speed.
+*(ruled 2026-10-01 — `src/sewtime.js`, `app/src/lib/quote.js`)*
+
+## A test that counts needle points cannot see thread, and a float has none (2026-10-03)
+
+`buildQualityDesign: annulus keeps hole empty (no sew points inside)` passed
+for as long as it existed while every fill row of the browser engine laid
+thread across that hole: 76 untrimmed floats over a 12 mm cut-out, 912 mm of
+it, and 20 plain stitches straight across a 3 mm one. Both ends of each land
+on the rim, so nothing is "inside". The Studio's field agreed with the test
+by default: it draws jumps only with its **Jumps** toggle on. The screen, the
+suite and the file were three views, and two of them did not show the defect.
+
+**And this entry's own first draft was wrong about the screen.** It said "the
+preview cannot show it: `render.js` draws no jumps", and six other documents
+of the same change said it with it. `src/render.js` is the PDF sheet's
+renderer. The field is `app/src/lib/preview.js`, the toggle is on its toolbar
+(an Ember-audit follow-up, `strands.js` says), and with it on that badge
+draws 77 dashed lines across the cut-out. One renderer had been read and the
+claim was about the app. Found the same day, by grepping the app for the word
+"jump" while looking for something else.
+
+**What to do with it:**
+
+- **To ask "is this ground clear", read the MOVES, not the points.** Walk the
+  stream: a move lays thread unless a trim has come since the last
+  penetration, and a `jump` after a stitch is a float. `test/fill.test.js`
+  `threadThrough` and `test/digitize.test.js` `threadAcross` are that walk.
+- **Leave the `end` record out of it.** It sits at the origin, which is
+  inside a centred hole; counted as a move it reads as one float that is not
+  there. It cost one wrong red here.
+- **Before writing "the screen cannot show it", grep the APP for the word.**
+  There are two renderers (`src/render.js` for the PDF sheet,
+  `app/src/lib/preview.js` for the field), and the field has view toggles:
+  Jumps, Trims, Outlines. To see a float on a real design, turn on Jumps.
+- **A margin that is "one pitch" is a different size on every pass.** A row
+  turn inside one column joins two row ends on adjacent edges of the hole,
+  and the chord clips the corner by less than the pitch. At a fill's 0.15 mm
+  that is under a thread's width. At an underlay's 2 to 2.5 mm it is a stitch
+  through the hole: 12.2 mm sewn 1.71 mm inside a cut-out, in the first build.
+  **A tolerance that guards open ground is ONE number for the shape, owned by
+  the caller** (`openTol`: the fill's pitch).
+- **And the ground is MEASURED, never "the outline plus a number".** The
+  second build let an underlay go "as deep as the pull compensation, since
+  the fill covers that far". A hole thinner than twice the compensation folds
+  when shrunk and is sewn as drawn, so there the fill covered nothing, and the
+  underlay went straight across a 1 mm slot. Hand each pass the rings the fill
+  is actually sewn to (`ground`).
+- **A box drawn well inside the hole measures the middle of the hole.** The
+  first build's tests sat 1.5 mm inside each rim, on two shapes, and all
+  twenty passed while thread lay 1.7 mm in on a third. An independent audit
+  with its own clipper found three real failures in an hour. Measure DEPTH
+  FROM THE EDGE, in mm of thread, on shapes the code was not written against.
+- **"Open ground" is what the fill does not COVER, not what is outside the
+  outline.** The fill is sewn to the pull-compensated rings, so its first
+  point sits a hair outside the true corner. Tested against the true outline,
+  a plain square read as leaving itself and went from one cut to two.
+- **"Does any row fork" is not the question.** No row of a T or an L is
+  split, and the old walk's turn at the step is still a float outside the
+  outline. A shape is plain only when every row is one span AND every row
+  turn stays inside. The converse trap is in the same place: at a pointed
+  corner two consecutive single-span rows can fail to overlap, which
+  `_columns` rightly calls a break, and that is not a reason to change a
+  rotated rectangle.
+- **Depth is not the whole question either: ask what KIND of move it is.** A
+  turn at the step of a T runs along the step's edge, under one fill row
+  out. It passes every depth test, and the plain walk FLOATS it, because it
+  is longer than a stitch: 6 to 28 mm of loose thread on the rim, on 35 of
+  165 notched designs, after the rebuild and with its tests green. Sewn,
+  thread on the rim is the fill's edge. Floated, it is a defect. Measure
+  floats and sewn thread separately, against the ground the fill COVERS.
+- **Ask about the moves the walk MAKES, not the rows in order.** Center-out
+  sews its upper half from the middle up, so its turns are the other
+  diagonal of each pair of rows. A check written against top-down turns
+  passed a shape whose bottom-up turn crossed open ground.
+- **Nearest-first strands the strips beside a row of holes.** After the
+  first strip the nearest reachable column is the band BELOW the holes, and
+  every other strip then costs a cut to get back to: one or more per hole.
+  Finish a level before descending.
+- **A fixture whose rows sit farther apart than the longest stitch, or whose
+  holes are under two tolerances wide, measures the fixture.** In the first
+  every plain row turn is too long to sew; in the second the engine rightly
+  treats the hole as closed. Every real caller has pitch far under stitch
+  far under hole.
+
+**What the second audit added** (it failed the rebuild four ways):
+
+- **A length on cloth must not depend on the drawing's resolution.** The edge
+  run's inset was "2 px, at most 0.6 mm": 0.2 mm at the Studio's 10 px per
+  mm, 0.6 mm on a design enlarged five times, and for a hole that is INTO the
+  hole. Every test ran at 10 px per mm. Sweep the scale (2, 10, 40).
+- **Keeping thread out of a hole by cutting it is the cheap answer, and the
+  cuts are the cost.** The rebuild cost 35 to 122 cuts on a 36-hole badge and
+  its own table said 42: measured on one drawing, at one row angle, with the
+  holes in one order. Count cuts BY WHERE THEY ARE (fill, underlay, between
+  runs), at the angle the engine picks AND at one it does not, and keep the
+  drawing in the tool (`tools/fill-columns-sheet.mjs` prints the table). The
+  engine's own angle for a symmetric shape is numerical noise: 82° for a
+  square with nine round holes.
+- **"None in 255 designs" is a statement about 255 designs.** The README said
+  a float between two runs never merely grazed the rim. The audit found 306
+  on 239 of 8,278.
+- **Code removed as unreachable by argument was reachable.** One random shape
+  in 3,000 went 1.4 deep on a tolerance of 1. An argument about geometry is a
+  hypothesis; run the random shapes before AND after
+  (`test/fill.test.js`, "shapes nobody chose"), and mutate each new rule to
+  see that some test dies.
+- **Travel along a traced curve puts a stitch on every vertex** unless it is
+  thinned: 2,561 stitches under 0.3 mm in one underlay. When a change adds
+  travel, count the short stitches as well as the cuts.
+- **Profile before optimizing.** A 36-hole design took 3.9 s, and the guess
+  was the sampling. It was two other things: asking what ground a move runs
+  over when the move lies on a ring's own edge (always the rim), and asking
+  again about every start further along a row already found blocked. Then a
+  grid of edges. 2,025 holes: from 94 s to 1.3.
+
+**What the third audit added** (one real regression, and it was in the
+question every move is asked):
+
+- **A rule that COUNTS crossings does not FIND them.** The scanline's
+  half-open rule gives a corner lying on the line to the side its edge leaves
+  by. That is right for parity, and it had been reused to cut a move where it
+  crosses the boundary. Along the tops of a U's two arms, right to left,
+  neither wall of the mouth was a crossing, and the mouth read as filled
+  ground. The same two points left to right read as open. The sheet's own wide
+  U, under terry, sewed 14.8 mm of fill across its notch.
+  **Ask a geometric question both ways round, and on whole-number shapes**,
+  where corners share a line. 9,000 random stars never ran a move along a line
+  of corners: the audit's 115 wrong answers in 176,672 random moves were all
+  collinear, and a drawn badge, letter or U is collinear all the time.
+- **And "on the line" means within rounding, not exactly.** Every fill but a
+  level one turns the shape first. A rule that stops only at a corner exactly
+  on the line gets 205 of 3,599 angles wrong.
+- **Three presets are not the presets.** Every sweep here ran no fabric,
+  pique and cap. Terry's underlay ends at the bottom, so its fill is sewn
+  upward, and upward was the direction that failed. Sweep `FABRICS.FABRICS`,
+  and treat where a pass is ENTERED from as an input like any other.
+- **Run the tool's own drawings through the suite.** The shape that failed
+  was on the sheet the README shows.
+- **A time measured at one row angle is the time at that angle.** "0.4 to
+  1.3 seconds on 2,025 holes" was the engine's own angle. At 30 degrees the
+  audit measured 3.5 to 18. One loop was 90% of it: a scan of every corner
+  for the nearest, inside a shortest-path search. A heap with the same
+  tie-break finds the same route (1,500 recorded designs hash the same), and
+  the stress shape is in the tool's table now.
+- **"None" is a rate with its denominator left off.** "No cut on a holed
+  shape" was true of the 48 it was measured on. Of the audit's 3,317, 95 keep
+  one. Print the rate and say where the exceptions are.
+- **Ask the auditor for what was NOT measured.** Travel was the cure and
+  nothing had measured where it lies: on average 16 mm of thread that is not
+  a row over rows already sewn in each holed fill, and up to nine lines of
+  thread on the worst millimetre of a rim. That goes to whoever decides the
+  flip, not into a footnote.
+*(measured 2026-10-03 — `test/fill.test.js`, `test/digitize.test.js`,
+`tools/fill-columns-sheet.mjs`; MASTER_SCOPE defect 52; scope-history 10-03)*
+
+## 2026-10-03 — The built-OFF sitting: one flip, one flag voted down for its weight, and one that was never waiting
+
+Kent asked for one labelled page for every finished flag with no verdict and
+judged all 19 pairs the same day (`docs/eye-pairs-2026-10-03/`).
+
+**Rulings.**
+
+- **`satin_cap_recentre` is ON** (Kent, in chat, on that sitting): *after* on
+  becker and tires — the two pairs the change locator boxed — and *before* on
+  none. `False` is the pre-flip engine.
+- **The enthusiast headline bar moved once, 0.26 → 0.29, attributed** (Kent,
+  the same day). The flip took `lost_frac` 0.2573 → 0.2819 on that fixture
+  with no spill behind it — the instrument's alignment grid, below — and he
+  ruled the bar re-pinned with that written beside it and a second guard
+  added at a one-pixel alignment (0.1555, bar 0.17). The fine guard is the
+  one to read as spill.
+- **`bean_letter_max_stroke_mm` stays OFF.** Today's satin read better on five
+  of six logos and bridge was *both bad*. His reason is the line's WEIGHT —
+  *"little worms"*, *"aren't thick enough"*, *"to skinny and not clean"* —
+  and he granted that fremont's path reads cleaner. So the path along the
+  source ink is not what he voted down; a three-pass bean on it is. Do not
+  re-offer the flag at 1.0 on the same renders.
+- **`split_off` and `keep_counters` drew nothing to rule on**: no difference
+  to his eye, and no real logo moves, respectively.
+
+**What to do differently.**
+
+- **Render a flag against shipped before writing that it waits on Kent.**
+  `satin_patch_junctions="satin"` was written into MASTER_SCOPE's decision
+  queue as a flip call on 2026-09-30, eleven days after
+  `satin_junction_stack`'s part C had made it the base (2026-09-19), and sat
+  there until this sitting. Off and on were one design on 8 of 8 logos, and a
+  test file had said why all along. A decision queue entry costs Kent's
+  attention; one arm-run on two logos costs minutes.
+- **Do not tell him which side of a pair wins before he has judged it.** The
+  session that drew the page described gaulke's bean side as "clean line
+  letters" in chat; his note on that pair was *"to skinny and not clean"*.
+  Say what changed and what it costs. The verdict is the thing being asked for.
+- **The renderer draws three bean passes as one thread** (`suspected`, read
+  from `stitchviz`, not measured): each stitch is drawn at one thread's width,
+  so passes laid on one path cover the same pixels. "Too thin" on the page is
+  therefore not yet separated from the picture of a bean. Settle that before
+  a heavier construction is built — and gate 1 already holds a three-pass
+  bean on knit as `pending sew-out`.
+- **Price a flag on its fidelity rows before recommending the flip, not on
+  stitches and trims alone.** The session recommended this flip as "nearly
+  free" — fifteen stitches and one trim — with enthusiast's 0.2573 → 0.2819
+  sitting in its own render table, and learned it from CI after Kent had
+  ruled. `features.json` carries `lost_frac`, `lost_elements` and
+  `uncovered_ink_frac` for every arm; read them, and run the guard a flip is
+  most likely to trip (`tests/test_lettering_coverage_regression.py`) before
+  asking for the ruling.
+- **A `lost_frac` delta beside a changed `widthMM` or `shift_x_mm` is the
+  alignment grid until a forced-alignment read says otherwise.**
+  `artfidelity_self.register` centres the stitches and the artwork and
+  searches translation in 0.4 mm steps, on an instrument whose opening is
+  0.5 mm. On enthusiast one design reads 0.1636, 0.2573 or 0.3226 depending
+  only on the step, and a 0.2 mm change at the design's right edge moved the
+  step. Held at one physical alignment the flag read LOWER on all three pairs
+  tried (0.2573 → 0.2481, 0.1636 → 0.1555, 0.1737 → 0.1623). A spill guard on
+  the flag was approved and not built, because there was no spill: measure
+  the instrument before guarding the engine against its reading.
+  `tools/dropped_elements.py` records it as bias 3; not fixed, because fixing
+  it renumbers every pinned fidelity figure in the repo. One earlier call
+  rests on a smaller move of this same reading and was NOT re-measured here:
+  the apex widening retracted on 2026-09-30 for 0.2573 → 0.2661 (defect 49).
+  Nobody recorded its `shift_*`. The crown cover closed that hole another
+  way, so nothing waits on it — but do not cite that retraction as proof the
+  widening spilled.
+- **A session's CLAUDE.md is the main checkout's working-tree copy.** With
+  that checkout 77 commits behind, this session was handed "an 800-line
+  budget" for MASTER_SCOPE and reported the file over it, with no guard,
+  three times and in a PR body. The budget had been 27,000 words since
+  2026-09-14 and `tests/test_scope_budget.py` enforces it. Before reporting
+  that a documented rule is broken, read the rule on `origin/main` and grep
+  for the test that already holds it.
+*(ruled, judged and measured 2026-10-03 — `docs/eye-pairs-2026-10-03/kent-notes.json`;
+`tests/test_satin_cap_recentre.py`, `tests/test_junction_stack.py`,
+`tests/test_lettering_coverage_regression.py`)*
+
+## A proof holds for what it was given: "equal to the last bit" was true of the rows I made (2026-10-03)
+
+Row stagger for the browser fill is a port, so the claim was the strongest
+there is: on 32,000 random rows the JS needle holes equal the Python fill's
+to the last bit. An independent audit failed it twice. Neither failure was
+in the comparison. Both were in what the comparison was fed.
+
+- **It sorted each row and sewed every row left to right.** The Python
+  engine cuts a step longer than a stitch along the PATH, from the end the
+  thread comes from, and counted from the two ends the same midpoint is not
+  always the same double. Six rows of 39,979 were one ulp off, all sewn
+  right to left. Compare a thing in the order it is made, not in the order
+  that is easy to compare.
+- **Its random rows never landed where the two rules part.** Python cuts a
+  step only when it is over a stitch by more than a micron; the port cut at
+  a billionth of a stitch. No random row of mine fell in the band between
+  them, and the audit's builder sweep hit it once in 12.2 million rows. A
+  generator has to be AIMED: for every threshold a rule has, write the cases
+  a hair either side of it.
+- **The second proof had to fail the old code.** In thread order, with the
+  band and the audit's literals in it, the fixed code is equal to the bit on
+  51,760 rows. Run on the commit the audit read, the same cases fail 997
+  rows and are one ulp off on 126. A proof that has not been seen to fail
+  the known-wrong version has not been shown to see anything.
+
+Two more from the same audit, both a lesson this file already had
+("None is a rate with its denominator left off", one entry up) and both
+made again within the day:
+
+- **"0.0%" was six.** The table rounded the holes still at the head of three
+  in a line to nothing, and I wrote "no hole". Print the count beside any
+  rate that reads as none; the lesson does not apply itself.
+- **A mechanism is not a place.** I explained the 7.5% of holes that still
+  have one under them ("a halved step lands by the next row's grid point,
+  once, with nothing above or below it") and took the explanation for an
+  answer. The auditor asked WHERE: 95.6% sit 1.5 to 2.6 mm from a row's end,
+  so along a straight edge they are a pair every four rows, a line of
+  dashes beside the edge. True of each pair, and not what the person
+  deciding the flip needs to see. Plot the remainder, or at least measure
+  where it lies, before calling it scattered.
+
+And one from the audit's second look, at the fixes:
+
+- **A fix whose own test passes before the fix is not for that.** The audit
+  found the stagger adding stitches under the 1 mm floor when a builder asks
+  for a stitch under 2 mm. I took the floor as half a stitch there and wrote
+  the test: "no stitch along a row is under half a stitch". It passed with
+  the change and WITHOUT it, and I kept the change and reasoned about what
+  it restored. The second look measured it: a halved step was never under
+  half a stitch, so the floor had not moved, and the lower clearance made a
+  third more short stitches (45,552 against 34,458). A limit of a rule is
+  stated, not patched. And when the test for a fix is green before the fix,
+  stop: either the test asks the wrong thing or the fix does nothing.
+
+*(measured 2026-10-03 — `test/fill-stagger.test.js`,
+`tools/fill-stagger-census.mjs`; `docs/renders/fill-stagger-2026-10-03/`;
+MASTER_SCOPE "Waiting on Kent" 24; scope-history 10-03)*
+
+## A guard is not an end: what only its guard stops comes back the size of the guard, and a later step can hide it (2026-10-03)
+
+The browser's `skeletonEdges` walked skeleton pixels under
+`while (guard++ < w * h)`. The guard was read as "this cannot loop for
+ever", which was true, and nobody asked what a walk that REACHED it handed
+back: an edge with a point for every cell of the grid, put first by a
+longest-first sort and sewn by the satin emitter. A 20 mm star off the shape
+tool came out at 48,645 stitches, a 24 mm one at 128,239.
+
+Of the 1,684 star rings the shape tool sends to satin, 432 had such a walk.
+**In 417 of them it showed in nothing but time**: the emitter smooths a
+spine with a three-point average, a walk going round three pixels averages
+to their centre, and a spine with no length sews nothing. Only where the
+circle was longer than three pixels did anything show, so the defect looked
+like one star at one size when it was a quarter of them, and thin
+round-ended bars and 273 of 612 image-lane designs besides.
+
+- **A loop with a guard has two exits. Count the second.** Put a counter on
+  the guard's exit and run the corpus. A guard nothing reaches is free; one
+  that something reaches is returning a result nobody designed.
+- **"Out of line with its neighbours" has to survive its neighbours being
+  out of line too.** The first test compared a design with the three sizes
+  either side. The star had run away at 19, 20, 21 and 22 mm, and the test
+  passed all four. Divide by what size alone explains, and take the median
+  over a window wider than any band you would believe.
+- **A counter inserted beside a line of text counts nothing once the line
+  has changed.** After the fix the census read "0 walks at the guard": the
+  loop's last line was different and the counter had never been inserted.
+  A missing anchor is an error now, and the counter was shown live by
+  switching the new rule off in a copy (16 walks on the 20 mm star, as
+  before the fix).
+- **Say which designs move only after every caller has been swept.** "The
+  other shapes do not move" was written from the star sweep and three spot
+  checks, and was wrong: 329 of 4,095 bars move. The function has three
+  callers in the Studio; the claim was true of none of them until each had
+  been run.
+- **"Better" is a measurement, and of every design that moves.** "The bars
+  that move get better" was written from two pictures of long ones. The
+  independent re-measure drew the stitches of all 726 over their outlines:
+  thread outside the outline fell, and 60 short bars LOST cover, 24 by more
+  than 30 points, because the knot that was taken out had been covering
+  them. A round shape 2 mm across went from 39 stitches to 4. Removing a
+  defect removes whatever it was doing by accident; measure the claim's own
+  noun on all of them before writing the adjective.
+
+*(measured 2026-10-03 — `tools/satin-walk-census.mjs`,
+`test/satin-walk.test.js`; MASTER_SCOPE defects 56 and 57; scope-history
+10-03)*
+
+## 2026-10-05 — Kent's ruling: the button starts every digitize; nothing runs on its own
+
+**Reverses two of his own rulings**, both of which had made the Studio start
+runs by itself: 2026-08-13 (a shape edit restitches after a 2 s pause) and
+2026-08-30 (uploading the image IS the run, PR #296). Asked which of three
+trigger models he wanted, with the catch of each stated, he picked "button
+only" over "button first, edits auto" — after first picking the other and
+asking to be asked again.
+
+What he asked for, in his words: "Change 'upload logo' to 'upload file' and
+when I select it, a file browser pops up. When I select 'Auto Digitize Image'
+that should begin the digitizing process. If I modify anything on the
+digitized version 'auto digitized' should be transparent so I know I need to
+select 'Auto Digitize' again."
+
+- **The rule:** a file loads and waits. `.dgp-run` is the run. Any change to
+  what a digitize would SEND — settings, crop, shape edits, borders, garment
+  — leaves the stitches where they are and turns the button transparent.
+  Solid before the first run and whenever the result is current (his pick).
+- **Do not re-add an automatic run to "help".** The 08-30 half that stands is
+  the other one: the Studio asks nothing about what the art is.
+- **What it costs, knowingly:** the canvas shows stitches that are behind the
+  outline after a drag, until the button is pressed. The stale note and the
+  dimmed border readout say so.
+
+*(built and driven 2026-10-05 — `DigitizePanel.spec.js` "nothing runs until
+Auto Digitize Image is pressed", e2e `digitize-auto-start.spec.js`;
+COOKBOOK "Nothing in `DigitizePanel` starts a run")*
+
+## A small shape on a low-resolution logo has no pixel of its own ink (2026-10-05)
+
+An open lead, with one retraction inside it. Started from an outside review's
+claim that the whole-image class is the photo lane's design flaw; the
+measurement moved the problem somewhere else.
+
+- **Forced flat is not an escape hatch for real logos.** Eleven of fifteen
+  real-art fixtures route `gradient` (the 09-11 entry above says why), and on
+  the six of those whose sheets were read — `logo_mfab_lc`, both `logo_toat`,
+  `logo_golke_roofing`, `drone_render`, `logo_bridge_bar` — `forced_class="flat"`
+  sews worse: `logo_toat_machine` 6,541 → 17,143 stitches with its border in
+  dashes, Bridge Bar a white ring round the wheel. It rescued the Instagram
+  icon and that is the whole of its record. Do not offer it as the general
+  cure. *(measured 2026-10-05 — scope-history 2026-10-05; five sheets rendered
+  and not read)*
+- **`robust_region_colour` does not reach a small shape, because the median is
+  anti-aliasing too.** `logo_mfab_lc` is 148 × 389 px, 4.71 px/mm at 80 mm: its
+  white linework is 27 regions, 139.5 mm², every one ≤ 0.6 mm wide (~2.4
+  source px), mean grey 150–207, yet the 90th percentile is ≥ 235 on 112 mm² of
+  it. The palette is handed a grey nobody drew and rightly buys it: 6 cones,
+  2,718 grey stitches, 30 white. The 09-10 fix was for a BIG region with
+  inclusions; this is the other end of the same seam.
+- **A halo and a stroke want opposite treatment, and nothing yet tells them
+  apart.** `tools/stroke_colour_probe.py` gives a region ≤ 4 source px wide
+  with a wide grey span its light or dark end: `logo_golke_roofing` 5 cones →
+  2 for 27.8 mm² rewritten, `logo_mfab_lc` white 30 → 1,859 stitches (909
+  left in off-shades), `logo_toat_beanie` not cured, the ramps unmoved — and
+  Bridge Bar's teal 227 → 1,882, because its thin bands are JPEG ringing and
+  the rule repaints what `dissolve_phantom_blends` should fold. **Do not
+  build the rule alone** — and not with the dissolve either; see the last
+  bullet.
+- **`dissolve_phantom_blends` DOES fold a band that borders enclosed ground**
+  — 7 of 10 on `logo_mfab_lc`, 60 of 63 on `logo_toat_beanie`. The opposite
+  was this session's first hypothesis, read off the comment at the page-mask
+  branch; a spy on the function refuted it. On these logos the flag alone
+  takes toat 6 → 4 cones, golke 5 → 4, mfab 6 → 6; turning `keep_thin_strokes`
+  off moves one cone on golke and none elsewhere.
+- **RETRACTED the same day: "no per-region rule works; width is the wrong
+  discriminator."** Two scratch copies of the probe chose a region's side
+  differently — mean ≥ 128 in one, mean ≥ the midpoint of its own range in the
+  other — and nine logos run on the second were read as a verdict on the
+  width gate. It was caught only because the committed tool would not
+  reproduce the first probe's golke 5 → 2. **Before a probe's result is
+  written down, reproduce it with the tool that will be committed, and give
+  every choice the probe makes a named flag** — the 09-11 rule ("commit the
+  probe, even an ugly one") is also the check on the probe.
+
+- **The rule and the dissolve do not combine (2026-10-06).** The hope was
+  that the dissolve folds Bridge Bar's ringing before the rule can repaint
+  it. It does not: with both on, teal is 607 → 2,304 stitches and sits on the
+  black ring in the render. And the two interfere where each worked alone —
+  cones as base / rule / dissolve / both: `logo_golke_roofing` 5 / **2** / 4 /
+  3 (the dissolve moves the region set, the rule then reaches 3 regions
+  instead of 7 and the roof lines sew light grey), `logo_toat_beanie` 6 / 6 /
+  **4** / 5 (the rule turns a few bars pure black beside off-black
+  lettering), `logo_mfab_lc` 6 / 6 / 6 / **5**. Three logos, three different
+  best arms. **What is missing is not a second flag but a per-region test
+  that tells a halo band from a drawn stroke; until one exists, neither
+  default should move on this evidence.** Not chased: the dissolve alone left
+  Bridge Bar 4,488 grey stitches at the Studio's six colours, against defect
+  27's record of five greys in six removed.
+
+*(measured 2026-10-05 and 10-06 — `tools/stroke_colour_probe.py`, defaults,
+`--dissolve` for the last bullet; tables in scope-history 2026-10-05 and
+2026-10-06)*
+
+
+## A preview shows the file, and the file is wider than the cloth: load the reference file in the same viewer before blaming the engine for weight (2026-10-06)
+
+Kent, on Hotel Fremont in the Studio: *"the letters are waaaay thicker than
+they should be."* Every width instrument said the file was at the pro's
+width — ours 1.23 mm on a 0.76 mm artwork stroke at 80 mm, the pro's own
+Wilcom DST of the same logo 1.40 on 0.81 at 92.5, the same 1.40 on his cap
+file — and the screen still said "way too thick", because the screen was
+showing both files honestly: a satin column is cut wider than its artwork
+by the fabric's pull compensation on each rail (0.3 mm per side on pique,
+Wilcom's documented per-side figure), and the canvas drew that column plus
+the 0.4 mm thread. Nothing simulated the pull. Kent had only ever seen the
+pro's file on cloth.
+
+**The test that settled it cost ten minutes:** the pro's DST uploaded to the
+Studio as a design file, same zoom, rendered HOTEL FREMONT at the same bold
+weight as ours (`docs/renders/` has none; the composite went to Kent as
+`fremont_studio_ours_vs_pro.png`). **Rule:** when a complaint is about
+WEIGHT, render the reference file in the same viewer first. The two cures
+that followed are both views: the "Sewn width" toggle (`lib/sewnWidth.js`,
+each satin strand loses the pull at each end — the rail stepping back in by
+what `_push_rails` gave it; fills and runs untouched; a model of the fabric,
+not a sew-out) and #643's Original-view registration on the stitched
+rectangle, without which the flip the help text recommends compared a logo
+drawn 30% larger than its stitches.
+
+**What the instruments found that the eye called "wobbly":** not rail
+jitter (ours 0.025 mm median deviation to the pro's 0.041) and not stem lean
+(9.5° to 8.1°, and a symmetric zigzag's inherent lean is atan(pitch / 2w),
+which alone explains most of either), but silhouette hair concentrated on
+curves — the O's outer rail stepping 0.53 mm against the pro's 0.33 — which
+is `claude/satin-outer-rail-pitch`'s. The lean-leg alternation that regular
+short stitches produce reads as "spray" on a cross-to-next-cross metric;
+read the crosses and the leans apart before calling a column sprayed.
+
+## 2026-10-07 — `letterform_priors_k` ruled ON at 0.75 on the labelled page; the N it costs is the construction's, not the outline's
+
+Kent on the thread pairs: becker *after* (*the "N" was better before -
+everything else was better after*), bridge *both bad*; ruled in chat: flip,
+log the N. What it costs: Becker +506 stitches and +11 trims (R / A / E
+each 2–4 more columns at their sharpened junctions) for satin bare 4.33 →
+2.65%; only an upload stage 1 upscaled is touched, the rest byte-identical.
+The N owed is defect 59: the refit outline is 13 clean vertices and stage 6
+fans its sharpened wedge (5 → 8 satin runs, 687 → 1,162 stitches on one
+letter) — rendered before it was written down, because "the N was better
+before" reads as an outline fault and is not one. **A cleaner outline can
+sew worse on today's satin: price a lettering outline change on the
+decomposition it feeds, and attribute a fan to the construction by drawing
+the outline under it.** *(measured 2026-10-07 — `docs/letterform-priors-2026-10-06.md`, "Sitting 2026-10-07")*
+
+## 2026-10-07 — The N fan is the tip gate reading a three-arm junction as a tip; measured four ways and left unbuilt
+
+Defect 59 diagnosed with the engine's own gate, not by reading code:
+`_is_tip_end` (`satin_tip_caps`, reach 1.6 sewn half-widths, set on the A's
+apex and on raster corner balls) calls three of the refit N's five junction
+ends tips — the neighbouring stroke's far edge at 4.56–4.81 mm along the end
+tangent, reach 4.84 — where the trace's five read as meetings; `_extend_to_
+cap` then runs each arm through the other stroke and the crosses fan. Two
+rules. **Ask the four arms before building: the fan is byte-identical under
+`satin_join_square` and gone under `lettering_columns` (becker 56 → 0
+over-long crosses), so a tier fix was not built — "a fix nobody will sew".**
+**An instrument's bar is a threshold on a population too:** the outline-cut
+spike's 1.6 W over-long bar read gaulke's thirty-nine 1 mm letters as 35 fan
+letters under every arm — the fabric's 0.3 mm pull per side, not a fan;
+`tools/fan_census.py` reads 1.6 x (W + 2 pull). *(measured 2026-10-07 —
+`docs/n-fan-2026-10-07.md`)*
+
+## 2026-10-07 — A flip Kent made on renders was held by its guards: `satin_join_square` ON loses an ENTHUSIAST element
+
+Kent flipped `satin_join_square` ON on 2026-10-06 on Fremont renders (stitches
+and trims identical, fan ends 7 → 5). Merged with main and run on the lettering
+set, ON loses one ≥ 1 mm² element of the ENTHUSIAST wordmark — a fixture that
+had never lost one — and tips three sibling bars (fine `lost_frac` 0.1702 /
+0.17, tip-cap end bare 10.53 / 9.5 mm², a rail-comp mid-rail hole 1.24 / 0.55);
+with the flag off on the same tree all four are green. Kent held the flip the
+same day. **The guards did their job: a render shows the fixture it was made
+on, a guard reads the corpus. Run the lettering guard set before a flip's PR
+opens, and when a flip tips a bar with Kent's ruling on it, that is a finding
+to name, not a pin to move.** *(measured 2026-10-07 — PR #663)*
+
+## 2026-10-07 — A sitting confounded by density: equalise pitch before pairing
+
+Kent's first `lettering_columns` sitting came back **needs work** — *"The
+comparison could be skewed because of the varying stitch density"* — and five
+of his six notes are about density, not construction. He was right, and it
+was the page's fault: the Columns side was rendered one commit before
+1782fbea, with one end of each station down, so every rail took a needle
+each 0.80–0.84 mm (outer-rail median, all six lettered logos) against the
+skeleton tier's 0.42–0.52. The engine fix was already on `main` when he
+looked; the pictures were not redrawn. On `main` the lane reads 0.40–0.46.
+**Before a construction pair goes to Kent, measure per-rail pitch on both
+sides (`tools/satin_pitch.py`) and put it in the caption; a pair that
+differs in density is a density pair, whatever the arm is called. And when
+an engine fix lands under a drawn page, the page is stale: redraw it or
+pull it.** *(measured 2026-10-07 — `docs/eye-pairs-2026-10-07/kent-notes.json`,
+`columns_sitting`; `tests/test_lettering_columns.py`)*
+
+## 2026-10-07 — The held flip, named and fixed: a bend read as a corner, and the vertex test would have cut the wrong way
+
+The ENTHUSIAST element `satin_join_square` lost is the S's bowl. At 80 mm
+(half-width 0.87 mm) a pull-comped inner bowl is a sharp reflex vertex, so
+`_split_sharp_corners`' join rule cuts the S there in BOTH arms; OFF the two
+members' bent ends still meet, ON `_straighten_member_end` projected both
+apexes 0.80 / 0.82 mm (0.92 half-widths) onto their fitted lines, the ends
+parted and the wedge sewed bare — the element and the three sibling bars are
+one mechanism. The first cure reached for was the corner's vertex angle
+(Fremont's accepted corners peak 6–8° at one vertex, enthusiast's 60–96°),
+and the census refuted it: Becker's, gaulke's and drone's REAL corners peak
+49–91° too, so a vertex test would have refused the corners the flip exists
+for. What separates is the apex's DISPLACEMENT off its own member's line —
+p50 0.92 half-widths on enthusiast against 0.22 on Fremont and 0.12 on
+Becker — and `_STRAIGHT_MAX_MOVE_HALVES` 0.6 keeps the bend. **Name a lost
+element by its shape id and a crop before choosing the cure, and census the
+candidate test over EVERY fixture's accepted cases: the first discriminator
+that parts the broken fixture from the clean one can refuse the clean cases
+everywhere else.** *(measured 2026-10-07 — `docs/join-square-enthusiast-2026-10-07.md`; `tests/test_join_corner_bend_cap.py`)*
+
+## 2026-10-08 — On black-and-white art the halo-vs-stroke question has a per-IMAGE answer: `cfg.two_tone_snap`, built OFF
+
+The 10-05/10-06 entry above ended on "what is missing is a per-region test
+that tells a halo band from a drawn stroke". For two-tone art no such test is
+needed: when the image has two inks, every grey in it is a mix of those two,
+stroke and halo alike, so the raster can be thresholded before any region
+exists. The per-region rule's one casualty, `logo_bridge_bar.jpg`, is colour
+art and never reaches the snap.
+
+- **The gate reads the FOREGROUND, not the canvas** (`digitizer_core/two_tone.py`).
+  The first build read every pixel, and the review found its shares moved
+  with the margin: a red accent at 0.36% of a padded canvas passed and
+  sewed black, and the same grey-inked art passed padded and failed cropped.
+  On the foreground the absolute plateau bin no longer separated anything
+  (golke 0.0149 against fremont_patch 0.0109), so the plateau test is
+  scale-free: the tallest 8-level mid-grey bin over their mean. Six B&W
+  logos and the tires script read 1.08-1.92; fremont_patch 2.34, the
+  Fremont webp's real grey rope 14.3. Cut at 2.1. **Read a share-of-pixels
+  threshold as a margin-dependent one until it is measured on the
+  foreground.**
+- **Snapping makes a new halo problem, which `fold_fringe` closes.** The
+  border flood stops at its tolerance, so the lighter half of the outer
+  halo snaps to background-coloured ink INSIDE the foreground and stops
+  reading as a blend: golke 1 → 12 white slivers on its outer edge before
+  the fold. Background-coloured ink connected to the background now joins
+  it. `native_rgb` is NOT snapped — stage 4's sub-pixel edge read wants its
+  real ramp.
+- **Cones, OFF → ON:** golke 5 → 2, mfab_lc 6 → 2, mfab_hat 6 → 2,
+  toat_beanie 6 → 2, toat_machine 6 → 2, gaulke 2 → 1; stitches and trims
+  fall on all six (mfab_lc 10,903 → 9,631, 75 → 51 trims). mfab_lc's white
+  linework sews white (36 → 1,498). Bridge Bar, Fremont and the golke
+  phone screenshot (its blue UI fails the chroma test) byte-identical.
+- **What it costs:** golke's thin white roof lines touch the outer
+  background, so the fold takes them with the halo and the roof sews as
+  one black mass. They had sewn grey. The fold cannot tell a drawn line
+  open to the background from a halo; on a garment the art's white IS the
+  ground, so this matches what the flood does with pure white.
+
+*(measured 2026-10-08 — `tools/two_tone_probe.py --detect` and default mode,
+renders read for golke, mfab_lc, toat_machine; scope-history 2026-10-08)*
+
+## What a figure counts is part of the figure, and a census of the shapes at hand is not a census of the lane (2026-10-04)
+
+Kent chose a cure for the browser's satin on three sentences: bars sew to
+their drawn size with no long stitch, logos keep or gain cover with far
+fewer stitches, and nearly every satin shape moves. He chose it and it was
+built as priced. Two of its costs were not in what he was shown, one of
+those sentences was true only of the measure it was taken with, and the
+build failed its independent re-measure on a shape no census of mine held.
+
+- **Measure what the code is handed, not what is to hand.** Every census
+  was a preset shape or a logo. `medialSatin` also sews whatever a user
+  draws and sets to satin. The re-measure drew a C: 447 stitches on main,
+  6,047 on the change, the mouth sewn solid, with the suite green and five
+  census grids clean. Before a change to a function is called measured,
+  give it the plainest input each of its lanes can be handed and the others
+  cannot (here, one curve), and leave the auditor free to choose its own.
+- **A wrong part can be holding up another.** The skeleton's border pixels
+  had been giving every curve real nodes, and the old walk's faults (a walk
+  that ends in a staircase's corner filler, a leftover closed with a chord)
+  did not show on curves while they were there. Putting the skeleton right
+  made curved strokes worse until the walk was put right too. When a fix
+  changes what the next stage is given, measure that stage on its new
+  input before the fix is called done.
+
+- **Cover has to say whose thread.** The measure drew every stitch of a
+  design and asked how much of each shape lay under thread. In a picture a
+  ground fill runs under small shapes, so a dot whose own satin had thinned
+  still read 100%. By any thread, 5 of 196 satin shapes lost over 2 points;
+  by their own, 41. A share "under thread" of a shape that lies on another
+  is partly the other's.
+- **Price an option on every measure the instrument has, and name the ones
+  it has not.** Needle-up travel was not measured before the choice. A
+  satin bar's underlay now ends at the far end from where its column starts,
+  a move as long as the bar, where the wrong skeleton had happened to start
+  beside the underlay's end. It was a red line on the first sheet drawn.
+  Draw the option before offering it, and say what was not taken.
+- **A cause read off a picture is a description of the picture.** The 10-03
+  record said a bar's spine "runs down the end's own edge into a corner".
+  The spine was the bar's top edge and its left edge; the picture is the
+  same either way. What settled it was changing one thing, a spare cell on
+  the grid, and reading the skeleton's own two ends.
+- **Hash the corpus before counting it.** "Nine logos, 241 satin shapes":
+  two of the nine files are one picture under two names. Eight, and 196.
+- **Before a path is made right, list what falls off it.** With a true
+  skeleton a small square or dot has no stroke, and lands on a fallback
+  older than the code that was fixed, with its own end margin. The wrong
+  skeleton had been sewing those twice over (10-03's last rule, again):
+  count what takes the fallback before and after.
+
+*(measured 2026-10-04 — `tools/satin-walk-census.mjs --cover`, `--images`;
+MASTER_SCOPE defect 57; scope-history 10-04)*

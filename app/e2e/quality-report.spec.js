@@ -10,7 +10,7 @@
 //
 // Same self-contained service bootstrap as the other digitize specs here.
 import { test, expect } from "@playwright/test";
-import { startStudio, pickGarment, pickTemplate, openDownload } from "./helpers.js";
+import { startStudio, pickGarment, pickTemplate, openDownload, uploadArtwork } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -87,12 +87,11 @@ test.afterAll(() => {
 });
 
 
-// Uploading IS the run (DigitizePanel's sourcePng watcher) — no Digitize click.
+// uploadArtwork picks the file and presses Auto Digitize Image.
 async function digitizeThenReview(page) {
   await startStudio(page);
   await pickGarment(page, "Tote");
-  await page.getByRole("button", { name: "Artwork" }).click();
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   await openDownload(page);
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
@@ -197,8 +196,7 @@ test("the thread picker offers the chart the design's cones came from", async ({
 
   await startStudio(page);
   await pickGarment(page, "Tote");
-  await page.getByRole("button", { name: "Artwork" }).click();
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
 
   // The spool list lives on the Threads tab since 2026-09-30.
@@ -237,8 +235,7 @@ test("a name beside a logo is summarised as one design, not as the logo", async 
   // not a string invented here.
   await pickTemplate(page, "Left-chest name");
 
-  await page.getByRole("button", { name: "Artwork" }).click();
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   await openDownload(page);
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
@@ -286,12 +283,7 @@ test("two logos in one design are summarised as one design, not as two panels", 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await startStudio(page);
   await pickGarment(page, "Tote");
-  // `.eladd-row` is the add-element row. Once an element exists its own chip
-  // also matches the name "Artwork", so the bare role query is ambiguous from
-  // the second add onwards.
-  const addArtwork = page.locator(".eladd-row button", { hasText: "Artwork" });
-  await addArtwork.click();
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
 
   const stitches = async () => {
@@ -302,8 +294,7 @@ test("two logos in one design are summarised as one design, not as two panels", 
   expect(afterOne).toBeGreaterThan(0);
 
   // A second one, so no single quality entry is the design any more.
-  await addArtwork.click();
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG);
   await expect.poll(stitches, { timeout: 120_000 }).toBeGreaterThan(afterOne);
 
   await openDownload(page);

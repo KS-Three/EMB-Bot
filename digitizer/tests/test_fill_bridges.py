@@ -45,7 +45,11 @@ def run():
     # is a finding (scope-history 2026-09-19, the step-4 addenda), not a
     # fixture; the instrument's own honesty is what this file pins, and it
     # needs bridges to be honest about.
-    cfg = PipelineConfig(target_width_mm=80.0, satin_lettering_split=False)
+    # `work_px_per_mm=None` likewise (ON since 2026-10-01): Becker is 1.8
+    # px/mm, and traced on the working grid this fixture has no exposed
+    # bridge left to take a census of.
+    cfg = PipelineConfig(target_width_mm=80.0, satin_lettering_split=False,
+                         work_px_per_mm=None)
     result, plan = digitize(ART, cfg)
     return result, plan, cfg
 

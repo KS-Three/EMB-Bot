@@ -237,14 +237,20 @@ def test_marine_80_keeps_its_cover_without_the_junction_cover(monkeypatch):
       2.25 mm² — rendered, and cloth between two letter parts rather than a
       coverage-model artefact (`docs/renders/uncovered-floor-2026-09-30/`).
       They are not the cover's to fix: they are there whether it runs or not.
+
+    `satin_crown_cover` held OFF (Kent's flip, 2026-10-02): those two holes
+    ARE the crown cover's to fix, it reaches them through this same emitter,
+    and with it ON the neutralised and the real plan differ by exactly its
+    thread. This test is about the JUNCTION cover under the stack; the crown
+    cover's price is pinned in `tests/test_crown_cover.py`.
     """
     monkeypatch.setattr(s6, "_junction_cover_runs", lambda *a, **k: [])
-    cfg, result, plan = _run(FIXTURE_80, 80.2)
+    cfg, result, plan = _run(FIXTURE_80, 80.2, satin_crown_cover=False)
     assert _letter_folds(result, plan) == 0
     no_cover = _uncovered(FIXTURE_80, cfg, result, plan)
 
     monkeypatch.undo()
-    cfg2, result2, plan2 = _run(FIXTURE_80, 80.2)
+    cfg2, result2, plan2 = _run(FIXTURE_80, 80.2, satin_crown_cover=False)
     assert plan2.stats.stitch_count == plan.stats.stitch_count, \
         "the cover emits thread here now; re-derive this prediction"
     assert _uncovered(FIXTURE_80, cfg2, result2, plan2) == no_cover
@@ -270,3 +276,32 @@ def test_an_explicit_cover_setting_wins_over_part_c():
     finally:
         s7.satin_shape = real
     assert seen and all(v is True for v in seen)
+
+
+def test_asking_for_the_satin_cover_is_the_engine_as_shipped(monkeypatch):
+    """`satin_patch_junctions="satin"` asked for explicitly reaches the cover
+    exactly as part C does unasked: the same calls, the same floors, the same
+    plan. That is why the setting stopped being a flip waiting on anyone --
+    the eye-pairs `patch_junctions` arm was identical to the stitch on all
+    eight logos (2026-10-03, crown cover on or off) and left the pending
+    table. If this fails, part C and the flag have come apart and the arm
+    has a question to ask again."""
+    real = s6._junction_cover_runs
+
+    def covered(**kw):
+        seen = []
+
+        def spy(poly, runs, shape_id, *a, **k):
+            seen.append((shape_id, a[-4:]))             # the four floors
+            return real(poly, runs, shape_id, *a, **k)
+
+        monkeypatch.setattr(s6, "_junction_cover_runs", spy)
+        _cfg, _result, plan = _run(FIXTURE_80, 80.2, **kw)
+        monkeypatch.undo()
+        return seen, _points(plan)
+
+    unasked, plan_unasked = covered()
+    asked, plan_asked = covered(satin_patch_junctions="satin")
+    assert unasked, "part C no longer reaches the cover on this fixture"
+    assert asked == unasked
+    assert plan_asked == plan_unasked

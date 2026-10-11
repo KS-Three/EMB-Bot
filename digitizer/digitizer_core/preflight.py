@@ -123,7 +123,7 @@ from shapely.geometry import Point, Polygon
 from skimage.color import deltaE_ciede2000
 
 from . import machine, stitches
-from .config import PHOTO_CLASSES, PipelineConfig
+from .config import PHOTO_CLASSES, PipelineConfig, work_grid_px_per_mm
 from .pipeline import PipelineResult, fabric_for
 from .stage0_classify import classify
 from .stage1_prep import _dominant_border_color, prep
@@ -133,6 +133,8 @@ from .stage6_satin import strip_splits
 from .stage6_scanline import SCANLINE_LEVEL_STRIDES, SCANLINE_ROW_MM
 from .stage6_streamline import (STREAMLINE_D_SEP_DARK_MM,
                                 STREAMLINE_D_SEP_LIGHT_MM)
+from . import curve_fidelity as _curve_fidelity
+from . import edge_wobble as _edge_wobble
 from . import legibility as _legibility
 from .stitches import StitchPlan
 from .textcluster import (LETTER_MAX_HEIGHT_MM, LETTER_MIN_HEIGHT_MM,
@@ -231,6 +233,11 @@ MIN_COLUMN_MM = machine.MIN_STITCH_MM
 # never upsampled, so growing the design adds no pixels to a letter).
 # One logo calibrated it; the docstring of `_resolution_note` says what to
 # re-measure if a second disagrees.
+# The name says SOURCE and the calibration was always in pixels of the
+# prep's GRID (lost at 13-18, back at 28 — both on the 4 px/mm grid). They
+# were the same thing until `cfg.work_px_per_mm` (2026-09-30) made the grid
+# finer than the source line, which is the cure for those very words: the
+# test reads the grid's pixels, the sentence still quotes the source's.
 LETTERING_MIN_SOURCE_PX = 20.0
 
 # Tight gaps inside a satin shape (2026-09-30, Kent's pick after the
@@ -547,8 +554,18 @@ _UNCOVERED_MIN_FILL = 0.15
 # fixtures is a narrow base, and the margins are 1.5-2x, not the two orders
 # of magnitude `_COVERAGE_MIN_PATCH_MM2` earned. Each one refuses a NAMED
 # false-positive class with a committed guard behind it rather than a number
-# that happened to work, which is the most that can be claimed. It stays a
-# warn, never a block.
+# that happened to work, which is the most that can be claimed. It was a
+# warn, never a block, from 2026-08-20 to 2026-10-04.
+#
+# **`info` since 2026-10-05 -- Kent's call on issue #630.** The 2026-10-04
+# scorecard recapture bisected every mover between the 09-16 and 10-04
+# rulers and found this check's 12 points crossing a band line on three
+# photo-lane rows (`photo_chrome_specular` both garments for 2.1 and 2.3 mm2
+# holes, `photo_scene_stub` both) while moving no stitch anywhere -- the
+# 1.0 mm2 floor was adjudicated on nine logos and never on the photo lane.
+# Kent made it `info`: the finding, its `extra`, the metrics below and the
+# Studio sentence all stay; `_DEDUCT` bills it nothing, so the grade is
+# blind to it, as it is to edge wobble and curve roughness (defect 46).
 _UNCOVERED_MIN_PATCH_MM2 = 1.0
 # How many patch areas ride out in the metrics, largest first. Twelve is
 # enough to read the shoulder of every corpus fixture measured 2026-09-30
@@ -1891,9 +1908,14 @@ def _tight_gap_findings(result: PipelineResult, plan: StitchPlan,
     polygon the engine draws at that size (bridge at 140 mm: the script
     clears and nothing fires; under a 3 mm floor four small shapes segmented
     anew at that scale fired instead).
-    One warn per design, whatever the count -- the same bill as
-    LETTERING_TOO_SMALL, which this extends (the counters-under-the-close
-    flag of the small-text battery, machine-physics backlog row 14)."""
+    One finding per design, whatever the count. `info` since 2026-10-05
+    (Kent's call, issue #630): it billed 12 points as a warn from 09-30 to
+    10-04, and the 2026-10-04 scorecard recapture showed those 12 crossing a
+    band line on `logo_script_tires` and `photo_scene_stub` while moving no
+    stitch. The sentence, the `extra` the Studio's "Make it bigger" chip
+    reads, and the metrics stay; the grade is blind to it. It extends
+    LETTERING_TOO_SMALL (the counters-under-the-close flag of the small-text
+    battery, machine-physics backlog row 14), which still bills a warn."""
     fabric = fabric_for(cfg)
     pull = max(0.0, float(fabric.pull_comp_mm))
     thread = float(machine.COVERAGE_THREAD_W_MM)
@@ -1956,7 +1978,7 @@ def _tight_gap_findings(result: PipelineResult, plan: StitchPlan,
     if worst["clear_width_mm"]:
         msg += (f" Its tightest tenth of gap clears that at about {worst['clear_width_mm']:.0f} mm "
                 f"of design width.")
-    return [finding(SATIN_GAPS_TIGHT, "warn", msg, count=n, judged=judged,
+    return [finding(SATIN_GAPS_TIGHT, "info", msg, count=n, judged=judged,
                     close_mm=round(close_mm, 2), pull_mm=round(pull, 2), thread_mm=round(thread, 2),
                     fabric=fabric.label, design_width_mm=round(design_w, 1),
                     worst_shape_id=worst["shape_id"], worst_tight_frac=worst["tight_frac"],
@@ -1964,7 +1986,7 @@ def _tight_gap_findings(result: PipelineResult, plan: StitchPlan,
 
 
 def _resolution_note(findings: list[dict], p, plan: StitchPlan,
-                     cfg: PipelineConfig) -> None:
+                     cfg: PipelineConfig, design_class: str | None = None) -> None:
     """Append the resolution fact to LETTERING_TOO_SMALL and LETTERING_ILLEGIBLE
     when the artwork cannot carry the lettering they name (in place; a
     finding's text and `extra` grow, nothing else changes).
@@ -1986,15 +2008,26 @@ def _resolution_note(findings: list[dict], p, plan: StitchPlan,
 
     Calibrated on one logo (bridge: lost at 13-18 grid px, recovered at 28).
     If a second logo loses lettering above 20 source pixels per letter, or
-    keeps it below, re-measure the constant on both before moving it."""
+    keeps it below, re-measure the constant on both before moving it.
+
+    That calibration is in GRID pixels, so the test is too (`cfg.
+    work_px_per_mm`, 2026-09-30): lettering the prep's grid gives
+    LETTERING_MIN_SOURCE_PX or more (`Prep.px_per_mm`, the raster the tracer
+    read) was traced and gets no note, however few pixels the source had --
+    bridge's 3.4 mm letters are 12 source pixels and 27 on an 8 px/mm grid.
+    The sentence still quotes the SOURCE's pixels, which is the fact a
+    customer can act on, and the width it names is read on the working grid
+    (`config.work_grid_px_per_mm` for this design's class), the one a bigger
+    design will be traced on."""
     if p is None or plan.stats is None:
         return
     px = float(getattr(p, "input_px_per_mm", 0.0) or 0.0)
     if px <= 0.0:
         return
+    traced_px = max(px, float(getattr(p, "px_per_mm", 0.0) or 0.0))
     x0, _y0, x1, _y1 = plan.stats.bbox_mm
     design_w = float(x1 - x0)
-    grid = float(cfg.min_px_per_mm)
+    grid = work_grid_px_per_mm(cfg, design_class)
     for f in findings:
         if f.get("code") not in (LETTERING_TOO_SMALL, LETTERING_ILLEGIBLE):
             continue
@@ -2007,7 +2040,7 @@ def _resolution_note(findings: list[dict], p, plan: StitchPlan,
             continue
         letter_mm = float(min(sizes))
         per_letter = letter_mm * px
-        if per_letter >= LETTERING_MIN_SOURCE_PX:
+        if letter_mm * traced_px >= LETTERING_MIN_SOURCE_PX:
             continue
         extra["input_px_per_mm"] = round(px, 2)
         extra["source_px_per_letter"] = round(per_letter, 1)
@@ -2930,7 +2963,7 @@ def _uncovered_findings(p, result: PipelineResult, plan: StitchPlan
     noun = "shape" if n_sh == 1 else "shapes"
     return [finding(
         ARTWORK_UNCOVERED,
-        "warn",
+        "info",
         f"{total:.0f} mm2 of artwork across {n_sh} {noun} is claimed by a "
         f"shape the design sews, but no thread lands on it (largest bare "
         f"patch {worst:.0f} mm2). A limb or corner is missing from the "
@@ -3521,6 +3554,233 @@ def _legibility_findings(p, result: PipelineResult, plan: StitchPlan,
 
 # --- The report -------------------------------------------------------------
 
+# --- Thread-break risk: the three findings, grouped and pointable ------------
+
+# The findings whose own messages say thread or needles break. Tagged, never
+# re-judged: `_tag_break_risk` moves no threshold and adds no finding, it marks
+# these `extra.break_risk` and gives each the shapes to show.
+#
+# A sharp-satin-angle check and a "stitches under 0.5 mm" finding are both
+# absent ON PURPOSE (2026-10-01). The angle has no threshold in this repo and
+# no trade source behind one, which is ROADMAP gate 1. The 0.5 mm line is
+# measured-wrong as a verdict: see `_tiny_step_metrics`.
+BREAK_RISK_CODES = frozenset({STITCHES_TOO_SHORT, DENSITY_STACKED,
+                              SAME_HOLE_HEAVY})
+
+# Shapes named per finding. The review step shows the first; the rest ride out
+# for a reader who wants them. Same cap as `_UNCOVERED_TOP_N`.
+_BREAK_SHOW_TOP_N = 12
+
+
+def _show_ids(shape_ids, region_ids: set[str] | None) -> list[str]:
+    """Run shape ids as the ids the Studio holds, in order, deduped, capped.
+
+    The canvas knows REGIONS. A shade band's run carries a derived id
+    (`_owning_region_id` has the rule), so with the regions in hand each id is
+    mapped to its owner and one nobody owns is dropped; a caller scoring a
+    bare plan has no regions, and the ids pass through.
+    """
+    out: list[str] = []
+    for sid in shape_ids:
+        if not sid:
+            continue
+        if region_ids is not None:
+            sid = _owning_region_id(sid, region_ids)
+            if sid is None:
+                continue
+        if sid not in out:
+            out.append(sid)
+    return out[:_BREAK_SHOW_TOP_N]
+
+
+def _shapes_near(plan: StitchPlan, at_mm, radius_mm: float) -> list[str]:
+    """Shape ids with a needle point within `radius_mm` of `at_mm`, nearest
+    first; the single nearest shape when none is that close."""
+    ax, ay = at_mm
+    best: dict[str, float] = {}
+    for _b, run in plan.iter_runs():
+        if not run.shape_id or not run.points:
+            continue
+        pts = np.asarray(run.points, dtype=float)
+        d = float(np.hypot(pts[:, 0] - ax, pts[:, 1] - ay).min())
+        if d < best.get(run.shape_id, math.inf):
+            best[run.shape_id] = d
+    ranked = sorted(best, key=lambda s: (best[s], s))
+    near = [s for s in ranked if best[s] <= radius_mm]
+    return near or ranked[:1]
+
+
+def _tag_break_risk(findings: list[dict], plan: StitchPlan,
+                    result: PipelineResult | None) -> None:
+    """Mark the break-risk findings and say which shapes to show, in place."""
+    region_ids = ({r.shape_id for r in result.regions}
+                  if result is not None else None)
+    for f in findings:
+        if f["code"] not in BREAK_RISK_CODES:
+            continue
+        extra = f.setdefault("extra", {})
+        if f["code"] == STITCHES_TOO_SHORT:
+            ids = [s["shape_id"] for s in extra.get("shapes", ())]
+        elif f["code"] == DENSITY_STACKED:
+            # Everything piled on the worst patch, out to that patch's own
+            # half-width: a stack is several shapes by definition.
+            ids = _shapes_near(plan, extra["worst_patch_at_mm"],
+                               math.sqrt(extra["worst_patch_mm2"]) / 2.0)
+        else:
+            ids = _shapes_near(plan, extra["worst_at_mm"],
+                               _SAME_HOLE_QUANTUM_MM)
+        extra["break_risk"] = True
+        extra["show_shape_ids"] = _show_ids(ids, region_ids)
+
+
+def _tiny_step_metrics(plan: StitchPlan) -> dict:
+    """Needle-down steps under `machine.TINY_STITCH_MM`, as a COUNT only.
+
+    "Stitches under 0.5 mm" is on every trade list of what breaks thread, and
+    it is not a finding here because it would fire on clean work. Measured
+    2026-10-01 at 80 mm, lock stitches stripped:
+
+        fixture               steps   under 0.5   where
+        logo_whitebg          5,730     618       fill 573, underlay 44, travel 1
+        becker_marine_logo    6,277     476       underlay 338, fill 125, run 12, satin 1
+
+    `logo_whitebg` has zero findings. Its 573 are the fill's row advance,
+    which IS the row pitch -- 0.15 mm since Kent's 2026-09-03 ruling -- so a
+    0.5 mm line condemns the ruled fill, not a defect. Reported so a change
+    that moves it is visible; a threshold on it would be a physical constant
+    with no sew-out behind it.
+    """
+    total = tiny = 0
+    for _b, run in plan.iter_runs():
+        pts = stitches.strip_ties(run.points)
+        for a, b in zip(pts, pts[1:]):
+            total += 1
+            if math.dist(a, b) < machine.TINY_STITCH_MM:
+                tiny += 1
+    return {"tiny_steps": tiny,
+            "tiny_step_fraction": round(tiny / total, 3) if total else None}
+
+
+_EDGE_WOBBLE_TIERS = ("satin", "border", "fill", "line")
+_EDGE_WOBBLE_STATS = ("p95_mm", "std_mm", "max_mm")
+
+
+def _edge_wobble_metrics(result: PipelineResult | None,
+                         plan: StitchPlan) -> dict:
+    """How far the sewn edge wanders about its own outline, as NUMBERS only.
+
+    Kent's most frequent complaint is "right shapes, bad edges", and until
+    2026-10-03 nothing in this report could see it: `logo_whitebg` and a logo
+    he calls jagged were graded without either number moving on the edge
+    (MASTER_SCOPE defect 46). The instrument is `edge_wobble.analyse_plan`,
+    read against the regions' own polygons.
+
+    **Per tier, never pooled.** The engine's run tier sews a shape's own
+    outline vertices and reads exactly 0, so one pooled figure moves when
+    shapes change tier and no rail has moved: `enthusiast_logo` reads satin
+    p95 0.247 mm and pooled 0.186, a quarter of the defect gone to 624 run
+    points at 0.000. Each tier the instrument reads -- satin rails, border
+    rails, fill row ends, run and bean lines -- reports its own three numbers.
+
+    No finding and no deduction, on two rulings. Law 37: score smoothness
+    monotonically and invent no cutoff -- the satin tier reads 0.07-0.11 mm
+    std on every real logo with every defence on, so a line would fire on all
+    of them or none. And Kent, 2026-10-02: the tool is not to warn the
+    customer about what it should fix. These ride out so a change that moves
+    the edge shows in `corpus_scorecard.diff`; like `raw_score`, they are
+    inert there until the baseline is recaptured.
+
+    This is edge DEVIATION, in mm. It is not Law 37's own quantity, which is
+    direction change along the path (`tools/curve_fidelity.py`'s
+    `roughness_deg`) and is still offline.
+
+    None without the regions (no outline to measure against), None for a tier
+    the design does not sew, and None when no series is long enough to read.
+    A None is never a clean edge; a tier that reads 0.0 was measured.
+
+    A shade band's runs are NOT read: they carry a derived id
+    (`_owning_region_id`), and the instrument pairs a run with a polygon by
+    equality. Left that way on purpose -- it is the tool's own reading, so a
+    number here is the number the docs quote; mapping the bands in is a
+    change to the measurement, with its own evidence to bring.
+    """
+    out = {f"edge_wobble_{t}_{s}": None
+           for t in _EDGE_WOBBLE_TIERS for s in _EDGE_WOBBLE_STATS}
+    if result is None:
+        return out
+    # No region is built without a polygon today. Skipped rather than trusted:
+    # a number that judges nothing must not be what fails a finished design.
+    row = _edge_wobble.analyse_plan(
+        {r.shape_id: r.polygon for r in result.regions if r.polygon is not None},
+        plan, unsewn=False)
+    for tier in _EDGE_WOBBLE_TIERS:
+        for stat in _EDGE_WOBBLE_STATS:
+            if tier in row["by_tier"]:
+                out[f"edge_wobble_{tier}_{stat}"] = row["by_tier"][tier][f"wobble_{stat}"]
+    return out
+
+
+def _curve_roughness_metrics(plan: StitchPlan) -> dict:
+    """Is a curve sewn as a curve, or as a polygon -- as NUMBERS only.
+
+    Law 37's own quantity, direction change along the stitch path, and the
+    second of Kent's two smoothness complaints ("lines/circles are not smooth
+    like the photo"). `curve_fidelity.measure` over the plan's visible traces.
+    The path is the whole input, so a bare plan is read like any other.
+
+    Five keys, because the instrument says to read them together: a move in
+    `curve_roughness_deg` means nothing when the traces or vertices under it
+    moved (`tools/curve_fidelity.py`, "Reading a paired arm without fooling
+    yourself"). And it cannot read intent -- a logo that IS a 20-gon and a
+    circle polygonised to one are the same path -- so this compares a design
+    with itself across engine changes, which is what `corpus_scorecard.diff`
+    does, and is never a grade. No finding and no deduction, on the rulings
+    `_edge_wobble_metrics` records.
+
+    A refusal (nothing curved to measure) is None, not the tool's NaN: the
+    service serialises with `allow_nan=False`.
+    """
+    row = _curve_fidelity.measure(
+        [p for _kind, _shape, p in _curve_fidelity.traces(plan)])
+
+    def number(v: float) -> float | None:
+        return None if v != v else v
+
+    return {"curve_roughness_deg": number(row["roughness_deg"]),
+            "curve_turn_gini": number(row["turn_gini"]),
+            "curve_vertices": row["curve_vertices"],
+            "curve_corner_vertices": row["corner_vertices"],
+            "curve_traces": row["traces"]}
+
+
+def _two_tone_view(p, plan: StitchPlan, cfg: PipelineConfig):
+    """The stage-1 re-read as the pipeline SEWED it: when `cfg.two_tone_snap`
+    fired (defect 58), a snapped copy of `p` (`two_tone.apply`, the
+    pipeline's own stage 1.3); otherwise `p` itself, untouched.
+
+    For the thread grader only. Unsnapped, it judged each thread against the
+    anti-alias grey the snap removed: White BLOCKED on golke (dE 14.6, the
+    art read 190 grey) and gaulke (33.9, 126 grey) under the thin roof lines
+    `two_tone.keep_lines` widens to the satin floor, where the art draws
+    them white (2026-10-08). The art is two inks, so two inks is the honest
+    yardstick. Every other check keeps the plain re-read.
+
+    The photograph gate is the pipeline's: a declared photograph, or stage
+    1.25's PHOTO_DETECTED on the plan (`_is_photo_class`'s re-read of the
+    same warning). Stage 0's photo CLASS is not a gate there, so it is not
+    one here (`logo_mfab_hat` snaps)."""
+    if not cfg.two_tone_snap or cfg.is_photographic is True:
+        return p
+    if cfg.is_photographic is None and any(
+            w.get("code") == _PHOTO_DETECTED for w in plan.warnings):
+        return p
+    import copy
+
+    from . import two_tone
+    q = copy.copy(p)
+    return q if two_tone.apply(q) else p
+
+
 def run_preflight(result: PipelineResult, plan: StitchPlan,
                   cfg: PipelineConfig | None = None,
                   image=None) -> dict:
@@ -3546,11 +3806,15 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     # thread-match rasterization and the two photo guardrails (resolution,
     # subject contrast). Without the artwork all three are skipped and the
     # metrics say so, each with its own None.
-    p = prep(image, cfg) if image is not None else None
+    # The class goes with it so the re-read lands on the grid the pipeline
+    # traced (`cfg.work_px_per_mm` is per class); a bare plan has none.
+    design_class = getattr(result, "design_class", None)
+    p = prep(image, cfg, design_class=design_class) if image is not None else None
 
     worst_de: float | None = None
     if p is not None and result is not None:
-        thread_findings, worst_de = _thread_match_findings(p, result, plan, cfg)
+        thread_findings, worst_de = _thread_match_findings(
+            _two_tone_view(p, plan, cfg), result, plan, cfg)
         findings.extend(thread_findings)
     metrics["thread_match_checked"] = p is not None and result is not None
     metrics["thread_worst_delta_e"] = None if worst_de is None else round(worst_de, 1)
@@ -3608,7 +3872,7 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     # Lettering the artwork cannot carry: the resolution fact on the two
     # lettering findings, when the artwork was given (the legibility check
     # above and the lettering check just before are both in `findings` here).
-    _resolution_note(findings, p, plan, cfg)
+    _resolution_note(findings, p, plan, cfg, design_class=design_class)
 
     # The shapes lettering just named, so the short-stitch check can say which
     # of ITS carriers are not covered by that warning. The two measure the same
@@ -3669,6 +3933,12 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     metrics["color_changes"] = color_changes
 
     metrics["stitch_count"] = plan.stats.stitch_count
+    metrics.update(_tiny_step_metrics(plan))
+    metrics.update(_edge_wobble_metrics(result, plan))
+    metrics.update(_curve_roughness_metrics(plan))
+
+    # Last, over the finished list: it tags findings, it does not make any.
+    _tag_break_risk(findings, plan, result)
 
     score = 100
     for f in findings:

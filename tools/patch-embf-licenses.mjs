@@ -22,6 +22,7 @@
 //      move together.
 //
 // Idempotent: a second run is a no-op.
+import "./_help.mjs";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";

@@ -14,6 +14,7 @@ import {
   outlineBBoxMm,
   outlineOf,
   pulseAt,
+  pulseFadeAt,
   PULSE_MS,
   rotatePointsDeg,
   shapeOutlinesInFieldMm,
@@ -286,6 +287,33 @@ describe("createPulseTracker", () => {
     t.seen("e1", REV_B, 1000);
     t.seen("e1", REV_A, 9000);   // a third distinct result object
     expect(t.startedAt("e1")).toBe(9000);
+  });
+
+  test("an upload's FIRST result pulses when the upload was seen before it", () => {
+    // EmbroideryField sees an un-digitized upload with a null key. Without
+    // that baseline the first result is a silent first sighting, and a fresh
+    // upload digitized with no cue at all (found 2026-10-08).
+    const t = createPulseTracker();
+    expect(t.seen("e1", null, 0)).toBe(null);
+    expect(t.seen("e1", null, 500)).toBe(null);
+    expect(t.seen("e1", REV_A, 1000)).toBe(1000);
+    expect(t.active(1000)).toBe(true);
+  });
+});
+
+describe("pulseFadeAt", () => {
+  test("is full at the start, gone at PULSE_MS, and never negative", () => {
+    expect(pulseFadeAt(0)).toBe(1);
+    expect(pulseFadeAt(PULSE_MS / 2)).toBeCloseTo(0.5, 6);
+    expect(pulseFadeAt(PULSE_MS)).toBe(0);
+    expect(pulseFadeAt(PULSE_MS + 1000)).toBe(0);
+    expect(pulseFadeAt(-5)).toBe(0);
+  });
+
+  test("stays above zero through every beat, so the cue is not cut off between beats", () => {
+    // pulseAt touches 0 between beats; a draw loop keyed on IT would stop
+    // there. The fade is what says the window is still open.
+    for (let t = 0; t < PULSE_MS; t += 5) expect(pulseFadeAt(t)).toBeGreaterThan(0);
   });
 });
 

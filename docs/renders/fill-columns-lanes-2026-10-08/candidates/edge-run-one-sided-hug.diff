@@ -1,0 +1,56 @@
+--- a/src/fill.js
++++ b/src/fill.js
+@@ -1380,8 +1380,17 @@
+     if (n === 1) return out;
+     const end = opts.open ? n - 1 : n;   // index of the last point: n is polygon[0] again
+     const at = (k) => polygon[k % n];
++    const inward = opts.inwardHug > hug ? opts.inwardHug : hug, side = opts.filledLeft == null ? 0 : (opts.filledLeft ? 1 : -1);
+     const hugs = (a, b) => {
+-      for (let m = a + 1; m < b; m++) if (distToSegment(at(m), at(a), at(b)) > hug) return false;
++      const p = at(a), q = at(b);
++      for (let m = a + 1; m < b; m++) {
++        const v = at(m), d = distToSegment(v, p, q);
++        if (d <= hug) continue;
++        // a corner on the unfilled side of the chord: the chord runs inside
++        const cross = (q.x - p.x) * (v.y - p.y) - (q.y - p.y) * (v.x - p.x);
++        if (side && Math.sign(cross) === -side && d <= inward) continue;
++        return false;
++      }
+       return true;
+     };
+     let a = 0;
+--- a/src/digitize.js
++++ b/src/digitize.js
+@@ -493,13 +493,19 @@
+       // the thread runs on round the ring it is on, over the stitches just
+       // laid, to the first corner one CAN be reached from.
+       const clear = ctx.clear || (() => true);
+-      const trace = (ring) => ctx.huggingOutline(ring, { stitchLen: edgeStitch, hug: ctx.openTol });
++      const filledLeftOf = (ring, filledInside) => {
++        const a0 = ring[0], b0 = ring[1 % ring.length], L = Math.hypot(b0.x - a0.x, b0.y - a0.y) || 1, e = Math.min(1e-3, L * 1e-3);
++        const probe = { x: (a0.x + b0.x) / 2 - (b0.y - a0.y) / L * e, y: (a0.y + b0.y) / 2 + (b0.x - a0.x) / L * e };
++        return pointInPoly(probe, ring) === filledInside;
++      };
++      const trace = (ring, filledInside = true) => ctx.huggingOutline(ring, Object.assign({ stitchLen: edgeStitch, hug: ctx.openTol }, globalThis.__INWARD ? { inwardHug: Number(globalThis.__INWARD) * pxPerFinalMm, filledLeft: filledLeftOf(ring, filledInside) } : {}));
+       const r = [trace(edgeRunRing(outer, false, ctx.edgeInsetPx))];
+       // `holes` is every ring inside the outline, and a ring inside a hole is
+       // an ISLAND: filled ground again (even-odd), so its filled side is its
+       // own inside. (Third audit: a bullseye's island had its run in the moat.)
+       const isHole = (hh) => holes.filter((other) => other !== hh && pointInPoly(hh[0], other)).length % 2 === 0;
+       const left = holes.map((hh) => edgeRunRing(hh, isHole(hh), ctx.edgeInsetPx));
++      const leftFilledInside = holes.map((hh) => !isHole(hh));
+       // the EDGE_RUN_TRIES corners of the rings still to sew that are nearest
+       // to p, nearest first (kept by insertion: with 2,000 holes, sorting
+       // every corner for every ring was most of the design's time)
+@@ -540,9 +546,9 @@
+           }
+         }
+         if (!pick) pick = cands[0];
+-        const ring = left.splice(pick.ri, 1)[0];
++        const ring = left.splice(pick.ri, 1)[0], filledInside = leftFilledInside.splice(pick.ri, 1)[0];
+         const turned = ring.slice(pick.vi).concat(ring.slice(0, pick.vi));
+-        r.push(trace(turned));
++        r.push(trace(turned, filledInside));
+         cur = turned[0];
+         on = turned;
+       }

@@ -47,6 +47,7 @@ def _cutout(path, under_rgb, size=600):
     return path
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_on_a_cutout_the_gate_and_the_extension_are_reported_per_width(tmp_path):
     src = _cutout(tmp_path / "cut.png", (0, 0, 0))
     rows = t.measure_fixture(src, widths=(200, 500), tmp=tmp_path)

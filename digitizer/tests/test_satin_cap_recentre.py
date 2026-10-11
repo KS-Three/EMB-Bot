@@ -113,5 +113,11 @@ def test_curvature_alone_is_never_a_kink():
     assert flat(sew(c, cap_recentre=True)) == flat(sew(c))
 
 
-def test_the_flag_ships_off():
-    assert PipelineConfig().satin_cap_recentre is False
+def test_the_flag_ships_on():
+    """Kent's flip, 2026-10-03, off his own sitting
+    (`docs/eye-pairs-2026-10-03/kent-notes.json`): after on the two logos
+    where it shows (becker's E and N, tires' T), before on none. The default
+    lives here so a change to it is a visible diff rather than a quiet one.
+    `satin_shape`'s own keyword stays False: every test above prices the
+    mechanism against the end it replaces."""
+    assert PipelineConfig().satin_cap_recentre is True

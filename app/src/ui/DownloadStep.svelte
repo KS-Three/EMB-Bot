@@ -1,7 +1,7 @@
 <script>
   import { onMount, createEventDispatcher } from "svelte";
   import { generateAll } from "../lib/generate.js";
-  import { exportDesignPreferService, exportWorksheetPDF, exportPNG, isServiceOnlyFormat } from "../lib/exporters.js";
+  import { exportFileName, exportDesignPreferService, exportWorksheetPDF, exportPNG, isServiceOnlyFormat } from "../lib/exporters.js";
   import { chartIdForProject } from "../lib/designChart.js";
   import { isSewable } from "../lib/flow.js";
   import { triggerDownload } from "../lib/download.js";
@@ -11,6 +11,7 @@
   import { ensureFonts } from "../lib/fontLoader.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
   import { MACHINES, machineById, loadMachineId, saveMachineId } from "../lib/machines.js";
+  import { friendlyError } from "../lib/friendlyError.js";
 
   // "Your machine" (2026-09-30): the customer picks the brand on the front
   // of their machine and gets ONE download button in the format it reads,
@@ -34,6 +35,8 @@
     saveMachineId(machineId);
   }
   export let project;
+  // The design's display name; the exported file is named from it.
+  export let designName = "";
   // Task 4 (Slice 5): export now covers every ready element in the project
   // (generateAll's combined design), not just a single text/image design —
   // `runtime` (the per-element flattened-image map, owned by App) is needed
@@ -539,7 +542,7 @@
         label: project.name,
         preferService: isPurelyDigitized(project),
       });
-      const where = await saveOut(out);
+      const where = await saveOut({ ...out, filename: exportFileName(designName, fmt) });
       // The message still names which encoder ran -- neutral provenance, not
       // a caveat. It stopped being a caveat on 2026-09-08, when the browser
       // DST codec was put right and both warning notes came out. `where` names
@@ -547,7 +550,7 @@
       msg = "Saved " + fmt.toUpperCase() + where
         + (out.via === "service" ? " (digitizer service encoder)" : " (browser encoder)");
     } catch (e) {
-      msg = e.message;
+      msg = friendlyError(e, "export", fmt.toUpperCase() + " file");
     }
   }
 
@@ -584,7 +587,7 @@
       await exportWorksheetPDF(design, garment, effectiveHoop(project).hoop, palette.label, hoopExceeds);
       msg = "Worksheet saved.";
     } catch (e) {
-      msg = e.message;
+      msg = friendlyError(e, "export", "PDF worksheet");
     } finally {
       worksheetBusy = false;
     }
@@ -595,10 +598,10 @@
       await ensureFonts(fontKeysOf(project));
       const design = buildDesign();
       const out = await exportPNG(design);
-      const where = await saveOut({ bytes: out.blob, filename: out.filename, mime: out.mime });
+      const where = await saveOut({ bytes: out.blob, filename: exportFileName(designName, "png"), mime: out.mime });
       msg = "Saved PNG" + where;
     } catch (e) {
-      msg = e.message;
+      msg = friendlyError(e, "export", "PNG picture");
     }
   }
 </script>
@@ -802,7 +805,7 @@
      of their machines want, and it teaches them to distrust the ones we keep.
      If a future difference reappears, MEASURE it and write a note about that
      difference — do not restore these. -->
-<p>{msg}</p>
+<p aria-live="polite">{msg}</p>
 <p class="fontcredits-footer">
   <button type="button" class="linklike" on:click={openCredits}>Fonts: open-source — see credits</button>
 </p>
@@ -830,7 +833,7 @@
   }
 
   .hg-panel h3 { margin: 0 0 var(--space-3); }
-  .hg-note { margin: 0 0 var(--space-3); font-weight: 600; }
+  .hg-note { margin: 0 0 var(--space-3); font-weight: var(--fw-medium, 500); }
   .hg-body { margin: 0 0 var(--space-4); line-height: 1.5; }
   .hg-btns { display: flex; gap: var(--space-3); flex-wrap: wrap; }
   .hg-blocks {
@@ -851,7 +854,7 @@
     flex-wrap: wrap;
     gap: var(--space-2) var(--space-3);
     margin-bottom: var(--space-3);
-    font-size: 0.9rem;
+    font-size: var(--fs-md);
     color: var(--text-2, inherit);
   }
   .savewhere-label { opacity: 0.9; }

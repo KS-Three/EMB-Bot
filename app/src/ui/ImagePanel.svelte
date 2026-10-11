@@ -1,9 +1,17 @@
 <script>
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import { flattenRGBA, flatToRGBA, flatShares, mergeFlat, WORK_MAX_PX, ALPHA_CUTOFF, MIN_SWATCH_SHARE } from "../lib/flatten.js";
-  import { loadImage, rasterSize, isVectorFile, UNREADABLE } from "../lib/rasterize.js";
+  import { loadImage, rasterSize, isVectorFile } from "../lib/rasterize.js";
+  import { friendlyError } from "../lib/friendlyError.js";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
+  // Swatch labels sit on the ART's own colour, so one fixed label colour fails
+  // on half the palette (white on a light swatch). WCAG relative luminance:
+  // --ink beats white as the label above ~0.18.
+  const lightSwatch = (c) => {
+    const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]) > 0.18;
+  };
 
   // Element-scoped image editor (Task 5, Slice 5). Pattern (see
   // TextStep.svelte for the same convention): settings patches dispatch an
@@ -119,9 +127,23 @@
     flattenFrom(workImage, element.nColors, element.removeBg);
   }
 
+  // A file picked before this element existed (App.onArtFile) — the
+  // service-down half of the same "Upload file" flow DigitizePanel has.
+  export let pendingFile = null;
+  onMount(() => {
+    if (!pendingFile) return;
+    const file = pendingFile;
+    d("fileconsumed");
+    ingestFile(file);
+  });
+
   async function onFileChange(e) {
     const file = e.target.files && e.target.files[0];
-    if (!file) return;
+    if (file) await ingestFile(file);
+    e.target.value = ""; // allow re-selecting the same file later
+  }
+
+  async function ingestFile(file) {
     error = "";
     busy = true;
     // Set BEFORE the first workSize() call — prepRGBA and encodeWorkPng both
@@ -152,14 +174,13 @@
       d("image", prep);
       flattenFrom(prep, element.nColors, element.removeBg);
     } catch (err) {
-      error = (err && err.message) || UNREADABLE;
+      error = friendlyError(err, "upload");
       fileName = "";
       patch({ sourcePng: null, name: "" });
       d("image", null);
       flattenFrom(null, element.nColors, element.removeBg);
     } finally {
       busy = false;
-      e.target.value = ""; // allow re-selecting the same file later
     }
   }
 
@@ -313,6 +334,7 @@
             type="button"
             class="swatch"
             class:sel={!!selected[i]}
+            class:lt={lightSwatch(c)}
             style="background: rgb({c[0]},{c[1]},{c[2]})"
             on:click={() => toggleSwatch(i)}
             title={(shares[i] * 100).toFixed(1) + "%"}

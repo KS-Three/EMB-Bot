@@ -29,6 +29,7 @@ from digitizer_core.pipeline import (BackgroundInfo, PipelineResult, digitize,
                                      fabric_for, plan_stitches)
 from digitizer_core.regions import Region
 from digitizer_core.preflight import (
+    _DEDUCT,
     ARTWORK_UNCOVERED,
     CLASS_OVERRIDE_TECHNIQUE_MISMATCH,
     COLOR_STOPS_HEAVY,
@@ -163,7 +164,13 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     # in its own thread, which is a sixth colour block and a sixth cone. The
     # whole arithmetic is pinned in `tests/test_keep_thin_strokes.py`; this
     # number is the report reading it.
-    assert m["color_changes"] == 6
+    # 9, not 6, since 2026-10-06: `edge_cap_follow_adjacent` sews each stretch
+    # of the cap in the thread of the shape it stands against, and this
+    # fixture's edge touches three threads, so the one cap block became three
+    # (Kent's ask: the bean outline did not follow the colour beside it). Each
+    # extra colour is a real thread change; the cones are unchanged because
+    # every piece uses a thread the design already loads.
+    assert m["color_changes"] == 9
 
 
 # --- Thread color fidelity ---------------------------------------------------
@@ -202,6 +209,7 @@ def test_without_the_artwork_the_thread_check_is_skipped_and_says_so(whitebg):
     assert report["metrics"]["thread_worst_delta_e"] is None
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_a_bimodal_thread_is_judged_by_its_worst_region_not_the_pool():
     """THE trap this instrument used to fall into, twice in one day (docs/
     photo-quality-root-cause-2026-08-11.md): two regions share one spool,
@@ -646,6 +654,26 @@ def test_a_word_whose_gaps_are_under_the_close_is_flagged_with_the_width_that_cl
     assert report["metrics"]["satin_gaps_tight_shapes"] == 1
 
 
+def test_satin_gaps_tight_judges_nothing():
+    """Kent's call 2026-10-05 (issue #630), after the 2026-10-04 scorecard
+    recapture bisected the finding's 12 points onto two band falls that moved
+    no stitch: the finding, its `extra` (the Studio chip reads it) and the
+    metrics stay, and the grade is blind to it. `raw_score` is the unclamped
+    sum of `_DEDUCT` over every finding, so the finding's share of it must be
+    exactly the sum WITHOUT it."""
+    close = _close_mm()
+    gap = round(0.8 * close, 2)
+    plan = _plan(_satin_column(30, width_mm=2.5, spacing_mm=0.4))
+    report = run_preflight(_result_with(_word(gap)), plan, cfg())
+    flagged = [f for f in report["findings"] if f["code"] == SATIN_GAPS_TIGHT]
+    assert flagged, "the fixture stopped exhibiting the gaps this test is about"
+    assert all(f["severity"] == "info" for f in flagged)
+    assert _DEDUCT["info"] == 0
+    without = sum(_DEDUCT[f["severity"]] for f in report["findings"]
+                  if f["code"] != SATIN_GAPS_TIGHT)
+    assert report["metrics"]["raw_score"] == 100 - without
+
+
 def test_a_word_whose_gaps_clear_the_close_is_judged_and_not_flagged():
     close = _close_mm()
     report = run_preflight(_result_with(_word(round(2.0 * close, 2))),
@@ -695,6 +723,7 @@ def _res_prep(px: float):
     return _P()
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_lettering_the_artwork_cannot_carry_gets_the_resolution_fact_and_the_two_levers():
     """bridge's teal words (2026-09-30): 3.25-4.5 mm letters in a 400 px JPEG,
     3.5 px/mm at 80 mm, lost in tracing. The sentence names the source as the
@@ -749,16 +778,18 @@ def test_bridges_script_sews_its_gaps_closed_at_80mm_and_the_finding_says_where_
     assert len(flagged) == 1
     extra = flagged[0]["extra"]
     assert abs(extra["close_mm"] - 1.0) < 1e-6 and extra["fabric"].startswith("Pique")
-    # The teal words (2026-09-30): LETTERING_TOO_SMALL names three blobs of
-    # them, and the artwork -- 400 px, 3.5 px/mm at 80 mm -- cannot carry the
-    # lettering, so the finding says so and names the width at which the
-    # prep's grid could try (the words came back at 140 mm, measured).
+    # The teal words. On the source line (2026-09-30) LETTERING_TOO_SMALL
+    # named three blobs of them and said the artwork -- 400 px, 3.5 px/mm at
+    # 80 mm -- lost them in tracing. On the working grid (ON 2026-10-01) the
+    # prep traces this file at 8 px/mm, the smallest flagged lettering has
+    # 20 grid pixels or more, so it WAS traced and the finding carries no
+    # resolution note. The note itself is held on the source line by
+    # test_lettering_the_artwork_cannot_carry_gets_the_resolution_fact_and_the_two_levers.
     small = [f for f in report["findings"] if f["code"] == LETTERING_TOO_SMALL]
     assert len(small) == 1
-    assert 3.3 <= small[0]["extra"]["input_px_per_mm"] <= 3.7
-    assert "lost in tracing" in small[0]["message"] and "larger source image" in small[0]["message"]
-    assert 100 <= small[0]["extra"]["traced_at_mm"] <= 160
-    script = [s for s in extra["shapes"] if abs(s["width_mm"] - 37.7) < 1.5 and abs(s["height_mm"] - 14.4) < 1.5]
+    assert "input_px_per_mm" not in small[0]["extra"]
+    assert "lost in tracing" not in small[0]["message"]
+    script =[s for s in extra["shapes"] if abs(s["width_mm"] - 37.7) < 1.5 and abs(s["height_mm"] - 14.4) < 1.5]
     assert len(script) == 1, extra["shapes"]
     s = script[0]
     assert 0.2 <= s["tight_frac"] <= 0.5 and s["tight_mm"] >= 10.0
@@ -1519,6 +1550,7 @@ def test_with_chaining_off_no_link_can_reach_the_float_ceiling():
         assert m["link_thread_mm"] < machine.TINY_STITCH_MM, (garment, m)
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_a_clean_one_shape_design_is_silent_across_the_2026_08_02_firing_band():
     """The pipeline half of the same pin, at the sizes the closeout measured
     the false block: bg_uncertain.png is ONE shape, and at 104-107 mm
@@ -1900,9 +1932,13 @@ def test_color_stops_past_the_single_needle_wall_warn():
     # 12 since the edge cap flipped on (2026-09-11): eleven artwork stops
     # plus the cap's own block. The WALL is still 11, so this fixture is
     # still over it — which is what the test is about.
-    assert hit[0]["extra"]["color_changes"] == 12
+    # 23 since 2026-10-06 (`edge_cap_follow_adjacent`): the cap now sews each
+    # stretch in the thread beside it, so this twelve-patch grid gets a cap
+    # piece per patch it borders instead of one block. Far over the wall
+    # either way; the finding is the same, the count is the new cost.
+    assert hit[0]["extra"]["color_changes"] == 23
     assert hit[0]["extra"]["max_stops"] == COLOR_STOPS_MAX
-    assert report["metrics"]["color_changes"] == 12
+    assert report["metrics"]["color_changes"] == 23
     json.dumps(report)
 
 
@@ -1916,9 +1952,10 @@ def test_a_design_at_the_stop_cap_is_not_warned(plan):
     assert COLOR_STOPS_HEAVY not in _codes(report)
     # +1 the edge cap's block (2026-09-11), +1 the teal run `keep_thin_
     # strokes` keeps (2026-09-13, Kent's ruling) — both pinned in the
-    # clean-report test above. Six is still well inside the 10-stop wall
-    # this test is about.
-    assert report["metrics"]["color_changes"] == 6
+    # clean-report test above. +2 since 2026-10-06 (the cap follows the
+    # adjacent colour: one block became three). Nine is still inside the
+    # 10-stop wall this test is about, and still unwarned.
+    assert report["metrics"]["color_changes"] == 9
 
 
 # --- Scoring -----------------------------------------------------------------
@@ -2124,14 +2161,19 @@ def test_a_dropped_limb_is_reported_and_names_its_shape(monkeypatch):
     # 2026-09-29, Kent's pick): on the artwork polygon the unguarded prune
     # keeps the tab's stem at 150 mm as well, so the injection has nothing to
     # drop and the finding is, again correctly, not raised.
+    # ... and without the crown cover (`satin_crown_cover`, ON since Kent's
+    # 2026-10-02 flip): it is the junction cover with its gate removed, so it
+    # sews the dropped tab the same way and the finding is, a third time
+    # correctly, not raised.
     c = cfg(target_width_mm=150.0, max_colors=6, subpixel_edges=False,
-            satin_junction_stack=False, satin_rail_comp=False)
+            satin_junction_stack=False, satin_rail_comp=False,
+            satin_crown_cover=False)
     result, plan_ = digitize(art, c)
     report = run_preflight(result, plan_, c, image=art)
 
     found = _uncovered(report)
     assert found is not None, "the dropped tab must be reported"
-    assert found["severity"] == "warn"
+    assert found["severity"] == "info"     # Kent 2026-10-05 (#630): reported, not billed
     ids = {s["shape_id"] for s in found["extra"]["shapes"]}
     assert "S041897f7" in ids, f"expected the left bracket, got {ids}"
     assert report["metrics"]["uncovered_worst_mm2"] >= 5.0
@@ -2189,16 +2231,21 @@ def test_the_letter_apex_is_reported_now_that_the_erosion_is_gone():
     Pinned as a FLOOR on what the check can see, and on WHERE. A build that
     closes the apex turns this red, and that is the signal to close defect 49
     and rewrite this test — not to loosen it.
+
+    **That build shipped: `satin_crown_cover`, ON since Kent's 2026-10-02
+    flip.** What the CHECK can see is still pinned here, on the engine the
+    hole was found on (the cover OFF); the last lines pin that the shipped
+    engine leaves less of it.
     """
     art = TESTDATA / "photo/enthusiast_logo.png"
-    c = cfg(target_width_mm=80.0, max_colors=6)
+    c = cfg(target_width_mm=80.0, max_colors=6, satin_crown_cover=False)
     result, plan_ = digitize(art, c)
     report = run_preflight(result, plan_, c, image=art)
     m = report["metrics"]
 
     found = _uncovered(report)
     assert found is not None, "the apex is invisible again"
-    assert found["severity"] == "warn"           # a warn, never a block
+    assert found["severity"] == "info"           # info since 2026-10-05 (#630); was a warn, never a block
     # Measured 2026-09-30: 27 patches, 2 holes, worst 1.56 mm2 (the apex) and
     # 1.00 mm2 (a gap between two letters). Rendered before this landed:
     # docs/renders/uncovered-floor-2026-09-30/enthusiast.png
@@ -2206,6 +2253,15 @@ def test_the_letter_apex_is_reported_now_that_the_erosion_is_gone():
     assert m["uncovered_hole_mm2"] >= 1.2, m["uncovered_hole_mm2"]
     # and it names a shape a person can go and look at
     assert found["extra"]["shapes"], found["extra"]
+
+    # Defect 49, closed: the shipped engine sews the apex.
+    shipped = cfg(target_width_mm=80.0, max_colors=6)
+    assert shipped.satin_crown_cover is True
+    result_on, plan_on = digitize(art, shipped)
+    m_on = run_preflight(result_on, plan_on, shipped, image=art)["metrics"]
+    assert m_on["uncovered_hole_mm2"] < m["uncovered_hole_mm2"], (
+        m["uncovered_hole_mm2"], m_on["uncovered_hole_mm2"])
+    assert m_on["uncovered_holes"] <= m["uncovered_holes"]
 
 
 def test_a_clean_fixture_leaves_no_artwork_uncovered(whitebg, plan):
@@ -2334,6 +2390,7 @@ def test_without_the_artwork_the_uncovered_check_is_skipped_and_says_so(whitebg,
 
 # --- The uncovered check on a BLEND design (2026-09-04) ----------------------
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_the_uncovered_check_actually_examines_a_blend_regions_ramp():
     """It never did before, and said "clean" about it.
 
@@ -2393,7 +2450,7 @@ def test_a_bare_patch_inside_a_blend_region_is_found_and_named():
     report = run_preflight(result, plan_, c, image=art)
     found = _uncovered(report)
     assert found is not None, f"dropping {victim} must leave bare artwork"
-    assert found["severity"] == "warn"
+    assert found["severity"] == "info"     # Kent 2026-10-05 (#630): reported, not billed
     # Attribution is to the region a person can go look at, not the band.
     ids = {s["shape_id"] for s in found["extra"]["shapes"]}
     assert region.shape_id in ids, f"expected the ramp region, got {ids}"
@@ -2565,6 +2622,7 @@ def _two_spool_photo_scene(assign_swapped: bool):
     return result, img, chart, red_i, blue_i
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_photo_route_stays_quiet_when_every_cone_is_the_best_one_loaded():
     """The misfire this rescoring exists to stop.
 
@@ -2650,6 +2708,7 @@ def test_non_photo_routes_keep_the_raw_yardstick_untouched():
         assert "already loaded for this design" in f["message"]
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_a_one_cone_photo_design_is_not_silenced_by_the_rescoring():
     """The degenerate guard. With a single loaded spool every excess is 0 by
     construction, so an unguarded rescoring would go permanently quiet and

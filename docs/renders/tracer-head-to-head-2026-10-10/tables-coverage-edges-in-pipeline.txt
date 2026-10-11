@@ -1,0 +1,60 @@
+
+fremontsil-flat-r1.8  (source 1.80 px/mm, work 7.20)
+  variant          p_med  p_p90  r_med   turn spikes/100mm nodes
+  shipped          0.121  0.272  0.112   67.0      1.4    2737
+  coverage_edges   0.053  0.165  0.067   28.5      1.4    1788
+  coverage no curves 0.060  0.165  0.080   26.9      1.7    1256
+  no native read   0.115  0.268  0.105   65.2      0.0    2485
+  no subpixel      0.115  0.268  0.105   65.2      0.0    2485
+  no curves        0.121  0.272  0.112   64.6      1.1    2484
+  plain DP         0.115  0.268  0.105   65.2      0.0    2485
+
+goldensil-flat-r1.8  (source 1.80 px/mm, work 7.20)
+  variant          p_med  p_p90  r_med   turn spikes/100mm nodes
+  shipped          0.094  0.264  0.128   69.2      1.8     452
+  coverage_edges   0.042  0.154  0.086   24.5      1.8     208
+  coverage no curves 0.055  0.158  0.100   24.2      2.1     169
+  no native read   0.085  0.230  0.119   67.2      0.0     419
+  no subpixel      0.085  0.230  0.119   67.2      0.0     419
+  no curves        0.093  0.271  0.128   68.1      2.0     429
+  plain DP         0.085  0.230  0.119   67.2      0.0     419
+
+fremontsil-flat-r3  (source 3.00 px/mm, work 8.00)
+  variant          p_med  p_p90  r_med   turn spikes/100mm nodes
+  shipped          0.062  0.172  0.048   66.1      6.3    3401
+  coverage_edges   0.037  0.093  0.048   49.5      8.8    2763
+  coverage no curves 0.043  0.117  0.058   47.0      9.4    1963
+  no native read   0.075  0.179  0.058   66.5      5.4    2986
+  no subpixel      0.075  0.179  0.058   66.5      5.4    2986
+  no curves        0.065  0.175  0.048   61.3      5.9    2704
+  plain DP         0.075  0.179  0.058   66.5      5.4    2986
+
+goldensil-flat-r3  (source 3.00 px/mm, work 8.00)
+  variant          p_med  p_p90  r_med   turn spikes/100mm nodes
+  shipped          0.061  0.159  0.076   49.2      3.1     425
+  coverage_edges   0.047  0.103  0.071   15.4      1.6     209
+  coverage no curves 0.047  0.115  0.071   14.1      1.6     131
+  no native read   0.058  0.159  0.071   54.9      2.9     458
+  no subpixel      0.058  0.159  0.071   54.9      2.9     458
+  no curves        0.063  0.162  0.076   47.7      3.1     391
+  plain DP         0.058  0.159  0.071   54.9      2.9     458
+
+fremontsil-flat-r5  (source 5.00 px/mm, work 8.00)
+  variant          p_med  p_p90  r_med   turn spikes/100mm nodes
+  shipped          0.046  0.111  0.045   66.6      9.6    3741
+  coverage_edges   0.042  0.098  0.048   50.3      7.9    3367
+  coverage no curves 0.045  0.117  0.048   48.9      8.1    2397
+  no native read   0.046  0.134  0.032   63.0      8.9    3026
+  no subpixel      0.046  0.134  0.032   63.0      8.9    3026
+  no curves        0.048  0.116  0.045   63.4      9.1    2997
+  plain DP         0.046  0.134  0.032   63.0      8.9    3026
+
+goldensil-flat-r5  (source 5.01 px/mm, work 8.00)
+  variant          p_med  p_p90  r_med   turn spikes/100mm nodes
+  shipped          0.049  0.127  0.071   18.1      1.8     219
+  coverage_edges   0.046  0.093  0.052   12.4      0.7     234
+  coverage no curves 0.047  0.106  0.067   10.9      0.9     137
+  no native read   0.045  0.129  0.067   18.6      1.8     217
+  no subpixel      0.045  0.129  0.067   18.6      1.8     217
+  no curves        0.050  0.131  0.071   17.9      1.8     206
+  plain DP         0.045  0.129  0.067   18.6      1.8     217

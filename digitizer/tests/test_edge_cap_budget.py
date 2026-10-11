@@ -96,7 +96,12 @@ def _run(fixture: str, width: float, cap: str = "bean",
         PipelineConfig(target_width_mm=width, edge_cap=cap,
                        edge_cap_over_budget=over_budget,
                        subpixel_edges_upscaled=False,
-                       satin_lettering_split=False, **extra))
+                       satin_lettering_split=False,
+                       # ...and the tracing grid at its pre-flip source line
+                       # (`work_px_per_mm`, ON since 2026-10-01): becker
+                       # traced at 5.8-7.2 px/mm is a third set of polygons,
+                       # and the sweep reads [54.1, 57.6, 54.5] flat.
+                       work_px_per_mm=None, **extra))
     return plan
 
 
@@ -277,7 +282,10 @@ def test_the_ceiling_does_not_fire_on_a_design_that_honestly_costs_a_quarter(wid
     """
     plan = _run(WHITEBG, width)
     bill = _bill(plan)
-    assert 20.0 < bill["percent"] < 27.0, bill["percent"]
+    # Ceiling 27 -> 28 on 2026-10-06: the cap now sews each stretch in the
+    # thread beside it (`edge_cap_follow_adjacent`), and every colour seam
+    # repeats one boundary point, so this design reads 27.0 where it read 26.3.
+    assert 20.0 < bill["percent"] < 28.0, bill["percent"]
     assert bill["over_budget"] is False
     assert _over(plan) is None
     assert bill["percent"] < EDGE_CAP_BUDGET_PCT / 1.4, (

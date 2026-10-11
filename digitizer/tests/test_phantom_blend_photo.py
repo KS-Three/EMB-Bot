@@ -163,6 +163,35 @@ def test_a_WIDE_grey_band_survives():
     assert warns == []
 
 
+def test_an_UPSCALED_halo_is_judged_at_its_source_width():
+    """Stage 1's work grid (`cfg.work_px_per_mm`) upscales a low-res JPEG
+    before this pass, so a 3-source-pixel halo arrives 6 px wide and only
+    a third of it is one-pixel edge: the band gate fails and the dissolve
+    goes quiet (Bridge Bar @ 80 mm: 5 labels dissolved with the grid on,
+    37 with it off). `source_scale` widens the edge band to match."""
+    labels, lab_img, valid = _striped(
+        [(1, BLACK, 20), (2, GREY, 6), (3, WHITE, 20)])
+    out, _drop, warns = dissolve_phantom_blends(
+        labels, valid, lab_img, PipelineConfig(), None, 8.0)
+    assert set(np.unique(out).tolist()) == {1, 2, 3}, "1-px band: survives"
+    assert warns == []
+    out, _drop, warns = dissolve_phantom_blends(
+        labels, valid, lab_img, PipelineConfig(), None, 8.0, source_scale=2.0)
+    assert set(np.unique(out).tolist()) == {1, 3}, "source-width band: gone"
+    assert warns and warns[0]["count"] == 1
+
+
+def test_source_scale_leaves_a_WIDE_band_alone():
+    """The widened band is still a band: a stripe as wide as its
+    neighbours keeps its colour at any scale."""
+    labels, lab_img, valid = _striped(
+        [(1, BLACK, 20), (2, GREY, 20), (3, WHITE, 20)])
+    out, _drop, warns = dissolve_phantom_blends(
+        labels, valid, lab_img, PipelineConfig(), None, 8.0, source_scale=2.0)
+    assert set(np.unique(out).tolist()) == {1, 2, 3}
+    assert warns == []
+
+
 def test_a_thin_TEAL_band_survives():
     """The colour gate, at the width where the edge gate has already given
     up. This is the case that would cost real lettering."""
@@ -251,9 +280,9 @@ def test_a_member_folds_into_the_instance_of_its_endpoint_it_TOUCHES():
     page = np.zeros((h, w), bool)
     labels[0:6, 0:8] = 0                         # B: black, top-left, touches Y and the page, not X
     page[6:40, 0:6] = True; valid[6:40, 0:6] = False
-    # Two pixels wide, not three: `_edge_mask` counts edges between VALID
-    # labels only, so a band's page side is not an edge, and Y has to clear
-    # the 0.5 edge fraction on its X side and its B side alone.
+    # A band's page side counts as edge since 2026-10-08 (the Whale residual
+    # on Bridge Bar), so B -- a thin black block on the page -- now clears
+    # the edge gate too and may fold into A, the identical black it touches.
     labels[6:40, 6:8] = 6; lab_img[6:40, 6:8] = grey    # Y: touches the page, B and X
     labels[6:40, 8:11] = 5; lab_img[6:40, 8:11] = grey  # X: touches Y and A only
     out, drop, warns = dissolve_phantom_blends(
@@ -263,7 +292,8 @@ def test_a_member_folds_into_the_instance_of_its_endpoint_it_TOUCHES():
     assert not gone[x].any() and set(np.unique(out[x]).tolist()) == {2}, "X folds into A, the black it touches"
     y = (labels == 6) & valid
     assert not gone[y].any() and set(np.unique(out[y]).tolist()) <= {0, 2}, "Y folds into a black it touches"
-    assert (out[(labels == 2) & valid] == 2).all() and (out[labels == 0] == 0).all()
+    assert (out[(labels == 2) & valid] == 2).all()
+    assert set(np.unique(out[labels == 0]).tolist()) <= {0, 2}, "B stays black"
 
 
 def test_fewer_than_three_labels_is_a_no_op():
@@ -297,9 +327,14 @@ def bridge_pair():
         # says why). Against the shipped engine the cap and
         # the bind already take most of these greys, which the decision sheet
         # prices as colour5 over colour4.
+        # `work_px_per_mm=None` for the same reason (ON since 2026-10-01,
+        # Kent's flip): bridge is 3.5 px/mm, and traced at 8 the halo is
+        # segmented differently in BOTH arms — 62 regions against 59, where
+        # this fixture's bar is "much less".
         return digitize(BRIDGE, PipelineConfig(
             target_width_mm=80.0, max_colors=6, satin=True,
-            garment_id="left_chest", dissolve_phantom_blends=on, **PRE_FLIP))
+            garment_id="left_chest", dissolve_phantom_blends=on,
+            work_px_per_mm=None, **PRE_FLIP))
     return run(False), run(True)
 
 

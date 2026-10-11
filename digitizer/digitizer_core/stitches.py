@@ -52,6 +52,13 @@ TIE = "tie"
 ROLE_BORDER = "border"
 ROLE_EDGE_CAP = "edge_cap"
 
+# Id prefix of one stretch of the design-silhouette cap. A stretch is
+# addressable like a shape: the Studio sends `cap:<x>:<y>` in
+# `deleted_shape_ids` to drop it, or in `shape_overrides` with a
+# `thread_index` to recolour it. The id is the stretch's midpoint in plan mm,
+# rounded to 1 mm, so it survives an edit elsewhere in the design.
+CAP_PIECE_PREFIX = "cap:"
+
 # The machine command stream a plan compiles to — see `iter_machine_commands`.
 CMD_STITCH = "stitch"
 CMD_JUMP = "jump"
@@ -90,6 +97,9 @@ class StitchRun:
     # sites in this package leaves it alone, and it moves no stitch. Declared
     # LAST so no positional `StitchRun(points, kind)` call shifts.
     role: str = ""
+    # Which stretch of the silhouette cap this run is (`CAP_PIECE_PREFIX` id);
+    # "" for everything else. Declared after `role` for the same reason.
+    piece: str = ""
 
     @property
     def length_mm(self) -> float:

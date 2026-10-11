@@ -20,7 +20,7 @@
   <p class="cfg-sub">{subtitle}</p>
   <div class="startseg" role="group" aria-label="Start with">
     <button type="button" class="startseg-btn" on:click={() => d("addelement", "text")}>Add text</button>
-    <button type="button" class="startseg-btn" on:click={() => d("addelement", "artwork")}>Upload logo</button>
+    <button type="button" class="startseg-btn" on:click={() => d("addelement", "artwork")}>Upload file</button>
   </div>
   <section class="cfg-section" data-section="design"><slot name="design" /></section>
   <section class="cfg-section" data-section="garment"><slot name="garment" /></section>

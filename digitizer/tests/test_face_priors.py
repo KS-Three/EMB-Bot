@@ -237,6 +237,7 @@ def _merged_regions(q) -> int:
     return w["merged_regions"]
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_face_local_threshold_splits_shades_that_merge_outside_a_face():
     cfg = _cfg()
     p = prep(_two_tone_blob(), cfg)

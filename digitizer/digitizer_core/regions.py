@@ -61,6 +61,7 @@ from shapely.ops import unary_union
 from shapely.validation import explain_validity
 
 from . import machine
+from .stitches import CAP_PIECE_PREFIX
 from .warnings_codes import (
     SHAPE_EDIT_UNKNOWN_ID,
     SHAPE_SPLIT_BY_USER,
@@ -220,7 +221,7 @@ _BORDER_VALUES = {"off", "auto", "bean"}
 # fabrics.py's own vocabulary, verbatim (mirrored in digitizer_service.app's
 # copy, which 400s the wire before this ever raises).
 _UNDERLAY_VALUES = {"none", "edge_run", "center_run", "edge_zigzag", "edge_lattice",
-                    "double_lattice", "zigzag"}
+                    "double_lattice", "zigzag", "cross_tatami"}
 
 # `boundary_override` (contract v1.4): a hand-edited polygon replacing a
 # shape's exterior ring outright, holes carried over unchanged from the
@@ -287,7 +288,10 @@ def apply_shape_edits(
     known = {r.shape_id for r in regions}
 
     removed = sorted({s for s in deleted_shape_ids if s in known})
-    unknown = {s for s in deleted_shape_ids if s not in known}
+    # A `cap:` id names a stretch of the silhouette cap, which stage 7 reads
+    # (`stage7_sequence._cap_follow_pieces`); it is not a missing shape.
+    unknown = {s for s in deleted_shape_ids
+               if s not in known and not s.startswith(CAP_PIECE_PREFIX)}
     if removed:
         gone = set(removed)
         regions = [r for r in regions if r.shape_id not in gone]
@@ -301,7 +305,8 @@ def apply_shape_edits(
             )
         )
 
-    unknown |= {s for s in shape_overrides if s not in known}
+    unknown |= {s for s in shape_overrides
+                if s not in known and not s.startswith(CAP_PIECE_PREFIX)}
     by_id = {r.shape_id: r for r in regions}
     # Sorted iteration: when two recolors both introduce new threads, the
     # palette order must not depend on dict insertion order.

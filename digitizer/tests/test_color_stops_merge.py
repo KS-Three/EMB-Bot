@@ -36,7 +36,11 @@ def _run(fixture: str):
     """One digitize + preflight per fixture, reused by every test here.
     Read-only; take an uncached run if one ever needs to mutate."""
     art = TESTDATA / fixture
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **PRE_FLIP)
+    # `work_px_per_mm=None`: the same posture for the tracing grid (ON since
+    # 2026-10-01) — the HEAVY fixture is bridge at 3.5 px/mm, and its cone
+    # list is not this list on the working grid.
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+                         work_px_per_mm=None, **PRE_FLIP)
     # PRE_FLIP: the colour flags Kent flipped ON on 2026-09-10 (the
     # bundle's four and `robust_region_colour`) are held OFF here because
     # this file documents a fact of the engine before those flips

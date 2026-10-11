@@ -246,3 +246,44 @@ test("a design whose sewn moves all fit the bar is byte-identical to before", ()
   assert.strictEqual(body.length, 4, "the leading jump plus three stitches, no splits");
   assert.deepStrictEqual(body.map((r) => r.kind), ["jump", "stitch", "stitch", "stitch"]);
 });
+
+// ---- thread chart: which Brother cone a design colour is written as ------
+//
+// `nearestPecIndex` ranked the chart by plain RGB distance until 2026-10-08,
+// and that sent the Studio's DEFAULT lettering colour (20,20,20) to chart
+// index 50, Deep Green #132b1a, with Black #000000 sitting in the same chart:
+// RGB distance 23.8 to the green, 34.6 to black. A Brother machine names the
+// cone it wants from this index, so black lettering exported as PES asked the
+// operator for green thread. Found by tools/export-audit.mjs's renders, which
+// draw each file in the threads the reader decodes.
+//
+// Every other place this repo matches a colour to a cone ranks by CIEDE2000
+// (app/src/lib/colorMatch.js, digitizer_core/threads.py), so the PES writer now
+// does too. The second test pins the port to colorMatch.js's, which is itself
+// pinned to skimage.
+const { nearestPecIndex, BROTHER_PEC_CHART } = require("../src/pes.js");
+
+test("near-black lettering is written as Black, not Deep Green", () => {
+  const black = BROTHER_PEC_CHART.findIndex((c, i) => i > 0 && c[0] === 0 && c[1] === 0 && c[2] === 0);
+  assert.ok(black > 0, "the chart carries a black");
+  for (const v of [0, 10, 20, 30]) {
+    assert.strictEqual(nearestPecIndex(v, v, v), black, `(${v},${v},${v}) -> index ${nearestPecIndex(v, v, v)}`);
+  }
+});
+
+test("nearestPecIndex ranks the chart by CIEDE2000, as colorMatch.js does", async () => {
+  const { rgbToLab, ciede2000 } = await import("../app/src/lib/colorMatch.js");
+  for (let r = 0; r <= 255; r += 51) {
+    for (let g = 0; g <= 255; g += 51) {
+      for (let b = 0; b <= 255; b += 51) {
+        const lab = rgbToLab([r, g, b]);
+        let best = 1, bestD = Infinity;
+        for (let i = 1; i < BROTHER_PEC_CHART.length; i++) {
+          const d = ciede2000(lab, rgbToLab(BROTHER_PEC_CHART[i]));
+          if (d < bestD) { bestD = d; best = i; }
+        }
+        assert.strictEqual(nearestPecIndex(r, g, b), best, `rgb(${r},${g},${b})`);
+      }
+    }
+  }
+});

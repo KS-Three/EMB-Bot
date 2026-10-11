@@ -64,6 +64,9 @@ FIELDS = {
     # garment in the lettering lane. Same reason as every field above.
     "assumedBacking": "assumed_backing",
     "needsTopper": "needs_topper",
+    # The needle the operator loads (Law 21) — the third hooping-advice
+    # field, 2026-10-01. Same reason as the two above.
+    "needle": "needle",
 }
 
 
@@ -145,6 +148,7 @@ def test_the_parser_is_not_vacuous():
     assert _norm(False) == _norm("false") == "false"
     assert _norm(True) != _norm(1.0), "a bool must not collide with a number"
     assert all(len(v) == len(FIELDS) for v in js.values()), js
+    assert js["pique_knit"]["needle"] == "75/11 ballpoint"       # a value with a space and a slash
 
     garments = _js_garment_fabric(FABRICS_JS.read_text(encoding="utf-8"))
     assert len(garments) == 10, sorted(garments)
@@ -212,6 +216,21 @@ def test_the_browser_fallback_default_matches_python_s():
     assert m, "src/fabrics.js's fabricForGarment no longer has a literal default"
     assert m.group(1) == DEFAULT_FABRIC_ID, (
         f"browser falls back to {m.group(1)!r}, Python to {DEFAULT_FABRIC_ID!r}")
+
+
+def test_the_cutaway_threshold_agrees_across_the_engines():
+    """`CUTAWAY_STITCHES` (src/fabrics.js `hoopingAdvice` — the Studio's
+    hooping card and the PDF worksheet) and `preflight.STITCHES_CUTAWAY_MIN`
+    (the service's `STABILIZER_CUTAWAY` finding) are one craft rule written
+    twice, and each one's comment says "change both". Nothing checked it, and
+    a drift shows the customer two different thresholds for one design.
+    """
+    from digitizer_core import preflight
+
+    src = FABRICS_JS.read_text(encoding="utf-8")
+    m = re.search(r"^\s*const CUTAWAY_STITCHES = (\d+);", src, re.M)
+    assert m, "no `const CUTAWAY_STITCHES = <int>;` in src/fabrics.js"
+    assert int(m.group(1)) == preflight.STITCHES_CUTAWAY_MIN
 
 
 # --- The second hand-copied physical pair -----------------------------------

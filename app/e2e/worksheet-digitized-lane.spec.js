@@ -10,7 +10,7 @@
 // breakdown, and a shopping list is exactly the thing an operator carries to
 // the machine and adds up.
 import { test, expect } from "@playwright/test";
-import { startStudio, pickGarment, openDownload } from "./helpers.js";
+import { startStudio, pickGarment, openDownload, uploadArtwork } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -125,8 +125,7 @@ test("a digitized design's review and worksheet agree, and the cone rows add up"
   // it exists to catch until the garment was pinned. A fixture that does not
   // straddle the boundary is not coverage.
   await pickGarment(page, "Patch");
-  await page.getByRole("button", { name: "Artwork" }).click();
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await uploadArtwork(page, ART_PNG);
   await expect(page.locator("span.stats")).toContainText(/\d[\d,]* stitches/, { timeout: 240000 });
 
   // ---- what the review says ----------------------------------------------

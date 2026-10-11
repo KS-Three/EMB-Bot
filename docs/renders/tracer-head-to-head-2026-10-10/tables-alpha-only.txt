@@ -1,0 +1,63 @@
+
+precision: median mm, arm edge -> truth edge (lower better)
+                                M     A0      A     B1     B2     B3
+fremontsil flat r1.8        0.112  0.115  0.123  0.111  0.109  0.139
+fremontsil flat r3          0.067  0.075  0.060  0.066  0.065  0.155
+fremontsil flat r5          0.037  0.046  0.046  0.044  0.056  0.101
+goldensil flat r1.8         0.103  0.085  0.094  0.103  0.120  0.152
+goldensil flat r3           0.064  0.058  0.061  0.064  0.069  0.254
+goldensil flat r5           0.034  0.045  0.053  0.045  0.052  0.120
+
+precision: share of arm edge within 0.10 mm of truth (higher better)
+                                M     A0      A     B1     B2     B3
+fremontsil flat r1.8         46.2   45.2   42.9   46.8   46.8   34.4
+fremontsil flat r3           70.1   64.5   69.3   70.2   70.7   34.1
+fremontsil flat r5           92.6   79.8   86.9   90.1   76.9   49.5
+goldensil flat r1.8          49.1   56.9   51.9   49.2   43.5   30.6
+goldensil flat r3            76.2   72.3   70.8   75.8   67.9   15.8
+goldensil flat r5            92.0   76.9   77.1   89.2   82.8   44.9
+
+recall: median mm, truth edge -> arm edge (lower better)
+                                M     A0      A     B1     B2     B3
+fremontsil flat r1.8        0.128  0.105  0.112  0.128  0.128  0.185
+fremontsil flat r3          0.064  0.058  0.045  0.064  0.064  0.176
+fremontsil flat r5          0.048  0.032  0.045  0.048  0.064  0.112
+goldensil flat r1.8         0.119  0.119  0.128  0.119  0.143  0.257
+goldensil flat r3           0.071  0.071  0.076  0.071  0.071  0.309
+goldensil flat r5           0.048  0.067  0.071  0.048  0.071  0.143
+
+recall: 90th pct mm (lower better)
+                                M     A0      A     B1     B2     B3
+fremontsil flat r1.8        0.320  0.320  0.333  0.320  0.336  0.534
+fremontsil flat r3          0.160  0.160  0.160  0.160  0.160  0.416
+fremontsil flat r5          0.096  0.096  0.099  0.105  0.144  0.240
+goldensil flat r1.8         0.884  1.017  0.989  0.884  0.883  3.486
+goldensil flat r3           0.143  0.204  0.209  0.166  0.181  1.697
+goldensil flat r5           0.095  0.166  0.166  0.119  0.124  0.285
+
+turning, deg per mm of boundary (lower = smoother)
+                                M     A0      A     B1     B2     B3
+fremontsil flat r1.8         74.2   65.2   63.6   74.2   75.4   20.1
+fremontsil flat r3          122.3   66.5   65.0  118.4  120.1   52.1
+fremontsil flat r5          189.4   63.0   66.4  120.1  122.6   69.5
+goldensil flat r1.8          72.0   67.2   69.2   72.0   73.6   13.8
+goldensil flat r3           116.7   54.9   49.2  109.9  111.7   15.7
+goldensil flat r5           193.9   18.6   17.4  111.5  113.1   12.7
+
+nodes
+                                M     A0      A     B1     B2     B3
+fremontsil flat r1.8         2519   2485   2860   2664   4244    697
+fremontsil flat r3           5051   2986   3487   5000   7027   1949
+fremontsil flat r5           8388   3026   3859   5621   7444   3048
+goldensil flat r1.8           399    419    452    426    812     93
+goldensil flat r3             776    458    425    742   1255    157
+goldensil flat r5            1409    217    472    865   1234    214
+
+regions
+                                M     A0      A     B1     B2     B3
+fremontsil flat r1.8           99     35     34     99     99     57
+fremontsil flat r3            208     48     48    122    122    121
+fremontsil flat r5            187    134    134    168    172    183
+goldensil flat r1.8            27     24     24     27     27     11
+goldensil flat r3              66     12     12     41     41     12
+goldensil flat r5               9      7      7      6      5      6

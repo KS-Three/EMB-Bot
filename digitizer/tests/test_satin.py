@@ -108,12 +108,23 @@ def test_crosses_stay_parallel_along_a_curve():
 
 
 @pytest.mark.parametrize("name,poly,worst", [("C", C_STROKE, 5.0),
-                                             ("O", O_RING, 5.0),
+                                             ("O", O_RING, 6.0),
                                              ("T", T_SHAPE, 5.0)])
 def test_every_archetype_keeps_its_crosses_parallel(name, poly, worst):
     """C 2.3 deg, O 3.1 deg, T 1.3 deg as measured. A branch junction is the
     interesting one: the stem yields to the through-bar there, and the yield
     used to tilt the last crosses of the stem.
+
+    O 5.5 since `satin_outer_rail_pitch` went ON (2026-10-06), bar 6.0: the
+    ring's body is stationed along its OUTER rail (168 stations at 0.40 mm
+    there, against 138 at 0.46), which crowds the inner rail under the
+    short-stitch threshold, so `_short_stitch_guard` retracts every other
+    inner penetration 0.6 mm -- the professional construction; the pro's own
+    O reads 22% short crosses. The CROSSES still turn evenly, 2.3-2.5 deg
+    each; what this metric also compares is each LEAN leg with the next,
+    and a lean leg to a retracted penetration sits ~2.9 deg off one to a
+    full penetration. Not spray: `tests/test_outer_rail_pitch.py` reads the
+    crosses and the leans apart and pins the retraction as regular.
     """
     satin, _, _ = _satin_runs(poly)
     rot = _cross_rotations(satin)
@@ -1688,6 +1699,11 @@ def test_the_hole_side_rail_reaches_the_counter_edge():
     assert inner.size > 100 and outer_pts.size > 100
     # The inner rail lands on the hole's edge (was 7.69, 0.19 short) and
     # never inside it; the outer rail was right before and still is.
-    assert float(np.median(inner)) <= 7.5 + 0.06, float(np.median(inner))
+    # Since `satin_outer_rail_pitch` went ON (2026-10-06) every other inner
+    # penetration is a deliberate short stitch, retracted toward the outer
+    # rail, so the on-rail HALF is what reaches the edge: the pin reads the
+    # lower quartile where it read the median. `tests/test_outer_rail_pitch.py`
+    # pins the retraction's own geometry.
+    assert float(np.percentile(inner, 25)) <= 7.5 + 0.06, float(np.percentile(inner, 25))
     assert float(inner.min()) >= 7.5 - 0.03, float(inner.min())
     assert float(np.median(outer_pts)) >= 10.0 - 0.06, float(np.median(outer_pts))

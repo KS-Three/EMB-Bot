@@ -1,5 +1,5 @@
 import { test, expect, vi } from "vitest";
-import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, threadLayers, threadLodLayers, layerSubsetForCount, drawThreads, kindStyle, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM } from "./preview.js";
+import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, drawGrid, renderRealistic, threadLayers, threadLodLayers, layerSubsetForCount, drawThreads, kindStyle, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM } from "./preview.js";
 // ONE import line, deliberately. Three had accumulated here -- each bad merge
 // of this file stacked another partial copy on top rather than reconciling the
 // list, so the same seven names were declared three times over. esbuild
@@ -649,6 +649,29 @@ test("drawThreads draws BLOCK-major: a later colour covers an earlier one, and a
   ]);
 });
 
+test("lit view skips a whole off-clip bucket, never part of one -- the on-canvas strokes are untouched", () => {
+  // Per-strand culling inside a path that still draws changes Chromium's
+  // anti-aliasing of the rest of that path (measured 2026-10-08), so the only
+  // pixel-exact skip is a whole stroke() whose every strand is off the clip.
+  const RED = [200, 10, 10], BLUE = [10, 10, 200];
+  const strands = [
+    { x0: 10, y0: 10, x1: 50, y1: 10, rgb: RED, kind: "stitch" },       // on canvas
+    { x0: 5000, y0: 10, x1: 5040, y1: 10, rgb: BLUE, kind: "stitch" },  // far right
+    { x0: 10, y0: 20, x1: 50, y1: 20, rgb: RED, kind: "stitch" },       // on canvas
+    { x0: -900, y0: 20, x1: 60, y1: 20, rgb: RED, kind: "stitch" },     // crosses the edge
+  ];
+  const clip = { x0: 0, y0: 0, x1: 100, y1: 100 };
+  const noClip = makeCtxSpy();
+  drawThreads(noClip, strands, (x) => x, (y) => y, 8, { layers: [TRUE_COLOUR_LAYER] });
+  const clipped = makeCtxSpy();
+  drawThreads(clipped, strands, (x) => x, (y) => y, 8, { layers: [TRUE_COLOUR_LAYER], clip });
+  const colours = (c) => c.strokeStyleLog.filter((x) => /^rgb\(/.test(x));
+  expect(colours(noClip)).toEqual(["rgb(200,10,10)", "rgb(10,10,200)", "rgb(200,10,10)"]);
+  // The blue block is entirely off-clip and goes; both red blocks stay, the
+  // edge-crossing strand with them.
+  expect(colours(clipped)).toEqual(["rgb(200,10,10)", "rgb(200,10,10)"]);
+});
+
 test("FLAT view agrees with the lit view about sew order — a recurring colour is its own block there too", () => {
   // The flat path used to key its buckets by RGB alone, so the third strand
   // below was merged back into the first block and drawn BEFORE the blue it
@@ -1145,4 +1168,25 @@ test("a role does NOT raise a run that is underneath by nature — a border's br
   // ...while the stitching that FORMS the border does stand proud.
   expect(kindStyle("border", "border").raised).toBe(true);
   expect(kindStyle("travel", "border").raised).toBe(false);
+});
+
+
+const rec = () => {
+  const calls = [];
+  const ctx = new Proxy({}, { get: (_, k) => (k === "calls" ? calls : (...a) => { calls.push([k, ...a]); }), set: () => true });
+  return { ctx, calls };
+};
+const g = { minor: "m", major: "M" };
+
+test("draws minor then major lines through the hoop centre", () => {
+  const { ctx, calls } = rec();
+  drawGrid(ctx, 200, 200, 2, 100, 100, g); // 10 mm = 20 px
+  expect(calls.filter((c) => c[0] === "stroke").length).toBe(2);
+  expect(calls.some((c) => c[0] === "moveTo" && c[1] === 100.5)).toBe(true);
+});
+
+test("drops minor lines when zoomed far out", () => {
+  const { ctx, calls } = rec();
+  drawGrid(ctx, 200, 200, 0.2, 100, 100, g); // 10 mm = 2 px
+  expect(calls.filter((c) => c[0] === "stroke").length).toBe(1);
 });

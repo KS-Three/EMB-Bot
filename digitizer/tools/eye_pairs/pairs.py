@@ -25,8 +25,10 @@ BASE = "base"
 # screen, not artwork a customer would send, and three sittings of verdicts on
 # it were all "both bad" or "disregard". It stays in `REAL_ART` for the
 # instruments (the corpus tables still count it); the render and the labelled
-# page skip it.
-EXCLUDED_FIXTURES = frozenset({"screenshot"})
+# page skip it. Gaulke joined it on the full-density Columns sitting of
+# 2026-10-08: "This image sucks, I wouldn't use this image in a comparison
+# going forward" -- a low-quality upload, judged "both bad" twice.
+EXCLUDED_FIXTURES = frozenset({"screenshot", "gaulke"})
 REF_ARM = "ref_0827"
 # `main` on 2026-08-27, the engine Kent's fourteen notes and his "60%" describe.
 REF_COMMIT = "25da2fe"
@@ -41,7 +43,11 @@ REF_0930AM_COMMIT = "1e5f8fe2"
 # `__ref__` instead of PipelineConfig kwargs. Adding a sitting is adding a row.
 ARMS: dict[str, dict] = {
     "per_stroke": {"satin_per_stroke": True},
-    "patch_junctions": {"satin_patch_junctions": "satin"},
+    # `patch_junctions` (`satin_patch_junctions="satin"`) left 2026-10-03
+    # without a flip: `satin_junction_stack` (ON 2026-09-19) hands the cover
+    # that same setting as its part C, so the arm was the base. Rendered on
+    # the built-OFF sitting it was identical to the stitch on all eight logos,
+    # and on becker and enthusiast with crown cover off as well.
     "polygon_axis": {"satin_polygon_axis": "artwork"},
     "area_weighted": {"classify_area_weighted": True},
     "design_angle": {"design_angle": True},
@@ -55,6 +61,9 @@ ARMS: dict[str, dict] = {
     # is the base now and no longer an arm.
     "wide_columns": {"wide_columns": True},
     "lettering_column": {"lettering_min_column_mm": 1.0},
+    # Lettering as Columns (2026-10-07): the outline-cut construction, built
+    # OFF; the labelled pairs are the flip's evidence.
+    "lettering_columns": {"lettering_columns": True},
     "phantom_dissolve": {"dissolve_phantom_blends": True},
     "directional_comp": {"directional_comp": True},
     REF_ARM: {"__ref__": REF_COMMIT},
@@ -85,6 +94,29 @@ ARMS: dict[str, dict] = {
     # there: a centre run and a ladder zigzag under every one; the pro's
     # crosshatch is denser, not different in kind.)
     "split_off": {"split_satin": False},
+    # The built-OFF sitting (2026-10-03): the flags that sat finished and
+    # unjudged -- MASTER_SCOPE "Waiting on Kent" 19 and 21, and #602 -- on
+    # one page, with `split_off` above carried over from its own unjudged
+    # sitting. `bean_letters` sews at 1.0, the value Kent picked.
+    # `cap_recentre` was the third; it shipped ON off that sitting the same
+    # day (2 after, 0 before), so it is the base now and no longer an arm.
+    "keep_counters": {"keep_counters": True},
+    "bean_letters": {"bean_letter_max_stroke_mm": 1.0},
+    # Letterform priors (2026-10-06, Kent's option A after the spike): a
+    # low-resolution upload's lettering refit to lines and arcs under the
+    # word's stem direction, widths and baseline, every move capped at 0.75
+    # source pixels. Only an upscaled upload is touched (becker, bridge,
+    # gaulke); drone, enthusiast and fremont are byte-identical and keep
+    # their head on the page as identical, which is the point of go/no-go 1.
+    "letterform_priors": {"letterform_priors_k": 0.75},
+    # L1, one lettering tagger (2026-10-08, built OFF; Kent picked the
+    # pairs): every lettering reader groups by one word model instead of
+    # the text cluster or the house group (`digitizer_core/words.py`).
+    "lettering_words": {"lettering_words": True},
+    # The flip sitting (2026-10-08, Kent's pick): the two together against
+    # shipped, which is what a flip of the Column lane would turn on -- he
+    # ruled the word tagger the lane's tagger on `words-columns-1008`.
+    "columns_words": {"lettering_columns": True, "lettering_words": True},
 }
 
 

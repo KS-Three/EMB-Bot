@@ -103,6 +103,7 @@ from skimage.color import deltaE_ciede2000
 from skimage import graph as skgraph
 
 from .config import PipelineConfig
+from .fast_skimage import deltaE_ciede2000_1
 from .palette import region_weight, select_palette
 from .stage1_prep import Prep
 from .stage2_quantize import Quant, _quantize_population
@@ -1077,9 +1078,15 @@ def _boundary_contrast_initial_adjust(rag) -> None:
 
 
 def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
-    da = g.nodes[dst]["mean color"].reshape(1, 3)
-    na = g.nodes[n]["mean color"].reshape(1, 3)
-    w = float(deltaE_ciede2000(da, na)[0])
+    da = g.nodes[dst]["mean color"]
+    na = g.nodes[n]["mean color"]
+    # The scalar twin of skimage's dE00 — the same float bit for bit, ~4x
+    # cheaper on one pair (`fast_skimage`). It is float64 only; skimage
+    # would compute a float32 pair in float32, so anything else goes there.
+    if da.dtype == np.float64 and na.dtype == np.float64:
+        w = deltaE_ciede2000_1(da, na)
+    else:
+        w = float(deltaE_ciede2000(da.reshape(1, 3), na.reshape(1, 3))[0])
     # The face-local threshold drop's recompute half — see
     # `_face_local_threshold`. No-face runs never set the attribute, so `w`
     # is untouched there (the pre-face-priors float, bit for bit).
@@ -1674,6 +1681,7 @@ def dissolve_phantom_blends(
     bg_edge_rgb: np.ndarray | None,
     px_per_mm: float,
     page_mask: np.ndarray | None = None,
+    source_scale: float = 1.0,
 ) -> tuple[np.ndarray, np.ndarray | None, list[dict]]:
     """Fold every merged label that is a COLOUR BLEND of its own two sides
     into whichever side it is nearer. -> (labels, drop_mask, warnings).
@@ -1729,6 +1737,21 @@ def dissolve_phantom_blends(
     # defect 11 was about, reached by a new route. Bincounts over one flat
     # index cost the foreground, once.
     edge = _edge_mask(labels, valid)
+    # The edge band is measured in SOURCE pixels, not working ones. Stage 1
+    # resamples to `cfg.work_px_per_mm` (8.0, ON since 2026-10-01), so a
+    # 5 px/mm JPEG arrives 1.6x upscaled and its ringing, 1-2 source pixels
+    # wide, is now 2-4 working pixels: its interior stops being edge, the
+    # band gate fails, and the dissolve goes quiet. Measured on Bridge Bar at
+    # 80 mm with the grid ON: 5 labels / 26.2 mm2 dissolved against 37 /
+    # 249.3 mm2 with it off. Widening the band by the upscale factor asks
+    # the question at the resolution the halo was made at; at scale <= 1.5
+    # the radius is 1 and this is the old one-pixel band, byte for byte.
+    radius = max(1, int(round(source_scale)))
+    for d in range(2, radius + 1):
+        for dy, dx in ((d, 0), (-d, 0), (0, d), (0, -d)):
+            shifted = np.roll(labels, (dy, dx), (0, 1))
+            shifted_valid = np.roll(valid, (dy, dx), (0, 1))
+            edge |= valid & shifted_valid & (shifted != labels)
     code_v = np.searchsorted(ids, labels[valid])
     counts = np.bincount(code_v, minlength=n_ids)
     edge_counts = np.bincount(code_v[edge[valid]], minlength=n_ids)
@@ -1780,11 +1803,22 @@ def dissolve_phantom_blends(
         # background, enclosed pixels excluded; None reduces to the old
         # behaviour for any caller that does not have it.
         outside = (~valid) if page_mask is None else page_mask
+        page_edge = np.zeros(labels.shape, bool)
         for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             touch = valid & np.roll(outside, (dy, dx), (0, 1))
+            page_edge |= touch
             for a in np.unique(code_frame[touch]):
                 if int(a) >= 0:
                     adj[int(a)].add(_PAGE)
+        # A pixel on the PAGE is on a boundary too. `_edge_mask` counts only
+        # label-against-label contacts, so the outer band of a rim halo loses
+        # its whole page side and reads under `_PHOTO_PHANTOM_EDGE_FRAC`. On
+        # Bridge Bar that was the Whale residual: eight neutral-grey bands
+        # (L* 49-53, between the black spokes and the page) read 0.43-0.49
+        # and were never offered to the dissolve; with page contact counted
+        # they read 0.50-0.54. The page is already an endpoint above, so
+        # counting it as an edge only makes the gate agree with that.
+        edge_counts = np.bincount(code_v[(edge | page_edge)[valid]], minlength=n_ids)
 
     # Each phantom names the side of its OWN step that it is nearer, which
     # is always one of its own neighbours. The flat lane instead sends a
@@ -2451,7 +2485,7 @@ def snap_region_edges(labels: np.ndarray, valid: np.ndarray, lab_img: np.ndarray
 
 def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
             split_tonal=False, shade_demand=False, design_ramp=None,
-            thin_population=False, snap_edges=False) -> Quant:
+            thin_population=False, snap_edges=False, keep_counters=False) -> Quant:
     h, w = p.rgb.shape[:2]
     valid = ~p.bg_mask
     flat_rgb = p.rgb.reshape(-1, 3)
@@ -2602,7 +2636,9 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
         merged, blend_drop, blend_warnings = dissolve_phantom_blends(
             merged, base_valid, true_lab, cfg,
             None if p.bg_from_alpha else p.bg_edge_rgb, p.px_per_mm,
-            page_mask=~valid)
+            page_mask=~valid,
+            source_scale=(p.px_per_mm / p.input_px_per_mm
+                          if p.input_px_per_mm > 0 else 1.0))
         if blend_drop is not None:
             # Page-side halo leaves the foreground before regions are cut
             # from it, so nothing downstream ever sees those pixels as
@@ -2654,8 +2690,11 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     # photo lane -- see stage3_segment.resolve_small_regions for the
     # measurement. Photo quantisation makes sub-floor fragments mutually
     # adjacent everywhere, so chaining stops discriminating here.
+    # `keep_counters` is the caller's gate, like `thin_population`: read on
+    # `true_lab`, the raster's own colours, since every region here is layer 0.
     kept, floor_warnings = resolve_small_regions(
-        regions, cfg, p.px_per_mm, chain_rescue=False)
+        regions, cfg, p.px_per_mm, chain_rescue=False,
+        lab_img=true_lab if keep_counters else None, keep_counters=keep_counters)
 
     return kept_masks_to_quant(
         p,

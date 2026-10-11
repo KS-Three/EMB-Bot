@@ -15,16 +15,18 @@ Run it:  .venv/Scripts/python -m digitizer_service
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
+import threading
 from contextlib import asynccontextmanager
 from dataclasses import fields as dataclass_fields
 
 import cv2
 import numpy as np
-from fastapi import Body, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from shapely.geometry import Polygon
 from starlette.concurrency import run_in_threadpool
 
@@ -40,8 +42,9 @@ from digitizer_core.stage0_classify import CLASSES
 from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
 from digitizer_core.stitchwidth import review_block, validate_override_mm
 
-from . import formats
-from .jobs import DONE, GenerationCache, JobRegistry, content_key, generation_key
+from . import formats, schemas
+from .guards import BodyLimit, Deadline, too_large_detail
+from .jobs import DONE, Busy, GenerationCache, JobRegistry, content_key, generation_key
 
 # 0.5.0 -> 0.6.0, 2026-09-15: `design.runs`, the run-span index, is now on
 # every `/digitize` and `/digitize-manual` response.
@@ -112,6 +115,49 @@ MAX_PIXELS = 40_000_000
 # must obey.
 DECODE_MAX_SIDE_PX = 2800
 
+# Whole-request byte budgets, enforced by `guards.BodyLimit` before a body is
+# buffered. An upload route gets the file limit plus a megabyte for the
+# multipart framing and the config field, so the route's own 413 (which names
+# the artwork's size) is still the one a near-miss sees. Everything else is
+# JSON: a 300k-stitch design is ~12 MB as `/export` JSON, so 32 MB.
+_UPLOAD_ROUTES = ("/digitize", "/calibration/read")
+MAX_JSON_BYTES = 32 * 1024 * 1024
+
+
+def _body_limit(path: str) -> tuple[int, int]:
+    if path in _UPLOAD_ROUTES:
+        return MAX_UPLOAD_BYTES + 1024 * 1024, MAX_UPLOAD_BYTES
+    return MAX_JSON_BYTES, MAX_JSON_BYTES
+
+
+# A request (not a job — `/digitize` returns 202 in well under this) that has
+# produced no response in this long is answered 504 by `guards.Deadline`.
+# Read at call time so an operator can set EMBBOT_REQUEST_TIMEOUT_S.
+REQUEST_TIMEOUT_S = 120.0
+
+
+def _request_timeout() -> float:
+    return float(os.environ.get("EMBBOT_REQUEST_TIMEOUT_S") or REQUEST_TIMEOUT_S)
+
+
+# Decodes run at submit, BEFORE the job queue, so the queue's in-flight bound
+# does not cover them: ten simultaneous uploads would be ten 40 MP decodes at
+# once. Two at a time; the rest wait in the threadpool. A threading
+# semaphore, not an asyncio one, so it is not bound to whichever event loop
+# touched it first.
+_DECODE_SLOTS = threading.BoundedSemaphore(2)
+
+
+def _decode_bounded(data: bytes) -> np.ndarray:
+    with _DECODE_SLOTS:
+        return _decode(data)
+
+
+BUSY_DETAIL = ("The digitizer is busy with other designs right now. "
+               "Try again in a minute.")
+
+log = logging.getLogger("digitizer_service")
+
 # Config keys a caller may set. Everything else on PipelineConfig is either
 # internal (debug_dir) or would let a request write to disk.
 _CONFIG_FIELDS = {f.name for f in dataclass_fields(PipelineConfig)} - {"debug_dir", "extra"}
@@ -130,6 +176,30 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Fritsch's Stitches digitizer", version=VERSION, lifespan=lifespan)
+
+# Starlette adds middleware outside-in in reverse order of these calls: CORS
+# (below) is outermost so even a 413/504 carries its headers, then the
+# deadline, then the body limit nearest the routes.
+app.add_middleware(BodyLimit, limit_for=_body_limit)
+app.add_middleware(Deadline, seconds=_request_timeout)
+
+
+@app.exception_handler(Exception)
+async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
+    """Anything a route did not turn into an HTTPException. The trace goes
+    to the log; the caller gets a sentence, never a stack."""
+    log.error("unhandled error on %s %s", request.method, request.url.path, exc_info=exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Something went wrong on our side. Please try again; "
+                           "if it keeps happening, let us know."},
+    )
+
+
+@app.exception_handler(Busy)
+async def _busy(_: Request, __: Busy) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": BUSY_DETAIL},
+                        headers={"Retry-After": "30"})
 
 # Studio runs on a localhost dev server or a localhost static host. `null`
 # (every file:// page on the machine) is deliberately not allowed.
@@ -172,7 +242,7 @@ _BORDER_VALUES = {"off", "auto", "bean"}
 # wire — so this validates it as a 400 instead of a shape quietly getting the
 # wrong underlay.
 _UNDERLAY_VALUES = {"none", "edge_run", "center_run", "edge_zigzag", "edge_lattice",
-                    "double_lattice", "zigzag"}
+                    "double_lattice", "zigzag", "cross_tatami"}
 # `boundary_override` (contract v1.4) point-count bounds — mirrored,
 # verbatim, in `digitizer_core.regions`'s own copy (the defense-in-depth
 # check for any caller that isn't this service). This layer also pre-checks
@@ -447,6 +517,9 @@ def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
         data.pop("shape_overrides")
 
 
+MAX_TARGET_WIDTH_MM = 1000.0
+
+
 def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
     """The field-allowlist + shape-edit canonicalization shared by every
     config-carrying route. `allowed_fields` differs by route: manual
@@ -477,6 +550,20 @@ def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
     # path. Checked here so a client typo is a 400 naming the valid values,
     # rather than the ValueError `stage0_classify.classify` raises — which
     # would reach the caller as a 500.
+    # `target_width_mm` divides the raster in stage 1, so 0 was a raw
+    # ZeroDivisionError in a FAILED JOB and "wide" a ValueError, both after a
+    # 202 (PR #694's xfail); a negative width even completed. The ceiling is
+    # compute hygiene, not a hoop: stage 1 upscales toward min_px_per_mm, so
+    # an absurd width is an absurd raster.
+    if "target_width_mm" in data:
+        tw = data["target_width_mm"]
+        if not (isinstance(tw, (int, float)) and not isinstance(tw, bool)
+                and math.isfinite(tw) and 0 < tw <= MAX_TARGET_WIDTH_MM):
+            raise HTTPException(
+                status_code=400,
+                detail=f"target_width_mm must be a number of millimetres above 0 "
+                       f"and at most {MAX_TARGET_WIDTH_MM:g}.",
+            )
     # `garment_rgb` reaches `PipelineConfig` as whatever JSON carried, so a
     # malformed one (a hex string, four channels, 300) would surface as a
     # TypeError deep in `stage4_vectorize.garment_sews_enclosed` — a 500.
@@ -660,6 +747,11 @@ def _review_payload(result, plan=None) -> dict:
         "palette": result.palette,
         "design_size_mm": list(result.design_size_mm),
         "px_per_mm": result.px_per_mm,
+        # Where the sewn art sits in the (cropped) upload, as fractions
+        # [x0, y0, x1, y1] — lets the Studio's Original view register the
+        # picture on its stitches. Absent when the result is hand-built.
+        "art_box": (list(result.art_box_frac)
+                    if getattr(result, "art_box_frac", None) else None),
         "segmenter": result.segmenter,
         "background": {
             "detected": result.background.detected,
@@ -807,7 +899,11 @@ def _is_edge_cap(block) -> bool:
     saying so, the Sequencer would show a nameless row the user cannot map to
     anything on the canvas.
     """
-    return any(r.shape_id == _EDGE_CAP_SHAPE_ID for r in block.runs)
+    # Every sewing run, not any: `cfg.edge_cap_fold_into_colour` sews a cone's
+    # cap stretches at the end of that cone's own artwork block, and such a
+    # block has review shapes behind it.
+    sewing = [r for r in block.runs if r.points]
+    return bool(sewing) and all(r.shape_id == _EDGE_CAP_SHAPE_ID for r in sewing)
 
 
 def _block_shape_ids(block, region_ids: set[str] | None = None) -> list[str]:
@@ -826,7 +922,8 @@ def _block_shape_ids(block, region_ids: set[str] | None = None) -> list[str]:
     return seen
 
 
-@app.get("/health")
+@app.get("/health", summary="Service status and limits", response_model=None,
+         responses={200: {"model": schemas.Health}, **schemas.TIMEOUT})
 def health() -> dict:
     return {
         "status": "ok",
@@ -842,7 +939,11 @@ def health() -> dict:
     }
 
 
-@app.post("/digitize", status_code=202)
+@app.post("/digitize", status_code=202, summary="Submit artwork for digitizing",
+          responses={202: {"model": schemas.JobSubmitted, "description": "Job accepted (or replayed)."},
+                     400: schemas.error("No image, undecodable image, or invalid `config`."),
+                     413: schemas.error("Upload over the byte or pixel limit."),
+                     **schemas.BUSY, **schemas.UNAUTHORIZED, **schemas.TIMEOUT})
 async def start_digitize(
     image: UploadFile = File(...),
     config: str | None = Form(None),
@@ -861,14 +962,15 @@ async def start_digitize(
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(
             status_code=413,
-            detail=f"Artwork is {len(data)//1024//1024} MB; the limit is "
-                   f"{MAX_UPLOAD_BYTES//1024//1024} MB. Export it smaller and try again.",
+            detail=too_large_detail(len(data), MAX_UPLOAD_BYTES).replace("Upload", "Artwork", 1),
         )
 
     cfg_dict = _parse_config(config)
     key = content_key(data, cfg_dict)
     gen_key = generation_key(data, cfg_dict)
-    pixels = await run_in_threadpool(_decode, data)
+    if not registry.admits(key):
+        raise Busy()
+    pixels = await run_in_threadpool(_decode_bounded, data)
 
     def work() -> dict:
         cfg = PipelineConfig(**cfg_dict)
@@ -929,9 +1031,13 @@ async def start_digitize(
 MAX_MANUAL_SHAPES = 2000
 
 
-@app.post("/digitize-manual", status_code=202)
+@app.post("/digitize-manual", status_code=202, summary="Submit hand-authored shapes",
+          responses={202: {"model": schemas.JobSubmitted, "description": "Job accepted (or replayed)."},
+                     400: schemas.error("Malformed payload, shape, or config."),
+                     413: schemas.error("Too many shapes."),
+                     **schemas.UNAUTHORIZED, **schemas.TIMEOUT})
 async def start_digitize_manual(
-    payload: dict = Body(...),
+    payload: dict = Body(..., examples=[schemas.MANUAL_EXAMPLE]),
     x_embbot_token: str | None = Header(None),
 ) -> dict:
     """Hand-authored shapes in — no image, stages 1-4 skipped entirely — a
@@ -1017,7 +1123,9 @@ async def start_digitize_manual(
     return {"job_id": job.id, "state": job.state, "cached": cached}
 
 
-@app.get("/jobs/{job_id}")
+@app.get("/jobs/{job_id}", summary="Poll a job", response_model=None,
+         responses={200: {"model": schemas.JobStatus},
+                    404: schemas.error("Unknown or evicted job."), **schemas.UNAUTHORIZED, **schemas.TIMEOUT})
 def job_status(job_id: str, x_embbot_token: str | None = Header(None)) -> dict:
     _require_token(x_embbot_token)
     job = registry.get(job_id)
@@ -1036,7 +1144,8 @@ def job_status(job_id: str, x_embbot_token: str | None = Header(None)) -> dict:
 # cached for the process — every download and every read uses the same
 # design, which is what makes the photo comparable to the reference.
 
-@app.get("/calibration/info")
+@app.get("/calibration/info", summary="Calibration card metadata", response_model=None,
+         responses={200: {"model": schemas.OpenObject}, **schemas.UNAUTHORIZED, **schemas.TIMEOUT})
 def calibration_info(x_embbot_token: str | None = Header(None)) -> dict:
     """What the Studio can show before the card is built: hoop, marks,
     blocks, formats; size and counts once it is. Never builds."""
@@ -1046,7 +1155,11 @@ def calibration_info(x_embbot_token: str | None = Header(None)) -> dict:
     return info
 
 
-@app.get("/calibration/card")
+@app.get("/calibration/card", summary="Download the calibration card",
+         responses={200: {"description": "Machine file in the requested format.",
+                          "content": {"application/octet-stream": {}}},
+                    400: schemas.error("Unsupported format or write failure."),
+                    **schemas.UNAUTHORIZED, **schemas.TIMEOUT})
 def calibration_card(
     format: str = "dst",
     x_embbot_token: str | None = Header(None),
@@ -1080,7 +1193,12 @@ def calibration_card(
     )
 
 
-@app.post("/calibration/read")
+@app.post("/calibration/read", summary="Read a photo of the sewn card", response_model=None,
+          responses={200: {"model": schemas.OpenObject},
+                     400: schemas.error("No photo, or it cannot be decoded."),
+                     413: schemas.error("Photo over the byte or pixel limit."),
+                     422: schemas.error("Card not found in the photo."),
+                     **schemas.UNAUTHORIZED, **schemas.TIMEOUT})
 async def calibration_read(
     photo: UploadFile = File(...),
     garment_id: str | None = Form(None),
@@ -1097,8 +1215,7 @@ async def calibration_read(
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(
             status_code=413,
-            detail=f"Photo is {len(data)//1024//1024} MB; the limit is "
-                   f"{MAX_UPLOAD_BYTES//1024//1024} MB. Export it smaller and try again.",
+            detail=too_large_detail(len(data), MAX_UPLOAD_BYTES).replace("Upload", "Photo", 1),
         )
     img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
     if img is None:
@@ -1110,9 +1227,13 @@ async def calibration_read(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@app.post("/export")
+@app.post("/export", summary="Write a design as a machine file",
+          responses={200: {"description": "Machine file; size and convention in `X-*` headers.",
+                           "content": {"application/octet-stream": {}}},
+                     400: schemas.error("Invalid design, unsupported format, or write failure."),
+                     **schemas.UNAUTHORIZED, **schemas.TIMEOUT})
 def export(
-    payload: dict = Body(...),
+    payload: dict = Body(..., examples=[schemas.EXPORT_EXAMPLE]),
     x_embbot_token: str | None = Header(None),
 ) -> Response:
     """Any EMB-Bot design in, a machine file out.
@@ -1138,7 +1259,9 @@ def export(
     try:
         pattern = design_to_pattern(design, label=label)
         data = formats.write(pattern, fmt)
-    except (KeyError, TypeError, ValueError) as exc:
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        # AttributeError: a stitch that is a bare [x, y, flag] list rather
+        # than a dict reaches the adapter's `.get` (PR #694's xfail).
         raise HTTPException(status_code=400, detail=f"could not write {fmt}: {exc}") from exc
 
     meta = formats.FORMATS[fmt]

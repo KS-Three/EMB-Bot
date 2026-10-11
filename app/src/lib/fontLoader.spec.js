@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 
@@ -21,6 +21,10 @@ describe("fontLoader", () => {
   });
 
   it("ensureFont populates EMB.SATIN_FONTS and returns the font", async () => {
+    // Fresh module: ensureFont memoises its load promise, so a prior test that
+    // already loaded medium_font would return the cached font without
+    // re-populating the global we deleted below.
+    vi.resetModules();
     const { ensureFont } = await import("./fontLoader.js");
     const g = globalThis;
     delete (g.EMB.SATIN_FONTS || {}).medium_font;

@@ -55,5 +55,11 @@ carry 1–3 fill shapes that essentially never cut; this one is the exception, n
 the type. Use it to reproduce a defect, never to size how much a fix is worth.
 Detail: [[real-artwork-trim-truth]].
 
+**Correction 2026-08-23 (recorded here 2026-10-04):** the "real logos carry 1–3
+fill shapes that essentially never cut" figure rests on four vendor preview
+renders, not client artwork, and is TAINTED until re-measured — see the
+correction in [[real-artwork-trim-truth]]. This fixture's UNREPRESENTATIVE
+verdict stands on its own 46-hole field.
+
 See also [[satin-extremity-drop-and-coverage-check]] and
 [[real-artwork-parity]].

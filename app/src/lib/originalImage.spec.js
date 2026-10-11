@@ -1,5 +1,5 @@
-import { expect, test } from "vitest";
-import { originalDataUrl, fitRect, hasOriginal, placeByContent, flatContentBox } from "./originalImage.js";
+import { expect, test, vi } from "vitest";
+import { originalDataUrl, fitRect, hasOriginal, placeByContent, flatContentBox, digitizedContentBox, loadOriginal, ORIGINAL_CACHE_MAX } from "./originalImage.js";
 
 test("the content box, not the frame, is fitted to the rect", () => {
   // 200x100 image whose art is the middle half: the image is drawn at twice
@@ -68,4 +68,35 @@ test("only image and digitized elements with a sourcePng have an original", () =
   expect(hasOriginal({ type: "digitized", sourcePng: null })).toBe(false);
   expect(hasOriginal({ type: "text", text: "A" })).toBe(false);
   expect(hasOriginal(null)).toBe(false);
+});
+
+test("digitizedContentBox maps the service's art fractions back through the crop", () => {
+  // Uncropped: fractions of the whole frame.
+  const a = digitizedContentBox(1000, 500, [0.1, 0.2, 0.6, 0.8], null);
+  expect([a.x, a.y, a.w, a.h].map(Math.round)).toEqual([100, 100, 500, 300]);
+  // Cropped to the right half: the art box is a fraction of THAT half.
+  const b = digitizedContentBox(1000, 500, [0, 0, 0.5, 1], { x0: 0.5, y0: 0, x1: 1, y1: 1 });
+  expect(b).toEqual({ x: 500, y: 0, w: 250, h: 500 });
+  // No box (an older saved review), or a degenerate one: no registration.
+  expect(digitizedContentBox(1000, 500, null, null)).toBeNull();
+  expect(digitizedContentBox(1000, 500, [0.5, 0.5, 0.5, 0.9], null)).toBeNull();
+});
+
+test("loadOriginal keeps a bounded cache: a repeat is the same decode, the oldest upload is evicted", async () => {
+  let decodes = 0;
+  vi.stubGlobal("Image", class {
+    set src(_) { decodes++; queueMicrotask(() => this.onload && this.onload()); }
+  });
+  try {
+    const png = (i) => "iVBORw0KGgo" + i;
+    const first = loadOriginal(png(0));
+    expect(loadOriginal(png(0))).toBe(first);
+    expect(decodes).toBe(1);
+    for (let i = 1; i <= ORIGINAL_CACHE_MAX; i++) loadOriginal(png(i));
+    expect(decodes).toBe(ORIGINAL_CACHE_MAX + 1);
+    loadOriginal(png(0)); // evicted by the ninth distinct image: decodes again
+    expect(decodes).toBe(ORIGINAL_CACHE_MAX + 2);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

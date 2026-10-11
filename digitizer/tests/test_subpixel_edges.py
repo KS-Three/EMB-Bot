@@ -28,7 +28,7 @@ from digitizer_core import stage4_vectorize as s4
 from digitizer_core.subpixel import ACCEPT_WINDOW_PX, drop_isolated_rejects, subpixel_contour
 from digitizer_core.threads import rgb_to_lab
 
-from .conftest import TESTDATA
+from .conftest import TESTDATA, held_on_source_line
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "tools"))
@@ -244,11 +244,15 @@ def rung_400(tmp_path_factory):
     # OFF and 0.188 ON — both an order of magnitude off the 0.048 -> 0.013
     # this rung was measured at, in BOTH arms, so the reading stops being
     # about sub-pixel edges at all.
+    # And the tracing grid at its pre-flip source line (`work_px_per_mm` went
+    # ON 2026-10-01): the 400 px rung is 4.2 px/mm, and enlarged to 8 it is
+    # not the raster these numbers were read on.
     work = tmp_path_factory.mktemp("subpixel_ladder")
-    return {"off": el.measure_rung("whitebg", 400, "flat", work,
-                                   flag=["subpixel_edges=false", "keep_thin_strokes=false"]),
-            "on": el.measure_rung("whitebg", 400, "flat", work,
-                                  flag=["subpixel_edges", "keep_thin_strokes=false"])}
+    with held_on_source_line():
+        return {"off": el.measure_rung("whitebg", 400, "flat", work,
+                                       flag=["subpixel_edges=false", "keep_thin_strokes=false"]),
+                "on": el.measure_rung("whitebg", 400, "flat", work,
+                                      flag=["subpixel_edges", "keep_thin_strokes=false"])}
 
 
 def _dp(points: np.ndarray, eps: float) -> np.ndarray:
@@ -423,6 +427,7 @@ def _radial(region) -> tuple[float, float, float, int]:
     return r, float(np.sqrt(np.mean(dev ** 2))), float(np.abs(dev).max()), len(pts)
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_prep_keeps_the_native_raster_only_when_it_upscales(tmp_path):
     opaque, cutout, _r = _low_res_discs(tmp_path)
     big, _c, _r2 = _disc(w=400, h=400, c=200, r=150)
@@ -440,6 +445,7 @@ def test_prep_keeps_the_native_raster_only_when_it_upscales(tmp_path):
 
 
 @pytest.mark.parametrize("which", ["opaque", "cutout"])
+@pytest.mark.usefixtures("source_line_grid")
 def test_an_upscaled_low_res_disc_is_read_onto_its_edge_from_the_source(tmp_path, which):
     """OFF, the polygon is the nearest-upscaled mask's staircase: 0.2 mm of
     radial scatter, 0.4 mm at worst, and on the cutout a tenth of a
@@ -469,6 +475,7 @@ def test_an_upscaled_low_res_disc_is_read_onto_its_edge_from_the_source(tmp_path
     assert n_on < n_off / 2, (n_off, n_on)
 
 
+@pytest.mark.usefixtures("source_line_grid")
 def test_the_upscaled_flag_is_inert_on_a_source_at_its_own_resolution(tmp_path):
     """A 400 px disc at 50 mm arrives above the floor: the flag has no
     regime to act in and the polygon is `subpixel_edges`'s, byte for byte."""

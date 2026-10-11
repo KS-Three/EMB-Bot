@@ -1,6 +1,7 @@
 // Full pre-digitized lettering pipeline in Node: font library -> layoutText ->
 // buildLetteringDesign -> DST. Then render with tools/render-dst.mjs to verify.
 // Usage: TEXT="SD WHEEL" FONT=test/fixtures/fonts/geneva_simple.json GW=5 GH=2.25 node tools/run-lettering.mjs out.dst colors.json
+import "./_help.mjs";
 import { createRequire } from "module";
 import fs from "node:fs";
 const require = createRequire(import.meta.url);

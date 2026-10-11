@@ -45,6 +45,7 @@ def parse_gpl(text: str) -> list[tuple[str, str, tuple[int, int, int]]]:
         # A line that is nothing but a catalog number still names a real spool.
         if not name:
             name, number = number, ""
+        name = " ".join(name.split())
         if name:
             entries.append((number, name, (r, g, b)))
     return entries

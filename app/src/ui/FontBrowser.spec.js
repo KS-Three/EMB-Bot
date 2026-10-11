@@ -13,6 +13,7 @@ import "@testing-library/jest-dom/vitest";
 import { createRequire } from "node:module";
 
 vi.mock("../lib/fontLoader.js", () => ({
+  loadCoverage: () => Promise.resolve(null),
   loadManifest: () => Promise.resolve({
     fonts: [
       { key: "good_font", name: "Good Font", group: "Sans" },

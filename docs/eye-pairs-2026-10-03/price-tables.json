@@ -1,0 +1,477 @@
+{
+ "cap_recentre": {
+  "caption": "The price the pictures cannot show, counted from the designs that drew these pairs (main at 28c893e3 plus satin_crown_cover ON, both sides): shipped → flag where they differ, one figure where they do not. Nothing here says which side is better; it says what the flag spends.",
+  "columns": [
+   "fixture",
+   "mm",
+   "stitches",
+   "trims",
+   "colour changes",
+   "cones",
+   "on the page"
+  ],
+  "rows": [
+   [
+    "tires",
+    "80",
+    "2,851 → 2,853",
+    "8",
+    "0",
+    "1",
+    "pair"
+   ],
+   [
+    "fremont",
+    "92.5 patch",
+    "20,023",
+    "57",
+    "3",
+    "3",
+    "pair"
+   ],
+   [
+    "becker",
+    "100",
+    "9,715 → 9,702",
+    "64 → 63",
+    "1",
+    "1",
+    "pair"
+   ],
+   [
+    "drone",
+    "80",
+    "18,975",
+    "138",
+    "9",
+    "6",
+    "pair"
+   ],
+   [
+    "enthusiast",
+    "80",
+    "2,486 → 2,484",
+    "14",
+    "2",
+    "2",
+    "pair"
+   ],
+   [
+    "bridge",
+    "80",
+    "17,744",
+    "97",
+    "6",
+    "6",
+    "pair"
+   ],
+   [
+    "golden_tee",
+    "80",
+    "8,476 → 8,474",
+    "44",
+    "9",
+    "6",
+    "pair"
+   ],
+   [
+    "gaulke",
+    "80",
+    "4,205",
+    "33",
+    "2",
+    "2",
+    "pair"
+   ],
+   [
+    "all eight",
+    "",
+    "84,475 → 84,460",
+    "455 → 454",
+    "32",
+    "",
+    ""
+   ]
+  ]
+ },
+ "patch_junctions": {
+  "caption": "NOTHING TO RULE: identical to the stitch on all eight logos, because this is already the shipped engine. satin_junction_stack (ON since 2026-09-19, your A + B + C ruling) sews this same satin cover as its part C, and satin_crown_cover contains it again, so the flag off and the flag on are one engine (stage6_satin.py, where the cover is chosen). The price the pictures cannot show, counted from the designs that drew these pairs (main at 28c893e3 plus satin_crown_cover ON, both sides): shipped → flag where they differ, one figure where they do not. Nothing here says which side is better; it says what the flag spends.",
+  "columns": [
+   "fixture",
+   "mm",
+   "stitches",
+   "trims",
+   "colour changes",
+   "cones",
+   "on the page"
+  ],
+  "rows": [
+   [
+    "tires",
+    "80",
+    "2,851",
+    "8",
+    "0",
+    "1",
+    "identical, no pair"
+   ],
+   [
+    "fremont",
+    "92.5 patch",
+    "20,023",
+    "57",
+    "3",
+    "3",
+    "identical, no pair"
+   ],
+   [
+    "becker",
+    "100",
+    "9,715",
+    "64",
+    "1",
+    "1",
+    "identical, no pair"
+   ],
+   [
+    "drone",
+    "80",
+    "18,975",
+    "138",
+    "9",
+    "6",
+    "identical, no pair"
+   ],
+   [
+    "enthusiast",
+    "80",
+    "2,486",
+    "14",
+    "2",
+    "2",
+    "identical, no pair"
+   ],
+   [
+    "bridge",
+    "80",
+    "17,744",
+    "97",
+    "6",
+    "6",
+    "identical, no pair"
+   ],
+   [
+    "golden_tee",
+    "80",
+    "8,476",
+    "44",
+    "9",
+    "6",
+    "identical, no pair"
+   ],
+   [
+    "gaulke",
+    "80",
+    "4,205",
+    "33",
+    "2",
+    "2",
+    "identical, no pair"
+   ],
+   [
+    "all eight",
+    "",
+    "84,475",
+    "455",
+    "32",
+    "",
+    ""
+   ]
+  ]
+ },
+ "keep_counters": {
+  "caption": "NO PAIR ON A REAL LOGO: identical to the stitch on all eight at the Studio's six colours. Its one measured effect is a synthetic teal-on-yellow lettering panel (docs/renders/keep-counters-2026-10-02/panel-png-off-vs-on.jpg, 0 to 9 counters kept); bridge's counters are closed in the JPEG before any region exists, so it does not move. Turning it on costs these logos nothing and gives them nothing. The price the pictures cannot show, counted from the designs that drew these pairs (main at 28c893e3 plus satin_crown_cover ON, both sides): shipped → flag where they differ, one figure where they do not. Nothing here says which side is better; it says what the flag spends.",
+  "columns": [
+   "fixture",
+   "mm",
+   "stitches",
+   "trims",
+   "colour changes",
+   "cones",
+   "on the page"
+  ],
+  "rows": [
+   [
+    "tires",
+    "80",
+    "2,851",
+    "8",
+    "0",
+    "1",
+    "identical, no pair"
+   ],
+   [
+    "fremont",
+    "92.5 patch",
+    "20,023",
+    "57",
+    "3",
+    "3",
+    "identical, no pair"
+   ],
+   [
+    "becker",
+    "100",
+    "9,715",
+    "64",
+    "1",
+    "1",
+    "identical, no pair"
+   ],
+   [
+    "drone",
+    "80",
+    "18,975",
+    "138",
+    "9",
+    "6",
+    "identical, no pair"
+   ],
+   [
+    "enthusiast",
+    "80",
+    "2,486",
+    "14",
+    "2",
+    "2",
+    "identical, no pair"
+   ],
+   [
+    "bridge",
+    "80",
+    "17,744",
+    "97",
+    "6",
+    "6",
+    "identical, no pair"
+   ],
+   [
+    "golden_tee",
+    "80",
+    "8,476",
+    "44",
+    "9",
+    "6",
+    "identical, no pair"
+   ],
+   [
+    "gaulke",
+    "80",
+    "4,205",
+    "33",
+    "2",
+    "2",
+    "identical, no pair"
+   ],
+   [
+    "all eight",
+    "",
+    "84,475",
+    "455",
+    "32",
+    "",
+    ""
+   ]
+  ]
+ },
+ "bean_letters": {
+  "caption": "The price the pictures cannot show, counted from the designs that drew these pairs (main at 28c893e3 plus satin_crown_cover ON, both sides): shipped → flag where they differ, one figure where they do not. Nothing here says which side is better; it says what the flag spends.",
+  "columns": [
+   "fixture",
+   "mm",
+   "stitches",
+   "trims",
+   "colour changes",
+   "cones",
+   "on the page"
+  ],
+  "rows": [
+   [
+    "tires",
+    "80",
+    "2,851",
+    "8",
+    "0",
+    "1",
+    "identical, no pair"
+   ],
+   [
+    "fremont",
+    "92.5 patch",
+    "20,023 → 19,173",
+    "57 → 53",
+    "3",
+    "3",
+    "pair"
+   ],
+   [
+    "becker",
+    "100",
+    "9,715",
+    "64",
+    "1",
+    "1",
+    "identical, no pair"
+   ],
+   [
+    "drone",
+    "80",
+    "18,975 → 19,766",
+    "138 → 156",
+    "9 → 10",
+    "6",
+    "pair"
+   ],
+   [
+    "enthusiast",
+    "80",
+    "2,486 → 2,234",
+    "14",
+    "2",
+    "2",
+    "pair"
+   ],
+   [
+    "bridge",
+    "80",
+    "17,744 → 17,549",
+    "97 → 103",
+    "6",
+    "6",
+    "pair"
+   ],
+   [
+    "golden_tee",
+    "80",
+    "8,476 → 8,468",
+    "44 → 52",
+    "9",
+    "6",
+    "pair"
+   ],
+   [
+    "gaulke",
+    "80",
+    "4,205 → 4,657",
+    "33 → 57",
+    "2",
+    "2",
+    "pair"
+   ],
+   [
+    "all eight",
+    "",
+    "84,475 → 84,413",
+    "455 → 507",
+    "32 → 33",
+    "",
+    ""
+   ]
+  ]
+ },
+ "split_off": {
+  "caption": "CARRIED OVER: this arm was on the page as the back-stitching sitting of 2026-10-01 and has no verdict yet; it is redrawn here on today's engine so it is not lost. The needle-holes toggle is where it shows. The price the pictures cannot show, counted from the designs that drew these pairs (main at 28c893e3 plus satin_crown_cover ON, both sides): shipped → flag where they differ, one figure where they do not. Nothing here says which side is better; it says what the flag spends.",
+  "columns": [
+   "fixture",
+   "mm",
+   "stitches",
+   "trims",
+   "colour changes",
+   "cones",
+   "on the page"
+  ],
+  "rows": [
+   [
+    "tires",
+    "80",
+    "2,851 → 2,631",
+    "8",
+    "0",
+    "1",
+    "pair"
+   ],
+   [
+    "fremont",
+    "92.5 patch",
+    "20,023",
+    "57",
+    "3",
+    "3",
+    "identical, no pair"
+   ],
+   [
+    "becker",
+    "100",
+    "9,715 → 7,752",
+    "64",
+    "1",
+    "1",
+    "pair"
+   ],
+   [
+    "drone",
+    "80",
+    "18,975 → 18,962",
+    "138",
+    "9",
+    "6",
+    "pair"
+   ],
+   [
+    "enthusiast",
+    "80",
+    "2,486",
+    "14",
+    "2",
+    "2",
+    "identical, no pair"
+   ],
+   [
+    "bridge",
+    "80",
+    "17,744 → 17,371",
+    "97",
+    "6",
+    "6",
+    "pair"
+   ],
+   [
+    "golden_tee",
+    "80",
+    "8,476 → 8,340",
+    "44",
+    "9",
+    "6",
+    "pair"
+   ],
+   [
+    "gaulke",
+    "80",
+    "4,205",
+    "33",
+    "2",
+    "2",
+    "identical, no pair"
+   ],
+   [
+    "all eight",
+    "",
+    "84,475 → 81,770",
+    "455",
+    "32",
+    "",
+    ""
+   ]
+  ]
+ }
+}

@@ -25,6 +25,9 @@
       // categories rather than gate-1 constants.
       assumedBacking: "cap_buckram",
       needsTopper: false,
+      // The needle the operator loads. Advice like the two above; see
+      // `hoopingAdvice` below for the source and the basis it prints.
+      needle: "75/11 sharp",
     },
     // fillUnderlay was "edge_lattice" on both knits until corpus law 26
     // (docs/corpus-laws-round3-2026-08-01.md, ruled SHIPPED 2026-08-05): under
@@ -48,6 +51,7 @@
       notes: "Polo pique; moderate stretch.",
       assumedBacking: "cutaway",
       needsTopper: false,
+      needle: "75/11 ballpoint",
     },
     {
       id: "jersey_tee",
@@ -60,6 +64,7 @@
       notes: "Stretchy knit; needs solid underlay.",
       assumedBacking: "cutaway",
       needsTopper: false,
+      needle: "75/11 ballpoint",
     },
     {
       id: "fleece_sweatshirt",
@@ -75,6 +80,7 @@
       notes: "Thick nap; heavy underlay, topping helps.",
       assumedBacking: "cutaway",
       needsTopper: true,
+      needle: "75/11 ballpoint",   // sweatshirt fleece is a knit
     },
     {
       id: "canvas_tote",
@@ -87,6 +93,10 @@
       notes: "Stable woven; minimal compensation.",
       assumedBacking: "tearaway",
       needsTopper: false,
+      // docs/specialty-techniques-2026-08-01.md says 80/12 for "denim /
+      // canvas"; Law 21 says 75/11 and escalate for heavy goods. This preset
+      // is also the patch and the tote, so it takes Law 21 (Kent, 2026-10-01).
+      needle: "75/11 sharp",
     },
     {
       id: "terry_towel",
@@ -99,6 +109,9 @@
       notes: "High loops; heavy underlay + topping essential.",
       assumedBacking: "cutaway",
       needsTopper: true,
+      // Woven, so Law 21's split says sharp — Kent ruled ballpoint
+      // (2026-10-01): it parts the loops instead of cutting them.
+      needle: "75/11 ballpoint",
     },
     {
       id: "woven_dress",
@@ -111,6 +124,7 @@
       notes: "Stable woven; minimal compensation.",
       assumedBacking: "tearaway",
       needsTopper: false,
+      needle: "75/11 sharp",
     },
   ];
 
@@ -197,10 +211,89 @@
     };
   }
 
+  // --- Hooping advice (2026-10-01, Kent's call) ------------------------------
+  //
+  // What the operator must hoop — stabilizer, topper, needle — from ONE
+  // function, read by the Studio's hooping card and by the PDF worksheet, so
+  // the screen and the sheet cannot state different advice for one design.
+  // Advice to a person: no stitch planner reads any of it.
+  //
+  // `needle` on each preset above is playbook Law 21 [P — Tajima, Madeira,
+  // Groz-Beckert, A&E]: 75/11 is the standard for 40wt thread, ballpoint on
+  // knits, sharp on wovens and caps. A trade category like the backing class,
+  // not a gate-1 constant — no sew-out settles whether a polo is a knit. Kent
+  // left needle size OFF the sheet on 2026-09-20 and put it back on
+  // 2026-10-01 with the basis printed beside it (DOCTRINE); the basis is
+  // NEEDLE_BASIS, and it rides with the figure everywhere the figure goes.
+  const NEEDLE_BASIS = "standard for 40wt thread";
+
+  // Stitch count past which the advice prescribes cutaway whatever the goods
+  // would otherwise take: a design this heavy needs permanent support or it
+  // distorts when the hoop comes off. Craft rule [P — OESD, via docs/photo-
+  // digitizing-plan-2026-07-31.md §2 row 15]. Twin of the digitizer
+  // preflight's STITCHES_CUTAWAY_MIN (digitizer/digitizer_core/preflight.py)
+  // — duplicated deliberately: this also serves designs that never pass
+  // through the service (lettering, imports, combined multi-element
+  // designs). Change one and change both. Lived in pdfsheet.js until the
+  // card needed the same rule.
+  const CUTAWAY_STITCHES = 25000;
+
+  // "cap_buckram" is an id, not a sentence. The advice is read by a person.
+  function backingLabel(id) {
+    return String(id || "").replace(/_/g, " ");
+  }
+
+  // The advice for a garment and a finished design's stitch count, or null
+  // when the garment is not one we ship — no basis, no claim.
+  // `fabricForGarment` is NOT used on purpose: its pique_knit fallback is
+  // right when you are about to sew and wrong when you are about to advise.
+  function hoopingAdvice(garmentId, stitchCount) {
+    const fabric = garmentId ? getFabric(GARMENT_FABRIC[garmentId]) : null;
+    if (!fabric) return null;
+    const count = stitchCount || 0;
+    // The 25k rule is an ESCALATION of the garment's own backing, not the
+    // only trigger: the backing class is a property of the goods.
+    const escalated = count > CUTAWAY_STITCHES && fabric.assumedBacking !== "cutaway";
+    const backing = escalated ? "cutaway" : fabric.assumedBacking;
+    return {
+      fabricId: fabric.id,
+      fabricLabel: fabric.label,
+      backing,
+      escalated,
+      topper: fabric.needsTopper,
+      needle: fabric.needle,
+      rows: [
+        {
+          label: "Stabilizer",
+          value: backingLabel(backing),
+          // Explicit "en-US": a PDF's text should not change with the machine
+          // that generated it, and the card says the same sentence.
+          note: escalated
+            ? "escalated - " + count.toLocaleString("en-US") +
+              " stitches; tear-away releases under this much thread"
+            : "",
+        },
+        // Stated either way: an operator cannot tell a considered "no topper"
+        // from an oversight.
+        { label: "Topper", value: fabric.needsTopper ? "yes" : "no", note: "" },
+        { label: "Needle", value: fabric.needle, note: NEEDLE_BASIS },
+      ],
+    };
+  }
+
+  // One advice row as one line of text — the worksheet's spelling.
+  function hoopingLine(row) {
+    return row.label + ": " + row.value + (row.note ? " (" + row.note + ")" : "");
+  }
+
   return {
     FABRICS,
     getFabric,
     fabricForGarment,
+    hoopingAdvice,
+    hoopingLine,
+    NEEDLE_BASIS,
+    CUTAWAY_STITCHES,
     PROFILE_FIELDS,
     profileClamps,
     normalizeFabricProfile,

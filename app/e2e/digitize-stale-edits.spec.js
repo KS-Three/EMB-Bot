@@ -20,7 +20,7 @@
 // Same runner split as wizard-smoke.spec.js: this is a @playwright/test spec
 // (`npm run test:e2e`), not a vitest one -- vite.config.js excludes e2e/**.
 import { test, expect } from "@playwright/test";
-import { pickGarment } from "./helpers.js";
+import { pickGarment, uploadArtwork, runDigitize } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -144,12 +144,8 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
 
   // The tile is health-gated (App probes /health on reaching this step); it
   // appearing IS the live assertion that the app sees the real service.
-  await page.getByRole("button", { name: "Artwork" }).click();
 
-  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
-  // No Digitize click: choosing the file starts the run (DigitizePanel's
-  // sourcePng watcher). The button reads "Digitize again" by the time a
-  // result exists, so clicking an exact "Digitize" here would hang.
+  await uploadArtwork(page, ART_PNG);
 
   // Editable layer rows: the black square and the red square -- plus,
   // depending on the service's stage1 build, the white ground. The panel's
@@ -182,15 +178,13 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
   // changes" when idle but "Digitizing…" mid-flight, and it disappearing
   // entirely (hasPendingEdits false) is the "edit landed" signal.
   //
-  // There is no click here any more, and that is the assertion. A BORDER is
-  // complete the moment it is picked, so it restitches on the pick rather than
-  // waiting out the 2 s idle pause the other shape edits keep (editKind in
-  // lib/digitizer.js) — this button goes straight to "Digitizing…" and is gone
-  // before anything could press it. Waiting for it to disappear is the same
-  // "edit landed" signal the note above describes, reached on its own. The
-  // button's own click is still driven by the recovery flow at the end of this
-  // spec, so nothing about it goes untested.
+  // Nothing restitches on its own (Kent 2026-10-05), a border included: the
+  // edit sits pending, the stitches stay as they were, and it is pressed for.
   const apply = page.locator(".dgp-apply");
+  await expect(apply).toHaveText("Apply layer changes");
+  await page.waitForTimeout(1500);
+  await expect(page.locator(".dgp-stats")).toHaveText(statsBefore);
+  await apply.click();
   await expect(apply).toBeHidden({ timeout: 120_000 });
   // The service actually sewed the border: the stitch count moved.
   await expect(page.locator(".dgp-stats")).not.toHaveText(statsBefore);
@@ -208,11 +202,13 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
   // ---- go stale: re-digitize at a new width ------------------------------
   // Shape ids hash the bucketed mm centroid, so halving the width gives both
   // shapes new ids; the applied border override now names a shape that no
-  // longer exists. The width change re-digitizes automatically (the panel's
-  // params watcher), carrying the now-stale override to the service.
+  // longer exists. The width change turns the run button transparent; pressing
+  // it carries the now-stale override to the service.
   const width = page.getByLabel("Design width");
   await width.fill("40");
   await width.blur();
+  await expect(page.locator(".dgp-run")).toHaveClass(/dgp-run-stale/);
+  await runDigitize(page);
 
   // The service answered SHAPE_EDIT_UNKNOWN_ID (translated for the user)...
   await expect(
@@ -226,20 +222,12 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
   // panel never silently drops a user's edit -- recovery is explicit.
   await expect(apply).toBeHidden();
 
-  // ---- recover: Clear them, and it re-sews itself ------------------------
+  // ---- recover: Clear them, then apply ------------------------------------
   await page.getByRole("button", { name: "Clear them" }).click();
   await expect(unmatched).toBeHidden();
+  await apply.click();
   // Dropping the stale override makes the element's edits differ from the ones
-  // this result was digitized with, so a restitch is owed. It no longer waits
-  // to be asked for: the override being dropped here is a BORDER, and a border
-  // change restitches on the spot (editKind in lib/digitizer.js), so recovery
-  // completes on the one "Clear them" click instead of on two.
-  //
-  // WORTH KNOWING, because it is a consequence of that rule rather than
-  // something aimed at: the rule reads the edit SET, so it cannot tell a
-  // border picked off a menu from a border dropped by a bulk recovery. Clear a
-  // stale BOUNDARY instead and this same step keeps the 2 s pause and its
-  // Apply button. Both recover; only the number of clicks differs.
+  // this result was digitized with, so a restitch is owed — and pressed for.
   await expect(apply).toBeHidden({ timeout: 120_000 });
 
   // Clean state: no stale-edit warning, no unmatched notice, both shapes

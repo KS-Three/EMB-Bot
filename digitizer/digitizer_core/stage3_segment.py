@@ -284,9 +284,24 @@ def _chained_small_regions(regions, areas, boxes, small, min_area_px,
 def resolve_small_regions(
     regions: list[RegionMask], cfg: PipelineConfig, px_per_mm: float,
     enclosed_mask: np.ndarray | None = None, *, chain_rescue: bool = True,
-    layer_lab: np.ndarray | None = None,
+    layer_lab: np.ndarray | None = None, lab_img: np.ndarray | None = None,
+    keep_counters: bool = False,
 ) -> tuple[list[RegionMask], list[dict]]:
     """Absorb or drop sub-sewable regions. Returns (kept, warnings).
+
+    `keep_counters` (the caller's lane gate over `cfg.keep_counters`, the way
+    `chain_rescue` is; `config.py` carries the measurement) keeps a letter's
+    counter on a coloured ground: a sub-floor region whose
+    ring is nine tenths one region, and which reads as the ground THAT
+    region sits on — its largest other neighbour — is not a sliver of the
+    letter, it is the gap in it. "Reads as" is nearer the ground's colour
+    than the encloser's, CIE76: the layers' own colours when `layer_lab` is
+    given, else the regions' means in `lab_img` (`(H, W, 3)` CIELAB of the
+    frame — the gradient lane's call, where every region is layer 0). Nearer,
+    not equal: a 1 mm counter in a 3.5 px/mm file is a blend of both and can
+    take a third thread of its own. With neither, or the flag down, nothing
+    here changes. A counter is kept as its own region with
+    `source="counter"`; the pipeline tags it and leaves it unstitched.
 
     `layer_lab` (optional, `(K, 3)` CIELAB per `RegionMask.layer` — the
     quantiser's own cluster colours) arms `cfg.keep_thin_strokes`: with both,
@@ -409,6 +424,50 @@ def resolve_small_regions(
         return bool(cfg.small_shape_rescue and areas[i] >= noise_area_px
                     and 2 * max(box_h, box_w) >= loop_floor_px)
 
+    # --- `cfg.keep_counters` ------------------------------------------------
+    keep_counters = bool(keep_counters) and (layer_lab is not None or lab_img is not None)
+    counters: list[int] = []
+    ground_of: dict[int, int | None] = {}
+    mean_lab: dict[int, np.ndarray] = {}
+
+    def ground(e: int) -> int | None:
+        """The full-size region holding most of `e`'s own one-pixel ring, when
+        that is at least half of it: what the encloser sits on. None for a
+        shape on the page, or one with no dominant neighbour."""
+        if e not in ground_of:
+            eb = boxes[e]
+            ey0, ex0 = max(0, eb[0] - 1), max(0, eb[1] - 1)
+            ey1, ex1 = min(height, eb[2] + 1), min(width, eb[3] + 1)
+            esub = regions[e].window(ey0, ex0, ey1, ex1)
+            ring = _dilate(esub) & ~esub
+            best_g, best_n = None, 0
+            for j in keep:
+                jb = boxes[j]
+                if j == e or jb is None or jb[2] <= ey0 or jb[0] >= ey1 or jb[3] <= ex0 or jb[1] >= ex1:
+                    continue
+                n = int((ring & regions[j].window(ey0, ex0, ey1, ex1)).sum())
+                if n > best_n:
+                    best_g, best_n = j, n
+            ground_of[e] = best_g if best_n * 2 >= int(ring.sum()) else None
+        return ground_of[e]
+
+    def lab_of(i: int) -> np.ndarray:
+        if layer_lab is not None:
+            return layer_lab[regions[i].layer]
+        if i not in mean_lab:
+            y0, x0, y1, x1 = boxes[i]
+            mean_lab[i] = lab_img[y0:y1, x0:x1][regions[i].window(y0, x0, y1, x1)].mean(axis=0)
+        return mean_lab[i]
+
+    def is_counter(i: int, encloser: int, share: int, ring_px: int) -> bool:
+        if share * 10 < ring_px * 9:
+            return False
+        g = ground(encloser)
+        if g is None:
+            return False
+        mine = lab_of(i)
+        return bool(np.linalg.norm(mine - lab_of(g)) < np.linalg.norm(mine - lab_of(encloser)))
+
     # Deterministic order: smallest first, then by top-left position.
     def sort_key(i: int) -> tuple:
         box = boxes[i]
@@ -468,6 +527,15 @@ def resolve_small_regions(
             if de > cfg.merge_delta_e:
                 rescued.append(i)
                 continue
+        # `keep_counters` is asked LAST, of a region about to be absorbed and
+        # of nothing else: whatever the rescue above keeps is sewn exactly as
+        # it was. The first cut asked it first and unstitched thread the
+        # engine lays today — the yellow in the bowl of bridge's script "B",
+        # a dark detail on drone's orange (the corpus sheet, 2026-10-02).
+        if keep_counters and is_counter(i, best, best_share, int(halo.sum())):
+            regions[i].source = "counter"
+            counters.append(i)
+            continue
         regions[best].union_from(regions[i])
         # The absorbing region just grew; its box has to grow with it or a
         # later sliver could be rejected against a stale footprint.
@@ -483,7 +551,8 @@ def resolve_small_regions(
     # order the loop walks).
     kept = ([regions[i] for i in keep] + [regions[i] for i in rescued]
             + [regions[i] for i in protected]
-            + [regions[i] for i in sorted(chained)])
+            + [regions[i] for i in sorted(chained)]
+            + [regions[i] for i in counters])
     warnings: list[dict] = []
     # Only regions big enough to have been intentional artwork are reported;
     # anti-alias slivers are cleaned up silently (see cfg.report_absorb_frac).

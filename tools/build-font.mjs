@@ -14,6 +14,7 @@
 //                          capitals override mono.svg's, which matches the
 //                          font's own preview). We sort filenames for
 //                          determinism where upstream trusts os.listdir.
+import "./_help.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";

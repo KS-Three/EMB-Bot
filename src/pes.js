@@ -231,13 +231,79 @@
     [227, 243, 91], [255, 153, 0], [255, 240, 141], [255, 200, 200],
   ];
 
+  // The chart cone a design colour is written as, ranked by CIEDE2000.
+  //
+  // It ranked by plain RGB distance until 2026-10-08, which sent the Studio's
+  // default lettering colour (20,20,20) to Deep Green #132b1a — 23.8 away in
+  // RGB, where Black #000000 is 34.6 — so black lettering exported as PES
+  // asked a Brother operator for green thread (tools/export-audit.mjs). Every
+  // other cone match in this repo is CIEDE2000 (app/src/lib/colorMatch.js,
+  // digitizer_core/threads.py); the two functions below are colorMatch.js's
+  // port of skimage's rgb2lab and deltaE_ciede2000, copied rather than
+  // imported because this file is a standalone browser global.
+  // test/pes.test.js pins the ranking to colorMatch.js's.
+  const LAB_WHITE = [0.95047, 1.0, 1.08883];
+  function toLinear(v) {
+    const c = v / 255;
+    return c > 0.04045 ? Math.pow((c + 0.055) / 1.055, 2.4) : c / 12.92;
+  }
+  function labF(t) {
+    return t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116;
+  }
+  function rgbToLab(r8, g8, b8) {
+    const r = toLinear(r8), g = toLinear(g8), b = toLinear(b8);
+    const fx = labF((0.412453 * r + 0.35758 * g + 0.180423 * b) / LAB_WHITE[0]);
+    const fy = labF((0.212671 * r + 0.71516 * g + 0.072169 * b) / LAB_WHITE[1]);
+    const fz = labF((0.019334 * r + 0.119193 * g + 0.950227 * b) / LAB_WHITE[2]);
+    return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+  }
+  const TWO_PI = 2 * Math.PI;
+  const POW25_7 = Math.pow(25, 7);
+  const rad = (deg) => (deg * Math.PI) / 180;
+  function ciede2000(lab1, lab2) {
+    const [L1, a1, b1] = lab1;
+    const [L2, a2, b2] = lab2;
+    const cbar = 0.5 * (Math.hypot(a1, b1) + Math.hypot(a2, b2));
+    const c7 = Math.pow(cbar, 7);
+    const scale = 1 + 0.5 * (1 - Math.sqrt(c7 / (c7 + POW25_7)));
+    const ap1 = a1 * scale, ap2 = a2 * scale;
+    const C1 = Math.hypot(ap1, b1), C2 = Math.hypot(ap2, b2);
+    let h1 = Math.atan2(b1, ap1), h2 = Math.atan2(b2, ap2);
+    if (h1 < 0) h1 += TWO_PI;
+    if (h2 < 0) h2 += TWO_PI;
+    const Lbar = 0.5 * (L1 + L2);
+    const lt = (Lbar - 50) * (Lbar - 50);
+    const Lterm = (L2 - L1) / (1 + (0.015 * lt) / Math.sqrt(20 + lt));
+    const Cbar = 0.5 * (C1 + C2);
+    const Cterm = (C2 - C1) / (1 + 0.045 * Cbar);
+    const hDiff = h2 - h1, hSum = h1 + h2, CC = C1 * C2;
+    let dH = hDiff;
+    if (hDiff > Math.PI) dH -= TWO_PI;
+    else if (hDiff < -Math.PI) dH += TWO_PI;
+    if (CC === 0) dH = 0;
+    const dHterm = 2 * Math.sqrt(CC) * Math.sin(dH / 2);
+    let Hbar = hSum;
+    if (CC !== 0 && Math.abs(hDiff) > Math.PI) Hbar += hSum < TWO_PI ? TWO_PI : -TWO_PI;
+    if (CC === 0) Hbar *= 2;
+    Hbar *= 0.5;
+    const T = 1 - 0.17 * Math.cos(Hbar - rad(30)) + 0.24 * Math.cos(2 * Hbar) +
+      0.32 * Math.cos(3 * Hbar + rad(6)) - 0.2 * Math.cos(4 * Hbar - rad(63));
+    const Hterm = dHterm / (1 + 0.015 * Cbar * T);
+    const cb7 = Math.pow(Cbar, 7);
+    const Rc = 2 * Math.sqrt(cb7 / (cb7 + POW25_7));
+    const dTheta = rad(30) * Math.exp(-Math.pow(((Hbar * 180) / Math.PI - 275) / 25, 2));
+    const Rterm = -Math.sin(2 * dTheta) * Rc * Cterm * Hterm;
+    return Math.sqrt(Math.max(0, Lterm * Lterm + Cterm * Cterm + Hterm * Hterm + Rterm));
+  }
+  let chartLab = null;
+
   function nearestPecIndex(r, g, b) {
+    if (!chartLab) chartLab = BROTHER_PEC_CHART.map((c) => (c ? rgbToLab(c[0], c[1], c[2]) : null));
+    const lab = rgbToLab(r, g, b);
     let bestIdx = 1;
     let bestDist = Infinity;
     for (let i = 1; i < BROTHER_PEC_CHART.length; i++) {
-      const entry = BROTHER_PEC_CHART[i];
-      const dr = r - entry[0], dg = g - entry[1], db = b - entry[2];
-      const dist = dr * dr + dg * dg + db * db;
+      const dist = ciede2000(lab, chartLab[i]);
       if (dist < bestDist) { bestDist = dist; bestIdx = i; }
     }
     return bestIdx;
@@ -427,5 +493,5 @@
 
   // splitSteps is exported for test/encoder-split.test.js — see the note on
   // dst.js's copy.
-  return { encodePES, writePEC, splitSteps };
+  return { encodePES, writePEC, splitSteps, nearestPecIndex, BROTHER_PEC_CHART };
 });

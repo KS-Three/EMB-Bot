@@ -25,6 +25,11 @@ Probes `pipeline.revalidate_threads`, NOT `stage4_vectorize`'s: `pipeline`
 binds the name at import, so patching the defining module silently does
 nothing.
 """
+import sys as _sys
+if {"-h", "--help"} & set(_sys.argv[1:]):
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    print(__doc__ or "No usage text; see the source.")
+    raise SystemExit(0)
 import pathlib
 from digitizer_core import PipelineConfig
 from digitizer_core.pipeline import run_stages

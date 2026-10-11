@@ -43,7 +43,8 @@ BASE = "base"
 # restated and pinned by test. Kent, 2026-09-30, twice: screenshot is not a
 # logo to judge digitizing by. A sitting rendered before the rule still has
 # its rows; the labelled page drops them and counts them as excluded.
-EXCLUDED_FIXTURES = frozenset({"screenshot"})
+# Gaulke joined it 2026-10-08 (Kent: not a logo to compare by, going forward).
+EXCLUDED_FIXTURES = frozenset({"screenshot", "gaulke"})
 # The yardstick's `__ref__` arms: an engine snapshot run out of process, and
 # the label the page gives it (BEFORE is that engine on the left, AFTER is
 # today on the right). Restated from `tools.eye_pairs.pairs.ARMS` and pinned
@@ -114,11 +115,6 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "Classify each thin stroke on its own, so a stroke pooled with a blob "
         "keeps its satin; a stroke over the width cap is vetoed to fill rather "
         "than sewn as capped satin beside bare cloth."),
-    "patch_junctions": (
-        'satin_patch_junctions="satin"',
-        "Cover the bare hole where satin arms meet (a K's crotch) with a small "
-        "satin column sewn first, under the arms, instead of a tatami patch "
-        "appended last."),
     "polygon_axis": (
         'satin_polygon_axis="artwork"',
         "Read the satin axis off the artwork polygon instead of stage 5's grown "
@@ -152,6 +148,17 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "lettering_min_column_mm=1.0",
         "Widen sub-floor lettering to a 1.0 mm sewable column instead of the "
         "bean run; known to fill counters at a 2.2 mm cap height."),
+    "lettering_columns": (
+        "lettering_columns=True",
+        "Sew each text-tagged letter as Columns cut from its own outline (one "
+        "column per stroke, rails on the outline, pull on the rails) instead of "
+        "the skeleton's slabs, sewn the way a font glyph is: an Euler walk "
+        "across a letter's columns (earlier visits run underpath, the last "
+        "sews satin), a butting stroke tucked under the stroke it meets, "
+        "slanted ends fanned, both rails needled every 0.40 mm. Built OFF "
+        "2026-10-07; only text-tagged shapes change, so a logo with no tagged "
+        "lettering is identical. Known open: an E or F body still sews as "
+        "three slabs, not a stem plus arms."),
     "phantom_dissolve": (
         "dissolve_phantom_blends=True",
         "Dissolve JPEG ringing colours on the photo/gradient lane, so a logo's "
@@ -208,6 +215,51 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "envelope reached. The envelope's coverage against its texture, on the "
         "letters. Say in your own words what 'flow' and 'structured' mean on a "
         "satin letter -- that note is worth more than the verdict."),
+    "keep_counters": (
+        "keep_counters=True",
+        "A letter's counter on a COLOURED ground stays a hole: today a counter "
+        "under the small-shape floor is absorbed into the letter around it and "
+        "the letter sews as one bar. It cannot read a counter the image has "
+        "already closed (bridge's JPEG), and it puts no ground thread in the "
+        "hole."),
+    "bean_letters": (
+        "bean_letter_max_stroke_mm=1.0",
+        "Small lettering whose INK strokes are under 1.0 mm sews as three-pass "
+        "bean runs along the skeleton of its source ink instead of as satin "
+        "blobs, and the ground under it sews through. Its own listed prices, "
+        "measured at 80 mm: bridge's RESTAURANT reads R-E-S-T with both A's as "
+        "a Y, and HOTEL FREMONT's main wordmark goes bean and loses its slab "
+        "serifs. The 1.0 mm line is a gate-1 number set without cloth: the page "
+        "says which reads right, only cloth says which sews right."),
+    "letterform_priors": (
+        "letterform_priors_k=0.75 (built OFF 2026-10-06)",
+        "A low-resolution upload's lettering is refit to straight segments and "
+        "circular arcs under the word's own stem direction, stroke widths and "
+        "baseline before anything is constructed, every vertex moved at most "
+        "0.75 of a source pixel and a letter the lines and arcs do not explain "
+        "left as traced. Only an upload the engine upscaled is touched: becker "
+        "(0.66 mm pixels), bridge (0.29) and gaulke (0.21). Drone, enthusiast "
+        "and fremont are byte-identical by design -- that identity is the "
+        "flag's first promise, not a failure to act -- and tires has no tagged "
+        "lettering. On today's satin the refit sews becker with more columns "
+        "and trims (55 -> 66) for less bare cloth."),
+    "lettering_words": (
+        "lettering_words=True (built OFF 2026-10-08)",
+        "One lettering tagger instead of two: each line of lettering is found "
+        "once, and the house angle, the satin split, the cap skip, the stitch "
+        "width and the letterform priors all read that word. It finds the "
+        "letters about as well as the text cluster does and splits two lines "
+        "the old taggers merged (gaulke, the screenshot). On today's shipped "
+        "flags the stitches barely move (0.4% at most); its real use is the "
+        "lanes that read it next."),
+    "columns_words": (
+        "lettering_columns=True + lettering_words=True (both built OFF)",
+        "What a flip of the Column lane would turn on: each letter the word "
+        "tagger finds is cut into strokes along its own outline and sewn as "
+        "one column per stroke, rails on the artwork's edge, walked as one "
+        "path with the travel under satin sewn later. BEFORE is shipped: the "
+        "skeleton satin tier. Letters cut less (becker 60 trims -> 28) and no "
+        "junction fans. Nothing here is sewn."),
 }
 
 # Arms that left the pending table because they SHIPPED. A sitting rendered
@@ -224,6 +276,22 @@ RETIRED_ARM_INTENT: dict[str, tuple[str, str]] = {
         "further out than the symmetric width, to the running minimum of that "
         "edge over seven stations. Kent flipped it on after the 2026-09-30 "
         "sitting (2 after, 0 before, golden_tee 'did its job')."),
+    # No flip of its own: the junction stack's part C has handed the cover
+    # this setting since 2026-09-19, so the arm was identical to the base.
+    "patch_junctions": (
+        'satin_patch_junctions="satin" (shipped inside satin_junction_stack, '
+        "ON 2026-09-19)",
+        "Cover the bare hole where satin arms meet (a K's crotch) with a small "
+        "satin column sewn first, under the arms. Already the engine as "
+        "shipped: the junction stack sews this cover as its part C, so the "
+        "flag off and the flag on are one design. Nothing to rule."),
+    "cap_recentre": (
+        "satin_cap_recentre=True (shipped ON 2026-10-03)",
+        "A satin stroke's flat end is rebuilt square where its spine ends in a "
+        "surviving cap fork, where it used to taper to a point at one corner "
+        "and leave the other bare. Kent flipped it on after the 2026-10-03 "
+        "sitting (2 after -- becker and tires, the two the locator boxed -- "
+        "0 before)."),
 }
 
 

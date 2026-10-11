@@ -1,5 +1,6 @@
 // Visualize satinColumn on a synthetic CURVED stroke (a "C" arc band) so we can
 // see whether cross-stitches are perpendicular to the edges and follow the arc.
+import "./_help.mjs";
 import { createRequire } from "module";
 import fs from "node:fs";
 import { encodePNG } from "./png.mjs";

@@ -20,6 +20,9 @@
   export let selectedShapeId = null;
   export let onShapeHover = () => {};
   export let onShapeSelect = () => {};
+  // "Upload file" picks the file before the element exists (App.onArtFile).
+  export let pendingFile = null;
+  export let onFileConsumed = () => {};
 
   function handle(e) {
     element = { ...element, ...e.detail.patch };
@@ -33,6 +36,8 @@
   {health}
   {hoverShapeId}
   {selectedShapeId}
+  {pendingFile}
+  on:fileconsumed={() => onFileConsumed()}
   on:elupdate={handle}
   on:shapehover={(e) => onShapeHover(e.detail)}
   on:shapeselect={(e) => onShapeSelect(e.detail)}

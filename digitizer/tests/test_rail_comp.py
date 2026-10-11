@@ -283,6 +283,11 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
     from tests.test_stroke_order_euler import FIXTURE
 
     def sewn(**kw):
+        # `satin_crown_cover` held OFF in every arm (Kent's flip, 2026-10-02):
+        # the cover adds thread to both sides of each pair, so the ceilings
+        # below would move for its sake and not rail comp's -- the same thing
+        # tip caps did, told above. Its own price is `tests/test_crown_cover.py`'s.
+        kw.setdefault("satin_crown_cover", False)
         c = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
         gen = build_generation(str(FIXTURE), c)
         return plan_stitches(finish_generation(gen.fork(), c), c)
@@ -607,7 +612,12 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
     assert env_bare < off_bare - 0.005, (off_bare, env_bare)          # it reaches: 10.2 -> 9.5%
     assert env_std <= off_std * 1.15, (off_std, env_std)             # at a tenth more roughness (True: +40%)
     assert on_std > env_std, (on_std, env_std)
-    assert env_st < on_st and abs(env_st - off_st) <= 0.02 * off_st, (off_st, env_st, on_st)   # and none of True's thread
+    # ... and none of True's thread. Within 2% of symmetric until
+    # `letterform_priors_k` went ON (2026-10-07): on the refit letters the
+    # envelope reads 6,270 against 6,472 symmetric (3.1% under) and 6,975
+    # True, so the band is 3.5% -- the direction (cheaper than symmetric,
+    # far cheaper than True) is what this pins.
+    assert env_st < on_st and abs(env_st - off_st) <= 0.035 * off_st, (off_st, env_st, on_st)
 
     band = box(0, 0, 24, 2.4).union(box(11, 2.4, 13, 3.6))            # a 2 mm bulge, 1.2 mm deep
     tops = {}

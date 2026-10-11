@@ -36,6 +36,21 @@ export function placeByContent(imgW, imgH, content, rect) {
   return { x: cx - content.x * s, y: cy - content.y * s, w: imgW * s, h: imgH * s };
 }
 
+// The digitized lane's content box, in the 1,200-px preview's own px. The
+// service reports where the sewn art sits as fractions of the image it was
+// handed — the customer's crop of the upload — so the crop (fractions of the
+// whole frame, or absent) maps it back to the whole frame. Null when the
+// review carries no box (a saved element from before the service sent one).
+export function digitizedContentBox(imgW, imgH, artBox, crop) {
+  if (!(imgW > 0) || !(imgH > 0) || !Array.isArray(artBox) || artBox.length !== 4) return null;
+  const [a0, b0, a1, b1] = artBox;
+  const c = crop && crop.x1 > crop.x0 && crop.y1 > crop.y0 ? crop : { x0: 0, y0: 0, x1: 1, y1: 1 };
+  const cw = c.x1 - c.x0, ch = c.y1 - c.y0;
+  const w = (a1 - a0) * cw * imgW, h = (b1 - b0) * ch * imgH;
+  if (!(w > 0) || !(h > 0)) return null;
+  return { x: (c.x0 + a0 * cw) * imgW, y: (c.y0 + b0 * ch) * imgH, w, h };
+}
+
 // The browser lane's content box: the bbox of every flattened pixel that is
 // NOT the engine's transparent index (quantize.js TRANSPARENT_INDEX, 255 —
 // knocked-out background and alpha-cut pixels). These are the pixels
@@ -62,11 +77,21 @@ export function flatContentBox(indices, w, h) {
   return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
 }
 
+// Decoded originals, keyed by the (large) source string. Bounded: every distinct
+// upload used to stay here -- decoded bitmap plus its base64 key -- for the
+// whole session, and removing the element never evicted it. Map order is
+// insertion order, so re-inserting on a hit makes the first key the LRU one.
+export const ORIGINAL_CACHE_MAX = 8;
 const cache = new Map();
 export function loadOriginal(sourcePng) {
   const url = originalDataUrl(sourcePng);
   if (!url) return Promise.reject(new Error("no original"));
-  if (cache.has(sourcePng)) return cache.get(sourcePng);
+  if (cache.has(sourcePng)) {
+    const hit = cache.get(sourcePng);
+    cache.delete(sourcePng);
+    cache.set(sourcePng, hit);
+    return hit;
+  }
   const p = new Promise((resolve, reject) => {
     const im = new Image();
     im.onload = () => resolve(im);
@@ -74,5 +99,6 @@ export function loadOriginal(sourcePng) {
     im.src = url;
   });
   cache.set(sourcePng, p);
+  while (cache.size > ORIGINAL_CACHE_MAX) cache.delete(cache.keys().next().value);
   return p;
 }

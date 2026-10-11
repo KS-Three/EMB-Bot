@@ -6,7 +6,7 @@ digitized here and one built there would need different tuning on the same
 garment. When a sew-out moves a number, move it in both places.
 
 Underlay ids: none | edge_run | center_run | edge_zigzag | edge_lattice |
-double_lattice | zigzag
+double_lattice | zigzag | cross_tatami
 """
 from __future__ import annotations
 
@@ -20,8 +20,9 @@ class Fabric:
     label: str
     pull_comp_mm: float
     fill_underlay: str
-    satin_underlay: str      # unused until build step 4; carried so the table
-                             # stays in step with the browser engine's
+    satin_underlay: str      # read by stage7_sequence's satin underlay choice
+                             # (a photo design overrides it); kept in step with
+                             # the browser engine's table
     density_adjust: float
     trim_at_mm: float
     notes: str
@@ -42,6 +43,13 @@ class Fabric:
     # same pair `density_adjust` already singles out below.
     assumed_backing: str = "cutaway"
     needs_topper: bool = False
+    # The needle the operator loads (playbook Law 21 [P — Tajima, Madeira,
+    # Groz-Beckert, A&E]): 75/11 is the standard for 40wt thread, ballpoint
+    # on knits, sharp on wovens and caps. Advice like the two above — places
+    # no stitch — and carried here only so the two tables stay field-for-field
+    # identical; the function that states it to a person is `hoopingAdvice`
+    # in `src/fabrics.js`. Kent's call 2026-10-01 (DOCTRINE).
+    needle: str = "75/11 ballpoint"
     # The calibration profile this preset was adjusted by, or None — the
     # unadjusted table entry. Set only by `apply_profile`, read by whoever
     # states which fabric is in force (the Studio's Garment step, a job's
@@ -52,7 +60,7 @@ class Fabric:
 FABRICS: list[Fabric] = [
     Fabric("structured_cap", "Structured cap", 0.4, "edge_zigzag", "center_run",
            1.0, 3.0, "Foam/structured cap front; firm, sew center-out.",
-           "cap_buckram", False),
+           "cap_buckram", False, "75/11 sharp"),
     # fill_underlay was "edge_lattice" until corpus law 26 (docs/corpus-laws-
     # round3-2026-08-01.md): the professional corpus never puts a full
     # crosshatch-lattice pass under a knit fill, only a single edge-walk
@@ -61,9 +69,11 @@ FABRICS: list[Fabric] = [
     # of COVERAGE_WARN_UNITS (machine.py); see that constant's derivation
     # comment for why the two moved together.
     Fabric("pique_knit", "Pique knit (polo)", 0.3, "edge_run", "center_run",
-           1.0, 3.0, "Polo pique; moderate stretch.", "cutaway", False),
+           1.0, 3.0, "Polo pique; moderate stretch.", "cutaway", False,
+           "75/11 ballpoint"),
     Fabric("jersey_tee", "Jersey / t-shirt", 0.35, "edge_run", "center_run",
-           1.0, 3.0, "Stretchy knit; needs solid underlay.", "cutaway", False),
+           1.0, 3.0, "Stretchy knit; needs solid underlay.", "cutaway", False,
+           "75/11 ballpoint"),
     # Pile fabrics run BELOW 1.0: the multiplier scales row SPACING, and pile
     # needs tighter rows, not looser — stitches sink into the nap (physics law
     # 30: density +10-20% on lofty goods, and more total thread on loft
@@ -76,14 +86,18 @@ FABRICS: list[Fabric] = [
     # DIRECTION is not.
     Fabric("fleece_sweatshirt", "Fleece / sweatshirt", 0.5, "double_lattice", "zigzag",
            0.90, 3.5, "Thick nap; heavy underlay, topping helps.",
-           "cutaway", True),
+           "cutaway", True, "75/11 ballpoint"),
     Fabric("canvas_tote", "Canvas / twill", 0.2, "edge_run", "center_run",
-           1.0, 3.0, "Stable woven; minimal compensation.", "tearaway", False),
+           1.0, 3.0, "Stable woven; minimal compensation.", "tearaway", False,
+           "75/11 sharp"),
     Fabric("terry_towel", "Terry towel", 0.6, "double_lattice", "zigzag",
            0.85, 4.0, "High loops; heavy underlay + topping essential.",
-           "cutaway", True),
+           # Woven, so Law 21 says sharp; Kent ruled ballpoint 2026-10-01 —
+           # it parts the loops instead of cutting them.
+           "cutaway", True, "75/11 ballpoint"),
     Fabric("woven_dress", "Woven dress shirt", 0.2, "edge_run", "center_run",
-           1.0, 3.0, "Stable woven; minimal compensation.", "tearaway", False),
+           1.0, 3.0, "Stable woven; minimal compensation.", "tearaway", False,
+           "75/11 sharp"),
 ]
 
 _BY_ID = {f.id: f for f in FABRICS}
