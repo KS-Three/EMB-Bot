@@ -290,7 +290,24 @@ class PipelineConfig:
     # (reason "subject_dominated_border") instead of silently deleting the
     # subject. Zero or negative disables the guard.
     bg_border_rival_min: float = 0.10
-    bg_margin_mm: float = 3.0          # intrusion past this inside a shape's hull = uncertain
+    # Background as one paint colour under smooth shading
+    # (`stage1_prep._structural_background`). ON, whether a background
+    # EXISTS is read against a shading field fitted to the border ring at a
+    # fixed visible-difference line (`stage1_prep.BG_FIELD_JND`, 5.0), so
+    # BACKGROUND_ABSENT no longer moves with `bg_tolerance_lab`; how FAR it
+    # floods is the field, refitted on its own flood, within
+    # `bg_tolerance_lab`. Measured 2026-10-11 on the committed fixtures:
+    # summit_badge's vignette goes from 28.3% of the canvas removed to
+    # 71.3% (the badge and its text left, nothing else), its verdict stops
+    # flipping to BACKGROUND_ABSENT below tolerance 4.8, and
+    # logo_toat_beanie's stops flipping at 3.0. One fixture changes
+    # verdict at the shipped tolerance: photo_chrome_specular (a sphere on
+    # a dark, noisy backdrop) gets a background where OFF reports
+    # BACKGROUND_ABSENT. Default OFF, byte-identical off; renders under
+    # `docs/renders/bg-structural-2026-10-11/`, tests
+    # `tests/test_bg_structural.py`.
+    bg_structural: bool = False
+    bg_margin_mm: float = 3.0         # intrusion past this inside a shape's hull = uncertain
     bg_intrusion_min_mm: float = 2.0   # intrusion below (this mm)^2 is boundary noise, not art loss
     min_px_per_mm: float = 4.0         # resolution floor at target size
     upscale_cap: float = 4.0           # max Lanczos upscale factor
@@ -1119,6 +1136,26 @@ class PipelineConfig:
     # moved are named in that entry. False is the pre-flip polygon — the
     # staircase — byte for byte.
     subpixel_edges_upscaled: bool = True
+    # A resolution floor under the read above: a source whose
+    # `Prep.input_px_per_mm` is below this skips the native read and keeps
+    # the pre-flip polygon (and, with it, the curve refinement the read
+    # carries — under `_CURVE_MIN_PX_PER_MM` that pass runs only on chords
+    # the read accepted). None = today's behaviour, the read wherever stage 1
+    # upscaled, byte for byte. Why it exists: measured 2026-10-10
+    # (`docs/tracer-head-to-head-2026-10-10.md`, addendum 3) the read is the
+    # source of the Becker outline reversals — vertices turning back more
+    # than 120 degrees, 7.1 per 100 mm ON against 0.0 OFF at 1.8 px/mm — and
+    # at that resolution it bought no edge accuracy in three cases of four,
+    # while at 3 px/mm it earned its keep in three of four. The ladder at
+    # 1.8 / 3 / 5 px/mm, both settings and this floor at 3.0:
+    # `docs/subpixel-res-gate-2026-10-11.md`. Its cost, seen only in the
+    # render: below the floor Becker's outline is the 0.68 mm source-pixel
+    # staircase again (right-angle turns 26.5 -> 81.3 per 100 mm, zero
+    # reversals because a stair turns 90 degrees), which is why that doc
+    # recommends leaving it unset. A raster quantity of the
+    # source, not a sewing constant. Default None: narrowing Kent's
+    # 2026-09-18 flip is his call.
+    subpixel_edges_min_px_per_mm: float | None = None
     # The same upscaled alpha cutout, outlined from the source's alpha
     # DIRECTLY instead of repaired from the mask. The `alpha < 128` mask and
     # its NEAREST enlargement throw the ramp away and stage 4 then walks a
