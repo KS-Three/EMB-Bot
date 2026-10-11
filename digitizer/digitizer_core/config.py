@@ -290,7 +290,24 @@ class PipelineConfig:
     # (reason "subject_dominated_border") instead of silently deleting the
     # subject. Zero or negative disables the guard.
     bg_border_rival_min: float = 0.10
-    bg_margin_mm: float = 3.0          # intrusion past this inside a shape's hull = uncertain
+    # Background as one paint colour under smooth shading
+    # (`stage1_prep._structural_background`). ON, whether a background
+    # EXISTS is read against a shading field fitted to the border ring at a
+    # fixed visible-difference line (`stage1_prep.BG_FIELD_JND`, 5.0), so
+    # BACKGROUND_ABSENT no longer moves with `bg_tolerance_lab`; how FAR it
+    # floods is the field, refitted on its own flood, within
+    # `bg_tolerance_lab`. Measured 2026-10-11 on the committed fixtures:
+    # summit_badge's vignette goes from 28.3% of the canvas removed to
+    # 71.3% (the badge and its text left, nothing else), its verdict stops
+    # flipping to BACKGROUND_ABSENT below tolerance 4.8, and
+    # logo_toat_beanie's stops flipping at 3.0. One fixture changes
+    # verdict at the shipped tolerance: photo_chrome_specular (a sphere on
+    # a dark, noisy backdrop) gets a background where OFF reports
+    # BACKGROUND_ABSENT. Default OFF, byte-identical off; renders under
+    # `docs/renders/bg-structural-2026-10-11/`, tests
+    # `tests/test_bg_structural.py`.
+    bg_structural: bool = False
+    bg_margin_mm: float = 3.0         # intrusion past this inside a shape's hull = uncertain
     bg_intrusion_min_mm: float = 2.0   # intrusion below (this mm)^2 is boundary noise, not art loss
     min_px_per_mm: float = 4.0         # resolution floor at target size
     upscale_cap: float = 4.0           # max Lanczos upscale factor
