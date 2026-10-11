@@ -8,13 +8,21 @@ the scalar.
 """
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import pytest
 from shapely.geometry import box
 
+from digitizer_core import stage5_overlap
 from digitizer_core.config import PipelineConfig
 from digitizer_core.fabrics import get_fabric
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import resolve_overlaps
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+
+from seam_underlap import measure  # noqa: E402
 
 FABRIC = get_fabric("pique_knit")
 
@@ -89,3 +97,42 @@ def test_another_technique_keeps_the_scalar():
     regs = _pair(0, 0)
     assert _tongue(regs, overlap_by_angle=True, fill_technique="contour") == pytest.approx(
         pull + 0.25, abs=0.02)
+
+
+# Read through the seam instrument (`tools/seam_underlap.measure`), whose
+# depth is the planned tongue -- overlap area over seam length: a parallel
+# join ON reads at least the law's 1.0 mm, a perpendicular one reads exactly
+# what OFF reads.
+def _seam_depth(regions, **kw):
+    planned, _ = resolve_overlaps(regions, FABRIC, PipelineConfig(**kw))
+    pairs = measure(regions, planned)["pairs"]
+    assert len(pairs) == 1 and pairs[0]["earlier"] == "A"
+    return pairs[0]["depth_mm"]
+
+
+def test_seam_instrument_reads_a_parallel_join_at_least_the_law():
+    off = _seam_depth(_pair(0, 0))
+    on = _seam_depth(_pair(0, 0), overlap_by_angle=True)
+    assert on >= 1.0
+    assert on - off == pytest.approx(1.0 - 0.25, abs=0.08)
+
+
+def test_seam_instrument_reads_a_perpendicular_join_unchanged():
+    off = _seam_depth(_pair(0, 90))
+    on = _seam_depth(_pair(0, 90), overlap_by_angle=True)
+    assert on == pytest.approx(off, abs=1e-3)
+
+
+def test_fabric_factor_is_the_gate1_placeholder():
+    # ROADMAP gate 1: the knit figure is a physical constant for a sew-out.
+    # Until one lands, every fabric reads the woven 1.0.
+    assert stage5_overlap.OVERLAP_FABRIC_FACTOR == 1.0
+
+
+def test_fabric_factor_reaches_only_the_flag_on_path(monkeypatch):
+    regs = _pair(0, 0)
+    off = [p.polygon.wkb for p in resolve_overlaps(regs, FABRIC, PipelineConfig())[0]]
+    monkeypatch.setattr(stage5_overlap, "OVERLAP_FABRIC_FACTOR", 1.5)
+    assert [p.polygon.wkb for p in resolve_overlaps(regs, FABRIC, PipelineConfig())[0]] == off
+    assert _tongue(regs, overlap_by_angle=True) == pytest.approx(
+        FABRIC.pull_comp_mm + 1.5, abs=0.02)
