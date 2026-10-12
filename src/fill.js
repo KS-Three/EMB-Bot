@@ -1409,10 +1409,66 @@
     return out;
   }
 
+  // A hand-drawn line (manual-digitizing spec 2026-09-30 §7) shorter than
+  // this, in mm, is not sewn: the floor that already decides when a run
+  // "reads as lint" on the Python lane (machine.py RUN_MIN_LOOP_MM). A new
+  // DECLARATION of an existing number, not a new number (ruling 6).
+  const RUN_MIN_LOOP_MM = 2.2;
+
+  // A running stitch along an OPEN path: the same carry walk as
+  // runningOutline, with no closing segment, landing on the final vertex
+  // exactly. A last remainder of at least half a step gets its own stitch; a
+  // shorter one moves the last station onto the end, so the final stitch is
+  // never shorter than half a step.
+  //
+  // `passes` 3 is a TRUE bean: forward, back and forward again over the SAME
+  // stations, so the three passes stack into one line -- not three walks that
+  // each land where they land (the mistake satinplay.js's own comment on its
+  // convenience underlay form records). Any other count: under 2 is a single
+  // pass, 2 or more is the bean. [] for a path with under two distinct points.
+  function runAlongPath(path, opts) {
+    const stitchLen = opts && opts.stitchLenPx;
+    const pts = [];
+    for (const p of path || []) {
+      if (!p || !isFinite(p.x) || !isFinite(p.y)) continue;
+      const last = pts[pts.length - 1];
+      if (last && Math.hypot(p.x - last.x, p.y - last.y) <= EPS) continue;
+      pts.push(p);
+    }
+    if (pts.length < 2 || !(stitchLen > EPS)) return [];
+    const out = [{ x: pts[0].x, y: pts[0].y }];
+    let carry = 0;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      const segLen = Math.hypot(b.x - a.x, b.y - a.y);
+      const ux = (b.x - a.x) / segLen, uy = (b.y - a.y) / segLen;
+      let dist = stitchLen - carry;
+      while (dist <= segLen + EPS) {
+        const d = Math.min(dist, segLen);
+        out.push({ x: a.x + ux * d, y: a.y + uy * d });
+        dist += stitchLen;
+      }
+      carry = segLen - (dist - stitchLen);
+    }
+    const end = pts[pts.length - 1];
+    if (carry > EPS) {
+      if (carry >= stitchLen / 2 || out.length < 2) out.push({ x: end.x, y: end.y });
+      else out[out.length - 1] = { x: end.x, y: end.y };
+    } else {
+      out[out.length - 1] = { x: end.x, y: end.y };   // within EPS of it: exactly it
+    }
+    const passes = typeof opts.passes === "number" && opts.passes >= 2 ? 3 : 1;
+    if (passes === 1) return out;
+    const back = out.slice(0, -1).reverse();
+    return out.concat(back, out.slice(1));
+  }
+
   return {
     tatamiFill,
     plainStart,
     runningOutline,
+    runAlongPath,
+    RUN_MIN_LOOP_MM,
     huggingOutline,
     pcaAngleDeg,
     crossesOpenGround,

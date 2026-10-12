@@ -9,8 +9,9 @@ import {
   applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, clampMmToBox,
   breaksContainment, ringInsideBox, cutOutOutlinesInFieldMm, CUTOUT_HOLD_HINT, refitShapesPatch,
   columnWidthMm, withColumnWidthMm, columnSewnMm, predictedFit, newColumnWidthPx,
+  convertOpenShape,
 } from "./fieldNodeEdit.js";
-import { withCutOut, shapeRing } from "./manualShapes.js";
+import { withCutOut, shapeRing, COLUMN_DEFAULT_MM, PX_PER_MM } from "./manualShapes.js";
 
 let EMB, generateElement, fabricInForce, garment;
 beforeAll(async () => {
@@ -614,5 +615,98 @@ describe("predictedFit / newColumnWidthPx — sized for the fit the column will 
   test("no garment: null, and the caller falls back", () => {
     expect(predictedFit(el([]), [rect("s1", 0, 0, 10, 10)], null)).toBeNull();
     expect(newColumnWidthPx(el([]), [], col("s1", [{ x: 0, y: 0 }, { x: 100, y: 0 }], 0), null)).toBeNull();
+  });
+});
+
+// ---- lines (runs): an open path, and run <-> column (plan 3) ------------------
+const run = (id, points, extra = {}) => ({ id, kind: "run", points, curves: {}, colorRgb: [200, 0, 0], ...extra });
+
+describe("lines — an open path", () => {
+  const f1 = { cxPx: 0, cyPx: 0, mmPerPx: 0.2, offsetXMm: 0, offsetYMm: 0, pxPerMm: 6 };
+
+  test("authoredInFieldMm: n - 1 handles and no rails", () => {
+    const a = authoredInFieldMm(run("r1", [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }]), f1);
+    expect(a.anchors).toHaveLength(3);
+    expect(a.handles).toHaveLength(2);
+    expect("rails" in a).toBe(false);
+  });
+
+  test("removeAnchor: the floor is 2, and an end anchor drops only its own segment's curve", () => {
+    expect(removeAnchor(run("r1", [{ x: 0, y: 0 }, { x: 100, y: 0 }]), 0)).toBeNull();
+    const r = run("r1", [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 200, y: 0 }], { curves: { 0: { x: 50, y: 9 }, 1: { x: 150, y: 9 }, 2: { x: 99, y: 99 } } });
+    expect(removeAnchor(r, 0).curves).toEqual({ 0: { x: 150, y: 9 } });
+    expect(removeAnchor(r, 2).curves).toEqual({ 0: { x: 50, y: 9 } });
+  });
+
+  test("convertOpenShape with no usable fit: nominal 4.0 mm, the plain shapes patch", () => {
+    const r = run("r1", [{ x: 0, y: 0 }, { x: 300, y: 0 }]);
+    const element = el([r]);
+    const patch = convertOpenShape(element, null, "r1", "column", null);
+    expect(patch.error).toBeUndefined();
+    expect(patch.shapes[0]).toEqual({ id: "r1", kind: "column", points: r.points, curves: {}, colorRgb: [200, 0, 0], widthPx: COLUMN_DEFAULT_MM * PX_PER_MM });
+    expect(Object.keys(patch)).toEqual(["shapes"]);
+  });
+
+  test("convertOpenShape refuses a column that would fold, and anything not open", () => {
+    const hairpin = run("r1", [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 0, y: 2 }]);
+    expect(convertOpenShape(el([hairpin]), f1, "r1", "column", null)).toEqual({ error: "This column folds over itself — widen the bend or narrow the column." });
+    const sq = rect("s1", 0, 0, 10, 10);
+    expect(convertOpenShape(el([sq]), f1, "s1", "column", null)).toEqual({ error: "Only a line or a column converts." });
+    expect(convertOpenShape(el([sq]), f1, "nope", "run", null)).toEqual({ error: "Only a line or a column converts." });
+  });
+});
+
+describe("lines — the re-fit rule and run <-> column, through the real engine", () => {
+  const R = rect("s1", 100, 100, 300, 300);
+  const L = run("r1", [{ x: 350, y: 200 }, { x: 425, y: 260 }, { x: 500, y: 200 }], { curves: { 1: { x: 470, y: 280 } } });
+  const gen = (element) => generateElement(element, garment, {});
+  const outline = (d) => Object.fromEntries(d.shapeOutlines.map((o) => [o.id, o.points]));
+  const residualOf = (off) => Math.round(off * 10) / 10 - off;
+  function rectangleHeld(before, patch) {
+    const d0 = gen(before), d1 = gen({ ...before, ...patch });
+    expect(d1.fit.mmPerPx).toBeCloseTo(d0.fit.mmPerPx, 12);
+    const rx = residualOf(patch.offsetXMm) - residualOf(before.offsetXMm);
+    const ry = residualOf(patch.offsetYMm) - residualOf(before.offsetYMm);
+    const o0 = outline(d0), o1 = outline(d1);
+    o1.s1.forEach((p, i) => { expect(p[0] - o0.s1[i][0]).toBeCloseTo(rx, 6); expect(p[1] - o0.s1[i][1]).toBeCloseTo(ry, 6); });
+    return { d0, d1 };
+  }
+  const kindsOf = (d, id) => d.runs.filter((r) => r.shape === id).map((r) => r.kind);
+
+  test("(a) a line sews as a run, and dragging one of its anchors moves nothing else", () => {
+    const before = el([R, L]);
+    const d0 = gen(before);
+    expect(kindsOf(d0, "r1")).toEqual(["run"]);
+    const moved = applyAnchorDrag(L, 2, { x: 560, y: 330 });
+    const patch = editedElementPatch(before, d0.fit, "r1", moved);
+    expect(patch.error).toBeUndefined();
+    rectangleHeld(before, patch);
+  });
+
+  test("(b) Make it a column: 4.0 mm drawn at the fit it is in, satin, and the rectangle stays put", () => {
+    const before = el([R, L]);
+    const d0 = gen(before);
+    const patch = convertOpenShape(before, d0.fit, "r1", "column", garment);
+    expect(patch.error).toBeUndefined();
+    const c = patch.shapes.find((s) => s.id === "r1");
+    expect(c.kind).toBe("column");
+    const { d1 } = rectangleHeld(before, patch);
+    expect(columnWidthMm(c, d1.fit)).toBeCloseTo(4.0, 6);
+    expect(kindsOf(d1, "r1")).toContain("satin");
+    expect(kindsOf(d1, "r1")).not.toContain("run");
+  });
+
+  test("(c) and Make it a line again: the spine is the one drawn, and it sews a run", () => {
+    const before = el([R, L]);
+    const d0 = gen(before);
+    const asCol = { ...before, ...convertOpenShape(before, d0.fit, "r1", "column", garment) };
+    const d1 = gen(asCol);
+    const back = convertOpenShape(asCol, d1.fit, "r1", "run", garment);
+    expect(back.error).toBeUndefined();
+    const r = back.shapes.find((s) => s.id === "r1");
+    expect(r).toEqual({ id: "r1", kind: "run", points: L.points, curves: L.curves, colorRgb: L.colorRgb });
+    const d2 = gen({ ...asCol, ...back });
+    expect(kindsOf(d2, "r1")).toEqual(["run"]);
+    expect(d2.fit.mmPerPx).toBeCloseTo(d1.fit.mmPerPx, 12);
   });
 });

@@ -72,6 +72,16 @@ test("a column survives the .embproj round trip with kind and widthPx intact, wi
   expect("widthPx" in shapes[0]).toBe(false);
 });
 
+test("a line (run) survives the .embproj round trip with kind, passes and stitch length intact", () => {
+  const run = { id: "s3", kind: "run", points: [{ x: 100, y: 300 }, { x: 500, y: 320 }], curves: { 0: { x: 300, y: 200 } }, passes: 1, stitchLenMm: 1.1, colorRgb: [9, 8, 7] };
+  const manual = { ...defaultManualElement("e9"), shapes: [run] };
+  const base = defaultProject();
+  const text = buildProjectFile({ ...base, elements: [...base.elements, manual] }, "Line");
+  expect(JSON.parse(text).version).toBe(PROJECT_FILE_VERSION);
+  const shapes = parseProjectFile(text).project.elements.find((e) => e.id === "e9").shapes;
+  expect(shapes[0]).toEqual(run);
+});
+
 test("a manual hoop pick survives the .embproj round trip (launch item 2)", () => {
   const project = { ...defaultProject(), hoopId: "6x10" };
   const parsed = parseProjectFile(buildProjectFile(project, "Hooped"));

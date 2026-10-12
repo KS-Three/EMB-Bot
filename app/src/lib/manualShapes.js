@@ -403,6 +403,11 @@ export function columnRails(shape) {
 // followed by rail B backwards. [] when a column has no rails.
 export function shapeRing(shape) {
   if (!shape) return [];
+  if (isRun(shape)) {
+    // A line's PROXY ring: its path stroked at a hairline (see isRun's block).
+    const r = railsFromSpine(flattenShape(shape.points, shape.curves, false), RUN_HAIRLINE_PX);
+    return r ? r.ring : [];
+  }
   if (!isColumn(shape)) return flattenShape(shape.points, shape.curves, true);
   const rails = railsFromSpine(columnSpine(shape), shape.widthPx);
   return rails ? rails.ring : [];
@@ -438,21 +443,92 @@ export function columnIssues(shape) {
   return issues;
 }
 
+// ---- Lines: an open path that sews a running stitch -------------------------
+// A shape with `kind: "run"` is a hand-drawn line (spec 2026-09-30 §7, plan
+// 3): `{ id, kind: "run", points, curves, colorRgb, passes?, stitchLenMm? }`.
+// The same OPEN spine a column has, with no width. `passes` (1 or 3) and
+// `stitchLenMm` are stored only once the author sets them; absent, the engine
+// sews its corpus bean (BEAN_PASSES x BEAN_STITCH_MM, ruling 6) — this module
+// never names those numbers. The UI calls it a Line (ruling 4); the record and
+// the engine's span call it a run. A line takes no part in cut-outs.
+//
+// ITS RING IS A PROXY. shapeRing strokes the path RUN_HAIRLINE_PX wide so the
+// line has a clickable outline, a bbox and a place in the sew order — and
+// nothing may SEW that ring (ruling 1): the engine reads `sewAs.path` instead
+// and skips underlay and outline for it. Self-crossing is allowed (a
+// signature crosses itself), so the ring is never asked whether it folds.
+
+// The hairline the proxy ring is stroked at, in authored canvas px. A
+// hit-test aid and a non-zero area for the engine — not a sewing number.
+export const RUN_HAIRLINE_PX = 1;
+
+const RUN_NEEDS_2 = "A line needs at least 2 points.";
+const RUN_TOO_SHORT = "This line is too short to sew.";
+
+export function isRun(shape) {
+  return !!shape && shape.kind === "run";
+}
+
+// A column or a line: an open spine with n - 1 segments and a 2-point floor.
+export function isOpenShape(shape) {
+  return isColumn(shape) || isRun(shape);
+}
+
+// The path the line sews along: its points and curves, flattened, open.
+export function runPath(shape) {
+  return flattenShape(shape.points, shape.curves, false);
+}
+
+// A line's problems, in shapeIssues' reason-string form. Length is checked
+// against the same mis-click floor a column's spine is (MIN_COLUMN_LEN_PX);
+// the sewing floor (2.2 mm) needs the fit, so the engine holds it.
+export function runIssues(shape) {
+  const pts = shape && Array.isArray(shape.points) ? shape.points : [];
+  if (pts.length < 2) return [RUN_NEEDS_2];
+  const issues = [];
+  if (pts.length > MAX_SHAPE_POINTS) issues.push(`Too many points (max ${MAX_SHAPE_POINTS}).`);
+  const path = runPath(shape);
+  let len = 0;
+  for (let i = 1; i < path.length; i++) len += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+  if (len <= MIN_COLUMN_LEN_PX) issues.push(RUN_TOO_SHORT);
+  return issues;
+}
+
+// Run <-> column (ruling 8): the same open spine, so conversion swaps which
+// fields the shape carries and COPIES the points and curves — no geometry is
+// recomputed, so a round trip hands back the spine as drawn. A line's
+// passes/stitch length are dropped going to a column (a column has none), and
+// a column's width and taper going to a line. Anything else is handed back
+// untouched, the same reference.
+export function runToColumn(shape, widthPx) {
+  if (!isRun(shape) || !(typeof widthPx === "number" && widthPx > 0 && isFinite(widthPx))) return shape;
+  return { id: shape.id, kind: "column", points: copySpine(shape.points), curves: { ...(shape.curves || {}) }, colorRgb: shape.colorRgb, widthPx };
+}
+export function columnToRun(shape) {
+  if (!isColumn(shape)) return shape;
+  return { id: shape.id, kind: "run", points: copySpine(shape.points), curves: { ...(shape.curves || {}) }, colorRgb: shape.colorRgb };
+}
+function copySpine(points) {
+  return (points || []).map((p) => ({ x: p.x, y: p.y }));
+}
+
 // Why this shape will not sew, whichever kind it is. A closed shape is judged
 // on the ring it presents — curves flattened — which is the ring
 // shapesToRegions hands the engine.
 export function shapeProblems(shape) {
   if (isColumn(shape)) return columnIssues(shape);
+  if (isRun(shape)) return runIssues(shape);
   return shapeIssues(shapeRing(shape));
 }
 
 // Will shapesToRegions emit a region for this shape? No problems, not a
 // cut-out — and a column must actually have rails (a column with no usable
-// width has no message of its own, and sews nothing). A column's `cutOut`
-// flag is ignored: a column cannot be a cut-out.
+// width has no message of its own, and sews nothing). A column's or a line's
+// `cutOut` flag is ignored: neither can be a cut-out.
 export function isSewableShape(shape) {
   if (!shape) return false;
   if (isColumn(shape)) return columnIssues(shape).length === 0 && columnRails(shape) !== null;
+  if (isRun(shape)) return runIssues(shape).length === 0 && shapeRing(shape).length >= 3;
   return !shape.cutOut && shapeProblems(shape).length === 0;
 }
 
@@ -722,19 +798,19 @@ export function resolveCutOuts(shapes) {
   // The common case — no cut-out at all — flattens nothing. This runs on every
   // drag frame and every shapesToRegions; callers read `flat` only for ids in
   // holesOf, so an empty Map is all they can ask of it.
-  // A column takes no part: it is never a cut-out (a stray flag on one is
-  // ignored) and never a solid, however much of the canvas its rails enclose.
-  const isCut = (s) => !!s.cutOut && !isColumn(s);
+  // A column or a line takes no part: never a cut-out (a stray flag on one is
+  // ignored) and never a solid, however much of the canvas it encloses.
+  const isCut = (s) => !!s.cutOut && !isOpenShape(s);
   if (!list.some(isCut)) return { parentOf, reasonOf, holesOf, flat: new Map() };
   const flat = new Map(), box = new Map(), valid = new Map();
   for (const s of list) {
-    if (isColumn(s)) continue;
+    if (isOpenShape(s)) continue;
     const ring = flattenShape(s.points, s.curves, true);
     flat.set(s.id, ring);
     box.set(s.id, ringBox(ring));
     valid.set(s.id, shapeIssues(ring).length === 0);
   }
-  const solids = list.filter((s) => !s.cutOut && !isColumn(s) && valid.get(s.id));
+  const solids = list.filter((s) => !s.cutOut && !isOpenShape(s) && valid.get(s.id));
   const area = new Map(solids.map((s) => [s.id, polygonArea(flat.get(s.id))]));
   for (const c of list) {
     if (!isCut(c)) continue;
@@ -768,8 +844,8 @@ export function resolveCutOuts(shapes) {
 // A copy of `shape` marked as a cut-out, or with the mark REMOVED — never
 // `cutOut: false`, so an untouched record equals a pre-feature record.
 export function withCutOut(shape, on) {
-  // A column cannot be a cut-out: handed back untouched, the same reference.
-  if (isColumn(shape)) return shape;
+  // A column or a line cannot be a cut-out: handed back untouched, the same reference.
+  if (isOpenShape(shape)) return shape;
   if (on) return { ...shape, cutOut: true };
   const rest = { ...shape };
   delete rest.cutOut;
@@ -782,6 +858,7 @@ export function withCutOut(shape, on) {
 export function manualShapeName(shape, cut) {
   const n = String(shape.id).replace(/^s/, "");
   if (isColumn(shape)) return `Shape ${n} · Column`;
+  if (isRun(shape)) return `Shape ${n} · Line`;
   if (shape.cutOut) return `Shape ${n} · Cut out`;
   const holed = !!(cut && cut.holesOf && (cut.holesOf[shape.id] || []).length);
   return `Shape ${n} · ${shape.stitchType === "satin" && !holed ? "Satin" : "Fill"}`;
@@ -823,6 +900,33 @@ export function shapesToRegions(shapes) {
           tierOverride: "satin",
           angleOverride: null,
           sewAs: { kind: "column", railA: copy(rails.railA), railB: copy(rails.railB) },
+        }],
+      });
+      continue;
+    }
+    // A line: its hairline ring is the PROXY `outer` (hit-testing, the bbox,
+    // the sew order) and `sewAs` carries the path it sews along. Never satin.
+    // passes / stitchLenMm go over as stored — null means the engine's bean
+    // defaults (ruling 6), which this module does not name.
+    if (isRun(shape)) {
+      if (runIssues(shape).length) continue;
+      const ring = shapeRing(shape);
+      if (ring.length < 3) continue;
+      const copy = (pts) => pts.map((p) => ({ x: p.x, y: p.y }));
+      regions.push({
+        rgb: Array.isArray(shape.colorRgb) ? shape.colorRgb : [20, 20, 20],
+        shapes: [{
+          id: shape.id == null ? "" : String(shape.id),
+          outer: copy(ring),
+          holes: [],
+          tierOverride: "fill",
+          angleOverride: null,
+          sewAs: {
+            kind: "run",
+            path: copy(runPath(shape)),
+            passes: shape.passes == null ? null : shape.passes,
+            stitchLenMm: shape.stitchLenMm == null ? null : shape.stitchLenMm,
+          },
         }],
       });
       continue;

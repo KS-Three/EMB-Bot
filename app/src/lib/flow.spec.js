@@ -52,6 +52,12 @@ test("a preset shape element is sewable from birth", () => {
   expect(isSewable({ type: "shape", kind: "circle", params: {} })).toBe(true);
 });
 
+test("a manual element holding only a valid line (run) is sewable", () => {
+  const run = { id: "s1", kind: "run", points: [{ x: 50, y: 100 }, { x: 350, y: 100 }], curves: {}, colorRgb: [20, 20, 20] };
+  expect(isSewable({ type: "manual", shapes: [run] })).toBe(true);
+  expect(isSewable({ type: "manual", shapes: [{ ...run, points: run.points.slice(0, 1) }] })).toBe(false);
+});
+
 test("null is not sewable", () => {
   expect(isSewable(null)).toBe(false);
 });
