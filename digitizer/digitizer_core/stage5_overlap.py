@@ -426,6 +426,23 @@ def _split_clip(geom, art, floor: float, *, by_ink: bool = True, keep: bool = Tr
     return parts[i_main], kept, dropped
 
 
+def _weld_part(joined, art) -> Polygon:
+    """`cfg.forbid_gap_mm`: the part of a failed weld (artwork ∪ strip that
+    stayed several polygons) the shape plans on — the one carrying its
+    ARTWORK, never a strip part on its own. `_largest_polygon` picked by
+    area, so a small shape with a long strip planned on the strip, bare
+    fabric, and sewed none of its ink (PR #855's audit). Where the artwork's
+    part is also the largest this is `_largest_polygon(joined)` exactly.
+
+    The artwork is one polygon, so it lies in one part of the union; a strip
+    part that did not weld overlaps it by nothing (or the union would have
+    merged them) and is dropped -- the gap stays open there, as it did."""
+    # Always by ink: this is the weld, not the clip `cfg.clip_parent_keeps_ink`
+    # governs, and no other part is kept as a region.
+    best, _, _ = _split_clip(joined, art, 0.0, by_ink=True, keep=False)
+    return best if best is not None else art
+
+
 def _judge_pieces(geom, art, floor: float):
     """`_split_clip` with no largest piece singled out: every piece judged."""
     kept, dropped = [], []
@@ -836,7 +853,7 @@ def resolve_overlaps(
             # a femtometre apart (measured on bridge's lettering, 2 mm² of
             # strip dropped). A tenth of a micron of overlap welds them.
             joined = unary_union([r.polygon, strip.buffer(1e-4)])
-            span[sid] = joined if joined.geom_type == "Polygon" else _largest_polygon(joined)
+            span[sid] = joined if joined.geom_type == "Polygon" else _weld_part(joined, r.polygon)
 
     def sewn_footprint(r: Region):
         """What a shape occupies on the fabric as far as the layers around
