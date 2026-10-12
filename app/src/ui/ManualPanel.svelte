@@ -1400,7 +1400,7 @@
         <p class="mp-cutnote mp-width-note" class:warn={widthNote.warn}>{widthNote.note}</p>
       {/if}
       <div class="mp-row">
-        <button type="button" class="mp-convert" on:click={() => convertSelected("run")}>Make it a line</button>
+        <button type="button" class="mp-btn mp-convert" on:click={() => convertSelected("run")}>Make it a line</button>
       </div>
       {:else if isRun(selectedShape)}
       <!-- A line: colour, passes and stitch length (the popover's own rows,
@@ -1437,7 +1437,7 @@
         <p class="mp-cutnote warn">{lineRows[1].note}</p>
       {/if}
       <div class="mp-row">
-        <button type="button" class="mp-convert" on:click={() => convertSelected("column")}>Make it a column</button>
+        <button type="button" class="mp-btn mp-convert" on:click={() => convertSelected("column")}>Make it a column</button>
       </div>
       {#if convertError}
         <p class="mp-cutnote warn">{convertError}</p>
