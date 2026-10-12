@@ -120,3 +120,5 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [N fan cure](n-fan-cure-2026-10-08.md) — `satin_tip_corner_gate` OFF: tip = convex corner; ≈ tip caps off; degree gate refuted
 - [fillColumns float pictures](fill-columns-float-pictures-2026-10-08.md) — STANDING: next 10 digitized images shown to Kent carry the off/on float sheet; count 1/10
 - [Column width on resize](column-width-on-resize-2026-10-01.md) — ruling 12: drawn width scales, pull comp fixed; store `widthPx`, mm is a view; no clamp 0.67-11.8 mm; columns lane done 10-11
+- [Letterform priors lane](letterform-priors-lane-2026-10-06.md) — "something new" on lettering was yesterday's lane (outline-cut); second pick: refit low-res text to lines+arcs, px-capped. Check sibling lanes before proposing new
+- [Lane triage 10-11](lane-triage-2026-10-11.md) — SNAPSHOT: lane HEAD = merged PR head means landed (squash); 25 lanes removable (Kent's), `manual-columns` stranded at task 5; a `-b X origin/main` lane pushes to main
