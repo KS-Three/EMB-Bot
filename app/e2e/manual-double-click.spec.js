@@ -15,7 +15,7 @@
 // What is read is the shape as the app SAVED it, where a slipped anchor would
 // stay for good. No digitizer service is involved.
 import { test, expect } from "@playwright/test";
-import { pickGarment } from "./helpers.js";
+import { pickGarment, openAdvanced } from "./helpers.js";
 
 async function openDrawing(page) {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -23,6 +23,7 @@ async function openDrawing(page) {
   await pickGarment(page, "Tote");
   await page.locator(".hoop canvas").click({ button: "right" });
   await page.locator(".fieldmenu button").filter({ hasText: "Draw shapes" }).click();
+  await openAdvanced(page);
   await expect(page.locator(".mp-canvas")).toBeVisible();
 }
 

@@ -1,0 +1,4578 @@
+{
+ "golden_tee 80 mm shipped": {
+  "width_mm": 80.4,
+  "shift_mm": [
+   0.0,
+   0.4
+  ],
+  "letters": [
+   {
+    "counters": [
+     {
+      "at_mm": [
+       16.899,
+       9.529
+      ],
+      "art_mm2": 148.781,
+      "sewn_mm2": 3.347,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       18.286,
+       12.394
+      ],
+      "art_width_mm": 16.956,
+      "sewn_width_mm": 15.916,
+      "art_depth_mm": 17.798,
+      "inner_open_frac": 0.906,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 0,
+    "refine_px": [
+     -4,
+     3
+    ],
+    "letter_iou": 0.255,
+    "art_rgb": [
+     1,
+     1,
+     1
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 55.4,
+    "cx_mm": 19.76,
+    "cy_mm": 15.8,
+    "h_mm": 31.5,
+    "line": 1,
+    "pos": 1,
+    "name": "L1.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 22,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.021,
+    "art_rgb": [
+     153,
+     153,
+     153
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.55,
+    "cx_mm": 68.66,
+    "cy_mm": 16.15,
+    "h_mm": 0.05,
+    "line": 2,
+    "pos": 1,
+    "name": "L2.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 23,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.039,
+    "art_rgb": [
+     177,
+     167,
+     144
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 1.08,
+    "cx_mm": 68.15,
+    "cy_mm": 16.56,
+    "h_mm": 0.08,
+    "line": 3,
+    "pos": 1,
+    "name": "L3.1"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       18.745,
+       4.861
+      ],
+      "art_mm2": 0.028,
+      "sewn_mm2": 0.0,
+      "status": "closed",
+      "art_sub_thread": true,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       19.608,
+       1.649
+      ],
+      "art_width_mm": 0.037,
+      "sewn_width_mm": 0.037,
+      "art_depth_mm": 0.612,
+      "inner_open_frac": 0.431,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       19.307,
+       3.017
+      ],
+      "art_width_mm": 0.087,
+      "sewn_width_mm": 0.087,
+      "art_depth_mm": 0.321,
+      "inner_open_frac": 1.0,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       19.088,
+       3.531
+      ],
+      "art_width_mm": 0.058,
+      "sewn_width_mm": 0.058,
+      "art_depth_mm": 0.452,
+      "inner_open_frac": 0.706,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       19.058,
+       4.313
+      ],
+      "art_width_mm": 0.037,
+      "sewn_width_mm": 0.037,
+      "art_depth_mm": 0.491,
+      "inner_open_frac": 0.692,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       16.98,
+       4.524
+      ],
+      "art_width_mm": 2.619,
+      "sewn_width_mm": 1.656,
+      "art_depth_mm": 3.791,
+      "inner_open_frac": 0.394,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 69,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.358,
+    "art_rgb": [
+     254,
+     233,
+     183
+    ],
+    "thread_rgb": [
+     240,
+     220,
+     170
+    ],
+    "area_mm2": 14.74,
+    "cx_mm": 43.95,
+    "cy_mm": 21.01,
+    "h_mm": 8.82,
+    "line": 4,
+    "pos": 1,
+    "name": "L4.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 14,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.262,
+    "art_rgb": [
+     238,
+     147,
+     33
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 4.04,
+    "cx_mm": 56.61,
+    "cy_mm": 19.32,
+    "h_mm": 5.45,
+    "line": 4,
+    "pos": 2,
+    "name": "L4.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 24,
+    "refine_px": [
+     0,
+     -3
+    ],
+    "letter_iou": 0.021,
+    "art_rgb": [
+     211,
+     211,
+     211
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.81,
+    "cx_mm": 39.19,
+    "cy_mm": 26.14,
+    "h_mm": 7.08,
+    "line": 5,
+    "pos": 1,
+    "name": "L5.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 15,
+    "refine_px": [
+     -4,
+     -1
+    ],
+    "letter_iou": 0.213,
+    "art_rgb": [
+     193,
+     33,
+     38
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 20.48,
+    "cx_mm": 43.48,
+    "cy_mm": 25.54,
+    "h_mm": 17.52,
+    "line": 5,
+    "pos": 2,
+    "name": "L5.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 70,
+    "refine_px": [
+     4,
+     2
+    ],
+    "letter_iou": 0.311,
+    "art_rgb": [
+     254,
+     228,
+     165
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 6.11,
+    "cx_mm": 59.64,
+    "cy_mm": 21.41,
+    "h_mm": 1.18,
+    "line": 5,
+    "pos": 3,
+    "name": "L5.3"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 72,
+    "refine_px": [
+     -2,
+     4
+    ],
+    "letter_iou": 0.125,
+    "art_rgb": [
+     254,
+     226,
+     161
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 0.6,
+    "cx_mm": 27.02,
+    "cy_mm": 27.31,
+    "h_mm": 2.38,
+    "line": 6,
+    "pos": 1,
+    "name": "L6.1"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       20.1,
+       4.797
+      ],
+      "art_width_mm": 6.574,
+      "sewn_width_mm": 5.176,
+      "art_depth_mm": 35.368,
+      "inner_open_frac": 0.745,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       14.496,
+       15.163
+      ],
+      "art_width_mm": 2.938,
+      "sewn_width_mm": 2.102,
+      "art_depth_mm": 22.452,
+      "inner_open_frac": 0.743,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 1,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.333,
+    "art_rgb": [
+     1,
+     1,
+     1
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 67.99,
+    "cx_mm": 39.69,
+    "cy_mm": 27.01,
+    "h_mm": 23.18,
+    "line": 6,
+    "pos": 2,
+    "name": "L6.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 25,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.035,
+    "art_rgb": [
+     182,
+     183,
+     179
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.52,
+    "cx_mm": 46.35,
+    "cy_mm": 26.34,
+    "h_mm": 0.08,
+    "line": 6,
+    "pos": 3,
+    "name": "L6.3"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 50,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.104,
+    "art_rgb": [
+     251,
+     180,
+     26
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 0.42,
+    "cx_mm": 26.66,
+    "cy_mm": 27.7,
+    "h_mm": 0.8,
+    "line": 7,
+    "pos": 1,
+    "name": "L7.1"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       2.33,
+       5.675
+      ],
+      "art_width_mm": 1.458,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 4.224,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       3.273,
+       7.162
+      ],
+      "art_width_mm": 1.38,
+      "sewn_width_mm": 0.49,
+      "art_depth_mm": 2.525,
+      "inner_open_frac": 0.176,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       3.363,
+       9.134
+      ],
+      "art_width_mm": 0.462,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 1.435,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       3.575,
+       9.75
+      ],
+      "art_width_mm": 0.037,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 0.727,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": true,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 17,
+    "refine_px": [
+     -4,
+     -1
+    ],
+    "letter_iou": 0.389,
+    "art_rgb": [
+     237,
+     146,
+     34
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 7.87,
+    "cx_mm": 41.4,
+    "cy_mm": 30.85,
+    "h_mm": 9.1,
+    "line": 7,
+    "pos": 2,
+    "name": "L7.2"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       13.287,
+       5.099
+      ],
+      "art_width_mm": 7.451,
+      "sewn_width_mm": 5.383,
+      "art_depth_mm": 33.565,
+      "inner_open_frac": 0.754,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       5.866,
+       10.571
+      ],
+      "art_width_mm": 4.464,
+      "sewn_width_mm": 3.308,
+      "art_depth_mm": 6.964,
+      "inner_open_frac": 0.556,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       17.205,
+       11.143
+      ],
+      "art_width_mm": 4.838,
+      "sewn_width_mm": 4.192,
+      "art_depth_mm": 5.682,
+      "inner_open_frac": 0.79,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       13.725,
+       17.55
+      ],
+      "art_width_mm": 0.037,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 2.843,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": true,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 2,
+    "refine_px": [
+     -4,
+     3
+    ],
+    "letter_iou": 0.343,
+    "art_rgb": [
+     1,
+     1,
+     1
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 58.46,
+    "cx_mm": 67.65,
+    "cy_mm": 28.99,
+    "h_mm": 25.68,
+    "line": 7,
+    "pos": 3,
+    "name": "L7.3"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 13,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.235,
+    "art_rgb": [
+     193,
+     32,
+     38
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 18.45,
+    "cx_mm": 70.65,
+    "cy_mm": 28.74,
+    "h_mm": 24.42,
+    "line": 7,
+    "pos": 4,
+    "name": "L7.4"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       14.301,
+       4.771
+      ],
+      "art_width_mm": 2.45,
+      "sewn_width_mm": 1.286,
+      "art_depth_mm": 3.276,
+      "inner_open_frac": 0.344,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       8.734,
+       9.476
+      ],
+      "art_width_mm": 4.938,
+      "sewn_width_mm": 4.404,
+      "art_depth_mm": 5.788,
+      "inner_open_frac": 0.818,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       1.364,
+       24.258
+      ],
+      "art_width_mm": 0.058,
+      "sewn_width_mm": 0.765,
+      "art_depth_mm": 0.308,
+      "inner_open_frac": 1.0,
+      "status": "open",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       1.48,
+       24.462
+      ],
+      "art_width_mm": 0.168,
+      "sewn_width_mm": 0.59,
+      "art_depth_mm": 0.272,
+      "inner_open_frac": 1.0,
+      "status": "open",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       1.678,
+       24.736
+      ],
+      "art_width_mm": 0.087,
+      "sewn_width_mm": 0.087,
+      "art_depth_mm": 0.375,
+      "inner_open_frac": 1.0,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 68,
+    "refine_px": [
+     -4,
+     0
+    ],
+    "letter_iou": 0.501,
+    "art_rgb": [
+     254,
+     222,
+     152
+    ],
+    "thread_rgb": [
+     240,
+     220,
+     170
+    ],
+    "area_mm2": 26.56,
+    "cx_mm": 70.68,
+    "cy_mm": 28.51,
+    "h_mm": 23.92,
+    "line": 7,
+    "pos": 5,
+    "name": "L7.5"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       4.917,
+       1.265
+      ],
+      "art_width_mm": 0.237,
+      "sewn_width_mm": 0.037,
+      "art_depth_mm": 0.758,
+      "inner_open_frac": 0.123,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       4.6,
+       1.4
+      ],
+      "art_width_mm": 0.037,
+      "sewn_width_mm": 0.037,
+      "art_depth_mm": 0.385,
+      "inner_open_frac": 1.0,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 74,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.275,
+    "art_rgb": [
+     255,
+     235,
+     188
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 2.57,
+    "cx_mm": 41.45,
+    "cy_mm": 31.05,
+    "h_mm": 0.9,
+    "line": 8,
+    "pos": 1,
+    "name": "L8.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 73,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.48,
+    "art_rgb": [
+     254,
+     222,
+     146
+    ],
+    "thread_rgb": [
+     240,
+     220,
+     170
+    ],
+    "area_mm2": 10.8,
+    "cx_mm": 47.8,
+    "cy_mm": 32.9,
+    "h_mm": 13.05,
+    "line": 8,
+    "pos": 2,
+    "name": "L8.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 3,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.188,
+    "art_rgb": [
+     1,
+     1,
+     1
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 3.15,
+    "cx_mm": 19.92,
+    "cy_mm": 35.38,
+    "h_mm": 5.15,
+    "line": 9,
+    "pos": 1,
+    "name": "L9.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 52,
+    "refine_px": [
+     4,
+     -4
+    ],
+    "letter_iou": 0.244,
+    "art_rgb": [
+     254,
+     192,
+     46
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 2.83,
+    "cx_mm": 26.55,
+    "cy_mm": 36.11,
+    "h_mm": 3.32,
+    "line": 9,
+    "pos": 2,
+    "name": "L9.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 51,
+    "refine_px": [
+     4,
+     2
+    ],
+    "letter_iou": 0.193,
+    "art_rgb": [
+     251,
+     172,
+     27
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 0.78,
+    "cx_mm": 41.64,
+    "cy_mm": 34.76,
+    "h_mm": 1.68,
+    "line": 9,
+    "pos": 3,
+    "name": "L9.3"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       6.743,
+       15.73
+      ],
+      "art_mm2": 0.032,
+      "sewn_mm2": 0.032,
+      "status": "breached",
+      "art_sub_thread": true,
+      "closes": false
+     },
+     {
+      "at_mm": [
+       10.029,
+       18.887
+      ],
+      "art_mm2": 0.191,
+      "sewn_mm2": 0.0,
+      "status": "closed",
+      "art_sub_thread": false,
+      "closes": true
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       8.622,
+       7.16
+      ],
+      "art_width_mm": 5.076,
+      "sewn_width_mm": 31.791,
+      "art_depth_mm": 7.401,
+      "inner_open_frac": 1.0,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       7.626,
+       16.69
+      ],
+      "art_width_mm": 3.025,
+      "sewn_width_mm": 12.19,
+      "art_depth_mm": 5.918,
+      "inner_open_frac": 0.815,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       5.613,
+       21.596
+      ],
+      "art_width_mm": 2.948,
+      "sewn_width_mm": 0.037,
+      "art_depth_mm": 8.877,
+      "inner_open_frac": 0.0,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       5.978,
+       24.953
+      ],
+      "art_width_mm": 1.988,
+      "sewn_width_mm": 0.54,
+      "art_depth_mm": 2.641,
+      "inner_open_frac": 0.123,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 16,
+    "refine_px": [
+     3,
+     -4
+    ],
+    "letter_iou": 0.265,
+    "art_rgb": [
+     236,
+     146,
+     33
+    ],
+    "thread_rgb": [
+     255,
+     204,
+     0
+    ],
+    "area_mm2": 38.31,
+    "cx_mm": 57.94,
+    "cy_mm": 34.79,
+    "h_mm": 27.88,
+    "line": 9,
+    "pos": 4,
+    "name": "L9.4"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       8.559,
+       1.307
+      ],
+      "art_width_mm": 0.188,
+      "sewn_width_mm": 0.188,
+      "art_depth_mm": 0.354,
+      "inner_open_frac": 1.0,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       5.635,
+       11.865
+      ],
+      "art_width_mm": 1.821,
+      "sewn_width_mm": 0.703,
+      "art_depth_mm": 4.225,
+      "inner_open_frac": 0.209,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       5.111,
+       16.707
+      ],
+      "art_width_mm": 3.795,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 5.982,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 18,
+    "refine_px": [
+     -4,
+     -3
+    ],
+    "letter_iou": 0.315,
+    "art_rgb": [
+     234,
+     149,
+     30
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 30.92,
+    "cx_mm": 47.92,
+    "cy_mm": 37.58,
+    "h_mm": 22.3,
+    "line": 10,
+    "pos": 1,
+    "name": "L10.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 53,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.204,
+    "art_rgb": [
+     250,
+     167,
+     26
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 1.25,
+    "cx_mm": 57.46,
+    "cy_mm": 37.15,
+    "h_mm": 2.45,
+    "line": 10,
+    "pos": 2,
+    "name": "L10.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 40,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.353,
+    "art_rgb": [
+     255,
+     229,
+     1
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 12.38,
+    "cx_mm": 39.85,
+    "cy_mm": 39.46,
+    "h_mm": 2.08,
+    "line": 11,
+    "pos": 1,
+    "name": "L11.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 27,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.08,
+    "art_rgb": [
+     234,
+     232,
+     232
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 1.04,
+    "cx_mm": 43.24,
+    "cy_mm": 38.78,
+    "h_mm": 1.2,
+    "line": 11,
+    "pos": 2,
+    "name": "L11.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 54,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.053,
+    "art_rgb": [
+     254,
+     230,
+     69
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 1.15,
+    "cx_mm": 48.31,
+    "cy_mm": 40.2,
+    "h_mm": 2.95,
+    "line": 11,
+    "pos": 3,
+    "name": "L11.3"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 41,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.254,
+    "art_rgb": [
+     254,
+     228,
+     1
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 4.18,
+    "cx_mm": 48.44,
+    "cy_mm": 39.66,
+    "h_mm": 1.92,
+    "line": 11,
+    "pos": 4,
+    "name": "L11.4"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 42,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.377,
+    "art_rgb": [
+     255,
+     225,
+     1
+    ],
+    "thread_rgb": [
+     255,
+     204,
+     0
+    ],
+    "area_mm2": 10.01,
+    "cx_mm": 58.84,
+    "cy_mm": 39.88,
+    "h_mm": 2.15,
+    "line": 11,
+    "pos": 5,
+    "name": "L11.5"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 29,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.128,
+    "art_rgb": [
+     216,
+     211,
+     208
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 1.86,
+    "cx_mm": 60.48,
+    "cy_mm": 39.46,
+    "h_mm": 2.02,
+    "line": 11,
+    "pos": 6,
+    "name": "L11.6"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 77,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.137,
+    "art_rgb": [
+     203,
+     182,
+     139
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 0.38,
+    "cx_mm": 34.48,
+    "cy_mm": 40.28,
+    "h_mm": 0.85,
+    "line": 12,
+    "pos": 1,
+    "name": "L12.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 31,
+    "refine_px": [
+     2,
+     -2
+    ],
+    "letter_iou": 0.081,
+    "art_rgb": [
+     222,
+     233,
+     229
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 0.7,
+    "cx_mm": 39.14,
+    "cy_mm": 40.52,
+    "h_mm": 0.75,
+    "line": 12,
+    "pos": 2,
+    "name": "L12.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 79,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.087,
+    "art_rgb": [
+     247,
+     245,
+     197
+    ],
+    "thread_rgb": [
+     255,
+     204,
+     0
+    ],
+    "area_mm2": 0.95,
+    "cx_mm": 59.75,
+    "cy_mm": 40.48,
+    "h_mm": 0.5,
+    "line": 12,
+    "pos": 3,
+    "name": "L12.3"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       2.829,
+       2.624
+      ],
+      "art_width_mm": 0.087,
+      "sewn_width_mm": 0.087,
+      "art_depth_mm": 0.431,
+      "inner_open_frac": 0.846,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 44,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.26,
+    "art_rgb": [
+     254,
+     213,
+     1
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 3.63,
+    "cx_mm": 35.24,
+    "cy_mm": 41.61,
+    "h_mm": 1.78,
+    "line": 13,
+    "pos": 1,
+    "name": "L13.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 56,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.178,
+    "art_rgb": [
+     247,
+     188,
+     25
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 3.65,
+    "cx_mm": 35.41,
+    "cy_mm": 41.69,
+    "h_mm": 3.32,
+    "line": 13,
+    "pos": 2,
+    "name": "L13.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 78,
+    "refine_px": [
+     4,
+     1
+    ],
+    "letter_iou": 0.072,
+    "art_rgb": [
+     252,
+     237,
+     163
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 1.69,
+    "cx_mm": 38.59,
+    "cy_mm": 41.44,
+    "h_mm": 3.12,
+    "line": 13,
+    "pos": 3,
+    "name": "L13.3"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 57,
+    "refine_px": [
+     4,
+     -4
+    ],
+    "letter_iou": 0.073,
+    "art_rgb": [
+     254,
+     231,
+     69
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 1.41,
+    "cx_mm": 42.91,
+    "cy_mm": 41.08,
+    "h_mm": 2.1,
+    "line": 13,
+    "pos": 4,
+    "name": "L13.4"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 45,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.249,
+    "art_rgb": [
+     254,
+     213,
+     2
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 3.78,
+    "cx_mm": 43.44,
+    "cy_mm": 41.74,
+    "h_mm": 1.72,
+    "line": 13,
+    "pos": 5,
+    "name": "L13.5"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 60,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.155,
+    "art_rgb": [
+     245,
+     182,
+     22
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 2.42,
+    "cx_mm": 43.46,
+    "cy_mm": 42.38,
+    "h_mm": 2.0,
+    "line": 13,
+    "pos": 6,
+    "name": "L13.6"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 46,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.188,
+    "art_rgb": [
+     255,
+     211,
+     2
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 2.98,
+    "cx_mm": 47.7,
+    "cy_mm": 41.82,
+    "h_mm": 1.6,
+    "line": 13,
+    "pos": 7,
+    "name": "L13.7"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 75,
+    "refine_px": [
+     3,
+     1
+    ],
+    "letter_iou": 0.048,
+    "art_rgb": [
+     252,
+     233,
+     131
+    ],
+    "thread_rgb": [
+     204,
+     204,
+     204
+    ],
+    "area_mm2": 0.65,
+    "cx_mm": 49.19,
+    "cy_mm": 41.08,
+    "h_mm": 5.15,
+    "line": 13,
+    "pos": 8,
+    "name": "L13.8"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 47,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.213,
+    "art_rgb": [
+     255,
+     210,
+     2
+    ],
+    "thread_rgb": [
+     204,
+     204,
+     204
+    ],
+    "area_mm2": 2.82,
+    "cx_mm": 56.09,
+    "cy_mm": 41.96,
+    "h_mm": 1.62,
+    "line": 13,
+    "pos": 9,
+    "name": "L13.9"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 58,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.129,
+    "art_rgb": [
+     255,
+     229,
+     69
+    ],
+    "thread_rgb": [
+     204,
+     204,
+     204
+    ],
+    "area_mm2": 1.04,
+    "cx_mm": 56.29,
+    "cy_mm": 40.95,
+    "h_mm": 0.95,
+    "line": 13,
+    "pos": 10,
+    "name": "L13.10"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 32,
+    "refine_px": [
+     3,
+     4
+    ],
+    "letter_iou": 0.109,
+    "art_rgb": [
+     218,
+     232,
+     226
+    ],
+    "thread_rgb": [
+     255,
+     204,
+     0
+    ],
+    "area_mm2": 1.05,
+    "cx_mm": 59.74,
+    "cy_mm": 40.67,
+    "h_mm": 0.35,
+    "line": 13,
+    "pos": 11,
+    "name": "L13.11"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 6,
+    "refine_px": [
+     -4,
+     0
+    ],
+    "letter_iou": 0.242,
+    "art_rgb": [
+     11,
+     49,
+     53
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 28.97,
+    "cx_mm": 36.55,
+    "cy_mm": 43.95,
+    "h_mm": 10.8,
+    "line": 14,
+    "pos": 1,
+    "name": "L14.1"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       7.628,
+       9.476
+      ],
+      "art_mm2": 0.02,
+      "sewn_mm2": 0.0,
+      "status": "closed",
+      "art_sub_thread": true,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       2.753,
+       3.338
+      ],
+      "art_width_mm": 0.211,
+      "sewn_width_mm": 0.812,
+      "art_depth_mm": 1.466,
+      "inner_open_frac": 0.244,
+      "status": "open",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       2.496,
+       3.839
+      ],
+      "art_width_mm": 0.62,
+      "sewn_width_mm": 0.257,
+      "art_depth_mm": 0.95,
+      "inner_open_frac": 0.136,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       6.578,
+       5.479
+      ],
+      "art_width_mm": 1.346,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 14.423,
+      "inner_open_frac": 0.575,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       1.918,
+       10.113
+      ],
+      "art_width_mm": 0.237,
+      "sewn_width_mm": 0.211,
+      "art_depth_mm": 0.512,
+      "inner_open_frac": 0.67,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 20,
+    "refine_px": [
+     -4,
+     2
+    ],
+    "letter_iou": 0.391,
+    "art_rgb": [
+     248,
+     157,
+     29
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 39.15,
+    "cx_mm": 39.39,
+    "cy_mm": 43.3,
+    "h_mm": 10.1,
+    "line": 14,
+    "pos": 2,
+    "name": "L14.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 61,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.126,
+    "art_rgb": [
+     246,
+     183,
+     22
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 2.03,
+    "cx_mm": 47.49,
+    "cy_mm": 42.55,
+    "h_mm": 1.65,
+    "line": 14,
+    "pos": 3,
+    "name": "L14.3"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       2.178,
+       9.852
+      ],
+      "art_width_mm": 0.099,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 6.187,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": true,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 7,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.343,
+    "art_rgb": [
+     14,
+     52,
+     56
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 10.57,
+    "cx_mm": 53.36,
+    "cy_mm": 43.92,
+    "h_mm": 10.5,
+    "line": 14,
+    "pos": 4,
+    "name": "L14.4"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 62,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.207,
+    "art_rgb": [
+     245,
+     179,
+     24
+    ],
+    "thread_rgb": [
+     255,
+     204,
+     0
+    ],
+    "area_mm2": 4.21,
+    "cx_mm": 57.61,
+    "cy_mm": 42.72,
+    "h_mm": 1.3,
+    "line": 14,
+    "pos": 5,
+    "name": "L14.5"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 65,
+    "refine_px": [
+     -4,
+     -2
+    ],
+    "letter_iou": 0.076,
+    "art_rgb": [
+     253,
+     191,
+     18
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.42,
+    "cx_mm": 58.24,
+    "cy_mm": 44.24,
+    "h_mm": 0.28,
+    "line": 15,
+    "pos": 1,
+    "name": "L15.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 83,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.081,
+    "art_rgb": [
+     250,
+     229,
+     183
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.47,
+    "cx_mm": 58.34,
+    "cy_mm": 44.45,
+    "h_mm": 0.2,
+    "line": 16,
+    "pos": 1,
+    "name": "L16.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 82,
+    "refine_px": [
+     3,
+     -4
+    ],
+    "letter_iou": 0.136,
+    "art_rgb": [
+     251,
+     242,
+     177
+    ],
+    "thread_rgb": [
+     240,
+     220,
+     170
+    ],
+    "area_mm2": 1.11,
+    "cx_mm": 42.51,
+    "cy_mm": 45.51,
+    "h_mm": 4.88,
+    "line": 17,
+    "pos": 1,
+    "name": "L17.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 12,
+    "refine_px": [
+     -4,
+     3
+    ],
+    "letter_iou": 0.431,
+    "art_rgb": [
+     7,
+     46,
+     52
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 2.59,
+    "cx_mm": 58.2,
+    "cy_mm": 44.92,
+    "h_mm": 0.85,
+    "line": 17,
+    "pos": 2,
+    "name": "L17.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 85,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.106,
+    "art_rgb": [
+     249,
+     246,
+     205
+    ],
+    "thread_rgb": [
+     240,
+     220,
+     170
+    ],
+    "area_mm2": 0.79,
+    "cx_mm": 35.83,
+    "cy_mm": 47.95,
+    "h_mm": 1.15,
+    "line": 18,
+    "pos": 1,
+    "name": "L18.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 36,
+    "refine_px": [
+     -4,
+     2
+    ],
+    "letter_iou": 0.077,
+    "art_rgb": [
+     221,
+     234,
+     226
+    ],
+    "thread_rgb": [
+     240,
+     220,
+     170
+    ],
+    "area_mm2": 0.78,
+    "cx_mm": 37.65,
+    "cy_mm": 48.3,
+    "h_mm": 0.9,
+    "line": 19,
+    "pos": 1,
+    "name": "L19.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 67,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.099,
+    "art_rgb": [
+     252,
+     193,
+     28
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 1.33,
+    "cx_mm": 47.66,
+    "cy_mm": 48.26,
+    "h_mm": 0.38,
+    "line": 19,
+    "pos": 2,
+    "name": "L19.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 48,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.077,
+    "art_rgb": [
+     254,
+     198,
+     10
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.56,
+    "cx_mm": 49.52,
+    "cy_mm": 48.31,
+    "h_mm": 0.22,
+    "line": 19,
+    "pos": 3,
+    "name": "L19.3"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 37,
+    "refine_px": [
+     4,
+     -4
+    ],
+    "letter_iou": 0.041,
+    "art_rgb": [
+     219,
+     228,
+     214
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.51,
+    "cx_mm": 47.54,
+    "cy_mm": 48.52,
+    "h_mm": 0.15,
+    "line": 20,
+    "pos": 1,
+    "name": "L20.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 8,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.378,
+    "art_rgb": [
+     0,
+     0,
+     0
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 23.95,
+    "cx_mm": 7.19,
+    "cy_mm": 53.06,
+    "h_mm": 27.88,
+    "line": 21,
+    "pos": 1,
+    "name": "L21.1"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       17.989,
+       2.923
+      ],
+      "art_width_mm": 0.703,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 6.805,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       8.731,
+       5.553
+      ],
+      "art_width_mm": 4.592,
+      "sewn_width_mm": 3.816,
+      "art_depth_mm": 11.753,
+      "inner_open_frac": 0.721,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 38,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.584,
+    "art_rgb": [
+     255,
+     203,
+     11
+    ],
+    "thread_rgb": [
+     255,
+     204,
+     0
+    ],
+    "area_mm2": 63.92,
+    "cx_mm": 11.66,
+    "cy_mm": 49.34,
+    "h_mm": 32.72,
+    "line": 21,
+    "pos": 2,
+    "name": "L21.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 21,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.057,
+    "art_rgb": [
+     125,
+     140,
+     52
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.43,
+    "cx_mm": 49.21,
+    "cy_mm": 48.65,
+    "h_mm": 0.15,
+    "line": 21,
+    "pos": 3,
+    "name": "L21.3"
+   }
+  ]
+ },
+ "golden_tee 80 mm coverage_edges": {
+  "width_mm": 80.4,
+  "shift_mm": [
+   0.0,
+   0.4
+  ],
+  "letters": [
+   {
+    "counters": [
+     {
+      "at_mm": [
+       16.899,
+       9.529
+      ],
+      "art_mm2": 148.781,
+      "sewn_mm2": 3.347,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       18.286,
+       12.394
+      ],
+      "art_width_mm": 16.956,
+      "sewn_width_mm": 15.916,
+      "art_depth_mm": 17.798,
+      "inner_open_frac": 0.906,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 0,
+    "refine_px": [
+     -4,
+     3
+    ],
+    "letter_iou": 0.255,
+    "art_rgb": [
+     1,
+     1,
+     1
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 55.4,
+    "cx_mm": 19.76,
+    "cy_mm": 15.8,
+    "h_mm": 31.5,
+    "line": 1,
+    "pos": 1,
+    "name": "L1.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 22,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.021,
+    "art_rgb": [
+     153,
+     153,
+     153
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.55,
+    "cx_mm": 68.66,
+    "cy_mm": 16.15,
+    "h_mm": 0.05,
+    "line": 2,
+    "pos": 1,
+    "name": "L2.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 23,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.039,
+    "art_rgb": [
+     177,
+     167,
+     144
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 1.08,
+    "cx_mm": 68.15,
+    "cy_mm": 16.56,
+    "h_mm": 0.08,
+    "line": 3,
+    "pos": 1,
+    "name": "L3.1"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       18.745,
+       4.861
+      ],
+      "art_mm2": 0.028,
+      "sewn_mm2": 0.0,
+      "status": "closed",
+      "art_sub_thread": true,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       19.608,
+       1.649
+      ],
+      "art_width_mm": 0.037,
+      "sewn_width_mm": 0.037,
+      "art_depth_mm": 0.612,
+      "inner_open_frac": 0.431,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       19.307,
+       3.017
+      ],
+      "art_width_mm": 0.087,
+      "sewn_width_mm": 0.087,
+      "art_depth_mm": 0.321,
+      "inner_open_frac": 1.0,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       19.088,
+       3.531
+      ],
+      "art_width_mm": 0.058,
+      "sewn_width_mm": 0.058,
+      "art_depth_mm": 0.452,
+      "inner_open_frac": 0.706,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       19.058,
+       4.313
+      ],
+      "art_width_mm": 0.037,
+      "sewn_width_mm": 0.037,
+      "art_depth_mm": 0.491,
+      "inner_open_frac": 0.692,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       16.98,
+       4.524
+      ],
+      "art_width_mm": 2.619,
+      "sewn_width_mm": 1.656,
+      "art_depth_mm": 3.791,
+      "inner_open_frac": 0.394,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 69,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.358,
+    "art_rgb": [
+     254,
+     233,
+     183
+    ],
+    "thread_rgb": [
+     240,
+     220,
+     170
+    ],
+    "area_mm2": 14.74,
+    "cx_mm": 43.95,
+    "cy_mm": 21.01,
+    "h_mm": 8.82,
+    "line": 4,
+    "pos": 1,
+    "name": "L4.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 14,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.262,
+    "art_rgb": [
+     238,
+     147,
+     33
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 4.04,
+    "cx_mm": 56.61,
+    "cy_mm": 19.32,
+    "h_mm": 5.45,
+    "line": 4,
+    "pos": 2,
+    "name": "L4.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 24,
+    "refine_px": [
+     0,
+     -3
+    ],
+    "letter_iou": 0.021,
+    "art_rgb": [
+     211,
+     211,
+     211
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.81,
+    "cx_mm": 39.19,
+    "cy_mm": 26.14,
+    "h_mm": 7.08,
+    "line": 5,
+    "pos": 1,
+    "name": "L5.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 15,
+    "refine_px": [
+     -4,
+     -1
+    ],
+    "letter_iou": 0.213,
+    "art_rgb": [
+     193,
+     33,
+     38
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 20.48,
+    "cx_mm": 43.48,
+    "cy_mm": 25.54,
+    "h_mm": 17.52,
+    "line": 5,
+    "pos": 2,
+    "name": "L5.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 70,
+    "refine_px": [
+     4,
+     2
+    ],
+    "letter_iou": 0.311,
+    "art_rgb": [
+     254,
+     228,
+     165
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 6.11,
+    "cx_mm": 59.64,
+    "cy_mm": 21.41,
+    "h_mm": 1.18,
+    "line": 5,
+    "pos": 3,
+    "name": "L5.3"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 72,
+    "refine_px": [
+     -2,
+     4
+    ],
+    "letter_iou": 0.125,
+    "art_rgb": [
+     254,
+     226,
+     161
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 0.6,
+    "cx_mm": 27.02,
+    "cy_mm": 27.31,
+    "h_mm": 2.38,
+    "line": 6,
+    "pos": 1,
+    "name": "L6.1"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       20.1,
+       4.797
+      ],
+      "art_width_mm": 6.574,
+      "sewn_width_mm": 5.176,
+      "art_depth_mm": 35.368,
+      "inner_open_frac": 0.745,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       14.496,
+       15.163
+      ],
+      "art_width_mm": 2.938,
+      "sewn_width_mm": 2.102,
+      "art_depth_mm": 22.452,
+      "inner_open_frac": 0.743,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 1,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.333,
+    "art_rgb": [
+     1,
+     1,
+     1
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 67.99,
+    "cx_mm": 39.69,
+    "cy_mm": 27.01,
+    "h_mm": 23.18,
+    "line": 6,
+    "pos": 2,
+    "name": "L6.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 25,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.035,
+    "art_rgb": [
+     182,
+     183,
+     179
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.52,
+    "cx_mm": 46.35,
+    "cy_mm": 26.34,
+    "h_mm": 0.08,
+    "line": 6,
+    "pos": 3,
+    "name": "L6.3"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 50,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.104,
+    "art_rgb": [
+     251,
+     180,
+     26
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 0.42,
+    "cx_mm": 26.66,
+    "cy_mm": 27.7,
+    "h_mm": 0.8,
+    "line": 7,
+    "pos": 1,
+    "name": "L7.1"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       2.33,
+       5.675
+      ],
+      "art_width_mm": 1.458,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 4.224,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       3.273,
+       7.162
+      ],
+      "art_width_mm": 1.38,
+      "sewn_width_mm": 0.49,
+      "art_depth_mm": 2.525,
+      "inner_open_frac": 0.176,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       3.363,
+       9.134
+      ],
+      "art_width_mm": 0.462,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 1.435,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       3.575,
+       9.75
+      ],
+      "art_width_mm": 0.037,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 0.727,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": true,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 17,
+    "refine_px": [
+     -4,
+     -1
+    ],
+    "letter_iou": 0.389,
+    "art_rgb": [
+     237,
+     146,
+     34
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 7.87,
+    "cx_mm": 41.4,
+    "cy_mm": 30.85,
+    "h_mm": 9.1,
+    "line": 7,
+    "pos": 2,
+    "name": "L7.2"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       13.287,
+       5.099
+      ],
+      "art_width_mm": 7.451,
+      "sewn_width_mm": 5.383,
+      "art_depth_mm": 33.565,
+      "inner_open_frac": 0.754,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       5.866,
+       10.571
+      ],
+      "art_width_mm": 4.464,
+      "sewn_width_mm": 3.308,
+      "art_depth_mm": 6.964,
+      "inner_open_frac": 0.556,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       17.205,
+       11.143
+      ],
+      "art_width_mm": 4.838,
+      "sewn_width_mm": 4.192,
+      "art_depth_mm": 5.682,
+      "inner_open_frac": 0.79,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       13.725,
+       17.55
+      ],
+      "art_width_mm": 0.037,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 2.843,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": true,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 2,
+    "refine_px": [
+     -4,
+     3
+    ],
+    "letter_iou": 0.343,
+    "art_rgb": [
+     1,
+     1,
+     1
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 58.46,
+    "cx_mm": 67.65,
+    "cy_mm": 28.99,
+    "h_mm": 25.68,
+    "line": 7,
+    "pos": 3,
+    "name": "L7.3"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 13,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.235,
+    "art_rgb": [
+     193,
+     32,
+     38
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 18.45,
+    "cx_mm": 70.65,
+    "cy_mm": 28.74,
+    "h_mm": 24.42,
+    "line": 7,
+    "pos": 4,
+    "name": "L7.4"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       14.301,
+       4.771
+      ],
+      "art_width_mm": 2.45,
+      "sewn_width_mm": 1.286,
+      "art_depth_mm": 3.276,
+      "inner_open_frac": 0.344,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       8.734,
+       9.476
+      ],
+      "art_width_mm": 4.938,
+      "sewn_width_mm": 4.404,
+      "art_depth_mm": 5.788,
+      "inner_open_frac": 0.818,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       1.364,
+       24.258
+      ],
+      "art_width_mm": 0.058,
+      "sewn_width_mm": 0.765,
+      "art_depth_mm": 0.308,
+      "inner_open_frac": 1.0,
+      "status": "open",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       1.48,
+       24.462
+      ],
+      "art_width_mm": 0.168,
+      "sewn_width_mm": 0.59,
+      "art_depth_mm": 0.272,
+      "inner_open_frac": 1.0,
+      "status": "open",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       1.678,
+       24.736
+      ],
+      "art_width_mm": 0.087,
+      "sewn_width_mm": 0.087,
+      "art_depth_mm": 0.375,
+      "inner_open_frac": 1.0,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 68,
+    "refine_px": [
+     -4,
+     0
+    ],
+    "letter_iou": 0.501,
+    "art_rgb": [
+     254,
+     222,
+     152
+    ],
+    "thread_rgb": [
+     240,
+     220,
+     170
+    ],
+    "area_mm2": 26.56,
+    "cx_mm": 70.68,
+    "cy_mm": 28.51,
+    "h_mm": 23.92,
+    "line": 7,
+    "pos": 5,
+    "name": "L7.5"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       4.917,
+       1.265
+      ],
+      "art_width_mm": 0.237,
+      "sewn_width_mm": 0.037,
+      "art_depth_mm": 0.758,
+      "inner_open_frac": 0.123,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       4.6,
+       1.4
+      ],
+      "art_width_mm": 0.037,
+      "sewn_width_mm": 0.037,
+      "art_depth_mm": 0.385,
+      "inner_open_frac": 1.0,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 74,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.275,
+    "art_rgb": [
+     255,
+     235,
+     188
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 2.57,
+    "cx_mm": 41.45,
+    "cy_mm": 31.05,
+    "h_mm": 0.9,
+    "line": 8,
+    "pos": 1,
+    "name": "L8.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 73,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.48,
+    "art_rgb": [
+     254,
+     222,
+     146
+    ],
+    "thread_rgb": [
+     240,
+     220,
+     170
+    ],
+    "area_mm2": 10.8,
+    "cx_mm": 47.8,
+    "cy_mm": 32.9,
+    "h_mm": 13.05,
+    "line": 8,
+    "pos": 2,
+    "name": "L8.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 3,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.188,
+    "art_rgb": [
+     1,
+     1,
+     1
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 3.15,
+    "cx_mm": 19.92,
+    "cy_mm": 35.38,
+    "h_mm": 5.15,
+    "line": 9,
+    "pos": 1,
+    "name": "L9.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 52,
+    "refine_px": [
+     4,
+     -4
+    ],
+    "letter_iou": 0.244,
+    "art_rgb": [
+     254,
+     192,
+     46
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 2.83,
+    "cx_mm": 26.55,
+    "cy_mm": 36.11,
+    "h_mm": 3.32,
+    "line": 9,
+    "pos": 2,
+    "name": "L9.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 51,
+    "refine_px": [
+     4,
+     2
+    ],
+    "letter_iou": 0.193,
+    "art_rgb": [
+     251,
+     172,
+     27
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 0.78,
+    "cx_mm": 41.64,
+    "cy_mm": 34.76,
+    "h_mm": 1.68,
+    "line": 9,
+    "pos": 3,
+    "name": "L9.3"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       6.743,
+       15.73
+      ],
+      "art_mm2": 0.032,
+      "sewn_mm2": 0.032,
+      "status": "breached",
+      "art_sub_thread": true,
+      "closes": false
+     },
+     {
+      "at_mm": [
+       10.029,
+       18.887
+      ],
+      "art_mm2": 0.191,
+      "sewn_mm2": 0.0,
+      "status": "closed",
+      "art_sub_thread": false,
+      "closes": true
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       8.622,
+       7.16
+      ],
+      "art_width_mm": 5.076,
+      "sewn_width_mm": 31.791,
+      "art_depth_mm": 7.401,
+      "inner_open_frac": 1.0,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       7.626,
+       16.69
+      ],
+      "art_width_mm": 3.025,
+      "sewn_width_mm": 12.19,
+      "art_depth_mm": 5.918,
+      "inner_open_frac": 0.815,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       5.613,
+       21.596
+      ],
+      "art_width_mm": 2.948,
+      "sewn_width_mm": 0.037,
+      "art_depth_mm": 8.877,
+      "inner_open_frac": 0.0,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       5.978,
+       24.953
+      ],
+      "art_width_mm": 1.988,
+      "sewn_width_mm": 0.54,
+      "art_depth_mm": 2.641,
+      "inner_open_frac": 0.123,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 16,
+    "refine_px": [
+     3,
+     -4
+    ],
+    "letter_iou": 0.265,
+    "art_rgb": [
+     236,
+     146,
+     33
+    ],
+    "thread_rgb": [
+     255,
+     204,
+     0
+    ],
+    "area_mm2": 38.31,
+    "cx_mm": 57.94,
+    "cy_mm": 34.79,
+    "h_mm": 27.88,
+    "line": 9,
+    "pos": 4,
+    "name": "L9.4"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       8.559,
+       1.307
+      ],
+      "art_width_mm": 0.188,
+      "sewn_width_mm": 0.188,
+      "art_depth_mm": 0.354,
+      "inner_open_frac": 1.0,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       5.635,
+       11.865
+      ],
+      "art_width_mm": 1.821,
+      "sewn_width_mm": 0.703,
+      "art_depth_mm": 4.225,
+      "inner_open_frac": 0.209,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       5.111,
+       16.707
+      ],
+      "art_width_mm": 3.795,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 5.982,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 18,
+    "refine_px": [
+     -4,
+     -3
+    ],
+    "letter_iou": 0.315,
+    "art_rgb": [
+     234,
+     149,
+     30
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 30.92,
+    "cx_mm": 47.92,
+    "cy_mm": 37.58,
+    "h_mm": 22.3,
+    "line": 10,
+    "pos": 1,
+    "name": "L10.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 53,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.204,
+    "art_rgb": [
+     250,
+     167,
+     26
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 1.25,
+    "cx_mm": 57.46,
+    "cy_mm": 37.15,
+    "h_mm": 2.45,
+    "line": 10,
+    "pos": 2,
+    "name": "L10.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 40,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.353,
+    "art_rgb": [
+     255,
+     229,
+     1
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 12.38,
+    "cx_mm": 39.85,
+    "cy_mm": 39.46,
+    "h_mm": 2.08,
+    "line": 11,
+    "pos": 1,
+    "name": "L11.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 27,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.08,
+    "art_rgb": [
+     234,
+     232,
+     232
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 1.04,
+    "cx_mm": 43.24,
+    "cy_mm": 38.78,
+    "h_mm": 1.2,
+    "line": 11,
+    "pos": 2,
+    "name": "L11.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 54,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.053,
+    "art_rgb": [
+     254,
+     230,
+     69
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 1.15,
+    "cx_mm": 48.31,
+    "cy_mm": 40.2,
+    "h_mm": 2.95,
+    "line": 11,
+    "pos": 3,
+    "name": "L11.3"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 41,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.254,
+    "art_rgb": [
+     254,
+     228,
+     1
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 4.18,
+    "cx_mm": 48.44,
+    "cy_mm": 39.66,
+    "h_mm": 1.92,
+    "line": 11,
+    "pos": 4,
+    "name": "L11.4"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 42,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.377,
+    "art_rgb": [
+     255,
+     225,
+     1
+    ],
+    "thread_rgb": [
+     255,
+     204,
+     0
+    ],
+    "area_mm2": 10.01,
+    "cx_mm": 58.84,
+    "cy_mm": 39.88,
+    "h_mm": 2.15,
+    "line": 11,
+    "pos": 5,
+    "name": "L11.5"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 29,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.128,
+    "art_rgb": [
+     216,
+     211,
+     208
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 1.86,
+    "cx_mm": 60.48,
+    "cy_mm": 39.46,
+    "h_mm": 2.02,
+    "line": 11,
+    "pos": 6,
+    "name": "L11.6"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 77,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.137,
+    "art_rgb": [
+     203,
+     182,
+     139
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 0.38,
+    "cx_mm": 34.48,
+    "cy_mm": 40.28,
+    "h_mm": 0.85,
+    "line": 12,
+    "pos": 1,
+    "name": "L12.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 31,
+    "refine_px": [
+     2,
+     -2
+    ],
+    "letter_iou": 0.081,
+    "art_rgb": [
+     222,
+     233,
+     229
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 0.7,
+    "cx_mm": 39.14,
+    "cy_mm": 40.52,
+    "h_mm": 0.75,
+    "line": 12,
+    "pos": 2,
+    "name": "L12.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 79,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.087,
+    "art_rgb": [
+     247,
+     245,
+     197
+    ],
+    "thread_rgb": [
+     255,
+     204,
+     0
+    ],
+    "area_mm2": 0.95,
+    "cx_mm": 59.75,
+    "cy_mm": 40.48,
+    "h_mm": 0.5,
+    "line": 12,
+    "pos": 3,
+    "name": "L12.3"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       2.829,
+       2.624
+      ],
+      "art_width_mm": 0.087,
+      "sewn_width_mm": 0.087,
+      "art_depth_mm": 0.431,
+      "inner_open_frac": 0.846,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 44,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.26,
+    "art_rgb": [
+     254,
+     213,
+     1
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 3.63,
+    "cx_mm": 35.24,
+    "cy_mm": 41.61,
+    "h_mm": 1.78,
+    "line": 13,
+    "pos": 1,
+    "name": "L13.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 56,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.178,
+    "art_rgb": [
+     247,
+     188,
+     25
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 3.65,
+    "cx_mm": 35.41,
+    "cy_mm": 41.69,
+    "h_mm": 3.32,
+    "line": 13,
+    "pos": 2,
+    "name": "L13.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 78,
+    "refine_px": [
+     4,
+     1
+    ],
+    "letter_iou": 0.072,
+    "art_rgb": [
+     252,
+     237,
+     163
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 1.69,
+    "cx_mm": 38.59,
+    "cy_mm": 41.44,
+    "h_mm": 3.12,
+    "line": 13,
+    "pos": 3,
+    "name": "L13.3"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 57,
+    "refine_px": [
+     4,
+     -4
+    ],
+    "letter_iou": 0.073,
+    "art_rgb": [
+     254,
+     231,
+     69
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 1.41,
+    "cx_mm": 42.91,
+    "cy_mm": 41.08,
+    "h_mm": 2.1,
+    "line": 13,
+    "pos": 4,
+    "name": "L13.4"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 45,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.249,
+    "art_rgb": [
+     254,
+     213,
+     2
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 3.78,
+    "cx_mm": 43.44,
+    "cy_mm": 41.74,
+    "h_mm": 1.72,
+    "line": 13,
+    "pos": 5,
+    "name": "L13.5"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 60,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.155,
+    "art_rgb": [
+     245,
+     182,
+     22
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 2.42,
+    "cx_mm": 43.46,
+    "cy_mm": 42.38,
+    "h_mm": 2.0,
+    "line": 13,
+    "pos": 6,
+    "name": "L13.6"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 46,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.188,
+    "art_rgb": [
+     255,
+     211,
+     2
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 2.98,
+    "cx_mm": 47.7,
+    "cy_mm": 41.82,
+    "h_mm": 1.6,
+    "line": 13,
+    "pos": 7,
+    "name": "L13.7"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 75,
+    "refine_px": [
+     3,
+     1
+    ],
+    "letter_iou": 0.048,
+    "art_rgb": [
+     252,
+     233,
+     131
+    ],
+    "thread_rgb": [
+     204,
+     204,
+     204
+    ],
+    "area_mm2": 0.65,
+    "cx_mm": 49.19,
+    "cy_mm": 41.08,
+    "h_mm": 5.15,
+    "line": 13,
+    "pos": 8,
+    "name": "L13.8"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 47,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.213,
+    "art_rgb": [
+     255,
+     210,
+     2
+    ],
+    "thread_rgb": [
+     204,
+     204,
+     204
+    ],
+    "area_mm2": 2.82,
+    "cx_mm": 56.09,
+    "cy_mm": 41.96,
+    "h_mm": 1.62,
+    "line": 13,
+    "pos": 9,
+    "name": "L13.9"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 58,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.129,
+    "art_rgb": [
+     255,
+     229,
+     69
+    ],
+    "thread_rgb": [
+     204,
+     204,
+     204
+    ],
+    "area_mm2": 1.04,
+    "cx_mm": 56.29,
+    "cy_mm": 40.95,
+    "h_mm": 0.95,
+    "line": 13,
+    "pos": 10,
+    "name": "L13.10"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 32,
+    "refine_px": [
+     3,
+     4
+    ],
+    "letter_iou": 0.109,
+    "art_rgb": [
+     218,
+     232,
+     226
+    ],
+    "thread_rgb": [
+     255,
+     204,
+     0
+    ],
+    "area_mm2": 1.05,
+    "cx_mm": 59.74,
+    "cy_mm": 40.67,
+    "h_mm": 0.35,
+    "line": 13,
+    "pos": 11,
+    "name": "L13.11"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 6,
+    "refine_px": [
+     -4,
+     0
+    ],
+    "letter_iou": 0.242,
+    "art_rgb": [
+     11,
+     49,
+     53
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 28.97,
+    "cx_mm": 36.55,
+    "cy_mm": 43.95,
+    "h_mm": 10.8,
+    "line": 14,
+    "pos": 1,
+    "name": "L14.1"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       7.628,
+       9.476
+      ],
+      "art_mm2": 0.02,
+      "sewn_mm2": 0.0,
+      "status": "closed",
+      "art_sub_thread": true,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       2.753,
+       3.338
+      ],
+      "art_width_mm": 0.211,
+      "sewn_width_mm": 0.812,
+      "art_depth_mm": 1.466,
+      "inner_open_frac": 0.244,
+      "status": "open",
+      "art_sub_thread": true,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       2.496,
+       3.839
+      ],
+      "art_width_mm": 0.62,
+      "sewn_width_mm": 0.257,
+      "art_depth_mm": 0.95,
+      "inner_open_frac": 0.136,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       6.578,
+       5.479
+      ],
+      "art_width_mm": 1.346,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 14.423,
+      "inner_open_frac": 0.575,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       1.918,
+       10.113
+      ],
+      "art_width_mm": 0.237,
+      "sewn_width_mm": 0.211,
+      "art_depth_mm": 0.512,
+      "inner_open_frac": 0.67,
+      "status": "bridged",
+      "art_sub_thread": true,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 20,
+    "refine_px": [
+     -4,
+     2
+    ],
+    "letter_iou": 0.391,
+    "art_rgb": [
+     248,
+     157,
+     29
+    ],
+    "thread_rgb": [
+     255,
+     188,
+     33
+    ],
+    "area_mm2": 39.15,
+    "cx_mm": 39.39,
+    "cy_mm": 43.3,
+    "h_mm": 10.1,
+    "line": 14,
+    "pos": 2,
+    "name": "L14.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 61,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.126,
+    "art_rgb": [
+     246,
+     183,
+     22
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 2.03,
+    "cx_mm": 47.49,
+    "cy_mm": 42.55,
+    "h_mm": 1.65,
+    "line": 14,
+    "pos": 3,
+    "name": "L14.3"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       2.178,
+       9.852
+      ],
+      "art_width_mm": 0.099,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 6.187,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": true,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 7,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.343,
+    "art_rgb": [
+     14,
+     52,
+     56
+    ],
+    "thread_rgb": [
+     255,
+     170,
+     51
+    ],
+    "area_mm2": 10.57,
+    "cx_mm": 53.36,
+    "cy_mm": 43.92,
+    "h_mm": 10.5,
+    "line": 14,
+    "pos": 4,
+    "name": "L14.4"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 62,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.207,
+    "art_rgb": [
+     245,
+     179,
+     24
+    ],
+    "thread_rgb": [
+     255,
+     204,
+     0
+    ],
+    "area_mm2": 4.21,
+    "cx_mm": 57.61,
+    "cy_mm": 42.72,
+    "h_mm": 1.3,
+    "line": 14,
+    "pos": 5,
+    "name": "L14.5"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 65,
+    "refine_px": [
+     -4,
+     -2
+    ],
+    "letter_iou": 0.076,
+    "art_rgb": [
+     253,
+     191,
+     18
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.42,
+    "cx_mm": 58.24,
+    "cy_mm": 44.24,
+    "h_mm": 0.28,
+    "line": 15,
+    "pos": 1,
+    "name": "L15.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 83,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.081,
+    "art_rgb": [
+     250,
+     229,
+     183
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.47,
+    "cx_mm": 58.34,
+    "cy_mm": 44.45,
+    "h_mm": 0.2,
+    "line": 16,
+    "pos": 1,
+    "name": "L16.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 82,
+    "refine_px": [
+     3,
+     -4
+    ],
+    "letter_iou": 0.136,
+    "art_rgb": [
+     251,
+     242,
+     177
+    ],
+    "thread_rgb": [
+     240,
+     220,
+     170
+    ],
+    "area_mm2": 1.11,
+    "cx_mm": 42.51,
+    "cy_mm": 45.51,
+    "h_mm": 4.88,
+    "line": 17,
+    "pos": 1,
+    "name": "L17.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 12,
+    "refine_px": [
+     -4,
+     3
+    ],
+    "letter_iou": 0.431,
+    "art_rgb": [
+     7,
+     46,
+     52
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 2.59,
+    "cx_mm": 58.2,
+    "cy_mm": 44.92,
+    "h_mm": 0.85,
+    "line": 17,
+    "pos": 2,
+    "name": "L17.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 85,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.106,
+    "art_rgb": [
+     249,
+     246,
+     205
+    ],
+    "thread_rgb": [
+     240,
+     220,
+     170
+    ],
+    "area_mm2": 0.79,
+    "cx_mm": 35.83,
+    "cy_mm": 47.95,
+    "h_mm": 1.15,
+    "line": 18,
+    "pos": 1,
+    "name": "L18.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 36,
+    "refine_px": [
+     -4,
+     2
+    ],
+    "letter_iou": 0.077,
+    "art_rgb": [
+     221,
+     234,
+     226
+    ],
+    "thread_rgb": [
+     240,
+     220,
+     170
+    ],
+    "area_mm2": 0.78,
+    "cx_mm": 37.65,
+    "cy_mm": 48.3,
+    "h_mm": 0.9,
+    "line": 19,
+    "pos": 1,
+    "name": "L19.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 67,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.099,
+    "art_rgb": [
+     252,
+     193,
+     28
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 1.33,
+    "cx_mm": 47.66,
+    "cy_mm": 48.26,
+    "h_mm": 0.38,
+    "line": 19,
+    "pos": 2,
+    "name": "L19.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 48,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.077,
+    "art_rgb": [
+     254,
+     198,
+     10
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.56,
+    "cx_mm": 49.52,
+    "cy_mm": 48.31,
+    "h_mm": 0.22,
+    "line": 19,
+    "pos": 3,
+    "name": "L19.3"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 37,
+    "refine_px": [
+     4,
+     -4
+    ],
+    "letter_iou": 0.041,
+    "art_rgb": [
+     219,
+     228,
+     214
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.51,
+    "cx_mm": 47.54,
+    "cy_mm": 48.52,
+    "h_mm": 0.15,
+    "line": 20,
+    "pos": 1,
+    "name": "L20.1"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 8,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.378,
+    "art_rgb": [
+     0,
+     0,
+     0
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 23.95,
+    "cx_mm": 7.19,
+    "cy_mm": 53.06,
+    "h_mm": 27.88,
+    "line": 21,
+    "pos": 1,
+    "name": "L21.1"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       17.989,
+       2.923
+      ],
+      "art_width_mm": 0.703,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 6.805,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       8.731,
+       5.553
+      ],
+      "art_width_mm": 4.592,
+      "sewn_width_mm": 3.816,
+      "art_depth_mm": 11.753,
+      "inner_open_frac": 0.721,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 38,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.584,
+    "art_rgb": [
+     255,
+     203,
+     11
+    ],
+    "thread_rgb": [
+     255,
+     204,
+     0
+    ],
+    "area_mm2": 63.92,
+    "cx_mm": 11.66,
+    "cy_mm": 49.34,
+    "h_mm": 32.72,
+    "line": 21,
+    "pos": 2,
+    "name": "L21.2"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": true,
+    "glyph": 21,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.057,
+    "art_rgb": [
+     125,
+     140,
+     52
+    ],
+    "thread_rgb": [
+     0,
+     0,
+     0
+    ],
+    "area_mm2": 0.43,
+    "cx_mm": 49.21,
+    "cy_mm": 48.65,
+    "h_mm": 0.15,
+    "line": 21,
+    "pos": 3,
+    "name": "L21.3"
+   }
+  ]
+ },
+ "_inert": {
+  "arms": [
+   "shipped",
+   "coverage_edges"
+  ],
+  "80 mm": {
+   "same_stitches": true,
+   "same_table": true
+  }
+ }
+}

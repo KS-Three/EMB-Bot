@@ -758,6 +758,38 @@ def _straight_rails(piece: Polygon, u):
     return (a, b) if side(a) <= side(b) else (b, a)
 
 
+def _slant_corner(piece: Polygon, P, tip, far, u, end: int, min_off: float):
+    """The slant's near corner, when the fan pivot P sits short of it: the
+    outline vertex on the slant side between P and the tip that stands
+    furthest outside the chord P -> tip, so long as it stands at least
+    `min_off` outside it (a traced slant's own jaggies stay under twice the
+    simplification) and lies ahead of P toward the tip. The slant side is
+    the arc from P to the tip that does not hold `far`, the long-side end
+    of the same cross. -> the corner, or None (the pivot is already there)."""
+    ring = LineString(piece.exterior.coords)
+    L = ring.length
+    dP, dT, dF = (ring.project(Point(p)) for p in (P, tip, far))
+
+    def between(d, a, b):                     # d on the ring arc a -> b, increasing
+        return (a <= d <= b) if a <= b else (d >= a or d <= b)
+
+    a, b = (dP, dT) if not between(dF, dP, dT) else (dT, dP)
+    cs = list(piece.exterior.coords)[:-1]
+    vx, vy = tip[0] - P[0], tip[1] - P[1]
+    n = math.hypot(vx, vy)
+    if n < 1e-9 or L < 1e-9:
+        return None
+    best, off = None, min_off
+    t0 = end * (P[0] * u[0] + P[1] * u[1])
+    for c in cs:
+        if not between(ring.project(Point(c)), a, b):
+            continue
+        d = abs((c[0] - P[0]) * vy - (c[1] - P[1]) * vx) / n
+        if d >= off and end * (c[0] * u[0] + c[1] * u[1]) > t0 + 1e-9:
+            best, off = c, d
+    return None if best is None else (float(best[0]), float(best[1]))
+
+
 def _fan_ends(st, piece: Polygon, u, pitch_mm: float, W: float):
     """Stations square to the axis shrink toward a slanted end: past the
     shorter side's corner the scan sees only the chord between the slant
@@ -812,8 +844,33 @@ def _fan_ends(st, piece: Polygon, u, pitch_mm: float, W: float):
             continue
         slant_a = move_a > move_b
         P = full[0] if slant_a else full[1]
+        # The pivot belongs on the slant's NEAR corner, where the slant side
+        # turns into the end. The last cross over 0.85 of the median only
+        # lands there on a column of even width: on a piece that tapers
+        # toward its end (the Becker A's right leg, narrowing to its apex
+        # beside the cut) the crosses fall under the bar well before the
+        # slant starts, the pivot sat 1.2 mm down the side, and the triangle
+        # between it, the corner and the tip sewed bare -- 1.3 -> 6.7 mm2
+        # unsewn on that A against the satin tier (2026-10-11,
+        # `docs/renders/columns-slant-fan-2026-10-11/`). The crosses whose
+        # slant-side end has not reached the corner are the side's own and
+        # stay scan crosses; the fan starts at the corner.
+        corner = _slant_corner(piece, P, tip, (full[1] if slant_a else full[0]), u, end,
+                               max(pitch_mm, 2.0 * max(SIMPLIFY_MM, W / 16.0)))
+        if corner is not None:
+            tc = end * proj(corner)
+            j = k
+            while j + 1 < len(order) and end * proj(order[j + 1][0 if slant_a else 1]) <= tc + 1e-9:
+                j += 1
+            k, P = j, corner
+            shrink = order[k + 1:][::-1]
         targets = [(s[1] if slant_a else s[0]) for s in reversed(shrink)]
-        if math.dist(targets[-1], tip) > 0.5 * pitch_mm:
+        # the final cross lies ON the slant: a last target within half a
+        # pitch of the tip is moved onto it rather than left up to 0.2 mm
+        # short of it, with no cross on the slant at all
+        if targets and math.dist(targets[-1], tip) <= 0.5 * pitch_mm:
+            targets[-1] = tip
+        else:
             targets.append(tip)
         fan = []
         for q in targets:

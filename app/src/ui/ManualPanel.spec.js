@@ -45,6 +45,14 @@ import "@testing-library/jest-dom/vitest";
 import { createRequire } from "node:module";
 import { preloadAllFontsSync } from "../lib/testFonts.js";
 import { CANVAS_W, CANVAS_H } from "../lib/manualShapes.js";
+import { advancedOpen } from "../lib/advanced.js";
+
+// The drawing tools live behind the panel's "Advanced ›" fold (spec
+// 2026-09-30 §5), which is `hidden` while closed -- and Testing Library's
+// role queries skip hidden subtrees. This spec drives the tools themselves,
+// so it opens the fold once; the fold's own behaviour is pinned in
+// Advanced.spec.js and ContentStep.advanced.spec.js.
+advancedOpen.set(true);
 
 let Harness;
 
@@ -236,7 +244,7 @@ describe("selecting and deleting a finished shape", () => {
     await fireEvent.click(getByRole("button", { name: "Delete shape" }));
     expect(patches).toHaveLength(1);
     expect(patches[0].patch.shapes).toEqual([]);
-    expect(getByText("No shapes yet — draw one above to get started.")).toBeTruthy();
+    expect(getByText("No shapes yet — open Advanced to draw one.")).toBeTruthy();
   });
 });
 

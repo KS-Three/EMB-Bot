@@ -13,6 +13,122 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-12 — scope refresh after the 10-11/12 wave (PRs #832–#848)
+
+Three MASTER_SCOPE lines were already stale when this pass began: area 1 and "Waiting on Kent" 41 called the native-read corner lane "in flight" though PR #834 had merged it OFF; the SVG-import paragraph called `claude/knockout-alpha` "in flight" though PR #832 had merged; and defect 47 called the forbid-gap rule "not built" an hour after PR #846 built it. All three re-stated. MASTER_SCOPE went 26,233 → 25,294 words: defects 21–25, 30, 32, 37, 39 and 43 (all fixed or measured, all still under "Live") moved to closed pointers with their full text in the area docs; the area-3 At-a-glance row's PR 2/PR 4 detail and four area-3 paragraphs already verbatim in `docs/scope/3-studio-app-wizard.md` came out; the phase-1 sitting chronology moved to area 1.
+
+Merged in the wave, with the numbers as each PR body measured them:
+
+- **#832** `knockoutBackground` keys on alpha for a transparent corner: 8×8 transparent canvas, 16-px mark, #000000 and #141414 0 → 16 of 16 kept; #231F20 and red 16 → 16; opaque corners byte-identical over 5 images × 4 option sets. `node --test` 1225 tests, 1215 pass, 0 fail.
+- **#834** `subpixel_corner_runs` built OFF. Becker at 1.8 px/mm: reversals 7.1 → 0.9 per 100 mm, right-angle turns 26.5 → 20.1; at 3 / 5 px/mm reversals 5.6 / 3.1 → 1.3 / 1.4. Worst median edge-error change +0.0028 mm (golden_tee, 1.8). 118 of 129 reversal vertices had a corner flag beside them; 16 remain. 63 tests passed over five files.
+- **#835** `blend_bands_share_cone` removed on Kent's ruling (WoK 36): 378 blocks / 2,214 trims identical OFF and ON over 52 combos. 100 tests passed over ten files.
+- **#836** `underlayDirection` default ON (WoK 40): hotel_fremont needle-up 7,629.4 → 7,329.5 mm (−3.9%), jump records 847 → 825, 3-jump runs 157 → 152, trims 42 → 42, stitches 11,975 both; logo_whitebg 1,876.5 → 1,820.6 mm (−3.0%), runs 8 → 6, trims 6 → 6. Two engine tests re-pinned. `node --test` 1236 tests, 1226 pass, 0 fail.
+- **#837** Column lane `RAIL_REACH_INSET_MM` 0.11 (WoK 37): enthusiast @ 80 grid 0.3627 → 0.2596, one-pixel 0.2953 → 0.1365, matched 0.2824 → 0.1395; penetration medians within 0.02 of shipped on enthusiast and drone, bridge 80 misses by 0.009, Fremont ~0.07 and golden_tee ~0.06 further in, Becker ~0.055 further out. Enthusiast letter overshoot 79.8 → 24.2 mm² (shipped 37.8). Lane-ON regression file 5 passed, 1 failed (the spill guard, fixed in #844).
+- **#838** shard durations from main run 38184616285: 279 files, 202.9 test-minutes; this PR's own run slowest shard 12.0 → 11.5 min, spread 4.7 → 3.8.
+- **#839** restitch trigger: (a) and (b) stale for the configurator, (c) a right-click edit under a multi-selection had no run button in front — fixed in `EmbroideryField`. Playwright 21 passed, 1 load flake that passed alone.
+- **#841** `tools/counter_slots.py` on Becker MARINE, six colours, left chest: at 80 mm flags shipped 1 / coverage_edges 3 / columns_words 0 / both 3; at 50 mm 5 / 7 / 5 / 5. Smallest sewn counter 0.71 mm². Hotel Fremont and golden_tee inert under `--assert-inert`. 5 tests passed.
+- **#842** pooled phase-1 kappa: 144 judged pairs over nine sittings, 115 in scope, 49 with a side chosen, 26 with an accepted fidelity reading. Trims ties-in +0.28 [+0.12, +0.43] (n = 90); `trims_per_1000` +0.28 [+0.11, +0.44] (n = 53); `changed_trims` +0.27 [+0.08, +0.44]; every fidelity instrument's intervals span zero. 18 new tests; 245 passed over the eye-pairs files.
+- **#843** research only, `docs/fine-detail-hair-research-2026-10-12.md`; corrects `docs/trade-knowledge-2026-09-13.md` §5 (Melco publishes a 1.0 mm satin minimum).
+- **#844** Column lane slant fan: Becker A matched unsewn 6.7 → 1.1 mm² (shipped 1.3), bare ink 15.27 → 10.26; whole Becker matched `lost_frac` 0.0150 → 0.0131 (shipped 0.0149); letters' unsewn 17.2 → 11.6 mm². One-pixel spill guard under the lane: 0.1538 (no teeth) → 0.3126. Lane OFF 60 passed; lane ON 6 passed.
+- **#845** configurator PR 3, the `Advanced ›` fold; vitest 99 files / 1,833 tests with the two power-tool specs opening the fold; Playwright all green in batches, three load flakes passed alone.
+- **#846** `forbid_gap_mm` built None: open gaps OFF → ON at the Studio's colours — drone 27 → 2 (18.46 → 0.37 mm², stitches 19,644 → 19,514, trims 133 → 145), bridge 14 → 1 (15.38 → 0.80 mm², stitches 18,837 → 17,718, trims 102 → 109), Fremont and Becker 0 → 0 byte-identical; OFF md5-identical on three fixtures. Found in passing: `S426e81b9` on drone loses a 9 mm² piece to `_largest_polygon` (defect 61). 76 tests passed over four files.
+- **#847** density/flow instrument: 14 candidates over 76 scorable pairs (33 with a side chosen); `jumps_per_1000` +0.53 / +0.30, agreeing with the trim picks at +0.72 (n = 72); `thread_density` −0.11; `flow_circvar` ties in +0.16 [+0.02, +0.30]; `long_share` −0.38 / −0.19 (reversed). 19 new tests; 311 passed.
+- **#848** thread weight and hairline tier: hair fixture (80 mm, 40 strands) OFF 40 → ON 40 → ON 60 — stitches 32,857 → 22,602 → 25,635, dark thread 10.65 → 1.62 → 1.61 m, trims 109 → 123 → 108, dark stitches under 1.0 mm 3,729 → 0 → 0; thin script 1,352 → 185 → 525 stitches. 280 passed, 1 failed (`photo/enthusiast_logo.png`, the known platform red CI deselects); service suites 250 passed.
+
+In flight, not merged at this writing: **#840** manual plan 3 (open runs, Line mode, run ↔ column), armed; `node --test` 1247 tests, 1237 pass, 0 fail; the read-back line 316 stitches over a 76.53 mm path, worst 0.058 mm off it, 229.90 mm of thread (3.00× the path).
+
+Moved out of MASTER_SCOPE "Waiting on Kent" on this pass, verbatim as they stood (resolved or condensed there):
+
+16. **RESOLVED 2026-10-11 — a hand-set sew order now reaches the file (Kent
+   chose option A).** Triage (PR #820): the file always sews what the review
+   lists after Apply, and a within-colour reorder holds; what was LOST was a
+   Sequencer block swap followed by a tier change that moves a layer —
+   `stage7_sequence.borders_last_layers` (called from the pipeline) renumbers
+   the layers between, and
+   `regions.apply_layer_overrides` then writes the Studio's stale layer
+   numbers into the new numbering (`logo_whitebg`, 80 mm: arranged blue, red,
+   orange; sewn blue, orange, red). The fix (PR #830, Studio only):
+   `moveBlock`/`moveShape` pin EVERY sewable shape's layer, as
+   `reorderWithinLayer` already did for a colour. **Accepted catch:** once a
+   customer reorders, a later tier change no longer gets the borders-last
+   move — their order wins; split/merge pieces made after a reorder come in
+   unpinned, so the engine half (option B, not taken) is still reachable for
+   them, pinned red-on-fix by `test_a_partial_pin_is_still_lost_by_the_engine`.
+   The area-vs-layer difference first queued here is `/digitize-manual`'s,
+   which nothing in `app/src` calls. *(confirmed 2026-10-11 —
+   `digitizer/tests/test_manual_sew_order.py`; `DigitizePanel.spec.js`,
+   `digitizer.spec.js`)*
+
+22. **Flip `fillColumns` on for the browser lanes — RESOLVED 2026-10-08:
+   ON in all three** (manual 10-07; basic shapes and the image lane 10-08,
+   Kent's call with the price in front of him). Measured off vs on with
+   `tools/fill-columns-lanes.mjs` (its control reproduces the manual sheet's
+   badge to the stitch). **Shapes**, every preset at 20/50/100 mm on three
+   garments: floats off the fill 3,118 → 25, none new; cuts 60 → 33;
+   stitches +1.8%, worst +16% (an 8-point thin star); circles and rectangles
+   byte-identical. **Image**, 14 real logos × 2/4/6 colours × 3 garments:
+   floats off the fill 188,952 → 484, none new; cuts 3,714 → 3,208; stitches
+   **+10.4%** (over +10% on 76 of 126, +29.7% worst), travel over sewn rows
+   6.0 → 52.1 m, builds up to 1.8 s. **Kent's standing ask:** the next ten
+   digitized images shown to him carry the off/on float picture
+   (`tools/fill-columns-image-sheet.mjs`; memory
+   `fill-columns-float-pictures-2026-10-08`). **None of it is sewn.**
+   `cutFloats` (28) is on in manual (#672). **The image lane's price, taken
+   apart — HOLD:** 56% of it is the floats' landings now sewn; four cheaper
+   walks each gave no gain, new floats, or 7.7× the cuts (candidate C is on
+   #786's sheet, item 32).
+   *(measured 2026-10-08 — PR #697, `docs/renders/fill-columns-lanes-2026-10-08/price.md`;
+   `docs/renders/fill-columns-lanes-2026-10-08/`;
+   `generate.js`, `generate.spec.js` star and counter tests)*
+
+36. **`blend_bands_share_cone`: keep or remove — NEW 2026-10-11.** Built OFF
+   for defect 18's band route, which measures EMPTY (0 of 52 combos, OFF and
+   ON). Keep: it is off, inert and tested, and `tools/cone_revisits` will
+   flag a real band case as `band`. Remove: about 120 lines of sequencing
+   code for zero measured occurrences, against DOCTRINE's "nothing enters
+   unless it would change what someone DOES". *(measured 2026-10-11 — PR #827)*
+
+37. **The Column lane's pull — gate 1, NEW 2026-10-11.** `lost_frac` with the
+   lane ON (`lettering_columns` + `lettering_words`) splits three ways. (1)
+   **Rail placement:** the lane puts each rail ON the outline and then pushes
+   the full `pull_comp_mm` (0.30 on pique), about 0.1 mm further out than the
+   satin tier reaches, uniform on all sides (enthusiast median −0.157 → −0.274
+   mm); enthusiast reads 0.311 on the grid, over the 0.30 bar. A diagnostic
+   lane with its pull cut 0.12 mm reads **0.2425** (one-pixel 0.1285), under
+   both bars and under shipped. Your call: keep the fabric's nominal pull on
+   the outline as designed, or match the satin tier's reach. (2) **Square
+   terminals stopped short — FIXED lane-ON** (`outline_cut._cap_square_ends`):
+   Becker MARINE unsewn 32.6 → 16.2 mm² against shipped's 17.2; it adds ~6
+   mm² of overshoot on enthusiast (grid 0.3627). (3) **Slanted-terminal fan**
+   (`_fan_ends`, the A's apex and feet): named, not fixed. Both flags stay
+   OFF; nothing sewn. *(measured 2026-10-11 — PR #828,
+   [`docs/renders/columns-lost-frac-2026-10-11/`](docs/renders/columns-lost-frac-2026-10-11/))*
+
+40. **`underlayDirection` flip (browser satin) — NEW 2026-10-11.** A column
+   starts at the end nearer where its centre-run underlay ENDS (`satin.js`
+   `startNear`): the needle-up move from underlay to column on a 30 × 3 mm
+   bar, left chest, 28.45 → 2.33 mm, which off is written as THREE jump
+   records (a cut on a machine trimming at three jumps); a five-bar row's
+   needle-up travel 231.7 → 68.3 mm at equal trims and stitches; zigzag
+   underlay unchanged. Catch: a turned column ends where the shape was
+   entered, so the move to the next shape changes; logos not measured;
+   lettering (`buildLetteringDesign`) not covered. No physical constant, so
+   not gate 1. Not sewn. *(measured 2026-10-11 — PR #822,
+   `tools/underlay-direction-measure.mjs`, `docs/renders/underlay-direction-2026-10-11/`)*
+
+41. **`subpixel_edges_min_px_per_mm` — built unset; recommendation LEAVE IT,
+   NEW 2026-10-11.** A floor under the native edge read clears Becker's
+   outline reversals at 1.8 px/mm (7.1 → 0.0 per 100 mm) but returns the
+   0.68 mm source-pixel staircase the 09-18 flip fixed (right-angle turns
+   26.5 → 81.3 per 100 mm), which the reversal count cannot see: a stair
+   turns 90° and the threshold is 120°. If set anyway, 2.5, not 3.0. The
+   reversals' own cure is corner placement in the read (lane
+   `claude/native-read-corners`, in flight) or `coverage_edges` on Becker's
+   class. *(measured 2026-10-11 — PR #826,
+   [`docs/subpixel-res-gate-2026-10-11.md`](docs/subpixel-res-gate-2026-10-11.md))*
+
+---
+
 **Last updated:** 2026-10-11 — scope refresh after the 10-11 wave (PRs #817–#830)
 
 Two MASTER_SCOPE entries had sent lanes out on stale text the same day: defect 47 said "Not built" though PR #700 built its angle half OFF on 10-08 (#823 found it and added only the gate-1 fabric placeholder), and defect 18 said "4 of 52 combos" though the band route had been empty since `bind_resnap_all_classes` went ON on 09-10 (#827 found it after building the fold). Both re-stated.

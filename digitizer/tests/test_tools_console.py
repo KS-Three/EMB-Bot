@@ -42,8 +42,9 @@ DOC_READERS = {"scope_budget", "memory_budget", "doc_claims"}
 #: reads doc text, so neither is exposed through a doc; listing them is what
 #: lets the sweep below stay exhaustive. (`sewout_walk_reach` widens its
 #: stdout all the same — its own sheet prints arrows, which is the OTHER
-#: exposure, swept separately below.)
-NAMES_ONLY = {"acceptance_ab", "sewout_walk_reach"}
+#: exposure, swept separately below.) `counter_slots` WRITES its table as
+#: `<fixture>.md` and reads none.
+NAMES_ONLY = {"acceptance_ab", "sewout_walk_reach", "counter_slots"}
 
 
 def cp1252_stream() -> tuple[io.BytesIO, io.TextIOWrapper]:

@@ -12,6 +12,11 @@
   // handles: a drag patches project.sizeMm, which triggers a regenerate in
   // EmbroideryField, which redispatches "dims" here.
   export let designDims = null;
+  // Which half renders (progressive disclosure, spec 2026-09-30 §5): "size"
+  // is the W x H row a first-time customer needs, "fine" is the align row and
+  // belongs behind Advanced. ContentStep mounts one of each around the
+  // element's editor; the default draws both, as the panel always did.
+  export let part = "all";
 
   const d = createEventDispatcher();
   const MM_PER_INCH = 25.4;
@@ -234,6 +239,7 @@
 </script>
 
 <div class="sizepanel">
+  {#if part !== "fine"}
   <h3>Size</h3>
   <div class="sizerow">
     <span class="sizelabel">W</span>
@@ -264,6 +270,14 @@
     </select>
     <button type="button" class="autofit" on:click={autoFit}>Auto-fit</button>
   </div>
+  {#if capNote}
+    <p class="capnote" role="status">{capNote}</p>
+  {/if}
+  {#if warn}
+    <p class="warn">Smaller than 5 mm — thread can't stitch this cleanly</p>
+  {/if}
+  {/if}
+  {#if part !== "size"}
   <div class="alignrow">
     <span class="alignlabel">Align in {placementLabel || "placement"}</span>
     <div class="alignbtns">
@@ -281,11 +295,6 @@
       {/each}
     </div>
   </div>
-  {#if capNote}
-    <p class="capnote" role="status">{capNote}</p>
-  {/if}
-  {#if warn}
-    <p class="warn">Smaller than 5 mm — thread can't stitch this cleanly</p>
   {/if}
 </div>
 

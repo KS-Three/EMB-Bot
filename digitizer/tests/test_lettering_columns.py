@@ -454,6 +454,27 @@ def test_a_straight_arm_fans_its_slanted_end():
     assert len(fan) >= 3 and all(math.dist(st[0], (10, 0)) < 0.5 for st in fan)
 
 
+def test_a_tapering_arm_fans_from_the_slants_near_corner():
+    """An arm that narrows toward its slanted end (the Becker A's right leg,
+    narrowing to its apex beside the cut): its crosses fall under 0.85 of
+    the median well before the slant starts, so the pivot used to sit on
+    the short side ~1 mm short of the corner and the triangle between it,
+    the corner and the tip sewed bare -- the A's 1.3 -> 6.7 mm2 unsewn
+    against the satin tier (2026-10-11). The fan now pivots on the slant's
+    near corner, its last cross lies on the slant, and the side's own
+    crosses up to the corner stay square."""
+    arm = Polygon([(0, 0), (14, 0), (12, 2.5), (0, 5)])
+    col = letter_columns(arm).columns[0]
+    assert col.kind == "straight"
+    runs, _ = lettering_columns_shape(arm, "arm", trim_at_mm=3.0)
+    tip = arm.intersection(box(10.5, -1, 15, 6)).buffer(-0.15)
+    assert tip.difference(_sewn(runs, 0.2)).area < 0.01 * tip.area      # was 0.51 of 4.93 mm2
+    end = col.stations[-1] if max(col.stations[-1][0][0], col.stations[-1][1][0]) > 13 else col.stations[0]
+    assert {tuple(round(v, 6) for v in p) for p in end} == {(12.0, 2.5), (14.0, 0.0)}
+    fan = [st for st in col.stations if (12.0, 2.5) in (tuple(st[0]), tuple(st[1]))]
+    assert len(fan) >= 3
+
+
 def test_a_curved_piece_keeps_its_slanted_tip():
     """A quarter-circle band whose end is cut on a slant: the spike squared
     a free end by cutting the longer rail back to the shorter, which left

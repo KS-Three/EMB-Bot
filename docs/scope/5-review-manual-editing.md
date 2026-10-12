@@ -260,7 +260,19 @@ overlay drew a large, obvious spike over unchanged stitching.
   because `finish_generation` (edits + palette + fork) now rides the paid
   tail. *(measured 2026-08-22 — `digitizer/tools/perf_stage_cache.py`,
   cold vs hit vs cache-cleared cold-edit over TestClient)*
-- **OPEN: the restitch trigger only exists on the Content step.**
+- **CLOSED 2026-10-11 (PR #839) — stale for the configurator, one real gap fixed.**
+  There are no steps any more: `Configurator.svelte` is one scroll and
+  `DigitizePanel` is always mounted for the selected digitized element;
+  nothing restitches on its own (Kent's 2026-10-05 ruling — the trigger is the
+  Auto Digitize Image button, transparent while an edit is pending); and a
+  canvas edit selects the element it edits. The gap was a right-click edit
+  under a multi-selection, accepted under the group panel with no run button
+  in front; `EmbroideryField`'s `shapeUnderPointer` now collapses the
+  selection to the edited element. Pinned per case by
+  `e2e/digitize-restitch-trigger.spec.js`; screenshots in
+  `docs/evidence/restitch-trigger-2026-10-11/`. The original entry, as written
+  for the wizard:
+- **(was OPEN) the restitch trigger only exists on the Content step.**
   `EmbroideryField` mounts on every step (`App.svelte`, outside the step
   conditional); `DigitizePanel`, which owns `runDigitize`, mounts only on
   `step === "content"`. A shape edited from Review/Create/Download saves and

@@ -23,7 +23,7 @@
 // than by guessed coordinates: the bounding box of the green pixels IS the
 // shape's box, and its top-left corner is where the anchor sits.
 import { test, expect } from "@playwright/test";
-import { pickGarment } from "./helpers.js";
+import { pickGarment, openAdvanced } from "./helpers.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -44,6 +44,7 @@ test("upload -> trace preview (colors, hole kept as a cut-out) -> add shapes -> 
   await expect(page.locator(".fieldmenu")).toBeHidden();
 
   // ---- open the trace panel, upload the real fixture ---------------------
+  await openAdvanced(page);
   await page.getByRole("button", { name: "Trace image…" }).click();
   await expect(page.locator(".tip-upload")).toBeVisible();
   await page.locator(".tip-upload input[type=file]").setInputFiles(FIXTURE_PNG);

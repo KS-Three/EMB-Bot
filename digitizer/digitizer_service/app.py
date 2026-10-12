@@ -227,7 +227,7 @@ def _require_token(supplied: str | None) -> None:
 # bad value is still a 400 at submit.
 _OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer",
                   "sew_order", "stitched", "underlay_style", "boundary_override",
-                  "stitch_width_mm"}
+                  "stitch_width_mm", "thread_wt"}
 # Kept in lockstep with digitizer_core.regions._TIER_VALUES — see that
 # copy's own comment for what "wave"/"chevron"/"brick" (alongside
 # "crosshatch") each do.
@@ -455,6 +455,11 @@ def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
         st = entry.get("stitched")
         if st is not None and not isinstance(st, bool):
             bad = "stitched must be a boolean"
+        twt = entry.get("thread_wt")
+        if twt is not None and (isinstance(twt, bool) or twt not in machine.THREAD_WEIGHTS):
+            # 2026-10-12: the colour block's thread weight (see
+            # `regions.apply_shape_edits`, which repeats this check).
+            bad = f"thread_wt must be one of {list(machine.THREAD_WEIGHTS)}"
         sw = entry.get("stitch_width_mm")
         if sw is not None:
             # Contract v1.8: the sewn column width for one shape. The range
@@ -563,6 +568,15 @@ def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
                 status_code=400,
                 detail=f"target_width_mm must be a number of millimetres above 0 "
                        f"and at most {MAX_TARGET_WIDTH_MM:g}.",
+            )
+    # `thread_wt` (2026-10-12) is read by `machine.thread_profile` at stage 7;
+    # a value outside its closed set would fail the JOB after a 202. A 400.
+    if "thread_wt" in data:
+        wt = data["thread_wt"]
+        if isinstance(wt, bool) or wt not in machine.THREAD_WEIGHTS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"thread_wt must be one of {list(machine.THREAD_WEIGHTS)}.",
             )
     # `garment_rgb` reaches `PipelineConfig` as whatever JSON carried, so a
     # malformed one (a hex string, four channels, 300) would surface as a

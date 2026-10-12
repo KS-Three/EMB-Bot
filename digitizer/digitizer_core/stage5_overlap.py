@@ -81,6 +81,17 @@ compensation can actually close) and never reaches a face whose local separation
 is wider, so every face keeps its full compensation except where growing would
 fuse. Underlap is untouched — the corridor is bare fabric only, and an underlap
 by definition runs under another colour.
+
+**Closing narrow gaps between colours (`cfg.forbid_gap_mm`, default OFF).** The
+underlap reaches only into a later colour's ARTWORK, never across bare fabric,
+so two colours the artwork separates by a strip narrower than two stitch rows
+get two pull bands meeting in the middle and nobody spanning it — fabric again
+once pull takes the bands back (Law 26: such gaps "close up" and cannot be sewn
+as their own region). With the flag, `gap_bridges` hands each such strip to the
+colour that sews first, which then plans as if its artwork ran across it: the
+ordinary tongue reaches under the later colour from the strip's far edge, and
+the later colour keeps its artwork edge — the colour on top owns the seam, as
+Kent ruled for borders on 2026-09-09. The threshold is gate 1's to set.
 """
 from __future__ import annotations
 
@@ -383,6 +394,143 @@ def _bare_part(hole: Polygon, covered, floor: float) -> list[Polygon]:
     return [g for g in parts if g.geom_type == "Polygon" and g.area >= floor]
 
 
+def _shares_edge(part, geom) -> bool:
+    """True when `part` meets `geom` along an edge, not at a point: a union
+    joined only at a vertex is two polygons, and `_largest_polygon` would
+    drop the smaller. 1e-4 mm either side of a shared edge of 0.01 mm is
+    1e-6 mm² of overlap."""
+    x0, y0, x1, y1 = part.bounds
+    m = 1e-2
+    local = geom.intersection(Polygon([(x0 - m, y0 - m), (x1 + m, y0 - m),
+                                       (x1 + m, y1 + m), (x0 - m, y1 + m)]))
+    return (not local.is_empty) and part.intersection(local.buffer(1e-4)).area > 1e-6
+
+
+def gap_bridges(regions: list[Region], gap_mm: float) -> tuple[dict[str, object], list[dict]]:
+    """-> ({shape_id: the strip it closes}, [one record per bridged pair]).
+
+    `cfg.forbid_gap_mm` (Law 26, defect 47): the bare fabric narrower than
+    `gap_mm` between two STITCHED shapes on different layers, read off their
+    ARTWORK, given to the one that sews first. The strip is the
+    morphological closing of the pair at `gap_mm / 2` minus the pair — it
+    fills exactly the fabric narrower than `gap_mm` between them and ends
+    flush with their ends, where the plain "within `gap_mm` of both" lens
+    would bulge past them — kept only where it lies within `gap_mm` of both
+    (a notch of one shape's own is not a gap between two), where no other
+    stitched shape's artwork already covers it, and where it touches both.
+    Pieces under `gap_mm²` are dropped: they are the fillets the closing
+    puts in every corner where two colours' edges meet at an angle, not a
+    channel of fabric (a 90-degree corner's is 0.05 · gap², a 0.4 mm gap
+    one gap long is already 0.5 · gap² and a real one runs far longer).
+
+    Same-layer pairs are not gaps between colours — stage 5's corridor
+    keeps those apart on purpose — and an unstitched shape is bare fabric
+    by design, so neither takes part.
+    """
+    out: dict[str, list] = {}
+    pairs: list[dict] = []
+    sew = [r for r in regions if r.meta.get("stitched", True)]
+    if gap_mm <= 0 or len(sew) < 2:
+        return {}, pairs
+    tree = STRtree([r.polygon for r in sew])
+    half = gap_mm / 2.0
+    floor = gap_mm * gap_mm
+    reach: dict[int, object] = {}
+
+    def near(k: int):
+        if k not in reach:
+            reach[k] = sew[k].polygon.buffer(gap_mm)
+        return reach[k]
+
+    for i, a in enumerate(sew):
+        x0, y0, x1, y1 = a.polygon.bounds
+        query = Polygon([(x0 - gap_mm, y0 - gap_mm), (x1 + gap_mm, y0 - gap_mm),
+                         (x1 + gap_mm, y1 + gap_mm), (x0 - gap_mm, y1 + gap_mm)])
+        for j in tree.query(query):
+            j = int(j)
+            b = sew[j]
+            if b.meta["layer"] <= a.meta["layer"]:
+                continue                 # only the EARLIER side builds; same layer never
+            d = a.polygon.distance(b.polygon)
+            if d >= gap_mm:
+                continue
+            lens = near(i).intersection(near(j))
+            if lens.is_empty:
+                continue
+            # The closing is computed in a window round the lens: whole-shape
+            # buffers would cost the full outline per pair, and a clip edge
+            # 2 x gap from the lens cannot reach into it at radius gap / 2.
+            lx0, ly0, lx1, ly1 = lens.bounds
+            m = 2.0 * gap_mm
+            win = Polygon([(lx0 - m, ly0 - m), (lx1 + m, ly0 - m),
+                           (lx1 + m, ly1 + m), (lx0 - m, ly1 + m)])
+            ca, cb = a.polygon.intersection(win), b.polygon.intersection(win)
+            both = unary_union([ca, cb])
+            strip = both.buffer(half).buffer(-half).difference(both).intersection(lens)
+            if strip.is_empty:
+                continue
+            others = [sew[int(k)].polygon for k in tree.query(win) if int(k) not in (i, j)]
+            if others:
+                strip = strip.difference(unary_union(others))
+            parts = [g for g in getattr(strip, "geoms", [strip])
+                     if g.geom_type == "Polygon" and g.area >= floor
+                     and g.distance(ca) < 1e-6 and g.distance(cb) < 1e-6]
+            if not parts:
+                continue
+            out.setdefault(a.shape_id, []).extend(parts)
+            pairs.append({"earlier": a.shape_id, "later": b.shape_id,
+                          "gap_mm": round(float(d), 3),
+                          "area_mm2": round(float(sum(g.area for g in parts)), 3)})
+
+    # Where three colours crowd one patch of fabric, two strips overlap, and
+    # stage 5 clips each shape by everything sewn before it -- so a strip
+    # can come out of that clip cut off from its own shape, and a piece of
+    # sewn polygon cut off from its shape is dropped (`_largest_polygon`):
+    # fabric again. Settle it here, in sew order: each strip loses what an
+    # earlier colour's strip already holds, and a piece that loses its
+    # contact with its own shape goes to the earlier strip that cut it off,
+    # which it touches by construction.
+    #
+    # The same holds for a strip on a piece of its shape that an EARLIER
+    # colour's artwork cuts off from the rest (artwork polygons can overlap
+    # a little): stage 5 keeps only the largest piece, so a strip on a
+    # smaller one is dropped with it. It goes to the earlier colour too.
+    layer_of = {r.shape_id: r.meta["layer"] for r in sew}
+    art_of = {r.shape_id: r.polygon for r in sew}
+    final: dict[str, object] = {}
+    for sid in sorted(out, key=lambda s: layer_of[s]):
+        mine = unary_union(out[sid])
+        prior = [s for s in final if layer_of[s] < layer_of[sid]]
+        if prior:
+            mine = mine.difference(unary_union([final[s] for s in prior]))
+        parts = [p for p in getattr(mine, "geoms", [mine])
+                 if p.geom_type == "Polygon" and p.area >= 1e-6]
+        if not parts:
+            continue
+        own = art_of[sid]
+        x0, y0, x1, y1 = unary_union([own] + parts).bounds
+        earlier_art = [sew[int(k)] for k in tree.query(Polygon(
+            [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]))
+            if layer_of[sew[int(k)].shape_id] < layer_of[sid]]
+        held_by = [(r.shape_id, r.polygon) for r in earlier_art] + [(s, final[s]) for s in prior]
+        body = None
+        if held_by:
+            cut = unary_union([own] + parts).difference(unary_union([g for _, g in held_by]))
+            body = _largest_polygon(cut)
+        keep = []
+        for part in parts:
+            if _shares_edge(part, own) and (body is None or _shares_edge(part, body)):
+                keep.append(part)
+                continue
+            for s, g in held_by:
+                if _shares_edge(part, g):
+                    final[s] = part if s not in final else unary_union([final[s], part])
+                    break
+        if keep:
+            final[sid] = unary_union(keep)
+    return final, pairs
+
+
 def resolve_overlaps(
     regions: list[Region], fabric: Fabric, cfg: PipelineConfig,
     design_class: str = "flat",
@@ -424,6 +572,25 @@ def resolve_overlaps(
     layers = sorted({r.meta["layer"] for r in regions})
     by_layer = {L: [r for r in regions if r.meta["layer"] == L] for L in layers}
 
+    # `cfg.forbid_gap_mm` (Law 26): a shape that sews before a neighbour it
+    # is separated from by a sub-threshold strip of bare fabric plans as if
+    # its artwork ran across the strip. Everything below then treats the
+    # join as the ordinary seam it now is -- the tongue reaches under the
+    # later colour from the strip's far edge, and the later colour, clipped
+    # by what is already down, keeps its artwork edge. Off (None): no entry,
+    # and every shape plans on its own artwork exactly as before.
+    forbid = float(getattr(cfg, "forbid_gap_mm", None) or 0.0)
+    span: dict[str, Polygon] = {}
+    if forbid > 0:
+        for sid, strip in gap_bridges(regions, forbid)[0].items():
+            r = next(x for x in regions if x.shape_id == sid)
+            # The strip's edge on the artwork is the artwork's own edge only
+            # to floating point: a bare union can come back as two polygons
+            # a femtometre apart (measured on bridge's lettering, 2 mm² of
+            # strip dropped). A tenth of a micron of overlap welds them.
+            joined = unary_union([r.polygon, strip.buffer(1e-4)])
+            span[sid] = joined if joined.geom_type == "Polygon" else _largest_polygon(joined)
+
     def sewn_footprint(r: Region):
         """What a shape occupies on the fabric as far as the layers around
         it are concerned: its artwork — or, for widened lettering, its
@@ -435,10 +602,12 @@ def resolve_overlaps(
         footprint and so leaves the column exposed, where clipping by the
         artwork buried 79% of it under the ground's own growth (measured
         2026-09-09, review of the first cut); a ground that sews BEFORE it
-        reaches its tongue under the column, not just under the artwork."""
+        reaches its tongue under the column, not just under the artwork.
+        With `cfg.forbid_gap_mm`, the artwork includes the strip it spans."""
+        art = span.get(r.shape_id, r.polygon)
         if widened_lettering(r):
-            return _grow(r.polygon, pull, axis_by_id[r.shape_id])
-        return r.polygon
+            return _grow(art, pull, axis_by_id[r.shape_id])
+        return art
 
     geom_by_layer = {L: unary_union([sewn_footprint(r) for r in by_layer[L]]) for L in layers}
 
@@ -570,7 +739,7 @@ def resolve_overlaps(
 
     for sew_index, L in enumerate(layers):
         for r in by_layer[L]:
-            poly = r.polygon
+            poly = span.get(r.shape_id, r.polygon)
             axis = axis_by_id[r.shape_id]
             on_rails = rail_comp and satin_by_id[r.shape_id] and not widened_lettering(r)
             grown = poly if on_rails else _grow(poly, pull, axis)
@@ -662,9 +831,18 @@ def resolve_overlaps(
                 if under is not None and hole.buffer(-0.05).within(under):
                     continue           # a bean letter's hole: sewn through, on purpose
                 if _shrink(hole, pull, axis).area < hole_floor:
-                    keep = (_bare_part(hole, later_sewn(L), hole_floor)
-                            if bare_only and r.meta.get("stitched", True)
-                            else [hole])
+                    if r.shape_id in span and not any(
+                            hole.equals(Polygon(o)) for o in r.polygon.interiors):
+                        # `cfg.forbid_gap_mm`: a hole the closed strip narrowed
+                        # down to the later colour sitting in it is a seam,
+                        # not a counter -- holding it would strip the tongue
+                        # off exactly the join the strip was closed for. Only
+                        # what no later colour covers is held.
+                        keep = _bare_part(hole, later[L], hole_floor)
+                    else:
+                        keep = (_bare_part(hole, later_sewn(L), hole_floor)
+                                if bare_only and r.meta.get("stitched", True)
+                                else [hole])
                     if keep:
                         held.extend(keep)
                         n_holes += 1

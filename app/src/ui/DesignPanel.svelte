@@ -3,6 +3,7 @@
   import { EMB } from "../lib/emb.js";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
+  import Advanced from "./Advanced.svelte";
 
   // Editor panel for an imported pre-digitized design element (.dst file).
   // The file's raw bytes live on the element as base64 (see project.js's
@@ -124,6 +125,21 @@
       {decoded.colorCount} color{decoded.colorCount === 1 ? "" : "s"} · {decoded.trimCount} trims
     </p>
 
+    <div class="dp-blocks">
+      <span class="dp-blocks-label">Thread per color block</span>
+      {#each Array.from({ length: decoded.colorCount }) as _, i}
+        <div class="dp-block">
+          <span class="dp-block-n">Block {i + 1}</span>
+          <ThreadPicker rgb={blockRgb(element, i)} compact on:pick={(e) => pickBlock(i, e.detail)} />
+        </div>
+      {/each}
+    </div>
+
+    <!-- Default slot: the size row (ContentStep). Advanced (spec 2026-09-30
+         §5) holds the file's details: the old-DST note, rotation and the
+         resize note, plus whatever ContentStep puts in the "advanced" slot. -->
+    <slot />
+    <Advanced>
     <!-- This note used to say the opposite, and was wrong in a way that
          mattered. A third-party file DID arrive turned round — but measured on
          the canvas on 2026-09-07, it arrived MIRRORED as well, and the note
@@ -147,16 +163,6 @@
       used to write DST on the opposite axis convention from every other program.
       Files written since, and files from anywhere else, import correctly.
     </p>
-
-    <div class="dp-blocks">
-      <span class="dp-blocks-label">Thread per color block</span>
-      {#each Array.from({ length: decoded.colorCount }) as _, i}
-        <div class="dp-block">
-          <span class="dp-block-n">Block {i + 1}</span>
-          <ThreadPicker rgb={blockRgb(element, i)} compact on:pick={(e) => pickBlock(i, e.detail)} />
-        </div>
-      {/each}
-    </div>
 
     <label class="letterspacing">
       <span>Rotation</span>
@@ -190,6 +196,8 @@
         themselves (no re-digitizing), so density changes with size.
       {/if}
     </p>
+    <slot name="advanced" />
+    </Advanced>
   {:else}
     <p class="dp-note">
       Drop in any Tajima .dst design — from a design site, a digitizer, or another machine —
@@ -198,6 +206,8 @@
       My designs rather than its .dst — it keeps more than a DST can, and a file this
       app wrote before September 2026 comes back mirrored.
     </p>
+    <slot />
+    <Advanced><slot name="advanced" /></Advanced>
   {/if}
 </div>
 

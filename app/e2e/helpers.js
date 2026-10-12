@@ -24,6 +24,18 @@ export async function pickGarment(page, label) {
   await expect(page.locator(".cfg-sub")).toContainText(label);
 }
 
+// The editor's power tools sit behind "Advanced ›" (spec 2026-09-30 §5):
+// rendered but hidden until opened, so a spec that reaches one calls this
+// first. Idempotent -- the choice is remembered for the page's life, so a
+// second call (or a spec that already opened it) leaves it open.
+export async function openAdvanced(page) {
+  const toggle = page.getByTestId("advanced-toggle");
+  await expect(toggle).toBeVisible({ timeout: 30_000 });
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByTestId("advanced-body")).toBeVisible();
+}
+
 export async function pickTemplate(page, name) {
   await page.getByRole("button", { name: /^My designs/ }).click();
   await page.locator(".tcard", { hasText: name }).click();

@@ -6,7 +6,7 @@
 //
 // Same service bootstrap and skip posture as digitize-auto-start.spec.js.
 import { test, expect } from "@playwright/test";
-import { startStudio, pickGarment, uploadArtwork } from "./helpers.js";
+import { startStudio, pickGarment, uploadArtwork, openAdvanced } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -126,6 +126,7 @@ test("reloading mid-run resumes the same service job and lands the stitches", as
   expect(submitted[1]).toBe(submitted[0]);
 
   // The result lands and the panel is not left busy.
+  await openAdvanced(page);
   await expect(page.getByRole("tab", { name: "Shapes" })).toBeVisible({ timeout: 120_000 });
   await expect(page.locator(".dgp-run")).toBeEnabled();
   await expect(page.locator(".dgp-run")).toHaveText(/Digitize/);

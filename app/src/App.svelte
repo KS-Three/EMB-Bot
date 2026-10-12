@@ -1,6 +1,7 @@
 <script>
   import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, withoutBlankStarter, removeElement, resolveArtworkType, deriveProjectName, UNTITLED_NAME } from "./lib/project.js";
   import { createHistory } from "./lib/history.js";
+  import { advancedOpen } from "./lib/advanced.js";
   import { applyTemplate } from "./lib/templates.js";
   import { onMount, tick } from "svelte";
   import { isSewable } from "./lib/flow.js";
@@ -722,6 +723,10 @@
       if (artInput) artInput.click();
       return;
     }
+    // "Draw shapes" (the canvas right-click menu) asked for the drawing
+    // canvas, which lives behind Advanced (spec 2026-09-30 §5) -- opening the
+    // panel onto a closed fold would hide the one thing the customer asked for.
+    if (type === "manual") advancedOpen.set(true);
     project = addElement(project, type, hoopWidthMm(project));
     // addElement selects the new element, and its editor is always on
     // screen now — the configurator panel shows the Design section at all

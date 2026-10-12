@@ -159,6 +159,38 @@ class PipelineConfig:
     # what every golden here is pinned to. The operator buys the cone this
     # names, so an unknown id raises rather than silently substituting.
     thread_brand: str | None = None
+    # Thread WEIGHT (2026-10-12, Kent: "Thread is extremely thin, we should
+    # be able to embroider hair!"; docs/fine-detail-hair-research-2026-10-12.md
+    # §4, docs/hairline-prototype-2026-10-12.md). 40, 60 or 75; default 40,
+    # which is every constant the engine already used (`machine.
+    # thread_profile(40)` returns them), so the default is byte-identical.
+    # Per COLOUR BLOCK through `shape_overrides[sid].thread_wt` (one needle
+    # per colour: a block takes the finest weight any of its shapes names —
+    # see `stage7_sequence.sequence`). What it moves today: satin spacing
+    # (both the classic satin tier and the Column lane), and the hairline
+    # tier's admission width and run width. What it does NOT move, on
+    # purpose: the minimum stitch (needle-bound), fill row spacing (from pro
+    # files of unknown thread), the stage-4 run-area floor (moving it would
+    # change which shapes exist, not how they sew) and preflight's coverage
+    # unit. 60 and 75 are CANDIDATES from vendor pages — gate 1: unsewn.
+    thread_wt: int = 40
+    # The hairline tier (2026-10-12, default OFF; same doc). A stroke whose
+    # skeleton-measured width is at or under `machine.HAIRLINE_MAX_WIDTHS`
+    # (1.5) laid thread widths of its block's weight — under 0.6 mm at
+    # 40 wt, under 0.48 mm at 60 — sews as ONE run along its skeleton
+    # (`stage6_hairline.hairline_runs`) instead of the three-pass bean on
+    # its outline: one thread for a one-thread stroke. Stitch length
+    # `hairline_stitch_mm`, shortened (never under `machine.MIN_STITCH_MM`)
+    # only where a curl needs it; no underlay; trims by `trim_at_mm`;
+    # strands of one shape chained nearest-neighbour, continuing straight
+    # through a crossing. Strands shorter than `machine.RUN_MIN_LOOP_MM` are
+    # dropped and COUNTED in the plan's warnings list (HAIRLINE_STRANDS_
+    # DROPPED, engine-side only — Kent's 2026-10-02 no-warnings ruling).
+    # Tried ahead of the run rung for `tier == "auto"` shapes only; a shape
+    # it declines takes the ladder exactly as before. Off, byte-identical.
+    hairline: bool = False
+    # candidate: Melco run (walk) floor 1.5 mm, #843 §1 [V][25], unsewn.
+    hairline_stitch_mm: float = 1.5
     max_colors: int = 12
     # Make `max_colors` true on EVERY lane, not just the flat one. Default
     # OFF and byte-identical off — it only ever runs when a design already
@@ -1287,6 +1319,23 @@ class PipelineConfig:
     # The fabric's multiplier waits on that sew-out as one named 1.0:
     # `stage5_overlap.OVERLAP_FABRIC_FACTOR`.
     overlap_parallel_mm: float = 1.0
+    # Law 26's other half (defect 47's forbid-gap rule): "engineered gaps
+    # under 2 stitch rows (~0.8 mm) close up". A strip of bare fabric
+    # between two colours narrower than this -- read off the ARTWORK, the
+    # gap the design drew -- cannot be sewn as its own region and shows
+    # fabric once pull takes the two compensation bands back, so stage 5
+    # does not leave it: the colour sewn FIRST spans the strip and tucks
+    # the ordinary `pull + overlap_mm` tongue under the later colour, whose
+    # edge stays on its artwork (the colour on top owns the seam, Kent's
+    # 2026-09-09 ruling). A gap a third colour fills, a gap between two
+    # shapes of one thread, and anything at or over this are untouched.
+    # The strip is closed, never widened: widening would shave artwork off
+    # a colour to make room for fabric the law says closes up anyway.
+    # None is OFF, the engine before it byte for byte. 0.8 is the
+    # documented CANDIDATE (two rows at the law's pitch), not a measured
+    # constant: the value is ROADMAP gate 1's and waits on card block 6.
+    # `stage5_overlap.gap_bridges`; read with `tools/seam_underlap.narrow_gaps`.
+    forbid_gap_mm: float | None = None
     # Stage 5's hole hold, read for what is actually IN the hole. A hole the
     # shell's pull growth would shrink under `min_detail_mm²` is held open at
     # its original size — right for a counter, wrong for a hole a LATER

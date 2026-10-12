@@ -31,7 +31,7 @@
 // convention: "each e2e spec here is self-contained, matching that file's
 // own convention").
 import { test, expect } from "@playwright/test";
-import { startStudio, pickGarment, uploadArtwork, runDigitize } from "./helpers.js";
+import { startStudio, pickGarment, uploadArtwork, runDigitize, openAdvanced } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -44,6 +44,7 @@ import { fileURLToPath } from "node:url";
 async function openShapeRows(page) {
   // The list lives on the Shapes tab since 2026-09-30; the tab appears with
   // the result, so the click waits for it.
+  await openAdvanced(page);
   await page.getByRole("tab", { name: "Shapes" }).click({ timeout: 120_000 });
   const btn = page.getByRole("button", { name: /^Edit shapes/ });
   await expect(btn).toBeVisible({ timeout: 120_000 });
@@ -147,6 +148,7 @@ test("text cluster: badge appears, convert to text, undo -- through the real ser
   // label wraps BOTH the input and a trailing "mm" unit span, so its
   // computed accessible name is ambiguous/concatenated; this is the
   // unambiguous real selector).
+  await openAdvanced(page);
   const widthInput = page
     .locator(".dgp-param")
     .filter({ hasText: "Design width" })

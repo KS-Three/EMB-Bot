@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
+  import Advanced from "./Advanced.svelte";
   import {
     SHAPE_KINDS, SHAPE_LABELS, defaultShapeParams, resolvedShapeParams,
     STAR_MIN_POINTS, STAR_MAX_POINTS, STAR_MIN_INNER_RATIO, STAR_MAX_INNER_RATIO,
@@ -64,6 +65,16 @@
     </div>
   </div>
 
+  <div class="sp-row">
+    <span class="sp-label">Color</span>
+    <ThreadPicker compact rgb={element.colorRgb} on:pick={(e) => patch({ colorRgb: e.detail })} />
+  </div>
+
+  <!-- Default slot: the size row (ContentStep). Advanced (spec 2026-09-30
+       §5): the per-shape parameters, then whatever ContentStep puts in the
+       "advanced" slot. -->
+  <slot />
+  <Advanced>
   {#if element.kind === "rect"}
     <label class="sp-row">
       <span class="sp-label">Height</span>
@@ -87,7 +98,7 @@
       />
       <span class="sp-unit">mm (0 = square corners)</span>
     </label>
-    <p class="sp-note">Width is the W in Size below.</p>
+    <p class="sp-note">Width is the W in Size above.</p>
   {:else if element.kind === "star"}
     <label class="sp-row">
       <span class="sp-label">Star points</span>
@@ -113,11 +124,8 @@
       <span class="sp-unit">{Math.round(params.innerRatio * 100)}% — lower is sharper tips</span>
     </label>
   {/if}
-
-  <div class="sp-row">
-    <span class="sp-label">Color</span>
-    <ThreadPicker compact rgb={element.colorRgb} on:pick={(e) => patch({ colorRgb: e.detail })} />
-  </div>
+  <slot name="advanced" />
+  </Advanced>
 </div>
 
 <style>
