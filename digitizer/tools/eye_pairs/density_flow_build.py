@@ -66,9 +66,55 @@ class Cache:
     def get(self, key, fn):
         if key not in self.data:
             self.data[key] = fn()
-            if self.path:
-                self.path.write_text(json.dumps(self.data), encoding="utf-8")
+            self.save()
         return self.data[key]
+
+    def save(self):
+        if self.path:
+            tmp = self.path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(self.data), encoding="utf-8")
+            tmp.replace(self.path)
+
+
+def _job(args):
+    """One cache entry, in a worker process: (key, path, shapes or None, what)."""
+    key, path, shapes, what = args
+    d = _utf(Path(path))
+    if what == "support":
+        return key, _support(d)
+    return key, df.measure(d, set(shapes) if shapes else None, support=False)
+
+
+def prefetch(pooled_inputs: dict, srcs: dict[str, Path], cache: Cache, workers: int) -> None:
+    """Fill the cache for every design measurement `build` will ask for, in
+    parallel. Same pairing logic as `_measure_pair`, nothing recorded here."""
+    from concurrent.futures import ProcessPoolExecutor
+
+    jobs = {}
+    for sid, s in pooled_inputs["sittings"].items():
+        src = srcs.get(sid)
+        if src is None:
+            continue
+        for p in s["pairs"]:
+            if p.get("unscored_why"):
+                continue
+            fx, arm = p["fixture"], p["arm"]
+            pb, pa = src / "designs" / f"{fx}__{BASE}.json", src / "designs" / f"{fx}__{arm}.json"
+            if not (pb.exists() and pa.exists()):
+                continue
+            ch = changed_shapes(_utf(pb), _utf(pa)) or None
+            for path in (pb, pa):
+                for key, what in ((_key(path, ch), "scoped"), (f"{path}|support", "support")):
+                    if key not in cache.data:
+                        jobs[key] = (key, str(path), sorted(ch) if ch else None, what)
+    print(f"{len(jobs)} measurements to run on {workers} workers", flush=True)
+    with ProcessPoolExecutor(max_workers=workers) as ex:
+        for i, (key, val) in enumerate(ex.map(_job, jobs.values()), 1):
+            cache.data[key] = val
+            if i % 10 == 0:
+                cache.save()
+                print(f"  {i}/{len(jobs)}", flush=True)
+    cache.save()
 
 
 def _key(path: Path, shapes) -> str:
@@ -161,13 +207,17 @@ def main(argv=None) -> int:
     ap.add_argument("--pro-root", type=Path, default=None)
     ap.add_argument("--cache", type=Path, default=None)
     ap.add_argument("--only", default=None, help="measure one sitting (fills the cache)")
+    ap.add_argument("--workers", type=int, default=1, help="processes for the measurements")
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args(argv)
     srcs = dict((s.split("=", 1)[0], Path(s.split("=", 1)[1])) for s in args.src)
     if args.only:
         srcs = {k: v for k, v in srcs.items() if k == args.only}
     pro = pro_densities(args.pro_root)
-    sittings = build(_utf(POOLED), srcs, pro, Cache(args.cache))
+    cache = Cache(args.cache)
+    if args.workers > 1:
+        prefetch(_utf(POOLED), srcs, cache, args.workers)
+    sittings = build(_utf(POOLED), srcs, pro, cache)
     data = {"schema": 1, "built": "2026-10-12",
             "labels_from": "docs/eye-pairs-2026-10-11/pooled-inputs.json (PR #842), unchanged",
             "pro": pro, "candidates": {k: list(v) for k, v in df.CANDIDATES.items()},
