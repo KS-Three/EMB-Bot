@@ -1,0 +1,10 @@
+prepush.py on origin/main 759042df (BEFORE this change), REAL_ART widths: signed distance (mm, + inside)
+of each rail point handed to stage6_satin._push_rails, letter shapes only, |d| < 0.8.
+off = shipped satin tier (`_rail_points`), on = the Column lane (`column_runs`).
+
+enthusiast off _rail_points   n= 1059 mean +0.124 p5/25/50/75/95 = -0.000 +0.000 +0.050 +0.168 +0.546
+enthusiast on  column_runs    n=  848 mean +0.032 p5/25/50/75/95 = -0.000 -0.000 +0.000 +0.000 +0.330
+drone      off _rail_points   n= 2541 mean +0.110 p5/25/50/75/95 = -0.000 +0.000 +0.043 +0.142 +0.458
+drone      on  column_runs    n= 2242 mean +0.038 p5/25/50/75/95 = -0.000 -0.000 +0.000 +0.000 +0.354
+bridge     off _rail_points   n=  447 mean +0.116 p5/25/50/75/95 = -0.000 +0.005 +0.058 +0.167 +0.454
+bridge     on  column_runs    n=  408 mean +0.048 p5/25/50/75/95 = -0.000 -0.000 +0.000 +0.000 +0.367

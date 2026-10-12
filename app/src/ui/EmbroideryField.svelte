@@ -2605,7 +2605,11 @@
       }
     }
     if (!hit) return null;
-    if (project.selectedId !== el.id) dispatch("select", el.id);
+    // Also when the element is only the PRIMARY of a multi-selection: the
+    // group panel has no "Auto Digitize Image" button, so an edit made there
+    // would sit unsewn with nothing in front to press. A plain select
+    // collapses the group to this element, as it does for any other element.
+    if (project.selectedId !== el.id || multiSel) dispatch("select", el.id);
     setSelectedShape(hit.shapeId);
     shapeEditError = "";
     drawOverlay();
