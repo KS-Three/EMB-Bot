@@ -73,7 +73,19 @@ def _plan(result, cfg):
     return plan, seen
 
 
-def run(rel: str, cfg_kw: dict) -> dict:
+def _uncovered(result, plan, cfg, image) -> dict:
+    """`ARTWORK_UNCOVERED`'s reading of this plan: {shape_id: missing mm²}."""
+    from digitizer_core.preflight import ARTWORK_UNCOVERED, run_preflight
+    report = run_preflight(result, plan, cfg, image=image)
+    out = {}
+    for f in report["findings"]:
+        if f.get("code") == ARTWORK_UNCOVERED:
+            for s in (f.get("extra") or f).get("shapes", []):
+                out[s["shape_id"]] = s["missing_mm2"]
+    return out
+
+
+def run(rel: str, cfg_kw: dict, preflight: bool = False) -> dict:
     gen = build_generation(str(ROOT / "testdata" / rel), PipelineConfig(**cfg_kw))
     out: dict = {"fixture": rel, "cfg": cfg_kw}
     off_by_id: dict = {}
@@ -83,6 +95,8 @@ def run(rel: str, cfg_kw: dict) -> dict:
         plan, planned = _plan(result, cfg)
         st = plan.stats
         row = {"stitches": st.stitch_count, "trims": st.trims, "md5": plan_md5(plan)}
+        if preflight:
+            row["uncovered"] = _uncovered(result, plan, cfg, ROOT / "testdata" / rel)
         if not flag:
             off_by_id = {p.shape_id: p for p in planned}
         if flag:
@@ -143,6 +157,8 @@ def main(argv=None) -> int:
                     help="only this corpus_scorecard MATRIX row (0-based)")
     ap.add_argument("--max-colors", type=int, default=None)
     ap.add_argument("--json", action="store_true", help="one JSON line per run")
+    ap.add_argument("--preflight", action="store_true",
+                    help="also read ARTWORK_UNCOVERED's per-shape finding OFF and ON")
     args = ap.parse_args(argv)
     from tools.corpus_scorecard import FIXTURES, MATRIX
     rows = MATRIX if args.matrix is None else [MATRIX[args.matrix]]
@@ -153,7 +169,7 @@ def main(argv=None) -> int:
             if args.max_colors:
                 kw["max_colors"] = args.max_colors
             try:
-                r = run(rel, kw)
+                r = run(rel, kw, preflight=args.preflight)
             except Exception as exc:  # noqa: BLE001 -- one bad fixture must not sink the sweep
                 print(json.dumps({"fixture": rel, "cfg": kw, "error": f"{type(exc).__name__}: {exc}"}),
                       flush=True)
