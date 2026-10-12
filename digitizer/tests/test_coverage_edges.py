@@ -103,6 +103,36 @@ def test_it_ships_off():
     assert PipelineConfig().coverage_edges is False
 
 
+# --- Deprecated: Kent 2026-10-12, "no" (PRs #818 built, #824 helps only under
+# the Column lane, #841 narrows three MARINE slots below one thread at 80 mm).
+# Still readable and behaviour unchanged; setting it True warns once.
+
+def test_default_off_construction_does_not_warn():
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert PipelineConfig(coverage_edges=False).coverage_edges is False
+        assert PipelineConfig().coverage_edges is False
+
+
+def test_setting_it_true_warns_once_and_names_the_ruling():
+    with pytest.warns(DeprecationWarning, match="Kent ruled it a no") as rec:
+        cfg = PipelineConfig(coverage_edges=True)
+    assert len([w for w in rec if issubclass(w.category, DeprecationWarning)]) == 1
+    assert cfg.coverage_edges is True                       # still readable, still set
+    with pytest.warns(DeprecationWarning, match="#818"):
+        cfg2 = PipelineConfig()
+        cfg2.coverage_edges = True                          # later assignment warns too
+    assert cfg2.coverage_edges is True
+
+
+def test_true_still_runs_and_warns(tmp_path):
+    art = _cutout(tmp_path, "disc.png", _disc_cov())
+    with pytest.warns(DeprecationWarning, match="coverage_edges"):
+        _p, on = _ink(art, coverage_edges=True)
+    assert len(on) == 1 and on[0].meta.get("coverage_edges") is True
+
+
 def test_a_low_res_cutout_disc_lands_on_the_circle(tmp_path):
     art = _cutout(tmp_path, "disc.png", _disc_cov())
     p, off = _ink(art)
