@@ -15,7 +15,7 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 **Last updated:** 2026-10-12 (evening) — scope refresh after PRs #850–#857 (and #840, which merged after #849 was written)
 
-Two MASTER_SCOPE lines were stale when this pass began: area 5 called PR #840 "armed and NOT merged" (it merged 04:04Z), and "Waiting on Kent" 45 called hairline step 2 "in flight, unpushed" (it merged as #850, and step 3 as #851). Both re-stated. The phase-1 instruments — counters (#841), the pooled kappa (#842) and the density/flow read (#847) — landed BEFORE #849 and are already recorded there; nothing in #850–#857 touches them, and phase 1's exit stays NOT MET. MASTER_SCOPE went 25,294 → 25,290 words.
+Two MASTER_SCOPE lines were stale when this pass began: area 5 called PR #840 "armed and NOT merged" (it merged 04:04Z), and "Waiting on Kent" 45 called hairline step 2 "in flight, unpushed" (it merged as #850, and step 3 as #851). Both re-stated. The phase-1 instruments — counters (#841), the pooled kappa (#842) and the density/flow read (#847) — landed BEFORE #849 and are already recorded there; nothing in #850–#857 touches them, and phase 1's exit stays NOT MET. MASTER_SCOPE went 25,294 → 25,308 words.
 
 Merged in the range, with the numbers as each PR body measured them:
 

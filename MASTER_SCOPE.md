@@ -554,7 +554,9 @@ about the facts.
    written down first (`long_share` now LOWER). Whether and when is his.
    *(proposed 2026-10-12 — [`docs/density-flow-instrument-2026-10-12.md`](docs/density-flow-instrument-2026-10-12.md))*
 43. **RESOLVED 2026-10-12 — the `Advanced ›` fold stays under each editor's
-   essentials (Kent);** spec §2.2 amended to match #845. *(confirmed 2026-10-12 —
+   essentials (Kent);** spec §2.2 amended to match #845. Still not built: a
+   "sewn colours" row for digitized art, and a fold on the multi-select group
+   panel. *(confirmed 2026-10-12 —
    PR #852, `docs/superpowers/specs/2026-09-30-studio-configurator-design.md`)*
 44. **`forbid_gap_mm` flip — RIPE for Kent since 2026-10-12.** Defect 47's
    forbid-gap half, built OFF. The weld's one way to lose ink is fixed (PR #857:
