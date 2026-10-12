@@ -4,6 +4,7 @@ so no hidden module-level tunables anywhere else.
 """
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -1260,6 +1261,16 @@ class PipelineConfig:
     # physical constant — every number is a raster quantity of the source.
     # Default OFF and byte-identical off; no sew-out has seen it.
     # `tests/test_coverage_edges.py`.
+    # DEPRECATED (Kent 2026-10-12: no). Still readable and still behaves as
+    # described above — setting it True changes nothing but emits one
+    # `DeprecationWarning` naming this ruling (`PipelineConfig.__setattr__`).
+    # The trail: PR #818 built it; PR #824 found it helps only under the
+    # Column lane; PR #841 (`tools/counter_slots.py`) found it narrows three
+    # MARINE slots below one thread (0.4 mm) at 80 mm that the lane alone keeps
+    # open. Kent 2026-10-12: no. The research docs
+    # (`docs/coverage-edges-under-columns-2026-10-11.md`,
+    # `docs/coverage-counters-2026-10-11.md`) and `tools/counter_slots.py`
+    # stay as the record; do not flip it, and do not build on it.
     coverage_edges: bool = False
 
     # Stage 5 — sew order, underlap, pull compensation
@@ -3956,3 +3967,16 @@ class PipelineConfig:
     #   - A sew-out that says at what clearance a needle-down float actually
     #     shows — LINK_COVER_TOL_MM is still a thread spec, not a measurement.
     chain_links: bool = False
+
+    def __setattr__(self, name: str, value) -> None:
+        # `coverage_edges` is DEPRECATED (Kent 2026-10-12: no; PRs #818, #824,
+        # #841 — see the field's comment). Setting it True, in the constructor
+        # or later, warns once and otherwise behaves exactly as before.
+        if name == "coverage_edges" and value:
+            warnings.warn(
+                "cfg.coverage_edges is deprecated: Kent ruled it a no on "
+                "2026-10-12 (built in PR #818, helps only under the Column "
+                "lane in #824, narrows three MARINE slots below one thread at "
+                "80 mm in #841). Behaviour is unchanged; do not build on it.",
+                DeprecationWarning, stacklevel=2)
+        object.__setattr__(self, name, value)
