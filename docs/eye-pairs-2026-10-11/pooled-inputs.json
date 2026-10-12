@@ -1,0 +1,4900 @@
+{
+ "schema": 1,
+ "built": "2026-10-11",
+ "sittings": {
+  "flags-0918-0928": {
+   "date": "2026-09-18..2026-09-28",
+   "labels": "docs/eye-pairs-2026-09-28/kent-notes.json",
+   "instruments": "09-18 render directory (Kent's laptop, gitignored), recomputed from stored designs",
+   "pairs": [
+    {
+     "id": "flags-0918-0928:area_weighted:drone",
+     "arm": "area_weighted",
+     "fixture": "drone",
+     "label": "both_bad",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.1573,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0328,
+      "uncovered_ink_frac": 0.0034,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 68,
+      "ragged_mm": 0.179,
+      "hausdorff_mm": 2.7,
+      "artfid": 83.3,
+      "trims_per_1000": 7.49,
+      "stitches": 18558,
+      "trims": 139,
+      "changed_trims": 24
+     },
+     "after": {
+      "lost_frac": 0.1575,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0328,
+      "uncovered_ink_frac": 0.0034,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 69,
+      "ragged_mm": 0.179,
+      "hausdorff_mm": 14.12,
+      "artfid": 83.3,
+      "trims_per_1000": 7.86,
+      "stitches": 18318,
+      "trims": 144,
+      "changed_trims": 29
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:area_weighted:screenshot",
+     "arm": "area_weighted",
+     "fixture": "screenshot",
+     "label": "both_bad",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.8527,
+      "unsewn_frac": 0.0358,
+      "overshoot_frac": 0.7746,
+      "uncovered_ink_frac": 0.1944,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 110,
+      "ragged_mm": 0.253,
+      "hausdorff_mm": 7.32,
+      "artfid": 71.1,
+      "trims_per_1000": 8.49,
+      "stitches": 8244,
+      "trims": 70,
+      "changed_trims": 15
+     },
+     "after": {
+      "lost_frac": 0.8356,
+      "unsewn_frac": 0.0442,
+      "overshoot_frac": 0.7469,
+      "uncovered_ink_frac": 0.2198,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 120,
+      "ragged_mm": 0.258,
+      "hausdorff_mm": 6.5,
+      "artfid": 70.9,
+      "trims_per_1000": 11.5,
+      "stitches": 6959,
+      "trims": 80,
+      "changed_trims": 25
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:design_angle:becker",
+     "arm": "design_angle",
+     "fixture": "becker",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.0575,
+      "unsewn_frac": 0.0033,
+      "overshoot_frac": 0.0542,
+      "uncovered_ink_frac": 0.0305,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 63,
+      "ragged_mm": 0.199,
+      "hausdorff_mm": 1.4,
+      "artfid": 88.4,
+      "trims_per_1000": 2.26,
+      "stitches": 17700,
+      "trims": 40,
+      "changed_trims": 16
+     },
+     "after": {
+      "lost_frac": 0.0583,
+      "unsewn_frac": 0.0033,
+      "overshoot_frac": 0.055,
+      "uncovered_ink_frac": 0.0304,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 65,
+      "ragged_mm": 0.2,
+      "hausdorff_mm": 1.4,
+      "artfid": 88.4,
+      "trims_per_1000": 2.07,
+      "stitches": 18386,
+      "trims": 38,
+      "changed_trims": 14
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:design_angle:bridge",
+     "arm": "design_angle",
+     "fixture": "bridge",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.1282,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0004,
+      "uncovered_ink_frac": 0.0038,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 80,
+      "ragged_mm": 0.148,
+      "hausdorff_mm": 18.58,
+      "artfid": 92.4,
+      "trims_per_1000": 8.42,
+      "stitches": 14608,
+      "trims": 123,
+      "changed_trims": 76
+     },
+     "after": {
+      "lost_frac": 0.1257,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0005,
+      "uncovered_ink_frac": 0.004,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 76,
+      "ragged_mm": 0.141,
+      "hausdorff_mm": 18.47,
+      "artfid": 92.1,
+      "trims_per_1000": 8.79,
+      "stitches": 14442,
+      "trims": 127,
+      "changed_trims": 80
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:design_angle:drone",
+     "arm": "design_angle",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.1573,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0328,
+      "uncovered_ink_frac": 0.0034,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 68,
+      "ragged_mm": 0.179,
+      "hausdorff_mm": 2.7,
+      "artfid": 83.3,
+      "trims_per_1000": 7.49,
+      "stitches": 18558,
+      "trims": 139,
+      "changed_trims": 43
+     },
+     "after": {
+      "lost_frac": 0.1578,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0327,
+      "uncovered_ink_frac": 0.0038,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 69,
+      "ragged_mm": 0.18,
+      "hausdorff_mm": 3.48,
+      "artfid": 83.2,
+      "trims_per_1000": 7.51,
+      "stitches": 18631,
+      "trims": 140,
+      "changed_trims": 44
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:design_angle:enthusiast",
+     "arm": "design_angle",
+     "fixture": "enthusiast",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.2933,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2933,
+      "uncovered_ink_frac": 0.0145,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 30,
+      "ragged_mm": 0.2,
+      "hausdorff_mm": 2.24,
+      "artfid": 78.5,
+      "trims_per_1000": 9.63,
+      "stitches": 2492,
+      "trims": 24,
+      "changed_trims": 21
+     },
+     "after": {
+      "lost_frac": 0.2968,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2968,
+      "uncovered_ink_frac": 0.0134,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 31,
+      "ragged_mm": 0.202,
+      "hausdorff_mm": 2.02,
+      "artfid": 78.5,
+      "trims_per_1000": 10.57,
+      "stitches": 2459,
+      "trims": 26,
+      "changed_trims": 23
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:design_angle:fremont",
+     "arm": "design_angle",
+     "fixture": "fremont",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.0018,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 4,
+      "ragged_mm": 0.092,
+      "hausdorff_mm": 16.3,
+      "artfid": 96.6,
+      "trims_per_1000": 3.77,
+      "stitches": 19885,
+      "trims": 75,
+      "changed_trims": 5
+     },
+     "after": {
+      "lost_frac": 0.0018,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 4,
+      "ragged_mm": 0.092,
+      "hausdorff_mm": 16.3,
+      "artfid": 96.6,
+      "trims_per_1000": 3.77,
+      "stitches": 19869,
+      "trims": 75,
+      "changed_trims": 5
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:design_angle:gaulke",
+     "arm": "design_angle",
+     "fixture": "gaulke",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.9823,
+      "unsewn_frac": 0.9365,
+      "overshoot_frac": 0.0455,
+      "uncovered_ink_frac": 0.9481,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 51,
+      "ragged_mm": 0.276,
+      "hausdorff_mm": 83.15,
+      "artfid": 33.8,
+      "trims_per_1000": 8.83,
+      "stitches": 4531,
+      "trims": 40,
+      "changed_trims": 9
+     },
+     "after": {
+      "lost_frac": 0.9824,
+      "unsewn_frac": 0.9365,
+      "overshoot_frac": 0.0453,
+      "uncovered_ink_frac": 0.9481,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 52,
+      "ragged_mm": 0.275,
+      "hausdorff_mm": 83.15,
+      "artfid": 33.8,
+      "trims_per_1000": 8.82,
+      "stitches": 4534,
+      "trims": 40,
+      "changed_trims": 9
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:design_angle:golden_tee",
+     "arm": "design_angle",
+     "fixture": "golden_tee",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.3352,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2893,
+      "uncovered_ink_frac": 0.0021,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 53,
+      "ragged_mm": 0.195,
+      "hausdorff_mm": 3.5,
+      "artfid": 75.6,
+      "trims_per_1000": 9.65,
+      "stitches": 6842,
+      "trims": 66,
+      "changed_trims": 35
+     },
+     "after": {
+      "lost_frac": 0.3353,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2831,
+      "uncovered_ink_frac": 0.0024,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 56,
+      "ragged_mm": 0.194,
+      "hausdorff_mm": 3.47,
+      "artfid": 75.6,
+      "trims_per_1000": 9.79,
+      "stitches": 6744,
+      "trims": 66,
+      "changed_trims": 35
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:design_angle:screenshot",
+     "arm": "design_angle",
+     "fixture": "screenshot",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.8527,
+      "unsewn_frac": 0.0358,
+      "overshoot_frac": 0.7746,
+      "uncovered_ink_frac": 0.1944,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 110,
+      "ragged_mm": 0.253,
+      "hausdorff_mm": 7.32,
+      "artfid": 71.1,
+      "trims_per_1000": 8.49,
+      "stitches": 8244,
+      "trims": 70,
+      "changed_trims": 20
+     },
+     "after": {
+      "lost_frac": 0.8635,
+      "unsewn_frac": 0.0363,
+      "overshoot_frac": 0.7804,
+      "uncovered_ink_frac": 0.1961,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 117,
+      "ragged_mm": 0.258,
+      "hausdorff_mm": 7.58,
+      "artfid": 71.1,
+      "trims_per_1000": 8.7,
+      "stitches": 8273,
+      "trims": 72,
+      "changed_trims": 22
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:design_angle:tires",
+     "arm": "design_angle",
+     "fixture": "tires",
+     "label": "before",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.1255,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.1255,
+      "uncovered_ink_frac": 0.0024,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 31,
+      "ragged_mm": 0.139,
+      "hausdorff_mm": 1.22,
+      "artfid": 85.7,
+      "trims_per_1000": 4.69,
+      "stitches": 2345,
+      "trims": 11,
+      "changed_trims": 11
+     },
+     "after": {
+      "lost_frac": 0.1285,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.1285,
+      "uncovered_ink_frac": 0.0024,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 27,
+      "ragged_mm": 0.167,
+      "hausdorff_mm": 1.3,
+      "artfid": 85.8,
+      "trims_per_1000": 4.7,
+      "stitches": 2339,
+      "trims": 11,
+      "changed_trims": 11
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:directional_comp:becker",
+     "arm": "directional_comp",
+     "fixture": "becker",
+     "label": "both_bad",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.0575,
+      "unsewn_frac": 0.0033,
+      "overshoot_frac": 0.0542,
+      "uncovered_ink_frac": 0.0305,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 63,
+      "ragged_mm": 0.199,
+      "hausdorff_mm": 1.4,
+      "artfid": 88.4,
+      "trims_per_1000": 2.26,
+      "stitches": 17700,
+      "trims": 40,
+      "changed_trims": 39
+     },
+     "after": {
+      "lost_frac": 0.0414,
+      "unsewn_frac": 0.0121,
+      "overshoot_frac": 0.0294,
+      "uncovered_ink_frac": 0.0645,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 46,
+      "ragged_mm": 0.186,
+      "hausdorff_mm": 1.3,
+      "artfid": 88.5,
+      "trims_per_1000": 2.1,
+      "stitches": 17597,
+      "trims": 37,
+      "changed_trims": 36
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:directional_comp:bridge",
+     "arm": "directional_comp",
+     "fixture": "bridge",
+     "label": "both_bad",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.1282,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0004,
+      "uncovered_ink_frac": 0.0038,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 80,
+      "ragged_mm": 0.148,
+      "hausdorff_mm": 18.58,
+      "artfid": 92.4,
+      "trims_per_1000": 8.42,
+      "stitches": 14608,
+      "trims": 123,
+      "changed_trims": 89
+     },
+     "after": {
+      "lost_frac": 0.1208,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0008,
+      "uncovered_ink_frac": 0.0039,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 77,
+      "ragged_mm": 0.149,
+      "hausdorff_mm": 21.42,
+      "artfid": 92.2,
+      "trims_per_1000": 8.46,
+      "stitches": 15014,
+      "trims": 127,
+      "changed_trims": 93
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:directional_comp:drone",
+     "arm": "directional_comp",
+     "fixture": "drone",
+     "label": "after",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.1573,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0328,
+      "uncovered_ink_frac": 0.0034,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 68,
+      "ragged_mm": 0.179,
+      "hausdorff_mm": 2.7,
+      "artfid": 83.3,
+      "trims_per_1000": 7.49,
+      "stitches": 18558,
+      "trims": 139,
+      "changed_trims": 127
+     },
+     "after": {
+      "lost_frac": 0.1589,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0295,
+      "uncovered_ink_frac": 0.0062,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 62,
+      "ragged_mm": 0.182,
+      "hausdorff_mm": 2.69,
+      "artfid": 83.7,
+      "trims_per_1000": 8.14,
+      "stitches": 18802,
+      "trims": 153,
+      "changed_trims": 141
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:directional_comp:enthusiast",
+     "arm": "directional_comp",
+     "fixture": "enthusiast",
+     "label": "before",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.2933,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2933,
+      "uncovered_ink_frac": 0.0145,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 30,
+      "ragged_mm": 0.2,
+      "hausdorff_mm": 2.24,
+      "artfid": 78.5,
+      "trims_per_1000": 9.63,
+      "stitches": 2492,
+      "trims": 24,
+      "changed_trims": 21
+     },
+     "after": {
+      "lost_frac": 0.3103,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.3103,
+      "uncovered_ink_frac": 0.0299,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 37,
+      "ragged_mm": 0.201,
+      "hausdorff_mm": 2.4,
+      "artfid": 78.4,
+      "trims_per_1000": 12.47,
+      "stitches": 2486,
+      "trims": 31,
+      "changed_trims": 28
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:directional_comp:fremont",
+     "arm": "directional_comp",
+     "fixture": "fremont",
+     "label": "before",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.0018,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 4,
+      "ragged_mm": 0.092,
+      "hausdorff_mm": 16.3,
+      "artfid": 96.6,
+      "trims_per_1000": 3.77,
+      "stitches": 19885,
+      "trims": 75,
+      "changed_trims": 62
+     },
+     "after": {
+      "lost_frac": 0.0018,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 4,
+      "ragged_mm": 0.094,
+      "hausdorff_mm": 14.91,
+      "artfid": 97.6,
+      "trims_per_1000": 3.32,
+      "stitches": 20812,
+      "trims": 69,
+      "changed_trims": 56
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:directional_comp:gaulke",
+     "arm": "directional_comp",
+     "fixture": "gaulke",
+     "label": "before",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.9823,
+      "unsewn_frac": 0.9365,
+      "overshoot_frac": 0.0455,
+      "uncovered_ink_frac": 0.9481,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 51,
+      "ragged_mm": 0.276,
+      "hausdorff_mm": 83.15,
+      "artfid": 33.8,
+      "trims_per_1000": 8.83,
+      "stitches": 4531,
+      "trims": 40,
+      "changed_trims": 38
+     },
+     "after": {
+      "lost_frac": 0.9843,
+      "unsewn_frac": 0.9384,
+      "overshoot_frac": 0.0459,
+      "uncovered_ink_frac": 0.9503,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 53,
+      "ragged_mm": 0.281,
+      "hausdorff_mm": 82.7,
+      "artfid": 33.6,
+      "trims_per_1000": 9.62,
+      "stitches": 4260,
+      "trims": 41,
+      "changed_trims": 39
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:directional_comp:golden_tee",
+     "arm": "directional_comp",
+     "fixture": "golden_tee",
+     "label": "both_bad",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.3352,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2893,
+      "uncovered_ink_frac": 0.0021,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 53,
+      "ragged_mm": 0.195,
+      "hausdorff_mm": 3.5,
+      "artfid": 75.6,
+      "trims_per_1000": 9.65,
+      "stitches": 6842,
+      "trims": 66,
+      "changed_trims": 62
+     },
+     "after": {
+      "lost_frac": 0.3305,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2881,
+      "uncovered_ink_frac": 0.0037,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 54,
+      "ragged_mm": 0.196,
+      "hausdorff_mm": 3.41,
+      "artfid": 75.7,
+      "trims_per_1000": 9.54,
+      "stitches": 6606,
+      "trims": 63,
+      "changed_trims": 59
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:directional_comp:screenshot",
+     "arm": "directional_comp",
+     "fixture": "screenshot",
+     "label": "both_bad",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.8527,
+      "unsewn_frac": 0.0358,
+      "overshoot_frac": 0.7746,
+      "uncovered_ink_frac": 0.1944,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 110,
+      "ragged_mm": 0.253,
+      "hausdorff_mm": 7.32,
+      "artfid": 71.1,
+      "trims_per_1000": 8.49,
+      "stitches": 8244,
+      "trims": 70,
+      "changed_trims": 44
+     },
+     "after": {
+      "lost_frac": 0.793,
+      "unsewn_frac": 0.0361,
+      "overshoot_frac": 0.7238,
+      "uncovered_ink_frac": 0.2039,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 108,
+      "ragged_mm": 0.258,
+      "hausdorff_mm": 6.26,
+      "artfid": 71.4,
+      "trims_per_1000": 9.07,
+      "stitches": 8047,
+      "trims": 73,
+      "changed_trims": 47
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:directional_comp:tires",
+     "arm": "directional_comp",
+     "fixture": "tires",
+     "label": "before",
+     "judged": "2026-09-20",
+     "before": {},
+     "after": {},
+     "unscored_why": "judged on the cutout render; the 09-18 directory holds the no-cutout one"
+    },
+    {
+     "id": "flags-0918-0928:lettering_column:enthusiast",
+     "arm": "lettering_column",
+     "fixture": "enthusiast",
+     "label": "before",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.2933,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2933,
+      "uncovered_ink_frac": 0.0145,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 30,
+      "ragged_mm": 0.2,
+      "hausdorff_mm": 2.24,
+      "artfid": 78.5,
+      "trims_per_1000": 9.63,
+      "stitches": 2492,
+      "trims": 24,
+      "changed_trims": 5
+     },
+     "after": {
+      "lost_frac": 0.3254,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.3254,
+      "uncovered_ink_frac": 0.0144,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 37,
+      "ragged_mm": 0.197,
+      "hausdorff_mm": 2.24,
+      "artfid": 77.6,
+      "trims_per_1000": 9.89,
+      "stitches": 2426,
+      "trims": 24,
+      "changed_trims": 5
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:lettering_column:fremont",
+     "arm": "lettering_column",
+     "fixture": "fremont",
+     "label": "before",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.0018,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 4,
+      "ragged_mm": 0.092,
+      "hausdorff_mm": 16.3,
+      "artfid": 96.6,
+      "trims_per_1000": 3.77,
+      "stitches": 19885,
+      "trims": 75,
+      "changed_trims": 31
+     },
+     "after": {
+      "lost_frac": 0.0045,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 9,
+      "ragged_mm": 0.092,
+      "hausdorff_mm": 16.3,
+      "artfid": 96.6,
+      "trims_per_1000": 3.82,
+      "stitches": 19634,
+      "trims": 75,
+      "changed_trims": 31
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:lettering_column:screenshot",
+     "arm": "lettering_column",
+     "fixture": "screenshot",
+     "label": "both_bad",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.8527,
+      "unsewn_frac": 0.0358,
+      "overshoot_frac": 0.7746,
+      "uncovered_ink_frac": 0.1944,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 110,
+      "ragged_mm": 0.253,
+      "hausdorff_mm": 7.32,
+      "artfid": 71.1,
+      "trims_per_1000": 8.49,
+      "stitches": 8244,
+      "trims": 70,
+      "changed_trims": 13
+     },
+     "after": {
+      "lost_frac": 0.8552,
+      "unsewn_frac": 0.0356,
+      "overshoot_frac": 0.7771,
+      "uncovered_ink_frac": 0.1933,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 110,
+      "ragged_mm": 0.253,
+      "hausdorff_mm": 7.32,
+      "artfid": 71.1,
+      "trims_per_1000": 8.5,
+      "stitches": 8234,
+      "trims": 70,
+      "changed_trims": 13
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:patch_junctions:enthusiast",
+     "arm": "patch_junctions",
+     "fixture": "enthusiast",
+     "label": "after",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.2933,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2933,
+      "uncovered_ink_frac": 0.0145,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 30,
+      "ragged_mm": 0.2,
+      "hausdorff_mm": 2.24,
+      "artfid": 78.5,
+      "trims_per_1000": 9.63,
+      "stitches": 2492,
+      "trims": 24,
+      "changed_trims": 2
+     },
+     "after": {
+      "lost_frac": 0.2824,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2824,
+      "uncovered_ink_frac": 0.0069,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 31,
+      "ragged_mm": 0.198,
+      "hausdorff_mm": 2.24,
+      "artfid": 78.8,
+      "trims_per_1000": 10.02,
+      "stitches": 2496,
+      "trims": 25,
+      "changed_trims": 3
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:patch_junctions:screenshot",
+     "arm": "patch_junctions",
+     "fixture": "screenshot",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.8527,
+      "unsewn_frac": 0.0358,
+      "overshoot_frac": 0.7746,
+      "uncovered_ink_frac": 0.1944,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 110,
+      "ragged_mm": 0.253,
+      "hausdorff_mm": 7.32,
+      "artfid": 71.1,
+      "trims_per_1000": 8.49,
+      "stitches": 8244,
+      "trims": 70,
+      "changed_trims": 9
+     },
+     "after": {
+      "lost_frac": 0.8616,
+      "unsewn_frac": 0.0363,
+      "overshoot_frac": 0.7808,
+      "uncovered_ink_frac": 0.1937,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 116,
+      "ragged_mm": 0.256,
+      "hausdorff_mm": 7.58,
+      "artfid": 71.2,
+      "trims_per_1000": 8.5,
+      "stitches": 8240,
+      "trims": 70,
+      "changed_trims": 9
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:per_stroke:becker",
+     "arm": "per_stroke",
+     "fixture": "becker",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.0575,
+      "unsewn_frac": 0.0033,
+      "overshoot_frac": 0.0542,
+      "uncovered_ink_frac": 0.0305,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 63,
+      "ragged_mm": 0.199,
+      "hausdorff_mm": 1.4,
+      "artfid": 88.4,
+      "trims_per_1000": 2.26,
+      "stitches": 17700,
+      "trims": 40,
+      "changed_trims": 21
+     },
+     "after": {
+      "lost_frac": 0.0552,
+      "unsewn_frac": 0.0033,
+      "overshoot_frac": 0.0519,
+      "uncovered_ink_frac": 0.0335,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 61,
+      "ragged_mm": 0.196,
+      "hausdorff_mm": 1.4,
+      "artfid": 88.4,
+      "trims_per_1000": 2.21,
+      "stitches": 17212,
+      "trims": 38,
+      "changed_trims": 19
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:per_stroke:drone",
+     "arm": "per_stroke",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.1573,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0328,
+      "uncovered_ink_frac": 0.0034,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 68,
+      "ragged_mm": 0.179,
+      "hausdorff_mm": 2.7,
+      "artfid": 83.3,
+      "trims_per_1000": 7.49,
+      "stitches": 18558,
+      "trims": 139,
+      "changed_trims": 46
+     },
+     "after": {
+      "lost_frac": 0.1565,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0329,
+      "uncovered_ink_frac": 0.0034,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 66,
+      "ragged_mm": 0.179,
+      "hausdorff_mm": 2.7,
+      "artfid": 83.3,
+      "trims_per_1000": 7.47,
+      "stitches": 18343,
+      "trims": 137,
+      "changed_trims": 44
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:per_stroke:fremont",
+     "arm": "per_stroke",
+     "fixture": "fremont",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.0018,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 4,
+      "ragged_mm": 0.092,
+      "hausdorff_mm": 16.3,
+      "artfid": 96.6,
+      "trims_per_1000": 3.77,
+      "stitches": 19885,
+      "trims": 75,
+      "changed_trims": 24
+     },
+     "after": {
+      "lost_frac": 0.0018,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 4,
+      "ragged_mm": 0.092,
+      "hausdorff_mm": 16.3,
+      "artfid": 96.6,
+      "trims_per_1000": 4.03,
+      "stitches": 19863,
+      "trims": 80,
+      "changed_trims": 29
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:phantom_dissolve:bridge",
+     "arm": "phantom_dissolve",
+     "fixture": "bridge",
+     "label": "after",
+     "judged": "2026-09-28",
+     "before": {
+      "lost_frac": 0.1282,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0004,
+      "uncovered_ink_frac": 0.0038,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 80,
+      "ragged_mm": 0.148,
+      "hausdorff_mm": 18.58,
+      "artfid": 92.4,
+      "trims_per_1000": 8.42,
+      "stitches": 14608,
+      "trims": 123,
+      "changed_trims": 109
+     },
+     "after": {
+      "lost_frac": 0.1764,
+      "unsewn_frac": 0.0005,
+      "overshoot_frac": 0.0149,
+      "uncovered_ink_frac": 0.0236,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 92,
+      "ragged_mm": 0.196,
+      "hausdorff_mm": 18.05,
+      "artfid": 90.3,
+      "trims_per_1000": 5.48,
+      "stitches": 11671,
+      "trims": 64,
+      "changed_trims": 50
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:phantom_dissolve:gaulke",
+     "arm": "phantom_dissolve",
+     "fixture": "gaulke",
+     "label": "both_bad",
+     "judged": "2026-09-28",
+     "before": {
+      "lost_frac": 0.9823,
+      "unsewn_frac": 0.9365,
+      "overshoot_frac": 0.0455,
+      "uncovered_ink_frac": 0.9481,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 51,
+      "ragged_mm": 0.276,
+      "hausdorff_mm": 83.15,
+      "artfid": 33.8,
+      "trims_per_1000": 8.83,
+      "stitches": 4531,
+      "trims": 40,
+      "changed_trims": 21
+     },
+     "after": {
+      "lost_frac": 0.9823,
+      "unsewn_frac": 0.9363,
+      "overshoot_frac": 0.0453,
+      "uncovered_ink_frac": 0.9481,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 47,
+      "ragged_mm": 0.275,
+      "hausdorff_mm": 83.15,
+      "artfid": 33.8,
+      "trims_per_1000": 10.61,
+      "stitches": 4714,
+      "trims": 50,
+      "changed_trims": 31
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:phantom_dissolve:golden_tee",
+     "arm": "phantom_dissolve",
+     "fixture": "golden_tee",
+     "label": "both_bad",
+     "judged": "2026-09-28",
+     "before": {
+      "lost_frac": 0.3352,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2893,
+      "uncovered_ink_frac": 0.0021,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 53,
+      "ragged_mm": 0.195,
+      "hausdorff_mm": 3.5,
+      "artfid": 75.6,
+      "trims_per_1000": 9.65,
+      "stitches": 6842,
+      "trims": 66,
+      "changed_trims": 29
+     },
+     "after": {
+      "lost_frac": 0.3348,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2889,
+      "uncovered_ink_frac": 0.0022,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 54,
+      "ragged_mm": 0.194,
+      "hausdorff_mm": 3.5,
+      "artfid": 75.6,
+      "trims_per_1000": 9.64,
+      "stitches": 6846,
+      "trims": 66,
+      "changed_trims": 29
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:phantom_dissolve:screenshot",
+     "arm": "phantom_dissolve",
+     "fixture": "screenshot",
+     "label": "both_bad",
+     "judged": "2026-09-28",
+     "before": {
+      "lost_frac": 0.8527,
+      "unsewn_frac": 0.0358,
+      "overshoot_frac": 0.7746,
+      "uncovered_ink_frac": 0.1944,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 110,
+      "ragged_mm": 0.253,
+      "hausdorff_mm": 7.32,
+      "artfid": 71.1,
+      "trims_per_1000": 8.49,
+      "stitches": 8244,
+      "trims": 70,
+      "changed_trims": 19
+     },
+     "after": {
+      "lost_frac": 0.8517,
+      "unsewn_frac": 0.0358,
+      "overshoot_frac": 0.7736,
+      "uncovered_ink_frac": 0.1941,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 110,
+      "ragged_mm": 0.254,
+      "hausdorff_mm": 7.32,
+      "artfid": 71.1,
+      "trims_per_1000": 8.71,
+      "stitches": 8263,
+      "trims": 72,
+      "changed_trims": 21
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:phantom_dissolve:tires",
+     "arm": "phantom_dissolve",
+     "fixture": "tires",
+     "label": "both_bad",
+     "judged": "2026-09-28",
+     "before": {},
+     "after": {},
+     "unscored_why": "judged on the cutout render; the 09-18 directory holds the no-cutout one"
+    },
+    {
+     "id": "flags-0918-0928:polygon_axis:becker",
+     "arm": "polygon_axis",
+     "fixture": "becker",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.0575,
+      "unsewn_frac": 0.0033,
+      "overshoot_frac": 0.0542,
+      "uncovered_ink_frac": 0.0305,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 63,
+      "ragged_mm": 0.199,
+      "hausdorff_mm": 1.4,
+      "artfid": 88.4,
+      "trims_per_1000": 2.26,
+      "stitches": 17700,
+      "trims": 40,
+      "changed_trims": 19
+     },
+     "after": {
+      "lost_frac": 0.0563,
+      "unsewn_frac": 0.0017,
+      "overshoot_frac": 0.0546,
+      "uncovered_ink_frac": 0.0301,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 61,
+      "ragged_mm": 0.196,
+      "hausdorff_mm": 1.26,
+      "artfid": 88.5,
+      "trims_per_1000": 2.27,
+      "stitches": 17660,
+      "trims": 40,
+      "changed_trims": 19
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:polygon_axis:bridge",
+     "arm": "polygon_axis",
+     "fixture": "bridge",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.1282,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0004,
+      "uncovered_ink_frac": 0.0038,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 80,
+      "ragged_mm": 0.148,
+      "hausdorff_mm": 18.58,
+      "artfid": 92.4,
+      "trims_per_1000": 8.42,
+      "stitches": 14608,
+      "trims": 123,
+      "changed_trims": 81
+     },
+     "after": {
+      "lost_frac": 0.117,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0004,
+      "uncovered_ink_frac": 0.0031,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 73,
+      "ragged_mm": 0.186,
+      "hausdorff_mm": 21.13,
+      "artfid": 92.0,
+      "trims_per_1000": 7.97,
+      "stitches": 12679,
+      "trims": 101,
+      "changed_trims": 59
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:polygon_axis:drone",
+     "arm": "polygon_axis",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.1573,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0328,
+      "uncovered_ink_frac": 0.0034,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 68,
+      "ragged_mm": 0.179,
+      "hausdorff_mm": 2.7,
+      "artfid": 83.3,
+      "trims_per_1000": 7.49,
+      "stitches": 18558,
+      "trims": 139,
+      "changed_trims": 77
+     },
+     "after": {
+      "lost_frac": 0.1558,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0316,
+      "uncovered_ink_frac": 0.0039,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 62,
+      "ragged_mm": 0.181,
+      "hausdorff_mm": 2.6,
+      "artfid": 83.5,
+      "trims_per_1000": 7.82,
+      "stitches": 18286,
+      "trims": 143,
+      "changed_trims": 81
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:polygon_axis:enthusiast",
+     "arm": "polygon_axis",
+     "fixture": "enthusiast",
+     "label": "both_bad",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.2933,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2933,
+      "uncovered_ink_frac": 0.0145,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 30,
+      "ragged_mm": 0.2,
+      "hausdorff_mm": 2.24,
+      "artfid": 78.5,
+      "trims_per_1000": 9.63,
+      "stitches": 2492,
+      "trims": 24,
+      "changed_trims": 24
+     },
+     "after": {
+      "lost_frac": 0.3001,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.3001,
+      "uncovered_ink_frac": 0.0051,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 36,
+      "ragged_mm": 0.186,
+      "hausdorff_mm": 2.5,
+      "artfid": 78.6,
+      "trims_per_1000": 8.65,
+      "stitches": 2197,
+      "trims": 19,
+      "changed_trims": 19
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:polygon_axis:fremont",
+     "arm": "polygon_axis",
+     "fixture": "fremont",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.0018,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 4,
+      "ragged_mm": 0.092,
+      "hausdorff_mm": 16.3,
+      "artfid": 96.6,
+      "trims_per_1000": 3.77,
+      "stitches": 19885,
+      "trims": 75,
+      "changed_trims": 34
+     },
+     "after": {
+      "lost_frac": 0.0019,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 4,
+      "ragged_mm": 0.092,
+      "hausdorff_mm": 16.3,
+      "artfid": 96.6,
+      "trims_per_1000": 3.77,
+      "stitches": 19895,
+      "trims": 75,
+      "changed_trims": 34
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:polygon_axis:gaulke",
+     "arm": "polygon_axis",
+     "fixture": "gaulke",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.9823,
+      "unsewn_frac": 0.9365,
+      "overshoot_frac": 0.0455,
+      "uncovered_ink_frac": 0.9481,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 51,
+      "ragged_mm": 0.276,
+      "hausdorff_mm": 83.15,
+      "artfid": 33.8,
+      "trims_per_1000": 8.83,
+      "stitches": 4531,
+      "trims": 40,
+      "changed_trims": 38
+     },
+     "after": {
+      "lost_frac": 0.9816,
+      "unsewn_frac": 0.9343,
+      "overshoot_frac": 0.0434,
+      "uncovered_ink_frac": 0.9486,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 49,
+      "ragged_mm": 0.275,
+      "hausdorff_mm": 82.92,
+      "artfid": 33.7,
+      "trims_per_1000": 7.46,
+      "stitches": 4560,
+      "trims": 34,
+      "changed_trims": 32
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:polygon_axis:golden_tee",
+     "arm": "polygon_axis",
+     "fixture": "golden_tee",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.3352,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2893,
+      "uncovered_ink_frac": 0.0021,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 53,
+      "ragged_mm": 0.195,
+      "hausdorff_mm": 3.5,
+      "artfid": 75.6,
+      "trims_per_1000": 9.65,
+      "stitches": 6842,
+      "trims": 66,
+      "changed_trims": 63
+     },
+     "after": {
+      "lost_frac": 0.285,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.26,
+      "uncovered_ink_frac": 0.0038,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 53,
+      "ragged_mm": 0.169,
+      "hausdorff_mm": 4.52,
+      "artfid": 75.5,
+      "trims_per_1000": 11.79,
+      "stitches": 6614,
+      "trims": 78,
+      "changed_trims": 75
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:polygon_axis:screenshot",
+     "arm": "polygon_axis",
+     "fixture": "screenshot",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.8527,
+      "unsewn_frac": 0.0358,
+      "overshoot_frac": 0.7746,
+      "uncovered_ink_frac": 0.1944,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 110,
+      "ragged_mm": 0.253,
+      "hausdorff_mm": 7.32,
+      "artfid": 71.1,
+      "trims_per_1000": 8.49,
+      "stitches": 8244,
+      "trims": 70,
+      "changed_trims": 38
+     },
+     "after": {
+      "lost_frac": 0.8673,
+      "unsewn_frac": 0.0382,
+      "overshoot_frac": 0.7868,
+      "uncovered_ink_frac": 0.1928,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 117,
+      "ragged_mm": 0.251,
+      "hausdorff_mm": 7.32,
+      "artfid": 71.0,
+      "trims_per_1000": 8.86,
+      "stitches": 8577,
+      "trims": 76,
+      "changed_trims": 44
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:polygon_axis:tires",
+     "arm": "polygon_axis",
+     "fixture": "tires",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {
+      "lost_frac": 0.1255,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.1255,
+      "uncovered_ink_frac": 0.0024,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 31,
+      "ragged_mm": 0.139,
+      "hausdorff_mm": 1.22,
+      "artfid": 85.7,
+      "trims_per_1000": 4.69,
+      "stitches": 2345,
+      "trims": 11,
+      "changed_trims": 11
+     },
+     "after": {
+      "lost_frac": 0.1063,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.1063,
+      "uncovered_ink_frac": 0.0015,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 22,
+      "ragged_mm": 0.138,
+      "hausdorff_mm": 1.1,
+      "artfid": 85.9,
+      "trims_per_1000": 2.24,
+      "stitches": 3131,
+      "trims": 7,
+      "changed_trims": 7
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:rail_comp:becker",
+     "arm": "rail_comp",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.0575,
+      "unsewn_frac": 0.0033,
+      "overshoot_frac": 0.0542,
+      "uncovered_ink_frac": 0.0305,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 63,
+      "ragged_mm": 0.199,
+      "hausdorff_mm": 1.4,
+      "artfid": 88.4,
+      "trims_per_1000": 2.26,
+      "stitches": 17700,
+      "trims": 40,
+      "changed_trims": 19
+     },
+     "after": {
+      "lost_frac": 0.0597,
+      "unsewn_frac": 0.0057,
+      "overshoot_frac": 0.054,
+      "uncovered_ink_frac": 0.0317,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 62,
+      "ragged_mm": 0.198,
+      "hausdorff_mm": 1.26,
+      "artfid": 88.4,
+      "trims_per_1000": 2.15,
+      "stitches": 17668,
+      "trims": 38,
+      "changed_trims": 17
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:rail_comp:bridge",
+     "arm": "rail_comp",
+     "fixture": "bridge",
+     "label": "after",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.1282,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0004,
+      "uncovered_ink_frac": 0.0038,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 80,
+      "ragged_mm": 0.148,
+      "hausdorff_mm": 18.58,
+      "artfid": 92.4,
+      "trims_per_1000": 8.42,
+      "stitches": 14608,
+      "trims": 123,
+      "changed_trims": 80
+     },
+     "after": {
+      "lost_frac": 0.1702,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0064,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 95,
+      "ragged_mm": 0.174,
+      "hausdorff_mm": 18.5,
+      "artfid": 91.9,
+      "trims_per_1000": 7.09,
+      "stitches": 13683,
+      "trims": 97,
+      "changed_trims": 54
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:rail_comp:drone",
+     "arm": "rail_comp",
+     "fixture": "drone",
+     "label": "both_bad",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.1573,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0328,
+      "uncovered_ink_frac": 0.0034,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 68,
+      "ragged_mm": 0.179,
+      "hausdorff_mm": 2.7,
+      "artfid": 83.3,
+      "trims_per_1000": 7.49,
+      "stitches": 18558,
+      "trims": 139,
+      "changed_trims": 82
+     },
+     "after": {
+      "lost_frac": 0.1666,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0341,
+      "uncovered_ink_frac": 0.0039,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 77,
+      "ragged_mm": 0.179,
+      "hausdorff_mm": 2.72,
+      "artfid": 83.7,
+      "trims_per_1000": 7.22,
+      "stitches": 18565,
+      "trims": 134,
+      "changed_trims": 77
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:rail_comp:enthusiast",
+     "arm": "rail_comp",
+     "fixture": "enthusiast",
+     "label": "after",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.2933,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2933,
+      "uncovered_ink_frac": 0.0145,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 30,
+      "ragged_mm": 0.2,
+      "hausdorff_mm": 2.24,
+      "artfid": 78.5,
+      "trims_per_1000": 9.63,
+      "stitches": 2492,
+      "trims": 24,
+      "changed_trims": 23
+     },
+     "after": {
+      "lost_frac": 0.269,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2589,
+      "uncovered_ink_frac": 0.0172,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 33,
+      "ragged_mm": 0.207,
+      "hausdorff_mm": 2.4,
+      "artfid": 79.4,
+      "trims_per_1000": 6.13,
+      "stitches": 2448,
+      "trims": 15,
+      "changed_trims": 14
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:rail_comp:fremont",
+     "arm": "rail_comp",
+     "fixture": "fremont",
+     "label": "after",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.0018,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 4,
+      "ragged_mm": 0.092,
+      "hausdorff_mm": 16.3,
+      "artfid": 96.6,
+      "trims_per_1000": 3.77,
+      "stitches": 19885,
+      "trims": 75,
+      "changed_trims": 42
+     },
+     "after": {
+      "lost_frac": 0.0292,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 22,
+      "ragged_mm": 0.092,
+      "hausdorff_mm": 10.05,
+      "artfid": 96.6,
+      "trims_per_1000": 3.65,
+      "stitches": 19977,
+      "trims": 73,
+      "changed_trims": 40
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:rail_comp:gaulke",
+     "arm": "rail_comp",
+     "fixture": "gaulke",
+     "label": "both_bad",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.9823,
+      "unsewn_frac": 0.9365,
+      "overshoot_frac": 0.0455,
+      "uncovered_ink_frac": 0.9481,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 51,
+      "ragged_mm": 0.276,
+      "hausdorff_mm": 83.15,
+      "artfid": 33.8,
+      "trims_per_1000": 8.83,
+      "stitches": 4531,
+      "trims": 40,
+      "changed_trims": 38
+     },
+     "after": {
+      "lost_frac": 0.9808,
+      "unsewn_frac": 0.9304,
+      "overshoot_frac": 0.0495,
+      "uncovered_ink_frac": 0.9476,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 56,
+      "ragged_mm": 0.276,
+      "hausdorff_mm": 82.66,
+      "artfid": 33.7,
+      "trims_per_1000": 8.0,
+      "stitches": 4500,
+      "trims": 36,
+      "changed_trims": 34
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:rail_comp:golden_tee",
+     "arm": "rail_comp",
+     "fixture": "golden_tee",
+     "label": "both_bad",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.3352,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2893,
+      "uncovered_ink_frac": 0.0021,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 53,
+      "ragged_mm": 0.195,
+      "hausdorff_mm": 3.5,
+      "artfid": 75.6,
+      "trims_per_1000": 9.65,
+      "stitches": 6842,
+      "trims": 66,
+      "changed_trims": 65
+     },
+     "after": {
+      "lost_frac": 0.4079,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2495,
+      "uncovered_ink_frac": 0.0106,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 70,
+      "ragged_mm": 0.189,
+      "hausdorff_mm": 3.41,
+      "artfid": 76.6,
+      "trims_per_1000": 10.32,
+      "stitches": 10655,
+      "trims": 110,
+      "changed_trims": 109
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:rail_comp:screenshot",
+     "arm": "rail_comp",
+     "fixture": "screenshot",
+     "label": "both_bad",
+     "judged": "2026-09-23",
+     "before": {
+      "lost_frac": 0.8527,
+      "unsewn_frac": 0.0358,
+      "overshoot_frac": 0.7746,
+      "uncovered_ink_frac": 0.1944,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 110,
+      "ragged_mm": 0.253,
+      "hausdorff_mm": 7.32,
+      "artfid": 71.1,
+      "trims_per_1000": 8.49,
+      "stitches": 8244,
+      "trims": 70,
+      "changed_trims": 41
+     },
+     "after": {
+      "lost_frac": 0.8412,
+      "unsewn_frac": 0.0361,
+      "overshoot_frac": 0.7603,
+      "uncovered_ink_frac": 0.1927,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 120,
+      "ragged_mm": 0.254,
+      "hausdorff_mm": 7.32,
+      "artfid": 71.2,
+      "trims_per_1000": 9.34,
+      "stitches": 8031,
+      "trims": 75,
+      "changed_trims": 46
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:rail_comp:tires",
+     "arm": "rail_comp",
+     "fixture": "tires",
+     "label": "after",
+     "judged": "2026-09-20",
+     "before": {},
+     "after": {},
+     "unscored_why": "judged on the cutout render; the 09-18 directory holds the no-cutout one"
+    },
+    {
+     "id": "flags-0918-0928:rails_follow_edge:becker",
+     "arm": "rails_follow_edge",
+     "fixture": "becker",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {},
+     "after": {},
+     "unscored_why": "arm not in the 09-18 render directory"
+    },
+    {
+     "id": "flags-0918-0928:rails_follow_edge:bridge",
+     "arm": "rails_follow_edge",
+     "fixture": "bridge",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {},
+     "after": {},
+     "unscored_why": "arm not in the 09-18 render directory"
+    },
+    {
+     "id": "flags-0918-0928:rails_follow_edge:drone",
+     "arm": "rails_follow_edge",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {},
+     "after": {},
+     "unscored_why": "arm not in the 09-18 render directory"
+    },
+    {
+     "id": "flags-0918-0928:rails_follow_edge:enthusiast",
+     "arm": "rails_follow_edge",
+     "fixture": "enthusiast",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {},
+     "after": {},
+     "unscored_why": "arm not in the 09-18 render directory"
+    },
+    {
+     "id": "flags-0918-0928:rails_follow_edge:fremont",
+     "arm": "rails_follow_edge",
+     "fixture": "fremont",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {},
+     "after": {},
+     "unscored_why": "arm not in the 09-18 render directory"
+    },
+    {
+     "id": "flags-0918-0928:rails_follow_edge:gaulke",
+     "arm": "rails_follow_edge",
+     "fixture": "gaulke",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {},
+     "after": {},
+     "unscored_why": "arm not in the 09-18 render directory"
+    },
+    {
+     "id": "flags-0918-0928:rails_follow_edge:golden_tee",
+     "arm": "rails_follow_edge",
+     "fixture": "golden_tee",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {},
+     "after": {},
+     "unscored_why": "arm not in the 09-18 render directory"
+    },
+    {
+     "id": "flags-0918-0928:rails_follow_edge:screenshot",
+     "arm": "rails_follow_edge",
+     "fixture": "screenshot",
+     "label": "same",
+     "judged": "2026-09-18",
+     "before": {},
+     "after": {},
+     "unscored_why": "arm not in the 09-18 render directory"
+    },
+    {
+     "id": "flags-0918-0928:rails_follow_edge:tires",
+     "arm": "rails_follow_edge",
+     "fixture": "tires",
+     "label": "after",
+     "judged": "2026-09-18",
+     "before": {},
+     "after": {},
+     "unscored_why": "arm not in the 09-18 render directory"
+    },
+    {
+     "id": "flags-0918-0928:ref_0827:becker",
+     "arm": "ref_0827",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-09-23",
+     "before": {
+      "lost_frac": 0.0685,
+      "unsewn_frac": 0.0544,
+      "overshoot_frac": 0.0141,
+      "uncovered_ink_frac": 0.115,
+      "lost_elements": 42,
+      "ragged_mm": 0.197,
+      "hausdorff_mm": 3.98,
+      "trims_per_1000": 5.07,
+      "stitches": 6702,
+      "trims": 34
+     },
+     "after": {
+      "lost_frac": 0.0575,
+      "unsewn_frac": 0.0033,
+      "overshoot_frac": 0.0542,
+      "uncovered_ink_frac": 0.0305,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 63,
+      "ragged_mm": 0.199,
+      "hausdorff_mm": 1.4,
+      "artfid": 88.4,
+      "trims_per_1000": 2.26,
+      "stitches": 17700,
+      "trims": 40
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:ref_0827:bridge",
+     "arm": "ref_0827",
+     "fixture": "bridge",
+     "label": "after",
+     "judged": "2026-09-23",
+     "before": {
+      "lost_frac": 0.1077,
+      "unsewn_frac": 0.0031,
+      "overshoot_frac": 0.0026,
+      "uncovered_ink_frac": 0.0065,
+      "lost_elements": 68,
+      "ragged_mm": 0.135,
+      "hausdorff_mm": 21.55,
+      "trims_per_1000": 9.44,
+      "stitches": 11118,
+      "trims": 105
+     },
+     "after": {
+      "lost_frac": 0.1282,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0004,
+      "uncovered_ink_frac": 0.0038,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 80,
+      "ragged_mm": 0.148,
+      "hausdorff_mm": 18.58,
+      "artfid": 92.4,
+      "trims_per_1000": 8.42,
+      "stitches": 14608,
+      "trims": 123
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:ref_0827:drone",
+     "arm": "ref_0827",
+     "fixture": "drone",
+     "label": "after",
+     "judged": "2026-09-23",
+     "before": {
+      "lost_frac": 0.1801,
+      "unsewn_frac": 0.0021,
+      "overshoot_frac": 0.0225,
+      "uncovered_ink_frac": 0.0174,
+      "lost_elements": 81,
+      "ragged_mm": 0.186,
+      "hausdorff_mm": 16.1,
+      "trims_per_1000": 8.65,
+      "stitches": 9485,
+      "trims": 82
+     },
+     "after": {
+      "lost_frac": 0.1573,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0328,
+      "uncovered_ink_frac": 0.0034,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 68,
+      "ragged_mm": 0.179,
+      "hausdorff_mm": 2.7,
+      "artfid": 83.3,
+      "trims_per_1000": 7.49,
+      "stitches": 18558,
+      "trims": 139
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:ref_0827:enthusiast",
+     "arm": "ref_0827",
+     "fixture": "enthusiast",
+     "label": "after",
+     "judged": "2026-09-23",
+     "before": {
+      "lost_frac": 0.2459,
+      "unsewn_frac": 0.0081,
+      "overshoot_frac": 0.2378,
+      "uncovered_ink_frac": 0.023,
+      "lost_elements": 34,
+      "ragged_mm": 0.195,
+      "hausdorff_mm": 1.43,
+      "trims_per_1000": 8.78,
+      "stitches": 2393,
+      "trims": 21
+     },
+     "after": {
+      "lost_frac": 0.2933,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2933,
+      "uncovered_ink_frac": 0.0145,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 30,
+      "ragged_mm": 0.2,
+      "hausdorff_mm": 2.24,
+      "artfid": 78.5,
+      "trims_per_1000": 9.63,
+      "stitches": 2492,
+      "trims": 24
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:ref_0827:fremont",
+     "arm": "ref_0827",
+     "fixture": "fremont",
+     "label": "after",
+     "judged": "2026-09-23",
+     "before": {
+      "lost_frac": 0.0014,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0013,
+      "lost_elements": 3,
+      "ragged_mm": 0.099,
+      "hausdorff_mm": 20.22,
+      "trims_per_1000": 10.23,
+      "stitches": 10363,
+      "trims": 106
+     },
+     "after": {
+      "lost_frac": 0.0018,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 4,
+      "ragged_mm": 0.092,
+      "hausdorff_mm": 16.3,
+      "artfid": 96.6,
+      "trims_per_1000": 3.77,
+      "stitches": 19885,
+      "trims": 75
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:ref_0827:gaulke",
+     "arm": "ref_0827",
+     "fixture": "gaulke",
+     "label": "both_bad",
+     "judged": "2026-09-22",
+     "before": {
+      "lost_frac": 0.9909,
+      "unsewn_frac": 0.9484,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.9345,
+      "lost_elements": 46,
+      "ragged_mm": 0.257,
+      "hausdorff_mm": 73.4,
+      "trims_per_1000": 5.77,
+      "stitches": 3987,
+      "trims": 23
+     },
+     "after": {
+      "lost_frac": 0.9823,
+      "unsewn_frac": 0.9365,
+      "overshoot_frac": 0.0455,
+      "uncovered_ink_frac": 0.9481,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 51,
+      "ragged_mm": 0.276,
+      "hausdorff_mm": 83.15,
+      "artfid": 33.8,
+      "trims_per_1000": 8.83,
+      "stitches": 4531,
+      "trims": 40
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:ref_0827:golden_tee",
+     "arm": "ref_0827",
+     "fixture": "golden_tee",
+     "label": "both_bad",
+     "judged": "2026-09-22",
+     "before": {
+      "lost_frac": 0.3381,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2631,
+      "uncovered_ink_frac": 0.0085,
+      "lost_elements": 51,
+      "ragged_mm": 0.217,
+      "hausdorff_mm": 3.47,
+      "trims_per_1000": 8.44,
+      "stitches": 6639,
+      "trims": 56
+     },
+     "after": {
+      "lost_frac": 0.3352,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2893,
+      "uncovered_ink_frac": 0.0021,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 53,
+      "ragged_mm": 0.195,
+      "hausdorff_mm": 3.5,
+      "artfid": 75.6,
+      "trims_per_1000": 9.65,
+      "stitches": 6842,
+      "trims": 66
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:ref_0827:screenshot",
+     "arm": "ref_0827",
+     "fixture": "screenshot",
+     "label": "after",
+     "judged": "2026-09-22",
+     "before": {
+      "lost_frac": 0.7555,
+      "unsewn_frac": 0.0383,
+      "overshoot_frac": 0.669,
+      "uncovered_ink_frac": 0.2228,
+      "lost_elements": 103,
+      "ragged_mm": 0.27,
+      "hausdorff_mm": 12.4,
+      "trims_per_1000": 13.41,
+      "stitches": 5818,
+      "trims": 78
+     },
+     "after": {
+      "lost_frac": 0.8527,
+      "unsewn_frac": 0.0358,
+      "overshoot_frac": 0.7746,
+      "uncovered_ink_frac": 0.1944,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 110,
+      "ragged_mm": 0.253,
+      "hausdorff_mm": 7.32,
+      "artfid": 71.1,
+      "trims_per_1000": 8.49,
+      "stitches": 8244,
+      "trims": 70
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:ref_0827:tires",
+     "arm": "ref_0827",
+     "fixture": "tires",
+     "label": "after",
+     "judged": "2026-09-22",
+     "before": {},
+     "after": {},
+     "unscored_why": "judged on the cutout render; the 09-18 directory holds the no-cutout one"
+    },
+    {
+     "id": "flags-0918-0928:wide_columns:becker",
+     "arm": "wide_columns",
+     "fixture": "becker",
+     "label": "before",
+     "judged": "2026-09-22",
+     "before": {
+      "lost_frac": 0.0575,
+      "unsewn_frac": 0.0033,
+      "overshoot_frac": 0.0542,
+      "uncovered_ink_frac": 0.0305,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 63,
+      "ragged_mm": 0.199,
+      "hausdorff_mm": 1.4,
+      "artfid": 88.4,
+      "trims_per_1000": 2.26,
+      "stitches": 17700,
+      "trims": 40,
+      "changed_trims": 38
+     },
+     "after": {
+      "lost_frac": 0.0541,
+      "unsewn_frac": 0.0146,
+      "overshoot_frac": 0.0395,
+      "uncovered_ink_frac": 0.0528,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 63,
+      "ragged_mm": 0.213,
+      "hausdorff_mm": 2.1,
+      "artfid": 87.6,
+      "trims_per_1000": 4.16,
+      "stitches": 15148,
+      "trims": 63,
+      "changed_trims": 62
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:wide_columns:bridge",
+     "arm": "wide_columns",
+     "fixture": "bridge",
+     "label": "both_bad",
+     "judged": "2026-09-22",
+     "before": {
+      "lost_frac": 0.1282,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0004,
+      "uncovered_ink_frac": 0.0038,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 80,
+      "ragged_mm": 0.148,
+      "hausdorff_mm": 18.58,
+      "artfid": 92.4,
+      "trims_per_1000": 8.42,
+      "stitches": 14608,
+      "trims": 123,
+      "changed_trims": 42
+     },
+     "after": {
+      "lost_frac": 0.1275,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0004,
+      "uncovered_ink_frac": 0.0038,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 79,
+      "ragged_mm": 0.148,
+      "hausdorff_mm": 18.58,
+      "artfid": 92.4,
+      "trims_per_1000": 8.18,
+      "stitches": 15037,
+      "trims": 123,
+      "changed_trims": 42
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:wide_columns:drone",
+     "arm": "wide_columns",
+     "fixture": "drone",
+     "label": "both_bad",
+     "judged": "2026-09-22",
+     "before": {
+      "lost_frac": 0.1573,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0328,
+      "uncovered_ink_frac": 0.0034,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 68,
+      "ragged_mm": 0.179,
+      "hausdorff_mm": 2.7,
+      "artfid": 83.3,
+      "trims_per_1000": 7.49,
+      "stitches": 18558,
+      "trims": 139,
+      "changed_trims": 16
+     },
+     "after": {
+      "lost_frac": 0.1566,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0327,
+      "uncovered_ink_frac": 0.0034,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 68,
+      "ragged_mm": 0.179,
+      "hausdorff_mm": 2.7,
+      "artfid": 83.3,
+      "trims_per_1000": 7.68,
+      "stitches": 18368,
+      "trims": 141,
+      "changed_trims": 18
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:wide_columns:enthusiast",
+     "arm": "wide_columns",
+     "fixture": "enthusiast",
+     "label": "both_bad",
+     "judged": "2026-09-22",
+     "before": {
+      "lost_frac": 0.2933,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2933,
+      "uncovered_ink_frac": 0.0145,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 30,
+      "ragged_mm": 0.2,
+      "hausdorff_mm": 2.24,
+      "artfid": 78.5,
+      "trims_per_1000": 9.63,
+      "stitches": 2492,
+      "trims": 24,
+      "changed_trims": 0
+     },
+     "after": {
+      "lost_frac": 0.293,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.293,
+      "uncovered_ink_frac": 0.0145,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 30,
+      "ragged_mm": 0.2,
+      "hausdorff_mm": 2.24,
+      "artfid": 78.5,
+      "trims_per_1000": 9.63,
+      "stitches": 2492,
+      "trims": 24,
+      "changed_trims": 0
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:wide_columns:gaulke",
+     "arm": "wide_columns",
+     "fixture": "gaulke",
+     "label": "both_bad",
+     "judged": "2026-09-22",
+     "before": {
+      "lost_frac": 0.9823,
+      "unsewn_frac": 0.9365,
+      "overshoot_frac": 0.0455,
+      "uncovered_ink_frac": 0.9481,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 51,
+      "ragged_mm": 0.276,
+      "hausdorff_mm": 83.15,
+      "artfid": 33.8,
+      "trims_per_1000": 8.83,
+      "stitches": 4531,
+      "trims": 40,
+      "changed_trims": 2
+     },
+     "after": {
+      "lost_frac": 0.9824,
+      "unsewn_frac": 0.9365,
+      "overshoot_frac": 0.0456,
+      "uncovered_ink_frac": 0.9481,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 51,
+      "ragged_mm": 0.276,
+      "hausdorff_mm": 83.15,
+      "artfid": 33.8,
+      "trims_per_1000": 8.83,
+      "stitches": 4531,
+      "trims": 40,
+      "changed_trims": 2
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:wide_columns:golden_tee",
+     "arm": "wide_columns",
+     "fixture": "golden_tee",
+     "label": "both_bad",
+     "judged": "2026-09-22",
+     "before": {
+      "lost_frac": 0.3352,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2893,
+      "uncovered_ink_frac": 0.0021,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 53,
+      "ragged_mm": 0.195,
+      "hausdorff_mm": 3.5,
+      "artfid": 75.6,
+      "trims_per_1000": 9.65,
+      "stitches": 6842,
+      "trims": 66,
+      "changed_trims": 12
+     },
+     "after": {
+      "lost_frac": 0.3337,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2864,
+      "uncovered_ink_frac": 0.0024,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 54,
+      "ragged_mm": 0.195,
+      "hausdorff_mm": 3.5,
+      "artfid": 75.6,
+      "trims_per_1000": 9.67,
+      "stitches": 6824,
+      "trims": 66,
+      "changed_trims": 12
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:wide_columns:screenshot",
+     "arm": "wide_columns",
+     "fixture": "screenshot",
+     "label": "same",
+     "judged": "2026-09-20",
+     "before": {
+      "lost_frac": 0.8527,
+      "unsewn_frac": 0.0358,
+      "overshoot_frac": 0.7746,
+      "uncovered_ink_frac": 0.1944,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 110,
+      "ragged_mm": 0.253,
+      "hausdorff_mm": 7.32,
+      "artfid": 71.1,
+      "trims_per_1000": 8.49,
+      "stitches": 8244,
+      "trims": 70,
+      "changed_trims": 13
+     },
+     "after": {
+      "lost_frac": 0.8508,
+      "unsewn_frac": 0.0344,
+      "overshoot_frac": 0.774,
+      "uncovered_ink_frac": 0.1954,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 110,
+      "ragged_mm": 0.253,
+      "hausdorff_mm": 7.32,
+      "artfid": 71.1,
+      "trims_per_1000": 8.28,
+      "stitches": 8336,
+      "trims": 69,
+      "changed_trims": 12
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     },
+     "source": "09-18 render directory + recomputed halves"
+    },
+    {
+     "id": "flags-0918-0928:wide_columns:tires",
+     "arm": "wide_columns",
+     "fixture": "tires",
+     "label": "same",
+     "judged": "2026-09-20",
+     "before": {},
+     "after": {},
+     "unscored_why": "judged on the cutout render; the 09-18 directory holds the no-cutout one"
+    }
+   ]
+  },
+  "envelope-0930": {
+   "date": "2026-09-30",
+   "labels": "docs/eye-pairs-2026-09-30/kent-notes.json",
+   "instruments": "docs/eye-pairs-2026-09-30/rail-envelope-corpus.json (symmetric -> envelope)",
+   "pairs": [
+    {
+     "id": "envelope-0930:rail_envelope:becker",
+     "arm": "rail_envelope",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 8297.0,
+      "trims": 48.0,
+      "bare_satin_pct": 8.14
+     },
+     "after": {
+      "stitches": 8900.0,
+      "trims": 49.0,
+      "bare_satin_pct": 7.35
+     }
+    },
+    {
+     "id": "envelope-0930:rail_envelope:bridge",
+     "arm": "rail_envelope",
+     "fixture": "bridge",
+     "label": "both_bad",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 15384.0,
+      "trims": 98.0,
+      "bare_satin_pct": 5.15
+     },
+     "after": {
+      "stitches": 15432.0,
+      "trims": 98.0,
+      "bare_satin_pct": 5.05
+     }
+    },
+    {
+     "id": "envelope-0930:rail_envelope:drone",
+     "arm": "rail_envelope",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 18540.0,
+      "trims": 123.0,
+      "bare_satin_pct": 4.88
+     },
+     "after": {
+      "stitches": 18540.0,
+      "trims": 123.0,
+      "bare_satin_pct": 4.86
+     }
+    },
+    {
+     "id": "envelope-0930:rail_envelope:gaulke",
+     "arm": "rail_envelope",
+     "fixture": "gaulke",
+     "label": "both_bad",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 4189.0,
+      "trims": 32.0,
+      "bare_satin_pct": 6.89
+     },
+     "after": {
+      "stitches": 4189.0,
+      "trims": 32.0,
+      "bare_satin_pct": 6.86
+     }
+    },
+    {
+     "id": "envelope-0930:rail_envelope:golden_tee",
+     "arm": "rail_envelope",
+     "fixture": "golden_tee",
+     "label": "after",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 7966.0,
+      "trims": 47.0,
+      "bare_satin_pct": 10.35
+     },
+     "after": {
+      "stitches": 8072.0,
+      "trims": 46.0,
+      "bare_satin_pct": 7.2
+     }
+    },
+    {
+     "id": "envelope-0930:rail_envelope:screenshot",
+     "arm": "rail_envelope",
+     "fixture": "screenshot",
+     "label": "both_bad",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 7885.0,
+      "trims": 71.0,
+      "bare_satin_pct": 8.97
+     },
+     "after": {
+      "stitches": 7885.0,
+      "trims": 71.0,
+      "bare_satin_pct": 8.96
+     }
+    },
+    {
+     "id": "envelope-0930:rail_envelope:tires",
+     "arm": "rail_envelope",
+     "fixture": "tires",
+     "label": "same",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 2515.0,
+      "trims": 7.0,
+      "bare_satin_pct": 4.55
+     },
+     "after": {
+      "stitches": 2515.0,
+      "trims": 7.0,
+      "bare_satin_pct": 4.52
+     }
+    }
+   ]
+  },
+  "evening-0930": {
+   "date": "2026-09-30",
+   "labels": "docs/eye-pairs-2026-09-30/kent-notes.json (third_sitting)",
+   "instruments": "docs/eye-pairs-2026-09-30/three-changes-corpus.json (morning engine -> today)",
+   "pairs": [
+    {
+     "id": "evening-0930:ref_0930am:becker",
+     "arm": "ref_0930am",
+     "fixture": "becker",
+     "label": "same",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 9563.0,
+      "trims": 51.0
+     },
+     "after": {
+      "stitches": 9321.0,
+      "trims": 50.0
+     }
+    },
+    {
+     "id": "evening-0930:ref_0930am:bridge",
+     "arm": "ref_0930am",
+     "fixture": "bridge",
+     "label": "same",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 16157.0,
+      "trims": 101.0
+     },
+     "after": {
+      "stitches": 16175.0,
+      "trims": 101.0
+     }
+    },
+    {
+     "id": "evening-0930:ref_0930am:drone",
+     "arm": "ref_0930am",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 18788.0,
+      "trims": 122.0
+     },
+     "after": {
+      "stitches": 18796.0,
+      "trims": 122.0
+     }
+    },
+    {
+     "id": "evening-0930:ref_0930am:enthusiast",
+     "arm": "ref_0930am",
+     "fixture": "enthusiast",
+     "label": "same",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 2474.0,
+      "trims": 15.0
+     },
+     "after": {
+      "stitches": 2474.0,
+      "trims": 15.0
+     }
+    },
+    {
+     "id": "evening-0930:ref_0930am:gaulke",
+     "arm": "ref_0930am",
+     "fixture": "gaulke",
+     "label": "both_bad",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 4307.0,
+      "trims": 30.0
+     },
+     "after": {
+      "stitches": 4305.0,
+      "trims": 30.0
+     }
+    },
+    {
+     "id": "evening-0930:ref_0930am:golden_tee",
+     "arm": "ref_0930am",
+     "fixture": "golden_tee",
+     "label": "both_bad",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 8613.0,
+      "trims": 41.0
+     },
+     "after": {
+      "stitches": 8575.0,
+      "trims": 41.0
+     }
+    },
+    {
+     "id": "evening-0930:ref_0930am:screenshot",
+     "arm": "ref_0930am",
+     "fixture": "screenshot",
+     "label": "both_bad",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 8171.0,
+      "trims": 73.0
+     },
+     "after": {
+      "stitches": 8201.0,
+      "trims": 73.0
+     }
+    },
+    {
+     "id": "evening-0930:ref_0930am:tires",
+     "arm": "ref_0930am",
+     "fixture": "tires",
+     "label": "before",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 2646.0,
+      "trims": 8.0
+     },
+     "after": {
+      "stitches": 2835.0,
+      "trims": 8.0
+     }
+    },
+    {
+     "id": "evening-0930:phantom_dissolve:bridge",
+     "arm": "phantom_dissolve",
+     "fixture": "bridge",
+     "label": "after",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 16179.0,
+      "trims": 101.0
+     },
+     "after": {
+      "stitches": 11385.0,
+      "trims": 43.0
+     }
+    },
+    {
+     "id": "evening-0930:phantom_dissolve:gaulke",
+     "arm": "phantom_dissolve",
+     "fixture": "gaulke",
+     "label": "before",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 4332.0,
+      "trims": 33.0
+     },
+     "after": {
+      "stitches": 4449.0,
+      "trims": 37.0
+     }
+    },
+    {
+     "id": "evening-0930:phantom_dissolve:golden_tee",
+     "arm": "phantom_dissolve",
+     "fixture": "golden_tee",
+     "label": "before",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 8659.0,
+      "trims": 45.0
+     },
+     "after": {
+      "stitches": 8554.0,
+      "trims": 47.0
+     }
+    },
+    {
+     "id": "evening-0930:phantom_dissolve:screenshot",
+     "arm": "phantom_dissolve",
+     "fixture": "screenshot",
+     "label": "both_bad",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 8171.0,
+      "trims": 73.0
+     },
+     "after": {
+      "stitches": 8170.0,
+      "trims": 76.0
+     }
+    },
+    {
+     "id": "evening-0930:phantom_dissolve:tires",
+     "arm": "phantom_dissolve",
+     "fixture": "tires",
+     "label": "same",
+     "judged": "2026-09-30",
+     "before": {
+      "stitches": 2646.0,
+      "trims": 8.0
+     },
+     "after": {
+      "stitches": 2643.0,
+      "trims": 8.0
+     }
+    }
+   ]
+  },
+  "texture-0930": {
+   "date": "2026-10-01",
+   "labels": "docs/eye-pairs-2026-09-30/kent-notes.json (fourth_sitting)",
+   "instruments": "docs/eye-pairs-2026-09-30/texture-corpus.json",
+   "pairs": [
+    {
+     "id": "texture-0930:split_7mm:becker",
+     "arm": "split_7mm",
+     "fixture": "becker",
+     "label": "same",
+     "judged": "2026-10-01",
+     "before": {
+      "stitches": 9321.0
+     },
+     "after": {
+      "stitches": 8281.0
+     }
+    },
+    {
+     "id": "texture-0930:split_7mm:bridge",
+     "arm": "split_7mm",
+     "fixture": "bridge",
+     "label": "same",
+     "judged": "2026-10-01",
+     "before": {
+      "stitches": 16175.0
+     },
+     "after": {
+      "stitches": 16064.0
+     }
+    },
+    {
+     "id": "texture-0930:split_7mm:drone",
+     "arm": "split_7mm",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-10-01",
+     "before": {
+      "stitches": 18796.0
+     },
+     "after": {
+      "stitches": 18783.0
+     }
+    },
+    {
+     "id": "texture-0930:split_7mm:screenshot",
+     "arm": "split_7mm",
+     "fixture": "screenshot",
+     "label": null,
+     "judged": "2026-10-01",
+     "before": {
+      "stitches": 8201.0
+     },
+     "after": {
+      "stitches": 8150.0
+     }
+    },
+    {
+     "id": "texture-0930:split_7mm:tires",
+     "arm": "split_7mm",
+     "fixture": "tires",
+     "label": "same",
+     "judged": "2026-10-01",
+     "before": {
+      "stitches": 2835.0
+     },
+     "after": {
+      "stitches": 2615.0
+     }
+    },
+    {
+     "id": "texture-0930:rails_symmetric:becker",
+     "arm": "rails_symmetric",
+     "fixture": "becker",
+     "label": "same",
+     "judged": "2026-10-01",
+     "before": {
+      "stitches": 9321.0
+     },
+     "after": {
+      "stitches": 9248.0
+     }
+    },
+    {
+     "id": "texture-0930:rails_symmetric:golden_tee",
+     "arm": "rails_symmetric",
+     "fixture": "golden_tee",
+     "label": "before",
+     "judged": "2026-10-01",
+     "before": {
+      "stitches": 8575.0
+     },
+     "after": {
+      "stitches": 8573.0
+     }
+    },
+    {
+     "id": "texture-0930:rails_symmetric:tires",
+     "arm": "rails_symmetric",
+     "fixture": "tires",
+     "label": "same",
+     "judged": "2026-10-01",
+     "before": {
+      "stitches": 2835.0
+     },
+     "after": {
+      "stitches": 2835.0
+     }
+    }
+   ]
+  },
+  "off-flags-1003": {
+   "date": "2026-10-03",
+   "labels": "docs/eye-pairs-2026-10-03/kent-notes.json",
+   "instruments": "docs/eye-pairs-2026-10-03/price-tables.json (stitches, trims only)",
+   "pairs": [
+    {
+     "id": "off-flags-1003:cap_recentre:becker",
+     "arm": "cap_recentre",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 9715.0,
+      "trims": 64.0
+     },
+     "after": {
+      "stitches": 9702.0,
+      "trims": 63.0
+     }
+    },
+    {
+     "id": "off-flags-1003:cap_recentre:bridge",
+     "arm": "cap_recentre",
+     "fixture": "bridge",
+     "label": "both_bad",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 17744.0,
+      "trims": 97.0
+     },
+     "after": {
+      "stitches": 17744.0,
+      "trims": 97.0
+     }
+    },
+    {
+     "id": "off-flags-1003:cap_recentre:drone",
+     "arm": "cap_recentre",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 18975.0,
+      "trims": 138.0
+     },
+     "after": {
+      "stitches": 18975.0,
+      "trims": 138.0
+     }
+    },
+    {
+     "id": "off-flags-1003:cap_recentre:enthusiast",
+     "arm": "cap_recentre",
+     "fixture": "enthusiast",
+     "label": "same",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 2486.0,
+      "trims": 14.0
+     },
+     "after": {
+      "stitches": 2484.0,
+      "trims": 14.0
+     }
+    },
+    {
+     "id": "off-flags-1003:cap_recentre:fremont",
+     "arm": "cap_recentre",
+     "fixture": "fremont",
+     "label": "same",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 20023.0,
+      "trims": 57.0
+     },
+     "after": {
+      "stitches": 20023.0,
+      "trims": 57.0
+     }
+    },
+    {
+     "id": "off-flags-1003:cap_recentre:gaulke",
+     "arm": "cap_recentre",
+     "fixture": "gaulke",
+     "label": "both_bad",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 4205.0,
+      "trims": 33.0
+     },
+     "after": {
+      "stitches": 4205.0,
+      "trims": 33.0
+     }
+    },
+    {
+     "id": "off-flags-1003:cap_recentre:golden_tee",
+     "arm": "cap_recentre",
+     "fixture": "golden_tee",
+     "label": "same",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 8476.0,
+      "trims": 44.0
+     },
+     "after": {
+      "stitches": 8474.0,
+      "trims": 44.0
+     }
+    },
+    {
+     "id": "off-flags-1003:cap_recentre:tires",
+     "arm": "cap_recentre",
+     "fixture": "tires",
+     "label": "after",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 2851.0,
+      "trims": 8.0
+     },
+     "after": {
+      "stitches": 2853.0,
+      "trims": 8.0
+     }
+    },
+    {
+     "id": "off-flags-1003:bean_letters:bridge",
+     "arm": "bean_letters",
+     "fixture": "bridge",
+     "label": "both_bad",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 17744.0,
+      "trims": 97.0
+     },
+     "after": {
+      "stitches": 17549.0,
+      "trims": 103.0
+     }
+    },
+    {
+     "id": "off-flags-1003:bean_letters:drone",
+     "arm": "bean_letters",
+     "fixture": "drone",
+     "label": "before",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 18975.0,
+      "trims": 138.0
+     },
+     "after": {
+      "stitches": 19766.0,
+      "trims": 156.0
+     }
+    },
+    {
+     "id": "off-flags-1003:bean_letters:enthusiast",
+     "arm": "bean_letters",
+     "fixture": "enthusiast",
+     "label": "before",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 2486.0,
+      "trims": 14.0
+     },
+     "after": {
+      "stitches": 2234.0,
+      "trims": 14.0
+     }
+    },
+    {
+     "id": "off-flags-1003:bean_letters:fremont",
+     "arm": "bean_letters",
+     "fixture": "fremont",
+     "label": "before",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 20023.0,
+      "trims": 57.0
+     },
+     "after": {
+      "stitches": 19173.0,
+      "trims": 53.0
+     }
+    },
+    {
+     "id": "off-flags-1003:bean_letters:gaulke",
+     "arm": "bean_letters",
+     "fixture": "gaulke",
+     "label": "before",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 4205.0,
+      "trims": 33.0
+     },
+     "after": {
+      "stitches": 4657.0,
+      "trims": 57.0
+     }
+    },
+    {
+     "id": "off-flags-1003:bean_letters:golden_tee",
+     "arm": "bean_letters",
+     "fixture": "golden_tee",
+     "label": "before",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 8476.0,
+      "trims": 44.0
+     },
+     "after": {
+      "stitches": 8468.0,
+      "trims": 52.0
+     }
+    },
+    {
+     "id": "off-flags-1003:split_off:becker",
+     "arm": "split_off",
+     "fixture": "becker",
+     "label": "both_bad",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 9715.0,
+      "trims": 64.0
+     },
+     "after": {
+      "stitches": 7752.0,
+      "trims": 64.0
+     }
+    },
+    {
+     "id": "off-flags-1003:split_off:bridge",
+     "arm": "split_off",
+     "fixture": "bridge",
+     "label": "same",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 17744.0,
+      "trims": 97.0
+     },
+     "after": {
+      "stitches": 17371.0,
+      "trims": 97.0
+     }
+    },
+    {
+     "id": "off-flags-1003:split_off:drone",
+     "arm": "split_off",
+     "fixture": "drone",
+     "label": "same",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 18975.0,
+      "trims": 138.0
+     },
+     "after": {
+      "stitches": 18962.0,
+      "trims": 138.0
+     }
+    },
+    {
+     "id": "off-flags-1003:split_off:golden_tee",
+     "arm": "split_off",
+     "fixture": "golden_tee",
+     "label": "same",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 8476.0,
+      "trims": 44.0
+     },
+     "after": {
+      "stitches": 8340.0,
+      "trims": 44.0
+     }
+    },
+    {
+     "id": "off-flags-1003:split_off:tires",
+     "arm": "split_off",
+     "fixture": "tires",
+     "label": "same",
+     "judged": "2026-10-03",
+     "before": {
+      "stitches": 2851.0,
+      "trims": 8.0
+     },
+     "after": {
+      "stitches": 2631.0,
+      "trims": 8.0
+     }
+    }
+   ]
+  },
+  "density-1007": {
+   "date": "2026-10-07",
+   "labels": "docs/eye-pairs-2026-10-07/kent-notes.json (columns_sitting)",
+   "instruments": "render directory of the page he judged (columns-sitting worktree, gitignored)",
+   "pairs": [
+    {
+     "id": "density-1007:lettering_columns:becker",
+     "arm": "lettering_columns",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-10-07",
+     "before": {
+      "lost_frac": 0.0327,
+      "unsewn_frac": 0.0192,
+      "overshoot_frac": 0.0135,
+      "uncovered_ink_frac": 0.0629,
+      "uncovered_total_mm2": 9.4,
+      "lost_elements": 49,
+      "ragged_mm": 0.186,
+      "hausdorff_mm": 4.0,
+      "artfid": 89.2,
+      "trims_per_1000": 5.38,
+      "stitches": 10976,
+      "trims": 59,
+      "changed_trims": 38
+     },
+     "after": {
+      "lost_frac": 0.0399,
+      "unsewn_frac": 0.0291,
+      "overshoot_frac": 0.0108,
+      "uncovered_ink_frac": 0.0914,
+      "uncovered_total_mm2": 7.6,
+      "lost_elements": 50,
+      "ragged_mm": 0.257,
+      "hausdorff_mm": 4.16,
+      "artfid": 86.6,
+      "trims_per_1000": 3.97,
+      "stitches": 7308,
+      "trims": 29,
+      "changed_trims": 8
+     }
+    },
+    {
+     "id": "density-1007:lettering_columns:bridge",
+     "arm": "lettering_columns",
+     "fixture": "bridge",
+     "label": "both_bad",
+     "judged": "2026-10-07",
+     "before": {
+      "lost_frac": 0.2215,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0492,
+      "uncovered_ink_frac": 0.0016,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 94,
+      "ragged_mm": 0.218,
+      "hausdorff_mm": 16.12,
+      "artfid": 79.6,
+      "trims_per_1000": 5.46,
+      "stitches": 18488,
+      "trims": 101,
+      "changed_trims": 8
+     },
+     "after": {
+      "lost_frac": 0.2172,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0492,
+      "uncovered_ink_frac": 0.0016,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 91,
+      "ragged_mm": 0.218,
+      "hausdorff_mm": 16.12,
+      "artfid": 79.6,
+      "trims_per_1000": 5.46,
+      "stitches": 18301,
+      "trims": 100,
+      "changed_trims": 7
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     }
+    },
+    {
+     "id": "density-1007:lettering_columns:drone",
+     "arm": "lettering_columns",
+     "fixture": "drone",
+     "label": "after",
+     "judged": "2026-10-07",
+     "before": {
+      "lost_frac": 0.0986,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0472,
+      "uncovered_ink_frac": 0.0033,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 100,
+      "ragged_mm": 0.185,
+      "hausdorff_mm": 15.09,
+      "artfid": 79.9,
+      "trims_per_1000": 7.13,
+      "stitches": 19351,
+      "trims": 138,
+      "changed_trims": 35
+     },
+     "after": {
+      "lost_frac": 0.0852,
+      "unsewn_frac": 0.0003,
+      "overshoot_frac": 0.0353,
+      "uncovered_ink_frac": 0.0124,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 78,
+      "ragged_mm": 0.191,
+      "hausdorff_mm": 15.09,
+      "artfid": 79.9,
+      "trims_per_1000": 7.75,
+      "stitches": 17802,
+      "trims": 138,
+      "changed_trims": 35
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     }
+    },
+    {
+     "id": "density-1007:lettering_columns:enthusiast",
+     "arm": "lettering_columns",
+     "fixture": "enthusiast",
+     "label": "both_bad",
+     "judged": "2026-10-07",
+     "before": {
+      "lost_frac": 0.2908,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.2908,
+      "uncovered_ink_frac": 0.0184,
+      "uncovered_total_mm2": 1.1,
+      "lost_elements": 46,
+      "ragged_mm": 0.198,
+      "hausdorff_mm": 2.5,
+      "artfid": 79.3,
+      "trims_per_1000": 5.36,
+      "stitches": 2614,
+      "trims": 14,
+      "changed_trims": 14
+     },
+     "after": {
+      "lost_frac": 0.0577,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0577,
+      "uncovered_ink_frac": 0.0372,
+      "uncovered_total_mm2": 1.0,
+      "lost_elements": 11,
+      "ragged_mm": 0.174,
+      "hausdorff_mm": 0.92,
+      "artfid": 79.8,
+      "trims_per_1000": 7.29,
+      "stitches": 1783,
+      "trims": 13,
+      "changed_trims": 13
+     }
+    },
+    {
+     "id": "density-1007:lettering_columns:fremont",
+     "arm": "lettering_columns",
+     "fixture": "fremont",
+     "label": "before",
+     "judged": "2026-10-07",
+     "before": {
+      "lost_frac": 0.0304,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 22,
+      "ragged_mm": 0.092,
+      "hausdorff_mm": 10.05,
+      "artfid": 96.6,
+      "trims_per_1000": 2.82,
+      "stitches": 20177,
+      "trims": 57,
+      "changed_trims": 18
+     },
+     "after": {
+      "lost_frac": 0.018,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0,
+      "uncovered_ink_frac": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 6,
+      "ragged_mm": 0.092,
+      "hausdorff_mm": 17.6,
+      "artfid": 96.6,
+      "trims_per_1000": 3.18,
+      "stitches": 19471,
+      "trims": 62,
+      "changed_trims": 23
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     }
+    },
+    {
+     "id": "density-1007:lettering_columns:gaulke",
+     "arm": "lettering_columns",
+     "fixture": "gaulke",
+     "label": "both_bad",
+     "judged": "2026-10-07",
+     "before": {
+      "lost_frac": 0.981,
+      "unsewn_frac": 0.9321,
+      "overshoot_frac": 0.0471,
+      "uncovered_ink_frac": 0.9474,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 51,
+      "ragged_mm": 0.281,
+      "hausdorff_mm": 82.62,
+      "artfid": 33.7,
+      "trims_per_1000": 7.2,
+      "stitches": 4583,
+      "trims": 33,
+      "changed_trims": 32
+     },
+     "after": {
+      "lost_frac": 0.9794,
+      "unsewn_frac": 0.9377,
+      "overshoot_frac": 0.0386,
+      "uncovered_ink_frac": 0.9517,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 67,
+      "ragged_mm": 0.281,
+      "hausdorff_mm": 82.88,
+      "artfid": 33.6,
+      "trims_per_1000": 8.77,
+      "stitches": 3307,
+      "trims": 29,
+      "changed_trims": 28
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     }
+    }
+   ]
+  },
+  "letterform-1007": {
+   "date": "2026-10-07",
+   "labels": "docs/eye-pairs-2026-10-07/kent-notes.json (pairs)",
+   "instruments": "render directory of the page he judged (letterform-priors worktree, gitignored)",
+   "pairs": [
+    {
+     "id": "letterform-1007:letterform_priors:becker",
+     "arm": "letterform_priors",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-10-07",
+     "before": {
+      "lost_frac": 0.023,
+      "unsewn_frac": 0.0135,
+      "overshoot_frac": 0.0094,
+      "uncovered_ink_frac": 0.0584,
+      "uncovered_total_mm2": 12.2,
+      "lost_elements": 35,
+      "ragged_mm": 0.176,
+      "hausdorff_mm": 4.2,
+      "artfid": 89.6,
+      "trims_per_1000": 6.49,
+      "stitches": 9702,
+      "trims": 63,
+      "changed_trims": 41
+     },
+     "after": {
+      "lost_frac": 0.0319,
+      "unsewn_frac": 0.018,
+      "overshoot_frac": 0.0139,
+      "uncovered_ink_frac": 0.0632,
+      "uncovered_total_mm2": 6.8,
+      "lost_elements": 49,
+      "ragged_mm": 0.187,
+      "hausdorff_mm": 4.0,
+      "artfid": 89.2,
+      "trims_per_1000": 5.87,
+      "stitches": 10217,
+      "trims": 60,
+      "changed_trims": 38
+     }
+    },
+    {
+     "id": "letterform-1007:letterform_priors:bridge",
+     "arm": "letterform_priors",
+     "fixture": "bridge",
+     "label": "both_bad",
+     "judged": "2026-10-07",
+     "before": {
+      "lost_frac": 0.2218,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0503,
+      "uncovered_ink_frac": 0.0016,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 97,
+      "ragged_mm": 0.22,
+      "hausdorff_mm": 16.12,
+      "artfid": 79.5,
+      "trims_per_1000": 5.47,
+      "stitches": 17744,
+      "trims": 97,
+      "changed_trims": 22
+     },
+     "after": {
+      "lost_frac": 0.2206,
+      "unsewn_frac": 0.0,
+      "overshoot_frac": 0.0503,
+      "uncovered_ink_frac": 0.0016,
+      "uncovered_total_mm2": 0.0,
+      "lost_elements": 97,
+      "ragged_mm": 0.22,
+      "hausdorff_mm": 16.12,
+      "artfid": 79.6,
+      "trims_per_1000": 5.67,
+      "stitches": 17817,
+      "trims": 101,
+      "changed_trims": 26
+     },
+     "refused": {
+      "before": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ],
+      "after": [
+       "artfid",
+       "hausdorff_mm",
+       "lost_elements",
+       "lost_frac",
+       "overshoot_frac",
+       "ragged_mm",
+       "uncovered_ink_frac",
+       "unsewn_frac"
+      ]
+     }
+    }
+   ]
+  },
+  "columns-flip-1008": {
+   "date": "2026-10-08",
+   "labels": "docs/eye-pairs-2026-10-11/kent-notes-store-export.json",
+   "instruments": "docs/eye-pairs-2026-10-08/flip/price-tables.json",
+   "pairs": [
+    {
+     "id": "columns-flip-1008:columns_words:becker",
+     "arm": "columns_words",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-10-08",
+     "before": {
+      "stitches": 10969.0,
+      "trims": 59.0,
+      "changed_trims": 38.0,
+      "uncovered_ink_frac": 0.06,
+      "lost_frac": 0.0236,
+      "ragged_mm": 0.18
+     },
+     "after": {
+      "stitches": 8708.0,
+      "trims": 27.0,
+      "changed_trims": 6.0,
+      "uncovered_ink_frac": 0.0629,
+      "lost_frac": 0.0381,
+      "ragged_mm": 0.183
+     }
+    },
+    {
+     "id": "columns-flip-1008:columns_words:bridge",
+     "arm": "columns_words",
+     "fixture": "bridge",
+     "label": "after",
+     "judged": "2026-10-08",
+     "before": {
+      "stitches": 18837.0,
+      "trims": 101.0,
+      "changed_trims": 8.0,
+      "uncovered_ink_frac": 0.0017000000000000001,
+      "lost_frac": 0.2213,
+      "ragged_mm": 0.218
+     },
+     "after": {
+      "stitches": 18870.0,
+      "trims": 98.0,
+      "changed_trims": 5.0,
+      "uncovered_ink_frac": 0.0017000000000000001,
+      "lost_frac": 0.2283,
+      "ragged_mm": 0.218
+     }
+    },
+    {
+     "id": "columns-flip-1008:columns_words:drone",
+     "arm": "columns_words",
+     "fixture": "drone",
+     "label": "both_bad",
+     "judged": "2026-10-08",
+     "before": {
+      "stitches": 19644.0,
+      "trims": 132.0,
+      "changed_trims": 24.0,
+      "uncovered_ink_frac": 0.0033,
+      "lost_frac": 0.1003,
+      "ragged_mm": 0.184
+     },
+     "after": {
+      "stitches": 19191.0,
+      "trims": 134.0,
+      "changed_trims": 26.0,
+      "uncovered_ink_frac": 0.0045000000000000005,
+      "lost_frac": 0.106,
+      "ragged_mm": 0.184
+     }
+    },
+    {
+     "id": "columns-flip-1008:columns_words:enthusiast",
+     "arm": "columns_words",
+     "fixture": "enthusiast",
+     "label": "after",
+     "judged": "2026-10-08",
+     "before": {
+      "stitches": 2602.0,
+      "trims": 14.0,
+      "changed_trims": 11.0,
+      "uncovered_ink_frac": 0.018000000000000002,
+      "lost_frac": 0.2771,
+      "ragged_mm": 0.198
+     },
+     "after": {
+      "stitches": 2365.0,
+      "trims": 7.0,
+      "changed_trims": 4.0,
+      "uncovered_ink_frac": 0.0059,
+      "lost_frac": 0.311,
+      "ragged_mm": 0.18
+     }
+    },
+    {
+     "id": "columns-flip-1008:columns_words:fremont",
+     "arm": "columns_words",
+     "fixture": "fremont",
+     "label": "after",
+     "judged": "2026-10-08",
+     "before": {
+      "stitches": 20819.0,
+      "trims": 63.0,
+      "changed_trims": 20.0,
+      "uncovered_ink_frac": 0.0,
+      "lost_frac": 0.0302,
+      "ragged_mm": 0.092
+     },
+     "after": {
+      "stitches": 20727.0,
+      "trims": 59.0,
+      "changed_trims": 16.0,
+      "uncovered_ink_frac": 0.0,
+      "lost_frac": 0.0325,
+      "ragged_mm": 0.092
+     }
+    },
+    {
+     "id": "columns-flip-1008:columns_words:golden_tee",
+     "arm": "columns_words",
+     "fixture": "golden_tee",
+     "label": "after",
+     "judged": "2026-10-08",
+     "before": {
+      "stitches": 8950.0,
+      "trims": 44.0,
+      "changed_trims": 19.0,
+      "uncovered_ink_frac": 0.0018,
+      "lost_frac": 0.4501,
+      "ragged_mm": 0.166
+     },
+     "after": {
+      "stitches": 8398.0,
+      "trims": 43.0,
+      "changed_trims": 18.0,
+      "uncovered_ink_frac": 0.002,
+      "lost_frac": 0.4698,
+      "ragged_mm": 0.17
+     }
+    }
+   ]
+  },
+  "full-density-1008": {
+   "date": "2026-10-08",
+   "labels": "docs/eye-pairs-2026-10-11/kent-notes-store-export.json",
+   "instruments": "none found",
+   "pairs": [
+    {
+     "id": "full-density-1008:lettering_columns:becker",
+     "arm": "lettering_columns",
+     "fixture": "becker",
+     "label": "after",
+     "judged": "2026-10-08",
+     "before": {},
+     "after": {},
+     "unscored_why": "no render directory or table for this page on main or on Kent's laptop"
+    },
+    {
+     "id": "full-density-1008:lettering_columns:bridge",
+     "arm": "lettering_columns",
+     "fixture": "bridge",
+     "label": "after",
+     "judged": "2026-10-08",
+     "before": {},
+     "after": {},
+     "unscored_why": "no render directory or table for this page on main or on Kent's laptop"
+    },
+    {
+     "id": "full-density-1008:lettering_columns:drone",
+     "arm": "lettering_columns",
+     "fixture": "drone",
+     "label": "after",
+     "judged": "2026-10-08",
+     "before": {},
+     "after": {},
+     "unscored_why": "no render directory or table for this page on main or on Kent's laptop"
+    },
+    {
+     "id": "full-density-1008:lettering_columns:enthusiast",
+     "arm": "lettering_columns",
+     "fixture": "enthusiast",
+     "label": "after",
+     "judged": "2026-10-08",
+     "before": {},
+     "after": {},
+     "unscored_why": "no render directory or table for this page on main or on Kent's laptop"
+    },
+    {
+     "id": "full-density-1008:lettering_columns:fremont",
+     "arm": "lettering_columns",
+     "fixture": "fremont",
+     "label": "after",
+     "judged": "2026-10-08",
+     "before": {},
+     "after": {},
+     "unscored_why": "no render directory or table for this page on main or on Kent's laptop"
+    },
+    {
+     "id": "full-density-1008:lettering_columns:gaulke",
+     "arm": "lettering_columns",
+     "fixture": "gaulke",
+     "label": "both_bad",
+     "judged": "2026-10-08",
+     "before": {},
+     "after": {},
+     "unscored_why": "no render directory or table for this page on main or on Kent's laptop"
+    },
+    {
+     "id": "full-density-1008:lettering_columns:golden_tee",
+     "arm": "lettering_columns",
+     "fixture": "golden_tee",
+     "label": "after",
+     "judged": "2026-10-08",
+     "before": {},
+     "after": {},
+     "unscored_why": "no render directory or table for this page on main or on Kent's laptop"
+    }
+   ]
+  }
+ }
+}
