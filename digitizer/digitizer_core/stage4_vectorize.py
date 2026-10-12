@@ -595,8 +595,14 @@ def vectorize(
         if not outers:
             note_drop(rm)
             continue
-        # A single connected component yields one meaningful shell; if
-        # simplification splintered it, keep the largest.
+        # A single connected component yields one meaningful shell. Every
+        # other outer contour is DROPPED here, with no warning — which is
+        # harmless only because stage 3 never hands over a mask with two
+        # islands: masks are 8-connected components and `union_from` only
+        # joins 8-adjacent ones (0 of 7,106 masks over the corpus, both
+        # garments, default and 6 colours, 2026-10-12;
+        # `tools/stage4_contours.py`, `tests/test_stage4_contours.py`). A
+        # change that builds multi-island masks must keep every island here.
         outer = max(outers, key=lambda i: cv2.contourArea(contours[i]))
 
         # Sub-detail masks are simplified at the floor only — see docstring.
