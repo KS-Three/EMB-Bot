@@ -214,3 +214,47 @@ def test_fixture_reads_no_gap_under_the_candidate(rel, width, garment, gaps_off)
         wkb.append([p.polygon.wkb for p in planned])
     if not gaps_off:
         assert wkb[0] == wkb[1]
+
+
+def test_a_failed_weld_keeps_the_artwork_not_the_larger_strip(monkeypatch):
+    """PR #855's audit: when the weld fails (the union of a shape's artwork
+    and its strip stays two polygons) and the strip is the LARGER part, the
+    shape must still plan on its artwork. Shipped `_largest_polygon` kept the
+    strip -- bare fabric -- and threw the shape's ink away.
+
+    A real weld failure is floating point (f6bc9319: a femtometre on bridge's
+    lettering), so the test builds one outright: a strip 0.01 mm off the
+    artwork, a hundred times the 1e-4 mm weld."""
+    import digitizer_core.stage5_overlap as s5
+
+    art = box(0, 0, 1, 1)                       # 1 mm² of ink
+    strip = box(1.01, 0, 1.4, 20)                # 7.8 mm², never welds
+    regs = [_region("A", art, 0, "1000"),
+            _region("B", box(1.4, 0, 21.4, 20), 1, "2000")]
+    monkeypatch.setattr(s5, "gap_bridges", lambda regions, gap: ({"A": strip}, []))
+    plan = _plan(regs, CANDIDATE)
+    sewn = plan["A"].polygon
+    assert sewn.intersection(art).area == pytest.approx(art.area, abs=1e-9)
+    # ...and it is the shape's own plan, not the strip's: OFF plans A the
+    # same way (a failed weld closes nothing, it must not cost ink either).
+    # (to float dust: the union hands the artwork back with its ring
+    # restarted, measured 9e-18 mm² apart)
+    assert sewn.symmetric_difference(_plan(regs)["A"].polygon).area < 1e-9
+
+
+def test_a_failed_weld_with_the_larger_artwork_is_unchanged(monkeypatch):
+    """The other side: where the artwork is already the largest part, the
+    choice is the one `_largest_polygon` made, byte for byte."""
+    import digitizer_core.stage5_overlap as s5
+
+    art = box(-20, 0, 0, 20)
+    strip = box(0.01, 0, 0.4, 20)
+    joined = s5.unary_union([art, strip.buffer(1e-4)])
+    assert joined.geom_type == "MultiPolygon"
+    assert s5._weld_part(joined, art).wkb == s5._largest_polygon(joined).wkb
+    # And the small-artwork case is where the two part company.
+    small = box(0, 0, 1, 1)
+    long_strip = box(1.01, 0, 1.4, 20)
+    j2 = s5.unary_union([small, long_strip.buffer(1e-4)])
+    assert s5._largest_polygon(j2).intersection(small).area == 0.0
+    assert s5._weld_part(j2, small).equals(small)
