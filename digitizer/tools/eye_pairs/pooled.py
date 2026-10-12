@@ -188,8 +188,11 @@ def pooled_pairs(inputs: dict) -> list[dict]:
     return out
 
 
-def instrument_pick(metric: str, before: float, after: float) -> str:
-    direction = INSTRUMENTS[metric][0]
+def instrument_pick(metric: str, before: float, after: float, *,
+                    directions: dict | None = None) -> str:
+    """`directions` defaults to `INSTRUMENTS`; a caller scoring its own
+    candidates (`density_flow`) passes a table that extends it."""
+    direction = (directions or INSTRUMENTS)[metric][0]
     if round(after - before, 9) == 0:
         return "tie"
     better_after = after > before if direction == "higher" else after < before
@@ -223,7 +226,8 @@ def _refused(p: dict, metric: str) -> bool:
 
 
 def agreement(rows: list[dict], metric: str, *, cluster: bool = False,
-              include_refused: bool = False, seed: int = SEED) -> dict:
+              include_refused: bool = False, seed: int = SEED,
+              directions: dict | None = None) -> dict:
     """Chance-corrected agreement of one instrument with Kent over `rows`.
     No raw agreement is returned. A pair the instrument REFUSED on (a side
     the scorecard says is not an engine result: ink ambiguous, subject
@@ -237,7 +241,7 @@ def agreement(rows: list[dict], metric: str, *, cluster: bool = False,
         if not include_refused and _refused(p, metric):
             n_refused += 1
             continue
-        scored.append((p, instrument_pick(metric, float(b), float(a))))
+        scored.append((p, instrument_pick(metric, float(b), float(a), directions=directions)))
     res = {"metric": metric, "n_scored": len(scored), "n_refused": n_refused,
            "n_kent_decided": sum(1 for p, _ in scored if p["kent"] != "tie"),
            "n_instrument_silent_on_decided": sum(1 for p, i in scored
@@ -284,18 +288,18 @@ def reading(n: int, *intervals) -> str:
     return "no evidence either way"
 
 
-def worse_pairs(rows: list[dict], metric: str) -> list[dict]:
+def worse_pairs(rows: list[dict], metric: str, *, directions: dict | None = None) -> list[dict]:
     """Every pair where Kent chose a side and the instrument chose the OTHER
     one: the pair, the values, and the margin by which Kent's pick scored
     WORSE (positive; in the instrument's own units). Pairs the instrument
     refused on are left out, as in `agreement`."""
-    direction = INSTRUMENTS[metric][0]
+    direction = (directions or INSTRUMENTS)[metric][0]
     out = []
     for p in rows:
         b, a = p["before"].get(metric), p["after"].get(metric)
         if b is None or a is None or p["kent"] == "tie" or _refused(p, metric):
             continue
-        pick = instrument_pick(metric, float(b), float(a))
+        pick = instrument_pick(metric, float(b), float(a), directions=directions)
         if pick == "tie" or pick == p["kent"]:
             continue
         mine, other = (float(a), float(b)) if p["kent"] == "after" else (float(b), float(a))
