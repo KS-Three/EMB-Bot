@@ -535,10 +535,14 @@ def gap_bridges(regions: list[Region], gap_mm: float) -> tuple[dict[str, object]
 
 
 _HAIR_TOUCH_MM = 0.1
+# Rings the zone under the strands is shared out in (`_hairline_ground`):
+# the split between two grounds is exact to reach / steps (0.15 mm at 40 wt).
+_HAIR_SPLIT_STEPS = 8
 
 
 def _hairline_ground(regions: list[Region], hairline: dict,
-                     cfg: PipelineConfig, design_class: str = "flat") -> dict[str, object]:
+                     cfg: PipelineConfig, design_class: str = "flat",
+                     tongue_mm: float = 0.0) -> dict[str, object]:
     """`cfg.hairline_over_ground`: what each ground shape fills UNDER the
     hairline strands sewn after it. -> {ground shape_id: geometry}.
 
@@ -559,10 +563,9 @@ def _hairline_ground(regions: list[Region], hairline: dict,
     block's hairline limit (1.2 mm at 40 wt). The strand's part of that
     closing — grown by the touch tolerance, because the strand and the
     ground's slot are two DP traces of one pixel edge — is shared out to the
-    ground shapes within `reach / 2` of it: each side fills to past the
-    strand's middle, so a strand between two skin cells is under both
-    (two layers where today's tongues already put two) and a 1.2 mm crossing
-    core is closed from its corners.
+    ground shapes by distance (nearest takes it), so a strand between two
+    skin cells is filled to its middle from each side and a crossing core
+    from its corners; what no fill ground reaches within `reach` is left.
 
     Only grounds that sew BEFORE the strand (an earlier layer) reach under
     it — a strand sewn first would be buried. Only FILL grounds: a narrow
@@ -608,24 +611,52 @@ def _hairline_ground(regions: list[Region], hairline: dict,
         # rule handed back, or a run/satin cell no bigger than a reach disk,
         # pinched between strands — is closed over like the strand is: on
         # the hair fixture these were nearly all the cloth left (2026-10-12).
-        crumbs = [g.polygon for g in mine
-                  if g.shape_id in frags
-                  or (not is_fill(g) and g.polygon.area <= math.pi * reach * reach)]
-        zone = unary_union([h.polygon.buffer(_HAIR_TOUCH_MM), *crumbs]).intersection(closed)
-        # The closing reads every ground; only fill grounds take a share.
-        mine = [g for g in mine if is_fill(g)]
+        crumb_ids = {g.shape_id for g in mine
+                     if g.shape_id in frags
+                     or (not is_fill(g) and g.polygon.area <= math.pi * reach * reach)}
+        zone = unary_union([h.polygon.buffer(_HAIR_TOUCH_MM),
+                            *[g.polygon for g in mine if g.shape_id in crumb_ids]]
+                           ).intersection(closed)
+        # The closing reads every ground. The zone is split among every
+        # ground that is not a crumb; only FILL grounds keep their share — a
+        # satin cell's share stays under its own underlap tongue, as today.
+        claimers = [g for g in mine if g.shape_id not in crumb_ids]
+        mine = [g for g in claimers if is_fill(g)]
         if zone.is_empty or not mine:
             continue
+        # Shared out by distance, nearest ground first (a Voronoi split
+        # grown in `_HAIR_SPLIT_STEPS` rings): each point of the zone goes
+        # to ONE ground, so a strand between two cells is filled once, to
+        # its middle from each side, not twice.
+        near = {g.shape_id: zone.intersection(g.polygon.buffer(reach)) for g in claimers}
         given = []
-        for g in mine:
-            piece = zone.intersection(g.polygon.buffer(reach / 2.0))
-            if not piece.is_empty and piece.area > 0:
-                pieces.setdefault(g.shape_id, []).append(piece)
-                given.append(piece)
-        # What no ground reached by half the reach — the inside of a small
-        # loop of strands, a cell of ground the tracer absorbed into the
-        # strand network — goes whole to the NEAREST ground, so the closing
-        # is filled everywhere it closed.
+        claimed = None
+        for k in range(1, _HAIR_SPLIT_STEPS + 1):
+            d = reach * k / _HAIR_SPLIT_STEPS
+            ring = []
+            for g in claimers:
+                z = near[g.shape_id]
+                if z.is_empty:
+                    continue
+                piece = z.intersection(g.polygon.buffer(d))
+                if claimed is not None:
+                    piece = piece.difference(claimed)
+                if not piece.is_empty and piece.area > 1e-9:
+                    if is_fill(g):
+                        pieces.setdefault(g.shape_id, []).append(piece)
+                        ring.append(piece)
+                    else:
+                        # A satin cell's share is given only as far as its
+                        # own underlap tongue already covers it; the rest is
+                        # left for the nearest fill ground below.
+                        ring.append(piece.intersection(g.polygon.buffer(tongue_mm)))
+                    claimed = piece if claimed is None else claimed.union(piece)
+            if ring:
+                given.extend(ring)
+        # What no ground reached — the inside of a small loop of strands, a
+        # cell of ground the tracer absorbed into the strand network, the
+        # far side of a satin cell's tongue — goes whole to the NEAREST fill
+        # ground within the reach, so the closing is filled where it closed.
         rest = zone.difference(unary_union(given)) if given else zone
         for part in (getattr(rest, "geoms", None) or [rest]):
             if part.is_empty or part.area < 1e-6 or part.geom_type != "Polygon":
@@ -825,7 +856,8 @@ def resolve_overlaps(
     # below reads `under`). Off, or no strands: no entry, byte-identical.
     if (hairline and getattr(cfg, "hairline", False)
             and getattr(cfg, "hairline_over_ground", False)):
-        for sid, geom in _hairline_ground(regions, hairline, cfg, design_class).items():
+        for sid, geom in _hairline_ground(regions, hairline, cfg, design_class,
+                                          tongue_mm=pull + overlap).items():
             prev = ground_under.get(sid)
             ground_under[sid] = geom if prev is None else prev.union(geom)
 
