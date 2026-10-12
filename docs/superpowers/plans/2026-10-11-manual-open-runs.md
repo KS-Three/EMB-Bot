@@ -101,9 +101,9 @@
 - `authoredInFieldMm`, `removeAnchor`, `flatBBox`: open-ness from `isOpenShape` (a run has n − 1 segments and a floor of 2); rails only for a column.
 - `convertOpenShape(element, fit, shapeId, to, garment?) → patch | { error }`: `to === "column"` → `runToColumn(run, COLUMN_DEFAULT_MM / fit.mmPerPx)` (with no usable fit: `newColumnWidthPx` with `garment`, else nominal `COLUMN_DEFAULT_MM × PX_PER_MM`); `to === "run"` → `columnToRun`. Refuses a column that would fold (`shapeProblems`' first string). Commits through `refitShapesPatch` when the fit is usable, else `{ shapes }`.
 
-- [ ] **Step 1: failing tests**, through the REAL engine as the file's invariance tests do: (a) element [rectangle, run]; drag a run anchor via `editedElementPatch`; regenerate — the rectangle's outline moves ≤ the existing tolerance, `fit.mmPerPx` held to 1e-12; (b) `convertOpenShape(…, "column")` then regenerate — the rectangle has not moved, `columnWidthMm` reads 4.0 ± 0.01, the region now sews satin; (c) then `"run"` — the spine (points, curves) deep-equals the original run's and it sews a run again; unit: `removeAnchor` on a 2-point run → null; on a run's end anchor drops only that end's curve; `authoredInFieldMm(run)` has n − 1 handles and no `rails`.
-- [ ] **Step 2–4:** fail → implement → suite to a log, zero failures.
-- [ ] **Step 5: commit** — `fieldNodeEdit: a run edits open, and converts to a column and back through the re-fit rule`.
+- [x] **Step 1: failing tests**, through the REAL engine as the file's invariance tests do: (a) element [rectangle, run]; drag a run anchor via `editedElementPatch`; regenerate — the rectangle's outline moves ≤ the existing tolerance, `fit.mmPerPx` held to 1e-12; (b) `convertOpenShape(…, "column")` then regenerate — the rectangle has not moved, `columnWidthMm` reads 4.0 ± 0.01, the region now sews satin; (c) then `"run"` — the spine (points, curves) deep-equals the original run's and it sews a run again; unit: `removeAnchor` on a 2-point run → null; on a run's end anchor drops only that end's curve; `authoredInFieldMm(run)` has n − 1 handles and no `rails`.
+- [x] **Step 2–4:** fail → implement → suite to a log, zero failures.
+- [x] **Step 5: commit** — `fieldNodeEdit: a run edits open, and converts to a column and back through the re-fit rule`.
 
 ---
 
