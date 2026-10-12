@@ -71,6 +71,7 @@ from .textcluster import (detect_text_clusters, ocr_suggest_text,
 from .design_ramp import DesignRamp, fit_design_ramp
 from .stage5_overlap import resolve_overlaps
 from .stage6_blend import SourcePixels, legacy_design_ramp_angle
+from .stage6_hairline import InkSource, hairline_candidates
 from .config import is_photographic
 from .stage7_sequence import (PHOTO_CLASSES, borders_last_layers,
                               depth_sort_layers, sequence)
@@ -212,6 +213,13 @@ class PipelineResult:
     # it. Defaults False — a hand-built PipelineResult, and every caller that
     # never turned detection on, reads exactly as before the field existed.
     detected_photographic: bool = False
+    # The artwork's own pixels for the hairline tier's width read
+    # (`stage6_hairline.InkSource`, 2026-10-12 step 2): references to arrays
+    # stage 1 already holds, no copy, and nothing is computed from them
+    # unless `cfg.hairline` is on at plan time — so a re-plan with the flag
+    # toggled has them. None on a hand-built result: the tier then gates on
+    # the traced width, as the prototype did.
+    ink_source: object | None = None
 
     @property
     def shape_ids(self) -> list[str]:
@@ -1424,6 +1432,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             list(gen.quant_palette_spools)
             if gen.quant_palette_spools is not None else None
         ),
+        ink_source=InkSource.from_prep(p, (art_cx, art_cy)),
     )
 
 
@@ -1572,8 +1581,15 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         stitched_regions = _fill_inside_satin_border(
             stitched_regions, cfg, result.design_class)
 
+    # The hairline tier's shapes (`cfg.hairline`, default OFF), read ONCE so
+    # stage 5 (the ground under them) and stage 7 (the tier) agree on which
+    # shape is a strand. Off: None, and neither stage looks.
+    hairline = (hairline_candidates(stitched_regions, cfg,
+                                    ink=getattr(result, "ink_source", None))
+                if cfg.hairline else None)
     planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
-                                                 design_class=result.design_class)
+                                                 design_class=result.design_class,
+                                                 hairline=hairline)
     if dbg:
         debugviz.stage5(dbg, planned, result.design_size_mm, chart_for(cfg))
 
@@ -1634,7 +1650,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                                     # `sequence` re-gates on cfg before
                                     # reading it (a re-plan with the flag
                                     # off must ignore a stale carrier).
-                                    palette_spools=result.palette_spools)
+                                    palette_spools=result.palette_spools,
+                                    hairline=hairline)
 
     # The plan's palette is the list of cones this plan actually sews, one per
     # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a

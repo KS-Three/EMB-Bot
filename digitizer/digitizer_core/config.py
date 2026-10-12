@@ -191,6 +191,19 @@ class PipelineConfig:
     hairline: bool = False
     # candidate: Melco run (walk) floor 1.5 mm, #843 §1 [V][25], unsewn.
     hairline_stitch_mm: float = 1.5
+    # Hairline step 2 (2026-10-12, default OFF; docs/hairline-ground-
+    # 2026-10-12.md). Only read when `hairline` is on. The ground a hairline
+    # strand lies on keeps its FULL polygon under the strand: stage 5 closes
+    # the ground across every hairline-width gap the strands cut in it and
+    # fills that under them (`stage5_overlap.resolve_overlaps`, the bean-
+    # letter `ground_under` path), so the ground sews first and the strands
+    # sew on top as runs — the pros' practice, #843 §2. Without it a 0.40 mm
+    # run lies in a 0.45-0.7 mm traced slot and the cloth shows beside it.
+    # A named exception to nothing: the 2026-09-09 seam ruling governs which
+    # colour BORDERS a shared seam, and a hairline is a run with no border
+    # and no seam of its own (argued in the doc). Only grounds sewn BEFORE
+    # the strand reach under it. Candidate geometry, unsewn (gate 1).
+    hairline_over_ground: bool = False
     max_colors: int = 12
     # Make `max_colors` true on EVERY lane, not just the flat one. Default
     # OFF and byte-identical off — it only ever runs when a design already

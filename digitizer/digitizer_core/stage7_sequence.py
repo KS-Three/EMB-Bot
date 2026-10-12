@@ -74,6 +74,7 @@ from .stage6_detail import detail_runs
 # Imported under another name: `hairline_runs` is already this module's count
 # of `stage6_satin._hairline_stretches` strokes (the HAIRLINE_STROKES_AS_RUN
 # warning), a different, older thing.
+from .stage6_hairline import hairline_candidates
 from .stage6_hairline import hairline_runs as hairline_tier_runs
 from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
@@ -1789,6 +1790,7 @@ def sequence(
     streamline_mode: str | None = None,
     detail_layer: bool | None = None,
     palette_spools: list[int] | None = None,
+    hairline: dict | None = None,
 ) -> tuple[list[StitchBlock], list[dict]]:
     """-> (blocks in sew order, warnings).
 
@@ -1868,6 +1870,12 @@ def sequence(
             return satin_spacing_mm
         return profile_for(pr).satin_spacing_mm * max(0.1, fabric.density_adjust)
     hairline_shapes_sewn = hairline_strands = hairline_dropped = 0
+    # Which shapes are strands (`stage6_hairline.hairline_candidates`):
+    # `plan_stitches` reads them once and hands the same dict to stage 5, so
+    # the ground under a strand and the strand itself agree. A direct caller
+    # that passes none gets them read here, from the traced polygons.
+    if cfg.hairline and hairline is None:
+        hairline = hairline_candidates([p.region for p in planned], cfg)
     stitch_mm = cfg.fill_stitch_mm or FILL_STITCH_MM
     # Row 14's underlay split (see _PHOTO_FILL_UNDERLAY above for the craft
     # case). Precedence is unchanged in shape, only the FALLBACK moves: an
@@ -2216,14 +2224,18 @@ def sequence(
             # outline. On the ARTWORK polygon, for the run rung's own reason
             # (a run does not pull; compensation would fatten the stroke).
             # "auto" only; a shape it declines takes the ladder as before.
-            if tier == "auto" and cfg.hairline:
+            # Step 2: only a shape `hairline_candidates` admitted (the width
+            # gate read off the source, and a ground colour's slivers left
+            # to the ground), with its measurement reused, not retaken.
+            if tier == "auto" and cfg.hairline and p.shape_id in hairline:
                 prof = profile_for(p)
                 runs, report = hairline_tier_runs(
                     p.region.polygon, p.shape_id,
                     max_width_mm=prof.hairline_max_width_mm,
                     run_width_mm=prof.hairline_run_width_mm,
                     stitch_mm=cfg.hairline_stitch_mm,
-                    entry=entry, trim_at_mm=trim_at)
+                    entry=entry, trim_at_mm=trim_at,
+                    m=hairline[p.shape_id])
                 if not report["empty"]:
                     report["hairline_tier"] = 1
                     return runs, report, False
