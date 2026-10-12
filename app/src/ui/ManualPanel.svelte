@@ -17,6 +17,7 @@
   import { SATIN_CUTOUT_NOTE, columnWidthNote } from "../lib/shapePopover.js";
   import { columnWidthMm, withColumnWidthMm, refitShapesPatch, newColumnWidthPx } from "../lib/fieldNodeEdit.js";
   import { traceFitRect } from "../lib/manualTrace.js";
+  import Advanced from "./Advanced.svelte";
 
   // Node colours, straight vs curved. Same vocabulary the Ember demo uses
   // ("blue nodes means it's straight and the green ones means it's curved"),
@@ -1136,6 +1137,60 @@
 </script>
 
 <div class="manualpanel">
+  {#if shapes.length}
+    <ul class="mp-shapelist">
+      {#each shapes as s (s.id)}
+        <li>
+          <button
+            type="button"
+            class="mp-shaperow"
+            class:sel={s.id === selectedShapeId}
+            on:click={() => selectShape(s.id)}
+            on:keydown={onCanvasKeydown}
+          >
+            {#if s.cutOut}
+              <!-- A cut-out sews nothing, so it has no colour to show: a hollow,
+                   dashed swatch, the list's version of its dashed outline. -->
+              <span class="mp-swatch hollow" aria-hidden="true"></span>
+            {:else}
+              <span class="mp-swatch" style="background: rgb({s.colorRgb[0]},{s.colorRgb[1]},{s.colorRgb[2]})"></span>
+            {/if}
+            <span class="mp-shapetext">
+              <span class="mp-shapename">{summary(s, cut)}</span>
+              {#if cut.reasonOf[s.id]}
+                <span class="mp-reason">{cut.reasonOf[s.id]}</span>
+              {/if}
+            </span>
+          </button>
+          <button
+            type="button"
+            class="mp-remove"
+            title="Delete shape"
+            aria-label="Delete shape"
+            on:click={() => deleteShape(s.id)}
+            on:keydown={onCanvasKeydown}
+          ><Icon name="close" size={14} /></button>
+        </li>
+      {/each}
+    </ul>
+  {:else}
+    <p class="mp-empty">No shapes yet — open Advanced to draw one.</p>
+  {/if}
+
+  {#if selectedShape && !selectedShape.cutOut}
+    <div class="mp-row">
+      <span class="mp-label">Color</span>
+      <ThreadPicker compact rgb={selectedShape.colorRgb} on:pick={(e) => updateShape(selectedShape.id, { colorRgb: e.detail })} />
+    </div>
+  {/if}
+
+  <!-- Default slot: the size row (ContentStep). Advanced (spec 2026-09-30 §5):
+       the drawing canvas and its tools, trace import, and each shape's stitch
+       type, angle, width and cut-out, plus whatever ContentStep adds in the
+       "advanced" slot. -->
+  <slot />
+  <Advanced>
+
   <p class="hint">
     <strong>Left-click</strong> places a straight node (blue); <strong>right-click</strong>
     places a curved one (green). Click near the first point (or double-click) to close the
@@ -1234,46 +1289,6 @@
     </div>
   {/if}
 
-  {#if shapes.length}
-    <ul class="mp-shapelist">
-      {#each shapes as s (s.id)}
-        <li>
-          <button
-            type="button"
-            class="mp-shaperow"
-            class:sel={s.id === selectedShapeId}
-            on:click={() => selectShape(s.id)}
-            on:keydown={onCanvasKeydown}
-          >
-            {#if s.cutOut}
-              <!-- A cut-out sews nothing, so it has no colour to show: a hollow,
-                   dashed swatch, the list's version of its dashed outline. -->
-              <span class="mp-swatch hollow" aria-hidden="true"></span>
-            {:else}
-              <span class="mp-swatch" style="background: rgb({s.colorRgb[0]},{s.colorRgb[1]},{s.colorRgb[2]})"></span>
-            {/if}
-            <span class="mp-shapetext">
-              <span class="mp-shapename">{summary(s, cut)}</span>
-              {#if cut.reasonOf[s.id]}
-                <span class="mp-reason">{cut.reasonOf[s.id]}</span>
-              {/if}
-            </span>
-          </button>
-          <button
-            type="button"
-            class="mp-remove"
-            title="Delete shape"
-            aria-label="Delete shape"
-            on:click={() => deleteShape(s.id)}
-            on:keydown={onCanvasKeydown}
-          ><Icon name="close" size={14} /></button>
-        </li>
-      {/each}
-    </ul>
-  {:else}
-    <p class="mp-empty">No shapes yet — draw one above to get started.</p>
-  {/if}
-
   {#if selectedShape}
     <div class="mp-assign">
       <h3>{summary(selectedShape, cut)}</h3>
@@ -1299,11 +1314,8 @@
       </div>
       {#if isColumn(selectedShape)}
       <!-- A column: colour and width. It has no stitch type (always satin),
-           no angle (its rails are the direction) and cannot be a cut-out. -->
-      <div class="mp-row">
-        <span class="mp-label">Color</span>
-        <ThreadPicker compact rgb={selectedShape.colorRgb} on:pick={(e) => updateShape(selectedShape.id, { colorRgb: e.detail })} />
-      </div>
+           no angle (its rails are the direction) and cannot be a cut-out. Its
+           colour is the Color row above the Advanced fold. -->
       <label class="mp-row mp-width">
         <span class="mp-label">Width</span>
         <input
@@ -1358,10 +1370,6 @@
       {#if selectedShape.stitchType === "satin" && (cut.holesOf[selectedShape.id] || []).length}
         <p class="mp-cutnote">{SATIN_CUTOUT_NOTE}</p>
       {/if}
-      <div class="mp-row">
-        <span class="mp-label">Color</span>
-        <ThreadPicker compact rgb={selectedShape.colorRgb} on:pick={(e) => updateShape(selectedShape.id, { colorRgb: e.detail })} />
-      </div>
       <label class="mp-row mp-angle">
         <span class="mp-label">Fill angle</span>
         <input
@@ -1377,6 +1385,8 @@
       {/if}
     </div>
   {/if}
+  <slot name="advanced" />
+  </Advanced>
 </div>
 
 <style>

@@ -10,7 +10,7 @@
 //
 // Same self-contained service bootstrap as the other digitize specs here.
 import { test, expect } from "@playwright/test";
-import { startStudio, pickGarment, pickTemplate, openDownload, uploadArtwork } from "./helpers.js";
+import { startStudio, pickGarment, pickTemplate, openDownload, uploadArtwork, openAdvanced } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -200,6 +200,7 @@ test("the thread picker offers the chart the design's cones came from", async ({
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
 
   // The spool list lives on the Threads tab since 2026-09-30.
+  await openAdvanced(page);
   await page.getByRole("tab", { name: "Threads" }).click();
   await page.getByRole("button", { name: /^Thread color/ }).first().click();
   const brand = page.locator("select.tp-brand").first();

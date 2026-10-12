@@ -18,7 +18,7 @@
 // reuse a running service, start one from a venv if there isn't one, and SKIP
 // (never fail) on a machine with no digitizer venv.
 import { test, expect } from "@playwright/test";
-import { startStudio, typeText, pickGarment, openDownload, uploadArtwork } from "./helpers.js";
+import { startStudio, typeText, pickGarment, openDownload, uploadArtwork, openAdvanced } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -124,6 +124,7 @@ test("Upload file opens the file browser; cancelling adds nothing, choosing adds
 
   // The Artwork tile is the same door.
   chooserPromise = page.waitForEvent("filechooser");
+  await openAdvanced(page);
   await page.locator(".eladd-row button", { hasText: "Artwork" }).click();
   chooser = await chooserPromise;
   await chooser.setFiles(ART_PNG);
@@ -207,6 +208,7 @@ test("a file loads without digitizing; the button runs it, and goes transparent 
   // ---- change something: transparent, stitches untouched, no request ------
   const statsBefore = await page.locator(".dgp-stats").innerText();
   const width = page.getByLabel("Design width");
+  await openAdvanced(page);
   await width.fill("50");
   await width.blur();
   await expect(run).toHaveClass(/dgp-run-stale/);

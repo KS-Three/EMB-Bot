@@ -2,6 +2,7 @@
   import FontSelect from "./FontSelect.svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import ColorRangesEditor from "./ColorRangesEditor.svelte";
+  import Advanced from "./Advanced.svelte";
   import { createEventDispatcher } from "svelte";
   import { tip } from "../lib/tip.js";
   import { remapColorRanges } from "../lib/colorRanges.js";
@@ -96,6 +97,11 @@
   currentText={element.text}
   on:pick={(e) => patch({ fontKey: e.detail })}
 />
+<!-- Default slot: the size row (ContentStep). Advanced (spec 2026-09-30 §5)
+     holds everything below it, plus whatever ContentStep puts in the
+     "advanced" slot (the align row, the add-element row). -->
+<slot />
+<Advanced>
 <label class="letterspacing" use:tip={"letterSpacing"}>
   <span>Letter spacing<i class="tipmark" aria-hidden="true"></i></span>
   <input
@@ -191,6 +197,8 @@
   />
   <span class="label">{element.slantDeg || 0}°</span>
 </label>
+<slot name="advanced" />
+</Advanced>
 
 <style>
   /* Reuses DigitizePanel.svelte's ".dgp-lbadge" pill shape (font-size,

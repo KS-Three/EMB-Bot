@@ -1,6 +1,6 @@
 ---
 name: studio-configurator-pr1-2026-09-30
-description: The Studio redesign Kent asked for (Tesla-style configurator) — PRs 1, 2 and 4 built 2026-09-30/10-01, PR 3 (hide the power tools) NOT planned; what he picked, what only driving/measuring found, and what is still open
+description: The Studio redesign Kent asked for (Tesla-style configurator) — PRs 1-4 all built (PR 3, the Advanced fold, 2026-10-11); what he picked, what only driving/measuring found, and what is still open
 metadata:
   type: project
 ---
@@ -11,7 +11,7 @@ Spec `docs/superpowers/specs/2026-09-30-studio-configurator-design.md`. One plan
 - **PR 1, structure — #585, merged.** `Configurator` + `SummaryBar` + `DownloadSheet`; `StepNav`/`stepHistory`/`flow.js` steps deleted; panel on the right; templates in the My designs drawer; e2e through `e2e/helpers.js`.
 - **PR 2, garment row + Original view — #586, merged.** `GarmentPicker` (Polo · Hat · Tee · More ›, a `role=menu`, never a dialog); "Original" is a fourth View segment painted on the canvas.
 - **PR 4, theme — built 2026-10-01 on `claude/configurator-theme`, BEFORE PR 3 by Kent's call.** White page, `--fill #f4f4f4` for control grounds, body 13 px, two weights, accent only for CTA/selection/links/focus, 44 px `EMB·BOT` top bar, `e2e/theme-contrast.spec.js`.
-- **PR 3, progressive disclosure (spec §5) — NOT planned, NOT built.** The panel is restyled but still long; the duplicate add controls (start control + ContentStep's buttons) wait on it.
+- **PR 3, progressive disclosure (spec §5) — built 2026-10-11 on `claude/configurator-pr3`.** One `Advanced ›` fold per editor (`Advanced.svelte`; session state in `lib/advanced.js`: closed on load, in memory only). Content is rendered but `hidden`, so test ids and state survive; e2e specs call `openAdvanced(page)`. Each panel has a default slot (the size row) and an `advanced` slot (add row, align row). The field menu's Draw shapes opens the fold. Deviation from the spec: the fold sits under the editor, not at the panel foot. Not built: a separate sewn-colours row for artwork (the stats line carries the colour count).
 
 **Why:** the wizard read as dated to Kent; structure had to change before any restyle would land.
 

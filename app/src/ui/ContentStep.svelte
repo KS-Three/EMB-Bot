@@ -246,14 +246,25 @@
   {/each}
 </div>
 
+
 {#if showAddElementsHint}
   <Hint on:dismiss={() => d("dismisshint")}>Combine text and a logo in one design.</Hint>
 {/if}
-<div class="eladd-row">
-  <button type="button" class="eladd" on:click={() => d("addelement", "text")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Text</button>
-  <button type="button" class="eladd" on:click={() => d("addelement", "artwork")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Artwork</button>
-  <button type="button" class="eladd" on:click={() => d("addelement", "design")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Design file</button>
-</div>
+<!-- Progressive disclosure (spec 2026-09-30 §5). The element list stays on
+     show; the "add" row -- which the panel's start control (Add text | Upload
+     file) duplicates, Design file aside -- and the size row's fine controls
+     go behind each editor's Advanced fold, as the "advanced" slot. -->
+{#snippet size()}
+  <SizePanel part="size" project={{ ...project, ...el }} {designDims} on:update={(e) => d("elupdate", { id: el.id, patch: e.detail })} />
+{/snippet}
+{#snippet extras()}
+  <div class="eladd-row">
+    <button type="button" class="eladd" on:click={() => d("addelement", "text")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Text</button>
+    <button type="button" class="eladd" on:click={() => d("addelement", "artwork")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Artwork</button>
+    <button type="button" class="eladd" on:click={() => d("addelement", "design")}><span class="eladd-icon" aria-hidden="true"><Icon name="plus" size={14} /></span>Design file</button>
+  </div>
+  <SizePanel part="fine" project={{ ...project, ...el }} {designDims} on:update={(e) => d("elupdate", { id: el.id, patch: e.detail })} />
+{/snippet}
 {#if !digitizerHealth}
   <!-- The tile no longer disappears when the service is down — Artwork still
        works, it just falls back to the browser engine's own flatten-and-sew
@@ -312,7 +323,10 @@
 {:else}
   {#key el.id}
     {#if el.type === "design"}
-      <DesignPanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
+      <DesignPanel element={el} on:elupdate={(e) => d("elupdate", e.detail)}>
+        {@render size()}
+        <svelte:fragment slot="advanced">{@render extras()}</svelte:fragment>
+      </DesignPanel>
     {:else if el.type === "digitized"}
      {#await import("./DigitizePanel.svelte") then { default: DigitizePanel }}
       <DigitizePanel
@@ -329,7 +343,10 @@
         on:checkservice={() => d("checkservice")}
         on:converttotext={(e) => d("converttotext", e.detail)}
         on:removeelement={(e) => d("removeelement", e.detail)}
-      />
+      >
+        {@render size()}
+        <svelte:fragment slot="advanced">{@render extras()}</svelte:fragment>
+      </DigitizePanel>
      {/await}
     {:else if el.type === "image"}
       <ImagePanel
@@ -341,19 +358,29 @@
         on:elupdate={(e) => d("elupdate", e.detail)}
         on:image={(e) => d("image", e.detail)}
         on:flat={(e) => d("flat", e.detail)}
-      />
+      >
+        {@render size()}
+        <svelte:fragment slot="advanced">{@render extras()}</svelte:fragment>
+      </ImagePanel>
     {:else if el.type === "manual"}
      {#await import("./ManualPanel.svelte") then { default: ManualPanel }}
-      <ManualPanel element={el} fit={(manualFits && manualFits[el.id]) || null} fabric={manualFabric} garment={manualGarment} fieldSelect={fieldShapeSelect && fieldShapeSelect.elementId === el.id ? fieldShapeSelect : null} on:elupdate={(e) => d("elupdate", e.detail)} />
+      <ManualPanel element={el} fit={(manualFits && manualFits[el.id]) || null} fabric={manualFabric} garment={manualGarment} fieldSelect={fieldShapeSelect && fieldShapeSelect.elementId === el.id ? fieldShapeSelect : null} on:elupdate={(e) => d("elupdate", e.detail)}>
+        {@render size()}
+        <svelte:fragment slot="advanced">{@render extras()}</svelte:fragment>
+      </ManualPanel>
      {/await}
     {:else if el.type === "shape"}
-      <ShapePanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
+      <ShapePanel element={el} on:elupdate={(e) => d("elupdate", e.detail)}>
+        {@render size()}
+        <svelte:fragment slot="advanced">{@render extras()}</svelte:fragment>
+      </ShapePanel>
     {:else}
-      <TextStep element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
+      <TextStep element={el} on:elupdate={(e) => d("elupdate", e.detail)}>
+        {@render size()}
+        <svelte:fragment slot="advanced">{@render extras()}</svelte:fragment>
+      </TextStep>
     {/if}
   {/key}
-
-  <SizePanel project={{ ...project, ...el }} {designDims} on:update={(e) => d("elupdate", { id: el.id, patch: e.detail })} />
 {/if}
 
 <style>
