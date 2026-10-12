@@ -30,6 +30,7 @@ def measure(image: str, width_mm: float) -> dict:
     dropped = []
     planned_out = []
     orig_largest, orig_resolve = s5._largest_polygon, pipeline.resolve_overlaps
+    orig_split = s5._split_clip
 
     def spy(geom):
         out = orig_largest(geom)
@@ -42,18 +43,34 @@ def measure(image: str, width_mm: float) -> dict:
                         dropped.append(piece)
         return out
 
+    def split_spy(geom, art, floor, **kw):
+        # Since `cfg.clip_parent_keeps_ink` (default ON, 2026-10-12) a split
+        # goes through `_split_clip`, not `_largest_polygon`: the pieces that
+        # are neither the parent's nor kept (`cfg.clip_keep_pieces`, OFF by
+        # default) are the ones dropped.
+        parent, kept, dropped_ink = orig_split(geom, art, floor, **kw)
+        if parent is not None and geom.geom_type != "Polygon":
+            for g in getattr(geom, "geoms", []):
+                if (g.geom_type == "Polygon" and not g.equals(parent)
+                        and not any(g.equals(k) for k in kept)):
+                    piece = g.intersection(art)
+                    if not piece.is_empty:
+                        dropped.append(piece)
+        return parent, kept, dropped_ink
+
     def resolve(*a, **k):
         planned, warnings = orig_resolve(*a, **k)
         planned_out.extend(planned)
         return planned, warnings
 
-    s5._largest_polygon, pipeline.resolve_overlaps = spy, resolve
+    s5._largest_polygon, s5._split_clip, pipeline.resolve_overlaps = spy, split_spy, resolve
     try:
         cfg = PipelineConfig()
         cfg.target_width_mm = width_mm
         pipeline.digitize(image, cfg)
     finally:
-        s5._largest_polygon, pipeline.resolve_overlaps = orig_largest, orig_resolve
+        s5._largest_polygon, s5._split_clip, pipeline.resolve_overlaps = (
+            orig_largest, orig_split, orig_resolve)
     floor = cfg.min_detail_mm ** 2
     sewn = unary_union([p.polygon for p in planned_out]) if planned_out else None
     lost = unary_union(dropped) if dropped else None

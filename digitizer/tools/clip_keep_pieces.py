@@ -85,21 +85,27 @@ def _uncovered(result, plan, cfg, image) -> dict:
     return out
 
 
-def run(rel: str, cfg_kw: dict, preflight: bool = False) -> dict:
+def run(rel: str, cfg_kw: dict, preflight: bool = False, full: bool = False) -> dict:
+    """OFF = both settings False (the engine before defect 61); ON = the
+    shipped default, `clip_parent_keeps_ink` alone; FULL (`full=True`) =
+    `clip_keep_pieces` too, which keeps the extra pieces as their own regions."""
     gen = build_generation(str(ROOT / "testdata" / rel), PipelineConfig(**cfg_kw))
     out: dict = {"fixture": rel, "cfg": cfg_kw}
     off_by_id: dict = {}
-    for tag, flag in (("off", False), ("on", True)):
-        cfg = PipelineConfig(**cfg_kw, clip_keep_pieces=flag)
+    variants = [("off", False, False), ("on", True, False)]
+    if full:
+        variants.append(("full", True, True))
+    for tag, flag, keep in variants:
+        cfg = PipelineConfig(**cfg_kw, clip_parent_keeps_ink=flag, clip_keep_pieces=keep)
         result = finish_generation(gen.fork(), cfg)
         plan, planned = _plan(result, cfg)
         st = plan.stats
         row = {"stitches": st.stitch_count, "trims": st.trims, "md5": plan_md5(plan)}
         if preflight:
             row["uncovered"] = _uncovered(result, plan, cfg, ROOT / "testdata" / rel)
-        if not flag:
+        if tag == "off":
             off_by_id = {p.shape_id: p for p in planned}
-        if flag:
+        else:
             floor = clip_piece_floor_mm2(cfg)
             sewn_by = {}
             for p in planned:
@@ -159,6 +165,8 @@ def main(argv=None) -> int:
     ap.add_argument("--json", action="store_true", help="one JSON line per run")
     ap.add_argument("--preflight", action="store_true",
                     help="also read ARTWORK_UNCOVERED's per-shape finding OFF and ON")
+    ap.add_argument("--full", action="store_true",
+                    help="also run FULL: clip_keep_pieces on too (extra pieces as own regions)")
     args = ap.parse_args(argv)
     from tools.corpus_scorecard import FIXTURES, MATRIX
     rows = MATRIX if args.matrix is None else [MATRIX[args.matrix]]
@@ -169,7 +177,7 @@ def main(argv=None) -> int:
             if args.max_colors:
                 kw["max_colors"] = args.max_colors
             try:
-                r = run(rel, kw, preflight=args.preflight)
+                r = run(rel, kw, preflight=args.preflight, full=args.full)
             except Exception as exc:  # noqa: BLE001 -- one bad fixture must not sink the sweep
                 print(json.dumps({"fixture": rel, "cfg": kw, "error": f"{type(exc).__name__}: {exc}"}),
                       flush=True)
@@ -177,7 +185,7 @@ def main(argv=None) -> int:
             if args.json:
                 print(json.dumps(r), flush=True)
                 continue
-            o, i = r["off"], r["on"]
+            o, i = r["off"], r["full" if args.full else "on"]
             n_split = len(i["splits"])
             entries = [s for v in i["splits"].values() for s in v]
             kept = sum(1 for s in entries if s.get("kept"))
