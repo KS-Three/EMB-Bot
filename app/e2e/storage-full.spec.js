@@ -18,7 +18,7 @@
 // same failure: it needs no service, it runs in a second, and a 34 KB file
 // base64s to ~46 KB, which is far past the zero headroom left below.
 import { test, expect } from "@playwright/test";
-import { startStudio, typeText } from "./helpers.js";
+import { startStudio, typeText, openAdvanced } from "./helpers.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -54,6 +54,7 @@ test("a save that cannot happen is said out loud", async ({ page }) => {
   const filled = await fillStorage(page);
   expect(filled.headroom).toBe("none");
 
+  await openAdvanced(page);
   await page.getByRole("button", { name: "Design file" }).click();
   await page.locator(".dp-upload input[type=file]").setInputFiles(BIG_DST);
   await expect(page.locator(".dp-stats")).toBeVisible({ timeout: 60_000 });
@@ -78,6 +79,7 @@ test("a save that cannot happen is said out loud", async ({ page }) => {
     for (let i = 0; i < 2000; i++) localStorage.removeItem("junk:" + i);
     for (let i = 0; i < 100000; i++) localStorage.removeItem("junkk:" + i);
   });
+  await openAdvanced(page);
   await page.getByRole("button", { name: "Text", exact: true }).click();
   await page.waitForTimeout(600);
   await expect(page.getByTestId("save-failed-banner")).toHaveCount(0);

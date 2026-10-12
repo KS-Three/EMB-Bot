@@ -4,7 +4,7 @@
 // drag. Service bootstrap and fixture copied from field-border-menu.spec.js,
 // per this directory's convention of self-contained specs.
 import { test, expect } from "@playwright/test";
-import { pickGarment, uploadArtwork, runDigitize } from "./helpers.js";
+import { pickGarment, uploadArtwork, runDigitize, openAdvanced } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -60,6 +60,7 @@ async function drawRectangle(page, { x0 = 0.25, x1 = 0.75, open = true } = {}) {
     await page.locator(".hoop canvas").click({ button: "right" });
     await page.locator(".fieldmenu button").filter({ hasText: "Draw shapes" }).click();
   }
+  await openAdvanced(page);
   const mp = page.locator(".mp-canvas");
   await expect(mp).toBeVisible();
   const box = await mp.boundingBox();
@@ -272,6 +273,7 @@ test("two preset circles: selecting one highlights only that one, and switching 
   // Circle A sits at the hoop's left edge, circle B at the centre: apart, so
   // each outline is its own run of columns. Both have the shape id "shape".
   await addCircle();
+  await openAdvanced(page);
   await page.getByRole("button", { name: "Left", exact: true }).click();
   await addCircle();
   await expect(page.locator(".elrow", { hasText: "Circle" })).toHaveCount(2);
@@ -345,6 +347,7 @@ test("digitized lane: click inside a square opens the Layers row's controls; Bor
   await expect.poll(() => page.locator(".dgp-stats").innerText(), { timeout: 120_000 }).not.toBe(before);
 
   // The panel's own Border select reads the same value.
+  await openAdvanced(page);
   await page.getByRole("tab", { name: "Shapes" }).click();
   const rows = page.getByRole("button", { name: /^Edit shapes/ });
   if ((await rows.getAttribute("aria-expanded")) !== "true") await rows.click();

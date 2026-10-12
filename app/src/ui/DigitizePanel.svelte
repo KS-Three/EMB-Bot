@@ -2,6 +2,7 @@
   import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
+  import Advanced from "./Advanced.svelte";
   import { tip } from "../lib/tip.js";
   import { markDigitizeBusy, rememberRun, forgetRun, wasRunning } from "../lib/digitizeBusy.js";
   import { isCapPieceId } from "../lib/capPieces.js";
@@ -1841,6 +1842,8 @@
       sharper than a small one, and a PNG with a transparent background and sharp,
       non-anti-aliased edges digitizes cleanest.
     </p>
+    <slot />
+    <Advanced><slot name="advanced" /></Advanced>
   {:else}
     <div class="dgp-src">
       <CropBox
@@ -1894,6 +1897,34 @@
       </p>
     {/if}
 
+    <!-- Progressive disclosure (spec 2026-09-30 §5). Visible: the colour
+         count and what the last run made (the stats line). Everything else --
+         the other settings, how the art was read, the warnings, the tabs --
+         sits behind Advanced, rendered but hidden, so it keeps its state. -->
+    <div class="dgp-params">
+      <label class="dgp-param" use:tip={"colors"}>
+        <span>Colors (max {element.params.max_colors})<i class="tipmark" aria-hidden="true"></i></span>
+        <input
+          type="range"
+          min="2"
+          max="12"
+          step="1"
+          value={element.params.max_colors}
+          on:input={(e) => setParam("max_colors", parseInt(e.currentTarget.value, 10))}
+        />
+      </label>
+    </div>
+    {#if element.result}
+      <p class="dgp-stats">
+        {element.result.stitchCount.toLocaleString()} stitches ·
+        {element.result.widthMM.toFixed(0)}×{element.result.heightMM.toFixed(0)} mm ·
+        {spoolCount(element.result)} color{spoolCount(element.result) === 1 ? "" : "s"}
+      </p>
+    {/if}
+
+    <!-- Default slot: the size row (ContentStep). -->
+    <slot />
+    <Advanced>
     <div class="dgp-params">
       <!-- Every setting carries `use:tip` (lib/tip.js) with its key in
            lib/settingHelp.js — hover the label or focus the control and the
@@ -1913,17 +1944,6 @@
           on:change={(e) => setDesignWidth(Math.min(400, Math.max(10, parseFloat(e.currentTarget.value) || 80)))}
         />
         <span class="dgp-unit">mm</span>
-      </label>
-      <label class="dgp-param" use:tip={"colors"}>
-        <span>Colors (max {element.params.max_colors})<i class="tipmark" aria-hidden="true"></i></span>
-        <input
-          type="range"
-          min="2"
-          max="12"
-          step="1"
-          value={element.params.max_colors}
-          on:input={(e) => setParam("max_colors", parseInt(e.currentTarget.value, 10))}
-        />
       </label>
       <label class="dgp-checkline" use:tip={"satinThin"}>
         <input
@@ -2081,11 +2101,6 @@
     {/if}
 
     {#if element.result}
-      <p class="dgp-stats">
-        {element.result.stitchCount.toLocaleString()} stitches ·
-        {element.result.widthMM.toFixed(0)}×{element.result.heightMM.toFixed(0)} mm ·
-        {spoolCount(element.result)} color{spoolCount(element.result) === 1 ? "" : "s"}
-      </p>
       <!-- "Since last run" sits with the stats, above the tabs: a re-run
            can be started from any of them (Apply on Shapes, a spool on
            Threads), and its outcome should be read where you are. -->
@@ -2926,6 +2941,8 @@
       </label>
       {/if}
     {/if}
+    <slot name="advanced" />
+    </Advanced>
   {/if}
 </div>
 

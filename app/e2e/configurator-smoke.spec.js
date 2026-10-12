@@ -29,7 +29,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { statSync } from "node:fs";
-import { startStudio, typeText, pickGarment, pickTemplate, openDownload, closeDownload, uploadArtwork, watchConsole } from "./helpers.js";
+import { startStudio, typeText, pickGarment, pickTemplate, openDownload, closeDownload, uploadArtwork, watchConsole, openAdvanced } from "./helpers.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Same fixture digitize-stale-edits.spec.js uses (see that file's own
@@ -608,6 +608,9 @@ test("every control in the configurator has an accessible name", async ({ page }
   await startStudio(page);
   await pickTemplate(page, "Name on a hat");
   await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
+  // The sweep reads the accessibility tree, which skips a closed Advanced
+  // fold -- and the fold holds exactly the sliders this test exists for.
+  await openAdvanced(page);
   expect(await unnamedControls(page), "configurator").toEqual([]);
 
   await uploadArtwork(page, ART_PNG, { run: false });
@@ -800,4 +803,30 @@ test("Original view swaps the thread for the uploaded artwork, and any edit swap
   await expect(sim).toHaveAttribute("aria-pressed", "false");
   await page.locator("button.fabricswatch:not(.sel)").first().click();
   await expect(orig).toHaveAttribute("aria-pressed", "false");
+});
+
+test("progressive disclosure: only the essentials on first load; Advanced opens and stays open across elements", async ({ page }) => {
+  // Spec 2026-09-30 §5. The first screen shows the text box, font, colour and
+  // size; letter spacing, curve, rotation and the rest wait behind Advanced.
+  await startStudio(page);
+  const toggle = page.getByTestId("advanced-toggle");
+  await expect(page.getByPlaceholder("Type a name or word")).toBeVisible();
+  await expect(page.getByLabel("Width")).toBeVisible();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByText(/^Letter spacing/)).toBeHidden();
+  await expect(page.getByText(/^Rotation/)).toBeHidden();
+  await expect(page.locator(".eladd-row")).toBeHidden();
+
+  await openAdvanced(page);
+  await expect(page.getByText(/^Letter spacing/)).toBeVisible();
+  await expect(page.locator(".eladd-row")).toBeVisible();
+
+  // The editor is rebuilt when another element is selected; the fold is not.
+  await page.getByRole("button", { name: "Add text" }).click();
+  await expect(page.locator(".elrow")).toHaveCount(2);
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByText(/^Letter spacing/)).toBeVisible();
+
+  await toggle.click();
+  await expect(page.getByText(/^Letter spacing/)).toBeHidden();
 });
