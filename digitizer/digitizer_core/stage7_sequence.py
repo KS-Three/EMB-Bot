@@ -1888,14 +1888,20 @@ def sequence(
     # one, so the order is the OFF path's: the same plan sequenced once with
     # the lane off (letters on the satin ladder, nothing else different),
     # each shape ranked by where it first sews there, and the pick below
-    # follows that rank. Only when a shape the lane would take is present;
-    # the lane off, this is never computed and the plan is byte-identical.
-    # Costs one more stage 7 on lane-ON designs with letters (17.8 s on
-    # golden_tee, against ~210 s for stages 0-5).
+    # follows that rank. Letters the OFF path sews back to back (a SPAN) stay
+    # back to back, but among themselves keep nearest-neighbour from the
+    # needle: that is the lane's own trim saving on a word (enthusiast, 7
+    # trims against 8 in strict OFF order), and it moves no other shape.
+    # Only when a shape the lane would take is present; the lane off, this
+    # is never computed and the plan is byte-identical. Costs one more
+    # stage 7 on lane-ON designs with letters (about 20 s on golden_tee,
+    # against ~200 s for stages 0-5).
     off_rank: dict[str, int] | None = None
-    if cfg.lettering_columns and cfg.satin and any(
-            str(p.region.meta.get("tier", "auto")).lower() == "auto"
-            and is_lettering(p.region, cfg) for p in planned):
+    off_span: dict[str, int] = {}
+    lane_letters = {p.shape_id for p in planned
+                    if str(p.region.meta.get("tier", "auto")).lower() == "auto"
+                    and is_lettering(p.region, cfg)}
+    if cfg.lettering_columns and cfg.satin and lane_letters:
         off_blocks, _off_warnings = sequence(
             planned, fabric, replace(cfg, lettering_columns=False),
             source_pixels=source_pixels, design_class=design_class,
@@ -1905,8 +1911,17 @@ def sequence(
         off_rank = {}
         for _b in off_blocks:
             for _r in _b.runs:
-                off_rank.setdefault(_r.shape_id, len(off_rank))
-    row_mm =(cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
+                if _r.shape_id:
+                    off_rank.setdefault(_r.shape_id, len(off_rank))
+        _span, _prev = 0, False
+        for _sid in sorted(off_rank, key=off_rank.get):
+            _is = _sid in lane_letters
+            if _is and not _prev:
+                _span += 1
+            if _is:
+                off_span[_sid] = _span
+            _prev = _is
+    row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     # Task A2: satin gets the same fabric-scaled density the fill row spacing
     # already has — the browser engine's own digitize.js already multiplies
     # ITS satin spacingMm by fabric.densityAdjust (src/digitize.js line
@@ -2995,8 +3010,19 @@ def sequence(
                 # function). That order already obeyed the pins, the
                 # borders-last bias and cap order below. A shape the OFF
                 # path left empty has no rank and takes the rules below once
-                # every ranked shape in its colour has sewn.
+                # every ranked shape in its colour has sewn. Inside a span of
+                # letters, nearest-neighbour from the needle -- unless a pin
+                # or cap order is in force, whose order the OFF rank IS.
                 pick = min(ranked, key=lambda i: off_rank[group[i].shape_id])
+                span = off_span.get(group[pick].shape_id)
+                if span is not None and cursor is not None and not cap_order:
+                    same = [i for i in ranked
+                            if off_span.get(group[i].shape_id) == span]
+                    if not any(i in sew_order for i in same):
+                        here = Point(cursor)
+                        pick = min(same, key=lambda i: (
+                            round(group[i].polygon.distance(here), 6),
+                            off_rank[group[i].shape_id]))
             elif due is not None and (sew_order[due] <= next_slot or not unpinned):
                 pick = due
             elif cap_order:
