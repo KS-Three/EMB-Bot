@@ -747,6 +747,47 @@ def test_letters_sewn_back_to_back_keep_nearest_neighbour_among_themselves(monke
     assert on == ["A", "L1", "L3", "L2", "B"]
 
 
+def test_the_lanes_exit_faces_the_shape_the_off_order_sews_next(monkeypatch):
+    """`satin_exit_toward_next` hands the letter the NEAREST remaining shape.
+    Under the lane's OFF order the next shape is not always the nearest, and
+    a letter that exits toward a shape sewn later walks the needle away from
+    the one sewn next. A letter pinned first, a far bar pinned second, a near
+    bar unpinned: the OFF order is letter, far bar, near bar, so the letter's
+    exit must face the far bar."""
+    import digitizer_core.stage7_sequence as S7
+    from digitizer_core.fabrics import fabric_for_garment
+
+    shapes = {"L": _rect(-1, -5, 1, 5), "N": _rect(3, -5, 5, 5),
+              "F": _rect(30, -5, 32, 5)}
+    pins = {"L": 0, "F": 1}
+
+    def planned():
+        out = _one_colour(shapes, {"L"})
+        for p in out:
+            if p.shape_id in pins:
+                p.region.meta["sew_order"] = pins[p.shape_id]
+        return out
+
+    fabric = fabric_for_garment("left_chest")
+    off_blocks, _ = S7.sequence(planned(), fabric, PipelineConfig(underlay=False))
+    assert _sew_order(off_blocks) == ["L", "F", "N"]
+    ends = {}
+
+    def fake_lane(poly, sid, *, end_near=None, **kw):
+        ends[sid] = end_near
+        cx, cy = poly.centroid.x, poly.centroid.y
+        return [stitches.StitchRun(points=[(cx, cy - 4), (cx, cy + 4)],
+                                   kind=stitches.SATIN, shape_id=sid)], \
+            {"empty": False, "jumps": 0}
+
+    monkeypatch.setattr(S7, "lettering_columns_shape", fake_lane)
+    on_blocks, _ = S7.sequence(planned(), fabric,
+                               PipelineConfig(underlay=False, lettering_columns=True))
+    assert _sew_order(on_blocks) == ["L", "F", "N"]
+    assert ends["L"] is not None
+    assert shapes["F"].distance(Point(ends["L"])) < 1e-6
+
+
 # ------------------------------------------- pitch: the satin tier's, as sewn
 #
 # Kent's Columns sitting (2026-10-07) came back "needs work": *"the

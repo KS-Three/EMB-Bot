@@ -3049,7 +3049,26 @@ def sequence(
             # emitter so its walk can end facing it. Read only; the pick
             # below is untouched.
             exit_near = None
-            if cfg.satin_exit_toward_next:
+            # The Column lane's order (above) is not nearest-neighbour, so
+            # the shape the needle goes to next is the one that order picks
+            # next: the lowest OFF rank left, or -- inside a span of letters
+            # -- the span's nearest letter to this one. Facing the nearest
+            # shape instead sent a letter's exit toward a shape that sews
+            # later. Lane-ON only; `off_rank` is None otherwise.
+            rest = [i for i in ranked if i != pick]
+            if cfg.satin_exit_toward_next and rest:
+                nxt = min(rest, key=lambda i: off_rank[group[i].shape_id])
+                span = off_span.get(group[nxt].shape_id)
+                if span is not None and not cap_order:
+                    same = [i for i in rest
+                            if off_span.get(group[i].shape_id) == span]
+                    if not any(i in sew_order for i in same):
+                        nxt = min(same, key=lambda i: (
+                            round(group[i].polygon.distance(p.polygon), 6),
+                            off_rank[group[i].shape_id]))
+                q = nearest_points(p.polygon, group[nxt].polygon)[1]
+                exit_near = (float(q.x), float(q.y))
+            elif cfg.satin_exit_toward_next:
                 cands = [i for i in pool if i != pick] or list(remaining)
                 if cands:
                     nxt = min(cands, key=lambda i: (
