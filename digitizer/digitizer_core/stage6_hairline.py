@@ -51,18 +51,39 @@ Reused, said once: `_skeleton_edges` (stage6_satin), the equal-division
 arc-length resample idea and the jump/trim rule (stage6_detail), and stage 7's
 per-shape emission slot, so sequencing, colour blocks and every exporter take
 these runs with no change.
+
+Step 2 (2026-10-12, docs/hairline-ground-2026-10-12.md), still under
+`cfg.hairline`:
+
+- **The width is read off the SOURCE** (finding 1 of the prototype doc,
+  corrected: its "0.11 mm wide" was a units error, but the tracer's error
+  is real and has no fixed sign — a lone 0.33 mm stroke traces at 0.24, a
+  hair network near the truth because crossings absorb cells). `InkSource`
+  carries the artwork's own pixels —
+  native resolution when stage 1 upscaled, the way `stage4_vectorize`'s
+  native edge read and `_coverage_parts` get at them — and
+  `source_width_mm` integrates ink coverage across the stroke along the
+  skeleton's normals. The traced width is the fallback when the source has
+  no contrast edge there.
+- **Who is a hairline at all** (`hairline_candidates`, finding 4): a thin
+  shape whose thread also sews a shape the gate rejects — a ground colour —
+  qualifies only when it is DARKER than the colours around it. A sliver of
+  skin between two strands is a piece of the ground, not a hair.
 """
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass, field
 
 import cv2
 import numpy as np
+from shapely.strtree import STRtree
 from skimage.morphology import medial_axis
 
 from . import machine, stitches
 from .stage6_satin import _skeleton_edges
 from .stitches import StitchRun
+from .threads import chart_for, rgb_to_lab
 
 # Pixels across the narrowest stroke when rasterizing. stage6_satin's rule is
 # 8 ("thinning a wall under ~8 px wide invents branch points at every
@@ -104,6 +125,95 @@ _BRIDGE_WIDTHS = 2.5
 # stays inside the mark the thread lays. candidate: geometry, unsewn.
 _CURL_TOL_WIDTHS = 0.5
 
+# --- the source width read (step 2) ---
+# Skeleton samples the source read takes per shape, spread evenly over the
+# strands' bodies (crossings already excluded by `measure`).
+_SRC_SAMPLES = 240
+# Profile step along each normal, in SOURCE pixels. Bilinear samples of an
+# aliased edge integrate to its exact pixel count, so a quarter pixel is
+# plenty; the read is an integral, not an edge fit.
+_SRC_STEP_PX = 0.25
+# How far past the traced half-width each profile reaches, in source pixels,
+# so both ends land on the surround even where the tracer under-reads.
+_SRC_MARGIN_PX = 2.0
+# Least contrast between ink and the surround on one side of a profile, in
+# the field's units (CIELAB with alpha x 100 as a fourth axis — the space
+# `stage4_vectorize._native_profile_image` reads edges in). Under it that side
+# has no edge to read, and the sample is skipped.
+_SRC_MIN_CONTRAST = 12.0
+# Coverage at or under this is surround: the integral along a profile stops
+# at the first such sample walking out from the skeleton.
+_SRC_GAP = 0.05
+# The source width is used when at least this share of the samples read;
+# otherwise the gate falls back to the traced width.
+_SRC_MIN_VALID = 0.5
+
+# --- the ground-fragment rule (step 2) ---
+# A thin shape of a ground colour is a hairline only when it is darker than
+# the colours its edge touches by more than this many L* units.
+_DARKER_L = 2.0
+# Two shapes "touch" within this distance (mm) — the bean-letter ground rule's.
+_TOUCH_MM = 0.1
+
+
+@dataclass
+class InkSource:
+    """The artwork's own pixels, for reading what a stroke was DRAWN at.
+
+    `rgb` is the source as stage 1 delivered it: `Prep.native_rgb` when it
+    upscaled (with `Prep.native_alpha`, and the per-axis `upscale` that maps
+    the traced grid onto it by cv2's half-pixel-centre rule), else `Prep.rgb`
+    itself with `bg` (`Prep.bg_mask`) standing in for alpha. `px_per_mm` and
+    `origin_px` are the TRACED grid's mm <-> px mapping (the art bbox centre,
+    `SourcePixels`' origin). The field is built on first use and cached: a
+    flat design that never turns `cfg.hairline` on never pays for it."""
+    rgb: np.ndarray
+    alpha: np.ndarray | None
+    bg: np.ndarray | None
+    upscale: tuple[float, float]
+    px_per_mm: float
+    origin_px: tuple[float, float]
+    _field: np.ndarray | None = field(default=None, repr=False, compare=False)
+
+    @classmethod
+    def from_prep(cls, p, origin_px: tuple[float, float]) -> "InkSource":
+        if p.native_rgb is not None:
+            return cls(rgb=p.native_rgb, alpha=p.native_alpha, bg=None,
+                       upscale=(float(p.upscale[0]), float(p.upscale[1])),
+                       px_per_mm=float(p.px_per_mm), origin_px=origin_px)
+        return cls(rgb=p.rgb, alpha=None, bg=p.bg_mask, upscale=(1.0, 1.0),
+                   px_per_mm=float(p.px_per_mm), origin_px=origin_px)
+
+    def field(self) -> np.ndarray:
+        """(H, W, 4) float32: CIELAB of the source composited over white by
+        its alpha, and alpha x 100 — `stage4_vectorize._native_profile_image`'s
+        space, so a transparent-to-ink edge has contrast whatever the ink."""
+        if self._field is None:
+            h, w = self.rgb.shape[:2]
+            if self.alpha is not None:
+                a = self.alpha.astype(np.float32) / 255.0
+            elif self.bg is not None:
+                a = (~self.bg).astype(np.float32)
+            else:
+                a = np.ones((h, w), np.float32)
+            a = a[..., None]
+            comp = np.clip(self.rgb.astype(np.float32) * a + 255.0 * (1.0 - a), 0, 255)
+            lab = rgb_to_lab(comp.reshape(-1, 3)).reshape(h, w, 3).astype(np.float32)
+            self._field = np.concatenate([lab, a * 100.0], axis=-1).astype(np.float32)
+        return self._field
+
+    def to_src(self, xy_mm: np.ndarray) -> np.ndarray:
+        """(N, 2) mm -> (N, 2) source pixel coordinates (x, y)."""
+        sx, sy = self.upscale
+        cx, cy = self.origin_px
+        X = xy_mm[:, 0] * self.px_per_mm + cx
+        Y = xy_mm[:, 1] * self.px_per_mm + cy
+        return np.column_stack([(X + 0.5) / sx - 0.5, (Y + 0.5) / sy - 0.5])
+
+    @property
+    def src_px_per_mm(self) -> float:
+        return self.px_per_mm / max(self.upscale)
+
 
 def _parts(poly):
     return list(poly.geoms) if hasattr(poly, "geoms") else [poly]
@@ -137,8 +247,14 @@ def _estimate_width_mm(poly) -> float:
     return 2.0 * poly.area / per if per > 0 else 0.0
 
 
-def measure(poly, max_width_mm: float):
-    """-> dict(admit, width_mm (median), width_p95_mm, skel, scale, x0, y0) or None.
+def measure(poly, max_width_mm: float, ink: InkSource | None = None):
+    """-> dict(admit, width_mm, width_traced_mm, width_source_mm, width_p95_mm,
+    skel, scale, x0, y0) or None.
+
+    `width_mm` is what the gate read: the SOURCE width (`source_width_mm`)
+    when `ink` is given and the source has an edge to read, else the traced
+    median — so with no `ink` this is exactly the 2026-10-12 prototype's
+    gate. `width_p95_mm`, the blob check, stays on the traced raster.
 
     `None` means the cheap 2A/P estimate already says the shape is far too
     wide to be a hairline, so nothing was rasterized."""
@@ -176,9 +292,196 @@ def measure(poly, max_width_mm: float):
     widths = np.maximum(2.0 * d - 2.0, 1.0) / scale
     med = float(np.percentile(widths, _GATE_PCT))
     p95 = float(np.percentile(widths, _BLOB_PCT))
-    admit = med <= max_width_mm and p95 <= _BLOB_FACTOR * max_width_mm
-    return {"admit": admit, "width_mm": med, "width_p95_mm": p95,
-            "skel": skel, "scale": scale, "x0": x0, "y0": y0}
+    src = None
+    if ink is not None:
+        src = source_width_mm(ink, skel, body, dist, scale, x0, y0)
+    gate = src if src is not None else med
+    admit = gate <= max_width_mm and p95 <= _BLOB_FACTOR * max_width_mm
+    return {"admit": admit, "width_mm": gate, "width_traced_mm": med,
+            "width_source_mm": src, "width_p95_mm": p95,
+            "skel": skel, "body": body, "dist": dist,
+            "scale": scale, "x0": x0, "y0": y0}
+
+
+def source_width_mm(ink: InkSource, skel, body, dist, scale: float,
+                    x0: float, y0: float) -> float | None:
+    """The stroke's DRAWN width, read off the source along the skeleton.
+
+    At up to `_SRC_SAMPLES` body pixels of the skeleton, a profile runs
+    along the local normal (the principal axis of the skeleton pixels round
+    it) out to the traced half-width plus `_SRC_MARGIN_PX` source pixels each
+    side, so both ends sit on the surround. Each profile point is unmixed
+    between the surround colour at that side's end and the stroke's ink (the
+    median over profiles of each profile's most ink-like point): coverage
+    c = (F - S).(I - S) / |I - S|^2, clipped to 0..1, in the alpha-extended
+    CIELAB field. The width is the integral of c across the profile — the
+    area of ink per unit length, which is the drawn width whatever the
+    anti-aliasing, and on an aliased edge the exact pixel count (a bilinear
+    sample of a step integrates to the step). Median over the samples.
+
+    -> mm, or None when fewer than `_SRC_MIN_VALID` of the profiles found an
+    edge on both sides (an opaque source with no contrast edge there): the
+    caller then gates on the traced width."""
+    got = _source_widths(ink, skel, body, dist, scale, x0, y0)
+    if got is None:
+        return None
+    widths, n = got
+    if len(widths) < _SRC_MIN_VALID * n:
+        return None
+    return float(np.median(widths))
+
+
+def _source_widths(ink, skel, body, dist, scale, x0, y0):
+    """`source_width_mm`'s per-profile widths -> (widths mm, profiles tried) or None."""
+    ys, xs = np.nonzero(body)
+    if len(xs) < 4:
+        return None
+    k = max(1, len(xs) // _SRC_SAMPLES)
+    ys, xs = ys[::k][:_SRC_SAMPLES], xs[::k][:_SRC_SAMPLES]
+    sk_y, sk_x = np.nonzero(skel)
+    sk = np.column_stack([sk_x, sk_y]).astype(np.float64)
+    src_ppm = ink.src_px_per_mm
+    step_mm = _SRC_STEP_PX / src_ppm
+    centres, normals, reach = [], [], []
+    for y, x in zip(ys, xs):
+        rr = max(4.0, 3.0 * float(dist[y, x]))
+        near = sk[(np.abs(sk[:, 0] - x) <= rr) & (np.abs(sk[:, 1] - y) <= rr)]
+        if len(near) < 3:
+            continue
+        c = near - near.mean(axis=0)
+        _w, v = np.linalg.eigh(c.T @ c)
+        tx, ty = v[:, -1]
+        centres.append(((x - _PAD_PX) / scale + x0, (y - _PAD_PX) / scale + y0))
+        normals.append((-ty, tx))
+        reach.append(float(dist[y, x]) / scale + _SRC_MARGIN_PX / src_ppm)
+    if not centres:
+        return None
+    R = max(reach)
+    t = np.arange(-R, R + step_mm * 0.5, step_mm)
+    C = np.asarray(centres)
+    N = np.asarray(normals)
+    pts = C[:, None, :] + t[None, :, None] * N[:, None, :]          # (n, m, 2) mm
+    src = ink.to_src(pts.reshape(-1, 2)).astype(np.float32)
+    F = ink.field()
+    V = cv2.remap(F, src[:, 0].reshape(len(C), -1), src[:, 1].reshape(len(C), -1),
+                  cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)   # (n, m, 4)
+    # Each profile's own reach: points past it are left out, so a profile
+    # does not wander onto a neighbouring strand the longest one reaches.
+    inside = np.abs(t)[None, :] <= np.asarray(reach)[:, None] + 1e-9
+    last = inside.sum(axis=1)
+    first = np.argmax(inside, axis=1)
+    rows = np.arange(len(C))
+    S_l = V[rows, first]
+    S_r = V[rows, first + last - 1]
+    score = np.minimum(np.linalg.norm(V - S_l[:, None], axis=2),
+                       np.linalg.norm(V - S_r[:, None], axis=2))
+    score[~inside] = -1.0
+    I = np.median(V[rows, np.argmax(score, axis=1)], axis=0)
+    widths = []
+    mid = int(np.argmin(np.abs(t)))
+    for i in range(len(C)):
+        ok = True
+        total = 0.0
+        for S, idx in ((S_l[i], np.arange(mid, -1, -1)), (S_r[i], np.arange(mid + 1, len(t)))):
+            d = I - S
+            n2 = float(d @ d)
+            if math.sqrt(n2) < _SRC_MIN_CONTRAST:
+                ok = False
+                break
+            idx = idx[inside[i, idx]]
+            c = np.clip((V[i, idx] - S) @ d / n2, 0.0, 1.0)
+            # Only the ink CONNECTED to the skeleton: walking out from the
+            # middle, the integral stops at the first gap of surround, so a
+            # neighbouring strand inside the reach is not added to this one.
+            gap = np.nonzero(c <= _SRC_GAP)[0]
+            total += float(c[:gap[0]].sum() if len(gap) else c.sum())
+        if ok:
+            widths.append(total * step_mm)
+    return widths, len(C)
+
+
+def block_thread_wt(regions, cfg) -> dict[int, int]:
+    """Per colour block, the finest weight any of its shapes names through
+    `shape_overrides[sid].thread_wt` — `stage7_sequence.sequence`'s rule."""
+    out: dict[int, int] = {}
+    for r in regions:
+        ov = r.meta.get("thread_wt")
+        if ov is not None:
+            out[r.thread_index] = max(out.get(r.thread_index, 0), int(ov))
+    return out
+
+
+def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "HairlineSet":
+    """The shapes the hairline tier will sew -> `HairlineSet` ({shape_id:
+    `measure` dict}, plus `.fragments`, the thin shapes rule 2 handed back).
+
+    Computed once per plan (`pipeline.plan_stitches`) and read by stage 5
+    (the ground under them, `cfg.hairline_over_ground`) and stage 7 (the
+    tier), so the two can never disagree about which shape is a strand.
+
+    1. **The width gate** (`measure`, against the block's thread weight),
+       "auto"-tier shapes only — a tier the user set is an instruction.
+    2. **The ground-fragment rule.** A colour that sews ANY shape the gate
+       rejects (a real area somewhere: the skin's big cells) is a ground
+       colour. A thin shape of a ground colour qualifies only when it is
+       darker than the colours its edge touches (boundary-length-weighted
+       L* of the touching shapes of other threads, by more than `_DARKER_L`)
+       — a hair line drawn in the same black as a filled logo still does; a
+       sliver of skin pinched between two dark strands does not, because it
+       is lighter than what surrounds it: it is a piece of the ground, and it
+       fills with the ground. A thin shape touching no other colour lies on
+       the garment and qualifies. A colour with no rejected shape (the hair,
+       a pen line) is never a ground and every thin shape of it qualifies.
+       Known limit: a LIGHT strand of a colour that also fills an area
+       elsewhere (blonde highlights over brown hair, when blonde is also a
+       patch) is read as ground; nothing here can tell it from a sliver."""
+    chart = chart_for(cfg)
+    bw = block_thread_wt(regions, cfg)
+    out = HairlineSet()
+    measured: dict[str, dict] = {}
+    for r in regions:
+        if str(r.meta.get("tier", "auto")).lower() != "auto":
+            continue
+        prof = machine.thread_profile(bw.get(r.thread_index, cfg.thread_wt))
+        m = measure(r.polygon, prof.hairline_max_width_mm, ink=ink)
+        if m is not None and m["admit"]:
+            measured[r.shape_id] = m
+    if not measured:
+        return out
+    ground = {r.thread_index for r in regions if r.shape_id not in measured}
+    tree = STRtree([r.polygon for r in regions])
+    for r in regions:
+        m = measured.get(r.shape_id)
+        if m is None:
+            continue
+        if r.thread_index not in ground:
+            out[r.shape_id] = m
+            continue
+        edge = r.polygon.boundary
+        tot = wsum = 0.0
+        for i in tree.query(r.polygon.buffer(_TOUCH_MM)):
+            o = regions[int(i)]
+            if o is r or o.thread_index == r.thread_index:
+                continue
+            shared = edge.intersection(o.polygon.buffer(_TOUCH_MM)).length
+            if shared > 0:
+                tot += shared
+                wsum += shared * float(chart.lab[o.thread_index][0])
+        if tot <= 0 or float(chart.lab[r.thread_index][0]) < wsum / tot - _DARKER_L:
+            out[r.shape_id] = m
+        else:
+            out.fragments.add(r.shape_id)
+    return out
+
+
+class HairlineSet(dict):
+    """`hairline_candidates`' verdict: {shape_id: measure} for the strands,
+    and `fragments`, the thin shapes the ground-fragment rule handed back to
+    the ground (stage 5's `_hairline_ground` closes the ground over them)."""
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.fragments: set[str] = set()
 
 
 def _arc(pts) -> float:
@@ -457,7 +760,8 @@ def stitch_path(pts, stitch_mm: float, tol_mm: float,
 
 def hairline_runs(poly, shape_id: str, *, max_width_mm: float, run_width_mm: float,
                   stitch_mm: float, entry: tuple[float, float] | None,
-                  trim_at_mm: float) -> tuple[list[StitchRun], dict]:
+                  trim_at_mm: float, ink: InkSource | None = None,
+                  m: dict | None = None) -> tuple[list[StitchRun], dict]:
     """One shape through the hairline tier -> (runs, report).
 
     Report keys: the shared tier vocabulary (`empty`, `jumps`, `too_thin` —
@@ -467,22 +771,29 @@ def hairline_runs(poly, shape_id: str, *, max_width_mm: float, run_width_mm: flo
     `admitted` False means "not a hairline — take the ladder"; `empty` with
     `admitted` True means the whole shape was too short to sew as a run,
     which stage 7 also treats as "take the ladder" so nothing is dropped
-    silently."""
+    silently.
+
+    `m` is a `measure` result already taken (`hairline_candidates`), so the
+    gate is not read twice; `ink` is only used when `m` is not given. The
+    skeleton's own thresholds (spurs, bridges, heading reach) read the TRACED
+    width, since they are properties of the raster being walked."""
     report = {"empty": True, "jumps": 0, "too_thin": False, "admitted": False,
               "width_mm": None, "strands": 0, "dropped": 0, "edges": 0}
-    m = measure(poly, max_width_mm)
+    if m is None:
+        m = measure(poly, max_width_mm, ink=ink)
     if m is None:
         return [], report
     report["width_mm"] = round(m["width_mm"], 4)
     if not m["admit"]:
         return [], report
     report["admitted"] = True
-    edges = _graph(m, max(m["width_mm"], 1e-3))
+    traced = m.get("width_traced_mm", m["width_mm"])
+    edges = _graph(m, max(traced, 1e-3))
     report["edges"] = len(edges)
     if not edges:
         return [], report
     paths = _walk(edges, entry,
-                  reach_mm=max(_HEADING_MM, _HEADING_WIDTHS * m["width_mm"]))
+                  reach_mm=max(_HEADING_MM, _HEADING_WIDTHS * traced))
     tol = _CURL_TOL_WIDTHS * run_width_mm
     runs: list[StitchRun] = []
     for path in paths:

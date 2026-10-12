@@ -256,6 +256,26 @@ python -m tools.hairline_renders          # renders + table.json
 python -m pytest -q tests/test_thread_profile.py tests/test_hairline_tier.py
 ```
 
+## Step 2 (2026-10-12): the ground, the source width, the sliver rule
+
+`docs/hairline-ground-2026-10-12.md` has the detail. All of it is still
+default OFF.
+- **Finding 3 (cloth between the strands):** `cfg.hairline_over_ground`
+  closes the ground across strand-width gaps and fills it under the
+  strands. On the hair fixture, the new bare fabric on the ground falls from
+  2.88 to 0.44 mm² at 40 wt, and from 3.25 to 0.69 mm² at 60 wt.
+- **Finding 4 (slivers):** a thin shape of a ground colour qualifies only
+  when it is darker than its surround. With the tier ON, the skin fill is
+  md5-identical to OFF at 40 wt.
+- **Finding 1 is corrected.** It was a units error: the table above
+  digitized the fixture at its 80 mm canvas width, not its 69.15 mm art
+  box, so every strand sewed 1.157× its drawn width. The "556 mm² of hair
+  pixels" are 744 mm² in design units. The gate now reads the width off the
+  source anyway, because the tracer's error has no fixed sign: a lone stroke
+  traces 27% thin.
+- The renders now run at the fixtures' drawn scale, so the table above is
+  superseded by the step-2 table.
+
 `test_thread_profile.py` also pins **byte-identity for the OFF path**. It
 digitizes `logo_whitebg`, `logo_alpha` and `ribbon_curve`, with
 `thread_wt=40, hairline=False` set explicitly, and checks the md5 of each

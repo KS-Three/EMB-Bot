@@ -109,6 +109,9 @@ from .regions import Region
 from .stitchwidth import column_sized
 from .stage6_fill import best_fill_angle_deg, principal_angle_deg
 from .stage6_satin import is_satin_candidate
+from . import machine
+from .stage6_hairline import _BLOB_FACTOR as _HAIR_BLOB_FACTOR
+from .stage6_hairline import block_thread_wt
 from .warnings_codes import (
     HOLE_NEARLY_CLOSED,
     SAME_THREAD_SHAPES_MERGED,
@@ -531,9 +534,143 @@ def gap_bridges(regions: list[Region], gap_mm: float) -> tuple[dict[str, object]
     return final, pairs
 
 
+_HAIR_TOUCH_MM = 0.1
+# Rings the zone under the strands is shared out in (`_hairline_ground`):
+# the split between two grounds is exact to reach / steps (0.15 mm at 40 wt).
+_HAIR_SPLIT_STEPS = 8
+
+
+def _hairline_ground(regions: list[Region], hairline: dict,
+                     cfg: PipelineConfig, design_class: str = "flat",
+                     tongue_mm: float = 0.0) -> dict[str, object]:
+    """`cfg.hairline_over_ground`: what each ground shape fills UNDER the
+    hairline strands sewn after it. -> {ground shape_id: geometry}.
+
+    The pros' order for hair (docs/fine-detail-hair-research-2026-10-12.md
+    §2): the ground goes down whole, then single-run strands on top. Stage 4
+    traces a strand as its own shape and cuts it out of the ground — as a
+    hole, or (a crossing network) by splitting the ground into cells — so
+    today the ground stops at the strand's traced edge plus the underlap
+    tongue, and a 0.40 mm run in a 0.45-0.7 mm slot leaves cloth beside it,
+    worst at crossings (prototype finding 3).
+
+    The ground's polygon as if the strands were never cut out is its
+    morphological CLOSING across strand-width gaps: every earlier-sewn,
+    non-strand shape touching a strand, unioned, grown by `reach` and shrunk
+    back. A gap narrower than 2 x `reach` closes; the ground's own outline
+    elsewhere does not move (a closing only fills). `reach` is the widest a
+    strand can be and still be one: the blob check's factor times the
+    block's hairline limit (1.2 mm at 40 wt). The strand's part of that
+    closing — grown by the touch tolerance, because the strand and the
+    ground's slot are two DP traces of one pixel edge — is shared out to the
+    ground shapes by distance (nearest takes it), so a strand between two
+    skin cells is filled to its middle from each side and a crossing core
+    from its corners; what no fill ground reaches within `reach` is left.
+
+    Only grounds that sew BEFORE the strand (an earlier layer) reach under
+    it — a strand sewn first would be buried. Only FILL grounds: a narrow
+    ground cell that sews as a satin column (stage 7 reads its tier on the
+    artwork, `_comp_axis`) builds that column on the planned polygon, and a
+    column with strand-shaped bulges along both rails decomposes worse —
+    measured on the hair fixture, 2026-10-12: its satin cells lost half
+    their stitches and opened bare patches INSIDE their own artwork. A satin
+    ground keeps today's underlap tongue under the strand instead. A strand
+    that is a bean letter is left to `ground_under`'s own rule. Candidate
+    geometry, unsewn (ROADMAP gate 1): card block E (`card_E_ground.dst`)
+    is the test."""
+    strands = [r for r in regions
+               if r.shape_id in hairline and not r.meta.get("bean_letter_spines")]
+    if not strands:
+        return {}
+    bw = block_thread_wt(regions, cfg)
+    satin_max = satin_ceiling_mm(cfg)
+    grounds = [r for r in regions
+               if r.shape_id not in hairline and r.meta.get("stitched", True)]
+    if not grounds:
+        return {}
+    satin: dict[str, bool] = {}
+    frags = set(getattr(hairline, "fragments", ()))
+
+    def is_fill(g: Region) -> bool:
+        if g.shape_id not in satin:
+            satin[g.shape_id] = _comp_axis(g, cfg, satin_max, design_class)[1]
+        return not satin[g.shape_id]
+    tree = STRtree([g.polygon for g in grounds])
+    pieces: dict[str, list] = {}
+    for h in strands:
+        reach = _HAIR_BLOB_FACTOR * machine.thread_profile(
+            bw.get(h.thread_index, cfg.thread_wt)).hairline_max_width_mm
+        mine = [grounds[int(i)] for i in tree.query(h.polygon.buffer(_HAIR_TOUCH_MM))]
+        mine = [g for g in mine
+                if g.meta["layer"] < h.meta["layer"]
+                and g.polygon.distance(h.polygon) <= _HAIR_TOUCH_MM]
+        if not mine:
+            continue
+        closed = unary_union([g.polygon for g in mine]).buffer(reach).buffer(-reach)
+        # A ground cell too small to cover itself — a sliver the fragment
+        # rule handed back, or a run/satin cell no bigger than a reach disk,
+        # pinched between strands — is closed over like the strand is: on
+        # the hair fixture these were nearly all the cloth left (2026-10-12).
+        crumb_ids = {g.shape_id for g in mine
+                     if g.shape_id in frags
+                     or (not is_fill(g) and g.polygon.area <= math.pi * reach * reach)}
+        zone = unary_union([h.polygon.buffer(_HAIR_TOUCH_MM),
+                            *[g.polygon for g in mine if g.shape_id in crumb_ids]]
+                           ).intersection(closed)
+        # The closing reads every ground. The zone is split among every
+        # ground that is not a crumb; only FILL grounds keep their share — a
+        # satin cell's share stays under its own underlap tongue, as today.
+        claimers = [g for g in mine if g.shape_id not in crumb_ids]
+        mine = [g for g in claimers if is_fill(g)]
+        if zone.is_empty or not mine:
+            continue
+        # Shared out by distance, nearest ground first (a Voronoi split
+        # grown in `_HAIR_SPLIT_STEPS` rings): each point of the zone goes
+        # to ONE ground, so a strand between two cells is filled once, to
+        # its middle from each side, not twice.
+        near = {g.shape_id: zone.intersection(g.polygon.buffer(reach)) for g in claimers}
+        given = []
+        claimed = None
+        for k in range(1, _HAIR_SPLIT_STEPS + 1):
+            d = reach * k / _HAIR_SPLIT_STEPS
+            ring = []
+            for g in claimers:
+                z = near[g.shape_id]
+                if z.is_empty:
+                    continue
+                piece = z.intersection(g.polygon.buffer(d))
+                if claimed is not None:
+                    piece = piece.difference(claimed)
+                if not piece.is_empty and piece.area > 1e-9:
+                    if is_fill(g):
+                        pieces.setdefault(g.shape_id, []).append(piece)
+                        ring.append(piece)
+                    else:
+                        # A satin cell's share is given only as far as its
+                        # own underlap tongue already covers it; the rest is
+                        # left for the nearest fill ground below.
+                        ring.append(piece.intersection(g.polygon.buffer(tongue_mm)))
+                    claimed = piece if claimed is None else claimed.union(piece)
+            if ring:
+                given.extend(ring)
+        # What no ground reached — the inside of a small loop of strands, a
+        # cell of ground the tracer absorbed into the strand network, the
+        # far side of a satin cell's tongue — goes whole to the NEAREST fill
+        # ground within the reach, so the closing is filled where it closed.
+        rest = zone.difference(unary_union(given)) if given else zone
+        for part in (getattr(rest, "geoms", None) or [rest]):
+            if part.is_empty or part.area < 1e-6 or part.geom_type != "Polygon":
+                continue
+            g = min(mine, key=lambda x: x.polygon.distance(part))
+            if g.polygon.distance(part) <= reach:
+                pieces.setdefault(g.shape_id, []).append(part)
+    return {sid: unary_union(v) for sid, v in pieces.items()}
+
+
 def resolve_overlaps(
     regions: list[Region], fabric: Fabric, cfg: PipelineConfig,
     design_class: str = "flat",
+    hairline: dict | None = None,
 ) -> tuple[list[PlannedRegion], list[dict]]:
     """-> (planned regions in sew order, warnings).
 
@@ -542,6 +679,10 @@ def resolve_overlaps(
     one stage 7 makes for the same shape — see `_comp_axis`'s docstring.
     Defaults to "flat" so every pre-existing caller needs no edit and keeps
     exactly today's classification.
+
+    `hairline` is `stage6_hairline.hairline_candidates`' verdict (the shapes
+    stage 7 will sew as one-thread runs), read only under
+    `cfg.hairline_over_ground` — see `_hairline_ground`.
     """
     warnings: list[dict] = []
     if not regions:
@@ -707,6 +848,18 @@ def resolve_overlaps(
         if best is not None:
             ground_under.setdefault(best.shape_id, []).append(b_.polygon)
     ground_under = {k: unary_union(v).buffer(0.1) for k, v in ground_under.items()}
+
+    # Hairlines over their ground (`cfg.hairline_over_ground`, 2026-10-12
+    # step 2): the same mechanism, for strands — the ground keeps its full
+    # polygon under every strand sewn after it (`_hairline_ground`), and a
+    # strand's slot in it is not held open as a counter (the hole check
+    # below reads `under`). Off, or no strands: no entry, byte-identical.
+    if (hairline and getattr(cfg, "hairline", False)
+            and getattr(cfg, "hairline_over_ground", False)):
+        for sid, geom in _hairline_ground(regions, hairline, cfg, design_class,
+                                          tongue_mm=pull + overlap).items():
+            prev = ground_under.get(sid)
+            ground_under[sid] = geom if prev is None else prev.union(geom)
 
     # `cfg.held_hole_bare_only`: what later STITCHED colours cover, per
     # layer -- a suffix union like `later`, built only with the flag on. An
