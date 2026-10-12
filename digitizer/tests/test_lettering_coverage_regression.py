@@ -484,17 +484,37 @@ def test_the_headline_holds_at_one_pixel_registration(monkeypatch):
 
 
 def test_the_one_pixel_guard_still_sees_spill(monkeypatch):
-    """A guard that cannot fail is not one. `satin_rails_follow_edge=True`
-    pushes each rail out to its own edge and is this fixture's measured
-    spill-maker (the headline test's docstring); at one pixel it must still
-    read over the bar, or the bar is guarding nothing."""
+    """A guard that cannot fail is not one. Each satin construction gets its
+    own measured spill-maker, and at one pixel the design must still read
+    over the bar, or the bar is guarding nothing.
+
+    * The skeleton tier: `satin_rails_follow_edge=True` pushes each rail out
+      to its own edge (the headline test's docstring).
+    * The Column lane (`lettering_columns`): `columns.RAIL_REACH_INSET_MM`
+      set to 0, its rails back ON the outline under the full pull -- the
+      lane as it stood before #837. With both knobs it reads 0.3126 here
+      at one pixel (2026-10-11), against 0.1365 for the lane as shipped.
+
+    Both are applied at once, so the test has teeth whichever construction
+    the config sends the letters through: until 2026-10-11 it set only the
+    skeleton flag, and run with the lane ON (#837's `lane_on_plugin.py`) the
+    wordmark's letters no longer passed through that tier -- it read 0.1538,
+    under the margin, while the lane itself could spill unseen. Each knob is
+    inert on the other's path (`column_runs` runs only under
+    `lettering_columns`), so with the lane OFF this reads exactly what it
+    always has."""
+    import digitizer_core.columns as columns
+
+    monkeypatch.setattr(columns, "RAIL_REACH_INSET_MM", 0.0)
     cfg = base_cfg(WIDTH_MM, GARMENT, satin_rails_follow_edge=True)
     _gen, _result, _plan, design = digitize_once(FIXTURE, cfg)
     fine = _fine(design, monkeypatch)
+    lane = bool(getattr(cfg, "lettering_columns", False))
     assert fine["lost_frac"] > LOST_FRAC_FINE_BAR + 0.02, (
-        f"`satin_rails_follow_edge=True` reads {fine['lost_frac']:.4f} at a "
-        f"one-pixel registration (0.2173 on 2026-10-03), which no longer "
-        f"clears the {LOST_FRAC_FINE_BAR} bar by a margin. Either the flag "
-        f"stopped spilling, or the fine guard stopped seeing it: find out "
-        f"which before trusting `test_the_headline_holds_at_one_pixel_"
+        f"the {'Column lane with its rails on the outline' if lane else '`satin_rails_follow_edge=True`'}"
+        f" reads {fine['lost_frac']:.4f} at a one-pixel registration "
+        f"({'0.3126 on 2026-10-11' if lane else '0.2173 on 2026-10-03, 0.2415 on 2026-10-11'}), which "
+        f"no longer clears the {LOST_FRAC_FINE_BAR} bar by a margin. Either the "
+        f"spill-maker stopped spilling, or the fine guard stopped seeing it: "
+        f"find out which before trusting `test_the_headline_holds_at_one_pixel_"
         f"registration` again.")

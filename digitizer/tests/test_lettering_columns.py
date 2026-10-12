@@ -14,7 +14,8 @@ Contracts pinned:
   cuts its stem from its bar, an O is one ring column whose rails are the
   outer ring and the counter;
 - the Column engine honours the rules it claims: every station's ends sit
-  on the piece's outline before the push and a pull outside it after, a
+  on the piece's outline as cut, and after the push the pull less the
+  satin tier's reach inset (`RAIL_REACH_INSET_MM`) outside it, a
   cross under the floor is dropped and counted, a column's runs are linked
   by the satin tier's sew-or-jump rule, and the nearest-next order enters
   a column at the end nearer the needle;
@@ -35,7 +36,8 @@ from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, machine, stitches
-from digitizer_core.columns import Column, column_runs, lettering_columns_shape
+from digitizer_core.columns import (RAIL_REACH_INSET_MM, Column, _inset_rails, column_runs,
+                                    lettering_columns_shape)
 from digitizer_core.outline_cut import (REFINE_TRIGGER, _overlong, build_column, letter_columns,
                                         stroke_width)
 from digitizer_core.pipeline import digitize
@@ -126,7 +128,14 @@ def test_pull_lands_on_the_rails_and_the_floor_drops_a_cross():
     sat = [r for r in runs if r.kind == stitches.SATIN]
     assert len(sat) == 1
     xs = sorted({round(p[0], 3) for p in sat[0].points})
-    assert xs[0] == pytest.approx(-0.3, abs=1e-6) and xs[-1] == pytest.approx(2.3, abs=1e-6)
+    # each rail starts the satin tier's reach inside the outline, then takes
+    # the whole pull (`RAIL_REACH_INSET_MM`, Kent's ruling 2026-10-11)
+    reach = 0.3 - RAIL_REACH_INSET_MM
+    assert xs[0] == pytest.approx(-reach, abs=1e-6) and xs[-1] == pytest.approx(2 + reach, abs=1e-6)
+    # the inset never takes more than a quarter of a cross: a 0.3 mm cross
+    # keeps 0.15 mm before the push, not a point
+    a_pts, b_pts = _inset_rails([((0.0, 0.0), (0.3, 0.0))], RAIL_REACH_INSET_MM)
+    assert math.dist(a_pts[0], b_pts[0]) == pytest.approx(0.15, abs=1e-9)
     # a column narrower than the cross floor sews nothing, and says so
     thin = Column(stations=[((0, y), (0.3, y)) for y in (0.0, 0.5, 1.0, 1.5)],
                   piece=_rect(0, 0, 0.3, 2), kind="straight", axis=(0, 1), width_mm=0.3)
@@ -445,6 +454,27 @@ def test_a_straight_arm_fans_its_slanted_end():
     assert len(fan) >= 3 and all(math.dist(st[0], (10, 0)) < 0.5 for st in fan)
 
 
+def test_a_tapering_arm_fans_from_the_slants_near_corner():
+    """An arm that narrows toward its slanted end (the Becker A's right leg,
+    narrowing to its apex beside the cut): its crosses fall under 0.85 of
+    the median well before the slant starts, so the pivot used to sit on
+    the short side ~1 mm short of the corner and the triangle between it,
+    the corner and the tip sewed bare -- the A's 1.3 -> 6.7 mm2 unsewn
+    against the satin tier (2026-10-11). The fan now pivots on the slant's
+    near corner, its last cross lies on the slant, and the side's own
+    crosses up to the corner stay square."""
+    arm = Polygon([(0, 0), (14, 0), (12, 2.5), (0, 5)])
+    col = letter_columns(arm).columns[0]
+    assert col.kind == "straight"
+    runs, _ = lettering_columns_shape(arm, "arm", trim_at_mm=3.0)
+    tip = arm.intersection(box(10.5, -1, 15, 6)).buffer(-0.15)
+    assert tip.difference(_sewn(runs, 0.2)).area < 0.01 * tip.area      # was 0.51 of 4.93 mm2
+    end = col.stations[-1] if max(col.stations[-1][0][0], col.stations[-1][1][0]) > 13 else col.stations[0]
+    assert {tuple(round(v, 6) for v in p) for p in end} == {(12.0, 2.5), (14.0, 0.0)}
+    fan = [st for st in col.stations if (12.0, 2.5) in (tuple(st[0]), tuple(st[1]))]
+    assert len(fan) >= 3
+
+
 def test_a_curved_piece_keeps_its_slanted_tip():
     """A quarter-circle band whose end is cut on a slant: the spike squared
     a free end by cutting the longer rail back to the shorter, which left
@@ -673,7 +703,9 @@ def test_a_bend_holds_the_outer_rail_at_pitch():
     def arc_gaps(lo, hi, r):
         ang = sorted(math.atan2(y, x) for x, y in pts if lo < math.hypot(x, y) < hi)
         return [(b - a) * r for a, b in zip(ang, ang[1:]) if (b - a) * r > 1e-3]
-    out_g, in_g = arc_gaps(outer_r - 0.15, outer_r + 0.15, outer_r), arc_gaps(inner_r - 0.15, inner_r + 0.15, inner_r)
+    # no pull here, so each rail sits the reach inset inside its edge
+    ro, ri = outer_r - RAIL_REACH_INSET_MM, inner_r + RAIL_REACH_INSET_MM
+    out_g, in_g = arc_gaps(ro - 0.15, ro + 0.15, outer_r), arc_gaps(ri - 0.15, ri + 0.15, inner_r)
     assert len(out_g) > 60
     med_out, med_in = sorted(out_g)[len(out_g) // 2], sorted(in_g)[len(in_g) // 2]
     assert abs(med_out - machine.SATIN_SPACING_MM) < 0.1 * machine.SATIN_SPACING_MM, med_out

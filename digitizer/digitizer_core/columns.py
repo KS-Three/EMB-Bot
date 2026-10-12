@@ -16,7 +16,8 @@ What this carries (each rule is the font engine's, `src/satinfont.js`
 - pull compensation on the RAILS, per side, by the fabric's own
   `pull_comp_mm`, held back across a counter (`stage6_satin._push_rails`,
   the same function the shipped satin tier uses, on the same artwork
-  polygon);
+  polygon), from rails set `RAIL_REACH_INSET_MM` inside the outline so the
+  lane reaches where that tier's rails reach (Kent's ruling 2026-10-11);
 - the cross floor (`machine.SATIN_MIN_CROSS_MM`): a cross the needle cannot
   resolve is dropped and counted, never sewn as a smear;
 - split satin above `split_above_mm` with the column-wide comb
@@ -93,6 +94,20 @@ _UNDERLAY_INSET_MM = 0.4
 # The walk-in lands this far inside the letter's near edge (or a quarter
 # stroke, if less): inside the satin that will cover it, clear of the edge.
 _ENTRY_INSET_MM = 0.3
+# Each rail starts this far INSIDE the outline, along its own cross, before
+# the pull pushes it out (or a quarter of the cross, if less) -- so the lane
+# reaches as far past the edge as the shipped satin tier does, under the same
+# `pull_comp_mm` (Kent's ruling 2026-10-11). Not a fabric constant and not a
+# new reach: the satin tier has no inset constant of its own; its rails are a
+# smoothed SYMMETRIC offset at the nearer edge's half-width
+# (`stage6_satin._rail_points`), which stops short of the outline, and only
+# then `_push_rails` adds the pull. The lane cut its rails ON the outline and
+# so stood that undershoot further out. Measured on #828's letters: median
+# satin penetration -0.157 / -0.173 / -0.109 mm shipped against -0.274 /
+# -0.265 / -0.231 lane (enthusiast / drone / bridge, negative outside), gaps
+# 0.117 / 0.092 / 0.122; this is their mean. Pre-push, the shipped rails sit
+# a mean +0.11-0.12 mm inside (median +0.04-0.06), the lane's +0.03-0.05.
+RAIL_REACH_INSET_MM = 0.11
 
 
 @dataclass
@@ -183,6 +198,57 @@ def _centre_underlay(mids) -> list[tuple[float, float]] | None:
     core = substring(ln, _UNDERLAY_INSET_MM, ln.length - _UNDERLAY_INSET_MM)
     path = _walk_points(list(core.coords), _UNDERLAY_STEP_MM)
     return path + path[-2::-1]
+
+
+def _inset_rails(stations, inset_mm: float) -> tuple[list, list]:
+    """Both rails of every cross moved `inset_mm` toward each other along the
+    cross (a quarter of the cross at most, the bound `stage6_satin`'s cap
+    inset takes), so the push that follows lands where the satin tier's rails
+    land. A cross with no direction stays as it is."""
+    a_pts, b_pts = [], []
+    for pa, pb in stations:
+        d = math.dist(pa, pb)
+        if d < 1e-9:
+            a_pts.append(pa)
+            b_pts.append(pb)
+            continue
+        k = min(inset_mm, 0.25 * d) / d
+        ux, uy = (pa[0] - pb[0]) * k, (pa[1] - pb[1]) * k
+        a_pts.append((pa[0] - ux, pa[1] - uy))
+        b_pts.append((pb[0] + ux, pb[1] + uy))
+    return a_pts, b_pts
+
+
+def _reach_fan_faces(stations, a_pts, b_pts, reach_mm: float) -> tuple[list, list]:
+    """The slant cross of a fanned end (`outline_cut._fan_ends`: the last
+    cross lies ON the slant, its pivot shared with the cross before it)
+    moved `reach_mm` outward, square to itself -- away from the cross
+    before it. The rails stand `pull - RAIL_REACH_INSET_MM` off the outline
+    after the push, but a cross lying along an edge is pushed only along
+    that edge, so the slant face stood on the traced outline itself, short
+    of where the satin tier's thread reaches there: the Becker A's feet
+    read as a strip of unsewn ink (2.65 mm2 against shipped's 1.3 on that
+    letter, 2026-10-11, `docs/renders/columns-slant-fan-2026-10-11/`).
+    The face gets the rails' own net reach, no constant of its own. Ends
+    that are not fanned are returned as they are."""
+    a_pts, b_pts = list(a_pts), list(b_pts)
+    if len(stations) < 2 or abs(reach_mm) < 1e-12:
+        return a_pts, b_pts
+    for i, j in ((len(stations) - 1, len(stations) - 2), (0, 1)):
+        if not ({tuple(p) for p in stations[i]} & {tuple(p) for p in stations[j]}):
+            continue                                    # no shared pivot: not a fan end
+        a, b = a_pts[i], b_pts[i]
+        L = math.dist(a, b)
+        if L < 1e-9:
+            continue
+        nx, ny = -(b[1] - a[1]) / L, (b[0] - a[0]) / L
+        mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
+        ox, oy = (a_pts[j][0] + b_pts[j][0]) / 2, (a_pts[j][1] + b_pts[j][1]) / 2
+        if (mx - ox) * nx + (my - oy) * ny < 0:
+            nx, ny = -nx, -ny
+        a_pts[i] = (a[0] + nx * reach_mm, a[1] + ny * reach_mm)
+        b_pts[i] = (b[0] + nx * reach_mm, b[1] + ny * reach_mm)
+    return a_pts, b_pts
 
 
 def _tuck_stations(col: Column, end: int, through: Polygon, tuck_mm: float,
@@ -541,10 +607,12 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     #    rails, crosses under the floor dropped.
     ready: list[Column] = []
     for col in columns:
-        a_pts = [a for a, _ in col.stations]
-        b_pts = [b for _, b in col.stations]
+        a_pts, b_pts = _inset_rails(col.stations, RAIL_REACH_INSET_MM)
         if pull_mm > 0:
             a_pts, b_pts = _push_rails(a_pts, b_pts, poly, pull_mm, pull_floor_mm)
+        if col.kind == "straight":
+            a_pts, b_pts = _reach_fan_faces(col.stations, a_pts, b_pts,
+                                            pull_mm - RAIL_REACH_INSET_MM)
         # Short stitches on the inside of a bend (`satinplay.js` pullShort;
         # the engine's own guard): where a rail's penetrations bunch up
         # under SATIN_SHORT_STITCH_AT_MM -- the inner rail of an S's curl is
