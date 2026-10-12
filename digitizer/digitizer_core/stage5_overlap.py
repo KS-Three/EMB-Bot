@@ -437,7 +437,9 @@ def _weld_part(joined, art) -> Polygon:
     The artwork is one polygon, so it lies in one part of the union; a strip
     part that did not weld overlaps it by nothing (or the union would have
     merged them) and is dropped -- the gap stays open there, as it did."""
-    best, _, _ = _split_clip(joined, art, float("inf"))
+    # Always by ink: this is the weld, not the clip `cfg.clip_parent_keeps_ink`
+    # governs, and no other part is kept as a region.
+    best, _, _ = _split_clip(joined, art, 0.0, by_ink=True, keep=False)
     return best if best is not None else art
 
 
