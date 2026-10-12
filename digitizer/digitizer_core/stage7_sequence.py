@@ -60,7 +60,7 @@ from .config import PipelineConfig
 from .fabrics import Fabric
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
 from .beanletters import BEAN_LETTER_KEY
-from .stage5_overlap import PlannedRegion, widened_lettering
+from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
 from .columns import is_lettering, lettering_columns_shape
@@ -86,6 +86,7 @@ from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
 from .threads import chart_for
 from .warnings_codes import (BLEND_NO_REGIONS_DECOMPOSED, BORDER_LIGHTENED,
+                             CLIP_DROPPED_SLIVER,
                              BORDER_SEAM_SHARED,
                              BORDER_SKIPPED_TOO_NARROW,
                              CONTOUR_DIRECTIONAL_COMP_UNSEWN,
@@ -1908,6 +1909,10 @@ def sequence(
             return satin_spacing_mm
         return profile_for(pr).satin_spacing_mm * max(0.1, fabric.density_adjust)
     hairline_shapes_sewn = hairline_strands = hairline_dropped = 0
+    # (shape_id, artwork mm2) of each rest-piece part `rest_planned` cut off
+    # below the clip floor: counted in CLIP_DROPPED_SLIVER, as stage 5 counts
+    # its own.
+    hairline_rest_slivers: list[tuple[str, float]] = []
     # Which shapes are strands (`stage6_hairline.hairline_candidates`):
     # `plan_stitches` reads them once and hands the same dict to stage 5, so
     # the ground under a strand and the strand itself agree. A direct caller
@@ -2276,7 +2281,9 @@ def sequence(
                 prof = profile_for(p)
                 hm = hairline[p.shape_id]
                 rest_runs, rest_rep, rest_filled = _sew_rest_pieces(
-                    rest_planned(p, hm), stitch_one, entry, exit_near, trim_at)
+                    rest_planned(p, hm, floor=clip_piece_floor_mm2(cfg),
+                                 dropped=hairline_rest_slivers),
+                    stitch_one, entry, exit_near, trim_at)
                 runs, report = hairline_tier_runs(
                     p.region.polygon, p.shape_id,
                     max_width_mm=prof.hairline_max_width_mm,
@@ -3398,6 +3405,25 @@ def sequence(
                 shapes=hairline_shapes_sewn,
                 strands=hairline_strands,
                 dropped=hairline_dropped,
+            )
+        )
+    if hairline_rest_slivers:
+        n = len(hairline_rest_slivers)
+        total = sum(a for _, a in hairline_rest_slivers)
+        warnings.append(
+            warn(
+                CLIP_DROPPED_SLIVER,
+                f"{n} sliver{'s' if n != 1 else ''} of artwork ({total:.2f} mm²) cut "
+                "off the thick part of a hairline shape, too small to sew on "
+                f"{'their' if n != 1 else 'its'} own, {'were' if n != 1 else 'was'} dropped.",
+                count=n,
+                ids=sorted({s for s, _ in hairline_rest_slivers}),
+                total_mm2=round(float(total), 3),
+                largest_mm2=round(float(max(a for _, a in hairline_rest_slivers)), 3),
+                floor_mm2=round(float(clip_piece_floor_mm2(cfg)), 4),
+                pieces=[{"id": s, "art_mm2": round(float(a), 3)}
+                        for s, a in hairline_rest_slivers],
+                source="hairline_rest",
             )
         )
     if blend_routed and not blend_decomposed:
