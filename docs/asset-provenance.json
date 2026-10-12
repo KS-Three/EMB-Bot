@@ -30,6 +30,18 @@
    "basis": "docs/classifier-lens-2026-08-04.md"
   },
   {
+   "path": "digitizer/testdata/synthetic/hair_strands.png",
+   "status": "synthetic",
+   "source": "Drawn by digitizer/tools/draw_hair_fixtures.py (seeded curves over an oval; no photograph, no person)",
+   "basis": "docs/hairline-prototype-2026-10-12.md"
+  },
+  {
+   "path": "digitizer/testdata/synthetic/thin_script.png",
+   "status": "synthetic",
+   "source": "Drawn by digitizer/tools/draw_hair_fixtures.py (a cycloid script line; no client art)",
+   "basis": "docs/hairline-prototype-2026-10-12.md"
+  },
+  {
    "path": "digitizer/testdata/bg_uncertain.png",
    "status": "synthetic",
    "source": "Generated synthetic logo (make_test_logo.py / classifier-lens table)",

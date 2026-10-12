@@ -212,6 +212,14 @@ SMALL_SHAPES_AS_RUN = "SMALL_SHAPES_AS_RUN"        # too small for fill or satin
 # techniques and a person looking at the review screen should know why.
 # extra: {"count": int, "shapes": int}
 HAIRLINE_STROKES_AS_RUN = "HAIRLINE_STROKES_AS_RUN"
+# Stage 6 (the hairline TIER, `cfg.hairline`, default OFF, 2026-10-12 — a
+# different thing from the satin-internal stretches above). Shapes whose
+# skeleton width is at or under 1.5 thread widths sewed as ONE run along the
+# skeleton; strands under `machine.RUN_MIN_LOOP_MM` were dropped and are
+# counted here. ENGINE-SIDE ONLY: the Studio lists it in SILENT_WARNINGS
+# (Kent's 2026-10-02 ruling, "We shouldn't have to warn the user of
+# anything"). extra: {"shapes": int, "strands": int, "dropped": int}
+HAIRLINE_TIER_SEWN = "HAIRLINE_TIER_SEWN"
 # `cfg.bean_letter_max_stroke_mm` (2026-10-02): lettering whose ink strokes are
 # under the line sewed as bean runs along the ink's skeleton instead of satin.
 # Info, not a problem -- Kent's ruling is that the engine takes the path and

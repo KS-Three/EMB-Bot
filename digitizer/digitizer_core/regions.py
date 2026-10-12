@@ -375,6 +375,19 @@ def apply_shape_edits(
                 )
             r.meta["underlay_style"] = u
 
+        if ov.get("thread_wt") is not None:
+            # 2026-10-12 (`cfg.thread_wt`): the thread weight this shape's
+            # COLOUR BLOCK sews in. Stored per shape, resolved per block in
+            # `stage7_sequence.sequence` (finest weight a block's shapes
+            # name), because one colour is one needle.
+            wt = ov["thread_wt"]
+            if isinstance(wt, bool) or wt not in machine.THREAD_WEIGHTS:
+                raise ValueError(
+                    f"shape_overrides[{sid!r}].thread_wt {wt!r} is not one of "
+                    f"{list(machine.THREAD_WEIGHTS)}"
+                )
+            r.meta["thread_wt"] = int(wt)
+
         if ov.get("stitch_width_mm") is not None:
             # Contract v1.8 — the sewn column this shape should take, applied
             # by `stitchwidth.apply_stitch_widths` after every edit here
