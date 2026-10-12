@@ -92,11 +92,26 @@ colour that sews first, which then plans as if its artwork ran across it: the
 ordinary tongue reaches under the later colour from the strip's far edge, and
 the later colour keeps its artwork edge — the colour on top owns the seam, as
 Kent ruled for borders on 2026-09-09. The threshold is gate 1's to set.
+
+**A clip that cuts a shape in two (`cfg.clip_keep_pieces`, default OFF).**
+Clipping a grown shape by the colours already down can split it: a later
+colour whose artwork overlaps an earlier one's comes out of the clip as two
+or more polygons. Shipped, `_largest_polygon` keeps the biggest and drops
+the rest without a word (MASTER_SCOPE defect 61: drone's `S426e81b9` loses a
+9 mm² piece) — and "biggest" is by SEWN area, so the piece kept can be
+underlap tongue with no artwork in it while the shape's ink is the piece
+thrown away. With the flag the shape keeps the piece carrying the most
+artwork, and every other piece whose ARTWORK clears the stage-4 region floor
+(`clip_piece_floor_mm2`) sews as its own region of the same thread and tier,
+planned right after its parent; smaller pieces are dropped as before and
+counted in `CLIP_DROPPED_SLIVER`, which the Studio keeps silent. A piece of
+pure compensation growth carries no artwork and is dropped, uncounted: it is
+not ink anyone drew, and cut off from its shape it underlaps nothing of it.
 """
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from shapely import STRtree, affinity
 from shapely.geometry import Polygon
@@ -113,6 +128,7 @@ from . import machine
 from .stage6_hairline import _BLOB_FACTOR as _HAIR_BLOB_FACTOR
 from .stage6_hairline import block_thread_wt
 from .warnings_codes import (
+    CLIP_DROPPED_SLIVER,
     HOLE_NEARLY_CLOSED,
     SAME_THREAD_SHAPES_MERGED,
     SHAPE_NOT_STITCHED,
@@ -337,6 +353,73 @@ def _largest_polygon(geom) -> Polygon | None:
     if not parts:
         return None
     return max(parts, key=lambda g: g.area)
+
+
+# `cfg.clip_keep_pieces`: the meta key a piece's region carries, naming the
+# shape it was cut from. A piece's shape_id is its parent's plus `-clip<k>`.
+CLIP_PIECE_OF_KEY = "clip_piece_of"
+
+
+def clip_piece_floor_mm2(cfg: PipelineConfig) -> float:
+    """The artwork a cut-off piece must carry to sew as its own region: the
+    floor stage 4 holds every traced region to (`min_area_mm2` in
+    `stage4_vectorize.vectorize`, a quarter of `min_detail_mm²`), never under
+    the run tier's `machine.RUN_MIN_AREA_MM2`. No new constant."""
+    return max(machine.RUN_MIN_AREA_MM2, 0.25 * float(cfg.min_detail_mm) ** 2)
+
+
+def _polygon_pieces(geom) -> list[Polygon]:
+    if geom is None or geom.is_empty:
+        return []
+    if geom.geom_type == "Polygon":
+        return [geom]
+    return [g for g in getattr(geom, "geoms", []) if g.geom_type == "Polygon"]
+
+
+def _split_clip(geom, art, floor: float):
+    """-> (the parent's piece or None, [cut-off pieces kept], [artwork mm² of
+    each cut-off piece dropped]).
+
+    The parent keeps the piece carrying the most ARTWORK (`art`, the shape's
+    own polygon), the largest among equals. Where that is also the largest
+    piece — every split but one measured — it is `_largest_polygon(geom)`
+    exactly, so the parent sews what it sews with the flag off. It is not
+    always: on drone (2026-10-12) a 0.25 mm strip's largest piece was 3.16
+    mm² of underlap tongue with no artwork in it, and `_largest_polygon`
+    sewed that and dropped all 2.64 mm² of the strip's ink.
+
+    Every other piece is judged on its artwork: at or over `floor` it is
+    kept; under it, dropped and its artwork reported; with none at all it is
+    pull growth cut off from its shape — scaffolding for nothing — and is
+    dropped uncounted, as the flag-off engine drops it.
+    """
+    parts = _polygon_pieces(geom)
+    if not parts:
+        return None, [], []
+    ink = [g.intersection(art).area for g in parts]
+    # Rounded so float dust on a contact (1e-9 mm²) cannot outrank area.
+    i_main = max(range(len(parts)), key=lambda i: (round(ink[i], 6), parts[i].area))
+    kept, dropped = [], []
+    for i, g in enumerate(parts):
+        if i == i_main:
+            continue
+        if ink[i] >= floor:
+            kept.append(g)
+        elif ink[i] > 1e-6:
+            dropped.append(float(ink[i]))
+    return parts[i_main], kept, dropped
+
+
+def _judge_pieces(geom, art, floor: float):
+    """`_split_clip` with no largest piece singled out: every piece judged."""
+    kept, dropped = [], []
+    for g in _polygon_pieces(geom):
+        ink = g.intersection(art).area
+        if ink >= floor:
+            kept.append(g)
+        elif ink > 1e-6:
+            dropped.append(float(ink))
+    return kept, dropped
 
 
 def seam_row_angles(regions: list[Region], cfg: PipelineConfig, fabric: Fabric,
@@ -897,6 +980,12 @@ def resolve_overlaps(
     lost: list[Region] = []
     fusing_pairs: set[tuple[str, str]] = set()
 
+    # `cfg.clip_keep_pieces` (defect 61): keep what the clip cuts off. Off:
+    # every split below goes through `_largest_polygon`, byte for byte.
+    keep_pieces = bool(getattr(cfg, "clip_keep_pieces", False))
+    piece_floor = clip_piece_floor_mm2(cfg) if keep_pieces else 0.0
+    slivers: list[tuple[str, float]] = []
+
     for sew_index, L in enumerate(layers):
         for r in by_layer[L]:
             poly = span.get(r.shape_id, r.polygon)
@@ -974,7 +1063,17 @@ def resolve_overlaps(
             if earlier[L] is not None and not widened_lettering(r):
                 grown = grown.difference(earlier[L])
 
-            grown = _largest_polygon(grown)
+            # A bean letter sews the paths of its whole ink and a hairline
+            # strand sews its whole ARTWORK polygon, so a piece the clip cuts
+            # off them is sewn already: neither is split.
+            pieces: list[Polygon] = []
+            splittable = (keep_pieces and not r.meta.get("bean_letter_spines")
+                          and not (hairline and r.shape_id in hairline))
+            if splittable:
+                grown, pieces, dropped_ink = _split_clip(grown, poly, piece_floor)
+                slivers.extend((r.shape_id, a) for a in dropped_ink)
+            else:
+                grown = _largest_polygon(grown)
             if grown is None or grown.is_empty:
                 lost.append(r)
                 continue
@@ -1008,7 +1107,20 @@ def resolve_overlaps(
                         n_holes += 1
             if held:
                 holes_held += n_holes
-                grown = _largest_polygon(grown.difference(unary_union(held)))
+                cut = unary_union(held)
+                if splittable:
+                    # Same judgement for a split a held hole makes, and the
+                    # cut-off pieces keep their share of the holes too.
+                    grown, more, dropped_ink = _split_clip(grown.difference(cut), poly, piece_floor)
+                    slivers.extend((r.shape_id, a) for a in dropped_ink)
+                    kept_after: list[Polygon] = []
+                    for pc in pieces:
+                        k_, d_ = _judge_pieces(pc.difference(cut), poly, piece_floor)
+                        kept_after.extend(k_)
+                        slivers.extend((r.shape_id, a) for a in d_)
+                    pieces = kept_after + more
+                else:
+                    grown = _largest_polygon(grown.difference(cut))
                 if grown is None or grown.is_empty:
                     lost.append(r)
                     continue
@@ -1025,11 +1137,42 @@ def resolve_overlaps(
                 vis = grown.difference(later[L])
                 visible = None if vis.is_empty else vis
 
-            planned.append(PlannedRegion(region=r, polygon=grown,
+            # `cfg.clip_keep_pieces`: each kept piece is a region of its own —
+            # its share of the artwork, the parent's thread, tier and meta —
+            # and the parent's artwork gives that share up, so a tier that
+            # sews the ARTWORK (the run rung's outline) does not sew it twice.
+            parent = r
+            extra: list[PlannedRegion] = []
+            if pieces:
+                art_left = poly
+                for k, pc in enumerate(pieces, start=2):
+                    share = _largest_polygon(poly.intersection(pc))
+                    if share is None:
+                        continue
+                    art_left = art_left.difference(pc)
+                    meta = dict(r.meta)
+                    meta[CLIP_PIECE_OF_KEY] = r.shape_id
+                    sub = replace(r, shape_id=f"{r.shape_id}-clip{k}", polygon=share,
+                                  area_mm2=float(share.area), meta=meta)
+                    pv = None
+                    if later[L] is not None:
+                        v = pc.difference(later[L])
+                        pv = None if v.is_empty else v
+                    extra.append(PlannedRegion(region=sub, polygon=pc,
+                                               sew_index=sew_index, visible=pv,
+                                               covered_by=later[L],
+                                               stitch_angle_deg=axis,
+                                               satin_tier=satin_by_id[r.shape_id]))
+                left = _largest_polygon(art_left)
+                if extra and left is not None:
+                    parent = replace(r, polygon=left, area_mm2=float(left.area))
+
+            planned.append(PlannedRegion(region=parent, polygon=grown,
                                          sew_index=sew_index, visible=visible,
                                          covered_by=later[L],
                                          stitch_angle_deg=axis,
                                          satin_tier=satin_by_id[r.shape_id]))
+            planned.extend(extra)
 
     if fusing_pairs:
         n = len(fusing_pairs)
@@ -1049,6 +1192,23 @@ def resolve_overlaps(
                 f"{holes_held} opening{'s' if holes_held != 1 else ''} would have "
                 "closed up under pull compensation and were kept open.",
                 count=holes_held,
+            )
+        )
+    if slivers:
+        n = len(slivers)
+        total = sum(a for _, a in slivers)
+        warnings.append(
+            warn(
+                CLIP_DROPPED_SLIVER,
+                f"{n} sliver{'s' if n != 1 else ''} of artwork ({total:.2f} mm²) cut "
+                "off a shape by the colour sewn before it, too small to sew on "
+                f"{'their' if n != 1 else 'its'} own, {'were' if n != 1 else 'was'} dropped.",
+                count=n,
+                ids=sorted({s for s, _ in slivers}),
+                total_mm2=round(float(total), 3),
+                largest_mm2=round(float(max(a for _, a in slivers)), 3),
+                floor_mm2=round(float(piece_floor), 4),
+                pieces=[{"id": s, "art_mm2": round(float(a), 3)} for s, a in slivers],
             )
         )
     if lost:
