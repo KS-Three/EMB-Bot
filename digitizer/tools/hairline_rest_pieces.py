@@ -22,8 +22,10 @@ Per fixture, matrix row and mode (`hairline`, then `hairline` +
   * `unsewn_mm2` -- the ink of every part at or over the floor that the
     CURRENT `rest_planned` did not hand to the ladder (its sewing polygon
     equals no returned copy's), read OFF the function's real output;
-  * `slivers` / `sliver_mm2` -- the parts under the floor that carry some ink,
-    the ones the warning counts;
+  * `slivers` / `sliver_mm2` -- the parts under the floor that carry some ink
+    and were not handed to the ladder (a piece\'s main copy is always sewn,
+    however small): the ones the warning counts, cross-checked against the
+    plan's own `CLIP_DROPPED_SLIVER` warning (`warned`);
   * `uncovered` -- `ARTWORK_UNCOVERED`'s missing mm2 on the parent shape, read
     only for a plan that has an unsewn part above the floor.
 
@@ -51,6 +53,7 @@ from digitizer_core import stage7_sequence  # noqa: E402
 from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches  # noqa: E402
 from digitizer_core.stage5_overlap import clip_piece_floor_mm2  # noqa: E402
 from digitizer_core.stage6_hairline import rest_sew_parts  # noqa: E402
+from digitizer_core.warnings_codes import CLIP_DROPPED_SLIVER  # noqa: E402
 
 DEFAULT = ("photo/drone_render.png",)
 MODES = (("hairline", {"hairline": True}),
@@ -75,7 +78,7 @@ def census_piece(piece, parts, handed, floor: float) -> dict:
     sewn = [any(g.equals_exact(h, 1e-9) for h in handed) for g in parts]
     above = [i for i, a in enumerate(ink) if a >= floor]
     unsewn = [i for i in above if not sewn[i]]
-    slivers = [i for i, a in enumerate(ink) if 1e-6 < a < floor]
+    slivers = [i for i, a in enumerate(ink) if 1e-6 < a < floor and not sewn[i]]
     return {"parts": len(parts), "above_floor": len(above),
             "ink_mm2": [round(a, 3) for a in ink],
             "before_mm2": round(sum(ink[1:]), 3),
@@ -112,6 +115,8 @@ def run_mode(gen, cfg_kw: dict, extra: dict) -> dict:
     finally:
         stage7_sequence.rest_planned = orig
     pieces = [x for s in shapes for x in s["pieces"]]
+    warned = sum(w.get("count", 0) for w in plan.warnings
+                 if w.get("code") == CLIP_DROPPED_SLIVER and w.get("source") == "hairline_rest")
     lost = [s for s in shapes if any(x["unsewn_above_floor"] for x in s["pieces"])]
     multi = [{"shape_id": s["shape_id"], "parts": x["parts"], "ink_mm2": x["ink_mm2"],
               "before_mm2": x["before_mm2"], "unsewn_mm2": x["unsewn_mm2"],
@@ -125,7 +130,7 @@ def run_mode(gen, cfg_kw: dict, extra: dict) -> dict:
             "before_mm2": round(sum(x["before_mm2"] for x in pieces), 3),
             "unsewn_pieces": sum(1 for x in pieces if x["unsewn_above_floor"]),
             "unsewn_mm2": round(sum(x["unsewn_mm2"] for x in pieces), 3),
-            "slivers": sum(x["slivers"] for x in pieces),
+            "slivers": sum(x["slivers"] for x in pieces), "warned": warned,
             "sliver_mm2": round(sum(x["sliver_mm2"] for x in pieces), 3),
             "lost_shapes": lost}
 
@@ -208,7 +213,7 @@ def main(argv=None) -> int:
                       f"{row['multi_part_pieces']} multi-part ({row['multi_above_floor']} above the "
                       f"{row['floor_mm2']} mm2 floor); ink dropped before {row['before_mm2']:.3f} -> "
                       f"after {row['unsewn_mm2']:.3f} mm2; {row['slivers']} sliver(s) "
-                      f"{row['sliver_mm2']:.3f} mm2 counted", flush=True)
+                      f"{row['sliver_mm2']:.3f} mm2 counted (warned {row['warned']})", flush=True)
                 for x in row["multi"]:
                     print(f"    multi-part {x['shape_id']}: ink per part {x['ink_mm2']}", flush=True)
                 for s in row["lost"]:
