@@ -47,6 +47,8 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import shapely
+from shapely.ops import unary_union
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -59,15 +61,47 @@ from tools import draw_hair_fixtures as fx  # noqa: E402
 from tools.fill_pitch import _summarise  # noqa: E402
 
 SYN = ROOT / "testdata" / "synthetic"
+
+
+def drawn_width_mm(path: Path) -> float:
+    """The design width at which a fixture's mm ARE the mm it was drawn in:
+    its art box (alpha > 0) at `draw_hair_fixtures.PX_PER_MM`.
+
+    Step 2's correction (2026-10-12). The first table digitized
+    `hair_strands.png` at 80 mm, the CANVAS width; its art box is 69.15 mm,
+    so every strand sewed 1.157x the width it was drawn at (0.29-0.69 mm,
+    not 0.25-0.6). Finding 1's "the tracer reads 0.11 mm fat" compared the
+    traced widths in design mm with the drawn ones in fixture mm."""
+    a = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)[..., 3] > 0
+    xs = np.nonzero(a.any(axis=0))[0]
+    return float(xs.max() - xs.min() + 1) / fx.PX_PER_MM
+
+
+def _drawn_median(file: str) -> float:
+    """Length-weighted median of the widths the fixture's strokes were drawn
+    at (fixture mm) — the truth a width read is checked against."""
+    strokes = fx.hair_strands() if file.startswith("hair") else fx.script_strokes()
+    lw = sorted((w, float(np.sum(np.hypot(*np.diff(np.asarray(p), axis=0).T))))
+                for p, w in strokes)
+    total = sum(length for _w, length in lw)
+    acc = 0.0
+    for w, length in lw:
+        acc += length
+        if acc >= total / 2:
+            return w
+    return lw[-1][0]
+
+
 FIXTURES = {
-    "hair_strands": dict(file="hair_strands.png", width_mm=80.0,
-                         drawn=len(fx.hair_strands()), zoom=(14, 34, 34, 52)),
-    "thin_script": dict(file="thin_script.png", width_mm=60.0,
+    "hair_strands": dict(file="hair_strands.png",
+                         drawn=len(fx.hair_strands()), zoom=(12, 30, 30, 46)),
+    "thin_script": dict(file="thin_script.png",
                         drawn=len(fx.script_strokes()), zoom=(8, 10, 32, 24)),
 }
 # arm -> (cfg.hairline, cfg.thread_wt, cfg.hairline_over_ground)
 ARMS = {"off40": (False, 40, False), "on40": (True, 40, False),
-        "on60": (True, 60, False), "on60g": (True, 60, True)}
+        "on40g": (True, 40, True), "on60": (True, 60, False),
+        "on60g": (True, 60, True)}
 RENDER_PX_PER_MM = 12.0
 ZOOM_PX_PER_MM = 30.0
 
@@ -111,21 +145,47 @@ def bare_cells(plan, result, p):
     return wanted_px[sy, sx] & ~covered, (gx0, gy0), cell
 
 
-def bare_new_mm2(bare, origin, base) -> float:
-    """Bare cells of this arm that sit on a cell the `off40` arm covered."""
+def ground_zone(result):
+    """Where the design HAS a ground: the colour with the most artwork (the
+    skin), closed across strand-width gaps (1.2 mm, `_hairline_ground`'s
+    reach at 40 wt) — the oval with the hair laid over it. A strand that
+    leaves the ground lies on the garment, and a single 0.40 mm run along a
+    0.6 mm drawn stroke leaves its edges' ink uncovered there whatever stage
+    5 does; that is the tier, not cloth between strands, so the "between
+    strands" figure counts only bare cells inside this zone."""
+    by: dict[int, list] = {}
+    for r in result.regions:
+        if r.meta.get("stitched", True):
+            by.setdefault(r.thread_index, []).append(r.polygon)
+    t = max(by, key=lambda k: sum(p.area for p in by[k]))
+    return unary_union(by[t]).buffer(1.2).buffer(-1.2)
+
+
+def _bare_points(bare, base=None):
+    """-> (x mm, y mm) of bare cells; with `base`, only those `base` covered."""
     grid, (gx0, gy0), cell = bare
-    bgrid, (bx0, by0), _ = base
     ys, xs = np.nonzero(grid)
-    if not len(xs):
-        return 0.0
     mx = (xs + 0.5) * cell + gx0
     my = (ys + 0.5) * cell + gy0
+    if base is None or not len(xs):
+        return mx, my
+    bgrid, (bx0, by0), _ = base
     bi = np.floor((mx - bx0) / cell).astype(int)
     bj = np.floor((my - by0) / cell).astype(int)
     inside = (bi >= 0) & (bj >= 0) & (bi < bgrid.shape[1]) & (bj < bgrid.shape[0])
     was_bare = np.zeros(len(xs), bool)
     was_bare[inside] = bgrid[bj[inside], bi[inside]]
-    return float((~was_bare).sum()) * cell * cell
+    return mx[~was_bare], my[~was_bare]
+
+
+def bare_new_mm2(bare, base, zone=None) -> float:
+    """Bare cells of this arm that sit on a cell the `off40` arm covered
+    (inside `zone` only, when given)."""
+    mx, my = _bare_points(bare, base)
+    if zone is not None and len(mx):
+        keep = shapely.contains_xy(zone, mx, my)
+        mx = mx[keep]
+    return float(len(mx)) * bare[2] * bare[2]
 
 
 def _lum(rgb) -> float:
@@ -224,7 +284,8 @@ def main(argv=None) -> int:
     out.mkdir(parents=True, exist_ok=True)
     table = {}
     for key, f in FIXTURES.items():
-        base_cfg = dict(target_width_mm=f["width_mm"], forced_class="flat")
+        width_mm = f.get("width_mm") or drawn_width_mm(SYN / f["file"])
+        base_cfg = dict(target_width_mm=width_mm, forced_class="flat")
         result = run_stages(SYN / f["file"], PipelineConfig(**base_cfg))
         p = preflight.prep(SYN / f["file"], PipelineConfig(**base_cfg),
                            design_class=result.design_class)
@@ -236,15 +297,18 @@ def main(argv=None) -> int:
                                  hairline_over_ground=ground)
             plan = plan_stitches(result, cfg)
             row = measure(plan, f["drawn"], base_md5)
+            row["design_width_mm"] = round(width_mm, 2)
+            row["strand_drawn_median_mm"] = round(
+                _drawn_median(f["file"]) * width_mm / drawn_width_mm(SYN / f["file"]), 3)
             table[f"{key}/{arm}"] = row
             bare = bare_cells(plan, result, p)
             cell2 = bare[2] ** 2
             row["bare_mm2"] = round(float(bare[0].sum()) * cell2, 2)
             if base_bare is None:
                 base_bare = bare
-                row["bare_new_mm2"] = 0.0
-            else:
-                row["bare_new_mm2"] = round(bare_new_mm2(bare, None, base_bare), 2)
+                zone = ground_zone(result)
+            row["bare_new_mm2"] = round(bare_new_mm2(bare, base_bare), 2)
+            row["bare_new_on_ground_mm2"] = round(bare_new_mm2(bare, base_bare, zone), 2)
             if on:
                 cands = hairline_candidates(stitched, cfg, ink=result.ink_source)
                 area = {r.shape_id: r.polygon.area for r in stitched}

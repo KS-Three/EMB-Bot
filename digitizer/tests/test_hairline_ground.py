@@ -164,6 +164,34 @@ def test_a_sliver_of_the_ground_colour_is_not_a_hairline():
     regions = [skin_a, skin_b, sliver, s1, s2]
     got = hairline_candidates(regions, cfg)
     assert set(got) == {"Sstrand1", "Sstrand2"}
+    assert got.fragments == {"Ssliver"}      # handed back to the ground
+
+
+def test_the_sliver_rule_leaves_the_ground_colour_alone_in_the_plan():
+    """Through stage 7: the sliver sews on the ladder as it did with the tier
+    off (not as a one-thread run), and only the strands are counted."""
+    regions = [_region("Sskina", box(-10, -10, 10, -0.5), LIGHT, 0),
+               _region("Sskinb", box(-10, 0.5, 10, 10), LIGHT, 0),
+               _region("Ssliver", box(-10, -0.2, 10, 0.2), LIGHT, 0),
+               _region("Sstrand1", box(-10, -0.5, 10, -0.2), DARK, 1),
+               _region("Sstrand2", box(-10, 0.2, 10, 0.5), DARK, 1)]
+    palette = [{"brand": CHART.label, "brand_id": CHART.id, "number": CHART[t].number,
+                "name": "x", "rgb": list(CHART[t].rgb)} for t in (LIGHT, DARK)]
+
+    def plan(**kw):
+        return plan_stitches(PipelineResult(regions=regions, palette=palette,
+                                            background=BackgroundInfo(detected=False),
+                                            px_per_mm=10.0, design_size_mm=(20.0, 20.0)),
+                             PipelineConfig(**kw))
+
+    def sliver(p):
+        return [(r.kind, [tuple(map(lambda v: round(v, 4), q)) for q in r.points])
+                for _b, r in p.iter_runs() if r.shape_id == "Ssliver"]
+
+    on = plan(hairline=True)
+    assert sliver(on) and sliver(on) == sliver(plan())
+    warn = next(w for w in on.warnings if w["code"] == "HAIRLINE_TIER_SEWN")
+    assert warn["shapes"] == 2
 
 
 def test_a_thin_dark_line_of_a_filled_colour_still_qualifies():

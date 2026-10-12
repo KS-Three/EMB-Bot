@@ -538,7 +538,7 @@ _HAIR_TOUCH_MM = 0.1
 
 
 def _hairline_ground(regions: list[Region], hairline: dict,
-                     cfg: PipelineConfig) -> dict[str, object]:
+                     cfg: PipelineConfig, design_class: str = "flat") -> dict[str, object]:
     """`cfg.hairline_over_ground`: what each ground shape fills UNDER the
     hairline strands sewn after it. -> {ground shape_id: geometry}.
 
@@ -565,18 +565,33 @@ def _hairline_ground(regions: list[Region], hairline: dict,
     core is closed from its corners.
 
     Only grounds that sew BEFORE the strand (an earlier layer) reach under
-    it — a strand sewn first would be buried. A strand that is a bean
-    letter is left to `ground_under`'s own rule. Candidate geometry, unsewn
-    (ROADMAP gate 1): card block E (`card_E_ground.dst`) is the test."""
+    it — a strand sewn first would be buried. Only FILL grounds: a narrow
+    ground cell that sews as a satin column (stage 7 reads its tier on the
+    artwork, `_comp_axis`) builds that column on the planned polygon, and a
+    column with strand-shaped bulges along both rails decomposes worse —
+    measured on the hair fixture, 2026-10-12: its satin cells lost half
+    their stitches and opened bare patches INSIDE their own artwork. A satin
+    ground keeps today's underlap tongue under the strand instead. A strand
+    that is a bean letter is left to `ground_under`'s own rule. Candidate
+    geometry, unsewn (ROADMAP gate 1): card block E (`card_E_ground.dst`)
+    is the test."""
     strands = [r for r in regions
                if r.shape_id in hairline and not r.meta.get("bean_letter_spines")]
     if not strands:
         return {}
     bw = block_thread_wt(regions, cfg)
+    satin_max = satin_ceiling_mm(cfg)
     grounds = [r for r in regions
                if r.shape_id not in hairline and r.meta.get("stitched", True)]
     if not grounds:
         return {}
+    satin: dict[str, bool] = {}
+    frags = set(getattr(hairline, "fragments", ()))
+
+    def is_fill(g: Region) -> bool:
+        if g.shape_id not in satin:
+            satin[g.shape_id] = _comp_axis(g, cfg, satin_max, design_class)[1]
+        return not satin[g.shape_id]
     tree = STRtree([g.polygon for g in grounds])
     pieces: dict[str, list] = {}
     for h in strands:
@@ -589,13 +604,35 @@ def _hairline_ground(regions: list[Region], hairline: dict,
         if not mine:
             continue
         closed = unary_union([g.polygon for g in mine]).buffer(reach).buffer(-reach)
-        zone = h.polygon.buffer(_HAIR_TOUCH_MM).intersection(closed)
-        if zone.is_empty:
+        # A ground cell too small to cover itself — a sliver the fragment
+        # rule handed back, or a run/satin cell no bigger than a reach disk,
+        # pinched between strands — is closed over like the strand is: on
+        # the hair fixture these were nearly all the cloth left (2026-10-12).
+        crumbs = [g.polygon for g in mine
+                  if g.shape_id in frags
+                  or (not is_fill(g) and g.polygon.area <= math.pi * reach * reach)]
+        zone = unary_union([h.polygon.buffer(_HAIR_TOUCH_MM), *crumbs]).intersection(closed)
+        # The closing reads every ground; only fill grounds take a share.
+        mine = [g for g in mine if is_fill(g)]
+        if zone.is_empty or not mine:
             continue
+        given = []
         for g in mine:
             piece = zone.intersection(g.polygon.buffer(reach / 2.0))
             if not piece.is_empty and piece.area > 0:
                 pieces.setdefault(g.shape_id, []).append(piece)
+                given.append(piece)
+        # What no ground reached by half the reach — the inside of a small
+        # loop of strands, a cell of ground the tracer absorbed into the
+        # strand network — goes whole to the NEAREST ground, so the closing
+        # is filled everywhere it closed.
+        rest = zone.difference(unary_union(given)) if given else zone
+        for part in (getattr(rest, "geoms", None) or [rest]):
+            if part.is_empty or part.area < 1e-6 or part.geom_type != "Polygon":
+                continue
+            g = min(mine, key=lambda x: x.polygon.distance(part))
+            if g.polygon.distance(part) <= reach:
+                pieces.setdefault(g.shape_id, []).append(part)
     return {sid: unary_union(v) for sid, v in pieces.items()}
 
 
@@ -788,7 +825,7 @@ def resolve_overlaps(
     # below reads `under`). Off, or no strands: no entry, byte-identical.
     if (hairline and getattr(cfg, "hairline", False)
             and getattr(cfg, "hairline_over_ground", False)):
-        for sid, geom in _hairline_ground(regions, hairline, cfg).items():
+        for sid, geom in _hairline_ground(regions, hairline, cfg, design_class).items():
             prev = ground_under.get(sid)
             ground_under[sid] = geom if prev is None else prev.union(geom)
 

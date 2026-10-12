@@ -139,6 +139,9 @@ _SRC_MARGIN_PX = 2.0
 # `stage4_vectorize._native_profile_image` reads edges in). Under it that side
 # has no edge to read, and the sample is skipped.
 _SRC_MIN_CONTRAST = 12.0
+# Coverage at or under this is surround: the integral along a profile stops
+# at the first such sample walking out from the skeleton.
+_SRC_GAP = 0.05
 # The source width is used when at least this share of the samples read;
 # otherwise the gate falls back to the traced width.
 _SRC_MIN_VALID = 0.5
@@ -294,7 +297,8 @@ def measure(poly, max_width_mm: float, ink: InkSource | None = None):
     admit = gate <= max_width_mm and p95 <= _BLOB_FACTOR * max_width_mm
     return {"admit": admit, "width_mm": gate, "width_traced_mm": med,
             "width_source_mm": src, "width_p95_mm": p95,
-            "skel": skel, "scale": scale, "x0": x0, "y0": y0}
+            "skel": skel, "body": body, "dist": dist,
+            "scale": scale, "x0": x0, "y0": y0}
 
 
 def source_width_mm(ink: InkSource, skel, body, dist, scale: float,
@@ -316,6 +320,17 @@ def source_width_mm(ink: InkSource, skel, body, dist, scale: float,
     -> mm, or None when fewer than `_SRC_MIN_VALID` of the profiles found an
     edge on both sides (an opaque source with no contrast edge there): the
     caller then gates on the traced width."""
+    got = _source_widths(ink, skel, body, dist, scale, x0, y0)
+    if got is None:
+        return None
+    widths, n = got
+    if len(widths) < _SRC_MIN_VALID * n:
+        return None
+    return float(np.median(widths))
+
+
+def _source_widths(ink, skel, body, dist, scale, x0, y0):
+    """`source_width_mm`'s per-profile widths -> (widths mm, profiles tried) or None."""
     ys, xs = np.nonzero(body)
     if len(xs) < 4:
         return None
@@ -361,22 +376,26 @@ def source_width_mm(ink: InkSource, skel, body, dist, scale: float,
     score[~inside] = -1.0
     I = np.median(V[rows, np.argmax(score, axis=1)], axis=0)
     widths = []
+    mid = int(np.argmin(np.abs(t)))
     for i in range(len(C)):
         ok = True
-        cov = np.zeros(len(t))
-        for S, side in ((S_l[i], t < 0), (S_r[i], t >= 0)):
+        total = 0.0
+        for S, idx in ((S_l[i], np.arange(mid, -1, -1)), (S_r[i], np.arange(mid + 1, len(t)))):
             d = I - S
             n2 = float(d @ d)
             if math.sqrt(n2) < _SRC_MIN_CONTRAST:
                 ok = False
                 break
-            sel = side & inside[i]
-            cov[sel] = np.clip((V[i, sel] - S) @ d / n2, 0.0, 1.0)
+            idx = idx[inside[i, idx]]
+            c = np.clip((V[i, idx] - S) @ d / n2, 0.0, 1.0)
+            # Only the ink CONNECTED to the skeleton: walking out from the
+            # middle, the integral stops at the first gap of surround, so a
+            # neighbouring strand inside the reach is not added to this one.
+            gap = np.nonzero(c <= _SRC_GAP)[0]
+            total += float(c[:gap[0]].sum() if len(gap) else c.sum())
         if ok:
-            widths.append(float(cov.sum()) * step_mm)
-    if len(widths) < _SRC_MIN_VALID * len(C):
-        return None
-    return float(np.median(widths))
+            widths.append(total * step_mm)
+    return widths, len(C)
 
 
 def block_thread_wt(regions, cfg) -> dict[int, int]:
@@ -415,6 +434,7 @@ def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> dict[str,
        patch) is read as ground; nothing here can tell it from a sliver."""
     chart = chart_for(cfg)
     bw = block_thread_wt(regions, cfg)
+    out = HairlineSet()
     measured: dict[str, dict] = {}
     for r in regions:
         if str(r.meta.get("tier", "auto")).lower() != "auto":
@@ -424,10 +444,9 @@ def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> dict[str,
         if m is not None and m["admit"]:
             measured[r.shape_id] = m
     if not measured:
-        return {}
+        return out
     ground = {r.thread_index for r in regions if r.shape_id not in measured}
     tree = STRtree([r.polygon for r in regions])
-    out: dict[str, dict] = {}
     for r in regions:
         m = measured.get(r.shape_id)
         if m is None:
@@ -447,7 +466,19 @@ def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> dict[str,
                 wsum += shared * float(chart.lab[o.thread_index][0])
         if tot <= 0 or float(chart.lab[r.thread_index][0]) < wsum / tot - _DARKER_L:
             out[r.shape_id] = m
+        else:
+            out.fragments.add(r.shape_id)
     return out
+
+
+class HairlineSet(dict):
+    """`hairline_candidates`' verdict: {shape_id: measure} for the strands,
+    and `fragments`, the thin shapes the ground-fragment rule handed back to
+    the ground (stage 5's `_hairline_ground` closes the ground over them)."""
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.fragments: set[str] = set()
 
 
 def _arc(pts) -> float:
