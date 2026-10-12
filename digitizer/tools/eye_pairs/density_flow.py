@@ -350,6 +350,16 @@ def instrument_vs_instrument(rows: list[dict], m1: str, m2: str) -> dict:
     return {"n": len(a), "kappa": pooled.kappa_from_table(pooled._table(np.array(a), np.array(b), 2))}
 
 
+# Splits that ask whether a reading is one sitting's or one arm's: the 09-18..09-28
+# flags sitting is 46 of the 76 measured pairs, and its two old-engine pairs
+# per logo (`ref_0827`) compare whole engines, not one flag.
+SPLITS = (
+    ("no_old_engine_arms", lambda p: p["arm"] not in ("ref_0827", "ref_0930am")),
+    ("flags_sitting_only", lambda p: p["sitting"] == "flags-0918-0928"),
+    ("later_sittings_only", lambda p: p["sitting"] != "flags-0918-0928"),
+)
+
+
 def full_report(inputs: dict) -> dict:
     dirs = directions()
     pairs = pooled.pooled_pairs(inputs)          # validates the label vocabulary
@@ -364,6 +374,12 @@ def full_report(inputs: dict) -> dict:
         r["ci2_cluster"] = (c["ci2_lo"], c["ci2_hi"])
         r["sens_both_bad_dropped"] = pooled._brief(
             pooled.agreement(pooled.select(pairs, both_bad="drop"), m, directions=dirs))
+        for name, keep in SPLITS:
+            sub = [p for p in rows if keep(p)]
+            s = pooled._brief(pooled.agreement(sub, m, directions=dirs))
+            cs = pooled.agreement(sub, m, cluster=True, directions=dirs)
+            s["ci2_cluster"], s["ci3_cluster"] = (cs["ci2_lo"], cs["ci2_hi"]), (cs["ci3_lo"], cs["ci3_hi"])
+            r[f"split_{name}"] = s
         out["instruments"][m] = r
         out["worse"][m] = pooled.worse_pairs(rows, m, directions=dirs)
         out["restates_trims"][m] = instrument_vs_instrument(rows, m, "trims_per_1000")
@@ -420,6 +436,24 @@ def kappa_table_markdown(rep: dict) -> str:
     return "\n".join(lines)
 
 
+def splits_markdown(rep: dict) -> str:
+    f, ci = pooled._f, pooled._ci
+    lines = ["| candidate | split | n scored | n decided | kappa, sides only | 95% CI pairs | 95% CI fixtures "
+             "| kappa, ties in | 95% CI pairs | 95% CI fixtures |", "|" + "---|" * 10]
+    for m in CANDIDATES:
+        r = rep["instruments"][m]
+        for name, _ in SPLITS:
+            s = r[f"split_{name}"]
+            lines.append(f"| `{m}` | {name.replace('_', ' ')} | {s['n_scored']} | {s['n_decided']} "
+                         f"| {f(s['kappa_decided'])} | {ci(s['ci2_lo'], s['ci2_hi'])} | {ci(*s['ci2_cluster'])} "
+                         f"| {f(s['kappa_3way'])} | {ci(s['ci3_lo'], s['ci3_hi'])} | {ci(*s['ci3_cluster'])} |")
+        s = r["sens_both_bad_dropped"]
+        lines.append(f"| `{m}` | both_bad dropped | {s['n_scored']} | {s['n_decided']} "
+                     f"| {f(s['kappa_decided'])} | {ci(s['ci2_lo'], s['ci2_hi'])} | - "
+                     f"| {f(s['kappa_3way'])} | {ci(s['ci3_lo'], s['ci3_hi'])} | - |")
+    return "\n".join(lines)
+
+
 def both_bad_markdown(rep: dict) -> str:
     f, ci = pooled._f, pooled._ci
     lines = ["| level instrument | source | bad side | n | n both bad | split (pooled median) | n flagged "
@@ -463,6 +497,8 @@ def main(argv=None) -> int:
     print()
     print(both_bad_markdown(rep))
     if args.markdown:
+        print()
+        print(splits_markdown(rep))
         print(worse_markdown(rep))
     return 0
 

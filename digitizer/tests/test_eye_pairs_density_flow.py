@@ -202,6 +202,32 @@ def test_both_bad_level_split():
     assert r["n"] == 8 and r["n_both_bad"] == 4 and r["kappa"] == pytest.approx(1.0)
 
 
+# ---------------------------------------------------- committed inputs ---
+
+def test_committed_inputs_carry_pr842_labels_and_only_checked_pairs():
+    """The committed density-flow inputs relabel nothing: every pair's label
+    is pooled-inputs.json's, every measured pair's stitch counts are the ones
+    the sitting recorded, and an unscored pair carries no candidate."""
+    mine = df.load()
+    ref = json.loads(dfb.POOLED.read_text(encoding="utf-8"))
+    df_pairs = {p["id"]: p for s in mine["sittings"].values() for p in s["pairs"]}
+    ref_pairs = {p["id"]: p for s in ref["sittings"].values() for p in s["pairs"]}
+    assert df_pairs.keys() == ref_pairs.keys()
+    pooled.validate(mine)
+    n_measured = 0
+    for pid, p in df_pairs.items():
+        assert p["label"] == ref_pairs[pid]["label"], pid
+        if p.get("designs"):
+            n_measured += 1
+            assert "unscored_why" not in p
+            assert p["designs"]["stitches"] == [ref_pairs[pid]["before"]["stitches"],
+                                                ref_pairs[pid]["after"]["stitches"]], pid
+        else:
+            assert p.get("unscored_why"), pid
+            assert not any(k in p[side] for side in ("before", "after") for k in df.CANDIDATES), pid
+    assert n_measured == 96
+
+
 # ------------------------------------------------------------- builder ---
 
 def test_builder_refuses_a_design_whose_stitch_count_is_not_the_judged_page(tmp_path):
