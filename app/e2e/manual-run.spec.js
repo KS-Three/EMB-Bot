@@ -10,7 +10,7 @@
 // every box is read after three agreeing reads, and the field's drag hint is
 // closed by its own X before any canvas coordinate is read.
 import { test, expect } from "@playwright/test";
-import { pickGarment } from "./helpers.js";
+import { pickGarment, openAdvanced } from "./helpers.js";
 
 const STATS = "span.stats";
 const MIN_RUN = 12;
@@ -39,6 +39,8 @@ async function toContent(page) {
 async function openDrawing(page) {
   await page.locator(".hoop canvas").click({ button: "right" });
   await page.locator(".fieldmenu button").filter({ hasText: "Draw shapes" }).click();
+  // the drawing tools sit behind "Advanced ›" since configurator PR 3 (#845)
+  await openAdvanced(page);
   await expect(page.locator(".mp-canvas")).toBeVisible();
 }
 
@@ -210,16 +212,7 @@ test("(b)+(c) the hoop popover: passes re-sew the line; Make it a column, then M
   expect(count(back)).toBe(bean);
 });
 
-test("screenshot: a bent line on the hoop", async ({ page }) => {
-  test.skip(!process.env.EMB_SHOTS, "set EMB_SHOTS=1 to write docs/screens/manual-run-2026-10-11.png");
-  test.setTimeout(120_000);
-  await toContent(page);
-  await openDrawing(page);
-  await setMode(page, "Line");
-  await drawPoly(page, [[0.1, 0.65], [0.3, 0.3], [0.5, 0.65], [0.7, 0.3], [0.9, 0.6]]);
-  await expect(page.locator(STATS)).toContainText(/\d[\d,]* stitches/, { timeout: 20_000 });
-  await closeDragHint(page);
-  // a bent line has no long dark row for settle()'s box: wait on the caption
-  await statsChangedFrom(page, null);
-  await page.screenshot({ path: "../docs/screens/manual-run-2026-10-11.png" });
-});
+// docs/screens/manual-run-2026-10-11.png was taken once by hand with a test
+// like (a) drawing a 5-point zigzag. It is not a test here: CI's studio-e2e
+// job fails on ANY skipped spec (it reads a skip as a failed service
+// bootstrap), so a skip-gated screenshot test turned the job red.

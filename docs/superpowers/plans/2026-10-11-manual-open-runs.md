@@ -178,6 +178,7 @@ Built in one session on `claude/manual-open-runs` (PR #840). Where the build dep
 
 - **Two pre-existing assertions changed on purpose.** `shapePopover.spec.js`'s column row list gained `toRun` ("Make it a line", ruling 8). `ManualPanel.spec.js`'s mode strip now has a fourth button, `Line` (ruling 4). Both are the spec's own additions; no other existing test was touched.
 - **Task 6's DST numbers** (bent line, one curved segment): 316 stitches, 76.53 mm path, worst 0.058 mm off it, 229.90 mm laid, median 0.721 mm, no trims.
-- **Task 7 screenshot** runs only with `EMB_SHOTS=1`, so CI never writes into `docs/`. It waits on the caption rather than `settle()`, because a bent line has no long dark row for the box reader.
+- **Task 7 screenshot** was taken once, by hand, and is not a test. A skip-gated screenshot test (`EMB_SHOTS=1`) turned CI's `studio-e2e` red: that job fails on ANY skipped spec, reading a skip as a failed service bootstrap. It was removed.
+- **Merging main brought configurator PR 3 (#845):** the drawing tools now sit behind "Advanced ›", so the spec calls `openAdvanced(page)` as `manual-column.spec.js` does.
 - **Task 7 (a) was proven red**: with `shapesToRegions` skipping runs it fails (no `Shape 1 · Line` row with stitches). It was green again once restored.
 - **Docs**: the area doc `docs/scope/5-review-manual-editing.md` carries the dated section. `MASTER_SCOPE.md` / `COOKBOOK.md` are left for an `update-master-scope` pass (the foreman's rule for this run).
