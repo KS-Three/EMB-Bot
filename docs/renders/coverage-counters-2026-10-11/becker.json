@@ -1,0 +1,2586 @@
+{
+ "becker 50 mm shipped": {
+  "width_mm": 50.0,
+  "shift_mm": [
+   0.0,
+   0.0
+  ],
+  "letters": [
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       5.764,
+       2.029
+      ],
+      "art_width_mm": 1.26,
+      "sewn_width_mm": 0.418,
+      "art_depth_mm": 1.475,
+      "inner_open_frac": 0.195,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       5.787,
+       6.292
+      ],
+      "art_width_mm": 1.918,
+      "sewn_width_mm": 1.653,
+      "art_depth_mm": 4.55,
+      "inner_open_frac": 0.434,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 5,
+    "refine_px": [
+     4,
+     -4
+    ],
+    "letter_iou": 0.821,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 56.11,
+    "cx_mm": 5.15,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 1,
+    "name": "MARINE:M"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       5.118,
+       5.207
+      ],
+      "art_mm2": 2.169,
+      "sewn_mm2": 1.198,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       5.121,
+       8.658
+      ],
+      "art_width_mm": 1.087,
+      "sewn_width_mm": 0.058,
+      "art_depth_mm": 1.05,
+      "inner_open_frac": 0.003,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 6,
+    "refine_px": [
+     -1,
+     4
+    ],
+    "letter_iou": 0.828,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 48.12,
+    "cx_mm": 14.78,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 2,
+    "name": "MARINE:A"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       4.859,
+       4.261
+      ],
+      "art_mm2": 2.381,
+      "sewn_mm2": 2.092,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       7.439,
+       7.265
+      ],
+      "art_width_mm": 1.111,
+      "sewn_width_mm": 0.435,
+      "art_depth_mm": 1.196,
+      "inner_open_frac": 0.278,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       4.337,
+       8.127
+      ],
+      "art_width_mm": 0.787,
+      "sewn_width_mm": 0.037,
+      "art_depth_mm": 1.925,
+      "inner_open_frac": 0.002,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 4,
+    "refine_px": [
+     0,
+     -2
+    ],
+    "letter_iou": 0.835,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 49.53,
+    "cx_mm": 23.79,
+    "cy_mm": 26.92,
+    "h_mm": 8.5,
+    "line": 1,
+    "pos": 3,
+    "name": "MARINE:R"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 7,
+    "refine_px": [
+     4,
+     -4
+    ],
+    "letter_iou": 0.746,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 21.68,
+    "cx_mm": 30.36,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 4,
+    "name": "MARINE:I"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       5.976,
+       2.998
+      ],
+      "art_width_mm": 1.121,
+      "sewn_width_mm": 0.547,
+      "art_depth_mm": 2.875,
+      "inner_open_frac": 0.249,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       4.537,
+       6.906
+      ],
+      "art_width_mm": 1.387,
+      "sewn_width_mm": 0.099,
+      "art_depth_mm": 3.65,
+      "inner_open_frac": 0.024,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 8,
+    "refine_px": [
+     -1,
+     1
+    ],
+    "letter_iou": 0.815,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 54.43,
+    "cx_mm": 37.02,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 5,
+    "name": "MARINE:N"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       4.968,
+       3.766
+      ],
+      "art_width_mm": 0.688,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 3.05,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       4.901,
+       6.541
+      ],
+      "art_width_mm": 0.787,
+      "sewn_width_mm": 0.138,
+      "art_depth_mm": 2.975,
+      "inner_open_frac": 0.176,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 9,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.769,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 43.15,
+    "cx_mm": 45.2,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 6,
+    "name": "MARINE:E"
+   }
+  ]
+ },
+ "becker 50 mm coverage_edges": {
+  "width_mm": 49.9,
+  "shift_mm": [
+   0.0,
+   0.0
+  ],
+  "letters": [
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       5.764,
+       2.029
+      ],
+      "art_width_mm": 1.26,
+      "sewn_width_mm": 0.368,
+      "art_depth_mm": 1.475,
+      "inner_open_frac": 0.118,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       5.787,
+       6.292
+      ],
+      "art_width_mm": 1.918,
+      "sewn_width_mm": 1.508,
+      "art_depth_mm": 4.55,
+      "inner_open_frac": 0.458,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 5,
+    "refine_px": [
+     4,
+     -4
+    ],
+    "letter_iou": 0.806,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 56.11,
+    "cx_mm": 5.15,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 1,
+    "name": "MARINE:M"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       5.118,
+       5.207
+      ],
+      "art_mm2": 2.169,
+      "sewn_mm2": 0.881,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       5.121,
+       8.658
+      ],
+      "art_width_mm": 1.087,
+      "sewn_width_mm": 0.146,
+      "art_depth_mm": 1.05,
+      "inner_open_frac": 0.024,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 6,
+    "refine_px": [
+     -3,
+     2
+    ],
+    "letter_iou": 0.832,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 48.12,
+    "cx_mm": 14.78,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 2,
+    "name": "MARINE:A"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       4.859,
+       4.261
+      ],
+      "art_mm2": 2.381,
+      "sewn_mm2": 0.706,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       7.439,
+       7.265
+      ],
+      "art_width_mm": 1.111,
+      "sewn_width_mm": 0.348,
+      "art_depth_mm": 1.196,
+      "inner_open_frac": 0.166,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       4.337,
+       8.127
+      ],
+      "art_width_mm": 0.787,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 1.925,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 4,
+    "refine_px": [
+     0,
+     4
+    ],
+    "letter_iou": 0.821,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 49.53,
+    "cx_mm": 23.79,
+    "cy_mm": 26.92,
+    "h_mm": 8.5,
+    "line": 1,
+    "pos": 3,
+    "name": "MARINE:R"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 7,
+    "refine_px": [
+     3,
+     2
+    ],
+    "letter_iou": 0.771,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 21.68,
+    "cx_mm": 30.36,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 4,
+    "name": "MARINE:I"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       5.976,
+       2.998
+      ],
+      "art_width_mm": 1.121,
+      "sewn_width_mm": 0.279,
+      "art_depth_mm": 2.875,
+      "inner_open_frac": 0.093,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       4.537,
+       6.906
+      ],
+      "art_width_mm": 1.387,
+      "sewn_width_mm": 0.438,
+      "art_depth_mm": 3.65,
+      "inner_open_frac": 0.117,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 8,
+    "refine_px": [
+     4,
+     1
+    ],
+    "letter_iou": 0.82,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 54.43,
+    "cx_mm": 37.02,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 5,
+    "name": "MARINE:N"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       4.968,
+       3.766
+      ],
+      "art_width_mm": 0.688,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 3.05,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       4.901,
+       6.541
+      ],
+      "art_width_mm": 0.787,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 2.975,
+      "inner_open_frac": 0.004,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 9,
+    "refine_px": [
+     4,
+     0
+    ],
+    "letter_iou": 0.784,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 43.15,
+    "cx_mm": 45.2,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 6,
+    "name": "MARINE:E"
+   }
+  ]
+ },
+ "becker 50 mm columns_words": {
+  "width_mm": 50.0,
+  "shift_mm": [
+   0.0,
+   0.0
+  ],
+  "letters": [
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       5.764,
+       2.029
+      ],
+      "art_width_mm": 1.26,
+      "sewn_width_mm": 0.448,
+      "art_depth_mm": 1.475,
+      "inner_open_frac": 0.195,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       5.787,
+       6.292
+      ],
+      "art_width_mm": 1.918,
+      "sewn_width_mm": 0.848,
+      "art_depth_mm": 4.55,
+      "inner_open_frac": 0.236,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 5,
+    "refine_px": [
+     4,
+     -4
+    ],
+    "letter_iou": 0.764,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 56.11,
+    "cx_mm": 5.15,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 1,
+    "name": "MARINE:M"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       5.118,
+       5.207
+      ],
+      "art_mm2": 2.169,
+      "sewn_mm2": 1.112,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       5.121,
+       8.658
+      ],
+      "art_width_mm": 1.087,
+      "sewn_width_mm": 0.48,
+      "art_depth_mm": 1.05,
+      "inner_open_frac": 0.185,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 6,
+    "refine_px": [
+     2,
+     4
+    ],
+    "letter_iou": 0.781,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 48.12,
+    "cx_mm": 14.78,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 2,
+    "name": "MARINE:A"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       4.859,
+       4.261
+      ],
+      "art_mm2": 2.381,
+      "sewn_mm2": 1.257,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       7.439,
+       7.265
+      ],
+      "art_width_mm": 1.111,
+      "sewn_width_mm": 0.323,
+      "art_depth_mm": 1.196,
+      "inner_open_frac": 0.129,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       4.337,
+       8.127
+      ],
+      "art_width_mm": 0.787,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 1.925,
+      "inner_open_frac": 0.001,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 4,
+    "refine_px": [
+     4,
+     -1
+    ],
+    "letter_iou": 0.808,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 49.53,
+    "cx_mm": 23.79,
+    "cy_mm": 26.92,
+    "h_mm": 8.5,
+    "line": 1,
+    "pos": 3,
+    "name": "MARINE:R"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 7,
+    "refine_px": [
+     -1,
+     -4
+    ],
+    "letter_iou": 0.714,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 21.68,
+    "cx_mm": 30.36,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 4,
+    "name": "MARINE:I"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       5.976,
+       2.998
+      ],
+      "art_width_mm": 1.121,
+      "sewn_width_mm": 0.237,
+      "art_depth_mm": 2.875,
+      "inner_open_frac": 0.11,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       4.537,
+       6.906
+      ],
+      "art_width_mm": 1.387,
+      "sewn_width_mm": 0.138,
+      "art_depth_mm": 3.65,
+      "inner_open_frac": 0.051,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 8,
+    "refine_px": [
+     -1,
+     1
+    ],
+    "letter_iou": 0.769,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 54.43,
+    "cx_mm": 37.02,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 5,
+    "name": "MARINE:N"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       4.968,
+       3.766
+      ],
+      "art_width_mm": 0.688,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 3.05,
+      "inner_open_frac": 0.009,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       4.901,
+       6.541
+      ],
+      "art_width_mm": 0.787,
+      "sewn_width_mm": 0.037,
+      "art_depth_mm": 2.975,
+      "inner_open_frac": 0.081,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 9,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.731,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 43.15,
+    "cx_mm": 45.2,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 6,
+    "name": "MARINE:E"
+   }
+  ]
+ },
+ "becker 50 mm coverage_columns": {
+  "width_mm": 49.9,
+  "shift_mm": [
+   0.0,
+   0.0
+  ],
+  "letters": [
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       5.764,
+       2.029
+      ],
+      "art_width_mm": 1.26,
+      "sewn_width_mm": 0.242,
+      "art_depth_mm": 1.475,
+      "inner_open_frac": 0.075,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       5.787,
+       6.292
+      ],
+      "art_width_mm": 1.918,
+      "sewn_width_mm": 1.047,
+      "art_depth_mm": 4.55,
+      "inner_open_frac": 0.278,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 5,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.765,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 56.11,
+    "cx_mm": 5.15,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 1,
+    "name": "MARINE:M"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       5.118,
+       5.207
+      ],
+      "art_mm2": 2.169,
+      "sewn_mm2": 0.753,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       5.121,
+       8.658
+      ],
+      "art_width_mm": 1.087,
+      "sewn_width_mm": 0.099,
+      "art_depth_mm": 1.05,
+      "inner_open_frac": 0.015,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 6,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.77,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 48.12,
+    "cx_mm": 14.78,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 2,
+    "name": "MARINE:A"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       4.859,
+       4.261
+      ],
+      "art_mm2": 2.381,
+      "sewn_mm2": 0.919,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       7.439,
+       7.265
+      ],
+      "art_width_mm": 1.111,
+      "sewn_width_mm": 0.415,
+      "art_depth_mm": 1.196,
+      "inner_open_frac": 0.195,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       4.337,
+       8.127
+      ],
+      "art_width_mm": 0.787,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 1.925,
+      "inner_open_frac": 0.0,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 4,
+    "refine_px": [
+     4,
+     1
+    ],
+    "letter_iou": 0.787,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 49.53,
+    "cx_mm": 23.79,
+    "cy_mm": 26.92,
+    "h_mm": 8.5,
+    "line": 1,
+    "pos": 3,
+    "name": "MARINE:R"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 7,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.724,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 21.68,
+    "cx_mm": 30.36,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 4,
+    "name": "MARINE:I"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       5.976,
+       2.998
+      ],
+      "art_width_mm": 1.121,
+      "sewn_width_mm": 0.292,
+      "art_depth_mm": 2.875,
+      "inner_open_frac": 0.103,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       4.537,
+       6.906
+      ],
+      "art_width_mm": 1.387,
+      "sewn_width_mm": 0.168,
+      "art_depth_mm": 3.65,
+      "inner_open_frac": 0.021,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 8,
+    "refine_px": [
+     -4,
+     3
+    ],
+    "letter_iou": 0.787,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 54.43,
+    "cx_mm": 37.02,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 5,
+    "name": "MARINE:N"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       4.968,
+       3.766
+      ],
+      "art_width_mm": 0.688,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 3.05,
+      "inner_open_frac": 0.006,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       4.901,
+       6.541
+      ],
+      "art_width_mm": 0.787,
+      "sewn_width_mm": 0.0,
+      "art_depth_mm": 2.975,
+      "inner_open_frac": 0.001,
+      "status": "closed",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 9,
+    "refine_px": [
+     -2,
+     4
+    ],
+    "letter_iou": 0.759,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 43.15,
+    "cx_mm": 45.2,
+    "cy_mm": 26.95,
+    "h_mm": 8.45,
+    "line": 1,
+    "pos": 6,
+    "name": "MARINE:E"
+   }
+  ]
+ },
+ "becker 80 mm shipped": {
+  "width_mm": 79.8,
+  "shift_mm": [
+   0.0,
+   0.4
+  ],
+  "letters": [
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       8.585,
+       2.634
+      ],
+      "art_width_mm": 2.043,
+      "sewn_width_mm": 1.577,
+      "art_depth_mm": 2.35,
+      "inner_open_frac": 0.707,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       8.623,
+       9.45
+      ],
+      "art_width_mm": 3.058,
+      "sewn_width_mm": 2.331,
+      "art_depth_mm": 7.25,
+      "inner_open_frac": 0.694,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 5,
+    "refine_px": [
+     -4,
+     -1
+    ],
+    "letter_iou": 0.861,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 142.7,
+    "cx_mm": 8.24,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 1,
+    "name": "MARINE:M"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       7.578,
+       7.714
+      ],
+      "art_mm2": 5.526,
+      "sewn_mm2": 3.994,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       7.585,
+       13.213
+      ],
+      "art_width_mm": 1.738,
+      "sewn_width_mm": 1.334,
+      "art_depth_mm": 1.7,
+      "inner_open_frac": 0.714,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 6,
+    "refine_px": [
+     -4,
+     -3
+    ],
+    "letter_iou": 0.895,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 122.47,
+    "cx_mm": 23.59,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 2,
+    "name": "MARINE:A"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       7.18,
+       6.226
+      ],
+      "art_mm2": 6.074,
+      "sewn_mm2": 3.659,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       11.291,
+       11.025
+      ],
+      "art_width_mm": 1.791,
+      "sewn_width_mm": 1.061,
+      "art_depth_mm": 1.925,
+      "inner_open_frac": 0.432,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       6.345,
+       12.399
+      ],
+      "art_width_mm": 1.238,
+      "sewn_width_mm": 0.688,
+      "art_depth_mm": 3.075,
+      "inner_open_frac": 0.403,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 4,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.875,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 126.17,
+    "cx_mm": 37.96,
+    "cy_mm": 42.96,
+    "h_mm": 13.58,
+    "line": 1,
+    "pos": 3,
+    "name": "MARINE:R"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 7,
+    "refine_px": [
+     -4,
+     4
+    ],
+    "letter_iou": 0.822,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 55.27,
+    "cx_mm": 48.45,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 4,
+    "name": "MARINE:I"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       8.97,
+       4.185
+      ],
+      "art_width_mm": 1.799,
+      "sewn_width_mm": 1.142,
+      "art_depth_mm": 4.6,
+      "inner_open_frac": 0.378,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       6.669,
+       10.42
+      ],
+      "art_width_mm": 2.208,
+      "sewn_width_mm": 1.139,
+      "art_depth_mm": 5.825,
+      "inner_open_frac": 0.279,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 8,
+    "refine_px": [
+     -4,
+     -3
+    ],
+    "letter_iou": 0.865,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 138.57,
+    "cx_mm": 59.09,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 5,
+    "name": "MARINE:N"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       7.361,
+       5.418
+      ],
+      "art_width_mm": 1.089,
+      "sewn_width_mm": 0.391,
+      "art_depth_mm": 4.85,
+      "inner_open_frac": 0.369,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       7.249,
+       9.847
+      ],
+      "art_width_mm": 1.288,
+      "sewn_width_mm": 0.861,
+      "art_depth_mm": 4.775,
+      "inner_open_frac": 0.476,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 9,
+    "refine_px": [
+     -3,
+     -3
+    ],
+    "letter_iou": 0.871,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 109.79,
+    "cx_mm": 72.14,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 6,
+    "name": "MARINE:E"
+   }
+  ]
+ },
+ "becker 80 mm coverage_edges": {
+  "width_mm": 79.7,
+  "shift_mm": [
+   0.0,
+   0.0
+  ],
+  "letters": [
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       8.585,
+       2.634
+      ],
+      "art_width_mm": 2.043,
+      "sewn_width_mm": 0.66,
+      "art_depth_mm": 2.35,
+      "inner_open_frac": 0.125,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       8.623,
+       9.45
+      ],
+      "art_width_mm": 3.058,
+      "sewn_width_mm": 2.792,
+      "art_depth_mm": 7.25,
+      "inner_open_frac": 0.537,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 5,
+    "refine_px": [
+     4,
+     -3
+    ],
+    "letter_iou": 0.845,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 142.7,
+    "cx_mm": 8.24,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 1,
+    "name": "MARINE:M"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       7.578,
+       7.714
+      ],
+      "art_mm2": 5.526,
+      "sewn_mm2": 2.646,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       7.585,
+       13.213
+      ],
+      "art_width_mm": 1.738,
+      "sewn_width_mm": 0.826,
+      "art_depth_mm": 1.7,
+      "inner_open_frac": 0.356,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 6,
+    "refine_px": [
+     1,
+     -4
+    ],
+    "letter_iou": 0.882,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 122.47,
+    "cx_mm": 23.59,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 2,
+    "name": "MARINE:A"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       7.18,
+       6.226
+      ],
+      "art_mm2": 6.074,
+      "sewn_mm2": 2.248,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       11.291,
+       11.025
+      ],
+      "art_width_mm": 1.791,
+      "sewn_width_mm": 0.958,
+      "art_depth_mm": 1.925,
+      "inner_open_frac": 0.348,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       6.345,
+       12.399
+      ],
+      "art_width_mm": 1.238,
+      "sewn_width_mm": 0.188,
+      "art_depth_mm": 3.075,
+      "inner_open_frac": 0.051,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 4,
+    "refine_px": [
+     4,
+     4
+    ],
+    "letter_iou": 0.876,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 126.17,
+    "cx_mm": 37.96,
+    "cy_mm": 42.96,
+    "h_mm": 13.58,
+    "line": 1,
+    "pos": 3,
+    "name": "MARINE:R"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 7,
+    "refine_px": [
+     4,
+     2
+    ],
+    "letter_iou": 0.858,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 55.27,
+    "cx_mm": 48.45,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 4,
+    "name": "MARINE:I"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       8.97,
+       4.185
+      ],
+      "art_width_mm": 1.799,
+      "sewn_width_mm": 1.018,
+      "art_depth_mm": 4.6,
+      "inner_open_frac": 0.35,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       6.669,
+       10.42
+      ],
+      "art_width_mm": 2.208,
+      "sewn_width_mm": 0.999,
+      "art_depth_mm": 5.825,
+      "inner_open_frac": 0.207,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 8,
+    "refine_px": [
+     4,
+     -1
+    ],
+    "letter_iou": 0.874,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 138.57,
+    "cx_mm": 59.09,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 5,
+    "name": "MARINE:N"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       7.361,
+       5.418
+      ],
+      "art_width_mm": 1.089,
+      "sewn_width_mm": 0.368,
+      "art_depth_mm": 4.85,
+      "inner_open_frac": 0.247,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       7.249,
+       9.847
+      ],
+      "art_width_mm": 1.288,
+      "sewn_width_mm": 0.058,
+      "art_depth_mm": 4.775,
+      "inner_open_frac": 0.026,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 9,
+    "refine_px": [
+     4,
+     -4
+    ],
+    "letter_iou": 0.86,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 109.79,
+    "cx_mm": 72.14,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 6,
+    "name": "MARINE:E"
+   }
+  ]
+ },
+ "becker 80 mm columns_words": {
+  "width_mm": 79.8,
+  "shift_mm": [
+   0.0,
+   0.4
+  ],
+  "letters": [
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       8.585,
+       2.634
+      ],
+      "art_width_mm": 2.043,
+      "sewn_width_mm": 1.159,
+      "art_depth_mm": 2.35,
+      "inner_open_frac": 0.419,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       8.623,
+       9.45
+      ],
+      "art_width_mm": 3.058,
+      "sewn_width_mm": 2.208,
+      "art_depth_mm": 7.25,
+      "inner_open_frac": 0.591,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 5,
+    "refine_px": [
+     -4,
+     -2
+    ],
+    "letter_iou": 0.843,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 142.7,
+    "cx_mm": 8.24,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 1,
+    "name": "MARINE:M"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       7.578,
+       7.714
+      ],
+      "art_mm2": 5.526,
+      "sewn_mm2": 3.033,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       7.585,
+       13.213
+      ],
+      "art_width_mm": 1.738,
+      "sewn_width_mm": 1.3,
+      "art_depth_mm": 1.7,
+      "inner_open_frac": 0.582,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 6,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.848,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 122.47,
+    "cx_mm": 23.59,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 2,
+    "name": "MARINE:A"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       7.18,
+       6.226
+      ],
+      "art_mm2": 6.074,
+      "sewn_mm2": 3.012,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       11.291,
+       11.025
+      ],
+      "art_width_mm": 1.791,
+      "sewn_width_mm": 0.874,
+      "art_depth_mm": 1.925,
+      "inner_open_frac": 0.33,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       6.345,
+       12.399
+      ],
+      "art_width_mm": 1.238,
+      "sewn_width_mm": 0.415,
+      "art_depth_mm": 3.075,
+      "inner_open_frac": 0.174,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 4,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.853,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 126.17,
+    "cx_mm": 37.96,
+    "cy_mm": 42.96,
+    "h_mm": 13.58,
+    "line": 1,
+    "pos": 3,
+    "name": "MARINE:R"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 7,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.809,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 55.27,
+    "cx_mm": 48.45,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 4,
+    "name": "MARINE:I"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       8.97,
+       4.185
+      ],
+      "art_width_mm": 1.799,
+      "sewn_width_mm": 0.958,
+      "art_depth_mm": 4.6,
+      "inner_open_frac": 0.337,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       6.669,
+       10.42
+      ],
+      "art_width_mm": 2.208,
+      "sewn_width_mm": 0.943,
+      "art_depth_mm": 5.825,
+      "inner_open_frac": 0.234,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 8,
+    "refine_px": [
+     -4,
+     -4
+    ],
+    "letter_iou": 0.856,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 138.57,
+    "cx_mm": 59.09,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 5,
+    "name": "MARINE:N"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       7.361,
+       5.418
+      ],
+      "art_width_mm": 1.089,
+      "sewn_width_mm": 0.487,
+      "art_depth_mm": 4.85,
+      "inner_open_frac": 0.423,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       7.249,
+       9.847
+      ],
+      "art_width_mm": 1.288,
+      "sewn_width_mm": 0.487,
+      "art_depth_mm": 4.775,
+      "inner_open_frac": 0.34,
+      "status": "bridged",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 9,
+    "refine_px": [
+     -3,
+     -4
+    ],
+    "letter_iou": 0.838,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 109.79,
+    "cx_mm": 72.14,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 6,
+    "name": "MARINE:E"
+   }
+  ]
+ },
+ "becker 80 mm coverage_columns": {
+  "width_mm": 79.7,
+  "shift_mm": [
+   0.0,
+   0.0
+  ],
+  "letters": [
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       8.585,
+       2.634
+      ],
+      "art_width_mm": 2.043,
+      "sewn_width_mm": 0.882,
+      "art_depth_mm": 2.35,
+      "inner_open_frac": 0.266,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       8.623,
+       9.45
+      ],
+      "art_width_mm": 3.058,
+      "sewn_width_mm": 2.246,
+      "art_depth_mm": 7.25,
+      "inner_open_frac": 0.474,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 5,
+    "refine_px": [
+     1,
+     -3
+    ],
+    "letter_iou": 0.833,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 142.7,
+    "cx_mm": 8.24,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 1,
+    "name": "MARINE:M"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       7.578,
+       7.714
+      ],
+      "art_mm2": 5.526,
+      "sewn_mm2": 2.456,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       7.585,
+       13.213
+      ],
+      "art_width_mm": 1.738,
+      "sewn_width_mm": 0.882,
+      "art_depth_mm": 1.7,
+      "inner_open_frac": 0.268,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 6,
+    "refine_px": [
+     4,
+     -4
+    ],
+    "letter_iou": 0.853,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 122.47,
+    "cx_mm": 23.59,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 2,
+    "name": "MARINE:A"
+   },
+   {
+    "counters": [
+     {
+      "at_mm": [
+       7.18,
+       6.226
+      ],
+      "art_mm2": 6.074,
+      "sewn_mm2": 1.764,
+      "status": "open",
+      "art_sub_thread": false,
+      "closes": false
+     }
+    ],
+    "slots": [
+     {
+      "at_mm": [
+       11.291,
+       11.025
+      ],
+      "art_width_mm": 1.791,
+      "sewn_width_mm": 0.949,
+      "art_depth_mm": 1.925,
+      "inner_open_frac": 0.341,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       6.345,
+       12.399
+      ],
+      "art_width_mm": 1.238,
+      "sewn_width_mm": 0.037,
+      "art_depth_mm": 3.075,
+      "inner_open_frac": 0.01,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 4,
+    "refine_px": [
+     4,
+     0
+    ],
+    "letter_iou": 0.84,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 126.17,
+    "cx_mm": 37.96,
+    "cy_mm": 42.96,
+    "h_mm": 13.58,
+    "line": 1,
+    "pos": 3,
+    "name": "MARINE:R"
+   },
+   {
+    "counters": [],
+    "slots": [],
+    "unread": false,
+    "glyph": 7,
+    "refine_px": [
+     -2,
+     -4
+    ],
+    "letter_iou": 0.818,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 55.27,
+    "cx_mm": 48.45,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 4,
+    "name": "MARINE:I"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       8.97,
+       4.185
+      ],
+      "art_width_mm": 1.799,
+      "sewn_width_mm": 0.994,
+      "art_depth_mm": 4.6,
+      "inner_open_frac": 0.374,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     },
+     {
+      "at_mm": [
+       6.669,
+       10.42
+      ],
+      "art_width_mm": 2.208,
+      "sewn_width_mm": 0.882,
+      "art_depth_mm": 5.825,
+      "inner_open_frac": 0.18,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": false
+     }
+    ],
+    "unread": false,
+    "glyph": 8,
+    "refine_px": [
+     2,
+     -4
+    ],
+    "letter_iou": 0.872,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 138.57,
+    "cx_mm": 59.09,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 5,
+    "name": "MARINE:N"
+   },
+   {
+    "counters": [],
+    "slots": [
+     {
+      "at_mm": [
+       7.361,
+       5.418
+      ],
+      "art_width_mm": 1.089,
+      "sewn_width_mm": 0.194,
+      "art_depth_mm": 4.85,
+      "inner_open_frac": 0.185,
+      "status": "bridged",
+      "art_sub_thread": false,
+      "narrows": true
+     },
+     {
+      "at_mm": [
+       7.249,
+       9.847
+      ],
+      "art_width_mm": 1.288,
+      "sewn_width_mm": 0.037,
+      "art_depth_mm": 4.775,
+      "inner_open_frac": 0.072,
+      "status": "open",
+      "art_sub_thread": false,
+      "narrows": true
+     }
+    ],
+    "unread": false,
+    "glyph": 9,
+    "refine_px": [
+     0,
+     -4
+    ],
+    "letter_iou": 0.836,
+    "art_rgb": [
+     35,
+     31,
+     32
+    ],
+    "thread_rgb": [
+     49,
+     46,
+     47
+    ],
+    "area_mm2": 109.79,
+    "cx_mm": 72.14,
+    "cy_mm": 43.01,
+    "h_mm": 13.48,
+    "line": 1,
+    "pos": 6,
+    "name": "MARINE:E"
+   }
+  ]
+ }
+}
