@@ -13,6 +13,7 @@ import {
   duplicateShape, PASTE_OFFSET_PX, CANVAS_W, CANVAS_H,
   shouldScrollCanvasIntoView,
   resolveCutOuts, manualShapeName, withCutOut, CUTOUT_NO_PARENT, CUTOUT_OVERLAP,
+  isRun, isOpenShape, runIssues, runPath, runToColumn, columnToRun, RUN_HAIRLINE_PX,
 } from "./manualShapes.js";
 
 // ---- isValidShape -----------------------------------------------------
@@ -1349,5 +1350,111 @@ describe("columns: through the real engine", () => {
     const d = generateElement(el([rect("s1", 100, 100, 400, 250)]), garment, {});
     expect(d.stitchCount).toBe(RECT_STITCH_COUNT_ON_MAIN);
     expect(hashOf(d)).toBe(RECT_HASH_ON_MAIN);
+  });
+});
+
+// ---- runs: an open path that sews a running stitch (plan 3) -----------------
+describe("runs: the model", () => {
+  const run = (points, extra = {}) => ({ id: "s4", kind: "run", points, curves: {}, colorRgb: [20, 20, 20], ...extra });
+  const line = [{ x: 50, y: 100 }, { x: 350, y: 100 }];
+
+  it("isRun / isOpenShape", () => {
+    expect(isRun(run(line))).toBe(true);
+    expect(isRun({ kind: "column" })).toBe(false);
+    expect(isRun(null)).toBe(false);
+    expect(isOpenShape(run(line))).toBe(true);
+    expect(isOpenShape({ kind: "column" })).toBe(true);
+    expect(isOpenShape({ points: line })).toBe(false);
+  });
+
+  it("runIssues names each problem, and a self-crossing line is fine", () => {
+    expect(runIssues(run(line.slice(0, 1)))).toEqual(["A line needs at least 2 points."]);
+    expect(runIssues(run([{ x: 0, y: 0 }, { x: 3, y: 0 }]))).toEqual(["This line is too short to sew."]);
+    expect(runIssues(run(line))).toEqual([]);
+    // a hairpin that doubles back, and a figure-8 that crosses itself
+    expect(runIssues(run([{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 0, y: 0 }]))).toEqual([]);
+    expect(runIssues(run([{ x: 0, y: 0 }, { x: 100, y: 100 }, { x: 100, y: 0 }, { x: 0, y: 100 }]))).toEqual([]);
+    const many = Array.from({ length: MAX_SHAPE_POINTS + 1 }, (_, i) => ({ x: i, y: (i % 2) * 5 }));
+    expect(runIssues(run(many))).toEqual([`Too many points (max ${MAX_SHAPE_POINTS}).`]);
+  });
+
+  it("shapeRing is the path stroked at RUN_HAIRLINE_PX: closed, area length x hairline", () => {
+    const ring = shapeRing(run(line));
+    expect(ring.length).toBe(4);
+    let a = 0;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) a += ring[j].x * ring[i].y - ring[i].x * ring[j].y;
+    expect(Math.abs(a) / 2).toBeCloseTo(300 * RUN_HAIRLINE_PX, 6);
+    expect(shapeRing(run(line.slice(0, 1)))).toEqual([]);
+  });
+
+  it("shapeProblems / isSewableShape; a stray cutOut on a run is ignored", () => {
+    expect(shapeProblems(run(line))).toEqual([]);
+    expect(isSewableShape(run(line))).toBe(true);
+    expect(isSewableShape(run(line, { cutOut: true }))).toBe(true);
+    expect(isSewableShape(run(line.slice(0, 1)))).toBe(false);
+    const plain = run(line);
+    expect(withCutOut(plain, true)).toBe(plain);
+  });
+
+  it("manualShapeName reads Line", () => {
+    expect(manualShapeName(run(line))).toBe("Shape 4 · Line");
+  });
+
+  it("runPath flattens curves along the open path, with no closing segment", () => {
+    const r = run([{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }], { curves: { 0: { x: 50, y: -40 } } });
+    const p = runPath(r);
+    expect(p).toEqual(flattenShape(r.points, r.curves, false));
+    expect(p[0]).toEqual({ x: 0, y: 0 });
+    expect(p[p.length - 1]).toEqual({ x: 100, y: 100 });
+    expect(p.length).toBeGreaterThan(3);
+  });
+
+  it("runToColumn / columnToRun swap fields and copy the spine, never recompute it", () => {
+    const r = run([{ x: 10, y: 20 }, { x: 200, y: 60 }, { x: 380, y: 30 }], { curves: { 1: { x: 300, y: 120 } }, passes: 1, stitchLenMm: 1.2, colorRgb: [1, 2, 3] });
+    const c = runToColumn(r, 24);
+    expect(c).toEqual({ id: "s4", kind: "column", points: r.points, curves: r.curves, colorRgb: [1, 2, 3], widthPx: 24 });
+    expect(c.points).not.toBe(r.points);
+    expect(c.curves).not.toBe(r.curves);
+    const back = columnToRun({ ...c, taperMm: null });
+    expect(back).toEqual({ id: "s4", kind: "run", points: r.points, curves: r.curves, colorRgb: [1, 2, 3] });
+    expect(back.points).not.toBe(c.points);
+    // not the right kind, or no width: handed back untouched
+    expect(runToColumn(c, 24)).toBe(c);
+    expect(runToColumn(r, 0)).toBe(r);
+    expect(columnToRun(r)).toBe(r);
+  });
+});
+
+describe("runs: resolveCutOuts and shapesToRegions", () => {
+  const rect = { id: "s1", points: [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 200 }, { x: 0, y: 200 }], curves: {}, stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+  const r = { id: "s2", kind: "run", points: [{ x: 20, y: 250 }, { x: 200, y: 260 }, { x: 380, y: 240 }], curves: { 0: { x: 100, y: 320 } }, colorRgb: [200, 0, 0] };
+
+  it("a run is never a cut-out's parent, even when its path encloses one", () => {
+    const loop = { id: "s3", kind: "run", points: [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 300 }, { x: 0, y: 300 }, { x: 0, y: 10 }], curves: {}, colorRgb: [0, 0, 0] };
+    const hole = { id: "s9", points: [{ x: 100, y: 100 }, { x: 150, y: 100 }, { x: 150, y: 150 }], curves: {}, cutOut: true, colorRgb: [0, 0, 0] };
+    expect(resolveCutOuts([loop, hole]).parentOf.s9).toBe(null);
+  });
+
+  it("emits a sewAs run region; every other region exactly as before", () => {
+    const alone = shapesToRegions([rect]);
+    const both = shapesToRegions([rect, r]);
+    expect(both.regions[0]).toEqual(alone.regions[0]);
+    expect(both.regions.length).toBe(2);
+    const sh = both.regions[1].shapes[0];
+    expect(both.regions[1].rgb).toEqual([200, 0, 0]);
+    expect(sh.id).toBe("s2");
+    expect(sh.tierOverride).toBe("fill");
+    expect(sh.angleOverride).toBe(null);
+    expect(sh.holes).toEqual([]);
+    expect(sh.outer).toEqual(shapeRing(r));
+    expect(sh.sewAs).toEqual({ kind: "run", path: flattenShape(r.points, r.curves, false), passes: null, stitchLenMm: null });
+    // what the author set is handed over as set
+    const set = shapesToRegions([{ ...r, passes: 1, stitchLenMm: 1.5 }]).regions[0].shapes[0].sewAs;
+    expect(set.passes).toBe(1);
+    expect(set.stitchLenMm).toBe(1.5);
+  });
+
+  it("an invalid run is skipped", () => {
+    expect(shapesToRegions([{ ...r, points: r.points.slice(0, 1) }]).regions).toEqual([]);
   });
 });
