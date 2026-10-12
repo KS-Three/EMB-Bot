@@ -74,7 +74,8 @@ from .stage6_detail import detail_runs
 # Imported under another name: `hairline_runs` is already this module's count
 # of `stage6_satin._hairline_stretches` strokes (the HAIRLINE_STROKES_AS_RUN
 # warning), a different, older thing.
-from .stage6_hairline import hairline_candidates
+from .stage6_hairline import REST_KEY as HAIRLINE_REST_KEY
+from .stage6_hairline import hairline_candidates, rest_planned
 from .stage6_hairline import hairline_runs as hairline_tier_runs
 from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
@@ -1782,6 +1783,43 @@ def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
     return p.stitch_angle_deg
 
 
+def _sew_rest_pieces(pieces, stitch_one, entry, exit_near, trim_at):
+    """The thick branches of a hairline shape (`stage6_hairline.rest_planned`),
+    one ladder call per connected piece, nearest piece to the needle first.
+    -> (runs, merged report | None, filled). A piece the ladder cannot sew is
+    skipped; the reports' counts add and their flags OR."""
+    runs: list[StitchRun] = []
+    rep: dict | None = None
+    filled = False
+    cur = entry
+    todo = list(pieces)
+    while todo:
+        if cur is not None:
+            here = Point(cur)
+            todo.sort(key=lambda q: round(q.polygon.distance(here), 6))
+        piece = todo.pop(0)
+        got, got_rep, got_filled = stitch_one(piece, cur, exit_near)
+        if not got:
+            continue
+        if rep is None:
+            rep, filled = dict(got_rep), got_filled
+        else:
+            hop = math.dist(runs[-1].points[-1], got[0].points[0])
+            if hop >= TINY_STITCH_MM:
+                got[0].jump = True
+                got[0].trim = hop > trim_at
+                got_rep["jumps"] += 1
+            for key, val in got_rep.items():
+                if isinstance(val, bool):
+                    rep[key] = rep.get(key, False) or val
+                elif isinstance(val, (int, float)):
+                    rep[key] = rep.get(key, 0) + val
+            filled = filled or got_filled
+        runs.extend(got)
+        cur = runs[-1].points[-1]
+    return runs, rep, filled
+
+
 def sequence(
     planned: list[PlannedRegion], fabric: Fabric, cfg: PipelineConfig,
     source_pixels: SourcePixels | None = None,
@@ -2227,18 +2265,47 @@ def sequence(
             # Step 2: only a shape `hairline_candidates` admitted (the width
             # gate read off the source, and a ground colour's slivers left
             # to the ground), with its measurement reused, not retaken.
-            if tier == "auto" and cfg.hairline and p.shape_id in hairline:
+            # Step 3 (docs/hairline-strand-gate-2026-10-12.md): the gate is
+            # per skeleton BRANCH. A shape with thick branches too has its
+            # thin ones sewn here as runs, and the rest of its polygon
+            # (`rest_planned`) goes down the ladder below as a shape of its
+            # own, FIRST — the hairlines are laid over it, like a strand over
+            # any ground.
+            if (tier == "auto" and cfg.hairline and p.shape_id in hairline
+                    and not p.region.meta.get(HAIRLINE_REST_KEY)):
                 prof = profile_for(p)
+                hm = hairline[p.shape_id]
+                rest_runs, rest_rep, rest_filled = _sew_rest_pieces(
+                    rest_planned(p, hm), stitch_one, entry, exit_near, trim_at)
                 runs, report = hairline_tier_runs(
                     p.region.polygon, p.shape_id,
                     max_width_mm=prof.hairline_max_width_mm,
                     run_width_mm=prof.hairline_run_width_mm,
                     stitch_mm=cfg.hairline_stitch_mm,
-                    entry=entry, trim_at_mm=trim_at,
-                    m=hairline[p.shape_id])
+                    entry=(rest_runs[-1].points[-1] if rest_runs else entry),
+                    trim_at_mm=trim_at, m=hm)
                 if not report["empty"]:
                     report["hairline_tier"] = 1
+                    if rest_runs:
+                        hop = math.dist(rest_runs[-1].points[-1], runs[0].points[0])
+                        if hop >= TINY_STITCH_MM:
+                            runs[0].jump = True
+                            runs[0].trim = hop > trim_at
+                            report["jumps"] += 1
+                        merged = dict(rest_rep)
+                        merged.update(hairline_tier=1, strands=report["strands"],
+                                      dropped=report["dropped"], empty=False,
+                                      jumps=rest_rep["jumps"] + report["jumps"])
+                        return rest_runs + runs, merged, rest_filled
                     return runs, report, False
+                if rest_runs:
+                    # Every hairline branch was under the loop floor: the
+                    # thick part is all there is to sew, and the dropped
+                    # branches are counted like any dropped strand.
+                    if report["dropped"]:
+                        rest_rep = dict(rest_rep, hairline_tier=1, strands=0,
+                                        dropped=report["dropped"])
+                    return rest_runs, rest_rep, rest_filled
             outline_tried = False
             if routes_to_run(p, tier):
                 runs, report = run_outline(p.region.polygon, p.shape_id,

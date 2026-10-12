@@ -77,6 +77,8 @@ from dataclasses import dataclass, field
 
 import cv2
 import numpy as np
+from shapely.geometry import LineString, Point
+from shapely.ops import unary_union
 from shapely.strtree import STRtree
 from skimage.morphology import medial_axis
 
@@ -147,6 +149,19 @@ _SRC_GAP = 0.05
 # The source width is used when at least this share of the samples read;
 # otherwise the gate falls back to the traced width.
 _SRC_MIN_VALID = 0.5
+
+# --- the per-strand gate (step 3, 2026-10-12) ---
+# Source profiles read per skeleton edge, spread evenly over the edge's body
+# pixels; an edge's source width is the median of those that found an edge.
+_EDGE_SAMPLES = 12
+# A hairline ribbon is the edge's width read plus this much (mm), subtracted
+# from the shape; what is left is opened by half a laid width, so a rim the
+# tracer left beside a thin strand (narrower than a thread) is not sewn.
+_RIBBON_PAD_MM = 0.02
+# At a node where a hairline edge meets an edge that is NOT one, the ribbon is
+# cut back by a disk of this many local radii, so the thick strand keeps its
+# own polygon whole through the junction.
+_JUNCTION_CUT = 1.0
 
 # --- the ground-fragment rule (step 2) ---
 # A thin shape of a ground colour is a hairline only when it is darker than
@@ -293,14 +308,129 @@ def measure(poly, max_width_mm: float, ink: InkSource | None = None):
     med = float(np.percentile(widths, _GATE_PCT))
     p95 = float(np.percentile(widths, _BLOB_PCT))
     src = None
+    ink_colour = None
     if ink is not None:
-        src = source_width_mm(ink, skel, body, dist, scale, x0, y0)
+        got = _source_widths(ink, skel, body, dist, scale, x0, y0)
+        if got is not None and len(got[0]) >= _SRC_MIN_VALID * got[1]:
+            src = float(np.median(got[0]))
+            ink_colour = got[2]
     gate = src if src is not None else med
-    admit = gate <= max_width_mm and p95 <= _BLOB_FACTOR * max_width_mm
-    return {"admit": admit, "width_mm": gate, "width_traced_mm": med,
-            "width_source_mm": src, "width_p95_mm": p95,
-            "skel": skel, "body": body, "dist": dist,
-            "scale": scale, "x0": x0, "y0": y0}
+    m = {"admit": False, "width_mm": gate, "width_traced_mm": med,
+         "width_source_mm": src, "width_p95_mm": p95,
+         "skel": skel, "body": body, "dist": dist,
+         "scale": scale, "x0": x0, "y0": y0}
+    # Step 3: the gate is PER STRAND. The shape-level read above is the
+    # shape's own summary (and what the prototype's all-or-nothing gate
+    # tested: `shape_admit`); what is sewn is decided edge by edge.
+    m["shape_admit"] = gate <= max_width_mm and p95 <= _BLOB_FACTOR * max_width_mm
+    _decide_edges(m, poly, max_width_mm, ink, ink_colour)
+    return m
+
+
+def _decide_edges(m: dict, poly, max_width_mm: float, ink, ink_colour) -> None:
+    """Walk the skeleton graph the tier builds (`_graph`) and decide each
+    branch on its OWN width: the SOURCE read along the branch when `ink` gives
+    an edge there, else the traced median of its body pixels. A branch is a
+    hairline when that width is at or under `max_width_mm` and its 95th
+    percentile is at or under `_BLOB_FACTOR` times it.
+
+    A branch with no body pixel of its own (a short piece between two
+    crossings, all inside the crossings' disks) cannot be read: it follows its
+    neighbours — a hairline when every branch it touches is, thick when any
+    is not — and on a branch with no neighbours at all, the traced width over
+    every pixel of it.
+
+    Sets `hair_edges`, `thick_edges`, `admit` (any hairline branch), and, when
+    some branch is thick, `rest` (the shape's polygon minus the hairline
+    ribbons, opened by half a laid width, pieces under `RUN_MIN_AREA_MM2`
+    dropped) and `hair_geom` (the shape minus `rest`: the hairline parts'
+    own territory, which is what stage 5's ground goes under). Both are None
+    when every branch is a hairline — the prototype's shape, untouched.
+    Candidate geometry, unsewn (ROADMAP gate 1)."""
+    skel, body, dist, scale, x0, y0 = (m["skel"], m["body"], m["dist"],
+                                       m["scale"], m["x0"], m["y0"])
+    edges = _graph(m, max(m["width_traced_mm"], 1e-3))
+    blob_lim = _BLOB_FACTOR * max_width_mm
+    picks_y, picks_x, owner = [], [], []
+    for k, e in enumerate(edges):
+        a = np.asarray(e["px"], np.int64)
+        xs, ys = a[:, 0], a[:, 1]
+        e["w"] = e["w_traced"] = e["p95"] = None
+        e["decided"] = False
+        on = body[ys, xs]
+        if on.any():
+            w = np.maximum(2.0 * dist[ys[on], xs[on]] - 2.0, 1.0) / scale
+            e["w_traced"] = float(np.median(w))
+            e["p95"] = float(np.percentile(w, _BLOB_PCT))
+            e["decided"] = True
+            idx = np.nonzero(on)[0]
+            take = idx[np.unique(np.round(np.linspace(0, len(idx) - 1,
+                                                       min(len(idx), _EDGE_SAMPLES))).astype(int))]
+            picks_y.extend(ys[take].tolist())
+            picks_x.extend(xs[take].tolist())
+            owner.extend([k] * len(take))
+        else:
+            w = np.maximum(2.0 * dist[ys, xs] - 2.0, 1.0) / scale
+            e["w_all"] = float(np.median(w))
+            e["p95_all"] = float(np.percentile(w, _BLOB_PCT))
+    if ink is not None and ink_colour is not None and picks_y:
+        got = _source_widths(ink, skel, body, dist, scale, x0, y0,
+                             pick=(np.asarray(picks_y), np.asarray(picks_x)),
+                             ink_colour=ink_colour)
+        if got is not None:
+            per: dict[int, list] = {}
+            for k, w in zip(owner, got[3]):
+                per.setdefault(k, []).append(w)
+            for k, ws in per.items():
+                ok = [w for w in ws if w is not None]
+                if ok and len(ok) >= _SRC_MIN_VALID * len(ws):
+                    edges[k]["w_source"] = float(np.median(ok))
+    for e in edges:
+        if not e["decided"]:
+            continue
+        e["w"] = e.get("w_source", e["w_traced"])
+        e["admit"] = e["w"] <= max_width_mm and e["p95"] <= blob_lim
+    # Branches too short to read follow their neighbours.
+    by_node: dict[int, list[int]] = {}
+    for i, e in enumerate(edges):
+        for key in ("a", "b"):
+            if e[key] is not None and e[key] >= 0:
+                by_node.setdefault(e[key], []).append(i)
+    for e in edges:
+        if e["decided"]:
+            continue
+        nb = {j for key in ("a", "b") if e[key] is not None and e[key] >= 0
+              for j in by_node.get(e[key], []) if edges[j] is not e and edges[j]["decided"]}
+        if nb:
+            e["admit"] = all(edges[j]["admit"] for j in nb)
+            e["w"] = float(np.median([edges[j]["w"] for j in nb]))
+        else:
+            e["w"] = e["w_all"]
+            e["admit"] = e["w"] <= max_width_mm and e["p95_all"] <= blob_lim
+    hair = [e for e in edges if e["admit"]]
+    thick = [e for e in edges if not e["admit"]]
+    m.update(hair_edges=hair, thick_edges=thick, admit=bool(hair), rest=None, hair_geom=None)
+    if not hair or not thick:
+        return
+    laid = max_width_mm / machine.HAIRLINE_MAX_WIDTHS
+    mixed = ({e[key] for e in hair for key in ("a", "b") if e[key] is not None and e[key] >= 0}
+             & {e[key] for e in thick for key in ("a", "b") if e[key] is not None and e[key] >= 0})
+    ribbons = []
+    for e in hair:
+        rib = LineString(e["pts"]).buffer(max(e["w"], e["w_traced"] or 0.0) / 2.0 + _RIBBON_PAD_MM)
+        for key, end in (("a", 0), ("b", -1)):
+            if e[key] in mixed:
+                px, py = e["px"][end]
+                rib = rib.difference(Point(e["pts"][end]).buffer(
+                    _JUNCTION_CUT * float(dist[py, px]) / scale + _RIBBON_PAD_MM))
+        ribbons.append(rib)
+    rest = poly.difference(unary_union(ribbons)).buffer(-0.5 * laid).buffer(0.5 * laid)
+    parts = [g for g in _parts(rest)
+             if g.geom_type == "Polygon" and g.area >= machine.RUN_MIN_AREA_MM2]
+    if parts:
+        rest = unary_union(parts)
+        m["rest"] = rest
+        m["hair_geom"] = poly.difference(rest)
 
 
 def source_width_mm(ink: InkSource, skel, body, dist, scale: float,
@@ -325,25 +455,34 @@ def source_width_mm(ink: InkSource, skel, body, dist, scale: float,
     got = _source_widths(ink, skel, body, dist, scale, x0, y0)
     if got is None:
         return None
-    widths, n = got
+    widths, n = got[0], got[1]
     if len(widths) < _SRC_MIN_VALID * n:
         return None
     return float(np.median(widths))
 
 
-def _source_widths(ink, skel, body, dist, scale, x0, y0):
-    """`source_width_mm`'s per-profile widths -> (widths mm, profiles tried) or None."""
-    ys, xs = np.nonzero(body)
-    if len(xs) < 4:
-        return None
-    k = max(1, len(xs) // _SRC_SAMPLES)
-    ys, xs = ys[::k][:_SRC_SAMPLES], xs[::k][:_SRC_SAMPLES]
+def _source_widths(ink, skel, body, dist, scale, x0, y0, pick=None, ink_colour=None):
+    """`source_width_mm`'s per-profile widths -> (widths mm, profiles tried,
+    the ink colour read, widths aligned to the samples asked for — None where
+    a sample read nothing) or None.
+
+    `pick` is an explicit (ys, xs) of skeleton pixels to profile (the
+    per-strand gate reads each edge's own); `ink_colour` fixes the ink the
+    profiles are unmixed against instead of taking it from these profiles."""
+    if pick is None:
+        ys, xs = np.nonzero(body)
+        if len(xs) < 4:
+            return None
+        k = max(1, len(xs) // _SRC_SAMPLES)
+        ys, xs = ys[::k][:_SRC_SAMPLES], xs[::k][:_SRC_SAMPLES]
+    else:
+        ys, xs = pick
     sk_y, sk_x = np.nonzero(skel)
     sk = np.column_stack([sk_x, sk_y]).astype(np.float64)
     src_ppm = ink.src_px_per_mm
     step_mm = _SRC_STEP_PX / src_ppm
-    centres, normals, reach = [], [], []
-    for y, x in zip(ys, xs):
+    centres, normals, reach, which = [], [], [], []
+    for j, (y, x) in enumerate(zip(ys, xs)):
         rr = max(4.0, 3.0 * float(dist[y, x]))
         near = sk[(np.abs(sk[:, 0] - x) <= rr) & (np.abs(sk[:, 1] - y) <= rr)]
         if len(near) < 3:
@@ -354,6 +493,7 @@ def _source_widths(ink, skel, body, dist, scale, x0, y0):
         centres.append(((x - _PAD_PX) / scale + x0, (y - _PAD_PX) / scale + y0))
         normals.append((-ty, tx))
         reach.append(float(dist[y, x]) / scale + _SRC_MARGIN_PX / src_ppm)
+        which.append(j)
     if not centres:
         return None
     R = max(reach)
@@ -376,8 +516,12 @@ def _source_widths(ink, skel, body, dist, scale, x0, y0):
     score = np.minimum(np.linalg.norm(V - S_l[:, None], axis=2),
                        np.linalg.norm(V - S_r[:, None], axis=2))
     score[~inside] = -1.0
-    I = np.median(V[rows, np.argmax(score, axis=1)], axis=0)
+    if ink_colour is None:
+        I = np.median(V[rows, np.argmax(score, axis=1)], axis=0)
+    else:
+        I = ink_colour
     widths = []
+    aligned = [None] * len(ys)
     mid = int(np.argmin(np.abs(t)))
     for i in range(len(C)):
         ok = True
@@ -397,7 +541,8 @@ def _source_widths(ink, skel, body, dist, scale, x0, y0):
             total += float(c[:gap[0]].sum() if len(gap) else c.sum())
         if ok:
             widths.append(total * step_mm)
-    return widths, len(C)
+            aligned[which[i]] = total * step_mm
+    return widths, len(C), I, aligned
 
 
 def block_thread_wt(regions, cfg) -> dict[int, int]:
@@ -531,7 +676,7 @@ def _graph(m: dict, width_mm: float):
             continue
         if e["closed"]:
             edges.append({"pts": pts, "a": None, "b": None, "closed": True,
-                          "free_a": False, "free_b": False})
+                          "free_a": False, "free_b": False, "px": e["pts"]})
             continue
         if e["free_start"]:
             a = free_id
@@ -544,7 +689,8 @@ def _graph(m: dict, width_mm: float):
         else:
             b = node_of(e["pts"][-1])
         edges.append({"pts": pts, "a": a, "b": b, "closed": False,
-                      "free_a": e["free_start"], "free_b": e["free_end"]})
+                      "free_a": e["free_start"], "free_b": e["free_end"],
+                      "px": e["pts"]})
 
     # Spurs: a free edge hanging off a node, shorter than two stroke widths.
     spur_mm = _SPUR_WIDTHS * width_mm
@@ -758,6 +904,45 @@ def stitch_path(pts, stitch_mm: float, tol_mm: float,
     return kept
 
 
+REST_KEY = "_hairline_rest"
+
+
+def rest_planned(p, m: dict):
+    """The parts of a planned shape the per-strand gate left to the ladder:
+    one copy of `p` per connected piece of `m["rest"]` (the thick branches),
+    its artwork polygon the piece and its sewing polygon cut to match; []
+    when every branch is a hairline or the thick part came to nothing
+    sewable. One piece per copy because the ladder takes one Polygon.
+
+    The sewing polygon is `p.polygon` (underlap and pull compensation
+    included) clipped to the piece grown by the mean outward growth stage 5
+    gave this shape, so the thick branches keep their compensation and the
+    hairline ribbons' slot is not sewn twice. Each copy carries `REST_KEY`
+    in its region's meta so stage 7 does not offer it to the tier again."""
+    import dataclasses
+    rest = m.get("rest")
+    if rest is None or rest.is_empty:
+        return []
+    art = p.region.polygon
+    grow = max(0.0, (p.polygon.area - art.area)
+               / max(0.5 * (p.polygon.length + art.length), 1e-6))
+    out = []
+    for piece in sorted(_parts(rest), key=lambda g: (round(g.centroid.x, 6),
+                                                      round(g.centroid.y, 6))):
+        sew = p.polygon.intersection(piece.buffer(grow + 0.01))
+        sew = [g for g in _parts(sew) if g.geom_type == "Polygon" and g.area > 1e-6]
+        if not sew:
+            continue
+        # The sewing polygon of this piece: its largest connected part (a
+        # clip across a junction can leave a stray fleck beside it).
+        sew = max(sew, key=lambda g: g.area)
+        region = dataclasses.replace(p.region, polygon=piece, area_mm2=float(piece.area),
+                                     meta={**p.region.meta, REST_KEY: True})
+        vis = None if p.visible is None else p.visible.intersection(sew)
+        out.append(dataclasses.replace(p, region=region, polygon=sew, visible=vis))
+    return out
+
+
 def hairline_runs(poly, shape_id: str, *, max_width_mm: float, run_width_mm: float,
                   stitch_mm: float, entry: tuple[float, float] | None,
                   trim_at_mm: float, ink: InkSource | None = None,
@@ -788,8 +973,11 @@ def hairline_runs(poly, shape_id: str, *, max_width_mm: float, run_width_mm: flo
         return [], report
     report["admitted"] = True
     traced = m.get("width_traced_mm", m["width_mm"])
-    edges = _graph(m, max(traced, 1e-3))
+    # Step 3: only the branches the per-strand gate admitted are walked;
+    # the thick ones are the caller's (`m["rest"]`, sewn by the ladder).
+    edges = m["hair_edges"]
     report["edges"] = len(edges)
+    report["thick_edges"] = len(m["thick_edges"])
     if not edges:
         return [], report
     paths = _walk(edges, entry,

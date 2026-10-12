@@ -43,8 +43,12 @@ DOC_READERS = {"scope_budget", "memory_budget", "doc_claims"}
 #: lets the sweep below stay exhaustive. (`sewout_walk_reach` widens its
 #: stdout all the same — its own sheet prints arrows, which is the OTHER
 #: exposure, swept separately below.) `counter_slots` WRITES its table as
-#: `<fixture>.md` and reads none.
-NAMES_ONLY = {"acceptance_ab", "sewout_walk_reach", "counter_slots"}
+#: `<fixture>.md` and reads none. `hairline_renders` WRITES `table.md` and
+#: `hairline_card` writes the sew-out card's `README.md`, `scoring-sheet.md`
+#: and `readback.md` (2026-10-12): both print only JSON rows, and neither
+#: reads a doc.
+NAMES_ONLY = {"acceptance_ab", "sewout_walk_reach", "counter_slots",
+              "hairline_renders", "hairline_card"}
 
 
 def cp1252_stream() -> tuple[io.BytesIO, io.TextIOWrapper]:

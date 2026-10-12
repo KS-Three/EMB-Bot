@@ -9,6 +9,10 @@ Writes, deterministically (seeded):
   wide, some crossing, a few curls under 2 mm radius. Hard-edged (no
   anti-aliasing) so stage 0 reads it as flat art and every strand is one
   colour.
+- `testdata/synthetic/hair_fine.png` — the same canvas, oval, curves,
+  crossings and curls as `hair_strands.png`, with the 40 strands drawn
+  0.25-0.35 mm wide (median 0.30): the fixture a 60 wt gate (0.48 mm) can
+  admit with margin. Hair and ground colours are `hair_strands.png`'s.
 - `testdata/synthetic/thin_script.png` — RGBA, 60 mm wide: a signature-style
   looping script line, 0.3-0.5 mm strokes, one ink, transparent ground.
 
@@ -44,8 +48,16 @@ def _curl(cx, cy, r, turns, a0, n=200):
     return np.column_stack([cx + rr * np.cos(a), cy + rr * np.sin(a)])
 
 
-def hair_strands(seed: int = 12):
-    """-> list of (polyline mm Nx2, width mm). ~40 strands."""
+FINE_RANGE_MM = (0.25, 0.35)    # hair_fine: median 0.30
+
+
+def hair_strands(seed: int = 12, fine: bool = False):
+    """-> list of (polyline mm Nx2, width mm). ~40 strands.
+
+    `fine` keeps every curve (same crossings, same curls) and replaces the
+    widths with `FINE_RANGE_MM` evenly spread over the 40 strands, in a
+    seeded shuffle, so the median is exactly 0.30 mm (step 3, 2026-10-12:
+    the fixture a 60 wt gate can admit with margin)."""
     rng = np.random.default_rng(seed)
     strands = []
     # Long flowing strands, falling from the crown (top) across the oval.
@@ -72,6 +84,10 @@ def hair_strands(seed: int = 12):
         r = float(rng.uniform(1.1, 1.9))
         strands.append((_curl(cx, cy, r, 1.4, rng.uniform(0, 2 * math.pi)),
                         float(rng.uniform(0.3, 0.45))))
+    if fine:
+        w = np.linspace(FINE_RANGE_MM[0], FINE_RANGE_MM[1], len(strands))
+        np.random.default_rng(seed + 1).shuffle(w)
+        strands = [(pts, float(wi)) for (pts, _w), wi in zip(strands, w)]
     return strands
 
 
@@ -88,14 +104,29 @@ def _stroke(img, pts_mm, width_mm, rgb):
     cv2.polylines(img, [pts.reshape(-1, 1, 2)], False, (*rgb, 255), t, cv2.LINE_8)
 
 
-def draw_hair(path: Path) -> int:
+def _stroke_exact(img, pts_mm, width_mm, rgb):
+    """A stroke of the stated width, to the pixel: the exact buffer of the
+    centreline, filled aliased. `_stroke`'s `cv2.polylines` can only draw an
+    ODD pixel count of widths (an odd `thickness` paints as the next even
+    one: 0.30 mm comes out 0.35), which is fine for the 0.25-0.6 fixture but
+    would turn `hair_fine`'s 0.30 median into 0.35. `cv2.fillPoly` paints the
+    boundary pixels on both sides, so the buffer is one pixel narrower."""
+    from shapely.geometry import LineString
+    half = max(width_mm - 1.0 / PX_PER_MM, 1.0 / PX_PER_MM) / 2.0
+    poly = LineString(np.asarray(pts_mm)).buffer(half, quad_segs=8)
+    for part in (poly.geoms if hasattr(poly, "geoms") else [poly]):
+        ring = np.round(np.asarray(part.exterior.coords) * PX_PER_MM).astype(np.int32)
+        cv2.fillPoly(img, [ring.reshape(-1, 1, 2)], (*rgb, 255), cv2.LINE_8)
+
+
+def draw_hair(path: Path, fine: bool = False) -> int:
     img = _canvas(80, 62)
     cv2.ellipse(img, (int(40 * PX_PER_MM), int(32 * PX_PER_MM)),
                 (int(34 * PX_PER_MM), int(27 * PX_PER_MM)), 0, 0, 360,
                 (*SKIN, 255), -1, cv2.LINE_8)
-    strands = hair_strands()
+    strands = hair_strands(fine=fine)
     for pts, w in strands:
-        _stroke(img, pts, w, HAIR)
+        (_stroke_exact if fine else _stroke)(img, pts, w, HAIR)
     rgba = cv2.cvtColor(img, cv2.COLOR_RGBA2BGRA)
     cv2.imwrite(str(path), rgba)
     return len(strands)
@@ -137,8 +168,10 @@ def main(argv=None) -> None:
     argparse.ArgumentParser(description=__doc__.split("\n\n")[0]).parse_args(argv)
     OUT.mkdir(parents=True, exist_ok=True)
     n = draw_hair(OUT / "hair_strands.png")
+    f = draw_hair(OUT / "hair_fine.png", fine=True)
     m = draw_script(OUT / "thin_script.png")
-    print(f"hair_strands.png: {n} strands; thin_script.png: {m} strokes -> {OUT}")
+    print(f"hair_strands.png: {n} strands; hair_fine.png: {f} strands; "
+          f"thin_script.png: {m} strokes -> {OUT}")
 
 
 if __name__ == "__main__":
