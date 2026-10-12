@@ -16,9 +16,11 @@ from pathlib import Path
 
 import pytest
 from shapely.geometry import box
+from shapely.ops import unary_union
 
-from digitizer_core import PipelineConfig, digitize
+from digitizer_core import PipelineConfig, digitize, run_stages
 from digitizer_core.fabrics import get_fabric
+from digitizer_core.pipeline import fabric_for
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import (CLIP_PIECE_OF_KEY, clip_piece_floor_mm2,
                                            resolve_overlaps)
@@ -132,6 +134,38 @@ def test_a_piece_of_pure_growth_is_not_ink_and_is_not_counted():
 def test_the_floor_is_stage_fours():
     cfg = PipelineConfig()
     assert clip_piece_floor_mm2(cfg) == pytest.approx(0.25 * cfg.min_detail_mm ** 2)
+
+
+def _inkless_parents(planned, regions) -> list[str]:
+    """Shapes stage 5 plans to sew with NO artwork in their sewing polygon,
+    though some of their artwork lies clear of every earlier colour's."""
+    art = {r.shape_id: r for r in regions}
+    out = []
+    for p in planned:
+        r = art.get(p.shape_id)
+        if r is None:
+            continue
+        earlier = [o.polygon for o in regions if o.meta["layer"] < r.meta["layer"]]
+        own = r.polygon.difference(unary_union(earlier)) if earlier else r.polygon
+        if own.area >= 1.0 and p.polygon.intersection(r.polygon).area < 1e-3:
+            out.append(p.shape_id)
+    return out
+
+
+def test_gaulke_roof_line_is_sewn_on_and_lost_off():
+    """The real case (2026-10-12): on `logo_gaulke_roofing.png` the black
+    roof-line stroke's largest clip piece is its underlap tongue — no ink —
+    so the shipped engine sews the tongue under the white and the whole
+    roof line is missing. Read without shape ids, which move per platform."""
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    result = run_stages(ROOT / "testdata" / "photo" / "logo_gaulke_roofing.png", cfg)
+    regions = [r for r in result.regions if r.meta.get("stitched", True)]
+    fabric = fabric_for(cfg)
+    off, _ = resolve_overlaps(regions, fabric, cfg, result.design_class)
+    on_cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", clip_keep_pieces=True)
+    on, _ = resolve_overlaps(regions, fabric, on_cfg, result.design_class)
+    assert _inkless_parents(off, regions), "the fixture no longer exercises the drop"
+    assert _inkless_parents(on, regions) == []
 
 
 def _plan_md5(plan) -> str:
