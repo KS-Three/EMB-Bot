@@ -118,7 +118,7 @@
 - `ShapePopover.svelte`: `stitchLenMm` commits on `change` like `widthMm`.
 - `EmbroideryField.svelte`: `onPopAction` handles `toColumn`/`toRun` through `convertOpenShape` (error → `shapeEditError`); `anchorFloor`/`anchorFloorMessage`, `drawAuthoredNodes`' `open`, and every `hitAuthored(..., closed)` use `isOpenShape`; the run message is `A line needs at least 2 points.`.
 
-- [ ] Steps: failing spec tests (run rows; defaults read off a stubbed `EMB`; patches; a column's `toRun` row; the short note) → implement → spec + suite to a log → `npx vite build` EXIT 0 → commit `Popover: a line shows its passes and stitch length, and a line and a column convert into each other`.
+- [x] Steps: failing spec tests (run rows; defaults read off a stubbed `EMB`; patches; a column's `toRun` row; the short note) → implement → spec + suite to a log → `npx vite build` EXIT 0 → commit `Popover: a line shows its passes and stitch length, and a line and a column convert into each other`.
 
 ---
 
