@@ -659,60 +659,92 @@ def _sew_order(blocks):
     return seen
 
 
+def _one_colour(shapes, letters):
+    from digitizer_core.regions import Region
+    from digitizer_core.stage5_overlap import PlannedRegion
+    out = []
+    for sid, poly in shapes.items():
+        meta = {"layer": 0}
+        if sid in letters:
+            meta["text_candidate"] = True
+        reg = Region(shape_id=sid, polygon=poly, thread_index=0, thread_number="0134",
+                     area_mm2=poly.area, source="test", meta=meta)
+        out.append(PlannedRegion(region=reg, polygon=poly, sew_index=0))
+    return out
+
+
+def _off_then_stubbed_lane(monkeypatch, shapes, letters, end_at):
+    """(OFF order, lane-ON order, letters the stub sewed). The stub stands
+    in for the Column lane: a run up the letter's middle that ENDS at
+    `end_at(off_order)` -- only where its exit lands matters to stage 7."""
+    import digitizer_core.stage7_sequence as S7
+    from digitizer_core.fabrics import fabric_for_garment
+
+    fabric = fabric_for_garment("left_chest")
+    off_blocks, _ = S7.sequence(_one_colour(shapes, letters), fabric,
+                                PipelineConfig(underlay=False))
+    off = _sew_order(off_blocks)
+    end = end_at(off)
+    calls = []
+
+    def fake_lane(poly, sid, **kw):
+        calls.append(sid)
+        cx, cy = poly.centroid.x, poly.centroid.y
+        return [stitches.StitchRun(points=[(cx, cy - 4), (cx, cy + 4), end],
+                                   kind=stitches.SATIN, shape_id=sid)], \
+            {"empty": False, "jumps": 0}
+
+    monkeypatch.setattr(S7, "lettering_columns_shape", fake_lane)
+    on_blocks, _ = S7.sequence(_one_colour(shapes, letters), fabric,
+                               PipelineConfig(underlay=False, lettering_columns=True))
+    assert any(r.points[-1] == end for b in on_blocks for r in b.runs
+               if r.shape_id in letters)
+    return off, _sew_order(on_blocks), calls
+
+
 def test_the_lane_keeps_the_off_paths_sew_order(monkeypatch):
     """golden_tee's flip blocker (#828): a Column letter ends somewhere else
     than the satin tier's letter did, and stage 7's nearest-neighbour pick
     followed it -- one non-letter shape jumped ahead of the next letter, and
     the next colour then sewed its four shapes in reverse. The lane changes
-    how a letter is BUILT, never the order the design is sewn in.
+    how a letter is BUILT, never where the shapes round it come in the order.
 
     One colour: a far-left bar sews first, the letter next to it, then two
     bars beyond the letter, one above-right and one below-right. The lane is
     stubbed to end its letter beside whichever of those two the OFF path
     sews LAST -- the case where nearest-neighbour from the lane's exit would
     take it first. The order must still be the OFF path's."""
-    import digitizer_core.stage7_sequence as S7
-    from digitizer_core.fabrics import fabric_for_garment
-    from digitizer_core.regions import Region
-    from digitizer_core.stage5_overlap import PlannedRegion
-
     shapes = {"A": _rect(-24, -5, -22, 5), "L": _rect(-1, -5, 1, 5),
               "B": _rect(6, -20, 8, -10), "C": _rect(6, 10, 8, 20)}
 
-    def planned():
-        out = []
-        for sid, poly in shapes.items():
-            meta = {"layer": 0}
-            if sid == "L":
-                meta["text_candidate"] = True
-            reg = Region(shape_id=sid, polygon=poly, thread_index=0, thread_number="0134",
-                         area_mm2=poly.area, source="test", meta=meta)
-            out.append(PlannedRegion(region=reg, polygon=poly, sew_index=0))
-        return out
+    def beside_the_last(off):
+        assert set(off) == set(shapes) and off.index("L") < len(off) - 2, off
+        c = shapes[off[-1]].centroid
+        return (c.x - 2.0, c.y)
 
-    fabric = fabric_for_garment("left_chest")
-    off_cfg = PipelineConfig(underlay=False)
-    off_blocks, _ = S7.sequence(planned(), fabric, off_cfg)
-    off = _sew_order(off_blocks)
-    assert set(off) == set(shapes) and off.index("L") < len(off) - 2, off
-    last = shapes[off[-1]].centroid
-
-    calls = []
-
-    def fake_lane(poly, sid, **kw):
-        calls.append(sid)
-        cx, cy = poly.centroid.x, poly.centroid.y
-        run = stitches.StitchRun(points=[(cx, cy - 4), (cx, cy + 4), (last.x - 2.0, last.y)],
-                                 kind=stitches.SATIN, shape_id=sid)
-        return [run], {"empty": False, "jumps": 0}
-
-    monkeypatch.setattr(S7, "lettering_columns_shape", fake_lane)
-    on_cfg = PipelineConfig(underlay=False, lettering_columns=True)
-    on_blocks, _ = S7.sequence(planned(), fabric, on_cfg)
+    off, on, calls = _off_then_stubbed_lane(monkeypatch, shapes, {"L"}, beside_the_last)
     assert calls == ["L"]
-    assert any(r.shape_id == "L" and r.points[-1] == (last.x - 2.0, last.y)
-               for b in on_blocks for r in b.runs)
-    assert _sew_order(on_blocks) == off
+    assert on == off
+
+
+def test_letters_sewn_back_to_back_keep_nearest_neighbour_among_themselves(monkeypatch):
+    """The other half of the rule: letters the OFF path sews back to back (a
+    span -- a word) stay back to back, but the lane may reorder THEM, which
+    is its own trim saving on a word (enthusiast: 7 trims, 8 in strict OFF
+    order). A bar, three letters in a row, a bar; the stub ends every letter
+    on the span's far letter, so the lane sews it second."""
+    shapes = {"A": _rect(-24, -5, -22, 5), "L1": _rect(-1, -5, 1, 5),
+              "L2": _rect(4, -5, 6, 5), "L3": _rect(9, -5, 11, 5),
+              "B": _rect(30, -5, 32, 5)}
+
+    def on_l3(off):
+        assert off == ["A", "L1", "L2", "L3", "B"], off
+        c = shapes["L3"].centroid
+        return (c.x, c.y)
+
+    off, on, calls = _off_then_stubbed_lane(monkeypatch, shapes, {"L1", "L2", "L3"}, on_l3)
+    assert sorted(calls) == ["L1", "L2", "L3"]
+    assert on == ["A", "L1", "L3", "L2", "B"]
 
 
 # ------------------------------------------- pitch: the satin tier's, as sewn
