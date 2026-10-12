@@ -600,10 +600,17 @@ def _hairline_ground(regions: list[Region], hairline: dict,
     for h in strands:
         reach = _HAIR_BLOB_FACTOR * machine.thread_profile(
             bw.get(h.thread_index, cfg.thread_wt)).hairline_max_width_mm
-        mine = [grounds[int(i)] for i in tree.query(h.polygon.buffer(_HAIR_TOUCH_MM))]
+        # The per-strand gate (step 3): a shape with thick branches sews them
+        # on the ladder, and the ground goes under the HAIRLINE parts only
+        # (`measure`'s `hair_geom`). A shape that is hairline throughout has
+        # none, and its whole polygon is the strand, as in step 2.
+        hm = hairline[h.shape_id]
+        hg = hm.get("hair_geom") if isinstance(hm, dict) else None
+        hp = h.polygon if hg is None or hg.is_empty else hg
+        mine = [grounds[int(i)] for i in tree.query(hp.buffer(_HAIR_TOUCH_MM))]
         mine = [g for g in mine
                 if g.meta["layer"] < h.meta["layer"]
-                and g.polygon.distance(h.polygon) <= _HAIR_TOUCH_MM]
+                and g.polygon.distance(hp) <= _HAIR_TOUCH_MM]
         if not mine:
             continue
         closed = unary_union([g.polygon for g in mine]).buffer(reach).buffer(-reach)
@@ -614,7 +621,7 @@ def _hairline_ground(regions: list[Region], hairline: dict,
         crumb_ids = {g.shape_id for g in mine
                      if g.shape_id in frags
                      or (not is_fill(g) and g.polygon.area <= math.pi * reach * reach)}
-        zone = unary_union([h.polygon.buffer(_HAIR_TOUCH_MM),
+        zone = unary_union([hp.buffer(_HAIR_TOUCH_MM),
                             *[g.polygon for g in mine if g.shape_id in crumb_ids]]
                            ).intersection(closed)
         # The closing reads every ground. The zone is split among every

@@ -36,6 +36,12 @@
    "basis": "docs/hairline-prototype-2026-10-12.md"
   },
   {
+   "path": "digitizer/testdata/synthetic/hair_fine.png",
+   "status": "synthetic",
+   "source": "Drawn by digitizer/tools/draw_hair_fixtures.py (hair_strands' curves redrawn 0.25-0.35 mm wide over the same oval; no photograph, no person)",
+   "basis": "docs/hairline-strand-gate-2026-10-12.md"
+  },
+  {
    "path": "digitizer/testdata/synthetic/thin_script.png",
    "status": "synthetic",
    "source": "Drawn by digitizer/tools/draw_hair_fixtures.py (a cycloid script line; no client art)",

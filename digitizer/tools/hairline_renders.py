@@ -1,6 +1,6 @@
 """Hairline tier: OFF vs ON at 40 and 60 wt, rendered and measured (2026-10-12).
 
-    python -m tools.hairline_renders [--out ../docs/renders/hairline-ground-2026-10-12]
+    python -m tools.hairline_renders [--out ../docs/renders/hairline-strand-gate-2026-10-12]
 
 For each synthetic fixture (`tools/draw_hair_fixtures.py`) and each arm —
 `off40` (today), `on40` (`cfg.hairline` at 40 wt), `on60` (at 60 wt),
@@ -80,7 +80,8 @@ def drawn_width_mm(path: Path) -> float:
 def _drawn_median(file: str) -> float:
     """Length-weighted median of the widths the fixture's strokes were drawn
     at (fixture mm) — the truth a width read is checked against."""
-    strokes = fx.hair_strands() if file.startswith("hair") else fx.script_strokes()
+    strokes = (fx.hair_strands(fine=file.startswith("hair_fine")) if file.startswith("hair")
+               else fx.script_strokes())
     lw = sorted((w, float(np.sum(np.hypot(*np.diff(np.asarray(p), axis=0).T))))
                 for p, w in strokes)
     total = sum(length for _w, length in lw)
@@ -95,13 +96,14 @@ def _drawn_median(file: str) -> float:
 FIXTURES = {
     "hair_strands": dict(file="hair_strands.png",
                          drawn=len(fx.hair_strands()), zoom=(12, 30, 30, 46)),
+    "hair_fine": dict(file="hair_fine.png",
+                      drawn=len(fx.hair_strands(fine=True)), zoom=(12, 30, 30, 46)),
     "thin_script": dict(file="thin_script.png",
                         drawn=len(fx.script_strokes()), zoom=(8, 10, 32, 24)),
 }
 # arm -> (cfg.hairline, cfg.thread_wt, cfg.hairline_over_ground)
 ARMS = {"off40": (False, 40, False), "on40": (True, 40, False),
-        "on40g": (True, 40, True), "on60": (True, 60, False),
-        "on60g": (True, 60, True)}
+        "on60": (True, 60, False), "on60g": (True, 60, True)}
 RENDER_PX_PER_MM = 12.0
 ZOOM_PX_PER_MM = 30.0
 
@@ -278,7 +280,7 @@ def measure(plan, drawn: int, base_skin_md5: str | None) -> dict:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out", default=str(ROOT.parent / "docs" / "renders"
-                                         / "hairline-ground-2026-10-12"))
+                                         / "hairline-strand-gate-2026-10-12"))
     args = ap.parse_args(argv)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -324,6 +326,18 @@ def main(argv=None) -> int:
                                       else round(m["width_source_mm"], 3)),
                         "gate_mm": lim,
                         "margin_mm": round(lim - m["width_mm"], 3)}
+                    # Step 3: the gate is per branch. Branches sewn as runs vs
+                    # branches left to the ladder, the area the ladder gets,
+                    # and the margin under the limit of the WIDEST branch sewn
+                    # as a run (the median margin above can hide one at the line).
+                    hw = [e["w"] for e in m["hair_edges"]]
+                    row["largest_hairline"].update({
+                        "hair_branches": len(hw),
+                        "thick_branches": len(m["thick_edges"]),
+                        "rest_mm2": (0.0 if m.get("rest") is None
+                                     else round(m["rest"].area, 1)),
+                        "widest_run_branch_mm": round(max(hw), 3) if hw else None,
+                        "margin_widest_mm": round(lim - max(hw), 3) if hw else None})
             design = plan_to_design(plan, name=f"{key} {arm}")
             row["coverage"] = round(stitchviz.coverage(design), 4)
             tw = machine.thread_profile(wt).width_mm
@@ -343,24 +357,73 @@ def main(argv=None) -> int:
                 row.pop("_skin_full")
             print(f"{key}/{arm}: " + json.dumps(row))
     (out / "table.json").write_text(json.dumps(table, indent=1) + "\n", encoding="utf-8")
+    (out / "table.md").write_text(markdown_table(table), encoding="utf-8")
     compose(out)
     print("wrote", out)
     return 0
 
 
+def markdown_table(table: dict) -> str:
+    """One markdown table per fixture from `table.json`'s rows: the columns
+    the strand-gate doc quotes. Every figure is a property of the FILE."""
+    arms = list(ARMS)
+    out = []
+    for key in FIXTURES:
+        rows = {a: table.get(f"{key}/{a}") for a in arms}
+        if any(r is None for r in rows.values()):
+            continue
+
+        def cell(a, fn):
+            try:
+                v = fn(rows[a])
+            except (KeyError, TypeError):
+                return "-"
+            return "-" if v is None else str(v)
+        lh = lambda r: r["largest_hairline"]       # noqa: E731
+        spec = [
+            ("stitches", lambda r: f"{r['stitches']:,}"),
+            ("thread laid, whole design (m)", lambda r: r["thread_m"]),
+            ("hairline shapes / strands sewn / dropped",
+             lambda r: "{} / {} / {}".format(*[r["hairline_warning"][k]
+                                               for k in ("shapes", "strands", "dropped")])),
+            ("branches: run / ladder",
+             lambda r: f"{lh(r)['hair_branches']} / {lh(r)['thick_branches']}"),
+            ("area left to the ladder (mm2)", lambda r: lh(r)["rest_mm2"]),
+            ("bare fabric, total (mm2)", lambda r: r["bare_mm2"]),
+            ("bare fabric, new vs OFF, on the ground (mm2)", lambda r: r["bare_new_on_ground_mm2"]),
+            ("skin fill + underlay stitches", lambda r: f"{r['skin_fill_stitches']:,}"),
+            ("trims / jumps", lambda r: f"{r['trims']} / {r['jumps']}"),
+            ("longest jump (mm)", lambda r: r["longest_jump_mm"]),
+            ("dark stitches < 1.0 mm (excl. lock legs)", lambda r: r["under_1mm_dark"]),
+            ("gate: median read (limit) -> margin (mm)",
+             lambda r: "{} ({}) -> {}".format(
+                 round(lh(r)["gate_mm"] - lh(r)["margin_mm"], 3), lh(r)["gate_mm"],
+                 lh(r)["margin_mm"])),
+            ("margin of the widest run branch (mm)", lambda r: lh(r)["margin_widest_mm"]),
+        ]
+        out.append(f"### {key} (drawn median {rows['off40']['strand_drawn_median_mm']} mm, "
+                   f"design {rows['off40']['design_width_mm']} mm wide)\n")
+        out.append("| | " + " | ".join(arms) + " |")
+        out.append("|---|" + "---|" * len(arms))
+        for label, fn in spec:
+            out.append(f"| {label} | " + " | ".join(cell(a, fn) for a in arms) + " |")
+        out.append("")
+    return "\n".join(out) + "\n"
+
+
 def compose(out: Path) -> None:
     """One labelled strip for the one-minute read: today, the tier, the tier
     over its ground — the hair zoom and the whole design, side by side."""
-    for key, arms in (("hair_strands", ("off40", "on60", "on60g")),
-                      ("hair_strands_full", ("off40", "on60", "on60g"))):
-        stem = "hair_strands"
+    for stem, full in (("hair_strands", False), ("hair_strands", True),
+                       ("hair_fine", False), ("hair_fine", True)):
+        arms = ("off40", "on60", "on60g")
         tiles = []
         for arm in arms:
-            name = f"{stem}_{arm}_zoom.jpg" if key == stem else f"{stem}_{arm}.jpg"
+            name = f"{stem}_{arm}.jpg" if full else f"{stem}_{arm}_zoom.jpg"
             img = cv2.imread(str(out / name))
             if img is None:
                 break
-            if key != stem:
+            if full:
                 img = cv2.resize(img, (img.shape[1] // 2, img.shape[0] // 2),
                                  interpolation=cv2.INTER_AREA)
             label = {"off40": "today (OFF)", "on60": "hairline 60 wt",
@@ -372,7 +435,7 @@ def compose(out: Path) -> None:
         else:
             sep = np.full((tiles[0].shape[0], 6, 3), 255, np.uint8)
             strip = np.hstack([tiles[0], sep, tiles[1], sep, tiles[2]])
-            cv2.imwrite(str(out / f"compare_{'zoom' if key == stem else 'full'}.jpg"),
+            cv2.imwrite(str(out / f"compare_{stem}_{'full' if full else 'zoom'}.jpg"),
                         strip, [cv2.IMWRITE_JPEG_QUALITY, 88])
 
 
