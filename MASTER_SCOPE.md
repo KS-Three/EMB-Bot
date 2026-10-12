@@ -510,9 +510,18 @@ about the facts.
    fan is fixed too — it pivots on the slant's near corner and the slant face
    takes the rails' reach: Becker A unsewn 6.7 → **1.1** mm² (shipped 1.3),
    and the one-pixel spill guard has teeth under the lane again (PR #844).
-   **Flip blockers left** (item 31's sitting is still his): golden_tee's sew
-   order (the lane swaps neighbouring shapes, so another thread lies on top —
-   the likely source of its 50 mm +0.029 over shipped); and letter reach —
+   **Flip blockers left** (item 31's sitting is still his): golden_tee's 50 mm
+   +0.029 matched `lost_frac` over shipped — **blocker 2 re-attributed to the
+   word tagger's size floor**: it comes from `cfg.lettering_words` alone, not
+   sew order. At 50 mm the tagger tags no word, so 7 shapes shipped's
+   `_lettering_groups` groups lose `lettering_group` (and, `suspected`, the
+   house angle: `word_groups()` hands `[]` to `set_lettering_house_angle`).
+   Words ON, lane OFF sews 5,984 stitches, the lane's #837 number (shipped
+   5,922), with shape sequence and 8-thread block order identical to shipped;
+   it also differs at 80/100 mm (8,985 vs 8,950; 12,015 vs 11,985). A sew-order
+   fix cannot move the 50 mm number *(measured 2026-10-12 — director worker
+   d-teeorder2, dump in the director scratchpad; lane `claude/golden-tee-order`
+   open)*; and letter reach —
    Fremont's and golden_tee's letters stand ~0.06–0.07 mm inside shipped's
    reach, every fanned slant face 0.19 mm outside its traced edge, both
    sew-out questions (gate 1). Both flags OFF; nothing sewn. *(measured
