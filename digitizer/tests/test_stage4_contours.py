@@ -7,8 +7,8 @@ sliver) unions it with a neighbour its 3x3 halo touches — 8-adjacent, so
 still one component, which `findContours` traces as one outer border.
 
 Measured 2026-10-12 (`tools/stage4_contours.py`, PR body): 0 multi-island
-masks over every corpus_scorecard FIXTURE x MATRIX row at the default colour
-count and at the Studio's 6. These tests pin the two halves of that: the
+masks of 7,106 over every corpus_scorecard FIXTURE (26) x MATRIX row (2) at
+the default colour count and at the Studio's 6 — 104 generations. These tests pin the two halves of that: the
 latent drop is real for a mask that DOES carry two islands (and the census
 sees it), and the stage-3 invariant that keeps it latent holds where it is
 easiest to break — a sliver touching its absorber only at a corner — and on
