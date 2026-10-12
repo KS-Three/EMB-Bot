@@ -1,0 +1,6 @@
+off         one-pixel lost_frac 0.2415  shift (+0.3, +0.2)
+on_old      one-pixel lost_frac 0.1538  shift (+0.3, +0.2)
+on_new      one-pixel lost_frac 0.3126  shift (+0.3, +0.2)
+off_new     one-pixel lost_frac 0.2415  shift (+0.3, +0.2)
+on_shipped  one-pixel lost_frac 0.1365  shift (+0.3, +0.2)
+off_new == off (byte-identical stitches): True

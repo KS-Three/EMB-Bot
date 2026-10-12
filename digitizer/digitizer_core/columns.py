@@ -219,6 +219,38 @@ def _inset_rails(stations, inset_mm: float) -> tuple[list, list]:
     return a_pts, b_pts
 
 
+def _reach_fan_faces(stations, a_pts, b_pts, reach_mm: float) -> tuple[list, list]:
+    """The slant cross of a fanned end (`outline_cut._fan_ends`: the last
+    cross lies ON the slant, its pivot shared with the cross before it)
+    moved `reach_mm` outward, square to itself -- away from the cross
+    before it. The rails stand `pull - RAIL_REACH_INSET_MM` off the outline
+    after the push, but a cross lying along an edge is pushed only along
+    that edge, so the slant face stood on the traced outline itself, short
+    of where the satin tier's thread reaches there: the Becker A's feet
+    read as a strip of unsewn ink (2.65 mm2 against shipped's 1.3 on that
+    letter, 2026-10-11, `docs/renders/columns-slant-fan-2026-10-11/`).
+    The face gets the rails' own net reach, no constant of its own. Ends
+    that are not fanned are returned as they are."""
+    a_pts, b_pts = list(a_pts), list(b_pts)
+    if len(stations) < 2 or abs(reach_mm) < 1e-12:
+        return a_pts, b_pts
+    for i, j in ((len(stations) - 1, len(stations) - 2), (0, 1)):
+        if not ({tuple(p) for p in stations[i]} & {tuple(p) for p in stations[j]}):
+            continue                                    # no shared pivot: not a fan end
+        a, b = a_pts[i], b_pts[i]
+        L = math.dist(a, b)
+        if L < 1e-9:
+            continue
+        nx, ny = -(b[1] - a[1]) / L, (b[0] - a[0]) / L
+        mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
+        ox, oy = (a_pts[j][0] + b_pts[j][0]) / 2, (a_pts[j][1] + b_pts[j][1]) / 2
+        if (mx - ox) * nx + (my - oy) * ny < 0:
+            nx, ny = -nx, -ny
+        a_pts[i] = (a[0] + nx * reach_mm, a[1] + ny * reach_mm)
+        b_pts[i] = (b[0] + nx * reach_mm, b[1] + ny * reach_mm)
+    return a_pts, b_pts
+
+
 def _tuck_stations(col: Column, end: int, through: Polygon, tuck_mm: float,
                    max_reach_mm: float, pitch_mm: float, poly_link):
     """Stations continuing `col` past the given end (0 or -1) into the piece
@@ -578,6 +610,9 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         a_pts, b_pts = _inset_rails(col.stations, RAIL_REACH_INSET_MM)
         if pull_mm > 0:
             a_pts, b_pts = _push_rails(a_pts, b_pts, poly, pull_mm, pull_floor_mm)
+        if col.kind == "straight":
+            a_pts, b_pts = _reach_fan_faces(col.stations, a_pts, b_pts,
+                                            pull_mm - RAIL_REACH_INSET_MM)
         # Short stitches on the inside of a bend (`satinplay.js` pullShort;
         # the engine's own guard): where a rail's penetrations bunch up
         # under SATIN_SHORT_STITCH_AT_MM -- the inner rail of an S's curl is
