@@ -13,9 +13,10 @@
     duplicateShape, nextShapeIds,
     resolveCutOuts, manualShapeName, withCutOut,
     PX_PER_MM, COLUMN_DEFAULT_MM, isColumn, columnIssues, shapeProblems, shapeRing,
+    isRun, runIssues, runPath, nearestSegmentIndex, CLOSE_RADIUS_PX,
   } from "../lib/manualShapes.js";
-  import { SATIN_CUTOUT_NOTE, columnWidthNote } from "../lib/shapePopover.js";
-  import { columnWidthMm, withColumnWidthMm, refitShapesPatch, newColumnWidthPx } from "../lib/fieldNodeEdit.js";
+  import { SATIN_CUTOUT_NOTE, columnWidthNote, runRows } from "../lib/shapePopover.js";
+  import { columnWidthMm, withColumnWidthMm, refitShapesPatch, newColumnWidthPx, convertOpenShape } from "../lib/fieldNodeEdit.js";
   import { traceFitRect } from "../lib/manualTrace.js";
 
   // Node colours, straight vs curved. Same vocabulary the Ember demo uses
@@ -196,10 +197,15 @@
   // the width a new column gets — so "folds over itself" shows while drawing,
   // and two points are enough.
   $: draftColumn = drawMode === "column" ? newColumn("", draft, draftCurves, fit, garment, shapes) : null;
+  // Line mode (plan 3): an open path like a column's spine, judged as a line —
+  // two points, a mis-click length floor, and crossing itself is fine.
+  $: openMode = drawMode === "column" || drawMode === "run";
   $: draftIssues = draftColumn
     ? (draft.length >= 2 ? columnIssues(draftColumn) : [])
-    : (draft.length >= 3 ? shapeIssues(draftFlat) : []);
-  $: canFinish = draft.length >= (draftColumn ? 2 : 3) && draftIssues.length === 0;
+    : drawMode === "run"
+      ? (draft.length >= 2 ? runIssues({ points: draft, curves: draftCurves }) : [])
+      : (draft.length >= 3 ? shapeIssues(draftFlat) : []);
+  $: canFinish = draft.length >= (openMode ? 2 : 3) && draftIssues.length === 0;
   $: draftRing = draftColumn && draft.length >= 2 ? shapeRing(draftColumn) : [];
 
   // A new column record: no stitchType, no angleDeg (the rails are the
@@ -293,6 +299,17 @@
       selectedShapeId = col.id;
       return;
     }
+    if (drawMode === "run") {
+      // A line: no stitchType, no width, no passes/stitch length stored — the
+      // engine's bean stands until the author changes it (ruling 6).
+      const run = { id: nextShapeId(shapes), kind: "run", points: draft, curves: draftCurves, colorRgb: defaultManualShape("").colorRgb };
+      if (runIssues(run).length) return;
+      patch({ shapes: [...shapes, run] });
+      draft = [];
+      draftCurves = {};
+      selectedShapeId = run.id;
+      return;
+    }
     if (!isValidShape(flattenShape(draft, draftCurves, true))) return;
     const base = { ...defaultManualShape(nextShapeId(shapes)), points: draft, curves: draftCurves };
     // Hole mode: born marked. Same validity gate as any shape (a cut-out IS a
@@ -366,7 +383,7 @@
         return;
       }
     }
-    if (drawMode !== "column" && draft.length >= 2 && isNearStart(draft, pt.x, pt.y)) {
+    if (drawMode !== "column" && drawMode !== "run" && draft.length >= 2 && isNearStart(draft, pt.x, pt.y)) {
       finishShape();
       return;
     }
@@ -407,7 +424,7 @@
     if (draft.length === 0) return;
     e.preventDefault();
     const pt = canvasPointFromEvent(e);
-    if (drawMode !== "column" && draft.length >= 2 && isNearStart(draft, pt.x, pt.y)) {
+    if (drawMode !== "column" && drawMode !== "run" && draft.length >= 2 && isNearStart(draft, pt.x, pt.y)) {
       finishShape();
       return;
     }
@@ -594,6 +611,12 @@
   function hitTestShapeAt(x, y) {
     for (let i = shapes.length - 1; i >= 0; i--) {
       const s = shapes[i];
+      // A line's ring is a hairline: hit it within the closing radius of its path.
+      if (isRun(s)) {
+        const near = nearestSegmentIndex(s.points, s.curves, x, y, false);
+        if (near && near.index >= 0 && near.dist <= CLOSE_RADIUS_PX) return s.id;
+        continue;
+      }
       // shapeRing: a closed shape's flattened ring, a column's rail ring.
       if (!pointInShape(shapeRing(s), x, y)) continue;
       const holes = cut.holesOf[s.id] || [];
@@ -765,6 +788,37 @@
     }
     widthError = "";
     patch(held);
+  }
+
+  // ---- A line's passes and stitch length, and run <-> column ---------------
+  // The rows are the popover's (runRows), so the two surfaces read one value.
+  $: lineRows = selectedShape && isRun(selectedShape) ? runRows(selectedShape, fit) : null;
+
+  function onStitchLenChange(e) {
+    if (!selectedShape || !isRun(selectedShape)) return;
+    const raw = e.currentTarget.value.trim();
+    if (raw === "") {
+      // blank: back to the engine's default — the key goes, never a null
+      const { stitchLenMm, ...rest } = selectedShape;
+      patch({ shapes: shapes.map((s) => (s.id === selectedShape.id ? rest : s)) });
+      return;
+    }
+    const mm = parseFloat(raw);
+    if (!(mm > 0)) { e.currentTarget.value = lineRows[1].value == null ? "" : lineRows[1].value; return; }
+    updateShape(selectedShape.id, { stitchLenMm: Math.max(0.5, mm) });
+  }
+
+  // Ruling 8: the same open spine, so conversion swaps the fields — a new
+  // column 4.0 mm at the element's fit (or the fit it will land in, or the
+  // nominal scale), held still by the re-fit rule when there is a fit.
+  let convertError = "";
+  $: { selectedShapeId; convertError = ""; }
+  function convertSelected(to) {
+    if (!selectedShape) return;
+    const p = convertOpenShape(element, fit && fit.mmPerPx > 0 ? fit : null, selectedShape.id, to, garment);
+    if (p.error) { convertError = p.error; return; }
+    convertError = "";
+    patch(p);
   }
 
   function onAngleInput(e) {
@@ -968,6 +1022,26 @@
     }
   }
 
+  // A line: its path stroked in its colour (what sews is a run along it), and
+  // the label at the path's middle point, which is always on the line.
+  function drawLine(ctx, s, strokeStyle, lineWidth, labelled) {
+    const path = runPath(s);
+    if (path.length < 2) return;
+    ctx.beginPath();
+    tracePath(ctx, s.points, s.curves, false);
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+    if (labelled) {
+      const i = Math.floor((path.length - 1) / 2);
+      const p = path[i], q = path[Math.min(i + 1, path.length - 1)];
+      ctx.fillStyle = "#111";
+      ctx.font = "11px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("LINE", (p.x + q.x) / 2, (p.y + q.y) / 2 - 6);
+    }
+  }
+
   // The curves map to actually draw with: the committed map, with the
   // in-progress drag (if any) applied on top — so the curve visibly follows
   // the cursor before release.
@@ -1034,9 +1108,10 @@
       const pts = s.points;
       const liveCrv = s.curves;
       const column = isColumn(s);
+      const line = isRun(s);
       // A column is judged and drawn as the rail ring the engine sews; a
       // closed shape as its own flattened ring, as it always was.
-      if (column ? shapeProblems(s).length : !isValidShape(flattenShape(pts, liveCrv, true))) continue;
+      if (column || line ? shapeProblems(s).length : !isValidShape(flattenShape(pts, liveCrv, true))) continue;
       const [r, g, b] = s.colorRgb || [20, 20, 20];
       const isSel = s.id === selectedId;
       // Once something is selected, every OTHER shape de-emphasizes to the
@@ -1053,10 +1128,14 @@
       const a = alphaFor(s.id);
       const strokeStyle = isSel ? `rgba(79,70,229,${a})` : `rgba(${r},${g},${b},${a})`;
       const lineWidth = isSel ? 3 : (dimmed ? 1 : 1.5);
-      if (s.cutOut) {
+      if (s.cutOut && !line) {
         // No fill and no stitch-type label: it sews nothing, and the dashed
         // outline plus the list's "Cut out" already say what it is.
         drawCutOut(ctx, pts, liveCrv, strokeStyle, lineWidth);
+        continue;
+      }
+      if (line) {
+        drawLine(ctx, s, isSel ? strokeStyle : `rgba(${r},${g},${b},${(dimmed ? 0.35 : 1) * a})`, isSel ? 3 : 2.5, !dimmed);
         continue;
       }
       const fillStyle = `rgba(${r},${g},${b},${(dimmed ? 0.18 : 0.55) * a})`;
@@ -1178,7 +1257,7 @@
        language as the hoop canvas's View strip (theme.css .viewseg): one
        bordered strip, hairline-separated, the lit segment filled ink. -->
   <div class="mp-mode" role="group" aria-label="Drawing mode">
-    {#each [["shape", "Shape"], ["hole", "Hole"], ["column", "Column"]] as [val, label]}
+    {#each [["shape", "Shape"], ["hole", "Hole"], ["column", "Column"], ["run", "Line"]] as [val, label]}
       <button
         type="button"
         class="mp-mode-btn"
@@ -1192,6 +1271,8 @@
     <p class="mp-modehint">Draw inside a shape — it cuts that shape.</p>
   {:else if drawMode === "column"}
     <p class="mp-modehint">Click along the middle of the stroke, then double-click to finish.</p>
+  {:else if drawMode === "run"}
+    <p class="mp-modehint">Click along the line, then double-click to finish.</p>
   {/if}
 
   <div class="mp-tools">
@@ -1317,6 +1398,49 @@
       </label>
       {#if widthNote}
         <p class="mp-cutnote mp-width-note" class:warn={widthNote.warn}>{widthNote.note}</p>
+      {/if}
+      <div class="mp-row">
+        <button type="button" class="mp-convert" on:click={() => convertSelected("run")}>Make it a line</button>
+      </div>
+      {:else if isRun(selectedShape)}
+      <!-- A line: colour, passes and stitch length (the popover's own rows,
+           runRows), and the way to a column. No stitch type, angle or cut out. -->
+      <div class="mp-row">
+        <span class="mp-label">Color</span>
+        <ThreadPicker compact rgb={selectedShape.colorRgb} on:pick={(e) => updateShape(selectedShape.id, { colorRgb: e.detail })} />
+      </div>
+      <div class="mp-row mp-passes">
+        <span class="mp-label">Passes</span>
+        <div class="mp-btns">
+          {#each lineRows[0].options as o (o.value)}
+            <button
+              type="button"
+              class="mp-btn"
+              class:active={lineRows[0].value === o.value}
+              on:click={() => updateShape(selectedShape.id, { passes: Number(o.value) })}
+            >{o.label}</button>
+          {/each}
+        </div>
+      </div>
+      <label class="mp-row mp-stitchlen">
+        <span class="mp-label">Stitch length</span>
+        <input
+          type="number"
+          step="0.1"
+          min="0.5"
+          value={lineRows[1].value == null ? "" : lineRows[1].value}
+          on:change={onStitchLenChange}
+        />
+        <span class="mp-deg">mm</span>
+      </label>
+      {#if lineRows[1].note}
+        <p class="mp-cutnote warn">{lineRows[1].note}</p>
+      {/if}
+      <div class="mp-row">
+        <button type="button" class="mp-convert" on:click={() => convertSelected("column")}>Make it a column</button>
+      </div>
+      {#if convertError}
+        <p class="mp-cutnote warn">{convertError}</p>
       {/if}
       {:else}
       <div class="mp-row">

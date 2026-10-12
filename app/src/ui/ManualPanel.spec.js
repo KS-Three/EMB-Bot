@@ -1140,10 +1140,11 @@ function columnBtn(getByRole) {
 }
 
 describe("Column mode", () => {
-  test("the mode strip reads Shape | Hole | Column", () => {
+  test("the mode strip reads Shape | Hole | Column | Line", () => {
     const { getByRole } = renderColumnPanel();
     const labels = [...getByRole("group", { name: "Drawing mode" }).querySelectorAll("button")].map((b) => b.textContent.trim());
-    expect(labels).toEqual(["Shape", "Hole", "Column"]);
+    // plan 3 added Line (ruling 4's fourth mode)
+    expect(labels).toEqual(["Shape", "Hole", "Column", "Line"]);
   });
 
   test("its hint line says how to draw one", async () => {
@@ -1300,5 +1301,103 @@ describe("Column mode", () => {
     await drawTri(canvas);
     expect(patches).toHaveLength(1);
     expect("kind" in patches[0].patch.shapes[0]).toBe(false);
+  });
+});
+
+// ---- Line mode (open runs, plan 3 Task 5) ------------------------------------
+// A line is an open path that sews a running stitch. Line mode never selects
+// and never closes on the start point; double-click / Enter / Finish with two
+// points or more. Its assign box: Dim, Color, Passes, Stitch length and
+// "Make it a column"; a column's assign box gains "Make it a line".
+const LINE = (extra = {}) => ({
+  id: "s1", kind: "run", points: [{ x: 100, y: 100 }, { x: 400, y: 100 }], curves: {},
+  colorRgb: [30, 120, 30], ...extra,
+});
+function lineBtn(getByRole) {
+  return getByRole("group", { name: "Drawing mode" }).querySelectorAll("button")[3];
+}
+
+describe("Line mode", () => {
+  test("its hint line says how to draw one", async () => {
+    const { getByRole, container } = renderColumnPanel();
+    await fireEvent.click(lineBtn(getByRole));
+    expect(container.querySelector(".mp-modehint").textContent.trim()).toBe("Click along the line, then double-click to finish.");
+  });
+
+  test("two clicks and a double-click make a kind: run shape, with nothing else stored", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(lineBtn(getByRole));
+    await clickAt(canvas, 100, 100);
+    await clickAt(canvas, 300, 150);
+    await fireEvent.dblClick(canvas, { clientX: 300, clientY: 150, detail: 2 });
+    expect(patches).toHaveLength(1);
+    const s = patches[0].patch.shapes[0];
+    expect(s.kind).toBe("run");
+    expect(s.points).toEqual([{ x: 100, y: 100 }, { x: 300, y: 150 }]);
+    for (const k of ["stitchType", "angleDeg", "widthPx", "passes", "stitchLenMm"]) expect(k in s).toBe(false);
+    expect(lineBtn(getByRole).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  test("a click back near the start adds a point instead of finishing", async () => {
+    const { canvas, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(lineBtn(getByRole));
+    await clickAt(canvas, 100, 100);
+    await clickAt(canvas, 300, 100);
+    await clickAt(canvas, 300, 250);
+    await clickAt(canvas, 102, 102);
+    expect(patches).toHaveLength(0);
+    await fireEvent.keyDown(canvas, { key: "Enter" });
+    expect(patches[0].patch.shapes[0].points).toHaveLength(4);
+  });
+
+  test("a click on a finished shape in Line mode places a point, it does not select", async () => {
+    const { canvas, getByRole, patches, container } = renderColumnPanel([COL()]);
+    await fireEvent.click(lineBtn(getByRole));
+    await clickAt(canvas, 250, 100);
+    expect(container.querySelector(".mp-assign")).toBeNull();
+    await clickAt(canvas, 250, 300);
+    await fireEvent.keyDown(canvas, { key: "Enter" });
+    expect(patches[0].patch.shapes[1].kind).toBe("run");
+  });
+
+  test("list row and assign box: Line, Color, Passes, Stitch length, Make it a column — no stitch type, width or cut out", async () => {
+    globalThis.EMB = { ...(globalThis.EMB || {}), LETTERING_GUARDS: { BEAN_PASSES: 3, BEAN_STITCH_MM: 0.73 } };
+    const { getByText, container } = renderColumnPanel([LINE()]);
+    await fireEvent.click(getByText("Shape 1 · Line", { selector: ".mp-shapename" }));
+    const box = container.querySelector(".mp-assign");
+    expect(box.querySelector("h3").textContent).toBe("Shape 1 · Line");
+    const labels = [...box.querySelectorAll(".mp-label")].map((l) => l.textContent.trim());
+    expect(labels).toEqual(["Dim", "Color", "Passes", "Stitch length"]);
+    const lit = box.querySelector(".mp-passes .mp-btn.active");
+    expect(lit.textContent.trim()).toBe("Bean (3 passes)");
+    expect(box.querySelector(".mp-stitchlen input").value).toBe("0.73");
+    expect([...box.querySelectorAll("button")].some((b) => b.textContent.trim() === "Make it a column")).toBe(true);
+    expect(box.querySelector(".mp-width")).toBeNull();
+  });
+
+  test("Passes and Stitch length write the record", async () => {
+    const { getByText, container, patches } = renderColumnPanel([LINE()]);
+    await fireEvent.click(getByText("Shape 1 · Line", { selector: ".mp-shapename" }));
+    await fireEvent.click(getByText("Single run"));
+    expect(patches.at(-1).patch.shapes[0].passes).toBe(1);
+    const input = container.querySelector(".mp-stitchlen input");
+    input.value = "1.2";
+    await fireEvent.change(input);
+    expect(patches.at(-1).patch.shapes[0].stitchLenMm).toBe(1.2);
+  });
+
+  test("Make it a column, then Make it a line: the spine is the one drawn", async () => {
+    const { getByText, patches } = renderColumnPanel([LINE({ curves: { 0: { x: 250, y: 160 } } })]);
+    await fireEvent.click(getByText("Shape 1 · Line", { selector: ".mp-shapename" }));
+    await fireEvent.click(getByText("Make it a column"));
+    const col = patches.at(-1).patch.shapes[0];
+    expect(col.kind).toBe("column");
+    expect(col.points).toEqual(LINE().points);
+    expect(col.curves).toEqual({ 0: { x: 250, y: 160 } });
+    // no fit, no garment: the nominal scale, 4.0 mm = 24 px
+    expect(col.widthPx).toBeCloseTo(24, 9);
+    // the harness applies the patch: the same row is now a column, still selected
+    await fireEvent.click(getByText("Make it a line"));
+    expect(patches.at(-1).patch.shapes[0]).toEqual({ id: "s1", kind: "run", points: LINE().points, curves: { 0: { x: 250, y: 160 } }, colorRgb: [30, 120, 30] });
   });
 });

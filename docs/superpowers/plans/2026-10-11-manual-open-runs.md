@@ -132,7 +132,7 @@ Behaviour:
 3. Render: a run draws as its flattened path stroked in its colour (2.5 px, Dim applies), label `LINE` at the path's middle point when not dimmed. Hit-test: a run is hit within `CLOSE_RADIUS_PX` of its path (`nearestSegmentIndex(..., false)`), since its ring is a hairline.
 4. List row `Shape N · Line`. Assign box for a run: Dim, Color, Passes (two buttons), Stitch length (number, mm), `Make it a column` button. A column's assign box gains `Make it a line`. Conversion goes through `convertOpenShape` with the panel's `fit` and `garment`.
 
-- [ ] Steps: failing spec tests (four mode buttons; 2 clicks + double-click in Line mode → one `kind: "run"` shape, no `stitchType`/`widthPx`; near-start click adds a point; list row; assign rows; `Make it a column` → the shape becomes a column with the same points; existing Shape/Hole/Column tests unmodified) → implement → suite + `vite build` → commit `ManualPanel: Line mode — draw an open path, sew a run; convert to a column and back`.
+- [x] Steps: failing spec tests (four mode buttons; 2 clicks + double-click in Line mode → one `kind: "run"` shape, no `stitchType`/`widthPx`; near-start click adds a point; list row; assign rows; `Make it a column` → the shape becomes a column with the same points; existing Shape/Hole/Column tests unmodified) → implement → suite + `vite build` → commit `ManualPanel: Line mode — draw an open path, sew a run; convert to a column and back`.
 
 ---
 
