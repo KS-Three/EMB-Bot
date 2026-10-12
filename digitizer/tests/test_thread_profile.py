@@ -89,11 +89,12 @@ def test_shape_override_thread_wt_is_validated_and_stored():
 
     result = run_stages(TESTDATA / "ribbon_curve.png", PipelineConfig(target_width_mm=80.0))
     sid = result.regions[0].shape_id
-    regions, threads, _w = apply_shape_edits(list(result.regions), list(result.thread_indices),
-                                             [], {sid: {"thread_wt": 60}}, chart_for(PipelineConfig()))
+    threads = sorted({r.thread_index for r in result.regions})
+    regions, _t, _w = apply_shape_edits(list(result.regions), list(threads),
+                                        [], {sid: {"thread_wt": 60}}, chart_for(PipelineConfig()))
     assert next(r for r in regions if r.shape_id == sid).meta["thread_wt"] == 60
     with pytest.raises(ValueError, match="thread_wt"):
-        apply_shape_edits(list(result.regions), list(result.thread_indices),
+        apply_shape_edits(list(result.regions), list(threads),
                           [], {sid: {"thread_wt": 50}}, chart_for(PipelineConfig()))
 
 
@@ -101,7 +102,9 @@ def test_service_refuses_an_unknown_weight_at_submit():
     pytest.importorskip("fastapi")
     from fastapi import HTTPException
 
-    from digitizer_service import app as svc
+    import importlib
+
+    svc = importlib.import_module("digitizer_service.app")
 
     svc._validate_config_dict({"thread_wt": 60}, svc._CONFIG_FIELDS)
     with pytest.raises(HTTPException):

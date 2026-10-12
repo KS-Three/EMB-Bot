@@ -1670,8 +1670,8 @@ export const SILENT_WARNINGS = new Set([
   "PHOTO_PREP_APPLIED", "PHOTO_FACES_DETECTED", "PHOTO_BACKGROUND_REMOVED",
   "PHOTO_BLEND_DISSOLVED", "PHOTO_SHADE_DEMAND", "PHOTO_SAM2_SEGMENTED",
   // The hairline tier's bookkeeping (cfg.hairline, built OFF 2026-10-12):
-  // strands sewn and short ones dropped. Engine-side only, Kent's 2026-10-02
-  // "We shouldn't have to warn the user of anything".
+  // strands sewn and short ones dropped. Engine-side only, per Kent's
+  // 2026-10-02 no-warnings ruling.
   "HAIRLINE_TIER_SEWN",
 ]);
 

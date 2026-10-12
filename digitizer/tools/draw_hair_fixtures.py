@@ -131,7 +131,10 @@ def draw_script(path: Path) -> int:
     return len(strokes)
 
 
-def main() -> None:
+def main(argv=None) -> None:
+    import argparse
+
+    argparse.ArgumentParser(description=__doc__.split("\n\n")[0]).parse_args(argv)
     OUT.mkdir(parents=True, exist_ok=True)
     n = draw_hair(OUT / "hair_strands.png")
     m = draw_script(OUT / "thin_script.png")
