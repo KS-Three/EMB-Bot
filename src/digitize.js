@@ -1295,6 +1295,21 @@
         const area = Math.max(0, outerArea - holeArea), perim = polyPerim(poly) + holes.reduce((a, hh) => a + polyPerim(hh), 0);
         if (area <= 0 || perim <= 0) { dropOutline(poly); continue; }
         const widthMmFinal = (2 * area / perim) * mmPerPxFinal;
+        // A HAND-DRAWN LINE (manual-digitizing spec 2026-09-30 §2 and §7,
+        // ruling 1). Its `outer` is the path stroked at a hairline: a PROXY
+        // that gives the line a clickable outline, a bbox and a place in the
+        // sew order, and that nothing may sew. Three gates below keep it so —
+        // no underlay, no finishing outline, and runAlongPath as the top
+        // stitch in place of a fill of the proxy. Null for every shape that
+        // does not carry a path, which is every shape Image and Text mode
+        // produce, so those sew exactly as before.
+        const runSew = (shape.sewAs && shape.sewAs.kind === "run" && Array.isArray(shape.sewAs.path) && shape.sewAs.path.length >= 2) ? shape.sewAs : null;
+        if (runSew) {
+          // Too short to sew: the Python lane's lint floor (ruling 6).
+          let lenPx = 0;
+          for (let k = 1; k < runSew.path.length; k++) lenPx += Math.hypot(runSew.path[k].x - runSew.path[k - 1].x, runSew.path[k].y - runSew.path[k - 1].y);
+          if (!(lenPx * mmPerPxFinal >= fillmod.RUN_MIN_LOOP_MM)) { dropOutline(poly); continue; }
+        }
         // satin only for genuinely thin SOLID strokes; ring-with-hole goes to
         // even-odd fill (satinColumn can't represent holes)
         let thin = widthMmFinal <= satinMaxWidthMm && holes.length === 0;
@@ -1339,6 +1354,7 @@
             }
           } catch (e) { thin = false; }
         }
+        if (runSew) thin = false;   // a line is never a satin column
         const rings = [poly].concat(holes);
         // Per-SHAPE stitch angle: a fixed color override wins; otherwise this
         // shape's OWN PCA axis (outer+holes) so each element's stitches follow
@@ -1391,7 +1407,7 @@
         // `cover` is that ground: the true rings, or the pull-compensated ones
         // the fill is sewn to. `mustCut` is asked of every float of the shape.
         let clearFloat = null, cover = null, mustCut = null;
-        if (fillColumns && !thin) {
+        if (fillColumns && !thin && !runSew) {
           cover = rings;
           try { cover = fillPlan().fillRings; } catch (e) { cover = rings; }
           const crosses = fillmod.openGroundTest(cover);
@@ -1429,7 +1445,9 @@
           }
           return fillBegins;
         };
-        if (useUnderlay) {
+        // Gate 1 of a line's three: no underlay. Read as `thin`, the hairline
+        // proxy would take a center_run and turn a 3-pass bean into 4.
+        if (useUnderlay && !runSew) {
           if (fabric) {
             // Fabric mode: named underlay style per shape type.
             try {
@@ -1472,7 +1490,18 @@
         // trace the TRUE edge and are never offset.
         let pts = [];
         try {
-          if (thin) {
+          if (runSew) {
+            // Gate 2: the top stitch is the path itself. No pull compensation
+            // (a run has no width to lose) and no tie (this builder has none,
+            // ruling 7). Defaults are the corpus's bean (ruling 6), read off
+            // satinfont's LETTERING_GUARDS rather than re-declared.
+            const guards = satinfontmod.LETTERING_GUARDS;
+            const passes = runSew.passes === 1 || runSew.passes === 3 ? runSew.passes : guards.BEAN_PASSES;
+            const lenMm = typeof runSew.stitchLenMm === "number" && isFinite(runSew.stitchLenMm) && runSew.stitchLenMm > 0
+              ? runSew.stitchLenMm : guards.BEAN_STITCH_MM;
+            pts = fillmod.runAlongPath(runSew.path, { stitchLenPx: lenMm * pxPerFinalMm, passes });
+          }
+          else if (thin) {
             // Medial-axis satin (rail-based) — clean on curves/terminals; falls
             // back to the outline-split satin internally for tiny/degenerate rings.
             //
@@ -1504,9 +1533,10 @@
         // list, so dropping here discards its underlay with it. Column-only:
         // a shape with no `sewAs` never takes this branch.
         if (thin && column && !(pts && pts.length)) { nSatin--; dropOutline(poly); continue; }
-        runs.push(pts); runKinds.push(thin ? "satin" : "fill");
-        // finishing outline: running stitch along the outer edge (and holes)
-        if (o.outline) {
+        runs.push(pts); runKinds.push(runSew ? "run" : thin ? "satin" : "fill");
+        // finishing outline: running stitch along the outer edge (and holes).
+        // Gate 3 of a line's three: it would run-stitch AROUND the hairline.
+        if (o.outline && !runSew) {
           try {
             const edgeLen = Math.max(0.02, 1.8 * pxPerFinalMm); // loop-safety floor only, see PX_LOOP_EPS note above
             for (const ring of rings) { runs.push(fillmod.runningOutline(ring, { stitchLen: edgeLen })); runKinds.push("run"); }

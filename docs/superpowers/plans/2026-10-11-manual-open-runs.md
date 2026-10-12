@@ -53,8 +53,8 @@
 - `fill.RUN_MIN_LOOP_MM = 2.2` (exported on `EMB`).
 - `digitize.js`: a region shape with `sewAs: { kind: "run", path: [≥2 {x,y}], passes, stitchLenMm }` sews ONLY `runAlongPath(path, { stitchLenPx: stitchLenMm × pxPerFinalMm, passes })` as one run of span kind `"run"`. No underlay (with or without fabric), no finishing outline, no fill plan, no pull comp. `passes` not 1 or 3 → `BEAN_PASSES`; `stitchLenMm` not a finite number > 0 → `BEAN_STITCH_MM` (both from `satinfontmod.LETTERING_GUARDS`). A path shorter than `RUN_MIN_LOOP_MM` in final mm sews nothing and its outline is dropped.
 
-- [ ] **Step 1: pin today.** Before touching `src/`, write the no-run sha256 pin test (a design with a fill rectangle and a satin column built from `shapesToRegions`, `underlay: true`, fabric `jersey`; hash of `JSON.stringify(d.stitches)`), run it, record the hash it prints from this tree (= origin/main), and paste it into the assertion.
-- [ ] **Step 2: failing tests** in `test/manualrun.test.js`:
+- [x] **Step 1: pin today.** Before touching `src/`, write the no-run sha256 pin test (a design with a fill rectangle and a satin column built from `shapesToRegions`, `underlay: true`, fabric `jersey`; hash of `JSON.stringify(d.stitches)`), run it, record the hash it prints from this tree (= origin/main), and paste it into the assertion.
+- [x] **Step 2: failing tests** in `test/manualrun.test.js`:
   1. `runAlongPath([(0,0),(100,0)], {stitchLenPx: 10, passes: 1})` → 11 stations, x = 0,10,…,100; last is exactly (100,0).
   2. Remainder: path length 104, step 10 → last station exactly the end vertex, no stitch shorter than 5 px.
   3. `passes: 3` → `3n − 2` points; forward stations equal pass 1; the middle pass is pass 1 reversed; ends on the last vertex.
@@ -64,10 +64,10 @@
   7. A path whose final length is under 2.2 mm → no stitches for that shape and its `shapeOutlines` entry is `dropped: true`.
   8. A hairpin path (0,0)→(200,0)→(0,0) sews (count > 0), all stations on y = path y.
   9. `sewAs: { kind: "run" }` with no `path` sews as the plain fill it always did (deep-equal to no `sewAs`).
-- [ ] **Step 3: run** `node --test test/manualrun.test.js` → the engine tests fail (no `runAlongPath`).
-- [ ] **Step 4: implement.** `runAlongPath` + `RUN_MIN_LOOP_MM` in `fill.js` beside `runningOutline`, both in the API object. In `digitize.js`, at the top of the per-shape body (after `rings`/`angle` are known): `const runSew = (shape.sewAs && shape.sewAs.kind === "run" && Array.isArray(shape.sewAs.path) && shape.sewAs.path.length >= 2) ? shape.sewAs : null;` then: `if (runSew) thin = false;` gate `fillColumns && !thin && !runSew`, `if (useUnderlay && !runSew)`, the top-stitch `try` takes `runSew` first, `if (o.outline && !runSew)`. Comment each gate with spec §2 / ruling 1.
-- [ ] **Step 5: run** the new file and the whole engine suite to a log → zero failures, the pin unchanged. `node app/scripts/copy-engine.mjs`.
-- [ ] **Step 6: commit** — `Engine: a region with an authored path sews a run along it (runAlongPath), and nothing else of it`.
+- [x] **Step 3: run** `node --test test/manualrun.test.js` → the engine tests fail (no `runAlongPath`).
+- [x] **Step 4: implement.** `runAlongPath` + `RUN_MIN_LOOP_MM` in `fill.js` beside `runningOutline`, both in the API object. In `digitize.js`, at the top of the per-shape body (after `rings`/`angle` are known): `const runSew = (shape.sewAs && shape.sewAs.kind === "run" && Array.isArray(shape.sewAs.path) && shape.sewAs.path.length >= 2) ? shape.sewAs : null;` then: `if (runSew) thin = false;` gate `fillColumns && !thin && !runSew`, `if (useUnderlay && !runSew)`, the top-stitch `try` takes `runSew` first, `if (o.outline && !runSew)`. Comment each gate with spec §2 / ruling 1.
+- [x] **Step 5: run** the new file and the whole engine suite to a log → zero failures, the pin unchanged. `node app/scripts/copy-engine.mjs`.
+- [x] **Step 6: commit** — `Engine: a region with an authored path sews a run along it (runAlongPath), and nothing else of it`.
 
 ---
 
