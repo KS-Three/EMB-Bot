@@ -1898,10 +1898,11 @@ def sequence(
     # against ~200 s for stages 0-5).
     off_rank: dict[str, int] | None = None
     off_span: dict[str, int] = {}
-    lane_letters = {p.shape_id for p in planned
-                    if str(p.region.meta.get("tier", "auto")).lower() == "auto"
-                    and is_lettering(p.region, cfg)}
-    if cfg.lettering_columns and cfg.satin and lane_letters:
+    lane_letters = ({p.shape_id for p in planned
+                     if str(p.region.meta.get("tier", "auto")).lower() == "auto"
+                     and is_lettering(p.region, cfg)}
+                    if cfg.lettering_columns and cfg.satin else set())
+    if lane_letters:
         off_blocks, _off_warnings = sequence(
             planned, fabric, replace(cfg, lettering_columns=False),
             source_pixels=source_pixels, design_class=design_class,
