@@ -343,8 +343,37 @@ def main(argv=None) -> int:
                 row.pop("_skin_full")
             print(f"{key}/{arm}: " + json.dumps(row))
     (out / "table.json").write_text(json.dumps(table, indent=1) + "\n", encoding="utf-8")
+    compose(out)
     print("wrote", out)
     return 0
+
+
+def compose(out: Path) -> None:
+    """One labelled strip for the one-minute read: today, the tier, the tier
+    over its ground — the hair zoom and the whole design, side by side."""
+    for key, arms in (("hair_strands", ("off40", "on60", "on60g")),
+                      ("hair_strands_full", ("off40", "on60", "on60g"))):
+        stem = "hair_strands"
+        tiles = []
+        for arm in arms:
+            name = f"{stem}_{arm}_zoom.jpg" if key == stem else f"{stem}_{arm}.jpg"
+            img = cv2.imread(str(out / name))
+            if img is None:
+                break
+            if key != stem:
+                img = cv2.resize(img, (img.shape[1] // 2, img.shape[0] // 2),
+                                 interpolation=cv2.INTER_AREA)
+            label = {"off40": "today (OFF)", "on60": "hairline 60 wt",
+                     "on60g": "hairline 60 wt + ground"}[arm]
+            band = np.full((34, img.shape[1], 3), 255, np.uint8)
+            cv2.putText(band, label, (8, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                        (30, 30, 30), 2, cv2.LINE_AA)
+            tiles.append(np.vstack([band, img]))
+        else:
+            sep = np.full((tiles[0].shape[0], 6, 3), 255, np.uint8)
+            strip = np.hstack([tiles[0], sep, tiles[1], sep, tiles[2]])
+            cv2.imwrite(str(out / f"compare_{'zoom' if key == stem else 'full'}.jpg"),
+                        strip, [cv2.IMWRITE_JPEG_QUALITY, 88])
 
 
 if __name__ == "__main__":

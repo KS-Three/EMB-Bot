@@ -55,9 +55,11 @@ these runs with no change.
 Step 2 (2026-10-12, docs/hairline-ground-2026-10-12.md), still under
 `cfg.hairline`:
 
-- **The width is read off the SOURCE** (finding 1 of the prototype doc: the
-  traced polygon is ~0.11 mm wider than the drawn stroke, so 60 wt admitted
-  the hair by 0.025 mm). `InkSource` carries the artwork's own pixels —
+- **The width is read off the SOURCE** (finding 1 of the prototype doc,
+  corrected: its "0.11 mm wide" was a units error, but the tracer's error
+  is real and has no fixed sign — a lone 0.33 mm stroke traces at 0.24, a
+  hair network near the truth because crossings absorb cells). `InkSource`
+  carries the artwork's own pixels —
   native resolution when stage 1 upscaled, the way `stage4_vectorize`'s
   native edge read and `_coverage_parts` get at them — and
   `source_width_mm` integrates ink coverage across the stroke along the
@@ -409,8 +411,9 @@ def block_thread_wt(regions, cfg) -> dict[int, int]:
     return out
 
 
-def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> dict[str, dict]:
-    """The shapes the hairline tier will sew -> {shape_id: `measure` dict}.
+def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "HairlineSet":
+    """The shapes the hairline tier will sew -> `HairlineSet` ({shape_id:
+    `measure` dict}, plus `.fragments`, the thin shapes rule 2 handed back).
 
     Computed once per plan (`pipeline.plan_stitches`) and read by stage 5
     (the ground under them, `cfg.hairline_over_ground`) and stage 7 (the
