@@ -276,6 +276,16 @@ default OFF.
 - The renders now run at the fixtures' drawn scale, so the table above is
   superseded by the step-2 table.
 
+## Step 3 (2026-10-12): the gate per strand, a finer fixture, the card
+
+`docs/hairline-strand-gate-2026-10-12.md` has the detail. The width gate now
+decides per skeleton branch (thin branches sew as runs, thick ones keep the
+ladder on the rest of the shape), `hair_fine.png` is drawn at a 0.30 mm
+median (60 wt margin 0.179 mm), and the card above is generated as two DST
+files with a README and a scoring sheet in
+`docs/sewout/hairline-card-2026-10-12/` (blocks A to E; the fixture DSTs in
+the table above are not part of it). Still default OFF; still unsewn.
+
 `test_thread_profile.py` also pins **byte-identity for the OFF path**. It
 digitizes `logo_whitebg`, `logo_alpha` and `ribbon_curve`, with
 `thread_wt=40, hairline=False` set explicitly, and checks the md5 of each

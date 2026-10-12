@@ -383,6 +383,8 @@ def markdown_table(table: dict) -> str:
         spec = [
             ("stitches", lambda r: f"{r['stitches']:,}"),
             ("thread laid, whole design (m)", lambda r: r["thread_m"]),
+            ("dark (hair / ink) thread laid (m)", lambda r: r["dark_thread_m"]),
+            ("dark-thread stitches", lambda r: f"{r['dark_stitches']:,}"),
             ("hairline shapes / strands sewn / dropped",
              lambda r: "{} / {} / {}".format(*[r["hairline_warning"][k]
                                                for k in ("shapes", "strands", "dropped")])),
@@ -391,15 +393,15 @@ def markdown_table(table: dict) -> str:
             ("area left to the ladder (mm2)", lambda r: lh(r)["rest_mm2"]),
             ("bare fabric, total (mm2)", lambda r: r["bare_mm2"]),
             ("bare fabric, new vs OFF, on the ground (mm2)", lambda r: r["bare_new_on_ground_mm2"]),
-            ("skin fill + underlay stitches", lambda r: f"{r['skin_fill_stitches']:,}"),
+            ("skin fill + underlay stitches (md5 = OFF at 40 wt?)",
+             lambda r: f"{r['skin_fill_stitches']:,} ({'same' if r['skin_unchanged'] else 'differs'})"),
             ("trims / jumps", lambda r: f"{r['trims']} / {r['jumps']}"),
             ("longest jump (mm)", lambda r: r["longest_jump_mm"]),
             ("dark stitches < 1.0 mm (excl. lock legs)", lambda r: r["under_1mm_dark"]),
-            ("gate: median read (limit) -> margin (mm)",
+            ("gate: network median read (limit) -> margin (mm)",
              lambda r: "{} ({}) -> {}".format(
-                 round(lh(r)["gate_mm"] - lh(r)["margin_mm"], 3), lh(r)["gate_mm"],
+                 round(lh(r)["gate_mm"] - lh(r)["margin_mm"], 3), round(lh(r)["gate_mm"], 3),
                  lh(r)["margin_mm"])),
-            ("margin of the widest run branch (mm)", lambda r: lh(r)["margin_widest_mm"]),
         ]
         out.append(f"### {key} (drawn median {rows['off40']['strand_drawn_median_mm']} mm, "
                    f"design {rows['off40']['design_width_mm']} mm wide)\n")
