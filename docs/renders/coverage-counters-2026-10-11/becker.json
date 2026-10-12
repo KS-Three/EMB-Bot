@@ -649,7 +649,7 @@
   "width_mm": 50.0,
   "shift_mm": [
    0.0,
-   0.0
+   0.4
   ],
   "letters": [
    {
@@ -661,12 +661,12 @@
        2.029
       ],
       "art_width_mm": 1.26,
-      "sewn_width_mm": 0.448,
+      "sewn_width_mm": 0.4,
       "art_depth_mm": 1.475,
-      "inner_open_frac": 0.195,
+      "inner_open_frac": 0.158,
       "status": "open",
       "art_sub_thread": false,
-      "narrows": false
+      "narrows": true
      },
      {
       "at_mm": [
@@ -674,9 +674,9 @@
        6.292
       ],
       "art_width_mm": 1.918,
-      "sewn_width_mm": 0.848,
+      "sewn_width_mm": 1.189,
       "art_depth_mm": 4.55,
-      "inner_open_frac": 0.236,
+      "inner_open_frac": 0.417,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -685,10 +685,10 @@
     "unread": false,
     "glyph": 5,
     "refine_px": [
-     4,
+     -4,
      -4
     ],
-    "letter_iou": 0.764,
+    "letter_iou": 0.791,
     "art_rgb": [
      35,
      31,
@@ -715,7 +715,7 @@
        5.207
       ],
       "art_mm2": 2.169,
-      "sewn_mm2": 1.112,
+      "sewn_mm2": 1.56,
       "status": "open",
       "art_sub_thread": false,
       "closes": false
@@ -728,9 +728,9 @@
        8.658
       ],
       "art_width_mm": 1.087,
-      "sewn_width_mm": 0.48,
+      "sewn_width_mm": 0.801,
       "art_depth_mm": 1.05,
-      "inner_open_frac": 0.185,
+      "inner_open_frac": 0.471,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -739,10 +739,10 @@
     "unread": false,
     "glyph": 6,
     "refine_px": [
-     2,
+     -4,
      4
     ],
-    "letter_iou": 0.781,
+    "letter_iou": 0.803,
     "art_rgb": [
      35,
      31,
@@ -769,7 +769,7 @@
        4.261
       ],
       "art_mm2": 2.381,
-      "sewn_mm2": 1.257,
+      "sewn_mm2": 1.854,
       "status": "open",
       "art_sub_thread": false,
       "closes": false
@@ -782,12 +782,12 @@
        7.265
       ],
       "art_width_mm": 1.111,
-      "sewn_width_mm": 0.323,
+      "sewn_width_mm": 0.519,
       "art_depth_mm": 1.196,
-      "inner_open_frac": 0.129,
+      "inner_open_frac": 0.323,
       "status": "open",
       "art_sub_thread": false,
-      "narrows": true
+      "narrows": false
      },
      {
       "at_mm": [
@@ -795,10 +795,10 @@
        8.127
       ],
       "art_width_mm": 0.787,
-      "sewn_width_mm": 0.0,
+      "sewn_width_mm": 0.129,
       "art_depth_mm": 1.925,
-      "inner_open_frac": 0.001,
-      "status": "closed",
+      "inner_open_frac": 0.092,
+      "status": "open",
       "art_sub_thread": false,
       "narrows": true
      }
@@ -806,10 +806,10 @@
     "unread": false,
     "glyph": 4,
     "refine_px": [
-     4,
-     -1
+     -4,
+     0
     ],
-    "letter_iou": 0.808,
+    "letter_iou": 0.845,
     "art_rgb": [
      35,
      31,
@@ -834,10 +834,10 @@
     "unread": false,
     "glyph": 7,
     "refine_px": [
-     -1,
+     -4,
      -4
     ],
-    "letter_iou": 0.714,
+    "letter_iou": 0.78,
     "art_rgb": [
      35,
      31,
@@ -865,12 +865,12 @@
        2.998
       ],
       "art_width_mm": 1.121,
-      "sewn_width_mm": 0.237,
+      "sewn_width_mm": 0.487,
       "art_depth_mm": 2.875,
-      "inner_open_frac": 0.11,
+      "inner_open_frac": 0.252,
       "status": "open",
       "art_sub_thread": false,
-      "narrows": true
+      "narrows": false
      },
      {
       "at_mm": [
@@ -878,9 +878,9 @@
        6.906
       ],
       "art_width_mm": 1.387,
-      "sewn_width_mm": 0.138,
+      "sewn_width_mm": 0.338,
       "art_depth_mm": 3.65,
-      "inner_open_frac": 0.051,
+      "inner_open_frac": 0.177,
       "status": "open",
       "art_sub_thread": false,
       "narrows": true
@@ -889,10 +889,10 @@
     "unread": false,
     "glyph": 8,
     "refine_px": [
-     -1,
-     1
+     -4,
+     2
     ],
-    "letter_iou": 0.769,
+    "letter_iou": 0.814,
     "art_rgb": [
      35,
      31,
@@ -920,10 +920,10 @@
        3.766
       ],
       "art_width_mm": 0.688,
-      "sewn_width_mm": 0.0,
+      "sewn_width_mm": 0.037,
       "art_depth_mm": 3.05,
-      "inner_open_frac": 0.009,
-      "status": "closed",
+      "inner_open_frac": 0.128,
+      "status": "bridged",
       "art_sub_thread": false,
       "narrows": true
      },
@@ -933,9 +933,9 @@
        6.541
       ],
       "art_width_mm": 0.787,
-      "sewn_width_mm": 0.037,
+      "sewn_width_mm": 0.194,
       "art_depth_mm": 2.975,
-      "inner_open_frac": 0.081,
+      "inner_open_frac": 0.265,
       "status": "open",
       "art_sub_thread": false,
       "narrows": true
@@ -944,10 +944,10 @@
     "unread": false,
     "glyph": 9,
     "refine_px": [
-     4,
+     -4,
      4
     ],
-    "letter_iou": 0.731,
+    "letter_iou": 0.787,
     "art_rgb": [
      35,
      31,
@@ -972,7 +972,7 @@
   "width_mm": 49.9,
   "shift_mm": [
    0.0,
-   0.0
+   0.4
   ],
   "letters": [
    {
@@ -984,9 +984,9 @@
        2.029
       ],
       "art_width_mm": 1.26,
-      "sewn_width_mm": 0.242,
+      "sewn_width_mm": 0.058,
       "art_depth_mm": 1.475,
-      "inner_open_frac": 0.075,
+      "inner_open_frac": 0.01,
       "status": "open",
       "art_sub_thread": false,
       "narrows": true
@@ -997,9 +997,9 @@
        6.292
       ],
       "art_width_mm": 1.918,
-      "sewn_width_mm": 1.047,
+      "sewn_width_mm": 1.409,
       "art_depth_mm": 4.55,
-      "inner_open_frac": 0.278,
+      "inner_open_frac": 0.509,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -1011,7 +1011,7 @@
      -4,
      -4
     ],
-    "letter_iou": 0.765,
+    "letter_iou": 0.799,
     "art_rgb": [
      35,
      31,
@@ -1038,7 +1038,7 @@
        5.207
       ],
       "art_mm2": 2.169,
-      "sewn_mm2": 0.753,
+      "sewn_mm2": 1.234,
       "status": "open",
       "art_sub_thread": false,
       "closes": false
@@ -1051,12 +1051,12 @@
        8.658
       ],
       "art_width_mm": 1.087,
-      "sewn_width_mm": 0.099,
+      "sewn_width_mm": 0.882,
       "art_depth_mm": 1.05,
-      "inner_open_frac": 0.015,
+      "inner_open_frac": 0.494,
       "status": "open",
       "art_sub_thread": false,
-      "narrows": true
+      "narrows": false
      }
     ],
     "unread": false,
@@ -1065,7 +1065,7 @@
      -4,
      4
     ],
-    "letter_iou": 0.77,
+    "letter_iou": 0.803,
     "art_rgb": [
      35,
      31,
@@ -1092,7 +1092,7 @@
        4.261
       ],
       "art_mm2": 2.381,
-      "sewn_mm2": 0.919,
+      "sewn_mm2": 1.145,
       "status": "open",
       "art_sub_thread": false,
       "closes": false
@@ -1105,9 +1105,9 @@
        7.265
       ],
       "art_width_mm": 1.111,
-      "sewn_width_mm": 0.415,
+      "sewn_width_mm": 0.558,
       "art_depth_mm": 1.196,
-      "inner_open_frac": 0.195,
+      "inner_open_frac": 0.316,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -1129,10 +1129,10 @@
     "unread": false,
     "glyph": 4,
     "refine_px": [
-     4,
-     1
+     -4,
+     0
     ],
-    "letter_iou": 0.787,
+    "letter_iou": 0.824,
     "art_rgb": [
      35,
      31,
@@ -1160,7 +1160,7 @@
      -4,
      -4
     ],
-    "letter_iou": 0.724,
+    "letter_iou": 0.773,
     "art_rgb": [
      35,
      31,
@@ -1190,7 +1190,7 @@
       "art_width_mm": 1.121,
       "sewn_width_mm": 0.292,
       "art_depth_mm": 2.875,
-      "inner_open_frac": 0.103,
+      "inner_open_frac": 0.147,
       "status": "open",
       "art_sub_thread": false,
       "narrows": true
@@ -1201,21 +1201,21 @@
        6.906
       ],
       "art_width_mm": 1.387,
-      "sewn_width_mm": 0.168,
+      "sewn_width_mm": 0.558,
       "art_depth_mm": 3.65,
-      "inner_open_frac": 0.021,
+      "inner_open_frac": 0.19,
       "status": "open",
       "art_sub_thread": false,
-      "narrows": true
+      "narrows": false
      }
     ],
     "unread": false,
     "glyph": 8,
     "refine_px": [
      -4,
-     3
+     2
     ],
-    "letter_iou": 0.787,
+    "letter_iou": 0.805,
     "art_rgb": [
      35,
      31,
@@ -1245,7 +1245,7 @@
       "art_width_mm": 0.688,
       "sewn_width_mm": 0.0,
       "art_depth_mm": 3.05,
-      "inner_open_frac": 0.006,
+      "inner_open_frac": 0.078,
       "status": "closed",
       "art_sub_thread": false,
       "narrows": true
@@ -1258,7 +1258,7 @@
       "art_width_mm": 0.787,
       "sewn_width_mm": 0.0,
       "art_depth_mm": 2.975,
-      "inner_open_frac": 0.001,
+      "inner_open_frac": 0.035,
       "status": "closed",
       "art_sub_thread": false,
       "narrows": true
@@ -1267,10 +1267,10 @@
     "unread": false,
     "glyph": 9,
     "refine_px": [
-     -2,
-     4
+     -4,
+     3
     ],
-    "letter_iou": 0.759,
+    "letter_iou": 0.794,
     "art_rgb": [
      35,
      31,
@@ -1953,9 +1953,9 @@
        2.634
       ],
       "art_width_mm": 2.043,
-      "sewn_width_mm": 1.159,
+      "sewn_width_mm": 1.378,
       "art_depth_mm": 2.35,
-      "inner_open_frac": 0.419,
+      "inner_open_frac": 0.581,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -1966,9 +1966,9 @@
        9.45
       ],
       "art_width_mm": 3.058,
-      "sewn_width_mm": 2.208,
+      "sewn_width_mm": 2.325,
       "art_depth_mm": 7.25,
-      "inner_open_frac": 0.591,
+      "inner_open_frac": 0.655,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -1978,9 +1978,9 @@
     "glyph": 5,
     "refine_px": [
      -4,
-     -2
+     -4
     ],
-    "letter_iou": 0.843,
+    "letter_iou": 0.874,
     "art_rgb": [
      35,
      31,
@@ -2007,7 +2007,7 @@
        7.714
       ],
       "art_mm2": 5.526,
-      "sewn_mm2": 3.033,
+      "sewn_mm2": 3.864,
       "status": "open",
       "art_sub_thread": false,
       "closes": false
@@ -2020,9 +2020,9 @@
        13.213
       ],
       "art_width_mm": 1.738,
-      "sewn_width_mm": 1.3,
+      "sewn_width_mm": 1.396,
       "art_depth_mm": 1.7,
-      "inner_open_frac": 0.582,
+      "inner_open_frac": 0.664,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -2034,7 +2034,7 @@
      -4,
      -4
     ],
-    "letter_iou": 0.848,
+    "letter_iou": 0.881,
     "art_rgb": [
      35,
      31,
@@ -2061,7 +2061,7 @@
        6.226
       ],
       "art_mm2": 6.074,
-      "sewn_mm2": 3.012,
+      "sewn_mm2": 3.867,
       "status": "open",
       "art_sub_thread": false,
       "closes": false
@@ -2074,9 +2074,9 @@
        11.025
       ],
       "art_width_mm": 1.791,
-      "sewn_width_mm": 0.874,
+      "sewn_width_mm": 0.558,
       "art_depth_mm": 1.925,
-      "inner_open_frac": 0.33,
+      "inner_open_frac": 0.153,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -2087,9 +2087,9 @@
        12.399
       ],
       "art_width_mm": 1.238,
-      "sewn_width_mm": 0.415,
+      "sewn_width_mm": 0.59,
       "art_depth_mm": 3.075,
-      "inner_open_frac": 0.174,
+      "inner_open_frac": 0.284,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -2101,7 +2101,7 @@
      -4,
      -4
     ],
-    "letter_iou": 0.853,
+    "letter_iou": 0.877,
     "art_rgb": [
      35,
      31,
@@ -2129,7 +2129,7 @@
      -4,
      -4
     ],
-    "letter_iou": 0.809,
+    "letter_iou": 0.844,
     "art_rgb": [
      35,
      31,
@@ -2157,9 +2157,9 @@
        4.185
       ],
       "art_width_mm": 1.799,
-      "sewn_width_mm": 0.958,
+      "sewn_width_mm": 1.106,
       "art_depth_mm": 4.6,
-      "inner_open_frac": 0.337,
+      "inner_open_frac": 0.475,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -2170,9 +2170,9 @@
        10.42
       ],
       "art_width_mm": 2.208,
-      "sewn_width_mm": 0.943,
+      "sewn_width_mm": 1.15,
       "art_depth_mm": 5.825,
-      "inner_open_frac": 0.234,
+      "inner_open_frac": 0.346,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -2181,10 +2181,10 @@
     "unread": false,
     "glyph": 8,
     "refine_px": [
-     -4,
+     -3,
      -4
     ],
-    "letter_iou": 0.856,
+    "letter_iou": 0.883,
     "art_rgb": [
      35,
      31,
@@ -2212,9 +2212,9 @@
        5.418
       ],
       "art_width_mm": 1.089,
-      "sewn_width_mm": 0.487,
+      "sewn_width_mm": 0.703,
       "art_depth_mm": 4.85,
-      "inner_open_frac": 0.423,
+      "inner_open_frac": 0.551,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -2225,9 +2225,9 @@
        9.847
       ],
       "art_width_mm": 1.288,
-      "sewn_width_mm": 0.487,
+      "sewn_width_mm": 0.787,
       "art_depth_mm": 4.775,
-      "inner_open_frac": 0.34,
+      "inner_open_frac": 0.522,
       "status": "bridged",
       "art_sub_thread": false,
       "narrows": false
@@ -2239,7 +2239,7 @@
      -3,
      -4
     ],
-    "letter_iou": 0.838,
+    "letter_iou": 0.876,
     "art_rgb": [
      35,
      31,
@@ -2264,7 +2264,7 @@
   "width_mm": 79.7,
   "shift_mm": [
    0.0,
-   0.0
+   0.4
   ],
   "letters": [
    {
@@ -2276,9 +2276,9 @@
        2.634
       ],
       "art_width_mm": 2.043,
-      "sewn_width_mm": 0.882,
+      "sewn_width_mm": 0.765,
       "art_depth_mm": 2.35,
-      "inner_open_frac": 0.266,
+      "inner_open_frac": 0.207,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -2289,9 +2289,9 @@
        9.45
       ],
       "art_width_mm": 3.058,
-      "sewn_width_mm": 2.246,
+      "sewn_width_mm": 2.645,
       "art_depth_mm": 7.25,
-      "inner_open_frac": 0.474,
+      "inner_open_frac": 0.626,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -2300,10 +2300,10 @@
     "unread": false,
     "glyph": 5,
     "refine_px": [
-     1,
-     -3
+     -4,
+     -4
     ],
-    "letter_iou": 0.833,
+    "letter_iou": 0.861,
     "art_rgb": [
      35,
      31,
@@ -2330,7 +2330,7 @@
        7.714
       ],
       "art_mm2": 5.526,
-      "sewn_mm2": 2.456,
+      "sewn_mm2": 3.273,
       "status": "open",
       "art_sub_thread": false,
       "closes": false
@@ -2343,9 +2343,9 @@
        13.213
       ],
       "art_width_mm": 1.738,
-      "sewn_width_mm": 0.882,
+      "sewn_width_mm": 1.353,
       "art_depth_mm": 1.7,
-      "inner_open_frac": 0.268,
+      "inner_open_frac": 0.524,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -2354,10 +2354,10 @@
     "unread": false,
     "glyph": 6,
     "refine_px": [
-     4,
+     -4,
      -4
     ],
-    "letter_iou": 0.853,
+    "letter_iou": 0.88,
     "art_rgb": [
      35,
      31,
@@ -2384,7 +2384,7 @@
        6.226
       ],
       "art_mm2": 6.074,
-      "sewn_mm2": 1.764,
+      "sewn_mm2": 2.132,
       "status": "open",
       "art_sub_thread": false,
       "closes": false
@@ -2397,9 +2397,9 @@
        11.025
       ],
       "art_width_mm": 1.791,
-      "sewn_width_mm": 0.949,
+      "sewn_width_mm": 1.084,
       "art_depth_mm": 1.925,
-      "inner_open_frac": 0.341,
+      "inner_open_frac": 0.433,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -2410,9 +2410,9 @@
        12.399
       ],
       "art_width_mm": 1.238,
-      "sewn_width_mm": 0.037,
+      "sewn_width_mm": 0.257,
       "art_depth_mm": 3.075,
-      "inner_open_frac": 0.01,
+      "inner_open_frac": 0.066,
       "status": "open",
       "art_sub_thread": false,
       "narrows": true
@@ -2421,10 +2421,10 @@
     "unread": false,
     "glyph": 4,
     "refine_px": [
-     4,
-     0
+     -3,
+     -1
     ],
-    "letter_iou": 0.84,
+    "letter_iou": 0.874,
     "art_rgb": [
      35,
      31,
@@ -2449,10 +2449,10 @@
     "unread": false,
     "glyph": 7,
     "refine_px": [
-     -2,
-     -4
+     -4,
+     -1
     ],
-    "letter_iou": 0.818,
+    "letter_iou": 0.855,
     "art_rgb": [
      35,
      31,
@@ -2480,9 +2480,9 @@
        4.185
       ],
       "art_width_mm": 1.799,
-      "sewn_width_mm": 0.994,
+      "sewn_width_mm": 1.084,
       "art_depth_mm": 4.6,
-      "inner_open_frac": 0.374,
+      "inner_open_frac": 0.404,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -2493,9 +2493,9 @@
        10.42
       ],
       "art_width_mm": 2.208,
-      "sewn_width_mm": 0.882,
+      "sewn_width_mm": 1.273,
       "art_depth_mm": 5.825,
-      "inner_open_frac": 0.18,
+      "inner_open_frac": 0.326,
       "status": "open",
       "art_sub_thread": false,
       "narrows": false
@@ -2504,10 +2504,10 @@
     "unread": false,
     "glyph": 8,
     "refine_px": [
-     2,
-     -4
+     -4,
+     -3
     ],
-    "letter_iou": 0.872,
+    "letter_iou": 0.885,
     "art_rgb": [
      35,
      31,
@@ -2535,9 +2535,9 @@
        5.418
       ],
       "art_width_mm": 1.089,
-      "sewn_width_mm": 0.194,
+      "sewn_width_mm": 0.388,
       "art_depth_mm": 4.85,
-      "inner_open_frac": 0.185,
+      "inner_open_frac": 0.343,
       "status": "bridged",
       "art_sub_thread": false,
       "narrows": true
@@ -2548,9 +2548,9 @@
        9.847
       ],
       "art_width_mm": 1.288,
-      "sewn_width_mm": 0.037,
+      "sewn_width_mm": 0.237,
       "art_depth_mm": 4.775,
-      "inner_open_frac": 0.072,
+      "inner_open_frac": 0.198,
       "status": "open",
       "art_sub_thread": false,
       "narrows": true
@@ -2559,10 +2559,10 @@
     "unread": false,
     "glyph": 9,
     "refine_px": [
-     0,
-     -4
+     -4,
+     -2
     ],
-    "letter_iou": 0.836,
+    "letter_iou": 0.853,
     "art_rgb": [
      35,
      31,

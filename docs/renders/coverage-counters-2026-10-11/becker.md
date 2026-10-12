@@ -23,21 +23,21 @@
 
 | letter | counters art / sewn mm² | slots art / sewn width mm | IoU |
 |---|---|---|---|
-| MARINE:M | - | 1.26 / 0.45 open; 1.92 / 0.85 open | 0.764 |
-| MARINE:A | 2.17 / 1.11 open | 1.09 / 0.48 open | 0.781 |
-| MARINE:R | 2.38 / 1.26 open | 1.11 / 0.32 open **NARROWS**; 0.79 / 0.00 closed **NARROWS** | 0.808 |
-| MARINE:N | - | 1.12 / 0.24 open **NARROWS**; 1.39 / 0.14 open **NARROWS** | 0.769 |
-| MARINE:E | - | 0.69 / 0.00 closed **NARROWS**; 0.79 / 0.04 open **NARROWS** | 0.731 |
+| MARINE:M | - | 1.26 / 0.40 open **NARROWS**; 1.92 / 1.19 open | 0.791 |
+| MARINE:A | 2.17 / 1.56 open | 1.09 / 0.80 open | 0.803 |
+| MARINE:R | 2.38 / 1.85 open | 1.11 / 0.52 open; 0.79 / 0.13 open **NARROWS** | 0.845 |
+| MARINE:N | - | 1.12 / 0.49 open; 1.39 / 0.34 open **NARROWS** | 0.814 |
+| MARINE:E | - | 0.69 / 0.04 bridged **NARROWS**; 0.79 / 0.19 open **NARROWS** | 0.787 |
 
 ### becker 50 mm coverage_columns
 
 | letter | counters art / sewn mm² | slots art / sewn width mm | IoU |
 |---|---|---|---|
-| MARINE:M | - | 1.26 / 0.24 open **NARROWS**; 1.92 / 1.05 open | 0.765 |
-| MARINE:A | 2.17 / 0.75 open | 1.09 / 0.10 open **NARROWS** | 0.77 |
-| MARINE:R | 2.38 / 0.92 open | 1.11 / 0.41 open; 0.79 / 0.00 closed **NARROWS** | 0.787 |
-| MARINE:N | - | 1.12 / 0.29 open **NARROWS**; 1.39 / 0.17 open **NARROWS** | 0.787 |
-| MARINE:E | - | 0.69 / 0.00 closed **NARROWS**; 0.79 / 0.00 closed **NARROWS** | 0.759 |
+| MARINE:M | - | 1.26 / 0.06 open **NARROWS**; 1.92 / 1.41 open | 0.799 |
+| MARINE:A | 2.17 / 1.23 open | 1.09 / 0.88 open | 0.803 |
+| MARINE:R | 2.38 / 1.15 open | 1.11 / 0.56 open; 0.79 / 0.00 closed **NARROWS** | 0.824 |
+| MARINE:N | - | 1.12 / 0.29 open **NARROWS**; 1.39 / 0.56 open | 0.805 |
+| MARINE:E | - | 0.69 / 0.00 closed **NARROWS**; 0.79 / 0.00 closed **NARROWS** | 0.794 |
 
 ### becker 80 mm shipped
 
@@ -63,18 +63,18 @@
 
 | letter | counters art / sewn mm² | slots art / sewn width mm | IoU |
 |---|---|---|---|
-| MARINE:M | - | 2.04 / 1.16 open; 3.06 / 2.21 open | 0.843 |
-| MARINE:A | 5.53 / 3.03 open | 1.74 / 1.30 open | 0.848 |
-| MARINE:R | 6.07 / 3.01 open | 1.79 / 0.87 open; 1.24 / 0.41 open | 0.853 |
-| MARINE:N | - | 1.80 / 0.96 open; 2.21 / 0.94 open | 0.856 |
-| MARINE:E | - | 1.09 / 0.49 open; 1.29 / 0.49 bridged | 0.838 |
+| MARINE:M | - | 2.04 / 1.38 open; 3.06 / 2.33 open | 0.874 |
+| MARINE:A | 5.53 / 3.86 open | 1.74 / 1.40 open | 0.881 |
+| MARINE:R | 6.07 / 3.87 open | 1.79 / 0.56 open; 1.24 / 0.59 open | 0.877 |
+| MARINE:N | - | 1.80 / 1.11 open; 2.21 / 1.15 open | 0.883 |
+| MARINE:E | - | 1.09 / 0.70 open; 1.29 / 0.79 bridged | 0.876 |
 
 ### becker 80 mm coverage_columns
 
 | letter | counters art / sewn mm² | slots art / sewn width mm | IoU |
 |---|---|---|---|
-| MARINE:M | - | 2.04 / 0.88 open; 3.06 / 2.25 open | 0.833 |
-| MARINE:A | 5.53 / 2.46 open | 1.74 / 0.88 open | 0.853 |
-| MARINE:R | 6.07 / 1.76 open | 1.79 / 0.95 open; 1.24 / 0.04 open **NARROWS** | 0.84 |
-| MARINE:N | - | 1.80 / 0.99 open; 2.21 / 0.88 open | 0.872 |
-| MARINE:E | - | 1.09 / 0.19 bridged **NARROWS**; 1.29 / 0.04 open **NARROWS** | 0.836 |
+| MARINE:M | - | 2.04 / 0.77 open; 3.06 / 2.65 open | 0.861 |
+| MARINE:A | 5.53 / 3.27 open | 1.74 / 1.35 open | 0.88 |
+| MARINE:R | 6.07 / 2.13 open | 1.79 / 1.08 open; 1.24 / 0.26 open **NARROWS** | 0.874 |
+| MARINE:N | - | 1.80 / 1.08 open; 2.21 / 1.27 open | 0.885 |
+| MARINE:E | - | 1.09 / 0.39 bridged **NARROWS**; 1.29 / 0.24 open **NARROWS** | 0.853 |
