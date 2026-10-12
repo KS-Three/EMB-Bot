@@ -137,7 +137,23 @@
     return sign + pad(n, 5);
   }
 
+  // The header's +X/-X/+Y/-Y fields are five digits. `pad` keeps the LAST five
+  // digits of a longer number, so a design reaching 100001 units (10 m) from
+  // the origin wrote 00001 and a reader saw a design one unit wide. pystitch's
+  // DstWriter does not clamp either: its "%5d" just widens the field and
+  // shifts every later one, a header no reader parses. No hoop is within two
+  // orders of magnitude of this, so refuse by name instead of writing a lie.
+  const HEADER_AXIS_MAX = 99999;
+
   function buildHeader(meta) {
+    for (const [name, v] of [["+X", meta.xMax], ["-X", meta.xMin], ["+Y", meta.yMax], ["-Y", meta.yMin]]) {
+      if (Math.abs(Math.round(v || 0)) > HEADER_AXIS_MAX) {
+        throw new RangeError(
+          "This design is too large for a DST file: it reaches " + (Math.abs(Math.round(v)) / 10 / 1000).toFixed(1) +
+          " m from its starting point and a DST file can only describe 10 m each way. Make the design smaller."
+        );
+      }
+    }
     const label = String(meta.label || "").slice(0, 16);
     let s = "";
     s += field("LA", label);

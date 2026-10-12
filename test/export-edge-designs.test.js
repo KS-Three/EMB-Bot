@@ -246,8 +246,43 @@ test("fractional coordinates do not corrupt the stream length parity", () => {
   assert.doesNotThrow(() => pes.encodePES(d));
 });
 
-// ---- BUGS found by this file (todo until fixed) --------------------------
+// ---- Limits the writers now refuse by name (were todo until fixed) --------
+// No real hoop is within two orders of magnitude of any of these; the point is
+// that a file which cannot say what the design is never gets written.
 
-test.todo("DST header: a design wider than 99999 units (10 m) wraps the 5-digit +X/-X field (writes 00001 for 100001) instead of clamping or refusing");
-test.todo("PES/PEC: a design wider than 32767 units (3.27 m) overflows the int16 width/height and CSewSeg points silently instead of throwing or clamping");
-test.todo("PES: 257 or more colours wraps the PEC colour-count byte to 0 (colorCount-1 & 0xff), and the 0x1cf-wide colour table is overrun past 463 colours");
+test("DST header: a design wider than 99999 units (10 m) throws instead of wrapping the 5-digit +X/-X field", () => {
+  // The old header wrote 00001 for 100001 (pad() kept the last five digits).
+  assert.throws(() => dst.encodeDST(design([S(0, 0), S(100001, 0)])), RangeError);
+  assert.throws(() => dst.encodeDST(design([S(0, 0), S(-100001, 0)])), RangeError);
+  assert.throws(() => dst.encodeDST(design([S(0, 0), S(0, 100001)])), RangeError);
+  assert.throws(() => dst.encodeDST(design([S(0, 0), S(0, -100001)])), RangeError);
+  // The largest value the field holds is still written, exactly.
+  const out = dst.encodeDST(design([S(0, 0), S(99999, -99999)]));
+  assert.strictEqual(hfield(out, "\\+X"), "99999");
+  assert.strictEqual(hfield(out, "\\-Y"), "99999");
+});
+
+test("PES/PEC: extents beyond int16 (3.27 m) throw instead of overflowing the width/height and CSewSeg points", () => {
+  assert.throws(() => pes.encodePES(design([S(0, 0), S(32768, 0)])), RangeError);
+  assert.throws(() => pes.encodePES(design([S(0, 0), S(0, 32768)])), RangeError);
+  assert.throws(() => pes.encodePES(design([S(0, 0), S(0, -32769)])), RangeError); // CSewSeg writes -y
+  assert.throws(() => pes.encodePES(design([S(0, 0), S(-32769, 0)])), RangeError);
+  // A small design placed far from the origin overflows the points, not the width.
+  assert.throws(() => pes.encodePES(design([S(40000, 0), S(40010, 0)])), RangeError);
+  // The PEC section alone is guarded too (writePEC is exported).
+  const w = { tell: () => 0, u8() { return this; }, str() { return this; }, i16le() { return this; }, u16le() { return this; } };
+  assert.throws(() => pes.writePEC(w, design([S(0, 0), S(32768, 0)])), RangeError);
+  // The limits themselves are still written.
+  assert.doesNotThrow(() => pes.encodePES(design([S(-32768, 0), S(-1, 0)])));
+  assert.doesNotThrow(() => pes.encodePES(design([S(0, -32767), S(0, 0)])));
+  assert.doesNotThrow(() => pes.encodePES(design([S(0, 0), S(0, 32767)])));
+});
+
+test("PES: 257 or more colours throw instead of wrapping the PEC colour-count byte", () => {
+  // The old writer stored (257 - 1) & 0xff = 0 and overran the 0x1cf-byte colour table past 463.
+  for (const n of [257, 300, 464]) {
+    assert.throws(() => pes.encodePES(design([S(0, 0), S(5, 3)], n)), RangeError, n + " colours");
+  }
+  const out = pes.encodePES(design([S(0, 0), S(5, 3)], 256));
+  assert.ok(out.length > 0);
+});

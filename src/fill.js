@@ -1090,6 +1090,13 @@
 
   function tatami(polygons, opts, startOnly) {
     const rowSpacing = opts.rowSpacing;
+    // The row loop below steps by rowSpacing: 0 never advances (the heap runs
+    // out pushing rows) and a negative step never reaches maxY. Refuse by name
+    // rather than hang. Only a number <= 0 is refused: undefined and NaN
+    // compare false here and have always produced a single row, unchanged.
+    // Every in-repo caller floors its row at a positive value (digitize.js
+    // PX_LOOP_EPS), so this only meets a direct caller.
+    if (rowSpacing <= 0) throw new RangeError("tatamiFill: rowSpacing must be greater than 0 (got " + rowSpacing + ")");
     const angleDeg = opts.angleDeg || 0;
     const maxStitch = opts.maxStitch;
     const theta = (angleDeg * Math.PI) / 180;
