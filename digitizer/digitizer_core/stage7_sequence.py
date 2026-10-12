@@ -71,6 +71,10 @@ from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             run_outline, silhouette_cap)
 from .stage6_contour import contour_fill
 from .stage6_detail import detail_runs
+# Imported under another name: `hairline_runs` is already this module's count
+# of `stage6_satin._hairline_stretches` strokes (the HAIRLINE_STROKES_AS_RUN
+# warning), a different, older thing.
+from .stage6_hairline import hairline_runs as hairline_tier_runs
 from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
@@ -86,7 +90,7 @@ from .warnings_codes import (BLEND_NO_REGIONS_DECOMPOSED, BORDER_LIGHTENED,
                              CONTOUR_RING_UNREACHABLE, EDGE_CAP_APPLIED,
                              EDGE_CAP_EMPTY,
                              EDGE_CAP_LIGHTENED, EDGE_CAP_OVER_BUDGET,
-                             HAIRLINE_STROKES_AS_RUN,
+                             HAIRLINE_STROKES_AS_RUN, HAIRLINE_TIER_SEWN,
                              LONG_JUMPS_TRIMMED,
                              SHAPE_NOT_STITCHED, SHAPE_TOO_THIN_TO_FILL,
                              SMALL_LETTERING_AS_BEAN,
@@ -1838,6 +1842,32 @@ def sequence(
     # on how a fabric preset reaches density. max(0.1, ...) mirrors row_mm's
     # own floor so a pathological preset cannot collapse spacing to zero.
     satin_spacing_mm = machine.SATIN_SPACING_MM * max(0.1, fabric.density_adjust)
+    # Thread weight (`cfg.thread_wt`, 2026-10-12; docs/hairline-prototype-
+    # 2026-10-12.md). One needle per colour, so the weight is per COLOUR
+    # BLOCK: a block takes the finest weight any of its shapes names through
+    # `shape_overrides[sid].thread_wt` (the operator threads that needle
+    # fine for the detail; the block's other shapes sew on the same thread),
+    # else the design's. Satin spacing is `thread_profile(wt).
+    # satin_spacing_mm` x the fabric's density adjust — at 40 wt that is
+    # `machine.SATIN_SPACING_MM` x the same factor, the very expression
+    # above, so the default plan is byte-identical. 60/75 are candidates
+    # (gate 1).
+    machine.thread_profile(cfg.thread_wt)     # a bad weight fails here, loudly
+    block_wt: dict[int, int] = {}
+    for _pr in planned:
+        _ov = _pr.region.meta.get("thread_wt")
+        if _ov is not None:
+            _t = _pr.region.thread_index
+            block_wt[_t] = max(block_wt.get(_t, 0), int(_ov))
+
+    def profile_for(pr: PlannedRegion) -> machine.ThreadProfile:
+        return machine.thread_profile(block_wt.get(pr.region.thread_index, cfg.thread_wt))
+
+    def satin_spacing_for(pr: PlannedRegion) -> float:
+        if not block_wt and cfg.thread_wt == machine.THREAD_WT_DEFAULT:
+            return satin_spacing_mm
+        return profile_for(pr).satin_spacing_mm * max(0.1, fabric.density_adjust)
+    hairline_shapes_sewn = hairline_strands = hairline_dropped = 0
     stitch_mm = cfg.fill_stitch_mm or FILL_STITCH_MM
     # Row 14's underlay split (see _PHOTO_FILL_UNDERLAY above for the craft
     # case). Precedence is unchanged in shape, only the FALLBACK moves: an
@@ -2179,6 +2209,24 @@ def sequence(
                     report["bean_letter"] = 1
                     report["bean_word"] = word_key(p.region, cfg)
                     return runs, report, False
+            # The hairline tier (`cfg.hairline`, default OFF, 2026-10-12 —
+            # `stage6_hairline`'s docstring): a stroke at or under 1.5 laid
+            # widths of its block's thread sews as ONE run along its
+            # skeleton, ahead of the run rung's three-pass bean on the
+            # outline. On the ARTWORK polygon, for the run rung's own reason
+            # (a run does not pull; compensation would fatten the stroke).
+            # "auto" only; a shape it declines takes the ladder as before.
+            if tier == "auto" and cfg.hairline:
+                prof = profile_for(p)
+                runs, report = hairline_tier_runs(
+                    p.region.polygon, p.shape_id,
+                    max_width_mm=prof.hairline_max_width_mm,
+                    run_width_mm=prof.hairline_run_width_mm,
+                    stitch_mm=cfg.hairline_stitch_mm,
+                    entry=entry, trim_at_mm=trim_at)
+                if not report["empty"]:
+                    report["hairline_tier"] = 1
+                    return runs, report, False
             outline_tried = False
             if routes_to_run(p, tier):
                 runs, report = run_outline(p.region.polygon, p.shape_id,
@@ -2204,7 +2252,7 @@ def sequence(
                 _small = max(_ax1 - _ax0, _ay1 - _ay0) < machine.SATIN_UNDERLAY_MIN_EXTENT_MM
                 runs, report = lettering_columns_shape(
                     p.region.polygon, p.shape_id, trim_at_mm=trim_at,
-                    spacing_mm=satin_spacing_mm, split_above_mm=split_above,
+                    spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
                     pull_mm=fabric.pull_comp_mm, pull_floor_mm=cfg.min_detail_mm,
                     underlay_style="none" if _small else satin_underlay,
                     start_near=entry,
@@ -2302,7 +2350,7 @@ def sequence(
                     rail_comp_mm=rail_comp_mm,
                     rail_comp_floor_mm=cfg.min_detail_mm,
                     use_shapefield=use_shapefield,
-                    spacing_mm=satin_spacing_mm,
+                    spacing_mm=satin_spacing_for(p),
                     angle_deg=satin_angle_deg,
                     rails_follow_edge=cfg.satin_rails_follow_edge,
                     outer_rail_pitch=cfg.satin_outer_rail_pitch,
@@ -2871,6 +2919,10 @@ def sequence(
             if report.get("hairline_runs"):
                 hairline_runs += report["hairline_runs"]
                 hairline_shapes += 1
+            if report.get("hairline_tier"):
+                hairline_shapes_sewn += 1
+                hairline_strands += report["strands"]
+                hairline_dropped += report["dropped"]
             bordered += report.get("bordered", 0)
             lightened += report.get("lightened", 0)
             border_narrow += report.get("border_narrow", 0)
@@ -3255,6 +3307,18 @@ def sequence(
                 "running stitch down the stroke instead.",
                 count=hairline_runs,
                 shapes=hairline_shapes,
+            )
+        )
+    if hairline_shapes_sewn:
+        warnings.append(
+            warn(
+                HAIRLINE_TIER_SEWN,
+                f"{hairline_shapes_sewn} hairline shape(s) sewed as "
+                f"{hairline_strands} single-run strand(s); {hairline_dropped} "
+                f"strand(s) under {machine.RUN_MIN_LOOP_MM:g} mm dropped.",
+                shapes=hairline_shapes_sewn,
+                strands=hairline_strands,
+                dropped=hairline_dropped,
             )
         )
     if blend_routed and not blend_decomposed:

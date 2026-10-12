@@ -1669,6 +1669,10 @@ export const SILENT_WARNINGS = new Set([
   // preflight reads PHOTO_FACES_DETECTED server-side, not from this list.
   "PHOTO_PREP_APPLIED", "PHOTO_FACES_DETECTED", "PHOTO_BACKGROUND_REMOVED",
   "PHOTO_BLEND_DISSOLVED", "PHOTO_SHADE_DEMAND", "PHOTO_SAM2_SEGMENTED",
+  // The hairline tier's bookkeeping (cfg.hairline, built OFF 2026-10-12):
+  // strands sewn and short ones dropped. Engine-side only, Kent's 2026-10-02
+  // "We shouldn't have to warn the user of anything".
+  "HAIRLINE_TIER_SEWN",
 ]);
 
 // Of the warnings that DO reach the panel, most are the engine reporting what

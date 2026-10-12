@@ -1173,3 +1173,120 @@ APPLIQUE_OVERLAP_ALLOWANCE_FRAC = 0.5
 # Machine speed for the worksheet — the Tajima will not infer it [P] (§2.10).
 APPLIQUE_COVER_SPM = 700
 APPLIQUE_TRIM_HEAVY_SPM = 650
+
+
+# --- Thread weight (2026-10-12, Kent: "Thread is extremely thin, we should be
+# able to embroider hair!") -------------------------------------------------
+#
+# Every number above that encodes the THREAD assumes 40 wt polyester on a
+# 75/11 (docs/fine-detail-hair-research-2026-10-12.md §3 lists them). The
+# profile below is the one place a different weight is described. With
+# `thread_wt` 40 every field returns the constant the engine already used, so
+# the default path is byte-identical by construction; 60 and 75 are
+# CANDIDATES from vendor pages, not settings — ROADMAP gate 1: no sew-out has
+# tested any of them (the card is #843 §4, restated as a DST list in
+# docs/hairline-prototype-2026-10-12.md).
+#
+# What is NOT here, on purpose: a weight-dependent `MIN_STITCH_MM`. The
+# shortest stitch is set by the NEEDLE (Melco "Stitches Too Small": a needle
+# is 0.7-0.8 mm across and a stitch shorter than it breaks thread; walk
+# >= 1.5, satin >= 1.0 — #843 §1 [V][25]), not by the thread, so a finer
+# thread does not lower it. `tests/test_thread_profile.py` asserts every
+# weight reports the same floor, so nobody "optimises" it down for 60 wt.
+
+THREAD_WEIGHTS = (40, 60, 75)
+THREAD_WT_DEFAULT = 40
+
+# The hairline tier's admission: a stroke whose skeleton-measured width is at
+# or under this many laid thread widths sews as ONE run along its skeleton.
+# 1.5 = the stroke is closer to one thread than to two; DRAWings switches a
+# single run to a double pass at 2 x 0.4 mm (#843 §1 [A][24]), so 1.5 sits
+# inside the band where one pass is the published technique.
+# candidate: #843 §4, unsewn.
+HAIRLINE_MAX_WIDTHS = 1.5
+
+
+class ThreadProfile:
+    """What a thread weight changes. Read-only; build with `thread_profile`."""
+
+    __slots__ = ("wt", "width_mm", "satin_spacing_mm", "hairline_run_width_mm",
+                 "hairline_max_width_mm", "min_stitch_mm", "min_cap_height_mm",
+                 "cap_height_note", "needle_advice")
+
+    def __init__(self, **kw):
+        for k in self.__slots__:
+            object.__setattr__(self, k, kw[k])
+
+    def __setattr__(self, name, value):
+        raise AttributeError("ThreadProfile is read-only")
+
+    def __repr__(self) -> str:
+        return (f"ThreadProfile(wt={self.wt}, width_mm={self.width_mm}, "
+                f"satin_spacing_mm={self.satin_spacing_mm})")
+
+
+def thread_profile(wt: int = THREAD_WT_DEFAULT) -> ThreadProfile:
+    """-> the profile for one thread weight (40, 60 or 75).
+
+    Fields:
+    - `width_mm`: the laid width of one thread (Law 16's unit). 40 is
+      `COVERAGE_THREAD_W_MM`, today's constant. No vendor publishes a
+      diameter (#843 §1); 60 and 75 scale 0.40 by the square root of the
+      Madeira Polyneon dtex (84x2 and 55x2 against 135x2).
+    - `satin_spacing_mm`: 40 is `SATIN_SPACING_MM`. 60 = its laid width,
+      which sits inside Amann's published 0.30-0.35 band for 60 wt [V][20]
+      (Madeira Classic 60's 0.35 is the band's top, Law 49). 75 = 0.25, the
+      top of Amann's 0.20-0.25 band; the laid-width rule would say 0.26 and
+      the vendor band wins.
+    - `hairline_run_width_mm`: the mark ONE run lays = `width_mm`.
+    - `hairline_max_width_mm`: `HAIRLINE_MAX_WIDTHS` x `width_mm` — the
+      widest stroke the hairline tier sews as one pass.
+    - `min_stitch_mm`: `MIN_STITCH_MM` at every weight (needle-bound, see
+      the block comment above).
+    - `min_cap_height_mm` / `cap_height_note`: the trade's smallest lettering
+      per weight. A NOTE for the worksheet, not read by preflight (whose
+      `MIN_LETTER_EXTENT_MM` 4.0 is Law 48's consumables line and is left
+      alone so 40 wt stays byte-identical).
+    - `needle_advice`: both primary sources where they disagree.
+    """
+    if isinstance(wt, bool) or wt not in THREAD_WEIGHTS:
+        raise ValueError(f"thread_wt {wt!r} is not one of {THREAD_WEIGHTS}")
+    wt = int(wt)
+    if wt == 40:
+        width = COVERAGE_THREAD_W_MM
+        spacing = SATIN_SPACING_MM
+        cap = 6.0         # candidate: AllStitch 6-7 mm block [R], Amaya >= 6 mm on a 75 [V]; #843 §5
+        cap_note = ("40 wt: block 6-7 mm (AllStitch, reseller [R]); >= 6 mm on a "
+                    "75 needle (Amaya/Melco [V]). Law 48 keeps 4 mm as the "
+                    "consumables line preflight reads. #843 §5.")
+        needle = ("40 wt: 75/11 (Wilcom [V][1]); Madeira Polyneon 40 sheet "
+                  "60/8-75/11 [A][19]. #843 §1.")
+    elif wt == 60:
+        width = 0.32      # candidate: √dtex scaling, #843 §1, unsewn
+        spacing = 0.32    # candidate: Amann 0.30-0.35 for 60 wt [V][20], #843 §1, unsewn
+        cap = 4.0         # candidate: sources DISAGREE (3 / 4-5 / 4 mm), #843 §5, unsewn
+        cap_note = ("60 wt: sources DISAGREE — 3 mm (Madeira UK [V][3]), 4-5 mm "
+                    "'very narrow bars' (Amann [V][20]), 4 mm (AllStitch [R][6]). "
+                    "Block letters only. #843 §5. Unsewn.")
+        needle = ("60 wt: Madeira says 60/8-65/9 [A][19] (Amann 65, Madeira UK "
+                  "'65' [V]); Wilcom says 70/10-75/11 [V][1]. Both primary — the "
+                  "sew-out card tests the needle. #843 §1.")
+    else:  # 75
+        width = 0.26      # candidate: √dtex scaling, #843 §1, unsewn
+        spacing = 0.25    # candidate: Amann 0.20-0.25 for 75 wt [V][20], #843 §1, unsewn
+        cap = 3.0         # candidate: Amann "~3 mm and slightly smaller" [V][20], unsewn
+        cap_note = ("75 wt: ~3 mm 'and slightly smaller' (Amann [V][20]), the "
+                    "only source found. #843 §5. Unsewn.")
+        needle = ("75 wt: 60/8 only (Madeira Polyneon 75 sheet [A][19]); Amann "
+                  "60 [V][20]. #843 §1.")
+    return ThreadProfile(
+        wt=wt,
+        width_mm=width,
+        satin_spacing_mm=spacing,
+        hairline_run_width_mm=width,
+        hairline_max_width_mm=HAIRLINE_MAX_WIDTHS * width,
+        min_stitch_mm=MIN_STITCH_MM,
+        min_cap_height_mm=cap,
+        cap_height_note=cap_note,
+        needle_advice=needle,
+    )

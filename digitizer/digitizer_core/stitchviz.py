@@ -150,8 +150,14 @@ def _frame(stitches: list[dict], px_per_mm: float, pad_mm: float):
 
 def render_design(design: dict, px_per_mm: float = DEFAULT_PX_PER_MM,
                   fabric_bgr: tuple[int, int, int] = FABRIC_BGR,
-                  pad_mm: float = 2.0, lit: bool = True) -> np.ndarray:
+                  pad_mm: float = 2.0, lit: bool = True,
+                  thread_mm: float = THREAD_MM) -> np.ndarray:
     """-> BGR image of `design` sewn on `fabric_bgr`.
+
+    `thread_mm` (2026-10-12) is the drawn filament width — `machine.
+    thread_profile(wt).width_mm` to picture a finer weight (60 wt ~0.32,
+    a candidate). Default `THREAD_MM`, so every existing render and
+    `coverage` figure is unchanged.
 
     Colour changes advance through `design["colors"]` in order, which is the
     same per-block list `adapter.plan_to_design` writes, so a block that
@@ -167,7 +173,7 @@ def render_design(design: dict, px_per_mm: float = DEFAULT_PX_PER_MM,
         return np.full((8, 8, 3), fabric_bgr, np.uint8)
     (h, w), to_px = frame
     img = np.full((h, w, 3), fabric_bgr, np.uint8)
-    tw = max(2, int(round(THREAD_MM * px_per_mm)))
+    tw = max(2, int(round(thread_mm * px_per_mm)))
 
     ci, prev = 0, None
     rgb = colors[0]
