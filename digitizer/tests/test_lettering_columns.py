@@ -730,8 +730,8 @@ def test_the_lane_keeps_the_off_paths_sew_order(monkeypatch):
 def test_letters_sewn_back_to_back_keep_nearest_neighbour_among_themselves(monkeypatch):
     """The other half of the rule: letters the OFF path sews back to back (a
     span -- a word) stay back to back, but the lane may reorder THEM, which
-    is its own trim saving on a word (enthusiast: 7 trims, 8 in strict OFF
-    order). A bar, three letters in a row, a bar; the stub ends every letter
+    is its own trim saving on a word (enthusiast: a strict OFF order inside
+    the word cost a trim when it was tried). A bar, three letters in a row, a bar; the stub ends every letter
     on the span's far letter, so the lane sews it second."""
     shapes = {"A": _rect(-24, -5, -22, 5), "L1": _rect(-1, -5, 1, 5),
               "L2": _rect(4, -5, 6, 5), "L3": _rect(9, -5, 11, 5),

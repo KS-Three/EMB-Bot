@@ -1890,8 +1890,10 @@ def sequence(
     # each shape ranked by where it first sews there, and the pick below
     # follows that rank. Letters the OFF path sews back to back (a SPAN) stay
     # back to back, but among themselves keep nearest-neighbour from the
-    # needle: that is the lane's own trim saving on a word (enthusiast, 7
-    # trims against 8 in strict OFF order), and it moves no other shape.
+    # needle: that is the lane's own trim saving on a word (enthusiast 80 mm,
+    # 2026-10-12: 8 trims lane-ON against 15 OFF, and a strict OFF order
+    # inside the word cost a trim when it was tried),
+    # and it moves no other shape.
     # Only when a shape the lane would take is present; the lane off, this
     # is never computed and the plan is byte-identical. Costs one more
     # stage 7 on lane-ON designs with letters (about 20 s on golden_tee,
