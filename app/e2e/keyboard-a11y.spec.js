@@ -7,7 +7,7 @@
 // browser's own accessibility tree over CDP instead — the same tree a screen
 // reader is handed, which is what axe's `button-name` / `label` rules inspect.
 import { test, expect } from "@playwright/test";
-import { startStudio, pickTemplate, openDownload } from "./helpers.js";
+import { startStudio, pickTemplate, openDownload, openAdvanced } from "./helpers.js";
 
 const NAMED_ROLES = new Set([
   "button", "link", "textbox", "searchbox", "combobox", "listbox", "checkbox", "radio",
@@ -184,6 +184,7 @@ test("Delete removes the selected element from the focused field, and Ctrl+Z bri
     await expect(rows).toHaveCount(1);
   }
 
+  await openAdvanced(page);
   await page.getByRole("button", { name: "Text", exact: true }).click();
   await expect(rows).toHaveCount(n0 + 1);
   await canvas.focus();

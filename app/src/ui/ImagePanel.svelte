@@ -5,6 +5,7 @@
   import { friendlyError } from "../lib/friendlyError.js";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
+  import Advanced from "./Advanced.svelte";
   // Swatch labels sit on the ART's own colour, so one fixed label colour fails
   // on half the palette (white on a light swatch). WCAG relative luminance:
   // --ink beats white as the label above ~0.18.
@@ -303,10 +304,6 @@
   {:else if fileName}<span class="filename">{fileName}</span>{/if}
 </div>
 <p class="hint">Best results: logos and flat-color art. Photos with gradients won't stitch cleanly.</p>
-<p class="hint">
-  PNG with sharp, non-anti-aliased edges and a bigger image hold detail best. Art already has a
-  transparent background? Leave "Remove background" unchecked below.
-</p>
 
 {#if error}<p class="err">{error}</p>{/if}
 
@@ -315,10 +312,6 @@
 <label class="rangerow">
   Colors: {element.nColors}
   <input type="range" min="2" max="8" step="1" value={element.nColors} on:input={onColorsInput} />
-</label>
-<label class="checkrow">
-  <input type="checkbox" checked={element.removeBg} on:change={onRemoveBgChange} />
-  Remove background
 </label>
 
 <div class="swatches">
@@ -372,7 +365,22 @@
   {/if}
 </div>
 
-<div class="swatch-actions">
-  <button on:click={mergeSelected} disabled={!flat || selectedCount < 2}>Merge selected</button>
-  <button on:click={resetColors} disabled={!flat}>Reset colors</button>
-</div>
+<!-- Default slot: the size row (ContentStep). Advanced (spec 2026-09-30 §5):
+     background removal, merge / reset, and whatever ContentStep adds in the
+     "advanced" slot. -->
+<slot />
+<Advanced>
+  <p class="hint">
+    PNG with sharp, non-anti-aliased edges and a bigger image hold detail best. Art already has a
+    transparent background? Leave "Remove background" unchecked below.
+  </p>
+  <label class="checkrow">
+    <input type="checkbox" checked={element.removeBg} on:change={onRemoveBgChange} />
+    Remove background
+  </label>
+  <div class="swatch-actions">
+    <button on:click={mergeSelected} disabled={!flat || selectedCount < 2}>Merge selected</button>
+    <button on:click={resetColors} disabled={!flat}>Reset colors</button>
+  </div>
+  <slot name="advanced" />
+</Advanced>

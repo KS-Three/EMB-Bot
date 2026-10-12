@@ -23,6 +23,14 @@ import { render, fireEvent, waitFor } from "@testing-library/svelte";
 import "@testing-library/jest-dom/vitest";
 import Harness from "./DigitizePanel.testHarness.svelte";
 import { DEFAULT_DIGITIZE_PARAMS } from "../lib/project.js";
+import { advancedOpen } from "../lib/advanced.js";
+
+// Most of this panel's settings sit behind its "Advanced ›" fold (spec
+// 2026-09-30 §5), `hidden` while closed -- and Testing Library's role queries
+// skip hidden subtrees. This spec drives those settings, so it opens the fold
+// once; the fold itself is pinned in Advanced.spec.js and
+// ContentStep.advanced.spec.js.
+advancedOpen.set(true);
 
 // Only `loadImage` is controlled; the rest of lib/rasterize.js is the real
 // module, so `isVectorFile`/`rasterSize`/`UNREADABLE` are the shipped ones and

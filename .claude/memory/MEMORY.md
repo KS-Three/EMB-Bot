@@ -93,7 +93,7 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [lost_frac is two metrics](lost-frac-is-two-metrics-2026-09-20.md) — `lost_frac` sums two OPPOSITE defects; enthusiast is 100% overshoot, no ink lost. Never quote its MAGNITUDE
 - [SEEDS unservable request, and the worktree blind spot](seeds-request-and-the-worktree-blind-spot-2026-09-22.md) — a worktree lacks the rembg venv: a DIFFERENT pipeline; the SEEDS crash was an unservable ask, can be SILENT
 - [Check what shipped before building it](check-shipped-before-building-2026-09-29.md) — Kent asked for a manual digitizer that had shipped; grep MASTER_SCOPE/PRODUCT, offer "show me", drive it
-- [Studio configurator redesign](studio-configurator-pr1-2026-09-30.md) — wizard → Tesla panel: PRs 1-2 merged, 4 built, 3 (hide power tools) UNPLANNED; Original view still open
+- [Studio configurator redesign](studio-configurator-pr1-2026-09-30.md) — wizard → Tesla panel: all four PRs built; PR 3 = Advanced fold (hidden, not removed); Original view still open
 - [Fine detail and the work grid](fine-detail-work-grid-2026-09-30.md) — "RESTAURANT" was lost to the tracer's 4 px/mm grid, not the file; `work_px_per_mm` ON at 8 (Kent 10-01)
 - [Instagram: gradient lane, not classifier](instagram-gradient-lane-edges-2026-09-30.md) — real IG file classifies gradient CORRECTLY; the SLIC lane's edges were the defect, snap ON. Render first
 - [The orphan-lane sweep](orphan-lane-sweep-2026-09-30.md) — `pro-overlay-diff` PARKED (Kent); squash merges blind `main..lane`, count added lines; Developer Mode ON

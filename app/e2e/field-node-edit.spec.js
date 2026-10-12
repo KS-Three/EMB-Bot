@@ -20,7 +20,7 @@
 // manual-trace-import.spec.js), so every pixel box that a gesture aims at is
 // read AFTER select + Escape and only once three consecutive reads agree.
 import { test, expect } from "@playwright/test";
-import { pickGarment } from "./helpers.js";
+import { pickGarment, openAdvanced } from "./helpers.js";
 
 const STATS = "span.stats";
 const MIN_RUN = 12;
@@ -59,6 +59,7 @@ async function drawRectangle(page, { x0 = 0.25, x1 = 0.75, open = true } = {}) {
     await page.locator(".hoop canvas").click({ button: "right" });
     await page.locator(".fieldmenu button").filter({ hasText: "Draw shapes" }).click();
   }
+  await openAdvanced(page);
   const mp = page.locator(".mp-canvas");
   await expect(mp).toBeVisible();
   const box = await mp.boundingBox();
