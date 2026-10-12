@@ -39,8 +39,9 @@ from . import analysis as an
 from . import features as ft
 from .features import base_cfg, digitize_once, features_design_only, features_full
 from .filearm import design_from_file
-from .pairs import (ARMS, BASE, EXCLUDED_FIXTURES, ArmRun, build_pairs, design_hash,
-                    load_picks, now_iso, sealed_hash, unpicked)
+from .pairs import (ARMS, BASE, EXCLUDED_FIXTURES, N_IDENTICAL, N_REPEAT, SHUFFLE_SEED,
+                    ArmRun, build_pairs, design_hash, load_picks, now_iso, sealed_hash,
+                    unpicked)
 from .refarm import (add_worktree, discard_worktree, link_photo_prep, ref_environment,
                      run_ref_design)
 from .server import PORT, make_server
@@ -294,7 +295,8 @@ def _place(src: Path, dst: Path) -> None:
         shutil.copy2(src, dst)
 
 
-def pair(out=OUT) -> int:
+def pair(out=OUT, *, seed: int = SHUFFLE_SEED, n_identical: int = N_IDENTICAL,
+         n_repeat: int = N_REPEAT) -> int:
     """Build the sitting from every rendered arm; -> the pair count.
 
     The identity of a sitting is the SEALED map — what each opaque id
@@ -303,6 +305,10 @@ def pair(out=OUT) -> int:
     the public lists could not see an arm swap at equal count, and skipped
     itself entirely when pairs.json was missing (review finding 2,
     2026-09-17, both halves shown empirically).
+
+    `seed` and the two control counts are `build_pairs`' own arguments,
+    passed through for `fresh_sitting` (a manifest names its seed); the
+    defaults are the constants this always used, so `--pair` is unchanged.
     """
     out = Path(out)
     feats = json.loads((out / "features.json").read_text(encoding="utf-8"))
@@ -321,7 +327,8 @@ def pair(out=OUT) -> int:
                 json.loads(dpath.read_text(encoding="utf-8")))
             runs.append(ArmRun(name, arm, sewn,
                                design_only=bool(row.get("design_only", False))))
-    public, sealed, skipped = build_pairs(runs)
+    public, sealed, skipped = build_pairs(runs, seed=seed, n_identical=n_identical,
+                                          n_repeat=n_repeat)
     new_hash = sealed_hash(sealed)
 
     picks_log, sitting = out / "picks.jsonl", out / "sitting.json"

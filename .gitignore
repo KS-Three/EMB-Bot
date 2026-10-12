@@ -64,6 +64,13 @@ digitizer/artfid_eye_out/
 # kept out of the public repo, not safe to delete — CLAUDE.md footgun 5.
 digitizer/eye_pairs_out/
 
+# Kent's OWN new logos for a fresh blinded sitting (tools/eye_pairs/fresh_sitting.py,
+# MASTER_SCOPE "Waiting on Kent" 42). Public repo: new client artwork is never
+# committed without asking him (CLAUDE.md), and `fresh_sitting build` refuses a
+# logo outside a git-ignored folder. The manifest and the logos live here; a
+# sitting's output goes under eye_pairs_out/ above.
+digitizer/eye_pairs_local/
+
 # Codex CLI's mirror of the Claude config (.codex/ hooks+agents, .agents/ skills,
 # AGENTS.md). Local-only on purpose: AGENTS.md is a stale sed-substituted copy of
 # CLAUDE.md whose "Codex" paths do not exist, and .codex/hooks.json hardcodes
