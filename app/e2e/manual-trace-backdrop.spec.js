@@ -9,7 +9,7 @@
 // AA 4.5:1 for normal text), not from pixels: the button is a solid fill, so
 // its colour pair IS what the customer sees.
 import { test, expect } from "@playwright/test";
-import { pickGarment } from "./helpers.js";
+import { pickGarment, openAdvanced } from "./helpers.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -35,6 +35,7 @@ test("the tracing image's Remove button is readable, and removes the image", asy
   await page.locator(".hoop canvas").click({ button: "right" });
   await page.getByRole("menuitem", { name: "Draw shapes" }).click();
 
+  await openAdvanced(page);
   await page.getByRole("button", { name: "Trace image…" }).click();
   await page.locator(".tip-upload input[type=file]").setInputFiles(FIXTURE_PNG);
 

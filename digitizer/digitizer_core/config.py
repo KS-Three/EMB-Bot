@@ -1319,6 +1319,23 @@ class PipelineConfig:
     # The fabric's multiplier waits on that sew-out as one named 1.0:
     # `stage5_overlap.OVERLAP_FABRIC_FACTOR`.
     overlap_parallel_mm: float = 1.0
+    # Law 26's other half (defect 47's forbid-gap rule): "engineered gaps
+    # under 2 stitch rows (~0.8 mm) close up". A strip of bare fabric
+    # between two colours narrower than this -- read off the ARTWORK, the
+    # gap the design drew -- cannot be sewn as its own region and shows
+    # fabric once pull takes the two compensation bands back, so stage 5
+    # does not leave it: the colour sewn FIRST spans the strip and tucks
+    # the ordinary `pull + overlap_mm` tongue under the later colour, whose
+    # edge stays on its artwork (the colour on top owns the seam, Kent's
+    # 2026-09-09 ruling). A gap a third colour fills, a gap between two
+    # shapes of one thread, and anything at or over this are untouched.
+    # The strip is closed, never widened: widening would shave artwork off
+    # a colour to make room for fabric the law says closes up anyway.
+    # None is OFF, the engine before it byte for byte. 0.8 is the
+    # documented CANDIDATE (two rows at the law's pitch), not a measured
+    # constant: the value is ROADMAP gate 1's and waits on card block 6.
+    # `stage5_overlap.gap_bridges`; read with `tools/seam_underlap.narrow_gaps`.
+    forbid_gap_mm: float | None = None
     # Stage 5's hole hold, read for what is actually IN the hole. A hole the
     # shell's pull growth would shrink under `min_detail_mm²` is held open at
     # its original size — right for a counter, wrong for a hole a LATER

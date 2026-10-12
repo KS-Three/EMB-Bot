@@ -20,7 +20,7 @@
 // Same runner split as wizard-smoke.spec.js: this is a @playwright/test spec
 // (`npm run test:e2e`), not a vitest one -- vite.config.js excludes e2e/**.
 import { test, expect } from "@playwright/test";
-import { pickGarment, uploadArtwork, runDigitize } from "./helpers.js";
+import { pickGarment, uploadArtwork, runDigitize, openAdvanced } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -33,6 +33,7 @@ import { fileURLToPath } from "node:url";
 async function openShapeRows(page) {
   // The list lives on the Shapes tab since 2026-09-30; the tab appears with
   // the result, so the click waits for it.
+  await openAdvanced(page);
   await page.getByRole("tab", { name: "Shapes" }).click({ timeout: 120_000 });
   const btn = page.getByRole("button", { name: /^Edit shapes/ });
   await expect(btn).toBeVisible({ timeout: 120_000 });

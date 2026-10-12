@@ -12,7 +12,7 @@
 // same way e2e/field-outlines.spec.js runs (its service bootstrap is copied
 // here rather than shared so each file stays runnable on its own).
 import { test, expect } from "@playwright/test";
-import { pickGarment, uploadArtwork } from "./helpers.js";
+import { pickGarment, uploadArtwork, openAdvanced } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -117,6 +117,7 @@ async function digitize(page) {
   await page.waitForTimeout(1200);
   // The rows live on the Shapes tab, behind the closed-by-default "Edit
   // shapes" disclosure.
+  await openAdvanced(page);
   await page.getByRole("tab", { name: "Shapes" }).click();
   await page.getByRole("button", { name: /^Edit shapes/ }).click();
   await expect(page.locator(".dgp-layer").first()).toBeVisible();

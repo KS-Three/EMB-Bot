@@ -8,7 +8,7 @@
 // A test marked `test.fail()` pins a bug on main TODAY: it passes while the
 // bug stands, turns red when someone fixes it, and that PR deletes the line.
 import { test, expect } from "@playwright/test";
-import { startStudio, pickTemplate, uploadArtwork, runDigitize } from "./helpers.js";
+import { startStudio, pickTemplate, uploadArtwork, runDigitize, openAdvanced } from "./helpers.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -87,6 +87,7 @@ test("undo after a resize restores the previous width", async ({ page }) => {
 test("undo after deleting an element brings it back; redo deletes it again", async ({ page }) => {
   await lettering(page);
   await expect(rows(page)).toHaveCount(1);
+  await openAdvanced(page);
   await page.locator(".eladd", { hasText: "Text" }).click();
   await expect(rows(page)).toHaveCount(2);
   await page.waitForTimeout(600);        // past history.js's 500 ms coalesce window
@@ -110,6 +111,7 @@ test("deleting an element right after adding it can still be undone", async ({ p
   // discrete structural edits). Whoever fixes it deletes this test.fail().
   test.fail();
   await lettering(page);
+  await openAdvanced(page);
   await page.locator(".eladd", { hasText: "Text" }).click();
   await expect(rows(page)).toHaveCount(2);
   await page.getByRole("button", { name: "Remove element" }).last().click();
