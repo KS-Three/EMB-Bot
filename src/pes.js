@@ -57,6 +57,31 @@
     return { xMin, xMax, yMin, yMax, have };
   }
 
+  // PES/PEC store the extents and every CSewSeg point as int16 (0.1 mm, so
+  // +/-3.27 m) and the PEC colour count as one byte holding count-1 inside a
+  // 0x1cf-byte colour table. Past either limit the old code wrapped silently:
+  // a wide design wrote a negative width, 257 colours wrote a count of 0 and
+  // 464 overran the table. No hoop is near these limits, so refuse by name.
+  const PES_INT16_MAX = 32767, PES_INT16_MIN = -32768, PES_MAX_COLORS = 256;
+
+  function assertPesLimits(ext, colorCount) {
+    if (colorCount > PES_MAX_COLORS) {
+      throw new RangeError(
+        "This design has " + colorCount + " colours and a PES file can only hold " + PES_MAX_COLORS +
+        ". Reduce the number of colours."
+      );
+    }
+    // CSewSeg points are (x, -y), so the y bounds are tested negated.
+    if (ext.xMax - ext.xMin > PES_INT16_MAX || ext.yMax - ext.yMin > PES_INT16_MAX ||
+        ext.xMin < PES_INT16_MIN || ext.xMax > PES_INT16_MAX ||
+        -ext.yMax < PES_INT16_MIN || -ext.yMin > PES_INT16_MAX) {
+      throw new RangeError(
+        "This design is too large for a PES file: a PES file can only describe a design up to 3.2 m across " +
+        "and 3.2 m from its starting point. Make the design smaller."
+      );
+    }
+  }
+
   // ---- PEC delta stitch encoding --------------------------------------
   // Short form: one signed 7-bit byte per axis when |delta| <= 63.
   // Long form:  two bytes per axis, 0x80 flag + 12-bit value; 0x20 flag = jump/trim.
@@ -318,6 +343,7 @@
     const ext = extents(stitches);
     const width = ext.xMax - ext.xMin;
     const height = ext.yMax - ext.yMin;
+    assertPesLimits(ext, colorCount);
 
     const label = String((design && design.label) || "EMBBOT").slice(0, 16);
 
@@ -409,6 +435,7 @@
     const ext = extents(stitches);
     const width = ext.xMax - ext.xMin;
     const height = ext.yMax - ext.yMin;
+    assertPesLimits(ext, colorCount);
 
     const w = new Writer();
     w.str("#PES0001");
