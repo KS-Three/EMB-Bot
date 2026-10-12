@@ -140,8 +140,8 @@ Behaviour:
 
 **Files:** Create `test/manualrun-dst.test.js`.
 
-- [ ] A bent 3-point line (60 × 30 mm design) through the Studio's own `shapesToRegions` (dynamic import of `app/src/lib/manualShapes.js`) → `buildQualityDesign` → `encodeDST` → written to a temp file → `tools/crossval_decode.py` via `tools/crossval-stitch-formats.mjs`'s `resolvePython`/`pyDecode` (skip locally without pystitch, FAIL on CI as that file does). Assert in mm: every decoded STITCH lies within 0.15 mm of the path (path mapped through `d.fit`); the first and last stitches are within 0.15 mm of the path's ends; the summed stitch length is 3 × path length ± 2 %; the median stitch is 0.73 ± 0.1 mm; zero TRIMs between the run's stitches.
-- [ ] Run → green against the venv (`EXIT=0`, test not skipped); commit `test: a drawn line read back from its DST by pystitch, in mm`.
+- [x] A bent 3-point line (60 × 30 mm design) through the Studio's own `shapesToRegions` (dynamic import of `app/src/lib/manualShapes.js`) → `buildQualityDesign` → `encodeDST` → written to a temp file → `tools/crossval_decode.py` via `tools/crossval-stitch-formats.mjs`'s `resolvePython`/`pyDecode` (skip locally without pystitch, FAIL on CI as that file does). Assert in mm: every decoded STITCH lies within 0.15 mm of the path (path mapped through `d.fit`); the first and last stitches are within 0.15 mm of the path's ends; the summed stitch length is 3 × path length ± 2 %; the median stitch is 0.73 ± 0.1 mm; zero TRIMs between the run's stitches.
+- [x] Run → green against the venv (`EXIT=0`, test not skipped); commit `test: a drawn line read back from its DST by pystitch, in mm`.
 
 ---
 
