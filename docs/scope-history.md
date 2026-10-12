@@ -13,6 +13,85 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-12 (evening) — scope refresh after PRs #850–#857 (and #840, which merged after #849 was written)
+
+Two MASTER_SCOPE lines were stale when this pass began: area 5 called PR #840 "armed and NOT merged" (it merged 04:04Z), and "Waiting on Kent" 45 called hairline step 2 "in flight, unpushed" (it merged as #850, and step 3 as #851). Both re-stated. The phase-1 instruments — counters (#841), the pooled kappa (#842) and the density/flow read (#847) — landed BEFORE #849 and are already recorded there; nothing in #850–#857 touches them, and phase 1's exit stays NOT MET. MASTER_SCOPE went 25,294 → 25,308 words.
+
+Merged in the range, with the numbers as each PR body measured them:
+
+- **#840** manual plan 3, open runs (`Line` mode, run ↔ column): a design with no line pinned byte-identical to main; read-back 316 stitches over a 76.53 mm path, worst 0.058 mm off it.
+- **#850** hairline step 2, `cfg.hairline_over_ground` OFF. Hair fixture at drawn scale (69.15 mm): bare fabric new vs OFF on the ground 2.88 → 0.44 mm² at 40 wt, 3.25 → 0.69 at 60 wt (~85%); skin fill + underlay 8,031 OFF = 8,031 ON (md5-identical) at 40 wt, 9,468 (+17.9%) with the ground; stitches OFF 26,922 / ON 19,841 / ON+ground 21,362; trims 90 / 105 / 115. Network width traced 0.398 → source 0.452 against the 0.48 mm 60 wt line (margin 0.028). #848's "+36% widening" was a units error: the fixture rendered at 80 mm against a 69.15 mm art box. 124 passed, 1 failed (`photo/enthusiast_logo.png`, the platform golden CI deselects).
+- **#851** hairline step 3, per-strand gate (replaces the per-shape gate; no new flag), `hair_fine.png` (40 strands 0.25–0.35 mm, median 0.30), sew-out card `docs/sewout/hairline-card-2026-10-12/`. hair_fine at 60 wt: margin 0.179 mm, 319 of 338 branches run; hair_strands at 60 wt: 183 run / 130 ladder. Card: 40 wt 3,883 stitches, 60 wt 4,158, both 94.0 × 82.0 mm, 0 short stitches outside the expected places (pystitch read-back). Found on the way: `cv2.polylines` draws an odd thickness as the next even one, so `hair_strands.png`'s strands sit at 0.25 / 0.35 / 0.45 / 0.55 mm. 152 passed, same one platform red.
+- **#852** `cfg.coverage_edges` DEPRECATED (Kent: no, WoK 38) — warns once when set True, byte-identical; configurator spec §2.2 amended (Kent: the fold stays, WoK 43). 45 passed, 7 expected warnings.
+- **#853** `cfg.clip_keep_pieces` built OFF (defect 61). Sweep 23 × 2: a split carrying ink on 6 of 23 fixtures; gaulke's roof line `Se9512992` 18.10 mm² of ink lost OFF (the kept piece was 24.30 mm² of tongue); drone `S426e81b9` 8.36 mm², `S53adc87e` 2.70; golden_tee 9.12 (5.41 bare); bridge ≈ 22.2 over seven halo shapes (≈ 0.06 bare); chrome 3.52 + 0.61 + 0.57; sunset 1.47 + 0.73. Whole flag ON: bridge 17,124 → 18,001 stitches (+5.1%), trims 87 → 91 left chest, 99 → 105 hat. `ARTWORK_UNCOVERED` reports nothing OFF or ON on gaulke and golden_tee. OFF md5-identical on eight runs. 76 passed.
+- **#854** memory: two notes left uncommitted in the main checkout landed (`lane-triage-2026-10-11`, `letterform-priors-lane-2026-10-06`); index 21,900 characters. No status change.
+- **#855** stage-4 largest-contour census: 0 multi-island masks of 7,106 over 26 fixtures × 2 garments × {default, 6 colours}; no flag built; comment corrected; tripwire `test_corpus_masks_reach_stage4_as_single_islands`. Of #853's other collapse sites only the forbid-gap weld and `stage6_hairline.rest_planned` can lose ink, both behind OFF flags. 66 passed.
+- **#856** `cfg.clip_parent_keeps_ink` default True (Kent's ruling on defect 61's first half); `clip_keep_pieces` stays False. OFF → ON: drone 19,452 → 19,457, gaulke 4,860 → 4,876 (trims 36 → 34), bridge 17,124 → 17,032, chrome 35,922 → 35,872; chrome's `ARTWORK_UNCOVERED:info` clears (2.3 → 0.0 mm² left chest); no grade falls. 11 heavy fixtures not run (inferred identical from #853's census). `corpus_scorecard_baseline.json` NOT recaptured (cloud-Linux only, 188 `digitizer_core` commits behind). 120 passed.
+- **#857** forbid-gap weld: a failed weld plans on the part carrying the artwork (`_weld_part`). ON at 0.8 mm over 46 cases: 88 strips, 0 failed welds, 0.00 mm² recovered (latent). Flag ON vs OFF moves `ARTWORK_UNCOVERED` both ways: chrome 1 → 0, scene_stub 2 → 1 left chest, grass_macro hat 802.5 → 736.4 mm², bridge left chest 0 → 1 (1.1 mm² of `Sdf9790da`). 16 passed.
+
+Moved out of MASTER_SCOPE on this pass, verbatim as they stood (resolved, rewritten, or condensed there):
+
+*Live defect 61:*
+
+61. **Stage 5's clip can cut a shape in two and silently drop the smaller piece — SHIPPED, on the default path, NEW 2026-10-12.** Where a shape's artwork overlaps an earlier colour's artwork, the clip by what is already down can split it, and `_largest_polygon` keeps the largest part and discards the rest with no warning: on `drone_render`, `S426e81b9` loses a **9 mm²** piece, forbid-gap OFF included. Seen in passing by the forbid-gap lane, one fixture, not diagnosed further; how often it happens across the corpus and whether `ARTWORK_UNCOVERED` sees the loss are unmeasured. The forbid-gap lane fixed its own instance only (a strip cut off from its shape goes to the earlier colour, PR #846); the general drop is untouched. Not sewn. *(measured 2026-10-11 — PR #846 body, "Catches")*
+
+*Waiting on Kent 38:*
+
+38. **`coverage_edges` with the Column lane — together or not at all, NEW
+   2026-10-11.** Becker 2×2 at 50/80 mm: MARINE's mess under `coverage_edges`
+   is the skeleton tier, not the outline (its long crosses 9 → 28 at 80 mm;
+   the Column lane sews the same outline with 0). Under the lane the cleaner
+   outline helps — bare MARINE satin 3.97 → 1.06 mm², uncovered ink 4.85 →
+   3.71%, trims 24 → 21 — for Hausdorff 3.1 → 3.5 mm and, at 50 mm, a
+   narrower A counter and E slot (seen, not measured). At 100 mm both Column
+   arms stay above shipped `lost_frac`, and #828 reads MARINE overshoot UP
+   under both tiers there. One fixture, unsewn; #818 asks a stitch-level
+   instrument before any flip. *(measured 2026-10-11 — PR #824,
+   [`docs/coverage-edges-under-columns-2026-10-11.md`](docs/coverage-edges-under-columns-2026-10-11.md))*
+   **That instrument now exists (PR #841, `tools/counter_slots.py`):** at 80 mm
+   `coverage_edges` narrows three Becker slots below one thread (0.4 mm) that
+   the lane alone keeps open — E lower 0.79 → 0.24, E upper 0.70 → 0.39, R
+   stem-to-leg 0.59 → 0.26 mm (lane flags 0 → 3); no counter closes in any
+   cell, but added to the lane it costs the A's counter 15% and the R's 45%;
+   #824's A-notch closing did not reproduce after #837; opaque fixtures
+   inert. One fixture, unsewn; the ruling is still Kent's. *(measured
+   2026-10-11 — PR #841, [`docs/coverage-counters-2026-10-11.md`](docs/coverage-counters-2026-10-11.md))*
+
+*Waiting on Kent 43:*
+
+43. **Configurator: where the `Advanced ›` fold sits — NEW 2026-10-12.** PR
+   #845 put one fold under each editor's essentials (above the Garment
+   section), not at the panel's foot as spec §2.2 words it, since §5's table
+   is per element type; the foot means splitting each panel in two. Also not
+   built: a "sewn colours" row for digitized art, and a fold on the
+   multi-select group panel (its add row is unreachable there). Does the
+   deviation stand? *(built 2026-10-11 — PR #845, `ContentStep.advanced.spec.js`)*
+
+*Waiting on Kent 44 and 45:*
+
+44. **`forbid_gap_mm` flip — after a satin render, NEW 2026-10-12.** Defect
+   47's forbid-gap half, built OFF. Before any flip: render bridge's
+   rail-comp satin `S0c90443f` (3,868 → 2,914 stitches once strips are handed
+   to it) and decide whether strips go to satin-tier shapes at all, or only
+   as an underlay-free fill patch; and accept that it closes a deliberate
+   sub-0.8 mm knockout line. The 0.8 mm value is card block 6's (gate 1).
+   *(measured 2026-10-11 — PR #846, `tools/forbid_gap.py`)*
+45. **The hairline tier — step 2 in flight; the flip and the weights wait,
+   NEW 2026-10-12.** `hairline` and per-block `thread_wt` are built (area 1,
+   PR #848). Step 2 — the ground running UNDER hairline shapes, so the cloth
+   stops showing between strands — is in flight (lane
+   `claude/hairline-ground`, unpushed at this writing). After it: whether to
+   flip `hairline`, and the sew-out card for the 60/75 wt widths, the 1.5 mm
+   stitch and strand spacing (written in the doc as a DST list, not
+   generated; gate 1). *(built 2026-10-12 — PR #848,
+   [`docs/hairline-prototype-2026-10-12.md`](docs/hairline-prototype-2026-10-12.md))*
+
+*Waiting on Kent 41's closing clause:* "flipping it, or `coverage_edges` on Becker's class (item 38), is his."
+
+*Area 1's hairline (#848) and low-resolution-outline paragraphs* moved verbatim to `docs/scope/1-auto-digitizing-quality.md`, last section.
+
+---
+
 **Last updated:** 2026-10-12 — scope refresh after the 10-11/12 wave (PRs #832–#848)
 
 Three MASTER_SCOPE lines were already stale when this pass began: area 1 and "Waiting on Kent" 41 called the native-read corner lane "in flight" though PR #834 had merged it OFF; the SVG-import paragraph called `claude/knockout-alpha` "in flight" though PR #832 had merged; and defect 47 called the forbid-gap rule "not built" an hour after PR #846 built it. All three re-stated. MASTER_SCOPE went 26,233 → 25,294 words: defects 21–25, 30, 32, 37, 39 and 43 (all fixed or measured, all still under "Live") moved to closed pointers with their full text in the area docs; the area-3 At-a-glance row's PR 2/PR 4 detail and four area-3 paragraphs already verbatim in `docs/scope/3-studio-app-wizard.md` came out; the phase-1 sitting chronology moved to area 1.

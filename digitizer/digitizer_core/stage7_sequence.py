@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import heapq
 import math
+from dataclasses import replace
 
 import shapely
 from shapely.geometry import LineString, Point, Polygon
@@ -1874,6 +1875,56 @@ def sequence(
     keeps. None (every pre-existing caller, every non-demand run) is
     byte-identical to the parameter not existing.
     """
+    # The Column lane keeps the OFF path's sew order (`cfg.lettering_columns`,
+    # 2026-10-12). Within a colour the pick below is nearest-neighbour from
+    # where the last shape ENDED, and a Column letter ends somewhere else than
+    # the satin tier's letter did -- usually nearer its exit target, which is
+    # the point of `satin_exit_toward_next`. That moved every pick after it:
+    # on golden_tee one letter's exit swapped a non-letter shape ahead of the
+    # next letter, so the colour's last shape changed, so the NEXT colour
+    # started from the other side and sewed its four shapes in reverse
+    # (S0eec8aa3 ... S75fc74c9, #828). A non-letter shape then starts and
+    # ends elsewhere, and its edges with the colours round it come out
+    # different. The lane is a letter-construction change, not a sequencing
+    # one, so the order is the OFF path's: the same plan sequenced once with
+    # the lane off (letters on the satin ladder, nothing else different),
+    # each shape ranked by where it first sews there, and the pick below
+    # follows that rank. Letters the OFF path sews back to back (a SPAN) stay
+    # back to back, but among themselves keep nearest-neighbour from the
+    # needle: that is the lane's own trim saving on a word (enthusiast 80 mm,
+    # 2026-10-12: 8 trims lane-ON against 15 OFF, and a strict OFF order
+    # inside the word cost a trim when it was tried),
+    # and it moves no other shape.
+    # Only when a shape the lane would take is present; the lane off, this
+    # is never computed and the plan is byte-identical. Costs one more
+    # stage 7 on lane-ON designs with letters (about 20 s on golden_tee,
+    # against ~200 s for stages 0-5).
+    off_rank: dict[str, int] | None = None
+    off_span: dict[str, int] = {}
+    lane_letters = ({p.shape_id for p in planned
+                     if str(p.region.meta.get("tier", "auto")).lower() == "auto"
+                     and is_lettering(p.region, cfg)}
+                    if cfg.lettering_columns and cfg.satin else set())
+    if lane_letters:
+        off_blocks, _off_warnings = sequence(
+            planned, fabric, replace(cfg, lettering_columns=False),
+            source_pixels=source_pixels, design_class=design_class,
+            fill_technique=fill_technique, streamline_mode=streamline_mode,
+            detail_layer=detail_layer, palette_spools=palette_spools,
+            hairline=hairline)
+        off_rank = {}
+        for _b in off_blocks:
+            for _r in _b.runs:
+                if _r.shape_id:
+                    off_rank.setdefault(_r.shape_id, len(off_rank))
+        _span, _prev = 0, False
+        for _sid in sorted(off_rank, key=off_rank.get):
+            _is = _sid in lane_letters
+            if _is and not _prev:
+                _span += 1
+            if _is:
+                off_span[_sid] = _span
+            _prev = _is
     row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     # Task A2: satin gets the same fabric-scaled density the fill row spacing
     # already has — the browser engine's own digitize.js already multiplies
@@ -2962,7 +3013,27 @@ def sequence(
             # that will take their turn, not a reason to pre-empt them.
             pool = (([i for i in unpinned if i not in late] or unpinned)
                     if late else unpinned)
-            if due is not None and (sew_order[due] <= next_slot or not unpinned):
+            ranked = ([i for i in remaining if group[i].shape_id in off_rank]
+                      if off_rank is not None else [])
+            if ranked:
+                # The Column lane: the OFF path's order (top of this
+                # function). That order already obeyed the pins, the
+                # borders-last bias and cap order below. A shape the OFF
+                # path left empty has no rank and takes the rules below once
+                # every ranked shape in its colour has sewn. Inside a span of
+                # letters, nearest-neighbour from the needle -- unless a pin
+                # or cap order is in force, whose order the OFF rank IS.
+                pick = min(ranked, key=lambda i: off_rank[group[i].shape_id])
+                span = off_span.get(group[pick].shape_id)
+                if span is not None and cursor is not None and not cap_order:
+                    same = [i for i in ranked
+                            if off_span.get(group[i].shape_id) == span]
+                    if not any(i in sew_order for i in same):
+                        here = Point(cursor)
+                        pick = min(same, key=lambda i: (
+                            round(group[i].polygon.distance(here), 6),
+                            off_rank[group[i].shape_id]))
+            elif due is not None and (sew_order[due] <= next_slot or not unpinned):
                 pick = due
             elif cap_order:
                 # Replaces BOTH geometry branches, not just the seed: on a cap
@@ -2988,7 +3059,26 @@ def sequence(
             # emitter so its walk can end facing it. Read only; the pick
             # below is untouched.
             exit_near = None
-            if cfg.satin_exit_toward_next:
+            # The Column lane's order (above) is not nearest-neighbour, so
+            # the shape the needle goes to next is the one that order picks
+            # next: the lowest OFF rank left, or -- inside a span of letters
+            # -- the span's nearest letter to this one. Facing the nearest
+            # shape instead sent a letter's exit toward a shape that sews
+            # later. Lane-ON only; `off_rank` is None otherwise.
+            rest = [i for i in ranked if i != pick]
+            if cfg.satin_exit_toward_next and rest:
+                nxt = min(rest, key=lambda i: off_rank[group[i].shape_id])
+                span = off_span.get(group[nxt].shape_id)
+                if span is not None and not cap_order:
+                    same = [i for i in rest
+                            if off_span.get(group[i].shape_id) == span]
+                    if not any(i in sew_order for i in same):
+                        nxt = min(same, key=lambda i: (
+                            round(group[i].polygon.distance(p.polygon), 6),
+                            off_rank[group[i].shape_id]))
+                q = nearest_points(p.polygon, group[nxt].polygon)[1]
+                exit_near = (float(q.x), float(q.y))
+            elif cfg.satin_exit_toward_next:
                 cands = [i for i in pool if i != pick] or list(remaining)
                 if cands:
                     nxt = min(cands, key=lambda i: (

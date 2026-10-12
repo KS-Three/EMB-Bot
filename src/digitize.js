@@ -935,16 +935,23 @@
     // bbox in px across all polygons
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const r of regions) for (const p of r.polygons) for (const q of p) { if (q.x < minX) minX = q.x; if (q.x > maxX) maxX = q.x; if (q.y < minY) minY = q.y; if (q.y > maxY) maxY = q.y; }
+    // No usable geometry (every region's rings are empty): the box of zero
+    // points is +/-Infinity, which put NaN in widthMM/heightMM and in the fit
+    // centre. Collapse it to a point at the origin and report 0 x 0 mm, the
+    // same answer the no-regions return above gives. Any ring with a vertex
+    // leaves the box finite, so this never runs for a real design.
+    const noGeometry = !isFinite(minX);
+    if (noGeometry) { minX = minY = maxX = maxY = 0; }
     const bboxWmm = (maxX - minX) / pxPerMm, bboxHmm = (maxY - minY) / pxPerMm;
     const fit = garments.fitScale(bboxWmm || 1, bboxHmm || 1, garment);
     let sc = (fit.scale > 0 && isFinite(fit.scale)) ? fit.scale : 1;
-    let designWmm = fit.targetWmm, designHmm = fit.targetHmm;
+    let designWmm = noGeometry ? 0 : fit.targetWmm, designHmm = noGeometry ? 0 : fit.targetHmm;
     // Explicit width override (Slice 3): replaces the auto garment fit. Clamp the
     // requested width into [1, hoopWmm], then ALSO clamp so height still fits the
     // hoop — same two-constraint min() fitScale itself uses, just seeded from the
     // requested width instead of the natural bbox. Reported widthMM/heightMM
     // become the actual design dims (bbox*sc), not the (unused) fit target.
-    if (typeof o.targetWidthMm === "number" && isFinite(o.targetWidthMm) && o.targetWidthMm > 0) {
+    if (!noGeometry && typeof o.targetWidthMm === "number" && isFinite(o.targetWidthMm) && o.targetWidthMm > 0) {
       const bw = bboxWmm || 1, bh = bboxHmm || 1;
       const hoopWmm = units.inToMm(garment.widthIn), hoopHmm = units.inToMm(garment.heightIn);
       const clampedTargetWmm = Math.min(Math.max(o.targetWidthMm, 1), hoopWmm);
