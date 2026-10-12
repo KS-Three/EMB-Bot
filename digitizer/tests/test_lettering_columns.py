@@ -650,6 +650,71 @@ def test_columns_on_golden_tee_is_deterministic_end_to_end():
     assert _plan_points(a) == _plan_points(b)
 
 
+def _sew_order(blocks):
+    seen = []
+    for b in blocks:
+        for r in b.runs:
+            if r.shape_id and r.shape_id not in seen:
+                seen.append(r.shape_id)
+    return seen
+
+
+def test_the_lane_keeps_the_off_paths_sew_order(monkeypatch):
+    """golden_tee's flip blocker (#828): a Column letter ends somewhere else
+    than the satin tier's letter did, and stage 7's nearest-neighbour pick
+    followed it -- one non-letter shape jumped ahead of the next letter, and
+    the next colour then sewed its four shapes in reverse. The lane changes
+    how a letter is BUILT, never the order the design is sewn in.
+
+    One colour: a far-left bar sews first, the letter next to it, then two
+    bars beyond the letter, one above-right and one below-right. The lane is
+    stubbed to end its letter beside whichever of those two the OFF path
+    sews LAST -- the case where nearest-neighbour from the lane's exit would
+    take it first. The order must still be the OFF path's."""
+    import digitizer_core.stage7_sequence as S7
+    from digitizer_core.fabrics import fabric_for_garment
+    from digitizer_core.regions import Region
+    from digitizer_core.stage5_overlap import PlannedRegion
+
+    shapes = {"A": _rect(-24, -5, -22, 5), "L": _rect(-1, -5, 1, 5),
+              "B": _rect(6, -20, 8, -10), "C": _rect(6, 10, 8, 20)}
+
+    def planned():
+        out = []
+        for sid, poly in shapes.items():
+            meta = {"layer": 0}
+            if sid == "L":
+                meta["text_candidate"] = True
+            reg = Region(shape_id=sid, polygon=poly, thread_index=0, thread_number="0134",
+                         area_mm2=poly.area, source="test", meta=meta)
+            out.append(PlannedRegion(region=reg, polygon=poly, sew_index=0))
+        return out
+
+    fabric = fabric_for_garment("left_chest")
+    off_cfg = PipelineConfig(underlay=False)
+    off_blocks, _ = S7.sequence(planned(), fabric, off_cfg)
+    off = _sew_order(off_blocks)
+    assert set(off) == set(shapes) and off.index("L") < len(off) - 2, off
+    last = shapes[off[-1]].centroid
+
+    calls = []
+
+    def fake_lane(poly, sid, **kw):
+        calls.append(sid)
+        cx, cy = poly.centroid.x, poly.centroid.y
+        run = stitches.StitchRun(points=[(cx, cy - 4), (cx, cy + 4), (last.x - 2.0, last.y)],
+                                 kind=stitches.SATIN, shape_id=sid)
+        return [run], {"empty": False, "jumps": 0}
+
+    monkeypatch.setattr(S7, "lettering_columns_shape", fake_lane)
+    on_cfg = PipelineConfig(underlay=False, lettering_columns=True)
+    on_blocks, _ = S7.sequence(planned(), fabric, on_cfg)
+    assert calls == ["L"]
+    assert any(r.shape_id == "L" and r.points[-1] == (last.x - 2.0, last.y)
+               for b in on_blocks for r in b.runs)
+    assert _sew_order(on_blocks) == off
+
+
 # ------------------------------------------- pitch: the satin tier's, as sewn
 #
 # Kent's Columns sitting (2026-10-07) came back "needs work": *"the
