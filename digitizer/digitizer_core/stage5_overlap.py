@@ -93,15 +93,21 @@ ordinary tongue reaches under the later colour from the strip's far edge, and
 the later colour keeps its artwork edge — the colour on top owns the seam, as
 Kent ruled for borders on 2026-09-09. The threshold is gate 1's to set.
 
-**A clip that cuts a shape in two (`cfg.clip_keep_pieces`, default OFF).**
+**A clip that cuts a shape in two (MASTER_SCOPE defect 61), two settings.**
 Clipping a grown shape by the colours already down can split it: a later
 colour whose artwork overlaps an earlier one's comes out of the clip as two
-or more polygons. Shipped, `_largest_polygon` keeps the biggest and drops
-the rest without a word (MASTER_SCOPE defect 61: drone's `S426e81b9` loses a
-9 mm² piece) — and "biggest" is by SEWN area, so the piece kept can be
-underlap tongue with no artwork in it while the shape's ink is the piece
-thrown away. With the flag the shape keeps the piece carrying the most
-artwork, and every other piece whose ARTWORK clears the stage-4 region floor
+or more polygons. Before the fix `_largest_polygon` kept the biggest and
+dropped the rest without a word (drone's `S426e81b9` loses a 9 mm² piece) —
+and "biggest" is by SEWN area, so the piece kept can be underlap tongue with
+no artwork in it while the shape's ink is the piece thrown away (gaulke's
+whole roof line).
+
+`cfg.clip_parent_keeps_ink` (default ON, Kent 2026-10-12): the shape keeps
+the piece carrying the most artwork. It adds no region and no warning; where
+the largest piece is also the inkiest, nothing changes.
+
+`cfg.clip_keep_pieces` (default OFF): the shape keeps the piece carrying the
+most artwork as above, and every other piece whose ARTWORK clears the stage-4 region floor
 (`clip_piece_floor_mm2`) sews as its own region of the same thread and tier,
 planned right after its parent; smaller pieces are dropped as before and
 counted in `CLIP_DROPPED_SLIVER`, which the Studio keeps silent. A piece of
@@ -376,30 +382,40 @@ def _polygon_pieces(geom) -> list[Polygon]:
     return [g for g in getattr(geom, "geoms", []) if g.geom_type == "Polygon"]
 
 
-def _split_clip(geom, art, floor: float):
+def _split_clip(geom, art, floor: float, *, by_ink: bool = True, keep: bool = True):
     """-> (the parent's piece or None, [cut-off pieces kept], [artwork mm² of
     each cut-off piece dropped]).
 
-    The parent keeps the piece carrying the most ARTWORK (`art`, the shape's
-    own polygon), the largest among equals. Where that is also the largest
-    piece — every split but one measured — it is `_largest_polygon(geom)`
-    exactly, so the parent sews what it sews with the flag off. It is not
-    always: on drone (2026-10-12) a 0.25 mm strip's largest piece was 3.16
-    mm² of underlap tongue with no artwork in it, and `_largest_polygon`
-    sewed that and dropped all 2.64 mm² of the strip's ink.
+    `by_ink` (`cfg.clip_parent_keeps_ink`): the parent keeps the piece
+    carrying the most ARTWORK (`art`, the shape's own polygon), the largest
+    among equals. Where that is also the largest piece — every split but a
+    handful measured — it is `_largest_polygon(geom)` exactly, so the parent
+    sews what it always did. It is not always: on drone (2026-10-12) a
+    0.25 mm strip's largest piece was 3.16 mm² of underlap tongue with no
+    artwork in it, and `_largest_polygon` sewed that and dropped all 2.64
+    mm² of the strip's ink. Off, the parent keeps the largest piece.
 
-    Every other piece is judged on its artwork: at or over `floor` it is
-    kept; under it, dropped and its artwork reported; with none at all it is
-    pull growth cut off from its shape — scaffolding for nothing — and is
-    dropped uncounted, as the flag-off engine drops it.
+    `keep` (`cfg.clip_keep_pieces`): every other piece is judged on its
+    artwork: at or over `floor` it is kept; under it, dropped and its
+    artwork reported; with none at all it is pull growth cut off from its
+    shape — scaffolding for nothing — and is dropped uncounted, as the
+    shipped engine drops it. Off, no piece is kept and nothing is reported:
+    the other pieces are dropped, as `_largest_polygon` drops them.
     """
     parts = _polygon_pieces(geom)
     if not parts:
         return None, [], []
-    ink = [g.intersection(art).area for g in parts]
-    # Rounded so float dust on a contact (1e-9 mm²) cannot outrank area.
-    i_main = max(range(len(parts)), key=lambda i: (round(ink[i], 6), parts[i].area))
+    if by_ink:
+        ink = [g.intersection(art).area for g in parts]
+        # Rounded so float dust on a contact (1e-9 mm²) cannot outrank area.
+        i_main = max(range(len(parts)), key=lambda i: (round(ink[i], 6), parts[i].area))
+    else:
+        i_main = max(range(len(parts)), key=lambda i: parts[i].area)
     kept, dropped = [], []
+    if not keep:
+        return parts[i_main], kept, dropped
+    if not by_ink:
+        ink = [g.intersection(art).area for g in parts]
     for i, g in enumerate(parts):
         if i == i_main:
             continue
@@ -995,8 +1011,12 @@ def resolve_overlaps(
     lost: list[Region] = []
     fusing_pairs: set[tuple[str, str]] = set()
 
-    # `cfg.clip_keep_pieces` (defect 61): keep what the clip cuts off. Off:
-    # every split below goes through `_largest_polygon`, byte for byte.
+    # Defect 61, two halves. `cfg.clip_parent_keeps_ink` (default ON): a split
+    # shape keeps the piece carrying the most ARTWORK, not the most sewn
+    # area. `cfg.clip_keep_pieces` (default OFF): the other pieces carrying
+    # enough artwork become regions of their own. Both off: every split below
+    # goes through `_largest_polygon`, byte for byte.
+    parent_ink = bool(getattr(cfg, "clip_parent_keeps_ink", True))
     keep_pieces = bool(getattr(cfg, "clip_keep_pieces", False))
     piece_floor = clip_piece_floor_mm2(cfg) if keep_pieces else 0.0
     slivers: list[tuple[str, float]] = []
@@ -1082,10 +1102,12 @@ def resolve_overlaps(
             # strand sews its whole ARTWORK polygon, so a piece the clip cuts
             # off them is sewn already: neither is split.
             pieces: list[Polygon] = []
-            splittable = (keep_pieces and not r.meta.get("bean_letter_spines")
+            splittable = ((parent_ink or keep_pieces)
+                          and not r.meta.get("bean_letter_spines")
                           and not (hairline and r.shape_id in hairline))
             if splittable:
-                grown, pieces, dropped_ink = _split_clip(grown, poly, piece_floor)
+                grown, pieces, dropped_ink = _split_clip(
+                    grown, poly, piece_floor, by_ink=parent_ink, keep=keep_pieces)
                 slivers.extend((r.shape_id, a) for a in dropped_ink)
             else:
                 grown = _largest_polygon(grown)
@@ -1126,7 +1148,9 @@ def resolve_overlaps(
                 if splittable:
                     # Same judgement for a split a held hole makes, and the
                     # cut-off pieces keep their share of the holes too.
-                    grown, more, dropped_ink = _split_clip(grown.difference(cut), poly, piece_floor)
+                    grown, more, dropped_ink = _split_clip(
+                        grown.difference(cut), poly, piece_floor,
+                        by_ink=parent_ink, keep=keep_pieces)
                     slivers.extend((r.shape_id, a) for a in dropped_ink)
                     kept_after: list[Polygon] = []
                     for pc in pieces:

@@ -1366,12 +1366,22 @@ class PipelineConfig:
     # the largest (`_largest_polygon`) and drops the rest silently -- drone's
     # `S426e81b9` loses a 9 mm² piece that way (MASTER_SCOPE defect 61) -- and
     # "largest" is by sewn area, so it can keep a piece of underlap tongue
-    # and drop the shape's ink. True keeps the piece with the most artwork as
-    # the shape, and every other piece whose ARTWORK clears the stage-4 region floor
-    # (`stage5_overlap.clip_piece_floor_mm2`, min_detail_mm² / 4) as its own
-    # region of the same thread and tier, sewn right after its parent; the
-    # rest are dropped as before and counted in `CLIP_DROPPED_SLIVER` (silent
-    # in the Studio). False is the engine before it, byte for byte.
+    # and drop the shape's ink. Two settings, one per half of the cure:
+    #
+    # `clip_parent_keeps_ink` (default TRUE, Kent's ruling 2026-10-12): after a
+    # split the shape keeps the piece carrying the most ARTWORK, the largest
+    # among equals, not the piece with the most sewn area -- a pure tongue
+    # piece is never kept over the ink. Wherever the largest piece is also
+    # the inkiest, the shape sews what it always did; it adds no region and
+    # no warning. False is `_largest_polygon`, byte for byte.
+    clip_parent_keeps_ink: bool = True
+    # `clip_keep_pieces` (default OFF): every OTHER piece whose ARTWORK clears
+    # the stage-4 region floor (`stage5_overlap.clip_piece_floor_mm2`,
+    # min_detail_mm² / 4) becomes a region of its own, same thread and tier,
+    # sewn right after its parent; the rest are dropped as before and counted
+    # in `CLIP_DROPPED_SLIVER` (silent in the Studio). It adds regions, and
+    # stitches (bridge: +5%, all from its JPEG-halo outline), so it waits.
+    # With both False the plan is the engine before defect 61, byte for byte.
     # Measured 2026-10-12: `tools/clip_keep_pieces.py`.
     clip_keep_pieces: bool = False
     # Stage 5's hole hold, read for what is actually IN the hole. A hole the
