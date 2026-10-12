@@ -1349,6 +1349,18 @@ class PipelineConfig:
     # constant: the value is ROADMAP gate 1's and waits on card block 6.
     # `stage5_overlap.gap_bridges`; read with `tools/seam_underlap.narrow_gaps`.
     forbid_gap_mm: float | None = None
+    # Stage 5 clips each grown shape by the colours already sewn, and the
+    # clip can cut it in two: a later colour whose artwork overlaps an
+    # earlier one's comes out as several polygons. False (shipped) keeps only
+    # the largest (`_largest_polygon`) and drops the rest silently -- drone's
+    # `S426e81b9` loses a 9 mm² piece that way (MASTER_SCOPE defect 61). True
+    # keeps every cut-off piece whose ARTWORK clears the stage-4 region floor
+    # (`stage5_overlap.clip_piece_floor_mm2`, min_detail_mm² / 4) as its own
+    # region of the same thread and tier, sewn right after its parent; the
+    # rest are dropped as before and counted in `CLIP_DROPPED_SLIVER` (silent
+    # in the Studio). False is the engine before it, byte for byte.
+    # Measured 2026-10-12: `tools/clip_keep_pieces.py`.
+    clip_keep_pieces: bool = False
     # Stage 5's hole hold, read for what is actually IN the hole. A hole the
     # shell's pull growth would shrink under `min_detail_mm²` is held open at
     # its original size — right for a counter, wrong for a hole a LATER

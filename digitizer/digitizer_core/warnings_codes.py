@@ -193,6 +193,15 @@ PALETTE_THREAD_MISMATCH = "PALETTE_THREAD_MISMATCH"
 # Stage 5 (overlap resolution / pull compensation)
 HOLE_NEARLY_CLOSED = "HOLE_NEARLY_CLOSED"          # pull comp would swallow a hole; held open. extra: {"count": int}
 SAME_THREAD_SHAPES_MERGED = "SAME_THREAD_SHAPES_MERGED"  # pull comp would fuse two shapes of one thread; gap held open. extra: {"count": int}
+# `cfg.clip_keep_pieces` (defect 61, built OFF 2026-10-12): stage 5's clip by
+# the colours already sewn cut a shape in pieces; every piece whose artwork
+# clears `stage5_overlap.clip_piece_floor_mm2` sewed as its own region, and
+# these are the ones under it, dropped as the flag-off engine drops every
+# cut-off piece. ENGINE-SIDE ONLY: the Studio lists it in SILENT_WARNINGS
+# (Kent's 2026-10-02 no-warnings ruling). extra: {"count": int, "ids":
+# list[str], "total_mm2": float, "largest_mm2": float, "floor_mm2": float,
+# "pieces": [{"id": str, "art_mm2": float}]}
+CLIP_DROPPED_SLIVER = "CLIP_DROPPED_SLIVER"
 
 # Stage 6 (stitch planning)
 SHAPE_TOO_THIN_TO_FILL = "SHAPE_TOO_THIN_TO_FILL"  # narrower than a fill can hold; satin's job (step 4). extra: {"count": int}

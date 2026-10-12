@@ -1673,6 +1673,9 @@ export const SILENT_WARNINGS = new Set([
   // strands sewn and short ones dropped. Engine-side only, per Kent's
   // 2026-10-02 no-warnings ruling.
   "HAIRLINE_TIER_SEWN",
+  // Stage 5's clip cut a shape in pieces and the ones too small to sew were
+  // dropped (cfg.clip_keep_pieces, built OFF 2026-10-12). Bookkeeping only.
+  "CLIP_DROPPED_SLIVER",
 ]);
 
 // Of the warnings that DO reach the panel, most are the engine reporting what
