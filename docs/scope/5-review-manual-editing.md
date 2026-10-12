@@ -1389,3 +1389,53 @@ auto-split of wide columns (a physical constant — gate 1); drawn two-rail
 columns. The side canvas's other edits still re-fit the element (plan 1's
 leftover); the Width row does not. The pull-comp attribution of ruling 12's
 fixed part is inferred from the pro's files, not sewn.
+
+## 2026-10-11 — open runs (Line mode), and run ↔ column
+
+Plan 3 of `docs/superpowers/specs/2026-09-30-manual-digitizing-gaps-design.md`
+(§2, §7; rulings 1, 4, 6, 7, 8), plan
+`docs/superpowers/plans/2026-10-11-manual-open-runs.md`, branch
+`claude/manual-open-runs` (PR #840).
+
+**What shipped.** A **Line** mode on the side canvas (`Shape | Hole | Column |
+Line`, ruling 4's word; the record and span kind are `run`): click along the
+line, double-click (or Enter, or Finish) to end it; it may cross itself. The
+record is `{ id, kind: "run", points, curves, colorRgb, passes?,
+stitchLenMm? }`, the same open spine a column has with no width.
+`shapesToRegions` hands the engine the path stroked 1 px wide as `outer` — a
+PROXY for hit-testing, the bbox and sew order — plus `sewAs: { kind: "run",
+path, passes, stitchLenMm }`. The engine (`src/digitize.js`) sews only
+`fill.runAlongPath(path)`, with ruling 1's three gates: no underlay, no
+finishing outline, no fill of the proxy. `runAlongPath` is a carry walk that
+lands on the last vertex exactly; 3 passes is a true bean (forward, back,
+forward over the same stations). Defaults are the corpus bean, 3 × 0.73 mm,
+read from `EMB.LETTERING_GUARDS` (ruling 6); a line under 2.2 mm sewn
+(`fill.RUN_MIN_LOOP_MM`, the one new declaration, mirroring `machine.py`)
+sews nothing and its outline is dropped. On the hoop a line edits open (floor
+2 points); its popover and the side panel's assign box show **Passes**
+(Single run / Bean) and **Stitch length**, and *Make it a column*. A column
+gains *Make it a line* (ruling 8): the spine is copied, never recomputed; a new
+column is 4.0 mm at the fit it is in and the re-fit rule holds everything else
+still. *(built 2026-10-11 — `test/manualrun.test.js`,
+`manualShapes.spec.js`, `fieldNodeEdit.spec.js`, `shapePopover.spec.js`,
+`ManualPanel.spec.js`, `app/e2e/manual-run.spec.js`)*
+
+**Read back from the DST.** A bent 3-point line (one curved segment) through
+the Studio's own chain → `encodeDST` → pystitch: 316 stitches along a
+76.53 mm path, worst 0.058 mm off it, 229.90 mm of thread laid (3.00 ×),
+median stitch 0.721 mm, no trims *(measured 2026-10-11 —
+`test/manualrun-dst.test.js`)*. In the running Studio, switching a bean line to a
+single run left 0.25–0.45× of its stitches (the asserted band), and run →
+column → run came back to
+the bean's exact count *(confirmed 2026-10-11 — `manual-run.spec.js` (b)+(c))*.
+Screenshot: `docs/screens/manual-run-2026-10-11.png`.
+
+**Byte-identity.** A design of a fill shape, a satin shape and a column, with
+underlay on jersey, is pinned at sha256 `9bede099…` / 2579 stitches, taken
+from origin/main 9e005c49's own `src/` before any engine edit
+*(pinned 2026-10-11 — `test/manualrun.test.js`)*.
+
+**Not built.** Lock stitches: a single-pass line sews unlocked (ruling 7 —
+its own PR with the bill measured). Closed ↔ open conversion; trace import
+emitting lines; drawing on the field. The walk chords corners (≤ ~0.26 mm at
+0.73 mm on a right angle); `huggingOutline` keeps them, if that ever matters.
