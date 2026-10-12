@@ -117,7 +117,8 @@ def test_on_closes_a_04_gap_to_an_ordinary_seam():
     assert _mid(plan["A"]).bounds[2] == pytest.approx(0.4 + pull + 0.25, abs=0.02)
     # The later colour's seam edge stays on its artwork: it does not grow
     # back over the strip the earlier colour now owns.
-    assert _mid(plan["B"]).bounds[0] == pytest.approx(0.4, abs=1e-6)
+    # (to the tenth of a micron the strip is welded on with)
+    assert _mid(plan["B"]).bounds[0] == pytest.approx(0.4, abs=1e-3)
     assert _gaps(regs, plan) == []
     # Read through the seam instrument, it is the seam two abutting fills get.
     pairs = measure(regs, list(plan.values()))["pairs"]
@@ -131,7 +132,7 @@ def test_the_colour_sewn_first_is_the_one_that_extends():
     plan = _plan(regs, CANDIDATE)
     pull = FABRIC.pull_comp_mm
     assert _mid(plan["B"]).bounds[0] == pytest.approx(-(pull + 0.25), abs=0.02)
-    assert _mid(plan["A"]).bounds[2] == pytest.approx(0.0, abs=1e-6)
+    assert _mid(plan["A"]).bounds[2] == pytest.approx(0.0, abs=1e-3)
     assert _gaps(regs, plan) == []
 
 

@@ -584,7 +584,11 @@ def resolve_overlaps(
     if forbid > 0:
         for sid, strip in gap_bridges(regions, forbid)[0].items():
             r = next(x for x in regions if x.shape_id == sid)
-            joined = unary_union([r.polygon, strip])
+            # The strip's edge on the artwork is the artwork's own edge only
+            # to floating point: a bare union can come back as two polygons
+            # a femtometre apart (measured on bridge's lettering, 2 mm² of
+            # strip dropped). A tenth of a micron of overlap welds them.
+            joined = unary_union([r.polygon, strip.buffer(1e-4)])
             span[sid] = joined if joined.geom_type == "Polygon" else _largest_polygon(joined)
 
     def sewn_footprint(r: Region):
