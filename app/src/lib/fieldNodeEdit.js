@@ -14,6 +14,7 @@ import {
   flattenShape, curveHandlePoint, curveControlOrNull,
   insertVertexAtSegment, nearestSegmentIndex, resolveCutOuts,
   isColumn, shapeRing, shapeProblems, columnRails, PX_PER_MM, COLUMN_DEFAULT_MM,
+  isOpenShape, isRun, runToColumn, columnToRun,
 } from "./manualShapes.js";
 
 // shapeOverlay.js's grab radii, so a hand-drawn node feels like a digitized one.
@@ -98,7 +99,8 @@ export function authoredInFieldMm(shape, fit) {
   const pts = shape.points || [];
   const curves = shape.curves || {};
   const n = pts.length;
-  const open = isColumn(shape);
+  // A line (run) is open the same way, and has no rails.
+  const open = isOpenShape(shape);
   const segCount = open ? Math.max(0, n - 1) : n;
   const anchors = pts.map((p) => pxToFieldMm(fit, p));
   const controls = {};
@@ -108,7 +110,7 @@ export function authoredInFieldMm(shape, fit) {
     if (curves[i]) controls[i] = pxToFieldMm(fit, curves[i]);
     handles.push(pxToFieldMm(fit, curveHandlePoint(a, c, curves[i])));
   }
-  if (!open) return { anchors, controls, handles };
+  if (!isColumn(shape)) return { anchors, controls, handles };
   const r = columnRails(shape);
   const rails = r
     ? { a: r.railA.map((p) => pxToFieldMm(fit, p)), b: r.railB.map((p) => pxToFieldMm(fit, p)) }
@@ -173,7 +175,7 @@ export function insertAnchor(shape, seg, atPx) {
 export function removeAnchor(shape, index) {
   const pts = shape.points || [];
   const n = pts.length;
-  const open = isColumn(shape);
+  const open = isOpenShape(shape);   // a column or a line: floor 2, no wrap
   if (n <= (open ? 2 : 3)) return null;
   const points = pts.filter((_, i) => i !== index);
   const old = shape.curves || {};
@@ -249,7 +251,7 @@ export function refitShapesPatch(element, fit, shapes) {
 function flatBBox(shapes) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const sh of shapes) {
-    if (!sh || (sh.cutOut && !isColumn(sh))) continue;
+    if (!sh || (sh.cutOut && !isOpenShape(sh))) continue;
     if (shapeProblems(sh).length) continue;
     const ring = shapeRing(sh);
     for (const p of ring) { if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x; if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y; }
@@ -321,6 +323,39 @@ export function withColumnWidthMm(shape, fit, mm) {
   if (!isColumn(shape) || !fitOk(fit)) return shape;
   const want = typeof mm === "number" && isFinite(mm) ? Math.max(COLUMN_MIN_TYPED_MM, mm) : COLUMN_MIN_TYPED_MM;
   return { ...shape, widthPx: want / fit.mmPerPx };
+}
+
+// ---- Run <-> column (ruling 8) ---------------------------------------------
+// `to` "column": the line becomes a column COLUMN_DEFAULT_MM wide (ruling 9)
+// at the fit it is in — `fit` when usable, else the fit the new column will
+// land in (newColumnWidthPx, with `garment`), else the nominal scale. `to`
+// "run": the column drops its width. The spine is copied, never recomputed
+// (manualShapes runToColumn / columnToRun). Committed through the re-fit rule
+// when the fit is usable: the column's rails change the bbox the engine fits,
+// so nothing else may move. A column that would fold is refused with
+// shapeProblems' own words.
+export const CONVERT_NOT_OPEN = "Only a line or a column converts.";
+export function convertOpenShape(element, fit, shapeId, to, garment = null) {
+  const shapes = (element && element.shapes) || [];
+  const src = shapes.find((s) => s && s.id === shapeId);
+  let next = null;
+  if (to === "column" && isRun(src)) {
+    let widthPx = fitOk(fit) ? COLUMN_DEFAULT_MM / fit.mmPerPx : null;
+    if (widthPx == null) {
+      const probe = runToColumn(src, COLUMN_DEFAULT_MM * PX_PER_MM);
+      const others = shapes.filter((s) => s !== src);
+      const solved = garment ? newColumnWidthPx(element, others, probe, garment) : null;
+      widthPx = solved > 0 ? solved : COLUMN_DEFAULT_MM * PX_PER_MM;
+    }
+    next = runToColumn(src, widthPx);
+  } else if (to === "run" && isColumn(src)) {
+    next = columnToRun(src);
+  }
+  if (!next || next === src) return { error: CONVERT_NOT_OPEN };
+  const issues = shapeProblems(next);
+  if (issues.length) return { error: issues[0] };
+  const list = shapes.map((s) => (s === src ? next : s));
+  return fitOk(fit) ? refitShapesPatch(element, fit, list) : { shapes: list };
 }
 
 // The SEWN width: satin pushes each rail out by half the fabric's pull

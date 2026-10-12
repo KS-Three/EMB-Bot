@@ -25,8 +25,8 @@
   import { boundaryIssues, canonicalShapeEdits, editsKey } from "../lib/digitizer.js";
   import { popoverModel, popoverPatch, recolorPatch } from "../lib/shapePopover.js";
   import { capOutlinesMm, isCapPieceId } from "../lib/capPieces.js";
-  import { resolveCutOuts, isColumn, shapeProblems } from "../lib/manualShapes.js";
-  import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, refitShapesPatch, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT } from "../lib/fieldNodeEdit.js";
+  import { resolveCutOuts, isColumn, isRun, isOpenShape, shapeProblems } from "../lib/manualShapes.js";
+  import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, refitShapesPatch, fieldMmToPx, pxToFieldMm, clampMmToBox, cutOutOutlinesInFieldMm, breaksContainment, ringInsideBox, CUTOUT_HOLD_HINT, convertOpenShape } from "../lib/fieldNodeEdit.js";
   import Hint from "./Hint.svelte";
   import DigitizeRing from "./DigitizeRing.svelte";
   import { digitizeBusy } from "../lib/digitizeBusy.js";
@@ -732,9 +732,10 @@
   // The fewest anchors a hand-drawn shape can have, and what to say there: a
   // closed shape needs three to enclose anything, a column's open spine two.
   function anchorFloor(shape) {
-    return isColumn(shape) ? 2 : 3;
+    return isOpenShape(shape) ? 2 : 3;
   }
   function anchorFloorMessage(shape) {
+    if (isRun(shape)) return "A line needs at least 2 points.";
     return isColumn(shape) ? "A column needs at least 2 points." : "A shape needs at least 3 points.";
   }
   // Removes one anchor of a hand-drawn shape: the floor message at the floor
@@ -891,6 +892,17 @@
       selectedShapeElId = null;
       focusedAnchor = null;
       drawOverlay();
+      return;
+    }
+    if ((key === "toColumn" || key === "toRun") && el.type === "manual") {
+      // Run <-> column (ruling 8): the spine stays as drawn; a new column is
+      // 4.0 mm at the fit it is in, and the re-fit rule holds everything else
+      // still (the rails widen the bbox the engine fits). The popover stays
+      // open on the same shape, now the other kind.
+      const patch = convertOpenShape(el, manualFit(el), selectedShapeId, key === "toColumn" ? "column" : "run", null);
+      if (patch.error) { shapeEditError = patch.error; return; }
+      shapeEditError = "";
+      dispatch("elupdate", { id: el.id, patch });
       return;
     }
     if (key === "editPoints") {
@@ -1545,7 +1557,8 @@
     // A column is an OPEN spine: two anchors are enough, there is no closing
     // segment (n - 1 segments, n - 1 handles), and its two rails are drawn as
     // thin lines so the width shows while the spine is edited.
-    const open = !!ap && isColumn(ap.shape);
+    // A line (run) is open the same way and has no rails to draw.
+    const open = !!ap && isOpenShape(ap.shape);
     if (!ap || ap.anchors.length < (open ? 2 : 3)) return;
     const n = ap.anchors.length;
     if (open && ap.rails) {
@@ -2468,7 +2481,7 @@
     // edges take a click (insert), which the "pointer" below already says.
     if (hoverEdit && hoverEdit.el.type === "manual" && selectedShapeId && selectedShapeElId === hoverEdit.el.id) {
       const ap = authoredPxFor(hoverEdit.el, selectedShapeId);
-      const ah = ap ? hitAuthored(ap, p.x, p.y, !isColumn(ap.shape)) : null;
+      const ah = ap ? hitAuthored(ap, p.x, p.y, !isOpenShape(ap.shape)) : null;
       if (ah && ah.kind !== "edge") {
         canvas.style.cursor = "grab";
         return;
@@ -2553,7 +2566,7 @@
     const selEl = selectedShapeElement();
     if (selEl && selEl.type === "manual") {
       const ap = authoredPxFor(selEl, selectedShapeId);
-      const ah = ap ? hitAuthored(ap, p.x, p.y, !isColumn(ap.shape)) : null;
+      const ah = ap ? hitAuthored(ap, p.x, p.y, !isOpenShape(ap.shape)) : null;
       if (ah && ah.kind === "anchor") {
         const model = popoverModel({ element: selEl, shapeId: selectedShapeId });
         const atFloor = ap.shape.points.length <= anchorFloor(ap.shape);
@@ -2819,7 +2832,7 @@
       // on the outline falls through to the selection branch below.
       if (edit.el.type === "manual" && selectedShapeId && selectedShapeElId === edit.el.id) {
         const ap = authoredPxFor(edit.el, selectedShapeId);
-        const ah = ap ? hitAuthored(ap, p.x, p.y, !isColumn(ap.shape)) : null;
+        const ah = ap ? hitAuthored(ap, p.x, p.y, !isOpenShape(ap.shape)) : null;
         if (ah) {
           canvas.setPointerCapture(e.pointerId);
           shapeEditError = "";
