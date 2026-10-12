@@ -99,6 +99,26 @@ def test_a_sliver_under_the_floor_is_dropped_and_counted():
     assert w["floor_mm2"] == pytest.approx(floor, abs=1e-4)
 
 
+def test_the_shape_keeps_its_ink_not_its_largest_piece():
+    """The drone case (`S53adc87e`, 2026-10-12): a thin strip whose underlap
+    tongue under a later colour is cut off its artwork by an earlier colour,
+    and the tongue is the BIGGER piece. OFF sews the tongue — no artwork in
+    it — and drops every square millimetre of the strip's ink."""
+    b = _region("B", box(0, 0, 10, 0.3), 1, "2000")            # the strip, 3 mm²
+    a = _region("A", box(-5, 0.3, 15, 0.4), 0, "1000")         # sewn first, between
+    c = _region("C", box(-5, 0.4, 15, 10), 2, "3000")          # sewn last, above
+    regs = [a, b, c]
+    kw = dict(overlap_mm=1.0)
+    off, _ = resolve_overlaps(regs, FABRIC, PipelineConfig(**kw))
+    on, on_w = resolve_overlaps(regs, FABRIC, PipelineConfig(clip_keep_pieces=True, **kw))
+    b_off = [p for p in off if p.region.thread_number == "2000"]
+    assert len(b_off) == 1 and b_off[0].polygon.intersection(b.polygon).area < 1e-6
+    b_on = [p for p in on if p.region.thread_number == "2000"]
+    assert [p.shape_id for p in b_on] == ["B"]
+    assert b_on[0].polygon.intersection(b.polygon).area == pytest.approx(3.0, abs=1e-6)
+    assert not any(w["code"] == CLIP_DROPPED_SLIVER for w in on_w)
+
+
 def test_a_piece_of_pure_growth_is_not_ink_and_is_not_counted():
     # B's artwork stops exactly at A's left edge: the only thing the clip
     # cuts off on that side is B's pull band, which carries no artwork.

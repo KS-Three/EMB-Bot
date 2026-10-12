@@ -9,9 +9,11 @@ thread and tier, and counts the rest in `CLIP_DROPPED_SLIVER`.
 
 Per fixture and matrix row, one generation and stages 5-7 twice:
 
-  * `splits` — every shape the clip cut, with each cut-off piece's artwork
-    area (mm²), whether ON keeps it, and how much of it no other sewn
-    polygon covers (`bare`: what OFF leaves as fabric);
+  * `splits` — every shape the clip cut where it matters: each cut-off
+    piece's artwork area (mm²), whether ON keeps it, and how much of it no
+    other sewn polygon covers (`bare`: what OFF leaves as fabric); and every
+    parent that sews a DIFFERENT piece ON because OFF's largest piece was not
+    the one carrying its ink (`switched`, artwork sewn OFF -> ON);
   * cost — stitches and trims OFF -> ON, and whether the OFF plan's md5
     equals the ON plan's (it must wherever nothing splits over the floor).
 
@@ -74,12 +76,15 @@ def _plan(result, cfg):
 def run(rel: str, cfg_kw: dict) -> dict:
     gen = build_generation(str(ROOT / "testdata" / rel), PipelineConfig(**cfg_kw))
     out: dict = {"fixture": rel, "cfg": cfg_kw}
+    off_by_id: dict = {}
     for tag, flag in (("off", False), ("on", True)):
         cfg = PipelineConfig(**cfg_kw, clip_keep_pieces=flag)
         result = finish_generation(gen.fork(), cfg)
         plan, planned = _plan(result, cfg)
         st = plan.stats
         row = {"stitches": st.stitch_count, "trims": st.trims, "md5": plan_md5(plan)}
+        if not flag:
+            off_by_id = {p.shape_id: p for p in planned}
         if flag:
             floor = clip_piece_floor_mm2(cfg)
             sewn_by = {}
@@ -103,6 +108,21 @@ def run(rel: str, cfg_kw: dict) -> dict:
                 for s in w.get("pieces", []):
                     splits.setdefault(s["id"], []).append(
                         {"art_mm2": s["art_mm2"], "kept": False})
+            # A parent that sews a DIFFERENT piece ON: OFF's largest piece
+            # was not the one carrying the ink (`_split_clip`).
+            for p in planned:
+                if p.region.meta.get(CLIP_PIECE_OF_KEY) or p.shape_id not in off_by_id:
+                    continue
+                o = off_by_id[p.shape_id]
+                if p.polygon.equals_exact(o.polygon, 0.0):
+                    continue
+                art = o.region.polygon
+                splits.setdefault(p.shape_id, []).append(
+                    {"switched": True,
+                     "art_off_mm2": round(o.polygon.intersection(art).area, 3),
+                     "art_on_mm2": round(p.polygon.intersection(art).area, 3),
+                     "sewn_off_mm2": round(o.polygon.area, 3),
+                     "sewn_on_mm2": round(p.polygon.area, 3)})
             row.update(floor_mm2=round(floor, 4), splits=splits,
                        sliver_count=sum(w.get("count", 0) for w in slivers))
         out[tag] = row
@@ -143,10 +163,14 @@ def main(argv=None) -> int:
                 continue
             o, i = r["off"], r["on"]
             n_split = len(i["splits"])
-            kept = sum(1 for v in i["splits"].values() for s in v if s["kept"])
-            dropped = sum(s["art_mm2"] for v in i["splits"].values() for s in v)
+            entries = [s for v in i["splits"].values() for s in v]
+            kept = sum(1 for s in entries if s.get("kept"))
+            switched = sum(1 for s in entries if s.get("switched"))
+            dropped = (sum(s.get("art_mm2", 0.0) for s in entries)
+                       + sum(s["art_on_mm2"] - s["art_off_mm2"] for s in entries if s.get("switched")))
             print(f"{rel} {kw.get('garment_id')}: {n_split} shapes split, "
                   f"{dropped:.2f} mm2 artwork dropped OFF, {kept} pieces kept ON, "
+                  f"{switched} parents switched to their ink, "
                   f"{i['sliver_count']} slivers; stitches {o['stitches']}->{i['stitches']}, "
                   f"trims {o['trims']}->{i['trims']}, md5 {'same' if o['md5'] == i['md5'] else 'DIFFERS'}",
                   flush=True)

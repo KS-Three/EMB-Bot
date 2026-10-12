@@ -98,12 +98,15 @@ Clipping a grown shape by the colours already down can split it: a later
 colour whose artwork overlaps an earlier one's comes out of the clip as two
 or more polygons. Shipped, `_largest_polygon` keeps the biggest and drops
 the rest without a word (MASTER_SCOPE defect 61: drone's `S426e81b9` loses a
-9 mm² piece). With the flag every cut-off piece whose ARTWORK clears the
-stage-4 region floor (`clip_piece_floor_mm2`) sews as its own region of the
-same thread and tier, planned right after its parent; smaller pieces are
-dropped as before and counted in `CLIP_DROPPED_SLIVER`, which the Studio
-keeps silent. A piece of pure compensation growth carries no artwork and is
-dropped as before, uncounted: it is not ink anyone drew.
+9 mm² piece) — and "biggest" is by SEWN area, so the piece kept can be
+underlap tongue with no artwork in it while the shape's ink is the piece
+thrown away. With the flag the shape keeps the piece carrying the most
+artwork, and every other piece whose ARTWORK clears the stage-4 region floor
+(`clip_piece_floor_mm2`) sews as its own region of the same thread and tier,
+planned right after its parent; smaller pieces are dropped as before and
+counted in `CLIP_DROPPED_SLIVER`, which the Studio keeps silent. A piece of
+pure compensation growth carries no artwork and is dropped, uncounted: it is
+not ink anyone drew, and cut off from its shape it underlaps nothing of it.
 """
 from __future__ import annotations
 
@@ -374,29 +377,37 @@ def _polygon_pieces(geom) -> list[Polygon]:
 
 
 def _split_clip(geom, art, floor: float):
-    """-> (the largest piece or None, [cut-off pieces kept], [artwork mm² of
+    """-> (the parent's piece or None, [cut-off pieces kept], [artwork mm² of
     each cut-off piece dropped]).
 
-    The largest piece is `_largest_polygon(geom)` exactly — same list, same
-    `max` — so the parent sews what it sews with the flag off. Every OTHER
-    piece is judged on the artwork it carries (`art`, the shape's own
-    polygon): at or over `floor` it is kept; under it, it is dropped and its
-    artwork reported, unless it carries none (pure pull growth, not ink).
+    The parent keeps the piece carrying the most ARTWORK (`art`, the shape's
+    own polygon), the largest among equals. Where that is also the largest
+    piece — every split but one measured — it is `_largest_polygon(geom)`
+    exactly, so the parent sews what it sews with the flag off. It is not
+    always: on drone (2026-10-12) a 0.25 mm strip's largest piece was 3.16
+    mm² of underlap tongue with no artwork in it, and `_largest_polygon`
+    sewed that and dropped all 2.64 mm² of the strip's ink.
+
+    Every other piece is judged on its artwork: at or over `floor` it is
+    kept; under it, dropped and its artwork reported; with none at all it is
+    pull growth cut off from its shape — scaffolding for nothing — and is
+    dropped uncounted, as the flag-off engine drops it.
     """
     parts = _polygon_pieces(geom)
     if not parts:
         return None, [], []
-    main = max(parts, key=lambda g: g.area)
+    ink = [g.intersection(art).area for g in parts]
+    # Rounded so float dust on a contact (1e-9 mm²) cannot outrank area.
+    i_main = max(range(len(parts)), key=lambda i: (round(ink[i], 6), parts[i].area))
     kept, dropped = [], []
-    for g in parts:
-        if g is main:
+    for i, g in enumerate(parts):
+        if i == i_main:
             continue
-        ink = g.intersection(art).area
-        if ink >= floor:
+        if ink[i] >= floor:
             kept.append(g)
-        elif ink > 1e-6:
-            dropped.append(float(ink))
-    return main, kept, dropped
+        elif ink[i] > 1e-6:
+            dropped.append(float(ink[i]))
+    return parts[i_main], kept, dropped
 
 
 def _judge_pieces(geom, art, floor: float):

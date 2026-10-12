@@ -1353,8 +1353,10 @@ class PipelineConfig:
     # clip can cut it in two: a later colour whose artwork overlaps an
     # earlier one's comes out as several polygons. False (shipped) keeps only
     # the largest (`_largest_polygon`) and drops the rest silently -- drone's
-    # `S426e81b9` loses a 9 mm² piece that way (MASTER_SCOPE defect 61). True
-    # keeps every cut-off piece whose ARTWORK clears the stage-4 region floor
+    # `S426e81b9` loses a 9 mm² piece that way (MASTER_SCOPE defect 61) -- and
+    # "largest" is by sewn area, so it can keep a piece of underlap tongue
+    # and drop the shape's ink. True keeps the piece with the most artwork as
+    # the shape, and every other piece whose ARTWORK clears the stage-4 region floor
     # (`stage5_overlap.clip_piece_floor_mm2`, min_detail_mm² / 4) as its own
     # region of the same thread and tier, sewn right after its parent; the
     # rest are dropped as before and counted in `CLIP_DROPPED_SLIVER` (silent
