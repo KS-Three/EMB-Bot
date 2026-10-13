@@ -97,3 +97,15 @@ def test_1895_on_main_is_the_reported_loss(main_run):
     assert tiers == ["UNSEWN", "run", "run", "run"], tiers
     assert 3.0 < r["ink_mm2"] < 5.0
     assert r["ink_bare_mm2"] < 1.5
+
+    # `cfg.small_glyph_keep` (built OFF, 2026-10-13) is the cure, and the
+    # flip is Kent's: ON, the "1" is sewn (the white ground still has no
+    # hole for it, so stage 5 sews its artwork over the ground rather than
+    # clipping it to nothing) and the 8 and 9 keep their counters (2 and 1,
+    # 0.30-0.52 mm²).
+    on = ft.roi_census(ft.run_arm("small_glyph_keep", preflight=False))["1895"]
+    on_shapes = sorted((s for s in on["shapes"] if min(s["rgb"]) < ft.WHITE_MIN),
+                       key=lambda s: s["shape_id"])
+    assert len(on_shapes) == 4
+    assert all(s["tier"] == "run" for s in on_shapes), [s["tier"] for s in on_shapes]
+    assert sorted(s["holes"] for s in on_shapes) == [0, 0, 1, 2]
