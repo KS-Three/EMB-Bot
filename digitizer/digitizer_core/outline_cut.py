@@ -56,6 +56,15 @@ REFINE_REFLEX_DEG = 30.0        # the second look reads softer concave corners t
 # per glyph (`tools/lowercase_angle.py`). Candidates, not fabric constants.
 FOLD_DEG = 45.0
 FOLD_MIN = 2
+# `fold_cuts`: a candidate cut whose pieces include a column shorter than
+# this many stroke widths along its middle is refused -- a stub (the u's
+# spur cut off its stem) sews as a knot of short crosses. Candidate.
+STUB_WIDTHS = 2.5
+OPENER_KEEP = 8      # ring-opening rays tried in pairs, shortest first
+# `fold_cuts`: a column whose cross turns more than this within one stroke
+# width carries a stroke round a corner (the u's bowl down into its spur
+# fans 87 deg; a bowl turns 30-55). Candidate.
+TURN_MAX_DEG = 60.0
 
 
 def _unit(v):
@@ -959,24 +968,74 @@ def _folded(col: Column | None) -> int:
     return n
 
 
+def _column_len(col: Column) -> float:
+    """Length of a column along its own middle (the cross midpoints)."""
+    mids = [((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0) for a, b in col.stations]
+    return sum(math.hypot(q[0] - p[0], q[1] - p[1]) for p, q in zip(mids[:-1], mids[1:]))
+
+
+def _max_turn(col: Column, W: float) -> float:
+    """The most a column's cross turns (deg) over one stroke width of its
+    middle. A bowl turns about 30 deg a width; a column that carries a
+    stroke round a corner into the next -- the u's bowl down into its spur,
+    an a's bowl top up into its stem -- fans 80-90 within one width, the
+    knot the eye reads at a junction, though no single cross there leans
+    past FOLD_DEG off its own (fanning) advance."""
+    st = col.stations
+    mids = [((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0) for a, b in st]
+    arc = [0.0]
+    for p, q in zip(mids[:-1], mids[1:]):
+        arc.append(arc[-1] + math.hypot(q[0] - p[0], q[1] - p[1]))
+    ang = [math.atan2(b[1] - a[1], b[0] - a[0]) for a, b in st]
+    most, j = 0.0, 0
+    for i in range(len(st)):
+        while j < len(st) - 1 and arc[j] - arc[i] < W:
+            j += 1
+        most = max(most, abs((math.degrees(ang[j] - ang[i]) + 90.0) % 180.0 - 90.0))
+    return most
+
+
+def _ring_opener(pc: Polygon, cut) -> bool:
+    """A cut from a ring piece's outside to its counter: alone it leaves
+    the piece whole (an a's or a b's bowl still wraps its counter), two of
+    them open it."""
+    ends = [Point(cut[0]), Point(cut[1])]
+    on_ext = [pc.exterior.distance(e) < 0.02 for e in ends]
+    on_hole = [any(h.distance(e) < 0.02 for h in pc.interiors) for e in ends]
+    return (on_ext[0] and on_hole[1]) or (on_hole[0] and on_ext[1])
+
+
 def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int):
     """`fold_cuts`: the second look for a piece that is not over-long but
     FOLDS (`_folded` >= FOLD_MIN). The junction rules leave a lone concave
     corner uncut when its far side is smooth -- "the stroke is bending here"
     (`find_cuts`) -- which is right for a bend and wrong for a lowercase
     shoulder, where a curved stroke leaves a straight one tangentially and
-    the far side is that stroke's straight edge. Same candidates as
-    `_refine` (the piece's soft concave corners, three rays each); the cut
-    kept is the one that leaves the fewest folded crosses, and it must take
-    them to REFINE_GAIN of the piece's and add no over-long thread. -> the
-    (score, cut, subs, lines) to take, or None."""
+    the far side is that stroke's straight edge.
+
+    Candidates are `_refine`'s (the piece's soft concave corners, three rays
+    each), plus, on a ring piece, every PAIR of rays that each run from its
+    outside to its counter: one such cut leaves a bowl whole, two open it
+    (an a's or a b's or a g's bowl into the stem it shares, 2026-10-13).
+    Each candidate is judged on the pieces it finally sews -- after the
+    over-long second look its pieces would get -- and is refused when
+    any of them is unsewn or a STUB (a column under STUB_WIDTHS stroke
+    widths along its middle: the u's spur, cut off its stem, sewed as a
+    tangle of short crosses), or when it adds over-long thread. Of the
+    rest the one kept leaves the fewest folded crosses, then the fewest
+    pieces, then no column carried round a corner (`_max_turn` within
+    TURN_MAX_DEG), then the most of it sewn as STRAIGHT columns (a stem
+    whole, the bowl butting it: the b's and g's stems, which a split bowl
+    otherwise keeps half of), then the least turn; it must take the folds to
+    REFINE_GAIN of the piece's. -> (cuts, [(piece, lines, new cuts)]) to
+    take, or None."""
     col0 = build_column(pc, cut_lines, W, pitch_mm)
     f0 = _folded(col0)
     if depth >= 3 or f0 < FOLD_MIN:
         return None
     long0, _tot0 = _overlong(col0, W)
     rf, _ = corners(pc, W, reflex_deg=REFINE_REFLEX_DEG)
-    best = None
+    cands, openers = [], []
     for r in _cluster(rf, 0.25 * W):
         p = r["p"]
         for dvec in (r["d_in"], (-r["d_out"][0], -r["d_out"][1]), r["bis"]):
@@ -987,21 +1046,52 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int):
             if L < 0.25 * W:
                 continue
             cut = (p, q, "fold", L)
-            subs = split(pc, [cut])
-            if len(subs) < 2 or min(g.area for g in subs) < 0.4 * W * W:
-                continue
-            lines = cut_lines + [LineString([p, q])]
-            cols = [build_column(g, lines, W, pitch_mm) for g in subs]
-            if any(c is None for c in cols):
-                continue                    # a cut that leaves a piece unsewn is no cure
-            if sum(_overlong(c, W)[0] for c in cols) > long0 + 1e-9:
-                continue
-            score = sum(_folded(c) for c in cols)
-            if best is None or score < best[0]:
-                best = (score, cut, subs, lines)
-    if best is None or best[0] > REFINE_GAIN * f0:
+            if len(split(pc, [cut])) >= 2:
+                cands.append([cut])
+            elif pc.interiors and _ring_opener(pc, cut):
+                openers.append(cut)
+    # A junction is crossed by a SHORT cut (about a stroke): the shortest
+    # OPENER_KEEP openers hold the a's, b's and g's (0.7-1.4 W); every pair
+    # of 22 took a minute a glyph.
+    openers = sorted(openers, key=lambda c: c[3])[:OPENER_KEEP]
+    for i, c1 in enumerate(openers):
+        for c2 in openers[i + 1:]:
+            l1, l2 = LineString([c1[0], c1[1]]), LineString([c2[0], c2[1]])
+            if l1.distance(l2) < 0.25 * W:
+                continue        # the same junction twice, or two cuts that cross
+            cands.append([c1, c2])
+    best = None
+    for cand in cands:
+        subs = split(pc, cand)
+        if len(subs) < 2 or min(g.area for g in subs) < STUB_WIDTHS * 0.5 * W * W:
+            continue            # 0.4 W^2 is `_refine`'s scrap; half a stub's area is surely one
+        lines = cut_lines + [LineString([c[0], c[1]]) for c in cand]
+        final, cols = [], []
+        for g in subs:
+            c = build_column(g, lines, W, pitch_mm)
+            if c is not None:
+                lg, tot = _overlong(c, W)
+                if tot <= 0 or lg / tot < REFINE_TRIGGER:
+                    final.append((g, lines, []))        # what `_refine` would yield
+                    cols.append(c)
+                    continue
+            for sub, ls, extra in _refine(g, lines, W, pitch_mm, depth + 1):
+                final.append((sub, ls, extra))
+                cols.append(build_column(sub, ls, W, pitch_mm))
+        if any(c is None for c in cols):
+            continue                        # a cut that leaves a piece unsewn is no cure
+        if any(_column_len(c) < STUB_WIDTHS * W for c in cols):
+            continue                        # a stub sews as a knot of short crosses
+        if sum(_overlong(c, W)[0] for c in cols) > long0 + 1e-9:
+            continue
+        turn = max(_max_turn(c, W) for c in cols)
+        score = (sum(_folded(c) for c in cols), len(cols), turn > TURN_MAX_DEG,
+                 -sum(len(c.stations) for c in cols if c.kind == "straight"), turn)
+        if best is None or score < best[0]:
+            best = (score, cand, final)
+    if best is None or best[0][0] > REFINE_GAIN * f0:
         return None
-    return best
+    return best[1], best[2]
 
 
 def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
@@ -1019,10 +1109,9 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
             yield pc, cut_lines, []
             return
         first = True
-        for g in fold[2]:
-            for sub, lines, extra in _refine(g, fold[3], W, pitch_mm, depth + 1, fold_cuts):
-                yield sub, lines, ([fold[1]] if first else []) + extra
-                first = False
+        for sub, lines, extra in fold[1]:
+            yield sub, lines, (list(fold[0]) if first else []) + extra
+            first = False
         return
     # Softer corners than the junction rules read (REFLEX_DEG): a low-res
     # E's slots round off under 55 deg and the body sewed as one fan (Becker
@@ -1049,7 +1138,17 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
             if best is None or score < best[0]:
                 best = (score, cut, subs, lines)
     if best is None or best[0] > REFINE_GAIN * long0:
-        yield pc, cut_lines, []
+        # `fold_cuts`: no single cut cures it -- an a's bowl, still holding
+        # the foot of its stem, is over-long AND a ring one cut cannot open
+        # -- so it gets the fold look, whose ring-opening pairs can.
+        fold = _fold_refine(pc, cut_lines, W, pitch_mm, depth) if fold_cuts else None
+        if fold is None:
+            yield pc, cut_lines, []
+            return
+        first = True
+        for sub, lines, extra in fold[1]:
+            yield sub, lines, (list(fold[0]) if first else []) + extra
+            first = False
         return
     first = True
     for g in best[2]:
