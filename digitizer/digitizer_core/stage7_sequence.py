@@ -2464,7 +2464,10 @@ def sequence(
                     underlay_style="none" if _small else satin_underlay,
                     start_near=entry,
                     end_near=exit_near if cfg.satin_exit_toward_next else None,
-                    **({"counter_clear_mm": _clear} if _clear > 0 else {}))
+                    **({"counter_clear_mm": _clear} if _clear > 0 else {}),
+                    # `cfg.lettering_columns_fold_cuts` (default OFF): off,
+                    # the call is today's, argument for argument
+                    **({"fold_cuts": True} if cfg.lettering_columns_fold_cuts else {}))
                 if not report["empty"]:
                     report["lettering_columns"] = 1
                     return runs, report, False

@@ -2133,6 +2133,20 @@ class PipelineConfig:
     # False is the pre-flip lane (the colour grid's patches and the fur
     # ramp's discs sewn as split satin). Tests: `tests/test_column_capture.py`.
     lettering_columns_skip_blobs: bool = True
+    # Under `lettering_columns`, cut a lowercase SHOULDER (2026-10-13,
+    # `outline_cut._fold_refine`). The junction rules leave a lone concave
+    # corner uncut when its far side is smooth ("the stroke is bending
+    # here"), so a u's bowl and its right stem, a b's or g's bowl and its
+    # stem, sew as ONE piece whose crosses fold 45-83 deg through the branch.
+    # Capitals meet at corners and are cut: at 80 and 120 mm a synthetic
+    # word reads 0.0% of capital station crosses past 45 deg off their own
+    # perpendicular against 1.4% lowercase, all of it at shoulders
+    # (`tools/lowercase_angle.py`). ON, a piece with FOLD_MIN interior
+    # crosses past FOLD_DEG takes the second look `_refine` already gives an
+    # over-long one, scored on folded crosses. Built OFF (Kent's call to
+    # flip; renders only, nothing sewn); False is byte-identical.
+    # Tests: `tests/test_lowercase_angle.py`.
+    lettering_columns_fold_cuts: bool = False
     # Under `lettering_columns` (old taggers, `lettering_words` off), refuse
     # a HOUSE-GROUP-ONLY shape whose thread is further than the text
     # cluster's own ink link (CIEDE2000 20) from every text-cluster letter's
