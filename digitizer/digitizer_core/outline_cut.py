@@ -1125,6 +1125,11 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
     # proven itself over-long, so a soft corner here is a junction, not a
     # bend -- and the cut still has to earn REFINE_GAIN.
     rf, _ = corners(pc, W, reflex_deg=REFINE_REFLEX_DEG)
+    # `fold_cuts`: an over-long piece that also FOLDS (a lowercase a's bowl
+    # carried round into its stem, 80 mm) refuses a cut that leaves a stub,
+    # as `_fold_refine` does -- its spur cut off sewed as a four-cross knot.
+    # A piece that does not fold (every capital) is judged as shipped.
+    no_stubs = fold_cuts and _folded(build_column(pc, cut_lines, W, pitch_mm)) >= FOLD_MIN
     best = None
     for r in _cluster(rf, 0.25 * W):
         p = r["p"]
@@ -1140,7 +1145,11 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
             if len(subs) < 2 or min(g.area for g in subs) < 0.4 * W * W:
                 continue
             lines = cut_lines + [LineString([p, q])]
-            score = sum(_overlong(build_column(g, lines, W, pitch_mm), W)[0] for g in subs)
+            cols = [build_column(g, lines, W, pitch_mm) for g in subs]
+            if no_stubs and any(c is not None and _column_len(c) < STUB_WIDTHS * W
+                                for c in cols):
+                continue
+            score = sum(_overlong(c, W)[0] for c in cols)
             if best is None or score < best[0]:
                 best = (score, cut, subs, lines)
     if best is None or best[0] > REFINE_GAIN * long0:

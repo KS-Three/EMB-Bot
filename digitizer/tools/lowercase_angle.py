@@ -214,14 +214,17 @@ def cross_records(plan, shape_ids):
 SHORT_FRAC = 0.5    # a satin leg under this share of its run's median leg is short
 
 
-def junction_short_crosses(plan, shape_ids):
-    """-> [(x, y, length mm)], one per SHORT satin leg at a JUNCTION: under
-    SHORT_FRAC of its own run's median leg, its midpoint within that median
-    of another satin run of the same shape (where two columns meet). The
-    knot #887's u traded its shoulder fold for -- a spur cut off its stem,
-    sewn as a fan of short crosses beside the stem and the bowl -- reads
-    here, which no lean figure does: the crosses there are short, not
-    leaning. Splits and ties are stripped first, as in `cross_records`."""
+def junction_knots(plan, shape_ids):
+    """-> (short, crossed): lists of (x, y, length mm), one per satin leg AT
+    A JUNCTION (its midpoint within its run's median leg of another satin
+    run of the same shape, where two columns meet) that is
+    - SHORT: under SHORT_FRAC of its own run's median leg;
+    - CROSSED: crossing another, non-adjacent leg of its own run -- the
+      zigzag folding over itself, a fan whose crosses tangle.
+    The knot #887's u traded its shoulder fold for (a spur cut off its
+    stem, sewn as a fan beside the stem and the bowl) reads in `crossed`
+    (u: 7 at 120 mm), which no lean figure does. Splits and ties are
+    stripped first, as in `cross_records`."""
     from shapely.geometry import LineString, Point
     from digitizer_core.stage6_satin import strip_splits
     from digitizer_core.stitches import strip_ties
@@ -232,24 +235,34 @@ def junction_short_crosses(plan, shape_ids):
         pts = np.asarray(strip_splits(strip_ties(list(run.points))), dtype=float)
         if len(pts) >= 4:
             runs.setdefault(run.shape_id, []).append(pts)
-    out = []
+    short, crossed = [], []
     for rl in runs.values():
         lines = [LineString(p) for p in rl]
         for k, pts in enumerate(rl):
             others = [ln for j, ln in enumerate(lines) if j != k]
             if not others:
                 continue
-            vec = pts[1:] - pts[:-1]
-            length = np.hypot(vec[:, 0], vec[:, 1])
+            legs = [LineString([pts[i], pts[i + 1]]) for i in range(len(pts) - 1)]
+            length = np.array([lg.length for lg in legs])
             real = length > 0.05
             if not real.any():
                 continue
             med = float(np.median(length[real]))
-            for i in np.nonzero(real & (length < SHORT_FRAC * med))[0]:
-                m = (pts[i] + pts[i + 1]) / 2.0
-                if min(o.distance(Point(m)) for o in others) < med:
-                    out.append((float(m[0]), float(m[1]), float(length[i])))
-    return out
+            hit = set()
+            for i in np.nonzero(real)[0]:
+                for j in np.nonzero(real[i + 2:])[0] + i + 2:
+                    if legs[i].crosses(legs[j]):
+                        hit.update((int(i), int(j)))
+            for i in np.nonzero(real)[0]:
+                m = legs[i].interpolate(0.5, normalized=True)
+                if min(o.distance(m) for o in others) >= med:
+                    continue
+                rec = (float(m.x), float(m.y), float(length[i]))
+                if length[i] < SHORT_FRAC * med:
+                    short.append(rec)
+                if int(i) in hit:
+                    crossed.append(rec)
+    return short, crossed
 
 
 def part_of(advance_deg: float, line_deg: float = 0.0) -> str:
@@ -356,11 +369,12 @@ def measure_synthetic(width_mm: float, columns: bool = True, base: Path = FIXTUR
     for name, chars, pred in LOWER_CLASSES + UPPER_CLASSES:
         sel = [r for r in recs if r["ch"] and r["ch"] in chars and pred(r["part"], r["below"])]
         classes[name] = summarize(sel, house)
-    shorts = {}
-    for x, y, _length in junction_short_crosses(plan, set(letters)):
-        g = _glyph_at(meta, *to_px(x, y))
-        if g:
-            shorts[g["ch"]] = shorts.get(g["ch"], 0) + 1
+    shorts, crossed = {}, {}
+    for recs_k, tally in zip(junction_knots(plan, set(letters)), (shorts, crossed)):
+        for x, y, _length in recs_k:
+            g = _glyph_at(meta, *to_px(x, y))
+            if g:
+                tally[g["ch"]] = tally.get(g["ch"], 0) + 1
     per_glyph = {}
     for ch in dict.fromkeys(LINES[0] + LINES[1]):
         sel = [r for r in recs if r["ch"] == ch]
@@ -370,7 +384,8 @@ def measure_synthetic(width_mm: float, columns: bool = True, base: Path = FIXTUR
                 [r["lean"] > 45.0 for r in sel])), 3),
                 station_past45=round(float(np.mean([v > 45.0 for v in sts])), 3) if sts else None,
                 station_folds=int(sum(v > 45.0 for v in sts)),
-                short_at_junction=shorts.get(ch, 0))
+                short_at_junction=shorts.get(ch, 0),
+                crossed_at_junction=crossed.get(ch, 0))
     lower = [r for r in recs if r["ch"] and r["ch"].islower()]
     upper = [r for r in recs if r["ch"] and r["ch"].isupper()]
     cap_h = (meta["baselines"][0] - min(g["box"][1] for g in meta["glyphs"] if g["ch"] == "H")) / s
@@ -385,6 +400,8 @@ def measure_synthetic(width_mm: float, columns: bool = True, base: Path = FIXTUR
                   all_lower=summarize(lower, house), all_upper=summarize(upper, house),
                   lower_short_at_junction=sum(v for ch, v in shorts.items() if ch.islower()),
                   upper_short_at_junction=sum(v for ch, v in shorts.items() if ch.isupper()),
+                  lower_crossed_at_junction=sum(v for ch, v in crossed.items() if ch.islower()),
+                  upper_crossed_at_junction=sum(v for ch, v in crossed.items() if ch.isupper()),
                   classes=classes, per_glyph=per_glyph)
     return report, result, plan
 
@@ -587,10 +604,11 @@ def main(argv: list[str]) -> None:
             print(_row("ALL capitals", rep["all_upper"]))
             for name, s in rep["classes"].items():
                 print(_row(name, s))
-            print(f"  short crosses at junctions: lowercase {rep['lower_short_at_junction']},"
-                  f" capitals {rep['upper_short_at_junction']}")
-            print("  lowercase by glyph (station folds >45 / short at junctions): " + " ".join(
-                f"{ch}:{g['station_folds']}/{g['short_at_junction']}"
+            print(f"  at junctions, short / crossed legs: lowercase {rep['lower_short_at_junction']}"
+                  f" / {rep['lower_crossed_at_junction']}, capitals {rep['upper_short_at_junction']}"
+                  f" / {rep['upper_crossed_at_junction']}")
+            print("  lowercase by glyph (station folds >45 / short / crossed at junctions): " + " ".join(
+                f"{ch}:{g['station_folds']}/{g['short_at_junction']}/{g['crossed_at_junction']}"
                 for ch, g in rep["per_glyph"].items() if ch.islower()))
             print("  >45 by glyph (legs/stations %): " + " ".join(
                 f"{ch}:{g['past45'] * 100:.0f}/{(g['station_past45'] or 0) * 100:.0f}"
