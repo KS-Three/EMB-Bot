@@ -387,7 +387,12 @@ def _clear_counters(a_pts, b_pts, poly: Polygon, clear_mm: float,
             t = min(seg.project(Point(c)) for g in getattr(outside, "geoms", [outside])
                     for c in g.coords)
             L = seg.length
-            t = min(t, max(0.0, L - min_cross_mm))
+            # held AT the floor lands a float hair under it, and the floor
+            # filter in `column_runs` then dropped the cross the hold meant
+            # to keep: two of Fremont's EAT A crosses at a 3 mm cap went,
+            # and the zigzag laid a 2.2 mm stitch over the counter
+            # (`tools/small_print.py`, #878). Held a hair short of it.
+            t = min(t, max(0.0, L - min_cross_mm - _FLOOR_EPS_MM))
             if t <= 0:
                 continue
             np_ = seg.interpolate(t).coords[0]
@@ -396,6 +401,118 @@ def _clear_counters(a_pts, b_pts, poly: Polygon, clear_mm: float,
             else:
                 out_b[i] = np_
     return out_a, out_b
+
+
+_FLOOR_EPS_MM = 1e-9     # a float hair, not a tolerance: far under any stitch
+
+
+def _counter_safe_pieces(stations, poly: Polygon, min_cross_mm: float,
+                         clear_mm: float) -> tuple[list[list], int]:
+    """`cfg.small_print_floor`: one column's stations (after every hold and
+    guard) -> the runs of them that sew as satin with no stitch passing
+    over one of the letter's counters, plus how many stations were not
+    kept. Two ways a column laid a stitch over a counter, both measured
+    with `tools/small_print.py` (#878):
+
+    - **A gap.** The floor filter drops a run of crosses under
+      `min_cross_mm`, and the zigzag joins the crosses either side of the
+      gap with one long stitch -- at a 3 mm cap, straight over the counter
+      beside the gap (Fremont's EAT A and P). Where that join would cross
+      a counter, the dropped crosses come back when every one is at least
+      one laid thread wide (`2 * clear_mm`) and neither they nor the joins
+      between them cross a counter; otherwise the column is split there.
+    - **A cross through the counter.** `outline_cut` can lay a column's
+      crosses straight across a counter (the synthetic 0's and 8's at 4
+      and 5 mm). Such a cross is cut at the counter, held `clear_mm` off
+      it, and its two halves sew as two columns, one each side of the
+      counter, where each half is still a cross (`min_cross_mm`).
+
+    A split column's pieces are linked by the walk's own link rule, which
+    already keeps out of counters."""
+    holes = [Polygon(r) for r in poly.interiors]
+    zone = unary_union([h.buffer(-stitches.SAME_POINT_MM) for h in holes]) if holes else None
+    if zone is not None and zone.is_empty:
+        zone = None
+    hold = unary_union([h.buffer(clear_mm) for h in holes]) if holes else None
+
+    def over(p, q) -> bool:
+        return zone is not None and math.dist(p, q) > 1e-9 and LineString([p, q]).intersects(zone)
+
+    def join_ok(s, t) -> bool:
+        # the stitch the zigzag lays between two crosses: b0 -> a1 walked
+        # forward, b1 -> a0 walked back (`_satin_points`)
+        (a0, b0), (a1, b1) = s, t
+        return not (over(b0, a1) or over(a0, b1))
+
+    def subs(a, b):
+        """-> [(track, cross)]: the whole cross, or its halves either side
+        of the counter it passes over."""
+        if not over(a, b):
+            return [("full", (a, b))] if math.dist(a, b) >= min_cross_mm else []
+        seg = LineString([a, b])
+        rest = seg.difference(hold)
+        out = []
+        for g in getattr(rest, "geoms", [rest]):
+            if g.is_empty or g.geom_type != "LineString":
+                continue
+            p, q = g.coords[0], g.coords[-1]
+            if seg.project(Point(p)) > seg.project(Point(q)):
+                p, q = q, p
+            if math.dist(p, a) < 1e-6:
+                out.append(("a", (a, q)))
+            elif math.dist(q, b) < 1e-6:
+                out.append(("b", (p, b)))
+        return [(t, s) for t, s in out
+                if math.dist(*s) >= min_cross_mm and not over(*s)]
+
+    n = len(stations)
+    pieces: list[dict] = []          # track, idx (station indices), sts
+    open_: dict[str, dict] = {}
+    keep_mm = 2.0 * clear_mm
+    used: set[int] = set()
+
+    def attach(piece, i, s, track) -> bool:
+        last = piece["idx"][-1]
+        if join_ok(piece["sts"][-1], s):
+            pass
+        elif (i > last + 1 and piece["track"] == "full" and track == "full"
+              and all(k not in used and math.dist(*stations[k]) >= keep_mm
+                      and not over(*stations[k]) for k in range(last + 1, i))
+              and all(join_ok(x, y) for x, y in zip([piece["sts"][-1]] + stations[last + 1:i],
+                                                      stations[last + 1:i] + [s]))):
+            # the dropped crosses come back rather than a stitch over the counter
+            piece["idx"].extend(range(last + 1, i))
+            piece["sts"].extend(stations[last + 1:i])
+            used.update(range(last + 1, i))
+        else:
+            return False
+        piece["idx"].append(i)
+        piece["sts"].append(s)
+        used.add(i)
+        if piece["track"] != track:
+            if open_.get(piece["track"]) is piece:
+                del open_[piece["track"]]
+            piece["track"] = track
+        open_[track] = piece
+        return True
+
+    for i, (a, b) in enumerate(stations):
+        for track, s in subs(a, b):
+            cands = [open_.get(track)] + ([open_.get("full")] if track != "full"
+                                          else [open_.get("a"), open_.get("b")])
+            seen = []
+            for c in cands:
+                if c is None or any(c is x for x in seen) or c["idx"][-1] == i:
+                    continue
+                seen.append(c)
+                if attach(c, i, s, track):
+                    break
+            else:
+                pc = dict(track=track, idx=[i], sts=[s])
+                used.add(i)
+                pieces.append(pc)
+                open_[track] = pc
+    return [p["sts"] for p in pieces], n - len(used)
 
 
 def _tuck_stations(col: Column, end: int, through: Polygon, tuck_mm: float,
@@ -773,6 +890,20 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         # one needle hole. The pro's S: the outer rail dense, the inner rail
         # short-stitched (lettering-thickness-fremont-2026-10-06).
         guarded = _short_stitch_guard(a_pts, b_pts)
+        if counter_clear_mm > 0:
+            # Small print: no zigzag stitch over a counter
+            # (`_counter_safe_pieces`); one column may sew as several.
+            pieces, dropped = _counter_safe_pieces(guarded, poly, min_cross_mm,
+                                                   counter_clear_mm)
+            report["thin_crosses"] += dropped
+            sewn_pieces = [p for p in pieces if len(p) >= 3]
+            report["thin_crosses"] += sum(len(p) for p in pieces if len(p) < 3)
+            if not sewn_pieces:
+                report["columns_unsewn"] += 1
+            for kept in sewn_pieces:
+                ready.append(Column(stations=kept, piece=col.piece, kind=col.kind, axis=col.axis,
+                                    width_mm=col.width_mm, rail_a=col.rail_a, rail_b=col.rail_b))
+            continue
         kept = [(a, b) for a, b in guarded if math.dist(a, b) >= min_cross_mm]
         report["thin_crosses"] += len(col.stations) - len(kept)
         if len(kept) < 3:
