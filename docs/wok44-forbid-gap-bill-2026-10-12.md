@@ -82,7 +82,7 @@ wide. Panels left to right: OFF, ON, OFF with every strip in the window filled r
    ![crop 4](renders/claude-wok44-bridge-forbid-gap/logo_bridge_bar_crop4_off_on_strip.png)
 
 Anything in the ON picture outside the red strips (the re-laid yellow rows) is
-a consequence of re-sequencing the fill's entry points, not a second change.
+looks like the fill's rows re-laid after its entry points moved; that was not separately measured.
 
 ## Options for Kent
 
