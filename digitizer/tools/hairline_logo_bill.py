@@ -67,6 +67,8 @@ ZOOM_PX_PER_MM = 30.0
 
 
 def row_key(fixture: str, cfg_kw: dict) -> str:
+    if "garment_id" not in cfg_kw:      # a hair fixture: forced flat, no garment row
+        return f"{fixture} @ {cfg_kw['target_width_mm']:g}mm/flat"
     return sc._run_key(fixture, cfg_kw)
 
 
@@ -244,13 +246,22 @@ def _matrix(sel: str) -> list[dict]:
     return sc.MATRIX if sel == "all" else [sc.MATRIX[int(sel)]]
 
 
+def _hair_matrix(fixture: str) -> list[dict]:
+    """The hair fixtures (`synthetic/hair_*.png`) are digitized the way
+    `tools/hairline_renders.py` does: forced flat, at the width their mm were
+    drawn in. One row, no scorecard matrix."""
+    from tools.hairline_renders import drawn_width_mm
+    return [{"target_width_mm": round(drawn_width_mm(TESTDATA / fixture), 2),
+             "forced_class": "flat"}]
+
+
 def cmd_run(args) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     fixtures = args.fixtures.split(",") if args.fixtures else list(sc.FIXTURES)
     rows = _load(out)
     for fx in fixtures:
-        for cfg_kw in _matrix(args.matrix):
+        for cfg_kw in (_hair_matrix(fx) if fx.startswith("synthetic/") else _matrix(args.matrix)):
             key = row_key(fx, cfg_kw)
             if key in rows and "error" not in rows[key] and not args.force:
                 print(f"{key}: cached")
@@ -381,6 +392,58 @@ def cmd_render(args) -> int:
 
 
 LABELS = ("today (OFF)", "hairline ON", "hairline ON + over_ground")
+GUARD_LABELS = ("today (OFF)", "hairline ON, no guard", "hairline ON + drop guard")
+
+
+def cmd_guard_render(args) -> int:
+    """OFF | ON without the drop guard | ON with it, one fixture, same scale,
+    plus a zoom (30 px/mm) on the shapes the unguarded tier drops strands from
+    (or on --zoom cx,cy,hw,hh, plan mm)."""
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    fx = args.fixture
+    cfg_kw = (_hair_matrix(fx)[0] if fx.startswith("synthetic/") else sc.MATRIX[0])
+    base = dict(cfg_kw, thread_wt=args.wt)
+    result = run_stages(TESTDATA / fx, PipelineConfig(**base))
+    plans = [plan_stitches(result, PipelineConfig(**base))]
+    prof = machine.thread_profile(args.wt)
+    stitched = [r for r in result.regions if r.meta.get("stitched", True)]
+    if PipelineConfig(**base).fill_inside_satin_border:
+        stitched = _fill_inside_satin_border(stitched, PipelineConfig(**base), result.design_class)
+    boxes = []
+    for guard in (False, True):
+        s6h.DROP_GUARD = guard
+        cfg = PipelineConfig(**base, hairline=True)
+        plans.append(plan_stitches(result, cfg))
+        if not guard:
+            by_id = {r.shape_id: r for r in stitched}
+            for sid, m in hairline_candidates(stitched, cfg,
+                                              ink=getattr(result, "ink_source", None)).items():
+                _runs, rep = hairline_runs(by_id[sid].polygon, sid,
+                                           max_width_mm=prof.hairline_max_width_mm,
+                                           run_width_mm=prof.hairline_run_width_mm,
+                                           stitch_mm=cfg.hairline_stitch_mm, entry=None,
+                                           trim_at_mm=3.0, m=m)
+                if rep["dropped"]:
+                    boxes.append(by_id[sid].polygon.bounds)
+    s6h.DROP_GUARD = True
+    name = Path(fx).stem
+    _write_png(out / f"{name}_guard_compare.png",
+               _strip([_panel(p, lb, args.wt) for p, lb in zip(plans, GUARD_LABELS)]))
+    if args.zoom:
+        cx, cy, hw, hh = (float(v) for v in args.zoom.split(","))
+    elif boxes:
+        x0 = min(b[0] for b in boxes); y0 = min(b[1] for b in boxes)
+        x1 = max(b[2] for b in boxes); y1 = max(b[3] for b in boxes)
+        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+        hw, hh = max(5.0, (x1 - x0) / 2 + 1.0), max(4.0, (y1 - y0) / 2 + 1.0)
+    else:
+        print("no shape loses a strand without the guard: no zoom")
+        return 0
+    print(f"zoom centre {cx:.1f},{cy:.1f} half {hw:.1f}x{hh:.1f} mm ({len(boxes)} shapes)")
+    _write_png(out / f"{name}_guard_zoom.png", _strip(
+        [_zoom_panel(p, lb, args.wt, cx, cy, hw, hh) for p, lb in zip(plans, GUARD_LABELS)]))
+    return 0
 
 
 def _strip(panels: list) -> np.ndarray:
@@ -441,6 +504,11 @@ def main(argv=None) -> int:
     m.set_defaults(fn=cmd_merge)
     t = sub.add_parser("table")
     t.set_defaults(fn=cmd_table)
+    g = sub.add_parser("guard-render")
+    g.add_argument("fixture", help="path under testdata/, e.g. photo/enthusiast_logo.png")
+    g.add_argument("--wt", type=int, default=40)
+    g.add_argument("--zoom", default="", help="cx,cy,hw,hh in plan mm; default: the shapes that drop")
+    g.set_defaults(fn=cmd_guard_render)
     d = sub.add_parser("render")
     d.add_argument("--top", type=int, default=3)
     d.set_defaults(fn=cmd_render)
