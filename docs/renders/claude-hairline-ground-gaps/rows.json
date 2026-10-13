@@ -7,7 +7,7 @@
   },
   "thread_wt": 40,
   "design_class": "gradient",
-  "stage0_4_s": 183.8,
+  "stage0_4_s": 216.1,
   "arms": {
    "off": {
     "stitches": 8345,
@@ -31,7 +31,7 @@
      "worst_mm": 0.0,
      "skipped": true
     },
-    "plan_s": 39.4
+    "plan_s": 43.8
    },
    "on_cov": {
     "stitches": 6884,
@@ -61,120 +61,140 @@
        "edge_mm2": 1.38,
        "erased_mm2": 0.19,
        "ground_mm2": 0.75,
+       "rim_mm2": 0.75,
        "new_bare_mm2": 2.32
       },
       "S597c2467": {
        "edge_mm2": 0.06,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.06
       },
       "S70a35fa2": {
        "edge_mm2": 0.19,
        "erased_mm2": 0.44,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.63
       },
       "S5aa49c97": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sbf69e1a9": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.44,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.44
       },
       "Sb9663a4e": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S5f67dd7d": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S69094fc7": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S0c6b0695": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S31872d5c": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S3589bebf": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S82734e7c": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sa669414f": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S89ff85ca": {
        "edge_mm2": 0.06,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.06
       },
       "Sb309b5ef": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S734f94f3": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S02f523db": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.06,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.06
       },
       "Se0882277": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sff7b4d69": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sc0bd0283": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       }
      },
@@ -182,7 +202,7 @@
      "new_bare_mm2": 3.56,
      "resolved_mm2": 1.5
     },
-    "plan_s": 38.1
+    "plan_s": 52.5
    },
    "on_cov_gnd": {
     "stitches": 6884,
@@ -212,120 +232,140 @@
        "edge_mm2": 1.38,
        "erased_mm2": 0.19,
        "ground_mm2": 0.75,
+       "rim_mm2": 0.75,
        "new_bare_mm2": 2.32
       },
       "S597c2467": {
        "edge_mm2": 0.06,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.06
       },
       "S70a35fa2": {
        "edge_mm2": 0.19,
        "erased_mm2": 0.44,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.63
       },
       "S5aa49c97": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sbf69e1a9": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.44,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.44
       },
       "Sb9663a4e": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S5f67dd7d": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S69094fc7": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S0c6b0695": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S31872d5c": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S3589bebf": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S82734e7c": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sa669414f": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S89ff85ca": {
        "edge_mm2": 0.06,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.06
       },
       "Sb309b5ef": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S734f94f3": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S02f523db": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.06,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.06
       },
       "Se0882277": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sff7b4d69": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sc0bd0283": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       }
      },
@@ -333,7 +373,7 @@
      "new_bare_mm2": 3.56,
      "resolved_mm2": 1.5
     },
-    "plan_s": 35.9
+    "plan_s": 48.4
    }
   },
   "candidates": [
@@ -787,7 +827,7 @@
   },
   "thread_wt": 40,
   "design_class": "flat",
-  "stage0_4_s": 49.7,
+  "stage0_4_s": 25.7,
   "arms": {
    "off": {
     "stitches": 2292,
@@ -811,7 +851,7 @@
      "worst_mm": 0.0,
      "skipped": true
     },
-    "plan_s": 17.5
+    "plan_s": 5.9
    },
    "on_cov": {
     "stitches": 2097,
@@ -841,84 +881,98 @@
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sc07b43a1": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S5cfbaa1f": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Se2c735fa": {
        "edge_mm2": 0.25,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.25
       },
       "S5345169d": {
        "edge_mm2": 0.25,
        "erased_mm2": 0.06,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.31
       },
       "S988eb60c": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sb06f9271": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sacc60621": {
        "edge_mm2": 0.12,
        "erased_mm2": 0.0,
        "ground_mm2": 0.12,
+       "rim_mm2": 0.12,
        "new_bare_mm2": 0.24
       },
       "S0a7a203e": {
        "edge_mm2": 0.12,
        "erased_mm2": 0.0,
        "ground_mm2": 0.12,
+       "rim_mm2": 0.12,
        "new_bare_mm2": 0.24
       },
       "S67188f24": {
        "edge_mm2": 0.12,
        "erased_mm2": 0.0,
        "ground_mm2": 0.06,
+       "rim_mm2": 0.06,
        "new_bare_mm2": 0.18
       },
       "S73040f57": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sdc28a8b8": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S75ba8c4e": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S6b648736": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       }
      },
@@ -926,7 +980,7 @@
      "new_bare_mm2": 1.25,
      "resolved_mm2": 0.0
     },
-    "plan_s": 50.1
+    "plan_s": 9.8
    },
    "on_cov_gnd": {
     "stitches": 2097,
@@ -956,84 +1010,98 @@
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sc07b43a1": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S5cfbaa1f": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Se2c735fa": {
        "edge_mm2": 0.25,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.25
       },
       "S5345169d": {
        "edge_mm2": 0.25,
        "erased_mm2": 0.06,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.31
       },
       "S988eb60c": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sb06f9271": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sacc60621": {
        "edge_mm2": 0.12,
        "erased_mm2": 0.0,
        "ground_mm2": 0.12,
+       "rim_mm2": 0.12,
        "new_bare_mm2": 0.24
       },
       "S0a7a203e": {
        "edge_mm2": 0.12,
        "erased_mm2": 0.0,
        "ground_mm2": 0.12,
+       "rim_mm2": 0.12,
        "new_bare_mm2": 0.24
       },
       "S67188f24": {
        "edge_mm2": 0.12,
        "erased_mm2": 0.0,
        "ground_mm2": 0.06,
+       "rim_mm2": 0.06,
        "new_bare_mm2": 0.18
       },
       "S73040f57": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sdc28a8b8": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S75ba8c4e": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S6b648736": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       }
      },
@@ -1041,7 +1109,7 @@
      "new_bare_mm2": 1.25,
      "resolved_mm2": 0.0
     },
-    "plan_s": 17.9
+    "plan_s": 12.6
    }
   },
   "candidates": [
@@ -1363,7 +1431,7 @@
   },
   "thread_wt": 40,
   "design_class": "gradient",
-  "stage0_4_s": 101.3,
+  "stage0_4_s": 66.4,
   "arms": {
    "off": {
     "stitches": 4892,
@@ -1387,7 +1455,7 @@
      "worst_mm": 0.0,
      "skipped": true
     },
-    "plan_s": 36.7
+    "plan_s": 26.6
    },
    "on_cov": {
     "stitches": 4636,
@@ -1417,30 +1485,35 @@
        "edge_mm2": 0.06,
        "erased_mm2": 0.0,
        "ground_mm2": 3.81,
+       "rim_mm2": 3.81,
        "new_bare_mm2": 3.87
       },
       "S5ddcc6a5": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S0d7a2fdf": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S0230f3d5": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S2d2a0936": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       }
      },
@@ -1448,7 +1521,7 @@
      "new_bare_mm2": 3.94,
      "resolved_mm2": 0.06
     },
-    "plan_s": 30.2
+    "plan_s": 30.6
    },
    "on_cov_gnd": {
     "stitches": 4636,
@@ -1478,30 +1551,35 @@
        "edge_mm2": 0.06,
        "erased_mm2": 0.0,
        "ground_mm2": 3.81,
+       "rim_mm2": 3.81,
        "new_bare_mm2": 3.87
       },
       "S5ddcc6a5": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S0d7a2fdf": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S0230f3d5": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S2d2a0936": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       }
      },
@@ -1509,7 +1587,7 @@
      "new_bare_mm2": 3.94,
      "resolved_mm2": 0.06
     },
-    "plan_s": 32.0
+    "plan_s": 26.0
    }
   },
   "candidates": [
@@ -6593,7 +6671,7 @@
   },
   "thread_wt": 40,
   "design_class": "gradient",
-  "stage0_4_s": 59.7,
+  "stage0_4_s": 82.5,
   "arms": {
    "off": {
     "stitches": 25907,
@@ -6617,7 +6695,7 @@
      "worst_mm": 0.0,
      "skipped": true
     },
-    "plan_s": 89.2
+    "plan_s": 78.1
    },
    "on_cov": {
     "stitches": 25863,
@@ -6647,96 +6725,112 @@
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S59787d23": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sf01834b1": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S19f85a5f": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S0a881283": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S587012ec": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S1d7e191f": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S762587e0": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S8379799d": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sc28daa63": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S40e1cad1": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sa049b7f4": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S57d81966": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Se979c060": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sa37babb3": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.12,
+       "rim_mm2": 0.12,
        "new_bare_mm2": 0.12
       },
       "S99d74eba": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.19,
+       "rim_mm2": 0.19,
        "new_bare_mm2": 0.19
       }
      },
@@ -6744,7 +6838,7 @@
      "new_bare_mm2": 0.31,
      "resolved_mm2": 0.0
     },
-    "plan_s": 100.1
+    "plan_s": 58.5
    },
    "on_cov_gnd": {
     "stitches": 25863,
@@ -6774,96 +6868,112 @@
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S59787d23": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sf01834b1": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S19f85a5f": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S0a881283": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S587012ec": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S1d7e191f": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S762587e0": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S8379799d": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sc28daa63": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S40e1cad1": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sa049b7f4": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "S57d81966": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Se979c060": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.0,
+       "rim_mm2": 0.0,
        "new_bare_mm2": 0.0
       },
       "Sa37babb3": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.12,
+       "rim_mm2": 0.12,
        "new_bare_mm2": 0.12
       },
       "S99d74eba": {
        "edge_mm2": 0.0,
        "erased_mm2": 0.0,
        "ground_mm2": 0.19,
+       "rim_mm2": 0.19,
        "new_bare_mm2": 0.19
       }
      },
@@ -6871,7 +6981,7 @@
      "new_bare_mm2": 0.31,
      "resolved_mm2": 0.0
     },
-    "plan_s": 84.6
+    "plan_s": 71.9
    }
   },
   "candidates": [
@@ -7228,5 +7338,29 @@
     "own_strict_mm2": 0.152
    }
   ]
+ },
+ "photo/drone_render.png @ 80mm/left_chest": {
+  "fixture": "photo/drone_render.png",
+  "matrix": {
+   "target_width_mm": 80.0,
+   "garment_id": "left_chest"
+  },
+  "error": "MemoryError: Unable to allocate 1.50 MiB for an array with shape (1024, 1536) and data type bool"
+ },
+ "photo/screenshot_phone_ui_golke.jpg @ 80mm/left_chest": {
+  "fixture": "photo/screenshot_phone_ui_golke.jpg",
+  "matrix": {
+   "target_width_mm": 80.0,
+   "garment_id": "left_chest"
+  },
+  "error": "MemoryError: Unable to allocate 50.0 MiB for an array with shape (6556552,) and data type float64"
+ },
+ "logo_alpha.png @ 80mm/left_chest": {
+  "fixture": "logo_alpha.png",
+  "matrix": {
+   "target_width_mm": 80.0,
+   "garment_id": "left_chest"
+  },
+  "error": "MemoryError: Unable to allocate 8.96 MiB for an array with shape (586979, 2) and data type int64"
  }
 }
