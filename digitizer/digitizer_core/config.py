@@ -2131,6 +2131,18 @@ class PipelineConfig:
     # Built OFF (Kent's call to flip, it changes default output on those
     # designs); False is byte-identical. Tests: `tests/test_column_capture.py`.
     lettering_columns_skip_blobs: bool = False
+    # Under `lettering_columns` (old taggers, `lettering_words` off), refuse
+    # a HOUSE-GROUP-ONLY shape whose thread is further than the text
+    # cluster's own ink link (CIEDE2000 20) from every text-cluster letter's
+    # thread, unless it abuts one (within 1.0 mm): `columns.ink_strays`,
+    # written as `meta["lettering_ink_stray"]` after the house angle.
+    # Census (`tools/column_capture_census.py --guard`, PR body): refuses
+    # enthusiast's shield star (34.2) and nothing else on the labelled
+    # fixtures; golden_tee's swashes are kept. It does NOT reach the phone
+    # screenshot's status icons, which are sewn in the text's own grey.
+    # Built OFF (Kent's call to flip); False writes no key and reads none.
+    # Tests: `tests/test_column_capture.py`.
+    lettering_columns_ink_link: bool = False
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
     # failure E). ON, `words.tag_words` finds each line of lettering once --

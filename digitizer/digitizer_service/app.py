@@ -746,7 +746,12 @@ def _sew_facts(plan, region_ids: set[str] | None = None) -> dict[str, dict]:
             if not sid:
                 continue
             f = facts.setdefault(sid, {"sew_index": len(facts), "sew_block": bi,
-                                       "_rank": 0})
+                                       "_rank": 0, "blended": False})
+            # Additive: `tier` keeps saying "fill" for a gradient's bands (the
+            # kind they sew as); `blended` is the separate fact that this
+            # shape went through the blend tier (`-blend<i>` band runs).
+            if run.shape_id != sid and "-blend" in run.shape_id:
+                f["blended"] = True
             f["_rank"] = max(f["_rank"], _KIND_TIER_RANK.get(run.kind, 0))
     for f in facts.values():
         f["tier"] = _RANK_TIER.get(f.pop("_rank"))
@@ -758,7 +763,7 @@ def _review_payload(result, plan=None) -> dict:
     and, when the plan is in hand, when each sews and as what tier."""
     facts = (_sew_facts(plan, {r.shape_id for r in result.regions})
              if plan is not None else {})
-    none = {"sew_index": None, "sew_block": None, "tier": None}
+    none = {"sew_index": None, "sew_block": None, "tier": None, "blended": False}
     return {
         "palette": result.palette,
         "design_size_mm": list(result.design_size_mm),
@@ -848,7 +853,7 @@ def _review_payload(result, plan=None) -> dict:
                 # by. None means the shape produced no stitches (the plan's
                 # SHAPE_NOT_STITCHED warning says how many did).
                 **{k: facts.get(r.shape_id, none)[k]
-                   for k in ("sew_index", "sew_block", "tier")},
+                   for k in ("sew_index", "sew_block", "tier", "blended")},
                 "outline_mm": [[round(x, 3), round(y, 3)] for x, y in r.polygon.exterior.coords],
                 "holes_mm": [
                     [[round(x, 3), round(y, 3)] for x, y in h.coords]
