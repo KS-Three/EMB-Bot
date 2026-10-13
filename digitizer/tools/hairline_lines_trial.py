@@ -64,6 +64,13 @@ LABELS = {"off40": "OFF", "on40": "hairline ON (regions)",
 # strands, for the 40 px/mm zoom.
 BOXES = {"beak": ((0.36, 0.18, 0.68, 0.48), 16.0),
          "zoom": ((0.45, 0.24, 0.52, 0.31), 40.0)}
+# Where the sewn strands land, by the strand's centroid as a fraction of the
+# source (first match wins): the facial bristles round the beak (the target
+# hair), the eyes, the barred breast; "elsewhere" is mostly the wispy
+# feather tips at the head's outline and the fence.
+ZONES = {"beak_bristles": (0.36, 0.18, 0.68, 0.48),
+         "eyes": (0.25, 0.12, 0.75, 0.25),
+         "breast": (0.0, 0.55, 1.0, 1.0)}
 MAX_JPEG_BYTES = 400_000
 PARTS = ROOT / "debug_out" / "hairline_lines_trial"
 OUT = ROOT.parent / "docs" / "renders" / "claude-hairline-fdog-lines"
@@ -174,6 +181,8 @@ def strand_map(result, k: int = 3) -> None:
                      interpolation=cv2.INTER_NEAREST)
     big = (0.55 * big + 0.45 * 255).astype(np.uint8)        # wash the photo out
     side0 = 0.5 * prof.hairline_max_width_mm
+    hh, ww = sp.rgb.shape[:2]
+    zones: dict[str, list] = {k: [0, 0.0] for k in list(ZONES) + ["elsewhere"]}
     for pol, g, col in (("dark", gray, (0, 0, 230)), ("light", 1.0 - gray, (230, 160, 0))):
         H = fdog_response(g, sampler.field.tangent)
         lmap = L._fill_slits(fdog_threshold(H, sampler.field.tangent, sampler.field.coherence))
@@ -186,8 +195,18 @@ def strand_map(result, k: int = 3) -> None:
                       else (0, 170, 0) if length < machine.RUN_MIN_LOOP_MM else col)
             q = np.array([sp.to_px(x, y) for x, y in pts]) * k
             cv2.polylines(big, [np.round(q).astype(np.int32)], False, colour, 2, cv2.LINE_AA)
+            if c >= _SRC_MIN_CONTRAST and length >= machine.RUN_MIN_LOOP_MM:
+                fx, fy = (q.mean(axis=0) / k) / [ww, hh]
+                zone = next((z for z, (x0, y0, x1, y1) in ZONES.items()
+                             if x0 <= fx < x1 and y0 <= fy < y1), "elsewhere")
+                zones[zone][0] += 1
+                zones[zone][1] += round(length, 1)
     OUT.mkdir(parents=True, exist_ok=True)
     write_jpeg(OUT / "owl_line_census.jpg", big)
+    (OUT / "zones.json").write_text(json.dumps(
+        {z: {"strands": n, "mm": round(mm, 1)} for z, (n, mm) in zones.items()}, indent=1)
+        + "\n", encoding="utf-8")
+    print("zones", json.dumps(zones), flush=True)
 
 
 def run_arm(arm: str) -> dict:

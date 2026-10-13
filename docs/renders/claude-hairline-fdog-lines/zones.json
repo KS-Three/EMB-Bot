@@ -1,0 +1,18 @@
+{
+ "beak_bristles": {
+  "strands": 5,
+  "mm": 18.4
+ },
+ "eyes": {
+  "strands": 2,
+  "mm": 60.3
+ },
+ "breast": {
+  "strands": 31,
+  "mm": 219.7
+ },
+ "elsewhere": {
+  "strands": 37,
+  "mm": 162.7
+ }
+}
