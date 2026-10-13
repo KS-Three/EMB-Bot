@@ -127,6 +127,25 @@
   // lettering sizes that is usually under a cell, but it is the known difference
   // between this and the reference output, and the reason a sew-out is wanted
   // before trusting these fonts on real fabric.
+  //
+  // `opts.maxSegPx` (2026-10-13, Kent: "Split at machine limit"): the longest
+  // per-AXIS delta one sewn segment may carry, in the same px as the rings. An
+  // arm past it is emitted as ceil(delta / maxSegPx) collinear sub-segments —
+  // no wave, the X is unchanged and the extra penetrations lie on the arm. Arms
+  // within it are returned untouched, so output is byte-identical at every size
+  // that never reaches a record. This is the MACHINE limit, not a fabric one:
+  // the length a cross arm may float before it snags is a sew-out question.
+  function splitArm(stroke, maxSegPx) {
+    if (!(maxSegPx > 0)) return stroke;
+    const [a, b] = stroke;
+    const n = Math.ceil(Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) / maxSegPx);
+    if (n <= 1) return stroke;
+    const pts = [a];
+    for (let k = 1; k < n; k++) pts.push({ x: a.x + ((b.x - a.x) * k) / n, y: a.y + ((b.y - a.y) * k) / n });
+    pts.push(b);
+    return pts;
+  }
+
   function crossFill(rings, lattice, opts) {
     const o = opts || {};
     const method = o.method || "simple_cross";
@@ -181,7 +200,7 @@
           Math.hypot(cx - prev.x, r.cy - prev.y) > step * GAP_CELLS);
         let firstOfCell = true;
         for (const stroke of crossStrokes(cx, r.cy, h, method)) {
-          out.push({ pts: stroke, kind: "cross", jump: firstOfCell && jumpHere });
+          out.push({ pts: splitArm(stroke, o.maxSegPx), kind: "cross", jump: firstOfCell && jumpHere });
           firstOfCell = false;
         }
         first = false;
