@@ -62,6 +62,7 @@ from __future__ import annotations
 import math
 from collections import deque
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import nearest_points, substring, unary_union
@@ -155,6 +156,10 @@ def is_lettering(region, cfg=None) -> bool:
         return False
     if tagged and getattr(cfg, "lettering_columns_ink_link", False) \
             and m.get("lettering_ink_stray"):
+        return False
+    if tagged and getattr(cfg, "lettering_columns_icon_guard", False) \
+            and m.get("lettering_group") and not m.get("text_candidate") \
+            and is_drawing_fragment(region.polygon):
         return False
     return tagged
 
@@ -253,6 +258,69 @@ def is_solid_blob(poly) -> bool:
     hull = poly.convex_hull.area
     return (stroke / side >= BLOB_STROKE_OVER_H
             and hull > 0 and poly.area / hull >= BLOB_MIN_SOLIDITY)
+
+
+# `cfg.lettering_columns_icon_guard`: a house-group-only shape whose medial
+# axis is a TANGLE is a piece of drawing, not a letter. Neither guard above
+# reaches the phone screenshot's three 4.5-6 mm captures (S4a2d12c4,
+# Sf90dec39, S84f354eb: thin-stroked pieces of the truck drawing, not solid
+# blobs, and in the text's own grey). What they have that no letter has is a
+# skeleton with many nodes: `skeleton_nodes` counts junctions plus free ends
+# of the shape's own medial axis (`shapefield.build_shape_field`, whose grid
+# is set by the stroke width, so the count does not move with size), after
+# spurs shorter than one stroke width are pruned away (edge noise, not
+# strokes). Census at the corpus settings (`tools/column_capture_census.py
+# --signals`, 2026-10-13, both other guards ON): the three captures read 36,
+# 39 and 45; the 130 hand-labelled letters of eight fixtures read at most 13
+# (Fremont's slab-serif H and M: every serif is a junction and two ends);
+# golden_tee's three house-only swashes read 4, 4 and 8. 24 sits between.
+# Judged on HOUSE-GROUP-ONLY shapes, as the ink link is: the text cluster
+# has its own ink link and letter door. A CANDIDATE shape count from one
+# corpus, not a cloth constant.
+ICON_GUARD_MIN_NODES = 24
+
+
+def skeleton_nodes(poly) -> int:
+    """Junctions plus free ends of `poly`'s pruned medial axis (see
+    `ICON_GUARD_MIN_NODES`). 0 for anything the shape field cannot raster:
+    no evidence, so the guard fails open."""
+    if not isinstance(poly, Polygon) or poly.is_empty:
+        return 0
+    return _skeleton_nodes(poly)
+
+
+@lru_cache(maxsize=1024)
+def _skeleton_nodes(poly: Polygon) -> int:
+    import cv2
+    import numpy as np
+    from .shapefield import build_shape_field
+
+    f = build_shape_field(poly)
+    if f is None or not f.skel.any():
+        return 0
+    sk = f.skel.astype(np.uint8)
+    kernel = np.ones((3, 3), np.float32)
+
+    def neighbours():
+        n = cv2.filter2D(sk, -1, kernel, borderType=cv2.BORDER_CONSTANT)
+        return (n.astype(np.int32) - 1) * sk
+
+    # Peel free ends one pixel at a time for one stroke width: a spur that
+    # short is gone, a real stroke is only shortened.
+    for _ in range(int(round(2.0 * float(np.median(f.dist[f.skel]))))):
+        ends = (sk > 0) & (neighbours() <= 1)
+        if not ends.any():
+            break
+        sk[ends] = 0
+    nb = neighbours()
+    ends = int(((sk > 0) & (nb == 1)).sum())
+    n_junctions, _ = cv2.connectedComponents(((sk > 0) & (nb >= 3)).astype(np.uint8),
+                                             connectivity=8)
+    return ends + n_junctions - 1
+
+
+def is_drawing_fragment(poly) -> bool:
+    return skeleton_nodes(poly) >= ICON_GUARD_MIN_NODES
 
 
 # ----------------------------------------------------------------- geometry
