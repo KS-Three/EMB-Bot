@@ -2194,20 +2194,6 @@ class PipelineConfig:
     # screenshot's two lines were one group in each). Off, nothing calls it
     # and every reader is byte-identical. Tests: `tests/test_words.py`.
     lettering_words: bool = False
-    # RINGS do not swallow the word in their hole (2026-10-13, needs
-    # `lettering_words`; `words._drop_nested_rings`). The tagger drops a
-    # glyph whose box sits inside a larger candidate's box -- a counter
-    # sliver riding in a letter's footprint. At 50 mm the bridge badge
-    # (49.4 mm, aspect 1.00, stroke CV 0.33) falls under the tagger's 60 mm
-    # height ceiling, passes every glyph screen, and its box swallows all
-    # twelve letters of BAR & RESTAURANT. ON, a candidate whose OUTLINE
-    # holds, in its hole, three or more glyphs that link into a word does
-    # not swallow that word's members; it stays a candidate, and glyphs
-    # beside a host's ink (in its box, outside its outline) are swallowed
-    # as before. Census (`tools/word_tagger_trace.py --nest-census`, 9
-    # fixtures x 50/65/80/100 mm) in the PR body. Built OFF (Kent's flip);
-    # off, `_drop_nested` exactly. Tests: `tests/test_words.py`.
-    lettering_word_rings: bool = False
     # ONE TIER PER WORD (L3 of the lettering lane, mechanism only;
     # `words.assign_word_tiers`). Needs `lettering_words`; without it there
     # are no words and nothing changes. ON, a word's tier is decided once

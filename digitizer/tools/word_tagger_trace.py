@@ -81,8 +81,7 @@ class Rules:
     prox_mult: float
     min_members: int
     # How `_drop_nested` picks the hosts that swallow a glyph (see
-    # `drop_nested`): "box" is the shipped rule, "ring" the
-    # `cfg.lettering_word_rings` rule; the others are census-only.
+    # `drop_nested`): "box" is the shipped rule; the others are census-only.
     nested: str = "box"
     # Census-only: a host taller than this many times the glyph does not
     # swallow it. None: no cap (shipped).
@@ -208,9 +207,48 @@ class Trace:
 
 
 def _box_holds(outer, inner) -> bool:
-    """`textcluster._drop_nested`'s containment test (`words._box_holds`)."""
-    from digitizer_core.words import _box_holds as holds
-    return holds(outer, inner)
+    """`textcluster._drop_nested`'s containment test on two bounds tuples:
+    `inner`'s box inside `outer`'s, and `outer`'s box strictly larger."""
+    ox0, oy0, ox1, oy1 = outer
+    bx0, by0, bx1, by1 = inner
+    return (ox0 <= bx0 and oy0 <= by0 and ox1 >= bx1 and oy1 >= by1
+            and (ox1 - ox0) * (oy1 - oy0) > (bx1 - bx0) * (by1 - by0))
+
+
+def _inside_outline(child, host) -> bool:
+    """At least half of `child`'s ink inside `host`'s OUTLINE with its holes
+    filled (`nest_info`'s shell_frac >= 0.5): a glyph in a ring's hole reads
+    1, one beside the host's ink (in its box, outside its outline) 0."""
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+    hp = host.region.polygon
+    shell = unary_union([Polygon(g.exterior) for g in getattr(hp, "geoms", [hp])])
+    cp = child.region.polygon
+    return cp.area > 0 and cp.intersection(shell).area >= 0.5 * cp.area
+
+
+def ring_words(cands, chart) -> dict[int, set[str]]:
+    """Census-only. {index of a RING in `cands`: shape ids of the word in its
+    hole}: a candidate whose outline holds, inside it, three or more
+    candidates that link into a word among themselves (`textcluster.
+    _cluster` with `LETTER_HEIGHT_RATIO` and the ink link, as `detect_words`
+    links). Measured 2026-10-13 and NOT shipped: it frees the 50 mm bridge
+    badge's BAR & RESTAURANT and also two 2x2 icon grids at 100 mm (drone,
+    screenshot), which link like a word of four."""
+    from digitizer_core.textcluster import LETTER_HEIGHT_RATIO
+    from digitizer_core.textcluster import _cluster as link_components
+    boxes = [c.region.polygon.bounds for c in cands]
+    out: dict[int, set[str]] = {}
+    for i, h in enumerate(cands):
+        held = [c for j, c in enumerate(cands)
+                if j != i and _box_holds(boxes[i], boxes[j]) and _inside_outline(c, h)]
+        if len(held) < 3:
+            continue
+        word = {c.region.shape_id for comp in link_components(held, LETTER_HEIGHT_RATIO, chart)
+                if len(comp) >= 3 for c in comp}
+        if word:
+            out[i] = word
+    return out
 
 
 def nest_info(child, cands, chart=None) -> dict:
@@ -257,7 +295,7 @@ NEST_POLICIES = ("box", "ring", "frame", "outline", "frame+outline")
 
 
 def frame_ids(cands, chart) -> set[str]:
-    """Census-only, the looser cousin of `words._ring_words`: shape ids of
+    """Census-only, the looser cousin of `ring_words`: shape ids of
     candidates whose BOX (not hole) holds three or more candidates that link
     into a word. Measured and refused: it also frees what sits in a host's
     box beside its ink (wheel spokes, a host's own ink, window panes)."""
@@ -275,12 +313,11 @@ def frame_ids(cands, chart) -> set[str]:
 
 def drop_nested(raw, rules: Rules, chart):
     """`_drop_nested` under `rules.nested` / `rules.nest_max_h`. "box" with no
-    cap IS `textcluster._drop_nested`, and "frame" with no cap IS
-    `words._drop_nested_rings` (the flag's own code), so the census scores
-    the shipped functions, not copies. The others:
+    cap IS `textcluster._drop_nested` (the census scores the shipped
+    function, not a copy). The others, none of them in the tagger:
 
-      ring           (the flag) a host does not swallow the members of a
-                     word that lies inside its outline (`words._ring_words`)
+      ring           a host does not swallow the members of a word that
+                     lies inside its outline (`ring_words`)
       frame          a host whose BOX holds a linked word swallows nothing
                      (`frame_ids`)
       outline        a host swallows only a glyph lying inside its outline
@@ -289,18 +326,13 @@ def drop_nested(raw, rules: Rules, chart):
       frame+outline  both
       nest_max_h=K   a host over K times the glyph's height does not swallow
     """
-    from digitizer_core import words as W
     from digitizer_core.textcluster import _drop_nested
-    if rules.nest_max_h is None:
-        if rules.nested == "box":
-            return _drop_nested(raw)
-        if rules.nested == "ring":
-            return W._drop_nested_rings(raw, chart)
     if rules.nested not in NEST_POLICIES:
         raise ValueError(f"unknown nested policy {rules.nested!r}")
-    if rules.nested == "ring":
-        raise ValueError("nested=ring takes no nest_max_h")
+    if rules.nested == "box" and rules.nest_max_h is None:
+        return _drop_nested(raw)
     frames = frame_ids(raw, chart) if "frame" in rules.nested else set()
+    rings = ring_words(raw, chart) if rules.nested == "ring" else {}
     boxes = [c.region.polygon.bounds for c in raw]
     out = []
     for i, c in enumerate(raw):
@@ -308,9 +340,11 @@ def drop_nested(raw, rules: Rules, chart):
         for j, h in enumerate(raw):
             if i == j or h.region.shape_id in frames or not _box_holds(boxes[j], boxes[i]):
                 continue
+            if c.region.shape_id in rings.get(j, ()):
+                continue
             if rules.nest_max_h is not None and h.height_mm > rules.nest_max_h * c.height_mm:
                 continue
-            if "outline" in rules.nested and not W._inside_outline(c, h):
+            if "outline" in rules.nested and not _inside_outline(c, h):
                 continue
             swallowed = True
             break
@@ -601,7 +635,7 @@ VARIANTS: dict[str, dict] = {
     "min_height_mm=0.8": {"min_height_mm": 0.8},
     "min_height_mm=0.6": {"min_height_mm": 0.6},
     "min_members=2": {"min_members": 2},
-    # the nesting drop (`drop_nested`); "nested=ring" is the flag
+    # the nesting drop (`drop_nested`), census-only
     "nested=ring": {"nested": "ring"},
     "nested=frame": {"nested": "frame"},
     "nested=outline": {"nested": "outline"},

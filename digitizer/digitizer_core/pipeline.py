@@ -847,7 +847,7 @@ def build_generation(
     # Off, `tag_words` is never called and no `word_*` key is written.
     if cfg.lettering_words:
         from .words import tag_words
-        tag_words(regions, chart=chart_for(cfg), rings=cfg.lettering_word_rings)
+        tag_words(regions, chart=chart_for(cfg))
         if cfg.lettering_word_tiers:
             from .words import assign_word_tiers
             assign_word_tiers(regions, floor_mm=cfg.lettering_min_column_mm,
