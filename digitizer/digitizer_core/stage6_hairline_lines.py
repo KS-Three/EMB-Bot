@@ -51,11 +51,11 @@ What runs, in order:
    from its nearer end; a hop is a jump, a trim past `trim_at_mm`
    (`detail_runs`' and `hairline_runs`' rule).
 
-Where it applies: the raster lanes only (`LINE_CLASSES`: gradient and the
-photo classes), because that is where strands do not arrive as shapes. On
-the flat lane a drawn hair IS a shape and the region tier already sews it
-(hair_strands, hair_fine); there this flag changes nothing, byte for byte,
-and the tier runs as before. On a raster lane the region tier is replaced,
+Where it applies: the photo lanes only (`LINE_CLASSES`), because that is
+where strands do not arrive as shapes. On a drawn design (the hair
+fixtures classify as `gradient`) a hair IS a shape and the region tier
+already sews it; there this flag changes nothing, byte for byte, and the
+tier runs as before. On a photo lane the region tier is replaced,
 not stacked: no shape is carved (`pipeline.plan_stitches` hands stage 5 and
 stage 7 an empty `HairlineSet`).
 
@@ -76,7 +76,13 @@ from .stitches import StitchRun
 from .threads import chart_for, rgb_to_lab
 
 # The lanes whose strands do not reach stage 6 as shapes (module docstring).
-LINE_CLASSES = ("gradient",) + tuple(PHOTO_CLASSES)
+# The photo classes only. NOT `gradient`: the drawn hair fixtures
+# (`hair_strands`, `hair_fine`) classify as gradient, and there the region
+# tier already sews every strand as a shape (184 / 321 run branches, #876).
+# The Studio sends owl_kent down the gradient lane too (#876's `studio`
+# route), so that route is not covered yet; widening this is a measured
+# follow-up, not a default.
+LINE_CLASSES = tuple(PHOTO_CLASSES)
 
 # How far past the widest strand's half-width a side sample reaches, in
 # SOURCE pixels. One pixel: the side must be read where a strand of the
@@ -106,7 +112,14 @@ def _fill_slits(line_map: np.ndarray) -> np.ndarray:
     traced as 96 pieces, 22 of them over the loop floor and lying on top of
     a line already sewn). A hole that narrow is the filter's artefact, not
     background between two strands: two strands that close sew as one
-    thread anyway."""
+    thread anyway.
+
+    A straight line can instead come back as two parallel tracks that never
+    join (a hole open at both ends), so a 3 x 3 closing first bridges any
+    one-pixel gap between tracks; two strands one pixel apart are closer
+    than a laid thread at any resolution this route sees."""
+    line_map = cv2.morphologyEx(line_map.astype(np.uint8), cv2.MORPH_CLOSE,
+                                np.ones((3, 3), np.uint8)).astype(bool)
     filled = line_map.copy()
     holes = (~line_map).astype(np.uint8)
     n, lab, stats, _c = cv2.connectedComponentsWithStats(holes, connectivity=4)

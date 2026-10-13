@@ -1273,7 +1273,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         str((ov or {}).get("tier", "")).lower() in ("sketch", "streamline")
         for ov in cfg.shape_overrides.values())
     # The hairline line route reads its lines from the raster too
-    # (`stage6_hairline_lines`; only on a raster lane, flags off -> False).
+    # (`stage6_hairline_lines`; only on a photo lane, flags off -> False).
     want_tonal = want_tonal or hairline_lines_apply(cfg, gen.classification_class)
     if gen.classification_class == "gradient" or want_tonal:
         source_pixels = SourcePixels(rgb=p.rgb, px_per_mm=p.px_per_mm,
@@ -1588,7 +1588,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # The hairline tier's shapes (`cfg.hairline`, default OFF), read ONCE so
     # stage 5 (the ground under them) and stage 7 (the tier) agree on which
     # shape is a strand. Off: None, and neither stage looks.
-    # On the line route (`cfg.hairline_from_lines` on a raster lane,
+    # On the line route (`cfg.hairline_from_lines` on a photo lane,
     # `stage6_hairline_lines`) no shape is a strand: the set is empty and the
     # strands come from FDoG lines in stage 7, over the untouched fills.
     hairline = ((HairlineSet() if hairline_lines_apply(cfg, result.design_class)

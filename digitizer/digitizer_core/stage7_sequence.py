@@ -1972,7 +1972,7 @@ def sequence(
     # the ground under a strand and the strand itself agree. A direct caller
     # that passes none gets them read here, from the traced polygons.
     if cfg.hairline and hairline is None:
-        # On the line route (`cfg.hairline_from_lines`, a raster lane) no
+        # On the line route (`cfg.hairline_from_lines`, a photo lane) no
         # shape is carved: the strands come from lines, after every block.
         hairline = (HairlineSet() if hairline_lines_apply(cfg, design_class)
                     else hairline_candidates([p.region for p in planned], cfg))
@@ -3461,7 +3461,7 @@ def sequence(
             cursor = d_runs[-1].points[-1]
 
     # --- Hairline strands from lines (`cfg.hairline_from_lines`, OFF) -------
-    # `stage6_hairline_lines`: on a raster lane, the hairline tier's strands
+    # `stage6_hairline_lines`: on a photo lane, the hairline tier's strands
     # come from FDoG lines, sewn as runs over the finished fills, last of
     # all — one block per polarity, in the design's own nearest thread.
     hair_lines = None

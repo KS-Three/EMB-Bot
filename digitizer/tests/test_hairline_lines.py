@@ -107,18 +107,20 @@ def test_the_flag_alone_changes_nothing_on_the_photo_lane(plans):
     assert plans["lines_result"].source_pixels is not None
 
 
-def test_the_line_route_does_not_apply_on_the_flat_lane():
+def test_the_line_route_leaves_drawn_hair_to_the_region_tier():
+    """Drawn hair classifies `gradient`; its strands ARE shapes, which the
+    region tier sews. The line route stays out: photo lanes only."""
     cfg = PipelineConfig(hairline=True, hairline_from_lines=True)
-    assert not applies(cfg, "flat")
+    assert not applies(cfg, "flat") and not applies(cfg, "gradient")
+    assert set(LINE_CLASSES) == {"photo_subject", "photo_scene"}
     assert all(applies(cfg, c) for c in LINE_CLASSES)
     assert not applies(PipelineConfig(hairline_from_lines=True), "photo_subject")
-    _r, on = digitize(TESTDATA / "synthetic" / "hair_strands.png",
-                      PipelineConfig(target_width_mm=80.0, hairline=True))
-    _r, both = digitize(TESTDATA / "synthetic" / "hair_strands.png",
-                        PipelineConfig(target_width_mm=80.0, hairline=True,
-                                       hairline_from_lines=True))
-    assert _r.design_class == "flat"
-    assert _md5(both) == _md5(on)
+    on_cfg = PipelineConfig(target_width_mm=80.0, hairline=True)
+    result = run_stages(TESTDATA / "synthetic" / "hair_strands.png", on_cfg)
+    assert result.design_class == "gradient"
+    both = plan_stitches(result, PipelineConfig(target_width_mm=80.0, hairline=True,
+                                                hairline_from_lines=True))
+    assert _md5(both) == _md5(plan_stitches(result, on_cfg))
 
 
 # --- the done-test: lines sew strands the regions do not --------------------
