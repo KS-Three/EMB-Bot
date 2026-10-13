@@ -624,6 +624,25 @@ tested:
 READBACK
 Reproduce with `python -m tools.hairline_card` from `digitizer/`; the
 tests are `digitizer/tests/test_hairline_card.py`.
+
+## Small print: two more candidates this card should settle (not in the DST yet)
+
+Added 2026-10-12 by the small-print lane (`cfg.small_print_floor`, built OFF;
+measurements in `digitizer/tools/small_print.py`, renders in
+`docs/renders/claude-small-print-floor/`). Block D's word, SKEIN, has no
+counters, so it cannot answer these. A future revision of this card should
+add a word WITH counters (the lane's synthetic word is `BOARD 80`) at 3 and
+4 mm cap, sewn OFF and ON, on both weights.
+
+| Candidate | Value | Where it lives | What settles it |
+|---|---|---|---|
+| Narrowest counter kept open | **1 laid thread width** across: 0.40 mm at 40 wt, ~0.32 mm at 60 wt | `machine.SMALL_PRINT_COUNTER_MIN_WIDTHS` x `thread_profile(wt).width_mm` (`counter_min_width_mm`) | Is a 0.4 mm (40 wt) / 0.32 mm (60 wt) counter still open at arm's length, or does it close up? |
+| Thread held off a counter | **half a laid width** from each penetration to the counter's edge: 0.20 mm at 40 wt, 0.16 mm at 60 wt | `thread_profile(wt).width_mm / 2`, in `columns._clear_counters` | Does the column next to a counter still cover its own ink (no bare line along the counter), and does the counter stay its drawn size? |
+
+Score each on the sheet's "Cap height legible" column, plus a free note:
+"counters open Y/N" per letter with a counter. Both numbers are derived from
+the laid width, which is itself a candidate (60 wt's 0.32 mm is a square-root-
+of-dtex estimate, never measured).
 """
 
 SCORING = """# Scoring sheet, hairline sew-out card

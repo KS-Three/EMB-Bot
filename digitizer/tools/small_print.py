@@ -287,6 +287,107 @@ def fmt(m: dict) -> str:
             f"({m['counter_mm2']:.2f} mm2) {m['flags']} [{m['seconds']} s]")
 
 
+def focus_box(art):
+    """The bounds of the source letter holding the largest counter (the zoom
+    panel's window), or None when the line has no counter."""
+    best = None
+    for g in getattr(art, "geoms", [art]):
+        for ring in g.interiors:
+            a = Polygon(ring).area
+            if best is None or a > best[0]:
+                best = (a, g.bounds)
+    return best[1] if best else None
+
+
+def render_line(plan, art, thread_mm: float, ppm: int = PX_PER_MM, pad: float = 0.8,
+                box=None) -> np.ndarray:
+    """The plan sewn (`stitchviz.render_design`, thread at `thread_mm`),
+    cropped to the measured line (or to `box`), the SOURCE outline and its
+    counters in red on top."""
+    from digitizer_core import stitchviz
+    from digitizer_core.adapter import plan_to_design
+
+    d = plan_to_design(plan)
+    img = stitchviz.render_design(d, px_per_mm=ppm, pad_mm=2.0, thread_mm=thread_mm)
+    (_h, _w), to_px = stitchviz._frame(d["stitches"], ppm, 2.0)
+    u = stitchviz.UNITS_PER_MM
+
+    def P(x, y):   # plan mm (y down) -> design units (y up) -> pixel
+        return to_px({"x": x * u, "y": -y * u})
+
+    for g in getattr(art, "geoms", [art]):
+        for ring in [g.exterior, *g.interiors]:
+            pts = np.array([P(x, y) for x, y in ring.coords], np.int32)
+            cv2.polylines(img, [pts], True, (40, 40, 220), 1, cv2.LINE_AA)
+    x0, y0, x1, y1 = box or art.bounds
+    a, b = P(x0 - pad, y0 - pad), P(x1 + pad, y1 + pad)
+    xa, xb = sorted((a[0], b[0]))
+    ya, yb = sorted((a[1], b[1]))
+    return img[max(0, ya):yb, max(0, xa):xb].copy()
+
+
+def _label(img: np.ndarray, text: str) -> np.ndarray:
+    bar = np.full((30, img.shape[1], 3), 255, np.uint8)
+    cv2.putText(bar, text, (6, 21), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (20, 20, 20), 1, cv2.LINE_AA)
+    return np.vstack([bar, img])
+
+
+def _hstack(imgs, gap=12):
+    h = max(i.shape[0] for i in imgs)
+    out = []
+    for k, i in enumerate(imgs):
+        if i.shape[0] < h:
+            i = np.vstack([i, np.full((h - i.shape[0], i.shape[1], 3), 255, np.uint8)])
+        out.append(i)
+        if k < len(imgs) - 1:
+            out.append(np.full((h, gap, 3), 255, np.uint8))
+    return np.hstack(out)
+
+
+def _vstack(imgs, gap=16):
+    w = max(i.shape[1] for i in imgs)
+    out = []
+    for i in imgs:
+        if i.shape[1] < w:
+            i = np.hstack([i, np.full((i.shape[0], w - i.shape[1], 3), 255, np.uint8)])
+        out += [i, np.full((gap, w, 3), 255, np.uint8)]
+    return np.vstack(out[:-1])
+
+
+def sheet(name: str, ref: dict, caps, weights=(40,), ppm: int = PX_PER_MM) -> tuple[np.ndarray, list]:
+    """OFF beside ON (`small_print_floor`) per cap and weight, every panel at
+    `ppm` px/mm, the same scale throughout. -> (BGR sheet, metric rows)."""
+    image = load(name)
+    rows, metrics = [], []
+    for wt in weights:
+        tw = machine.thread_profile(wt).width_mm
+        for cap in caps:
+            w = round(cap / ref["cap"], 2)
+            pair, zoom = [], []
+            for on in (False, True):
+                cfg = PipelineConfig(target_width_mm=w, thread_wt=wt, small_print_floor=on)
+                m, (_res, plan, art) = measure(image, cfg, ref)
+                m.update(fixture=name, target_cap=cap, flags={"thread_wt": wt, "small_print_floor": on})
+                metrics.append(m)
+                tag = f"{'ON ' if on else 'OFF'} {cap:g} mm cap, {wt} wt"
+                pair.append(_label(render_line(plan, art, tw, ppm),
+                                   f"{tag}: {m['counters_shut']}/{m['counters']} counters shut, "
+                                   f"{m['counter_open']:.2f} open"))
+                fb = focus_box(art)
+                if fb is not None:
+                    zoom.append(_label(render_line(plan, art, tw, 2 * ppm, pad=0.5, box=fb),
+                                       f"{tag}, zoom {2 * ppm} px/mm"))
+            rows.append(_hstack(pair))
+            if zoom:
+                rows.append(_hstack(zoom))
+    out = _vstack(rows)
+    title = np.full((40, out.shape[1], 3), 255, np.uint8)
+    cv2.putText(title, f"{name}: cfg.small_print_floor OFF (left) vs ON (right), {ppm} px/mm, "
+                f"red = source outline traced at the reference width",
+                (6, 27), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (20, 20, 20), 1, cv2.LINE_AA)
+    return np.vstack([title, out]), metrics
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--fixture", required=True, choices=sorted(FIXTURES))
@@ -295,6 +396,8 @@ def main(argv=None):
     ap.add_argument("--ref", help="a reference JSON written by an earlier run (skips the reference run)")
     ap.add_argument("--save-ref", help="write the reference JSON here")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--sheet", help="write an OFF/ON render sheet (PNG) here instead of measuring")
+    ap.add_argument("--weights", default="40", help="thread weights for --sheet, e.g. 40,60")
     a = ap.parse_args(argv)
     _path, rank, ref_w = FIXTURES[a.fixture]
     ref = json.loads(Path(a.ref).read_text()) if a.ref else None
@@ -305,6 +408,13 @@ def main(argv=None):
               f"({ref['letters']} letters, {time.time() - t0:.0f} s)", flush=True)
         if a.save_ref:
             Path(a.save_ref).write_text(json.dumps(ref))
+    if a.sheet:
+        img, metrics = sheet(a.fixture, ref, [float(c) for c in a.caps.split(",")],
+                             tuple(int(w) for w in a.weights.split(",")))
+        cv2.imwrite(a.sheet, img)
+        for m in metrics:
+            print(json.dumps(m) if a.json else fmt(m), flush=True)
+        return
     for cap in [float(c) for c in a.caps.split(",")]:
         _ref, (m,) = run_fixture(a.fixture, [cap], parse_flags(a.flag), ref)
         print(json.dumps(m) if a.json else fmt(m), flush=True)
