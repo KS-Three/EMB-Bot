@@ -46,10 +46,13 @@ DOC_READERS = {"scope_budget", "memory_budget", "doc_claims"}
 #: `<fixture>.md` and reads none. `hairline_renders` WRITES `table.md` and
 #: `hairline_card` writes the sew-out card's `README.md`, `scoring-sheet.md`
 #: and `readback.md` (2026-10-12): both print only JSON rows, and neither
-#: reads a doc.
+#: reads a doc. `hairline_photo_trial` (2026-10-12) likewise WRITES
+#: `table.md` and names its findings doc in comments; it prints JSON rows and
+#: one ASCII pipeline line, and reads no doc.
 NAMES_ONLY = {"acceptance_ab", "sewout_walk_reach", "counter_slots",
               "hairline_renders", "hairline_card", "hairline_logo_bill",
-              "sewout_candidates_card"}   # writes README / scoring sheet / readback .md, reads none
+              "sewout_candidates_card",   # writes README / scoring sheet / readback .md, reads none
+              "hairline_photo_trial"}
 
 
 def cp1252_stream() -> tuple[io.BytesIO, io.TextIOWrapper]:
