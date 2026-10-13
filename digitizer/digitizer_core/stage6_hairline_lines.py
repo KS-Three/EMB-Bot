@@ -37,6 +37,13 @@ What runs, in order:
    a wide band has one side like its middle and reads near 0. This is the
    same question #876's `_line_contrasts` asks of a traced branch, asked of
    a detected line, written here so the two do not collide.
+   **A strand, not a bar** (`cfg.hairline_lines_strand_test`, default OFF,
+   2026-10-13). A thin bar is a ridge too: on owl_kent 31 of 75 strands
+   were the breast barring. With the flag on, a ridge that sits in a stack
+   of parallel lines of its own polarity is a bar and is not sewn
+   (`stack_share`, the constants beside it). The same flag makes the run
+   rules read the colour block's weight (`strand_blocks`' `block_wt`)
+   instead of the design's.
 3. **Stitch, the tier's rules.** Each strand is a run: `stitch_path` at
    `cfg.hairline_stitch_mm`, shortened on a curl to the curl tolerance of
    the block's thread (`_CURL_TOL_WIDTHS` x `hairline_run_width_mm`, so
@@ -98,6 +105,31 @@ _SLIT_PX = 2.0
 
 # Spacing of the cross-profiles along a line, in laid thread widths.
 _PROFILE_STEP_WIDTHS = 1.0
+
+# --- The strand test (`cfg.hairline_lines_strand_test`, default OFF) ---------
+# A thin BAR passes the ridge test as well as a strand does: on owl_kent, 31
+# of the line route's 75 strands are the thin dark parts of the breast
+# barring (#882). What tells them apart is the company a line keeps: a bar
+# is one of a STACK — parallel lines of its own polarity on both sides of it
+# (the bars above and below), or two on one side at an even period (the
+# stack's edge). A strand is not. Read at stations `_STACK_STEP_MM` apart
+# along the line; at each, a ray along either normal looks for any line the
+# detector found in the same polarity (ridge or not: a wide bar is still a
+# bar), running within `_STACK_ANGLE_DEG` of the station's direction, between
+# half the widest strand (`hairline_max_width_mm` / 2: nearer is the line's
+# own other rim) and `_STACK_REACH_MM`. A line is a bar, and is not sewn, when
+# at least `_STACK_SHARE` of its stations sit in a stack.
+# Curvature, taper and the ends were measured too and do not separate the
+# two on this photo (the PR's census): the bars curve as much as the
+# bristles, both fade at the ends, and at 4.36 px/mm neither has a width
+# profile to taper. All CANDIDATES (geometry of the file, unsewn, gate 1).
+_STACK_STEP_MM = 0.5
+_STACK_ANGLE_DEG = 20.0
+_STACK_REACH_MM = 6.0
+_STACK_SHARE = 0.4
+# A second neighbour on one side at this multiple of the first's distance is
+# the next bar of an evenly spaced stack.
+_STACK_PERIOD = (1.6, 2.5)
 
 SHAPE_ID = "hairline_lines"
 
@@ -212,13 +244,84 @@ def ridge_contrast(pts, light: np.ndarray, sp, *, polarity: str,
     return float(np.median(vals)) if vals else 0.0
 
 
-def extract_strands(sp, cfg) -> tuple[list[dict], dict]:
+def _segments(lines) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Every segment of `lines` -> (owner line index, start, direction,
+    unit direction), for `stack_share`'s rays."""
+    owner, a, b = [], [], []
+    for k, pts in enumerate(lines):
+        for p, q in zip(pts, pts[1:]):
+            owner.append(k)
+            a.append(p)
+            b.append(q)
+    if not owner:
+        z = np.zeros((0, 2))
+        return np.zeros(0, int), z, z, z
+    A = np.asarray(a, np.float64)
+    D = np.asarray(b, np.float64) - A
+    U = D / (np.hypot(D[:, 0], D[:, 1])[:, None] + 1e-12)
+    return np.asarray(owner, int), A, D, U
+
+
+def _ray_hits(o, nrm, tan, own: int, segs, gap0_mm: float) -> np.ndarray:
+    """Sorted distances along the ray `o + t * nrm` (gap0 < t < reach) at
+    which it crosses a segment of another line running within
+    `_STACK_ANGLE_DEG` of `tan`."""
+    owner, A, D, U = segs
+    den = nrm[0] * D[:, 1] - nrm[1] * D[:, 0]
+    ok = np.abs(den) > 1e-9
+    safe = np.where(ok, den, 1.0)
+    AO = A - o
+    t = (AO[:, 0] * D[:, 1] - AO[:, 1] * D[:, 0]) / safe
+    u = (AO[:, 0] * nrm[1] - AO[:, 1] * nrm[0]) / safe
+    par = np.abs(U @ tan) >= math.cos(math.radians(_STACK_ANGLE_DEG))
+    m = (ok & (u >= 0.0) & (u <= 1.0) & (t > gap0_mm) & (t < _STACK_REACH_MM)
+         & (owner != own) & par)
+    return np.sort(t[m])
+
+
+def stack_share(own: int, pts, segs, *, gap0_mm: float) -> float:
+    """The share of stations along `pts` (line `own` of the polarity whose
+    segments are `segs`) that sit inside a stack of parallel lines: one
+    either side, or two on one side at `_STACK_PERIOD` times the first's
+    distance. 0 for a line too short to hold a station."""
+    p = np.asarray(pts, np.float64)
+    d = np.hypot(*np.diff(p, axis=0).T)
+    cum = np.r_[0.0, np.cumsum(d)]
+    n = max(2, int(cum[-1] // _STACK_STEP_MM) + 1)
+    t = np.linspace(0.0, cum[-1], n)
+    q = np.c_[np.interp(t, cum, p[:, 0]), np.interp(t, cum, p[:, 1])]
+    stations = hit = 0
+    lo, hi = _STACK_PERIOD
+    for i in range(1, len(q) - 1):
+        tan = q[i + 1] - q[i - 1]
+        tan = tan / (np.linalg.norm(tan) + 1e-12)
+        nrm = np.array([-tan[1], tan[0]])
+        stations += 1
+        left = _ray_hits(q[i], -nrm, tan, own, segs, gap0_mm)
+        right = _ray_hits(q[i], nrm, tan, own, segs, gap0_mm)
+        stacked = bool(len(left) and len(right))
+        for side in (left, right):
+            if len(side) >= 2 and lo <= side[1] / side[0] <= hi:
+                stacked = True
+        hit += stacked
+    return hit / stations if stations else 0.0
+
+
+def extract_strands(sp, cfg, *, thread_wt: int | None = None,
+                    polarities: tuple[str, ...] = ("dark", "light")
+                    ) -> tuple[list[dict], dict]:
     """-> (strands, census). Each strand: `pts` (mm polyline), `polarity`,
     `length_mm`, `contrast` (L*), `strength` (median 1 + tanh(gain x H) on
     its pixels; the detector's floor is tau = 0.5). The census counts what
-    the detector found and what the ridge test refused, per polarity."""
+    the detector found and what the ridge test refused, per polarity; with
+    `cfg.hairline_lines_strand_test` on, also what the strand test refused
+    as a bar (`refused_bar`), and each strand carries its `stack` share.
+
+    `thread_wt` (default `cfg.thread_wt`) sets the widths the ridge reads;
+    `polarities` limits the read to some of the two."""
     from .stage6_detail import FDOG_RESPONSE_GAIN
-    prof = machine.thread_profile(cfg.thread_wt)
+    prof = machine.thread_profile(cfg.thread_wt if thread_wt is None else thread_wt)
+    strand_test = bool(getattr(cfg, "hairline_lines_strand_test", False))
     sampler, gray = field_gray(sp)
     tangent, coherence = sampler.field.tangent, sampler.field.coherence
     light = _light(sp)
@@ -228,21 +331,32 @@ def extract_strands(sp, cfg) -> tuple[list[dict], dict]:
     side1 = side0 + _SIDE_REACH_PX * src_px
     step = _PROFILE_STEP_WIDTHS * prof.width_mm
     census = {"found": {}, "refused_no_ridge": {}}
+    if strand_test:
+        census["refused_bar"] = {}
     strands: list[dict] = []
     for polarity, g in (("dark", gray), ("light", 1.0 - gray)):
+        if polarity not in polarities:
+            continue
         H = fdog_response(g, tangent)
         lmap = _fill_slits(fdog_threshold(H, tangent, coherence))
         lines = lines_from_map(lmap, sp, sampler.scale, min_len_mm=0.0)
         census["found"][polarity] = len(lines)
-        refused = 0
+        refused = bars = 0
+        segs = _segments(lines) if strand_test else None
         resp = 1.0 + np.tanh(FDOG_RESPONSE_GAIN * H.astype(np.float64))
         hh, ww = resp.shape
-        for pts in lines:
+        for k, pts in enumerate(lines):
             c = ridge_contrast(pts, light, sp, polarity=polarity, core_mm=core,
                                side0_mm=side0, side1_mm=side1, step_mm=step)
             if c < _SRC_MIN_CONTRAST:
                 refused += 1
                 continue
+            share = None
+            if strand_test:
+                share = stack_share(k, pts, segs, gap0_mm=side0)
+                if share >= _STACK_SHARE:
+                    bars += 1
+                    continue
             rs = []
             for x, y in pts:
                 px, py = sp.to_px(x, y)
@@ -250,9 +364,14 @@ def extract_strands(sp, cfg) -> tuple[list[dict], dict]:
                 yi = min(max(int(round(py * sampler.scale)), 0), hh - 1)
                 rs.append(resp[yi, xi])
             length = sum(math.dist(a, b) for a, b in zip(pts, pts[1:]))
-            strands.append({"pts": pts, "polarity": polarity, "length_mm": length,
-                            "contrast": c, "strength": float(np.median(rs))})
+            strand = {"pts": pts, "polarity": polarity, "length_mm": length,
+                      "contrast": c, "strength": float(np.median(rs))}
+            if strand_test:
+                strand["stack"] = share
+            strands.append(strand)
         census["refused_no_ridge"][polarity] = refused
+        if strand_test:
+            census["refused_bar"][polarity] = bars
     return strands, census
 
 
@@ -278,36 +397,68 @@ def _thread_for(strands, sp, cfg, allowed: list[int]) -> int:
     return allowed[int(np.argmin(d))]
 
 
-def strand_blocks(sp, cfg, *, entry, trim_at_mm: float,
-                  allowed_threads: list[int]) -> tuple[list[tuple[int, list[StitchRun]]], dict]:
+def _sewable(group, cfg, thread_wt: int) -> tuple[list, int]:
+    """-> ([(strand, stitch points)], dropped): the strands of `group` the
+    tier's run rules sew at `thread_wt`'s curl tolerance."""
+    tol = _CURL_TOL_WIDTHS * machine.thread_profile(thread_wt).hairline_run_width_mm
+    keep, dropped = [], 0
+    for s in group:
+        if s["length_mm"] < machine.RUN_MIN_LOOP_MM:
+            dropped += 1
+            continue
+        pts = stitch_path(s["pts"], cfg.hairline_stitch_mm, tol)
+        if len(pts) < 2:
+            dropped += 1
+            continue
+        keep.append((s, pts))
+    return keep, dropped
+
+
+def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[int],
+                  block_wt: dict[int, int] | None = None
+                  ) -> tuple[list[tuple[int, list[StitchRun]]], dict]:
     """The line route for one design -> ([(thread_index, runs)], report).
 
     Report: `strands` (sewn), `dropped` (strand-tested lines under the loop
     floor, or with nothing left after the needle floor), `jumps`, and the
-    extraction census (`found`, `refused_no_ridge`, per polarity)."""
-    prof = machine.thread_profile(cfg.thread_wt)
+    extraction census (`found`, `refused_no_ridge`, per polarity).
+
+    `block_wt` is stage 7's per-colour-block weight (`stage6_hairline.
+    block_thread_wt`'s rule: the finest weight a shape of that thread names
+    through `shape_overrides`). It is read only with
+    `cfg.hairline_lines_strand_test` on: a polarity's block is chosen at the
+    design weight as before, and when that thread's block names another
+    weight, the polarity's strands are read again (ridge widths) and
+    stitched (curl tolerance) at the block's weight, on the same thread.
+    The report then carries `thread_wt` per polarity. With no override every
+    block is at `cfg.thread_wt`, and nothing is read twice."""
+    strand_test = bool(getattr(cfg, "hairline_lines_strand_test", False))
+    bw = dict(block_wt or {}) if strand_test else {}
     strands, census = extract_strands(sp, cfg)
     report = {"strands": 0, "dropped": 0, "jumps": 0, **census,
               "sewn_by_polarity": {}}
-    tol = _CURL_TOL_WIDTHS * prof.hairline_run_width_mm
+    if strand_test:
+        report["thread_wt"] = {}
     out: list[tuple[int, list[StitchRun]]] = []
     cur = entry
     for polarity in ("dark", "light"):
         group = [s for s in strands if s["polarity"] == polarity]
-        keep = []
-        for s in group:
-            if s["length_mm"] < machine.RUN_MIN_LOOP_MM:
-                report["dropped"] += 1
-                continue
-            pts = stitch_path(s["pts"], cfg.hairline_stitch_mm, tol)
-            if len(pts) < 2:
-                report["dropped"] += 1
-                continue
-            keep.append((s, pts))
+        keep, dropped = _sewable(group, cfg, cfg.thread_wt)
+        wt = cfg.thread_wt
+        thread = (_thread_for([s for s, _ in keep], sp, cfg, allowed_threads)
+                  if keep else None)
+        if thread is not None and bw.get(thread, cfg.thread_wt) != cfg.thread_wt:
+            wt = bw[thread]
+            group, again = extract_strands(sp, cfg, thread_wt=wt, polarities=(polarity,))
+            for key, per in again.items():
+                report[key][polarity] = per[polarity]
+            keep, dropped = _sewable(group, cfg, wt)
+        if strand_test:
+            report["thread_wt"][polarity] = wt
+        report["dropped"] += dropped
         report["sewn_by_polarity"][polarity] = len(keep)
         if not keep:
             continue
-        thread = _thread_for([s for s, _ in keep], sp, cfg, allowed_threads)
         remaining = list(range(len(keep)))
         runs: list[StitchRun] = []
         while remaining:
