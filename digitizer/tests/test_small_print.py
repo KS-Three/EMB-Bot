@@ -373,8 +373,8 @@ def _counter_crossings(result, plan, cfg):
 
 
 def test_no_stitch_crosses_a_counter_on_fremonts_tagline_at_three_millimetres():
-    """DONE-TEST, part 3. Measured 2026-10-13 (Windows): OFF 3 stitches of
-    1.73-1.96 mm over counters, #878's ON 4 (up to 2.16 mm), now none."""
+    """DONE-TEST, part 3. Measured 2026-10-13 (Windows): OFF 4 stitches over
+    a counter (up to 1.96 mm), #878's ON 4 (up to 2.16 mm), now none."""
     image = small_print.load("fremont_tagline")
     on = PipelineConfig(target_width_mm=FREMONT_3MM_WIDTH, small_print_floor=True)
     res_on, plan_on = digitize(image, on)
