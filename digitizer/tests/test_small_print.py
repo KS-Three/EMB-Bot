@@ -444,3 +444,53 @@ def test_a_cross_through_a_counter_sews_as_two_columns():
     assert len(halves) == 6
     assert all(math.dist(*s) == pytest.approx(1.3, abs=1e-6) for s in halves)
     assert sorted(len(p) for p in pieces) == [3, 5]
+
+
+def _slashed_zero(outer=2.0, inner=1.3, bar=0.5):
+    from shapely import affinity
+    slash = affinity.rotate(Polygon(_square(0, 0, 3.0)).intersection(
+        Polygon([(-3, -bar / 2), (3, -bar / 2), (3, bar / 2), (-3, bar / 2)])), 65, origin=(0, 0))
+    hole = Point(0, 0).buffer(inner, 64).difference(slash)
+    return Point(0, 0).buffer(outer, 64).difference(hole), slash
+
+
+def test_a_slashed_zero_keeps_its_slash_and_its_counters():
+    """A slashed 0 (two counters, a 0.5 mm slash between): ON, no stitch
+    or link passes over either counter, and the slash is still sewn --
+    by its own bar column where the letter's columns leave it bare
+    (`_bar_columns`; the synthetic 0 at 4 and 5 mm)."""
+    letter, slash = _slashed_zero()
+    assert len(letter.interiors) == 2
+    holes = [Polygon(r).buffer(-stitches.SAME_POINT_MM) for r in letter.interiors]
+    kw = dict(trim_at_mm=3.0, pull_mm=0.3, pull_floor_mm=1.5)
+    runs, rep = lettering_columns_shape(letter, "S1", counter_clear_mm=0.2, **kw)
+    assert not rep["empty"]
+    prev, segs = None, []
+    for r in runs:
+        pts = ([prev] if prev is not None and not r.jump else []) + list(r.points)
+        segs += [(p, q, r.kind) for p, q in zip(pts, pts[1:]) if p != q]
+        prev = r.points[-1]
+    for p, q, kind in segs:
+        assert not any(LineString([p, q]).intersects(h) for h in holes), (kind, p, q)
+    # the slash's middle lies under satin thread (half a 0.4 mm laid width)
+    sat = [LineString([p, q]) for p, q, kind in segs if kind == stitches.SATIN]
+    for t in (-0.6, 0.0, 0.6):
+        c = Point(t * math.cos(math.radians(65)), t * math.sin(math.radians(65)))
+        assert min(s.distance(c) for s in sat) <= 0.2, t
+
+
+def test_bar_columns_station_the_bar_between_two_counters():
+    letter, slash = _slashed_zero()
+    from digitizer_core.columns import _bar_columns
+    bars = _bar_columns(letter, [], 0.4)
+    assert len(bars) == 1
+    col = bars[0]
+    assert len(col.stations) >= 5
+    # every cross runs edge to edge across the 0.5 mm bar, square to it
+    for a, b in col.stations:
+        assert math.dist(a, b) == pytest.approx(0.5, abs=0.03)
+    # a bar the columns already sew gets nothing
+    sewn = lettering_columns_shape.__globals__["Column"](
+        stations=[((-2, -2), (2, -2)), ((-2, 0), (2, 0)), ((-2, 2), (2, 2))],
+        piece=letter, kind="straight", axis=(0, 1), width_mm=4.0)
+    assert _bar_columns(letter, [sewn], 0.4) == []
