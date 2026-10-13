@@ -170,6 +170,28 @@ _DARKER_L = 2.0
 # Two shapes "touch" within this distance (mm) — the bean-letter ground rule's.
 _TOUCH_MM = 0.1
 
+# --- the drop guard (2026-10-12, docs/renders/claude-hairline-drop-guard/) ---
+# A shape whose hairline routing would DROP a real share of its strands (paths
+# under `RUN_MIN_LOOP_MM`) is not offered to the tier at all: it takes the
+# ladder it takes with `cfg.hairline` off, whole, in stage 5 and in stage 7.
+# Not a `cfg` flag: the tier is unflipped and has no users, so the guard is
+# part of what "hairline ON" means. The module constant exists so the logo
+# bill can price the tier without it (`tools/hairline_logo_bill.py
+# --no-guard`).
+DROP_GUARD = True
+# "A real share": the dropped paths' length over the shape's strand length.
+# MEASURED, not set (docs/renders/claude-hairline-drop-guard/survey.md, 10
+# fixtures): both hair networks drop 0.3 and 0.5 % (a crossing's leftover
+# stubs: 2 of 51 paths, 4 of 56); of the 133 logo shapes that drop anything
+# (survey: 8 logo fixtures), 131 drop 2.8 % or more and 94 drop ALL of
+# their strand length (the whole shape is under the floor). The two under
+# 2 % are a 54 mm2 outline stroke (0.11 %, golden_tee: 0.08 mm lost) and a
+# 2.1 mm2 serif (1.9 %, Fremont: 0.12 mm lost). Guarding on ANY drop forfeited the whole hair network
+# (hair_strands -152 stitches instead of -5,637) to save two stubs. 2 %
+# sits in the gap. A candidate: a plan-quality cut, not a machine constant,
+# but no sew-out has been asked about it (ROADMAP gate 1).
+DROP_GUARD_SHARE = 0.02
+
 
 @dataclass
 class InkSource:
@@ -556,6 +578,27 @@ def block_thread_wt(regions, cfg) -> dict[int, int]:
     return out
 
 
+def strand_drops(poly, shape_id: str, m: dict, cfg, thread_wt: int) -> tuple[int, float]:
+    """-> (strands `hairline_runs` would DROP, their share of the shape's
+    strand length): a path under `machine.RUN_MIN_LOOP_MM`, or one too short
+    to stitch.
+
+    A dropped path is ink erased, not re-routed: the arms of a 1.6 mm "E"
+    are paths under the floor and the letter reads as a "C"
+    (docs/renders/claude-hairline-logo-bill/). The count comes from the same
+    walk stage 7 runs, started with no entry point; the entry only breaks ties
+    between equally good starts, so the real walk almost always cuts the
+    paths the same way (stage 7 counts any difference in the plan's
+    `HAIRLINE_TIER_SEWN.dropped`, which the logo bill reads)."""
+    prof = machine.thread_profile(thread_wt)
+    _runs, rep = hairline_runs(poly, shape_id,
+                               max_width_mm=prof.hairline_max_width_mm,
+                               run_width_mm=prof.hairline_run_width_mm,
+                               stitch_mm=cfg.hairline_stitch_mm, entry=None,
+                               trim_at_mm=machine.TRIM_AT_MM, m=m)
+    total = rep["dropped_mm"] + rep["sewn_mm"]
+    return rep["dropped"], (rep["dropped_mm"] / total if total > 0 else 0.0)
+
 def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "HairlineSet":
     """The shapes the hairline tier will sew -> `HairlineSet` ({shape_id:
     `measure` dict}, plus `.fragments`, the thin shapes rule 2 handed back).
@@ -579,7 +622,15 @@ def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "Hairline
        a pen line) is never a ground and every thin shape of it qualifies.
        Known limit: a LIGHT strand of a colour that also fills an area
        elsewhere (blonde highlights over brown hair, when blonde is also a
-       patch) is read as ground; nothing here can tell it from a sliver."""
+       patch) is read as ground; nothing here can tell it from a sliver.
+    3. **The drop guard** (`strand_drops`, `DROP_GUARD`). A shape the first
+       two rules would admit but whose walk would DROP more than
+       `DROP_GUARD_SHARE` of its strand length (paths under
+       `RUN_MIN_LOOP_MM`: the arms of a small capital E) is handed back
+       whole, to the ladder it takes with the tier off — in stage 5 and
+       stage 7 alike, because both read this set. Recorded in `.guarded`.
+       A hair network's two stubs of fifty paths are under the share and
+       stay."""
     chart = chart_for(cfg)
     bw = block_thread_wt(regions, cfg)
     out = HairlineSet()
@@ -600,33 +651,49 @@ def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "Hairline
         if m is None:
             continue
         if r.thread_index not in ground:
-            out[r.shape_id] = m
-            continue
-        edge = r.polygon.boundary
-        tot = wsum = 0.0
-        for i in tree.query(r.polygon.buffer(_TOUCH_MM)):
-            o = regions[int(i)]
-            if o is r or o.thread_index == r.thread_index:
-                continue
-            shared = edge.intersection(o.polygon.buffer(_TOUCH_MM)).length
-            if shared > 0:
-                tot += shared
-                wsum += shared * float(chart.lab[o.thread_index][0])
-        if tot <= 0 or float(chart.lab[r.thread_index][0]) < wsum / tot - _DARKER_L:
-            out[r.shape_id] = m
+            admitted = True
         else:
-            out.fragments.add(r.shape_id)
+            edge = r.polygon.boundary
+            tot = wsum = 0.0
+            for i in tree.query(r.polygon.buffer(_TOUCH_MM)):
+                o = regions[int(i)]
+                if o is r or o.thread_index == r.thread_index:
+                    continue
+                shared = edge.intersection(o.polygon.buffer(_TOUCH_MM)).length
+                if shared > 0:
+                    tot += shared
+                    wsum += shared * float(chart.lab[o.thread_index][0])
+            admitted = tot <= 0 or float(chart.lab[r.thread_index][0]) < wsum / tot - _DARKER_L
+            if not admitted:
+                out.fragments.add(r.shape_id)
+        if not admitted:
+            continue
+        # The drop guard, last: a colour is ground by what the WIDTH gate
+        # rejects and a sliver is a fragment by the ground rule, neither by
+        # what the guard does. It only hands back a shape that would have
+        # been sewn.
+        if DROP_GUARD:
+            n_drop, share = strand_drops(r.polygon, r.shape_id, m, cfg,
+                                         bw.get(r.thread_index, cfg.thread_wt))
+            if n_drop and share > DROP_GUARD_SHARE:
+                out.guarded[r.shape_id] = n_drop
+                continue
+        out[r.shape_id] = m
     return out
 
 
 class HairlineSet(dict):
     """`hairline_candidates`' verdict: {shape_id: measure} for the strands,
-    and `fragments`, the thin shapes the ground-fragment rule handed back to
-    the ground (stage 5's `_hairline_ground` closes the ground over them)."""
+    `fragments`, the thin shapes the ground-fragment rule handed back to
+    the ground (stage 5's `_hairline_ground` closes the ground over them),
+    and `guarded`, {shape_id: strands it would have dropped} for the shapes
+    the drop guard handed back to the ladder (`strand_drops`); those are in
+    neither of the others."""
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
         self.fragments: set[str] = set()
+        self.guarded: dict[str, int] = {}
 
 
 def _arc(pts) -> float:
@@ -805,6 +872,28 @@ def _walk(edges, entry, reach_mm: float = _HEADING_MM):
         cur = path[-1]
     return paths
 
+
+def _nearest_first(paths, entry):
+    """`paths` re-ordered nearest-neighbour from `entry`, each turned round
+    when its far end is the nearer one. The stitches of a path are the same
+    either way; only where the needle comes in changes."""
+    left = list(paths)
+    out = []
+    cur = entry
+    while left:
+        best = None
+        for i, p in enumerate(left):
+            for flip in (0, 1):
+                end = p[-1] if flip else p[0]
+                key = (round(math.dist(cur, end), 6), i, flip)
+                if best is None or key < best[0]:
+                    best = (key, i, flip)
+        _k, i, flip = best
+        p = left.pop(i)
+        p = list(reversed(p)) if flip else p
+        out.append(p)
+        cur = p[-1]
+    return out
 
 def _cum(pts):
     out = [0.0]
@@ -1013,7 +1102,8 @@ def hairline_runs(poly, shape_id: str, *, max_width_mm: float, run_width_mm: flo
     skeleton's own thresholds (spurs, bridges, heading reach) read the TRACED
     width, since they are properties of the raster being walked."""
     report = {"empty": True, "jumps": 0, "too_thin": False, "admitted": False,
-              "width_mm": None, "strands": 0, "dropped": 0, "edges": 0}
+              "width_mm": None, "strands": 0, "dropped": 0, "edges": 0,
+              "dropped_mm": 0.0, "sewn_mm": 0.0}
     if m is None:
         m = measure(poly, max_width_mm, ink=ink)
     if m is None:
@@ -1030,18 +1120,26 @@ def hairline_runs(poly, shape_id: str, *, max_width_mm: float, run_width_mm: flo
     report["thick_edges"] = len(m["thick_edges"])
     if not edges:
         return [], report
-    paths = _walk(edges, entry,
+    # The partition into paths never reads the entry point (the drop guard
+    # judges it before the entry is known); the entry only picks which path
+    # is sewn first and which way round, then nearest-neighbour onward.
+    paths = _walk(edges, None,
                   reach_mm=max(_HEADING_MM, _HEADING_WIDTHS * traced))
+    if entry is not None:
+        paths = _nearest_first(paths, entry)
     tol = _CURL_TOL_WIDTHS * run_width_mm
     runs: list[StitchRun] = []
     for path in paths:
         if _arc(path) < machine.RUN_MIN_LOOP_MM:
             report["dropped"] += 1
+            report["dropped_mm"] += _arc(path)
             continue
         pts = stitch_path(path, stitch_mm, tol)
         if len(pts) < 2:
             report["dropped"] += 1
+            report["dropped_mm"] += _arc(path)
             continue
+        report["sewn_mm"] += _arc(path)
         jump = trim = False
         if runs:
             d = math.dist(runs[-1].points[-1], pts[0])

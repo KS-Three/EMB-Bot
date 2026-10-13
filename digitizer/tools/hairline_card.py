@@ -176,6 +176,10 @@ LETTERS = {      # 4 mm tall, 3 mm wide, origin top-left, y down; vertices are n
 class Card:
     """Runs by colour stop, with the layout bookkeeping the read-back needs."""
 
+    #: Runs whose shape_id starts with one of these came from the digitizer
+    #: and keep ITS jump/cut decisions (a sibling card adds its own prefixes).
+    DIGITIZED = ("D:",)
+
     def __init__(self, wt: int):
         self.wt = wt
         self.prof = machine.thread_profile(wt)
@@ -195,9 +199,10 @@ class Card:
         self.add(DARK, corners([(x0 + a, y0 + b) for a, b in LETTERS[key]]), f"{key}:index")
         self.add(DARK, corners([(x0 + 5.0, y0 + 5.0), (x0 + width, y0 + 5.0)]), f"{key}:rule")
 
-    def plan(self) -> StitchPlan:
+    def plan(self, stops=(GROUND, DARK, LIGHT), table=None) -> StitchPlan:
+        table = STOPS if table is None else table
         blocks = []
-        for stop in (GROUND, DARK, LIGHT):
+        for stop in stops:
             runs = [r for s, r in self.items if s == stop]
             if not runs:
                 continue
@@ -208,7 +213,7 @@ class Card:
             # the card is cut after every run, locked at both ends.
             prev = None
             for r in runs:
-                if r.shape_id.startswith("D:"):
+                if r.shape_id.startswith(self.DIGITIZED):
                     r.points = strip_ties(r.points)
                     if prev is not None:
                         hop = math.dist(prev, r.points[0])
@@ -218,7 +223,7 @@ class Card:
             runs[0].jump = False
             runs[0].trim = False
             apply_ties(runs)
-            name, rgb, _hint = STOPS[stop]
+            name, rgb, _hint = table[stop]
             blocks.append(StitchBlock(thread_index=stop, thread_number=f"{stop + 1}", rgb=rgb,
                                       runs=runs))
         return StitchPlan(blocks=blocks, palette=[], warnings=[])
@@ -292,15 +297,15 @@ def block_C(c: Card, x0: float, y0: float) -> None:
     c.boxes["C"] = (x0, y0, x0 + 44.0, top + 3 * 3.6 + 1.5)
 
 
-def _font_words():
-    font = json.loads(FONT.read_text(encoding="utf-8"))
+def _font_words(path: Path | None = None):
+    font = json.loads((path or FONT).read_text(encoding="utf-8"))
     return font
 
 
-def word_mask(text: str, cap_mm: float, px_per_mm: float = 20.0):
+def word_mask(text: str, cap_mm: float, px_per_mm: float = 20.0, font_path: Path | None = None):
     """The word, from the font's authored satin columns filled between their
     rails -> (RGBA image, width mm, height mm). Cap height is measured from H."""
-    font = _font_words()
+    font = _font_words(font_path)
     gl = font["glyphs"]
 
     def ys(g):
