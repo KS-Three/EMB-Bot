@@ -2144,6 +2144,30 @@ class PipelineConfig:
     # byte-identical.
     # Tests: `tests/test_word_tiers.py`.
     lettering_word_tiers: bool = False
+    # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
+    # about fine print; `tools/small_print.py`). Measured on the Column lane
+    # at 2.5-12 mm caps, the worst small-lettering defect at 3-4 mm is the
+    # counter sewn shut, by two mechanisms: stage 4 drops every hole under
+    # its 0.56 mm2 sliver floor (`min_detail_mm`^2 / 4, which knows no
+    # thread) before a letter is ever tagged, and the counter that survives
+    # is closed by its own columns' thread, which lies half a laid width past
+    # every penetration. ON:
+    #   - stage 4 records each hole that floor drops in `meta["small_
+    #     counters"]` (the polygon itself is unchanged, so nothing but the
+    #     Column lane sees them), and the Column lane punches back every one
+    #     at least `thread_profile(wt).counter_min_width_mm` across
+    #     (`machine.SMALL_PRINT_COUNTER_MIN_WIDTHS` laid widths) -- a counter
+    #     narrower than one thread cannot stay open;
+    #   - the Column lane holds every penetration half a laid width clear of
+    #     the letter's counters, along its own cross, so the thread's edge,
+    #     not its centre, lands on the counter's edge (never taking a cross
+    #     under the cross floor).
+    # The weight is the colour block's (`shape_overrides[sid].thread_wt`,
+    # else `thread_wt`), so 60 wt keeps counters down to ~0.32 mm and holds
+    # 0.16 mm off them. Both numbers are CANDIDATES (ROADMAP gate 1), marked
+    # for the hairline sew-out card. Off, byte-identical (md5-pinned in
+    # `tests/test_small_print.py`). Lettering in the Column lane only.
+    small_print_floor: bool = False
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the

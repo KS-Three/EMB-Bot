@@ -64,7 +64,7 @@ from .beanletters import BEAN_LETTER_KEY
 from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
-from .columns import is_lettering, lettering_columns_shape
+from .columns import is_lettering, lettering_columns_shape, small_print_counters
 from .words import is_text, word_key
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
@@ -2387,13 +2387,27 @@ def sequence(
                     and is_lettering(p.region, cfg)):
                 _ax0, _ay0, _ax1, _ay1 = p.region.polygon.bounds
                 _small = max(_ax1 - _ax0, _ay1 - _ay0) < machine.SATIN_UNDERLAY_MIN_EXTENT_MM
+                # Small print (`cfg.small_print_floor`, default OFF): the
+                # counters stage 4's sliver floor dropped come back where at
+                # least one laid thread wide, and the columns hold their
+                # thread half a width off every counter -- both at the
+                # block's own weight. Off, the polygon and the call are
+                # today's, argument for argument.
+                _letter, _clear = p.region.polygon, 0.0
+                if cfg.small_print_floor:
+                    _prof = profile_for(p)
+                    _letter = small_print_counters(
+                        _letter, p.region.meta.get("small_counters"),
+                        _prof.counter_min_width_mm)
+                    _clear = _prof.width_mm / 2.0
                 runs, report = lettering_columns_shape(
-                    p.region.polygon, p.shape_id, trim_at_mm=trim_at,
+                    _letter, p.shape_id, trim_at_mm=trim_at,
                     spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
                     pull_mm=fabric.pull_comp_mm, pull_floor_mm=cfg.min_detail_mm,
                     underlay_style="none" if _small else satin_underlay,
                     start_near=entry,
-                    end_near=exit_near if cfg.satin_exit_toward_next else None)
+                    end_near=exit_near if cfg.satin_exit_toward_next else None,
+                    **({"counter_clear_mm": _clear} if _clear > 0 else {}))
                 if not report["empty"]:
                     report["lettering_columns"] = 1
                     return runs, report, False
