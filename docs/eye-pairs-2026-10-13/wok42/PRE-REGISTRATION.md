@@ -239,3 +239,19 @@ a tenth of the base rate), and a `holds` metric must move by **less than its
 threshold** instead of less than half of it (half of 0.5 trims per 1000 is two
 trims on a 9,000-stitch design, inside the noise of any arm that reorders
 anything). No arm, flag, direction, expected pick, logo or statistic changed.
+
+## Amendment 2, 2026-10-13, before any pick exists
+
+The kit builder ran the manipulation check once, on all six arms, after
+Amendment 1. The rule above said nothing about two cases it then met, and
+this fixes them in words before a picture is shown: **a reserve that fails
+the check too, and a failing arm whose stratum has no reserve (`density` has
+none), stay in the sitting, flagged `passes: false` in the manifest.** Nothing
+is swapped a second time in search of a pass, and nothing is dropped after
+looking. What changes is the reading: the analysis now reports every lead on
+all live pairs AND, beside it, on the pairs of arms that passed the check
+alone (`isolating_only`), so a lead is never read off pairs whose arm did not
+isolate its variable without saying so. No arm, flag, direction, expected
+pick, logo or statistic was changed, and no pick, picture or per-pair figure
+had been looked at. The manifest reports pass or fail per arm and nothing
+finer; the table of deltas stays unpublished until the sitting is over.
