@@ -18,14 +18,31 @@ in a PART of that glyph by its advance against the line of text:
 
 Columns per class:
 
-- `lean`   -- the cross off its column's own perpendicular (p50 / p90);
-- `>45`    -- share of crosses leaning past 45 deg (the "crosses past 45 deg
-  off perpendicular" figure of the 2026-09-03 rule);
-- `target` -- the rule's lean for that cross (`satin_house_fourfold`'s
+- `lean`    -- every zigzag LEG off its column's own perpendicular (p50 /
+  p90) and the share past 45 deg: satin_lean's reading, the "crosses past
+  45 deg off perpendicular" figure of the 2026-09-03 rule. It carries the
+  return leg's atan(spacing / width) -- 17 deg on a 1.3 mm stem -- so a
+  thin or tightly curved column reads high by geometry alone;
+- `station` -- only the station crosses (the even legs of the A1 B1 A2 B2
+  zigzag both engines lay), against the advance between stations: the
+  angle the construction CHOSE. Capitals read 0.4 deg on stems, 0.5 on bars;
+- `target`  -- the rule's lean for that cross (`satin_house_fourfold`'s
   fade): d = how far the column's own perpendicular sits from the house
-  angle, held (lean d) up to the 30 deg cap, fading linearly to 0 at 90;
-- `|dev|`  -- |lean - target|, p50: how far the sewn cross is from the rule;
-- `pitch`  -- median thread pitch across the column (mm), as satin_lean.
+  angle, held (lean d) up to the 30 deg cap, fading linearly to 0 at 90.
+  The Column lane reads no house angle, so its diagonals and bowl flanks
+  sit off this target in capitals and lowercase alike;
+- `|dev|`   -- |station - target|, p50;
+- `width`, `pitch` -- median leg length and thread pitch across (mm);
+- `at end`  -- share of crosses within one width of their run's end.
+
+Finding (2026-10-13): no capital station cross leans past 45 deg at 80 or
+120 mm; lowercase ones do (1.4% at both), every one at a SHOULDER -- the
+u's bowl into its right stem, the b's and g's bowl into the stem, the m's
+first arch -- which the junction rules leave uncut. That is
+`cfg.lettering_columns_fold_cuts` (`--fold-cuts`). On the four corpus
+logos with lowercase the lowercase is script or UI text the taggers do not
+send to the Column lane at all (34 of ~3,000 crosses), and the flag moves
+none of them.
 
 Fixture: `testdata/synthetic/lowercase_aileron.png` -- "HAMBURGEFONTSIVYLP"
 over "hamburgefontsivylp" in one font at one size, so the capitals are the
@@ -38,6 +55,7 @@ reads as gradient from its anti-aliasing.
     python -m tools.lowercase_angle [WIDTH_MM ...] [--columns-off] [--fold-cuts] [--json PATH]
     python -m tools.lowercase_angle --make-fixture
     python -m tools.lowercase_angle --dump-letters  # the test's traced polygons
+    python -m tools.lowercase_angle 120 80 --render DIR   # OFF/ON thread renders
     python -m tools.lowercase_angle --corpus     # real fixtures with lowercase
 
 `--corpus` reads the corpus logos that carry lowercase (toat's "achine",
@@ -324,6 +342,74 @@ def measure_synthetic(width_mm: float, columns: bool = True, base: Path = FIXTUR
 LETTERS = FIXTURE.with_name("lowercase_aileron_letters_120.json")
 
 
+def render_pair(width_mm: float, out_dir: Path, zoom: str = "ubgm",
+                px_per_mm: float = 40.0) -> list[Path]:
+    """Renders of the fixture OFF and ON (`fold_cuts`), same fixture, same
+    scale, OFF above ON: the lowercase line through the thread renderer
+    (`stitchviz.render_design`, the black ink drawn as gold thread so its
+    lie shows), and per glyph in `zoom` the STITCH PATH at 3x that scale
+    (satin dark, underlay blue, travel green): a cross is a line there, so
+    a fold reads as one. -> the files written."""
+    import cv2
+    from digitizer_core.adapter import UNITS_PER_MM, plan_to_design
+    from digitizer_core.stitchviz import _frame, render_design
+    meta = json.loads(FIXTURE.with_suffix(".json").read_text(encoding="utf-8"))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    low = [g for g in meta["glyphs"] if g["line"] == 1]
+    line = [min(g["box"][0] for g in low), min(g["box"][1] for g in low),
+            max(g["box"][2] for g in low), max(g["box"][3] for g in low)]
+    zoom_ppm = 3.0 * px_per_mm
+    ink = {"satin": (60, 60, 60), "underlay": (215, 160, 120), "travel": (120, 190, 120)}
+    shots = {}
+    for fold in (False, True):
+        _rep, result, plan = measure_synthetic(width_mm, fold_cuts=fold)
+        design = plan_to_design(plan)
+        design["colors"] = [{"r": 214, "g": 168, "b": 64}] * len(design.get("colors") or [1])
+        img = render_design(design, px_per_mm=px_per_mm)
+        _hw, frame_px = _frame(design["stitches"], px_per_mm, 2.0)
+        img_px, s = mm_to_px(result, meta["image"])
+        cx, cy = img_px(0.0, 0.0)
+
+        def mm_box(b, pad_mm):
+            return ((b[0] - cx) / s - pad_mm, (b[1] - cy) / s - pad_mm,
+                    (b[2] - cx) / s + pad_mm, (b[3] - cy) / s + pad_mm)
+        x0m, y0m, x1m, y1m = mm_box(line, 1.0)
+        (x0, y0) = frame_px({"x": x0m * UNITS_PER_MM, "y": -y0m * UNITS_PER_MM})
+        (x1, y1) = frame_px({"x": x1m * UNITS_PER_MM, "y": -y1m * UNITS_PER_MM})
+        shots[fold] = {"line": img[max(0, y0):y1, max(0, x0):x1]}
+        for ch in zoom:
+            g = next(g for g in low if g["ch"] == ch)
+            bx0, by0, bx1, by1 = mm_box(g["box"], 0.6)
+            pane = np.full((int((by1 - by0) * zoom_ppm), int((bx1 - bx0) * zoom_ppm), 3), 255, np.uint8)
+
+            def P(p):
+                return (int(round((p[0] - bx0) * zoom_ppm)), int(round((p[1] - by0) * zoom_ppm)))
+            for kind in ("travel", "underlay", "satin"):
+                for _b, run in plan.iter_runs():
+                    if run.kind != kind:
+                        continue
+                    for a, b in zip(run.points[:-1], run.points[1:]):
+                        cv2.line(pane, P(a), P(b), ink[kind], 1, cv2.LINE_AA)
+            shots[fold][ch] = pane
+    written = []
+
+    def label(im, text):
+        bar = np.full((40, im.shape[1], 3), 255, np.uint8)
+        cv2.putText(bar, text, (8, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
+        return np.vstack([bar, im])
+    for key in ["line"] + list(zoom):
+        a, b = shots[False][key], shots[True][key]
+        w = max(a.shape[1], b.shape[1], 560)
+        pad = lambda im: np.pad(im, ((0, 0), (0, w - im.shape[1]), (0, 0)), constant_values=255)
+        pair = np.vstack([label(pad(a), f"OFF (shipped) {width_mm:g} mm"),
+                          np.full((6, w, 3), 200, np.uint8),
+                          label(pad(b), "ON  lettering_columns_fold_cuts")])
+        p = out_dir / f"lowercase-{width_mm:g}mm-{key}.png"
+        cv2.imwrite(str(p), pair)
+        written.append(p)
+    return written
+
+
 def dump_letters(width_mm: float = 120.0, out: Path = LETTERS) -> int:
     """Write each glyph's lettering polygon (mm), as the pipeline traced it
     at `width_mm`, so `tests/test_lowercase_angle.py` can drive `outline_cut`
@@ -356,7 +442,7 @@ def dump_letters(width_mm: float = 120.0, out: Path = LETTERS) -> int:
     return len(letters)
 
 
-def measure_corpus(name: str) -> dict:
+def measure_corpus(name: str, fold_cuts: bool = False) -> dict:
     from digitizer_core import PipelineConfig, digitize
     from digitizer_core.columns import is_lettering
     from PIL import Image
@@ -364,7 +450,8 @@ def measure_corpus(name: str) -> dict:
     path = ROOT / "testdata" / rel
     with Image.open(path) as im:
         wh = im.size
-    cfg = PipelineConfig(target_width_mm=width, garment_id=garment)
+    cfg = PipelineConfig(target_width_mm=width, garment_id=garment,
+                         **({"lettering_columns_fold_cuts": True} if fold_cuts else {}))
     result, plan = digitize(path, cfg)
     to_px, _s = mm_to_px(result, wh)
     letters = {r.shape_id for r in result.regions if is_lettering(r, cfg)}
@@ -383,7 +470,8 @@ def measure_corpus(name: str) -> dict:
                 pools[key].append(r)
                 tagged[key] += r["shape"] in letters
                 break
-    return dict(name=name, width_mm=width, stitches=plan.stats.stitch_count,
+    return dict(name=name, width_mm=width, fold_cuts=fold_cuts, stitches=plan.stats.stitch_count,
+                trims=plan.stats.trims,
                 lower=summarize(pools["lower"], 0.0), upper=summarize(pools["upper"], 0.0),
                 lower_in_column_lane=tagged["lower"], upper_in_column_lane=tagged["upper"])
 
@@ -406,6 +494,13 @@ def main(argv: list[str]) -> None:
         make_fixture()
         print(f"wrote {FIXTURE.with_suffix('.png')} and .json")
         return
+    if "--render" in argv:
+        out = Path(argv[argv.index("--render") + 1])
+        widths = [float(a) for a in argv if a.replace(".", "", 1).isdigit()] or [120.0]
+        for w in widths:
+            for p in render_pair(w, out):
+                print(f"wrote {p}")
+        return
     if "--dump-letters" in argv:
         print(f"wrote {dump_letters()} letters to {LETTERS}")
         return
@@ -415,9 +510,10 @@ def main(argv: list[str]) -> None:
     reports = []
     if "--corpus" in argv:
         for name in [a for a in argv if a in CORPUS] or list(CORPUS):
-            rep = measure_corpus(name)
+            rep = measure_corpus(name, fold_cuts="--fold-cuts" in argv)
             reports.append(rep)
-            print(f"## {name} {rep['width_mm']:.0f} mm st={rep['stitches']} "
+            print(f"## {name} {rep['width_mm']:.0f} mm{' fold_cuts ON' if rep['fold_cuts'] else ''} "
+                  f"st={rep['stitches']} trims={rep['trims']} "
                   f"crosses in the Column lane: lower {rep['lower_in_column_lane']}, "
                   f"upper {rep['upper_in_column_lane']}")
             print(_row("lowercase", rep["lower"]))

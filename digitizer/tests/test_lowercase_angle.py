@@ -88,6 +88,24 @@ def test_fold_cuts_leave_every_capital_alone(glyphs, caps_off):
         assert [c.stations for c in on.columns] == [c.stations for c in off.columns], ch
 
 
+#: md5 of every glyph's OFF stations on the stored polygons, computed with
+#: this branch's outline_cut AND with main's at the merge base (e982ce25):
+#: both 780d0990... (2026-10-13). The end-to-end OFF plans agree too, on the
+#: same pair of codebases: synthetic at 80 mm f40e59bd..., toat at 80 mm
+#: 6b336916... (PR body).
+OFF_CONSTRUCTION_MD5 = "780d099076b6610380d36df2a06de1a6"
+
+
+def test_off_construction_is_pinned(glyphs):
+    import hashlib
+    rows = []
+    for ch in sorted(glyphs):
+        cut = outline_cut.letter_columns(glyphs[ch])
+        rows.append([ch, [[[round(a[0], 4), round(a[1], 4), round(b[0], 4), round(b[1], 4)]
+                           for a, b in c.stations] for c in cut.columns]])
+    assert hashlib.md5(json.dumps(rows).encode()).hexdigest() == OFF_CONSTRUCTION_MD5
+
+
 def test_off_never_enters_the_new_code(glyphs, monkeypatch):
     def boom(*_a, **_k):
         raise AssertionError("_fold_refine reached with fold_cuts off")
