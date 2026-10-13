@@ -647,7 +647,9 @@ def signature(tab: dict) -> dict:
             "stitches": tab["stitches"], "trims": tab["trims"], "boxes": out}
 
 
-LABELS = {"the": list("THE"), "tagline": list("EAT|STAY|PLAY"), "est": list("EST")}
+LABELS = {"the": list("THE"),
+          "tagline": ["E", "A", "T", "bar", "S", "T", "A", "Y", "bar", "P", "L", "A", "Y"],
+          "est": list("EST")}
 
 
 def label_of(box: str, i: int, n: int) -> str:
