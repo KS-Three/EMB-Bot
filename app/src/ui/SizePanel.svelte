@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import { EMB } from "../lib/emb.js";
   import { alignOffset } from "../lib/interact.js";
+  import { autoCapNote } from "../lib/hoop.js";
 
   export let project;
   // Dims of the last generated design ({ widthMM, heightMM }) or null when
@@ -164,6 +165,7 @@
   // width, so a long name hits the placement's width long before any height
   // they would ask for. Say what capped it and what would get them bigger.
   // Cleared by the next request that fits, and whenever the garment changes.
+  $: autoCap = autoCapNote(project && EMB.getGarment(project.garmentId));
   let capNote = "";
   let capGarment = project && project.garmentId;
   $: if (project && project.garmentId !== capGarment) { capGarment = project.garmentId; capNote = ""; }
@@ -272,6 +274,8 @@
   </div>
   {#if capNote}
     <p class="capnote" role="status">{capNote}</p>
+  {:else if project.sizeMm == null && autoCap}
+    <p class="capnote autocap" role="status">{autoCap}</p>
   {/if}
   {#if warn}
     <p class="warn">Smaller than 5 mm — thread can't stitch this cleanly</p>
