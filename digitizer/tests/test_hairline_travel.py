@@ -84,8 +84,8 @@ def test_a_chained_link_over_bare_cloth_is_counted_like_the_shipped_instrument()
 
 def test_a_link_over_thread_is_not_bare():
     a = _row(0, 0, shape="A")
-    link = StitchRun(points=[(10, 0), (11, 0)], kind=stitches.TRAVEL, shape_id="B")
-    b = _row(11, 0, shape="B")
+    link = StitchRun(points=[(9, 0), (10, 0)], kind=stitches.TRAVEL, shape_id="B")
+    b = _row(10, 0, shape="B")
     assert ht.measure_plan(_plan(a, link, b), with_legacy=False)["thread_bare_mm"] == 0.0
 
 

@@ -2347,5 +2347,677 @@
     ]
    }
   }
+ },
+ "photo/drone_render.png @ 80mm/left_chest": {
+  "fixture": "photo/drone_render.png",
+  "matrix": {
+   "target_width_mm": 80.0,
+   "garment_id": "left_chest"
+  },
+  "thread_wt": 40,
+  "stage0_4_s": 118.6,
+  "arms": {
+   "off": {
+    "stitches": 18953,
+    "trims": 147,
+    "thread_bare_mm": 8.17,
+    "thread_exposed_legs": 8,
+    "thread_by_leg": {
+     "in": 6.95,
+     "body": 1.22,
+     "out": 0.0
+    },
+    "flight_bare_mm": 44.34,
+    "flight_legs": 8,
+    "trims_block_start": 17,
+    "trims_in_shape": 52,
+    "trims_between_shapes": 78,
+    "flight_total_mm": 2319.94,
+    "worst": [
+     {
+      "i": 577,
+      "leg": "in",
+      "bare_mm": 1.65,
+      "from": [
+       "satin",
+       "S16c5aa59"
+      ],
+      "to": [
+       "travel",
+       "S1bc7a568"
+      ]
+     },
+     {
+      "i": 596,
+      "leg": "in",
+      "bare_mm": 1.55,
+      "from": [
+       "satin",
+       "S5d81346e"
+      ],
+      "to": [
+       "travel",
+       "S6b0dab8e"
+      ]
+     },
+     {
+      "i": 849,
+      "leg": "in",
+      "bare_mm": 1.31,
+      "from": [
+       "satin",
+       "S89cc9fe3"
+      ],
+      "to": [
+       "travel",
+       "S2af2043d"
+      ]
+     },
+     {
+      "i": 905,
+      "leg": "in",
+      "bare_mm": 1.2,
+      "from": [
+       "satin",
+       "S14057482"
+      ],
+      "to": [
+       "travel",
+       "Sbf8a37c3"
+      ]
+     },
+     {
+      "i": 791,
+      "leg": "in",
+      "bare_mm": 0.83,
+      "from": [
+       "satin",
+       "S71f2a4c9"
+      ],
+      "to": [
+       "travel",
+       "Se98c90bf"
+      ]
+     },
+     {
+      "i": 582,
+      "leg": "body",
+      "bare_mm": 0.61,
+      "from": [
+       "travel",
+       "S670e7aec"
+      ],
+      "to": [
+       "travel",
+       "S670e7aec"
+      ]
+     }
+    ]
+   },
+   "on": {
+    "stitches": 17802,
+    "trims": 149,
+    "thread_bare_mm": 6.09,
+    "thread_exposed_legs": 6,
+    "thread_by_leg": {
+     "in": 5.49,
+     "body": 0.61,
+     "out": 0.0
+    },
+    "flight_bare_mm": 15.52,
+    "flight_legs": 4,
+    "trims_block_start": 18,
+    "trims_in_shape": 55,
+    "trims_between_shapes": 76,
+    "flight_total_mm": 2339.26,
+    "worst": [
+     {
+      "i": 573,
+      "leg": "in",
+      "bare_mm": 1.74,
+      "from": [
+       "run",
+       "S1bc7a568"
+      ],
+      "to": [
+       "travel",
+       "S670e7aec"
+      ]
+     },
+     {
+      "i": 829,
+      "leg": "in",
+      "bare_mm": 1.31,
+      "from": [
+       "satin",
+       "S89cc9fe3"
+      ],
+      "to": [
+       "travel",
+       "S2af2043d"
+      ]
+     },
+     {
+      "i": 886,
+      "leg": "in",
+      "bare_mm": 1.2,
+      "from": [
+       "satin",
+       "S14057482"
+      ],
+      "to": [
+       "travel",
+       "Sbf8a37c3"
+      ]
+     },
+     {
+      "i": 771,
+      "leg": "in",
+      "bare_mm": 0.83,
+      "from": [
+       "satin",
+       "S71f2a4c9"
+      ],
+      "to": [
+       "travel",
+       "Se98c90bf"
+      ]
+     },
+     {
+      "i": 576,
+      "leg": "body",
+      "bare_mm": 0.61,
+      "from": [
+       "travel",
+       "S670e7aec"
+      ],
+      "to": [
+       "travel",
+       "S670e7aec"
+      ]
+     },
+     {
+      "i": 932,
+      "leg": "in",
+      "bare_mm": 0.4,
+      "from": [
+       "satin",
+       "S980e2ff4"
+      ],
+      "to": [
+       "travel",
+       "S980e2ff4"
+      ]
+     }
+    ]
+   },
+   "on_nodrop": {
+    "stitches": 17309,
+    "trims": 150,
+    "thread_bare_mm": 3.75,
+    "thread_exposed_legs": 4,
+    "thread_by_leg": {
+     "in": 3.75,
+     "body": 0.0,
+     "out": 0.0
+    },
+    "flight_bare_mm": 15.52,
+    "flight_legs": 4,
+    "trims_block_start": 18,
+    "trims_in_shape": 55,
+    "trims_between_shapes": 77,
+    "flight_total_mm": 2361.18,
+    "worst": [
+     {
+      "i": 809,
+      "leg": "in",
+      "bare_mm": 1.31,
+      "from": [
+       "satin",
+       "S89cc9fe3"
+      ],
+      "to": [
+       "travel",
+       "S2af2043d"
+      ]
+     },
+     {
+      "i": 866,
+      "leg": "in",
+      "bare_mm": 1.2,
+      "from": [
+       "satin",
+       "S14057482"
+      ],
+      "to": [
+       "travel",
+       "Sbf8a37c3"
+      ]
+     },
+     {
+      "i": 751,
+      "leg": "in",
+      "bare_mm": 0.83,
+      "from": [
+       "satin",
+       "S71f2a4c9"
+      ],
+      "to": [
+       "travel",
+       "Se98c90bf"
+      ]
+     },
+     {
+      "i": 912,
+      "leg": "in",
+      "bare_mm": 0.4,
+      "from": [
+       "satin",
+       "S980e2ff4"
+      ],
+      "to": [
+       "travel",
+       "S980e2ff4"
+      ]
+     }
+    ]
+   },
+   "on_cov": {
+    "stitches": 18321,
+    "trims": 147,
+    "thread_bare_mm": 7.56,
+    "thread_exposed_legs": 7,
+    "thread_by_leg": {
+     "in": 6.95,
+     "body": 0.61,
+     "out": 0.0
+    },
+    "flight_bare_mm": 40.61,
+    "flight_legs": 8,
+    "trims_block_start": 17,
+    "trims_in_shape": 53,
+    "trims_between_shapes": 77,
+    "flight_total_mm": 2278.39,
+    "worst": [
+     {
+      "i": 577,
+      "leg": "in",
+      "bare_mm": 1.65,
+      "from": [
+       "satin",
+       "S16c5aa59"
+      ],
+      "to": [
+       "travel",
+       "S1bc7a568"
+      ]
+     },
+     {
+      "i": 596,
+      "leg": "in",
+      "bare_mm": 1.55,
+      "from": [
+       "satin",
+       "S6394a464"
+      ],
+      "to": [
+       "travel",
+       "S6b0dab8e"
+      ]
+     },
+     {
+      "i": 845,
+      "leg": "in",
+      "bare_mm": 1.31,
+      "from": [
+       "satin",
+       "S89cc9fe3"
+      ],
+      "to": [
+       "travel",
+       "S2af2043d"
+      ]
+     },
+     {
+      "i": 902,
+      "leg": "in",
+      "bare_mm": 1.2,
+      "from": [
+       "satin",
+       "S14057482"
+      ],
+      "to": [
+       "travel",
+       "Sbf8a37c3"
+      ]
+     },
+     {
+      "i": 787,
+      "leg": "in",
+      "bare_mm": 0.83,
+      "from": [
+       "satin",
+       "S71f2a4c9"
+      ],
+      "to": [
+       "travel",
+       "Se98c90bf"
+      ]
+     },
+     {
+      "i": 582,
+      "leg": "body",
+      "bare_mm": 0.61,
+      "from": [
+       "travel",
+       "S670e7aec"
+      ],
+      "to": [
+       "travel",
+       "S670e7aec"
+      ]
+     }
+    ]
+   },
+   "on_cov_nodrop": {
+    "stitches": 18307,
+    "trims": 147,
+    "thread_bare_mm": 7.56,
+    "thread_exposed_legs": 7,
+    "thread_by_leg": {
+     "in": 6.95,
+     "body": 0.61,
+     "out": 0.0
+    },
+    "flight_bare_mm": 40.61,
+    "flight_legs": 8,
+    "trims_block_start": 17,
+    "trims_in_shape": 53,
+    "trims_between_shapes": 77,
+    "flight_total_mm": 2278.59,
+    "worst": [
+     {
+      "i": 577,
+      "leg": "in",
+      "bare_mm": 1.65,
+      "from": [
+       "satin",
+       "S16c5aa59"
+      ],
+      "to": [
+       "travel",
+       "S1bc7a568"
+      ]
+     },
+     {
+      "i": 596,
+      "leg": "in",
+      "bare_mm": 1.55,
+      "from": [
+       "satin",
+       "S6394a464"
+      ],
+      "to": [
+       "travel",
+       "S6b0dab8e"
+      ]
+     },
+     {
+      "i": 845,
+      "leg": "in",
+      "bare_mm": 1.31,
+      "from": [
+       "satin",
+       "S89cc9fe3"
+      ],
+      "to": [
+       "travel",
+       "S2af2043d"
+      ]
+     },
+     {
+      "i": 902,
+      "leg": "in",
+      "bare_mm": 1.2,
+      "from": [
+       "satin",
+       "S14057482"
+      ],
+      "to": [
+       "travel",
+       "Sbf8a37c3"
+      ]
+     },
+     {
+      "i": 787,
+      "leg": "in",
+      "bare_mm": 0.83,
+      "from": [
+       "satin",
+       "S71f2a4c9"
+      ],
+      "to": [
+       "travel",
+       "Se98c90bf"
+      ]
+     },
+     {
+      "i": 582,
+      "leg": "body",
+      "bare_mm": 0.61,
+      "from": [
+       "travel",
+       "S670e7aec"
+      ],
+      "to": [
+       "travel",
+       "S670e7aec"
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "logo_alpha.png @ 80mm/left_chest": {
+  "fixture": "logo_alpha.png",
+  "matrix": {
+   "target_width_mm": 80.0,
+   "garment_id": "left_chest"
+  },
+  "thread_wt": 40,
+  "stage0_4_s": 4.6,
+  "arms": {
+   "off": {
+    "stitches": 5854,
+    "trims": 15,
+    "thread_bare_mm": 0.0,
+    "thread_exposed_legs": 0,
+    "thread_by_leg": {
+     "in": 0.0,
+     "body": 0.0,
+     "out": 0.0
+    },
+    "flight_bare_mm": 0.0,
+    "flight_legs": 0,
+    "trims_block_start": 10,
+    "trims_in_shape": 4,
+    "trims_between_shapes": 1,
+    "flight_total_mm": 51.96,
+    "worst": []
+   },
+   "on": {
+    "stitches": 5854,
+    "trims": 15,
+    "thread_bare_mm": 0.0,
+    "thread_exposed_legs": 0,
+    "thread_by_leg": {
+     "in": 0.0,
+     "body": 0.0,
+     "out": 0.0
+    },
+    "flight_bare_mm": 0.0,
+    "flight_legs": 0,
+    "trims_block_start": 10,
+    "trims_in_shape": 4,
+    "trims_between_shapes": 1,
+    "flight_total_mm": 51.96,
+    "worst": []
+   },
+   "on_nodrop": {
+    "stitches": 5854,
+    "trims": 15,
+    "thread_bare_mm": 0.0,
+    "thread_exposed_legs": 0,
+    "thread_by_leg": {
+     "in": 0.0,
+     "body": 0.0,
+     "out": 0.0
+    },
+    "flight_bare_mm": 0.0,
+    "flight_legs": 0,
+    "trims_block_start": 10,
+    "trims_in_shape": 4,
+    "trims_between_shapes": 1,
+    "flight_total_mm": 51.96,
+    "worst": []
+   },
+   "on_cov": {
+    "stitches": 5854,
+    "trims": 15,
+    "thread_bare_mm": 0.0,
+    "thread_exposed_legs": 0,
+    "thread_by_leg": {
+     "in": 0.0,
+     "body": 0.0,
+     "out": 0.0
+    },
+    "flight_bare_mm": 0.0,
+    "flight_legs": 0,
+    "trims_block_start": 10,
+    "trims_in_shape": 4,
+    "trims_between_shapes": 1,
+    "flight_total_mm": 51.96,
+    "worst": []
+   },
+   "on_cov_nodrop": {
+    "stitches": 5854,
+    "trims": 15,
+    "thread_bare_mm": 0.0,
+    "thread_exposed_legs": 0,
+    "thread_by_leg": {
+     "in": 0.0,
+     "body": 0.0,
+     "out": 0.0
+    },
+    "flight_bare_mm": 0.0,
+    "flight_legs": 0,
+    "trims_block_start": 10,
+    "trims_in_shape": 4,
+    "trims_between_shapes": 1,
+    "flight_total_mm": 51.96,
+    "worst": []
+   }
+  }
+ },
+ "logo_whitebg.png @ 80mm/left_chest": {
+  "fixture": "logo_whitebg.png",
+  "matrix": {
+   "target_width_mm": 80.0,
+   "garment_id": "left_chest"
+  },
+  "thread_wt": 40,
+  "stage0_4_s": 7.7,
+  "arms": {
+   "off": {
+    "stitches": 5824,
+    "trims": 15,
+    "thread_bare_mm": 0.0,
+    "thread_exposed_legs": 0,
+    "thread_by_leg": {
+     "in": 0.0,
+     "body": 0.0,
+     "out": 0.0
+    },
+    "flight_bare_mm": 0.0,
+    "flight_legs": 0,
+    "trims_block_start": 10,
+    "trims_in_shape": 4,
+    "trims_between_shapes": 1,
+    "flight_total_mm": 51.96,
+    "worst": []
+   },
+   "on": {
+    "stitches": 5824,
+    "trims": 15,
+    "thread_bare_mm": 0.0,
+    "thread_exposed_legs": 0,
+    "thread_by_leg": {
+     "in": 0.0,
+     "body": 0.0,
+     "out": 0.0
+    },
+    "flight_bare_mm": 0.0,
+    "flight_legs": 0,
+    "trims_block_start": 10,
+    "trims_in_shape": 4,
+    "trims_between_shapes": 1,
+    "flight_total_mm": 51.96,
+    "worst": []
+   },
+   "on_nodrop": {
+    "stitches": 5824,
+    "trims": 15,
+    "thread_bare_mm": 0.0,
+    "thread_exposed_legs": 0,
+    "thread_by_leg": {
+     "in": 0.0,
+     "body": 0.0,
+     "out": 0.0
+    },
+    "flight_bare_mm": 0.0,
+    "flight_legs": 0,
+    "trims_block_start": 10,
+    "trims_in_shape": 4,
+    "trims_between_shapes": 1,
+    "flight_total_mm": 51.96,
+    "worst": []
+   },
+   "on_cov": {
+    "stitches": 5824,
+    "trims": 15,
+    "thread_bare_mm": 0.0,
+    "thread_exposed_legs": 0,
+    "thread_by_leg": {
+     "in": 0.0,
+     "body": 0.0,
+     "out": 0.0
+    },
+    "flight_bare_mm": 0.0,
+    "flight_legs": 0,
+    "trims_block_start": 10,
+    "trims_in_shape": 4,
+    "trims_between_shapes": 1,
+    "flight_total_mm": 51.96,
+    "worst": []
+   },
+   "on_cov_nodrop": {
+    "stitches": 5824,
+    "trims": 15,
+    "thread_bare_mm": 0.0,
+    "thread_exposed_legs": 0,
+    "thread_by_leg": {
+     "in": 0.0,
+     "body": 0.0,
+     "out": 0.0
+    },
+    "flight_bare_mm": 0.0,
+    "flight_legs": 0,
+    "trims_block_start": 10,
+    "trims_in_shape": 4,
+    "trims_between_shapes": 1,
+    "flight_total_mm": 51.96,
+    "worst": []
+   }
+  }
  }
 }
