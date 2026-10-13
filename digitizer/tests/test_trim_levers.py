@@ -58,6 +58,12 @@ def _run(**kw):
     # trim counts this file holds its two levers to were read without it.
     # Its price is `tests/test_crown_cover.py`'s.
     kw.setdefault("satin_crown_cover", False)
+    # And on the skeleton tier, explicitly: `lettering_columns` went ON by
+    # default 2026-10-12 (Kent), and the Column lane sews MARINE's letters with
+    # its own walk, so the two levers priced here (the skeleton walk's exit and
+    # underlay) would price nothing. The lane's own trims are pinned in
+    # `tests/test_lettering_columns.py`.
+    kw.setdefault("lettering_columns", False)
     cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
     gen = build_generation(str(FIXTURE), cfg)
     result = finish_generation(gen.fork(), cfg)

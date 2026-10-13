@@ -1687,6 +1687,8 @@ def digitize(
     cfg = cfg or PipelineConfig()
     result = run_stages(image, cfg, segmenter)
     plan = plan_stitches(result, cfg)
+    if cfg.tonal_split_layer_cap and effective_split_tonal(cfg, result.design_class):
+        result, plan = _cap_tonal_layers(image, cfg, segmenter, result, plan)
     if cfg.tonal_split_ceiling and effective_split_tonal(cfg, result.design_class):
         # Defect 20: the split's parts stack thread past the pucker ceiling.
         # Plan it whole too and keep whichever puts less fabric past it; a
@@ -1697,6 +1699,39 @@ def digitize(
         whole_plan = plan_stitches(whole, whole_cfg)
         if area_past_ceiling_mm2(plan) > area_past_ceiling_mm2(whole_plan):
             return whole, whole_plan
+    return result, plan
+
+
+# Re-runs `cfg.tonal_split_layer_cap` may spend. Each is a full generation,
+# so this bounds the flag's cost at (1 + rounds) x one digitize.
+TONAL_CAP_ROUNDS = 2
+
+
+def _cap_tonal_layers(image, cfg, segmenter, result, plan):
+    """Defect 20's per-region cap: keep whole every split parent that sits
+    under fabric past the 3.5-layer ceiling, and only those.
+
+    Each round adds the split plan's over-ceiling cells to
+    `cfg.tonal_split_veto_mm` and re-runs; a round is kept only if it lowers
+    the area past the ceiling, and the loop stops at the first that does
+    not. Nothing past the ceiling -> the inputs come back untouched, which
+    is what makes the flag byte-identical on a design it does not need.
+    """
+    from .layer_density import cells_past_ceiling_mm
+    best = area_past_ceiling_mm2(plan)
+    veto: tuple = tuple(cfg.tonal_split_veto_mm)
+    for _ in range(TONAL_CAP_ROUNDS):
+        hot = [pt for pt in cells_past_ceiling_mm(plan) if pt not in veto]
+        if not hot:
+            break
+        veto = veto + tuple(hot)
+        capped_cfg = replace(cfg, tonal_split_veto_mm=veto)
+        capped = run_stages(image, capped_cfg, segmenter)
+        capped_plan = plan_stitches(capped, capped_cfg)
+        area = area_past_ceiling_mm2(capped_plan)
+        if area >= best:
+            break
+        best, result, plan = area, capped, capped_plan
     return result, plan
 
 

@@ -390,7 +390,11 @@ def test_the_flips_bare_artwork_is_hairlines_on_the_sides_and_a_hole_at_a_tapere
     from tools.bare_anatomy import components
     from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
 
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6)
+    # `lettering_columns=False` (ON by default since Kent's 2026-10-12 flip):
+    # the rail comp's bare artwork is the skeleton tier's; the lane's rails
+    # are priced in `tests/test_lettering_columns.py`.
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6,
+                         lettering_columns=False)
     gen = build_generation(str(TESTDATA / "photo" / "enthusiast_logo.png"), cfg)
     result = finish_generation(gen.fork(), cfg)
     plan = plan_stitches(result, cfg)
@@ -600,7 +604,10 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
         r, p = digitize(TESTDATA / "becker_marine_logo.png",
                         PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
                                        max_colors=6, satin_rails_follow_edge=mode,
-                                       satin_tip_caps=False))
+                                       satin_tip_caps=False,
+                                       # the envelope is the skeleton tier's; the
+                                       # Column lane (ON since 2026-10-12) has none
+                                       lettering_columns=False))
         polys = {rg.shape_id: rg.polygon for rg in r.regions}
         num, den = bare_area(polys, p)
         wob = EW.analyse_plan(polys, p, background=set())

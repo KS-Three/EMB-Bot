@@ -18,7 +18,7 @@
 // reuse a running service, start one from a venv if there isn't one, and SKIP
 // (never fail) on a machine with no digitizer venv.
 import { test, expect } from "@playwright/test";
-import { startStudio, typeText, pickGarment, openDownload, uploadArtwork, openAdvanced } from "./helpers.js";
+import { startStudio, typeText, makeOversize, pickGarment, openDownload, uploadArtwork, openAdvanced } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -335,10 +335,11 @@ async function jefHoopCode(page) {
   return readFileSync(await download.path()).readInt32LE(JEF_HOOP_CODE_OFFSET);
 }
 
-async function reachDownloadWithText(page, garmentLabel, text) {
+async function reachDownloadWithText(page, garmentLabel, text, { oversize = false } = {}) {
   await startStudio(page);
   await pickGarment(page, garmentLabel);
   await typeText(page, text);
+  if (oversize) await makeOversize(page);
   await openDownload(page);
 }
 
@@ -346,8 +347,9 @@ test("the JEF caveat appears exactly when the file's hoop code is the bad one", 
   test.skip(!serviceUp, skipReason);
   test.setTimeout(300_000);
 
-  // ---- over the band: Full Back's placement box is 304.8 mm ---------------
-  await reachDownloadWithText(page, "Full Back", "FRITSCHS");
+  // ---- over the band: Full Back auto-fit is capped to the 200 mm hoop (2026-10-13),
+  // so type a 10 in width (254 mm) to go past the band --------------------------
+  await reachDownloadWithText(page, "Full Back", "FRITSCHS", { oversize: true });
   const note = page.getByTestId("jef-hoop-header-note");
   await expect(note).toBeVisible();
   await expect(note).toContainText("110 × 110 mm");

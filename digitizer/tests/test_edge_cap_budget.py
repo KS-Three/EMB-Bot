@@ -97,6 +97,11 @@ def _run(fixture: str, width: float, cap: str = "bean",
                        edge_cap_over_budget=over_budget,
                        subpixel_edges_upscaled=False,
                        satin_lettering_split=False,
+                       # ...and the Column lane (`lettering_columns`, ON since
+                       # Kent's 2026-10-12 flip): it sews becker's MARINE
+                       # letters from their outline, so the edge-cap budget
+                       # these numbers price was read on the skeleton tier.
+                       lettering_columns=False,
                        # ...and the tracing grid at its pre-flip source line
                        # (`work_px_per_mm`, ON since 2026-10-01): becker
                        # traced at 5.8-7.2 px/mm is a third set of polygons,
