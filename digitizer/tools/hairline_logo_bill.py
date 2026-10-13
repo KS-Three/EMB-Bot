@@ -48,11 +48,11 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from digitizer_core import PipelineConfig, preflight, stitchviz  # noqa: E402
+from digitizer_core import PipelineConfig, machine, preflight, stitchviz  # noqa: E402
 from digitizer_core.adapter import plan_to_design  # noqa: E402
 from digitizer_core.pipeline import (  # noqa: E402
     _fill_inside_satin_border, plan_stitches, run_stages)
-from digitizer_core.stage6_hairline import hairline_candidates  # noqa: E402
+from digitizer_core.stage6_hairline import hairline_candidates, hairline_runs  # noqa: E402
 from digitizer_core.threads import chart_for  # noqa: E402
 from digitizer_core.warnings_codes import CLIP_DROPPED_SLIVER, HAIRLINE_TIER_SEWN  # noqa: E402
 from tools import corpus_scorecard as sc  # noqa: E402
@@ -140,6 +140,7 @@ def candidate_rows(result, cfg, off_digests, on_digests, plan) -> list[dict]:
         stitched = _fill_inside_satin_border(stitched, cfg, result.design_class)
     cands = hairline_candidates(stitched, cfg, ink=getattr(result, "ink_source", None))
     chart = chart_for(cfg)
+    prof = machine.thread_profile(cfg.thread_wt)
     by_id = {r.shape_id: r for r in stitched}
     out = []
     for sid, m in cands.items():
@@ -147,7 +148,17 @@ def candidate_rows(result, cfg, off_digests, on_digests, plan) -> list[dict]:
         x0, y0, x1, y1 = r.polygon.bounds
         hair = m.get("hair_edges") or []
         rest = m.get("rest")
+        # What the tier does with the shape: strands laid, strands dropped
+        # (under the loop floor: ink erased, not re-routed), thread laid.
+        runs, rep = hairline_runs(r.polygon, sid, max_width_mm=prof.hairline_max_width_mm,
+                                  run_width_mm=prof.hairline_run_width_mm,
+                                  stitch_mm=cfg.hairline_stitch_mm, entry=None,
+                                  trim_at_mm=3.0, m=m)
         out.append({
+            "strands": rep.get("strands", 0),
+            "dropped": rep.get("dropped", 0),
+            "strand_mm": round(sum(math.dist(a, c) for ru in runs
+                                   for a, c in zip(ru.points, ru.points[1:])), 2),
             "shape_id": sid,
             "thread": chart.threads[r.thread_index].name,
             "area_mm2": round(r.polygon.area, 2),
@@ -288,14 +299,15 @@ def markdown(rows: dict) -> str:
             f"{o['bare_mm2']}>{n['bare_mm2']}>{g['bare_mm2']} | {o['plan_s']}/{n['plan_s']}/{g['plan_s']} |")
     lines += ["", "### Shapes the gate admits (ON mode), widest first", "",
               "| fixture @ matrix | shape | thread | ink mm2 | width mm (read / traced / source) | "
-              "run/ladder branches | rest mm2 | re-sewn | where (bbox mm) |",
-              "|---|---|---|---|---|---|---|---|---|"]
+              "run/ladder branches | rest mm2 | strands / dropped | re-sewn | where (bbox mm) |",
+              "|---|---|---|---|---|---|---|---|---|---|"]
     for k, r in sorted(ok.items()):
         for c in sorted(r["on"]["candidates"], key=lambda c: -c["width_mm"]):
             lines.append(
                 f"| {k} | {c['shape_id']} | {c['thread']} | {c['area_mm2']} | {c['width_mm']} / "
                 f"{c['width_traced_mm']} / {c['width_source_mm']} | "
                 f"{c['hair_branches']}/{c['thick_branches']} | {c['rest_mm2']} | "
+                f"{c['strands']} / {c['dropped']} | "
                 f"{'yes' if c['resewn'] else 'no'} | {c['bbox_mm']} |")
     bad = {k: r["error"] for k, r in rows.items() if "error" in r}
     if bad:
