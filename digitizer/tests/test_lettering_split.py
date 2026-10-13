@@ -71,7 +71,12 @@ def test_the_helper_lifts_the_ceiling_for_lettering_only_under_the_flag():
 # --- through the pipeline ---------------------------------------------------
 
 def _plan(art: Path, **kw):
-    cfg = PipelineConfig(target_width_mm=127.4, garment_id="left_chest", max_colors=6, **kw)
+    # On the skeleton tier, explicitly: the Column lane (`lettering_columns`,
+    # ON by default since Kent's 2026-10-12 flip) takes a text-tagged word
+    # ahead of the split this file prices, and sews it as columns, never as
+    # tatami. The lane's own sewing is pinned in `tests/test_lettering_columns.py`.
+    kw.setdefault("lettering_columns", False)
+    cfg =PipelineConfig(target_width_mm=127.4, garment_id="left_chest", max_colors=6, **kw)
     gen = build_generation(str(art), cfg)
     result = finish_generation(gen.fork(), cfg)
     return cfg, result, plan_stitches(result, cfg)
