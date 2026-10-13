@@ -187,7 +187,9 @@ def test_ink_link_is_on_by_default_and_reads_its_key_only_when_on():
     assert star.meta["lettering_ink_stray"] is True
     assert not is_lettering(star, PipelineConfig())
     assert not is_lettering(star, PipelineConfig(lettering_columns_ink_link=True))
-    assert is_lettering(star, PipelineConfig(lettering_columns_ink_link=False))
+    # (the 5 mm box is also a solid blob, so the blob guard is held off here)
+    assert is_lettering(star, PipelineConfig(lettering_columns_ink_link=False,
+                                             lettering_columns_skip_blobs=False))
 
 
 def _guard_census(case):
