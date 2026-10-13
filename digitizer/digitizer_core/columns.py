@@ -267,15 +267,23 @@ def is_solid_blob(poly) -> bool:
 # AREA, so a stroke clears it by length as much as by width: the synthetic
 # word's capital I (0.57 x 4.87 mm at 80 mm, 2.771 mm^2) sews satin, and its
 # lowercase i stem at the SAME width (0.57 x 3.73 mm, 2.124 mm^2) sews a
-# two-line run (`tools/lowercase_angle.py --trace-stem`, 2026-10-13). A stem
-# is a shape whose long side is at least the floor's own width and at least
-# `STEM_MIN_ASPECT` times its short side (the i stem reads 6.5; a dot or a
-# blob reads 1.0-1.3). CANDIDATES, shape ratios from one synthetic face,
-# not cloth constants.
-STEM_MIN_ASPECT = 3.0
+# two-line run (`tools/stem_trace.py`, 2026-10-13). A stem is a shape that
+#   - is at least the floor's own width long (`min_detail_mm`),
+#   - is at least `machine.SATIN_MIN_CROSS_MM` (0.5) across -- narrower, the
+#     lane's own cross floor makes it a hairline anyway -- and
+#   - is at least `STEM_MIN_ASPECT` times as long as it is wide.
+# The i stem reads 3.73 x 0.57 mm, aspect 6.5; a dot or a blob reads 1.0-1.3.
+# The aspect bar is set by the corpus, not by the stem: the phone-UI
+# screenshot has seven lettering shapes under the floor that are stems by
+# length alone (`tools/stem_trace.py --census`), three of them 0.31-0.39 mm
+# across (held out by the cross floor) and three 0.63-0.90 mm across at
+# aspect 3.1-4.1, which stay run. CANDIDATES, shape ratios from one
+# synthetic face and one UI screenshot, not cloth constants (ROADMAP gate 1).
+STEM_MIN_ASPECT = 6.0
 
 
-def is_thin_stem(poly, min_long_mm: float) -> bool:
+def is_thin_stem(poly, min_long_mm: float,
+                 min_short_mm: float = machine.SATIN_MIN_CROSS_MM) -> bool:
     """A sub-floor shape that is a stroke, not a dot (see `STEM_MIN_ASPECT`)."""
     if not isinstance(poly, Polygon) or poly.is_empty:
         return False
@@ -286,7 +294,7 @@ def is_thin_stem(poly, min_long_mm: float) -> bool:
     a = math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1])
     b = math.hypot(pts[2][0] - pts[1][0], pts[2][1] - pts[1][1])
     long_side, short_side = max(a, b), min(a, b)
-    return short_side > 0 and long_side >= min_long_mm \
+    return short_side >= min_short_mm and long_side >= min_long_mm \
         and long_side / short_side >= STEM_MIN_ASPECT
 
 

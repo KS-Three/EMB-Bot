@@ -42,7 +42,7 @@ CAPS = ("HILTIL", 20.7)
 
 #: md5 of the OFF plan, computed on main's digitizer_core at the merge base
 #: (the same hash `plan_md5` takes) and on this branch: equal.
-OFF_MD5 = {"tsivyl": "PIN_LOWER", "HILTIL": "PIN_CAPS"}
+OFF_MD5 = {"tsivyl": "d94c1b95f29bb045bb003b08e95c36c2", "HILTIL": "9eb5d7bd7c751b8b3afb6a9fae1f7d23"}
 
 
 def plan_md5(plan, skip=()):
@@ -127,8 +127,15 @@ def test_a_stem_is_thin_and_long_a_dot_or_blob_is_not():
     assert not is_thin_stem(Point(0, 0).buffer(0.375), 1.5)   # the 80 mm dot
     assert not is_thin_stem(box(0, 0, 1.4, 1.4), 1.5)         # a blob
     assert not is_thin_stem(box(0, 0, 0.3, 1.2), 1.5)         # thin but under the floor's length
-    assert not is_thin_stem(box(0, 0, 1.0, 2.5), 1.5)         # aspect 2.5, under 3
-    assert columns.STEM_MIN_ASPECT == 3.0
+    assert not is_thin_stem(box(0, 0, 1.0, 2.5), 1.5)         # aspect 2.5
+    # the phone screenshot's lettering stems under the floor (measured by
+    # `tools/stem_trace.py --census screenshot`): none reaches the lane
+    assert not is_thin_stem(box(0, 0, 0.39, 3.29), 1.5)       # 8.4, but under the 0.5 cross floor
+    assert not is_thin_stem(box(0, 0, 0.31, 3.29), 1.5)
+    assert not is_thin_stem(box(0, 0, 0.63, 2.51), 1.5)       # aspect 4.0
+    assert not is_thin_stem(box(0, 0, 0.63, 1.96), 1.5)       # 3.1
+    assert not is_thin_stem(box(0, 0, 0.90, 3.70), 1.5)       # 4.1
+    assert columns.STEM_MIN_ASPECT == 6.0
 
 
 def test_the_flag_is_off_by_default():
@@ -163,11 +170,31 @@ def test_on_the_stem_sews_satin_and_no_run(lower_off, lower_on):
     assert kinds_of(plan_on)[sid] == {"satin"}
 
 
-def test_on_every_other_shape_sews_the_same_thread(lower_off, lower_on):
+def test_on_every_other_shape_sews_the_same_tier_and_the_ones_before_it_the_same_thread(
+        lower_off, lower_on):
+    """Only the stem changes tier. A letter sewn AFTER it starts its column
+    walk near where the stem ended (`start_near`), so its crosses may be laid
+    in another order -- the same ink, the same tier -- while every run before
+    the stem in the sew order is byte-identical."""
     (res_off, plan_off), cfg_off = lower_off
     (_r, plan_on), _c = lower_on
     sid = i_stem(res_off, cfg_off).shape_id
-    assert plan_md5(plan_off, skip=(sid,)) == plan_md5(plan_on, skip=(sid,))
+    k_off, k_on = kinds_of(plan_off), kinds_of(plan_on)
+    assert {s: k for s, k in k_off.items() if s != sid} == {s: k for s, k in k_on.items() if s != sid}
+
+    def before(plan):
+        out = []
+        for _b, run in plan.iter_runs():
+            if run.shape_id == sid:
+                break
+            out.append(run)
+        return out
+    h = lambda runs: hashlib.md5(repr([(r.shape_id, r.kind, [tuple(p) for p in r.points])
+                                       for r in runs]).encode()).hexdigest()
+    pre = before(plan_off)
+    assert pre and h(pre) == h(before(plan_on))
+    assert plan_on.stats.trims == plan_off.stats.trims
+    assert plan_on.stats.stitch_count == pytest.approx(plan_off.stats.stitch_count, rel=0.08)
 
 
 def test_capitals_are_identical_on_and_off(caps_off, caps_on):
@@ -187,7 +214,7 @@ def test_off_matches_main_byte_for_byte(lower_off, caps_off):
 
 # --- the rule is the area floor, not the letter case -----------------------
 
-SMALL_CAPS = ("HILTIL", 16.1)   # 36 px/mm: the capital I is 0.44 x 3.79 mm, 1.677 mm^2
+SMALL_CAPS = ("HILTIL", 18.42)   # 31.6 px/mm: the capital I is 0.51 x 4.34 mm, 2.196 mm^2
 
 
 def test_a_capital_i_under_the_floor_takes_the_same_road(tmp_path_factory):

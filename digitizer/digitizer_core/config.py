@@ -2154,12 +2154,15 @@ class PipelineConfig:
     # an area: at 80 mm the synthetic word's capital I stem (0.57 x 4.87 mm,
     # 2.771 mm^2) sews satin and its lowercase i stem at the same 0.57 mm
     # width (x 3.73 mm, 2.124 mm^2) sews a two-line run, though both are
-    # tagged lettering (`tools/lowercase_angle.py --trace-stem`). ON, a
-    # lettering shape under the floor whose long side is at least
-    # `min_detail_mm` and at least `columns.STEM_MIN_ASPECT` (3) times its
-    # short side is not rescued to the run tier; a dot or a blob still is.
-    # STEM_MIN_ASPECT is a CANDIDATE shape ratio, and nothing here is
-    # sewn (ROADMAP gate 1). Built OFF (Kent's call to flip); False is
+    # tagged lettering (`tools/stem_trace.py`). ON, a lettering shape under
+    # the floor whose long side is at least `min_detail_mm`, whose short
+    # side is at least `machine.SATIN_MIN_CROSS_MM` and whose long / short
+    # is at least `columns.STEM_MIN_ASPECT` (6) is not rescued to the run
+    # tier; a dot, a blob or a shape narrower than the cross floor still is.
+    # The aspect bar is a CANDIDATE shape ratio set by the corpus (the
+    # phone screenshot's stems under the floor read 3.1-4.1 at 0.63-0.90 mm
+    # across and stay run, the i stem 6.5), and nothing here is sewn
+    # (ROADMAP gate 1). Built OFF (Kent's call to flip); False is
     # byte-identical. Tests: `tests/test_small_stem.py`.
     lettering_columns_small_stem: bool = False
     # Under `lettering_columns` (old taggers, `lettering_words` off), refuse

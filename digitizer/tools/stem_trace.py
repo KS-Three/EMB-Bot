@@ -24,11 +24,19 @@ Finding, measured by this tool (80 mm; `tests/test_small_stem.py` pins it):
   at 1.0 the dot comes back as a 49th region). At 120 mm the dot is 1.12 mm
   across (proxy 2.24, just clearing 2.2) and sews as a non-lettering run of
   20 points. Not touched here: the floor is a cloth value (ROADMAP gate 1);
+- the rule is the area floor, not the letter case: a capital I at 31.6 px/mm
+  (0.51 x 4.34 mm, 2.196 mm^2) runs too (`--word HILTIL 18.42`), and a stem
+  narrower than `machine.SATIN_MIN_CROSS_MM` (0.5) stays a run even with the
+  flag (the same I at 36 px/mm is 0.44 mm across);
 - `cfg.lettering_columns_small_stem` (default OFF) lets a lettering stem under
-  the floor (long side >= `min_detail_mm`, long / short >= 3) into the lane.
+  the floor (long side >= `min_detail_mm`, short side >= 0.5, long / short
+  >= 6) into the lane. The corpus sets the aspect bar: the phone screenshot
+  has seven lettering shapes under the floor that are stems by length alone
+  (`--census screenshot`); aspect 3.1-4.1 at 0.63-0.90 mm across stay run.
 
     python -m tools.stem_trace [WIDTH_MM ...] [--small-stem] [--word TEXT]
     python -m tools.stem_trace 80 --render DIR     # OFF / ON stitch-path zoom
+    python -m tools.stem_trace --census screenshot # lettering shapes under the floor
 
 `--word TEXT` draws TEXT in the same CC0 face at the fixture's pixels per
 mm (no image is kept) so a glyph the fixture does not carry (the j) can be
@@ -177,7 +185,39 @@ def render_zoom(width_mm: float, out_dir: Path, chars: str = "iIl", ppm: float =
     return written
 
 
+def census(name: str, small_stem: bool = False) -> list[dict]:
+    """Every lettering shape of corpus fixture `name` under the area floor,
+    with its sides and what it sewed (the fixtures of `lowercase_angle.CORPUS`)."""
+    from digitizer_core import PipelineConfig, digitize
+    from digitizer_core.columns import is_lettering, is_thin_stem
+    from tools.lowercase_angle import CORPUS
+    rel, width, garment, *_ = CORPUS[name]
+    cfg = PipelineConfig(target_width_mm=width, garment_id=garment,
+                         **({"lettering_columns_small_stem": True} if small_stem else {}))
+    result, plan = digitize(ROOT / "testdata" / rel, cfg)
+    sewn = {}
+    for _b, run in plan.iter_runs():
+        d = sewn.setdefault(run.shape_id, {})
+        d[run.kind] = d.get(run.kind, 0) + len(run.points)
+    out = []
+    for r in result.regions:
+        if is_lettering(r, cfg) and r.polygon.area < cfg.min_detail_mm ** 2:
+            long_s, short_s = _sides(r.polygon)
+            out.append(dict(shape=r.shape_id, area=round(r.polygon.area, 3),
+                            long=round(long_s, 2), short=round(short_s, 2),
+                            aspect=round(long_s / max(short_s, 1e-9), 1),
+                            thin_stem=bool(is_thin_stem(r.polygon, cfg.min_detail_mm)),
+                            sewn=sewn.get(r.shape_id, {})))
+    return out
+
+
 def main(argv: list[str]) -> None:
+    if "--census" in argv:
+        name = argv[argv.index("--census") + 1]
+        for row in census(name, "--small-stem" in argv):
+            print(f"  {row['shape']} area {row['area']:.3f} {row['long']:.2f} x {row['short']:.2f} mm "
+                  f"aspect {row['aspect']:4.1f} thin_stem={row['thin_stem']} sewn {row['sewn']}")
+        return
     widths = [float(a) for a in argv if a.replace(".", "", 1).isdigit()] or [80.0]
     if "--render" in argv:
         out = Path(argv[argv.index("--render") + 1])
