@@ -13,6 +13,78 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-13 — scope refresh after PRs #859–#870 and #873 (#871/#872 open when written)
+
+The Column lane went ON by default this round (Kent's ruling 2026-10-12, #863), so "Waiting on Kent" 31 and 37 resolve and defect 59 becomes moot on the default path. Two more Kent rulings landed as code: auto-fit caps to the largest hoop (#865, closing defect 39's open half) and cross-stitch arms split at the machine record (#870). "Waiting on Kent" 18 has his ruling ("Faster photo reorder"); one exact step merged (#868), the larger (#871) is a draft for his look. To stay 1,500+ words under budget, three verbatim chunks moved to the area docs (area 2's long-stitch paragraph; area 1's item 6 rail-comp and item 5 PR 2/3 entries). MASTER_SCOPE went 25,393 → 25,008 words (1,992 under the 27,000 budget).
+
+Merged in the range, with the numbers as each PR body measured them:
+
+- **#859** Column lane keeps the OFF path's sew order (blocker 2), lane-ON only. Non-letters keep OFF rank; letters reorder within OFF letter spans. golden_tee 80 ON branch 8,384 st / 44 trims (OFF 8,950 / 45); golden_tee 100 11,304 / 59 (OFF 11,985 / 65); golden_tee 50 5,393 / 32 (OFF 5,922 / 35); fremont 92.5 20,799 / 63 (OFF 20,819 / 64); becker 100 8,645 / 28 (OFF 10,969 / 60); enthusiast 80 2,269 / 8 (OFF 2,602 / 15). No colour change added anywhere; enthusiast has one fewer block (OFF's `1720-1720` stop merges). OFF md5 identical on all six. +~20 s on golden_tee for the extra stage-7 pass. 63 passed.
+- **#860** JS engine input guards: five `test.todo` become passing tests (row spacing ≤ 0, empty outer ring, DST header > 99999, PES int16, PES > 256 colours). Byte pin of one ordinary design identical (dst d47a6fb2…, exp 35fccf5d…, pes b77f8d7d…). `node --test` 1248 tests, 1243 pass, 5 todo (other files').
+- **#861** hairline rest pieces (defect 61's twin): `rest_planned` runs `stage5_overlap._split_clip`; census 52 rows: 24 hand rest pieces to the ladder, 108 pieces, 35 multi-part, 0 with a second part over the floor; ink dropped 0.000 → 0.000 mm². Default-path md5 identical on 6 rows. 12 new tests; 63 passed on neighbours.
+- **#862** small-cap census, 85 fonts × caps 2.5/3/4/5/6/12 mm, 31 s, 0 errors, 83 scored. Relative-clean from 3 mm: 3 fonts; 4 mm: 16; 5 mm: 6; 6 mm: 15; none to 6 mm: 43. Library sub-0.3 mm share 49.0% at 2.5 mm, 2.9% at 12 mm. `node --test` 1262 tests, 1257 pass, 5 todo.
+- **#863** `lettering_columns` default True (Kent 2026-10-12). lost_frac OFF → ON: golden_tee 50 0.6700 → 0.6103, 80 0.4501 → 0.4064, 100 0.4063 → 0.3977, fremont 92.5 0.0302 → 0.0184, becker 100 0.0236 → 0.0186, enthusiast 80 0.2771 → 0.2363. Four golden_tee 50 arms: lane ON words ON = lane OFF words ON = 5,984 st / 0.6801 (same digest `49183679…`). Twenty skeleton-tier tests in nine files now name the lane OFF; 110 passed, 1 xfailed. CI then caught six more files (commit `302e678d`, incl. `test_preflight`'s 12-patch grid, whose edge-cap stops drop 23 → 11 under the lane).
+- **#864** cross-stitch arm census: 9 fonts; at 10–60 mm caps no arm passes a DST record (worst jaquarda_bastarda_9 at 60 mm, 9.1 mm long, 6.4 per axis); passes a record from 113 mm (jaquarda) to 232 mm (jersey_15) cap; long-stitch-census's 31.0 mm rows are a 254–285 mm cap on a full back.
+- **#865** garment auto-fit caps to the largest hoop (Kent 2026-10-13): `autoFitBoxMm`, 200 mm less 1 mm a side; full_back "EMB TEST" 198 × 24 mm (was ~305); six presets byte-identical. Studio 100 files / 1,867 tests; Playwright oversize-fix + size-cap-note 4 pass.
+- **#866** `field-panel-sync` e2e waits on `data-paint-seq` instead of a 1,200 ms sleep; `--repeat-each=20`: 60 passed.
+- **#867** defect 20 instrument `layer_density` + `cfg.tonal_split_layer_cap` (OFF). photo_scene_stub OFF 54 regions / 24,761 st / max 5.25 / 8 mm² > 3.5 → ON 4 / 12,911 / 2.44 / 0; owl_kent (forced split) 111 / 47,039 / 9.57 / 28 → 57 / 35,264 / 4.00 / 5. Eight fixtures OFF = ON. 16 new tests; 71 passed.
+- **#868** cold photo profile (`owl_kent`, cProfile + py-spy, 4,688 samples): blend fill 78.3 s of an 82.4 s plan, `_reorder_for_cover` 43.7 s, one `_order_cost` call on the 599-path region 22.5 s. Unsewn-ground memo: 88.5 → 84.2 s mean (−5%), stitch SHA `adecd4cc…6a055813` (30,711 stitches) on all 13 runs. 106 passed.
+- **#869** renders, Column lane OFF vs ON: golden_tee 50 mm (5,922 / 34 trims vs 5,393 / 31) and fremont 92.5 mm (20,819 / 63 vs 20,799 / 62), `docs/renders/lettering-columns-on/`.
+- **#870** `crossFill` `maxSegPx` (Kent 2026-10-13, "Split at machine limit"): egyptian/heavenly AB full_back 31.0 (21.9) → 15.6 (11.0) mm; noble 24.0 (17.0) → 12.0 (8.5); 14.4 (10.2) left-chest arms unchanged. Byte-identical for 9 fonts at 25 and 60 mm. `node --test` 1242 pass, 24 skipped.
+
+Open when this was written, recorded in MASTER_SCOPE as open PRs:
+
+- **#871** (draft, Kent's look) windowed covered routing + lazy order pricing: owl_kent 148.2 → 114.0 s, byte-identical; drone 19,243 → 19,249 st, +1 jump; sunset 26,016 → 26,012; fremont and owl_pale identical SHA.
+- **#872** hairline logo bill: 272 shapes / 938 mm² re-sewn on 8 gradient logos + enthusiast; 87 shapes (276 mm²) lose ≥ 1 strand, 120 strands; bare fabric e.g. screenshot 5.5 → 47.8 mm², drone 5.1 → 28.9; 5 new `ARTWORK_UNCOVERED`; golden_tee −25.5% stitches.
+
+Merged while this pass was being written (2026-10-13 04:29Z):
+
+- **#873** `cfg.small_print_floor` (OFF): synthetic word 3 mm 8/10 → 4/10 counters shut, open area 0.31 → 0.68, covered 0.997 → 0.983; enthusiast 3 mm A 0.00 → 0.95 open; golden_tee GOLF untouched (run tier). 9 new tests; 59 passed on neighbours.
+
+Moved out of MASTER_SCOPE on this pass, verbatim as they stood:
+
+*Waiting on Kent 31:*
+
+31. **`lettering_columns` — first sitting ruled NEEDS WORK 2026-10-07, redrawn at equal pitch.**
+   The page's Columns side sewed 0.80 mm per rail (drawn before 1782fbea);
+   on `main` both sides read 0.40–0.52. Sitting `density-1007` is his. OFF.
+   *(measured 2026-10-07 — `tools/satin_pitch.py`; `docs/eye-pairs-2026-10-07/kent-notes.json`)*
+
+*Waiting on Kent 37:*
+
+37. **RESOLVED 2026-10-11 as built — the Column lane's rails match the satin
+   tier's reach** (Kent's pick of #828's two options).
+   `columns.RAIL_REACH_INSET_MM = 0.11` moves each cross's rails in before the
+   unchanged pull (lane ON only; OFF byte-identical): enthusiast @ 80 mm grid
+   `lost_frac` 0.3627 → **0.2596** (bar 0.30; shipped 0.2771), and on the
+   matched reading no logo rises at any width (PR #837). The slanted-terminal
+   fan is fixed too — it pivots on the slant's near corner and the slant face
+   takes the rails' reach: Becker A unsewn 6.7 → **1.1** mm² (shipped 1.3),
+   and the one-pixel spill guard has teeth under the lane again (PR #844).
+   **Flip blockers left** (item 31's sitting is still his): golden_tee's 50 mm
+   +0.029 matched `lost_frac` over shipped — **blocker 2 re-attributed to the
+   word tagger's size floor**: it comes from `cfg.lettering_words` alone, not
+   sew order. At 50 mm the tagger tags no word, so 7 shapes shipped's
+   `_lettering_groups` groups lose `lettering_group` (and, `suspected`, the
+   house angle: `word_groups()` hands `[]` to `set_lettering_house_angle`).
+   Words ON, lane OFF sews 5,984 stitches, the lane's #837 number (shipped
+   5,922), with shape sequence and 8-thread block order identical to shipped;
+   it also differs at 80/100 mm (8,985 vs 8,950; 12,015 vs 11,985). A sew-order
+   fix cannot move the 50 mm number *(measured 2026-10-12 — director worker
+   d-teeorder2, dump in the director scratchpad; lane `claude/golden-tee-order`
+   open)*; and letter reach —
+   Fremont's and golden_tee's letters stand ~0.06–0.07 mm inside shipped's
+   reach, every fanned slant face 0.19 mm outside its traced edge, both
+   sew-out questions (gate 1). Both flags OFF; nothing sewn. *(measured
+   2026-10-11 — PRs #828, #837, #844; [`docs/renders/columns-rail-inset-2026-10-11/`](docs/renders/columns-rail-inset-2026-10-11/),
+   [`docs/renders/columns-slant-fan-2026-10-11/`](docs/renders/columns-slant-fan-2026-10-11/))*
+
+*Waiting on Kent 18 (rewritten with the ruling):*
+
+18. **OPEN: a COLD photo digitize is ~90 s and `fill_travel_under_cover` is ~58% of it.** The 2026-09-17 memo fixed the RE-stitch (79.3 → 44.6 s); the first digitize still pays the flag in full. Three ways out, all Kent's: flip it off (costs stitches, re-exposes the travel it hides), optimise `_reorder_for_cover` (golden-pinned — a win must be byte-identical), or accept it. **Do not re-derive the numbers** — method, noise floor, per-flag table and three INERT flags are in the doc. *(measured 2026-09-17 — `docs/flag-runtime-bills-2026-09-12.md`)*
+
+---
+
 **Last updated:** 2026-10-12 (evening) — scope refresh after PRs #850–#857 (and #840, which merged after #849 was written)
 
 Two MASTER_SCOPE lines were stale when this pass began: area 5 called PR #840 "armed and NOT merged" (it merged 04:04Z), and "Waiting on Kent" 45 called hairline step 2 "in flight, unpushed" (it merged as #850, and step 3 as #851). Both re-stated. The phase-1 instruments — counters (#841), the pooled kappa (#842) and the density/flow read (#847) — landed BEFORE #849 and are already recorded there; nothing in #850–#857 touches them, and phase 1's exit stays NOT MET. MASTER_SCOPE went 25,294 → 25,308 words.
