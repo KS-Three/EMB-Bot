@@ -37,6 +37,7 @@ reads as gradient from its anti-aliasing.
 
     python -m tools.lowercase_angle [WIDTH_MM ...] [--columns-off] [--fold-cuts] [--json PATH]
     python -m tools.lowercase_angle --make-fixture
+    python -m tools.lowercase_angle --dump-letters  # the test's traced polygons
     python -m tools.lowercase_angle --corpus     # real fixtures with lowercase
 
 `--corpus` reads the corpus logos that carry lowercase (toat's "achine",
@@ -320,6 +321,41 @@ def measure_synthetic(width_mm: float, columns: bool = True, base: Path = FIXTUR
     return report, result, plan
 
 
+LETTERS = FIXTURE.with_name("lowercase_aileron_letters_120.json")
+
+
+def dump_letters(width_mm: float = 120.0, out: Path = LETTERS) -> int:
+    """Write each glyph's lettering polygon (mm), as the pipeline traced it
+    at `width_mm`, so `tests/test_lowercase_angle.py` can drive `outline_cut`
+    without a digitize. One polygon per glyph (the first occurrence)."""
+    from digitizer_core import PipelineConfig
+    from digitizer_core.columns import is_lettering
+    meta = json.loads(FIXTURE.with_suffix(".json").read_text(encoding="utf-8"))
+    _rep, result, _plan = measure_synthetic(width_mm)
+    cfg = PipelineConfig(target_width_mm=width_mm, forced_class="flat")
+    to_px, _s = mm_to_px(result, meta["image"])
+    found = {}
+    for r in result.regions:
+        if not is_lettering(r, cfg):
+            continue
+        g = _glyph_at(meta, *to_px(r.polygon.centroid.x, r.polygon.centroid.y))
+        if g is None:
+            continue
+        p = r.polygon
+        found[g["ch"]] = dict(shape_id=r.shape_id,
+                              exterior=[[round(x, 4), round(y, 4)] for x, y in p.exterior.coords],
+                              holes=[[[round(x, 4), round(y, 4)] for x, y in h.coords]
+                                     for h in p.interiors])
+    letters = dict(sorted(found.items()))
+    out.write_text(json.dumps(dict(
+        about=(f"Lettering polygons (mm) of lowercase_aileron.png digitized at {width_mm:g} mm, "
+               "forced_class flat, origin/main 2026-10-13, written by tools/lowercase_angle.py "
+               "--dump-letters; one per glyph (first occurrence). Test input for outline_cut, "
+               "so no digitize is needed."),
+        letters=letters), separators=(",", ":")) + "\n", encoding="utf-8")
+    return len(letters)
+
+
 def measure_corpus(name: str) -> dict:
     from digitizer_core import PipelineConfig, digitize
     from digitizer_core.columns import is_lettering
@@ -369,6 +405,9 @@ def main(argv: list[str]) -> None:
     if "--make-fixture" in argv:
         make_fixture()
         print(f"wrote {FIXTURE.with_suffix('.png')} and .json")
+        return
+    if "--dump-letters" in argv:
+        print(f"wrote {dump_letters()} letters to {LETTERS}")
         return
     out_json = None
     if "--json" in argv:
