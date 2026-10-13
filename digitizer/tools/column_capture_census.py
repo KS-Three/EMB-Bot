@@ -247,12 +247,34 @@ def main(argv=None) -> int:
     ap.add_argument("--json", type=Path)
     ap.add_argument("--on-only", action="store_true", dest="on_only",
                     help="skip the lane-OFF arm (shape rows only; OFF columns read 0)")
-    ap.add_argument("--render",type=Path, help="write OFF|ON renders of the named fixtures here")
-    ap.add_argument("--grid",action="store_true", help="the synthetic twelve-patch colour grid only")
+    ap.add_argument("--ids", nargs="*", default=[], help="shape ids to zoom on in --render")
+    ap.add_argument("--flag", nargs="*", default=[], help="config flags to turn ON in the render's ON arm")
+    ap.add_argument("--corpus",action="store_true",
+                    help="the real-art corpus at the settings the hand labels were made at")
+    ap.add_argument("--render", type=Path, help="write OFF|ON renders of the named fixtures here")
+    ap.add_argument("--grid", action="store_true", help="the synthetic twelve-patch colour grid only")
     args = ap.parse_args(argv)
 
     inv = {v: k for k, v in TRUTH_CASE_FILE.items()}
     results = []
+    if args.corpus:
+        # The settings the hand labels were made at (`tools.thin_strokes.corpus_cases`).
+        from tools.thin_strokes import corpus_cases
+        for name, path, width, garment in corpus_cases():
+            rel = path.relative_to(TESTDATA).as_posix()
+            kw = {"target_width_mm": width, "garment_id": garment, "max_colors": 6}
+            r = census_one(rel, kw, name if name in TRUTH_CASE_FILE else None, on_only=args.on_only)
+            r["case"] = name
+            results.append(r)
+            on, off = r["on"], r["off"]
+            bad = [x for x in r["rows"] if x["label"] == "NOT-LETTER"]
+            print(f"{name:11s} taken {len(on['taken']):3d} truth={r.get('truth', '-'):6s} "
+                  f"false={len(bad)} st {off['stitches']}->{on['stitches']} "
+                  f"trims {off['trims']}->{on['trims']} cc {off['color_changes']}->{on['color_changes']}",
+                  flush=True)
+            if args.json:
+                args.json.write_text(json.dumps(results, indent=1, default=str), encoding="utf-8")
+        return 0
     if args.grid:
         r = census_one("colour_grid", {"target_width_mm": 100.0}, image=colour_grid())
         r["rows"] = [(x["shape_id"], x["w_mm"], x["h_mm"], x["text_candidate"], x["lettering_group"])
@@ -267,7 +289,9 @@ def main(argv=None) -> int:
         for f in matrix(args.fixtures):
             kw = {"target_width_mm": args.width, "garment_id": args.garment,
                   "max_colors": args.max_colors}
-            for p in render_pair(Path(f).stem, TESTDATA / f, kw, args.render):
+            for p in render_pair(Path(f).stem, TESTDATA / f, kw, args.render,
+                                 zoom_ids=args.ids or None,
+                                 flags_on={k: True for k in args.flag}):
                 print(p)
         return 0
     for f in matrix(args.fixtures):
