@@ -79,6 +79,9 @@ from .stage6_detail import detail_runs
 from .stage6_hairline import REST_KEY as HAIRLINE_REST_KEY
 from .stage6_hairline import hairline_candidates, rest_planned
 from .stage6_hairline import hairline_runs as hairline_tier_runs
+from .stage6_hairline import HairlineSet
+from .stage6_hairline_lines import applies as hairline_lines_apply
+from .stage6_hairline_lines import strand_blocks
 from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
@@ -2013,7 +2016,10 @@ def sequence(
     # the ground under a strand and the strand itself agree. A direct caller
     # that passes none gets them read here, from the traced polygons.
     if cfg.hairline and hairline is None:
-        hairline = hairline_candidates([p.region for p in planned], cfg)
+        # On the line route (`cfg.hairline_from_lines`, a photo lane) no
+        # shape is carved: the strands come from lines, after every block.
+        hairline = (HairlineSet() if hairline_lines_apply(cfg, design_class)
+                    else hairline_candidates([p.region for p in planned], cfg))
     stitch_mm = cfg.fill_stitch_mm or FILL_STITCH_MM
     # Row 14's underlay split (see _PHOTO_FILL_UNDERLAY above for the craft
     # case). Precedence is unchanged in shape, only the FALLBACK moves: an
@@ -3513,7 +3519,41 @@ def sequence(
             )
             cursor = d_runs[-1].points[-1]
 
+    # --- Hairline strands from lines (`cfg.hairline_from_lines`, OFF) -------
+    # `stage6_hairline_lines`: on a photo lane, the hairline tier's strands
+    # come from FDoG lines, sewn as runs over the finished fills, last of
+    # all — one block per polarity, in the design's own nearest thread.
+    hair_lines = None
+    if source_pixels is not None and hairline_lines_apply(cfg, design_class):
+        hl_blocks, hair_lines = strand_blocks(
+            source_pixels, cfg, entry=cursor, trim_at_mm=trim_at,
+            allowed_threads=sorted({b.thread_index for b in blocks}))
+        for hl_thread, hl_runs in hl_blocks:
+            hl_runs[0].jump = True
+            hl_runs[0].trim = True
+            _apply_ties(hl_runs)
+            t = chart_for(cfg)[hl_thread]
+            blocks.append(StitchBlock(thread_index=hl_thread, thread_number=t.number,
+                                      rgb=tuple(t.rgb), runs=hl_runs))
+            cursor = hl_runs[-1].points[-1]
+
     warnings: list[dict] = list(applique_warnings)
+    if hair_lines is not None:
+        warnings.append(
+            warn(
+                HAIRLINE_TIER_SEWN,
+                f"{hair_lines['strands']} hairline strand(s) sewn from detected "
+                f"lines; {hair_lines['dropped']} strand(s) under "
+                f"{machine.RUN_MIN_LOOP_MM:g} mm dropped.",
+                shapes=0,
+                strands=hair_lines["strands"],
+                dropped=hair_lines["dropped"],
+                source="lines",
+                found=hair_lines["found"],
+                refused_no_ridge=hair_lines["refused_no_ridge"],
+                sewn_by_polarity=hair_lines["sewn_by_polarity"],
+            )
+        )
     if thin:
         warnings.append(
             warn(

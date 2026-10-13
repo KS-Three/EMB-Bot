@@ -230,7 +230,10 @@ HAIRLINE_STROKES_AS_RUN = "HAIRLINE_STROKES_AS_RUN"
 # skeleton; strands under `machine.RUN_MIN_LOOP_MM` were dropped and are
 # counted here. ENGINE-SIDE ONLY: the Studio lists it in SILENT_WARNINGS
 # (Kent's 2026-10-02 ruling, "We shouldn't have to warn the user of
-# anything"). extra: {"shapes": int, "strands": int, "dropped": int}
+# anything"). extra: {"shapes": int, "strands": int, "dropped": int}; on the
+# line route (`cfg.hairline_from_lines`, stage6_hairline_lines) also
+# {"source": "lines", "found", "refused_no_ridge", "sewn_by_polarity"}
+# (each {"dark": int, "light": int}), with "shapes" 0.
 HAIRLINE_TIER_SEWN = "HAIRLINE_TIER_SEWN"
 # `cfg.bean_letter_max_stroke_mm` (2026-10-02): lettering whose ink strokes are
 # under the line sewed as bean runs along the ink's skeleton instead of satin.

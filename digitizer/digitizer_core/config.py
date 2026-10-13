@@ -205,6 +205,18 @@ class PipelineConfig:
     # and no seam of its own (argued in the doc). Only grounds sewn BEFORE
     # the strand reach under it. Candidate geometry, unsewn (gate 1).
     hairline_over_ground: bool = False
+    # Hairline strands from LINES (2026-10-13, default OFF; needs `hairline`
+    # on too). On a photo lane (photo_subject, photo_scene) the
+    # segmenter merges fine strands into regions, so the tier above never
+    # sees them as shapes (docs/hairline-photo-trial-2026-10-12.md, PR #876:
+    # owl_kent sewed 3 strands, dropped 10). This feeds the tier's stitch
+    # rules from `stage6_detail`'s FDoG lines instead, both polarities,
+    # kept when the line is a ridge on the source (`stage6_hairline_lines`),
+    # and sews them as runs over the untouched fills, last. On a photo lane
+    # it REPLACES the region tier (no shape is carved); on the flat and
+    # gradient lanes (drawn hair, where strands ARE shapes) it changes
+    # nothing. Candidate, unsewn (gate 1). Off, byte-identical.
+    hairline_from_lines: bool = False
     max_colors: int = 12
     # Make `max_colors` true on EVERY lane, not just the flat one. Default
     # OFF and byte-identical off — it only ever runs when a design already
