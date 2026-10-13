@@ -217,6 +217,17 @@ class PipelineConfig:
     # gradient lanes (drawn hair, where strands ARE shapes) it changes
     # nothing. Candidate, unsewn (gate 1). Off, byte-identical.
     hairline_from_lines: bool = False
+    # Hairline line route: a strand, not a bar (2026-10-13, default OFF;
+    # read only when the line route above runs). A thin bar passes the
+    # ridge test like a strand: on owl_kent 31 of the route's 75 strands
+    # were the breast barring (#882). On, a ridge that sits in a stack of
+    # parallel lines of its own polarity (one either side, or two evenly
+    # spaced on one side, over 40% of its length) is a bar and is not sewn
+    # (`stage6_hairline_lines.stack_share`); and the route's widths and curl
+    # tolerance follow the colour block's thread weight (a
+    # `shape_overrides[sid].thread_wt`) instead of `thread_wt`. Candidate
+    # geometry, unsewn (gate 1). Off, byte-identical.
+    hairline_lines_strand_test: bool = False
     # Hairline coverage guard (2026-10-13, default OFF; needs `hairline` on).
     # A shape whose hairline runs would leave more than
     # `stage6_hairline.COVERAGE_GUARD_MM2` of its own ink bare (a 0.4 mm
@@ -2147,6 +2158,24 @@ class PipelineConfig:
     # flip; renders only, nothing sewn); False is byte-identical.
     # Tests: `tests/test_lowercase_angle.py`.
     lettering_columns_fold_cuts: bool = False
+    # Under `lettering_columns`, let a thin STEM under the area floor reach
+    # the Column lane (2026-10-13, `columns.is_thin_stem`). Stage 7's
+    # small-shape rescue sends every auto-tier shape under `min_detail_mm`^2
+    # (2.25 mm^2) to the run tier before the lane is asked, and the floor is
+    # an area: at 80 mm the synthetic word's capital I stem (0.57 x 4.87 mm,
+    # 2.771 mm^2) sews satin and its lowercase i stem at the same 0.57 mm
+    # width (x 3.73 mm, 2.124 mm^2) sews a two-line run, though both are
+    # tagged lettering (`tools/stem_trace.py`). ON, a lettering shape under
+    # the floor whose long side is at least `min_detail_mm`, whose short
+    # side is at least `machine.SATIN_MIN_CROSS_MM` and whose long / short
+    # is at least `columns.STEM_MIN_ASPECT` (6) is not rescued to the run
+    # tier; a dot, a blob or a shape narrower than the cross floor still is.
+    # The aspect bar is a CANDIDATE shape ratio set by the corpus (the
+    # phone screenshot's stems under the floor read 3.1-4.1 at 0.63-0.90 mm
+    # across and stay run, the i stem 6.5), and nothing here is sewn
+    # (ROADMAP gate 1). Built OFF (Kent's call to flip); False is
+    # byte-identical. Tests: `tests/test_small_stem.py`.
+    lettering_columns_small_stem: bool = False
     # Under `lettering_columns` (old taggers, `lettering_words` off), refuse
     # a HOUSE-GROUP-ONLY shape whose thread is further than the text
     # cluster's own ink link (CIEDE2000 20) from every text-cluster letter's
