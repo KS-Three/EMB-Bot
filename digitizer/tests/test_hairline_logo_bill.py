@@ -14,7 +14,7 @@ from digitizer_core import PipelineConfig, machine
 from digitizer_core.pipeline import plan_stitches, run_stages
 from tools import hairline_logo_bill as hlb
 
-SMALL = {"target_width_mm": 30.0, "garment_id": "left_chest"}
+SMALL = {"target_width_mm": 20.0, "garment_id": "left_chest"}
 
 
 def _raw_counts(plan) -> tuple[int, int, float]:
@@ -42,8 +42,8 @@ def test_off_row_matches_the_plain_pipeline():
 
 
 def test_the_tool_sees_hair_where_there_is_hair():
-    row = hlb.run_one("synthetic/hair_fine.png",
-                      {"target_width_mm": 40.0, "forced_class": "flat"}, wt=40)
+    row = hlb.run_one("synthetic/thin_script.png",
+                      {"target_width_mm": 30.0, "forced_class": "flat"}, wt=40)
     assert row["off"]["hairline_sewn"]["shapes"] == 0
     assert row["on"]["candidate_count"] > 0
     assert row["on"]["hairline_sewn"]["shapes"] > 0

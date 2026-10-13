@@ -307,7 +307,7 @@ def markdown(rows: dict) -> str:
                 f"| {k} | {c['shape_id']} | {c['thread']} | {c['area_mm2']} | {c['width_mm']} / "
                 f"{c['width_traced_mm']} / {c['width_source_mm']} | "
                 f"{c['hair_branches']}/{c['thick_branches']} | {c['rest_mm2']} | "
-                f"{c['strands']} / {c['dropped']} | "
+                f"{c.get('strands', '-')} / {c.get('dropped', '-')} | "
                 f"{'yes' if c['resewn'] else 'no'} | {c['bbox_mm']} |")
     bad = {k: r["error"] for k, r in rows.items() if "error" in r}
     if bad:
