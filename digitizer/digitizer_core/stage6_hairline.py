@@ -517,7 +517,7 @@ def _source_widths(ink, skel, body, dist, scale, x0, y0, pick=None, ink_colour=N
     prof = _profiles(ink, skel, dist, scale, x0, y0, ys, xs)
     if prof is None:
         return None
-    t, V, inside, S_l, S_r, which, step_mm, C = prof
+    t, V, inside, S_l, S_r, which, step_mm, C, _N = prof
     rows = np.arange(len(C))
     score = np.minimum(np.linalg.norm(V - S_l[:, None], axis=2),
                        np.linalg.norm(V - S_r[:, None], axis=2))
@@ -597,7 +597,7 @@ def _profiles(ink, skel, dist, scale, x0, y0, ys, xs):
     rows = np.arange(len(C))
     S_l = V[rows, first]
     S_r = V[rows, first + last - 1]
-    return t, V, inside, S_l, S_r, which, step_mm, C
+    return t, V, inside, S_l, S_r, which, step_mm, C, N
 
 
 def _line_contrasts(ink, skel, dist, scale, x0, y0, ys, xs) -> list:
@@ -614,22 +614,60 @@ def _line_contrasts(ink, skel, dist, scale, x0, y0, ys, xs) -> list:
     lighter, or another hue) than both. So: the largest distance, over the
     profile's core (the traced half-width, at least half a source pixel), of
     a sample from the segment S_l..S_r. A band ON that segment reads near 0
-    whatever its two sides are; a strand reads its own contrast."""
+    whatever its two sides are; a strand reads its own contrast.
+
+    A profile with an end still INSIDE the shape's own traced raster (`dist`
+    > 0 there: the normal ran along the strand at a curl, or the tracer fused
+    two strands) has the ink itself for a side, so it would read ~0 on a real
+    strand; it is not read (None). Measured on the drawn hair fixtures,
+    where every refusal before this rule was such a profile."""
     prof = _profiles(ink, skel, dist, scale, x0, y0, ys, xs)
     out: list = [None] * len(ys)
     if prof is None:
         return out
-    t, V, inside, S_l, S_r, which, _step, _C = prof
+    t, V, inside, _S_l, _S_r, which, _step, C, N = prof
     src_ppm = ink.src_px_per_mm
+    h, w = dist.shape
+    first = np.argmax(inside, axis=1)
+    last = inside.shape[1] - 1 - np.argmax(inside[:, ::-1], axis=1)
     for i, j in enumerate(which):
+        ends_in = False
+        for k in (first[i], last[i]):
+            ex, ey = C[i] + t[k] * N[i]
+            px = int(round((ex - x0) * scale + _PAD_PX))
+            py = int(round((ey - y0) * scale + _PAD_PX))
+            if 0 <= px < w and 0 <= py < h and dist[py, px] > 0:
+                ends_in = True
+        if ends_in:
+            continue
         y, x = ys[j], xs[j]
         half = max(float(dist[y, x]) / scale, 0.5 / src_ppm)
         core = inside[i] & (np.abs(t) <= half + 1e-9)
         if not core.any():
             core = inside[i] & (np.abs(t) == np.abs(t).min())
-        d = S_r[i] - S_l[i]
+        # Each side's surround is the sample on that half of the profile
+        # that differs MOST from the middle, not the profile's far end: a
+        # strand lying beside another strand has ink at its far end, and
+        # the skin between them is its real surround. A ramp band still
+        # reads its two fields (the extremes ARE its sides); a flat sliver
+        # still reads nothing.
+        mid = V[i, int(np.argmin(np.abs(t)))]
+        sides = []
+        for half_mask in (inside[i] & (t < 0), inside[i] & (t > 0)):
+            Sv = V[i, half_mask] if half_mask.any() else V[i, inside[i]]
+            sides.append(Sv[int(np.argmax(np.linalg.norm(Sv - mid, axis=1)))])
+        s_l, s_r = sides
+        # Exactly one side indistinguishable from the middle: the strand is
+        # fused with ink on that side (a touching neighbour), or it is a
+        # sliver of one field along its edge. The profile cannot tell which,
+        # so it is not read (the width gate decides, as before). Both sides
+        # like the middle is a flat field: read as such (0 below).
+        near = [float(np.linalg.norm(s - mid)) < _LINE_MIN_CONTRAST for s in sides]
+        if near[0] != near[1]:
+            continue
+        d = s_r - s_l
         n2 = float(d @ d)
-        P = V[i, core] - S_l[i]
+        P = V[i, core] - s_l
         u = np.clip(P @ d / n2, 0.0, 1.0) if n2 > 1e-12 else np.zeros(len(P))
         off = P - u[:, None] * d[None, :]
         out[j] = float(np.sqrt((off * off).sum(axis=1)).max())

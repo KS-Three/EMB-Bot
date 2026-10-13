@@ -1,7 +1,7 @@
 """The hairline tier on a REAL photograph (2026-10-12).
 
     python -m tools.hairline_photo_trial [--routes photo classical studio]
-        [--rembg-python PATH] [--out ../docs/renders/hairline-photo-trial-2026-10-12]
+        [--rembg-python PATH] [--out ../docs/renders/claude-hairline-photo-trial]
 
 Until this, `cfg.hairline` (PRs #848 #850 #851 #861) had been measured only
 on drawn fixtures (`hair_strands`, `hair_fine`, `thin_script`). This runs the
@@ -73,8 +73,11 @@ ROUTES = {
 }
 # arm -> (cfg.hairline, cfg.thread_wt, cfg.hairline_over_ground)
 ARMS = {"off40": (False, 40, False), "on40": (True, 40, False),
-        "on40g": (True, 40, True), "on60": (True, 60, False),
-        "on60g": (True, 60, True)}
+        "on40g": (True, 40, True), "off60": (False, 60, False),
+        "on60": (True, 60, False), "on60g": (True, 60, True)}
+RENDER_ARMS = {"off60": "OFF (60 wt)", "on60": "hairline ON (60 wt)",
+               "on60g": "ON + over_ground (60 wt)"}
+MAX_JPEG_BYTES = 290_000
 # Zoom boxes as fractions of the SOURCE photo (x0, y0, x1, y1): the facial
 # bristles round the beak, and the barred breast feathers lower left.
 ZOOMS = {"beak": (0.36, 0.18, 0.68, 0.48), "bars": (0.06, 0.60, 0.40, 0.94)}
@@ -195,8 +198,10 @@ def _src_to_mm(ink, fx: float, fy: float) -> tuple[float, float]:
 
 
 def render(design, ink, thread_mm: float, out: Path, stem: str) -> None:
+    """Lossless parts (whole design, and each `ZOOMS` box) into `out` — the
+    gitignored parts folder; `compose` builds the committed strips from them."""
     img = stitchviz.render_design(design, px_per_mm=RENDER_PX_PER_MM, thread_mm=thread_mm)
-    cv2.imwrite(str(out / f"{stem}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    cv2.imwrite(str(out / f"{stem}.png"), img)
     big = stitchviz.render_design(design, px_per_mm=ZOOM_PX_PER_MM, thread_mm=thread_mm)
     _size, to_px = stitchviz._frame(design.get("stitches") or [], ZOOM_PX_PER_MM, 2.0)
     for name, (fx0, fy0, fx1, fy1) in ZOOMS.items():
@@ -207,31 +212,59 @@ def render(design, ink, thread_mm: float, out: Path, stem: str) -> None:
         y0, y1 = sorted((max(a[1], 0), max(b[1], 0)))
         crop = big[y0:y1, x0:x1]
         if crop.size:
-            cv2.imwrite(str(out / f"{stem}_{name}.jpg"), crop, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            cv2.imwrite(str(out / f"{stem}_{name}.png"), crop)
 
 
-def compose(out: Path, route: str) -> None:
-    """today | hairline 60 wt | hairline 60 wt + ground, per zoom."""
-    labels = {"off40": "today (OFF)", "on60": "hairline 60 wt",
-              "on60g": "hairline 60 wt + ground"}
-    for zoom in ZOOMS:
-        tiles = []
-        for arm, label in labels.items():
-            img = cv2.imread(str(out / f"{route}_{arm}_{zoom}.jpg"))
-            if img is None:
-                return
-            band = np.full((30, img.shape[1], 3), 255, np.uint8)
-            cv2.putText(band, label, (6, 21), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
-                        (30, 30, 30), 2, cv2.LINE_AA)
-            tiles.append(np.vstack([band, img]))
-        h = min(t.shape[0] for t in tiles)
-        sep = np.full((h, 6, 3), 255, np.uint8)
-        strip = np.hstack([tiles[0][:h], sep, tiles[1][:h], sep, tiles[2][:h]])
-        cv2.imwrite(str(out / f"compare_{route}_{zoom}.jpg"), strip,
-                    [cv2.IMWRITE_JPEG_QUALITY, 85])
+def strip(parts: Path, panels: list[tuple[str, str]], dest: Path) -> None:
+    """Labelled panels (files in `parts`) side by side -> `dest`, kept under
+    `MAX_JPEG_BYTES`."""
+    tiles = []
+    for fname, label in panels:
+        img = cv2.imread(str(parts / fname))
+        if img is None:
+            return
+        band = np.full((30, img.shape[1], 3), 255, np.uint8)
+        cv2.putText(band, label, (6, 21), cv2.FONT_HERSHEY_SIMPLEX, 0.55,
+                    (30, 30, 30), 2, cv2.LINE_AA)
+        tiles.append(np.vstack([band, img]))
+    h = min(t.shape[0] for t in tiles)
+    sep = np.full((h, 6, 3), 255, np.uint8)
+    parts = []
+    for t in tiles:
+        parts += [t[:h], sep]
+    img = np.hstack(parts[:-1])
+    write_jpeg(dest, img)
 
 
-def run_route(route: str, out: Path | None, arms=ARMS) -> dict:
+def write_jpeg(path: Path, img) -> None:
+    """JPEG under `MAX_JPEG_BYTES` (docs renders are committed): lower the
+    quality, then the size, until it fits."""
+    q = 85
+    while True:
+        ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, q])
+        if len(buf) <= MAX_JPEG_BYTES or (q <= 60 and img.shape[1] < 400):
+            break
+        if q > 60:
+            q -= 8
+        else:
+            img = cv2.resize(img, (img.shape[1] * 4 // 5, img.shape[0] * 4 // 5),
+                             interpolation=cv2.INTER_AREA)
+    path.write_bytes(buf.tobytes())
+
+
+def compose(parts: Path, out: Path, route: str) -> None:
+    """OFF | hairline | hairline + ground at 60 wt (OFF at 60 wt, so the only
+    difference is the tier), per zoom and for the whole design."""
+    for zoom in list(ZOOMS) + [None]:
+        sfx = f"_{zoom}" if zoom else ""
+        strip(parts, [(f"{route}_{arm}{sfx}.png", RENDER_ARMS[arm]) for arm in RENDER_ARMS],
+              out / f"compare_{route}{sfx or '_full'}.jpg")
+
+
+def run_route(route: str, out: Path | None, arms=ARMS, parts: Path | None = None) -> dict:
+    """One route through every arm -> its table row. With `out`, renders:
+    lossless parts into `parts` (default `out`), strips into `out`."""
+    parts = parts or out
     result = stage_result(route)
     row = {"pipeline": pipeline_ran(result), "design_class": result.design_class,
            "regions": len(result.regions), "census": {}, "arms": {}}
@@ -241,35 +274,30 @@ def run_route(route: str, out: Path | None, arms=ARMS) -> dict:
         row["census"][wt]["_ids"] = cen["_ids"]
     p = preflight.prep(PHOTO, route_cfg(route), design_class=result.design_class) \
         if out is not None else None
-    base_bare = None
+    base_bare: dict[int, tuple] = {}
     for arm, (on, wt, ground) in arms.items():
         cfg = route_cfg(route, hairline=on, thread_wt=wt, hairline_over_ground=ground)
         plan = plan_stitches(result, cfg)
-        # The shapes this weight's gate admits; the OFF arm is measured over
-        # the 60 wt set as well, so every ON arm has its OFF baseline.
+        # The shapes this weight's gate admits, measured in every arm of that
+        # weight — the OFF arm of the same weight is each ON arm's baseline
+        # (a 60 wt plan re-spaces every satin, hairline or not).
         ids = set(row["census"][wt]["_ids"])
         r = measure_arm(plan, ids)
-        if not on:
-            off60 = measure_arm(plan, set(row["census"][60]["_ids"]))
-            r["touched60_stitches"] = off60["touched_stitches"]
-            r["touched60_thread_m"] = off60["touched_thread_m"]
-            r["touched60_under_1mm"] = off60["touched_under_1mm"]
         if p is not None:
             bare = bare_cells(plan, result, p)
             r["bare_mm2"] = round(float(bare[0].sum()) * bare[2] ** 2, 2)
-            if base_bare is None:
-                base_bare = bare
-            r["bare_new_mm2"] = round(bare_new_mm2(bare, base_bare), 2)
-        if out is not None and arm in ("off40", "on60", "on60g"):
+            base_bare.setdefault(wt, bare)
+            r["bare_new_mm2"] = round(bare_new_mm2(bare, base_bare[wt]), 2)
+        if out is not None and arm in RENDER_ARMS:
             design = plan_to_design(plan, name=f"owl {route} {arm}")
             render(design, result.ink_source, machine.thread_profile(wt).width_mm,
-                   out, f"{route}_{arm}")
+                   parts, f"{route}_{arm}")
         row["arms"][arm] = r
         print(f"{route}/{arm}: {json.dumps(r)}", flush=True)
     for wt in (40, 60):
         row["census"][wt].pop("_ids")
     if out is not None:
-        compose(out, route)
+        compose(parts, out, route)
     return row
 
 
@@ -330,21 +358,24 @@ def main(argv=None) -> int:
     ap.add_argument("--rembg-python", default=None,
                     help="the isolated rembg venv's python (a worktree has none)")
     ap.add_argument("--out", default=str(ROOT.parent / "docs" / "renders"
-                                         / "hairline-photo-trial-2026-10-12"))
-    ap.add_argument("--table", default="table.json",
-                    help="file name under --out; routes already in it are kept")
+                                         / "claude-hairline-photo-trial"))
+    ap.add_argument("--parts", default=str(ROOT / "debug_out" / "hairline_photo_trial"),
+                    help="lossless per-arm renders (gitignored); strips go to --out")
     args = ap.parse_args(argv)
     if args.rembg_python:
         stage1_photo_prep.REMBG_VENV_PYTHON = Path(args.rembg_python)
-    out = Path(args.out)
+    out, parts = Path(args.out), Path(args.parts)
     out.mkdir(parents=True, exist_ok=True)
-    tpath = out / args.table
-    table = json.loads(tpath.read_text(encoding="utf-8")) if tpath.exists() else {}
+    parts.mkdir(parents=True, exist_ok=True)
+    # One file per route, so routes can run as separate processes; the
+    # combined table is rebuilt from whatever routes are present.
     for route in args.routes:
-        row = run_route(route, out)
-        table[route] = json.loads(json.dumps(row))
-        tpath.write_text(json.dumps(table, indent=1) + "\n", encoding="utf-8")
-    (out / tpath.with_suffix(".md").name).write_text(markdown(table), encoding="utf-8")
+        row = run_route(route, out, parts=parts)
+        (out / f"table_{route}.json").write_text(json.dumps(row, indent=1) + "\n",
+                                                 encoding="utf-8")
+    table = {r: json.loads((out / f"table_{r}.json").read_text(encoding="utf-8"))
+             for r in ROUTES if (out / f"table_{r}.json").exists()}
+    (out / "table.md").write_text(markdown(table), encoding="utf-8")
     print("wrote", out)
     return 0
 
