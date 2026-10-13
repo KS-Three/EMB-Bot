@@ -31,8 +31,9 @@ from collections import OrderedDict
 from functools import lru_cache
 
 import numpy as np
+import shapely
 from shapely import affinity
-from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry import LineString, Point, Polygon, box
 
 from . import machine, stitches
 from .stitches import StitchRun
@@ -44,6 +45,10 @@ _OVERLAP_EPS_MM = 1e-6
 # the thread is better lifted and cut than dragged around the whole shape.
 _TRAVEL_DETOUR_FACTOR = 4.0
 _TRAVEL_DETOUR_FLOOR_MM = 20.0
+# How far past the farthest point a covered route can reach (`travel_path`'s
+# window) its unsewn ground is still built. Twenty times the 0.075 mm inset
+# its rings use, so a ring inside the window is the ring of the whole ground.
+_TRAVEL_WINDOW_MARGIN_MM = 1.5
 
 
 def _ring_moments(coords) -> tuple[float, float, float, float, float, float]:
@@ -600,11 +605,98 @@ def _ring_route(ring: LineString, a: tuple[float, float],
 _EXPOSED_TOLERANCE_MM = machine.TRAVEL_STITCH_MM
 
 
+class _Sewn:
+    """The fill laid so far in one shape, kept as its separate footprints.
+
+    It used to be one geometry, grown by `sewn.union(footprint)` per path, and
+    every covered bridge then asked questions of the WHOLE thing: the unsewn
+    ground was `cover.difference(sewn)` and its inset rings a buffer of that.
+    On owl_kent's 627-path blend region one pricing of an order cost 26 s,
+    almost all of it those three operations on shape-sized geometry
+    (2026-10-13, `docs/photo-cold-profile-2026-10-13.md`). A bridge only ever
+    looks at a neighbourhood -- `travel_path`'s length budget bounds how far
+    any route it returns can stray -- so `clipped` builds the sewn fill of
+    that window alone, and `on_line` measures a line against only the
+    footprints whose boxes meet it (footprints that miss the line's box
+    cannot touch the line). Both answer the same set question the single
+    geometry did; owl_kent's stitches came out byte-identical to the
+    single-geometry code, at 17 s of reorder against 48.
+    """
+
+    __slots__ = ("_parts", "_boxes", "_n")
+
+    def __init__(self) -> None:
+        self._parts = np.empty(64, dtype=object)
+        self._boxes = np.empty((64, 4))
+        self._n = 0
+
+    is_empty = False
+
+    def add(self, footprint) -> "_Sewn":
+        if self._n == len(self._boxes):
+            self._boxes = np.concatenate([self._boxes, np.empty_like(self._boxes)])
+            self._parts = np.concatenate([self._parts, np.empty_like(self._parts)])
+        self._boxes[self._n] = footprint.bounds
+        self._parts[self._n] = footprint
+        self._n += 1
+        return self
+
+    def _hits(self, x0: float, y0: float, x1: float, y1: float) -> np.ndarray:
+        b = self._boxes[:self._n]
+        return np.flatnonzero((b[:, 0] <= x1) & (b[:, 2] >= x0)
+                              & (b[:, 1] <= y1) & (b[:, 3] >= y0))
+
+    def clipped(self, x0: float, y0: float, x1: float, y1: float):
+        """The sewn fill inside the box: each footprint that meets it, cut to
+        it, then unioned -- the box's share of work, not the shape's."""
+        idx = self._hits(x0, y0, x1, y1)
+        if not len(idx):
+            return Polygon()
+        # `intersection`, not `clip_by_rect`: the faster clip builds
+        # three-point rings on a two-pass fill's footprints and GEOS refuses them.
+        return shapely.union_all(shapely.intersection(self._parts[idx],
+                                                      box(x0, y0, x1, y1)))
+
+    def on_line(self, line: LineString) -> float:
+        """Length of `line` over the sewn fill: the line cut by each nearby
+        footprint, and the pieces merged as intervals of distance along the
+        line -- the same set as cutting it by the union, without building
+        the union. (Unioning the pieces as geometry does NOT merge them: two
+        footprints' overlapping pieces differ in the last bits and are kept
+        twice, measured 50% over on owl_kent.)"""
+        idx = self._hits(*line.bounds)
+        if not len(idx):
+            return 0.0
+        pieces = shapely.get_parts(shapely.get_parts(
+            shapely.intersection(line, self._parts[idx])))
+        pieces = pieces[(shapely.get_type_id(pieces) == 1)     # LineStrings
+                        & ~shapely.is_empty(pieces)]
+        if not len(pieces):
+            return 0.0
+        s = shapely.line_locate_point(line, shapely.get_point(pieces, 0))
+        e = shapely.line_locate_point(line, shapely.get_point(pieces, -1))
+        total, hi = 0.0, -math.inf
+        for lo, up in sorted(zip(np.minimum(s, e), np.maximum(s, e))):
+            if up <= hi:
+                continue
+            total += up - max(lo, hi)
+            hi = up
+        return float(total)
+
+
+def _sewn_add(sewn, footprint) -> _Sewn:
+    return (sewn if sewn is not None else _Sewn()).add(footprint)
+
+
 def _exposed_mm(route: list[tuple[float, float]], sewn) -> float:
-    """Length of `route` lying over `sewn`, the footprint of fill already laid."""
+    """Length of `route` lying over `sewn`, the footprint of fill already laid
+    (a geometry, or a `_Sewn`)."""
     if sewn is None or sewn.is_empty or len(route) < 2:
         return 0.0
-    return float(LineString(route).intersection(sewn).length)
+    line = LineString(route)
+    if isinstance(sewn, _Sewn):
+        return sewn.on_line(line)
+    return float(line.intersection(sewn).length)
 
 
 # The unsewn ground a covered bridge routes through, and its inset rings,
@@ -760,7 +852,19 @@ def travel_path(poly: Polygon, ring, a: tuple[float, float],
     # row — a route there rides the seam of the next column, which the next
     # column covers. Then the shape's own rings both ways round (rarely clear,
     # measured), then the exposed route of last resort.
-    unsewn, unsewn_slack, u_rings = _unsewn_ground(cover, sewn)
+    ground, local = cover, sewn
+    if isinstance(sewn, _Sewn):
+        # Every route `along` accepts is at most `budget` long, so each of its
+        # points lies within budget/2 of the midpoint of a-b. The unsewn
+        # ground and its rings are built in that box (plus a margin, so the
+        # rings inside it are the rings of the whole ground), not across the
+        # whole shape -- see `_Sewn`. The route is still checked against the
+        # whole shape below.
+        half = budget / 2.0 + _TRAVEL_WINDOW_MARGIN_MM
+        mx, my = (a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0
+        ground = cover.intersection(box(mx - half, my - half, mx + half, my + half))
+        local = sewn.clipped(mx - half, my - half, mx + half, my + half)
+    unsewn, unsewn_slack, u_rings = _unsewn_ground(ground, local)
     if not unsewn.is_empty:
         # `a` is the last penetration of the column just sewn, so it lies
         # inside `sewn` by construction and a route can only LEAVE the unsewn
@@ -835,7 +939,23 @@ def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
                 cut_bridges: bool = False,
                 ) -> tuple[int, float, float]:
     """-> (cuts, travel stitches, exposed travel stitches) this path ORDER
-    costs, by `fill_region`'s rule.
+    costs: the last figure `_order_cost_walk` yields."""
+    cost = (0, 0.0, 0.0)
+    for cost in _order_cost_walk(paths, poly, ring, slack, entry, trim_at_mm,
+                                 row_mm, cut_bridges):
+        pass
+    return cost
+
+
+def _order_cost_walk(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
+                     slack: Polygon, entry: tuple[float, float] | None,
+                     trim_at_mm: float, row_mm: float | None = None,
+                     cut_bridges: bool = False):
+    """Yields (cuts, travel stitches, exposed travel stitches) this path ORDER
+    has cost so far, after each path, by `fill_region`'s rule -- every figure
+    only grows, so a partial cost is a floor on the whole one, which is what
+    lets `_reorder_for_cover` stop pricing an order already beaten.
+    `_order_cost` is the last of them.
 
     `row_mm` turns on the covered routing `stitch_shape` uses when
     `under_cover` is set — the same `travel_path(..., sewn=...)` call with the
@@ -893,9 +1013,9 @@ def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
                                       - _EXPOSED_TOLERANCE_MM)
         if row_mm is not None and len(path) > 1:
             footprint = _footprint(path, row_mm)
-            sewn = footprint if sewn is None else sewn.union(footprint)
+            sewn = _sewn_add(sewn, footprint)
         cur = path[-1]
-    return cuts, float(travel_stitches), exposed_mm / machine.TRAVEL_STITCH_MM
+        yield cuts, float(travel_stitches), exposed_mm / machine.TRAVEL_STITCH_MM
 
 
 # What one EXPOSED travel stitch — thread lying on top of fill already sewn,
@@ -1180,8 +1300,20 @@ def _reorder_for_cover(paths: list[list[tuple[float, float]]], poly: Polygon,
     ends = [(p[0], p[-1]) for p in paths if p]
     if len(ends) != len(paths):
         return paths
-    before = _order_cost(paths, poly, ring, slack, entry, trim_at_mm, row_mm,
-                         cut_bridges=cut_bridges)
+    # The incoming order is priced lazily: only until it shows exposed travel
+    # (the one thing deciding whether to look for another order at all), and
+    # later only until it costs more than the candidate. Every figure in the
+    # walk only grows, so once the partial cost passes the candidate's the
+    # candidate wins whatever the rest would add -- the same answer the full
+    # price gives. On owl_kent's 627-path region the full price was 22.7 s.
+    walk = _order_cost_walk(paths, poly, ring, slack, entry, trim_at_mm, row_mm,
+                            cut_bridges=cut_bridges)
+    before = (0, 0.0, 0.0)
+    done = True
+    for before in walk:
+        if before[2] > 0.0:
+            done = False
+            break
     # Nothing exposed, nothing to win -- unless `cut_bridges` is why nothing is
     # exposed: the scorer lifts a dear bridge, so an order can read "one cut,
     # nothing on top" and still lose to the order this function would have
@@ -1236,16 +1368,20 @@ def _reorder_for_cover(paths: list[list[tuple[float, float]]], poly: Polygon,
         path = paths[j][::-1] if flip else paths[j]
         if len(path) > 1:
             footprint = _footprint(path, row_mm)
-            sewn = footprint if sewn is None else sewn.union(footprint)
+            sewn = _sewn_add(sewn, footprint)
         cur = path[-1]
         remaining.discard(j)
 
     order.append(pinned)
     candidate = [paths[j][::-1] if j in flipped else paths[j] for j in order]
     assert candidate[-1][-1] == paths[-1][-1], "exit point must be unchanged"
-    after = _order_cost(candidate, poly, ring, slack, entry, trim_at_mm, row_mm,
-                        cut_bridges=cut_bridges)
-    return candidate if _score(after) < _score(before) else paths
+    after = _score(_order_cost(candidate, poly, ring, slack, entry, trim_at_mm,
+                               row_mm, cut_bridges=cut_bridges))
+    if not done:
+        for before in walk:
+            if _score(before) > after:
+                break
+    return candidate if after < _score(before) else paths
 
 
 # Which row-point function each fill `technique` dispatches to inside
@@ -1681,7 +1817,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                                           trim=d > trim_at_mm, shape_id=shape_id))
                     if under_cover and kind == stitches.FILL and len(pts) > 1:
                         footprint = _footprint(pts, row_mm)
-                        sewn = footprint if sewn is None else sewn.union(footprint)
+                        sewn = _sewn_add(sewn, footprint)
                     continue
                 # The bridge starts where the last run ended and finishes where
                 # the next one begins, so both ends belong to their own runs.
@@ -1694,7 +1830,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
             runs.append(StitchRun(points=pts, kind=kind, shape_id=shape_id))
             if under_cover and kind == stitches.FILL and len(pts) > 1:
                 footprint = _footprint(pts, row_mm)
-                sewn = footprint if sewn is None else sewn.union(footprint)
+                sewn = _sewn_add(sewn, footprint)
 
     # `cross_tatami` is laid at its own, longer stitch; split at the
     # lattice's 2.5 mm every 4 mm stitch of it came out as two of 2 mm.
