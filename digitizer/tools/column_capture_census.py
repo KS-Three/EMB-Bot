@@ -20,6 +20,7 @@ stitch / trim / colour-change difference ON vs OFF.
     .venv/Scripts/python -m tools.column_capture_census logo_alpha.png
     .venv/Scripts/python -m tools.column_capture_census --json out.json
     .venv/Scripts/python -m tools.column_capture_census --corpus --on-only         --guard lettering_columns_ink_link        # what a guard flag refuses
+    .venv/Scripts/python -m tools.column_capture_census --signals         --base lettering_columns_skip_blobs lettering_columns_ink_link   # candidate margins
 
 `--guard FLAG...` adds a third arm, lane ON with those flags ON too, and
 lists the shapes the lane takes without them and not with them (`refused`),
@@ -30,6 +31,14 @@ so the lane arm here PINS THEM OFF explicitly: "lane ON" means the lane
 without its guards, which is what this census was built to measure, and the
 `--guard` arm turns them back on. With no `--guard` the lane arm is the
 pre-flip lane; with `--guard GUARD_FLAGS` the guard arm is today's default.
+`--base FLAG...` turns flags ON in EVERY arm, over that pin (a new guard
+judged with the others already ON).
+
+`--signals` measures each candidate signal for a new guard on the corpus:
+the lane's NOT-LETTER house-group-only captures against every labelled
+letter and every house-only shape taken on an unlabelled fixture, and the
+gap between them (`margins`). OCR confidence is measured only where
+`tesseract` is on PATH, and says so when it is not.
 """
 from __future__ import annotations
 
@@ -94,6 +103,7 @@ def lane_takes(path, cfg):
 
 
 def shape_row(region, label=None):
+    from digitizer_core.columns import skeleton_nodes
     m = region.meta or {}
     x0, y0, x1, y1 = region.polygon.bounds
     poly = region.polygon
@@ -102,6 +112,7 @@ def shape_row(region, label=None):
         "stroke_over_h": round(w_mean / max(y1 - y0, x1 - x0, 1e-9), 3),
         "solidity": round(poly.area / max(poly.convex_hull.area, 1e-9), 3),
         "holes": len(getattr(poly, "interiors", []) or []),
+        "skeleton_nodes": skeleton_nodes(poly),
         "shape_id": region.shape_id,
         "w_mm": round(x1 - x0, 2), "h_mm": round(y1 - y0, 2),
         "area_mm2": round(region.polygon.area, 2),
@@ -127,7 +138,7 @@ def census_one(fixture: str, cfg_kw: dict, truth_case: str | None = None,
                          "taken": [], "declined": [], "secs": 0}
             continue
         t = time.time()
-        cfg = PipelineConfig(**cfg_kw, lettering_columns=on, **GUARDS_PINNED_OFF)
+        cfg = PipelineConfig(**{**GUARDS_PINNED_OFF, **cfg_kw}, lettering_columns=on)
         res, plan, taken, declined = lane_takes(path, cfg)
         s = plan.stats
         arms[arm] = {"stitches": s.stitch_count, "trims": s.trims,
@@ -157,8 +168,8 @@ def census_one(fixture: str, cfg_kw: dict, truth_case: str | None = None,
             if lab:
                 out["truth"] = "scored"
     if guard:
-        cfg = PipelineConfig(**cfg_kw, lettering_columns=True,
-                             **{**GUARDS_PINNED_OFF, **{k: True for k in guard}})
+        cfg = PipelineConfig(**{**GUARDS_PINNED_OFF, **cfg_kw, **{k: True for k in guard}},
+                             lettering_columns=True)
         res_g, plan_g, taken_g, _decl = lane_takes(path, cfg)
         s = plan_g.stats
         arms["guard"] = {"flags": list(guard), "stitches": s.stitch_count, "trims": s.trims,
@@ -169,6 +180,131 @@ def census_one(fixture: str, cfg_kw: dict, truth_case: str | None = None,
         out["gained"] = sorted(set(taken_g) - set(arms["on"]["taken"]))
     out.update(arms)
     return out
+
+
+# --- `--signals`: which shape signal separates a false capture from a letter?
+#
+# The candidates measured for `cfg.lettering_columns_icon_guard` (PR body
+# has the table). Each is read off a tagged shape; `margins` then sets the
+# lane's NOT-LETTER house-only captures against every hand-labelled letter
+# and against the house-only shapes the lane takes on an unlabelled fixture
+# (golden_tee's swashes, which are letters).
+
+def _line_residual(region, mates) -> float | None:
+    """Off the reading line: the smallest, over house-group mates of like
+    height (0.8-1.25x), of the larger of the top and bottom offsets, over the
+    shape's height. None with no like-height mate."""
+    x0, y0, x1, y1 = region.polygon.bounds
+    h = max(y1 - y0, 1e-9)
+    best = None
+    for o in mates:
+        if o is region:
+            continue
+        ox0, oy0, ox1, oy1 = o.polygon.bounds
+        if not 0.8 <= (oy1 - oy0) / h <= 1.25:
+            continue
+        d = max(abs(oy0 - y0), abs(oy1 - y1)) / h
+        best = d if best is None else min(best, d)
+    return best
+
+
+def shape_signals(regions, ocr: bool) -> dict[str, dict]:
+    """Every candidate signal for every tagged shape, by shape id."""
+    import cv2
+    import numpy as np
+    from digitizer_core import textcluster as tc
+    from digitizer_core.columns import skeleton_nodes
+    from digitizer_core.shapefield import rasterize_polygon
+
+    mates = {}
+    for g in tc._lettering_groups(regions):
+        for r in g:
+            mates[r.shape_id] = g
+    out = {}
+    for r in regions:
+        m = r.meta or {}
+        if not (m.get("text_candidate") or m.get("lettering_group")):
+            continue
+        p = r.polygon
+        x0, y0, x1, y1 = p.bounds
+        mask, *_ = rasterize_polygon(p) if p.geom_type == "Polygon" else (None,)
+        hu1 = None
+        if mask is not None and mask.any():
+            v = float(cv2.HuMoments(cv2.moments(mask, binaryImage=True))[0, 0])
+            hu1 = round(float(-np.sign(v) * np.log10(abs(v))), 3) if v else 0.0
+        conf = tc._ocr_glyph_guess(p)[1] if ocr else None
+        res = _line_residual(r, mates[r.shape_id]) if r.shape_id in mates else None
+        out[r.shape_id] = {
+            "skeleton_nodes": skeleton_nodes(p),
+            "stroke_over_h": 2.0 * p.area / max(p.length, 1e-9) / max(x1 - x0, y1 - y0, 1e-9),
+            "solidity": p.area / max(p.convex_hull.area, 1e-9),
+            "holes": len(getattr(p, "interiors", []) or []),
+            "hu1": hu1,
+            "line_residual": res,
+            "ocr_confidence": conf,
+        }
+    return out
+
+
+SIGNALS = ("skeleton_nodes", "stroke_over_h", "solidity", "holes", "hu1",
+           "line_residual", "ocr_confidence")
+
+
+def margins(captures: list[dict], letters: list[dict], keep: list[dict]) -> dict[str, dict]:
+    """Per signal: the ranges, and the gap between captures and the shapes
+    that must be kept (letters + `keep`), in whichever direction is wider.
+    A gap <= 0 means no threshold on that signal alone separates them."""
+    out = {}
+    for k in SIGNALS:
+        cv = [c[k] for c in captures if c.get(k) is not None]
+        lv = [c[k] for c in letters + keep if c.get(k) is not None]
+        if not cv or not lv:
+            out[k] = {"gap": None, "why": "not measured"}
+            continue
+        above, below = min(cv) - max(lv), min(lv) - max(cv)
+        out[k] = {"captures": [round(min(cv), 3), round(max(cv), 3)],
+                  "kept": [round(min(lv), 3), round(max(lv), 3)],
+                  "gap": round(max(above, below), 3),
+                  "side": "captures above" if above >= below else "captures below"}
+    return out
+
+
+def signals_census(cases=None, base=None) -> dict:
+    """Run each corpus case with the lane (and `base` flags) ON; return the
+    three populations and `margins` over them."""
+    import shutil
+    from digitizer_core import PipelineConfig
+    from tools.thin_strokes import corpus_cases
+
+    ocr = shutil.which("tesseract") is not None
+    truth = json.loads(TRUTH.read_text(encoding="utf-8"))["fixtures"]
+    captures, letters, keep = [], [], []
+    for name, path, width, garment in corpus_cases():
+        if cases and name not in cases:
+            continue
+        cfg = PipelineConfig(target_width_mm=width, garment_id=garment, max_colors=6,
+                             lettering_columns=True, **{k: True for k in (base or [])})
+        res, _plan, taken, _decl = lane_takes(path, cfg)
+        sig = shape_signals(res.regions, ocr)
+        by_id = {r.shape_id: r for r in res.regions}
+        tr = truth.get(name)
+        lab = {s for ids in tr["lines"].values() for s in ids} if tr else set()
+        ign = set(tr.get("ignore", [])) if tr else set()
+        if lab and not lab <= set(by_id):
+            lab, ign = set(), set()                      # stale: not scored
+        for sid, s in sig.items():
+            m = by_id[sid].meta
+            s = dict(s, case=name, shape_id=sid)
+            house_only = m.get("lettering_group") and not m.get("text_candidate")
+            if sid in lab:
+                letters.append(s)
+            elif lab and sid not in ign and sid in taken and house_only:
+                captures.append(s)
+            elif not tr and sid in taken and house_only:
+                keep.append(s)
+        print(f"  {name}: tagged {len(sig)} letters {len(lab & set(sig))}", flush=True)
+    return {"ocr": ocr, "captures": captures, "letters": letters, "keep": keep,
+            "margins": margins(captures, letters, keep)}
 
 
 def colour_grid():
@@ -202,7 +338,7 @@ def render_pair(name: str, source, cfg_kw: dict, out: Path, *, flags_on: dict | 
     designs, takens, regions = {}, {}, {}
     for tag, kw in (("off", {"lettering_columns": guard}),
                     ("on", {"lettering_columns": True, **(flags_on or {})})):
-        cfg = PipelineConfig(**cfg_kw, **{**GUARDS_PINNED_OFF, **kw})
+        cfg = PipelineConfig(**{**GUARDS_PINNED_OFF, **cfg_kw, **kw})
         res, plan, taken, _decl = lane_takes(source, cfg)
         designs[tag] = plan_to_design(plan, name=f"{name} {tag}")
         takens[tag] = taken
@@ -302,7 +438,28 @@ def main(argv=None) -> int:
                     help="the real-art corpus at the settings the hand labels were made at")
     ap.add_argument("--render", type=Path, help="write OFF|ON renders of the named fixtures here")
     ap.add_argument("--grid", action="store_true", help="the synthetic twelve-patch colour grid only")
+    ap.add_argument("--base", nargs="*", default=[],
+                    help="config flags ON in EVERY arm (e.g. the guards already flipped)")
+    ap.add_argument("--signals", action="store_true",
+                    help="corpus: each candidate signal's margin, false captures vs letters")
     args = ap.parse_args(argv)
+
+    base = {k: True for k in args.base}
+    if args.signals:
+        r = signals_census(args.fixtures or None, args.base)
+        print(f"OCR {'available' if r['ocr'] else 'UNAVAILABLE (tesseract not found): not measured'}")
+        for name in ("captures", "keep"):
+            for s in r[name]:
+                print(f"  {name[:-1] if name == 'captures' else 'keep'} {s['case']} {s['shape_id']} "
+                      + " ".join(f"{k}={s[k] if not isinstance(s[k], float) else round(s[k], 3)}"
+                                 for k in SIGNALS))
+        print(f"{len(r['captures'])} captures, {len(r['letters'])} labelled letters, "
+              f"{len(r['keep'])} house-only shapes taken on unlabelled fixtures")
+        for k, v in r["margins"].items():
+            print(f"  {k:15s} {v}")
+        if args.json:
+            args.json.write_text(json.dumps(r, indent=1, default=str), encoding="utf-8")
+        return 0
 
     inv = {v: k for k, v in TRUTH_CASE_FILE.items()}
     results = []
@@ -313,7 +470,7 @@ def main(argv=None) -> int:
             if args.fixtures and name not in args.fixtures:
                 continue
             rel = path.relative_to(TESTDATA).as_posix()
-            kw = {"target_width_mm": width, "garment_id": garment, "max_colors": 6}
+            kw = {"target_width_mm": width, "garment_id": garment, "max_colors": 6, **base}
             r = census_one(rel, kw, name if name in TRUTH_CASE_FILE else None, on_only=args.on_only,
                            guard=args.guard)
             r["case"] = name
@@ -345,7 +502,7 @@ def main(argv=None) -> int:
     if args.render:
         for f in matrix(args.fixtures):
             kw = {"target_width_mm": args.width, "garment_id": args.garment,
-                  "max_colors": args.max_colors}
+                  "max_colors": args.max_colors, **base}
             for p in render_pair(Path(f).stem, TESTDATA / f, kw, args.render,
                                  zoom_ids=args.ids or None,
                                  flags_on={k: True for k in (args.flag or args.guard)},
@@ -354,7 +511,7 @@ def main(argv=None) -> int:
         return 0
     for f in matrix(args.fixtures):
         kw = {"target_width_mm": args.width, "garment_id": args.garment,
-              "max_colors": args.max_colors}
+              "max_colors": args.max_colors, **base}
         try:
             r = census_one(f, kw, inv.get(f), on_only=args.on_only, guard=args.guard)
         except Exception as exc:  # noqa: BLE001

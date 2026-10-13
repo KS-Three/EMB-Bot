@@ -2146,9 +2146,20 @@ class PipelineConfig:
     # PR body: per-fixture OFF vs ON table). ON by Kent's ruling 2026-10-13:
     # enthusiast's star goes back to fill (+159 stitches). The phone
     # screenshot's status icons are STILL captured (dE 0.0 / 0.0 / 9.1 from
-    # the text ink); a shape/OCR guard is queued separately. False writes no
+    # the text ink); the shape guard for them is `lettering_columns_icon_guard`
+    # below (built OFF). False writes no
     # key and reads none. Tests: `tests/test_column_capture.py`.
     lettering_columns_ink_link: bool = True
+    # Under `lettering_columns`, refuse a HOUSE-GROUP-ONLY shape whose medial
+    # axis is a tangle: `columns.is_drawing_fragment`, junctions plus free
+    # ends of the pruned skeleton >= `columns.ICON_GUARD_MIN_NODES` (24).
+    # Census (`tools/column_capture_census.py --signals`, PR body): the phone
+    # screenshot's three 4.5-6 mm captures read 36-45, which neither guard
+    # above reaches (not blobs; the text's own grey); every hand-labelled
+    # letter reads <= 13 and golden_tee's swashes <= 8. Composes with both.
+    # Built OFF (Kent's call to flip); False reads nothing.
+    # Tests: `tests/test_column_capture.py`.
+    lettering_columns_icon_guard: bool = False
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
     # failure E). ON, `words.tag_words` finds each line of lettering once --
