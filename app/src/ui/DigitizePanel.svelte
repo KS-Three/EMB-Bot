@@ -2553,6 +2553,8 @@
               {@const textCand = !dead && !unstitched && !!row.textCandidate}
               {@const rgb = effRgb(row, overrides)}
               {@const tier = effTier(row, overrides)}
+              {@const rowShades = dead || unstitched ? [] : machineBlocksForRows(machineBlocks, [row])}
+              {@const blendShades = rowShades.length > 1 ? rowShades : []}
               {@const siblings = dead || unstitched ? [] : layerSiblings(row, sewableShapes, overrides)}
               {@const siblingIdx = siblings.findIndex((r) => r.id === row.id)}
               <li
@@ -2607,6 +2609,9 @@
                       {/if}
                     {:else}
                       <ThreadPicker {rgb} compact name={rowAria} on:pick={(e) => recolorShape(row.id, e.detail)} />
+                      {#if blendShades.length}
+                        <span class="dgp-lnote" title="Changes the base color only; the blend shades keep their own threads.">base color only</span>
+                      {/if}
                       <!-- The name is the row's handle onto the canvas: click
                            it and the field selects this shape, the amber
                            outline showing which one. Only a sewing row gets
@@ -2621,6 +2626,19 @@
                       >{rowName(row)}</button>
                       <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
                       <span class="dgp-ltier tier-{tier || 'none'}">{tier || "not sewn"}</span>
+                      {#if blendShades.length}
+                        <!-- Same markup as the Color sequence's "sews as". -->
+                        <span class="dgp-seq-shades dgp-lshades" title="This shape sews as {blendShades.length} threads">
+                          {#each blendShades as cone}
+                            <span class="dgp-seq-shade">
+                              <span
+                                class="dgp-seq-swatch dgp-seq-swatch-sm"
+                                style="background: rgb({cone.rgb[0]},{cone.rgb[1]},{cone.rgb[2]})"
+                              ></span>{cone.number}
+                            </span>
+                          {/each}
+                        </span>
+                      {/if}
                       <!-- The border this row actually has on it (borderMenu
                            .js's shapeBorderState), beside the tier badge
                            because the two answer the same question about the
@@ -2679,7 +2697,7 @@
                         aria-label={"Stitch type — " + rowAria}
                         use:tip={"shapeTier"}
                       >
-                        <option value="auto">Auto{row.tier ? " (" + row.tier + ")" : ""}</option>
+                        <option value="auto">Auto{blendShades.length ? " (blended, " + blendShades.length + " shades)" : row.tier ? " (" + row.tier + ")" : ""}</option>
                         <option value="satin">Satin</option>
                         <option value="fill">Fill</option>
                         <option value="run">Run</option>
@@ -3282,6 +3300,8 @@
   }
   .dgp-seq-shade { display: inline-flex; align-items: center; gap: 3px; }
   .dgp-seq-swatch-sm { width: 9px; height: 9px; }
+  .dgp-lshades { font-size: 10px; }
+  .dgp-lnote { font-size: 10px; opacity: 0.7; }
   .dgp-seq-btns { display: flex; gap: 2px; flex: none; }
   /* Bounded, with its own scroll. One shape per row and no ceiling meant a
      31-shape logo pushed everything after the list -- thread-per-color,

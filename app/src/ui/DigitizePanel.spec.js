@@ -590,6 +590,32 @@ describe("Sequencer view", () => {
     expect(getByText("1000").closest("li")).not.toHaveTextContent("sews as");
   });
 
+  test("the Shapes row of a blended shape shows one swatch per shade and labels the tier", async () => {
+    const stats = {
+      blocks: [
+        { number: "1000", name: "Red", rgb: [200, 0, 0], shape_ids: ["a"] },
+        { number: "2100", name: "Dark green", rgb: [0, 120, 0], shape_ids: ["b"] },
+        { number: "2000", name: "Green", rgb: [0, 200, 0], shape_ids: ["b"] },
+        { number: "2200", name: "Light green", rgb: [0, 240, 0], shape_ids: ["b"] },
+      ],
+    };
+    const { container } = renderPanel(
+      [shapeRow("a", { layer: 0 }), shapeRow("b", { layer: 1, blended: true })],
+      { stats },
+    );
+    const plain = container.querySelector('[data-shape-id="a"]');
+    const blended = container.querySelector('[data-shape-id="b"]');
+    expect(blended.querySelectorAll(".dgp-lshades .dgp-seq-swatch")).toHaveLength(3);
+    expect(blended.querySelector(".dgp-lshades")).toHaveTextContent("2100");
+    expect(blended.querySelector(".dgp-lshades")).toHaveTextContent("2200");
+    expect(blended.querySelector("select option[value=auto]")).toHaveTextContent("Auto (blended, 3 shades)");
+    expect(blended).toHaveTextContent("base color only");
+    // A one-thread shape keeps the plain row and label.
+    expect(plain.querySelector(".dgp-lshades")).toBeNull();
+    expect(plain.querySelector("select option[value=auto]")).toHaveTextContent("Auto (fill)");
+    expect(plain).not.toHaveTextContent("base color only");
+  });
+
   test("a shape hidden or unstitched doesn't get its own block", async () => {
     const rows = [
       shapeRow("a", { layer: 0 }),
