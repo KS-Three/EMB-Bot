@@ -217,7 +217,7 @@ def shape_signals(regions, ocr: bool) -> dict[str, dict]:
         hu1 = None
         if mask is not None and mask.any():
             v = float(cv2.HuMoments(cv2.moments(mask, binaryImage=True))[0, 0])
-            hu1 = round(-np.sign(v) * np.log10(abs(v)), 3) if v else 0.0
+            hu1 = round(float(-np.sign(v) * np.log10(abs(v))), 3) if v else 0.0
         conf = tc._ocr_glyph_guess(p)[1] if ocr else None
         res = _line_residual(r, mates[r.shape_id]) if r.shape_id in mates else None
         out[r.shape_id] = {
