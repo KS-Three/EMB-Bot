@@ -150,8 +150,13 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 # fold saves 305 stitches and 181 mm of flying (16,998 against 17,303),
 # the seam closing is byte-identical, and the claim is measured where it
 # was made.
+# ... and `lettering_columns` False (the Column lane went ON by default
+# 2026-10-12, Kent): it sews drone's lettering from the outline, and the fold's
+# thread price under it reads 17,041 against a 16,981 ceiling (CI, PR #863).
+# The engine these claims were measured on has the skeleton tier.
 PRE_FLIP_RC = {"robust_region_colour": False, "keep_thin_strokes": False,
-               "satin_corner_twigs": False, "satin_rail_comp": False}
+               "satin_corner_twigs": False, "satin_rail_comp": False,
+               "lettering_columns": False}
 
 
 @pytest.fixture(scope="module")
@@ -292,21 +297,14 @@ def test_off_leaves_the_design_exactly_as_it_was(drone_off):
 # regression on the shipped path now shows up somewhere.
 
 
-# Held on the skeleton tier (`lettering_columns=False`) since the Column lane
-# went ON by default (Kent, 2026-10-12): with the lane the fold's stitch price
-# on drone @ 80 mm reads 17,041 against 16,981 (2.4% over the 2% alarm below;
-# measured by CI on PR #863). That is a number for the lane to answer, not
-# a re-pin made here.
 @pytest.fixture(scope="module")
 def drone_shipped_off():
-    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=False,
-                               lettering_columns=False))
+    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=False))
 
 
 @pytest.fixture(scope="module")
 def drone_shipped_on():
-    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True,
-                               lettering_columns=False))
+    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True))
 
 
 def _artwork_revisits(plan) -> int:
