@@ -541,7 +541,7 @@
     } : null;
     const splitSegmentMm = opts.splitSegmentMm > 0 ? opts.splitSegmentMm : undefined;
     const underpathStepMm = opts.underpathStepMm > 0 ? opts.underpathStepMm : UNDERPATH_STEP_MM;
-    const satinOpts = { spacingMm, pxPerMm, pullCompMm, weightMm, slantDeg, minCrossMm, counterGuard, shortStitch, splitAboveMm, splitSegmentMm, splitStats: splitAboveMm > 0 ? report : null };
+    const satinOpts = { spacingMm, pxPerMm, pullCompMm, weightMm, slantDeg, minCrossMm, counterGuard, shortStitch, splitAboveMm, splitSegmentMm, splitStats: splitAboveMm > 0 ? report : null, zigzag: opts.zigzag === true };
     const ws = G.map((g) => g.w).sort((a, b) => a - b);
     const medW = ws[ws.length >> 1] || 4;
     const mergeR = Math.max(2, 1.3 * medW);
@@ -889,6 +889,9 @@
     const fillOn = o.wideColumnFill === true ? SATIN_MAX_WIDTH_MM
       : (typeof o.wideColumnFill === "number" && o.wideColumnFill > 0 ? o.wideColumnFill : 0);
     guardOpts.splitAboveMm = splitOn ? splitOn / fitScale : 0;
+    // `satinZigzag` (built OFF 2026-10-13): constant rail order in the satin
+    // emitter — see `zigzag` in satinplay.emitZigzag. Only `true` turns it on.
+    guardOpts.zigzag = o.satinZigzag === true;
     // The SEGMENT rides the fit scale too, and forgetting that is the whole
     // bug: leaving it at 3.0 while the threshold is pre-divided makes k come
     // out of ceil(cross / 3.0 LAYOUT mm), which on a design scaled 8x is
