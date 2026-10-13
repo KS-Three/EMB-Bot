@@ -48,6 +48,12 @@
    "basis": "docs/hairline-prototype-2026-10-12.md"
   },
   {
+   "path": "digitizer/testdata/synthetic/lowercase_aileron.png",
+   "status": "synthetic",
+   "source": "Drawn by digitizer/tools/lowercase_angle.py --make-fixture: HAMBURGEFONTSIVYLP / hamburgefontsivylp set in Pillow's bundled Aileron font (CC0 glyphs); no client art",
+   "basis": "digitizer/tools/lowercase_angle.py; docs/renders/claude-lowercase-house-angle/"
+  },
+  {
    "path": "digitizer/testdata/bg_uncertain.png",
    "status": "synthetic",
    "source": "Generated synthetic logo (make_test_logo.py / classifier-lens table)",
