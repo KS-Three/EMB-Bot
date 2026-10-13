@@ -97,18 +97,21 @@ ROIS = {
     "1895": (0.537, 0.190, 0.620, 0.256),
     "the": (0.440, 0.315, 0.562, 0.397),
     "tagline": (0.344, 0.684, 0.680, 0.782),
-    "accent_e": (0.262, 0.372, 0.346, 0.432),
-    "m_o_junction": (0.660, 0.420, 0.790, 0.585),
-    "final_t": (0.860, 0.420, 0.975, 0.585),
+    # 5-7 are where Kent's red pen strokes POINT (his marks are annotation,
+    # not thread): HOTEL's E upper arm end; FREMONT's M at its V vertex on
+    # the baseline, beside the O; the foot of N's diagonal before the T.
+    "accent_e": (0.285, 0.395, 0.340, 0.475),
+    "m_o_junction": (0.655, 0.480, 0.720, 0.580),
+    "final_t": (0.860, 0.490, 0.912, 0.590),
 }
 CIRCLES = [
     ("est", "1. EST ragged"),
     ("1895", "2. 1895 missing / reads 098"),
     ("the", "3. THE garbled"),
     ("tagline", "4. EAT | STAY | PLAY illegible"),
-    ("accent_e", "5. stray accent over HOTEL's E"),
-    ("m_o_junction", "6. loop at FREMONT's M->O"),
-    ("final_t", "7. tick after the final T"),
+    ("accent_e", "5. mark over HOTEL's E (upper arm end)"),
+    ("m_o_junction", "6. loop at FREMONT's M vertex (M->O)"),
+    ("final_t", "7. tick at N's diagonal foot, before the final T"),
 ]
 
 
@@ -127,7 +130,8 @@ def _decode(data: bytes):
     return raw
 
 
-def run_arm(arm: str, width_mm: float = KENT_WIDTH_MM, core: str | None = None) -> dict:
+def run_arm(arm: str, width_mm: float = KENT_WIDTH_MM, core: str | None = None,
+            preflight: bool = True) -> dict:
     """Digitize the fixture the way /digitize does for `arm`. Returns
     {result, plan, design, preflight, gen, taken, declined, cfg_dict, secs}."""
     from digitizer_core import PipelineConfig
@@ -165,8 +169,9 @@ def run_arm(arm: str, width_mm: float = KENT_WIDTH_MM, core: str | None = None) 
         if real is not None:
             s7.lettering_columns_shape = real
     design = plan_to_design(plan, name="Digitized design")
-    pre = run_preflight(result, plan, cfg, image=pixels) if cfg.preflight else None
-    return {"result": result, "plan": plan, "design": design, "preflight": pre,
+    t_plan = round(time.time() - t, 1)
+    pre = run_preflight(result, plan, cfg, image=pixels) if (preflight and cfg.preflight) else None
+    return {"secs_to_plan": t_plan,"result": result, "plan": plan, "design": design, "preflight": pre,
             "gen": gen, "taken": taken, "declined": declined, "cfg_dict": cfg_dict,
             "cfg": cfg, "secs": round(time.time() - t, 1)}
 
@@ -189,7 +194,9 @@ def _tier_of(plan, region_ids: set[str]) -> dict[str, list[str]]:
     from digitizer_core import preflight as pf
     kinds: dict[str, set] = {}
     for _b, r in plan.iter_runs():
-        if r.shape_id and not r.jump:
+        # `jump` on a run means "jump to its start", not "no thread": the
+        # 1895 digits' bean runs all carry it.
+        if r.shape_id and r.points:
             own = pf._owning_region_id(r.shape_id, region_ids)
             if own is not None:
                 kinds.setdefault(own, set()).add(r.kind)
@@ -201,6 +208,7 @@ def _tier_of(plan, region_ids: set[str]) -> dict[str, list[str]]:
 # everywhere and says nothing. Letter ink is the non-white artwork, and it
 # counts as sewn only where NON-WHITE thread lands on it.
 WHITE_MIN = 215          # a channel minimum at or above this is the white patch
+STRAY_MM = 0.4           # how far off the ink a non-white needle point is "stray"
 
 
 def _thread_rgb(region, plan) -> tuple[int, int, int]:
@@ -269,6 +277,33 @@ def roi_census(run: dict) -> dict:
     pts = np.asarray(pts, float)
     trims_at = np.asarray(trims_at, float).reshape(-1, 2)
 
+    # Stray thread: non-white needle points that land off the artwork's
+    # non-white ink by more than STRAY_MM -- an accent, a tick or a loop is
+    # exactly that. Read per run so the owning shape and run kind are named.
+    import cv2
+    k = max(1, int(round(STRAY_MM * p.px_per_mm)))
+    near_ink = cv2.dilate(ink.astype(np.uint8), np.ones((2 * k + 1, 2 * k + 1), np.uint8)) > 0
+    dark_pts = []          # (x, y, shape_id, kind)
+    for b, r in plan.iter_runs():
+        if min(b.rgb) >= WHITE_MIN:
+            continue
+        for (x, y) in r.points:
+            dark_pts.append((x, y, r.shape_id, r.kind))
+
+    def stray_in(bx0, by0, bx1, by1):
+        hits: dict[str, int] = {}
+        n_dark = 0
+        for (x, y, sid, kind) in dark_pts:
+            if not (bx0 <= x <= bx1 and by0 <= y <= by1):
+                continue
+            n_dark += 1
+            px = int(np.clip(x * p.px_per_mm + cx, 0, w - 1))
+            py = int(np.clip(y * p.px_per_mm + cy, 0, h - 1))
+            if not near_ink[py, px]:
+                key = f"{sid}:{kind}"
+                hits[key] = hits.get(key, 0) + 1
+        return n_dark, hits
+
     out = {}
     for name, frac in ROIS.items():
         bx0, by0, bx1, by1 = roi_mm(p, frac)
@@ -308,7 +343,7 @@ def roi_census(run: dict) -> dict:
                 "column_lane": r.shape_id in taken,
                 "text_candidate": bool(m.get("text_candidate")),
                 "lettering_group": bool(m.get("lettering_group")),
-                "ink_stray": bool(m.get("ink_stray")),
+                "ink_stray": bool(m.get("lettering_ink_stray")),
                 # The two small-detail rules (stage 4's run-tier floor,
                 # stage 7's run routing): is this shape under either?
                 "under_run_loop_floor": perim < machine.RUN_MIN_LOOP_MM,
@@ -324,8 +359,12 @@ def roi_census(run: dict) -> dict:
         if len(trims_at):
             tx, ty = trims_at[:, 0], trims_at[:, 1]
             in_trims = int(((tx >= bx0) & (tx <= bx1) & (ty >= by0) & (ty <= by1)).sum())
+        n_dark, stray = stray_in(bx0, by0, bx1, by1)
         out[name] = {
             "box_mm": [round(v, 2) for v in (bx0, by0, bx1, by1)],
+            "dark_points": n_dark,
+            "stray_points": sum(stray.values()),
+            "stray_by_run": dict(sorted(stray.items(), key=lambda kv: -kv[1])),
             "ink_mm2": round(float(ink_c.sum()) * cell * cell, 2),
             "ink_bare_mm2": round(float((ink_c & ~cov_c).sum()) * cell * cell, 2),
             "ink_unclaimed_mm2": round(float((ink_c & ~claimed_c).sum()) * cell * cell, 2),
@@ -343,11 +382,13 @@ def arm_summary(arm: str, run: dict) -> dict:
     pre = run["preflight"] or {}
     unc = next((f for f in pre.get("findings", []) if f.get("code") == pf.ARTWORK_UNCOVERED), None)
     colours = len({tuple(b.rgb) for b in run["plan"].blocks})
+    import digitizer_core
     return {
         "arm": arm,
+        "core": str(Path(digitizer_core.__file__).parent),
         "request": run["cfg_dict"], "overrides": ARMS[arm],
         "fixture": str(FIXTURE.relative_to(ROOT)).replace("\\", "/"),
-        "secs": run["secs"],
+        "secs": run["secs"], "secs_to_plan": run.get("secs_to_plan"),
         "stitches": s.stitch_count, "trims": s.trims, "jumps": s.jumps,
         "color_changes": s.color_changes, "colours": colours,
         "size_mm": [round(v, 1) for v in s.size_mm],
