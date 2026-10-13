@@ -39,8 +39,9 @@ from . import analysis as an
 from . import features as ft
 from .features import base_cfg, digitize_once, features_design_only, features_full
 from .filearm import design_from_file
-from .pairs import (ARMS, BASE, EXCLUDED_FIXTURES, ArmRun, build_pairs, design_hash,
-                    load_picks, now_iso, sealed_hash, unpicked)
+from .pairs import (ARMS, BASE, EXCLUDED_FIXTURES, N_IDENTICAL, N_REPEAT, SHUFFLE_SEED,
+                    ArmRun, build_pairs, design_hash, load_picks, now_iso, sealed_hash,
+                    unpicked)
 from .refarm import (add_worktree, discard_worktree, link_photo_prep, ref_environment,
                      run_ref_design)
 from .server import PORT, make_server
@@ -294,8 +295,15 @@ def _place(src: Path, dst: Path) -> None:
         shutil.copy2(src, dst)
 
 
-def pair(out=OUT) -> int:
+def pair(out=OUT, *, seed: int = SHUFFLE_SEED, n_identical: int = N_IDENTICAL,
+         n_repeat: int = N_REPEAT, arms=None, balance_live: bool = False) -> int:
     """Build the sitting from every rendered arm; -> the pair count.
+
+    `seed`, `n_identical`, `n_repeat` and `arms` (the arm names to pair;
+    `base` is always kept) default to what every earlier sitting used, so the
+    CLI is unchanged; `tools.eye_pairs.sitting` passes a pre-registered seed
+    and the arm list its manipulation check left standing, and asks for the
+    arm on the left in exactly half of the LIVE pairs (`balance_live`).
 
     The identity of a sitting is the SEALED map — what each opaque id
     actually shows. `sitting.json` records its hash, and once picks exist
@@ -314,6 +322,8 @@ def pair(out=OUT) -> int:
             dpath = out / "designs" / f"{name}__{arm}.json"
             if "error" in row or not dpath.exists():
                 continue
+            if arms is not None and arm != BASE and arm not in arms:
+                continue
             # `--render` records the hash with the row. A row rendered before
             # it did has none — no FEATURES_SCHEMA bump came with the field,
             # on purpose — and is hashed from its design as before.
@@ -321,7 +331,8 @@ def pair(out=OUT) -> int:
                 json.loads(dpath.read_text(encoding="utf-8")))
             runs.append(ArmRun(name, arm, sewn,
                                design_only=bool(row.get("design_only", False))))
-    public, sealed, skipped = build_pairs(runs)
+    public, sealed, skipped = build_pairs(runs, seed=seed, n_identical=n_identical,
+                                          n_repeat=n_repeat, balance_live=balance_live)
     new_hash = sealed_hash(sealed)
 
     picks_log, sitting = out / "picks.jsonl", out / "sitting.json"

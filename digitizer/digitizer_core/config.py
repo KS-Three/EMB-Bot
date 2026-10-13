@@ -217,6 +217,18 @@ class PipelineConfig:
     # gradient lanes (drawn hair, where strands ARE shapes) it changes
     # nothing. Candidate, unsewn (gate 1). Off, byte-identical.
     hairline_from_lines: bool = False
+    # Hairline coverage guard (2026-10-13, default OFF; needs `hairline` on).
+    # A shape whose hairline runs would leave more than
+    # `stage6_hairline.COVERAGE_GUARD_MM2` of its own ink bare (a 0.4 mm
+    # ribbon on a wider stroke, a strand the walk dropped:
+    # `stage6_hairline.strand_bare_mm2`, predicted from the shape alone) is
+    # handed back to the ladder it takes with the tier off, whole, in
+    # stage 5 and stage 7 alike -- `cfg.hairline` ON then adds no bare
+    # fabric or ARTWORK_UNCOVERED on logos
+    # (docs/renders/claude-hairline-coverage-guard/). The threshold is a
+    # plan-quality candidate from the logo distribution, not a machine
+    # constant (gate 1). Off, byte-identical. The flip is Kent's.
+    hairline_coverage_guard: bool = False
     max_colors: int = 12
     # Make `max_colors` true on EVERY lane, not just the flat one. Default
     # OFF and byte-identical off — it only ever runs when a design already
