@@ -32,6 +32,29 @@ fence. Each of these is thin enough to pass the width gate.
     and the walk drops them. **The next step is upstream:** hair has to reach stage 6 as
   lines. See "What next" below for three options; that choice is Kent's.
 
+## Since this was measured: the drop guard (#879)
+
+After these runs, `main` merged the drop guard
+(`stage6_hairline.DROP_GUARD`). A shape whose walk would drop more than 2%
+of its strand length is handed back whole to its OFF ladder. It sits after
+the line test and composes with it.
+
+**Every table below predates the guard.** The guard answers this doc's "it
+drops 10 strands" from the other side. On the `classical` route at 40 wt,
+the census on the merged tree reads:
+
+| | candidates | run branches | handed back by the guard |
+|---|---|---|---|
+| line test and guard | 2 | 3 | 7 |
+| guard only (line test off) | 6 | 11 | 13 |
+
+At 60 wt the census reads 2 / 3 / 4 with both, and 5 / 9 / 11 with the guard
+only. `tests/test_hairline_photo_trial.py` pins these figures.
+
+On this photo the tier now touches two shapes and three short strands. That
+makes the verdict stronger, not weaker: the gate is clean, and there is
+nothing for it to sew.
+
 ## The photo, and which pipeline ran
 
 `digitizer/testdata/photo/owl_kent.jpg` is Kent's own snowy owl, cleared as

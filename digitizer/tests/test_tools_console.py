@@ -50,7 +50,9 @@ DOC_READERS = {"scope_budget", "memory_budget", "doc_claims"}
 #: `table.md` and names its findings doc in comments; it prints JSON rows and
 #: one ASCII pipeline line, and reads no doc.
 NAMES_ONLY = {"acceptance_ab", "sewout_walk_reach", "counter_slots",
-              "hairline_renders", "hairline_card", "hairline_photo_trial"}
+              "hairline_renders", "hairline_card", "hairline_logo_bill",
+              "sewout_candidates_card",   # writes README / scoring sheet / readback .md, reads none
+              "hairline_photo_trial"}
 
 
 def cp1252_stream() -> tuple[io.BytesIO, io.TextIOWrapper]:

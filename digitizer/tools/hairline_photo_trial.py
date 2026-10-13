@@ -159,6 +159,9 @@ def census(result, route: str, wt: int) -> dict:
         "regions": len(stitched),
         "candidates": len(c),
         "fragments": len(c.fragments),
+        # The drop guard (#879): admitted shapes handed back whole because
+        # their walk would drop strands.
+        "guarded": len(getattr(c, "guarded", {})),
         "candidate_area_mm2": round(sum(area[s] for s in c), 1),
         "branches_run": len(hair),
         "branches_ladder": len(thick),
