@@ -52,6 +52,7 @@ from digitizer_core import PipelineConfig, machine, preflight, stitchviz  # noqa
 from digitizer_core.adapter import plan_to_design  # noqa: E402
 from digitizer_core.pipeline import (  # noqa: E402
     _fill_inside_satin_border, plan_stitches, run_stages)
+from digitizer_core import stage6_hairline as s6h  # noqa: E402
 from digitizer_core.stage6_hairline import hairline_candidates, hairline_runs  # noqa: E402
 from digitizer_core.threads import chart_for  # noqa: E402
 from digitizer_core.warnings_codes import CLIP_DROPPED_SLIVER, HAIRLINE_TIER_SEWN  # noqa: E402
@@ -174,7 +175,12 @@ def candidate_rows(result, cfg, off_digests, on_digests, plan) -> list[dict]:
             "resewn": off_digests.get(sid) != on_digests.get(sid),
         })
     out.sort(key=lambda c: -c["area_mm2"])
-    return out
+    # The drop guard's hand-backs (`HairlineSet.guarded`): shapes that WOULD
+    # have been admitted and dropped a strand. Absent under --no-guard.
+    guarded = sorted(({"shape_id": sid, "area_mm2": round(by_id[sid].polygon.area, 2),
+                       "would_drop": n} for sid, n in cands.guarded.items()),
+                     key=lambda g: -g["area_mm2"])
+    return out, guarded
 
 
 def run_one(fixture: str, cfg_kw: dict, wt: int) -> dict:
@@ -198,7 +204,16 @@ def run_one(fixture: str, cfg_kw: dict, wt: int) -> dict:
         if mode == "off":
             off_digests = digests
         else:
-            row["candidates"] = candidate_rows(result, cfg, off_digests, digests, plan)
+            row["candidates"], row["guarded"] = candidate_rows(
+                result, cfg, off_digests, digests, plan)
+            row["guarded_count"] = len(row["guarded"])
+            row["guarded_area_mm2"] = round(sum(g["area_mm2"] for g in row["guarded"]), 2)
+            # Shapes that lose a strand: the walk's drops, as stage 7 laid them
+            # when the shape is re-sewn (the guard makes these empty).
+            lossy = [c for c in row["candidates"] if c.get("dropped")]
+            row["drop_shapes"] = len(lossy)
+            row["drop_strands"] = sum(c["dropped"] for c in lossy)
+            row["drop_area_mm2"] = round(sum(c["area_mm2"] for c in lossy), 2)
             row["candidate_count"] = len(row["candidates"])
             row["candidate_area_mm2"] = round(sum(c["area_mm2"] for c in row["candidates"]), 2)
             row["resewn_count"] = sum(c["resewn"] for c in row["candidates"])
@@ -417,6 +432,9 @@ def main(argv=None) -> int:
     r.add_argument("--matrix", default="0", help="0 | 1 | all (scorecard MATRIX rows)")
     r.add_argument("--wt", type=int, default=40)
     r.add_argument("--force", action="store_true")
+    r.add_argument("--no-guard", action="store_true",
+                   help="price the tier WITHOUT the drop guard "
+                        "(stage6_hairline.DROP_GUARD = False): the before column")
     r.set_defaults(fn=cmd_run)
     m = sub.add_parser("merge")
     m.add_argument("dirs", nargs="+")
@@ -427,6 +445,8 @@ def main(argv=None) -> int:
     d.add_argument("--top", type=int, default=3)
     d.set_defaults(fn=cmd_render)
     args = ap.parse_args(argv)
+    if getattr(args, "no_guard", False):
+        s6h.DROP_GUARD = False
     return args.fn(args)
 
 

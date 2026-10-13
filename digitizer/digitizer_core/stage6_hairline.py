@@ -170,6 +170,15 @@ _DARKER_L = 2.0
 # Two shapes "touch" within this distance (mm) — the bean-letter ground rule's.
 _TOUCH_MM = 0.1
 
+# --- the drop guard (2026-10-12, docs/renders/claude-hairline-drop-guard/) ---
+# A shape whose hairline routing would DROP a strand (a path under
+# `RUN_MIN_LOOP_MM`) is not offered to the tier at all: it takes the ladder it
+# takes with `cfg.hairline` off, whole, in stage 5 and in stage 7. Not a
+# `cfg` flag: the tier is unflipped and has no users, so the guard is part of
+# what "hairline ON" means. The module constant exists so the logo bill can
+# price the tier without it (`tools/hairline_logo_bill.py --no-guard`).
+DROP_GUARD = True
+
 
 @dataclass
 class InkSource:
@@ -556,6 +565,26 @@ def block_thread_wt(regions, cfg) -> dict[int, int]:
     return out
 
 
+def strand_drops(poly, shape_id: str, m: dict, cfg, thread_wt: int) -> int:
+    """How many of a measured shape's strands `hairline_runs` would DROP
+    (a path under `machine.RUN_MIN_LOOP_MM`, or one too short to stitch).
+
+    A dropped path is ink erased, not re-routed: the arms of a 1.6 mm "E"
+    are paths under the floor and the letter reads as a "C"
+    (docs/renders/claude-hairline-logo-bill/). The count comes from the same
+    walk stage 7 runs, started with no entry point; the entry only breaks ties
+    between equally good starts, so the real walk almost always cuts the
+    paths the same way (stage 7 counts any difference in the plan's
+    `HAIRLINE_TIER_SEWN.dropped`, which the logo bill reads)."""
+    prof = machine.thread_profile(thread_wt)
+    _runs, rep = hairline_runs(poly, shape_id,
+                               max_width_mm=prof.hairline_max_width_mm,
+                               run_width_mm=prof.hairline_run_width_mm,
+                               stitch_mm=cfg.hairline_stitch_mm, entry=None,
+                               trim_at_mm=machine.TRIM_AT_MM, m=m)
+    return rep["dropped"]
+
+
 def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "HairlineSet":
     """The shapes the hairline tier will sew -> `HairlineSet` ({shape_id:
     `measure` dict}, plus `.fragments`, the thin shapes rule 2 handed back).
@@ -579,7 +608,12 @@ def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "Hairline
        a pen line) is never a ground and every thin shape of it qualifies.
        Known limit: a LIGHT strand of a colour that also fills an area
        elsewhere (blonde highlights over brown hair, when blonde is also a
-       patch) is read as ground; nothing here can tell it from a sliver."""
+       patch) is read as ground; nothing here can tell it from a sliver.
+    3. **The drop guard** (`strand_drops`, `DROP_GUARD`). A shape the first
+       two rules would admit but whose strands the walk would DROP (a path
+       under `RUN_MIN_LOOP_MM`: the arms of a small capital E) is handed back
+       whole, to the ladder it takes with the tier off — in stage 5 and
+       stage 7 alike, because both read this set. Recorded in `.guarded`."""
     chart = chart_for(cfg)
     bw = block_thread_wt(regions, cfg)
     out = HairlineSet()
@@ -600,33 +634,49 @@ def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "Hairline
         if m is None:
             continue
         if r.thread_index not in ground:
-            out[r.shape_id] = m
-            continue
-        edge = r.polygon.boundary
-        tot = wsum = 0.0
-        for i in tree.query(r.polygon.buffer(_TOUCH_MM)):
-            o = regions[int(i)]
-            if o is r or o.thread_index == r.thread_index:
-                continue
-            shared = edge.intersection(o.polygon.buffer(_TOUCH_MM)).length
-            if shared > 0:
-                tot += shared
-                wsum += shared * float(chart.lab[o.thread_index][0])
-        if tot <= 0 or float(chart.lab[r.thread_index][0]) < wsum / tot - _DARKER_L:
-            out[r.shape_id] = m
+            admitted = True
         else:
-            out.fragments.add(r.shape_id)
+            edge = r.polygon.boundary
+            tot = wsum = 0.0
+            for i in tree.query(r.polygon.buffer(_TOUCH_MM)):
+                o = regions[int(i)]
+                if o is r or o.thread_index == r.thread_index:
+                    continue
+                shared = edge.intersection(o.polygon.buffer(_TOUCH_MM)).length
+                if shared > 0:
+                    tot += shared
+                    wsum += shared * float(chart.lab[o.thread_index][0])
+            admitted = tot <= 0 or float(chart.lab[r.thread_index][0]) < wsum / tot - _DARKER_L
+            if not admitted:
+                out.fragments.add(r.shape_id)
+        if not admitted:
+            continue
+        # The drop guard, last: a colour is ground by what the WIDTH gate
+        # rejects and a sliver is a fragment by the ground rule, neither by
+        # what the guard does. It only hands back a shape that would have
+        # been sewn.
+        if DROP_GUARD:
+            n_drop = strand_drops(r.polygon, r.shape_id, m, cfg,
+                                  bw.get(r.thread_index, cfg.thread_wt))
+            if n_drop:
+                out.guarded[r.shape_id] = n_drop
+                continue
+        out[r.shape_id] = m
     return out
 
 
 class HairlineSet(dict):
     """`hairline_candidates`' verdict: {shape_id: measure} for the strands,
-    and `fragments`, the thin shapes the ground-fragment rule handed back to
-    the ground (stage 5's `_hairline_ground` closes the ground over them)."""
+    `fragments`, the thin shapes the ground-fragment rule handed back to
+    the ground (stage 5's `_hairline_ground` closes the ground over them),
+    and `guarded`, {shape_id: strands it would have dropped} for the shapes
+    the drop guard handed back to the ladder (`strand_drops`); those are in
+    neither of the others."""
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
         self.fragments: set[str] = set()
+        self.guarded: dict[str, int] = {}
 
 
 def _arc(pts) -> float:
