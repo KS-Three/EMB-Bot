@@ -175,24 +175,31 @@ def colour_grid():
 
 
 def render_pair(name: str, source, cfg_kw: dict, out: Path, *, flags_on: dict | None = None,
-                px_per_mm: float = 10.0, zoom_px_per_mm: float = 28.0, zoom_ids=None) -> list[Path]:
+                px_per_mm: float = 10.0, zoom_px_per_mm: float = 28.0, zoom_ids=None,
+                guard: bool = False) -> list[Path]:
     """Lane OFF | lane ON thread renders, same frame and scale, plus a zoom
     panel pair on the lane-taken shape(s) (`zoom_ids`, else the first taken).
-    `flags_on` lets the caller add a guard flag to the ON arm."""
+    `flags_on` lets the caller add a guard flag to the ON arm. `guard`: both
+    arms run the lane, and only `flags_on` differs (guard OFF | guard ON);
+    the zoom defaults to the shapes the guard refused."""
     import cv2
     import numpy as np
     from digitizer_core import PipelineConfig, stitchviz
     from digitizer_core.adapter import plan_to_design
 
     designs, takens, regions = {}, {}, {}
-    for tag, kw in (("off", {"lettering_columns": False}),
+    for tag, kw in (("off", {"lettering_columns": guard}),
                     ("on", {"lettering_columns": True, **(flags_on or {})})):
         cfg = PipelineConfig(**cfg_kw, **kw)
         res, plan, taken, _decl = lane_takes(source, cfg)
         designs[tag] = plan_to_design(plan, name=f"{name} {tag}")
         takens[tag] = taken
         regions[tag] = {r.shape_id: r for r in res.regions}
-    ids = [s for s in (zoom_ids or takens["on"]) if s in regions["on"]][:6]
+    default = ([s for s in takens["off"] if s not in set(takens["on"])] if guard
+               else takens["on"])
+    ids = [s for s in (zoom_ids or default) if s in regions["on"]][:6]
+    arm = ("guard", "Column lane ON, guard") if guard else ("lane", "Column lane")
+    stem = f"{name}_guard" if guard else name
     ba = stitchviz._bounds(designs["off"]["stitches"])
     bb = stitchviz._bounds(designs["on"]["stitches"])
     ux0, ux1 = min(ba[0], bb[0]), max(ba[1], bb[1])
@@ -210,9 +217,9 @@ def render_pair(name: str, source, cfg_kw: dict, out: Path, *, flags_on: dict | 
     outs: list[Path] = []
     out.mkdir(parents=True, exist_ok=True)
     full = {k: stitchviz.render_design(d, px_per_mm=px_per_mm, pad_mm=pad) for k, d in designs.items()}
-    panel = np.hstack([label(full["off"], f"{name}: Column lane OFF"),
-                       label(full["on"], f"{name}: Column lane ON ({len(takens['on'])} shapes)")])
-    p = out / f"{name}_full.png"
+    panel = np.hstack([label(full["off"], f"{name}: {arm[1]} OFF ({len(takens['off'])} shapes)"),
+                       label(full["on"], f"{name}: {arm[1]} ON ({len(takens['on'])} shapes)")])
+    p = out / f"{stem}_full.png"
     cv2.imwrite(str(p), panel)
     outs.append(p)
     if ids:
@@ -233,11 +240,11 @@ def render_pair(name: str, source, cfg_kw: dict, out: Path, *, flags_on: dict | 
         h, w = zoom["off"].shape[:2]
         ax, bx = int(max(0, min(ax, bx))), int(min(w, max(ax, bx)))
         ay, by = int(max(0, min(ay, by))), int(min(h, max(ay, by)))
-        crops = [label(zoom[k][ay:by, ax:bx], f"zoom, lane {k.upper()} ({', '.join(ids[:3])}{'...' if len(ids) > 3 else ''})")
+        crops = [label(zoom[k][ay:by, ax:bx], f"zoom, {arm[0]} {k.upper()} ({', '.join(ids[:3])}{'...' if len(ids) > 3 else ''})")
                  for k in ("off", "on")]
         hh = max(c.shape[0] for c in crops)
         crops = [np.pad(c, ((0, hh - c.shape[0]), (0, 0), (0, 0)), constant_values=255) for c in crops]
-        p = out / f"{name}_zoom.png"
+        p = out / f"{stem}_zoom.png"
         cv2.imwrite(str(p), np.hstack(crops))
         outs.append(p)
     return outs
@@ -324,7 +331,8 @@ def main(argv=None) -> int:
                   "max_colors": args.max_colors}
             for p in render_pair(Path(f).stem, TESTDATA / f, kw, args.render,
                                  zoom_ids=args.ids or None,
-                                 flags_on={k: True for k in args.flag}):
+                                 flags_on={k: True for k in (args.flag or args.guard)},
+                                 guard=bool(args.guard)):
                 print(p)
         return 0
     for f in matrix(args.fixtures):
