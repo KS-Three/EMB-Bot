@@ -1500,6 +1500,33 @@ def test_a_gradients_regions_carry_their_sew_facts(client):
         assert set(cone["shape_ids"]) <= ids, cone
 
 
+def test_sew_facts_flags_a_shape_that_sewed_through_the_blend_tier():
+    """`tier` stays "fill" for a gradient's bands; `blended` is the additive
+    fact the Shapes row reads to show the shades. Only `-blend<i>` runs set it."""
+    from types import SimpleNamespace as NS
+    from digitizer_service.app import _sew_facts
+    run = lambda sid, kind="fill": NS(shape_id=sid, kind=kind)
+    plan = NS(blocks=[
+        NS(runs=[run("g-blend0"), run("g-blend1"), run("plain", "satin")]),
+        NS(runs=[run("g-blend2")]),
+    ])
+    facts = _sew_facts(plan, {"g", "plain"})
+    assert facts["g"]["blended"] is True and facts["g"]["tier"] == "fill"
+    assert facts["plain"]["blended"] is False and facts["plain"]["tier"] == "satin"
+
+
+def test_a_gradients_review_shapes_report_blended(client):
+    state = _digitize(client, {"target_width_mm": 80.0}, art=REPRO)
+    shapes = state["review"]["shapes"]
+    assert all(isinstance(s["blended"], bool) for s in shapes)
+    blended = {s["shape_id"] for s in shapes if s["blended"]}
+    assert blended, "the repro's gradient regions should sew through the blend tier"
+    # Every blended shape is spread over several machine blocks.
+    for sid in blended:
+        n = sum(1 for c in state["stats"]["blocks"] if sid in c["shape_ids"])
+        assert n > 1, sid
+
+
 def test_every_stitch_format_health_advertises_decodes_to_the_same_design(client):
     """The surface, not one format at a time.
 

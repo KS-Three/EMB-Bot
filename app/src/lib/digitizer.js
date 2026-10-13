@@ -1151,6 +1151,8 @@ export function reviewFromJob(review, blocks = null) {
       sewIndex: s.sew_index,
       sewBlock: s.sew_block,
       tier: s.tier,
+      // Additive service flag: this shape sewed through the blend tier.
+      blended: s.blended === true,
       stitched: s.stitched !== false,
       // Whether the shape's colour is a flattening artifact rather than a
       // decision (contract v1.7, server-computed, read-only — see app.py's
