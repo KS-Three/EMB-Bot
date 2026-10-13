@@ -54,8 +54,10 @@ reads as gradient from its anti-aliasing.
 
     python -m tools.lowercase_angle [WIDTH_MM ...] [--columns-off] [--fold-cuts] [--json PATH]
     python -m tools.lowercase_angle --make-fixture
-    python -m tools.lowercase_angle --dump-letters  # the test's traced polygons
+    python -m tools.lowercase_angle --dump-letters [80]  # the tests' traced polygons
     python -m tools.lowercase_angle 120 80 --render DIR   # OFF/ON thread renders
+    python -m tools.lowercase_angle --panes DIR LABEL 120 80   # ON panes of this code
+    python -m tools.lowercase_angle --compose DIR TOP BOTTOM OUT 120 80   # two codes
     python -m tools.lowercase_angle --corpus     # real fixtures with lowercase
 
 `--corpus` reads the corpus logos that carry lowercase (toat's "achine",
@@ -407,6 +409,7 @@ def measure_synthetic(width_mm: float, columns: bool = True, base: Path = FIXTUR
 
 
 LETTERS = FIXTURE.with_name("lowercase_aileron_letters_120.json")
+LETTERS_80 = FIXTURE.with_name("lowercase_aileron_letters_80.json")
 
 
 def render_pair(width_mm: float, out_dir: Path, zoom: str = "ubgm",
@@ -417,64 +420,99 @@ def render_pair(width_mm: float, out_dir: Path, zoom: str = "ubgm",
     lie shows), and per glyph in `zoom` the STITCH PATH at 3x that scale
     (satin dark, underlay blue, travel green): a cross is a line there, so
     a fold reads as one. -> the files written."""
+    shots = {fold: _shots(width_mm, fold, zoom, px_per_mm) for fold in (False, True)}
+    return _write_pairs(shots[False], shots[True], f"OFF (shipped) {width_mm:g} mm",
+                        "ON  lettering_columns_fold_cuts", out_dir,
+                        f"lowercase-{width_mm:g}mm", ["line"] + list(zoom))
+
+
+def write_panes(width_mm: float, out_dir: Path, label: str, zoom: str = "ubae",
+                px_per_mm: float = 40.0) -> list[Path]:
+    """`render_pair`'s ON panes, one PNG each (`{label}-{w}mm-{key}.png`),
+    so two CODEBASES can be compared (#887's ON against this branch's):
+    run once in each checkout, then `compose_panes`."""
     import cv2
-    from digitizer_core.adapter import UNITS_PER_MM, plan_to_design
-    from digitizer_core.stitchviz import _frame, render_design
-    meta = json.loads(FIXTURE.with_suffix(".json").read_text(encoding="utf-8"))
     out_dir.mkdir(parents=True, exist_ok=True)
-    low = [g for g in meta["glyphs"] if g["line"] == 1]
-    line = [min(g["box"][0] for g in low), min(g["box"][1] for g in low),
-            max(g["box"][2] for g in low), max(g["box"][3] for g in low)]
-    zoom_ppm = 3.0 * px_per_mm
-    ink = {"satin": (60, 60, 60), "underlay": (215, 160, 120), "travel": (120, 190, 120)}
-    shots = {}
-    for fold in (False, True):
-        _rep, result, plan = measure_synthetic(width_mm, fold_cuts=fold)
-        design = plan_to_design(plan)
-        design["colors"] = [{"r": 214, "g": 168, "b": 64}] * len(design.get("colors") or [1])
-        img = render_design(design, px_per_mm=px_per_mm)
-        _hw, frame_px = _frame(design["stitches"], px_per_mm, 2.0)
-        img_px, s = mm_to_px(result, meta["image"])
-        cx, cy = img_px(0.0, 0.0)
+    written = []
+    for key, im in _shots(width_mm, True, zoom, px_per_mm).items():
+        p = out_dir / f"{label}-{width_mm:g}mm-{key}.png"
+        cv2.imwrite(str(p), im)
+        written.append(p)
+    return written
 
-        def mm_box(b, pad_mm):
-            return ((b[0] - cx) / s - pad_mm, (b[1] - cy) / s - pad_mm,
-                    (b[2] - cx) / s + pad_mm, (b[3] - cy) / s + pad_mm)
-        x0m, y0m, x1m, y1m = mm_box(line, 1.0)
-        (x0, y0) = frame_px({"x": x0m * UNITS_PER_MM, "y": -y0m * UNITS_PER_MM})
-        (x1, y1) = frame_px({"x": x1m * UNITS_PER_MM, "y": -y1m * UNITS_PER_MM})
-        shots[fold] = {"line": img[max(0, y0):y1, max(0, x0):x1]}
-        for ch in zoom:
-            g = next(g for g in low if g["ch"] == ch)
-            bx0, by0, bx1, by1 = mm_box(g["box"], 0.6)
-            pane = np.full((int((by1 - by0) * zoom_ppm), int((bx1 - bx0) * zoom_ppm), 3), 255, np.uint8)
 
-            def P(p):
-                return (int(round((p[0] - bx0) * zoom_ppm)), int(round((p[1] - by0) * zoom_ppm)))
-            for kind in ("travel", "underlay", "satin"):
-                for _b, run in plan.iter_runs():
-                    if run.kind != kind:
-                        continue
-                    for a, b in zip(run.points[:-1], run.points[1:]):
-                        cv2.line(pane, P(a), P(b), ink[kind], 1, cv2.LINE_AA)
-            shots[fold][ch] = pane
+def compose_panes(pane_dir: Path, top: str, bottom: str, out_dir: Path, width_mm: float,
+                  keys: str = "ubae") -> list[Path]:
+    """Two `write_panes` labels -> before/after pairs, `top` above `bottom`."""
+    import cv2
+    keys_l = ["line"] + list(keys)
+    load = lambda lab: {k: cv2.imread(str(pane_dir / f"{lab}-{width_mm:g}mm-{k}.png")) for k in keys_l}
+    return _write_pairs(load(top), load(bottom), f"{top} {width_mm:g} mm", bottom, out_dir,
+                        f"fold-cuts-{width_mm:g}mm", keys_l)
+
+
+def _write_pairs(a_shots, b_shots, top_label, bottom_label, out_dir: Path, stem: str, keys):
+    import cv2
+    out_dir.mkdir(parents=True, exist_ok=True)
     written = []
 
     def label(im, text):
         bar = np.full((40, im.shape[1], 3), 255, np.uint8)
         cv2.putText(bar, text, (8, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
         return np.vstack([bar, im])
-    for key in ["line"] + list(zoom):
-        a, b = shots[False][key], shots[True][key]
+    for key in keys:
+        a, b = a_shots[key], b_shots[key]
         w = max(a.shape[1], b.shape[1], 560)
         pad = lambda im: np.pad(im, ((0, 0), (0, w - im.shape[1]), (0, 0)), constant_values=255)
-        pair = np.vstack([label(pad(a), f"OFF (shipped) {width_mm:g} mm"),
-                          np.full((6, w, 3), 200, np.uint8),
-                          label(pad(b), "ON  lettering_columns_fold_cuts")])
-        p = out_dir / f"lowercase-{width_mm:g}mm-{key}.png"
+        pair = np.vstack([label(pad(a), top_label), np.full((6, w, 3), 200, np.uint8),
+                          label(pad(b), bottom_label)])
+        p = out_dir / f"{stem}-{key}.png"
         cv2.imwrite(str(p), pair)
         written.append(p)
     return written
+
+
+def _shots(width_mm: float, fold: bool, zoom: str, px_per_mm: float) -> dict:
+    """-> {"line": thread render of the lowercase line, ch: stitch-path zoom}."""
+    import cv2
+    from digitizer_core.adapter import UNITS_PER_MM, plan_to_design
+    from digitizer_core.stitchviz import _frame, render_design
+    meta = json.loads(FIXTURE.with_suffix(".json").read_text(encoding="utf-8"))
+    low = [g for g in meta["glyphs"] if g["line"] == 1]
+    line = [min(g["box"][0] for g in low), min(g["box"][1] for g in low),
+            max(g["box"][2] for g in low), max(g["box"][3] for g in low)]
+    zoom_ppm = 3.0 * px_per_mm
+    ink = {"satin": (60, 60, 60), "underlay": (215, 160, 120), "travel": (120, 190, 120)}
+    _rep, result, plan = measure_synthetic(width_mm, fold_cuts=fold)
+    design = plan_to_design(plan)
+    design["colors"] = [{"r": 214, "g": 168, "b": 64}] * len(design.get("colors") or [1])
+    img = render_design(design, px_per_mm=px_per_mm)
+    _hw, frame_px = _frame(design["stitches"], px_per_mm, 2.0)
+    img_px, s = mm_to_px(result, meta["image"])
+    cx, cy = img_px(0.0, 0.0)
+
+    def mm_box(b, pad_mm):
+        return ((b[0] - cx) / s - pad_mm, (b[1] - cy) / s - pad_mm,
+                (b[2] - cx) / s + pad_mm, (b[3] - cy) / s + pad_mm)
+    x0m, y0m, x1m, y1m = mm_box(line, 1.0)
+    (x0, y0) = frame_px({"x": x0m * UNITS_PER_MM, "y": -y0m * UNITS_PER_MM})
+    (x1, y1) = frame_px({"x": x1m * UNITS_PER_MM, "y": -y1m * UNITS_PER_MM})
+    shots = {"line": img[max(0, y0):y1, max(0, x0):x1]}
+    for ch in zoom:
+        g = next(g for g in low if g["ch"] == ch)
+        bx0, by0, bx1, by1 = mm_box(g["box"], 0.6)
+        pane = np.full((int((by1 - by0) * zoom_ppm), int((bx1 - bx0) * zoom_ppm), 3), 255, np.uint8)
+
+        def P(p):
+            return (int(round((p[0] - bx0) * zoom_ppm)), int(round((p[1] - by0) * zoom_ppm)))
+        for kind in ("travel", "underlay", "satin"):
+            for _b, run in plan.iter_runs():
+                if run.kind != kind:
+                    continue
+                for a, b in zip(run.points[:-1], run.points[1:]):
+                    cv2.line(pane, P(a), P(b), ink[kind], 1, cv2.LINE_AA)
+        shots[ch] = pane
+    return shots
 
 
 def dump_letters(width_mm: float = 120.0, out: Path = LETTERS) -> int:
@@ -561,6 +599,20 @@ def main(argv: list[str]) -> None:
         make_fixture()
         print(f"wrote {FIXTURE.with_suffix('.png')} and .json")
         return
+    if "--panes" in argv:          # --panes DIR LABEL [W ...]
+        i = argv.index("--panes")
+        out, label = Path(argv[i + 1]), argv[i + 2]
+        for w in [float(a) for a in argv[i + 3:] if a.replace(".", "", 1).isdigit()] or [120.0]:
+            for p in write_panes(w, out, label):
+                print(f"wrote {p}")
+        return
+    if "--compose" in argv:        # --compose PANE_DIR TOP BOTTOM OUT_DIR [W ...]
+        i = argv.index("--compose")
+        pane_dir, top, bottom, out = Path(argv[i + 1]), argv[i + 2], argv[i + 3], Path(argv[i + 4])
+        for w in [float(a) for a in argv[i + 5:] if a.replace(".", "", 1).isdigit()] or [120.0]:
+            for p in compose_panes(pane_dir, top, bottom, out, w):
+                print(f"wrote {p}")
+        return
     if "--render" in argv:
         out = Path(argv[argv.index("--render") + 1])
         widths = [float(a) for a in argv if a.replace(".", "", 1).isdigit()] or [120.0]
@@ -569,7 +621,8 @@ def main(argv: list[str]) -> None:
                 print(f"wrote {p}")
         return
     if "--dump-letters" in argv:
-        print(f"wrote {dump_letters()} letters to {LETTERS}")
+        w, out = (80.0, LETTERS_80) if "80" in argv else (120.0, LETTERS)
+        print(f"wrote {dump_letters(w, out)} letters to {out}")
         return
     out_json = None
     if "--json" in argv:

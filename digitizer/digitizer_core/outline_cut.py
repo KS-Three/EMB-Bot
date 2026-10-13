@@ -1155,8 +1155,11 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
     if best is None or best[0] > REFINE_GAIN * long0:
         # `fold_cuts`: no single cut cures it -- an a's bowl, still holding
         # the foot of its stem, is over-long AND a ring one cut cannot open
-        # -- so it gets the fold look, whose ring-opening pairs can.
-        fold = _fold_refine(pc, cut_lines, W, pitch_mm, depth) if fold_cuts else None
+        # -- so it gets the fold look, whose ring-opening pairs can. A RING
+        # only: an open over-long piece already had every single cut tried
+        # (open to any piece, it cut a 0.3 mm flourish on bridge).
+        fold = (_fold_refine(pc, cut_lines, W, pitch_mm, depth)
+                if fold_cuts and pc.interiors else None)
         if fold is None:
             yield pc, cut_lines, []
             return
