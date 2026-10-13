@@ -100,9 +100,11 @@ ROIS = {
     # 5-7 are where Kent's red pen strokes POINT (his marks are annotation,
     # not thread): HOTEL's E upper arm end; FREMONT's M at its V vertex on
     # the baseline, beside the O; the foot of N's diagonal before the T.
-    "accent_e": (0.285, 0.395, 0.340, 0.475),
-    "m_o_junction": (0.655, 0.480, 0.720, 0.580),
-    "final_t": (0.860, 0.490, 0.912, 0.590),
+    # Each box holds the whole letter (and its neighbour's edge) so the
+    # panel shows the end in context.
+    "accent_e": (0.262, 0.392, 0.338, 0.580),
+    "m_o_junction": (0.640, 0.420, 0.760, 0.585),
+    "final_t": (0.812, 0.420, 0.972, 0.590),
 }
 CIRCLES = [
     ("est", "1. EST ragged"),
@@ -489,12 +491,22 @@ def panels(out: Path, renders: Path, px_per_mm: float = 40.0) -> list[Path]:
                                      f"{main_sum['stitches']:,} stitches, {main_sum['colours']} colours"))
     written.append(p)
     big, to_px = _render(main_design, px_per_mm)
+    # Beside main, the same place with the Column lane OFF, so each panel
+    # also says whether the lane is what changed it.
+    off = None
+    if "lane_off" in arms:
+        off = (arms["lane_off"][0], *_render(arms["lane_off"][1], px_per_mm))
     for key, title in CIRCLES:
         r = main_sum["rois"][key]
         crop = _crop(big, to_px, r["box_mm"])
         src = _source_crop(ROIS[key], crop.shape[0])
-        panel = _hstack([_label(src, "artwork"),
-                         _label(crop, f"main: {r['ink_bare_mm2']:.1f} of {r['ink_mm2']:.1f} mm2 ink bare")])
+        cols = [_label(src, "artwork"),
+                _label(crop, f"main: {r['ink_bare_mm2']:.1f} of {r['ink_mm2']:.1f} mm2 bare")]
+        if off is not None:
+            ro = off[0]["rois"][key]
+            cols.append(_label(_crop(off[1], off[2], ro["box_mm"]),
+                               f"Column lane OFF: {ro['ink_bare_mm2']:.1f} mm2 bare"))
+        panel = _hstack(cols)
         panel = _label(panel, title)
         p = renders / f"circle_{CIRCLES.index((key, title)) + 1}_{key}.png"
         cv2.imwrite(str(p), panel)
