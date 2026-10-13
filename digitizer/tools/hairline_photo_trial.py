@@ -58,7 +58,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from digitizer_core import PipelineConfig, machine, preflight, stitchviz  # noqa: E402
-from digitizer_core import stage1_photo_prep  # noqa: E402
+from digitizer_core import stage1_photo_prep, stage6_hairline  # noqa: E402
 from digitizer_core.adapter import UNITS_PER_MM, plan_to_design  # noqa: E402
 from digitizer_core.pipeline import plan_stitches, run_stages  # noqa: E402
 from digitizer_core.stage6_hairline import hairline_candidates  # noqa: E402
@@ -67,16 +67,28 @@ from tools.hairline_renders import bare_cells, bare_new_mm2  # noqa: E402
 PHOTO = ROOT / "testdata" / "photo" / "owl_kent.jpg"
 WIDTH_MM = 127.0
 ROUTES = {
-    "photo": {"forced_class": "photo_subject"},
+    # The rembg worker's timeout raised: on a loaded machine the default
+    # timed out and the route silently became `classical` (pipeline.py's
+    # cutout-failed rule) — the 2026-10-12 arm run did exactly that.
+    "photo": {"forced_class": "photo_subject",
+              "photo_prep_background_removal_timeout_s": 900.0},
     "classical": {"forced_class": "photo_subject", "photo_prep": False},
     "studio": {"detect_photographic": True, "faces_route_flat": True},
 }
 # arm -> (cfg.hairline, cfg.thread_wt, cfg.hairline_over_ground)
 ARMS = {"off40": (False, 40, False), "on40": (True, 40, False),
         "on40g": (True, 40, True), "off60": (False, 60, False),
-        "on60": (True, 60, False), "on60g": (True, 60, True)}
-RENDER_ARMS = {"off60": "OFF (60 wt)", "on60": "hairline ON (60 wt)",
-               "on60g": "ON + over_ground (60 wt)"}
+        "on60": (True, 60, False), "on60g": (True, 60, True),
+        # The gate as it was before the line test (`_LINE_MIN_CONTRAST`
+        # disabled for this plan only): the line test's own before/after.
+        "on40_noline": (True, 40, False)}
+# What the 2026-10-12 trial ran (the full set took ~25 min an arm on a loaded
+# laptop; the rest are one `--arms` away).
+DEFAULT_ARMS = ["off40", "on40", "on40g", "on40_noline"]
+RENDER_ARMS = {"off40": "OFF (40 wt)", "on40": "hairline ON (40 wt)",
+               "on40g": "ON + over_ground (40 wt)"}
+GATE_ARMS = {"off40": "OFF (40 wt)", "on40_noline": "ON, width gate only (before)",
+             "on40": "ON, with the line test (after)"}
 MAX_JPEG_BYTES = 290_000
 # Zoom boxes as fractions of the SOURCE photo (x0, y0, x1, y1): the facial
 # bristles round the beak, and the barred breast feathers lower left.
@@ -259,6 +271,9 @@ def compose(parts: Path, out: Path, route: str) -> None:
         sfx = f"_{zoom}" if zoom else ""
         strip(parts, [(f"{route}_{arm}{sfx}.png", RENDER_ARMS[arm]) for arm in RENDER_ARMS],
               out / f"compare_{route}{sfx or '_full'}.jpg")
+        if zoom:
+            strip(parts, [(f"{route}_{arm}{sfx}.png", GATE_ARMS[arm]) for arm in GATE_ARMS],
+                  out / f"gate_before_after_{route}{sfx}.jpg")
 
 
 def candidate_sheet(result, route: str, wt: int, dest: Path, cols: int = 8) -> None:
@@ -345,7 +360,8 @@ def source_figure(result, route: str, dest: Path, zoom: str = "beak", k: int = 3
     write_jpeg(dest, np.hstack(strip_img[:-1]))
 
 
-def run_route(route: str, out: Path | None, arms=ARMS, parts: Path | None = None) -> dict:
+def run_route(route: str, out: Path | None, arms=DEFAULT_ARMS,
+              parts: Path | None = None) -> dict:
     """One route through every arm -> its table row. With `out`, renders:
     lossless parts into `parts` (default `out`), strips into `out`."""
     parts = parts or out
@@ -358,10 +374,18 @@ def run_route(route: str, out: Path | None, arms=ARMS, parts: Path | None = None
         row["census"][wt]["_ids"] = cen["_ids"]
     p = preflight.prep(PHOTO, route_cfg(route), design_class=result.design_class) \
         if out is not None else None
+    print(f"{route}: {row['pipeline']} (class {row['design_class']})", flush=True)
     base_bare: dict[int, tuple] = {}
-    for arm, (on, wt, ground) in arms.items():
+    for arm in arms:
+        on, wt, ground = ARMS[arm]
         cfg = route_cfg(route, hairline=on, thread_wt=wt, hairline_over_ground=ground)
-        plan = plan_stitches(result, cfg)
+        keep = stage6_hairline._LINE_MIN_CONTRAST
+        if arm.endswith("_noline"):
+            stage6_hairline._LINE_MIN_CONTRAST = -math.inf
+        try:
+            plan = plan_stitches(result, cfg)
+        finally:
+            stage6_hairline._LINE_MIN_CONTRAST = keep
         # The shapes this weight's gate admits, measured in every arm of that
         # weight — the OFF arm of the same weight is each ON arm's baseline
         # (a 60 wt plan re-spaces every satin, hairline or not).
@@ -372,7 +396,7 @@ def run_route(route: str, out: Path | None, arms=ARMS, parts: Path | None = None
             r["bare_mm2"] = round(float(bare[0].sum()) * bare[2] ** 2, 2)
             base_bare.setdefault(wt, bare)
             r["bare_new_mm2"] = round(bare_new_mm2(bare, base_bare[wt]), 2)
-        if out is not None and arm in RENDER_ARMS:
+        if out is not None and (arm in RENDER_ARMS or arm in GATE_ARMS):
             design = plan_to_design(plan, name=f"owl {route} {arm}")
             render(design, result.ink_source, machine.thread_profile(wt).width_mm,
                    parts, f"{route}_{arm}")
@@ -445,6 +469,9 @@ def main(argv=None) -> int:
                                          / "claude-hairline-photo-trial"))
     ap.add_argument("--parts", default=str(ROOT / "debug_out" / "hairline_photo_trial"),
                     help="lossless per-arm renders (gitignored); strips go to --out")
+    ap.add_argument("--arms", nargs="*", default=DEFAULT_ARMS, choices=list(ARMS),
+                    help="OFF arms first: each ON arm's bare-fabric baseline is the "
+                         "first arm of its weight")
     ap.add_argument("--sheets-only", action="store_true",
                     help="only the candidate sheets (`candidate_sheet`, 60 wt): a minute a route")
     args = ap.parse_args(argv)
@@ -462,7 +489,7 @@ def main(argv=None) -> int:
     # One file per route, so routes can run as separate processes; the
     # combined table is rebuilt from whatever routes are present.
     for route in args.routes:
-        row = run_route(route, out, parts=parts)
+        row = run_route(route, out, arms=args.arms, parts=parts)
         (out / f"table_{route}.json").write_text(json.dumps(row, indent=1) + "\n",
                                                  encoding="utf-8")
     table = {r: json.loads((out / f"table_{r}.json").read_text(encoding="utf-8"))

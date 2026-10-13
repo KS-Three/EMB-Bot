@@ -24,10 +24,12 @@ fence. Each of these is thin enough to pass the width gate.
   60 wt, the tier's shapes fall from 47 to 22 and the branches it sews as
   runs from 172 to 72. The drawn fixtures are untouched: zero refusals, and
   every gate verdict is the same.
-- Even after the fix, the tier is a rounding error on this photo. It sews
-  roughly 0.1 m of hairline runs out of a design of about 50 m of thread.
-  About 70% of the paths it would walk are under the 2.2 mm loop floor and
-  are dropped. **The next step is upstream:** hair has to reach stage 6 as
+- Even after the fix, the tier is a rounding error on this photo.
+  - Its run branches total 0.02 m (`classical`) to 0.16 m (`studio`) at
+    40 wt, against designs of 53 and 227 m of thread.
+  - In the full `classical` plan it sews 3 strands and drops 10.
+  - About 70% of the paths it would walk are under the 2.2 mm loop floor,
+    and the walk drops them. **The next step is upstream:** hair has to reach stage 6 as
   lines. See "What next" below for three options; that choice is Kent's.
 
 ## The photo, and which pipeline ran
@@ -158,9 +160,11 @@ The run-branch count falls by more than the refusals for two reasons:
 - A shape that is no longer admitted makes its colour a ground colour, so
   the ground-fragment rule then hands back more slivers of that colour.
 
-Drawn fixtures, before and after: `hair_strands` 263 / 184 run branches at
-40 / 60 wt, `hair_fine` 332 / 321, `thin_script` 26. These are identical,
-which is why `test_hairline_strand_gate.py`, `test_hairline_ground.py`,
+Drawn fixtures, after: `hair_strands` 263 / 184 run branches at
+40 / 60 wt, `hair_fine` 332 / 321, `thin_script` 26 (both candidate shapes
+summed, so these are not the doc tables' largest-shape figures). The test
+can only refuse, and it refuses nothing on them, so every verdict is the one
+it was before. That is why `test_hairline_strand_gate.py`, `test_hairline_ground.py`,
 `test_hairline_tier.py`, `test_hairline_rest_pieces.py`,
 `test_thread_profile.py` and `test_hairline_card.py` pass unchanged.
 
@@ -177,22 +181,100 @@ edge slivers along the subject's cut-out edge.
 
 ## Finding 3: what it sews, stitched (OFF vs ON vs ON + ground)
 
-ARM_TABLES
+The full plans: route `classical`, 40 wt, 127 mm, on `main` as of this
+branch's merge. The `noline` arm is the same plan with the line test
+switched off, which is the gate as it stood before this PR.
 
-Each ON arm is compared with the OFF arm **of its own weight**. A 60 wt plan
-re-spaces every satin in the design, so `on60` against `off40` would credit
-the tier with a whole-design change it did not make (+3,130 stitches on
-`classical`).
+| `classical`, 40 wt | OFF | ON | ON + ground | ON, before the line test |
+|---|---|---|---|---|
+| stitches | 31,484 | 31,162 | 31,161 | 30,938 |
+| trims | 332 | 332 | 332 | 332 |
+| colour changes | 30 | 30 | 30 | 29 |
+| thread laid (m) | 52.86 | 52.64 | 52.64 | 52.52 |
+| stitches < 1.0 mm (not lock legs) | 5,659 | 5,346 | 5,346 | 5,115 |
+| hairline shapes / strands sewn / dropped | — | 9 / 3 / 10 | 9 / 3 / 10 | 14 / 14 / 18 |
+| rest slivers dropped | — | 0 | 0 | 0 |
+| admitted shapes*: stitches | 654 | 328 | 328 | 252 |
+| admitted shapes*: thread (m) | 0.547 | 0.326 | 0.326 | 0.267 |
+| admitted shapes*: stitches < 1.0 mm | 456 | 140 | 140 | 82 |
+| **bare fabric, new vs OFF (mm²)** | 0 | **14.3** | 14.5 | **31.1** |
 
-COMPARE_FIGURES
+\* The 9 shapes the gate admits **after** the line test, measured in every
+arm. The before arm admits 14 shapes, so its row is not its whole tier.
+
+The gate census for the same route is in Finding 2. Per-route JSON:
+`docs/renders/claude-hairline-photo-trial/table_classical.json`.
+
+**The line test halves the damage.** Before it, the tier sewed 14 strands
+and dropped 18, and it left **31.1 mm²** of fabric bare that OFF covered.
+It also sewed one colour change fewer (30 → 29). I did not chase why;
+the line test puts the change back. After it, the tier sews 3 strands, drops 10, and
+leaves **14.3 mm²**.
+
+**Read "bare fabric" as new vs OFF only.** The absolute total (about
+6,700 mm²) is the photo lane's own open fills read by an instrument built
+for solid flat fills. The part that moved against OFF is the tier's.
+
+![](renders/claude-hairline-photo-trial/compare_classical_beak.jpg)
+
+![](renders/claude-hairline-photo-trial/compare_classical_bars.jpg)
+
+![](renders/claude-hairline-photo-trial/compare_classical_full.jpg)
+
+The line test's own before/after, on the same plans:
+
+![](renders/claude-hairline-photo-trial/gate_before_after_classical_beak.jpg)
+
+![](renders/claude-hairline-photo-trial/gate_before_after_classical_bars.jpg)
 
 What the arms say:
 
-ARM_READING
+- **ON changes almost nothing on this photo.** The design loses 322 of
+  31,484 stitches (1.0%), 0.22 m of 52.86 m of thread, and 313 of its
+  5,659 sub-1 mm stitches. Trims and colour changes do not move.
+- **The tier sews 3 strands and drops 10.** The 9 shapes it admits at
+  40 wt carry 13 walkable paths, and 10 of them are under the 2.2 mm loop
+  floor. Within those 9 shapes, stitches halve (654 → 328), thread falls
+  from 0.55 to 0.33 m, and sub-1 mm stitches fall from 456 to 140. The
+  effect is real but small.
+- **It leaves about 14 mm² of new bare fabric.** That area was covered OFF.
+  It is the tier's own edges (one 0.40 mm run down a region traced wider)
+  plus the dropped short strands (about 2 mm², see "What it loses").
+- **The Studio route**, from an earlier run of the same arms (off40 and
+  on40 only; on40g was not run):
+  - 89,404 against 90,555 stitches;
+  - 24 shapes sewn as 17 strands, with **38 dropped**;
+  - trims 183 → 189;
+  - 3.9 mm² new bare fabric.
+  The same story at a larger scale. The Studio sews this photo in the
+  `gradient` lane, which is why its totals differ from `classical`.
 
 ## Does over_ground do anything here?
 
-OVER_GROUND
+**No.** `on40g` differs from `on40` by one stitch and 0.2 mm² of bare
+fabric. The ground only reaches under a strand from a ground colour that
+sews **before** it and touches it (`stage5_overlap._hairline_ground`). The
+three strands that survive on this photo are mostly the subject's edge, and
+no earlier ground meets them. That fits the verdict: there are no strands
+lying over a ground here for the ground to go under.
+
+## Not run, and how to run it
+
+The arm runs took about 25 minutes per plan on a laptop shared with seven
+other lanes, so the trial ran the four arms above and stopped. The rest is
+one command each:
+
+- **The `photo` route's arms (the rembg cutout).**
+  - Its census is in Finding 2 and is real: the cutout fired there.
+  - Its arm run **timed out in the rembg worker under load**, and the route
+    silently became `classical` (`pipeline.py`'s cutout-failed rule). Its
+    numbers came out identical to `classical`, which is how this was caught.
+  - The tool now gives that route a 900 s worker timeout.
+  - `python -m tools.hairline_photo_trial --routes photo --rembg-python <venv python>`
+- **60 wt** (`--arms off60 on60 on60g`). Compare it with `off60`, never
+  with `off40`: a 60 wt plan re-spaces every satin, and an earlier pass
+  measured +3,130 stitches from that alone.
+- **The Studio route's ground arm** (`--routes studio --arms off40 on40 on40g`).
 
 ## What it loses
 
@@ -276,9 +358,9 @@ candidates, which stay with the sew-out card (gate 1).
 
 ```
 cd digitizer
-python -m tools.hairline_photo_trial --routes classical studio \
-    photo --rembg-python <primary>/digitizer/rembg_isolated/venv/Scripts/python.exe
-python -m tools.hairline_photo_trial --sheets-only --routes classical studio photo --rembg-python ...
+python -m tools.hairline_photo_trial --routes classical     # arms off40 on40 on40g on40_noline
+python -m tools.hairline_photo_trial --sheets-only --routes classical studio photo \
+    --rembg-python <primary>/digitizer/rembg_isolated/venv/Scripts/python.exe
 python -m pytest -q tests/test_hairline_photo_trial.py
 ```
 
