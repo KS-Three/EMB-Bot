@@ -21,6 +21,10 @@ BECKER = Path(__file__).resolve().parent.parent / "testdata" / "becker_marine_lo
 
 
 def _cfg(**kw) -> PipelineConfig:
+    # On the skeleton tier, explicitly: the Column lane (`lettering_columns`,
+    # ON by default since Kent's 2026-10-12 flip) walks MARINE's letters
+    # itself, so the satin tier's hop rule priced here has nothing to bury.
+    kw.setdefault("lettering_columns", False)
     return PipelineConfig(target_width_mm=100.0, garment_id="left_chest", **kw)
 
 

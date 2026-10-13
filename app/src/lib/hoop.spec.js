@@ -7,7 +7,7 @@ import { createRequire } from "node:module";
 // onto globalThis.EMB) plus a stub for the buildLetteringDesign gate, and
 // hoop.js itself is imported dynamically after. Same "stub before
 // importing" ordering TextStep.spec.js documents.
-let effectiveHoop, hoopFitNote, EMB;
+let effectiveHoop, hoopFitNote, autoCapNote, EMB;
 beforeAll(async () => {
   const require = createRequire(import.meta.url);
   globalThis.window = globalThis;
@@ -15,7 +15,7 @@ beforeAll(async () => {
   require("../../../src/garments.js");
   globalThis.EMB.buildLetteringDesign =
     globalThis.EMB.buildLetteringDesign || (() => { throw new Error("not used by this spec"); });
-  ({ effectiveHoop, hoopFitNote } = await import("./hoop.js"));
+  ({ effectiveHoop, hoopFitNote, autoCapNote } = await import("./hoop.js"));
   ({ EMB } = await import("./emb.js"));
 });
 
@@ -90,4 +90,11 @@ test("hoopFitNote covers every shipped garment's own placement box", () => {
 test("hoopFitNote tolerates a missing hoop or dims (no note rather than a throw)", () => {
   expect(hoopFitNote(90, 90, null)).toBeNull();
   expect(hoopFitNote(NaN, 90, EMB.getHoop("4x4"))).toBeNull();
+});
+
+test("autoCapNote speaks only on the four garments whose placement is bigger than every hoop", () => {
+  const capped = EMB.GARMENTS.filter((g) => autoCapNote(g) !== "").map((g) => g.id).sort();
+  expect(capped).toEqual(["blanket", "full_back", "jacket_back", "tote"]);
+  expect(autoCapNote(EMB.getGarment("full_back"))).toContain("8×8 in hoop");
+  expect(autoCapNote(null)).toBe("");
 });

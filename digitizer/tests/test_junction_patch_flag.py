@@ -75,6 +75,10 @@ def _cfg(**kw) -> PipelineConfig:
     # the "off" arm already sews the cover and the contrast reads nothing --
     # the same reason as the stack above.
     kw.setdefault("satin_crown_cover", False)
+    # ... and on the skeleton tier: the Column lane (`lettering_columns`, ON
+    # by default since Kent's 2026-10-12 flip) sews the letters this file's
+    # tatami patch lies under, from their outline, with no patch to fire.
+    kw.setdefault("lettering_columns", False)
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 

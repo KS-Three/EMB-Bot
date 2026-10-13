@@ -1367,6 +1367,46 @@ TONAL_SPLIT_MAX_PARTS = 4
 # are confetti rather than areas. Small on purpose — removing quantisation
 # artefacts, not reshaping the subject.
 TONAL_SPLIT_CLEAN_PX = 3
+# Defect 20's per-region cap (`cfg.tonal_split_layer_cap`): how far, in mm,
+# a vetoed point may sit outside a region and still keep that region whole.
+# The points are 1 mm coverage cells measured on the SEWN plan, which reaches
+# past the pixel mask by pull compensation and stage 5's underlap, so a
+# point exactly on the mask would miss the parent whose seam stacked it.
+TONAL_SPLIT_VETO_MARGIN_MM = 1.5
+
+
+def tonal_veto_px(p: Prep, veto_mm) -> np.ndarray | None:
+    """Plan-mm points -> (N, 2) (row, col) pixel coordinates in `p`'s frame,
+    by inverting stage 4's `_to_mm` (origin at the art bbox centre, y down).
+    None when there is nothing to veto."""
+    if not veto_mm or p.px_per_mm <= 0:
+        return None
+    x0, y0, x1, y1 = p.art_bbox
+    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    xy = np.asarray(veto_mm, np.float64).reshape(-1, 2)
+    return np.stack([xy[:, 1] * p.px_per_mm + cy, xy[:, 0] * p.px_per_mm + cx], axis=1)
+
+
+def _veto_hits(r: RegionMask, veto_px: np.ndarray | None, margin_px: float) -> bool:
+    """True when a vetoed point lies on `r` or within `margin_px` of it."""
+    if veto_px is None or not len(veto_px):
+        return False
+    (oy, ox) = r.origin
+    h, w = r.crop.shape
+    rel = veto_px - np.array([oy, ox], np.float64)
+    near = ((rel[:, 0] >= -margin_px) & (rel[:, 0] < h + margin_px)
+            & (rel[:, 1] >= -margin_px) & (rel[:, 1] < w + margin_px))
+    if not near.any():
+        return False
+    pad = int(np.ceil(margin_px)) + 1
+    grown = np.pad(r.crop.astype(np.uint8), pad)
+    k = 2 * int(np.ceil(margin_px)) + 1
+    grown = cv2.dilate(grown, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k)))
+    rc = np.floor(rel[near]).astype(np.int64) + pad
+    ok = ((rc[:, 0] >= 0) & (rc[:, 0] < grown.shape[0])
+          & (rc[:, 1] >= 0) & (rc[:, 1] < grown.shape[1]))
+    rc = rc[ok]
+    return bool(len(rc) and grown[rc[:, 0], rc[:, 1]].any())
 
 
 def _percentile_extremes_deltae(lab: np.ndarray) -> float:
@@ -1443,7 +1483,8 @@ def _region_lab(pixels_rgb: np.ndarray, cfg: PipelineConfig) -> np.ndarray:
 
 
 def split_tonal_regions(
-    p: Prep, kept: list[RegionMask], split_tonal: bool = False
+    p: Prep, kept: list[RegionMask], split_tonal: bool = False,
+    veto_px: np.ndarray | None = None,
 ) -> tuple[list[RegionMask], int]:
     """Split regions whose own pixels span more tone than one thread can tell.
 
@@ -1451,6 +1492,11 @@ def split_tonal_regions(
     mask it came from, the parts of one input region are disjoint, and their
     union is exactly the original — so this can neither lose artwork nor
     create overlap for stage 5 to resolve.
+
+    `veto_px` ((N, 2) row/col, `tonal_veto_px`) keeps every region within
+    `TONAL_SPLIT_VETO_MARGIN_MM` of a listed point whole — defect 20's cap,
+    fed the cells an earlier plan stacked past the ceiling. None (every
+    caller but the cap) is the split exactly as before.
     """
     if not split_tonal:
         return kept, 0
@@ -1466,6 +1512,10 @@ def split_tonal_regions(
         px = r.area
         area_mm2 = px * px_area_mm2
         if area_mm2 < TONAL_SPLIT_MIN_AREA_MM2:
+            out.append(r)
+            continue
+        if veto_px is not None and _veto_hits(
+                r, veto_px, TONAL_SPLIT_VETO_MARGIN_MM * px_per_mm):
             out.append(r)
             continue
         # Crop-space throughout (2026-08-24). Boolean indexing walks the
@@ -2159,7 +2209,9 @@ def kept_masks_to_quant(
     # either region former so both the classical and SAM2 paths get it from
     # one implementation — the same reason this function exists.
     regions_before_split = len(kept)
-    kept, tonal_splits = split_tonal_regions(p, kept, split_tonal=split_tonal)
+    kept, tonal_splits = split_tonal_regions(
+        p, kept, split_tonal=split_tonal,
+        veto_px=tonal_veto_px(p, cfg.tonal_split_veto_mm))
 
     # --- 6. Palette selection (chart-restricted weighted k-medoids) -----------
     # (Step 5, the face-local threshold drop, already ran inside the RAG

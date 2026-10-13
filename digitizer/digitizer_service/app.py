@@ -159,8 +159,10 @@ BUSY_DETAIL = ("The digitizer is busy with other designs right now. "
 log = logging.getLogger("digitizer_service")
 
 # Config keys a caller may set. Everything else on PipelineConfig is either
-# internal (debug_dir) or would let a request write to disk.
-_CONFIG_FIELDS = {f.name for f in dataclass_fields(PipelineConfig)} - {"debug_dir", "extra"}
+# internal (debug_dir, tonal_split_veto_mm — the layer cap's working state)
+# or would let a request write to disk.
+_CONFIG_FIELDS = {f.name for f in dataclass_fields(PipelineConfig)} - {
+    "debug_dir", "extra", "tonal_split_veto_mm"}
 
 registry = JobRegistry(workers=1)
 # Stage 0-4 generations, cached across review edits — the reason a boundary

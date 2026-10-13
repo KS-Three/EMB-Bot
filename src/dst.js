@@ -430,5 +430,6 @@
     // one set of cases rather than trusting them to stay in step by eye.
     splitSteps,
     jumpRecords,
+    DST_MAX_DELTA: MAX_DELTA,
   };
 });
