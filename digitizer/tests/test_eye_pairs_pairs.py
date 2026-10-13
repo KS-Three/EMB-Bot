@@ -158,3 +158,38 @@ def test_a_bad_choice_is_refused(tmp_path):
 
 def test_a_missing_log_is_no_picks(tmp_path):
     assert ep.load_picks(tmp_path / "nope.jsonl") == {}
+
+def _arm_on_left(sealed):
+    live = [s for s in sealed.values() if s["kind"] == "live"]
+    return sum(1 for s in live if s["left_arm"] != ep.BASE), len(live)
+
+
+@pytest.mark.parametrize("seed", [1, 7, 20260917, 20261013])
+def test_balance_live_puts_the_arm_on_the_left_in_exactly_half_the_live_pairs(seed):
+    _p, sealed, _s = ep.build_pairs(runs(), seed=seed, n_identical=4, n_repeat=4,
+                                    balance_live=True)
+    left, n = _arm_on_left(sealed)
+    assert n == 12 and left == 6
+
+
+def test_balance_live_takes_the_extra_pair_on_the_right_when_the_count_is_odd():
+    _p, sealed, _s = ep.build_pairs(runs(identical={("becker", "design_angle")}), seed=3,
+                                    n_identical=2, n_repeat=0, balance_live=True)
+    left, n = _arm_on_left(sealed)
+    assert n == 11 and left == 5
+
+
+def test_without_balance_live_the_live_pairs_alone_can_be_lopsided():
+    """Why the option exists: the half is taken over live + identical, and an
+    identical pair shows no arm."""
+    counts = {_arm_on_left(ep.build_pairs(runs(), seed=s, n_identical=4, n_repeat=0)[1])[0]
+              for s in range(40)}
+    assert counts - {6}
+
+
+def test_a_repeat_still_shows_the_other_side_under_balance_live():
+    _p, sealed, _s = ep.build_pairs(runs(), seed=5, n_identical=2, n_repeat=4, balance_live=True)
+    for s in sealed.values():
+        if s["kind"] == "repeat":
+            orig = sealed[s["repeat_of"]]
+            assert (s["left_arm"], s["right_arm"]) == (orig["right_arm"], orig["left_arm"])
