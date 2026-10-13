@@ -140,9 +140,9 @@ reserve.
 Before Kent sees a picture, the kit measures each arm against the base on every
 logo it changes, from the designs alone (no pick exists). An arm passes when,
 on at least 2 of those logos and at least half of them, every `moves` metric
-moves the stated way by its threshold (`trims_per_1000` 1.0, `flow_circvar`
+moves the stated way by its threshold (`trims_per_1000` 0.5, `flow_circvar`
 0.02, `long_share` 0.02 absolute; `thread_density_whole` 5% relative) and every
-`holds` metric moves by less than half of it. A failing arm, or one identical
+`holds` metric moves by less than it (Amendment 1). A failing arm, or one identical
 to base on 4 or more of the 6 logos, is replaced once by the first reserve of
 its stratum (`spec.json`: `words` for construction; `exit_next_off`, then
 `hop_under` for trims; `per_stroke` for flow). The swap and the reason go into
@@ -193,7 +193,7 @@ reported and not read as findings: `longest_jump_mm`, `jumps_per_1000`,
 false "above chance" expected by chance alone, and none is corrected for.
 
 **The separation reading.** Each lead is also read on the pairs whose
-`trims_per_1000` differs by less than 1.0 between sides (trims held) against
+`trims_per_1000` differs by less than 0.5 between sides (trims held) against
 those that differ by more. A flow lead that clears chance only where trims
 moved is the trims lead again; that is the point of the arms.
 
@@ -225,3 +225,17 @@ before every pair is picked is refused (`--reveal` and `analyse` both).
   another machine's would not.
 - The 0.30 mm fill row, the 7.0 mm split and the pre-flip lettering tier are
   probes of an eye, **candidates, never settings** (ROADMAP gate 1).
+
+## Amendment 1, 2026-10-13, before anything was rendered
+
+Two numbers in the manipulation check were set without a scale to hold them
+against, and are corrected here. Nothing was rendered or measured between the
+first commit and this one; the scale comes from PUBLISHED price tables
+(`docs/eye-pairs-2026-10-07` and `-10-08`): the base sews about 5 to 7 trims
+per 1000 stitches, so a threshold of 1.0 asks a trims arm for a 15 to 20%
+change, while `underlay_on_column`'s documented effect is 3% over nine logos
+(478 to 465 trims). Changed: **`trims_per_1000` threshold 1.0 to 0.5** (about
+a tenth of the base rate), and a `holds` metric must move by **less than its
+threshold** instead of less than half of it (half of 0.5 trims per 1000 is two
+trims on a 9,000-stitch design, inside the noise of any arm that reorders
+anything). No arm, flag, direction, expected pick, logo or statistic changed.

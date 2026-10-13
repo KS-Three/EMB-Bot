@@ -142,9 +142,9 @@
   {"name": "per_stroke", "flags": {"satin_per_stroke": true}, "replaces_stratum": "flow", "expected_pick": "tie", "moves": {}, "holds": ["trims_per_1000", "long_share", "thread_density_whole"], "stratum": "flow", "variable": "satin vs fill call per stroke (differs on one of six logos, so a last resort)"}
  ],
  "manipulation": {
-  "rule": "An arm passes when, on at least 2 of the logos where its design differs from base AND on at least half of them, every `moves` metric changes in the stated direction by at least its threshold and every `holds` metric changes by less than half its threshold. A failing arm is replaced by the first reserve of its stratum, once, before Kent sees a picture; the swap and the reason go in the manifest. An arm identical to base on 4 or more of the 6 logos is replaced the same way. Computed from the designs alone; no pick exists yet.",
+  "rule": "An arm passes when, on at least 2 of the logos where its design differs from base AND on at least half of them, every `moves` metric changes in the stated direction by at least its threshold and every `holds` metric changes by less than its threshold. A failing arm is replaced by the first reserve of its stratum, once, before Kent sees a picture; the swap and the reason go in the manifest. An arm identical to base on 4 or more of the 6 logos is replaced the same way. Computed from the designs alone; no pick exists yet.",
   "thresholds": {
-   "trims_per_1000": {"kind": "abs", "value": 1.0},
+   "trims_per_1000": {"kind": "abs", "value": 0.5},
    "flow_circvar": {"kind": "abs", "value": 0.02},
    "long_share": {"kind": "abs", "value": 0.02},
    "thread_density_whole": {"kind": "rel", "value": 0.05}
