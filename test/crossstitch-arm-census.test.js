@@ -34,5 +34,6 @@ test("reproduces long-stitch-census's hoop rows: jersey_15 'A' at left chest", (
   assert.strictEqual(+r.maxMm.toFixed(1), 9.6);
   assert.strictEqual(+r.maxAx.toFixed(1), 6.8);
   assert.strictEqual(r.over12, 0);
-  assert.strictEqual(+T.hoopRow("noble", "AB", "full_back").maxAx.toFixed(1), 17.0);
+  // 17.0 before the arm split (crossfill maxSegPx, 2026-10-13); the 24.0 mm arm is now two 12.0 mm halves
+  assert.strictEqual(+T.hoopRow("noble", "AB", "full_back").maxAx.toFixed(1), 8.5);
 });
