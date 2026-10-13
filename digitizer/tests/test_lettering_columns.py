@@ -5,10 +5,11 @@ lettering-lane architecture, `docs/lettering-architecture-rd-2026-10-07.md`
 
 Contracts pinned:
 
-- the flag is built OFF, and OFF is byte-identical: the stage 7 hook and
-  the `_sews_satin` branch are both behind the flag, so a run with the
-  flag unset and one with it set False produce the same plan on a real
-  lettering fixture, point for point;
+- the flag is ON by default (Kent's ruling 2026-10-12), and OFF stays the
+  pre-flip construction: the stage 7 hook and the `_sews_satin` branch
+  are both behind the flag, so a run with it set False is the skeleton
+  tier's plan on a real lettering fixture, point for point
+  (`test_off_is_byte_identical`);
 - the cut is the construction the spike settled on synthetic letters: an I
   is one straight column, an L cuts once into two straight columns, a T
   cuts its stem from its bar, an O is one ring column whose rails are the
@@ -50,8 +51,13 @@ def _rect(x0, y0, x1, y1):
     return Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
 
 
-def test_flag_is_built_off():
-    assert PipelineConfig().lettering_columns is False
+def test_flag_is_on_by_default_and_needs_no_sibling():
+    """Flipped ON 2026-10-12 (Kent). The lane takes a shape by
+    `is_lettering`, which reads the old taggers unless `lettering_words` is
+    on, so the flip leaves `lettering_words` at its OFF default."""
+    cfg = PipelineConfig()
+    assert cfg.lettering_columns is True
+    assert cfg.lettering_words is False
 
 
 # ---------------------------------------------------------------- the cut
@@ -577,7 +583,9 @@ def _letter_census(result, plan):
 
 @pytest.fixture(scope="module")
 def becker_off():
-    cfg = PipelineConfig(target_width_mm=100.0, garment_id="left_chest", max_colors=6)
+    # The lane is ON by default now (2026-10-12), so the OFF arm names it.
+    cfg = PipelineConfig(target_width_mm=100.0, garment_id="left_chest", max_colors=6,
+                         lettering_columns=False)
     return digitize(str(BECKER), cfg)
 
 
@@ -586,6 +594,10 @@ def test_off_is_byte_identical(becker_off):
                          lettering_columns=False)
     _, plan = digitize(str(BECKER), cfg)
     assert _plan_points(plan) == _plan_points(becker_off[1])
+    # ... and the default is the lane, not the skeleton tier
+    _, dflt = digitize(str(BECKER), PipelineConfig(target_width_mm=100.0,
+                                                    garment_id="left_chest", max_colors=6))
+    assert _plan_points(dflt) != _plan_points(becker_off[1])
 
 
 def test_on_every_marine_letter_sews_columns_with_fewer_runs_and_trims(becker_off):

@@ -15,7 +15,7 @@
 // but only a real download proves the app hands the sheet the same numbers it
 // just put on the screen.
 import { test, expect } from "@playwright/test";
-import { startStudio, pickGarment, openDownload } from "./helpers.js";
+import { startStudio, pickGarment, openDownload, makeOversize } from "./helpers.js";
 import { readFileSync } from "node:fs";
 import zlib from "node:zlib";
 
@@ -125,6 +125,8 @@ test("a design that cannot be hooped says so on the sheet, not only in the expor
   await pickGarment(page, "Full Back");
   await page.getByPlaceholder("Type a name or word").fill("FRITSCH'S STITCHES");
   await expect(page.locator("span.stats")).toContainText(/\d[\d,]* stitches/, { timeout: 20000 });
+  // Auto-fit is capped to the hoop now (2026-10-13), so type the oversize width.
+  await makeOversize(page);
 
   await openDownload(page);
 

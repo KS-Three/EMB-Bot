@@ -12,7 +12,7 @@
 // this spec must run on a machine with no digitizer venv. The service's own
 // success path is covered by digitize-auto-start.spec.js.
 import { test, expect } from "@playwright/test";
-import { startStudio, typeText, pickGarment, openDownload, uploadArtwork, runDigitize } from "./helpers.js";
+import { startStudio, typeText, makeOversize, pickGarment, openDownload, uploadArtwork, runDigitize } from "./helpers.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -202,6 +202,7 @@ test.describe("export", () => {
     await startStudio(page);
     await pickGarment(page, "Tote");
     await typeText(page, "FRITSCH");
+    await makeOversize(page);
     await openDownload(page);
     await page.getByRole("button", { name: "DST", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: /This design is bigger than/ });

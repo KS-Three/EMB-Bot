@@ -60,7 +60,13 @@ NEAR_MM = 1.5
 
 
 def _sewn(**kw):
-    cfg = PipelineConfig(target_width_mm=WIDTH_MM, garment_id=GARMENT,
+    # On the skeleton tier, explicitly: the apex defect this file measures is
+    # the skeleton tier's; the Column lane (`lettering_columns`, ON by default
+    # since Kent's 2026-10-12 flip) builds the A from its outline and reads
+    # 0.53 mm2 here against the 1.5 floor. Its own apex is pinned in
+    # `tests/test_lettering_columns.py` and #844's A table.
+    kw.setdefault("lettering_columns", False)
+    cfg =PipelineConfig(target_width_mm=WIDTH_MM, garment_id=GARMENT,
                          max_colors=6, **kw)
     gen = build_generation(str(FIXTURE), cfg)
     result = finish_generation(gen.fork(), cfg)

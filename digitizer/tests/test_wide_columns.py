@@ -144,10 +144,13 @@ def _becker_coverage(monkeypatch, guard: bool) -> tuple[float, float]:
     # refit letters is 7.72 -- over the line, on the N's sharpened junction
     # that today's decomposition sews as a fan (MASTER_SCOPE defect 59),
     # which is not the bend this guard caps. Held OFF here, same rule.
+    # ... and a SEVENTH, 2026-10-12: `lettering_columns` ON (Kent's flip). The
+    # Column lane cuts Becker's letters from their outline and never reaches
+    # the skeleton tier's fold guard, so the guard's reading needs the tier.
     cfg = PipelineConfig(target_width_mm=_FOLD_WIDTH_MM, wide_columns=True,
                          satin_corner_twigs=False, satin_junction_stack=False,
                          satin_rail_comp=False, satin_rails_follow_edge=False,
-                         letterform_priors_k=None)
+                         letterform_priors_k=None, lettering_columns=False)
     result, plan = digitize(art, cfg)
     m = run_preflight(result, plan, cfg, image=art)["metrics"]
     return float(m["coverage_max"]), float(m["uncovered_worst_mm2"])

@@ -150,8 +150,13 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 # fold saves 305 stitches and 181 mm of flying (16,998 against 17,303),
 # the seam closing is byte-identical, and the claim is measured where it
 # was made.
+# ... and `lettering_columns` False (the Column lane went ON by default
+# 2026-10-12, Kent): it sews drone's lettering from the outline, and the fold's
+# thread price under it reads 17,041 against a 16,981 ceiling (CI, PR #863).
+# The engine these claims were measured on has the skeleton tier.
 PRE_FLIP_RC = {"robust_region_colour": False, "keep_thin_strokes": False,
-               "satin_corner_twigs": False, "satin_rail_comp": False}
+               "satin_corner_twigs": False, "satin_rail_comp": False,
+               "lettering_columns": False}
 
 
 @pytest.fixture(scope="module")

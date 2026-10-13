@@ -1924,7 +1924,10 @@ def test_color_stops_past_the_single_needle_wall_warn():
         row, col = divmod(i, 4)
         y, x = 20 + row * 105, 20 + col * 110
         patches[y:y + 85, x:x + 90] = c
-    report = _digitize_report(patches, target_width_mm=100.0)
+    # `lettering_columns=False` (ON by default since Kent's 2026-10-12 flip):
+    # the twelve patches read as a line of lettering, the Column lane takes
+    # them, and the cap's per-patch pieces this count prices drop 23 -> 11.
+    report = _digitize_report(patches, target_width_mm=100.0, lettering_columns=False)
 
     hit = [f for f in report["findings"] if f["code"] == COLOR_STOPS_HEAVY]
     assert len(hit) == 1
@@ -2238,7 +2241,11 @@ def test_the_letter_apex_is_reported_now_that_the_erosion_is_gone():
     engine leaves less of it.
     """
     art = TESTDATA / "photo/enthusiast_logo.png"
-    c = cfg(target_width_mm=80.0, max_colors=6, satin_crown_cover=False)
+    # `lettering_columns=False` (ON by default since Kent's 2026-10-12 flip):
+    # the apex hole is the skeleton tier's; the Column lane builds the A from
+    # its outline.
+    c = cfg(target_width_mm=80.0, max_colors=6, satin_crown_cover=False,
+            lettering_columns=False)
     result, plan_ = digitize(art, c)
     report = run_preflight(result, plan_, c, image=art)
     m = report["metrics"]
