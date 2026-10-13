@@ -148,7 +148,12 @@ def arm(gen, path: Path, base: dict, forbid: float | None, read_gap_mm: float) -
     open_n, open_mm2, satin = _open_mm2(result, cfg, read_gap_mm)
     pairs = [{**p, "earlier_satin": satin.get(p["earlier"]),
               "later_satin": satin.get(p["later"])} for p in spy.pairs]
-    return {"pairs": pairs,"stitches": int(st.stitch_count), "trims": int(st.trims),
+    shape_points: dict[str, int] = {}          # needle points per shape (a clip piece
+    for _blk, run in plan.iter_runs():         # `S1-clip0` counts to `S1`)
+        key = run.shape_id.split("-")[0]
+        shape_points[key] = shape_points.get(key, 0) + len(run.points)
+    return {"pairs": pairs, "shape_points": shape_points,
+            "stitches": int(st.stitch_count), "trims": int(st.trims),
             "color_changes": int(st.color_changes), "seconds": round(secs, 1),
             **spy.row(), "open_n": open_n, "open_mm2": round(open_mm2, 2),
             "uncovered_n": unc_n, "uncovered_mm2": round(unc_mm2, 2),
