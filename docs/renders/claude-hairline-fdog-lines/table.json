@@ -14,21 +14,21 @@
    "bare_new_mm2": 0.0
   },
   "on40": {
-   "md5": "b61ee8bce87ca00a122a38ed0e9e3503",
-   "stitches": 30938,
-   "trims": 332,
-   "color_changes": 29,
-   "thread_m": 52.52,
-   "under_1mm": 5115,
+   "md5": "1b6d5d85b26d39c085c4287b83f3926e",
+   "stitches": 31232,
+   "trims": 333,
+   "color_changes": 30,
+   "thread_m": 52.66,
+   "under_1mm": 5438,
    "hairline": {
-    "shapes": 14,
-    "strands": 14,
-    "dropped": 18
+    "shapes": 6,
+    "strands": 6,
+    "dropped": 0
    },
    "line_strand_stitches": 0,
    "line_strand_thread_m": 0.0,
-   "bare_mm2": 6744.06,
-   "bare_new_mm2": 31.06
+   "bare_mm2": 6740.69,
+   "bare_new_mm2": 11.38
   },
   "lines40": {
    "md5": "e1b1c714f8158903b8581baf2ce8eecf",
