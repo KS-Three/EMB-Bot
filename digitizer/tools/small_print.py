@@ -255,6 +255,7 @@ def measure(image, cfg: PipelineConfig, ref: dict) -> dict:
         cv2.fillPoly(m, [np.array([px(p) for p in c.exterior.coords], np.int32)], 1)
         a = int(m.sum())
         per_counter.append(dict(mm2=round(a / PX_PER_MM ** 2, 3),
+                                at=[round(c.centroid.x, 2), round(c.centroid.y, 2)],
                                 open=round(float((m & (1 - sewn)).sum()) / a, 3) if a else None,
                                 traced=not any(p.covers(c.representative_point()) for p in here)))
     for r in result.regions:
@@ -375,7 +376,8 @@ def _vstack(imgs, gap=16):
     return np.vstack(out[:-1])
 
 
-def sheet(name: str, ref: dict, caps, weights=(40,), ppm: int = PX_PER_MM) -> tuple[np.ndarray, list]:
+def sheet(name: str, ref: dict, caps, weights=(40,), ppm: int = PX_PER_MM,
+          focus=None) -> tuple[np.ndarray, list]:
     """OFF beside ON (`small_print_floor`) per cap and weight, every panel at
     `ppm` px/mm, the same scale throughout. -> (BGR sheet, metric rows)."""
     image = load(name)
@@ -395,6 +397,10 @@ def sheet(name: str, ref: dict, caps, weights=(40,), ppm: int = PX_PER_MM) -> tu
                                    f"{tag}: {m['counters_shut']}/{m['counters']} counters shut, "
                                    f"{m['counter_open']:.2f} open"))
                 fb = focus_box(art)
+                if focus is not None:
+                    # the zoom window as a share of the line's width (`--focus`)
+                    x0, y0, x1, y1 = art.bounds
+                    fb = (x0 + focus[0] * (x1 - x0), y0, x0 + focus[1] * (x1 - x0), y1)
                 if fb is not None:
                     zoom.append(_label(render_line(plan, art, tw, 2 * ppm, pad=0.5, box=fb),
                                        f"{tag}, zoom {2 * ppm} px/mm"))
@@ -419,6 +425,8 @@ def main(argv=None):
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--sheet", help="write an OFF/ON render sheet (PNG) here instead of measuring")
     ap.add_argument("--weights", default="40", help="thread weights for --sheet, e.g. 40,60")
+    ap.add_argument("--focus", help="--sheet zoom window as shares of the line width, e.g. 0.72,1 "
+                                    "(default: the letter holding the largest counter)")
     a = ap.parse_args(argv)
     _path, rank, ref_w = FIXTURES[a.fixture]
     ref = json.loads(Path(a.ref).read_text()) if a.ref else None
@@ -431,7 +439,8 @@ def main(argv=None):
             Path(a.save_ref).write_text(json.dumps(ref))
     if a.sheet:
         img, metrics = sheet(a.fixture, ref, [float(c) for c in a.caps.split(",")],
-                             tuple(int(w) for w in a.weights.split(",")))
+                             tuple(int(w) for w in a.weights.split(",")),
+                             focus=tuple(float(f) for f in a.focus.split(",")) if a.focus else None)
         cv2.imwrite(a.sheet, img)
         for m in metrics:
             print(json.dumps(m) if a.json else fmt(m), flush=True)

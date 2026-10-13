@@ -258,6 +258,17 @@ def small_print_counters(poly: Polygon, rings, min_width_mm: float) -> Polygon:
     (`thread_profile(wt).counter_min_width_mm`) and that lies inside the
     letter. A counter narrower than that cannot stay open under thread and
     stays sewn, as before. Returns `poly` itself when nothing qualifies."""
+    keep = _wide_counters(poly, rings, min_width_mm)
+    if not keep:
+        return poly
+    out = poly.difference(unary_union(keep))
+    return out if out.geom_type == "Polygon" and not out.is_empty else poly
+
+
+def _wide_counters(poly: Polygon, rings, min_width_mm: float) -> list[Polygon]:
+    """The recorded counters (`meta["small_counters"]`) that lie inside
+    `poly` and are at least `min_width_mm` across (largest inscribed
+    circle) -- the ones `small_print_counters` punches back."""
     from shapely.ops import polylabel
 
     keep = []
@@ -270,10 +281,65 @@ def small_print_counters(poly: Polygon, rings, min_width_mm: float) -> Polygon:
         centre = polylabel(c, tolerance=0.01)
         if 2.0 * centre.distance(c.exterior) >= min_width_mm:
             keep.append(c)
-    if not keep:
+    return keep
+
+
+def small_print_counter_set(art: Polygon, rings, min_width_mm: float,
+                            lettering: bool) -> list[Polygon]:
+    """`cfg.small_print_floor` outside the Column lane: the counters a run-
+    or fill-tier shape must keep open. Every recorded counter stage 4's
+    sliver floor dropped that is one laid width across (`_wide_counters`),
+    and -- when the shape is lettering, the Column lane's own scope -- the
+    counters its artwork polygon still has. A shape that is not tagged as
+    lettering but had a counter of that width dropped is small print by the
+    same evidence (the synthetic 8 and 0 lose their text tag at a 3 mm cap
+    and fall to the fill tier); its other holes are left as they were."""
+    if art is None or art.is_empty or art.geom_type != "Polygon":
+        return []
+    out = _wide_counters(art, rings, min_width_mm)
+    if lettering:
+        out += [Polygon(r) for r in art.interiors]
+    return [c for c in out if not c.is_empty]
+
+
+def small_print_clear(poly, counters, clear_mm: float, art=None):
+    """`poly` (the shape a run or fill tier is about to sew) with every
+    counter grown by `clear_mm` cut out of it: a fill's rows and a run's
+    ring then lie that far off the counter, so the thread's EDGE, not its
+    centre, meets the counter's edge (half the block's laid width, the
+    Column lane's `_clear_counters` hold). The counter itself is a hole, so
+    the tier's own travel stays out of it.
+
+    A stroke the growth would eat is kept whole: ink of `art` (the
+    artwork letter) within `clear_mm` of one counter and of another, or of
+    the letter's outside, is a bar thinner than one laid width -- a B's
+    middle bar, a slashed zero's slash, an O's ring -- and cutting it
+    would change the glyph, not open it. The Column lane's own rule is the
+    same: it never takes a cross under the cross floor. Returns `poly`
+    itself when there is nothing to cut or the cut would leave nothing."""
+    if not counters or clear_mm <= 0 or poly is None or poly.is_empty:
         return poly
-    out = poly.difference(unary_union(keep))
-    return out if out.geom_type == "Polygon" and not out.is_empty else poly
+    grown = [c.buffer(clear_mm) for c in counters]
+    cut = unary_union(grown)
+    if art is not None and not art.is_empty:
+        ink = art.difference(unary_union(counters))
+        filled = unary_union([Polygon(g.exterior) for g in getattr(art, "geoms", [art])])
+        thin = []
+        for i, g in enumerate(grown):
+            # through the letter's outside, or into another counter's growth
+            t = g.difference(filled)
+            others = [h for j, h in enumerate(grown) if j != i]
+            if others:
+                t = t.union(g.difference(counters[i]).intersection(unary_union(others)))
+            if not t.is_empty:
+                thin.append(t)
+        if thin:
+            keep = unary_union(thin).buffer(clear_mm).intersection(ink)
+            cut = cut.difference(keep)
+    out = poly.difference(cut)
+    if out.is_empty or out.geom_type not in ("Polygon", "MultiPolygon"):
+        return poly
+    return out
 
 
 def _clear_counters(a_pts, b_pts, poly: Polygon, clear_mm: float,
