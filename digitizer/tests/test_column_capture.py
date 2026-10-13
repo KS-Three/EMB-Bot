@@ -4,8 +4,10 @@
 admits. The house-angle group (`lettering_group`) has no ink link and no
 "is this a stroke" test, so a grid of colour patches (`test_preflight`'s
 12-patch fixture, #863) and a ramp of 14.4 mm discs (`photo/fur_ramp.png`)
-read as lines of lettering. `cfg.lettering_columns_skip_blobs` (default OFF)
-refuses a tagged shape that is a solid blob.
+read as lines of lettering. `cfg.lettering_columns_skip_blobs` (default ON
+since Kent's ruling 2026-10-13) refuses a tagged shape that is a solid blob;
+`cfg.lettering_columns_ink_link` (likewise ON) refuses a house-group-only
+shape in a far ink. The OFF paths are pinned by setting the flag False.
 
 Pins here are at the TAG level (`run_stages` + `is_lettering`): the lane's
 reach, not its stitches, which is what a tripwire on "gains captures" needs
@@ -59,8 +61,9 @@ def test_blob_predicate_separates_patches_from_strokes():
     assert not is_solid_blob(bold)
 
 
-def test_guard_is_off_by_default():
-    assert PipelineConfig().lettering_columns_skip_blobs is False
+def test_guard_is_on_by_default():
+    """ON by Kent's ruling 2026-10-13; False is the pre-flip lane."""
+    assert PipelineConfig().lettering_columns_skip_blobs is True
 
 
 # --- the tripwire: known non-text fixtures take nothing --------------------
@@ -75,13 +78,13 @@ def test_non_text_fixtures_gain_no_lane_captures(fixture):
 
 
 def test_colour_grid_capture_is_pinned_and_the_guard_clears_it():
-    """The synthetic grid is the KNOWN false capture: with the guard OFF the
-    lane takes all 12 patches (house group only, `text_candidate` False);
-    with it ON, none. If the OFF count moves, the taggers moved: re-read the
-    census before editing the number."""
+    """The synthetic grid is the KNOWN false capture: with the guard OFF
+    (explicitly; it is ON by default) the lane takes all 12 patches (house
+    group only, `text_candidate` False); at the default, none. If the OFF
+    count moves, the taggers moved: re-read the census before editing it."""
     grid = _grid_image()
-    assert len(_taken(grid, target_width_mm=100.0)) == 12
-    assert _taken(grid, target_width_mm=100.0, lettering_columns_skip_blobs=True) == set()
+    assert len(_taken(grid, target_width_mm=100.0, lettering_columns_skip_blobs=False)) == 12
+    assert _taken(grid, target_width_mm=100.0) == set()
 
 
 def test_fur_ramp_discs_are_the_second_known_false_capture():
@@ -89,17 +92,19 @@ def test_fur_ramp_discs_are_the_second_known_false_capture():
     group alone (census 2026-10-13); the guard clears all eight."""
     path = TESTDATA / "photo/fur_ramp.png"
     kw = dict(garment_id="left_chest", max_colors=6)
-    assert len(_taken(path, **kw)) == 8
-    assert _taken(path, lettering_columns_skip_blobs=True, **kw) == set()
+    assert len(_taken(path, lettering_columns_skip_blobs=False, **kw)) == 8
+    assert _taken(path, **kw) == set()
 
 
 def test_guard_keeps_the_letters_on_enthusiast():
     """Every letter the lane takes on the enthusiast wordmark is still taken
-    with the guard ON (the one extra shape the lane takes there, the shield
-    star, is not a solid blob and is out of this guard's reach)."""
+    with the blob guard ON (the one extra shape the lane takes there, the
+    shield star, is not a solid blob and is out of this guard's reach; the ink
+    link is held OFF on both sides so only the blob guard differs)."""
     path = TESTDATA / "photo/enthusiast_logo.png"
-    off = _taken(path, garment_id="left_chest", max_colors=6)
-    on = _taken(path, garment_id="left_chest", max_colors=6, lettering_columns_skip_blobs=True)
+    kw = dict(garment_id="left_chest", max_colors=6, lettering_columns_ink_link=False)
+    off = _taken(path, lettering_columns_skip_blobs=False, **kw)
+    on = _taken(path, lettering_columns_skip_blobs=True, **kw)
     assert len(off) >= 10        # tag level: stage 7 builds columns for 11 of them
     assert on == off
 
@@ -174,13 +179,17 @@ def test_ink_link_never_refuses_a_text_letter_nor_fails_closed():
     assert ink_strays(_word() + [unknown], CHART) == []
 
 
-def test_ink_link_is_off_by_default_and_reads_its_key_only_when_on():
-    assert PipelineConfig().lettering_columns_ink_link is False
+def test_ink_link_is_on_by_default_and_reads_its_key_only_when_on():
+    """ON by Kent's ruling 2026-10-13; False reads no key."""
+    assert PipelineConfig().lettering_columns_ink_link is True
     star = _r("star", box(-10, 0, -5, 5), 2, lettering_group=True)
     assert tag_ink_strays(_word() + [star], CHART) == 1
     assert star.meta["lettering_ink_stray"] is True
-    assert is_lettering(star, PipelineConfig())
+    assert not is_lettering(star, PipelineConfig())
     assert not is_lettering(star, PipelineConfig(lettering_columns_ink_link=True))
+    # (the 5 mm box is also a solid blob, so the blob guard is held off here)
+    assert is_lettering(star, PipelineConfig(lettering_columns_ink_link=False,
+                                             lettering_columns_skip_blobs=False))
 
 
 def _guard_census(case):
@@ -193,7 +202,7 @@ def _guard_census(case):
     rel, width, garment = REAL_ART[case]
     base = dict(target_width_mm=width, garment_id=garment, max_colors=6)
     on = PipelineConfig(**base, lettering_columns_ink_link=True)
-    off = PipelineConfig(**base)
+    off = PipelineConfig(**base, lettering_columns_ink_link=False)
     res = run_stages(TESTDATA / rel, on)
     truth = json.loads((TESTDATA / "lettering_truth.json").read_text(encoding="utf-8"))
     lab = truth["fixtures"].get(case)
@@ -240,9 +249,11 @@ def test_ink_link_refuses_nothing_on_the_other_letter_fixtures(case):
 
 
 def test_ink_link_off_never_reaches_the_new_code(monkeypatch):
-    """OFF is byte-identical by construction: the tag pass is never called
-    (it raises here), no key is written, and is_lettering's new branch is
-    behind the flag. The ON stream differs (the star), so the pin has teeth."""
+    """OFF (set explicitly; the default is ON since 2026-10-13) is
+    byte-identical to the pre-flip lane by construction: the tag pass is never
+    called (it raises here), no key is written, and is_lettering's branch is
+    behind the flag. The default (ON) stream differs (the star), so the pin
+    has teeth."""
     import hashlib
     import json
     from digitizer_core import columns
@@ -258,11 +269,12 @@ def test_ink_link_off_never_reaches_the_new_code(monkeypatch):
                   for _, r in plan.iter_runs() for x, y in r.points]
         return hashlib.md5(json.dumps(coords).encode()).hexdigest(), keys
 
-    on, on_keys = md5(PipelineConfig(**kw, lettering_columns_ink_link=True))
+    on, on_keys = md5(PipelineConfig(**kw))
+    assert PipelineConfig(**kw).lettering_columns_ink_link is True
 
     def boom(*_a, **_k):
         raise AssertionError("tag_ink_strays reached with the flag OFF")
     monkeypatch.setattr(columns, "tag_ink_strays", boom)
-    off, off_keys = md5(PipelineConfig(**kw))
+    off, off_keys = md5(PipelineConfig(**kw, lettering_columns_ink_link=False))
     assert off_keys == 0 and on_keys == 1
     assert on != off
