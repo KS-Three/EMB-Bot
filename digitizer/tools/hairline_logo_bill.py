@@ -59,9 +59,10 @@ from tools import corpus_scorecard as sc  # noqa: E402
 from tools.hairline_renders import bare_cells  # noqa: E402
 
 TESTDATA = sc.TESTDATA
-OUT_DIR = ROOT.parent / "docs" / "renders" / "hairline-logo-bill-2026-10-12"
+OUT_DIR = ROOT.parent / "docs" / "renders" / "claude-hairline-logo-bill"
 MODES = {"off": (False, False), "on": (True, False), "on_gnd": (True, True)}
 RENDER_PX_PER_MM = 6.0
+ZOOM_PX_PER_MM = 30.0
 
 
 def row_key(fixture: str, cfg_kw: dict) -> str:
@@ -327,32 +328,72 @@ def cmd_render(args) -> int:
         cfg_kw, wt = r["matrix"], r["thread_wt"]
         base = dict(cfg_kw, thread_wt=wt)
         result = run_stages(TESTDATA / r["fixture"], PipelineConfig(**base))
-        panels = []
-        for mode, label in (("off", "today (OFF)"), ("on", "hairline ON"),
-                            ("on_gnd", "hairline ON + over_ground")):
+        panels, plans = [], []
+        for mode, label in zip(MODES, LABELS):
             on, gnd = MODES[mode]
             plan = plan_stitches(result, PipelineConfig(**base, hairline=on, hairline_over_ground=gnd))
             panels.append(_panel(plan, label, wt))
-        h = max(p.shape[0] for p in panels)
-        w = max(p.shape[1] for p in panels)
-        panels = [cv2.copyMakeBorder(p, 0, h - p.shape[0], 0, w - p.shape[1], cv2.BORDER_CONSTANT,
-                                     value=(255, 255, 255)) for p in panels]
-        sep = np.full((h, 4, 3), 200, np.uint8)
-        strip = np.hstack([panels[0], sep, panels[1], sep, panels[2]])
+            plans.append(plan)
         name = Path(r["fixture"]).stem
-        dest = out / f"compare_{name}.jpg"
-        q = 85
-        while True:
-            ok, buf = cv2.imencode(".jpg", strip, [cv2.IMWRITE_JPEG_QUALITY, q])
-            if len(buf) < 290_000 or q <= 40:
-                break
-            q -= 5
-            if q < 60:      # shrink rather than crush quality
-                strip = cv2.resize(strip, None, fx=0.85, fy=0.85, interpolation=cv2.INTER_AREA)
-                q = 80
-        dest.write_bytes(buf.tobytes())
-        print(f"{dest} {len(buf) / 1024:.0f} KB (change score {change_score(r):.4f})")
+        _write_png(out / f"{name}_compare.png", _strip(panels))
+        # Zoom: the widest-area re-sewn candidate, where the detail is under
+        # 1 mm. Same fixture, same scale, the three arms side by side.
+        pick = [c for c in r["on"]["candidates"] if c["resewn"]]
+        if pick:
+            c = max(pick, key=lambda c: c["area_mm2"])
+            x0, y0, x1, y1 = c["bbox_mm"]
+            cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+            hw = max(5.0, (x1 - x0) / 2 + 1.5)
+            hh = max(4.0, (y1 - y0) / 2 + 1.5)
+            crops = []
+            for plan, label in zip(plans, LABELS):
+                crops.append(_zoom_panel(plan, label, wt, cx, cy, hw, hh))
+            _write_png(out / f"{name}_zoom.png", _strip(crops))
+            print(f"zoom on {c['shape_id']} ({c['area_mm2']} mm2, width {c['width_mm']} mm)")
     return 0
+
+
+LABELS = ("today (OFF)", "hairline ON", "hairline ON + over_ground")
+
+
+def _strip(panels: list) -> np.ndarray:
+    h = max(p.shape[0] for p in panels)
+    w = max(p.shape[1] for p in panels)
+    panels = [cv2.copyMakeBorder(p, 0, h - p.shape[0], 0, w - p.shape[1], cv2.BORDER_CONSTANT,
+                                 value=(255, 255, 255)) for p in panels]
+    sep = np.full((h, 4, 3), 200, np.uint8)
+    return np.hstack([panels[0], sep, panels[1], sep, panels[2]])
+
+
+def _write_png(dest: Path, img: np.ndarray, limit: int = 290_000) -> None:
+    """PNG under `limit` bytes: shrink by 15 % steps until it fits."""
+    while True:
+        ok, buf = cv2.imencode(".png", img, [cv2.IMWRITE_PNG_COMPRESSION, 9])
+        if len(buf) < limit or min(img.shape[:2]) < 120:
+            break
+        img = cv2.resize(img, None, fx=0.85, fy=0.85, interpolation=cv2.INTER_AREA)
+    dest.write_bytes(buf.tobytes())
+    print(f"{dest} {len(buf) / 1024:.0f} KB {img.shape[1]}x{img.shape[0]}")
+
+
+def _zoom_panel(plan, label: str, wt: int, cx: float, cy: float, hw: float, hh: float) -> np.ndarray:
+    """The design rendered at `ZOOM_PX_PER_MM`, cropped to a mm box around
+    (cx, cy) in plan mm (the adapter's frame: design unit = mm x 10, y up)."""
+    from digitizer_core import machine
+    design = plan_to_design(plan, name=label)
+    img = stitchviz.render_design(design, px_per_mm=ZOOM_PX_PER_MM,
+                                  thread_mm=machine.thread_profile(wt).width_mm)
+    (_h, _w), to_px = stitchviz._frame(design["stitches"], ZOOM_PX_PER_MM, 2.0)
+    u = stitchviz.UNITS_PER_MM
+    ax, ay = to_px({"x": (cx - hw) * u, "y": -(cy - hh) * u})   # left, bottom of the box
+    bx, by = to_px({"x": (cx + hw) * u, "y": -(cy + hh) * u})   # right, top
+    top, bot = sorted((ay, by))
+    crop = img[max(top, 0):max(bot, 1), max(ax, 0):max(bx, 1)]
+    out = np.full((int(2 * hh * ZOOM_PX_PER_MM), int(2 * hw * ZOOM_PX_PER_MM), 3), 255, np.uint8)
+    out[:crop.shape[0], :crop.shape[1]] = crop[:out.shape[0], :out.shape[1]]
+    band = np.full((30, out.shape[1], 3), 255, np.uint8)
+    cv2.putText(band, label, (6, 21), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (30, 30, 30), 1, cv2.LINE_AA)
+    return np.vstack([band, out])
 
 
 def main(argv=None) -> int:
