@@ -9,9 +9,9 @@
 //   "make it smaller under Size" -> type a smaller width in the Size panel
 //
 // Each test follows the warning's own instruction and asserts the caption
-// stops warning. Auto-fit is deliberately NOT asserted here: it fits the
-// garment's placement box, not the hoop, so on a tote or back it brings the
-// warning straight back (MASTER_SCOPE area 3 carries that open question).
+// stops warning. Auto-fit is capped to the largest hoop (Kent, 2026-10-13), so
+// on a tote or back it no longer warns by itself; the third test pins that, and
+// the second reaches the warning by typing a width past the hoop.
 import { test, expect } from "@playwright/test";
 import { startStudio, pickGarment, typeText } from "./helpers.js";
 
@@ -41,14 +41,28 @@ test("oversize on a garment past every hoop says make it smaller, and a smaller 
   await pickGarment(page, "Full Back");
   await typeText(page, "EMB TEST");
 
+  // Auto-fit alone is capped to the hoop and stays quiet; a typed 10 in
+  // (254 mm, inside the Full Back placement) is past every hoop.
+  await expect(caption(page).locator(".warn", { hasText: "Exceeds" })).toHaveCount(0);
+  const w = page.getByLabel("Width");
+  expect(await page.locator("select.unitselect").inputValue()).toBe("in");
+  await w.fill("10");
+  await w.dispatchEvent("change");
   const warn = caption(page).locator(".warn", { hasText: "Exceeds" });
   await expect(warn).toBeVisible();
   await expect(warn).toContainText("every hoop this app offers — make it smaller under Size");
 
   // Do what it says: 6 in (152 mm) is inside the largest, 200 mm, hoop.
-  const w = page.getByLabel("Width");
-  expect(await page.locator("select.unitselect").inputValue()).toBe("in");
   await w.fill("6");
   await w.dispatchEvent("change");
+  await expect(caption(page).locator(".warn", { hasText: "Exceeds" })).toHaveCount(0);
+});
+
+test("auto-fit on a garment bigger than every hoop is capped to the hoop: no oversize warning, and the Size panel says why", async ({ page }) => {
+  await startStudio(page);
+  await pickGarment(page, "Full Back");
+  await typeText(page, "EMB TEST");
+
+  await expect(page.locator(".capnote.autocap")).toContainText("Auto-fit sizes this to the 8×8 in hoop");
   await expect(caption(page).locator(".warn", { hasText: "Exceeds" })).toHaveCount(0);
 });

@@ -1773,11 +1773,13 @@
     // past the box by construction (pull compensation — defect 34), so
     // comparing it to the box would read "capped" for every design.
     const el = project.elements.find((e) => e.id === pe.id);
-    const capWmm = (() => {
-      const g = EMB.getGarment(project.garmentId);
-      return g ? g.widthIn * 25.4 : Infinity;
-    })();
-    const atWidthCap = !!el && (el.sizeMm == null || el.sizeMm >= capWmm - 0.05);
+    // Auto-fit is capped to the largest hoop (EMB.autoFitBoxMm), so on the four
+    // garments whose placement is bigger than every hoop it sits BELOW the box
+    // and the letters can still grow by typing a width.
+    const g = EMB.getGarment(project.garmentId);
+    const boxWmm = g ? g.widthIn * 25.4 : Infinity;
+    const reqWmm = el && el.sizeMm == null ? (g ? EMB.autoFitBoxMm(g).w : Infinity) : el && el.sizeMm;
+    const atWidthCap = !!el && reqWmm >= boxWmm - 0.05;
     // `lines` only picks the wording of the cap-floor fix ("break it across
     // lines" vs "use more lines"); read off the element's own text, which is
     // what the customer would be editing.

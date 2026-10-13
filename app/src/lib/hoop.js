@@ -5,11 +5,14 @@
 // hoop the Studio shows also drives any engine-side ceiling check; this
 // module only resolves a project's pick and phrases the result.
 //
-// IMPORTANT: the hoop is a CEILING check, never a clamp. The scale-to-fit
-// math everywhere (fitScale, SizePanel's typed-width bound, the field's
-// drag clamps) keys off the garment PLACEMENT box, unchanged — a design can
-// legitimately fit its placement and still exceed the picked hoop, and the
-// answer is a warning, not a silent resize.
+// IMPORTANT: the hoop is a CEILING check, never a clamp on what the user
+// asks for. SizePanel's typed-width bound and the field's drag clamps key off
+// the garment PLACEMENT box, unchanged — a design can legitimately fit its
+// placement and still exceed the picked hoop, and the answer is a warning,
+// not a silent resize. The one exception is AUTO-fit (Kent's ruling
+// 2026-10-13, "cap to hoop"): fitScale sizes to the placement box capped to
+// the largest hoop's usable field (EMB.autoFitBoxMm), so auto-fit alone never
+// produces an oversize design.
 import { EMB } from "./emb.js";
 
 // The hoop in effect for a project: the manual pick when project.hoopId
@@ -49,9 +52,9 @@ export function effectiveHoop(project) {
 // the placement box. So every design on 40% of the garment picker is oversize
 // by construction, on every run, and got told to try a bigger hoop.
 //
-// This changes the MESSAGE only. Whether auto-fit should cap to the hoop
-// instead is the open question MASTER_SCOPE area 3 already carries, and it is
-// Kent's: capping would silently shrink every back-of-jacket design.
+// Auto-fit now caps to the largest hoop (2026-10-13), so this last case is
+// reached only by a width the user typed (or dragged) past the hoop; the
+// auto-fit design says it was capped via `autoCapNote` instead.
 export function hoopFitNote(widthMM, heightMM, hoop) {
   if (!hoop || !isFinite(widthMM) || !isFinite(heightMM)) return null;
   const fit = EMB.hoopFit(widthMM, heightMM, hoop);
@@ -61,4 +64,18 @@ export function hoopFitNote(widthMM, heightMM, hoop) {
   return bigger
     ? `Exceeds your ${hoop.label} hoop — a ${bigger.label} hoop fits it`
     : `Exceeds your ${hoop.label} hoop, and every hoop this app offers — make it smaller under Size`;
+}
+
+// Said beside the Size controls while a design is auto-fit on a garment whose
+// placement box is bigger than the largest hoop: the design is smaller than
+// the placement area by choice, not by accident. "" when auto-fit is not
+// capped (every other garment), so the line only appears where it is true.
+export function autoCapNote(garment) {
+  if (!garment || !EMB.autoFitBoxMm || !EMB.HOOPS) return "";
+  const hoop = EMB.HOOPS[EMB.HOOPS.length - 1];
+  const box = EMB.autoFitBoxMm(garment);
+  const capped = box.w < garment.widthIn * 25.4 - 1e-9 || box.h < garment.heightIn * 25.4 - 1e-9;
+  return capped
+    ? `Auto-fit sizes this to the ${hoop.label} hoop, the largest this app offers — the ${garment.label} area is bigger. Type a width to go larger.`
+    : "";
 }
