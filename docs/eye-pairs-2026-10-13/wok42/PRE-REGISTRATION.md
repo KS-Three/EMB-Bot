@@ -252,6 +252,8 @@ looking. What changes is the reading: the analysis now reports every lead on
 all live pairs AND, beside it, on the pairs of arms that passed the check
 alone (`isolating_only`), so a lead is never read off pairs whose arm did not
 isolate its variable without saying so. No arm, flag, direction, expected
-pick, logo or statistic was changed, and no pick, picture or per-pair figure
-had been looked at. The manifest reports pass or fail per arm and nothing
-finer; the table of deltas stays unpublished until the sitting is over.
+pick, logo or statistic was changed. No pick exists and Kent has seen no
+picture; the builder did read the check's per-arm, per-logo deltas to see why
+arms failed, which is what the check is for and not something a pick could have
+touched. The manifest reports pass or fail per arm and nothing finer; the table
+of deltas stays unpublished until the sitting is over.
