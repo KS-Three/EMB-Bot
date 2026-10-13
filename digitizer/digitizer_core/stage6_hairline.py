@@ -163,12 +163,42 @@ _RIBBON_PAD_MM = 0.02
 # own polygon whole through the junction.
 _JUNCTION_CUT = 1.0
 
+# --- the line test (the photo trial, 2026-10-12) ---
+# A branch is a strand only when its core leaves the straight path between
+# the colours on its two sides by at least this much (CIELAB + alpha x 100,
+# `_SRC_MIN_CONTRAST`'s units and value). Measured on owl_kent.jpg: eye rims
+# and beak bristles read 14-66, the grey blur rim of a feather bar and
+# slivers of smooth down 0-10. Candidate, unsewn (ROADMAP gate 1).
+_LINE_MIN_CONTRAST = _SRC_MIN_CONTRAST
+
 # --- the ground-fragment rule (step 2) ---
 # A thin shape of a ground colour is a hairline only when it is darker than
 # the colours its edge touches by more than this many L* units.
 _DARKER_L = 2.0
 # Two shapes "touch" within this distance (mm) — the bean-letter ground rule's.
 _TOUCH_MM = 0.1
+
+# --- the drop guard (2026-10-12, docs/renders/claude-hairline-drop-guard/) ---
+# A shape whose hairline routing would DROP a real share of its strands (paths
+# under `RUN_MIN_LOOP_MM`) is not offered to the tier at all: it takes the
+# ladder it takes with `cfg.hairline` off, whole, in stage 5 and in stage 7.
+# Not a `cfg` flag: the tier is unflipped and has no users, so the guard is
+# part of what "hairline ON" means. The module constant exists so the logo
+# bill can price the tier without it (`tools/hairline_logo_bill.py
+# --no-guard`).
+DROP_GUARD = True
+# "A real share": the dropped paths' length over the shape's strand length.
+# MEASURED, not set (docs/renders/claude-hairline-drop-guard/survey.md, 10
+# fixtures): both hair networks drop 0.3 and 0.5 % (a crossing's leftover
+# stubs: 2 of 51 paths, 4 of 56); of the 133 logo shapes that drop anything
+# (survey: 8 logo fixtures), 131 drop 2.8 % or more and 94 drop ALL of
+# their strand length (the whole shape is under the floor). The two under
+# 2 % are a 54 mm2 outline stroke (0.11 %, golden_tee: 0.08 mm lost) and a
+# 2.1 mm2 serif (1.9 %, Fremont: 0.12 mm lost). Guarding on ANY drop forfeited the whole hair network
+# (hair_strands -152 stitches instead of -5,637) to save two stubs. 2 %
+# sits in the gap. A candidate: a plan-quality cut, not a machine constant,
+# but no sew-out has been asked about it (ROADMAP gate 1).
+DROP_GUARD_SHARE = 0.02
 
 
 @dataclass
@@ -385,11 +415,28 @@ def _decide_edges(m: dict, poly, max_width_mm: float, ink, ink_colour) -> None:
                 ok = [w for w in ws if w is not None]
                 if ok and len(ok) >= _SRC_MIN_VALID * len(ws):
                     edges[k]["w_source"] = float(np.median(ok))
+    # The photo trial (2026-10-12): with the source in hand, a branch is a
+    # strand only where the photograph shows a LINE there (`_line_contrasts`)
+    # — read whether or not the width read found an ink colour, because a
+    # sliver with no edge at all is exactly the case that used to fall back
+    # to the traced width and pass.
+    if ink is not None and picks_y:
+        lines = _line_contrasts(ink, skel, dist, scale, x0, y0,
+                                np.asarray(picks_y), np.asarray(picks_x))
+        per_l: dict[int, list] = {}
+        for k, v in zip(owner, lines):
+            if v is not None:
+                per_l.setdefault(k, []).append(v)
+        for k, vs in per_l.items():
+            edges[k]["line"] = float(np.median(vs))
     for e in edges:
         if not e["decided"]:
             continue
         e["w"] = e.get("w_source", e["w_traced"])
         e["admit"] = e["w"] <= max_width_mm and e["p95"] <= blob_lim
+        if e["admit"] and e.get("line") is not None and e["line"] < _LINE_MIN_CONTRAST:
+            e["admit"] = False
+            e["refused"] = "no_line"
     # Branches too short to read follow their neighbours.
     by_node: dict[int, list[int]] = {}
     for i, e in enumerate(edges):
@@ -407,6 +454,18 @@ def _decide_edges(m: dict, poly, max_width_mm: float, ink, ink_colour) -> None:
         else:
             e["w"] = e["w_all"]
             e["admit"] = e["w"] <= max_width_mm and e["p95_all"] <= blob_lim
+            if e["admit"] and ink is not None:
+                # No neighbour to follow: the line test reads its own pixels.
+                a = np.asarray(e["px"], np.int64)
+                take = np.unique(np.round(np.linspace(0, len(a) - 1,
+                                                      min(len(a), _EDGE_SAMPLES))).astype(int))
+                vs = [v for v in _line_contrasts(ink, skel, dist, scale, x0, y0,
+                                                 a[take, 1], a[take, 0]) if v is not None]
+                if vs:
+                    e["line"] = float(np.median(vs))
+                    if e["line"] < _LINE_MIN_CONTRAST:
+                        e["admit"] = False
+                        e["refused"] = "no_line"
     hair = [e for e in edges if e["admit"]]
     thick = [e for e in edges if not e["admit"]]
     m.update(hair_edges=hair, thick_edges=thick, admit=bool(hair), rest=None, hair_geom=None)
@@ -477,6 +536,53 @@ def _source_widths(ink, skel, body, dist, scale, x0, y0, pick=None, ink_colour=N
         ys, xs = ys[::k][:_SRC_SAMPLES], xs[::k][:_SRC_SAMPLES]
     else:
         ys, xs = pick
+    prof = _profiles(ink, skel, dist, scale, x0, y0, ys, xs)
+    if prof is None:
+        return None
+    t, V, inside, S_l, S_r, which, step_mm, C, _N = prof
+    rows = np.arange(len(C))
+    score = np.minimum(np.linalg.norm(V - S_l[:, None], axis=2),
+                       np.linalg.norm(V - S_r[:, None], axis=2))
+    score[~inside] = -1.0
+    if ink_colour is None:
+        I = np.median(V[rows, np.argmax(score, axis=1)], axis=0)
+    else:
+        I = ink_colour
+    widths = []
+    aligned = [None] * len(ys)
+    mid = int(np.argmin(np.abs(t)))
+    for i in range(len(C)):
+        ok = True
+        total = 0.0
+        for S, idx in ((S_l[i], np.arange(mid, -1, -1)), (S_r[i], np.arange(mid + 1, len(t)))):
+            d = I - S
+            n2 = float(d @ d)
+            if math.sqrt(n2) < _SRC_MIN_CONTRAST:
+                ok = False
+                break
+            idx = idx[inside[i, idx]]
+            c = np.clip((V[i, idx] - S) @ d / n2, 0.0, 1.0)
+            # Only the ink CONNECTED to the skeleton: walking out from the
+            # middle, the integral stops at the first gap of surround, so a
+            # neighbouring strand inside the reach is not added to this one.
+            gap = np.nonzero(c <= _SRC_GAP)[0]
+            total += float(c[:gap[0]].sum() if len(gap) else c.sum())
+        if ok:
+            widths.append(total * step_mm)
+            aligned[which[i]] = total * step_mm
+    return widths, len(C), I, aligned
+
+
+def _profiles(ink, skel, dist, scale, x0, y0, ys, xs):
+    """Profiles across the stroke at skeleton pixels (`ys`, `xs`) — the
+    geometry `_source_widths` and `_line_contrasts` share -> (t mm, V (n, m,
+    4) field samples, `inside` mask, S_l, S_r (each profile's two ends), the
+    index into `ys` of each profile, step mm, centres) or None.
+
+    Each normal is the principal axis of the skeleton pixels round the
+    sample; each profile reaches the traced half-width plus
+    `_SRC_MARGIN_PX` source pixels each side, so both ends sit on the
+    surround."""
     sk_y, sk_x = np.nonzero(skel)
     sk = np.column_stack([sk_x, sk_y]).astype(np.float64)
     src_ppm = ink.src_px_per_mm
@@ -513,36 +619,81 @@ def _source_widths(ink, skel, body, dist, scale, x0, y0, pick=None, ink_colour=N
     rows = np.arange(len(C))
     S_l = V[rows, first]
     S_r = V[rows, first + last - 1]
-    score = np.minimum(np.linalg.norm(V - S_l[:, None], axis=2),
-                       np.linalg.norm(V - S_r[:, None], axis=2))
-    score[~inside] = -1.0
-    if ink_colour is None:
-        I = np.median(V[rows, np.argmax(score, axis=1)], axis=0)
-    else:
-        I = ink_colour
-    widths = []
-    aligned = [None] * len(ys)
-    mid = int(np.argmin(np.abs(t)))
-    for i in range(len(C)):
-        ok = True
-        total = 0.0
-        for S, idx in ((S_l[i], np.arange(mid, -1, -1)), (S_r[i], np.arange(mid + 1, len(t)))):
-            d = I - S
-            n2 = float(d @ d)
-            if math.sqrt(n2) < _SRC_MIN_CONTRAST:
-                ok = False
-                break
-            idx = idx[inside[i, idx]]
-            c = np.clip((V[i, idx] - S) @ d / n2, 0.0, 1.0)
-            # Only the ink CONNECTED to the skeleton: walking out from the
-            # middle, the integral stops at the first gap of surround, so a
-            # neighbouring strand inside the reach is not added to this one.
-            gap = np.nonzero(c <= _SRC_GAP)[0]
-            total += float(c[:gap[0]].sum() if len(gap) else c.sum())
-        if ok:
-            widths.append(total * step_mm)
-            aligned[which[i]] = total * step_mm
-    return widths, len(C), I, aligned
+    return t, V, inside, S_l, S_r, which, step_mm, C, N
+
+
+def _line_contrasts(ink, skel, dist, scale, x0, y0, ys, xs) -> list:
+    """How far each profile's CORE stands out of the straight path between
+    its two ends, in the source field's units -> list aligned to `ys` (None
+    where no profile was taken).
+
+    The photo trial's finding (docs/hairline-photo-trial-2026-10-12.md): on
+    a photograph most thin shapes are not strands. They are the blur band
+    between two colours (a grey rim between a black feather bar and white
+    down, its colour ON the path from one side to the other), or a sliver
+    of a smooth gradient the segmenter cut (no edge at all). A strand is a
+    LINE: its ink leaves the path between its two sides — darker (or
+    lighter, or another hue) than both. So: the largest distance, over the
+    profile's core (the traced half-width, at least half a source pixel), of
+    a sample from the segment S_l..S_r. A band ON that segment reads near 0
+    whatever its two sides are; a strand reads its own contrast.
+
+    A profile with an end still INSIDE the shape's own traced raster (`dist`
+    > 0 there: the normal ran along the strand at a curl, or the tracer fused
+    two strands) has the ink itself for a side, so it would read ~0 on a real
+    strand; it is not read (None). Measured on the drawn hair fixtures,
+    where every refusal before this rule was such a profile."""
+    prof = _profiles(ink, skel, dist, scale, x0, y0, ys, xs)
+    out: list = [None] * len(ys)
+    if prof is None:
+        return out
+    t, V, inside, _S_l, _S_r, which, _step, C, N = prof
+    src_ppm = ink.src_px_per_mm
+    h, w = dist.shape
+    first = np.argmax(inside, axis=1)
+    last = inside.shape[1] - 1 - np.argmax(inside[:, ::-1], axis=1)
+    for i, j in enumerate(which):
+        ends_in = False
+        for k in (first[i], last[i]):
+            ex, ey = C[i] + t[k] * N[i]
+            px = int(round((ex - x0) * scale + _PAD_PX))
+            py = int(round((ey - y0) * scale + _PAD_PX))
+            if 0 <= px < w and 0 <= py < h and dist[py, px] > 0:
+                ends_in = True
+        if ends_in:
+            continue
+        y, x = ys[j], xs[j]
+        half = max(float(dist[y, x]) / scale, 0.5 / src_ppm)
+        core = inside[i] & (np.abs(t) <= half + 1e-9)
+        if not core.any():
+            core = inside[i] & (np.abs(t) == np.abs(t).min())
+        # Each side's surround is the sample on that half of the profile
+        # that differs MOST from the middle, not the profile's far end: a
+        # strand lying beside another strand has ink at its far end, and
+        # the skin between them is its real surround. A ramp band still
+        # reads its two fields (the extremes ARE its sides); a flat sliver
+        # still reads nothing.
+        mid = V[i, int(np.argmin(np.abs(t)))]
+        sides = []
+        for half_mask in (inside[i] & (t < 0), inside[i] & (t > 0)):
+            Sv = V[i, half_mask] if half_mask.any() else V[i, inside[i]]
+            sides.append(Sv[int(np.argmax(np.linalg.norm(Sv - mid, axis=1)))])
+        s_l, s_r = sides
+        # Exactly one side indistinguishable from the middle: the strand is
+        # fused with ink on that side (a touching neighbour), or it is a
+        # sliver of one field along its edge. The profile cannot tell which,
+        # so it is not read (the width gate decides, as before). Both sides
+        # like the middle is a flat field: read as such (0 below).
+        near = [float(np.linalg.norm(s - mid)) < _LINE_MIN_CONTRAST for s in sides]
+        if near[0] != near[1]:
+            continue
+        d = s_r - s_l
+        n2 = float(d @ d)
+        P = V[i, core] - s_l
+        u = np.clip(P @ d / n2, 0.0, 1.0) if n2 > 1e-12 else np.zeros(len(P))
+        off = P - u[:, None] * d[None, :]
+        out[j] = float(np.sqrt((off * off).sum(axis=1)).max())
+    return out
 
 
 def block_thread_wt(regions, cfg) -> dict[int, int]:
@@ -555,6 +706,27 @@ def block_thread_wt(regions, cfg) -> dict[int, int]:
             out[r.thread_index] = max(out.get(r.thread_index, 0), int(ov))
     return out
 
+
+def strand_drops(poly, shape_id: str, m: dict, cfg, thread_wt: int) -> tuple[int, float]:
+    """-> (strands `hairline_runs` would DROP, their share of the shape's
+    strand length): a path under `machine.RUN_MIN_LOOP_MM`, or one too short
+    to stitch.
+
+    A dropped path is ink erased, not re-routed: the arms of a 1.6 mm "E"
+    are paths under the floor and the letter reads as a "C"
+    (docs/renders/claude-hairline-logo-bill/). The count comes from the same
+    walk stage 7 runs, started with no entry point; the entry only breaks ties
+    between equally good starts, so the real walk almost always cuts the
+    paths the same way (stage 7 counts any difference in the plan's
+    `HAIRLINE_TIER_SEWN.dropped`, which the logo bill reads)."""
+    prof = machine.thread_profile(thread_wt)
+    _runs, rep = hairline_runs(poly, shape_id,
+                               max_width_mm=prof.hairline_max_width_mm,
+                               run_width_mm=prof.hairline_run_width_mm,
+                               stitch_mm=cfg.hairline_stitch_mm, entry=None,
+                               trim_at_mm=machine.TRIM_AT_MM, m=m)
+    total = rep["dropped_mm"] + rep["sewn_mm"]
+    return rep["dropped"], (rep["dropped_mm"] / total if total > 0 else 0.0)
 
 def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "HairlineSet":
     """The shapes the hairline tier will sew -> `HairlineSet` ({shape_id:
@@ -579,7 +751,15 @@ def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "Hairline
        a pen line) is never a ground and every thin shape of it qualifies.
        Known limit: a LIGHT strand of a colour that also fills an area
        elsewhere (blonde highlights over brown hair, when blonde is also a
-       patch) is read as ground; nothing here can tell it from a sliver."""
+       patch) is read as ground; nothing here can tell it from a sliver.
+    3. **The drop guard** (`strand_drops`, `DROP_GUARD`). A shape the first
+       two rules would admit but whose walk would DROP more than
+       `DROP_GUARD_SHARE` of its strand length (paths under
+       `RUN_MIN_LOOP_MM`: the arms of a small capital E) is handed back
+       whole, to the ladder it takes with the tier off — in stage 5 and
+       stage 7 alike, because both read this set. Recorded in `.guarded`.
+       A hair network's two stubs of fifty paths are under the share and
+       stay."""
     chart = chart_for(cfg)
     bw = block_thread_wt(regions, cfg)
     out = HairlineSet()
@@ -600,33 +780,49 @@ def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "Hairline
         if m is None:
             continue
         if r.thread_index not in ground:
-            out[r.shape_id] = m
-            continue
-        edge = r.polygon.boundary
-        tot = wsum = 0.0
-        for i in tree.query(r.polygon.buffer(_TOUCH_MM)):
-            o = regions[int(i)]
-            if o is r or o.thread_index == r.thread_index:
-                continue
-            shared = edge.intersection(o.polygon.buffer(_TOUCH_MM)).length
-            if shared > 0:
-                tot += shared
-                wsum += shared * float(chart.lab[o.thread_index][0])
-        if tot <= 0 or float(chart.lab[r.thread_index][0]) < wsum / tot - _DARKER_L:
-            out[r.shape_id] = m
+            admitted = True
         else:
-            out.fragments.add(r.shape_id)
+            edge = r.polygon.boundary
+            tot = wsum = 0.0
+            for i in tree.query(r.polygon.buffer(_TOUCH_MM)):
+                o = regions[int(i)]
+                if o is r or o.thread_index == r.thread_index:
+                    continue
+                shared = edge.intersection(o.polygon.buffer(_TOUCH_MM)).length
+                if shared > 0:
+                    tot += shared
+                    wsum += shared * float(chart.lab[o.thread_index][0])
+            admitted = tot <= 0 or float(chart.lab[r.thread_index][0]) < wsum / tot - _DARKER_L
+            if not admitted:
+                out.fragments.add(r.shape_id)
+        if not admitted:
+            continue
+        # The drop guard, last: a colour is ground by what the WIDTH gate
+        # rejects and a sliver is a fragment by the ground rule, neither by
+        # what the guard does. It only hands back a shape that would have
+        # been sewn.
+        if DROP_GUARD:
+            n_drop, share = strand_drops(r.polygon, r.shape_id, m, cfg,
+                                         bw.get(r.thread_index, cfg.thread_wt))
+            if n_drop and share > DROP_GUARD_SHARE:
+                out.guarded[r.shape_id] = n_drop
+                continue
+        out[r.shape_id] = m
     return out
 
 
 class HairlineSet(dict):
     """`hairline_candidates`' verdict: {shape_id: measure} for the strands,
-    and `fragments`, the thin shapes the ground-fragment rule handed back to
-    the ground (stage 5's `_hairline_ground` closes the ground over them)."""
+    `fragments`, the thin shapes the ground-fragment rule handed back to
+    the ground (stage 5's `_hairline_ground` closes the ground over them),
+    and `guarded`, {shape_id: strands it would have dropped} for the shapes
+    the drop guard handed back to the ladder (`strand_drops`); those are in
+    neither of the others."""
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
         self.fragments: set[str] = set()
+        self.guarded: dict[str, int] = {}
 
 
 def _arc(pts) -> float:
@@ -805,6 +1001,28 @@ def _walk(edges, entry, reach_mm: float = _HEADING_MM):
         cur = path[-1]
     return paths
 
+
+def _nearest_first(paths, entry):
+    """`paths` re-ordered nearest-neighbour from `entry`, each turned round
+    when its far end is the nearer one. The stitches of a path are the same
+    either way; only where the needle comes in changes."""
+    left = list(paths)
+    out = []
+    cur = entry
+    while left:
+        best = None
+        for i, p in enumerate(left):
+            for flip in (0, 1):
+                end = p[-1] if flip else p[0]
+                key = (round(math.dist(cur, end), 6), i, flip)
+                if best is None or key < best[0]:
+                    best = (key, i, flip)
+        _k, i, flip = best
+        p = left.pop(i)
+        p = list(reversed(p)) if flip else p
+        out.append(p)
+        cur = p[-1]
+    return out
 
 def _cum(pts):
     out = [0.0]
@@ -1013,7 +1231,8 @@ def hairline_runs(poly, shape_id: str, *, max_width_mm: float, run_width_mm: flo
     skeleton's own thresholds (spurs, bridges, heading reach) read the TRACED
     width, since they are properties of the raster being walked."""
     report = {"empty": True, "jumps": 0, "too_thin": False, "admitted": False,
-              "width_mm": None, "strands": 0, "dropped": 0, "edges": 0}
+              "width_mm": None, "strands": 0, "dropped": 0, "edges": 0,
+              "dropped_mm": 0.0, "sewn_mm": 0.0}
     if m is None:
         m = measure(poly, max_width_mm, ink=ink)
     if m is None:
@@ -1030,18 +1249,26 @@ def hairline_runs(poly, shape_id: str, *, max_width_mm: float, run_width_mm: flo
     report["thick_edges"] = len(m["thick_edges"])
     if not edges:
         return [], report
-    paths = _walk(edges, entry,
+    # The partition into paths never reads the entry point (the drop guard
+    # judges it before the entry is known); the entry only picks which path
+    # is sewn first and which way round, then nearest-neighbour onward.
+    paths = _walk(edges, None,
                   reach_mm=max(_HEADING_MM, _HEADING_WIDTHS * traced))
+    if entry is not None:
+        paths = _nearest_first(paths, entry)
     tol = _CURL_TOL_WIDTHS * run_width_mm
     runs: list[StitchRun] = []
     for path in paths:
         if _arc(path) < machine.RUN_MIN_LOOP_MM:
             report["dropped"] += 1
+            report["dropped_mm"] += _arc(path)
             continue
         pts = stitch_path(path, stitch_mm, tol)
         if len(pts) < 2:
             report["dropped"] += 1
+            report["dropped_mm"] += _arc(path)
             continue
+        report["sewn_mm"] += _arc(path)
         jump = trim = False
         if runs:
             d = math.dist(runs[-1].points[-1], pts[0])

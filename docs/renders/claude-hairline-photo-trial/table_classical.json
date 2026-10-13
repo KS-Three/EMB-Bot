@@ -1,0 +1,105 @@
+{
+ "pipeline": "photo_subject lane, no photo prep",
+ "design_class": "photo_subject",
+ "regions": 107,
+ "census": {
+  "40": {
+   "regions": 107,
+   "candidates": 9,
+   "fragments": 7,
+   "candidate_area_mm2": 31.1,
+   "branches_run": 19,
+   "branches_ladder": 33,
+   "branches_refused_no_line": 16,
+   "rest_mm2": 22.2,
+   "run_branch_width_median_mm": 0.382,
+   "run_branch_length_m": 0.021
+  },
+  "60": {
+   "regions": 107,
+   "candidates": 6,
+   "fragments": 7,
+   "candidate_area_mm2": 17.5,
+   "branches_run": 14,
+   "branches_ladder": 24,
+   "branches_refused_no_line": 11,
+   "rest_mm2": 11.1,
+   "run_branch_width_median_mm": 0.382,
+   "run_branch_length_m": 0.016
+  }
+ },
+ "arms": {
+  "off40": {
+   "stitches": 31484,
+   "trims": 332,
+   "color_changes": 30,
+   "thread_m": 52.86,
+   "under_1mm": 5659,
+   "lock_legs": 2136,
+   "hairline_sewn": null,
+   "rest_slivers": 0,
+   "touched_stitches": 654,
+   "touched_thread_m": 0.547,
+   "touched_under_1mm": 456,
+   "bare_mm2": 6731.19,
+   "bare_new_mm2": 0.0
+  },
+  "on40": {
+   "stitches": 31162,
+   "trims": 332,
+   "color_changes": 30,
+   "thread_m": 52.64,
+   "under_1mm": 5346,
+   "lock_legs": 2156,
+   "hairline_sewn": {
+    "shapes": 9,
+    "strands": 3,
+    "dropped": 10
+   },
+   "rest_slivers": 0,
+   "touched_stitches": 328,
+   "touched_thread_m": 0.326,
+   "touched_under_1mm": 140,
+   "bare_mm2": 6741.56,
+   "bare_new_mm2": 14.31
+  },
+  "on40g": {
+   "stitches": 31161,
+   "trims": 332,
+   "color_changes": 30,
+   "thread_m": 52.64,
+   "under_1mm": 5346,
+   "lock_legs": 2156,
+   "hairline_sewn": {
+    "shapes": 9,
+    "strands": 3,
+    "dropped": 10
+   },
+   "rest_slivers": 0,
+   "touched_stitches": 328,
+   "touched_thread_m": 0.326,
+   "touched_under_1mm": 140,
+   "bare_mm2": 6741.69,
+   "bare_new_mm2": 14.5
+  },
+  "on40_noline": {
+   "stitches": 30938,
+   "trims": 332,
+   "color_changes": 29,
+   "thread_m": 52.52,
+   "under_1mm": 5115,
+   "lock_legs": 2188,
+   "hairline_sewn": {
+    "shapes": 14,
+    "strands": 14,
+    "dropped": 18
+   },
+   "rest_slivers": 0,
+   "touched_stitches": 252,
+   "touched_thread_m": 0.267,
+   "touched_under_1mm": 82,
+   "bare_mm2": 6744.06,
+   "bare_new_mm2": 31.06
+  }
+ }
+}
