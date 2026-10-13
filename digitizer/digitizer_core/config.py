@@ -2667,6 +2667,22 @@ class PipelineConfig:
     # thread satin. Costs a second generation, only when the split is on.
     # `tools/tonal_stack_hist.py` prints the stacked-layer histogram.
     tonal_split_ceiling: bool = False
+    # Defect 20's PER-REGION cap, BUILT 2026-10-13, DEFAULT OFF (the flip is
+    # Kent's; ROADMAP gate 3). Finer than `tonal_split_ceiling` above, which
+    # keeps or drops the split for the WHOLE design: with this on, `digitize`
+    # reads the split plan's coverage map, and every split parent within
+    # `stage2_photo_segment.TONAL_SPLIT_VETO_MARGIN_MM` of a cell at or past
+    # `machine.COVERAGE_BLOCK_UNITS` (3.5 fill layers, unchanged) is planned
+    # WHOLE on a re-run; parents nowhere near one keep their shading. Up to
+    # `pipeline.TONAL_CAP_ROUNDS` re-runs, and a round that does not lower the
+    # area past the ceiling is discarded. A plan with nothing past the
+    # ceiling returns on the first pass, byte-identical to the flag off.
+    # `tools/layer_density.py` reports the layers OFF vs ON.
+    tonal_split_layer_cap: bool = False
+    # The cap's working state, NOT a setting: plan-mm (x, y) points whose
+    # split parents stage 2 keeps whole. Only `digitize`'s cap loop sets it;
+    # empty is the split exactly as before.
+    tonal_split_veto_mm: tuple = ()
     # DEFAULT ON since 2026-08-24 — Kent's quality call, made from the fresh
     # 32-job acceptance sheet (4 photos x 8 arms) exactly as spec decision 1
     # requires: the eyeball loop, not a scorecard, settles tonal work. Was
