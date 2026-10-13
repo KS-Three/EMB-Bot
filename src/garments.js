@@ -32,16 +32,16 @@ const units =
   // boxes (full_back, jacket_back, blanket, tote) are bigger than every hoop,
   // so fitting the whole box made every auto-fit design on them oversize.
   // Placement geometry is unchanged: drags and typed widths still clamp to the
-  // full box (see hoop.js); only the AUTO size is capped. HOOP_MARGIN_MM per
+  // full box (see hoop.js); only the AUTO size is capped. HOOP_FIT_MARGIN_MM per
   // side is held back because the sewn extent runs past the fit target by pull
   // compensation (defect 34), which would put a design fitted to exactly 200 mm
   // at 200.2 and trip the oversize check the cap exists to prevent.
-  const HOOP_MARGIN_MM = 1;
+  const HOOP_FIT_MARGIN_MM = 1;
   function autoFitBoxMm(garment) {
     const hoop = HOOPS[HOOPS.length - 1];
     return {
-      w: Math.min(inToMm(garment.widthIn), hoop.widthMm - 2 * HOOP_MARGIN_MM),
-      h: Math.min(inToMm(garment.heightIn), hoop.heightMm - 2 * HOOP_MARGIN_MM),
+      w: Math.min(inToMm(garment.widthIn), hoop.widthMm - 2 * HOOP_FIT_MARGIN_MM),
+      h: Math.min(inToMm(garment.heightIn), hoop.heightMm - 2 * HOOP_FIT_MARGIN_MM),
     };
   }
 
@@ -117,7 +117,7 @@ const units =
     getGarment,
     fitScale,
     autoFitBoxMm,
-    HOOP_MARGIN_MM,
+    HOOP_FIT_MARGIN_MM,
     TYPICAL_HOOP_MM,
     HOOPS,
     getHoop,
