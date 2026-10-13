@@ -112,9 +112,10 @@ def measure_mode(plan, result, p, cfg) -> dict:
                                   if sliver else None)
     findings, _metrics = preflight._uncovered_findings(p, result, plan)
     unc = next((f for f in findings if f["code"] == preflight.ARTWORK_UNCOVERED), None)
-    row["artwork_uncovered"] = ({"shapes": unc["count"], "total_mm2": unc["total_mm2"],
-                                 "worst_mm2": unc["worst_mm2"],
-                                 "ids": [s["shape_id"] for s in unc["shapes"]]} if unc else None)
+    ux = unc["extra"] if unc else {}
+    row["artwork_uncovered"] = ({"shapes": ux["count"], "total_mm2": ux["total_mm2"],
+                                 "worst_mm2": ux["worst_mm2"],
+                                 "ids": [s["shape_id"] for s in ux["shapes"]]} if unc else None)
     bare = bare_cells(plan, result, p)
     row["bare_mm2"] = round(float(bare[0].sum()) * bare[2] ** 2, 2)
     row["coverage"] = round(stitchviz.coverage(plan_to_design(plan, name="bill")), 4)
@@ -206,7 +207,7 @@ def cmd_run(args) -> int:
     for fx in fixtures:
         for cfg_kw in _matrix(args.matrix):
             key = row_key(fx, cfg_kw)
-            if key in rows and not args.force:
+            if key in rows and "error" not in rows[key] and not args.force:
                 print(f"{key}: cached")
                 continue
             try:
