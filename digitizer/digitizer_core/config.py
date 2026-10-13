@@ -2146,7 +2146,8 @@ class PipelineConfig:
     # PR body: per-fixture OFF vs ON table). ON by Kent's ruling 2026-10-13:
     # enthusiast's star goes back to fill (+159 stitches). The phone
     # screenshot's status icons are STILL captured (dE 0.0 / 0.0 / 9.1 from
-    # the text ink); a shape/OCR guard is queued separately. False writes no
+    # the text ink); the shape guard for them is `lettering_columns_icon_guard`
+    # below (built OFF). False writes no
     # key and reads none. Tests: `tests/test_column_capture.py`.
     lettering_columns_ink_link: bool = True
     # Under `lettering_columns`, refuse a HOUSE-GROUP-ONLY shape whose medial

@@ -303,7 +303,7 @@ def test_ink_link_off_never_reaches_the_new_code(monkeypatch):
 # drawing. Census 2026-10-13 (PR body, `tools/column_capture_census.py
 # --signals`): the phone screenshot's three captures read 36-45, the 130
 # labelled letters <= 13, golden_tee's swashes <= 8. Judged with the two
-# other guards ON, which the sibling lane is flipping.
+# other guards ON (their default since Kent's ruling 2026-10-13).
 
 GUARDS_ON = ("lettering_columns_skip_blobs", "lettering_columns_ink_link")
 ICON = "lettering_columns_icon_guard"
