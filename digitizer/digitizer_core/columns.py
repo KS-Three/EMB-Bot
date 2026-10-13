@@ -260,6 +260,36 @@ def is_solid_blob(poly) -> bool:
             and hull > 0 and poly.area / hull >= BLOB_MIN_SOLIDITY)
 
 
+# `cfg.lettering_columns_small_stem`: a thin STEM under the area floor.
+# Stage 7 sends every auto-tier shape under `min_detail_mm`^2 (1.5 mm ->
+# 2.25 mm^2) to the run tier before the Column lane is asked
+# (`stage7_sequence.routes_to_run`, the small-shape rescue). The floor is an
+# AREA, so a stroke clears it by length as much as by width: the synthetic
+# word's capital I (0.57 x 4.87 mm at 80 mm, 2.771 mm^2) sews satin, and its
+# lowercase i stem at the SAME width (0.57 x 3.73 mm, 2.124 mm^2) sews a
+# two-line run (`tools/lowercase_angle.py --trace-stem`, 2026-10-13). A stem
+# is a shape whose long side is at least the floor's own width and at least
+# `STEM_MIN_ASPECT` times its short side (the i stem reads 6.5; a dot or a
+# blob reads 1.0-1.3). CANDIDATES, shape ratios from one synthetic face,
+# not cloth constants.
+STEM_MIN_ASPECT = 3.0
+
+
+def is_thin_stem(poly, min_long_mm: float) -> bool:
+    """A sub-floor shape that is a stroke, not a dot (see `STEM_MIN_ASPECT`)."""
+    if not isinstance(poly, Polygon) or poly.is_empty:
+        return False
+    rect = poly.minimum_rotated_rectangle
+    if not isinstance(rect, Polygon):
+        return False
+    pts = list(rect.exterior.coords)
+    a = math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1])
+    b = math.hypot(pts[2][0] - pts[1][0], pts[2][1] - pts[1][1])
+    long_side, short_side = max(a, b), min(a, b)
+    return short_side > 0 and long_side >= min_long_mm \
+        and long_side / short_side >= STEM_MIN_ASPECT
+
+
 # `cfg.lettering_columns_icon_guard`: a house-group-only shape whose medial
 # axis is a TANGLE is a piece of drawing, not a letter. Neither guard above
 # reaches the phone screenshot's three 4.5-6 mm captures (S4a2d12c4,
