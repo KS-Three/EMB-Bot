@@ -319,6 +319,13 @@ def small_print_clear(poly, counters, clear_mm: float, art=None):
     itself when there is nothing to cut or the cut would leave nothing."""
     if not counters or clear_mm <= 0 or poly is None or poly.is_empty:
         return poly
+    # A traced polygon can self-touch (golden_tee's italic O at a 3 mm cap);
+    # GEOS then returns a collection or nothing from the cut. Repaired here,
+    # where the flag is on and there is a counter to cut, and nowhere else.
+    src = poly
+    poly = _polygonal(poly if poly.is_valid else poly.buffer(0))
+    if art is not None and not art.is_valid:
+        art = _polygonal(art.buffer(0))
     grown = [c.buffer(clear_mm) for c in counters]
     cut = unary_union(grown)
     if art is not None and not art.is_empty:
@@ -336,10 +343,18 @@ def small_print_clear(poly, counters, clear_mm: float, art=None):
         if thin:
             keep = unary_union(thin).buffer(clear_mm).intersection(ink)
             cut = cut.difference(keep)
-    out = poly.difference(cut)
+    out = _polygonal(poly.difference(cut))
     if out.is_empty or out.geom_type not in ("Polygon", "MultiPolygon"):
-        return poly
+        return src
     return out
+
+
+def _polygonal(g):
+    """The polygon parts of `g` (a GEOS cut can return a collection)."""
+    if g.geom_type == "GeometryCollection":
+        parts = [p for p in g.geoms if p.geom_type in ("Polygon", "MultiPolygon")]
+        return unary_union(parts) if parts else Polygon()
+    return g
 
 
 def _clear_counters(a_pts, b_pts, poly: Polygon, clear_mm: float,
