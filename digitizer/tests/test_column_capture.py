@@ -82,6 +82,15 @@ def test_colour_grid_capture_is_pinned_and_the_guard_clears_it():
     assert _taken(grid, target_width_mm=100.0, lettering_columns_skip_blobs=True) == set()
 
 
+def test_fur_ramp_discs_are_the_second_known_false_capture():
+    """`photo/fur_ramp.png`: eight 14.4 mm discs, all tagged by the house
+    group alone (census 2026-10-13); the guard clears all eight."""
+    path = TESTDATA / "photo/fur_ramp.png"
+    kw = dict(garment_id="left_chest", max_colors=6)
+    assert len(_taken(path, **kw)) == 8
+    assert _taken(path, lettering_columns_skip_blobs=True, **kw) == set()
+
+
 def test_guard_keeps_the_letters_on_enthusiast():
     """Every letter the lane takes on the enthusiast wordmark is still taken
     with the guard ON (the one extra shape the lane takes there, the shield
