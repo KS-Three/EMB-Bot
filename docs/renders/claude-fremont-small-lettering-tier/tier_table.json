@@ -1,0 +1,8556 @@
+{
+ "arms": {
+  "main_81": {
+   "arm": "main_81",
+   "label": "main",
+   "width_mm": 81.0,
+   "overrides": {},
+   "size_mm": [
+    81.7,
+    44.3
+   ],
+   "stitches": 15306,
+   "trims": 44,
+   "lane_taken": 14,
+   "boxes": {
+    "the": {
+     "glyphs": [
+      {
+       "glyph": "the[0]",
+       "bbox_mm": [
+        -4.39,
+        -7.61,
+        -2.09,
+        -4.92
+       ],
+       "w_mm": 2.3,
+       "h_mm": 2.69,
+       "area_mm2": 2.4,
+       "shape_ids": [
+        "Scead5d18"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.4,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.426,
+       "sewn_w_min_mm": 0.373,
+       "width_ratio": 1.07,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.026,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.913,
+       "spill": 0.744,
+       "stitches": 60,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[1]",
+       "bbox_mm": [
+        -1.22,
+        -7.61,
+        1.41,
+        -4.92
+       ],
+       "w_mm": 2.62,
+       "h_mm": 2.69,
+       "area_mm2": 3.47,
+       "shape_ids": [
+        "S8fa08a06"
+       ],
+       "kinds": [
+        "satin",
+        "travel"
+       ],
+       "tier": "satin",
+       "column_lane": true,
+       "src_stroke_mm": 0.4,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.953,
+       "sewn_w_min_mm": 0.466,
+       "width_ratio": 2.38,
+       "satin_runs": 5,
+       "needle_offset_p50_mm": 0.191,
+       "needle_offset_p90_mm": 0.347,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.986,
+       "spill": 1.551,
+       "stitches": 54,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[2]",
+       "bbox_mm": [
+        2.28,
+        -7.61,
+        4.39,
+        -4.92
+       ],
+       "w_mm": 2.11,
+       "h_mm": 2.69,
+       "area_mm2": 3.24,
+       "shape_ids": [
+        "S9bac9a3c"
+       ],
+       "kinds": [
+        "satin",
+        "travel"
+       ],
+       "tier": "satin",
+       "column_lane": true,
+       "src_stroke_mm": 0.407,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.839,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.06,
+       "satin_runs": 4,
+       "needle_offset_p50_mm": 0.216,
+       "needle_offset_p90_mm": 0.337,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.988,
+       "spill": 1.532,
+       "stitches": 56,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -4.86,
+      -8.06,
+      5.02,
+      -4.49
+     ],
+     "ink_mm2": 8.69,
+     "ink_bare_mm2": 0.0,
+     "stitches": 357,
+     "trims": 4
+    },
+    "tagline": {
+     "glyphs": [
+      {
+       "glyph": "tagline[0]",
+       "bbox_mm": [
+        -12.0,
+        9.01,
+        -10.32,
+        11.18
+       ],
+       "w_mm": 1.68,
+       "h_mm": 2.17,
+       "area_mm2": 1.49,
+       "shape_ids": [
+        "Se9a3bf6a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.473,
+       "sewn_w_min_mm": 0.386,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.962,
+       "spill": 1.344,
+       "stitches": 59,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[1]",
+       "bbox_mm": [
+        -10.22,
+        9.01,
+        -7.95,
+        11.18
+       ],
+       "w_mm": 2.27,
+       "h_mm": 2.17,
+       "area_mm2": 1.45,
+       "shape_ids": [
+        "Sf0a6f1de"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.413,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.0,
+       "needle_offset_p90_mm": 0.008,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.367,
+         "width_mm": 0.504,
+         "bare_share": 0.989,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.933,
+       "spill": 1.012,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[2]",
+       "bbox_mm": [
+        -8.25,
+        9.01,
+        -6.4,
+        11.18
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.17,
+       "area_mm2": 1.11,
+       "shape_ids": [
+        "Sdeda9448"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.6,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.25,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.008,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.971,
+       "spill": 1.339,
+       "stitches": 47,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[3]",
+       "bbox_mm": [
+        -5.07,
+        8.23,
+        -4.78,
+        11.92
+       ],
+       "w_mm": 0.29,
+       "h_mm": 3.69,
+       "area_mm2": 1.08,
+       "shape_ids": [
+        "S5ac4eae6"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.3,
+       "sewn_w_mm": 0.667,
+       "sewn_w_min_mm": 0.537,
+       "width_ratio": 2.22,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.015,
+       "needle_offset_p90_mm": 0.026,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 1.0,
+       "spill": 1.222,
+       "stitches": 42,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[4]",
+       "bbox_mm": [
+        -3.32,
+        8.94,
+        -1.8,
+        11.21
+       ],
+       "w_mm": 1.52,
+       "h_mm": 2.27,
+       "area_mm2": 1.42,
+       "shape_ids": [
+        "Sdf13b84a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.213,
+       "sewn_w_mm": 0.626,
+       "sewn_w_min_mm": 0.54,
+       "width_ratio": 2.61,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.976,
+       "spill": 1.267,
+       "stitches": 56,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[5]",
+       "bbox_mm": [
+        -1.64,
+        9.01,
+        0.21,
+        11.18
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "S990f2088"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.58,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.17,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.973,
+       "spill": 1.377,
+       "stitches": 43,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[6]",
+       "bbox_mm": [
+        -0.08,
+        9.01,
+        2.22,
+        11.18
+       ],
+       "w_mm": 2.3,
+       "h_mm": 2.17,
+       "area_mm2": 1.46,
+       "shape_ids": [
+        "Sa0fbbfd4"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.413,
+       "sewn_w_min_mm": 0.38,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.37,
+         "width_mm": 0.508,
+         "bare_share": 0.985,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.939,
+       "spill": 0.989,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[7]",
+       "bbox_mm": [
+        1.8,
+        9.01,
+        3.84,
+        11.18
+       ],
+       "w_mm": 2.04,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "S8fa2e64e"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.506,
+       "sewn_w_min_mm": 0.355,
+       "width_ratio": 2.11,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.975,
+       "spill": 1.387,
+       "stitches": 44,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[8]",
+       "bbox_mm": [
+        4.97,
+        8.23,
+        5.26,
+        11.92
+       ],
+       "w_mm": 0.29,
+       "h_mm": 3.69,
+       "area_mm2": 1.08,
+       "shape_ids": [
+        "S658eac5c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.3,
+       "sewn_w_mm": 0.733,
+       "sewn_w_min_mm": 0.533,
+       "width_ratio": 2.44,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.986,
+       "spill": 1.336,
+       "stitches": 42,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[9]",
+       "bbox_mm": [
+        6.82,
+        9.01,
+        8.47,
+        11.18
+       ],
+       "w_mm": 1.65,
+       "h_mm": 2.17,
+       "area_mm2": 1.24,
+       "shape_ids": [
+        "S931202c8"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.6,
+       "sewn_w_min_mm": 0.413,
+       "width_ratio": 2.57,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.02,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.782,
+         "width_mm": 0.846,
+         "bare_share": 0.149,
+         "known_to_planner": false,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.997,
+       "spill": 1.51,
+       "stitches": 48,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[10]",
+       "bbox_mm": [
+        8.57,
+        9.01,
+        10.19,
+        11.18
+       ],
+       "w_mm": 1.62,
+       "h_mm": 2.17,
+       "area_mm2": 0.99,
+       "shape_ids": [
+        "S1377425b"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.466,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.75,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.967,
+       "spill": 1.316,
+       "stitches": 37,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[11]",
+       "bbox_mm": [
+        10.32,
+        9.01,
+        12.59,
+        11.18
+       ],
+       "w_mm": 2.27,
+       "h_mm": 2.17,
+       "area_mm2": 1.44,
+       "shape_ids": [
+        "Sa6ebf53d"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.42,
+       "sewn_w_min_mm": 0.38,
+       "width_ratio": 1.8,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.367,
+         "width_mm": 0.517,
+         "bare_share": 0.975,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.945,
+       "spill": 1.012,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[12]",
+       "bbox_mm": [
+        12.1,
+        9.01,
+        14.18,
+        11.18
+       ],
+       "w_mm": 2.07,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "Se58e299c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.579,
+       "sewn_w_min_mm": 0.407,
+       "width_ratio": 2.42,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.017,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.978,
+       "spill": 1.324,
+       "stitches": 44,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 13,
+     "box_mm": [
+      -12.64,
+      8.02,
+      14.58,
+      12.29
+     ],
+     "ink_mm2": 20.06,
+     "ink_bare_mm2": 0.25,
+     "stitches": 883,
+     "trims": 7
+    },
+    "est": {
+     "glyphs": [
+      {
+       "glyph": "est[0]",
+       "bbox_mm": [
+        -9.15,
+        -12.9,
+        -7.86,
+        -11.28
+       ],
+       "w_mm": 1.3,
+       "h_mm": 1.62,
+       "area_mm2": 1.0,
+       "shape_ids": [
+        "S1b0527a5"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.533,
+       "sewn_w_min_mm": 0.404,
+       "width_ratio": 2.28,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.933,
+       "spill": 1.387,
+       "stitches": 47,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[1]",
+       "bbox_mm": [
+        -7.11,
+        -12.93,
+        -5.91,
+        -11.24
+       ],
+       "w_mm": 1.2,
+       "h_mm": 1.68,
+       "area_mm2": 0.97,
+       "shape_ids": [
+        "Sfe26555a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.22,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.706,
+       "sewn_w_min_mm": 0.45,
+       "width_ratio": 3.21,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.991,
+       "spill": 1.272,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[2]",
+       "bbox_mm": [
+        -5.23,
+        -12.9,
+        -3.77,
+        -11.28
+       ],
+       "w_mm": 1.46,
+       "h_mm": 1.62,
+       "area_mm2": 0.82,
+       "shape_ids": [
+        "S7c58ea3d"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.467,
+       "sewn_w_min_mm": 0.4,
+       "width_ratio": 2.0,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.91,
+       "spill": 1.11,
+       "stitches": 35,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -9.72,
+      -13.51,
+      -3.24,
+      -10.63
+     ],
+     "ink_mm2": 3.19,
+     "ink_bare_mm2": 0.06,
+     "stitches": 166,
+     "trims": 1
+    }
+   },
+   "pull_sweep": [
+    {
+     "glyph": "the[0]",
+     "shape_id": "Scead5d18",
+     "pull_mm": 0.0,
+     "lane_empty": true,
+     "src_stroke_mm": 0.4
+    },
+    {
+     "glyph": "the[0]",
+     "shape_id": "Scead5d18",
+     "pull_mm": 0.1,
+     "lane_empty": true,
+     "src_stroke_mm": 0.4
+    },
+    {
+     "glyph": "the[0]",
+     "shape_id": "Scead5d18",
+     "pull_mm": 0.2,
+     "lane_empty": false,
+     "src_stroke_mm": 0.4,
+     "sewn_w_mm": 0.8,
+     "sewn_w_min_mm": 0.446,
+     "needle_span_med_mm": 0.578,
+     "needle_span_min_mm": 0.549,
+     "satin_stitches": 30,
+     "counters_bare": []
+    },
+    {
+     "glyph": "the[0]",
+     "shape_id": "Scead5d18",
+     "pull_mm": 0.3,
+     "lane_empty": false,
+     "src_stroke_mm": 0.4,
+     "sewn_w_mm": 0.943,
+     "sewn_w_min_mm": 0.453,
+     "needle_span_med_mm": 0.778,
+     "needle_span_min_mm": 0.527,
+     "satin_stitches": 36,
+     "counters_bare": []
+    },
+    {
+     "glyph": "the[0]",
+     "shape_id": "Scead5d18",
+     "pull_mm": 0.4,
+     "lane_empty": false,
+     "src_stroke_mm": 0.4,
+     "sewn_w_mm": 1.103,
+     "sewn_w_min_mm": 0.48,
+     "needle_span_med_mm": 0.978,
+     "needle_span_min_mm": 0.657,
+     "satin_stitches": 36,
+     "counters_bare": []
+    },
+    {
+     "glyph": "the[1]",
+     "shape_id": "S8fa08a06",
+     "pull_mm": 0.0,
+     "lane_empty": true,
+     "src_stroke_mm": 0.4
+    },
+    {
+     "glyph": "the[1]",
+     "shape_id": "S8fa08a06",
+     "pull_mm": 0.1,
+     "lane_empty": false,
+     "src_stroke_mm": 0.4,
+     "sewn_w_mm": 0.579,
+     "sewn_w_min_mm": 0.426,
+     "needle_span_med_mm": 0.56,
+     "needle_span_min_mm": 0.508,
+     "satin_stitches": 18,
+     "counters_bare": []
+    },
+    {
+     "glyph": "the[1]",
+     "shape_id": "S8fa08a06",
+     "pull_mm": 0.2,
+     "lane_empty": false,
+     "src_stroke_mm": 0.4,
+     "sewn_w_mm": 0.799,
+     "sewn_w_min_mm": 0.439,
+     "needle_span_med_mm": 0.699,
+     "needle_span_min_mm": 0.551,
+     "satin_stitches": 42,
+     "counters_bare": []
+    },
+    {
+     "glyph": "the[1]",
+     "shape_id": "S8fa08a06",
+     "pull_mm": 0.3,
+     "lane_empty": false,
+     "src_stroke_mm": 0.4,
+     "sewn_w_mm": 0.945,
+     "sewn_w_min_mm": 0.473,
+     "needle_span_med_mm": 0.865,
+     "needle_span_min_mm": 0.505,
+     "satin_stitches": 48,
+     "counters_bare": []
+    },
+    {
+     "glyph": "the[1]",
+     "shape_id": "S8fa08a06",
+     "pull_mm": 0.4,
+     "lane_empty": false,
+     "src_stroke_mm": 0.4,
+     "sewn_w_mm": 0.986,
+     "sewn_w_min_mm": 0.439,
+     "needle_span_med_mm": 1.065,
+     "needle_span_min_mm": 0.533,
+     "satin_stitches": 48,
+     "counters_bare": []
+    },
+    {
+     "glyph": "the[2]",
+     "shape_id": "S9bac9a3c",
+     "pull_mm": 0.0,
+     "lane_empty": true,
+     "src_stroke_mm": 0.407
+    },
+    {
+     "glyph": "the[2]",
+     "shape_id": "S9bac9a3c",
+     "pull_mm": 0.1,
+     "lane_empty": true,
+     "src_stroke_mm": 0.407
+    },
+    {
+     "glyph": "the[2]",
+     "shape_id": "S9bac9a3c",
+     "pull_mm": 0.2,
+     "lane_empty": false,
+     "src_stroke_mm": 0.407,
+     "sewn_w_mm": 0.766,
+     "sewn_w_min_mm": 0.466,
+     "needle_span_med_mm": 0.601,
+     "needle_span_min_mm": 0.505,
+     "satin_stitches": 44,
+     "counters_bare": []
+    },
+    {
+     "glyph": "the[2]",
+     "shape_id": "S9bac9a3c",
+     "pull_mm": 0.3,
+     "lane_empty": false,
+     "src_stroke_mm": 0.407,
+     "sewn_w_mm": 0.763,
+     "sewn_w_min_mm": 0.42,
+     "needle_span_med_mm": 0.801,
+     "needle_span_min_mm": 0.505,
+     "satin_stitches": 44,
+     "counters_bare": []
+    },
+    {
+     "glyph": "the[2]",
+     "shape_id": "S9bac9a3c",
+     "pull_mm": 0.4,
+     "lane_empty": false,
+     "src_stroke_mm": 0.407,
+     "sewn_w_mm": 0.846,
+     "sewn_w_min_mm": 0.453,
+     "needle_span_med_mm": 1.001,
+     "needle_span_min_mm": 0.505,
+     "satin_stitches": 44,
+     "counters_bare": []
+    }
+   ]
+  },
+  "floor_81": {
+   "arm": "floor_81",
+   "label": "small_print_floor ON",
+   "width_mm": 81.0,
+   "overrides": {
+    "small_print_floor": true
+   },
+   "size_mm": [
+    81.7,
+    44.3
+   ],
+   "stitches": 15456,
+   "trims": 46,
+   "lane_taken": 14,
+   "boxes": {
+    "the": {
+     "glyphs": [
+      {
+       "glyph": "the[0]",
+       "bbox_mm": [
+        -4.39,
+        -7.61,
+        -2.09,
+        -4.92
+       ],
+       "w_mm": 2.3,
+       "h_mm": 2.69,
+       "area_mm2": 2.4,
+       "shape_ids": [
+        "Scead5d18"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.4,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.426,
+       "sewn_w_min_mm": 0.373,
+       "width_ratio": 1.07,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.026,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.913,
+       "spill": 0.744,
+       "stitches": 60,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[1]",
+       "bbox_mm": [
+        -1.22,
+        -7.61,
+        1.41,
+        -4.92
+       ],
+       "w_mm": 2.62,
+       "h_mm": 2.69,
+       "area_mm2": 3.47,
+       "shape_ids": [
+        "S8fa08a06"
+       ],
+       "kinds": [
+        "satin",
+        "travel"
+       ],
+       "tier": "satin",
+       "column_lane": true,
+       "src_stroke_mm": 0.4,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.953,
+       "sewn_w_min_mm": 0.466,
+       "width_ratio": 2.38,
+       "satin_runs": 5,
+       "needle_offset_p50_mm": 0.191,
+       "needle_offset_p90_mm": 0.347,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.986,
+       "spill": 1.551,
+       "stitches": 54,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[2]",
+       "bbox_mm": [
+        2.28,
+        -7.61,
+        4.39,
+        -4.92
+       ],
+       "w_mm": 2.11,
+       "h_mm": 2.69,
+       "area_mm2": 3.24,
+       "shape_ids": [
+        "S9bac9a3c"
+       ],
+       "kinds": [
+        "satin",
+        "travel"
+       ],
+       "tier": "satin",
+       "column_lane": true,
+       "src_stroke_mm": 0.407,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.839,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.06,
+       "satin_runs": 4,
+       "needle_offset_p50_mm": 0.216,
+       "needle_offset_p90_mm": 0.337,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.988,
+       "spill": 1.532,
+       "stitches": 56,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -4.86,
+      -8.06,
+      5.02,
+      -4.49
+     ],
+     "ink_mm2": 8.69,
+     "ink_bare_mm2": 0.0,
+     "stitches": 358,
+     "trims": 4
+    },
+    "tagline": {
+     "glyphs": [
+      {
+       "glyph": "tagline[0]",
+       "bbox_mm": [
+        -12.0,
+        9.01,
+        -10.32,
+        11.18
+       ],
+       "w_mm": 1.68,
+       "h_mm": 2.17,
+       "area_mm2": 1.49,
+       "shape_ids": [
+        "Se9a3bf6a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.473,
+       "sewn_w_min_mm": 0.386,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.962,
+       "spill": 1.344,
+       "stitches": 59,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[1]",
+       "bbox_mm": [
+        -10.22,
+        9.01,
+        -7.95,
+        11.18
+       ],
+       "w_mm": 2.27,
+       "h_mm": 2.17,
+       "area_mm2": 1.45,
+       "shape_ids": [
+        "Sf0a6f1de"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.606,
+       "sewn_w_min_mm": 0.372,
+       "width_ratio": 2.6,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.022,
+       "needle_offset_p90_mm": 0.019,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.367,
+         "width_mm": 0.504,
+         "bare_share": 0.095,
+         "known_to_planner": true,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.979,
+       "spill": 1.229,
+       "stitches": 56,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[2]",
+       "bbox_mm": [
+        -8.25,
+        9.01,
+        -6.4,
+        11.18
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.17,
+       "area_mm2": 1.11,
+       "shape_ids": [
+        "Sdeda9448"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.6,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.25,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.008,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.971,
+       "spill": 1.339,
+       "stitches": 47,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[3]",
+       "bbox_mm": [
+        -5.07,
+        8.23,
+        -4.78,
+        11.92
+       ],
+       "w_mm": 0.29,
+       "h_mm": 3.69,
+       "area_mm2": 1.08,
+       "shape_ids": [
+        "S5ac4eae6"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.3,
+       "sewn_w_mm": 0.667,
+       "sewn_w_min_mm": 0.537,
+       "width_ratio": 2.22,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.015,
+       "needle_offset_p90_mm": 0.026,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 1.0,
+       "spill": 1.222,
+       "stitches": 42,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[4]",
+       "bbox_mm": [
+        -3.32,
+        8.94,
+        -1.8,
+        11.21
+       ],
+       "w_mm": 1.52,
+       "h_mm": 2.27,
+       "area_mm2": 1.42,
+       "shape_ids": [
+        "Sdf13b84a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.213,
+       "sewn_w_mm": 0.626,
+       "sewn_w_min_mm": 0.54,
+       "width_ratio": 2.61,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.976,
+       "spill": 1.267,
+       "stitches": 56,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[5]",
+       "bbox_mm": [
+        -1.64,
+        9.01,
+        0.21,
+        11.18
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "S990f2088"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.58,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.17,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.012,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.973,
+       "spill": 1.377,
+       "stitches": 43,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[6]",
+       "bbox_mm": [
+        -0.08,
+        9.01,
+        2.22,
+        11.18
+       ],
+       "w_mm": 2.3,
+       "h_mm": 2.17,
+       "area_mm2": 1.46,
+       "shape_ids": [
+        "Sa0fbbfd4"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.619,
+       "sewn_w_min_mm": 0.436,
+       "width_ratio": 2.65,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.028,
+       "needle_offset_p90_mm": 0.008,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.37,
+         "width_mm": 0.508,
+         "bare_share": 0.106,
+         "known_to_planner": true,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.976,
+       "spill": 1.209,
+       "stitches": 59,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[7]",
+       "bbox_mm": [
+        1.8,
+        9.01,
+        3.84,
+        11.18
+       ],
+       "w_mm": 2.04,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "S8fa2e64e"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.506,
+       "sewn_w_min_mm": 0.355,
+       "width_ratio": 2.11,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.975,
+       "spill": 1.387,
+       "stitches": 44,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[8]",
+       "bbox_mm": [
+        4.97,
+        8.23,
+        5.26,
+        11.92
+       ],
+       "w_mm": 0.29,
+       "h_mm": 3.69,
+       "area_mm2": 1.08,
+       "shape_ids": [
+        "S658eac5c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.3,
+       "sewn_w_mm": 0.733,
+       "sewn_w_min_mm": 0.533,
+       "width_ratio": 2.44,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.986,
+       "spill": 1.336,
+       "stitches": 42,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[9]",
+       "bbox_mm": [
+        6.82,
+        9.01,
+        8.47,
+        11.18
+       ],
+       "w_mm": 1.65,
+       "h_mm": 2.17,
+       "area_mm2": 1.24,
+       "shape_ids": [
+        "S931202c8"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.533,
+       "sewn_w_min_mm": 0.413,
+       "width_ratio": 2.29,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.782,
+         "width_mm": 0.846,
+         "bare_share": 0.238,
+         "known_to_planner": false,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.999,
+       "spill": 1.51,
+       "stitches": 51,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[10]",
+       "bbox_mm": [
+        8.57,
+        9.01,
+        10.19,
+        11.18
+       ],
+       "w_mm": 1.62,
+       "h_mm": 2.17,
+       "area_mm2": 0.99,
+       "shape_ids": [
+        "S1377425b"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.466,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.75,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.967,
+       "spill": 1.316,
+       "stitches": 37,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[11]",
+       "bbox_mm": [
+        10.32,
+        9.01,
+        12.59,
+        11.18
+       ],
+       "w_mm": 2.27,
+       "h_mm": 2.17,
+       "area_mm2": 1.44,
+       "shape_ids": [
+        "Sa6ebf53d"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.579,
+       "sewn_w_min_mm": 0.407,
+       "width_ratio": 2.48,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.367,
+         "width_mm": 0.517,
+         "bare_share": 0.224,
+         "known_to_planner": true,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.979,
+       "spill": 1.221,
+       "stitches": 59,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[12]",
+       "bbox_mm": [
+        12.1,
+        9.01,
+        14.18,
+        11.18
+       ],
+       "w_mm": 2.07,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "Se58e299c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.579,
+       "sewn_w_min_mm": 0.407,
+       "width_ratio": 2.42,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.017,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.978,
+       "spill": 1.324,
+       "stitches": 44,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 13,
+     "box_mm": [
+      -12.64,
+      8.02,
+      14.58,
+      12.29
+     ],
+     "ink_mm2": 20.06,
+     "ink_bare_mm2": 0.25,
+     "stitches": 939,
+     "trims": 6
+    },
+    "est": {
+     "glyphs": [
+      {
+       "glyph": "est[0]",
+       "bbox_mm": [
+        -9.15,
+        -12.9,
+        -7.86,
+        -11.28
+       ],
+       "w_mm": 1.3,
+       "h_mm": 1.62,
+       "area_mm2": 1.0,
+       "shape_ids": [
+        "S1b0527a5"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.533,
+       "sewn_w_min_mm": 0.404,
+       "width_ratio": 2.28,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.933,
+       "spill": 1.387,
+       "stitches": 47,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[1]",
+       "bbox_mm": [
+        -7.11,
+        -12.93,
+        -5.91,
+        -11.24
+       ],
+       "w_mm": 1.2,
+       "h_mm": 1.68,
+       "area_mm2": 0.97,
+       "shape_ids": [
+        "Sfe26555a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.22,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.706,
+       "sewn_w_min_mm": 0.45,
+       "width_ratio": 3.21,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.991,
+       "spill": 1.272,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[2]",
+       "bbox_mm": [
+        -5.23,
+        -12.9,
+        -3.77,
+        -11.28
+       ],
+       "w_mm": 1.46,
+       "h_mm": 1.62,
+       "area_mm2": 0.82,
+       "shape_ids": [
+        "S7c58ea3d"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.467,
+       "sewn_w_min_mm": 0.4,
+       "width_ratio": 2.0,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.91,
+       "spill": 1.11,
+       "stitches": 35,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -9.72,
+      -13.51,
+      -3.24,
+      -10.63
+     ],
+     "ink_mm2": 3.19,
+     "ink_bare_mm2": 0.06,
+     "stitches": 166,
+     "trims": 1
+    }
+   }
+  },
+  "floor_stem_81": {
+   "arm": "floor_stem_81",
+   "label": "small_print_floor + small_stem ON",
+   "width_mm": 81.0,
+   "overrides": {
+    "small_print_floor": true,
+    "lettering_columns_small_stem": true
+   },
+   "size_mm": [
+    81.7,
+    44.3
+   ],
+   "stitches": 15456,
+   "trims": 46,
+   "lane_taken": 14,
+   "boxes": {
+    "the": {
+     "glyphs": [
+      {
+       "glyph": "the[0]",
+       "bbox_mm": [
+        -4.39,
+        -7.61,
+        -2.09,
+        -4.92
+       ],
+       "w_mm": 2.3,
+       "h_mm": 2.69,
+       "area_mm2": 2.4,
+       "shape_ids": [
+        "Scead5d18"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.4,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.426,
+       "sewn_w_min_mm": 0.373,
+       "width_ratio": 1.07,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.026,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.913,
+       "spill": 0.744,
+       "stitches": 60,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[1]",
+       "bbox_mm": [
+        -1.22,
+        -7.61,
+        1.41,
+        -4.92
+       ],
+       "w_mm": 2.62,
+       "h_mm": 2.69,
+       "area_mm2": 3.47,
+       "shape_ids": [
+        "S8fa08a06"
+       ],
+       "kinds": [
+        "satin",
+        "travel"
+       ],
+       "tier": "satin",
+       "column_lane": true,
+       "src_stroke_mm": 0.4,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.953,
+       "sewn_w_min_mm": 0.466,
+       "width_ratio": 2.38,
+       "satin_runs": 5,
+       "needle_offset_p50_mm": 0.191,
+       "needle_offset_p90_mm": 0.347,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.986,
+       "spill": 1.551,
+       "stitches": 54,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[2]",
+       "bbox_mm": [
+        2.28,
+        -7.61,
+        4.39,
+        -4.92
+       ],
+       "w_mm": 2.11,
+       "h_mm": 2.69,
+       "area_mm2": 3.24,
+       "shape_ids": [
+        "S9bac9a3c"
+       ],
+       "kinds": [
+        "satin",
+        "travel"
+       ],
+       "tier": "satin",
+       "column_lane": true,
+       "src_stroke_mm": 0.407,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.839,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.06,
+       "satin_runs": 4,
+       "needle_offset_p50_mm": 0.216,
+       "needle_offset_p90_mm": 0.337,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.988,
+       "spill": 1.532,
+       "stitches": 56,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -4.86,
+      -8.06,
+      5.02,
+      -4.49
+     ],
+     "ink_mm2": 8.69,
+     "ink_bare_mm2": 0.0,
+     "stitches": 358,
+     "trims": 4
+    },
+    "tagline": {
+     "glyphs": [
+      {
+       "glyph": "tagline[0]",
+       "bbox_mm": [
+        -12.0,
+        9.01,
+        -10.32,
+        11.18
+       ],
+       "w_mm": 1.68,
+       "h_mm": 2.17,
+       "area_mm2": 1.49,
+       "shape_ids": [
+        "Se9a3bf6a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.473,
+       "sewn_w_min_mm": 0.386,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.962,
+       "spill": 1.344,
+       "stitches": 59,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[1]",
+       "bbox_mm": [
+        -10.22,
+        9.01,
+        -7.95,
+        11.18
+       ],
+       "w_mm": 2.27,
+       "h_mm": 2.17,
+       "area_mm2": 1.45,
+       "shape_ids": [
+        "Sf0a6f1de"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.606,
+       "sewn_w_min_mm": 0.372,
+       "width_ratio": 2.6,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.022,
+       "needle_offset_p90_mm": 0.019,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.367,
+         "width_mm": 0.504,
+         "bare_share": 0.095,
+         "known_to_planner": true,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.979,
+       "spill": 1.229,
+       "stitches": 56,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[2]",
+       "bbox_mm": [
+        -8.25,
+        9.01,
+        -6.4,
+        11.18
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.17,
+       "area_mm2": 1.11,
+       "shape_ids": [
+        "Sdeda9448"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.6,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.25,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.008,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.971,
+       "spill": 1.339,
+       "stitches": 47,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[3]",
+       "bbox_mm": [
+        -5.07,
+        8.23,
+        -4.78,
+        11.92
+       ],
+       "w_mm": 0.29,
+       "h_mm": 3.69,
+       "area_mm2": 1.08,
+       "shape_ids": [
+        "S5ac4eae6"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.3,
+       "sewn_w_mm": 0.667,
+       "sewn_w_min_mm": 0.537,
+       "width_ratio": 2.22,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.015,
+       "needle_offset_p90_mm": 0.026,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 1.0,
+       "spill": 1.222,
+       "stitches": 42,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[4]",
+       "bbox_mm": [
+        -3.32,
+        8.94,
+        -1.8,
+        11.21
+       ],
+       "w_mm": 1.52,
+       "h_mm": 2.27,
+       "area_mm2": 1.42,
+       "shape_ids": [
+        "Sdf13b84a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.213,
+       "sewn_w_mm": 0.626,
+       "sewn_w_min_mm": 0.54,
+       "width_ratio": 2.61,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.976,
+       "spill": 1.267,
+       "stitches": 56,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[5]",
+       "bbox_mm": [
+        -1.64,
+        9.01,
+        0.21,
+        11.18
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "S990f2088"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.58,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.17,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.012,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.973,
+       "spill": 1.377,
+       "stitches": 43,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[6]",
+       "bbox_mm": [
+        -0.08,
+        9.01,
+        2.22,
+        11.18
+       ],
+       "w_mm": 2.3,
+       "h_mm": 2.17,
+       "area_mm2": 1.46,
+       "shape_ids": [
+        "Sa0fbbfd4"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.619,
+       "sewn_w_min_mm": 0.436,
+       "width_ratio": 2.65,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.028,
+       "needle_offset_p90_mm": 0.008,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.37,
+         "width_mm": 0.508,
+         "bare_share": 0.106,
+         "known_to_planner": true,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.976,
+       "spill": 1.209,
+       "stitches": 59,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[7]",
+       "bbox_mm": [
+        1.8,
+        9.01,
+        3.84,
+        11.18
+       ],
+       "w_mm": 2.04,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "S8fa2e64e"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.506,
+       "sewn_w_min_mm": 0.355,
+       "width_ratio": 2.11,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.975,
+       "spill": 1.387,
+       "stitches": 44,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[8]",
+       "bbox_mm": [
+        4.97,
+        8.23,
+        5.26,
+        11.92
+       ],
+       "w_mm": 0.29,
+       "h_mm": 3.69,
+       "area_mm2": 1.08,
+       "shape_ids": [
+        "S658eac5c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.3,
+       "sewn_w_mm": 0.733,
+       "sewn_w_min_mm": 0.533,
+       "width_ratio": 2.44,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.986,
+       "spill": 1.336,
+       "stitches": 42,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[9]",
+       "bbox_mm": [
+        6.82,
+        9.01,
+        8.47,
+        11.18
+       ],
+       "w_mm": 1.65,
+       "h_mm": 2.17,
+       "area_mm2": 1.24,
+       "shape_ids": [
+        "S931202c8"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.533,
+       "sewn_w_min_mm": 0.413,
+       "width_ratio": 2.29,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.782,
+         "width_mm": 0.846,
+         "bare_share": 0.238,
+         "known_to_planner": false,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.999,
+       "spill": 1.51,
+       "stitches": 51,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[10]",
+       "bbox_mm": [
+        8.57,
+        9.01,
+        10.19,
+        11.18
+       ],
+       "w_mm": 1.62,
+       "h_mm": 2.17,
+       "area_mm2": 0.99,
+       "shape_ids": [
+        "S1377425b"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.466,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.75,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.967,
+       "spill": 1.316,
+       "stitches": 37,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[11]",
+       "bbox_mm": [
+        10.32,
+        9.01,
+        12.59,
+        11.18
+       ],
+       "w_mm": 2.27,
+       "h_mm": 2.17,
+       "area_mm2": 1.44,
+       "shape_ids": [
+        "Sa6ebf53d"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.579,
+       "sewn_w_min_mm": 0.407,
+       "width_ratio": 2.48,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.367,
+         "width_mm": 0.517,
+         "bare_share": 0.224,
+         "known_to_planner": true,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.979,
+       "spill": 1.221,
+       "stitches": 59,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[12]",
+       "bbox_mm": [
+        12.1,
+        9.01,
+        14.18,
+        11.18
+       ],
+       "w_mm": 2.07,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "Se58e299c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.579,
+       "sewn_w_min_mm": 0.407,
+       "width_ratio": 2.42,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.017,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.978,
+       "spill": 1.324,
+       "stitches": 44,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 13,
+     "box_mm": [
+      -12.64,
+      8.02,
+      14.58,
+      12.29
+     ],
+     "ink_mm2": 20.06,
+     "ink_bare_mm2": 0.25,
+     "stitches": 939,
+     "trims": 6
+    },
+    "est": {
+     "glyphs": [
+      {
+       "glyph": "est[0]",
+       "bbox_mm": [
+        -9.15,
+        -12.9,
+        -7.86,
+        -11.28
+       ],
+       "w_mm": 1.3,
+       "h_mm": 1.62,
+       "area_mm2": 1.0,
+       "shape_ids": [
+        "S1b0527a5"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.533,
+       "sewn_w_min_mm": 0.404,
+       "width_ratio": 2.28,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.933,
+       "spill": 1.387,
+       "stitches": 47,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[1]",
+       "bbox_mm": [
+        -7.11,
+        -12.93,
+        -5.91,
+        -11.24
+       ],
+       "w_mm": 1.2,
+       "h_mm": 1.68,
+       "area_mm2": 0.97,
+       "shape_ids": [
+        "Sfe26555a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.22,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.706,
+       "sewn_w_min_mm": 0.45,
+       "width_ratio": 3.21,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.991,
+       "spill": 1.272,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[2]",
+       "bbox_mm": [
+        -5.23,
+        -12.9,
+        -3.77,
+        -11.28
+       ],
+       "w_mm": 1.46,
+       "h_mm": 1.62,
+       "area_mm2": 0.82,
+       "shape_ids": [
+        "S7c58ea3d"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.467,
+       "sewn_w_min_mm": 0.4,
+       "width_ratio": 2.0,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.91,
+       "spill": 1.11,
+       "stitches": 35,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -9.72,
+      -13.51,
+      -3.24,
+      -10.63
+     ],
+     "ink_mm2": 3.19,
+     "ink_bare_mm2": 0.06,
+     "stitches": 166,
+     "trims": 1
+    }
+   }
+  },
+  "floor_stem_92": {
+   "arm": "floor_stem_92",
+   "label": "small_print_floor + small_stem ON, 92.5 mm",
+   "width_mm": 92.5,
+   "overrides": {
+    "small_print_floor": true,
+    "lettering_columns_small_stem": true
+   },
+   "size_mm": [
+    93.2,
+    50.5
+   ],
+   "stitches": 19027,
+   "trims": 60,
+   "lane_taken": 15,
+   "boxes": {
+    "the": {
+     "glyphs": [
+      {
+       "glyph": "the[0]",
+       "bbox_mm": [
+        -5.01,
+        -8.7,
+        -2.39,
+        -5.62
+       ],
+       "w_mm": 2.63,
+       "h_mm": 3.07,
+       "area_mm2": 3.13,
+       "shape_ids": [
+        "S42e426b8"
+       ],
+       "kinds": [
+        "satin",
+        "travel"
+       ],
+       "tier": "satin",
+       "column_lane": true,
+       "src_stroke_mm": 0.467,
+       "src_stroke_min_mm": 0.467,
+       "sewn_w_mm": 0.879,
+       "sewn_w_min_mm": 0.473,
+       "width_ratio": 1.88,
+       "satin_runs": 5,
+       "needle_offset_p50_mm": 0.204,
+       "needle_offset_p90_mm": 0.303,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 1.0,
+       "spill": 1.51,
+       "stitches": 60,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[1]",
+       "bbox_mm": [
+        -1.39,
+        -8.7,
+        1.61,
+        -5.62
+       ],
+       "w_mm": 3.0,
+       "h_mm": 3.07,
+       "area_mm2": 4.53,
+       "shape_ids": [
+        "S666da526"
+       ],
+       "kinds": [
+        "satin",
+        "travel"
+       ],
+       "tier": "satin",
+       "column_lane": true,
+       "src_stroke_mm": 0.467,
+       "src_stroke_min_mm": 0.467,
+       "sewn_w_mm": 0.96,
+       "sewn_w_min_mm": 0.473,
+       "width_ratio": 2.06,
+       "satin_runs": 4,
+       "needle_offset_p50_mm": 0.163,
+       "needle_offset_p90_mm": 0.302,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.985,
+       "spill": 1.185,
+       "stitches": 59,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[2]",
+       "bbox_mm": [
+        2.61,
+        -8.7,
+        5.01,
+        -5.62
+       ],
+       "w_mm": 2.4,
+       "h_mm": 3.07,
+       "area_mm2": 4.23,
+       "shape_ids": [
+        "S3ddcec6c"
+       ],
+       "kinds": [
+        "satin",
+        "travel"
+       ],
+       "tier": "satin",
+       "column_lane": true,
+       "src_stroke_mm": 0.467,
+       "src_stroke_min_mm": 0.467,
+       "sewn_w_mm": 0.986,
+       "sewn_w_min_mm": 0.473,
+       "width_ratio": 2.11,
+       "satin_runs": 5,
+       "needle_offset_p50_mm": 0.21,
+       "needle_offset_p90_mm": 0.291,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.984,
+       "spill": 1.318,
+       "stitches": 62,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -5.55,
+      -9.21,
+      5.74,
+      -5.13
+     ],
+     "ink_mm2": 12.25,
+     "ink_bare_mm2": 0.25,
+     "stitches": 431,
+     "trims": 3
+    },
+    "tagline": {
+     "glyphs": [
+      {
+       "glyph": "tagline[0]",
+       "bbox_mm": [
+        -13.71,
+        10.29,
+        -11.78,
+        12.77
+       ],
+       "w_mm": 1.92,
+       "h_mm": 2.48,
+       "area_mm2": 1.95,
+       "shape_ids": [
+        "S5c2d8e5a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.507,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.9,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.018,
+       "needle_offset_p90_mm": 0.019,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.952,
+       "spill": 1.183,
+       "stitches": 68,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[1]",
+       "bbox_mm": [
+        -11.67,
+        10.29,
+        -9.08,
+        12.77
+       ],
+       "w_mm": 2.59,
+       "h_mm": 2.48,
+       "area_mm2": 1.89,
+       "shape_ids": [
+        "Sfb387a73"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.42,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.57,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.012,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.483,
+         "width_mm": 0.579,
+         "bare_share": 1.0,
+         "known_to_planner": true,
+         "status": "open"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 1,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.914,
+       "spill": 0.911,
+       "stitches": 46,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[2]",
+       "bbox_mm": [
+        -9.42,
+        10.29,
+        -7.31,
+        12.77
+       ],
+       "w_mm": 2.11,
+       "h_mm": 2.48,
+       "area_mm2": 1.44,
+       "shape_ids": [
+        "Sd3e6b4c8"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.626,
+       "sewn_w_min_mm": 0.426,
+       "width_ratio": 2.09,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.018,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.975,
+       "spill": 1.305,
+       "stitches": 53,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[3]",
+       "bbox_mm": [
+        -5.79,
+        9.4,
+        -5.46,
+        13.62
+       ],
+       "w_mm": 0.33,
+       "h_mm": 4.22,
+       "area_mm2": 1.4,
+       "shape_ids": [
+        "S1644ba78"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.333,
+       "src_stroke_min_mm": 0.333,
+       "sewn_w_mm": 0.7,
+       "sewn_w_min_mm": 0.7,
+       "width_ratio": 2.1,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.027,
+       "needle_offset_p90_mm": 0.011,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.967,
+       "spill": 1.081,
+       "stitches": 45,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[4]",
+       "bbox_mm": [
+        -3.79,
+        10.21,
+        -2.05,
+        12.8
+       ],
+       "w_mm": 1.74,
+       "h_mm": 2.59,
+       "area_mm2": 1.86,
+       "shape_ids": [
+        "Sb18dbd63"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.24,
+       "sewn_w_mm": 0.646,
+       "sewn_w_min_mm": 0.586,
+       "width_ratio": 2.42,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.018,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.996,
+       "spill": 1.187,
+       "stitches": 65,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[5]",
+       "bbox_mm": [
+        -1.87,
+        10.29,
+        0.24,
+        12.77
+       ],
+       "w_mm": 2.11,
+       "h_mm": 2.48,
+       "area_mm2": 1.44,
+       "shape_ids": [
+        "S793ddbbb"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.533,
+       "sewn_w_min_mm": 0.389,
+       "width_ratio": 2.0,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.018,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.974,
+       "spill": 1.328,
+       "stitches": 49,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[6]",
+       "bbox_mm": [
+        -0.09,
+        10.29,
+        2.53,
+        12.77
+       ],
+       "w_mm": 2.63,
+       "h_mm": 2.48,
+       "area_mm2": 1.91,
+       "shape_ids": [
+        "S050ca08b"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.413,
+       "sewn_w_min_mm": 0.386,
+       "width_ratio": 1.55,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.012,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.495,
+         "width_mm": 0.58,
+         "bare_share": 1.0,
+         "known_to_planner": true,
+         "status": "open"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 1,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.912,
+       "spill": 0.884,
+       "stitches": 46,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[7]",
+       "bbox_mm": [
+        2.05,
+        10.29,
+        4.38,
+        12.77
+       ],
+       "w_mm": 2.33,
+       "h_mm": 2.48,
+       "area_mm2": 1.44,
+       "shape_ids": [
+        "Sa2e2f98e"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.44,
+       "sewn_w_min_mm": 0.303,
+       "width_ratio": 1.65,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.009,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.973,
+       "spill": 1.2,
+       "stitches": 50,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[8]",
+       "bbox_mm": [
+        5.68,
+        9.4,
+        6.01,
+        13.62
+       ],
+       "w_mm": 0.33,
+       "h_mm": 4.22,
+       "area_mm2": 1.4,
+       "shape_ids": [
+        "S4cb247df"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.333,
+       "src_stroke_min_mm": 0.333,
+       "sewn_w_mm": 0.767,
+       "sewn_w_min_mm": 0.507,
+       "width_ratio": 2.3,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.0,
+       "needle_offset_p90_mm": 0.019,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.992,
+       "spill": 1.208,
+       "stitches": 45,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[9]",
+       "bbox_mm": [
+        7.79,
+        10.29,
+        9.68,
+        12.77
+       ],
+       "w_mm": 1.89,
+       "h_mm": 2.48,
+       "area_mm2": 1.62,
+       "shape_ids": [
+        "S177d120f"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.266,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.5,
+       "sewn_w_min_mm": 0.413,
+       "width_ratio": 1.88,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.021,
+       "needle_offset_p90_mm": 0.012,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 1.012,
+         "width_mm": 0.966,
+         "bare_share": 0.627,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.996,
+       "spill": 1.169,
+       "stitches": 63,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[10]",
+       "bbox_mm": [
+        9.79,
+        10.29,
+        11.64,
+        12.77
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.48,
+       "area_mm2": 1.29,
+       "shape_ids": [
+        "S83a2afe8"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.499,
+       "sewn_w_min_mm": 0.4,
+       "width_ratio": 1.66,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.018,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.971,
+       "spill": 1.287,
+       "stitches": 43,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[11]",
+       "bbox_mm": [
+        11.78,
+        10.29,
+        14.37,
+        12.77
+       ],
+       "w_mm": 2.59,
+       "h_mm": 2.48,
+       "area_mm2": 1.88,
+       "shape_ids": [
+        "S47b1a317"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.426,
+       "sewn_w_min_mm": 0.386,
+       "width_ratio": 1.6,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.015,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.487,
+         "width_mm": 0.591,
+         "bare_share": 1.0,
+         "known_to_planner": true,
+         "status": "open"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 1,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.906,
+       "spill": 0.902,
+       "stitches": 46,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[12]",
+       "bbox_mm": [
+        13.82,
+        10.29,
+        16.19,
+        12.77
+       ],
+       "w_mm": 2.37,
+       "h_mm": 2.48,
+       "area_mm2": 1.43,
+       "shape_ids": [
+        "S77bf5723"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.266,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.467,
+       "sewn_w_min_mm": 0.367,
+       "width_ratio": 1.75,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.01,
+       "needle_offset_p90_mm": 0.019,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.952,
+       "spill": 1.16,
+       "stitches": 50,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 13,
+     "box_mm": [
+      -14.43,
+      9.16,
+      16.65,
+      14.03
+     ],
+     "ink_mm2": 26.19,
+     "ink_bare_mm2": 0.31,
+     "stitches": 1301,
+     "trims": 14
+    },
+    "est": {
+     "glyphs": [
+      {
+       "glyph": "est[0]",
+       "bbox_mm": [
+        -10.45,
+        -14.73,
+        -8.97,
+        -12.88
+       ],
+       "w_mm": 1.48,
+       "h_mm": 1.85,
+       "area_mm2": 1.31,
+       "shape_ids": [
+        "S8093c5d6"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.433,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.86,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.014,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.951,
+       "spill": 1.515,
+       "stitches": 53,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[1]",
+       "bbox_mm": [
+        -8.12,
+        -14.76,
+        -6.75,
+        -12.84
+       ],
+       "w_mm": 1.37,
+       "h_mm": 1.92,
+       "area_mm2": 1.27,
+       "shape_ids": [
+        "S549f2371"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.22,
+       "sewn_w_mm": 0.653,
+       "sewn_w_min_mm": 0.586,
+       "width_ratio": 2.72,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.018,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.995,
+       "spill": 1.201,
+       "stitches": 46,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[2]",
+       "bbox_mm": [
+        -5.98,
+        -14.73,
+        -4.31,
+        -12.88
+       ],
+       "w_mm": 1.66,
+       "h_mm": 1.85,
+       "area_mm2": 1.06,
+       "shape_ids": [
+        "S3d895b56"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.686,
+       "sewn_w_min_mm": 0.577,
+       "width_ratio": 2.57,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.018,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.975,
+       "spill": 1.158,
+       "stitches": 41,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -11.1,
+      -15.43,
+      -3.7,
+      -12.14
+     ],
+     "ink_mm2": 4.88,
+     "ink_bare_mm2": 0.06,
+     "stitches": 203,
+     "trims": 1
+    }
+   }
+  },
+  "stem_81": {
+   "arm": "stem_81",
+   "label": "small_stem ON alone (control)",
+   "width_mm": 81.0,
+   "overrides": {
+    "lettering_columns_small_stem": true
+   },
+   "size_mm": [
+    81.7,
+    44.3
+   ],
+   "stitches": 15306,
+   "trims": 44,
+   "lane_taken": 14,
+   "boxes": {
+    "the": {
+     "glyphs": [
+      {
+       "glyph": "the[0]",
+       "bbox_mm": [
+        -4.39,
+        -7.61,
+        -2.09,
+        -4.92
+       ],
+       "w_mm": 2.3,
+       "h_mm": 2.69,
+       "area_mm2": 2.4,
+       "shape_ids": [
+        "Scead5d18"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.4,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.426,
+       "sewn_w_min_mm": 0.373,
+       "width_ratio": 1.07,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.026,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.913,
+       "spill": 0.744,
+       "stitches": 60,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[1]",
+       "bbox_mm": [
+        -1.22,
+        -7.61,
+        1.41,
+        -4.92
+       ],
+       "w_mm": 2.62,
+       "h_mm": 2.69,
+       "area_mm2": 3.47,
+       "shape_ids": [
+        "S8fa08a06"
+       ],
+       "kinds": [
+        "satin",
+        "travel"
+       ],
+       "tier": "satin",
+       "column_lane": true,
+       "src_stroke_mm": 0.4,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.953,
+       "sewn_w_min_mm": 0.466,
+       "width_ratio": 2.38,
+       "satin_runs": 5,
+       "needle_offset_p50_mm": 0.191,
+       "needle_offset_p90_mm": 0.347,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.986,
+       "spill": 1.551,
+       "stitches": 54,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[2]",
+       "bbox_mm": [
+        2.28,
+        -7.61,
+        4.39,
+        -4.92
+       ],
+       "w_mm": 2.11,
+       "h_mm": 2.69,
+       "area_mm2": 3.24,
+       "shape_ids": [
+        "S9bac9a3c"
+       ],
+       "kinds": [
+        "satin",
+        "travel"
+       ],
+       "tier": "satin",
+       "column_lane": true,
+       "src_stroke_mm": 0.407,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.839,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.06,
+       "satin_runs": 4,
+       "needle_offset_p50_mm": 0.216,
+       "needle_offset_p90_mm": 0.337,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.988,
+       "spill": 1.532,
+       "stitches": 56,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -4.86,
+      -8.06,
+      5.02,
+      -4.49
+     ],
+     "ink_mm2": 8.69,
+     "ink_bare_mm2": 0.0,
+     "stitches": 357,
+     "trims": 4
+    },
+    "tagline": {
+     "glyphs": [
+      {
+       "glyph": "tagline[0]",
+       "bbox_mm": [
+        -12.0,
+        9.01,
+        -10.32,
+        11.18
+       ],
+       "w_mm": 1.68,
+       "h_mm": 2.17,
+       "area_mm2": 1.49,
+       "shape_ids": [
+        "Se9a3bf6a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.473,
+       "sewn_w_min_mm": 0.386,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.962,
+       "spill": 1.344,
+       "stitches": 59,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[1]",
+       "bbox_mm": [
+        -10.22,
+        9.01,
+        -7.95,
+        11.18
+       ],
+       "w_mm": 2.27,
+       "h_mm": 2.17,
+       "area_mm2": 1.45,
+       "shape_ids": [
+        "Sf0a6f1de"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.413,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.0,
+       "needle_offset_p90_mm": 0.008,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.367,
+         "width_mm": 0.504,
+         "bare_share": 0.989,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.933,
+       "spill": 1.012,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[2]",
+       "bbox_mm": [
+        -8.25,
+        9.01,
+        -6.4,
+        11.18
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.17,
+       "area_mm2": 1.11,
+       "shape_ids": [
+        "Sdeda9448"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.6,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.25,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.008,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.971,
+       "spill": 1.339,
+       "stitches": 47,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[3]",
+       "bbox_mm": [
+        -5.07,
+        8.23,
+        -4.78,
+        11.92
+       ],
+       "w_mm": 0.29,
+       "h_mm": 3.69,
+       "area_mm2": 1.08,
+       "shape_ids": [
+        "S5ac4eae6"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.3,
+       "sewn_w_mm": 0.667,
+       "sewn_w_min_mm": 0.537,
+       "width_ratio": 2.22,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.015,
+       "needle_offset_p90_mm": 0.026,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 1.0,
+       "spill": 1.222,
+       "stitches": 42,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[4]",
+       "bbox_mm": [
+        -3.32,
+        8.94,
+        -1.8,
+        11.21
+       ],
+       "w_mm": 1.52,
+       "h_mm": 2.27,
+       "area_mm2": 1.42,
+       "shape_ids": [
+        "Sdf13b84a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.213,
+       "sewn_w_mm": 0.626,
+       "sewn_w_min_mm": 0.54,
+       "width_ratio": 2.61,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.976,
+       "spill": 1.267,
+       "stitches": 56,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[5]",
+       "bbox_mm": [
+        -1.64,
+        9.01,
+        0.21,
+        11.18
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "S990f2088"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.58,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.17,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.973,
+       "spill": 1.377,
+       "stitches": 43,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[6]",
+       "bbox_mm": [
+        -0.08,
+        9.01,
+        2.22,
+        11.18
+       ],
+       "w_mm": 2.3,
+       "h_mm": 2.17,
+       "area_mm2": 1.46,
+       "shape_ids": [
+        "Sa0fbbfd4"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.413,
+       "sewn_w_min_mm": 0.38,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.37,
+         "width_mm": 0.508,
+         "bare_share": 0.985,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.939,
+       "spill": 0.989,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[7]",
+       "bbox_mm": [
+        1.8,
+        9.01,
+        3.84,
+        11.18
+       ],
+       "w_mm": 2.04,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "S8fa2e64e"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.506,
+       "sewn_w_min_mm": 0.355,
+       "width_ratio": 2.11,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.975,
+       "spill": 1.387,
+       "stitches": 44,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[8]",
+       "bbox_mm": [
+        4.97,
+        8.23,
+        5.26,
+        11.92
+       ],
+       "w_mm": 0.29,
+       "h_mm": 3.69,
+       "area_mm2": 1.08,
+       "shape_ids": [
+        "S658eac5c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.3,
+       "sewn_w_mm": 0.733,
+       "sewn_w_min_mm": 0.533,
+       "width_ratio": 2.44,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.986,
+       "spill": 1.336,
+       "stitches": 42,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[9]",
+       "bbox_mm": [
+        6.82,
+        9.01,
+        8.47,
+        11.18
+       ],
+       "w_mm": 1.65,
+       "h_mm": 2.17,
+       "area_mm2": 1.24,
+       "shape_ids": [
+        "S931202c8"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.6,
+       "sewn_w_min_mm": 0.413,
+       "width_ratio": 2.57,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.02,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.782,
+         "width_mm": 0.846,
+         "bare_share": 0.149,
+         "known_to_planner": false,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.997,
+       "spill": 1.51,
+       "stitches": 48,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[10]",
+       "bbox_mm": [
+        8.57,
+        9.01,
+        10.19,
+        11.18
+       ],
+       "w_mm": 1.62,
+       "h_mm": 2.17,
+       "area_mm2": 0.99,
+       "shape_ids": [
+        "S1377425b"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.466,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.75,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.967,
+       "spill": 1.316,
+       "stitches": 37,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[11]",
+       "bbox_mm": [
+        10.32,
+        9.01,
+        12.59,
+        11.18
+       ],
+       "w_mm": 2.27,
+       "h_mm": 2.17,
+       "area_mm2": 1.44,
+       "shape_ids": [
+        "Sa6ebf53d"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.42,
+       "sewn_w_min_mm": 0.38,
+       "width_ratio": 1.8,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.367,
+         "width_mm": 0.517,
+         "bare_share": 0.975,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.945,
+       "spill": 1.012,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[12]",
+       "bbox_mm": [
+        12.1,
+        9.01,
+        14.18,
+        11.18
+       ],
+       "w_mm": 2.07,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "Se58e299c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.579,
+       "sewn_w_min_mm": 0.407,
+       "width_ratio": 2.42,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.017,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.978,
+       "spill": 1.324,
+       "stitches": 44,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 13,
+     "box_mm": [
+      -12.64,
+      8.02,
+      14.58,
+      12.29
+     ],
+     "ink_mm2": 20.06,
+     "ink_bare_mm2": 0.25,
+     "stitches": 883,
+     "trims": 7
+    },
+    "est": {
+     "glyphs": [
+      {
+       "glyph": "est[0]",
+       "bbox_mm": [
+        -9.15,
+        -12.9,
+        -7.86,
+        -11.28
+       ],
+       "w_mm": 1.3,
+       "h_mm": 1.62,
+       "area_mm2": 1.0,
+       "shape_ids": [
+        "S1b0527a5"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.533,
+       "sewn_w_min_mm": 0.404,
+       "width_ratio": 2.28,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.933,
+       "spill": 1.387,
+       "stitches": 47,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[1]",
+       "bbox_mm": [
+        -7.11,
+        -12.93,
+        -5.91,
+        -11.24
+       ],
+       "w_mm": 1.2,
+       "h_mm": 1.68,
+       "area_mm2": 0.97,
+       "shape_ids": [
+        "Sfe26555a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.22,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.706,
+       "sewn_w_min_mm": 0.45,
+       "width_ratio": 3.21,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.991,
+       "spill": 1.272,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[2]",
+       "bbox_mm": [
+        -5.23,
+        -12.9,
+        -3.77,
+        -11.28
+       ],
+       "w_mm": 1.46,
+       "h_mm": 1.62,
+       "area_mm2": 0.82,
+       "shape_ids": [
+        "S7c58ea3d"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.467,
+       "sewn_w_min_mm": 0.4,
+       "width_ratio": 2.0,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.91,
+       "spill": 1.11,
+       "stitches": 35,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -9.72,
+      -13.51,
+      -3.24,
+      -10.63
+     ],
+     "ink_mm2": 3.19,
+     "ink_bare_mm2": 0.06,
+     "stitches": 166,
+     "trims": 1
+    }
+   }
+  },
+  "main_92": {
+   "arm": "main_92",
+   "label": "main at 92.5 mm (control)",
+   "width_mm": 92.5,
+   "overrides": {},
+   "size_mm": [
+    93.2,
+    50.5
+   ],
+   "stitches": 18761,
+   "trims": 56,
+   "lane_taken": 15,
+   "boxes": {
+    "the": {
+     "glyphs": [
+      {
+       "glyph": "the[0]",
+       "bbox_mm": [
+        -5.01,
+        -8.7,
+        -2.39,
+        -5.62
+       ],
+       "w_mm": 2.63,
+       "h_mm": 3.07,
+       "area_mm2": 3.13,
+       "shape_ids": [
+        "S42e426b8"
+       ],
+       "kinds": [
+        "satin",
+        "travel"
+       ],
+       "tier": "satin",
+       "column_lane": true,
+       "src_stroke_mm": 0.467,
+       "src_stroke_min_mm": 0.467,
+       "sewn_w_mm": 0.879,
+       "sewn_w_min_mm": 0.473,
+       "width_ratio": 1.88,
+       "satin_runs": 5,
+       "needle_offset_p50_mm": 0.204,
+       "needle_offset_p90_mm": 0.303,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 1.0,
+       "spill": 1.51,
+       "stitches": 60,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[1]",
+       "bbox_mm": [
+        -1.39,
+        -8.7,
+        1.61,
+        -5.62
+       ],
+       "w_mm": 3.0,
+       "h_mm": 3.07,
+       "area_mm2": 4.53,
+       "shape_ids": [
+        "S666da526"
+       ],
+       "kinds": [
+        "satin",
+        "travel"
+       ],
+       "tier": "satin",
+       "column_lane": true,
+       "src_stroke_mm": 0.467,
+       "src_stroke_min_mm": 0.467,
+       "sewn_w_mm": 0.96,
+       "sewn_w_min_mm": 0.473,
+       "width_ratio": 2.06,
+       "satin_runs": 4,
+       "needle_offset_p50_mm": 0.163,
+       "needle_offset_p90_mm": 0.302,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.985,
+       "spill": 1.185,
+       "stitches": 59,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[2]",
+       "bbox_mm": [
+        2.61,
+        -8.7,
+        5.01,
+        -5.62
+       ],
+       "w_mm": 2.4,
+       "h_mm": 3.07,
+       "area_mm2": 4.23,
+       "shape_ids": [
+        "S3ddcec6c"
+       ],
+       "kinds": [
+        "satin",
+        "travel"
+       ],
+       "tier": "satin",
+       "column_lane": true,
+       "src_stroke_mm": 0.467,
+       "src_stroke_min_mm": 0.467,
+       "sewn_w_mm": 0.986,
+       "sewn_w_min_mm": 0.473,
+       "width_ratio": 2.11,
+       "satin_runs": 5,
+       "needle_offset_p50_mm": 0.21,
+       "needle_offset_p90_mm": 0.291,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.984,
+       "spill": 1.318,
+       "stitches": 62,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -5.55,
+      -9.21,
+      5.74,
+      -5.13
+     ],
+     "ink_mm2": 12.25,
+     "ink_bare_mm2": 0.25,
+     "stitches": 410,
+     "trims": 3
+    },
+    "tagline": {
+     "glyphs": [
+      {
+       "glyph": "tagline[0]",
+       "bbox_mm": [
+        -13.71,
+        10.29,
+        -11.78,
+        12.77
+       ],
+       "w_mm": 1.92,
+       "h_mm": 2.48,
+       "area_mm2": 1.95,
+       "shape_ids": [
+        "S5c2d8e5a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.507,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.9,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.018,
+       "needle_offset_p90_mm": 0.019,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.952,
+       "spill": 1.183,
+       "stitches": 68,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[1]",
+       "bbox_mm": [
+        -11.67,
+        10.29,
+        -9.08,
+        12.77
+       ],
+       "w_mm": 2.59,
+       "h_mm": 2.48,
+       "area_mm2": 1.89,
+       "shape_ids": [
+        "Sfb387a73"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.42,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.57,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.012,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.483,
+         "width_mm": 0.579,
+         "bare_share": 1.0,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.914,
+       "spill": 0.911,
+       "stitches": 46,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[2]",
+       "bbox_mm": [
+        -9.42,
+        10.29,
+        -7.31,
+        12.77
+       ],
+       "w_mm": 2.11,
+       "h_mm": 2.48,
+       "area_mm2": 1.44,
+       "shape_ids": [
+        "Sd3e6b4c8"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.626,
+       "sewn_w_min_mm": 0.426,
+       "width_ratio": 2.09,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.018,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.975,
+       "spill": 1.305,
+       "stitches": 53,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[3]",
+       "bbox_mm": [
+        -5.79,
+        9.4,
+        -5.46,
+        13.62
+       ],
+       "w_mm": 0.33,
+       "h_mm": 4.22,
+       "area_mm2": 1.4,
+       "shape_ids": [
+        "S1644ba78"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.333,
+       "src_stroke_min_mm": 0.333,
+       "sewn_w_mm": 0.7,
+       "sewn_w_min_mm": 0.7,
+       "width_ratio": 2.1,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.027,
+       "needle_offset_p90_mm": 0.011,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.967,
+       "spill": 1.081,
+       "stitches": 45,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[4]",
+       "bbox_mm": [
+        -3.79,
+        10.21,
+        -2.05,
+        12.8
+       ],
+       "w_mm": 1.74,
+       "h_mm": 2.59,
+       "area_mm2": 1.86,
+       "shape_ids": [
+        "Sb18dbd63"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.24,
+       "sewn_w_mm": 0.646,
+       "sewn_w_min_mm": 0.586,
+       "width_ratio": 2.42,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.018,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.996,
+       "spill": 1.187,
+       "stitches": 65,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[5]",
+       "bbox_mm": [
+        -1.87,
+        10.29,
+        0.24,
+        12.77
+       ],
+       "w_mm": 2.11,
+       "h_mm": 2.48,
+       "area_mm2": 1.44,
+       "shape_ids": [
+        "S793ddbbb"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.533,
+       "sewn_w_min_mm": 0.389,
+       "width_ratio": 2.0,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.018,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.974,
+       "spill": 1.328,
+       "stitches": 49,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[6]",
+       "bbox_mm": [
+        -0.09,
+        10.29,
+        2.53,
+        12.77
+       ],
+       "w_mm": 2.63,
+       "h_mm": 2.48,
+       "area_mm2": 1.91,
+       "shape_ids": [
+        "S050ca08b"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.413,
+       "sewn_w_min_mm": 0.386,
+       "width_ratio": 1.55,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.012,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.495,
+         "width_mm": 0.58,
+         "bare_share": 1.0,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.912,
+       "spill": 0.884,
+       "stitches": 46,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[7]",
+       "bbox_mm": [
+        2.05,
+        10.29,
+        4.38,
+        12.77
+       ],
+       "w_mm": 2.33,
+       "h_mm": 2.48,
+       "area_mm2": 1.44,
+       "shape_ids": [
+        "Sa2e2f98e"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.44,
+       "sewn_w_min_mm": 0.303,
+       "width_ratio": 1.65,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.009,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.973,
+       "spill": 1.2,
+       "stitches": 50,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[8]",
+       "bbox_mm": [
+        5.68,
+        9.4,
+        6.01,
+        13.62
+       ],
+       "w_mm": 0.33,
+       "h_mm": 4.22,
+       "area_mm2": 1.4,
+       "shape_ids": [
+        "S4cb247df"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.333,
+       "src_stroke_min_mm": 0.333,
+       "sewn_w_mm": 0.767,
+       "sewn_w_min_mm": 0.507,
+       "width_ratio": 2.3,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.0,
+       "needle_offset_p90_mm": 0.019,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.992,
+       "spill": 1.208,
+       "stitches": 45,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[9]",
+       "bbox_mm": [
+        7.79,
+        10.29,
+        9.68,
+        12.77
+       ],
+       "w_mm": 1.89,
+       "h_mm": 2.48,
+       "area_mm2": 1.62,
+       "shape_ids": [
+        "S177d120f"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.266,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.473,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.012,
+       "needle_offset_p90_mm": 0.358,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 1.012,
+         "width_mm": 0.966,
+         "bare_share": 0.146,
+         "known_to_planner": false,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.959,
+       "spill": 1.485,
+       "stitches": 57,
+       "trims": 0,
+       "jumps": 2,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[10]",
+       "bbox_mm": [
+        9.79,
+        10.29,
+        11.64,
+        12.77
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.48,
+       "area_mm2": 1.29,
+       "shape_ids": [
+        "S83a2afe8"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.499,
+       "sewn_w_min_mm": 0.4,
+       "width_ratio": 1.66,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.018,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.971,
+       "spill": 1.287,
+       "stitches": 43,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[11]",
+       "bbox_mm": [
+        11.78,
+        10.29,
+        14.37,
+        12.77
+       ],
+       "w_mm": 2.59,
+       "h_mm": 2.48,
+       "area_mm2": 1.88,
+       "shape_ids": [
+        "S47b1a317"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.426,
+       "sewn_w_min_mm": 0.386,
+       "width_ratio": 1.6,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.015,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.487,
+         "width_mm": 0.591,
+         "bare_share": 1.0,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.906,
+       "spill": 0.902,
+       "stitches": 46,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[12]",
+       "bbox_mm": [
+        13.82,
+        10.29,
+        16.19,
+        12.77
+       ],
+       "w_mm": 2.37,
+       "h_mm": 2.48,
+       "area_mm2": 1.43,
+       "shape_ids": [
+        "S77bf5723"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.266,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.467,
+       "sewn_w_min_mm": 0.367,
+       "width_ratio": 1.75,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.01,
+       "needle_offset_p90_mm": 0.019,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.952,
+       "spill": 1.16,
+       "stitches": 50,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 13,
+     "box_mm": [
+      -14.43,
+      9.16,
+      16.65,
+      14.03
+     ],
+     "ink_mm2": 26.19,
+     "ink_bare_mm2": 0.31,
+     "stitches": 1309,
+     "trims": 15
+    },
+    "est": {
+     "glyphs": [
+      {
+       "glyph": "est[0]",
+       "bbox_mm": [
+        -10.45,
+        -14.73,
+        -8.97,
+        -12.88
+       ],
+       "w_mm": 1.48,
+       "h_mm": 1.85,
+       "area_mm2": 1.31,
+       "shape_ids": [
+        "S8093c5d6"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.433,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.86,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.014,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.951,
+       "spill": 1.515,
+       "stitches": 53,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[1]",
+       "bbox_mm": [
+        -8.12,
+        -14.76,
+        -6.75,
+        -12.84
+       ],
+       "w_mm": 1.37,
+       "h_mm": 1.92,
+       "area_mm2": 1.27,
+       "shape_ids": [
+        "S549f2371"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.22,
+       "sewn_w_mm": 0.653,
+       "sewn_w_min_mm": 0.586,
+       "width_ratio": 2.72,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.018,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.995,
+       "spill": 1.201,
+       "stitches": 46,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[2]",
+       "bbox_mm": [
+        -5.98,
+        -14.73,
+        -4.31,
+        -12.88
+       ],
+       "w_mm": 1.66,
+       "h_mm": 1.85,
+       "area_mm2": 1.06,
+       "shape_ids": [
+        "S3d895b56"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.686,
+       "sewn_w_min_mm": 0.577,
+       "width_ratio": 2.57,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.018,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.975,
+       "spill": 1.158,
+       "stitches": 41,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -11.1,
+      -15.43,
+      -3.7,
+      -12.14
+     ],
+     "ink_mm2": 4.88,
+     "ink_bare_mm2": 0.06,
+     "stitches": 203,
+     "trims": 1
+    }
+   }
+  },
+  "bean_81": {
+   "arm": "bean_81",
+   "label": "bean_letter_max_stroke_mm 1.0 (the value its comment names)",
+   "width_mm": 81.0,
+   "overrides": {
+    "bean_letter_max_stroke_mm": 1.0
+   },
+   "size_mm": [
+    81.7,
+    44.3
+   ],
+   "stitches": 13653,
+   "trims": 39,
+   "lane_taken": 0,
+   "boxes": {
+    "the": {
+     "glyphs": [
+      {
+       "glyph": "the[0]",
+       "bbox_mm": [
+        -4.39,
+        -7.61,
+        -2.09,
+        -4.92
+       ],
+       "w_mm": 2.3,
+       "h_mm": 2.69,
+       "area_mm2": 2.4,
+       "shape_ids": [
+        "Scead5d18"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.4,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.433,
+       "sewn_w_min_mm": 0.4,
+       "width_ratio": 1.08,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.189,
+       "needle_offset_p90_mm": -0.038,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.801,
+       "spill": 0.084,
+       "stitches": 28,
+       "trims": 1,
+       "jumps": 2,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[1]",
+       "bbox_mm": [
+        -1.22,
+        -7.61,
+        1.41,
+        -4.92
+       ],
+       "w_mm": 2.62,
+       "h_mm": 2.69,
+       "area_mm2": 3.47,
+       "shape_ids": [
+        "S8fa08a06"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.4,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.433,
+       "sewn_w_min_mm": 0.4,
+       "width_ratio": 1.08,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.211,
+       "needle_offset_p90_mm": -0.187,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.707,
+       "spill": 0.019,
+       "stitches": 29,
+       "trims": 0,
+       "jumps": 3,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[2]",
+       "bbox_mm": [
+        2.28,
+        -7.61,
+        4.39,
+        -4.92
+       ],
+       "w_mm": 2.11,
+       "h_mm": 2.69,
+       "area_mm2": 3.24,
+       "shape_ids": [
+        "S9bac9a3c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.407,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.433,
+       "sewn_w_min_mm": 0.4,
+       "width_ratio": 1.06,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.2,
+       "needle_offset_p90_mm": -0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.863,
+       "spill": 0.092,
+       "stitches": 42,
+       "trims": 0,
+       "jumps": 2,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -4.86,
+      -8.06,
+      5.02,
+      -4.49
+     ],
+     "ink_mm2": 8.69,
+     "ink_bare_mm2": 0.75,
+     "stitches": 251,
+     "trims": 1
+    },
+    "tagline": {
+     "glyphs": [
+      {
+       "glyph": "tagline[0]",
+       "bbox_mm": [
+        -12.0,
+        9.01,
+        -10.32,
+        11.18
+       ],
+       "w_mm": 1.68,
+       "h_mm": 2.17,
+       "area_mm2": 1.49,
+       "shape_ids": [
+        "Se9a3bf6a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.473,
+       "sewn_w_min_mm": 0.386,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.962,
+       "spill": 1.344,
+       "stitches": 59,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[1]",
+       "bbox_mm": [
+        -10.22,
+        9.01,
+        -7.95,
+        11.18
+       ],
+       "w_mm": 2.27,
+       "h_mm": 2.17,
+       "area_mm2": 1.45,
+       "shape_ids": [
+        "Sf0a6f1de"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.413,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.0,
+       "needle_offset_p90_mm": 0.009,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.367,
+         "width_mm": 0.504,
+         "bare_share": 0.989,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.933,
+       "spill": 1.012,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[2]",
+       "bbox_mm": [
+        -8.25,
+        9.01,
+        -6.4,
+        11.18
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.17,
+       "area_mm2": 1.11,
+       "shape_ids": [
+        "Sdeda9448"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.6,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.25,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.008,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.971,
+       "spill": 1.339,
+       "stitches": 47,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[3]",
+       "bbox_mm": [
+        -5.07,
+        8.23,
+        -4.78,
+        11.92
+       ],
+       "w_mm": 0.29,
+       "h_mm": 3.69,
+       "area_mm2": 1.08,
+       "shape_ids": [
+        "S5ac4eae6"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.3,
+       "sewn_w_mm": 0.433,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 1.44,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.146,
+       "needle_offset_p90_mm": -0.021,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 1.0,
+       "spill": 0.469,
+       "stitches": 24,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[4]",
+       "bbox_mm": [
+        -3.32,
+        8.94,
+        -1.8,
+        11.21
+       ],
+       "w_mm": 1.52,
+       "h_mm": 2.27,
+       "area_mm2": 1.42,
+       "shape_ids": [
+        "Sdf13b84a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.213,
+       "sewn_w_mm": 0.626,
+       "sewn_w_min_mm": 0.54,
+       "width_ratio": 2.61,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.976,
+       "spill": 1.267,
+       "stitches": 56,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[5]",
+       "bbox_mm": [
+        -1.64,
+        9.01,
+        0.21,
+        11.18
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "S990f2088"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.58,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.17,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.012,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.973,
+       "spill": 1.377,
+       "stitches": 43,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[6]",
+       "bbox_mm": [
+        -0.08,
+        9.01,
+        2.22,
+        11.18
+       ],
+       "w_mm": 2.3,
+       "h_mm": 2.17,
+       "area_mm2": 1.46,
+       "shape_ids": [
+        "Sa0fbbfd4"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.413,
+       "sewn_w_min_mm": 0.38,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.37,
+         "width_mm": 0.508,
+         "bare_share": 0.985,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.939,
+       "spill": 0.989,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[7]",
+       "bbox_mm": [
+        1.8,
+        9.01,
+        3.84,
+        11.18
+       ],
+       "w_mm": 2.04,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "S8fa2e64e"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.506,
+       "sewn_w_min_mm": 0.355,
+       "width_ratio": 2.11,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.975,
+       "spill": 1.387,
+       "stitches": 44,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[8]",
+       "bbox_mm": [
+        4.97,
+        8.23,
+        5.26,
+        11.92
+       ],
+       "w_mm": 0.29,
+       "h_mm": 3.69,
+       "area_mm2": 1.08,
+       "shape_ids": [
+        "S658eac5c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.3,
+       "sewn_w_mm": 0.433,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 1.44,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.146,
+       "needle_offset_p90_mm": -0.038,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 1.0,
+       "spill": 0.468,
+       "stitches": 24,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[9]",
+       "bbox_mm": [
+        6.82,
+        9.01,
+        8.47,
+        11.18
+       ],
+       "w_mm": 1.65,
+       "h_mm": 2.17,
+       "area_mm2": 1.24,
+       "shape_ids": [
+        "S931202c8"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.6,
+       "sewn_w_min_mm": 0.413,
+       "width_ratio": 2.57,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.782,
+         "width_mm": 0.846,
+         "bare_share": 0.149,
+         "known_to_planner": false,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.997,
+       "spill": 1.51,
+       "stitches": 48,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[10]",
+       "bbox_mm": [
+        8.57,
+        9.01,
+        10.19,
+        11.18
+       ],
+       "w_mm": 1.62,
+       "h_mm": 2.17,
+       "area_mm2": 0.99,
+       "shape_ids": [
+        "S1377425b"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.466,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.75,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.967,
+       "spill": 1.316,
+       "stitches": 37,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[11]",
+       "bbox_mm": [
+        10.32,
+        9.01,
+        12.59,
+        11.18
+       ],
+       "w_mm": 2.27,
+       "h_mm": 2.17,
+       "area_mm2": 1.44,
+       "shape_ids": [
+        "Sa6ebf53d"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.42,
+       "sewn_w_min_mm": 0.38,
+       "width_ratio": 1.8,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.367,
+         "width_mm": 0.517,
+         "bare_share": 0.975,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.945,
+       "spill": 1.012,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[12]",
+       "bbox_mm": [
+        12.1,
+        9.01,
+        14.18,
+        11.18
+       ],
+       "w_mm": 2.07,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "Se58e299c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.579,
+       "sewn_w_min_mm": 0.407,
+       "width_ratio": 2.42,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.017,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.978,
+       "spill": 1.324,
+       "stitches": 44,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 13,
+     "box_mm": [
+      -12.64,
+      8.02,
+      14.58,
+      12.29
+     ],
+     "ink_mm2": 20.06,
+     "ink_bare_mm2": 0.25,
+     "stitches": 841,
+     "trims": 5
+    },
+    "est": {
+     "glyphs": [
+      {
+       "glyph": "est[0]",
+       "bbox_mm": [
+        -9.15,
+        -12.9,
+        -7.86,
+        -11.28
+       ],
+       "w_mm": 1.3,
+       "h_mm": 1.62,
+       "area_mm2": 1.0,
+       "shape_ids": [
+        "S1b0527a5"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.42,
+       "sewn_w_min_mm": 0.393,
+       "width_ratio": 1.8,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.092,
+       "needle_offset_p90_mm": -0.031,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.861,
+       "spill": 0.732,
+       "stitches": 30,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[1]",
+       "bbox_mm": [
+        -7.11,
+        -12.93,
+        -5.91,
+        -11.24
+       ],
+       "w_mm": 1.2,
+       "h_mm": 1.68,
+       "area_mm2": 0.97,
+       "shape_ids": [
+        "Sfe26555a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.22,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.4,
+       "sewn_w_min_mm": 0.38,
+       "width_ratio": 1.82,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.091,
+       "needle_offset_p90_mm": -0.036,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.834,
+       "spill": 0.699,
+       "stitches": 23,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[2]",
+       "bbox_mm": [
+        -5.23,
+        -12.9,
+        -3.77,
+        -11.28
+       ],
+       "w_mm": 1.46,
+       "h_mm": 1.62,
+       "area_mm2": 0.82,
+       "shape_ids": [
+        "S7c58ea3d"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.433,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.86,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.113,
+       "needle_offset_p90_mm": -0.066,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.787,
+       "spill": 0.578,
+       "stitches": 19,
+       "trims": 0,
+       "jumps": 2,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -9.72,
+      -13.51,
+      -3.24,
+      -10.63
+     ],
+     "ink_mm2": 3.19,
+     "ink_bare_mm2": 0.38,
+     "stitches": 113,
+     "trims": 2
+    }
+   }
+  },
+  "wordtier_81": {
+   "arm": "wordtier_81",
+   "label": "lettering_words + lettering_word_tiers",
+   "width_mm": 81.0,
+   "overrides": {
+    "lettering_words": true,
+    "lettering_word_tiers": true
+   },
+   "size_mm": [
+    81.7,
+    44.3
+   ],
+   "stitches": 15375,
+   "trims": 48,
+   "lane_taken": 12,
+   "boxes": {
+    "the": {
+     "glyphs": [
+      {
+       "glyph": "the[0]",
+       "bbox_mm": [
+        -4.39,
+        -7.61,
+        -2.09,
+        -4.92
+       ],
+       "w_mm": 2.3,
+       "h_mm": 2.69,
+       "area_mm2": 2.4,
+       "shape_ids": [
+        "Scead5d18"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.4,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.426,
+       "sewn_w_min_mm": 0.373,
+       "width_ratio": 1.07,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.026,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.913,
+       "spill": 0.744,
+       "stitches": 60,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[1]",
+       "bbox_mm": [
+        -1.22,
+        -7.61,
+        1.41,
+        -4.92
+       ],
+       "w_mm": 2.62,
+       "h_mm": 2.69,
+       "area_mm2": 3.47,
+       "shape_ids": [
+        "S8fa08a06"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.4,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.42,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.05,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.012,
+       "needle_offset_p90_mm": 0.152,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.726,
+       "spill": 0.889,
+       "stitches": 75,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[2]",
+       "bbox_mm": [
+        2.28,
+        -7.61,
+        4.39,
+        -4.92
+       ],
+       "w_mm": 2.11,
+       "h_mm": 2.69,
+       "area_mm2": 3.24,
+       "shape_ids": [
+        "S9bac9a3c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.407,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.426,
+       "sewn_w_min_mm": 0.386,
+       "width_ratio": 1.05,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.019,
+       "needle_offset_p90_mm": 0.05,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.858,
+       "spill": 0.738,
+       "stitches": 72,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -4.86,
+      -8.06,
+      5.02,
+      -4.49
+     ],
+     "ink_mm2": 8.69,
+     "ink_bare_mm2": 0.25,
+     "stitches": 401,
+     "trims": 5
+    },
+    "tagline": {
+     "glyphs": [
+      {
+       "glyph": "tagline[0]",
+       "bbox_mm": [
+        -12.0,
+        9.01,
+        -10.32,
+        11.18
+       ],
+       "w_mm": 1.68,
+       "h_mm": 2.17,
+       "area_mm2": 1.49,
+       "shape_ids": [
+        "Se9a3bf6a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.473,
+       "sewn_w_min_mm": 0.386,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.962,
+       "spill": 1.344,
+       "stitches": 59,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[1]",
+       "bbox_mm": [
+        -10.22,
+        9.01,
+        -7.95,
+        11.18
+       ],
+       "w_mm": 2.27,
+       "h_mm": 2.17,
+       "area_mm2": 1.45,
+       "shape_ids": [
+        "Sf0a6f1de"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.413,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.0,
+       "needle_offset_p90_mm": 0.008,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.367,
+         "width_mm": 0.504,
+         "bare_share": 0.989,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.933,
+       "spill": 1.012,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[2]",
+       "bbox_mm": [
+        -8.25,
+        9.01,
+        -6.4,
+        11.18
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.17,
+       "area_mm2": 1.11,
+       "shape_ids": [
+        "Sdeda9448"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.6,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.25,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.971,
+       "spill": 1.339,
+       "stitches": 47,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[3]",
+       "bbox_mm": [
+        -5.07,
+        8.23,
+        -4.78,
+        11.92
+       ],
+       "w_mm": 0.29,
+       "h_mm": 3.69,
+       "area_mm2": 1.08,
+       "shape_ids": [
+        "S5ac4eae6"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.3,
+       "sewn_w_mm": 0.667,
+       "sewn_w_min_mm": 0.537,
+       "width_ratio": 2.22,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.015,
+       "needle_offset_p90_mm": 0.026,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 1.0,
+       "spill": 1.222,
+       "stitches": 42,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[4]",
+       "bbox_mm": [
+        -3.32,
+        8.94,
+        -1.8,
+        11.21
+       ],
+       "w_mm": 1.52,
+       "h_mm": 2.27,
+       "area_mm2": 1.42,
+       "shape_ids": [
+        "Sdf13b84a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.213,
+       "sewn_w_mm": 0.626,
+       "sewn_w_min_mm": 0.54,
+       "width_ratio": 2.61,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.976,
+       "spill": 1.267,
+       "stitches": 56,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[5]",
+       "bbox_mm": [
+        -1.64,
+        9.01,
+        0.21,
+        11.18
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "S990f2088"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.58,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.17,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.973,
+       "spill": 1.377,
+       "stitches": 43,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[6]",
+       "bbox_mm": [
+        -0.08,
+        9.01,
+        2.22,
+        11.18
+       ],
+       "w_mm": 2.3,
+       "h_mm": 2.17,
+       "area_mm2": 1.46,
+       "shape_ids": [
+        "Sa0fbbfd4"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.413,
+       "sewn_w_min_mm": 0.38,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.018,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.37,
+         "width_mm": 0.508,
+         "bare_share": 0.985,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.939,
+       "spill": 0.989,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[7]",
+       "bbox_mm": [
+        1.8,
+        9.01,
+        3.84,
+        11.18
+       ],
+       "w_mm": 2.04,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "S8fa2e64e"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.506,
+       "sewn_w_min_mm": 0.355,
+       "width_ratio": 2.11,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.975,
+       "spill": 1.387,
+       "stitches": 44,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[8]",
+       "bbox_mm": [
+        4.97,
+        8.23,
+        5.26,
+        11.92
+       ],
+       "w_mm": 0.29,
+       "h_mm": 3.69,
+       "area_mm2": 1.08,
+       "shape_ids": [
+        "S658eac5c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.3,
+       "sewn_w_mm": 0.733,
+       "sewn_w_min_mm": 0.533,
+       "width_ratio": 2.44,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.986,
+       "spill": 1.336,
+       "stitches": 42,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[9]",
+       "bbox_mm": [
+        6.82,
+        9.01,
+        8.47,
+        11.18
+       ],
+       "w_mm": 1.65,
+       "h_mm": 2.17,
+       "area_mm2": 1.24,
+       "shape_ids": [
+        "S931202c8"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.6,
+       "sewn_w_min_mm": 0.413,
+       "width_ratio": 2.57,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.782,
+         "width_mm": 0.846,
+         "bare_share": 0.149,
+         "known_to_planner": false,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.997,
+       "spill": 1.51,
+       "stitches": 48,
+       "trims": 1,
+       "jumps": 2,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[10]",
+       "bbox_mm": [
+        8.57,
+        9.01,
+        10.19,
+        11.18
+       ],
+       "w_mm": 1.62,
+       "h_mm": 2.17,
+       "area_mm2": 0.99,
+       "shape_ids": [
+        "S1377425b"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.466,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.75,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.967,
+       "spill": 1.316,
+       "stitches": 37,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[11]",
+       "bbox_mm": [
+        10.32,
+        9.01,
+        12.59,
+        11.18
+       ],
+       "w_mm": 2.27,
+       "h_mm": 2.17,
+       "area_mm2": 1.44,
+       "shape_ids": [
+        "Sa6ebf53d"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.42,
+       "sewn_w_min_mm": 0.38,
+       "width_ratio": 1.8,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.367,
+         "width_mm": 0.517,
+         "bare_share": 0.975,
+         "known_to_planner": false,
+         "status": "bare-unplanned"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 1,
+       "counters_shut": 0,
+       "covered": 0.945,
+       "spill": 1.012,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[12]",
+       "bbox_mm": [
+        12.1,
+        9.01,
+        14.18,
+        11.18
+       ],
+       "w_mm": 2.07,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "Se58e299c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.579,
+       "sewn_w_min_mm": 0.407,
+       "width_ratio": 2.42,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.017,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.978,
+       "spill": 1.324,
+       "stitches": 44,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 13,
+     "box_mm": [
+      -12.64,
+      8.02,
+      14.58,
+      12.29
+     ],
+     "ink_mm2": 20.06,
+     "ink_bare_mm2": 0.25,
+     "stitches": 883,
+     "trims": 7
+    },
+    "est": {
+     "glyphs": [
+      {
+       "glyph": "est[0]",
+       "bbox_mm": [
+        -9.15,
+        -12.9,
+        -7.86,
+        -11.28
+       ],
+       "w_mm": 1.3,
+       "h_mm": 1.62,
+       "area_mm2": 1.0,
+       "shape_ids": [
+        "S1b0527a5"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.533,
+       "sewn_w_min_mm": 0.404,
+       "width_ratio": 2.28,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.933,
+       "spill": 1.387,
+       "stitches": 43,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[1]",
+       "bbox_mm": [
+        -7.11,
+        -12.93,
+        -5.91,
+        -11.24
+       ],
+       "w_mm": 1.2,
+       "h_mm": 1.68,
+       "area_mm2": 0.97,
+       "shape_ids": [
+        "Sfe26555a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.22,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.706,
+       "sewn_w_min_mm": 0.45,
+       "width_ratio": 3.21,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.991,
+       "spill": 1.272,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[2]",
+       "bbox_mm": [
+        -5.23,
+        -12.9,
+        -3.77,
+        -11.28
+       ],
+       "w_mm": 1.46,
+       "h_mm": 1.62,
+       "area_mm2": 0.82,
+       "shape_ids": [
+        "S7c58ea3d"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.467,
+       "sewn_w_min_mm": 0.4,
+       "width_ratio": 2.0,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.91,
+       "spill": 1.11,
+       "stitches": 35,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -9.72,
+      -13.51,
+      -3.24,
+      -10.63
+     ],
+     "ink_mm2": 3.19,
+     "ink_bare_mm2": 0.06,
+     "stitches": 162,
+     "trims": 0
+    }
+   }
+  },
+  "wordtier_floor_81": {
+   "arm": "wordtier_floor_81",
+   "label": "lettering_words + lettering_word_tiers + small_print_floor",
+   "width_mm": 81.0,
+   "overrides": {
+    "lettering_words": true,
+    "lettering_word_tiers": true,
+    "small_print_floor": true
+   },
+   "size_mm": [
+    81.7,
+    44.3
+   ],
+   "stitches": 15532,
+   "trims": 50,
+   "lane_taken": 12,
+   "boxes": {
+    "the": {
+     "glyphs": [
+      {
+       "glyph": "the[0]",
+       "bbox_mm": [
+        -4.39,
+        -7.61,
+        -2.09,
+        -4.92
+       ],
+       "w_mm": 2.3,
+       "h_mm": 2.69,
+       "area_mm2": 2.4,
+       "shape_ids": [
+        "Scead5d18"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.4,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.426,
+       "sewn_w_min_mm": 0.373,
+       "width_ratio": 1.07,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.026,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.913,
+       "spill": 0.744,
+       "stitches": 60,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[1]",
+       "bbox_mm": [
+        -1.22,
+        -7.61,
+        1.41,
+        -4.92
+       ],
+       "w_mm": 2.62,
+       "h_mm": 2.69,
+       "area_mm2": 3.47,
+       "shape_ids": [
+        "S8fa08a06"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.4,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.42,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.05,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.012,
+       "needle_offset_p90_mm": 0.152,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.726,
+       "spill": 0.889,
+       "stitches": 75,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "the[2]",
+       "bbox_mm": [
+        2.28,
+        -7.61,
+        4.39,
+        -4.92
+       ],
+       "w_mm": 2.11,
+       "h_mm": 2.69,
+       "area_mm2": 3.24,
+       "shape_ids": [
+        "S9bac9a3c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.407,
+       "src_stroke_min_mm": 0.4,
+       "sewn_w_mm": 0.426,
+       "sewn_w_min_mm": 0.386,
+       "width_ratio": 1.05,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.019,
+       "needle_offset_p90_mm": 0.05,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.858,
+       "spill": 0.738,
+       "stitches": 72,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -4.86,
+      -8.06,
+      5.02,
+      -4.49
+     ],
+     "ink_mm2": 8.69,
+     "ink_bare_mm2": 0.25,
+     "stitches": 402,
+     "trims": 5
+    },
+    "tagline": {
+     "glyphs": [
+      {
+       "glyph": "tagline[0]",
+       "bbox_mm": [
+        -12.0,
+        9.01,
+        -10.32,
+        11.18
+       ],
+       "w_mm": 1.68,
+       "h_mm": 2.17,
+       "area_mm2": 1.49,
+       "shape_ids": [
+        "Se9a3bf6a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.473,
+       "sewn_w_min_mm": 0.386,
+       "width_ratio": 1.77,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.962,
+       "spill": 1.344,
+       "stitches": 59,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[1]",
+       "bbox_mm": [
+        -10.22,
+        9.01,
+        -7.95,
+        11.18
+       ],
+       "w_mm": 2.27,
+       "h_mm": 2.17,
+       "area_mm2": 1.45,
+       "shape_ids": [
+        "Sf0a6f1de"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.606,
+       "sewn_w_min_mm": 0.372,
+       "width_ratio": 2.6,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.022,
+       "needle_offset_p90_mm": 0.019,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.367,
+         "width_mm": 0.504,
+         "bare_share": 0.095,
+         "known_to_planner": true,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.979,
+       "spill": 1.229,
+       "stitches": 56,
+       "trims": 0,
+       "jumps": 2,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[2]",
+       "bbox_mm": [
+        -8.25,
+        9.01,
+        -6.4,
+        11.18
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.17,
+       "area_mm2": 1.11,
+       "shape_ids": [
+        "Sdeda9448"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.6,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.25,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.971,
+       "spill": 1.339,
+       "stitches": 47,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[3]",
+       "bbox_mm": [
+        -5.07,
+        8.23,
+        -4.78,
+        11.92
+       ],
+       "w_mm": 0.29,
+       "h_mm": 3.69,
+       "area_mm2": 1.08,
+       "shape_ids": [
+        "S5ac4eae6"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.3,
+       "sewn_w_mm": 0.667,
+       "sewn_w_min_mm": 0.537,
+       "width_ratio": 2.22,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.015,
+       "needle_offset_p90_mm": 0.026,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 1.0,
+       "spill": 1.222,
+       "stitches": 42,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[4]",
+       "bbox_mm": [
+        -3.32,
+        8.94,
+        -1.8,
+        11.21
+       ],
+       "w_mm": 1.52,
+       "h_mm": 2.27,
+       "area_mm2": 1.42,
+       "shape_ids": [
+        "Sdf13b84a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.213,
+       "sewn_w_mm": 0.626,
+       "sewn_w_min_mm": 0.54,
+       "width_ratio": 2.61,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.976,
+       "spill": 1.267,
+       "stitches": 56,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[5]",
+       "bbox_mm": [
+        -1.64,
+        9.01,
+        0.21,
+        11.18
+       ],
+       "w_mm": 1.85,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "S990f2088"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.58,
+       "sewn_w_min_mm": 0.433,
+       "width_ratio": 2.17,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.973,
+       "spill": 1.377,
+       "stitches": 43,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[6]",
+       "bbox_mm": [
+        -0.08,
+        9.01,
+        2.22,
+        11.18
+       ],
+       "w_mm": 2.3,
+       "h_mm": 2.17,
+       "area_mm2": 1.46,
+       "shape_ids": [
+        "Sa0fbbfd4"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.619,
+       "sewn_w_min_mm": 0.436,
+       "width_ratio": 2.65,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.028,
+       "needle_offset_p90_mm": 0.008,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.37,
+         "width_mm": 0.508,
+         "bare_share": 0.106,
+         "known_to_planner": true,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.976,
+       "spill": 1.209,
+       "stitches": 59,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[7]",
+       "bbox_mm": [
+        1.8,
+        9.01,
+        3.84,
+        11.18
+       ],
+       "w_mm": 2.04,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "S8fa2e64e"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.506,
+       "sewn_w_min_mm": 0.355,
+       "width_ratio": 2.11,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.975,
+       "spill": 1.387,
+       "stitches": 44,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[8]",
+       "bbox_mm": [
+        4.97,
+        8.23,
+        5.26,
+        11.92
+       ],
+       "w_mm": 0.29,
+       "h_mm": 3.69,
+       "area_mm2": 1.08,
+       "shape_ids": [
+        "S658eac5c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.3,
+       "src_stroke_min_mm": 0.3,
+       "sewn_w_mm": 0.733,
+       "sewn_w_min_mm": 0.533,
+       "width_ratio": 2.44,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.986,
+       "spill": 1.336,
+       "stitches": 42,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        0,
+        0,
+        0
+       ]
+      },
+      {
+       "glyph": "tagline[9]",
+       "bbox_mm": [
+        6.82,
+        9.01,
+        8.47,
+        11.18
+       ],
+       "w_mm": 1.65,
+       "h_mm": 2.17,
+       "area_mm2": 1.24,
+       "shape_ids": [
+        "S931202c8"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.533,
+       "sewn_w_min_mm": 0.413,
+       "width_ratio": 2.29,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.782,
+         "width_mm": 0.846,
+         "bare_share": 0.238,
+         "known_to_planner": false,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.999,
+       "spill": 1.51,
+       "stitches": 51,
+       "trims": 1,
+       "jumps": 2,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[10]",
+       "bbox_mm": [
+        8.57,
+        9.01,
+        10.19,
+        11.18
+       ],
+       "w_mm": 1.62,
+       "h_mm": 2.17,
+       "area_mm2": 0.99,
+       "shape_ids": [
+        "S1377425b"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.267,
+       "src_stroke_min_mm": 0.233,
+       "sewn_w_mm": 0.466,
+       "sewn_w_min_mm": 0.399,
+       "width_ratio": 1.75,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": 0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.967,
+       "spill": 1.316,
+       "stitches": 37,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[11]",
+       "bbox_mm": [
+        10.32,
+        9.01,
+        12.59,
+        11.18
+       ],
+       "w_mm": 2.27,
+       "h_mm": 2.17,
+       "area_mm2": 1.44,
+       "shape_ids": [
+        "Sa6ebf53d"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.207,
+       "sewn_w_mm": 0.579,
+       "sewn_w_min_mm": 0.407,
+       "width_ratio": 2.48,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.02,
+       "pull_nominal_mm": 0.4,
+       "counters": [
+        {
+         "mm2": 0.367,
+         "width_mm": 0.517,
+         "bare_share": 0.224,
+         "known_to_planner": true,
+         "status": "SHUT"
+        }
+       ],
+       "counters_src": 1,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 1,
+       "covered": 0.979,
+       "spill": 1.221,
+       "stitches": 59,
+       "trims": 0,
+       "jumps": 2,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "tagline[12]",
+       "bbox_mm": [
+        12.1,
+        9.01,
+        14.18,
+        11.18
+       ],
+       "w_mm": 2.07,
+       "h_mm": 2.17,
+       "area_mm2": 1.1,
+       "shape_ids": [
+        "Se58e299c"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.24,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.579,
+       "sewn_w_min_mm": 0.407,
+       "width_ratio": 2.42,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.017,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.978,
+       "spill": 1.324,
+       "stitches": 44,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 13,
+     "box_mm": [
+      -12.64,
+      8.02,
+      14.58,
+      12.29
+     ],
+     "ink_mm2": 20.06,
+     "ink_bare_mm2": 0.25,
+     "stitches": 939,
+     "trims": 6
+    },
+    "est": {
+     "glyphs": [
+      {
+       "glyph": "est[0]",
+       "bbox_mm": [
+        -9.15,
+        -12.9,
+        -7.86,
+        -11.28
+       ],
+       "w_mm": 1.3,
+       "h_mm": 1.62,
+       "area_mm2": 1.0,
+       "shape_ids": [
+        "S1b0527a5"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.533,
+       "sewn_w_min_mm": 0.404,
+       "width_ratio": 2.28,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.933,
+       "spill": 1.387,
+       "stitches": 43,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[1]",
+       "bbox_mm": [
+        -7.11,
+        -12.93,
+        -5.91,
+        -11.24
+       ],
+       "w_mm": 1.2,
+       "h_mm": 1.68,
+       "area_mm2": 0.97,
+       "shape_ids": [
+        "Sfe26555a"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.22,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.706,
+       "sewn_w_min_mm": 0.45,
+       "width_ratio": 3.21,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.991,
+       "spill": 1.272,
+       "stitches": 40,
+       "trims": 0,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      },
+      {
+       "glyph": "est[2]",
+       "bbox_mm": [
+        -5.23,
+        -12.9,
+        -3.77,
+        -11.28
+       ],
+       "w_mm": 1.46,
+       "h_mm": 1.62,
+       "area_mm2": 0.82,
+       "shape_ids": [
+        "S7c58ea3d"
+       ],
+       "kinds": [
+        "run"
+       ],
+       "tier": "run",
+       "column_lane": false,
+       "src_stroke_mm": 0.233,
+       "src_stroke_min_mm": 0.2,
+       "sewn_w_mm": 0.467,
+       "sewn_w_min_mm": 0.4,
+       "width_ratio": 2.0,
+       "satin_runs": 0,
+       "needle_offset_p50_mm": -0.016,
+       "needle_offset_p90_mm": 0.016,
+       "pull_nominal_mm": 0.4,
+       "counters": [],
+       "counters_src": 0,
+       "counters_open": 0,
+       "counters_bare_unplanned": 0,
+       "counters_shut": 0,
+       "covered": 0.91,
+       "spill": 1.11,
+       "stitches": 35,
+       "trims": 1,
+       "jumps": 1,
+       "thread_rgb": [
+        163,
+        150,
+        135
+       ]
+      }
+     ],
+     "n_glyphs": 3,
+     "box_mm": [
+      -9.72,
+      -13.51,
+      -3.24,
+      -10.63
+     ],
+     "ink_mm2": 3.19,
+     "ink_bare_mm2": 0.06,
+     "stitches": 162,
+     "trims": 0
+    }
+   }
+  }
+ }
+}

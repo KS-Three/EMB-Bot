@@ -1,0 +1,336 @@
+{
+ "main_81": {
+  "arm": "main_81",
+  "width_mm": 81.0,
+  "overrides": {},
+  "stitches": 15306,
+  "trims": 44,
+  "boxes": {
+   "the": {
+    "n": 3,
+    "tiers": "R S* S*",
+    "counters": [],
+    "stitches": 357,
+    "trims": 4
+   },
+   "tagline": {
+    "n": 13,
+    "tiers": "R R R R R R R R R R R R R",
+    "counters": [
+     "bare-unplanned",
+     "bare-unplanned",
+     "SHUT",
+     "bare-unplanned"
+    ],
+    "stitches": 883,
+    "trims": 7
+   },
+   "est": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 166,
+    "trims": 1
+   }
+  }
+ },
+ "floor_81": {
+  "arm": "floor_81",
+  "width_mm": 81.0,
+  "overrides": {
+   "small_print_floor": true
+  },
+  "stitches": 15456,
+  "trims": 46,
+  "boxes": {
+   "the": {
+    "n": 3,
+    "tiers": "R S* S*",
+    "counters": [],
+    "stitches": 358,
+    "trims": 4
+   },
+   "tagline": {
+    "n": 13,
+    "tiers": "R R R R R R R R R R R R R",
+    "counters": [
+     "SHUT",
+     "SHUT",
+     "SHUT",
+     "SHUT"
+    ],
+    "stitches": 939,
+    "trims": 6
+   },
+   "est": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 166,
+    "trims": 1
+   }
+  }
+ },
+ "floor_stem_81": {
+  "arm": "floor_stem_81",
+  "width_mm": 81.0,
+  "overrides": {
+   "small_print_floor": true,
+   "lettering_columns_small_stem": true
+  },
+  "stitches": 15456,
+  "trims": 46,
+  "boxes": {
+   "the": {
+    "n": 3,
+    "tiers": "R S* S*",
+    "counters": [],
+    "stitches": 358,
+    "trims": 4
+   },
+   "tagline": {
+    "n": 13,
+    "tiers": "R R R R R R R R R R R R R",
+    "counters": [
+     "SHUT",
+     "SHUT",
+     "SHUT",
+     "SHUT"
+    ],
+    "stitches": 939,
+    "trims": 6
+   },
+   "est": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 166,
+    "trims": 1
+   }
+  }
+ },
+ "floor_stem_92": {
+  "arm": "floor_stem_92",
+  "width_mm": 92.5,
+  "overrides": {
+   "small_print_floor": true,
+   "lettering_columns_small_stem": true
+  },
+  "stitches": 19027,
+  "trims": 60,
+  "boxes": {
+   "the": {
+    "n": 3,
+    "tiers": "S* S* S*",
+    "counters": [],
+    "stitches": 431,
+    "trims": 3
+   },
+   "tagline": {
+    "n": 13,
+    "tiers": "R R R R R R R R R R R R R",
+    "counters": [
+     "open",
+     "open",
+     "bare-unplanned",
+     "open"
+    ],
+    "stitches": 1301,
+    "trims": 14
+   },
+   "est": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 203,
+    "trims": 1
+   }
+  }
+ },
+ "stem_81": {
+  "arm": "stem_81",
+  "width_mm": 81.0,
+  "overrides": {
+   "lettering_columns_small_stem": true
+  },
+  "stitches": 15306,
+  "trims": 44,
+  "boxes": {
+   "the": {
+    "n": 3,
+    "tiers": "R S* S*",
+    "counters": [],
+    "stitches": 357,
+    "trims": 4
+   },
+   "tagline": {
+    "n": 13,
+    "tiers": "R R R R R R R R R R R R R",
+    "counters": [
+     "bare-unplanned",
+     "bare-unplanned",
+     "SHUT",
+     "bare-unplanned"
+    ],
+    "stitches": 883,
+    "trims": 7
+   },
+   "est": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 166,
+    "trims": 1
+   }
+  }
+ },
+ "main_92": {
+  "arm": "main_92",
+  "width_mm": 92.5,
+  "overrides": {},
+  "stitches": 18761,
+  "trims": 56,
+  "boxes": {
+   "the": {
+    "n": 3,
+    "tiers": "S* S* S*",
+    "counters": [],
+    "stitches": 410,
+    "trims": 3
+   },
+   "tagline": {
+    "n": 13,
+    "tiers": "R R R R R R R R R R R R R",
+    "counters": [
+     "bare-unplanned",
+     "bare-unplanned",
+     "SHUT",
+     "bare-unplanned"
+    ],
+    "stitches": 1309,
+    "trims": 15
+   },
+   "est": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 203,
+    "trims": 1
+   }
+  }
+ },
+ "bean_81": {
+  "arm": "bean_81",
+  "width_mm": 81.0,
+  "overrides": {
+   "bean_letter_max_stroke_mm": 1.0
+  },
+  "stitches": 13653,
+  "trims": 39,
+  "boxes": {
+   "the": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 251,
+    "trims": 1
+   },
+   "tagline": {
+    "n": 13,
+    "tiers": "R R R R R R R R R R R R R",
+    "counters": [
+     "bare-unplanned",
+     "bare-unplanned",
+     "SHUT",
+     "bare-unplanned"
+    ],
+    "stitches": 841,
+    "trims": 5
+   },
+   "est": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 113,
+    "trims": 2
+   }
+  }
+ },
+ "wordtier_81": {
+  "arm": "wordtier_81",
+  "width_mm": 81.0,
+  "overrides": {
+   "lettering_words": true,
+   "lettering_word_tiers": true
+  },
+  "stitches": 15375,
+  "trims": 48,
+  "boxes": {
+   "the": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 401,
+    "trims": 5
+   },
+   "tagline": {
+    "n": 13,
+    "tiers": "R R R R R R R R R R R R R",
+    "counters": [
+     "bare-unplanned",
+     "bare-unplanned",
+     "SHUT",
+     "bare-unplanned"
+    ],
+    "stitches": 883,
+    "trims": 7
+   },
+   "est": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 162,
+    "trims": 0
+   }
+  }
+ },
+ "wordtier_floor_81": {
+  "arm": "wordtier_floor_81",
+  "width_mm": 81.0,
+  "overrides": {
+   "lettering_words": true,
+   "lettering_word_tiers": true,
+   "small_print_floor": true
+  },
+  "stitches": 15532,
+  "trims": 50,
+  "boxes": {
+   "the": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 402,
+    "trims": 5
+   },
+   "tagline": {
+    "n": 13,
+    "tiers": "R R R R R R R R R R R R R",
+    "counters": [
+     "SHUT",
+     "SHUT",
+     "SHUT",
+     "SHUT"
+    ],
+    "stitches": 939,
+    "trims": 6
+   },
+   "est": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 162,
+    "trims": 0
+   }
+  }
+ }
+}

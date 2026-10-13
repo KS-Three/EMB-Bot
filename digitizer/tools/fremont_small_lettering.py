@@ -589,6 +589,46 @@ def sweep_sheet(out: Path, renders: Path, sweep: list, ppm: int = SHEET_PPM) -> 
     return path
 
 
+ZOOM_ARMS = ["main_81", "floor_81", "floor_stem_81", "floor_stem_92", "main_92"]
+ZOOM_GLYPHS = [("tagline", 1, "A of EAT"), ("tagline", 9, "P of PLAY")]
+
+
+def counter_zoom(out: Path, renders: Path, ppm: int = 150) -> Path:
+    """The two tagline glyphs that carry a counter at 81 mm (the A of EAT and
+    the P of PLAY), one row per arm, the artwork outline in red, one scale:
+    the evidence for the counter column of the table."""
+    import cv2
+    import numpy as np
+    from tools import fremont_triage as ft
+    rows = []
+    for name in ZOOM_ARMS:
+        pk = out / f"{name}.pkl"
+        if not pk.exists():
+            continue
+        run = pickle.loads(pk.read_bytes())          # our own scratch file
+        p = run["gen"].p
+        img, to_px = ft._render(run["design"], ppm)
+        cells = []
+        for box, idx, title in ZOOM_GLYPHS:
+            g = source_glyphs(p, ft.ROIS[box])[idx]
+            x0, y0, x1, y1 = g.bounds
+            crop = ft._crop(img, to_px, (x0, y0, x1, y1), margin_mm=0.5).copy()
+            a, b = to_px(x0 - 0.5, y0 - 0.5), to_px(x1 + 0.5, y1 + 0.5)
+            ox, oy = int(max(0, min(a[0], b[0]))), int(max(0, min(a[1], b[1])))
+            for ring in [g.exterior, *g.interiors]:
+                pts = np.array([[to_px(x, y)[0] - ox, to_px(x, y)[1] - oy]
+                                for x, y in ring.coords], np.int32)
+                cv2.polylines(crop, [pts], True, (40, 40, 220), 1, cv2.LINE_AA)
+            cells.append(ft._label(crop, f"{title}"))
+        rows.append(ft._label(ft._hstack(cells, gap=10), f"{name}  ({ARMS[name][2]}), {ppm} px/mm"))
+        del img, run
+    w = max(r.shape[1] for r in rows)
+    sheet = np.vstack([np.pad(r, ((0, 8), (0, w - r.shape[1]), (0, 0)), constant_values=255) for r in rows])
+    path = renders / "counters_zoom.png"
+    cv2.imwrite(str(path), sheet)
+    return path
+
+
 def signature(tab: dict) -> dict:
     """The part of an arm's table a test can pin across platforms: per box,
     the tier string (`S` satin, `R` run, `F` fill, `*` = the Column lane took
@@ -674,14 +714,17 @@ def main(argv=None) -> int:
         names = a.markdown or KENT_ARMS
         print(markdown({n: json.loads((a.out / f"{n}_table.json").read_text()) for n in names}))
     if a.signatures:
-        sigs = {n: signature(json.loads((a.out / f"{n}_table.json").read_text()))
+        tabs = {n: json.loads((a.out / f"{n}_table.json").read_text())
                 for n in ARM_ORDER if (a.out / f"{n}_table.json").exists()}
+        sigs = {n: signature(t) for n, t in tabs.items()}
         (a.out / "signatures.json").write_text(json.dumps(sigs, indent=1))
-        print(f"signatures.json: {len(sigs)} arms")
+        (a.out / "tier_table.json").write_text(json.dumps({"arms": tabs}, indent=1))
+        print(f"signatures.json, tier_table.json: {len(sigs)} arms")
     if a.sheets:
         renders = a.renders or a.out / "renders"
         sw = json.loads((a.out / "main_81_table.json").read_text()).get("pull_sweep", [])
-        for pth in build_sheets(a.out, renders) + [sweep_sheet(a.out, renders, sw)]:
+        for pth in build_sheets(a.out, renders) + [sweep_sheet(a.out, renders, sw),
+                                                    counter_zoom(a.out, renders)]:
             print(pth)
     return 0
 
