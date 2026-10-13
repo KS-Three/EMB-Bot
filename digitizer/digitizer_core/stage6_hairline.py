@@ -210,6 +210,15 @@ DROP_GUARD_SHARE = 0.02
 # A CANDIDATE: a plan-quality cut on the preflight instrument, not a machine
 # constant, and no sew-out has been asked about it (ROADMAP gate 1).
 COVERAGE_GUARD_MM2 = 0.3
+# ... AND the predicted bare per mm of strand thread laid, in mm (an
+# "effective bare width"). The absolute cut alone hands back a whole hair
+# network (hair_strands predicts 32.9 mm2 over 1,070 mm of strand, hair_fine
+# 20.3 over 1,272: 0.031 and 0.016) -- the tier's own use case, forfeited, the
+# mistake #879 measured for "any drop". The logo shapes that carry the new
+# bare run 0.04 to 0.39 (median 0.12). 0.04 sits between: it keeps both
+# networks and costs the logos 8.4 mm2 of the 75.4 the absolute cut alone
+# would have removed (residual 12.0 against 3.6). A candidate, not a constant (gate 1).
+COVERAGE_GUARD_WIDTH_MM = 0.04
 
 
 @dataclass
@@ -771,16 +780,18 @@ def strand_bare_mm2(poly, runs, m: dict) -> float:
     return float(ink.difference(unary_union(ribbons)).area)
 
 
-def coverage_bare_mm2(poly, shape_id: str, m: dict, cfg, thread_wt: int) -> float:
-    """`strand_bare_mm2` of the runs `hairline_runs` would lay for the shape
-    (the same entry-free walk `strand_drops` uses)."""
+def coverage_bare_mm2(poly, shape_id: str, m: dict, cfg, thread_wt: int
+                      ) -> tuple[float, float]:
+    """-> (`strand_bare_mm2`, strand thread laid in mm) of the runs
+    `hairline_runs` would lay for the shape (the same entry-free walk
+    `strand_drops` uses)."""
     prof = machine.thread_profile(thread_wt)
     runs, _rep = hairline_runs(poly, shape_id,
                                max_width_mm=prof.hairline_max_width_mm,
                                run_width_mm=prof.hairline_run_width_mm,
                                stitch_mm=cfg.hairline_stitch_mm, entry=None,
                                trim_at_mm=machine.TRIM_AT_MM, m=m)
-    return strand_bare_mm2(poly, runs, m)
+    return strand_bare_mm2(poly, runs, m), sum(_arc(r.points) for r in runs)
 
 
 def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "HairlineSet":
@@ -865,9 +876,9 @@ def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "Hairline
         # The coverage guard (`cfg.hairline_coverage_guard`), after the drop
         # guard so a shape handed back there is not walked again.
         if cfg.hairline_coverage_guard:
-            bare = coverage_bare_mm2(r.polygon, r.shape_id, m, cfg,
-                                     bw.get(r.thread_index, cfg.thread_wt))
-            if bare > COVERAGE_GUARD_MM2:
+            bare, laid_mm = coverage_bare_mm2(r.polygon, r.shape_id, m, cfg,
+                                              bw.get(r.thread_index, cfg.thread_wt))
+            if bare > COVERAGE_GUARD_MM2 and bare > COVERAGE_GUARD_WIDTH_MM * laid_mm:
                 out.guarded_coverage[r.shape_id] = round(bare, 3)
                 continue
         out[r.shape_id] = m

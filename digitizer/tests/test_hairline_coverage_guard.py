@@ -77,6 +77,28 @@ def test_a_thin_stroke_keeps_the_tier_with_the_guard_on():
     assert "Sthin" in got and not got.guarded_coverage
 
 
+@pytest.mark.parametrize("name", ["hair_strands.png", "hair_fine.png"])
+def test_a_hair_network_keeps_the_tier_with_the_guard_on(name):
+    """The case the tier exists for. Its predicted bare is large in mm2 (32.9
+    and 20.3 over a whole network) but small per mm of strand (0.031 and
+    0.016 against the 0.04 cut): the absolute cut alone would have handed the
+    network back, which is why there is a second condition."""
+    from digitizer_core.pipeline import _fill_inside_satin_border
+    from tools.hairline_renders import drawn_width_mm
+    path = TESTDATA / "synthetic" / name
+    kw = dict(target_width_mm=round(drawn_width_mm(path), 2), forced_class="flat", thread_wt=40)
+    result = run_stages(path, PipelineConfig(**kw))
+    cfg = PipelineConfig(**kw, hairline=True, hairline_coverage_guard=True)
+    stitched = [r for r in result.regions if r.meta.get("stitched", True)]
+    if cfg.fill_inside_satin_border:
+        stitched = _fill_inside_satin_border(stitched, cfg, result.design_class)
+    on = hairline_candidates(stitched, PipelineConfig(**kw, hairline=True),
+                             ink=getattr(result, "ink_source", None))
+    got = hairline_candidates(stitched, cfg, ink=getattr(result, "ink_source", None))
+    assert len(on) >= 1
+    assert set(got) == set(on) and not got.guarded_coverage
+
+
 # --- 3. through the pipeline, on a logo that triggers it ----------------------------
 
 @pytest.fixture(scope="module")
