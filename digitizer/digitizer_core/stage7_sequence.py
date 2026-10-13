@@ -64,7 +64,8 @@ from .beanletters import BEAN_LETTER_KEY
 from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
-from .columns import is_lettering, lettering_columns_shape, small_print_counters
+from .columns import (is_lettering, lettering_columns_shape, small_print_clear,
+                      small_print_counter_set, small_print_counters)
 from .words import is_text, word_key
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
@@ -456,7 +457,7 @@ def _ring_points(geom) -> list[tuple[float, float]]:
 
 
 def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion],
-                run_tier_art=None):
+                run_tier_art=None, forbid=None):
     """Where this colour's needle may travel down without showing.
 
     -> (cover geometry, candidate waypoints), or (None, []) with nothing to go on.
@@ -575,6 +576,12 @@ def _link_cover(runs: list[StitchRun], regions: list[PlannedRegion],
     # resulting simple capsules is cheap too. Same geometry, the order that
     # does not fall off GEOS's performance cliff.
     cover = unary_union([g.buffer(machine.LINK_COVER_TOL_MM) for g in parts])
+    if forbid is not None and not forbid.is_empty:
+        # `cfg.small_print_floor`: a letter's counter is bare fabric even
+        # where the thread around it, buffered to its width, closes over it.
+        cover = cover.difference(forbid)
+        if cover.is_empty:
+            return None, []
     shapely.prepare(cover)
     lean = raw.simplify(machine.LINK_COVER_TOL_MM / 2.0)
     return cover, _ring_points(raw if lean.is_empty else lean)
@@ -670,7 +677,7 @@ def _link_stitches(route: list[tuple[float, float]]) -> list[tuple[float, float]
 
 
 def _chain(runs: list[StitchRun], regions: list[PlannedRegion], base_thread: int,
-           run_tier_art=None) -> tuple[list[StitchRun], int]:
+           run_tier_art=None, forbid=None) -> tuple[list[StitchRun], int]:
     """Sew every needle-up move this colour can bury. -> (runs, in-shape links).
 
     Runs in one pass over the finished block, after every shape has stitched,
@@ -715,7 +722,7 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion], base_thread: int
     """
     if len(runs) < 2 or not regions:
         return runs, 0
-    cover, waypoints = _link_cover(runs, regions, run_tier_art)
+    cover, waypoints = _link_cover(runs, regions, run_tier_art, forbid)
     if cover is None:
         return runs, 0
 
@@ -1959,6 +1966,43 @@ def sequence(
         if not block_wt and cfg.thread_wt == machine.THREAD_WT_DEFAULT:
             return satin_spacing_mm
         return profile_for(pr).satin_spacing_mm * max(0.1, fabric.density_adjust)
+
+    sp_tree: list = []      # [STRtree, polygons], built on first use
+
+    def small_print_counters_of(pr: PlannedRegion) -> list:
+        """`cfg.small_print_floor` outside the Column lane: the counters the
+        run and fill tiers keep open (`columns.small_print_counter_set`), at
+        the block's own weight. A hole another sewn shape covers (a layered
+        letter's inner colour) is not a counter: it is ink, and holding
+        thread off it would open a gap of bare fabric at the seam. Empty
+        with the flag off."""
+        if not cfg.small_print_floor:
+            return []
+        counters = small_print_counter_set(
+            pr.region.polygon, pr.region.meta.get("small_counters"),
+            profile_for(pr).counter_min_width_mm, is_lettering(pr.region, cfg))
+        if not counters:
+            return []
+        if not sp_tree:
+            polys = [q.region.polygon for q in planned]
+            sp_tree.extend([shapely.STRtree(polys), polys])
+        tree, polys = sp_tree
+        bare = []
+        for c in counters:
+            pt = c.representative_point()
+            if not any(polys[i] is not pr.region.polygon and polys[i].covers(pt)
+                       for i in tree.query(pt)):
+                bare.append(c)
+        return bare
+
+    def small_print_cut(pr: PlannedRegion, poly):
+        """`poly` with `pr`'s counters cut out, grown by half the block's
+        laid width; `poly` itself, the same object, with the flag off."""
+        counters = small_print_counters_of(pr)
+        if not counters:
+            return poly
+        return small_print_clear(poly, counters, profile_for(pr).width_mm / 2.0,
+                                 art=pr.region.polygon)
     hairline_shapes_sewn = hairline_strands = hairline_dropped = 0
     # (shape_id, artwork mm2) of each rest-piece part `rest_planned` cut off
     # below the clip floor: counted in CLIP_DROPPED_SLIVER, as stage 5 counts
@@ -2365,8 +2409,15 @@ def sequence(
                                         dropped=report["dropped"])
                     return rest_runs, rest_rep, rest_filled
             outline_tried = False
+            # Small print (`cfg.small_print_floor`, default OFF) reaches the
+            # run and fill tiers through `small_print_cut`: the shape is
+            # sewn with each counter (`small_print_counters_of`) cut out of
+            # it, grown by half the block's laid width, so the outline run's
+            # ring and the fill's rows keep their thread off the counter,
+            # and nothing the tier routes inside the shape crosses it. Off,
+            # the polygon handed over is the same object as before.
             if routes_to_run(p, tier):
-                runs, report = run_outline(p.region.polygon, p.shape_id,
+                runs, report = run_outline(small_print_cut(p, p.region.polygon), p.shape_id,
                                            entry=entry, trim_at_mm=trim_at,
                                            soft_vertices=cfg.run_soft_vertices)
                 if not report["empty"]:
@@ -2452,7 +2503,7 @@ def sequence(
             rides_ramp = (tier == "auto" and source_pixels is not None
                           and region_rides_design_ramp(p.region.polygon, source_pixels))
             if ribbon is not None and ribbon.reason == "photo_width_floor":
-                runs, report = run_outline(p.region.polygon, p.shape_id,
+                runs, report = run_outline(small_print_cut(p, p.region.polygon), p.shape_id,
                                            entry=entry, trim_at_mm=trim_at,
                                            soft_vertices=cfg.run_soft_vertices)
                 if not report["empty"]:
@@ -2557,7 +2608,7 @@ def sequence(
                 # it may fall to. The same holds for a letter its WORD sent
                 # to satin (`cfg.lettering_word_tiers`) that the satin tier
                 # could not sew.
-                runs, report = run_outline(p.region.polygon, p.shape_id,
+                runs, report = run_outline(small_print_cut(p, p.region.polygon), p.shape_id,
                                            entry=entry, trim_at_mm=trim_at,
                                            soft_vertices=cfg.run_soft_vertices)
                 if not report["empty"]:
@@ -2820,12 +2871,12 @@ def sequence(
                 # tier was never handed it. Sewn only under
                 # `cfg.blend_fallback_underlay`, on the fallback path.
                 runs, report = blend_fill(p.region, source_pixels, cfg,
-                                          start_near=entry, polygon=p.polygon,
+                                          start_near=entry, polygon=small_print_cut(p, p.polygon),
                                           row_mm=row_mm, stitch_mm=stitch_mm,
                                           underlay_style=eff_underlay_style)
             elif contour:
                 runs, report = contour_fill(
-                    p.polygon,
+                    small_print_cut(p, p.polygon),
                     p.shape_id,
                     spacing_mm=contour_spacing,
                     stitch_mm=stitch_mm,
@@ -2865,7 +2916,7 @@ def sequence(
                 # along and the axis it sews along stay one number by
                 # construction.
                 runs, report = stitch_shape(
-                    p.polygon,
+                    small_print_cut(p, p.polygon),
                     p.shape_id,
                     angle_deg=_fill_angle_for(p, cfg),
                     row_mm=row_mm,
@@ -2886,7 +2937,7 @@ def sequence(
             # to be a silent SHAPE_NOT_STITCHED; its outline still exists, and
             # sewing it as a run beats leaving a hole in the artwork.
             if rescue and not runs:
-                r_runs, r_report = run_outline(p.region.polygon, p.shape_id,
+                r_runs, r_report = run_outline(small_print_cut(p, p.region.polygon), p.shape_id,
                                                entry=entry, trim_at_mm=trim_at,
                                                soft_vertices=cfg.run_soft_vertices)
                 if r_runs:
@@ -3154,9 +3205,17 @@ def sequence(
         if cfg.chain_links:
             later_run_art = [g for i, g in run_tier_later
                              if i > group[0].sew_index]
+            # Small print: no link may cross a counter the block keeps
+            # open (`small_print_counters_of`); None with the flag off.
+            sp_forbid = None
+            if cfg.small_print_floor:
+                _cs = [c.buffer(-stitches.SAME_POINT_MM) for q in sewn
+                       for c in small_print_counters_of(q)]
+                sp_forbid = unary_union(_cs) if _cs else None
             ordered, linked_in_shape = _chain(
                 ordered, sewn, group[0].region.thread_index,
-                unary_union(later_run_art) if later_run_art else None)
+                unary_union(later_run_art) if later_run_art else None,
+                forbid=sp_forbid)
             jumps -= linked_in_shape
 
         # Task 1 (photo/tonal v1): a blend-tier run carries the thread its
