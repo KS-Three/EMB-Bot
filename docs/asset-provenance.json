@@ -832,6 +832,12 @@
    "review": true
   },
   {
+   "prefix": "docs/renders/claude-fold-cuts-junctions/",
+   "status": "derived-render",
+   "source": "Rendered by digitizer/tools/lowercase_angle.py --panes/--compose from digitizer/testdata/synthetic/lowercase_aileron.png (synthetic, Pillow's bundled CC0 Aileron glyphs); stitch-path zooms and thread renders, no client art",
+   "basis": "digitizer/tools/lowercase_angle.py; PR body of claude/fold-cuts-junctions"
+  },
+  {
    "prefix": "docs/renders/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures (catch-all for new render directories)",
