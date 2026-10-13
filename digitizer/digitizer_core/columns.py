@@ -153,7 +153,79 @@ def is_lettering(region, cfg=None) -> bool:
     if tagged and getattr(cfg, "lettering_columns_skip_blobs", False) \
             and is_solid_blob(region.polygon):
         return False
+    if tagged and getattr(cfg, "lettering_columns_ink_link", False) \
+            and m.get("lettering_ink_stray"):
+        return False
     return tagged
+
+
+# `cfg.lettering_columns_ink_link`: the text cluster links two letters only
+# when their chart threads sit within `textcluster.TEXT_CLUSTER_DELTA_E_MAX`
+# (CIEDE2000 20); the house-angle group has no such link, so a glyph-sized
+# shape in another colour beside a wordmark joins its line. `ink_strays`
+# refuses a HOUSE-GROUP-ONLY shape (`lettering_group`, not `text_candidate`)
+# whose thread is further than that from EVERY text-cluster letter's thread,
+# unless it ABUTS a text-cluster letter. Census at the corpus settings
+# (`tools/column_capture_census.py --corpus --guard
+# lettering_columns_ink_link`, 2026-10-13): the one house-only
+# shape past 20 on the seven labelled-or-rendered fixtures is enthusiast's
+# shield star (34.2 from the wordmark's 0134); every other house-only shape
+# reads <= 12.2, golden_tee's three swashes 0.0 (their inks 0811/1102/0020
+# are inks of its text letters too).
+#
+# ABUTS: within `INK_LINK_TOUCH_MM` of a text-cluster letter, polygon to
+# polygon. 1.0 mm is the widest gap between two letters of one measured word
+# (enthusiast's subline, 0.88-1.0; its wordmark 0.18-0.48, fremont's
+# 0.15-0.47), so a part as close to a letter as the word's own letters are
+# to each other counts as part of the word. golden_tee's swashes that touch
+# the GT letters sit at 0.0 and 0.0 (the third, the black arc, at 2.81, and
+# passes on ink); the star sits 6.28 mm from the nearest letter. A CANDIDATE
+# shape ratio from one corpus, not a cloth constant.
+INK_LINK_TOUCH_MM = 1.0
+
+
+def ink_strays(regions, chart, *, max_delta_e: float | None = None,
+               touch_mm: float = INK_LINK_TOUCH_MM) -> list[str]:
+    """Shape ids of house-group-only shapes the ink link refuses (see
+    `INK_LINK_TOUCH_MM`). No text-cluster letter in the design means no text
+    ink to compare with: nothing is refused (fails open, like
+    `textcluster._same_ink`). A thread the chart cannot place is no colour
+    evidence either, and is kept."""
+    if max_delta_e is None:
+        from .textcluster import TEXT_CLUSTER_DELTA_E_MAX
+        max_delta_e = TEXT_CLUSTER_DELTA_E_MAX
+    text = [r for r in regions if (r.meta or {}).get("text_candidate")]
+    if not text:
+        return []
+    inks = sorted({r.thread_index for r in text})
+    out: list[str] = []
+    for r in regions:
+        m = r.meta or {}
+        if not m.get("lettering_group") or m.get("text_candidate"):
+            continue
+        if r.thread_index in inks:
+            continue
+        try:
+            near = min(float(chart.delta_e(r.thread_index, i)) for i in inks)
+        except (IndexError, TypeError, ValueError):
+            continue
+        if near <= max_delta_e:
+            continue
+        if any(r.polygon.distance(t.polygon) <= touch_mm for t in text):
+            continue
+        out.append(r.shape_id)
+    return out
+
+
+def tag_ink_strays(regions, chart) -> int:
+    """Write `meta["lettering_ink_stray"] = True` on every `ink_strays`
+    shape; returns how many. Called only under
+    `cfg.lettering_columns_ink_link`, so OFF no key is written."""
+    ids = set(ink_strays(regions, chart))
+    for r in regions:
+        if r.shape_id in ids:
+            r.meta["lettering_ink_stray"] = True
+    return len(ids)
 
 
 # `cfg.lettering_columns_skip_blobs`: a tagged shape that is a solid blob, not
