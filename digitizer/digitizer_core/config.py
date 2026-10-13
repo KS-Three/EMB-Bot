@@ -217,6 +217,17 @@ class PipelineConfig:
     # gradient lanes (drawn hair, where strands ARE shapes) it changes
     # nothing. Candidate, unsewn (gate 1). Off, byte-identical.
     hairline_from_lines: bool = False
+    # Hairline line route: a strand, not a bar (2026-10-13, default OFF;
+    # read only when the line route above runs). A thin bar passes the
+    # ridge test like a strand: on owl_kent 31 of the route's 75 strands
+    # were the breast barring (#882). On, a ridge that sits in a stack of
+    # parallel lines of its own polarity (one either side, or two evenly
+    # spaced on one side, over 40% of its length) is a bar and is not sewn
+    # (`stage6_hairline_lines.stack_share`); and the route's widths and curl
+    # tolerance follow the colour block's thread weight (a
+    # `shape_overrides[sid].thread_wt`) instead of `thread_wt`. Candidate
+    # geometry, unsewn (gate 1). Off, byte-identical.
+    hairline_lines_strand_test: bool = False
     # Hairline coverage guard (2026-10-13, default OFF; needs `hairline` on).
     # A shape whose hairline runs would leave more than
     # `stage6_hairline.COVERAGE_GUARD_MM2` of its own ink bare (a 0.4 mm
