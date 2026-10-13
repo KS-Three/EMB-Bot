@@ -2084,8 +2084,20 @@ class PipelineConfig:
     # measured 2026-10-07). Built OFF: the order between a letter's columns
     # is nearest-next (no Euler walk yet), junction overlap and short
     # stitches are not built, and the renders are Kent's to judge first.
-    # Off, byte-identical. Tests: `tests/test_lettering_columns.py`.
-    lettering_columns: bool = False
+    # Tests: `tests/test_lettering_columns.py`.
+    # **FLIPPED ON 2026-10-12, Kent's ruling** (relayed through the VP and
+    # director), on the four flip blockers' close-out: #828 (the lost_frac
+    # read, the matched instrument), #837 (rail reach inset), #844 (slanted-
+    # terminal fan, the one-pixel spill guard's teeth) and #859 (the OFF
+    # path's sew order). Its instrument is `lost_frac` (`tools/dropped_
+    # elements`; every logo at or under shipped's, `.claude/memory/
+    # lettering-architecture-2026-10-07.md`). Needs NO sibling flag: the lane
+    # takes a shape by `columns.is_lettering`, which reads the old taggers
+    # (`text_candidate` / `lettering_group`) unless `lettering_words` is on,
+    # and `lettering_words` stays OFF. KNOWN OPEN, sew-out (ROADMAP gate 1):
+    # fremont's and golden_tee's letters stand 0.06-0.07 mm inside shipped's
+    # reach, which is unsewn. False is the pre-flip construction, byte for byte.
+    lettering_columns: bool = True
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
     # failure E). ON, `words.tag_words` finds each line of lettering once --

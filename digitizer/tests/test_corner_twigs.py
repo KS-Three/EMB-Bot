@@ -103,6 +103,10 @@ def _plan(art: Path, **kw):
     # one the wrong way for the last assertion below (7 -> 8 with the pruner
     # on, 1,958 -> 1,820 stitches) -- the envelope's, not the pruner's.
     kw.setdefault("satin_rails_follow_edge", False)
+    # ... and on the skeleton tier: the Column lane (`lettering_columns`, ON
+    # by default since Kent's 2026-10-12 flip) cuts MARINE's letters from
+    # their outline and never reaches the pruner this file prices.
+    kw.setdefault("lettering_columns", False)
     cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
     gen = build_generation(str(art), cfg)
     result = finish_generation(gen.fork(), cfg)
