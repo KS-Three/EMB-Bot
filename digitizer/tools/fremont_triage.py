@@ -84,6 +84,8 @@ ARMS = {
                    "lettering_columns_skip_blobs": False},
     "lane_off": {"lettering_columns": False},
     "pre863": {},
+    # The cure for the 1895 loss, built OFF (`cfg.small_glyph_keep`).
+    "small_glyph_keep": {"small_glyph_keep": True},
 }
 ARM_ORDER = list(ARMS)
 

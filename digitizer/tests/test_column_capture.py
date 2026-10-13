@@ -349,12 +349,13 @@ def test_icon_predicate_is_size_free_and_fails_open():
     assert skeleton_nodes(Point(0, 0).buffer(0)) == 0                            # empty
 
 
-def test_icon_guard_is_off_by_default_and_judges_house_only_shapes():
-    assert PipelineConfig().lettering_columns_icon_guard is False
-    on = PipelineConfig(lettering_columns_icon_guard=True)
+def test_icon_guard_is_on_by_default_and_judges_house_only_shapes():
+    assert PipelineConfig().lettering_columns_icon_guard is True
+    on = PipelineConfig()
+    off = PipelineConfig(lettering_columns_icon_guard=False)
     house = _r("h", _hatch(), 1, lettering_group=True)
     text = _r("t", _hatch(), 1, lettering_group=True, text_candidate=True)
-    assert is_lettering(house, PipelineConfig()) and not is_lettering(house, on)
+    assert is_lettering(house, off) and not is_lettering(house, on)
     assert is_lettering(text, on)                  # the text cluster is not judged
     assert not is_lettering(_r("u", _hatch(), 1), on)   # untagged stays untagged
 
@@ -392,5 +393,9 @@ def test_icon_guard_off_never_reaches_the_predicate(monkeypatch):
     def boom(*_a, **_k):
         raise AssertionError("is_drawing_fragment reached with the flag OFF")
     monkeypatch.setattr(columns, "is_drawing_fragment", boom)
-    cfg = PipelineConfig(**base, **{k: True for k in GUARDS_ON})
+    cfg = PipelineConfig(**base, **{k: True for k in GUARDS_ON}, **{ICON: False})
     assert sum(is_lettering(r, cfg) for r in regions) > 0
+    # ... and ON (the default) does reach it: the OFF test above is not vacuous.
+    with pytest.raises(AssertionError, match="reached with the flag OFF"):
+        for r in regions:
+            is_lettering(r, PipelineConfig(**base))

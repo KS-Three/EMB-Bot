@@ -109,7 +109,7 @@
 "tests/test_flat_lane_byte_identical.py": 13.89,
 "tests/test_flip_sheet.py": 0.01,
 "tests/test_fremont_small_lettering.py": 900.0,
-"tests/test_fremont_triage.py": 300.0,
+"tests/test_fremont_triage.py": 600.0,
 "tests/test_generation_cache.py": 24.54,
 "tests/test_held_hole_bare_only.py": 0.07,
 "tests/test_house_anchor.py": 74.91,

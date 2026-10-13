@@ -1655,6 +1655,23 @@ flattery. Anything unlisted raises `NotInManifest`.
   catch it either way at 0.3 mm thread. *(found 2026-10-07 by the desktop
   sitting agent counting crosses on the N; fixed in PR #660)*
 
+- **Needles per rail is not thread across the column — count CROSSINGS too.
+  The browser lettering engine passes the rule above and still lays half the
+  thread.** `satinplay.emitZigzag` alternates the leading rail, A1, B1, B2,
+  A2, A3, B3: a needle every `SATIN_SPACING_MM` on each rail, exactly like
+  the Python zigzag, but only every other stitch crosses — the rest are
+  one-spacing steps along a rail. One crossing per station against the
+  Python order's two. It has been that way since the file was written
+  (`ede6fea4`, 2026-07-24) and no ruling chose it. Measured on a lone "l"
+  stem: Studio text 2.5 threads across per mm, the Python order 5, a
+  competitor's exported DST (Ember, 0.3 mm per rail) 6.7. `satinZigzag`
+  (`zigzag` in the emitter) keeps one rail leading; built OFF, same
+  penetrations and stitch count, 10 to 28% more thread on "Hotel Rag" across
+  four fonts. The default is Kent's and wants a sew-out (gate 1): a render at
+  0.3 mm thread shows ladders off and closed columns on, and a render is not
+  fabric. *(found 2026-10-13 by exporting the same words from Ember and from
+  `buildLetteringDesign` and reading both stitch streams)*
+
 - **Adding an engine file means FOUR lists, and only three were documented —
   now guarded.** `src/*.js` files are plain scripts sharing one
   `globalThis.EMB`, and the load order lives in `app/scripts/copy-engine.mjs`

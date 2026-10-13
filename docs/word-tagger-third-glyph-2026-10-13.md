@@ -141,3 +141,65 @@ What the data points at instead:
 
 No agreement statistic is reported here: this is a refusal census, and kappa
 with a CI lives in `tools/word_tagger_eval.py`.
+
+## Follow-up: the `nested` drop at small print (2026-10-13, later)
+
+This one is also a measured negative, with no flag. The trace tool now names
+the host of every `nested` drop and its containment values (`nest_info`: box
+area ratio, height ratio, share of the glyph on the host's ink, and share
+inside the host's outline with holes filled). It also censuses five nesting
+policies (`--nest-census`, plus `--variant nested=ring`). `digitizer_core/`
+is unchanged.
+
+The 18 `nested` refusals at 50 mm are three different things:
+
+| fixture | glyphs | host | host h vs glyph h | box area | on host ink | in host outline | host aspect / CV |
+|---|---|---|---|---|---|---|---|
+| bridge | 12 (all of BAR & RESTAURANT) | Sc050577e, the wheel's badge disc | 49.40 vs 2.04-4.66 mm | x149-458 | 0.00 | 1.00 | 1.00 / 0.33 |
+| gaulke | 4 ("word2") | S474b1932, the house | 6.16 vs 1.96 mm | x23.2-23.9 | 0.00 | 0.00 | 1.77 / 0.45 |
+| gaulke | 1 (Sff465103) | S5c5f2b6f | 2.72 vs 1.74 mm | x2.8 | 0.00 | 1.00 | 0.97 / 0.13 |
+| fremont | 1 (Se137a45a) | S7569cf1c | 3.82 vs 2.94 mm | x1.7 | 0.00 | 1.00 | 0.99 / 0.06 |
+
+- bridge: once the design is 50 mm wide the badge is 49.4 mm tall. That is
+  under `WORD_MAX_HEIGHT_MM` (60), so the badge passes every glyph screen and
+  its box swallows the whole line sitting in its hole. At 65 mm the hosts are
+  other shapes (S2cb6c9d0, 18.4 mm; S86f3627b, 40.3 mm), and the letters sit in
+  their BOX beside their ink (in outline 0.00). At 80 mm the badge is over
+  60 mm and is not a candidate.
+- gaulke "word2" is the house icon's four WINDOW PANES (2x2, 1.96 x 1.43 mm,
+  in the house's own ink). They count as "expected" only because gaulke has no
+  labels for this generation and the 100 mm tagger reads the panes as a word.
+  Here the `nested` drop is RIGHT and the 100 mm reference is wrong.
+- The last two are single glyphs inside a small ring-like host.
+
+Census (36 fixture x size cells; a false join is a non-letter newly in a word):
+
+| policy | gained | lost | new stray | zero false joins |
+|---|---|---|---|---|
+| ring: a host does not swallow a linked word (3+) inside its outline | 8 | 0 | 8 | NO |
+| frame: a host whose BOX holds a linked word swallows nothing | 28 | 0 | 19 | NO |
+| outline: a host swallows only what is inside its outline | 20 | 0 | 21 | NO |
+| frame+outline | 28 | 0 | 29 | NO |
+| nest_max_h=5 / 8 (no host over K x the glyph's height) | 8 / 8 | 0 | 16 / 12 | NO |
+
+- `ring`'s 8 gains are bridge's BAR & RESTAURANT at 50 mm. The other four
+  letters there fail ink or small_component, as they do at 80 and 100 mm.
+- `ring`'s 8 strays are two 2x2 icon grids at 100 mm, each inside a shape's
+  hole: on drone, four 1.4-1.9 mm panes in the 19.3 mm body (S2af623d5); on
+  the phone screenshot, four 1.2-1.4 mm squares in a 9.0 mm icon (S618732e4).
+  Four panes link like a word of four, because `_split_lines` only cuts
+  components of 6 or more.
+- `frame`'s 28 gains include gaulke's 12 window panes (4 each at 50, 65 and
+  80 mm), so its real gain is 16 letters.
+- `frame`'s strays are the wheel's spokes at 50 mm (0.18-0.21 inside the
+  badge outline) and pieces of a host's own ink at 80 mm (outline 0.00).
+
+What would separate the bridge line from the icon grids is the word's SHAPE
+(one row of 8 against a 2x2 block), not containment. A rule tweaked to clear
+these two grids would be fitted to the same census that scores it, so it is
+left for the L3 / size-policy work rather than built here.
+
+`no_region` is not a tagger rule; it comes from stage 0 / regions. It accounts
+for 21 of the 58 glyphs missing at 50 mm (36%), all of them at 50 mm
+(enthusiast 14, fremont 7), and 0 at 65, 80 and 100 mm. ROADMAP gate 2: not
+touched.
