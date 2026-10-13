@@ -559,6 +559,7 @@ def vectorize(
         h_img, w_img = p.rgb.shape[:2]
         lab_img = rgb_to_lab(p.rgb.reshape(-1, 3)).reshape(h_img, w_img, 3).astype(np.float32)
     min_area_mm2 = (cfg.min_detail_mm ** 2) * 0.25  # a sliver after simplification
+    small_print = bool(getattr(cfg, "small_print_floor", False))
     min_detail_px2 = (cfg.min_detail_mm * p.px_per_mm) ** 2
 
     regions: list[Region] = []
@@ -673,12 +674,16 @@ def vectorize(
         shell = _to_mm(shell_px, cx, cy, p.px_per_mm)
 
         holes = []
+        small_counters: list = []      # `cfg.small_print_floor`: holes the floor drops
         for i in range(len(contours)):
             if hier[i][3] != outer:
                 continue
             hole_src, _hole_share, hole_acc = ring_source(contours[i])
             h_px = cv2.approxPolyDP(hole_src, eps, True).reshape(-1, 2)
             if len(h_px) < 3:
+                if small_print and len(hole_src.reshape(-1, 2)) >= 3:
+                    # a counter Douglas-Peucker collapsed: its raw ring
+                    small_counters.append(_to_mm(hole_src.reshape(-1, 2), cx, cy, p.px_per_mm))
                 continue
             if refine and _wide_enough_to_refine(h_px, p.px_per_mm):
                 h_px = _refine_curves(hole_src.reshape(-1, 2).astype(np.float64),
@@ -687,6 +692,8 @@ def vectorize(
             ring = _to_mm(h_px, cx, cy, p.px_per_mm)
             if Polygon(ring).area >= min_area_mm2:
                 holes.append(ring)
+            elif small_print:
+                small_counters.append(ring)
 
         poly = Polygon(shell, holes)
         # A self-intersecting ring does not repair into ONE shape. Where the
@@ -732,6 +739,15 @@ def vectorize(
                 meta["coverage_edges"] = True
             elif outer_share is not None:
                 meta["subpixel_accepted"] = round(outer_share, 4)
+            if small_counters:
+                # Recorded, not cut: the polygon every stage reads is the
+                # floor's, and only the Column lane punches these back
+                # (`cfg.small_print_floor`, `columns.small_print_counters`).
+                mine_sc = [[[round(float(x), 4), round(float(y), 4)] for x, y in ring]
+                           for ring in small_counters
+                           if part.covers(Polygon(ring).representative_point())]
+                if mine_sc:
+                    meta["small_counters"] = mine_sc
             regions.append(
                 Region(
                     shape_id="",

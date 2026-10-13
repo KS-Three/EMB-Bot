@@ -251,6 +251,72 @@ def _reach_fan_faces(stations, a_pts, b_pts, reach_mm: float) -> tuple[list, lis
     return a_pts, b_pts
 
 
+def small_print_counters(poly: Polygon, rings, min_width_mm: float) -> Polygon:
+    """`cfg.small_print_floor`: the letter `poly` with the counters stage 4's
+    sliver floor dropped (`meta["small_counters"]`) punched back -- each one
+    whose widest inscribed circle is at least `min_width_mm` across
+    (`thread_profile(wt).counter_min_width_mm`) and that lies inside the
+    letter. A counter narrower than that cannot stay open under thread and
+    stays sewn, as before. Returns `poly` itself when nothing qualifies."""
+    from shapely.ops import polylabel
+
+    keep = []
+    for ring in rings or ():
+        if len(ring) < 3:
+            continue
+        c = Polygon(ring).buffer(0)
+        if c.is_empty or c.geom_type != "Polygon" or not poly.contains(c):
+            continue
+        centre = polylabel(c, tolerance=0.01)
+        if 2.0 * centre.distance(c.exterior) >= min_width_mm:
+            keep.append(c)
+    if not keep:
+        return poly
+    out = poly.difference(unary_union(keep))
+    return out if out.geom_type == "Polygon" and not out.is_empty else poly
+
+
+def _clear_counters(a_pts, b_pts, poly: Polygon, clear_mm: float,
+                    min_cross_mm: float) -> tuple[list, list]:
+    """`cfg.small_print_floor`: every penetration that lands within
+    `clear_mm` (half the block's laid thread width) of one of the letter's
+    counters is moved back along its own cross until it sits `clear_mm`
+    off the counter, so the thread's EDGE, not its centre, meets the
+    counter's edge. Never past the point where the cross would fall under
+    `min_cross_mm`; a cross with no room is left as it is."""
+    holes = [Polygon(r) for r in poly.interiors]
+    if not holes or clear_mm <= 0:
+        return a_pts, b_pts
+    zone = unary_union([h.buffer(clear_mm) for h in holes])
+    out_a, out_b = list(a_pts), list(b_pts)
+    for i, (pa, pb) in enumerate(zip(a_pts, b_pts)):
+        d = math.dist(pa, pb)
+        if d < 1e-9:
+            continue
+        for side in (0, 1):
+            p = out_a[i] if side == 0 else out_b[i]
+            q = out_b[i] if side == 0 else out_a[i]
+            if not zone.contains(Point(p)):
+                continue
+            seg = LineString([p, q])
+            outside = seg.difference(zone)
+            if outside.is_empty:
+                continue
+            # where the cross first leaves the zone, walking from p toward q
+            t = min(seg.project(Point(c)) for g in getattr(outside, "geoms", [outside])
+                    for c in g.coords)
+            L = seg.length
+            t = min(t, max(0.0, L - min_cross_mm))
+            if t <= 0:
+                continue
+            np_ = seg.interpolate(t).coords[0]
+            if side == 0:
+                out_a[i] = np_
+            else:
+                out_b[i] = np_
+    return out_a, out_b
+
+
 def _tuck_stations(col: Column, end: int, through: Polygon, tuck_mm: float,
                    max_reach_mm: float, pitch_mm: float, poly_link):
     """Stations continuing `col` past the given end (0 or -1) into the piece
@@ -591,10 +657,13 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 start_near: tuple[float, float] | None = None,
                 min_cross_mm: float = machine.SATIN_MIN_CROSS_MM,
                 end_near: tuple[float, float] | None = None,
+                counter_clear_mm: float = 0.0,
                 ) -> tuple[list[StitchRun], dict]:
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
-    column census stage 7 copies into the plan's counters."""
+    column census stage 7 copies into the plan's counters.
+    `counter_clear_mm` > 0 (`cfg.small_print_floor`) holds every
+    penetration that far off the letter's counters (`_clear_counters`)."""
     from .stage6_satin import (_JUNCTION_TUCK_MM, _comb_thresholds, _push_rails,   # same package,
                                _short_stitch_guard, _split_points)                  # same rules
 
@@ -613,6 +682,8 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         if col.kind == "straight":
             a_pts, b_pts = _reach_fan_faces(col.stations, a_pts, b_pts,
                                             pull_mm - RAIL_REACH_INSET_MM)
+        if counter_clear_mm > 0:
+            a_pts, b_pts = _clear_counters(a_pts, b_pts, poly, counter_clear_mm, min_cross_mm)
         # Short stitches on the inside of a bend (`satinplay.js` pullShort;
         # the engine's own guard): where a rail's penetrations bunch up
         # under SATIN_SHORT_STITCH_AT_MM -- the inner rail of an S's curl is
@@ -667,6 +738,16 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     #    (`poly_link` is the sew-or-jump rule's polygon, see step 4; the
     #    connector below asks it the same question one leg early.)
     poly_link = poly.buffer(0.1 + pull_mm)
+    if counter_clear_mm > 0 and poly.interiors:
+        # Small print: the buffer closes every counter narrower than twice
+        # (0.1 + pull) -- at 0.3 mm pull, every counter under 0.8 mm -- and
+        # a hop the link rule then sews runs needle-down across the bare
+        # counter (the B's and the 8's diagonals, `tools/small_print.py`
+        # renders at 4 mm). A counter is not inside the letter.
+        _counters = unary_union([Polygon(r).buffer(-stitches.SAME_POINT_MM)
+                                 for r in poly.interiors])
+        if not _counters.is_empty:
+            poly_link = poly_link.difference(_counters)
     all_legs: list[dict] = []       # ci, sat, i0, i1 in traversal order (i0 may be > i1)
     for circuit in components:
         seen: set[int] = set()
@@ -835,9 +916,11 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             underlay_style: str = "none",
                             start_near: tuple[float, float] | None = None,
                             end_near: tuple[float, float] | None = None,
+                            counter_clear_mm: float = 0.0,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
-    stage 7 entry point behind `cfg.lettering_columns`: cut, then construct."""
+    stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
+    `counter_clear_mm`: see `column_runs` (`cfg.small_print_floor`)."""
     from .outline_cut import letter_columns
 
     # One station per `spacing_mm` along the rail, both ends of each sewn:
@@ -849,7 +932,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                                spacing_mm=spacing_mm, split_above_mm=split_above_mm,
                                pull_mm=pull_mm, pull_floor_mm=pull_floor_mm,
                                underlay_style=underlay_style, start_near=start_near,
-                               end_near=end_near)
+                               end_near=end_near, counter_clear_mm=counter_clear_mm)
     report["cuts"] = len(cut.cuts)
     report["columns_unsewn"] += len(cut.unsewn)
     return runs, report
