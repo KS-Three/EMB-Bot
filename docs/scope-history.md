@@ -13,7 +13,7 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
-**Last updated:** 2026-10-13 — scope refresh after PRs #859–#870 (and #872/#873, open when written)
+**Last updated:** 2026-10-13 — scope refresh after PRs #859–#870 and #873 (#871/#872 open when written)
 
 The Column lane went ON by default this round (Kent's ruling 2026-10-12, #863), so "Waiting on Kent" 31 and 37 resolve and defect 59 becomes moot on the default path. Two more Kent rulings landed as code: auto-fit caps to the largest hoop (#865, closing defect 39's open half) and cross-stitch arms split at the machine record (#870). "Waiting on Kent" 18 has his ruling ("Faster photo reorder"); one exact step merged (#868), the larger (#871) is a draft for his look. To stay 1,500+ words under budget, three verbatim chunks moved to the area docs (area 2's long-stitch paragraph; area 1's item 6 rail-comp and item 5 PR 2/3 entries). MASTER_SCOPE went 25,393 → 25,008 words (1,992 under the 27,000 budget).
 
@@ -36,7 +36,10 @@ Open when this was written, recorded in MASTER_SCOPE as open PRs:
 
 - **#871** (draft, Kent's look) windowed covered routing + lazy order pricing: owl_kent 148.2 → 114.0 s, byte-identical; drone 19,243 → 19,249 st, +1 jump; sunset 26,016 → 26,012; fremont and owl_pale identical SHA.
 - **#872** hairline logo bill: 272 shapes / 938 mm² re-sewn on 8 gradient logos + enthusiast; 87 shapes (276 mm²) lose ≥ 1 strand, 120 strands; bare fabric e.g. screenshot 5.5 → 47.8 mm², drone 5.1 → 28.9; 5 new `ARTWORK_UNCOVERED`; golden_tee −25.5% stitches.
-- **#873** `cfg.small_print_floor` (OFF): synthetic word 3 mm 8/10 → 4/10 counters shut, open area 0.31 → 0.68, covered 0.997 → 0.983; enthusiast 3 mm A 0.00 → 0.95 open; golden_tee GOLF untouched (run tier).
+
+Merged while this pass was being written (2026-10-13 04:29Z):
+
+- **#873** `cfg.small_print_floor` (OFF): synthetic word 3 mm 8/10 → 4/10 counters shut, open area 0.31 → 0.68, covered 0.997 → 0.983; enthusiast 3 mm A 0.00 → 0.95 open; golden_tee GOLF untouched (run tier). 9 new tests; 59 passed on neighbours.
 
 Moved out of MASTER_SCOPE on this pass, verbatim as they stood:
 
