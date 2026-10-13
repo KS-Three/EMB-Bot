@@ -142,6 +142,9 @@ export function hoopRow(name, text, garmentId) {
   const d = DG.buildLetteringDesign(loadFont(name), text, {
     garment: garments.getGarment(garmentId), pxPerMm: 8, emMm: 18,
     rgb: [25, 25, 25], pullCompMm: 0.2, splitSatin: true,
+    // Fill the whole placement box, as auto-fit did before it was capped to the
+    // hoop (2026-10-13); a typed width clamps to the box.
+    targetWidthMm: 1e4,
   });
   return Object.assign({ font: name, text, garment: garmentId, capMm: d.lettering.capMm }, longest(d));
 }
