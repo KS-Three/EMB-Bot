@@ -29,7 +29,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { statSync } from "node:fs";
-import { startStudio, typeText, pickGarment, pickTemplate, openDownload, closeDownload, uploadArtwork, watchConsole, openAdvanced } from "./helpers.js";
+import { startStudio, typeText, makeOversize, pickGarment, pickTemplate, openDownload, closeDownload, uploadArtwork, watchConsole, openAdvanced } from "./helpers.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Same fixture digitize-stale-edits.spec.js uses (see that file's own
@@ -39,14 +39,14 @@ const ART_PNG = path.join(__dirname, "fixtures", "two-squares.png");
 
 // ---- shared helpers -------------------------------------------------------
 
-// Every stitch-format export in this file runs on a TOTE, and a tote design
-// exceeds its hoop by construction: the placement box is 8 in = 203.2 mm, the
-// largest hoop the app offers is "8x8 in" = 200 mm, and the design is auto-fit
-// to the BOX. So the field caption has always read "Exceeds your 8x8 in hoop"
-// here, and since 2026-09-02 exporting one costs a deliberate confirm.
+// The stitch-format exports in this file run on a TOTE sized past its hoop: the
+// placement box is 8 in = 203.2 mm, the largest hoop the app offers is "8x8 in"
+// = 200 mm, and auto-fit is capped to that hoop since 2026-10-13, so each such
+// test types a width first (`makeOversize`). Exporting an oversize design costs
+// a deliberate confirm (since 2026-09-02).
 //
-// Asserted rather than tolerated: the dialog is deterministic for this garment,
-// so a conditional dismiss would hide it the day it stops appearing. PNG and
+// Asserted rather than tolerated: the dialog is deterministic once the width is
+// typed, so a conditional dismiss would hide it the day it stops appearing. PNG and
 // the PDF worksheet are not gated and must NOT call this.
 async function confirmOversizeExport(page, fmt) {
   // The Download sheet is itself a dialog and stays open beneath the confirm,
@@ -65,10 +65,11 @@ async function confirmOversizeExport(page, fmt) {
 // Picks the garment, types the text, opens the Download sheet. Callers vary
 // garmentLabel/text; what the sheet reflects is asserted by each caller since
 // that's the point being tested.
-async function reachDownloadWithText(page, garmentLabel, text) {
+async function reachDownloadWithText(page, garmentLabel, text, { oversize = false } = {}) {
   await startStudio(page);
   await pickGarment(page, garmentLabel);
   await typeText(page, text);
+  if (oversize) await makeOversize(page);
   await openDownload(page);
 }
 
@@ -82,6 +83,7 @@ test("configurator: text -> download sheet -> DST", async ({ page }) => {
   // Real content produced real stitches on the field -- typeText asserts the
   // input took the value and the field's stats readout reports a count.
   await typeText(page, "EMB TEST");
+  await makeOversize(page);
 
   // ---- Download sheet -----------------------------------------------------
   await openDownload(page);
@@ -195,6 +197,7 @@ test("configurator: image content path -> sheet reflects it -> download", async 
   await expect(page.locator(".elsummary").filter({ hasText: /^Image · / }))
     .toHaveText(`Image · ${swatches} color${swatches === 1 ? "" : "s"}`);
 
+  await makeOversize(page);
   await openDownload(page);
 
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
@@ -249,8 +252,8 @@ test("configurator: image content path -> sheet reflects it -> download", async 
   // The confirm fires here too since 2026-10-08. The PNG used to skip it only
   // because it was seeded as a SECOND element beside the fresh design's empty
   // text box, at 40% of the hoop; it now replaces that box and auto-fits the
-  // placement exactly as lettering does (art-first-size.spec.js), so on a
-  // tote it exceeds the 8x8 hoop by the same construction as the text path.
+  // placement exactly as lettering does (art-first-size.spec.js); the width typed
+  // above (`makeOversize`) puts it past the 8x8 hoop, as for the text path.
   await confirmOversizeExport(page, "DST");
   const download = await downloadPromise;
 
@@ -268,7 +271,7 @@ test("configurator: image content path -> sheet reflects it -> download", async 
 // through to the Download step, three format clicks against it: each is a
 // real download, verified on disk, not just "a click handler ran".
 test("configurator: PES, EXP, and PDF worksheet exports produce real files", async ({ page }) => {
-  await reachDownloadWithText(page, "Tote", "EMB TEST");
+  await reachDownloadWithText(page, "Tote", "EMB TEST", { oversize: true });
 
   // ---- PES: has a real, checkable magic header ("#PES0001") -------------
   const pesDownloadPromise = page.waitForEvent("download");

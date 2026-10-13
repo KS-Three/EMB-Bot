@@ -2084,8 +2084,20 @@ class PipelineConfig:
     # measured 2026-10-07). Built OFF: the order between a letter's columns
     # is nearest-next (no Euler walk yet), junction overlap and short
     # stitches are not built, and the renders are Kent's to judge first.
-    # Off, byte-identical. Tests: `tests/test_lettering_columns.py`.
-    lettering_columns: bool = False
+    # Tests: `tests/test_lettering_columns.py`.
+    # **FLIPPED ON 2026-10-12, Kent's ruling** (relayed through the VP and
+    # director), on the four flip blockers' close-out: #828 (the lost_frac
+    # read, the matched instrument), #837 (rail reach inset), #844 (slanted-
+    # terminal fan, the one-pixel spill guard's teeth) and #859 (the OFF
+    # path's sew order). Its instrument is `lost_frac` (`tools/dropped_
+    # elements`; every logo at or under shipped's, `.claude/memory/
+    # lettering-architecture-2026-10-07.md`). Needs NO sibling flag: the lane
+    # takes a shape by `columns.is_lettering`, which reads the old taggers
+    # (`text_candidate` / `lettering_group`) unless `lettering_words` is on,
+    # and `lettering_words` stays OFF. KNOWN OPEN, sew-out (ROADMAP gate 1):
+    # fremont's and golden_tee's letters stand 0.06-0.07 mm inside shipped's
+    # reach, which is unsewn. False is the pre-flip construction, byte for byte.
+    lettering_columns: bool = True
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
     # failure E). ON, `words.tag_words` finds each line of lettering once --
@@ -2655,6 +2667,22 @@ class PipelineConfig:
     # thread satin. Costs a second generation, only when the split is on.
     # `tools/tonal_stack_hist.py` prints the stacked-layer histogram.
     tonal_split_ceiling: bool = False
+    # Defect 20's PER-REGION cap, BUILT 2026-10-13, DEFAULT OFF (the flip is
+    # Kent's; ROADMAP gate 3). Finer than `tonal_split_ceiling` above, which
+    # keeps or drops the split for the WHOLE design: with this on, `digitize`
+    # reads the split plan's coverage map, and every split parent within
+    # `stage2_photo_segment.TONAL_SPLIT_VETO_MARGIN_MM` of a cell at or past
+    # `machine.COVERAGE_BLOCK_UNITS` (3.5 fill layers, unchanged) is planned
+    # WHOLE on a re-run; parents nowhere near one keep their shading. Up to
+    # `pipeline.TONAL_CAP_ROUNDS` re-runs, and a round that does not lower the
+    # area past the ceiling is discarded. A plan with nothing past the
+    # ceiling returns on the first pass, byte-identical to the flag off.
+    # `tools/layer_density.py` reports the layers OFF vs ON.
+    tonal_split_layer_cap: bool = False
+    # The cap's working state, NOT a setting: plan-mm (x, y) points whose
+    # split parents stage 2 keeps whole. Only `digitize`'s cap loop sets it;
+    # empty is the split exactly as before.
+    tonal_split_veto_mm: tuple = ()
     # DEFAULT ON since 2026-08-24 — Kent's quality call, made from the fresh
     # 32-job acceptance sheet (4 photos x 8 arms) exactly as spec decision 1
     # requires: the eyeball loop, not a scorecard, settles tonal work. Was

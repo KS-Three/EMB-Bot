@@ -607,6 +607,55 @@ def _exposed_mm(route: list[tuple[float, float]], sewn) -> float:
     return float(LineString(route).intersection(sewn).length)
 
 
+# The unsewn ground a covered bridge routes through, and its inset rings,
+# memoized on the exact bytes of their inputs. Profiled cold on owl_kent
+# 2026-10-13 (`docs/photo-cold-profile-2026-10-13.md`): the rings' inset
+# buffer was 24% of the run's samples, and 223 of 749 calls rebuilt rings
+# from byte-identical ground -- the `sewn` footprints accumulate in the same
+# order in `_order_cost` and in `emit`, so two walks over the same columns ask
+# the same question. All three are pure functions of (`cover`, `sewn`), so a
+# hit is the geometry the miss would have built; nothing is approximated.
+# Bounded by entry count: an entry is one shape's ground at one step, up to
+# ~0.26 MB on owl_kent. Every one of owl_kent's 250 hits came back within 128
+# distinct entries (an offline LRU replay of the run's key sequence), and
+# `stitch_shape` empties the memo when it returns, so nothing is held between
+# shapes or jobs.
+_UNSEWN_MAX = 128
+_UNSEWN_MEMO: "OrderedDict[bytes, list]" = OrderedDict()
+
+
+def _unsewn_ground(cover: Polygon, sewn):
+    """-> (`cover` minus `sewn`, then two functions returning that ground
+    hair-widened by 0.01 mm and its inset rings as a tuple). Each of the two
+    is built on first request only, and kept."""
+    h = hashlib.blake2b(digest_size=32)
+    for g in (cover, sewn):
+        gb = g.wkb
+        h.update(struct.pack("<I", len(gb)))
+        h.update(gb)
+    key = h.digest()
+    entry = _UNSEWN_MEMO.get(key)
+    if entry is None:
+        entry = [cover.difference(sewn), None, None]
+        _UNSEWN_MEMO[key] = entry
+        while len(_UNSEWN_MEMO) > _UNSEWN_MAX:
+            _UNSEWN_MEMO.popitem(last=False)
+    else:
+        _UNSEWN_MEMO.move_to_end(key)
+
+    def slack():
+        if entry[1] is None:
+            entry[1] = entry[0].buffer(0.01)
+        return entry[1]
+
+    def rings() -> tuple:
+        if entry[2] is None:
+            entry[2] = tuple(_inset_ring(entry[0], min(machine.TRAVEL_INSET_MM,
+                                                       machine.FILL_ROW_MM / 2.0)))
+        return entry[2]
+    return entry[0], slack, rings
+
+
 def travel_path(poly: Polygon, ring, a: tuple[float, float],
                 b: tuple[float, float], slack: Polygon | None = None,
                 sewn=None, cache: dict | None = None,
@@ -711,12 +760,12 @@ def travel_path(poly: Polygon, ring, a: tuple[float, float],
     # row — a route there rides the seam of the next column, which the next
     # column covers. Then the shape's own rings both ways round (rarely clear,
     # measured), then the exposed route of last resort.
-    unsewn = cover.difference(sewn)
+    unsewn, unsewn_slack, u_rings = _unsewn_ground(cover, sewn)
     if not unsewn.is_empty:
         # `a` is the last penetration of the column just sewn, so it lies
         # inside `sewn` by construction and a route can only LEAVE the unsewn
         # ground at its two ends; allow one travel stitch around each.
-        inside = unsewn.buffer(0.01).union(cover.intersection(
+        inside = unsewn_slack().union(cover.intersection(
             pa.buffer(_EXPOSED_TOLERANCE_MM).union(pb.buffer(_EXPOSED_TOLERANCE_MM))))
         stale = cache.get("unsewn_rings") if cache is not None else None
         if stale:
@@ -724,7 +773,7 @@ def travel_path(poly: Polygon, ring, a: tuple[float, float],
             found = along(near[:_TRAVEL_RING_CANDIDATES], True, inside)
             if found is not None:
                 return found
-        u_rings = _inset_ring(unsewn, min(machine.TRAVEL_INSET_MM, machine.FILL_ROW_MM / 2.0))
+        u_rings = list(u_rings())
         if cache is not None:
             cache["unsewn_rings"] = u_rings
         u_rings.sort(key=lambda r: max(r.distance(pa), r.distance(pb)))
@@ -954,6 +1003,7 @@ def clear_fill_reorder_memo() -> None:
     a stale entry is impossible, because the key is the full input."""
     global _reorder_memo_points
     _REORDER_MEMO.clear()
+    _UNSEWN_MEMO.clear()
     _reorder_memo_points = 0
     _reorder_memo_stats["hit"] = 0
     _reorder_memo_stats["miss"] = 0
@@ -1686,6 +1736,9 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
         fill_paths = _memoized(_k, lambda: _reorder_for_cover(
             _before, poly, ring, slack, entry, trim_at_mm, row_mm, cut_bridges))
     emit(fill_paths, stitches.FILL, stitch_mm)
+    # Every hit is within this shape (`cover` is in the key), so nothing
+    # after this point can use the unsewn-ground memo; let its geometry go.
+    _UNSEWN_MEMO.clear()
 
     if not runs:
         report["empty"] = True

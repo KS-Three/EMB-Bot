@@ -215,6 +215,10 @@ test("the Euler-walk underpath steps 2 mm ON THE FABRIC at any fit scale", () =>
 // ---- end to end, on the design DOCTRINE measured ------------------------
 
 const MANGA = path.join(BIN, "manga_impact.embf");
+// These measure the design at the FULL Full Back width (DOCTRINE 2026-09-07).
+// Auto-fit is capped to the largest hoop since 2026-10-13, so ask for the width
+// explicitly; the engine clamps a typed width to the placement box (304.8 mm).
+const FULL_BACK_MM = 1e4;
 
 test("the census reproduces DOCTRINE's own numbers, so the rest of this file means something", (t) => {
   if (!fs.existsSync(MANGA)) { t.skip("manga_impact.embf not built"); return; }
@@ -223,7 +227,7 @@ test("the census reproduces DOCTRINE's own numbers, so the rest of this file mea
   // before any of this; the split went default ON the same day this landed.
   const d = DG.buildLetteringDesign(f, "AB", {
     garment: G.getGarment("full_back"), pxPerMm: 8, emMm: 18, rgb: [25, 25, 25],
-    pullCompMm: 0.2, splitSatin: false });
+    targetWidthMm: FULL_BACK_MM, pullCompMm: 0.2, splitSatin: false });
   // DOCTRINE 2026-09-07: "a two-letter monogram on a Full Back gives 1,933 of
   // 5,828, worst 44.9 mm", on a design it records as 304.9 x 146.2 mm. The
   // stitch count moved by 3 with the underpath units fix (5,830 -> 5,863) and
@@ -239,7 +243,7 @@ test("the census reproduces DOCTRINE's own numbers, so the rest of this file mea
 test("split satin — the DEFAULT since Kent's ruling — takes that design to ZERO unsewable segments", (t) => {
   if (!fs.existsSync(MANGA)) { t.skip("manga_impact.embf not built"); return; }
   const f = fb.decodeFontBin(fs.readFileSync(MANGA));
-  const base = { garment: G.getGarment("full_back"), pxPerMm: 8, emMm: 18, rgb: [25, 25, 25], pullCompMm: 0.2 };
+  const base = { garment: G.getGarment("full_back"), pxPerMm: 8, emMm: 18, rgb: [25, 25, 25], targetWidthMm: FULL_BACK_MM, pullCompMm: 0.2 };
   const on = DG.buildLetteringDesign(f, "AB", base);
   const { n, worstAx } = overRecord(on);
   assert.strictEqual(n, 0, "not one sewn segment past a DST record");

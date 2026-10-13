@@ -24,6 +24,18 @@ export async function pickGarment(page, label) {
   await expect(page.locator(".cfg-sub")).toContainText(label);
 }
 
+// Auto-fit is capped to the largest hoop (2026-10-13), so no garment produces an
+// oversize design by itself any more. A spec about the oversize path asks for
+// one the way a customer does: a typed width past the hoop (10 in = 254 mm,
+// clamped to the placement box on a Tote), then waits for the caption to say so.
+export async function makeOversize(page) {
+  const w = page.getByLabel("Width");
+  expect(await page.locator("select.unitselect").inputValue()).toBe("in");
+  await w.fill("10");
+  await w.dispatchEvent("change");
+  await expect(page.locator("span.stats").locator("xpath=..").locator(".warn", { hasText: "Exceeds" })).toBeVisible();
+}
+
 // The editor's power tools sit behind "Advanced ›" (spec 2026-09-30 §5):
 // rendered but hidden until opened, so a spec that reaches one calls this
 // first. Idempotent -- the choice is remembered for the page's life, so a

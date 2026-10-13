@@ -132,6 +132,9 @@
   // kept around so pointer handlers and the selection overlay can hit-test /
   // draw against the exact transform that was just used to paint the canvas.
   let renderResult = null;
+  // Count of completed paints of a real design (paint() and repaintView()).
+  // Surfaced as data-paint-seq so a test waits on state, not on a timer.
+  let paintSeq = 0;
 
   // Per-element canvas rects computed from the last paint(), one per ready
   // element (see generate.js's generateAll perElement), each shaped
@@ -1773,11 +1776,13 @@
     // past the box by construction (pull compensation — defect 34), so
     // comparing it to the box would read "capped" for every design.
     const el = project.elements.find((e) => e.id === pe.id);
-    const capWmm = (() => {
-      const g = EMB.getGarment(project.garmentId);
-      return g ? g.widthIn * 25.4 : Infinity;
-    })();
-    const atWidthCap = !!el && (el.sizeMm == null || el.sizeMm >= capWmm - 0.05);
+    // Auto-fit is capped to the largest hoop (EMB.autoFitBoxMm), so on the four
+    // garments whose placement is bigger than every hoop it sits BELOW the box
+    // and the letters can still grow by typing a width.
+    const g = EMB.getGarment(project.garmentId);
+    const boxWmm = g ? g.widthIn * 25.4 : Infinity;
+    const reqWmm = el && el.sizeMm == null ? (g ? EMB.autoFitBoxMm(g).w : Infinity) : el && el.sizeMm;
+    const atWidthCap = !!el && reqWmm >= boxWmm - 0.05;
     // `lines` only picks the wording of the cap-floor fix ("break it across
     // lines" vs "use more lines"); read off the element's own text, which is
     // what the customer would be editing.
@@ -2059,6 +2064,7 @@
     }
 
     drawOverlay();
+    paintSeq++;
     emitManualFits(result.perElement);
     emitSelectedDims(result.perElement);
     reclampAll(result.perElement);
@@ -2105,6 +2111,7 @@
       // Selection chrome is hidden during playback -- the simulator is a
       // watch-mode, not an edit-mode (pointer editing is disabled below too).
       if (!simActive) drawOverlay();
+      paintSeq++;
     } else {
       clearToFabric();
     }
@@ -3368,6 +3375,7 @@
     <!-- svelte-ignore a11y_no_interactive_element_to_noninteractive_role -->
     <canvas
       bind:this={canvas}
+      data-paint-seq={paintSeq}
       width="760"
       height="560"
       tabindex="0"

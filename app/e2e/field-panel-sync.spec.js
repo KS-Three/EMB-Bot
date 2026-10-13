@@ -109,12 +109,38 @@ async function overlayPixels(page) {
   });
 }
 
+// Ceiling for every state wait below, not a delay: expect.poll returns the
+// moment its signal reads true. Generous because CI load stretches a paint.
+const STATE_WAIT = 30_000;
+
+// The canvas has painted a real design and nothing more is queued. The field
+// stamps `data-paint-seq` on the canvas after each completed paint, and every
+// state change (hover, selection, outline toggle) repaints through a
+// requestAnimationFrame, so two frames with the counter unmoved means the
+// pixels now on the canvas are the pixels for the current state.
+async function paintSettled(page) {
+  const canvas = page.locator(".hoop canvas");
+  await expect.poll(async () => {
+    const read = () => canvas.evaluate((c) => c.dataset.paintSeq);
+    const a = await read();
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const b = await read();
+    return a === b && Number(b) > 0;
+  }, { timeout: STATE_WAIT }).toBe(true);
+}
+
+// Pixel counts once the paint for the current state has landed.
+async function settledPixels(page) {
+  await paintSettled(page);
+  return overlayPixels(page);
+}
+
 async function digitize(page) {
   await page.goto("/");
   await pickGarment(page, "Tote");
   await uploadArtwork(page, ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
-  await page.waitForTimeout(1200);
+  await paintSettled(page);
   // The rows live on the Shapes tab, behind the closed-by-default "Edit
   // shapes" disclosure.
   await openAdvanced(page);
@@ -134,7 +160,7 @@ async function digitize(page) {
 async function outlinePoints(page, n = 12) {
   const toggle = page.locator('.zoomctl button[aria-label="Show shape outlines"]');
   await toggle.click();
-  await expect.poll(async () => (await overlayPixels(page)).cyan, { timeout: 10_000 }).toBeGreaterThan(100);
+  await expect.poll(async () => (await settledPixels(page)).cyan, { timeout: STATE_WAIT }).toBeGreaterThan(100);
   const points = await page.evaluate((n) => {
     const c = document.querySelector(".hoop canvas");
     const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
@@ -152,7 +178,7 @@ async function outlinePoints(page, n = 12) {
     return out;
   }, n);
   await toggle.click();
-  await expect.poll(async () => (await overlayPixels(page)).cyan, { timeout: 10_000 }).toBe(0);
+  await expect.poll(async () => (await settledPixels(page)).cyan, { timeout: STATE_WAIT }).toBe(0);
   return points;
 }
 
@@ -163,19 +189,19 @@ test("hovering a row outlines its shape on the canvas, and leaving it clears the
   await digitize(page);
 
   // Outlines are off by default, so a white outline can only be the hover.
-  const before = await overlayPixels(page);
+  const before = await settledPixels(page);
   expect(before.cyan).toBe(0);
 
   const row = page.locator(".dgp-layer:not(.dead):not(.unstitched)").first();
   await row.hover();
   await expect(row).toHaveClass(/\bdgp-layer-hover\b/);
-  await expect.poll(async () => (await overlayPixels(page)).white, { timeout: 10_000 })
+  await expect.poll(async () => (await settledPixels(page)).white, { timeout: STATE_WAIT })
     .toBeGreaterThan(before.white + 40);
 
   // Off the list entirely (the topbar), so no other row picks the hover up.
   await page.locator(".topbar").hover();
   await expect(row).not.toHaveClass(/\bdgp-layer-hover\b/);
-  await expect.poll(async () => (await overlayPixels(page)).white, { timeout: 10_000 })
+  await expect.poll(async () => (await settledPixels(page)).white, { timeout: STATE_WAIT })
     .toBeLessThanOrEqual(before.white + 5);
 });
 
@@ -185,11 +211,11 @@ test("clicking a row's name selects the shape on the canvas (amber), and the row
   await page.setViewportSize({ width: 1440, height: 900 });
   await digitize(page);
 
-  expect((await overlayPixels(page)).amber).toBe(0);
+  expect((await settledPixels(page)).amber).toBe(0);
   const row = page.locator(".dgp-layer:not(.dead):not(.unstitched)").first();
   await row.locator(".dgp-lname-btn").click();
   await expect(row).toHaveClass(/\bdgp-layer-sel\b/);
-  await expect.poll(async () => (await overlayPixels(page)).amber, { timeout: 10_000 }).toBeGreaterThan(40);
+  await expect.poll(async () => (await settledPixels(page)).amber, { timeout: STATE_WAIT }).toBeGreaterThan(40);
 });
 
 test("clicking a shape on the canvas marks its row in the list, and clicking away clears it", async ({ page }) => {
@@ -204,7 +230,7 @@ test("clicking a shape on the canvas marks its row in the list, and clicking awa
   let marked = false;
   for (const t of targets) {
     await page.mouse.click(t.x, t.y);
-    await expect.poll(async () => (await overlayPixels(page)).amber, { timeout: 10_000 }).toBeGreaterThan(40);
+    await expect.poll(async () => (await settledPixels(page)).amber, { timeout: STATE_WAIT }).toBeGreaterThan(40);
     if (await page.locator(".dgp-layer.dgp-layer-sel").count() === 1) { marked = true; break; }
     // A cap stretch: selected on the canvas, no row of its own. Clear it and
     // try the next point.

@@ -52,7 +52,11 @@ def _crossing_pairs(points) -> int:
 
 
 def _run(fixture, width_mm: float, **kw):
-    cfg = PipelineConfig(target_width_mm=width_mm, garment_id="left_chest",
+    # On the skeleton tier, explicitly: the Column lane (`lettering_columns`,
+    # ON by default since Kent's 2026-10-12 flip) cuts MARINE's letters from
+    # their outline and never reaches the junction stack this file prices.
+    kw.setdefault("lettering_columns", False)
+    cfg =PipelineConfig(target_width_mm=width_mm, garment_id="left_chest",
                          max_colors=6, **kw)
     gen = build_generation(str(fixture), cfg)
     result = finish_generation(gen.fork(), cfg)

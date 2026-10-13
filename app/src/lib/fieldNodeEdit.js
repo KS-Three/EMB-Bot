@@ -280,9 +280,13 @@ export function predictedFit(element, shapes, garment) {
   if (!b) return null;
   const wPx = (b.maxX - b.minX) || PX_PER_MM, hPx = (b.maxY - b.minY) || PX_PER_MM;
   const boxW = garment.widthIn * MM_PER_INCH, boxH = garment.heightIn * MM_PER_INCH;
-  const size = element && typeof element.sizeMm === "number" && isFinite(element.sizeMm) && element.sizeMm > 0
-    ? Math.min(Math.max(element.sizeMm, 1), boxW) : boxW;
-  return { mmPerPx: Math.min(size / wPx, boxH / hPx) };
+  const typed = element && typeof element.sizeMm === "number" && isFinite(element.sizeMm) && element.sizeMm > 0;
+  // Auto-fit sizes to the box capped to the largest hoop (garments.fitScale);
+  // a typed size clamps to the full placement box.
+  const eng = globalThis.EMB; // this module stays engine-free; absent -> the uncapped box
+  const auto = eng && eng.autoFitBoxMm ? eng.autoFitBoxMm(garment) : { w: boxW, h: boxH };
+  if (!typed) return { mmPerPx: Math.min(auto.w / wPx, auto.h / hPx) };
+  return { mmPerPx: Math.min(Math.min(Math.max(element.sizeMm, 1), boxW) / wPx, boxH / hPx) };
 }
 
 // The `widthPx` that makes a NEW column `mm` wide (COLUMN_DEFAULT_MM, ruling
