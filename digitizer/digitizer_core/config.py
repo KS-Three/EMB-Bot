@@ -2116,9 +2116,11 @@ class PipelineConfig:
     # ordinary fill ladder. Census (`tools/column_capture_census.py`, PR body):
     # the house-angle group, which has no ink link, tags colour patches and
     # ramp discs as lettering and the lane sews them as 20 mm split satin.
-    # Built OFF (Kent's call to flip, it changes default output on those
-    # designs); False is byte-identical. Tests: `tests/test_column_capture.py`.
-    lettering_columns_skip_blobs: bool = False
+    # **FLIPPED ON 2026-10-13, Kent's ruling** (relayed through the director;
+    # PR body: per-fixture OFF vs ON table). ON by Kent's ruling 2026-10-13.
+    # False is the pre-flip lane (the colour grid's patches and the fur
+    # ramp's discs sewn as split satin). Tests: `tests/test_column_capture.py`.
+    lettering_columns_skip_blobs: bool = True
     # Under `lettering_columns` (old taggers, `lettering_words` off), refuse
     # a HOUSE-GROUP-ONLY shape whose thread is further than the text
     # cluster's own ink link (CIEDE2000 20) from every text-cluster letter's
@@ -2128,9 +2130,13 @@ class PipelineConfig:
     # enthusiast's shield star (34.2) and nothing else on the labelled
     # fixtures; golden_tee's swashes are kept. It does NOT reach the phone
     # screenshot's status icons, which are sewn in the text's own grey.
-    # Built OFF (Kent's call to flip); False writes no key and reads none.
-    # Tests: `tests/test_column_capture.py`.
-    lettering_columns_ink_link: bool = False
+    # **FLIPPED ON 2026-10-13, Kent's ruling** (relayed through the director;
+    # PR body: per-fixture OFF vs ON table). ON by Kent's ruling 2026-10-13:
+    # enthusiast's star goes back to fill (+159 stitches). The phone
+    # screenshot's status icons are STILL captured (dE 0.0 / 0.0 / 9.1 from
+    # the text ink); a shape/OCR guard is queued separately. False writes no
+    # key and reads none. Tests: `tests/test_column_capture.py`.
+    lettering_columns_ink_link: bool = True
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
     # failure E). ON, `words.tag_words` finds each line of lettering once --
