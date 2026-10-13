@@ -13,6 +13,22 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-13 (third pass) — scope refresh after PRs #884–#891
+
+Kent's rulings relayed by the director 2026-10-13: the Column lane's `skip_blobs` and `ink_link` guards flip ON (option A); the hairline drop guard keeps the 2% share rule; WoK 42 waits on 4+ flat lettering logos he supplies (no `mfab_lc`/`toat_beanie`, no satin-density knob). "Waiting on Kent" 48 resolves; 49 (icon guard flip) and 50 (fold_cuts, not flip-ready) are new.
+
+Merged in the range, with the numbers as each PR body measured them:
+
+- **#884** Shapes row shows blend shades (`blended` flag on review shapes; strip of swatches when `machineBlocksForRows` returns more than one block). Studio 268 vitest tests in the two touched specs; no real screenshot captured.
+- **#885** `cfg.lettering_columns_ink_link` (OFF then): enthusiast taken 11 → 10, stitches 2,269 → 2,428, star 6.28 mm from the text, dE 34.2; golden_tee swashes kept (dE 0.0 to the text inks). screenshot's three non-letters 4.4–4.8 mm from text, dE 9.1 / 0.0 / 0.0.
+- **#886** WoK 42 kit: 6 logos qualify, 27 pairs (19 live, 4 identical, 4 repeat controls), seed 20261013, 9 arm-left / 10 base-left; manipulation check passed for `design_angle`, `split_7mm`, `lane_off`, failed for `fill_row_030` (identical to base on 4 of 6 logos), `per_stroke`, `exit_next_off`. 54 + 22 new/touched eye-pairs tests passed. Prepared, not run.
+- **#887** lowercase vs the stitch-angle rule, 120 mm: lowercase stations > 45° 1.4% (bowls 2.0%, arches 5.3%) vs capitals 0.0%; leg-lean 10.2% vs 4.8%; `fold_cuts` ON 1.4% → 0.4%, stitches 4,345 → 4,369, trims 10 → 10; at 80 mm 1.4% → 0.5%, 2,656 → 2,683. Corpus: 34 of about 3,000 lowercase crosses reach the lane.
+- **#888** `hairline_coverage_guard`: screenshot bare 5.62 / 41.88 / 6.94 mm² (OFF / ON / guard), stitches 8,254 / 6,866 / 7,907; drone 2.94 / 20.50 / 4.44; summit 1.50 / 9.38 / 1.81; gaulke 3.19 / 7.06 / 7.06. Cuts 0.3 mm² and 0.04 mm/mm. 13 new tests passed.
+- **#889** word tagger at 50 / 65 / 80 / 100 mm over 9 fixtures: glyphs missing from any word 58 / 44 / 19 / 15 of 190 each; at 50 mm `nested` 18, `no_region` 21, `height_ratio` 5. Best rescue rule +3 glyphs at 3–15 new false joins; no variant with zero false joins gains.
+- **#890** guards ON, per-fixture delta: enthusiast 2,269 → 2,428 stitches; `fur_ramp` 6 captures → 0, 4,059 → 7,142 stitches, trims 24 → 8; colour grid 12 → 0, 18,980 → 20,599, trims 12 → 24; every other fixture identical. The one other red, `test_flat_lane_byte_identical[photo/enthusiast_logo.png]`, is the documented platform-red golden.
+- **#891** `lettering_columns_icon_guard` (OFF): skeleton nodes captures 36–45 vs letters 0–13 (gap +23); screenshot lane-taken 33 → 30, stitches 8,228 → 8,295, trims 62 → 61. Seven candidate signals measured; only skeleton nodes separates the captures from the letters.
+- **#892** (open and armed when written) hairline ground gaps, no flag, `digitizer_core/` untouched: bare fabric identical with and without `hairline_over_ground` on all 10 logos; ground-gap residual 6.41 mm² after the guard, 6.29 rim, 0.12 a hole beneath (drone 0.06, golden_tee 0.06); gaulke `Se9512992` 3.81 mm² all rim; drone -51 stitches, -4 trims with it. 24 tests passed.
+
 **Last updated:** 2026-10-13 (second pass) — scope refresh after PRs #874, #876–#882
 
 Small print, hairline and forbid-gap work all landed behind OFF flags, plus the Column lane's first non-letter census. Four rulings from Kent (some relayed by the director) are now in "Waiting on Kent": `forbid_gap_mm` flips only after card v2 block G is sewn (44); the hairline drop guard keeps its 2% share rule, and the hairline flip waits on the sew-out (45); `small_print_floor` waits on block F (47); `lettering_columns_skip_blobs` is his flip (48). The hairline tier's long area-1 paragraph moved to `docs/scope/1-auto-digitizing-quality.md` to hold the budget.

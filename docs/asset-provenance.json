@@ -48,6 +48,12 @@
    "basis": "docs/hairline-prototype-2026-10-12.md"
   },
   {
+   "path": "digitizer/testdata/synthetic/lowercase_aileron.png",
+   "status": "synthetic",
+   "source": "Drawn by digitizer/tools/lowercase_angle.py --make-fixture: HAMBURGEFONTSIVYLP / hamburgefontsivylp set in Pillow's bundled Aileron font (CC0 glyphs); no client art",
+   "basis": "digitizer/tools/lowercase_angle.py; docs/renders/claude-lowercase-house-angle/"
+  },
+  {
    "path": "digitizer/testdata/bg_uncertain.png",
    "status": "synthetic",
    "source": "Generated synthetic logo (make_test_logo.py / classifier-lens table)",
@@ -824,6 +830,12 @@
    "source": "Rendered by digitizer/tools/hairline_photo_trial.py from digitizer/testdata/photo/owl_kent.jpg (Kent's own photograph, kent-owned fixture); crops of that photo and thread renders of it",
    "basis": "docs/hairline-photo-trial-2026-10-12.md",
    "review": true
+  },
+  {
+   "prefix": "docs/renders/claude-fold-cuts-junctions/",
+   "status": "derived-render",
+   "source": "Rendered by digitizer/tools/lowercase_angle.py --panes/--compose from digitizer/testdata/synthetic/lowercase_aileron.png (synthetic, Pillow's bundled CC0 Aileron glyphs); stitch-path zooms and thread renders, no client art",
+   "basis": "digitizer/tools/lowercase_angle.py; PR body of claude/fold-cuts-junctions"
   },
   {
    "prefix": "docs/renders/",

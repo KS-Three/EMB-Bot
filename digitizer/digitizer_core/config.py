@@ -2128,9 +2128,25 @@ class PipelineConfig:
     # ordinary fill ladder. Census (`tools/column_capture_census.py`, PR body):
     # the house-angle group, which has no ink link, tags colour patches and
     # ramp discs as lettering and the lane sews them as 20 mm split satin.
-    # Built OFF (Kent's call to flip, it changes default output on those
-    # designs); False is byte-identical. Tests: `tests/test_column_capture.py`.
-    lettering_columns_skip_blobs: bool = False
+    # **FLIPPED ON 2026-10-13, Kent's ruling** (relayed through the director;
+    # PR body: per-fixture OFF vs ON table). ON by Kent's ruling 2026-10-13.
+    # False is the pre-flip lane (the colour grid's patches and the fur
+    # ramp's discs sewn as split satin). Tests: `tests/test_column_capture.py`.
+    lettering_columns_skip_blobs: bool = True
+    # Under `lettering_columns`, cut a lowercase SHOULDER (2026-10-13,
+    # `outline_cut._fold_refine`). The junction rules leave a lone concave
+    # corner uncut when its far side is smooth ("the stroke is bending
+    # here"), so a u's bowl and its right stem, a b's or g's bowl and its
+    # stem, sew as ONE piece whose crosses fold 45-83 deg through the branch.
+    # Capitals meet at corners and are cut: at 80 and 120 mm a synthetic
+    # word reads 0.0% of capital station crosses past 45 deg off their own
+    # perpendicular against 1.4% lowercase, all of it at shoulders
+    # (`tools/lowercase_angle.py`). ON, a piece with FOLD_MIN interior
+    # crosses past FOLD_DEG takes the second look `_refine` already gives an
+    # over-long one, scored on folded crosses. Built OFF (Kent's call to
+    # flip; renders only, nothing sewn); False is byte-identical.
+    # Tests: `tests/test_lowercase_angle.py`.
+    lettering_columns_fold_cuts: bool = False
     # Under `lettering_columns` (old taggers, `lettering_words` off), refuse
     # a HOUSE-GROUP-ONLY shape whose thread is further than the text
     # cluster's own ink link (CIEDE2000 20) from every text-cluster letter's
@@ -2140,9 +2156,24 @@ class PipelineConfig:
     # enthusiast's shield star (34.2) and nothing else on the labelled
     # fixtures; golden_tee's swashes are kept. It does NOT reach the phone
     # screenshot's status icons, which are sewn in the text's own grey.
-    # Built OFF (Kent's call to flip); False writes no key and reads none.
+    # **FLIPPED ON 2026-10-13, Kent's ruling** (relayed through the director;
+    # PR body: per-fixture OFF vs ON table). ON by Kent's ruling 2026-10-13:
+    # enthusiast's star goes back to fill (+159 stitches). The phone
+    # screenshot's status icons are STILL captured (dE 0.0 / 0.0 / 9.1 from
+    # the text ink); the shape guard for them is `lettering_columns_icon_guard`
+    # below (built OFF). False writes no
+    # key and reads none. Tests: `tests/test_column_capture.py`.
+    lettering_columns_ink_link: bool = True
+    # Under `lettering_columns`, refuse a HOUSE-GROUP-ONLY shape whose medial
+    # axis is a tangle: `columns.is_drawing_fragment`, junctions plus free
+    # ends of the pruned skeleton >= `columns.ICON_GUARD_MIN_NODES` (24).
+    # Census (`tools/column_capture_census.py --signals`, PR body): the phone
+    # screenshot's three 4.5-6 mm captures read 36-45, which neither guard
+    # above reaches (not blobs; the text's own grey); every hand-labelled
+    # letter reads <= 13 and golden_tee's swashes <= 8. Composes with both.
+    # Built OFF (Kent's call to flip); False reads nothing.
     # Tests: `tests/test_column_capture.py`.
-    lettering_columns_ink_link: bool = False
+    lettering_columns_icon_guard: bool = False
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
     # failure E). ON, `words.tag_words` finds each line of lettering once --
