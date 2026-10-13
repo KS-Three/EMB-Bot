@@ -434,9 +434,11 @@ def _counter_safe_pieces(stations, poly: Polygon, min_cross_mm: float,
     - **A cross through the counter.** `outline_cut` can lay a column's
       crosses straight across a counter (the synthetic 0's and 8's at 4
       and 5 mm). Such a cross is cut at the counter and each stretch of
-      it -- the halves either side, and a bar between two counters (the
-      0's slash) -- sews in a column of its own (`subs`). The first build
-      kept only the two halves, and the render showed the 0's slash gone.
+      it that is still a cross -- the halves either side, a bar between
+      two counters -- sews in a column of its own (`subs`). The 0's
+      slash is only CLIPPED by its ring's crosses (0.23-0.40 mm of it,
+      under one laid width), so cutting them left it bare; it gets a
+      column of its own from `_bar_columns`.
 
     A split column's pieces are linked by the walk's own link rule, which
     already keeps out of counters."""
@@ -1139,6 +1141,9 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
             report["spans"] += 1
             if underlay_style != "none":
                 ul = _centre_underlay(mids)
+                if (ul is not None and counter_clear_mm > 0
+                        and not poly_link.covers(LineString(ul))):
+                    ul = None       # small print: a split piece's centre over a counter
                 if ul is not None:
                     runs.append(StitchRun(points=ul, kind=stitches.UNDERLAY, shape_id=shape_id))
             pts = _satin_points(sts, above, _comb_thresholds, _split_points)
