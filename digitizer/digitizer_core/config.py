@@ -2098,6 +2098,15 @@ class PipelineConfig:
     # fremont's and golden_tee's letters stand 0.06-0.07 mm inside shipped's
     # reach, which is unsewn. False is the pre-flip construction, byte for byte.
     lettering_columns: bool = True
+    # Under `lettering_columns`, refuse a tagged shape that is a SOLID BLOB
+    # rather than a stroke (`columns.is_solid_blob`: mean stroke width over
+    # the longer bbox side >= 0.40 and solidity >= 0.95), so it takes the
+    # ordinary fill ladder. Census (`tools/column_capture_census.py`, PR body):
+    # the house-angle group, which has no ink link, tags colour patches and
+    # ramp discs as lettering and the lane sews them as 20 mm split satin.
+    # Built OFF (Kent's call to flip, it changes default output on those
+    # designs); False is byte-identical. Tests: `tests/test_column_capture.py`.
+    lettering_columns_skip_blobs: bool = False
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
     # failure E). ON, `words.tag_words` finds each line of lettering once --

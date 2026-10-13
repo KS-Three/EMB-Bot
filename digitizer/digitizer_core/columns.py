@@ -147,8 +147,40 @@ def is_lettering(region, cfg=None) -> bool:
     which disagree on real logos (`tools/word_tagger_eval.py`)."""
     m = region.meta or {}
     if getattr(cfg, "lettering_words", False):
-        return bool(m.get("word_id"))
-    return bool(m.get("text_candidate") or m.get("lettering_group"))
+        tagged = bool(m.get("word_id"))
+    else:
+        tagged = bool(m.get("text_candidate") or m.get("lettering_group"))
+    if tagged and getattr(cfg, "lettering_columns_skip_blobs", False) \
+            and is_solid_blob(region.polygon):
+        return False
+    return tagged
+
+
+# `cfg.lettering_columns_skip_blobs`: a tagged shape that is a solid blob, not
+# a stroke, is not a letter. Both old taggers ask only for glyph-sized,
+# glyph-aspect, alike shapes; `tools/column_capture_census.py` found the
+# house-angle group (no ink link) admitting twelve colour patches
+# (`test_preflight`'s grid) and eight 14.4 mm ramp discs (`photo/
+# fur_ramp.png`), which the lane then sewed as 20 mm split satin. The two
+# numbers are read off the polygon: mean stroke width (2 x area / perimeter)
+# over the longer bbox side, and solidity (area / convex hull). Census, real
+# art at the labelled settings: every labelled letter reads <= 0.31 on the
+# first (Becker's bold caps, the maximum) and no solid one reaches 0.4; the
+# patches and discs read 0.49-0.50 at solidity 0.99. CANDIDATES, not cloth
+# constants: they are shape ratios, set from one corpus.
+BLOB_STROKE_OVER_H = 0.40
+BLOB_MIN_SOLIDITY = 0.95
+
+
+def is_solid_blob(poly) -> bool:
+    x0, y0, x1, y1 = poly.bounds
+    side = max(x1 - x0, y1 - y0)
+    if side <= 0 or poly.length <= 0:
+        return False
+    stroke = 2.0 * poly.area / poly.length
+    hull = poly.convex_hull.area
+    return (stroke / side >= BLOB_STROKE_OVER_H
+            and hull > 0 and poly.area / hull >= BLOB_MIN_SOLIDITY)
 
 
 # ----------------------------------------------------------------- geometry
