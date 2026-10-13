@@ -59,10 +59,11 @@ ARMS = {"off40": (False, False, 40), "on40": (True, False, 40),
 LABELS = {"off40": "OFF", "on40": "hairline ON (regions)",
           "lines40": "hairline ON + from_lines"}
 # Boxes as fractions of the SOURCE photo (x0, y0, x1, y1): the beak and the
-# bristle field round it (#876's `beak` box), and a 9 mm patch of bristles
-# left of the beak for the 40 px/mm zoom.
+# bristle field round it (#876's `beak` box), and a 9 mm patch of the
+# bristles above-left of the beak, where the line route sews its dark
+# strands, for the 40 px/mm zoom.
 BOXES = {"beak": ((0.36, 0.18, 0.68, 0.48), 16.0),
-         "zoom": ((0.43, 0.27, 0.50, 0.34), 40.0)}
+         "zoom": ((0.45, 0.24, 0.52, 0.31), 40.0)}
 MAX_JPEG_BYTES = 400_000
 PARTS = ROOT / "debug_out" / "hairline_lines_trial"
 OUT = ROOT.parent / "docs" / "renders" / "claude-hairline-fdog-lines"
@@ -127,8 +128,7 @@ def _src_box_mm(result, box) -> tuple[float, float, float, float]:
     return a[0], a[1], b[0], b[1]
 
 
-def render_parts(plan, result, arm: str, wt: int) -> None:
-    design = plan_to_design(plan, name=f"owl {arm}")
+def render_parts(design: dict, result, arm: str, wt: int) -> None:
     for name, (box, ppm) in BOXES.items():
         img = stitchviz.render_design(design, px_per_mm=ppm,
                                       thread_mm=machine.thread_profile(wt).width_mm)
@@ -156,6 +156,40 @@ def source_part(result, name: str) -> Path:
     return dest
 
 
+def strand_map(result, k: int = 3) -> None:
+    """Every line the detector found on the whole photo, on the photo:
+    sewn dark strands red, sewn light strands cyan, refused (no ridge)
+    yellow, under the loop floor green. Where the route's thread goes."""
+    from digitizer_core.stage6_hairline_lines import (_light, _SRC_MIN_CONTRAST,
+                                                      ridge_contrast)
+    from digitizer_core.stage6_detail import (fdog_response, fdog_threshold,
+                                              field_gray, lines_from_map)
+    from digitizer_core import stage6_hairline_lines as L
+    sp = result.source_pixels
+    cfg = arm_cfg("lines40")
+    prof = machine.thread_profile(cfg.thread_wt)
+    sampler, gray = field_gray(sp)
+    light = _light(sp)
+    big = cv2.resize(cv2.cvtColor(sp.rgb, cv2.COLOR_RGB2BGR), None, fx=k, fy=k,
+                     interpolation=cv2.INTER_NEAREST)
+    big = (0.55 * big + 0.45 * 255).astype(np.uint8)        # wash the photo out
+    side0 = 0.5 * prof.hairline_max_width_mm
+    for pol, g, col in (("dark", gray, (0, 0, 230)), ("light", 1.0 - gray, (230, 160, 0))):
+        H = fdog_response(g, sampler.field.tangent)
+        lmap = L._fill_slits(fdog_threshold(H, sampler.field.tangent, sampler.field.coherence))
+        for pts in lines_from_map(lmap, sp, sampler.scale, min_len_mm=0.0):
+            c = ridge_contrast(pts, light, sp, polarity=pol, core_mm=0.5 * prof.hairline_run_width_mm,
+                               side0_mm=side0, side1_mm=side0 + L._SIDE_REACH_PX / sp.px_per_mm,
+                               step_mm=L._PROFILE_STEP_WIDTHS * prof.width_mm)
+            length = sum(math.dist(a, b) for a, b in zip(pts, pts[1:]))
+            colour = ((0, 200, 230) if c < _SRC_MIN_CONTRAST
+                      else (0, 170, 0) if length < machine.RUN_MIN_LOOP_MM else col)
+            q = np.array([sp.to_px(x, y) for x, y in pts]) * k
+            cv2.polylines(big, [np.round(q).astype(np.int32)], False, colour, 2, cv2.LINE_AA)
+    OUT.mkdir(parents=True, exist_ok=True)
+    write_jpeg(OUT / "owl_line_census.jpg", big)
+
+
 def run_arm(arm: str) -> dict:
     cfg = arm_cfg(arm)
     result = run_stages(PHOTO, cfg)
@@ -173,7 +207,9 @@ def run_arm(arm: str) -> dict:
         z = np.load(npz)
         base = (z["grid"], tuple(z["origin"]), float(z["cell"]))
         row["bare_new_mm2"] = round(bare_new_mm2(bare, base), 2)
-    render_parts(plan, result, arm, ARMS[arm][2])
+    design = plan_to_design(plan, name=f"owl {arm}")
+    (PARTS / f"{arm}_design.json").write_text(json.dumps(design), encoding="utf-8")
+    render_parts(design, result, arm, ARMS[arm][2])
     for name in BOXES:
         source_part(result, name)
     (PARTS / f"{arm}.json").write_text(json.dumps(row, indent=1) + "\n", encoding="utf-8")
@@ -268,10 +304,22 @@ def main(argv=None) -> int:
     ap.add_argument("--arm", choices=list(ARMS))
     ap.add_argument("--drawn", action="store_true")
     ap.add_argument("--compose", action="store_true")
+    ap.add_argument("--render", action="store_true",
+                    help="re-render the parts from each arm's saved design (no re-plan)")
     args = ap.parse_args(argv)
     PARTS.mkdir(parents=True, exist_ok=True)
     if args.arm:
         print(args.arm, json.dumps(run_arm(args.arm)), flush=True)
+    if args.render:
+        result = run_stages(PHOTO, arm_cfg("off40"))
+        strand_map(result)
+        for name in BOXES:
+            source_part(result, name)
+        for arm in ARMS:
+            f = PARTS / f"{arm}_design.json"
+            if f.exists():
+                render_parts(json.loads(f.read_text(encoding="utf-8")), result, arm,
+                             ARMS[arm][2])
     if args.drawn:
         run_drawn()
     if args.compose:
