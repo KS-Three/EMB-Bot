@@ -171,13 +171,24 @@ _DARKER_L = 2.0
 _TOUCH_MM = 0.1
 
 # --- the drop guard (2026-10-12, docs/renders/claude-hairline-drop-guard/) ---
-# A shape whose hairline routing would DROP a strand (a path under
-# `RUN_MIN_LOOP_MM`) is not offered to the tier at all: it takes the ladder it
-# takes with `cfg.hairline` off, whole, in stage 5 and in stage 7. Not a
-# `cfg` flag: the tier is unflipped and has no users, so the guard is part of
-# what "hairline ON" means. The module constant exists so the logo bill can
-# price the tier without it (`tools/hairline_logo_bill.py --no-guard`).
+# A shape whose hairline routing would DROP a real share of its strands (paths
+# under `RUN_MIN_LOOP_MM`) is not offered to the tier at all: it takes the
+# ladder it takes with `cfg.hairline` off, whole, in stage 5 and in stage 7.
+# Not a `cfg` flag: the tier is unflipped and has no users, so the guard is
+# part of what "hairline ON" means. The module constant exists so the logo
+# bill can price the tier without it (`tools/hairline_logo_bill.py
+# --no-guard`).
 DROP_GUARD = True
+# "A real share": the dropped paths' length over the shape's strand length.
+# MEASURED, not set (docs/renders/claude-hairline-drop-guard/survey.md): every
+# hair network drops 0.3 to 0.5 % (two stubs of 51 paths: a crossing's
+# leftovers) and every shape whose strands are LETTER ARMS drops 5.7 % or
+# more, mostly 17 to 100 %. Guarding on ANY drop forfeited the whole hair
+# network (-5,485 stitches on hair_strands) to save two stubs. Between the
+# two populations nothing was measured except one 1.9 % case that drops
+# 0.12 mm; 2 % sits in that gap. A candidate: it is a plan-quality cut, not a
+# machine constant, but no sew-out has been asked about it (ROADMAP gate 1).
+DROP_GUARD_SHARE = 0.02
 
 
 @dataclass
@@ -565,9 +576,10 @@ def block_thread_wt(regions, cfg) -> dict[int, int]:
     return out
 
 
-def strand_drops(poly, shape_id: str, m: dict, cfg, thread_wt: int) -> int:
-    """How many of a measured shape's strands `hairline_runs` would DROP
-    (a path under `machine.RUN_MIN_LOOP_MM`, or one too short to stitch).
+def strand_drops(poly, shape_id: str, m: dict, cfg, thread_wt: int) -> tuple[int, float]:
+    """-> (strands `hairline_runs` would DROP, their share of the shape's
+    strand length): a path under `machine.RUN_MIN_LOOP_MM`, or one too short
+    to stitch.
 
     A dropped path is ink erased, not re-routed: the arms of a 1.6 mm "E"
     are paths under the floor and the letter reads as a "C"
@@ -582,8 +594,8 @@ def strand_drops(poly, shape_id: str, m: dict, cfg, thread_wt: int) -> int:
                                run_width_mm=prof.hairline_run_width_mm,
                                stitch_mm=cfg.hairline_stitch_mm, entry=None,
                                trim_at_mm=machine.TRIM_AT_MM, m=m)
-    return rep["dropped"]
-
+    total = rep["dropped_mm"] + rep["sewn_mm"]
+    return rep["dropped"], (rep["dropped_mm"] / total if total > 0 else 0.0)
 
 def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "HairlineSet":
     """The shapes the hairline tier will sew -> `HairlineSet` ({shape_id:
@@ -610,10 +622,13 @@ def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "Hairline
        elsewhere (blonde highlights over brown hair, when blonde is also a
        patch) is read as ground; nothing here can tell it from a sliver.
     3. **The drop guard** (`strand_drops`, `DROP_GUARD`). A shape the first
-       two rules would admit but whose strands the walk would DROP (a path
-       under `RUN_MIN_LOOP_MM`: the arms of a small capital E) is handed back
+       two rules would admit but whose walk would DROP more than
+       `DROP_GUARD_SHARE` of its strand length (paths under
+       `RUN_MIN_LOOP_MM`: the arms of a small capital E) is handed back
        whole, to the ladder it takes with the tier off — in stage 5 and
-       stage 7 alike, because both read this set. Recorded in `.guarded`."""
+       stage 7 alike, because both read this set. Recorded in `.guarded`.
+       A hair network's two stubs of fifty paths are under the share and
+       stay."""
     chart = chart_for(cfg)
     bw = block_thread_wt(regions, cfg)
     out = HairlineSet()
@@ -656,9 +671,9 @@ def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "Hairline
         # what the guard does. It only hands back a shape that would have
         # been sewn.
         if DROP_GUARD:
-            n_drop = strand_drops(r.polygon, r.shape_id, m, cfg,
-                                  bw.get(r.thread_index, cfg.thread_wt))
-            if n_drop:
+            n_drop, share = strand_drops(r.polygon, r.shape_id, m, cfg,
+                                         bw.get(r.thread_index, cfg.thread_wt))
+            if n_drop and share > DROP_GUARD_SHARE:
                 out.guarded[r.shape_id] = n_drop
                 continue
         out[r.shape_id] = m
@@ -1063,7 +1078,8 @@ def hairline_runs(poly, shape_id: str, *, max_width_mm: float, run_width_mm: flo
     skeleton's own thresholds (spurs, bridges, heading reach) read the TRACED
     width, since they are properties of the raster being walked."""
     report = {"empty": True, "jumps": 0, "too_thin": False, "admitted": False,
-              "width_mm": None, "strands": 0, "dropped": 0, "edges": 0}
+              "width_mm": None, "strands": 0, "dropped": 0, "edges": 0,
+              "dropped_mm": 0.0, "sewn_mm": 0.0}
     if m is None:
         m = measure(poly, max_width_mm, ink=ink)
     if m is None:
@@ -1087,11 +1103,14 @@ def hairline_runs(poly, shape_id: str, *, max_width_mm: float, run_width_mm: flo
     for path in paths:
         if _arc(path) < machine.RUN_MIN_LOOP_MM:
             report["dropped"] += 1
+            report["dropped_mm"] += _arc(path)
             continue
         pts = stitch_path(path, stitch_mm, tol)
         if len(pts) < 2:
             report["dropped"] += 1
+            report["dropped_mm"] += _arc(path)
             continue
+        report["sewn_mm"] += _arc(path)
         jump = trim = False
         if runs:
             d = math.dist(runs[-1].points[-1], pts[0])

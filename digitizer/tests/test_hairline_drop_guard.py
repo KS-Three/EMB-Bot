@@ -82,6 +82,21 @@ def test_a_shape_that_drops_nothing_keeps_the_tier():
     assert "Sline" in got and not got.guarded
 
 
+def test_a_stub_off_a_long_strand_does_not_cost_the_shape_its_tier():
+    """The hair case. A 120 mm strand with a 1.5 mm stub drops the stub (a path
+    under the loop floor) and 1.2 % of its length: the guard leaves the tier
+    on, or every hair network would go to the ladder for its crossings'
+    leftovers (hair_strands: 2 stubs of 51 paths, -5,485 stitches forfeited
+    when the guard fired on ANY drop)."""
+    poly = unary_union([LineString([(0, 0), (120, 0)]).buffer(0.15),
+                        LineString([(60, 0), (60, 1.5)]).buffer(0.15)])
+    n, share = s6h.strand_drops(poly, "Sstub", measure(poly, P40.hairline_max_width_mm),
+                                PipelineConfig(hairline=True), 40)
+    assert n == 1 and 0.0 < share < s6h.DROP_GUARD_SHARE
+    got = hairline_candidates([_region("Sstub", poly)], PipelineConfig(hairline=True))
+    assert "Sstub" in got and not got.guarded
+
+
 def test_a_large_e_loses_no_strand_so_it_is_not_guarded():
     got = hairline_candidates([_region("Sbig", _small_e(h=6.0, w=3.6))],
                               PipelineConfig(hairline=True))
