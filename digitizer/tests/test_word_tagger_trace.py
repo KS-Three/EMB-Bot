@@ -114,3 +114,51 @@ def test_expected_lines_reads_labels_when_present_and_words_otherwise():
     assert source == "labels" and lines == truth
     lines, source = T.expected_lines("golden_tee", _text("a", "HELT"), threads.CHART)
     assert source == "reference" and list(lines.values()) == [["a0", "a1", "a2", "a3"]]
+
+
+# --- the census -------------------------------------------------------------
+
+def test_default_rules_are_the_shipped_constants():
+    r = T.base_rules()
+    assert (r.aspect_max, r.height_ratio, r.prox_mult, r.min_members) == (
+        WORD_ASPECT_MAX, LETTER_HEIGHT_RATIO, PROXIMITY_HEIGHT_MULT, 3)
+
+
+def test_a_relaxed_reach_joins_the_far_glyph_and_the_shipped_rules_do_not():
+    regions = _text("a", "HELT") + _text("z", "F", x0=60.0)
+    base = T.trace(regions, threads.CHART)
+    wide = T.trace(regions, threads.CHART, rules=T.replace(T.base_rules(), prox_mult=30.0))
+    assert base.words == [["a0", "a1", "a2", "a3"]]
+    assert wide.words == [["a0", "a1", "a2", "a3", "z0"]]
+
+
+def test_variant_parity_when_nothing_is_overridden():
+    regions = _text("t", "HELTFU") + _rope("r", 12, -4, 15) + _text("x", "HE", x0=40.0)
+    a = T.trace(regions, threads.CHART)
+    b = T.trace(regions, threads.CHART, rules=T.base_rules(), memo={})
+    assert a.words == b.words and a.rejected.keys() == b.rejected.keys()
+
+
+def test_score_words_counts_gained_letters_and_new_strays_and_crossline_words():
+    line_of = {"a": "ONE", "b": "ONE", "c": "ONE", "d": "TWO", "e": "TWO", "f": "TWO"}
+    base = [["a", "b", "c"]]
+    # the variant adds the second line as its own word, and a stray joined to the first
+    var = [["a", "b", "c", "x"], ["d", "e", "f"]]
+    s = T.score_words(var, base, line_of, set(), {"ONE": 3, "TWO": 3})
+    assert s["gained"] == ["d", "e", "f"] and s["lost"] == []
+    assert s["stray"] == ["x"] and s["crossline"] == 0 and s["complete"] == 2
+    # a word spanning two expected lines is a cross-line join
+    s = T.score_words([["a", "b", "c", "d", "e", "f"]], base, line_of, set(), {"ONE": 3, "TWO": 3})
+    assert s["crossline"] == 1
+    # an ignored region is neither a stray nor a letter
+    s = T.score_words([["a", "b", "c", "ig"]], base, line_of, {"ig"}, {"ONE": 3})
+    assert s["stray"] == []
+
+
+def test_census_table_flags_a_variant_with_a_false_join():
+    res = [{"fixture": "f", "sizes": {"50.0": {
+        "base_score": {"complete": 0},
+        "variants": {"good": {"gained": ["a"], "lost": [], "stray": [], "crossline": 0, "complete": 1},
+                     "bad": {"gained": ["a"], "lost": [], "stray": ["x"], "crossline": 0, "complete": 1}}}}}]
+    rows = T.census_table(res).splitlines()
+    assert rows[2].endswith("| yes |") and rows[3].endswith("| NO |")
