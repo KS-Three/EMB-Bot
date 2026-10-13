@@ -206,6 +206,33 @@ def fdog_line_map(gray: np.ndarray, tangent: np.ndarray,
     `DETAIL_MIN_COHERENCE` (see that constant — the noise/structure
     separation is measured, not assumed). Deterministic, no RNG.
     """
+    return fdog_threshold(fdog_response(gray, tangent), tangent, coherence)
+
+
+def fdog_threshold(H: np.ndarray, tangent: np.ndarray,
+                   coherence: np.ndarray | None = None) -> np.ndarray:
+    """Step 4 of `fdog_line_map` on a response `fdog_response` computed:
+    the paper's binarization at the calibrated operating point, the
+    no-flow rule and the coherence gate. Split out (2026-10-13) so
+    `stage6_hairline_lines` can read the same response for its strength
+    without running the filter twice; `fdog_line_map` is this composed with
+    `fdog_response`, unchanged."""
+    tx = tangent[..., 0].astype(np.float32)
+    ty = tangent[..., 1].astype(np.float32)
+    Hs = FDOG_RESPONSE_GAIN * H.astype(np.float64)
+    line = (Hs < 0.0) & ((1.0 + np.tanh(Hs)) < FDOG_TAU)
+    # A pixel with no flow direction at all never carries a line: its "cross
+    # flow" sampled the same point repeatedly and its response is not a
+    # measurement of anything.
+    line &= ~((np.abs(tx) < _EPS) & (np.abs(ty) < _EPS))
+    if coherence is not None:
+        line &= coherence >= DETAIL_MIN_COHERENCE
+    return line
+
+
+def fdog_response(gray: np.ndarray, tangent: np.ndarray) -> np.ndarray:
+    """Steps 2-3 of `fdog_line_map`: the accumulated FDoG response H
+    (float32, (H, W)); negative where a dark line crosses the flow."""
     h, w = gray.shape
     g32 = gray.astype(np.float32)
     tx = tangent[..., 0].astype(np.float32)
@@ -251,17 +278,7 @@ def fdog_line_map(gray: np.ndarray, tangent: np.ndarray,
             dx, dy = stx, sty
             wgt = np.float32(_gauss(np.array([float(s)]), FDOG_SIGMA_M)[0])
             H += wgt * _remap(F, px, py)
-
-    # Step 4: the paper's binarization, at the calibrated operating point.
-    Hs = FDOG_RESPONSE_GAIN * H.astype(np.float64)
-    line = (Hs < 0.0) & ((1.0 + np.tanh(Hs)) < FDOG_TAU)
-    # A pixel with no flow direction at all never carries a line: its "cross
-    # flow" sampled the same point repeatedly and its response is not a
-    # measurement of anything.
-    line &= ~((np.abs(tx) < _EPS) & (np.abs(ty) < _EPS))
-    if coherence is not None:
-        line &= coherence >= DETAIL_MIN_COHERENCE
-    return line
+    return H
 
 
 # --- Skeleton tracing ---------------------------------------------------------
@@ -392,6 +409,15 @@ def extract_detail_lines(sp: SourcePixels) -> list[list[tuple[float, float]]]:
     `_mask_to_subject`. Without a mask (every job that did not opt into the
     rembg cutout) this reads the whole raster exactly as it always has.
     """
+    sampler, gray = field_gray(sp)
+    line_map = fdog_line_map(gray, sampler.field.tangent,
+                             sampler.field.coherence)
+    return lines_from_map(line_map, sp, sampler.scale)
+
+
+def field_gray(sp: SourcePixels):
+    """-> (the cached field sampler, the unit-range gray raster at the
+    field's working resolution) — what `extract_detail_lines` filters."""
     sampler = _field_for(sp)
     h, w = sp.rgb.shape[:2]
     if sampler.scale < 1.0:
@@ -401,9 +427,14 @@ def extract_detail_lines(sp: SourcePixels) -> list[list[tuple[float, float]]]:
     else:
         small = sp.rgb
     gray = cv2.cvtColor(small, cv2.COLOR_RGB2GRAY).astype(np.float64) / 255.0
+    return sampler, gray
 
-    line_map = fdog_line_map(gray, sampler.field.tangent,
-                             sampler.field.coherence)
+
+def lines_from_map(line_map: np.ndarray, sp: SourcePixels, scale: float,
+                   min_len_mm: float = DETAIL_MIN_LINE_MM) -> list[list[tuple[float, float]]]:
+    """A field-resolution line map -> mm polylines: confined to the subject
+    (`_mask_to_subject`), thinned, traced, simplified at
+    `DETAIL_SIMPLIFY_MM`, and kept when at least `min_len_mm` long."""
     line_map = _mask_to_subject(line_map, sp)
     if not line_map.any():
         return []
@@ -411,11 +442,11 @@ def extract_detail_lines(sp: SourcePixels) -> list[list[tuple[float, float]]]:
 
     lines: list[list[tuple[float, float]]] = []
     for path in _trace_polylines(skel):
-        mm = [sp.to_mm(x / sampler.scale, y / sampler.scale) for x, y in path]
+        mm = [sp.to_mm(x / scale, y / scale) for x, y in path]
         ls = LineString(mm).simplify(DETAIL_SIMPLIFY_MM, preserve_topology=False)
         if ls.is_empty or ls.geom_type != "LineString":
             continue
-        if ls.length < DETAIL_MIN_LINE_MM:
+        if ls.length < min_len_mm:
             continue
         lines.append([(float(x), float(y)) for x, y in ls.coords])
     return lines

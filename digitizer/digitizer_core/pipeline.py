@@ -71,7 +71,8 @@ from .textcluster import (detect_text_clusters, ocr_suggest_text,
 from .design_ramp import DesignRamp, fit_design_ramp
 from .stage5_overlap import resolve_overlaps
 from .stage6_blend import SourcePixels, legacy_design_ramp_angle
-from .stage6_hairline import InkSource, hairline_candidates
+from .stage6_hairline import HairlineSet, InkSource, hairline_candidates
+from .stage6_hairline_lines import applies as hairline_lines_apply
 from .config import is_photographic
 from .stage7_sequence import (PHOTO_CLASSES, borders_last_layers,
                               depth_sort_layers, sequence)
@@ -1271,6 +1272,9 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     want_tonal = want_tonal or any(
         str((ov or {}).get("tier", "")).lower() in ("sketch", "streamline")
         for ov in cfg.shape_overrides.values())
+    # The hairline line route reads its lines from the raster too
+    # (`stage6_hairline_lines`; only on a raster lane, flags off -> False).
+    want_tonal = want_tonal or hairline_lines_apply(cfg, gen.classification_class)
     if gen.classification_class == "gradient" or want_tonal:
         source_pixels = SourcePixels(rgb=p.rgb, px_per_mm=p.px_per_mm,
                                      origin_px=(art_cx, art_cy),
@@ -1584,8 +1588,12 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # The hairline tier's shapes (`cfg.hairline`, default OFF), read ONCE so
     # stage 5 (the ground under them) and stage 7 (the tier) agree on which
     # shape is a strand. Off: None, and neither stage looks.
-    hairline = (hairline_candidates(stitched_regions, cfg,
-                                    ink=getattr(result, "ink_source", None))
+    # On the line route (`cfg.hairline_from_lines` on a raster lane,
+    # `stage6_hairline_lines`) no shape is a strand: the set is empty and the
+    # strands come from FDoG lines in stage 7, over the untouched fills.
+    hairline = ((HairlineSet() if hairline_lines_apply(cfg, result.design_class)
+                 else hairline_candidates(stitched_regions, cfg,
+                                          ink=getattr(result, "ink_source", None)))
                 if cfg.hairline else None)
     planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
                                                  design_class=result.design_class,
