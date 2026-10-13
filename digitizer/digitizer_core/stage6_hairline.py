@@ -907,19 +907,15 @@ def stitch_path(pts, stitch_mm: float, tol_mm: float,
 REST_KEY = "_hairline_rest"
 
 
-def rest_planned(p, m: dict):
-    """The parts of a planned shape the per-strand gate left to the ladder:
-    one copy of `p` per connected piece of `m["rest"]` (the thick branches),
-    its artwork polygon the piece and its sewing polygon cut to match; []
-    when every branch is a hairline or the thick part came to nothing
-    sewable. One piece per copy because the ladder takes one Polygon.
-
-    The sewing polygon is `p.polygon` (underlap and pull compensation
-    included) clipped to the piece grown by the mean outward growth stage 5
-    gave this shape, so the thick branches keep their compensation and the
-    hairline ribbons' slot is not sewn twice. Each copy carries `REST_KEY`
-    in its region's meta so stage 7 does not offer it to the tier again."""
-    import dataclasses
+def rest_sew_parts(p, m: dict):
+    """-> [(piece, [sewing parts, largest first])]: each connected piece of
+    `m["rest"]` (the thick branches) with the connected parts of `p.polygon`
+    (underlap and pull compensation included) clipped to it grown by the mean
+    outward growth stage 5 gave this shape. A clip across a junction, or
+    stage 5's clip of the shape by an earlier colour, can leave a piece's
+    sewing polygon in several parts; `rest_planned` decides which to sew and
+    `tools/hairline_rest_pieces` counts what it leaves. A piece with no
+    sewable part is omitted."""
     rest = m.get("rest")
     if rest is None or rest.is_empty:
         return []
@@ -933,15 +929,69 @@ def rest_planned(p, m: dict):
         sew = [g for g in _parts(sew) if g.geom_type == "Polygon" and g.area > 1e-6]
         if not sew:
             continue
-        # The sewing polygon of this piece: its largest connected part (a
-        # clip across a junction can leave a stray fleck beside it).
-        sew = max(sew, key=lambda g: g.area)
-        region = dataclasses.replace(p.region, polygon=piece, area_mm2=float(piece.area),
-                                     meta={**p.region.meta, REST_KEY: True})
-        vis = None if p.visible is None else p.visible.intersection(sew)
-        out.append(dataclasses.replace(p, region=region, polygon=sew, visible=vis))
+        out.append((piece, sorted(sew, key=lambda g: -g.area)))
     return out
 
+
+def rest_planned(p, m: dict, floor: float | None = None, dropped: list | None = None):
+    """The parts of a planned shape the per-strand gate left to the ladder:
+    one copy of `p` per connected piece of `m["rest"]` (the thick branches),
+    its artwork polygon the piece and its sewing polygon cut to match; []
+    when every branch is a hairline or the thick part came to nothing
+    sewable. One piece per copy because the ladder takes one Polygon.
+
+    The sewing polygon is `p.polygon` (underlap and pull compensation
+    included) clipped to the piece grown by the mean outward growth stage 5
+    gave this shape, so the thick branches keep their compensation and the
+    hairline ribbons' slot is not sewn twice. Each copy carries `REST_KEY`
+    in its region's meta so stage 7 does not offer it to the tier again.
+
+    A piece's sewing polygon can come in several parts (`rest_sew_parts`) --
+    stage 5's clip of the shape by an earlier colour can cut a rest piece in
+    two while a hairline branch still holds the shape together round the
+    outside. The hairline twin of defect 61: this used to sew the largest
+    part and drop the rest with their ink, unreported. Now it is stage 5's
+    `_split_clip` over the parts: the part carrying the most artwork is the
+    piece's main copy (the single part of every piece measured, so those
+    copies are what they always were); every other part whose artwork clears
+    `clip_piece_floor_mm2` is a copy of its own, its artwork the share of the
+    piece inside it (the main copy gives that share up, so a tier that sews
+    the ARTWORK does not sew it twice); parts under the floor are dropped and
+    each one's artwork appended to `dropped` as `(shape_id, mm2)`, the
+    caller's `CLIP_DROPPED_SLIVER` count. A part with no artwork in it is
+    underlap beside the piece and drops uncounted. Rides `cfg.hairline`: this
+    function only runs under it."""
+    import dataclasses
+    from shapely.geometry import MultiPolygon
+    from .stage5_overlap import _largest_polygon, _split_clip, clip_piece_floor_mm2
+    if floor is None:
+        from .config import PipelineConfig
+        floor = clip_piece_floor_mm2(PipelineConfig())
+    out = []
+    for piece, sew in rest_sew_parts(p, m):
+        if len(sew) == 1:
+            main, kept, lost = sew[0], [], []
+        else:
+            main, kept, lost = _split_clip(MultiPolygon(sew), piece, floor)
+        if dropped is not None:
+            dropped.extend((p.shape_id, a) for a in lost)
+        shares = []
+        for g in kept:
+            share = _largest_polygon(piece.intersection(g))
+            if share is not None:
+                shares.append((g, share))
+        art = piece
+        if shares:
+            left = _largest_polygon(piece.difference(unary_union([s for _g, s in shares])))
+            art = left if left is not None else piece
+        copies = [(main, art)] + [(g, s) for g, s in shares]
+        for sew_poly, art_poly in copies:
+            region = dataclasses.replace(p.region, polygon=art_poly,
+                                         area_mm2=float(art_poly.area),
+                                         meta={**p.region.meta, REST_KEY: True})
+            vis = None if p.visible is None else p.visible.intersection(sew_poly)
+            out.append(dataclasses.replace(p, region=region, polygon=sew_poly, visible=vis))
+    return out
 
 def hairline_runs(poly, shape_id: str, *, max_width_mm: float, run_width_mm: float,
                   stitch_mm: float, entry: tuple[float, float] | None,

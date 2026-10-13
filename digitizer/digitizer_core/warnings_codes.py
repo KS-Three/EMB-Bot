@@ -201,6 +201,9 @@ SAME_THREAD_SHAPES_MERGED = "SAME_THREAD_SHAPES_MERGED"  # pull comp would fuse 
 # (Kent's 2026-10-02 no-warnings ruling). extra: {"count": int, "ids":
 # list[str], "total_mm2": float, "largest_mm2": float, "floor_mm2": float,
 # "pieces": [{"id": str, "art_mm2": float}]}
+# Also raised by stage 7 under `cfg.hairline`, with the same extra plus
+# "source": "hairline_rest": the parts of a hairline shape's thick remainder
+# (`stage6_hairline.rest_planned`) that stage 5's clip cut off below the floor.
 CLIP_DROPPED_SLIVER = "CLIP_DROPPED_SLIVER"
 
 # Stage 6 (stitch planning)
