@@ -871,6 +871,28 @@ def _walk(edges, entry, reach_mm: float = _HEADING_MM):
     return paths
 
 
+def _nearest_first(paths, entry):
+    """`paths` re-ordered nearest-neighbour from `entry`, each turned round
+    when its far end is the nearer one. The stitches of a path are the same
+    either way; only where the needle comes in changes."""
+    left = list(paths)
+    out = []
+    cur = entry
+    while left:
+        best = None
+        for i, p in enumerate(left):
+            for flip in (0, 1):
+                end = p[-1] if flip else p[0]
+                key = (round(math.dist(cur, end), 6), i, flip)
+                if best is None or key < best[0]:
+                    best = (key, i, flip)
+        _k, i, flip = best
+        p = left.pop(i)
+        p = list(reversed(p)) if flip else p
+        out.append(p)
+        cur = p[-1]
+    return out
+
 def _cum(pts):
     out = [0.0]
     for a, b in zip(pts, pts[1:]):
@@ -1096,8 +1118,13 @@ def hairline_runs(poly, shape_id: str, *, max_width_mm: float, run_width_mm: flo
     report["thick_edges"] = len(m["thick_edges"])
     if not edges:
         return [], report
-    paths = _walk(edges, entry,
+    # The partition into paths never reads the entry point (the drop guard
+    # judges it before the entry is known); the entry only picks which path
+    # is sewn first and which way round, then nearest-neighbour onward.
+    paths = _walk(edges, None,
                   reach_mm=max(_HEADING_MM, _HEADING_WIDTHS * traced))
+    if entry is not None:
+        paths = _nearest_first(paths, entry)
     tol = _CURL_TOL_WIDTHS * run_width_mm
     runs: list[StitchRun] = []
     for path in paths:
