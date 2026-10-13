@@ -60,8 +60,18 @@ ARMS = {
     "floor_stem_92": (PRO_WIDTH_MM, {**FLOOR, **STEM}, "small_print_floor + small_stem ON, 92.5 mm"),
     "stem_81": (81.0, dict(STEM), "small_stem ON alone (control)"),
     "main_92": (PRO_WIDTH_MM, {}, "main at 92.5 mm (control)"),
+    # The flags that DO move a sub-2.25 mm^2 letter's tier (the floor and the
+    # stem rule do not, see the table): measured as the priced alternatives,
+    # at their documented values, nothing flipped.
+    "bean_81": (81.0, {"bean_letter_max_stroke_mm": 1.0},
+                "bean_letter_max_stroke_mm 1.0 (the value its comment names)"),
+    "wordtier_81": (81.0, {"lettering_words": True, "lettering_word_tiers": True},
+                    "lettering_words + lettering_word_tiers"),
+    "wordtier_floor_81": (81.0, {"lettering_words": True, "lettering_word_tiers": True,
+                                 **FLOOR},
+                          "lettering_words + lettering_word_tiers + small_print_floor"),
 }
-# The four arms Kent named, in his order; the controls follow.
+# The four arms Kent named, in his order; the controls and alternatives follow.
 KENT_ARMS = ["main_81", "floor_81", "floor_stem_81", "floor_stem_92"]
 ARM_ORDER = list(ARMS)
 
@@ -579,12 +589,66 @@ def sweep_sheet(out: Path, renders: Path, sweep: list, ppm: int = SHEET_PPM) -> 
     return path
 
 
+def signature(tab: dict) -> dict:
+    """The part of an arm's table a test can pin across platforms: per box,
+    the tier string (`S` satin, `R` run, `F` fill, `*` = the Column lane took
+    it), each counter's status, stitches and trims. No measured width: those
+    are numbers to read, not to pin."""
+    out = {}
+    for b, v in tab["boxes"].items():
+        out[b] = {
+            "n": v["n_glyphs"],
+            "tiers": " ".join({"satin": "S", "run": "R", "fill": "F"}.get(g["tier"], "?")
+                              + ("*" if g["column_lane"] else "") for g in v["glyphs"]),
+            "counters": [c["status"] for g in v["glyphs"] for c in g["counters"]],
+            "stitches": v["stitches"], "trims": v["trims"],
+        }
+    return {"arm": tab["arm"], "width_mm": tab["width_mm"], "overrides": tab["overrides"],
+            "stitches": tab["stitches"], "trims": tab["trims"], "boxes": out}
+
+
+LABELS = {"the": list("THE"), "tagline": list("EAT|STAY|PLAY"), "est": list("EST")}
+
+
+def label_of(box: str, i: int, n: int) -> str:
+    ls = LABELS[box]
+    return ls[i] if len(ls) == n else f"#{i}"
+
+
+def markdown(tabs: dict, boxes=BOXES) -> str:
+    """The per-glyph table, one block per box and arm, as markdown."""
+    lines = []
+    for b in boxes:
+        lines.append(f"### {b.upper() if b != 'tagline' else 'EAT | STAY | PLAY'}\n")
+        for name, tab in tabs.items():
+            v = tab["boxes"][b]
+            lines.append(f"**{name}** ({tab['label']}, {tab['size_mm'][0]} x {tab['size_mm'][1]} mm): "
+                         f"{v['stitches']} stitches, {v['trims']} trims in the box, "
+                         f"{v['ink_bare_mm2']}/{v['ink_mm2']} mm2 ink bare\n")
+            lines.append("| glyph | tier | lane | src stroke mm | sewn w mm (narrowest) | x src | "
+                         "needle offset mm | counters (bare share) | stitches | trims |")
+            lines.append("|---|---|---|---|---|---|---|---|---|---|")
+            for i, g in enumerate(v["glyphs"]):
+                cs = ", ".join(f"{c['status']} {c['bare_share']:.2f}" for c in g["counters"]) or "-"
+                lines.append(
+                    f"| {label_of(b, i, v['n_glyphs'])} | {g['tier']} | {'yes' if g['column_lane'] else 'no'} "
+                    f"| {g['src_stroke_mm']:.2f} | {g['sewn_w_mm']:.2f} ({g['sewn_w_min_mm']:.2f}) "
+                    f"| {g['width_ratio']} | {g['needle_offset_p50_mm']:+.2f} | {cs} "
+                    f"| {g['stitches']} | {g['trims']} |")
+            lines.append("")
+    return "\n".join(lines)
+
+
 def main(argv=None) -> int:
     from tools._console import utf8_console
     utf8_console()
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--arm", choices=ARM_ORDER)
     ap.add_argument("--analyze", action="store_true")
+    ap.add_argument("--markdown", nargs="*", metavar="ARM",
+                    help="print the per-glyph table of these saved arms (default: the four Kent named)")
+    ap.add_argument("--signatures", action="store_true",
+                    help="write <out>/signatures.json from the saved tables")
     ap.add_argument("--sheets", action="store_true")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--renders", type=Path)
@@ -606,6 +670,14 @@ def main(argv=None) -> int:
             (a.out / f"{name}_table.json").write_text(json.dumps(res, indent=1))
             print(f"{name}: analysed", flush=True)
             del run
+    if a.markdown is not None:
+        names = a.markdown or KENT_ARMS
+        print(markdown({n: json.loads((a.out / f"{n}_table.json").read_text()) for n in names}))
+    if a.signatures:
+        sigs = {n: signature(json.loads((a.out / f"{n}_table.json").read_text()))
+                for n in ARM_ORDER if (a.out / f"{n}_table.json").exists()}
+        (a.out / "signatures.json").write_text(json.dumps(sigs, indent=1))
+        print(f"signatures.json: {len(sigs)} arms")
     if a.sheets:
         renders = a.renders or a.out / "renders"
         sw = json.loads((a.out / "main_81_table.json").read_text()).get("pull_sweep", [])
