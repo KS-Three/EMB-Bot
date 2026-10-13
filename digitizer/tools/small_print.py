@@ -71,6 +71,18 @@ FIXTURES = {
     "enthusiast_sub": ("photo/enthusiast_logo.png", "smallest", 200.0),
     "golden_tee": ("photo/logo_golden_tee.jpg", "second", 100.0),
     "fremont": ("photo/logo_hotel_fremont.webp", "smallest", 200.0),
+    "fremont_tagline": ("photo/logo_hotel_fremont.webp", "largest", 80.0),
+}
+
+# name -> source-pixel crop (x0, y0, x1, y1), the image composited on white
+# first. `fremont_tagline` is the EAT | STAY | PLAY band alone: the whole
+# badge's 200 mm reference trace did not finish inside a lane's time box
+# (#873), and at 3 to 5 mm caps the whole badge is 140 to 230 mm wide. The
+# crop traces on its own (one gold colour and two black bars, no rope), so
+# its classification is the crop's, not the badge's -- say so beside any
+# number it gives.
+CROPS = {
+    "fremont_tagline": (850, 925, 1695, 1035),
 }
 
 
@@ -86,7 +98,16 @@ def synthetic_text() -> np.ndarray:
 
 def load(name: str):
     path = FIXTURES[name][0]
-    return synthetic_text() if path is None else str(TESTDATA / path)
+    if path is None:
+        return synthetic_text()
+    if name in CROPS:
+        from PIL import Image
+        im = Image.open(TESTDATA / path).convert("RGBA")
+        bg = Image.new("RGBA", im.size, (255, 255, 255, 255))
+        bg.alpha_composite(im)
+        rgb = np.asarray(bg.convert("RGB").crop(CROPS[name]))
+        return np.ascontiguousarray(rgb[:, :, ::-1])
+    return str(TESTDATA / path)
 
 
 def parse_flags(items) -> dict:
