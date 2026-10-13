@@ -54,7 +54,8 @@ DOC_READERS = {"scope_budget", "memory_budget", "doc_claims"}
 NAMES_ONLY = {"acceptance_ab", "sewout_walk_reach", "counter_slots",
               "hairline_renders", "hairline_card", "hairline_logo_bill",
               "sewout_candidates_card",   # writes README / scoring sheet / readback .md, reads none
-              "hairline_photo_trial", "hairline_lines_trial"}
+              "hairline_photo_trial", "hairline_lines_trial",
+              "hairline_coverage"}   # WRITES table.md, reads none (2026-10-13)
 
 
 def cp1252_stream() -> tuple[io.BytesIO, io.TextIOWrapper]:

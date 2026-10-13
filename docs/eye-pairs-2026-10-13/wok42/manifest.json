@@ -1,0 +1,223 @@
+{
+ "schema": 1,
+ "sitting": "wok42-1013",
+ "built": "2026-10-13T10:53:39-05:00",
+ "spec_sha256": "99df5c74db6a3177aa094c54014a07bdb2e0060096f19e9b959f02c50bedad31",
+ "engine": {
+  "git_head": "14d5bb329da1cae75c0ff115c35d0ee1c3c58a55",
+  "python": "3.14.6",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "photo_prep_venv": true
+ },
+ "base_flags": {
+  "lettering_columns": true,
+  "lettering_columns_skip_blobs": true,
+  "lettering_columns_ink_link": true
+ },
+ "seed": 20261013,
+ "logos": [
+  {
+   "name": "mfab",
+   "design": "mfab",
+   "kind": "client_art_already_committed",
+   "sha256": "53b2d2978b8b2019e0e1240406afb63ad3978f438b72a7da00d6088fa05f7d33",
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "provenance": "M-FAB and Welding LLC. Customer artwork recovered from a vendor's two-panel preview by tools/pro_parity/preview_split.py and committed in PR #556 (2026-09-28), already public in this repo; low resolution (418 x 159). Not in REAL_ART, in no labelled or blind sitting, not byte-equal to any judged fixture. Added by no one in this PR."
+  },
+  {
+   "name": "toat",
+   "design": "toat",
+   "kind": "client_art_already_committed",
+   "sha256": "d09766ed6ca95a87ef44f9c15123dc5f2227bcbd16a4d884fb353c5e2a24d8aa",
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "provenance": "To a T Machine LLC. Vendor-preview crop committed in PR #556 (2026-09-28), already public in this repo; 372 x 273. Not in REAL_ART, in no sitting. logo_toat_beanie.png is the same design (reserve, see reserve_logos)."
+  },
+  {
+   "name": "fritsch",
+   "design": "fritsch",
+   "kind": "synthetic_generator",
+   "sha256": "7dcc5987471f5b278d2f289b52148d06eba9806dc460ab212d0242e84e3f9e7e",
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "provenance": "cv2 Hershey triplex 'Fritsch', 900 x 260, drawn 4x and area-downscaled; the committed generator tools/make_hard_cases.py::serif_text (its output is not committed, the function is). Deterministic. No client art."
+  },
+  {
+   "name": "board80",
+   "design": "board80",
+   "kind": "synthetic_generator",
+   "sha256": "849062149a441172f9c4d0a9e9fb8067ab38fc47ad8b11ca782ef7408637b81c",
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "provenance": "cv2 Hershey simplex 'BOARD 80', 1500 x 260, a block word with counters; the committed generator tools/small_print.py::synthetic_text (tests pin it). Deterministic. No client art."
+  },
+  {
+   "name": "whitebg",
+   "design": "whitebg",
+   "kind": "synthetic_committed",
+   "sha256": "f2d112b7bd834eb41a3e88a9528af5d104ae30a189ca5f00bf5ee703fa90b73f",
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "provenance": "The five-colour flat logo (circle, ring, bar, two blocks, dot) written by tools/make_test_logo.py, committed since 2026-07-29 and in the corpus scorecard FIXTURES. The only fixture there Stage 0 routes to the flat lane. Not in REAL_ART. logo_alpha.png is the same art on a transparent ground and is not used."
+  },
+  {
+   "name": "thin_script",
+   "design": "thin_script",
+   "kind": "synthetic_committed",
+   "sha256": "eca7ad5b6cfcae4cf25f707771f260c87b5fde4906c656df13fb85a759545075",
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "provenance": "Synthetic script strokes (loops under a flourish) committed 2026-10-11 with the hairline tier (PR #848); Stage 0 routes it flat. A fixture rather than a logo, kept because two of the six arms move it. No client art."
+  }
+ ],
+ "arms": {
+  "design_angle": {
+   "flags": {
+    "design_angle": true
+   },
+   "stratum": "flow",
+   "expected_pick": "tie",
+   "moves": {},
+   "holds": [
+    "trims_per_1000",
+    "long_share",
+    "thread_density_whole"
+   ]
+  },
+  "split_7mm": {
+   "flags": {
+    "split_satin_above_mm": 7.0
+   },
+   "stratum": "length",
+   "expected_pick": "base",
+   "moves": {
+    "long_share": "up"
+   },
+   "holds": [
+    "trims_per_1000",
+    "thread_density_whole"
+   ]
+  },
+  "fill_row_030": {
+   "flags": {
+    "fill_row_mm": 0.3
+   },
+   "stratum": "density",
+   "expected_pick": "base",
+   "moves": {
+    "thread_density_whole": "down"
+   },
+   "holds": [
+    "trims_per_1000",
+    "flow_circvar",
+    "long_share"
+   ]
+  },
+  "lane_off": {
+   "flags": {
+    "lettering_columns": false
+   },
+   "stratum": "construction",
+   "expected_pick": "base",
+   "moves": {
+    "trims_per_1000": "up"
+   },
+   "holds": []
+  },
+  "per_stroke": {
+   "flags": {
+    "satin_per_stroke": true
+   },
+   "stratum": "flow",
+   "expected_pick": "tie",
+   "moves": {},
+   "holds": [
+    "trims_per_1000",
+    "long_share",
+    "thread_density_whole"
+   ]
+  },
+  "exit_next_off": {
+   "flags": {
+    "satin_exit_toward_next": false
+   },
+   "stratum": "trims",
+   "expected_pick": "base",
+   "moves": {
+    "trims_per_1000": "up"
+   },
+   "holds": [
+    "flow_circvar",
+    "long_share"
+   ]
+  }
+ },
+ "replacements": [
+  {
+   "arm": "polygon_axis",
+   "reason": "failed: moved and held as registered on 1 of 4 logos",
+   "replaced_by": "per_stroke",
+   "reserve_passes": false
+  },
+  {
+   "arm": "fill_row_030",
+   "reason": "identical to base on 4 of 6 logos",
+   "replaced_by": null
+  },
+  {
+   "arm": "underlay_on_column",
+   "reason": "failed: moved and held as registered on 0 of 4 logos",
+   "replaced_by": "exit_next_off",
+   "reserve_passes": false
+  }
+ ],
+ "manipulation": {
+  "design_angle": {
+   "passes": true,
+   "why": "as registered on 4 of 4 logos"
+  },
+  "split_7mm": {
+   "passes": true,
+   "why": "as registered on 2 of 4 logos"
+  },
+  "fill_row_030": {
+   "passes": false,
+   "why": "identical to base on 4 of 6 logos"
+  },
+  "lane_off": {
+   "passes": true,
+   "why": "as registered on 2 of 4 logos"
+  },
+  "per_stroke": {
+   "passes": false,
+   "why": "identical to base on 5 of 6 logos"
+  },
+  "exit_next_off": {
+   "passes": false,
+   "why": "moved and held as registered on 1 of 4 logos"
+  }
+ },
+ "pairs": {
+  "total": 27,
+  "live": 19,
+  "identical": 4,
+  "repeat": 4,
+  "live_base_left": 10,
+  "live_per_logo": {
+   "mfab": 5,
+   "toat": 4,
+   "fritsch": 4,
+   "board80": 3,
+   "whitebg": 2,
+   "thin_script": 1
+  }
+ },
+ "sealed_sha256": "05043ed6b983c5297d82ca35d8b9b0a91377794a90a2abb4667d64fc0ed1e98d",
+ "designs_sha256": "36b690554054164e78f749262cc5b789bb13a9445e9266a89dc29e30e3adcb63",
+ "commands": [
+  "cd digitizer",
+  "python -m tools.eye_pairs --serve --out <OUT>      # Kent's sitting; picks go to <OUT>/picks.jsonl",
+  "python -m tools.eye_pairs.sitting analyse <SPEC> --out <OUT>   # refuses until every pair is picked"
+ ]
+}
