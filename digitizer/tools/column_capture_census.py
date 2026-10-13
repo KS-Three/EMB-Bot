@@ -1,0 +1,319 @@
+"""Which shapes does the Column lane take, and are they letters?
+
+The lane (`cfg.lettering_columns`, ON by default since 2026-10-12) takes any
+shape `columns.is_lettering` admits: `meta.text_candidate` (the text cluster,
+`textcluster.detect_text_clusters`) or `meta.lettering_group` (the house-angle
+group, `textcluster._lettering_groups`). Neither asks whether the shape is a
+LETTER; both ask whether a handful of shapes are glyph-sized, glyph-shaped and
+alike. #863 found the twelve-patch colour grid of `test_preflight` is one such
+"line of lettering". This counts, over the scorecard matrix, how many shapes
+the lane takes and which of them are not text.
+
+For each fixture it runs the pipeline twice (lane OFF, lane ON), records every
+shape the lane actually built columns for (a wrapper on
+`stage7_sequence.lettering_columns_shape`, nothing in the engine changes), and
+prints the shape's size, the tags that admitted it, the OCR read where there
+is one, the hand label where `testdata/lettering_truth.json` has one, and the
+stitch / trim / colour-change difference ON vs OFF.
+
+    .venv/Scripts/python -m tools.column_capture_census              # whole matrix
+    .venv/Scripts/python -m tools.column_capture_census logo_alpha.png
+    .venv/Scripts/python -m tools.column_capture_census --json out.json
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+TESTDATA = ROOT / "testdata"
+TRUTH = TESTDATA / "lettering_truth.json"
+
+# The truth file names fixtures by corpus case; map to the scorecard file so a
+# scorecard row can be scored against hand labels at the settings they were
+# made on (`tools.thin_strokes.REAL_ART`: Studio's six colours).
+TRUTH_CASE_FILE = {
+    "becker": "becker_marine_logo.png",
+    "tires": "logo_script_tires.png",
+    "enthusiast": "photo/enthusiast_logo.png",
+    "fremont": "photo/logo_hotel_fremont.webp",
+    "bridge": "photo/logo_bridge_bar.jpg",
+    "gaulke": "photo/logo_gaulke_roofing.png",
+    "drone": "photo/drone_render.png",
+    "screenshot": "photo/screenshot_phone_ui_golke.jpg",
+}
+
+
+def lane_takes(path, cfg):
+    """Run the pipeline with `cfg` and return (result, plan, taken, declined).
+
+    `taken`: shape ids the Column lane built columns for. `declined`: shape
+    ids `is_lettering` admitted whose lane build came back empty (they fall
+    to the ordinary ladder). Both come from a wrapper around the stage 7
+    entry point; the engine is not touched."""
+    from digitizer_core import stage7_sequence as s7
+    from digitizer_core.pipeline import plan_stitches, run_stages
+
+    taken: list[str] = []
+    declined: list[str] = []
+    real = s7.lettering_columns_shape
+
+    def spy(poly, shape_id, **kw):
+        runs, report = real(poly, shape_id, **kw)
+        (declined if report.get("empty") else taken).append(shape_id)
+        return runs, report
+
+    s7.lettering_columns_shape = spy
+    try:
+        res = run_stages(path, cfg)
+        plan = plan_stitches(res, cfg)
+    finally:
+        s7.lettering_columns_shape = real
+    return res, plan, taken, declined
+
+
+def shape_row(region, label=None):
+    m = region.meta or {}
+    x0, y0, x1, y1 = region.polygon.bounds
+    poly = region.polygon
+    w_mean = 2.0 * poly.area / max(poly.length, 1e-9)       # mean stroke width, mm
+    return {
+        "stroke_over_h": round(w_mean / max(y1 - y0, x1 - x0, 1e-9), 3),
+        "solidity": round(poly.area / max(poly.convex_hull.area, 1e-9), 3),
+        "holes": len(getattr(poly, "interiors", []) or []),
+        "shape_id": region.shape_id,
+        "w_mm": round(x1 - x0, 2), "h_mm": round(y1 - y0, 2),
+        "area_mm2": round(region.polygon.area, 2),
+        "text_candidate": bool(m.get("text_candidate")),
+        "text_cluster_id": m.get("text_cluster_id"),
+        "lettering_group": bool(m.get("lettering_group")),
+        "rescued": bool(m.get("rescued_small_shape")),
+        "ocr_char": m.get("ocr_char"),
+        "label": label,
+    }
+
+
+def census_one(fixture: str, cfg_kw: dict, truth_case: str | None = None,
+               image=None, on_only: bool = False) -> dict:
+    from digitizer_core import PipelineConfig
+
+    path = TESTDATA / fixture if image is None else image
+    out: dict = {"fixture": fixture, "cfg": cfg_kw}
+    arms = {}
+    for arm, on in (("off", False), ("on", True)):
+        if on_only and not on:
+            arms[arm] = {"stitches": 0, "trims": 0, "color_changes": 0, "jumps": 0,
+                         "taken": [], "declined": [], "secs": 0}
+            continue
+        t = time.time()
+        cfg = PipelineConfig(**cfg_kw, lettering_columns=on)
+        res, plan, taken, declined = lane_takes(path, cfg)
+        s = plan.stats
+        arms[arm] = {"stitches": s.stitch_count, "trims": s.trims,
+                     "color_changes": s.color_changes, "jumps": s.jumps,
+                     "taken": taken, "declined": declined,
+                     "secs": round(time.time() - t)}
+        if on:
+            by_id = {r.shape_id: r for r in res.regions}
+            lab: dict[str, str] = {}
+            ignore: set[str] = set()
+            if truth_case:
+                tr = json.loads(TRUTH.read_text())["fixtures"].get(truth_case)
+                if tr:
+                    lab = {sid: line for line, ids in tr["lines"].items() for sid in ids}
+                    ignore = set(tr.get("ignore", []))
+                    have = set(by_id)
+                    if any(s_ not in have for s_ in lab):
+                        lab, ignore = {}, set()   # STALE labels: do not score
+                        out["truth"] = "stale"
+            out["n_regions"] = len(res.regions)
+            out["rows"] = [
+                shape_row(by_id[sid],
+                          None if not lab else ("letter" if sid in lab
+                                                else ("ignored" if sid in ignore else "NOT-LETTER")))
+                for sid in taken if sid in by_id]
+            out["declined_rows"] = [shape_row(by_id[sid]) for sid in declined if sid in by_id]
+            if lab:
+                out["truth"] = "scored"
+    out.update(arms)
+    return out
+
+
+def colour_grid():
+    """`test_preflight`'s twelve-patch colour grid (the constructed 11-stop
+    negative): twelve solid patches, none of them a letter. Returns the image."""
+    import numpy as np
+    colors = [(230, 40, 40), (40, 180, 40), (40, 40, 230), (230, 230, 40),
+              (230, 40, 230), (40, 230, 230), (140, 70, 20), (250, 140, 20),
+              (120, 20, 160), (20, 120, 90), (90, 90, 90), (10, 10, 10)]
+    patches = np.full((340, 460, 3), 255, np.uint8)
+    for i, c in enumerate(colors):
+        row, col = divmod(i, 4)
+        y, x = 20 + row * 105, 20 + col * 110
+        patches[y:y + 85, x:x + 90] = c
+    return patches
+
+
+def render_pair(name: str, source, cfg_kw: dict, out: Path, *, flags_on: dict | None = None,
+                px_per_mm: float = 10.0, zoom_px_per_mm: float = 28.0, zoom_ids=None) -> list[Path]:
+    """Lane OFF | lane ON thread renders, same frame and scale, plus a zoom
+    panel pair on the lane-taken shape(s) (`zoom_ids`, else the first taken).
+    `flags_on` lets the caller add a guard flag to the ON arm."""
+    import cv2
+    import numpy as np
+    from digitizer_core import PipelineConfig, stitchviz
+    from digitizer_core.adapter import plan_to_design
+
+    designs, takens, regions = {}, {}, {}
+    for tag, kw in (("off", {"lettering_columns": False}),
+                    ("on", {"lettering_columns": True, **(flags_on or {})})):
+        cfg = PipelineConfig(**cfg_kw, **kw)
+        res, plan, taken, _decl = lane_takes(source, cfg)
+        designs[tag] = plan_to_design(plan, name=f"{name} {tag}")
+        takens[tag] = taken
+        regions[tag] = {r.shape_id: r for r in res.regions}
+    ids = [s for s in (zoom_ids or takens["on"]) if s in regions["on"]][:6]
+    ba = stitchviz._bounds(designs["off"]["stitches"])
+    bb = stitchviz._bounds(designs["on"]["stitches"])
+    ux0, ux1 = min(ba[0], bb[0]), max(ba[1], bb[1])
+    uy0, uy1 = min(ba[2], bb[2]), max(ba[3], bb[3])
+    for d in designs.values():
+        d["stitches"] = ([{"x": ux0, "y": uy0, "type": "jump"},
+                          {"x": ux1, "y": uy1, "type": "jump"}] + list(d["stitches"]))
+    pad = 2.0
+
+    def label(img, text):
+        bar = np.full((24, img.shape[1], 3), 235, np.uint8)
+        cv2.putText(bar, text, (6, 17), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (20, 20, 20), 1, cv2.LINE_AA)
+        return np.vstack([bar, img])
+
+    outs: list[Path] = []
+    out.mkdir(parents=True, exist_ok=True)
+    full = {k: stitchviz.render_design(d, px_per_mm=px_per_mm, pad_mm=pad) for k, d in designs.items()}
+    panel = np.hstack([label(full["off"], f"{name}: Column lane OFF"),
+                       label(full["on"], f"{name}: Column lane ON ({len(takens['on'])} shapes)")])
+    p = out / f"{name}_full.png"
+    cv2.imwrite(str(p), panel)
+    outs.append(p)
+    if ids:
+        zoom = {k: stitchviz.render_design(d, px_per_mm=zoom_px_per_mm, pad_mm=pad)
+                for k, d in designs.items()}
+        polys = [regions["on"][s].polygon for s in ids]
+        x0 = min(q.bounds[0] for q in polys) - 1.5
+        x1 = max(q.bounds[2] for q in polys) + 1.5
+        y0 = min(q.bounds[1] for q in polys) - 1.5
+        y1 = max(q.bounds[3] for q in polys) + 1.5
+        s = zoom_px_per_mm
+        # `adapter` writes x = 10 x_mm, y = -10 y_mm; `stitchviz._frame` maps
+        # that to pixels on the union box with `pad` around it.
+        def to_px(xm, ym):
+            return (xm - ux0 / 10.0 + pad) * s, (uy1 / 10.0 + ym + pad) * s
+        ax, ay = to_px(x0, y0)
+        bx, by = to_px(x1, y1)
+        h, w = zoom["off"].shape[:2]
+        ax, bx = int(max(0, min(ax, bx))), int(min(w, max(ax, bx)))
+        ay, by = int(max(0, min(ay, by))), int(min(h, max(ay, by)))
+        crops = [label(zoom[k][ay:by, ax:bx], f"zoom, lane {k.upper()} ({', '.join(ids[:3])}{'...' if len(ids) > 3 else ''})")
+                 for k in ("off", "on")]
+        hh = max(c.shape[0] for c in crops)
+        crops = [np.pad(c, ((0, hh - c.shape[0]), (0, 0), (0, 0)), constant_values=255) for c in crops]
+        p = out / f"{name}_zoom.png"
+        cv2.imwrite(str(p), np.hstack(crops))
+        outs.append(p)
+    return outs
+
+
+def matrix(only: list[str] | None = None):
+    from tools.corpus_scorecard import FIXTURES
+    for f in FIXTURES:
+        if only and f not in only:
+            continue
+        if not (TESTDATA / f).exists():
+            continue
+        yield f
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("fixtures", nargs="*")
+    ap.add_argument("--garment", default="left_chest")
+    ap.add_argument("--width", type=float, default=80.0)
+    ap.add_argument("--max-colors", type=int, default=6, dest="max_colors")
+    ap.add_argument("--json", type=Path)
+    ap.add_argument("--on-only", action="store_true", dest="on_only",
+                    help="skip the lane-OFF arm (shape rows only; OFF columns read 0)")
+    ap.add_argument("--ids", nargs="*", default=[], help="shape ids to zoom on in --render")
+    ap.add_argument("--flag", nargs="*", default=[], help="config flags to turn ON in the render's ON arm")
+    ap.add_argument("--corpus",action="store_true",
+                    help="the real-art corpus at the settings the hand labels were made at")
+    ap.add_argument("--render", type=Path, help="write OFF|ON renders of the named fixtures here")
+    ap.add_argument("--grid", action="store_true", help="the synthetic twelve-patch colour grid only")
+    args = ap.parse_args(argv)
+
+    inv = {v: k for k, v in TRUTH_CASE_FILE.items()}
+    results = []
+    if args.corpus:
+        # The settings the hand labels were made at (`tools.thin_strokes.corpus_cases`).
+        from tools.thin_strokes import corpus_cases
+        for name, path, width, garment in corpus_cases():
+            rel = path.relative_to(TESTDATA).as_posix()
+            kw = {"target_width_mm": width, "garment_id": garment, "max_colors": 6}
+            r = census_one(rel, kw, name if name in TRUTH_CASE_FILE else None, on_only=args.on_only)
+            r["case"] = name
+            results.append(r)
+            on, off = r["on"], r["off"]
+            bad = [x for x in r["rows"] if x["label"] == "NOT-LETTER"]
+            print(f"{name:11s} taken {len(on['taken']):3d} truth={r.get('truth', '-'):6s} "
+                  f"false={len(bad)} st {off['stitches']}->{on['stitches']} "
+                  f"trims {off['trims']}->{on['trims']} cc {off['color_changes']}->{on['color_changes']}",
+                  flush=True)
+            if args.json:
+                args.json.write_text(json.dumps(results, indent=1, default=str), encoding="utf-8")
+        return 0
+    if args.grid:
+        r = census_one("colour_grid", {"target_width_mm": 100.0}, image=colour_grid())
+        r["rows"] = [(x["shape_id"], x["w_mm"], x["h_mm"], x["text_candidate"], x["lettering_group"])
+                     for x in r["rows"]]
+        print(json.dumps(r, default=str))
+        if args.render:
+            for p in render_pair("colour_grid", colour_grid(), {"target_width_mm": 100.0},
+                                 args.render, px_per_mm=6.0, zoom_px_per_mm=12.0):
+                print(p)
+        return 0
+    if args.render:
+        for f in matrix(args.fixtures):
+            kw = {"target_width_mm": args.width, "garment_id": args.garment,
+                  "max_colors": args.max_colors}
+            for p in render_pair(Path(f).stem, TESTDATA / f, kw, args.render,
+                                 zoom_ids=args.ids or None,
+                                 flags_on={k: True for k in args.flag}):
+                print(p)
+        return 0
+    for f in matrix(args.fixtures):
+        kw = {"target_width_mm": args.width, "garment_id": args.garment,
+              "max_colors": args.max_colors}
+        try:
+            r = census_one(f, kw, inv.get(f), on_only=args.on_only)
+        except Exception as exc:  # noqa: BLE001
+            print(f"{f}: ERROR {type(exc).__name__}: {exc}", flush=True)
+            continue
+        results.append(r)
+        off, on = r["off"], r["on"]
+        bad = [x for x in r["rows"] if x["label"] == "NOT-LETTER"]
+        print(f"{f:44s} taken {len(on['taken']):3d} declined {len(on['declined']):2d}"
+              f"  st {off['stitches']:6d}->{on['stitches']:6d}"
+              f" trims {off['trims']:3d}->{on['trims']:3d}"
+              f" cc {off['color_changes']:3d}->{on['color_changes']:3d}"
+              f"  truth={r.get('truth', '-')} false={len(bad)}  {on['secs']}s", flush=True)
+        if args.json:
+            args.json.write_text(json.dumps(results, indent=1, default=str), encoding="utf-8")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

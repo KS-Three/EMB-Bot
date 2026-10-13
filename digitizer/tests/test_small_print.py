@@ -330,3 +330,167 @@ def test_a_bar_thinner_than_the_hold_is_kept():
     out = small_print_clear(ring, [Polygon(_square(0, 0, 0.5))], 0.2, art=ring)
     assert out.covers(Point(0.6, 0.0))                      # never cut through to the outside
     assert small_print_clear(letter, [], 0.2, art=letter) is letter
+
+
+# --- part 3: no Column-lane stitch over a counter (2026-10-13) -----------------
+#
+# #878 measured a regression in #873's Column-lane code on Fremont's tagline
+# at a 3 mm cap: the EAT A's counter went 0.76 -> 0.46 open, because the hold
+# landed two leg crosses a float hair under the cross floor, the floor
+# dropped them, and the zigzag laid a 2.2 mm stitch over the counter. OFF,
+# the same lane already lays 1.7-2.0 mm stitches over three tagline counters
+# (joining the crosses either side of ones the floor drops), and at 4-5 mm
+# `outline_cut` lays the synthetic 0's and 8's crosses straight through
+# theirs. Under the flag, `columns._counter_safe_pieces` keeps every satin
+# stitch off a counter.
+
+from digitizer_core.columns import _counter_safe_pieces, is_lettering  # noqa: E402
+
+FREMONT_3MM_WIDTH = 35.7     # 3 mm over the tagline's reference cap (0.08402 of the width)
+
+
+def _counter_crossings(result, plan, cfg):
+    """Every needle-down segment of the plan (`small_print._segments`) that
+    passes over a counter the Column lane knows: the interiors of each
+    lettering region's polygon with its dropped counters punched back
+    (`small_print_counters`), shrunk by the same-point tolerance."""
+    floor = machine.thread_profile(cfg.thread_wt).counter_min_width_mm
+    holes = []
+    for r in result.regions:
+        if not is_lettering(r, cfg):
+            continue
+        letter = small_print_counters(r.polygon, r.meta.get("small_counters"), floor)
+        holes += [Polygon(i).buffer(-stitches.SAME_POINT_MM) for i in letter.interiors]
+    holes = [h for h in holes if not h.is_empty]
+    assert len(holes) >= 4      # E-A-T, S-T-A-Y, P-L-A-Y: three A's and the P
+    out = []
+    for a, b, sid in small_print._segments(plan):
+        if a != b:
+            s = LineString([a, b])
+            if any(s.intersects(h) for h in holes):
+                out.append((sid, round(s.length, 3)))
+    return out
+
+
+def test_no_stitch_crosses_a_counter_on_fremonts_tagline_at_three_millimetres():
+    """DONE-TEST, part 3. Measured 2026-10-13 (Windows): OFF 4 stitches over
+    a counter (up to 1.96 mm), #878's ON 4 (up to 2.16 mm), now none."""
+    image = small_print.load("fremont_tagline")
+    on = PipelineConfig(target_width_mm=FREMONT_3MM_WIDTH, small_print_floor=True)
+    res_on, plan_on = digitize(image, on)
+    assert _counter_crossings(res_on, plan_on, on) == []
+    # and the check bites: the same fixture OFF lays stitches over counters
+    off = PipelineConfig(target_width_mm=FREMONT_3MM_WIDTH)
+    res_off, plan_off = digitize(image, off)
+    assert len(_counter_crossings(res_off, plan_off, off)) >= 1
+
+
+def test_a_cross_held_at_the_floor_is_kept():
+    """The float hair: a cross the hold shortens to the floor must survive
+    the floor filter (two of the EAT A's crosses did not)."""
+    letter = Polygon(_square(0, 0, 2.0), [_square(0, 0, 0.5)])
+    a, b = [(0.55, 0.0)], [(1.1, 0.0)]
+    na, nb = _clear_counters(a, b, letter, 0.2, machine.SATIN_MIN_CROSS_MM)
+    assert math.dist(na[0], nb[0]) >= machine.SATIN_MIN_CROSS_MM
+
+
+def _joins_clear(pieces, hole) -> bool:
+    for p in pieces:
+        for a, b in p:
+            if LineString([a, b]).intersects(hole):
+                return False
+        for (a0, b0), (a1, b1) in zip(p, p[1:]):
+            if LineString([b0, a1]).intersects(hole) or LineString([a0, b1]).intersects(hole):
+                return False
+    return True
+
+
+def test_a_gap_beside_a_counter_takes_its_crosses_back():
+    """A stroke (y -0.3..0.3, vertical crosses) whose middle three crosses
+    are 0.45 mm, under the 0.5 mm floor, beside a counter the join between
+    the crosses either side of the gap would cut. The dropped crosses come
+    back when each is at least one laid width; when they are not, the
+    column splits at the gap. Either way no stitch is over the counter."""
+    counter = [(-0.75, 0.2), (-0.2, 0.2), (-0.2, 1.0), (-0.75, 1.0)]
+    letter = Polygon(_square(0, 0, 3.0), [counter])
+    hole = Polygon(counter).buffer(-stitches.SAME_POINT_MM)
+    xs = (-1.2, -0.8, -0.4, 0.0, 0.4, 0.8, 1.2)
+    sts = [((x, -0.3), (x, 0.3 if abs(x) > 0.5 else 0.15)) for x in xs]
+    floor = machine.SATIN_MIN_CROSS_MM
+    # the defect: the floor's own cut joins (-0.8, 0.3) to (0.8, -0.3) over the counter
+    kept = [s for s in sts if math.dist(*s) >= floor]
+    assert not _joins_clear([kept], hole)
+    pieces, dropped = _counter_safe_pieces(sts, letter, floor, 0.2)
+    assert [len(p) for p in pieces] == [7] and dropped == 0 and _joins_clear(pieces, hole)
+    # a hold of 0.3 (a 0.6 mm laid width): 0.45 mm crosses are under one
+    # laid width, so they stay dropped and the column splits instead
+    pieces, dropped = _counter_safe_pieces(sts, letter, floor, 0.3)
+    assert [len(p) for p in pieces] == [2, 2] and dropped == 3 and _joins_clear(pieces, hole)
+
+
+def test_a_cross_through_a_counter_sews_as_two_columns():
+    """`outline_cut` laid a column's crosses straight across a counter (the
+    synthetic 0 at 4-5 mm). Each such cross is cut at the counter, held
+    half a laid width off it, and its two halves sew as two pieces."""
+    letter = Polygon(_square(0, 0, 2.0), [_square(0, 0, 0.4)])
+    hole = Polygon(letter.interiors[0]).buffer(-stitches.SAME_POINT_MM)
+    sts = [((x, -1.9), (x, 1.9)) for x in (-0.8, -0.3, 0.0, 0.3, 0.8)]
+    assert not _joins_clear([sts], hole)
+    pieces, dropped = _counter_safe_pieces(sts, letter, machine.SATIN_MIN_CROSS_MM, 0.2)
+    assert _joins_clear(pieces, hole) and dropped == 0
+    # x -0.3, 0 and 0.3 pass over the counter: each is cut in two, held 0.2
+    # off it (0.6 from the centre), both halves 1.3 mm
+    halves = [s for p in pieces for s in p if abs(s[0][0]) < 0.5]
+    assert len(halves) == 6
+    assert all(math.dist(*s) == pytest.approx(1.3, abs=1e-6) for s in halves)
+    assert sorted(len(p) for p in pieces) == [3, 5]
+
+
+def _slashed_zero(outer=2.0, inner=1.3, bar=0.5):
+    from shapely import affinity
+    slash = affinity.rotate(Polygon(_square(0, 0, 3.0)).intersection(
+        Polygon([(-3, -bar / 2), (3, -bar / 2), (3, bar / 2), (-3, bar / 2)])), 65, origin=(0, 0))
+    hole = Point(0, 0).buffer(inner, 64).difference(slash)
+    return Point(0, 0).buffer(outer, 64).difference(hole), slash
+
+
+def test_a_slashed_zero_keeps_its_slash_and_its_counters():
+    """A slashed 0 (two counters, a 0.5 mm slash between): ON, no stitch
+    or link passes over either counter, and the slash is still sewn --
+    by its own bar column where the letter's columns leave it bare
+    (`_bar_columns`; the synthetic 0 at 4 and 5 mm)."""
+    letter, slash = _slashed_zero()
+    assert len(letter.interiors) == 2
+    holes = [Polygon(r).buffer(-stitches.SAME_POINT_MM) for r in letter.interiors]
+    kw = dict(trim_at_mm=3.0, pull_mm=0.3, pull_floor_mm=1.5)
+    runs, rep = lettering_columns_shape(letter, "S1", counter_clear_mm=0.2, **kw)
+    assert not rep["empty"]
+    prev, segs = None, []
+    for r in runs:
+        pts = ([prev] if prev is not None and not r.jump else []) + list(r.points)
+        segs += [(p, q, r.kind) for p, q in zip(pts, pts[1:]) if p != q]
+        prev = r.points[-1]
+    for p, q, kind in segs:
+        assert not any(LineString([p, q]).intersects(h) for h in holes), (kind, p, q)
+    # the slash's middle lies under satin thread (half a 0.4 mm laid width)
+    sat = [LineString([p, q]) for p, q, kind in segs if kind == stitches.SATIN]
+    for t in (-0.6, 0.0, 0.6):
+        c = Point(t * math.cos(math.radians(65)), t * math.sin(math.radians(65)))
+        assert min(s.distance(c) for s in sat) <= 0.2, t
+
+
+def test_bar_columns_station_the_bar_between_two_counters():
+    letter, slash = _slashed_zero()
+    from digitizer_core.columns import _bar_columns
+    bars = _bar_columns(letter, [], 0.4)
+    assert len(bars) == 1
+    col = bars[0]
+    assert len(col.stations) >= 5
+    # every cross runs edge to edge across the 0.5 mm bar, square to it
+    for a, b in col.stations:
+        assert math.dist(a, b) == pytest.approx(0.5, abs=0.03)
+    # a bar the columns already sew gets nothing
+    sewn = lettering_columns_shape.__globals__["Column"](
+        stations=[((-2, -2), (2, -2)), ((-2, 0), (2, 0)), ((-2, 2), (2, 2))],
+        piece=letter, kind="straight", axis=(0, 1), width_mm=4.0)
+    assert _bar_columns(letter, [sewn], 0.4) == []

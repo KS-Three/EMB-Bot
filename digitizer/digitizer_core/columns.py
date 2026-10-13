@@ -147,11 +147,53 @@ def is_lettering(region, cfg=None) -> bool:
     which disagree on real logos (`tools/word_tagger_eval.py`)."""
     m = region.meta or {}
     if getattr(cfg, "lettering_words", False):
-        return bool(m.get("word_id"))
-    return bool(m.get("text_candidate") or m.get("lettering_group"))
+        tagged = bool(m.get("word_id"))
+    else:
+        tagged = bool(m.get("text_candidate") or m.get("lettering_group"))
+    if tagged and getattr(cfg, "lettering_columns_skip_blobs", False) \
+            and is_solid_blob(region.polygon):
+        return False
+    return tagged
+
+
+# `cfg.lettering_columns_skip_blobs`: a tagged shape that is a solid blob, not
+# a stroke, is not a letter. Both old taggers ask only for glyph-sized,
+# glyph-aspect, alike shapes; `tools/column_capture_census.py` found the
+# house-angle group (no ink link) admitting twelve colour patches
+# (`test_preflight`'s grid) and eight 14.4 mm ramp discs (`photo/
+# fur_ramp.png`), which the lane then sewed as 20 mm split satin. The two
+# numbers are read off the polygon: mean stroke width (2 x area / perimeter)
+# over the longer bbox side, and solidity (area / convex hull). Census, real
+# art at the labelled settings: every labelled letter reads <= 0.31 on the
+# first (Becker's bold caps, the maximum) and no solid one reaches 0.4; the
+# patches and discs read 0.49-0.50 at solidity 0.99. CANDIDATES, not cloth
+# constants: they are shape ratios, set from one corpus.
+BLOB_STROKE_OVER_H = 0.40
+BLOB_MIN_SOLIDITY = 0.95
+
+
+def is_solid_blob(poly) -> bool:
+    x0, y0, x1, y1 = poly.bounds
+    side = max(x1 - x0, y1 - y0)
+    if side <= 0 or poly.length <= 0:
+        return False
+    stroke = 2.0 * poly.area / poly.length
+    hull = poly.convex_hull.area
+    return (stroke / side >= BLOB_STROKE_OVER_H
+            and hull > 0 and poly.area / hull >= BLOB_MIN_SOLIDITY)
 
 
 # ----------------------------------------------------------------- geometry
+
+def _walk_corners(path, step_mm: float) -> list[tuple[float, float]]:
+    """`path` resampled every `step_mm` on each of its legs, every corner
+    kept (`_walk_points` keeps only the two ends)."""
+    out: list[tuple[float, float]] = [tuple(path[0])]
+    for p, q in zip(path, path[1:]):
+        if math.dist(p, q) > 1e-9:
+            out.extend(_walk_points([p, q], step_mm)[1:])
+    return out if len(out) >= 2 else [tuple(path[0]), tuple(path[-1])]
+
 
 def _mids(stations):
     return [((a[0] + b[0]) / 2, (a[1] + b[1]) / 2) for a, b in stations]
@@ -387,7 +429,12 @@ def _clear_counters(a_pts, b_pts, poly: Polygon, clear_mm: float,
             t = min(seg.project(Point(c)) for g in getattr(outside, "geoms", [outside])
                     for c in g.coords)
             L = seg.length
-            t = min(t, max(0.0, L - min_cross_mm))
+            # held AT the floor lands a float hair under it, and the floor
+            # filter in `column_runs` then dropped the cross the hold meant
+            # to keep: two of Fremont's EAT A crosses at a 3 mm cap went,
+            # and the zigzag laid a 2.2 mm stitch over the counter
+            # (`tools/small_print.py`, #878). Held a hair short of it.
+            t = min(t, max(0.0, L - min_cross_mm - _FLOOR_EPS_MM))
             if t <= 0:
                 continue
             np_ = seg.interpolate(t).coords[0]
@@ -396,6 +443,198 @@ def _clear_counters(a_pts, b_pts, poly: Polygon, clear_mm: float,
             else:
                 out_b[i] = np_
     return out_a, out_b
+
+
+_FLOOR_EPS_MM = 1e-9     # a float hair, not a tolerance: far under any stitch
+
+
+def _counter_safe_pieces(stations, poly: Polygon, min_cross_mm: float,
+                         clear_mm: float) -> tuple[list[list], int]:
+    """`cfg.small_print_floor`: one column's stations (after every hold and
+    guard) -> the runs of them that sew as satin with no stitch passing
+    over one of the letter's counters, plus how many stations were not
+    kept. Two ways a column laid a stitch over a counter, both measured
+    with `tools/small_print.py` (#878):
+
+    - **A gap.** The floor filter drops a run of crosses under
+      `min_cross_mm`, and the zigzag joins the crosses either side of the
+      gap with one long stitch -- at a 3 mm cap, straight over the counter
+      beside the gap (Fremont's EAT A and P). Where that join would cross
+      a counter, the dropped crosses come back when every one is at least
+      one laid thread wide (`2 * clear_mm`) and neither they nor the joins
+      between them cross a counter; otherwise the column is split there.
+    - **A cross through the counter.** `outline_cut` can lay a column's
+      crosses straight across a counter (the synthetic 0's and 8's at 4
+      and 5 mm). Such a cross is cut at the counter and each stretch of
+      it that is still a cross -- the halves either side, a bar between
+      two counters -- sews in a column of its own (`subs`). The 0's
+      slash is only CLIPPED by its ring's crosses (0.23-0.40 mm of it,
+      under one laid width), so cutting them left it bare; it gets a
+      column of its own from `_bar_columns`.
+
+    A split column's pieces are linked by the walk's own link rule, which
+    already keeps out of counters."""
+    holes = [Polygon(r) for r in poly.interiors]
+    zone = unary_union([h.buffer(-stitches.SAME_POINT_MM) for h in holes]) if holes else None
+    if zone is not None and zone.is_empty:
+        zone = None
+    cut = unary_union(holes) if holes else None
+    hold = unary_union([h.buffer(clear_mm) for h in holes]) if holes else None
+
+    def over(p, q) -> bool:
+        return zone is not None and math.dist(p, q) > 1e-9 and LineString([p, q]).intersects(zone)
+
+    def join_ok(s, t) -> bool:
+        # the stitch the zigzag lays between two crosses: b0 -> a1 walked
+        # forward, b1 -> a0 walked back (`_satin_points`)
+        (a0, b0), (a1, b1) = s, t
+        return not (over(b0, a1) or over(a0, b1))
+
+    def lines(g):
+        return [x for x in getattr(g, "geoms", [g])
+                if not x.is_empty and x.geom_type == "LineString" and x.length > 1e-9]
+
+    def subs(a, b):
+        """-> [(track, cross)]: the whole cross, or -- where it passes over
+        a counter -- each stretch of it between counters: the half from
+        rail a ("a"), the half to rail b ("b") and any bar between two
+        counters ("m1", "m2", ...: the slash of a slashed zero). Each is
+        held `clear_mm` off the counters where it stays a cross
+        (`min_cross_mm`) and kept whole where only one laid width is left
+        (`small_print_clear`'s rule: a bar the hold would eat is kept)."""
+        if not over(a, b):
+            return [("full", (a, b))] if math.dist(a, b) >= min_cross_mm else []
+        seg = LineString([a, b])
+        parts = sorted(lines(seg.difference(cut)), key=lambda g: seg.project(Point(g.centroid)))
+        out = []
+        for k, g in enumerate(parts):
+            held = max(lines(g.difference(hold)), key=lambda x: x.length, default=None)
+            x = (held if held is not None and held.length >= min_cross_mm
+                 else g if g.length >= keep_mm else None)
+            if x is None:
+                continue
+            p, q = x.coords[0], x.coords[-1]
+            if seg.project(Point(p)) > seg.project(Point(q)):
+                p, q = q, p
+            track = ("a" if math.dist(g.coords[0], a) < 1e-6 or math.dist(g.coords[-1], a) < 1e-6
+                     else "b" if math.dist(g.coords[0], b) < 1e-6 or math.dist(g.coords[-1], b) < 1e-6
+                     else f"m{k}")
+            out.append((track, (p, q)))
+        return [(t, s) for t, s in out if not over(*s)]
+
+    n = len(stations)
+    pieces: list[dict] = []          # track, idx (station indices), sts
+    open_: dict[str, dict] = {}
+    keep_mm = 2.0 * clear_mm
+    used: set[int] = set()
+
+    def attach(piece, i, s, track) -> bool:
+        last = piece["idx"][-1]
+        if join_ok(piece["sts"][-1], s):
+            pass
+        elif (i > last + 1 and piece["track"] == "full" and track == "full"
+              and all(k not in used and math.dist(*stations[k]) >= keep_mm
+                      and not over(*stations[k]) for k in range(last + 1, i))
+              and all(join_ok(x, y) for x, y in zip([piece["sts"][-1]] + stations[last + 1:i],
+                                                      stations[last + 1:i] + [s]))):
+            # the dropped crosses come back rather than a stitch over the counter
+            piece["idx"].extend(range(last + 1, i))
+            piece["sts"].extend(stations[last + 1:i])
+            used.update(range(last + 1, i))
+        else:
+            return False
+        piece["idx"].append(i)
+        piece["sts"].append(s)
+        used.add(i)
+        if piece["track"] != track:
+            if open_.get(piece["track"]) is piece:
+                del open_[piece["track"]]
+            piece["track"] = track
+        open_[track] = piece
+        return True
+
+    for i, (a, b) in enumerate(stations):
+        for track, s in subs(a, b):
+            cands = [open_.get(track)] + ([open_.get("full")] if track != "full"
+                                          else [v for k, v in open_.items() if k != "full"])
+            seen = []
+            for c in cands:
+                if c is None or any(c is x for x in seen) or c["idx"][-1] == i:
+                    continue
+                seen.append(c)
+                if attach(c, i, s, track):
+                    break
+            else:
+                pc = dict(track=track, idx=[i], sts=[s])
+                used.add(i)
+                pieces.append(pc)
+                open_[track] = pc
+    return [p["sts"] for p in pieces], n - len(used)
+
+
+def _bar_columns(poly: Polygon, ready: list[Column], spacing_mm: float) -> list[Column]:
+    """`cfg.small_print_floor`: a column for each bar of ink between two of
+    the letter's counters that the letter's columns leave unsewn.
+
+    `outline_cut` builds the slashed 0 as ONE ring column and never builds
+    its slash: the ring's crosses reached over the counter and into the
+    slash, and that was the only thread the slash got. Once no cross may
+    pass over a counter (`_counter_safe_pieces`) the slash went bare at 4
+    and 5 mm caps (`tools/small_print.py` renders). The bar is the ink in
+    the convex hull of the two counters, less the counters; when the
+    columns' crosses cover under half of it, it is stationed across its
+    long axis every `spacing_mm`, rail on its outline. Like a bar the hold
+    would eat (`small_print_clear`), it is sewn whole -- its crosses run
+    edge to edge between the counters -- down to the same-hole line
+    (`machine.SATIN_SHORT_STITCH_AT_MM`)."""
+    holes = [Polygon(r) for r in poly.interiors]
+    if len(holes) < 2:
+        return []
+    sewn = unary_union([Polygon([a for a, _ in c.stations] + [b for _, b in c.stations][::-1]).buffer(0)
+                        for c in ready])
+    floor = machine.SATIN_SHORT_STITCH_AT_MM
+    out = []
+    for i in range(len(holes)):
+        for j in range(i + 1, len(holes)):
+            gap = unary_union([holes[i], holes[j]]).convex_hull.difference(holes[i]).difference(holes[j])
+            bar = gap.intersection(poly)
+            bar = max((g for g in getattr(bar, "geoms", [bar]) if g.geom_type == "Polygon"),
+                      key=lambda g: g.area, default=None)
+            if bar is None or bar.area < floor * floor:
+                continue
+            if bar.difference(sewn).area < 0.5 * bar.area:
+                continue
+            rect = list(bar.minimum_rotated_rectangle.exterior.coords)
+            e1 = (rect[1][0] - rect[0][0], rect[1][1] - rect[0][1])
+            e2 = (rect[2][0] - rect[1][0], rect[2][1] - rect[1][1])
+            long_, short = (e1, e2) if math.hypot(*e1) >= math.hypot(*e2) else (e2, e1)
+            L, Wd = math.hypot(*long_), math.hypot(*short)
+            if L < 2 * spacing_mm or Wd < 1e-9:
+                continue
+            u = (long_[0] / L, long_[1] / L)
+            v = (-u[1], u[0])
+            cx = sum(p[0] for p in rect[:4]) / 4
+            cy = sum(p[1] for p in rect[:4]) / 4
+            stations = []
+            n = int(L // spacing_mm)
+            for k in range(n):
+                t = -L / 2 + (k + 0.5) * L / n
+                q = (cx + u[0] * t, cy + u[1] * t)
+                line = LineString([(q[0] - v[0] * Wd, q[1] - v[1] * Wd),
+                                   (q[0] + v[0] * Wd, q[1] + v[1] * Wd)])
+                hit = bar.intersection(line)
+                seg = max((g for g in getattr(hit, "geoms", [hit]) if g.geom_type == "LineString"),
+                          key=lambda g: g.length, default=None)
+                if seg is None or seg.length < floor:
+                    continue
+                p0, p1 = seg.coords[0], seg.coords[-1]
+                if (p1[0] - p0[0]) * v[0] + (p1[1] - p0[1]) * v[1] < 0:
+                    p0, p1 = p1, p0
+                stations.append((p0, p1))
+            if len(stations) >= 3:
+                w = sorted(math.dist(a, b) for a, b in stations)[len(stations) // 2]
+                out.append(Column(stations=stations, piece=bar, kind="straight", axis=u, width_mm=w))
+    return out
 
 
 def _tuck_stations(col: Column, end: int, through: Polygon, tuck_mm: float,
@@ -448,11 +687,13 @@ def _coords(geom):
 
 
 def _inside_path(columns: list[Column], nodes, spans, a, b, reach_mm: float,
-                 inside: Polygon) -> list[tuple[float, float]] | None:
+                 inside: Polygon, strict: bool = False) -> list[tuple[float, float]] | None:
     """The shortest way from `a` to `b` along the columns' centrelines (the
     walk's own graph: consecutive station midpoints, joined at span nodes),
     stepping on and off within `reach_mm` where that step stays `inside`.
-    None when either point cannot step on, or the two are not connected."""
+    None when either point cannot step on, or the two are not connected.
+    `strict` (`cfg.small_print_floor`): every edge of the graph stays
+    `inside` too -- a split column's centreline can cross a counter."""
     import heapq
 
     mids = [_mids(c.stations) for c in columns]
@@ -468,6 +709,8 @@ def _inside_path(columns: list[Column], nodes, spans, a, b, reach_mm: float,
     adj: dict[int, list[tuple[int, float]]] = {}
 
     def link(i, j):
+        if strict and not inside.covers(LineString([pts[i], pts[j]])):
+            return
         w = math.dist(pts[i], pts[j])
         adj.setdefault(i, []).append((j, w))
         adj.setdefault(j, []).append((i, w))
@@ -773,6 +1016,20 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         # one needle hole. The pro's S: the outer rail dense, the inner rail
         # short-stitched (lettering-thickness-fremont-2026-10-06).
         guarded = _short_stitch_guard(a_pts, b_pts)
+        if counter_clear_mm > 0:
+            # Small print: no zigzag stitch over a counter
+            # (`_counter_safe_pieces`); one column may sew as several.
+            pieces, dropped = _counter_safe_pieces(guarded, poly, min_cross_mm,
+                                                   counter_clear_mm)
+            report["thin_crosses"] += dropped
+            sewn_pieces = [p for p in pieces if len(p) >= 3]
+            report["thin_crosses"] += sum(len(p) for p in pieces if len(p) < 3)
+            if not sewn_pieces:
+                report["columns_unsewn"] += 1
+            for kept in sewn_pieces:
+                ready.append(Column(stations=kept, piece=col.piece, kind=col.kind, axis=col.axis,
+                                    width_mm=col.width_mm, rail_a=col.rail_a, rail_b=col.rail_b))
+            continue
         kept = [(a, b) for a, b in guarded if math.dist(a, b) >= min_cross_mm]
         report["thin_crosses"] += len(col.stations) - len(kept)
         if len(kept) < 3:
@@ -780,6 +1037,14 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
             continue
         ready.append(Column(stations=kept, piece=col.piece, kind=col.kind, axis=col.axis,
                             width_mm=col.width_mm, rail_a=col.rail_a, rail_b=col.rail_b))
+    if counter_clear_mm > 0 and ready:
+        # Small print: a bar between two counters that no column sews (the
+        # slashed 0's slash, once its crosses stop running over the
+        # counters beside it) gets a column of its own (`_bar_columns`).
+        bars = _bar_columns(poly, ready, spacing_mm)
+        if bars:
+            report["bars"] = len(bars)
+            ready.extend(bars)
     if not ready:
         report["empty"] = True
         return [], report
@@ -908,6 +1173,9 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
             report["spans"] += 1
             if underlay_style != "none":
                 ul = _centre_underlay(mids)
+                if (ul is not None and counter_clear_mm > 0
+                        and not poly_link.covers(LineString(ul))):
+                    ul = None       # small print: a split piece's centre over a counter
                 if ul is not None:
                     runs.append(StitchRun(points=ul, kind=stitches.UNDERLAY, shape_id=shape_id))
             pts = _satin_points(sts, above, _comb_thresholds, _split_points)
@@ -919,6 +1187,12 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         # an underpath (an earlier visit), or a satin span too short to
         # sew: the needle still has to reach the far end, under later thread
         path = _walk_points(mids, _UNDERPATH_STEP_MM)
+        if (len(path) >= 2 and counter_clear_mm > 0
+                and not poly_link.covers(LineString(path))):
+            # Small print: an underpath whose centreline crosses a counter
+            # (a split column's pieces) is not walked; the link rule in
+            # step 4, which keeps out of counters, takes the needle on.
+            path = []
         if len(path) >= 2:
             runs.append(StitchRun(points=path, kind=stitches.TRAVEL, shape_id=shape_id))
             report["underpath_mm"] += LineString(path).length
@@ -935,6 +1209,14 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     #     satin tier). The needle now lands just inside the near edge and
     #     runs to the start under the thread sewn after it -- only where
     #     that run stays inside the letter.
+    def walk(path):
+        # Small print: a routed path keeps its corners -- resampled by arc
+        # length, the synthetic 0's 0.42 mm hop round a counter's corner
+        # came out as one straight stitch across it.
+        if counter_clear_mm > 0:
+            return _walk_corners(path, _UNDERPATH_STEP_MM)
+        return _walk_points(path, _UNDERPATH_STEP_MM)
+
     if start_near is not None and runs:
         f = runs[0].points[0]
         inner = poly.buffer(-min(_ENTRY_INSET_MM, 0.25 * W))
@@ -947,9 +1229,10 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 # -- 3 of Fremont's 4 lane-only entry trims, 2026-10-08).
                 path = ([e, f] if poly_link.covers(LineString([e, f]))
                         else _inside_path(ready, nodes, spans, e, f,
-                                          _CONNECTOR_WIDTHS * W, poly_link))
+                                          _CONNECTOR_WIDTHS * W, poly_link,
+                                          strict=counter_clear_mm > 0))
                 if path is not None:
-                    runs.insert(0, StitchRun(points=_walk_points(path, _UNDERPATH_STEP_MM),
+                    runs.insert(0, StitchRun(points=walk(path),
                                              kind=stitches.TRAVEL, shape_id=shape_id))
                     run_leg.insert(0, -1)
                     report["entry_walk_mm"] = LineString(path).length
@@ -968,16 +1251,19 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         prev_run, cur = runs[k - 1], runs[k]
         a, b = prev_run.points[-1], cur.points[0]
         d = math.dist(a, b)
-        if d < machine.TINY_STITCH_MM or (d <= allow and poly_link.covers(LineString([a, b]))):
+        tiny = d < machine.TINY_STITCH_MM and (counter_clear_mm <= 0 or d < 1e-9
+                                               or poly_link.covers(LineString([a, b])))
+        if tiny or (d <= allow and poly_link.covers(LineString([a, b]))):
             linked.append(cur)      # needle-down inside the letter, under thread sewn later
             continue
         path = ([a, b] if poly_link.covers(LineString([a, b]))
-                else _inside_path(ready, nodes, spans, a, b, _CONNECTOR_WIDTHS * W, poly_link))
+                else _inside_path(ready, nodes, spans, a, b, _CONNECTOR_WIDTHS * W, poly_link,
+                                  strict=counter_clear_mm > 0))
         later = [g for li, g in sewn.items() if li >= run_leg[k]]
         if path is not None and later:
             line = LineString(path)
             if line.difference(unary_union(later)).length <= allow:
-                linked.append(StitchRun(points=_walk_points(path, _UNDERPATH_STEP_MM),
+                linked.append(StitchRun(points=walk(path),
                                         kind=stitches.TRAVEL, shape_id=shape_id))
                 linked.append(cur)
                 report["hops_buried"] = report.get("hops_buried", 0) + 1
@@ -988,6 +1274,18 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         report["jumps"] += 1
         linked.append(cur)
     return linked, report
+
+
+def _recorded_counters(cut_poly: Polygon, letter: Polygon) -> Polygon:
+    """`cfg.small_print_floor`: the cut's polygon holding the letter's own
+    counters (the recorded ones, `small_print_counters`) as holes, not the
+    cut's copy of them -- that copy can be a few hundredths smaller, and
+    the synthetic R's entry walk at a 5 mm cap ran 0.14 mm into the
+    recorded counter while clear of the cut's (`tools/small_print.py`)."""
+    if not letter.interiors:
+        return cut_poly
+    both = cut_poly.difference(unary_union([Polygon(r) for r in letter.interiors]))
+    return both if both.geom_type == "Polygon" and not both.is_empty else cut_poly
 
 
 def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
@@ -1009,7 +1307,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     # on EACH rail). The spike stationed at half that with both ends down
     # and sewed every letter twice as dense.
     cut = letter_columns(poly, pitch_mm=spacing_mm)
-    runs, report = column_runs(cut.columns, cut.poly, shape_id, trim_at_mm=trim_at_mm,
+    held = _recorded_counters(cut.poly, poly) if counter_clear_mm > 0 else cut.poly
+    runs, report = column_runs(cut.columns, held, shape_id, trim_at_mm=trim_at_mm,
                                spacing_mm=spacing_mm, split_above_mm=split_above_mm,
                                pull_mm=pull_mm, pull_floor_mm=pull_floor_mm,
                                underlay_style=underlay_style, start_near=start_near,
