@@ -163,6 +163,14 @@ _RIBBON_PAD_MM = 0.02
 # own polygon whole through the junction.
 _JUNCTION_CUT = 1.0
 
+# --- the line test (the photo trial, 2026-10-12) ---
+# A branch is a strand only when its core leaves the straight path between
+# the colours on its two sides by at least this much (CIELAB + alpha x 100,
+# `_SRC_MIN_CONTRAST`'s units and value). Measured on owl_kent.jpg: eye rims
+# and beak bristles read 14-66, the grey blur rim of a feather bar and
+# slivers of smooth down 0-10. Candidate, unsewn (ROADMAP gate 1).
+_LINE_MIN_CONTRAST = _SRC_MIN_CONTRAST
+
 # --- the ground-fragment rule (step 2) ---
 # A thin shape of a ground colour is a hairline only when it is darker than
 # the colours its edge touches by more than this many L* units.
@@ -385,11 +393,28 @@ def _decide_edges(m: dict, poly, max_width_mm: float, ink, ink_colour) -> None:
                 ok = [w for w in ws if w is not None]
                 if ok and len(ok) >= _SRC_MIN_VALID * len(ws):
                     edges[k]["w_source"] = float(np.median(ok))
+    # The photo trial (2026-10-12): with the source in hand, a branch is a
+    # strand only where the photograph shows a LINE there (`_line_contrasts`)
+    # — read whether or not the width read found an ink colour, because a
+    # sliver with no edge at all is exactly the case that used to fall back
+    # to the traced width and pass.
+    if ink is not None and picks_y:
+        lines = _line_contrasts(ink, skel, dist, scale, x0, y0,
+                                np.asarray(picks_y), np.asarray(picks_x))
+        per_l: dict[int, list] = {}
+        for k, v in zip(owner, lines):
+            if v is not None:
+                per_l.setdefault(k, []).append(v)
+        for k, vs in per_l.items():
+            edges[k]["line"] = float(np.median(vs))
     for e in edges:
         if not e["decided"]:
             continue
         e["w"] = e.get("w_source", e["w_traced"])
         e["admit"] = e["w"] <= max_width_mm and e["p95"] <= blob_lim
+        if e["admit"] and e.get("line") is not None and e["line"] < _LINE_MIN_CONTRAST:
+            e["admit"] = False
+            e["refused"] = "no_line"
     # Branches too short to read follow their neighbours.
     by_node: dict[int, list[int]] = {}
     for i, e in enumerate(edges):
@@ -407,6 +432,18 @@ def _decide_edges(m: dict, poly, max_width_mm: float, ink, ink_colour) -> None:
         else:
             e["w"] = e["w_all"]
             e["admit"] = e["w"] <= max_width_mm and e["p95_all"] <= blob_lim
+            if e["admit"] and ink is not None:
+                # No neighbour to follow: the line test reads its own pixels.
+                a = np.asarray(e["px"], np.int64)
+                take = np.unique(np.round(np.linspace(0, len(a) - 1,
+                                                      min(len(a), _EDGE_SAMPLES))).astype(int))
+                vs = [v for v in _line_contrasts(ink, skel, dist, scale, x0, y0,
+                                                 a[take, 1], a[take, 0]) if v is not None]
+                if vs:
+                    e["line"] = float(np.median(vs))
+                    if e["line"] < _LINE_MIN_CONTRAST:
+                        e["admit"] = False
+                        e["refused"] = "no_line"
     hair = [e for e in edges if e["admit"]]
     thick = [e for e in edges if not e["admit"]]
     m.update(hair_edges=hair, thick_edges=thick, admit=bool(hair), rest=None, hair_geom=None)
@@ -477,6 +514,53 @@ def _source_widths(ink, skel, body, dist, scale, x0, y0, pick=None, ink_colour=N
         ys, xs = ys[::k][:_SRC_SAMPLES], xs[::k][:_SRC_SAMPLES]
     else:
         ys, xs = pick
+    prof = _profiles(ink, skel, dist, scale, x0, y0, ys, xs)
+    if prof is None:
+        return None
+    t, V, inside, S_l, S_r, which, step_mm, C = prof
+    rows = np.arange(len(C))
+    score = np.minimum(np.linalg.norm(V - S_l[:, None], axis=2),
+                       np.linalg.norm(V - S_r[:, None], axis=2))
+    score[~inside] = -1.0
+    if ink_colour is None:
+        I = np.median(V[rows, np.argmax(score, axis=1)], axis=0)
+    else:
+        I = ink_colour
+    widths = []
+    aligned = [None] * len(ys)
+    mid = int(np.argmin(np.abs(t)))
+    for i in range(len(C)):
+        ok = True
+        total = 0.0
+        for S, idx in ((S_l[i], np.arange(mid, -1, -1)), (S_r[i], np.arange(mid + 1, len(t)))):
+            d = I - S
+            n2 = float(d @ d)
+            if math.sqrt(n2) < _SRC_MIN_CONTRAST:
+                ok = False
+                break
+            idx = idx[inside[i, idx]]
+            c = np.clip((V[i, idx] - S) @ d / n2, 0.0, 1.0)
+            # Only the ink CONNECTED to the skeleton: walking out from the
+            # middle, the integral stops at the first gap of surround, so a
+            # neighbouring strand inside the reach is not added to this one.
+            gap = np.nonzero(c <= _SRC_GAP)[0]
+            total += float(c[:gap[0]].sum() if len(gap) else c.sum())
+        if ok:
+            widths.append(total * step_mm)
+            aligned[which[i]] = total * step_mm
+    return widths, len(C), I, aligned
+
+
+def _profiles(ink, skel, dist, scale, x0, y0, ys, xs):
+    """Profiles across the stroke at skeleton pixels (`ys`, `xs`) — the
+    geometry `_source_widths` and `_line_contrasts` share -> (t mm, V (n, m,
+    4) field samples, `inside` mask, S_l, S_r (each profile's two ends), the
+    index into `ys` of each profile, step mm, centres) or None.
+
+    Each normal is the principal axis of the skeleton pixels round the
+    sample; each profile reaches the traced half-width plus
+    `_SRC_MARGIN_PX` source pixels each side, so both ends sit on the
+    surround."""
     sk_y, sk_x = np.nonzero(skel)
     sk = np.column_stack([sk_x, sk_y]).astype(np.float64)
     src_ppm = ink.src_px_per_mm
@@ -513,36 +597,43 @@ def _source_widths(ink, skel, body, dist, scale, x0, y0, pick=None, ink_colour=N
     rows = np.arange(len(C))
     S_l = V[rows, first]
     S_r = V[rows, first + last - 1]
-    score = np.minimum(np.linalg.norm(V - S_l[:, None], axis=2),
-                       np.linalg.norm(V - S_r[:, None], axis=2))
-    score[~inside] = -1.0
-    if ink_colour is None:
-        I = np.median(V[rows, np.argmax(score, axis=1)], axis=0)
-    else:
-        I = ink_colour
-    widths = []
-    aligned = [None] * len(ys)
-    mid = int(np.argmin(np.abs(t)))
-    for i in range(len(C)):
-        ok = True
-        total = 0.0
-        for S, idx in ((S_l[i], np.arange(mid, -1, -1)), (S_r[i], np.arange(mid + 1, len(t)))):
-            d = I - S
-            n2 = float(d @ d)
-            if math.sqrt(n2) < _SRC_MIN_CONTRAST:
-                ok = False
-                break
-            idx = idx[inside[i, idx]]
-            c = np.clip((V[i, idx] - S) @ d / n2, 0.0, 1.0)
-            # Only the ink CONNECTED to the skeleton: walking out from the
-            # middle, the integral stops at the first gap of surround, so a
-            # neighbouring strand inside the reach is not added to this one.
-            gap = np.nonzero(c <= _SRC_GAP)[0]
-            total += float(c[:gap[0]].sum() if len(gap) else c.sum())
-        if ok:
-            widths.append(total * step_mm)
-            aligned[which[i]] = total * step_mm
-    return widths, len(C), I, aligned
+    return t, V, inside, S_l, S_r, which, step_mm, C
+
+
+def _line_contrasts(ink, skel, dist, scale, x0, y0, ys, xs) -> list:
+    """How far each profile's CORE stands out of the straight path between
+    its two ends, in the source field's units -> list aligned to `ys` (None
+    where no profile was taken).
+
+    The photo trial's finding (docs/hairline-photo-trial-2026-10-12.md): on
+    a photograph most thin shapes are not strands. They are the blur band
+    between two colours (a grey rim between a black feather bar and white
+    down, its colour ON the path from one side to the other), or a sliver
+    of a smooth gradient the segmenter cut (no edge at all). A strand is a
+    LINE: its ink leaves the path between its two sides — darker (or
+    lighter, or another hue) than both. So: the largest distance, over the
+    profile's core (the traced half-width, at least half a source pixel), of
+    a sample from the segment S_l..S_r. A band ON that segment reads near 0
+    whatever its two sides are; a strand reads its own contrast."""
+    prof = _profiles(ink, skel, dist, scale, x0, y0, ys, xs)
+    out: list = [None] * len(ys)
+    if prof is None:
+        return out
+    t, V, inside, S_l, S_r, which, _step, _C = prof
+    src_ppm = ink.src_px_per_mm
+    for i, j in enumerate(which):
+        y, x = ys[j], xs[j]
+        half = max(float(dist[y, x]) / scale, 0.5 / src_ppm)
+        core = inside[i] & (np.abs(t) <= half + 1e-9)
+        if not core.any():
+            core = inside[i] & (np.abs(t) == np.abs(t).min())
+        d = S_r[i] - S_l[i]
+        n2 = float(d @ d)
+        P = V[i, core] - S_l[i]
+        u = np.clip(P @ d / n2, 0.0, 1.0) if n2 > 1e-12 else np.zeros(len(P))
+        off = P - u[:, None] * d[None, :]
+        out[j] = float(np.sqrt((off * off).sum(axis=1)).max())
+    return out
 
 
 def block_thread_wt(regions, cfg) -> dict[int, int]:
