@@ -1205,12 +1205,26 @@ THREAD_WT_DEFAULT = 40
 # candidate: #843 §4, unsewn.
 HAIRLINE_MAX_WIDTHS = 1.5
 
+# Small print (`cfg.small_print_floor`, 2026-10-12, default OFF): the
+# narrowest counter -- the bare ground inside an A, a B, an 8 -- the lettering
+# lane keeps open, in laid thread widths. One width: a gap narrower than one
+# thread is not a gap the needle can leave between two columns, because each
+# column's thread spreads half a laid width past its penetration and the two
+# halves meet. 40 wt 0.40 mm, 60 wt ~0.32. Where it came from: the counters
+# `tools/small_print.py` found shut at 3-4 mm caps (6 of 10 on the synthetic
+# word at 3 mm dropped by stage 4's 0.56 mm2 sliver floor, which knows no
+# thread; a 1.1 mm2 counter at 4 mm sewn shut by its own columns' thread).
+# candidate: unsewn -- the hairline card (docs/sewout/hairline-card-
+# 2026-10-12/README.md, "Small print") is where it is settled. Gate 1.
+SMALL_PRINT_COUNTER_MIN_WIDTHS = 1.0
+
 
 class ThreadProfile:
     """What a thread weight changes. Read-only; build with `thread_profile`."""
 
     __slots__ = ("wt", "width_mm", "satin_spacing_mm", "hairline_run_width_mm",
-                 "hairline_max_width_mm", "min_stitch_mm", "min_cap_height_mm",
+                 "hairline_max_width_mm", "counter_min_width_mm",
+                 "min_stitch_mm", "min_cap_height_mm",
                  "cap_height_note", "needle_advice")
 
     def __init__(self, **kw):
@@ -1241,6 +1255,9 @@ def thread_profile(wt: int = THREAD_WT_DEFAULT) -> ThreadProfile:
     - `hairline_run_width_mm`: the mark ONE run lays = `width_mm`.
     - `hairline_max_width_mm`: `HAIRLINE_MAX_WIDTHS` x `width_mm` — the
       widest stroke the hairline tier sews as one pass.
+    - `counter_min_width_mm`: `SMALL_PRINT_COUNTER_MIN_WIDTHS` x
+      `width_mm` -- the narrowest letter counter `cfg.small_print_floor`
+      keeps open (candidate, unsewn).
     - `min_stitch_mm`: `MIN_STITCH_MM` at every weight (needle-bound, see
       the block comment above).
     - `min_cap_height_mm` / `cap_height_note`: the trade's smallest lettering
@@ -1285,6 +1302,7 @@ def thread_profile(wt: int = THREAD_WT_DEFAULT) -> ThreadProfile:
         satin_spacing_mm=spacing,
         hairline_run_width_mm=width,
         hairline_max_width_mm=HAIRLINE_MAX_WIDTHS * width,
+        counter_min_width_mm=SMALL_PRINT_COUNTER_MIN_WIDTHS * width,
         min_stitch_mm=MIN_STITCH_MM,
         min_cap_height_mm=cap,
         cap_height_note=cap_note,

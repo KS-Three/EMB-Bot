@@ -249,6 +249,8 @@ def measure(image, cfg: PipelineConfig, ref: dict) -> dict:
         width_mm=w, cap_mm=ref["cap"] * w,
         cap_traced_mm=_cap(letters) if letters else float("nan"),
         tiers=tiers, stitches=len(lens),
+        trims=sum(1 for _, r in plan.iter_runs() if r.trim),
+        jumps=sum(1 for _, r in plan.iter_runs() if r.jump),
         dust=short / len(lens) if lens else float("nan"),
         covered=int((art_m & sewn).sum()) / art_a if art_a else float("nan"),
         spill=int((sewn & (1 - art_m) & (1 - hole_m)).sum()) / art_a if art_a else float("nan"),
@@ -279,7 +281,7 @@ def run_fixture(name: str, caps, flags: dict | None = None, ref: dict | None = N
 
 def fmt(m: dict) -> str:
     return (f"{m['fixture']} cap {m['target_cap']} (got {m['cap_mm']:.2f}, traced {m['cap_traced_mm']:.2f}) "
-            f"w {m['width_mm']} {m['tiers']} st {m['stitches']} dust {m['dust']:.3f} "
+            f"w {m['width_mm']} {m['tiers']} st {m['stitches']} trims {m['trims']} dust {m['dust']:.3f} "
             f"covered {m['covered']:.3f} spill {m['spill']:.3f} counters {m['counters']} "
             f"traced {m['counters_traced']} shut {m['counters_shut']} open {m['counter_open']:.3f} "
             f"({m['counter_mm2']:.2f} mm2) {m['flags']} [{m['seconds']} s]")
