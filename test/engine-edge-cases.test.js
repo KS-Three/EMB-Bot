@@ -8,9 +8,9 @@
 // count came back, because a count is the first thing a legitimate tuning
 // change moves.
 //
-// `test.todo` marks a case that exposed a real defect. The body is the repro,
-// kept so whoever fixes it can delete the `.todo` and have the test. These
-// are NOT fixed here: this file changes no engine behaviour.
+// `test.todo` marked a case that exposed a real defect; the two it held
+// (tatamiFill with a non-positive rowSpacing, an empty outer ring reporting
+// NaN) are fixed and are plain tests now.
 
 const assert = require("node:assert");
 const { test } = require("node:test");
@@ -270,9 +270,19 @@ test("tatamiFill: a missing or NaN rowSpacing still produces finite output", () 
 // NaN, a zero or negative maxStitch) is tolerated. The Studio's density slider
 // bottoms out above 0, which is why no customer has hit this, but
 // buildQualityDesign({ densityMm: 0 }) is falsy and falls back to the default,
-// so the reachable route is a direct caller. Fix belongs in fill.js; the repro
-// is deliberately not run here because it takes the process down with it.
-test.todo("tatamiFill: rowSpacing <= 0 terminates (BUG: runs out of memory at 0, hangs at -1)");
+// so the reachable route is a direct caller. FIXED: tatamiFill now throws a
+// RangeError for a rowSpacing <= 0 before the row loop starts (every in-repo
+// caller floors its row spacing above 0, so none reaches the throw).
+test("tatamiFill: rowSpacing <= 0 terminates", () => {
+  for (const rowSpacing of [0, -1, -0.5]) {
+    assert.throws(
+      () => fill.tatamiFill([OUTER], { rowSpacing, angleDeg: 0, maxStitch: 20 }),
+      RangeError,
+      "rowSpacing " + rowSpacing
+    );
+  }
+  assert.throws(() => fill.plainStart([OUTER], { rowSpacing: 0, angleDeg: 0, maxStitch: 20 }), RangeError);
+});
 
 // ---------------------------------------------------------------------------
 // satin.js
@@ -385,8 +395,17 @@ test("buildQualityDesign: a hole larger than its outer ring does not throw or se
 // NaN (the bbox of zero points, 0/0 after the fit scale). Anything downstream
 // that prints or compares the size -- the stats line, the hoop ceiling check,
 // the worksheet -- gets NaN. The all-regions-empty path just above it returns
-// widthMM: 0 and is correct, which is the contract this should meet.
-test.todo("buildQualityDesign: an empty outer ring reports 0 x 0 mm, not NaN (BUG: widthMM/heightMM are NaN)");
+// widthMM: 0 and is correct, which is the contract this should meet. FIXED.
+test("buildQualityDesign: an empty outer ring reports 0 x 0 mm, not NaN", () => {
+  for (const opts of [undefined, { targetWidthMm: 50 }]) {
+    const d = design([{ outer: [], holes: [] }], opts);
+    assert.ok(finite(d.stitches));
+    assert.strictEqual(d.widthMM, 0);
+    assert.strictEqual(d.heightMM, 0);
+    assert.strictEqual(d.stitchCount, 0);
+    assert.ok(d.fit && Number.isFinite(d.fit.cxPx) && Number.isFinite(d.fit.cyPx));
+  }
+});
 
 test("buildQualityDesign: a shape far below one row spacing beside a large one is sewn finite and in the hoop", () => {
   const d = design([{ outer: sq(0, 0, 400), holes: [] }, { outer: sq(500, 0, 1), holes: [] }]);
