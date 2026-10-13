@@ -2,6 +2,7 @@
 
     python -m tools.hairline_coverage run   [--fixtures a,b] [--arms off,on,...] [--force]
     python -m tools.hairline_coverage table
+    python -m tools.hairline_coverage reach [--fixtures a,b]   # why hairline_over_ground does / does not act
     python -m tools.hairline_coverage render [--fixture photo/logo_gaulke_roofing.png]
 
 #872 priced `cfg.hairline` on the scorecard logos and found bare fabric and new
@@ -17,6 +18,9 @@ Arms (all `matrix[0]` = 80 mm / left_chest, 40 wt, stages 0-4 once per fixture):
 - `on_nodrop`    `cfg.hairline` True, drop guard OFF (#872's arm).
 - `on_cov`       `on` + `cfg.hairline_coverage_guard`.
 - `on_cov_nodrop` `on_nodrop` + `cfg.hairline_coverage_guard`.
+- `on_gnd`       `on` + `cfg.hairline_over_ground` (the ground close, #850).
+- `on_cov_gnd`   `on_cov` + `cfg.hairline_over_ground` (2026-10-13: does the ground close
+                 the gaps the coverage guard cannot see?).
 
 Per arm: stitches, trims, preflight's `ARTWORK_UNCOVERED` (total mm2, shape ids),
 the bare-fabric total (`hairline_renders.bare_cells`: artwork cells with no
@@ -76,7 +80,7 @@ LOGOS = ("photo/enthusiast_logo.png", "photo/screenshot_phone_ui_golke.jpg",
          "photo/drone_render.png", "photo/logo_bridge_bar.jpg",
          "photo/logo_gaulke_roofing.png", "photo/summit_badge.png",
          "logo_alpha.png", "logo_whitebg.png")
-ARMS = ("off", "on", "on_nodrop", "on_cov", "on_cov_nodrop")
+ARMS = ("off", "on", "on_nodrop", "on_cov", "on_cov_nodrop", "on_gnd", "on_cov_gnd")
 NO_TRAVEL = False          # --no-travel: skip `_thread_bare_mm` (minutes per plan on a hair network)
 EDGE_REACH_MM = 0.5      # a bare cell nearer than this to a laid run is a narrow-run edge
 GROUND_REACH_MM = 0.6    # a bare cell this near a captured shape, outside it, is a ground gap
@@ -89,6 +93,8 @@ def arm_setup(arm: str) -> tuple[dict, bool]:
         kw["hairline"] = True
     if arm.startswith("on_cov"):
         kw["hairline_coverage_guard"] = True
+    if arm.endswith("_gnd"):
+        kw["hairline_over_ground"] = True
     return kw, "nodrop" not in arm
 
 
@@ -138,9 +144,13 @@ def laid_by_shape(plan) -> dict[str, list]:
     return out
 
 
-def attribute(off_bare, on_bare, cands: dict, plan) -> dict:
+def attribute(off_bare, on_bare, cands: dict, plan, stitched=None) -> dict:
     """New bare cells of `plan` against OFF -> per-candidate mm2 split by cause,
-    plus the cells no candidate owns. `cands` = {sid: polygon}."""
+    plus the cells no candidate owns. `cands` = {sid: polygon}. `stitched`, the
+    union of every stitched shape's artwork polygon, splits the ground cells:
+    `rim_mm2` is the part whose centre lies in NO stitched polygon (ink beyond
+    the strand's traced edge, not a hole in a colour beneath); `ground_mm2`
+    keeps the whole of both for the earlier tables."""
     xs, ys, cell, fixed = new_bare_cells(off_bare, on_bare)
     a = cell * cell
     laid = laid_by_shape(plan)
@@ -162,21 +172,23 @@ def attribute(off_bare, on_bare, cands: dict, plan) -> dict:
     for sid, poly in cands.items():
         near = left & shapely.contains_xy(poly.buffer(GROUND_REACH_MM), xs, ys)
         per[sid]["ground_mm2"] = float(near.sum()) * a
+        if stitched is not None:
+            per[sid]["rim_mm2"] = float((near & ~shapely.contains_xy(stitched, xs, ys)).sum()) * a
         left &= ~near
     for v in per.values():
-        for k in v:
+        for k in list(v):
             v[k] = round(v[k], 2)
         v["new_bare_mm2"] = round(v["edge_mm2"] + v["erased_mm2"] + v["ground_mm2"], 2)
     return {"per_shape": per, "unattributed_mm2": round(float(left.sum()) * a, 2),
             "new_bare_mm2": round(len(xs) * a, 2), "resolved_mm2": round(fixed * a, 2)}
 
 
-def measure_arm(plan, result, p, cfg, off_bare=None, cands=None) -> tuple[dict, tuple]:
+def measure_arm(plan, result, p, cfg, off_bare=None, cands=None, stitched=None) -> tuple[dict, tuple]:
     row = measure_mode(plan, result, p, cfg)
     row["thread_bare"] = thread_bare(plan)
     bare = bare_cells(plan, result, p)
     if off_bare is not None:
-        row["attribution"] = attribute(off_bare, bare, cands, plan)
+        row["attribution"] = attribute(off_bare, bare, cands, plan, stitched)
     return row, bare
 
 
@@ -244,6 +256,10 @@ def run_one(fixture: str, cfg_kw: dict, wt: int, arms: tuple) -> dict:
                  "design_class": str(result.design_class),
                  "stage0_4_s": round(time.perf_counter() - t0, 1), "arms": {}}
     cand_rows, polys = candidate_table(result, PipelineConfig(**base, hairline=True))
+    all_st = [r for r in result.regions if r.meta.get("stitched", True)]
+    if PipelineConfig(**base).fill_inside_satin_border:
+        all_st = _fill_inside_satin_border(all_st, PipelineConfig(**base), result.design_class)
+    stitched_union = unary_union([r.polygon for r in all_st])
     out["candidates"] = cand_rows
     off_bare = None
     for arm in arms:
@@ -256,7 +272,7 @@ def run_one(fixture: str, cfg_kw: dict, wt: int, arms: tuple) -> dict:
             t0 = time.perf_counter()
             plan = plan_stitches(result, cfg)
             el = time.perf_counter() - t0
-            row, bare = measure_arm(plan, result, p, cfg, off_bare, polys)
+            row, bare = measure_arm(plan, result, p, cfg, off_bare, polys, stitched_union)
         finally:
             s6h.DROP_GUARD = True
         row["plan_s"] = round(el, 1)
@@ -328,6 +344,28 @@ def markdown(rows: dict) -> str:
             cells.append("-" if v is None else
                          f"{_unc(v)} / {v['bare_mm2']} / {v['thread_bare']['mm']} / {v['stitches']:,}")
         lines.append(f"| {k.split(' @ ')[0]} | " + " | ".join(cells) + " |")
+    gnd = [(k, r) for k, r in sorted(ok.items()) if "on_cov_gnd" in r["arms"] and "on_cov" in r["arms"]]
+    if gnd:
+        lines += ["", "### `hairline_over_ground`: `on_cov` -> `on_cov_gnd` (drop + coverage guard on in both)",
+                  "(bare / ARTWORK_UNCOVERED mm2, stitches, trims; ground = new bare cells outside the shape within "
+                  f"{GROUND_REACH_MM} mm of a captured shape, of which rim = no stitched polygon under the cell; "
+                  "shapes = those carrying >= 0.1 mm2 of ground-gap cells in `on_cov`)", "",
+                  "| fixture | bare | uncovered | stitches | trims | ground (rim) | ground-gap shapes |",
+                  "|---|---|---|---|---|---|---|"]
+        for k, r in gnd:
+            a, b = r["arms"]["on_cov"], r["arms"]["on_cov_gnd"]
+
+            def g(v, key):
+                att = v.get("attribution")
+                return 0.0 if not att else round(sum(p.get(key, 0.0) for p in att["per_shape"].values()), 2)
+            shapes = ", ".join(
+                f"{sid} {p['ground_mm2']}" for sid, p in sorted(
+                    (a.get("attribution") or {"per_shape": {}})["per_shape"].items(),
+                    key=lambda kv: -kv[1]["ground_mm2"]) if p["ground_mm2"] >= 0.1)
+            lines.append(
+                f"| {k.split(' @ ')[0]} | {a['bare_mm2']} -> {b['bare_mm2']} | {_unc(a)} -> {_unc(b)} | "
+                f"{a['stitches']:,} -> {b['stitches']:,} | {a['trims']} -> {b['trims']} | "
+                f"{g(a, 'ground_mm2')} ({g(a, 'rim_mm2')}) -> {g(b, 'ground_mm2')} ({g(b, 'rim_mm2')}) | {shapes or '-'} |")
     lines += ["", "### Shapes that lose coverage under `on_nodrop`: new bare mm2 against OFF, by cause",
               "(edge = run narrower than the stroke; erased = strand dropped; ground = gap in the colour beneath;"
               " est = `strand_bare_mm2`, the plan-time prediction)", "",
@@ -373,13 +411,24 @@ def cmd_render(args) -> int:
     cfg_kw = sc.MATRIX[0]
     base = dict(cfg_kw, thread_wt=args.wt)
     result = run_stages(TESTDATA / args.fixture, PipelineConfig(**base))
-    labels = ("today (OFF)", "hairline ON", "hairline ON + coverage guard")
-    plans = [plan_stitches(result, PipelineConfig(**base)),
-             plan_stitches(result, PipelineConfig(**base, hairline=True)),
-             plan_stitches(result, PipelineConfig(**base, hairline=True,
-                                                  hairline_coverage_guard=True))]
+    if args.ground:
+        # OFF | ON + both guards | the same + hairline_over_ground (the ground-gap question).
+        labels = ("today (OFF)", "hairline ON + coverage guard", "... + hairline_over_ground")
+        plans = [plan_stitches(result, PipelineConfig(**base)),
+                 plan_stitches(result, PipelineConfig(**base, hairline=True,
+                                                      hairline_coverage_guard=True)),
+                 plan_stitches(result, PipelineConfig(**base, hairline=True,
+                                                      hairline_coverage_guard=True,
+                                                      hairline_over_ground=True))]
+    else:
+        labels = ("today (OFF)", "hairline ON", "hairline ON + coverage guard")
+        plans = [plan_stitches(result, PipelineConfig(**base)),
+                 plan_stitches(result, PipelineConfig(**base, hairline=True)),
+                 plan_stitches(result, PipelineConfig(**base, hairline=True,
+                                                      hairline_coverage_guard=True))]
     name = Path(args.fixture).stem
-    _write_png(out / f"{name}_coverage_compare.png",
+    tag = "ground" if args.ground else "coverage"
+    _write_png(out / f"{name}_{tag}_compare.png",
                _strip([_panel(pl, lb, args.wt) for pl, lb in zip(plans, labels)]))
     if args.zoom:
         cx, cy, hw, hh = (float(v) for v in args.zoom.split(","))
@@ -393,8 +442,64 @@ def cmd_render(args) -> int:
         cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
         hw, hh = max(5.0, (x1 - x0) / 2 + 1.5), max(4.0, (y1 - y0) / 2 + 1.5)
         print(f"zoom on {pick['shape_id']} ({pick['area_mm2']} mm2)")
-    _write_png(out / f"{name}_coverage_zoom.png", _strip(
+    _write_png(out / f"{name}_{tag}_zoom.png", _strip(
         [_zoom_panel(pl, lb, args.wt, cx, cy, hw, hh) for pl, lb in zip(plans, labels)]))
+    return 0
+
+
+def reach_one(fixture: str, wt: int) -> dict:
+    """Why `hairline_over_ground` does or does not act on `fixture`'s kept
+    strands (drop + coverage guard ON, the arm it is meant to improve). Per
+    strand: the grounds touching it, how many sew BEFORE it, how many of those
+    are fill (a satin ground keeps only its underlap tongue), and the area
+    `_hairline_ground` hands out. No plan, no preflight: stages 0-4 + the set."""
+    from digitizer_core import stage5_overlap as s5
+    from digitizer_core.stage5_overlap import _comp_axis, satin_ceiling_mm
+    from shapely.strtree import STRtree
+    base = dict(sc.MATRIX[0], thread_wt=wt)
+    result = run_stages(TESTDATA / fixture, PipelineConfig(**base))
+    cfg = PipelineConfig(**base, hairline=True, hairline_coverage_guard=True,
+                         hairline_over_ground=True)
+    st = [r for r in result.regions if r.meta.get("stitched", True)]
+    if cfg.fill_inside_satin_border:
+        st = _fill_inside_satin_border(st, cfg, result.design_class)
+    hs = hairline_candidates(st, cfg, ink=getattr(result, "ink_source", None))
+    smax = satin_ceiling_mm(cfg)
+    tree = STRtree([r.polygon for r in st])
+    pieces = s5._hairline_ground(st, hs, cfg, result.design_class, tongue_mm=0.1) if hs else {}
+    rows = []
+    for sid in hs:
+        h = next(r for r in st if r.shape_id == sid)
+        touch = [st[int(i)] for i in tree.query(h.polygon.buffer(s5._HAIR_TOUCH_MM))
+                 if st[int(i)].shape_id != sid and st[int(i)].shape_id not in hs
+                 and st[int(i)].polygon.distance(h.polygon) <= s5._HAIR_TOUCH_MM]
+        earlier = [g for g in touch if g.meta["layer"] < h.meta["layer"]]
+        fills = [g for g in earlier if not _comp_axis(g, cfg, smax, result.design_class)[1]]
+        rows.append({"shape_id": sid, "area_mm2": round(h.polygon.area, 2),
+                     "layer": h.meta["layer"], "touching": len(touch), "earlier": len(earlier),
+                     "earlier_fill": len(fills)})
+    return {"fixture": fixture, "kept": len(hs), "strands": rows,
+            "ground_piece_mm2": round(sum(g.area for g in pieces.values()), 3),
+            "ground_pieces": len(pieces)}
+
+
+def cmd_reach(args) -> int:
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    fixtures = args.fixtures.split(",") if args.fixtures else list(LOGOS)
+    got = {}
+    f = out / "reach.json"
+    if f.exists():
+        got = json.loads(f.read_text(encoding="utf-8"))
+    for fx in fixtures:
+        got[fx] = reach_one(fx, args.wt)
+        r = got[fx]
+        n = len(r["strands"])
+        print(f"{fx}: kept {r['kept']}  touching-a-ground {sum(1 for s in r['strands'] if s['touching'])}"
+              f"  with an EARLIER ground {sum(1 for s in r['strands'] if s['earlier'])}"
+              f"  with an earlier FILL ground {sum(1 for s in r['strands'] if s['earlier_fill'])}"
+              f"  -> ground handed out {r['ground_piece_mm2']} mm2 in {r['ground_pieces']} piece(s)", flush=True)
+        f.write_text(json.dumps(got, indent=1) + "\n", encoding="utf-8")
     return 0
 
 
@@ -412,12 +517,18 @@ def main(argv=None) -> int:
     m = sub.add_parser("merge")
     m.add_argument("dirs", nargs="+")
     m.set_defaults(fn=cmd_merge)
+    rc = sub.add_parser("reach")
+    rc.add_argument("--fixtures", default="", help="comma list under testdata/; default the logo set")
+    rc.add_argument("--wt", type=int, default=40)
+    rc.set_defaults(fn=cmd_reach)
     t = sub.add_parser("table")
     t.set_defaults(fn=cmd_table)
     d = sub.add_parser("render")
     d.add_argument("--fixture", required=True)
     d.add_argument("--wt", type=int, default=40)
     d.add_argument("--zoom", default="")
+    d.add_argument("--ground", action="store_true",
+                   help="panels OFF | ON + guards | + hairline_over_ground (needs --zoom or rows.json)")
     d.set_defaults(fn=cmd_render)
     args = ap.parse_args(argv)
     return args.fn(args)
