@@ -48,7 +48,7 @@ DOC_READERS = {"scope_budget", "memory_budget", "doc_claims"}
 #: and `readback.md` (2026-10-12): both print only JSON rows, and neither
 #: reads a doc.
 NAMES_ONLY = {"acceptance_ab", "sewout_walk_reach", "counter_slots",
-              "hairline_renders", "hairline_card"}
+              "hairline_renders", "hairline_card", "hairline_logo_bill"}
 
 
 def cp1252_stream() -> tuple[io.BytesIO, io.TextIOWrapper]:
