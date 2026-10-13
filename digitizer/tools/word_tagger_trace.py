@@ -328,8 +328,41 @@ def expected_lines(name: str, ref_regions, chart) -> tuple[dict[str, list[str]],
     return {f"word{i}": ids for i, ids in enumerate(t.words)}, "reference"
 
 
-def report_size(lines: dict[str, list[str]], mapping: dict[str, str | None], t: Trace, chart) -> list[dict]:
-    """One row per expected line at one size."""
+# A host box more than this many times the scaled reference box is a
+# background plate that happens to lie over the glyph, not a merge partner.
+MERGE_AREA_MAX = 8.0
+
+
+def absorbers(ref_regions, ref_w: float, regions, width: float,
+              mapping: dict[str, str | None]) -> dict[str, str]:
+    """For each reference region with no counterpart at this size: the
+    smallest region whose box holds its scaled centre, i.e. the region it was
+    merged into when the segmentation lost the boundary between them."""
+    k = width / ref_w
+    out: dict[str, str] = {}
+    for rr in ref_regions:
+        if mapping.get(rr.shape_id):
+            continue
+        x0, y0, x1, y1 = rr.polygon.bounds
+        cx, cy = (x0 + x1) / 2 * k, (y0 + y1) / 2 * k
+        cap = MERGE_AREA_MAX * (x1 - x0) * (y1 - y0) * k * k
+        best = None
+        for r in regions:
+            a0, b0, a1, b1 = r.polygon.bounds
+            if a0 <= cx <= a1 and b0 <= cy <= b1:
+                area = (a1 - a0) * (b1 - b0)
+                if area <= cap and (best is None or area < best[0]):
+                    best = (area, r.shape_id)
+        if best:
+            out[rr.shape_id] = best[1]
+    return out
+
+
+def report_size(lines: dict[str, list[str]], mapping: dict[str, str | None], t: Trace, chart,
+                absorbed: dict[str, str] | None = None) -> list[dict]:
+    """One row per expected line at one size. `absorbed` (see `absorbers`)
+    turns a bare no_region into "merged>" + the rule that refused the region
+    it was merged into."""
     rows = []
     word_of = {s: i for i, ids in enumerate(t.words) for s in ids}
     for line, ref_ids in lines.items():
@@ -344,7 +377,14 @@ def report_size(lines: dict[str, list[str]], mapping: dict[str, str | None], t: 
         in_best = set(t.words[best]) if best is not None else set()
         missing = []
         for ref_id, s in zip(ref_ids, now):
-            if s is None:
+            if s is None and absorbed and ref_id in absorbed:
+                host = absorbed[ref_id]
+                if host in in_best:
+                    continue            # fused into a region that IS in the word
+                w = explain_missing(host, [p for p in present], t, chart)
+                missing.append({"ref": ref_id, "shape": host,
+                                "why": f"merged into {host}: {w.text()}", "rule": "merged>" + w.rule})
+            elif s is None:
                 missing.append({"ref": ref_id, "shape": None, "why": Why("no_region", None, None, detail="no region at this size").text(), "rule": "no_region"})
             elif s not in in_best:
                 w = explain_missing(s, [p for p in present if p != s], t, chart)
@@ -463,7 +503,16 @@ def run_fixture(name: str, widths, reference_width: float | None, log=print,
     ref_regions, ref_chart = build(ref_w)
     lines, source = expected_lines(name, ref_regions, ref_chart)
     if source == "reference":
-        ref_w = float(reference_width or max(widths))
+        # No honest labels for this generation (unlabelled, or the truth file's
+        # ids belong to an older build): "expected" is what the tagger reads at
+        # the reference width, so the reference regions must BE that width's.
+        new_w = float(reference_width or max(widths))
+        if new_w != ref_w:
+            ref_w = new_w
+            ref_regions, ref_chart = build(ref_w)
+            t_ref = trace(ref_regions, ref_chart)
+            lines = {f"word{i}": ids for i, ids in enumerate(t_ref.words)}
+        ref_w = new_w
     out = {"fixture": name, "source": source, "reference_width": ref_w, "sizes": {}}
     ignore_ref = set(json.loads(TRUTH.read_text())["fixtures"].get(name, {}).get("ignore", []))
     lines_total = {k: len(v) for k, v in lines.items()}
@@ -473,7 +522,8 @@ def run_fixture(name: str, widths, reference_width: float | None, log=print,
         mapping = carry(ref_regions, ref_w, regions, float(w)) if float(w) != ref_w else {r.shape_id: r.shape_id for r in ref_regions}
         memo: dict = {}
         t = trace(regions, chart, memo=memo)
-        rows = report_size(lines, mapping, t, chart)
+        absorbed = {} if float(w) == ref_w else absorbers(ref_regions, ref_w, regions, float(w), mapping)
+        rows = report_size(lines, mapping, t, chart, absorbed)
         entry = {"regions": len(regions), "candidates": len(t.cands),
                  "words": len(t.words), "rows": rows, "tally": tally(rows),
                  "word_ids": t.words}

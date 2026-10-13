@@ -118,6 +118,27 @@ def test_expected_lines_reads_labels_when_present_and_words_otherwise():
 
 # --- the census -------------------------------------------------------------
 
+def test_a_fused_pair_is_named_merged_with_the_rule_that_refused_the_host():
+    ref = _text("a", "HELT")
+    # at half the size the first three letters stand alone and the fourth is
+    # fused with a neighbour into one box wider than the glyph limit
+    k = 0.5
+    small = [_region(f"n{i}", shp_scale(r.polygon, k, k, origin=(0, 0))) for i, r in enumerate(ref[:3])]
+    x0, y0, x1, y1 = ref[3].polygon.bounds
+    fused = _region("f0", box(x0 * k, y0 * k, x1 * k + 3.0 * H * k, y1 * k))
+    regions = small + [fused]
+    t = T.trace(regions, threads.CHART)
+    assert t.rejected["f0"].rule == "aspect"
+    m = T.carry(ref, 100.0, regions, 50.0)
+    ab = T.absorbers(ref, 100.0, regions, 50.0, m)
+    (row,) = T.report_size({"WORD": ["a0", "a1", "a2", "a3"]}, m, t, threads.CHART, ab)
+    if m["a3"] is None:                       # the carry gave the fused box to nobody
+        assert ab == {"a3": "f0"}
+        assert [x["rule"] for x in row["missing"]] == ["merged>aspect"]
+    else:                                     # or to the fourth glyph, refused at admission
+        assert [x["rule"] for x in row["missing"]] == ["aspect"]
+
+
 def test_default_rules_are_the_shipped_constants():
     r = T.base_rules()
     assert (r.aspect_max, r.height_ratio, r.prox_mult, r.min_members) == (
