@@ -24,6 +24,12 @@ stitch / trim / colour-change difference ON vs OFF.
 `--guard FLAG...` adds a third arm, lane ON with those flags ON too, and
 lists the shapes the lane takes without them and not with them (`refused`),
 each with its hand label: the census a guard is judged on.
+
+Both guards (`GUARD_FLAGS`) went ON by default on 2026-10-13 (Kent's ruling),
+so the lane arm here PINS THEM OFF explicitly: "lane ON" means the lane
+without its guards, which is what this census was built to measure, and the
+`--guard` arm turns them back on. With no `--guard` the lane arm is the
+pre-flip lane; with `--guard GUARD_FLAGS` the guard arm is today's default.
 """
 from __future__ import annotations
 
@@ -38,6 +44,11 @@ sys.path.insert(0, str(ROOT))
 
 TESTDATA = ROOT / "testdata"
 TRUTH = TESTDATA / "lettering_truth.json"
+
+# The lane's two guards, ON by default since 2026-10-13. Every lane arm below
+# pins them OFF so the census still measures the unguarded lane.
+GUARD_FLAGS = ("lettering_columns_skip_blobs", "lettering_columns_ink_link")
+GUARDS_PINNED_OFF = {f: False for f in GUARD_FLAGS}
 
 # The truth file names fixtures by corpus case; map to the scorecard file so a
 # scorecard row can be scored against hand labels at the settings they were
@@ -116,7 +127,7 @@ def census_one(fixture: str, cfg_kw: dict, truth_case: str | None = None,
                          "taken": [], "declined": [], "secs": 0}
             continue
         t = time.time()
-        cfg = PipelineConfig(**cfg_kw, lettering_columns=on)
+        cfg = PipelineConfig(**cfg_kw, lettering_columns=on, **GUARDS_PINNED_OFF)
         res, plan, taken, declined = lane_takes(path, cfg)
         s = plan.stats
         arms[arm] = {"stitches": s.stitch_count, "trims": s.trims,
@@ -146,7 +157,8 @@ def census_one(fixture: str, cfg_kw: dict, truth_case: str | None = None,
             if lab:
                 out["truth"] = "scored"
     if guard:
-        cfg = PipelineConfig(**cfg_kw, lettering_columns=True, **{k: True for k in guard})
+        cfg = PipelineConfig(**cfg_kw, lettering_columns=True,
+                             **{**GUARDS_PINNED_OFF, **{k: True for k in guard}})
         res_g, plan_g, taken_g, _decl = lane_takes(path, cfg)
         s = plan_g.stats
         arms["guard"] = {"flags": list(guard), "stitches": s.stitch_count, "trims": s.trims,
@@ -190,7 +202,7 @@ def render_pair(name: str, source, cfg_kw: dict, out: Path, *, flags_on: dict | 
     designs, takens, regions = {}, {}, {}
     for tag, kw in (("off", {"lettering_columns": guard}),
                     ("on", {"lettering_columns": True, **(flags_on or {})})):
-        cfg = PipelineConfig(**cfg_kw, **kw)
+        cfg = PipelineConfig(**cfg_kw, **{**GUARDS_PINNED_OFF, **kw})
         res, plan, taken, _decl = lane_takes(source, cfg)
         designs[tag] = plan_to_design(plan, name=f"{name} {tag}")
         takens[tag] = taken
@@ -256,6 +268,7 @@ def _print_guard(r: dict) -> None:
         return
     print(f"    guard {'+'.join(g['flags'])}: taken {len(r['on']['taken'])}->{len(g['taken'])} "
           f"st {r['on']['stitches']}->{g['stitches']} trims {r['on']['trims']}->{g['trims']} "
+          f"cc {r['on']['color_changes']}->{g['color_changes']} "
           f"refused {len(r['refused'])} gained {len(r['gained'])}", flush=True)
     for x in r["refused"]:
         print(f"      refused {x['shape_id']} {x['w_mm']}x{x['h_mm']} mm "
@@ -316,13 +329,17 @@ def main(argv=None) -> int:
                 args.json.write_text(json.dumps(results, indent=1, default=str), encoding="utf-8")
         return 0
     if args.grid:
-        r = census_one("colour_grid", {"target_width_mm": 100.0}, image=colour_grid())
+        r = census_one("colour_grid", {"target_width_mm": 100.0}, image=colour_grid(),
+                       guard=args.guard)
         r["rows"] = [(x["shape_id"], x["w_mm"], x["h_mm"], x["text_candidate"], x["lettering_group"])
                      for x in r["rows"]]
         print(json.dumps(r, default=str))
+        _print_guard(r)
         if args.render:
             for p in render_pair("colour_grid", colour_grid(), {"target_width_mm": 100.0},
-                                 args.render, px_per_mm=6.0, zoom_px_per_mm=12.0):
+                                 args.render, px_per_mm=6.0, zoom_px_per_mm=12.0,
+                                 flags_on={k: True for k in (args.flag or args.guard)},
+                                 guard=bool(args.guard)):
                 print(p)
         return 0
     if args.render:
