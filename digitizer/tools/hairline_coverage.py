@@ -77,6 +77,7 @@ LOGOS = ("photo/enthusiast_logo.png", "photo/screenshot_phone_ui_golke.jpg",
          "photo/logo_gaulke_roofing.png", "photo/summit_badge.png",
          "logo_alpha.png", "logo_whitebg.png")
 ARMS = ("off", "on", "on_nodrop", "on_cov", "on_cov_nodrop")
+NO_TRAVEL = False          # --no-travel: skip `_thread_bare_mm` (minutes per plan on a hair network)
 EDGE_REACH_MM = 0.5      # a bare cell nearer than this to a laid run is a narrow-run edge
 GROUND_REACH_MM = 0.6    # a bare cell this near a captured shape, outside it, is a ground gap
 
@@ -92,6 +93,8 @@ def arm_setup(arm: str) -> tuple[dict, bool]:
 
 
 def thread_bare(plan) -> dict:
+    if NO_TRAVEL:
+        return {"links": 0, "exposed": 0, "mm": 0.0, "worst_mm": 0.0, "skipped": True}
     from tests.test_chaining import _thread_bare_mm
     links, exposed, mm, worst = _thread_bare_mm(plan)
     return {"links": links, "exposed": exposed, "mm": round(mm, 3), "worst_mm": round(worst, 3)}
@@ -269,6 +272,8 @@ def _load(out: Path) -> dict:
 
 
 def cmd_run(args) -> int:
+    global NO_TRAVEL
+    NO_TRAVEL = args.no_travel
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     fixtures = args.fixtures.split(",") if args.fixtures else list(LOGOS)
@@ -402,6 +407,7 @@ def main(argv=None) -> int:
     r.add_argument("--arms", default=",".join(ARMS))
     r.add_argument("--wt", type=int, default=40)
     r.add_argument("--force", action="store_true")
+    r.add_argument("--no-travel", action="store_true", help="skip the travel-over-bare-fabric instrument")
     r.set_defaults(fn=cmd_run)
     m = sub.add_parser("merge")
     m.add_argument("dirs", nargs="+")
