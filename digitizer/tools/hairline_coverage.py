@@ -17,6 +17,9 @@ Arms (all `matrix[0]` = 80 mm / left_chest, 40 wt, stages 0-4 once per fixture):
 - `on_nodrop`    `cfg.hairline` True, drop guard OFF (#872's arm).
 - `on_cov`       `on` + `cfg.hairline_coverage_guard`.
 - `on_cov_nodrop` `on_nodrop` + `cfg.hairline_coverage_guard`.
+- `on_gnd`       `on` + `cfg.hairline_over_ground` (the ground close, #850).
+- `on_cov_gnd`   `on_cov` + `cfg.hairline_over_ground` (2026-10-13: does the ground close
+                 the gaps the coverage guard cannot see?).
 
 Per arm: stitches, trims, preflight's `ARTWORK_UNCOVERED` (total mm2, shape ids),
 the bare-fabric total (`hairline_renders.bare_cells`: artwork cells with no
@@ -76,7 +79,7 @@ LOGOS = ("photo/enthusiast_logo.png", "photo/screenshot_phone_ui_golke.jpg",
          "photo/drone_render.png", "photo/logo_bridge_bar.jpg",
          "photo/logo_gaulke_roofing.png", "photo/summit_badge.png",
          "logo_alpha.png", "logo_whitebg.png")
-ARMS = ("off", "on", "on_nodrop", "on_cov", "on_cov_nodrop")
+ARMS = ("off", "on", "on_nodrop", "on_cov", "on_cov_nodrop", "on_gnd", "on_cov_gnd")
 NO_TRAVEL = False          # --no-travel: skip `_thread_bare_mm` (minutes per plan on a hair network)
 EDGE_REACH_MM = 0.5      # a bare cell nearer than this to a laid run is a narrow-run edge
 GROUND_REACH_MM = 0.6    # a bare cell this near a captured shape, outside it, is a ground gap
@@ -89,6 +92,8 @@ def arm_setup(arm: str) -> tuple[dict, bool]:
         kw["hairline"] = True
     if arm.startswith("on_cov"):
         kw["hairline_coverage_guard"] = True
+    if arm.endswith("_gnd"):
+        kw["hairline_over_ground"] = True
     return kw, "nodrop" not in arm
 
 
