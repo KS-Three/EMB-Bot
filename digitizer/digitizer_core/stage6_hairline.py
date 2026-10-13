@@ -180,14 +180,16 @@ _TOUCH_MM = 0.1
 # --no-guard`).
 DROP_GUARD = True
 # "A real share": the dropped paths' length over the shape's strand length.
-# MEASURED, not set (docs/renders/claude-hairline-drop-guard/survey.md): every
-# hair network drops 0.3 to 0.5 % (two stubs of 51 paths: a crossing's
-# leftovers) and every shape whose strands are LETTER ARMS drops 5.7 % or
-# more, mostly 17 to 100 %. Guarding on ANY drop forfeited the whole hair
-# network (-5,485 stitches on hair_strands) to save two stubs. Between the
-# two populations nothing was measured except one 1.9 % case that drops
-# 0.12 mm; 2 % sits in that gap. A candidate: it is a plan-quality cut, not a
-# machine constant, but no sew-out has been asked about it (ROADMAP gate 1).
+# MEASURED, not set (docs/renders/claude-hairline-drop-guard/survey.md, 10
+# fixtures): both hair networks drop 0.3 and 0.5 % (a crossing's leftover
+# stubs: 2 of 51 paths, 4 of 56); of the 133 logo shapes that drop anything
+# (survey: 8 logo fixtures), 131 drop 2.8 % or more and 94 drop ALL of
+# their strand length (the whole shape is under the floor). The two under
+# 2 % are a 54 mm2 outline stroke (0.11 %, golden_tee: 0.08 mm lost) and a
+# 2.1 mm2 serif (1.9 %, Fremont: 0.12 mm lost). Guarding on ANY drop forfeited the whole hair network
+# (hair_strands -152 stitches instead of -5,637) to save two stubs. 2 %
+# sits in the gap. A candidate: a plan-quality cut, not a machine constant,
+# but no sew-out has been asked about it (ROADMAP gate 1).
 DROP_GUARD_SHARE = 0.02
 
 
