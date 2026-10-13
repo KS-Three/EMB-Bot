@@ -199,6 +199,26 @@ DROP_GUARD = True
 # sits in the gap. A candidate: a plan-quality cut, not a machine constant,
 # but no sew-out has been asked about it (ROADMAP gate 1).
 DROP_GUARD_SHARE = 0.02
+# The coverage guard's cut (`cfg.hairline_coverage_guard`): the artwork a
+# shape's hairline runs would leave bare (`strand_bare_mm2`), in mm2, above
+# which the shape keeps its pre-hairline construction. MEASURED on 7 logo
+# fixtures, not set (docs/renders/claude-hairline-coverage-guard/table.md): of
+# the 158 shapes that survive the drop guard, the new bare cells against OFF
+# total 75.4 mm2; the cut leaves 7.95 mm2 at 0.5, 3.58 at 0.3, 2.21 at 0.2 and
+# 0.43 at 0.1, while the strand thread the tier keeps falls 38 % -> 32 % ->
+# 30 % -> 15 %. 0.3 is the knee (the residual doubles between 0.3 and 0.5).
+# A CANDIDATE: a plan-quality cut on the preflight instrument, not a machine
+# constant, and no sew-out has been asked about it (ROADMAP gate 1).
+COVERAGE_GUARD_MM2 = 0.3
+# ... AND the predicted bare per mm of strand thread laid, in mm (an
+# "effective bare width"). The absolute cut alone hands back a whole hair
+# network (hair_strands predicts 32.9 mm2 over 1,070 mm of strand, hair_fine
+# 20.3 over 1,272: 0.031 and 0.016) -- the tier's own use case, forfeited, the
+# mistake #879 measured for "any drop". The logo shapes that carry the new
+# bare run 0.04 to 0.39 (median 0.12). 0.04 sits between: it keeps both
+# networks and costs the logos 8.4 mm2 of the 75.4 the absolute cut alone
+# would have removed (residual 12.0 against 3.6). A candidate, not a constant (gate 1).
+COVERAGE_GUARD_WIDTH_MM = 0.04
 
 
 @dataclass
@@ -728,6 +748,52 @@ def strand_drops(poly, shape_id: str, m: dict, cfg, thread_wt: int) -> tuple[int
     total = rep["dropped_mm"] + rep["sewn_mm"]
     return rep["dropped"], (rep["dropped_mm"] / total if total > 0 else 0.0)
 
+def strand_bare_mm2(poly, runs, m: dict) -> float:
+    """The artwork a shape's hairline runs would leave BARE, in mm2.
+
+    The shape's ink (its polygon, minus the thick branches the ladder sews,
+    `m["rest"]`) minus the ribbon each laid run covers: `machine.
+    COVERAGE_THREAD_W_MM` wide, centred on the stitch, which is the ribbon
+    preflight's coverage instrument (`preflight._coverage_map`) grades, grown
+    by the instrument's own slack: a cell counts as covered once the ribbon
+    fills `_COVERAGE_FLOOR_UNITS` of it, so a cell centre up to
+    `_UNCOVERED_CELL_MM * (0.5 - floor)` beyond the ribbon edge still reads
+    covered. A strand wider than that reach leaves both edges bare; a strand
+    the walk dropped (a path under the loop floor) has no run, so its whole
+    ink is bare. Both are what `ARTWORK_UNCOVERED` and the logo bill's
+    bare-fabric total pick up on the plan, predicted here from the shape
+    alone, before stage 5 or 7 has run. A plan-time estimate, not a plan
+    measurement: it cannot see the OFF ladder's own gaps or a neighbour's
+    cover."""
+    from shapely.geometry import LineString
+    from shapely.ops import unary_union
+    from . import preflight
+    half = (machine.COVERAGE_THREAD_W_MM / 2.0
+            + preflight._UNCOVERED_CELL_MM * (0.5 - preflight._COVERAGE_FLOOR_UNITS))
+    ribbons = [LineString(r.points).buffer(half) for r in runs if len(r.points) >= 2]
+    ink = poly
+    rest = m.get("rest")
+    if rest is not None and not rest.is_empty:
+        ink = ink.difference(rest)
+    if not ribbons:
+        return float(ink.area)
+    return float(ink.difference(unary_union(ribbons)).area)
+
+
+def coverage_bare_mm2(poly, shape_id: str, m: dict, cfg, thread_wt: int
+                      ) -> tuple[float, float]:
+    """-> (`strand_bare_mm2`, strand thread laid in mm) of the runs
+    `hairline_runs` would lay for the shape (the same entry-free walk
+    `strand_drops` uses)."""
+    prof = machine.thread_profile(thread_wt)
+    runs, _rep = hairline_runs(poly, shape_id,
+                               max_width_mm=prof.hairline_max_width_mm,
+                               run_width_mm=prof.hairline_run_width_mm,
+                               stitch_mm=cfg.hairline_stitch_mm, entry=None,
+                               trim_at_mm=machine.TRIM_AT_MM, m=m)
+    return strand_bare_mm2(poly, runs, m), sum(_arc(r.points) for r in runs)
+
+
 def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "HairlineSet":
     """The shapes the hairline tier will sew -> `HairlineSet` ({shape_id:
     `measure` dict}, plus `.fragments`, the thin shapes rule 2 handed back).
@@ -807,6 +873,14 @@ def hairline_candidates(regions, cfg, ink: InkSource | None = None) -> "Hairline
             if n_drop and share > DROP_GUARD_SHARE:
                 out.guarded[r.shape_id] = n_drop
                 continue
+        # The coverage guard (`cfg.hairline_coverage_guard`), after the drop
+        # guard so a shape handed back there is not walked again.
+        if cfg.hairline_coverage_guard:
+            bare, laid_mm = coverage_bare_mm2(r.polygon, r.shape_id, m, cfg,
+                                              bw.get(r.thread_index, cfg.thread_wt))
+            if bare > COVERAGE_GUARD_MM2 and bare > COVERAGE_GUARD_WIDTH_MM * laid_mm:
+                out.guarded_coverage[r.shape_id] = round(bare, 3)
+                continue
         out[r.shape_id] = m
     return out
 
@@ -823,6 +897,7 @@ class HairlineSet(dict):
         super().__init__(*a, **k)
         self.fragments: set[str] = set()
         self.guarded: dict[str, int] = {}
+        self.guarded_coverage: dict[str, float] = {}
 
 
 def _arc(pts) -> float:
