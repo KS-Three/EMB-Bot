@@ -3530,7 +3530,8 @@ def sequence(
     if source_pixels is not None and hairline_lines_apply(cfg, design_class):
         hl_blocks, hair_lines = strand_blocks(
             source_pixels, cfg, entry=cursor, trim_at_mm=trim_at,
-            allowed_threads=sorted({b.thread_index for b in blocks}))
+            allowed_threads=sorted({b.thread_index for b in blocks}),
+            block_wt=block_wt)
         for hl_thread, hl_runs in hl_blocks:
             hl_runs[0].jump = True
             hl_runs[0].trim = True
@@ -3555,6 +3556,9 @@ def sequence(
                 found=hair_lines["found"],
                 refused_no_ridge=hair_lines["refused_no_ridge"],
                 sewn_by_polarity=hair_lines["sewn_by_polarity"],
+                # `cfg.hairline_lines_strand_test` only (absent off).
+                **{k: hair_lines[k] for k in ("refused_bar", "thread_wt")
+                   if k in hair_lines},
             )
         )
     if thin:
