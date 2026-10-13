@@ -350,7 +350,7 @@
   // Turn corresponded pairs into zig-zag satin at the given density.
   // opts = { spacingMm, pxPerMm, pullCompMm=0, weightMm=0, slantDeg=0,
   //          minCrossMm=0, counterGuard=null, shortStitch=null,
-  //          splitAboveMm=0 }.
+  //          splitAboveMm=0, zigzag=false }.
   // `splitAboveMm` (quality review item 10): a leg longer than this carries
   // intermediate penetrations instead of being thrown whole — see splitLeg.
   // 0 or absent is byte-identical to before it existed. The split fires on
@@ -407,6 +407,15 @@
     const splitAbovePx = (opts.splitAboveMm || 0) * (opts.pxPerMm || 1);
     const splitSegPx = (opts.splitSegmentMm || SPLIT_SEGMENT_MM) * (opts.pxPerMm || 1);
     const slantRad = ((opts.slantDeg || 0) * Math.PI) / 180;
+    // `zigzag` (built OFF 2026-10-13): keep ONE rail leading, A1,B1,A2,B2 —
+    // the Python emitter's order (`stage6_satin.satin_stroke`). The default
+    // alternates the leading rail, A1,B1,B2,A2, so only every other stitch
+    // crosses the column and the rest are one-spacing steps along a rail:
+    // the same needles per rail as the Python satin, HALF the thread across.
+    // Measured on an "l" stem against a competitor's export and the Python
+    // order, 2026-10-13. Absent or false is byte-identical. Turning it on
+    // changes how much thread a letter carries, so the default is Kent's.
+    const constRail = opts.zigzag === true;
     const M = A.length;
     if (M < 2) return [];
     // Centerline cumulative arc length, to space stations evenly along the run.
@@ -450,7 +459,8 @@
       }
       prevA = { x: ax, y: ay }; prevB = { x: bx, y: by };
       if (Math.hypot(pA.x - pB.x, pA.y - pB.y) < minCrossPx) continue;
-      const lead = t % 2 === 0 ? pA : pB, trail = t % 2 === 0 ? pB : pA;
+      const flip = !constRail && t % 2 === 1;
+      const lead = flip ? pB : pA, trail = flip ? pA : pB;
       if (!(splitAbovePx > 0)) { out.push(lead, trail); continue; }
       if (out.length) {
         const into = splitLeg(out[out.length - 1], lead, kept, splitAbovePx, splitSegPx);
@@ -469,7 +479,7 @@
       // the same two stations land at 0.410/0.743 and 0.257/0.590 of the
       // cross, as the corpus wave intends.
       const mid = splitLeg(pA, pB, kept, splitAbovePx, splitSegPx);
-      if (t % 2 === 1) mid.reverse();
+      if (flip) mid.reverse();
       for (const q of mid) out.push(q);
       if (opts.splitStats) opts.splitStats.splitPenetrations += mid.length;
       out.push(trail);

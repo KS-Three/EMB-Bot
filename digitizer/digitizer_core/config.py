@@ -2210,7 +2210,7 @@ class PipelineConfig:
     # enthusiast's star goes back to fill (+159 stitches). The phone
     # screenshot's status icons are STILL captured (dE 0.0 / 0.0 / 9.1 from
     # the text ink); the shape guard for them is `lettering_columns_icon_guard`
-    # below (built OFF). False writes no
+    # below (ON since the same ruling). False writes no
     # key and reads none. Tests: `tests/test_column_capture.py`.
     lettering_columns_ink_link: bool = True
     # Under `lettering_columns`, refuse a HOUSE-GROUP-ONLY shape whose medial
@@ -2220,9 +2220,10 @@ class PipelineConfig:
     # screenshot's three 4.5-6 mm captures read 36-45, which neither guard
     # above reaches (not blobs; the text's own grey); every hand-labelled
     # letter reads <= 13 and golden_tee's swashes <= 8. Composes with both.
-    # Built OFF (Kent's call to flip); False reads nothing.
+    # ON by Kent's ruling 2026-10-13 (stitch output moves on the phone
+    # screenshot only: 33 -> 30 lane shapes); False reads nothing.
     # Tests: `tests/test_column_capture.py`.
-    lettering_columns_icon_guard: bool = False
+    lettering_columns_icon_guard: bool = True
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
     # failure E). ON, `words.tag_words` finds each line of lettering once --

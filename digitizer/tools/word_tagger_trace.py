@@ -80,6 +80,12 @@ class Rules:
     ink_de: float
     prox_mult: float
     min_members: int
+    # How `_drop_nested` picks the hosts that swallow a glyph (see
+    # `drop_nested`): "box" is the shipped rule; the others are census-only.
+    nested: str = "box"
+    # Census-only: a host taller than this many times the glyph does not
+    # swallow it. None: no cap (shipped).
+    nest_max_h: float | None = None
 
 
 def base_rules() -> Rules:
@@ -197,6 +203,154 @@ class Trace:
     fate: dict = field(default_factory=dict)          # sid -> Why (admitted, in no word)
     components: list = field(default_factory=list)    # lists of sids, first link pass
     words: list = field(default_factory=list)         # lists of sids, reading-agnostic
+    nested: dict = field(default_factory=dict)        # sid -> `nest_info` (nested drops)
+
+
+def _box_holds(outer, inner) -> bool:
+    """`textcluster._drop_nested`'s containment test on two bounds tuples:
+    `inner`'s box inside `outer`'s, and `outer`'s box strictly larger."""
+    ox0, oy0, ox1, oy1 = outer
+    bx0, by0, bx1, by1 = inner
+    return (ox0 <= bx0 and oy0 <= by0 and ox1 >= bx1 and oy1 >= by1
+            and (ox1 - ox0) * (oy1 - oy0) > (bx1 - bx0) * (by1 - by0))
+
+
+def _inside_outline(child, host) -> bool:
+    """At least half of `child`'s ink inside `host`'s OUTLINE with its holes
+    filled (`nest_info`'s shell_frac >= 0.5): a glyph in a ring's hole reads
+    1, one beside the host's ink (in its box, outside its outline) 0."""
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+    hp = host.region.polygon
+    shell = unary_union([Polygon(g.exterior) for g in getattr(hp, "geoms", [hp])])
+    cp = child.region.polygon
+    return cp.area > 0 and cp.intersection(shell).area >= 0.5 * cp.area
+
+
+def ring_words(cands, chart) -> dict[int, set[str]]:
+    """Census-only. {index of a RING in `cands`: shape ids of the word in its
+    hole}: a candidate whose outline holds, inside it, three or more
+    candidates that link into a word among themselves (`textcluster.
+    _cluster` with `LETTER_HEIGHT_RATIO` and the ink link, as `detect_words`
+    links). Measured 2026-10-13 and NOT shipped: it frees the 50 mm bridge
+    badge's BAR & RESTAURANT and also two 2x2 icon grids at 100 mm (drone,
+    screenshot), which link like a word of four."""
+    from digitizer_core.textcluster import LETTER_HEIGHT_RATIO
+    from digitizer_core.textcluster import _cluster as link_components
+    boxes = [c.region.polygon.bounds for c in cands]
+    out: dict[int, set[str]] = {}
+    for i, h in enumerate(cands):
+        held = [c for j, c in enumerate(cands)
+                if j != i and _box_holds(boxes[i], boxes[j]) and _inside_outline(c, h)]
+        if len(held) < 3:
+            continue
+        word = {c.region.shape_id for comp in link_components(held, LETTER_HEIGHT_RATIO, chart)
+                if len(comp) >= 3 for c in comp}
+        if word:
+            out[i] = word
+    return out
+
+
+def nest_info(child, cands, chart=None) -> dict:
+    """Why `_drop_nested` dropped `child`: the SMALLEST candidate whose box
+    holds its box (the host), with the containment values a smarter test
+    could read.
+
+      area_ratio   host box area / child box area (the shipped test is > 1)
+      h_ratio      child height / host height
+      ink_overlap  child polygon area covered by the host's polygon (ink on ink:
+                   a fragment riding on a letter reads near 1)
+      shell_frac   child polygon area inside the host's OUTLINE with its holes
+                   filled (a glyph in a ring's hole, or a counter fragment,
+                   reads 1; a glyph that only sits in the host's box, beside
+                   its ink, reads 0)
+      hosts        how many candidates' boxes hold the child
+    """
+    from shapely.geometry import Polygon
+    cb = child.region.polygon.bounds
+    hosts = [o for o in cands if o is not child and _box_holds(o.region.polygon.bounds, cb)]
+    def barea(b):
+        return (b[2] - b[0]) * (b[3] - b[1])
+    host = min(hosts, key=lambda o: (barea(o.region.polygon.bounds), o.region.shape_id))
+    cp, hp = child.region.polygon, host.region.polygon
+    shell = Polygon(hp.exterior) if hasattr(hp, "exterior") else         __import__("shapely.ops", fromlist=["unary_union"]).unary_union([Polygon(g.exterior) for g in hp.geoms])
+    ca = cp.area if cp.area > 0 else 1e-12
+    try:
+        de = (0.0 if child.region.thread_index == host.region.thread_index
+              else float(chart.delta_e(child.region.thread_index, host.region.thread_index)))
+    except (AttributeError, IndexError, TypeError, ValueError):
+        de = float("nan")
+    return {"host": host.region.shape_id, "hosts": len(hosts),
+            "h": child.height_mm, "w": child.width_mm, "cv": child.stroke_cv,
+            "host_h": host.height_mm, "host_w": host.width_mm,
+            "host_aspect": host.width_mm / host.height_mm, "host_cv": host.stroke_cv,
+            "area_ratio": barea(host.region.polygon.bounds) / max(barea(cb), 1e-12),
+            "h_ratio": child.height_mm / host.height_mm,
+            "ink_overlap": cp.intersection(hp).area / ca,
+            "shell_frac": cp.intersection(shell).area / ca,
+            "ink_de": de}
+
+
+NEST_POLICIES = ("box", "ring", "frame", "outline", "frame+outline")
+
+
+def frame_ids(cands, chart) -> set[str]:
+    """Census-only, the looser cousin of `ring_words`: shape ids of
+    candidates whose BOX (not hole) holds three or more candidates that link
+    into a word. Measured and refused: it also frees what sits in a host's
+    box beside its ink (wheel spokes, a host's own ink, window panes)."""
+    from digitizer_core.textcluster import _cluster as link_components
+    from digitizer_core.textcluster import LETTER_HEIGHT_RATIO
+    boxes = [c.region.polygon.bounds for c in cands]
+    out: set[str] = set()
+    for i, h in enumerate(cands):
+        held = [c for j, c in enumerate(cands) if j != i and _box_holds(boxes[i], boxes[j])]
+        if len(held) >= 3 and any(len(comp) >= 3 for comp in
+                                  link_components(held, LETTER_HEIGHT_RATIO, chart)):
+            out.add(h.region.shape_id)
+    return out
+
+
+def drop_nested(raw, rules: Rules, chart):
+    """`_drop_nested` under `rules.nested` / `rules.nest_max_h`. "box" with no
+    cap IS `textcluster._drop_nested` (the census scores the shipped
+    function, not a copy). The others, none of them in the tagger:
+
+      ring           a host does not swallow the members of a word that
+                     lies inside its outline (`ring_words`)
+      frame          a host whose BOX holds a linked word swallows nothing
+                     (`frame_ids`)
+      outline        a host swallows only a glyph lying inside its outline
+                     (a counter sliver, a glyph in a ring's hole), not one
+                     that merely sits in its box beside its ink
+      frame+outline  both
+      nest_max_h=K   a host over K times the glyph's height does not swallow
+    """
+    from digitizer_core.textcluster import _drop_nested
+    if rules.nested not in NEST_POLICIES:
+        raise ValueError(f"unknown nested policy {rules.nested!r}")
+    if rules.nested == "box" and rules.nest_max_h is None:
+        return _drop_nested(raw)
+    frames = frame_ids(raw, chart) if "frame" in rules.nested else set()
+    rings = ring_words(raw, chart) if rules.nested == "ring" else {}
+    boxes = [c.region.polygon.bounds for c in raw]
+    out = []
+    for i, c in enumerate(raw):
+        swallowed = False
+        for j, h in enumerate(raw):
+            if i == j or h.region.shape_id in frames or not _box_holds(boxes[j], boxes[i]):
+                continue
+            if c.region.shape_id in rings.get(j, ()):
+                continue
+            if rules.nest_max_h is not None and h.height_mm > rules.nest_max_h * c.height_mm:
+                continue
+            if "outline" in rules.nested and not _inside_outline(c, h):
+                continue
+            swallowed = True
+            break
+        if not swallowed:
+            out.append(c)
+    return out
 
 
 def pair_rescue(comps, regions, chart, rules: Rules, relaxed: Rules, memo: dict | None = None):
@@ -211,14 +365,13 @@ def pair_rescue(comps, regions, chart, rules: Rules, relaxed: Rules, memo: dict 
     word-sized component: strict singletons, and glyphs admitted only under
     `relaxed`. Single hop, deterministic (pairs and thirds in shape-id order).
     """
-    from digitizer_core.textcluster import _drop_nested
     strict_ids = {c.region.shape_id for comp in comps for c in comp}
     raw = []
     for r in regions:
         c, _ = admission(r, relaxed, memo)
         if c is not None:
             raw.append(c)
-    extras = [c for c in _drop_nested(raw) if c.region.shape_id not in strict_ids]
+    extras = [c for c in drop_nested(raw, rules, chart) if c.region.shape_id not in strict_ids]
     singles = [comp[0] for comp in comps if len(comp) == 1]
     pool = sorted(extras + singles, key=lambda c: c.region.shape_id)
     pairs = sorted((comp for comp in comps if 2 <= len(comp) < rules.min_members),
@@ -246,7 +399,6 @@ def trace(regions, chart=None, rules: Rules | None = None, memo: dict | None = N
     (default None: the shipped tagger) adds `pair_rescue` with those rules."""
     from digitizer_core import threads
     from digitizer_core import words as W
-    from digitizer_core.textcluster import _drop_nested
     if chart is None:
         chart = threads.CHART
     rules = rules or base_rules()
@@ -262,11 +414,18 @@ def trace(regions, chart=None, rules: Rules | None = None, memo: dict | None = N
             t.rejected[r.shape_id] = why
         else:
             raw.append(c)
-    kept_n = _drop_nested(raw)
+    kept_n = drop_nested(raw, rules, chart)
     keep_ids = {c.region.shape_id for c in kept_n}
     for c in raw:
         if c.region.shape_id not in keep_ids:
-            t.rejected[c.region.shape_id] = Why("nested", None, None, detail="box inside a larger candidate's box")
+            info = nest_info(c, raw, chart)
+            t.nested[c.region.shape_id] = info
+            t.rejected[c.region.shape_id] = Why(
+                "nested", None, None,
+                detail=f"box inside a larger candidate's box [host {info['host']}: "
+                       f"h {info['host_h']:.2f} vs {info['h']:.2f} mm, box area x{info['area_ratio']:.1f}, "
+                       f"ink overlap {info['ink_overlap']:.2f}, in host outline {info['shell_frac']:.2f}, "
+                       f"host aspect {info['host_aspect']:.2f} cv {info['host_cv']:.2f}]")
     t.cands = {c.region.shape_id: c for c in kept_n}
     in_word: set[str] = set()
     comps = _cluster_(kept_n, chart)
@@ -476,7 +635,17 @@ VARIANTS: dict[str, dict] = {
     "min_height_mm=0.8": {"min_height_mm": 0.8},
     "min_height_mm=0.6": {"min_height_mm": 0.6},
     "min_members=2": {"min_members": 2},
+    # the nesting drop (`drop_nested`), census-only
+    "nested=ring": {"nested": "ring"},
+    "nested=frame": {"nested": "frame"},
+    "nested=outline": {"nested": "outline"},
+    "nested=frame+outline": {"nested": "frame+outline"},
+    "nest_max_h=5": {"nest_max_h": 5.0},
+    "nest_max_h=8": {"nest_max_h": 8.0},
 }
+
+# `--nest-census`: only the nesting variants (the census of this lane).
+NEST_VARIANTS = {k: v for k, v in VARIANTS.items() if k.startswith(("nested=", "nest_max_h="))}
 
 
 RESCUE_KEY = "__rescue__"
@@ -504,8 +673,8 @@ def parse_variant(spec: str) -> tuple[str, dict]:
     rescue = spec.startswith("rescue:")
     ov = {}
     for part in spec.removeprefix("rescue:").split(","):
-        k, v = part.split("=")
-        ov[k.strip()] = int(v) if k.strip() == "min_members" else float(v)
+        k, v = (x.strip() for x in part.split("=", 1))
+        ov[k] = int(v) if k == "min_members" else v if k == "nested" else float(v)
     return spec, ({RESCUE_KEY: ov} if rescue else ov)
 
 
@@ -709,6 +878,9 @@ def main(argv=None) -> int:
     ap.add_argument("--census", action="store_true",
                     help="also replay the tagger with each VARIANTS rule relaxed and score the "
                          "false joins against the truth carry")
+    ap.add_argument("--nest-census", action="store_true",
+                    help="also replay with each nesting variant only (NEST_VARIANTS); implies the "
+                         "census scoring")
     ap.add_argument("--rescue-census", action="store_true",
                     help="also replay with each RESCUE_VARIANTS pair-rescue (a third glyph that "
                          "fails one rule joins a pair that already links); implies the census scoring")
@@ -726,8 +898,10 @@ def main(argv=None) -> int:
             print(census_table(results))
         return 0
     variants = None
-    if args.census or args.rescue_census or args.variant:
+    if args.census or args.rescue_census or args.nest_census or args.variant:
         variants = dict(VARIANTS) if args.census else {}
+        if args.nest_census:
+            variants.update(NEST_VARIANTS)
         if args.rescue_census:
             variants.update(RESCUE_VARIANTS)
         variants.update(parse_variant(v) for v in args.variant)
