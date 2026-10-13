@@ -1,0 +1,267 @@
+{
+ "owl_classical_40wt": {
+  "off40": {
+   "md5": "ba6c5517116dbd63f070ff542f272478",
+   "stitches": 31484,
+   "trims": 332,
+   "color_changes": 30,
+   "thread_m": 52.86,
+   "under_1mm": 5659,
+   "hairline": null,
+   "line_strand_stitches": 0,
+   "line_strand_thread_m": 0.0,
+   "bare_mm2": 6731.19,
+   "bare_new_mm2": 0.0,
+   "zones": {
+    "beak_bristles": {
+     "strands": 0,
+     "mm": 0.0
+    },
+    "eyes": {
+     "strands": 0,
+     "mm": 0.0
+    },
+    "breast": {
+     "strands": 0,
+     "mm": 0.0
+    },
+    "elsewhere": {
+     "strands": 0,
+     "mm": 0.0
+    }
+   }
+  },
+  "lines40": {
+   "md5": "e1b1c714f8158903b8581baf2ce8eecf",
+   "stitches": 32236,
+   "trims": 377,
+   "color_changes": 32,
+   "thread_m": 53.59,
+   "under_1mm": 5659,
+   "hairline": {
+    "shapes": 0,
+    "strands": 75,
+    "dropped": 38,
+    "source": "lines",
+    "found": {
+     "dark": 235,
+     "light": 289
+    },
+    "refused_no_ridge": {
+     "dark": 162,
+     "light": 249
+    },
+    "sewn_by_polarity": {
+     "dark": 47,
+     "light": 28
+    }
+   },
+   "line_strand_stitches": 752,
+   "line_strand_thread_m": 0.737,
+   "bare_mm2": 6684.31,
+   "bare_new_mm2": 0.0,
+   "zones": {
+    "beak_bristles": {
+     "strands": 6,
+     "mm": 86.3
+    },
+    "eyes": {
+     "strands": 1,
+     "mm": 29.5
+    },
+    "breast": {
+     "strands": 31,
+     "mm": 341.8
+    },
+    "elsewhere": {
+     "strands": 37,
+     "mm": 280.0
+    }
+   }
+  },
+  "strand40": {
+   "md5": "9f4f4faf8218ecf834e3b915c48332cd",
+   "stitches": 31832,
+   "trims": 357,
+   "color_changes": 32,
+   "thread_m": 53.19,
+   "under_1mm": 5659,
+   "hairline": {
+    "shapes": 0,
+    "strands": 29,
+    "dropped": 25,
+    "source": "lines",
+    "found": {
+     "dark": 235,
+     "light": 289
+    },
+    "refused_no_ridge": {
+     "dark": 162,
+     "light": 249
+    },
+    "sewn_by_polarity": {
+     "dark": 22,
+     "light": 7
+    }
+   },
+   "line_strand_stitches": 348,
+   "line_strand_thread_m": 0.328,
+   "bare_mm2": 6711.5,
+   "bare_new_mm2": 0.0,
+   "zones": {
+    "beak_bristles": {
+     "strands": 6,
+     "mm": 86.3
+    },
+    "eyes": {
+     "strands": 1,
+     "mm": 29.5
+    },
+    "breast": {
+     "strands": 15,
+     "mm": 137.7
+    },
+    "elsewhere": {
+     "strands": 7,
+     "mm": 75.0
+    }
+   }
+  }
+ },
+ "drawn": {
+  "hair_strands.png": {
+   "on40": {
+    "md5": "80e71d74eb1f1d50d36637ab85035208",
+    "stitches": 28014,
+    "trims": 131,
+    "color_changes": 2,
+    "thread_m": 48.4,
+    "under_1mm": 5201,
+    "hairline": {
+     "shapes": 2,
+     "strands": 44,
+     "dropped": 4
+    },
+    "line_strand_stitches": 0,
+    "line_strand_thread_m": 0.0,
+    "design_class": "gradient"
+   },
+   "on40_test": {
+    "md5": "80e71d74eb1f1d50d36637ab85035208",
+    "stitches": 28014,
+    "trims": 131,
+    "color_changes": 2,
+    "thread_m": 48.4,
+    "under_1mm": 5201,
+    "hairline": {
+     "shapes": 2,
+     "strands": 44,
+     "dropped": 4
+    },
+    "line_strand_stitches": 0,
+    "line_strand_thread_m": 0.0,
+    "design_class": "gradient"
+   },
+   "lines40": {
+    "md5": "80e71d74eb1f1d50d36637ab85035208",
+    "stitches": 28014,
+    "trims": 131,
+    "color_changes": 2,
+    "thread_m": 48.4,
+    "under_1mm": 5201,
+    "hairline": {
+     "shapes": 2,
+     "strands": 44,
+     "dropped": 4
+    },
+    "line_strand_stitches": 0,
+    "line_strand_thread_m": 0.0,
+    "design_class": "gradient"
+   },
+   "strand40": {
+    "md5": "80e71d74eb1f1d50d36637ab85035208",
+    "stitches": 28014,
+    "trims": 131,
+    "color_changes": 2,
+    "thread_m": 48.4,
+    "under_1mm": 5201,
+    "hairline": {
+     "shapes": 2,
+     "strands": 44,
+     "dropped": 4
+    },
+    "line_strand_stitches": 0,
+    "line_strand_thread_m": 0.0,
+    "design_class": "gradient"
+   },
+   "identical": true
+  },
+  "hair_fine.png": {
+   "on40": {
+    "md5": "94098d8a1939d87813d1447e560c828b",
+    "stitches": 25302,
+    "trims": 122,
+    "color_changes": 2,
+    "thread_m": 44.05,
+    "under_1mm": 5056,
+    "hairline": {
+     "shapes": 2,
+     "strands": 64,
+     "dropped": 3
+    },
+    "line_strand_stitches": 0,
+    "line_strand_thread_m": 0.0,
+    "design_class": "gradient"
+   },
+   "on40_test": {
+    "md5": "94098d8a1939d87813d1447e560c828b",
+    "stitches": 25302,
+    "trims": 122,
+    "color_changes": 2,
+    "thread_m": 44.05,
+    "under_1mm": 5056,
+    "hairline": {
+     "shapes": 2,
+     "strands": 64,
+     "dropped": 3
+    },
+    "line_strand_stitches": 0,
+    "line_strand_thread_m": 0.0,
+    "design_class": "gradient"
+   },
+   "lines40": {
+    "md5": "94098d8a1939d87813d1447e560c828b",
+    "stitches": 25302,
+    "trims": 122,
+    "color_changes": 2,
+    "thread_m": 44.05,
+    "under_1mm": 5056,
+    "hairline": {
+     "shapes": 2,
+     "strands": 64,
+     "dropped": 3
+    },
+    "line_strand_stitches": 0,
+    "line_strand_thread_m": 0.0,
+    "design_class": "gradient"
+   },
+   "strand40": {
+    "md5": "94098d8a1939d87813d1447e560c828b",
+    "stitches": 25302,
+    "trims": 122,
+    "color_changes": 2,
+    "thread_m": 44.05,
+    "under_1mm": 5056,
+    "hairline": {
+     "shapes": 2,
+     "strands": 64,
+     "dropped": 3
+    },
+    "line_strand_stitches": 0,
+    "line_strand_thread_m": 0.0,
+    "design_class": "gradient"
+   },
+   "identical": true
+  }
+ }
+}

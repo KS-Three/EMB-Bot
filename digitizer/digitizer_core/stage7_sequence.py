@@ -64,7 +64,8 @@ from .beanletters import BEAN_LETTER_KEY
 from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
-from .columns import (is_lettering, lettering_columns_shape, small_print_clear,
+from .columns import (is_lettering, is_thin_stem, lettering_columns_shape,
+                      small_print_clear,
                       small_print_counter_set, small_print_counters)
 from .words import is_text, word_key
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
@@ -2098,6 +2099,13 @@ def sequence(
                       if cfg.border_abrupt_raggedness is not None
                       else machine.BORDER_ABRUPT_RAGGEDNESS)
     rescue = cfg.small_shape_rescue
+    # `cfg.lettering_columns_small_stem` (default OFF): a lettering stem
+    # under the area floor goes to the Column lane, not the run tier. Off,
+    # `routes_to_run` below is today's, branch for branch. It also needs the
+    # lane itself (satin + lettering_columns): a stem the lane does not take
+    # would otherwise fall through to the classifier with no outline run.
+    small_stem = bool(cfg.lettering_columns_small_stem and cfg.lettering_columns
+                      and cfg.satin)
     # The config-to-emitter mapping the split-satin knobs document: False
     # sews raw crosses however long (a real house style — jolly-af ships
     # 7 mm stitches), None defers to the corpus-median machine default.
@@ -2134,6 +2142,11 @@ def sequence(
             return True                 # L3: the word decided, not the shape's area
         if pr_tier == "auto" and wt in ("satin", "widened") and cfg.satin:
             return False                # L3: satin for the word; with satin off, the rescue stands
+        if (small_stem and pr_tier == "auto" and rescue
+                and pr.region.polygon.area < detail_mm2
+                and is_lettering(pr.region, cfg)
+                and is_thin_stem(pr.region.polygon, cfg.min_detail_mm)):
+            return False                # a lettering STEM under the area floor: the Column lane
         return pr_tier == "run" or (pr_tier == "auto" and rescue
                                     and pr.region.polygon.area < detail_mm2
                                     and not widened_lettering(pr.region))
@@ -3530,7 +3543,8 @@ def sequence(
     if source_pixels is not None and hairline_lines_apply(cfg, design_class):
         hl_blocks, hair_lines = strand_blocks(
             source_pixels, cfg, entry=cursor, trim_at_mm=trim_at,
-            allowed_threads=sorted({b.thread_index for b in blocks}))
+            allowed_threads=sorted({b.thread_index for b in blocks}),
+            block_wt=block_wt)
         for hl_thread, hl_runs in hl_blocks:
             hl_runs[0].jump = True
             hl_runs[0].trim = True
@@ -3555,6 +3569,9 @@ def sequence(
                 found=hair_lines["found"],
                 refused_no_ridge=hair_lines["refused_no_ridge"],
                 sewn_by_polarity=hair_lines["sewn_by_polarity"],
+                # `cfg.hairline_lines_strand_test` only (absent off).
+                **{k: hair_lines[k] for k in ("refused_bar", "thread_wt")
+                   if k in hair_lines},
             )
         )
     if thin:
