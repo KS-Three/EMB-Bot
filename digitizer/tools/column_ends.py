@@ -187,15 +187,15 @@ def letter_ends(poly, kw: dict, square_ends: bool = False, tol_mm: float = TOL_M
                     (l1, s1), (l2, s2) = near_segs[x], near_segs[y]
                     if l1 != l2 and not (set(s1) & set(s2)) and LineString(s1).crosses(LineString(s2)):
                         crossings += 1
-            stub = max(h[2] for h in hits)
+            stub = float(max(h[2] for h in hits))
             ends.append({"column": ci, "end": end, "kind": col.kind,
                          "at_mm": [round(float(mid0[0]), 2), round(float(mid0[1]), 2)],
                          "stub_mm": round(stub, 3),
-                         "cap_deg": None if cap is None else round(cap, 1),
+                         "cap_deg": None if cap is None else round(float(cap), 1),
                          "fan": fan, "crossings": crossings,
-                         "overshoot": stub > tol_mm})
+                         "overshoot": bool(stub > tol_mm)})
     reach = max(0.0, pull - C.RAIL_REACH_INSET_MM)
-    beyond = [outline.boundary.distance(Point(p)) for leg in legs for st in leg for p in st
+    beyond = [float(outline.boundary.distance(Point(p))) for leg in legs for st in leg for p in st
               if not outline.covers(Point(p))]
     beyond = [d for d in beyond if d > reach + REACH_SLACK_MM]
     grown = outline.buffer(reach + 1e-6)
@@ -203,7 +203,7 @@ def letter_ends(poly, kw: dict, square_ends: bool = False, tol_mm: float = TOL_M
                      if r.kind in (stitches.TRAVEL, stitches.UNDERLAY) and len(r.points) >= 2)
     laid = unary_union([LineString(s[1]).buffer(THREAD_HALF_MM) for s in segs]) if segs else None
     bare = outline.area if laid is None else outline.difference(laid).area
-    return {"W_mm": round(W, 3), "ends": ends,
+    return {"W_mm": round(float(W), 3), "ends": ends,
             "overshoots": sum(e["overshoot"] for e in ends),
             "worst_stub_mm": round(max((e["stub_mm"] for e in ends), default=0.0), 3),
             "beyond_reach": len(beyond),
@@ -261,20 +261,26 @@ def design_census(calls, square_ends: bool, tol_mm: float = TOL_MM) -> dict:
     }
 
 
-def fixture_census(name: str, tol_mm: float = TOL_MM, arms: tuple[str, ...] = ()) -> dict:
-    """OFF and ON whole-design runs of a CORPUS fixture: each arm's letters
-    measured as THAT arm sewed them (the ON run's needle positions feed its
-    own next letters), plus the plan totals."""
+def fixture_census(name: str, tol_mm: float = TOL_MM, full_on: bool = False) -> dict:
+    """A CORPUS fixture: one whole-design OFF run records every letter the
+    Column lane takes (polygon and arguments); both arms are then measured
+    by re-running the lane on those letters, OFF and ON. The ON arm so
+    reads each letter from the needle position the OFF run handed it -- the
+    flag changes a letter's ends, not which letters the lane takes. With
+    `full_on` the ON arm is a whole-design run of its own instead (slower)."""
     fixture, cfg_kw = CORPUS[name]
-    out = {"fixture": fixture, "request": cfg_kw, "tol_mm": tol_mm}
-    for arm, ov in (("off", {}), ("on", {"lettering_columns_square_ends": True})):
-        if arms and arm not in arms:
-            continue
-        calls, plan, design = capture(fixture, cfg_kw, ov)
-        c = design_census(calls, square_ends=bool(ov), tol_mm=tol_mm)
+    calls, plan, design = capture(fixture, cfg_kw)
+    s = plan.stats
+    out = {"fixture": fixture, "request": cfg_kw, "tol_mm": tol_mm,
+           "off": {"stitches": s.stitch_count, "trims": s.trims, "jumps": s.jumps,
+                   "design_md5": _md5(design), **design_census(calls, False, tol_mm)}}
+    if full_on:
+        calls, plan, design = capture(fixture, cfg_kw, {"lettering_columns_square_ends": True})
         s = plan.stats
-        out[arm] = {"stitches": s.stitch_count, "trims": s.trims, "jumps": s.jumps,
-                    "design_md5": _md5(design), **c}
+        out["on"] = {"stitches": s.stitch_count, "trims": s.trims, "jumps": s.jumps,
+                     "design_md5": _md5(design), **design_census(calls, True, tol_mm)}
+    else:
+        out["on"] = {"replayed_on_off_calls": True, **design_census(calls, True, tol_mm)}
     return out
 
 
@@ -403,7 +409,9 @@ def main(argv=None) -> int:
     ap.add_argument("--fixture", choices=sorted(CORPUS))
     ap.add_argument("--fremont81", action="store_true")
     ap.add_argument("--arm", choices=("off", "on"), action="append",
-                    help="run only this arm (repeatable; default both)")
+                    help="with --fremont81: run only this arm (repeatable; default both)")
+    ap.add_argument("--full-on", action="store_true",
+                    help="with --fixture: digitize the ON arm too, instead of replaying the OFF run's letters")
     ap.add_argument("--panels", action="store_true",
                     help="render the zoom panels from saved --fremont81 arms, digitizing nothing")
     ap.add_argument("--out", type=Path, required=True)
@@ -423,9 +431,8 @@ def main(argv=None) -> int:
         for p in zoom_panels(load_designs(a.out), a.renders or a.out / "renders"):
             print(p)
     if a.fixture:
-        r = fixture_census(a.fixture, a.tol, tuple(a.arm or ()))
-        tag = "" if not a.arm or len(a.arm) == 2 else f"_{a.arm[0]}"
-        (a.out / f"{a.fixture}{tag}.json").write_text(json.dumps(r, indent=1))
+        r = fixture_census(a.fixture, a.tol, a.full_on)
+        (a.out / f"{a.fixture}.json").write_text(json.dumps(r, indent=1))
         for arm in ("off", "on"):
             if arm in r:
                 print(a.fixture, arm, {k: v for k, v in r[arm].items() if k != "per_letter"})
