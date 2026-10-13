@@ -170,7 +170,7 @@ def test_deterministic_under_input_order():
 
 # ------------------------------------------------------------------ meta + readers
 
-# ------------------------------------------------- frames (`lettering_word_frames`)
+# --------------------------------------------------- rings (`lettering_word_rings`)
 
 def _ring(sid: str, cx: float, cy: float, r: float, stroke: float = 0.8) -> Region:
     """A badge ring: an annulus, aspect 1 and an even stroke, so it passes
@@ -180,29 +180,45 @@ def _ring(sid: str, cx: float, cy: float, r: float, stroke: float = 0.8) -> Regi
     return _region(sid, c.buffer(r, 64).difference(c.buffer(r - stroke, 64)))
 
 
-def test_a_ring_round_a_word_swallows_it_unless_frames_is_on():
-    word = _text("a", "HELTFU", x0=-11.0, y0=-2.0)
-    regions = word + [_ring("ring", 0.0, 0.0, 15.0)]
+def test_a_ring_round_a_word_swallows_it_unless_rings_is_on():
+    regions = _text("a", "HELTFU", x0=-11.0, y0=-2.0) + [_ring("ring", 0.0, 0.0, 15.0)]
     assert any(c.region.shape_id == "ring" for c in _candidates(regions))
     assert detect_words(regions) == []                       # shipped: nested
-    words = detect_words(regions, frames=True)
+    words = detect_words(regions, rings=True)
     assert [_ids(w) for w in words] == [[f"a{i}" for i in range(6)]]
-    # the frame stays a candidate; it only loses the power to swallow
-    assert "ring" in {c.region.shape_id for c in _candidates(regions, frames=True)}
+    # the ring stays a candidate; it only loses the power to swallow the word
+    assert "ring" in {c.region.shape_id for c in _candidates(regions, rings=True)}
 
 
-def test_a_box_holding_under_a_word_still_swallows():
-    """Two linked glyphs and a crumb are not a word: the host keeps them."""
+def test_a_ring_holding_under_a_word_still_swallows():
+    """Two linked glyphs are not a word: the host keeps them."""
     regions = _text("a", "HE", x0=-3.5, y0=-2.0) + [_ring("ring", 0.0, 0.0, 15.0)]
-    kept = {c.region.shape_id for c in _candidates(regions, frames=True)}
-    assert kept == {"ring"}
+    assert {c.region.shape_id for c in _candidates(regions, rings=True)} == {"ring"}
 
 
-def test_without_a_frame_the_frame_aware_drop_is_drop_nested():
-    """No candidate holds a word, so the flag's drop returns exactly what
-    the shipped `_drop_nested` does -- fragments inside a letter still go."""
+def test_a_word_beside_a_hosts_ink_is_still_swallowed():
+    """Gaulke's window panes and the bridge wheel's spokes: in the host's
+    BOX, outside its outline. Only a word in the hole is released."""
+    host = _region("host", Polygon([(0, 0), (1, 0), (1, 29), (40, 29), (40, 30), (0, 30)]))
+    regions = _text("a", "HELT", x0=10.0, y0=5.0) + [host]
+    assert "host" in {c.region.shape_id for c in _candidates(regions)}
+    assert detect_words(regions, rings=True) == detect_words(regions) == []
+
+
+def test_a_fragment_in_the_hole_beside_the_word_is_still_swallowed():
+    """Only the word's members are released: a crumb that links to nothing
+    in the same hole stays dropped."""
+    crumb = _region("crumb", box(-1.0, 7.0, -0.2, 8.5))
+    regions = _text("a", "HELTFU", x0=-11.0, y0=-2.0) + [_ring("ring", 0.0, 0.0, 15.0), crumb]
+    kept = {c.region.shape_id for c in _candidates(regions, rings=True)}
+    assert "crumb" not in kept and {f"a{i}" for i in range(6)} <= kept
+
+
+def test_without_a_ring_the_ring_aware_drop_is_drop_nested():
+    """No candidate's hole holds a word, so the flag's drop returns exactly
+    what the shipped `_drop_nested` does -- fragments in a letter still go."""
     from digitizer_core.textcluster import _Candidate, _drop_nested
-    from digitizer_core.words import _drop_nested_unframed
+    from digitizer_core.words import _drop_nested_rings
 
     def cand(sid, x0, y0, x1, y1):
         return _Candidate(region=_region(sid, box(x0, y0, x1, y1)), height_mm=y1 - y0,
@@ -210,32 +226,32 @@ def test_without_a_frame_the_frame_aware_drop_is_drop_nested():
                           cx=(x0 + x1) / 2, cy=(y0 + y1) / 2)
     cands = [cand("big", 0, 0, 3, 4), cand("frag", 1, 1, 1.5, 2.2),
              cand("frag2", 1.6, 1, 2.1, 2.2), cand("next", 4, 0, 7, 4)]
-    assert _drop_nested_unframed(cands, threads.CHART) == _drop_nested(cands)
+    assert _drop_nested_rings(cands, threads.CHART) == _drop_nested(cands)
     assert [c.region.shape_id for c in _drop_nested(cands)] == ["big", "next"]
 
 
-def test_tag_words_passes_frames_through():
+def test_tag_words_passes_rings_through():
     regions = _text("a", "HELTFU", x0=-11.0, y0=-2.0) + [_ring("ring", 0.0, 0.0, 15.0)]
     assert tag_words(regions) == []
     assert not any("word_id" in r.meta for r in regions)
-    tag_words(regions, frames=True)
+    tag_words(regions, rings=True)
     assert {r.shape_id for r in regions if r.meta.get("word_id")} == {f"a{i}" for i in range(6)}
 
 
-def test_pipeline_reads_the_frames_flag(monkeypatch):
-    """`cfg.lettering_word_frames` reaches `tag_words`; off it passes False."""
-    from digitizer_core import pipeline, words as W
+def test_pipeline_reads_the_rings_flag(monkeypatch):
+    """`cfg.lettering_word_rings` reaches `tag_words`; off it passes False."""
+    from digitizer_core import words as W
     seen = []
     real = W.tag_words
 
-    def spy(regions, *, chart=None, frames=False):
-        seen.append(frames)
-        return real(regions, chart=chart, frames=frames)
+    def spy(regions, *, chart=None, rings=False):
+        seen.append(rings)
+        return real(regions, chart=chart, rings=rings)
     monkeypatch.setattr(W, "tag_words", spy)
-    assert PipelineConfig().lettering_word_frames is False
+    assert PipelineConfig().lettering_word_rings is False
     for flag in (False, True):
         cfg = PipelineConfig(target_width_mm=50, lettering_words=True,
-                             lettering_word_frames=flag)
+                             lettering_word_rings=flag)
         build_generation(str(TESTDATA / "becker_marine_logo.png"), cfg)
     assert seen == [False, True]
 

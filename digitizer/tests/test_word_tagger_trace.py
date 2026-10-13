@@ -236,11 +236,22 @@ def test_a_nested_glyph_names_its_host_and_the_containment_values():
     assert t.rejected["a0"].rule == "nested" and "host ring" in t.rejected["a0"].detail
 
 
-def test_the_frame_policy_is_the_flags_own_code():
+def test_the_ring_policy_is_the_flags_own_code():
     regions = _text("a", "HELTFU", x0=-11.0, y0=-2.0) + [_ring("ring", 0.0, 0.0, 15.0)]
-    t = T.trace(regions, threads.CHART, rules=T.replace(T.base_rules(), nested="frame"))
-    assert sorted(t.words) == _ids_of(detect_words(regions, chart=threads.CHART, frames=True))
+    t = T.trace(regions, threads.CHART, rules=T.replace(T.base_rules(), nested="ring"))
+    assert sorted(t.words) == _ids_of(detect_words(regions, chart=threads.CHART, rings=True))
     assert t.words == [[f"a{i}" for i in range(6)]]
+
+
+def test_the_frame_policy_frees_a_word_beside_a_hosts_ink_and_the_ring_does_not():
+    from shapely.geometry import Polygon as P
+    host = _region("host", P([(0, 0), (1, 0), (1, 29), (40, 29), (40, 30), (0, 30)]))
+    regions = _text("a", "HELT", x0=10.0, y0=5.0) + [host]
+    if "host" not in T.trace(regions, threads.CHART).cands:
+        pytest.fail("fixture: the L host must pass the glyph screens")
+    frame = T.trace(regions, threads.CHART, rules=T.replace(T.base_rules(), nested="frame"))
+    ring = T.trace(regions, threads.CHART, rules=T.replace(T.base_rules(), nested="ring"))
+    assert frame.words == [["a0", "a1", "a2", "a3"]] and ring.words == []
 
 
 def test_the_outline_policy_frees_a_glyph_beside_a_hosts_ink_not_in_its_hole():
@@ -260,4 +271,4 @@ def test_the_outline_policy_frees_a_glyph_beside_a_hosts_ink_not_in_its_hole():
 def test_parse_variant_reads_a_nested_policy():
     assert T.parse_variant("nested=frame") == ("nested=frame", {"nested": "frame"})
     assert T.parse_variant("nest_max_h=5") == ("nest_max_h=5", {"nest_max_h": 5.0})
-    assert set(T.NEST_VARIANTS) >= {"nested=frame", "nested=outline"}
+    assert set(T.NEST_VARIANTS) >= {"nested=ring", "nested=frame", "nested=outline"}
