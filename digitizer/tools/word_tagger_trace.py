@@ -199,11 +199,51 @@ class Trace:
     words: list = field(default_factory=list)         # lists of sids, reading-agnostic
 
 
-def trace(regions, chart=None, rules: Rules | None = None, memo: dict | None = None) -> Trace:
+def pair_rescue(comps, regions, chart, rules: Rules, relaxed: Rules, memo: dict | None = None):
+    """The CANDIDATE rule under test, not the shipped tagger. Two glyphs that
+    already link under the shipped rules are presumptive text; a THIRD glyph
+    that fails a shipped rule but passes `relaxed` against either of them
+    completes the word. A relaxed glyph never seeds a component and never
+    extends a component that already holds `min_members`, so the loosened
+    rule cannot create a word out of non-letters on its own.
+
+    `comps` are the shipped components. The thirds come from glyphs in no
+    word-sized component: strict singletons, and glyphs admitted only under
+    `relaxed`. Single hop, deterministic (pairs and thirds in shape-id order).
+    """
+    from digitizer_core.textcluster import _drop_nested
+    strict_ids = {c.region.shape_id for comp in comps for c in comp}
+    raw = []
+    for r in regions:
+        c, _ = admission(r, relaxed, memo)
+        if c is not None:
+            raw.append(c)
+    extras = [c for c in _drop_nested(raw) if c.region.shape_id not in strict_ids]
+    singles = [comp[0] for comp in comps if len(comp) == 1]
+    pool = sorted(extras + singles, key=lambda c: c.region.shape_id)
+    pairs = sorted((comp for comp in comps if 2 <= len(comp) < rules.min_members),
+                   key=lambda comp: min(c.region.shape_id for c in comp))
+    used: set[str] = set()
+    out = [comp for comp in comps if len(comp) >= rules.min_members]
+    for pair in pairs:
+        thirds = [c for c in pool if c.region.shape_id not in used
+                  and any(not link_failures(c, m, chart, relaxed) for m in pair)]
+        if len(pair) + len(thirds) >= rules.min_members:
+            used.update(c.region.shape_id for c in thirds)
+            out.append(pair + thirds)
+        else:
+            out.append(pair)
+    out.extend(comp for comp in comps if len(comp) == 1 and comp[0].region.shape_id not in used)
+    return out
+
+
+def trace(regions, chart=None, rules: Rules | None = None, memo: dict | None = None,
+          rescue: Rules | None = None) -> Trace:
     """`words.detect_words`, instrumented. Returns the words (as sets of
     shape ids) and the fate of every region. `rules` (default: the shipped
     constants) lets the census replay the same pipeline with one number
-    moved; `memo` shares skeleton reads across those replays."""
+    moved; `memo` shares skeleton reads across those replays; `rescue`
+    (default None: the shipped tagger) adds `pair_rescue` with those rules."""
     from digitizer_core import threads
     from digitizer_core import words as W
     from digitizer_core.textcluster import _drop_nested
@@ -229,7 +269,10 @@ def trace(regions, chart=None, rules: Rules | None = None, memo: dict | None = N
             t.rejected[c.region.shape_id] = Why("nested", None, None, detail="box inside a larger candidate's box")
     t.cands = {c.region.shape_id: c for c in kept_n}
     in_word: set[str] = set()
-    for comp in _cluster_(kept_n, chart):
+    comps = _cluster_(kept_n, chart)
+    if rescue is not None:
+        comps = pair_rescue(comps, regions, chart, rules, rescue, memo)
+    for comp in comps:
         ids = sorted(c.region.shape_id for c in comp)
         t.components.append(ids)
         if len(comp) < MIN_CLUSTER_MEMBERS:
@@ -386,6 +429,12 @@ def report_size(lines: dict[str, list[str]], mapping: dict[str, str | None], t: 
                                 "why": f"merged into {host}: {w.text()}", "rule": "merged>" + w.rule})
             elif s is None:
                 missing.append({"ref": ref_id, "shape": None, "why": Why("no_region", None, None, detail="no region at this size").text(), "rule": "no_region"})
+            elif s not in in_best and s in word_of:
+                # tagged, but into a different word than the line's best one:
+                # the line was cut (row_split) or its glyphs chained elsewhere
+                missing.append({"ref": ref_id, "shape": s,
+                                "why": f"other_word in a word of {len(t.words[word_of[s]])} (the line's best word has {len(in_best)})",
+                                "rule": "other_word"})
             elif s not in in_best:
                 w = explain_missing(s, [p for p in present if p != s], t, chart)
                 missing.append({"ref": ref_id, "shape": s, "why": w.text(), "rule": w.rule})
@@ -430,13 +479,34 @@ VARIANTS: dict[str, dict] = {
 }
 
 
+RESCUE_KEY = "__rescue__"
+
+# The same numbers, but as `pair_rescue`'s RELAXED rules: only a glyph that
+# completes a strict pair may use them (see `pair_rescue`).
+RESCUE_VARIANTS: dict[str, dict] = {
+    "rescue:" + ",".join(f"{k}={v:g}" for k, v in ov.items()): {RESCUE_KEY: dict(ov)}
+    for ov in (
+        {"cv_max": 0.65}, {"cv_max": 0.7}, {"cv_max": 0.8},
+        {"ink_de": 30.0}, {"ink_de": 45.0}, {"ink_de": 80.0},
+        {"height_ratio": 0.7}, {"height_ratio": 0.6}, {"height_ratio": 0.5},
+        {"stroke_ratio": 0.4}, {"stroke_ratio": 0.3},
+        {"prox_mult": 4.0}, {"prox_mult": 5.0},
+        {"aspect_max": 2.6},
+        {"cv_max": 0.7, "ink_de": 45.0},
+        {"cv_max": 0.7, "ink_de": 45.0, "height_ratio": 0.6, "stroke_ratio": 0.3, "prox_mult": 4.0},
+    )
+}
+
+
 def parse_variant(spec: str) -> tuple[str, dict]:
-    """`key=val,key=val` -> (spec, overrides)."""
+    """`key=val,key=val` -> (spec, overrides); a `rescue:` prefix makes the
+    overrides `pair_rescue`'s relaxed rules instead of the tagger's."""
+    rescue = spec.startswith("rescue:")
     ov = {}
-    for part in spec.split(","):
+    for part in spec.removeprefix("rescue:").split(","):
         k, v = part.split("=")
         ov[k.strip()] = int(v) if k.strip() == "min_members" else float(v)
-    return spec, ov
+    return spec, ({RESCUE_KEY: ov} if rescue else ov)
 
 
 def _truth_roles(lines: dict[str, list[str]], mapping: dict[str, str | None],
@@ -533,7 +603,10 @@ def run_fixture(name: str, widths, reference_width: float | None, log=print,
             entry["base_score"] = score_words(t.words, t.words, line_of, ign, lines_total)
             entry["variants"] = {}
             for vname, ov in variants.items():
-                tv = trace(regions, chart, rules=replace(base, **ov), memo=memo)
+                if RESCUE_KEY in ov:
+                    tv = trace(regions, chart, memo=memo, rescue=replace(base, **ov[RESCUE_KEY]))
+                else:
+                    tv = trace(regions, chart, rules=replace(base, **ov), memo=memo)
                 sc = score_words(tv.words, t.words, line_of, ign, lines_total)
                 sc["word_ids"] = tv.words
                 entry["variants"][vname] = sc
@@ -554,6 +627,28 @@ def print_fixture(res: dict) -> None:
                   f"word {r['members']:2d}  {tag}")
             for m in r["missing"]:
                 print(f"       {m['ref']} -> {m['shape'] or '-':10s} {m['why']}")
+
+
+def pool_results(files: list[list[dict]]) -> list[dict]:
+    """Merge several `--json` outputs: per fixture and size the LATER file's
+    rows win and the variants of every file are kept side by side, so a
+    census run and a rescue run (or a rerun of the table) read as one."""
+    by: dict[str, dict] = {}
+    for results in files:
+        for r in results:
+            cur = by.setdefault(r["fixture"], {"fixture": r["fixture"], "source": r["source"],
+                                               "reference_width": r["reference_width"], "sizes": {}})
+            cur["source"], cur["reference_width"] = r["source"], r["reference_width"]
+            for w, s in r["sizes"].items():
+                old = cur["sizes"].get(w)
+                variants = dict(old.get("variants", {})) if old else {}
+                variants.update(s.get("variants", {}))
+                cur["sizes"][w] = {**s, "variants": variants}
+                if not variants:
+                    cur["sizes"][w].pop("variants")
+                elif "base_score" not in s and old and "base_score" in old:
+                    cur["sizes"][w]["base_score"] = old["base_score"]
+    return list(by.values())
 
 
 def refusal_table(results: list[dict]) -> str:
@@ -614,22 +709,27 @@ def main(argv=None) -> int:
     ap.add_argument("--census", action="store_true",
                     help="also replay the tagger with each VARIANTS rule relaxed and score the "
                          "false joins against the truth carry")
-    ap.add_argument("--variant", action="append", default=[], metavar="k=v[,k=v]",
+    ap.add_argument("--rescue-census", action="store_true",
+                    help="also replay with each RESCUE_VARIANTS pair-rescue (a third glyph that "
+                         "fails one rule joins a pair that already links); implies the census scoring")
+    ap.add_argument("--variant", action="append", default=[], metavar="[rescue:]k=v[,k=v]",
                     help="add a census variant (keys: aspect_max min_height_mm cv_max height_ratio "
                          "stroke_ratio ink_de prox_mult min_members); implies --census")
     ap.add_argument("--summarize", type=Path, nargs="+", metavar="JSON",
                     help="pool --json outputs and print the refusal and census tables")
     args = ap.parse_args(argv)
     if args.summarize:
-        results = [r for p in args.summarize for r in json.loads(p.read_text())]
+        results = pool_results([json.loads(p.read_text()) for p in args.summarize])
         print(refusal_table(results))
         if any(s.get("variants") for r in results for s in r["sizes"].values()):
             print()
             print(census_table(results))
         return 0
     variants = None
-    if args.census or args.variant:
+    if args.census or args.rescue_census or args.variant:
         variants = dict(VARIANTS) if args.census else {}
+        if args.rescue_census:
+            variants.update(RESCUE_VARIANTS)
         variants.update(parse_variant(v) for v in args.variant)
     results = []
     for name in args.fixtures:

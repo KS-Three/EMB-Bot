@@ -139,6 +139,36 @@ def test_a_fused_pair_is_named_merged_with_the_rule_that_refused_the_host():
         assert [x["rule"] for x in row["missing"]] == ["aspect"]
 
 
+def _far_ink(chart):
+    return next(j for j in range(1, 50) if float(chart.delta_e(0, j)) > 20.0)
+
+
+def test_pair_rescue_completes_a_strict_pair_with_a_relaxed_third_and_only_that():
+    chart = threads.CHART
+    far = _far_ink(chart)
+    base = T.base_rules()
+    relaxed = T.replace(base, ink_de=200.0)
+    pair_plus_far = _text("a", "HE", ink=0) + [_region("z0", _glyph("L", 2 * 3.8, 0.0), far)]
+    assert T.trace(pair_plus_far, chart).words == []                       # shipped: no word
+    t = T.trace(pair_plus_far, chart, rescue=relaxed)
+    assert t.words == [["a0", "a1", "z0"]]
+    # three glyphs that each fail the shipped ink test against everything have no strict
+    # pair to hang from: the relaxed rule alone seeds nothing
+    inks = [0]
+    for j in range(1, 50):
+        if all(float(chart.delta_e(i, j)) > 20.0 for i in inks):
+            inks.append(j)
+        if len(inks) == 3:
+            break
+    assert len(inks) == 3
+    scattered = [_region(f"s{i}", _glyph("HEL"[i], i * 3.8, 0.0), inks[i]) for i in range(3)]
+    far_pairwise = T.trace(scattered, chart, rescue=relaxed)
+    assert far_pairwise.words == []
+    # and a component that already holds three is not extended by a relaxed glyph
+    full = _text("a", "HEL", ink=0) + [_region("z0", _glyph("T", 3 * 3.8, 0.0), far)]
+    assert T.trace(full, chart, rescue=relaxed).words == [["a0", "a1", "a2"]]
+
+
 def test_default_rules_are_the_shipped_constants():
     r = T.base_rules()
     assert (r.aspect_max, r.height_ratio, r.prox_mult, r.min_members) == (
