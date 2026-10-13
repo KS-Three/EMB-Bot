@@ -117,6 +117,9 @@
   //   FILL_STITCH_MM        the image lane's own fills already sew at.
   const SPLIT_SATIN_ABOVE_MM = 5.0;
   const SATIN_MAX_WIDTH_MM = 3.0;
+  // One DST record per axis: machine.MAX_STITCH_MM, dst.js MAX_DELTA / 10.
+  // A cross-stitch arm longer than this is split (crossfill `maxSegPx`).
+  const MAX_STITCH_MM = 12.1;
   const FILL_ROW_MM = 0.15;
   const FILL_STITCH_MM = 3.0;
 
@@ -1167,6 +1170,7 @@
           const cf = crossfill.crossFill(rings, lat, {
             method: crossRuns[0].method || font.crossGrid.method,
             firstIsJump: gRuns.length === 0,
+            maxSegPx: (MAX_STITCH_MM / fitScale) * pxPerMm,
           });
           if (cf.length) gRuns = gRuns.concat(cf);
         }
