@@ -146,7 +146,66 @@ def _word_id(shape_ids: list[str]) -> str:
     return "WD" + hashlib.blake2s(key, digest_size=4).hexdigest()
 
 
-def _candidates(regions: list[Region]) -> list[_Candidate]:
+def _box_holds(outer, inner) -> bool:
+    """`textcluster._drop_nested`'s containment test, on two bounds tuples:
+    `inner`'s box inside `outer`'s, and `outer`'s box strictly larger."""
+    ox0, oy0, ox1, oy1 = outer
+    bx0, by0, bx1, by1 = inner
+    return (ox0 <= bx0 and oy0 <= by0 and ox1 >= bx1 and oy1 >= by1
+            and (ox1 - ox0) * (oy1 - oy0) > (bx1 - bx0) * (by1 - by0))
+
+
+def _frame_ids(cands: list[_Candidate], chart) -> set[str]:
+    """Shape ids of the FRAMES among `cands`: candidates whose box holds at
+    least `MIN_CLUSTER_MEMBERS` other candidates that link into a word among
+    themselves (`textcluster._cluster`, the same links `detect_words` uses).
+
+    A letter's box holds what rides inside its footprint -- a counter
+    sliver, a fragment of a neighbouring ink -- and `_drop_nested` drops
+    those. A box that holds a WORD is not a letter: it is a badge, a ring or
+    a plate the lettering sits on. At small print the 50 mm bridge badge is
+    exactly that: under `WORD_MAX_HEIGHT_MM` once the design is 50 mm wide,
+    it passes every glyph screen (aspect 1.00, stroke CV 0.33) and its box
+    swallows all twelve letters of BAR & RESTAURANT, which then link
+    nowhere (`tools/word_tagger_trace.py`, `nest_info`, 2026-10-13). The
+    held candidates are clustered as they are, nesting among them not
+    dropped first, so a ring inside a ring is a frame too."""
+    boxes = [c.region.polygon.bounds for c in cands]
+    out: set[str] = set()
+    for i, h in enumerate(cands):
+        held = [c for j, c in enumerate(cands) if j != i and _box_holds(boxes[i], boxes[j])]
+        if len(held) < MIN_CLUSTER_MEMBERS:
+            continue
+        if any(len(comp) >= MIN_CLUSTER_MEMBERS
+               for comp in _cluster(held, LETTER_HEIGHT_RATIO, chart)):
+            out.add(h.region.shape_id)
+    return out
+
+
+def _drop_nested_unframed(cands: list[_Candidate], chart) -> list[_Candidate]:
+    """`textcluster._drop_nested` with the frames (`_frame_ids`) taken out of
+    the hosts: a candidate is dropped when a NON-frame candidate's box holds
+    it. The frames themselves stay candidates (and are tested as glyphs like
+    any other); they only lose the power to swallow. With no frame this is
+    `_drop_nested` exactly."""
+    frames = _frame_ids(cands, chart)
+    if not frames:
+        return _drop_nested(cands)
+    boxes = [c.region.polygon.bounds for c in cands]
+    hosts = [boxes[j] for j, c in enumerate(cands) if c.region.shape_id not in frames]
+    out = []
+    for i, c in enumerate(cands):
+        if not any(b is not boxes[i] and _box_holds(b, boxes[i]) for b in hosts):
+            out.append(c)
+    return out
+
+
+def _candidates(regions: list[Region], *, frames: bool = False,
+                chart=None) -> list[_Candidate]:
+    """Every region that passes the glyph screens, nested ones dropped.
+    `frames` (`cfg.lettering_word_frames`, default OFF) keeps a frame --
+    a candidate whose box holds a word -- from swallowing that word
+    (`_drop_nested_unframed`); off, `_drop_nested` exactly as before."""
     raw: list[_Candidate] = []
     for r in regions:
         x0, y0, x1, y1 = r.polygon.bounds
@@ -163,6 +222,8 @@ def _candidates(regions: list[Region]) -> list[_Candidate]:
         raw.append(_Candidate(region=r, height_mm=h, width_mm=w,
                               stroke_mean_mm=stats.mean_mm, stroke_cv=stats.cv,
                               cx=(x0 + x1) / 2.0, cy=(y0 + y1) / 2.0))
+    if frames:
+        return _drop_nested_unframed(raw, threads.CHART if chart is None else chart)
     return _drop_nested(raw)
 
 
@@ -308,14 +369,16 @@ def _describe(members: list[Region], cands: list[_Candidate]) -> Word:
                 stroke_mm=stroke, stroke_spread=spread, baseline=baseline)
 
 
-def detect_words(regions: list[Region], *, chart=None) -> list[Word]:
+def detect_words(regions: list[Region], *, chart=None, frames: bool = False) -> list[Word]:
     """Every line of lettering in `regions`, nothing written. Deterministic:
     the linking is `textcluster._cluster`'s order-free union-find, the line
-    split and the reading order sort with shape-id tie-breaks."""
+    split and the reading order sort with shape-id tie-breaks. `frames`:
+    see `_candidates` (`cfg.lettering_word_frames`)."""
     if chart is None:
         chart = threads.CHART
     words: list[Word] = []
-    for comp in _cluster(_candidates(regions), LETTER_HEIGHT_RATIO, chart):
+    for comp in _cluster(_candidates(regions, frames=frames, chart=chart),
+                         LETTER_HEIGHT_RATIO, chart):
         if len(comp) < MIN_CLUSTER_MEMBERS:
             continue
         # Pattern elements leave first, and the rest re-link without them:
@@ -336,14 +399,14 @@ WORD_KEYS = ("word_id", "word_index", "word_size", "word_line_deg", "word_slant_
              "word_cap_mm", "word_stroke_mm")
 
 
-def tag_words(regions: list[Region], *, chart=None) -> list[Word]:
+def tag_words(regions: list[Region], *, chart=None, frames: bool = False) -> list[Word]:
     """`detect_words`, and every member's meta stamped with its word. A
     region in no word carries none of the keys (absent means false, the
     text cluster's convention). Returns the words for callers that group."""
     for r in regions:
         for k in WORD_KEYS:
             r.meta.pop(k, None)
-    words = detect_words(regions, chart=chart)
+    words = detect_words(regions, chart=chart, frames=frames)
     for w in words:
         for i, r in enumerate(w.members):
             r.meta["word_id"] = w.word_id
