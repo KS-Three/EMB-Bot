@@ -217,6 +217,18 @@ class PipelineConfig:
     # gradient lanes (drawn hair, where strands ARE shapes) it changes
     # nothing. Candidate, unsewn (gate 1). Off, byte-identical.
     hairline_from_lines: bool = False
+    # Hairline coverage guard (2026-10-13, default OFF; needs `hairline` on).
+    # A shape whose hairline runs would leave more than
+    # `stage6_hairline.COVERAGE_GUARD_MM2` of its own ink bare (a 0.4 mm
+    # ribbon on a wider stroke, a strand the walk dropped:
+    # `stage6_hairline.strand_bare_mm2`, predicted from the shape alone) is
+    # handed back to the ladder it takes with the tier off, whole, in
+    # stage 5 and stage 7 alike -- `cfg.hairline` ON then adds no bare
+    # fabric or ARTWORK_UNCOVERED on logos
+    # (docs/renders/claude-hairline-coverage-guard/). The threshold is a
+    # plan-quality candidate from the logo distribution, not a machine
+    # constant (gate 1). Off, byte-identical. The flip is Kent's.
+    hairline_coverage_guard: bool = False
     max_colors: int = 12
     # Make `max_colors` true on EVERY lane, not just the flat one. Default
     # OFF and byte-identical off — it only ever runs when a design already
@@ -2116,9 +2128,11 @@ class PipelineConfig:
     # ordinary fill ladder. Census (`tools/column_capture_census.py`, PR body):
     # the house-angle group, which has no ink link, tags colour patches and
     # ramp discs as lettering and the lane sews them as 20 mm split satin.
-    # Built OFF (Kent's call to flip, it changes default output on those
-    # designs); False is byte-identical. Tests: `tests/test_column_capture.py`.
-    lettering_columns_skip_blobs: bool = False
+    # **FLIPPED ON 2026-10-13, Kent's ruling** (relayed through the director;
+    # PR body: per-fixture OFF vs ON table). ON by Kent's ruling 2026-10-13.
+    # False is the pre-flip lane (the colour grid's patches and the fur
+    # ramp's discs sewn as split satin). Tests: `tests/test_column_capture.py`.
+    lettering_columns_skip_blobs: bool = True
     # Under `lettering_columns` (old taggers, `lettering_words` off), refuse
     # a HOUSE-GROUP-ONLY shape whose thread is further than the text
     # cluster's own ink link (CIEDE2000 20) from every text-cluster letter's
@@ -2128,9 +2142,13 @@ class PipelineConfig:
     # enthusiast's shield star (34.2) and nothing else on the labelled
     # fixtures; golden_tee's swashes are kept. It does NOT reach the phone
     # screenshot's status icons, which are sewn in the text's own grey.
-    # Built OFF (Kent's call to flip); False writes no key and reads none.
-    # Tests: `tests/test_column_capture.py`.
-    lettering_columns_ink_link: bool = False
+    # **FLIPPED ON 2026-10-13, Kent's ruling** (relayed through the director;
+    # PR body: per-fixture OFF vs ON table). ON by Kent's ruling 2026-10-13:
+    # enthusiast's star goes back to fill (+159 stitches). The phone
+    # screenshot's status icons are STILL captured (dE 0.0 / 0.0 / 9.1 from
+    # the text ink); a shape/OCR guard is queued separately. False writes no
+    # key and reads none. Tests: `tests/test_column_capture.py`.
+    lettering_columns_ink_link: bool = True
     # Under `lettering_columns`, refuse a HOUSE-GROUP-ONLY shape whose medial
     # axis is a tangle: `columns.is_drawing_fragment`, junctions plus free
     # ends of the pruned skeleton >= `columns.ICON_GUARD_MIN_NODES` (24).

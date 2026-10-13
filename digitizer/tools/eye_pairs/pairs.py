@@ -150,6 +150,7 @@ def design_hash(design: dict) -> str:
 
 def build_pairs(runs: list[ArmRun], seed: int = SHUFFLE_SEED,
                 n_identical: int = N_IDENTICAL, n_repeat: int = N_REPEAT,
+                balance_live: bool = False,
                 ) -> tuple[list[dict], dict[str, dict], list[dict]]:
     """-> (public pairs in show order, sealed map, skipped arms)."""
     rng = random.Random(seed)
@@ -182,6 +183,17 @@ def build_pairs(runs: list[ArmRun], seed: int = SHUFFLE_SEED,
     # land 40/60 at this n, and a side habit would then read as a preference.
     flips = [i % 2 == 0 for i in range(len(order))]
     rng.shuffle(flips)
+    if balance_live:
+        # Half is taken over live + identical pairs above, and an identical
+        # pair shows no arm, so the LIVE pairs alone can land 1 of 4. A sitting
+        # of a few dozen live pairs wants the arm on the left in exactly half
+        # of them (one more on the right when the count is odd). Only this
+        # path draws again, so the default sealed map is untouched.
+        live_at = [i for i, e in enumerate(order) if e["kind"] == "live"]
+        mix = [True] * (len(live_at) // 2) + [False] * (len(live_at) - len(live_at) // 2)
+        rng.shuffle(mix)
+        for i, flip in zip(live_at, mix):
+            flips[i] = flip
     for entry, flip in zip(order, flips):
         entry["flip"] = flip
 
