@@ -938,13 +938,16 @@ def _overlong(col: Column | None, W: float):
     return float(L[L > thr].sum()) + col.dropped_mm, float(L.sum()) + col.dropped_mm
 
 
-def _folded(col: Column | None) -> int:
+def _folded(col: Column | None, ends: bool = False) -> int:
     """-> how many of a column's interior crosses lean past FOLD_DEG off the
     perpendicular to the column's own advance (the line between the cross
     midpoints either side). One stroke has none away from its two ends; a
     piece holding a stroke AND the stroke it branches from folds its
     crosses through the branch (a lowercase shoulder: the u's bowl into its
-    right stem, the b's bowl into its stem -- `tools/lowercase_angle.py`)."""
+    right stem, the b's bowl into its stem -- `tools/lowercase_angle.py`).
+    `ends`: count ONLY the crosses within a width of either end instead --
+    a column closing onto a cut at a slant fans its last crosses past
+    FOLD_DEG there, which the sewn reading counts as folds."""
     if col is None or len(col.stations) < 3:
         return 0
     st = col.stations
@@ -955,7 +958,8 @@ def _folded(col: Column | None) -> int:
     ring = col.kind == "ring"       # no ends: its seam is wherever the walk began
     n = 0
     for i in range(0 if ring else 1, len(st) if ring else len(st) - 1):
-        if not ring and min(arc[i], arc[-1] - arc[i]) < col.width_mm:
+        at_end = not ring and min(arc[i], arc[-1] - arc[i]) < col.width_mm
+        if at_end != ends:
             continue        # an end fan is the mitre closing the column, not a fold
         p, q = mids[i - 1], mids[(i + 1) % len(st)]
         if math.hypot(q[0] - p[0], q[1] - p[1]) < 1e-9:
@@ -1024,7 +1028,8 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int):
     tangle of short crosses), or when it adds over-long thread. Of the
     rest the one kept leaves the fewest folded crosses, then the fewest
     pieces, then no column carried round a corner (`_max_turn` within
-    TURN_MAX_DEG), then the most of it sewn as STRAIGHT columns (a stem
+    TURN_MAX_DEG), then the fewest end crosses past FOLD_DEG (a column
+    closing onto its cut at a slant), then the most sewn as STRAIGHT columns (a stem
     whole, the bowl butting it: the b's and g's stems, which a split bowl
     otherwise keeps half of), then the least turn; it must take the folds to
     REFINE_GAIN of the piece's. -> (cuts, [(piece, lines, new cuts)]) to
@@ -1086,6 +1091,7 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int):
             continue
         turn = max(_max_turn(c, W) for c in cols)
         score = (sum(_folded(c) for c in cols), len(cols), turn > TURN_MAX_DEG,
+                 sum(_folded(c, ends=True) for c in cols),
                  -sum(len(c.stations) for c in cols if c.kind == "straight"), turn)
         if best is None or score < best[0]:
             best = (score, cand, final)
