@@ -819,6 +819,13 @@
    "review": true
   },
   {
+   "prefix": "docs/renders/claude-hairline-photo-trial/",
+   "status": "derived-render",
+   "source": "Rendered by digitizer/tools/hairline_photo_trial.py from digitizer/testdata/photo/owl_kent.jpg (Kent's own photograph, kent-owned fixture); crops of that photo and thread renders of it",
+   "basis": "docs/hairline-photo-trial-2026-10-12.md",
+   "review": true
+  },
+  {
    "prefix": "docs/renders/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures (catch-all for new render directories)",

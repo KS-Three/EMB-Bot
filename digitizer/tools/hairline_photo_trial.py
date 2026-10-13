@@ -261,6 +261,90 @@ def compose(parts: Path, out: Path, route: str) -> None:
               out / f"compare_{route}{sfx or '_full'}.jpg")
 
 
+def candidate_sheet(result, route: str, wt: int, dest: Path, cols: int = 8) -> None:
+    """Every shape the gate admits at `wt`, on the SOURCE it read (nearest-
+    neighbour, so a photo pixel stays a pixel): branches sewn as runs green,
+    refused by the line test red, left to the ladder for width blue; the
+    shape's outline grey. Largest first. This is what "does it catch real
+    hair, or JPEG and blur edges" was judged on."""
+    stitched = [r for r in result.regions if r.meta.get("stitched", True)]
+    c = hairline_candidates(stitched, route_cfg(route, hairline=True, thread_wt=wt),
+                            ink=result.ink_source)
+    ink = result.ink_source
+    src = ink.rgb
+    by_id = {r.shape_id: r for r in stitched}
+    T = 200
+    tiles = []
+    for sid in sorted(c, key=lambda s: -by_id[s].polygon.area):
+        r, m = by_id[sid], c[sid]
+        x0, y0, x1, y1 = r.polygon.bounds
+        b = ink.to_src(np.array([[x0 - 0.8, y0 - 0.8], [x1 + 0.8, y1 + 0.8]]))
+        sx0, sy0 = np.maximum(np.floor(b[0]).astype(int), 0)
+        sx1 = min(int(np.ceil(b[1][0])), src.shape[1])
+        sy1 = min(int(np.ceil(b[1][1])), src.shape[0])
+        crop = src[sy0:sy1, sx0:sx1]
+        if crop.size == 0:
+            continue
+        k = T / max(crop.shape[:2])
+        big = cv2.resize(crop, (max(1, int(crop.shape[1] * k)), max(1, int(crop.shape[0] * k))),
+                         interpolation=cv2.INTER_NEAREST)
+        big = cv2.cvtColor(big, cv2.COLOR_RGB2BGR)
+
+        def P(pts):
+            s = ink.to_src(np.asarray(pts, float))
+            return np.round(np.column_stack([(s[:, 0] - sx0 + 0.5) * k,
+                                             (s[:, 1] - sy0 + 0.5) * k])).astype(np.int32)
+        for part in (r.polygon.geoms if hasattr(r.polygon, "geoms") else [r.polygon]):
+            cv2.polylines(big, [P(part.exterior.coords)], True, (150, 150, 150), 1)
+        for e in m["thick_edges"]:
+            col = (0, 0, 230) if e.get("refused") else (230, 120, 0)
+            cv2.polylines(big, [P(e["pts"])], False, col, 2)
+        for e in m["hair_edges"]:
+            cv2.polylines(big, [P(e["pts"])], False, (0, 190, 0), 2)
+        tile = np.full((T + 18, T, 3), 255, np.uint8)
+        tile[:big.shape[0], :big.shape[1]] = big[:T, :T]
+        cv2.putText(tile, f"{r.polygon.area:.1f} mm2  {len(m['hair_edges'])} run",
+                    (3, T + 13), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1, cv2.LINE_AA)
+        tiles.append(tile)
+    if not tiles:
+        return
+    blank = np.full_like(tiles[0], 255)
+    rows = [np.hstack(tiles[i:i + cols] + [blank] * (cols - len(tiles[i:i + cols])))
+            for i in range(0, len(tiles), cols)]
+    write_jpeg(dest, np.vstack(rows))
+
+
+def source_figure(result, route: str, dest: Path, zoom: str = "beak", k: int = 3) -> None:
+    """The photograph | what the gate reads (`ink_source`: the prepped
+    raster on the photo lane) | the traced regions over it, on one `ZOOMS`
+    box — where the strands go before the hairline tier ever sees a shape."""
+    orig = cv2.imread(str(PHOTO))
+    ink = result.ink_source
+    src = cv2.cvtColor(ink.rgb, cv2.COLOR_RGB2BGR)
+    fx0, fy0, fx1, fy1 = ZOOMS[zoom]
+    h, w = orig.shape[:2]
+    x0, y0, x1, y1 = int(fx0 * w), int(fy0 * h), int(fx1 * w), int(fy1 * h)
+    a = cv2.resize(orig[y0:y1, x0:x1], None, fx=k, fy=k, interpolation=cv2.INTER_NEAREST)
+    hs, ws = src.shape[:2]
+    sx0, sy0, sx1, sy1 = int(fx0 * ws), int(fy0 * hs), int(fx1 * ws), int(fy1 * hs)
+    kk = a.shape[1] / max(sx1 - sx0, 1)
+    b = cv2.resize(src[sy0:sy1, sx0:sx1], (a.shape[1], a.shape[0]), interpolation=cv2.INTER_NEAREST)
+    c = b.copy()
+    for r in result.regions:
+        for part in (r.polygon.geoms if hasattr(r.polygon, "geoms") else [r.polygon]):
+            s = ink.to_src(np.asarray(part.exterior.coords, float))
+            s = np.round((s - [sx0, sy0] + 0.5) * kk).astype(np.int32)
+            cv2.polylines(c, [s], True, (0, 0, 255), 1)
+    strip_img = []
+    for img, label in ((a, "the photograph"), (b, "what the gate reads"),
+                       (c, f"traced regions ({route})")):
+        band = np.full((30, img.shape[1], 3), 255, np.uint8)
+        cv2.putText(band, label, (6, 21), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (30, 30, 30), 2,
+                    cv2.LINE_AA)
+        strip_img += [np.vstack([band, img]), np.full((img.shape[0] + 30, 6, 3), 255, np.uint8)]
+    write_jpeg(dest, np.hstack(strip_img[:-1]))
+
+
 def run_route(route: str, out: Path | None, arms=ARMS, parts: Path | None = None) -> dict:
     """One route through every arm -> its table row. With `out`, renders:
     lossless parts into `parts` (default `out`), strips into `out`."""
@@ -361,12 +445,20 @@ def main(argv=None) -> int:
                                          / "claude-hairline-photo-trial"))
     ap.add_argument("--parts", default=str(ROOT / "debug_out" / "hairline_photo_trial"),
                     help="lossless per-arm renders (gitignored); strips go to --out")
+    ap.add_argument("--sheets-only", action="store_true",
+                    help="only the candidate sheets (`candidate_sheet`, 60 wt): a minute a route")
     args = ap.parse_args(argv)
     if args.rembg_python:
         stage1_photo_prep.REMBG_VENV_PYTHON = Path(args.rembg_python)
     out, parts = Path(args.out), Path(args.parts)
     out.mkdir(parents=True, exist_ok=True)
     parts.mkdir(parents=True, exist_ok=True)
+    if args.sheets_only:
+        for route in args.routes:
+            result = stage_result(route)
+            candidate_sheet(result, route, 60, out / f"candidates_{route}_60wt.jpg")
+            source_figure(result, route, out / f"source_{route}_beak.jpg")
+        return 0
     # One file per route, so routes can run as separate processes; the
     # combined table is rebuilt from whatever routes are present.
     for route in args.routes:
