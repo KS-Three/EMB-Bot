@@ -132,6 +132,9 @@
   // kept around so pointer handlers and the selection overlay can hit-test /
   // draw against the exact transform that was just used to paint the canvas.
   let renderResult = null;
+  // Count of completed paints of a real design (paint() and repaintView()).
+  // Surfaced as data-paint-seq so a test waits on state, not on a timer.
+  let paintSeq = 0;
 
   // Per-element canvas rects computed from the last paint(), one per ready
   // element (see generate.js's generateAll perElement), each shaped
@@ -2059,6 +2062,7 @@
     }
 
     drawOverlay();
+    paintSeq++;
     emitManualFits(result.perElement);
     emitSelectedDims(result.perElement);
     reclampAll(result.perElement);
@@ -2105,6 +2109,7 @@
       // Selection chrome is hidden during playback -- the simulator is a
       // watch-mode, not an edit-mode (pointer editing is disabled below too).
       if (!simActive) drawOverlay();
+      paintSeq++;
     } else {
       clearToFabric();
     }
@@ -3368,6 +3373,7 @@
     <!-- svelte-ignore a11y_no_interactive_element_to_noninteractive_role -->
     <canvas
       bind:this={canvas}
+      data-paint-seq={paintSeq}
       width="760"
       height="560"
       tabindex="0"
