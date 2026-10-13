@@ -19,6 +19,11 @@ stitch / trim / colour-change difference ON vs OFF.
     .venv/Scripts/python -m tools.column_capture_census              # whole matrix
     .venv/Scripts/python -m tools.column_capture_census logo_alpha.png
     .venv/Scripts/python -m tools.column_capture_census --json out.json
+    .venv/Scripts/python -m tools.column_capture_census --corpus --on-only         --guard lettering_columns_ink_link        # what a guard flag refuses
+
+`--guard FLAG...` adds a third arm, lane ON with those flags ON too, and
+lists the shapes the lane takes without them and not with them (`refused`),
+each with its hand label: the census a guard is judged on.
 """
 from __future__ import annotations
 
@@ -99,7 +104,7 @@ def shape_row(region, label=None):
 
 
 def census_one(fixture: str, cfg_kw: dict, truth_case: str | None = None,
-               image=None, on_only: bool = False) -> dict:
+               image=None, on_only: bool = False, guard: list[str] | None = None) -> dict:
     from digitizer_core import PipelineConfig
 
     path = TESTDATA / fixture if image is None else image
@@ -140,6 +145,16 @@ def census_one(fixture: str, cfg_kw: dict, truth_case: str | None = None,
             out["declined_rows"] = [shape_row(by_id[sid]) for sid in declined if sid in by_id]
             if lab:
                 out["truth"] = "scored"
+    if guard:
+        cfg = PipelineConfig(**cfg_kw, lettering_columns=True, **{k: True for k in guard})
+        res_g, plan_g, taken_g, _decl = lane_takes(path, cfg)
+        s = plan_g.stats
+        arms["guard"] = {"flags": list(guard), "stitches": s.stitch_count, "trims": s.trims,
+                         "color_changes": s.color_changes, "jumps": s.jumps,
+                         "taken": taken_g}
+        kept = set(taken_g)
+        out["refused"] = [x for x in out.get("rows", []) if x["shape_id"] not in kept]
+        out["gained"] = sorted(set(taken_g) - set(arms["on"]["taken"]))
     out.update(arms)
     return out
 
@@ -160,24 +175,31 @@ def colour_grid():
 
 
 def render_pair(name: str, source, cfg_kw: dict, out: Path, *, flags_on: dict | None = None,
-                px_per_mm: float = 10.0, zoom_px_per_mm: float = 28.0, zoom_ids=None) -> list[Path]:
+                px_per_mm: float = 10.0, zoom_px_per_mm: float = 28.0, zoom_ids=None,
+                guard: bool = False) -> list[Path]:
     """Lane OFF | lane ON thread renders, same frame and scale, plus a zoom
     panel pair on the lane-taken shape(s) (`zoom_ids`, else the first taken).
-    `flags_on` lets the caller add a guard flag to the ON arm."""
+    `flags_on` lets the caller add a guard flag to the ON arm. `guard`: both
+    arms run the lane, and only `flags_on` differs (guard OFF | guard ON);
+    the zoom defaults to the shapes the guard refused."""
     import cv2
     import numpy as np
     from digitizer_core import PipelineConfig, stitchviz
     from digitizer_core.adapter import plan_to_design
 
     designs, takens, regions = {}, {}, {}
-    for tag, kw in (("off", {"lettering_columns": False}),
+    for tag, kw in (("off", {"lettering_columns": guard}),
                     ("on", {"lettering_columns": True, **(flags_on or {})})):
         cfg = PipelineConfig(**cfg_kw, **kw)
         res, plan, taken, _decl = lane_takes(source, cfg)
         designs[tag] = plan_to_design(plan, name=f"{name} {tag}")
         takens[tag] = taken
         regions[tag] = {r.shape_id: r for r in res.regions}
-    ids = [s for s in (zoom_ids or takens["on"]) if s in regions["on"]][:6]
+    default = ([s for s in takens["off"] if s not in set(takens["on"])] if guard
+               else takens["on"])
+    ids = [s for s in (zoom_ids or default) if s in regions["on"]][:6]
+    arm = ("guard", "Column lane ON, guard") if guard else ("lane", "Column lane")
+    stem = f"{name}_guard" if guard else name
     ba = stitchviz._bounds(designs["off"]["stitches"])
     bb = stitchviz._bounds(designs["on"]["stitches"])
     ux0, ux1 = min(ba[0], bb[0]), max(ba[1], bb[1])
@@ -195,9 +217,9 @@ def render_pair(name: str, source, cfg_kw: dict, out: Path, *, flags_on: dict | 
     outs: list[Path] = []
     out.mkdir(parents=True, exist_ok=True)
     full = {k: stitchviz.render_design(d, px_per_mm=px_per_mm, pad_mm=pad) for k, d in designs.items()}
-    panel = np.hstack([label(full["off"], f"{name}: Column lane OFF"),
-                       label(full["on"], f"{name}: Column lane ON ({len(takens['on'])} shapes)")])
-    p = out / f"{name}_full.png"
+    panel = np.hstack([label(full["off"], f"{name}: {arm[1]} OFF ({len(takens['off'])} shapes)"),
+                       label(full["on"], f"{name}: {arm[1]} ON ({len(takens['on'])} shapes)")])
+    p = out / f"{stem}_full.png"
     cv2.imwrite(str(p), panel)
     outs.append(p)
     if ids:
@@ -218,14 +240,26 @@ def render_pair(name: str, source, cfg_kw: dict, out: Path, *, flags_on: dict | 
         h, w = zoom["off"].shape[:2]
         ax, bx = int(max(0, min(ax, bx))), int(min(w, max(ax, bx)))
         ay, by = int(max(0, min(ay, by))), int(min(h, max(ay, by)))
-        crops = [label(zoom[k][ay:by, ax:bx], f"zoom, lane {k.upper()} ({', '.join(ids[:3])}{'...' if len(ids) > 3 else ''})")
+        crops = [label(zoom[k][ay:by, ax:bx], f"zoom, {arm[0]} {k.upper()} ({', '.join(ids[:3])}{'...' if len(ids) > 3 else ''})")
                  for k in ("off", "on")]
         hh = max(c.shape[0] for c in crops)
         crops = [np.pad(c, ((0, hh - c.shape[0]), (0, 0), (0, 0)), constant_values=255) for c in crops]
-        p = out / f"{name}_zoom.png"
+        p = out / f"{stem}_zoom.png"
         cv2.imwrite(str(p), np.hstack(crops))
         outs.append(p)
     return outs
+
+
+def _print_guard(r: dict) -> None:
+    g = r.get("guard")
+    if not g:
+        return
+    print(f"    guard {'+'.join(g['flags'])}: taken {len(r['on']['taken'])}->{len(g['taken'])} "
+          f"st {r['on']['stitches']}->{g['stitches']} trims {r['on']['trims']}->{g['trims']} "
+          f"refused {len(r['refused'])} gained {len(r['gained'])}", flush=True)
+    for x in r["refused"]:
+        print(f"      refused {x['shape_id']} {x['w_mm']}x{x['h_mm']} mm "
+              f"tc={x['text_candidate']} lg={x['lettering_group']} label={x['label']}", flush=True)
 
 
 def matrix(only: list[str] | None = None):
@@ -249,6 +283,8 @@ def main(argv=None) -> int:
                     help="skip the lane-OFF arm (shape rows only; OFF columns read 0)")
     ap.add_argument("--ids", nargs="*", default=[], help="shape ids to zoom on in --render")
     ap.add_argument("--flag", nargs="*", default=[], help="config flags to turn ON in the render's ON arm")
+    ap.add_argument("--guard", nargs="*", default=[],
+                    help="config flags for a third arm (lane ON + these); prints what they refuse")
     ap.add_argument("--corpus",action="store_true",
                     help="the real-art corpus at the settings the hand labels were made at")
     ap.add_argument("--render", type=Path, help="write OFF|ON renders of the named fixtures here")
@@ -261,9 +297,12 @@ def main(argv=None) -> int:
         # The settings the hand labels were made at (`tools.thin_strokes.corpus_cases`).
         from tools.thin_strokes import corpus_cases
         for name, path, width, garment in corpus_cases():
+            if args.fixtures and name not in args.fixtures:
+                continue
             rel = path.relative_to(TESTDATA).as_posix()
             kw = {"target_width_mm": width, "garment_id": garment, "max_colors": 6}
-            r = census_one(rel, kw, name if name in TRUTH_CASE_FILE else None, on_only=args.on_only)
+            r = census_one(rel, kw, name if name in TRUTH_CASE_FILE else None, on_only=args.on_only,
+                           guard=args.guard)
             r["case"] = name
             results.append(r)
             on, off = r["on"], r["off"]
@@ -272,6 +311,7 @@ def main(argv=None) -> int:
                   f"false={len(bad)} st {off['stitches']}->{on['stitches']} "
                   f"trims {off['trims']}->{on['trims']} cc {off['color_changes']}->{on['color_changes']}",
                   flush=True)
+            _print_guard(r)
             if args.json:
                 args.json.write_text(json.dumps(results, indent=1, default=str), encoding="utf-8")
         return 0
@@ -291,14 +331,15 @@ def main(argv=None) -> int:
                   "max_colors": args.max_colors}
             for p in render_pair(Path(f).stem, TESTDATA / f, kw, args.render,
                                  zoom_ids=args.ids or None,
-                                 flags_on={k: True for k in args.flag}):
+                                 flags_on={k: True for k in (args.flag or args.guard)},
+                                 guard=bool(args.guard)):
                 print(p)
         return 0
     for f in matrix(args.fixtures):
         kw = {"target_width_mm": args.width, "garment_id": args.garment,
               "max_colors": args.max_colors}
         try:
-            r = census_one(f, kw, inv.get(f), on_only=args.on_only)
+            r = census_one(f, kw, inv.get(f), on_only=args.on_only, guard=args.guard)
         except Exception as exc:  # noqa: BLE001
             print(f"{f}: ERROR {type(exc).__name__}: {exc}", flush=True)
             continue
@@ -310,6 +351,7 @@ def main(argv=None) -> int:
               f" trims {off['trims']:3d}->{on['trims']:3d}"
               f" cc {off['color_changes']:3d}->{on['color_changes']:3d}"
               f"  truth={r.get('truth', '-')} false={len(bad)}  {on['secs']}s", flush=True)
+        _print_guard(r)
         if args.json:
             args.json.write_text(json.dumps(results, indent=1, default=str), encoding="utf-8")
     return 0

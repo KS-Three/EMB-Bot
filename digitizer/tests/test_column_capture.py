@@ -19,8 +19,10 @@ from shapely.geometry import Point, box
 from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig
-from digitizer_core.columns import is_lettering, is_solid_blob
-from digitizer_core.pipeline import run_stages
+from digitizer_core.columns import (INK_LINK_TOUCH_MM, ink_strays, is_lettering,
+                                    is_solid_blob, tag_ink_strays)
+from digitizer_core.pipeline import plan_stitches, run_stages
+from digitizer_core.regions import Region
 from tests.conftest import TESTDATA
 
 
@@ -100,3 +102,167 @@ def test_guard_keeps_the_letters_on_enthusiast():
     on = _taken(path, garment_id="left_chest", max_colors=6, lettering_columns_skip_blobs=True)
     assert len(off) >= 10        # tag level: stage 7 builds columns for 11 of them
     assert on == off
+
+
+# --- the ink link (`cfg.lettering_columns_ink_link`) ------------------------
+#
+# A house-group-only shape whose thread is further than the text cluster's
+# own link (CIEDE2000 20) from every text letter's thread, and that does not
+# abut a text letter (`columns.INK_LINK_TOUCH_MM`), is not a letter of the
+# text. Census 2026-10-13 (PR body): it refuses enthusiast's shield star and
+# nothing else on the corpus; it cannot reach the phone screenshot's status
+# icons, which are sewn in the text's own grey.
+
+class _Chart:
+    """delta_e from a table, symmetric; a pair it does not know raises the
+    way a chart that cannot place a thread does."""
+    def __init__(self, table):
+        self.t = {}
+        for (a, b), d in table.items():
+            self.t[(a, b)] = self.t[(b, a)] = d
+
+    def delta_e(self, a, b):
+        if a == b:
+            return 0.0
+        if (a, b) not in self.t:
+            raise IndexError(a)
+        return self.t[(a, b)]
+
+
+def _r(sid, poly, thread, **meta):
+    return Region(shape_id=sid, polygon=poly, thread_index=thread,
+                  thread_number=str(thread), area_mm2=poly.area, meta=dict(meta))
+
+
+def _word(thread=1):
+    return [_r(f"L{i}", box(i * 7.0, 0, i * 7.0 + 6.0, 6.5), thread,
+               text_candidate=True, lettering_group=True) for i in range(4)]
+
+
+CHART = _Chart({(1, 2): 34.2, (1, 3): 12.0, (2, 3): 30.0})
+
+
+def test_ink_link_refuses_a_far_ink_house_only_shape():
+    star = _r("star", Point(-10.0, 3.0).buffer(2.7, 16), 2, lettering_group=True)
+    assert ink_strays(_word() + [star], CHART) == ["star"]
+
+
+def test_ink_link_keeps_a_near_ink_and_a_same_ink_shape():
+    near = _r("near", box(-10, 0, -5, 5), 3, lettering_group=True)
+    same = _r("same", box(-20, 0, -15, 5), 1, lettering_group=True)
+    assert ink_strays(_word() + [near, same], CHART) == []
+
+
+def test_ink_link_exempts_a_far_ink_shape_that_abuts_the_text():
+    """The swash case: a far ink, but as close to a letter as the word's own
+    letters are to each other. Just inside and just outside the 1.0 mm."""
+    t = INK_LINK_TOUCH_MM
+    inside = _r("in", box(-t + 0.05 - 5.0, 0, -t + 0.05, 6), 2, lettering_group=True)
+    outside = _r("out", box(-t - 0.05 - 5.0, 10, -t - 0.05, 16), 2, lettering_group=True)
+    assert ink_strays(_word() + [inside, outside], CHART) == ["out"]
+
+
+def test_ink_link_never_refuses_a_text_letter_nor_fails_closed():
+    """A text-cluster letter is never judged; no text in the design, or an
+    ink the chart cannot place, is no evidence and refuses nothing."""
+    odd = _word()
+    odd[0].thread_index = 2                       # a far ink, but a text letter
+    assert ink_strays(odd, CHART) == []
+    lone = _r("star", box(-10, 0, -5, 5), 2, lettering_group=True)
+    assert ink_strays([lone], CHART) == []        # no text cluster at all
+    unknown = _r("u", box(-10, 0, -5, 5), 7, lettering_group=True)
+    assert ink_strays(_word() + [unknown], CHART) == []
+
+
+def test_ink_link_is_off_by_default_and_reads_its_key_only_when_on():
+    assert PipelineConfig().lettering_columns_ink_link is False
+    star = _r("star", box(-10, 0, -5, 5), 2, lettering_group=True)
+    assert tag_ink_strays(_word() + [star], CHART) == 1
+    assert star.meta["lettering_ink_stray"] is True
+    assert is_lettering(star, PipelineConfig())
+    assert not is_lettering(star, PipelineConfig(lettering_columns_ink_link=True))
+
+
+def _guard_census(case):
+    """(regions, labelled letter ids or None, refused ids) for a corpus case
+    at its labelled settings, from ONE `run_stages` with the guard ON: the
+    tag pass only writes a key, so the OFF reading is the same regions read
+    with the flag off (`test_ink_link_off_never_reaches_the_new_code`)."""
+    import json
+    from tools.thin_strokes import REAL_ART
+    rel, width, garment = REAL_ART[case]
+    base = dict(target_width_mm=width, garment_id=garment, max_colors=6)
+    on = PipelineConfig(**base, lettering_columns_ink_link=True)
+    off = PipelineConfig(**base)
+    res = run_stages(TESTDATA / rel, on)
+    truth = json.loads((TESTDATA / "lettering_truth.json").read_text(encoding="utf-8"))
+    lab = truth["fixtures"].get(case)
+    letters = None
+    if lab:
+        letters = {s for v in lab["lines"].values() for s in v}
+        if not letters <= {r.shape_id for r in res.regions}:
+            letters = None                       # stale labels: not scored
+    refused = {r.shape_id for r in res.regions
+               if is_lettering(r, off) and not is_lettering(r, on)}
+    return res.regions, letters, refused
+
+
+def test_ink_link_refuses_the_enthusiast_star_and_keeps_every_letter():
+    regions, letters, refused = _guard_census("enthusiast")
+    assert letters, "enthusiast's hand labels went stale: re-read the census"
+    assert len(refused) == 1
+    star = next(r for r in regions if r.shape_id in refused)
+    x0, y0, x1, y1 = star.polygon.bounds
+    assert not star.meta.get("text_candidate") and star.meta.get("lettering_group")
+    assert 4.5 <= x1 - x0 <= 6.5 and 4.5 <= y1 - y0 <= 6.5      # the 5.5 mm star
+    assert not (refused & letters)
+
+
+def test_ink_link_keeps_golden_tees_swashes():
+    """The three house-group-only swashes (the script T and its swash, 8-39
+    mm) are in the text's own inks; the guard refuses nothing here."""
+    regions, _letters, refused = _guard_census("golden_tee")
+    swashes = [r for r in regions if r.meta.get("lettering_group")
+               and not r.meta.get("text_candidate")
+               and max(r.polygon.bounds[2] - r.polygon.bounds[0],
+                       r.polygon.bounds[3] - r.polygon.bounds[1]) >= 20.0]
+    assert len(swashes) >= 2
+    assert refused == set()
+
+
+@pytest.mark.parametrize("case", ["becker", "bridge", "fremont", "drone", "screenshot"])
+def test_ink_link_refuses_nothing_on_the_other_letter_fixtures(case):
+    """Nothing refused, so every labelled letter is kept. On `screenshot` this
+    pins the measured NEGATIVE too: its 4.5-6 mm status icons are the text's
+    own grey (dE 0.0, one at 9.1), so an ink link cannot see them."""
+    _regions, _letters, refused = _guard_census(case)
+    assert refused == set()
+
+
+def test_ink_link_off_never_reaches_the_new_code(monkeypatch):
+    """OFF is byte-identical by construction: the tag pass is never called
+    (it raises here), no key is written, and is_lettering's new branch is
+    behind the flag. The ON stream differs (the star), so the pin has teeth."""
+    import hashlib
+    import json
+    from digitizer_core import columns
+
+    path = TESTDATA / "photo/enthusiast_logo.png"
+    kw = dict(target_width_mm=80.0, garment_id="left_chest", max_colors=6)
+
+    def md5(cfg):
+        res = run_stages(path, cfg)
+        keys = sum("lettering_ink_stray" in r.meta for r in res.regions)
+        plan = plan_stitches(res, cfg)
+        coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
+                  for _, r in plan.iter_runs() for x, y in r.points]
+        return hashlib.md5(json.dumps(coords).encode()).hexdigest(), keys
+
+    on, on_keys = md5(PipelineConfig(**kw, lettering_columns_ink_link=True))
+
+    def boom(*_a, **_k):
+        raise AssertionError("tag_ink_strays reached with the flag OFF")
+    monkeypatch.setattr(columns, "tag_ink_strays", boom)
+    off, off_keys = md5(PipelineConfig(**kw))
+    assert off_keys == 0 and on_keys == 1
+    assert on != off

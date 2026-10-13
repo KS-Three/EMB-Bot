@@ -896,6 +896,13 @@ def build_generation(
     set_lettering_house_angle(regions, p, fourfold=cfg.satin_house_fourfold,
                               from_line=cfg.satin_house_from_line,
                               anchor=cfg.satin_house_anchor, groups=house_groups)
+    # The Column lane's ink link (`cfg.lettering_columns_ink_link`, default
+    # OFF): a house-group-only shape in a far ink is not a letter of the
+    # text. Here, once both old taggers have written their keys. Off, it is
+    # never called and no key is written.
+    if cfg.lettering_columns_ink_link and not cfg.lettering_words:
+        from .columns import tag_ink_strays
+        tag_ink_strays(regions, chart_for(cfg))
 
     # Stitch width (2026-09-29, `stitchwidth.py`): what column each shape
     # measures, and the one width a detected word's letters will share.
