@@ -48,6 +48,14 @@ REFINE_TRIGGER = 0.12    # share of thread in over-long crosses that says "two s
 REFINE_GAIN = 0.6        # a second-look cut must take that share to this fraction
 _SLOT_STEP_MM = 0.1           # outline walk step for the slot backs
 REFINE_REFLEX_DEG = 30.0        # the second look reads softer concave corners than the junction rules
+# `fold_cuts` (default OFF): a cross leaning past this off its column's own
+# perpendicular is folded through a branch, and a piece with at least
+# FOLD_MIN of them gets the second look. 45 is the "crosses past 45 deg off
+# perpendicular" line of the 2026-09-03 stitch-angle rule; capitals at 80
+# and 120 mm read zero interior crosses past it, lowercase shoulders 2-5
+# per glyph (`tools/lowercase_angle.py`). Candidates, not fabric constants.
+FOLD_DEG = 45.0
+FOLD_MIN = 2
 
 
 def _unit(v):
@@ -921,13 +929,100 @@ def _overlong(col: Column | None, W: float):
     return float(L[L > thr].sum()) + col.dropped_mm, float(L.sum()) + col.dropped_mm
 
 
-def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int):
+def _folded(col: Column | None) -> int:
+    """-> how many of a column's interior crosses lean past FOLD_DEG off the
+    perpendicular to the column's own advance (the line between the cross
+    midpoints either side). One stroke has none away from its two ends; a
+    piece holding a stroke AND the stroke it branches from folds its
+    crosses through the branch (a lowercase shoulder: the u's bowl into its
+    right stem, the b's bowl into its stem -- `tools/lowercase_angle.py`)."""
+    if col is None or len(col.stations) < 3:
+        return 0
+    st = col.stations
+    mids = [((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0) for a, b in st]
+    arc = [0.0]
+    for p, q in zip(mids[:-1], mids[1:]):
+        arc.append(arc[-1] + math.hypot(q[0] - p[0], q[1] - p[1]))
+    ring = col.kind == "ring"       # no ends: its seam is wherever the walk began
+    n = 0
+    for i in range(0 if ring else 1, len(st) if ring else len(st) - 1):
+        if not ring and min(arc[i], arc[-1] - arc[i]) < col.width_mm:
+            continue        # an end fan is the mitre closing the column, not a fold
+        p, q = mids[i - 1], mids[(i + 1) % len(st)]
+        if math.hypot(q[0] - p[0], q[1] - p[1]) < 1e-9:
+            continue
+        adv = math.atan2(q[1] - p[1], q[0] - p[0]) + math.pi / 2.0
+        a, b = st[i]
+        cr = math.atan2(b[1] - a[1], b[0] - a[0])
+        lean = abs((math.degrees(cr - adv) + 90.0) % 180.0 - 90.0)
+        n += lean > FOLD_DEG
+    return n
+
+
+def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int):
+    """`fold_cuts`: the second look for a piece that is not over-long but
+    FOLDS (`_folded` >= FOLD_MIN). The junction rules leave a lone concave
+    corner uncut when its far side is smooth -- "the stroke is bending here"
+    (`find_cuts`) -- which is right for a bend and wrong for a lowercase
+    shoulder, where a curved stroke leaves a straight one tangentially and
+    the far side is that stroke's straight edge. Same candidates as
+    `_refine` (the piece's soft concave corners, three rays each); the cut
+    kept is the one that leaves the fewest folded crosses, and it must take
+    them to REFINE_GAIN of the piece's and add no over-long thread. -> the
+    (score, cut, subs, lines) to take, or None."""
+    col0 = build_column(pc, cut_lines, W, pitch_mm)
+    f0 = _folded(col0)
+    if depth >= 3 or f0 < FOLD_MIN:
+        return None
+    long0, _tot0 = _overlong(col0, W)
+    rf, _ = corners(pc, W, reflex_deg=REFINE_REFLEX_DEG)
+    best = None
+    for r in _cluster(rf, 0.25 * W):
+        p = r["p"]
+        for dvec in (r["d_in"], (-r["d_out"][0], -r["d_out"][1]), r["bis"]):
+            q = _ray_hit(pc, p, dvec, 2.4 * W, r["bis"])
+            if q is None:
+                continue
+            L = math.hypot(q[0] - p[0], q[1] - p[1])
+            if L < 0.25 * W:
+                continue
+            cut = (p, q, "fold", L)
+            subs = split(pc, [cut])
+            if len(subs) < 2 or min(g.area for g in subs) < 0.4 * W * W:
+                continue
+            lines = cut_lines + [LineString([p, q])]
+            cols = [build_column(g, lines, W, pitch_mm) for g in subs]
+            if any(c is None for c in cols):
+                continue                    # a cut that leaves a piece unsewn is no cure
+            if sum(_overlong(c, W)[0] for c in cols) > long0 + 1e-9:
+                continue
+            score = sum(_folded(c) for c in cols)
+            if best is None or score < best[0]:
+                best = (score, cut, subs, lines)
+    if best is None or best[0] > REFINE_GAIN * f0:
+        return None
+    return best
+
+
+def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
+            fold_cuts: bool = False):
     """Yield (piece, cut lines, new cuts). The junction rules missed a cut
     wherever a piece still sews over-long; look again at that piece's own
-    concave corners and keep the one cut that most reduces it."""
+    concave corners and keep the one cut that most reduces it. With
+    `fold_cuts` (`cfg.lettering_columns_fold_cuts`, default OFF) a piece
+    that is not over-long but folds its crosses gets the same second look
+    (`_fold_refine`); off, this is the shipped function, step for step."""
     long0, tot0 = _overlong(build_column(pc, cut_lines, W, pitch_mm), W)
     if depth >= 3 or tot0 <= 0 or long0 / tot0 < REFINE_TRIGGER:
-        yield pc, cut_lines, []
+        fold = _fold_refine(pc, cut_lines, W, pitch_mm, depth) if fold_cuts and tot0 > 0 else None
+        if fold is None:
+            yield pc, cut_lines, []
+            return
+        first = True
+        for g in fold[2]:
+            for sub, lines, extra in _refine(g, fold[3], W, pitch_mm, depth + 1, fold_cuts):
+                yield sub, lines, ([fold[1]] if first else []) + extra
+                first = False
         return
     # Softer corners than the junction rules read (REFLEX_DEG): a low-res
     # E's slots round off under 55 deg and the body sewed as one fan (Becker
@@ -958,7 +1053,7 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int):
         return
     first = True
     for g in best[2]:
-        for sub, lines, extra in _refine(g, best[3], W, pitch_mm, depth + 1):
+        for sub, lines, extra in _refine(g, best[3], W, pitch_mm, depth + 1, fold_cuts):
             yield sub, lines, ([best[1]] if first else []) + extra
             first = False
 
@@ -976,11 +1071,12 @@ class LetterCut:
         self.unsewn = unsewn
 
 
-def letter_columns(poly: Polygon, pitch_mm: float = 0.4) -> LetterCut:
+def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False) -> LetterCut:
     """A letter polygon -> its stroke Columns. `pitch_mm` is the progress
     between consecutive stations along the moving rail -- the satin spacing
     itself (`machine.SATIN_SPACING_MM`): a station is one cross, and the
-    crosses sit `pitch_mm` apart whichever rail each starts from."""
+    crosses sit `pitch_mm` apart whichever rail each starts from.
+    `fold_cuts`: see `_fold_refine` (`cfg.lettering_columns_fold_cuts`)."""
     W = stroke_width(poly)
     # a pinhole is the trace, not a counter
     poly = Polygon(poly.exterior, [h for h in poly.interiors if Polygon(h).area > 0.05 * W * W])
@@ -1023,7 +1119,7 @@ def letter_columns(poly: Polygon, pitch_mm: float = 0.4) -> LetterCut:
     cut_lines = [LineString([a, b]) for a, b, _, _ in cuts]
     columns, unsewn = [], []
     for pc in pieces:
-        for sub, lines, extra in _refine(pc, cut_lines, W, pitch_mm, 0):
+        for sub, lines, extra in _refine(pc, cut_lines, W, pitch_mm, 0, fold_cuts):
             cuts = cuts + extra
             col = build_column(sub, lines, W, pitch_mm)
             if col is None:

@@ -1296,17 +1296,20 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             start_near: tuple[float, float] | None = None,
                             end_near: tuple[float, float] | None = None,
                             counter_clear_mm: float = 0.0,
+                            fold_cuts: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
-    `counter_clear_mm`: see `column_runs` (`cfg.small_print_floor`)."""
+    `counter_clear_mm`: see `column_runs` (`cfg.small_print_floor`).
+    `fold_cuts`: `cfg.lettering_columns_fold_cuts` (`outline_cut._fold_refine`)."""
     from .outline_cut import letter_columns
 
     # One station per `spacing_mm` along the rail, both ends of each sewn:
     # the engine's own meaning of satin spacing (a needle every `spacing_mm`
     # on EACH rail). The spike stationed at half that with both ends down
     # and sewed every letter twice as dense.
-    cut = letter_columns(poly, pitch_mm=spacing_mm)
+    cut = (letter_columns(poly, pitch_mm=spacing_mm, fold_cuts=True) if fold_cuts
+           else letter_columns(poly, pitch_mm=spacing_mm))
     held = _recorded_counters(cut.poly, poly) if counter_clear_mm > 0 else cut.poly
     runs, report = column_runs(cut.columns, held, shape_id, trim_at_mm=trim_at_mm,
                                spacing_mm=spacing_mm, split_above_mm=split_above_mm,
