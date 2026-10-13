@@ -16,7 +16,7 @@ at the bottom for the authority model behind the confidence ratings.
 (**42.5**, not the older ~70) and the metric's own **75-84** pro-vs-pro ceiling.
 Its code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-10-13. **This file is current state only, under a
+**Last updated:** 2026-10-13 (after PR #882). **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
 on 2026-09-14). Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
@@ -337,7 +337,7 @@ about the facts.
 15. **RESOLVED 2026-09-12 — the wizard's steps are browser history entries** Detail: scope-history 2026-10-07 (moved for the word budget). *(resolved 2026-09-12)*
 17. **RESOLVED 2026-09-17 (Kent) — clearing a stale BORDER recovers on ONE click**, a stale BOUNDARY on two. Kept: "Clear them" is an explicit click, so nothing is dropped behind the user's back — what "recovery is explicit" protects. Do NOT gate recovery out of the fast lane to tidy this. *(`e2e/digitize-stale-edits.spec.js`)*
 
-18. **A COLD photo digitize is slow — Kent RULED 2026-10-13 "Faster photo reorder"; one step merged, the larger one waits on his look.** `fill_travel_under_cover` is most of a cold photo run; the 2026-09-17 memo fixed only the RE-stitch. Profiled on `owl_kent` (cProfile + py-spy): `_reorder_for_cover` and the unsewn-ground inset buffer dominate. **Merged (PR #868), byte-identical, no flag:** the unsewn ground memoized on (`cover`, `sewn`), about −5% (88.5 → 84.2 s, same stitch SHA on 13 runs). **Open, draft PR #871 (his ruling allows an order change that holds coverage and the instruments):** sewn footprints kept apart, routing windowed to the length budget, the incoming order priced lazily — owl_kent 148 → 114 s with byte-identical stitches; drone +1 jump / +6 stitches, sunset −4 stitches, no coverage lost, exposed travel equal or lower; renders in the PR. Marking it ready is his. *(measured 2026-10-13 — PRs #868, #871, [`docs/photo-cold-profile-2026-10-13.md`](docs/photo-cold-profile-2026-10-13.md); before: `docs/flag-runtime-bills-2026-09-12.md`)*
+18. **RESOLVED 2026-10-13 — "Faster photo reorder" (Kent): both steps merged, no flag.** `fill_travel_under_cover` was most of a cold photo run (`_reorder_for_cover` and the unsewn-ground inset buffer dominate). PR #868, byte-identical: unsewn ground memoized, about −5%. PR #871 (Kent merged it): sewn footprints kept apart, routing windowed to the length budget, the incoming order priced lazily — `owl_kent` 148 → 114 s with byte-identical stitches; drone +1 jump / +6 stitches, sunset −4 stitches, no coverage lost, exposed travel equal or lower; renders in `docs/renders/photo-reorder-fast-2026-10-13/`. *(measured 2026-10-13 — PRs #868, #871, [`docs/photo-cold-profile-2026-10-13.md`](docs/photo-cold-profile-2026-10-13.md); before: `docs/flag-runtime-bills-2026-09-12.md`)*
 
 19. **RESOLVED 2026-10-03 — `satin_cap_recentre` is ON** (Kent's ruling in chat,
    on his sitting: after on becker and tires, before on none; Latent 5).
@@ -521,12 +521,21 @@ about the facts.
    - **Eye-pairs `SPEC_ARMS` still list `lettering_columns` as an OFF arm**
      (`tools/eye_pairs/pairs.py`), now equal to the base; a test asserts the
      table, so it waits on a tidy-up.
-   - **A possible non-letter capture (`suspected`):** `test_preflight`'s
-     12-patch grid reads as a line of lettering and the lane takes it (its
-     edge-cap colour stops 23 → 11), so that test pins the lane OFF; whether
-     real non-letter art is captured is unmeasured.
-   *(measured 2026-10-12 — PRs #859, #863, #869, [`docs/renders/lettering-columns-on/`](docs/renders/lettering-columns-on/);
-   confirmed 2026-10-13 — `config.py`, `tests/test_preflight.py` at `302e678d`; the 10-11/12 text: scope-history 10-13)*
+   - **Non-letter capture — MEASURED 2026-10-13 (PR #881):** the house-angle
+     group (`textcluster._lettering_groups`) has no ink link and no stroke
+     test, so the lane takes solid blobs: all 12 patches of `test_preflight`'s
+     grid and all 8 tagged discs of the synthetic `fur_ramp`, both sewn as
+     ragged split satin with the border pass lost. On real art, 0 solid blobs
+     in 150 lane shapes over ten fixtures; but the enthusiast shield star
+     (a filled sparkle becomes a thin X) and three phone-UI icons are
+     house-group-only captures, not blobs, and are NOT cured. The guard
+     `cfg.lettering_columns_skip_blobs` (mean stroke over longer bbox side
+     ≥ 0.40 and solidity ≥ 0.95; every labelled letter ≤ 0.344) is built
+     OFF — "Waiting on Kent" 48. `tools/column_capture_census.py`.
+   - **Letter reach** is now card v2 block H (ROSE, `lettering_columns` OFF/ON
+     pair, [`docs/sewout/card-v2-2026-10-13/`](docs/sewout/card-v2-2026-10-13/)); unsewn.
+   *(measured 2026-10-12/13 — PRs #859, #863, #869, #877, #881, [`docs/renders/lettering-columns-on/`](docs/renders/lettering-columns-on/), `tests/test_column_capture.py`;
+   confirmed 2026-10-13 — `config.py`; the 10-11/12 text: scope-history 10-13)*
 38. **RESOLVED 2026-10-12 — `coverage_edges` is a NO (Kent).** `cfg.coverage_edges` is
    DEPRECATED: still readable, default False, OFF path untouched; setting it True
    warns once, naming the ruling. Evidence it rested on: PRs #818, #824, #841
@@ -568,45 +577,71 @@ about the facts.
    "sewn colours" row for digitized art, and a fold on the multi-select group
    panel. *(confirmed 2026-10-12 —
    PR #852, `docs/superpowers/specs/2026-09-30-studio-configurator-design.md`)*
-44. **`forbid_gap_mm` flip — RIPE for Kent since 2026-10-12.** Defect 47's
-   forbid-gap half, built OFF. The weld's one way to lose ink is fixed (PR #857:
-   a failed weld keeps the artwork; 0 of 88 corpus strips fail). **Still open,
-   plainly — needs a render before any flip:** #846's side effect on bridge, whose
-   rail-comp satin `S0c90443f` goes 3,868 → 2,914 stitches (−5.9% for the design)
-   once strips reach it — decide whether strips go to satin-tier shapes at all,
-   or only as an underlay-free fill patch. Also unmeasured: bridge left chest
-   gains one `ARTWORK_UNCOVERED` (1.1 mm² of `Sdf9790da`, whose own weld held).
-   It closes a deliberate sub-0.8 mm knockout line, and 0.8 mm is card block 6's
-   (gate 1). *(measured 2026-10-11/12 — PRs #846, #857, `tools/forbid_gap.py`)*
-   The bridge render is being built (branch `claude/wok44-bridge-forbid-gap`,
-   no PR yet, 2026-10-13); until it lands, nothing here has changed.
-45. **The hairline tier — built OFF in three steps; hair now waits on Kent's
-   sew-out (gate 1).** Thread weight, the tier (PR #848), the ground under
-   strands (#850) and the per-strand gate (#851) are in (area 1). The card is
-   generated: [`docs/sewout/hairline-card-2026-10-12/`](docs/sewout/hairline-card-2026-10-12/README.md)
-   — two hoops (40 wt; 60 wt on 65/9 and 70/10), blocks A–E (run length and
-   curl radius, strand spacing, column width, cap height, strands over ground),
-   a scoring sheet, read back by pystitch. Flipping `hairline` or
-   `hairline_over_ground`, and every 60/75 wt value and the 1.5 mm stitch, wait
-   on his sewing it. *(built 2026-10-12 — PRs #848, #850, #851;
-   `tests/test_hairline_card.py`)* **`hairline` is NOT flip-safe on logos as
-   it stands (PR #872, measurement only):** over the 26 scorecard fixtures
-   (no hair) it re-sews 272 shapes on the eight gradient-lane logos and
-   `enthusiast_logo` as single 0.4 mm runs — taglines, serifs, outlines; 87
-   lose a strand (enthusiast's E reads C), bare fabric rises 2–10x on five,
-   five new `ARTWORK_UNCOVERED`. No width cut separates those strokes (deciles
-   to 0.60 mm) from hair (0.25–0.6). The flat logos are untouched. Priced
-   minimum before a flip: a drop guard (a shape that would lose a strand falls
-   back to the ladder) — a lane is building it, no PR yet (director's brief
-   2026-10-13); the
-   thinner outlines are a look for his eye. *(measured 2026-10-13 — PR #872,
-   `tools/hairline_logo_bill.py`)* **Small print rides the same card (PR
-   #873, `cfg.small_print_floor`, OFF):** in the Column lane a counter sewn
-   shut is the worst defect at 3–4 mm caps; the flag keeps the counters stage
-   4 drops and holds penetrations half a laid width off them (synthetic word
-   at 3 mm: 8 → 4 of 10 shut). Its counter floor (one laid width) and hold are
-   candidates on the card under "Small print". *(measured 2026-10-13 — PR
-   #873, `tools/small_print.py`)*
+44. **`forbid_gap_mm` flip — Kent RULED 2026-10-13: sew-out first (card v2
+   block G); the flip waits on it.** Defect 47's forbid-gap half, built OFF.
+   Priced (PR #874, measure and render only): at 0.8 mm over the 26 scorecard
+   fixtures, bare cloth under 0.8 mm between colours 126.6 → 6.2 mm² (−95%),
+   stitches +1,424 (+0.41%; bridge +3.7%), trims −14, 0 failed welds, and none of
+   the findings gained. WoK 44's old "3,868 → 2,914" bridge satin figure does
+   NOT reproduce (the border `S0c90443f` goes 3,383 → 3,605, +6.6%), and
+   #857's bridge `ARTWORK_UNCOVERED` is gone on main. 116 of 128 pairs are
+   artwork within 0.1 mm — seams, not knockout lines; a third of the strips land
+   on satin shapes nobody has sewn. Options were flip at 0.8, another value, or
+   hold; 0.8 mm is a physical constant (gate 1), so candidates only. **Card v2
+   block G** ([`docs/sewout/card-v2-2026-10-13/`](docs/sewout/card-v2-2026-10-13/))
+   sews an 8×8 mm fill and three satin bars at 0.3/0.6/1.0 mm gaps with arms
+   OFF, 0.4, 0.8 (the 1.0 bar is the control). *(measured 2026-10-12/13 — PRs
+   #846, #857, #874, #877, `docs/wok44-forbid-gap-bill-2026-10-12.md`;
+   renders `docs/renders/claude-wok44-bridge-forbid-gap/`)*
+45. **The hairline tier — built OFF; the flip waits on a sew-out (gate 1).**
+   Thread weight, the tier (PR #848), ground under strands (#850) and the
+   per-strand gate (#851) are in (area 1). Card v1:
+   [`docs/sewout/hairline-card-2026-10-12/`](docs/sewout/hairline-card-2026-10-12/README.md)
+   (blocks A–E, 40 and 60 wt). Flipping `hairline`, `hairline_over_ground`,
+   every 60/75 wt value and the 1.5 mm stitch wait on sewing it.
+   *(built 2026-10-12 — `tests/test_hairline_card.py`)* **Logos (PR #872):**
+   `hairline` was not flip-safe — it re-sewed 272 shapes on nine logos as 0.4 mm
+   runs, 87 lost a strand (enthusiast's E read C), five new
+   `ARTWORK_UNCOVERED`; no width cut separates those strokes from hair.
+   **Drop guard (PR #879, built, still OFF with the tier; no flag of its own):**
+   a shape whose walk would drop more than **2% of its strand length** is handed
+   back whole to the ladder. **Kent RULED 2026-10-13 (via the director): keep
+   the 2% share rule, not literal "any dropped strand"** (which forfeited the
+   hair itself: `hair_strands` −5,637 → −152 stitches). Measured: strands
+   dropped 0 on every logo bar two sub-2% survivors (0.08, 0.12 mm); hair
+   fixtures lose nothing. Remaining cost: thinner outlines on gradient-lane
+   logos (screenshot +8.6 mm² new `ARTWORK_UNCOVERED`) — a look for his eye. **Real
+   photo (PR #876, owl_kent):** the segmenter merges bristles into ragged
+   regions, so the tier barely sees strands; a line test in the strand gate
+   (refuses blur rims and down) leaves 3 strands sewn, 10 dropped. **Lines route
+   (PR #882, `cfg.hairline_from_lines`, OFF, needs `hairline`):** strands from
+   FDoG lines over the fill ground, no fill carved — 75 strands, 0 mm² new bare
+   fabric (regions: 2 strands, 2.1 mm²), +752 stitches, +45 trims; only 5 land on
+   the facial bristles (31 are breast barring, not hair) — resolution (4.36
+   px/mm), not tuning, is the limit; photo lanes only. Its flip is Kent's.
+   *(measured 2026-10-13 — PRs #872, #876, #879, #882,
+   `tools/hairline_logo_bill.py`, `tools/hairline_lines_trial.py`,
+   `docs/hairline-photo-trial-2026-10-12.md`)*
+47. **`small_print_floor` flip — waits on card v2 block F (gate 1).** PRs
+   #873, #878, #880, flag OFF, OFF byte-identical (md5 pins): at 3–4 mm caps a
+   counter sewn shut is the worst defect, so the flag keeps counters stage 4
+   drops and holds penetrations half a laid width off them, in the Column lane
+   (#873), now also the run and fill tiers (#878) and with no Column-lane
+   stitch over a counter (#880). Measured (40 wt render, not cloth): synthetic
+   BOARD at 3 mm counters shut 8/10 → 2/10, Fremont's tagline 0/4 shut with
+   zero stitches over a counter at 3–5 mm (the A's float-hair regression found
+   in #878 is fixed in #880). Costs: dust 0.103 → 0.131 at 3 mm, +25–52 stitches.
+   Still shut: the synthetic 0's two counters beside the slash, golden_tee's O
+   at 3 mm. Counter floor (one laid width) and hold are candidates; block F
+   sews BOARD at 4 and 3 mm, OFF/ON. *(measured 2026-10-13 — PRs #873, #878,
+   #880, #877, `tools/small_print.py`, `tests/test_small_print.py`)*
+48. **Flip `lettering_columns_skip_blobs` — Kent's (PR #881, built OFF).** The
+   Column lane takes solid 14–20 mm patches (synthetic grid, fur discs) as split
+   satin; the guard refuses them and moves no real-art shape (0 of 150). Whether
+   to also give the house-angle group an ink link (cures the enthusiast star and
+   phone icons but would refuse golden_tee's three swashes, which are letters)
+   is open. See the Column lane entry (37). *(measured 2026-10-13 — PR #881,
+   `tools/column_capture_census.py`)*
 46. **Defect 61's other half — keep the cut-off pieces (`clip_keep_pieces`),
    NEW 2026-10-12.** The parent-keeps-ink half is ON (Kent). Whole-flag ON
    restores drone's and golden_tee's dropped ink but costs bridge +5.1%
@@ -685,7 +720,9 @@ exits on. Its pointer was **2026-08-21**, eleven days earlier. *(gap audit §3)*
 **What it does not settle:** random operator threading (never grade colour from
 it), one fabric, one size, no controlled blocks. The CARD (`docs/sewout-card-2026-07-31.md`) is the instrument
 and has not been sewn; nor has the hairline card generated 2026-10-12
-(`docs/sewout/hairline-card-2026-10-12/`, "Waiting on Kent" 45). **Gate 1
+(`docs/sewout/hairline-card-2026-10-12/`, "Waiting on Kent" 45) or card v2
+(`docs/sewout/card-v2-2026-10-13/`, PR #877: small print F, forbid gap G,
+column reach H — "Waiting on Kent" 44, 47). **Gate 1
 stands**; scores stay `pending sew-out`.
 
 **Kent's 2026-08-21 ruling is unchanged by the icon:** accepted as-is, not a
@@ -833,7 +870,7 @@ the numbers were chosen. Still a `warn`, never a block; the margins are
 **Both halves of the smoothness complaint now have instruments, and they are not the same measurement** (Spearman 0.028). `tools/edge_smoothness.py` owns edge noise; `tools/curve_fidelity.py` owns the curve half, read from `plan.iter_runs()` because **curve fidelity is not readable from a raster**. Read **`roughness_deg`** per design; `turn_gini` is substantially a COMPLEXITY statistic (Pearson −0.763 vs log trace count), valid only on the ladder or a paired arm; the floor is **stitch length**. *(measured 2026-08-27/28 — PR #281; `docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
 **Wobble attributed (2026-09-19): SATIN RAILS, not the outline** — `tools/edge_wobble.py`: satin std 0.09–0.11 mm on real logos, 0.038 synthetic; outline 0.011. **Cause DIAGNOSED 2026-09-21, and it is the rail MODEL rather than a step inside it:** the rail sits where a width-profile ray puts it, and that ray cannot tell "the shape is wider here" from "the ray escaped into the next arm"; the offset is settled and OUTWARD (+0.24 to +0.25 mm), the width-filter hypothesis is refuted, and the ablation found no mechanism to switch off. Closing it means placing satin rails on boundary geometry the way `line` (std 0.000) and `fill` (0.010) already are — a large build in the most caveated file in the repo, and **not one to start before the sew-out**: nothing ties 0.089 mm to Kent's eye on cloth, and closing it does not move `lost_frac` on ENTHUSIAST. *(measured 2026-09-21 — [`docs/rail-wobble-cause-2026-09-21.md`](docs/rail-wobble-cause-2026-09-21.md))*
 **Low-resolution outlines (2026-10-10/11): the hard stair-stepped mask, not the pixel count, is the limit.** An off-the-shelf tracer (vtracer, nine settings) is not closer than stage 4 (closer in 5 of 26 cases, stage 4 in 13). `cfg.coverage_edges` (PR #818, outlines from the source alpha's half-coverage contour) is **DEPRECATED — Kent: no, 2026-10-12** (item 38, PR #852): it halved median edge error on golden_tee and Fremont but worsened a sharp corner (0.03 → 0.22 mm) and narrowed three Becker slots below one thread. The reversals come from `subpixel_edges_upscaled`'s read at 1.8 px/mm; a resolution floor under it is built unset and left so (Kent, item 41). **The reversals' own cure is BUILT OFF — `cfg.subpixel_corner_runs` (PR #834):** one fit per corner run, an unread vertex takes its read neighbours' offset, a vertex landing behind its predecessor drops; Becker at 1.8 px/mm reversals **7.1 → 0.9** per 100 mm, right-angle turns 26.5 → 20.1, worst median edge-error change +0.0028 mm over four cases × three rungs; 16 reversal vertices remain, and at 3 and 5 px/mm Becker reads 1.3 and 1.4. Nothing sewn. *(measured 2026-10-10/11 — PRs #818, #824, #826, #834; `docs/low-res-outline-sparknotes-2026-10-10.md`, `docs/native-read-corners-2026-10-11.md`)*
-**Thread weight and a hairline tier (2026-10-12) — `cfg.hairline` and `cfg.hairline_over_ground` DEFAULT OFF, thread weight 40 by default (PRs #848, #850, #851).** Kent: *"Thread is extremely thin, we should be able to embroider hair!"* The floor is the NEEDLE, not the thread — Melco publishes run ≥ 1.5 mm and satin ≥ 1.0 mm, so a thinner weight changes density and lettering size, never the minimum stitch (research PR #843; it corrects `docs/trade-knowledge-2026-09-13.md` §5). Built: `machine.thread_profile(40|60|75)` and a per-colour-block `thread_wt`; `stage6_hairline` sews each skeleton BRANCH under 1.5 × the laid width (0.60 mm at 40 wt, 0.48 at 60) as one Euler-walked run, no stitch under 1.0 mm, its width read off the SOURCE ink, and the thick rest of a mixed shape keeps today's tier (#851); the ground runs under the strands (`hairline_over_ground`, #850), cutting new bare fabric on the ground **~85%** (2.88 → 0.44 mm² at 40 wt) for +11–18% skin-fill stitches by stacking; a sliver rule keeps skin fill md5-identical to OFF at 40 wt. **#848's "tracer widens a hairline ~0.11 mm" was a units error** (the fixture rendered at 80 mm, drawn at 69.15); the tracer's error has no fixed sign. A finer fixture (`hair_fine.png`, strands 0.25–0.35 mm) admits at 60 wt with **0.179 mm** margin; `hair_strands` (median 0.43) only 0.028. **Open:** bare fabric is not zero; curls under 1.5 mm radius look polygonal; `rest_planned` keeps a split rest piece's largest part (defect 61's twin). Every 60/75 wt value, the 1.5 mm stitch and the ground's double layer wait on the hairline card ("Waiting on Kent" 45). Renders only. *(measured 2026-10-12 — PRs #848, #850, #851; `docs/hairline-prototype-2026-10-12.md`, `docs/hairline-ground-2026-10-12.md`, `docs/hairline-strand-gate-2026-10-12.md`; `tests/test_hairline_ground.py`, `tests/test_hairline_strand_gate.py`; #848's full paragraph: [area 1](docs/scope/1-auto-digitizing-quality.md))*
+**Thread weight and a hairline tier (2026-10-12) — `cfg.hairline`, `cfg.hairline_over_ground` and `cfg.hairline_from_lines` DEFAULT OFF, thread weight 40 by default (PRs #848, #850, #851, #876, #879, #882).** Kent: *"Thread is extremely thin, we should be able to embroider hair!"* The floor is the NEEDLE, not the thread (Melco run ≥ 1.5 mm, satin ≥ 1.0 mm). `stage6_hairline` sews each skeleton BRANCH under 1.5 × the laid width as one Euler-walked run; the ground runs under strands; a per-strand gate and (from 2026-10-13) a drop guard and a line test hold it back where it would erase letters or sew blur. On drawn hair it works; on logos and the one real photo it is not ready — status, bills and the flip queue are "Waiting on Kent" 45. Every 60/75 wt value and the 1.5 mm stitch wait on the hairline card. Renders only. Full paragraph: [area 1](docs/scope/1-auto-digitizing-quality.md#hairline-tier-paragraph-moved-from-master_scope-2026-10-13). *(measured 2026-10-12/13 — PRs #848, #850, #851, #876, #879, #882; `docs/hairline-prototype-2026-10-12.md`, `docs/hairline-ground-2026-10-12.md`, `docs/hairline-strand-gate-2026-10-12.md`)*
 **Two stage-1 background defects, both reproduced on main 2026-10-11 and both fixed behind `cfg.bg_structural`, DEFAULT OFF:** `summit_badge`'s half-removed background (0.383 of the true background removed at the shipped `bg_tolerance_lab` 6.0; ON **0.9995**, no badge pixel lost), and `BACKGROUND_ABSENT` answering a structural question through a colour threshold (summit flips between 4.5 and 4.8, `logo_toat_beanie` at 3.0). ON, stage 1 reads the background as one paint under smooth shading — a quadratic field over the border ring at a fixed 5.0 ΔE for existence, a degree-4 field for reach — and both fixtures read "background" at every tolerance 3.0–8.0; one other verdict changes. Flip: "Waiting on Kent" 39. *(measured 2026-10-11 — PR #825, `docs/renders/bg-structural-2026-10-11/`; first found 2026-08-27 — `docs/kent-review-2026-08-27.md`. PR #276's body claims the engine is correct on `summit_badge` — that sentence is wrong, its instrument fix stands.)* **Satin extremity drop — FIXED 2026-08-21.** `_prune_spurs` re-measured a stem its OWN first pass had un-branched, one raster pixel deciding a 3.3 mm tab. **The blind spot that hid it stays fixed:** `preflight`'s `ARTWORK_UNCOVERED`, 5.0 mm² threshold still provisional. *(fixed 2026-08-21 — PR #186)* **Lettering quality — the STITCH-ANGLE mechanism is FIXED 2026-08-27. Three others remain open.** Kent on two sewn logos: *"lettering should be smooth"*, *"ROOKIE MISTAKE"*, and *"Why is the 'N' running Vertically?"*
 
 **Fixed: a word's letters now share one house angle.** `stage6_satin` grew
