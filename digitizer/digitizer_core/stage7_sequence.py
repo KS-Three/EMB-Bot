@@ -64,7 +64,8 @@ from .beanletters import BEAN_LETTER_KEY
 from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
-from .columns import (is_lettering, lettering_columns_shape, small_print_clear,
+from .columns import (is_lettering, is_thin_stem, lettering_columns_shape,
+                      small_print_clear,
                       small_print_counter_set, small_print_counters)
 from .words import is_text, word_key
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
@@ -2098,6 +2099,13 @@ def sequence(
                       if cfg.border_abrupt_raggedness is not None
                       else machine.BORDER_ABRUPT_RAGGEDNESS)
     rescue = cfg.small_shape_rescue
+    # `cfg.lettering_columns_small_stem` (default OFF): a lettering stem
+    # under the area floor goes to the Column lane, not the run tier. Off,
+    # `routes_to_run` below is today's, branch for branch. It also needs the
+    # lane itself (satin + lettering_columns): a stem the lane does not take
+    # would otherwise fall through to the classifier with no outline run.
+    small_stem = bool(cfg.lettering_columns_small_stem and cfg.lettering_columns
+                      and cfg.satin)
     # The config-to-emitter mapping the split-satin knobs document: False
     # sews raw crosses however long (a real house style — jolly-af ships
     # 7 mm stitches), None defers to the corpus-median machine default.
@@ -2134,6 +2142,11 @@ def sequence(
             return True                 # L3: the word decided, not the shape's area
         if pr_tier == "auto" and wt in ("satin", "widened") and cfg.satin:
             return False                # L3: satin for the word; with satin off, the rescue stands
+        if (small_stem and pr_tier == "auto" and rescue
+                and pr.region.polygon.area < detail_mm2
+                and is_lettering(pr.region, cfg)
+                and is_thin_stem(pr.region.polygon, cfg.min_detail_mm)):
+            return False                # a lettering STEM under the area floor: the Column lane
         return pr_tier == "run" or (pr_tier == "auto" and rescue
                                     and pr.region.polygon.area < detail_mm2
                                     and not widened_lettering(pr.region))
