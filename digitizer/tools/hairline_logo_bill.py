@@ -107,9 +107,15 @@ def warning_extra(plan, code: str) -> dict | None:
 
 def measure_mode(plan, result, p, cfg) -> dict:
     row = plan_counts(plan)
-    sliver = warning_extra(plan, CLIP_DROPPED_SLIVER)
-    row["clip_dropped_sliver"] = ({"count": sliver.get("count"), "total_mm2": sliver.get("total_mm2")}
-                                  if sliver else None)
+    # Stage 5's clip raises one; under `cfg.hairline` stage 7 may raise a
+    # second (`source: hairline_rest`). Sum them, keep the split.
+    slivers = [w for w in plan.warnings if w["code"] == CLIP_DROPPED_SLIVER]
+    row["clip_dropped_sliver"] = ({
+        "count": sum(w.get("count") or 0 for w in slivers),
+        "total_mm2": round(sum(w.get("total_mm2") or 0.0 for w in slivers), 3),
+        "from_hairline_rest": sum(w.get("count") or 0 for w in slivers
+                                  if w.get("source") == "hairline_rest"),
+    } if slivers else None)
     findings, _metrics = preflight._uncovered_findings(p, result, plan)
     unc = next((f for f in findings if f["code"] == preflight.ARTWORK_UNCOVERED), None)
     ux = unc["extra"] if unc else {}
@@ -193,6 +199,18 @@ def run_one(fixture: str, cfg_kw: dict, wt: int) -> dict:
 def _load(out: Path) -> dict:
     f = out / "rows.json"
     return json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+
+
+def cmd_merge(args) -> int:
+    """Fold the `rows.json` of several worker directories into --out's."""
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    rows = _load(out)
+    for d in args.dirs:
+        rows.update(_load(Path(d)))
+    (out / "rows.json").write_text(json.dumps(rows, indent=1) + "\n", encoding="utf-8")
+    print(f"{len(rows)} rows")
+    return 0
 
 
 def _matrix(sel: str) -> list[dict]:
@@ -347,6 +365,9 @@ def main(argv=None) -> int:
     r.add_argument("--wt", type=int, default=40)
     r.add_argument("--force", action="store_true")
     r.set_defaults(fn=cmd_run)
+    m = sub.add_parser("merge")
+    m.add_argument("dirs", nargs="+")
+    m.set_defaults(fn=cmd_merge)
     t = sub.add_parser("table")
     t.set_defaults(fn=cmd_table)
     d = sub.add_parser("render")
