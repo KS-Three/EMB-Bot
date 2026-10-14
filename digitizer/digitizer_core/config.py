@@ -2315,6 +2315,24 @@ class PipelineConfig:
     # for the hairline sew-out card. Off, byte-identical (md5-pinned in
     # `tests/test_small_print.py`). Lettering in the Column lane only.
     small_print_floor: bool = False
+    # Enlarge lettering too small to sew (`small_text.enlarge_small_text`,
+    # 2026-10-13; Kent on Hotel Fremont's "EST 1895": "the date is still
+    # showing up very poorly"). The cap height in mm a line of traced
+    # lettering is grown TO when its letters are under 0.9 of it: the line is
+    # retraced from the source raster (stage 4 has already dropped the
+    # counters of an 8 that small), scaled about itself -- never past 2x --
+    # and moved the least distance at which it clears every other shape by
+    # 0.4 mm; a line with no room is left exactly as it was. It is what the
+    # professional's file for that patch does: at the same 92.5 mm its date
+    # is 3.6-3.9 mm tall in satin against the art's 1.9 mm, which this
+    # engine sews as a running stitch that reads "1095". Five existing
+    # lettering options were rendered on that date first and none made it
+    # legible. THE DESIGN NO LONGER MATCHES THE ARTWORK where this fires --
+    # that is the trade, and why it is built OFF. None is byte-identical
+    # (nothing calls the pass). The intended value is a CANDIDATE (ROADMAP
+    # gate 1): 3.7 is the professional's on one file, unsewn here. The flip
+    # is Kent's, on renders. Tests: `tests/test_small_text.py`.
+    small_text_cap_mm: float | None = None
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
