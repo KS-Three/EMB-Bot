@@ -117,6 +117,8 @@
   //   FILL_STITCH_MM        the image lane's own fills already sew at.
   const SPLIT_SATIN_ABOVE_MM = 5.0;
   const SATIN_MAX_WIDTH_MM = 3.0;
+  // Kent's ruling 2026-10-14: the satin zigzag sews only columns whose widest sewn cross is under this (final mm); wider ones sew alternating rails. Reuses the split point, where the zigzag starts costing stitches; a candidate, not sewn.
+  const SATIN_ZIGZAG_MAX_WIDTH_MM = SPLIT_SATIN_ABOVE_MM;
   // One DST record per axis: machine.MAX_STITCH_MM, dst.js MAX_DELTA / 10.
   // A cross-stitch arm longer than this is split (crossfill `maxSegPx`).
   const MAX_STITCH_MM = 12.1;
@@ -519,13 +521,25 @@
       minStitchMm: opts.minStitchMm == null ? UNDERLAY_MIN_STITCH_MM : opts.minStitchMm,
       repeats: UNDERLAY_REPEATS,
     } : null;
+    // The zigzag's width cap (Kent's ruling 2026-10-14), per column: a column
+    // whose widest cross reaches the cap sews alternating rails instead. The
+    // cross is measured as SEWN — rails plus the pull comp and weight
+    // emitZigzag adds — so at the split point a zigzag column carries no split.
+    const zzCapPx = opts.zigzag === true && opts.zigzagMaxWidthMm > 0 ? opts.zigzagMaxWidthMm * pxPerMm : 0;
     const G = [];
     for (const c of cols) {
       const geom = columnGeom(c.railA, c.railB, c.rungs, 12);
       if (!geom || geom.total <= 1e-6 || geom.C.length < 2) continue;
       const w = Math.max(dist(c.railA[0], c.railB[0]), dist(c.railA[c.railA.length - 1], c.railB[c.railB.length - 1]));
-      G.push({ geom, w });
+      let zzOff = false;
+      if (zzCapPx > 0) {
+        let wMax = 0;
+        for (let i = 0; i < Math.min(geom.A.length, geom.B.length); i++) wMax = Math.max(wMax, dist(geom.A[i], geom.B[i]));
+        zzOff = wMax + (pullCompMm + weightMm) * pxPerMm >= zzCapPx;
+      }
+      G.push({ geom, w, zzOff });
       if (report) accumulateWidths(geom, report);
+      if (report && opts.zigzag === true) { if (zzOff) report.zigzagCapped += 1; else report.zigzagColumns += 1; }
     }
     if (!G.length) return [];
     // Counter guard (review item 4): every rail of this glyph, sampled with
@@ -542,6 +556,7 @@
     const splitSegmentMm = opts.splitSegmentMm > 0 ? opts.splitSegmentMm : undefined;
     const underpathStepMm = opts.underpathStepMm > 0 ? opts.underpathStepMm : UNDERPATH_STEP_MM;
     const satinOpts = { spacingMm, pxPerMm, pullCompMm, weightMm, slantDeg, minCrossMm, counterGuard, shortStitch, splitAboveMm, splitSegmentMm, splitStats: splitAboveMm > 0 ? report : null, zigzag: opts.zigzag === true };
+    const satinOptsWide = Object.assign({}, satinOpts, { zigzag: false });
     const ws = G.map((g) => g.w).sort((a, b) => a - b);
     const medW = ws[ws.length >> 1] || 4;
     const mergeR = Math.max(2, 1.3 * medW);
@@ -669,7 +684,7 @@
                 continue;
               }
             }
-            const s = satinFromGeom(geom, sg.f0, sg.f1, satinOpts);
+            const s = satinFromGeom(geom, sg.f0, sg.f1, G[sp.gi].zzOff ? satinOptsWide : satinOpts);
             if (s && s.length >= 2) { parts.push({ pts: s, kind: "satin", fa: sg.f0, fb: sg.f1 }); continue; }
             // A stretch that sews NOTHING still has to be walked: the circuit
             // is continuous by construction, so skipping it would leave the
@@ -836,6 +851,10 @@
       // sewed as a fill. Both 0 unless the caller asked for them.
       splitPenetrations: 0,
       wideSpans: 0,
+      // The zigzag's width cap: glyph columns that sewed the zigzag, and
+      // columns at or over the cap that went back to alternating rails.
+      zigzagColumns: 0,
+      zigzagCapped: 0,
       // The floors in THIS layout's px: final mm -> caller mm (/ fitScale)
       // -> px (* pxPerMm), the same conversion spacingMm rides.
       floorsPx: [(SATIN_MIN_CROSS_MM / fitScale) * pxPerMm, (COLUMN_FLOOR_MM / fitScale) * pxPerMm],
@@ -892,6 +911,15 @@
     // `satinZigzag` (built OFF 2026-10-13): constant rail order in the satin
     // emitter — see `zigzag` in satinplay.emitZigzag. Only `true` turns it on.
     guardOpts.zigzag = o.satinZigzag === true;
+    // ...and only on a column narrower than SATIN_ZIGZAG_MAX_WIDTH_MM (Kent's
+    // ruling 2026-10-14): on a wide column the zigzag's return leg is a full
+    // cross carrying its own split comb, which on "AB" at 198 mm took 12,492
+    // stitches to 21,070. Decided per column in routeGlyph, on the column's
+    // widest cross. A number overrides the cap in final mm; `false` or `0`
+    // lifts it (the zigzag on every column, the 2026-10-13 stream).
+    const zzCap = o.satinZigzagMaxMm === false || o.satinZigzagMaxMm === 0 ? 0
+      : (typeof o.satinZigzagMaxMm === "number" && o.satinZigzagMaxMm > 0 ? o.satinZigzagMaxMm : SATIN_ZIGZAG_MAX_WIDTH_MM);
+    guardOpts.zigzagMaxWidthMm = guardOpts.zigzag && zzCap ? zzCap / fitScale : 0;
     // The SEGMENT rides the fit scale too, and forgetting that is the whole
     // bug: leaving it at 3.0 while the threshold is pre-divided makes k come
     // out of ceil(cross / 3.0 LAYOUT mm), which on a design scaled 8x is
@@ -1288,6 +1316,8 @@
       // design. Both 0 when neither is asked for, which is the default.
       splitPenetrations: report.splitPenetrations,
       wideSpans: report.wideSpans,
+      zigzagColumns: report.zigzagColumns,
+      zigzagCapped: report.zigzagCapped,
       columnFloorMm: COLUMN_FLOOR_MM,
       crossFloorMm: SATIN_MIN_CROSS_MM,
     };
@@ -1304,7 +1334,7 @@
   }
 
   return {
-    layoutText, capHeightMm, underlayModeForCapMm, TYPOGRAPHIC_FOLD,
+    layoutText, capHeightMm, underlayModeForCapMm, TYPOGRAPHIC_FOLD, SATIN_ZIGZAG_MAX_WIDTH_MM,
     LETTERING_GUARDS: { SATIN_MIN_CROSS_MM, BEAN_STITCH_MM, BEAN_PASSES, COLUMN_FLOOR_MM, CAP_FLOOR_MM, SHORT_STITCH_AT_MM, SHORT_STITCH_PULL, SHORT_STITCH_MAX_MM },
   };
 });
