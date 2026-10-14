@@ -36,6 +36,7 @@ from digitizer_core.stage6_hairline import (REST_KEY, hairline_candidates,
 from digitizer_core.threads import chart_for
 from digitizer_core.warnings_codes import CLIP_DROPPED_SLIVER
 from tools import hairline_rest_pieces as census
+from tests.conftest import own_thread_only
 
 CHART = chart_for(PipelineConfig())
 DARK = int(np.argmin(CHART.lab[:, 0]))
@@ -217,8 +218,8 @@ def test_corpus_rest_pieces_lose_no_ink():
 def test_off_path_never_reaches_rest_planned(monkeypatch):
     """`cfg.hairline` False: stage 7 does not call `rest_planned` at all."""
     called = []
-    monkeypatch.setattr(stage7_sequence, "rest_planned",
-                        lambda *a, **k: called.append(1) or [])
+    monkeypatch.setattr(stage7_sequence, "rest_planned", own_thread_only(
+        lambda *a, **k: called.append(1) or [], stage7_sequence.rest_planned))
     reg = _region("Su", _u_shape())
     palette = [{"brand": CHART.label, "brand_id": CHART.id, "number": CHART[DARK].number,
                 "name": "x", "rgb": list(CHART[DARK].rgb)}]

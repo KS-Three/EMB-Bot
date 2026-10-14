@@ -30,6 +30,7 @@ from shapely.geometry import Polygon
 
 from digitizer_core import PipelineConfig, digitize, outline_cut
 from tools import lowercase_angle as la
+from tests.conftest import own_thread_only
 
 SHOULDERS = "ubgma"         # glyphs that fold OFF and come apart ON (120 mm)
 
@@ -230,7 +231,8 @@ def test_off_never_enters_the_new_code(glyphs, glyphs80, monkeypatch):
         raise AssertionError("fold_cuts code reached with fold_cuts off")
     for name in ("_fold_refine", "_folded", "_column_len", "_max_turn", "_ring_opener",
                  "_carried_ring"):
-        monkeypatch.setattr(outline_cut, name, boom)
+        monkeypatch.setattr(outline_cut, name,
+                            own_thread_only(boom, getattr(outline_cut, name)))
     for ch in SHOULDERS + "e":
         outline_cut.letter_columns(glyphs[ch])
         outline_cut.letter_columns(glyphs80[ch])
@@ -252,7 +254,8 @@ def word():
     def boom(*_a, **_k):
         raise AssertionError("_fold_refine reached on the default config")
     with pytest.MonkeyPatch.context() as mp:      # OFF never runs the new code
-        mp.setattr(outline_cut, "_fold_refine", boom)
+        mp.setattr(outline_cut, "_fold_refine",
+                   own_thread_only(boom, outline_cut._fold_refine))
         off_r, off = digitize(la.FIXTURE.with_suffix(".png"), PipelineConfig(**kw))
     _on_r, on = digitize(la.FIXTURE.with_suffix(".png"),
                          PipelineConfig(lettering_columns_fold_cuts=True, **kw))

@@ -63,6 +63,7 @@ from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage6_blend import SourcePixels
 from digitizer_core.threads import CHART, rgb_to_lab
 from digitizer_core.warnings_codes import PHOTO_SHADE_DEMAND
+from tests.conftest import own_thread_only
 
 TESTDATA = str(Path(__file__).resolve().parent.parent / "testdata" / "photo")
 FAB = get_fabric("pique_knit")
@@ -86,7 +87,7 @@ class _SelectSpy:
 def _segment_with_spy(monkeypatch, fixture: str, *, shade_demand: bool,
                       split_tonal: bool = True):
     spy = _SelectSpy()
-    monkeypatch.setattr(S2, "select_palette", spy)
+    monkeypatch.setattr(S2, "select_palette", own_thread_only(spy, spy._real))
     cfg = PipelineConfig(target_width_mm=80.0)
     p = prep(f"{TESTDATA}/{fixture}", cfg)
     q = S2.segment(p, cfg, split_tonal=split_tonal, shade_demand=shade_demand)
@@ -110,7 +111,8 @@ def test_off_path_feeds_select_palette_exactly_the_region_rows(monkeypatch):
     def tripwire(*a, **kw):  # pragma: no cover - the point is it never runs
         raise AssertionError("_shade_demand_points ran on the OFF path")
 
-    monkeypatch.setattr(S2, "_shade_demand_points", tripwire)
+    monkeypatch.setattr(S2, "_shade_demand_points",
+                        own_thread_only(tripwire, S2._shade_demand_points))
     _p, q, (labs, weights) = _segment_with_spy(
         monkeypatch, "fur_ramp.png", shade_demand=False)
 
@@ -196,7 +198,7 @@ def _kept_for(p):
         captured["kept"] = kept
         return real(p_, cfg_, kept, *a, **kw)
 
-    S2.kept_masks_to_quant = grab
+    S2.kept_masks_to_quant = own_thread_only(grab, real)
     try:
         cfg = PipelineConfig(target_width_mm=80.0)
         S2.segment(p, cfg, split_tonal=True, shade_demand=False)
@@ -320,7 +322,7 @@ def _bind_palettes_seen(monkeypatch, cfg, *, palette_spools, design_class):
         seen.append(kw.get("shade_palette_indices", "MISSING"))
         return real(region, source_pixels, cfg_, **kw)
 
-    monkeypatch.setattr(S7, "streamline_fill", spy)
+    monkeypatch.setattr(S7, "streamline_fill", own_thread_only(spy, real))
     poly = Polygon([(-35, -25), (35, -25), (35, 25), (-35, 25)])
     planned, _ = resolve_overlaps([_region(poly)], FAB, cfg,
                                   design_class=design_class)

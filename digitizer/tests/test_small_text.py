@@ -32,6 +32,7 @@ from digitizer_core import small_text  # noqa: E402
 from digitizer_core.regions import Region  # noqa: E402
 from digitizer_core.small_text import enlarge_small_text  # noqa: E402
 from digitizer_core.stage1_prep import Prep  # noqa: E402
+from tests.conftest import own_thread_only
 
 PPM = 24.0
 W, H = 960, 480                    # 40 x 20 mm
@@ -180,8 +181,8 @@ def test_the_flag_runs_end_to_end_and_none_never_calls_the_pass(monkeypatch):
     fixture = Path(__file__).resolve().parent.parent / "testdata" / "logo_whitebg.png"
     calls = []
     real = small_text.enlarge_small_text
-    monkeypatch.setattr(small_text, "enlarge_small_text",
-                        lambda *a, **k: (calls.append(k.get("cap_mm")), real(*a, **k))[1])
+    monkeypatch.setattr(small_text, "enlarge_small_text", own_thread_only(
+        lambda *a, **k: (calls.append(k.get("cap_mm")), real(*a, **k))[1], real))
     _, plan_off = digitize(fixture, PipelineConfig(target_width_mm=80.0))
     assert calls == [], "None is byte-identical because nothing calls the pass"
     _, plan_on = digitize(fixture, PipelineConfig(target_width_mm=80.0, small_text_cap_mm=3.7))
@@ -301,9 +302,14 @@ def test_serif_trim_leaves_a_curve_and_a_short_stroke_alone():
     # The tail of a 9: a quarter arc of 1 mm radius turns gently.
     arc = [(math.cos(t), math.sin(t)) for t in [k * (math.pi / 2) / 30 for k in range(31)]]
     assert trim_serif_hooks([arc], 0.45)[0] == arc
-    # A stroke under three hooks long is never cut: there is no letter left.
-    short = [(0.0, 0.3), (0.0, 0.0), (1.0, 0.0)]
+    # A stroke that would be left under twice its hook is never cut: there is
+    # no letter left. One that keeps enough is (Fremont's E at 81 mm: arms
+    # about 1 mm, which a fixed three-serif floor refused, and it read as B).
+    short = [(0.0, 0.3), (0.0, 0.0), (0.4, 0.0)]
     assert trim_serif_hooks([short], 0.45)[0] == short
+    arm81 = [(1.0, 0.3), (1.0, 0.0), (0.0, 0.0)]
+    cut = trim_serif_hooks([arm81], 0.45)[0]
+    assert abs(cut[0][1]) < 0.05 and cut[-1] == (0.0, 0.0), f"the 1 mm arm loses its hook: {cut}"
 
 
 # --- The ink reader on a cutout (`ink_path.read_cluster_ink`) --------------
@@ -335,3 +341,38 @@ def test_a_cutout_letters_counter_is_not_ink():
     radius = np.hypot(pts[:, 0], pts[:, 1])
     assert radius.min() > 1.0, f"the centreline runs round the counter, not through it (min r {radius.min():.2f} mm)"
     assert abs(float(np.median(radius)) - 1.5) < 0.2, "on the stroke, 1.5 mm out"
+
+
+def test_restore_drops_the_taggers_strays_from_the_line():
+    # Fremont's tagline cluster holds its two black separator bars and a
+    # twist of the rope. Bean letters reads a cluster's ink as one colour, so
+    # with them in it the tagline was never read. They leave the cluster.
+    regions, p = _scene()
+    bar = Region("Sbar", box(4.0, -1.0, 4.2, 1.5), 9, "9", 0.5)       # another ink, in the line
+    rope = Region("Srope", box(-6.0, 4.0, -5.0, 6.0), 7, "7", 2.0)    # same ink, far off the line
+    regions += [bar, rope]
+    _tag(regions, {"Sg0", "Sg2", "Sg3", "Sbar", "Srope"})
+    rep = small_text.restore_small_text(regions, p, cap_mm=3.0)
+    row = next(r for r in rep if r["cluster"] == "TCtest")
+    assert row.get("strays") == 2, row
+    for r in (bar, rope):
+        assert "text_cluster_id" not in r.meta and "text_candidate" not in r.meta
+        assert r.meta.get("small_text_stray") is True
+    assert all(r.meta.get("text_cluster_id") == "TCtest" for r in _glyphs(regions)), "the four digits stay"
+
+
+def test_serif_trim_never_cuts_where_strokes_meet():
+    # The 8 at 81 mm: two loop arcs meeting at the waist turn sharply there,
+    # and were cut open as if the turn were a serif. A junction is not a
+    # free end.
+    from digitizer_core.stage6_beanletter import trim_serif_hooks
+
+    waist_l, waist_r = (0.0, 0.0), (0.6, 0.0)
+    top = [waist_l, (-0.1, -0.3), (0.0, -0.6), (0.3, -0.7), (0.6, -0.6), (0.7, -0.3), waist_r]
+    bottom = [waist_l, (-0.15, 0.35), (0.0, 0.7), (0.3, 0.8), (0.6, 0.7), (0.75, 0.35), waist_r]
+    bar = [waist_l, (0.3, 0.0), waist_r]
+    assert trim_serif_hooks([top, bottom, bar], 0.45) == [top, bottom, bar]
+    # ...while a free end on the same spine set is still trimmed.
+    hooked = [(1.5, 0.3), (1.5, 0.0), waist_r]
+    out = trim_serif_hooks([top, bottom, bar, hooked], 0.45)
+    assert out[:3] == [top, bottom, bar] and out[3][0] != hooked[0]

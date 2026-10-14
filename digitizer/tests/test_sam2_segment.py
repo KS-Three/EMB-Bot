@@ -30,6 +30,7 @@ from digitizer_core.config import PipelineConfig
 
 from .test_flat_lane_byte_identical import GOLDEN
 from .test_flat_lane_byte_identical import _snapshot as _golden_snapshot
+from tests.conftest import own_thread_only
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 FIXTURE = TESTDATA / "photo" / "region_blobs.png"
@@ -291,7 +292,7 @@ def test_seam_passes_the_documented_argv_to_the_worker(monkeypatch):
         assert kwargs["text"] is True
         return inner(cmd, **kwargs)
 
-    monkeypatch.setattr(s2.subprocess, "run", _spy)
+    monkeypatch.setattr(s2.subprocess, "run", own_thread_only(_spy, subprocess.run))
     p, cfg = _prepped()
     s2.sam2_segment_seam(p, cfg)
 
@@ -334,7 +335,7 @@ def test_a_request_supplied_timeout_above_the_hard_cap_is_clamped_not_honored(
         seen_timeouts.append(kwargs["timeout"])
         return _fake_worker(_quadrant_labels)(cmd, **kwargs)
 
-    monkeypatch.setattr(s2.subprocess, "run", _spy)
+    monkeypatch.setattr(s2.subprocess, "run", own_thread_only(_spy, subprocess.run))
     huge = s2.SAM2_TIMEOUT_HARD_CAP_S + 10_000.0
     p, cfg = _prepped(photo_segment_sam2_timeout_s=huge)
     s2.sam2_segment_seam(p, cfg)
@@ -359,7 +360,7 @@ def test_a_request_supplied_timeout_under_the_hard_cap_passes_through_unclamped(
         seen_timeouts.append(kwargs["timeout"])
         return _fake_worker(_quadrant_labels)(cmd, **kwargs)
 
-    monkeypatch.setattr(s2.subprocess, "run", _spy)
+    monkeypatch.setattr(s2.subprocess, "run", own_thread_only(_spy, subprocess.run))
     p, cfg = _prepped(photo_segment_sam2_timeout_s=45.0)
     s2.sam2_segment_seam(p, cfg)
 
@@ -385,7 +386,7 @@ def test_seam_scales_the_area_floor_to_the_downscaled_image(monkeypatch):
         seen.append([str(c) for c in cmd])
         return _fake_worker(_quadrant_labels)(cmd, **kwargs)
 
-    monkeypatch.setattr(s2.subprocess, "run", _spy)
+    monkeypatch.setattr(s2.subprocess, "run", own_thread_only(_spy, subprocess.run))
     p, cfg = _prepped(photo_segment_sam2_max_side_px=64)
     s2.sam2_segment_seam(p, cfg)
 
@@ -412,7 +413,7 @@ def test_seam_downscales_to_the_configured_max_side(monkeypatch):
         sizes.append(image.shape[:2])
         return _fake_worker(_quadrant_labels)(cmd, **kwargs)
 
-    monkeypatch.setattr(s2.subprocess, "run", _run)
+    monkeypatch.setattr(s2.subprocess, "run", own_thread_only(_run, subprocess.run))
     p, cfg = _prepped(photo_segment_sam2_max_side_px=64)
     quant, reason = s2.sam2_segment_seam(p, cfg)
 
@@ -432,7 +433,7 @@ def test_unavailable_environment_short_circuits_before_any_subprocess(monkeypatc
     def _boom(*a, **kw):
         raise AssertionError("subprocess.run must not be reached")
 
-    monkeypatch.setattr(s2.subprocess, "run", _boom)
+    monkeypatch.setattr(s2.subprocess, "run", own_thread_only(_boom, subprocess.run))
     p, cfg = _prepped()
     quant, reason = s2.sam2_segment_seam(p, cfg)
     assert quant is None
@@ -708,7 +709,8 @@ def _spy_seam(monkeypatch, result):
         calls.append({"face_regions": face_regions, "bg_mask": bg_mask})
         return result
 
-    monkeypatch.setattr(pipeline_module, "sam2_segment_seam", _seam)
+    monkeypatch.setattr(pipeline_module, "sam2_segment_seam",
+                        own_thread_only(_seam, pipeline_module.sam2_segment_seam))
     return calls
 
 
@@ -724,7 +726,7 @@ def _spy_photo_segment(monkeypatch):
         return real(p, cfg, face_regions=face_regions, bg_mask=bg_mask, split_tonal=split_tonal,
                             shade_demand=shade_demand, design_ramp=design_ramp, **kwargs)
 
-    monkeypatch.setattr(pipeline_module, "photo_segment", _spy)
+    monkeypatch.setattr(pipeline_module, "photo_segment", own_thread_only(_spy, real))
     return calls
 
 

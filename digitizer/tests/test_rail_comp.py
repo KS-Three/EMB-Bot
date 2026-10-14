@@ -32,6 +32,7 @@ from digitizer_core.pipeline import digitize, fabric_for
 from digitizer_core.stage5_overlap import widened_lettering
 from digitizer_core.stitches import strip_ties
 from tests.conftest import TESTDATA
+from tests.conftest import own_thread_only
 
 PULL = fabric_for(PipelineConfig(garment_id="left_chest")).pull_comp_mm
 
@@ -67,7 +68,7 @@ def _sewn(path: Path, **kw):
         seen[shape_id] = poly
         return real(poly, shape_id, **kwargs)
 
-    s7.satin_shape = spy
+    s7.satin_shape = own_thread_only(spy, real)
     try:
         result, plan = digitize(path, PipelineConfig(garment_id="left_chest", **kw))
     finally:
