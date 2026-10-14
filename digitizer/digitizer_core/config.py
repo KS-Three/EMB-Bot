@@ -2198,7 +2198,29 @@ class PipelineConfig:
     # 0.10 mm tolerance are CANDIDATES (geometry, sized on no fixture; nothing
     # sewn, ROADMAP gate 1). Built OFF (Kent's call to flip); False is
     # byte-identical. Tests: `tests/test_column_ends.py`.
+    # Follow-up, same flag (2026-10-13): a column whose end is one slanted
+    # outline edge 8-45 deg off square (the N's diagonal foot on the
+    # baseline) is MITRED -- its last crosses turn onto that edge
+    # (`outline_cut._mitre_ends`); a penetration on two end faces meeting at
+    # a corner (the M's V) is held at the corner; a side keeps its own push
+    # (a cross under 0.44 mm reaches past `pull - 0.11`, and cut back there
+    # golden_tee's thin bars fell under the cross floor). Fremont 81 mm: 0
+    # ends past their face (#907: 1).
     lettering_columns_square_ends: bool = False
+    # Under `lettering_columns`, a needle-down CONNECTOR between two of a
+    # letter's runs stays inside the letter as far as its own satin reaches
+    # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
+    # tests a hop against the letter grown by 0.1 mm + the pull, and that
+    # buffer closes a narrow notch: on Kent's Fremont 81 mm hat the M's walk
+    # sewed a 2.5 mm connector from its right foot to its vertex, 1.65 mm of
+    # it over the bare notch (his M->O "loop"), and Becker's MARINE N got a
+    # visible one under `lettering_columns_square_ends`. ON, a connector, the
+    # walk-in and the link rule test the letter grown only by the rails' side
+    # reach (`pull - RAIL_REACH_INSET_MM`), a routed path keeps its corners
+    # and walks only graph edges that stay inside; a hop with no such route
+    # is a jump (a trim past `trim_at_mm`). Built OFF (Kent's call to flip);
+    # False is byte-identical. Tests: `tests/test_column_ends.py`.
+    lettering_columns_inside_connectors: bool = False
     # Under `lettering_columns`, let a thin STEM under the area floor reach
     # the Column lane (2026-10-13, `columns.is_thin_stem`). Stage 7's
     # small-shape rescue sends every auto-tier shape under `min_detail_mm`^2
