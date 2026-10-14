@@ -65,6 +65,7 @@ from __future__ import annotations
 import heapq
 import math
 
+import numpy as np
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import unary_union
 
@@ -155,6 +156,7 @@ def text_line_members(regions) -> set[str]:
     0.25-0.51 mm), so taking them one by one sewed half the row as runs and
     half as outlines."""
     boxes: dict = {}
+    cents: dict = {}
     members: set[str] = set()
     for r in regions:
         cid = (r.meta or {}).get("text_cluster_id")
@@ -166,14 +168,35 @@ def text_line_members(regions) -> set[str]:
         b = boxes.get(key)
         boxes[key] = ((x0, y0, x1, y1) if b is None else
                       (min(b[0], x0), min(b[1], y0), max(b[2], x1), max(b[3], y1)))
+        c = r.polygon.centroid
+        cents.setdefault(key, []).append((c.x, c.y))
+    # Each line's reading direction: the principal axis of its letters'
+    # centroids (a line on an arc reads along its chord, near enough).
+    axes = {}
+    for key, pts in cents.items():
+        a = np.asarray(pts, np.float64)
+        if len(a) < 2:
+            continue
+        mean = a.mean(axis=0)
+        _u, _s, vt = np.linalg.svd(a - mean)
+        axes[key] = (mean, vt[0], (a - mean) @ vt[0])
     for r in regions:
         m = r.meta or {}
         if r.shape_id in members or not m.get("lettering_group") or m.get("text_candidate"):
             continue
         c = r.polygon.centroid
-        if any(t == r.thread_index and x0 <= c.x <= x1 and y0 <= c.y <= y1
-               for (_cid, t), (x0, y0, x1, y1) in boxes.items()):
-            members.add(r.shape_id)
+        for key, (x0, y0, x1, y1) in boxes.items():
+            if key[1] != r.thread_index or key not in axes:
+                continue
+            if not (x0 <= c.x <= x1 and y0 <= c.y <= y1):
+                continue
+            # BETWEEN two of the line's letters along it, not past its end:
+            # the bounding box of a slanted line takes in its neighbours too.
+            mean, ax, proj = axes[key]
+            t = float((np.array([c.x, c.y]) - mean) @ ax)
+            if proj.min() < t < proj.max():
+                members.add(r.shape_id)
+                break
     return members
 
 
@@ -521,7 +544,8 @@ def skeleton_letter_runs(poly, shape_id: str, *, max_width_mm: float, stitch_mm:
         report["declined"] = "width"
         return [], report
     report["admitted"] = True
-    edges = list(m["hair_edges"]) + list(m["thick_edges"])
+    edges, report["hook_mm"] = trim_hooks(list(m["hair_edges"]) + list(m["thick_edges"]), min_mm)
+    report["hook_mm"] = round(report["hook_mm"], 4)
     report["edges"] = len(edges)
     if not edges:
         report["declined"] = "empty"
@@ -577,6 +601,44 @@ def skeleton_letter_runs(poly, shape_id: str, *, max_width_mm: float, stitch_mm:
         return [], report
     report["empty"] = False
     return runs, report
+
+
+def trim_hooks(edges, min_mm: float) -> tuple[list, float]:
+    """-> (edges, mm trimmed): every free end's terminal HOOK -- the stretch
+    past the last corner (`CORNER_MIN_DEG`) within `min_mm` of the tip -- cut
+    off. At 2 mm caps that hook is a slab serif: an E's arm turning down for
+    0.3 mm at its end, a T's bar dropping at each side. A stitch at the
+    needle floor cannot turn into it, so it is not asked to, and the shape
+    test does not bill it as stroke the thread missed."""
+    out = []
+    cut = 0.0
+    for e in edges:
+        if e.get("closed") or not (e.get("free_a") or e.get("free_b")):
+            out.append(e)
+            continue
+        pts = [tuple(q) for q in e["pts"]]
+        if len(pts) < 3:
+            out.append(e)
+            continue
+        turns, cum = _turns(pts, CORNER_REACH_MM)
+        lo, hi = 0, len(pts) - 1
+        if e.get("free_b"):
+            ks = [k for k in range(1, hi) if cum[hi] - cum[k] < min_mm and turns[k] > CORNER_MIN_DEG]
+            if ks:
+                hi = max(ks, key=lambda k: (turns[k], -k))
+        if e.get("free_a"):
+            ks = [k for k in range(1, hi) if cum[k] - cum[0] < min_mm and turns[k] > CORNER_MIN_DEG]
+            if ks:
+                lo = max(ks, key=lambda k: (turns[k], k))
+        if lo == 0 and hi == len(pts) - 1:
+            out.append(e)
+            continue
+        if hi - lo < 1:
+            out.append(e)
+            continue
+        cut += cum[lo] + (cum[-1] - cum[hi])
+        out.append({**e, "pts": pts[lo:hi + 1]})
+    return out, cut
 
 
 def fidelity(runs, poly, edges, reach_mm: float,

@@ -131,12 +131,17 @@ def test_a_counter_the_run_goes_round_stays_open():
 
 
 def test_a_counter_too_small_to_go_round_at_the_floor_is_declined():
-    """A 1.0 mm O: its skeleton loop is ~2.4 mm, so 1.0 mm chords cut the
-    counter -- the glyph goes back to the ladder rather than shut it."""
-    ring = Point(0, 0).buffer(0.5, 64).difference(Point(0, 0).buffer(0.5 - STROKE, 64))
+    """A 1.4 mm O: its skeleton loop is 1.16 mm across, so every stitch at
+    the 1.0 mm floor is a chord across the counter -- the glyph goes back to
+    the ladder rather than shut it. (A 1.0 mm O has no stitch at all: its
+    loop is narrower than the floor, `declined` "empty".)"""
+    ring = Point(0, 0).buffer(0.7, 64).difference(Point(0, 0).buffer(0.7 - STROKE, 64))
     runs, rep = _sew(ring, floor=machine.MIN_STITCH_MM)
     assert runs == [] and rep["empty"]
     assert rep["declined"] in ("counter", "shape")
+    small = Point(0, 0).buffer(0.5, 64).difference(Point(0, 0).buffer(0.5 - STROKE, 64))
+    runs, rep = _sew(small, floor=machine.MIN_STITCH_MM)
+    assert runs == [] and rep["declined"] == "empty"
 
 
 def test_glyph_polygon_punches_recorded_counters_back():
@@ -203,7 +208,9 @@ def test_text_line_members_takes_a_cluster_and_the_letters_it_missed():
 
 def _with_glyph(result, glyph, tagged=True):
     base = result.regions[0]
-    meta = {"text_candidate": True, "text_cluster_id": "TC1"} if tagged else {}
+    meta = {"layer": base.meta["layer"], "rescued_small_shape": True}
+    if tagged:
+        meta.update(text_candidate=True, text_cluster_id="TC1")
     g = dataclasses.replace(base, shape_id="SGLYPH", polygon=glyph, area_mm2=float(glyph.area),
                             meta=meta)
     return dataclasses.replace(result, regions=list(result.regions) + [g])
