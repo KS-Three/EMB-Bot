@@ -1129,9 +1129,28 @@ def _ring_opener(pc: Polygon, cut) -> bool:
     return (on_ext[0] and on_hole[1]) or (on_hole[0] and on_ext[1])
 
 
+def _carried_ring(pc: Polygon, col: Column | None, W: float) -> bool:
+    """`fold_cuts`: a RING piece that carries a stroke round a junction
+    corner -- its cross turns past TURN_MAX_DEG within one width
+    (`_max_turn`) AND its outline holds a corner the junction rules
+    themselves read (REFLEX_DEG). The 80 mm e: the junction rules miss the
+    through cut at its bar's left end by a hair (alignment 0.937 against
+    0.94; 0.985 at 120 mm), the over-long look cuts the left wall under the
+    bar instead, and what is left is a ring of counter AND bar that fans
+    83 deg round the bar's ends -- one sewn cross past 45 deg there, though
+    no cross leans past FOLD_DEG off its own fanning advance, so `_folded`
+    reads 0. A tight O also turns past TURN_MAX_DEG (61 at 50 mm) but holds
+    no junction corner, so it is not one."""
+    if col is None or not pc.interiors or _max_turn(col, W) <= TURN_MAX_DEG:
+        return False
+    return bool(corners(pc, W)[0])
+
+
 def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int):
     """`fold_cuts`: the second look for a piece that is not over-long but
-    FOLDS (`_folded` >= FOLD_MIN). The junction rules leave a lone concave
+    FOLDS (`_folded` >= FOLD_MIN), or is a ring carried round a junction
+    corner (`_carried_ring`: the 80 mm e), which is taken only when no
+    column is carried after it. The junction rules leave a lone concave
     corner uncut when its far side is smooth -- "the stroke is bending here"
     (`find_cuts`) -- which is right for a bend and wrong for a lowercase
     shoulder, where a curved stroke leaves a straight one tangentially and
@@ -1156,7 +1175,8 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int):
     take, or None."""
     col0 = build_column(pc, cut_lines, W, pitch_mm)
     f0 = _folded(col0)
-    if depth >= 3 or f0 < FOLD_MIN:
+    carried = f0 < FOLD_MIN and _carried_ring(pc, col0, W)
+    if depth >= 3 or (f0 < FOLD_MIN and not carried):
         return None
     long0, _tot0 = _overlong(col0, W)
     rf, _ = corners(pc, W, reflex_deg=REFINE_REFLEX_DEG)
@@ -1217,6 +1237,8 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int):
             best = (score, cand, final)
     if best is None or best[0][0] > REFINE_GAIN * f0:
         return None
+    if carried and best[0][2]:
+        return None             # a carried ring is cured only if nothing is carried after
     return best[1], best[2]
 
 

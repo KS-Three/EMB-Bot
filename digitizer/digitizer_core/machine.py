@@ -199,6 +199,30 @@ WAVE_LENGTH_MM = 4.0
 # herringbone texture.
 CHEVRON_AMPLITUDE_MM = 0.45
 
+# --- Fur fill (randomised tatami, 2026-10-14) -------------------------------
+# Tatami whose rows each draw their own random start offset and a random
+# length for every stitch (stage6_fill._fur_row_points), seeded from
+# `cfg.seed`, so the needle holes never settle into the stagger's lattice and
+# the fill reads as hair rather than as a woven field. Reached only by an
+# explicit `fill_technique="fur"` or a per-shape `tier: "fur"`.
+#
+# Every number below is a CANDIDATE (ROADMAP gate 1: no physical constant is
+# settled without a sew-out). They come from one practitioner source, Jesse
+# Elliott's settings as quoted in docs/fine-detail-hair-research-2026-10-12.md
+# section 2: short fur "4 mm, offset .5/0, random 50", long fur "4-6 mm,
+# offset 1/0, random 70-90". The long-fur pair below is the middle of each
+# quoted range. How a "random %" and an "offset fraction" map onto stitches
+# is this module's reading of them, not the source's:
+#   random r  -> every stitch length is drawn uniformly from
+#                [L * (1 - r), L], floored at MIN_STITCH_MM;
+#   offset o  -> every row's first grid point sits a random distance in
+#                [0, o * L) before the row's start.
+# Each tuple is (stitch length L mm, random fraction r, offset fraction o).
+FUR_STYLES = {
+    "short": (4.0, 0.50, 0.5),
+    "long": (5.0, 0.80, 1.0),
+}
+
 # --- Contour fill (rings instead of rows) -----------------------------------
 # The offset-ring tier: uniform inward offsets of the outline, sewn inner to
 # outer. Numbers are the pins from docs/fill-techniques-2026-08-01.md §1.3;
@@ -1218,13 +1242,23 @@ HAIRLINE_MAX_WIDTHS = 1.5
 # 2026-10-12/README.md, "Small print") is where it is settled. Gate 1.
 SMALL_PRINT_COUNTER_MIN_WIDTHS = 1.0
 
+# The streamline thread-paint tier's row separation at full black, in laid
+# thread widths (#843 §4, "two widths [calc]"; the tier's own comment: solid-
+# reading fur strokes without piling a satin-density mat of full-length
+# runs). 40 wt: 2 x 0.40 = 0.8 mm, the constant the tier has always used;
+# 60 wt 0.64, 75 wt 0.52. Only the DARK end follows the weight: the light
+# (sparse) end is a bare-fabric choice, not a coverage one, and #843 §4 gives
+# no figure for it.
+# candidate: unsewn -- gate 1.
+STREAMLINE_DARK_SEP_WIDTHS = 2.0
+
 
 class ThreadProfile:
     """What a thread weight changes. Read-only; build with `thread_profile`."""
 
     __slots__ = ("wt", "width_mm", "satin_spacing_mm", "hairline_run_width_mm",
                  "hairline_max_width_mm", "counter_min_width_mm",
-                 "min_stitch_mm", "min_cap_height_mm",
+                 "streamline_dark_sep_mm", "min_stitch_mm", "min_cap_height_mm",
                  "cap_height_note", "needle_advice")
 
     def __init__(self, **kw):
@@ -1258,6 +1292,9 @@ def thread_profile(wt: int = THREAD_WT_DEFAULT) -> ThreadProfile:
     - `counter_min_width_mm`: `SMALL_PRINT_COUNTER_MIN_WIDTHS` x
       `width_mm` -- the narrowest letter counter `cfg.small_print_floor`
       keeps open (candidate, unsewn).
+    - `streamline_dark_sep_mm`: `STREAMLINE_DARK_SEP_WIDTHS` x `width_mm` --
+      the streamline tier's row separation at full black (40 wt 0.8, 60 wt
+      0.64, 75 wt 0.52; candidates, unsewn).
     - `min_stitch_mm`: `MIN_STITCH_MM` at every weight (needle-bound, see
       the block comment above).
     - `min_cap_height_mm` / `cap_height_note`: the trade's smallest lettering
@@ -1303,6 +1340,7 @@ def thread_profile(wt: int = THREAD_WT_DEFAULT) -> ThreadProfile:
         hairline_run_width_mm=width,
         hairline_max_width_mm=HAIRLINE_MAX_WIDTHS * width,
         counter_min_width_mm=SMALL_PRINT_COUNTER_MIN_WIDTHS * width,
+        streamline_dark_sep_mm=STREAMLINE_DARK_SEP_WIDTHS * width,
         min_stitch_mm=MIN_STITCH_MM,
         min_cap_height_mm=cap,
         cap_height_note=cap_note,

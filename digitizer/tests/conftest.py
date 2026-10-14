@@ -393,6 +393,15 @@ PRE_FLIP["snap_region_edges"] = False
 # their PREMISE -- is never segmented at all. The test that is ABOUT the snap
 # is `tests/test_two_tone.py`.
 PRE_FLIP["two_tone_snap"] = False
+# `lettering_columns_square_ends` and `lettering_columns_inside_connectors`
+# joined the flipped set 2026-10-13 (Kent's ruling), for the reason every
+# entry above gives. ON, the Column lane ends every column on the letter's
+# own outline and keeps its connectors on the letter, so a lettering fixture's
+# stitches, trims and penetrations move; a test pricing one OTHER flag must
+# measure against the engine its arms were made on. The tests ABOUT them are
+# `tests/test_column_ends.py`.
+PRE_FLIP["lettering_columns_square_ends"] = False
+PRE_FLIP["lettering_columns_inside_connectors"] = False
 # `small_glyph_keep` joined the flipped set 2026-10-13 (Kent's ruling), for the
 # reason every entry above gives. ON, stage 4 keeps the counters and the ground
 # hole of a rescued small glyph, which on `screenshot_phone_ui_golke` adds one

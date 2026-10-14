@@ -2248,8 +2248,9 @@ class PipelineConfig:
     # a corner (the M's V) is held at the corner; a side keeps its own push
     # (a cross under 0.44 mm reaches past `pull - 0.11`, and cut back there
     # golden_tee's thin bars fell under the cross floor). Fremont 81 mm: 0
-    # ends past their face (#907: 1).
-    lettering_columns_square_ends: bool = False
+    # ends past their face (#907: 1). ON by Kent's ruling 2026-10-13; False
+    # is the pre-flip lane.
+    lettering_columns_square_ends: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
@@ -2261,9 +2262,11 @@ class PipelineConfig:
     # walk-in and the link rule test the letter grown only by the rails' side
     # reach (`pull - RAIL_REACH_INSET_MM`), a routed path keeps its corners
     # and walks only graph edges that stay inside; a hop with no such route
-    # is a jump (a trim past `trim_at_mm`). Built OFF (Kent's call to flip);
-    # False is byte-identical. Tests: `tests/test_column_ends.py`.
-    lettering_columns_inside_connectors: bool = False
+    # is a jump (a trim past `trim_at_mm`). ON by Kent's ruling 2026-10-13;
+    # False is the pre-flip lane. Cost: Becker gains 3 trims (22 -> 25),
+    # three in-letter hops with no on-letter route. Tests:
+    # `tests/test_column_ends.py`.
+    lettering_columns_inside_connectors: bool = True
     # Under `lettering_columns`, let a thin STEM under the area floor reach
     # the Column lane (2026-10-13, `columns.is_thin_stem`). Stage 7's
     # small-shape rescue sends every auto-tier shape under `min_detail_mm`^2
@@ -2703,7 +2706,22 @@ class PipelineConfig:
     #             constant — the phase IS `stitch_mm / 2`, already a known
     #             quantity. Same contract as "wave"/"chevron" above,
     #             including the `tier: "brick"` override.
+    # "fur" – (2026-10-14) randomised tatami for hair and fur: every row
+    #             draws its own random start offset and every stitch a random
+    #             length, from `seed` below and the row's own place, so the
+    #             same config sews the same file (stage6_fill._fur_row_points).
+    #             The stitch length and both random fractions are
+    #             `machine.FUR_STYLES[fur_style]`, gate-1 CANDIDATES from one
+    #             practitioner's settings, not sewn. No stitch along a row is
+    #             under `machine.MIN_STITCH_MM`. Same opt-in / per-shape /
+    #             no-source-pixels / never-drop-artwork contract as "wave",
+    #             including the `tier: "fur"` override. Nothing routes here
+    #             on its own: not the photo auto-tier, not hair routing.
     fill_technique: str = "tatami"
+    # Which `machine.FUR_STYLES` entry "fur" sews: "short" (4 mm, random 50 %,
+    # offset 0.5) or "long" (5 mm, random 80 %, offset 1.0). Read only when a
+    # shape sews "fur"; any other name raises. Candidates, not sewn.
+    fur_style: str = "short"
     # Fill-phase travel prefers routes over ground not yet sewn: straight only
     # when straight crosses unsewn ground, else the inset ring whichever way
     # round stays clear, else the exposed route it always took. Kent's

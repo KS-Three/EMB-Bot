@@ -232,9 +232,9 @@ _OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer",
                   "stitch_width_mm", "thread_wt"}
 # Kept in lockstep with digitizer_core.regions._TIER_VALUES — see that
 # copy's own comment for what "wave"/"chevron"/"brick" (alongside
-# "crosshatch") each do.
+# "crosshatch") each do, and "fur".
 _TIER_VALUES = {"auto", "satin", "fill", "run", "sketch", "streamline", "crosshatch",
-                "wave", "chevron", "brick"}
+                "wave", "chevron", "brick", "fur"}
 _BORDER_VALUES = {"off", "auto", "bean"}
 # fabrics.py's own vocabulary, verbatim — the one place that spells out the
 # closed set stage6_fill._underlay_paths actually interprets. Anything

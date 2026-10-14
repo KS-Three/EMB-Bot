@@ -215,8 +215,10 @@ def match_shape_ids(
 # rather than adding a new pass, so none of them need source pixels either.
 # See stage7_sequence.stitch_one's wave/chevron/brick branches, positioned
 # the same way as its crosshatch branch.
+# "fur" (2026-10-14) forces the randomised tatami (stage6_fill.
+# _fur_row_points) on one shape, the same reach as "brick".
 _TIER_VALUES = {"auto", "satin", "fill", "run", "sketch", "streamline", "crosshatch",
-                "wave", "chevron", "brick"}
+                "wave", "chevron", "brick", "fur"}
 _BORDER_VALUES = {"off", "auto", "bean"}
 # fabrics.py's own vocabulary, verbatim (mirrored in digitizer_service.app's
 # copy, which 400s the wire before this ever raises).
