@@ -711,7 +711,8 @@ def small_print_counter_set(art: Polygon, rings, min_width_mm: float,
     return [c for c in out if not c.is_empty]
 
 
-def small_print_clear(poly, counters, clear_mm: float, art=None):
+def small_print_clear(poly, counters, clear_mm: float, art=None, chord_mm: float | None = None,
+                      bar_mm: float | None = None):
     """`poly` (the shape a run or fill tier is about to sew) with every
     counter grown by `clear_mm` cut out of it: a fill's rows and a run's
     ring then lie that far off the counter, so the thread's EDGE, not its
@@ -725,7 +726,18 @@ def small_print_clear(poly, counters, clear_mm: float, art=None):
     middle bar, a slashed zero's slash, an O's ring -- and cutting it
     would change the glyph, not open it. The Column lane's own rule is the
     same: it never takes a cross under the cross floor. Returns `poly`
-    itself when there is nothing to cut or the cut would leave nothing."""
+    itself when there is nothing to cut or the cut would leave nothing.
+
+    `chord_mm` (the run tier's bean stitch, `machine.BEAN_STITCH_MM`): the
+    run tier sews a counter's ring as `round(length / chord_mm)` straight
+    stitches between points ON the ring, and every one of those chords cuts
+    INTO the counter by its sagitta -- golden_tee's O at a 3 mm cap sewed
+    its 0.76 mm counter as a pentagon of 0.73 mm chords, 0.42 open with the
+    ring held half a width off (`tools/small_print.py`). Given, each
+    counter grows further, to the ring whose chords' midpoints sit
+    `clear_mm` off it (`_chord_hold`), never past the letter's outside.
+    None (the fill tier, whose rows are clipped to the ring exactly): as
+    before."""
     if not counters or clear_mm <= 0 or poly is None or poly.is_empty:
         return poly
     # A traced polygon can self-touch (golden_tee's italic O at a 3 mm cap);
@@ -741,9 +753,12 @@ def small_print_clear(poly, counters, clear_mm: float, art=None):
         ink = art.difference(unary_union(counters))
         filled = unary_union([Polygon(g.exterior) for g in getattr(art, "geoms", [art])])
         thin = []
+        thin_out = []
         for i, g in enumerate(grown):
             # through the letter's outside, or into another counter's growth
             t = g.difference(filled)
+            if bar_mm and not t.is_empty:
+                thin_out.append(t)
             others = [h for j, h in enumerate(grown) if j != i]
             if others:
                 t = t.union(g.difference(counters[i]).intersection(unary_union(others)))
@@ -751,11 +766,116 @@ def small_print_clear(poly, counters, clear_mm: float, art=None):
                 thin.append(t)
         if thin:
             keep = unary_union(thin).buffer(clear_mm).intersection(ink)
+            if bar_mm:
+                keep = _narrow_bars(counters, grown, thin_out, clear_mm, bar_mm, ink)
             cut = cut.difference(keep)
+        if chord_mm:
+            cut = _chord_hold(cut, counters, clear_mm, chord_mm, filled,
+                              keep if thin else None)
     out = _polygonal(poly.difference(cut))
     if out.is_empty or out.geom_type not in ("Polygon", "MultiPolygon"):
         return src
     return out
+
+
+def _narrow_bars(counters, grown, thin_out, clear_mm: float, bar_mm: float, ink):
+    """`small_print_clear`'s fill-tier keep: a bar between two counters
+    thinner than the hold, narrowed to `bar_mm` (the tier's row spacing)
+    about its middle instead of kept edge to edge.
+
+    A fill row's penetrations sit on the polygon's edge and its thread
+    spreads half a laid width past them. A bar kept whole is sewn edge to
+    edge, so it lays `w + 2 * clear_mm` of thread and spills `clear_mm`
+    into the counter on each side -- the synthetic slashed 0 at a 3 mm cap:
+    a 0.32 mm slash between two 0.5 mm counters, 0.42 open (`tools/
+    small_print.py`). Narrowed to a band `w'` wide about its middle (the
+    points whose distances to the two counters differ by at most
+    `bar_mm`), the thread still covers the whole bar (`w' + 2 * clear_mm
+    >= w` for any bar under `2 * clear_mm`) and spills `clear_mm - (w -
+    w') / 2` instead of `clear_mm`. The band is the tier's row spacing
+    wide, so one row still lands in a bar that runs along the rows; the
+    core every point of which is within the hold of both counters (what
+    today's keep grows from) is always kept, and nothing is kept outside
+    today's keep. A bar no wider than a row is kept whole, as before. No
+    new constant: the band is the row spacing, the hold half a laid width.
+
+    A stroke between a counter and the letter's outside (an O's ring) is
+    kept whole, as before: what it spills outward is outline, not a
+    counter."""
+    parts = []
+    if thin_out:
+        parts.append(unary_union(thin_out).buffer(clear_mm).intersection(ink))
+    half = bar_mm / 2.0
+    step = bar_mm / 4.0
+    n_steps = int(math.ceil(2.0 * clear_mm / step)) + 1
+    for i in range(len(counters)):
+        for j in range(i + 1, len(counters)):
+            core = grown[i].difference(counters[i]).intersection(grown[j].difference(counters[j]))
+            if core.is_empty:
+                continue
+            whole = core.buffer(clear_mm).intersection(ink)     # today's keep
+            # the band |d_i - d_j| <= bar_mm about the bar's middle: the
+            # union, over a ladder of distances s, of the points within
+            # bar_mm / 2 of s from both counters
+            band = []
+            for k in range(n_steps):
+                s = k * step
+                lo = max(0.0, s - half)
+                ai = counters[i].buffer(s + half)
+                aj = counters[j].buffer(s + half)
+                if lo > 0:
+                    ai = ai.difference(counters[i].buffer(lo))
+                    aj = aj.difference(counters[j].buffer(lo))
+                band.append(ai.intersection(aj))
+            keep = whole.intersection(unary_union(band + [core]))
+            parts.append(keep if not keep.is_empty else whole)
+    parts = [g for g in parts if not g.is_empty]
+    return unary_union(parts) if parts else Polygon()
+
+
+def _chord_hold(cut, counters, clear_mm: float, chord_mm: float, filled, keep):
+    """`small_print_clear`'s run-tier growth: each counter grown to the
+    ring whose `n` chords (`n = max(3, round(length / chord_mm))`, the run
+    tier's own sampling) have their midpoints `clear_mm` off the counter.
+    On a circle of radius `rho` that ring is `(rho + clear_mm) / cos(pi /
+    n)`; `rho` is read as `2 * area / perimeter` of the grown ring (exact
+    on a circle), and `n` follows the ring it sets, so the two are iterated
+    to a fixed point. No new constant: the chord is the bean stitch, the
+    hold is half a laid width.
+
+    The growth stops a same-point hair inside the letter's outside
+    (`filled`): a stroke thinner than the growth is not cut through, the
+    counter's ring only moves out to the letter's edge (where the outline's
+    own run already lays its thread). A thin bar `small_print_clear` kept
+    (`keep`) stays kept."""
+    if filled is None or filled.is_empty:
+        return cut
+    lim = filled.buffer(-stitches.SAME_POINT_MM)
+    extra = []
+    for c in counters:
+        if c.is_empty:
+            continue
+        r = clear_mm
+        for _ in range(6):
+            g = c.buffer(r)
+            per = g.length
+            if per <= 0:
+                break
+            n = max(3, int(round(per / chord_mm)))
+            rho = 2.0 * g.area / per
+            r_new = (rho - r + clear_mm) / math.cos(math.pi / n) - (rho - r)
+            if abs(r_new - r) < 1e-4:
+                r = r_new
+                break
+            r = r_new
+        if r > clear_mm:
+            extra.append(c.buffer(r))
+    if not extra:
+        return cut
+    add = unary_union(extra).intersection(lim)
+    if keep is not None and not keep.is_empty:
+        add = add.difference(keep)
+    return cut.union(add)
 
 
 def _polygonal(g):

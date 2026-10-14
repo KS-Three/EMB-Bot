@@ -703,6 +703,8 @@ def vectorize(
             if Polygon(ring).area >= (small_hole_mm2 if sub_detail else min_area_mm2):
                 holes.append(ring)
             elif record_counters:
+                if small_print:
+                    ring = _to_mm(hole_src.reshape(-1, 2), cx, cy, p.px_per_mm)
                 small_counters.append(ring)
 
         poly = Polygon(shell, holes)
