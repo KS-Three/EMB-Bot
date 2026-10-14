@@ -1,0 +1,240 @@
+{
+ "design": "sp_fremont_tagline_3",
+ "arm": "true",
+ "box_mm": [
+  -17.85,
+  -2.41,
+  17.81,
+  2.36
+ ],
+ "changed_shapes": [
+  {
+   "shape_id": "S1cc84ff0",
+   "area_mm2": 2.28,
+   "bounds_mm": [
+    14.98,
+    -1.39,
+    17.81,
+    1.61
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 1,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 7
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "S2061945c",
+   "area_mm2": 2.2,
+   "bounds_mm": [
+    -3.68,
+    -1.39,
+    -1.21,
+    1.61
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 1,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 5
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "S3b4442b7",
+   "area_mm2": 2.77,
+   "bounds_mm": [
+    -6.02,
+    -1.43,
+    -3.99,
+    1.65
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 0,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 3
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "S5b75318f",
+   "area_mm2": 1.91,
+   "bounds_mm": [
+    10.17,
+    -1.39,
+    12.38,
+    1.61
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S76f2851f",
+   "area_mm2": 3.11,
+   "bounds_mm": [
+    -1.61,
+    -1.35,
+    1.52,
+    1.61
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 2,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 8
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "S7ab6deaa",
+   "area_mm2": 2.73,
+   "bounds_mm": [
+    7.78,
+    -1.37,
+    10.04,
+    1.61
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 0,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 6
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "S945d4089",
+   "area_mm2": 1.67,
+   "bounds_mm": [
+    5.32,
+    -2.36,
+    5.67,
+    2.36
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sacda9361",
+   "area_mm2": 3.02,
+   "bounds_mm": [
+    12.55,
+    -1.39,
+    15.64,
+    1.61
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 1,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 9
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sd21931e0",
+   "area_mm2": 2.32,
+   "bounds_mm": [
+    -12.73,
+    -1.39,
+    -10.22,
+    1.61
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 1,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 5
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sd44acd94",
+   "area_mm2": 3.04,
+   "bounds_mm": [
+    -15.42,
+    -1.39,
+    -12.33,
+    1.61
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 1,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 8
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sd5411cd1",
+   "area_mm2": 1.89,
+   "bounds_mm": [
+    -8.41,
+    -2.41,
+    -8.01,
+    2.36
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sf1dd227f",
+   "area_mm2": 2.21,
+   "bounds_mm": [
+    0.9,
+    -1.39,
+    3.77,
+    1.61
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sfe76afb2",
+   "area_mm2": 2.99,
+   "bounds_mm": [
+    -17.85,
+    -1.39,
+    -15.6,
+    1.61
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 1,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 6
+   },
+   "skeleton": null
+  }
+ ]
+}

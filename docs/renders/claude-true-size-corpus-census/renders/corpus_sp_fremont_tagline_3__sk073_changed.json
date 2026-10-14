@@ -1,0 +1,102 @@
+{
+ "design": "sp_fremont_tagline_3",
+ "arm": "sk073",
+ "box_mm": [
+  0.9,
+  -1.39,
+  15.64,
+  1.61
+ ],
+ "changed_shapes": [
+  {
+   "shape_id": "S5b75318f",
+   "area_mm2": 1.91,
+   "bounds_mm": [
+    10.17,
+    -1.39,
+    12.38,
+    1.61
+   ],
+   "bean": null,
+   "skeleton": {
+    "empty": false,
+    "jumps": 0,
+    "too_thin": false,
+    "admitted": true,
+    "width_mm": 0.3487,
+    "edges": 6,
+    "components": 1,
+    "retrace_mm": 3.3634,
+    "sewn_mm": 5.2828,
+    "stitches": 8,
+    "min_stitch_mm": 0.736,
+    "counters": 0,
+    "counter_crossings": 0,
+    "counter_depth_mm": 0.0,
+    "declined": null,
+    "width_traced_mm": 0.3039,
+    "hook_mm": 0.0,
+    "shape_tol_mm": 0.2,
+    "outside_mm": 0.0289,
+    "missed_share": 0.0697
+   }
+  },
+  {
+   "shape_id": "S7ab6deaa",
+   "area_mm2": 2.73,
+   "bounds_mm": [
+    7.78,
+    -1.37,
+    10.04,
+    1.61
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sacda9361",
+   "area_mm2": 3.02,
+   "bounds_mm": [
+    12.55,
+    -1.39,
+    15.64,
+    1.61
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sf1dd227f",
+   "area_mm2": 2.21,
+   "bounds_mm": [
+    0.9,
+    -1.39,
+    3.77,
+    1.61
+   ],
+   "bean": null,
+   "skeleton": {
+    "empty": false,
+    "jumps": 0,
+    "too_thin": false,
+    "admitted": true,
+    "width_mm": 0.3506,
+    "edges": 9,
+    "components": 1,
+    "retrace_mm": 2.491,
+    "sewn_mm": 5.7362,
+    "stitches": 7,
+    "min_stitch_mm": 0.7456,
+    "counters": 0,
+    "counter_crossings": 0,
+    "counter_depth_mm": 0.0,
+    "declined": null,
+    "width_traced_mm": 0.2977,
+    "hook_mm": 0.2449,
+    "shape_tol_mm": 0.2,
+    "outside_mm": 0.0553,
+    "missed_share": 0.0843
+   }
+  }
+ ]
+}
