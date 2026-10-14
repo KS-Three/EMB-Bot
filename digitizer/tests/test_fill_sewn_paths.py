@@ -123,12 +123,13 @@ def test_on_sews_the_same_penetrations():
 
 
 def test_the_config_reaches_every_fill_call_site():
-    """Stage 7's five tatami calls and the blend tier's two pass the flag."""
+    """Stage 7's six tatami calls (plain, crosshatch, wave, chevron, brick
+    and, since 2026-10-14, fur) and the blend tier's two pass the flag."""
     from pathlib import Path
     root = Path(sf.__file__).parent
     s7 = (root / "stage7_sequence.py").read_text()
     sb = (root / "stage6_blend.py").read_text()
     assert s7.count("sewn_paths_only=cfg.fill_order_sewn_paths") == \
-        s7.count("cut_bridges=cfg.fill_bridge_cut") == 5
+        s7.count("cut_bridges=cfg.fill_bridge_cut") == 6
     assert sb.count("sewn_paths_only=cfg.fill_order_sewn_paths") == \
         sb.count("cut_bridges=cfg.fill_bridge_cut") == 2
