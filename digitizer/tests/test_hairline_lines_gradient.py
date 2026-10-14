@@ -126,27 +126,21 @@ def drawn():
     assert result.design_class == "gradient"
     plans = {name: plan_stitches(result, PipelineConfig(**base, **kw)) for name, kw in {
         "region": dict(hairline=True),
-        "base": dict(ALL, hairline_lines_gradient=False),
         "no_test": dict(ALL, hairline_lines_strand_test=False),
         "supp": ALL}.items()}
     return plans
 
 
-def test_off_on_gradient_the_line_flags_are_inert(drawn):
-    """Without the new flag (or without the strand test) the line route
-    flags change nothing on gradient, byte for byte."""
-    want = _md5(drawn["region"])
-    assert _md5(drawn["base"]) == want
-    assert _md5(drawn["no_test"]) == want
+def test_without_the_strand_test_the_flag_is_inert_on_gradient(drawn):
+    assert _md5(drawn["no_test"]) == _md5(drawn["region"])
 
 
-def test_on_drawn_hair_the_region_tier_is_kept(drawn):
-    """The supplement keeps every region-tier stitch: the plan up to the
-    supplement's own blocks is the region plan, run for run."""
-    region = [(r.points, r.kind, r.jump, r.trim) for _, r in drawn["region"].iter_runs()]
-    supp = [(r.points, r.kind, r.jump, r.trim) for _, r in drawn["supp"].iter_runs()
-            if r.shape_id != "hairline_lines"]
-    assert supp == region
+def test_on_drawn_hair_the_supplement_adds_nothing(drawn):
+    """#915's A/B bar 1: on drawn hair the region tier already sews every
+    strand as a shape, so the supplement must not add any. Measured
+    (tools/hairline_lines_gradient.py): every ridge line it keeps lies on a
+    walked shape, and the plan is the region plan, byte for byte."""
+    assert _md5(drawn["supp"]) == _md5(drawn["region"])
     w = next(w for w in drawn["supp"].warnings
              if w["code"] == "HAIRLINE_TIER_SEWN" and w.get("source") == "lines_gradient")
-    assert sum(w["refused_region"].values()) > 0
+    assert w["strands"] == 0 and sum(w["refused_region"].values()) > 0
