@@ -1148,7 +1148,9 @@ def _carried_ring(pc: Polygon, col: Column | None, W: float) -> bool:
 
 def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int):
     """`fold_cuts`: the second look for a piece that is not over-long but
-    FOLDS (`_folded` >= FOLD_MIN). The junction rules leave a lone concave
+    FOLDS (`_folded` >= FOLD_MIN), or is a ring carried round a junction
+    corner (`_carried_ring`: the 80 mm e), which is taken only when no
+    column is carried after it. The junction rules leave a lone concave
     corner uncut when its far side is smooth -- "the stroke is bending here"
     (`find_cuts`) -- which is right for a bend and wrong for a lowercase
     shoulder, where a curved stroke leaves a straight one tangentially and

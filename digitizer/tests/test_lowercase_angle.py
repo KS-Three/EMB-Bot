@@ -268,25 +268,29 @@ def test_on_moves_only_lowercase_and_cuts_its_folds(word):
     assert _md5(on) != _md5(off)
     meta = json.loads(la.FIXTURE.with_suffix(".json").read_text(encoding="utf-8"))
     to_px, _s = la.mm_to_px(result, meta["image"])
-    upper = set()
+    upper, e_ids = set(), set()
     for r in result.regions:
         g = la._glyph_at(meta, *to_px(r.polygon.centroid.x, r.polygon.centroid.y))
         if g and g["ch"].isupper():
             upper.add(r.shape_id)
+        if g and g["ch"] == "e":
+            e_ids.add(r.shape_id)
 
     def runs(plan, ids):
         return [(r.shape_id, r.kind, [(round(x, 4), round(y, 4)) for x, y in r.points])
                 for _, r in plan.iter_runs() if r.shape_id in ids]
     assert upper and runs(on, upper) == runs(off, upper)
 
-    def folds(plan):
-        recs = la.cross_records(plan, {r.shape_id for r in result.regions} - upper)
+    def folds(plan, ids=None):
+        recs = la.cross_records(plan, ids or {r.shape_id for r in result.regions} - upper)
         st = [r["station_lean"] for r in recs if r["station_lean"] is not None]
         return sum(v > 45.0 for v in st), len(st)
     f_off, n_off = folds(off)
     f_on, n_on = folds(on)
-    # 5 -> 2 of ~365 lowercase station crosses on Kent's box (#887 and this
-    # branch alike: the a's and the e's end fans, which no cut reaches)
+    # 5 -> 0 of ~365 lowercase station crosses on Kent's box (#887 left 2,
+    # the a's and the e's; #893 cut the a's, claude/lowercase-e-folds the e's)
     assert f_off >= 3 and f_on < f_off, (f_off, n_off, f_on, n_on)
+    # the e: one sewn cross past 45 deg OFF, at its bar's end; none ON
+    assert e_ids and folds(off, e_ids)[0] >= 1 and folds(on, e_ids)[0] == 0
     assert on.stats.trims == off.stats.trims
     assert math.isclose(on.stats.stitch_count, off.stats.stitch_count, rel_tol=0.03)
