@@ -19,8 +19,8 @@ from shapely.geometry import box
 from digitizer_core import PipelineConfig, machine
 from digitizer_core.pipeline import digitize, plan_stitches, run_stages
 from digitizer_core.stage6_hairline_lines import (
-    _SUPPLEMENT_COVERED_SHARE, applies, covered_share, strand_blocks, supplement_zone,
-    supplements)
+    _SUPPLEMENT_COVERED_SHARE, applies, covered_share, strand_blocks, supplement_test,
+    supplement_zone, supplements)
 from tests.test_hairline_lines import _md5
 from tests.test_hairline_lines_chain import _pair, _sp
 from tests.test_thread_profile import GOLDEN_MD5, TESTDATA, _coords_md5
@@ -85,36 +85,67 @@ def test_covered_share_reads_the_length_inside():
     assert covered_share([(0, 5), (10, 5)], shapely.Polygon()) == 0.0
 
 
-# --- strand_blocks: a covered line is refused, a free one is sewn -----------------
+# --- strand_blocks: a refused line is not sewn, a free one is ---------------------
 
-def _blocks(exclude):
-    cfg = PipelineConfig(hairline=True, hairline_from_lines=True)
-    return strand_blocks(_sp(_pair(40)), cfg, entry=None, trim_at_mm=machine.TRIM_AT_MM,
-                         allowed_threads=[0], exclude=exclude)
-
-
-def test_without_a_zone_nothing_changes():
-    _b, rep = _blocks(None)
-    assert "refused_region" not in rep and rep["strands"] == 2
+class _R:
+    def __init__(self, sid, poly, thread):
+        self.shape_id, self.polygon, self.thread_index = sid, poly, thread
 
 
-def test_an_empty_zone_refuses_nothing():
-    b0, r0 = _blocks(None)
-    b1, r1 = _blocks(shapely.Polygon())
+def _blocks(regions=None, walked=()):
+    cfg = PipelineConfig(**ALL)
+    sp = _sp(_pair(40))
+    refuse = None if regions is None else supplement_test(regions, set(walked), sp, cfg)
+    return strand_blocks(sp, cfg, entry=None, trim_at_mm=machine.TRIM_AT_MM,
+                         allowed_threads=[0], refuse=refuse)
+
+
+def _first_box():
+    b0, _r0 = _blocks()
+    xs = [p[0] for p in b0[0][1][0].points]
+    # A box over the first strand only (the pair are 5 mm apart).
+    return box(min(xs) - 0.5, -100, max(xs) + 0.5, 100)
+
+
+def _thread(lightness: str) -> int:
+    """A chart index whose L* is the lightest / darkest."""
+    from digitizer_core.threads import chart_for
+    L = chart_for(PipelineConfig()).lab[:, 0]
+    return int(L.argmax() if lightness == "light" else L.argmin())
+
+
+def test_without_a_test_nothing_changes():
+    _b, rep = _blocks()
+    assert "refused_region" not in rep and "refused_own_tone" not in rep
+    assert rep["strands"] == 2
+
+
+def test_no_shapes_refuse_nothing():
+    b0, _r0 = _blocks()
+    b1, r1 = _blocks(regions=[])
     assert r1["refused_region"] == {"dark": 0, "light": 0}
+    assert r1["refused_own_tone"] == {"dark": 0, "light": 0}
     assert [r.points for _t, rr in b1 for r in rr] == [r.points for _t, rr in b0 for r in rr]
 
 
-def test_a_line_the_region_tier_covers_is_not_sewn():
-    b0, _r0 = _blocks(None)
-    first = b0[0][1][0].points
-    xs = [p[0] for p in first]
-    # A box over the first strand only (the pair are 5 mm apart).
-    cover = box(min(xs) - 0.5, -100, max(xs) + 0.5, 100)
-    b1, r1 = _blocks(cover)
+def test_a_line_on_a_walked_shape_is_not_sewn():
+    cover = _first_box()
+    b1, r1 = _blocks(regions=[_R("s1", cover, _thread("light"))], walked=["s1"])
     assert r1["strands"] == 1 and sum(r1["refused_region"].values()) == 1
     sewn = [r.points for _t, rr in b1 for r in rr if r.kind == "run"]
     assert all(covered_share(p, cover) < _SUPPLEMENT_COVERED_SHARE for p in sewn)
+
+
+def test_a_dark_line_on_a_dark_shape_is_line_art_and_not_sewn():
+    """The bridge logo's case: the line's ink is already a shape of its tone."""
+    _b, r1 = _blocks(regions=[_R("s1", _first_box(), _thread("dark"))])
+    assert r1["strands"] == 1 and sum(r1["refused_own_tone"].values()) == 1
+
+
+def test_a_dark_line_on_a_light_fill_is_a_strand_and_sewn():
+    """The owl's case: a strand the fill under it does not carry."""
+    _b, r1 = _blocks(regions=[_R("s1", box(-100, -100, 100, 100), _thread("light"))])
+    assert r1["strands"] == 2 and sum(r1["refused_own_tone"].values()) == 0
 
 
 # --- the pipeline: drawn hair on gradient ------------------------------------------

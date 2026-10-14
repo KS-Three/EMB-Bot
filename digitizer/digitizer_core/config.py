@@ -251,8 +251,9 @@ class PipelineConfig:
     # the region tier runs there exactly as before, and the line route adds
     # the strands it laid nothing near: a line mostly inside a shape the
     # tier walked (grown by the run half-width plus one source pixel) is not
-    # sewn (`stage6_hairline_lines.supplements` / `supplement_zone`). Carves
-    # nothing. Candidate geometry, unsewn (gate 1). Off, byte-identical.
+    # sewn, nor is one mostly on a shape of its own tone (line art already
+    # traced as a shape) (`stage6_hairline_lines.supplements` /
+    # `supplement_test`). Carves nothing. Candidate geometry, unsewn (gate 1). Off, byte-identical.
     hairline_lines_gradient: bool = False
     # Hairline coverage guard (2026-10-13, default OFF; needs `hairline` on).
     # A shape whose hairline runs would leave more than

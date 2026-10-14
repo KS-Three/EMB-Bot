@@ -85,7 +85,7 @@ from .stage6_hairline import hairline_runs as hairline_tier_runs
 from .stage6_hairline import HairlineSet
 from .stage6_hairline_lines import applies as hairline_lines_apply
 from .stage6_hairline_lines import strand_blocks
-from .stage6_hairline_lines import supplement_zone as hairline_supplement_zone
+from .stage6_hairline_lines import supplement_test as hairline_supplement_test
 from .stage6_hairline_lines import supplements as hairline_lines_supplements
 from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
@@ -3651,13 +3651,13 @@ def sequence(
                 hit = _tree.query(pp, predicate="dwithin",
                                   distance=machine.COVERAGE_THREAD_W_MM / 2.0)
                 return len(set(hit[0].tolist())) == len(pp)
-        exclude = (hairline_supplement_zone(
-            [p.region.polygon for p in planned if p.shape_id in (hairline or {})],
-            source_pixels, cfg) if hl_supplement else None)
+        refuse = (hairline_supplement_test([p.region for p in planned],
+                                           set(hairline or {}), source_pixels, cfg)
+                  if hl_supplement else None)
         hl_blocks, hair_lines = strand_blocks(
             source_pixels, cfg, entry=cursor, trim_at_mm=trim_at,
             allowed_threads=sorted({b.thread_index for b in blocks}),
-            block_wt=block_wt, hop_ok=hop_ok, exclude=exclude)
+            block_wt=block_wt, hop_ok=hop_ok, refuse=refuse)
         for hl_thread, hl_runs in hl_blocks:
             hl_runs[0].jump = True
             hl_runs[0].trim = True
@@ -3685,7 +3685,7 @@ def sequence(
                 # `cfg.hairline_lines_strand_test` / `hairline_lines_chain` /
                 # `hairline_lines_gradient` only (absent off).
                 **{k: hair_lines[k] for k in ("refused_bar", "thread_wt", "hops", "hop_mm",
-                                              "refused_region")
+                                              "refused_region", "refused_own_tone")
                    if k in hair_lines},
             )
         )

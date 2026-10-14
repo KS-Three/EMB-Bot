@@ -75,8 +75,12 @@ line route replacing it is a regression. So on `gradient` the region tier
 runs exactly as it does, and the line route adds only the strands it laid
 nothing near: a line with at least `_SUPPLEMENT_COVERED_SHARE` of its length
 within the tier's run half-width plus one source pixel of a shape the tier
-walked (`supplement_zone`) is not sewn, counted in `refused_region`. Needs
-the strand test on too (it removes the barring, #897), else inert.
+walked (`supplement_zone`) is not sewn, counted in `refused_region`; nor is
+one lying mostly on a shape of its OWN tone (`own_tone_share`, the tier's
+contrast floor), counted in `refused_own_tone`: on a drawn logo that line
+is line art the tracer already kept as a shape (the bridge logo's wave
+outlines), and sewing it again doubles it. Needs the strand test on too (it
+removes the barring, #897), else inert.
 
 Every number is a property of the FILE, not of cloth (ROADMAP gate 1).
 """
@@ -236,17 +240,79 @@ def supplement_zone(polygons, sp, cfg):
     return zone
 
 
+def _samples(pts) -> tuple[np.ndarray, np.ndarray]:
+    """Points along the polyline `pts` (mm) every `_SUPPLEMENT_STEP_MM`."""
+    p = np.asarray(pts, np.float64)
+    cum = np.r_[0.0, np.cumsum(np.hypot(*np.diff(p, axis=0).T))]
+    n = max(2, int(cum[-1] / _SUPPLEMENT_STEP_MM) + 1)
+    t = np.linspace(0.0, cum[-1], n)
+    return np.interp(t, cum, p[:, 0]), np.interp(t, cum, p[:, 1])
+
+
 def covered_share(pts, zone) -> float:
     """Share of the polyline `pts` (mm) lying inside `zone`, sampled every
     `_SUPPLEMENT_STEP_MM`."""
     if zone is None or zone.is_empty or len(pts) < 2:
         return 0.0
-    p = np.asarray(pts, np.float64)
-    cum = np.r_[0.0, np.cumsum(np.hypot(*np.diff(p, axis=0).T))]
-    n = max(2, int(cum[-1] / _SUPPLEMENT_STEP_MM) + 1)
-    t = np.linspace(0.0, cum[-1], n)
-    x, y = np.interp(t, cum, p[:, 0]), np.interp(t, cum, p[:, 1])
+    x, y = _samples(pts)
     return float(np.mean(shapely.contains_xy(zone, x, y)))
+
+
+def own_tone_share(pts, polarity: str, light: np.ndarray, sp, tree, region_l) -> float:
+    """Share of the polyline `pts` lying on a shape whose thread does NOT
+    stand out from the line by the tier's contrast floor in the line's own
+    polarity (`_SRC_MIN_CONTRAST` L*: a dark line on a fill at most 12 L*
+    lighter, a light one on a fill at most 12 darker). There the line's ink
+    is already a shape of its own tone: drawn line art the tracer kept, not a
+    strand the fills lost. A sample on no shape counts as standing out.
+    `tree` holds the shapes' polygons in sew order (the LAST one containing a
+    sample is on top), `region_l` their threads' L*."""
+    if len(pts) < 2:
+        return 0.0
+    x, y = _samples(pts)
+    h, w = light.shape
+    px = np.clip(np.round(x * sp.px_per_mm + sp.origin_px[0]).astype(int), 0, w - 1)
+    py = np.clip(np.round(y * sp.px_per_mm + sp.origin_px[1]).astype(int), 0, h - 1)
+    line_l = light[py, px].astype(np.float64)
+    top = np.full(len(x), -1)
+    hit = tree.query(shapely.points(x, y), predicate="within")
+    for i, j in zip(hit[0].tolist(), hit[1].tolist()):
+        top[i] = max(top[i], j)
+    on = top >= 0
+    gap = np.zeros(len(x))
+    gap[on] = (region_l[top[on]] - line_l[on]) if polarity == "dark" else \
+        (line_l[on] - region_l[top[on]])
+    return float(np.mean(on & (gap < _SRC_MIN_CONTRAST)))
+
+
+def supplement_test(regions, walked: set, sp, cfg):
+    """The gradient supplement's refusal, for `strand_blocks`' `refuse`:
+    -> refuse(strand) -> the report key it is counted under, or None (sew).
+
+    1. `refused_region`: at least `_SUPPLEMENT_COVERED_SHARE` of the line
+       within `supplement_zone` of a shape the region tier walked (`walked`,
+       shape ids): the tier's strand seen a second time (#915).
+    2. `refused_own_tone`: at least that share on a shape of the line's own
+       tone (`own_tone_share`): drawn line art already traced and sewn as
+       shapes (measured on the bridge logo's wave and anchor outlines).
+
+    `regions` are the design's shapes in sew order (`.polygon`,
+    `.thread_index`, `.shape_id`)."""
+    from .threads import chart_for as _chart
+    zone = supplement_zone([r.polygon for r in regions if r.shape_id in walked], sp, cfg)
+    tree = shapely.STRtree([r.polygon for r in regions])
+    lab = _chart(cfg).lab
+    region_l = np.array([float(lab[r.thread_index][0]) for r in regions], np.float64)
+    light = _light(sp)
+
+    def refuse(s):
+        if covered_share(s["pts"], zone) >= _SUPPLEMENT_COVERED_SHARE:
+            return "refused_region"
+        if regions and own_tone_share(s["pts"], s["polarity"], light, sp, tree,
+                                      region_l) >= _SUPPLEMENT_COVERED_SHARE:
+            return "refused_own_tone"
+        return None
+    return refuse
 
 
 def _light(sp) -> np.ndarray:
@@ -499,7 +565,7 @@ def _sewable(group, cfg, thread_wt: int) -> tuple[list, int]:
 
 def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[int],
                   block_wt: dict[int, int] | None = None, hop_ok=None,
-                  exclude=None
+                  refuse=None
                   ) -> tuple[list[tuple[int, list[StitchRun]]], dict]:
     """The line route for one design -> ([(thread_index, runs)], report).
 
@@ -523,24 +589,32 @@ def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[in
     `TRAVEL_STITCH_MM`, the next strand not a jump) and counted in `hops` /
     `hop_mm`; every other hop is a jump, a trim past `trim_at_mm`, as before.
 
-    `exclude` (the gradient supplement, `supplement_zone`): a strand with at
-    least `_SUPPLEMENT_COVERED_SHARE` of its length inside it is not sewn,
-    and the report counts it per polarity in `refused_region`. None: no
-    such test, and no such key."""
+    `refuse(strand) -> key | None` (the gradient supplement,
+    `supplement_test`): a strand it names a key for is not sewn, and the
+    report counts it per polarity under `refused_region` and
+    `refused_own_tone`. None: no such test, and no such keys."""
     strand_test = bool(getattr(cfg, "hairline_lines_strand_test", False))
     bw = dict(block_wt or {}) if strand_test else {}
     strands, census = extract_strands(sp, cfg)
     report = {"strands": 0, "dropped": 0, "jumps": 0, **census,
               "sewn_by_polarity": {}}
-    if exclude is not None:
+    if refuse is not None:
         report["refused_region"] = {}
+        report["refused_own_tone"] = {}
 
     def free(group, polarity):
-        if exclude is None:
+        if refuse is None:
             return group
-        out = [s for s in group
-               if covered_share(s["pts"], exclude) < _SUPPLEMENT_COVERED_SHARE]
-        report["refused_region"][polarity] = len(group) - len(out)
+        out = []
+        n = {"refused_region": 0, "refused_own_tone": 0}
+        for s in group:
+            why = refuse(s)
+            if why is None:
+                out.append(s)
+            else:
+                n[why] += 1
+        for key, v in n.items():
+            report[key][polarity] = v
         return out
     if strand_test:
         report["thread_wt"] = {}

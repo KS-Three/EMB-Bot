@@ -100,7 +100,8 @@ def measure(plan, image: str, sp) -> dict:
         "region": ({k: reg.get(k) for k in ("shapes", "strands", "dropped")} if reg else None),
         "supplement": ({k: sup.get(k) for k in ("strands", "dropped", "found", "refused_no_ridge",
                                                 "refused_bar", "refused_region",
-                                                "sewn_by_polarity")} if sup else None),
+                                                "refused_own_tone", "sewn_by_polarity")}
+                       if sup else None),
         "supp_strand_mm": round(sum(math.dist(a, c) for r in runs
                                     for a, c in zip(r.points, r.points[1:])), 1),
         "zones": hr.run_zone_counts(image, runs, sp) if runs and sp is not None else None,
@@ -130,6 +131,11 @@ def _bare_fields(row: dict, stem: str, arm: str, bare) -> None:
     if arm in ("off", "region"):
         _save_bare(f"{stem}_{arm}", bare)
     for ref in ("off", "region"):
+        # An arm run in parallel with `off` / `region` waits for its read.
+        t0 = time.time()
+        while (arm not in ("off", "region") and _load_bare(f"{stem}_{ref}") is None
+               and time.time() - t0 < 1800):
+            time.sleep(15)
         base = bare if ref == arm else _load_bare(f"{stem}_{ref}")
         if base is not None:
             row[f"bare_new_vs_{ref}_mm2"] = round(bare_new_mm2(bare, base), 2)
@@ -230,17 +236,17 @@ def _sum(d):
 
 
 def plan_table(rows: list[dict]) -> str:
-    out = ["| image | arm | region strands | supplement strands | refused (region covers it) | "
-           "bristle-box strands | stitches | trims | colour chg | thread m | < 1 mm | "
-           "bare new vs OFF mm2 | bare new vs region mm2 | md5 |",
-           "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    out = ["| image | arm | region strands | supplement strands | refused: region covers it | "
+           "refused: own tone | bristle-box strands | stitches | trims | colour chg | thread m | "
+           "< 1 mm | bare new vs OFF mm2 | bare new vs region mm2 | md5 |",
+           "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     order = {a: i for i, a in enumerate(ARMS)}
     for r in sorted(rows, key=lambda r: (r["image"], order[r["arm"]])):
         z = (r.get("zones") or {}).get("bristles", {}).get("n", "-") if r.get("zones") else "-"
         out.append(
             f"| {r['image']} {r['width_mm']:g} mm | {LABELS[r['arm']]} | "
             f"{(r.get('region') or {}).get('strands', '-')} | {_sup(r, 'strands')} | "
-            f"{_sum(_sup(r, 'refused_region'))} | {z} | {r['stitches']:,} | {r['trims']} | "
+            f"{_sum(_sup(r, 'refused_region'))} | {_sum(_sup(r, 'refused_own_tone'))} | {z} | {r['stitches']:,} | {r['trims']} | "
             f"{r['color_changes']} | {r['thread_m']} | {r['under_1mm']} | "
             f"{r.get('bare_new_vs_off_mm2', '-')} | {r.get('bare_new_vs_region_mm2', '-')} | "
             f"`{r['md5'][:8]}` |")
