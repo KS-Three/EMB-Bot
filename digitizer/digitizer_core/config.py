@@ -2198,6 +2198,14 @@ class PipelineConfig:
     # 0.10 mm tolerance are CANDIDATES (geometry, sized on no fixture; nothing
     # sewn, ROADMAP gate 1). Built OFF (Kent's call to flip); False is
     # byte-identical. Tests: `tests/test_column_ends.py`.
+    # Follow-up, same flag (2026-10-13): a column whose end is one slanted
+    # outline edge 8-45 deg off square (the N's diagonal foot on the
+    # baseline) is MITRED -- its last crosses turn onto that edge
+    # (`outline_cut._mitre_ends`); a penetration on two end faces meeting at
+    # a corner (the M's V) is held at the corner; a side keeps its own push
+    # (a cross under 0.44 mm reaches past `pull - 0.11`, and cut back there
+    # golden_tee's thin bars fell under the cross floor). Fremont 81 mm: 0
+    # ends past their face (#907: 1).
     lettering_columns_square_ends: bool = False
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches

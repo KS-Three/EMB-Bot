@@ -19,6 +19,13 @@ These pin:
   an end past its face by more than the 0.10 mm candidate, ON none does (the
   M keeps one, at 0.17 mm), no penetration ends past the rails' side reach,
   and neither stitches nor bare outline move by more than a hair.
+And the follow-up (2026-10-13, `claude/column-end-connectors`):
+- `square_ends` mitres the N's diagonal foot to the baseline
+  (`outline_cut._mitre_ends`), holds the M's vertex corner on both faces,
+  and keeps a thin cross's own side push (golden_tee's 0.10 mm bars);
+- `cfg.lettering_columns_inside_connectors` (built OFF) keeps every
+  connector on the letter or its satin: Kent's M->O "loop" and Becker
+  MARINE's N travel (`testdata/becker80_lane_letters.json`).
 Fremont is UNREPRESENTATIVE: these reproduce its defects, they size nothing.
 """
 from __future__ import annotations
@@ -36,6 +43,7 @@ from tools import column_ends as ce
 from tools import lowercase_angle as la
 
 LETTERS = Path(__file__).resolve().parent.parent / "testdata" / "fremont81_end_letters.json"
+BECKER = Path(__file__).resolve().parent.parent / "testdata" / "becker80_lane_letters.json"
 #: the lane's OFF runs on the aileron glyphs (120 and 80 mm) and the three
 #: Fremont letters, at the hat's 0.4 mm pull -- identical on this branch and
 #: on main at 8240f86c (2026-10-13)
@@ -224,6 +232,19 @@ def test_the_m_connector_stays_on_the_letter(fremont, square):
     r = ce.letter_ends(poly, kw, square_ends=square, inside_connectors=True)
     assert r["connector_bare_mm"] < 0.05
     assert r["trims"] == 0
+
+
+def test_becker_marine_connectors_stay_on_the_letters():
+    """Becker MARINE at 80 mm (`testdata/becker80_lane_letters.json`, the
+    letters and arguments the OFF run handed the lane): under #907's
+    `square_ends` the N grew a visible travel stitch across the notch at its
+    top. With `inside_connectors` too, no connector crosses bare cloth."""
+    letters = ce.load_letters(BECKER)
+    sq = sum(ce.letter_ends(p, kw, square_ends=True)["connector_bare_mm"] for p, kw in letters.values())
+    both = sum(ce.letter_ends(p, kw, square_ends=True, inside_connectors=True)["connector_bare_mm"]
+               for p, kw in letters.values())
+    assert sq > 1.0
+    assert both < 0.05
 
 
 def test_stage7_passes_the_flags(monkeypatch):
