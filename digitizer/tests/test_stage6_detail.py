@@ -231,8 +231,9 @@ def test_default_stitch_is_the_bean_and_explicit_bean_is_identical():
 
 
 def test_run_sews_each_line_once_with_no_stitch_under_the_needle_floor():
-    """"run": one pass per line, kind RUN, every stitch between the needle
-    floor and the candidate length — the bean's sub-1 mm stations are gone."""
+    """"run": one pass per line, kind RUN, no stitch under the needle floor
+    and the median at or under the candidate length — the bean's sub-1 mm
+    stations are gone."""
     from digitizer_core.stage6_detail import DETAIL_RUN_STITCH_MM
 
     runs, report = _detail(_circle_img(), detail_layer_stitch="run")
@@ -241,7 +242,10 @@ def test_run_sews_each_line_once_with_no_stitch_under_the_needle_floor():
         assert r.kind == stitches.RUN and r.shape_id == "detail"
         seg = [math.dist(a, b) for a, b in zip(r.points, r.points[1:])]
         assert min(seg) >= machine.MIN_STITCH_MM - 1e-9
-        assert max(seg) <= DETAIL_RUN_STITCH_MM + 1e-9
+        # `stitch_path` folds a sub-floor end stub into the last stitch, so
+        # one stitch per line may run up to a needle floor past the length.
+        assert max(seg) <= DETAIL_RUN_STITCH_MM + machine.MIN_STITCH_MM + 1e-9
+        assert float(np.median(seg)) <= DETAIL_RUN_STITCH_MM + 1e-9
         # One pass: the polyline never retraces, so its length is the line's
         # (a bean's is BEAN_PASSES times it).
         assert r.length_mm >= 0.8 * DETAIL_MIN_LINE_MM

@@ -63,9 +63,14 @@ def arm_cfg(arm: str) -> PipelineConfig:
 def detail_numbers(plan) -> dict:
     runs = [r for b in plan.blocks for r in b.runs if r.shape_id == "detail"]
     legs = [math.dist(a, c) for r in runs for a, c in zip(r.points, r.points[1:])]
+    tie = [abs(d - machine.TIE_STITCH_MM) <= 1e-6 for d in legs]
     return {"detail_runs": len(runs),
+            "detail_kinds": sorted({r.kind for r in runs}),
             "detail_stitches": sum(len(r.points) for r in runs),
-            "detail_under_1mm": sum(1 for d in legs if 0.01 < d < machine.MIN_STITCH_MM),
+            # `short_stitches`' rule: 0.01-1.0 mm, not a 0.8 mm lock leg
+            "detail_under_1mm": sum(1 for d, t in zip(legs, tie)
+                                    if 0.01 < d < machine.MIN_STITCH_MM and not t),
+            "detail_lock_legs": sum(tie),
             "detail_thread_m": round(sum(legs) / 1000.0, 3),
             "detail_max_mm": round(max(legs), 3) if legs else 0.0}
 
