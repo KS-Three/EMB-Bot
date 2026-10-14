@@ -145,6 +145,56 @@ def test_lettering_words_groups_by_word_id(monkeypatch):
     assert len(seen) == 2
 
 
+# --- the ink read must agree with the traced shape (INK_SHAPE_MAX_RATIO) --------
+
+def _box(w, h):
+    from shapely.geometry import box
+    return box(0.0, 0.0, w, h)
+
+
+def test_ink_reads_shape_compares_the_shapes_mean_width_with_the_ink():
+    from digitizer_core.beanletters import INK_SHAPE_MAX_RATIO, ink_reads_shape
+    bar = _box(2.0, 8.0)                       # 2A/P = 32 / 20 = 1.6 mm
+    assert ink_reads_shape(bar, 1.6)
+    assert ink_reads_shape(bar, 1.6 / INK_SHAPE_MAX_RATIO)          # at the ratio: agrees
+    assert not ink_reads_shape(bar, 1.6 / INK_SHAPE_MAX_RATIO * 0.99)
+    assert not ink_reads_shape(bar, 0.3)       # drone's chrome letters: ~5-6x
+    assert not ink_reads_shape(bar, None)
+    assert ink_reads_shape(None, 0.3)          # nothing traced: nothing to disagree with
+
+
+def test_a_bold_letter_with_a_thin_ink_read_is_left_out_of_the_decision(monkeypatch):
+    # Drone 2026-10-14: bold letters traced ~1.7 mm wide read 0.28-0.35 mm of
+    # ink (the highlight between bevel lines) and pulled the cluster median
+    # under the line, taking two 0.5-0.7 mm arcs with them.
+    bold = [_region() for _ in range(4)]
+    for r in bold:
+        r.polygon = _box(2.0, 8.0)
+    arcs = [_region(), _region()]
+    inks = {**{id(r): MemberInk(stroke_mm=0.3, spines=[SPINE]) for r in bold},
+            id(arcs[0]): MemberInk(stroke_mm=0.73, spines=[SPINE]),
+            id(arcs[1]): MemberInk(stroke_mm=0.47, spines=[SPINE])}
+    _stub_ink(monkeypatch, inks)
+    assert tag_bean_letters(bold + arcs, object(), PipelineConfig(bean_letter_max_stroke_mm=0.5)) == 0
+    assert not any(BEAN_LETTER_KEY in r.meta for r in bold + arcs)
+    assert all(r.meta["ink_stroke_mm"] == 0.3 for r in bold)        # the read is still recorded
+
+
+def test_thin_letters_whose_shape_agrees_still_go(monkeypatch):
+    thin = [_region() for _ in range(3)]
+    for r in thin:
+        r.polygon = _box(0.25, 2.4)             # 2A/P ~0.23 mm, ink 0.25
+    _stub_ink(monkeypatch, {id(r): MemberInk(stroke_mm=0.25, spines=[SPINE]) for r in thin})
+    assert tag_bean_letters(thin, object(), PipelineConfig(bean_letter_max_stroke_mm=0.4)) == 3
+
+
+def test_the_gate_holds_under_word_tiers_too(monkeypatch):
+    a = _region()
+    a.polygon = _box(2.0, 8.0)
+    _stub_ink(monkeypatch, {id(a): MemberInk(stroke_mm=0.3, spines=[SPINE])})
+    assert tag_bean_letters([a], object(), _cfg(lettering_word_tiers=True)) == 0
+
+
 # --- bean_letter ----------------------------------------------------------------
 
 def _run(spines, entry=None, trim=3.0):
