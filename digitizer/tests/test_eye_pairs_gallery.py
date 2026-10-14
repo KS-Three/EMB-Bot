@@ -21,20 +21,23 @@ SPEC_ARMS = ["per_stroke", "polygon_axis", "area_weighted",
              "design_angle", "rails_follow_edge", "wide_columns",
              "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827",
              "ref_0930am", "split_7mm", "rails_symmetric", "pro_file", "split_off",
-             "keep_counters", "bean_letters", "letterform_priors", "lettering_columns",
-             "lettering_words", "columns_words", "coverage_edges", "coverage_columns"]
-# `coverage_edges` and `coverage_columns` joined 2026-10-11: #818's coverage
-# outline alone and under the Column lane (docs/coverage-edges-under-columns-2026-10-11.md).
-# `columns_words` joined 2026-10-08: the Column lane's flip sitting, both flags.
-# `letterform_priors` joined 2026-10-06, Kent's option A after the spike
-# (docs/letterform-priors-2026-10-06.md): built OFF, judged on thread pairs.
-# `lettering_columns` joined 2026-10-07: the outline-cut Column lane, built OFF.
+             "keep_counters", "bean_letters", "lettering_words"]
+# 2026-10-14 tidy (rule in tools/eye_pairs/pairs.py): five arms left because
+# the base caught up with them or Kent ruled them out. They are in
+# RETIRED_SPEC_ARMS below, so a sitting rendered earlier still names them.
+#   `lettering_columns` shipped ON (#863); `letterform_priors_k` 0.75 is the
+#   config default (Kent 2026-10-07); `columns_words` is now exactly
+#   `lettering_words`; `coverage_edges` and `coverage_columns` are deprecated
+#   (Kent, no, 2026-10-12).
 # `lettering_words` joined 2026-10-08: L1, one lettering tagger, built OFF.
 # `rail_comp` shipped ON 2026-09-28 and left the table (docs/kent-review-2026-09-28.md);
 # `rail_envelope` shipped ON 2026-09-30 and left it (docs/eye-pairs-2026-09-30/).
 # The last two joined 2026-10-03 with `cap_recentre`, the built-OFF flags
 # waiting on Kent's eye; `cap_recentre` shipped ON off that sitting the same
 # day and left again (docs/eye-pairs-2026-10-03/).
+RETIRED_SPEC_ARMS = ["rail_comp", "rail_envelope", "patch_junctions", "cap_recentre",
+                     "lettering_columns", "letterform_priors", "columns_words",
+                     "coverage_edges", "coverage_columns"]
 # `patch_junctions` left the same day with no flip of its own: it was already
 # the shipped engine (`satin_junction_stack`'s part C, ON 2026-09-19).
 SPEC_METRICS = {
@@ -131,6 +134,14 @@ def test_arm_table_pins_the_yardstick_spec():
     assert sorted(g.ARM_INTENT) == sorted(SPEC_ARMS)
     for arm, (change, intent) in g.ARM_INTENT.items():
         assert change and intent, arm
+
+
+def test_retired_arms_are_named_and_never_pending():
+    assert sorted(g.RETIRED_ARM_INTENT) == sorted(RETIRED_SPEC_ARMS)
+    assert not set(g.RETIRED_ARM_INTENT) & set(g.ARM_INTENT)
+    for arm in RETIRED_SPEC_ARMS:       # a pre-tidy sitting still gets its words
+        change, intent = g.arm_intent(arm)
+        assert change != arm and intent, arm
 
 
 def test_metric_table_pins_the_yardstick_spec():
