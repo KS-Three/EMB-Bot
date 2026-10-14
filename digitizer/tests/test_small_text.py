@@ -187,3 +187,75 @@ def test_the_flag_runs_end_to_end_and_none_never_calls_the_pass(monkeypatch):
     _, plan_on = digitize(fixture, PipelineConfig(target_width_mm=80.0, small_text_cap_mm=3.7))
     assert calls == [3.7]
     assert plan_on.blocks, "a plan comes back with the flag on"
+
+
+# --- True size (`cfg.small_text_restore_mm`, `cfg.bean_letter_stitch_mm`) ---
+# Kent, 2026-10-13: "you can't change the font size for the final product."
+# Same fixture, nothing scaled or moved: the line's untagged letters join its
+# cluster and every letter gets its counters back, so bean letters can sew
+# the whole line as centrelines; and bean letters take a shorter pitch.
+
+def test_true_size_defaults_are_off():
+    cfg = PipelineConfig()
+    assert cfg.small_text_restore_mm is None and cfg.bean_letter_stitch_mm is None
+    regions, p = _scene()
+    _tag(regions, {"Sg0", "Sg2", "Sg3"})
+    before = [(r.shape_id, r.polygon.wkb, dict(r.meta)) for r in regions]
+    assert small_text.restore_small_text(regions, p, cap_mm=None) == []
+    assert [(r.shape_id, r.polygon.wkb, dict(r.meta)) for r in regions] == before
+
+
+def test_restore_keeps_size_and_place_brings_counters_back_and_adopts_the_8():
+    regions, p = _scene()
+    _tag(regions, {"Sg0", "Sg2", "Sg3"})          # the tagger refused the 8
+    boxes0 = {r.shape_id: r.polygon.bounds for r in _glyphs(regions)}
+    rep = small_text.restore_small_text(regions, p, cap_mm=3.0)
+    row = next(r for r in rep if r["cluster"] == "TCtest")
+    assert row.get("adopted") == 1 and "skipped" not in row, row
+    one, eight, nine, five = _glyphs(regions)
+    for r in (one, eight, nine, five):
+        b0, b1 = boxes0[r.shape_id], r.polygon.bounds
+        assert max(abs(a - b) for a, b in zip(b0, b1)) < 0.15, "nothing is scaled or moved"
+        assert r.meta["text_cluster_id"] == "TCtest", "every letter of the line is a member now"
+        assert "small_text_enlarged" not in r.meta
+    assert len(eight.polygon.interiors) == 2 and len(nine.polygon.interiors) == 1
+    assert eight.meta.get("small_text_adopted") is True and "small_text_adopted" not in one.meta
+    assert eight.meta["text_cluster_stroke_mm"] == one.meta["text_cluster_stroke_mm"]
+
+
+def test_restore_leaves_a_line_at_or_over_the_height_alone():
+    regions, p = _scene()
+    _tag(regions, {"Sg0", "Sg1", "Sg2", "Sg3"})
+    before = [(r.shape_id, r.polygon.wkb, dict(r.meta)) for r in regions]
+    rep = small_text.restore_small_text(regions, p, cap_mm=_cap(regions) * 0.95)
+    assert next(r for r in rep if r["cluster"] == "TCtest")["skipped"] == "tall_enough"
+    assert [(r.shape_id, r.polygon.wkb, dict(r.meta)) for r in regions] == before
+
+
+def test_bean_letter_pitch_none_is_byte_identical_and_a_shorter_one_draws_a_small_loop():
+    import math
+
+    from digitizer_core import machine
+    from digitizer_core.stage6_beanletter import bean_letter
+
+    # The loop of a 1.9 mm "8": a ring about 0.3 mm in radius, 1.9 mm round.
+    ring = [(0.3 * math.cos(2 * math.pi * k / 24), 0.3 * math.sin(2 * math.pi * k / 24)) for k in range(25)]
+    stem = [(2.0, 0.0), (2.0, 1.9)]
+    base, _ = bean_letter([ring, stem], "S", entry=None, trim_at_mm=3.0)
+    same, _ = bean_letter([ring, stem], "S", entry=None, trim_at_mm=3.0, stitch_mm=None)
+    assert [r.points for r in same] == [r.points for r in base]
+    fine, _ = bean_letter([ring, stem], "S", entry=None, trim_at_mm=3.0, stitch_mm=0.45)
+
+    def lap(runs, i):                      # stations in one pass of spine i
+        return (len(runs[i].points) - 1) // machine.BEAN_PASSES + 1
+
+    assert lap(base, 0) <= 4, "at 0.73 mm the loop is a wedge"
+    assert lap(fine, 0) >= 5, "at 0.45 mm it has enough stations to be round"
+    steps = [math.dist(a, b) for r in fine for a, b in zip(r.points, r.points[1:])]
+    assert min(steps) >= 0.3, f"no stitch under the short-stitch floor, got {min(steps):.2f}"
+    # A short arm that 0.73 refuses sews at the shorter pitch (Bridge's E).
+    arm = [(0.0, 0.0), (0.6, 0.0)]
+    long_stem = [(0.0, 0.0), (0.0, 3.0)]
+    off, _ = bean_letter([long_stem, arm], "S", entry=None, trim_at_mm=3.0)
+    on, _ = bean_letter([long_stem, arm], "S", entry=None, trim_at_mm=3.0, stitch_mm=0.45)
+    assert len(off) == 1 and len(on) == 2

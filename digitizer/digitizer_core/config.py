@@ -2333,6 +2333,31 @@ class PipelineConfig:
     # gate 1): 3.7 is the professional's on one file, unsewn here. The flip
     # is Kent's, on renders. Tests: `tests/test_small_text.py`.
     small_text_cap_mm: float | None = None
+    # Small lettering at its TRUE size (`small_text.restore_small_text`,
+    # 2026-10-13). Kent, on the enlargement above: "you can't change the font
+    # size for the final product." For every line of traced lettering whose
+    # letters are under this many millimetres tall, with nothing scaled or
+    # moved: the untagged letters of the line are ADOPTED into its text
+    # cluster (Fremont's 8 is traced as a solid blob and is in no cluster),
+    # and every letter is RETRACED from the source raster so it keeps the
+    # counters stage 4 dropped. On its own that changes little; it is what
+    # lets `bean_letter_max_stroke_mm` sew the whole line as centrelines,
+    # the 8 included. Rendered on Fremont's date at 92.5 mm with
+    # `bean_letter_max_stroke_mm` 0.4 and `bean_letter_stitch_mm` 0.45: the
+    # date goes from "1093" to "1895"; "EST" stays rough (E like B, S like
+    # 8) because a 0.4 mm thread fills the 0.5 mm gaps between its strokes.
+    # None never calls the pass. A CANDIDATE (ROADMAP gate 1), unsewn; the
+    # flip is Kent's. Tests: `tests/test_small_text.py`.
+    small_text_restore_mm: float | None = None
+    # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
+    # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
+    # two or three stations and it sews as a wedge; at 0.45 it is drawn.
+    # Every other bean tier (run outlines, hairline stretches, borders) keeps
+    # 0.73 -- overriding the constant itself took Fremont from 17,378 to
+    # 19,971 stitches for no gain outside the lettering. None is 0.73, byte
+    # for byte. 0.45 is a CANDIDATE (gate 1): above the 0.3 mm short-stitch
+    # floor, never sewn.
+    bean_letter_stitch_mm: float | None = None
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
