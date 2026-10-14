@@ -302,9 +302,14 @@ def test_serif_trim_leaves_a_curve_and_a_short_stroke_alone():
     # The tail of a 9: a quarter arc of 1 mm radius turns gently.
     arc = [(math.cos(t), math.sin(t)) for t in [k * (math.pi / 2) / 30 for k in range(31)]]
     assert trim_serif_hooks([arc], 0.45)[0] == arc
-    # A stroke under three hooks long is never cut: there is no letter left.
-    short = [(0.0, 0.3), (0.0, 0.0), (1.0, 0.0)]
+    # A stroke that would be left under twice its hook is never cut: there is
+    # no letter left. One that keeps enough is (Fremont's E at 81 mm: arms
+    # about 1 mm, which a fixed three-serif floor refused, and it read as B).
+    short = [(0.0, 0.3), (0.0, 0.0), (0.4, 0.0)]
     assert trim_serif_hooks([short], 0.45)[0] == short
+    arm81 = [(1.0, 0.3), (1.0, 0.0), (0.0, 0.0)]
+    cut = trim_serif_hooks([arm81], 0.45)[0]
+    assert abs(cut[0][1]) < 0.05 and cut[-1] == (0.0, 0.0), f"the 1 mm arm loses its hook: {cut}"
 
 
 # --- The ink reader on a cutout (`ink_path.read_cluster_ink`) --------------
@@ -354,3 +359,20 @@ def test_restore_drops_the_taggers_strays_from_the_line():
         assert "text_cluster_id" not in r.meta and "text_candidate" not in r.meta
         assert r.meta.get("small_text_stray") is True
     assert all(r.meta.get("text_cluster_id") == "TCtest" for r in _glyphs(regions)), "the four digits stay"
+
+
+def test_serif_trim_never_cuts_where_strokes_meet():
+    # The 8 at 81 mm: two loop arcs meeting at the waist turn sharply there,
+    # and were cut open as if the turn were a serif. A junction is not a
+    # free end.
+    from digitizer_core.stage6_beanletter import trim_serif_hooks
+
+    waist_l, waist_r = (0.0, 0.0), (0.6, 0.0)
+    top = [waist_l, (-0.1, -0.3), (0.0, -0.6), (0.3, -0.7), (0.6, -0.6), (0.7, -0.3), waist_r]
+    bottom = [waist_l, (-0.15, 0.35), (0.0, 0.7), (0.3, 0.8), (0.6, 0.7), (0.75, 0.35), waist_r]
+    bar = [waist_l, (0.3, 0.0), waist_r]
+    assert trim_serif_hooks([top, bottom, bar], 0.45) == [top, bottom, bar]
+    # ...while a free end on the same spine set is still trimmed.
+    hooked = [(1.5, 0.3), (1.5, 0.0), waist_r]
+    out = trim_serif_hooks([top, bottom, bar, hooked], 0.45)
+    assert out[:3] == [top, bottom, bar] and out[3][0] != hooked[0]

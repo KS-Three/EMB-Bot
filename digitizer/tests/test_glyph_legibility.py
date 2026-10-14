@@ -258,3 +258,131 @@ def test_fremont_word_boxes_find_the_glyphs_Kent_circled():
         sm = cv2.resize(sub.astype(np.uint8), None, fx=0.25, fy=0.25, interpolation=cv2.INTER_NEAREST) > 0
         _lab, found = gl._label_glyphs(sm, (box[0] // 4, box[1] // 4, box[2] // 4, box[3] // 4), 5.0)
         assert len(found) == n, (name, len(found))
+
+
+# --- pull-aware reading --------------------------------------------------------
+#
+# A narrow-bayed E: arms 1.4 mm apart, drawn 0.5 mm thick, so each bay is 0.9 mm
+# clear in the artwork. Sewn the way the engine sews a cap, every rail pushed out
+# 0.4 mm (the structured cap's pull), each arm is 1.3 mm of thread and the bay
+# is 0.1 mm: shut, as a render, though the cloth would draw it back open.
+
+PULL_E = [[(14.0, 4.0), (14.0, 6.8)], [(14.0, 4.0), (17.0, 4.0)],
+          [(14.0, 5.4), (16.0, 5.4)], [(14.0, 6.8), (17.0, 6.8)]]
+PULL_E_BOX = (0.50, 0.20, 0.82, 0.70)
+
+
+def _pushed_e(push: float, step: float = 0.15):
+    """The E as parallel passes: each stroke gets passes every `step` mm out to
+    `0.25 + push` either side of its centreline (less half a thread)."""
+    reach = 0.25 + push - 0.2
+    offs = np.arange(-reach, reach + 1e-9, step)
+    paths = [[(14.0 + dx, 4.0 - reach), (14.0 + dx, 6.8 + reach)] for dx in offs]
+    for y0, x1 in ((4.0, 17.0), (5.4, 16.0), (6.8, 17.0)):
+        paths += [[(14.0, y0 + dy), (x1, y0 + dy)] for dy in offs]
+    return paths
+
+
+def _read_pull(push: float, pull, **kw):
+    rgb, alpha = _artwork(PULL_E, 0.5)
+    words, dbg, _reg = gl.read_arrays(rgb, alpha, {"w": PULL_E_BOX}, _design(_pushed_e(push)),
+                                      use_ocr=False, pull_mm=pull, **kw)
+    return words[0], dbg["w"]
+
+
+def test_default_pull_is_zero_and_today_s_output_exactly():
+    """`pull_mm` left out, 0 and 0.0 are one read, and it is the read the
+    instrument made before the option existed (numbers measured on the commit
+    before `--pull-mm` landed)."""
+    o_paths = _o_paths([O_R - 0.15, O_R, O_R + 0.15])
+    rgb, alpha = _artwork([_ring(*O_CENTRE, O_R)], O_STROKE)
+    base = gl.read_arrays(rgb, alpha, {"w": O_BOX}, _design(o_paths), use_ocr=False)[0][0]
+    zero = gl.read_arrays(rgb, alpha, {"w": O_BOX}, _design(o_paths), use_ocr=False, pull_mm=0.0)[0][0]
+    assert base.glyphs == zero.glyphs and base.pull_mm == 0.0
+    g = base.glyphs[0]
+    assert (g["iou"], g["area_sewn_mm2"], g["stroke_w_sewn_mm"]) == (0.962, 10.915, 0.781)
+    e, _ = _read(E_STROKES, 0.6, _e_paths(), E_BOX)
+    ge = e.glyphs[0]
+    assert (ge["iou"], ge["area_sewn_mm2"], ge["stroke_w_sewn_mm"]) == (0.681, 8.008, 0.5)
+    mask = np.zeros((40, 40), bool)
+    mask[10:30, 10:30] = True
+    assert gl.pull_erode(mask, 0.0, 0.4) is mask
+
+
+def test_pull_erode_takes_the_pull_off_each_side_but_never_a_stroke_under_one_thread():
+    wide = np.zeros((200, 200), bool)
+    wide[80:120, 20:180] = True                              # a 2.0 mm bar at 20 px/mm
+    out = gl.pull_erode(wide, 0.4, 0.4)
+    assert (out.sum(axis=0)[100], wide.sum(axis=0)[100]) == (24, 40)      # 0.4 mm gone each side
+    thin = np.zeros((200, 200), bool)
+    thin[96:104, 20:180] = True                              # 0.4 mm: one thread
+    kept = gl.pull_erode(thin, 0.4, 0.4)
+    assert kept.any() and kept.sum() >= 0.8 * thin.sum()     # it keeps its own line
+
+
+def test_a_thin_line_survives_the_pull_only_where_it_lies_on_the_ink():
+    thin = np.zeros((200, 200), bool)
+    thin[96:104, 20:180] = True                              # 0.4 mm line
+    ink = np.zeros_like(thin)
+    ink[90:110, 20:100] = True                               # the artwork's ink under its left half
+    got = gl.pull_erode(thin, 0.4, 0.4, ink=ink, lines="ink")
+    assert got[:, 30:90].any() and not got[:, 110:170].any()
+    assert gl.pull_erode(thin, 0.4, 0.4, ink=ink, lines="all")[:, 110:170].any()
+    assert not gl.pull_erode(thin, 0.4, 0.4, ink=ink, lines="none").any()
+
+
+def test_a_pinhole_in_a_column_is_not_grown_into_a_counter_by_the_pull():
+    col = np.zeros((200, 200), bool)
+    col[60:140, 40:160] = True
+    col[100:102, 100:102] = False                            # 0.1 mm texture gap between rows
+    assert gl.pull_erode(col, 0.3, 0.4)[100, 100]            # closed before the erosion, so it stays closed
+    real = col.copy()
+    real[85:115, 85:115] = False                             # 1.5 mm: a counter
+    assert gl.ndi.binary_fill_holes(gl.pull_erode(real, 0.3, 0.4))[100, 100] and not gl.pull_erode(real, 0.3, 0.4)[100, 100]
+
+
+def test_a_bay_the_pull_would_reopen_reads_closed_without_pull_and_open_with_it():
+    shut, shut_dbg = _read_pull(0.4, 0.0)
+    pulled, dbg = _read_pull(0.4, 0.4)
+    gs, gp = shut.glyphs[0], pulled.glyphs[0]
+    assert gs["space"] < 0.4 and gp["space"] >= 0.7, (gs["space"], gp["space"])
+    assert gp["strokes"] >= 0.9 and gp["legibility_space"] > gs["legibility_space"] + 0.4
+    assert pulled.pull_mm == 0.4 and shut.pull_mm == 0.0
+    assert dbg["T"].sum() < shut_dbg["T"].sum()
+
+
+def test_pull_does_not_rescue_a_bay_that_was_poured_full():
+    """The pull takes back what the push put out. Solid thread across the bays
+    is still solid thread after it."""
+    rgb, alpha = _artwork(PULL_E, 0.5)
+    rows = [[(14.0, y), (17.0, y)] for y in np.arange(3.6, 7.21, 0.2)]
+    words, _d, _r = gl.read_arrays(rgb, alpha, {"w": PULL_E_BOX}, _design(rows), use_ocr=False, pull_mm=0.4)
+    kept_open = _read_pull(0.4, 0.4)[0].glyphs[0]["space"]
+    assert words[0].glyphs[0]["space"] < kept_open - 0.2, (words[0].glyphs[0]["space"], kept_open)
+
+
+def test_a_design_that_declares_its_pull_is_believed_and_one_that_does_not_is_estimated():
+    d = _design(_pushed_e(0.4))
+    assert gl.declared_pull_mm(d) is None
+    assert gl.declared_pull_mm({**d, "pull_comp_mm": 0.35}) == 0.35
+    assert gl.declared_pull_mm({**d, "fabric": {"pull_comp_mm": 0.5}}) == 0.5
+    rgb, alpha = _artwork(PULL_E, 0.5)
+    box = {"w": PULL_E_BOX}
+    declared = gl.read_arrays(rgb, alpha, box, {**d, "pull_comp_mm": 0.4}, use_ocr=False, pull_mm="auto")[0][0]
+    explicit = gl.read_arrays(rgb, alpha, box, d, use_ocr=False, pull_mm=0.4)[0][0]
+    assert declared.pull_mm == 0.4 and declared.glyphs == explicit.glyphs
+    est = gl.read_arrays(rgb, alpha, box, d, use_ocr=False, pull_mm="auto")[0][0]
+    assert 0.2 <= est.pull_mm <= gl.PULL_AUTO_MAX_MM            # the push is 0.4 a side; stroke width reads it back
+    assert est.glyphs[0]["space"] >= 0.6                       # and the estimate opens the bay
+    plain = gl.read_arrays(rgb, alpha, box, _design(PULL_E, step=0.2), use_ocr=False, pull_mm="auto")[0][0]
+    assert plain.pull_mm <= 0.12                                # a design with no push is not eroded
+    with pytest.raises(ValueError):
+        gl.read_arrays(rgb, alpha, box, d, use_ocr=False, pull_mm="sometimes")
+
+
+def test_the_cli_takes_a_number_or_auto_and_nothing_else(capsys):
+    for bad in ("sometimes", "-0.1", "9"):
+        with pytest.raises(SystemExit) as e:
+            gl.main(["--list", "--pull-mm", bad])
+        assert e.value.code == 2
+    capsys.readouterr()
