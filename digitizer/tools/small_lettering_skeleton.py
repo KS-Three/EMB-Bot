@@ -49,6 +49,12 @@ ARMS = {
     "on_81": (81.0, dict(FLAG), "ON, floor 1.0 mm (MIN_STITCH_MM)"),
     "on073_81": (81.0, {**FLAG, "small_lettering_skeleton_floor_mm": 0.73},
                  "ON, floor 0.73 mm (BEAN_STITCH_MM)"),
+    # Composition with `cfg.small_text_cap_mm` (#909, OFF): the lines it
+    # grows to 3.7 mm caps leave the run tier; this tier sees what is left.
+    "cap_81": (81.0, {"small_text_cap_mm": 3.7}, "small_text_cap_mm 3.7 alone"),
+    "cap_on073_81": (81.0, {"small_text_cap_mm": 3.7, **FLAG,
+                            "small_lettering_skeleton_floor_mm": 0.73},
+                     "small_text_cap_mm 3.7 + ON, floor 0.73"),
 }
 ARM_ORDER = list(ARMS)
 BOXES = ["the", "tagline", "est"]

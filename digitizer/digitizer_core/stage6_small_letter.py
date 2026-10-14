@@ -103,6 +103,10 @@ _ARC_REACH = 2.0
 # Candidates (gate 1).
 SHAPE_TOL_WIDTHS = 0.5
 MISSED_SHARE_MAX = 0.10
+# ... and never more than this share of the letter's own size: 0.2 mm is
+# nothing on a 2.2 mm cap and a seventh of a 1.35 mm one, where a chord that
+# close to the stem still turns a T into a 7 (Fremont's EST, rendered).
+SHAPE_TOL_SIZE_SHARE = 0.10
 
 
 def _parts(geom):
@@ -588,7 +592,10 @@ def skeleton_letter_runs(poly, shape_id: str, *, max_width_mm: float, stitch_mm:
     report["counter_depth_mm"] = depth
     report["sewn_mm"] = round(report["sewn_mm"], 4)
     report["retrace_mm"] = round(report["retrace_mm"], 4)
-    shape_tol = SHAPE_TOL_WIDTHS * run_width_mm
+    gx0, gy0, gx1, gy1 = poly.bounds
+    shape_tol = min(SHAPE_TOL_WIDTHS * run_width_mm,
+                    SHAPE_TOL_SIZE_SHARE * max(gx1 - gx0, gy1 - gy0))
+    report["shape_tol_mm"] = round(shape_tol, 4)
     outside, missed = fidelity(runs, poly, edges, shape_tol)
     report["outside_mm"] = outside
     report["missed_share"] = missed

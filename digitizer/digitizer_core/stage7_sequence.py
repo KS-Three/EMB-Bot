@@ -2445,8 +2445,13 @@ def sequence(
             if (tier == "auto" and p.shape_id in skeleton_letters
                     and routes_to_run(p, tier) and is_lettering(p.region, cfg)):
                 prof = profile_for(p)
+                # A line `cfg.small_text_cap_mm` enlarged was retraced from
+                # the source with its counters; stage 4's record is of the
+                # polygon before that, at the old size and place.
                 runs, report = skeleton_letter_runs(
-                    glyph_polygon(p.region.polygon, p.region.meta.get("small_counters")),
+                    glyph_polygon(p.region.polygon,
+                                  None if p.region.meta.get("small_text_enlarged")
+                                  else p.region.meta.get("small_counters")),
                     p.shape_id, max_width_mm=prof.width_mm,
                     stitch_mm=cfg.hairline_stitch_mm,
                     run_width_mm=prof.hairline_run_width_mm,
