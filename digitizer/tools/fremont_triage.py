@@ -84,6 +84,8 @@ ARMS = {
                    "lettering_columns_skip_blobs": False},
     "lane_off": {"lettering_columns": False},
     "pre863": {},
+    # The cure for the 1895 loss, built OFF (`cfg.small_glyph_keep`).
+    "small_glyph_keep": {"small_glyph_keep": True},
 }
 ARM_ORDER = list(ARMS)
 
@@ -133,9 +135,11 @@ def _decode(data: bytes):
 
 
 def run_arm(arm: str, width_mm: float = KENT_WIDTH_MM, core: str | None = None,
-            preflight: bool = True) -> dict:
+            preflight: bool = True, overrides: dict | None = None) -> dict:
     """Digitize the fixture the way /digitize does for `arm`. Returns
-    {result, plan, design, preflight, gen, taken, declined, cfg_dict, secs}."""
+    {result, plan, design, preflight, gen, taken, declined, cfg_dict, secs}.
+    `overrides` (the small-lettering tier arms, `fremont_small_lettering.py`)
+    replaces `ARMS[arm]`; None keeps the bisect table."""
     from digitizer_core import PipelineConfig
     from digitizer_core import stage7_sequence as s7
     from digitizer_core.adapter import plan_to_design
@@ -151,7 +155,7 @@ def run_arm(arm: str, width_mm: float = KENT_WIDTH_MM, core: str | None = None,
     else:
         cfg_dict = dict(studio_request(width_mm))
         pixels = _decode(data)
-    cfg = PipelineConfig(**{**cfg_dict, **ARMS[arm]})
+    cfg = PipelineConfig(**{**cfg_dict, **(ARMS[arm] if overrides is None else overrides)})
 
     taken: list[str] = []
     declined: list[str] = []

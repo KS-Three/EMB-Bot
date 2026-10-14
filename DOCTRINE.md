@@ -1665,11 +1665,18 @@ flattery. Anything unlisted raises `NotInManifest`.
   (`ede6fea4`, 2026-07-24) and no ruling chose it. Measured on a lone "l"
   stem: Studio text 2.5 threads across per mm, the Python order 5, a
   competitor's exported DST (Ember, 0.3 mm per rail) 6.7. `satinZigzag`
-  (`zigzag` in the emitter) keeps one rail leading; built OFF, same
-  penetrations and stitch count, 10 to 28% more thread on "Hotel Rag" across
-  four fonts. The default is Kent's and wants a sew-out (gate 1): a render at
-  0.3 mm thread shows ladders off and closed columns on, and a render is not
-  fabric. *(found 2026-10-13 by exporting the same words from Ember and from
+  (`zigzag` in the emitter) keeps one rail leading. On small text it is the
+  same penetrations and stitch count, 10 to 28% more thread on "Hotel Rag"
+  across four fonts, and far fewer short stitches (alchemy at a 3 mm cap:
+  under 0.5 mm 199 to 18, under 0.3 mm 18 to 4). **"Same stitch count" stops
+  being true where split satin fires:** the return leg is a cross now and
+  carries its own comb, so a wide-column design nearly doubles — manga_impact
+  "AB" at 198 mm 12,492 to 21,070 stitches, on a Full Back 27,033 to 48,079.
+  **Kent ruled it ON for `buildLetteringDesign` 2026-10-13, on a before/after
+  render and NOT a sew-out;** `satinZigzag: false` is the old stream, and
+  `layoutText` and the emitter still default off. A render at 0.3 mm thread
+  shows ladders off and closed columns on, and a render is not fabric.
+  *(found 2026-10-13 by exporting the same words from Ember and from
   `buildLetteringDesign` and reading both stitch streams)*
 
 - **Adding an engine file means FOUR lists, and only three were documented —

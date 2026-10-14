@@ -561,6 +561,11 @@ def vectorize(
     min_area_mm2 = (cfg.min_detail_mm ** 2) * 0.25  # a sliver after simplification
     small_print = bool(getattr(cfg, "small_print_floor", False))
     min_detail_px2 = (cfg.min_detail_mm * p.px_per_mm) ** 2
+    # `cfg.small_glyph_keep`: a rescued small shape's holes answer to the run
+    # tier's floor, not the sliver floor -- its counters are the size of the
+    # glyph (Fremont's 8 and 9, 0.30-0.52 mm²). Off, the one floor as before.
+    small_hole_mm2 = (min(min_area_mm2, machine.RUN_MIN_AREA_MM2)
+                      if getattr(cfg, "small_glyph_keep", False) else min_area_mm2)
 
     regions: list[Region] = []
     dropped: list[float] = []
@@ -690,7 +695,7 @@ def vectorize(
                                       h_px.astype(np.float64), eps, curve_turn,
                                       accepted=hole_acc, resolution_gated=resolution_gated)
             ring = _to_mm(h_px, cx, cy, p.px_per_mm)
-            if Polygon(ring).area >= min_area_mm2:
+            if Polygon(ring).area >= (small_hole_mm2 if sub_detail else min_area_mm2):
                 holes.append(ring)
             elif small_print:
                 small_counters.append(ring)
