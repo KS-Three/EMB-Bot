@@ -4736,3 +4736,63 @@ Three measurements the ranking rests on: the curve gate reaches **2 of 29** fixt
      small-shape rescue (`routes_to_run`, under `min_detail_mm`² 2.25) fires before the lane is asked; `cfg.lettering_columns_small_stem` (OFF, item 52) keeps
      it for the lane. The i DOT (0.446 mm²) is dropped separately, by `RUN_MIN_LOOP_MM` 2.2 (a cloth value).
 
+
+### Evaluation harness: the density/flow instrument (PR #847)
+
+**A density/flow instrument coded from his own notes finds no new signal (PR #847):** of 14 candidates read from the stored stitch records, the one clearing chance on both statistics, `jumps_per_1000`, restates trims (kappa +0.72 against the trim picks); density per area does not track his picks (#842's "denser" was stitch COUNT); `flow_circvar` is a lead from one sitting; and "each stitch crosses the whole stroke", coded as more long stitches, came out REVERSED — he picks the side with fewer stitches over 4 mm. Its proposed fresh blinded sitting waits on logos Kent supplies ("Waiting on Kent" 42). *(measured 2026-10-12 — PR #847, [`docs/density-flow-instrument-2026-10-12.md`](docs/density-flow-instrument-2026-10-12.md))* 
+
+### Waiting on Kent 22 (`fillColumns` lanes) as it stood after the fourth pass
+
+22. **RESOLVED 2026-10-08 — `fillColumns` ON in all three browser lanes**
+   (manual 10-07; basic shapes and the image lane 10-08, Kent's call with
+   the price in front of him). Image lane: floats off the fill 188,952 → 484,
+   cuts 3,714 → 3,208, stitches **+10.4%** (+29.7% worst); shapes +1.8%.
+   **Kent's standing ask:** the next ten digitized images shown to him carry
+   the off/on float picture (`tools/fill-columns-image-sheet.mjs`; memory
+   `fill-columns-float-pictures-2026-10-08`). The image lane's price — HOLD:
+   four cheaper walks each failed (candidate C is on #786's sheet, item 32).
+   None of it is sewn. Full tables: the price doc; scope-history 10-12.
+   *(measured 2026-10-08 — PR #697, `docs/renders/fill-columns-lanes-2026-10-08/price.md`)*
+
+### Waiting on Kent 21 (`bean_letter_max_stroke_mm`) as it stood after the fourth pass
+
+21. **`bean_letter_max_stroke_mm` at 1.0 — JUDGED 2026-10-03, stays OFF.**
+   Small traced lettering sewn as bean runs along the skeleton of its SOURCE
+   INK instead of satin blobs. On the labelled page Kent put today's satin
+   ahead on five of six logos and called bridge both bad; his reason is the
+   line's WEIGHT — *"little worms"*, *"aren't thick enough"*, *"to skinny"* —
+   while granting fremont's path reads cleaner. Open, and his: a heavier line
+   on the same path, or drop it. The render draws three passes as one thread,
+   so "too thin" is not yet separated from the picture (`suspected`); gate 1
+   holds a 3-pass bean on knit as `pending sew-out`.
+   *(judged 2026-10-03 — `docs/eye-pairs-2026-10-03/kent-notes.json`)*
+
+### Defect 57: its costs and a star's centre, standing (as of 2026-10-11)
+
+**Its costs, standing.** A satin bar's centre-run underlay ended at the far end from where its column starts (a needle-up move a median 49 mm on left chest) — cured by `underlayDirection`, ON since 2026-10-11 (PR #836). The last cross of a round end stands up to 0.46 mm outside it. A square or dot up to 6 mm has no skeleton and takes the outline-split fallback, which starts 12% in from each end (a 6 mm square: 92% covered to 85%, stitches to 8.8 mm). **A star's centre, standing.** The longest stitch of a satin star is a median 21 mm, up to 100 mm, cast arm to arm across the centre; its strokes are joined by needle-up moves (a median 139 mm a star). The branch guard sends it there: an even-pointed star splits tip to tip into equal halves, so twelve arms pass as ONE column. 
+
+### Waiting on Kent 39 (`bg_structural`) as it stood after the fourth pass
+
+39. **`bg_structural` flip — waits on real tonal art, NEW 2026-10-11.** Area 1's
+   two stage-1 background defects, fixed OFF. Before any flip:
+   `photo_chrome_specular` changes verdict ABSENT → background (read as a fix),
+   and `test_preflight` uses it as the full-bleed guard, so that guard moves
+   to another fixture first. Its three constants were chosen on mostly
+   synthetic fixtures; ON can change `px_per_mm` (summit traced on 949 px, not
+   900). *(measured 2026-10-11 — PR #825, `tests/test_bg_structural.py`)*
+
+### Waiting on Kent 41 (`subpixel_edges_min_px_per_mm`) as it stood after the fourth pass
+
+41. **`subpixel_edges_min_px_per_mm` — LEFT UNSET (Kent 2026-10-11); open: the
+   corner-run flip.** A floor under the native edge read clears Becker's
+   outline reversals at 1.8 px/mm (7.1 → 0.0 per 100 mm) but returns the
+   0.68 mm source-pixel staircase the 09-18 flip fixed (right-angle turns
+   26.5 → 81.3 per 100 mm), which the reversal count cannot see. The
+   reversals' own cure is BUILT OFF as `subpixel_corner_runs` (PR #834:
+   7.1 → 0.9 per 100 mm, turns 26.5 → 20.1, area 1); flipping it is his. *(measured
+   2026-10-11 — PRs #826, #834,
+   [`docs/subpixel-res-gate-2026-10-11.md`](docs/subpixel-res-gate-2026-10-11.md))*
+
+### Closed defect 54 in full (as of 2026-10-03)
+
+54. a ring that says a point TWICE running (handed over CLOSED: its first point again at the end) got a WEDGE from the BROWSER builder's `offsetRing` — FIXED 2026-10-03 (`distinctCorners`, `digitize.js`: the corners said once are what `offsetRing` moves and what `isConvexRing` reads). The repeat is an edge of no length; its two ends were each moved along one neighbour's normal, the first by three times the distance. Under a preset the fill is sewn to the moved rings, so the wedge was sewn: a 40 mm box on terry was filled 1.8 mm outside the drawing at its first corner, where 0.6 is right; a closed hole and a closed island the same, and with `fillColumns` the edge run. **Exported stitches change for a ring that says a point twice, under a preset or with `fillColumns`, and for no other** (4,536 outputs on rings that do not: identical). **No Studio lane hands over an EXACT repeat**: none in 24,985 rings from basic shapes, the image lane and trace import, and a hand-drawn one is refused as crossing itself. `parseSVG` and `fonts.js` do hand them over, and nothing in the Studio calls either. **A NEAR repeat is another matter and was in the Studio's reach: defect 55 (its gesture cured, its offset open).** Older than every flag. Left: the auto angle, a satin shape's centre run, the edge run drawn toward the centroid and the order of a colour's shapes are read off the POINTS, so a closed ring's underlay still differs. Independently audited: the fix held, five sentences of its record did not and are corrected. `tools/closed-ring-census.mjs`, `test/digitize.test.js`. Full text: scope-history 10-03.
