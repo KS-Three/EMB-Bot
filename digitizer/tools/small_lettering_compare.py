@@ -23,6 +23,8 @@ Fixtures: the Studio request of `fremont_triage.studio_request` (Hat) at 81 mm
     both073   true + skeleton ON, floor 0.73 (bean letters are tried first,
               so the skeleton run only sees what they decline)
     both100   true + skeleton ON, floor 1.0
+    switch    small_text_true_size ON: the true values behind one switch,
+              bean stroke 0.5 (THE at 92.5 mm sews as a centre line)
 
 Per word (EST, 1895, THE, the EAT | STAY | PLAY tagline), per arm, from
 `glyph_legibility.read_case` (the repo's per-glyph shape read of the sewn
@@ -97,6 +99,9 @@ ARMS = {
     "true": (dict(TRUE_SIZE), "true size: restore 3.0, bean 0.4 / pitch 0.45 / serif 0.45"),
     "both073": ({**TRUE_SIZE, **SKELETON, **FLOOR_073}, "true size + skeleton, floor 0.73 mm"),
     "both100": ({**TRUE_SIZE, **SKELETON}, "true size + skeleton, floor 1.0 mm"),
+    # cfg.small_text_true_size: the four true-size values behind one switch,
+    # bean stroke 0.5 (Kent 2026-10-14: THE as a centre line is fine).
+    "switch": ({"small_text_true_size": True}, "small_text_true_size ON (bean 0.5)"),
 }
 ARM_ORDER = list(ARMS)
 

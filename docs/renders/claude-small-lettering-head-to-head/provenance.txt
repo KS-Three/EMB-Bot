@@ -4,3 +4,4 @@ Sheets are renders of EMB-Bot's own stitch output (stitchviz, thread at its laid
 The pro's Hotel Fremont files are read from the committed 'Embroidery Files.zip' (already public); they are scored, not rendered, and none of their stitches are copied here.
 cells/*.json: saved per-arm tables. Re-print: python -m tools.small_lettering_compare --table --out docs/renders/claude-small-lettering-head-to-head/cells
 Measured on origin/main: main at 1467d2f4 (the skeleton and true-size options are off in it; later merges are gated on them); true at cc7cab97 (after #931, #933 and the serif guard); sk073, sk100, both073 and both100 at bdca6fd6 (after #936, which extends the skeleton run to EST and 1895).
+switch at 96d57a2c+ (branch claude/small-text-switch, 2026-10-14): small_text_true_size ON = restore 3.0, bean stroke 0.5, pitch 0.45, serif 0.45, shortest free arm 0.3.

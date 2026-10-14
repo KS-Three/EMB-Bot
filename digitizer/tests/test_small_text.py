@@ -376,3 +376,44 @@ def test_serif_trim_never_cuts_where_strokes_meet():
     hooked = [(1.5, 0.3), (1.5, 0.0), waist_r]
     out = trim_serif_hooks([top, bottom, bar, hooked], 0.45)
     assert out[:3] == [top, bottom, bar] and out[3][0] != hooked[0]
+
+
+def test_one_switch_fills_the_four_values_and_explicit_ones_win():
+    from dataclasses import replace
+
+    from digitizer_core.config import SMALL_TEXT_TRUE_SIZE
+
+    off = PipelineConfig()
+    assert off.small_text_true_size is False
+    assert all(getattr(off, k) is None for k in SMALL_TEXT_TRUE_SIZE)
+    on = PipelineConfig(small_text_true_size=True)
+    assert {k: getattr(on, k) for k in SMALL_TEXT_TRUE_SIZE} == SMALL_TEXT_TRUE_SIZE
+    mixed = PipelineConfig(small_text_true_size=True, bean_letter_max_stroke_mm=0.4)
+    assert mixed.bean_letter_max_stroke_mm == 0.4 and mixed.small_text_restore_mm == 3.0
+    # replace() re-runs __post_init__ and keeps what is already set
+    assert replace(on, target_width_mm=81.0).bean_letter_stitch_mm == 0.45
+
+
+def test_min_arm_none_is_byte_identical_and_a_shorter_floor_keeps_a_1s_flag_and_foot():
+    from digitizer_core.stage6_beanletter import bean_letter
+
+    # Fremont's 1 at 81 mm: stem 1.24, flag 0.44, foot halves 0.41 and 0.39,
+    # each short arm meeting the stem.
+    stem = [(0.0, 0.0), (0.0, 1.24)]
+    flag = [(0.0, 0.0), (-0.31, 0.31)]
+    foot_l = [(0.0, 1.24), (-0.41, 1.24)]
+    foot_r = [(0.0, 1.24), (0.39, 1.24)]
+    spines = [stem, flag, foot_l, foot_r]
+    a, ra = bean_letter(spines, "S", entry=None, trim_at_mm=3.0, stitch_mm=0.45)
+    b, _ = bean_letter(spines, "S", entry=None, trim_at_mm=3.0, stitch_mm=0.45, min_arm_mm=None)
+    assert [r.points for r in a] == [r.points for r in b]
+    assert ra["strokes"] == 1, "at the 0.45 pitch only the stem sews: a bare stick"
+    _, rc = bean_letter(spines, "S", entry=None, trim_at_mm=3.0, stitch_mm=0.45, min_arm_mm=0.3)
+    assert rc["strokes"] == 4
+    # ...but a short link between two junctions (an 8's waist) still needs the pitch.
+    top = [(0.0, 0.0), (-0.2, -0.6), (0.2, -1.0), (0.6, -0.6), (0.35, 0.0)]
+    bottom = [(0.0, 0.0), (-0.3, 0.6), (0.2, 1.0), (0.7, 0.6), (0.35, 0.0)]
+    waist = [(0.0, 0.0), (0.35, 0.0)]
+    _, rw = bean_letter([top, bottom, waist], "S", entry=None, trim_at_mm=3.0,
+                        stitch_mm=0.45, min_arm_mm=0.3)
+    assert rw["strokes"] == 2
