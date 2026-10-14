@@ -376,3 +376,19 @@ def test_serif_trim_never_cuts_where_strokes_meet():
     hooked = [(1.5, 0.3), (1.5, 0.0), waist_r]
     out = trim_serif_hooks([top, bottom, bar, hooked], 0.45)
     assert out[:3] == [top, bottom, bar] and out[3][0] != hooked[0]
+
+
+def test_one_switch_fills_the_four_values_and_explicit_ones_win():
+    from dataclasses import replace
+
+    from digitizer_core.config import SMALL_TEXT_TRUE_SIZE
+
+    off = PipelineConfig()
+    assert off.small_text_true_size is False
+    assert all(getattr(off, k) is None for k in SMALL_TEXT_TRUE_SIZE)
+    on = PipelineConfig(small_text_true_size=True)
+    assert {k: getattr(on, k) for k in SMALL_TEXT_TRUE_SIZE} == SMALL_TEXT_TRUE_SIZE
+    mixed = PipelineConfig(small_text_true_size=True, bean_letter_max_stroke_mm=0.4)
+    assert mixed.bean_letter_max_stroke_mm == 0.4 and mixed.small_text_restore_mm == 3.0
+    # replace() re-runs __post_init__ and keeps what is already set
+    assert replace(on, target_width_mm=81.0).bean_letter_stitch_mm == 0.45
