@@ -704,6 +704,13 @@ def vectorize(
                 holes.append(ring)
             elif record_counters:
                 if small_print:
+                    # `cfg.small_print_floor`: the counter's own ring, not
+                    # Douglas-Peucker's. A chord of a convex hole lies INSIDE
+                    # the hole, so at the work grid's eps a half-millimetre
+                    # counter came back a triangle or a quad a third
+                    # smaller (the synthetic 0's two counters at a 3 mm
+                    # cap: 0.435 mm2 recorded against 0.64 in the source),
+                    # and every hold downstream was measured from that.
                     ring = _to_mm(hole_src.reshape(-1, 2), cx, cy, p.px_per_mm)
                 small_counters.append(ring)
 

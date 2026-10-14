@@ -814,6 +814,9 @@ def _narrow_bars(counters, grown, thin_out, clear_mm: float, bar_mm: float, ink)
             if core.is_empty:
                 continue
             whole = core.buffer(clear_mm).intersection(ink)     # today's keep
+            if counters[i].distance(counters[j]) <= bar_mm + 1e-9:
+                parts.append(whole)         # no wider than a row: kept whole
+                continue
             # the band |d_i - d_j| <= bar_mm about the bar's middle: the
             # union, over a ladder of distances s, of the points within
             # bar_mm / 2 of s from both counters
