@@ -85,7 +85,8 @@ def test_the_arm_flags_are_pinned():
     card; an arm changes only what it names."""
     pins = v31.PINS
     for key in ("lettering_columns_square_ends", "lettering_columns_inside_connectors",
-                "small_lettering_skeleton", "small_glyph_keep", "lettering_words", "lettering_word_tiers"):
+                "small_lettering_skeleton", "small_glyph_keep", "lettering_words", "lettering_word_tiers",
+                "small_text_true_size"):
         assert pins[key] is False, key
     for key in ("small_lettering_skeleton_floor_mm", "small_text_cap_mm", "small_text_restore_mm",
                 "bean_letter_max_stroke_mm", "bean_letter_stitch_mm"):      # #909 and #911 OFF

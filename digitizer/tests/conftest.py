@@ -441,4 +441,12 @@ PRE_FLIP["lettering_columns_inside_connectors"] = False
 # `test_revalidate_small_shapes` prices that flag against ("16 -> 16 cones").
 # The test that is ABOUT the keep is `tests/test_small_glyph_keep.py`.
 PRE_FLIP["small_glyph_keep"] = False
+# `small_text_true_size` joined the flipped set 2026-10-14 (Kent, WoK 56
+# option A, after PR #948's drone fix), for the reason every entry above
+# gives. ON, small lettering is re-traced at its true size and thin letters
+# sew as bean centrelines (`config.SMALL_TEXT_TRUE_SIZE`), which moves the
+# stitches, trims and tiers of every fixture with lettering under 3 mm caps.
+# The tests ABOUT it are `tests/test_small_text.py`,
+# `tests/test_bean_letters_pipeline.py` and `tests/test_bean_ink_shape_gate.py`.
+PRE_FLIP["small_text_true_size"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

@@ -49,9 +49,11 @@ WEIGHTS = (40, 60)
 FIXTURES = ("synthetic", "fremont_tagline")
 
 # The neighbouring flags this census holds at their shipped defaults. Printed
-# with every run so a table says which engine it was measured on.
+# with every run so a table says which engine it was measured on. True size
+# (`small_text_true_size`, restore 3.0) is ON since 2026-10-14; a census
+# table printed before that day was measured with it OFF.
 PINNED = {"small_glyph_keep": True, "small_lettering_skeleton": False,
-          "small_text_cap_mm": None, "small_text_restore_mm": None}
+          "small_text_cap_mm": None, "small_text_true_size": True, "small_text_restore_mm": 3.0}
 
 MIN_COLUMN_CROSSES = 5
 

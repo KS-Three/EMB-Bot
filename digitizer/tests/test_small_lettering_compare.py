@@ -38,18 +38,22 @@ def test_arms_are_valid_config_and_carry_the_values_the_scope_names():
     assert slc.ARM_ORDER == ["main", "sk073", "sk100", "true", "both073", "both100", "switch"]
     for name, (overrides, _label) in slc.ARMS.items():
         PipelineConfig(**overrides)                 # every key is a real field, every value accepted
-    assert slc.ARMS["main"][0] == {}
+    # the switch is ON by default since 2026-10-14: main is the pre-flip engine
+    assert slc.OFF == {"small_text_true_size": False}
+    assert slc.ARMS["main"][0] == slc.OFF
     # #911 + #914, MASTER_SCOPE 56: restore 3.0, bean 0.4, pitch 0.45, serif 0.45
     assert slc.TRUE_SIZE == {"small_text_restore_mm": 3.0, "bean_letter_max_stroke_mm": 0.4,
                              "bean_letter_stitch_mm": 0.45, "bean_letter_serif_mm": 0.45}
-    assert slc.ARMS["sk073"][0] == {"small_lettering_skeleton": True,
+    assert slc.ARMS["sk073"][0] == {**slc.OFF, "small_lettering_skeleton": True,
                                     "small_lettering_skeleton_floor_mm": 0.73}
-    assert slc.ARMS["sk100"][0] == {"small_lettering_skeleton": True}      # the default floor
+    assert slc.ARMS["sk100"][0] == {**slc.OFF, "small_lettering_skeleton": True}   # the default floor
     # the small-glyph second try (#936) is the config's own default, not an arm setting
     assert "small_lettering_skeleton_small_floor_mm" not in slc.ARMS["sk073"][0]
-    assert slc.ARMS["true"][0] == slc.TRUE_SIZE
+    assert slc.ARMS["true"][0] == {**slc.OFF, **slc.TRUE_SIZE}
     assert slc.ARMS["both073"][0] == {**slc.TRUE_SIZE, **slc.ARMS["sk073"][0]}
     assert slc.ARMS["both100"][0] == {**slc.TRUE_SIZE, **slc.ARMS["sk100"][0]}
+    # the switch arm is the shipped default
+    assert PipelineConfig(**slc.ARMS["switch"][0]) == PipelineConfig()
     assert slc.FIXTURES == {"hat81": 81.0, "hat925": 92.5}
     # the one switch fills the true-size values, bean stroke raised to 0.5
     sw = PipelineConfig(**slc.ARMS["switch"][0])
@@ -58,12 +62,12 @@ def test_arms_are_valid_config_and_carry_the_values_the_scope_names():
 
 
 def test_the_arms_change_only_the_two_options_and_nothing_else():
-    base = PipelineConfig()
+    base = PipelineConfig(**slc.ARMS["main"][0])
     keys = {"small_lettering_skeleton", "small_lettering_skeleton_floor_mm", *slc.TRUE_SIZE,
             "small_text_true_size"}
     for name, (overrides, _l) in slc.ARMS.items():
         assert set(overrides) <= keys, name
-    # the options themselves are OFF in the config the arms start from
+    # the options themselves are OFF in the main arm every other arm is priced against
     assert not base.small_lettering_skeleton and base.small_text_restore_mm is None
     assert base.bean_letter_max_stroke_mm is None
 
@@ -188,7 +192,7 @@ def test_corpus_designs_are_the_nine_logos_the_hat_renders_and_the_small_print_s
     from tools import glyph_legibility as gl
     for case in slc.LEGIBILITY_CASE.values():
         assert case in gl.CASES
-    assert slc.CORPUS_ARMS == ["main", "true", "sk073"]
+    assert slc.CORPUS_ARMS == ["main", "true", "sk073", "switch"]
     assert all(a in slc.ARMS for a in slc.CORPUS_ARMS)
 
 

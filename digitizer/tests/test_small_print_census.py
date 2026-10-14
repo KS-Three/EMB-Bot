@@ -33,7 +33,8 @@ TESTDATA = Path(__file__).resolve().parents[1] / "testdata"
 def test_the_neighbouring_flags_sit_at_their_shipped_defaults():
     cfg = PipelineConfig()
     assert census.PINNED == {"small_glyph_keep": True, "small_lettering_skeleton": False,
-                             "small_text_cap_mm": None, "small_text_restore_mm": None}
+                             "small_text_cap_mm": None, "small_text_true_size": True,
+                             "small_text_restore_mm": 3.0}
     for k, v in census.PINNED.items():
         assert getattr(cfg, k) == v, k
     assert cfg.small_print_floor is False and cfg.thread_wt == 40

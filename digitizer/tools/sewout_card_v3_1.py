@@ -95,6 +95,8 @@ PINS = {
     "small_lettering_skeleton": False,
     "small_lettering_skeleton_floor_mm": None,   # None = machine.MIN_STITCH_MM, 1.0 mm
     "small_text_cap_mm": None,                   # #909, OFF
+    # ON by default since 2026-10-14; while it is ON a None below is refilled
+    "small_text_true_size": False,
     "small_text_restore_mm": None,               # #911, OFF
     "bean_letter_max_stroke_mm": None,           # #911's companions, OFF
     "bean_letter_stitch_mm": None,

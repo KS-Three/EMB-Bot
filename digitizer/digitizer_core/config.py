@@ -2533,7 +2533,19 @@ class PipelineConfig:
     # cleanly at 80 mm. Under 1.5 mm caps the text tagger finds nothing to act
     # on. Head to head: docs/renders/claude-small-lettering-head-to-head. Unsewn;
     # every value is a CANDIDATE (gate 1). False is byte-identical.
-    small_text_true_size: bool = False
+    #
+    # ON by default since 2026-10-14 (Kent, WoK 56 option A: "fix the drone
+    # bean miss, THEN flip true size ON"; the drone fix is PR #948's
+    # `beanletters.INK_SHAPE_MAX_RATIO`, itself a gate-1 candidate that now
+    # runs by default). The pre-flip engine is `small_text_true_size=False`
+    # (`tests/conftest.py`, PRE_FLIP); `setattr(cfg, "small_text_true_size",
+    # False)` also clears what the switch filled. TRAP: `replace(cfg,
+    # small_text_true_size=False)` on a cfg built ON keeps the six filled
+    # values (replace passes them as explicit) -- build a fresh
+    # `PipelineConfig(..., small_text_true_size=False)` for the OFF engine.
+    # And `None` for one of the six no longer means "off" while the switch is
+    # ON: it is refilled.
+    small_text_true_size: bool = True
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
@@ -4448,12 +4460,29 @@ class PipelineConfig:
     chain_links: bool = False
 
     def __post_init__(self) -> None:
+        self._fill_true_size()
+
+    def _fill_true_size(self) -> None:
+        # Records which of the six the switch filled (not a field: no repr, eq
+        # or replace() sees it), so that turning the switch OFF by setattr --
+        # the way `flagcost.py` and `parity_config(**extra)` build an off arm
+        # -- clears exactly those and leaves an explicit value alone.
+        filled = []
         if self.small_text_true_size:
             for name, value in SMALL_TEXT_TRUE_SIZE.items():
                 if getattr(self, name) is None:
                     object.__setattr__(self, name, value)
+                    filled.append(name)
+        object.__setattr__(self, "_true_size_filled", tuple(filled))
 
     def __setattr__(self, name: str, value) -> None:
+        if name == "small_text_true_size" and "_true_size_filled" in self.__dict__:
+            for n in self._true_size_filled:
+                if getattr(self, n) == SMALL_TEXT_TRUE_SIZE[n]:
+                    object.__setattr__(self, n, None)
+            object.__setattr__(self, name, value)
+            self._fill_true_size()
+            return
         # `coverage_edges` is DEPRECATED (Kent 2026-10-12: no; PRs #818, #824,
         # #841 — see the field's comment). Setting it True, in the constructor
         # or later, warns once and otherwise behaves exactly as before.
