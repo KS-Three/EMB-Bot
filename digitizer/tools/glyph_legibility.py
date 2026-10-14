@@ -73,7 +73,29 @@ permutation p say so). Ground-coloured thread sewn OVER ink is not seen as
 hiding it. The ground colour is the mode colour of the ring around the word
 box.
 
+Pull-aware reading (`--pull-mm`). The thread render lays the engine's pull
+compensation (0.4 mm a side on a structured cap) as thread, and a render has no
+fabric to take it back: a bay 1.0 mm wide in the artwork reads closed by
+thread that, on a cap, would have been drawn in by the pull. So FREMONT's E
+scores 0 on `counters` and the professional's own THE reads under Kent's red
+boxes. `--pull-mm P` erodes the thread mask by P mm a side before any glyph is
+read. A thin stroke has no push to take back, so a thread-wide line lying on
+the artwork's ink survives it; a line off the ink does not, and a gap in the
+thread too small to be a counter is closed first so erosion cannot grow it into
+one (`pull_erode`; `--pull-lines all|none` turn the first rule into its two
+edges). `--pull-mm 0` is the default and is today's
+output exactly. `--pull-mm auto` reads the pull from the design: a Design that
+declares `pull_comp_mm` (or `pull_mm`, or `fabric.pull_comp_mm`) is believed;
+a stitch file or a Design that does not (every one the engine writes today, and
+every professional's file) has it ESTIMATED from the stitches, as the median
+excess of the sewn stroke width over the artwork's, per side, over every
+glyph of the case, capped at `PULL_AUTO_MAX_MM`. The estimate is one number per
+design, never per word, so a word cannot excuse itself; it is printed beside
+every row. It is a way of reading a render as if the cloth had pulled, not a
+measurement of any cloth (ROADMAP gate 1: no sew-out has set a pull).
+
     .venv/Scripts/python -m tools.glyph_legibility --case fremont --design D.json   # a Design json, or a .pes/.dst
+    .venv/Scripts/python -m tools.glyph_legibility --case fremont --design D.json --pull-mm auto
     .venv/Scripts/python -m tools.glyph_legibility --list
     .venv/Scripts/python -m tools.glyph_legibility --validate DIR --renders RENDER_DIR --json out.json
     # DIR holds <run>.json (a Design) or <run>.pes for each run in RUNS; --make DIR writes
@@ -109,6 +131,10 @@ GROUND_DIST = 60.0          # a thread this far (RGB) from the ground is ink
 MIN_HOLE_DIAM_THREADS = 0.5  # a counter counts when a circle of this x thread fits in it
 OCR_CONF_MIN = 60.0         # source read below this is no truth to compare to
 OCR_MAX_GLYPH_MM2 = 150.0   # a component bigger than any single letter here is merged letters
+PULL_LINES = "ink"          # what the pull leaves of a thread-wide line: "ink" = the ones lying on the
+                            # artwork's ink, "all", or "none" (a plain erosion); `--pull-lines`
+PULL_AUTO_MAX_MM = 0.60     # `--pull-mm auto` never estimates more than this a side (the repo's
+                            # largest fabric pull is 0.6, terry; a hat is 0.4)
 
 # Kent's seven circles and the Fremont words, as boxes in FRACTIONS of the
 # artwork (x0, y0, x1, y1), the same boxes `tools/fremont_triage.ROIS` uses
@@ -258,6 +284,81 @@ def design_from_pes(path, flip_y: bool = True) -> dict:
     if not colors:
         colors = [{"r": 0, "g": 0, "b": 0}]
     return {"stitches": recs, "colors": colors}
+
+
+# --- pull ---------------------------------------------------------------------
+
+def declared_pull_mm(design: dict) -> float | None:
+    """The pull a Design says it was digitized for, or None. Looks for
+    `pull_comp_mm`, `pull_mm`, then `fabric.pull_comp_mm`. No Design the engine
+    writes today carries any of these (`adapter.plan_to_design` keeps the runs,
+    not the fabric), and a professional's file never does."""
+    for key in ("pull_comp_mm", "pull_mm"):
+        v = design.get(key)
+        if isinstance(v, (int, float)) and math.isfinite(v):
+            return max(0.0, float(v))
+    fab = design.get("fabric")
+    if isinstance(fab, dict) and isinstance(fab.get("pull_comp_mm"), (int, float)):
+        return max(0.0, float(fab["pull_comp_mm"]))
+    return None
+
+
+def pull_erode(T: np.ndarray, pull_mm: float, thread_mm: float, px_per_mm: float = P,
+               ink: np.ndarray | None = None, lines: str | None = None) -> np.ndarray:
+    """The thread mask after the cloth takes `pull_mm` back on every side.
+    `pull_mm` <= 0 returns `T` itself, so the default is byte-for-byte today's
+    read.
+
+    Pull narrows what the engine pushed out: a satin column or a fill, wider
+    than a thread. It does not erase a thin stroke, which has no push to take
+    back (the tagline's 0.4 mm beans would vanish under a plain erosion and the
+    read would bill the letter for the cloth). So whatever the erosion removes
+    outright keeps its own medial axis, thickened to `thread_mm`, WHERE IT LIES
+    ON THE ARTWORK'S INK (`ink`, a mask of the source ink grown half a thread;
+    None keeps every such line). A thread-wide line off the ink, such as a run
+    across the mouth of a bay or down the open side of an E, is not a stroke of
+    the letter and the pull takes it with the rest. `lines` ("ink", "all",
+    "none"; default `PULL_LINES`) is that rule, or its two edges, for a
+    sensitivity run."""
+    lines = PULL_LINES if lines is None else lines
+    r = int(round(pull_mm * px_per_mm))
+    if r < 1 or not T.any():
+        return T
+    # An enclosed gap too small to be a counter (the read does not count a hole
+    # under MIN_HOLE_DIAM_THREADS of a thread across) is the render's own texture
+    # between rows of a satin column. Erosion would grow it into one, so it is
+    # closed first: the pull takes thread back from an EDGE, it does not part a
+    # column down the middle.
+    lab, n = ndi.label(ndi.binary_fill_holes(T) & ~T)
+    if n:
+        dt = ndi.distance_transform_edt(~T)
+        diam = 2.0 * np.asarray(ndi.maximum(dt, lab, range(1, n + 1))) / px_per_mm
+        small = np.zeros(n + 1, bool)
+        small[1:] = diam < MIN_HOLE_DIAM_THREADS * thread_mm
+        if small.any():
+            T = T | small[lab]
+    eroded = cv2.erode(T.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1,) * 2)) > 0
+    rt = max(1, int(round(thread_mm / 2.0 * px_per_mm)))
+    line = cv2.dilate(skeletonize(T).astype(np.uint8),
+                      cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * rt + 1,) * 2)) > 0
+    if lines == "none":
+        return eroded
+    keep = line & T
+    if lines == "ink" and ink is not None:
+        keep &= ink
+    return eroded | keep
+
+
+def estimate_pull_mm(words: list["WordResult"]) -> float:
+    """A pull for a design that does not declare one: per side, the median
+    excess of the sewn stroke width over the artwork's, across every glyph read at pull 0 (glyphs with no thread are left out),
+    clipped to [0, PULL_AUTO_MAX_MM]. The push compensation of a satin column
+    is added on both rails, so excess/2 is what each side owes the cloth."""
+    ex = [(g["stroke_w_sewn_mm"] - g["stroke_w_src_mm"]) / 2.0
+          for w in words for g in w.glyphs if g["stroke_w_sewn_mm"] > 0 and g["stroke_w_src_mm"] > 0]
+    if not ex:
+        return 0.0
+    return round(float(min(PULL_AUTO_MAX_MM, max(0.0, np.median(ex)))), 3)
 
 
 # --- registration -------------------------------------------------------------
@@ -533,6 +634,7 @@ class WordResult:
     registration: dict = field(default_factory=dict)
     ocr: object = "OCR UNAVAILABLE"
     ground: list = field(default_factory=list)
+    pull_mm: float = 0.0
 
     def summary(self) -> dict:
         g = self.glyphs
@@ -604,9 +706,12 @@ def _best_shift(S: np.ndarray, T: np.ndarray, bb, R: int, px_per_mm: float):
 def read_word(name: str, rgb: np.ndarray, alpha: np.ndarray, box_frac, design: dict,
               thread_mm: float | None = None, use_ocr: bool = True,
               reg: Registration | None = None, thread_cache: dict | None = None,
-              keep_frac=None, ground_interior: bool = False) -> tuple[WordResult, dict]:
+              keep_frac=None, ground_interior: bool = False,
+              pull_mm: float = 0.0) -> tuple[WordResult, dict]:
     """Score every glyph of one labelled word. `keep_frac`: the labelled
     letters' boxes (fractions of the artwork), to read only those components.
+    `pull_mm`: the pull the cloth takes back on each side, eroded off the
+    thread before any glyph is read (0 = the render as it is).
     -> (WordResult, debug arrays for the panel renderer)."""
     from digitizer_core import stitchviz
     thread_mm = stitchviz.THREAD_MM if thread_mm is None else thread_mm
@@ -632,13 +737,18 @@ def read_word(name: str, rgb: np.ndarray, alpha: np.ndarray, box_frac, design: d
     box_mask[max(0, gbox[1]):gbox[3], max(0, gbox[0]):gbox[2]] = True
     S_all = (soft_w >= 0.5) & box_mask
     T_all = thread_f >= 0.5
+    if pull_mm > 0:
+        rt = max(1, int(round(thread_mm / 2.0 * P)))
+        near_ink = cv2.dilate((soft_w >= 0.5).astype(np.uint8),
+                              cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * rt + 1,) * 2)) > 0
+        T_all = pull_erode(T_all, pull_mm, thread_mm, P, near_ink)
     keep_px = None
     if keep_frac:
         keep_px = []
         for (kx0, ky0, kx1, ky1) in keep_frac:
             keep_px.append(reg.apply_box(kx0 * w, ky0 * h, kx1 * w, ky1 * h))
     lab, glyphs = _label_glyphs(S_all, gbox, P, keep_px)
-    res = WordResult(name=name, ground=[int(v) for v in G],
+    res = WordResult(name=name, ground=[int(v) for v in G], pull_mm=round(float(pull_mm), 3),
                      registration={"scale_mm_per_src_px": round(reg.mm_per_src_px, 6),
                                    "ncc": round(reg.score, 3)})
     dbg = {"S": S_all, "T": T_all, "box": gbox, "glyphs": []}
@@ -833,20 +943,25 @@ def case_boxes(case: str) -> dict:
 
 
 def read_case(case: str, design: dict, thread_mm: float | None = None,
-              use_ocr: bool = True, words: list[str] | None = None):
-    """Score every labelled word of `case` in `design`.
-    -> ([WordResult], {word: debug}, Registration)."""
+              use_ocr: bool = True, words: list[str] | None = None,
+              pull_mm: float | str = 0.0):
+    """Score every labelled word of `case` in `design`. `pull_mm`: see
+    `read_arrays`. -> ([WordResult], {word: debug}, Registration)."""
     spec = CASES[case]
     rgb, alpha = load_source(ROOT / "testdata" / spec["source"])
     return read_arrays(rgb, alpha, case_boxes(case), design, thread_mm, use_ocr, words,
-                       ground_interior=bool(spec.get("ground_interior")))
+                       ground_interior=bool(spec.get("ground_interior")), pull_mm=pull_mm)
 
 
 def read_arrays(rgb: np.ndarray, alpha: np.ndarray, boxes: dict, design: dict,
                 thread_mm: float | None = None, use_ocr: bool = True,
-                words: list[str] | None = None, ground_interior: bool = False):
+                words: list[str] | None = None, ground_interior: bool = False,
+                pull_mm: float | str = 0.0):
     """`read_case` on an artwork already in memory (the tests' synthetic
-    glyphs come in here)."""
+    glyphs come in here). `pull_mm`: a number of mm a side to erode off the
+    thread (0, the default, reads the render as it is), or "auto": the pull
+    the Design declares, else the estimate `estimate_pull_mm` makes from a first
+    read of this same case at pull 0."""
     from digitizer_core import stitchviz
     thread_mm = stitchviz.THREAD_MM if thread_mm is None else thread_mm
     cache: dict = {}
@@ -854,17 +969,28 @@ def read_arrays(rgb: np.ndarray, alpha: np.ndarray, boxes: dict, design: dict,
     cache[tuple(np.round(ground / 8))] = thread_ink(design, ground, P, thread_mm)
     soft_all, _ = soft_ink(rgb, alpha, ground)
     reg = register(soft_all, cache[tuple(np.round(ground / 8))][0])
-    out, dbg = [], {}
-    for name, box in boxes.items():
-        if words and name not in words:
-            continue
-        keep = None
-        if isinstance(box, dict):
-            box, keep = box["box"], box["keep"]
-        r, d = read_word(name, rgb, alpha, box, design, thread_mm, use_ocr, reg, cache, keep,
-                         ground_interior)
-        out.append(r)
-        dbg[name] = d
+    def one_pass(pull, ocr):
+        out, dbg = [], {}
+        for name, box in boxes.items():
+            if words and name not in words:
+                continue
+            keep = None
+            if isinstance(box, dict):
+                box, keep = box["box"], box["keep"]
+            r, d = read_word(name, rgb, alpha, box, design, thread_mm, ocr, reg, cache, keep,
+                             ground_interior, pull)
+            out.append(r)
+            dbg[name] = d
+        return out, dbg
+
+    if isinstance(pull_mm, str):
+        if pull_mm != "auto":
+            raise ValueError(f"pull_mm must be a number or 'auto', not {pull_mm!r}")
+        declared = declared_pull_mm(design)
+        # a first look at pull 0 (no OCR: it only measures stroke widths) when the
+        # design does not say
+        pull_mm = declared if declared is not None else estimate_pull_mm(one_pass(0.0, False)[0])
+    out, dbg = one_pass(float(pull_mm), use_ocr)
     return out, dbg, reg
 
 
@@ -1059,7 +1185,7 @@ def table(runs: dict[str, list[WordResult]]) -> str:
             lines.append(f"{run:18} {w.name:17} {s['glyphs']:3d} {s['legibility']:6.3f} {s['legibility_space']:6.3f} {s['worst_glyph']:6.3f} "
                          f"{s['strokes']:6.3f} {s['clean']:6.3f} {s['counters']:6.3f} {s['space']:6.3f} "
                          f"{s['iou']:6.3f} {s['euler_match']:>6} {s['stray_mm2']:6.2f} {s['max_offset_mm']:6.2f}  {ocr}"
-                         f"{'  <' + lab + '>' if lab else ''}")
+                         f"{'  <' + lab + '>' if lab else ''}{'  [pull ' + format(w.pull_mm, '.2f') + ' mm]' if w.pull_mm else ''}")
     return "\n".join(lines)
 
 
@@ -1072,7 +1198,8 @@ def _design_path(d: Path, run: str) -> Path | None:
 
 
 def run_validation(src_dir: Path, renders: Path | None, json_out: Path | None,
-                   thread_mm: float | None, use_ocr: bool = True) -> int:
+                   thread_mm: float | None, use_ocr: bool = True,
+                   pull_mm: float | str = 0.0) -> int:
     results: dict[str, list[WordResult]] = {}
     dbgs: dict = {}
     regs: dict = {}
@@ -1082,9 +1209,10 @@ def run_validation(src_dir: Path, renders: Path | None, json_out: Path | None,
         if p is None:
             missing.append(run)
             continue
-        words, dbg, reg = read_case(spec["case"], load_design(p), thread_mm, use_ocr)
+        words, dbg, reg = read_case(spec["case"], load_design(p), thread_mm, use_ocr, pull_mm=pull_mm)
         results[run], dbgs[run] = words, dbg
-        regs[run] = {"scale_mm_per_src_px": round(reg.mm_per_src_px, 6), "ncc": round(reg.score, 3)}
+        regs[run] = {"scale_mm_per_src_px": round(reg.mm_per_src_px, 6), "ncc": round(reg.score, 3),
+                     "pull_mm": words[0].pull_mm if words else 0.0}
     print(table(results))
     if missing:
         print("\nMISSING RUNS (not scored): " + ", ".join(missing))
@@ -1094,7 +1222,7 @@ def run_validation(src_dir: Path, renders: Path | None, json_out: Path | None,
         print("\nOCR UNAVAILABLE: the tesseract binary is not on PATH; the geometric number stands alone.")
     if json_out:
         json_out.write_text(json.dumps({
-            "thread_mm": thread_mm, "ocr": "available" if tesseract_available() and use_ocr else "OCR UNAVAILABLE",
+            "thread_mm": thread_mm, "pull_mm_arg": pull_mm, "ocr": "available" if tesseract_available() and use_ocr else "OCR UNAVAILABLE",
             "missing_runs": missing, "registrations": regs, "statistics": stats,
             "runs": {r: [{**w.summary(), "glyph_rows": w.glyphs} for w in ws] for r, ws in results.items()}},
             indent=1))
@@ -1124,12 +1252,27 @@ def main(argv=None) -> int:
     ap.add_argument("--write-truth-boxes", action="store_true",
                     help="with --truth-boxes: pin the result into testdata/lettering_truth_boxes.json")
     ap.add_argument("--thread-mm", type=float, default=None)
+    ap.add_argument("--pull-mm", default="0", metavar="MM|auto",
+                    help="erode the thread by this much a side before reading (the cloth's pull); "
+                         "'auto' = the pull the Design declares, else estimated from its stitches. "
+                         "Default 0: the render as it is")
     ap.add_argument("--no-ocr", action="store_true")
+    ap.add_argument("--pull-lines", choices=("ink", "all", "none"), default=None,
+                    help="what --pull-mm leaves of a thread-wide line: those on the artwork's ink "
+                         "(default), all of them, or none (a plain erosion). Sensitivity runs")
     ap.add_argument("--space-keep-mm", type=float, default=None,
                     help="override SPACE_KEEP_HALF_MM (sensitivity runs)")
     ap.add_argument("--json", type=Path)
     ap.add_argument("--renders", type=Path)
     a = ap.parse_args(argv)
+    try:
+        a.pull_mm = "auto" if a.pull_mm == "auto" else float(a.pull_mm)
+    except ValueError:
+        ap.error("--pull-mm takes a number of mm or 'auto'")
+    if not (a.pull_mm == "auto" or 0.0 <= a.pull_mm <= 2.0):
+        ap.error("--pull-mm must be between 0 and 2 mm (a cap pulls 0.4)")
+    if a.pull_lines:
+        globals()["PULL_LINES"] = a.pull_lines
     if a.space_keep_mm is not None:
         globals()["SPACE_KEEP_HALF_MM"] = a.space_keep_mm
     if a.list:
@@ -1152,9 +1295,10 @@ def main(argv=None) -> int:
             print("wrote", a.make / f"ours_{name}.json")
         return 0
     if a.validate:
-        return run_validation(a.validate, a.renders, a.json, a.thread_mm, not a.no_ocr)
+        return run_validation(a.validate, a.renders, a.json, a.thread_mm, not a.no_ocr, a.pull_mm)
     if a.case and a.design:
-        words, dbg, reg = read_case(a.case, load_design(a.design), a.thread_mm, not a.no_ocr)
+        words, dbg, reg = read_case(a.case, load_design(a.design), a.thread_mm, not a.no_ocr,
+                                    pull_mm=a.pull_mm)
         print(table({"design": words}))
         if not tesseract_available():
             print("\nOCR UNAVAILABLE: the tesseract binary is not on PATH.")
