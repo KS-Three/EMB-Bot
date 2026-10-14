@@ -156,3 +156,84 @@ def test_saved_cells_reprint_without_digitizing(tmp_path):
     assert list(cells) == ["hat81__main"]
     assert "Hotel Fremont, Hat, 81 mm" in slc.table(cells)
     assert slc.main(["--table", "--out", str(tmp_path)]) == 0
+
+
+# --- the corpus mode (what the true-size arm costs outside Fremont) ------------------
+
+def _ccell(design, arm, st=1000, tr=10, md5="a", digests=None, au=0.0, bare=1.0, leg=None, ocr=(2, 4)):
+    words = {} if leg is None else {"w": {"legibility": leg, "ocr": {"recovered": ocr[0], "read": ocr[1],
+                                                                       "ci95": [0.1, 0.9]}}}
+    return {"design": design, "arm": arm, "stitches": st, "trims": tr, "md5": md5,
+            "shape_digests": digests or {"s1": "x", "s2": "y"}, "uncovered_total_mm2": au,
+            "bare_mm2": bare, "words": words}
+
+
+def test_corpus_designs_are_the_nine_logos_the_hat_renders_and_the_small_print_set():
+    specs = slc.corpus_designs()
+    names = list(specs)
+    logos = [n for n, s in specs.items() if s["kind"] == "logo"]
+    assert len(logos) == 9 and "thermal" not in logos           # the byte-duplicate runs once
+    assert {"becker", "tires", "enthusiast", "fremont", "bridge", "golden_tee", "gaulke", "drone",
+            "screenshot"} == set(logos)
+    assert names[9:11] == ["fremont_hat81", "fremont_hat925"]
+    assert [n for n in names if n.startswith("sp_")] == [
+        f"sp_{fx}_{c:g}" for fx in slc.SMALL_PRINT_CORPUS for c in slc.SMALL_PRINT_CAPS]
+    assert specs["fremont_hat925"]["width_mm"] == 92.5
+    assert specs["becker"]["cfg"]["max_colors"] == 6            # the Studio's six
+    from tools import glyph_legibility as gl
+    for case in slc.LEGIBILITY_CASE.values():
+        assert case in gl.CASES
+    assert slc.CORPUS_ARMS == ["main", "true", "sk073"]
+    assert all(a in slc.ARMS for a in slc.CORPUS_ARMS)
+
+
+def test_changed_shapes_counts_differing_added_and_retired_ids():
+    base = {"a": "1", "b": "2", "c": "3"}
+    assert slc.changed_shapes(base, dict(base)) == 0
+    assert slc.changed_shapes(base, {**base, "b": "9"}) == 1
+    assert slc.changed_shapes(base, {"a": "1", "b": "2", "d": "4"}) == 2       # c retired, d added
+
+
+def test_ocr_total_and_mean_legibility_skip_what_was_not_read():
+    words = {"a": {"legibility": 0.6, "ocr": {"recovered": 1, "read": 2}},
+             "b": {"legibility": 0.2, "ocr": {"recovered": None, "read": None}},
+             "c": {"legibility": None, "ocr": {"note": "OCR UNAVAILABLE"}}}
+    assert slc.ocr_total(words) == (1, 2)
+    assert slc.mean_legibility(words) == pytest.approx(0.4)
+    assert slc.mean_legibility({}) is None
+
+
+def test_corpus_tables_and_the_worst_line_per_arm():
+    cells = {"becker": {"main": _ccell("becker", "main", leg=0.6),
+                        "true": _ccell("becker", "true", st=1300, tr=12, md5="b", au=2.5, bare=3.0, leg=0.4,
+                                       digests={"s1": "x", "s2": "z"}),
+                        "sk073": _ccell("becker", "sk073", leg=0.6)},
+             "drone": {"main": _ccell("drone", "main"), "true": _ccell("drone", "true"),
+                       "sk073": _ccell("drone", "sk073", st=900, tr=8, md5="c")}}
+    rows = {(r["design"], r["arm"]): r for r in slc.corpus_deltas(cells)}
+    assert rows[("becker", "true")]["identical"] is False and rows[("becker", "true")]["changed"] == 1
+    assert rows[("becker", "true")]["d_au"] == 2.5 and rows[("becker", "true")]["d_trims"] == 2
+    assert rows[("becker", "true")]["d_leg"] == {"w": -0.2}
+    assert rows[("becker", "sk073")]["identical"] and rows[("drone", "true")]["identical"]
+    md = slc.corpus_table(cells)
+    assert "| becker | 1,000 / 10 | 1,300 / 12 | NO | 1 | +2.50 | +2.00 | 1,000 / 10 | yes | 0 | +0.00 | +0.00 |" in md
+    assert "| drone | 1,000 / 10 | 1,000 / 10 | yes | 0 |" in md
+    leg = slc.corpus_legibility_table(cells)
+    assert "| becker | true | 1 | 0.400 | w 0.400 | 2/4 [0.15-0.85] |" in leg
+    assert "drone" not in leg                                   # no case reads it
+    lines = slc.worst_regressions(cells)
+    assert lines[0].startswith("true size changed 1 of 2 designs")
+    assert "new uncovered artwork: worst +2.50 mm2 (becker)" in lines[0]
+    assert "legibility: worst -0.200 (becker w)" in lines[0]
+    assert lines[1].startswith("skeleton @ 0.73 changed 1 of 2 designs")
+    assert "new uncovered artwork: no increase anywhere" in lines[1]
+    assert "stitches: no increase anywhere" in lines[1]
+
+
+def test_saved_corpus_cells_reprint_without_digitizing(tmp_path, capsys):
+    for arm in slc.CORPUS_ARMS:
+        (tmp_path / f"corpus_becker__{arm}.json").write_text(json.dumps(_ccell("becker", arm)))
+    assert list(slc.load_cells(tmp_path)) == []                 # the Fremont loader leaves them alone
+    assert set(slc.load_corpus(tmp_path)["becker"]) == set(slc.CORPUS_ARMS)
+    assert slc.main(["--corpus-table", "--out", str(tmp_path)]) == 0
+    assert "| becker | 1,000 / 10 |" in capsys.readouterr().out
