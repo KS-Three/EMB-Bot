@@ -756,6 +756,12 @@
    "basis": "docs/renders/sewout-reader-2026-09-30 (dir name dated; inputs are the fixtures above)"
   },
   {
+   "prefix": "docs/renders/claude-sewout-card-v3-2/",
+   "status": "derived-render",
+   "source": "Thread renders of sew-out card v3.2 (tools/sewout_card_v3_2.py): stitches the engine sews for the Fremont, enthusiast, Becker and owl_kent fixtures already in digitizer/testdata, plus drawn labels; copies of the PNGs in docs/sewout/card-v3-2026-10-13/",
+   "basis": "docs/sewout/card-v3-2026-10-13/README-v3.2.md"
+  },
+  {
    "prefix": "docs/renders/slab-serifs-2026-10-07/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont",
