@@ -258,6 +258,18 @@ def covered_share(pts, zone) -> float:
     return float(np.mean(shapely.contains_xy(zone, x, y)))
 
 
+def line_tone_images(sp, cfg) -> dict[str, np.ndarray]:
+    """{polarity: L* image} of a line's own tone: the source's L* at its
+    extreme within the middle window `ridge_contrast` reads (half a laid
+    hairline run either side), min for a dark line, max for a light one --
+    so a one-pixel strand reads its own peak, not the ground beside it."""
+    light = _light(sp)
+    r = int(math.ceil(0.5 * machine.thread_profile(cfg.thread_wt).hairline_run_width_mm
+                      * sp.px_per_mm))
+    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1))
+    return {"dark": cv2.erode(light, k), "light": cv2.dilate(light, k)}
+
+
 def own_tone_share(pts, polarity: str, light: np.ndarray, sp, tree, region_l) -> float:
     """Share of the polyline `pts` lying on a shape whose thread does NOT
     stand out from the line by the tier's contrast floor in the line's own
@@ -265,8 +277,9 @@ def own_tone_share(pts, polarity: str, light: np.ndarray, sp, tree, region_l) ->
     lighter, a light one on a fill at most 12 darker). There the line's ink
     is already a shape of its own tone: drawn line art the tracer kept, not a
     strand the fills lost. A sample on no shape counts as standing out.
-    `tree` holds the shapes' polygons in sew order (the LAST one containing a
-    sample is on top), `region_l` their threads' L*."""
+    `light` is the line's tone image (`line_tone_images[polarity]`), `tree`
+    the shapes' polygons in sew order (the LAST one containing a sample is
+    on top), `region_l` their threads' L*."""
     if len(pts) < 2:
         return 0.0
     x, y = _samples(pts)
@@ -303,13 +316,13 @@ def supplement_test(regions, walked: set, sp, cfg):
     tree = shapely.STRtree([r.polygon for r in regions])
     lab = _chart(cfg).lab
     region_l = np.array([float(lab[r.thread_index][0]) for r in regions], np.float64)
-    light = _light(sp)
+    tone = line_tone_images(sp, cfg) if regions else {}
 
     def refuse(s):
         if covered_share(s["pts"], zone) >= _SUPPLEMENT_COVERED_SHARE:
             return "refused_region"
-        if regions and own_tone_share(s["pts"], s["polarity"], light, sp, tree,
-                                      region_l) >= _SUPPLEMENT_COVERED_SHARE:
+        if regions and own_tone_share(s["pts"], s["polarity"], tone[s["polarity"]], sp,
+                                      tree, region_l) >= _SUPPLEMENT_COVERED_SHARE:
             return "refused_own_tone"
         return None
     return refuse
