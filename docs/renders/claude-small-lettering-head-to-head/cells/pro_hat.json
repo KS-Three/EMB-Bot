@@ -1,0 +1,93 @@
+{
+ "fixture": "pro_hat",
+ "arm": "pro_hat",
+ "label": "the pro's hat file (HOTEL FREMONT HAT.PES)",
+ "stitches": 17067,
+ "trims": 52,
+ "size_mm": [
+  92.6,
+  50.9
+ ],
+ "words": {
+  "est": {
+   "glyphs": 3,
+   "legibility": 0.742,
+   "legibility_space": 0.135,
+   "worst_glyph": 0.693,
+   "counters_open": [
+    0,
+    0
+   ],
+   "ocr": {
+    "recovered": 1,
+    "read": 2,
+    "ci95": [
+     0.095,
+     0.905
+    ]
+   },
+   "stitches": null,
+   "trims": null
+  },
+  "1895": {
+   "glyphs": 4,
+   "legibility": 0.333,
+   "legibility_space": 0.078,
+   "worst_glyph": 0.0,
+   "counters_open": [
+    0,
+    3
+   ],
+   "ocr": {
+    "recovered": 1,
+    "read": 4,
+    "ci95": [
+     0.046,
+     0.699
+    ]
+   },
+   "stitches": null,
+   "trims": null
+  },
+  "the": {
+   "glyphs": 3,
+   "legibility": 0.298,
+   "legibility_space": 0.08,
+   "worst_glyph": 0.0,
+   "counters_open": [
+    0,
+    0
+   ],
+   "ocr": {
+    "recovered": 3,
+    "read": 3,
+    "ci95": [
+     0.438,
+     1.0
+    ]
+   },
+   "stitches": null,
+   "trims": null
+  },
+  "tagline": {
+   "glyphs": 13,
+   "legibility": 0.503,
+   "legibility_space": 0.169,
+   "worst_glyph": 0.0,
+   "counters_open": [
+    0,
+    4
+   ],
+   "ocr": {
+    "recovered": 5,
+    "read": 11,
+    "ci95": [
+     0.213,
+     0.72
+    ]
+   },
+   "stitches": null,
+   "trims": null
+  }
+ }
+}
