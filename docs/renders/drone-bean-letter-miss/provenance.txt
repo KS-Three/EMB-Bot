@@ -1,0 +1,5 @@
+Renders made 2026-10-14 on branch claude/drone-bean-letter-miss from EMB-Bot's own stitch output (fremont_triage render: thread at its laid width), not photographs. Nothing was sewn.
+Input artwork already in the repo, no new image and no new client artwork: digitizer/testdata/photo/logo_drone_thermal_badge.png (drone corpus case) and the small-print census's Fremont tagline crop (digitizer/testdata/photo/logo_hotel_fremont.webp via tools/small_print.py).
+drone_before_after.png: main / true size before this fix / true size after / small_text_true_size ON after, 14 px/mm over the lettering.
+fremont_tagline_3mm_before_after.png: PR #944's --corpus-sheet over the tagline crop at 3 mm caps (main / true / switch / true before this fix).
+tables.txt: the 17-design corpus, every cell digitized on this branch (PR #944's --corpus mode plus switch / pre-fix arms).

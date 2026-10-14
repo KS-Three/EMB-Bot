@@ -1,0 +1,43 @@
+| design | main pin (944 md5 = now) | main st/tr | true size, before fix | true size, after fix | switch (#943), after fix |
+|---|---|---|---|---|---|
+| becker | same | 8,758/29 leg 0.913  | 8,758/29 (+0/+0) AU 6.6 (+0.0) bare +0.0 md5= bean 0 leg 0.913  | 8,758/29 (+0/+0) AU 6.6 (+0.0) bare +0.0 md5= bean 0 leg 0.913  | 8,758/29 (+0/+0) AU 6.6 (+0.0) bare +0.0 md5= bean 0 leg 0.913  |
+| tires | same | 2,732/8 leg -  | 2,732/8 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg -  | 2,732/8 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg -  | 2,732/8 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg -  |
+| enthusiast | same | 2,447/9 leg -  | 2,390/8 (-57/-1) AU 0.0 (+0.0) bare +0.1 22 sh bean 14 leg -  | 2,390/8 (-57/-1) AU 0.0 (+0.0) bare +0.1 22 sh bean 14 leg -  | 2,390/8 (-57/-1) AU 0.0 (+0.0) bare +0.1 22 sh bean 14 leg -  |
+| fremont | same | 20,952/61 leg 0.816  | 20,753/49 (-199/-12) AU 0.0 (+0.0) bare +0.0 110 sh bean 18 leg 0.985  | 20,753/49 (-199/-12) AU 0.0 (+0.0) bare +0.0 110 sh bean 18 leg 0.985  | 20,808/48 (-144/-13) AU 0.0 (+0.0) bare +0.0 74 sh bean 21 leg 0.931  |
+| bridge | same | 18,923/99 leg 0.480  | 18,923/99 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg 0.480  | 18,923/99 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg 0.480  | 18,923/99 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg 0.480  |
+| golden_tee | same | 8,412/45 leg -  | 8,412/45 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg -  | 8,412/45 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg -  | 8,412/45 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg -  |
+| gaulke | same | 4,893/23 leg -  | 4,893/23 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg -  | 4,893/23 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg -  | 4,893/23 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg -  |
+| drone | same | 19,326/131 leg -  | 21,660/154 (+2,334/+23) AU 170.8 (+170.8) bare +189.2 33 sh bean 11 leg -  | 19,281/130 (-45/-1) AU 0.0 (+0.0) bare +0.4 8 sh bean 0 leg -  | 19,281/130 (-45/-1) AU 0.0 (+0.0) bare +0.4 8 sh bean 0 leg -  |
+| screenshot | same | 8,467/58 leg -  | 8,469/59 (+2/+1) AU 0.0 (+0.0) bare +0.1 11 sh bean 4 leg -  | 8,469/59 (+2/+1) AU 0.0 (+0.0) bare +0.1 11 sh bean 4 leg -  | 8,511/63 (+44/+5) AU 0.0 (+0.0) bare +2.7 37 sh bean 23 leg -  |
+| fremont_hat81 | same | 15,625/47 leg 0.816  | 15,281/41 (-344/-6) AU 0.0 (+0.0) bare +0.0 123 sh bean 21 leg 0.938  | 15,281/41 (-344/-6) AU 0.0 (+0.0) bare +0.0 123 sh bean 21 leg 0.938  | 15,318/41 (-307/-6) AU 0.0 (+0.0) bare +0.0 123 sh bean 21 leg 0.941  |
+| fremont_hat925 | same | 18,882/53 leg 0.747  | 18,622/51 (-260/-2) AU 0.0 (+0.0) bare +0.0 105 sh bean 18 leg 0.919  | 18,622/51 (-260/-2) AU 0.0 (+0.0) bare +0.0 105 sh bean 18 leg 0.919  | 18,651/54 (-231/+1) AU 0.0 (+0.0) bare +0.0 71 sh bean 21 leg 0.925  |
+| sp_synthetic_2.5 | same | 463/8 leg - 8/10 shut | 281/1 (-182/-7) AU 0.0 (+0.0) bare +1.1 8 sh bean 0 leg - 3/10 shut | 281/1 (-182/-7) AU 0.0 (+0.0) bare +1.1 8 sh bean 0 leg - 3/10 shut | 324/1 (-139/-7) AU 0.0 (+0.0) bare +1.1 8 sh bean 3 leg - 2/10 shut |
+| sp_synthetic_3 | same | 474/4 leg - 8/10 shut | 378/2 (-96/-2) AU 0.0 (+0.0) bare +0.9 8 sh bean 0 leg - 2/10 shut | 378/2 (-96/-2) AU 0.0 (+0.0) bare +0.9 8 sh bean 0 leg - 2/10 shut | 378/2 (-96/-2) AU 0.0 (+0.0) bare +0.9 8 sh bean 0 leg - 2/10 shut |
+| sp_synthetic_4 | same | 547/4 leg - 2/10 shut | 547/4 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg - 2/10 shut | 547/4 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg - 2/10 shut | 547/4 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg - 2/10 shut |
+| sp_fremont_tagline_2.5 | same | 624/5 leg - 4/4 shut | 540/5 (-84/+0) AU 0.0 (+0.0) bare +1.7 13 sh bean 11 leg - 2/4 shut | 540/5 (-84/+0) AU 0.0 (+0.0) bare +1.7 13 sh bean 11 leg - 2/4 shut | 560/5 (-64/+0) AU 0.0 (+0.0) bare +1.4 13 sh bean 11 leg - 2/4 shut |
+| sp_fremont_tagline_3 | same | 618/7 leg - 0/4 shut | 749/7 (+131/+0) AU 0.0 (+0.0) bare -1.9 13 sh bean 9 leg - 0/4 shut | 749/7 (+131/+0) AU 0.0 (+0.0) bare -1.9 13 sh bean 9 leg - 0/4 shut | 713/5 (+95/-2) AU 0.0 (+0.0) bare -1.9 13 sh bean 11 leg - 0/4 shut |
+| sp_fremont_tagline_4 | same | 944/6 leg - 0/4 shut | 944/6 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg - 0/4 shut | 944/6 (+0/+0) AU 0.0 (+0.0) bare +0.0 md5= bean 0 leg - 0/4 shut | 991/10 (+47/+4) AU 0.0 (+0.0) bare +1.6 13 sh bean 11 leg - 0/4 shut |
+
+drone switch before fix: 21,664/154 (+2,338/+23) AU 170.8 (+170.8) bare +189.1 33 sh bean 11 leg - 
+becker true before/after fix md5 SAME | shapes moved by the fix: 0
+tires true before/after fix md5 SAME | shapes moved by the fix: 0
+enthusiast true before/after fix md5 SAME | shapes moved by the fix: 0
+fremont true before/after fix md5 SAME | shapes moved by the fix: 0
+bridge true before/after fix md5 SAME | shapes moved by the fix: 0
+golden_tee true before/after fix md5 SAME | shapes moved by the fix: 0
+gaulke true before/after fix md5 SAME | shapes moved by the fix: 0
+drone true before/after fix md5 DIFF | shapes moved by the fix: 25
+screenshot true before/after fix md5 SAME | shapes moved by the fix: 0
+fremont_hat81 true before/after fix md5 SAME | shapes moved by the fix: 0
+fremont_hat925 true before/after fix md5 SAME | shapes moved by the fix: 0
+sp_synthetic_2.5 true before/after fix md5 SAME | shapes moved by the fix: 0
+sp_synthetic_3 true before/after fix md5 SAME | shapes moved by the fix: 0
+sp_synthetic_4 true before/after fix md5 SAME | shapes moved by the fix: 0
+sp_fremont_tagline_2.5 true before/after fix md5 SAME | shapes moved by the fix: 0
+sp_fremont_tagline_3 true before/after fix md5 SAME | shapes moved by the fix: 0
+sp_fremont_tagline_4 true before/after fix md5 SAME | shapes moved by the fix: 0
+becker {'MARINE': (1.0, 1.0, 1.0), 'BECKER': (0.827, 0.827, 0.827)}
+fremont {'est': (0.987, 0.967, 0.967), '1895': (0.214, 0.944, 0.956), 'the': (1.0, 1.0, 0.667), 'tagline': (0.692, 0.999, 0.998), 'hotel': (1.0, 1.0, 1.0), 'fremont': (1.0, 1.0, 1.0)}
+bridge {'Bridge': (0.733, 0.733, 0.733), 'BAR & RESTAURANT': (0.227, 0.227, 0.227)}
+fremont_hat81 {'est': (0.967, 0.945, 0.945), '1895': (0.551, 0.9, 0.916), 'the': (0.974, 0.996, 0.996), 'tagline': (0.614, 0.995, 0.996), 'hotel': (0.953, 0.955, 0.955), 'fremont': (0.836, 0.835, 0.835)}
+fremont_hat925 {'est': (0.987, 0.984, 0.984), '1895': (0.214, 0.945, 0.96), 'the': (0.649, 0.649, 0.667), 'tagline': (0.692, 0.999, 0.999), 'hotel': (0.962, 0.962, 0.962), 'fremont': (0.978, 0.978, 0.978)}
