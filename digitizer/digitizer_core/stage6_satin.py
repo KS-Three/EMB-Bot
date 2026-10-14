@@ -5101,16 +5101,21 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     return out
 
 
-def _bean_along(pts: list[tuple[float, float]]) -> list[tuple[float, float]]:
+def _bean_along(pts: list[tuple[float, float]],
+                stitch_mm: float | None = None) -> list[tuple[float, float]]:
     """A HAIRLINE stretch of a stroke's spine sewn as a bean run: `BEAN_PASSES`
     laps at `BEAN_STITCH_MM`, the corpus-measured light tier
     `stage6_border.run_outline` sews — no new physical constant. An odd pass
     count ends at the far end, where the column's next station is.
+
+    `stitch_mm` (`cfg.bean_letter_stitch_mm`, bean letters only) is a shorter
+    station pitch for small print; None is `BEAN_STITCH_MM`, byte for byte.
     """
     length = sum(math.dist(a, b) for a, b in zip(pts, pts[1:]))
     if length <= 0 or len(pts) < 2:
         return []
-    lap = _resample(pts, max(2, int(round(length / machine.BEAN_STITCH_MM)) + 1))
+    step = stitch_mm if stitch_mm and stitch_mm > 0 else machine.BEAN_STITCH_MM
+    lap = _resample(pts, max(2, int(round(length / step)) + 1))
     out = list(lap)
     for p in range(1, machine.BEAN_PASSES):
         leg = list(reversed(lap)) if p % 2 == 1 else list(lap)

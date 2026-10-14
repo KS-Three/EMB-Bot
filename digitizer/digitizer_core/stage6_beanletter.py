@@ -36,7 +36,8 @@ def _length(pts) -> float:
 
 
 def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
-                trim_at_mm: float) -> tuple[list[StitchRun], dict]:
+                trim_at_mm: float,
+                stitch_mm: float | None = None) -> tuple[list[StitchRun], dict]:
     """One letter's spines -> bean runs in sew order, plus `run_outline`'s
     report contract (and `strokes`, how many spines sewed).
 
@@ -47,11 +48,17 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
     the letter is the sequence loop's to book, not this function's.
 
     `empty` when nothing was long enough to sew: the caller falls through to
-    the ladder it had before, so a letter never sews as nothing."""
+    the ladder it had before, so a letter never sews as nothing.
+
+    `stitch_mm` (`cfg.bean_letter_stitch_mm`): the station pitch, and the
+    shortest arm that sews. At `BEAN_STITCH_MM` (0.73) the loop of a 1.9 mm
+    "8" -- under 2 mm round -- gets two or three stations and collapses to a
+    wedge; None is that pitch, byte for byte."""
+    arm_floor = stitch_mm if stitch_mm and stitch_mm > 0 else _MIN_ARM_MM
     report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False,
               "arcs": 0, "yielded": 0, "strokes": 0}
     todo = [list(map(tuple, s)) for s in (spines or [])
-            if len(s) >= 2 and _length(s) >= _MIN_ARM_MM]
+            if len(s) >= 2 and _length(s) >= arm_floor]
     if sum(_length(s) for s in todo) < _MIN_SPINE_MM:
         todo = []
     runs: list[StitchRun] = []
@@ -66,7 +73,7 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
         spine = todo.pop(i)
         if rev:
             spine.reverse()
-        pts = _bean_along(spine)
+        pts = _bean_along(spine, stitch_mm)
         if len(pts) < 2:
             continue
         jump = trim = False
