@@ -1,4 +1,5 @@
-"""`cfg.small_glyph_keep` (built OFF 2026-10-13): a rescued small glyph keeps
+"""`cfg.small_glyph_keep` (built OFF 2026-10-13, ON by Kent's
+ruling the same day): a rescued small glyph keeps
 its counters, and its ink when its ground has no hole for it.
 
 Kent's Hotel Fremont at 81 mm on a hat sewed "1895" as "098"
@@ -39,8 +40,9 @@ TESTDATA = Path(__file__).resolve().parents[1] / "testdata"
 PPM = 30.0
 
 
-def test_flag_is_off_by_default():
-    assert PipelineConfig().small_glyph_keep is False
+def test_flag_is_on_by_default():
+    """ON by Kent's ruling 2026-10-13; False is the old engine."""
+    assert PipelineConfig().small_glyph_keep is True
 
 
 # --- stage 4: a rescued small glyph's counters --------------------------------

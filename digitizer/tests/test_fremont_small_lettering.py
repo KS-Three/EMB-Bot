@@ -48,16 +48,22 @@ def test_arm_table_is_the_four_arms_kent_named():
 
 
 def test_every_arm_flag_exists_and_is_built_off():
-    """No arm flips a default: every flag an arm turns ON is OFF in the
-    config today (a flipped default would make the arm a no-op), and every
-    key is a real PipelineConfig field."""
+    """No arm is a no-op: every override moves its flag AWAY from the config
+    default (an arm that sets a flag to the value it already has measures
+    nothing), and every key is a real PipelineConfig field. The flags the
+    arms turn ON are OFF today; `small_glyph_keep` is the one default that
+    flipped ON (2026-10-13, Kent), so its arms turn it OFF."""
     from digitizer_core import PipelineConfig
     base = PipelineConfig()
     for name, (_w, overrides, _label) in fsl.ARMS.items():
         for k, v in overrides.items():
             assert hasattr(base, k), f"{name}: {k} is not a PipelineConfig field"
-            assert getattr(base, k) in (False, None), f"{name}: {k} is already ON"
-            assert v not in (False, None)
+            if k == "small_glyph_keep":
+                assert base.small_glyph_keep is True, f"{name}: keep is no longer the default"
+                assert v is False, f"{name}: {k} is already ON"
+            else:
+                assert getattr(base, k) in (False, None), f"{name}: {k} is already ON"
+                assert v not in (False, None)
 
 
 def test_arms_run_the_studio_request_at_their_width():
@@ -96,25 +102,35 @@ def test_small_print_floor_moves_no_tier_at_81_or_92(record):
 
 
 def test_floor_shuts_the_tagline_counters_at_81(record):
-    """The four tagline counters (the three A's and the P): bare today only
-    because the outline run leaves the middle of a blob bare, and SHUT once
-    the floor plans them, at 81 mm. At 92.5 mm the A's stay open."""
-    c81 = record["main_81"]["boxes"]["tagline"]["counters"]
-    assert c81 == ["bare-unplanned", "bare-unplanned", "SHUT", "bare-unplanned"]
-    assert record["floor_81"]["boxes"]["tagline"]["counters"] == ["SHUT"] * 4
-    assert record["floor_stem_81"]["boxes"]["tagline"]["counters"] == ["SHUT"] * 4
-    c92 = record["floor_stem_92"]["boxes"]["tagline"]["counters"]
-    assert c92[0] == c92[1] == c92[3] == "open"
+    """The four tagline counters (the three A's and the P): with
+    `small_glyph_keep` OFF (`nokeep_81`, the engine before 2026-10-13) they
+    were bare only because the outline run leaves the middle of a blob bare,
+    and SHUT once the floor planned them. Keep ON is the default now, so
+    plain main and the floor arms all shut them at 81 mm."""
+    nokeep = record["nokeep_81"]["boxes"]["tagline"]["counters"]
+    assert nokeep == ["bare-unplanned", "bare-unplanned", "SHUT", "bare-unplanned"]
+    assert record["nokeep_floor_81"]["boxes"]["tagline"]["counters"] == ["SHUT"] * 4
+    for arm in ("main_81", "floor_81", "floor_stem_81"):
+        assert record[arm]["boxes"]["tagline"]["counters"] == ["SHUT"] * 4
+
+
+def test_keep_on_leaves_no_tagline_counter_open_at_92(record):
+    """At 92.5 mm the A's used to stay open (measured with keep OFF); with
+    the keep ON, as it is by default, none is open: they are SHUT, and the
+    one the floor + small-stem arm leaves unplanned is bare, not open."""
+    for arm in ("main_92", "floor_stem_92"):
+        assert "open" not in record[arm]["boxes"]["tagline"]["counters"]
 
 
 def test_small_glyph_keep_moves_no_tier_and_shuts_the_81_counters(record):
-    """`small_glyph_keep` (936224e4, landed beside this) keeps the holes of
-    rescued small shapes. On this tagline it plans the counters and the
-    outline run around them closes them: no tier moves, 0 of 4 open."""
-    for arm in ("keep_81", "keep_floor_81"):
+    """`small_glyph_keep` (936224e4, ON by default since 2026-10-13) keeps
+    the holes of rescued small shapes. On this tagline it plans the counters
+    and the outline run around them closes them: no tier moves against the
+    OFF controls, and 0 of 4 are open or bare-unplanned (OFF: 3 bare)."""
+    for arm in ("nokeep_81", "nokeep_floor_81"):
         for box in fsl.BOXES:
             assert _tiers(record, arm, box) == _tiers(record, "main_81", box)
-        assert record[arm]["boxes"]["tagline"]["counters"] == ["SHUT"] * 4
+    assert record["main_81"]["boxes"]["tagline"]["counters"] == ["SHUT"] * 4
 
 
 def test_size_alone_lifts_the_word_not_the_tagline(record):
