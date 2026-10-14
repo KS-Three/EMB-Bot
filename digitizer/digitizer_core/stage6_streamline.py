@@ -297,12 +297,16 @@ def _darkness_sampler(sp: SourcePixels):
     return darkness
 
 
-def _d_sep(darkness: float) -> float:
-    """Local streamline separation: dark = tight, light = sparse."""
+def _d_sep(darkness: float, dark_mm: float = STREAMLINE_D_SEP_DARK_MM) -> float:
+    """Local streamline separation: dark = tight, light = sparse.
+
+    `dark_mm` is the separation at full black. The default is the 40 wt
+    constant, so every caller that passes nothing is byte-identical; a finer
+    thread passes `machine.thread_profile(wt).streamline_dark_sep_mm`."""
     t = min(1.0, max(0.0, (darkness - STREAMLINE_CUTOFF_DARKNESS)
                      / (1.0 - STREAMLINE_CUTOFF_DARKNESS)))
     return (STREAMLINE_D_SEP_LIGHT_MM
-            + (STREAMLINE_D_SEP_DARK_MM - STREAMLINE_D_SEP_LIGHT_MM) * t)
+            + (dark_mm - STREAMLINE_D_SEP_LIGHT_MM) * t)
 
 
 # --- The Jobard–Lefer placement ----------------------------------------------
@@ -361,7 +365,8 @@ def _orient(t: tuple[float, float], ref: tuple[float, float]) -> tuple[float, fl
     return (tx, ty)
 
 
-def _trace_streamlines(poly, tangent_at, darkness, seeds_hint: list[tuple[float, float]]
+def _trace_streamlines(poly, tangent_at, darkness, seeds_hint: list[tuple[float, float]],
+                       dark_mm: float = STREAMLINE_D_SEP_DARK_MM
                        ) -> list[list[tuple[float, float]]]:
     """Jobard–Lefer evenly-spaced streamline placement over `poly`.
 
@@ -400,7 +405,7 @@ def _trace_streamlines(poly, tangent_at, darkness, seeds_hint: list[tuple[float,
             ny = py + STREAMLINE_STEP_MM * d1[1] / n
             if not valid_point(nx, ny):
                 break
-            if grid.blocked(nx, ny, STREAMLINE_D_TEST_FRAC * _d_sep(darkness(nx, ny)),
+            if grid.blocked(nx, ny, STREAMLINE_D_TEST_FRAC * _d_sep(darkness(nx, ny), dark_mm),
                             own_line=line_id, own_step=i * step_sign):
                 break
             out.append((nx, ny))
@@ -414,7 +419,7 @@ def _trace_streamlines(poly, tangent_at, darkness, seeds_hint: list[tuple[float,
         """Seed acceptance (>= d_sep from everything), then the trace."""
         if not valid_point(sx, sy):
             return False
-        if grid.blocked(sx, sy, _d_sep(darkness(sx, sy))):
+        if grid.blocked(sx, sy, _d_sep(darkness(sx, sy), dark_mm)):
             return False
         d0 = tangent_at(sx, sy)
         if d0 == (0.0, 0.0):
@@ -434,7 +439,7 @@ def _trace_streamlines(poly, tangent_at, darkness, seeds_hint: list[tuple[float,
             if seg < 1e-9:
                 continue
             nx, ny = -(by - ay) / seg, (bx - ax) / seg
-            sep = _d_sep(darkness(bx, by))
+            sep = _d_sep(darkness(bx, by), dark_mm)
             queue.append((bx + nx * sep, by + ny * sep))
             queue.append((bx - nx * sep, by - ny * sep))
         return True
@@ -452,12 +457,13 @@ def _trace_streamlines(poly, tangent_at, darkness, seeds_hint: list[tuple[float,
     return lines
 
 
-def _sweep_seeds(poly) -> list[tuple[float, float]]:
+def _sweep_seeds(poly, dark_mm: float = STREAMLINE_D_SEP_DARK_MM
+                 ) -> list[tuple[float, float]]:
     """Deterministic raster-order fallback seeds: a grid at the DARK d_sep
     over the polygon bounds. Most are rejected in one distance query each;
     they exist so no disconnected pocket of the mask goes unseeded."""
     minx, miny, maxx, maxy = poly.bounds
-    step = STREAMLINE_D_SEP_DARK_MM
+    step = dark_mm
     out = []
     ny = max(1, int(math.ceil((maxy - miny) / step)))
     nx = max(1, int(math.ceil((maxx - minx) / step)))
@@ -684,7 +690,8 @@ def _shade_layers(poly, source_pixels: SourcePixels, base_darkness, region: Regi
     return shades
 
 
-def _trace_layer(poly, tangent_at, darkness_map, ring, slack, shape_id: str
+def _trace_layer(poly, tangent_at, darkness_map, ring, slack, shape_id: str,
+                 dark_mm: float = STREAMLINE_D_SEP_DARK_MM
                  ) -> tuple[list[StitchRun], int, int]:
     """One shade's full trace-through-emission pass: the mono slice's own
     `_trace_streamlines` -> resample -> nearest-neighbour order -> travel-
@@ -697,7 +704,8 @@ def _trace_layer(poly, tangent_at, darkness_map, ring, slack, shape_id: str
     this ONE shade — a colour change into or out of this layer is the
     caller's concern, not counted here).
     """
-    lines = _trace_streamlines(poly, tangent_at, darkness_map, _sweep_seeds(poly))
+    lines = _trace_streamlines(poly, tangent_at, darkness_map,
+                               _sweep_seeds(poly, dark_mm), dark_mm)
 
     paths = []
     for pts in lines:
@@ -757,8 +765,18 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
                     *, darkness_scale: float = 1.0,
                     streamline_mode: str | None = None,
                     shade_palette_indices: list[int] | None = None,
+                    thread_wt: int | None = None,
                     ) -> tuple[list[StitchRun], dict]:
     """One shape -> its streamline runs plus the standard tier report.
+
+    `thread_wt` (2026-10-14, `cfg.thread_wt`) is the colour BLOCK's thread
+    weight (`stage7_sequence` passes the finest weight any shape of the block
+    names, else the design's). It sets the dark-end line separation through
+    `machine.thread_profile(wt).streamline_dark_sep_mm` (40 wt 0.8 mm, 60 wt
+    0.64, 75 wt 0.52 -- candidates, unsewn, gate 1). `None` reads the shape's
+    own `meta["thread_wt"]`, else `cfg.thread_wt`; at 40 the separation is
+    the module's `STREAMLINE_D_SEP_DARK_MM`, so the default path is
+    byte-identical.
 
     `darkness_scale` attenuates the darkness field every downstream decision
     reads — d_sep, the highlight cutoff, layered mode's shade split alike —
@@ -817,6 +835,11 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
     if poly.buffer(-machine.MIN_FILL_WIDTH_MM / 2.0).is_empty:
         report["too_thin"] = True
 
+    if thread_wt is None:
+        thread_wt = region.meta.get("thread_wt", cfg.thread_wt)
+    dark_mm = (STREAMLINE_D_SEP_DARK_MM if thread_wt == machine.THREAD_WT_DEFAULT
+               else machine.thread_profile(thread_wt).streamline_dark_sep_mm)
+
     darkness = _darkness_sampler(source_pixels)
     if darkness_scale != 1.0:
         raw = darkness
@@ -872,7 +895,7 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
         for i, (thread_idx, rgb, membership) in enumerate(shades):
             layer_runs, n_lines, layer_jumps = _trace_layer(
                 poly, tangent_at, membership, ring, slack,
-                f"{region.shape_id}-shade{i}")
+                f"{region.shape_id}-shade{i}", dark_mm)
             report["jumps"] += layer_jumps
             total_streamlines += n_lines
             shade_thread_idx.append(thread_idx)
@@ -915,7 +938,7 @@ def streamline_fill(region: Region, source_pixels: SourcePixels, cfg,
         report["streamlines_by_layer"] = streamlines_by_layer
     else:
         runs, n_lines, layer_jumps = _trace_layer(
-            poly, tangent_at, darkness, ring, slack, region.shape_id)
+            poly, tangent_at, darkness, ring, slack, region.shape_id, dark_mm)
         report["jumps"] += layer_jumps
         report["streamlines"] = n_lines
 
