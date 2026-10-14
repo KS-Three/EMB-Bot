@@ -1476,6 +1476,24 @@ class PipelineConfig:
     # (a 2.05 mm ring) sews no ring, under `RUN_MIN_LOOP_MM` 2.2 (gate 1);
     # `coverage_edges` ON still hands stage 4 the old 0.5625 mm² hole floor.
     small_glyph_keep: bool = True
+    # A rung for closed parts under the run loop floor (2026-10-14, built
+    # OFF; MASTER_SCOPE "Waiting on Kent" 52 asks "lower the floor or a dot
+    # rung"; this PRICES the rung, Kent decides). `machine.RUN_MIN_LOOP_MM`
+    # (2.2) drops the 80 mm i/j dot (0.446 mm², 0.75 mm across) at stage 3,
+    # whose 2 x max(w, h) perimeter proxy reads 1.5 mm (the real ring is
+    # 2.49 mm). ON: stage 3's proxy and stage 4's real-ring test admit a part
+    # down to `machine.DOT_RUNG_MIN_LOOP_MM` (still over `RUN_MIN_AREA_MM2`;
+    # not a part nine tenths ringed by other small regions, which is a small
+    # glyph's counter), and the run tier sews an OUTER ring between that and
+    # RUN_MIN_LOOP_MM as a tack ring (`DOT_RUNG_STITCH_MM`, `DOT_RUNG_PASSES`)
+    # instead of skipping it. A sub-floor HOLE ring is still skipped, on
+    # purpose: Fremont 81 mm Hat's 8 has a 2.05 mm counter ring, and sewing it
+    # shut that counter (glyph legibility 1895 0.551 -> 0.426, the 8's open
+    # counters 1 -> 0). The 8's OTHER counter is shut by the 0.73 mm bean on
+    # its own 2.39 mm ring, not by this floor. Rings at or over 2.2 mm sew
+    # exactly as before. All three numbers are CANDIDATES (ROADMAP gate 1).
+    # Off, byte-identical (md5-pinned in `tests/test_small_dot_rung.py`).
+    small_dot_rung: bool = False
     # Small lettering thinner than the thread, sewn as ONE run down its
     # skeleton (2026-10-13, default OFF; Kent's "fine details" priority,
     # `digitizer_core/stage6_small_letter.py`, `tools/small_lettering_skeleton.py`).

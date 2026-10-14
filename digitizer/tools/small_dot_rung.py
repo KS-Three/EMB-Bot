@@ -1,0 +1,346 @@
+#!/usr/bin/env python
+"""The small-dot rung (`cfg.small_dot_rung`, built OFF 2026-10-14): what it
+sews, and what it costs. MASTER_SCOPE "Waiting on Kent" 52 asks "lower the
+floor or a dot rung"; this prices the rung. `machine.RUN_MIN_LOOP_MM` (2.2)
+is not touched (ROADMAP gate 1).
+
+Where the parts under the loop floor are lost, traced on origin/main:
+
+- the 80 mm i dot (0.446 mm^2, 0.75 mm across) and the j dot never reach
+  stage 7. Stage 3's cheap perimeter proxy, 2 x max(w, h) = 1.5 mm against
+  2.2, drops them (the real ring is 2.49 mm, over the floor). So the rung is
+  admission first: stage 3's proxy and stage 4's real-ring test go down to
+  `machine.DOT_RUNG_MIN_LOOP_MM` (3 stations of `DOT_RUNG_STITCH_MM`), and the
+  run tier sews an OUTER ring under 2.2 mm as a tack ring instead of skipping
+  it. A part nine tenths ringed by other small regions is a small glyph's
+  counter and is not admitted (the first cut admitted Fremont's 8 and 9
+  counters as white runs);
+- Fremont 81 mm Hat's 8: its 2.05 mm counter ring IS skipped by the run
+  tier's loop floor, but sewing it SHUT that counter: 1895's glyph
+  legibility 0.551 -> 0.426, the 8's open counters 1 of 2 -> 0 of 2. The
+  counter the 8 loses on main is the OTHER one: a 0.413 mm^2 hole whose
+  2.39 mm ring the 0.73 mm bean sews, centred on an edge 0.2 mm from the
+  outline run. That is the outline bean on a stroke thinner than the thread
+  (the skeleton lanes' ground), not this floor. So the rung never sews a
+  hole ring, and Fremont's 1895 is left exactly as main sews it.
+
+    python -m tools.small_dot_rung dots                  # synthetic i/j dots, OFF / ON
+    python -m tools.small_dot_rung fremont [--renders DIR] [--hole-ring]
+    python -m tools.small_dot_rung census [--only NAME,NAME] [--jsonl PATH]
+    python -m tools.small_dot_rung render DIR            # i/j dot stitch paths, OFF over ON
+
+`--hole-ring` reproduces the measured negative: it sews sub-floor HOLE rings
+too, through the same tack ring (a test seam, `_HOLE_RING`).
+"""
+from __future__ import annotations
+
+import contextlib
+import hashlib
+import json
+import sys
+import time
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+sys.path.insert(0, str(ROOT))
+
+TESTDATA = ROOT / "testdata"
+DOT_WIDTH_MM = 80.0
+SMALL_DOT_WIDTH_MM = 60.0
+WORD = "hijlij"
+FIXTURE_PX_PER_MM = 28.125     # lowercase_aileron at 80 mm: the word is drawn to match
+# The five real logos #902 read on the Studio route (80 mm, Hat).
+LOGOS = ("becker_marine_logo.png", "photo/logo_bridge_bar.jpg", "photo/enthusiast_logo.png",
+         "photo/logo_golden_tee.jpg", "photo/drone_render.png")
+
+
+def plan_md5(plan) -> str:
+    """The stitch stream's md5, the recipe `test_small_glyph_keep.py` pins."""
+    coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
+              for _, r in plan.iter_runs() for x, y in r.points]
+    return hashlib.md5(json.dumps(coords).encode()).hexdigest()
+
+
+@contextlib.contextmanager
+def count_dot_rings(hole_ring: bool = False):
+    """Count the tack rings stage 7's run routing sews (its report's
+    `dot_rings`). `hole_ring` swaps in a copy of the run tier that sews a
+    sub-floor HOLE ring as well -- the measured negative, never the engine."""
+    from digitizer_core import stage7_sequence as s7
+    real = s7.run_outline
+    box = {"dot_rings": 0}
+
+    def spy(poly, shape_id, **kw):
+        if hole_ring and kw.get("dot_rung"):
+            runs, report = _hole_ring_outline(real, poly, shape_id, **kw)
+        else:
+            runs, report = real(poly, shape_id, **kw)
+        box["dot_rings"] += int(report.get("dot_rings", 0))
+        return runs, report
+    s7.run_outline = spy
+    try:
+        yield box
+    finally:
+        s7.run_outline = real
+
+
+def _hole_ring_outline(real, poly, shape_id, **kw):
+    """`run_outline` with each sub-floor hole ring promoted to a part of its
+    own (its ring sews as the rung's tack ring): what sewing the 8's small
+    counter ring would lay, for the negative measurement only."""
+    from shapely.geometry import Polygon
+    from digitizer_core import machine
+    from digitizer_core.stage6_border import _parts
+    runs, report = real(poly, shape_id, **kw)
+    if report["empty"]:
+        return runs, report
+    for part in _parts(poly):
+        for hole in part.interiors:
+            if machine.DOT_RUNG_MIN_LOOP_MM <= hole.length < machine.RUN_MIN_LOOP_MM:
+                extra, rep = real(Polygon(hole), shape_id, **{**kw, "entry": runs[-1].points[-1]})
+                if not rep["empty"]:
+                    extra[0].jump = True
+                    runs = runs + extra
+                    report["dot_rings"] = report.get("dot_rings", 0) + rep.get("dot_rings", 0)
+    return runs, report
+
+
+def _sewn(plan) -> dict:
+    out: dict = {}
+    for _b, r in plan.iter_runs():
+        d = out.setdefault(r.shape_id, {})
+        d[r.kind] = d.get(r.kind, 0) + len(r.points)
+    return out
+
+
+def _codes(result, plan) -> dict:
+    out: dict = {}
+    for w in list(result.warnings or []) + list(plan.warnings or []):
+        out[w.get("code")] = out.get(w.get("code"), 0) + 1
+    return out
+
+
+# --- the synthetic dots ---------------------------------------------------------
+
+def dot_cases(tmp: Path):
+    """(name, image, glyph meta, width mm): the fixture's i, and WORD drawn in
+    the same CC0 face at the fixture's pixels per mm (it carries a j)."""
+    from tools.lowercase_angle import FIXTURE
+    from tools.stem_trace import word_image
+    fx = json.loads(FIXTURE.with_suffix(".json").read_text(encoding="utf-8"))
+    # At 60 mm the i dot's own ring is under 2.2 mm, so the tack ring sews it.
+    cases = [("fixture", FIXTURE.with_suffix(".png"), fx, DOT_WIDTH_MM),
+             ("fixture60", FIXTURE.with_suffix(".png"), fx, SMALL_DOT_WIDTH_MM)]
+    meta = word_image(WORD, tmp / "small_dot_rung_word.png")
+    xs = [g["box"][0] for g in meta["glyphs"]] + [g["box"][2] for g in meta["glyphs"]]
+    cases.append((f"word {WORD}", tmp / "small_dot_rung_word.png", meta,
+                  round((max(xs) - min(xs)) / FIXTURE_PX_PER_MM, 3)))
+    return cases
+
+
+def dots(on: bool, tmp: Path) -> list[dict]:
+    """Per case: every i/j dot region (centroid above the glyph's x-height
+    band), what it sewed, and the design's stitch / trim / md5 / warnings."""
+    from digitizer_core import PipelineConfig, digitize
+    from tools.lowercase_angle import mm_to_px
+    from tools.stem_trace import _glyph_at
+    rows = []
+    for name, path, meta, width in dot_cases(tmp):
+        cfg = PipelineConfig(target_width_mm=width, forced_class="flat", small_dot_rung=on)
+        with count_dot_rings() as box:
+            result, plan = digitize(path, cfg)
+        to_px, _s = mm_to_px(result, meta["image"])
+        sewn = _sewn(plan)
+        found = []
+        for r in result.regions:
+            c = r.polygon.centroid
+            px, py = to_px(c.x, c.y)
+            g = _glyph_at(meta, px, py)
+            if g is None or g["ch"] not in "ij":
+                continue
+            top = g["box"][1] + 0.3 * (g["box"][3] - g["box"][1])
+            if py < top:
+                found.append(dict(ch=g["ch"], shape=r.shape_id, area_mm2=round(r.polygon.area, 3),
+                                  ring_mm=round(r.polygon.exterior.length, 3),
+                                  sewn=sewn.get(r.shape_id, {})))
+        n_dots = sum(1 for g in meta["glyphs"] if g["ch"] in "ij")
+        codes = _codes(result, plan)
+        rows.append(dict(case=name, width_mm=width, on=on, dots_in_art=n_dots, dots=found,
+                         dots_sewn=sum(1 for d in found if d["sewn"]),
+                         stitches=plan.stats.stitch_count, trims=plan.stats.trims,
+                         md5=plan_md5(plan), dot_rings=box["dot_rings"],
+                         shape_not_stitched=codes.get("SHAPE_NOT_STITCHED", 0),
+                         dropped_small_shapes=codes.get("DROPPED_SMALL_SHAPES", 0)))
+    return rows
+
+
+# --- Fremont 81 mm Hat -------------------------------------------------------------
+
+def fremont(on: bool, hole_ring: bool = False, renders: Path | None = None) -> dict:
+    """Fremont 81 mm Hat on the Studio route (`fremont_triage.run_arm`):
+    stitches, trims, md5, and the 1895 glyph legibility with the 8's
+    counters (`tools/glyph_legibility.py`)."""
+    from tools import fremont_triage as ft
+    from tools import glyph_legibility as gl
+    t = time.time()
+    with count_dot_rings(hole_ring) as box:
+        run = ft.run_arm("main", preflight=False, overrides={"small_dot_rung": on})
+    plan = run["plan"]
+    words, dbg, _reg = gl.read_case("fremont", run["design"], use_ocr=False, words=["1895"])
+    w = next(x for x in words if x.name == "1895")
+    # The glyphs read left to right: 1 8 9 5.
+    eight = w.glyphs[1] if len(w.glyphs) == 4 else None
+    if renders is not None:
+        import cv2
+        renders.mkdir(parents=True, exist_ok=True)
+        tag = "on-hole-ring" if hole_ring else ("on" if on else "off")
+        cv2.imwrite(str(renders / f"fremont81-1895-{tag}.png"),
+                    gl.word_panel(w, dbg["1895"], f"1895 small_dot_rung {tag}"))
+    return dict(on=on, hole_ring=hole_ring, stitches=plan.stats.stitch_count,
+                trims=plan.stats.trims, md5=plan_md5(plan), dot_rings=box["dot_rings"],
+                legibility_1895=w.summary()["legibility"],
+                counters_1895=w.summary()["counters"],
+                eight_counters=(None if eight is None else
+                                dict(src=eight["src_counters"], sewn=eight["sewn_counters"])),
+                secs=round(time.time() - t, 1))
+
+
+# --- the census ------------------------------------------------------------------------
+
+def _studio_plan(rel: str, width_mm: float, on: bool):
+    """A logo the way /digitize sees a Studio upload on a Hat (the request
+    `fremont_triage.studio_request` writes, the fixture swapped)."""
+    from digitizer_core import PipelineConfig
+    from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
+    from digitizer_service.app import _decode, _parse_config
+    from tools.fremont_triage import studio_request
+    data = (TESTDATA / rel).read_bytes()
+    cfg = PipelineConfig(**{**_parse_config(json.dumps(studio_request(width_mm))),
+                            "small_dot_rung": on})
+    gen = build_generation(_decode(data), cfg, exif_source=data)
+    result = finish_generation(gen.fork(), cfg)
+    return result, plan_stitches(result, cfg)
+
+
+def census_targets() -> list[tuple[str, str, str]]:
+    """(name, route, fixture): the 26 scorecard fixtures at 80 mm left
+    chest, then the five logos on the Studio route at 80 mm Hat."""
+    from tools.corpus_scorecard import FIXTURES
+    return ([(f, "lc80", f) for f in FIXTURES]
+            + [(f"studio:{f}", "studio_hat80", f) for f in LOGOS])
+
+
+def census_row(name: str, route: str, rel: str) -> dict:
+    from digitizer_core import PipelineConfig, digitize
+    arms = {}
+    for on in (False, True):
+        t = time.time()
+        with count_dot_rings() as box:
+            if route == "lc80":
+                result, plan = digitize(TESTDATA / rel, PipelineConfig(
+                    target_width_mm=80.0, garment_id="left_chest", small_dot_rung=on))
+            else:
+                result, plan = _studio_plan(rel, 80.0, on)
+        arms[on] = dict(ids={r.shape_id for r in result.regions},
+                        stitches=plan.stats.stitch_count, trims=plan.stats.trims,
+                        md5=plan_md5(plan), dot_rings=box["dot_rings"],
+                        secs=round(time.time() - t, 1))
+    off, on_ = arms[False], arms[True]
+    return dict(name=name, route=route, identical=off["md5"] == on_["md5"],
+                stitches=[off["stitches"], on_["stitches"]], trims=[off["trims"], on_["trims"]],
+                shapes_added=len(on_["ids"] - off["ids"]), shapes_removed=len(off["ids"] - on_["ids"]),
+                dot_rings=on_["dot_rings"], md5_off=off["md5"], secs=[off["secs"], on_["secs"]])
+
+
+# --- render -------------------------------------------------------------------------------
+
+def render(out: Path, tmp: Path, ppm: float = 60.0) -> list[Path]:
+    """OFF above ON: the stitch path round each i/j of the synthetic word
+    (run red, satin dark, travel green, underlay blue) at `ppm` px per mm."""
+    import cv2
+    import numpy as np
+    from digitizer_core import PipelineConfig, digitize
+    from tools.lowercase_angle import mm_to_px
+    ink = {"satin": (60, 60, 60), "underlay": (215, 160, 120), "travel": (120, 190, 120),
+           "run": (40, 40, 200)}
+    out.mkdir(parents=True, exist_ok=True)
+    written = []
+    for name, path, meta, width in dot_cases(tmp):
+        panes = []
+        for on in (False, True):
+            result, plan = digitize(path, PipelineConfig(target_width_mm=width, forced_class="flat",
+                                                         small_dot_rung=on))
+            to_px, s = mm_to_px(result, meta["image"])
+            cx, cy = to_px(0.0, 0.0)
+            gl = [g for g in meta["glyphs"] if g["ch"] in "ij"]
+            if name.startswith("fixture"):
+                gl = [g for g in gl if g["line"] == 1]
+            x0 = min((g["box"][0] - cx) / s for g in gl) - 0.8
+            x1 = max((g["box"][2] - cx) / s for g in gl) + 0.8
+            y0 = min((g["box"][1] - cy) / s for g in gl) - 1.6
+            y1 = max((g["box"][3] - cy) / s for g in gl) + 0.6
+            pane = np.full((int((y1 - y0) * ppm), int((x1 - x0) * ppm), 3), 255, np.uint8)
+
+            def P(p):
+                return (int(round((p[0] - x0) * ppm)), int(round((p[1] - y0) * ppm)))
+            for kind in ("travel", "underlay", "run", "satin"):
+                for _b, run in plan.iter_runs():
+                    if run.kind == kind:
+                        for a, b in zip(run.points[:-1], run.points[1:]):
+                            cv2.line(pane, P(a), P(b), ink[kind], 1, cv2.LINE_AA)
+            bar = np.full((36, pane.shape[1], 3), 255, np.uint8)
+            label = f"{'ON  small_dot_rung' if on else 'OFF (shipped)'}  {name} {width:g} mm"
+            cv2.putText(bar, label, (6, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1)
+            panes.append(np.vstack([bar, pane]))
+        w = max(p.shape[1] for p in panes)
+        pad = [np.pad(p, ((0, 0), (0, w - p.shape[1]), (0, 0)), constant_values=255) for p in panes]
+        sheet = np.vstack([pad[0], np.full((6, w, 3), 200, np.uint8), pad[1]])
+        dest = out / f"dots-{name.split()[0]}-off-on.png"
+        cv2.imwrite(str(dest), sheet)
+        written.append(dest)
+    return written
+
+
+def main(argv: list[str]) -> int:
+    from tools._console import utf8_console
+    utf8_console()
+    if argv and argv[0] in ("-h", "--help"):
+        print(__doc__)
+        return 0
+    if not argv:
+        print(__doc__)
+        return 2
+    tmp = Path(__import__("tempfile").mkdtemp(prefix="small_dot_rung_"))
+    cmd = argv[0]
+    if cmd == "dots":
+        for on in (False, True):
+            for row in dots(on, tmp):
+                print(json.dumps(row))
+    elif cmd == "fremont":
+        renders = Path(argv[argv.index("--renders") + 1]) if "--renders" in argv else None
+        arms = [(False, False), (True, False)] + ([(True, True)] if "--hole-ring" in argv else [])
+        for on, hole in arms:
+            print(json.dumps(fremont(on, hole, renders)))
+    elif cmd == "census":
+        only = argv[argv.index("--only") + 1].split(",") if "--only" in argv else None
+        jsonl = Path(argv[argv.index("--jsonl") + 1]) if "--jsonl" in argv else None
+        for name, route, rel in census_targets():
+            if only and not any(o in name for o in only):
+                continue
+            row = census_row(name, route, rel)
+            print(json.dumps(row), flush=True)
+            if jsonl is not None:
+                with jsonl.open("a", encoding="utf-8") as fh:
+                    fh.write(json.dumps(row) + "\n")
+    elif cmd == "render":
+        for p in render(Path(argv[1]), tmp):
+            print("wrote", p)
+    else:
+        print(__doc__)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

@@ -746,9 +746,13 @@ def vectorize(
                 # a lower bound, so this is the authoritative test of whether
                 # the bean run has a sewable loop and the shape outweighs the
                 # thread.
+                # `cfg.small_dot_rung` (default OFF): down to the dot rung's
+                # own loop floor, the ring the run tier then sews as a tack.
                 rescueable = (sub_detail
                               and part.area >= machine.RUN_MIN_AREA_MM2
-                              and part.exterior.length >= machine.RUN_MIN_LOOP_MM)
+                              and part.exterior.length >= (
+                                  machine.DOT_RUNG_MIN_LOOP_MM if cfg.small_dot_rung
+                                  else machine.RUN_MIN_LOOP_MM))
                 if not rescueable:
                     continue
             meta = {"layer": rm.layer}
