@@ -2419,6 +2419,13 @@ class PipelineConfig:
     # for byte. 0.45 is a CANDIDATE (gate 1): above the 0.3 mm short-stitch
     # floor, never sewn.
     bean_letter_stitch_mm: float | None = None
+    # Serif hooks off bean letters (`stage6_beanletter.trim_serif_hooks`), in
+    # mm: a turn of 50 degrees or more within this distance of a centreline's
+    # free end is cut. At 1.9 mm Fremont's slab serifs become hooks on the
+    # ends of the E's arms and the T's bar, and laid in thread they close the
+    # E into a B (thinner thread did not open it). None leaves every spine
+    # as read. A CANDIDATE (gate 1); 0.45 was tried on Fremont's date.
+    bean_letter_serif_mm: float | None = None
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the

@@ -35,9 +35,71 @@ def _length(pts) -> float:
     return sum(math.dist(a, b) for a, b in zip(pts, pts[1:]))
 
 
+# A hook is a turn of at least this many degrees within `serif_mm` of a
+# spine's free end. A slab serif on a 1.9 mm letter is ~0.35 mm of spine
+# turned 90 degrees; the gentle tail of a 9 or 5 turns well under this
+# within the same distance.
+_HOOK_TURN_DEG = 50.0
+
+
+def _cut_hook(spine: list, serif_mm: float) -> list:
+    """`spine` with the hook at its START cut off, or unchanged. The corner is
+    the point within `serif_mm` of the end where the end's direction and the
+    next `serif_mm` of spine differ most; cut there only when that turn is at
+    least `_HOOK_TURN_DEG` and what is left is twice the hook."""
+    if len(spine) < 3 or _length(spine) < 3.0 * serif_mm:
+        return spine
+    cum = [0.0]
+    for a, b in zip(spine, spine[1:]):
+        cum.append(cum[-1] + math.dist(a, b))
+
+    def at(s):
+        for i in range(1, len(cum)):
+            if cum[i] >= s:
+                f = (s - cum[i - 1]) / ((cum[i] - cum[i - 1]) or 1.0)
+                a, b = spine[i - 1], spine[i]
+                return (a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f), i
+        return spine[-1], len(spine) - 1
+
+    best, best_turn = None, 0.0
+    steps = 12
+    for k in range(2, steps + 1):
+        s = serif_mm * k / steps
+        c, i = at(s)
+        far, _ = at(s + serif_mm)
+        v1 = (c[0] - spine[0][0], c[1] - spine[0][1])
+        v2 = (far[0] - c[0], far[1] - c[1])
+        n1, n2 = math.hypot(*v1), math.hypot(*v2)
+        if n1 < 1e-9 or n2 < 1e-9:
+            continue
+        turn = math.degrees(math.acos(max(-1.0, min(1.0, (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)))))
+        if turn > best_turn:
+            best, best_turn = (c, i), turn
+    if best is None or best_turn < _HOOK_TURN_DEG:
+        return spine
+    c, i = best
+    return [c] + list(spine[i:])
+
+
+def trim_serif_hooks(spines, serif_mm: float | None):
+    """Every spine with a short hook cut off each free end -- the slab serif a
+    1.9 mm letter's centreline turns into, which closes an E into a B once
+    the thread is laid (`cfg.bean_letter_serif_mm`). None: unchanged."""
+    if not serif_mm or serif_mm <= 0:
+        return spines
+    out = []
+    for s in spines or []:
+        s = [tuple(p) for p in s]
+        s = _cut_hook(s, serif_mm)
+        s = list(reversed(_cut_hook(list(reversed(s)), serif_mm)))
+        out.append(s)
+    return out
+
+
 def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
                 trim_at_mm: float,
-                stitch_mm: float | None = None) -> tuple[list[StitchRun], dict]:
+                stitch_mm: float | None = None,
+                serif_mm: float | None = None) -> tuple[list[StitchRun], dict]:
     """One letter's spines -> bean runs in sew order, plus `run_outline`'s
     report contract (and `strokes`, how many spines sewed).
 
@@ -57,7 +119,7 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
     arm_floor = stitch_mm if stitch_mm and stitch_mm > 0 else _MIN_ARM_MM
     report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False,
               "arcs": 0, "yielded": 0, "strokes": 0}
-    todo = [list(map(tuple, s)) for s in (spines or [])
+    todo = [list(map(tuple, s)) for s in (trim_serif_hooks(spines, serif_mm) or [])
             if len(s) >= 2 and _length(s) >= arm_floor]
     if sum(_length(s) for s in todo) < _MIN_SPINE_MM:
         todo = []
