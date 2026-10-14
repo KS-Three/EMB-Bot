@@ -21,6 +21,7 @@ from digitizer_core.stage6_fill import stitch_shape
 from digitizer_core.threads import CHART
 
 from .test_stage6_blend import _linear_region, _linear_source
+from tests.conftest import own_thread_only
 
 PHOTO_DIR = Path(__file__).resolve().parent.parent / "testdata" / "photo"
 
@@ -122,7 +123,7 @@ def _blend_calls(monkeypatch, cfg):
             fallback_ids.add(region.shape_id)
         return runs, report
 
-    monkeypatch.setattr(s7, "blend_fill", spy)
+    monkeypatch.setattr(s7, "blend_fill", own_thread_only(spy, real))
     result = run_stages(str(PHOTO_DIR / "repro_gradient_white_icon.png"), cfg)
     plan = plan_stitches(result, cfg)
     assert handed, "the repro routes through the blend tier"

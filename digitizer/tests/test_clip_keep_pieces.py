@@ -33,6 +33,7 @@ from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import (CLIP_PIECE_OF_KEY, clip_piece_floor_mm2,
                                            resolve_overlaps)
 from digitizer_core.warnings_codes import CLIP_DROPPED_SLIVER
+from tests.conftest import own_thread_only
 
 FABRIC = get_fabric("pique_knit")
 ROOT = Path(__file__).resolve().parents[1]
@@ -204,7 +205,7 @@ def test_both_off_never_leaves_largest_polygon(monkeypatch):
         plan, w = _plan(regs, **LEGACY, **kw)
         reference[name] = ([p.shape_id for p in plan], [p.polygon.wkb for p in plan])
     with monkeypatch.context() as m:
-        m.setattr(s5, "_split_clip", boom)
+        m.setattr(s5, "_split_clip", own_thread_only(boom, s5._split_clip))
         for name, (regs, kw) in {"cross": (_cross(0.0), {}), "strip": _strip()}.items():
             plan, _ = _plan(regs, **LEGACY, **kw)
             assert ([p.shape_id for p in plan], [p.polygon.wkb for p in plan]) == reference[name]

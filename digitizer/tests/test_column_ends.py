@@ -44,6 +44,7 @@ from shapely.geometry import Polygon
 from digitizer_core import PipelineConfig, columns, outline_cut
 from tools import column_ends as ce
 from tools import lowercase_angle as la
+from tests.conftest import own_thread_only
 
 LETTERS = Path(__file__).resolve().parent.parent / "testdata" / "fremont81_end_letters.json"
 BECKER = Path(__file__).resolve().parent.parent / "testdata" / "becker80_lane_letters.json"
@@ -110,8 +111,9 @@ def test_off_never_reaches_the_new_code(fremont, monkeypatch):
     def boom(*_a, **_k):
         raise AssertionError("square_ends code reached with the flag off")
     for name in ("_hold_end_faces", "end_face_hold", "end_faces", "_ring_edges"):
-        monkeypatch.setattr(columns, name, boom)
-    monkeypatch.setattr(outline_cut, "_mitre_ends", boom)
+        monkeypatch.setattr(columns, name, own_thread_only(boom, getattr(columns, name)))
+    monkeypatch.setattr(outline_cut, "_mitre_ends",
+                        own_thread_only(boom, outline_cut._mitre_ends))
     for poly, kw in list(fremont.values()) + list(_aileron().values())[:12]:
         columns.lettering_columns_shape(poly, "off", **kw)
 
@@ -265,7 +267,7 @@ def test_stage7_passes_the_flags(monkeypatch):
         seen.append((kw.get("square_ends"), kw.get("inside_connectors")))
         return real(poly, shape_id, **kw)
 
-    monkeypatch.setattr(s7, "lettering_columns_shape", spy)
+    monkeypatch.setattr(s7, "lettering_columns_shape", own_thread_only(spy, real))
     digitize(la.FIXTURE.with_suffix(".png"),
              PipelineConfig(target_width_mm=80.0, forced_class="flat",
                             lettering_columns_square_ends=True,

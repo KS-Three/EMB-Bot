@@ -21,6 +21,7 @@ from shapely import affinity
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 from tests.conftest import TESTDATA
+from tests.conftest import own_thread_only
 
 BECKER = TESTDATA / "becker_marine_logo.png"
 ALPHA = TESTDATA / "logo_alpha.png"
@@ -164,7 +165,7 @@ def test_on_becker_every_fill_shares_the_house_and_sews_along_it():
         fills[shape_id] = kwargs.get("angle_deg")
         return real(poly, shape_id, **kwargs)
 
-    s7.stitch_shape = spy
+    s7.stitch_shape = own_thread_only(spy, real)
     try:
         result, plan = digitize(BECKER, cfg)
     finally:

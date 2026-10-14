@@ -11,6 +11,38 @@ from digitizer_core import PipelineConfig, run_stages
 from tests._ci_shard import pytest_collection_modifyitems  # noqa: F401
 
 
+def own_thread_only(fake, real):
+    """Gate a module-global patch to the thread that installed it.
+
+    `monkeypatch.setattr(module, "fn", fake)` swaps the name for EVERY thread
+    in the process, and under xdist the service's `JobRegistry` pool (the
+    session-long `client` fixture's background thread, `digitizer_service.jobs`)
+    can still be sewing a job another test submitted while this test's patch is
+    live. Its calls then land in this test's counter, list or tripwire (CI on
+    #925, shard 5: `test_fill_bridge_cut` read `[True] * 4`; 6fb67c65 fixed that
+    one test inline). Build `fake` exactly as before, keep the original as
+    `real`, and install `own_thread_only(fake, real)`: `fake` runs for the
+    calling thread of THIS call (captured now, so call it from the test or the
+    fixture body, not from a helper that runs on another thread) and every
+    other thread gets the unpatched function. The pipeline is single-threaded
+    (the service pool is the only thread pool), so the test's own pipeline
+    calls all run on this thread.
+
+    Do NOT use it where the code under test deliberately runs on the service
+    pool (a test that drives `/digitize` through `client` and counts there).
+    """
+    import threading
+
+    me = threading.get_ident()
+
+    def gated(*args, **kwargs):
+        if threading.get_ident() == me:
+            return fake(*args, **kwargs)
+        return real(*args, **kwargs)
+
+    return gated
+
+
 # CI scheduling (`--dist loadgroup`); a no-op otherwise. See
 # tests/_xdist_groups.py. A plugin rather than a hook here because this
 # conftest already exports the shard hook under the same name.

@@ -50,6 +50,7 @@ from digitizer_core.warnings_codes import (EDGE_CAP_APPLIED,
                                            EDGE_CAP_OVER_BUDGET)
 
 from .conftest import TESTDATA
+from tests.conftest import own_thread_only
 
 BECKER = "becker_marine_logo.png"
 WHITEBG = "logo_whitebg.png"
@@ -324,7 +325,7 @@ def test_dropping_is_off_by_default_and_the_drop_never_executes(monkeypatch):
             return a
 
         monkeypatch.setattr(S, "EDGE_CAP_BUDGET_PCT", 1.0)
-        monkeypatch.setattr(S, "_over_budget_action", spy)
+        monkeypatch.setattr(S, "_over_budget_action", own_thread_only(spy, real))
         plan = digitize(TESTDATA / WHITEBG,
                         PipelineConfig(target_width_mm=CHEAP, edge_cap="bean",
                                        **({"edge_cap_over_budget": mode}
