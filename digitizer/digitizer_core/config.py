@@ -2265,8 +2265,9 @@ class PipelineConfig:
     # a corner (the M's V) is held at the corner; a side keeps its own push
     # (a cross under 0.44 mm reaches past `pull - 0.11`, and cut back there
     # golden_tee's thin bars fell under the cross floor). Fremont 81 mm: 0
-    # ends past their face (#907: 1).
-    lettering_columns_square_ends: bool = False
+    # ends past their face (#907: 1). ON by Kent's ruling 2026-10-13; False
+    # is the pre-flip lane.
+    lettering_columns_square_ends: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
@@ -2278,9 +2279,11 @@ class PipelineConfig:
     # walk-in and the link rule test the letter grown only by the rails' side
     # reach (`pull - RAIL_REACH_INSET_MM`), a routed path keeps its corners
     # and walks only graph edges that stay inside; a hop with no such route
-    # is a jump (a trim past `trim_at_mm`). Built OFF (Kent's call to flip);
-    # False is byte-identical. Tests: `tests/test_column_ends.py`.
-    lettering_columns_inside_connectors: bool = False
+    # is a jump (a trim past `trim_at_mm`). ON by Kent's ruling 2026-10-13;
+    # False is the pre-flip lane. Cost: Becker gains 3 trims (22 -> 25),
+    # three in-letter hops with no on-letter route. Tests:
+    # `tests/test_column_ends.py`.
+    lettering_columns_inside_connectors: bool = True
     # Under `lettering_columns`, let a thin STEM under the area floor reach
     # the Column lane (2026-10-13, `columns.is_thin_stem`). Stage 7's
     # small-shape rescue sends every auto-tier shape under `min_detail_mm`^2

@@ -76,7 +76,11 @@ def draw(text, path):
 def run(tmp_path_factory, word, small_stem, guard=False):
     text, width = word
     path = draw(text, tmp_path_factory.mktemp(f"w{text}{int(small_stem)}") / "w.png")
+    # The column-end flags flipped ON 2026-10-13 (Kent); the OFF pins below
+    # were taken without them, so this file keeps them False (conftest.PRE_FLIP).
     cfg = PipelineConfig(target_width_mm=width, forced_class="flat",
+                         lettering_columns_square_ends=False,
+                         lettering_columns_inside_connectors=False,
                          **({"lettering_columns_small_stem": True} if small_stem else {}))
     if not guard:
         return digitize(path, cfg), cfg
