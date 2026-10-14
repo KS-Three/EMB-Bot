@@ -253,7 +253,8 @@ class PipelineConfig:
     # tier walked (grown by the run half-width plus one source pixel) is not
     # sewn, nor is one mostly on a stroke-wide shape of its own tone (line
     # art already traced as a shape) (`stage6_hairline_lines.supplements` /
-    # `supplement_test`). Carves nothing. Candidate geometry, unsewn (gate 1). Off, byte-identical.
+    # `supplement_test`). Carves nothing. Candidate geometry, unsewn
+    # (gate 1). Off, byte-identical.
     hairline_lines_gradient: bool = False
     # Hairline coverage guard (2026-10-13, default OFF; needs `hairline` on).
     # A shape whose hairline runs would leave more than
