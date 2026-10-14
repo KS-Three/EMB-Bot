@@ -152,7 +152,7 @@ def test_the_new_arms_differ_where_the_card_says_they_do():
 
 def test_the_skeleton_arm_is_still_dropped_from_block_t():
     got = v32.the_is_unaffected(CUTS)
-    assert got["skel_same_as_today"] and got["skel073_same_as_today"] and got["today_same_as_t_block_cut"], got
+    assert got["skel_same_as_today"] and got["skel073_same_as_today"], got
 
 
 def test_the_owl_pair_has_the_same_strands_and_only_the_on_arm_has_hops():
@@ -161,18 +161,18 @@ def test_the_owl_pair_has_the_same_strands_and_only_the_on_arm_has_hops():
     is over 8 mm."""
     off = v32.load_cut(CUTS, "owl_chain_off", "O")
     on = v32.load_cut(CUTS, "owl_chain_on", "O")
-    assert off["strand_box_mm"] == on["strand_box_mm"] and off["fill_box_mm"] == on["fill_box_mm"]
+    assert off["window_mm"] == on["window_mm"] and off["fill_box_mm"] == on["fill_box_mm"]
+    assert off["strand_rgb"] == on["strand_rgb"]
     assert off["fill"] == on["fill"]
+    # the strands' interiors (the lock stitches at a cut differ between the arms) are the same points
     core = lambda p: [r["points"][4:-4] for r in p["strands"] if r["kind"] == "run"]       # noqa: E731
     assert core(off) == core(on) and off["strand_count"] == on["strand_count"] >= 3
     assert not [r for r in off["strands"] if r["kind"] == "travel"]
     hops = [r for r in on["strands"] if r["kind"] == "travel"]
     assert len(hops) >= 1
-    assert all(not r["jump"] and not r["trim"] for r in hops)
-    for link in on["links"]:
-        if link["chained"]:
-            assert link["mm"] <= v32.OWL_HOP_MAX_MM
-    assert not [l for l in off["links"] if l["chained"]]
+    assert all(not r["jump"] and not r["trim"] and r["link"] == "engine" for r in hops)
+    assert len(on["links"]) >= 3 and all(l["mm"] <= v32.OWL_HOP_MAX_MM for l in on["links"])
+    assert off["links"] == []
     # the whole design behind each piece: only the ON plan sewed hops
     won, woff = (v32.load_cut_file(CUTS, a)["whole"] for a in ("owl_chain_on", "owl_chain_off"))
     assert woff["census"].get("hops", 0) == 0 and won["census"]["hops"] >= 1
@@ -297,9 +297,9 @@ def test_the_owl_fills_sew_light_and_the_strands_dark(card):
     by = {}
     for stop, b in enumerate(plan.blocks):
         for r in b.runs:
-            if r.shape_id.startswith("O:") and not r.shape_id.startswith("O:label"):
+            if r.shape_id.count(":") == 2 and r.shape_id.startswith("O:") and not r.shape_id.startswith("O:label"):
                 by.setdefault(r.shape_id.split(":")[2], set()).add(stop)
-    assert by == {"fill": {1}, "strand": {2}}, by
+    assert by == {"fill": {1}, "strand": {2}, "gap": {2}}, by
     on = [r for b in plan.blocks for r in b.runs if r.shape_id == "O:chain-on:strand"]
     assert any(r.kind == stitches.TRAVEL and not r.jump and not r.trim for r in on)
     off = [r for b in plan.blocks for r in b.runs if r.shape_id == "O:chain-off:strand"]

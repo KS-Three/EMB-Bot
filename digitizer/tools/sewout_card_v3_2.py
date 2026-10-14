@@ -533,15 +533,16 @@ def build(cuts: Path) -> tuple[StitchPlan, Card, dict]:
 
 def the_is_unaffected(cuts: Path) -> dict:
     """#913: THE is unaffected by the skeleton tier. On the v3.2 cuts: the THE box of each
-    skeleton arm is point for point today's, and today's is the T block's own cut."""
+    skeleton arm is point for point today's (both pin the ends flags OFF). The T block's own cut
+    is v3's (it does not pin the ends flags and follows main's default, ON since #922), so it is
+    not compared point for point; `t_block_same_stitches` says whether it still has today's count."""
     def pts(file_arm):
         return [(r["kind"], r["points"]) for r in load_cut(cuts, file_arm, "T")["runs"]]
     today = pts("today")
     t_block = [(r["kind"], r["points"]) for r in v3.load_cut(cuts / TN_DIR, "today", "T")["runs"]]
     return {"skel_same_as_today": pts("skel") == today, "skel073_same_as_today": pts("skel073") == today,
-            "today_same_as_t_block_cut": today == t_block, "runs": len(today),
-            "points": sum(len(p) for _k, p in today)}
-
+            "t_block_same_stitches": sum(len(p) for _k, p in t_block) == sum(len(p) for _k, p in today),
+            "runs": len(today), "points": sum(len(p) for _k, p in today)}
 
 # --- renders ------------------------------------------------------------------------------------
 
@@ -1088,7 +1089,10 @@ def write_docs(out: Path, rb: dict, cuts: Path) -> None:
             f"a skeleton arm would be a duplicate of arm 1 and is dropped."))
     else:
         blockmap = blockmap.replace("THE_NOTE", "the skeleton arms DIFFER from today's here: see the cuts.")
-    blockmap += ("\nBlock O's cuts pin `hairline`, `hairline_from_lines`, `hairline_lines_strand_test` OFF and `thread_wt` "
+    blockmap += ("\nF3, T and N come from v3's generator, unchanged: they do not pin `lettering_columns_square_ends` "
+                 "or `lettering_columns_inside_connectors`, so they follow main's default (ON since #922). Only F3's "
+                 "stitch counts move with them (see change 3); T's and N's counts equal v3.1's.\n"
+                 "\nBlock O's cuts pin `hairline`, `hairline_from_lines`, `hairline_lines_strand_test` OFF and `thread_wt` "
                  "40 on the photo lane (`forced_class` photo_subject, `photo_prep` off), differing only by "
                  "`hairline_lines_chain`; `cuts/cut32_owl_*.json` record the flag set each came from.\n")
     things = _between(v31.README, "## Things to know before you sew", None).split("\n", 2)[2].rstrip() + "\n"
