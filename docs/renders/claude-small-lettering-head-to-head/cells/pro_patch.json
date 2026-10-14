@@ -1,0 +1,93 @@
+{
+ "fixture": "pro_patch",
+ "arm": "pro_patch",
+ "label": "the pro's patch file (HOTEL FREMONT .PES)",
+ "stitches": 15458,
+ "trims": 53,
+ "size_mm": [
+  92.5,
+  50.8
+ ],
+ "words": {
+  "est": {
+   "glyphs": 3,
+   "legibility": 0.266,
+   "legibility_space": 0.0,
+   "worst_glyph": 0.0,
+   "counters_open": [
+    0,
+    0
+   ],
+   "ocr": {
+    "recovered": 1,
+    "read": 3,
+    "ci95": [
+     0.061,
+     0.792
+    ]
+   },
+   "stitches": null,
+   "trims": null
+  },
+  "1895": {
+   "glyphs": 4,
+   "legibility": 0.411,
+   "legibility_space": 0.0,
+   "worst_glyph": 0.0,
+   "counters_open": [
+    1,
+    3
+   ],
+   "ocr": {
+    "recovered": 1,
+    "read": 4,
+    "ci95": [
+     0.046,
+     0.699
+    ]
+   },
+   "stitches": null,
+   "trims": null
+  },
+  "the": {
+   "glyphs": 3,
+   "legibility": 0.316,
+   "legibility_space": 0.042,
+   "worst_glyph": 0.0,
+   "counters_open": [
+    0,
+    0
+   ],
+   "ocr": {
+    "recovered": 3,
+    "read": 3,
+    "ci95": [
+     0.438,
+     1.0
+    ]
+   },
+   "stitches": null,
+   "trims": null
+  },
+  "tagline": {
+   "glyphs": 13,
+   "legibility": 0.418,
+   "legibility_space": 0.095,
+   "worst_glyph": 0.0,
+   "counters_open": [
+    0,
+    4
+   ],
+   "ocr": {
+    "recovered": 5,
+    "read": 11,
+    "ci95": [
+     0.213,
+     0.72
+    ]
+   },
+   "stitches": null,
+   "trims": null
+  }
+ }
+}
