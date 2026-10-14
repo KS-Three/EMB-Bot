@@ -46,8 +46,11 @@ def _cut_hook(spine: list, serif_mm: float) -> list:
     """`spine` with the hook at its START cut off, or unchanged. The corner is
     the point within `serif_mm` of the end where the end's direction and the
     next `serif_mm` of spine differ most; cut there only when that turn is at
-    least `_HOOK_TURN_DEG` and what is left is twice the hook."""
-    if len(spine) < 3 or _length(spine) < 3.0 * serif_mm:
+    least `_HOOK_TURN_DEG` and what is left is at least twice the hook it
+    cut and at least `serif_mm`. The guard is on the hook actually found, not
+    on `serif_mm`: a fixed "three serifs long" floor refused every arm of
+    Fremont's E at 81 mm (about 1 mm each) and it sewed as a B again."""
+    if len(spine) < 3:
         return spine
     cum = [0.0]
     for a, b in zip(spine, spine[1:]):
@@ -74,10 +77,12 @@ def _cut_hook(spine: list, serif_mm: float) -> list:
             continue
         turn = math.degrees(math.acos(max(-1.0, min(1.0, (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)))))
         if turn > best_turn:
-            best, best_turn = (c, i), turn
+            best, best_turn = (c, i, s), turn
     if best is None or best_turn < _HOOK_TURN_DEG:
         return spine
-    c, i = best
+    c, i, hook = best
+    if cum[-1] - hook < max(2.0 * hook, serif_mm):
+        return spine
     return [c] + list(spine[i:])
 
 

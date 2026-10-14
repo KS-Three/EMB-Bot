@@ -302,9 +302,14 @@ def test_serif_trim_leaves_a_curve_and_a_short_stroke_alone():
     # The tail of a 9: a quarter arc of 1 mm radius turns gently.
     arc = [(math.cos(t), math.sin(t)) for t in [k * (math.pi / 2) / 30 for k in range(31)]]
     assert trim_serif_hooks([arc], 0.45)[0] == arc
-    # A stroke under three hooks long is never cut: there is no letter left.
-    short = [(0.0, 0.3), (0.0, 0.0), (1.0, 0.0)]
+    # A stroke that would be left under twice its hook is never cut: there is
+    # no letter left. One that keeps enough is (Fremont's E at 81 mm: arms
+    # about 1 mm, which a fixed three-serif floor refused, and it read as B).
+    short = [(0.0, 0.3), (0.0, 0.0), (0.4, 0.0)]
     assert trim_serif_hooks([short], 0.45)[0] == short
+    arm81 = [(1.0, 0.3), (1.0, 0.0), (0.0, 0.0)]
+    cut = trim_serif_hooks([arm81], 0.45)[0]
+    assert abs(cut[0][1]) < 0.05 and cut[-1] == (0.0, 0.0), f"the 1 mm arm loses its hook: {cut}"
 
 
 # --- The ink reader on a cutout (`ink_path.read_cluster_ink`) --------------
