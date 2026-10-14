@@ -22,35 +22,40 @@ DST from a pro, with no frame), then each glyph gets a small translation of
 its own, because the question is shape and not where the pull compensation
 put it. The offset is reported, never scored.
 
-Five readings per glyph, each in [0, 1] unless said:
+Readings per glyph, each in [0, 1] unless said:
 
-  shape      thread-vs-source IoU, divided by its CEILING. A 0.22 mm stroke
-             sewn with 0.40 mm thread cannot score above 0.55 IoU however
-             well it is sewn (memory `letterform-fidelity-2026-08-26`: IoU
-             "saturates on small letters" -- an E scoring 0.534 against a
-             0.580 ceiling while sewing as an L). The ceiling is the IoU of
-             the source against the best thread could do: the source plus its
-             medial axis thickened to thread width.
   strokes    medial-axis recall: how much of the source's skeleton has thread
-             on it. A missing arm, a lost "1" and an E sewn as an L all drop
-             here, and they do NOT drop IoU much on a small letter.
-  clean      1 - the share of thread more than `TOL_MM` off the source ink:
-             accents, ticks, blobs poured into a counter.
-  counters   Euler read. Source counters wide enough to be openable (an
-             inscribed circle of at least half a thread) must show as a hole
-             in the thread; a hole in the thread where the source has none
-             counts against it. 8 and 9 sewn as blobs, and an A or R with its
-             counter shut, drop here. IoU, recall and clean cannot see this:
-             a counter 0.3 mm wide is inside thread tolerance of the ink
-             around it.
-  width      sewn stroke width over max(source stroke width, thread): a
-             legible stroke is as wide as the thread allows and not a blob.
+             on it. A missing arm, a lost "1" and an E sewn as an L drop here;
+             they barely move IoU on a small letter.
+  clean      1 - the share of thread more than `COMP_TOL_MM` (0.5 mm, the
+             push compensation) off the source ink: accents, ticks, stubs.
+  counters   Euler read. A source counter that holds a circle of half a
+             thread must show as a hole in the thread, matched ONE to one (an
+             "8" whose waist is never sewn has one hole against two); a hole
+             in the thread where the source has none counts against it.
+             IoU, recall and clean cannot see a shut counter: a counter 0.3
+             mm wide is inside thread tolerance of the ink around it.
+  space      negative space: the ridge of every bay and counter of the
+             source (a circle of 0.15 mm fits) must keep a clear circle of
+             0.10 mm in the thread. Thread poured into an E's mouth, or a
+             satin that closes up the gap between letters' arms, drops here
+             and nowhere else. It also bills a correct but BOLD letter (the
+             pro's THE), so it is reported beside the headline and is the
+             caveat on every number below.
+  iou        thread-vs-source IoU with its CEILING (`iou_ceiling`: the source
+             plus its medial axis thickened to thread width; a 0.22 mm stroke
+             sewn with 0.40 mm thread cannot reach 0.55). REPORTED, not
+             scored: memory `letterform-fidelity-2026-08-26` found IoU
+             "saturates on small letters", and the push compensation puts a
+             half-millimetre halo on every glyph, so even HOTEL reads 0.48.
+  width      sewn stroke width over max(source stroke width, thread).
              Reported as a ratio, not scored.
 
-`legibility` is the geometric mean of the four scores, so one failed reading
-drags the glyph: a glyph with shut counters cannot be rescued by a good
-outline. A word's number is the mean over its glyphs; the worst glyph is
-reported beside it, because a word with one lost digit reads wrong.
+`legibility` is the WEAKEST of strokes, clean and counters (a geometric mean
+of four let a missing arm read 0.89: one failure loses a letter), and
+`legibility_space` is that minimum with `space` added. A word's number is
+the mean over its glyphs; the worst glyph is reported beside it, because a
+word with one lost digit reads wrong.
 
 OCR is a SECOND reader, not part of the number: tesseract on each glyph
 alone (psm 10, no language model, so no filling in), the thread read against
@@ -62,14 +67,17 @@ passes.
 
 What this is NOT. Not a sew-out (ROADMAP gate 1): it reads where thread
 lands in a render, with no pull, no push, no nap. Not a threshold: no cut-off
-is claimed, only an ordering, and it was developed on the same handful of
-cases it is validated on (n words is small; the confidence interval says so).
-Ground-coloured thread sewn OVER ink is not seen as hiding it. The ground
-colour is the mode colour of the word box's artwork.
+is claimed, only an ordering, and the readings were chosen while looking at
+the same cases they are validated on (the words are few; the interval and the
+permutation p say so). Ground-coloured thread sewn OVER ink is not seen as
+hiding it. The ground colour is the mode colour of the ring around the word
+box.
 
-    .venv/Scripts/python -m tools.glyph_legibility --case fremont81 --design D.json
+    .venv/Scripts/python -m tools.glyph_legibility --case fremont --design D.json   # a Design json, or a .pes/.dst
     .venv/Scripts/python -m tools.glyph_legibility --list
-    .venv/Scripts/python -m tools.glyph_legibility --validate OUT_DIR --renders DOCS_DIR
+    .venv/Scripts/python -m tools.glyph_legibility --validate DIR --renders RENDER_DIR --json out.json
+    # DIR holds <run>.json (a Design) or <run>.pes for each run in RUNS; --make DIR writes
+    # ours_becker.json and ours_bridge.json; tools/fremont_triage.py --arm main writes the 81 mm one.
 """
 from __future__ import annotations
 
@@ -134,18 +142,22 @@ def load_source(path) -> tuple[np.ndarray, np.ndarray]:
     return rgb, np.full(raw.shape[:2], 255, np.uint8)
 
 
-def ground_colour(rgb: np.ndarray, alpha: np.ndarray, box_px=None) -> np.ndarray:
+def ground_colour(rgb: np.ndarray, alpha: np.ndarray, box_px=None, ring_only: bool = True) -> np.ndarray:
     """The mode colour (16-level quantised) of the RING around a word box (or
     around the whole image), 4% of its short side wide: the ground is what the
     lettering sits on, and a ring cannot be out-voted by heavy lettering the
-    way the whole box can (Becker's letters are most of its ink)."""
+    way the whole box can (Becker's letters are most of its ink). With
+    `ring_only=False` the whole box votes: right when the box overhangs the
+    ground it sits on (Bridge's lettering sits on a yellow disc and its box
+    reaches the black rim and the white beyond)."""
     if box_px is not None:
         x0, y0, x1, y1 = box_px
         rgb, alpha = rgb[y0:y1, x0:x1], alpha[y0:y1, x0:x1]
     h, w = rgb.shape[:2]
     k = max(2, int(0.04 * min(h, w)))
     ring = np.ones((h, w), bool)
-    ring[k:h - k, k:w - k] = False
+    if ring_only:
+        ring[k:h - k, k:w - k] = False
     px = rgb[ring & (alpha >= 128)].reshape(-1, 3)
     if len(px) == 0:
         return np.array([255.0, 255.0, 255.0], np.float32)
@@ -592,7 +604,7 @@ def _best_shift(S: np.ndarray, T: np.ndarray, bb, R: int, px_per_mm: float):
 def read_word(name: str, rgb: np.ndarray, alpha: np.ndarray, box_frac, design: dict,
               thread_mm: float | None = None, use_ocr: bool = True,
               reg: Registration | None = None, thread_cache: dict | None = None,
-              keep_frac=None) -> tuple[WordResult, dict]:
+              keep_frac=None, ground_interior: bool = False) -> tuple[WordResult, dict]:
     """Score every glyph of one labelled word. `keep_frac`: the labelled
     letters' boxes (fractions of the artwork), to read only those components.
     -> (WordResult, debug arrays for the panel renderer)."""
@@ -601,7 +613,7 @@ def read_word(name: str, rgb: np.ndarray, alpha: np.ndarray, box_frac, design: d
     h, w = rgb.shape[:2]
     fx0, fy0, fx1, fy1 = box_frac
     box_px = (int(fx0 * w), int(fy0 * h), int(fx1 * w), int(fy1 * h))
-    G = ground_colour(rgb, alpha, box_px)
+    G = ground_colour(rgb, alpha, box_px, ring_only=not ground_interior)
     key = tuple(np.round(G / 8))
     cache = thread_cache if thread_cache is not None else {}
     if key not in cache:
@@ -706,7 +718,8 @@ CASES: dict[str, dict] = {
                   "fremont": (0.430, 0.415, 0.970, 0.590)},
     },
     "becker": {"source": "becker_marine_logo.png", "boxes": {}, "truth": "becker"},
-    "bridge": {"source": "photo/logo_bridge_bar.jpg", "boxes": {}, "truth": "bridge"},
+    "bridge": {"source": "photo/logo_bridge_bar.jpg", "boxes": {}, "truth": "bridge",
+               "ground_interior": True},
 }
 
 # What each run is, and what Kent (or the repo) says about each word. A word
@@ -732,8 +745,11 @@ RUNS: dict[str, dict] = {
     "pro_fremont_patch": {"case": "fremont", "labels": dict(_PRO_FREMONT)},
     "ours_becker": {"case": "becker", "labels": {"BECKER": "legible", "MARINE": "legible"}},
     "pro_becker": {"case": "becker", "labels": {"BECKER": "legible", "MARINE": "legible"}},
-    "ours_bridge": {"case": "bridge", "labels": {
-        "Bridge": "legible", "BAR & RESTAURANT": "legible"}},
+    # "BAR & RESTAURANT" is read and shown but not labelled: on the 400 px
+    # source its strokes are 1.9 px wide and its letters run together into two
+    # blobs, so there is no source glyph to compare the thread to (memory
+    # `pro-files-refute-scale-limit-2026-09-03`: "no lane can read it").
+    "ours_bridge": {"case": "bridge", "labels": {"Bridge": "legible"}},
 }
 
 
@@ -822,12 +838,13 @@ def read_case(case: str, design: dict, thread_mm: float | None = None,
     -> ([WordResult], {word: debug}, Registration)."""
     spec = CASES[case]
     rgb, alpha = load_source(ROOT / "testdata" / spec["source"])
-    return read_arrays(rgb, alpha, case_boxes(case), design, thread_mm, use_ocr, words)
+    return read_arrays(rgb, alpha, case_boxes(case), design, thread_mm, use_ocr, words,
+                       ground_interior=bool(spec.get("ground_interior")))
 
 
 def read_arrays(rgb: np.ndarray, alpha: np.ndarray, boxes: dict, design: dict,
                 thread_mm: float | None = None, use_ocr: bool = True,
-                words: list[str] | None = None):
+                words: list[str] | None = None, ground_interior: bool = False):
     """`read_case` on an artwork already in memory (the tests' synthetic
     glyphs come in here)."""
     from digitizer_core import stitchviz
@@ -844,7 +861,8 @@ def read_arrays(rgb: np.ndarray, alpha: np.ndarray, boxes: dict, design: dict,
         keep = None
         if isinstance(box, dict):
             box, keep = box["box"], box["keep"]
-        r, d = read_word(name, rgb, alpha, box, design, thread_mm, use_ocr, reg, cache, keep)
+        r, d = read_word(name, rgb, alpha, box, design, thread_mm, use_ocr, reg, cache, keep,
+                         ground_interior)
         out.append(r)
         dbg[name] = d
     return out, dbg, reg
@@ -883,7 +901,33 @@ def cluster_auc_ci(groups_pos: list[list[float]], groups_neg: list[list[float]],
             vals.append(a)
     lo, hi = np.percentile(vals, [2.5, 97.5]) if vals else (None, None)
     return {"auc": round(point, 3), "ci95": [round(float(lo), 3), round(float(hi), 3)],
+            "perm_p": round(_perm_p(groups_pos, groups_neg, point, rng), 4),
             "n_pos": len(groups_pos), "n_neg": len(groups_neg)}
+
+
+def _perm_p(gp: list[list[float]], gn: list[list[float]], observed: float,
+            rng, limit: int = 20000) -> float:
+    """One-sided permutation p for 'AUC at least this high by chance': the
+    cluster labels are shuffled, exactly when there are few arrangements. With
+    4 against 5 words, a perfect split has p = 1/126; the percentile interval
+    of a bootstrap collapses to [1, 1] there and says nothing."""
+    import itertools
+    groups = gp + gn
+    n_pos, n = len(gp), len(groups)
+    flat = lambda idx: [v for i in idx for v in groups[i]]      # noqa: E731
+    total = math.comb(n, n_pos)
+    if total <= limit:
+        arrangements = itertools.combinations(range(n), n_pos)
+    else:
+        arrangements = (rng.permutation(n)[:n_pos] for _ in range(limit))
+        total = limit
+    hits = 0
+    for pos_idx in arrangements:
+        pos_set = set(int(i) for i in pos_idx)
+        a = auc(flat(sorted(pos_set)), flat([i for i in range(n) if i not in pos_set]))
+        if a is not None and a >= observed - 1e-12:
+            hits += 1
+    return hits / total
 
 
 def validate(results: dict[str, list[WordResult]]) -> dict:
@@ -896,20 +940,33 @@ def validate(results: dict[str, list[WordResult]]) -> dict:
             lab = labels.get(w.name)
             if lab and w.glyphs:          # a word with no glyph found is reported, never scored as 0 or 1
                 rows.append((run, w, lab))
+    out: dict = {}
+    # Two legible sets. `all_labelled` includes the professional's own files;
+    # `lane_output_only` leaves them out, because the pro redraws the logo
+    # (bolder, and a millimetre or two off on EST / 1895 / the tagline), so
+    # a thread-vs-artwork read of a pro file compares two drawings. They are
+    # shown separately so neither reading hides the other.
+    for subset, keep in (("all_labelled", lambda run: True),
+                         ("lane_output_only", lambda run: not run.startswith("pro_"))):
+        pos = [(r, w) for r, w, lab in rows if lab == "legible" and keep(r)]
+        neg = [(r, w) for r, w, lab in rows if lab == "illegible" and keep(r)]
+        sub: dict = {"n_legible_words": len(pos), "n_illegible_words": len(neg)}
+        for key in ("legibility_space", "space", "legibility"):
+            ps = [w.summary()[key] for _r, w in pos]
+            ns = [w.summary()[key] for _r, w in neg]
+            sub[f"word_{key}"] = {
+                **cluster_auc_ci([[v] for v in ps], [[v] for v in ns]),
+                "max_illegible": max(ns) if ns else None,
+                "min_legible": min(ps) if ps else None,
+                "lowest_legible_word": min(((w.summary()[key], f"{r}/{w.name}") for r, w in pos),
+                                           default=(None, None))[1],
+                "margin": round(min(ps) - max(ns), 3) if ps and ns else None}
+        gp = [[g["legibility_space"] for g in w.glyphs] for _r, w in pos]
+        gn = [[g["legibility_space"] for g in w.glyphs] for _r, w in neg]
+        sub["glyph_legibility_space"] = cluster_auc_ci(gp, gn)
+        out[subset] = sub
     pos = [(r, w) for r, w, lab in rows if lab == "legible"]
     neg = [(r, w) for r, w, lab in rows if lab == "illegible"]
-    out: dict = {"n_legible_words": len(pos), "n_illegible_words": len(neg)}
-    for key in ("legibility", "worst_glyph", "legibility_space"):
-        ps = [w.summary()[key] for _r, w in pos]
-        ns = [w.summary()[key] for _r, w in neg]
-        out[f"word_{key}"] = {
-            **cluster_auc_ci([[v] for v in ps], [[v] for v in ns]),
-            "max_illegible": max(ns) if ns else None,
-            "min_legible": min(ps) if ps else None,
-            "margin": round(min(ps) - max(ns), 3) if ps and ns else None}
-    gp = [[g["legibility"] for g in w.glyphs] for _r, w in pos]
-    gn = [[g["legibility"] for g in w.glyphs] for _r, w in neg]
-    out["glyph_legibility"] = cluster_auc_ci(gp, gn)
     # OCR as the independent reader, scored the same way: share of readable
     # glyphs the thread recovers, per word, legible words against illegible.
     if tesseract_available():
@@ -928,11 +985,11 @@ def validate(results: dict[str, list[WordResult]]) -> dict:
             for w in words:
                 o = [g for g in w.glyphs if g.get("ocr_readable_src")]
                 if o:
-                    ok.append([g["legibility"] for g in o if g["ocr_recovered"]])
-                    bad.append([g["legibility"] for g in o if not g["ocr_recovered"]])
+                    ok.append([g["legibility_space"] for g in o if g["ocr_recovered"]])
+                    bad.append([g["legibility_space"] for g in o if not g["ocr_recovered"]])
         ok, bad = [x for x in ok if x], [x for x in bad if x]
         out["ocr_cross_check"] = {
-            "question": "AUC of glyph legibility for 'OCR recovered the source character'",
+            "question": "AUC of glyph legibility_space for 'OCR recovered the source character'",
             **cluster_auc_ci(ok, bad)}
     return out
 
@@ -986,7 +1043,7 @@ def word_panel(word: WordResult, dbg: dict, title: str, scale: int = 4) -> np.nd
 # --- output ------------------------------------------------------------------------
 
 def table(runs: dict[str, list[WordResult]]) -> str:
-    lines = [f"{'run':18} {'word':17} {'gl':>3} {'LEGIBILITY':>10} {'worst':>6} {'strok':>6} "
+    lines = [f"{'run':18} {'word':17} {'gl':>3} {'LEGIB':>6} {'+space':>6} {'worst':>6} {'strok':>6} "
              f"{'clean':>6} {'ctrs':>6} {'space':>6} {'iou':>6} {'euler':>6} {'stray':>6} {'offmm':>6}  ocr recovered"]
     for run, words in runs.items():
         for w in words:
@@ -999,7 +1056,7 @@ def table(runs: dict[str, list[WordResult]]) -> str:
                 f"{o['recovered']}/{o['read_on_source']}" + ("" if o["ci95"] is None else
                                                               f" [{o['ci95'][0]:.2f}-{o['ci95'][1]:.2f}]"))
             lab = RUNS.get(run, {}).get("labels", {}).get(w.name, "")
-            lines.append(f"{run:18} {w.name:17} {s['glyphs']:3d} {s['legibility']:10.3f} {s['worst_glyph']:6.3f} "
+            lines.append(f"{run:18} {w.name:17} {s['glyphs']:3d} {s['legibility']:6.3f} {s['legibility_space']:6.3f} {s['worst_glyph']:6.3f} "
                          f"{s['strokes']:6.3f} {s['clean']:6.3f} {s['counters']:6.3f} {s['space']:6.3f} "
                          f"{s['iou']:6.3f} {s['euler_match']:>6} {s['stray_mm2']:6.2f} {s['max_offset_mm']:6.2f}  {ocr}"
                          f"{'  <' + lab + '>' if lab else ''}")
@@ -1068,9 +1125,13 @@ def main(argv=None) -> int:
                     help="with --truth-boxes: pin the result into testdata/lettering_truth_boxes.json")
     ap.add_argument("--thread-mm", type=float, default=None)
     ap.add_argument("--no-ocr", action="store_true")
+    ap.add_argument("--space-keep-mm", type=float, default=None,
+                    help="override SPACE_KEEP_HALF_MM (sensitivity runs)")
     ap.add_argument("--json", type=Path)
     ap.add_argument("--renders", type=Path)
     a = ap.parse_args(argv)
+    if a.space_keep_mm is not None:
+        globals()["SPACE_KEEP_HALF_MM"] = a.space_keep_mm
     if a.list:
         print(json.dumps({"cases": {k: case_boxes(k) for k in CASES}, "runs": RUNS}, indent=1))
         return 0
