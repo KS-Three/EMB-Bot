@@ -2723,7 +2723,22 @@ class PipelineConfig:
     #             constant — the phase IS `stitch_mm / 2`, already a known
     #             quantity. Same contract as "wave"/"chevron" above,
     #             including the `tier: "brick"` override.
+    # "fur" – (2026-10-14) randomised tatami for hair and fur: every row
+    #             draws its own random start offset and every stitch a random
+    #             length, from `seed` below and the row's own place, so the
+    #             same config sews the same file (stage6_fill._fur_row_points).
+    #             The stitch length and both random fractions are
+    #             `machine.FUR_STYLES[fur_style]`, gate-1 CANDIDATES from one
+    #             practitioner's settings, not sewn. No stitch along a row is
+    #             under `machine.MIN_STITCH_MM`. Same opt-in / per-shape /
+    #             no-source-pixels / never-drop-artwork contract as "wave",
+    #             including the `tier: "fur"` override. Nothing routes here
+    #             on its own: not the photo auto-tier, not hair routing.
     fill_technique: str = "tatami"
+    # Which `machine.FUR_STYLES` entry "fur" sews: "short" (4 mm, random 50 %,
+    # offset 0.5) or "long" (5 mm, random 80 %, offset 1.0). Read only when a
+    # shape sews "fur"; any other name raises. Candidates, not sewn.
+    fur_style: str = "short"
     # Fill-phase travel prefers routes over ground not yet sewn: straight only
     # when straight crosses unsewn ground, else the inset ring whichever way
     # round stays clear, else the exposed route it always took. Kent's

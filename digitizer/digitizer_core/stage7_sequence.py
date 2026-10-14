@@ -2002,14 +2002,20 @@ def sequence(
                 bare.append(c)
         return bare
 
-    def small_print_cut(pr: PlannedRegion, poly):
+    def small_print_cut(pr: PlannedRegion, poly, chord_mm: float | None = None,
+                        bar_mm: float | None = None):
         """`poly` with `pr`'s counters cut out, grown by half the block's
-        laid width; `poly` itself, the same object, with the flag off."""
+        laid width; `poly` itself, the same object, with the flag off.
+        `chord_mm` (the run tier's bean stitch): grown further so the
+        run's chords, not just its ring, keep that hold
+        (`columns._chord_hold`). `bar_mm` (the fill tier's row spacing): a
+        bar between two counters thinner than the hold is narrowed to it
+        about its middle, not kept edge to edge (`columns._narrow_bars`)."""
         counters = small_print_counters_of(pr)
         if not counters:
             return poly
         return small_print_clear(poly, counters, profile_for(pr).width_mm / 2.0,
-                                 art=pr.region.polygon)
+                                 art=pr.region.polygon, chord_mm=chord_mm, bar_mm=bar_mm)
     hairline_shapes_sewn = hairline_strands = hairline_dropped = 0
     # (shape_id, artwork mm2) of each rest-piece part `rest_planned` cut off
     # below the clip floor: counted in CLIP_DROPPED_SLIVER, as stage 5 counts
@@ -2223,6 +2229,10 @@ def sequence(
     wave = technique == "wave"
     chevron = technique == "chevron"
     brick = technique == "brick"
+    # Fur (2026-10-14): randomised tatami, a fourth row-point variant in the
+    # same family, seeded by cfg.seed — see stage6_fill._fur_row_points.
+    # Reached only by naming it here or as the per-shape tier.
+    fur = technique == "fur"
 
     thin = empty = jumps = as_run = 0
     bean_letters = 0
@@ -2474,7 +2484,7 @@ def sequence(
             # and nothing the tier routes inside the shape crosses it. Off,
             # the polygon handed over is the same object as before.
             if routes_to_run(p, tier):
-                runs, report = run_outline(small_print_cut(p, p.region.polygon), p.shape_id,
+                runs, report = run_outline(small_print_cut(p, p.region.polygon, machine.BEAN_STITCH_MM), p.shape_id,
                                            entry=entry, trim_at_mm=trim_at,
                                            soft_vertices=cfg.run_soft_vertices)
                 if not report["empty"]:
@@ -2568,7 +2578,7 @@ def sequence(
             rides_ramp = (tier == "auto" and source_pixels is not None
                           and region_rides_design_ramp(p.region.polygon, source_pixels))
             if ribbon is not None and ribbon.reason == "photo_width_floor":
-                runs, report = run_outline(small_print_cut(p, p.region.polygon), p.shape_id,
+                runs, report = run_outline(small_print_cut(p, p.region.polygon, machine.BEAN_STITCH_MM), p.shape_id,
                                            entry=entry, trim_at_mm=trim_at,
                                            soft_vertices=cfg.run_soft_vertices)
                 if not report["empty"]:
@@ -2673,7 +2683,7 @@ def sequence(
                 # it may fall to. The same holds for a letter its WORD sent
                 # to satin (`cfg.lettering_word_tiers`) that the satin tier
                 # could not sew.
-                runs, report = run_outline(small_print_cut(p, p.region.polygon), p.shape_id,
+                runs, report = run_outline(small_print_cut(p, p.region.polygon, machine.BEAN_STITCH_MM), p.shape_id,
                                            entry=entry, trim_at_mm=trim_at,
                                            soft_vertices=cfg.run_soft_vertices)
                 if not report["empty"]:
@@ -2706,7 +2716,9 @@ def sequence(
                 # all-highlight shape sews nothing) and falls through to
                 # tatami below rather than dropping artwork — the standing
                 # contract of every tonal tier in this chain.
-                runs, report = sketch_fill(p.region, source_pixels, cfg)
+                runs, report = sketch_fill(
+                    p.region, source_pixels, cfg,
+                    thread_wt=block_wt.get(p.region.thread_index, cfg.thread_wt))
                 need_tatami = report["empty"]
             elif (streamline or tier == "streamline") and source_pixels is not None:
                 # The streamline thread-paint tier (row 10): the design-wide
@@ -2758,7 +2770,9 @@ def sequence(
                 # snap reads it, mono ignores it.
                 runs, report = streamline_fill(p.region, source_pixels, cfg,
                                                streamline_mode=streamline_mode,
-                                               shade_palette_indices=shade_palette)
+                                               shade_palette_indices=shade_palette,
+                                               thread_wt=block_wt.get(
+                                                   p.region.thread_index, cfg.thread_wt))
                 need_tatami = report["empty"]
             elif crosshatch or tier == "crosshatch":
                 # The cross-hatch fill tier: two tatami passes on the same
@@ -2886,6 +2900,30 @@ def sequence(
                     technique="brick",
                 )
                 need_tatami = report["empty"]
+            elif fur or tier == "fur":
+                # The fur fill tier: tatami whose rows each take a random
+                # start offset and a random length per stitch, seeded by
+                # cfg.seed (stage6_fill._fur_row_points), at the stitch
+                # length machine.FUR_STYLES[cfg.fur_style] names instead of
+                # the design's own. Same slot/contract as brick above.
+                runs, report = stitch_shape(
+                    p.polygon,
+                    p.shape_id,
+                    angle_deg=_fill_angle_for(p, cfg),
+                    row_mm=row_mm,
+                    stitch_mm=stitch_mm,
+                    underlay_style=eff_underlay_style,
+                    trim_at_mm=trim_at,
+                    under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
+                    underlay_all_pieces=cfg.underlay_all_pieces,
+                    sewn_paths_only=cfg.fill_order_sewn_paths,
+                    start_near=entry,
+                    technique="fur",
+                    seed=cfg.seed,
+                    fur_style_name=cfg.fur_style,
+                )
+                need_tatami = report["empty"]
             elif scanline and source_pixels is not None:
                 # The explicit scanline_tonal opt-in beats the gradient
                 # class's blend routing — the caller already chose the mono
@@ -2936,7 +2974,8 @@ def sequence(
                 # tier was never handed it. Sewn only under
                 # `cfg.blend_fallback_underlay`, on the fallback path.
                 runs, report = blend_fill(p.region, source_pixels, cfg,
-                                          start_near=entry, polygon=small_print_cut(p, p.polygon),
+                                          start_near=entry,
+                                          polygon=small_print_cut(p, p.polygon, bar_mm=row_mm),
                                           row_mm=row_mm, stitch_mm=stitch_mm,
                                           underlay_style=eff_underlay_style)
             elif contour:
@@ -2981,7 +3020,7 @@ def sequence(
                 # along and the axis it sews along stay one number by
                 # construction.
                 runs, report = stitch_shape(
-                    small_print_cut(p, p.polygon),
+                    small_print_cut(p, p.polygon, bar_mm=row_mm),
                     p.shape_id,
                     angle_deg=_fill_angle_for(p, cfg),
                     row_mm=row_mm,
@@ -3002,7 +3041,7 @@ def sequence(
             # to be a silent SHAPE_NOT_STITCHED; its outline still exists, and
             # sewing it as a run beats leaving a hole in the artwork.
             if rescue and not runs:
-                r_runs, r_report = run_outline(small_print_cut(p, p.region.polygon), p.shape_id,
+                r_runs, r_report = run_outline(small_print_cut(p, p.region.polygon, machine.BEAN_STITCH_MM), p.shape_id,
                                                entry=entry, trim_at_mm=trim_at,
                                                soft_vertices=cfg.run_soft_vertices)
                 if r_runs:
