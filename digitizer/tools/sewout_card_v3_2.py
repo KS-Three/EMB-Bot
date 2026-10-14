@@ -407,7 +407,7 @@ O_SOURCE = {"chain-off": "owl_chain_off", "chain-on": "owl_chain_on"}
 SOURCES = {**v31.SOURCES, "O": {a: (O_SOURCE[a], ["O"]) for a in O_ARMS}}
 ORIENT = {**v31.ORIENT, "E2": "v", "O": "h"}     # E2 stacks so O fits beside it in the hoop
 GARMENT_OF = {**v31.GARMENT_OF, "O": None}
-ROW_GAP = 3.6            # between the rows S / B / E2+O (v3.1: 4.0), to keep the card inside the hoop
+ROW_GAP = 3.0            # between the rows S / B / E2+O (v3.1: 4.0), to keep the card inside the hoop
 NEW_DIGITIZED = v31.NEW_DIGITIZED + tuple(f"O:{a}:" for a in O_ARMS)
 
 
@@ -757,20 +757,28 @@ def e2_note(cuts: Path) -> str:
             f"sew **{new['skeleton_sewn']} of {new['offered']}** ({new['stitches_whole']:,} stitches whole). "
             f"**v3.2's E2 arm 2 is the re-cut, so it sews {new['skeleton_sewn']}, not {old['skeleton_sewn']}**: the "
             f"card is for what main does today, and the flag the sew-out asks about is the one that would be "
-            f"flipped. Declined on this tree: {', '.join(new['declined']) or 'none'}.")
+            f"flipped. Declined on this tree: {len(new['declined'])} (reason: {', '.join(new['declined']) or 'none'}).")
 
 
 def f3_note(rb: dict) -> str:
-    old = json.loads((DEFAULT_OUT / "readback.json").read_text(encoding="utf-8"))["stitches_by_piece"]
-    new = rb["stitches_by_piece"]
-    ds = {a: new[f"F3:{a}"] - old[f"F3:{a}"] for a in ("today", "floor", "keep")}
-    return (f"**F3 (small caps).** After v3.1 was cut, #923 (`small_print_floor`, the counters that still shut at 3 mm) "
-            f"moved F3's arm 2 by one stitch and 0.1 mm or less; the VP accepted that. F3 is not a cut: the card "
-            f"digitizes APA when it is built, so **v3.2's F3 is regenerated on today's main**, not carried. Its "
-            f"stitches against v3.1's file: today {old['F3:today']} to {new['F3:today']} ({ds['today']:+d}), "
-            f"`small_print_floor` ON {old['F3:floor']} to {new['F3:floor']} ({ds['floor']:+d}), "
-            f"`small_glyph_keep` ON {old['F3:keep']} to {new['F3:keep']} ({ds['keep']:+d}).")
-
+    oldrb = json.loads((DEFAULT_OUT / "readback.json").read_text(encoding="utf-8"))
+    old, new = oldrb["stitches_by_piece"], rb["stitches_by_piece"]
+    ext = lambda r, a: r["decoded_pieces"][f"F3:{a}"]["file"]        # noqa: E731
+    parts = []
+    for a, label in (("today", "today"), ("floor", "`small_print_floor` ON"), ("keep", "`small_glyph_keep` ON")):
+        o, n = ext(oldrb, a), ext(rb, a)
+        parts.append(f"{label} {old[f'F3:{a}']} to {new[f'F3:{a}']} stitches ({new[f'F3:{a}'] - old[f'F3:{a}']:+d}), "
+                     f"{o['w']} x {o['h']} to {n['w']} x {n['h']} mm")
+    return ("**F3 (small caps).** #923 (`small_print_floor`, the counters that still shut at 3 mm) was said to move "
+            "v3.1's F3 arm 2 by one stitch and 0.1 mm or less; the VP accepted that. F3 is not a cut: the card "
+            "digitizes APA when it is built, so **v3.2's F3 is regenerated on today's main**, not carried. Measured "
+            "on this tree against v3.1's file (file stitches, file extent): " + "; ".join(parts) + ". **That is not "
+            "#923:** the same three arms digitized with `lettering_columns_square_ends` and "
+            "`lettering_columns_inside_connectors` OFF give 94 / 114 / 94 stitches, v3.1's counts exactly, so #923 "
+            "is 0 stitches here and the whole change is the two ends flags, which #922 turned ON by default after "
+            "v3.1 was built. F3's arms do not pin them (v3's generator, unchanged), so F3 follows main's default "
+            "and the arms still differ only by the flag each names. "
+            "The readout is unchanged: does the counter open in arm 2 and arm 3 and not in arm 1.")
 
 README = """# Sew-out card v3.2, 2026-10-14
 
@@ -949,14 +957,22 @@ trim each); arm 2, short stitched hops lying on the fills.
 
 **What the piece is.** The owl at 127 mm, 40 wt, #917's route (photo lane,
 `photo_prep` off, hairline line route, strand test OFF), digitized on this
-tree twice (chain OFF, chain ON). The window is the run of consecutive strands
-with the most hops that fits WINDOW mm, picked from the chain-ON plan
-(HOPS_IN_WINDOW hops in STRANDS_IN_WINDOW strands, box STRANDBOX mm). The same
-strands are taken from the chain-OFF plan (the strands themselves do not move,
-#917's test; the cut asserts it). Under the strands sit the fills of the
-design clipped to that box grown by 0.6 mm (FILLFRAGS fragments, no stitch moved
-or invented), so a hop that is "covered" in the design is covered on the card.
-The fills sew in the light cone, the strands in the dark one.
+tree twice (chain OFF, chain ON). The window is the WINDOWSIZE mm patch of the
+chain-ON plan that holds the most hops sewn needle-down, a hop counting only
+with 1.5 mm of both its strands round it (HOPS_IN_WINDOW hops, STRANDS_IN_WINDOW
+strand runs, window WINDOWBOX mm in the design's frame; #917's whole owl has 9
+hops, 4 with a travel run). The same window is cut from the chain-OFF plan: the
+strands themselves do not move (#917's test; the cut asserts the same window and
+the same fills). **Strands are clipped to the window** (no stitch is moved or
+invented; where a strand leaves the window the piece simply ends, and the join
+to the next fragment follows the card's rule: a hop under 3.0 mm is a float, a
+longer one a trim; those WINDOWJOINS window joins are the same in both arms and
+are not hops). Under the strands sit the fills of the design clipped to the
+window grown by 0.6 mm (FILLFRAGS fragments), so a hop that is "covered" in the
+design is covered on the card. The fills sew in the light cone, the strands in
+the dark one. The fills are several layers of the owl's colours: they sew as a
+dense light pile and carry their own cuts (the piece's trim count is mostly
+those, equal in both arms).
 
 **What the instrument says** (the FILE, never the cloth; ROADMAP gate 1).
 `tools/hairline_travel.measure_plan` is #895's reader as #937 corrected it (a
@@ -980,7 +996,7 @@ def _layout_note(rb: dict) -> str:
     x, y = rb["extent_mm"]
     return (f"**Layout.** v3.1 was 93.8 x 92.8 mm. To fit O inside the same 100 x 100 mm hoop, **E2's two arms are "
             f"stacked instead of side by side** (they were 75 mm wide in one row, 31.8 mm wide stacked) and O sits "
-            f"to the right of them in the same row; the gap between the S, B and E2+O rows is 3.6 mm instead of "
+            f"to the right of them in the same row; the gap between the S, B and E2+O rows is 3.0 mm instead of "
             f"4.0. Nothing was dropped or moved to another block. The card is **{x} x {y} mm** "
             f"(v3.1: 93.8 x 92.8): inside the hoop with {round((100 - max(x, y)) / 2, 1)} mm to spare each side.")
 
@@ -1056,9 +1072,10 @@ def write_docs(out: Path, rb: dict, cuts: Path) -> None:
     on = cb["pieces"]["chain-on"]
     longhop = max(on["chained_hop_mm"] + [0.0])
     owl = load_cut_file(cuts, "owl_chain_on")["boxes"]["O"]
-    chaindoc = (CHAINDOC.replace("WINDOW", f"{OWL_WINDOW_MM[0]} x {OWL_WINDOW_MM[1]}")
+    chaindoc = (CHAINDOC.replace("WINDOWSIZE", f"{OWL_WINDOW_MM[0]} x {OWL_WINDOW_MM[1]}")
                 .replace("HOPS_IN_WINDOW", str(on["chained_hops"])).replace("STRANDS_IN_WINDOW", str(owl["strand_count"]))
-                .replace("STRANDBOX", str([round(v, 2) for v in owl["strand_box_mm"]]))
+                .replace("WINDOWBOX", str([round(v, 1) for v in owl["window_mm"]]))
+                .replace("WINDOWJOINS", str(on["window_joins"]))
                 .replace("FILLFRAGS", f"{len(owl['fill']):,}").replace("CHAINTABLE", chain_markdown(cb)))
     blockmap = _between(v31.README, "| Block | Where |", "### Pinned flags").rstrip() + "\n" + O_ROW + "\n\n" \
         + _between(v31.README, "### Pinned flags", "## What the files say")

@@ -355,5 +355,6 @@ def test_the_readme_says_what_changed_and_what_it_pins():
         assert needle in text, needle
     # every placeholder was filled
     for left in ("PAIRNOTES", "CUTNOTES", "READBACK", "BLOCKMAP", "CHAINDOC", "CHAINTABLE", "THINGS", "LAYOUTNOTE",
-                 "F3NOTE", "E2NOTE", "CUTDRIFT", "DRIFT", "SIZE_MM", "LONGHOP", "THE_NOTE", "WINDOW"):
+                 "F3NOTE", "E2NOTE", "CUTDRIFT", "DRIFT", "SIZE_MM", "LONGHOP", "THE_NOTE", "WINDOWSIZE", "WINDOWBOX",
+                 "WINDOWJOINS", "HOPS_IN_", "STRANDS_IN_", "FILLFRAGS"):
         assert left not in text, left
