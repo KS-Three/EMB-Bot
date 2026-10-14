@@ -86,16 +86,18 @@ def work_grid_px_per_mm(cfg: "PipelineConfig", class_: str | None = None) -> flo
     return max(float(cfg.min_px_per_mm), float(cfg.work_px_per_mm or 0.0))
 
 
-# `PipelineConfig.small_text_true_size`'s values: the four small-lettering
+# `PipelineConfig.small_text_true_size`'s values: the small-lettering
 # settings at what was rendered on Fremont (81 and 92.5 mm) and four other
 # logos (80 mm) on 2026-10-13/14. 0.5 for the stroke line takes Fremont's THE
 # (0.46 mm strokes, satin closing its E and H) to a centreline; Kent chose that
-# over keeping it bold. CANDIDATES (ROADMAP gate 1): nothing here was sewn.
+# over keeping it bold. 0.3 for the shortest free arm keeps a 1's flag and
+# foot. CANDIDATES (ROADMAP gate 1): nothing here was sewn.
 SMALL_TEXT_TRUE_SIZE = {
     "small_text_restore_mm": 3.0,
     "bean_letter_max_stroke_mm": 0.5,
     "bean_letter_stitch_mm": 0.45,
     "bean_letter_serif_mm": 0.45,
+    "bean_letter_min_arm_mm": 0.3,
 }
 
 
@@ -2476,14 +2478,22 @@ class PipelineConfig:
     # E into a B (thinner thread did not open it). None leaves every spine
     # as read. A CANDIDATE (gate 1); 0.45 was tried on Fremont's date.
     bean_letter_serif_mm: float | None = None
+    # The shortest spine of a bean letter that sews. None: the station pitch
+    # (`bean_letter_stitch_mm`, else `machine.BEAN_STITCH_MM`), as before. At
+    # 81 mm Fremont's 1 read its flag at 0.44 mm and the halves of its foot at
+    # 0.41 and 0.39 -- each just under the 0.45 pitch, so all three were
+    # dropped and the 1 sewed as a bare stick, read as "F" (2026-10-14). 0.3
+    # is the ink reader's own spur floor (`ink_path.INK_MIN_BRANCH_MM`): a
+    # spine shorter than that never reaches here. A CANDIDATE (gate 1).
+    bean_letter_min_arm_mm: float | None = None
     # ONE switch for small lettering at its true size (2026-10-14, Kent:
-    # "keep working on improvements on this"). True fills each of the four
+    # "keep working on improvements on this"). True fills each of the
     # values above that is still None with `SMALL_TEXT_TRUE_SIZE`; a value set
     # explicitly wins. Rendered at those values: Fremont's date "EST 1093" ->
-    # "EST 1895" at 92.5 mm, its tagline and THE read cleanly, Enthusiast's
-    # "ENTERPRISES INC" reads cleanly at 80 mm; Bridge Bar, Gaulke and Golden
-    # Tee at 80 mm are pixel-identical. At 81 mm Fremont's 5 still reads as an
-    # 8; under 1.5 mm caps the text tagger finds nothing to act on. Unsewn;
+    # "EST 1895" at 92.5 mm, its tagline and THE read cleanly, and its 1 keeps
+    # its flag and foot (min arm 0.3); Enthusiast's "ENTERPRISES INC" reads
+    # cleanly at 80 mm. Under 1.5 mm caps the text tagger finds nothing to act
+    # on. Head to head: docs/renders/claude-small-lettering-head-to-head. Unsewn;
     # every value is a CANDIDATE (gate 1). False is byte-identical.
     small_text_true_size: bool = False
     # Pull compensation on the RAILS instead of the polygon (quality review

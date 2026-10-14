@@ -2388,7 +2388,8 @@ def sequence(
                 runs, report = bean_letter(p.region.meta[BEAN_LETTER_KEY], p.shape_id,
                                            entry=entry, trim_at_mm=trim_at,
                                            stitch_mm=cfg.bean_letter_stitch_mm,
-                                           serif_mm=cfg.bean_letter_serif_mm)
+                                           serif_mm=cfg.bean_letter_serif_mm,
+                                           min_arm_mm=cfg.bean_letter_min_arm_mm)
                 if not report["empty"]:
                     report["bean_letter"] = 1
                     report["bean_word"] = word_key(p.region, cfg)

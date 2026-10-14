@@ -35,7 +35,7 @@ def _cell(fx, arm, **kw):
 
 
 def test_arms_are_valid_config_and_carry_the_values_the_scope_names():
-    assert slc.ARM_ORDER == ["main", "sk073", "sk100", "true", "both073", "both100"]
+    assert slc.ARM_ORDER == ["main", "sk073", "sk100", "true", "both073", "both100", "switch"]
     for name, (overrides, _label) in slc.ARMS.items():
         PipelineConfig(**overrides)                 # every key is a real field, every value accepted
     assert slc.ARMS["main"][0] == {}
@@ -51,11 +51,16 @@ def test_arms_are_valid_config_and_carry_the_values_the_scope_names():
     assert slc.ARMS["both073"][0] == {**slc.TRUE_SIZE, **slc.ARMS["sk073"][0]}
     assert slc.ARMS["both100"][0] == {**slc.TRUE_SIZE, **slc.ARMS["sk100"][0]}
     assert slc.FIXTURES == {"hat81": 81.0, "hat925": 92.5}
+    # the one switch fills the true-size values, bean stroke raised to 0.5
+    sw = PipelineConfig(**slc.ARMS["switch"][0])
+    assert {k: getattr(sw, k) for k in slc.TRUE_SIZE} == {**slc.TRUE_SIZE,
+                                                          "bean_letter_max_stroke_mm": 0.5}
 
 
 def test_the_arms_change_only_the_two_options_and_nothing_else():
     base = PipelineConfig()
-    keys = {"small_lettering_skeleton", "small_lettering_skeleton_floor_mm", *slc.TRUE_SIZE}
+    keys = {"small_lettering_skeleton", "small_lettering_skeleton_floor_mm", *slc.TRUE_SIZE,
+            "small_text_true_size"}
     for name, (overrides, _l) in slc.ARMS.items():
         assert set(overrides) <= keys, name
     # the options themselves are OFF in the config the arms start from
