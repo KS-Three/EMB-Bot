@@ -135,6 +135,38 @@ def test_a_missing_arm_has_the_same_euler_number_and_is_caught_by_strokes():
     assert l["shape"] < f["shape"]
 
 
+def _e_paths():
+    return [[(14.0, 3.0), (18.0, 3.0)], [(14.0, 3.0), (14.0, 9.0)],
+            [(14.0, 6.0), (17.0, 6.0)], [(14.0, 9.0), (18.0, 9.0)]]
+
+
+def test_thread_poured_into_the_bays_is_billed_as_lost_space():
+    """An E whose arms are joined by solid thread has every stroke, no counter
+    to lose and nothing missing: only the negative-space read sees it."""
+    good, _ = _read(E_STROKES, 0.6, _e_paths(), E_BOX)
+    rows = [[(14.0, y), (18.0, y)] for y in np.arange(3.0, 9.01, 0.3)]
+    flooded, _ = _read(E_STROKES, 0.6, rows, E_BOX)
+    g, f = good.glyphs[0], flooded.glyphs[0]
+    assert g["space"] >= 0.9 and f["space"] < 0.3
+    assert f["strokes"] >= 0.95 and f["counters"] == 1.0
+    assert f["legibility_space"] < g["legibility_space"] - 0.5
+
+
+def test_two_counters_run_into_one_are_billed_once():
+    """An 8 sewn as one big loop (its waist never sewn) has ONE hole against
+    the source's TWO. Matching is one-to-one, so one counter is lost."""
+    eight = [_ring(6.0, 4.0, 1.6), _ring(6.0, 7.4, 2.0)]
+    rgb, alpha = _artwork(eight, 0.5)
+    box = (0.14, 0.05, 0.36, 0.95)
+    right = [_ring(6.0, 4.0, r) for r in (1.55, 1.6, 1.65)] + [_ring(6.0, 7.4, r) for r in (1.95, 2.0, 2.05)]
+    one_loop = [[(6.0 + 2.2 * math.cos(2 * math.pi * k / 72), 5.9 + 3.7 * math.sin(2 * math.pi * k / 72))
+                 for k in range(73)]]
+    good = gl.read_arrays(rgb, alpha, {"w": box}, _design(right), use_ocr=False)[0][0].glyphs[0]
+    zero = gl.read_arrays(rgb, alpha, {"w": box}, _design(one_loop), use_ocr=False)[0][0].glyphs[0]
+    assert good["src_counters_openable"] == 2 and good["counters"] == 1.0 and good["euler_match"]
+    assert zero["sewn_counters"] == 1 and zero["counters"] == 0.5 and not zero["euler_match"]
+
+
 def test_thread_off_the_letter_is_billed_as_not_clean():
     word, _ = _read(E_STROKES, 0.6, [[(14.0, 3.0), (18.0, 3.0)], [(14.0, 3.0), (14.0, 9.0)],
                                      [(14.0, 6.0), (17.0, 6.0)], [(14.0, 9.0), (18.0, 9.0)],

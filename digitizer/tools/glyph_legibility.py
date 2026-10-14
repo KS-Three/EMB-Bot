@@ -91,13 +91,16 @@ sys.path.insert(0, str(ROOT))
 
 P = 20.0                    # working grid, px per mm
 PAD_MM = 2.0                # render_design's own pad
-TOL_MM = 0.20               # thread this far off the source ink is "off"
+COMP_TOL_MM = 0.50          # push compensation: thread this far off the ink is not "off"
+SPACE_MIN_HALF_MM = 0.15    # a bay or counter is read when a circle this big fits in the source
+SPACE_KEEP_HALF_MM = 0.10   # ... and it survives when thread leaves a clear circle this big
 SKEL_TOL_MM = 0.15          # a skeleton point is "sewn" with thread this close
-SHIFT_MM = 0.60             # per-glyph translation the read may take
+SHIFT_MM = 0.80             # per-glyph translation the read may take
 MIN_GLYPH_MM2 = 0.12        # smaller source components are specks, not glyphs
 GROUND_DIST = 60.0          # a thread this far (RGB) from the ground is ink
-MIN_HOLE_PX_DIAM_MM = 0.5   # openable counter: inscribed diameter >= this x thread
+MIN_HOLE_DIAM_THREADS = 0.5  # a counter counts when a circle of this x thread fits in it
 OCR_CONF_MIN = 60.0         # source read below this is no truth to compare to
+OCR_MAX_GLYPH_MM2 = 150.0   # a component bigger than any single letter here is merged letters
 
 # Kent's seven circles and the Fremont words, as boxes in FRACTIONS of the
 # artwork (x0, y0, x1, y1), the same boxes `tools/fremont_triage.ROIS` uses
@@ -124,18 +127,26 @@ def load_source(path) -> tuple[np.ndarray, np.ndarray]:
         raise SystemExit(f"unreadable artwork: {path}")
     if raw.ndim == 2:
         raw = cv2.cvtColor(raw, cv2.COLOR_GRAY2BGR)
-    alpha = raw[..., 3] if raw.shape[2] == 4 else np.full(raw.shape[:2], 255, np.uint8)
     rgb = cv2.cvtColor(raw[..., :3], cv2.COLOR_BGR2RGB).astype(np.float32)
-    return rgb, alpha
+    if raw.shape[2] == 4:
+        a = raw[..., 3:4].astype(np.float32) / 255.0
+        rgb = rgb * a + 255.0 * (1.0 - a)        # transparent artwork is read on white
+    return rgb, np.full(raw.shape[:2], 255, np.uint8)
 
 
 def ground_colour(rgb: np.ndarray, alpha: np.ndarray, box_px=None) -> np.ndarray:
-    """The mode colour (16-level quantised) of the opaque pixels, optionally
-    inside `box_px` (x0, y0, x1, y1). The ground is what most of a word box is."""
+    """The mode colour (16-level quantised) of the RING around a word box (or
+    around the whole image), 4% of its short side wide: the ground is what the
+    lettering sits on, and a ring cannot be out-voted by heavy lettering the
+    way the whole box can (Becker's letters are most of its ink)."""
     if box_px is not None:
         x0, y0, x1, y1 = box_px
         rgb, alpha = rgb[y0:y1, x0:x1], alpha[y0:y1, x0:x1]
-    px = rgb[alpha >= 128].reshape(-1, 3)
+    h, w = rgb.shape[:2]
+    k = max(2, int(0.04 * min(h, w)))
+    ring = np.ones((h, w), bool)
+    ring[k:h - k, k:w - k] = False
+    px = rgb[ring & (alpha >= 128)].reshape(-1, 3)
     if len(px) == 0:
         return np.array([255.0, 255.0, 255.0], np.float32)
     q = (px // 16).astype(np.int32)
@@ -242,16 +253,29 @@ def design_from_pes(path, flip_y: bool = True) -> dict:
 @dataclass
 class Registration:
     """source px -> design-image px (the render grid at P px/mm):
-    u = a * sx + tx, v = a * sy + ty, one uniform scale `a` (design px per
-    source px)."""
-    a: float
+    u = ax * sx + tx, v = ay * sy + ty. The two scales may differ: a
+    professional's file is often drawn from a slightly different crop of the
+    logo (Fremont's is 2.3% narrower in aspect than the artwork here)."""
+    ax: float
+    ay: float
     tx: float
     ty: float
     score: float
-    mm_per_src_px: float
+
+    @property
+    def a(self) -> float:
+        return (self.ax + self.ay) / 2.0
+
+    @property
+    def mm_per_src_px(self) -> float:
+        return self.a / P
 
     def matrix(self) -> np.ndarray:
-        return np.array([[self.a, 0, self.tx], [0, self.a, self.ty]], np.float64)
+        return np.array([[self.ax, 0, self.tx], [0, self.ay, self.ty]], np.float64)
+
+    def apply_box(self, x0, y0, x1, y1) -> tuple[float, float, float, float]:
+        return (self.ax * x0 + self.tx, self.ay * y0 + self.ty,
+                self.ax * x1 + self.tx, self.ay * y1 + self.ty)
 
 
 def _bbox(mask: np.ndarray, level: float = 0.5):
@@ -264,49 +288,59 @@ def _bbox(mask: np.ndarray, level: float = 0.5):
 def register(src_soft: np.ndarray, thread: np.ndarray, px_per_mm: float = P,
              search_scale: float = 0.03, reg_ppm: float = 4.0,
              search_mm: float = 1.5) -> Registration:
-    """Fit one uniform scale and a translation taking the whole source ink onto
-    the whole thread ink: bbox centres and widths first, then a scale search
-    (+-3%) with a normalised cross-correlation over translation, at 4 px/mm."""
+    """Fit a per-axis scale and a translation taking the whole source ink onto
+    the whole thread ink. Bbox centres and widths first; then a search over an
+    isotropic scale (+-3%) and over each axis's scale around it (+-3%), each
+    scored by a normalised cross-correlation maximised over translation by
+    FFT, at 4 px/mm. The source is shrunk once, by area, so no candidate
+    aliases."""
     sb, tb = _bbox(src_soft), _bbox(thread, 0.3)
     if sb is None or tb is None:
         raise SystemExit("nothing to register: no source ink or no thread")
-    sw, tw = sb[2] - sb[0], tb[2] - tb[0]
-    a0 = tw / sw                              # design px per source px
     k = reg_ppm / px_per_mm
+    a0 = (tb[2] - tb[0]) / (sb[2] - sb[0])        # design px per source px
+    b0 = (tb[3] - tb[1]) / (sb[3] - sb[1])
+    pre = a0 * k                                    # source px -> reg px, x
+    pre_y = b0 * k
+    small = cv2.resize(src_soft, None, fx=pre, fy=pre_y, interpolation=cv2.INTER_AREA)
     th = cv2.resize(thread, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
     th = cv2.GaussianBlur(th, (0, 0), 0.25 * reg_ppm)
     H, W = th.shape
     tn = float(np.sqrt((th * th).sum())) or 1.0
-    best = None
-    scx, scy = (sb[0] + sb[2]) / 2.0, (sb[1] + sb[3]) / 2.0
-    tcx, tcy = (tb[0] + tb[2]) / 2.0, (tb[1] + tb[3]) / 2.0
+    scx, scy = (sb[0] + sb[2]) / 2.0 * pre, (sb[1] + sb[3]) / 2.0 * pre_y     # in `small`
+    tcx, tcy = (tb[0] + tb[2]) / 2.0 * k, (tb[1] + tb[3]) / 2.0 * k           # in `th`
     R = int(search_mm * reg_ppm)
-    for f in np.linspace(1 - search_scale, 1 + search_scale, 25):
-        a = a0 * f
-        ar = a * k
-        M = np.array([[ar, 0, tcx * k - scx * ar], [0, ar, tcy * k - scy * ar]], np.float64)
-        w = cv2.warpAffine(src_soft, M, (W, H), flags=cv2.INTER_AREA if ar < 1 else cv2.INTER_LINEAR)
+    shape = (H + 2 * R, W + 2 * R)
+    F = np.fft.rfft2(th, s=shape)
+    rows = np.arange(-R, R + 1) % shape[0]
+    cols = np.arange(-R, R + 1) % shape[1]
+
+    def evaluate(fx: float, fy: float):
+        M = np.array([[fx, 0, tcx - fx * scx], [0, fy, tcy - fy * scy]], np.float64)
+        w = cv2.warpAffine(small, M, (W, H), flags=cv2.INTER_LINEAR)
         w = cv2.GaussianBlur(w, (0, 0), 0.25 * reg_ppm)
         wn = float(np.sqrt((w * w).sum())) or 1.0
-        # correlation over integer shifts within +-R, by FFT
-        F = np.fft.rfft2(th, s=(H + 2 * R, W + 2 * R))
-        G = np.fft.rfft2(w, s=(H + 2 * R, W + 2 * R))
-        cc = np.fft.irfft2(F * np.conj(G), s=(H + 2 * R, W + 2 * R))
-        # shift (dy, dx) of w onto th: index modulo
-        best_here = None
-        for dy in range(-R, R + 1):
-            row = cc[dy % cc.shape[0]]
-            for dx in range(-R, R + 1):
-                v = row[dx % cc.shape[1]]
-                if best_here is None or v > best_here[0]:
-                    best_here = (v, dx, dy)
-        sc = best_here[0] / (tn * wn)
-        if best is None or sc > best[0]:
-            best = (sc, a, best_here[1], best_here[2], M)
-    sc, a, dx, dy, M = best
-    tx = (tcx * k - scx * a * k + dx) / k
-    ty = (tcy * k - scy * a * k + dy) / k
-    return Registration(a=a, tx=tx, ty=ty, score=float(sc), mm_per_src_px=a / px_per_mm)
+        cc = np.fft.irfft2(F * np.conj(np.fft.rfft2(w, s=shape)), s=shape)
+        win = cc[np.ix_(rows, cols)]
+        j, i = np.unravel_index(int(win.argmax()), win.shape)
+        return float(win[j, i]) / (tn * wn), int(i) - R, int(j) - R
+
+    best = None
+    for f in np.linspace(1 - search_scale, 1 + search_scale, 13):
+        r = evaluate(f, f)
+        if best is None or r[0] > best[0][0]:
+            best = (r, f, f)
+    f0 = best[1]
+    for fx in np.linspace(f0 - search_scale, f0 + search_scale, 9):
+        for fy in np.linspace(f0 - search_scale, f0 + search_scale, 9):
+            r = evaluate(fx, fy)
+            if r[0] > best[0][0]:
+                best = (r, fx, fy)
+    (sc, dx, dy), fx, fy = best
+    ax, ay = fx * a0, fy * b0
+    tx = (tcx + dx - fx * scx) / k
+    ty = (tcy + dy - fy * scy) / k
+    return Registration(ax=float(ax), ay=float(ay), tx=float(tx), ty=float(ty), score=float(sc))
 
 
 # --- one glyph --------------------------------------------------------------
@@ -354,52 +388,88 @@ def glyph_scores(S: np.ndarray, T: np.ndarray, thread_mm: float,
     sk_n = int(sk_s.sum())
     recall = float((t_dist[sk_s] <= SKEL_TOL_MM * px_per_mm).mean()) if sk_n else 0.0
 
-    # clean: thread off the source ink
+    # clean: thread more than the push compensation off the source ink
     s_dist = ndi.distance_transform_edt(~S)
-    off = float((s_dist[T] > TOL_MM * px_per_mm).sum()) if a_t else 0.0
+    off = float((s_dist[T] > COMP_TOL_MM * px_per_mm).sum()) if a_t else 0.0
     clean = 1.0 - off / a_t if a_t else 0.0
 
-    # counters (Euler)
-    lab_s, n_s_all = _holes(S, int(0.02 * px_per_mm ** 2))
+    # counters (Euler). A hole counts when a circle of half a thread fits in it,
+    # on either side: a pinhole in a satin column is not a counter and is not
+    # seen by a reader.
+    min_diam = MIN_HOLE_DIAM_THREADS * thread_mm
+    min_px = int(0.02 * px_per_mm ** 2)
+    lab_s, n_s_all = _holes(S, min_px)
     dt_s = ndi.distance_transform_edt(~S)
     feas = []
     for i in range(1, n_s_all + 1):
         hole = lab_s == i
-        diam = 2.0 * float(dt_s[hole].max()) / px_per_mm
-        if diam >= MIN_HOLE_PX_DIAM_MM * thread_mm:
+        if 2.0 * float(dt_s[hole].max()) / px_per_mm >= min_diam:
             feas.append(hole)
-    lab_t, n_t = _holes(T, int(0.01 * px_per_mm ** 2))
-    t_holes = [lab_t == j for j in range(1, n_t + 1)]
-    matched_s, matched_t = 0, set()
-    for hole in feas:
-        best = None
+    lab_t, n_t_all = _holes(T, min_px)
+    dt_t = ndi.distance_transform_edt(~T) if T.any() else np.zeros(T.shape)
+    t_holes = []
+    for j in range(1, n_t_all + 1):
+        hole = lab_t == j
+        if 2.0 * float(dt_t[hole].max()) / px_per_mm >= min_diam:
+            t_holes.append(hole)
+    n_t = len(t_holes)
+    # one-to-one: each sewn hole answers at most one source counter, so an "8"
+    # whose waist was never sewn (two counters run into one) matches only one
+    pairs = []
+    for i, hole in enumerate(feas):
         for j, th in enumerate(t_holes):
             ov = float((hole & th).sum())
-            if ov >= 0.25 * min(hole.sum(), th.sum()) and (best is None or ov > best[0]):
-                best = (ov, j)
-        if best is not None:
-            matched_s += 1
-            matched_t.add(best[1])
-    spurious = [j for j in range(n_t) if j not in matched_t
-                and not any((t_holes[j] & lab_s_h).any() for lab_s_h in
-                            [lab_s == i for i in range(1, n_s_all + 1)])]
+            if ov >= 0.25 * min(hole.sum(), th.sum()):
+                pairs.append((ov, i, j))
+    pairs.sort(reverse=True)
+    used_s, used_t = set(), set()
+    for _ov, i, j in pairs:
+        if i not in used_s and j not in used_t:
+            used_s.add(i)
+            used_t.add(j)
+    src_any = ndi.binary_fill_holes(S) & ~S
+    spurious = [j for j in range(n_t) if j not in used_t and not (t_holes[j] & src_any).any()]
     denom = len(feas) + len(spurious)
-    counters = 1.0 if denom == 0 else matched_s / denom
+    counters = 1.0 if denom == 0 else len(used_s) / denom
 
     comps_t = ndi.label(T)[1] if T.any() else 0
     comps_s = ndi.label(S)[1]
-    euler_s = comps_s - n_s_all
+    euler_s = comps_s - len(feas)
     euler_t = comps_t - n_t
+
+    # space: the core of the glyph's own negative space (inside its convex
+    # hull, a quarter-millimetre or more from any ink: the mouth of an E, the
+    # waist of an S, a counter) must stay bare. Thread poured into it is what
+    # makes "THE" a blob, and it is what Euler cannot see in an open bay.
+    pts = cv2.findNonZero(S.astype(np.uint8))
+    space, space_px = 1.0, 0
+    if pts is not None and len(pts) >= 3:
+        hull = np.zeros(S.shape, np.uint8)
+        cv2.fillConvexPoly(hull, cv2.convexHull(pts), 1)
+        neg = (hull > 0) & ~S
+        ridge = skeletonize(neg) & (s_dist >= SPACE_MIN_HALF_MM * px_per_mm)
+        space_px = int(ridge.sum())
+        if space_px:
+            # the ridge of each bay and counter survives when thread leaves a
+            # clear circle of SPACE_KEEP_HALF_MM around it
+            kept = ridge & (t_dist >= SPACE_KEEP_HALF_MM * px_per_mm)
+            space = float(kept.sum()) / space_px
 
     w_s, w_t = _skeleton_width(S, px_per_mm), _skeleton_width(T, px_per_mm)
     width_ratio = w_t / max(w_s, thread_mm) if w_t else 0.0
 
-    parts = [max(shape, 1e-3), max(recall, 1e-3), max(clean, 1e-3), max(counters, 1e-3)]
-    legibility = float(np.exp(np.mean(np.log(parts))))
-    return {"legibility": round(legibility, 3), "shape": round(shape, 3),
+    # The headline is the WEAKEST of the three failure-mode readings, not their
+    # mean: a geometric mean of four lets a missing arm (recall 0.66) read as
+    # 0.89, and "can you read it" is lost by one failure. `legibility_space`
+    # adds the negative-space read, which also bills thick-but-correct
+    # lettering, so it is reported beside the headline and never folded in.
+    legibility = min(recall, clean, counters)
+    legibility_space = min(legibility, space)
+    return {"legibility": round(legibility, 3), "legibility_space": round(legibility_space, 3),
+            "shape": round(shape, 3),
             "iou": round(iou, 3), "iou_ceiling": round(ceil, 3),
             "strokes": round(recall, 3), "clean": round(clean, 3),
-            "counters": round(counters, 3),
+            "counters": round(counters, 3), "space": round(space, 3),
             "src_counters": n_s_all, "src_counters_openable": len(feas),
             "sewn_counters": n_t, "sewn_counters_spurious": len(spurious),
             "euler_src": int(euler_s), "euler_sewn": int(euler_t),
@@ -425,6 +495,8 @@ def _ocr_char(mask: np.ndarray, px_per_mm: float = P) -> tuple[str, float]:
         t = core.normalise(txt)[:1]
         if t and conf > best[1]:
             best = (t, conf)
+        if best[1] >= OCR_CONF_MIN:       # a confident read ends the search: each call is ~0.7 s
+            break
     return best
 
 
@@ -455,8 +527,10 @@ class WordResult:
         sc = [x["legibility"] for x in g]
         out = {"word": self.name, "glyphs": len(g),
                "legibility": round(float(np.mean(sc)), 3) if sc else None,
+               "legibility_space": round(float(np.mean([x["legibility_space"] for x in g])), 3) if g else None,
                "worst_glyph": round(float(min(sc)), 3) if sc else None,
-               "shape": round(float(np.mean([x["shape"] for x in g])), 3) if g else None,
+               "iou": round(float(np.mean([x["iou"] for x in g])), 3) if g else None,
+               "space": round(float(np.mean([x["space"] for x in g])), 3) if g else None,
                "strokes": round(float(np.mean([x["strokes"] for x in g])), 3) if g else None,
                "clean": round(float(np.mean([x["clean"] for x in g])), 3) if g else None,
                "counters": round(float(np.mean([x["counters"] for x in g])), 3) if g else None,
@@ -467,10 +541,13 @@ class WordResult:
         return out
 
 
-def _label_glyphs(S_box: np.ndarray, box_px, px_per_mm: float):
+def _label_glyphs(S_box: np.ndarray, box_px, px_per_mm: float, keep_px=None):
     """Connected components of the source ink inside the word box, at least
-    MIN_GLYPH_MM2, dropping any that touch the box edge (a neighbour cut by
-    the box is not this word's glyph)."""
+    MIN_GLYPH_MM2. Without `keep_px`, any that touch the box edge are dropped
+    (a neighbour cut by the box is not this word's glyph). With it -- the
+    labelled letters' boxes, (x0, y0, x1, y1) in this grid -- a component is
+    kept when its centroid is inside one of them, which is how a word box
+    that also holds an anchor and waves (Bridge) reads only its letters."""
     x0, y0, x1, y1 = box_px
     lab, n = ndi.label(S_box)
     out = []
@@ -480,7 +557,11 @@ def _label_glyphs(S_box: np.ndarray, box_px, px_per_mm: float):
         if area < MIN_GLYPH_MM2:
             continue
         ys, xs = np.where(m)
-        if xs.min() <= x0 + 1 or ys.min() <= y0 + 1 or xs.max() >= x1 - 2 or ys.max() >= y1 - 2:
+        if keep_px:
+            cx, cy = xs.mean(), ys.mean()
+            if not any(k[0] <= cx <= k[2] and k[1] <= cy <= k[3] for k in keep_px):
+                continue
+        elif xs.min() <= x0 + 1 or ys.min() <= y0 + 1 or xs.max() >= x1 - 2 or ys.max() >= y1 - 2:
             continue
         out.append((i, m, (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)))
     out.sort(key=lambda t: t[2][0])
@@ -492,29 +573,29 @@ def _best_shift(S: np.ndarray, T: np.ndarray, bb, R: int, px_per_mm: float):
     maximises the correlation of the blurred glyph and the blurred thread over
     the glyph's window. -> (dx, dy)."""
     x0, y0, x1, y1 = bb
-    m = R + int(0.4 * px_per_mm)
+    m = int(0.4 * px_per_mm)
     H, W = S.shape
     ys0, ys1, xs0, xs1 = max(0, y0 - m), min(H, y1 + m), max(0, x0 - m), min(W, x1 + m)
-    s = cv2.GaussianBlur(S[ys0:ys1, xs0:xs1].astype(np.float32), (0, 0), 0.12 * px_per_mm)
-    best = (-1.0, 0, 0)
-    t_pad = np.pad(T.astype(np.float32), R + m, mode="constant")
-    for dy in range(-R, R + 1):
-        for dx in range(-R, R + 1):
-            ty0, tx0 = ys0 + dy + R + m, xs0 + dx + R + m
-            t = t_pad[ty0:ty0 + s.shape[0], tx0:tx0 + s.shape[1]]
-            t = cv2.GaussianBlur(t, (0, 0), 0.12 * px_per_mm)
-            v = float((s * t).sum())
-            if v > best[0]:
-                best = (v, dx, dy)
-    return best[1], best[2]
+    sig = 0.12 * px_per_mm
+    tmpl = cv2.GaussianBlur(S[ys0:ys1, xs0:xs1].astype(np.float32), (0, 0), sig)
+    pad = R
+    t_pad = np.pad(T.astype(np.float32), pad, mode="constant")
+    img = cv2.GaussianBlur(t_pad[ys0:ys1 + 2 * pad, xs0:xs1 + 2 * pad], (0, 0), sig)
+    if img.shape[0] < tmpl.shape[0] or img.shape[1] < tmpl.shape[1] or not T[ys0:ys1, xs0:xs1].any():
+        return 0, 0
+    # mean-subtracted correlation, so thick thread is not favoured over right thread
+    res = cv2.matchTemplate(img, tmpl, cv2.TM_CCOEFF_NORMED)
+    j, i = np.unravel_index(int(np.nanargmax(res)), res.shape)
+    return int(i) - pad, int(j) - pad
 
 
 def read_word(name: str, rgb: np.ndarray, alpha: np.ndarray, box_frac, design: dict,
               thread_mm: float | None = None, use_ocr: bool = True,
               reg: Registration | None = None, thread_cache: dict | None = None,
-              src_full_cache: dict | None = None) -> tuple[WordResult, dict]:
-    """Score every glyph of one labelled word. -> (WordResult, debug arrays
-    for the panel renderer)."""
+              keep_frac=None) -> tuple[WordResult, dict]:
+    """Score every glyph of one labelled word. `keep_frac`: the labelled
+    letters' boxes (fractions of the artwork), to read only those components.
+    -> (WordResult, debug arrays for the panel renderer)."""
     from digitizer_core import stitchviz
     thread_mm = stitchviz.THREAD_MM if thread_mm is None else thread_mm
     h, w = rgb.shape[:2]
@@ -534,14 +615,17 @@ def read_word(name: str, rgb: np.ndarray, alpha: np.ndarray, box_frac, design: d
     H, W = thread_f.shape
     soft_w = cv2.warpAffine(soft_box, reg.matrix(), (W, H), flags=cv2.INTER_CUBIC)
     # restrict to the word box
-    bx = np.array([[box_px[0], box_px[1]], [box_px[2], box_px[3]]], np.float64)
-    bu = bx @ np.array([[reg.a, 0], [0, reg.a]]) + np.array([reg.tx, reg.ty])
-    gbox = (int(bu[0, 0]), int(bu[0, 1]), int(bu[1, 0]), int(bu[1, 1]))
+    gbox = tuple(int(v) for v in reg.apply_box(*box_px))
     box_mask = np.zeros((H, W), bool)
     box_mask[max(0, gbox[1]):gbox[3], max(0, gbox[0]):gbox[2]] = True
     S_all = (soft_w >= 0.5) & box_mask
     T_all = thread_f >= 0.5
-    lab, glyphs = _label_glyphs(S_all, gbox, P)
+    keep_px = None
+    if keep_frac:
+        keep_px = []
+        for (kx0, ky0, kx1, ky1) in keep_frac:
+            keep_px.append(reg.apply_box(kx0 * w, ky0 * h, kx1 * w, ky1 * h))
+    lab, glyphs = _label_glyphs(S_all, gbox, P, keep_px)
     res = WordResult(name=name, ground=[int(v) for v in G],
                      registration={"scale_mm_per_src_px": round(reg.mm_per_src_px, 6),
                                    "ncc": round(reg.score, 3)})
@@ -555,7 +639,7 @@ def read_word(name: str, rgb: np.ndarray, alpha: np.ndarray, box_frac, design: d
     dist, (iy, ix) = ndi.distance_transform_edt(marker == 0, return_indices=True)
     owner = marker[iy, ix]
     R = int(SHIFT_MM * P)
-    zone_r = (TOL_MM * 2.0 + SHIFT_MM) * P
+    zone_r = (COMP_TOL_MM + 0.5) * P         # a glyph's thread lives within comp + half a mm of it
     claimed = np.zeros((H, W), bool)
     ocr_ok = use_ocr and tesseract_available()
     if not use_ocr:
@@ -576,7 +660,9 @@ def read_word(name: str, rgb: np.ndarray, alpha: np.ndarray, box_frac, design: d
         sc = glyph_scores(m[win], Tg[win], thread_mm, P)
         sc["offset_mm"] = round(math.hypot(dxs, dys) / P, 2)
         sc["bbox_mm"] = [round(v / P, 2) for v in bb]
-        if ocr_ok:
+        if ocr_ok and sc["area_src_mm2"] > OCR_MAX_GLYPH_MM2:
+            sc["ocr_skipped"] = "touching letters: not a single character"
+        elif ocr_ok:
             st, sconf = _ocr_char(m[win])
             tt, tconf = _ocr_char(Tg[win])
             readable = bool(st) and sconf >= OCR_CONF_MIN
@@ -608,8 +694,10 @@ def read_word(name: str, rgb: np.ndarray, alpha: np.ndarray, box_frac, design: d
 # circles, plus the two big words he did not circle. Becker and Bridge boxes
 # come from the labelled lines of `testdata/lettering_truth.json` through
 # `truth_boxes` (the region polygons of those shape ids at the corpus size);
-# they are pinned in `PINNED_TRUTH_BOXES` so a read needs no digitize, and
-# `--truth-boxes` recomputes them.
+# they are pinned in `testdata/lettering_truth_boxes.json` so a read needs no
+# digitize, and `--truth-boxes NAME` recomputes them. A word read through
+# them keeps only the components inside a labelled letter's box, so Bridge's
+# anchor and waves, which share the line's box, are not scored as letters.
 CASES: dict[str, dict] = {
     "fremont": {
         "source": "photo/logo_hotel_fremont.webp",
@@ -629,7 +717,13 @@ CASES: dict[str, dict] = {
 #              `testdata/reference/becker_*.pes`); Becker and Bridge from the
 #              lane's own output, which the director named legible.
 KENT_ILLEGIBLE = ("est", "1895", "the", "tagline")
-_PRO_FREMONT = {w: "legible" for w in (*KENT_ILLEGIBLE, "hotel", "fremont")}
+# The pro's file is NOT the same lettering as the artwork on EST, 1895 and the
+# tagline: rendered over the artwork it sews them in bold block letters about
+# 2 mm off, so a shape-vs-artwork read of those three is a comparison of two
+# designs, not of sewing against its source (measured: `r1/` panels and the
+# PR body). Only the words the pro sews where and as the artwork draws them
+# are labelled; the other three are still read and reported.
+_PRO_FREMONT = {w: "legible" for w in ("the", "hotel", "fremont")}
 RUNS: dict[str, dict] = {
     "ours_fremont81": {"case": "fremont", "labels": {
         **{w: "illegible" for w in KENT_ILLEGIBLE}, "hotel": "legible", "fremont": "legible"}},
@@ -643,11 +737,20 @@ RUNS: dict[str, dict] = {
 }
 
 
-def truth_boxes(name: str, margin_mm: float = 0.3) -> dict[str, tuple]:
-    """Word boxes, as fractions of the artwork, from the labelled lines of
-    `testdata/lettering_truth.json`: the union of each line's region polygons
-    at the corpus size, through the prep frame, grown by `margin_mm`.
-    Runs stages 1-4 of the pipeline."""
+TRUTH_BOXES_FILE = ROOT / "testdata" / "lettering_truth_boxes.json"
+TRUTH_BOXES_ABOUT = ("Letter-region boxes, as fractions of the artwork, for each labelled line of "
+                     "lettering_truth.json: the region polygons' bounds at the corpus size "
+                     "(tools/thin_strokes.REAL_ART, six colours), grown 0.3 mm. Written by "
+                     "tools/glyph_legibility.py --truth-boxes NAME --write-truth-boxes. Text "
+                     "only: no artwork is stored here.")
+
+
+def truth_boxes(name: str, margin_mm: float = 0.3) -> dict[str, list[tuple]]:
+    """Per labelled line of `testdata/lettering_truth.json`, one box per
+    labelled letter region, as fractions of the artwork: the region polygon's
+    bounds at the corpus size, through the prep frame, grown by `margin_mm`.
+    Runs stages 1-4 of the pipeline; its output is what
+    `testdata/lettering_truth_boxes.json` pins."""
     from digitizer_core import PipelineConfig
     from digitizer_core.pipeline import build_generation
     from tools.thin_strokes import REAL_ART, STUDIO_MAX_COLORS
@@ -664,12 +767,26 @@ def truth_boxes(name: str, margin_mm: float = 0.3) -> dict[str, tuple]:
         polys = [r.polygon for r in gen.regions if r.shape_id in set(ids)]
         if not polys:
             continue
-        b = [q.bounds for q in polys]
-        bx = (min(v[0] for v in b) - margin_mm, min(v[1] for v in b) - margin_mm,
-              max(v[2] for v in b) + margin_mm, max(v[3] for v in b) + margin_mm)
-        out[line] = tuple(round(v, 4) for v in (
-            (bx[0] * p.px_per_mm + cx) / w, (bx[1] * p.px_per_mm + cy) / h,
-            (bx[2] * p.px_per_mm + cx) / w, (bx[3] * p.px_per_mm + cy) / h))
+        boxes = []
+        for q in polys:
+            b = q.bounds
+            bx = (b[0] - margin_mm, b[1] - margin_mm, b[2] + margin_mm, b[3] + margin_mm)
+            boxes.append(tuple(round(v, 4) for v in (
+                (bx[0] * p.px_per_mm + cx) / w, (bx[1] * p.px_per_mm + cy) / h,
+                (bx[2] * p.px_per_mm + cx) / w, (bx[3] * p.px_per_mm + cy) / h)))
+        out[line] = boxes
+    return out
+
+
+def truth_word_boxes(name: str, grow: float = 0.012) -> dict[str, dict]:
+    """The pinned truth boxes as read specs: {line: {"box": union grown by
+    `grow` of the image, "keep": the letter boxes}}."""
+    pinned = json.loads(TRUTH_BOXES_FILE.read_text())["fixtures"][name]
+    out = {}
+    for line, boxes in pinned.items():
+        bx = (min(b[0] for b in boxes) - grow, min(b[1] for b in boxes) - grow,
+              max(b[2] for b in boxes) + grow, max(b[3] for b in boxes) + grow)
+        out[line] = {"box": tuple(min(1.0, max(0.0, v)) for v in bx), "keep": [tuple(b) for b in boxes]}
     return out
 
 
@@ -694,7 +811,9 @@ def load_design(path) -> dict:
     return design_from_pes(path)
 
 
-PINNED_TRUTH_BOXES: dict[str, dict] = {"becker": {}, "bridge": {}}
+def case_boxes(case: str) -> dict:
+    spec = CASES[case]
+    return spec["boxes"] or truth_word_boxes(spec["truth"])
 
 
 def read_case(case: str, design: dict, thread_mm: float | None = None,
@@ -703,8 +822,7 @@ def read_case(case: str, design: dict, thread_mm: float | None = None,
     -> ([WordResult], {word: debug}, Registration)."""
     spec = CASES[case]
     rgb, alpha = load_source(ROOT / "testdata" / spec["source"])
-    boxes = spec["boxes"] or PINNED_TRUTH_BOXES[spec["truth"]]
-    return read_arrays(rgb, alpha, boxes, design, thread_mm, use_ocr, words)
+    return read_arrays(rgb, alpha, case_boxes(case), design, thread_mm, use_ocr, words)
 
 
 def read_arrays(rgb: np.ndarray, alpha: np.ndarray, boxes: dict, design: dict,
@@ -723,7 +841,10 @@ def read_arrays(rgb: np.ndarray, alpha: np.ndarray, boxes: dict, design: dict,
     for name, box in boxes.items():
         if words and name not in words:
             continue
-        r, d = read_word(name, rgb, alpha, box, design, thread_mm, use_ocr, reg, cache)
+        keep = None
+        if isinstance(box, dict):
+            box, keep = box["box"], box["keep"]
+        r, d = read_word(name, rgb, alpha, box, design, thread_mm, use_ocr, reg, cache, keep)
         out.append(r)
         dbg[name] = d
     return out, dbg, reg
@@ -773,12 +894,12 @@ def validate(results: dict[str, list[WordResult]]) -> dict:
         labels = RUNS[run]["labels"]
         for w in words:
             lab = labels.get(w.name)
-            if lab:
+            if lab and w.glyphs:          # a word with no glyph found is reported, never scored as 0 or 1
                 rows.append((run, w, lab))
     pos = [(r, w) for r, w, lab in rows if lab == "legible"]
     neg = [(r, w) for r, w, lab in rows if lab == "illegible"]
     out: dict = {"n_legible_words": len(pos), "n_illegible_words": len(neg)}
-    for key in ("legibility", "worst_glyph"):
+    for key in ("legibility", "worst_glyph", "legibility_space"):
         ps = [w.summary()[key] for _r, w in pos]
         ns = [w.summary()[key] for _r, w in neg]
         out[f"word_{key}"] = {
@@ -789,6 +910,14 @@ def validate(results: dict[str, list[WordResult]]) -> dict:
     gp = [[g["legibility"] for g in w.glyphs] for _r, w in pos]
     gn = [[g["legibility"] for g in w.glyphs] for _r, w in neg]
     out["glyph_legibility"] = cluster_auc_ci(gp, gn)
+    # OCR as the independent reader, scored the same way: share of readable
+    # glyphs the thread recovers, per word, legible words against illegible.
+    if tesseract_available():
+        def rates(items):
+            return [[1.0 if g["ocr_recovered"] else 0.0
+                     for g in w.glyphs if g.get("ocr_readable_src")] for _r, w in items]
+        rp, rn = [x for x in rates(pos) if x], [x for x in rates(neg) if x]
+        out["glyph_ocr_recovered"] = cluster_auc_ci(rp, rn)
     # Does the geometric number agree with the second reader? Over glyphs whose
     # SOURCE reads, AUC of legibility for "thread read as the same character".
     if not tesseract_available():
@@ -824,11 +953,16 @@ def word_panel(word: WordResult, dbg: dict, title: str, scale: int = 4) -> np.nd
     blue = thread off the source, dark = agree), its five readings under it."""
     tiles = []
     for g in dbg["glyphs"]:
-        t = _tile(g["S"], g["T"], scale)
+        # big glyphs (Becker's merged lettering is 30 mm wide) are drawn at 1:1 or less
+        sc_t = scale if max(g["S"].shape) <= 160 else 1
+        t = _tile(g["S"], g["T"], sc_t)
+        if max(t.shape[:2]) > 520:
+            f = 520.0 / max(t.shape[:2])
+            t = cv2.resize(t, None, fx=f, fy=f, interpolation=cv2.INTER_AREA)
         sc = g["score"]
-        lines = [f"{sc['legibility']:.2f}",
-                 f"sh {sc['shape']:.2f} st {sc['strokes']:.2f}",
-                 f"cl {sc['clean']:.2f} co {sc['counters']:.2f}"]
+        lines = [f"{sc['legibility']:.2f}  iou {sc['iou']:.2f}",
+                 f"st {sc['strokes']:.2f} cl {sc['clean']:.2f}",
+                 f"co {sc['counters']:.2f} sp {sc['space']:.2f}"]
         if "ocr_src" in sc:
             lines.append(f"ocr {sc['ocr_src'] or '-'}>{sc['ocr_sewn'] or '-'}")
         pad = np.full((16 * len(lines) + 4, max(t.shape[1], 118), 3), 245, np.uint8)
@@ -852,8 +986,8 @@ def word_panel(word: WordResult, dbg: dict, title: str, scale: int = 4) -> np.nd
 # --- output ------------------------------------------------------------------------
 
 def table(runs: dict[str, list[WordResult]]) -> str:
-    lines = [f"{'run':18} {'word':17} {'gl':>3} {'LEGIBILITY':>10} {'worst':>6} {'shape':>6} {'strok':>6} "
-             f"{'clean':>6} {'ctrs':>6} {'euler':>6} {'stray':>6} {'offmm':>6}  ocr recovered"]
+    lines = [f"{'run':18} {'word':17} {'gl':>3} {'LEGIBILITY':>10} {'worst':>6} {'strok':>6} "
+             f"{'clean':>6} {'ctrs':>6} {'space':>6} {'iou':>6} {'euler':>6} {'stray':>6} {'offmm':>6}  ocr recovered"]
     for run, words in runs.items():
         for w in words:
             s = w.summary()
@@ -866,8 +1000,8 @@ def table(runs: dict[str, list[WordResult]]) -> str:
                                                               f" [{o['ci95'][0]:.2f}-{o['ci95'][1]:.2f}]"))
             lab = RUNS.get(run, {}).get("labels", {}).get(w.name, "")
             lines.append(f"{run:18} {w.name:17} {s['glyphs']:3d} {s['legibility']:10.3f} {s['worst_glyph']:6.3f} "
-                         f"{s['shape']:6.3f} {s['strokes']:6.3f} {s['clean']:6.3f} {s['counters']:6.3f} "
-                         f"{s['euler_match']:>6} {s['stray_mm2']:6.2f} {s['max_offset_mm']:6.2f}  {ocr}"
+                         f"{s['strokes']:6.3f} {s['clean']:6.3f} {s['counters']:6.3f} {s['space']:6.3f} "
+                         f"{s['iou']:6.3f} {s['euler_match']:>6} {s['stray_mm2']:6.2f} {s['max_offset_mm']:6.2f}  {ocr}"
                          f"{'  <' + lab + '>' if lab else ''}")
     return "\n".join(lines)
 
@@ -928,18 +1062,27 @@ def main(argv=None) -> int:
                     help="score every run in RUNS found in DIR as <run>.json|.pes")
     ap.add_argument("--make", type=Path, metavar="DIR",
                     help="write ours_becker.json and ours_bridge.json into DIR (digitizes both)")
-    ap.add_argument("--truth-boxes", choices=("becker", "bridge", "fremont"))
+    ap.add_argument("--truth-boxes", choices=("becker", "bridge"),
+                    help="recompute one fixture's letter boxes from the labelled lines")
+    ap.add_argument("--write-truth-boxes", action="store_true",
+                    help="with --truth-boxes: pin the result into testdata/lettering_truth_boxes.json")
     ap.add_argument("--thread-mm", type=float, default=None)
     ap.add_argument("--no-ocr", action="store_true")
     ap.add_argument("--json", type=Path)
     ap.add_argument("--renders", type=Path)
     a = ap.parse_args(argv)
     if a.list:
-        print(json.dumps({"cases": {k: v.get("boxes") or PINNED_TRUTH_BOXES.get(v.get("truth"))
-                                    for k, v in CASES.items()}, "runs": RUNS}, indent=1))
+        print(json.dumps({"cases": {k: case_boxes(k) for k in CASES}, "runs": RUNS}, indent=1))
         return 0
     if a.truth_boxes:
-        print(json.dumps(truth_boxes(a.truth_boxes), indent=1))
+        boxes = truth_boxes(a.truth_boxes)
+        print(json.dumps(boxes, indent=1))
+        if a.write_truth_boxes:
+            cur = (json.loads(TRUTH_BOXES_FILE.read_text()) if TRUTH_BOXES_FILE.exists()
+                   else {"about": TRUTH_BOXES_ABOUT, "fixtures": {}})
+            cur["fixtures"][a.truth_boxes] = boxes
+            TRUTH_BOXES_FILE.write_text(json.dumps(cur, indent=1) + "\n", encoding="utf-8")
+            print("wrote", TRUTH_BOXES_FILE)
         return 0
     if a.make:
         a.make.mkdir(parents=True, exist_ok=True)
