@@ -1,8 +1,10 @@
 # Sew-out card v3, 2026-10-13
 
+**Superseded by card v3.1 (see `README.md` in this folder and `card_v3_1_40wt.dst`), which carries every block here unchanged and adds the skeleton arms and the ends check. Kept for history.**
+
 One DST file (**40 wt**) for the questions Kent's Hotel Fremont 81 mm Hat
 report left open. Each question is a block of arms sewn **side by side** and
-labelled with teeth. You sew it once, read each block on `scoring-sheet.md`,
+labelled with teeth. You sew it once, read each block on `scoring-sheet-v3.md`,
 and that settles several ROADMAP gate-1 questions together. **Every number on
 this card is a candidate until you sew it.** Nothing here is a setting.
 
@@ -21,9 +23,9 @@ stitch count, not a measurement).
 | `card_v3_40wt.dst` | the card, **40 wt** thread. |
 | `card_v3_40wt.png` | what the file looks like, thread drawn at the laid width, 12 px/mm. A picture of the file, not of cloth. |
 | `card_v3_40wt_blocks.png` | every arm cropped at 60 px/mm, the arms of a block side by side, for comparing them before you sew. |
-| `scoring-sheet.md` | the readout sheet: one table per block. Print it. |
+| `scoring-sheet-v3.md` | the readout sheet: one table per block. Print it. |
 | `cuts/cut_*.json` | the Fremont runs the T and N blocks sew: the replay of the Studio request, cut to each box (see below). |
-| `readback.md`, `readback.json` | the file checks, also quoted below. |
+| `readback-v3.md`, `readback-v3.json` | the file checks, also quoted below. |
 
 The file is written by `python -m tools.sewout_card_v3` (in `digitizer/`)
 through the service's export path (pystitch), not the browser's DST codec,
