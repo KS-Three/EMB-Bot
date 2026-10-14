@@ -755,17 +755,16 @@ RUN_MIN_LOOP_MM = 2.2
 RUN_MIN_AREA_MM2 = 0.16
 
 # The small-dot rung (`cfg.small_dot_rung`, built OFF 2026-10-14). A closed
-# ring under RUN_MIN_LOOP_MM -- the dot of a small i or j, the 8's small
-# counter -- sews as a tack ring of DOT_RUNG_PASSES passes at
-# DOT_RUNG_STITCH_MM instead of being dropped. The rung's own floor keeps the
+# PART whose outline is under RUN_MIN_LOOP_MM -- the dot of a small i or j --
+# sews as a tack ring of DOT_RUNG_PASSES passes at DOT_RUNG_STITCH_MM
+# instead of being dropped (a counter ring that short is not: see the flag). The rung's own floor keeps the
 # loop constant's reasoning (three stations, or the needle re-enters its own
 # holes) at the shorter stitch: 3 x 0.45 = 1.35 mm. 0.45 is the stitch the
 # bean-letter lane already sews small text at (`cfg.bean_letter_stitch_mm`,
 # PR #911); 3 passes is BEAN_PASSES. Both are CANDIDATES (ROADMAP gate 1):
 # no sew-out has said what a 0.45 mm tack ring does on a cap, and
 # RUN_MIN_LOOP_MM itself is untouched. Measured on the synthetic 80 mm i dot
-# (0.446 mm², 0.75 mm across: stage 3's 2 x max(w, h) proxy 1.5 mm) and
-# Fremont 81 mm Hat's 8 (a 0.300 mm² counter, 2.05 mm ring).
+# (0.446 mm², 0.75 mm across: stage 3's 2 x max(w, h) proxy 1.5 mm).
 DOT_RUNG_STITCH_MM = 0.45
 DOT_RUNG_PASSES = 3
 DOT_RUNG_MIN_LOOP_MM = 3 * DOT_RUNG_STITCH_MM

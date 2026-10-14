@@ -1188,11 +1188,13 @@ def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
     it — see `_covered_walk`. Counted as `walked`; OFF never consults it.
 
     `dot_rung` (`cfg.small_dot_rung`, built OFF; stage 7's run routing is
-    its only caller): a ring under `RUN_MIN_LOOP_MM` but at or over
-    `machine.DOT_RUNG_MIN_LOOP_MM` -- an i dot, the 8's small counter -- sews
-    as a tack ring, `DOT_RUNG_PASSES` passes at `DOT_RUNG_STITCH_MM`, instead
-    of being skipped. Counted as `dot_rings` (the key exists only when asked).
-    Every ring at or over RUN_MIN_LOOP_MM sews exactly as without it.
+    its only caller): an OUTER ring under `RUN_MIN_LOOP_MM` but at or over
+    `machine.DOT_RUNG_MIN_LOOP_MM` -- the outline of an i dot -- sews as a
+    tack ring, `DOT_RUNG_PASSES` passes at `DOT_RUNG_STITCH_MM`, instead of
+    being skipped. A sub-floor HOLE ring is still skipped: sewing the 8's
+    small counter ring shut that counter (measured, see the loop below).
+    Counted as `dot_rings` (the key exists only when asked). Every ring at or
+    over RUN_MIN_LOOP_MM sews exactly as without it.
     """
     report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False,
               "arcs": 0, "yielded": 0, "walked": 0}
@@ -1204,12 +1206,16 @@ def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
     if omit is not None and not getattr(omit, "is_empty", True):
         omit_prep = prep(omit.buffer(_OMIT_TOL_MM))
     for part in _parts(poly):
-        for ring in [part.exterior, *part.interiors]:
+        for k, ring in enumerate([part.exterior, *part.interiors]):
             coords = list(ring.coords)
             length = LineString(coords).length
             stitch_mm, passes = machine.BEAN_STITCH_MM, machine.BEAN_PASSES
             if length < machine.RUN_MIN_LOOP_MM:
-                if not dot_rung or length < machine.DOT_RUNG_MIN_LOOP_MM:
+                # The rung sews a closed PART (k == 0), never a counter: a
+                # tack ring on a sub-floor hole's edge shuts it (Fremont's
+                # 8, 2026-10-14: 1 of 2 counters open -> 0 of 2).
+                if (not dot_rung or k > 0
+                        or length < machine.DOT_RUNG_MIN_LOOP_MM):
                     continue           # smaller than the mark the thread makes
                 stitch_mm, passes = machine.DOT_RUNG_STITCH_MM, machine.DOT_RUNG_PASSES
                 report["dot_rings"] += 1

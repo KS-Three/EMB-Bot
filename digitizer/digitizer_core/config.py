@@ -1479,16 +1479,20 @@ class PipelineConfig:
     # A rung for closed parts under the run loop floor (2026-10-14, built
     # OFF; MASTER_SCOPE "Waiting on Kent" 52 asks "lower the floor or a dot
     # rung"; this PRICES the rung, Kent decides). `machine.RUN_MIN_LOOP_MM`
-    # (2.2) loses two things: stage 3's 2 x max(w, h) perimeter proxy drops
-    # the 80 mm i/j dot (0.446 mm², 0.75 mm across, proxy 1.5 mm, real ring
-    # 2.49 mm), and the run tier skips the 8's small counter ring (2.05 mm,
-    # Fremont 81 mm Hat). ON: stage 3's proxy and stage 4's real-ring test
-    # admit a shape down to `machine.DOT_RUNG_MIN_LOOP_MM` (still over
-    # `RUN_MIN_AREA_MM2`), and the run tier sews a ring between that and
+    # (2.2) drops the 80 mm i/j dot (0.446 mm², 0.75 mm across) at stage 3,
+    # whose 2 x max(w, h) perimeter proxy reads 1.5 mm (the real ring is
+    # 2.49 mm). ON: stage 3's proxy and stage 4's real-ring test admit a part
+    # down to `machine.DOT_RUNG_MIN_LOOP_MM` (still over `RUN_MIN_AREA_MM2`;
+    # not a part nine tenths ringed by other small regions, which is a small
+    # glyph's counter), and the run tier sews an OUTER ring between that and
     # RUN_MIN_LOOP_MM as a tack ring (`DOT_RUNG_STITCH_MM`, `DOT_RUNG_PASSES`)
-    # instead of skipping it. Rings at or over 2.2 mm sew exactly as before.
-    # All three numbers are CANDIDATES (ROADMAP gate 1). Off, byte-identical
-    # (md5-pinned in `tests/test_small_dot_rung.py`).
+    # instead of skipping it. A sub-floor HOLE ring is still skipped, on
+    # purpose: Fremont 81 mm Hat's 8 has a 2.05 mm counter ring, and sewing it
+    # shut that counter (glyph legibility 1895 0.551 -> 0.426, the 8's open
+    # counters 1 -> 0). The 8's OTHER counter is shut by the 0.73 mm bean on
+    # its own 2.39 mm ring, not by this floor. Rings at or over 2.2 mm sew
+    # exactly as before. All three numbers are CANDIDATES (ROADMAP gate 1).
+    # Off, byte-identical (md5-pinned in `tests/test_small_dot_rung.py`).
     small_dot_rung: bool = False
     # Small lettering thinner than the thread, sewn as ONE run down its
     # skeleton (2026-10-13, default OFF; Kent's "fine details" priority,
