@@ -10,11 +10,14 @@ thread, so 1.6-3.2x the drawn width, and a counter the outline goes round is
 shut (PR #905's per-glyph table). A stroke under one thread wide has one
 honest construction: one pass down its middle.
 
-This is that pass, for a lettering-tagged shape (`columns.is_lettering`)
-the rescue would send to the run tier anyway, and only when its stroke
-(the traced skeleton's median body width, `stage6_hairline.measure`) is at or
-under the block's laid thread width. Everything else, and every shape when
-the flag is off, takes the ladder exactly as before.
+This is that pass, for a letter of a line of text (`text_line_members`: a
+text-cluster member, or a house-angle-group shape inside a same-thread
+cluster's box) the rescue would send to the run tier anyway, and only when
+its stroke -- read off the artwork's own pixels along the skeleton
+(`stage6_hairline.measure` with the plan's `InkSource`), the traced width
+where the source has no edge -- is at or under the block's laid thread
+width. Everything else, and every shape when the flag is off, takes the
+ladder exactly as before.
 
 How a glyph is sewn:
 
@@ -126,14 +129,52 @@ def glyph_polygon(poly, small_counters) -> Polygon:
     return max(polys, key=lambda g: g.area)
 
 
-def qualifies(poly, max_width_mm: float):
-    """-> the `stage6_hairline.measure` dict when the glyph's stroke (traced
-    skeleton median body width) is at or under `max_width_mm` and its 95th
-    percentile under twice it (a blob is not a stroke); else None."""
-    m = measure(poly, max_width_mm)
+def qualifies(poly, max_width_mm: float, ink=None):
+    """-> the `stage6_hairline.measure` dict when the glyph's stroke is at or
+    under `max_width_mm` and its traced 95th percentile under twice it (a
+    blob is not a stroke); else None. The stroke is read off the SOURCE
+    pixels when `ink` (`stage6_hairline.InkSource`) is given and has an edge
+    there -- the tracer's error at this scale has no fixed sign (a 0.40 mm
+    tick traces anywhere from 0.17 to 0.45 at 8 px/mm) -- else the traced
+    skeleton's median body width."""
+    m = measure(poly, max_width_mm, ink=ink)
     if m is None or not m["shape_admit"]:
         return None
     return m
+
+
+def text_line_members(regions) -> set[str]:
+    """The shape ids this tier may take: every member of a text cluster
+    (`meta["text_cluster_id"]`, `textcluster`), plus a shape only the
+    house-angle tagger calls lettering (`lettering_group`) whose centroid
+    lies inside the bounding box of a text cluster of the SAME thread -- a
+    letter of that line the text tagger missed (Fremont's tagline A's, which
+    stage 4's dropped counter turned into blobs to it). A `lettering_group`
+    shape outside every line of text is left alone: on Fremont that is a
+    banner's row of tick marks whose widths straddle the thread (source
+    0.25-0.51 mm), so taking them one by one sewed half the row as runs and
+    half as outlines."""
+    boxes: dict = {}
+    members: set[str] = set()
+    for r in regions:
+        cid = (r.meta or {}).get("text_cluster_id")
+        if not cid or not (r.meta or {}).get("text_candidate"):
+            continue
+        members.add(r.shape_id)
+        key = (cid, r.thread_index)
+        x0, y0, x1, y1 = r.polygon.bounds
+        b = boxes.get(key)
+        boxes[key] = ((x0, y0, x1, y1) if b is None else
+                      (min(b[0], x0), min(b[1], y0), max(b[2], x1), max(b[3], y1)))
+    for r in regions:
+        m = r.meta or {}
+        if r.shape_id in members or not m.get("lettering_group") or m.get("text_candidate"):
+            continue
+        c = r.polygon.centroid
+        if any(t == r.thread_index and x0 <= c.x <= x1 and y0 <= c.y <= y1
+               for (_cid, t), (x0, y0, x1, y1) in boxes.items()):
+            members.add(r.shape_id)
+    return members
 
 
 # --- the route ---------------------------------------------------------------
@@ -454,11 +495,13 @@ def counter_crossings(points, counters, tol_mm: float = COUNTER_TOL_MM):
 def skeleton_letter_runs(poly, shape_id: str, *, max_width_mm: float, stitch_mm: float,
                          run_width_mm: float, entry, trim_at_mm: float,
                          min_mm: float = machine.MIN_STITCH_MM,
-                         m: dict | None = None) -> tuple[list[StitchRun], dict]:
+                         ink=None, m: dict | None = None) -> tuple[list[StitchRun], dict]:
     """One glyph (`poly`, counters already punched back) -> (runs, report).
+    `ink` is the artwork's pixels for the width gate (`qualifies`).
 
     Report: the shared tier keys (`empty`, `jumps`, `too_thin` False) plus
-    `admitted`, `width_mm` (the traced stroke), `edges`, `components`,
+    `admitted`, `width_mm` (the stroke the gate read), `width_traced_mm`,
+    `edges`, `components`,
     `retrace_mm` (thread walked back over), `sewn_mm` (skeleton length),
     `stitches`, `min_stitch_mm`, `counters`, `counter_crossings`,
     `counter_depth_mm`, `outside_mm` and `missed_share` (`fidelity`), and
@@ -470,12 +513,14 @@ def skeleton_letter_runs(poly, shape_id: str, *, max_width_mm: float, stitch_mm:
               "counters": len(getattr(poly, "interiors", []) or []),
               "counter_crossings": 0, "counter_depth_mm": 0.0, "declined": None}
     if m is None:
-        m = qualifies(poly, max_width_mm)
-    if m is None:
+        m = measure(poly, max_width_mm, ink=ink)
+    if m is not None:
+        report["width_mm"] = round(m["width_mm"], 4)
+        report["width_traced_mm"] = round(m["width_traced_mm"], 4)
+    if m is None or not m["shape_admit"]:
         report["declined"] = "width"
         return [], report
     report["admitted"] = True
-    report["width_mm"] = round(m["width_traced_mm"], 4)
     edges = list(m["hair_edges"]) + list(m["thick_edges"])
     report["edges"] = len(edges)
     if not edges:
