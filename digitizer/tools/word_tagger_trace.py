@@ -461,19 +461,21 @@ def trace(regions, chart=None, rules: Rules | None = None, memo: dict | None = N
     return t
 
 
-def explain_missing(sid: str, partners: list[str], t: Trace, chart) -> Why:
+def explain_missing(sid: str, partners: list[str], t: Trace, chart, rules: Rules | None = None) -> Why:
     """Why glyph `sid` is in no word. Rejected at admission, or lost after
     linking: that fate. Otherwise (admitted, linked to too few): the
     nearest-to-linking partner among `partners` (the other members the word
     should have, admitted ones first), reported with the pair's failing
-    link rules; the dominant one is the one furthest over its line."""
+    link rules; the dominant one is the one furthest over its line. `rules`
+    are the link thresholds to read (default: the shipped L1 constants;
+    `tools/script_lowercase_census.py` passes each old tagger's own)."""
     if sid in t.rejected:
         return t.rejected[sid]
     me = t.cands[sid]
     pool = [p for p in partners if p in t.cands and p != sid] or [p for p in t.cands if p != sid]
     best = None
     for p in pool:
-        fails = link_failures(me, t.cands[p], chart)
+        fails = link_failures(me, t.cands[p], chart, rules)
         key = (len(fails), max((f.ratio for f in fails), default=0.0))
         if best is None or key < best[0]:
             best = (key, p, fails)
