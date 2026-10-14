@@ -2201,6 +2201,27 @@ class PipelineConfig:
     # flip; renders only, nothing sewn); False is byte-identical.
     # Tests: `tests/test_lowercase_angle.py`.
     lettering_columns_fold_cuts: bool = False
+    # Under `lettering_columns`, a column ENDS ON the letter's own outline
+    # (2026-10-13, Kent: "we need to work on lettering and how they start /
+    # end"; `columns._hold_end_faces`). The pull push moves every cross end
+    # out along its own cross, and at a column END that cross is not square
+    # to the edge it stops on: Kent's Fremont 81 mm hat job (PR #898's replay)
+    # sewed HOTEL's E upper serif 0.29 mm past the arm's end face, the N's
+    # diagonal foot as a 142-deg ear 0.30 mm under the baseline, and the M's
+    # V as two fans pushed 0.41 mm below the vertex with a tuck run out under
+    # it. ON, a cross end that starts on an outline edge running ACROSS its
+    # column (more than `columns.END_FACE_DEG`, 45, off the column's
+    # direction), or on an edge some column's end cross lies along (the E's
+    # arm end, which its serif's side continues), keeps only the part of its
+    # move that runs ALONG that edge; a fan lying on a cut gets no reach; a
+    # tuck station must lie within the rails' side reach of the letter; and
+    # no penetration ends further out than that reach. Measured
+    # (`tools/column_ends.py`, PR body): Fremont 81 mm hat, 36 of the lane's
+    # column ends past their face by more than 0.10 mm -> 1. 45 deg and the
+    # 0.10 mm tolerance are CANDIDATES (geometry, sized on no fixture; nothing
+    # sewn, ROADMAP gate 1). Built OFF (Kent's call to flip); False is
+    # byte-identical. Tests: `tests/test_column_ends.py`.
+    lettering_columns_square_ends: bool = False
     # Under `lettering_columns`, let a thin STEM under the area floor reach
     # the Column lane (2026-10-13, `columns.is_thin_stem`). Stage 7's
     # small-shape rescue sends every auto-tier shape under `min_detail_mm`^2
@@ -2317,6 +2338,24 @@ class PipelineConfig:
     # for the hairline sew-out card. Off, byte-identical (md5-pinned in
     # `tests/test_small_print.py`). Lettering in the Column lane only.
     small_print_floor: bool = False
+    # Enlarge lettering too small to sew (`small_text.enlarge_small_text`,
+    # 2026-10-13; Kent on Hotel Fremont's "EST 1895": "the date is still
+    # showing up very poorly"). The cap height in mm a line of traced
+    # lettering is grown TO when its letters are under 0.9 of it: the line is
+    # retraced from the source raster (stage 4 has already dropped the
+    # counters of an 8 that small), scaled about itself -- never past 2x --
+    # and moved the least distance at which it clears every other shape by
+    # 0.4 mm; a line with no room is left exactly as it was. It is what the
+    # professional's file for that patch does: at the same 92.5 mm its date
+    # is 3.6-3.9 mm tall in satin against the art's 1.9 mm, which this
+    # engine sews as a running stitch that reads "1095". Five existing
+    # lettering options were rendered on that date first and none made it
+    # legible. THE DESIGN NO LONGER MATCHES THE ARTWORK where this fires --
+    # that is the trade, and why it is built OFF. None is byte-identical
+    # (nothing calls the pass). The intended value is a CANDIDATE (ROADMAP
+    # gate 1): 3.7 is the professional's on one file, unsewn here. The flip
+    # is Kent's, on renders. Tests: `tests/test_small_text.py`.
+    small_text_cap_mm: float | None = None
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
