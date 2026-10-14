@@ -79,6 +79,8 @@ from .stage6_detail import detail_runs
 # warning), a different, older thing.
 from .stage6_hairline import REST_KEY as HAIRLINE_REST_KEY
 from .stage6_hairline import hairline_candidates, rest_planned
+from .stage6_small_letter import REPORT_KEY as SMALL_LETTER_KEY
+from .stage6_small_letter import glyph_polygon, skeleton_letter_runs
 from .stage6_hairline import hairline_runs as hairline_tier_runs
 from .stage6_hairline import HairlineSet
 from .stage6_hairline_lines import applies as hairline_lines_apply
@@ -2427,6 +2429,30 @@ def sequence(
                         rest_rep = dict(rest_rep, hairline_tier=1, strands=0,
                                         dropped=report["dropped"])
                     return rest_runs, rest_rep, rest_filled
+            # Small lettering as ONE skeleton run (`cfg.small_lettering_skeleton`,
+            # default OFF, 2026-10-13 -- `stage6_small_letter`'s docstring): a
+            # lettering shape the rescue below would sew as a bean run on its
+            # OUTLINE, whose stroke is at or under the block's laid width, sews
+            # one run down its middle instead, its dropped counters punched
+            # back first. On the ARTWORK polygon, for the run rung's reason. A
+            # glyph it declines (too wide, or its run would cross a counter)
+            # takes the rescue as before.
+            if (tier == "auto" and cfg.small_lettering_skeleton
+                    and routes_to_run(p, tier) and is_lettering(p.region, cfg)):
+                prof = profile_for(p)
+                runs, report = skeleton_letter_runs(
+                    glyph_polygon(p.region.polygon, p.region.meta.get("small_counters")),
+                    p.shape_id, max_width_mm=prof.width_mm,
+                    stitch_mm=cfg.hairline_stitch_mm,
+                    run_width_mm=prof.hairline_run_width_mm,
+                    entry=entry, trim_at_mm=trim_at,
+                    min_mm=(cfg.small_lettering_skeleton_floor_mm
+                            if cfg.small_lettering_skeleton_floor_mm is not None
+                            else machine.MIN_STITCH_MM))
+                if not report["empty"]:
+                    report["as_run"] = 1
+                    report[SMALL_LETTER_KEY] = 1
+                    return runs, report, False
             outline_tried = False
             # Small print (`cfg.small_print_floor`, default OFF) reaches the
             # run and fill tiers through `small_print_cut`: the shape is
