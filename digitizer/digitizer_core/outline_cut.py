@@ -901,8 +901,126 @@ def _fan_ends(st, piece: Polygon, u, pitch_mm: float, W: float):
     return st
 
 
-def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float) -> Column | None:
-    """One piece -> its Column, or None when neither construction fits it."""
+# `cfg.lettering_columns_square_ends` (`mitre_ends`): a slanted end face is
+# mitred when it stands at least this far off square to the column (under it
+# the square cap's own rule is the end) and no more than this far (past it the
+# face runs nearly along the column and is a side, `columns.END_FACE_DEG`).
+MITRE_MIN_DEG = 8.0
+MITRE_MAX_DEG = 45.0
+
+
+def _ring_arc(ring: LineString, d0: float, d1: float, avoid: float, step: float):
+    """Points along the closed `ring` from arc position d0 to d1, going the
+    way that does NOT pass `avoid`, every `step` or closer, both ends kept.
+    -> (points, length)."""
+    L = ring.length
+
+    def fwd(a, b):                                     # length going forward a -> b
+        return (b - a) % L
+
+    if fwd(d0, avoid) < fwd(d0, d1):                   # forward passes `avoid`: go back
+        length, sgn = fwd(d1, d0), -1.0
+    else:
+        length, sgn = fwd(d0, d1), 1.0
+    n = max(1, int(math.ceil(length / step)))
+    pts = [ring.interpolate((d0 + sgn * length * k / n) % L).coords[0] for k in range(n + 1)]
+    return pts, length
+
+
+def _mitre_ends(st, piece: Polygon, u, cut_lines, pitch_mm: float, W: float):
+    """`cfg.lettering_columns_square_ends`: a column whose END is one straight
+    outline edge running across it at a slant -- the N's diagonal foot on the
+    baseline, where both sides draw in and `_fan_ends` does not fire -- ends
+    with its last cross ON that edge, a `CAP_INSET_MM` inside it, the way a
+    square cap ends on its face (`_cap_square_ends`). The crosses from the
+    last one clear of the face turn to it evenly: each rail walks its own
+    outline side to the face's corner, both in the same number of steps, no
+    step longer than `pitch_mm` on either rail -- a mitre, not a fan, since
+    neither rail pivots. The face is the end's longest edge that is not a cut
+    and stands `MITRE_MIN_DEG`..`MITRE_MAX_DEG` off square to the column,
+    found within 1.6 W of the end. Ends without one are returned as they
+    are, and so is any end whose new crosses the piece does not cover."""
+    if len(st) < 4:
+        return st
+    n = (-u[1], u[0])
+
+    def proj(p):
+        return p[0] * u[0] + p[1] * u[1]
+
+    def projn(p):
+        return p[0] * n[0] + p[1] * n[1]
+
+    ring = LineString(piece.exterior.coords)
+    cs = list(piece.exterior.coords)
+    cover = piece.buffer(0.05)
+    for end in (1, -1):
+        order = st if end > 0 else st[::-1]
+        last = order[-1]
+        if set(last) & set(order[-2]):
+            continue                                        # a fan already ends on its slant
+        t_last = end * proj(((last[0][0] + last[1][0]) / 2, (last[0][1] + last[1][1]) / 2))
+        face = None
+        for p, q in zip(cs[:-1], cs[1:]):
+            L = math.dist(p, q)
+            if L < 0.25 * W:
+                continue
+            m = ((p[0] + q[0]) / 2, (p[1] + q[1]) / 2)
+            if any(c.distance(Point(m)) < CAP_CUT_CLEAR_MM for c in cut_lines):
+                continue                                    # a cut, not a face
+            if end * proj(m) < t_last - 1.6 * W:
+                continue                                    # not at this end
+            f = ((q[0] - p[0]) / L, (q[1] - p[1]) / L)
+            off = math.degrees(math.acos(min(1.0, abs(f[0] * n[0] + f[1] * n[1]))))
+            if not (MITRE_MIN_DEG <= off <= MITRE_MAX_DEG):
+                continue
+            # the face must lie beyond the column's last cross, toward the end
+            if min(end * proj(p), end * proj(q)) < t_last - 0.5 * W:
+                continue
+            if face is None or L > face[2]:
+                face = (p, q, L, f)
+        if face is None:
+            continue
+        p, q, L, f = face
+        ca, cb = (p, q) if projn(p) < projn(q) else (q, p)   # the a side has the smaller normal
+        # the last cross clear of the face: both its ends before both corners
+        lim = min(end * proj(ca), end * proj(cb))
+        k = len(order) - 1
+        while k > 0 and max(end * proj(order[k][0]), end * proj(order[k][1])) > lim - 1e-9:
+            k -= 1
+        if k < 2:
+            continue
+        a_k, b_k = order[k]
+        # inset the face's corners along the face's inward normal
+        fn = (-f[1], f[0])
+        mid = ((p[0] + q[0]) / 2, (p[1] + q[1]) / 2)
+        if not piece.covers(Point(mid[0] + fn[0] * 0.02, mid[1] + fn[1] * 0.02)):
+            fn = (-fn[0], -fn[1])
+        ca_in = (ca[0] + fn[0] * CAP_INSET_MM, ca[1] + fn[1] * CAP_INSET_MM)
+        cb_in = (cb[0] + fn[0] * CAP_INSET_MM, cb[1] + fn[1] * CAP_INSET_MM)
+        d_face = ring.project(Point(mid))
+        rail_a, la = _ring_arc(ring, ring.project(Point(a_k)), ring.project(Point(ca)), d_face, 0.02)
+        rail_b, lb = _ring_arc(ring, ring.project(Point(b_k)), ring.project(Point(cb)), d_face, 0.02)
+        steps = max(1, int(math.ceil(max(la, lb) / pitch_mm - 1e-9)))
+        ra, rb = LineString(rail_a), LineString(rail_b)
+        new = []
+        for i in range(1, steps + 1):
+            if i == steps:
+                new.append((ca_in, cb_in))
+                break
+            new.append((ra.interpolate(i / steps, normalized=True).coords[0],
+                        rb.interpolate(i / steps, normalized=True).coords[0]))
+        if not all(cover.covers(LineString([a, b])) for a, b in new):
+            continue
+        new = [(tuple(map(float, a)), tuple(map(float, b))) for a, b in new]
+        out = order[:k + 1] + new
+        st = out if end > 0 else out[::-1]
+    return st
+
+
+def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
+                 mitre_ends: bool = False) -> Column | None:
+    """One piece -> its Column, or None when neither construction fits it.
+    `mitre_ends` (`cfg.lettering_columns_square_ends`): see `_mitre_ends`."""
     if not piece.interiors:
         u = straight_axis(piece, W, cut_lines)
         if u is not None:
@@ -912,6 +1030,8 @@ def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float) -> Column
                 rr = _straight_rails(piece, u)
                 st = _cap_square_ends(st, piece, u, cut_lines, pitch_mm)
                 st = _fan_ends(st, piece, u, pitch_mm, W)
+                if mitre_ends:
+                    st = _mitre_ends(st, piece, u, cut_lines, pitch_mm, W)
                 return Column(stations=st, piece=piece, kind="straight", axis=u,
                               width_mm=W, rail_a=rr[0] if rr else [], rail_b=rr[1] if rr else [],
                               dropped_mm=dropped)
@@ -1188,12 +1308,14 @@ class LetterCut:
         self.unsewn = unsewn
 
 
-def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False) -> LetterCut:
+def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False,
+                   mitre_ends: bool = False) -> LetterCut:
     """A letter polygon -> its stroke Columns. `pitch_mm` is the progress
     between consecutive stations along the moving rail -- the satin spacing
     itself (`machine.SATIN_SPACING_MM`): a station is one cross, and the
     crosses sit `pitch_mm` apart whichever rail each starts from.
-    `fold_cuts`: see `_fold_refine` (`cfg.lettering_columns_fold_cuts`)."""
+    `fold_cuts`: see `_fold_refine` (`cfg.lettering_columns_fold_cuts`).
+    `mitre_ends`: see `_mitre_ends` (`cfg.lettering_columns_square_ends`)."""
     W = stroke_width(poly)
     # a pinhole is the trace, not a counter
     poly = Polygon(poly.exterior, [h for h in poly.interiors if Polygon(h).area > 0.05 * W * W])
@@ -1238,7 +1360,8 @@ def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False
     for pc in pieces:
         for sub, lines, extra in _refine(pc, cut_lines, W, pitch_mm, 0, fold_cuts):
             cuts = cuts + extra
-            col = build_column(sub, lines, W, pitch_mm)
+            col = (build_column(sub, lines, W, pitch_mm, mitre_ends=True) if mitre_ends
+                   else build_column(sub, lines, W, pitch_mm))
             if col is None:
                 unsewn.append(sub)
             else:
