@@ -15,6 +15,9 @@ Fixtures: the Studio request of `fremont_triage.studio_request` (Hat) at 81 mm
     main      both flags off
     sk073     small_lettering_skeleton ON, floor 0.73 mm (BEAN_STITCH_MM)
     sk100     small_lettering_skeleton ON, floor 1.0 mm (the default)
+              (both skeleton arms carry the config's own default for the
+              small-glyph second try, `small_lettering_skeleton_small_floor_mm`
+              0.5, PR #936: EST and 1895 only reach the skeleton through it)
     true      small_text_restore_mm 3.0 + bean_letter_max_stroke_mm 0.4 +
               bean_letter_stitch_mm 0.45 + bean_letter_serif_mm 0.45
     both073   true + skeleton ON, floor 0.73 (bean letters are tried first,

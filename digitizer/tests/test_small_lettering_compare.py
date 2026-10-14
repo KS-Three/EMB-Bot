@@ -45,6 +45,8 @@ def test_arms_are_valid_config_and_carry_the_values_the_scope_names():
     assert slc.ARMS["sk073"][0] == {"small_lettering_skeleton": True,
                                     "small_lettering_skeleton_floor_mm": 0.73}
     assert slc.ARMS["sk100"][0] == {"small_lettering_skeleton": True}      # the default floor
+    # the small-glyph second try (#936) is the config's own default, not an arm setting
+    assert "small_lettering_skeleton_small_floor_mm" not in slc.ARMS["sk073"][0]
     assert slc.ARMS["true"][0] == slc.TRUE_SIZE
     assert slc.ARMS["both073"][0] == {**slc.TRUE_SIZE, **slc.ARMS["sk073"][0]}
     assert slc.ARMS["both100"][0] == {**slc.TRUE_SIZE, **slc.ARMS["sk100"][0]}

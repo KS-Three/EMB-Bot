@@ -7,33 +7,33 @@
   "small_lettering_skeleton": true,
   "small_lettering_skeleton_floor_mm": 0.73
  },
- "stitches": 18194,
+ "stitches": 18092,
  "trims": 53,
  "size_mm": [
   93.2,
   50.5
  ],
- "skeleton_shapes": 17,
+ "skeleton_shapes": 20,
  "bean_shapes": 0,
  "words": {
   "est": {
    "glyphs": 3,
    "legibility": 0.968,
-   "legibility_space": 0.338,
+   "legibility_space": 0.638,
    "worst_glyph": 0.912,
    "counters_open": [
     0,
     0
    ],
    "ocr": {
-    "recovered": 2,
+    "recovered": 3,
     "read": 3,
     "ci95": [
-     0.208,
-     0.939
+     0.438,
+     1.0
     ]
    },
-   "stitches": 129,
+   "stitches": 89,
    "trims": 1,
    "box_mm": [
     -11.1,
@@ -42,9 +42,9 @@
     -12.14
    ],
    "built": {
-    "skeleton": 2,
+    "skeleton": 3,
     "bean": 0,
-    "outline": 1
+    "outline": 0
    },
    "glyph_rows": [
     {
@@ -70,11 +70,11 @@
     },
     {
      "legibility": 1.0,
-     "legibility_space": 0.0,
+     "legibility_space": 0.9,
      "strokes": 1.0,
      "clean": 1.0,
      "counters": 1.0,
-     "space": 0.0,
+     "space": 0.9,
      "src_counters_openable": 0,
      "sewn_counters": 0,
      "sewn_counters_spurious": 0,
@@ -85,9 +85,9 @@
       14.4
      ],
      "ocr_src": "S",
-     "ocr_sewn": "",
+     "ocr_sewn": "S",
      "ocr_readable_src": true,
-     "ocr_recovered": false
+     "ocr_recovered": true
     },
     {
      "legibility": 0.912,
@@ -114,22 +114,22 @@
   },
   "1895": {
    "glyphs": 4,
-   "legibility": 0.715,
-   "legibility_space": 0.25,
-   "worst_glyph": 0.0,
+   "legibility": 0.927,
+   "legibility_space": 0.414,
+   "worst_glyph": 0.707,
    "counters_open": [
     3,
     3
    ],
    "ocr": {
-    "recovered": 2,
+    "recovered": 3,
     "read": 4,
     "ci95": [
-     0.15,
-     0.85
+     0.301,
+     0.954
     ]
    },
-   "stitches": 188,
+   "stitches": 126,
    "trims": 1,
    "box_mm": [
     3.42,
@@ -138,18 +138,18 @@
     -12.14
    ],
    "built": {
-    "skeleton": 2,
+    "skeleton": 4,
     "bean": 0,
-    "outline": 2
+    "outline": 0
    },
    "glyph_rows": [
     {
-     "legibility": 0.858,
-     "legibility_space": 0.0,
+     "legibility": 0.707,
+     "legibility_space": 0.48,
      "strokes": 1.0,
-     "clean": 0.858,
+     "clean": 0.707,
      "counters": 1.0,
-     "space": 0.0,
+     "space": 0.48,
      "src_counters_openable": 0,
      "sewn_counters": 0,
      "sewn_counters_spurious": 0,
@@ -160,9 +160,9 @@
       14.35
      ],
      "ocr_src": "1",
-     "ocr_sewn": "4",
+     "ocr_sewn": "1",
      "ocr_readable_src": true,
-     "ocr_recovered": false
+     "ocr_recovered": true
     },
     {
      "legibility": 1.0,
@@ -187,11 +187,11 @@
     },
     {
      "legibility": 1.0,
-     "legibility_space": 0.5,
+     "legibility_space": 0.3,
      "strokes": 1.0,
      "clean": 1.0,
      "counters": 1.0,
-     "space": 0.5,
+     "space": 0.3,
      "src_counters_openable": 1,
      "sewn_counters": 1,
      "sewn_counters_spurious": 0,
@@ -207,15 +207,15 @@
      "ocr_recovered": true
     },
     {
-     "legibility": 0.0,
-     "legibility_space": 0.0,
+     "legibility": 1.0,
+     "legibility_space": 0.375,
      "strokes": 1.0,
      "clean": 1.0,
-     "counters": 0.0,
-     "space": 0.062,
+     "counters": 1.0,
+     "space": 0.375,
      "src_counters_openable": 0,
-     "sewn_counters": 1,
-     "sewn_counters_spurious": 1,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
      "bbox_mm": [
       57.7,
       12.45,
@@ -223,7 +223,7 @@
       14.4
      ],
      "ocr_src": "5",
-     "ocr_sewn": "8",
+     "ocr_sewn": "S",
      "ocr_readable_src": true,
      "ocr_recovered": false
     }
@@ -645,5 +645,5 @@
   ],
   "px_per_mm": 27.027027027027028
  },
- "secs": 465
+ "secs": 658
 }
