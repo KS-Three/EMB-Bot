@@ -122,6 +122,21 @@ def test_a_strand_field_is_fur_and_a_flat_patch_or_one_strand_is_not():
     assert not single["fur"] and single["strands"] < fur_regions.FUR_MIN_STRANDS, single
 
 
+def test_a_stroke_full_of_strands_is_not_a_field():
+    """A narrow region over the strand field reads dense strands -- as a
+    stroke network does (logo_bridge_bar's outline, the census) -- and is
+    still not fur: its mean width is under `FUR_MIN_FIELD_WIDTH_MM`."""
+    sp, regions = _drawn()
+    strip = Region(shape_id="S_strip", polygon=box(-30, -6.6, -10.5, -4.4), thread_index=3,
+                   thread_number=CHART[3].number, area_mm2=19.5 * 2.2,
+                   meta={"layer": 0, "stitched": True})
+    v = fur_regions.read_regions([strip], sp, PipelineConfig())["S_strip"]
+    assert v["strands"] >= fur_regions.FUR_MIN_STRANDS, v
+    assert v["density"] >= fur_regions.FUR_MIN_STRAND_DENSITY, v
+    assert v["width_mm"] < fur_regions.FUR_MIN_FIELD_WIDTH_MM
+    assert not v["fur"]
+
+
 def test_the_gate_skips_small_and_overridden_regions():
     sp, regions = _drawn()
     regions[0].meta["tier"] = "satin"

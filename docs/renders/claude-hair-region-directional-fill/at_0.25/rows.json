@@ -1,7383 +1,1888 @@
 {
- "photo/owl_kent.jpg@studio": {
-  "fixture": "photo/owl_kent.jpg",
-  "route": "studio",
-  "class": "gradient",
-  "gate_ran": true,
-  "regions_read": 105,
-  "fur_ids": [
-   "S28277d7b"
-  ],
-  "densest": {
-   "id": "S95091568",
-   "area_mm2": 29.33,
-   "strands": 1,
-   "strand_mm": 21.42,
-   "density": 0.7304,
-   "fur": false
+  "photo/owl_kent.jpg@studio": {
+    "fixture": "photo/owl_kent.jpg",
+    "route": "studio",
+    "class": "gradient",
+    "gate_ran": true,
+    "regions_read": 105,
+    "fur_ids": [
+      "S28277d7b"
+    ],
+    "densest": {
+      "id": "S95091568",
+      "area_mm2": 29.33,
+      "strands": 1,
+      "strand_mm": 21.42,
+      "density": 0.7304,
+      "fur": false
+    },
+    "read": {
+      "S4666f9bf": {
+        "area_mm2": 4232.6,
+        "strands": 52,
+        "strand_mm": 105.49,
+        "density": 0.0249,
+        "fur": false
+      },
+      "S6d13fcbd": {
+        "area_mm2": 642.76,
+        "strands": 17,
+        "strand_mm": 43.09,
+        "density": 0.067,
+        "fur": false
+      },
+      "S3cd8eadb": {
+        "area_mm2": 482.58,
+        "strands": 16,
+        "strand_mm": 42.37,
+        "density": 0.0878,
+        "fur": false
+      },
+      "S2ad5a99d": {
+        "area_mm2": 44.54,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S8fdb876e": {
+        "area_mm2": 51.96,
+        "strands": 8,
+        "strand_mm": 10.13,
+        "density": 0.1951,
+        "fur": false
+      },
+      "S5de8cbba": {
+        "area_mm2": 81.65,
+        "strands": 1,
+        "strand_mm": 4.22,
+        "density": 0.0517,
+        "fur": false
+      },
+      "Se687391c": {
+        "area_mm2": 31.16,
+        "strands": 0,
+        "strand_mm": 0.96,
+        "density": 0.0308,
+        "fur": false
+      },
+      "S28277d7b": {
+        "area_mm2": 30.69,
+        "strands": 4,
+        "strand_mm": 22.09,
+        "density": 0.7197,
+        "fur": true
+      },
+      "S95091568": {
+        "area_mm2": 29.33,
+        "strands": 1,
+        "strand_mm": 21.42,
+        "density": 0.7304,
+        "fur": false
+      },
+      "S5a852f61": {
+        "area_mm2": 53.6,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S0bf22e05": {
+        "area_mm2": 26.88,
+        "strands": 0,
+        "strand_mm": 2.9,
+        "density": 0.108,
+        "fur": false
+      }
+    },
+    "md5_off": "72900f9723aae42285468d96b9e4ccf9",
+    "md5_on": "2c1cae0230e41e049e9bf742d20f838c",
+    "identical": false,
+    "seconds": {
+      "stages0_4": 74.2,
+      "finish_x2_with_gate": 27.3,
+      "plan_x2": 867.8
+    },
+    "off": {
+      "stitches": 33178,
+      "trims": 160,
+      "color_changes": 19,
+      "thread_m": 56.73,
+      "thread_bare_mm": 0.51,
+      "flight_bare_mm": 0.0,
+      "density_stacked": null,
+      "coverage_over_warn_mm2": 0.0,
+      "coverage_over_block_mm2": 0.0,
+      "uncovered_total_mm2": 82.1,
+      "uncovered_wanted_mm2": 6608.8,
+      "grade": "F"
+    },
+    "on": {
+      "stitches": 32572,
+      "trims": 162,
+      "color_changes": 19,
+      "thread_m": 55.96,
+      "thread_bare_mm": 0.51,
+      "flight_bare_mm": 0.0,
+      "density_stacked": null,
+      "coverage_over_warn_mm2": 0.0,
+      "coverage_over_block_mm2": 0.0,
+      "uncovered_total_mm2": 82.0,
+      "uncovered_wanted_mm2": 6608.8,
+      "grade": "F"
+    },
+    "min_density": 0.25
   },
-  "read": {
-   "S4666f9bf": {
-    "area_mm2": 4232.6,
-    "strands": 52,
-    "strand_mm": 105.49,
-    "density": 0.0249,
-    "fur": false
-   },
-   "S0f6e18f2": {
-    "area_mm2": 2.52,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S35f7002c": {
-    "area_mm2": 1.66,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6d13fcbd": {
-    "area_mm2": 642.76,
-    "strands": 17,
-    "strand_mm": 43.09,
-    "density": 0.067,
-    "fur": false
-   },
-   "S95e92bae": {
-    "area_mm2": 14.03,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sea4353c0": {
-    "area_mm2": 12.3,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S55dbae4b": {
-    "area_mm2": 3.55,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6a91d46d": {
-    "area_mm2": 3.34,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9f7c7aac": {
-    "area_mm2": 1.11,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S12884f96": {
-    "area_mm2": 0.66,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se70782ba": {
-    "area_mm2": 0.63,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S784ac538": {
-    "area_mm2": 0.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3cd8eadb": {
-    "area_mm2": 482.58,
-    "strands": 16,
-    "strand_mm": 42.37,
-    "density": 0.0878,
-    "fur": false
-   },
-   "S4cba85cc": {
-    "area_mm2": 20.2,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2ad5a99d": {
-    "area_mm2": 44.54,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8f9f2000": {
-    "area_mm2": 13.27,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1b265f0b": {
-    "area_mm2": 7.06,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9c88dcc9": {
-    "area_mm2": 5.17,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbef680ba": {
-    "area_mm2": 4.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S517fd972": {
-    "area_mm2": 2.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S91af85ee": {
-    "area_mm2": 1.39,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8fdb876e": {
-    "area_mm2": 51.96,
-    "strands": 8,
-    "strand_mm": 10.13,
-    "density": 0.1951,
-    "fur": false
-   },
-   "See4deb6f": {
-    "area_mm2": 7.91,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S29fd19c0": {
-    "area_mm2": 1.51,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0758fb23": {
-    "area_mm2": 1.21,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sede5522a": {
-    "area_mm2": 0.59,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S054dcf25": {
-    "area_mm2": 0.44,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S02ca4a99": {
-    "area_mm2": 18.93,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfb4de36f": {
-    "area_mm2": 3.39,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S96d05e1b": {
-    "area_mm2": 3.15,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5662567e": {
-    "area_mm2": 2.09,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf0fd6e17": {
-    "area_mm2": 2.01,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa3698c07": {
-    "area_mm2": 1.95,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5de8cbba": {
-    "area_mm2": 81.65,
-    "strands": 1,
-    "strand_mm": 4.22,
-    "density": 0.0517,
-    "fur": false
-   },
-   "Se687391c": {
-    "area_mm2": 31.16,
-    "strands": 0,
-    "strand_mm": 0.96,
-    "density": 0.0308,
-    "fur": false
-   },
-   "S28277d7b": {
-    "area_mm2": 30.69,
-    "strands": 4,
-    "strand_mm": 22.09,
-    "density": 0.7197,
-    "fur": true
-   },
-   "S95091568": {
-    "area_mm2": 29.33,
-    "strands": 1,
-    "strand_mm": 21.42,
-    "density": 0.7304,
-    "fur": false
-   },
-   "S882728ba": {
-    "area_mm2": 23.38,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd0e42b75": {
-    "area_mm2": 15.52,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd12b5af8": {
-    "area_mm2": 12.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S28546fc1": {
-    "area_mm2": 10.54,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sea7805a2": {
-    "area_mm2": 9.07,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbfef72a9": {
-    "area_mm2": 8.86,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se6ed96b3": {
-    "area_mm2": 8.03,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Safb505fc": {
-    "area_mm2": 7.68,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2c633868": {
-    "area_mm2": 7.47,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S250fe342": {
-    "area_mm2": 4.11,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0711057c": {
-    "area_mm2": 3.41,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0fd53c66": {
-    "area_mm2": 2.05,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3ff8091f": {
-    "area_mm2": 1.97,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S46cc77e6": {
-    "area_mm2": 1.43,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1102f108": {
-    "area_mm2": 1.31,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5a852f61": {
-    "area_mm2": 53.6,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0cc41031": {
-    "area_mm2": 15.56,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1a885762": {
-    "area_mm2": 14.67,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2d2ee5e4": {
-    "area_mm2": 12.63,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb2229da9": {
-    "area_mm2": 8.42,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdb7596e0": {
-    "area_mm2": 4.57,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6aeab240": {
-    "area_mm2": 3.26,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S13ee8cee": {
-    "area_mm2": 2.82,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S520f67b9": {
-    "area_mm2": 2.23,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf02eae98": {
-    "area_mm2": 1.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S401dd26f": {
-    "area_mm2": 1.19,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1f58f0cc": {
-    "area_mm2": 0.51,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc6ebad71": {
-    "area_mm2": 0.31,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sffbafd1b": {
-    "area_mm2": 20.84,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S71eb5d8f": {
-    "area_mm2": 17.19,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdfbbbdc3": {
-    "area_mm2": 10.93,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfe2acf44": {
-    "area_mm2": 10.17,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0da87d4b": {
-    "area_mm2": 8.59,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1b6f777f": {
-    "area_mm2": 7.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd5cb90ee": {
-    "area_mm2": 6.41,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2c015d4b": {
-    "area_mm2": 5.38,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S353e04bb": {
-    "area_mm2": 4.66,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0b1b37e9": {
-    "area_mm2": 3.93,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1d95c496": {
-    "area_mm2": 3.31,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Scaf76de3": {
-    "area_mm2": 2.44,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc0b686a5": {
-    "area_mm2": 2.39,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sac8ae5d5": {
-    "area_mm2": 19.85,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8f6e0e99": {
-    "area_mm2": 9.91,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S534a60af": {
-    "area_mm2": 7.0,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9a0b8ef2": {
-    "area_mm2": 4.78,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S7896b780": {
-    "area_mm2": 1.63,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S658b3d59": {
-    "area_mm2": 1.42,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S916c7db2": {
-    "area_mm2": 0.35,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf0833783": {
-    "area_mm2": 0.18,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0877828a": {
-    "area_mm2": 12.38,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S263845de": {
-    "area_mm2": 8.34,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S04b959bd": {
-    "area_mm2": 4.32,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S97d37418": {
-    "area_mm2": 3.73,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0bf22e05": {
-    "area_mm2": 26.88,
-    "strands": 0,
-    "strand_mm": 2.9,
-    "density": 0.108,
-    "fur": false
-   },
-   "S8635755a": {
-    "area_mm2": 20.21,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc75390b2": {
-    "area_mm2": 8.63,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa7833839": {
-    "area_mm2": 5.97,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sebefeaeb": {
-    "area_mm2": 1.53,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S40cffd3c": {
-    "area_mm2": 1.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5e6895f4": {
-    "area_mm2": 1.09,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sacfe3a2b": {
-    "area_mm2": 1.04,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa0211d2d": {
-    "area_mm2": 0.4,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S15b9ddf8": {
-    "area_mm2": 17.54,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S76090d59": {
-    "area_mm2": 2.56,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S65b48c9f": {
-    "area_mm2": 2.3,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd0f12300": {
-    "area_mm2": 1.32,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa1491069": {
-    "area_mm2": 0.71,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S40e0adf0": {
-    "area_mm2": 0.7,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
+  "photo/fur_ramp.png": {
+    "fixture": "photo/fur_ramp.png",
+    "route": "file",
+    "class": "photo_scene",
+    "gate_ran": true,
+    "regions_read": 8,
+    "fur_ids": [],
+    "densest": {
+      "id": "S1432c3f6",
+      "area_mm2": 160.72,
+      "strands": 0,
+      "strand_mm": 0.0,
+      "density": 0.0,
+      "fur": false
+    },
+    "read": {
+      "S1432c3f6": {
+        "area_mm2": 160.72,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sc78689db": {
+        "area_mm2": 160.77,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S84d10a7c": {
+        "area_mm2": 160.76,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sc6b82dcc": {
+        "area_mm2": 160.79,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sef44c5c6": {
+        "area_mm2": 160.81,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S0acba01f": {
+        "area_mm2": 160.71,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sf6e41633": {
+        "area_mm2": 160.73,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S3947b75c": {
+        "area_mm2": 160.7,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      }
+    },
+    "md5_off": "25e0c301badff310d0cae241449b9636",
+    "md5_on": "25e0c301badff310d0cae241449b9636",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 19.1,
+      "finish_x2_with_gate": 8.9,
+      "plan_x2": 22.9
+    },
+    "min_density": 0.25
   },
-  "md5_off": "72900f9723aae42285468d96b9e4ccf9",
-  "md5_on": "2c1cae0230e41e049e9bf742d20f838c",
-  "identical": false,
-  "seconds": {
-   "stages0_4": 74.2,
-   "finish_x2_with_gate": 27.3,
-   "plan_x2": 867.8
+  "bg_uncertain.png": {
+    "fixture": "bg_uncertain.png",
+    "route": "file",
+    "class": "flat",
+    "gate_ran": false,
+    "regions_read": 0,
+    "fur_ids": [],
+    "densest": null,
+    "read": null,
+    "md5_off": "60350a3398713bb19a93f010375749c2",
+    "md5_on": "60350a3398713bb19a93f010375749c2",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 9.8,
+      "finish_x2_with_gate": 0.0,
+      "plan_x2": 12.7
+    },
+    "min_density": 0.25
   },
-  "off": {
-   "stitches": 33178,
-   "trims": 160,
-   "color_changes": 19,
-   "thread_m": 56.73,
-   "thread_bare_mm": 0.51,
-   "flight_bare_mm": 0.0,
-   "density_stacked": null,
-   "coverage_over_warn_mm2": 0.0,
-   "coverage_over_block_mm2": 0.0,
-   "uncovered_total_mm2": 82.1,
-   "uncovered_wanted_mm2": 6608.8,
-   "grade": "F"
+  "logo_alpha.png": {
+    "fixture": "logo_alpha.png",
+    "route": "file",
+    "class": "flat",
+    "gate_ran": false,
+    "regions_read": 0,
+    "fur_ids": [],
+    "densest": null,
+    "read": null,
+    "md5_off": "ef61d70df6fed1625492a036ec293a76",
+    "md5_on": "ef61d70df6fed1625492a036ec293a76",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 9.8,
+      "finish_x2_with_gate": 0.0,
+      "plan_x2": 11.7
+    },
+    "min_density": 0.25
   },
-  "on": {
-   "stitches": 32572,
-   "trims": 162,
-   "color_changes": 19,
-   "thread_m": 55.96,
-   "thread_bare_mm": 0.51,
-   "flight_bare_mm": 0.0,
-   "density_stacked": null,
-   "coverage_over_warn_mm2": 0.0,
-   "coverage_over_block_mm2": 0.0,
-   "uncovered_total_mm2": 82.0,
-   "uncovered_wanted_mm2": 6608.8,
-   "grade": "F"
+  "logo_whitebg.png": {
+    "fixture": "logo_whitebg.png",
+    "route": "file",
+    "class": "flat",
+    "gate_ran": false,
+    "regions_read": 0,
+    "fur_ids": [],
+    "densest": null,
+    "read": null,
+    "md5_off": "a1c270b7a120b1860a664e36962a4094",
+    "md5_on": "a1c270b7a120b1860a664e36962a4094",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 10.8,
+      "finish_x2_with_gate": 0.0,
+      "plan_x2": 11.3
+    },
+    "min_density": 0.25
+  },
+  "ribbon_curve.png": {
+    "fixture": "ribbon_curve.png",
+    "route": "file",
+    "class": "flat",
+    "gate_ran": false,
+    "regions_read": 0,
+    "fur_ids": [],
+    "densest": null,
+    "read": null,
+    "md5_off": "b4cf9ff93a4d216cd3477323ca2d7560",
+    "md5_on": "b4cf9ff93a4d216cd3477323ca2d7560",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 7.2,
+      "finish_x2_with_gate": 0.1,
+      "plan_x2": 2.9
+    },
+    "min_density": 0.25
+  },
+  "photo/drone_render.png": {
+    "fixture": "photo/drone_render.png",
+    "route": "file",
+    "class": "gradient",
+    "gate_ran": true,
+    "regions_read": 113,
+    "fur_ids": [],
+    "densest": {
+      "id": "S980e2ff4",
+      "area_mm2": 85.42,
+      "strands": 2,
+      "strand_mm": 31.88,
+      "density": 0.3732,
+      "fur": false
+    },
+    "read": {
+      "Se9100b9d": {
+        "area_mm2": 1475.28,
+        "strands": 13,
+        "strand_mm": 93.51,
+        "density": 0.0634,
+        "fur": false
+      },
+      "S426e81b9": {
+        "area_mm2": 217.72,
+        "strands": 4,
+        "strand_mm": 25.6,
+        "density": 0.1176,
+        "fur": false
+      },
+      "See6c8f8f": {
+        "area_mm2": 197.45,
+        "strands": 3,
+        "strand_mm": 4.49,
+        "density": 0.0228,
+        "fur": false
+      },
+      "Sb5b27ad4": {
+        "area_mm2": 26.67,
+        "strands": 2,
+        "strand_mm": 2.01,
+        "density": 0.0753,
+        "fur": false
+      },
+      "S6edce285": {
+        "area_mm2": 36.94,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S68387d18": {
+        "area_mm2": 38.68,
+        "strands": 1,
+        "strand_mm": 1.29,
+        "density": 0.0333,
+        "fur": false
+      },
+      "Sef56b99a": {
+        "area_mm2": 49.87,
+        "strands": 0,
+        "strand_mm": 0.63,
+        "density": 0.0126,
+        "fur": false
+      },
+      "S71f2a4c9": {
+        "area_mm2": 48.49,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sc579466d": {
+        "area_mm2": 48.09,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Se98c90bf": {
+        "area_mm2": 40.36,
+        "strands": 0,
+        "strand_mm": 1.95,
+        "density": 0.0482,
+        "fur": false
+      },
+      "Se9a6d835": {
+        "area_mm2": 32.48,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S89cc9fe3": {
+        "area_mm2": 49.03,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sa34f3d79": {
+        "area_mm2": 43.78,
+        "strands": 1,
+        "strand_mm": 2.94,
+        "density": 0.0671,
+        "fur": false
+      },
+      "S24beef6d": {
+        "area_mm2": 38.33,
+        "strands": 1,
+        "strand_mm": 2.18,
+        "density": 0.057,
+        "fur": false
+      },
+      "S6cc4a060": {
+        "area_mm2": 31.81,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sbf8a37c3": {
+        "area_mm2": 27.32,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S14057482": {
+        "area_mm2": 26.22,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S3e7df60e": {
+        "area_mm2": 25.99,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S980e2ff4": {
+        "area_mm2": 85.42,
+        "strands": 2,
+        "strand_mm": 31.88,
+        "density": 0.3732,
+        "fur": false
+      }
+    },
+    "md5_off": "25dc7aabc6acf2144136a5e729c26fec",
+    "md5_on": "25dc7aabc6acf2144136a5e729c26fec",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 135.8,
+      "finish_x2_with_gate": 9.2,
+      "plan_x2": 386.0
+    },
+    "min_density": 0.25
+  },
+  "photo/enthusiast_logo.png": {
+    "fixture": "photo/enthusiast_logo.png",
+    "route": "file",
+    "class": "flat",
+    "gate_ran": false,
+    "regions_read": 0,
+    "fur_ids": [],
+    "densest": null,
+    "read": null,
+    "md5_off": "c0bb6acffcf40bb71c7dddb414b2ae1a",
+    "md5_on": "c0bb6acffcf40bb71c7dddb414b2ae1a",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 29.7,
+      "finish_x2_with_gate": 0.0,
+      "plan_x2": 13.3
+    },
+    "min_density": 0.25
+  },
+  "photo/gradient_ramp_linear.png": {
+    "fixture": "photo/gradient_ramp_linear.png",
+    "route": "file",
+    "class": "gradient",
+    "gate_ran": true,
+    "regions_read": 1,
+    "fur_ids": [],
+    "densest": {
+      "id": "S95d3b384",
+      "area_mm2": 3795.32,
+      "strands": 0,
+      "strand_mm": 0.0,
+      "density": 0.0,
+      "fur": false
+    },
+    "read": {
+      "S95d3b384": {
+        "area_mm2": 3795.32,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      }
+    },
+    "md5_off": "b34530f6b4613c2d4a7d904aa71722a0",
+    "md5_on": "b34530f6b4613c2d4a7d904aa71722a0",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 28.3,
+      "finish_x2_with_gate": 9.5,
+      "plan_x2": 2.1
+    },
+    "min_density": 0.25
+  },
+  "photo/gradient_ramp_radial.png": {
+    "fixture": "photo/gradient_ramp_radial.png",
+    "route": "file",
+    "class": "gradient",
+    "gate_ran": true,
+    "regions_read": 5,
+    "fur_ids": [],
+    "densest": {
+      "id": "S6067381a",
+      "area_mm2": 4994.78,
+      "strands": 0,
+      "strand_mm": 0.0,
+      "density": 0.0,
+      "fur": false
+    },
+    "read": {
+      "S6067381a": {
+        "area_mm2": 4994.78,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      }
+    },
+    "md5_off": "cd4884d3067bbd849b074fb128e74cf4",
+    "md5_on": "cd4884d3067bbd849b074fb128e74cf4",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 36.6,
+      "finish_x2_with_gate": 10.3,
+      "plan_x2": 8.8
+    },
+    "min_density": 0.25
+  },
+  "photo/photo_chrome_specular.png": {
+    "fixture": "photo/photo_chrome_specular.png",
+    "route": "file",
+    "class": "photo_scene",
+    "gate_ran": true,
+    "regions_read": 26,
+    "fur_ids": [],
+    "densest": {
+      "id": "Sb9b40a71",
+      "area_mm2": 2273.43,
+      "strands": 1,
+      "strand_mm": 0.75,
+      "density": 0.0003,
+      "fur": false
+    },
+    "read": {
+      "S75b4b6e6": {
+        "area_mm2": 1789.28,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S17d9d004": {
+        "area_mm2": 200.76,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S78027469": {
+        "area_mm2": 2361.54,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S781eacc1": {
+        "area_mm2": 99.8,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S3d82e17f": {
+        "area_mm2": 25.83,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S645a5b61": {
+        "area_mm2": 89.8,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Se0f650f5": {
+        "area_mm2": 113.92,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sb9b40a71": {
+        "area_mm2": 2273.43,
+        "strands": 1,
+        "strand_mm": 0.75,
+        "density": 0.0003,
+        "fur": false
+      },
+      "Sbc4e1370": {
+        "area_mm2": 152.03,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S5d48bc3e": {
+        "area_mm2": 150.27,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sdbfa0cd1": {
+        "area_mm2": 98.92,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sbbc13e51": {
+        "area_mm2": 42.85,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      }
+    },
+    "md5_off": "725a94d2f2dbb7da363299024e3e31fb",
+    "md5_on": "725a94d2f2dbb7da363299024e3e31fb",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 18.6,
+      "finish_x2_with_gate": 10.1,
+      "plan_x2": 447.4
+    },
+    "min_density": 0.25
+  },
+  "photo/photo_dof_meadow.png": {
+    "fixture": "photo/photo_dof_meadow.png",
+    "route": "file",
+    "class": "photo_scene",
+    "gate_ran": true,
+    "regions_read": 46,
+    "fur_ids": [],
+    "densest": {
+      "id": "S369f7364",
+      "area_mm2": 32.94,
+      "strands": 0,
+      "strand_mm": 0.0,
+      "density": 0.0,
+      "fur": false
+    },
+    "read": {
+      "S369f7364": {
+        "area_mm2": 32.94,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sf0dc3da8": {
+        "area_mm2": 2198.82,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S45c80390": {
+        "area_mm2": 702.84,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S8052c894": {
+        "area_mm2": 880.98,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S63f5c3e6": {
+        "area_mm2": 60.83,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S5549dcbe": {
+        "area_mm2": 42.12,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sc3b512e8": {
+        "area_mm2": 34.39,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S97683393": {
+        "area_mm2": 104.86,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S25d20266": {
+        "area_mm2": 54.44,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Scedac1b7": {
+        "area_mm2": 25.92,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      }
+    },
+    "md5_off": "121ffe0ce8d9b8cad631fdf3d48cef22",
+    "md5_on": "121ffe0ce8d9b8cad631fdf3d48cef22",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 21.5,
+      "finish_x2_with_gate": 8.8,
+      "plan_x2": 293.6
+    },
+    "min_density": 0.25
+  },
+  "photo/photo_grass_macro.png": {
+    "fixture": "photo/photo_grass_macro.png",
+    "route": "file",
+    "class": "photo_subject",
+    "gate_ran": true,
+    "regions_read": 2,
+    "fur_ids": [
+      "Scfe3827c"
+    ],
+    "densest": {
+      "id": "Scfe3827c",
+      "area_mm2": 4682.86,
+      "strands": 1881,
+      "strand_mm": 2165.29,
+      "density": 0.4624,
+      "fur": true
+    },
+    "read": {
+      "Scfe3827c": {
+        "area_mm2": 4682.86,
+        "strands": 1881,
+        "strand_mm": 2165.29,
+        "density": 0.4624,
+        "fur": true
+      }
+    },
+    "md5_off": "35ba660e8028c43ccb7833c4d615151b",
+    "md5_on": "35ba660e8028c43ccb7833c4d615151b",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 22.7,
+      "finish_x2_with_gate": 13.1,
+      "plan_x2": 30.7
+    },
+    "min_density": 0.25
+  },
+  "photo/photo_owl_pale.png": {
+    "fixture": "photo/photo_owl_pale.png",
+    "route": "file",
+    "class": "photo_scene",
+    "gate_ran": true,
+    "regions_read": 6,
+    "fur_ids": [],
+    "densest": {
+      "id": "Sba191375",
+      "area_mm2": 43.15,
+      "strands": 0,
+      "strand_mm": 0.0,
+      "density": 0.0,
+      "fur": false
+    },
+    "read": {
+      "Sba191375": {
+        "area_mm2": 43.15,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sb75e97a3": {
+        "area_mm2": 41.6,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S04a09019": {
+        "area_mm2": 8039.38,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      }
+    },
+    "md5_off": "9e4d6381c0a61cc30c3e16e529a60423",
+    "md5_on": "9e4d6381c0a61cc30c3e16e529a60423",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 11.0,
+      "finish_x2_with_gate": 8.6,
+      "plan_x2": 55.8
+    },
+    "min_density": 0.25
+  },
+  "photo/photo_scene_stub.png": {
+    "fixture": "photo/photo_scene_stub.png",
+    "route": "file",
+    "class": "photo_scene",
+    "gate_ran": true,
+    "regions_read": 54,
+    "fur_ids": [],
+    "densest": {
+      "id": "S4dfd5f1a",
+      "area_mm2": 948.09,
+      "strands": 0,
+      "strand_mm": 0.0,
+      "density": 0.0,
+      "fur": false
+    },
+    "read": {
+      "S4dfd5f1a": {
+        "area_mm2": 948.09,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S693e3e33": {
+        "area_mm2": 892.48,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Se3d4097f": {
+        "area_mm2": 46.34,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sf80b4c46": {
+        "area_mm2": 859.47,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sed9708f3": {
+        "area_mm2": 101.6,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S4fef9dee": {
+        "area_mm2": 33.0,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S8c97b2f3": {
+        "area_mm2": 800.59,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S27c05298": {
+        "area_mm2": 71.48,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S37fa24e4": {
+        "area_mm2": 50.25,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S1af41b3b": {
+        "area_mm2": 44.31,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S2d8e0e3b": {
+        "area_mm2": 44.12,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      }
+    },
+    "md5_off": "b49236272874a7bcf128d3bef5928ed9",
+    "md5_on": "b49236272874a7bcf128d3bef5928ed9",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 29.5,
+      "finish_x2_with_gate": 6.2,
+      "plan_x2": 180.1
+    },
+    "min_density": 0.25
+  },
+  "photo/photo_subject_stub.png": {
+    "fixture": "photo/photo_subject_stub.png",
+    "route": "file",
+    "class": "photo_subject",
+    "gate_ran": true,
+    "regions_read": 1,
+    "fur_ids": [],
+    "densest": {
+      "id": "S83d298e8",
+      "area_mm2": 4149.45,
+      "strands": 18,
+      "strand_mm": 8.73,
+      "density": 0.0021,
+      "fur": false
+    },
+    "read": {
+      "S83d298e8": {
+        "area_mm2": 4149.45,
+        "strands": 18,
+        "strand_mm": 8.73,
+        "density": 0.0021,
+        "fur": false
+      }
+    },
+    "md5_off": "1262ab23fda6ea7a22843ab313417325",
+    "md5_on": "1262ab23fda6ea7a22843ab313417325",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 30.7,
+      "finish_x2_with_gate": 7.3,
+      "plan_x2": 30.5
+    },
+    "min_density": 0.25
+  },
+  "photo/photo_sunset_backlit.png": {
+    "fixture": "photo/photo_sunset_backlit.png",
+    "route": "file",
+    "class": "photo_scene",
+    "gate_ran": true,
+    "regions_read": 45,
+    "fur_ids": [],
+    "densest": {
+      "id": "S7dd2678e",
+      "area_mm2": 938.71,
+      "strands": 0,
+      "strand_mm": 0.0,
+      "density": 0.0,
+      "fur": false
+    },
+    "read": {
+      "S7dd2678e": {
+        "area_mm2": 938.71,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S96ae75f4": {
+        "area_mm2": 690.82,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S26b53a30": {
+        "area_mm2": 261.91,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S1deb1d2d": {
+        "area_mm2": 549.95,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S28ba254b": {
+        "area_mm2": 1147.68,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S227ea671": {
+        "area_mm2": 928.17,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S418841b6": {
+        "area_mm2": 149.84,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      }
+    },
+    "md5_off": "98e5625d48913b7c5f6426d042ccbfc6",
+    "md5_on": "98e5625d48913b7c5f6426d042ccbfc6",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 20.3,
+      "finish_x2_with_gate": 7.7,
+      "plan_x2": 850.5
+    },
+    "min_density": 0.25
+  },
+  "photo/region_blobs.png": {
+    "fixture": "photo/region_blobs.png",
+    "route": "file",
+    "class": "gradient",
+    "gate_ran": true,
+    "regions_read": 3,
+    "fur_ids": [],
+    "densest": {
+      "id": "S0752cb96",
+      "area_mm2": 2308.16,
+      "strands": 0,
+      "strand_mm": 0.0,
+      "density": 0.0,
+      "fur": false
+    },
+    "read": {
+      "S0752cb96": {
+        "area_mm2": 2308.16,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S83c0662d": {
+        "area_mm2": 686.91,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Se79a966d": {
+        "area_mm2": 619.4,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      }
+    },
+    "md5_off": "c118f691653e78bc9feed9662ab43410",
+    "md5_on": "c118f691653e78bc9feed9662ab43410",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 27.1,
+      "finish_x2_with_gate": 12.9,
+      "plan_x2": 38.5
+    },
+    "min_density": 0.25
+  },
+  "photo/repro_gradient_white_icon.png": {
+    "fixture": "photo/repro_gradient_white_icon.png",
+    "route": "file",
+    "class": "gradient",
+    "gate_ran": true,
+    "regions_read": 6,
+    "fur_ids": [],
+    "densest": {
+      "id": "S5afb1e0a",
+      "area_mm2": 3299.71,
+      "strands": 0,
+      "strand_mm": 0.0,
+      "density": 0.0,
+      "fur": false
+    },
+    "read": {
+      "S5afb1e0a": {
+        "area_mm2": 3299.71,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S10e5c7ce": {
+        "area_mm2": 1075.87,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S5afb1e0a-2": {
+        "area_mm2": 630.21,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S78e6cd01": {
+        "area_mm2": 1017.81,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S78e6cd01-2": {
+        "area_mm2": 365.63,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      }
+    },
+    "md5_off": "cea41452dd4d843966e2644e194c10e0",
+    "md5_on": "cea41452dd4d843966e2644e194c10e0",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 30.7,
+      "finish_x2_with_gate": 11.5,
+      "plan_x2": 23.2
+    },
+    "min_density": 0.25
+  },
+  "photo/summit_badge.png": {
+    "fixture": "photo/summit_badge.png",
+    "route": "file",
+    "class": "gradient",
+    "gate_ran": true,
+    "regions_read": 35,
+    "fur_ids": [],
+    "densest": {
+      "id": "Sf1d58e9d",
+      "area_mm2": 573.56,
+      "strands": 6,
+      "strand_mm": 92.36,
+      "density": 0.161,
+      "fur": false
+    },
+    "read": {
+      "Scd5f9d89": {
+        "area_mm2": 2775.72,
+        "strands": 4,
+        "strand_mm": 2.71,
+        "density": 0.001,
+        "fur": false
+      },
+      "Sf1d58e9d": {
+        "area_mm2": 573.56,
+        "strands": 6,
+        "strand_mm": 92.36,
+        "density": 0.161,
+        "fur": false
+      },
+      "S673d0f24": {
+        "area_mm2": 259.15,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Saadc6d0b": {
+        "area_mm2": 136.91,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S3ed09833": {
+        "area_mm2": 347.43,
+        "strands": 2,
+        "strand_mm": 11.08,
+        "density": 0.0319,
+        "fur": false
+      },
+      "S4c1d84ee": {
+        "area_mm2": 259.28,
+        "strands": 0,
+        "strand_mm": 0.09,
+        "density": 0.0003,
+        "fur": false
+      },
+      "S4ccb6b37": {
+        "area_mm2": 137.05,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      }
+    },
+    "md5_off": "1db6dd30045a57cd95f8370779236354",
+    "md5_on": "1db6dd30045a57cd95f8370779236354",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 69.0,
+      "finish_x2_with_gate": 15.1,
+      "plan_x2": 180.9
+    },
+    "min_density": 0.25
+  },
+  "becker_marine_logo.png": {
+    "fixture": "becker_marine_logo.png",
+    "route": "file",
+    "class": "flat",
+    "gate_ran": false,
+    "regions_read": 0,
+    "fur_ids": [],
+    "densest": null,
+    "read": null,
+    "md5_off": "7e4f8ce23af8810a0e712da31725afa4",
+    "md5_on": "7e4f8ce23af8810a0e712da31725afa4",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 11.7,
+      "finish_x2_with_gate": 0.1,
+      "plan_x2": 43.4
+    },
+    "min_density": 0.25
+  },
+  "logo_script_tires.png": {
+    "fixture": "logo_script_tires.png",
+    "route": "file",
+    "class": "photo_scene",
+    "gate_ran": true,
+    "regions_read": 4,
+    "fur_ids": [],
+    "densest": {
+      "id": "Sf272c1de",
+      "area_mm2": 451.98,
+      "strands": 0,
+      "strand_mm": 0.0,
+      "density": 0.0,
+      "fur": false
+    },
+    "read": {
+      "Sf272c1de": {
+        "area_mm2": 451.98,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S8edf1545": {
+        "area_mm2": 178.99,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S1f2e2d7b": {
+        "area_mm2": 100.66,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      }
+    },
+    "md5_off": "4f95eb849b7b108f33bee00f3c4b2693",
+    "md5_on": "4f95eb849b7b108f33bee00f3c4b2693",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 40.5,
+      "finish_x2_with_gate": 9.4,
+      "plan_x2": 11.6
+    },
+    "min_density": 0.25
+  },
+  "photo/logo_bridge_bar.jpg": {
+    "fixture": "photo/logo_bridge_bar.jpg",
+    "route": "file",
+    "class": "gradient",
+    "gate_ran": true,
+    "regions_read": 74,
+    "fur_ids": [
+      "Sb7d33da8"
+    ],
+    "densest": {
+      "id": "Sb7d33da8",
+      "area_mm2": 141.56,
+      "strands": 9,
+      "strand_mm": 99.74,
+      "density": 0.7046,
+      "fur": true
+    },
+    "read": {
+      "S5d53f83f": {
+        "area_mm2": 883.28,
+        "strands": 1,
+        "strand_mm": 1.18,
+        "density": 0.0013,
+        "fur": false
+      },
+      "S8943c3c6": {
+        "area_mm2": 52.68,
+        "strands": 0,
+        "strand_mm": 0.64,
+        "density": 0.0121,
+        "fur": false
+      },
+      "Sb0b8df59": {
+        "area_mm2": 39.68,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S92b2adab": {
+        "area_mm2": 36.04,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S0c90443f": {
+        "area_mm2": 665.49,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S49fe9136": {
+        "area_mm2": 36.91,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S71ddac97": {
+        "area_mm2": 250.11,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sdf9790da": {
+        "area_mm2": 28.55,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sd1cfd380": {
+        "area_mm2": 34.08,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sb7d33da8": {
+        "area_mm2": 141.56,
+        "strands": 9,
+        "strand_mm": 99.74,
+        "density": 0.7046,
+        "fur": true
+      }
+    },
+    "md5_off": "e78ba691b8772db43ca91f8a6a4d5831",
+    "md5_on": "fa46338d9ffed2f3870f2becde9aedc1",
+    "identical": false,
+    "seconds": {
+      "stages0_4": 38.4,
+      "finish_x2_with_gate": 14.4,
+      "plan_x2": 413.7
+    },
+    "off": {
+      "stitches": 17580,
+      "trims": 89,
+      "color_changes": 12,
+      "thread_m": 28.85,
+      "thread_bare_mm": 0.11,
+      "flight_bare_mm": 8.42,
+      "density_stacked": null,
+      "coverage_over_warn_mm2": 0.0,
+      "coverage_over_block_mm2": 0.0,
+      "uncovered_total_mm2": 0.0,
+      "uncovered_wanted_mm2": 2441.0,
+      "grade": "F"
+    },
+    "on": {
+      "stitches": 16746,
+      "trims": 89,
+      "color_changes": 12,
+      "thread_m": 27.46,
+      "thread_bare_mm": 2.36,
+      "flight_bare_mm": 8.42,
+      "density_stacked": null,
+      "coverage_over_warn_mm2": 0.0,
+      "coverage_over_block_mm2": 0.0,
+      "uncovered_total_mm2": 10.5,
+      "uncovered_wanted_mm2": 2441.0,
+      "grade": "F"
+    },
+    "min_density": 0.25
+  },
+  "photo/logo_gaulke_roofing.png": {
+    "fixture": "photo/logo_gaulke_roofing.png",
+    "route": "file",
+    "class": "gradient",
+    "gate_ran": true,
+    "regions_read": 44,
+    "fur_ids": [],
+    "densest": {
+      "id": "Saba1ec0a",
+      "area_mm2": 29.03,
+      "strands": 0,
+      "strand_mm": 1.04,
+      "density": 0.0358,
+      "fur": false
+    },
+    "read": {
+      "S0c90443f": {
+        "area_mm2": 143.93,
+        "strands": 1,
+        "strand_mm": 3.23,
+        "density": 0.0224,
+        "fur": false
+      },
+      "Sff7e4240": {
+        "area_mm2": 126.81,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Saba1ec0a": {
+        "area_mm2": 29.03,
+        "strands": 0,
+        "strand_mm": 1.04,
+        "density": 0.0358,
+        "fur": false
+      }
+    },
+    "md5_off": "d9df13d47276db36c1f194a4a559ba3f",
+    "md5_on": "d9df13d47276db36c1f194a4a559ba3f",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 54.4,
+      "finish_x2_with_gate": 3.4,
+      "plan_x2": 39.6
+    },
+    "min_density": 0.25
+  },
+  "photo/logo_golden_tee.jpg": {
+    "fixture": "photo/logo_golden_tee.jpg",
+    "route": "file",
+    "class": "gradient",
+    "gate_ran": true,
+    "regions_read": 41,
+    "fur_ids": [],
+    "densest": {
+      "id": "Sbf69e1a9",
+      "area_mm2": 26.41,
+      "strands": 3,
+      "strand_mm": 28.2,
+      "density": 1.0679,
+      "fur": false
+    },
+    "read": {
+      "S0bcd1e39": {
+        "area_mm2": 63.21,
+        "strands": 1,
+        "strand_mm": 9.69,
+        "density": 0.1532,
+        "fur": false
+      },
+      "S597c2467": {
+        "area_mm2": 56.85,
+        "strands": 1,
+        "strand_mm": 29.52,
+        "density": 0.5192,
+        "fur": false
+      },
+      "S70a35fa2": {
+        "area_mm2": 54.42,
+        "strands": 1,
+        "strand_mm": 9.47,
+        "density": 0.1741,
+        "fur": false
+      },
+      "S75fc74c9": {
+        "area_mm2": 70.49,
+        "strands": 1,
+        "strand_mm": 8.94,
+        "density": 0.1269,
+        "fur": false
+      },
+      "Se631d99f": {
+        "area_mm2": 35.5,
+        "strands": 3,
+        "strand_mm": 9.95,
+        "density": 0.2803,
+        "fur": false
+      },
+      "S0eec8aa3": {
+        "area_mm2": 25.24,
+        "strands": 1,
+        "strand_mm": 10.25,
+        "density": 0.4062,
+        "fur": false
+      },
+      "S1183b1d4": {
+        "area_mm2": 96.81,
+        "strands": 0,
+        "strand_mm": 1.38,
+        "density": 0.0143,
+        "fur": false
+      },
+      "S235ce2af": {
+        "area_mm2": 65.31,
+        "strands": 2,
+        "strand_mm": 8.57,
+        "density": 0.1313,
+        "fur": false
+      },
+      "S8b2615dd": {
+        "area_mm2": 39.63,
+        "strands": 2,
+        "strand_mm": 5.97,
+        "density": 0.1508,
+        "fur": false
+      },
+      "Sb46d5971": {
+        "area_mm2": 69.5,
+        "strands": 0,
+        "strand_mm": 2.09,
+        "density": 0.03,
+        "fur": false
+      },
+      "Sbf69e1a9": {
+        "area_mm2": 26.41,
+        "strands": 3,
+        "strand_mm": 28.2,
+        "density": 1.0679,
+        "fur": false
+      }
+    },
+    "md5_off": "2d0c9163ce2eb1259820f91095cbfcc9",
+    "md5_on": "2d0c9163ce2eb1259820f91095cbfcc9",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 265.0,
+      "finish_x2_with_gate": 19.9,
+      "plan_x2": 99.3
+    },
+    "min_density": 0.25
+  },
+  "photo/logo_hotel_fremont.webp": {
+    "fixture": "photo/logo_hotel_fremont.webp",
+    "route": "file",
+    "class": "gradient",
+    "gate_ran": true,
+    "regions_read": 161,
+    "fur_ids": [],
+    "densest": {
+      "id": "S78e6cd01",
+      "area_mm2": 1595.88,
+      "strands": 82,
+      "strand_mm": 84.33,
+      "density": 0.0528,
+      "fur": false
+    },
+    "read": {
+      "S78e6cd01": {
+        "area_mm2": 1595.88,
+        "strands": 82,
+        "strand_mm": 84.33,
+        "density": 0.0528,
+        "fur": false
+      },
+      "S11b90a0d": {
+        "area_mm2": 66.39,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S898a2252": {
+        "area_mm2": 52.6,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sf93498a6": {
+        "area_mm2": 52.48,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S33a22d8e": {
+        "area_mm2": 26.64,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S337fbf9c": {
+        "area_mm2": 26.63,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      }
+    },
+    "md5_off": "4a61d19690104b91e9761c060a93d76a",
+    "md5_on": "4a61d19690104b91e9761c060a93d76a",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 216.0,
+      "finish_x2_with_gate": 9.9,
+      "plan_x2": 125.4
+    },
+    "min_density": 0.25
+  },
+  "photo/screenshot_phone_ui_golke.jpg": {
+    "fixture": "photo/screenshot_phone_ui_golke.jpg",
+    "route": "file",
+    "class": "gradient",
+    "gate_ran": true,
+    "regions_read": 86,
+    "fur_ids": [],
+    "densest": {
+      "id": "Sc8148c53",
+      "area_mm2": 491.48,
+      "strands": 19,
+      "strand_mm": 64.69,
+      "density": 0.1316,
+      "fur": false
+    },
+    "read": {
+      "Sc8148c53": {
+        "area_mm2": 491.48,
+        "strands": 19,
+        "strand_mm": 64.69,
+        "density": 0.1316,
+        "fur": false
+      },
+      "Sa5732b09": {
+        "area_mm2": 41.64,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sef0109bc": {
+        "area_mm2": 65.7,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S9867fa6c": {
+        "area_mm2": 25.58,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      }
+    },
+    "md5_off": "423fe6e69e7185b607cf9b9b30bd755c",
+    "md5_on": "423fe6e69e7185b607cf9b9b30bd755c",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 225.3,
+      "finish_x2_with_gate": 5.0,
+      "plan_x2": 162.0
+    },
+    "min_density": 0.25
+  },
+  "photo/owl_kent.jpg@classical": {
+    "fixture": "photo/owl_kent.jpg",
+    "route": "classical",
+    "class": "photo_subject",
+    "min_density": 0.25,
+    "gate_ran": true,
+    "regions_read": 78,
+    "fur_ids": [
+      "S12900860",
+      "S2b0ec51a"
+    ],
+    "densest": {
+      "id": "S12900860",
+      "area_mm2": 219.76,
+      "strands": 17,
+      "strand_mm": 106.39,
+      "density": 0.4841,
+      "fur": true
+    },
+    "read": {
+      "S5de8cbba": {
+        "area_mm2": 83.9,
+        "strands": 2,
+        "strand_mm": 4.83,
+        "density": 0.0576,
+        "fur": false
+      },
+      "S6254db6f": {
+        "area_mm2": 54.36,
+        "strands": 1,
+        "strand_mm": 9.05,
+        "density": 0.1665,
+        "fur": false
+      },
+      "S12900860": {
+        "area_mm2": 219.76,
+        "strands": 17,
+        "strand_mm": 106.39,
+        "density": 0.4841,
+        "fur": true
+      },
+      "S2b0ec51a": {
+        "area_mm2": 99.18,
+        "strands": 9,
+        "strand_mm": 44.89,
+        "density": 0.4526,
+        "fur": true
+      },
+      "S2b2526ce": {
+        "area_mm2": 96.24,
+        "strands": 0,
+        "strand_mm": 0.11,
+        "density": 0.0012,
+        "fur": false
+      },
+      "S8fdb876e": {
+        "area_mm2": 47.91,
+        "strands": 4,
+        "strand_mm": 6.81,
+        "density": 0.1421,
+        "fur": false
+      },
+      "Safc1034d": {
+        "area_mm2": 395.44,
+        "strands": 23,
+        "strand_mm": 55.2,
+        "density": 0.1396,
+        "fur": false
+      },
+      "S33efcdad": {
+        "area_mm2": 126.09,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S1375a4b4": {
+        "area_mm2": 40.71,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sa6ff8b0e": {
+        "area_mm2": 38.76,
+        "strands": 0,
+        "strand_mm": 3.9,
+        "density": 0.1005,
+        "fur": false
+      },
+      "S3bae93ad": {
+        "area_mm2": 308.6,
+        "strands": 16,
+        "strand_mm": 30.42,
+        "density": 0.0986,
+        "fur": false
+      },
+      "Sbe51e36b": {
+        "area_mm2": 97.96,
+        "strands": 0,
+        "strand_mm": 0.08,
+        "density": 0.0008,
+        "fur": false
+      },
+      "S10a2861c": {
+        "area_mm2": 34.29,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S6afd5c91": {
+        "area_mm2": 726.35,
+        "strands": 7,
+        "strand_mm": 16.13,
+        "density": 0.0222,
+        "fur": false
+      },
+      "S872ebc62": {
+        "area_mm2": 48.65,
+        "strands": 2,
+        "strand_mm": 19.32,
+        "density": 0.3971,
+        "fur": false
+      },
+      "S71859fe2": {
+        "area_mm2": 45.22,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "S1984cdd1": {
+        "area_mm2": 37.79,
+        "strands": 0,
+        "strand_mm": 14.35,
+        "density": 0.3798,
+        "fur": false
+      },
+      "S8e07fa31": {
+        "area_mm2": 2248.1,
+        "strands": 44,
+        "strand_mm": 94.85,
+        "density": 0.0422,
+        "fur": false
+      },
+      "Sa5d77aa5": {
+        "area_mm2": 101.37,
+        "strands": 0,
+        "strand_mm": 5.17,
+        "density": 0.051,
+        "fur": false
+      },
+      "S5d65a6bd": {
+        "area_mm2": 766.57,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Se3296f01": {
+        "area_mm2": 118.47,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      },
+      "Sb40da1a0": {
+        "area_mm2": 104.58,
+        "strands": 0,
+        "strand_mm": 0.0,
+        "density": 0.0,
+        "fur": false
+      }
+    },
+    "md5_off": "45731087b2178306a5303cb29fdc1b55",
+    "md5_on": "45731087b2178306a5303cb29fdc1b55",
+    "identical": true,
+    "seconds": {
+      "stages0_4": 18.2,
+      "finish_x2_with_gate": 13.0,
+      "plan_x2": 334.5
+    }
   }
- },
- "photo/fur_ramp.png": {
-  "fixture": "photo/fur_ramp.png",
-  "route": "file",
-  "class": "photo_scene",
-  "gate_ran": true,
-  "regions_read": 8,
-  "fur_ids": [],
-  "densest": {
-   "id": "S1432c3f6",
-   "area_mm2": 160.72,
-   "strands": 0,
-   "strand_mm": 0.0,
-   "density": 0.0,
-   "fur": false
-  },
-  "read": {
-   "S1432c3f6": {
-    "area_mm2": 160.72,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc78689db": {
-    "area_mm2": 160.77,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S84d10a7c": {
-    "area_mm2": 160.76,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc6b82dcc": {
-    "area_mm2": 160.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sef44c5c6": {
-    "area_mm2": 160.81,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0acba01f": {
-    "area_mm2": 160.71,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf6e41633": {
-    "area_mm2": 160.73,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3947b75c": {
-    "area_mm2": 160.7,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "25e0c301badff310d0cae241449b9636",
-  "md5_on": "25e0c301badff310d0cae241449b9636",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 19.1,
-   "finish_x2_with_gate": 8.9,
-   "plan_x2": 22.9
-  }
- },
- "bg_uncertain.png": {
-  "fixture": "bg_uncertain.png",
-  "route": "file",
-  "class": "flat",
-  "gate_ran": false,
-  "regions_read": 0,
-  "fur_ids": [],
-  "densest": null,
-  "read": null,
-  "md5_off": "60350a3398713bb19a93f010375749c2",
-  "md5_on": "60350a3398713bb19a93f010375749c2",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 9.8,
-   "finish_x2_with_gate": 0.0,
-   "plan_x2": 12.7
-  }
- },
- "logo_alpha.png": {
-  "fixture": "logo_alpha.png",
-  "route": "file",
-  "class": "flat",
-  "gate_ran": false,
-  "regions_read": 0,
-  "fur_ids": [],
-  "densest": null,
-  "read": null,
-  "md5_off": "ef61d70df6fed1625492a036ec293a76",
-  "md5_on": "ef61d70df6fed1625492a036ec293a76",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 9.8,
-   "finish_x2_with_gate": 0.0,
-   "plan_x2": 11.7
-  }
- },
- "logo_whitebg.png": {
-  "fixture": "logo_whitebg.png",
-  "route": "file",
-  "class": "flat",
-  "gate_ran": false,
-  "regions_read": 0,
-  "fur_ids": [],
-  "densest": null,
-  "read": null,
-  "md5_off": "a1c270b7a120b1860a664e36962a4094",
-  "md5_on": "a1c270b7a120b1860a664e36962a4094",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 10.8,
-   "finish_x2_with_gate": 0.0,
-   "plan_x2": 11.3
-  }
- },
- "ribbon_curve.png": {
-  "fixture": "ribbon_curve.png",
-  "route": "file",
-  "class": "flat",
-  "gate_ran": false,
-  "regions_read": 0,
-  "fur_ids": [],
-  "densest": null,
-  "read": null,
-  "md5_off": "b4cf9ff93a4d216cd3477323ca2d7560",
-  "md5_on": "b4cf9ff93a4d216cd3477323ca2d7560",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 7.2,
-   "finish_x2_with_gate": 0.1,
-   "plan_x2": 2.9
-  }
- },
- "photo/drone_render.png": {
-  "fixture": "photo/drone_render.png",
-  "route": "file",
-  "class": "gradient",
-  "gate_ran": true,
-  "regions_read": 113,
-  "fur_ids": [],
-  "densest": {
-   "id": "S980e2ff4",
-   "area_mm2": 85.42,
-   "strands": 2,
-   "strand_mm": 31.88,
-   "density": 0.3732,
-   "fur": false
-  },
-  "read": {
-   "Se9100b9d": {
-    "area_mm2": 1475.28,
-    "strands": 13,
-    "strand_mm": 93.51,
-    "density": 0.0634,
-    "fur": false
-   },
-   "Sdc41c3a4": {
-    "area_mm2": 7.72,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2492f28b": {
-    "area_mm2": 3.55,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S426e81b9": {
-    "area_mm2": 217.72,
-    "strands": 4,
-    "strand_mm": 25.6,
-    "density": 0.1176,
-    "fur": false
-   },
-   "Sbf52e132": {
-    "area_mm2": 8.95,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8633a853": {
-    "area_mm2": 7.94,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S16c5aa59": {
-    "area_mm2": 6.82,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5d81346e": {
-    "area_mm2": 6.77,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6b0dab8e": {
-    "area_mm2": 6.6,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S247fd25b": {
-    "area_mm2": 6.56,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa6a4c16b": {
-    "area_mm2": 6.28,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0cfa3ec7": {
-    "area_mm2": 5.97,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S237fd10d": {
-    "area_mm2": 5.96,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S670e7aec": {
-    "area_mm2": 5.55,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1bc7a568": {
-    "area_mm2": 5.34,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Secb59b4d": {
-    "area_mm2": 5.28,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S181d280a": {
-    "area_mm2": 5.0,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S454fc91c": {
-    "area_mm2": 4.98,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6394a464": {
-    "area_mm2": 4.97,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Scf6dbb5b": {
-    "area_mm2": 4.94,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S91ec62ea": {
-    "area_mm2": 3.72,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4b977f19": {
-    "area_mm2": 2.88,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se680e8f4": {
-    "area_mm2": 2.88,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb9e57a54": {
-    "area_mm2": 0.89,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf3a525e6": {
-    "area_mm2": 0.57,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "See6c8f8f": {
-    "area_mm2": 197.45,
-    "strands": 3,
-    "strand_mm": 4.49,
-    "density": 0.0228,
-    "fur": false
-   },
-   "S662adb5e": {
-    "area_mm2": 0.84,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb5b27ad4": {
-    "area_mm2": 26.67,
-    "strands": 2,
-    "strand_mm": 2.01,
-    "density": 0.0753,
-    "fur": false
-   },
-   "S914cf425": {
-    "area_mm2": 2.73,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S53adc87e": {
-    "area_mm2": 2.73,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6edce285": {
-    "area_mm2": 36.94,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S68387d18": {
-    "area_mm2": 38.68,
-    "strands": 1,
-    "strand_mm": 1.29,
-    "density": 0.0333,
-    "fur": false
-   },
-   "Sef56b99a": {
-    "area_mm2": 49.87,
-    "strands": 0,
-    "strand_mm": 0.63,
-    "density": 0.0126,
-    "fur": false
-   },
-   "S71f2a4c9": {
-    "area_mm2": 48.49,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc579466d": {
-    "area_mm2": 48.09,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se98c90bf": {
-    "area_mm2": 40.36,
-    "strands": 0,
-    "strand_mm": 1.95,
-    "density": 0.0482,
-    "fur": false
-   },
-   "Se9a6d835": {
-    "area_mm2": 32.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S62a56c58": {
-    "area_mm2": 15.26,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc20646a8": {
-    "area_mm2": 15.22,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1907c1ed": {
-    "area_mm2": 3.17,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8e9f5a6d": {
-    "area_mm2": 2.12,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S89cc9fe3": {
-    "area_mm2": 49.03,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa34f3d79": {
-    "area_mm2": 43.78,
-    "strands": 1,
-    "strand_mm": 2.94,
-    "density": 0.0671,
-    "fur": false
-   },
-   "S24beef6d": {
-    "area_mm2": 38.33,
-    "strands": 1,
-    "strand_mm": 2.18,
-    "density": 0.057,
-    "fur": false
-   },
-   "S2af2043d": {
-    "area_mm2": 17.02,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S17f70862": {
-    "area_mm2": 15.32,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S38e4f908": {
-    "area_mm2": 13.92,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3bf43597": {
-    "area_mm2": 3.13,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb48f72d9": {
-    "area_mm2": 1.6,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6cc4a060": {
-    "area_mm2": 31.81,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbf8a37c3": {
-    "area_mm2": 27.32,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S14057482": {
-    "area_mm2": 26.22,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3e7df60e": {
-    "area_mm2": 25.99,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S81d913c5": {
-    "area_mm2": 22.74,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6ae7403b": {
-    "area_mm2": 5.26,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1fa8b3c6": {
-    "area_mm2": 5.03,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5f311187": {
-    "area_mm2": 0.6,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbf8a37c3-2": {
-    "area_mm2": 0.54,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sddfb5115": {
-    "area_mm2": 0.44,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S980e2ff4": {
-    "area_mm2": 85.42,
-    "strands": 2,
-    "strand_mm": 31.88,
-    "density": 0.3732,
-    "fur": false
-   },
-   "Sf976c922": {
-    "area_mm2": 3.96,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sed37903a": {
-    "area_mm2": 2.08,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdad8ab8f": {
-    "area_mm2": 1.4,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb1c653ed": {
-    "area_mm2": 22.61,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sadf04438": {
-    "area_mm2": 9.31,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfccd3e0b": {
-    "area_mm2": 5.41,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3df49a44": {
-    "area_mm2": 3.21,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbe3ff5f3": {
-    "area_mm2": 2.87,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S37491305": {
-    "area_mm2": 2.62,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sadbf37d0": {
-    "area_mm2": 1.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se06679a1": {
-    "area_mm2": 0.85,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S992a90a6": {
-    "area_mm2": 0.5,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S09758e15": {
-    "area_mm2": 15.76,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Saf68e25d": {
-    "area_mm2": 2.97,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S48e382c3": {
-    "area_mm2": 1.74,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf9b47140": {
-    "area_mm2": 1.62,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6c65c000": {
-    "area_mm2": 1.11,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5f5ba1a0": {
-    "area_mm2": 0.73,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S7b1674bc": {
-    "area_mm2": 0.25,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Seb45f7dc": {
-    "area_mm2": 19.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1f9b4b87": {
-    "area_mm2": 17.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4e75a7f1": {
-    "area_mm2": 16.05,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb69cb13d": {
-    "area_mm2": 6.52,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4d9a9bf1": {
-    "area_mm2": 2.14,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf5882f8b": {
-    "area_mm2": 1.06,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S7f810963": {
-    "area_mm2": 0.55,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6aa47953": {
-    "area_mm2": 0.41,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se56f0d8e": {
-    "area_mm2": 0.2,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Scb4ac826": {
-    "area_mm2": 0.19,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S165b8dc4": {
-    "area_mm2": 5.47,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S181093fc": {
-    "area_mm2": 4.51,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb26e489f": {
-    "area_mm2": 3.89,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S787d58d0": {
-    "area_mm2": 3.27,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S80bb4c96": {
-    "area_mm2": 2.15,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9f24aee6": {
-    "area_mm2": 1.4,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8d274eeb": {
-    "area_mm2": 0.83,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4a5b3c7b": {
-    "area_mm2": 5.92,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S02724172": {
-    "area_mm2": 3.99,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S579a4b67": {
-    "area_mm2": 8.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Scc45702d": {
-    "area_mm2": 1.62,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8f92c597": {
-    "area_mm2": 1.27,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S74c1dc51": {
-    "area_mm2": 0.99,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc9881779": {
-    "area_mm2": 0.71,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf92d0bfe": {
-    "area_mm2": 0.66,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf76a520d": {
-    "area_mm2": 0.64,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S370fae15": {
-    "area_mm2": 0.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2f8dc0df": {
-    "area_mm2": 0.31,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdfc69a40": {
-    "area_mm2": 2.93,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S193650fa": {
-    "area_mm2": 0.73,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S167a2661": {
-    "area_mm2": 0.49,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S34c92c8b": {
-    "area_mm2": 0.87,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1e203cd0": {
-    "area_mm2": 0.82,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb52eb29e": {
-    "area_mm2": 1.86,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "25dc7aabc6acf2144136a5e729c26fec",
-  "md5_on": "25dc7aabc6acf2144136a5e729c26fec",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 135.8,
-   "finish_x2_with_gate": 9.2,
-   "plan_x2": 386.0
-  }
- },
- "photo/enthusiast_logo.png": {
-  "fixture": "photo/enthusiast_logo.png",
-  "route": "file",
-  "class": "flat",
-  "gate_ran": false,
-  "regions_read": 0,
-  "fur_ids": [],
-  "densest": null,
-  "read": null,
-  "md5_off": "c0bb6acffcf40bb71c7dddb414b2ae1a",
-  "md5_on": "c0bb6acffcf40bb71c7dddb414b2ae1a",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 29.7,
-   "finish_x2_with_gate": 0.0,
-   "plan_x2": 13.3
-  }
- },
- "photo/gradient_ramp_linear.png": {
-  "fixture": "photo/gradient_ramp_linear.png",
-  "route": "file",
-  "class": "gradient",
-  "gate_ran": true,
-  "regions_read": 1,
-  "fur_ids": [],
-  "densest": {
-   "id": "S95d3b384",
-   "area_mm2": 3795.32,
-   "strands": 0,
-   "strand_mm": 0.0,
-   "density": 0.0,
-   "fur": false
-  },
-  "read": {
-   "S95d3b384": {
-    "area_mm2": 3795.32,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "b34530f6b4613c2d4a7d904aa71722a0",
-  "md5_on": "b34530f6b4613c2d4a7d904aa71722a0",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 28.3,
-   "finish_x2_with_gate": 9.5,
-   "plan_x2": 2.1
-  }
- },
- "photo/gradient_ramp_radial.png": {
-  "fixture": "photo/gradient_ramp_radial.png",
-  "route": "file",
-  "class": "gradient",
-  "gate_ran": true,
-  "regions_read": 5,
-  "fur_ids": [],
-  "densest": {
-   "id": "S6067381a",
-   "area_mm2": 4994.78,
-   "strands": 0,
-   "strand_mm": 0.0,
-   "density": 0.0,
-   "fur": false
-  },
-  "read": {
-   "S6067381a": {
-    "area_mm2": 4994.78,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc2ec162e": {
-    "area_mm2": 0.21,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S130a1778": {
-    "area_mm2": 0.2,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S302ca405": {
-    "area_mm2": 0.17,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S54c3733c": {
-    "area_mm2": 0.17,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "cd4884d3067bbd849b074fb128e74cf4",
-  "md5_on": "cd4884d3067bbd849b074fb128e74cf4",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 36.6,
-   "finish_x2_with_gate": 10.3,
-   "plan_x2": 8.8
-  }
- },
- "photo/photo_chrome_specular.png": {
-  "fixture": "photo/photo_chrome_specular.png",
-  "route": "file",
-  "class": "photo_scene",
-  "gate_ran": true,
-  "regions_read": 26,
-  "fur_ids": [],
-  "densest": {
-   "id": "Sb9b40a71",
-   "area_mm2": 2273.43,
-   "strands": 1,
-   "strand_mm": 0.75,
-   "density": 0.0003,
-   "fur": false
-  },
-  "read": {
-   "S75b4b6e6": {
-    "area_mm2": 1789.28,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S17d9d004": {
-    "area_mm2": 200.76,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S78027469": {
-    "area_mm2": 2361.54,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf47f7eae": {
-    "area_mm2": 3.3,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdcdfaad1": {
-    "area_mm2": 3.27,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5466a1c6": {
-    "area_mm2": 1.87,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb1c2f778": {
-    "area_mm2": 0.74,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5f4bd344": {
-    "area_mm2": 0.64,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfd992c7e": {
-    "area_mm2": 0.59,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S781eacc1": {
-    "area_mm2": 99.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3d82e17f": {
-    "area_mm2": 25.83,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdb1c771c": {
-    "area_mm2": 13.68,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S645a5b61": {
-    "area_mm2": 89.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sed2e9e6d": {
-    "area_mm2": 7.04,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9b4b2b37": {
-    "area_mm2": 1.54,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se0f650f5": {
-    "area_mm2": 113.92,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb9b40a71": {
-    "area_mm2": 2273.43,
-    "strands": 1,
-    "strand_mm": 0.75,
-    "density": 0.0003,
-    "fur": false
-   },
-   "S30e06b2f": {
-    "area_mm2": 3.52,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6526ae82": {
-    "area_mm2": 0.95,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0117631f": {
-    "area_mm2": 0.6,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sec6b51e0": {
-    "area_mm2": 0.59,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S22b5a088": {
-    "area_mm2": 0.44,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbc4e1370": {
-    "area_mm2": 152.03,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5d48bc3e": {
-    "area_mm2": 150.27,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdbfa0cd1": {
-    "area_mm2": 98.92,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbbc13e51": {
-    "area_mm2": 42.85,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "725a94d2f2dbb7da363299024e3e31fb",
-  "md5_on": "725a94d2f2dbb7da363299024e3e31fb",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 18.6,
-   "finish_x2_with_gate": 10.1,
-   "plan_x2": 447.4
-  }
- },
- "photo/photo_dof_meadow.png": {
-  "fixture": "photo/photo_dof_meadow.png",
-  "route": "file",
-  "class": "photo_scene",
-  "gate_ran": true,
-  "regions_read": 46,
-  "fur_ids": [],
-  "densest": {
-   "id": "S369f7364",
-   "area_mm2": 32.94,
-   "strands": 0,
-   "strand_mm": 0.0,
-   "density": 0.0,
-   "fur": false
-  },
-  "read": {
-   "S369f7364": {
-    "area_mm2": 32.94,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf0dc3da8": {
-    "area_mm2": 2198.82,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa4c46391": {
-    "area_mm2": 0.92,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9ad91699": {
-    "area_mm2": 0.71,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbf95b4d7": {
-    "area_mm2": 0.64,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfa72a2d2": {
-    "area_mm2": 0.61,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfe6ae257": {
-    "area_mm2": 0.61,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S114ca4f7": {
-    "area_mm2": 0.57,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8fcc2988": {
-    "area_mm2": 0.55,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S95030279": {
-    "area_mm2": 0.54,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S86677fa1": {
-    "area_mm2": 0.49,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S34b48187": {
-    "area_mm2": 0.46,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S36b98052": {
-    "area_mm2": 0.4,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfe04a4f1": {
-    "area_mm2": 0.37,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdd0bbeef": {
-    "area_mm2": 0.36,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S08c8777e": {
-    "area_mm2": 0.35,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se506c641": {
-    "area_mm2": 0.33,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2dd06c4f": {
-    "area_mm2": 0.31,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6c78cb9e": {
-    "area_mm2": 0.26,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S85a4346e": {
-    "area_mm2": 0.24,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdf26b41c": {
-    "area_mm2": 0.24,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S864eb4fc": {
-    "area_mm2": 0.19,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S584fd7b2": {
-    "area_mm2": 0.19,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0438da39": {
-    "area_mm2": 0.18,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3c4bf203": {
-    "area_mm2": 0.18,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf96adf73": {
-    "area_mm2": 0.18,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S45c80390": {
-    "area_mm2": 702.84,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8052c894": {
-    "area_mm2": 880.98,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S63f5c3e6": {
-    "area_mm2": 60.83,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5549dcbe": {
-    "area_mm2": 42.12,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc3b512e8": {
-    "area_mm2": 34.39,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1ecbdcc8": {
-    "area_mm2": 13.93,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3a50e4e0": {
-    "area_mm2": 4.63,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S504f88a7": {
-    "area_mm2": 4.11,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4e579193": {
-    "area_mm2": 4.06,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S230534aa": {
-    "area_mm2": 3.35,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9d0e449a": {
-    "area_mm2": 2.11,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S374b6020": {
-    "area_mm2": 1.86,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S817eff25": {
-    "area_mm2": 1.82,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfeaaf7ef": {
-    "area_mm2": 1.49,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S41207615": {
-    "area_mm2": 1.44,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1c3a051c": {
-    "area_mm2": 1.05,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb2a9c210": {
-    "area_mm2": 1.02,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S97683393": {
-    "area_mm2": 104.86,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S25d20266": {
-    "area_mm2": 54.44,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Scedac1b7": {
-    "area_mm2": 25.92,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "121ffe0ce8d9b8cad631fdf3d48cef22",
-  "md5_on": "121ffe0ce8d9b8cad631fdf3d48cef22",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 21.5,
-   "finish_x2_with_gate": 8.8,
-   "plan_x2": 293.6
-  }
- },
- "photo/photo_grass_macro.png": {
-  "fixture": "photo/photo_grass_macro.png",
-  "route": "file",
-  "class": "photo_subject",
-  "gate_ran": true,
-  "regions_read": 2,
-  "fur_ids": [
-   "Scfe3827c"
-  ],
-  "densest": {
-   "id": "Scfe3827c",
-   "area_mm2": 4682.86,
-   "strands": 1881,
-   "strand_mm": 2165.29,
-   "density": 0.4624,
-   "fur": true
-  },
-  "read": {
-   "Scfe3827c": {
-    "area_mm2": 4682.86,
-    "strands": 1881,
-    "strand_mm": 2165.29,
-    "density": 0.4624,
-    "fur": true
-   },
-   "Sf4820659": {
-    "area_mm2": 15.22,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "35ba660e8028c43ccb7833c4d615151b",
-  "md5_on": "35ba660e8028c43ccb7833c4d615151b",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 22.7,
-   "finish_x2_with_gate": 13.1,
-   "plan_x2": 30.7
-  }
- },
- "photo/photo_owl_pale.png": {
-  "fixture": "photo/photo_owl_pale.png",
-  "route": "file",
-  "class": "photo_scene",
-  "gate_ran": true,
-  "regions_read": 6,
-  "fur_ids": [],
-  "densest": {
-   "id": "Sba191375",
-   "area_mm2": 43.15,
-   "strands": 0,
-   "strand_mm": 0.0,
-   "density": 0.0,
-   "fur": false
-  },
-  "read": {
-   "S26d442d3": {
-    "area_mm2": 14.83,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5ced9608": {
-    "area_mm2": 11.15,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1632ec3d": {
-    "area_mm2": 11.14,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sba191375": {
-    "area_mm2": 43.15,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb75e97a3": {
-    "area_mm2": 41.6,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S04a09019": {
-    "area_mm2": 8039.38,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "9e4d6381c0a61cc30c3e16e529a60423",
-  "md5_on": "9e4d6381c0a61cc30c3e16e529a60423",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 11.0,
-   "finish_x2_with_gate": 8.6,
-   "plan_x2": 55.8
-  }
- },
- "photo/photo_scene_stub.png": {
-  "fixture": "photo/photo_scene_stub.png",
-  "route": "file",
-  "class": "photo_scene",
-  "gate_ran": true,
-  "regions_read": 54,
-  "fur_ids": [],
-  "densest": {
-   "id": "S4dfd5f1a",
-   "area_mm2": 948.09,
-   "strands": 0,
-   "strand_mm": 0.0,
-   "density": 0.0,
-   "fur": false
-  },
-  "read": {
-   "S9991e16b": {
-    "area_mm2": 9.51,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S95251399": {
-    "area_mm2": 8.76,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4dfd5f1a": {
-    "area_mm2": 948.09,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8e650a5c": {
-    "area_mm2": 21.75,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3321f2b7": {
-    "area_mm2": 5.37,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd2578f1f": {
-    "area_mm2": 0.5,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6af93a7b": {
-    "area_mm2": 0.42,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb3b92acd": {
-    "area_mm2": 0.39,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9f36d001": {
-    "area_mm2": 0.35,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S32a5d9c6": {
-    "area_mm2": 0.27,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S693e3e33": {
-    "area_mm2": 892.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se3d4097f": {
-    "area_mm2": 46.34,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb0ea5803": {
-    "area_mm2": 17.05,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3ec95225": {
-    "area_mm2": 2.11,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S762c1172": {
-    "area_mm2": 2.07,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4785df3c": {
-    "area_mm2": 1.97,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sff6459a9": {
-    "area_mm2": 1.01,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1b4da307": {
-    "area_mm2": 0.92,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S56d2020b": {
-    "area_mm2": 0.88,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9cc173b3": {
-    "area_mm2": 0.63,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S7784a25f": {
-    "area_mm2": 0.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf80b4c46": {
-    "area_mm2": 859.47,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sed9708f3": {
-    "area_mm2": 101.6,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4fef9dee": {
-    "area_mm2": 33.0,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S57a39bdb": {
-    "area_mm2": 9.86,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9d080f59": {
-    "area_mm2": 8.05,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S400c4dcf": {
-    "area_mm2": 7.39,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf3c87db3": {
-    "area_mm2": 6.84,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S719e7cfe": {
-    "area_mm2": 6.14,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S63b18616": {
-    "area_mm2": 4.71,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S7fddac29": {
-    "area_mm2": 3.3,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Seb176be4": {
-    "area_mm2": 2.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5b0b6771": {
-    "area_mm2": 1.9,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S02c2a575": {
-    "area_mm2": 1.36,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa82fc9de": {
-    "area_mm2": 1.35,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdba5e856": {
-    "area_mm2": 1.15,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se0cb082d": {
-    "area_mm2": 1.11,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Scc8f4693": {
-    "area_mm2": 0.9,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3de50e65": {
-    "area_mm2": 0.82,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb454cc6d": {
-    "area_mm2": 0.73,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S90c4c733": {
-    "area_mm2": 0.6,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8c97b2f3": {
-    "area_mm2": 800.59,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S27c05298": {
-    "area_mm2": 71.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S37fa24e4": {
-    "area_mm2": 50.25,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1af41b3b": {
-    "area_mm2": 44.31,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2d8e0e3b": {
-    "area_mm2": 44.12,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S912235f8": {
-    "area_mm2": 12.31,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfeb5780a": {
-    "area_mm2": 7.86,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0b435006": {
-    "area_mm2": 7.74,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd8ce66f2": {
-    "area_mm2": 6.68,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc78952fb": {
-    "area_mm2": 4.15,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd6fa4d98": {
-    "area_mm2": 1.28,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd6610f1f": {
-    "area_mm2": 0.98,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S75c943c8": {
-    "area_mm2": 0.94,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "b49236272874a7bcf128d3bef5928ed9",
-  "md5_on": "b49236272874a7bcf128d3bef5928ed9",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 29.5,
-   "finish_x2_with_gate": 6.2,
-   "plan_x2": 180.1
-  }
- },
- "photo/photo_subject_stub.png": {
-  "fixture": "photo/photo_subject_stub.png",
-  "route": "file",
-  "class": "photo_subject",
-  "gate_ran": true,
-  "regions_read": 1,
-  "fur_ids": [],
-  "densest": {
-   "id": "S83d298e8",
-   "area_mm2": 4149.45,
-   "strands": 18,
-   "strand_mm": 8.73,
-   "density": 0.0021,
-   "fur": false
-  },
-  "read": {
-   "S83d298e8": {
-    "area_mm2": 4149.45,
-    "strands": 18,
-    "strand_mm": 8.73,
-    "density": 0.0021,
-    "fur": false
-   }
-  },
-  "md5_off": "1262ab23fda6ea7a22843ab313417325",
-  "md5_on": "1262ab23fda6ea7a22843ab313417325",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 30.7,
-   "finish_x2_with_gate": 7.3,
-   "plan_x2": 30.5
-  }
- },
- "photo/photo_sunset_backlit.png": {
-  "fixture": "photo/photo_sunset_backlit.png",
-  "route": "file",
-  "class": "photo_scene",
-  "gate_ran": true,
-  "regions_read": 45,
-  "fur_ids": [],
-  "densest": {
-   "id": "S7dd2678e",
-   "area_mm2": 938.71,
-   "strands": 0,
-   "strand_mm": 0.0,
-   "density": 0.0,
-   "fur": false
-  },
-  "read": {
-   "S7dd2678e": {
-    "area_mm2": 938.71,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S96ae75f4": {
-    "area_mm2": 690.82,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S26b53a30": {
-    "area_mm2": 261.91,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf99e9bab": {
-    "area_mm2": 1.26,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf98c9620": {
-    "area_mm2": 0.78,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1deb1d2d": {
-    "area_mm2": 549.95,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S32fa303d": {
-    "area_mm2": 1.1,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S28ba254b": {
-    "area_mm2": 1147.68,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sacda1c3b": {
-    "area_mm2": 6.56,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8d872b6f": {
-    "area_mm2": 6.3,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfd929510": {
-    "area_mm2": 2.54,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S90ef14b5": {
-    "area_mm2": 1.06,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S77a2e851": {
-    "area_mm2": 0.97,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa7782861": {
-    "area_mm2": 0.83,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S17b617ca": {
-    "area_mm2": 0.69,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd76847a8": {
-    "area_mm2": 0.65,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sca46175c": {
-    "area_mm2": 0.63,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa41eafa3": {
-    "area_mm2": 0.61,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa6df2e78": {
-    "area_mm2": 0.59,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc204de8f": {
-    "area_mm2": 0.55,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4ec88d24": {
-    "area_mm2": 0.55,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S59c071f9": {
-    "area_mm2": 0.54,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S7f48410b": {
-    "area_mm2": 0.52,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S857ad598": {
-    "area_mm2": 0.49,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa7b8f91d": {
-    "area_mm2": 0.47,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa680090d": {
-    "area_mm2": 0.47,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S75f9dfe7": {
-    "area_mm2": 0.47,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd474f43e": {
-    "area_mm2": 0.46,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S7f9afeda": {
-    "area_mm2": 0.45,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb56ad332": {
-    "area_mm2": 0.43,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S89a20d6b": {
-    "area_mm2": 0.43,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2d2d82ba": {
-    "area_mm2": 0.42,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Saa8ba4a1": {
-    "area_mm2": 0.42,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0f9c6907": {
-    "area_mm2": 0.4,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S083b9fd0": {
-    "area_mm2": 0.39,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa8747f90": {
-    "area_mm2": 0.38,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa73f7386": {
-    "area_mm2": 0.36,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1f87b44a": {
-    "area_mm2": 0.31,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S13be579c": {
-    "area_mm2": 0.3,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc6fc8cf6": {
-    "area_mm2": 0.28,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S915dbbb0": {
-    "area_mm2": 0.27,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S227ea671": {
-    "area_mm2": 928.17,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S418841b6": {
-    "area_mm2": 149.84,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc529f20f": {
-    "area_mm2": 0.54,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2c89fc4e": {
-    "area_mm2": 0.52,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "98e5625d48913b7c5f6426d042ccbfc6",
-  "md5_on": "98e5625d48913b7c5f6426d042ccbfc6",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 20.3,
-   "finish_x2_with_gate": 7.7,
-   "plan_x2": 850.5
-  }
- },
- "photo/region_blobs.png": {
-  "fixture": "photo/region_blobs.png",
-  "route": "file",
-  "class": "gradient",
-  "gate_ran": true,
-  "regions_read": 3,
-  "fur_ids": [],
-  "densest": {
-   "id": "S0752cb96",
-   "area_mm2": 2308.16,
-   "strands": 0,
-   "strand_mm": 0.0,
-   "density": 0.0,
-   "fur": false
-  },
-  "read": {
-   "S0752cb96": {
-    "area_mm2": 2308.16,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S83c0662d": {
-    "area_mm2": 686.91,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se79a966d": {
-    "area_mm2": 619.4,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "c118f691653e78bc9feed9662ab43410",
-  "md5_on": "c118f691653e78bc9feed9662ab43410",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 27.1,
-   "finish_x2_with_gate": 12.9,
-   "plan_x2": 38.5
-  }
- },
- "photo/repro_gradient_white_icon.png": {
-  "fixture": "photo/repro_gradient_white_icon.png",
-  "route": "file",
-  "class": "gradient",
-  "gate_ran": true,
-  "regions_read": 6,
-  "fur_ids": [],
-  "densest": {
-   "id": "S5afb1e0a",
-   "area_mm2": 3299.71,
-   "strands": 0,
-   "strand_mm": 0.0,
-   "density": 0.0,
-   "fur": false
-  },
-  "read": {
-   "S5afb1e0a": {
-    "area_mm2": 3299.71,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S10e5c7ce": {
-    "area_mm2": 1075.87,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5afb1e0a-2": {
-    "area_mm2": 630.21,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S78e6cd01": {
-    "area_mm2": 1017.81,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S78e6cd01-2": {
-    "area_mm2": 365.63,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S82bfe7ed": {
-    "area_mm2": 22.43,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "cea41452dd4d843966e2644e194c10e0",
-  "md5_on": "cea41452dd4d843966e2644e194c10e0",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 30.7,
-   "finish_x2_with_gate": 11.5,
-   "plan_x2": 23.2
-  }
- },
- "photo/summit_badge.png": {
-  "fixture": "photo/summit_badge.png",
-  "route": "file",
-  "class": "gradient",
-  "gate_ran": true,
-  "regions_read": 35,
-  "fur_ids": [],
-  "densest": {
-   "id": "Sf1d58e9d",
-   "area_mm2": 573.56,
-   "strands": 6,
-   "strand_mm": 92.36,
-   "density": 0.161,
-   "fur": false
-  },
-  "read": {
-   "Scd5f9d89": {
-    "area_mm2": 2775.72,
-    "strands": 4,
-    "strand_mm": 2.71,
-    "density": 0.001,
-    "fur": false
-   },
-   "Sf1d58e9d": {
-    "area_mm2": 573.56,
-    "strands": 6,
-    "strand_mm": 92.36,
-    "density": 0.161,
-    "fur": false
-   },
-   "S673d0f24": {
-    "area_mm2": 259.15,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Saadc6d0b": {
-    "area_mm2": 136.91,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3ed09833": {
-    "area_mm2": 347.43,
-    "strands": 2,
-    "strand_mm": 11.08,
-    "density": 0.0319,
-    "fur": false
-   },
-   "Sc6644fa0": {
-    "area_mm2": 5.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4c1d84ee": {
-    "area_mm2": 259.28,
-    "strands": 0,
-    "strand_mm": 0.09,
-    "density": 0.0003,
-    "fur": false
-   },
-   "S4ccb6b37": {
-    "area_mm2": 137.05,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa54e4eaa": {
-    "area_mm2": 0.72,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5ee6c186": {
-    "area_mm2": 11.33,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4bec85db": {
-    "area_mm2": 10.57,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S59787d23": {
-    "area_mm2": 6.23,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sca22b596": {
-    "area_mm2": 4.05,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd7d6eaf6": {
-    "area_mm2": 3.34,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdb7a8849": {
-    "area_mm2": 3.2,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf01834b1": {
-    "area_mm2": 3.19,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S19f85a5f": {
-    "area_mm2": 3.1,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0a881283": {
-    "area_mm2": 2.67,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb35a025b": {
-    "area_mm2": 2.65,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S587012ec": {
-    "area_mm2": 2.56,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1d7e191f": {
-    "area_mm2": 2.4,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S762587e0": {
-    "area_mm2": 2.33,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8379799d": {
-    "area_mm2": 2.22,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc28daa63": {
-    "area_mm2": 1.9,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S40e1cad1": {
-    "area_mm2": 1.9,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa049b7f4": {
-    "area_mm2": 1.89,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfaa643ec": {
-    "area_mm2": 1.64,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S57d81966": {
-    "area_mm2": 1.6,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se979c060": {
-    "area_mm2": 0.98,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa37babb3": {
-    "area_mm2": 0.83,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S99d74eba": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd71a6a91": {
-    "area_mm2": 8.9,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sca016e35": {
-    "area_mm2": 16.87,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S24ec9e24": {
-    "area_mm2": 12.65,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Saa732b7a": {
-    "area_mm2": 6.52,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "1db6dd30045a57cd95f8370779236354",
-  "md5_on": "1db6dd30045a57cd95f8370779236354",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 69.0,
-   "finish_x2_with_gate": 15.1,
-   "plan_x2": 180.9
-  }
- },
- "becker_marine_logo.png": {
-  "fixture": "becker_marine_logo.png",
-  "route": "file",
-  "class": "flat",
-  "gate_ran": false,
-  "regions_read": 0,
-  "fur_ids": [],
-  "densest": null,
-  "read": null,
-  "md5_off": "7e4f8ce23af8810a0e712da31725afa4",
-  "md5_on": "7e4f8ce23af8810a0e712da31725afa4",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 11.7,
-   "finish_x2_with_gate": 0.1,
-   "plan_x2": 43.4
-  }
- },
- "logo_script_tires.png": {
-  "fixture": "logo_script_tires.png",
-  "route": "file",
-  "class": "photo_scene",
-  "gate_ran": true,
-  "regions_read": 4,
-  "fur_ids": [],
-  "densest": {
-   "id": "Sf272c1de",
-   "area_mm2": 451.98,
-   "strands": 0,
-   "strand_mm": 0.0,
-   "density": 0.0,
-   "fur": false
-  },
-  "read": {
-   "Sf272c1de": {
-    "area_mm2": 451.98,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8edf1545": {
-    "area_mm2": 178.99,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1f2e2d7b": {
-    "area_mm2": 100.66,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S27641282": {
-    "area_mm2": 11.97,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "4f95eb849b7b108f33bee00f3c4b2693",
-  "md5_on": "4f95eb849b7b108f33bee00f3c4b2693",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 40.5,
-   "finish_x2_with_gate": 9.4,
-   "plan_x2": 11.6
-  }
- },
- "photo/logo_bridge_bar.jpg": {
-  "fixture": "photo/logo_bridge_bar.jpg",
-  "route": "file",
-  "class": "gradient",
-  "gate_ran": true,
-  "regions_read": 74,
-  "fur_ids": [
-   "Sb7d33da8"
-  ],
-  "densest": {
-   "id": "Sb7d33da8",
-   "area_mm2": 141.56,
-   "strands": 9,
-   "strand_mm": 99.74,
-   "density": 0.7046,
-   "fur": true
-  },
-  "read": {
-   "S5d53f83f": {
-    "area_mm2": 883.28,
-    "strands": 1,
-    "strand_mm": 1.18,
-    "density": 0.0013,
-    "fur": false
-   },
-   "Sb7247667": {
-    "area_mm2": 16.07,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0d3ce62b": {
-    "area_mm2": 4.98,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S87a02ba8": {
-    "area_mm2": 4.9,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S354f0f99": {
-    "area_mm2": 4.85,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd42af7c9": {
-    "area_mm2": 3.17,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc5eda90a": {
-    "area_mm2": 2.67,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sefa7bbc4": {
-    "area_mm2": 2.26,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbd81cede": {
-    "area_mm2": 1.84,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S93d061c4": {
-    "area_mm2": 1.66,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd3faf0ac": {
-    "area_mm2": 1.02,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8a0fb84e": {
-    "area_mm2": 0.65,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3c5fd5ce": {
-    "area_mm2": 0.19,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8943c3c6": {
-    "area_mm2": 52.68,
-    "strands": 0,
-    "strand_mm": 0.64,
-    "density": 0.0121,
-    "fur": false
-   },
-   "Sb0b8df59": {
-    "area_mm2": 39.68,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S92b2adab": {
-    "area_mm2": 36.04,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9c0339bd": {
-    "area_mm2": 13.14,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S58b50491": {
-    "area_mm2": 8.3,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S964033a8": {
-    "area_mm2": 7.5,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6ccdb180": {
-    "area_mm2": 5.15,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0d0605c8": {
-    "area_mm2": 3.58,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S98802d48": {
-    "area_mm2": 2.63,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S234ff84b": {
-    "area_mm2": 2.82,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S73690a18": {
-    "area_mm2": 1.86,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S05d3485d": {
-    "area_mm2": 10.22,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8b50cbe7": {
-    "area_mm2": 2.65,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2a9c3bda": {
-    "area_mm2": 1.45,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0defb551": {
-    "area_mm2": 0.69,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0c90443f": {
-    "area_mm2": 665.49,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S49fe9136": {
-    "area_mm2": 36.91,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S71ddac97": {
-    "area_mm2": 250.11,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdf9790da": {
-    "area_mm2": 28.55,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0ef46bf9": {
-    "area_mm2": 19.71,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sce97dd84": {
-    "area_mm2": 16.19,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5fe55ddb": {
-    "area_mm2": 9.66,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S93eca036": {
-    "area_mm2": 3.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2f9815fc": {
-    "area_mm2": 4.54,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sce88c0dc": {
-    "area_mm2": 2.12,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5d504cb7": {
-    "area_mm2": 2.0,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6fd01198": {
-    "area_mm2": 1.86,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S58e5573d": {
-    "area_mm2": 1.78,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S400d8245": {
-    "area_mm2": 1.6,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfc50d4f8": {
-    "area_mm2": 1.36,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa29222d0": {
-    "area_mm2": 1.3,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S48d6cae6": {
-    "area_mm2": 1.26,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6bf0c484": {
-    "area_mm2": 1.15,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S288da8f3": {
-    "area_mm2": 0.97,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3d84a46d": {
-    "area_mm2": 0.97,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf9afdca8": {
-    "area_mm2": 0.88,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S69f40076": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S416e05eb": {
-    "area_mm2": 0.76,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S97fa4b97": {
-    "area_mm2": 0.76,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc5b84977": {
-    "area_mm2": 0.71,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0aed43ca": {
-    "area_mm2": 0.69,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdf23671d": {
-    "area_mm2": 0.64,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf8fb868b": {
-    "area_mm2": 0.52,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S10494db0": {
-    "area_mm2": 0.27,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd1cfd380": {
-    "area_mm2": 34.08,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf40a6b7e": {
-    "area_mm2": 2.47,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf6fe55e0": {
-    "area_mm2": 12.44,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S673d856d": {
-    "area_mm2": 12.36,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc434b18d": {
-    "area_mm2": 10.16,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5afda564": {
-    "area_mm2": 9.1,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9f5dea0d": {
-    "area_mm2": 23.02,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S092303fb": {
-    "area_mm2": 8.52,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Scfb22ad4": {
-    "area_mm2": 6.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sec8bbaa6": {
-    "area_mm2": 5.9,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S346a2590": {
-    "area_mm2": 2.72,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbfcccc40": {
-    "area_mm2": 16.21,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd12d2f2c": {
-    "area_mm2": 3.78,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S35d8b70a": {
-    "area_mm2": 3.15,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S622da9be": {
-    "area_mm2": 12.19,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb7d33da8": {
-    "area_mm2": 141.56,
-    "strands": 9,
-    "strand_mm": 99.74,
-    "density": 0.7046,
-    "fur": true
-   },
-   "S97fb983d": {
-    "area_mm2": 9.59,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "e78ba691b8772db43ca91f8a6a4d5831",
-  "md5_on": "fa46338d9ffed2f3870f2becde9aedc1",
-  "identical": false,
-  "seconds": {
-   "stages0_4": 38.4,
-   "finish_x2_with_gate": 14.4,
-   "plan_x2": 413.7
-  },
-  "off": {
-   "stitches": 17580,
-   "trims": 89,
-   "color_changes": 12,
-   "thread_m": 28.85,
-   "thread_bare_mm": 0.11,
-   "flight_bare_mm": 8.42,
-   "density_stacked": null,
-   "coverage_over_warn_mm2": 0.0,
-   "coverage_over_block_mm2": 0.0,
-   "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 2441.0,
-   "grade": "F"
-  },
-  "on": {
-   "stitches": 16746,
-   "trims": 89,
-   "color_changes": 12,
-   "thread_m": 27.46,
-   "thread_bare_mm": 2.36,
-   "flight_bare_mm": 8.42,
-   "density_stacked": null,
-   "coverage_over_warn_mm2": 0.0,
-   "coverage_over_block_mm2": 0.0,
-   "uncovered_total_mm2": 10.5,
-   "uncovered_wanted_mm2": 2441.0,
-   "grade": "F"
-  }
- },
- "photo/logo_gaulke_roofing.png": {
-  "fixture": "photo/logo_gaulke_roofing.png",
-  "route": "file",
-  "class": "gradient",
-  "gate_ran": true,
-  "regions_read": 44,
-  "fur_ids": [],
-  "densest": {
-   "id": "Saba1ec0a",
-   "area_mm2": 29.03,
-   "strands": 0,
-   "strand_mm": 1.04,
-   "density": 0.0358,
-   "fur": false
-  },
-  "read": {
-   "S0c90443f": {
-    "area_mm2": 143.93,
-    "strands": 1,
-    "strand_mm": 3.23,
-    "density": 0.0224,
-    "fur": false
-   },
-   "Sff7e4240": {
-    "area_mm2": 126.81,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se9512992": {
-    "area_mm2": 18.1,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdfc008ad": {
-    "area_mm2": 14.08,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S22ffd854": {
-    "area_mm2": 6.71,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Saab2077e": {
-    "area_mm2": 6.66,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5ddcc6a5": {
-    "area_mm2": 5.43,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0d7a2fdf": {
-    "area_mm2": 5.36,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5cda8b8d": {
-    "area_mm2": 13.27,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S340887b6": {
-    "area_mm2": 13.24,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S62b66dd3": {
-    "area_mm2": 12.93,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6d317e4d": {
-    "area_mm2": 12.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S09eb9ae3": {
-    "area_mm2": 12.15,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S44508e74": {
-    "area_mm2": 11.88,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S682a7e69": {
-    "area_mm2": 11.71,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S396ab4ae": {
-    "area_mm2": 11.66,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2ac9dc84": {
-    "area_mm2": 11.59,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0230f3d5": {
-    "area_mm2": 11.47,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd4acf570": {
-    "area_mm2": 10.34,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2d2a0936": {
-    "area_mm2": 10.13,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se79874d5": {
-    "area_mm2": 9.6,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbbd3a3df": {
-    "area_mm2": 9.12,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0c920d78": {
-    "area_mm2": 8.73,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S99ad308b": {
-    "area_mm2": 8.73,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2bc221f8": {
-    "area_mm2": 8.62,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S634d63cc": {
-    "area_mm2": 8.51,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc60e570f": {
-    "area_mm2": 8.02,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3ba157e2": {
-    "area_mm2": 7.91,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S97506b61": {
-    "area_mm2": 7.9,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2ffb8519": {
-    "area_mm2": 7.88,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S168575e5": {
-    "area_mm2": 7.77,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1a7191f5": {
-    "area_mm2": 7.76,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S44974c8e": {
-    "area_mm2": 7.53,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S93841276": {
-    "area_mm2": 7.52,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbe29f71a": {
-    "area_mm2": 6.36,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa8175815": {
-    "area_mm2": 5.74,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S7a890655": {
-    "area_mm2": 5.53,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S152127ae": {
-    "area_mm2": 5.53,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S410bde6c": {
-    "area_mm2": 5.4,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd908e7f6": {
-    "area_mm2": 5.13,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4a2cf289": {
-    "area_mm2": 5.13,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S63f04e76": {
-    "area_mm2": 3.36,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Saba1ec0a": {
-    "area_mm2": 29.03,
-    "strands": 0,
-    "strand_mm": 1.04,
-    "density": 0.0358,
-    "fur": false
-   },
-   "S94b8296d": {
-    "area_mm2": 6.76,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "d9df13d47276db36c1f194a4a559ba3f",
-  "md5_on": "d9df13d47276db36c1f194a4a559ba3f",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 54.4,
-   "finish_x2_with_gate": 3.4,
-   "plan_x2": 39.6
-  }
- },
- "photo/logo_golden_tee.jpg": {
-  "fixture": "photo/logo_golden_tee.jpg",
-  "route": "file",
-  "class": "gradient",
-  "gate_ran": true,
-  "regions_read": 41,
-  "fur_ids": [],
-  "densest": {
-   "id": "Sbf69e1a9",
-   "area_mm2": 26.41,
-   "strands": 3,
-   "strand_mm": 28.2,
-   "density": 1.0679,
-   "fur": false
-  },
-  "read": {
-   "S0bcd1e39": {
-    "area_mm2": 63.21,
-    "strands": 1,
-    "strand_mm": 9.69,
-    "density": 0.1532,
-    "fur": false
-   },
-   "S597c2467": {
-    "area_mm2": 56.85,
-    "strands": 1,
-    "strand_mm": 29.52,
-    "density": 0.5192,
-    "fur": false
-   },
-   "S70a35fa2": {
-    "area_mm2": 54.42,
-    "strands": 1,
-    "strand_mm": 9.47,
-    "density": 0.1741,
-    "fur": false
-   },
-   "S7680d90b": {
-    "area_mm2": 23.11,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S139d2567": {
-    "area_mm2": 14.6,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5aa49c97": {
-    "area_mm2": 2.96,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S75fc74c9": {
-    "area_mm2": 70.49,
-    "strands": 1,
-    "strand_mm": 8.94,
-    "density": 0.1269,
-    "fur": false
-   },
-   "Se631d99f": {
-    "area_mm2": 35.5,
-    "strands": 3,
-    "strand_mm": 9.95,
-    "density": 0.2803,
-    "fur": false
-   },
-   "S0eec8aa3": {
-    "area_mm2": 25.24,
-    "strands": 1,
-    "strand_mm": 10.25,
-    "density": 0.4062,
-    "fur": false
-   },
-   "S1183b1d4": {
-    "area_mm2": 96.81,
-    "strands": 0,
-    "strand_mm": 1.38,
-    "density": 0.0143,
-    "fur": false
-   },
-   "Sccba15f5": {
-    "area_mm2": 12.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5d5cb73f": {
-    "area_mm2": 12.06,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S178e44ca": {
-    "area_mm2": 3.17,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S235ce2af": {
-    "area_mm2": 65.31,
-    "strands": 2,
-    "strand_mm": 8.57,
-    "density": 0.1313,
-    "fur": false
-   },
-   "S8b2615dd": {
-    "area_mm2": 39.63,
-    "strands": 2,
-    "strand_mm": 5.97,
-    "density": 0.1508,
-    "fur": false
-   },
-   "Sb46d5971": {
-    "area_mm2": 69.5,
-    "strands": 0,
-    "strand_mm": 2.09,
-    "density": 0.03,
-    "fur": false
-   },
-   "Sbf69e1a9": {
-    "area_mm2": 26.41,
-    "strands": 3,
-    "strand_mm": 28.2,
-    "density": 1.0679,
-    "fur": false
-   },
-   "S6cccbc14": {
-    "area_mm2": 14.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb9663a4e": {
-    "area_mm2": 10.14,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5f67dd7d": {
-    "area_mm2": 9.1,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6175da18": {
-    "area_mm2": 2.66,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S69094fc7": {
-    "area_mm2": 17.54,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0c6b0695": {
-    "area_mm2": 15.66,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S31872d5c": {
-    "area_mm2": 11.4,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3589bebf": {
-    "area_mm2": 3.12,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0067e61f": {
-    "area_mm2": 17.18,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb5eb73ae": {
-    "area_mm2": 10.57,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S39bb2247": {
-    "area_mm2": 6.65,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S11c62cf4": {
-    "area_mm2": 2.73,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S82734e7c": {
-    "area_mm2": 23.15,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa669414f": {
-    "area_mm2": 2.32,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S89ff85ca": {
-    "area_mm2": 2.2,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa21351e8": {
-    "area_mm2": 15.91,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2b4b4087": {
-    "area_mm2": 2.47,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb309b5ef": {
-    "area_mm2": 6.01,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S734f94f3": {
-    "area_mm2": 3.05,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S02f523db": {
-    "area_mm2": 2.18,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se0882277": {
-    "area_mm2": 2.11,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Safcc6fae": {
-    "area_mm2": 11.35,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sff7b4d69": {
-    "area_mm2": 3.59,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc0bd0283": {
-    "area_mm2": 2.21,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "2d0c9163ce2eb1259820f91095cbfcc9",
-  "md5_on": "2d0c9163ce2eb1259820f91095cbfcc9",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 265.0,
-   "finish_x2_with_gate": 19.9,
-   "plan_x2": 99.3
-  }
- },
- "photo/logo_hotel_fremont.webp": {
-  "fixture": "photo/logo_hotel_fremont.webp",
-  "route": "file",
-  "class": "gradient",
-  "gate_ran": true,
-  "regions_read": 161,
-  "fur_ids": [],
-  "densest": {
-   "id": "S78e6cd01",
-   "area_mm2": 1595.88,
-   "strands": 82,
-   "strand_mm": 84.33,
-   "density": 0.0528,
-   "fur": false
-  },
-  "read": {
-   "S78e6cd01": {
-    "area_mm2": 1595.88,
-    "strands": 82,
-    "strand_mm": 84.33,
-    "density": 0.0528,
-    "fur": false
-   },
-   "Sdea02c23": {
-    "area_mm2": 17.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdeaad264": {
-    "area_mm2": 17.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc3bf56ee": {
-    "area_mm2": 4.68,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbf647133": {
-    "area_mm2": 24.81,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdbbe51f4": {
-    "area_mm2": 14.02,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9b4d2aca": {
-    "area_mm2": 12.81,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S31fdca10": {
-    "area_mm2": 10.18,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1d0c7e50": {
-    "area_mm2": 9.67,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd0d7ded7": {
-    "area_mm2": 9.59,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9bac9a3c": {
-    "area_mm2": 2.97,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S11b90a0d": {
-    "area_mm2": 66.39,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S898a2252": {
-    "area_mm2": 52.6,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf93498a6": {
-    "area_mm2": 52.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S33a22d8e": {
-    "area_mm2": 26.64,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S337fbf9c": {
-    "area_mm2": 26.63,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9a48e915": {
-    "area_mm2": 16.18,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd4bf6420": {
-    "area_mm2": 14.18,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S00d683b7": {
-    "area_mm2": 13.02,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se394be84": {
-    "area_mm2": 12.63,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa9ce03f2": {
-    "area_mm2": 11.99,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se645801a": {
-    "area_mm2": 11.97,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9df2ea64": {
-    "area_mm2": 8.3,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S54b55cf1": {
-    "area_mm2": 3.46,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Scead5d18": {
-    "area_mm2": 2.11,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5ac4eae6": {
-    "area_mm2": 0.92,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S658eac5c": {
-    "area_mm2": 0.92,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa0fbbfd4": {
-    "area_mm2": 1.68,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa6ebf53d": {
-    "area_mm2": 1.67,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf0a6f1de": {
-    "area_mm2": 1.67,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S022f2120": {
-    "area_mm2": 1.64,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se9a3bf6a": {
-    "area_mm2": 1.35,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdf13b84a": {
-    "area_mm2": 1.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S686b93ed": {
-    "area_mm2": 1.21,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S931202c8": {
-    "area_mm2": 1.11,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbd04fa7c": {
-    "area_mm2": 1.05,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc47e9d1a": {
-    "area_mm2": 1.0,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdeda9448": {
-    "area_mm2": 0.99,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdc6f0782": {
-    "area_mm2": 0.99,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S41d15531": {
-    "area_mm2": 0.97,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4e11bda6": {
-    "area_mm2": 0.96,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1b0527a5": {
-    "area_mm2": 0.96,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc0465651": {
-    "area_mm2": 0.96,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9dd25e26": {
-    "area_mm2": 0.96,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf0dddc10": {
-    "area_mm2": 0.91,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfe26555a": {
-    "area_mm2": 0.86,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S22342dba": {
-    "area_mm2": 0.84,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S53cbc825": {
-    "area_mm2": 0.83,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb192e650": {
-    "area_mm2": 0.83,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5aaa542f": {
-    "area_mm2": 0.81,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd8fdfc5c": {
-    "area_mm2": 0.81,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S49c34dd9": {
-    "area_mm2": 0.81,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S19e408ea": {
-    "area_mm2": 0.81,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S53c14bf6": {
-    "area_mm2": 0.81,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S038a4644": {
-    "area_mm2": 0.81,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S388f10f8": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S7bcfc6af": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se2079fea": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se24a0f3a": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa363d32f": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6b733863": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6423e247": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S99897465": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6d68131e": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0618ff71": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2fa19a70": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S320c4cc2": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S840ec722": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd578b131": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb71df590": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf957df68": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8f353e53": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S99ac3b6a": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S69d33103": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5dc5cfc4": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S7d876f7e": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S339228a3": {
-    "area_mm2": 0.58,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5f661f34": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S97b1fae5": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S376ae3ab": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S040cecf6": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5baa3cf0": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd35e02bd": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfcfc30dc": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd5088a04": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa1cd74ee": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb15b61d3": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S43727200": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc312b159": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S94f3028e": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4d4622b2": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3a44f867": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa41b8e5b": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S03c238ee": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb7f72026": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4eef5ef2": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S75f4c4ce": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S45a2ce75": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2240c752": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc3eb615f": {
-    "area_mm2": 0.59,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Scc127e72": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S268aff46": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0e192f7d": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S303461ce": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S372b40a3": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6725e9af": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S21a88636": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8a615062": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sce436077": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se086bc8e": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5ae80e5d": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2be4f2cd": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc3156047": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd43d502e": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8cf14e22": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8ba2a94d": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S06c24a1d": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sded5054c": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1eb05300": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd98e7899": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se5632e98": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9d9ccba8": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6e137317": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S506b9d3c": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S01251ce1": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd9a488d9": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9f917a49": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5e1c953c": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0c83f398": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S166119ce": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0aa55eb4": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S722c0d7f": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1a993a5d": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S89284286": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa94d90a4": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0da0111f": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8a8b7a65": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S7b31940a": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Saa2a4461": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4405e55d": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9d451632": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb99d5841": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S7dbc248c": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S22890c28": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9fde0480": {
-    "area_mm2": 0.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3ed81ff4": {
-    "area_mm2": 0.78,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S591c594e": {
-    "area_mm2": 0.78,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se3d08d7c": {
-    "area_mm2": 0.76,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S48dcdbf2": {
-    "area_mm2": 0.76,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf84099aa": {
-    "area_mm2": 0.76,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb5161fc1": {
-    "area_mm2": 0.75,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0a4b0b1b": {
-    "area_mm2": 0.75,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdcd93482": {
-    "area_mm2": 0.74,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S70e7e44c": {
-    "area_mm2": 0.74,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4bf4ffc4": {
-    "area_mm2": 0.68,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S59d587ae": {
-    "area_mm2": 0.68,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb83d13f7": {
-    "area_mm2": 0.67,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S48553186": {
-    "area_mm2": 0.46,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S15110a1c": {
-    "area_mm2": 0.53,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sda6f07e5": {
-    "area_mm2": 0.52,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc7327357": {
-    "area_mm2": 0.51,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "4a61d19690104b91e9761c060a93d76a",
-  "md5_on": "4a61d19690104b91e9761c060a93d76a",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 216.0,
-   "finish_x2_with_gate": 9.9,
-   "plan_x2": 125.4
-  }
- },
- "photo/screenshot_phone_ui_golke.jpg": {
-  "fixture": "photo/screenshot_phone_ui_golke.jpg",
-  "route": "file",
-  "class": "gradient",
-  "gate_ran": true,
-  "regions_read": 86,
-  "fur_ids": [],
-  "densest": {
-   "id": "Sc8148c53",
-   "area_mm2": 491.48,
-   "strands": 19,
-   "strand_mm": 64.69,
-   "density": 0.1316,
-   "fur": false
-  },
-  "read": {
-   "Sc8148c53": {
-    "area_mm2": 491.48,
-    "strands": 19,
-    "strand_mm": 64.69,
-    "density": 0.1316,
-    "fur": false
-   },
-   "S2adab146": {
-    "area_mm2": 4.42,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc95da587": {
-    "area_mm2": 1.15,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa5732b09": {
-    "area_mm2": 41.64,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S26421497": {
-    "area_mm2": 0.43,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1d498ddc": {
-    "area_mm2": 0.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa7264f9d": {
-    "area_mm2": 9.7,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf90dec39": {
-    "area_mm2": 5.47,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3405d79c": {
-    "area_mm2": 1.73,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf6bdc07f": {
-    "area_mm2": 0.74,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sef0109bc": {
-    "area_mm2": 65.7,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9867fa6c": {
-    "area_mm2": 25.58,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb0a1d70a": {
-    "area_mm2": 11.08,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd3950c67": {
-    "area_mm2": 10.69,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se817948d": {
-    "area_mm2": 10.6,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9ccbba0d": {
-    "area_mm2": 10.52,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0b58b7a7": {
-    "area_mm2": 10.26,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S166a6b53": {
-    "area_mm2": 9.66,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S9e674e3b": {
-    "area_mm2": 9.53,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S65a20c46": {
-    "area_mm2": 9.38,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc7cc9ce2": {
-    "area_mm2": 9.18,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf869f184": {
-    "area_mm2": 9.07,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc3669fef": {
-    "area_mm2": 8.97,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S46b1e67b": {
-    "area_mm2": 6.75,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5d3e6d8a": {
-    "area_mm2": 6.37,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2326fdac": {
-    "area_mm2": 5.64,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6e8a2495": {
-    "area_mm2": 5.52,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2172088e": {
-    "area_mm2": 5.39,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S59780e53": {
-    "area_mm2": 5.3,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4dc9c668": {
-    "area_mm2": 4.96,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa4751f75": {
-    "area_mm2": 4.51,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbdc54df9": {
-    "area_mm2": 4.42,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf5074b37": {
-    "area_mm2": 4.42,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfc8436e3": {
-    "area_mm2": 4.41,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa4e1fd64": {
-    "area_mm2": 4.39,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb6f776a7": {
-    "area_mm2": 4.35,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4a9d4a9a": {
-    "area_mm2": 4.27,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S61b3f12d": {
-    "area_mm2": 3.75,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S93270afb": {
-    "area_mm2": 3.68,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S7b1c5b71": {
-    "area_mm2": 3.58,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S16e882d6": {
-    "area_mm2": 3.02,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S132d02dd": {
-    "area_mm2": 3.01,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S593b6998": {
-    "area_mm2": 2.9,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf663a4ed": {
-    "area_mm2": 2.44,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S313540c6": {
-    "area_mm2": 2.37,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6537cb07": {
-    "area_mm2": 2.0,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se48b6ddb": {
-    "area_mm2": 1.88,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S152a196e": {
-    "area_mm2": 1.74,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S96bb6902": {
-    "area_mm2": 1.74,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S7a618665": {
-    "area_mm2": 1.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3e79ef40": {
-    "area_mm2": 1.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3cdee8e9": {
-    "area_mm2": 1.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa59f1486": {
-    "area_mm2": 1.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2cb59600": {
-    "area_mm2": 1.21,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5d7e5fd5": {
-    "area_mm2": 1.13,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2650777f": {
-    "area_mm2": 1.05,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4213de65": {
-    "area_mm2": 1.03,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S726defa9": {
-    "area_mm2": 0.98,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf93252d9": {
-    "area_mm2": 0.9,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa19fff06": {
-    "area_mm2": 0.81,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se8390790": {
-    "area_mm2": 0.76,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S18a40f32": {
-    "area_mm2": 0.39,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8dd55105": {
-    "area_mm2": 0.32,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4a2d12c4": {
-    "area_mm2": 4.14,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1c77e186": {
-    "area_mm2": 1.16,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd6e40cfc": {
-    "area_mm2": 7.36,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S58cf7c39": {
-    "area_mm2": 7.34,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S482cdfe1": {
-    "area_mm2": 6.42,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se2f5d7f9": {
-    "area_mm2": 5.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S478413b9": {
-    "area_mm2": 4.11,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se2fa25d0": {
-    "area_mm2": 2.04,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd265fa97": {
-    "area_mm2": 1.47,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S7bf770df": {
-    "area_mm2": 1.46,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se693adc4": {
-    "area_mm2": 1.26,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdc2b8bbe": {
-    "area_mm2": 0.8,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S84f354eb": {
-    "area_mm2": 3.18,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S630f31f6": {
-    "area_mm2": 1.56,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "See68a70e": {
-    "area_mm2": 1.21,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Seed25324": {
-    "area_mm2": 1.05,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdaaa3b28": {
-    "area_mm2": 0.21,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd1095a3d": {
-    "area_mm2": 0.17,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S52fbdb0d": {
-    "area_mm2": 0.33,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc5072ed8": {
-    "area_mm2": 1.18,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S51e740d9": {
-    "area_mm2": 0.9,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3737d395": {
-    "area_mm2": 0.26,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Scb6686ce": {
-    "area_mm2": 2.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "423fe6e69e7185b607cf9b9b30bd755c",
-  "md5_on": "423fe6e69e7185b607cf9b9b30bd755c",
-  "identical": true,
-  "seconds": {
-   "stages0_4": 225.3,
-   "finish_x2_with_gate": 5.0,
-   "plan_x2": 162.0
-  }
- },
- "photo/owl_kent.jpg@classical": {
-  "fixture": "photo/owl_kent.jpg",
-  "route": "classical",
-  "class": "photo_subject",
-  "gate_ran": true,
-  "regions_read": 78,
-  "fur_ids": [
-   "S12900860",
-   "S2b0ec51a"
-  ],
-  "densest": {
-   "id": "S12900860",
-   "area_mm2": 219.76,
-   "strands": 17,
-   "strand_mm": 106.39,
-   "density": 0.4841,
-   "fur": true
-  },
-  "read": {
-   "S5de8cbba": {
-    "area_mm2": 83.9,
-    "strands": 2,
-    "strand_mm": 4.83,
-    "density": 0.0576,
-    "fur": false
-   },
-   "S6254db6f": {
-    "area_mm2": 54.36,
-    "strands": 1,
-    "strand_mm": 9.05,
-    "density": 0.1665,
-    "fur": false
-   },
-   "S2a07414c": {
-    "area_mm2": 15.36,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S68099f7f": {
-    "area_mm2": 12.4,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd8433c16": {
-    "area_mm2": 5.25,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S12900860": {
-    "area_mm2": 219.76,
-    "strands": 17,
-    "strand_mm": 106.39,
-    "density": 0.4841,
-    "fur": true
-   },
-   "S2b0ec51a": {
-    "area_mm2": 99.18,
-    "strands": 9,
-    "strand_mm": 44.89,
-    "density": 0.4526,
-    "fur": true
-   },
-   "S2b2526ce": {
-    "area_mm2": 96.24,
-    "strands": 0,
-    "strand_mm": 0.11,
-    "density": 0.0012,
-    "fur": false
-   },
-   "S8fdb876e": {
-    "area_mm2": 47.91,
-    "strands": 4,
-    "strand_mm": 6.81,
-    "density": 0.1421,
-    "fur": false
-   },
-   "Sc858642f": {
-    "area_mm2": 16.99,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc7597b35": {
-    "area_mm2": 6.26,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sae98f135": {
-    "area_mm2": 8.74,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6369e04e": {
-    "area_mm2": 8.54,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se05957a2": {
-    "area_mm2": 5.92,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd283e507": {
-    "area_mm2": 5.3,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdc21b796": {
-    "area_mm2": 5.21,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S28d444f6": {
-    "area_mm2": 4.87,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sffb97a8b": {
-    "area_mm2": 4.5,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S37203bc1": {
-    "area_mm2": 4.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8367c904": {
-    "area_mm2": 3.79,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Safc1034d": {
-    "area_mm2": 395.44,
-    "strands": 23,
-    "strand_mm": 55.2,
-    "density": 0.1396,
-    "fur": false
-   },
-   "S33efcdad": {
-    "area_mm2": 126.09,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1375a4b4": {
-    "area_mm2": 40.71,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Saf5d59a6": {
-    "area_mm2": 4.98,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sec78fce3": {
-    "area_mm2": 0.4,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S10fb1b34": {
-    "area_mm2": 0.37,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa6ff8b0e": {
-    "area_mm2": 38.76,
-    "strands": 0,
-    "strand_mm": 3.9,
-    "density": 0.1005,
-    "fur": false
-   },
-   "Scbdb8ecc": {
-    "area_mm2": 24.14,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3bae93ad": {
-    "area_mm2": 308.6,
-    "strands": 16,
-    "strand_mm": 30.42,
-    "density": 0.0986,
-    "fur": false
-   },
-   "Sbe51e36b": {
-    "area_mm2": 97.96,
-    "strands": 0,
-    "strand_mm": 0.08,
-    "density": 0.0008,
-    "fur": false
-   },
-   "S10a2861c": {
-    "area_mm2": 34.29,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sc07a409d": {
-    "area_mm2": 9.54,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf7ff770f": {
-    "area_mm2": 8.54,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S73ebee82": {
-    "area_mm2": 1.09,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S01609e9d": {
-    "area_mm2": 0.2,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S84326da1": {
-    "area_mm2": 5.53,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S6afd5c91": {
-    "area_mm2": 726.35,
-    "strands": 7,
-    "strand_mm": 16.13,
-    "density": 0.0222,
-    "fur": false
-   },
-   "S872ebc62": {
-    "area_mm2": 48.65,
-    "strands": 2,
-    "strand_mm": 19.32,
-    "density": 0.3971,
-    "fur": false
-   },
-   "S71859fe2": {
-    "area_mm2": 45.22,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S1984cdd1": {
-    "area_mm2": 37.79,
-    "strands": 0,
-    "strand_mm": 14.35,
-    "density": 0.3798,
-    "fur": false
-   },
-   "S693c615c": {
-    "area_mm2": 23.14,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sed841567": {
-    "area_mm2": 17.98,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S949f0c61": {
-    "area_mm2": 14.52,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se3a9446d": {
-    "area_mm2": 12.46,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S81eb83f8": {
-    "area_mm2": 9.27,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbf3d2549": {
-    "area_mm2": 8.93,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sbf35eafb": {
-    "area_mm2": 8.68,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sf7b943c1": {
-    "area_mm2": 8.43,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S54d0e683": {
-    "area_mm2": 2.2,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S4521d628": {
-    "area_mm2": 1.1,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S8e07fa31": {
-    "area_mm2": 2248.1,
-    "strands": 44,
-    "strand_mm": 94.85,
-    "density": 0.0422,
-    "fur": false
-   },
-   "Sa5d77aa5": {
-    "area_mm2": 101.37,
-    "strands": 0,
-    "strand_mm": 5.17,
-    "density": 0.051,
-    "fur": false
-   },
-   "Sae0d4ae7": {
-    "area_mm2": 18.16,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S2ebc9e94": {
-    "area_mm2": 7.67,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S04c6423e": {
-    "area_mm2": 6.69,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S0764306b": {
-    "area_mm2": 5.95,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S50345c0c": {
-    "area_mm2": 5.59,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S31942b49": {
-    "area_mm2": 5.04,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S290794f3": {
-    "area_mm2": 4.85,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S23ecd611": {
-    "area_mm2": 3.65,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S779bb47f": {
-    "area_mm2": 2.61,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sdfe2db74": {
-    "area_mm2": 2.48,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5f6a10f8": {
-    "area_mm2": 2.26,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S04955146": {
-    "area_mm2": 1.84,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S09ac47dd": {
-    "area_mm2": 1.71,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S03c7d674": {
-    "area_mm2": 1.65,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sa879f74a": {
-    "area_mm2": 1.57,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S40e4c34f": {
-    "area_mm2": 1.56,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S3375d2e4": {
-    "area_mm2": 1.4,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sada306b9": {
-    "area_mm2": 0.96,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Scc983d11": {
-    "area_mm2": 0.81,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se5ade6c2": {
-    "area_mm2": 0.75,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd0950c67": {
-    "area_mm2": 0.59,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sd1384bc8": {
-    "area_mm2": 0.58,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sfadd55ff": {
-    "area_mm2": 0.44,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "S5d65a6bd": {
-    "area_mm2": 766.57,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Se3296f01": {
-    "area_mm2": 118.47,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   },
-   "Sb40da1a0": {
-    "area_mm2": 104.58,
-    "strands": 0,
-    "strand_mm": 0.0,
-    "density": 0.0,
-    "fur": false
-   }
-  },
-  "md5_off": "45731087b2178306a5303cb29fdc1b55",
-  "md5_on": "4f084c5d39a7281775e1ce445e0559d1",
-  "identical": false,
-  "seconds": {
-   "stages0_4": 19.6,
-   "finish_x2_with_gate": 19.6,
-   "plan_x2": 292.3
-  },
-  "off": {
-   "stitches": 18557,
-   "trims": 180,
-   "color_changes": 23,
-   "thread_m": 24.7,
-   "thread_bare_mm": 477.07,
-   "flight_bare_mm": 0.0,
-   "density_stacked": null,
-   "coverage_over_warn_mm2": 0.0,
-   "coverage_over_block_mm2": 0.0,
-   "uncovered_total_mm2": 2863.5,
-   "uncovered_wanted_mm2": 6570.4,
-   "grade": "F"
-  },
-  "on": {
-   "stitches": 13329,
-   "trims": 184,
-   "color_changes": 24,
-   "thread_m": 17.28,
-   "thread_bare_mm": 538.19,
-   "flight_bare_mm": 0.0,
-   "density_stacked": null,
-   "coverage_over_warn_mm2": 0.0,
-   "coverage_over_block_mm2": 0.0,
-   "uncovered_total_mm2": 2992.8,
-   "uncovered_wanted_mm2": 6570.4,
-   "grade": "F"
-  }
- }
 }

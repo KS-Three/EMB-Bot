@@ -133,7 +133,9 @@ def run_one(spec: str, keep: dict | None = None) -> dict:
         "gate_ran": read is not None, "regions_read": len(read or {}),
         "fur_ids": list(res_on.hair_fur_ids or ()),
         "densest": (None if densest is None else {"id": densest[0], **densest[1]}),
-        "read": read,
+        # Only the regions the area floor lets the gate judge: the rest are
+        # not fur by construction, and listing them all made the file huge.
+        "read": (None if read is None else big),
         "md5_off": m_off, "md5_on": m_on, "identical": m_off == m_on,
         "seconds": {"stages0_4": round(t1 - t0, 1), "finish_x2_with_gate": round(t2 - t1, 1),
                     "plan_x2": round(t3 - t2, 1)},

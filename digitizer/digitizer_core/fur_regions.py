@@ -16,8 +16,16 @@ it: the line route's ridge test (`stage6_hairline_lines.extract_strands`,
 both polarities, the detector's and the tier's own thresholds, nothing new)
 finds at least `FUR_MIN_STRANDS` strands and `FUR_MIN_STRAND_DENSITY` mm of
 strand per mm2 of the region's own area inside it, on a region of at least
-`FUR_MIN_AREA_MM2`. Many strands over an area is a texture; one strand along
-a thin shape is that shape (the hairline tier's business, not this).
+`FUR_MIN_AREA_MM2` whose mean width is at least `FUR_MIN_FIELD_WIDTH_MM`.
+Many strands over an area is a texture; one strand along a thin shape is
+that shape, and a network of strokes reads as its own strands (the census:
+logo_bridge_bar's outline) -- the hairline tier's business, not this.
+
+On the repo's corpus the gate routes nothing that sews differently (PR
+census): the one strand field it admits, photo_grass_macro, is on
+`photo_subject`, where every fill is streamline already. The fixtures named
+as fur do not read as fur: `fur_ramp`'s discs are a palette fixture with no
+strands, and owl_kent's body reads 0.025 mm of strand per mm2 at 80 mm.
 
 Where. The raster lanes only (`FUR_CLASSES`: gradient and the photo
 classes); a flat-lane design is never read, so it pays nothing and changes
@@ -52,14 +60,21 @@ FUR_CLASSES = ("gradient", *PHOTO_CLASSES)
 # the strand count it is one line along a shape.
 FUR_MIN_AREA_MM2 = 25.0
 FUR_MIN_STRANDS = 4
-# mm of strand per mm2 of region. Census 2026-10-13 (`tools/
-# fur_regions_census.py`, 80 mm): the densest qualifying region on the nine
-# logos is logo_bridge_bar's, 0.70 (9 strands); on owl_kent (Studio route)
-# the bristle patch beside the beak, 0.72 (4 strands); the owl's body reads
-# 0.025. Nothing separates the two, so the candidate sits above every logo
-# and the corpus routes NOTHING: a measured negative, the gate shipped for
-# the photo it was built for. At 0.25 both regions route (the PR's bill).
-FUR_MIN_STRAND_DENSITY = 0.75
+# mm of strand per mm2 of region.
+FUR_MIN_STRAND_DENSITY = 0.25
+# A FIELD, not a stroke: the region's mean width (2 x area / perimeter) must
+# be at least this. Census 2026-10-13 (`tools/fur_regions_census.py`, 80 mm,
+# PR body): every region reading over 0.3 mm/mm2 on the nine logos and on
+# owl_kent is itself a stroke, 0.74-1.39 mm wide (logo_bridge_bar's black
+# outline network, 0.70 mm/mm2 at 1.28 mm; the owl's bristle patch, 0.72 at
+# 0.74) -- the ridge test reads the stroke as its own strand, and streamline
+# then sews it as a few loose runs (the 0.25-without-width renders). The one
+# true strand field in the corpus, photo_grass_macro, is 29.4 mm wide; the
+# owl's body is 7.3 mm wide but reads 0.025 mm/mm2. Every region measured
+# at or over the density floor is either at most 1.39 mm wide or 29.4 mm,
+# so 3.0 decides nothing in the corpus on a hair; regions 2.0-2.2 mm wide
+# (drone, summit, owl) read 0.12-0.20 and fail on density anyway.
+FUR_MIN_FIELD_WIDTH_MM = 3.0
 
 TIER = "streamline"
 
@@ -70,7 +85,8 @@ def applies(cfg, design_class: str | None) -> bool:
 
 
 def read_regions(regions, sp, cfg) -> dict[str, dict]:
-    """-> {shape_id: {"area_mm2", "strands", "strand_mm", "density", "fur"}}
+    """-> {shape_id: {"area_mm2", "width_mm", "strands", "strand_mm", "density",
+    "fur"}}
     for every stitched auto-tier region, from the hair gate's strands on
     `sp` (a `SourcePixels`)."""
     from .stage6_hairline_lines import extract_strands
@@ -93,11 +109,13 @@ def read_regions(regions, sp, cfg) -> dict[str, dict]:
                     n += 1
                 length += inside
         density = length / r.area_mm2 if r.area_mm2 > 0 else 0.0
+        width = 2.0 * poly.area / poly.length if poly.length > 0 else 0.0
         out[r.shape_id] = {
-            "area_mm2": round(float(r.area_mm2), 2), "strands": n,
+            "area_mm2": round(float(r.area_mm2), 2), "width_mm": round(width, 2), "strands": n,
             "strand_mm": round(length, 2), "density": round(density, 4),
             "fur": bool(r.area_mm2 >= FUR_MIN_AREA_MM2 and n >= FUR_MIN_STRANDS
-                        and density >= FUR_MIN_STRAND_DENSITY)}
+                        and density >= FUR_MIN_STRAND_DENSITY
+                        and width >= FUR_MIN_FIELD_WIDTH_MM)}
     return out
 
 

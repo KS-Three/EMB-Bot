@@ -262,7 +262,8 @@ class PipelineConfig:
     # (`fur_regions.FUR_CLASSES`), a region the hair gate reads as FUR --
     # the line route's ridge test (`stage6_hairline_lines.extract_strands`)
     # finds at least `fur_regions.FUR_MIN_STRAND_DENSITY` mm of strand per
-    # mm2 of it -- sews on the `streamline` tier (`tier: "streamline"`, the
+    # mm2 of it, over a field at least `FUR_MIN_FIELD_WIDTH_MM` wide rather
+    # than a stroke -- sews on the `streamline` tier (`tier: "streamline"`, the
     # per-shape route the review screen already has) instead of the lane's
     # fill. Read where the pixels are, in `run_stages`, so it must be on
     # there too: a plan with the flag on over a result built with it off
