@@ -8,7 +8,11 @@ PR #888 found a side effect: on golden_tee the travel-over-bare-fabric number
 of `tests/test_chaining.py::_thread_bare_mm` rises from 19.9 to 75.2 mm when
 `cfg.hairline` is ON. This tool takes that number apart.
 
-`_thread_bare_mm` walks, for every `TRAVEL` run, the path
+(Since 2026-10-14 `_thread_bare_mm` reads this module's `scan`, so the two agree
+by construction; the instrument as it shipped lives on as
+`_thread_bare_mm_untrimmed`, the `legacy` column below.)
+
+The shipped `_thread_bare_mm` walked, for every `TRAVEL` run, the path
 `previous run's last point -> the TRAVEL run's own points -> next run's first
 point` and counts the length further than half a thread width from ANY laid
 stitch. It was written for chaining links (`jump=False`: the needle stays down,
@@ -126,18 +130,35 @@ def _thread_zone(plan):
     return shapely.STRtree(laid) if laid else None
 
 
-def bare_mm(zone, pts) -> float:
-    """Length of the polyline `pts` further than half a thread width from any
-    laid stitch (sampled every STEP_MM, like the shipped instrument)."""
+def bare_profile(zone, pts) -> tuple[float, float]:
+    """(length of the polyline `pts` further than half a thread width from any
+    laid stitch, the largest such distance), sampled every STEP_MM.
+    Nothing bare -> (0.0, 0.0).
+
+    The samples are the MIDPOINTS of n equal cells, each standing for L / n mm.
+    The instrument this replaced sampled n + 1 points that each stood for L / n,
+    so every wholly bare polyline read one step (~0.1 mm) too long -- harmless
+    once per TRAVEL run, but three legs per run is three steps, and a 0.5 mm
+    bare walk-in read as 0.6. (Measured 2026-10-14: the benchmark's chain-ON
+    figure rose 2.43 -> 2.56 mm from the split alone, which is that bias.)"""
     if zone is None or len(pts) < 2:
-        return 0.0
+        return 0.0, 0.0
     path = LineString(pts)
     n = max(2, int(path.length / STEP_MM))
-    pp = shapely.line_interpolate_point(path, np.linspace(0.0, 1.0, n + 1), normalized=True)
+    pp = shapely.line_interpolate_point(path, (np.arange(n) + 0.5) / n, normalized=True)
     hit = zone.query(pp, predicate="dwithin", distance=machine.COVERAGE_THREAD_W_MM / 2.0)
     covered = np.zeros(len(pp), bool)
     covered[hit[0]] = True
-    return float((~covered).sum()) * path.length / n
+    if covered.all():
+        return 0.0, 0.0
+    _idx, dist = zone.query_nearest(pp[~covered], return_distance=True, all_matches=False)
+    return float((~covered).sum()) * path.length / n, float(dist.max())
+
+
+def bare_mm(zone, pts) -> float:
+    """Length of the polyline `pts` further than half a thread width from any
+    laid stitch (sampled every STEP_MM, like the shipped instrument)."""
+    return bare_profile(zone, pts)[0]
 
 
 def trim_anatomy(plan) -> dict:
@@ -166,34 +187,52 @@ def trim_anatomy(plan) -> dict:
             "trims_between_shapes": between, "flight_total_mm": round(fly, 2)}
 
 
-def measure_plan(plan, with_legacy: bool = True) -> dict:
+def scan(plan) -> dict:
+    """The unrounded measurement behind `measure_plan` and behind
+    `tests/test_chaining.py::_thread_bare_mm` (which now reads this, 2026-10-14).
+
+    `thread_bare_mm` / `thread_worst_mm` / `thread_exposed_runs` cover the legs
+    that really are thread; a trimmed-jump flight is `flight_bare_mm`.
+    `travel_runs` is every TRAVEL run in the plan, flights' walk-ins included."""
     zone = _thread_zone(plan)
-    thread = flight = 0.0
+    thread = flight = worst_clear = 0.0
     thread_links = flight_links = 0
+    exposed_runs: set[int] = set()
     by_leg = {"in": 0.0, "body": 0.0, "out": 0.0}
     worst: list[dict] = []
     for lg in legs(plan):
-        b = bare_mm(zone, lg["pts"])
+        b, clear = bare_profile(zone, lg["pts"])
         if lg["flight"]:
             flight += b
             flight_links += b > 0
             continue
         thread += b
         by_leg[lg["leg"]] += b
+        worst_clear = max(worst_clear, clear)
         if b > 0:
             thread_links += 1
+            exposed_runs.add(lg["i"])
             worst.append({"i": lg["i"], "leg": lg["leg"], "bare_mm": round(b, 2),
                           "from": list(lg["from"]), "to": list(lg["to"])})
     worst.sort(key=lambda w: -w["bare_mm"])
+    travel_runs = sum(1 for b in plan.blocks for r in b.runs if r.kind == stitches.TRAVEL)
+    return {"thread": thread, "flight": flight, "thread_legs": thread_links,
+            "flight_legs": flight_links, "by_leg": by_leg, "worst": worst,
+            "worst_clear": worst_clear, "exposed_runs": len(exposed_runs),
+            "travel_runs": travel_runs}
+
+
+def measure_plan(plan, with_legacy: bool = True) -> dict:
+    s = scan(plan)
     row = {"stitches": plan.stats.stitch_count, "trims": plan.stats.trims,
-           "thread_bare_mm": round(thread, 2), "thread_exposed_legs": int(thread_links),
-           "thread_by_leg": {k: round(v, 2) for k, v in by_leg.items()},
-           "flight_bare_mm": round(flight, 2), "flight_legs": int(flight_links),
+           "thread_bare_mm": round(s["thread"], 2), "thread_exposed_legs": int(s["thread_legs"]),
+           "thread_by_leg": {k: round(v, 2) for k, v in s["by_leg"].items()},
+           "flight_bare_mm": round(s["flight"], 2), "flight_legs": int(s["flight_legs"]),
            **trim_anatomy(plan),
-           "worst": worst[:6]}
+           "worst": s["worst"][:6]}
     if with_legacy:
-        from tests.test_chaining import _thread_bare_mm
-        links, exposed, mm, _w = _thread_bare_mm(plan)
+        from tests.test_chaining import _thread_bare_mm_untrimmed
+        links, exposed, mm, _w = _thread_bare_mm_untrimmed(plan)
         row["legacy"] = {"links": links, "exposed": exposed, "mm": round(mm, 2)}
     return row
 

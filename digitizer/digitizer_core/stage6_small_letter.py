@@ -58,6 +58,15 @@ ladder's documented behaviour, not a new defect:
   or more than a tenth of the skeleton out of the thread's reach ("shape")
   -- the floor bent the letter (an E's arms joined into a sigma).
 
+A glyph SMALLER than two machine floors (`SMALL_GLYPH_FLOORS`, 2.0 mm) that
+the floor declines -- Fremont's EST and 1895 at 1.6-1.7 mm, whose E has no
+room on its stem for a needle point at the middle arm -- gets one more try
+(2026-10-14): at `cfg.small_lettering_skeleton_small_floor_mm` (0.5 mm,
+`machine.TINY_STITCH_MM`; a separately named candidate), with the stubs
+shorter than that floor left off the route (`trim_stubs`: serif feet, an
+S's beak). The same two measurements decide it; a decline there leaves the
+first try's outline. A glyph the first try sews never reaches it.
+
 Every number here is a CANDIDATE (ROADMAP gate 1): the width gate is one laid
 width, the floor is the needle's, the tolerances are fractions of the laid
 width. Nothing is settled until it is sewn.
@@ -107,6 +116,16 @@ MISSED_SHARE_MAX = 0.10
 # nothing on a 2.2 mm cap and a seventh of a 1.35 mm one, where a chord that
 # close to the stem still turns a T into a 7 (Fremont's EST, rendered).
 SHAPE_TOL_SIZE_SHARE = 0.10
+# A glyph whose larger side is under this many of the machine's needle
+# floors (`machine.MIN_STITCH_MM`, so 2.0 mm) cannot be followed at that
+# floor: a capital E needs needle points at its foot, its middle arm and its
+# top, a floor apart, and a 1.6 mm stem has room for two. Fremont's EST and
+# 1895 at 81 mm (1.62-1.70 mm tall) are declined at the default floor for
+# exactly that, and the tagline (2.17 mm caps) is not under it. Such a glyph,
+# if the first try declines it, is tried once more at
+# `cfg.small_lettering_skeleton_small_floor_mm` with its sub-floor stubs off
+# the route (`trim_stubs`). Candidate (gate 1).
+SMALL_GLYPH_FLOORS = 2.0
 
 
 def _parts(geom):
@@ -524,7 +543,8 @@ def counter_crossings(points, counters, tol_mm: float = COUNTER_TOL_MM):
 def skeleton_letter_runs(poly, shape_id: str, *, max_width_mm: float, stitch_mm: float,
                          run_width_mm: float, entry, trim_at_mm: float,
                          min_mm: float = machine.MIN_STITCH_MM,
-                         ink=None, m: dict | None = None) -> tuple[list[StitchRun], dict]:
+                         ink=None, m: dict | None = None,
+                         small_floor_mm: float | None = None) -> tuple[list[StitchRun], dict]:
     """One glyph (`poly`, counters already punched back) -> (runs, report).
     `ink` is the artwork's pixels for the width gate (`qualifies`).
 
@@ -535,12 +555,22 @@ def skeleton_letter_runs(poly, shape_id: str, *, max_width_mm: float, stitch_mm:
     `stitches`, `min_stitch_mm`, `counters`, `counter_crossings`,
     `counter_depth_mm`, `outside_mm` and `missed_share` (`fidelity`), and
     `declined` ("width", "empty", "counter", "shape" or None).
-    `empty` means "take the ladder"."""
-    report = {"empty": True, "jumps": 0, "too_thin": False, "admitted": False,
-              "width_mm": None, "edges": 0, "components": 0, "retrace_mm": 0.0,
-              "sewn_mm": 0.0, "stitches": 0, "min_stitch_mm": None,
-              "counters": len(getattr(poly, "interiors", []) or []),
-              "counter_crossings": 0, "counter_depth_mm": 0.0, "declined": None}
+    `empty` means "take the ladder".
+
+    `small_floor_mm` (None: no second try): a glyph smaller than
+    `SMALL_GLYPH_FLOORS` machine floors that the first try declines on its
+    route ("empty", "counter", "shape") is tried once more at this floor,
+    its stubs shorter than it off the route (`trim_stubs`). When that sews,
+    the report is the second try's, with `small_floor` 1 and
+    `first_declined`; when it does not, the first try's, with
+    `small_floor_declined`. The first try is exactly the one-floor tier."""
+    def fresh():
+        return {"empty": True, "jumps": 0, "too_thin": False, "admitted": False,
+                "width_mm": None, "edges": 0, "components": 0, "retrace_mm": 0.0,
+                "sewn_mm": 0.0, "stitches": 0, "min_stitch_mm": None,
+                "counters": len(getattr(poly, "interiors", []) or []),
+                "counter_crossings": 0, "counter_depth_mm": 0.0, "declined": None}
+    report = fresh()
     if m is None:
         m = measure(poly, max_width_mm, ink=ink)
     if m is not None:
@@ -550,7 +580,37 @@ def skeleton_letter_runs(poly, shape_id: str, *, max_width_mm: float, stitch_mm:
         report["declined"] = "width"
         return [], report
     report["admitted"] = True
+    runs, report = _sew_glyph(poly, shape_id, m, report, stitch_mm=stitch_mm,
+                              run_width_mm=run_width_mm, entry=entry,
+                              trim_at_mm=trim_at_mm, min_mm=min_mm, stubs=False)
+    if not report["empty"] or small_floor_mm is None or small_floor_mm >= min_mm:
+        return runs, report
+    gx0, gy0, gx1, gy1 = poly.bounds
+    if max(gx1 - gx0, gy1 - gy0) >= SMALL_GLYPH_FLOORS * machine.MIN_STITCH_MM:
+        return runs, report
+    second = fresh()
+    second.update(admitted=True, width_mm=report["width_mm"],
+                  width_traced_mm=report["width_traced_mm"])
+    runs2, second = _sew_glyph(poly, shape_id, m, second, stitch_mm=stitch_mm,
+                               run_width_mm=run_width_mm, entry=entry,
+                               trim_at_mm=trim_at_mm, min_mm=small_floor_mm, stubs=True)
+    if second["empty"]:
+        report["small_floor_declined"] = second["declined"]
+        return runs, report
+    second["small_floor"] = 1
+    second["first_declined"] = report["declined"]
+    return runs2, second
+
+
+def _sew_glyph(poly, shape_id, m, report, *, stitch_mm, run_width_mm, entry,
+               trim_at_mm, min_mm, stubs):
+    """`skeleton_letter_runs` past its width gate, at one floor: route,
+    stitches, and the counter and shape measurements. `stubs`: also take
+    the free stubs shorter than the floor off the route (`trim_stubs`)."""
     edges, report["hook_mm"] = trim_hooks(list(m["hair_edges"]) + list(m["thick_edges"]), min_mm)
+    if stubs:
+        edges, stub_mm = trim_stubs(edges, min_mm)
+        report["stub_mm"] = round(stub_mm, 4)
     report["hook_mm"] = round(report["hook_mm"], 4)
     report["edges"] = len(edges)
     if not edges:
@@ -647,6 +707,37 @@ def trim_hooks(edges, min_mm: float) -> tuple[list, float]:
             continue
         cut += cum[lo] + (cum[-1] - cum[hi])
         out.append({**e, "pts": pts[lo:hi + 1]})
+    return out, cut
+
+
+def trim_stubs(edges, min_mm: float) -> tuple[list, float]:
+    """-> (edges, mm dropped): every STUB -- an edge with one free end,
+    shorter than `min_mm`, hanging off a node something else also reaches --
+    left off the route. `trim_hooks` cuts the bend at a stroke's end; this
+    takes the short branch itself: a slab serif's foot, the beak at an S's
+    terminal, a T's drop at the end of its bar. Each is under one stitch, so
+    the needle can only reach it by bending the letter round it, and the
+    shape test billed exactly that (Fremont's EST and 1895, 2026-10-14).
+    One pass; a glyph that is one edge keeps it. The second try of
+    `skeleton_letter_runs` only, at the small-glyph floor."""
+    if len(edges) < 2:
+        return list(edges), 0.0
+    degree: dict = {}
+    for e in edges:
+        for k in ("a", "b"):
+            if e[k] is not None:
+                degree[e[k]] = degree.get(e[k], 0) + 1
+    out = []
+    cut = 0.0
+    for e in edges:
+        one_free = (not e.get("closed")) and (bool(e.get("free_a")) != bool(e.get("free_b")))
+        hub = e["b"] if e.get("free_a") else e["a"]
+        length = _arc(e["pts"])
+        if one_free and length < min_mm and degree.get(hub, 0) >= 2:
+            degree[hub] -= 1
+            cut += length
+            continue
+        out.append(e)
     return out, cut
 
 
