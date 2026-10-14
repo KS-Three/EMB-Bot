@@ -13,10 +13,18 @@ and the legibility instrument (`glyph_legibility.read_case`: strokes,
 clean, counters per glyph). Fremont is UNREPRESENTATIVE: it reproduces the
 defect, it sizes nothing. Every number the tier uses is a candidate (gate 1).
 
+EST and 1895 (1.62-1.70 mm tall) are under two needle floors: the floor
+declines every glyph of both, and since 2026-10-14 the tier tries each once
+more at `cfg.small_lettering_skeleton_small_floor_mm` (0.5) with its stubs
+off the route. Both lines are boxes here; the per-glyph report says which
+try sewed it (`small_floor`, `first_declined`).
+
 Arms (the Studio request of `fremont_triage.studio_request`, Hat, 81 mm):
 
     off_81      main, the flag off
-    on_81       small_lettering_skeleton ON, the needle floor (1.0 mm)
+    on1f_81     ON, the needle floor (1.0 mm), no small-glyph try (#913)
+    on_81       small_lettering_skeleton ON, the needle floor (1.0 mm), and
+                the small-glyph second try at 0.5 mm (the defaults)
     on073_81    ON, floor 0.73 mm (`machine.BEAN_STITCH_MM`, the run tier's
                 own stitch on these glyphs today)
 
@@ -46,7 +54,10 @@ if str(ROOT) not in sys.path:
 FLAG = {"small_lettering_skeleton": True}
 ARMS = {
     "off_81": (81.0, {}, "main (flag off)"),
-    "on_81": (81.0, dict(FLAG), "ON, floor 1.0 mm (MIN_STITCH_MM)"),
+    # #913's tier as it was: one floor, no small-glyph second try.
+    "on1f_81": (81.0, {**FLAG, "small_lettering_skeleton_small_floor_mm": None},
+                "ON, floor 1.0 mm, no small-glyph try (#913)"),
+    "on_81": (81.0, dict(FLAG), "ON, floor 1.0 mm (MIN_STITCH_MM), small-glyph try 0.5"),
     "on073_81": (81.0, {**FLAG, "small_lettering_skeleton_floor_mm": 0.73},
                  "ON, floor 0.73 mm (BEAN_STITCH_MM)"),
     # Composition with `cfg.small_text_cap_mm` (#909, OFF): the lines it
@@ -57,8 +68,11 @@ ARMS = {
                      "small_text_cap_mm 3.7 + ON, floor 0.73"),
 }
 ARM_ORDER = list(ARMS)
-BOXES = ["the", "tagline", "est"]
-LEGIBILITY_WORDS = ["the", "tagline", "est"]
+# 1895 joined 2026-10-14: with EST it is the line under two needle floors
+# tall that the small-glyph floor's second try takes.
+BOXES = ["the", "tagline", "est", "1895"]
+LEGIBILITY_WORDS = ["the", "tagline", "est", "1895"]
+TITLES = {"the": "THE", "tagline": "EAT | STAY | PLAY", "est": "EST", "1895": "1895"}
 
 # The corpus the brief names, at 80 mm on a left chest (`thin_strokes.REAL_ART`
 # paths; becker at 80 here, not its 100).
@@ -71,7 +85,8 @@ CORPUS = {
 }
 CORPUS_WIDTH_MM = 80.0
 CORPUS_ARMS = {"off": {}, "on": dict(FLAG),
-               "on073": {**FLAG, "small_lettering_skeleton_floor_mm": 0.73}}
+               "on073": {**FLAG, "small_lettering_skeleton_floor_mm": 0.73},
+               "on1f": {**FLAG, "small_lettering_skeleton_small_floor_mm": None}}
 
 
 @contextlib.contextmanager
@@ -145,7 +160,8 @@ def analyze_arm(name: str, run: dict) -> dict:
         rows = []
         for i, g in enumerate(glyphs):
             row = fsl.glyph_row(run, g, f"{b}[{i}]", owners[i], taken, False)
-            row["label"] = fsl.label_of(b, i, len(glyphs))
+            row["label"] = (fsl.label_of(b, i, len(glyphs)) if b in fsl.LABELS else
+                            b[i] if len(b) == len(glyphs) else f"#{i}")
             reps = [log[s] for s in owners[i] if s in log]
             if any(not r["empty"] for r in reps):
                 row["construction"] = "skeleton"
@@ -156,7 +172,8 @@ def analyze_arm(name: str, run: dict) -> dict:
             row["skeleton_report"] = {k: v for r in reps for k, v in r.items()
                                       if k in ("width_mm", "stitches", "min_stitch_mm", "counter_crossings",
                                                "counter_depth_mm", "outside_mm", "missed_share",
-                                               "retrace_mm", "declined")}
+                                               "retrace_mm", "declined", "small_floor", "first_declined",
+                                               "small_floor_declined", "stub_mm")}
             rows.append(row)
         boxes[b] = {"glyphs": rows}
     census = ft.roi_census(run)
@@ -186,7 +203,7 @@ def analyze_arm(name: str, run: dict) -> dict:
 def markdown(tabs: dict) -> str:
     lines = []
     for b in BOXES:
-        lines.append(f"### {'EAT | STAY | PLAY' if b == 'tagline' else b.upper()}\n")
+        lines.append(f"### {TITLES[b]}\n")
         lines.append("| arm | " + " | ".join(g["label"] for g in tabs[ARM_ORDER[0]]["boxes"][b]["glyphs"]) + " |")
         lines.append("|---|" + "---|" * len(tabs[ARM_ORDER[0]]["boxes"][b]["glyphs"]))
         for name, tab in tabs.items():
@@ -245,8 +262,9 @@ def corpus_one(case: str, arm: str, out: Path) -> dict:
 
 
 def corpus_table(out: Path) -> str:
-    lines = ["| case (80 mm) | OFF md5 | ON md5 | ON 0.73 md5 | offered ON | skeleton ON / ON 0.73 | identical |",
-             "|---|---|---|---|---|---|---|"]
+    lines = ["| case (80 mm) | OFF md5 | ON md5 | ON 0.73 md5 | ON one-floor md5 | offered ON | "
+             "skeleton ON / ON 0.73 | identical |",
+             "|---|---|---|---|---|---|---|---|"]
     for case in CORPUS:
         recs = {a: json.loads((out / f"corpus_{case}_{a}.json").read_text())
                 for a in CORPUS_ARMS if (out / f"corpus_{case}_{a}.json").exists()}
@@ -254,7 +272,7 @@ def corpus_table(out: Path) -> str:
             continue
         md = {a: recs[a]["md5"][:8] if a in recs else "-" for a in CORPUS_ARMS}
         same = all(recs[a]["md5"] == recs["off"]["md5"] for a in recs)
-        lines.append(f"| {case} | {md['off']} | {md['on']} | {md['on073']} | "
+        lines.append(f"| {case} | {md['off']} | {md['on']} | {md['on073']} | {md['on1f']} | "
                      f"{recs.get('on', {}).get('offered', '-')} | "
                      f"{recs.get('on', {}).get('skeleton_sewn', '-')} / "
                      f"{recs.get('on073', {}).get('skeleton_sewn', '-')} | {'yes' if same else 'NO'} |")
@@ -305,7 +323,7 @@ def sheets(out: Path, renders: Path) -> list[Path]:
     from tools import fremont_triage as ft
     renders.mkdir(parents=True, exist_ok=True)
     written = []
-    for ppm, boxes, tag in ((SHEET_PPM, BOXES, "arms"), (ZOOM_PPM, ["tagline", "est"], "zoom")):
+    for ppm, boxes, tag in ((SHEET_PPM, BOXES, "arms"), (ZOOM_PPM, ["tagline", "est", "1895"], "zoom")):
         rows: dict[str, list] = {b: [] for b in boxes}
         art: dict = {}
         for name in ARM_ORDER:
@@ -344,7 +362,7 @@ def sheets(out: Path, renders: Path) -> list[Path]:
             w = max(x.shape[1] for x in panels)
             sheet = np.vstack([np.pad(x, ((0, 8), (0, w - x.shape[1]), (0, 0)), constant_values=255)
                                for x in panels])
-            title = {"the": "THE", "tagline": "EAT | STAY | PLAY", "est": "EST"}[b]
+            title = TITLES[b]
             extra = ", artwork outline red" if tag == "zoom" else ""
             sheet = ft._label(sheet, f"{title} at 81 mm (Hat): every row {ppm} px/mm{extra}; "
                                      "thread drawn at its laid width, a picture of the file, not of cloth",
