@@ -2716,7 +2716,9 @@ def sequence(
                 # all-highlight shape sews nothing) and falls through to
                 # tatami below rather than dropping artwork — the standing
                 # contract of every tonal tier in this chain.
-                runs, report = sketch_fill(p.region, source_pixels, cfg)
+                runs, report = sketch_fill(
+                    p.region, source_pixels, cfg,
+                    thread_wt=block_wt.get(p.region.thread_index, cfg.thread_wt))
                 need_tatami = report["empty"]
             elif (streamline or tier == "streamline") and source_pixels is not None:
                 # The streamline thread-paint tier (row 10): the design-wide
@@ -2768,7 +2770,9 @@ def sequence(
                 # snap reads it, mono ignores it.
                 runs, report = streamline_fill(p.region, source_pixels, cfg,
                                                streamline_mode=streamline_mode,
-                                               shade_palette_indices=shade_palette)
+                                               shade_palette_indices=shade_palette,
+                                               thread_wt=block_wt.get(
+                                                   p.region.thread_index, cfg.thread_wt))
                 need_tatami = report["empty"]
             elif crosshatch or tier == "crosshatch":
                 # The cross-hatch fill tier: two tatami passes on the same
