@@ -2480,7 +2480,9 @@ def sequence(
                     **({"counter_clear_mm": _clear} if _clear > 0 else {}),
                     # `cfg.lettering_columns_fold_cuts` (default OFF): off,
                     # the call is today's, argument for argument
-                    **({"fold_cuts": True} if cfg.lettering_columns_fold_cuts else {}))
+                    **({"fold_cuts": True} if cfg.lettering_columns_fold_cuts else {}),
+                    # `cfg.lettering_columns_square_ends` (default OFF): same rule
+                    **({"square_ends": True} if cfg.lettering_columns_square_ends else {}))
                 if not report["empty"]:
                     report["lettering_columns"] = 1
                     return runs, report, False
