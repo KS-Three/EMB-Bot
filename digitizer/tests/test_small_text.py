@@ -336,3 +336,21 @@ def test_a_cutout_letters_counter_is_not_ink():
     radius = np.hypot(pts[:, 0], pts[:, 1])
     assert radius.min() > 1.0, f"the centreline runs round the counter, not through it (min r {radius.min():.2f} mm)"
     assert abs(float(np.median(radius)) - 1.5) < 0.2, "on the stroke, 1.5 mm out"
+
+
+def test_restore_drops_the_taggers_strays_from_the_line():
+    # Fremont's tagline cluster holds its two black separator bars and a
+    # twist of the rope. Bean letters reads a cluster's ink as one colour, so
+    # with them in it the tagline was never read. They leave the cluster.
+    regions, p = _scene()
+    bar = Region("Sbar", box(4.0, -1.0, 4.2, 1.5), 9, "9", 0.5)       # another ink, in the line
+    rope = Region("Srope", box(-6.0, 4.0, -5.0, 6.0), 7, "7", 2.0)    # same ink, far off the line
+    regions += [bar, rope]
+    _tag(regions, {"Sg0", "Sg2", "Sg3", "Sbar", "Srope"})
+    rep = small_text.restore_small_text(regions, p, cap_mm=3.0)
+    row = next(r for r in rep if r["cluster"] == "TCtest")
+    assert row.get("strays") == 2, row
+    for r in (bar, rope):
+        assert "text_cluster_id" not in r.meta and "text_candidate" not in r.meta
+        assert r.meta.get("small_text_stray") is True
+    assert all(r.meta.get("text_cluster_id") == "TCtest" for r in _glyphs(regions)), "the four digits stay"
