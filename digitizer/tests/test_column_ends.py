@@ -1,4 +1,7 @@
-"""Column END shapes: `cfg.lettering_columns_square_ends` (built OFF).
+"""Column END shapes: `cfg.lettering_columns_square_ends` and
+`cfg.lettering_columns_inside_connectors` (built OFF, both flipped ON by Kent's
+ruling 2026-10-13; the OFF paths below set the flags False or call the lane
+functions, whose own defaults are still OFF).
 
 Kent's Fremont 81 mm hat job (PR #898's replay) traced three of his circles to
 how the Column lane ENDS a column: HOTEL's E upper serif stood 0.29 mm past
@@ -8,7 +11,7 @@ below it. The flag holds every cross end that starts on an end face on that
 face (`columns._hold_end_faces`); `tools/column_ends.py` measures it.
 
 These pin:
-- the flag is OFF by default, OFF never reaches the new code, and OFF is
+- OFF never reaches the new code, and OFF is
   byte-identical: the lane's runs on the stored aileron glyphs and the three
   circled Fremont letters hash to the same md5 on this branch and on main at
   8240f86c (computed with both trees, 2026-10-13);
@@ -97,8 +100,10 @@ def ends(fremont):
 
 # --- OFF ------------------------------------------------------------------------
 
-def test_the_flag_is_off_by_default():
-    assert PipelineConfig().lettering_columns_square_ends is False
+def test_the_flag_is_on_by_default():
+    """ON by Kent's ruling 2026-10-13; the OFF path below is reached by
+    setting the flag False (the lane functions' own default is still OFF)."""
+    assert PipelineConfig().lettering_columns_square_ends is True
 
 
 def test_off_never_reaches_the_new_code(fremont, monkeypatch):
@@ -218,8 +223,9 @@ def test_a_thin_bar_keeps_its_side_push():
 
 # --- inside connectors --------------------------------------------------------------
 
-def test_inside_connectors_is_off_by_default():
-    assert PipelineConfig().lettering_columns_inside_connectors is False
+def test_inside_connectors_is_on_by_default():
+    """ON by Kent's ruling 2026-10-13."""
+    assert PipelineConfig().lettering_columns_inside_connectors is True
 
 
 @pytest.mark.parametrize("square", [False, True])
@@ -265,3 +271,15 @@ def test_stage7_passes_the_flags(monkeypatch):
                             lettering_columns_square_ends=True,
                             lettering_columns_inside_connectors=True))
     assert seen and all(v == (True, True) for v in seen)
+    # ... and the DEFAULT is ON (Kent 2026-10-13); only an explicit False
+    # leaves the call argument for argument what it was.
+    seen.clear()
+    digitize(la.FIXTURE.with_suffix(".png"),
+             PipelineConfig(target_width_mm=80.0, forced_class="flat"))
+    assert seen and all(v == (True, True) for v in seen)
+    seen.clear()
+    digitize(la.FIXTURE.with_suffix(".png"),
+             PipelineConfig(target_width_mm=80.0, forced_class="flat",
+                            lettering_columns_square_ends=False,
+                            lettering_columns_inside_connectors=False))
+    assert seen and all(v == (None, None) for v in seen)
