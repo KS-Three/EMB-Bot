@@ -157,6 +157,74 @@ def test_a_serif_hook_shorter_than_one_stitch_is_trimmed_and_a_long_one_kept():
     assert cut == 0.0 and kept["pts"][-1] == (1.5, 1.0)
 
 
+# --- a glyph under two needle floors: the small-glyph floor's second try ----------
+
+def _sew2(poly, floor=machine.MIN_STITCH_MM, small=0.5, entry=None):
+    return skeleton_letter_runs(poly, "G1", max_width_mm=P40.width_mm, stitch_mm=1.5,
+                                run_width_mm=P40.hairline_run_width_mm, entry=entry,
+                                trim_at_mm=machine.TRIM_AT_MM, min_mm=floor,
+                                small_floor_mm=small)
+
+
+def _E_est():
+    """Fremont's EST E at 81 mm: 1.6 mm tall, 1.1 mm arms, 0.22 mm strokes."""
+    return _glyph([(1.1, 0), (0, 0), (0, 1.6), (1.1, 1.6)], [(0, 0.8), (0.935, 0.8)], w=0.22)
+
+
+def test_small_floor_default_is_the_tiny_stitch():
+    assert PipelineConfig().small_lettering_skeleton_small_floor_mm == machine.TINY_STITCH_MM == 0.5
+
+
+def test_an_E_under_two_floors_is_declined_at_the_floor_and_taken_by_the_second_try():
+    """Fremont's EST E: 1.6 mm tall, 0.22 mm strokes. The stem has no room
+    for a needle point at the middle arm a floor from both ends, so the
+    one-floor tier declines it; the second try sews it as one run, every
+    arm reached, every stitch at or over the small floor."""
+    e = _E_est()
+    runs, rep = _sew2(e, small=None)
+    assert runs == [] and rep["declined"] in ("shape", "empty"), rep
+    assert "small_floor" not in rep
+    runs, rep = _sew2(e)
+    assert not rep["empty"], rep
+    assert rep["small_floor"] == 1 and rep["first_declined"] in ("shape", "empty")
+    assert len(runs) == 1 and rep["jumps"] == 0
+    assert min(_steps(runs)) >= 0.5 - 1e-9
+    spine = unary_union([LineString([(1.1, 0), (0, 0), (0, 1.6), (1.1, 1.6)]),
+                         LineString([(0, 0.8), (0.935, 0.8)])])
+    assert max(spine.distance(Point(q)) for q in runs[0].points) <= 0.5 * P40.width_mm
+    for tip in [(1.1, 0), (1.1, 1.6), (0.935, 0.8)]:
+        assert min(math.dist(tip, q) for q in runs[0].points) <= 0.25, tip
+
+
+def test_a_glyph_two_floors_or_more_gets_no_second_try():
+    """The tagline's 2.2 mm T, declined at the 1.0 floor, is not small enough
+    for the second try: it stays the outline, as before."""
+    runs, rep = _sew2(_T(), floor=machine.MIN_STITCH_MM)
+    assert runs == [] and rep["declined"] == "shape", rep
+    assert "small_floor" not in rep and "small_floor_declined" not in rep
+
+
+def test_a_glyph_the_floor_takes_never_reaches_the_second_try():
+    a, ra = _sew2(_T(3.0, 2.4), small=None)
+    b, rb = _sew2(_T(3.0, 2.4))
+    assert not ra["empty"] and [r.points for r in a] == [r.points for r in b] and ra == rb
+
+
+def test_trim_stubs_drops_a_foot_shorter_than_the_floor_and_keeps_the_stroke():
+    from digitizer_core.stage6_small_letter import trim_stubs
+    stem = {"pts": [(0.0, y / 10.0) for y in range(0, 15)], "a": -1, "b": 0, "closed": False,
+            "free_a": True, "free_b": False}
+    foot = {"pts": [(0.0, 1.4), (0.3, 1.4)], "a": 0, "b": -2, "closed": False,
+            "free_a": False, "free_b": True}
+    leg = {"pts": [(0.0, 1.4), (-0.8, 1.4)], "a": 0, "b": -3, "closed": False,
+           "free_a": False, "free_b": True}
+    out, cut = trim_stubs([stem, foot, leg], 0.5)
+    assert out == [stem, leg] and cut == pytest.approx(0.3)
+    # one edge is the glyph: kept however short
+    out, cut = trim_stubs([foot], 0.5)
+    assert out == [foot] and cut == 0.0
+
+
 def test_glyph_polygon_punches_recorded_counters_back():
     blob = _glyph([(0, 0), (0, 2)], w=1.0)
     counter = [(-0.1, 0.8), (0.1, 0.8), (0.1, 1.2), (-0.1, 1.2)]
@@ -259,6 +327,26 @@ def test_stage7_sews_a_tagged_small_glyph_as_one_skeleton_run(script_result):
     # OFF traces the outline (a half stroke off the middle); ON rides it
     assert np.median(off_d) >= 0.5 * STROKE - 0.02
     assert max(on_d) <= 0.5 * P40.width_mm
+    assert sum(len(r.points) for r in on) < sum(len(r.points) for r in off)
+
+
+def test_stage7_sews_an_EST_sized_glyph_at_the_default_floor(script_result):
+    """Flag ON, floor and small floor at their defaults: a 1.6 mm E (Fremont's
+    EST) rides its skeleton instead of the outline; with the second try off
+    (`small_lettering_skeleton_small_floor_mm` None) it is the outline, as
+    #913 left it."""
+    from shapely import affinity
+    glyph = affinity.translate(_E_est(), 40.0, 0.0)
+    res = _with_glyph(script_result, glyph)
+    base = dict(target_width_mm=60.0, forced_class="flat")
+    off = _glyph_runs(plan_stitches(res, PipelineConfig(**base)))
+    one = _glyph_runs(plan_stitches(res, PipelineConfig(**base, small_lettering_skeleton=True,
+                                                        small_lettering_skeleton_small_floor_mm=None)))
+    on = _glyph_runs(plan_stitches(res, PipelineConfig(**base, small_lettering_skeleton=True)))
+    assert [r.points for r in one] == [r.points for r in off]
+    spine = affinity.translate(unary_union([LineString([(1.1, 0), (0, 0), (0, 1.6), (1.1, 1.6)]),
+                                            LineString([(0, 0.8), (0.935, 0.8)])]), 40.0, 0.0)
+    assert on and max(spine.distance(Point(q)) for r in on for q in r.points) <= 0.5 * P40.width_mm
     assert sum(len(r.points) for r in on) < sum(len(r.points) for r in off)
 
 

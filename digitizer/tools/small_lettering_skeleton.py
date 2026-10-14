@@ -13,6 +13,12 @@ and the legibility instrument (`glyph_legibility.read_case`: strokes,
 clean, counters per glyph). Fremont is UNREPRESENTATIVE: it reproduces the
 defect, it sizes nothing. Every number the tier uses is a candidate (gate 1).
 
+EST and 1895 (1.62-1.70 mm tall) are under two needle floors: the floor
+declines every glyph of both, and since 2026-10-14 the tier tries each once
+more at `cfg.small_lettering_skeleton_small_floor_mm` (0.5) with its stubs
+off the route. Both lines are boxes here; the per-glyph report says which
+try sewed it (`small_floor`, `first_declined`).
+
 Arms (the Studio request of `fremont_triage.studio_request`, Hat, 81 mm):
 
     off_81      main, the flag off
@@ -57,8 +63,11 @@ ARMS = {
                      "small_text_cap_mm 3.7 + ON, floor 0.73"),
 }
 ARM_ORDER = list(ARMS)
-BOXES = ["the", "tagline", "est"]
-LEGIBILITY_WORDS = ["the", "tagline", "est"]
+# 1895 joined 2026-10-14: with EST it is the line under two needle floors
+# tall that the small-glyph floor's second try takes.
+BOXES = ["the", "tagline", "est", "1895"]
+LEGIBILITY_WORDS = ["the", "tagline", "est", "1895"]
+TITLES = {"the": "THE", "tagline": "EAT | STAY | PLAY", "est": "EST", "1895": "1895"}
 
 # The corpus the brief names, at 80 mm on a left chest (`thin_strokes.REAL_ART`
 # paths; becker at 80 here, not its 100).
@@ -156,7 +165,8 @@ def analyze_arm(name: str, run: dict) -> dict:
             row["skeleton_report"] = {k: v for r in reps for k, v in r.items()
                                       if k in ("width_mm", "stitches", "min_stitch_mm", "counter_crossings",
                                                "counter_depth_mm", "outside_mm", "missed_share",
-                                               "retrace_mm", "declined")}
+                                               "retrace_mm", "declined", "small_floor", "first_declined",
+                                               "small_floor_declined", "stub_mm")}
             rows.append(row)
         boxes[b] = {"glyphs": rows}
     census = ft.roi_census(run)
@@ -186,7 +196,7 @@ def analyze_arm(name: str, run: dict) -> dict:
 def markdown(tabs: dict) -> str:
     lines = []
     for b in BOXES:
-        lines.append(f"### {'EAT | STAY | PLAY' if b == 'tagline' else b.upper()}\n")
+        lines.append(f"### {TITLES[b]}\n")
         lines.append("| arm | " + " | ".join(g["label"] for g in tabs[ARM_ORDER[0]]["boxes"][b]["glyphs"]) + " |")
         lines.append("|---|" + "---|" * len(tabs[ARM_ORDER[0]]["boxes"][b]["glyphs"]))
         for name, tab in tabs.items():
@@ -305,7 +315,7 @@ def sheets(out: Path, renders: Path) -> list[Path]:
     from tools import fremont_triage as ft
     renders.mkdir(parents=True, exist_ok=True)
     written = []
-    for ppm, boxes, tag in ((SHEET_PPM, BOXES, "arms"), (ZOOM_PPM, ["tagline", "est"], "zoom")):
+    for ppm, boxes, tag in ((SHEET_PPM, BOXES, "arms"), (ZOOM_PPM, ["tagline", "est", "1895"], "zoom")):
         rows: dict[str, list] = {b: [] for b in boxes}
         art: dict = {}
         for name in ARM_ORDER:
@@ -344,7 +354,7 @@ def sheets(out: Path, renders: Path) -> list[Path]:
             w = max(x.shape[1] for x in panels)
             sheet = np.vstack([np.pad(x, ((0, 8), (0, w - x.shape[1]), (0, 0)), constant_values=255)
                                for x in panels])
-            title = {"the": "THE", "tagline": "EAT | STAY | PLAY", "est": "EST"}[b]
+            title = TITLES[b]
             extra = ", artwork outline red" if tag == "zoom" else ""
             sheet = ft._label(sheet, f"{title} at 81 mm (Hat): every row {ppm} px/mm{extra}; "
                                      "thread drawn at its laid width, a picture of the file, not of cloth",
