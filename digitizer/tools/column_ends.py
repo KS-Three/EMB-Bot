@@ -394,6 +394,32 @@ def zoom_panels(designs: dict, renders: Path, px_per_mm: float = 40.0, zoom_px_p
     return written
 
 
+def word_panel(name: str, renders: Path, px_per_mm: float = 60.0) -> Path:
+    """A corpus fixture's lane letters, OFF above ON, whole-design runs of
+    each arm, cropped to the letters the OFF run gave the lane."""
+    import cv2
+    import numpy as np
+    from shapely.ops import unary_union
+    from tools import fremont_triage as ft
+    fixture, cfg_kw = CORPUS[name]
+    rows = []
+    box = None
+    for arm, ov in (("off", {}), ("on", {"lettering_columns_square_ends": True})):
+        calls, plan, design = capture(fixture, cfg_kw, ov)
+        if box is None:
+            box = unary_union([p for p, _s, _k in calls]).bounds
+        img, tp = ft._render(design, px_per_mm)
+        s = plan.stats
+        rows.append(ft._label(ft._crop(img, tp, box, margin_mm=0.8),
+                              f"{name} square_ends {arm.upper()}: {s.stitch_count:,} stitches, {s.trims} trims"))
+    w = max(r.shape[1] for r in rows)
+    out = np.vstack([np.pad(r, ((0, 6), (0, w - r.shape[1]), (0, 0)), constant_values=255) for r in rows])
+    renders.mkdir(parents=True, exist_ok=True)
+    p = renders / f"{name}_word.png"
+    cv2.imwrite(str(p), out)
+    return p
+
+
 # Zoom windows, mm offsets from the circle box's centre (x0, y0, x1, y1).
 ZOOM_BOX = {
     "accent_e": (0.0, -3.4, 3.4, -0.6),
@@ -414,6 +440,8 @@ def main(argv=None) -> int:
                     help="with --fixture: digitize the ON arm too, instead of replaying the OFF run's letters")
     ap.add_argument("--panels", action="store_true",
                     help="render the zoom panels from saved --fremont81 arms, digitizing nothing")
+    ap.add_argument("--word", choices=sorted(CORPUS),
+                    help="render that fixture's lane letters OFF above ON (two whole-design runs)")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--renders", type=Path)
     ap.add_argument("--tol", type=float, default=TOL_MM)
@@ -427,6 +455,8 @@ def main(argv=None) -> int:
             for key, c in row["circles"].items():
                 print(f"  {key}: overshoots {c['overshoots']} worst stub {c['worst_stub_mm']} mm "
                       f"beyond reach {c['beyond_reach']} travel off {c['travel_off_mm']} mm")
+    if a.word:
+        print(word_panel(a.word, a.renders or a.out / "renders"))
     if a.panels:
         for p in zoom_panels(load_designs(a.out), a.renders or a.out / "renders"):
             print(p)
