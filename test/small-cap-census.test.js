@@ -30,10 +30,15 @@ test("the floors are the engine's own, read, not restated", () => {
 // under 1.0 mm: 0.64 0.45 0.41 0.40 0.40 0.41 0.45 0.64 = 8 (the three 1.00s are
 // not under it); under 0.5 mm: 0.45 0.41 0.40 0.40 0.41 0.45 = 6; under 0.3: none.
 // Narrowest cross 1.0; the single span's median cross (5th of 9 sorted) is 1.2.
+//
+// THAT DUMP IS THE ALTERNATING-RAIL STREAM. Since 2026-10-13 the zigzag order
+// is the default: the same 18 penetrations, but the eight rail steps are
+// diagonal crosses back, each longer than the cross beside it, so nothing is
+// under 1.0 mm any more (sub1 8 -> 0, sub05 6 -> 0).
 test("hand count: alchemy 'I' at 3 mm", () => {
   const c = cell("alchemy", "I", 3);
   assert.deepStrictEqual(pick(c, ["sewn", "sub1", "sub05", "sub03", "repeat", "overRec", "hairlineSpans"]),
-    { sewn: 17, sub1: 8, sub05: 6, sub03: 0, repeat: 0, overRec: 0, hairlineSpans: 0 });
+    { sewn: 17, sub1: 0, sub05: 0, sub03: 0, repeat: 0, overRec: 0, hairlineSpans: 0 });
   assert.deepStrictEqual(pick(c, ["satinSpans", "strokeSpans", "thinSpans", "minCrossMm", "narrowestMm"]),
     { satinSpans: 1, strokeSpans: 1, thinSpans: 0, minCrossMm: 1, narrowestMm: 1.2 });
   assert.strictEqual(c.capMm, 3, "the cap lands on the target");
@@ -89,14 +94,18 @@ test("pins: full test string on two fonts, 3 and 6 mm", () => {
   const keys = ["stitches", "sewn", "sub1", "sub05", "sub03", "repeat", "overRec", "hairlineSpans", "satinSpans", "strokeSpans", "thinSpans", "narrowestMm", "minCrossMm"];
   const t = T.TEXTS[0];
   assert.strictEqual(t, "Hamburgefonstiv 0123");
+  // Re-pinned 2026-10-13, zigzag default ON. The short-stitch columns were
+  // sub1 / sub05 / sub03 = 515 / 199 / 18 (alchemy 3), 1076 / 350 / 28
+  // (alchemy 6, one more stitch: 1837) and 1450 / 376 / 107 (montecarlo 6).
+  // montecarlo at 3 mm has no satin and did not move.
   assert.deepStrictEqual(pick(cell("alchemy", t, 3), keys),
-    { stitches: 664, sewn: 645, sub1: 515, sub05: 199, sub03: 18, repeat: 0, overRec: 0, hairlineSpans: 1, satinSpans: 45, strokeSpans: 35, thinSpans: 27, narrowestMm: 0.59, minCrossMm: 0.45 });
+    { stitches: 664, sewn: 645, sub1: 407, sub05: 18, sub03: 4, repeat: 0, overRec: 0, hairlineSpans: 1, satinSpans: 45, strokeSpans: 35, thinSpans: 27, narrowestMm: 0.59, minCrossMm: 0.45 });
   assert.deepStrictEqual(pick(cell("alchemy", t, 6), keys),
-    { stitches: 1837, sewn: 1818, sub1: 1076, sub05: 350, sub03: 28, repeat: 1, overRec: 0, hairlineSpans: 0, satinSpans: 46, strokeSpans: 43, thinSpans: 1, narrowestMm: 0.97, minCrossMm: 0.41 });
+    { stitches: 1836, sewn: 1817, sub1: 549, sub05: 19, sub03: 7, repeat: 1, overRec: 0, hairlineSpans: 0, satinSpans: 46, strokeSpans: 43, thinSpans: 1, narrowestMm: 0.97, minCrossMm: 0.41 });
   assert.deepStrictEqual(pick(cell("montecarlo", t, 3), keys),
     { stitches: 543, sewn: 522, sub1: 508, sub05: 111, sub03: 80, repeat: 49, overRec: 0, hairlineSpans: 44, satinSpans: 0, strokeSpans: 0, thinSpans: 0, narrowestMm: null, minCrossMm: null });
   assert.deepStrictEqual(pick(cell("montecarlo", t, 6), keys),
-    { stitches: 1532, sewn: 1511, sub1: 1450, sub05: 376, sub03: 107, repeat: 47, overRec: 0, hairlineSpans: 51, satinSpans: 48, strokeSpans: 30, thinSpans: 30, narrowestMm: 0.5, minCrossMm: 0.41 });
+    { stitches: 1532, sewn: 1511, sub1: 1444, sub05: 188, sub03: 89, repeat: 47, overRec: 0, hairlineSpans: 51, satinSpans: 48, strokeSpans: 30, thinSpans: 30, narrowestMm: 0.5, minCrossMm: 0.41 });
 });
 
 // jersey_15 is the extreme: at a 4 mm cap 11,180 of its 11,789 sewn segments are
