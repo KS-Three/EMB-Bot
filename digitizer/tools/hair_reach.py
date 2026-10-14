@@ -2,6 +2,7 @@
 
     python -m tools.hair_reach census --image owl_kent --width 127 --grid 8
     python -m tools.hair_reach run    --image owl_kent --arm off|region|lines|lines_st
+    python -m tools.hair_reach drawn                  # hair_strands, hair_fine: the A/B bar's baselines
     python -m tools.hair_reach table  [--out DIR]
     python -m tools.hair_reach render --image owl_kent [--out DIR]
 
@@ -334,8 +335,9 @@ def strand_map(image: str, width: float, grid: float, out: Path, k: int = 2) -> 
         strands, _cen = L.extract_strands(sp, cfg)
         keep = []
         for pol in ("dark", "light"):
-            keep += [s for s, _ in L._sewable(
-                [s for s in strands if s["polarity"] == pol], cfg, cfg.thread_wt)]
+            sewn, _dropped = L._sewable(
+                [s for s in strands if s["polarity"] == pol], cfg, cfg.thread_wt)
+            keep += [s for s, _pts in sewn]
     big = cv2.resize(cv2.cvtColor(sp.rgb, cv2.COLOR_RGB2BGR), None, fx=k, fy=k,
                      interpolation=cv2.INTER_NEAREST)
     big = (0.55 * big + 0.45 * 255).astype(np.uint8)

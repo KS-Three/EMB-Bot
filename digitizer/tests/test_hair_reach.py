@@ -113,11 +113,11 @@ def test_the_line_route_reaches_the_drawn_hair_lane_only_when_forced(tmp_path, m
     import cv2
     full = cv2.imread(str(H.IMAGES["hair_fine"]), cv2.IMREAD_UNCHANGED)
     h, w = full.shape[:2]
-    crop = full[int(h * 0.1):int(h * 0.6), int(w * 0.2):int(w * 0.8)]
+    crop = full[int(h * 0.12):int(h * 0.47), int(w * 0.25):int(w * 0.55)]
     f = tmp_path / "hair_fine_crop.png"
     cv2.imwrite(str(f), crop)
     monkeypatch.setitem(H.IMAGES, "hair_fine_crop", f)
-    row = H.census("hair_fine_crop", 40.0, 8.0, False)
+    row = H.census("hair_fine_crop", 24.0, 8.0, False)
     assert row["design_class"] == "gradient", row
     assert row["reached"] and row["strands"] >= 3, row
     assert L.LINE_CLASSES == tuple(L.PHOTO_CLASSES), "the tool's patch leaked"
