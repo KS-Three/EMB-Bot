@@ -2523,9 +2523,9 @@ def sequence(
                     # `cfg.lettering_columns_fold_cuts` (default OFF): off,
                     # the call is today's, argument for argument
                     **({"fold_cuts": True} if cfg.lettering_columns_fold_cuts else {}),
-                    # `cfg.lettering_columns_square_ends` (default OFF): same rule
+                    # `cfg.lettering_columns_square_ends` (default ON, Kent 2026-10-13): same rule
                     **({"square_ends": True} if cfg.lettering_columns_square_ends else {}),
-                    # `cfg.lettering_columns_inside_connectors` (default OFF): same rule
+                    # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
                     **({"inside_connectors": True}
                        if cfg.lettering_columns_inside_connectors else {}))
                 if not report["empty"]:
