@@ -114,25 +114,21 @@ from pathlib import Path
 import cv2
 import numpy as np
 from scipy import ndimage as ndi
-from skimage.morphology import skeletonize
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-P = 20.0                    # working grid, px per mm
-PAD_MM = 2.0                # render_design's own pad
-COMP_TOL_MM = 0.50          # push compensation: thread this far off the ink is not "off"
-SPACE_MIN_HALF_MM = 0.15    # a bay or counter is read when a circle this big fits in the source
-SPACE_KEEP_HALF_MM = 0.10   # ... and it survives when thread leaves a clear circle this big
-SKEL_TOL_MM = 0.15          # a skeleton point is "sewn" with thread this close
-SHIFT_MM = 0.80             # per-glyph translation the read may take
-MIN_GLYPH_MM2 = 0.12        # smaller source components are specks, not glyphs
-GROUND_DIST = 60.0          # a thread this far (RGB) from the ground is ink
-MIN_HOLE_DIAM_THREADS = 0.5  # a counter counts when a circle of this x thread fits in it
+# The per-glyph read itself -- the grid, the ink, the thread, the pull, the
+# five readings and the per-word glyph loop -- lives in the package since
+# preflight reads it too (`glyph_legibility_*` metrics); this tool keeps its
+# cases, the OCR second reader, the registration search and the statistics.
+from digitizer_core import glyph_read as _core  # noqa: E402
+from digitizer_core.glyph_read import (  # noqa: E402,F401  (_label_glyphs, glyph_scores: the tests' handles)
+    COMP_TOL_MM, P, Registration, _bbox, _label_glyphs, glyph_scores, ground_colour,
+    pull_erode, read_glyphs, soft_ink, thread_ink)
+
 OCR_CONF_MIN = 60.0         # source read below this is no truth to compare to
 OCR_MAX_GLYPH_MM2 = 150.0   # a component bigger than any single letter here is merged letters
-PULL_LINES = "ink"          # what the pull leaves of a thread-wide line: "ink" = the ones lying on the
-                            # artwork's ink, "all", or "none" (a plain erosion); `--pull-lines`
 PULL_AUTO_MAX_MM = 0.60     # `--pull-mm auto` never estimates more than this a side (the repo's
                             # largest fabric pull is 0.6, terry; a hat is 0.4)
 
@@ -166,97 +162,6 @@ def load_source(path) -> tuple[np.ndarray, np.ndarray]:
         a = raw[..., 3:4].astype(np.float32) / 255.0
         rgb = rgb * a + 255.0 * (1.0 - a)        # transparent artwork is read on white
     return rgb, np.full(raw.shape[:2], 255, np.uint8)
-
-
-def ground_colour(rgb: np.ndarray, alpha: np.ndarray, box_px=None, ring_only: bool = True) -> np.ndarray:
-    """The mode colour (16-level quantised) of the RING around a word box (or
-    around the whole image), 4% of its short side wide: the ground is what the
-    lettering sits on, and a ring cannot be out-voted by heavy lettering the
-    way the whole box can (Becker's letters are most of its ink). With
-    `ring_only=False` the whole box votes: right when the box overhangs the
-    ground it sits on (Bridge's lettering sits on a yellow disc and its box
-    reaches the black rim and the white beyond)."""
-    if box_px is not None:
-        x0, y0, x1, y1 = box_px
-        rgb, alpha = rgb[y0:y1, x0:x1], alpha[y0:y1, x0:x1]
-    h, w = rgb.shape[:2]
-    k = max(2, int(0.04 * min(h, w)))
-    ring = np.ones((h, w), bool)
-    if ring_only:
-        ring[k:h - k, k:w - k] = False
-    px = rgb[ring & (alpha >= 128)].reshape(-1, 3)
-    if len(px) == 0:
-        return np.array([255.0, 255.0, 255.0], np.float32)
-    q = (px // 16).astype(np.int32)
-    key = q[:, 0] * 256 + q[:, 1] * 16 + q[:, 2]
-    mode = np.bincount(key).argmax()
-    sel = px[key == mode]
-    return sel.mean(axis=0).astype(np.float32)
-
-
-def otsu_threshold(dist: np.ndarray, floor: float = GROUND_DIST * 0.5) -> float:
-    """Otsu on the colour distance from the ground, never under `floor`: a box
-    that is all ground must not have its noise called ink."""
-    d = np.clip(dist, 0, 441).astype(np.uint8)
-    t, _ = cv2.threshold(d, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return float(max(t, floor))
-
-
-def soft_ink(rgb: np.ndarray, alpha: np.ndarray, ground: np.ndarray,
-             thr: float | None = None) -> tuple[np.ndarray, float]:
-    """-> (soft ink field in [0, 1], threshold): colour distance from the
-    ground over twice the threshold, so 0.5 is the Otsu split. Transparent
-    pixels are ground."""
-    dist = np.linalg.norm(rgb - ground[None, None, :], axis=2)
-    dist = np.where(alpha >= 128, dist, 0.0)
-    if thr is None:
-        op = dist[alpha >= 128]
-        thr = otsu_threshold(op) if op.size else GROUND_DIST
-    return np.clip(dist / (2.0 * thr), 0, 1).astype(np.float32), thr
-
-
-# --- the thread, as ink ------------------------------------------------------
-
-def _colours(design: dict) -> list[tuple[int, int, int]]:
-    cols = design.get("colors") or [{"r": 0, "g": 0, "b": 0}]
-    return [(int(c["r"]), int(c["g"]), int(c["b"])) for c in cols]
-
-
-def ink_blocks(design: dict, ground: np.ndarray, dist: float = GROUND_DIST) -> list[bool]:
-    """Per colour block: is its thread distinguishable from the ground?"""
-    return [float(np.linalg.norm(np.array(c, np.float32) - ground)) > dist
-            for c in _colours(design)]
-
-
-def thread_ink(design: dict, ground: np.ndarray, px_per_mm: float = P,
-               thread_mm: float | None = None) -> tuple[np.ndarray, tuple[float, float]]:
-    """-> (ink field in [0, 1], (x0_mm, y1_mm)): `render_design` of the
-    non-ground blocks only, drawn black on white, flat (`lit=False`), at
-    `thread_mm`. Ground-coloured blocks become jumps so the frame -- the stitch
-    bounds -- is the design's own and does not move with the filter."""
-    from digitizer_core import stitchviz
-    thread_mm = stitchviz.THREAD_MM if thread_mm is None else thread_mm
-    keep = ink_blocks(design, ground)
-    ci = 0
-    recs = []
-    for s in design.get("stitches") or []:
-        k = s.get("type")
-        if k == "color":
-            ci += 1
-            recs.append(s)
-            continue
-        if k == "stitch" and not (keep[min(ci, len(keep) - 1)]):
-            recs.append({**s, "type": "jump"})
-        else:
-            recs.append(s)
-    black = {"stitches": recs, "colors": [{"r": 0, "g": 0, "b": 0}] * max(1, len(keep))}
-    img = stitchviz.render_design(black, px_per_mm=px_per_mm, fabric_bgr=(255, 255, 255),
-                                  pad_mm=PAD_MM, lit=False, thread_mm=thread_mm)
-    ink = 1.0 - img.mean(axis=2) / 255.0
-    b = stitchviz._bounds(design.get("stitches") or [])
-    x0 = b[0] / stitchviz.UNITS_PER_MM
-    y1 = b[3] / stitchviz.UNITS_PER_MM
-    return ink.astype(np.float32), (x0, y1)
 
 
 def design_from_pes(path, flip_y: bool = True) -> dict:
@@ -303,52 +208,6 @@ def declared_pull_mm(design: dict) -> float | None:
     return None
 
 
-def pull_erode(T: np.ndarray, pull_mm: float, thread_mm: float, px_per_mm: float = P,
-               ink: np.ndarray | None = None, lines: str | None = None) -> np.ndarray:
-    """The thread mask after the cloth takes `pull_mm` back on every side.
-    `pull_mm` <= 0 returns `T` itself, so the default is byte-for-byte today's
-    read.
-
-    Pull narrows what the engine pushed out: a satin column or a fill, wider
-    than a thread. It does not erase a thin stroke, which has no push to take
-    back (the tagline's 0.4 mm beans would vanish under a plain erosion and the
-    read would bill the letter for the cloth). So whatever the erosion removes
-    outright keeps its own medial axis, thickened to `thread_mm`, WHERE IT LIES
-    ON THE ARTWORK'S INK (`ink`, a mask of the source ink grown half a thread;
-    None keeps every such line). A thread-wide line off the ink, such as a run
-    across the mouth of a bay or down the open side of an E, is not a stroke of
-    the letter and the pull takes it with the rest. `lines` ("ink", "all",
-    "none"; default `PULL_LINES`) is that rule, or its two edges, for a
-    sensitivity run."""
-    lines = PULL_LINES if lines is None else lines
-    r = int(round(pull_mm * px_per_mm))
-    if r < 1 or not T.any():
-        return T
-    # An enclosed gap too small to be a counter (the read does not count a hole
-    # under MIN_HOLE_DIAM_THREADS of a thread across) is the render's own texture
-    # between rows of a satin column. Erosion would grow it into one, so it is
-    # closed first: the pull takes thread back from an EDGE, it does not part a
-    # column down the middle.
-    lab, n = ndi.label(ndi.binary_fill_holes(T) & ~T)
-    if n:
-        dt = ndi.distance_transform_edt(~T)
-        diam = 2.0 * np.asarray(ndi.maximum(dt, lab, range(1, n + 1))) / px_per_mm
-        small = np.zeros(n + 1, bool)
-        small[1:] = diam < MIN_HOLE_DIAM_THREADS * thread_mm
-        if small.any():
-            T = T | small[lab]
-    eroded = cv2.erode(T.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1,) * 2)) > 0
-    rt = max(1, int(round(thread_mm / 2.0 * px_per_mm)))
-    line = cv2.dilate(skeletonize(T).astype(np.uint8),
-                      cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * rt + 1,) * 2)) > 0
-    if lines == "none":
-        return eroded
-    keep = line & T
-    if lines == "ink" and ink is not None:
-        keep &= ink
-    return eroded | keep
-
-
 def estimate_pull_mm(words: list["WordResult"]) -> float:
     """A pull for a design that does not declare one: per side, the median
     excess of the sewn stroke width over the artwork's, across every glyph read at pull 0 (glyphs with no thread are left out),
@@ -362,41 +221,6 @@ def estimate_pull_mm(words: list["WordResult"]) -> float:
 
 
 # --- registration -------------------------------------------------------------
-
-@dataclass
-class Registration:
-    """source px -> design-image px (the render grid at P px/mm):
-    u = ax * sx + tx, v = ay * sy + ty. The two scales may differ: a
-    professional's file is often drawn from a slightly different crop of the
-    logo (Fremont's is 2.3% narrower in aspect than the artwork here)."""
-    ax: float
-    ay: float
-    tx: float
-    ty: float
-    score: float
-
-    @property
-    def a(self) -> float:
-        return (self.ax + self.ay) / 2.0
-
-    @property
-    def mm_per_src_px(self) -> float:
-        return self.a / P
-
-    def matrix(self) -> np.ndarray:
-        return np.array([[self.ax, 0, self.tx], [0, self.ay, self.ty]], np.float64)
-
-    def apply_box(self, x0, y0, x1, y1) -> tuple[float, float, float, float]:
-        return (self.ax * x0 + self.tx, self.ay * y0 + self.ty,
-                self.ax * x1 + self.tx, self.ay * y1 + self.ty)
-
-
-def _bbox(mask: np.ndarray, level: float = 0.5):
-    ys, xs = np.where(mask >= level)
-    if len(xs) == 0:
-        return None
-    return xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
-
 
 def register(src_soft: np.ndarray, thread: np.ndarray, px_per_mm: float = P,
              search_scale: float = 0.03, reg_ppm: float = 4.0,
@@ -454,144 +278,6 @@ def register(src_soft: np.ndarray, thread: np.ndarray, px_per_mm: float = P,
     tx = (tcx + dx - fx * scx) / k
     ty = (tcy + dy - fy * scy) / k
     return Registration(ax=float(ax), ay=float(ay), tx=float(tx), ty=float(ty), score=float(sc))
-
-
-# --- one glyph --------------------------------------------------------------
-
-def _holes(mask: np.ndarray, min_px: int = 0):
-    """Enclosed background components of a binary mask: -> (labels, n)."""
-    filled = ndi.binary_fill_holes(mask)
-    lab, n = ndi.label(filled & ~mask)
-    if min_px and n:
-        sizes = ndi.sum(np.ones_like(lab), lab, range(1, n + 1))
-        keep = np.zeros(n + 1, bool)
-        keep[1:] = sizes >= min_px
-        lab = np.where(keep[lab], lab, 0)
-        lab, n = ndi.label(lab > 0)
-    return lab, n
-
-
-def _skeleton_width(mask: np.ndarray, px_per_mm: float) -> float:
-    if not mask.any():
-        return 0.0
-    sk = skeletonize(mask)
-    if not sk.any():
-        return 0.0
-    dt = ndi.distance_transform_edt(mask)
-    return float(np.median(2.0 * dt[sk]) / px_per_mm)
-
-
-def glyph_scores(S: np.ndarray, T: np.ndarray, thread_mm: float,
-                 px_per_mm: float = P) -> dict:
-    """The five readings of one sewn glyph. `S` the source glyph and `T` the
-    thread inside its zone, both bool, same grid, already aligned."""
-    a_s, a_t = float(S.sum()), float(T.sum())
-    inter, union = float((S & T).sum()), float((S | T).sum())
-    iou = inter / union if union else 0.0
-
-    sk_s = skeletonize(S) if S.any() else S
-    r_thr = max(1, int(round(thread_mm / 2.0 * px_per_mm)))
-    ideal = S | (cv2.dilate(sk_s.astype(np.uint8),
-                            cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r_thr + 1,) * 2)) > 0)
-    ceil = a_s / float(ideal.sum()) if ideal.any() else 1.0
-    shape = min(1.0, iou / ceil) if ceil > 0 else 0.0
-
-    # strokes: skeleton points with thread on them
-    t_dist = ndi.distance_transform_edt(~T) if T.any() else np.full(T.shape, 1e9)
-    sk_n = int(sk_s.sum())
-    recall = float((t_dist[sk_s] <= SKEL_TOL_MM * px_per_mm).mean()) if sk_n else 0.0
-
-    # clean: thread more than the push compensation off the source ink
-    s_dist = ndi.distance_transform_edt(~S)
-    off = float((s_dist[T] > COMP_TOL_MM * px_per_mm).sum()) if a_t else 0.0
-    clean = 1.0 - off / a_t if a_t else 0.0
-
-    # counters (Euler). A hole counts when a circle of half a thread fits in it,
-    # on either side: a pinhole in a satin column is not a counter and is not
-    # seen by a reader.
-    min_diam = MIN_HOLE_DIAM_THREADS * thread_mm
-    min_px = int(0.02 * px_per_mm ** 2)
-    lab_s, n_s_all = _holes(S, min_px)
-    dt_s = ndi.distance_transform_edt(~S)
-    feas = []
-    for i in range(1, n_s_all + 1):
-        hole = lab_s == i
-        if 2.0 * float(dt_s[hole].max()) / px_per_mm >= min_diam:
-            feas.append(hole)
-    lab_t, n_t_all = _holes(T, min_px)
-    dt_t = ndi.distance_transform_edt(~T) if T.any() else np.zeros(T.shape)
-    t_holes = []
-    for j in range(1, n_t_all + 1):
-        hole = lab_t == j
-        if 2.0 * float(dt_t[hole].max()) / px_per_mm >= min_diam:
-            t_holes.append(hole)
-    n_t = len(t_holes)
-    # one-to-one: each sewn hole answers at most one source counter, so an "8"
-    # whose waist was never sewn (two counters run into one) matches only one
-    pairs = []
-    for i, hole in enumerate(feas):
-        for j, th in enumerate(t_holes):
-            ov = float((hole & th).sum())
-            if ov >= 0.25 * min(hole.sum(), th.sum()):
-                pairs.append((ov, i, j))
-    pairs.sort(reverse=True)
-    used_s, used_t = set(), set()
-    for _ov, i, j in pairs:
-        if i not in used_s and j not in used_t:
-            used_s.add(i)
-            used_t.add(j)
-    src_any = ndi.binary_fill_holes(S) & ~S
-    spurious = [j for j in range(n_t) if j not in used_t and not (t_holes[j] & src_any).any()]
-    denom = len(feas) + len(spurious)
-    counters = 1.0 if denom == 0 else len(used_s) / denom
-
-    comps_t = ndi.label(T)[1] if T.any() else 0
-    comps_s = ndi.label(S)[1]
-    euler_s = comps_s - len(feas)
-    euler_t = comps_t - n_t
-
-    # space: the core of the glyph's own negative space (inside its convex
-    # hull, a quarter-millimetre or more from any ink: the mouth of an E, the
-    # waist of an S, a counter) must stay bare. Thread poured into it is what
-    # makes "THE" a blob, and it is what Euler cannot see in an open bay.
-    pts = cv2.findNonZero(S.astype(np.uint8))
-    space, space_px = 1.0, 0
-    if pts is not None and len(pts) >= 3:
-        hull = np.zeros(S.shape, np.uint8)
-        cv2.fillConvexPoly(hull, cv2.convexHull(pts), 1)
-        neg = (hull > 0) & ~S
-        ridge = skeletonize(neg) & (s_dist >= SPACE_MIN_HALF_MM * px_per_mm)
-        space_px = int(ridge.sum())
-        if space_px:
-            # the ridge of each bay and counter survives when thread leaves a
-            # clear circle of SPACE_KEEP_HALF_MM around it
-            kept = ridge & (t_dist >= SPACE_KEEP_HALF_MM * px_per_mm)
-            space = float(kept.sum()) / space_px
-
-    w_s, w_t = _skeleton_width(S, px_per_mm), _skeleton_width(T, px_per_mm)
-    width_ratio = w_t / max(w_s, thread_mm) if w_t else 0.0
-
-    # The headline is the WEAKEST of the three failure-mode readings, not their
-    # mean: a geometric mean of four lets a missing arm (recall 0.66) read as
-    # 0.89, and "can you read it" is lost by one failure. `legibility_space`
-    # adds the negative-space read, which also bills thick-but-correct
-    # lettering, so it is reported beside the headline and never folded in.
-    legibility = min(recall, clean, counters)
-    legibility_space = min(legibility, space)
-    return {"legibility": round(legibility, 3), "legibility_space": round(legibility_space, 3),
-            "shape": round(shape, 3),
-            "iou": round(iou, 3), "iou_ceiling": round(ceil, 3),
-            "strokes": round(recall, 3), "clean": round(clean, 3),
-            "counters": round(counters, 3), "space": round(space, 3),
-            "src_counters": n_s_all, "src_counters_openable": len(feas),
-            "sewn_counters": n_t, "sewn_counters_spurious": len(spurious),
-            "euler_src": int(euler_s), "euler_sewn": int(euler_t),
-            "euler_match": bool(euler_s == euler_t),
-            "sewn_pieces": int(comps_t),
-            "stroke_w_src_mm": round(w_s, 3), "stroke_w_sewn_mm": round(w_t, 3),
-            "width_ratio": round(width_ratio, 2),
-            "area_src_mm2": round(a_s / px_per_mm ** 2, 3),
-            "area_sewn_mm2": round(a_t / px_per_mm ** 2, 3)}
 
 
 # --- OCR, as a second reader -------------------------------------------------
@@ -655,54 +341,6 @@ class WordResult:
         return out
 
 
-def _label_glyphs(S_box: np.ndarray, box_px, px_per_mm: float, keep_px=None):
-    """Connected components of the source ink inside the word box, at least
-    MIN_GLYPH_MM2. Without `keep_px`, any that touch the box edge are dropped
-    (a neighbour cut by the box is not this word's glyph). With it -- the
-    labelled letters' boxes, (x0, y0, x1, y1) in this grid -- a component is
-    kept when its centroid is inside one of them, which is how a word box
-    that also holds an anchor and waves (Bridge) reads only its letters."""
-    x0, y0, x1, y1 = box_px
-    lab, n = ndi.label(S_box)
-    out = []
-    for i in range(1, n + 1):
-        m = lab == i
-        area = m.sum() / px_per_mm ** 2
-        if area < MIN_GLYPH_MM2:
-            continue
-        ys, xs = np.where(m)
-        if keep_px:
-            cx, cy = xs.mean(), ys.mean()
-            if not any(k[0] <= cx <= k[2] and k[1] <= cy <= k[3] for k in keep_px):
-                continue
-        elif xs.min() <= x0 + 1 or ys.min() <= y0 + 1 or xs.max() >= x1 - 2 or ys.max() >= y1 - 2:
-            continue
-        out.append((i, m, (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)))
-    out.sort(key=lambda t: t[2][0])
-    return lab, out
-
-
-def _best_shift(S: np.ndarray, T: np.ndarray, bb, R: int, px_per_mm: float):
-    """Integer translation (dx, dy) of the thread, within +-R px, that
-    maximises the correlation of the blurred glyph and the blurred thread over
-    the glyph's window. -> (dx, dy)."""
-    x0, y0, x1, y1 = bb
-    m = int(0.4 * px_per_mm)
-    H, W = S.shape
-    ys0, ys1, xs0, xs1 = max(0, y0 - m), min(H, y1 + m), max(0, x0 - m), min(W, x1 + m)
-    sig = 0.12 * px_per_mm
-    tmpl = cv2.GaussianBlur(S[ys0:ys1, xs0:xs1].astype(np.float32), (0, 0), sig)
-    pad = R
-    t_pad = np.pad(T.astype(np.float32), pad, mode="constant")
-    img = cv2.GaussianBlur(t_pad[ys0:ys1 + 2 * pad, xs0:xs1 + 2 * pad], (0, 0), sig)
-    if img.shape[0] < tmpl.shape[0] or img.shape[1] < tmpl.shape[1] or not T[ys0:ys1, xs0:xs1].any():
-        return 0, 0
-    # mean-subtracted correlation, so thick thread is not favoured over right thread
-    res = cv2.matchTemplate(img, tmpl, cv2.TM_CCOEFF_NORMED)
-    j, i = np.unravel_index(int(np.nanargmax(res)), res.shape)
-    return int(i) - pad, int(j) - pad
-
-
 def read_word(name: str, rgb: np.ndarray, alpha: np.ndarray, box_frac, design: dict,
               thread_mm: float | None = None, use_ocr: bool = True,
               reg: Registration | None = None, thread_cache: dict | None = None,
@@ -747,46 +385,20 @@ def read_word(name: str, rgb: np.ndarray, alpha: np.ndarray, box_frac, design: d
         keep_px = []
         for (kx0, ky0, kx1, ky1) in keep_frac:
             keep_px.append(reg.apply_box(kx0 * w, ky0 * h, kx1 * w, ky1 * h))
-    lab, glyphs = _label_glyphs(S_all, gbox, P, keep_px)
     res = WordResult(name=name, ground=[int(v) for v in G], pull_mm=round(float(pull_mm), 3),
                      registration={"scale_mm_per_src_px": round(reg.mm_per_src_px, 6),
                                    "ncc": round(reg.score, 3)})
     dbg = {"S": S_all, "T": T_all, "box": gbox, "glyphs": []}
-    if not glyphs:
-        return res, dbg
-    # zones: each pixel belongs to its nearest source glyph (within a margin)
-    marker = np.zeros((H, W), np.int32)
-    for k, (_i, m, _bb) in enumerate(glyphs, 1):
-        marker[m] = k
-    dist, (iy, ix) = ndi.distance_transform_edt(marker == 0, return_indices=True)
-    owner = marker[iy, ix]
-    R = int(SHIFT_MM * P)
-    zone_r = (COMP_TOL_MM + 0.5) * P         # a glyph's thread lives within comp + half a mm of it
-    claimed = np.zeros((H, W), bool)
     ocr_ok = use_ocr and tesseract_available()
-    if not use_ocr:
-        res.ocr = "OCR OFF (--no-ocr)"
     k_ok = n_read = 0
-    ocr_rows = []
-    for k, (_i, m, bb) in enumerate(glyphs, 1):
-        dxs, dys = _best_shift(m, T_all, bb, R, P)
-        T_sh = np.roll(np.roll(T_all, -dys, axis=0), -dxs, axis=1)
-        # the zone is the glyph's own surroundings AND its counters, however
-        # wide: thread poured into the middle of an "O" must be read, not cut
-        zone = (owner == k) & ((dist <= zone_r) | ndi.binary_fill_holes(m))
-        Tg = T_sh & zone
-        claimed |= np.roll(np.roll(Tg, dys, axis=0), dxs, axis=1)
-        pad = int(1.0 * P)
-        x0, y0, x1, y1 = bb
-        win = (slice(max(0, y0 - pad), min(H, y1 + pad)), slice(max(0, x0 - pad), min(W, x1 + pad)))
-        sc = glyph_scores(m[win], Tg[win], thread_mm, P)
-        sc["offset_mm"] = round(math.hypot(dxs, dys) / P, 2)
-        sc["bbox_mm"] = [round(v / P, 2) for v in bb]
+
+    def ocr_glyph(sc: dict, S_win: np.ndarray, T_win: np.ndarray) -> None:
+        nonlocal k_ok, n_read
         if ocr_ok and sc["area_src_mm2"] > OCR_MAX_GLYPH_MM2:
             sc["ocr_skipped"] = "touching letters: not a single character"
         elif ocr_ok:
-            st, sconf = _ocr_char(m[win])
-            tt, tconf = _ocr_char(Tg[win])
+            st, sconf = _ocr_char(S_win)
+            tt, tconf = _ocr_char(T_win)
             readable = bool(st) and sconf >= OCR_CONF_MIN
             sc["ocr_src"], sc["ocr_src_conf"] = st, round(max(sconf, 0), 1)
             sc["ocr_sewn"], sc["ocr_sewn_conf"] = tt, round(max(tconf, 0), 1)
@@ -795,8 +407,14 @@ def read_word(name: str, rgb: np.ndarray, alpha: np.ndarray, box_frac, design: d
             if readable:
                 n_read += 1
                 k_ok += int(tt == st)
-        res.glyphs.append(sc)
-        dbg["glyphs"].append({"S": m[win], "T": Tg[win], "win": win, "score": sc})
+
+    rows, dbg["glyphs"], claimed = read_glyphs(S_all, T_all, gbox, keep_px, thread_mm, P, ocr_glyph)
+    if not rows:
+        return res, dbg
+    if not use_ocr:
+        res.ocr = "OCR OFF (--no-ocr)"
+    res.glyphs.extend(rows)
+    zone_r = (COMP_TOL_MM + 0.5) * P         # a glyph's thread lives within comp + half a mm of it
     # thread in the word box that no glyph zone claims: strays
     unclaimed = T_all & box_mask & ~claimed
     unclaimed &= ndi.distance_transform_edt(~S_all) > zone_r
@@ -1271,10 +889,10 @@ def main(argv=None) -> int:
         ap.error("--pull-mm takes a number of mm or 'auto'")
     if not (a.pull_mm == "auto" or 0.0 <= a.pull_mm <= 2.0):
         ap.error("--pull-mm must be between 0 and 2 mm (a cap pulls 0.4)")
-    if a.pull_lines:
-        globals()["PULL_LINES"] = a.pull_lines
+    if a.pull_lines:                      # the read lives in the package: set it there
+        _core.PULL_LINES = a.pull_lines
     if a.space_keep_mm is not None:
-        globals()["SPACE_KEEP_HALF_MM"] = a.space_keep_mm
+        _core.SPACE_KEEP_HALF_MM = a.space_keep_mm
     if a.list:
         print(json.dumps({"cases": {k: case_boxes(k) for k in CASES}, "runs": RUNS}, indent=1))
         return 0
