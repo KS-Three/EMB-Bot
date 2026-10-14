@@ -32,6 +32,7 @@ from digitizer_core import small_text  # noqa: E402
 from digitizer_core.regions import Region  # noqa: E402
 from digitizer_core.small_text import enlarge_small_text  # noqa: E402
 from digitizer_core.stage1_prep import Prep  # noqa: E402
+from tests.conftest import own_thread_only
 
 PPM = 24.0
 W, H = 960, 480                    # 40 x 20 mm
@@ -180,8 +181,8 @@ def test_the_flag_runs_end_to_end_and_none_never_calls_the_pass(monkeypatch):
     fixture = Path(__file__).resolve().parent.parent / "testdata" / "logo_whitebg.png"
     calls = []
     real = small_text.enlarge_small_text
-    monkeypatch.setattr(small_text, "enlarge_small_text",
-                        lambda *a, **k: (calls.append(k.get("cap_mm")), real(*a, **k))[1])
+    monkeypatch.setattr(small_text, "enlarge_small_text", own_thread_only(
+        lambda *a, **k: (calls.append(k.get("cap_mm")), real(*a, **k))[1], real))
     _, plan_off = digitize(fixture, PipelineConfig(target_width_mm=80.0))
     assert calls == [], "None is byte-identical because nothing calls the pass"
     _, plan_on = digitize(fixture, PipelineConfig(target_width_mm=80.0, small_text_cap_mm=3.7))

@@ -22,6 +22,7 @@ from shapely.geometry import Polygon
 from digitizer_core import PipelineConfig, pipeline
 from digitizer_core.pipeline import build_generation
 from digitizer_core.subpixel import _fit_corner_runs, _inherit_offsets, drop_folds
+from tests.conftest import own_thread_only
 
 BECKER = Path(__file__).resolve().parents[1] / "testdata" / "becker_marine_logo.png"
 
@@ -58,7 +59,7 @@ def _becker(monkeypatch, **kw):
         bare["polys"] = [r.polygon for r in out[0]]
         return out
 
-    monkeypatch.setattr(pipeline, "vectorize", wrap)
+    monkeypatch.setattr(pipeline, "vectorize", own_thread_only(wrap, orig))
     gen = build_generation(str(BECKER), PipelineConfig(target_width_mm=80.0, **kw))
     return gen.p, bare["polys"], [r.polygon for r in gen.regions]
 

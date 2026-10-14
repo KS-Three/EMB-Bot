@@ -7,6 +7,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.eye_pairs import refarm  # noqa: E402
+from tests.conftest import own_thread_only
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -269,7 +270,7 @@ def test_every_child_process_is_decoded_the_same_lenient_way(tiny_repo, tmp_path
         seen.append((cmd[0] if cmd[0] == "git" else "python", kw))
         return real(cmd, **kw)
 
-    monkeypatch.setattr(refarm.subprocess, "run", spy)
+    monkeypatch.setattr(refarm.subprocess, "run", own_thread_only(spy, real))
     wt = refarm.add_worktree(repo, old, tmp_path / "wt")
     refarm.requirements_differ(repo, old)
     refarm.remove_worktree(repo, wt)

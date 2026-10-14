@@ -10,6 +10,7 @@ import pytest
 
 from digitizer_core import PipelineConfig, machine, pipeline
 from digitizer_core.stitches import StitchBlock, StitchPlan, StitchRun
+from tests.conftest import own_thread_only
 
 ROW = machine.FILL_ROW_MM
 
@@ -50,8 +51,10 @@ def stub(monkeypatch):
         calls.append(cfg.split_tonal_regions)
         return _Res("photo_scene", "whole" if cfg.split_tonal_regions is False else "split")
 
-    monkeypatch.setattr(pipeline, "run_stages", run_stages)
-    monkeypatch.setattr(pipeline, "plan_stitches", lambda r, cfg=None: _fill(layers[r.tag]))
+    monkeypatch.setattr(pipeline, "run_stages",
+                        own_thread_only(run_stages, pipeline.run_stages))
+    monkeypatch.setattr(pipeline, "plan_stitches", own_thread_only(
+        lambda r, cfg=None: _fill(layers[r.tag]), pipeline.plan_stitches))
     return calls, layers
 
 

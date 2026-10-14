@@ -29,6 +29,7 @@ from digitizer_core.columns import (ICON_GUARD_MIN_NODES, INK_LINK_TOUCH_MM,
 from digitizer_core.pipeline import plan_stitches, run_stages
 from digitizer_core.regions import Region
 from tests.conftest import TESTDATA
+from tests.conftest import own_thread_only
 
 
 def _grid_image():
@@ -290,7 +291,8 @@ def test_ink_link_off_never_reaches_the_new_code(monkeypatch):
 
     def boom(*_a, **_k):
         raise AssertionError("tag_ink_strays reached with the flag OFF")
-    monkeypatch.setattr(columns, "tag_ink_strays", boom)
+    monkeypatch.setattr(columns, "tag_ink_strays",
+                        own_thread_only(boom, columns.tag_ink_strays))
     off, off_keys = md5(PipelineConfig(**kw, lettering_columns_ink_link=False))
     assert off_keys == 0 and on_keys == 1
     assert on != off
@@ -392,7 +394,8 @@ def test_icon_guard_off_never_reaches_the_predicate(monkeypatch):
 
     def boom(*_a, **_k):
         raise AssertionError("is_drawing_fragment reached with the flag OFF")
-    monkeypatch.setattr(columns, "is_drawing_fragment", boom)
+    monkeypatch.setattr(columns, "is_drawing_fragment",
+                        own_thread_only(boom, columns.is_drawing_fragment))
     cfg = PipelineConfig(**base, **{k: True for k in GUARDS_ON}, **{ICON: False})
     assert sum(is_lettering(r, cfg) for r in regions) > 0
     # ... and ON (the default) does reach it: the OFF test above is not vacuous.

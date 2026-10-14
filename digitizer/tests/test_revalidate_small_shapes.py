@@ -39,6 +39,7 @@ from digitizer_core.pipeline import plan_stitches
 from digitizer_core.warnings_codes import THREAD_RESNAPPED_AFTER_DRIFT
 
 from .conftest import BUNDLE_ON, PRE_FLIP, TESTDATA
+from tests.conftest import own_thread_only
 
 # The fixture the defect was traced on. Its worst thread finding is a 177-px
 # shape — inside the band, and the largest single dE00 the corpus offers.
@@ -113,7 +114,7 @@ def _case(fixture: str, small: bool) -> _Case:
         return real(regions, p, cfg, **kw)
 
     cfg = _cfg(**{**PRE_FLIP, "revalidate_small_shapes": small})   # the flag alone, over the pre-flip engine
-    pl.revalidate_threads = probe
+    pl.revalidate_threads = own_thread_only(probe, real)
     try:
         result = run_stages(TESTDATA / fixture, cfg)
     finally:

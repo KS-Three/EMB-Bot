@@ -39,6 +39,7 @@ bridge_bar 240 -> 156. What the flag buys on gaulke is therefore the value of
 DECLINING a wrong re-snap, not of making a better one, which is what the
 tests below pin.
 """
+import threading
 from functools import lru_cache
 
 import cv2
@@ -96,13 +97,18 @@ class _CountingCv2:
 
     def __init__(self, real):
         self._real = real
+        self._me = threading.get_ident()
         self.erodes = 0
 
     def __getattr__(self, name):          # fillPoly, connectedComponents, ...
         return getattr(self._real, name)
 
     def erode(self, *a, **kw):
-        self.erodes += 1
+        # This test's own thread only: the swap is module-global, and the
+        # service's job-pool thread can be eroding for another test's job
+        # (see `conftest.own_thread_only`).
+        if threading.get_ident() == self._me:
+            self.erodes += 1
         return self._real.erode(*a, **kw)
 
 

@@ -22,6 +22,7 @@ from digitizer_core.stage6_blend import SourcePixels
 from digitizer_core.stage6_hairline_lines import extract_strands, strand_blocks
 from tests.test_hairline_lines import _md5
 from tests.test_thread_profile import GOLDEN_MD5, TESTDATA, _coords_md5
+from tests.conftest import own_thread_only
 
 PX_PER_MM = 8.0
 SIZE_PX = 320
@@ -165,7 +166,7 @@ def test_the_block_weight_moves_the_ridge_widths(monkeypatch):
     def spy(sp, cfg, **kw):
         seen.append(kw)
         return real(sp, cfg, **kw)
-    monkeypatch.setattr(L, "extract_strands", spy)
+    monkeypatch.setattr(L, "extract_strands", own_thread_only(spy, real))
     sp = _sp(_strands(_ground()))
     L.strand_blocks(sp, PipelineConfig(**ON, hairline_lines_strand_test=True), entry=None,
                     trim_at_mm=machine.TRIM_AT_MM, allowed_threads=[0], block_wt={0: 60})

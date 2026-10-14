@@ -24,6 +24,7 @@ from shapely.geometry import Polygon
 
 from digitizer_core import PipelineConfig
 from digitizer_core import stage6_satin as s6
+from tests.conftest import own_thread_only
 
 
 def test_the_flag_is_off_by_default():
@@ -122,7 +123,7 @@ def test_the_flag_reaches_the_emitter():
             gen = build_generation(str(TESTDATA / "photo" / "enthusiast_logo.png"), cfg)
         result = finish_generation(gen.fork(), cfg)
         calls.clear()
-        s6._tip_lands_on_corner = spy
+        s6._tip_lands_on_corner = own_thread_only(spy, orig)
         try:
             plan = plan_stitches(result, cfg)
         finally:
