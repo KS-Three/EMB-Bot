@@ -228,6 +228,22 @@ class PipelineConfig:
     # `shape_overrides[sid].thread_wt`) instead of `thread_wt`. Candidate
     # geometry, unsewn (gate 1). Off, byte-identical.
     hairline_lines_strand_test: bool = False
+    # Hairline line route: chain the strands (2026-10-13, default OFF; read
+    # only when the line route runs). The route sews each strand as its own
+    # run and every hop between strands is a jump, a trim past `trim_at_mm`:
+    # +45 trims on owl_kent (#882), and a trim adds roughness
+    # (docs/fine-detail-hair-research-2026-10-12.md section 2). On, the
+    # strands are taken nearest end first as before, but a hop of at most
+    # `stage6_hairline_lines.HOP_MAX_MM` (8 mm, streamline's own cap) whose
+    # whole length lies over thread the fills already laid
+    # (`stage7_sequence._hop_cover`) is sewn needle-down as travel stitches
+    # instead of cut; any other hop is trimmed as before. Not `chain_links`
+    # (permanently OFF by ruling). The hop lies ON TOP of the fill, since
+    # the strands are the last layer: it is thread over thread, not over
+    # bare cloth, but a dark hop over a light fill can be seen. The 8 mm is
+    # a CANDIDATE (ROADMAP gate 3: exposed thread is reported, not settled).
+    # Off, byte-identical.
+    hairline_lines_chain: bool = False
     # Hairline coverage guard (2026-10-13, default OFF; needs `hairline` on).
     # A shape whose hairline runs would leave more than
     # `stage6_hairline.COVERAGE_GUARD_MM2` of its own ink bare (a 0.4 mm
