@@ -226,6 +226,7 @@
 "tests/test_skeleton_tracer.py": 0.01,
 "tests/test_slab_serifs.py": 0.48,
 "tests/test_small_lettering.py": 0.98,
+"tests/test_small_lettering_skeleton.py": 70.0,
 "tests/test_snap_region_edges.py": 17.43,
 "tests/test_speckle_override.py": 0.83,
 "tests/test_split_tonal_default.py": 0.01,

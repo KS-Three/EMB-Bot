@@ -211,22 +211,29 @@ def corpus_one(case: str, arm: str, out: Path) -> dict:
     """Digitize one corpus case at 80 mm (left chest) under one arm; -> its
     stitch-stream md5 and what the tier was offered."""
     from digitizer_core import PipelineConfig
+    from digitizer_core.adapter import plan_to_design
     from digitizer_core.pipeline import digitize
     t = time.time()
     log: dict = {}
     cfg = PipelineConfig(target_width_mm=CORPUS_WIDTH_MM, garment_id="left_chest",
                          **CORPUS_ARMS[arm])
     with spy_skeleton(log):
-        _result, plan = digitize(ROOT / "testdata" / CORPUS[case], cfg)
+        result, plan = digitize(ROOT / "testdata" / CORPUS[case], cfg)
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
+    by = {r.shape_id: r for r in result.regions}
+    bounds = [by[s].polygon.bounds for s in log if s in by]
     rec = {"case": case, "arm": arm, "md5": hashlib.md5(json.dumps(coords).encode()).hexdigest(),
            "stitches": plan.stats.stitch_count, "trims": plan.stats.trims,
            "offered": len(log), "skeleton_sewn": sum(1 for r in log.values() if not r["empty"]),
            "declined": sorted(str(r["declined"]) for r in log.values() if r["empty"]),
+           "offered_box_mm": ([round(min(b[0] for b in bounds), 2), round(min(b[1] for b in bounds), 2),
+                               round(max(b[2] for b in bounds), 2), round(max(b[3] for b in bounds), 2)]
+                              if bounds else None),
            "secs": round(time.time() - t, 1)}
     out.mkdir(parents=True, exist_ok=True)
     (out / f"corpus_{case}_{arm}.json").write_text(json.dumps(rec, indent=1))
+    (out / f"corpus_{case}_{arm}_design.json").write_text(json.dumps(plan_to_design(plan, name=case)))
     print(json.dumps(rec), flush=True)
     return rec
 
@@ -246,6 +253,35 @@ def corpus_table(out: Path) -> str:
                      f"{recs.get('on', {}).get('skeleton_sewn', '-')} / "
                      f"{recs.get('on073', {}).get('skeleton_sewn', '-')} | {'yes' if same else 'NO'} |")
     return "\n".join(lines)
+
+
+def corpus_sheet(case: str, out: Path, renders: Path, ppm: int = 60) -> Path | None:
+    """A corpus case the tier changed: every arm over the box of the glyphs it
+    was offered, one px/mm, stacked."""
+    import cv2
+    import numpy as np
+    from tools import fremont_triage as ft
+    recs = {a: json.loads((out / f"corpus_{case}_{a}.json").read_text())
+            for a in CORPUS_ARMS if (out / f"corpus_{case}_{a}_design.json").exists()}
+    box = next((r["offered_box_mm"] for r in recs.values() if r.get("offered_box_mm")), None)
+    if box is None:
+        return None
+    rows = []
+    for a, rec in recs.items():
+        design = json.loads((out / f"corpus_{case}_{a}_design.json").read_text())
+        img, to_px = ft._render(design, ppm)
+        crop = ft._crop(img, to_px, box, margin_mm=0.8)
+        rows.append(ft._label(crop, f"{case} 80 mm, {a} ({CORPUS_ARMS[a] or 'flag off'}) | "
+                                    f"st {rec['stitches']} tr {rec['trims']} | offered {rec['offered']}, "
+                                    f"skeleton {rec['skeleton_sewn']}"))
+    w = max(r.shape[1] for r in rows)
+    sheet = np.vstack([np.pad(r, ((0, 8), (0, w - r.shape[1]), (0, 0)), constant_values=255) for r in rows])
+    sheet = ft._label(sheet, f"{case} at 80 mm (left chest): every row {ppm} px/mm, thread at its laid width",
+                      width=w)
+    renders.mkdir(parents=True, exist_ok=True)
+    path = renders / f"corpus_{case}.png"
+    cv2.imwrite(str(path), sheet)
+    return path
 
 
 # --- render sheets -----------------------------------------------------------
@@ -324,6 +360,7 @@ def main(argv=None) -> int:
     ap.add_argument("--corpus", choices=list(CORPUS))
     ap.add_argument("--corpus-arm", choices=list(CORPUS_ARMS), default="on")
     ap.add_argument("--corpus-table", action="store_true")
+    ap.add_argument("--corpus-sheet", choices=list(CORPUS))
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--renders", type=Path)
     a = ap.parse_args(argv)
@@ -345,6 +382,8 @@ def main(argv=None) -> int:
         corpus_one(a.corpus, a.corpus_arm, a.out)
     if a.corpus_table:
         print(corpus_table(a.out))
+    if a.corpus_sheet:
+        print(corpus_sheet(a.corpus_sheet, a.out, a.renders or a.out / "renders"))
     if a.sheets:
         for pth in sheets(a.out, a.renders or a.out / "renders"):
             print(pth)

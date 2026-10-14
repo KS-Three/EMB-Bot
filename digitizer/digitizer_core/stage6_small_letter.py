@@ -28,6 +28,8 @@ How a glyph is sewn:
    instead of through the blob where it was.
 2. **Skeleton.** `stage6_hairline.measure` -- the hairline tier's medial axis,
    its spur and crossing-bridge pruning (`_graph`) -- reused, not copied.
+   A free end's terminal hook shorter than one stitch (a slab serif at 2 mm
+   caps) is trimmed (`trim_hooks`): the needle cannot turn into it.
 3. **One route.** Every skeleton edge once, from the free tip nearest the
    needle, straightest continuation at a node (the hairline walk's rule); a
    dead-end arm is taken out and back before the strand it hangs off, and

@@ -144,6 +144,19 @@ def test_a_counter_too_small_to_go_round_at_the_floor_is_declined():
     assert runs == [] and rep["declined"] == "empty"
 
 
+def test_a_serif_hook_shorter_than_one_stitch_is_trimmed_and_a_long_one_kept():
+    from digitizer_core.stage6_small_letter import trim_hooks
+    arm = [(x / 100.0, 0.0) for x in range(0, 151)]           # 1.5 mm arm
+    hook = [(1.5, y / 100.0) for y in range(1, 31)]             # 0.3 mm serif down
+    e = {"pts": arm + hook, "a": 0, "b": -1, "closed": False, "free_a": False, "free_b": True}
+    (out,), cut = trim_hooks([e], machine.BEAN_STITCH_MM)
+    assert cut == pytest.approx(0.3, abs=0.02)
+    assert math.dist(out["pts"][-1], (1.5, 0.0)) < 0.02
+    long_leg = [(1.5, y / 100.0) for y in range(1, 101)]        # a 1.0 mm leg: an L, not a serif
+    (kept,), cut = trim_hooks([{**e, "pts": arm + long_leg}], machine.BEAN_STITCH_MM)
+    assert cut == 0.0 and kept["pts"][-1] == (1.5, 1.0)
+
+
 def test_glyph_polygon_punches_recorded_counters_back():
     blob = _glyph([(0, 0), (0, 2)], w=1.0)
     counter = [(-0.1, 0.8), (0.1, 0.8), (0.1, 1.2), (-0.1, 1.2)]
