@@ -182,7 +182,9 @@ def markdown(rows: dict) -> str:
     ok = {k: r for k, r in rows.items() if "error" not in r}
     lines = [
         f"Gate: area >= {fur_regions.FUR_MIN_AREA_MM2:g} mm2, >= {fur_regions.FUR_MIN_STRANDS} strands, "
-        "strand mm per mm2 at the row's own `min density`. 80 mm, 40 wt.", "",
+        "strand mm per mm2 at the row's own `min density`, mean width >= "
+        f"{fur_regions.FUR_MIN_FIELD_WIDTH_MM:g} mm (the shipped gate; `at_0.25/` ran without the "
+        "width test). 80 mm, 40 wt.", "",
         "| fixture | route | class | gate ran | regions read | min density | fur | densest region >= area floor "
         "(id, mm/mm2, strands, mm2) | OFF vs ON |",
         "|---|---|---|---|---|---|---|---|---|"]
@@ -191,7 +193,8 @@ def markdown(rows: dict) -> str:
         dd = "-" if d is None else f"{d['id']} {d['density']:.3f} / {d['strands']} / {d['area_mm2']:.0f}"
         lines.append(f"| {r['fixture']} | {r['route']} | {r['class']} | {'yes' if r['gate_ran'] else 'no'} "
                      f"| {r['regions_read']} | {r.get('min_density', 0.25):g} | {len(r['fur_ids'])} | {dd} | "
-                     f"{'identical' if r['identical'] else '**moved**'} |")
+                     f"{'identical' if r['identical'] else '**moved**'}"
+                     f"{' (carried: ' + r['carried'] + ')' if r.get('carried') else ''} |")
     moved = {k: r for k, r in ok.items() if not r["identical"]}
     if moved:
         keys = ["stitches", "trims", "color_changes", "thread_m", "thread_bare_mm", "flight_bare_mm",
