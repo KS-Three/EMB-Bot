@@ -1,7 +1,8 @@
 """Why `cfg.hairline` raises "thread over bare fabric" (2026-10-13): it does
 not. A MEASURED NEGATIVE, pinned.
 
-PR #888 saw golden_tee's `tests/test_chaining.py::_thread_bare_mm` go from 19.9
+PR #888 saw golden_tee's `tests/test_chaining.py::_thread_bare_mm` (as it shipped,
+now `_thread_bare_mm_untrimmed`) go from 19.9
 to 75.2 mm with `cfg.hairline` ON. That instrument walks previous-run-end ->
 TRAVEL run -> next-run-start for every TRAVEL run and never reads `jump` /
 `trim`; a TRAVEL run that follows a TRIMMED jump (the walk-in to a column) is a
@@ -22,7 +23,7 @@ import pytest
 from digitizer_core import PipelineConfig, stitches
 from digitizer_core.pipeline import plan_stitches, run_stages
 from digitizer_core.stitches import StitchRun
-from tests.test_chaining import _thread_bare_mm
+from tests.test_chaining import _thread_bare_mm_untrimmed
 from tests.test_thread_profile import TESTDATA
 from tools import hairline_travel as ht
 
@@ -52,7 +53,7 @@ def _flight_plan(trim: bool):
 
 def test_a_trimmed_jump_is_a_flight_and_not_thread():
     plan = _flight_plan(trim=True)
-    _links, _exposed, legacy_mm, _w = _thread_bare_mm(plan)
+    _links, _exposed, legacy_mm, _w = _thread_bare_mm_untrimmed(plan)
     row = ht.measure_plan(plan, with_legacy=False)
     assert legacy_mm > 20.0, "the shipped instrument counts the flight"
     assert row["thread_bare_mm"] == 0.0
@@ -65,7 +66,7 @@ def test_an_untrimmed_jump_is_a_dragged_float_and_stays_counted():
     """The needle lifts but the thread is NOT cut: it crosses the cloth."""
     plan = _flight_plan(trim=False)
     row = ht.measure_plan(plan, with_legacy=False)
-    _links, _exposed, legacy_mm, _w = _thread_bare_mm(plan)
+    _links, _exposed, legacy_mm, _w = _thread_bare_mm_untrimmed(plan)
     assert row["flight_bare_mm"] == 0.0
     assert row["thread_bare_mm"] == pytest.approx(legacy_mm, rel=0.05)
     assert row["thread_by_leg"]["in"] > 20.0
@@ -77,7 +78,7 @@ def test_a_chained_link_over_bare_cloth_is_counted_like_the_shipped_instrument()
     b = _row(20, 5, shape="B")
     plan = _plan(a, link, b)
     row = ht.measure_plan(plan, with_legacy=False)
-    _l, _e, legacy_mm, _w = _thread_bare_mm(plan)
+    _l, _e, legacy_mm, _w = _thread_bare_mm_untrimmed(plan)
     assert row["flight_bare_mm"] == 0.0 and row["thread_bare_mm"] > 3.0
     assert row["thread_bare_mm"] == pytest.approx(legacy_mm, rel=0.1)
 
@@ -117,11 +118,17 @@ def test_hairline_adds_no_thread_over_bare_fabric_on_a_real_logo(enthusiast):
 
 def test_the_corrected_number_and_the_shipped_one_agree_without_flights(enthusiast):
     """enthusiast_logo has flights too, so the shipped number is the corrected
-    thread plus the flight, to sampling noise."""
+    thread plus the flight, to sampling noise.
+
+    The noise is one-sided since 2026-10-14: the shipped instrument sampled n + 1
+    points that each stood for L / n, so it read every bare stretch ~0.1 mm long;
+    `bare_profile` now samples cell midpoints. Measured on this fixture the
+    shipped figure is 0.45 mm above the sum (5.84 vs 5.39), hence the 0.5 mm
+    floor on the tolerance."""
     for plan in enthusiast.values():
         row = ht.measure_plan(plan, with_legacy=True)
         assert row["legacy"]["mm"] == pytest.approx(
-            row["thread_bare_mm"] + row["flight_bare_mm"], rel=0.05)
+            row["thread_bare_mm"] + row["flight_bare_mm"], rel=0.05, abs=0.5)
 
 
 def test_recorded_golden_tee_the_rise_is_flights_and_trims():

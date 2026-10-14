@@ -26,7 +26,8 @@ Per arm: stitches, trims, preflight's `ARTWORK_UNCOVERED` (total mm2, shape ids)
 the bare-fabric total (`hairline_renders.bare_cells`: artwork cells with no
 thread, the instrument #872 reported), and `tests/test_chaining.py`'s
 `_thread_bare_mm` (thread TRAVELLING over bare fabric: links, exposed links, mm,
-worst clearance). Those are two different instruments; the second is about
+worst clearance; since 2026-10-14 a trimmed-jump flight is not billed as thread).
+Those are two different instruments; the second is about
 travel links, the first about the artwork itself, and both are recorded.
 
 Per shape the gate admits (drop guard off, so every shape the width gate and the
