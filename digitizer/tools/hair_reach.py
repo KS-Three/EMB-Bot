@@ -62,7 +62,11 @@ from digitizer_core.pipeline import plan_stitches, run_stages  # noqa: E402
 from tools.hairline_renders import bare_cells, bare_new_mm2  # noqa: E402
 
 PHOTO = ROOT / "testdata" / "photo"
-IMAGES = {"owl_kent": PHOTO / "owl_kent.jpg", "photo_owl_pale": PHOTO / "photo_owl_pale.png"}
+SYN = ROOT / "testdata" / "synthetic"
+IMAGES = {"owl_kent": PHOTO / "owl_kent.jpg", "photo_owl_pale": PHOTO / "photo_owl_pale.png",
+          "hair_strands": SYN / "hair_strands.png", "hair_fine": SYN / "hair_fine.png"}
+DRAWN = ("hair_strands", "hair_fine")        # 80 mm, 40 drawn strands each (the A/B bar)
+DRAWN_WIDTH = 80.0
 # The Studio's own settings (#876's `studio` route): the two photographic
 # signals ON, no forced class. Stage 0 picks the lane.
 STUDIO = {"detect_photographic": True, "faces_route_flat": True}
@@ -112,7 +116,7 @@ def cfg_for(width: float = 127.0, grid: float = 8.0, arm: str = "off",
 
 
 def zone_of(image: str, fx: float, fy: float) -> str:
-    for name, (x0, y0, x1, y1) in ZONES[image].items():
+    for name, (x0, y0, x1, y1) in ZONES.get(image, {}).items():
         if x0 <= fx < x1 and y0 <= fy < y1:
             return name
     return "elsewhere"
@@ -122,7 +126,7 @@ def zone_counts(image: str, strands, sp) -> dict:
     """strands (dicts with `pts` in mm, `length_mm`) -> {zone: {n, mm}} by
     each strand's centroid as a fraction of the source raster."""
     h, w = sp.rgb.shape[:2]
-    out = {z: {"n": 0, "mm": 0.0} for z in list(ZONES[image]) + ["elsewhere"]}
+    out = {z: {"n": 0, "mm": 0.0} for z in list(ZONES.get(image, {})) + ["elsewhere"]}
     for s in strands:
         q = np.array([sp.to_px(x, y) for x, y in s["pts"]]).mean(axis=0)
         z = zone_of(image, q[0] / w, q[1] / h)
@@ -340,8 +344,9 @@ def strand_map(image: str, width: float, grid: float, out: Path, k: int = 2) -> 
         cv2.polylines(big, [np.round(q).astype(np.int32)], False,
                       (230, 160, 0) if s["polarity"] == "light" else (0, 0, 230), 2, cv2.LINE_AA)
     h, w = big.shape[:2]
-    x0, y0, x1, y1 = ZONES[image]["bristles"]
-    cv2.rectangle(big, (int(x0 * w), int(y0 * h)), (int(x1 * w), int(y1 * h)), (0, 150, 0), 2)
+    if "bristles" in ZONES.get(image, {}):
+        x0, y0, x1, y1 = ZONES[image]["bristles"]
+        cv2.rectangle(big, (int(x0 * w), int(y0 * h)), (int(x1 * w), int(y1 * h)), (0, 150, 0), 2)
     out.mkdir(parents=True, exist_ok=True)
     write_jpeg(out / f"{stem(image, width, grid)}_strands.jpg", big)
 
@@ -364,6 +369,8 @@ def cmd_render(image: str, width: float, grid: float, out: Path) -> int:
     16 px/mm, from the saved designs (`run` first)."""
     out.mkdir(parents=True, exist_ok=True)
     strand_map(image, width, grid, out)
+    if "bristles" not in ZONES.get(image, {}):
+        return 0
     cfg = cfg_for(width, grid, "off")
     with lines_on():
         result = run_stages(IMAGES[image], cfg)
@@ -393,6 +400,19 @@ def cmd_render(image: str, width: float, grid: float, out: Path) -> int:
     return 0
 
 
+def cmd_drawn() -> int:
+    """The A/B bar's two baselines: the drawn hair fixtures (80 mm, 40 wt,
+    40 drawn strands each) with the region tier and with the line route
+    forced onto `gradient`. On these the region tier already sews every
+    strand as a shape (#876: 184 / 321 run branches), so a gradient-route
+    flag must not lose any of it. OFF first, for bare fabric."""
+    for image in DRAWN:
+        for arm in ("off", "region", "lines", "lines_st"):
+            r = run_arm(image, DRAWN_WIDTH, 8.0, arm)
+            print(image, arm, json.dumps(r), flush=True)
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -407,6 +427,7 @@ def main(argv=None) -> int:
             p.add_argument("--arm", choices=list(ARMS), required=True)
         if name == "render":
             p.add_argument("--out", type=Path, default=OUT)
+    sub.add_parser("drawn")
     t = sub.add_parser("table")
     t.add_argument("--out", type=Path, default=OUT)
     args = ap.parse_args(argv)
@@ -417,6 +438,8 @@ def main(argv=None) -> int:
         print(json.dumps(r), flush=True)
     elif args.cmd == "run":
         print(json.dumps(run_arm(args.image, args.width, args.grid, args.arm)), flush=True)
+    elif args.cmd == "drawn":
+        return cmd_drawn()
     elif args.cmd == "render":
         return cmd_render(args.image, args.width, args.grid, args.out)
     else:
