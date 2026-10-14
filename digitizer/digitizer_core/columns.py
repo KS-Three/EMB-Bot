@@ -439,7 +439,8 @@ def _inset_rails(stations, inset_mm: float) -> tuple[list, list]:
     return a_pts, b_pts
 
 
-def _reach_fan_faces(stations, a_pts, b_pts, reach_mm: float) -> tuple[list, list]:
+def _reach_fan_faces(stations, a_pts, b_pts, reach_mm: float,
+                     outline: Polygon | None = None) -> tuple[list, list]:
     """The slant cross of a fanned end (`outline_cut._fan_ends`: the last
     cross lies ON the slant, its pivot shared with the cross before it)
     moved `reach_mm` outward, square to itself -- away from the cross
@@ -450,13 +451,21 @@ def _reach_fan_faces(stations, a_pts, b_pts, reach_mm: float) -> tuple[list, lis
     read as a strip of unsewn ink (2.65 mm2 against shipped's 1.3 on that
     letter, 2026-10-11, `docs/renders/columns-slant-fan-2026-10-11/`).
     The face gets the rails' own net reach, no constant of its own. Ends
-    that are not fanned are returned as they are."""
+    that are not fanned are returned as they are.
+    `outline` (`cfg.lettering_columns_square_ends` only): a fan face that
+    does not lie on that polygon's boundary is a CUT, the far side of which
+    is the next column's (the M's V, where both diagonals fan to one cut);
+    it gets no reach."""
     a_pts, b_pts = list(a_pts), list(b_pts)
     if len(stations) < 2 or abs(reach_mm) < 1e-12:
         return a_pts, b_pts
     for i, j in ((len(stations) - 1, len(stations) - 2), (0, 1)):
         if not ({tuple(p) for p in stations[i]} & {tuple(p) for p in stations[j]}):
             continue                                    # no shared pivot: not a fan end
+        if outline is not None:
+            fa, fb = stations[i]
+            if outline.boundary.distance(Point((fa[0] + fb[0]) / 2, (fa[1] + fb[1]) / 2)) > _FACE_EPS_MM:
+                continue                                # the fan lies on a cut, not on the letter's edge
         a, b = a_pts[i], b_pts[i]
         L = math.dist(a, b)
         if L < 1e-9:
@@ -469,6 +478,156 @@ def _reach_fan_faces(stations, a_pts, b_pts, reach_mm: float) -> tuple[list, lis
         a_pts[i] = (a[0] + nx * reach_mm, a[1] + ny * reach_mm)
         b_pts[i] = (b[0] + nx * reach_mm, b[1] + ny * reach_mm)
     return a_pts, b_pts
+
+
+# `cfg.lettering_columns_square_ends` (2026-10-13, built OFF). An outline
+# edge that runs ACROSS a column -- more than this far off the column's own
+# direction at that station -- is an END face of that column, not one of its
+# sides. Geometry, not cloth: 45 deg is the bisector (an edge nearer the
+# column's direction than across it is a side). A CANDIDATE, set by no fixture.
+END_FACE_DEG = 45.0
+# A station end this close to an outline edge lies on it: a square cap's last
+# cross sits `outline_cut.CAP_INSET_MM` (0.03) inside its face, plus a hair.
+_FACE_EPS_MM = 0.05
+
+
+def _ring_edges(poly: Polygon) -> list[tuple[tuple, tuple, tuple]]:
+    """Every edge of `poly`'s rings as (p, q, unit direction), degenerate
+    edges skipped."""
+    out = []
+    for ring in [poly.exterior, *poly.interiors]:
+        cs = list(ring.coords)
+        for p, q in zip(cs[:-1], cs[1:]):
+            L = math.dist(p, q)
+            if L > 1e-9:
+                out.append((tuple(p), tuple(q), ((q[0] - p[0]) / L, (q[1] - p[1]) / L)))
+    return out
+
+
+def _seg_dist(p, e) -> float:
+    (ax, ay), (bx, by), (ux, uy) = e
+    L = math.dist((ax, ay), (bx, by))
+    t = max(0.0, min(L, (p[0] - ax) * ux + (p[1] - ay) * uy))
+    return math.dist(p, (ax + ux * t, ay + uy * t))
+
+
+def _station_dirs(col: Column) -> list[tuple[float, float]]:
+    """The column's own direction at each station: its axis when straight,
+    else the centreline's local tangent."""
+    if col.axis is not None:
+        return [tuple(col.axis)] * len(col.stations)
+    m = _mids(col.stations)
+    out = []
+    for i in range(len(m)):
+        p, q = m[max(0, i - 1)], m[min(len(m) - 1, i + 1)]
+        L = math.dist(p, q)
+        out.append(((q[0] - p[0]) / L, (q[1] - p[1]) / L) if L > 1e-9 else (1.0, 0.0))
+    return out
+
+
+def end_faces(columns: list[Column], poly: Polygon) -> list[int]:
+    """Indices into `_ring_edges(poly)` of the letter's TERMINAL faces: the
+    edges a column's first or last cross lies ALONG (its midpoint on the
+    edge, the cross within `END_FACE_DEG` of the edge's direction) -- a
+    square cap on its face, a fan's final cross on its slant."""
+    edges = _ring_edges(poly)
+    lim = math.cos(math.radians(END_FACE_DEG))
+    faces: set[int] = set()
+    for col in columns:
+        for a, b in (col.stations[0], col.stations[-1]):
+            L = math.dist(a, b)
+            if L < 1e-9:
+                continue
+            c = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
+            mid = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+            for k, e in enumerate(edges):
+                if abs(c[0] * e[2][0] + c[1] * e[2][1]) >= lim and _seg_dist(mid, e) <= _FACE_EPS_MM:
+                    faces.add(k)
+    return sorted(faces)
+
+
+def end_face_hold(columns: list[Column], poly: Polygon):
+    """What `_hold_end_faces` needs for one letter: (edges, terminal faces)."""
+    return _ring_edges(poly), frozenset(end_faces(columns, poly))
+
+
+def sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float, hold=None):
+    """One column's crosses as the fabric gets them, before the cross floor:
+    rails inset, pushed by the pull, a fanned straight end's face given the
+    rails' reach -- and, with `hold` (`end_face_hold`, under
+    `cfg.lettering_columns_square_ends`), every end-face penetration held on
+    its face. -> (a_pts, b_pts). `tools/column_ends.py` reads it too."""
+    from .stage6_satin import _push_rails
+    a_pts, b_pts = _inset_rails(col.stations, RAIL_REACH_INSET_MM)
+    if pull_mm > 0:
+        a_pts, b_pts = _push_rails(a_pts, b_pts, poly, pull_mm, pull_floor_mm)
+    if col.kind == "straight":
+        a_pts, b_pts = _reach_fan_faces(col.stations, a_pts, b_pts,
+                                        pull_mm - RAIL_REACH_INSET_MM,
+                                        **({"outline": poly} if hold is not None else {}))
+    if hold is not None:
+        a_pts, b_pts = _hold_end_faces(col, a_pts, b_pts, *hold, poly,
+                                       max(0.0, pull_mm - RAIL_REACH_INSET_MM))
+    return a_pts, b_pts
+
+
+def _hold_end_faces(col: Column, a_pts, b_pts, edges, letter_faces, poly: Polygon, reach_mm: float):
+    """`cfg.lettering_columns_square_ends`: every penetration that started ON
+    an end face keeps only the part of its displacement (rail inset, pull
+    push, fan-face reach) that runs ALONG that face -- it slides on the
+    outline, never off it -- so a column ends on the letter's own edge.
+
+    A face, for one station end, is an outline edge within `_FACE_EPS_MM`
+    whose direction is more than `END_FACE_DEG` off the column's own
+    direction there (`_station_dirs`); a side is pushed as before. Every
+    column also holds on the letter's TERMINAL faces (`end_faces`: an edge
+    some column's end cross lies along), so a serif whose side continues an
+    arm's end face ends flush with it (HOTEL's E, where the upper serif's
+    side stood 0.29 mm past the arm's end). Where a point lies on two edges
+    (a corner) the nearer face wins.
+
+    A slide that runs off the face's end (a square cap's corner, pushed
+    sideways along its face: the column's own side pull) is kept. No
+    penetration, held or not, ends further outside `poly` than the rails'
+    side reach `reach_mm`: the move is cut back along itself (the M's top
+    joint, where a fan face's reach on top of the push stood 0.37 mm out)."""
+    lim = math.cos(math.radians(END_FACE_DEG))
+    dirs = _station_dirs(col)
+    out_a, out_b = list(a_pts), list(b_pts)
+    boundary = poly.boundary
+
+    def outside(q) -> float:
+        pt = Point(q)
+        return 0.0 if poly.covers(pt) else boundary.distance(pt)
+    for i, ((a0, b0), d) in enumerate(zip(col.stations, dirs)):
+        for p0, out in ((a0, out_a), (b0, out_b)):
+            best, bd = None, _FACE_EPS_MM
+            for k, e in enumerate(edges):
+                dist = _seg_dist(p0, e)
+                if dist > bd:
+                    continue
+                face = abs(d[0] * e[2][0] + d[1] * e[2][1]) < lim or k in letter_faces
+                if face:
+                    best, bd = e, dist
+            p1 = out[i]
+            if best is not None:
+                f = best[2]
+                s = (p1[0] - p0[0]) * f[0] + (p1[1] - p0[1]) * f[1]
+                p1 = (p0[0] + f[0] * s, p0[1] + f[1] * s)
+            if outside(p1) > reach_mm + 1e-9:
+                # the longest part of the move that stays inside the reach
+                # (a fan face's reach on top of the push stood 0.37 mm out)
+                dx, dy = p1[0] - p0[0], p1[1] - p0[1]
+                lo, hi = 0.0, 1.0
+                for _ in range(16):
+                    t = (lo + hi) / 2
+                    if outside((p0[0] + dx * t, p0[1] + dy * t)) > reach_mm:
+                        hi = t
+                    else:
+                        lo = t
+                p1 = (p0[0] + dx * lo, p0[1] + dy * lo)
+            out[i] = p1
+    return out_a, out_b
 
 
 def small_print_counters(poly: Polygon, rings, min_width_mm: float) -> Polygon:
@@ -1160,14 +1319,17 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 min_cross_mm: float = machine.SATIN_MIN_CROSS_MM,
                 end_near: tuple[float, float] | None = None,
                 counter_clear_mm: float = 0.0,
+                square_ends: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
     column census stage 7 copies into the plan's counters.
     `counter_clear_mm` > 0 (`cfg.small_print_floor`) holds every
-    penetration that far off the letter's counters (`_clear_counters`)."""
-    from .stage6_satin import (_JUNCTION_TUCK_MM, _comb_thresholds, _push_rails,   # same package,
-                               _short_stitch_guard, _split_points)                  # same rules
+    penetration that far off the letter's counters (`_clear_counters`).
+    `square_ends` (`cfg.lettering_columns_square_ends`) holds every
+    penetration that starts on an end face on that face (`_hold_end_faces`)."""
+    from .stage6_satin import (_JUNCTION_TUCK_MM, _comb_thresholds,   # same package,
+                               _short_stitch_guard, _split_points)      # same rules
 
     report = {"too_thin": False, "jumps": 0, "empty": False,
               "columns": 0, "columns_unsewn": 0, "thin_crosses": 0, "stations": 0,
@@ -1177,13 +1339,9 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     # 1. Each column's stations as the fabric will get them: pushed on the
     #    rails, crosses under the floor dropped.
     ready: list[Column] = []
+    hold = end_face_hold(columns, poly) if square_ends else None
     for col in columns:
-        a_pts, b_pts = _inset_rails(col.stations, RAIL_REACH_INSET_MM)
-        if pull_mm > 0:
-            a_pts, b_pts = _push_rails(a_pts, b_pts, poly, pull_mm, pull_floor_mm)
-        if col.kind == "straight":
-            a_pts, b_pts = _reach_fan_faces(col.stations, a_pts, b_pts,
-                                            pull_mm - RAIL_REACH_INSET_MM)
+        a_pts, b_pts = sewn_rails(col, poly, pull_mm, pull_floor_mm, hold)
         if counter_clear_mm > 0:
             a_pts, b_pts = _clear_counters(a_pts, b_pts, poly, counter_clear_mm, min_cross_mm)
         # Short stitches on the inside of a bend (`satinplay.js` pullShort;
@@ -1296,6 +1454,11 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     # The junction tuck: a butting column that sews BEFORE the column it
     # butts runs on under it, so the later stroke covers the seam. Decided on
     # the satin order the walk produced -- sewn after, it stays square.
+    # `square_ends`: a tuck station must lie within the letter grown by the
+    # rails' own side reach, not the link rule's looser 0.1 + pull -- at the
+    # M's V the left diagonal's tuck ran on past the vertex and 0.5 mm out
+    # under the baseline (Fremont 81 mm, circle 6).
+    tuck_cover = poly.buffer(max(0.0, pull_mm - RAIL_REACH_INSET_MM) + _FACE_EPS_MM) if square_ends else None
     for j in junctions:
         n = len(ready[j["ci"]].stations)
         end_idx = 0 if j["end"] == 0 else n - 1
@@ -1311,7 +1474,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         before = mine[0] < max(theirs)
         ext = _tuck_stations(ready[j["ci"]], j["end"], ready[j["through"]].piece,
                              tuck_mm if before else 0.0, _TUCK_MAX_WIDTHS * W,
-                             spacing_mm, poly_link)
+                             spacing_mm, tuck_cover if square_ends else poly_link)
         if not ext:
             continue
         if before:
@@ -1475,6 +1638,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             end_near: tuple[float, float] | None = None,
                             counter_clear_mm: float = 0.0,
                             fold_cuts: bool = False,
+                            square_ends: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -1493,7 +1657,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                                spacing_mm=spacing_mm, split_above_mm=split_above_mm,
                                pull_mm=pull_mm, pull_floor_mm=pull_floor_mm,
                                underlay_style=underlay_style, start_near=start_near,
-                               end_near=end_near, counter_clear_mm=counter_clear_mm)
+                               end_near=end_near, counter_clear_mm=counter_clear_mm,
+                               **({"square_ends": True} if square_ends else {}))
     report["cuts"] = len(cut.cuts)
     report["columns_unsewn"] += len(cut.unsewn)
     return runs, report
