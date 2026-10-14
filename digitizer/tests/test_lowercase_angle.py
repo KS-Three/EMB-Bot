@@ -167,6 +167,46 @@ def test_the_80mm_a_spur_is_no_longer_a_stub(glyphs80):
     assert min(outline_cut._column_len(c) for c in on.columns) >= outline_cut.STUB_WIDTHS * W
 
 
+def test_the_80mm_e_ring_is_opened_at_its_bar(glyphs80):
+    """At 80 mm the junction rules miss the through cut at the e's bar's
+    left end by a hair (alignment 0.937 against 0.94), the over-long look
+    cuts the left wall under the bar instead, and what is left is a ring of
+    counter AND bar that fans 83 deg round the bar's ends (`_max_turn`) --
+    one sewn cross past 45 deg, which `_folded` cannot see. ON a pair of
+    cuts opens that ring at the bar's two ends: the bar sews as a straight
+    column, nothing is carried round a corner, nothing is a stub."""
+    W = outline_cut.letter_columns(glyphs80["e"]).W
+    off = outline_cut.letter_columns(glyphs80["e"])
+    on = outline_cut.letter_columns(glyphs80["e"], fold_cuts=True)
+    ring = next(c for c in off.columns if c.kind == "ring")
+    assert outline_cut._max_turn(ring, W) > outline_cut.TURN_MAX_DEG
+    assert not any(c.kind == "ring" for c in on.columns) and not on.unsewn
+    assert len(on.cuts) == len(off.cuts) + 2
+    assert any(c.kind == "straight" for c in on.columns)
+    assert all(outline_cut._max_turn(c, W) <= outline_cut.TURN_MAX_DEG for c in on.columns)
+    assert all(outline_cut._column_len(c) >= outline_cut.STUB_WIDTHS * W for c in on.columns)
+    assert _folded(on) == 0
+
+
+def test_the_120mm_e_is_left_as_it_was(glyphs):
+    """At 120 mm the junction rules already cut the e at its bar (a through
+    cut and an edge extension): ON leaves it alone."""
+    off = outline_cut.letter_columns(glyphs["e"])
+    on = outline_cut.letter_columns(glyphs["e"], fold_cuts=True)
+    assert [c.stations for c in on.columns] == [c.stations for c in off.columns]
+
+
+def test_a_tight_o_is_not_a_carried_ring():
+    """A ring that turns hard but holds no junction corner is a round
+    counter, not a stroke carried round a junction: no second look."""
+    from shapely.geometry import Point
+    o = Point(0, 0).buffer(1.6, 16).difference(Point(0, 0).buffer(1.0, 16))
+    W = outline_cut.stroke_width(o)
+    col = outline_cut.build_column(o, [], W, 0.4)
+    assert col is not None and col.kind == "ring"
+    assert not outline_cut._carried_ring(o, col, W)
+
+
 #: md5 of every glyph's OFF stations on the stored polygons, computed with
 #: this branch's outline_cut AND with main's at the merge base (e982ce25):
 #: both 780d0990... (2026-10-13). The end-to-end OFF plans agree too, on the
@@ -188,9 +228,10 @@ def test_off_construction_is_pinned(glyphs):
 def test_off_never_enters_the_new_code(glyphs, glyphs80, monkeypatch):
     def boom(*_a, **_k):
         raise AssertionError("fold_cuts code reached with fold_cuts off")
-    for name in ("_fold_refine", "_folded", "_column_len", "_max_turn", "_ring_opener"):
+    for name in ("_fold_refine", "_folded", "_column_len", "_max_turn", "_ring_opener",
+                 "_carried_ring"):
         monkeypatch.setattr(outline_cut, name, boom)
-    for ch in SHOULDERS:
+    for ch in SHOULDERS + "e":
         outline_cut.letter_columns(glyphs[ch])
         outline_cut.letter_columns(glyphs80[ch])
 
@@ -227,25 +268,29 @@ def test_on_moves_only_lowercase_and_cuts_its_folds(word):
     assert _md5(on) != _md5(off)
     meta = json.loads(la.FIXTURE.with_suffix(".json").read_text(encoding="utf-8"))
     to_px, _s = la.mm_to_px(result, meta["image"])
-    upper = set()
+    upper, e_ids = set(), set()
     for r in result.regions:
         g = la._glyph_at(meta, *to_px(r.polygon.centroid.x, r.polygon.centroid.y))
         if g and g["ch"].isupper():
             upper.add(r.shape_id)
+        if g and g["ch"] == "e":
+            e_ids.add(r.shape_id)
 
     def runs(plan, ids):
         return [(r.shape_id, r.kind, [(round(x, 4), round(y, 4)) for x, y in r.points])
                 for _, r in plan.iter_runs() if r.shape_id in ids]
     assert upper and runs(on, upper) == runs(off, upper)
 
-    def folds(plan):
-        recs = la.cross_records(plan, {r.shape_id for r in result.regions} - upper)
+    def folds(plan, ids=None):
+        recs = la.cross_records(plan, ids or {r.shape_id for r in result.regions} - upper)
         st = [r["station_lean"] for r in recs if r["station_lean"] is not None]
         return sum(v > 45.0 for v in st), len(st)
     f_off, n_off = folds(off)
     f_on, n_on = folds(on)
-    # 5 -> 2 of ~365 lowercase station crosses on Kent's box (#887 and this
-    # branch alike: the a's and the e's end fans, which no cut reaches)
+    # 5 -> 0 of ~365 lowercase station crosses on Kent's box (#887 left 2,
+    # the a's and the e's; #893 cut the a's, claude/lowercase-e-folds the e's)
     assert f_off >= 3 and f_on < f_off, (f_off, n_off, f_on, n_on)
+    # the e: one sewn cross past 45 deg OFF, at its bar's end; none ON
+    assert e_ids and folds(off, e_ids)[0] >= 1 and folds(on, e_ids)[0] == 0
     assert on.stats.trims == off.stats.trims
     assert math.isclose(on.stats.stitch_count, off.stats.stitch_count, rel_tol=0.03)
