@@ -1738,8 +1738,10 @@
     // `satinZigzag` is ON here by default (Kent's ruling 2026-10-13, on a
     // before/after render, NOT sewn): every satin stitch crosses the column.
     // `false` is the alternating-rail stream every design before that date
-    // carries; layoutText itself still defaults off.
-    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: satinSpacingMm / sc, pullCompMm: pullCompMm / sc, weightMm: weightMm / sc, counterGuard: o.counterGuard !== false, shortStitch: o.shortStitch !== false, letterSpacingMm: ls, underlay: o.underlay !== false, crossFloor: o.crossFloor !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout, splitSatin: o.splitSatin, satinZigzag: o.satinZigzag !== false, wideColumnFill: o.wideColumnFill, fillRowMm: letterFillRowMm, fillStitchMm: o.fillStitchMm });
+    // carries; layoutText itself still defaults off. Since 2026-10-14 (Kent)
+    // only columns under satinfont's SATIN_ZIGZAG_MAX_WIDTH_MM zigzag;
+    // `satinZigzagMaxMm` overrides that cap in final mm, `false` lifts it.
+    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: satinSpacingMm / sc, pullCompMm: pullCompMm / sc, weightMm: weightMm / sc, counterGuard: o.counterGuard !== false, shortStitch: o.shortStitch !== false, letterSpacingMm: ls, underlay: o.underlay !== false, crossFloor: o.crossFloor !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout, splitSatin: o.splitSatin, satinZigzag: o.satinZigzag !== false, satinZigzagMaxMm: o.satinZigzagMaxMm, wideColumnFill: o.wideColumnFill, fillRowMm: letterFillRowMm, fillStitchMm: o.fillStitchMm });
     if (!lay.runs.length) return emptyWith(lay.unsupported, lay.lettering);
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     // Explicit placement offset (Slice 3): applied AFTER the center transform, in
