@@ -1443,6 +1443,29 @@ class PipelineConfig:
     # (a 2.05 mm ring) sews no ring, under `RUN_MIN_LOOP_MM` 2.2 (gate 1);
     # `coverage_edges` ON still hands stage 4 the old 0.5625 mm² hole floor.
     small_glyph_keep: bool = True
+    # Small lettering thinner than the thread, sewn as ONE run down its
+    # skeleton (2026-10-13, default OFF; Kent's "fine details" priority,
+    # `digitizer_core/stage6_small_letter.py`, `tools/small_lettering_skeleton.py`).
+    # Fremont's tagline and EST at 81 mm have 0.22-0.30 mm strokes under the
+    # 0.40 mm a 40 wt strand lays; the small-shape rescue sews each as a bean
+    # run on its OUTLINE, 1.6-3.2x the stroke, counters shut (PR #905). ON: a
+    # lettering-tagged shape (`columns.is_lettering`) the rescue routes to
+    # the run tier, whose traced stroke is at or under the block's laid
+    # width, sews one run along its medial axis (the hairline tier's
+    # skeleton and walk), its stage-4-dropped counters punched back first
+    # (stage 4 records them for rescued shapes under this flag, the record
+    # `small_print_floor` keeps). A glyph whose run would cross a counter, or
+    # that does not qualify, takes the ladder as before. The width gate and
+    # the stitch length are CANDIDATES (ROADMAP gate 1). Off, byte-identical
+    # (md5-pinned in `tests/test_small_lettering_skeleton.py`).
+    small_lettering_skeleton: bool = False
+    # The shortest stitch that tier may lay (mm). None: `machine.MIN_STITCH_MM`
+    # (1.0), the needle floor. At Fremont's 2.2 mm caps that floor cannot
+    # follow a 1 mm arm, so most glyphs are declined back to the outline;
+    # `machine.BEAN_STITCH_MM` (0.73, the pro bean median the run tier
+    # already sews these same glyphs at) is the measured alternative. A
+    # physical constant: gate 1, a sew-out decides it, not this comment.
+    small_lettering_skeleton_floor_mm: float | None = None
     # Stage 5's hole hold, read for what is actually IN the hole. A hole the
     # shell's pull growth would shrink under `min_detail_mm²` is held open at
     # its original size — right for a counter, wrong for a hole a LATER

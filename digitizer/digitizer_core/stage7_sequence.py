@@ -79,6 +79,8 @@ from .stage6_detail import detail_runs
 # warning), a different, older thing.
 from .stage6_hairline import REST_KEY as HAIRLINE_REST_KEY
 from .stage6_hairline import hairline_candidates, rest_planned
+from .stage6_small_letter import REPORT_KEY as SMALL_LETTER_KEY
+from .stage6_small_letter import glyph_polygon, skeleton_letter_runs, text_line_members
 from .stage6_hairline import hairline_runs as hairline_tier_runs
 from .stage6_hairline import HairlineSet
 from .stage6_hairline_lines import applies as hairline_lines_apply
@@ -1842,6 +1844,7 @@ def sequence(
     detail_layer: bool | None = None,
     palette_spools: list[int] | None = None,
     hairline: dict | None = None,
+    ink_source=None,
 ) -> tuple[list[StitchBlock], list[dict]]:
     """-> (blocks in sew order, warnings).
 
@@ -1922,7 +1925,7 @@ def sequence(
             source_pixels=source_pixels, design_class=design_class,
             fill_technique=fill_technique, streamline_mode=streamline_mode,
             detail_layer=detail_layer, palette_spools=palette_spools,
-            hairline=hairline)
+            hairline=hairline, ink_source=ink_source)
         off_rank = {}
         for _b in off_blocks:
             for _r in _b.runs:
@@ -2021,6 +2024,10 @@ def sequence(
         # shape is carved: the strands come from lines, after every block.
         hairline = (HairlineSet() if hairline_lines_apply(cfg, design_class)
                     else hairline_candidates([p.region for p in planned], cfg))
+    # The letters `cfg.small_lettering_skeleton` may take (lines of text, see
+    # `stage6_small_letter.text_line_members`); empty with the flag off.
+    skeleton_letters = (text_line_members([p.region for p in planned])
+                        if cfg.small_lettering_skeleton else set())
     stitch_mm = cfg.fill_stitch_mm or FILL_STITCH_MM
     # Row 14's underlay split (see _PHOTO_FILL_UNDERLAY above for the craft
     # case). Precedence is unchanged in shape, only the FALLBACK moves: an
@@ -2428,6 +2435,35 @@ def sequence(
                         rest_rep = dict(rest_rep, hairline_tier=1, strands=0,
                                         dropped=report["dropped"])
                     return rest_runs, rest_rep, rest_filled
+            # Small lettering as ONE skeleton run (`cfg.small_lettering_skeleton`,
+            # default OFF, 2026-10-13 -- `stage6_small_letter`'s docstring): a
+            # lettering shape the rescue below would sew as a bean run on its
+            # OUTLINE, whose stroke is at or under the block's laid width, sews
+            # one run down its middle instead, its dropped counters punched
+            # back first. On the ARTWORK polygon, for the run rung's reason. A
+            # glyph it declines (too wide, or its run would cross a counter)
+            # takes the rescue as before.
+            if (tier == "auto" and p.shape_id in skeleton_letters
+                    and routes_to_run(p, tier) and is_lettering(p.region, cfg)):
+                prof = profile_for(p)
+                # A line `cfg.small_text_cap_mm` enlarged was retraced from
+                # the source with its counters; stage 4's record is of the
+                # polygon before that, at the old size and place.
+                runs, report = skeleton_letter_runs(
+                    glyph_polygon(p.region.polygon,
+                                  None if p.region.meta.get("small_text_enlarged")
+                                  else p.region.meta.get("small_counters")),
+                    p.shape_id, max_width_mm=prof.width_mm,
+                    stitch_mm=cfg.hairline_stitch_mm,
+                    run_width_mm=prof.hairline_run_width_mm,
+                    entry=entry, trim_at_mm=trim_at, ink=ink_source,
+                    min_mm=(cfg.small_lettering_skeleton_floor_mm
+                            if cfg.small_lettering_skeleton_floor_mm is not None
+                            else machine.MIN_STITCH_MM))
+                if not report["empty"]:
+                    report["as_run"] = 1
+                    report[SMALL_LETTER_KEY] = 1
+                    return runs, report, False
             outline_tried = False
             # Small print (`cfg.small_print_floor`, default OFF) reaches the
             # run and fill tiers through `small_print_cut`: the shape is
