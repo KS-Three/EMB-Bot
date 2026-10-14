@@ -86,6 +86,21 @@ def work_grid_px_per_mm(cfg: "PipelineConfig", class_: str | None = None) -> flo
     return max(float(cfg.min_px_per_mm), float(cfg.work_px_per_mm or 0.0))
 
 
+# `PipelineConfig.small_text_true_size`'s values: the small-lettering
+# settings at what was rendered on Fremont (81 and 92.5 mm) and four other
+# logos (80 mm) on 2026-10-13/14. 0.5 for the stroke line takes Fremont's THE
+# (0.46 mm strokes, satin closing its E and H) to a centreline; Kent chose that
+# over keeping it bold. 0.3 for the shortest free arm keeps a 1's flag and
+# foot. CANDIDATES (ROADMAP gate 1): nothing here was sewn.
+SMALL_TEXT_TRUE_SIZE = {
+    "small_text_restore_mm": 3.0,
+    "bean_letter_max_stroke_mm": 0.5,
+    "bean_letter_stitch_mm": 0.45,
+    "bean_letter_serif_mm": 0.45,
+    "bean_letter_min_arm_mm": 0.3,
+}
+
+
 @dataclass
 class PipelineConfig:
     # Physical target: the artwork's finished embroidered width. The px->mm
@@ -244,6 +259,18 @@ class PipelineConfig:
     # a CANDIDATE (ROADMAP gate 3: exposed thread is reported, not settled).
     # Off, byte-identical.
     hairline_lines_chain: bool = False
+    # Hairline line route on the GRADIENT lane, as a supplement (2026-10-14,
+    # default OFF; needs `hairline`, `hairline_from_lines` and
+    # `hairline_lines_strand_test` all on, else inert). The Studio sends
+    # owl_kent down `gradient`, where the line route never runs (#915). On,
+    # the region tier runs there exactly as before, and the line route adds
+    # the strands it laid nothing near: a line mostly inside a shape the
+    # tier walked (grown by the run half-width plus one source pixel) is not
+    # sewn, nor is one mostly on a stroke-wide shape of its own tone (line
+    # art already traced as a shape) (`stage6_hairline_lines.supplements` /
+    # `supplement_test`). Carves nothing. Candidate geometry, unsewn
+    # (gate 1). Off, byte-identical.
+    hairline_lines_gradient: bool = False
     # Hairline coverage guard (2026-10-13, default OFF; needs `hairline` on).
     # A shape whose hairline runs would leave more than
     # `stage6_hairline.COVERAGE_GUARD_MM2` of its own ink bare (a 0.4 mm
@@ -1476,6 +1503,24 @@ class PipelineConfig:
     # (a 2.05 mm ring) sews no ring, under `RUN_MIN_LOOP_MM` 2.2 (gate 1);
     # `coverage_edges` ON still hands stage 4 the old 0.5625 mm² hole floor.
     small_glyph_keep: bool = True
+    # A rung for closed parts under the run loop floor (2026-10-14, built
+    # OFF; MASTER_SCOPE "Waiting on Kent" 52 asks "lower the floor or a dot
+    # rung"; this PRICES the rung, Kent decides). `machine.RUN_MIN_LOOP_MM`
+    # (2.2) drops the 80 mm i/j dot (0.446 mm², 0.75 mm across) at stage 3,
+    # whose 2 x max(w, h) perimeter proxy reads 1.5 mm (the real ring is
+    # 2.49 mm). ON: stage 3's proxy and stage 4's real-ring test admit a part
+    # down to `machine.DOT_RUNG_MIN_LOOP_MM` (still over `RUN_MIN_AREA_MM2`;
+    # not a part nine tenths ringed by other small regions, which is a small
+    # glyph's counter), and the run tier sews an OUTER ring between that and
+    # RUN_MIN_LOOP_MM as a tack ring (`DOT_RUNG_STITCH_MM`, `DOT_RUNG_PASSES`)
+    # instead of skipping it. A sub-floor HOLE ring is still skipped, on
+    # purpose: Fremont 81 mm Hat's 8 has a 2.05 mm counter ring, and sewing it
+    # shut that counter (glyph legibility 1895 0.551 -> 0.426, the 8's open
+    # counters 1 -> 0). The 8's OTHER counter is shut by the 0.73 mm bean on
+    # its own 2.39 mm ring, not by this floor. Rings at or over 2.2 mm sew
+    # exactly as before. All three numbers are CANDIDATES (ROADMAP gate 1).
+    # Off, byte-identical (md5-pinned in `tests/test_small_dot_rung.py`).
+    small_dot_rung: bool = False
     # Small lettering thinner than the thread, sewn as ONE run down its
     # skeleton (2026-10-13, default OFF; Kent's "fine details" priority,
     # `digitizer_core/stage6_small_letter.py`, `tools/small_lettering_skeleton.py`).
@@ -2463,6 +2508,24 @@ class PipelineConfig:
     # E into a B (thinner thread did not open it). None leaves every spine
     # as read. A CANDIDATE (gate 1); 0.45 was tried on Fremont's date.
     bean_letter_serif_mm: float | None = None
+    # The shortest spine of a bean letter that sews. None: the station pitch
+    # (`bean_letter_stitch_mm`, else `machine.BEAN_STITCH_MM`), as before. At
+    # 81 mm Fremont's 1 read its flag at 0.44 mm and the halves of its foot at
+    # 0.41 and 0.39 -- each just under the 0.45 pitch, so all three were
+    # dropped and the 1 sewed as a bare stick, read as "F" (2026-10-14). 0.3
+    # is the ink reader's own spur floor (`ink_path.INK_MIN_BRANCH_MM`): a
+    # spine shorter than that never reaches here. A CANDIDATE (gate 1).
+    bean_letter_min_arm_mm: float | None = None
+    # ONE switch for small lettering at its true size (2026-10-14, Kent:
+    # "keep working on improvements on this"). True fills each of the
+    # values above that is still None with `SMALL_TEXT_TRUE_SIZE`; a value set
+    # explicitly wins. Rendered at those values: Fremont's date "EST 1093" ->
+    # "EST 1895" at 92.5 mm, its tagline and THE read cleanly, and its 1 keeps
+    # its flag and foot (min arm 0.3); Enthusiast's "ENTERPRISES INC" reads
+    # cleanly at 80 mm. Under 1.5 mm caps the text tagger finds nothing to act
+    # on. Head to head: docs/renders/claude-small-lettering-head-to-head. Unsewn;
+    # every value is a CANDIDATE (gate 1). False is byte-identical.
+    small_text_true_size: bool = False
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
@@ -4240,6 +4303,20 @@ class PipelineConfig:
     # or without tesseract — so off is never mistaken for clean. False is the
     # pre-flip report byte for byte.
     legibility_check: bool = True
+    # Glyph legibility as preflight METRICS (`preflight._glyph_legibility_
+    # metrics`, `digitizer_core/glyph_read.py`): the per-glyph SHAPE read of
+    # `tools/glyph_legibility.py` -- strokes, clean, counters -- on every word
+    # of text-tagged shapes, the thread render against the artwork it was
+    # traced from. It sees what the OCR check above cannot: Hotel Fremont at
+    # 81 mm on a hat reads `ARTWORK_UNCOVERED` null and its tagline's three
+    # A counters sewn shut. Metrics only (`glyph_legibility_min`,
+    # `glyph_legibility_mean`, `counters_shut`, per-word rows): no finding,
+    # no deduction, nothing the customer sees (Kent 2026-10-02). DEFAULT OFF
+    # because it is not free: one thread render at 20 px/mm plus the glyph
+    # read, 2.6-2.8 s warm on Fremont 81 mm on the loaded laptop
+    # (2026-10-14), on every job with lettering. OFF, the report is the
+    # pre-change report byte for byte (no key is written).
+    preflight_glyph_metric: bool = False
 
     # Stage 7 — chaining. Whether a needle-up move that would be trimmed may
     # instead be sewn as a needle-down link, when its path is buried under a
@@ -4361,6 +4438,12 @@ class PipelineConfig:
     #   - A sew-out that says at what clearance a needle-down float actually
     #     shows — LINK_COVER_TOL_MM is still a thread spec, not a measurement.
     chain_links: bool = False
+
+    def __post_init__(self) -> None:
+        if self.small_text_true_size:
+            for name, value in SMALL_TEXT_TRUE_SIZE.items():
+                if getattr(self, name) is None:
+                    object.__setattr__(self, name, value)
 
     def __setattr__(self, name: str, value) -> None:
         # `coverage_edges` is DEPRECATED (Kent 2026-10-12: no; PRs #818, #824,

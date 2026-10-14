@@ -1,0 +1,77 @@
+{
+ "design": "becker",
+ "arm": "true",
+ "kind": "logo",
+ "overrides": {
+  "small_text_restore_mm": 3.0,
+  "bean_letter_max_stroke_mm": 0.4,
+  "bean_letter_stitch_mm": 0.45,
+  "bean_letter_serif_mm": 0.45
+ },
+ "stitches": 8758,
+ "trims": 29,
+ "jumps": 0,
+ "thread_m": 18.971,
+ "size_mm": [
+  99.9,
+  62.5
+ ],
+ "md5": "19b381002ea8374f6aa3fb2cc8794ddb",
+ "shape_digests": {
+  "Sc9b48e5a": "42cbe057661b7abeba662fd903d873da",
+  "S4ce50f57": "35559db26b632ebea671a83d761ece9e",
+  "Sf48a80bd": "2765dccdbf5c20f4103130028eab007d",
+  "Sf1c25fcd": "a78c4478c5c39dd92c2803529e1a98cf",
+  "Sdd5f27fb": "e31cb116ec36ab23de75cfdf4a2211a5",
+  "S14230a1b": "135fc35329a0f9858b6013772fa3d9ca",
+  "Sa587cbf9": "27ac916db44a28d79d8344133f368c17",
+  "S501501b6": "e30ee34affcff07da9e40c824e8f49f3",
+  "Scc08b907": "0330bdaf34a4299b92700c1e5b0dfa3f",
+  "S6d3d3130": "55664d21106decb8e2c4afdff5fe90d3",
+  "__edge_cap__": "3f56a7ab2935fa4d414aca6bc6903b26"
+ },
+ "uncovered_total_mm2": 6.6,
+ "uncovered_wanted_mm2": 2205.6,
+ "uncovered_worst_mm2": 2.2,
+ "uncovered_fires": true,
+ "uncovered_shapes": [
+  "(unattributed)",
+  "S4ce50f57"
+ ],
+ "bare_mm2": 19.94,
+ "skeleton_shapes": 0,
+ "bean_shapes": 0,
+ "words": {
+  "MARINE": {
+   "glyphs": 6,
+   "legibility": 1.0,
+   "legibility_space": 0.866,
+   "worst_glyph": 0.999,
+   "counters_open": [
+    2,
+    2
+   ],
+   "ocr": {
+    "recovered": 0,
+    "read": 0,
+    "ci95": null
+   }
+  },
+  "BECKER": {
+   "glyphs": 4,
+   "legibility": 0.827,
+   "legibility_space": 0.577,
+   "worst_glyph": 0.417,
+   "counters_open": [
+    5,
+    6
+   ],
+   "ocr": {
+    "recovered": 0,
+    "read": 0,
+    "ci95": null
+   }
+  }
+ },
+ "secs": 98
+}

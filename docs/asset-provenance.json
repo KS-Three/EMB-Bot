@@ -838,6 +838,12 @@
    "basis": "digitizer/tools/lowercase_angle.py; PR body of claude/fold-cuts-junctions"
   },
   {
+   "prefix": "docs/renders/preflight-glyph-metric/",
+   "status": "derived-render",
+   "source": "Thread render (digitizer_core.stitchviz) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp at 81 mm, Hat (tools/fremont_triage.py --arm main), with the glyph boxes cfg.preflight_glyph_metric read drawn over it; no artwork pixels, no new client art",
+   "basis": "PR body of claude/preflight-glyph-metric; source fixture cleared by Kent 2026-10-08 (its own entry above)"
+  },
+  {
    "prefix": "docs/renders/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures (catch-all for new render directories)",

@@ -130,7 +130,8 @@ def trim_serif_hooks(spines, serif_mm: float | None):
 def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
                 trim_at_mm: float,
                 stitch_mm: float | None = None,
-                serif_mm: float | None = None) -> tuple[list[StitchRun], dict]:
+                serif_mm: float | None = None,
+                min_arm_mm: float | None = None) -> tuple[list[StitchRun], dict]:
     """One letter's spines -> bean runs in sew order, plus `run_outline`'s
     report contract (and `strokes`, how many spines sewed).
 
@@ -146,12 +147,29 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
     `stitch_mm` (`cfg.bean_letter_stitch_mm`): the station pitch, and the
     shortest arm that sews. At `BEAN_STITCH_MM` (0.73) the loop of a 1.9 mm
     "8" -- under 2 mm round -- gets two or three stations and collapses to a
-    wedge; None is that pitch, byte for byte."""
+    wedge; None is that pitch, byte for byte.
+
+    `min_arm_mm` (`cfg.bean_letter_min_arm_mm`): the shortest arm with a free
+    end that sews, when it should be shorter than the pitch -- a 1's flag and
+    foot. None: the pitch, as above."""
     arm_floor = stitch_mm if stitch_mm and stitch_mm > 0 else _MIN_ARM_MM
     report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False,
               "arcs": 0, "yielded": 0, "strokes": 0}
-    todo = [list(map(tuple, s)) for s in (trim_serif_hooks(spines, serif_mm) or [])
-            if len(s) >= 2 and _length(s) >= arm_floor]
+    trimmed = [list(map(tuple, s)) for s in (trim_serif_hooks(spines, serif_mm) or [])]
+
+    def sews(i: int, s: list) -> bool:
+        if len(s) < 2:
+            return False
+        n = _length(s)
+        if n >= arm_floor:
+            return True
+        # Only an arm with a FREE end gets the shorter floor: a short link
+        # between two junctions is the skeleton's waist of an 8, and sewn it
+        # crossed the 8 into an X (Fremont at 92.5 mm, 2026-10-14).
+        return bool(min_arm_mm and min_arm_mm > 0 and n >= min_arm_mm
+                    and not (_attached(s[0], i, trimmed) and _attached(s[-1], i, trimmed)))
+
+    todo = [s for i, s in enumerate(trimmed) if sews(i, s)]
     if sum(_length(s) for s in todo) < _MIN_SPINE_MM:
         todo = []
     runs: list[StitchRun] = []

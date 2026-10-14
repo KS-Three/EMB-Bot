@@ -1,0 +1,484 @@
+{
+ "design": "drone",
+ "arm": "true",
+ "box_mm": [
+  -40.0,
+  -41.11,
+  39.79,
+  33.65
+ ],
+ "changed_shapes": [
+  {
+   "shape_id": "S0a096aed",
+   "area_mm2": 17.75,
+   "bounds_mm": [
+    16.35,
+    13.06,
+    18.7,
+    20.7
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 3,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 8
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "S0d4a3c8f",
+   "area_mm2": 4.69,
+   "bounds_mm": [
+    13.78,
+    30.85,
+    17.32,
+    33.65
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S0ed45b78",
+   "area_mm2": 1.87,
+   "bounds_mm": [
+    -25.02,
+    -11.18,
+    -23.25,
+    -9.31
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S1e345617",
+   "area_mm2": 41.11,
+   "bounds_mm": [
+    -39.69,
+    13.06,
+    -30.85,
+    21.38
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 6,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 15
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "S24beef6d",
+   "area_mm2": 38.33,
+   "bounds_mm": [
+    -8.37,
+    13.06,
+    0.99,
+    20.7
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 2,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 5
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "S29a0d6fe",
+   "area_mm2": 32.74,
+   "bounds_mm": [
+    -16.59,
+    -41.11,
+    15.24,
+    -34.38
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S2af2043d",
+   "area_mm2": 17.02,
+   "bounds_mm": [
+    2.0,
+    13.06,
+    4.26,
+    20.71
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 3,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 5
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "S32156ac6",
+   "area_mm2": 10.13,
+   "bounds_mm": [
+    19.09,
+    -2.86,
+    25.12,
+    4.94
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 2,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 5
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "S33b68606",
+   "area_mm2": 4.29,
+   "bounds_mm": [
+    7.65,
+    30.85,
+    11.5,
+    33.65
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S3c4af2e7",
+   "area_mm2": 48.09,
+   "bounds_mm": [
+    20.09,
+    13.06,
+    29.7,
+    20.67
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 6,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 18
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "S4832bb89",
+   "area_mm2": 3.88,
+   "bounds_mm": [
+    24.19,
+    -6.93,
+    26.48,
+    -2.76
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S4a8ca7e8",
+   "area_mm2": 5.38,
+   "bounds_mm": [
+    -19.82,
+    -36.05,
+    -14.72,
+    -31.47
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S5403dda0",
+   "area_mm2": 4.38,
+   "bounds_mm": [
+    -17.43,
+    30.85,
+    -13.89,
+    33.65
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S616c3b46",
+   "area_mm2": 0.69,
+   "bounds_mm": [
+    -26.89,
+    -22.11,
+    -24.5,
+    -21.79
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S6cb7b0da",
+   "area_mm2": 4.37,
+   "bounds_mm": [
+    -3.49,
+    30.85,
+    0.26,
+    33.65
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S6d6db17f",
+   "area_mm2": 4.24,
+   "bounds_mm": [
+    -11.81,
+    30.85,
+    -8.17,
+    33.65
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S6dd674f6",
+   "area_mm2": 48.64,
+   "bounds_mm": [
+    -29.39,
+    13.16,
+    -19.71,
+    20.55
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 9,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 21
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "S6eb461d0",
+   "area_mm2": 0.45,
+   "bounds_mm": [
+    -8.69,
+    -5.88,
+    -7.96,
+    -4.63
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S718a4e40",
+   "area_mm2": 11.27,
+   "bounds_mm": [
+    22.42,
+    14.72,
+    27.2,
+    17.74
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S8438f8fc",
+   "area_mm2": 46.44,
+   "bounds_mm": [
+    30.33,
+    13.06,
+    39.79,
+    21.38
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 12,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 22
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "S89cc9fe3",
+   "area_mm2": 49.03,
+   "bounds_mm": [
+    5.94,
+    13.06,
+    15.03,
+    20.65
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 7,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 26
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "S940673c7",
+   "area_mm2": 3.75,
+   "bounds_mm": [
+    19.4,
+    30.95,
+    22.63,
+    33.65
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S9833f682",
+   "area_mm2": 3.71,
+   "bounds_mm": [
+    -23.36,
+    30.95,
+    -19.3,
+    33.65
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sa05913cd",
+   "area_mm2": 4.07,
+   "bounds_mm": [
+    2.34,
+    30.85,
+    5.77,
+    33.65
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sa34f3d79",
+   "area_mm2": 43.78,
+   "bounds_mm": [
+    -18.57,
+    13.16,
+    -9.73,
+    20.55
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 6,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 20
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sa3fb09f4",
+   "area_mm2": 10.47,
+   "bounds_mm": [
+    -24.92,
+    -2.55,
+    -18.78,
+    5.05
+   ],
+   "bean": {
+    "loops": 0,
+    "jumps": 2,
+    "empty": false,
+    "too_thin": false,
+    "arcs": 0,
+    "yielded": 0,
+    "strokes": 5
+   },
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sb48f72d9",
+   "area_mm2": 1.62,
+   "bounds_mm": [
+    -40.0,
+    -22.94,
+    -29.7,
+    -22.11
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sb7626cc0",
+   "area_mm2": 1489.68,
+   "bounds_mm": [
+    -37.19,
+    -40.98,
+    35.73,
+    11.59
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sb9218115",
+   "area_mm2": 174.41,
+   "bounds_mm": [
+    0.2,
+    -15.86,
+    24.61,
+    3.9
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "Se3dbbdb0",
+   "area_mm2": 225.61,
+   "bounds_mm": [
+    -22.36,
+    -17.22,
+    -0.16,
+    6.86
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "See873345",
+   "area_mm2": 0.57,
+   "bounds_mm": [
+    -5.46,
+    -16.28,
+    -4.32,
+    -15.03
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sf6cc12cd",
+   "area_mm2": 3.63,
+   "bounds_mm": [
+    -4.63,
+    -9.83,
+    5.15,
+    -8.48
+   ],
+   "bean": null,
+   "skeleton": null
+  }
+ ]
+}

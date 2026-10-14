@@ -23,6 +23,8 @@ Fixtures: the Studio request of `fremont_triage.studio_request` (Hat) at 81 mm
     both073   true + skeleton ON, floor 0.73 (bean letters are tried first,
               so the skeleton run only sees what they decline)
     both100   true + skeleton ON, floor 1.0
+    switch    small_text_true_size ON: the true values behind one switch,
+              bean stroke 0.5 (THE at 92.5 mm sews as a centre line)
 
 Per word (EST, 1895, THE, the EAT | STAY | PLAY tagline), per arm, from
 `glyph_legibility.read_case` (the repo's per-glyph shape read of the sewn
@@ -48,6 +50,17 @@ digitizing, and a lane that changes the engine re-runs only its cells:
     .venv/Scripts/python -m tools.small_lettering_compare --table --out DIR
     # render sheets (artwork, then one row per arm; red outline = artwork)
     .venv/Scripts/python -m tools.small_lettering_compare --sheets --out DIR --renders DIR2
+
+The CORPUS cost of the true-size arm (the section "the corpus" below): the same
+three arms (main, true, sk073) over the nine corpus logos, Fremont's two Hat
+renders and the small-print censuses' two fixtures at 2.5 / 3 / 4 mm caps:
+
+    .venv/Scripts/python -m tools.small_lettering_compare --corpus-list
+    .venv/Scripts/python -m tools.small_lettering_compare --corpus becker true --out DIR
+    .venv/Scripts/python -m tools.small_lettering_compare --corpus-table --out DIR
+    # a render re-run (sidecars in DIR2, the saved cells untouched), then the sheet
+    .venv/Scripts/python -m tools.small_lettering_compare --corpus drone true --out DIR --renders DIR2
+    .venv/Scripts/python -m tools.small_lettering_compare --corpus-sheet drone --out DIR --renders DIR2
 """
 from __future__ import annotations
 
@@ -86,6 +99,9 @@ ARMS = {
     "true": (dict(TRUE_SIZE), "true size: restore 3.0, bean 0.4 / pitch 0.45 / serif 0.45"),
     "both073": ({**TRUE_SIZE, **SKELETON, **FLOOR_073}, "true size + skeleton, floor 0.73 mm"),
     "both100": ({**TRUE_SIZE, **SKELETON}, "true size + skeleton, floor 1.0 mm"),
+    # cfg.small_text_true_size: the four true-size values behind one switch,
+    # bean stroke 0.5 (Kent 2026-10-14: THE as a centre line is fine).
+    "switch": ({"small_text_true_size": True}, "small_text_true_size ON (bean 0.5)"),
 }
 ARM_ORDER = list(ARMS)
 
@@ -353,7 +369,7 @@ def run_pro(out: Path) -> dict:
 def load_cells(out: Path) -> dict[str, dict]:
     cells = {}
     for p in sorted(out.glob("*.json")):
-        if p.stem.endswith("_design"):
+        if p.stem.endswith("_design") or p.stem.startswith("corpus_"):
             continue
         d = json.loads(p.read_text())
         if "words" in d:
@@ -440,6 +456,390 @@ def _glyph_rings(p, word: str) -> list:
     return rings
 
 
+# --- the corpus: what the true-size arm COSTS everywhere else --------------------------
+#
+# #938 found, on Fremont alone, that the true-size arm beats the skeleton on every
+# word. Its cost on the rest of the corpus was never read. `--corpus` digitizes ONE
+# design under ONE of three arms (every cell its own process), the way the pipeline
+# does, and records what a customer would see change: stitches, trims, the md5 of
+# the stitch stream (byte-identical or not), which shapes stage 7 laid differently,
+# `ARTWORK_UNCOVERED` and the bare-artwork area (preflight's own instrument, whole
+# design), and, where `glyph_legibility` can read the design's words (Fremont,
+# Becker, Bridge), the legibility and OCR read of each word.
+#
+# The designs: the nine corpus logos at `thin_strokes.REAL_ART`'s own size and the
+# Studio's six colours (the byte-duplicate thermal badge runs once, as the other
+# corpus tools do); Fremont's two Hat renders #938 used; and the two fixtures the
+# small-print censuses used (the synthetic BOARD 80 word and Fremont's tagline crop)
+# at 2.5 / 3 / 4 mm caps, 40 wt. The arms are the two options MASTER_SCOPE 56 names
+# (candidates, gate 1); "main" has both off.
+
+CORPUS_ARMS = ["main", "true", "sk073"]
+CORPUS_ARM_LABEL = {"main": "main (both off)", "true": "true size", "sk073": "skeleton @ 0.73"}
+HAT_CORPUS = {"fremont_hat81": 81.0, "fremont_hat925": PRO_WIDTH_MM}
+SMALL_PRINT_CORPUS = ("synthetic", "fremont_tagline")
+SMALL_PRINT_CAPS = (2.5, 3.0, 4.0)
+# corpus design -> the `glyph_legibility.CASES` entry that can read its words.
+LEGIBILITY_CASE = {"fremont": "fremont", "fremont_hat81": "fremont", "fremont_hat925": "fremont",
+                   "becker": "becker", "bridge": "bridge"}
+
+
+def corpus_designs() -> dict[str, dict]:
+    """name -> spec, in run order. `kind` is logo / hat / small_print."""
+    from tools.thin_strokes import STUDIO_MAX_COLORS, corpus_cases
+    out: dict[str, dict] = {}
+    for name, path, width, garment in corpus_cases():
+        out[name] = {"kind": "logo", "path": str(path),
+                     "cfg": {"target_width_mm": width, "garment_id": garment,
+                             "max_colors": STUDIO_MAX_COLORS}}
+    for name, width in HAT_CORPUS.items():
+        out[name] = {"kind": "hat", "width_mm": width}
+    for fx in SMALL_PRINT_CORPUS:
+        for cap in SMALL_PRINT_CAPS:
+            out[f"sp_{fx}_{cap:g}"] = {"kind": "small_print", "fixture": fx, "cap": cap}
+    return out
+
+
+def stream_md5(plan) -> str:
+    """The stitch stream's md5, `small_lettering_skeleton.corpus_one`'s own recipe."""
+    import hashlib
+    coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
+              for _, r in plan.iter_runs() for x, y in r.points]
+    return hashlib.md5(json.dumps(coords).encode()).hexdigest()
+
+
+def changed_shapes(base: dict[str, str], arm: dict[str, str]) -> int:
+    """Shapes stage 7 laid differently: an id whose runs differ, or one that only
+    one of the two plans has (the options can retire a shape or add one)."""
+    return sum(1 for k in set(base) | set(arm) if base.get(k) != arm.get(k))
+
+
+def ocr_total(words: dict) -> tuple[int, int]:
+    """(recovered, read) summed over a design's words; words with no OCR count 0."""
+    k = n = 0
+    for w in words.values():
+        o = w.get("ocr") or {}
+        k += o.get("recovered") or 0
+        n += o.get("read") or 0
+    return k, n
+
+
+def mean_legibility(words: dict):
+    vals = [w["legibility"] for w in words.values() if w.get("legibility") is not None]
+    return None if not vals else sum(vals) / len(vals)
+
+
+def _digitize(source, cfg_kw: dict) -> dict:
+    """Stages 0-7 the way `/digitize` runs them, keeping the pieces the metrics read."""
+    from digitizer_core import PipelineConfig
+    from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
+    cfg = PipelineConfig(**cfg_kw)
+    gen = build_generation(source, cfg)
+    result = finish_generation(gen.fork(), cfg)
+    return {"gen": gen, "result": result, "plan": plan_stitches(result, cfg), "cfg": cfg}
+
+
+def corpus_metrics(run: dict) -> dict:
+    """The design-level numbers of one digitized cell (no words)."""
+    from digitizer_core import preflight
+    from tools.hairline_logo_bill import plan_counts, shape_digests
+    from tools.hairline_renders import bare_cells
+    plan, result, p = run["plan"], run["result"], run["gen"].p
+    counts = plan_counts(plan)
+    findings, metrics = preflight._uncovered_findings(p, result, plan)
+    unc = next((f for f in findings if f["code"] == preflight.ARTWORK_UNCOVERED), None)
+    bare = bare_cells(plan, result, p)
+    s = plan.stats
+    return {"stitches": s.stitch_count, "trims": s.trims, "jumps": counts["jumps"],
+            "thread_m": counts["thread_m"], "size_mm": [round(v, 1) for v in s.size_mm],
+            "md5": stream_md5(plan), "shape_digests": shape_digests(plan),
+            "uncovered_total_mm2": metrics.get("uncovered_total_mm2"),
+            "uncovered_wanted_mm2": metrics.get("uncovered_wanted_mm2"),
+            "uncovered_worst_mm2": metrics.get("uncovered_hole_mm2"),
+            "uncovered_fires": unc is not None,
+            "uncovered_shapes": ([x["shape_id"] for x in unc["extra"]["shapes"]] if unc else []),
+            "bare_mm2": round(float(bare[0].sum()) * bare[2] ** 2, 2)}
+
+
+def corpus_words(case: str, design: dict) -> dict:
+    """Every word `glyph_legibility` can read in `design`, as `word_row` rows."""
+    from tools import glyph_legibility as gl
+    words, _dbg, _reg = gl.read_case(case, design, use_ocr=True)
+    out = {}
+    for w in words:
+        g = [{k: v for k, v in x.items()
+              if k in ("legibility", "counters", "src_counters_openable", "sewn_counters_spurious")}
+             for x in w.glyphs]
+        out[w.name] = word_row(w.summary(), g)
+    return out
+
+
+def _digitize_small_print(spec: dict, overrides: dict, out: Path):
+    """A small-print census cell: the fixture scaled so its reference line lands
+    at `cap` mm, 40 wt. Also reads the census's own counters (the instrument the
+    small-print censuses used) from the same cfg."""
+    from digitizer_core import PipelineConfig
+    from tools import small_print
+    fx, cap = spec["fixture"], spec["cap"]
+    image = small_print.load(fx)
+    ref_path = out / f"sp_ref_{fx}.json"
+    if fx == "synthetic":
+        ref = json.loads((ROOT / "testdata" / "small_print_synthetic_ref.json").read_text())
+    elif ref_path.exists():
+        ref = json.loads(ref_path.read_text())
+    else:
+        ref = small_print.reference(image, PipelineConfig(target_width_mm=small_print.FIXTURES[fx][2]),
+                                    small_print.FIXTURES[fx][1])
+        out.mkdir(parents=True, exist_ok=True)
+        ref_path.write_text(json.dumps(ref))
+    kw = {"target_width_mm": round(cap / ref["cap"], 2), **overrides}
+    run = _digitize(image, kw)
+    m, _ = small_print.measure(image, run["cfg"], ref)
+    keep = ("width_mm", "cap_mm", "counters", "counters_shut", "counter_open", "covered", "spill", "dust")
+    extra = {"sp": {k: (None if isinstance(m[k], float) and math.isnan(m[k]) else m[k]) for k in keep}}
+    return run, extra
+
+
+def _corpus_sidecar(name: str, arm: str, run: dict, sk: dict, bean: dict, out: Path, renders: Path) -> dict:
+    """What a render sheet needs: the design, and (for an option arm) which shapes
+    stage 7 laid differently from the saved main cell, their area, box and tier
+    reports. The saved cells are not rewritten."""
+    from digitizer_core.adapter import plan_to_design
+    from tools.hairline_logo_bill import shape_digests
+    renders.mkdir(parents=True, exist_ok=True)
+    (renders / f"corpus_{name}__{arm}_design.json").write_text(
+        json.dumps(plan_to_design(run["plan"], name=name)))
+    main_cell = out / f"corpus_{name}__main.json"
+    base = json.loads(main_cell.read_text())["shape_digests"] if arm != "main" and main_cell.exists() else {}
+    now = shape_digests(run["plan"])
+    by = {r.shape_id: r for r in run["result"].regions}
+    shapes = []
+    for sid in sorted(k for k in set(base) | set(now) if base and base.get(k) != now.get(k)):
+        r = by.get(sid)
+        if r is None:
+            continue
+        shapes.append({"shape_id": sid, "area_mm2": round(r.polygon.area, 2),
+                       "bounds_mm": [round(v, 2) for v in r.polygon.bounds],
+                       "bean": bean.get(sid), "skeleton": sk.get(sid)})
+    box = ([min(s["bounds_mm"][0] for s in shapes), min(s["bounds_mm"][1] for s in shapes),
+            max(s["bounds_mm"][2] for s in shapes), max(s["bounds_mm"][3] for s in shapes)]
+           if shapes else None)
+    side = {"design": name, "arm": arm, "box_mm": box, "changed_shapes": shapes}
+    (renders / f"corpus_{name}__{arm}_changed.json").write_text(json.dumps(side, indent=1, default=str))
+    print(f"{name}__{arm}: {len(shapes)} changed shapes, box {box}", flush=True)
+    return side
+
+
+def corpus_sheet(name: str, out: Path, renders: Path, ppm: float = 30.0):
+    """Every arm of one design over the box of the shapes the options changed
+    (the whole design when none changed), one px/mm, the saved cell's numbers in
+    each caption."""
+    import cv2
+    import numpy as np
+    from tools import fremont_triage as ft
+    cells = load_corpus(out).get(name, {})
+    arms = [a for a in CORPUS_ARMS if (renders / f"corpus_{name}__{a}_design.json").exists()]
+    boxes = [json.loads(p.read_text())["box_mm"] for a in arms
+             if (p := renders / f"corpus_{name}__{a}_changed.json").exists()]
+    boxes = [b for b in boxes if b]
+    rows = []
+    box = None
+    if boxes:
+        box = [min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes)]
+        ppm = min(ppm, 1700.0 / max(box[2] - box[0], box[3] - box[1], 1.0))
+    for a in arms:
+        design = json.loads((renders / f"corpus_{name}__{a}_design.json").read_text())
+        img, to_px = ft._render(design, ppm)
+        crop = img if box is None else ft._crop(img, to_px, box, margin_mm=1.0)
+        c = cells.get(a)
+        cap = f"{name} | {CORPUS_ARM_LABEL[a]}"
+        if c:
+            cap += f" | {c['stitches']:,} st, {c['trims']} tr, uncovered {c['uncovered_total_mm2']} mm2, bare {c['bare_mm2']} mm2"
+        rows.append(ft._label(crop, cap))
+    if not rows:
+        return None
+    w = max(r.shape[1] for r in rows)
+    sheet = np.vstack([np.pad(r, ((0, 8), (0, w - r.shape[1]), (0, 0)), constant_values=255) for r in rows])
+    sheet = ft._label(sheet, f"{name}: every row {ppm:.0f} px/mm over the shapes the options changed; thread at its "
+                             "laid width, a picture of the file, not of cloth", width=w)
+    path = renders / f"corpus_{name}.png"
+    cv2.imwrite(str(path), sheet)
+    return path
+
+
+def corpus_cell(name: str, arm: str, out: Path, renders: Path | None = None) -> dict:
+    """Digitize one corpus design under one arm and save its record. With
+    `renders`, a re-run for the render sheets instead (`_corpus_sidecar`)."""
+    from digitizer_core.adapter import plan_to_design
+    spec = corpus_designs()[name]
+    overrides = ARMS[arm][0]
+    t = time.time()
+    sk: dict = {}
+    bean: dict = {}
+    extra: dict = {}
+    with spy_tiers(sk, bean):
+        if spec["kind"] == "logo":
+            run = _digitize(spec["path"], {**spec["cfg"], **overrides})
+        elif spec["kind"] == "hat":
+            from tools import fremont_triage as ft
+            run = ft.run_arm(name, spec["width_mm"], None, preflight=False, overrides=overrides)
+        else:
+            run, extra = _digitize_small_print(spec, overrides, out)
+    if renders is not None:         # a render re-run: sidecars only, the saved cell stays as it is
+        return _corpus_sidecar(name, arm, run, sk, bean, out, renders)
+    rec = {"design": name, "arm": arm, "kind": spec["kind"], "overrides": overrides,
+           **corpus_metrics(run), "skeleton_shapes": sum(1 for r in sk.values() if not r.get("empty")),
+           "bean_shapes": sum(1 for r in bean.values() if not r.get("empty")), **extra}
+    case = LEGIBILITY_CASE.get(name)
+    rec["words"] = corpus_words(case, plan_to_design(run["plan"], name=name)) if case else {}
+    rec["secs"] = round(time.time() - t)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / f"corpus_{name}__{arm}.json").write_text(json.dumps(rec, indent=1))
+    print(f"{name}__{arm}: {rec['stitches']:,} st, {rec['trims']} tr, md5 {rec['md5'][:8]}, "
+          f"AU {rec['uncovered_total_mm2']} mm2, bare {rec['bare_mm2']} mm2, skeleton {rec['skeleton_shapes']}, "
+          f"bean {rec['bean_shapes']}, {rec['secs']} s", flush=True)
+    for w, r in rec["words"].items():
+        print(f"  {w:8s} leg {r['legibility']} OCR {fmt_ocr(r['ocr'])}", flush=True)
+    return rec
+
+
+def load_corpus(out: Path) -> dict[str, dict[str, dict]]:
+    """{design: {arm: record}} from the saved corpus cells."""
+    cells: dict[str, dict[str, dict]] = {}
+    for p in sorted(out.glob("corpus_*__*.json")):
+        d = json.loads(p.read_text())
+        cells.setdefault(d["design"], {})[d["arm"]] = d
+    return cells
+
+
+def _ordered(cells: dict) -> list[str]:
+    order = list(corpus_designs())
+    return sorted(cells, key=lambda n: order.index(n) if n in order else len(order))
+
+
+def corpus_deltas(cells: dict) -> list[dict]:
+    """One row per design and non-main arm, against that design's main cell."""
+    rows = []
+    for name in _ordered(cells):
+        base = cells[name].get("main")
+        if not base:
+            continue
+        for arm in CORPUS_ARMS[1:]:
+            c = cells[name].get(arm)
+            if not c:
+                continue
+            bw, cw = base["words"], c["words"]
+            legs = {w: round(cw[w]["legibility"] - bw[w]["legibility"], 3)
+                    for w in cw if w in bw and cw[w].get("legibility") is not None
+                    and bw[w].get("legibility") is not None}
+            rows.append({
+                "design": name, "arm": arm, "identical": c["md5"] == base["md5"],
+                "d_stitches": c["stitches"] - base["stitches"], "d_trims": c["trims"] - base["trims"],
+                "d_stitch_pct": 100.0 * (c["stitches"] - base["stitches"]) / max(base["stitches"], 1),
+                "changed": changed_shapes(base["shape_digests"], c["shape_digests"]),
+                "d_au": round((c["uncovered_total_mm2"] or 0) - (base["uncovered_total_mm2"] or 0), 2),
+                "d_bare": round(c["bare_mm2"] - base["bare_mm2"], 2),
+                "d_leg": legs})
+    return rows
+
+
+def _cnt(c: dict) -> str:
+    return f"{c['stitches']:,} / {c['trims']}"
+
+
+def corpus_table(cells: dict) -> str:
+    """The PR table: per design, main vs true size vs skeleton @ 0.73."""
+    lines = ["| design | main st / tr | true size st / tr | same? | shapes changed | dAU mm2 | dBare mm2 | "
+             "skeleton@0.73 st / tr | same? | shapes changed | dAU mm2 | dBare mm2 |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    by = {(r["design"], r["arm"]): r for r in corpus_deltas(cells)}
+    for name in _ordered(cells):
+        base = cells[name].get("main")
+        if not base:
+            continue
+        cols = [name, _cnt(base)]
+        for arm in CORPUS_ARMS[1:]:
+            c, d = cells[name].get(arm), by.get((name, arm))
+            if not c or not d:
+                cols += ["-"] * 5
+                continue
+            cols += [_cnt(c), "yes" if d["identical"] else "NO", str(d["changed"]),
+                     f"{d['d_au']:+.2f}", f"{d['d_bare']:+.2f}"]
+        lines.append("| " + " | ".join(cols) + " |")
+    return "\n".join(lines)
+
+
+def corpus_legibility_table(cells: dict) -> str:
+    """Per design `glyph_legibility` can read: mean legibility, the worst word and
+    the OCR glyphs recovered (Wilson 95%) per arm."""
+    lines = ["| design | arm | words | mean legibility | worst word | OCR glyphs recovered (Wilson 95%) |",
+             "|---|---|---|---|---|---|"]
+    for name in _ordered(cells):
+        for arm in CORPUS_ARMS:
+            c = cells[name].get(arm)
+            if not c or not c["words"]:
+                continue
+            m = mean_legibility(c["words"])
+            vals = {w: r["legibility"] for w, r in c["words"].items() if r.get("legibility") is not None}
+            worst = min(vals, key=vals.get) if vals else None
+            k, n = ocr_total(c["words"])
+            ci = wilson(k, n)
+            ocr = "n/a" if not n else f"{k}/{n}" + (f" [{ci[0]:.2f}-{ci[1]:.2f}]" if ci else "")
+            lines.append(f"| {name} | {arm} | {len(c['words'])} | "
+                         f"{'-' if m is None else f'{m:.3f}'} | "
+                         f"{'-' if worst is None else f'{worst} {vals[worst]:.3f}'} | {ocr} |")
+    return "\n".join(lines)
+
+
+def corpus_small_print_table(cells: dict) -> str:
+    """The small-print rows read by the censuses' own instrument
+    (`small_print.measure`): counters still shut / of source, the share of counter
+    area open, source letters covered by thread, thread spilled outside them."""
+    lines = ["| design | arm | counters shut / of | counter area open | source covered | spill |",
+             "|---|---|---|---|---|---|"]
+    for name in _ordered(cells):
+        for arm in CORPUS_ARMS:
+            sp = (cells[name].get(arm) or {}).get("sp")
+            if not sp:
+                continue
+
+            def f(k):
+                return "-" if sp.get(k) is None else f"{sp[k]:.2f}"
+            lines.append(f"| {name} | {arm} | {sp['counters_shut']} / {sp['counters']} | "
+                         f"{f('counter_open')} | {f('covered')} | {f('spill')} |")
+    return "\n".join(lines)
+
+
+def _worst(value, fmt: str, design: str) -> str:
+    """A regression cell: 'none' when the worst change anywhere is zero or an improvement."""
+    return "no increase anywhere" if value <= 0 else f"worst {fmt.format(value)} ({design})"
+
+
+def worst_regressions(cells: dict) -> list[str]:
+    """One plain line per non-main arm: the worst thing it does anywhere."""
+    rows = corpus_deltas(cells)
+    out = []
+    for arm in CORPUS_ARMS[1:]:
+        rs = [r for r in rows if r["arm"] == arm]
+        if not rs:
+            continue
+        moved = [r for r in rs if not r["identical"]]
+        parts = [f"{CORPUS_ARM_LABEL[arm]} changed {len(moved)} of {len(rs)} designs"]
+        if moved:
+            a = max(rs, key=lambda r: r["d_au"])
+            t = max(rs, key=lambda r: r["d_trims"])
+            s = max(rs, key=lambda r: r["d_stitch_pct"])
+            parts.append(f"new uncovered artwork: {_worst(a['d_au'], '{:+.2f} mm2', a['design'])}")
+            parts.append(f"trims: {_worst(t['d_trims'], '{:+d}', t['design'])}")
+            parts.append(f"stitches: {_worst(s['d_stitch_pct'], '{:+.1f}%', s['design'])}")
+            legs = [(v, r["design"], w) for r in rs for w, v in r["d_leg"].items()]
+            if legs:
+                v, d, w = min(legs)
+                parts.append("legibility: " + ("never lower" if v >= 0 else f"worst {v:+.3f} ({d} {w})"))
+        out.append("; ".join(parts))
+    return out
+
+
 def main(argv=None) -> int:
     from tools._console import utf8_console
     utf8_console()
@@ -450,9 +850,32 @@ def main(argv=None) -> int:
     ap.add_argument("--table", action="store_true", help="print the markdown tables from the saved cells")
     ap.add_argument("--pick", action="store_true", help="print the one-line-per-arm table for the PR body")
     ap.add_argument("--sheets", action="store_true")
-    ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--corpus", nargs=2, metavar=("DESIGN", "ARM"),
+                    help="digitize one corpus design under one arm (ARM in %s); see the corpus section" % CORPUS_ARMS)
+    ap.add_argument("--corpus-list", action="store_true", help="print the corpus design names")
+    ap.add_argument("--corpus-sheet", metavar="DESIGN",
+                    help="render sheet of one design from the --renders sidecars (written by --corpus ... --renders)")
+    ap.add_argument("--corpus-table", action="store_true",
+                    help="print the corpus tables and the worst-regression lines from the saved cells")
+    ap.add_argument("--out", type=Path)
     ap.add_argument("--renders", type=Path)
     a = ap.parse_args(argv)
+    if a.corpus_list:
+        print("\n".join(corpus_designs()))
+        return 0
+    if a.out is None:
+        ap.error("--out is required")
+    if a.corpus:
+        design, arm = a.corpus
+        if design not in corpus_designs() or arm not in CORPUS_ARMS:
+            raise SystemExit(f"--corpus DESIGN in {list(corpus_designs())}, ARM in {CORPUS_ARMS}")
+        corpus_cell(design, arm, a.out, a.renders)
+    if a.corpus_sheet:
+        print(corpus_sheet(a.corpus_sheet, a.out, a.renders or a.out / "renders"))
+    if a.corpus_table:
+        cc = load_corpus(a.out)
+        print(corpus_table(cc), "", corpus_legibility_table(cc), "", corpus_small_print_table(cc), "",
+              *worst_regressions(cc), sep="\n")
     if a.cell:
         fixture, arm = a.cell
         if fixture not in FIXTURES or arm not in ARMS:

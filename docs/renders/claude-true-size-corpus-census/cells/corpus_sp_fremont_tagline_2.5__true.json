@@ -1,0 +1,55 @@
+{
+ "design": "sp_fremont_tagline_2.5",
+ "arm": "true",
+ "kind": "small_print",
+ "overrides": {
+  "small_text_restore_mm": 3.0,
+  "bean_letter_max_stroke_mm": 0.4,
+  "bean_letter_stitch_mm": 0.45,
+  "bean_letter_serif_mm": 0.45
+ },
+ "stitches": 540,
+ "trims": 5,
+ "jumps": 18,
+ "thread_m": 0.247,
+ "size_mm": [
+  29.3,
+  4.0
+ ],
+ "md5": "cd43e51edd640c6741d0c7eb15e926b0",
+ "shape_digests": {
+  "S257157fb": "a305e93272c305bd199ed319fe4b4747",
+  "S040a4bdb": "f4d570e1b3d885caf3aea660902acc16",
+  "Sd9db0c07": "5aaa28284d061f01c325a938efaa4f2a",
+  "S0841ec1d": "9e385e11f45ae15d17b3e8d8dabb3422",
+  "S09d01a96": "e524f836c48e70032e626a0cedec9d8b",
+  "S1af37cd4": "6a3c7ede63651ad16cf03f58162d9563",
+  "S57639643": "785d7c4d9e2ff98af25d35c4fff44273",
+  "Sdd6a9eaa": "60c60d35483976093b0bfb218d7650dd",
+  "S29508639": "2637f2ba04180dd62245c561b0a264cc",
+  "S33c35156": "4387a61544d4fdab77bbcd94b1ec8e19",
+  "S0dc8ee1a": "2671323d800ed9dd16db11d6b9f0aea0",
+  "Sd8a4708f": "6c2f3469d41586bace45c85078ae9803",
+  "Saf2aba3a": "fec10b012a3662414124a6fe81eb1b9e"
+ },
+ "uncovered_total_mm2": 0.0,
+ "uncovered_wanted_mm2": 23.5,
+ "uncovered_worst_mm2": 0.0,
+ "uncovered_fires": false,
+ "uncovered_shapes": [],
+ "bare_mm2": 2.44,
+ "skeleton_shapes": 0,
+ "bean_shapes": 11,
+ "sp": {
+  "width_mm": 29.75,
+  "cap_mm": 2.499686581832075,
+  "counters": 4,
+  "counters_shut": 2,
+  "counter_open": 0.5597035410376063,
+  "covered": 0.8831953122664354,
+  "spill": 0.5327812490657419,
+  "dust": 0.05166051660516605
+ },
+ "words": {},
+ "secs": 62
+}
