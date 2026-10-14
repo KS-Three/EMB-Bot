@@ -305,6 +305,9 @@ def render(out: Path, tmp: Path, ppm: float = 60.0) -> list[Path]:
 def main(argv: list[str]) -> int:
     from tools._console import utf8_console
     utf8_console()
+    if argv and argv[0] in ("-h", "--help"):
+        print(__doc__)
+        return 0
     if not argv:
         print(__doc__)
         return 2
