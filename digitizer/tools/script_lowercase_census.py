@@ -335,7 +335,8 @@ def census_regions(name: str, regions, chart, cfg, truth_fixture: dict | None) -
     pred = {k: [s in sets[k] for s in scored] for k in TAGGERS}
     pred["lane"] = [lane[s][0] for s in scored]
     return {"fixture": name, "regions": len(regions), "source": "labels" if labelled else "reference",
-            "stale": stale, "parity": parity, "glyphs": glyphs, "tagged_not_letter": not_letter, "wide_refused": wide,
+            "stale": stale, "parity": parity,
+            "admitted": {k: len(traces[k].cands) for k in TAGGERS}, "glyphs": glyphs, "tagged_not_letter": not_letter, "wide_refused": wide,
             "rest_refusals": dict(sorted(rest.items(), key=lambda kv: (-kv[1], kv[0]))),
             "scored": scored, "truth": [s in gset for s in scored] if labelled else None,
             "pred": pred}
@@ -422,7 +423,9 @@ def format_table(res: dict) -> list[str]:
     `lettering_words`. Y tagged, . not. A refused tagger's rule follows."""
     out = [f"== {res['fixture']} at {res['width_mm']:g} mm: {res['regions']} regions, glyphs from "
            f"{res['source']}{' (STALE labels)' if res['stale'] else ''}; parity "
-           + " ".join(f"{k}={'ok' if v else 'DIFF'}" for k, v in res["parity"].items())]
+           + " ".join(f"{k}={'ok' if v else 'DIFF'}" for k, v in res["parity"].items())
+           + "; candidates admitted past admission and nesting "
+           + " ".join(f"{k}={v}" for k, v in res["admitted"].items())]
     out.append(f"{'shape':10s} {'line':18s} {'read':16s} {'kind':6s} {'h':>5s} {'w':>5s} {'asp':>5s} {'cv':>5s} "
                f"TC HG L1 LN L1+LN  refusals")
     for g in res["glyphs"] + res["tagged_not_letter"]:
