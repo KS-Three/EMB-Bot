@@ -19,6 +19,13 @@ These pin:
   an end past its face by more than the 0.10 mm candidate, ON none does (the
   M keeps one, at 0.17 mm), no penetration ends past the rails' side reach,
   and neither stitches nor bare outline move by more than a hair.
+And the follow-up (2026-10-13, `claude/column-end-connectors`):
+- `square_ends` mitres the N's diagonal foot to the baseline
+  (`outline_cut._mitre_ends`), holds the M's vertex corner on both faces,
+  and keeps a thin cross's own side push (golden_tee's 0.10 mm bars);
+- `cfg.lettering_columns_inside_connectors` (built OFF) keeps every
+  connector on the letter or its satin: Kent's M->O "loop" and Becker
+  MARINE's N travel (`testdata/becker80_lane_letters.json`).
 Fremont is UNREPRESENTATIVE: these reproduce its defects, they size nothing.
 """
 from __future__ import annotations
@@ -36,6 +43,7 @@ from tools import column_ends as ce
 from tools import lowercase_angle as la
 
 LETTERS = Path(__file__).resolve().parent.parent / "testdata" / "fremont81_end_letters.json"
+BECKER = Path(__file__).resolve().parent.parent / "testdata" / "becker80_lane_letters.json"
 #: the lane's OFF runs on the aileron glyphs (120 and 80 mm) and the three
 #: Fremont letters, at the hat's 0.4 mm pull -- identical on this branch and
 #: on main at 8240f86c (2026-10-13)
@@ -98,6 +106,7 @@ def test_off_never_reaches_the_new_code(fremont, monkeypatch):
         raise AssertionError("square_ends code reached with the flag off")
     for name in ("_hold_end_faces", "end_face_hold", "end_faces", "_ring_edges"):
         monkeypatch.setattr(columns, name, boom)
+    monkeypatch.setattr(outline_cut, "_mitre_ends", boom)
     for poly, kw in list(fremont.values()) + list(_aileron().values())[:12]:
         columns.lettering_columns_shape(poly, "off", **kw)
 
@@ -153,12 +162,15 @@ def test_off_reproduces_the_circled_end(ends, key):
     assert ends[key]["off"]["worst_stub_mm"] > 0.24
 
 
-@pytest.mark.parametrize("key, left", [("accent_e", 0), ("final_t", 0), ("m_o_junction", 1)])
-def test_on_ends_on_the_outline(ends, key, left):
+@pytest.mark.parametrize("key", sorted(ce.FREMONT_ENDS))
+def test_on_ends_on_the_outline(ends, key):
+    """#907 left the M's vertex one end at 0.17 mm (its last cross slid
+    along the right diagonal's edge, off the V's flat foot); a corner held
+    on both faces leaves none."""
     on = ends[key]["on"]
-    assert on["overshoots"] <= left
-    assert on["worst_stub_mm"] < 0.2
-    assert on["beyond_reach"] == 0
+    assert on["overshoots"] == 0
+    assert on["worst_stub_mm"] <= ce.TOL_MM
+    assert on["beyond_pull"] == 0
 
 
 @pytest.mark.parametrize("key", sorted(ce.FREMONT_ENDS))
@@ -175,19 +187,81 @@ def test_the_m_travel_no_longer_crosses_its_counter(ends):
     assert ends["m_o_junction"]["on"]["travel_off_mm"] < 0.05
 
 
-def test_stage7_passes_the_flag(monkeypatch):
-    """The stage 7 call carries `square_ends` exactly when the flag is on."""
+def _end_at(row, xy):
+    return min(row["ends"], key=lambda e: math.dist(e["at_mm"], xy))
+
+
+def test_the_n_foot_is_mitred_to_the_baseline(ends):
+    """#907 left the N's diagonal ending in crosses square to the diagonal,
+    a chamfer 40 deg off the baseline it stands on; `outline_cut._mitre_ends`
+    turns its last crosses onto the baseline."""
+    foot = (31.13, 2.9)
+    off, on = _end_at(ends["final_t"]["off"], foot), _end_at(ends["final_t"]["on"], foot)
+    assert math.dist(off["at_mm"], foot) < 0.3 and math.dist(on["at_mm"], foot) < 0.3
+    assert off["cap_deg"] > 30
+    assert on["cap_deg"] < 5
+    assert on["stub_mm"] <= ce.TOL_MM
+
+
+def test_a_thin_bar_keeps_its_side_push():
+    """A 0.12 mm bar: every cross is inset by a quarter of itself, so its
+    side push reaches past `pull - RAIL_REACH_INSET_MM`. #907 cut it back to
+    that and the crosses fell under the cross floor (golden_tee 50 mm: 31
+    crosses unsewn on one letter, +0.56 mm2 bare); ON keeps them all."""
+    bar = Polygon([(0, 0), (6, 0), (6, 0.12), (0, 0.12)])
+    kw = dict(trim_at_mm=3.0, spacing_mm=0.4, pull_mm=0.3, pull_floor_mm=1.5)
+    _r, off = columns.lettering_columns_shape(bar, "bar", **kw)
+    _r, on = columns.lettering_columns_shape(bar, "bar", **kw, square_ends=True)
+    assert off["stations"] > 0 and off["thin_crosses"] == 0
+    assert on["thin_crosses"] == 0 and on["stations"] >= off["stations"] - 2
+
+
+# --- inside connectors --------------------------------------------------------------
+
+def test_inside_connectors_is_off_by_default():
+    assert PipelineConfig().lettering_columns_inside_connectors is False
+
+
+@pytest.mark.parametrize("square", [False, True])
+def test_the_m_connector_stays_on_the_letter(fremont, square):
+    """Kent's M->O "loop": OFF a 2.5 mm needle-down connector from the M's
+    right foot to its vertex, 1.65 mm of it over the bare notch, passed the
+    link rule's letter + 0.1 + pull. With `inside_connectors`, alone or with
+    `square_ends`, no connector leaves the letter or its satin."""
+    poly, kw = fremont["m_o_junction"]
+    r = ce.letter_ends(poly, kw, square_ends=square, inside_connectors=True)
+    assert r["connector_bare_mm"] < 0.05
+    assert r["trims"] == 0
+
+
+def test_becker_marine_connectors_stay_on_the_letters():
+    """Becker MARINE at 80 mm (`testdata/becker80_lane_letters.json`, the
+    letters and arguments the OFF run handed the lane): under #907's
+    `square_ends` the N grew a visible travel stitch across the notch at its
+    top. With `inside_connectors` too, no connector crosses bare cloth."""
+    letters = ce.load_letters(BECKER)
+    sq = sum(ce.letter_ends(p, kw, square_ends=True)["connector_bare_mm"] for p, kw in letters.values())
+    both = sum(ce.letter_ends(p, kw, square_ends=True, inside_connectors=True)["connector_bare_mm"]
+               for p, kw in letters.values())
+    assert sq > 1.0
+    assert both < 0.05
+
+
+def test_stage7_passes_the_flags(monkeypatch):
+    """The stage 7 call carries `square_ends` and `inside_connectors`
+    exactly when their flags are on."""
     from digitizer_core import digitize
     from digitizer_core import stage7_sequence as s7
     seen = []
     real = s7.lettering_columns_shape
 
     def spy(poly, shape_id, **kw):
-        seen.append(kw.get("square_ends"))
+        seen.append((kw.get("square_ends"), kw.get("inside_connectors")))
         return real(poly, shape_id, **kw)
 
     monkeypatch.setattr(s7, "lettering_columns_shape", spy)
     digitize(la.FIXTURE.with_suffix(".png"),
              PipelineConfig(target_width_mm=80.0, forced_class="flat",
-                            lettering_columns_square_ends=True))
-    assert seen and all(v is True for v in seen)
+                            lettering_columns_square_ends=True,
+                            lettering_columns_inside_connectors=True))
+    assert seen and all(v == (True, True) for v in seen)

@@ -832,6 +832,11 @@ def build_generation(
     # and before every reader of a letter's geometry -- the regularizer, the
     # word tagger, the priors, the house angle -- so each sees the line at
     # the size it will be sewn. None: never called, byte-identical.
+    if cfg.small_text_restore_mm:
+        # True size: adopt the line's untagged letters and give every letter
+        # its counters back, before any reader of a letter's geometry.
+        from .small_text import restore_small_text
+        restore_small_text(regions, p, cap_mm=cfg.small_text_restore_mm)
     if cfg.small_text_cap_mm:
         from .small_text import enlarge_small_text
         enlarge_small_text(regions, p, cap_mm=cfg.small_text_cap_mm)
@@ -1675,7 +1680,12 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                                     # reading it (a re-plan with the flag
                                     # off must ignore a stale carrier).
                                     palette_spools=result.palette_spools,
-                                    hairline=hairline)
+                                    hairline=hairline,
+                                    # `cfg.small_lettering_skeleton` reads its
+                                    # width gate off the artwork's pixels, as
+                                    # the hairline tier does; off, None.
+                                    ink_source=(getattr(result, "ink_source", None)
+                                                if cfg.small_lettering_skeleton else None))
 
     # The plan's palette is the list of cones this plan actually sews, one per
     # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a

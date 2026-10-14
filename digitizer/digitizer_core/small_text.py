@@ -33,6 +33,12 @@ Fails open throughout, the discipline of every tagger here: anything
 uncertain leaves the cluster untouched. Off (None), nothing calls this and
 the pipeline is byte-identical.
 
+TRUE SIZE (`restore_small_text`, `cfg.small_text_restore_mm`). Kent on
+the enlargement: "you can't change the font size for the final product."
+Steps 1 and 2 alone, nothing scaled or moved, with the adopted letters
+written into the cluster -- so bean letters, which sews the centreline of a
+cluster member's source ink, sews the whole line, the 8 included.
+
 Every number below is a CANDIDATE (ROADMAP gate 1). The cap height the flag
 takes is the professional's on one file; nothing here has been sewn.
 """
@@ -424,3 +430,58 @@ def _fill_old_holes(regions: list[Region], ids: set[int], old_union) -> None:
             if filled.is_valid:
                 r.polygon = filled
                 r.area_mm2 = float(filled.area)
+
+
+def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float) -> list[dict]:
+    """The true-size half of this module (`cfg.small_text_restore_mm`): no
+    scale, no move. For every line of lettering under `cap_mm`, ADOPT the
+    untagged letters of the line into its text cluster and RETRACE every
+    letter from the source raster, so each keeps the counters stage 4
+    dropped. A lettering tier that reads cluster members -- bean letters
+    sews the centreline of a member's source ink -- then sees the whole
+    line, the 8 included. -> one report row per cluster considered."""
+    report: list[dict] = []
+    if not cap_mm or cap_mm <= 0 or not regions:
+        return report
+    clusters: dict[str, list[Region]] = {}
+    for r in regions:
+        cid = r.meta.get("text_cluster_id")
+        if cid:
+            clusters.setdefault(cid, []).append(r)
+    claimed: set[int] = set()
+    for cid in sorted(clusters):
+        row = {"cluster": cid, "members": len(clusters[cid])}
+        report.append(row)
+        try:
+            members = _core(clusters[cid])
+            if len(members) < 3:
+                row["skipped"] = "not_one_line"
+                continue
+            cap = float(np.median([_height(r) for r in members]))
+            row["cap_mm"] = round(cap, 3)
+            if cap <= 0 or cap >= cap_mm:
+                row["skipped"] = "tall_enough"
+                continue
+            group = [r for r in _adopt(members, regions, cap) if id(r) not in claimed]
+            if len(group) < len(members):
+                row["skipped"] = "member_claimed"
+                continue
+            traced = _retrace(group, p, cap)
+            tags = {k: members[0].meta[k] for k in
+                    ("text_candidate", "text_cluster_id", "text_cluster_stroke_mm", "text_cluster_all_rescued")
+                    if k in members[0].meta}
+            member_ids = {id(r) for r in members}
+            for i, r in enumerate(group):
+                shape = traced.get(i)
+                if shape is not None and isinstance(shape, Polygon) and shape.is_valid and not shape.is_empty:
+                    r.polygon = shape
+                    r.area_mm2 = float(shape.area)
+                    r.meta["small_text_restored"] = True
+                if id(r) not in member_ids:
+                    r.meta.update(tags)
+                    r.meta["small_text_adopted"] = True
+                claimed.add(id(r))
+            row.update(adopted=len(group) - len(members), retraced=len(traced))
+        except Exception as exc:  # fail open
+            row["skipped"] = f"error:{type(exc).__name__}"
+    return report

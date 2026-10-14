@@ -560,6 +560,10 @@ def vectorize(
         lab_img = rgb_to_lab(p.rgb.reshape(-1, 3)).reshape(h_img, w_img, 3).astype(np.float32)
     min_area_mm2 = (cfg.min_detail_mm ** 2) * 0.25  # a sliver after simplification
     small_print = bool(getattr(cfg, "small_print_floor", False))
+    # `cfg.small_lettering_skeleton`: record the counters the floor drops from
+    # a RESCUED shape (the record above, nothing cut), so stage 7 can punch
+    # them back before it reads the glyph's skeleton. Off, nothing recorded.
+    skeleton_letters = bool(getattr(cfg, "small_lettering_skeleton", False))
     min_detail_px2 = (cfg.min_detail_mm * p.px_per_mm) ** 2
     # `cfg.small_glyph_keep`: a rescued small shape's holes answer to the run
     # tier's floor, not the sliver floor -- its counters are the size of the
@@ -680,13 +684,14 @@ def vectorize(
 
         holes = []
         small_counters: list = []      # `cfg.small_print_floor`: holes the floor drops
+        record_counters = small_print or (skeleton_letters and sub_detail)
         for i in range(len(contours)):
             if hier[i][3] != outer:
                 continue
             hole_src, _hole_share, hole_acc = ring_source(contours[i])
             h_px = cv2.approxPolyDP(hole_src, eps, True).reshape(-1, 2)
             if len(h_px) < 3:
-                if small_print and len(hole_src.reshape(-1, 2)) >= 3:
+                if record_counters and len(hole_src.reshape(-1, 2)) >= 3:
                     # a counter Douglas-Peucker collapsed: its raw ring
                     small_counters.append(_to_mm(hole_src.reshape(-1, 2), cx, cy, p.px_per_mm))
                 continue
@@ -697,7 +702,7 @@ def vectorize(
             ring = _to_mm(h_px, cx, cy, p.px_per_mm)
             if Polygon(ring).area >= (small_hole_mm2 if sub_detail else min_area_mm2):
                 holes.append(ring)
-            elif small_print:
+            elif record_counters:
                 small_counters.append(ring)
 
         poly = Polygon(shell, holes)
