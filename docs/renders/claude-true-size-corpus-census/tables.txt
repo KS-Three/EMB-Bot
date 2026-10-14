@@ -1,0 +1,63 @@
+  [note] thermal (photo/logo_drone_thermal_badge.png) is byte-identical to drone; run once
+  [note] thermal (photo/logo_drone_thermal_badge.png) is byte-identical to drone; run once
+| design | main st / tr | true size st / tr | same? | shapes changed | dAU mm2 | dBare mm2 | skeleton@0.73 st / tr | same? | shapes changed | dAU mm2 | dBare mm2 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| becker | 8,758 / 29 | 8,758 / 29 | yes | 0 | +0.00 | +0.00 | 8,758 / 29 | yes | 0 | +0.00 | +0.00 |
+| tires | 2,732 / 8 | 2,732 / 8 | yes | 0 | +0.00 | +0.00 | 2,732 / 8 | yes | 0 | +0.00 | +0.00 |
+| enthusiast | 2,447 / 9 | 2,390 / 8 | NO | 22 | +0.00 | +0.12 | 2,042 / 8 | NO | 14 | +0.00 | +0.44 |
+| fremont | 20,952 / 61 | 20,753 / 49 | NO | 110 | +0.00 | +0.00 | 20,162 / 61 | NO | 26 | +0.00 | +0.00 |
+| bridge | 18,923 / 99 | 18,923 / 99 | yes | 0 | +0.00 | +0.00 | 18,923 / 99 | yes | 0 | +0.00 | +0.00 |
+| golden_tee | 8,412 / 45 | 8,412 / 45 | yes | 0 | +0.00 | +0.00 | 8,412 / 45 | yes | 0 | +0.00 | +0.00 |
+| gaulke | 4,893 / 23 | 4,893 / 23 | yes | 0 | +0.00 | +0.00 | 4,893 / 23 | yes | 0 | +0.00 | +0.00 |
+| drone | 19,326 / 131 | 21,660 / 154 | NO | 33 | +170.80 | +189.18 | 19,326 / 131 | yes | 0 | +0.00 | +0.00 |
+| screenshot | 8,467 / 58 | 8,469 / 59 | NO | 11 | +0.00 | +0.06 | 8,365 / 57 | NO | 7 | +0.00 | +0.56 |
+| fremont_hat81 | 15,625 / 47 | 15,281 / 41 | NO | 123 | +0.00 | +0.00 | 15,000 / 47 | NO | 19 | +0.00 | +0.00 |
+| fremont_hat925 | 18,882 / 53 | 18,622 / 51 | NO | 105 | +0.00 | +0.00 | 18,092 / 53 | NO | 27 | +0.00 | +0.00 |
+| sp_synthetic_2.5 | 463 / 8 | 281 / 1 | NO | 8 | +0.00 | +1.06 | 463 / 8 | yes | 0 | +0.00 | +0.00 |
+| sp_synthetic_3 | 474 / 4 | 378 / 2 | NO | 8 | +0.00 | +0.93 | 474 / 4 | yes | 0 | +0.00 | +0.00 |
+| sp_synthetic_4 | 547 / 4 | 547 / 4 | yes | 0 | +0.00 | +0.00 | 547 / 4 | yes | 0 | +0.00 | +0.00 |
+| sp_fremont_tagline_2.5 | 624 / 5 | 540 / 5 | NO | 13 | +0.00 | +1.69 | 373 / 5 | NO | 8 | +0.00 | +1.37 |
+| sp_fremont_tagline_3 | 618 / 7 | 749 / 7 | NO | 13 | +0.00 | -1.94 | 513 / 6 | NO | 4 | +0.00 | +0.94 |
+| sp_fremont_tagline_4 | 944 / 6 | 944 / 6 | yes | 0 | +0.00 | +0.00 | 944 / 6 | yes | 0 | +0.00 | +0.00 |
+
+| design | arm | words | mean legibility | worst word | OCR glyphs recovered (Wilson 95%) |
+|---|---|---|---|---|---|
+| becker | main | 2 | 0.913 | BECKER 0.827 | n/a |
+| becker | true | 2 | 0.913 | BECKER 0.827 | n/a |
+| becker | sk073 | 2 | 0.913 | BECKER 0.827 | n/a |
+| fremont | main | 6 | 0.816 | 1895 0.214 | 27/33 [0.66-0.91] |
+| fremont | true | 6 | 0.985 | 1895 0.944 | 29/33 [0.73-0.95] |
+| fremont | sk073 | 6 | 0.979 | 1895 0.925 | 28/33 [0.69-0.93] |
+| bridge | main | 2 | 0.480 | BAR & RESTAURANT 0.227 | 0/1 [0.00-0.79] |
+| bridge | true | 2 | 0.480 | BAR & RESTAURANT 0.227 | 0/1 [0.00-0.79] |
+| bridge | sk073 | 2 | 0.480 | BAR & RESTAURANT 0.227 | 0/1 [0.00-0.79] |
+| fremont_hat81 | main | 6 | 0.816 | 1895 0.551 | 26/32 [0.65-0.91] |
+| fremont_hat81 | true | 6 | 0.938 | fremont 0.835 | 30/32 [0.80-0.98] |
+| fremont_hat81 | sk073 | 6 | 0.899 | 1895 0.772 | 28/32 [0.72-0.95] |
+| fremont_hat925 | main | 6 | 0.747 | 1895 0.214 | 25/33 [0.59-0.87] |
+| fremont_hat925 | true | 6 | 0.919 | the 0.649 | 28/33 [0.69-0.93] |
+| fremont_hat925 | sk073 | 6 | 0.912 | the 0.649 | 27/33 [0.66-0.91] |
+
+| design | arm | counters shut / of | counter area open | source covered | spill |
+|---|---|---|---|---|---|
+| sp_synthetic_2.5 | main | 8 / 10 | 0.28 | 0.98 | 0.83 |
+| sp_synthetic_2.5 | true | 3 / 10 | 0.61 | 0.93 | 0.61 |
+| sp_synthetic_2.5 | sk073 | 8 / 10 | 0.28 | 0.98 | 0.83 |
+| sp_synthetic_3 | main | 8 / 10 | 0.33 | 1.00 | 0.66 |
+| sp_synthetic_3 | true | 2 / 10 | 0.65 | 0.98 | 0.54 |
+| sp_synthetic_3 | sk073 | 8 / 10 | 0.33 | 1.00 | 0.66 |
+| sp_synthetic_4 | main | 2 / 10 | 0.57 | 1.00 | 0.43 |
+| sp_synthetic_4 | true | 2 / 10 | 0.57 | 1.00 | 0.43 |
+| sp_synthetic_4 | sk073 | 2 / 10 | 0.57 | 1.00 | 0.43 |
+| sp_fremont_tagline_2.5 | main | 4 / 4 | 0.05 | 0.97 | 1.43 |
+| sp_fremont_tagline_2.5 | true | 2 / 4 | 0.56 | 0.88 | 0.53 |
+| sp_fremont_tagline_2.5 | sk073 | 4 / 4 | 0.18 | 0.92 | 1.08 |
+| sp_fremont_tagline_3 | main | 0 / 4 | 0.68 | 0.92 | 1.37 |
+| sp_fremont_tagline_3 | true | 0 / 4 | 0.74 | 0.93 | 0.51 |
+| sp_fremont_tagline_3 | sk073 | 1 / 4 | 0.58 | 0.90 | 1.26 |
+| sp_fremont_tagline_4 | main | 0 / 4 | 0.68 | 1.00 | 1.41 |
+| sp_fremont_tagline_4 | true | 0 / 4 | 0.68 | 1.00 | 1.41 |
+| sp_fremont_tagline_4 | sk073 | 0 / 4 | 0.68 | 1.00 | 1.41 |
+
+true size changed 10 of 17 designs; new uncovered artwork: worst +170.80 mm2 (drone); trims: worst +23 (drone); stitches: worst +21.2% (sp_fremont_tagline_3); legibility: worst -0.022 (fremont_hat81 est)
+skeleton @ 0.73 changed 7 of 17 designs; new uncovered artwork: no increase anywhere; trims: no increase anywhere; stitches: no increase anywhere; legibility: worst -0.026 (fremont est)

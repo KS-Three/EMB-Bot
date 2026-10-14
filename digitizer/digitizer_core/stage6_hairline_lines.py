@@ -66,6 +66,23 @@ tier runs as before. On a photo lane the region tier is replaced,
 not stacked: no shape is carved (`pipeline.plan_stitches` hands stage 5 and
 stage 7 an empty `HairlineSet`).
 
+**On the gradient lane, a SUPPLEMENT** (`cfg.hairline_lines_gradient`,
+default OFF, 2026-10-14; `supplements`). The Studio sends owl_kent down
+`gradient` (#876's `studio` route), where the route above never runs. #915
+measured why it must not simply be widened there: on drawn hair the region
+tier sews every strand as a shape and saves thousands of stitches, and the
+line route replacing it is a regression. So on `gradient` the region tier
+runs exactly as it does, and the line route adds only the strands it laid
+nothing near: a line with at least `_SUPPLEMENT_COVERED_SHARE` of its length
+within the tier's run half-width plus one source pixel of a shape the tier
+walked (`supplement_zone`) is not sewn, counted in `refused_region`; nor is
+one lying mostly on a STROKE shape (`is_stroke`) of its OWN tone
+(`own_tone_share`, the tier's contrast floor), counted in
+`refused_own_tone`: on a drawn logo that line
+is line art the tracer already kept as a shape (the bridge logo's wave
+outlines), and sewing it again doubles it. Needs the strand test on too (it
+removes the barring, #897), else inert.
+
 Every number is a property of the FILE, not of cloth (ROADMAP gate 1).
 """
 from __future__ import annotations
@@ -74,6 +91,7 @@ import math
 
 import cv2
 import numpy as np
+import shapely
 
 from . import machine, stitches
 from .config import PHOTO_CLASSES
@@ -142,6 +160,18 @@ SHAPE_ID = "hairline_lines"
 # already laid (the caller's `hop_ok`), else it is cut as before.
 HOP_MAX_MM = 8.0
 
+# --- The gradient supplement (`cfg.hairline_lines_gradient`, default OFF) ----
+# The lane the supplement runs on: where the region tier already sews drawn
+# hair as shapes, and where the Studio sends owl_kent (#915).
+GRADIENT_SUPPLEMENT_CLASSES = ("gradient",)
+# A line whose share of length inside `supplement_zone` is at least this is
+# the region tier's strand seen a second time, and is not sewn. Half: a line
+# that merely crosses a walked shape keeps its free length. A CANDIDATE
+# (geometry of the file, unsewn, gate 1); the measured split is in the PR.
+_SUPPLEMENT_COVERED_SHARE = 0.5
+# Sampling pitch along a line for that share (the chain's cover test's).
+_SUPPLEMENT_STEP_MM = 0.1
+
 
 def _fill_slits(line_map: np.ndarray) -> np.ndarray:
     """Fill every hole of the line map no wider than `_SLIT_PX` pixels.
@@ -182,6 +212,137 @@ def applies(cfg, design_class: str | None) -> bool:
     return bool(getattr(cfg, "hairline", False)
                 and getattr(cfg, "hairline_from_lines", False)
                 and design_class in LINE_CLASSES)
+
+
+def supplements(cfg, design_class: str | None) -> bool:
+    """Does the line route run as a SUPPLEMENT to the region tier on this
+    design? `cfg.hairline_lines_gradient` on a gradient lane, with
+    `hairline`, `hairline_from_lines` and `hairline_lines_strand_test` all
+    on; any one off, False (inert)."""
+    return bool(getattr(cfg, "hairline", False)
+                and getattr(cfg, "hairline_from_lines", False)
+                and getattr(cfg, "hairline_lines_strand_test", False)
+                and getattr(cfg, "hairline_lines_gradient", False)
+                and design_class in GRADIENT_SUPPLEMENT_CLASSES
+                and not applies(cfg, design_class))
+
+
+def supplement_zone(polygons, sp, cfg):
+    """Where the region tier laid strands: the shapes it walked, grown by
+    the tier's run half-width plus one source pixel (#915's proposal). An
+    empty geometry when it walked none."""
+    reach = (0.5 * machine.thread_profile(cfg.thread_wt).hairline_run_width_mm
+             + 1.0 / sp.px_per_mm)
+    polys = [p for p in polygons if p is not None and not p.is_empty]
+    if not polys:
+        return shapely.Polygon()
+    zone = shapely.union_all([p.buffer(reach) for p in polys])
+    shapely.prepare(zone)
+    return zone
+
+
+def _samples(pts) -> tuple[np.ndarray, np.ndarray]:
+    """Points along the polyline `pts` (mm) every `_SUPPLEMENT_STEP_MM`."""
+    p = np.asarray(pts, np.float64)
+    cum = np.r_[0.0, np.cumsum(np.hypot(*np.diff(p, axis=0).T))]
+    n = max(2, int(cum[-1] / _SUPPLEMENT_STEP_MM) + 1)
+    t = np.linspace(0.0, cum[-1], n)
+    return np.interp(t, cum, p[:, 0]), np.interp(t, cum, p[:, 1])
+
+
+def covered_share(pts, zone) -> float:
+    """Share of the polyline `pts` (mm) lying inside `zone`, sampled every
+    `_SUPPLEMENT_STEP_MM`."""
+    if zone is None or zone.is_empty or len(pts) < 2:
+        return 0.0
+    x, y = _samples(pts)
+    return float(np.mean(shapely.contains_xy(zone, x, y)))
+
+
+def line_tone_images(sp, cfg) -> dict[str, np.ndarray]:
+    """{polarity: L* image} of a line's own tone: the source's L* at its
+    extreme within the middle window `ridge_contrast` reads (half a laid
+    hairline run either side), min for a dark line, max for a light one --
+    so a one-pixel strand reads its own peak, not the ground beside it."""
+    light = _light(sp)
+    r = int(math.ceil(0.5 * machine.thread_profile(cfg.thread_wt).hairline_run_width_mm
+                      * sp.px_per_mm))
+    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1))
+    return {"dark": cv2.erode(light, k), "light": cv2.dilate(light, k)}
+
+
+def is_stroke(polygon) -> bool:
+    """A shape that is a STROKE: mean width (2 x area / perimeter) at most
+    `machine.SATIN_MAX_WIDTH_MM`, the widest a satin column sews."""
+    return polygon.length > 0 and 2.0 * polygon.area / polygon.length <= machine.SATIN_MAX_WIDTH_MM
+
+
+def own_tone_share(pts, polarity: str, light: np.ndarray, sp, tree, region_l,
+                   stroke=None) -> float:
+    """Share of the polyline `pts` lying on a STROKE shape (`is_stroke`)
+    whose thread does NOT stand out from the line by the tier's contrast
+    floor in the line's own polarity (`_SRC_MIN_CONTRAST` L*: a dark line on
+    a fill at most 12 L* lighter, a light one on a fill at most 12 darker).
+    There the line's ink is already a shape of its own tone: drawn line art
+    the tracer kept, not a strand the fills lost. A sample on no shape, or
+    on a shape wider than a stroke (a fill the segmenter merged the strand
+    into, on a photo), counts as standing out.
+    `light` is the line's tone image (`line_tone_images[polarity]`), `tree`
+    the shapes' polygons in sew order (the LAST one containing a sample is
+    on top), `region_l` their threads' L*, `stroke` their `is_stroke`
+    (None: all strokes)."""
+    if len(pts) < 2:
+        return 0.0
+    x, y = _samples(pts)
+    h, w = light.shape
+    px = np.clip(np.round(x * sp.px_per_mm + sp.origin_px[0]).astype(int), 0, w - 1)
+    py = np.clip(np.round(y * sp.px_per_mm + sp.origin_px[1]).astype(int), 0, h - 1)
+    line_l = light[py, px].astype(np.float64)
+    top = np.full(len(x), -1)
+    hit = tree.query(shapely.points(x, y), predicate="within")
+    for i, j in zip(hit[0].tolist(), hit[1].tolist()):
+        top[i] = max(top[i], j)
+    on = top >= 0
+    if stroke is not None:
+        on[on] = np.asarray(stroke, bool)[top[on]]
+    gap = np.zeros(len(x))
+    gap[on] = (region_l[top[on]] - line_l[on]) if polarity == "dark" else \
+        (line_l[on] - region_l[top[on]])
+    return float(np.mean(on & (gap < _SRC_MIN_CONTRAST)))
+
+
+def supplement_test(regions, walked: set, sp, cfg):
+    """The gradient supplement's refusal, for `strand_blocks`' `refuse`:
+    -> refuse(strand) -> the report key it is counted under, or None (sew).
+
+    1. `refused_region`: at least `_SUPPLEMENT_COVERED_SHARE` of the line
+       within `supplement_zone` of a shape the region tier walked (`walked`,
+       shape ids): the tier's strand seen a second time (#915).
+    2. `refused_own_tone`: at least that share on a STROKE shape of the
+       line's own tone (`own_tone_share`): drawn line art already traced and
+       sewn as shapes (measured on the bridge logo's wave and anchor
+       outlines, mean width 0.7-1.0 mm). A wider shape is a fill, and a
+       strand inside it is kept (owl_kent's white bristles over its 11.6 mm
+       white mass).
+
+    `regions` are the design's shapes in sew order (`.polygon`,
+    `.thread_index`, `.shape_id`)."""
+    from .threads import chart_for as _chart
+    zone = supplement_zone([r.polygon for r in regions if r.shape_id in walked], sp, cfg)
+    tree = shapely.STRtree([r.polygon for r in regions])
+    lab = _chart(cfg).lab
+    region_l = np.array([float(lab[r.thread_index][0]) for r in regions], np.float64)
+    stroke = [is_stroke(r.polygon) for r in regions]
+    tone = line_tone_images(sp, cfg) if any(stroke) else {}
+
+    def refuse(s):
+        if covered_share(s["pts"], zone) >= _SUPPLEMENT_COVERED_SHARE:
+            return "refused_region"
+        if tone and own_tone_share(s["pts"], s["polarity"], tone[s["polarity"]], sp,
+                                   tree, region_l, stroke) >= _SUPPLEMENT_COVERED_SHARE:
+            return "refused_own_tone"
+        return None
+    return refuse
 
 
 def _light(sp) -> np.ndarray:
@@ -433,7 +594,8 @@ def _sewable(group, cfg, thread_wt: int) -> tuple[list, int]:
 
 
 def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[int],
-                  block_wt: dict[int, int] | None = None, hop_ok=None
+                  block_wt: dict[int, int] | None = None, hop_ok=None,
+                  refuse=None
                   ) -> tuple[list[tuple[int, list[StitchRun]]], dict]:
     """The line route for one design -> ([(thread_index, runs)], report).
 
@@ -455,12 +617,35 @@ def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[in
     read only with `cfg.hairline_lines_chain` on. A hop of at most
     `HOP_MAX_MM` for which it holds is sewn needle-down (a TRAVEL run at
     `TRAVEL_STITCH_MM`, the next strand not a jump) and counted in `hops` /
-    `hop_mm`; every other hop is a jump, a trim past `trim_at_mm`, as before."""
+    `hop_mm`; every other hop is a jump, a trim past `trim_at_mm`, as before.
+
+    `refuse(strand) -> key | None` (the gradient supplement,
+    `supplement_test`): a strand it names a key for is not sewn, and the
+    report counts it per polarity under `refused_region` and
+    `refused_own_tone`. None: no such test, and no such keys."""
     strand_test = bool(getattr(cfg, "hairline_lines_strand_test", False))
     bw = dict(block_wt or {}) if strand_test else {}
     strands, census = extract_strands(sp, cfg)
     report = {"strands": 0, "dropped": 0, "jumps": 0, **census,
               "sewn_by_polarity": {}}
+    if refuse is not None:
+        report["refused_region"] = {}
+        report["refused_own_tone"] = {}
+
+    def free(group, polarity):
+        if refuse is None:
+            return group
+        out = []
+        n = {"refused_region": 0, "refused_own_tone": 0}
+        for s in group:
+            why = refuse(s)
+            if why is None:
+                out.append(s)
+            else:
+                n[why] += 1
+        for key, v in n.items():
+            report[key][polarity] = v
+        return out
     if strand_test:
         report["thread_wt"] = {}
     chain = bool(getattr(cfg, "hairline_lines_chain", False)) and hop_ok is not None
@@ -469,7 +654,7 @@ def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[in
     out: list[tuple[int, list[StitchRun]]] = []
     cur = entry
     for polarity in ("dark", "light"):
-        group = [s for s in strands if s["polarity"] == polarity]
+        group = free([s for s in strands if s["polarity"] == polarity], polarity)
         keep, dropped = _sewable(group, cfg, cfg.thread_wt)
         wt = cfg.thread_wt
         thread = (_thread_for([s for s, _ in keep], sp, cfg, allowed_threads)
@@ -479,6 +664,7 @@ def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[in
             group, again = extract_strands(sp, cfg, thread_wt=wt, polarities=(polarity,))
             for key, per in again.items():
                 report[key][polarity] = per[polarity]
+            group = free(group, polarity)
             keep, dropped = _sewable(group, cfg, wt)
         if strand_test:
             report["thread_wt"][polarity] = wt

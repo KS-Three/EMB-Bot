@@ -1,0 +1,25 @@
+  [note] thermal (photo/logo_drone_thermal_badge.png) is byte-identical to drone; run once
+  [note] thermal (photo/logo_drone_thermal_badge.png) is byte-identical to drone; run once
+| design | main st / tr | true size st / tr | skeleton@0.73 st / tr | new uncovered mm2 (true / skel) | new bare mm2 (true / skel) | shapes changed (true / skel) | md5 same (true / skel) | mean legibility main > true > skel |
+|---|---|---|---|---|---|---|---|---|
+| becker | 8,758 / 29 | 8,758 / 29 | 8,758 / 29 | +0.0 / +0.0 | +0.0 / +0.0 | 0 / 0 | yes / yes | 0.913 > 0.913 > 0.913 |
+| tires | 2,732 / 8 | 2,732 / 8 | 2,732 / 8 | +0.0 / +0.0 | +0.0 / +0.0 | 0 / 0 | yes / yes | - |
+| enthusiast | 2,447 / 9 | 2,390 / 8 (-57 / -1) | 2,042 / 8 (-405 / -1) | +0.0 / +0.0 | +0.1 / +0.4 | 22 / 14 | NO / NO | - |
+| fremont | 20,952 / 61 | 20,753 / 49 (-199 / -12) | 20,162 / 61 (-790 / +0) | +0.0 / +0.0 | +0.0 / +0.0 | 110 / 26 | NO / NO | 0.816 > 0.985 > 0.979 |
+| bridge | 18,923 / 99 | 18,923 / 99 | 18,923 / 99 | +0.0 / +0.0 | +0.0 / +0.0 | 0 / 0 | yes / yes | 0.480 > 0.480 > 0.480 |
+| golden_tee | 8,412 / 45 | 8,412 / 45 | 8,412 / 45 | +0.0 / +0.0 | +0.0 / +0.0 | 0 / 0 | yes / yes | - |
+| gaulke | 4,893 / 23 | 4,893 / 23 | 4,893 / 23 | +0.0 / +0.0 | +0.0 / +0.0 | 0 / 0 | yes / yes | - |
+| drone | 19,326 / 131 | 21,660 / 154 (+2,334 / +23) | 19,326 / 131 | +170.8 / +0.0 | +189.2 / +0.0 | 33 / 0 | NO / yes | - |
+| screenshot | 8,467 / 58 | 8,469 / 59 (+2 / +1) | 8,365 / 57 (-102 / -1) | +0.0 / +0.0 | +0.1 / +0.6 | 11 / 7 | NO / NO | - |
+| fremont_hat81 | 15,625 / 47 | 15,281 / 41 (-344 / -6) | 15,000 / 47 (-625 / +0) | +0.0 / +0.0 | +0.0 / +0.0 | 123 / 19 | NO / NO | 0.816 > 0.938 > 0.899 |
+| fremont_hat925 | 18,882 / 53 | 18,622 / 51 (-260 / -2) | 18,092 / 53 (-790 / +0) | +0.0 / +0.0 | +0.0 / +0.0 | 105 / 27 | NO / NO | 0.747 > 0.919 > 0.912 |
+| sp_synthetic_2.5 | 463 / 8 | 281 / 1 (-182 / -7) | 463 / 8 | +0.0 / +0.0 | +1.1 / +0.0 | 8 / 0 | NO / yes | - |
+| sp_synthetic_3 | 474 / 4 | 378 / 2 (-96 / -2) | 474 / 4 | +0.0 / +0.0 | +0.9 / +0.0 | 8 / 0 | NO / yes | - |
+| sp_synthetic_4 | 547 / 4 | 547 / 4 | 547 / 4 | +0.0 / +0.0 | +0.0 / +0.0 | 0 / 0 | yes / yes | - |
+| sp_fremont_tagline_2.5 | 624 / 5 | 540 / 5 (-84 / +0) | 373 / 5 (-251 / +0) | +0.0 / +0.0 | +1.7 / +1.4 | 13 / 8 | NO / NO | - |
+| sp_fremont_tagline_3 | 618 / 7 | 749 / 7 (+131 / +0) | 513 / 6 (-105 / -1) | +0.0 / +0.0 | -1.9 / +0.9 | 13 / 4 | NO / NO | - |
+| sp_fremont_tagline_4 | 944 / 6 | 944 / 6 | 944 / 6 | +0.0 / +0.0 | +0.0 / +0.0 | 0 / 0 | yes / yes | - |
+
+  [note] thermal (photo/logo_drone_thermal_badge.png) is byte-identical to drone; run once
+true size changed 10 of 17 designs; new uncovered artwork: worst +170.80 mm2 (drone); trims: worst +23 (drone); stitches: worst +21.2% (sp_fremont_tagline_3); legibility: worst -0.022 (fremont_hat81 est)
+skeleton @ 0.73 changed 7 of 17 designs; new uncovered artwork: no increase anywhere; trims: no increase anywhere; stitches: no increase anywhere; legibility: worst -0.026 (fremont est)

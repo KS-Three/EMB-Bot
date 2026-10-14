@@ -1,0 +1,53 @@
+{
+ "design": "sp_fremont_tagline_2.5",
+ "arm": "sk073",
+ "kind": "small_print",
+ "overrides": {
+  "small_lettering_skeleton": true,
+  "small_lettering_skeleton_floor_mm": 0.73
+ },
+ "stitches": 373,
+ "trims": 5,
+ "jumps": 5,
+ "thread_m": 0.27,
+ "size_mm": [
+  29.5,
+  4.0
+ ],
+ "md5": "ed83a8e93bfc6631e9b24d7957a700a4",
+ "shape_digests": {
+  "Saf2aba3a": "2f0e631934e42de9f9fc25892a6164b2",
+  "Sd8a4708f": "a097ddd4860bad124ab5b2da010c15fa",
+  "S29508639": "61b899e2689681462f8658cead6b74bc",
+  "S33c35156": "7bf623f455bab40255a7da9ab5d861fe",
+  "S0dc8ee1a": "b0dbfa90539cc95f0ebece70351eb931",
+  "Sdd6a9eaa": "4278093c15bf90e7ebc66e760977e815",
+  "S57639643": "4a4a264fc72724f84f197c3f89413cdf",
+  "S1af37cd4": "3cf8e2407e3f816721f4f77d150bc6c2",
+  "S09d01a96": "eae53fa260820d5efbd3dcd5773b98dc",
+  "S0841ec1d": "e7035530027954e9a9433633952f031d",
+  "Sd9db0c07": "b5b0c27312e3517110d4b5d51a12fc69",
+  "S040a4bdb": "a432692c2f779992140e631d5ba99932",
+  "S257157fb": "c377bcf76da3bca35959c407094cfa4e"
+ },
+ "uncovered_total_mm2": 0.0,
+ "uncovered_wanted_mm2": 25.1,
+ "uncovered_worst_mm2": 0.0,
+ "uncovered_fires": false,
+ "uncovered_shapes": [],
+ "bare_mm2": 2.12,
+ "skeleton_shapes": 6,
+ "bean_shapes": 0,
+ "sp": {
+  "width_mm": 29.75,
+  "cap_mm": 2.499686581832075,
+  "counters": 4,
+  "counters_shut": 4,
+  "counter_open": 0.1814438649464727,
+  "covered": 0.9246315285957727,
+  "spill": 1.078836437561661,
+  "dust": 0.01634877384196185
+ },
+ "words": {},
+ "secs": 61
+}

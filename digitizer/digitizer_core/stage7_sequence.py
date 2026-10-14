@@ -85,6 +85,8 @@ from .stage6_hairline import hairline_runs as hairline_tier_runs
 from .stage6_hairline import HairlineSet
 from .stage6_hairline_lines import applies as hairline_lines_apply
 from .stage6_hairline_lines import strand_blocks
+from .stage6_hairline_lines import supplement_test as hairline_supplement_test
+from .stage6_hairline_lines import supplements as hairline_lines_supplements
 from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
@@ -2388,7 +2390,8 @@ def sequence(
                 runs, report = bean_letter(p.region.meta[BEAN_LETTER_KEY], p.shape_id,
                                            entry=entry, trim_at_mm=trim_at,
                                            stitch_mm=cfg.bean_letter_stitch_mm,
-                                           serif_mm=cfg.bean_letter_serif_mm)
+                                           serif_mm=cfg.bean_letter_serif_mm,
+                                           min_arm_mm=cfg.bean_letter_min_arm_mm)
                 if not report["empty"]:
                     report["bean_letter"] = 1
                     report["bean_word"] = word_key(p.region, cfg)
@@ -3628,8 +3631,13 @@ def sequence(
     # `stage6_hairline_lines`: on a photo lane, the hairline tier's strands
     # come from FDoG lines, sewn as runs over the finished fills, last of
     # all — one block per polarity, in the design's own nearest thread.
+    # `cfg.hairline_lines_gradient` (OFF): on the gradient lane the same
+    # route runs as a SUPPLEMENT, after the region tier, sewing only the
+    # strands it laid nothing near (`hairline_lines_supplements`).
     hair_lines = None
-    if source_pixels is not None and hairline_lines_apply(cfg, design_class):
+    hl_supplement = hairline_lines_supplements(cfg, design_class)
+    if source_pixels is not None and (hairline_lines_apply(cfg, design_class)
+                                      or hl_supplement):
         # `cfg.hairline_lines_chain` (OFF): a hop between two strands is
         # sewn needle-down, not cut, when its whole length lies over thread
         # the blocks above already laid (a half-thread-width of any laid
@@ -3651,10 +3659,13 @@ def sequence(
                 hit = _tree.query(pp, predicate="dwithin",
                                   distance=machine.COVERAGE_THREAD_W_MM / 2.0)
                 return len(set(hit[0].tolist())) == len(pp)
+        refuse = (hairline_supplement_test([p.region for p in planned],
+                                           set(hairline or {}), source_pixels, cfg)
+                  if hl_supplement else None)
         hl_blocks, hair_lines = strand_blocks(
             source_pixels, cfg, entry=cursor, trim_at_mm=trim_at,
             allowed_threads=sorted({b.thread_index for b in blocks}),
-            block_wt=block_wt, hop_ok=hop_ok)
+            block_wt=block_wt, hop_ok=hop_ok, refuse=refuse)
         for hl_thread, hl_runs in hl_blocks:
             hl_runs[0].jump = True
             hl_runs[0].trim = True
@@ -3675,13 +3686,14 @@ def sequence(
                 shapes=0,
                 strands=hair_lines["strands"],
                 dropped=hair_lines["dropped"],
-                source="lines",
+                source="lines_gradient" if hl_supplement else "lines",
                 found=hair_lines["found"],
                 refused_no_ridge=hair_lines["refused_no_ridge"],
                 sewn_by_polarity=hair_lines["sewn_by_polarity"],
-                # `cfg.hairline_lines_strand_test` / `hairline_lines_chain`
-                # only (absent off).
-                **{k: hair_lines[k] for k in ("refused_bar", "thread_wt", "hops", "hop_mm")
+                # `cfg.hairline_lines_strand_test` / `hairline_lines_chain` /
+                # `hairline_lines_gradient` only (absent off).
+                **{k: hair_lines[k] for k in ("refused_bar", "thread_wt", "hops", "hop_mm",
+                                              "refused_region", "refused_own_tone")
                    if k in hair_lines},
             )
         )
