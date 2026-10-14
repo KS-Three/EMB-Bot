@@ -304,3 +304,34 @@ def test_serif_trim_leaves_a_curve_and_a_short_stroke_alone():
     # A stroke under three hooks long is never cut: there is no letter left.
     short = [(0.0, 0.3), (0.0, 0.0), (1.0, 0.0)]
     assert trim_serif_hooks([short], 0.45)[0] == short
+
+
+# --- The ink reader on a cutout (`ink_path.read_cluster_ink`) --------------
+# A letter's counter on a transparent PNG is transparency stage 1 files under
+# `enclosed_mask`, not `bg_mask`. Read as ink it filled every counter, and the
+# bean centreline of Enthusiast's P lost its bowl and read as an "r".
+
+def test_a_cutout_letters_counter_is_not_ink():
+    from digitizer_core.ink_path import read_cluster_ink
+
+    ppm = 20.0
+    h = w = 200
+    rgb = np.zeros((h, w, 3), np.uint8)                 # exporter's black under alpha
+    opaque = np.zeros((h, w), np.uint8)
+    cv2.circle(opaque, (100, 100), 30, 255, 6)          # an "O": 3 mm round, 0.3 mm stroke
+    enclosed = np.zeros((h, w), np.uint8)
+    cv2.circle(enclosed, (100, 100), 27, 255, -1)
+    enclosed = (enclosed > 0) & (opaque == 0)
+    bg = (opaque == 0) & ~enclosed
+    rgb[opaque > 0] = (60, 60, 60)
+    p = Prep(rgb=rgb, bg_mask=bg, px_per_mm=ppm, art_bbox=(0, 0, w, h),
+             bg_from_alpha=True, enclosed_mask=enclosed)
+    outer = Polygon([(((100 + 33 * np.cos(t)) - w / 2) / ppm, ((100 + 33 * np.sin(t)) - h / 2) / ppm)
+                     for t in np.linspace(0, 2 * np.pi, 48, endpoint=False)])
+    ring = Region("Sring", outer, 3, "3", float(outer.area))   # the traced blob: counter lost
+    (reading,) = read_cluster_ink(p, [ring])
+    assert reading.spines, "the letter has ink"
+    pts = np.array([q for s in reading.spines for q in s])
+    radius = np.hypot(pts[:, 0], pts[:, 1])
+    assert radius.min() > 1.0, f"the centreline runs round the counter, not through it (min r {radius.min():.2f} mm)"
+    assert abs(float(np.median(radius)) - 1.5) < 0.2, "on the stroke, 1.5 mm out"
