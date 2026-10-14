@@ -55,9 +55,11 @@ NAMES_ONLY = {"acceptance_ab", "sewout_walk_reach", "counter_slots",
               "hairline_renders", "hairline_card", "hairline_logo_bill",
               "sewout_candidates_card",   # writes README / scoring sheet / readback .md, reads none
               "sewout_card_v3",           # same: writes the v3 card's .md files, reads none (2026-10-13)
+              "sewout_card_v3_1",         # same: writes v3.1's README / scoring sheet / readback, reads none
               "hairline_photo_trial", "hairline_lines_trial",
               "hairline_coverage",   # WRITES table.md, reads none (2026-10-13)
               "hairline_travel",     # same: writes table.md, reads none (2026-10-13)
+              "hair_reach",          # same: writes table.md, reads none (2026-10-13)
               "fur_regions_census"}  # same: writes table.md, reads none (2026-10-13)
 
 

@@ -79,6 +79,8 @@ from .stage6_detail import detail_runs
 # warning), a different, older thing.
 from .stage6_hairline import REST_KEY as HAIRLINE_REST_KEY
 from .stage6_hairline import hairline_candidates, rest_planned
+from .stage6_small_letter import REPORT_KEY as SMALL_LETTER_KEY
+from .stage6_small_letter import glyph_polygon, skeleton_letter_runs, text_line_members
 from .stage6_hairline import hairline_runs as hairline_tier_runs
 from .stage6_hairline import HairlineSet
 from .stage6_hairline_lines import applies as hairline_lines_apply
@@ -1842,6 +1844,7 @@ def sequence(
     detail_layer: bool | None = None,
     palette_spools: list[int] | None = None,
     hairline: dict | None = None,
+    ink_source=None,
 ) -> tuple[list[StitchBlock], list[dict]]:
     """-> (blocks in sew order, warnings).
 
@@ -1922,7 +1925,7 @@ def sequence(
             source_pixels=source_pixels, design_class=design_class,
             fill_technique=fill_technique, streamline_mode=streamline_mode,
             detail_layer=detail_layer, palette_spools=palette_spools,
-            hairline=hairline)
+            hairline=hairline, ink_source=ink_source)
         off_rank = {}
         for _b in off_blocks:
             for _r in _b.runs:
@@ -2021,6 +2024,10 @@ def sequence(
         # shape is carved: the strands come from lines, after every block.
         hairline = (HairlineSet() if hairline_lines_apply(cfg, design_class)
                     else hairline_candidates([p.region for p in planned], cfg))
+    # The letters `cfg.small_lettering_skeleton` may take (lines of text, see
+    # `stage6_small_letter.text_line_members`); empty with the flag off.
+    skeleton_letters = (text_line_members([p.region for p in planned])
+                        if cfg.small_lettering_skeleton else set())
     stitch_mm = cfg.fill_stitch_mm or FILL_STITCH_MM
     # Row 14's underlay split (see _PHOTO_FILL_UNDERLAY above for the craft
     # case). Precedence is unchanged in shape, only the FALLBACK moves: an
@@ -2370,7 +2377,8 @@ def sequence(
             if tier == "auto" and p.region.meta.get(BEAN_LETTER_KEY):
                 runs, report = bean_letter(p.region.meta[BEAN_LETTER_KEY], p.shape_id,
                                            entry=entry, trim_at_mm=trim_at,
-                                           stitch_mm=cfg.bean_letter_stitch_mm)
+                                           stitch_mm=cfg.bean_letter_stitch_mm,
+                                           serif_mm=cfg.bean_letter_serif_mm)
                 if not report["empty"]:
                     report["bean_letter"] = 1
                     report["bean_word"] = word_key(p.region, cfg)
@@ -2428,6 +2436,35 @@ def sequence(
                         rest_rep = dict(rest_rep, hairline_tier=1, strands=0,
                                         dropped=report["dropped"])
                     return rest_runs, rest_rep, rest_filled
+            # Small lettering as ONE skeleton run (`cfg.small_lettering_skeleton`,
+            # default OFF, 2026-10-13 -- `stage6_small_letter`'s docstring): a
+            # lettering shape the rescue below would sew as a bean run on its
+            # OUTLINE, whose stroke is at or under the block's laid width, sews
+            # one run down its middle instead, its dropped counters punched
+            # back first. On the ARTWORK polygon, for the run rung's reason. A
+            # glyph it declines (too wide, or its run would cross a counter)
+            # takes the rescue as before.
+            if (tier == "auto" and p.shape_id in skeleton_letters
+                    and routes_to_run(p, tier) and is_lettering(p.region, cfg)):
+                prof = profile_for(p)
+                # A line `cfg.small_text_cap_mm` enlarged was retraced from
+                # the source with its counters; stage 4's record is of the
+                # polygon before that, at the old size and place.
+                runs, report = skeleton_letter_runs(
+                    glyph_polygon(p.region.polygon,
+                                  None if p.region.meta.get("small_text_enlarged")
+                                  else p.region.meta.get("small_counters")),
+                    p.shape_id, max_width_mm=prof.width_mm,
+                    stitch_mm=cfg.hairline_stitch_mm,
+                    run_width_mm=prof.hairline_run_width_mm,
+                    entry=entry, trim_at_mm=trim_at, ink=ink_source,
+                    min_mm=(cfg.small_lettering_skeleton_floor_mm
+                            if cfg.small_lettering_skeleton_floor_mm is not None
+                            else machine.MIN_STITCH_MM))
+                if not report["empty"]:
+                    report["as_run"] = 1
+                    report[SMALL_LETTER_KEY] = 1
+                    return runs, report, False
             outline_tried = False
             # Small print (`cfg.small_print_floor`, default OFF) reaches the
             # run and fill tiers through `small_print_cut`: the shape is
@@ -3547,10 +3584,31 @@ def sequence(
     # all — one block per polarity, in the design's own nearest thread.
     hair_lines = None
     if source_pixels is not None and hairline_lines_apply(cfg, design_class):
+        # `cfg.hairline_lines_chain` (OFF): a hop between two strands is
+        # sewn needle-down, not cut, when its whole length lies over thread
+        # the blocks above already laid (a half-thread-width of any laid
+        # stitch, `machine.COVERAGE_THREAD_W_MM`, the instrument
+        # `tools/hairline_travel.py` reads) -- never across bare cloth.
+        hop_ok = None
+        if getattr(cfg, "hairline_lines_chain", False):
+            laid = [shapely.LineString(r.points) for b in blocks for r in b.runs
+                    if r.kind != stitches.TRAVEL and len(r.points) >= 2]
+            laid_tree = shapely.STRtree(laid) if laid else None
+
+            def hop_ok(a, b, _tree=laid_tree):
+                if _tree is None:
+                    return False
+                n = max(2, int(math.dist(a, b) / 0.1))
+                pp = shapely.points([(a[0] + (b[0] - a[0]) * i / n,
+                                      a[1] + (b[1] - a[1]) * i / n)
+                                     for i in range(n + 1)])
+                hit = _tree.query(pp, predicate="dwithin",
+                                  distance=machine.COVERAGE_THREAD_W_MM / 2.0)
+                return len(set(hit[0].tolist())) == len(pp)
         hl_blocks, hair_lines = strand_blocks(
             source_pixels, cfg, entry=cursor, trim_at_mm=trim_at,
             allowed_threads=sorted({b.thread_index for b in blocks}),
-            block_wt=block_wt)
+            block_wt=block_wt, hop_ok=hop_ok)
         for hl_thread, hl_runs in hl_blocks:
             hl_runs[0].jump = True
             hl_runs[0].trim = True
@@ -3575,8 +3633,9 @@ def sequence(
                 found=hair_lines["found"],
                 refused_no_ridge=hair_lines["refused_no_ridge"],
                 sewn_by_polarity=hair_lines["sewn_by_polarity"],
-                # `cfg.hairline_lines_strand_test` only (absent off).
-                **{k: hair_lines[k] for k in ("refused_bar", "thread_wt")
+                # `cfg.hairline_lines_strand_test` / `hairline_lines_chain`
+                # only (absent off).
+                **{k: hair_lines[k] for k in ("refused_bar", "thread_wt", "hops", "hop_mm")
                    if k in hair_lines},
             )
         )

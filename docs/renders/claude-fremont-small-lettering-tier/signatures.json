@@ -3,26 +3,26 @@
   "arm": "main_81",
   "width_mm": 81.0,
   "overrides": {},
-  "stitches": 15306,
-  "trims": 44,
+  "stitches": 15611,
+  "trims": 46,
   "boxes": {
    "the": {
     "n": 3,
     "tiers": "R S* S*",
     "counters": [],
-    "stitches": 357,
-    "trims": 4
+    "stitches": 363,
+    "trims": 3
    },
    "tagline": {
     "n": 13,
     "tiers": "R R R R R R R R R R R R R",
     "counters": [
-     "bare-unplanned",
-     "bare-unplanned",
      "SHUT",
-     "bare-unplanned"
+     "SHUT",
+     "SHUT",
+     "SHUT"
     ],
-    "stitches": 883,
+    "stitches": 970,
     "trims": 7
    },
    "est": {
@@ -40,15 +40,15 @@
   "overrides": {
    "small_print_floor": true
   },
-  "stitches": 15456,
-  "trims": 46,
+  "stitches": 15645,
+  "trims": 45,
   "boxes": {
    "the": {
     "n": 3,
     "tiers": "R S* S*",
     "counters": [],
-    "stitches": 358,
-    "trims": 4
+    "stitches": 363,
+    "trims": 3
    },
    "tagline": {
     "n": 13,
@@ -59,7 +59,7 @@
      "SHUT",
      "SHUT"
     ],
-    "stitches": 939,
+    "stitches": 984,
     "trims": 6
    },
    "est": {
@@ -78,15 +78,15 @@
    "small_print_floor": true,
    "lettering_columns_small_stem": true
   },
-  "stitches": 15456,
-  "trims": 46,
+  "stitches": 15645,
+  "trims": 45,
   "boxes": {
    "the": {
     "n": 3,
     "tiers": "R S* S*",
     "counters": [],
-    "stitches": 358,
-    "trims": 4
+    "stitches": 363,
+    "trims": 3
    },
    "tagline": {
     "n": 13,
@@ -97,7 +97,7 @@
      "SHUT",
      "SHUT"
     ],
-    "stitches": 939,
+    "stitches": 984,
     "trims": 6
    },
    "est": {
@@ -116,26 +116,26 @@
    "small_print_floor": true,
    "lettering_columns_small_stem": true
   },
-  "stitches": 19027,
-  "trims": 60,
+  "stitches": 18866,
+  "trims": 53,
   "boxes": {
    "the": {
     "n": 3,
     "tiers": "S* S* S*",
     "counters": [],
-    "stitches": 431,
+    "stitches": 414,
     "trims": 3
    },
    "tagline": {
     "n": 13,
     "tiers": "R R R R R R R R R R R R R",
     "counters": [
-     "open",
-     "open",
+     "SHUT",
+     "SHUT",
      "bare-unplanned",
-     "open"
+     "SHUT"
     ],
-    "stitches": 1301,
+    "stitches": 1350,
     "trims": 14
    },
    "est": {
@@ -152,192 +152,6 @@
   "width_mm": 81.0,
   "overrides": {
    "lettering_columns_small_stem": true
-  },
-  "stitches": 15306,
-  "trims": 44,
-  "boxes": {
-   "the": {
-    "n": 3,
-    "tiers": "R S* S*",
-    "counters": [],
-    "stitches": 357,
-    "trims": 4
-   },
-   "tagline": {
-    "n": 13,
-    "tiers": "R R R R R R R R R R R R R",
-    "counters": [
-     "bare-unplanned",
-     "bare-unplanned",
-     "SHUT",
-     "bare-unplanned"
-    ],
-    "stitches": 883,
-    "trims": 7
-   },
-   "est": {
-    "n": 3,
-    "tiers": "R R R",
-    "counters": [],
-    "stitches": 166,
-    "trims": 1
-   }
-  }
- },
- "main_92": {
-  "arm": "main_92",
-  "width_mm": 92.5,
-  "overrides": {},
-  "stitches": 18761,
-  "trims": 56,
-  "boxes": {
-   "the": {
-    "n": 3,
-    "tiers": "S* S* S*",
-    "counters": [],
-    "stitches": 410,
-    "trims": 3
-   },
-   "tagline": {
-    "n": 13,
-    "tiers": "R R R R R R R R R R R R R",
-    "counters": [
-     "bare-unplanned",
-     "bare-unplanned",
-     "SHUT",
-     "bare-unplanned"
-    ],
-    "stitches": 1309,
-    "trims": 15
-   },
-   "est": {
-    "n": 3,
-    "tiers": "R R R",
-    "counters": [],
-    "stitches": 203,
-    "trims": 1
-   }
-  }
- },
- "bean_81": {
-  "arm": "bean_81",
-  "width_mm": 81.0,
-  "overrides": {
-   "bean_letter_max_stroke_mm": 1.0
-  },
-  "stitches": 13653,
-  "trims": 39,
-  "boxes": {
-   "the": {
-    "n": 3,
-    "tiers": "R R R",
-    "counters": [],
-    "stitches": 251,
-    "trims": 1
-   },
-   "tagline": {
-    "n": 13,
-    "tiers": "R R R R R R R R R R R R R",
-    "counters": [
-     "bare-unplanned",
-     "bare-unplanned",
-     "SHUT",
-     "bare-unplanned"
-    ],
-    "stitches": 841,
-    "trims": 5
-   },
-   "est": {
-    "n": 3,
-    "tiers": "R R R",
-    "counters": [],
-    "stitches": 113,
-    "trims": 2
-   }
-  }
- },
- "wordtier_81": {
-  "arm": "wordtier_81",
-  "width_mm": 81.0,
-  "overrides": {
-   "lettering_words": true,
-   "lettering_word_tiers": true
-  },
-  "stitches": 15375,
-  "trims": 48,
-  "boxes": {
-   "the": {
-    "n": 3,
-    "tiers": "R R R",
-    "counters": [],
-    "stitches": 401,
-    "trims": 5
-   },
-   "tagline": {
-    "n": 13,
-    "tiers": "R R R R R R R R R R R R R",
-    "counters": [
-     "bare-unplanned",
-     "bare-unplanned",
-     "SHUT",
-     "bare-unplanned"
-    ],
-    "stitches": 883,
-    "trims": 7
-   },
-   "est": {
-    "n": 3,
-    "tiers": "R R R",
-    "counters": [],
-    "stitches": 162,
-    "trims": 0
-   }
-  }
- },
- "wordtier_floor_81": {
-  "arm": "wordtier_floor_81",
-  "width_mm": 81.0,
-  "overrides": {
-   "lettering_words": true,
-   "lettering_word_tiers": true,
-   "small_print_floor": true
-  },
-  "stitches": 15532,
-  "trims": 50,
-  "boxes": {
-   "the": {
-    "n": 3,
-    "tiers": "R R R",
-    "counters": [],
-    "stitches": 402,
-    "trims": 5
-   },
-   "tagline": {
-    "n": 13,
-    "tiers": "R R R R R R R R R R R R R",
-    "counters": [
-     "SHUT",
-     "SHUT",
-     "SHUT",
-     "SHUT"
-    ],
-    "stitches": 939,
-    "trims": 6
-   },
-   "est": {
-    "n": 3,
-    "tiers": "R R R",
-    "counters": [],
-    "stitches": 162,
-    "trims": 0
-   }
-  }
- },
- "keep_81": {
-  "arm": "keep_81",
-  "width_mm": 81.0,
-  "overrides": {
-   "small_glyph_keep": true
   },
   "stitches": 15611,
   "trims": 46,
@@ -370,21 +184,18 @@
    }
   }
  },
- "keep_floor_81": {
-  "arm": "keep_floor_81",
-  "width_mm": 81.0,
-  "overrides": {
-   "small_glyph_keep": true,
-   "small_print_floor": true
-  },
-  "stitches": 15645,
-  "trims": 45,
+ "main_92": {
+  "arm": "main_92",
+  "width_mm": 92.5,
+  "overrides": {},
+  "stitches": 18843,
+  "trims": 53,
   "boxes": {
    "the": {
     "n": 3,
-    "tiers": "R S* S*",
+    "tiers": "S* S* S*",
     "counters": [],
-    "stitches": 363,
+    "stitches": 414,
     "trims": 3
    },
    "tagline": {
@@ -396,7 +207,196 @@
      "SHUT",
      "SHUT"
     ],
-    "stitches": 984,
+    "stitches": 1344,
+    "trims": 14
+   },
+   "est": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 203,
+    "trims": 1
+   }
+  }
+ },
+ "bean_81": {
+  "arm": "bean_81",
+  "width_mm": 81.0,
+  "overrides": {
+   "bean_letter_max_stroke_mm": 1.0
+  },
+  "stitches": 13801,
+  "trims": 43,
+  "boxes": {
+   "the": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 258,
+    "trims": 2
+   },
+   "tagline": {
+    "n": 13,
+    "tiers": "R R R R R R R R R R R R R",
+    "counters": [
+     "SHUT",
+     "SHUT",
+     "SHUT",
+     "SHUT"
+    ],
+    "stitches": 932,
+    "trims": 7
+   },
+   "est": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 109,
+    "trims": 1
+   }
+  }
+ },
+ "wordtier_81": {
+  "arm": "wordtier_81",
+  "width_mm": 81.0,
+  "overrides": {
+   "lettering_words": true,
+   "lettering_word_tiers": true
+  },
+  "stitches": 15656,
+  "trims": 47,
+  "boxes": {
+   "the": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 407,
+    "trims": 4
+   },
+   "tagline": {
+    "n": 13,
+    "tiers": "R R R R R R R R R R R R R",
+    "counters": [
+     "SHUT",
+     "SHUT",
+     "SHUT",
+     "SHUT"
+    ],
+    "stitches": 970,
+    "trims": 7
+   },
+   "est": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 162,
+    "trims": 0
+   }
+  }
+ },
+ "wordtier_floor_81": {
+  "arm": "wordtier_floor_81",
+  "width_mm": 81.0,
+  "overrides": {
+   "lettering_words": true,
+   "lettering_word_tiers": true,
+   "small_print_floor": true
+  },
+  "stitches": 15705,
+  "trims": 47,
+  "boxes": {
+   "the": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 407,
+    "trims": 4
+   },
+   "tagline": {
+    "n": 13,
+    "tiers": "R R R R R R R R R R R R R",
+    "counters": [
+     "SHUT",
+     "SHUT",
+     "SHUT",
+     "SHUT"
+    ],
+    "stitches": 988,
+    "trims": 7
+   },
+   "est": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 162,
+    "trims": 0
+   }
+  }
+ },
+ "nokeep_81": {
+  "arm": "nokeep_81",
+  "width_mm": 81.0,
+  "overrides": {
+   "small_glyph_keep": false
+  },
+  "stitches": 15306,
+  "trims": 44,
+  "boxes": {
+   "the": {
+    "n": 3,
+    "tiers": "R S* S*",
+    "counters": [],
+    "stitches": 357,
+    "trims": 4
+   },
+   "tagline": {
+    "n": 13,
+    "tiers": "R R R R R R R R R R R R R",
+    "counters": [
+     "bare-unplanned",
+     "bare-unplanned",
+     "SHUT",
+     "bare-unplanned"
+    ],
+    "stitches": 883,
+    "trims": 7
+   },
+   "est": {
+    "n": 3,
+    "tiers": "R R R",
+    "counters": [],
+    "stitches": 166,
+    "trims": 1
+   }
+  }
+ },
+ "nokeep_floor_81": {
+  "arm": "nokeep_floor_81",
+  "width_mm": 81.0,
+  "overrides": {
+   "small_print_floor": true,
+   "small_glyph_keep": false
+  },
+  "stitches": 15456,
+  "trims": 46,
+  "boxes": {
+   "the": {
+    "n": 3,
+    "tiers": "R S* S*",
+    "counters": [],
+    "stitches": 358,
+    "trims": 4
+   },
+   "tagline": {
+    "n": 13,
+    "tiers": "R R R R R R R R R R R R R",
+    "counters": [
+     "SHUT",
+     "SHUT",
+     "SHUT",
+     "SHUT"
+    ],
+    "stitches": 939,
     "trims": 6
    },
    "est": {

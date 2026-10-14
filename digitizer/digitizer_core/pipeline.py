@@ -1717,7 +1717,12 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                                     # reading it (a re-plan with the flag
                                     # off must ignore a stale carrier).
                                     palette_spools=result.palette_spools,
-                                    hairline=hairline)
+                                    hairline=hairline,
+                                    # `cfg.small_lettering_skeleton` reads its
+                                    # width gate off the artwork's pixels, as
+                                    # the hairline tier does; off, None.
+                                    ink_source=(getattr(result, "ink_source", None)
+                                                if cfg.small_lettering_skeleton else None))
 
     # The plan's palette is the list of cones this plan actually sews, one per
     # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a

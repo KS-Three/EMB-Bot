@@ -66,29 +66,42 @@ def test_fixture_is_the_transparent_upload():
 
 @pytest.fixture(scope="module")
 def main_run():
+    """The default config: `small_glyph_keep` is ON since 2026-10-13."""
     return ft.run_arm("main", preflight=False)
 
 
-def test_reproduces_kents_job(main_run):
-    s = main_run["plan"].stats
-    colours = len({tuple(b.rgb) for b in main_run["plan"].blocks})
+@pytest.fixture(scope="module")
+def off_run():
+    """Kent's job as it was: `small_glyph_keep` set False explicitly."""
+    return ft.run_arm("small_glyph_keep_off", preflight=False)
+
+
+def test_reproduces_kents_job(off_run):
+    """His stitch-out predates the flip, so it is the OFF arm that matches his
+    15,129 stitches (the default now sews the "1" and the counters)."""
+    s = off_run["plan"].stats
+    colours = len({tuple(b.rgb) for b in off_run["plan"].blocks})
     assert colours == ft.KENT_COLOURS
     assert abs(s.stitch_count - ft.KENT_STITCHES) / ft.KENT_STITCHES < 0.03, s.stitch_count
-    assert len(main_run["result"].regions) == 161      # his "Edit shapes (161)"
+    assert len(off_run["result"].regions) == 161      # his "Edit shapes (161)"
     assert abs(s.size_mm[0] - 81.0) < 1.5 and abs(s.size_mm[1] - 44.0) < 1.5
 
 
-def test_1895_on_main_is_the_reported_loss(main_run):
-    """PINS THE DEFECT, not a goal. At 81 mm every 1895 digit is a shape
-    under `min_detail_mm`^2 (2.25 mm^2), so stage 7's small-shape rescue
-    routes it to the run tier before the Column lane is asked: the digits
-    sew as bean outlines of solid blobs (the 8's and 9's counters are gone
-    by stage 4), and one digit sews nothing. That is Kent's "098". The
-    thread still lands on most of the ink -- a run outline over a 0.2 mm
-    stroke covers it -- which is why ARTWORK_UNCOVERED is silent. A change
-    that fixes 1895 breaks this test on purpose: update it and say so."""
-    r = ft.roi_census(main_run)["1895"]
-    shapes = [s for s in r["shapes"] if min(s["rgb"]) < ft.WHITE_MIN]
+def _ink_shapes(run):
+    r = ft.roi_census(run)["1895"]
+    return r, [s for s in r["shapes"] if min(s["rgb"]) < ft.WHITE_MIN]
+
+
+def test_1895_with_small_glyph_keep_off_is_the_reported_loss(off_run):
+    """PINS THE DEFECT, not a goal: `cfg.small_glyph_keep` False (the engine
+    as it was). At 81 mm every 1895 digit is a shape under `min_detail_mm`^2
+    (2.25 mm^2), so stage 7's small-shape rescue routes it to the run tier
+    before the Column lane is asked: the digits sew as bean outlines of solid
+    blobs (the 8's and 9's counters are gone by stage 4), and one digit sews
+    nothing. That is Kent's "098". The thread still lands on most of the ink
+    -- a run outline over a 0.2 mm stroke covers it -- which is why
+    ARTWORK_UNCOVERED is silent."""
+    r, shapes = _ink_shapes(off_run)
     assert len(shapes) == 4
     assert all(s["under_min_detail_mm2"] for s in shapes)
     assert not any(s["column_lane"] for s in shapes)
@@ -98,14 +111,14 @@ def test_1895_on_main_is_the_reported_loss(main_run):
     assert 3.0 < r["ink_mm2"] < 5.0
     assert r["ink_bare_mm2"] < 1.5
 
-    # `cfg.small_glyph_keep` (built OFF, 2026-10-13) is the cure, and the
-    # flip is Kent's: ON, the "1" is sewn (the white ground still has no
-    # hole for it, so stage 5 sews its artwork over the ground rather than
-    # clipping it to nothing) and the 8 and 9 keep their counters (2 and 1,
-    # 0.30-0.52 mm²).
-    on = ft.roi_census(ft.run_arm("small_glyph_keep", preflight=False))["1895"]
-    on_shapes = sorted((s for s in on["shapes"] if min(s["rgb"]) < ft.WHITE_MIN),
-                       key=lambda s: s["shape_id"])
-    assert len(on_shapes) == 4
-    assert all(s["tier"] == "run" for s in on_shapes), [s["tier"] for s in on_shapes]
-    assert sorted(s["holes"] for s in on_shapes) == [0, 0, 1, 2]
+
+def test_1895_at_the_default_is_sewn(main_run):
+    """`cfg.small_glyph_keep` is ON by default (Kent's ruling 2026-10-13): the
+    "1" is sewn (the white ground still has no hole for it, so stage 5 sews
+    its artwork over the ground rather than clipping it to nothing) and the
+    8 and 9 keep their counters (2 and 1, 0.30-0.52 mm^2)."""
+    _r, shapes = _ink_shapes(main_run)
+    shapes = sorted(shapes, key=lambda s: s["shape_id"])
+    assert len(shapes) == 4
+    assert all(s["tier"] == "run" for s in shapes), [s["tier"] for s in shapes]
+    assert sorted(s["holes"] for s in shapes) == [0, 0, 1, 2]

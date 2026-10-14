@@ -228,6 +228,22 @@ class PipelineConfig:
     # `shape_overrides[sid].thread_wt`) instead of `thread_wt`. Candidate
     # geometry, unsewn (gate 1). Off, byte-identical.
     hairline_lines_strand_test: bool = False
+    # Hairline line route: chain the strands (2026-10-13, default OFF; read
+    # only when the line route runs). The route sews each strand as its own
+    # run and every hop between strands is a jump, a trim past `trim_at_mm`:
+    # +45 trims on owl_kent (#882), and a trim adds roughness
+    # (docs/fine-detail-hair-research-2026-10-12.md section 2). On, the
+    # strands are taken nearest end first as before, but a hop of at most
+    # `stage6_hairline_lines.HOP_MAX_MM` (8 mm, streamline's own cap) whose
+    # whole length lies over thread the fills already laid
+    # (`stage7_sequence._hop_cover`) is sewn needle-down as travel stitches
+    # instead of cut; any other hop is trimmed as before. Not `chain_links`
+    # (permanently OFF by ruling). The hop lies ON TOP of the fill, since
+    # the strands are the last layer: it is thread over thread, not over
+    # bare cloth, but a dark hop over a light fill can be seen. The 8 mm is
+    # a CANDIDATE (ROADMAP gate 3: exposed thread is reported, not settled).
+    # Off, byte-identical.
+    hairline_lines_chain: bool = False
     # Hairline coverage guard (2026-10-13, default OFF; needs `hairline` on).
     # A shape whose hairline runs would leave more than
     # `stage6_hairline.COVERAGE_GUARD_MM2` of its own ink bare (a 0.4 mm
@@ -1436,8 +1452,9 @@ class PipelineConfig:
     # Measured 2026-10-12: `tools/clip_keep_pieces.py`.
     clip_keep_pieces: bool = False
     # Small glyphs the run tier rescues (`rescued_small_shape`), kept whole
-    # (2026-10-13, default OFF; Kent's Fremont at 81 mm on a hat sewed "1895"
-    # as "098", `tools/fremont_triage.py`). Both losses are stage 4's hole
+    # (2026-10-13; ON by Kent's ruling 2026-10-13). Kent's Fremont at 81 mm
+    # on a hat sewed "1895" as "098" (`tools/fremont_triage.py`). Both losses
+    # are stage 4's hole
     # floor (`min_detail_mm`² / 4, 0.5625 mm²), which knows nothing of what
     # is in the hole:
     #   - the 8's and 9's counters (0.30-0.52 mm², transparent in the art)
@@ -1452,9 +1469,35 @@ class PipelineConfig:
     # artwork over the colour beneath, the way lettering sews over its
     # ground. Both are CANDIDATES (ROADMAP gate 1): no sew-out has settled
     # what a 0.16 mm² counter does on a cap. Fremont is unrepresentative --
-    # it reproduces the defect, it sizes nothing. Off, byte-identical
-    # (md5-pinned in `tests/test_small_glyph_keep.py`).
-    small_glyph_keep: bool = False
+    # it reproduces the defect, it sizes nothing. False is the engine before
+    # this flag, byte-identical (md5-pinned in
+    # `tests/test_small_glyph_keep.py`). Known open: the 8's lower counter
+    # (a 2.05 mm ring) sews no ring, under `RUN_MIN_LOOP_MM` 2.2 (gate 1);
+    # `coverage_edges` ON still hands stage 4 the old 0.5625 mm² hole floor.
+    small_glyph_keep: bool = True
+    # Small lettering thinner than the thread, sewn as ONE run down its
+    # skeleton (2026-10-13, default OFF; Kent's "fine details" priority,
+    # `digitizer_core/stage6_small_letter.py`, `tools/small_lettering_skeleton.py`).
+    # Fremont's tagline and EST at 81 mm have 0.22-0.30 mm strokes under the
+    # 0.40 mm a 40 wt strand lays; the small-shape rescue sews each as a bean
+    # run on its OUTLINE, 1.6-3.2x the stroke, counters shut (PR #905). ON: a
+    # lettering-tagged shape (`columns.is_lettering`) the rescue routes to
+    # the run tier, whose traced stroke is at or under the block's laid
+    # width, sews one run along its medial axis (the hairline tier's
+    # skeleton and walk), its stage-4-dropped counters punched back first
+    # (stage 4 records them for rescued shapes under this flag, the record
+    # `small_print_floor` keeps). A glyph whose run would cross a counter, or
+    # that does not qualify, takes the ladder as before. The width gate and
+    # the stitch length are CANDIDATES (ROADMAP gate 1). Off, byte-identical
+    # (md5-pinned in `tests/test_small_lettering_skeleton.py`).
+    small_lettering_skeleton: bool = False
+    # The shortest stitch that tier may lay (mm). None: `machine.MIN_STITCH_MM`
+    # (1.0), the needle floor. At Fremont's 2.2 mm caps that floor cannot
+    # follow a 1 mm arm, so most glyphs are declined back to the outline;
+    # `machine.BEAN_STITCH_MM` (0.73, the pro bean median the run tier
+    # already sews these same glyphs at) is the measured alternative. A
+    # physical constant: gate 1, a sew-out decides it, not this comment.
+    small_lettering_skeleton_floor_mm: float | None = None
     # Stage 5's hole hold, read for what is actually IN the hole. A hole the
     # shell's pull growth would shrink under `min_detail_mm²` is held open at
     # its original size — right for a counter, wrong for a hole a LATER
@@ -2396,6 +2439,13 @@ class PipelineConfig:
     # for byte. 0.45 is a CANDIDATE (gate 1): above the 0.3 mm short-stitch
     # floor, never sewn.
     bean_letter_stitch_mm: float | None = None
+    # Serif hooks off bean letters (`stage6_beanletter.trim_serif_hooks`), in
+    # mm: a turn of 50 degrees or more within this distance of a centreline's
+    # free end is cut. At 1.9 mm Fremont's slab serifs become hooks on the
+    # ends of the E's arms and the T's bar, and laid in thread they close the
+    # E into a B (thinner thread did not open it). None leaves every spine
+    # as read. A CANDIDATE (gate 1); 0.45 was tried on Fremont's date.
+    bean_letter_serif_mm: float | None = None
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
