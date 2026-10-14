@@ -98,6 +98,7 @@ SMALL_TEXT_TRUE_SIZE = {
     "bean_letter_stitch_mm": 0.45,
     "bean_letter_serif_mm": 0.45,
     "bean_letter_min_arm_mm": 0.3,
+    "bean_letter_corner_deg": 50.0,
 }
 
 
@@ -2516,6 +2517,13 @@ class PipelineConfig:
     # is the ink reader's own spur floor (`ink_path.INK_MIN_BRANCH_MM`): a
     # spine shorter than that never reaches here. A CANDIDATE (gate 1).
     bean_letter_min_arm_mm: float | None = None
+    # A bean-letter spine turning at least this many degrees gets a station ON
+    # the corner (`stage6_beanletter._bean_keep_corners`). At the even 0.45
+    # pitch the stations of Fremont's 5 skipped the corner of its stem and
+    # bar, the thread cut across it, and the 5's top sewed as a triangle
+    # (single-glyph OCR: "A", 2026-10-14). None: even pitch, byte for byte.
+    # Geometry, not fabric: no sew-out settles where a corner is.
+    bean_letter_corner_deg: float | None = None
     # ONE switch for small lettering at its true size (2026-10-14, Kent:
     # "keep working on improvements on this"). True fills each of the
     # values above that is still None with `SMALL_TEXT_TRUE_SIZE`; a value set
