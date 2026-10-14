@@ -31,6 +31,7 @@ from digitizer_core import photo_signals as ps
 from digitizer_core.config import is_photographic
 from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
 from tests.conftest import TESTDATA
+from tests.conftest import own_thread_only
 
 OWL = TESTDATA / "photo" / "owl_kent.jpg"
 LOGO = TESTDATA / "photo" / "logo_hotel_fremont.webp"
@@ -138,9 +139,10 @@ def test_a_decoded_array_has_no_header_left():
 def test_exif_short_circuits_the_detector(tmp_path, monkeypatch):
     """Once EXIF says photograph, YuNet cannot change the answer — running it
     is pure cost on the one lane where the answer is already in."""
+    import digitizer_core.stage1_photo_prep as photo_prep_mod
     called = []
-    monkeypatch.setattr("digitizer_core.stage1_photo_prep.detect_faces_seam",
-                        lambda *a, **k: called.append(1) or [])
+    monkeypatch.setattr(photo_prep_mod, "detect_faces_seam", own_thread_only(
+        lambda *a, **k: called.append(1) or [], photo_prep_mod.detect_faces_seam))
     signals = ps.detect(_jpeg_with_camera(tmp_path / "a.jpg"),
                         rgb=np.zeros((32, 32, 3), np.uint8))
     assert signals.signal == "exif" and not called

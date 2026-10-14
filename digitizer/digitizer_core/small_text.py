@@ -432,6 +432,9 @@ def _fill_old_holes(regions: list[Region], ids: set[int], old_union) -> None:
                 r.area_mm2 = float(filled.area)
 
 
+_CLUSTER_TAGS = ("text_candidate", "text_cluster_id", "text_cluster_stroke_mm", "text_cluster_all_rescued")
+
+
 def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float) -> list[dict]:
     """The true-size half of this module (`cfg.small_text_restore_mm`): no
     scale, no move. For every line of lettering under `cap_mm`, ADOPT the
@@ -467,9 +470,7 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float) -> list
                 row["skipped"] = "member_claimed"
                 continue
             traced = _retrace(group, p, cap)
-            tags = {k: members[0].meta[k] for k in
-                    ("text_candidate", "text_cluster_id", "text_cluster_stroke_mm", "text_cluster_all_rescued")
-                    if k in members[0].meta}
+            tags = {k: members[0].meta[k] for k in _CLUSTER_TAGS if k in members[0].meta}
             member_ids = {id(r) for r in members}
             for i, r in enumerate(group):
                 shape = traced.get(i)
@@ -481,7 +482,19 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float) -> list
                     r.meta.update(tags)
                     r.meta["small_text_adopted"] = True
                 claimed.add(id(r))
-            row.update(adopted=len(group) - len(members), retraced=len(traced))
+            # The tagger's strays leave the line. Fremont's tagline cluster
+            # carries its two black separator bars and a twist of the rope;
+            # bean letters reads a cluster's ink as one colour against its
+            # ground, so with them in it the tagline was never read at all.
+            # They sew as the ordinary shapes they are.
+            line_ids = {id(r) for r in group}
+            strays = [r for r in clusters[cid] if id(r) not in line_ids]
+            for r in strays:
+                for k in _CLUSTER_TAGS:
+                    r.meta.pop(k, None)
+                r.meta["small_text_stray"] = True
+            row.update(adopted=len(group) - len(members), retraced=len(traced),
+                       strays=len(strays))
         except Exception as exc:  # fail open
             row["skipped"] = f"error:{type(exc).__name__}"
     return report

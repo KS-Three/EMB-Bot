@@ -32,6 +32,7 @@ from digitizer_core import small_text  # noqa: E402
 from digitizer_core.regions import Region  # noqa: E402
 from digitizer_core.small_text import enlarge_small_text  # noqa: E402
 from digitizer_core.stage1_prep import Prep  # noqa: E402
+from tests.conftest import own_thread_only
 
 PPM = 24.0
 W, H = 960, 480                    # 40 x 20 mm
@@ -180,8 +181,8 @@ def test_the_flag_runs_end_to_end_and_none_never_calls_the_pass(monkeypatch):
     fixture = Path(__file__).resolve().parent.parent / "testdata" / "logo_whitebg.png"
     calls = []
     real = small_text.enlarge_small_text
-    monkeypatch.setattr(small_text, "enlarge_small_text",
-                        lambda *a, **k: (calls.append(k.get("cap_mm")), real(*a, **k))[1])
+    monkeypatch.setattr(small_text, "enlarge_small_text", own_thread_only(
+        lambda *a, **k: (calls.append(k.get("cap_mm")), real(*a, **k))[1], real))
     _, plan_off = digitize(fixture, PipelineConfig(target_width_mm=80.0))
     assert calls == [], "None is byte-identical because nothing calls the pass"
     _, plan_on = digitize(fixture, PipelineConfig(target_width_mm=80.0, small_text_cap_mm=3.7))
@@ -304,3 +305,52 @@ def test_serif_trim_leaves_a_curve_and_a_short_stroke_alone():
     # A stroke under three hooks long is never cut: there is no letter left.
     short = [(0.0, 0.3), (0.0, 0.0), (1.0, 0.0)]
     assert trim_serif_hooks([short], 0.45)[0] == short
+
+
+# --- The ink reader on a cutout (`ink_path.read_cluster_ink`) --------------
+# A letter's counter on a transparent PNG is transparency stage 1 files under
+# `enclosed_mask`, not `bg_mask`. Read as ink it filled every counter, and the
+# bean centreline of Enthusiast's P lost its bowl and read as an "r".
+
+def test_a_cutout_letters_counter_is_not_ink():
+    from digitizer_core.ink_path import read_cluster_ink
+
+    ppm = 20.0
+    h = w = 200
+    rgb = np.zeros((h, w, 3), np.uint8)                 # exporter's black under alpha
+    opaque = np.zeros((h, w), np.uint8)
+    cv2.circle(opaque, (100, 100), 30, 255, 6)          # an "O": 3 mm round, 0.3 mm stroke
+    enclosed = np.zeros((h, w), np.uint8)
+    cv2.circle(enclosed, (100, 100), 27, 255, -1)
+    enclosed = (enclosed > 0) & (opaque == 0)
+    bg = (opaque == 0) & ~enclosed
+    rgb[opaque > 0] = (60, 60, 60)
+    p = Prep(rgb=rgb, bg_mask=bg, px_per_mm=ppm, art_bbox=(0, 0, w, h),
+             bg_from_alpha=True, enclosed_mask=enclosed)
+    outer = Polygon([(((100 + 33 * np.cos(t)) - w / 2) / ppm, ((100 + 33 * np.sin(t)) - h / 2) / ppm)
+                     for t in np.linspace(0, 2 * np.pi, 48, endpoint=False)])
+    ring = Region("Sring", outer, 3, "3", float(outer.area))   # the traced blob: counter lost
+    (reading,) = read_cluster_ink(p, [ring])
+    assert reading.spines, "the letter has ink"
+    pts = np.array([q for s in reading.spines for q in s])
+    radius = np.hypot(pts[:, 0], pts[:, 1])
+    assert radius.min() > 1.0, f"the centreline runs round the counter, not through it (min r {radius.min():.2f} mm)"
+    assert abs(float(np.median(radius)) - 1.5) < 0.2, "on the stroke, 1.5 mm out"
+
+
+def test_restore_drops_the_taggers_strays_from_the_line():
+    # Fremont's tagline cluster holds its two black separator bars and a
+    # twist of the rope. Bean letters reads a cluster's ink as one colour, so
+    # with them in it the tagline was never read. They leave the cluster.
+    regions, p = _scene()
+    bar = Region("Sbar", box(4.0, -1.0, 4.2, 1.5), 9, "9", 0.5)       # another ink, in the line
+    rope = Region("Srope", box(-6.0, 4.0, -5.0, 6.0), 7, "7", 2.0)    # same ink, far off the line
+    regions += [bar, rope]
+    _tag(regions, {"Sg0", "Sg2", "Sg3", "Sbar", "Srope"})
+    rep = small_text.restore_small_text(regions, p, cap_mm=3.0)
+    row = next(r for r in rep if r["cluster"] == "TCtest")
+    assert row.get("strays") == 2, row
+    for r in (bar, rope):
+        assert "text_cluster_id" not in r.meta and "text_candidate" not in r.meta
+        assert r.meta.get("small_text_stray") is True
+    assert all(r.meta.get("text_cluster_id") == "TCtest" for r in _glyphs(regions)), "the four digits stay"

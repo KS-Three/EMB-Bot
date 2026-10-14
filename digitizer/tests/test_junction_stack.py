@@ -37,6 +37,7 @@ from digitizer_core.stitches import strip_ties
 
 from .test_lettering_split import FIXTURE as FIXTURE_127
 from .test_stroke_order_euler import FIXTURE as FIXTURE_80
+from tests.conftest import own_thread_only
 
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
@@ -274,7 +275,7 @@ def test_an_explicit_cover_setting_wins_over_part_c():
         return real(poly, shape_id, **kw)
 
     import digitizer_core.stage7_sequence as s7
-    s7.satin_shape = spy
+    s7.satin_shape = own_thread_only(spy, real)
     try:
         _run(FIXTURE_80, 80.2, satin_patch_junctions=True)
     finally:
@@ -299,7 +300,7 @@ def test_asking_for_the_satin_cover_is_the_engine_as_shipped(monkeypatch):
             seen.append((shape_id, a[-4:]))             # the four floors
             return real(poly, runs, shape_id, *a, **k)
 
-        monkeypatch.setattr(s6, "_junction_cover_runs", spy)
+        monkeypatch.setattr(s6, "_junction_cover_runs", own_thread_only(spy, real))
         _cfg, _result, plan = _run(FIXTURE_80, 80.2, **kw)
         monkeypatch.undo()
         return seen, _points(plan)

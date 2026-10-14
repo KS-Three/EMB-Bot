@@ -41,6 +41,7 @@ from digitizer_core.stitches import StitchRun
 
 from .conftest import PLAN_CFG_KW, cfg
 from .test_edge_wobble import R_OUT, plan_of, plan_with, ring, ring_satin
+from tests.conftest import own_thread_only
 
 TIERS = ("satin", "border", "fill", "line")
 STATS = ("p95_mm", "std_mm", "max_mm")
@@ -179,7 +180,7 @@ def test_preflight_does_not_pay_for_the_unsewn_outline_walk(monkeypatch):
     def walked(*_a, **_k):
         raise AssertionError("preflight walked the unsewn outline")
 
-    monkeypatch.setattr(core(), "_unsewn", walked)
+    monkeypatch.setattr(core(), "_unsewn", own_thread_only(walked, core()._unsewn))
     assert metrics(sawtooth(0.2))["edge_wobble_satin_p95_mm"] is not None
 
     monkeypatch.undo()
