@@ -56,6 +56,9 @@ renders and the small-print censuses' two fixtures at 2.5 / 3 / 4 mm caps:
     .venv/Scripts/python -m tools.small_lettering_compare --corpus-list
     .venv/Scripts/python -m tools.small_lettering_compare --corpus becker true --out DIR
     .venv/Scripts/python -m tools.small_lettering_compare --corpus-table --out DIR
+    # a render re-run (sidecars in DIR2, the saved cells untouched), then the sheet
+    .venv/Scripts/python -m tools.small_lettering_compare --corpus drone true --out DIR --renders DIR2
+    .venv/Scripts/python -m tools.small_lettering_compare --corpus-sheet drone --out DIR --renders DIR2
 """
 from __future__ import annotations
 
@@ -592,8 +595,76 @@ def _digitize_small_print(spec: dict, overrides: dict, out: Path):
     return run, extra
 
 
-def corpus_cell(name: str, arm: str, out: Path) -> dict:
-    """Digitize one corpus design under one arm and save its record."""
+def _corpus_sidecar(name: str, arm: str, run: dict, sk: dict, bean: dict, out: Path, renders: Path) -> dict:
+    """What a render sheet needs: the design, and (for an option arm) which shapes
+    stage 7 laid differently from the saved main cell, their area, box and tier
+    reports. The saved cells are not rewritten."""
+    from digitizer_core.adapter import plan_to_design
+    from tools.hairline_logo_bill import shape_digests
+    renders.mkdir(parents=True, exist_ok=True)
+    (renders / f"corpus_{name}__{arm}_design.json").write_text(
+        json.dumps(plan_to_design(run["plan"], name=name)))
+    main_cell = out / f"corpus_{name}__main.json"
+    base = json.loads(main_cell.read_text())["shape_digests"] if arm != "main" and main_cell.exists() else {}
+    now = shape_digests(run["plan"])
+    by = {r.shape_id: r for r in run["result"].regions}
+    shapes = []
+    for sid in sorted(k for k in set(base) | set(now) if base and base.get(k) != now.get(k)):
+        r = by.get(sid)
+        if r is None:
+            continue
+        shapes.append({"shape_id": sid, "area_mm2": round(r.polygon.area, 2),
+                       "bounds_mm": [round(v, 2) for v in r.polygon.bounds],
+                       "bean": bean.get(sid), "skeleton": sk.get(sid)})
+    box = ([min(s["bounds_mm"][0] for s in shapes), min(s["bounds_mm"][1] for s in shapes),
+            max(s["bounds_mm"][2] for s in shapes), max(s["bounds_mm"][3] for s in shapes)]
+           if shapes else None)
+    side = {"design": name, "arm": arm, "box_mm": box, "changed_shapes": shapes}
+    (renders / f"corpus_{name}__{arm}_changed.json").write_text(json.dumps(side, indent=1, default=str))
+    print(f"{name}__{arm}: {len(shapes)} changed shapes, box {box}", flush=True)
+    return side
+
+
+def corpus_sheet(name: str, out: Path, renders: Path, ppm: float = 30.0):
+    """Every arm of one design over the box of the shapes the options changed
+    (the whole design when none changed), one px/mm, the saved cell's numbers in
+    each caption."""
+    import cv2
+    import numpy as np
+    from tools import fremont_triage as ft
+    cells = load_corpus(out).get(name, {})
+    arms = [a for a in CORPUS_ARMS if (renders / f"corpus_{name}__{a}_design.json").exists()]
+    boxes = [json.loads(p.read_text())["box_mm"] for a in arms
+             if (p := renders / f"corpus_{name}__{a}_changed.json").exists()]
+    boxes = [b for b in boxes if b]
+    rows = []
+    box = None
+    if boxes:
+        box = [min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes)]
+        ppm = min(ppm, 1700.0 / max(box[2] - box[0], box[3] - box[1], 1.0))
+    for a in arms:
+        design = json.loads((renders / f"corpus_{name}__{a}_design.json").read_text())
+        img, to_px = ft._render(design, ppm)
+        crop = img if box is None else ft._crop(img, to_px, box, margin_mm=1.0)
+        c = cells.get(a)
+        cap = f"{name} | {CORPUS_ARM_LABEL[a]}"
+        if c:
+            cap += f" | {c['stitches']:,} st, {c['trims']} tr, uncovered {c['uncovered_total_mm2']} mm2, bare {c['bare_mm2']} mm2"
+        rows.append(ft._label(crop, cap))
+    if not rows:
+        return None
+    w = max(r.shape[1] for r in rows)
+    sheet = np.vstack([np.pad(r, ((0, 8), (0, w - r.shape[1]), (0, 0)), constant_values=255) for r in rows])
+    sheet = ft._label(sheet, f"{name}: every row {ppm:.0f} px/mm over the shapes the options changed; thread at its "
+                             "laid width, a picture of the file, not of cloth", width=w)
+    path = renders / f"corpus_{name}.png"
+    cv2.imwrite(str(path), sheet)
+    return path
+
+
+def corpus_cell(name: str, arm: str, out: Path, renders: Path | None = None) -> dict:
+    """Digitize one corpus design under one arm and save its record. With
+    `renders`, a re-run for the render sheets instead (`_corpus_sidecar`)."""
     from digitizer_core.adapter import plan_to_design
     spec = corpus_designs()[name]
     overrides = ARMS[arm][0]
@@ -609,6 +680,8 @@ def corpus_cell(name: str, arm: str, out: Path) -> dict:
             run = ft.run_arm(name, spec["width_mm"], None, preflight=False, overrides=overrides)
         else:
             run, extra = _digitize_small_print(spec, overrides, out)
+    if renders is not None:         # a render re-run: sidecars only, the saved cell stays as it is
+        return _corpus_sidecar(name, arm, run, sk, bean, out, renders)
     rec = {"design": name, "arm": arm, "kind": spec["kind"], "overrides": overrides,
            **corpus_metrics(run), "skeleton_shapes": sum(1 for r in sk.values() if not r.get("empty")),
            "bean_shapes": sum(1 for r in bean.values() if not r.get("empty")), **extra}
@@ -713,6 +786,25 @@ def corpus_legibility_table(cells: dict) -> str:
     return "\n".join(lines)
 
 
+def corpus_small_print_table(cells: dict) -> str:
+    """The small-print rows read by the censuses' own instrument
+    (`small_print.measure`): counters still shut / of source, the share of counter
+    area open, source letters covered by thread, thread spilled outside them."""
+    lines = ["| design | arm | counters shut / of | counter area open | source covered | spill |",
+             "|---|---|---|---|---|---|"]
+    for name in _ordered(cells):
+        for arm in CORPUS_ARMS:
+            sp = (cells[name].get(arm) or {}).get("sp")
+            if not sp:
+                continue
+
+            def f(k):
+                return "-" if sp.get(k) is None else f"{sp[k]:.2f}"
+            lines.append(f"| {name} | {arm} | {sp['counters_shut']} / {sp['counters']} | "
+                         f"{f('counter_open')} | {f('covered')} | {f('spill')} |")
+    return "\n".join(lines)
+
+
 def _worst(value, fmt: str, design: str) -> str:
     """A regression cell: 'none' when the worst change anywhere is zero or an improvement."""
     return "no increase anywhere" if value <= 0 else f"worst {fmt.format(value)} ({design})"
@@ -756,6 +848,8 @@ def main(argv=None) -> int:
     ap.add_argument("--corpus", nargs=2, metavar=("DESIGN", "ARM"),
                     help="digitize one corpus design under one arm (ARM in %s); see the corpus section" % CORPUS_ARMS)
     ap.add_argument("--corpus-list", action="store_true", help="print the corpus design names")
+    ap.add_argument("--corpus-sheet", metavar="DESIGN",
+                    help="render sheet of one design from the --renders sidecars (written by --corpus ... --renders)")
     ap.add_argument("--corpus-table", action="store_true",
                     help="print the corpus tables and the worst-regression lines from the saved cells")
     ap.add_argument("--out", type=Path)
@@ -770,10 +864,13 @@ def main(argv=None) -> int:
         design, arm = a.corpus
         if design not in corpus_designs() or arm not in CORPUS_ARMS:
             raise SystemExit(f"--corpus DESIGN in {list(corpus_designs())}, ARM in {CORPUS_ARMS}")
-        corpus_cell(design, arm, a.out)
+        corpus_cell(design, arm, a.out, a.renders)
+    if a.corpus_sheet:
+        print(corpus_sheet(a.corpus_sheet, a.out, a.renders or a.out / "renders"))
     if a.corpus_table:
         cc = load_corpus(a.out)
-        print(corpus_table(cc), "", corpus_legibility_table(cc), "", *worst_regressions(cc), sep="\n")
+        print(corpus_table(cc), "", corpus_legibility_table(cc), "", corpus_small_print_table(cc), "",
+              *worst_regressions(cc), sep="\n")
     if a.cell:
         fixture, arm = a.cell
         if fixture not in FIXTURES or arm not in ARMS:

@@ -230,6 +230,35 @@ def test_corpus_tables_and_the_worst_line_per_arm():
     assert "stitches: no increase anywhere" in lines[1]
 
 
+def test_corpus_sheet_stacks_the_arms_over_the_changed_box(tmp_path):
+    cells, side = tmp_path / "cells", tmp_path / "side"
+    cells.mkdir()
+    side.mkdir()
+    run = [{"x": int(i * 3), "y": 100, "type": "stitch"} for i in range(60)]
+    for arm in ("main", "true"):
+        (cells / f"corpus_demo__{arm}.json").write_text(json.dumps(_ccell("demo", arm)))
+        (side / f"corpus_demo__{arm}_design.json").write_text(json.dumps(
+            {"stitches": run, "colors": [{"r": 10, "g": 20, "b": 200}]}))
+    (side / "corpus_demo__true_changed.json").write_text(json.dumps(
+        {"design": "demo", "arm": "true", "box_mm": [0.0, -15.0, 10.0, -5.0], "changed_shapes": []}))
+    path = slc.corpus_sheet("demo", cells, side)
+    assert path == side / "corpus_demo.png" and path.exists()
+    import cv2
+    two = cv2.imread(str(path)).shape[0]
+    (side / "corpus_demo__true_design.json").unlink()
+    one = cv2.imread(str(slc.corpus_sheet("demo", cells, side))).shape[0]
+    assert two > one                                            # a second arm adds a row
+    assert slc.corpus_sheet("nothing", cells, side) is None
+
+
+def test_small_print_table_reads_the_censuses_counters():
+    c = _ccell("sp_synthetic_3", "true")
+    c["sp"] = {"counters": 6, "counters_shut": 2, "counter_open": 0.5, "covered": 0.93, "spill": None}
+    md = slc.corpus_small_print_table({"sp_synthetic_3": {"true": c, "main": _ccell("sp_synthetic_3", "main")}})
+    assert "| sp_synthetic_3 | true | 2 / 6 | 0.50 | 0.93 | - |" in md
+    assert "main" not in md                                     # a cell with no `sp` read has no row
+
+
 def test_saved_corpus_cells_reprint_without_digitizing(tmp_path, capsys):
     for arm in slc.CORPUS_ARMS:
         (tmp_path / f"corpus_becker__{arm}.json").write_text(json.dumps(_ccell("becker", arm)))
