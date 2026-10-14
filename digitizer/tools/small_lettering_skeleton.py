@@ -22,7 +22,9 @@ try sewed it (`small_floor`, `first_declined`).
 Arms (the Studio request of `fremont_triage.studio_request`, Hat, 81 mm):
 
     off_81      main, the flag off
-    on_81       small_lettering_skeleton ON, the needle floor (1.0 mm)
+    on1f_81     ON, the needle floor (1.0 mm), no small-glyph try (#913)
+    on_81       small_lettering_skeleton ON, the needle floor (1.0 mm), and
+                the small-glyph second try at 0.5 mm (the defaults)
     on073_81    ON, floor 0.73 mm (`machine.BEAN_STITCH_MM`, the run tier's
                 own stitch on these glyphs today)
 
@@ -52,7 +54,10 @@ if str(ROOT) not in sys.path:
 FLAG = {"small_lettering_skeleton": True}
 ARMS = {
     "off_81": (81.0, {}, "main (flag off)"),
-    "on_81": (81.0, dict(FLAG), "ON, floor 1.0 mm (MIN_STITCH_MM)"),
+    # #913's tier as it was: one floor, no small-glyph second try.
+    "on1f_81": (81.0, {**FLAG, "small_lettering_skeleton_small_floor_mm": None},
+                "ON, floor 1.0 mm, no small-glyph try (#913)"),
+    "on_81": (81.0, dict(FLAG), "ON, floor 1.0 mm (MIN_STITCH_MM), small-glyph try 0.5"),
     "on073_81": (81.0, {**FLAG, "small_lettering_skeleton_floor_mm": 0.73},
                  "ON, floor 0.73 mm (BEAN_STITCH_MM)"),
     # Composition with `cfg.small_text_cap_mm` (#909, OFF): the lines it
@@ -80,7 +85,8 @@ CORPUS = {
 }
 CORPUS_WIDTH_MM = 80.0
 CORPUS_ARMS = {"off": {}, "on": dict(FLAG),
-               "on073": {**FLAG, "small_lettering_skeleton_floor_mm": 0.73}}
+               "on073": {**FLAG, "small_lettering_skeleton_floor_mm": 0.73},
+               "on1f": {**FLAG, "small_lettering_skeleton_small_floor_mm": None}}
 
 
 @contextlib.contextmanager
@@ -154,7 +160,8 @@ def analyze_arm(name: str, run: dict) -> dict:
         rows = []
         for i, g in enumerate(glyphs):
             row = fsl.glyph_row(run, g, f"{b}[{i}]", owners[i], taken, False)
-            row["label"] = fsl.label_of(b, i, len(glyphs))
+            row["label"] = (fsl.label_of(b, i, len(glyphs)) if b in fsl.LABELS else
+                            b[i] if len(b) == len(glyphs) else f"#{i}")
             reps = [log[s] for s in owners[i] if s in log]
             if any(not r["empty"] for r in reps):
                 row["construction"] = "skeleton"
@@ -255,8 +262,9 @@ def corpus_one(case: str, arm: str, out: Path) -> dict:
 
 
 def corpus_table(out: Path) -> str:
-    lines = ["| case (80 mm) | OFF md5 | ON md5 | ON 0.73 md5 | offered ON | skeleton ON / ON 0.73 | identical |",
-             "|---|---|---|---|---|---|---|"]
+    lines = ["| case (80 mm) | OFF md5 | ON md5 | ON 0.73 md5 | ON one-floor md5 | offered ON | "
+             "skeleton ON / ON 0.73 | identical |",
+             "|---|---|---|---|---|---|---|---|"]
     for case in CORPUS:
         recs = {a: json.loads((out / f"corpus_{case}_{a}.json").read_text())
                 for a in CORPUS_ARMS if (out / f"corpus_{case}_{a}.json").exists()}
@@ -264,7 +272,7 @@ def corpus_table(out: Path) -> str:
             continue
         md = {a: recs[a]["md5"][:8] if a in recs else "-" for a in CORPUS_ARMS}
         same = all(recs[a]["md5"] == recs["off"]["md5"] for a in recs)
-        lines.append(f"| {case} | {md['off']} | {md['on']} | {md['on073']} | "
+        lines.append(f"| {case} | {md['off']} | {md['on']} | {md['on073']} | {md['on1f']} | "
                      f"{recs.get('on', {}).get('offered', '-')} | "
                      f"{recs.get('on', {}).get('skeleton_sewn', '-')} / "
                      f"{recs.get('on073', {}).get('skeleton_sewn', '-')} | {'yes' if same else 'NO'} |")
