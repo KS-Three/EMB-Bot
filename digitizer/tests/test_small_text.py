@@ -259,3 +259,48 @@ def test_bean_letter_pitch_none_is_byte_identical_and_a_shorter_one_draws_a_smal
     off, _ = bean_letter([long_stem, arm], "S", entry=None, trim_at_mm=3.0)
     on, _ = bean_letter([long_stem, arm], "S", entry=None, trim_at_mm=3.0, stitch_mm=0.45)
     assert len(off) == 1 and len(on) == 2
+
+
+# --- Serif hooks (`cfg.bean_letter_serif_mm`) -------------------------------
+# At 1.9 mm Fremont's slab serifs read as hooks on the ends of a letter's
+# centrelines; laid in thread they close the E into a B, and 60 wt thread
+# did not open it. A sharp turn within `serif_mm` of a free end is cut.
+
+def test_serif_trim_none_is_byte_identical():
+    from digitizer_core.stage6_beanletter import bean_letter, trim_serif_hooks
+
+    spines = [[(2.0, 0.35), (2.0, 0.0), (0.0, 0.0)], [(0.0, 0.0), (0.0, 1.9)]]
+    assert trim_serif_hooks(spines, None) is spines
+    assert trim_serif_hooks(spines, 0) is spines
+    a, _ = bean_letter(spines, "S", entry=None, trim_at_mm=3.0)
+    b, _ = bean_letter(spines, "S", entry=None, trim_at_mm=3.0, serif_mm=None)
+    assert [r.points for r in a] == [r.points for r in b]
+
+
+def test_serif_hook_is_cut_at_both_ends_and_the_arm_is_kept():
+    import math
+
+    from digitizer_core.stage6_beanletter import trim_serif_hooks
+
+    # An E's top arm with a slab serif dropping 0.35 mm at its right end, and
+    # a T's bar with one at each end.
+    arm = [(2.0, 0.35), (2.0, 0.0), (0.0, 0.0)]
+    bar = [(0.0, 0.35), (0.0, 0.0), (2.4, 0.0), (2.4, 0.35)]
+    (arm2,), (bar2,) = trim_serif_hooks([arm], 0.45), trim_serif_hooks([bar], 0.45)
+    assert arm2[-1] == (0.0, 0.0), "the free end with no hook is untouched"
+    assert abs(arm2[0][1]) < 0.05 and abs(arm2[0][0] - 2.0) < 0.1, f"hook cut at the corner, got {arm2[0]}"
+    assert all(abs(p[1]) < 0.05 for p in bar2), f"both of the bar's hooks cut: {bar2}"
+    assert math.dist(bar2[0], bar2[-1]) > 2.2, "the bar itself is kept"
+
+
+def test_serif_trim_leaves_a_curve_and_a_short_stroke_alone():
+    import math
+
+    from digitizer_core.stage6_beanletter import trim_serif_hooks
+
+    # The tail of a 9: a quarter arc of 1 mm radius turns gently.
+    arc = [(math.cos(t), math.sin(t)) for t in [k * (math.pi / 2) / 30 for k in range(31)]]
+    assert trim_serif_hooks([arc], 0.45)[0] == arc
+    # A stroke under three hooks long is never cut: there is no letter left.
+    short = [(0.0, 0.3), (0.0, 0.0), (1.0, 0.0)]
+    assert trim_serif_hooks([short], 0.45)[0] == short
