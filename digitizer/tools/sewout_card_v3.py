@@ -98,7 +98,7 @@ CUT_MARGIN_MM = 0.8          # a run belongs to a box if its extent lies inside 
 WHITE_MIN = 215              # a block whose every channel is this high is the white patch (fremont_triage.WHITE_MIN)
 
 
-def cut_arm(arm: str, cuts: Path) -> Path:
+def cut_arm(arm: str, cuts: Path, design_dir: Path | None = None) -> Path:
     """Digitize the Fremont fixture as the Studio does (81 mm, Hat) with this
     arm's flags, and save the runs of the non-white thread that lie inside the
     T ("THE") and N ("1895") boxes, as JSON. Returns the file."""
@@ -133,6 +133,9 @@ def cut_arm(arm: str, cuts: Path) -> Path:
                              "crossing_runs": crossing}
         print(f"{arm}/{key}: {len(inside)} runs, {sum(len(r['points']) for r in inside)} points, "
               f"{len(crossing)} crossing runs dropped: {crossing}", flush=True)
+    if design_dir is not None:      # the whole design, for 	ools/glyph_legibility.py --design (not committed)
+        design_dir.mkdir(parents=True, exist_ok=True)
+        (design_dir / f"fremont_{arm}.json").write_text(json.dumps(run["design"]), encoding="utf-8")
     cuts.mkdir(parents=True, exist_ok=True)
     path = cuts / f"cut_{arm}.json"
     path.write_text(json.dumps(out), encoding="utf-8")
@@ -487,6 +490,32 @@ CUTNOTES
 `claude/small-glyph-keep-on`, is not merged), and the card pins it explicitly in
 every arm, so it does not move if that default flips.
 
+## A legibility screen, read before you sew (not a verdict)
+
+`tools/glyph_legibility.py` (#906) reads the sewn thread of each Fremont word
+glyph by glyph against the artwork, on the whole 81 mm design of each arm
+(the replay above; thread render, no pull, no nap). `legib` is the weakest of
+strokes / clean / counters; `+space` adds the negative-space read. Its own
+caveats apply (#906, "What it can and cannot say"): the pro's own legible THE
+scores 0.04-0.08 on `+space`, and an outline run laid round a bold letter
+leaves a hollow the artwork does not have, which the counters read bills as a
+spurious hole. So it is a screen for where to look, and these two flips are
+for the cloth to decide.
+
+| box | arm | legib | +space | counters | worst glyph | OCR recovered |
+|---|---|---|---|---|---|---|
+| THE | today | 0.982 | 0.186 | 1.00 | 0.97 | 1/3 |
+| THE | `lettering_words` + `lettering_word_tiers` | 0.333 | 0.186 | 0.33 | 0.00 | 1/3 |
+| 1895 | `small_glyph_keep` OFF | 0.846 | 0.291 | 0.88 | 0.50 | 1/4 |
+| 1895 | `small_glyph_keep` ON | 0.551 | 0.062 | 0.63 | 0.00 | 1/4 |
+
+By this screen neither candidate improves its box: the one-tier-per-word THE
+loses on counters (three outlines read as holes), and `small_glyph_keep` on
+1895 sews the missing 1 (strokes 0.96 to 1.00) but in two pieces and with
+extra holes (worst glyph 0.00). F3 (a synthetic word) and G (no artwork glyphs)
+have no source boxes and are not scored. Whether THE or 1895 READS is the
+question block T and block N put to the cloth.
+
 ## The file checks (pystitch reading the DST back)
 
 READBACK
@@ -624,11 +653,12 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--cut", choices=list(CUT_ARMS), help="digitize the Fremont fixture with this arm and save its cuts")
     ap.add_argument("--cuts", default=str(DEFAULT_CUTS))
+    ap.add_argument("--design-dir", help="with --cut: also save the whole Fremont design here (for glyph_legibility)")
     ap.add_argument("--out", default=str(DEFAULT_OUT))
     ap.add_argument("--renders", default=str(DEFAULT_RENDERS), help="copy the PNGs here too ('' to skip)")
     args = ap.parse_args(argv)
     if args.cut:
-        cut_arm(args.cut, Path(args.cuts))
+        cut_arm(args.cut, Path(args.cuts), Path(args.design_dir) if args.design_dir else None)
         return 0
     generate(Path(args.out), Path(args.renders) if args.renders else None, Path(args.cuts))
     return 0

@@ -115,6 +115,32 @@ table. Each box is the artwork rectangle `fremont_triage.ROIS` names, grown by
 `claude/small-glyph-keep-on`, is not merged), and the card pins it explicitly in
 every arm, so it does not move if that default flips.
 
+## A legibility screen, read before you sew (not a verdict)
+
+`tools/glyph_legibility.py` (#906) reads the sewn thread of each Fremont word
+glyph by glyph against the artwork, on the whole 81 mm design of each arm
+(the replay above; thread render, no pull, no nap). `legib` is the weakest of
+strokes / clean / counters; `+space` adds the negative-space read. Its own
+caveats apply (#906, "What it can and cannot say"): the pro's own legible THE
+scores 0.04-0.08 on `+space`, and an outline run laid round a bold letter
+leaves a hollow the artwork does not have, which the counters read bills as a
+spurious hole. So it is a screen for where to look, and these two flips are
+for the cloth to decide.
+
+| box | arm | legib | +space | counters | worst glyph | OCR recovered |
+|---|---|---|---|---|---|---|
+| THE | today | 0.982 | 0.186 | 1.00 | 0.97 | 1/3 |
+| THE | `lettering_words` + `lettering_word_tiers` | 0.333 | 0.186 | 0.33 | 0.00 | 1/3 |
+| 1895 | `small_glyph_keep` OFF | 0.846 | 0.291 | 0.88 | 0.50 | 1/4 |
+| 1895 | `small_glyph_keep` ON | 0.551 | 0.062 | 0.63 | 0.00 | 1/4 |
+
+By this screen neither candidate improves its box: the one-tier-per-word THE
+loses on counters (three outlines read as holes), and `small_glyph_keep` on
+1895 sews the missing 1 (strokes 0.96 to 1.00) but in two pieces and with
+extra holes (worst glyph 0.00). F3 (a synthetic word) and G (no artwork glyphs)
+have no source boxes and are not scored. Whether THE or 1895 READS is the
+question block T and block N put to the cloth.
+
 ## The file checks (pystitch reading the DST back)
 
 | | 40 wt |
