@@ -854,7 +854,7 @@
   // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides, fillColumns, fillStagger, dedupeHoles, cutFloats }
   // (buildLetteringDesign additionally takes `splitSatin` and
   // `wideColumnFill` — the two wide-column answers, both default off; see
-  // satinfont.js's constant block — and `satinZigzag`, built OFF 2026-10-13:
+  // satinfont.js's constant block — and `satinZigzag`, ON by default since 2026-10-13:
   // constant rail order in the satin emitter, see satinplay.emitZigzag.)
   //   `densityMm` (legacy, pre-2026-09-04) is one number for BOTH fillRowMm
   //   and satinSpacingMm and is still honoured exactly as it was — see the
@@ -1735,7 +1735,11 @@
     // `crossFloor` passes straight through (default on — see satinfont's
     // width guards); `false` is the pre-2026-09-03 stitch stream, kept
     // reachable for the byte-identity pins in test/run-fonts.test.js.
-    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: satinSpacingMm / sc, pullCompMm: pullCompMm / sc, weightMm: weightMm / sc, counterGuard: o.counterGuard !== false, shortStitch: o.shortStitch !== false, letterSpacingMm: ls, underlay: o.underlay !== false, crossFloor: o.crossFloor !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout, splitSatin: o.splitSatin, satinZigzag: o.satinZigzag, wideColumnFill: o.wideColumnFill, fillRowMm: letterFillRowMm, fillStitchMm: o.fillStitchMm });
+    // `satinZigzag` is ON here by default (Kent's ruling 2026-10-13, on a
+    // before/after render, NOT sewn): every satin stitch crosses the column.
+    // `false` is the alternating-rail stream every design before that date
+    // carries; layoutText itself still defaults off.
+    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: satinSpacingMm / sc, pullCompMm: pullCompMm / sc, weightMm: weightMm / sc, counterGuard: o.counterGuard !== false, shortStitch: o.shortStitch !== false, letterSpacingMm: ls, underlay: o.underlay !== false, crossFloor: o.crossFloor !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout, splitSatin: o.splitSatin, satinZigzag: o.satinZigzag !== false, wideColumnFill: o.wideColumnFill, fillRowMm: letterFillRowMm, fillStitchMm: o.fillStitchMm });
     if (!lay.runs.length) return emptyWith(lay.unsupported, lay.lettering);
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     // Explicit placement offset (Slice 3): applied AFTER the center transform, in

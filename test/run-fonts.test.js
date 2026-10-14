@@ -142,13 +142,16 @@ function binOrSkip(p, key) {
 // under the floor at this size — so the invariant is asserted on the legacy
 // stream, which the option keeps reachable. The floor's own effect is pinned
 // where it belongs, in test/satinfont.test.js.
+// `satinZigzag: false` (2026-10-13) for the same reason: the zigzag order
+// went default ON that day and moves alchemy (762 -> 797, its split return
+// legs), so the invariant stays on the stream it was pinned on.
 for (const [key, expected] of Object.entries(SATIN_BASELINE)) {
   test(`satin font ${key} stitches exactly as before run support`, () => {
     const p = path.join(BIN, key + ".embf");
     if (!binOrSkip(p, key)) return;
     const font = fb.decodeFontBin(fs.readFileSync(p));
     const text = font.glyphs["a"] ? "Emb" : "EMB";
-    const d = DG.buildLetteringDesign(font, text, { ...base, crossFloor: false });
+    const d = DG.buildLetteringDesign(font, text, { ...base, crossFloor: false, satinZigzag: false });
     assert.strictEqual(d.stitches.length, expected, `${key} stitch count moved`);
   });
 }
