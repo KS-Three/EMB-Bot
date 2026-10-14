@@ -105,3 +105,38 @@ def test_bootstrap_auc_is_seeded_and_brackets_the_point_estimate():
     assert a[0] == 1.0 and a[1] <= a[0] <= a[2]
     mixed = ftc.bootstrap_auc([1.0, 5.0], list(np.linspace(0.0, 6.0, 12)), reps=300, seed=1)
     assert mixed[1] < 0.9, "two positives straddling the negatives cannot clear 0.9"
+
+
+def _fake_rows(owl_val: float, logo_vals: list[float], flat_val: float = 0.0) -> dict:
+    """A rows.json-shaped dict with ONE value for every signal: the owl's plumage
+    regions at `owl_val`, each logo's regions at `logo_vals`."""
+    def reg(rid, v, width=4.0):
+        return {"id": rid, "area_mm2": 100.0, "width_mm": width, **{s: v for s in ftc.SIGNALS}}
+    rows = {"owl": {"erode_mm": 0.5,
+                    "regions": [reg("S4666f9bf", owl_val, 7.0)] + [reg(i, 1.0) for i in ftc.FENCE["owl"]]},
+            "owl_classical": {"erode_mm": 0.5,
+                              "regions": [reg(i, owl_val) for i in ftc.FUR_POSITIVES["owl_classical"]]},
+            "grass": {"erode_mm": 0.5, "regions": [reg("Sg", 2.0)]},
+            "fur_ramp": {"erode_mm": 0.5, "regions": [reg("Sr", flat_val)]}}
+    for k, name in enumerate(ftc.LOGOS):
+        rows[name] = {"erode_mm": 0.5, "regions": [reg(f"L{k}{j}", v) for j, v in enumerate(logo_vals)]}
+    return rows
+
+
+def test_table_says_clears_only_when_the_owl_is_past_every_logo_region():
+    above = ftc.table_rows(_fake_rows(10.0, [1.0, 2.0, 3.0, 4.0]))
+    assert all(t["clears"] == "above" and t["auc_lo"] > ftc.CLEAR_AUC for t in above)
+    below = ftc.table_rows(_fake_rows(0.5, [1.0, 2.0, 3.0, 4.0]))
+    assert all(t["clears"] == "below" for t in below)
+    # One logo region level with the owl: the margin is gone, nothing clears.
+    tied = ftc.table_rows(_fake_rows(3.0, [1.0, 3.0, 5.0]))
+    assert all(t["clears"] == "no" for t in tied)
+
+
+def test_wide_only_drops_the_strokes():
+    rows = _fake_rows(10.0, [1.0, 2.0])
+    for name in ftc.LOGOS:
+        rows[name]["regions"][0]["width_mm"] = 1.0       # a stroke
+    full = ftc.table_rows(rows)[0]
+    wide = ftc.table_rows(rows, wide_only=True)[0]
+    assert wide["n_neg"] == full["n_neg"] // 2

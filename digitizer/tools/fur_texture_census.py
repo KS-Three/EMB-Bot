@@ -1,8 +1,15 @@
 """Fur needs a texture signal, not ridges: a CENSUS (2026-10-14). Measures only.
 
     python -m tools.fur_texture_census run    [--fixtures a,b] [--erode-mm 0.5] [--force]
-    python -m tools.fur_texture_census table  [--rows rows.json]
+    python -m tools.fur_texture_census table
+    python -m tools.fur_texture_census map
     python -m tools.fur_texture_census render [--logo golden_tee] [--signal NAME]
+
+`run` writes rows.json (per-region signals at the primary erosion and at
+`SENSITIVITY_MM`); `table` reads it, writes table.md / table.json, and prints;
+`map` draws the owl's id-labelled regions (the by-eye fur labels); `render`
+paints one signal per region over the owl and one logo, on one colour scale.
+Writes under docs/renders/fur-texture-census/.
 
 Why. PR #925 (`fur_regions`, `cfg.hair_regions_directional`, OFF) gated fur on
 the line route's RIDGE test and found it fires on no fixture: owl_kent's body
@@ -64,11 +71,13 @@ sys.path.insert(0, str(ROOT))
 OUT_DIR = ROOT.parent / "docs" / "renders" / "fur-texture-census"
 TESTDATA = ROOT / "testdata"
 ERODE_MM = 0.5
+SENSITIVITY_MM = (0.25, 1.0)    # the erosion is a free parameter: the table is also read at these
 AREA_FLOOR_MM2 = 25.0           # fur_regions.FUR_MIN_AREA_MM2, restated to keep imports light
 GABOR_WAVELENGTHS_MM = (0.6, 1.2, 2.4)
 GABOR_ORIENTS = 8
 ST_SCALES_MM = (0.5, 1.0, 2.0)
 HF_SIGMA_MM = 0.35
+HF_VAR_FLOOR = 1.0
 FILL_SIGMA_MM = 1.0
 RENDER_PX_PER_MM = 6.0
 MAX_JPEG_BYTES = 290_000
@@ -201,7 +210,11 @@ def hf_signals(ext: np.ndarray, interior: np.ndarray, ppm: float) -> dict:
     hp = ext - cv2.GaussianBlur(ext, (0, 0), max(0.8, HF_SIGMA_MM * ppm))
     var_hp = float(hp[interior].astype(np.float64).var())
     var_all = float(ext[interior].astype(np.float64).var())
-    return {"hf_frac": (var_hp / var_all) if var_all > 1e-9 else 0.0, "hf_pow": math.sqrt(var_hp)}
+    # The denominator carries a 1 L*^2 floor (about a just-noticeable
+    # difference squared): a region flat to the eye has no "fraction" of
+    # anything, and without the floor a flat logo's rounding noise read
+    # ratios in the thousands. Capped at 1: a fraction.
+    return {"hf_frac": min(1.0, var_hp / (var_all + HF_VAR_FLOOR)), "hf_pow": math.sqrt(var_hp)}
 
 
 def region_signals(lum: np.ndarray, mask: np.ndarray, ppm: float, erode_mm: float = ERODE_MM):
@@ -269,7 +282,11 @@ def _mask_for(poly, sp, box_px):
     return m.astype(bool)
 
 
-def read_fixture(spec: str, erode_mm: float = ERODE_MM, keep: dict | None = None) -> dict:
+def read_fixture(spec: str, erode_mm: float = ERODE_MM, keep: dict | None = None,
+                 sensitivity: tuple = ()) -> dict:
+    """One fixture's per-region signals at `erode_mm` ("regions") and, from the
+    same pipeline run, at each erosion in `sensitivity` ("sensitivity":
+    {erode: regions})."""
     from digitizer_core import PipelineConfig, fur_regions
     from digitizer_core.pipeline import build_generation, finish_generation
     from digitizer_core.stage6_blend import SourcePixels
@@ -289,7 +306,9 @@ def read_fixture(spec: str, erode_mm: float = ERODE_MM, keep: dict | None = None
     lum_full = luminance(p.rgb)
     h, w = lum_full.shape
     pad = int(math.ceil(4.0 * p.px_per_mm))        # past the widest kernel's reach
-    rows, no_interior = [], 0
+    erodes = [erode_mm, *sensitivity]
+    rows: dict[float, list] = {e: [] for e in erodes}
+    no_interior = {e: 0 for e in erodes}
     for r in regions:
         if r.area_mm2 < AREA_FLOOR_MM2:
             continue
@@ -301,24 +320,37 @@ def read_fixture(spec: str, erode_mm: float = ERODE_MM, keep: dict | None = None
         if box[2] <= box[0] or box[3] <= box[1]:
             continue
         mask = _mask_for(r.polygon, sp, box)
-        sig = region_signals(lum_full[box[1]:box[3], box[0]:box[2]], mask, p.px_per_mm, erode_mm)
-        if sig is None:
-            no_interior += 1
-            continue
         rd = ridge.get(r.shape_id, {})
-        rows.append({"id": r.shape_id, "area_mm2": round(float(r.area_mm2), 2),
-                     "width_mm": rd.get("width_mm"), "strands": rd.get("strands"),
-                     "ridge_gate_fur": rd.get("fur"),
-                     "mean_rgb": [int(v) for v in p.rgb[box[1]:box[3], box[0]:box[2]][mask].mean(axis=0)],
-                     "ridge_dens": rd.get("density", 0.0),
-                     **{k: round(float(v), 5) for k, v in sig.items()}})
+        for e in erodes:
+            sig = region_signals(lum_full[box[1]:box[3], box[0]:box[2]], mask, p.px_per_mm, e)
+            if sig is None:
+                no_interior[e] += 1
+                continue
+            rows[e].append({"id": r.shape_id, "area_mm2": round(float(r.area_mm2), 2),
+                            "width_mm": rd.get("width_mm"), "strands": rd.get("strands"),
+                            "ridge_gate_fur": rd.get("fur"),
+                            "mean_rgb": [int(v) for v in p.rgb[box[1]:box[3], box[0]:box[2]][mask].mean(axis=0)],
+                            "ridge_dens": rd.get("density", 0.0),
+                            **{k: round(float(v), 5) for k, v in sig.items()}})
     if keep is not None:
         keep.update(sp=sp, regions=regions, res=res)
     return {"fixture": path, "route": route, "class": res.design_class,
             "px_per_mm": round(float(p.px_per_mm), 3), "erode_mm": erode_mm,
             "regions_total": len(res.regions), "regions_read": len(regions),
             "regions_over_floor": sum(r.area_mm2 >= AREA_FLOOR_MM2 for r in regions),
-            "no_interior": no_interior, "regions": rows}
+            "no_interior": no_interior[erode_mm], "regions": rows[erode_mm],
+            "sensitivity": {str(e): {"no_interior": no_interior[e], "regions": rows[e]} for e in sensitivity}}
+
+
+def at_erosion(rows: dict, erode_mm: float) -> dict:
+    """`rows` with every fixture's regions swapped for its `erode_mm` variant."""
+    if erode_mm == next(iter(rows.values())).get("erode_mm"):
+        return rows
+    out = {}
+    for n, r in rows.items():
+        v = r.get("sensitivity", {}).get(str(erode_mm))
+        out[n] = {**r, "erode_mm": erode_mm, "regions": v["regions"], "no_interior": v["no_interior"]} if v else r
+    return out
 
 
 def _load(out: Path) -> dict:
@@ -337,7 +369,8 @@ def cmd_run(args) -> int:
             print(f"{name}: cached", flush=True)
             continue
         try:
-            rows[name] = read_fixture(FIXTURES.get(name, name), args.erode_mm)
+            rows[name] = read_fixture(FIXTURES.get(name, name), args.erode_mm,
+                                      sensitivity=tuple(e for e in SENSITIVITY_MM if e != args.erode_mm))
             rows[name]["name"] = name
             r = rows[name]
             print(f"{name}: class {r['class']} {r['px_per_mm']} px/mm, regions over floor "
@@ -352,69 +385,101 @@ def cmd_run(args) -> int:
 
 # --- the table ------------------------------------------------------------------
 
-OWL_FUR_MIN_WIDTH_MM = 3.0
+# Labelled BY EYE from the id-labelled region maps (the `map` command; both
+# routes' maps are in the PR): the owl's white plumage, the only fur on the
+# repo's fixtures. The positives are NOT independent -- two segmentations of
+# one bird -- so a bootstrap CI over regions UNDERSTATES the real uncertainty.
+FUR_POSITIVES = {"owl": ("S4666f9bf",),
+                 "owl_classical": ("S8e07fa31", "S5d65a6bd", "S6afd5c91", "Se3296f01", "Sb40da1a0")}
+# The owl photograph's fence: photographic texture that is not fur.
+FENCE = {"owl": ("S6d13fcbd", "S3cd8eadb")}
+BODY = ("owl", "S4666f9bf")
+CLEAR_AUC = 0.90
+FIELD_WIDTH_MM = 3.0            # fur_regions.FUR_MIN_FIELD_WIDTH_MM, restated to keep imports light
 
 
-def populations(rows: dict, fur_ids: list[str] | None = None):
-    """-> (owl body row, fur positives [(label, row)], logo negatives [(label, row)]).
-
-    The owl body is the largest region of owl_kent on the Studio route. Fur
-    positives are the owl regions at least `OWL_FUR_MIN_WIDTH_MM` wide (a field,
-    not a stroke), unless `fur_ids` names them (a render-checked list)."""
-    owl = rows["owl"]["regions"]
-    body = max(owl, key=lambda r: r["area_mm2"])
-    if fur_ids is None:
-        pos = [("owl", r) for r in owl if (r.get("width_mm") or 0) >= OWL_FUR_MIN_WIDTH_MM]
-    else:
-        pos = [("owl", r) for r in owl if r["id"] in fur_ids]
-    neg = [(n, r) for n in LOGOS if n in rows and "regions" in rows[n] for r in rows[n]["regions"]]
-    return body, pos, neg
+def _pick(rows: dict, name: str, ids) -> list[dict]:
+    return [r for r in rows.get(name, {}).get("regions", []) if r["id"] in ids]
 
 
-def table_rows(rows: dict, fur_ids: list[str] | None = None) -> list[dict]:
-    body, pos, neg = populations(rows, fur_ids)
-    grass = max(rows["grass"]["regions"], key=lambda r: r["area_mm2"]) if rows.get("grass", {}).get("regions") else None
-    ramp = rows.get("fur_ramp", {}).get("regions") or []
-    ramp_max = None
+def populations(rows: dict):
+    """-> (owl body row, fur positives [(label, row)], logo negatives [(label, row)],
+    fence rows)."""
+    body = _pick(rows, BODY[0], (BODY[1],))[0]
+    pos = [(n, r) for n, ids in FUR_POSITIVES.items() for r in _pick(rows, n, ids)]
+    neg = [(n, r) for n in LOGOS if "regions" in rows.get(n, {}) for r in rows[n]["regions"]]
+    fence = [r for n, ids in FENCE.items() for r in _pick(rows, n, ids)]
+    return body, pos, neg, fence
+
+
+def table_rows(rows: dict, wide_only: bool = False) -> list[dict]:
+    """One row per signal. `wide_only` keeps only regions at least
+    `FIELD_WIDTH_MM` wide (the fur gate's own field test), positives and
+    negatives alike: the population a texture gate behind that test faces."""
+    body, pos, neg, fence = populations(rows)
+    if wide_only:
+        pos = [(n, r) for n, r in pos if (r.get("width_mm") or 0) >= FIELD_WIDTH_MM]
+        neg = [(n, r) for n, r in neg if (r.get("width_mm") or 0) >= FIELD_WIDTH_MM]
+    grass = max(rows["grass"]["regions"], key=lambda r: r["area_mm2"])
+    ramp = rows["fur_ramp"]["regions"]
     out = []
     for sig in SIGNALS:
         nv = [r[sig] for _n, r in neg]
         pv = [r[sig] for _n, r in pos]
-        a, lo, hi = bootstrap_auc(pv, nv) if pv and nv else (float("nan"),) * 3
+        a, lo, hi = bootstrap_auc(pv, nv)
         top = max(neg, key=lambda t: t[1][sig])
-        owl_v = body[sig]
-        ramp_v = max((r[sig] for r in ramp), default=None)
-        out.append({"signal": sig, "owl_body": owl_v, "grass": None if grass is None else grass[sig],
-                    "fur_ramp_max": ramp_v, "logo_max": top[1][sig], "logo_max_at": f"{top[0]} {top[1]['id']}",
-                    "margin_abs": owl_v - top[1][sig],
-                    "margin_ratio": (owl_v / top[1][sig]) if top[1][sig] > 1e-9 else float("inf"),
-                    "owl_rank_in_negatives": int(sum(v < owl_v for v in nv)), "n_neg": len(nv),
-                    "n_pos": len(pv), "auc": a, "auc_lo": lo, "auc_hi": hi,
-                    "separates": bool(owl_v > top[1][sig] and lo > 0.9)})
+        bot = min(neg, key=lambda t: t[1][sig])
+        v = body[sig]
+        clear = ("above" if v > top[1][sig] and lo > CLEAR_AUC else
+                 "below" if v < bot[1][sig] and hi < 1.0 - CLEAR_AUC else "no")
+        out.append({"signal": sig, "owl_body": v, "grass": grass[sig],
+                    "fur_ramp_max": max(r[sig] for r in ramp),
+                    "fence_max": max(r[sig] for r in fence),
+                    "logo_max": top[1][sig], "logo_max_at": f"{top[0]} {top[1]['id']}",
+                    "logo_min": bot[1][sig], "logo_min_at": f"{bot[0]} {bot[1]['id']}",
+                    "margin_up": v - top[1][sig], "margin_down": bot[1][sig] - v,
+                    "owl_beats": int(sum(x < v for x in nv)), "n_neg": len(nv), "n_pos": len(pv),
+                    "auc": a, "auc_lo": lo, "auc_hi": hi, "clears": clear})
     return out
 
 
 def _f(v, n=3):
-    return "-" if v is None else ("inf" if v == float("inf") else f"{v:.{n}g}")
+    return "-" if v is None else f"{v:.{n}g}"
 
 
-def markdown(rows: dict, fur_ids: list[str] | None = None) -> str:
-    body, pos, neg = populations(rows, fur_ids)
-    tr = table_rows(rows, fur_ids)
-    lines = [f"Regions: area >= {AREA_FLOOR_MM2:g} mm2, interior after {rows['owl']['erode_mm']:g} mm erosion, "
-             "80 mm; owl_kent on the Studio route, the rest on the file route (80 mm left_chest).", "",
-             f"Owl body = {body['id']} ({body['area_mm2']:.0f} mm2). Fur positives (n={len(pos)}): "
-             + ", ".join(f"{r['id']} ({r['area_mm2']:.0f} mm2, {r['width_mm']} mm wide)" for _n, r in pos)
-             + f". Logo negatives: n={len(neg)} regions over {len({n for n, _ in neg})} logos.", "",
-             "| signal | owl body | grass (largest) | fur_ramp (max disc) | max over logo regions | at | margin (owl - max) | owl / max "
-             "| owl beats N of n logo regions | AUC [95% CI] | clears |",
-             "|---|---|---|---|---|---|---|---|---|---|---|"]
+def markdown(rows: dict) -> str:
+    body, pos, neg, fence = populations(rows)
+    tr = table_rows(rows)
+    lines = [f"Regions: area >= {AREA_FLOOR_MM2:g} mm2, read on the interior after {rows['owl']['erode_mm']:g} mm erosion; "
+             "80 mm. owl_kent on the Studio route (and the classical photo_subject route for more plumage regions), "
+             "the rest on the file route (80 mm left_chest).", "",
+             f"Owl body = {body['id']} ({body['area_mm2']:.0f} mm2). Fur positives for the AUC (n={len(pos)}, labelled "
+             "by eye, two segmentations of one bird): "
+             + ", ".join(f"{n}:{r['id']} ({r['area_mm2']:.0f} mm2)" for n, r in pos)
+             + f". Negatives: every logo region, n={len(neg)} over {len({n for n, _ in neg})} logos. Fence = "
+             + ", ".join(r["id"] for r in fence) + " (owl, Studio route).", "",
+             "| signal | owl body | grass | fur_ramp (max disc) | owl fence (max) | logo max | at | logo min | at "
+             "| margin above max | margin below min | owl body beats N of n | AUC [95% CI] | clears |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for t in tr:
         lines.append(f"| {t['signal']} | {_f(t['owl_body'])} | {_f(t['grass'])} | {_f(t['fur_ramp_max'])} | "
-                     f"{_f(t['logo_max'])} | {t['logo_max_at']} | {_f(t['margin_abs'])} | {_f(t['margin_ratio'])} | "
-                     f"{t['owl_rank_in_negatives']} of {t['n_neg']} | {t['auc']:.2f} [{t['auc_lo']:.2f}, {t['auc_hi']:.2f}] | "
-                     f"{'**yes**' if t['separates'] else 'no'} |")
-    lines += ["", "clears = owl body above EVERY logo region AND the AUC's lower bound above 0.90.", "",
+                     f"{_f(t['fence_max'])} | {_f(t['logo_max'])} | {t['logo_max_at']} | {_f(t['logo_min'])} | "
+                     f"{t['logo_min_at']} | {_f(t['margin_up'])} | {_f(t['margin_down'])} | "
+                     f"{t['owl_beats']} of {t['n_neg']} | {t['auc']:.2f} [{t['auc_lo']:.2f}, {t['auc_hi']:.2f}] | "
+                     f"{'**' + t['clears'] + '**' if t['clears'] != 'no' else 'no'} |")
+    lines += ["", f"clears = the owl body is past EVERY logo region (above the max, or below the min) AND the AUC's "
+              f"95% bound is past {CLEAR_AUC:g} (lower bound above it, or upper bound below {1 - CLEAR_AUC:g}).", ""]
+    wide = table_rows(rows, wide_only=True)
+    lines += [f"### Only regions at least {FIELD_WIDTH_MM:g} mm wide (the fur gate's field test), positives and negatives", "",
+              f"n positives = {wide[0]['n_pos']}, n negatives = {wide[0]['n_neg']}.", "",
+              "| signal | owl body | logo max | at | owl body beats N of n | AUC [95% CI] | clears |",
+              "|---|---|---|---|---|---|---|"]
+    for t in wide:
+        lines.append(f"| {t['signal']} | {_f(t['owl_body'])} | {_f(t['logo_max'])} | {t['logo_max_at']} | "
+                     f"{t['owl_beats']} of {t['n_neg']} | {t['auc']:.2f} [{t['auc_lo']:.2f}, {t['auc_hi']:.2f}] | "
+                     f"{'**' + t['clears'] + '**' if t['clears'] != 'no' else 'no'} |")
+    lines += [""]
+    lines += [
               "### Per-fixture counts", "", "| fixture | class | px/mm | regions >= floor | read | no interior |",
               "|---|---|---|---|---|---|"]
     for n, r in rows.items():
@@ -429,11 +494,58 @@ def markdown(rows: dict, fur_ids: list[str] | None = None) -> str:
 def cmd_table(args) -> int:
     out = Path(args.out)
     rows = _load(out)
-    fur_ids = args.fur_ids.split(",") if args.fur_ids else None
-    text = markdown(rows, fur_ids)
+    text = markdown(rows)
+    # The same table at the other erosions, AUC columns only: does the
+    # verdict move with the one free parameter?
+    sens = ["", "### Sensitivity to the erosion (same pipeline run)", "",
+            "| signal | " + " | ".join(f"AUC [95% CI] / clears at {e:g} mm" for e in (ERODE_MM, *SENSITIVITY_MM)) + " |",
+            "|---|" + "---|" * (1 + len(SENSITIVITY_MM))]
+    per = {e: {t["signal"]: t for t in table_rows(at_erosion(rows, e))} for e in (ERODE_MM, *SENSITIVITY_MM)}
+    for sig in SIGNALS:
+        sens.append(f"| {sig} | " + " | ".join(
+            f"{per[e][sig]['auc']:.2f} [{per[e][sig]['auc_lo']:.2f}, {per[e][sig]['auc_hi']:.2f}] / {per[e][sig]['clears']}"
+            for e in per) + " |")
+    text += "\n".join(sens) + "\n"
     (out / "table.md").write_text(text, encoding="utf-8")
-    (out / "table.json").write_text(json.dumps(table_rows(rows, fur_ids), indent=1) + "\n", encoding="utf-8")
+    (out / "table.json").write_text(json.dumps({str(e): list(d.values()) for e, d in per.items()}, indent=1) + "\n",
+                                    encoding="utf-8")
     print(text)
+    return 0
+
+
+def cmd_map(args) -> int:
+    """The id-labelled region maps of the owl on both routes, positives
+    outlined green and the fence red, so the by-eye labelling can be checked."""
+    out = Path(args.out)
+    tiles = []
+    for name in ("owl", "owl_classical"):
+        keep: dict = {}
+        read_fixture(FIXTURES[name], ERODE_MM, keep)
+        sp = keep["sp"]
+        scale = RENDER_PX_PER_MM * 1.3 / sp.px_per_mm
+        img = cv2.resize(cv2.cvtColor(sp.rgb, cv2.COLOR_RGB2BGR), None, fx=scale, fy=scale,
+                         interpolation=cv2.INTER_AREA)
+        for r in keep["regions"]:
+            if r.area_mm2 < AREA_FLOOR_MM2:
+                continue
+            col = ((0, 200, 0) if r.shape_id in FUR_POSITIVES[name] else
+                   (0, 0, 255) if r.shape_id in FENCE.get(name, ()) else (200, 120, 0))
+            thick = 3 if col != (200, 120, 0) else 1
+            for g in getattr(r.polygon, "geoms", [r.polygon]):
+                ring = np.array([[sp.to_px(x, y)[0] * scale, sp.to_px(x, y)[1] * scale]
+                                 for x, y in g.exterior.coords], np.int32)
+                cv2.polylines(img, [ring], True, col, thick)
+            c = r.polygon.representative_point()
+            px, py = sp.to_px(c.x, c.y)
+            cv2.putText(img, r.shape_id[1:5], (int(px * scale) - 14, int(py * scale)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 3, cv2.LINE_AA)
+            cv2.putText(img, r.shape_id[1:5], (int(px * scale) - 14, int(py * scale)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, col, 1, cv2.LINE_AA)
+        tiles.append(_panel(img, f"{name}: regions >= {AREA_FLOOR_MM2:g} mm2 (green = fur positive, red = fence)"))
+    h = max(t.shape[0] for t in tiles)
+    pad = [np.vstack([t, np.full((h - t.shape[0], t.shape[1], 3), 255, np.uint8)]) for t in tiles]
+    _write_jpeg(out / "owl_regions_map.jpg", np.hstack([pad[0], np.full((h, 8, 3), 255, np.uint8), pad[1]]))
+    print(json.dumps({"written": "owl_regions_map.jpg"}))
     return 0
 
 
@@ -529,8 +641,9 @@ def main(argv=None) -> int:
     r.add_argument("--force", action="store_true")
     r.set_defaults(fn=cmd_run)
     t = sub.add_parser("table")
-    t.add_argument("--fur-ids", default="", help="comma list of owl region ids to use as fur positives")
     t.set_defaults(fn=cmd_table)
+    m = sub.add_parser("map")
+    m.set_defaults(fn=cmd_map)
     d = sub.add_parser("render")
     d.add_argument("--logo", default="golden_tee", choices=list(LOGOS))
     d.add_argument("--signal", default="gabor_amp", choices=list(SIGNALS))
