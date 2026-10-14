@@ -133,6 +133,15 @@ _STACK_PERIOD = (1.6, 2.5)
 
 SHAPE_ID = "hairline_lines"
 
+# --- Chaining (`cfg.hairline_lines_chain`, default OFF) ----------------------
+# The longest hop between two strands sewn needle-down instead of cut:
+# `stage6_streamline.STREAMLINE_TRAVEL_MAX_MM`, the same cap for the same
+# reason (a longer drag is a float across the art). A CANDIDATE, not a
+# settled constant: no sew-out has judged what a dragged hop looks like
+# over a fill (ROADMAP gate 3). The hop must also lie over thread the fills
+# already laid (the caller's `hop_ok`), else it is cut as before.
+HOP_MAX_MM = 8.0
+
 
 def _fill_slits(line_map: np.ndarray) -> np.ndarray:
     """Fill every hole of the line map no wider than `_SLIT_PX` pixels.
@@ -397,6 +406,15 @@ def _thread_for(strands, sp, cfg, allowed: list[int]) -> int:
     return allowed[int(np.argmin(d))]
 
 
+def _hop_stitches(a, b) -> list[tuple[float, float]]:
+    """The needle-down walk from `a` to `b`, both exclusive: points at most
+    `machine.TRAVEL_STITCH_MM` apart (the fills' own travel pitch). Empty
+    when the hop is a single stitch."""
+    n = max(1, math.ceil(math.dist(a, b) / machine.TRAVEL_STITCH_MM))
+    return [(a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n)
+            for i in range(1, n)]
+
+
 def _sewable(group, cfg, thread_wt: int) -> tuple[list, int]:
     """-> ([(strand, stitch points)], dropped): the strands of `group` the
     tier's run rules sew at `thread_wt`'s curl tolerance."""
@@ -415,7 +433,7 @@ def _sewable(group, cfg, thread_wt: int) -> tuple[list, int]:
 
 
 def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[int],
-                  block_wt: dict[int, int] | None = None
+                  block_wt: dict[int, int] | None = None, hop_ok=None
                   ) -> tuple[list[tuple[int, list[StitchRun]]], dict]:
     """The line route for one design -> ([(thread_index, runs)], report).
 
@@ -431,7 +449,13 @@ def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[in
     weight, the polarity's strands are read again (ridge widths) and
     stitched (curl tolerance) at the block's weight, on the same thread.
     The report then carries `thread_wt` per polarity. With no override every
-    block is at `cfg.thread_wt`, and nothing is read twice."""
+    block is at `cfg.thread_wt`, and nothing is read twice.
+
+    `hop_ok(a, b) -> bool` (stage 7: the segment lies over laid thread) is
+    read only with `cfg.hairline_lines_chain` on. A hop of at most
+    `HOP_MAX_MM` for which it holds is sewn needle-down (a TRAVEL run at
+    `TRAVEL_STITCH_MM`, the next strand not a jump) and counted in `hops` /
+    `hop_mm`; every other hop is a jump, a trim past `trim_at_mm`, as before."""
     strand_test = bool(getattr(cfg, "hairline_lines_strand_test", False))
     bw = dict(block_wt or {}) if strand_test else {}
     strands, census = extract_strands(sp, cfg)
@@ -439,6 +463,9 @@ def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[in
               "sewn_by_polarity": {}}
     if strand_test:
         report["thread_wt"] = {}
+    chain = bool(getattr(cfg, "hairline_lines_chain", False)) and hop_ok is not None
+    if chain:
+        report.update(hops=0, hop_mm=0.0)
     out: list[tuple[int, list[StitchRun]]] = []
     cur = entry
     for polarity in ("dark", "light"):
@@ -479,13 +506,21 @@ def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[in
             if runs:
                 d = math.dist(runs[-1].points[-1], pts[0])
                 if d >= machine.TINY_STITCH_MM:
-                    jump = True
-                    trim = d > trim_at_mm
-                    report["jumps"] += 1
+                    if chain and d <= HOP_MAX_MM and hop_ok(runs[-1].points[-1], pts[0]):
+                        walk = _hop_stitches(runs[-1].points[-1], pts[0])
+                        if walk:
+                            runs.append(StitchRun(points=walk, kind=stitches.TRAVEL,
+                                                  shape_id=SHAPE_ID))
+                        report["hops"] += 1
+                        report["hop_mm"] = round(report["hop_mm"] + d, 3)
+                    else:
+                        jump = True
+                        trim = d > trim_at_mm
+                        report["jumps"] += 1
             runs.append(StitchRun(points=stitches.split_long_moves(pts),
                                   kind=stitches.RUN, jump=jump, trim=trim,
                                   shape_id=SHAPE_ID))
             cur = pts[-1]
-        report["strands"] += len(runs)
+        report["strands"] += sum(1 for r in runs if r.kind == stitches.RUN)
         out.append((thread, runs))
     return out, report
