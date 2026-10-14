@@ -2486,10 +2486,14 @@ def sequence(
             # ring and the fill's rows keep their thread off the counter,
             # and nothing the tier routes inside the shape crosses it. Off,
             # the polygon handed over is the same object as before.
+            # `cfg.small_dot_rung` (default OFF): an outline under the loop
+            # floor (an i dot) sews as a tack ring. Off, the call is
+            # today's, argument for argument.
             if routes_to_run(p, tier):
                 runs, report = run_outline(small_print_cut(p, p.region.polygon, machine.BEAN_STITCH_MM), p.shape_id,
                                            entry=entry, trim_at_mm=trim_at,
-                                           soft_vertices=cfg.run_soft_vertices)
+                                           soft_vertices=cfg.run_soft_vertices,
+                                           **({"dot_rung": True} if cfg.small_dot_rung else {}))
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
