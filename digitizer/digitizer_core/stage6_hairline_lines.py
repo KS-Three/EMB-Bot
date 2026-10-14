@@ -76,8 +76,9 @@ runs exactly as it does, and the line route adds only the strands it laid
 nothing near: a line with at least `_SUPPLEMENT_COVERED_SHARE` of its length
 within the tier's run half-width plus one source pixel of a shape the tier
 walked (`supplement_zone`) is not sewn, counted in `refused_region`; nor is
-one lying mostly on a shape of its OWN tone (`own_tone_share`, the tier's
-contrast floor), counted in `refused_own_tone`: on a drawn logo that line
+one lying mostly on a STROKE shape (`is_stroke`) of its OWN tone
+(`own_tone_share`, the tier's contrast floor), counted in
+`refused_own_tone`: on a drawn logo that line
 is line art the tracer already kept as a shape (the bridge logo's wave
 outlines), and sewing it again doubles it. Needs the strand test on too (it
 removes the barring, #897), else inert.
@@ -270,16 +271,26 @@ def line_tone_images(sp, cfg) -> dict[str, np.ndarray]:
     return {"dark": cv2.erode(light, k), "light": cv2.dilate(light, k)}
 
 
-def own_tone_share(pts, polarity: str, light: np.ndarray, sp, tree, region_l) -> float:
-    """Share of the polyline `pts` lying on a shape whose thread does NOT
-    stand out from the line by the tier's contrast floor in the line's own
-    polarity (`_SRC_MIN_CONTRAST` L*: a dark line on a fill at most 12 L*
-    lighter, a light one on a fill at most 12 darker). There the line's ink
-    is already a shape of its own tone: drawn line art the tracer kept, not a
-    strand the fills lost. A sample on no shape counts as standing out.
+def is_stroke(polygon) -> bool:
+    """A shape that is a STROKE: mean width (2 x area / perimeter) at most
+    `machine.SATIN_MAX_WIDTH_MM`, the widest a satin column sews."""
+    return polygon.length > 0 and 2.0 * polygon.area / polygon.length <= machine.SATIN_MAX_WIDTH_MM
+
+
+def own_tone_share(pts, polarity: str, light: np.ndarray, sp, tree, region_l,
+                   stroke=None) -> float:
+    """Share of the polyline `pts` lying on a STROKE shape (`is_stroke`)
+    whose thread does NOT stand out from the line by the tier's contrast
+    floor in the line's own polarity (`_SRC_MIN_CONTRAST` L*: a dark line on
+    a fill at most 12 L* lighter, a light one on a fill at most 12 darker).
+    There the line's ink is already a shape of its own tone: drawn line art
+    the tracer kept, not a strand the fills lost. A sample on no shape, or
+    on a shape wider than a stroke (a fill the segmenter merged the strand
+    into, on a photo), counts as standing out.
     `light` is the line's tone image (`line_tone_images[polarity]`), `tree`
     the shapes' polygons in sew order (the LAST one containing a sample is
-    on top), `region_l` their threads' L*."""
+    on top), `region_l` their threads' L*, `stroke` their `is_stroke`
+    (None: all strokes)."""
     if len(pts) < 2:
         return 0.0
     x, y = _samples(pts)
@@ -292,6 +303,8 @@ def own_tone_share(pts, polarity: str, light: np.ndarray, sp, tree, region_l) ->
     for i, j in zip(hit[0].tolist(), hit[1].tolist()):
         top[i] = max(top[i], j)
     on = top >= 0
+    if stroke is not None:
+        on[on] = np.asarray(stroke, bool)[top[on]]
     gap = np.zeros(len(x))
     gap[on] = (region_l[top[on]] - line_l[on]) if polarity == "dark" else \
         (line_l[on] - region_l[top[on]])
@@ -305,9 +318,12 @@ def supplement_test(regions, walked: set, sp, cfg):
     1. `refused_region`: at least `_SUPPLEMENT_COVERED_SHARE` of the line
        within `supplement_zone` of a shape the region tier walked (`walked`,
        shape ids): the tier's strand seen a second time (#915).
-    2. `refused_own_tone`: at least that share on a shape of the line's own
-       tone (`own_tone_share`): drawn line art already traced and sewn as
-       shapes (measured on the bridge logo's wave and anchor outlines).
+    2. `refused_own_tone`: at least that share on a STROKE shape of the
+       line's own tone (`own_tone_share`): drawn line art already traced and
+       sewn as shapes (measured on the bridge logo's wave and anchor
+       outlines, mean width 0.7-1.0 mm). A wider shape is a fill, and a
+       strand inside it is kept (owl_kent's white bristles over its 11.6 mm
+       white mass).
 
     `regions` are the design's shapes in sew order (`.polygon`,
     `.thread_index`, `.shape_id`)."""
@@ -316,13 +332,14 @@ def supplement_test(regions, walked: set, sp, cfg):
     tree = shapely.STRtree([r.polygon for r in regions])
     lab = _chart(cfg).lab
     region_l = np.array([float(lab[r.thread_index][0]) for r in regions], np.float64)
-    tone = line_tone_images(sp, cfg) if regions else {}
+    stroke = [is_stroke(r.polygon) for r in regions]
+    tone = line_tone_images(sp, cfg) if any(stroke) else {}
 
     def refuse(s):
         if covered_share(s["pts"], zone) >= _SUPPLEMENT_COVERED_SHARE:
             return "refused_region"
-        if regions and own_tone_share(s["pts"], s["polarity"], tone[s["polarity"]], sp,
-                                      tree, region_l) >= _SUPPLEMENT_COVERED_SHARE:
+        if tone and own_tone_share(s["pts"], s["polarity"], tone[s["polarity"]], sp,
+                                   tree, region_l, stroke) >= _SUPPLEMENT_COVERED_SHARE:
             return "refused_own_tone"
         return None
     return refuse

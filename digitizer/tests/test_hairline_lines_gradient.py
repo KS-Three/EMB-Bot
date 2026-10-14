@@ -19,7 +19,7 @@ from shapely.geometry import box
 from digitizer_core import PipelineConfig, machine
 from digitizer_core.pipeline import digitize, plan_stitches, run_stages
 from digitizer_core.stage6_hairline_lines import (
-    _SUPPLEMENT_COVERED_SHARE, applies, covered_share, strand_blocks, supplement_test,
+    _SUPPLEMENT_COVERED_SHARE, applies, covered_share, is_stroke, strand_blocks, supplement_test,
     supplement_zone, supplements)
 from tests.test_hairline_lines import _md5
 from tests.test_hairline_lines_chain import _pair, _sp
@@ -140,6 +140,16 @@ def test_a_dark_line_on_a_dark_shape_is_line_art_and_not_sewn():
     """The bridge logo's case: the line's ink is already a shape of its tone."""
     _b, r1 = _blocks(regions=[_R("s1", _first_box(), _thread("dark"))])
     assert r1["strands"] == 1 and sum(r1["refused_own_tone"].values()) == 1
+
+
+def test_a_dark_line_inside_a_wide_dark_fill_is_kept():
+    """Own tone counts only on a STROKE shape: a strand the segmenter merged
+    into a wide fill of its tone (owl_kent's white bristles in its white
+    mass) is not line art."""
+    wide = box(-100, -100, 100, 100)
+    assert not is_stroke(wide) and is_stroke(_first_box())
+    _b, r1 = _blocks(regions=[_R("s1", wide, _thread("dark"))])
+    assert r1["strands"] == 2 and sum(r1["refused_own_tone"].values()) == 0
 
 
 def test_a_dark_line_on_a_light_fill_is_a_strand_and_sewn():
