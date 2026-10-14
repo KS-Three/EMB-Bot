@@ -19,6 +19,7 @@ isolated text (a logo's subline) that the old drop-everything rule deleted.
 """
 from __future__ import annotations
 
+import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -414,6 +415,10 @@ def resolve_small_regions(
     # never rescue what geometry would then reject silently.
     noise_area_px = machine.RUN_MIN_AREA_MM2 * px_per_mm ** 2
     loop_floor_px = machine.RUN_MIN_LOOP_MM * px_per_mm
+    # `cfg.small_dot_rung` (default OFF): the run tier sews a ring down to
+    # the dot rung's own floor, so the proxy admits down to it too.
+    dot_floor_px = (machine.DOT_RUNG_MIN_LOOP_MM * px_per_mm
+                    if cfg.small_dot_rung else None)
     keep_contrast = bool(cfg.keep_thin_strokes) and layer_lab is not None
 
     def clears_run_floors(i: int, box) -> bool:
@@ -423,6 +428,31 @@ def resolve_small_regions(
         box_h, box_w = box[2] - box[0], box[3] - box[1]
         return bool(cfg.small_shape_rescue and areas[i] >= noise_area_px
                     and 2 * max(box_h, box_w) >= loop_floor_px)
+
+    def clears_dot_rung(i: int, box, halo, win) -> bool:
+        """`cfg.small_dot_rung`: a perimeter lower bound at the dot rung's
+        floor, for a part that stands on its own (an i dot on its ground).
+        The bound is the larger of the proxy above and the isoperimetric one,
+        2 * sqrt(pi * area) -- still never more than the real ring, and exact
+        on a round dot, where 2 * max(w, h) reads only 2/pi of it. A part nine
+        tenths ringed by other SMALL regions is a hole in a small glyph (the
+        8's counter): it is the glyph's own ring that sews it, and keeping it
+        as a shape of its own would lay ground-coloured thread in the hole."""
+        if dot_floor_px is None or not (cfg.small_shape_rescue
+                                        and areas[i] >= noise_area_px):
+            return False
+        box_h, box_w = box[2] - box[0], box[3] - box[1]
+        if max(2 * max(box_h, box_w), 2.0 * math.sqrt(math.pi * areas[i])) < dot_floor_px:
+            return False
+        wy0, wx0, wy1, wx1 = win
+        ring_px = int(halo.sum())
+        on_small = 0
+        for j in small:
+            jb = boxes[j]
+            if j == i or jb is None or jb[2] <= wy0 or jb[0] >= wy1 or jb[3] <= wx0 or jb[1] >= wx1:
+                continue
+            on_small += int((halo & regions[j].window(wy0, wx0, wy1, wx1)).sum())
+        return on_small * 10 < ring_px * 9
 
     # --- `cfg.keep_counters` ------------------------------------------------
     keep_counters = bool(keep_counters) and (layer_lab is not None or lab_img is not None)
@@ -505,19 +535,22 @@ def resolve_small_regions(
                 best, best_share = j, share
 
         reportable = areas[i] >= report_floor_px
+        # Off, `clears` is `clears_run_floors` alone, as before the rung.
+        clears = (clears_run_floors(i, box)
+                  or clears_dot_rung(i, box, halo, (wy0, wx0, wy1, wx1)))
         if best is None:
             # No neighbour to absorb into: this is isolated artwork, and the
             # benchmark showed exactly what it tends to be — a logo's small
             # text, sitting alone on background. Keep it for the run tier
             # when it is at least the thread's own visual weight; below that
             # it is lint, and lint drops.
-            if clears_run_floors(i, box):
+            if clears:
                 rescued.append(i)
                 continue
             dropped += 1
             dropped_reportable += int(reportable)
             continue
-        if keep_contrast and clears_run_floors(i, box):
+        if keep_contrast and clears:
             # `cfg.keep_thin_strokes`: a neighbour of another colour is not
             # what this region is a sliver OF. Anti-alias and compression
             # slivers sit within the merge tolerance of the shape they edge
