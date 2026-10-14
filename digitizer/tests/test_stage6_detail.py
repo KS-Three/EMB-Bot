@@ -26,6 +26,7 @@ from digitizer_core.stage6_detail import (
     detail_runs,
     extract_detail_lines,
 )
+from tests.conftest import own_thread_only
 
 HERE = Path(__file__).resolve().parent
 PHOTO_DIR = HERE.parent / "testdata" / "photo"
@@ -246,7 +247,7 @@ def test_default_config_never_runs_the_layer(monkeypatch):
     def boom(*a, **k):  # pragma: no cover - the point is it never fires
         raise AssertionError("detail_runs ran on a default config")
 
-    monkeypatch.setattr(s7, "detail_runs", boom)
+    monkeypatch.setattr(s7, "detail_runs", own_thread_only(boom, s7.detail_runs))
     _result, plan = digitize(str(LOGO), PipelineConfig(
         target_width_mm=90.0, forced_class="flat"))
     assert plan.blocks

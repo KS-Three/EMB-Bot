@@ -17,8 +17,8 @@ import pytest
 
 from digitizer_core import PipelineConfig
 from digitizer_core import photo_signals as ps
+from tests.conftest import own_thread_only
 
-DETECTOR = "digitizer_core.stage1_photo_prep.detect_faces_seam"
 RGB = np.zeros((16, 16, 3), np.uint8)
 
 
@@ -43,8 +43,10 @@ def _png_bytes():
 
 
 def _faces(monkeypatch, n):
+    import digitizer_core.stage1_photo_prep as photo_prep_mod
     calls = []
-    monkeypatch.setattr(DETECTOR, lambda rgb, cfg: calls.append(1) or ["f"] * n)
+    monkeypatch.setattr(photo_prep_mod, "detect_faces_seam", own_thread_only(
+        lambda rgb, cfg: calls.append(1) or ["f"] * n, photo_prep_mod.detect_faces_seam))
     return calls
 
 

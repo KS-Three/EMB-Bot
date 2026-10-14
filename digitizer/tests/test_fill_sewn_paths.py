@@ -23,6 +23,7 @@ from digitizer_core.stage6_fill import (
     _sewn_paths, clear_fill_reorder_memo, stitch_shape,
 )
 import digitizer_core.stage6_fill as sf
+from tests.conftest import own_thread_only
 
 ROW, STITCH, TRIM_AT, ANGLE = 0.4, 3.0, 3.0, 30.0
 _COMB = Polygon([(0, 0), (40, 0), (40, 4)]
@@ -39,7 +40,7 @@ def _sew(flag: bool, monkeypatch=None, capture=None):
             out = real(key, compute)
             capture[:] = [[list(p) for p in out]]
             return out
-        monkeypatch.setattr(sf, "_memoized", spy)
+        monkeypatch.setattr(sf, "_memoized", own_thread_only(spy, real))
     runs, _ = stitch_shape(_COMB, "S1", angle_deg=ANGLE, row_mm=ROW, stitch_mm=STITCH,
                            underlay_style="edge_run", trim_at_mm=TRIM_AT,
                            under_cover=True, cut_bridges=True, sewn_paths_only=flag)

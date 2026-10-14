@@ -30,6 +30,7 @@ from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import plan_stitches, run_stages
 
 from .conftest import BUNDLE_ON, PRE_FLIP, TESTDATA
+from tests.conftest import own_thread_only
 
 # Two gradient fixtures with a measured escape (7 and 5 cones), one photo-class
 # fixture that already binds (must be byte-identical either way), and a flat
@@ -77,7 +78,7 @@ def _case(fixture: str, bind: bool) -> _Case:
         return real(regions, p, cfg, **kw)
 
     cfg = _cfg(**{**PRE_FLIP, "bind_resnap_all_classes": bind})   # the flag alone, over the pre-flip engine
-    pl.revalidate_threads = probe
+    pl.revalidate_threads = own_thread_only(probe, real)
     try:
         result = run_stages(TESTDATA / fixture, cfg)
     finally:

@@ -42,6 +42,7 @@ from digitizer_core.columns import (RAIL_REACH_INSET_MM, Column, _inset_rails, c
 from digitizer_core.outline_cut import (REFINE_TRIGGER, _overlong, build_column, letter_columns,
                                         stroke_width)
 from digitizer_core.pipeline import digitize
+from tests.conftest import own_thread_only
 
 TESTDATA = Path(__file__).resolve().parents[1] / "testdata"
 BECKER = TESTDATA / "becker_marine_logo.png"
@@ -706,7 +707,8 @@ def _off_then_stubbed_lane(monkeypatch, shapes, letters, end_at):
                                    kind=stitches.SATIN, shape_id=sid)], \
             {"empty": False, "jumps": 0}
 
-    monkeypatch.setattr(S7, "lettering_columns_shape", fake_lane)
+    monkeypatch.setattr(S7, "lettering_columns_shape",
+                        own_thread_only(fake_lane, S7.lettering_columns_shape))
     on_blocks, _ = S7.sequence(_one_colour(shapes, letters), fabric,
                                PipelineConfig(underlay=False, lettering_columns=True))
     assert any(r.points[-1] == end for b in on_blocks for r in b.runs
@@ -792,7 +794,8 @@ def test_the_lanes_exit_faces_the_shape_the_off_order_sews_next(monkeypatch):
                                    kind=stitches.SATIN, shape_id=sid)], \
             {"empty": False, "jumps": 0}
 
-    monkeypatch.setattr(S7, "lettering_columns_shape", fake_lane)
+    monkeypatch.setattr(S7, "lettering_columns_shape",
+                        own_thread_only(fake_lane, S7.lettering_columns_shape))
     on_blocks, _ = S7.sequence(planned(), fabric,
                                PipelineConfig(underlay=False, lettering_columns=True))
     assert _sew_order(on_blocks) == ["L", "F", "N"]

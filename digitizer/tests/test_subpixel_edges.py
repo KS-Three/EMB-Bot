@@ -34,6 +34,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "tools"))
 
 import edge_truth_ladder as el  # noqa: E402
+from tests.conftest import own_thread_only
 
 S = 4                      # the fixture generator's supersample
 FG = (30, 30, 200)         # BGR
@@ -187,8 +188,11 @@ def test_a_vertex_never_moves_further_than_the_window():
 
 def test_off_never_runs_the_step_and_on_records_the_accepted_share():
     art = TESTDATA / "logo_whitebg.png"
+    def ran(*_a, **_k):
+        raise AssertionError("the step ran with the flag off")
+
     with patch("digitizer_core.stage4_vectorize.subpixel_contour",
-               side_effect=AssertionError("the step ran with the flag off")):
+               own_thread_only(ran, subpixel_contour)):
         off, _plan = digitize(art, PipelineConfig(target_width_mm=80.0, subpixel_edges=False))
     assert not any("subpixel_accepted" in r.meta for r in off.regions)
     on, _plan = digitize(art, PipelineConfig(target_width_mm=80.0, subpixel_edges=True))

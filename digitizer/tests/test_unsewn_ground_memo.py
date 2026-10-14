@@ -19,6 +19,7 @@ from digitizer_core import PipelineConfig, machine
 from digitizer_core import stage6_fill as F
 from digitizer_core.adapter import plan_to_design
 from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
+from tests.conftest import own_thread_only
 
 OWL = Path(__file__).resolve().parent.parent / "testdata" / "photo" / "owl_kent.jpg"
 
@@ -87,7 +88,7 @@ def test_owl_kent_cold_digitize_is_byte_identical_with_and_without_the_memo(monk
         keys.append(cover.wkb + sewn.wkb)
         return real(cover, sewn)
 
-    monkeypatch.setattr(F, "_unsewn_ground", counting)
+    monkeypatch.setattr(F, "_unsewn_ground", own_thread_only(counting, real))
     memoized = plan()
     assert len(keys) > len(set(keys)), "no repeated ground; the memo was never hit"
     assert not F._UNSEWN_MEMO, "stitch_shape must let the memo's geometry go"
