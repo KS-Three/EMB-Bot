@@ -1510,6 +1510,19 @@ class PipelineConfig:
     # already sews these same glyphs at) is the measured alternative. A
     # physical constant: gate 1, a sew-out decides it, not this comment.
     small_lettering_skeleton_floor_mm: float | None = None
+    # A glyph SMALLER than `stage6_small_letter.SMALL_GLYPH_FLOORS` of the
+    # machine's needle floors (`machine.MIN_STITCH_MM`: 2.0 mm) cannot be
+    # followed at that floor at all: an E's stem has no room for a needle
+    # point at its middle arm.
+    # Fremont's EST and 1895 at 81 mm (1.6-1.7 mm tall) are declined there
+    # for that reason. Such a glyph, and only such a glyph, is tried once more
+    # at THIS floor (mm), with the stubs shorter than it (serif feet, a
+    # terminal's beak) left off the route (`stage6_small_letter.trim_stubs`).
+    # 0.5 is `machine.TINY_STITCH_MM`, the shortest step that is a stitch at
+    # all; today's outline sews these same glyphs at a 0.42-0.67 mm median
+    # stitch. A separately named CANDIDATE (gate 1), unsewn; it changes
+    # nothing unless `small_lettering_skeleton` is ON. None: no second try.
+    small_lettering_skeleton_small_floor_mm: float | None = 0.5
     # Stage 5's hole hold, read for what is actually IN the hole. A hole the
     # shell's pull growth would shrink under `min_detail_mm²` is held open at
     # its original size — right for a counter, wrong for a hole a LATER

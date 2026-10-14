@@ -2472,7 +2472,10 @@ def sequence(
                     entry=entry, trim_at_mm=trim_at, ink=ink_source,
                     min_mm=(cfg.small_lettering_skeleton_floor_mm
                             if cfg.small_lettering_skeleton_floor_mm is not None
-                            else machine.MIN_STITCH_MM))
+                            else machine.MIN_STITCH_MM),
+                    # a glyph under two needle floors, declined at the
+                    # floor above, tried again at this one (candidate)
+                    small_floor_mm=cfg.small_lettering_skeleton_small_floor_mm)
                 if not report["empty"]:
                     report["as_run"] = 1
                     report[SMALL_LETTER_KEY] = 1
