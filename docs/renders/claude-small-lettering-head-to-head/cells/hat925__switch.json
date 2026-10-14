@@ -6,7 +6,7 @@
  "overrides": {
   "small_text_true_size": true
  },
- "stitches": 18651,
+ "stitches": 18675,
  "trims": 54,
  "size_mm": [
   93.2,
@@ -18,8 +18,8 @@
   "est": {
    "glyphs": 3,
    "legibility": 0.984,
-   "legibility_space": 0.476,
-   "worst_glyph": 0.951,
+   "legibility_space": 0.482,
+   "worst_glyph": 0.952,
    "counters_open": [
     0,
     0
@@ -32,7 +32,7 @@
      1.0
     ]
    },
-   "stitches": 161,
+   "stitches": 167,
    "trims": 1,
    "box_mm": [
     -11.1,
@@ -89,12 +89,12 @@
      "ocr_recovered": true
     },
     {
-     "legibility": 0.951,
-     "legibility_space": 0.4,
+     "legibility": 0.952,
+     "legibility_space": 0.418,
      "strokes": 1.0,
-     "clean": 0.951,
+     "clean": 0.952,
      "counters": 1.0,
-     "space": 0.4,
+     "space": 0.418,
      "src_counters_openable": 0,
      "sewn_counters": 0,
      "sewn_counters_spurious": 0,
@@ -128,7 +128,7 @@
      0.85
     ]
    },
-   "stitches": 222,
+   "stitches": 225,
    "trims": 1,
    "box_mm": [
     3.42,
@@ -222,7 +222,7 @@
       14.4
      ],
      "ocr_src": "5",
-     "ocr_sewn": "",
+     "ocr_sewn": "S",
      "ocr_readable_src": true,
      "ocr_recovered": false
     }
@@ -245,7 +245,7 @@
      1.0
     ]
    },
-   "stitches": 430,
+   "stitches": 436,
    "trims": 3,
    "box_mm": [
     -5.55,
@@ -327,7 +327,7 @@
   "tagline": {
    "glyphs": 13,
    "legibility": 0.999,
-   "legibility_space": 0.75,
+   "legibility_space": 0.765,
    "worst_glyph": 0.993,
    "counters_open": [
     4,
@@ -341,7 +341,7 @@
      0.984
     ]
    },
-   "stitches": 1208,
+   "stitches": 1217,
    "trims": 16,
    "box_mm": [
     -14.43,
@@ -378,11 +378,11 @@
     },
     {
      "legibility": 1.0,
-     "legibility_space": 0.561,
+     "legibility_space": 0.621,
      "strokes": 1.0,
      "clean": 1.0,
      "counters": 1.0,
-     "space": 0.561,
+     "space": 0.621,
      "src_counters_openable": 1,
      "sewn_counters": 1,
      "sewn_counters_spurious": 0,
@@ -588,11 +588,11 @@
     },
     {
      "legibility": 1.0,
-     "legibility_space": 0.521,
+     "legibility_space": 0.648,
      "strokes": 1.0,
      "clean": 1.0,
      "counters": 1.0,
-     "space": 0.521,
+     "space": 0.648,
      "src_counters_openable": 1,
      "sewn_counters": 1,
      "sewn_counters_spurious": 0,
@@ -644,5 +644,5 @@
   ],
   "px_per_mm": 27.027027027027028
  },
- "secs": 501
+ "secs": 442
 }
