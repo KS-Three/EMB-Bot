@@ -205,6 +205,43 @@ def test_hold_bean_counters_is_inert_off_and_moves_only_bean_members():
     assert r.meta["bean_counter_held"] is True
 
 
+# --- the tool's pure helpers ---------------------------------------------------------
+
+def test_the_tools_arms_are_valid_config_and_change_only_the_hold():
+    from tools import bean_counter_hold as bch
+    for name, (overrides, _label) in bch.ARMS.items():
+        PipelineConfig(**overrides)
+        extra = set(overrides) - {"small_text_true_size", "bean_letter_counter_hold_mm"}
+        assert not extra, (name, extra)
+    assert bch.ARMS["switch_hold"][0] == {**bch.ARMS["switch"][0], "bean_letter_counter_hold_mm": bch.HOLD_MM}
+    assert bch.ARMS["main_hold"][0] == {"bean_letter_counter_hold_mm": bch.HOLD_MM}
+
+
+def test_open_counters_is_905s_fifty_percent_rule():
+    from tools import bean_counter_hold as bch
+    rows = [{"bare": []}, {"bare": [0.619, 0.5]}, {"bare": [0.499]}]
+    assert bch.open_counters(rows) == (2, 3)
+
+
+def test_corpus_rows_flag_a_new_uncovered_shape_and_the_changes():
+    from tools import bean_counter_hold as bch
+
+    def cell(md5, st, au, shapes, digests, leg):
+        return {"md5": md5, "stitches": st, "trims": 4, "shape_digests": digests,
+                "uncovered_fires": au, "uncovered_total_mm2": 1.0 if au else 0.0,
+                "uncovered_shapes": shapes, "words": {"w": {"legibility": leg}}}
+    same = {"switch": cell("a", 10, False, [], {"S1": "x"}, 0.5),
+            "switch_hold": cell("a", 10, False, [], {"S1": "x"}, 0.5)}
+    moved = {"switch": cell("a", 10, True, ["S1"], {"S1": "x", "S2": "y"}, 0.5),
+             "switch_hold": cell("b", 12, True, ["S1", "S2"], {"S1": "x", "S2": "z"}, 0.6)}
+    rows = {r["design"]: r for r in bch.corpus_rows({"same": same, "moved": moved, "half": {"switch": same["switch"]}})}
+    assert set(rows) == {"same", "moved"}
+    assert rows["same"]["identical"] and rows["same"]["changed"] == 0 and not rows["same"]["new_au"]
+    assert not rows["moved"]["identical"] and rows["moved"]["changed"] == 1 and rows["moved"]["new_au"]
+    assert rows["moved"]["d_leg"] == {"w": 0.1}
+    assert "| moved |" in bch.corpus_table({"moved": moved})
+
+
 # --- OFF is byte-identical ----------------------------------------------------------
 
 GOLDEN_MD5 = {
