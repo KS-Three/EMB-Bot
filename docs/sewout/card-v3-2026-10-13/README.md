@@ -1,5 +1,7 @@
 # Sew-out card v3.1, 2026-10-13
 
+**Superseded by card v3.2 (see `README-v3.2.md` in this folder and `card_v3_2_40wt.dst`), which carries every block here, re-cut on today's main, and adds the line route's chaining block. Kept for history.**
+
 One DST file (**40 wt**) for the questions Kent's Hotel Fremont 81 mm Hat
 report left open, **plus the small-lettering skeleton arms** that card v3 was
 waiting on (#913, merged, `cfg.small_lettering_skeleton`, default OFF), **plus a
