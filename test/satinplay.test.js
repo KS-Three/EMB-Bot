@@ -421,3 +421,50 @@ test("short stitches: the width gate — on a column near the cross floor the pu
   const atFloor = bentColumn(0.6, 1.1);
   assert.deepStrictEqual(satinplay.satinFromGeom(atFloor, 0, 1, { ...base, shortStitch: SS }), satinplay.satinFromGeom(atFloor, 0, 1, base));
 });
+
+// ---- Constant rail order (`zigzag`, built OFF 2026-10-13) -----------------
+// The default stream is A1,B1,B2,A2,A3,B3: one cross per station, then a
+// one-spacing step ALONG a rail. `zigzag: true` is A1,B1,A2,B2 — the Python
+// engine's order (`stage6_satin.satin_stroke`), where the needle crosses back
+// from b_i to a_(i+1), so every stitch lays thread across the column.
+const crossings = (pts, widthPx) => {
+  let n = 0;
+  for (let i = 1; i < pts.length; i++) if (Math.abs(pts[i].x - pts[i - 1].x) > widthPx / 2) n++;
+  return n;
+};
+
+test("zigzag: absent or false is byte-identical to the alternating-rail stream", () => {
+  const { railA, railB } = straightColumn(400, 12, 20);
+  const geom = columnGeom(railA, railB, [], 12);
+  const base = { spacingMm: 0.4, pxPerMm: 10, pullCompMm: 0.2, minCrossMm: 0.5, splitAboveMm: 0.8 };
+  assert.deepStrictEqual(satinFromGeom(geom, 0, 1, { ...base, zigzag: false }), satinFromGeom(geom, 0, 1, base));
+  assert.deepStrictEqual(satinFromGeom(geom, 0, 1, { ...base, zigzag: undefined }), satinFromGeom(geom, 0, 1, base));
+});
+
+test("zigzag: on, every stitch crosses the column — twice the crossings of the default at the same needles per rail", () => {
+  const { railA, railB } = straightColumn(400, 12, 20);   // 40 mm long, 1.2 mm wide
+  const geom = columnGeom(railA, railB, [], 12);
+  const base = { spacingMm: 0.4, pxPerMm: 10 };
+  const off = satinFromGeom(geom, 0, 1, base);
+  const on = satinFromGeom(geom, 0, 1, { ...base, zigzag: true });
+  // Same penetrations: only the ORDER changes, so needles per rail (the
+  // DOCTRINE density yardstick) cannot tell the two apart.
+  const key = (p) => p.x.toFixed(6) + "," + p.y.toFixed(6);
+  assert.deepStrictEqual(on.map(key).sort(), off.map(key).sort());
+  // Constant rail order: A on even indices, B on odd.
+  for (let i = 0; i < on.length; i++) assert.ok(i % 2 === 0 ? on[i].x < 0 : on[i].x > 0, `point ${i} is on the wrong rail`);
+  // Default: half the stitches are rail steps. On: none are.
+  assert.strictEqual(crossings(off, 12), off.length / 2);
+  assert.strictEqual(crossings(on, 12), on.length - 1);
+  // No stitch in the ON stream is a one-spacing rail step.
+  for (let i = 1; i < on.length; i++) assert.ok(Math.hypot(on[i].x - on[i - 1].x, on[i].y - on[i - 1].y) >= 12 - 1e-9);
+});
+
+test("zigzag: split satin still splits a wide cross, and its comb points stay collinear with their leg", () => {
+  const { railA, railB } = straightColumn(400, 80, 20);   // 8 mm wide
+  const geom = columnGeom(railA, railB, [], 12);
+  const on = satinFromGeom(geom, 0, 1, { spacingMm: 0.4, pxPerMm: 10, zigzag: true, splitAboveMm: 5 });
+  const bare = satinFromGeom(geom, 0, 1, { spacingMm: 0.4, pxPerMm: 10, zigzag: true });
+  assert.ok(on.length > bare.length, "a split cross carries intermediate penetrations");
+  for (let i = 1; i < on.length; i++) assert.ok(Math.hypot(on[i].x - on[i - 1].x, on[i].y - on[i - 1].y) <= 50 + 1e-6, `segment ${i} is over the 5 mm threshold`);
+});

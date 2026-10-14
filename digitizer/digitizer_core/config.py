@@ -1419,6 +1419,26 @@ class PipelineConfig:
     # With both False the plan is the engine before defect 61, byte for byte.
     # Measured 2026-10-12: `tools/clip_keep_pieces.py`.
     clip_keep_pieces: bool = False
+    # Small glyphs the run tier rescues (`rescued_small_shape`), kept whole
+    # (2026-10-13, default OFF; Kent's Fremont at 81 mm on a hat sewed "1895"
+    # as "098", `tools/fremont_triage.py`). Both losses are stage 4's hole
+    # floor (`min_detail_mm`² / 4, 0.5625 mm²), which knows nothing of what
+    # is in the hole:
+    #   - the 8's and 9's counters (0.30-0.52 mm², transparent in the art)
+    #     are filled, so each digit sews as the outline of a blob;
+    #   - the white ground's hole where the "1" sits (0.47 mm²) is filled,
+    #     so the 1's whole artwork lies under an earlier colour and stage 5's
+    #     clip by what is already down (`grown.difference(earlier)`) leaves
+    #     nothing: SHAPE_NOT_STITCHED.
+    # ON: a rescued small shape keeps every hole of at least the run tier's
+    # own floor (`machine.RUN_MIN_AREA_MM2`, no new number), and a rescued
+    # small shape the earlier-colour clip would leave with NO ink sews its
+    # artwork over the colour beneath, the way lettering sews over its
+    # ground. Both are CANDIDATES (ROADMAP gate 1): no sew-out has settled
+    # what a 0.16 mm² counter does on a cap. Fremont is unrepresentative --
+    # it reproduces the defect, it sizes nothing. Off, byte-identical
+    # (md5-pinned in `tests/test_small_glyph_keep.py`).
+    small_glyph_keep: bool = False
     # Stage 5's hole hold, read for what is actually IN the hole. A hole the
     # shell's pull growth would shrink under `min_detail_mm²` is held open at
     # its original size — right for a counter, wrong for a hole a LATER
@@ -2190,7 +2210,7 @@ class PipelineConfig:
     # enthusiast's star goes back to fill (+159 stitches). The phone
     # screenshot's status icons are STILL captured (dE 0.0 / 0.0 / 9.1 from
     # the text ink); the shape guard for them is `lettering_columns_icon_guard`
-    # below (built OFF). False writes no
+    # below (ON since the same ruling). False writes no
     # key and reads none. Tests: `tests/test_column_capture.py`.
     lettering_columns_ink_link: bool = True
     # Under `lettering_columns`, refuse a HOUSE-GROUP-ONLY shape whose medial
@@ -2200,9 +2220,10 @@ class PipelineConfig:
     # screenshot's three 4.5-6 mm captures read 36-45, which neither guard
     # above reaches (not blobs; the text's own grey); every hand-labelled
     # letter reads <= 13 and golden_tee's swashes <= 8. Composes with both.
-    # Built OFF (Kent's call to flip); False reads nothing.
+    # ON by Kent's ruling 2026-10-13 (stitch output moves on the phone
+    # screenshot only: 33 -> 30 lane shapes); False reads nothing.
     # Tests: `tests/test_column_capture.py`.
-    lettering_columns_icon_guard: bool = False
+    lettering_columns_icon_guard: bool = True
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
     # failure E). ON, `words.tag_words` finds each line of lettering once --

@@ -26,7 +26,7 @@ stitch / trim / colour-change difference ON vs OFF.
 lists the shapes the lane takes without them and not with them (`refused`),
 each with its hand label: the census a guard is judged on.
 
-Both guards (`GUARD_FLAGS`) went ON by default on 2026-10-13 (Kent's ruling),
+All three guards (`GUARD_FLAGS`) went ON by default on 2026-10-13 (Kent's ruling),
 so the lane arm here PINS THEM OFF explicitly: "lane ON" means the lane
 without its guards, which is what this census was built to measure, and the
 `--guard` arm turns them back on. With no `--guard` the lane arm is the
@@ -54,9 +54,10 @@ sys.path.insert(0, str(ROOT))
 TESTDATA = ROOT / "testdata"
 TRUTH = TESTDATA / "lettering_truth.json"
 
-# The lane's two guards, ON by default since 2026-10-13. Every lane arm below
+# The lane's three guards, ON by default since 2026-10-13. Every lane arm below
 # pins them OFF so the census still measures the unguarded lane.
-GUARD_FLAGS = ("lettering_columns_skip_blobs", "lettering_columns_ink_link")
+GUARD_FLAGS = ("lettering_columns_skip_blobs", "lettering_columns_ink_link",
+               "lettering_columns_icon_guard")
 GUARDS_PINNED_OFF = {f: False for f in GUARD_FLAGS}
 
 # The truth file names fixtures by corpus case; map to the scorecard file so a
@@ -486,14 +487,14 @@ def main(argv=None) -> int:
                 args.json.write_text(json.dumps(results, indent=1, default=str), encoding="utf-8")
         return 0
     if args.grid:
-        r = census_one("colour_grid", {"target_width_mm": 100.0}, image=colour_grid(),
+        r = census_one("colour_grid", {"target_width_mm": 100.0, **base}, image=colour_grid(),
                        guard=args.guard)
         r["rows"] = [(x["shape_id"], x["w_mm"], x["h_mm"], x["text_candidate"], x["lettering_group"])
                      for x in r["rows"]]
         print(json.dumps(r, default=str))
         _print_guard(r)
         if args.render:
-            for p in render_pair("colour_grid", colour_grid(), {"target_width_mm": 100.0},
+            for p in render_pair("colour_grid", colour_grid(), {"target_width_mm": 100.0, **base},
                                  args.render, px_per_mm=6.0, zoom_px_per_mm=12.0,
                                  flags_on={k: True for k in (args.flag or args.guard)},
                                  guard=bool(args.guard)):

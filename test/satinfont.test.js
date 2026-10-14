@@ -1065,3 +1065,27 @@ test("a needle-down connector stops short of the run it leads into", () => {
     assert.strictEqual(doubled, 0, `underlay ${underlay}: a run's first stitch repeats the connector's last`);
   }
 });
+
+// ---- satinZigzag (default ON since 2026-10-13, Kent's ruling) -------------
+// The alternating-rail satin crosses the column once per station and then
+// steps one spacing along a rail; the Python satin crosses twice.
+// `satinZigzag` is the Python order and buildLetteringDesign's default;
+// `false` is the stream every design before that date carries.
+test("satinZigzag: on by default in buildLetteringDesign; false is the alternating-rail stream, full of rail steps", () => {
+  const garment = { widthIn: 5, heightIn: 2.25 };
+  const build = (extra) => DG.buildLetteringDesign(font, "HILL", { garment, pxPerMm: 8, ...extra });
+  const on = build({});
+  assert.deepStrictEqual(build({ satinZigzag: true }).stitches, on.stitches);
+  assert.deepStrictEqual(build({ satinZigzag: undefined }).stitches, on.stitches);
+  const off = build({ satinZigzag: false });
+  assert.notDeepStrictEqual(off.stitches, on.stitches);
+  const seg = (d) => { const o = []; for (let i = 1; i < d.stitches.length; i++) { const a = d.stitches[i - 1], b = d.stitches[i]; if (b.type === "stitch" && a.type !== "trim") o.push(Math.hypot(b.x - a.x, b.y - a.y) / 10); } return o; };
+  // Rail steps are the 0.4 mm satin spacing: OFF is full of them, ON is not.
+  const steps = (d) => seg(d).filter((l) => l > 0.3 && l < 0.5).length;
+  assert.ok(steps(off) > 50, `the alternating-rail stream should carry rail steps, got ${steps(off)}`);
+  assert.ok(steps(on) < steps(off) * 0.2, `zigzag should remove the rail steps: ${steps(on)} vs ${steps(off)}`);
+  // Same design, same size, same trims: only the satin order changed.
+  assert.strictEqual(on.widthMM, off.widthMM);
+  assert.strictEqual(on.heightMM, off.heightMM);
+  assert.strictEqual(on._debug.nTrims, off._debug.nTrims);
+});

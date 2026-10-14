@@ -213,3 +213,79 @@ def test_census_table_flags_a_variant_with_a_false_join():
                      "bad": {"gained": ["a"], "lost": [], "stray": ["x"], "crossline": 0, "complete": 1}}}}}]
     rows = T.census_table(res).splitlines()
     assert rows[2].endswith("| yes |") and rows[3].endswith("| NO |")
+
+
+# --- the nesting drop, named ------------------------------------------------
+
+def _ring(sid, cx, cy, r, stroke=0.8):
+    from shapely.geometry import Point
+    c = Point(cx, cy)
+    return _region(sid, c.buffer(r, 64).difference(c.buffer(r - stroke, 64)))
+
+
+def test_a_nested_glyph_names_its_host_and_the_containment_values():
+    regions = _text("a", "HELTFU", x0=-11.0, y0=-2.0) + [_ring("ring", 0.0, 0.0, 15.0)]
+    t = T.trace(regions, threads.CHART)
+    assert t.words == []
+    info = t.nested["a0"]
+    assert info["host"] == "ring" and info["hosts"] == 1
+    assert info["host_h"] == pytest.approx(30.0, rel=0.01)
+    assert info["h_ratio"] == pytest.approx(H / 30.0, rel=0.02)
+    assert info["ink_overlap"] == pytest.approx(0.0)       # not on the ring's ink
+    assert info["shell_frac"] == pytest.approx(1.0)        # it sits in the ring's hole
+    assert t.rejected["a0"].rule == "nested" and "host ring" in t.rejected["a0"].detail
+
+
+def test_the_ring_policy_frees_the_word_in_the_hole_and_nothing_else():
+    crumb = _region("crumb", box(-1.0, 7.0, -0.2, 8.5))
+    regions = (_text("a", "HELTFU", x0=-11.0, y0=-2.0) + [_ring("ring", 0.0, 0.0, 15.0), crumb])
+    ring = T.replace(T.base_rules(), nested="ring")
+    t = T.trace(regions, threads.CHART, rules=ring)
+    assert t.words == [[f"a{i}" for i in range(6)]]
+    assert "ring" in t.cands and t.rejected["crumb"].rule == "nested"
+    # two glyphs are not a word: the host keeps them
+    pair = _text("a", "HE", x0=-3.5, y0=-2.0) + [_ring("ring", 0.0, 0.0, 15.0)]
+    assert set(T.trace(pair, threads.CHART, rules=ring).cands) == {"ring"}
+
+
+def test_the_ring_policy_also_frees_a_two_by_two_icon_grid():
+    """Why it is not shipped: four panes in a 2x2 grid inside a shape's hole
+    (the drone's and the screenshot's icons at 100 mm, gaulke's window)
+    link like a word of four and are freed with it."""
+    panes = [_region(f"p{i}", box(x, y, x + 1.5, y + 1.5))
+             for i, (x, y) in enumerate([(-1.7, -1.7), (0.2, -1.7), (-1.7, 0.2), (0.2, 0.2)])]
+    regions = panes + [_ring("ring", 0.0, 0.0, 6.0)]
+    assert T.trace(regions, threads.CHART).words == []
+    t = T.trace(regions, threads.CHART, rules=T.replace(T.base_rules(), nested="ring"))
+    assert t.words == [["p0", "p1", "p2", "p3"]]
+
+
+def test_the_frame_policy_frees_a_word_beside_a_hosts_ink_and_the_ring_does_not():
+    from shapely.geometry import Polygon as P
+    host = _region("host", P([(0, 0), (1, 0), (1, 29), (40, 29), (40, 30), (0, 30)]))
+    regions = _text("a", "HELT", x0=10.0, y0=5.0) + [host]
+    if "host" not in T.trace(regions, threads.CHART).cands:
+        pytest.fail("fixture: the L host must pass the glyph screens")
+    frame = T.trace(regions, threads.CHART, rules=T.replace(T.base_rules(), nested="frame"))
+    ring = T.trace(regions, threads.CHART, rules=T.replace(T.base_rules(), nested="ring"))
+    assert frame.words == [["a0", "a1", "a2", "a3"]] and ring.words == []
+
+
+def test_the_outline_policy_frees_a_glyph_beside_a_hosts_ink_not_in_its_hole():
+    from shapely.geometry import Polygon as P
+    # an L-shaped host whose box holds a word that sits beside its ink
+    host = _region("host", P([(0, 0), (1, 0), (1, 29), (40, 29), (40, 30), (0, 30)]))
+    regions = _text("a", "HELT", x0=10.0, y0=5.0) + [host]
+    outline = T.replace(T.base_rules(), nested="outline")
+    base = T.trace(regions, threads.CHART)
+    if "host" in base.cands:                  # the host passed the glyph screens
+        assert base.words == [] and base.nested["a0"]["shell_frac"] == pytest.approx(0.0)
+    assert T.trace(regions, threads.CHART, rules=outline).words == [["a0", "a1", "a2", "a3"]]
+    ring = _text("a", "HELT", x0=-7.0, y0=-2.0) + [_ring("ring", 0.0, 0.0, 15.0)]
+    assert T.trace(ring, threads.CHART, rules=outline).words == []   # in the hole: swallowed
+
+
+def test_parse_variant_reads_a_nested_policy():
+    assert T.parse_variant("nested=frame") == ("nested=frame", {"nested": "frame"})
+    assert T.parse_variant("nest_max_h=5") == ("nest_max_h=5", {"nest_max_h": 5.0})
+    assert set(T.NEST_VARIANTS) >= {"nested=ring", "nested=frame", "nested=outline"}
