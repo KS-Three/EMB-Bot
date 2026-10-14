@@ -320,6 +320,27 @@ def test_pull_erode_takes_the_pull_off_each_side_but_never_a_stroke_under_one_th
     assert kept.any() and kept.sum() >= 0.8 * thin.sum()     # it keeps its own line
 
 
+def test_a_thin_line_survives_the_pull_only_where_it_lies_on_the_ink():
+    thin = np.zeros((200, 200), bool)
+    thin[96:104, 20:180] = True                              # 0.4 mm line
+    ink = np.zeros_like(thin)
+    ink[90:110, 20:100] = True                               # the artwork's ink under its left half
+    got = gl.pull_erode(thin, 0.4, 0.4, ink=ink, lines="ink")
+    assert got[:, 30:90].any() and not got[:, 110:170].any()
+    assert gl.pull_erode(thin, 0.4, 0.4, ink=ink, lines="all")[:, 110:170].any()
+    assert not gl.pull_erode(thin, 0.4, 0.4, ink=ink, lines="none").any()
+
+
+def test_a_pinhole_in_a_column_is_not_grown_into_a_counter_by_the_pull():
+    col = np.zeros((200, 200), bool)
+    col[60:140, 40:160] = True
+    col[100:102, 100:102] = False                            # 0.1 mm texture gap between rows
+    assert gl.pull_erode(col, 0.3, 0.4)[100, 100]            # closed before the erosion, so it stays closed
+    real = col.copy()
+    real[85:115, 85:115] = False                             # 1.5 mm: a counter
+    assert gl.ndi.binary_fill_holes(gl.pull_erode(real, 0.3, 0.4))[100, 100] and not gl.pull_erode(real, 0.3, 0.4)[100, 100]
+
+
 def test_a_bay_the_pull_would_reopen_reads_closed_without_pull_and_open_with_it():
     shut, shut_dbg = _read_pull(0.4, 0.0)
     pulled, dbg = _read_pull(0.4, 0.4)

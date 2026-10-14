@@ -79,8 +79,11 @@ fabric to take it back: a bay 1.0 mm wide in the artwork reads closed by
 thread that, on a cap, would have been drawn in by the pull. So FREMONT's E
 scores 0 on `counters` and the professional's own THE reads under Kent's red
 boxes. `--pull-mm P` erodes the thread mask by P mm a side before any glyph is
-read (a stroke is never eroded under one thread width: it keeps its own
-centreline, as a sewn line does). `--pull-mm 0` is the default and is today's
+read. A thin stroke has no push to take back, so a thread-wide line lying on
+the artwork's ink survives it; a line off the ink does not, and a gap in the
+thread too small to be a counter is closed first so erosion cannot grow it into
+one (`pull_erode`; `--pull-lines all|none` turn the first rule into its two
+edges). `--pull-mm 0` is the default and is today's
 output exactly. `--pull-mm auto` reads the pull from the design: a Design that
 declares `pull_comp_mm` (or `pull_mm`, or `fabric.pull_comp_mm`) is believed;
 a stitch file or a Design that does not (every one the engine writes today, and
@@ -128,6 +131,8 @@ GROUND_DIST = 60.0          # a thread this far (RGB) from the ground is ink
 MIN_HOLE_DIAM_THREADS = 0.5  # a counter counts when a circle of this x thread fits in it
 OCR_CONF_MIN = 60.0         # source read below this is no truth to compare to
 OCR_MAX_GLYPH_MM2 = 150.0   # a component bigger than any single letter here is merged letters
+PULL_LINES = "ink"          # what the pull leaves of a thread-wide line: "ink" = the ones lying on the
+                            # artwork's ink, "all", or "none" (a plain erosion); `--pull-lines`
 PULL_AUTO_MAX_MM = 0.60     # `--pull-mm auto` never estimates more than this a side (the repo's
                             # largest fabric pull is 0.6, terry; a hat is 0.4)
 
@@ -298,19 +303,50 @@ def declared_pull_mm(design: dict) -> float | None:
     return None
 
 
-def pull_erode(T: np.ndarray, pull_mm: float, thread_mm: float, px_per_mm: float = P) -> np.ndarray:
+def pull_erode(T: np.ndarray, pull_mm: float, thread_mm: float, px_per_mm: float = P,
+               ink: np.ndarray | None = None, lines: str | None = None) -> np.ndarray:
     """The thread mask after the cloth takes `pull_mm` back on every side.
     `pull_mm` <= 0 returns `T` itself, so the default is byte-for-byte today's
-    read. A stroke cannot narrow below one thread: whatever the erosion removes
-    outright keeps its own medial axis, thickened to `thread_mm`."""
+    read.
+
+    Pull narrows what the engine pushed out: a satin column or a fill, wider
+    than a thread. It does not erase a thin stroke, which has no push to take
+    back (the tagline's 0.4 mm beans would vanish under a plain erosion and the
+    read would bill the letter for the cloth). So whatever the erosion removes
+    outright keeps its own medial axis, thickened to `thread_mm`, WHERE IT LIES
+    ON THE ARTWORK'S INK (`ink`, a mask of the source ink grown half a thread;
+    None keeps every such line). A thread-wide line off the ink, such as a run
+    across the mouth of a bay or down the open side of an E, is not a stroke of
+    the letter and the pull takes it with the rest. `lines` ("ink", "all",
+    "none"; default `PULL_LINES`) is that rule, or its two edges, for a
+    sensitivity run."""
+    lines = PULL_LINES if lines is None else lines
     r = int(round(pull_mm * px_per_mm))
     if r < 1 or not T.any():
         return T
+    # An enclosed gap too small to be a counter (the read does not count a hole
+    # under MIN_HOLE_DIAM_THREADS of a thread across) is the render's own texture
+    # between rows of a satin column. Erosion would grow it into one, so it is
+    # closed first: the pull takes thread back from an EDGE, it does not part a
+    # column down the middle.
+    lab, n = ndi.label(ndi.binary_fill_holes(T) & ~T)
+    if n:
+        dt = ndi.distance_transform_edt(~T)
+        diam = 2.0 * np.asarray(ndi.maximum(dt, lab, range(1, n + 1))) / px_per_mm
+        small = np.zeros(n + 1, bool)
+        small[1:] = diam < MIN_HOLE_DIAM_THREADS * thread_mm
+        if small.any():
+            T = T | small[lab]
     eroded = cv2.erode(T.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1,) * 2)) > 0
     rt = max(1, int(round(thread_mm / 2.0 * px_per_mm)))
     line = cv2.dilate(skeletonize(T).astype(np.uint8),
                       cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * rt + 1,) * 2)) > 0
-    return eroded | (line & T)
+    if lines == "none":
+        return eroded
+    keep = line & T
+    if lines == "ink" and ink is not None:
+        keep &= ink
+    return eroded | keep
 
 
 def estimate_pull_mm(words: list["WordResult"]) -> float:
@@ -700,10 +736,12 @@ def read_word(name: str, rgb: np.ndarray, alpha: np.ndarray, box_frac, design: d
     box_mask = np.zeros((H, W), bool)
     box_mask[max(0, gbox[1]):gbox[3], max(0, gbox[0]):gbox[2]] = True
     S_all = (soft_w >= 0.5) & box_mask
-    pkey = ("pull", key, round(float(pull_mm), 4))
-    if pkey not in cache:
-        cache[pkey] = pull_erode(thread_f >= 0.5, pull_mm, thread_mm, P)
-    T_all = cache[pkey]
+    T_all = thread_f >= 0.5
+    if pull_mm > 0:
+        rt = max(1, int(round(thread_mm / 2.0 * P)))
+        near_ink = cv2.dilate((soft_w >= 0.5).astype(np.uint8),
+                              cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * rt + 1,) * 2)) > 0
+        T_all = pull_erode(T_all, pull_mm, thread_mm, P, near_ink)
     keep_px = None
     if keep_frac:
         keep_px = []
@@ -1219,6 +1257,9 @@ def main(argv=None) -> int:
                          "'auto' = the pull the Design declares, else estimated from its stitches. "
                          "Default 0: the render as it is")
     ap.add_argument("--no-ocr", action="store_true")
+    ap.add_argument("--pull-lines", choices=("ink", "all", "none"), default=None,
+                    help="what --pull-mm leaves of a thread-wide line: those on the artwork's ink "
+                         "(default), all of them, or none (a plain erosion). Sensitivity runs")
     ap.add_argument("--space-keep-mm", type=float, default=None,
                     help="override SPACE_KEEP_HALF_MM (sensitivity runs)")
     ap.add_argument("--json", type=Path)
@@ -1230,6 +1271,8 @@ def main(argv=None) -> int:
         ap.error("--pull-mm takes a number of mm or 'auto'")
     if not (a.pull_mm == "auto" or 0.0 <= a.pull_mm <= 2.0):
         ap.error("--pull-mm must be between 0 and 2 mm (a cap pulls 0.4)")
+    if a.pull_lines:
+        globals()["PULL_LINES"] = a.pull_lines
     if a.space_keep_mm is not None:
         globals()["SPACE_KEEP_HALF_MM"] = a.space_keep_mm
     if a.list:
