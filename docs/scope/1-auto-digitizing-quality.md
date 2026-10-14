@@ -4947,3 +4947,35 @@ Moved verbatim from `MASTER_SCOPE.md` by the sixth-pass refresh (PRs #919-#928) 
    lines). 0.8 mm is a physical constant (gate 1), so candidates only; block G sews an 8×8 mm fill and three satin bars at
    0.3/0.6/1.0 mm gaps with arms OFF, 0.4, 0.8. WoK 44's old "3,868 → 2,914" bridge figure does NOT reproduce. Full text:
    [area 1](docs/scope/1-auto-digitizing-quality.md#overflow-moved-from-master_scope-2026-10-14-fifth-pass). *(measured 2026-10-12/13 — PRs #846, #857, #874, #877, `docs/wok44-forbid-gap-bill-2026-10-12.md`)*
+
+## Overflow moved from MASTER_SCOPE (2026-10-14, seventh pass)
+
+Moved verbatim from `MASTER_SCOPE.md` by the seventh-pass refresh (PRs #930-#940) to keep the file under its word budget. Each entry stood as written after PR #928; the live text in MASTER_SCOPE carries the verdict and the current numbers.
+
+### Waiting on Kent 53 (`satinZigzag` size cap) as it stood after PR #928
+
+53. **RESOLVED 2026-10-14 — Kent has seen the big-text bill and RULED (~00:40 CDT, relayed by the VP): `satinZigzag` stays ON only below a column-width cap.**
+   The cap is about 8 mm, the wide-column split point, a NAMED TUNABLE config value; above it the old stream. Big text goes back to pre-#904 counts (198 mm "AB"
+   12,492; Full Back 305 mm 27,033), small text is byte-identical. **Ruled, build in flight** on `claude/satin-zigzag-size-cap`, NOT merged: until it merges the
+   shipped default (#904) is ON at every size and big text still pays +69% / +78% (12,492 → 21,070; 27,033 → 48,079). Sew-out owed (gate 1).
+   *(ruled 2026-10-14 — Kent; measured 2026-10-13 — PRs #901, #904, `test/satinplay.test.js`)*
+
+### Waiting on Kent 54 (`small_lettering_skeleton`) as it stood after PR #928
+
+54. **`small_lettering_skeleton` — built OFF (PR #913); the flip and the floor are his, after the card v3.1 sew-out (gate 1).**
+   Small lettering at or under one laid thread wide sews as ONE run down each letter's middle instead of a bean outline. Fremont 81 mm Hat replay, stitch floor 0.73 mm:
+   11 of the tagline's 13 glyphs take it, sewn width 0.47–0.73 → 0.42–0.43 mm, stitches 15,306 → 14,886, trims 44 → 44, mean glyph legibility 0.844 → 0.916 (6 glyphs
+   at the default 1.0 mm floor). **Counter trade-off:** a 0.40 mm thread round a 0.5 mm counter leaves 20–40% bare. ON leaves becker, bridge, golden_tee and drone
+   identical and changes enthusiast's "ENTERPRISES INC" (2,428 → 2,102 stitches). 0.73, 1.0 and the 10% tolerance are candidates (`MIN_STITCH_MM` 1.0's own question).
+   Card v3.1 blocks S and E2 sew it (PR #916, handed to Kent). Prior text: [area 1](docs/scope/1-auto-digitizing-quality.md#overflow-moved-from-master_scope-2026-10-14-sixth-pass). *(measured 2026-10-13/14 — PR #913,
+   `tools/small_lettering_skeleton.py`, `tests/test_small_lettering_skeleton.py`)*
+
+### Waiting on Kent 56 (true-size small lettering) as it stood after PR #928
+
+56. **True-size small lettering options — built OFF, none sewn; #909 KEPT (Kent) after it merged in error.** `small_text_cap_mm` (#909)
+   enlarges a small line; Kent: *"you can't change the font size for the final product"*, so it stays OFF and is not the route. The true-size
+   route is `small_text_restore_mm` + `bean_letter_stitch_mm` (#911) and `bean_letter_serif_mm` (#914). Hotel Fremont 92.5 mm with all four set:
+   the date reads "EST 1895" in the render, 17,378 → 17,402 stitches, 52 → 54 trims; four candidate values (gate 1) for one render of one logo at
+   one size. **Overlap with item 54:** #913's skeleton run attacks the same problem another way; the two have not been compared on one render
+   and only one should be on: his. Full text: [area 1](docs/scope/1-auto-digitizing-quality.md#overflow-moved-from-master_scope-2026-10-14-sixth-pass).
+   *(measured 2026-10-13 — PRs #909, #911, #914, `tests/test_small_text.py`)*

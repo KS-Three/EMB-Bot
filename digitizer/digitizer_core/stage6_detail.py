@@ -110,6 +110,7 @@ from skimage.morphology import skeletonize
 
 from . import debugviz, machine, stitches
 from .stage6_blend import SourcePixels
+from .stage6_hairline import _CURL_TOL_WIDTHS, stitch_path
 from .stage6_streamline import _field_for
 from .stitches import StitchRun
 from .threads import chart_for, rgb_to_lab
@@ -180,6 +181,18 @@ DETAIL_SIMPLIFY_MM = 0.2
 # A skeleton fragment under this many pixels is raster debris; dropped
 # before it is even measured in mm.
 _MIN_TRACE_PX = 3
+
+# `cfg.detail_layer_stitch` (2026-10-14, default "bean"). "bean" is the
+# 0.73 mm triple run this layer has always sewn; "run" sews each line ONCE,
+# at DETAIL_RUN_STITCH_MM, through `stage6_hairline.stitch_path` (shortened
+# on a curl to `_CURL_TOL_WIDTHS` of one run's laid width at `cfg.thread_wt`,
+# never under `machine.MIN_STITCH_MM`). Why it exists: on owl_kent the bean
+# adds 5,267 stitches under the 1.0 mm needle floor (PR #928's table) —
+# every bean station is one.
+DETAIL_STITCH_MODES = ("bean", "run")
+# candidate: the hairline tier's run length (`hairline_stitch_mm`'s Melco
+# run floor, #843 §1), unsewn — gate 1; card v1 block A sews both.
+DETAIL_RUN_STITCH_MM = 1.5
 
 _EPS = 1e-12
 
@@ -519,6 +532,10 @@ def detail_runs(sp: SourcePixels, cfg, entry: tuple[float, float] | None,
     unlike a fill tier there is nothing to fall back to and nothing lost.
     """
     report: dict = {"lines": 0, "jumps": 0, "empty": True, "too_thin": False}
+    mode = getattr(cfg, "detail_layer_stitch", "bean")
+    if mode not in DETAIL_STITCH_MODES:
+        raise ValueError(f"detail_layer_stitch must be one of "
+                         f"{DETAIL_STITCH_MODES}, got {mode!r}")
     lines = extract_detail_lines(sp)
     if not lines:
         return [], report
@@ -551,10 +568,19 @@ def detail_runs(sp: SourcePixels, cfg, entry: tuple[float, float] | None,
         cur = pts[-1]
 
     runs: list[StitchRun] = []
+    run_tol = (_CURL_TOL_WIDTHS * machine.thread_profile(cfg.thread_wt).hairline_run_width_mm
+               if mode == "run" else 0.0)
     for pts in ordered:
-        stations = _resample(pts, machine.BEAN_STITCH_MM)
-        bean = _bean_line(stations, machine.BEAN_PASSES)
-        if len(bean) < 2:
+        if mode == "run":
+            # One pass, same end as the bean (an odd pass count ends at the
+            # far end too), so the sew order and every hop are unchanged.
+            path = stitch_path(pts, DETAIL_RUN_STITCH_MM, run_tol)
+            kind = stitches.RUN
+        else:
+            stations = _resample(pts, machine.BEAN_STITCH_MM)
+            path = _bean_line(stations, machine.BEAN_PASSES)
+            kind = stitches.BEAN
+        if len(path) < 2:
             continue
         # No travel, ever: this layer has no covering topcoat, so a hop
         # between lines is the plain jump-or-trim call (see module
@@ -562,13 +588,13 @@ def detail_runs(sp: SourcePixels, cfg, entry: tuple[float, float] | None,
         # stage 7's forced color change, exactly as it is for every block.
         jump = trim = False
         if runs:
-            d = math.dist(runs[-1].points[-1], bean[0])
+            d = math.dist(runs[-1].points[-1], path[0])
             if d >= machine.TINY_STITCH_MM:
                 jump = True
                 trim = d > trim_at_mm
                 report["jumps"] += 1
-        runs.append(StitchRun(points=stitches.split_long_moves(bean),
-                              kind=stitches.BEAN, jump=jump, trim=trim,
+        runs.append(StitchRun(points=stitches.split_long_moves(path),
+                              kind=kind, jump=jump, trim=trim,
                               shape_id="detail"))
     report["lines"] = len(runs)
     report["empty"] = not runs
@@ -576,5 +602,5 @@ def detail_runs(sp: SourcePixels, cfg, entry: tuple[float, float] | None,
     if cfg.debug_dir and runs:
         debugviz.stage6_detail_lines(Path(cfg.debug_dir), sp.rgb,
                                      [[sp.to_px(x, y) for x, y in r.points]
-                                      for r in runs if r.kind == stitches.BEAN])
+                                      for r in runs if r.kind == kind])
     return runs, report
