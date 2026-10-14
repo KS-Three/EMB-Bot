@@ -475,6 +475,81 @@ def _brick_row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm:
     return _row_points_at_phase(x0, x1, y, phase, stitch_mm, reverse)
 
 
+def fur_style(name: str) -> tuple[float, float, float]:
+    """`machine.FUR_STYLES[name]` -> (stitch mm, random fraction, offset
+    fraction), refusing a name it does not know rather than sewing some
+    other fur under it. Every value is a gate-1 CANDIDATE — see machine.py."""
+    try:
+        return machine.FUR_STYLES[name]
+    except KeyError:
+        raise ValueError(f"fur_style must be one of {sorted(machine.FUR_STYLES)}, "
+                         f"got {name!r}") from None
+
+
+def _fur_row_rng(seed: int, row_index: int, y: float, x0: float, x1: float):
+    """A random stream owned by ONE row of ONE span, from `cfg.seed` and the
+    row's own place. Hashing the place (not drawing from a stream shared by
+    the whole fill) makes a row's stitches independent of the order rows are
+    generated in — `_fill_paths` builds every column twice, once from each
+    end — and of every other shape in the design. Rounded to a micron so a
+    last-bit difference in the rotation cannot re-roll the row."""
+    key = struct.pack("<qq3q", int(seed), int(row_index),
+                      *(int(round(v * 1e3)) for v in (y, x0, x1)))
+    word = int.from_bytes(hashlib.blake2b(key, digest_size=8).digest(), "little")
+    return np.random.default_rng(word)
+
+
+def _fur_row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm: float,
+                    staggers: int, reverse: bool, *, seed: int = 0,
+                    random_frac: float = 0.5, offset_frac: float = 0.5
+                    ) -> list[tuple[float, float]]:
+    """One row of the "fur" fill: random start offset, random stitch lengths.
+
+    `stitch_mm` is the fur's longest stitch L. The row's grid starts a random
+    `[0, offset_frac * L)` before `x0`, and each next point is a random
+    `[L * (1 - random_frac), L]` further on, never under `MIN_STITCH_MM`.
+    `staggers` is accepted, unused, for `_ROW_POINT_FNS`' shared signature:
+    the random offset IS the stagger.
+
+    Same boundary contract as `_row_points_at_phase`: both row ends land on
+    the boundary, a span under `TINY_STITCH_MM` is its midpoint, a span under
+    two `MIN_STITCH_MM` is the single stitch across it, and an interior point
+    is kept only when it clears both the last kept point and `x1` by
+    `MIN_STITCH_MM`. A step left longer than L by a skipped point is split
+    here, evenly, into steps of at most L; each piece is then over L / 2,
+    which `machine.FUR_STYLES` keeps at or above `MIN_STITCH_MM`. So along a
+    row of two minimum stitches or more, every step lies in
+    `[MIN_STITCH_MM, L]`.
+
+    Both traversals of a row give the same points, reversed: the stream
+    depends on the row, not on the direction it is sewn in.
+    """
+    span = x1 - x0
+    if span < machine.TINY_STITCH_MM:
+        mid = (x0 + x1) / 2.0
+        return [(mid, y)]
+    xs = [x0]
+    if span >= 2 * machine.MIN_STITCH_MM:
+        rng = _fur_row_rng(seed, row_index, y, x0, x1)
+        shortest = max(machine.MIN_STITCH_MM, stitch_mm * (1.0 - random_frac))
+        x = x0 - float(rng.random()) * offset_frac * stitch_mm
+        while True:
+            x += shortest + float(rng.random()) * (stitch_mm - shortest)
+            if x >= x1:
+                break
+            if x - xs[-1] >= machine.MIN_STITCH_MM and x1 - x >= machine.MIN_STITCH_MM:
+                xs.append(x)
+    xs.append(x1)
+    out = [xs[0]]
+    for a, b in zip(xs, xs[1:]):
+        n = math.ceil((b - a) / stitch_mm - 1e-9)
+        if n > 1:
+            out.extend(a + (b - a) * k / n for k in range(1, n))
+        out.append(b)
+    pts = [(vx, y) for vx in out]
+    return list(reversed(pts)) if reverse else pts
+
+
 def _densify(a: tuple[float, float], b: tuple[float, float], step_mm: float) -> list[tuple[float, float]]:
     """Points from a (exclusive) to b (inclusive), no step longer than step_mm."""
     d = math.dist(a, b)
@@ -1402,7 +1477,9 @@ _ROW_POINT_FNS = {
 def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float,
                 staggers: int, start_near: tuple[float, float] | None = None,
                 technique: str = "tatami", row_phase_mm: float = 0.0,
-                keep_row=None) -> list[list[tuple[float, float]]]:
+                keep_row=None, seed: int = 0,
+                fur: tuple[float, float, float] | None = None
+                ) -> list[list[tuple[float, float]]]:
     """Fill one polygon; -> continuous stitch paths in original (unrotated) mm space.
 
     Columns are visited nearest-first from the end of the previous one, and each
@@ -1424,8 +1501,20 @@ def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float
     spacing), these three techniques only change how ONE row's own interior
     points are placed, so they need no travel-planning logic of their own
     and share this function outright instead of wrapping it.
+
+    "fur" (2026-10-14) is the one technique whose rows need more than the
+    shared signature: `_fur_row_points` takes `seed` and the style's random
+    and offset fractions, bound here. `fur` is `(stitch mm, random, offset)`
+    as `fur_style` returns it; its stitch length is the caller's `stitch_mm`
+    (stitch_shape passes the style's own). Neither keyword is read for any
+    other technique.
     """
-    row_point_fn = _ROW_POINT_FNS.get(technique, _row_points)
+    if technique == "fur":
+        _length, rand, offset = fur if fur is not None else fur_style("short")
+        row_point_fn = functools.partial(_fur_row_points, seed=seed,
+                                         random_frac=rand, offset_frac=offset)
+    else:
+        row_point_fn = _ROW_POINT_FNS.get(technique, _row_points)
     rotated = affinity.rotate(poly, -angle_deg, origin=(0, 0), use_radians=False)
     rows = _row_spans(rotated, row_mm, row_phase_mm, keep_row)
     if not rows:
@@ -1703,6 +1792,8 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  cut_bridges: bool = False,
                  underlay_all_pieces: bool = False,
                  sewn_paths_only: bool = False,
+                 seed: int = 0,
+                 fur_style_name: str = "short",
                  ) -> tuple[list[StitchRun], dict]:
     """One shape -> its runs, in sew order (underlay first), plus a small report.
 
@@ -1760,10 +1851,21 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     so the order was chosen against bridges that are never sewn and against
     hops that do not exist -- see `_sewn_paths`.
 
+    `technique="fur"` (2026-10-14): tatami with a random start offset per row
+    and a random length per stitch (`_fur_row_points`), seeded by `seed`
+    (`cfg.seed`) so the same call sews the same file. `fur_style_name` picks
+    the `machine.FUR_STYLES` entry, whose own stitch length replaces
+    `stitch_mm` for the fill pass — the length IS the technique. Underlay is
+    unaffected. `seed` and `fur_style_name` are read for no other technique.
+
     Report keys: `too_thin` (nowhere wide enough for a fill), `jumps` (travel
     that had to lift the needle), `empty` (produced nothing).
     """
     report = {"too_thin": False, "jumps": 0, "empty": False}
+    fur = None
+    if technique == "fur":
+        fur = fur_style(fur_style_name)
+        stitch_mm = fur[0]
     angle = best_fill_angle_deg(poly, row_mm) if angle_deg is None else angle_deg
     if poly.buffer(-machine.MIN_FILL_WIDTH_MM / 2.0).is_empty:
         report["too_thin"] = True
@@ -1852,7 +1954,8 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     else:
         fill_paths = _fill_paths(poly, angle, row_mm, stitch_mm,
                                  machine.FILL_STAGGERS, entry, technique=technique,
-                                 row_phase_mm=row_phase_mm, keep_row=keep_row)
+                                 row_phase_mm=row_phase_mm, keep_row=keep_row,
+                                 seed=seed, fur=fur)
     if sewn_paths_only:
         fill_paths = _sewn_paths(fill_paths)
     # Memoized, not changed: both reorders are pure functions of this shape's
