@@ -1,0 +1,6 @@
+Renders and cell tables made 2026-10-14 by digitizer/tools/small_lettering_compare.py.
+Input artwork: digitizer/testdata/photo/logo_hotel_fremont.webp (already in the repo; no new image, no new client artwork).
+Sheets are renders of EMB-Bot's own stitch output (stitchviz, thread at its laid width), not photographs; the 'artwork' row is a crop of that same file on slate.
+The pro's Hotel Fremont files are read from the committed 'Embroidery Files.zip' (already public); they are scored, not rendered, and none of their stitches are copied here.
+cells/*.json: saved per-arm tables. Re-print: python -m tools.small_lettering_compare --table --out docs/renders/claude-small-lettering-head-to-head/cells
+Measured on origin/main: main at 1467d2f4 (the skeleton and true-size options are off in it; later merges are gated on them); true at cc7cab97 (after #931, #933 and the serif guard); sk073, sk100, both073 and both100 at bdca6fd6 (after #936, which extends the skeleton run to EST and 1895).
