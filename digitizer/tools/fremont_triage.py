@@ -84,8 +84,9 @@ ARMS = {
                    "lettering_columns_skip_blobs": False},
     "lane_off": {"lettering_columns": False},
     "pre863": {},
-    # The cure for the 1895 loss, built OFF (`cfg.small_glyph_keep`).
-    "small_glyph_keep": {"small_glyph_keep": True},
+    # The 1895 loss: `cfg.small_glyph_keep` OFF (it is ON by default since
+    # 2026-10-13, Kent's ruling). The ON arm is "main".
+    "small_glyph_keep_off": {"small_glyph_keep": False},
 }
 ARM_ORDER = list(ARMS)
 

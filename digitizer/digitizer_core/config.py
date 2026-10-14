@@ -1420,8 +1420,9 @@ class PipelineConfig:
     # Measured 2026-10-12: `tools/clip_keep_pieces.py`.
     clip_keep_pieces: bool = False
     # Small glyphs the run tier rescues (`rescued_small_shape`), kept whole
-    # (2026-10-13, default OFF; Kent's Fremont at 81 mm on a hat sewed "1895"
-    # as "098", `tools/fremont_triage.py`). Both losses are stage 4's hole
+    # (2026-10-13; ON by Kent's ruling 2026-10-13). Kent's Fremont at 81 mm
+    # on a hat sewed "1895" as "098" (`tools/fremont_triage.py`). Both losses
+    # are stage 4's hole
     # floor (`min_detail_mm`² / 4, 0.5625 mm²), which knows nothing of what
     # is in the hole:
     #   - the 8's and 9's counters (0.30-0.52 mm², transparent in the art)
@@ -1436,9 +1437,12 @@ class PipelineConfig:
     # artwork over the colour beneath, the way lettering sews over its
     # ground. Both are CANDIDATES (ROADMAP gate 1): no sew-out has settled
     # what a 0.16 mm² counter does on a cap. Fremont is unrepresentative --
-    # it reproduces the defect, it sizes nothing. Off, byte-identical
-    # (md5-pinned in `tests/test_small_glyph_keep.py`).
-    small_glyph_keep: bool = False
+    # it reproduces the defect, it sizes nothing. False is the engine before
+    # this flag, byte-identical (md5-pinned in
+    # `tests/test_small_glyph_keep.py`). Known open: the 8's lower counter
+    # (a 2.05 mm ring) sews no ring, under `RUN_MIN_LOOP_MM` 2.2 (gate 1);
+    # `coverage_edges` ON still hands stage 4 the old 0.5625 mm² hole floor.
+    small_glyph_keep: bool = True
     # Stage 5's hole hold, read for what is actually IN the hole. A hole the
     # shell's pull growth would shrink under `min_detail_mm²` is held open at
     # its original size — right for a counter, wrong for a hole a LATER
