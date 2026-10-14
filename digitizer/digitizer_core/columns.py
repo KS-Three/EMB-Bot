@@ -637,12 +637,13 @@ def _hold_end_faces(col: Column, a_pts, b_pts, edges, letter_faces, poly: Polygo
                 f = best[2]
                 s = (p1[0] - p0[0]) * f[0] + (p1[1] - p0[1]) * f[1]
                 p1 = (p0[0] + f[0] * s, p0[1] + f[1] * s)
-            # A side keeps its own push. A cross under 0.44 mm is inset by a
-            # quarter of itself, not by RAIL_REACH_INSET_MM, so its push
-            # reaches further than `reach_mm`; cut back to that, golden_tee's
-            # 0.10 mm bars fell under the cross floor and went unsewn
-            # (+0.56 mm2 bare on one letter at 50 mm).
-            limit = side_reach[i] if (best is None and side_reach is not None) else reach_mm
+            # Each cross keeps its own side reach. A cross under 0.44 mm is
+            # inset by a quarter of itself, not by RAIL_REACH_INSET_MM, so its
+            # push reaches further than `reach_mm`; cut back to that,
+            # golden_tee's 0.10 mm bars fell under the cross floor and went
+            # unsewn (+0.56 mm2 bare on one letter at 50 mm). A held point
+            # stays on its face's line either way.
+            limit = side_reach[i] if side_reach is not None else reach_mm
             if outside(p1) > limit + 1e-9:
                 # the longest part of the move that stays inside the reach
                 # (a fan face's reach on top of the push stood 0.37 mm out)
