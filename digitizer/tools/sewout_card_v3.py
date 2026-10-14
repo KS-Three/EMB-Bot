@@ -395,9 +395,11 @@ def pair_notes(rb: dict) -> str:
 
 README = """# Sew-out card v3, 2026-10-13
 
+**Superseded by card v3.1 (see `README.md` in this folder and `card_v3_1_40wt.dst`), which carries every block here unchanged and adds the skeleton arms and the ends check. Kept for history.**
+
 One DST file (**40 wt**) for the questions Kent's Hotel Fremont 81 mm Hat
 report left open. Each question is a block of arms sewn **side by side** and
-labelled with teeth. You sew it once, read each block on `scoring-sheet.md`,
+labelled with teeth. You sew it once, read each block on `scoring-sheet-v3.md`,
 and that settles several ROADMAP gate-1 questions together. **Every number on
 this card is a candidate until you sew it.** Nothing here is a setting.
 
@@ -416,9 +418,9 @@ stitch count, not a measurement).
 | `card_v3_40wt.dst` | the card, **40 wt** thread. |
 | `card_v3_40wt.png` | what the file looks like, thread drawn at the laid width, 12 px/mm. A picture of the file, not of cloth. |
 | `card_v3_40wt_blocks.png` | every arm cropped at 60 px/mm, the arms of a block side by side, for comparing them before you sew. |
-| `scoring-sheet.md` | the readout sheet: one table per block. Print it. |
+| `scoring-sheet-v3.md` | the readout sheet: one table per block. Print it. |
 | `cuts/cut_*.json` | the Fremont runs the T and N blocks sew: the replay of the Studio request, cut to each box (see below). |
-| `readback.md`, `readback.json` | the file checks, also quoted below. |
+| `readback-v3.md`, `readback-v3.json` | the file checks, also quoted below. |
 
 The file is written by `python -m tools.sewout_card_v3` (in `digitizer/`)
 through the service's export path (pystitch), not the browser's DST codec,
@@ -619,8 +621,8 @@ def write_docs(out: Path, rb: dict, cuts: Path) -> None:
             .replace("STITCHES", f"{rb['stitches_file']:,}")
             .replace("@WTHE@", str(wh("T:today")[0])).replace("@HTHE@", str(wh("T:today")[1]))
             .replace("@WN@", str(wh("N:keep-off")[0])).replace("@HN@", str(wh("N:keep-off")[1])))
-    (out / "README.md").write_text(text, encoding="utf-8")
-    (out / "scoring-sheet.md").write_text(SCORING, encoding="utf-8")
+    (out / "README-v3.md").write_text(text, encoding="utf-8")
+    (out / "scoring-sheet-v3.md").write_text(SCORING, encoding="utf-8")
 
 
 def generate(out: Path, renders: Path | None = None, cuts: Path | None = None, *, quiet: bool = False) -> dict:
@@ -639,8 +641,8 @@ def generate(out: Path, renders: Path | None = None, cuts: Path | None = None, *
     rb["pieces"] = extra["pieces"]
     if not quiet:
         print(json.dumps({k: v for k, v in rb.items() if k not in ("pieces", "pieces_mm", "stitches_by_piece")}))
-    (out / "readback.json").write_text(json.dumps(rb, indent=1) + "\n", encoding="utf-8")
-    (out / "readback.md").write_text(readback_markdown(rb), encoding="utf-8")
+    (out / "readback-v3.json").write_text(json.dumps(rb, indent=1) + "\n", encoding="utf-8")
+    (out / "readback-v3.md").write_text(readback_markdown(rb), encoding="utf-8")
     write_docs(out, rb, cuts)
     if renders is not None:
         renders.mkdir(parents=True, exist_ok=True)

@@ -3584,10 +3584,31 @@ def sequence(
     # all — one block per polarity, in the design's own nearest thread.
     hair_lines = None
     if source_pixels is not None and hairline_lines_apply(cfg, design_class):
+        # `cfg.hairline_lines_chain` (OFF): a hop between two strands is
+        # sewn needle-down, not cut, when its whole length lies over thread
+        # the blocks above already laid (a half-thread-width of any laid
+        # stitch, `machine.COVERAGE_THREAD_W_MM`, the instrument
+        # `tools/hairline_travel.py` reads) -- never across bare cloth.
+        hop_ok = None
+        if getattr(cfg, "hairline_lines_chain", False):
+            laid = [shapely.LineString(r.points) for b in blocks for r in b.runs
+                    if r.kind != stitches.TRAVEL and len(r.points) >= 2]
+            laid_tree = shapely.STRtree(laid) if laid else None
+
+            def hop_ok(a, b, _tree=laid_tree):
+                if _tree is None:
+                    return False
+                n = max(2, int(math.dist(a, b) / 0.1))
+                pp = shapely.points([(a[0] + (b[0] - a[0]) * i / n,
+                                      a[1] + (b[1] - a[1]) * i / n)
+                                     for i in range(n + 1)])
+                hit = _tree.query(pp, predicate="dwithin",
+                                  distance=machine.COVERAGE_THREAD_W_MM / 2.0)
+                return len(set(hit[0].tolist())) == len(pp)
         hl_blocks, hair_lines = strand_blocks(
             source_pixels, cfg, entry=cursor, trim_at_mm=trim_at,
             allowed_threads=sorted({b.thread_index for b in blocks}),
-            block_wt=block_wt)
+            block_wt=block_wt, hop_ok=hop_ok)
         for hl_thread, hl_runs in hl_blocks:
             hl_runs[0].jump = True
             hl_runs[0].trim = True
@@ -3612,8 +3633,9 @@ def sequence(
                 found=hair_lines["found"],
                 refused_no_ridge=hair_lines["refused_no_ridge"],
                 sewn_by_polarity=hair_lines["sewn_by_polarity"],
-                # `cfg.hairline_lines_strand_test` only (absent off).
-                **{k: hair_lines[k] for k in ("refused_bar", "thread_wt")
+                # `cfg.hairline_lines_strand_test` / `hairline_lines_chain`
+                # only (absent off).
+                **{k: hair_lines[k] for k in ("refused_bar", "thread_wt", "hops", "hop_mm")
                    if k in hair_lines},
             )
         )

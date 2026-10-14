@@ -1,0 +1,323 @@
+{
+ "file": "card_v3_40wt.dst",
+ "bytes": 10400,
+ "wt": 40,
+ "blocks": 4,
+ "stitches_file": 3074,
+ "stitches_plan": 3074,
+ "colour_changes_file": 2,
+ "colour_changes_plan": 2,
+ "colours": 3,
+ "extent_mm": [
+  90.6,
+  38.4
+ ],
+ "within_hoop": true,
+ "x_range_mm": [
+  -45.3,
+  45.3
+ ],
+ "y_range_mm": [
+  -19.2,
+  19.2
+ ],
+ "max_needle_stitch_mm": 3.14,
+ "max_record_axis_mm": 11.9,
+ "stops": [
+  {
+   "stop": 1,
+   "thread": "dark",
+   "stitches": 2180,
+   "thread_m": 2.74
+  },
+  {
+   "stop": 2,
+   "thread": "light",
+   "stitches": 677,
+   "thread_m": 1.57
+  },
+  {
+   "stop": 3,
+   "thread": "dark",
+   "stitches": 237,
+   "thread_m": 0.17
+  }
+ ],
+ "stitches_by_piece": {
+  "F3:floor": 114,
+  "F3:keep": 94,
+  "F3:strips": 48,
+  "F3:today": 94,
+  "F:strips": 42,
+  "G:gap-0.4": 607,
+  "G:gap-0.8": 667,
+  "G:gap-off": 605,
+  "G:strips": 106,
+  "N:keep-off": 92,
+  "N:keep-on": 133,
+  "N:strips": 61,
+  "T:strips": 58,
+  "T:today": 170,
+  "T:wordtier": 203
+ },
+ "under_1mm_by_piece": {
+  "F3:floor": 67,
+  "F3:keep": 15,
+  "F3:today": 15,
+  "G:gap-0.4": 148,
+  "G:gap-0.8": 174,
+  "G:gap-off": 148,
+  "N:keep-off": 89,
+  "N:keep-on": 124,
+  "T:today": 84,
+  "T:wordtier": 170
+ },
+ "lock_legs_0p8": 288,
+ "trims": 38,
+ "blocks_mm": {
+  "F3": [
+   -45.3,
+   -19.2,
+   -12.7,
+   -7.5
+  ],
+  "G": [
+   -45.3,
+   -1.9,
+   4.2,
+   19.2
+  ],
+  "N": [
+   25.3,
+   -19.2,
+   45.3,
+   -8.5
+  ],
+  "T": [
+   -6.7,
+   -19.2,
+   19.3,
+   -6.9
+  ]
+ },
+ "pieces_mm": {
+  "F3:floor": [
+   -32.4,
+   -10.2,
+   -25.6,
+   -7.5
+  ],
+  "F3:keep": [
+   -19.6,
+   -10.2,
+   -12.7,
+   -7.8
+  ],
+  "F3:today": [
+   -45.3,
+   -10.2,
+   -38.4,
+   -7.8
+  ],
+  "G:gap-0.4": [
+   -27.8,
+   7.1,
+   -13.3,
+   19.2
+  ],
+  "G:gap-0.8": [
+   -10.3,
+   7.1,
+   4.2,
+   19.2
+  ],
+  "G:gap-off": [
+   -45.3,
+   7.1,
+   -30.8,
+   19.2
+  ],
+  "N:keep-off": [
+   25.3,
+   -10.2,
+   29.6,
+   -8.5
+  ],
+  "N:keep-on": [
+   34.6,
+   -10.2,
+   40.0,
+   -8.5
+  ],
+  "T:today": [
+   -6.7,
+   -10.2,
+   2.4,
+   -6.9
+  ],
+  "T:wordtier": [
+   7.4,
+   -10.2,
+   16.0,
+   -7.5
+  ]
+ },
+ "pieces": [
+  {
+   "block": "F3",
+   "arm": "today",
+   "word": "APA",
+   "cap_mm": 2.2,
+   "stroke_mm": 0.236,
+   "garment_id": "hat_front",
+   "small_print_floor": false,
+   "small_glyph_keep": false,
+   "counters": [
+    {
+     "area_mm2": 0.297,
+     "inscribed_width_mm": 0.45
+    },
+    {
+     "area_mm2": 0.434,
+     "inscribed_width_mm": 0.65
+    },
+    {
+     "area_mm2": 0.297,
+     "inscribed_width_mm": 0.45
+    }
+   ],
+   "width_mm": 6.9,
+   "height_mm": 2.38
+  },
+  {
+   "block": "F3",
+   "arm": "floor",
+   "word": "APA",
+   "cap_mm": 2.2,
+   "stroke_mm": 0.236,
+   "garment_id": "hat_front",
+   "small_print_floor": true,
+   "small_glyph_keep": false,
+   "counters": [
+    {
+     "area_mm2": 0.297,
+     "inscribed_width_mm": 0.45
+    },
+    {
+     "area_mm2": 0.434,
+     "inscribed_width_mm": 0.65
+    },
+    {
+     "area_mm2": 0.297,
+     "inscribed_width_mm": 0.45
+    }
+   ],
+   "width_mm": 6.76,
+   "height_mm": 2.66
+  },
+  {
+   "block": "F3",
+   "arm": "keep",
+   "word": "APA",
+   "cap_mm": 2.2,
+   "stroke_mm": 0.236,
+   "garment_id": "hat_front",
+   "small_print_floor": false,
+   "small_glyph_keep": true,
+   "counters": [
+    {
+     "area_mm2": 0.297,
+     "inscribed_width_mm": 0.45
+    },
+    {
+     "area_mm2": 0.434,
+     "inscribed_width_mm": 0.65
+    },
+    {
+     "area_mm2": 0.297,
+     "inscribed_width_mm": 0.45
+    }
+   ],
+   "width_mm": 6.9,
+   "height_mm": 2.38
+  },
+  {
+   "block": "T",
+   "arm": "today",
+   "roi": "the",
+   "cut": "today",
+   "overrides": {
+    "small_glyph_keep": false
+   },
+   "runs": 18,
+   "garment_id": "hat_front",
+   "width_mm": 9.08,
+   "height_mm": 3.25
+  },
+  {
+   "block": "T",
+   "arm": "wordtier",
+   "roi": "the",
+   "cut": "wordtier",
+   "overrides": {
+    "small_glyph_keep": false,
+    "lettering_words": true,
+    "lettering_word_tiers": true
+   },
+   "runs": 3,
+   "garment_id": "hat_front",
+   "width_mm": 8.67,
+   "height_mm": 2.66
+  },
+  {
+   "block": "N",
+   "arm": "keep-off",
+   "roi": "1895",
+   "cut": "today",
+   "overrides": {
+    "small_glyph_keep": false
+   },
+   "runs": 3,
+   "garment_id": "hat_front",
+   "width_mm": 4.28,
+   "height_mm": 1.66
+  },
+  {
+   "block": "N",
+   "arm": "keep-on",
+   "roi": "1895",
+   "cut": "keep",
+   "overrides": {
+    "small_glyph_keep": true
+   },
+   "runs": 6,
+   "garment_id": "hat_front",
+   "width_mm": 5.43,
+   "height_mm": 1.66
+  },
+  {
+   "block": "G",
+   "arm": "gap-off",
+   "forbid_gap_mm": null,
+   "colour_stretches": 3,
+   "width_mm": 14.5,
+   "height_mm": 12.1
+  },
+  {
+   "block": "G",
+   "arm": "gap-0.4",
+   "forbid_gap_mm": 0.4,
+   "colour_stretches": 3,
+   "width_mm": 14.5,
+   "height_mm": 12.1
+  },
+  {
+   "block": "G",
+   "arm": "gap-0.8",
+   "forbid_gap_mm": 0.8,
+   "colour_stretches": 3,
+   "width_mm": 14.5,
+   "height_mm": 12.1
+  }
+ ]
+}

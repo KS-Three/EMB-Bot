@@ -63,6 +63,7 @@ OUT = Path(os.environ.get("PRO_PARITY_OUT", "pro_parity_out"))
 FLAGS: dict[str, object] = {
     "lettering_columns_square_ends": False,  # 2026-10-13, Kent's flip
     "lettering_columns_inside_connectors": False,  # 2026-10-13, Kent's flip
+    "small_glyph_keep": False,              # 2026-10-13, Kent's flip
     "lettering_columns_icon_guard": False,  # 2026-10-13, Kent's flip
     "lettering_columns_ink_link": False,    # 2026-10-13, Kent's flip
     "lettering_columns_skip_blobs": False,  # 2026-10-13, Kent's flip

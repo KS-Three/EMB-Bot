@@ -402,4 +402,11 @@ PRE_FLIP["two_tone_snap"] = False
 # `tests/test_column_ends.py`.
 PRE_FLIP["lettering_columns_square_ends"] = False
 PRE_FLIP["lettering_columns_inside_connectors"] = False
+# `small_glyph_keep` joined the flipped set 2026-10-13 (Kent's ruling), for the
+# reason every entry above gives. ON, stage 4 keeps the counters and the ground
+# hole of a rescued small glyph, which on `screenshot_phone_ui_golke` adds one
+# cone (15 -> 16) under `revalidate_small_shapes` alone -- the premise
+# `test_revalidate_small_shapes` prices that flag against ("16 -> 16 cones").
+# The test that is ABOUT the keep is `tests/test_small_glyph_keep.py`.
+PRE_FLIP["small_glyph_keep"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}
