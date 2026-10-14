@@ -2369,7 +2369,8 @@ def sequence(
             # the ladder below, exactly as every rung does.
             if tier == "auto" and p.region.meta.get(BEAN_LETTER_KEY):
                 runs, report = bean_letter(p.region.meta[BEAN_LETTER_KEY], p.shape_id,
-                                           entry=entry, trim_at_mm=trim_at)
+                                           entry=entry, trim_at_mm=trim_at,
+                                           stitch_mm=cfg.bean_letter_stitch_mm)
                 if not report["empty"]:
                     report["bean_letter"] = 1
                     report["bean_word"] = word_key(p.region, cfg)
@@ -2482,7 +2483,10 @@ def sequence(
                     # the call is today's, argument for argument
                     **({"fold_cuts": True} if cfg.lettering_columns_fold_cuts else {}),
                     # `cfg.lettering_columns_square_ends` (default OFF): same rule
-                    **({"square_ends": True} if cfg.lettering_columns_square_ends else {}))
+                    **({"square_ends": True} if cfg.lettering_columns_square_ends else {}),
+                    # `cfg.lettering_columns_inside_connectors` (default OFF): same rule
+                    **({"inside_connectors": True}
+                       if cfg.lettering_columns_inside_connectors else {}))
                 if not report["empty"]:
                     report["lettering_columns"] = 1
                     return runs, report, False

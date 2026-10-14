@@ -211,6 +211,7 @@
 "tests/test_service_hardening.py": 1.39,
 "tests/test_service_openapi.py": 0.09,
 "tests/test_sewout_card_v2.py": 30.85,
+"tests/test_sewout_card_v3.py": 70.0,
 "tests/test_sewout_reader.py": 37.45,
 "tests/test_sewout_walk_reach.py": 0.0,
 "tests/test_shade_axis.py": 0.23,

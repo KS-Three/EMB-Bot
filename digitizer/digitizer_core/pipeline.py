@@ -827,6 +827,20 @@ def build_generation(
     # chart, not the default one.
     detect_text_clusters(regions, p, chart=chart_for(cfg))
 
+    # Lettering too small to sew, grown the way a digitizer grows it
+    # (`cfg.small_text_cap_mm`, default None). Here, on the tagger's clusters
+    # and before every reader of a letter's geometry -- the regularizer, the
+    # word tagger, the priors, the house angle -- so each sees the line at
+    # the size it will be sewn. None: never called, byte-identical.
+    if cfg.small_text_restore_mm:
+        # True size: adopt the line's untagged letters and give every letter
+        # its counters back, before any reader of a letter's geometry.
+        from .small_text import restore_small_text
+        restore_small_text(regions, p, cap_mm=cfg.small_text_restore_mm)
+    if cfg.small_text_cap_mm:
+        from .small_text import enlarge_small_text
+        enlarge_small_text(regions, p, cap_mm=cfg.small_text_cap_mm)
+
     # Regularization (Step 5): a genuine geometry change, not metadata, so it
     # runs immediately after tagging and still before shape identity edits —
     # a merge/split/boundary_override on a tagged shape should see the

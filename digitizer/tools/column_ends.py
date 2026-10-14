@@ -32,19 +32,31 @@ receives it, tucks included -- independent of the face rule):
 
 - `beyond_reach`: satin penetrations further outside the outline than the
   rails' own side reach (`pull_mm - columns.RAIL_REACH_INSET_MM`) plus
-  0.02 mm -- a tuck run out of the letter, a fan face reached past a cut;
+  0.02 mm -- a tuck run out of the letter, a fan face reached past a cut --
+  and also a cross under 0.44 mm's own side push (inset by a quarter of
+  itself, not 0.11); `beyond_pull`: past the whole pull, which no rail's push
+  reaches;
 - `travel_off_mm`: needle-down travel and underlay further outside the outline
-  than that reach, i.e. over bare fabric;
+  than that reach; `link_off_mm`: the same for the needle-down stitch the
+  link rule sews between two runs (no run of its own);
+- `connector_bare_mm`: travel, underlay and links over BARE cloth -- outside
+  both that grown outline and the letter's own laid satin;
 - `bare_mm2`: outline area no satin stitch's thread covers (each zigzag
   stitch read `THREAD_HALF_MM` either side) -- the price of holding a face.
 
+`--connectors` adds `cfg.lettering_columns_inside_connectors` to the ON arm
+(2026-10-13: every connector on the letter or its satin, Kent's M->O "loop").
+
 Fremont is an UNREPRESENTATIVE fixture: reproduce defects on it, never size a
-constant on it. Measurement only; the flag stays OFF.
+constant on it. Measurement only; the flags stay OFF.
 
     # one fixture, OFF then ON, writes <out>/<name>.json
-    .venv/Scripts/python -m tools.column_ends --fixture becker --out DIR
+    .venv/Scripts/python -m tools.column_ends --fixture becker --out DIR [--connectors]
     # Kent's Fremont replay (81 mm, Hat, the Studio request) + zoom panels
     .venv/Scripts/python -m tools.column_ends --fremont81 --out DIR --renders DIR2
+    # the lane alone on stored letters: artwork | OFF | ON, cropped (mm, y down)
+    .venv/Scripts/python -m tools.column_ends --letters testdata/fremont81_end_letters.json \\
+        --box 29.6,1.0,31.9,3.2 --px 150 --connectors --out n_foot.png
 """
 from __future__ import annotations
 
@@ -84,7 +96,7 @@ FREMONT_ENDS = {
 
 # --- one letter ----------------------------------------------------------------
 
-def _lane(poly, kw: dict, square_ends: bool):
+def _lane(poly, kw: dict, square_ends: bool, inside_connectors: bool = False):
     """The lane on one letter, its sewn legs captured. -> (runs, report, legs, cut)."""
     from digitizer_core import columns as C
     from digitizer_core.outline_cut import letter_columns
@@ -96,15 +108,18 @@ def _lane(poly, kw: dict, square_ends: bool):
         legs.append([(tuple(p), tuple(q)) for p, q in stations])
         return real(stations, *a, **k)
 
-    kw = {k: v for k, v in kw.items() if k != "square_ends"}
+    kw = {k: v for k, v in kw.items() if k not in ("square_ends", "inside_connectors")}
     C._satin_points = spy
     try:
-        runs, report = C.lettering_columns_shape(poly, "census", **kw,
-                                                 **({"square_ends": True} if square_ends else {}))
+        runs, report = C.lettering_columns_shape(
+            poly, "census", **kw,
+            **({"square_ends": True} if square_ends else {}),
+            **({"inside_connectors": True} if inside_connectors else {}))
     finally:
         C._satin_points = real
     cut = letter_columns(poly, pitch_mm=kw.get("spacing_mm", 0.4),
-                         fold_cuts=bool(kw.get("fold_cuts", False)))
+                         fold_cuts=bool(kw.get("fold_cuts", False)),
+                         **({"mitre_ends": True} if square_ends else {}))
     return runs, report, legs, cut
 
 
@@ -126,13 +141,14 @@ def _past_line(p, edge, outline) -> float:
     return (p[0] - ax) * nx + (p[1] - ay) * ny
 
 
-def letter_ends(poly, kw: dict, square_ends: bool = False, tol_mm: float = TOL_MM) -> dict:
+def letter_ends(poly, kw: dict, square_ends: bool = False, tol_mm: float = TOL_MM,
+                inside_connectors: bool = False) -> dict:
     """Every outline END of one letter's columns (see the module docstring)."""
     from shapely.geometry import LineString, Point
     from shapely.ops import unary_union
     from digitizer_core import columns as C, stitches
 
-    runs, report, legs, cut = _lane(poly, kw, square_ends)
+    runs, report, legs, cut = _lane(poly, kw, square_ends, inside_connectors)
     outline = cut.poly
     edges = C._ring_edges(outline)
     lim = math.cos(math.radians(C.END_FACE_DEG))
@@ -197,21 +213,40 @@ def letter_ends(poly, kw: dict, square_ends: bool = False, tol_mm: float = TOL_M
     reach = max(0.0, pull - C.RAIL_REACH_INSET_MM)
     beyond = [float(outline.boundary.distance(Point(p))) for leg in legs for st in leg for p in st
               if not outline.covers(Point(p))]
+    # past the whole pull: further than any rail's own push can take it (a
+    # cross under 0.44 mm is inset by a quarter of itself, not by the 0.11,
+    # so its side push legitimately passes `reach`)
+    beyond_pull = sum(1 for d in beyond if d > pull + REACH_SLACK_MM)
     beyond = [d for d in beyond if d > reach + REACH_SLACK_MM]
     grown = outline.buffer(reach + 1e-6)
-    travel_off = sum(LineString(r.points).difference(grown).length for r in runs
-                     if r.kind in (stitches.TRAVEL, stitches.UNDERLAY) and len(r.points) >= 2)
     laid = unary_union([LineString(s[1]).buffer(THREAD_HALF_MM) for s in segs]) if segs else None
     bare = outline.area if laid is None else outline.difference(laid).area
+    # over BARE fabric: outside both the grown outline and the letter's own
+    # laid satin (a thin cross's rail is pushed past `reach`, and a hop from
+    # it runs on satin, not on cloth)
+    cloth = grown if laid is None else grown.union(laid)
+    travel = [LineString(r.points) for r in runs
+              if r.kind in (stitches.TRAVEL, stitches.UNDERLAY) and len(r.points) >= 2]
+    # the needle-down stitch from one run's last point to the next run's
+    # first, where the link rule sewed it (no jump): not part of any run
+    links = [LineString([r0.points[-1], r1.points[0]]) for r0, r1 in zip(runs, runs[1:])
+             if not r1.jump and math.dist(r0.points[-1], r1.points[0]) > 1e-9]
+    travel_off = sum(t.difference(grown).length for t in travel)
+    link_off = sum(t.difference(grown).length for t in links)
+    connector_bare = sum(t.difference(cloth).length for t in travel + links)
     return {"W_mm": round(float(W), 3), "ends": ends,
             "overshoots": sum(e["overshoot"] for e in ends),
             "worst_stub_mm": round(max((e["stub_mm"] for e in ends), default=0.0), 3),
             "beyond_reach": len(beyond),
             "beyond_reach_max_mm": round(max(beyond, default=0.0), 3),
+            "beyond_pull": beyond_pull,
             "travel_off_mm": round(travel_off, 3),
+            "link_off_mm": round(link_off, 3),
+            "connector_bare_mm": round(connector_bare, 3),
             "bare_mm2": round(bare, 3),
             "stitches": sum(len(r.points) for r in runs),
-            "jumps": report.get("jumps", 0)}
+            "jumps": report.get("jumps", 0),
+            "trims": sum(1 for r in runs if r.trim)}
 
 
 # --- whole designs ---------------------------------------------------------------
@@ -242,10 +277,12 @@ def capture(fixture: str, cfg_kw: dict, overrides: dict | None = None):
     return calls, plan, plan_to_design(plan)
 
 
-def design_census(calls, square_ends: bool, tol_mm: float = TOL_MM) -> dict:
+def design_census(calls, square_ends: bool, tol_mm: float = TOL_MM,
+                  inside_connectors: bool = False) -> dict:
     rows = {}
     for poly, sid, kw in calls:
-        rows[sid] = letter_ends(poly, kw, square_ends=square_ends, tol_mm=tol_mm)
+        rows[sid] = letter_ends(poly, kw, square_ends=square_ends, tol_mm=tol_mm,
+                                inside_connectors=inside_connectors)
     return {
         "letters": len(rows),
         "ends": sum(len(r["ends"]) for r in rows.values()),
@@ -253,12 +290,25 @@ def design_census(calls, square_ends: bool, tol_mm: float = TOL_MM) -> dict:
         "worst_stub_mm": round(max((r["worst_stub_mm"] for r in rows.values()), default=0.0), 3),
         "beyond_reach": sum(r["beyond_reach"] for r in rows.values()),
         "beyond_reach_max_mm": round(max((r["beyond_reach_max_mm"] for r in rows.values()), default=0.0), 3),
+        "beyond_pull": sum(r["beyond_pull"] for r in rows.values()),
         "travel_off_mm": round(sum(r["travel_off_mm"] for r in rows.values()), 2),
+        "link_off_mm": round(sum(r["link_off_mm"] for r in rows.values()), 2),
+        "connector_bare_mm": round(sum(r["connector_bare_mm"] for r in rows.values()), 2),
+        "letter_jumps": sum(r["jumps"] for r in rows.values()),
+        "letter_trims": sum(r["trims"] for r in rows.values()),
         "bare_mm2": round(sum(r["bare_mm2"] for r in rows.values()), 2),
         "crossings": sum(e["crossings"] for r in rows.values() for e in r["ends"]),
         "fan_ends": sum(1 for r in rows.values() for e in r["ends"] if e["fan"]),
         "per_letter": rows,
     }
+
+
+#: the ON arm's config; `--connectors` adds `lettering_columns_inside_connectors`
+ON = {"lettering_columns_square_ends": True}
+
+
+def _on_conn() -> bool:
+    return bool(ON.get("lettering_columns_inside_connectors"))
 
 
 def fixture_census(name: str, tol_mm: float = TOL_MM, full_on: bool = False) -> dict:
@@ -275,12 +325,14 @@ def fixture_census(name: str, tol_mm: float = TOL_MM, full_on: bool = False) -> 
            "off": {"stitches": s.stitch_count, "trims": s.trims, "jumps": s.jumps,
                    "design_md5": _md5(design), **design_census(calls, False, tol_mm)}}
     if full_on:
-        calls, plan, design = capture(fixture, cfg_kw, {"lettering_columns_square_ends": True})
+        calls, plan, design = capture(fixture, cfg_kw, dict(ON))
         s = plan.stats
         out["on"] = {"stitches": s.stitch_count, "trims": s.trims, "jumps": s.jumps,
-                     "design_md5": _md5(design), **design_census(calls, True, tol_mm)}
+                     "design_md5": _md5(design),
+                     **design_census(calls, True, tol_mm, inside_connectors=_on_conn())}
     else:
-        out["on"] = {"replayed_on_off_calls": True, **design_census(calls, True, tol_mm)}
+        out["on"] = {"replayed_on_off_calls": True,
+                     **design_census(calls, True, tol_mm, inside_connectors=_on_conn())}
     return out
 
 
@@ -300,9 +352,10 @@ def fremont81(out: Path, renders: Path | None, tol_mm: float = TOL_MM,
 
     res = {}
     designs = {}
-    for arm, ov in (("off", {}), ("on", {"lettering_columns_square_ends": True})):
+    for arm, ov in (("off", {}), ("on", dict(ON))):
         if arms and arm not in arms:
             continue
+        conn = bool(ov.get("lettering_columns_inside_connectors"))
         ft.ARMS[f"square_ends_{arm}"] = ov
         calls = []
         real = s7.lettering_columns_shape
@@ -323,12 +376,14 @@ def fremont81(out: Path, renders: Path | None, tol_mm: float = TOL_MM,
         for key, (sid, title) in FREMONT_ENDS.items():
             poly, kw = by_sid[sid]
             circles[key] = {"shape_id": sid, "title": title,
-                            **letter_ends(poly, kw, square_ends=bool(ov), tol_mm=tol_mm)}
+                            **letter_ends(poly, kw, square_ends=bool(ov), tol_mm=tol_mm,
+                                          inside_connectors=conn)}
         s = run["plan"].stats
         designs[arm] = (run["design"], boxes)
         res[arm] = {"stitches": s.stitch_count, "trims": s.trims, "jumps": s.jumps,
                     "design_md5": _md5(run["design"]), "circles": circles,
-                    **{k: v for k, v in design_census(calls, bool(ov), tol_mm).items() if k != "per_letter"}}
+                    **{k: v for k, v in design_census(calls, bool(ov), tol_mm, inside_connectors=conn).items()
+                       if k != "per_letter"}}
         out.mkdir(parents=True, exist_ok=True)
         (out / f"fremont81_{arm}.json").write_text(json.dumps(res[arm], indent=1))
         (out / f"fremont81_{arm}_design.json").write_text(json.dumps({"design": run["design"], "boxes": boxes}))
@@ -404,7 +459,7 @@ def word_panel(name: str, renders: Path, px_per_mm: float = 60.0) -> Path:
     fixture, cfg_kw = CORPUS[name]
     rows = []
     box = None
-    for arm, ov in (("off", {}), ("on", {"lettering_columns_square_ends": True})):
+    for arm, ov in (("off", {}), ("on", dict(ON))):
         calls, plan, design = capture(fixture, cfg_kw, ov)
         if box is None:
             box = unary_union([p for p, _s, _k in calls]).bounds
@@ -418,6 +473,85 @@ def word_panel(name: str, renders: Path, px_per_mm: float = 60.0) -> Path:
     p = renders / f"{name}_word.png"
     cv2.imwrite(str(p), out)
     return p
+
+
+def load_letters(path: Path) -> dict:
+    """A stored letter set (`testdata/*_letters.json`: polygon and the lane
+    arguments each letter received) -> {key: (poly, kw)}."""
+    from shapely.geometry import Polygon
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    out = {}
+    for key, v in data.items():
+        kw = dict(v["kw"])
+        for k in ("start_near", "end_near"):
+            if kw.get(k) is not None:
+                kw[k] = tuple(kw[k])
+        out[key] = (Polygon(v["exterior"], v["holes"]), kw)
+    return out
+
+
+def _lane_design(runs) -> dict:
+    """Lane runs -> a design dict `stitchviz` renders (0.1 mm, y flipped)."""
+    st = []
+    for r in runs:
+        x, y = r.points[0]
+        if r.jump and st:
+            if r.trim:
+                st.append({"type": "trim", "x": st[-1]["x"], "y": st[-1]["y"]})
+            st.append({"type": "jump", "x": x * 10, "y": -y * 10})
+        st.extend({"type": "stitch", "x": px * 10, "y": -py * 10} for px, py in r.points)
+    return {"stitches": st, "colors": [{"r": 30, "g": 30, "b": 30}]}
+
+
+def letter_panel(letters: dict, box, out_png: Path, title: str, px_per_mm: float = 120.0,
+                 arms=None) -> Path:
+    """The lane alone on stored letters, cropped to `box` (mm, x0 y0 x1 y1):
+    the artwork polygon the lane received (filled) | each arm's thread with
+    that outline drawn over it in red. `arms`: [(label, lane kwargs)], by
+    default OFF and ON (`ON`, as lane kwargs)."""
+    import cv2
+    import numpy as np
+    from shapely.ops import unary_union
+    from digitizer_core import columns as C
+    from tools import fremont_triage as ft
+    if arms is None:
+        on = {"square_ends": True, **({"inside_connectors": True} if _on_conn() else {})}
+        arms = [("OFF", {}), ("ON " + "+".join(on), on)]
+    from shapely.geometry import box as _box
+    letters = {k: v for k, v in letters.items() if v[0].intersects(_box(*box))}
+    x0, y0, x1, y1 = unary_union([p for p, _kw in letters.values()]).bounds
+    pin = [{"type": "jump", "x": (x0 - 1) * 10, "y": -(y0 - 1) * 10},
+           {"type": "jump", "x": (x1 + 1) * 10, "y": -(y1 + 1) * 10}]
+
+    def outline(img, tp, fill):
+        for poly, _kw in letters.values():
+            ext = np.array([tp(x, y) for x, y in poly.exterior.coords], np.int32)
+            holes = [np.array([tp(x, y) for x, y in r.coords], np.int32) for r in poly.interiors]
+            if fill:
+                cv2.fillPoly(img, [ext, *holes], (30, 30, 30))
+            else:
+                cv2.polylines(img, [ext, *holes], True, (0, 0, 230), 1, cv2.LINE_AA)
+
+    cols = []
+    img, tp = ft._render({"stitches": list(pin), "colors": []}, px_per_mm)
+    img = img.copy()
+    outline(img, tp, True)
+    cols.append(ft._label(ft._crop(img, tp, box, margin_mm=0.0), "artwork (lane input)"))
+    for label, kw_on in arms:
+        runs = []
+        for poly, kw in letters.values():
+            r, _rep = C.lettering_columns_shape(poly, "panel", **kw, **kw_on)
+            runs.extend(r)
+        d = _lane_design(runs)
+        d["stitches"] = pin + d["stitches"]
+        img, tp = ft._render(d, px_per_mm)
+        img = img.copy()
+        outline(img, tp, False)
+        cols.append(ft._label(ft._crop(img, tp, box, margin_mm=0.0), label))
+    panel = ft._label(ft._hstack(cols), title)
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(out_png), panel)
+    return out_png
 
 
 # Zoom windows, mm offsets from the circle box's centre (x0, y0, x1, y1).
@@ -442,11 +576,24 @@ def main(argv=None) -> int:
                     help="render the zoom panels from saved --fremont81 arms, digitizing nothing")
     ap.add_argument("--word", choices=sorted(CORPUS),
                     help="render that fixture's lane letters OFF above ON (two whole-design runs)")
+    ap.add_argument("--connectors", action="store_true",
+                    help="the ON arm adds lettering_columns_inside_connectors")
+    ap.add_argument("--letters", type=Path,
+                    help="a stored letter set (testdata/*_letters.json): render --box OFF | ON on it")
+    ap.add_argument("--box", help="with --letters: x0,y0,x1,y1 in mm (the lane's frame, y down)")
+    ap.add_argument("--px", type=float, default=120.0, help="with --letters: px per mm")
+    ap.add_argument("--title", default="", help="with --letters: the panel's title")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--renders", type=Path)
     ap.add_argument("--tol", type=float, default=TOL_MM)
     a = ap.parse_args(argv)
     sys.path.insert(0, str(ROOT))
+    if a.connectors:
+        ON["lettering_columns_inside_connectors"] = True
+    if a.letters:       # --out is the PNG here
+        box = tuple(float(v) for v in a.box.split(","))
+        print(letter_panel(load_letters(a.letters), box, a.out, a.title or a.letters.stem, a.px))
+        return 0
     a.out.mkdir(parents=True, exist_ok=True)
     if a.fremont81:
         r = fremont81(a.out, None, a.tol, tuple(a.arm or ()))
