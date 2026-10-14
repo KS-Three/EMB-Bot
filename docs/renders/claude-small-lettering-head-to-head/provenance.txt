@@ -3,4 +3,4 @@ Input artwork: digitizer/testdata/photo/logo_hotel_fremont.webp (already in the 
 Sheets are renders of EMB-Bot's own stitch output (stitchviz, thread at its laid width), not photographs; the 'artwork' row is a crop of that same file on slate.
 The pro's Hotel Fremont files are read from the committed 'Embroidery Files.zip' (already public); they are scored, not rendered, and none of their stitches are copied here.
 cells/*.json: saved per-arm tables. Re-print: python -m tools.small_lettering_compare --table --out docs/renders/claude-small-lettering-head-to-head/cells
-Measured on origin/main 1467d2f4 (main, sk073, sk100) and d7c79888 (true, both073, both100; #931 and #933 changed the true-size route in between and do not touch the other arms' code).
+Measured on origin/main 1467d2f4 (main, sk073, sk100) and cc7cab97 (true, both073, both100). #931, #933 and the serif-guard PRs changed the bean-letter / true-size route in between; none touches the code the main and skeleton arms run.

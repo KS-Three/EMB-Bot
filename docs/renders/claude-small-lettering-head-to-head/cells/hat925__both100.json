@@ -10,7 +10,7 @@
   "bean_letter_serif_mm": 0.45,
   "small_lettering_skeleton": true
  },
- "stitches": 18617,
+ "stitches": 18622,
  "trims": 51,
  "size_mm": [
   93.2,
@@ -118,7 +118,7 @@
   "1895": {
    "glyphs": 4,
    "legibility": 0.945,
-   "legibility_space": 0.457,
+   "legibility_space": 0.475,
    "worst_glyph": 0.78,
    "counters_open": [
     3,
@@ -132,7 +132,7 @@
      0.85
     ]
    },
-   "stitches": 220,
+   "stitches": 225,
    "trims": 1,
    "box_mm": [
     3.42,
@@ -169,11 +169,11 @@
     },
     {
      "legibility": 1.0,
-     "legibility_space": 0.571,
+     "legibility_space": 0.643,
      "strokes": 1.0,
      "clean": 1.0,
      "counters": 1.0,
-     "space": 0.571,
+     "space": 0.643,
      "src_counters_openable": 2,
      "sewn_counters": 2,
      "sewn_counters_spurious": 0,
@@ -648,5 +648,5 @@
   ],
   "px_per_mm": 27.027027027027028
  },
- "secs": 341
+ "secs": 475
 }
