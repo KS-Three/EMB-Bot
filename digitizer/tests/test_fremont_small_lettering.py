@@ -107,6 +107,16 @@ def test_floor_shuts_the_tagline_counters_at_81(record):
     assert c92[0] == c92[1] == c92[3] == "open"
 
 
+def test_small_glyph_keep_moves_no_tier_and_shuts_the_81_counters(record):
+    """`small_glyph_keep` (936224e4, landed beside this) keeps the holes of
+    rescued small shapes. On this tagline it plans the counters and the
+    outline run around them closes them: no tier moves, 0 of 4 open."""
+    for arm in ("keep_81", "keep_floor_81"):
+        for box in fsl.BOXES:
+            assert _tiers(record, arm, box) == _tiers(record, "main_81", box)
+        assert record[arm]["boxes"]["tagline"]["counters"] == ["SHUT"] * 4
+
+
 def test_size_alone_lifts_the_word_not_the_tagline(record):
     """At 92.5 mm THE is three Column-lane satin letters (the T clears
     2.25 mm^2), the tagline and EST are still all runs."""

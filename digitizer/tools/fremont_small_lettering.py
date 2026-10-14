@@ -70,6 +70,11 @@ ARMS = {
     "wordtier_floor_81": (81.0, {"lettering_words": True, "lettering_word_tiers": True,
                                  **FLOOR},
                           "lettering_words + lettering_word_tiers + small_print_floor"),
+    # Landed on main while this was being measured (936224e4): stage 4's
+    # hole floor, the other half of the counter loss.
+    "keep_81": (81.0, {"small_glyph_keep": True}, "small_glyph_keep ON"),
+    "keep_floor_81": (81.0, {"small_glyph_keep": True, **FLOOR},
+                      "small_glyph_keep + small_print_floor ON"),
 }
 # The four arms Kent named, in his order; the controls and alternatives follow.
 KENT_ARMS = ["main_81", "floor_81", "floor_stem_81", "floor_stem_92"]
@@ -589,7 +594,8 @@ def sweep_sheet(out: Path, renders: Path, sweep: list, ppm: int = SHEET_PPM) -> 
     return path
 
 
-ZOOM_ARMS = ["main_81", "floor_81", "floor_stem_81", "floor_stem_92", "main_92"]
+ZOOM_ARMS = ["main_81", "floor_81", "floor_stem_81", "keep_81", "keep_floor_81",
+             "floor_stem_92", "main_92"]
 ZOOM_GLYPHS = [("tagline", 1, "A of EAT"), ("tagline", 9, "P of PLAY")]
 
 
