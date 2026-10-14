@@ -1,0 +1,4 @@
+Made 2026-10-14 on branch claude/bean-corners from logo_hotel_fremont.webp (already in the repo).
+The 5 of "1895" at 81 mm: grey = traced outline, yellow = the ink centreline read for it, lines and dots = the bean stations sewn.
+Left: even 0.45 mm pitch (the stations cut the corner of stem and bar). Right: bean_letter_corner_deg 50 (a station on the corner).
+A plot of the stitch path, not a thread render; nothing was sewn.

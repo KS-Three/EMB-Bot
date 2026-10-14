@@ -417,3 +417,32 @@ def test_min_arm_none_is_byte_identical_and_a_shorter_floor_keeps_a_1s_flag_and_
     _, rw = bean_letter([top, bottom, waist], "S", entry=None, trim_at_mm=3.0,
                         stitch_mm=0.45, min_arm_mm=0.3)
     assert rw["strokes"] == 2
+
+
+def test_corner_none_is_byte_identical_and_a_corner_gets_its_own_station():
+    import math
+
+    from digitizer_core.stage6_beanletter import bean_letter
+
+    # The top of Fremont's 5: a stem rising 0.55 mm into a bar running 0.8
+    # mm right, sampled like a skeleton (0.05 mm steps).
+    stem = [(0.0, 0.55 - 0.05 * i) for i in range(12)]
+    bar = [(0.05 * i, 0.0) for i in range(1, 17)]
+    spine = stem + bar
+    a, _ = bean_letter([spine], "S", entry=None, trim_at_mm=3.0, stitch_mm=0.45)
+    b, _ = bean_letter([spine], "S", entry=None, trim_at_mm=3.0, stitch_mm=0.45, corner_deg=None)
+    assert [r.points for r in a] == [r.points for r in b]
+    gap = min(math.dist(p, (0.0, 0.0)) for p in a[0].points)
+    assert gap > 0.05, f"even pitch cuts the corner (nearest station {gap:.2f} mm)"
+    c, _ = bean_letter([spine], "S", entry=None, trim_at_mm=3.0, stitch_mm=0.45, corner_deg=50.0)
+    assert min(math.dist(p, (0.0, 0.0)) for p in c[0].points) < 0.03
+
+
+def test_corner_leaves_a_round_bowl_alone():
+    import math
+
+    from digitizer_core.stage6_beanletter import _corners
+
+    # a 0.5 mm radius arc, the bowl of a 1.9 mm digit
+    arc = [(0.5 * math.cos(t / 40 * math.pi), 0.5 * math.sin(t / 40 * math.pi)) for t in range(41)]
+    assert _corners(arc, 50.0) == []

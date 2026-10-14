@@ -18,7 +18,7 @@ from __future__ import annotations
 import math
 
 from . import machine, stitches
-from .stage6_satin import _bean_along
+from .stage6_satin import _bean_along, _resample
 from .stitches import StitchRun
 
 # A LETTER whose spines total less than this is under two bean stations:
@@ -127,11 +127,87 @@ def trim_serif_hooks(spines, serif_mm: float | None):
     return out
 
 
+# A corner is found by comparing the spine's direction over this much spine
+# on either side of a point; the ink skeleton rounds a square corner over
+# about a stroke width, so the window spans that rounding.
+_CORNER_WINDOW_MM = 0.2
+# Two corners closer than this along the spine are one corner.
+_CORNER_SEP_MM = 0.3
+
+
+def _corners(spine: list, corner_deg: float) -> list[int]:
+    """Indices of `spine`'s interior points where it turns at least
+    `corner_deg` within `_CORNER_WINDOW_MM` either side, strongest first
+    wins within `_CORNER_SEP_MM`."""
+    cum = [0.0]
+    for a, b in zip(spine, spine[1:]):
+        cum.append(cum[-1] + math.dist(a, b))
+    total = cum[-1]
+    w = _CORNER_WINDOW_MM
+
+    def at(t: float):
+        t = max(0.0, min(total, t))
+        for i in range(1, len(cum)):
+            if cum[i] >= t:
+                f = (t - cum[i - 1]) / ((cum[i] - cum[i - 1]) or 1.0)
+                a, b = spine[i - 1], spine[i]
+                return (a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f)
+        return spine[-1]
+
+    turns = []
+    for i in range(1, len(spine) - 1):
+        if cum[i] < w or total - cum[i] < w:
+            continue
+        p, q, r = at(cum[i] - w), spine[i], at(cum[i] + w)
+        v1, v2 = (q[0] - p[0], q[1] - p[1]), (r[0] - q[0], r[1] - q[1])
+        n1, n2 = math.hypot(*v1), math.hypot(*v2)
+        if n1 < 1e-9 or n2 < 1e-9:
+            continue
+        c = max(-1.0, min(1.0, (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)))
+        turn = math.degrees(math.acos(c))
+        if turn >= corner_deg:
+            turns.append((turn, i))
+    picked: list[int] = []
+    for _turn, i in sorted(turns, reverse=True):
+        if all(abs(cum[i] - cum[j]) >= _CORNER_SEP_MM for j in picked):
+            picked.append(i)
+    return sorted(picked)
+
+
+def _bean_keep_corners(spine: list, stitch_mm: float | None, corner_deg: float) -> list:
+    """`_bean_along`, with a station ON every corner of the spine and the
+    rest spaced evenly between corners. At an even pitch the stations of
+    Fremont's 5 skipped the corner where its stem meets its bar, the thread
+    cut straight across it, and the top of the 5 sewed as a triangle (read
+    "A", 2026-10-14). No corner: exactly `_bean_along`."""
+    cuts = _corners(spine, corner_deg)
+    if not cuts:
+        return _bean_along(spine, stitch_mm)
+    step = stitch_mm if stitch_mm and stitch_mm > 0 else machine.BEAN_STITCH_MM
+    lap: list = []
+    bounds = [0, *cuts, len(spine) - 1]
+    for a, b in zip(bounds, bounds[1:]):
+        piece = spine[a:b + 1]
+        n = _length(piece)
+        if n <= 0:
+            continue
+        pts = _resample(piece, max(2, int(round(n / step)) + 1))
+        lap.extend(pts if not lap else pts[1:])
+    if len(lap) < 2:
+        return _bean_along(spine, stitch_mm)
+    out = list(lap)
+    for p in range(1, machine.BEAN_PASSES):
+        leg = list(reversed(lap)) if p % 2 == 1 else list(lap)
+        out.extend(leg[1:])
+    return out
+
+
 def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
                 trim_at_mm: float,
                 stitch_mm: float | None = None,
                 serif_mm: float | None = None,
-                min_arm_mm: float | None = None) -> tuple[list[StitchRun], dict]:
+                min_arm_mm: float | None = None,
+                corner_deg: float | None = None) -> tuple[list[StitchRun], dict]:
     """One letter's spines -> bean runs in sew order, plus `run_outline`'s
     report contract (and `strokes`, how many spines sewed).
 
@@ -151,7 +227,10 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
 
     `min_arm_mm` (`cfg.bean_letter_min_arm_mm`): the shortest arm with a free
     end that sews, when it should be shorter than the pitch -- a 1's flag and
-    foot. None: the pitch, as above."""
+    foot. None: the pitch, as above.
+
+    `corner_deg` (`cfg.bean_letter_corner_deg`): a turn this sharp gets a
+    station of its own (`_bean_keep_corners`). None: even pitch, as before."""
     arm_floor = stitch_mm if stitch_mm and stitch_mm > 0 else _MIN_ARM_MM
     report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False,
               "arcs": 0, "yielded": 0, "strokes": 0}
@@ -184,7 +263,8 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
         spine = todo.pop(i)
         if rev:
             spine.reverse()
-        pts = _bean_along(spine, stitch_mm)
+        pts = (_bean_keep_corners(spine, stitch_mm, corner_deg) if corner_deg
+               else _bean_along(spine, stitch_mm))
         if len(pts) < 2:
             continue
         jump = trim = False
