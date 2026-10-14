@@ -129,6 +129,7 @@ def run_one(spec: str, keep: dict | None = None) -> dict:
     densest = max(big.items(), key=lambda kv: kv[1]["density"], default=None)
     row = {
         "fixture": path, "route": route, "class": res_on.design_class,
+        "min_density": fur_regions.FUR_MIN_STRAND_DENSITY,
         "gate_ran": read is not None, "regions_read": len(read or {}),
         "fur_ids": list(res_on.hair_fur_ids or ()),
         "densest": (None if densest is None else {"id": densest[0], **densest[1]}),
@@ -179,15 +180,15 @@ def markdown(rows: dict) -> str:
     ok = {k: r for k, r in rows.items() if "error" not in r}
     lines = [
         f"Gate: area >= {fur_regions.FUR_MIN_AREA_MM2:g} mm2, >= {fur_regions.FUR_MIN_STRANDS} strands, "
-        f">= {fur_regions.FUR_MIN_STRAND_DENSITY:g} mm of strand per mm2. 80 mm, 40 wt.", "",
-        "| fixture | route | class | gate ran | regions read | fur | densest region >= area floor "
+        "strand mm per mm2 at the row's own `min density`. 80 mm, 40 wt.", "",
+        "| fixture | route | class | gate ran | regions read | min density | fur | densest region >= area floor "
         "(id, mm/mm2, strands, mm2) | OFF vs ON |",
-        "|---|---|---|---|---|---|---|---|"]
+        "|---|---|---|---|---|---|---|---|---|"]
     for k, r in ok.items():
         d = r["densest"]
         dd = "-" if d is None else f"{d['id']} {d['density']:.3f} / {d['strands']} / {d['area_mm2']:.0f}"
         lines.append(f"| {r['fixture']} | {r['route']} | {r['class']} | {'yes' if r['gate_ran'] else 'no'} "
-                     f"| {r['regions_read']} | {len(r['fur_ids'])} | {dd} | "
+                     f"| {r['regions_read']} | {r.get('min_density', 0.25):g} | {len(r['fur_ids'])} | {dd} | "
                      f"{'identical' if r['identical'] else '**moved**'} |")
     moved = {k: r for k, r in ok.items() if not r["identical"]}
     if moved:
@@ -296,6 +297,8 @@ def main(argv=None) -> int:
     utf8_console()
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out", default=str(OUT_DIR))
+    ap.add_argument("--min-density", type=float, default=None,
+                    help="override fur_regions.FUR_MIN_STRAND_DENSITY for this run (a looser candidate)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
     r.add_argument("--fixtures", default="")
@@ -307,6 +310,8 @@ def main(argv=None) -> int:
     d.add_argument("--fixture", default="photo/owl_kent.jpg@studio")
     d.set_defaults(fn=cmd_render)
     args = ap.parse_args(argv)
+    if args.min_density is not None:
+        fur_regions.FUR_MIN_STRAND_DENSITY = args.min_density
     return args.fn(args)
 
 

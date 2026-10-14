@@ -1631,8 +1631,14 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
 
     # Fur regions on the streamline tier (`cfg.hair_regions_directional`,
     # default OFF; `fur_regions`). Only regions the gate read in
-    # `finish_generation`, and only with the raster that read them.
-    if (fur_regions.applies(cfg, result.design_class)
+    # `finish_generation`, and only with the raster that read them. Not where
+    # every fill already sews streamline (photo_subject's auto-route, or the
+    # caller's own `fill_technique`): there a per-shape tier would only move
+    # the shape off the `auto` paths (the satin and border predictions) and
+    # change nothing about its fill (census, owl_kent `classical`).
+    already = (auto_photo_tier(cfg, result.design_class, result.faces_present)
+               or cfg.fill_technique or "tatami").lower() == fur_regions.TIER
+    if (fur_regions.applies(cfg, result.design_class) and not already
             and getattr(result, "hair_fur_ids", None)
             and result.source_pixels is not None):
         stitched_regions = fur_regions.route(stitched_regions, result.hair_fur_ids)

@@ -51,13 +51,18 @@ def _drawn():
         cv2.rectangle(img, _px(x0, y0, o), _px(x0 + 20, y0 + 20, o), GROUND, -1)
     fx, fy = patches["fur"]
     rng = np.random.default_rng(7)
-    for row in range(9):
-        for col in range(4):
-            x = fx + 2.0 + col * 4.5 + rng.uniform(-0.5, 0.5)
-            y = fy + 1.5 + row * 2.0 + rng.uniform(-0.3, 0.3)
-            a = math.radians(70 + rng.uniform(-10, 10))
-            p, q = (x, y), (x + 3.5 * math.cos(a), y + 3.5 * math.sin(a))
-            cv2.line(img, _px(*p, o), _px(*q, o), STRAND, 2, cv2.LINE_AA)
+    # Short strands, 5 mm long, one row per mm, staggered: a fur texture
+    # about 0.8 mm of strand per mm2.
+    for row in range(19):
+        y = fy + 1.0 + row * 1.0
+        x = fx + 0.5 + (row % 3) * 2.0 - 2.0
+        while x < fx + 19.5:
+            a = math.radians(8 + rng.uniform(-4, 4))
+            p = (max(x, fx + 0.5), y)
+            q = (min(x + 5.0 * math.cos(a), fx + 19.5), y + 5.0 * math.sin(a) * 0.2)
+            if q[0] - p[0] > 1.0:
+                cv2.line(img, _px(*p, o), _px(*q, o), STRAND, 2, cv2.LINE_AA)
+            x += 6.0
     sx, sy = patches["single"]
     cv2.line(img, _px(sx + 10, sy + 2, o), _px(sx + 10, sy + 18, o), STRAND, 2, cv2.LINE_AA)
     sp = SourcePixels(rgb=cv2.cvtColor(img, cv2.COLOR_BGR2RGB), px_per_mm=PX_MM, origin_px=o)
@@ -141,13 +146,13 @@ def test_route_is_a_copy_and_an_override_wins():
     assert "tier" not in regions[0].meta                   # caller untouched
 
 
-def _result(sp, regions, fur_ids):
+def _result(sp, regions, fur_ids, design_class="photo_scene"):
     palette = [{"brand": CHART.label, "brand_id": CHART.id, "number": CHART[3].number,
                 "name": "x", "rgb": list(CHART[3].rgb)}]
     return PipelineResult(regions=regions, palette=palette,
                           background=BackgroundInfo(detected=False), px_per_mm=PX_MM,
                           design_size_mm=(W_MM, H_MM), source_pixels=sp,
-                          design_class="photo_scene", hair_fur_ids=fur_ids)
+                          design_class=design_class, hair_fur_ids=fur_ids)
 
 
 def _md5(plan):
@@ -162,9 +167,28 @@ def test_a_fur_region_sews_streamline_on_and_tatami_off():
     off = plan_stitches(res, PipelineConfig(hair_regions_directional=False))
     on = plan_stitches(res, PipelineConfig(hair_regions_directional=True))
     assert _md5(off) != _md5(on)
-    streamline = plan_stitches(res, PipelineConfig(shape_overrides={"S_fur": {"tier": "streamline"}}))
-    assert _md5(on) == _md5(streamline)      # exactly the review screen's own route
+    # Exactly the review screen's own route: the region's `tier` set to
+    # streamline (what `apply_shape_overrides` writes), the flag off.
+    forced = fur_regions.route(fur_only, ("S_fur",))
+    streamline = plan_stitches(_result(sp, forced, None), PipelineConfig())
+    assert _md5(on) == _md5(streamline)
     assert all(r.kind != stitches.UNDERLAY for _, r in on.iter_runs())
+
+
+def test_where_every_fill_is_already_streamline_nothing_moves():
+    """photo_subject's auto-route sews every fill streamline already; a
+    per-shape tier there only took the shape off the `auto` paths (the owl's
+    `classical` route moved at 0.25 in the census for exactly that)."""
+    sp, regions = _drawn()
+    res = _result(sp, [regions[0]], ("S_fur",), design_class="photo_subject")
+    off = plan_stitches(res, PipelineConfig(hair_regions_directional=False))
+    on = plan_stitches(res, PipelineConfig(hair_regions_directional=True))
+    assert _md5(off) == _md5(on)
+    res = _result(sp, [regions[0]], ("S_fur",))
+    off = plan_stitches(res, PipelineConfig(fill_technique="streamline"))
+    on = plan_stitches(res, PipelineConfig(fill_technique="streamline",
+                                           hair_regions_directional=True))
+    assert _md5(off) == _md5(on)
 
 
 def test_a_result_built_without_the_gate_routes_nothing():

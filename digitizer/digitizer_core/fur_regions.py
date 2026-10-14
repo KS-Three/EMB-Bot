@@ -48,9 +48,18 @@ from .config import PHOTO_CLASSES
 FUR_CLASSES = ("gradient", *PHOTO_CLASSES)
 
 # CANDIDATES (plan quality, not cloth; module docstring and the PR census).
+# A region under the area floor is a strand or a sliver, not a field; under
+# the strand count it is one line along a shape.
 FUR_MIN_AREA_MM2 = 25.0
 FUR_MIN_STRANDS = 4
-FUR_MIN_STRAND_DENSITY = 0.25    # mm of strand per mm2 of region
+# mm of strand per mm2 of region. Census 2026-10-13 (`tools/
+# fur_regions_census.py`, 80 mm): the densest qualifying region on the nine
+# logos is logo_bridge_bar's, 0.70 (9 strands); on owl_kent (Studio route)
+# the bristle patch beside the beak, 0.72 (4 strands); the owl's body reads
+# 0.025. Nothing separates the two, so the candidate sits above every logo
+# and the corpus routes NOTHING: a measured negative, the gate shipped for
+# the photo it was built for. At 0.25 both regions route (the PR's bill).
+FUR_MIN_STRAND_DENSITY = 0.75
 
 TIER = "streamline"
 
