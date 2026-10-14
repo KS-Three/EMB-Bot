@@ -19,6 +19,7 @@ from digitizer_core.layer_density import (CEILING_LAYERS, cells_past_ceiling_mm,
 from digitizer_core.stage2_photo_segment import split_tonal_regions, tonal_veto_px
 from digitizer_core.stage3_segment import RegionMask
 from digitizer_core.stitches import StitchBlock, StitchPlan, StitchRun
+from tests.conftest import own_thread_only
 
 ROW = machine.FILL_ROW_MM
 RAMP = Path(__file__).resolve().parent.parent / "testdata" / "photo" / "gradient_ramp_linear.png"
@@ -162,8 +163,10 @@ def stub(monkeypatch):
             return _plan(_fill(1), _fill(1, x0=30.0))
         return _plan(_fill(1), _fill(5, x0=30.0))     # worse
 
-    monkeypatch.setattr(pipeline, "run_stages", run_stages)
-    monkeypatch.setattr(pipeline, "plan_stitches", plan_stitches)
+    monkeypatch.setattr(pipeline, "run_stages",
+                        own_thread_only(run_stages, pipeline.run_stages))
+    monkeypatch.setattr(pipeline, "plan_stitches",
+                        own_thread_only(plan_stitches, pipeline.plan_stitches))
     return calls, state
 
 

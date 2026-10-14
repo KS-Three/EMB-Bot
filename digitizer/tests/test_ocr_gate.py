@@ -40,7 +40,7 @@ as expected behaviour will read as a regression when the defect is fixed.**
 """
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -57,6 +57,7 @@ from digitizer_core.textcluster import (
 )
 
 from .conftest import requires_tesseract
+from tests.conftest import own_thread_only
 
 _P = Prep(rgb=None, bg_mask=None, px_per_mm=1.0, art_bbox=(0, 0, 1, 1))
 
@@ -174,13 +175,15 @@ def test_gate_fires_exactly_at_the_threshold_boundary():
     values -- deterministic, independent of any real OCR reading, so this
     one bit of control flow stays pinned even if Tesseract's own numbers
     ever drift on some other machine."""
-    with patch("digitizer_core.textcluster._ocr_confidence",
-               side_effect=[80.0, 80.0 - _OCR_CONFIDENCE_DROP_THRESHOLD]):
+    with patch("digitizer_core.textcluster._ocr_confidence", own_thread_only(
+            MagicMock(side_effect=[80.0, 80.0 - _OCR_CONFIDENCE_DROP_THRESHOLD]),
+            _ocr_confidence)):
         assert _ocr_regularization_hurts_legibility(
             _block_letter_polygon("I"), _block_letter_polygon("T")) is True
 
-    with patch("digitizer_core.textcluster._ocr_confidence",
-               side_effect=[80.0, 80.0 - _OCR_CONFIDENCE_DROP_THRESHOLD + 0.1]):
+    with patch("digitizer_core.textcluster._ocr_confidence", own_thread_only(
+            MagicMock(side_effect=[80.0, 80.0 - _OCR_CONFIDENCE_DROP_THRESHOLD + 0.1]),
+            _ocr_confidence)):
         assert _ocr_regularization_hurts_legibility(
             _block_letter_polygon("I"), _block_letter_polygon("T")) is False
 

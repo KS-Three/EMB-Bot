@@ -37,6 +37,7 @@ from digitizer_core.stage6_blend import (
 )
 from digitizer_core.stage6_fill import principal_angle_deg, stitch_shape
 from digitizer_core.threads import CHART
+from tests.conftest import own_thread_only
 
 HERE = Path(__file__).resolve().parent
 PHOTO_DIR = HERE.parent / "testdata" / "photo"
@@ -594,7 +595,8 @@ def test_blend_marks_jump_between_multiple_parts_of_one_band(monkeypatch):
             return [part_a, part_b]
         return real_band_clip(poly, model, t_lo, t_hi)
 
-    monkeypatch.setattr(blend_mod, "_band_clip", fake_band_clip)
+    monkeypatch.setattr(blend_mod, "_band_clip",
+                        own_thread_only(fake_band_clip, real_band_clip))
 
     runs, report = blend_fill(region, source, cfg)
     first_layer = _layers_of(runs)[f"{region.shape_id}-blend0"]
@@ -1258,7 +1260,7 @@ def test_stage7_hands_the_blend_tier_the_compensated_polygon_and_the_tongue_is_s
         seen.append((region, kw.get("polygon"), kw.get("row_mm")))
         return real(region, sp, cfg, start_near, **kw)
 
-    monkeypatch.setattr(s7, "blend_fill", spy)
+    monkeypatch.setattr(s7, "blend_fill", own_thread_only(spy, real))
 
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
     result = run_stages(str(PHOTO_DIR / "repro_gradient_white_icon.png"), cfg)

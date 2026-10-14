@@ -111,7 +111,18 @@ def read_cluster_ink(p, members: list) -> list[MemberInk]:
     S = ppm * up                                   # working pixels per millimetre
     big = cv2.resize(np.ascontiguousarray(p.rgb[Y0:Y1, X0:X1]), None, fx=up, fy=up,
                      interpolation=cv2.INTER_CUBIC)
-    fg = cv2.resize((~p.bg_mask[Y0:Y1, X0:X1]).astype(np.float32), None, fx=up, fy=up,
+    # On a cutout the ink is the opaque pixels. `bg_mask` is only the
+    # transparency CONNECTED TO THE BORDER; a letter's counter is transparency
+    # too but sits in `enclosed_mask`, which stage 1 counts as foreground. Read
+    # as ink it filled every counter: Enthusiast's "ENTERPRISES" at 80 mm sewed
+    # its P's bowl and the top of its stem as nothing, and the P read as an "r"
+    # (2026-10-13). On the colour path the counter is read by its colour, so
+    # only the alpha path needs it.
+    fg_src = ~p.bg_mask[Y0:Y1, X0:X1]
+    enclosed = getattr(p, "enclosed_mask", None)
+    if bool(getattr(p, "bg_from_alpha", False)) and enclosed is not None:
+        fg_src = fg_src & ~enclosed[Y0:Y1, X0:X1]
+    fg = cv2.resize(fg_src.astype(np.float32), None, fx=up, fy=up,
                     interpolation=cv2.INTER_CUBIC)
     H, W = big.shape[:2]
 
