@@ -185,14 +185,17 @@ def test_counters_open_on_the_synthetic_word_at_three_millimetres():
     # width) lose their text tag at this size and fall to the FILL tier:
     # all four of their counters sewn solid OFF, held open ON (part 2).
     # Measured 0.63 / 0.69 (the 8) and 0.29 / 0.39 (the 0, whose slash is
-    # a bar thinner than the hold and is kept: its thread still covers the
-    # counters beside it).
+    # a bar thinner than the hold and was kept edge to edge: its thread
+    # covered the counters beside it). Part 4 (2026-10-14): 0.94 / 0.91
+    # and 0.74 / 0.79 -- the counters recorded as their own rings and the
+    # slash narrowed about its middle -- and no counter of the ten shut.
     x_8 = 0.25 * off["width_mm"]
     fill_off = [c["open"] for c in off["per_counter"] if c["at"][0] > x_8]
     fill_on = [c["open"] for c in on["per_counter"] if c["at"][0] > x_8]
     assert len(fill_off) == len(fill_on) == 4
     assert max(fill_off) < 0.05, fill_off
-    assert min(fill_on) >= 0.2 and sum(fill_on) / 4 >= 0.4, fill_on
+    assert min(fill_on) >= 0.5, fill_on
+    assert on["counters_shut"] == 0, on["per_counter"]
     # stage 4 recorded the counters its floor dropped, ON only, and left
     # every polygon as the floor made it
     assert not any("small_counters" in r.meta for r in r_off.regions)
@@ -494,3 +497,101 @@ def test_bar_columns_station_the_bar_between_two_counters():
         stations=[((-2, -2), (2, -2)), ((-2, 0), (2, 0)), ((-2, 2), (2, 2))],
         piece=letter, kind="straight", axis=(0, 1), width_mm=4.0)
     assert _bar_columns(letter, [sewn], 0.4) == []
+
+
+# --- part 4: the counters still shut (2026-10-14) -------------------------------
+#
+# With the floor ON, two counters still sewed shut at a 3 mm cap
+# (`tools/small_print.py`): golden_tee's O (run tier, 0.42 open) and the
+# synthetic slashed 0's two counters (fill tier, 0.29 / 0.39). Three
+# causes, each fixed under the same flag:
+#
+# - stage 4 recorded a dropped counter as its Douglas-Peucker ring, whose
+#   chords lie INSIDE the hole: the 0's half-moons came back as triangles
+#   a third smaller, and every hold was measured from them;
+# - the run tier sews a counter's ring as 0.73 mm bean chords between
+#   points on the ring, and each chord cuts into the counter by its
+#   sagitta (the O's counter was sewn as a pentagon);
+# - a bar between two counters thinner than the hold is kept, and the fill
+#   sewed it edge to edge: its thread spilled half a laid width into both
+#   counters (the 0's slash).
+
+from digitizer_core.stage6_border import run_outline  # noqa: E402
+
+
+def test_the_new_arguments_default_to_the_old_cut():
+    letter = Polygon(_square(0, 0, 1.0))
+    top, bottom = Polygon(_square(0, 0.4, 0.25)), Polygon(_square(0, -0.4, 0.25))
+    old = small_print_clear(letter, [top, bottom], 0.2, art=letter)
+    assert small_print_clear(letter, [top, bottom], 0.2, art=letter,
+                             chord_mm=None, bar_mm=None).equals(old)
+
+
+def test_the_run_tiers_chords_keep_the_hold():
+    """An O at a 3 mm cap (golden_tee's: a 0.93 mm counter, a 0.3 mm
+    stroke). The run sews the counter's ring as bean chords; held only by
+    half a laid width at the ring, the chords cut back into the counter.
+    Grown for the chords, the ring moves out toward the letter's edge and
+    never through it."""
+    letter = _ring(0.77, 0.465)
+    counter = Polygon(letter.interiors[0])
+    flat = small_print_clear(letter, [counter], 0.2, art=letter)
+    held = small_print_clear(letter, [counter], 0.2, art=letter, chord_mm=machine.BEAN_STITCH_MM)
+    assert held.geom_type == "Polygon" and len(held.interiors) == 1
+    assert Polygon(held.exterior).equals(Polygon(letter.exterior))
+    assert Polygon(held.interiors[0]).contains(Polygon(flat.interiors[0]))
+    o_flat = _open_share(run_outline(flat, "S1", entry=None, trim_at_mm=3.0)[0], counter)
+    o_held = _open_share(run_outline(held, "S1", entry=None, trim_at_mm=3.0)[0], counter)
+    assert o_held >= o_flat + 0.15 and o_held >= 0.8, (o_flat, o_held)
+    # through `sequence`, the run tier's call carries the bean chord (measured 0.63 -> 0.87)
+    on = _sequenced([(letter, {"tier": "run", "text_candidate": True})], True)
+    assert _open_share(on, counter) == pytest.approx(o_held, abs=0.02)
+
+
+def test_a_thin_bar_is_narrowed_about_its_middle():
+    """The fill tier's keep: a 0.3 mm bar between two counters is narrowed
+    to a band one row wide about its middle, so its rows' thread spills
+    less into either counter. A bar no wider than the row is kept whole."""
+    letter = Polygon(_square(0, 0, 1.0))
+    top, bottom = Polygon(_square(0, 0.4, 0.25)), Polygon(_square(0, -0.4, 0.25))
+    whole = small_print_clear(letter, [top, bottom], 0.2, art=letter)
+    narrow = small_print_clear(letter, [top, bottom], 0.2, art=letter, bar_mm=0.15)
+    assert narrow.covers(Point(0, 0)) and narrow.covers(Point(0, 0.05))
+    assert whole.covers(Point(0, 0.12)) and not narrow.covers(Point(0, 0.12))
+    assert narrow.geom_type == "Polygon" and whole.contains(narrow)
+    assert small_print_clear(letter, [top, bottom], 0.2, art=letter, bar_mm=0.3).equals(whole)
+
+
+def test_a_small_slashed_zero_keeps_its_slash_in_the_fill_tier(monkeypatch):
+    """A slashed 0 at a ~3 mm cap the way stage 4 hands the synthetic one
+    over: one filled polygon, its two counters dropped by the sliver floor
+    and recorded (a 0.32 mm slash between). Sewn by tatami ON, both
+    counters open, the slash is still under thread, and the narrowed slash
+    opens them no less than the slash kept edge to edge. (The traced 0 at
+    3 mm: 0.42 / 0.57 -> 0.74 / 0.79, the done-test above.)"""
+    zero, _slash = _slashed_zero(outer=0.95, inner=0.68, bar=0.32)
+    counters = [Polygon(r) for r in zero.interiors]
+    assert len(counters) == 2
+    letters = [(Polygon(zero.exterior),
+                {"small_counters": [[list(p) for p in c.exterior.coords] for c in counters]})]
+    on = _sequenced(letters, True, satin=False)
+    assert stitches.FILL in {r.kind for r in on}
+    opens = [_open_share(on, c) for c in counters]
+    assert min(opens) >= 0.7, opens                       # measured 0.80 / 0.81
+    segs, prev = [], None
+    for r in on:
+        pts = ([prev] if prev is not None and not r.jump else []) + list(r.points)
+        segs += [LineString([p, q]) for p, q in zip(pts, pts[1:]) if p != q]
+        prev = r.points[-1]
+    for t in (-0.3, 0.0, 0.3):
+        c = Point(t * math.cos(math.radians(65)), t * math.sin(math.radians(65)))
+        assert min(s.distance(c) for s in segs) <= 0.2, t
+    # the same letter with the slash kept edge to edge (no `bar_mm`)
+    from digitizer_core import stage7_sequence
+    orig = stage7_sequence.small_print_clear
+    monkeypatch.setattr(stage7_sequence, "small_print_clear",
+                        lambda *a, bar_mm=None, **k: orig(*a, **k))
+    whole = [_open_share(_sequenced(letters, True, satin=False), c) for c in counters]
+    assert min(opens) >= min(whole), (opens, whole)     # measured 0.75 / 0.79
+
+
