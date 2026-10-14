@@ -4240,6 +4240,20 @@ class PipelineConfig:
     # or without tesseract — so off is never mistaken for clean. False is the
     # pre-flip report byte for byte.
     legibility_check: bool = True
+    # Glyph legibility as preflight METRICS (`preflight._glyph_legibility_
+    # metrics`, `digitizer_core/glyph_read.py`): the per-glyph SHAPE read of
+    # `tools/glyph_legibility.py` -- strokes, clean, counters -- on every word
+    # of text-tagged shapes, the thread render against the artwork it was
+    # traced from. It sees what the OCR check above cannot: Hotel Fremont at
+    # 81 mm on a hat reads `ARTWORK_UNCOVERED` null and its tagline's three
+    # A counters sewn shut. Metrics only (`glyph_legibility_min`,
+    # `glyph_legibility_mean`, `counters_shut`, per-word rows): no finding,
+    # no deduction, nothing the customer sees (Kent 2026-10-02). DEFAULT OFF
+    # because it is not free: one thread render at 20 px/mm plus the glyph
+    # read, 2.6-2.8 s warm on Fremont 81 mm on the loaded laptop
+    # (2026-10-14), on every job with lettering. OFF, the report is the
+    # pre-change report byte for byte (no key is written).
+    preflight_glyph_metric: bool = False
 
     # Stage 7 — chaining. Whether a needle-up move that would be trimmed may
     # instead be sewn as a needle-down link, when its path is buried under a
