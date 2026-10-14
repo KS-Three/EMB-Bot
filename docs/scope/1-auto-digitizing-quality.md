@@ -4796,3 +4796,154 @@ Three measurements the ranking rests on: the curve gate reaches **2 of 29** fixt
 ### Closed defect 54 in full (as of 2026-10-03)
 
 54. a ring that says a point TWICE running (handed over CLOSED: its first point again at the end) got a WEDGE from the BROWSER builder's `offsetRing` — FIXED 2026-10-03 (`distinctCorners`, `digitize.js`: the corners said once are what `offsetRing` moves and what `isConvexRing` reads). The repeat is an edge of no length; its two ends were each moved along one neighbour's normal, the first by three times the distance. Under a preset the fill is sewn to the moved rings, so the wedge was sewn: a 40 mm box on terry was filled 1.8 mm outside the drawing at its first corner, where 0.6 is right; a closed hole and a closed island the same, and with `fillColumns` the edge run. **Exported stitches change for a ring that says a point twice, under a preset or with `fillColumns`, and for no other** (4,536 outputs on rings that do not: identical). **No Studio lane hands over an EXACT repeat**: none in 24,985 rings from basic shapes, the image lane and trace import, and a hand-drawn one is refused as crossing itself. `parseSVG` and `fonts.js` do hand them over, and nothing in the Studio calls either. **A NEAR repeat is another matter and was in the Studio's reach: defect 55 (its gesture cured, its offset open).** Older than every flag. Left: the auto angle, a satin shape's centre run, the edge run drawn toward the centroid and the order of a colour's shapes are read off the POINTS, so a closed ring's underlay still differs. Independently audited: the fix held, five sentences of its record did not and are corrected. `tools/closed-ring-census.mjs`, `test/digitize.test.js`. Full text: scope-history 10-03.
+
+## Overflow moved from MASTER_SCOPE (2026-10-14, sixth pass)
+
+Moved verbatim from `MASTER_SCOPE.md` by the sixth-pass refresh (PRs #919-#928) to keep the file under its word budget. Each entry stood as written after PR #917 / the fifth pass; the live text in MASTER_SCOPE carries the verdict and the current numbers.
+
+### Waiting on Kent 51 (`small_glyph_keep`) as it stood after PR #917
+
+51. **RESOLVED 2026-10-14 — `cfg.small_glyph_keep` is ON (Kent, option A, 2026-10-13: flip now, the sew-out block follows; PR #908 merged,
+   `config.py` default True).** Built OFF in PR #902: keeps a rescued small shape's holes down to 0.16 mm² (stage 4) and plans a wholly
+   clipped one on its artwork (stage 5). Fremont's "1895" at 81 mm on a Hat goes from "098" to "1895" (15,306 → 15,611 stitches, trims
+   44 → 46); 4 of 5 corpus logos byte-identical, drone gains one 0.313 mm² speck (+21 stitches, +1 trim). **The price, measured after the
+   flip (#908):** it does not make the tagline legible — the A counters are in the plan and the 0.4 mm thread sews over them (0.02 of each
+   left bare), so at 81 mm 3 of 4 tagline counters bare-unplanned → 0 of 4, all shut, and at 92.5 mm none stays open (3 were with the flag
+   OFF). The tagline needs `small_lettering_skeleton` (item 54). Both floors it moves are candidates (gate 1); card v3 block N (#910) sews OFF
+   against ON. Open gap: the 8's lower counter (a 2.05 mm ring, under `RUN_MIN_LOOP_MM` 2.2). Detail: area 1, "Kent's Fremont 81 mm report".
+   *(ruled 2026-10-13 — PRs #902, #908; measured 2026-10-13/14 — #905, #908, `tests/test_small_glyph_keep.py`)*
+
+### Waiting on Kent 53 (`satinZigzag`) as it stood after PR #917
+
+53. **RESOLVED 2026-10-13 — Kent ruled `satinZigzag` ON for Studio text satin (PR #904, merged 2026-10-14, on a
+   before/after render; not sewn).** One rail leads so every stitch crosses (area 2); `satinZigzag: false` gives the old
+   stream. **A cost the ruling's picture did not show:** where split satin fires the return leg is a full cross with its own
+   split penetrations, so `manga_impact` "AB" goes 12,492 → 21,070 stitches at 198 mm and 27,033 → 48,079 on a Full Back
+   (+69% / +78%), no segment over a DST record, worst sewn segment 4.96 mm either way. Small text: same stitch count,
+   +10 to +28% thread. PR #904's body says the ruling rested on a small-text picture and that auto-merge was not to be armed
+   until Kent had seen the big-text bill; it is merged, and whether he saw that bill is `suspected` not (not recorded).
+   Sew-out owed (gate 1). *(measured 2026-10-13 — PRs #901, #904, `test/satinplay.test.js`)*
+
+### Waiting on Kent 55 (Column lane ends) as it stood after PR #917
+
+55. **Column lane ends: `lettering_columns_square_ends` + `lettering_columns_inside_connectors` — Kent RULED ON; the flip is in
+   flight (`claude/letter-ends-on`, no merged PR when this was written).** Built OFF in PR #907 (`square_ends`) and #912
+   (`inside_connectors` plus three refinements: N foot mitre, M vertex corner, thin-cross reach). Fremont 81 mm Hat: ends more
+   than 0.10 mm past their face 36 → 0 (worst stub 0.41 → 0.048 mm), the M's travel across its counter gone, the N foot's cap
+   39.9° → under 5°; six fixtures, ends past their face 15–55 → 0–2 under #907 and 0 under #912. **Costs standing:** Becker gains 3
+   trims (22 → 25: three in-letter hops with no route on the letter now jump), bare outline stays above OFF on fremont 92.5
+   (+0.11 mm²) and drone (+0.31 mm²), becker stitches 6,011 → 6,150. 45°, the 8°/45° mitre bounds, 10° and 0.10 mm are candidates
+   sized on no fixture. Card v3.1 blocks X (Fremont E, M, O, N) and B (Becker MARINE) check it on cloth. *(ruled 2026-10-13 — Kent,
+   relayed by the director; measured 2026-10-13/14 — PRs #907, #912, `tools/column_ends.py`, `tests/test_column_ends.py`)*
+
+### Waiting on Kent 56 (true-size small lettering options) as it stood after PR #917
+
+56. **True-size small lettering options — built OFF, none sewn; #909 KEPT (Kent) after it merged in error.** `small_text_cap_mm`
+   (#909) enlarges a small line to a cap height; Kent: *"you can't change the font size for the final product"*, so it stays OFF
+   and is not the route. The true-size route is `small_text_restore_mm` + `bean_letter_stitch_mm` (#911: retrace the line's
+   letters from the source raster so counters survive, adopt untagged letters, a station pitch for bean letters only) and
+   `bean_letter_serif_mm` (#914: trim slab-serif hooks off bean spines). Hotel Fremont 92.5 mm with restore 3.0,
+   `bean_letter_max_stroke_mm` 0.4, pitch 0.45 and serif 0.45: the date reads "EST 1895" in the render (hooks kept: "B8T 1895";
+   untreated: about "EST 1093"), 17,378 → 17,402 stitches, 52 → 54 trims. #909 reads "EST 1895" too (17,379 stitches, trims 52 → 42), by redrawing the line larger. That is four values for one render of one logo at one size
+   (3.0, 0.4, 0.45, 0.45 and 50° are candidates, gate 1); `bean_letter_max_stroke_mm` 0.4 also turns the tagline into
+   centrelines, unlooked-at elsewhere. **Overlap with item 54:** #913's skeleton run attacks the same problem another way;
+   the two have not been compared on one render and only one should be on: his. *(measured 2026-10-13 — PRs #909, #911, #914,
+   `tests/test_small_text.py`)*
+
+### Waiting on Kent 37: the `SPEC_ARMS` bullet (retired by PR #926)
+
+   - **Eye-pairs `SPEC_ARMS` still list `lettering_columns` as an OFF arm** (`tools/eye_pairs/pairs.py`), now equal to the base; waits on a tidy-up.
+
+### Waiting on Kent 45: hair reach and chaining as they stood after PR #917
+
+   `tools/hairline_travel.py`.** **Hair reach (#915, measure only, merged):** the Studio sends `owl_kent` down `gradient`, which the line route excludes; forced there it sews 52 strands, 4 in the bristle box, +36 trims, bare 0.0. The bristle box holds 1-6 strands across 90-250 mm and work grids 4-16 px/mm, and a bigger DESIGN pushes it DOWN (4 at 127 mm, 2 at 180, 1 at 250). On drawn hair the line route REPLACING the region tier regresses (hair_strands 28,014 → 33,448 stitches, +23 trims). Proposed, not built: `cfg.hairline_lines_gradient` OFF as a supplement; expected value small. **Chaining (#917, merged, `cfg.hairline_lines_chain` OFF):** a strand-to-strand hop of 8 mm or less sews needle-down only over laid thread; owl_kent 9 hops, trims 421 → 418, corrected bare thread unchanged, a no-op with the strand test; 3 of 4 hops differ by 12 L* or more from the fill (a short visible line); the 8 mm is a candidate (gate 3). The flip is his, after the card. Full text: [area 1](docs/scope/1-auto-digitizing-quality.md#overflow-moved-from-master_scope-2026-10-14-fifth-pass).
+
+### Waiting on Kent 45: standing numbers as they stood after PR #917
+
+   (blocks A–E, 40 and 60 wt). Flipping `hairline`, `hairline_over_ground`, every 60/75 wt value and the 1.5 mm stitch wait on sewing it. Standing numbers:
+   with both guards bare fabric is within 0.3–1.5 mm² of OFF on screenshot, drone, summit and Fremont, but gaulke's 7.06 mm² "ground gap" is not cured
+   (#892: 6.29 of 6.41 mm² is rim; the one lever left is `hairline_run_width_mm`, gate 1). On owl_kent the line route sews 75 strands and only 5 reach the
+   facial bristles; **the strand test (#897) halves the barring (31 → 15) and keeps the 5 bristles, but drops the head-outline wisps (37 → 7) and would
+   refuse dense hair**, so it stays OFF (in-sample, one photo at 4.36 px/mm). **Hairline travel (#895, MEASURED NEGATIVE):** the rise in thread over bare
+   fabric is trimmed FLIGHTS, not thread; the real cost is +6 trims inside block 0's hairline shapes. **INSTRUMENT BLIND SPOT:
+   `tests/test_chaining.py::_thread_bare_mm` never reads `run.jump` / `run.trim`, so it counts the walk-in after a trimmed jump as thread; use
+
+### Waiting on Kent 47 (`small_print_floor`) as it stood after PR #917
+
+47. **`small_print_floor` flip — waits on card v2 block F (gate 1).** PRs
+   #873, #878, #880, flag OFF, OFF byte-identical (md5 pins): at 3–4 mm caps a
+   counter sewn shut is the worst defect, so the flag keeps counters stage 4
+   drops and holds penetrations half a laid width off them, in the Column lane
+   (#873), now also the run and fill tiers (#878) and with no Column-lane
+   stitch over a counter (#880). Measured (40 wt render, not cloth): synthetic
+   BOARD at 3 mm counters shut 8/10 → 2/10, Fremont's tagline 0/4 shut with
+   zero stitches over a counter at 3–5 mm (the A's float-hair regression found
+   in #878 is fixed in #880). Costs: dust 0.103 → 0.131 at 3 mm, +25–52 stitches.
+   Still shut: the synthetic 0's two counters beside the slash, golden_tee's O
+   at 3 mm. **At Kent's 81 mm hat replay it does the opposite (#905):
+   all four Fremont tagline counters shut** (0.50–0.85 mm across against a 0.40 mm thread; bare share 0.10–0.24 each; +150
+   stitches, +2 trims) — it is a counter flag, not a tier flag, and at 92.5 mm it keeps the three A's open. Counter floor (one laid width) and hold are candidates; block F
+   sews BOARD at 4 and 3 mm, OFF/ON. *(measured 2026-10-13 — PRs #873, #878,
+   #880, #877, `tools/small_print.py`, `tests/test_small_print.py`)*
+
+### Waiting on Kent 54 (`small_lettering_skeleton`) as it stood after PR #917
+
+54. **`small_lettering_skeleton` — built OFF (PR #913); the flip and the floor are his, after the card v3.1 sew-out (gate 1).**
+   Small lettering at or under one laid thread wide sews as ONE run down each letter's middle instead of a bean outline.
+   Fremont 81 mm Hat replay with the stitch floor at 0.73 mm (`small_lettering_skeleton_floor_mm`): 11 of the tagline's 13
+   glyphs take it, sewn width 0.47–0.73 → 0.42–0.43 mm, stitches 15,306 → 14,886, trims 44 → 44, mean glyph legibility 0.844 →
+   0.916; at the default 1.0 mm floor 6 take it (15,124). EST (1.35 mm caps) and THE are declined and unchanged. **Counter
+   trade-off:** a 0.40 mm thread round a 0.5 mm counter leaves 20–40% bare (P 0.15 → 0.38). OFF is md5-pinned on the three
+   flat-lane goldens; ON leaves becker, bridge, golden_tee and drone identical and changes enthusiast's "ENTERPRISES INC" (2,428 →
+   2,102 stitches at 0.73), where the R of PRISES reads closer to an A. Whether 0.73 mm stitches hold (shred, looping) is `MIN_STITCH_MM` 1.0's own question: 0.73, 1.0 and the 10% shape
+   tolerance are candidates. Card v3.1 blocks S and E2 sew it (PR #916, merged; handed to Kent). *(measured 2026-10-13/14 — PR #913,
+   `tools/small_lettering_skeleton.py`, `tests/test_small_lettering_skeleton.py`)*
+
+### Area 1, Kent's Fremont 81 mm Hat report: what the existing flags do at 81 mm (#905), as it stood after PR #917
+
+**What the existing flags do at 81 mm (#905, measure only):** `small_print_floor` is a counter flag, not a tier flag, and it SHUTS all four tagline counters (item 47); `lettering_columns_small_stem` does nothing here; `small_glyph_keep` (now ON) keeps counters in the plan and the thread sews over them (item 51); size alone fixes THE's tiers (the T clears 2.25 mm² at 92.5 mm). The tagline and EST strokes (0.22–0.30 mm) are thinner than one thread, so every run construction sews them 1.6–3.2× wide; THE's blob is the hat preset's 0.4 mm pull (item 57). *(measured 2026-10-13 — PR #905, `tools/fremont_small_lettering.py`, `tests/test_fremont_small_lettering.py`)*
+
+### Area 1, Kent's Fremont 81 mm Hat report: the legibility instrument (#906), as it stood after PR #917
+
+**A legibility instrument exists (#906, `tools/glyph_legibility.py`) and it is NOT a gate.** Per glyph it reads the sewn thread (strokes, clean, counters, space) at 20 px/mm; tesseract on each glyph alone is a second reader, not part of the number. On the lane's own output the `+space` reading ranks Kent's four red boxes below five legible words with AUC 1.000 (exact permutation p 0.008, margin +0.132; margin +0.073 to +0.170 across the space radius and a 0.32 mm thread). **It does NOT hold when the pro's own THE counts as legible** (AUC 0.885 [0.692, 1.0], margin −0.249: the pro's THE reads 0.080 / 0.042), and its failure-mode headline (`legibility`) ranks them the wrong way round (AUC 0.10): never quote that one. *(measured 2026-10-13 — PR #906, `tests/test_glyph_legibility.py`, `docs/renders/claude-legibility-instrument/`)*
+### Waiting on Kent 22 (`fillColumns` lanes) as it stood after PR #917
+
+22. **RESOLVED 2026-10-08 — `fillColumns` ON in all three browser lanes** (manual 10-07; shapes and image lane 10-08, Kent's call with the price in
+   front of him). Image lane: floats off the fill 188,952 → 484, stitches **+10.4%** (+29.7% worst); shapes +1.8%. **Kent's standing ask:** the next ten
+   digitized images shown to him carry the off/on float picture (`tools/fill-columns-image-sheet.mjs`; memory `fill-columns-float-pictures-2026-10-08`).
+   None of it is sewn. Full text: [area 1](docs/scope/1-auto-digitizing-quality.md#overflow-moved-from-master_scope-2026-10-14-fifth-pass). *(measured 2026-10-08 — PR #697, `docs/renders/fill-columns-lanes-2026-10-08/price.md`)*
+
+### Waiting on Kent 26 (defect 57's cure) as it stood after PR #917
+
+26. **Defect 57's cure — ARMED by Kent 2026-10-11 on the port's sheets (PR #817); built 2026-10-04.** It moves
+   every satin shape of the browser lanes and no fill: a hand-drawn C set to satin goes from 6,047 stitches with its
+   mouth sewn solid to 304 in one column. Still open: the underlay's direction (**ON since 2026-10-11**, PR #836, item 40);
+   round ends, small squares and dots (a number or a tier, gate 1); the star's tier (ask whether the whole rung stays
+   inside the shape; most satin stars would go to fill, which nothing has sewn). Full text: [area 1](docs/scope/1-auto-digitizing-quality.md#overflow-moved-from-master_scope-2026-10-14-fifth-pass).
+   *(ruled 2026-10-11 — defect 57; [`docs/renders/satin-spine-port-2026-10-11/`](docs/renders/satin-spine-port-2026-10-11/README.md), [`…-2026-10-04/`](docs/renders/satin-spine-2026-10-04/README.md))*
+
+### Waiting on Kent 42 (the blinded sitting) as it stood after PR #917
+
+42. **A fresh BLINDED sitting — Kent RULED 2026-10-13: source 4+ flat lettering logos FIRST, then rebuild
+   to 48–60 pairs and sit.** The art is his to supply. PR #847 proposed it (new flat-art logos, sides
+   randomised, arm names hidden, directions written down first, `long_share` LOWER). PR #886 built the
+   machinery and a 27-pair kit from the six logos that qualify (19 live pairs, 8 controls; pre-registered
+   before any render; `analyse` prints kappa with 95% bootstrap CIs and n, never a raw agreement). Three of
+   its six arms pass the manipulation check (`design_angle`, `split_7mm`, `lane_off`); the density-only
+   arm, the trims-only arm and `per_stroke` FAIL it, since there is no satin-density knob and the trims
+   flags move whole-design trims by under 0.5 per 1000 stitches. At about 27 pairs a sides-only kappa
+   interval is near ±0.5, so the kit alone licenses nothing. Once the art arrives the rebuild is one
+   `logos[]` edit and about 25 min of CPU. **Rulings: no `mfab_lc` / `toat_beanie` extras (the same designs
+   at another crop), no satin-density knob.** *(ruled 2026-10-13 — PRs #847, #886,
+   [`docs/eye-pairs-2026-10-13/wok42/README.md`](docs/eye-pairs-2026-10-13/wok42/README.md),
+   [`docs/density-flow-instrument-2026-10-12.md`](docs/density-flow-instrument-2026-10-12.md))*
+
+### Waiting on Kent 44 (`forbid_gap_mm`) as it stood after PR #917
+
+44. **`forbid_gap_mm` flip — Kent RULED 2026-10-13: sew-out first (card v2 block G; card v3's G is the same block,
+   #910); the flip waits on it.** Defect 47's forbid-gap half, built OFF. Priced (PR #874, measure and render only): at
+   0.8 mm over the 26 scorecard fixtures, bare cloth under 0.8 mm between colours 126.6 → 6.2 mm² (−95%), stitches
+   +0.41% (bridge +3.7%), trims −14, 0 failed welds. 116 of 128 pairs are artwork within 0.1 mm (seams, not knockout
+   lines). 0.8 mm is a physical constant (gate 1), so candidates only; block G sews an 8×8 mm fill and three satin bars at
+   0.3/0.6/1.0 mm gaps with arms OFF, 0.4, 0.8. WoK 44's old "3,868 → 2,914" bridge figure does NOT reproduce. Full text:
+   [area 1](docs/scope/1-auto-digitizing-quality.md#overflow-moved-from-master_scope-2026-10-14-fifth-pass). *(measured 2026-10-12/13 — PRs #846, #857, #874, #877, `docs/wok44-forbid-gap-bill-2026-10-12.md`)*
