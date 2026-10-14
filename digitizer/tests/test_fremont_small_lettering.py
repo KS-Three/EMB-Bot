@@ -48,16 +48,22 @@ def test_arm_table_is_the_four_arms_kent_named():
 
 
 def test_every_arm_flag_exists_and_is_built_off():
-    """No arm flips a default: every flag an arm turns ON is OFF in the
-    config today (a flipped default would make the arm a no-op), and every
-    key is a real PipelineConfig field."""
+    """No arm is a no-op: every override moves its flag AWAY from the config
+    default (an arm that sets a flag to the value it already has measures
+    nothing), and every key is a real PipelineConfig field. The flags the
+    arms turn ON are OFF today; `small_glyph_keep` is the one default that
+    flipped ON (2026-10-13, Kent), so its arms turn it OFF."""
     from digitizer_core import PipelineConfig
     base = PipelineConfig()
     for name, (_w, overrides, _label) in fsl.ARMS.items():
         for k, v in overrides.items():
             assert hasattr(base, k), f"{name}: {k} is not a PipelineConfig field"
-            assert getattr(base, k) in (False, None), f"{name}: {k} is already ON"
-            assert v not in (False, None)
+            if k == "small_glyph_keep":
+                assert base.small_glyph_keep is True, f"{name}: keep is no longer the default"
+                assert v is False, f"{name}: {k} is already ON"
+            else:
+                assert getattr(base, k) in (False, None), f"{name}: {k} is already ON"
+                assert v not in (False, None)
 
 
 def test_arms_run_the_studio_request_at_their_width():
