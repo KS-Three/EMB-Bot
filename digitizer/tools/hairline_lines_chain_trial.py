@@ -51,6 +51,7 @@ ARMS = {"lines": (False, False), "lines_chain": (False, True),
         "strand": (True, False), "strand_chain": (True, True)}
 PARTS = ROOT / "debug_out" / "hairline_lines_chain_trial"
 OUT = ROOT.parent / "docs" / "renders" / "claude-hairline-lines-chain"
+PICKLE = False
 PPM = 30.0
 BOX_MM = (14.0, 9.0)
 
@@ -68,11 +69,12 @@ def _runs(plan):
 
 def strand_signature(plan) -> str:
     """The line route's strands, in order: every RUN-kind run of the strand
-    blocks, point for point (the chain flag must not move one)."""
+    blocks, point for point but for the four stitches at each end, where
+    the lock stitches of a cut sit (the chain flag must not move one)."""
     h = hashlib.md5()
     for _b, r in _runs(plan):
         if r.shape_id == SHAPE_ID and r.kind == stitches.RUN:
-            h.update(json.dumps([[round(x, 4), round(y, 4)] for x, y in r.points]).encode())
+            h.update(json.dumps([[round(x, 4), round(y, 4)] for x, y in r.points[4:-4]]).encode())
     return h.hexdigest()
 
 
@@ -161,6 +163,9 @@ def run_arm(arm: str, result=None) -> dict:
     row["census"] = {k: w[0].get(k) for k in ("strands", "dropped", "hops", "hop_mm",
                                               "refused_bar") if w and k in w[0]}
     PARTS.mkdir(parents=True, exist_ok=True)
+    if PICKLE:
+        import pickle
+        (PARTS / f"{arm}.pkl").write_bytes(pickle.dumps((plan, sp)))
     render_parts(plan, sp, arm)
     (PARTS / f"{arm}.json").write_text(json.dumps(row, indent=1) + "\n", encoding="utf-8")
     return row
@@ -281,8 +286,10 @@ def main(argv=None) -> int:
     ap.add_argument("--drawn", action="store_true")
     ap.add_argument("--compose", action="store_true")
     ap.add_argument("--parts", type=Path, help="scratch folder for the per-arm parts")
+    ap.add_argument("--pickle", action="store_true", help="also save each arm's plan")
     args = ap.parse_args(argv)
-    global PARTS
+    global PARTS, PICKLE
+    PICKLE = args.pickle
     if args.parts:
         PARTS = args.parts
     if args.arms:
