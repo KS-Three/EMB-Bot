@@ -148,17 +148,6 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "lettering_min_column_mm=1.0",
         "Widen sub-floor lettering to a 1.0 mm sewable column instead of the "
         "bean run; known to fill counters at a 2.2 mm cap height."),
-    "lettering_columns": (
-        "lettering_columns=True",
-        "Sew each text-tagged letter as Columns cut from its own outline (one "
-        "column per stroke, rails on the outline, pull on the rails) instead of "
-        "the skeleton's slabs, sewn the way a font glyph is: an Euler walk "
-        "across a letter's columns (earlier visits run underpath, the last "
-        "sews satin), a butting stroke tucked under the stroke it meets, "
-        "slanted ends fanned, both rails needled every 0.40 mm. Built OFF "
-        "2026-10-07; only text-tagged shapes change, so a logo with no tagged "
-        "lettering is identical. Known open: an E or F body still sews as "
-        "three slabs, not a stem plus arms."),
     "phantom_dissolve": (
         "dissolve_phantom_blends=True",
         "Dissolve JPEG ringing colours on the photo/gradient lane, so a logo's "
@@ -231,18 +220,6 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "a Y, and HOTEL FREMONT's main wordmark goes bean and loses its slab "
         "serifs. The 1.0 mm line is a gate-1 number set without cloth: the page "
         "says which reads right, only cloth says which sews right."),
-    "letterform_priors": (
-        "letterform_priors_k=0.75 (built OFF 2026-10-06)",
-        "A low-resolution upload's lettering is refit to straight segments and "
-        "circular arcs under the word's own stem direction, stroke widths and "
-        "baseline before anything is constructed, every vertex moved at most "
-        "0.75 of a source pixel and a letter the lines and arcs do not explain "
-        "left as traced. Only an upload the engine upscaled is touched: becker "
-        "(0.66 mm pixels), bridge (0.29) and gaulke (0.21). Drone, enthusiast "
-        "and fremont are byte-identical by design -- that identity is the "
-        "flag's first promise, not a failure to act -- and tires has no tagged "
-        "lettering. On today's satin the refit sews becker with more columns "
-        "and trims (55 -> 66) for less bare cloth."),
     "lettering_words": (
         "lettering_words=True (built OFF 2026-10-08)",
         "One lettering tagger instead of two: each line of lettering is found "
@@ -252,29 +229,6 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "the old taggers merged (gaulke, the screenshot). On today's shipped "
         "flags the stitches barely move (0.4% at most); its real use is the "
         "lanes that read it next."),
-    "columns_words": (
-        "lettering_columns=True + lettering_words=True (both built OFF)",
-        "What a flip of the Column lane would turn on: each letter the word "
-        "tagger finds is cut into strokes along its own outline and sewn as "
-        "one column per stroke, rails on the artwork's edge, walked as one "
-        "path with the travel under satin sewn later. BEFORE is shipped: the "
-        "skeleton satin tier. Letters cut less (becker 60 trims -> 28) and no "
-        "junction fans. Nothing here is sewn."),
-    "coverage_edges": (
-        "coverage_edges=True (built OFF)",
-        "A one-ink logo with its shape in alpha, enlarged from a small file, "
-        "is outlined from the source's own soft edge instead of the enlarged "
-        "stair-stepped mask: closer to the art (median edge error about half "
-        "at 1.8 px/mm). Only becker is that kind of file; every other logo is "
-        "unchanged. BEFORE is shipped. Nothing here is sewn."),
-    "coverage_columns": (
-        "coverage_edges=True + lettering_columns=True + lettering_words=True "
-        "(all built OFF)",
-        "The coverage outline under the Column lane: the cleaner edge feeding "
-        "rails cut along the letter's own outline rather than a skeleton. "
-        "BEFORE is shipped, so this pair asks whether all three together beat "
-        "today; the 2x2 in docs/coverage-edges-under-columns-2026-10-11.md "
-        "separates the two. Nothing here is sewn."),
 }
 
 # Arms that left the pending table because they SHIPPED. A sitting rendered
@@ -307,6 +261,56 @@ RETIRED_ARM_INTENT: dict[str, tuple[str, str]] = {
         "and leave the other bare. Kent flipped it on after the 2026-10-03 "
         "sitting (2 after -- becker and tires, the two the locator boxed -- "
         "0 before)."),
+    # The 2026-10-14 tidy (rule in `tools/eye_pairs/pairs.py`): each of these
+    # is the base now, or a flag Kent ruled a no, so none can pair as live.
+    "lettering_columns": (
+        "lettering_columns=True (shipped ON, #863)",
+        "Sew each text-tagged letter as Columns cut from its own outline (one "
+        "column per stroke, rails on the outline, pull on the rails) instead of "
+        "the skeleton's slabs, sewn the way a font glyph is: an Euler walk "
+        "across a letter's columns (earlier visits run underpath, the last "
+        "sews satin), a butting stroke tucked under the stroke it meets, "
+        "slanted ends fanned, both rails needled every 0.40 mm. Built OFF "
+        "2026-10-07; only text-tagged shapes change, so a logo with no tagged "
+        "lettering is identical. Known open: an E or F body still sews as "
+        "three slabs, not a stem plus arms."),
+    "letterform_priors": (
+        "letterform_priors_k=0.75 (shipped ON, Kent 2026-10-07)",
+        "A low-resolution upload's lettering is refit to straight segments and "
+        "circular arcs under the word's own stem direction, stroke widths and "
+        "baseline before anything is constructed, every vertex moved at most "
+        "0.75 of a source pixel and a letter the lines and arcs do not explain "
+        "left as traced. Only an upload the engine upscaled is touched: becker "
+        "(0.66 mm pixels), bridge (0.29) and gaulke (0.21). Drone, enthusiast "
+        "and fremont are byte-identical by design -- that identity is the "
+        "flag's first promise, not a failure to act -- and tires has no tagged "
+        "lettering. On today's satin the refit sews becker with more columns "
+        "and trims (55 -> 66) for less bare cloth."),
+    # Now exactly the `lettering_words` arm: the lane half is the base.
+    "columns_words": (
+        "lettering_columns=True + lettering_words=True (the lane is the base "
+        "since #863; what is left is lettering_words)",
+        "What a flip of the Column lane would turn on: each letter the word "
+        "tagger finds is cut into strokes along its own outline and sewn as "
+        "one column per stroke, rails on the artwork's edge, walked as one "
+        "path with the travel under satin sewn later. BEFORE is shipped: the "
+        "skeleton satin tier. Letters cut less (becker 60 trims -> 28) and no "
+        "junction fans. Nothing here is sewn."),
+    "coverage_edges": (
+        "coverage_edges=True (deprecated: Kent ruled no, 2026-10-12)",
+        "A one-ink logo with its shape in alpha, enlarged from a small file, "
+        "is outlined from the source's own soft edge instead of the enlarged "
+        "stair-stepped mask: closer to the art (median edge error about half "
+        "at 1.8 px/mm). Only becker is that kind of file; every other logo is "
+        "unchanged. BEFORE is shipped. Nothing here is sewn."),
+    "coverage_columns": (
+        "coverage_edges=True + lettering_columns=True + lettering_words=True "
+        "(deprecated: Kent ruled no, 2026-10-12)",
+        "The coverage outline under the Column lane: the cleaner edge feeding "
+        "rails cut along the letter's own outline rather than a skeleton. "
+        "BEFORE is shipped, so this pair asks whether all three together beat "
+        "today; the 2x2 in docs/coverage-edges-under-columns-2026-10-11.md "
+        "separates the two. Nothing here is sewn."),
 }
 
 

@@ -61,9 +61,9 @@ ARMS: dict[str, dict] = {
     # is the base now and no longer an arm.
     "wide_columns": {"wide_columns": True},
     "lettering_column": {"lettering_min_column_mm": 1.0},
-    # Lettering as Columns (2026-10-07): the outline-cut construction, built
-    # OFF; the labelled pairs are the flip's evidence.
-    "lettering_columns": {"lettering_columns": True},
+    # `lettering_columns` (the outline-cut Column lane) shipped ON in #863, and
+    # `letterform_priors_k=0.75` is the config default (Kent, 2026-10-07): each
+    # is the base now and no longer an arm. See the retirement rule below.
     "phantom_dissolve": {"dissolve_phantom_blends": True},
     "directional_comp": {"directional_comp": True},
     REF_ARM: {"__ref__": REF_COMMIT},
@@ -102,30 +102,29 @@ ARMS: dict[str, dict] = {
     # day (2 after, 0 before), so it is the base now and no longer an arm.
     "keep_counters": {"keep_counters": True},
     "bean_letters": {"bean_letter_max_stroke_mm": 1.0},
-    # Letterform priors (2026-10-06, Kent's option A after the spike): a
-    # low-resolution upload's lettering refit to lines and arcs under the
-    # word's stem direction, widths and baseline, every move capped at 0.75
-    # source pixels. Only an upscaled upload is touched (becker, bridge,
-    # gaulke); drone, enthusiast and fremont are byte-identical and keep
-    # their head on the page as identical, which is the point of go/no-go 1.
-    "letterform_priors": {"letterform_priors_k": 0.75},
     # L1, one lettering tagger (2026-10-08, built OFF; Kent picked the
     # pairs): every lettering reader groups by one word model instead of
     # the text cluster or the house group (`digitizer_core/words.py`).
     "lettering_words": {"lettering_words": True},
-    # The flip sitting (2026-10-08, Kent's pick): the two together against
-    # shipped, which is what a flip of the Column lane would turn on -- he
-    # ruled the word tagger the lane's tagger on `words-columns-1008`.
-    "columns_words": {"lettering_columns": True, "lettering_words": True},
-    # The coverage read (2026-10-11, #818's follow-ups a and c): a one-ink
-    # alpha cutout outlined from its own alpha's half-coverage contour, alone
-    # and under the Column lane -- whether the cleaner outline pays under
-    # outline rails where the skeleton tier reads messier. Only becker is
-    # that class; every other fixture is byte-identical to its own arm.
-    "coverage_edges": {"coverage_edges": True},
-    "coverage_columns": {"coverage_edges": True, "lettering_columns": True,
-                         "lettering_words": True},
 }
+
+# THE RETIREMENT RULE (one rule, 2026-10-14). An arm leaves ARMS the moment it
+# can no longer ask a pending question, and is NOT re-based to "flag OFF":
+#   (a) every flag it sets already equals the config default (Kent shipped it
+#       ON), so the arm is the base and every fixture would pair as
+#       `identical_to_base`; or
+#   (b) it sets a flag Kent ruled a no (deprecated), so it is no longer a
+#       candidate for a flip.
+# Re-basing would turn a shipped flag into a regression arm that no sitting
+# asked for, and it is not how `rail_comp`, `rail_envelope`, `cap_recentre`
+# and `patch_junctions` left. The row moves to `RETIRED_ARM_INTENT` in
+# `tools/eye_pairs_gallery.py`, so a sitting rendered before the flip still
+# names it. The deliberate exception is `rails_symmetric` (envelope OFF):
+# it began life as an OFF-against-shipped arm, so it differs from the base.
+# `tests/test_eye_pairs_pairs.py::test_no_arm_equals_the_base` enforces (a).
+# Retired here 2026-10-14: `lettering_columns` (ON, #863), `letterform_priors`
+# (default 0.75), `columns_words` (now exactly `lettering_words`, because the
+# lane is the base), `coverage_edges` and `coverage_columns` (deprecated).
 
 
 @dataclass(frozen=True)

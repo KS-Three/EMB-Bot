@@ -193,3 +193,22 @@ def test_a_repeat_still_shows_the_other_side_under_balance_live():
         if s["kind"] == "repeat":
             orig = sealed[s["repeat_of"]]
             assert (s["left_arm"], s["right_arm"]) == (orig["right_arm"], orig["left_arm"])
+
+
+def test_no_arm_equals_the_base():
+    """The retirement rule in `pairs.py`: an arm whose every flag already
+    equals the config default IS the base, and would pair as
+    `identical_to_base` on every fixture. A flag that ships ON (or a default
+    that moves) must take its arm out of the table in the same change."""
+    from digitizer_core.config import PipelineConfig
+    base = PipelineConfig()
+    fields = set(PipelineConfig.__dataclass_fields__)
+    for arm, kw in ep.ARMS.items():
+        if "__ref__" in kw or "__file__" in kw:
+            continue                       # an older engine / a pro's file
+        assert kw, arm
+        assert set(kw) <= fields, (arm, sorted(set(kw) - fields))
+        same = [k for k, v in kw.items() if getattr(base, k) == v]
+        assert not same, (
+            f"arm {arm!r} sets {same} to what the config already defaults to; "
+            "retire the arm (or drop the flag) -- see the rule in pairs.py")
