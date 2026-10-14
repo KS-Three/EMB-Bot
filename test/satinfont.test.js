@@ -1073,8 +1073,12 @@ test("a needle-down connector stops short of the run it leads into", () => {
 // `false` is the stream every design before that date carries.
 test("satinZigzag: on by default in buildLetteringDesign; false is the alternating-rail stream, full of rail steps", () => {
   const garment = { widthIn: 5, heightIn: 2.25 };
-  const build = (extra) => DG.buildLetteringDesign(font, "HILL", { garment, pxPerMm: 8, ...extra });
+  // 60 mm wide: every column under the zigzag's width cap (Kent's ruling
+  // 2026-10-14). Auto-fit puts "HILL" at 127 mm, where all 11 columns are
+  // over it and sew alternating rails — test/satin-zigzag-cap.test.js.
+  const build = (extra) => DG.buildLetteringDesign(font, "HILL", { garment, pxPerMm: 8, targetWidthMm: 60, ...extra });
   const on = build({});
+  assert.deepStrictEqual([on.lettering.zigzagColumns, on.lettering.zigzagCapped], [11, 0]);
   assert.deepStrictEqual(build({ satinZigzag: true }).stitches, on.stitches);
   assert.deepStrictEqual(build({ satinZigzag: undefined }).stitches, on.stitches);
   const off = build({ satinZigzag: false });

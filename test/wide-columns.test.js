@@ -250,13 +250,12 @@ test("split satin — the DEFAULT since Kent's ruling — takes that design to Z
   const on = DG.buildLetteringDesign(f, "AB", base);
   const { n, worstAx } = overRecord(on);
   assert.strictEqual(n, 0, "not one sewn segment past a DST record");
-  // 5.0 is the split threshold: a leg at or under it is thrown whole. This
-  // read 4.5 on the alternating-rail stream and 4.7 with the zigzag (default
-  // ON 2026-10-13), whose diagonal return legs lie at other angles.
-  assert.ok(worstAx <= 5.0, `worst sewn segment ${worstAx} mm — over the 5.0 split threshold`);
-  // 21,211 before the zigzag, 42,258 with it: the return leg is a cross now
-  // and carries its own comb. Stitches on this design 27,033 -> 48,079.
-  assert.ok(on.lettering.splitPenetrations > 40000, "and it says how many penetrations that cost");
+  // Every column here is over the zigzag's width cap (Kent's ruling
+  // 2026-10-14), so this is the alternating-rail stream again: worst 4.5,
+  // 21,211 penetrations. Uncapped, the zigzag read 4.7 and 42,258 (27,033 ->
+  // 48,079 stitches) — test/satin-zigzag-cap.test.js pins both sides.
+  assert.ok(worstAx <= 4.5, `worst sewn segment ${worstAx} mm — the split segment is 3.0`);
+  assert.ok(on.lettering.splitPenetrations > 20000, "and it says how many penetrations that cost");
 });
 
 test("the wide-column fill takes it to zero too, at a very different price", (t) => {
@@ -271,9 +270,9 @@ test("the wide-column fill takes it to zero too, at a very different price", (t)
   // The two are NOT the same trade. Pinned as an ordering, not as counts, so
   // the file does not go stale every time a glyph moves.
   assert.ok(split.stitchCount > off.stitchCount * 3, "the split multiplies penetrations");
-  // Was "> split * 2" (28,649 against 12,492). With the zigzag the split
-  // stream is 21,070, so the fill is 1.36x it, not 2.29x.
-  assert.ok(fill.stitchCount > split.stitchCount * 1.2, "and the fill costs more again");
+  // 28,649 against 12,492 — back to 2.29x since the zigzag's width cap
+  // (2026-10-14); the uncapped zigzag's 21,070 made it 1.36x.
+  assert.ok(fill.stitchCount > split.stitchCount * 2, "and the fill multiplies them again");
   assert.ok(fill._debug.nTrims > off._debug.nTrims, "a fill on a curved column costs trims the satin did not");
 });
 
