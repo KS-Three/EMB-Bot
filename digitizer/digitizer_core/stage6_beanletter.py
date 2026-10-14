@@ -86,17 +86,43 @@ def _cut_hook(spine: list, serif_mm: float) -> list:
     return [c] + list(spine[i:])
 
 
+# A spine end this close to another spine (or to its own other end) is a
+# JUNCTION, not a free end. The ink skeleton's edges meet at a shared pixel,
+# a few hundredths of a millimetre apart.
+_JOIN_MM = 0.12
+
+
+def _attached(end, i: int, spines) -> bool:
+    for j, other in enumerate(spines):
+        pts = other if j != i else (other[-1:] if end == other[0] else other[:1])
+        for q in pts:
+            if math.dist(end, q) <= _JOIN_MM:
+                return True
+    return False
+
+
 def trim_serif_hooks(spines, serif_mm: float | None):
-    """Every spine with a short hook cut off each free end -- the slab serif a
+    """Every spine with a short hook cut off each FREE end -- the slab serif a
     1.9 mm letter's centreline turns into, which closes an E into a B once
-    the thread is laid (`cfg.bean_letter_serif_mm`). None: unchanged."""
+    the thread is laid (`cfg.bean_letter_serif_mm`). None: unchanged.
+
+    An end that meets another spine is a junction and is never cut: at 81 mm
+    the turn where an 8's loops meet read as a hook and both loops were
+    snipped open, and the 5 lost the stroke joining its bar to its bowl."""
     if not serif_mm or serif_mm <= 0:
         return spines
+    spines = [[tuple(p) for p in s] for s in (spines or [])]
     out = []
-    for s in spines or []:
-        s = [tuple(p) for p in s]
-        s = _cut_hook(s, serif_mm)
-        s = list(reversed(_cut_hook(list(reversed(s)), serif_mm)))
+    for i, s in enumerate(spines):
+        if len(s) < 2:
+            out.append(s)
+            continue
+        head_free = not _attached(s[0], i, spines)
+        tail_free = not _attached(s[-1], i, spines)
+        if head_free:
+            s = _cut_hook(s, serif_mm)
+        if tail_free:
+            s = list(reversed(_cut_hook(list(reversed(s)), serif_mm)))
         out.append(s)
     return out
 
