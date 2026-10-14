@@ -2392,7 +2392,8 @@ def sequence(
                                            stitch_mm=cfg.bean_letter_stitch_mm,
                                            serif_mm=cfg.bean_letter_serif_mm,
                                            min_arm_mm=cfg.bean_letter_min_arm_mm,
-                                           corner_deg=cfg.bean_letter_corner_deg)
+                                           corner_deg=cfg.bean_letter_corner_deg,
+                                           passes=cfg.bean_letter_passes)
                 if not report["empty"]:
                     report["bean_letter"] = 1
                     report["bean_word"] = word_key(p.region, cfg)
