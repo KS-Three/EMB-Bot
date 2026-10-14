@@ -13,6 +13,7 @@ from digitizer_core import PipelineConfig, beanletters, machine, stitches
 from digitizer_core.beanletters import BEAN_LETTER_KEY, tag_bean_letters, weight_groups
 from digitizer_core.ink_path import MemberInk
 from digitizer_core.stage6_beanletter import bean_letter
+from tests.conftest import own_thread_only
 
 SPINE = [(0.0, 0.0), (0.0, 5.0)]
 
@@ -54,7 +55,8 @@ def _stub_ink(monkeypatch, inks):
         seen.append(list(members))
         return [inks[id(r)] for r in members]
 
-    monkeypatch.setattr(beanletters, "read_cluster_ink", fake)
+    monkeypatch.setattr(beanletters, "read_cluster_ink",
+                        own_thread_only(fake, beanletters.read_cluster_ink))
     return seen
 
 
@@ -66,7 +68,8 @@ def test_tag_reads_nothing_when_off_or_without_a_page(monkeypatch):
     def boom(*_a):
         raise AssertionError("ink must not be read")
 
-    monkeypatch.setattr(beanletters, "read_cluster_ink", boom)
+    monkeypatch.setattr(beanletters, "read_cluster_ink",
+                        own_thread_only(boom, beanletters.read_cluster_ink))
     r = _region()
     assert tag_bean_letters([r], object(), PipelineConfig()) == 0
     assert tag_bean_letters([r], None, _cfg()) == 0
