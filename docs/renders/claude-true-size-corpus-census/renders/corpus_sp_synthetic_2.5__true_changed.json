@@ -1,0 +1,96 @@
+{
+ "design": "sp_synthetic_2.5",
+ "arm": "true",
+ "box_mm": [
+  -8.77,
+  -1.29,
+  8.77,
+  1.27
+ ],
+ "changed_shapes": [
+  {
+   "shape_id": "S157ddc66",
+   "area_mm2": 3.21,
+   "bounds_mm": [
+    -6.37,
+    -1.29,
+    -4.25,
+    1.27
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S24b4f35a",
+   "area_mm2": 3.38,
+   "bounds_mm": [
+    6.79,
+    -1.29,
+    8.77,
+    1.27
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S8008d95a",
+   "area_mm2": 3.28,
+   "bounds_mm": [
+    -1.29,
+    -1.25,
+    0.73,
+    1.23
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "S945d4089",
+   "area_mm2": 3.24,
+   "bounds_mm": [
+    4.45,
+    -1.29,
+    6.48,
+    1.27
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "Scc1cc9a6",
+   "area_mm2": 3.29,
+   "bounds_mm": [
+    1.15,
+    -1.25,
+    3.21,
+    1.23
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sd2e51a3c",
+   "area_mm2": 2.87,
+   "bounds_mm": [
+    -4.02,
+    -1.25,
+    -1.6,
+    1.23
+   ],
+   "bean": null,
+   "skeleton": null
+  },
+  {
+   "shape_id": "Sd5411cd1",
+   "area_mm2": 3.58,
+   "bounds_mm": [
+    -8.77,
+    -1.25,
+    -6.72,
+    1.23
+   ],
+   "bean": null,
+   "skeleton": null
+  }
+ ]
+}
