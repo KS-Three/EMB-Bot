@@ -303,8 +303,13 @@ def design_census(calls, square_ends: bool, tol_mm: float = TOL_MM,
     }
 
 
-#: the ON arm's config; `--connectors` adds `lettering_columns_inside_connectors`
-ON = {"lettering_columns_square_ends": True}
+#: the ON arm's config. Both flags are ON by default since Kent's ruling
+#: 2026-10-13, so the OFF arm PINS them False and the ON arm names them;
+#: `--connectors` is kept for old command lines and changes nothing.
+ON = {"lettering_columns_square_ends": True,
+      "lettering_columns_inside_connectors": True}
+OFF = {"lettering_columns_square_ends": False,
+       "lettering_columns_inside_connectors": False}
 
 
 def _on_conn() -> bool:
@@ -319,7 +324,7 @@ def fixture_census(name: str, tol_mm: float = TOL_MM, full_on: bool = False) -> 
     flag changes a letter's ends, not which letters the lane takes. With
     `full_on` the ON arm is a whole-design run of its own instead (slower)."""
     fixture, cfg_kw = CORPUS[name]
-    calls, plan, design = capture(fixture, cfg_kw)
+    calls, plan, design = capture(fixture, cfg_kw, dict(OFF))
     s = plan.stats
     out = {"fixture": fixture, "request": cfg_kw, "tol_mm": tol_mm,
            "off": {"stitches": s.stitch_count, "trims": s.trims, "jumps": s.jumps,
@@ -352,10 +357,11 @@ def fremont81(out: Path, renders: Path | None, tol_mm: float = TOL_MM,
 
     res = {}
     designs = {}
-    for arm, ov in (("off", {}), ("on", dict(ON))):
+    for arm, ov in (("off", dict(OFF)), ("on", dict(ON))):
         if arms and arm not in arms:
             continue
         conn = bool(ov.get("lettering_columns_inside_connectors"))
+        sq = bool(ov.get("lettering_columns_square_ends"))
         ft.ARMS[f"square_ends_{arm}"] = ov
         calls = []
         real = s7.lettering_columns_shape
@@ -376,13 +382,13 @@ def fremont81(out: Path, renders: Path | None, tol_mm: float = TOL_MM,
         for key, (sid, title) in FREMONT_ENDS.items():
             poly, kw = by_sid[sid]
             circles[key] = {"shape_id": sid, "title": title,
-                            **letter_ends(poly, kw, square_ends=bool(ov), tol_mm=tol_mm,
+                            **letter_ends(poly, kw, square_ends=sq, tol_mm=tol_mm,
                                           inside_connectors=conn)}
         s = run["plan"].stats
         designs[arm] = (run["design"], boxes)
         res[arm] = {"stitches": s.stitch_count, "trims": s.trims, "jumps": s.jumps,
                     "design_md5": _md5(run["design"]), "circles": circles,
-                    **{k: v for k, v in design_census(calls, bool(ov), tol_mm, inside_connectors=conn).items()
+                    **{k: v for k, v in design_census(calls, sq, tol_mm, inside_connectors=conn).items()
                        if k != "per_letter"}}
         out.mkdir(parents=True, exist_ok=True)
         (out / f"fremont81_{arm}.json").write_text(json.dumps(res[arm], indent=1))
@@ -459,7 +465,7 @@ def word_panel(name: str, renders: Path, px_per_mm: float = 60.0) -> Path:
     fixture, cfg_kw = CORPUS[name]
     rows = []
     box = None
-    for arm, ov in (("off", {}), ("on", dict(ON))):
+    for arm, ov in (("off", dict(OFF)), ("on", dict(ON))):
         calls, plan, design = capture(fixture, cfg_kw, ov)
         if box is None:
             box = unary_union([p for p, _s, _k in calls]).bounds
