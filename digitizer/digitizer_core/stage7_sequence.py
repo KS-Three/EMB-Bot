@@ -2229,6 +2229,10 @@ def sequence(
     wave = technique == "wave"
     chevron = technique == "chevron"
     brick = technique == "brick"
+    # Fur (2026-10-14): randomised tatami, a fourth row-point variant in the
+    # same family, seeded by cfg.seed — see stage6_fill._fur_row_points.
+    # Reached only by naming it here or as the per-shape tier.
+    fur = technique == "fur"
 
     thin = empty = jumps = as_run = 0
     bean_letters = 0
@@ -2890,6 +2894,30 @@ def sequence(
                     sewn_paths_only=cfg.fill_order_sewn_paths,
                     start_near=entry,
                     technique="brick",
+                )
+                need_tatami = report["empty"]
+            elif fur or tier == "fur":
+                # The fur fill tier: tatami whose rows each take a random
+                # start offset and a random length per stitch, seeded by
+                # cfg.seed (stage6_fill._fur_row_points), at the stitch
+                # length machine.FUR_STYLES[cfg.fur_style] names instead of
+                # the design's own. Same slot/contract as brick above.
+                runs, report = stitch_shape(
+                    p.polygon,
+                    p.shape_id,
+                    angle_deg=_fill_angle_for(p, cfg),
+                    row_mm=row_mm,
+                    stitch_mm=stitch_mm,
+                    underlay_style=eff_underlay_style,
+                    trim_at_mm=trim_at,
+                    under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
+                    underlay_all_pieces=cfg.underlay_all_pieces,
+                    sewn_paths_only=cfg.fill_order_sewn_paths,
+                    start_near=entry,
+                    technique="fur",
+                    seed=cfg.seed,
+                    fur_style_name=cfg.fur_style,
                 )
                 need_tatami = report["empty"]
             elif scanline and source_pixels is not None:

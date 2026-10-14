@@ -49,7 +49,9 @@ from tests.conftest import PLAN_CFG_KW, cfg
 FAB = get_fabric("pique_knit")
 LOGO = str(Path(__file__).resolve().parent.parent / "testdata" / "logo_whitebg.png")
 
-TECHNIQUES = ["wave", "chevron", "brick"]
+# "fur" (2026-10-14) joins on the same wiring skeleton; its own geometry,
+# determinism and stitch-length floor are in `test_fur_fill.py`.
+TECHNIQUES = ["wave", "chevron", "brick", "fur"]
 
 
 # --- helpers -----------------------------------------------------------------

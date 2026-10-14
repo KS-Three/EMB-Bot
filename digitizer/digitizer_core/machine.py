@@ -199,6 +199,30 @@ WAVE_LENGTH_MM = 4.0
 # herringbone texture.
 CHEVRON_AMPLITUDE_MM = 0.45
 
+# --- Fur fill (randomised tatami, 2026-10-14) -------------------------------
+# Tatami whose rows each draw their own random start offset and a random
+# length for every stitch (stage6_fill._fur_row_points), seeded from
+# `cfg.seed`, so the needle holes never settle into the stagger's lattice and
+# the fill reads as hair rather than as a woven field. Reached only by an
+# explicit `fill_technique="fur"` or a per-shape `tier: "fur"`.
+#
+# Every number below is a CANDIDATE (ROADMAP gate 1: no physical constant is
+# settled without a sew-out). They come from one practitioner source, Jesse
+# Elliott's settings as quoted in docs/fine-detail-hair-research-2026-10-12.md
+# section 2: short fur "4 mm, offset .5/0, random 50", long fur "4-6 mm,
+# offset 1/0, random 70-90". The long-fur pair below is the middle of each
+# quoted range. How a "random %" and an "offset fraction" map onto stitches
+# is this module's reading of them, not the source's:
+#   random r  -> every stitch length is drawn uniformly from
+#                [L * (1 - r), L], floored at MIN_STITCH_MM;
+#   offset o  -> every row's first grid point sits a random distance in
+#                [0, o * L) before the row's start.
+# Each tuple is (stitch length L mm, random fraction r, offset fraction o).
+FUR_STYLES = {
+    "short": (4.0, 0.50, 0.5),
+    "long": (5.0, 0.80, 1.0),
+}
+
 # --- Contour fill (rings instead of rows) -----------------------------------
 # The offset-ring tier: uniform inward offsets of the outline, sewn inner to
 # outer. Numbers are the pins from docs/fill-techniques-2026-08-01.md §1.3;
