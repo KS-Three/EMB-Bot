@@ -767,7 +767,13 @@ def small_print_clear(poly, counters, clear_mm: float, art=None, chord_mm: float
         if thin:
             keep = unary_union(thin).buffer(clear_mm).intersection(ink)
             if bar_mm:
-                keep = _narrow_bars(counters, grown, thin_out, clear_mm, bar_mm, ink)
+                narrow = _narrow_bars(counters, grown, thin_out, clear_mm, bar_mm, ink)
+                # never at the price of the letter's connectivity: a band
+                # that leaves the sewn shape in more pieces than the whole
+                # bar did is not taken
+                if (_n_parts(_polygonal(poly.difference(cut.difference(narrow))))
+                        <= _n_parts(_polygonal(poly.difference(cut.difference(keep))))):
+                    keep = narrow
             cut = cut.difference(keep)
         if chord_mm:
             cut = _chord_hold(cut, counters, clear_mm, chord_mm, filled,
@@ -879,6 +885,10 @@ def _chord_hold(cut, counters, clear_mm: float, chord_mm: float, filled, keep):
     if keep is not None and not keep.is_empty:
         add = add.difference(keep)
     return cut.union(add)
+
+
+def _n_parts(g) -> int:
+    return 0 if g.is_empty else len(getattr(g, "geoms", [g]))
 
 
 def _polygonal(g):
