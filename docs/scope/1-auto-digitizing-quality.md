@@ -4537,3 +4537,262 @@ Moved verbatim to make room for PRs #895-#901. The verdicts stay in MASTER_SCOPE
 ### Defect 52 (browser fill across holes) in full
 
 52. **A fill in the BROWSER engine carries thread across every hole and every notch — CLOSED in all three Studio lanes by `fillColumns` (manual 2026-10-07, shapes and image 2026-10-08, Kent's calls).** The JS tatami walk goes from one span of a split row straight to the next: a float over a long gap, a STITCH over a short one. A 40 mm manual fill with two cut-outs: **76 untrimmed floats across the 12 mm one (912 mm of thread), 20 stitches sewn across the 3 mm one.** **Hidden:** a float puts no needle point in the hole, and the Studio draws jumps only with Jumps on. **The cure:** rows cut into monotone columns (`fill.js`, a port of the Python `_columns`), and every move of every pass of the shape asked what ground it runs over, the ground being what the FILL covers. On it: unchanged. Off it by no more than a fill row (0.15 mm): sewn, never floated. Deeper: the thread goes ROUND — along the hole's own edge, or in by a strip's far end under that strip's own rows — and is cut only where there is no way round. **Audited** on 9,869 designs (three scales, all seven presets): floats that leave the fill's ground **1,154,992 → 0**; designs with thread deeper than a fill row off it **8,581 → 36**, none of the 36 across a hole. **Cost:** cuts fall from 0.89 a design to 0.25, though 3% of holed shapes keep one and a comb can gain hundreds; stitches +3.3%, at worst +37%; the travel shows, with up to nine lines of thread on a rim's worst millimetre and over 5 mm across sewn rows in one holed fill in six; a forked large fill loses center-out; the edge run of a shape with a hole or an inside corner moves 0.2 mm inside the fill. Satin shapes, and shapes with neither, are untouched. **Not sewn: no sew-out exists.** **Three builds, three independent audits.** **On** in every Studio lane (`generate.js`); the engine default stays off ("Waiting on Kent" 22). **Not built:** row stagger (tie stitches: "Waiting on Kent" 23). The sheet, the cost tables and what was seen but not changed: [`docs/renders/fill-columns-2026-10-03/`](docs/renders/fill-columns-2026-10-03/). *(measured 2026-10-03 — `tools/fill-columns-sheet.mjs`; `test/fill.test.js`, `test/digitize.test.js`; three independent audits, scope-history 10-03; flipped for manual 2026-10-07, shapes and image 2026-10-08 — `generate.js`, `generate.spec.js`)*
+
+## Overflow moved from MASTER_SCOPE (2026-10-14, fifth pass)
+
+Moved verbatim to make room for PRs #904-#914. The verdicts stay in MASTER_SCOPE; this is the text they replaced.
+
+### Waiting on Kent 23 (`ties`) as it stood after the fourth pass
+
+23. **Flip `ties` on for the browser lanes — NEW 2026-10-03, built OFF in
+   both builders.** Every trim in a lettering or shape file exported from the
+   Studio leaves two unlocked ends; the Python lane locks every one and always
+   has. The 09-14 question was never queued here, and its lock was wrong: a
+   leg of 0.8 pixels, 0.1 to 0.5 mm in practice. Now one rule for both
+   builders, at 0.8 mm. Cost: lettering +3% (four letters) to +8% (a line of
+   text) stitches; shapes about +1%, by how many pieces a design is in. No
+   cut is added. **On shapes one lock in five lands on a stitch under 0.3 mm**
+   (a fill's last row at a tip): five penetrations inside 0.3 mm. That is
+   Python's rule too, and the audit's advice is to sew one first; lettering,
+   under 1%, could flip alone. **Not sewn**, and neither are `machine.py`'s
+   0.8 mm and three legs: a candidate for the sew-out card. A flip is
+   `ties: true` at `generate.js`'s four call sites and a re-pin of every
+   snapshot.
+   *(measured 2026-10-03 — [`docs/lock-stitches-2026-10-03.md`](docs/lock-stitches-2026-10-03.md))*
+
+### Waiting on Kent 24 (`fillStagger`) as it stood after the fourth pass
+
+24. **Flip `fillStagger` on for the browser shape lanes — NEW 2026-10-03,
+   built OFF.** The shape builder cuts every fill row evenly from its own
+   end, so the needle holes of one row stand under the holes of the row
+   before: 94% of them, and 86% head three in a line, which is the line light
+   runs down (quality review 09-08 §4). One sheet, the holes as dots, as
+   shipped beside staggered: `docs/renders/fill-stagger-2026-10-03/`. The
+   flag puts the holes on the Python fill's shifted grid instead; 6 holes in
+   148,477 still head three in a line. Row for row it is the Python rule
+   (51,760 rows in thread order, equal to the bit, after an audit failed the
+   first proof). Cost: +7% stitches (+2% on a plain square, +12% on a design
+   in small pieces) and stitches down to 1 mm where a row meets the edge
+   (2 mm today). No cut, no float and no edge moves. **What it leaves: a
+   line of dashes.** A first or last step over a stitch is halved, and the
+   half lands by the next row's grid hole: a pair of holes every four rows,
+   about 2 mm inside a straight edge, where today there is a solid line every
+   4 mm across the fill. Python's fill does the same. **Not sewn from this
+   lane**; the honest choices are flip now, or sew one square and look for
+   the dashes. A flip is `fillStagger: true` at `generate.js`'s three shape
+   call sites and a re-pin of every shape snapshot. Lettering has no fill to
+   stagger as shipped: a wide letter's fill (`satinplay.js`) sews only under
+   `wideColumnFill`, off since 09-11 (8,500 Studio lettering builds, no fill
+   row), and takes the stagger in whatever change flips that.
+   *(measured 2026-10-03 — [`docs/renders/fill-stagger-2026-10-03/`](docs/renders/fill-stagger-2026-10-03/README.md))*
+
+### Waiting on Kent 25 (`dedupeHoles`) as it stood after the fourth pass
+
+25. **Flip `dedupeHoles` on for the browser shape lanes — NEW 2026-10-03,
+   built OFF.** The shape builder rounds to the file's 0.1 mm, so two
+   penetrations nearer than that become two stitch records on one point:
+   the needle twice in one hole, about two a design in what ships (16,575
+   on 8,255). The flag lays the first and not the second; no other record
+   moves. Machines differ on the record. **Not sewn.** A flip is
+   `dedupeHoles: true` at `generate.js`'s three shape call sites and a re-pin
+   of every shape snapshot. Lettering has its own and no flag yet.
+   *(measured 2026-10-03 — [`docs/sub-unit-stitches-2026-10-03.md`](docs/sub-unit-stitches-2026-10-03.md))*
+
+### Waiting on Kent 26 (defect 57's cure) as it stood after the fourth pass
+
+26. **Defect 57's cure — ARMED by Kent 2026-10-11 on the port's sheets (PR
+   #817); built 2026-10-04.** Two of your three cures are in it (the bar's
+   end; one pixel, one edge). It moves every satin shape of the browser
+   lanes and no fill. Against `main` of 10-11 a hand-drawn C set to satin
+   goes from 6,047 stitches with its mouth sewn solid to 304 in one column;
+   a bar gains a millimetre; a star sews a third fewer stitches. Logos,
+   joints and garments other than left chest were not drawn against 10-11.
+   Still open:
+   - **The underlay's direction — ON since 2026-10-11** (`underlayDirection`,
+     built in PR #822, flipped in PR #836; item 40).
+   - **Round ends, small squares and dots.** The last cross of a round end
+     stands up to 0.46 mm outside it, and a square or dot up to 6 mm falls
+     to the outline-split column, which leaves its ends bare. A cure for
+     either is a number or a tier (dots to fill): gate 1's.
+   - **Still open from 10-03: the star's tier.** Have the branch guard ask
+     whether the whole rung stays inside the shape, not its midpoint; it
+     would send most satin stars to fill, which nothing has sewn.
+   *(ruled 2026-10-11 — defect 57; [`docs/renders/satin-spine-port-2026-10-11/`](docs/renders/satin-spine-port-2026-10-11/README.md), [`…-2026-10-04/`](docs/renders/satin-spine-2026-10-04/README.md))*
+
+### Waiting on Kent 44 (`forbid_gap_mm`) as it stood after the fourth pass
+
+44. **`forbid_gap_mm` flip — Kent RULED 2026-10-13: sew-out first (card v2
+   block G); the flip waits on it.** Defect 47's forbid-gap half, built OFF.
+   Priced (PR #874, measure and render only): at 0.8 mm over the 26 scorecard
+   fixtures, bare cloth under 0.8 mm between colours 126.6 → 6.2 mm² (−95%),
+   stitches +1,424 (+0.41%; bridge +3.7%), trims −14, 0 failed welds, and none of
+   the findings gained. WoK 44's old "3,868 → 2,914" bridge satin figure does
+   NOT reproduce (the border `S0c90443f` goes 3,383 → 3,605, +6.6%), and
+   #857's bridge `ARTWORK_UNCOVERED` is gone on main. 116 of 128 pairs are
+   artwork within 0.1 mm — seams, not knockout lines; a third of the strips land
+   on satin shapes nobody has sewn. Options were flip at 0.8, another value, or
+   hold; 0.8 mm is a physical constant (gate 1), so candidates only. **Card v2
+   block G** ([`docs/sewout/card-v2-2026-10-13/`](docs/sewout/card-v2-2026-10-13/))
+   sews an 8×8 mm fill and three satin bars at 0.3/0.6/1.0 mm gaps with arms
+   OFF, 0.4, 0.8 (the 1.0 bar is the control). *(measured 2026-10-12/13 — PRs
+   #846, #857, #874, #877, `docs/wok44-forbid-gap-bill-2026-10-12.md`;
+   renders `docs/renders/claude-wok44-bridge-forbid-gap/`)*
+
+### Quality review 2026-09-08: the three measurements and the `ties`/`fillStagger` pointers (area 1 summary)
+
+Three measurements the ranking rests on: the curve gate reaches **2 of 29** fixtures; MARINE sews tatami at 100 mm, refused by the width cap, not by irregularity; the pro's sewn Becker files carry **7–23%** of satin crosses over the 5.0 mm cap. The browser engine locks no cut as shipped: `ties` is built OFF in both JS builders (lettering 2026-09-14, shapes 2026-10-03; "Waiting on Kent" 23). Its shape fills line their needle holes up from row to row: `fillStagger` is built OFF (2026-10-03; "Waiting on Kent" 24). **`cfg.keep_thin_strokes` is DEFAULT ON since 2026-09-13** (Kent: *"Flip it — take gaulke and becker as the price"*; False is the pre-flip engine): the instruments (`tools/thin_strokes.py`, `legibility.py`) showed the two lanes lose different width bands; ON, Fremont routed loses 3 thin strokes instead of 18, at MORE stitches since `cfg.subpixel_edges` turned the old saving into a cost. `logo_gaulke_roofing`'s black lettering is enclosed background — item 9's garment rule is what sews it. Photo classes are gated out. *(measured 2026-09-13 — `docs/thin-strokes-flip-2026-09-13.md`; detail: [area 1](docs/scope/1-auto-digitizing-quality.md#area-1-lanes-in-full--moved-from-master_scope-2026-10-08))* 
+
+### Connected script, `SATIN_GAPS_TIGHT` and the lettering findings (area 1 summary)
+
+**Connected script is outside the construction (measured 2026-09-30):** the letter door's aspect ceiling (1.4) refuses a script word (bridge 2.6, tires 3.8) and a word is a cluster of one; force-tagging bridge's "Bridge" moved its red-on-yellow 39.9 → 40.6 mm² — no shipped rule reads the tag for rails, pull or gaps, and 22 % of the word's gap length is under the 1.0 mm pull + thread close at 80 mm (`docs/renders/bridge-phantom-2026-09-30/script-as-lettering.json`). **The lever Kent picked, built 2026-09-30: preflight `SATIN_GAPS_TIGHT`** — a satin shape whose gaps between its own strokes are under 2 × pull + thread, with the width at which its tightest tenth clears; fires on bridge (3 shapes), golden_tee (3), tires and gaulke (tires A → B, gaulke B → C), one warn per design (scope-history 2026-09-30). **The lettering findings name the artwork's limit (2026-09-30):** under 20 source pixels per letter `LETTERING_TOO_SMALL` and `LETTERING_ILLEGIBLE` say the lettering was lost in tracing, the larger source is the lever, and — for a source under the prep's 4 px/mm floor — the width at which the grid could try (`traced_at_mm`, which the size chip jumps to); bridge's teal words, 3.5 px/mm, 118 mm predicted, back at 140 measured. 
+
+### Kent's Fremont 81 mm Hat report as it stood after PR #902
+
+**Kent's Fremont 81 mm Hat report — "1895" dropped out of his Studio run (2026-10-13, PRs #898, #902).** Replayed with the Studio's own request (`tools/fremont_triage.py studio_request()`: 81 mm, 6 colours, Hat, bean edge cap) it reproduces his job: 15,306 stitches against his 15,129, 3 colours, 161 shapes. **Not the Column lane (#863) and not today's guards (#890):** all six bisect arms, lane OFF and the pre-#863 core included, sew EST and 1895 identically. The causes, by stage: (1) stage 4's hole floor (`min_detail_mm`² / 4 = 0.5625 mm²) fills the 8's and 9's counters (0.30–0.52 mm²) and the white ground's hole where the "1" sits (0.47 mm²), after which stage 5's clip removes the whole "1" (`SHAPE_NOT_STITCHED`); (2) stage 7's small-shape rescue sews every glyph under `min_detail_mm`² (2.25 mm²) as a bean outline before the lane is asked — 134 of 161 shapes, EST, THE's T and the whole tagline; (3) the tagline's three A's lose counters at stage 4. **`ARTWORK_UNCOVERED` is silent in every arm: coverage cannot see illegibility**, since the thread lands on the ink in the wrong shape. Stage 0 classes this flat logo `gradient` (gated, not chased). Fremont is UNREPRESENTATIVE (it reproduces defects, it sizes nothing), and the pro sews this tagline legibly at 92.5 mm. **Kent RULED `cfg.small_glyph_keep` ON** ("Waiting on Kent" 51; built OFF in PR #902, merged; the flip PR in flight): at the replay the "1" sews, the 8 gains 2 counters and the 9 one, the three A's one each, 15,306 → 15,611 stitches, trims 44 → 46. **Open gap:** the 8's lower counter ring (2.05 mm) is under `RUN_MIN_LOOP_MM` 2.2 and sews no ring. **Live follow-ups, one defect per lane (#898):** small lettering under 2.25 mm² goes to bean outlines before the lane is asked (a new floor is a sew-out; the pro's file says what they should sew as); mixed tiers inside one word (THE: two letters satin, one run, and satin at ~0.45 mm under the cap's 0.4 mm pull closes into a blob; pull is gate 1); Column end shapes on the big letters (E arm end, N diagonal foot, M vertex join — none a lane regression, lane OFF is the same or worse); and **a legibility instrument, which must exist before any of these flips a default.** Branches pushed with no PR open on 2026-10-13: `claude/column-end-shapes`, `claude/fremont-small-lettering-tier`, `claude/legibility-instrument` (suspected in flight; their content was not read). *(measured 2026-10-13 — PRs #898, #902, `tools/fremont_triage.py`, `tests/test_fremont_triage.py`, `tests/test_small_glyph_keep.py`, `docs/renders/claude-fremont-81mm-triage/`)*
+
+### Area 2: the `satinZigzag` paragraph as it stood after PR #901
+
+**Studio text satin lays half the thread across a column that the Python satin does (2026-10-13, PR #901); the cure is built OFF as `satinZigzag`.** `satinplay.emitZigzag` alternated its leading rail (A1,B1,B2,A2,A3,B3), so one stitch crosses and the next steps one spacing along a rail: on a lone "l" stem **2.5 threads across per mm against 5 in the Python order and 6.7 in Ember's export** (0.3 mm per rail). The order dates from the file's first commit (2026-07-24) and no ruling chose it. `buildLetteringDesign({ satinZigzag: true })` makes one rail lead so every stitch crosses; absent or false is byte-identical (pinned). Needles per rail, the density yardstick, cannot see it. Over five font/cap cells of "Hotel Rag": stitch count unchanged (same penetrations, new order), thread +10 to +28%, trims move by one in three of five cells. Not looked at: the comb on wide split columns with the flag on, and whether browser-digitized shapes reach this emitter. A render shows open ladders off and closed columns on, but is not fabric: the default is Kent's and wants a sew-out (gate 1; "Waiting on Kent" 53). *(measured 2026-10-13 — PR #901, `test/satinplay.test.js`, `test/satinfont.test.js`)*
+
+### Waiting on Kent 45 (hairline tier) as it stood after the fourth pass
+
+45. **The hairline tier — built OFF; the flip waits on a sew-out (gate 1).** Thread weight, the tier (PR #848), ground under strands (#850), the per-strand
+   gate (#851), a drop guard (#879, no flag; **Kent RULED 2026-10-13 (via the director): keep the 2% share rule, not literal "any dropped strand"**), a
+   coverage guard (#888, `hairline_coverage_guard`), the lines route (#882, `hairline_from_lines`, photo lanes) and a strand test (#897,
+   `hairline_lines_strand_test`) are in, every flag OFF. Card v1: [`docs/sewout/hairline-card-2026-10-12/`](docs/sewout/hairline-card-2026-10-12/README.md)
+   (blocks A–E, 40 and 60 wt). Flipping `hairline`, `hairline_over_ground`, every 60/75 wt value and the 1.5 mm stitch wait on sewing it. Standing numbers:
+   before the drop guard `hairline` re-sewed 272 shapes on nine logos as 0.4 mm runs and 87 lost a strand (#872); with both guards bare fabric is within 0.3–1.5 mm²
+   of OFF on screenshot, drone, summit and Fremont, but gaulke's 7.06 mm² "ground gap" is not cured, and `hairline_over_ground` closes none of it (#892: 6.29 of
+   6.41 mm² is rim; the one lever left is `hairline_run_width_mm`, gate 1). On owl_kent the line route sews 75 strands and only 5 reach the facial bristles (31 are
+   breast barring); **the strand test (#897) halves the barring (31 → 15) and keeps the 5 bristles, but also drops the head-outline wisps (37 → 7) and would refuse
+   dense hair (a mane)**: no shape cue separated them, so it stays OFF, and every number is in-sample on one photo at 4.36 px/mm.
+   **Hairline travel (#895, MEASURED NEGATIVE):** #888's rise in thread over bare fabric on golden_tee (19.9 → 75.2 mm) is trimmed FLIGHTS, not thread; corrected, thread
+   over bare is 0.94 OFF against 0.56 ON on golden_tee and never higher with hairline on any of ten logos. The real cost is **+6 trims** inside block 0's hairline
+   shapes (46 → 52; screenshot +13, drone +2, which the coverage guard removes). **INSTRUMENT BLIND SPOT: `tests/test_chaining.py::_thread_bare_mm` never reads
+   `run.jump` / `run.trim`, so it counts the walk-in after a trimmed jump as thread; any claim built on it, on any plan with trimmed jumps, overstates thread. Use
+   `tools/hairline_travel.py`.** No fix built. The flip is his. Full prior text: [area 1](docs/scope/1-auto-digitizing-quality.md#overflow-moved-from-master_scope-2026-10-13-fourth-pass).
+   *(measured 2026-10-12/13 — PRs #872, #876, #879, #882, #888, #892, #895, #897, `tools/hairline_logo_bill.py`, `tools/hairline_lines_trial.py`, `tools/hairline_coverage.py`,
+   `tools/hairline_strand_test_trial.py`, `tests/test_hairline_travel.py`, `docs/hairline-photo-trial-2026-10-12.md`)*
+
+### Waiting on Kent 32 (the four-flag contact sheet) as it stood after the fourth pass
+
+32. **Four default-OFF flags on one contact sheet — NEW 2026-10-08 (PR #786).**
+   OFF beside ON on real art, nothing sewn: `two_tone_snap` (defect 58 —
+   **ON since 2026-10-11, PR #821**, so it has left this sheet's open set);
+   `satin_tip_corner_gate` (defect 59, #677; Becker trims 60 → 59; shifts
+   junction ends on every logo); `lettering_columns` + `lettering_words`
+   (Becker 10,975 → 8,682 stitches, trims 60 → 29; the lane is **ON since
+   2026-10-12**, PR #863, and `lettering_words` stays OFF, item 37); the image lane's cuts-vs-stitches patch (#697
+   candidate C: summit_badge −4% stitches for 38 → 1,219 cuts; only a sew-out
+   prices a cut against a stitch). *(measured 2026-10-08 — PR #786,
+   `docs/renders/off-flags-2026-10-08/`; `digitizer/tools/off_flags_sheet.py`;
+   flipped 2026-10-11 — PR #821; 2026-10-12 — PR #863)*
+
+### Defect 4: the open assumption under the 3.1x (2026-09-13)
+
+   **An open assumption under the whole 3.1x (2026-09-13):** the corpus was decoded from the pro's FILES, so it records what the file says; whether it records what the MACHINE did is unestablished — ten machine-side trim-threshold claims went to adversarial vote and **all ten were refuted**, and a machine trims only connectors longer than its own setting whatever the file requests. Not assumed either way. In our favour: **vendors publish no distance rule** (Hatch's coverage rule; a three-state override whose Off/Always bypass the mm value; Embird, sew ORDER only), so *"no single threshold reproduces this pro"* is the published model's expected shape, not an anomaly — though those rules govern needle-DOWN runs and this corpus is needle-UP. *(`docs/trade-knowledge-2026-09-13.md` §1, §6)*    
+
+### Waiting on Kent 37: the word tagger's 50 mm misses (#889, #900)
+
+   - **The word tagger misses glyphs at 50 mm (#889, #900), no dominant rule.** 58 of 190 expected glyphs sit in no word at 50 mm (15 at 100 mm):
+     `no_region` 21 (enthusiast 14, fremont 7: segmentation, stage 0 and regions are gated), `nested` 18, `height_ratio` 5. **`nested` is a MEASURED
+     NEGATIVE (#900):** 12 of its 18 are bridge's letters inside a 49.4 mm badge disc (under the 60 mm word ceiling), 4 are gaulke's house-icon window
+     panes (the drop is right there), and five nesting policies each gain 8–28 glyphs only with 8–29 new strays (2x2 icon grids, wheel spokes): what
+     separates bridge's line is the word's SHAPE, not containment. Nothing shipped, no flag. Fix before any `lettering_words` flip. `tools/word_tagger_trace.py`.
+
+
+### Waiting on Kent 18 (faster photo reorder) as it stood after the fourth pass
+
+18. **RESOLVED 2026-10-13 — "Faster photo reorder" (Kent): both steps merged, no flag.** `fill_travel_under_cover` was most of a cold photo run (`_reorder_for_cover` and the unsewn-ground inset buffer dominate). PR #868, byte-identical: unsewn ground memoized, about −5%. PR #871 (Kent merged it): sewn footprints kept apart, routing windowed to the length budget, the incoming order priced lazily — `owl_kent` 148 → 114 s with byte-identical stitches; drone +1 jump / +6 stitches, sunset −4 stitches, no coverage lost, exposed travel equal or lower; renders in `docs/renders/photo-reorder-fast-2026-10-13/`. *(measured 2026-10-13 — PRs #868, #871, [`docs/photo-cold-profile-2026-10-13.md`](docs/photo-cold-profile-2026-10-13.md); before: `docs/flag-runtime-bills-2026-09-12.md`)*
+
+### Waiting on Kent 16 (hand-set sew order) as it stood after the fourth pass
+
+16. **RESOLVED 2026-10-11 — a hand-set sew order now reaches the file (Kent
+   chose option A, PR #830).** `moveBlock`/`moveShape` pin every sewable
+   shape's layer, so once a customer reorders, a later tier change no longer
+   gets the borders-last move — their order wins. Split/merge pieces made
+   after a reorder come in unpinned; the engine half (option B, not taken)
+   stays pinned red-on-fix by `test_a_partial_pin_is_still_lost_by_the_engine`.
+   Triage and the `logo_whitebg` repro: scope-history 10-11, 10-12.
+   *(confirmed 2026-10-11 — `digitizer/tests/test_manual_sew_order.py`;
+   `DigitizePanel.spec.js`, `digitizer.spec.js`)*
+
+### Defect 61: the twins paragraph
+
+**Twins (PR #855):** stage 4's `max(outers)` has the same shape but is latent — 0 of 7,106 masks have a second island, guarded by a tripwire test; the forbid-gap weld's twin is fixed (PR #857); the hairline twin is fixed under `hairline` and latent — `rest_planned` now keeps every rest part over the floor and counts slivers in `CLIP_DROPPED_SLIVER` (`source: hairline_rest`), and 0 of 52 corpus rows lose ink either way (PR #861, tripwire `test_corpus_rest_pieces_lose_no_ink`).
+
+### Waiting on Kent 37: non-letter capture, the three guards (as of PR #899)
+
+   - **Non-letter capture — all three guards ON.** `lettering_columns_skip_blobs` and `lettering_columns_ink_link` (Kent, option A, PR #890) and
+     `lettering_columns_icon_guard` (**Kent, 2026-10-13, PR #899**): skeleton nodes ≥ 24 refuse screenshot's three white truck-drawing pieces and none of 130
+     hand-labelled letters. Icon guard, screenshot: lane-taken 33 → 30, stitches 8,228 → 8,295, trims 62 → 61; the other eleven measured fixtures identical.
+     The 24-node, 1.0 mm and 0.40/0.95 cuts are candidate shape ratios from one corpus, not cloth constants. Scorecard baseline NOT recaptured (the screenshot row moves).
+
+
+### Waiting on Kent 37: lowercase (#887, #896)
+
+   - **Lowercase (#887, #896):** a lowercase station cross folds past 45° 1.4% of the time against 0.0% for capitals (u, b, g, m);
+     `lettering_columns_fold_cuts` (OFF) is NOT flip-ready (item 50). At 80 mm the synthetic i stem (2.124 mm²) is tagged lettering but sews a RUN: stage 7's
+     small-shape rescue (`routes_to_run`, under `min_detail_mm`² 2.25) fires before the lane is asked; `cfg.lettering_columns_small_stem` (OFF, item 52) keeps
+     it for the lane. The i DOT (0.446 mm²) is dropped separately, by `RUN_MIN_LOOP_MM` 2.2 (a cloth value).
+
+
+### Evaluation harness: the density/flow instrument (PR #847)
+
+**A density/flow instrument coded from his own notes finds no new signal (PR #847):** of 14 candidates read from the stored stitch records, the one clearing chance on both statistics, `jumps_per_1000`, restates trims (kappa +0.72 against the trim picks); density per area does not track his picks (#842's "denser" was stitch COUNT); `flow_circvar` is a lead from one sitting; and "each stitch crosses the whole stroke", coded as more long stitches, came out REVERSED — he picks the side with fewer stitches over 4 mm. Its proposed fresh blinded sitting waits on logos Kent supplies ("Waiting on Kent" 42). *(measured 2026-10-12 — PR #847, [`docs/density-flow-instrument-2026-10-12.md`](docs/density-flow-instrument-2026-10-12.md))* 
+
+### Waiting on Kent 22 (`fillColumns` lanes) as it stood after the fourth pass
+
+22. **RESOLVED 2026-10-08 — `fillColumns` ON in all three browser lanes**
+   (manual 10-07; basic shapes and the image lane 10-08, Kent's call with
+   the price in front of him). Image lane: floats off the fill 188,952 → 484,
+   cuts 3,714 → 3,208, stitches **+10.4%** (+29.7% worst); shapes +1.8%.
+   **Kent's standing ask:** the next ten digitized images shown to him carry
+   the off/on float picture (`tools/fill-columns-image-sheet.mjs`; memory
+   `fill-columns-float-pictures-2026-10-08`). The image lane's price — HOLD:
+   four cheaper walks each failed (candidate C is on #786's sheet, item 32).
+   None of it is sewn. Full tables: the price doc; scope-history 10-12.
+   *(measured 2026-10-08 — PR #697, `docs/renders/fill-columns-lanes-2026-10-08/price.md`)*
+
+### Waiting on Kent 21 (`bean_letter_max_stroke_mm`) as it stood after the fourth pass
+
+21. **`bean_letter_max_stroke_mm` at 1.0 — JUDGED 2026-10-03, stays OFF.**
+   Small traced lettering sewn as bean runs along the skeleton of its SOURCE
+   INK instead of satin blobs. On the labelled page Kent put today's satin
+   ahead on five of six logos and called bridge both bad; his reason is the
+   line's WEIGHT — *"little worms"*, *"aren't thick enough"*, *"to skinny"* —
+   while granting fremont's path reads cleaner. Open, and his: a heavier line
+   on the same path, or drop it. The render draws three passes as one thread,
+   so "too thin" is not yet separated from the picture (`suspected`); gate 1
+   holds a 3-pass bean on knit as `pending sew-out`.
+   *(judged 2026-10-03 — `docs/eye-pairs-2026-10-03/kent-notes.json`)*
+
+### Defect 57: its costs and a star's centre, standing (as of 2026-10-11)
+
+**Its costs, standing.** A satin bar's centre-run underlay ended at the far end from where its column starts (a needle-up move a median 49 mm on left chest) — cured by `underlayDirection`, ON since 2026-10-11 (PR #836). The last cross of a round end stands up to 0.46 mm outside it. A square or dot up to 6 mm has no skeleton and takes the outline-split fallback, which starts 12% in from each end (a 6 mm square: 92% covered to 85%, stitches to 8.8 mm). **A star's centre, standing.** The longest stitch of a satin star is a median 21 mm, up to 100 mm, cast arm to arm across the centre; its strokes are joined by needle-up moves (a median 139 mm a star). The branch guard sends it there: an even-pointed star splits tip to tip into equal halves, so twelve arms pass as ONE column. 
+
+### Waiting on Kent 39 (`bg_structural`) as it stood after the fourth pass
+
+39. **`bg_structural` flip — waits on real tonal art, NEW 2026-10-11.** Area 1's
+   two stage-1 background defects, fixed OFF. Before any flip:
+   `photo_chrome_specular` changes verdict ABSENT → background (read as a fix),
+   and `test_preflight` uses it as the full-bleed guard, so that guard moves
+   to another fixture first. Its three constants were chosen on mostly
+   synthetic fixtures; ON can change `px_per_mm` (summit traced on 949 px, not
+   900). *(measured 2026-10-11 — PR #825, `tests/test_bg_structural.py`)*
+
+### Waiting on Kent 41 (`subpixel_edges_min_px_per_mm`) as it stood after the fourth pass
+
+41. **`subpixel_edges_min_px_per_mm` — LEFT UNSET (Kent 2026-10-11); open: the
+   corner-run flip.** A floor under the native edge read clears Becker's
+   outline reversals at 1.8 px/mm (7.1 → 0.0 per 100 mm) but returns the
+   0.68 mm source-pixel staircase the 09-18 flip fixed (right-angle turns
+   26.5 → 81.3 per 100 mm), which the reversal count cannot see. The
+   reversals' own cure is BUILT OFF as `subpixel_corner_runs` (PR #834:
+   7.1 → 0.9 per 100 mm, turns 26.5 → 20.1, area 1); flipping it is his. *(measured
+   2026-10-11 — PRs #826, #834,
+   [`docs/subpixel-res-gate-2026-10-11.md`](docs/subpixel-res-gate-2026-10-11.md))*
+
+### Closed defect 54 in full (as of 2026-10-03)
+
+54. a ring that says a point TWICE running (handed over CLOSED: its first point again at the end) got a WEDGE from the BROWSER builder's `offsetRing` — FIXED 2026-10-03 (`distinctCorners`, `digitize.js`: the corners said once are what `offsetRing` moves and what `isConvexRing` reads). The repeat is an edge of no length; its two ends were each moved along one neighbour's normal, the first by three times the distance. Under a preset the fill is sewn to the moved rings, so the wedge was sewn: a 40 mm box on terry was filled 1.8 mm outside the drawing at its first corner, where 0.6 is right; a closed hole and a closed island the same, and with `fillColumns` the edge run. **Exported stitches change for a ring that says a point twice, under a preset or with `fillColumns`, and for no other** (4,536 outputs on rings that do not: identical). **No Studio lane hands over an EXACT repeat**: none in 24,985 rings from basic shapes, the image lane and trace import, and a hand-drawn one is refused as crossing itself. `parseSVG` and `fonts.js` do hand them over, and nothing in the Studio calls either. **A NEAR repeat is another matter and was in the Studio's reach: defect 55 (its gesture cured, its offset open).** Older than every flag. Left: the auto angle, a satin shape's centre run, the edge run drawn toward the centroid and the order of a colour's shapes are read off the POINTS, so a closed ring's underlay still differs. Independently audited: the fix held, five sentences of its record did not and are corrected. `tools/closed-ring-census.mjs`, `test/digitize.test.js`. Full text: scope-history 10-03.
