@@ -66,6 +66,18 @@ tier runs as before. On a photo lane the region tier is replaced,
 not stacked: no shape is carved (`pipeline.plan_stitches` hands stage 5 and
 stage 7 an empty `HairlineSet`).
 
+**On the gradient lane, a SUPPLEMENT** (`cfg.hairline_lines_gradient`,
+default OFF, 2026-10-14; `supplements`). The Studio sends owl_kent down
+`gradient` (#876's `studio` route), where the route above never runs. #915
+measured why it must not simply be widened there: on drawn hair the region
+tier sews every strand as a shape and saves thousands of stitches, and the
+line route replacing it is a regression. So on `gradient` the region tier
+runs exactly as it does, and the line route adds only the strands it laid
+nothing near: a line with at least `_SUPPLEMENT_COVERED_SHARE` of its length
+within the tier's run half-width plus one source pixel of a shape the tier
+walked (`supplement_zone`) is not sewn, counted in `refused_region`. Needs
+the strand test on too (it removes the barring, #897), else inert.
+
 Every number is a property of the FILE, not of cloth (ROADMAP gate 1).
 """
 from __future__ import annotations
@@ -74,6 +86,7 @@ import math
 
 import cv2
 import numpy as np
+import shapely
 
 from . import machine, stitches
 from .config import PHOTO_CLASSES
@@ -142,6 +155,18 @@ SHAPE_ID = "hairline_lines"
 # already laid (the caller's `hop_ok`), else it is cut as before.
 HOP_MAX_MM = 8.0
 
+# --- The gradient supplement (`cfg.hairline_lines_gradient`, default OFF) ----
+# The lane the supplement runs on: where the region tier already sews drawn
+# hair as shapes, and where the Studio sends owl_kent (#915).
+GRADIENT_SUPPLEMENT_CLASSES = ("gradient",)
+# A line whose share of length inside `supplement_zone` is at least this is
+# the region tier's strand seen a second time, and is not sewn. Half: a line
+# that merely crosses a walked shape keeps its free length. A CANDIDATE
+# (geometry of the file, unsewn, gate 1); the measured split is in the PR.
+_SUPPLEMENT_COVERED_SHARE = 0.5
+# Sampling pitch along a line for that share (the chain's cover test's).
+_SUPPLEMENT_STEP_MM = 0.1
+
 
 def _fill_slits(line_map: np.ndarray) -> np.ndarray:
     """Fill every hole of the line map no wider than `_SLIT_PX` pixels.
@@ -182,6 +207,46 @@ def applies(cfg, design_class: str | None) -> bool:
     return bool(getattr(cfg, "hairline", False)
                 and getattr(cfg, "hairline_from_lines", False)
                 and design_class in LINE_CLASSES)
+
+
+def supplements(cfg, design_class: str | None) -> bool:
+    """Does the line route run as a SUPPLEMENT to the region tier on this
+    design? `cfg.hairline_lines_gradient` on a gradient lane, with
+    `hairline`, `hairline_from_lines` and `hairline_lines_strand_test` all
+    on; any one off, False (inert)."""
+    return bool(getattr(cfg, "hairline", False)
+                and getattr(cfg, "hairline_from_lines", False)
+                and getattr(cfg, "hairline_lines_strand_test", False)
+                and getattr(cfg, "hairline_lines_gradient", False)
+                and design_class in GRADIENT_SUPPLEMENT_CLASSES
+                and not applies(cfg, design_class))
+
+
+def supplement_zone(polygons, sp, cfg):
+    """Where the region tier laid strands: the shapes it walked, grown by
+    the tier's run half-width plus one source pixel (#915's proposal). An
+    empty geometry when it walked none."""
+    reach = (0.5 * machine.thread_profile(cfg.thread_wt).hairline_run_width_mm
+             + 1.0 / sp.px_per_mm)
+    polys = [p for p in polygons if p is not None and not p.is_empty]
+    if not polys:
+        return shapely.Polygon()
+    zone = shapely.union_all([p.buffer(reach) for p in polys])
+    shapely.prepare(zone)
+    return zone
+
+
+def covered_share(pts, zone) -> float:
+    """Share of the polyline `pts` (mm) lying inside `zone`, sampled every
+    `_SUPPLEMENT_STEP_MM`."""
+    if zone is None or zone.is_empty or len(pts) < 2:
+        return 0.0
+    p = np.asarray(pts, np.float64)
+    cum = np.r_[0.0, np.cumsum(np.hypot(*np.diff(p, axis=0).T))]
+    n = max(2, int(cum[-1] / _SUPPLEMENT_STEP_MM) + 1)
+    t = np.linspace(0.0, cum[-1], n)
+    x, y = np.interp(t, cum, p[:, 0]), np.interp(t, cum, p[:, 1])
+    return float(np.mean(shapely.contains_xy(zone, x, y)))
 
 
 def _light(sp) -> np.ndarray:
@@ -433,7 +498,8 @@ def _sewable(group, cfg, thread_wt: int) -> tuple[list, int]:
 
 
 def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[int],
-                  block_wt: dict[int, int] | None = None, hop_ok=None
+                  block_wt: dict[int, int] | None = None, hop_ok=None,
+                  exclude=None
                   ) -> tuple[list[tuple[int, list[StitchRun]]], dict]:
     """The line route for one design -> ([(thread_index, runs)], report).
 
@@ -455,12 +521,27 @@ def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[in
     read only with `cfg.hairline_lines_chain` on. A hop of at most
     `HOP_MAX_MM` for which it holds is sewn needle-down (a TRAVEL run at
     `TRAVEL_STITCH_MM`, the next strand not a jump) and counted in `hops` /
-    `hop_mm`; every other hop is a jump, a trim past `trim_at_mm`, as before."""
+    `hop_mm`; every other hop is a jump, a trim past `trim_at_mm`, as before.
+
+    `exclude` (the gradient supplement, `supplement_zone`): a strand with at
+    least `_SUPPLEMENT_COVERED_SHARE` of its length inside it is not sewn,
+    and the report counts it per polarity in `refused_region`. None: no
+    such test, and no such key."""
     strand_test = bool(getattr(cfg, "hairline_lines_strand_test", False))
     bw = dict(block_wt or {}) if strand_test else {}
     strands, census = extract_strands(sp, cfg)
     report = {"strands": 0, "dropped": 0, "jumps": 0, **census,
               "sewn_by_polarity": {}}
+    if exclude is not None:
+        report["refused_region"] = {}
+
+    def free(group, polarity):
+        if exclude is None:
+            return group
+        out = [s for s in group
+               if covered_share(s["pts"], exclude) < _SUPPLEMENT_COVERED_SHARE]
+        report["refused_region"][polarity] = len(group) - len(out)
+        return out
     if strand_test:
         report["thread_wt"] = {}
     chain = bool(getattr(cfg, "hairline_lines_chain", False)) and hop_ok is not None
@@ -469,7 +550,7 @@ def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[in
     out: list[tuple[int, list[StitchRun]]] = []
     cur = entry
     for polarity in ("dark", "light"):
-        group = [s for s in strands if s["polarity"] == polarity]
+        group = free([s for s in strands if s["polarity"] == polarity], polarity)
         keep, dropped = _sewable(group, cfg, cfg.thread_wt)
         wt = cfg.thread_wt
         thread = (_thread_for([s for s, _ in keep], sp, cfg, allowed_threads)
@@ -479,6 +560,7 @@ def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[in
             group, again = extract_strands(sp, cfg, thread_wt=wt, polarities=(polarity,))
             for key, per in again.items():
                 report[key][polarity] = per[polarity]
+            group = free(group, polarity)
             keep, dropped = _sewable(group, cfg, wt)
         if strand_test:
             report["thread_wt"][polarity] = wt

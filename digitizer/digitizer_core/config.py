@@ -244,6 +244,16 @@ class PipelineConfig:
     # a CANDIDATE (ROADMAP gate 3: exposed thread is reported, not settled).
     # Off, byte-identical.
     hairline_lines_chain: bool = False
+    # Hairline line route on the GRADIENT lane, as a supplement (2026-10-14,
+    # default OFF; needs `hairline`, `hairline_from_lines` and
+    # `hairline_lines_strand_test` all on, else inert). The Studio sends
+    # owl_kent down `gradient`, where the line route never runs (#915). On,
+    # the region tier runs there exactly as before, and the line route adds
+    # the strands it laid nothing near: a line mostly inside a shape the
+    # tier walked (grown by the run half-width plus one source pixel) is not
+    # sewn (`stage6_hairline_lines.supplements` / `supplement_zone`). Carves
+    # nothing. Candidate geometry, unsewn (gate 1). Off, byte-identical.
+    hairline_lines_gradient: bool = False
     # Hairline coverage guard (2026-10-13, default OFF; needs `hairline` on).
     # A shape whose hairline runs would leave more than
     # `stage6_hairline.COVERAGE_GUARD_MM2` of its own ink bare (a 0.4 mm
