@@ -84,7 +84,7 @@ FREMONT_ENDS = {
 
 # --- one letter ----------------------------------------------------------------
 
-def _lane(poly, kw: dict, square_ends: bool):
+def _lane(poly, kw: dict, square_ends: bool, inside_connectors: bool = False):
     """The lane on one letter, its sewn legs captured. -> (runs, report, legs, cut)."""
     from digitizer_core import columns as C
     from digitizer_core.outline_cut import letter_columns
@@ -96,15 +96,18 @@ def _lane(poly, kw: dict, square_ends: bool):
         legs.append([(tuple(p), tuple(q)) for p, q in stations])
         return real(stations, *a, **k)
 
-    kw = {k: v for k, v in kw.items() if k != "square_ends"}
+    kw = {k: v for k, v in kw.items() if k not in ("square_ends", "inside_connectors")}
     C._satin_points = spy
     try:
-        runs, report = C.lettering_columns_shape(poly, "census", **kw,
-                                                 **({"square_ends": True} if square_ends else {}))
+        runs, report = C.lettering_columns_shape(
+            poly, "census", **kw,
+            **({"square_ends": True} if square_ends else {}),
+            **({"inside_connectors": True} if inside_connectors else {}))
     finally:
         C._satin_points = real
     cut = letter_columns(poly, pitch_mm=kw.get("spacing_mm", 0.4),
-                         fold_cuts=bool(kw.get("fold_cuts", False)))
+                         fold_cuts=bool(kw.get("fold_cuts", False)),
+                         **({"mitre_ends": True} if square_ends else {}))
     return runs, report, legs, cut
 
 
@@ -126,13 +129,14 @@ def _past_line(p, edge, outline) -> float:
     return (p[0] - ax) * nx + (p[1] - ay) * ny
 
 
-def letter_ends(poly, kw: dict, square_ends: bool = False, tol_mm: float = TOL_MM) -> dict:
+def letter_ends(poly, kw: dict, square_ends: bool = False, tol_mm: float = TOL_MM,
+                inside_connectors: bool = False) -> dict:
     """Every outline END of one letter's columns (see the module docstring)."""
     from shapely.geometry import LineString, Point
     from shapely.ops import unary_union
     from digitizer_core import columns as C, stitches
 
-    runs, report, legs, cut = _lane(poly, kw, square_ends)
+    runs, report, legs, cut = _lane(poly, kw, square_ends, inside_connectors)
     outline = cut.poly
     edges = C._ring_edges(outline)
     lim = math.cos(math.radians(C.END_FACE_DEG))
@@ -197,21 +201,40 @@ def letter_ends(poly, kw: dict, square_ends: bool = False, tol_mm: float = TOL_M
     reach = max(0.0, pull - C.RAIL_REACH_INSET_MM)
     beyond = [float(outline.boundary.distance(Point(p))) for leg in legs for st in leg for p in st
               if not outline.covers(Point(p))]
+    # past the whole pull: further than any rail's own push can take it (a
+    # cross under 0.44 mm is inset by a quarter of itself, not by the 0.11,
+    # so its side push legitimately passes `reach`)
+    beyond_pull = sum(1 for d in beyond if d > pull + REACH_SLACK_MM)
     beyond = [d for d in beyond if d > reach + REACH_SLACK_MM]
     grown = outline.buffer(reach + 1e-6)
-    travel_off = sum(LineString(r.points).difference(grown).length for r in runs
-                     if r.kind in (stitches.TRAVEL, stitches.UNDERLAY) and len(r.points) >= 2)
     laid = unary_union([LineString(s[1]).buffer(THREAD_HALF_MM) for s in segs]) if segs else None
     bare = outline.area if laid is None else outline.difference(laid).area
+    # over BARE fabric: outside both the grown outline and the letter's own
+    # laid satin (a thin cross's rail is pushed past `reach`, and a hop from
+    # it runs on satin, not on cloth)
+    cloth = grown if laid is None else grown.union(laid)
+    travel = [LineString(r.points) for r in runs
+              if r.kind in (stitches.TRAVEL, stitches.UNDERLAY) and len(r.points) >= 2]
+    # the needle-down stitch from one run's last point to the next run's
+    # first, where the link rule sewed it (no jump): not part of any run
+    links = [LineString([r0.points[-1], r1.points[0]]) for r0, r1 in zip(runs, runs[1:])
+             if not r1.jump and math.dist(r0.points[-1], r1.points[0]) > 1e-9]
+    travel_off = sum(t.difference(grown).length for t in travel)
+    link_off = sum(t.difference(grown).length for t in links)
+    connector_bare = sum(t.difference(cloth).length for t in travel + links)
     return {"W_mm": round(float(W), 3), "ends": ends,
             "overshoots": sum(e["overshoot"] for e in ends),
             "worst_stub_mm": round(max((e["stub_mm"] for e in ends), default=0.0), 3),
             "beyond_reach": len(beyond),
             "beyond_reach_max_mm": round(max(beyond, default=0.0), 3),
+            "beyond_pull": beyond_pull,
             "travel_off_mm": round(travel_off, 3),
+            "link_off_mm": round(link_off, 3),
+            "connector_bare_mm": round(connector_bare, 3),
             "bare_mm2": round(bare, 3),
             "stitches": sum(len(r.points) for r in runs),
-            "jumps": report.get("jumps", 0)}
+            "jumps": report.get("jumps", 0),
+            "trims": sum(1 for r in runs if r.trim)}
 
 
 # --- whole designs ---------------------------------------------------------------
@@ -242,10 +265,12 @@ def capture(fixture: str, cfg_kw: dict, overrides: dict | None = None):
     return calls, plan, plan_to_design(plan)
 
 
-def design_census(calls, square_ends: bool, tol_mm: float = TOL_MM) -> dict:
+def design_census(calls, square_ends: bool, tol_mm: float = TOL_MM,
+                  inside_connectors: bool = False) -> dict:
     rows = {}
     for poly, sid, kw in calls:
-        rows[sid] = letter_ends(poly, kw, square_ends=square_ends, tol_mm=tol_mm)
+        rows[sid] = letter_ends(poly, kw, square_ends=square_ends, tol_mm=tol_mm,
+                                inside_connectors=inside_connectors)
     return {
         "letters": len(rows),
         "ends": sum(len(r["ends"]) for r in rows.values()),
@@ -253,7 +278,12 @@ def design_census(calls, square_ends: bool, tol_mm: float = TOL_MM) -> dict:
         "worst_stub_mm": round(max((r["worst_stub_mm"] for r in rows.values()), default=0.0), 3),
         "beyond_reach": sum(r["beyond_reach"] for r in rows.values()),
         "beyond_reach_max_mm": round(max((r["beyond_reach_max_mm"] for r in rows.values()), default=0.0), 3),
+        "beyond_pull": sum(r["beyond_pull"] for r in rows.values()),
         "travel_off_mm": round(sum(r["travel_off_mm"] for r in rows.values()), 2),
+        "link_off_mm": round(sum(r["link_off_mm"] for r in rows.values()), 2),
+        "connector_bare_mm": round(sum(r["connector_bare_mm"] for r in rows.values()), 2),
+        "letter_jumps": sum(r["jumps"] for r in rows.values()),
+        "letter_trims": sum(r["trims"] for r in rows.values()),
         "bare_mm2": round(sum(r["bare_mm2"] for r in rows.values()), 2),
         "crossings": sum(e["crossings"] for r in rows.values() for e in r["ends"]),
         "fan_ends": sum(1 for r in rows.values() for e in r["ends"] if e["fan"]),

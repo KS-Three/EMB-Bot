@@ -2482,7 +2482,10 @@ def sequence(
                     # the call is today's, argument for argument
                     **({"fold_cuts": True} if cfg.lettering_columns_fold_cuts else {}),
                     # `cfg.lettering_columns_square_ends` (default OFF): same rule
-                    **({"square_ends": True} if cfg.lettering_columns_square_ends else {}))
+                    **({"square_ends": True} if cfg.lettering_columns_square_ends else {}),
+                    # `cfg.lettering_columns_inside_connectors` (default OFF): same rule
+                    **({"inside_connectors": True}
+                       if cfg.lettering_columns_inside_connectors else {}))
                 if not report["empty"]:
                     report["lettering_columns"] = 1
                     return runs, report, False

@@ -489,6 +489,10 @@ END_FACE_DEG = 45.0
 # A station end this close to an outline edge lies on it: a square cap's last
 # cross sits `outline_cut.CAP_INSET_MM` (0.03) inside its face, plus a hair.
 _FACE_EPS_MM = 0.05
+# Two end faces whose directions differ by more than this (as a sine: 10 deg)
+# meet at a CORNER, and a penetration on both is held at it (`_hold_end_faces`).
+# Under it they are one face traced in two pieces. Geometry, a CANDIDATE.
+_CORNER_SIN = math.sin(math.radians(10.0))
 
 
 def _ring_edges(poly: Polygon) -> list[tuple[tuple, tuple, tuple]]:
@@ -567,11 +571,12 @@ def sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float,
                                         **({"outline": poly} if hold is not None else {}))
     if hold is not None:
         a_pts, b_pts = _hold_end_faces(col, a_pts, b_pts, *hold, poly,
-                                       max(0.0, pull_mm - RAIL_REACH_INSET_MM))
+                                       max(0.0, pull_mm - RAIL_REACH_INSET_MM), pull_mm)
     return a_pts, b_pts
 
 
-def _hold_end_faces(col: Column, a_pts, b_pts, edges, letter_faces, poly: Polygon, reach_mm: float):
+def _hold_end_faces(col: Column, a_pts, b_pts, edges, letter_faces, poly: Polygon, reach_mm: float,
+                    pull_mm: float | None = None):
     """`cfg.lettering_columns_square_ends`: every penetration that started ON
     an end face keeps only the part of its displacement (rail inset, pull
     push, fan-face reach) that runs ALONG that face -- it slides on the
@@ -583,8 +588,9 @@ def _hold_end_faces(col: Column, a_pts, b_pts, edges, letter_faces, poly: Polygo
     column also holds on the letter's TERMINAL faces (`end_faces`: an edge
     some column's end cross lies along), so a serif whose side continues an
     arm's end face ends flush with it (HOTEL's E, where the upper serif's
-    side stood 0.29 mm past the arm's end). Where a point lies on two edges
-    (a corner) the nearer face wins.
+    side stood 0.29 mm past the arm's end). Where a point lies on a face and
+    a side (a square cap's corner) the face holds it; on two faces that
+    meet at a corner (more than `_CORNER_SIN` apart) it does not move.
 
     A slide that runs off the face's end (a square cap's corner, pushed
     sideways along its face: the column's own side pull) is kept. No
@@ -595,6 +601,11 @@ def _hold_end_faces(col: Column, a_pts, b_pts, edges, letter_faces, poly: Polygo
     dirs = _station_dirs(col)
     out_a, out_b = list(a_pts), list(b_pts)
     boundary = poly.boundary
+    # each cross's own side reach: the pull less the inset that cross got
+    # (`_inset_rails`: a quarter of a cross under 0.44 mm)
+    side_reach = None if pull_mm is None else [
+        max(0.0, pull_mm - min(RAIL_REACH_INSET_MM, 0.25 * math.dist(a, b)))
+        for a, b in col.stations]
 
     def outside(q) -> float:
         pt = Point(q)
@@ -602,26 +613,44 @@ def _hold_end_faces(col: Column, a_pts, b_pts, edges, letter_faces, poly: Polygo
     for i, ((a0, b0), d) in enumerate(zip(col.stations, dirs)):
         for p0, out in ((a0, out_a), (b0, out_b)):
             best, bd = None, _FACE_EPS_MM
+            faces = []
             for k, e in enumerate(edges):
                 dist = _seg_dist(p0, e)
-                if dist > bd:
+                if dist > _FACE_EPS_MM:
                     continue
                 face = abs(d[0] * e[2][0] + d[1] * e[2][1]) < lim or k in letter_faces
                 if face:
-                    best, bd = e, dist
+                    faces.append(e)
+                    if dist <= bd:
+                        best, bd = e, dist
             p1 = out[i]
+            if len(faces) >= 2 and any(
+                    abs(f[2][0] * g[2][1] - f[2][1] * g[2][0]) > _CORNER_SIN
+                    for f in faces for g in faces):
+                # On two end faces that meet at an angle (the M's V, whose
+                # flat foot meets the right diagonal's outer edge): a slide
+                # along either runs off the other, 0.17 mm under the flat on
+                # Fremont 81 mm. Held on both, the corner stays where it is.
+                out[i] = p0
+                continue
             if best is not None:
                 f = best[2]
                 s = (p1[0] - p0[0]) * f[0] + (p1[1] - p0[1]) * f[1]
                 p1 = (p0[0] + f[0] * s, p0[1] + f[1] * s)
-            if outside(p1) > reach_mm + 1e-9:
+            # A side keeps its own push. A cross under 0.44 mm is inset by a
+            # quarter of itself, not by RAIL_REACH_INSET_MM, so its push
+            # reaches further than `reach_mm`; cut back to that, golden_tee's
+            # 0.10 mm bars fell under the cross floor and went unsewn
+            # (+0.56 mm2 bare on one letter at 50 mm).
+            limit = side_reach[i] if (best is None and side_reach is not None) else reach_mm
+            if outside(p1) > limit + 1e-9:
                 # the longest part of the move that stays inside the reach
                 # (a fan face's reach on top of the push stood 0.37 mm out)
                 dx, dy = p1[0] - p0[0], p1[1] - p0[1]
                 lo, hi = 0.0, 1.0
                 for _ in range(16):
                     t = (lo + hi) / 2
-                    if outside((p0[0] + dx * t, p0[1] + dy * t)) > reach_mm:
+                    if outside((p0[0] + dx * t, p0[1] + dy * t)) > limit:
                         hi = t
                     else:
                         lo = t
@@ -1320,6 +1349,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 end_near: tuple[float, float] | None = None,
                 counter_clear_mm: float = 0.0,
                 square_ends: bool = False,
+                inside_connectors: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
@@ -1327,7 +1357,10 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     `counter_clear_mm` > 0 (`cfg.small_print_floor`) holds every
     penetration that far off the letter's counters (`_clear_counters`).
     `square_ends` (`cfg.lettering_columns_square_ends`) holds every
-    penetration that starts on an end face on that face (`_hold_end_faces`)."""
+    penetration that starts on an end face on that face (`_hold_end_faces`).
+    `inside_connectors` (`cfg.lettering_columns_inside_connectors`) keeps
+    every needle-down connector within the rails' side reach of the letter
+    (`poly_hop` in step 3)."""
     from .stage6_satin import (_JUNCTION_TUCK_MM, _comb_thresholds,   # same package,
                                _short_stitch_guard, _split_points)      # same rules
 
@@ -1430,6 +1463,25 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                                  for r in poly.interiors])
         if not _counters.is_empty:
             poly_link = poly_link.difference(_counters)
+    # `inside_connectors`: a needle-down connector (the hop below, the
+    # walk-in, the link rule) must stay on the letter -- within its outline
+    # grown by the rails' side reach, or on the ground its own satin covers
+    # (a thin cross's rail reaches further: it is inset by a quarter of
+    # itself) -- not inside the link rule's 0.1 + pull, which closes a narrow
+    # notch: the Fremont 81 mm M sewed 2.5 mm from its right foot to its
+    # vertex, 1.65 mm of it over the bare notch (Kent's M->O "loop"). A
+    # routed path walks only graph edges that stay on it and keeps its
+    # corners; a hop with no such route jumps (a trim past `trim_at_mm`).
+    if inside_connectors:
+        ground = [Polygon([a for a, _ in c.stations] + [b for _, b in c.stations][::-1]).buffer(0)
+                  for c in ready if len(c.stations) >= 2]
+        poly_hop = unary_union([poly.buffer(max(0.0, pull_mm - RAIL_REACH_INSET_MM) + _FACE_EPS_MM),
+                                *ground])
+        if counter_clear_mm > 0 and poly.interiors and not _counters.is_empty:
+            poly_hop = poly_hop.difference(_counters)
+    else:
+        poly_hop = poly_link
+    hop_strict = inside_connectors or counter_clear_mm > 0
     all_legs: list[dict] = []       # ci, sat, i0, i1 in traversal order (i0 may be > i1)
     for circuit in components:
         seen: set[int] = set()
@@ -1506,7 +1558,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
             tail = runs[-1].points[-1]
             hop = math.dist(tail, mids[0])
             if (machine.TINY_STITCH_MM <= hop <= max(trim_at_mm, _CONNECTOR_WIDTHS * W)
-                    and poly_link.covers(LineString([tail, mids[0]]))):
+                    and poly_hop.covers(LineString([tail, mids[0]]))):
                 runs.append(StitchRun(points=_walk_points([tail, mids[0]], _UNDERPATH_STEP_MM),
                                       kind=stitches.TRAVEL, shape_id=shape_id))
             # else a real gap: the link rule in step 4 decides
@@ -1554,7 +1606,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         # Small print: a routed path keeps its corners -- resampled by arc
         # length, the synthetic 0's 0.42 mm hop round a counter's corner
         # came out as one straight stitch across it.
-        if counter_clear_mm > 0:
+        if hop_strict:
             return _walk_corners(path, _UNDERPATH_STEP_MM)
         return _walk_points(path, _UNDERPATH_STEP_MM)
 
@@ -1568,10 +1620,10 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 # Straight where it stays inside; otherwise along the
                 # centrelines (the start is round a bend from the near edge
                 # -- 3 of Fremont's 4 lane-only entry trims, 2026-10-08).
-                path = ([e, f] if poly_link.covers(LineString([e, f]))
+                path = ([e, f] if poly_hop.covers(LineString([e, f]))
                         else _inside_path(ready, nodes, spans, e, f,
-                                          _CONNECTOR_WIDTHS * W, poly_link,
-                                          strict=counter_clear_mm > 0))
+                                          _CONNECTOR_WIDTHS * W, poly_hop,
+                                          strict=hop_strict))
                 if path is not None:
                     runs.insert(0, StitchRun(points=walk(path),
                                              kind=stitches.TRAVEL, shape_id=shape_id))
@@ -1593,13 +1645,13 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         a, b = prev_run.points[-1], cur.points[0]
         d = math.dist(a, b)
         tiny = d < machine.TINY_STITCH_MM and (counter_clear_mm <= 0 or d < 1e-9
-                                               or poly_link.covers(LineString([a, b])))
-        if tiny or (d <= allow and poly_link.covers(LineString([a, b]))):
+                                               or poly_hop.covers(LineString([a, b])))
+        if tiny or (d <= allow and poly_hop.covers(LineString([a, b]))):
             linked.append(cur)      # needle-down inside the letter, under thread sewn later
             continue
-        path = ([a, b] if poly_link.covers(LineString([a, b]))
-                else _inside_path(ready, nodes, spans, a, b, _CONNECTOR_WIDTHS * W, poly_link,
-                                  strict=counter_clear_mm > 0))
+        path = ([a, b] if poly_hop.covers(LineString([a, b]))
+                else _inside_path(ready, nodes, spans, a, b, _CONNECTOR_WIDTHS * W, poly_hop,
+                                  strict=hop_strict))
         later = [g for li, g in sewn.items() if li >= run_leg[k]]
         if path is not None and later:
             line = LineString(path)
@@ -1639,6 +1691,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             counter_clear_mm: float = 0.0,
                             fold_cuts: bool = False,
                             square_ends: bool = False,
+                            inside_connectors: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -1650,15 +1703,18 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     # the engine's own meaning of satin spacing (a needle every `spacing_mm`
     # on EACH rail). The spike stationed at half that with both ends down
     # and sewed every letter twice as dense.
-    cut = (letter_columns(poly, pitch_mm=spacing_mm, fold_cuts=True) if fold_cuts
-           else letter_columns(poly, pitch_mm=spacing_mm))
+    lc_kw = {**({"fold_cuts": True} if fold_cuts else {}),
+             # `cfg.lettering_columns_square_ends`: a slanted end face is mitred
+             **({"mitre_ends": True} if square_ends else {})}
+    cut = letter_columns(poly, pitch_mm=spacing_mm, **lc_kw)
     held = _recorded_counters(cut.poly, poly) if counter_clear_mm > 0 else cut.poly
     runs, report = column_runs(cut.columns, held, shape_id, trim_at_mm=trim_at_mm,
                                spacing_mm=spacing_mm, split_above_mm=split_above_mm,
                                pull_mm=pull_mm, pull_floor_mm=pull_floor_mm,
                                underlay_style=underlay_style, start_near=start_near,
                                end_near=end_near, counter_clear_mm=counter_clear_mm,
-                               **({"square_ends": True} if square_ends else {}))
+                               **({"square_ends": True} if square_ends else {}),
+                               **({"inside_connectors": True} if inside_connectors else {}))
     report["cuts"] = len(cut.cuts)
     report["columns_unsewn"] += len(cut.unsewn)
     return runs, report
