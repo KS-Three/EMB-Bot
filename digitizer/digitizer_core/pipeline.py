@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 from shapely.geometry import Polygon
 
-from . import debugviz, two_tone
+from . import debugviz, fur_regions, two_tone
 from .config import PipelineConfig
 from .fabrics import Fabric, apply_profile, fabric_for_garment, get_fabric
 from .machine import FILL_ROW_MM, satin_ceiling_mm
@@ -221,6 +221,14 @@ class PipelineResult:
     # toggled has them. None on a hand-built result: the tier then gates on
     # the traced width, as the prototype did.
     ink_source: object | None = None
+    # The regions the fur gate read as FUR (`fur_regions`, only under
+    # `cfg.hair_regions_directional`); None when it did not run. Read in
+    # `finish_generation` because that is where the raster is, so a re-plan
+    # with the flag turned on over a result built with it off routes nothing.
+    hair_fur_ids: tuple | None = None
+    # The gate's whole read, per region (`fur_regions.read_regions`): the
+    # census a tool reports. None when the gate did not run.
+    hair_fur_read: dict | None = None
 
     @property
     def shape_ids(self) -> list[str]:
@@ -1429,6 +1437,19 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             )
         )
 
+    # Fur regions (`cfg.hair_regions_directional`, default OFF): read where
+    # the pixels are. The raster rides on the result only when the gate
+    # found fur, so a design with none is byte-identical with the flag on.
+    hair_fur_ids = read = None
+    if fur_regions.applies(cfg, gen.classification_class):
+        fur_sp = source_pixels or SourcePixels(
+            rgb=p.rgb, px_per_mm=p.px_per_mm, origin_px=(art_cx, art_cy),
+            gradient_class=False, subject_mask=gen.subject_mask)
+        read = fur_regions.read_regions(regions, fur_sp, cfg)
+        hair_fur_ids = tuple(sorted(s for s, v in read.items() if v["fur"]))
+        if hair_fur_ids and source_pixels is None:
+            source_pixels = fur_sp
+
     return PipelineResult(
         regions=regions,
         palette=palette,
@@ -1458,6 +1479,8 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             if gen.quant_palette_spools is not None else None
         ),
         ink_source=InkSource.from_prep(p, (art_cx, art_cy)),
+        hair_fur_ids=hair_fur_ids,
+        hair_fur_read=read,
     )
 
 
@@ -1605,6 +1628,20 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     if cfg.fill_inside_satin_border:
         stitched_regions = _fill_inside_satin_border(
             stitched_regions, cfg, result.design_class)
+
+    # Fur regions on the streamline tier (`cfg.hair_regions_directional`,
+    # default OFF; `fur_regions`). Only regions the gate read in
+    # `finish_generation`, and only with the raster that read them. Not where
+    # every fill already sews streamline (photo_subject's auto-route, or the
+    # caller's own `fill_technique`): there a per-shape tier would only move
+    # the shape off the `auto` paths (the satin and border predictions) and
+    # change nothing about its fill (census, owl_kent `classical`).
+    already = (auto_photo_tier(cfg, result.design_class, result.faces_present)
+               or cfg.fill_technique or "tatami").lower() == fur_regions.TIER
+    if (fur_regions.applies(cfg, result.design_class) and not already
+            and getattr(result, "hair_fur_ids", None)
+            and result.source_pixels is not None):
+        stitched_regions = fur_regions.route(stitched_regions, result.hair_fur_ids)
 
     # The hairline tier's shapes (`cfg.hairline`, default OFF), read ONCE so
     # stage 5 (the ground under them) and stage 7 (the tier) agree on which

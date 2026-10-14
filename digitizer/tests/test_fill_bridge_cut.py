@@ -159,11 +159,20 @@ def _stage7_hands_over(monkeypatch, **cfg_kw) -> list:
     from digitizer_core.regions import Region
     from digitizer_core.threads import chart_for
 
+    import threading
+
     seen: list = []
     real = stage7_sequence.stitch_shape
+    me = threading.get_ident()
 
     def recording(*a, **k):
-        seen.append(k.get("cut_bridges"))
+        # This test's own plan only. The patch is module-global, and under
+        # xdist the service's JobRegistry pool (`digitizer_service.jobs`, one
+        # background thread per worker, alive for the session -- conftest's
+        # `client` note) can still be sewing a job another test submitted:
+        # its calls landed here too (CI on #925, shard 5: `[True] * 4`).
+        if threading.get_ident() == me:
+            seen.append(k.get("cut_bridges"))
         return real(*a, **k)
 
     monkeypatch.setattr(stage7_sequence, "stitch_shape", recording)

@@ -256,6 +256,23 @@ class PipelineConfig:
     # plan-quality candidate from the logo distribution, not a machine
     # constant (gate 1). Off, byte-identical. The flip is Kent's.
     hairline_coverage_guard: bool = False
+    # Fur regions as directional texture (2026-10-13, default OFF; option 2 of
+    # docs/hairline-photo-trial-2026-10-12.md, research doc §2: pros sew fur
+    # as long directional stitches, not as strands). On a raster lane
+    # (`fur_regions.FUR_CLASSES`), a region the hair gate reads as FUR --
+    # the line route's ridge test (`stage6_hairline_lines.extract_strands`)
+    # finds at least `fur_regions.FUR_MIN_STRAND_DENSITY` mm of strand per
+    # mm2 of it, over a field at least `FUR_MIN_FIELD_WIDTH_MM` wide rather
+    # than a stroke -- sews on the `streamline` tier (`tier: "streamline"`, the
+    # per-shape route the review screen already has) instead of the lane's
+    # fill. Read where the pixels are, in `run_stages`, so it must be on
+    # there too: a plan with the flag on over a result built with it off
+    # changes nothing. A design with no fur region is byte-identical with
+    # the flag on. The threshold is a plan-quality CANDIDATE; the streamline
+    # tier's spacing and stitch length are untouched (DOCTRINE: no
+    # subject-relative d_sep retune; gate 1). Off, byte-identical. The flip
+    # is Kent's.
+    hair_regions_directional: bool = False
     max_colors: int = 12
     # Make `max_colors` true on EVERY lane, not just the flat one. Default
     # OFF and byte-identical off — it only ever runs when a design already
