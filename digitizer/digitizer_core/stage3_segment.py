@@ -19,6 +19,7 @@ isolated text (a logo's subline) that the old drop-everything rule deleted.
 """
 from __future__ import annotations
 
+import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -429,8 +430,11 @@ def resolve_small_regions(
                     and 2 * max(box_h, box_w) >= loop_floor_px)
 
     def clears_dot_rung(i: int, box, halo, win) -> bool:
-        """`cfg.small_dot_rung`: the same proxy at the dot rung's floor, for a
-        part that stands on its own (an i dot on its ground). A part nine
+        """`cfg.small_dot_rung`: a perimeter lower bound at the dot rung's
+        floor, for a part that stands on its own (an i dot on its ground).
+        The bound is the larger of the proxy above and the isoperimetric one,
+        2 * sqrt(pi * area) -- still never more than the real ring, and exact
+        on a round dot, where 2 * max(w, h) reads only 2/pi of it. A part nine
         tenths ringed by other SMALL regions is a hole in a small glyph (the
         8's counter): it is the glyph's own ring that sews it, and keeping it
         as a shape of its own would lay ground-coloured thread in the hole."""
@@ -438,7 +442,7 @@ def resolve_small_regions(
                                         and areas[i] >= noise_area_px):
             return False
         box_h, box_w = box[2] - box[0], box[3] - box[1]
-        if 2 * max(box_h, box_w) < dot_floor_px:
+        if max(2 * max(box_h, box_w), 2.0 * math.sqrt(math.pi * areas[i])) < dot_floor_px:
             return False
         wy0, wx0, wy1, wx1 = win
         ring_px = int(halo.sum())

@@ -47,6 +47,7 @@ sys.path.insert(0, str(ROOT))
 
 TESTDATA = ROOT / "testdata"
 DOT_WIDTH_MM = 80.0
+SMALL_DOT_WIDTH_MM = 60.0
 WORD = "hijlij"
 FIXTURE_PX_PER_MM = 28.125     # lowercase_aileron at 80 mm: the word is drawn to match
 # The five real logos #902 read on the Studio route (80 mm, Hat).
@@ -127,8 +128,10 @@ def dot_cases(tmp: Path):
     the same CC0 face at the fixture's pixels per mm (it carries a j)."""
     from tools.lowercase_angle import FIXTURE
     from tools.stem_trace import word_image
-    cases = [("fixture", FIXTURE.with_suffix(".png"),
-              json.loads(FIXTURE.with_suffix(".json").read_text(encoding="utf-8")), DOT_WIDTH_MM)]
+    fx = json.loads(FIXTURE.with_suffix(".json").read_text(encoding="utf-8"))
+    # At 60 mm the i dot's own ring is under 2.2 mm, so the tack ring sews it.
+    cases = [("fixture", FIXTURE.with_suffix(".png"), fx, DOT_WIDTH_MM),
+             ("fixture60", FIXTURE.with_suffix(".png"), fx, SMALL_DOT_WIDTH_MM)]
     meta = word_image(WORD, tmp / "small_dot_rung_word.png")
     xs = [g["box"][0] for g in meta["glyphs"]] + [g["box"][2] for g in meta["glyphs"]]
     cases.append((f"word {WORD}", tmp / "small_dot_rung_word.png", meta,
@@ -271,7 +274,7 @@ def render(out: Path, tmp: Path, ppm: float = 60.0) -> list[Path]:
             to_px, s = mm_to_px(result, meta["image"])
             cx, cy = to_px(0.0, 0.0)
             gl = [g for g in meta["glyphs"] if g["ch"] in "ij"]
-            if name == "fixture":
+            if name.startswith("fixture"):
                 gl = [g for g in gl if g["line"] == 1]
             x0 = min((g["box"][0] - cx) / s for g in gl) - 0.8
             x1 = max((g["box"][2] - cx) / s for g in gl) + 0.8
