@@ -2965,6 +2965,14 @@ class PipelineConfig:
     # row's other half (the eye recipe) is a documented seam, not built:
     # see stage6_detail's module docstring.
     detail_layer: bool = False
+    # How the detail layer sews each line (2026-10-14; read only when the
+    # layer sews). "bean" (default) is the 0.73 mm triple run above,
+    # byte-identical. "run" is ONE pass at `stage6_detail.
+    # DETAIL_RUN_STITCH_MM` (1.5, a candidate — gate 1, unsewn), shortened
+    # on a curl, never under `machine.MIN_STITCH_MM`: the bean's stations
+    # are all under the 1.0 mm needle floor (PR #928 measured +5,267 such
+    # stitches on owl_kent). Anything else raises in `detail_runs`.
+    detail_layer_stitch: str = "bean"
     # Split a photo region whose own pixels span more light-to-dark range than
     # one thread can express into several regions, each getting its own mean
     # colour, palette weight and spool (stage2_photo_segment.

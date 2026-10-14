@@ -1,0 +1,76 @@
+{
+ "image": "owl_kent",
+ "class": "photo_subject",
+ "route": {
+  "forced_class": "photo_subject",
+  "photo_prep": false
+ },
+ "width_mm": 127.0,
+ "thread_wt": 40,
+ "arms": {
+  "off": {
+   "md5": "76fb7ec96eba0522ca860eac42422b58",
+   "stitches": 34694,
+   "trims": 377,
+   "color_changes": 30,
+   "thread_m": 56.07,
+   "under_1mm": 6624,
+   "line_strand_stitches": 0,
+   "line_strand_thread_m": 0.0,
+   "thread_bare_mm": 805.83,
+   "flight_bare_mm": 69.62,
+   "detail_runs": 0,
+   "detail_kinds": [],
+   "detail_stitches": 0,
+   "detail_under_1mm": 0,
+   "detail_lock_legs": 0,
+   "detail_thread_m": 0.0,
+   "detail_max_mm": 0.0,
+   "bare_new_mm2": 0.0
+  },
+  "bean": {
+   "md5": "58b87ae12e2dbadf3606594f196afe20",
+   "stitches": 40160,
+   "trims": 449,
+   "color_changes": 31,
+   "thread_m": 59.94,
+   "under_1mm": 11891,
+   "line_strand_stitches": 0,
+   "line_strand_thread_m": 0.0,
+   "thread_bare_mm": 779.98,
+   "flight_bare_mm": 69.22,
+   "detail_runs": 147,
+   "detail_kinds": [
+    "bean"
+   ],
+   "detail_stitches": 5466,
+   "detail_under_1mm": 5267,
+   "detail_lock_legs": 52,
+   "detail_thread_m": 3.865,
+   "detail_max_mm": 0.831,
+   "bare_new_mm2": 0.0
+  },
+  "run": {
+   "md5": "0806416c937aa1005dd09a12d0d49626",
+   "stitches": 36197,
+   "trims": 449,
+   "color_changes": 31,
+   "thread_m": 57.66,
+   "under_1mm": 6624,
+   "line_strand_stitches": 0,
+   "line_strand_thread_m": 0.0,
+   "thread_bare_mm": 782.23,
+   "flight_bare_mm": 69.22,
+   "detail_runs": 147,
+   "detail_kinds": [
+    "run"
+   ],
+   "detail_stitches": 1503,
+   "detail_under_1mm": 0,
+   "detail_lock_legs": 576,
+   "detail_thread_m": 1.588,
+   "detail_max_mm": 2.773,
+   "bare_new_mm2": 0.0
+  }
+ }
+}
