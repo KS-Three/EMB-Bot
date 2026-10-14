@@ -4431,3 +4431,109 @@ Lifted verbatim from MASTER_SCOPE area 1 when PRs #872-#882 made it stale; the l
 ## Items 4, 5, 7, 8, 9, 11 and sub-pixel edges — moved from MASTER_SCOPE (2026-10-13)
 
 **Item 7 — `cfg.design_angle`, DEFAULT OFF (built 2026-09-09):** one stitch direction for shapes without a house of their own; the pro's Becker holds ONE fill angle at every size, so no per-shape override was built. Becker's chance-corrected `direction` 0.0 → 0.289 at +4.2% stitches; byte-identical off. The last ~20° to the pro's angle is a house-style number — Kent's. *(measured 2026-09-09 — `tests/test_design_angle.py`; detail: [area 1](docs/scope/1-auto-digitizing-quality.md#area-1-lanes-in-full--moved-from-master_scope-2026-10-08))* **Item 8 RULED 2026-09-10 (Kent): the four colour flags not already ruled ship ON as ONE set** (`enforce_color_cap`, `resnap_mask_matches_grader`, `revalidate_small_shapes`, `bind_resnap_all_classes`; `dissolve_phantom_blends` stays banked), and **`cfg.robust_region_colour` is ON since the same day** — a SLIC+RAG region hands the palette the modal mean of its Lab pixels, not the mean, after Bridge Bar's disc bound to a spool 7.0 ΔE00 off the artwork. False on each is the pre-flip engine. The 26-fixture flip sheet, the per-budget cone/stop tables and the accepted prices: [area 1](docs/scope/1-auto-digitizing-quality.md), "Item 8's colour bundle". *(measured 2026-09-10 — `tools/flip_sheet.py`; `tests/test_robust_region_colour.py`)* **Item 9 — `cfg.enclosed_by_garment`, DEFAULT ON since 2026-09-10 (Kent; the 10 ΔE00 threshold and leaving alpha holes to the review toggle are also his):** an enclosed background-coloured hole of KNOWN colour sews by default when the Studio's garment is more than 10 ΔE00 from it; a review override still wins. Prices accepted: gaulke **+43 trims** on a light garment; at the Studio's 6 colours a sewing hole's cone takes a slot from the artwork (`COLOR_CAP_APPLIED`). *(measured 2026-09-10 — `tests/test_enclosed_by_garment.py`; detail: [area 1](docs/scope/1-auto-digitizing-quality.md#area-1-lanes-in-full--moved-from-master_scope-2026-10-08))* **Item 11 BUILT in three parts (2026-09-10):** `THREAD_MATCH_POOR` takes a 5.0 mm² patch floor (ON; 40 → 26 blocking findings over the 52-pair matrix); `raw_score` is read on the flip sheet and scorecard (two grade drops bisected to #432 and #433, flagged for a follow-up); and **`cfg.legibility_check` is DEFAULT ON** (Kent's ruling A): `LETTERING_ILLEGIBLE` warns under 0.5 and **never blocks, RULED**; SPOTIFY at exactly 0.50 is the accepted miss. OCR on the render is a LOWER bound on loss. *(measured 2026-09-10 — `docs/superpowers/plans/2026-09-10-legibility-yardstick.md` §4; `tests/test_legibility_check.py`; detail: [area 1](docs/scope/1-auto-digitizing-quality.md#area-1-lanes-in-full--moved-from-master_scope-2026-10-08))* **`cfg.subpixel_edges` is DEFAULT ON (Kent's flip 2026-09-09; False is the pre-flip polygon byte for byte):** stage 4's vertices sit on the anti-alias edge; below ~15 px/mm the error is the pixel, above it the 0.2 mm simplification tolerance (`tools/edge_truth_ladder.py`). The three mechanisms the flip exposed were fixed where they live, never in the polygon (DOCTRINE 2026-09-09). `curve_turn_deg` 15° and the upscaled decline are carried as Kent's. *(measured 2026-09-09 — detail: [area 1](docs/scope/1-auto-digitizing-quality.md#area-1-lanes-in-full--moved-from-master_scope-2026-10-08))* **Item 5's first PR is BUILT (2026-09-09): stage 6 clusters split junctions** — stubs under 0.5 half-widths and the loops inside them, the number read off `tools/junction_nodes.py`'s corpus histogram — so a crossing decomposes into its two bars at every scale; interior over-wide rail readings **948 → 830** across 14 fixtures at +0.21% stitches, Becker's bare total 16.0 → 9.0 mm², enthusiast 150's worst 4.5 → 1.2, no golden moved (the flat-lane keys have no branch node); the K's crotch (7.8 → 9.0) stays the junction cover's problem, PR 2. **Item 4 — `cfg.wide_columns`, DEFAULT OFF (2026-09-09):** a 6.5 mm ceiling read off the pro's MARINE; ON, MARINE sews satin at −13% stitches with 251 self-crossings — the decomposition, not the width, is the blocker; Kent's call. *(measured 2026-09-09 — `docs/renders/wide-columns-2026-09-09/`; detail: [area 1](docs/scope/1-auto-digitizing-quality.md#area-1-lanes-in-full--moved-from-master_scope-2026-10-08))* **Thin-stroke PR 2** (the flat lane's absorb-by-colour rule) and the 2026-09-13 flip's accepted prices — gaulke 2 → 4 cones, Becker a second cone: [area 1](docs/scope/1-auto-digitizing-quality.md#area-1-lanes-in-full--moved-from-master_scope-2026-10-08). *(measured 2026-09-13 — `docs/thin-strokes-flip-2026-09-13.md`)*
+
+## Overflow moved from MASTER_SCOPE (2026-10-13, fourth pass)
+
+Moved verbatim to make room for PRs #895-#901. The verdicts stay in MASTER_SCOPE; this is the text they replaced.
+
+### Waiting on Kent 37 (Column lane) as it stood after PR #891
+
+37. **RESOLVED 2026-10-12 — the Column lane is ON by default (Kent's ruling,
+   PR #863; renders PR #869).** `lettering_columns` True, `lettering_words`
+   False: with words OFF the lane reads the two old taggers, so it needs no
+   sibling. The blockers closed: rails at the satin tier's reach
+   (`RAIL_REACH_INSET_MM` 0.11, #837), the slanted fan (#844), and sew order
+   (#859: non-letters keep the OFF path's rank, letters reorder only within
+   their span, no colour change added). golden_tee 50 mm's excess was
+   `lettering_words` alone; with words at its default the lane reads under
+   shipped there. ON vs OFF, real `digitize()`: `lost_frac` lower at all six
+   fixture-widths (golden_tee 50 0.6700 → 0.6103, fremont 0.0302 → 0.0184,
+   becker 0.0236 → 0.0186), no new colour change, trims never up;
+   wrong-colour rises a little on golden_tee, the sew-order price. Tests of
+   the skeleton tier on text fixtures now name the lane OFF. **Still open:**
+   - **Letter reach, gate 1:** fremont's and golden_tee's letters stand
+     0.06–0.07 mm inside shipped's reach, every fanned slant face 0.19 mm
+     outside its traced edge — a sew-out question. Not sewn.
+   - **The word tagger misses glyphs at 50 mm — MEASURED 2026-10-13 (PR #889), no dominant rule.** 58 of 190
+     expected glyphs sit in no word at 50 mm (15 at 100 mm); 39 of the 58 are lost upstream of linking
+     (`nested` 18, `no_region` 21), and the largest link rule, `height_ratio`, takes 5. golden_tee's
+     "third glyph" is four different rules. A census of single-number relaxations and "rescue" joins found
+     none with zero false joins AND a gain, so nothing shipped; the lever it points at is the `nested`
+     admission drop. Fix before any `lettering_words` flip. `tools/word_tagger_trace.py`.
+   - **Eye-pairs `SPEC_ARMS` still list `lettering_columns` as an OFF arm**
+     (`tools/eye_pairs/pairs.py`), now equal to the base; a test asserts the
+     table, so it waits on a tidy-up.
+   - **Non-letter capture — guards ON 2026-10-13 (Kent, option A, PR #890).** The house-angle group had no
+     ink link and no stroke test, so the lane took solid blobs (PR #881: all 12 patches of `test_preflight`'s
+     grid, 8 `fur_ramp` discs; 0 of 150 lane shapes on real art) and the enthusiast shield star (a filled
+     sparkle sewn as a thin X). `cfg.lettering_columns_skip_blobs` (mean stroke over longer bbox side ≥ 0.40
+     and solidity ≥ 0.95) and `cfg.lettering_columns_ink_link` (PR #885: house-group-only, > CIEDE2000 20
+     from every text-cluster thread, not within 1.0 mm of a text letter) are ON. Only enthusiast (+159
+     stitches, star back to fill), `fur_ramp` and the grid move; every other real-art fixture is identical.
+     The 1.0 mm and 0.40/0.95 cuts are candidate shape ratios from one corpus, not cloth constants.
+     **Still captured: three white highlight pieces inside screenshot's truck drawing** (not status icons —
+     PR #891's correction; two share the text's exact ink, so no ink cut can refuse them).
+     `cfg.lettering_columns_icon_guard` (skeleton nodes ≥ 24; captures 36–45, letters ≤ 13) is built OFF:
+     "Waiting on Kent" 49.
+   - **Lowercase (PR #887, measured 2026-10-13):** on a CC0 Aileron fixture a lowercase station cross folds
+     past 45° 1.4% of the time against 0.0% for capitals, only where a curved stroke leaves a straight one
+     (u, b, g, m). `cfg.lettering_columns_fold_cuts` (OFF) cuts those (0.4%, +0.6% stitches, capitals
+     identical) but leaves a knot of short crosses at u and b: NOT flip-ready ("Waiting on Kent" 50). On
+     real art only 34 of about 3,000 lowercase crosses reach the lane (the rest is script or UI text); the
+     lane carries no house angle for any case.
+   - **Letter reach** is now card v2 block H (ROSE, `lettering_columns` OFF/ON
+     pair, [`docs/sewout/card-v2-2026-10-13/`](docs/sewout/card-v2-2026-10-13/)); unsewn.
+   *(measured 2026-10-12/13 — PRs #859, #863, #869, #877, #881, #885, #887, #889, #890, #891, [`docs/renders/lettering-columns-on/`](docs/renders/lettering-columns-on/), `tests/test_column_capture.py`, `tests/test_lowercase_angle.py`;
+   confirmed 2026-10-13 — `config.py`; the 10-11/12 text: scope-history 10-13)*
+
+### Waiting on Kent 45 (hairline tier) as it stood after PR #892
+
+45. **The hairline tier — built OFF; the flip waits on a sew-out (gate 1).**
+   Thread weight, the tier (PR #848), ground under strands (#850) and the
+   per-strand gate (#851) are in (area 1). Card v1:
+   [`docs/sewout/hairline-card-2026-10-12/`](docs/sewout/hairline-card-2026-10-12/README.md)
+   (blocks A–E, 40 and 60 wt). Flipping `hairline`, `hairline_over_ground`,
+   every 60/75 wt value and the 1.5 mm stitch wait on sewing it.
+   *(built 2026-10-12 — `tests/test_hairline_card.py`)* **Logos (PR #872):**
+   `hairline` was not flip-safe — it re-sewed 272 shapes on nine logos as 0.4 mm
+   runs, 87 lost a strand (enthusiast's E read C), five new
+   `ARTWORK_UNCOVERED`; no width cut separates those strokes from hair.
+   **Drop guard (PR #879, built, still OFF with the tier; no flag of its own):**
+   a shape whose walk would drop more than **2% of its strand length** is handed
+   back whole to the ladder. **Kent RULED 2026-10-13 (via the director): keep
+   the 2% share rule, not literal "any dropped strand"** (which forfeited the
+   hair itself: `hair_strands` −5,637 → −152 stitches). Measured: strands
+   dropped 0 on every logo bar two sub-2% survivors (0.08, 0.12 mm); hair
+   fixtures lose nothing. Remaining cost: thinner outlines on gradient-lane
+   logos (screenshot +8.6 mm² new `ARTWORK_UNCOVERED`) — a look for his eye. **Real
+   photo (PR #876, owl_kent):** the segmenter merges bristles into ragged
+   regions, so the tier barely sees strands; a line test in the strand gate
+   (refuses blur rims and down) leaves 3 strands sewn, 10 dropped. **Lines route
+   (PR #882, `cfg.hairline_from_lines`, OFF, needs `hairline`):** strands from
+   FDoG lines over the fill ground, no fill carved — 75 strands, 0 mm² new bare
+   fabric (regions: 2 strands, 2.1 mm²), +752 stitches, +45 trims; only 5 land on
+   the facial bristles (31 are breast barring, not hair) — resolution (4.36
+   px/mm), not tuning, is the limit; photo lanes only. Its flip is Kent's.
+   **Coverage guard (PR #888, `cfg.hairline_coverage_guard`, OFF, read only under `hairline`):** with the
+   drop guard ON, hairline still raised bare fabric on ordinary logos (screenshot 5.62 → 41.88 mm², new
+   `ARTWORK_UNCOVERED` 8.6; drone 2.94 → 20.50). The guard hands a shape back whole when its runs would
+   leave > 0.3 mm² bare AND > 0.04 mm per mm of strand (candidates from 285 shapes on 8 logos, not
+   constants). It brings screenshot, drone, summit and Fremont back to within 0.3–1.5 mm² of OFF (new
+   `ARTWORK_UNCOVERED` 0 on every fixture) for part of the stitch saving (screenshot −16.8% → −4.2%) and
+   keeps both hair networks; it does NOT cure the "ground gap" bucket (gaulke 7.06 mm² either way, golden_tee and
+   enthusiast only partly). **Ground gaps (PR #892, open and armed when written; measurement, no engine change, no
+   flag):** `hairline_over_ground` closes none of it. Bare fabric is unchanged on all ten logos; 6.29 of the 6.41 mm²
+   left after the guard is rim (ink within a 0.25 mm cell of the traced edge; gaulke's 0.48 mm outline stroke is 3.81
+   of it), and the gradient lane's grounds are satin, which keep only a tongue. The one lever left is the run width
+   (`hairline_run_width_mm`), a physical constant: a sew-out and Kent's call (gate 1). The flip is his.
+   *(measured 2026-10-13 — PRs #872, #876, #879, #882, #888, #892,
+   `tools/hairline_logo_bill.py`, `tools/hairline_lines_trial.py`, `tools/hairline_coverage.py` (`reach`),
+   `docs/hairline-photo-trial-2026-10-12.md`)*
+
+### Defect 51 (low-resolution line art) in full
+
+51. **Low-resolution line art lost its fine detail at the TRACER'S GRID, not in the file — FIXED, `cfg.work_px_per_mm` ON at 8.0 (Kent's flip 2026-10-01, on renders: full-size file best, this grid second, the old grid third on every logo; None = the engine before it).** Kent's ask: bridge's "RESTAURANT" completely missing. A source under `min_px_per_mm` was enlarged to 4 px/mm and traced there; a 0.7–1.4 mm stroke is then 3–5 px, the gradient lane's superpixels hold ink and ground both, and the RAG merge — which compares MEAN colours at 26 dE00 and whose two protections are gated at 1,000 px — swallowed the letters (bridge: 67 of 81 mm² of teal held by SEEDS, **39** after the merge, six blobs sewn). The same file on a 5–10 px/mm grid keeps 64–67. Stage 1 traces line art on the working grid and `min_px_per_mm` keeps only the `INPUT_LOW_RESOLUTION` warning; photo classes keep the source line; a 2,800 px side bounds it. **Not bridge's alone:** real logos downsampled to 5 px/mm and scored against their own full-resolution digitization recover fine ink **0.64 → 0.84** on average (ENTHUSIAST 0.25 → 0.90, its tagline; Fremont's "THE"; Golke's second line), and nothing in the corpus could have shown it — bridge was the only gradient logo under 5 px/mm. **Costs:** trims rise toward the full-resolution file's own count; a blurred synthetic (`logo_whitebg` at 5 px/mm) pays 12 → 21 trims; sources at 6.5 px/mm gain little (two of five logos down). **Still open, and a different defect:** the recovered letters are 3.25–4.5 mm and each sews as ONE satin bar — present, not legible letter by letter; that is `LETTERING_TOO_SMALL`'s size question. **Not robust:** the result moves with small changes to the foreground mask (a smoother mask sent bridge's words to a grey-green cone and cost ENTHUSIAST 0.90 → 0.70), and 43 tests read on the old grid hold it (`conftest.source_line_grid`), a few of them real costs on 6–7 px/mm synthetics (the radial ramp sews 2 regions for 1). **Open, Kent's:** his verdict also says the SOURCE is the bigger lever, and `INPUT_LOW_RESOLUTION` only fires under 4 px/mm — the 5 px/mm files on his page lost to their full-size selves unwarned. Detail: `docs/fine-detail-work-grid-2026-09-30.md`. *(measured 2026-10-01 — `tools/lowres_detail.py`; `tests/test_work_grid.py`)*
+
+### Defect 52 (browser fill across holes) in full
+
+52. **A fill in the BROWSER engine carries thread across every hole and every notch — CLOSED in all three Studio lanes by `fillColumns` (manual 2026-10-07, shapes and image 2026-10-08, Kent's calls).** The JS tatami walk goes from one span of a split row straight to the next: a float over a long gap, a STITCH over a short one. A 40 mm manual fill with two cut-outs: **76 untrimmed floats across the 12 mm one (912 mm of thread), 20 stitches sewn across the 3 mm one.** **Hidden:** a float puts no needle point in the hole, and the Studio draws jumps only with Jumps on. **The cure:** rows cut into monotone columns (`fill.js`, a port of the Python `_columns`), and every move of every pass of the shape asked what ground it runs over, the ground being what the FILL covers. On it: unchanged. Off it by no more than a fill row (0.15 mm): sewn, never floated. Deeper: the thread goes ROUND — along the hole's own edge, or in by a strip's far end under that strip's own rows — and is cut only where there is no way round. **Audited** on 9,869 designs (three scales, all seven presets): floats that leave the fill's ground **1,154,992 → 0**; designs with thread deeper than a fill row off it **8,581 → 36**, none of the 36 across a hole. **Cost:** cuts fall from 0.89 a design to 0.25, though 3% of holed shapes keep one and a comb can gain hundreds; stitches +3.3%, at worst +37%; the travel shows, with up to nine lines of thread on a rim's worst millimetre and over 5 mm across sewn rows in one holed fill in six; a forked large fill loses center-out; the edge run of a shape with a hole or an inside corner moves 0.2 mm inside the fill. Satin shapes, and shapes with neither, are untouched. **Not sewn: no sew-out exists.** **Three builds, three independent audits.** **On** in every Studio lane (`generate.js`); the engine default stays off ("Waiting on Kent" 22). **Not built:** row stagger (tie stitches: "Waiting on Kent" 23). The sheet, the cost tables and what was seen but not changed: [`docs/renders/fill-columns-2026-10-03/`](docs/renders/fill-columns-2026-10-03/). *(measured 2026-10-03 — `tools/fill-columns-sheet.mjs`; `test/fill.test.js`, `test/digitize.test.js`; three independent audits, scope-history 10-03; flipped for manual 2026-10-07, shapes and image 2026-10-08 — `generate.js`, `generate.spec.js`)*
