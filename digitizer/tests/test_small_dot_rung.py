@@ -170,12 +170,15 @@ def _md5(coords) -> str:
 
 
 @pytest.mark.parametrize("fixture", sorted(GOLDEN_MD5))
-def test_off_is_byte_identical(fixture):
+@pytest.mark.parametrize("flag", [False, True])
+def test_goldens_are_byte_identical_either_way(fixture, flag):
+    """OFF is the engine as it was. ON too, on these three: none has a part
+    in the rung's band (the census, `tools/small_dot_rung.py census`)."""
     golden = json.loads((TESTDATA / "flat_lane_golden.json").read_text(encoding="utf-8"))[fixture]
     assert _md5(golden["stitch_coords"]) == GOLDEN_MD5[fixture]
     _result, plan = digitize(TESTDATA / fixture,
                              PipelineConfig(target_width_mm=80.0, edge_cap="none",
-                                            small_dot_rung=False))
+                                            small_dot_rung=flag))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
     assert _md5(coords) == GOLDEN_MD5[fixture]
