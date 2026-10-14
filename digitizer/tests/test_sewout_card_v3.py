@@ -48,7 +48,7 @@ def card(tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def committed():
-    return json.loads((COMMITTED / "readback.json").read_text(encoding="utf-8"))
+    return json.loads((COMMITTED / "readback-v3.json").read_text(encoding="utf-8"))
 
 
 def test_the_block_list_and_arms_are_pinned():
@@ -179,7 +179,7 @@ def test_the_earlier_cards_are_not_overwritten(card):
 
 
 def test_the_readout_sheet_names_every_block_and_arm():
-    sheet = (COMMITTED / "scoring-sheet.md").read_text(encoding="utf-8")
+    sheet = (COMMITTED / "scoring-sheet-v3.md").read_text(encoding="utf-8")
     for needle in ("## F3", "## T", "## N", "## G", "small_print_floor", "small_glyph_keep",
                    "lettering_words", "lettering_word_tiers", "forbid_gap_mm", "1 tooth", "2 teeth", "3 teeth"):
         assert needle in sheet, needle

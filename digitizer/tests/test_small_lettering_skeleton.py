@@ -183,7 +183,11 @@ def _small_a(ppm=30.0):
 def test_stage4_records_a_rescued_glyphs_dropped_counter_only_under_the_flag(flag):
     m, p = _small_a()
     regions, _dropped = vectorize([RegionMask.from_full(m, layer=0)], [0], p,
-                                  PipelineConfig(small_lettering_skeleton=flag))
+                                  PipelineConfig(small_lettering_skeleton=flag,
+                                                 # `small_glyph_keep` (ON by default since 2026-10-13)
+                                                 # keeps the counter in the polygon, so nothing is
+                                                 # dropped to record; this test is about the floor.
+                                                 small_glyph_keep=False))
     (r,) = regions
     assert r.meta.get("rescued_small_shape")
     assert len(r.polygon.interiors) == 0                 # the polygon is the floor's, either way
