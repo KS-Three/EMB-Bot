@@ -21,12 +21,31 @@ from digitizer_core import PipelineConfig, machine, stitches
 from digitizer_core.pipeline import digitize, plan_stitches, run_stages
 from digitizer_core.stage6_blend import SourcePixels
 from digitizer_core.stage6_hairline_lines import HOP_MAX_MM, SHAPE_ID, strand_blocks
-from tests.test_hairline_lines import BASE, _fixture, _md5
+from tests.test_hairline_lines import BASE as _BASE
+from tests.test_hairline_lines import SIZE_PX, _drawn_lines, _md5
 from tests.test_thread_profile import GOLDEN_MD5, TESTDATA, _coords_md5
+from tools.hairline_lines_chain_trial import core
 from tools.hairline_travel import measure_plan
 
 ON = dict(hairline=True, hairline_from_lines=True)
 PX_PER_MM = 8.0
+# #882's eight dark strands on a mid-tone ground, framed in white so the
+# segmenter sees the ground as a subject and fills it (unframed, the ground
+# is the background and nothing is laid under the strands to hop over).
+BASE = dict(_BASE, target_width_mm=40.0)
+
+
+def _fixture(path):
+    rng = np.random.default_rng(7)
+    inner = np.full((SIZE_PX, SIZE_PX, 3), (150, 120, 95), np.float64)
+    inner = np.clip(inner + rng.normal(0.0, 4.0, (SIZE_PX, SIZE_PX, 1)), 0, 255).astype(np.uint8)
+    for pts in _drawn_lines():
+        cv2.polylines(inner, [np.round(pts).astype(np.int32)], False, (40, 30, 25), 2,
+                      cv2.LINE_AA)
+    img = np.full((SIZE_PX + 80, SIZE_PX + 80, 3), 255, np.uint8)
+    img[40:40 + SIZE_PX, 40:40 + SIZE_PX] = inner
+    cv2.imwrite(str(path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+    return path
 
 
 def _sp(img) -> SourcePixels:
@@ -164,7 +183,7 @@ def test_the_chain_cuts_the_trims_and_moves_no_strand(plans):
     lines, chain = plans["lines"], plans["chain"]
     # Same strands, in the same order, point for point.
     # (Lock stitches sit at the ends of a cut and move with it: compare inside.)
-    assert [r.points[4:-4] for r in _strand_runs(chain)] == [r.points[4:-4] for r in _strand_runs(lines)]
+    assert [core(r.points) for r in _strand_runs(chain)] == [core(r.points) for r in _strand_runs(lines)]
     rep = _hairline_report(chain)
     assert rep["hops"] > 0
     assert rep["strands"] == _hairline_report(lines)["strands"]

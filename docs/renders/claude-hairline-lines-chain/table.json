@@ -1,0 +1,237 @@
+{
+ "owl_classical_40wt": {
+  "lines": {
+   "md5": "941023729033a7aaef7a7b98a211e8fa",
+   "stitches": 35455,
+   "trims": 421,
+   "color_changes": 32,
+   "thread_m": 56.83,
+   "under_1mm": 6638,
+   "hairline": {
+    "shapes": 0,
+    "strands": 75,
+    "dropped": 38,
+    "source": "lines",
+    "found": {
+     "dark": 235,
+     "light": 289
+    },
+    "refused_no_ridge": {
+     "dark": 162,
+     "light": 249
+    },
+    "sewn_by_polarity": {
+     "dark": 47,
+     "light": 28
+    }
+   },
+   "line_strand_stitches": 752,
+   "line_strand_thread_m": 0.737,
+   "thread_bare_mm": 792.25,
+   "thread_exposed_legs": 739,
+   "thread_by_leg": {
+    "in": 211.53,
+    "body": 371.1,
+    "out": 209.61
+   },
+   "flight_bare_mm": 69.62,
+   "trims_block_start": 33,
+   "trims_in_shape": 274,
+   "trims_between_shapes": 114,
+   "flight_total_mm": 9166.45,
+   "strand_runs": 75,
+   "strand_trims": 44,
+   "strand_jumps": 74,
+   "visibility": {
+    "hops": 0,
+    "hop_mm": 0,
+    "showing_hops": 0,
+    "showing_mm": 0,
+    "mean_gap_L": 0.0,
+    "max_hop_mm": 0.0
+   },
+   "census": {
+    "strands": 75,
+    "dropped": 38
+   }
+  },
+  "lines_chain": {
+   "md5": "4f4d0189e34d90b87bdfcbe11da1b0dd",
+   "stitches": 35436,
+   "trims": 418,
+   "color_changes": 32,
+   "thread_m": 56.81,
+   "under_1mm": 6638,
+   "hairline": {
+    "shapes": 0,
+    "strands": 75,
+    "dropped": 38,
+    "source": "lines",
+    "found": {
+     "dark": 235,
+     "light": 289
+    },
+    "refused_no_ridge": {
+     "dark": 162,
+     "light": 249
+    },
+    "sewn_by_polarity": {
+     "dark": 47,
+     "light": 28
+    }
+   },
+   "line_strand_stitches": 733,
+   "line_strand_thread_m": 0.72,
+   "thread_bare_mm": 792.25,
+   "thread_exposed_legs": 739,
+   "thread_by_leg": {
+    "in": 211.53,
+    "body": 371.1,
+    "out": 209.61
+   },
+   "flight_bare_mm": 69.62,
+   "trims_block_start": 33,
+   "trims_in_shape": 271,
+   "trims_between_shapes": 114,
+   "flight_total_mm": 9153.67,
+   "strand_runs": 75,
+   "strand_trims": 41,
+   "strand_jumps": 65,
+   "visibility": {
+    "hops": 4,
+    "hop_mm": 15.31,
+    "showing_hops": 3,
+    "showing_mm": 11.46,
+    "mean_gap_L": 25.7,
+    "max_hop_mm": 5.79
+   },
+   "census": {
+    "strands": 75,
+    "dropped": 38,
+    "hops": 9,
+    "hop_mm": 22.786
+   }
+  },
+  "strand": {
+   "md5": "c086ff28bef29a2f33e9e7ac8dc8a520",
+   "stitches": 35051,
+   "trims": 401,
+   "color_changes": 32,
+   "thread_m": 56.42,
+   "under_1mm": 6638,
+   "hairline": {
+    "shapes": 0,
+    "strands": 29,
+    "dropped": 25,
+    "source": "lines",
+    "found": {
+     "dark": 235,
+     "light": 289
+    },
+    "refused_no_ridge": {
+     "dark": 162,
+     "light": 249
+    },
+    "sewn_by_polarity": {
+     "dark": 22,
+     "light": 7
+    }
+   },
+   "line_strand_stitches": 348,
+   "line_strand_thread_m": 0.328,
+   "thread_bare_mm": 804.08,
+   "thread_exposed_legs": 746,
+   "thread_by_leg": {
+    "in": 213.17,
+    "body": 379.44,
+    "out": 211.47
+   },
+   "flight_bare_mm": 69.62,
+   "trims_block_start": 33,
+   "trims_in_shape": 254,
+   "trims_between_shapes": 114,
+   "flight_total_mm": 9013.41,
+   "strand_runs": 29,
+   "strand_trims": 24,
+   "strand_jumps": 28,
+   "visibility": {
+    "hops": 0,
+    "hop_mm": 0,
+    "showing_hops": 0,
+    "showing_mm": 0,
+    "mean_gap_L": 0.0,
+    "max_hop_mm": 0.0
+   },
+   "census": {
+    "strands": 29,
+    "dropped": 25,
+    "refused_bar": {
+     "dark": 31,
+     "light": 28
+    }
+   }
+  },
+  "strand_chain": {
+   "md5": "c086ff28bef29a2f33e9e7ac8dc8a520",
+   "stitches": 35051,
+   "trims": 401,
+   "color_changes": 32,
+   "thread_m": 56.42,
+   "under_1mm": 6638,
+   "hairline": {
+    "shapes": 0,
+    "strands": 29,
+    "dropped": 25,
+    "source": "lines",
+    "found": {
+     "dark": 235,
+     "light": 289
+    },
+    "refused_no_ridge": {
+     "dark": 162,
+     "light": 249
+    },
+    "sewn_by_polarity": {
+     "dark": 22,
+     "light": 7
+    }
+   },
+   "line_strand_stitches": 348,
+   "line_strand_thread_m": 0.328,
+   "thread_bare_mm": 804.08,
+   "thread_exposed_legs": 746,
+   "thread_by_leg": {
+    "in": 213.17,
+    "body": 379.44,
+    "out": 211.47
+   },
+   "flight_bare_mm": 69.62,
+   "trims_block_start": 33,
+   "trims_in_shape": 254,
+   "trims_between_shapes": 114,
+   "flight_total_mm": 9013.41,
+   "strand_runs": 29,
+   "strand_trims": 24,
+   "strand_jumps": 28,
+   "visibility": {
+    "hops": 0,
+    "hop_mm": 0,
+    "showing_hops": 0,
+    "showing_mm": 0,
+    "mean_gap_L": 0.0,
+    "max_hop_mm": 0.0
+   },
+   "census": {
+    "strands": 29,
+    "dropped": 25,
+    "hops": 0,
+    "hop_mm": 0.0,
+    "refused_bar": {
+     "dark": 31,
+     "light": 28
+    }
+   }
+  }
+ },
+ "drawn": {}
+}

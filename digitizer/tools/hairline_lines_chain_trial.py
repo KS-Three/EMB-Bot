@@ -67,14 +67,25 @@ def _runs(plan):
     return [(b, r) for b in plan.blocks for r in b.runs if r.points]
 
 
+# A lock stitch is a few 0.8 mm legs back and forth at the end of a cut, so
+# it stays within this distance of the run's end; a hop has none.
+LOCK_REACH_MM = 2.5
+
+
+def core(points) -> list:
+    """The points further than `LOCK_REACH_MM` from both ends of the run."""
+    a, b = points[0], points[-1]
+    return [p for p in points
+            if math.dist(p, a) > LOCK_REACH_MM and math.dist(p, b) > LOCK_REACH_MM]
+
 def strand_signature(plan) -> str:
     """The line route's strands, in order: every RUN-kind run of the strand
-    blocks, point for point but for the four stitches at each end, where
+    blocks, point for point but for `LOCK_REACH_MM` at each end, where
     the lock stitches of a cut sit (the chain flag must not move one)."""
     h = hashlib.md5()
     for _b, r in _runs(plan):
         if r.shape_id == SHAPE_ID and r.kind == stitches.RUN:
-            h.update(json.dumps([[round(x, 4), round(y, 4)] for x, y in r.points[4:-4]]).encode())
+            h.update(json.dumps([[round(x, 4), round(y, 4)] for x, y in core(r.points)]).encode())
     return h.hexdigest()
 
 
@@ -234,6 +245,8 @@ def compose() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     rows = {a: json.loads((PARTS / f"{a}.json").read_text(encoding="utf-8"))
             for a in ARMS if (PARTS / f"{a}.json").exists()}
+    for r in rows.values():
+        r.pop("strand_signature", None)  # the unit test pins "no strand moved"
     drawn = (json.loads((PARTS / "drawn.json").read_text(encoding="utf-8"))
              if (PARTS / "drawn.json").exists() else {})
     (OUT / "table.json").write_text(json.dumps({"owl_classical_40wt": rows, "drawn": drawn},
@@ -246,9 +259,9 @@ def compose() -> None:
         if not mids:
             continue
         box = _window(mids, BOX_MM)
-        tiles = [_panel(off, box, {"trims", "jumps"}, f"{name}: chain OFF (cut hops drawn)"),
+        tiles = [_panel(off, box, {"trims", "jumps"}, f"{name}: chain OFF (cuts blue)"),
                  _panel(on, box, {"hops", "trims", "jumps"},
-                        f"{name}: chain ON (red = needle-down hop, blue = still cut)")]
+                        f"{name}: chain ON (red hop, blue cut)")]
         h, w = min(t.shape[0] for t in tiles), min(t.shape[1] for t in tiles)
         sep = np.full((h, 8, 3), 255, np.uint8)
         write_jpeg(OUT / f"owl_{name}_chain_{int(PPM)}pxmm.jpg",
