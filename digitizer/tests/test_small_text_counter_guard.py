@@ -198,9 +198,9 @@ def test_bean_tagging_takes_the_restore_steps_verdict(monkeypatch):
 # md5 prefixes measured 2026-10-15 (`plan.iter_runs()` coords). "off" is the engine
 # before the flip (`small_text_true_size=False`), pinned so an OFF drift is caught;
 # "unguarded" is the switch with no counter guard. The synthetic line's narrowest
-# source counter is 0.28 mm at a 1.55 mm cap and 0.455 at 2.5 (under 0.5: the
-# default is the engine before the flip), 0.546 at 3 (over it: the default is the
-# switch). At 2.5 mm the old 1.6 mm cap guard let the switch act; this one does not.
+# source counter is 0.32 mm at a 1.55 mm cap (under 0.45: the default is the
+# engine before the flip), 0.48 at 2.5 and 0.59 at 3 (over it: the default is
+# the switch) -- the counter census's own readings (PR #964) at 2.5 and 3.
 MD5 = {1.55: {"off": "dbb6380a91", "unguarded": "1644330929"},
        2.5: {"off": "1ad15a6e07", "unguarded": "a502e7908a"},
        3: {"off": "5da6cf3d84", "unguarded": "88822294f9"}}
@@ -216,14 +216,14 @@ def _md5(cap, **kw):
     return hashlib.md5(json.dumps(coords).encode()).hexdigest()[:10]
 
 
-@pytest.mark.parametrize("cap", [1.55, 2.5])
-def test_below_the_guard_the_default_is_the_engine_before_the_flip(cap):
-    off = _md5(cap, small_text_true_size=False)
-    assert off == MD5[cap]["off"]
-    assert _md5(cap) == off
-    assert _md5(cap, small_text_true_size_min_counter_mm=None) == MD5[cap]["unguarded"]
+def test_below_the_guard_the_default_is_the_engine_before_the_flip():
+    off = _md5(1.55, small_text_true_size=False)
+    assert off == MD5[1.55]["off"]
+    assert _md5(1.55) == off
+    assert _md5(1.55, small_text_true_size_min_counter_mm=None) == MD5[1.55]["unguarded"]
 
 
-def test_above_the_guard_the_default_is_the_switch():
-    assert _md5(3, small_text_true_size=False) == MD5[3]["off"]
-    assert _md5(3) == MD5[3]["unguarded"]
+@pytest.mark.parametrize("cap", [2.5, 3])
+def test_above_the_guard_the_default_is_the_switch(cap):
+    assert _md5(cap, small_text_true_size=False) == MD5[cap]["off"]
+    assert _md5(cap) == MD5[cap]["unguarded"]
