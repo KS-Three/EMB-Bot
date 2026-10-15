@@ -221,6 +221,13 @@ def _bbox(mask: np.ndarray) -> tuple[int, int, int, int] | None:
 # along one edge.
 ENCLOSED_PROTECT_OVERLAP = 0.6
 
+# `cfg.small_dot_rung_lettering`: an i/j stem under a dot, in dot heights
+# (gap, minimum height) and dot widths (its top band's span). Classification
+# candidates, read off the letter's shape -- not physical constants.
+_STEM_GAP_DOTS = 1.5
+_STEM_MIN_DOTS = 2.0
+_STEM_MAX_WIDTH_DOTS = 2.5
+
 
 def _chained_small_regions(regions, areas, boxes, small, min_area_px,
                            height, width) -> set[int]:
@@ -419,6 +426,9 @@ def resolve_small_regions(
     # the dot rung's own floor, so the proxy admits down to it too.
     dot_floor_px = (machine.DOT_RUNG_MIN_LOOP_MM * px_per_mm
                     if cfg.small_dot_rung else None)
+    # `cfg.small_dot_rung_lettering` (default OFF): the rung admits only a
+    # dot with a stem under it (`has_stem_below`).
+    dot_scope = bool(cfg.small_dot_rung and cfg.small_dot_rung_lettering)
     keep_contrast = bool(cfg.keep_thin_strokes) and layer_lab is not None
 
     def clears_run_floors(i: int, box) -> bool:
@@ -452,7 +462,51 @@ def resolve_small_regions(
             if j == i or jb is None or jb[2] <= wy0 or jb[0] >= wy1 or jb[3] <= wx0 or jb[1] >= wx1:
                 continue
             on_small += int((halo & regions[j].window(wy0, wx0, wy1, wx1)).sum())
-        return on_small * 10 < ring_px * 9
+        if on_small * 10 >= ring_px * 9:
+            return False
+        return not dot_scope or has_stem_below(i, box)
+
+    def colour(j: int) -> np.ndarray | None:
+        """CIELAB of region `j`: its layer's own colour, else the raster's
+        mean under it, else None (no colour is known)."""
+        if layer_lab is not None:
+            return layer_lab[regions[j].layer]
+        if lab_img is None:
+            return None
+        y0, x0, y1, x1 = regions[j].bbox
+        return lab_img[y0:y1, x0:x1][regions[j].crop].mean(axis=0)
+
+    def has_stem_below(i: int, box) -> bool:
+        """`cfg.small_dot_rung_lettering`: is there an i/j stem under this
+        dot? A region of the same colour (CIE76 within `cfg.merge_delta_e`)
+        whose top sits below the dot by at most `_STEM_GAP_DOTS` dot heights,
+        that is at least `_STEM_MIN_DOTS` dot heights tall, and whose top band
+        (one dot height deep) reaches under the dot and spans at most
+        `_STEM_MAX_WIDTH_DOTS` dot widths. A photo speck has no such column
+        beneath it; a dot on lettering always does. With no colour known
+        (`colour` is None), nothing is admitted."""
+        y0, x0, y1, x1 = box
+        dot_h, dot_w = y1 - y0, x1 - x0
+        mine = colour(i)
+        if mine is None:
+            return False
+        reach = y1 + _STEM_GAP_DOTS * dot_h
+        for j, rj in enumerate(regions):
+            if j == i or rj.area == 0:
+                continue
+            jy0, jx0, jy1, jx1 = rj.bbox
+            if (jy0 < y1 or jy0 > reach or jx1 <= x0 or jx0 >= x1
+                    or jy1 - jy0 < _STEM_MIN_DOTS * dot_h):
+                continue
+            band = rj.crop[:dot_h].any(axis=0)
+            cols = np.flatnonzero(band) + jx0
+            if (cols.size == 0 or cols[-1] < x0 or cols[0] >= x1
+                    or cols[-1] - cols[0] + 1 > _STEM_MAX_WIDTH_DOTS * dot_w):
+                continue
+            theirs = colour(j)
+            if theirs is not None and float(np.linalg.norm(mine - theirs)) <= cfg.merge_delta_e:
+                return True
+        return False
 
     # --- `cfg.keep_counters` ------------------------------------------------
     keep_counters = bool(keep_counters) and (layer_lab is not None or lab_img is not None)

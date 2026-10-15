@@ -754,7 +754,9 @@ def build_generation(
     counters_on = bool(cfg.keep_counters and classification.class_ not in PHOTO_CLASSES)
     masks, small_warnings = resolve_small_regions(
         masks, cfg, p.px_per_mm, p.enclosed_mask,
-        layer_lab=rgb_to_lab(q.cluster_rgb) if (cfg.keep_thin_strokes or counters_on) else None,
+        layer_lab=rgb_to_lab(q.cluster_rgb) if (
+            cfg.keep_thin_strokes or counters_on
+            or (cfg.small_dot_rung and cfg.small_dot_rung_lettering)) else None,
         keep_counters=counters_on)
     if dbg:
         debugviz.stage3(dbg, p.rgb, masks)
