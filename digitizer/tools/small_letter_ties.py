@@ -150,8 +150,8 @@ def word_ties(row: dict, thread_mm: float = THREAD_MM) -> dict:
     `ties` every lock anchored in the word's box (any colour, any shape: the
     ground's fill locks too, which no small-letter construction touches);
     `ties_glyph_box` those in a source glyph's bounding box grown by half a
-    thread; `ties_ink` those within half a thread of a glyph's own ink -- the
-    lock that lands ON a letter. `glyph_ties`: `ties_ink` per glyph.
+    thread; `ties_ink` those in a non-white thread within half a thread of a
+    glyph's own ink -- the lock that lands ON a letter, in its colour. `glyph_ties`: `ties_ink` per glyph.
     `by_tier`: the box's locks counted by the tier that sewed their run."""
     from shapely import wkt
     from shapely.geometry import Point
@@ -164,8 +164,13 @@ def word_ties(row: dict, thread_mm: float = THREAD_MM) -> dict:
         return any(g.bounds[0] - half <= x <= g.bounds[2] + half and g.bounds[1] - half <= y <= g.bounds[3] + half
                    for g in glyphs)
 
+    from tools.fremont_triage import WHITE_MIN
+
     def near(t, g):
-        return g.distance(Point(t["anchor"])) <= half
+        # in a LETTER's thread: the white patch fill under the words is not
+        # the letter (`fremont_triage.WHITE_MIN`, the census's own rule)
+        rgb = t.get("rgb")
+        return (rgb is None or min(rgb) < WHITE_MIN) and g.distance(Point(t["anchor"])) <= half
     tiers: dict[str, int] = {}
     for t in ties:
         k = f"{t.get('tier', t['kind'])}{'' if t['laid'] else ' (untied)'}"
@@ -213,7 +218,7 @@ def spy_ties(log: list):
                 lead, trail = tie_legs(pre[i], head, tail)
                 for end, legs, anchor in (("in", lead, pre[i][0]), ("out", trail, pre[i][-1])):
                     if end in ends:
-                        log.append({"shape_id": r.shape_id, "kind": r.kind, "end": end, "run_id": id(r),
+                        log.append({"shape_id": r.shape_id, "kind": r.kind, "end": end, "_run": r,
                                     "anchor": [anchor[0], anchor[1]], "laid": legs is not None,
                                     "legs": [[x, y] for x, y in (legs or [])]})
         return spy
@@ -237,17 +242,22 @@ def _digitize(kind: str, name: str, overrides: dict):
             spec = slc.corpus_designs()[name]
             run = slc._digitize(spec["path"], {**spec["cfg"], **overrides})
     small = sorted(s for s, rep in {**bean, **sk}.items() if not rep.get("empty"))
+    # Stage 7 can be run more than once per digitize (a trial plan whose runs
+    # are thrown away): only a lock on a run of the FINAL plan is sewn. The
+    # log holds each run itself, so no id is reused while this is read.
     rgb = {id(r): list(b.rgb) for b, r in run["plan"].iter_runs()}
     regions = {r.shape_id: r for r in run["result"].regions}
-    for t in log:
+    final = [t for t in log if id(t["_run"]) in rgb]
+    run["unsewn_tie_slots"] = len(log) - len(final)
+    for t in final:
         t["small"] = t["shape_id"] in small and t["kind"] == "run"
-        t["rgb"] = rgb.get(t.pop("run_id"))
+        t["rgb"] = rgb[id(t.pop("_run"))]
         reg = regions.get(t["shape_id"])
         meta = (reg.meta or {}) if reg is not None else {}
         t["text"] = bool(meta.get("text_candidate") or meta.get("lettering_group"))
         t["tier"] = ("bean" if t["shape_id"] in bean and not bean[t["shape_id"]].get("empty") else
                      "skeleton" if t["shape_id"] in sk and not sk[t["shape_id"]].get("empty") else t["kind"])
-    return run, log, small
+    return run, final, small
 
 
 def _plan_record(run: dict, log: list, small: list) -> dict:
