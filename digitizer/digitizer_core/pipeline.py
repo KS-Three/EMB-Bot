@@ -843,8 +843,10 @@ def build_generation(
     if cfg.small_text_restore_mm:
         # True size: adopt the line's untagged letters and give every letter
         # its counters back, before any reader of a letter's geometry.
+        from .config import true_size_min_cap
         from .small_text import restore_small_text
-        restore_small_text(regions, p, cap_mm=cfg.small_text_restore_mm)
+        restore_small_text(regions, p, cap_mm=cfg.small_text_restore_mm,
+                           min_cap_mm=true_size_min_cap(cfg))
     if cfg.small_text_cap_mm:
         from .small_text import enlarge_small_text
         enlarge_small_text(regions, p, cap_mm=cfg.small_text_cap_mm)

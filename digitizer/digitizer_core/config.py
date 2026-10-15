@@ -101,6 +101,25 @@ SMALL_TEXT_TRUE_SIZE = {
     "bean_letter_corner_deg": 50.0,
 }
 
+# The cap-height guard on that switch (`PipelineConfig.
+# small_text_true_size_min_cap_mm`), Kent's ruling 2026-10-14 21:55: the
+# switch acts only on a line of lettering whose cap height is at least this.
+# Below it the line takes today's path, byte for byte. Fremont's Hat at 65 mm
+# read WORSE under the switch (tagline OCR 10/11 -> 5/11, THE 3/3 -> 1/3), at
+# 81 and 92.5 mm better. A CANDIDATE (gate 1), unsewn; Kent may lower it.
+SMALL_TEXT_TRUE_SIZE_MIN_CAP_MM = 1.6
+
+
+def true_size_min_cap(cfg) -> float | None:
+    """The cap height (mm) under which a line of lettering keeps today's
+    path: `cfg.small_text_true_size_min_cap_mm` while the switch is ON, else
+    None (no guard: values set explicitly with the switch OFF act at every
+    size, as they did before the guard)."""
+    if not getattr(cfg, "small_text_true_size", False):
+        return None
+    cap = getattr(cfg, "small_text_true_size_min_cap_mm", None)
+    return float(cap) if cap and cap > 0 else None
+
 
 @dataclass
 class PipelineConfig:
@@ -2554,6 +2573,16 @@ class PipelineConfig:
     # And `None` for one of the six no longer means "off" while the switch is
     # ON: it is refilled.
     small_text_true_size: bool = True
+    # The switch's cap-height guard (Kent 2026-10-14 21:55; see
+    # `SMALL_TEXT_TRUE_SIZE_MIN_CAP_MM`, 1.6). While `small_text_true_size` is
+    # ON, a line of lettering whose cap height (the median member height, as
+    # `small_text.restore_small_text` measures it) is under this is neither
+    # restored (`restore_small_text`) nor tagged bean (`beanletters.
+    # tag_bean_letters`): it sews exactly as it did before the flip. None: no
+    # guard. Read only while the switch is ON (`true_size_min_cap`): with the
+    # switch OFF, explicitly set restore / bean values act at every size, as
+    # before. A CANDIDATE (gate 1).
+    small_text_true_size_min_cap_mm: float | None = SMALL_TEXT_TRUE_SIZE_MIN_CAP_MM
     # Bean letters' needle points held this far (mm) off a SMALL counter --
     # one no wider than `beanletters.COUNTER_HOLD_MAX_MM` -- inside the ink
     # (`beanletters.hold_bean_counters`, `ink_path.hold_off_counters`). A bean

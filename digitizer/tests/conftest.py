@@ -449,4 +449,9 @@ PRE_FLIP["small_glyph_keep"] = False
 # The tests ABOUT it are `tests/test_small_text.py`,
 # `tests/test_bean_letters_pipeline.py` and `tests/test_bean_ink_shape_gate.py`.
 PRE_FLIP["small_text_true_size"] = False
+# ...and its cap-height guard (Kent 2026-10-14 21:55, 1.6 mm), which came with
+# the flip: None is no guard. With the switch OFF the guard is never read
+# (`config.true_size_min_cap`), so this pin is the posture, not a second lever.
+# The tests ABOUT it are `tests/test_small_text_cap_guard.py`.
+PRE_FLIP["small_text_true_size_min_cap_mm"] = None
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

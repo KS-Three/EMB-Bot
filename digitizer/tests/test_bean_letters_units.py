@@ -61,6 +61,9 @@ def _stub_ink(monkeypatch, inks):
 
 
 def _cfg(**kw):
+    # The tagger alone, as built: the true-size switch (ON since 2026-10-14)
+    # would add its cap-height guard (`test_small_text_cap_guard.py`).
+    kw.setdefault("small_text_true_size", False)
     return PipelineConfig(bean_letter_max_stroke_mm=1.0, **kw)
 
 
@@ -176,7 +179,8 @@ def test_a_bold_letter_with_a_thin_ink_read_is_left_out_of_the_decision(monkeypa
             id(arcs[0]): MemberInk(stroke_mm=0.73, spines=[SPINE]),
             id(arcs[1]): MemberInk(stroke_mm=0.47, spines=[SPINE])}
     _stub_ink(monkeypatch, inks)
-    assert tag_bean_letters(bold + arcs, object(), PipelineConfig(bean_letter_max_stroke_mm=0.5)) == 0
+    assert tag_bean_letters(bold + arcs, object(), PipelineConfig(bean_letter_max_stroke_mm=0.5,
+                                                                small_text_true_size=False)) == 0
     assert not any(BEAN_LETTER_KEY in r.meta for r in bold + arcs)
     assert all(r.meta["ink_stroke_mm"] == 0.3 for r in bold)        # the read is still recorded
 
@@ -186,7 +190,8 @@ def test_thin_letters_whose_shape_agrees_still_go(monkeypatch):
     for r in thin:
         r.polygon = _box(0.25, 2.4)             # 2A/P ~0.23 mm, ink 0.25
     _stub_ink(monkeypatch, {id(r): MemberInk(stroke_mm=0.25, spines=[SPINE]) for r in thin})
-    assert tag_bean_letters(thin, object(), PipelineConfig(bean_letter_max_stroke_mm=0.4)) == 3
+    assert tag_bean_letters(thin, object(), PipelineConfig(bean_letter_max_stroke_mm=0.4,
+                                                        small_text_true_size=False)) == 3
 
 
 def test_the_gate_holds_under_word_tiers_too(monkeypatch):

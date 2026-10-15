@@ -94,6 +94,15 @@ def _height(r: Region) -> float:
     return b[3] - b[1]
 
 
+def line_cap_mm(members: list[Region]) -> float:
+    """A line's cap height as `restore_small_text` measures it: the median
+    member height of its core (`_core`), or of every member when the cluster
+    is too small to have one. The true-size switch's guard
+    (`config.true_size_min_cap`) reads this."""
+    core = _core(members) or list(members)
+    return float(np.median([_height(r) for r in core])) if core else 0.0
+
+
 def _adopt(members: list[Region], regions: list[Region], cap: float) -> list[Region]:
     """Untagged same-thread shapes of a letter's height sitting in the line."""
     group = list(members)
@@ -435,7 +444,8 @@ def _fill_old_holes(regions: list[Region], ids: set[int], old_union) -> None:
 _CLUSTER_TAGS = ("text_candidate", "text_cluster_id", "text_cluster_stroke_mm", "text_cluster_all_rescued")
 
 
-def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float) -> list[dict]:
+def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
+                       min_cap_mm: float | None = None) -> list[dict]:
     """The true-size half of this module (`cfg.small_text_restore_mm`): no
     scale, no move. For every line of lettering under `cap_mm`, ADOPT the
     untagged letters of the line into its text cluster and RETRACE every
@@ -464,6 +474,10 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float) -> list
             row["cap_mm"] = round(cap, 3)
             if cap <= 0 or cap >= cap_mm:
                 row["skipped"] = "tall_enough"
+                continue
+            if min_cap_mm and cap < min_cap_mm:
+                # Under the switch's cap-height guard: today's path, untouched.
+                row["skipped"] = "below_min_cap"
                 continue
             group = [r for r in _adopt(members, regions, cap) if id(r) not in claimed]
             if len(group) < len(members):
