@@ -579,7 +579,7 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
     `min_counter_mm` (`config.true_size_min_counter`, the switch's counter
     guard): a line whose narrowest source counter (`line_min_counter_mm`,
     over its letters and the ones it would adopt) is under `min_counter_mm x
-    wt / 40` -- `wt` its thread's weight in `thread_wts`, else `default_wt`
+    40 / wt` -- `wt` its thread's weight in `thread_wts`, else `default_wt`
     -- is left exactly as it was: nothing adopted, retraced or stripped. Its
     shapes are marked `GUARD_KEY` so the bean tagger leaves it too. A line
     with no counter passes. A guarded cluster stays whole, a stray line in it

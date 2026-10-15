@@ -110,7 +110,7 @@ SMALL_TEXT_TRUE_SIZE = {
 # letters in the SOURCE raster (`small_text.line_min_counter_mm`: each
 # counter the retrace reads, as twice its largest distance-transform value
 # at 40 px/mm, tracer specks left out -- the counter census's measure, PR
-# #964) is at least this x thread_wt / 40 mm across. It is read only on a
+# #964) is at least this x 40 / thread_wt mm across. It is read only on a
 # line the switch would act on (under the restore step's cap, or with a bean
 # candidate). A line with no counter passes. Below it the line takes today's
 # path. It replaced a 1.6 mm cap-height guard that could not separate
@@ -127,7 +127,7 @@ def true_size_min_counter(cfg) -> float | None:
     today's path: `cfg.small_text_true_size_min_counter_mm` while the switch
     is ON, else None (no guard: values set explicitly with the switch OFF act
     on every line, as they did before the guard). The floor a line meets is
-    this x its thread weight / 40 (`counter_floor_mm`)."""
+    this x 40 / its thread weight (`counter_floor_mm`)."""
     if not getattr(cfg, "small_text_true_size", False):
         return None
     floor = getattr(cfg, "small_text_true_size_min_counter_mm", None)
@@ -135,13 +135,12 @@ def true_size_min_counter(cfg) -> float | None:
 
 
 def counter_floor_mm(base_mm: float, thread_wt: int) -> float:
-    """`true_size_min_counter`'s floor at `thread_wt`, `base x wt / 40` as
-    ruled (0.45 mm at 40 wt, 0.675 at 60, 0.84 at 75). NOTE the direction: a
-    higher weight is a FINER thread, and `machine.thread_profile`'s own
-    `counter_min_width_mm` SHRINKS with it, so this scale guards more lines at
-    60 wt, not fewer. At the default 40 wt the two agree; flagged in the PR
-    for Kent rather than silently inverted."""
-    return float(base_mm) * float(thread_wt) / 40.0
+    """`true_size_min_counter`'s floor at `thread_wt`, `base x 40 / wt`
+    (0.45 mm at 40 wt, 0.30 at 60, 0.24 at 75): a higher weight is a FINER
+    thread, which keeps a narrower counter open, as `machine.thread_profile`'s
+    own `counter_min_width_mm` does. (The first spec read `x wt / 40`, the
+    wrong way round; corrected, VP option B, 2026-10-15.)"""
+    return float(base_mm) * 40.0 / float(thread_wt)
 
 
 @dataclass
@@ -2634,7 +2633,7 @@ class PipelineConfig:
     # is ON, a line of lettering whose smallest SOURCE counter
     # (`small_text.line_min_counter_mm`, over the counters `_retrace` reads
     # from the raster for the line's letters and the ones it adopts, specks
-    # left out) is narrower than this x thread_wt / 40 mm is neither restored
+    # left out) is narrower than this x 40 / thread_wt mm is neither restored
     # (`restore_small_text`) nor tagged bean (`beanletters.tag_bean_letters`):
     # it sews as it did before the flip. A line with no counter passes. None:
     # no guard. Read

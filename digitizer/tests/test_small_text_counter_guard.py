@@ -1,6 +1,6 @@
 """The true-size switch's counter guard (`cfg.small_text_true_size_min_counter_mm`,
 Kent WoK 56 option A; `config.SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM` 0.45 x
-thread_wt / 40 mm, a gate-1 CANDIDATE). It replaced a 1.6 mm cap-height guard
+40 / thread_wt mm, a gate-1 CANDIDATE). It replaced a 1.6 mm cap-height guard
 that could not separate Fremont's Hat 81 mm date (better ON) from its 65 mm
 tagline (worse ON): the tagline's cost is its A's apex counters closing, so
 the guard reads the narrowest SOURCE counter of a line. A line under it takes
@@ -54,9 +54,10 @@ def test_the_switch_fills_keep_stray_lines_and_an_explicit_value_wins():
 
 
 def test_the_floor_scales_with_thread_weight():
+    # finer thread (higher weight), narrower floor: base x 40 / wt
     assert counter_floor_mm(0.45, 40) == 0.45          # exact: a 0.45 counter passes
-    assert counter_floor_mm(0.45, 60) == pytest.approx(0.675)
-    assert counter_floor_mm(0.45, 75) == pytest.approx(0.84375)
+    assert counter_floor_mm(0.45, 60) == pytest.approx(0.30)
+    assert counter_floor_mm(0.45, 75) == pytest.approx(0.24)
 
 
 def test_tracer_specks_are_not_counters():
@@ -112,13 +113,13 @@ def test_a_line_with_no_counter_passes_any_floor():
     assert "skipped" not in row and row["min_counter_mm"] is None, row
 
 
-@pytest.mark.parametrize("wt, guarded", [(40, False), (60, True)])
+@pytest.mark.parametrize("wt, guarded", [(40, True), (60, False)])
 def test_the_line_meets_its_own_threads_floor(wt, guarded):
     narrow = _narrow()
     regions, p = _scene()
     _tag(regions, {"Sg0", "Sg2", "Sg3"})
-    # base 0.8 x narrow: 40 wt floor 0.8 x narrow passes; 60 wt 1.2 x narrow does not
-    rep = small_text.restore_small_text(regions, p, cap_mm=3.0, min_counter_mm=narrow * 0.8,
+    # base 1.2 x narrow: 40 wt floor 1.2 x narrow holds it; 60 wt 0.8 x narrow passes
+    rep = small_text.restore_small_text(regions, p, cap_mm=3.0, min_counter_mm=narrow * 1.2,
                                         thread_wts={7: wt})
     row = next(r for r in rep if r["cluster"] == "TCtest")
     assert (row.get("skipped") == "below_min_counter") is guarded, row

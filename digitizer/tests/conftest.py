@@ -449,7 +449,7 @@ PRE_FLIP["small_glyph_keep"] = False
 # The tests ABOUT it are `tests/test_small_text.py`,
 # `tests/test_bean_letters_pipeline.py` and `tests/test_bean_ink_shape_gate.py`.
 PRE_FLIP["small_text_true_size"] = False
-# ...and its counter guard (Kent, WoK 56 option A; 0.45 mm x thread_wt / 40,
+# ...and its counter guard (Kent, WoK 56 option A; 0.45 mm x 40 / thread_wt,
 # replacing a 1.6 mm cap-height guard), which came with the flip: None is no
 # guard. With the switch OFF the guard is never read
 # (`config.true_size_min_counter`), so this pin is the posture, not a second
