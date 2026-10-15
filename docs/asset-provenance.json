@@ -881,6 +881,18 @@
    "basis": "PR body of claude/fremont-wordmark-ends; source fixture cleared by Kent 2026-10-08 (its own entry above)"
   },
   {
+   "prefix": "docs/renders/hair-reach-size-proof/",
+   "status": "derived-render",
+   "source": "Strand map drawn by digitizer/tools/hair_reach.py sizerender: the line route's strands (main reading beside the source-pixel side sample) over a washed-out, downscaled copy of the work raster of digitizer/testdata/photo/owl_kent.jpg at 250 mm; per-cell size table beside it; no new artwork, no person, no client art",
+   "basis": "PR body of claude/hair-reach-size-proof; source fixture has its own entry above"
+  },
+  {
+   "prefix": "docs/renders/bridge-restaurant-tier/",
+   "status": "derived-render",
+   "source": "Rendered by digitizer/tools/restaurant_trace.py (--regions: a crop of digitizer/testdata/photo/logo_bridge_bar.jpg's prep raster with EMB-Bot's own region outlines; --band: thread renders, digitizer_core.stitchviz, of EMB-Bot's own digitize of it at 80 mm) and tools/glyph_legibility.py's word panel; no new artwork, no new client art",
+   "basis": "PR body of claude/bridge-restaurant-tier; source fixture cleared by Kent 2026-10-08 (its own entry above)"
+  },
+  {
    "prefix": "docs/renders/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures (catch-all for new render directories)",
