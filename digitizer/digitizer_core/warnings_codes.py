@@ -238,6 +238,8 @@ HAIRLINE_STROKES_AS_RUN = "HAIRLINE_STROKES_AS_RUN"
 # the region tier's, with "source": "lines_gradient", "refused_region" and
 # "refused_own_tone"; with `cfg.hairline_lines_logo_refusal` also
 # "refused_logo_edge", "refused_logo_flat" and "refused_logo_pattern".
+# With `cfg.hairline_lines_strand_test`, "refused_bar"; with
+# `cfg.hairline_lines_strand_mass` too, "exempt_mass" (bars kept as hair).
 HAIRLINE_TIER_SEWN = "HAIRLINE_TIER_SEWN"
 # `cfg.bean_letter_max_stroke_mm` (2026-10-02): lettering whose ink strokes are
 # under the line sewed as bean runs along the ink's skeleton instead of satin.
