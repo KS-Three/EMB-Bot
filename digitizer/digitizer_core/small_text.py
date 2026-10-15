@@ -549,10 +549,9 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
     wt / 40` -- `wt` its thread's weight in `thread_wts`, else `default_wt`
     -- is left exactly as it was: nothing adopted, retraced or stripped. Its
     shapes are marked `GUARD_KEY` so the bean tagger leaves it too. A line
-    with no counter passes. The guard is per LINE: with `keep_stray_lines`, a
-    stray line in a guarded line's cluster (65 mm Fremont: THE in the date's
-    cluster) still leaves as a cluster of its own and is considered in turn;
-    the guarded line and its other strays keep today's tags."""
+    with no counter passes. A guarded cluster stays whole, a stray line in it
+    included (65 mm Fremont: THE in the date's cluster sews as on main):
+    releasing it re-routes the rest of the design, the guarded lines with it."""
     report: list[dict] = []
     if not cap_mm or cap_mm <= 0 or not regions:
         return report
@@ -594,17 +593,13 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 if narrow is not None and narrow < floor:
                     # Under the switch's counter guard: today's path, untouched
                     # but for the mark that keeps the bean tagger off it too.
-                    # A stray LINE in its cluster is another line, judged on
-                    # its own counters: it leaves, as below.
-                    line_ids = {id(r) for r in group}
-                    kept = _stray_line([r for r in clusters[cid] if id(r) not in line_ids],
-                                       keep_stray_lines)
-                    kept_ids = {id(r) for r in kept}
+                    # The WHOLE cluster stays, a stray line in it included:
+                    # releasing Fremont's THE from the guarded 65 mm date
+                    # moved the black block's exit, so the tan block re-routed
+                    # and the guarded tagline's runs were entered elsewhere --
+                    # not today's path (measured 2026-10-15, PR #955).
                     for r in clusters[cid]:
-                        if id(r) not in kept_ids:
-                            r.meta[GUARD_KEY] = True
-                    if kept:
-                        row["stray_line"] = _release(kept, f"{cid}.line{at}", clusters, order)
+                        r.meta[GUARD_KEY] = True
                     row["skipped"] = "below_min_counter"
                     continue
                 for r in group:

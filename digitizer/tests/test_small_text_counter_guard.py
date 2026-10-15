@@ -109,23 +109,26 @@ def test_the_line_meets_its_own_threads_floor(wt, guarded):
     assert (row.get("skipped") == "below_min_counter") is guarded, row
 
 
-def test_a_stray_line_leaves_a_guarded_line_and_is_judged_on_its_own():
+def test_a_guarded_cluster_keeps_its_stray_line():
     """65 mm Fremont: THE (no counter) shares the date's cluster, the date is
-    under the guard. The date keeps today's path; THE leaves and is restored."""
+    under the guard. The whole cluster takes today's path, THE included:
+    releasing THE re-routed the rest of the design, the guarded tagline with
+    it. Over the guard the stray line still leaves (`keep_stray_lines`)."""
     narrow = _narrow()
     regions, p, glyphs = _two_lines()
+    before = [(r.shape_id, r.polygon.wkb, dict(r.meta)) for r in regions]
     rep = small_text.restore_small_text(regions, p, cap_mm=3.0, keep_stray_lines=True,
                                         min_counter_mm=narrow * 1.05)
-    first = rep[0]
-    assert first["cluster"] == "TCmerged" and first["skipped"] == "below_min_counter"
-    assert all(r.meta.get("text_cluster_id") == "TCmerged" and r.meta.get(small_text.GUARD_KEY)
-               for r in glyphs[:4])
-    assert not any(r.meta.get("small_text_restored") for r in glyphs[:4])
-    new = first["stray_line"]
-    assert all(r.meta.get("text_cluster_id") == new and not r.meta.get(small_text.GUARD_KEY)
-               for r in glyphs[4:])
-    second = next(r for r in rep if r["cluster"] == new)
-    assert "skipped" not in second and second["min_counter_mm"] is None, second
+    assert [r["cluster"] for r in rep] == ["TCmerged"]
+    assert rep[0]["skipped"] == "below_min_counter" and "stray_line" not in rep[0]
+    assert all(r.meta.get(small_text.GUARD_KEY) for r in glyphs)
+    after = [(r.shape_id, r.polygon.wkb, {k: v for k, v in r.meta.items() if k != small_text.GUARD_KEY})
+             for r in regions]
+    assert after == before
+    regions, p, glyphs = _two_lines()
+    rep = small_text.restore_small_text(regions, p, cap_mm=3.0, keep_stray_lines=True,
+                                        min_counter_mm=narrow * 0.95)
+    assert rep[0].get("stray_line") and len(rep) == 2
 
 
 @pytest.mark.parametrize("scale, reads", [(1.05, False), (0.95, True)])
