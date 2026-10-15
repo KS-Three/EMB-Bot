@@ -44,6 +44,11 @@ What runs, in order:
    (`stack_share`, the constants beside it). The same flag makes the run
    rules read the colour block's weight (`strand_blocks`' `block_wt`)
    instead of the design's.
+   **A stack of strands is hair** (`cfg.hairline_lines_strand_mass`,
+   default OFF, 2026-10-15; `is_hair_mass`). The strand test refuses a
+   mane as readily as barring. With this flag on too, a stack whose
+   members pass the ridge test themselves is kept: barring stacks thin bar
+   with wide bar, hair stacks strand with strand.
 3. **Stitch, the tier's rules.** Each strand is a run: `stitch_path` at
    `cfg.hairline_stitch_mm`, shortened on a curl to the curl tolerance of
    the block's thread (`_CURL_TOL_WIDTHS` x `hairline_run_width_mm`, so
@@ -154,6 +159,28 @@ _STACK_SHARE = 0.4
 # A second neighbour on one side at this multiple of the first's distance is
 # the next bar of an evenly spaced stack.
 _STACK_PERIOD = (1.6, 2.5)
+
+# --- The hair-mass exemption (`cfg.hairline_lines_strand_mass`, OFF) ---------
+# The strand test refuses ANY stack, so dense hair (a mane, a beard: strands
+# side by side) reads as barring, and so does #882's own synthetic of 8 thin
+# strands ~3 mm apart (#897's known limits). What tells a stack of hair from
+# a barred breast on owl_kent is what the stack is MADE of: a barred breast
+# stacks the thin parts of its bars with the WIDE parts, which the ridge
+# test refuses, while a stack of hair is strands throughout. So a line the
+# strand test would refuse is kept when, of the same-polarity lines its
+# STACKED stations' rays cross (`stack_share`'s rays), at least
+# `_MASS_ALL_STRANDS` pass the ridge test themselves; or at least
+# `_MASS_STRAND_SHARE` when the nearest of them sits within
+# `_MASS_GAP_WIDTHS` thread widths (median over those stations, centre to
+# centre), because in a dense mass strand ends and strands touching break a
+# few lines into pieces the ridge test refuses. No curvature, taper or ends
+# cue: #897 measured them and they do not separate. A uniform stack of thin
+# lines is now read as hair, whatever drew it; the barring stays refused
+# only because its stacks hold wide bars. All CANDIDATES, fitted in-sample
+# on owl_kent and two synthetics (the PR's table), unsewn (gate 1).
+_MASS_ALL_STRANDS = 0.95
+_MASS_STRAND_SHARE = 0.75
+_MASS_GAP_WIDTHS = 3.0
 
 SHAPE_ID = "hairline_lines"
 
@@ -524,10 +551,11 @@ def _segments(lines) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     return np.asarray(owner, int), A, D, U
 
 
-def _ray_hits(o, nrm, tan, own: int, segs, gap0_mm: float) -> np.ndarray:
-    """Sorted distances along the ray `o + t * nrm` (gap0 < t < reach) at
-    which it crosses a segment of another line running within
-    `_STACK_ANGLE_DEG` of `tan`."""
+def _ray_crossings(o, nrm, tan, own: int, segs, gap0_mm: float
+                   ) -> tuple[np.ndarray, np.ndarray]:
+    """-> (distances, owner line indices), sorted by distance, along the ray
+    `o + t * nrm` (gap0 < t < reach) where it crosses a segment of another
+    line running within `_STACK_ANGLE_DEG` of `tan`."""
     owner, A, D, U = segs
     den = nrm[0] * D[:, 1] - nrm[1] * D[:, 0]
     ok = np.abs(den) > 1e-9
@@ -538,7 +566,34 @@ def _ray_hits(o, nrm, tan, own: int, segs, gap0_mm: float) -> np.ndarray:
     par = np.abs(U @ tan) >= math.cos(math.radians(_STACK_ANGLE_DEG))
     m = (ok & (u >= 0.0) & (u <= 1.0) & (t > gap0_mm) & (t < _STACK_REACH_MM)
          & (owner != own) & par)
-    return np.sort(t[m])
+    order = np.argsort(t[m], kind="stable")
+    return t[m][order], owner[m][order]
+
+
+def _stack_stations(own: int, pts, segs, gap0_mm: float):
+    """Yield, per station along `pts` (line `own` of the polarity whose
+    segments are `segs`), (stacked, (left distances, owners), (right
+    distances, owners)): stacked when there is a parallel line on either
+    side, or two on one side at `_STACK_PERIOD` times the first's
+    distance."""
+    p = np.asarray(pts, np.float64)
+    d = np.hypot(*np.diff(p, axis=0).T)
+    cum = np.r_[0.0, np.cumsum(d)]
+    n = max(2, int(cum[-1] // _STACK_STEP_MM) + 1)
+    t = np.linspace(0.0, cum[-1], n)
+    q = np.c_[np.interp(t, cum, p[:, 0]), np.interp(t, cum, p[:, 1])]
+    lo, hi = _STACK_PERIOD
+    for i in range(1, len(q) - 1):
+        tan = q[i + 1] - q[i - 1]
+        tan = tan / (np.linalg.norm(tan) + 1e-12)
+        nrm = np.array([-tan[1], tan[0]])
+        left = _ray_crossings(q[i], -nrm, tan, own, segs, gap0_mm)
+        right = _ray_crossings(q[i], nrm, tan, own, segs, gap0_mm)
+        stacked = bool(len(left[0]) and len(right[0]))
+        for side, _o in (left, right):
+            if len(side) >= 2 and lo <= side[1] / side[0] <= hi:
+                stacked = True
+        yield stacked, left, right
 
 
 def stack_share(own: int, pts, segs, *, gap0_mm: float) -> float:
@@ -546,27 +601,38 @@ def stack_share(own: int, pts, segs, *, gap0_mm: float) -> float:
     segments are `segs`) that sit inside a stack of parallel lines: one
     either side, or two on one side at `_STACK_PERIOD` times the first's
     distance. 0 for a line too short to hold a station."""
-    p = np.asarray(pts, np.float64)
-    d = np.hypot(*np.diff(p, axis=0).T)
-    cum = np.r_[0.0, np.cumsum(d)]
-    n = max(2, int(cum[-1] // _STACK_STEP_MM) + 1)
-    t = np.linspace(0.0, cum[-1], n)
-    q = np.c_[np.interp(t, cum, p[:, 0]), np.interp(t, cum, p[:, 1])]
     stations = hit = 0
-    lo, hi = _STACK_PERIOD
-    for i in range(1, len(q) - 1):
-        tan = q[i + 1] - q[i - 1]
-        tan = tan / (np.linalg.norm(tan) + 1e-12)
-        nrm = np.array([-tan[1], tan[0]])
+    for stacked, _l, _r in _stack_stations(own, pts, segs, gap0_mm):
         stations += 1
-        left = _ray_hits(q[i], -nrm, tan, own, segs, gap0_mm)
-        right = _ray_hits(q[i], nrm, tan, own, segs, gap0_mm)
-        stacked = bool(len(left) and len(right))
-        for side in (left, right):
-            if len(side) >= 2 and lo <= side[1] / side[0] <= hi:
-                stacked = True
         hit += stacked
     return hit / stations if stations else 0.0
+
+
+def mass_reading(own: int, pts, segs, ridge, *, gap0_mm: float) -> tuple[float, float]:
+    """-> (strand share, nearest mm) of line `own`'s stack. Over the
+    stations `stack_share` counts as stacked: the share of every
+    same-polarity line their rays cross that passes the ridge test itself
+    (`ridge[k]`), and the median distance to the nearest such line, centre
+    to centre. (0.0, inf) when no station is stacked."""
+    seen, near = [], []
+    for stacked, (lt, lo), (rt, ro) in _stack_stations(own, pts, segs, gap0_mm):
+        if not stacked:
+            continue
+        seen.extend(int(k) for k in lo)
+        seen.extend(int(k) for k in ro)
+        firsts = [float(s[0]) for s in (lt, rt) if len(s)]
+        near.append(min(firsts))
+    if not seen:
+        return 0.0, math.inf
+    return (float(np.mean([bool(ridge[k]) for k in seen])), float(np.median(near)))
+
+
+def is_hair_mass(own: int, pts, segs, ridge, *, gap0_mm: float, width_mm: float) -> bool:
+    """Is line `own`, which the strand test reads as a bar, one of a stack
+    of STRANDS (hair) instead (`mass_reading`, the constants beside it)?"""
+    share, near = mass_reading(own, pts, segs, ridge, gap0_mm=gap0_mm)
+    return share >= _MASS_ALL_STRANDS or (share >= _MASS_STRAND_SHARE
+                                          and near <= _MASS_GAP_WIDTHS * width_mm)
 
 
 def extract_strands(sp, cfg, *, thread_wt: int | None = None,
@@ -577,13 +643,17 @@ def extract_strands(sp, cfg, *, thread_wt: int | None = None,
     its pixels; the detector's floor is tau = 0.5). The census counts what
     the detector found and what the ridge test refused, per polarity; with
     `cfg.hairline_lines_strand_test` on, also what the strand test refused
-    as a bar (`refused_bar`), and each strand carries its `stack` share.
+    as a bar (`refused_bar`), and each strand carries its `stack` share;
+    with `cfg.hairline_lines_strand_mass` on too, the lines the strand test
+    read as bars but kept as hair (`is_hair_mass`) are counted in
+    `exempt_mass`, and each strand carries `mass` (True for those).
 
     `thread_wt` (default `cfg.thread_wt`) sets the widths the ridge reads;
     `polarities` limits the read to some of the two."""
     from .stage6_detail import FDOG_RESPONSE_GAIN
     prof = machine.thread_profile(cfg.thread_wt if thread_wt is None else thread_wt)
     strand_test = bool(getattr(cfg, "hairline_lines_strand_test", False))
+    mass = strand_test and bool(getattr(cfg, "hairline_lines_strand_mass", False))
     sampler, gray = field_gray(sp)
     tangent, coherence = sampler.field.tangent, sampler.field.coherence
     light = _light(sp)
@@ -595,6 +665,8 @@ def extract_strands(sp, cfg, *, thread_wt: int | None = None,
     census = {"found": {}, "refused_no_ridge": {}}
     if strand_test:
         census["refused_bar"] = {}
+    if mass:
+        census["exempt_mass"] = {}
     strands: list[dict] = []
     for polarity, g in (("dark", gray), ("light", 1.0 - gray)):
         if polarity not in polarities:
@@ -603,22 +675,33 @@ def extract_strands(sp, cfg, *, thread_wt: int | None = None,
         lmap = _fill_slits(fdog_threshold(H, tangent, coherence))
         lines = lines_from_map(lmap, sp, sampler.scale, min_len_mm=0.0)
         census["found"][polarity] = len(lines)
-        refused = bars = 0
+        refused = bars = exempt = 0
         segs = _segments(lines) if strand_test else None
         resp = 1.0 + np.tanh(FDOG_RESPONSE_GAIN * H.astype(np.float64))
         hh, ww = resp.shape
+
+        def contrast(pts):
+            return ridge_contrast(pts, light, sp, polarity=polarity, core_mm=core,
+                                  side0_mm=side0, side1_mm=side1, step_mm=step)
+        # The exemption reads every line's ridge test, its neighbours' too.
+        contrasts = [contrast(pts) for pts in lines] if mass else None
+        ridge = [c >= _SRC_MIN_CONTRAST for c in contrasts] if mass else None
         for k, pts in enumerate(lines):
-            c = ridge_contrast(pts, light, sp, polarity=polarity, core_mm=core,
-                               side0_mm=side0, side1_mm=side1, step_mm=step)
+            c = contrasts[k] if mass else contrast(pts)
             if c < _SRC_MIN_CONTRAST:
                 refused += 1
                 continue
             share = None
+            hair = False
             if strand_test:
                 share = stack_share(k, pts, segs, gap0_mm=side0)
                 if share >= _STACK_SHARE:
-                    bars += 1
-                    continue
+                    hair = mass and is_hair_mass(k, pts, segs, ridge, gap0_mm=side0,
+                                                 width_mm=prof.width_mm)
+                    if not hair:
+                        bars += 1
+                        continue
+                    exempt += 1
             rs = []
             for x, y in pts:
                 px, py = sp.to_px(x, y)
@@ -630,10 +713,14 @@ def extract_strands(sp, cfg, *, thread_wt: int | None = None,
                       "contrast": c, "strength": float(np.median(rs))}
             if strand_test:
                 strand["stack"] = share
+            if mass:
+                strand["mass"] = hair
             strands.append(strand)
         census["refused_no_ridge"][polarity] = refused
         if strand_test:
             census["refused_bar"][polarity] = bars
+        if mass:
+            census["exempt_mass"][polarity] = exempt
     return strands, census
 
 
