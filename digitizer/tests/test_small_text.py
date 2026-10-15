@@ -520,9 +520,12 @@ def test_the_tagger_passes_the_ground_ring_only_when_set(monkeypatch):
     monkeypatch.setattr(beanletters, "read_cluster_ink", fake)
     regions, p = _scene()
     _tag(regions, {"Sg0", "Sg1", "Sg2", "Sg3"})
-    beanletters.tag_bean_letters(regions, p, PipelineConfig(bean_letter_max_stroke_mm=0.5))
+    # the scene's 8 and 9 counters are under the switch's 0.5 mm counter guard;
+    # this prices the ring's plumbing, so the guard is off
+    off = {"small_text_true_size_min_counter_mm": None}
+    beanletters.tag_bean_letters(regions, p, PipelineConfig(bean_letter_max_stroke_mm=0.5, **off))
     beanletters.tag_bean_letters(regions, p, PipelineConfig(bean_letter_max_stroke_mm=0.5,
-                                                            ink_ground_ring_mm=0.8))
+                                                            ink_ground_ring_mm=0.8, **off))
     assert seen == [{}, {"ground_ring_mm": 0.8}]
 
 
