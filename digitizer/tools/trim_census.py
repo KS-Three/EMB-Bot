@@ -83,6 +83,9 @@ BUCKETS = ("colour", "same_cone", "in_shape", "entry", "order", "gap")
 
 
 def main(argv: list[str]) -> int:
+    if {"-h", "--help"} & set(argv):
+        print(__doc__.strip())
+        return 0
     from thin_strokes import corpus_cases
     sets = {}
     names = []

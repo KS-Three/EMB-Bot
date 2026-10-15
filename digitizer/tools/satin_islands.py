@@ -61,6 +61,9 @@ def islands(plan) -> dict:
 
 
 def main(argv: list[str]) -> int:
+    if {"-h", "--help"} & set(argv):
+        print(__doc__.strip())
+        return 0
     from thin_strokes import corpus_cases
     sets: dict = {}
     names: list[str] = []
