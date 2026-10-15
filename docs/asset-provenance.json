@@ -931,6 +931,12 @@
    "basis": "PR body of claude/bridge-restaurant-tier; source fixture cleared by Kent 2026-10-08 (its own entry above)"
   },
   {
+   "prefix": "docs/renders/dot-rung-lettering-scope/",
+   "status": "derived-render",
+   "source": "Rendered by digitizer/tools/small_dot_rung.py (render: stitch paths of EMB-Bot's own digitize of the word \"hijlij\" drawn at runtime in Pillow's bundled CC0 Aileron, and of digitizer/testdata/synthetic/lowercase_aileron.png; render-photo: stitch paths of EMB-Bot's own digitize of digitizer/testdata/photo/photo_sunset_backlit.png at 80 mm); no new artwork, no client art",
+   "basis": "PR body of claude/dot-rung-lettering-scope; source fixtures carry their own entries above"
+  },
+  {
    "prefix": "docs/renders/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures (catch-all for new render directories)",
