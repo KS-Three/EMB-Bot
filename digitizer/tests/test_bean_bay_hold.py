@@ -249,7 +249,7 @@ def test_the_tools_arms_are_valid_config_and_change_only_the_hold():
     for name, (overrides, _label) in bbh.ARMS.items():
         PipelineConfig(**overrides)
         assert set(overrides) <= {"bean_letter_bay_hold"}, name
-    assert bbh.ARMS[bbh.CORPUS_ARM][0] == {"bean_letter_bay_hold": bbh.HOLD_MM}
+    assert bbh.ARMS[bbh.CORPUS_ARM][0] == {"bean_letter_bay_hold": bbh.HOLD_HALF_THREAD_MM}
 
 
 def _trace(bays, holes, glyph="5"):

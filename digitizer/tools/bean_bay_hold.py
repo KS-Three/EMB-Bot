@@ -56,7 +56,9 @@ ARMS = {
 ARM_ORDER = list(ARMS)
 FIXTURES = {"hat81": 81.0, "hat925": 92.5}
 WORDS = ["est", "1895", "the", "tagline"]
-CORPUS_BASE, CORPUS_ARM = "switch", "bay"
+# The corpus pair: main defaults, and the hold the Fremont arms favour (0.2: same
+# bays opened as 0.25, smaller outward cost on EST).
+CORPUS_BASE, CORPUS_ARM = "switch", "bay20"
 OPEN_SHARE = 0.5
 
 
@@ -332,9 +334,12 @@ def sheets(out: Path, renders: Path) -> list[Path]:
                 design = json.loads((out / f"{fx}__{a}_design.json").read_text())
                 r = tab["words"][word]
                 filled = sum(g["bays_filled"] for g in r["glyphs"])
-                holes = sum(g["holes_strict"] for g in r["glyphs"])
+                strict = sum(g["holes_strict"] for g in r["glyphs"])
+                bridged = sum(g["holes_bridged"] for g in r["glyphs"])
+                spurious = sum(g["spurious"] or 0 for g in r["glyphs"])
                 cap = (f"{ARMS[a][1]}: {word} legibility {r['legibility']:.3f} | bays filled {filled} | "
-                       f"thread holes {holes} | {tab['stitches']:,} st {tab['trims']} tr")
+                       f"false counters {spurious} | thread holes {strict}/{bridged} (strict/bridged) | "
+                       f"{tab['stitches']:,} st {tab['trims']} tr")
                 rows.append(bch._panel(design, r["box_mm"], bch._rings(tab["frame"], word), ppm, cap))
             if not rows:
                 continue
