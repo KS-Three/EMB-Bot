@@ -365,6 +365,13 @@
    "review": true
   },
   {
+   "prefix": "docs/renders/strand-mass-exemption/",
+   "status": "derived-render",
+   "source": "Session-generated renders of EMB-Bot's own stitch output (2026-10-15, cfg.hairline_lines_strand_mass) via digitizer/tools/hairline_strand_mass.py render/census: two synthetics drawn in code by that tool (a mane of 28 thin strands, mane_image; #882's 8-strand synthetic, s882_image; neither is saved as a file in the repo) and the committed photo digitizer/testdata/photo/owl_kent.jpg; no new artwork",
+   "basis": "digitizer/tools/hairline_strand_mass.py; docs/renders/strand-mass-exemption/table.json",
+   "review": true
+  },
+  {
    "prefix": "docs/renders/blend-fallback-underlay-2026-10-05/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont, drone, bridge",

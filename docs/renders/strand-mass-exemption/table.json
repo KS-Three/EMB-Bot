@@ -1,0 +1,896 @@
+{
+ "drawn_hair_fine": {
+  "image": "hair_fine",
+  "width_mm": 80.0,
+  "design_class": "gradient",
+  "test": {
+   "md5": "94098d8a1939d87813d1447e560c828b",
+   "stitches": 25302,
+   "trims": 122
+  },
+  "test_mass": {
+   "md5": "94098d8a1939d87813d1447e560c828b",
+   "stitches": 25302,
+   "trims": 122
+  },
+  "supp": {
+   "md5": "94098d8a1939d87813d1447e560c828b",
+   "stitches": 25302,
+   "trims": 122
+  },
+  "supp_mass": {
+   "md5": "94098d8a1939d87813d1447e560c828b",
+   "stitches": 25302,
+   "trims": 122
+  },
+  "identical": true
+ },
+ "drawn_hair_strands": {
+  "image": "hair_strands",
+  "width_mm": 80.0,
+  "design_class": "gradient",
+  "test": {
+   "md5": "80e71d74eb1f1d50d36637ab85035208",
+   "stitches": 28014,
+   "trims": 131
+  },
+  "test_mass": {
+   "md5": "80e71d74eb1f1d50d36637ab85035208",
+   "stitches": 28014,
+   "trims": 131
+  },
+  "supp": {
+   "md5": "80e71d74eb1f1d50d36637ab85035208",
+   "stitches": 28014,
+   "trims": 131
+  },
+  "supp_mass": {
+   "md5": "80e71d74eb1f1d50d36637ab85035208",
+   "stitches": 28014,
+   "trims": 131
+  },
+  "identical": true
+ },
+ "logo_becker": {
+  "logo": "becker",
+  "width_mm": 100.0,
+  "design_class": "flat",
+  "test": {
+   "md5": "19b381002ea8374f6aa3fb2cc8794ddb",
+   "stitches": 8758,
+   "trims": 29
+  },
+  "test_mass": {
+   "md5": "19b381002ea8374f6aa3fb2cc8794ddb",
+   "stitches": 8758,
+   "trims": 29
+  },
+  "supp": {
+   "md5": "19b381002ea8374f6aa3fb2cc8794ddb",
+   "stitches": 8758,
+   "trims": 29
+  },
+  "supp_mass": {
+   "md5": "19b381002ea8374f6aa3fb2cc8794ddb",
+   "stitches": 8758,
+   "trims": 29
+  },
+  "identical": true,
+  "seconds": 48
+ },
+ "logo_bridge": {
+  "logo": "bridge",
+  "width_mm": 80.0,
+  "design_class": "gradient",
+  "test": {
+   "md5": "be2a6a9b336f5211a67ed92bcae5866c",
+   "stitches": 18856,
+   "trims": 99
+  },
+  "test_mass": {
+   "md5": "be2a6a9b336f5211a67ed92bcae5866c",
+   "stitches": 18856,
+   "trims": 99
+  },
+  "supp": {
+   "md5": "be2a6a9b336f5211a67ed92bcae5866c",
+   "stitches": 18856,
+   "trims": 99
+  },
+  "supp_mass": {
+   "md5": "be2a6a9b336f5211a67ed92bcae5866c",
+   "stitches": 18856,
+   "trims": 99
+  },
+  "identical": true,
+  "seconds": 219
+ },
+ "logo_drone": {
+  "logo": "drone",
+  "width_mm": 80.0,
+  "design_class": "gradient",
+  "test": {
+   "md5": "6d6bcce667a667c9b66398143b2c0e8b",
+   "stitches": 18306,
+   "trims": 131
+  },
+  "test_mass": {
+   "md5": "6d6bcce667a667c9b66398143b2c0e8b",
+   "stitches": 18306,
+   "trims": 131
+  },
+  "supp": {
+   "md5": "6d6bcce667a667c9b66398143b2c0e8b",
+   "stitches": 18306,
+   "trims": 131
+  },
+  "supp_mass": {
+   "md5": "6d6bcce667a667c9b66398143b2c0e8b",
+   "stitches": 18306,
+   "trims": 131
+  },
+  "identical": true,
+  "seconds": 300
+ },
+ "logo_enthusiast": {
+  "logo": "enthusiast",
+  "width_mm": 80.0,
+  "design_class": "flat",
+  "test": {
+   "md5": "1df648e7ae49207249256432313bbbe7",
+   "stitches": 2408,
+   "trims": 8
+  },
+  "test_mass": {
+   "md5": "1df648e7ae49207249256432313bbbe7",
+   "stitches": 2408,
+   "trims": 8
+  },
+  "supp": {
+   "md5": "1df648e7ae49207249256432313bbbe7",
+   "stitches": 2408,
+   "trims": 8
+  },
+  "supp_mass": {
+   "md5": "1df648e7ae49207249256432313bbbe7",
+   "stitches": 2408,
+   "trims": 8
+  },
+  "identical": true,
+  "seconds": 22
+ },
+ "logo_fremont": {
+  "logo": "fremont",
+  "width_mm": 92.5,
+  "design_class": "gradient",
+  "test": {
+   "md5": "0253361f184b34f1392b5f29aab414db",
+   "stitches": 18879,
+   "trims": 46
+  },
+  "test_mass": {
+   "md5": "0253361f184b34f1392b5f29aab414db",
+   "stitches": 18879,
+   "trims": 46
+  },
+  "supp": {
+   "md5": "0253361f184b34f1392b5f29aab414db",
+   "stitches": 18879,
+   "trims": 46
+  },
+  "supp_mass": {
+   "md5": "0253361f184b34f1392b5f29aab414db",
+   "stitches": 18879,
+   "trims": 46
+  },
+  "identical": true,
+  "seconds": 325
+ },
+ "logo_gaulke": {
+  "logo": "gaulke",
+  "width_mm": 80.0,
+  "design_class": "gradient",
+  "test": {
+   "md5": "2e73b7235bbdc236c6980b314aaee405",
+   "stitches": 4635,
+   "trims": 23
+  },
+  "test_mass": {
+   "md5": "2e73b7235bbdc236c6980b314aaee405",
+   "stitches": 4635,
+   "trims": 23
+  },
+  "supp": {
+   "md5": "2e73b7235bbdc236c6980b314aaee405",
+   "stitches": 4635,
+   "trims": 23
+  },
+  "supp_mass": {
+   "md5": "2e73b7235bbdc236c6980b314aaee405",
+   "stitches": 4635,
+   "trims": 23
+  },
+  "identical": true,
+  "seconds": 74
+ },
+ "logo_golden_tee": {
+  "logo": "golden_tee",
+  "width_mm": 80.0,
+  "design_class": "gradient",
+  "test": {
+   "md5": "7c123276bb5d1845c18f3cf7ebdf25d0",
+   "stitches": 6931,
+   "trims": 50
+  },
+  "test_mass": {
+   "md5": "7c123276bb5d1845c18f3cf7ebdf25d0",
+   "stitches": 6931,
+   "trims": 50
+  },
+  "supp": {
+   "md5": "7c123276bb5d1845c18f3cf7ebdf25d0",
+   "stitches": 6931,
+   "trims": 50
+  },
+  "supp_mass": {
+   "md5": "7c123276bb5d1845c18f3cf7ebdf25d0",
+   "stitches": 6931,
+   "trims": 50
+  },
+  "identical": true,
+  "seconds": 173
+ },
+ "logo_screenshot": {
+  "logo": "screenshot",
+  "width_mm": 80.0,
+  "design_class": "gradient",
+  "test": {
+   "md5": "704d0ed0eaffb665f3c1671afe6aa5dc",
+   "stitches": 7916,
+   "trims": 65
+  },
+  "test_mass": {
+   "md5": "704d0ed0eaffb665f3c1671afe6aa5dc",
+   "stitches": 7916,
+   "trims": 65
+  },
+  "supp": {
+   "md5": "704d0ed0eaffb665f3c1671afe6aa5dc",
+   "stitches": 7916,
+   "trims": 65
+  },
+  "supp_mass": {
+   "md5": "704d0ed0eaffb665f3c1671afe6aa5dc",
+   "stitches": 7916,
+   "trims": 65
+  },
+  "identical": true,
+  "seconds": 175
+ },
+ "logo_tires": {
+  "logo": "tires",
+  "width_mm": 80.0,
+  "design_class": "photo_scene",
+  "test": {
+   "md5": "6a6ada47668b9a274b0086680e123441",
+   "stitches": 2732,
+   "trims": 8
+  },
+  "test_mass": {
+   "md5": "6a6ada47668b9a274b0086680e123441",
+   "stitches": 2732,
+   "trims": 8
+  },
+  "supp": {
+   "md5": "6a6ada47668b9a274b0086680e123441",
+   "stitches": 2732,
+   "trims": 8
+  },
+  "supp_mass": {
+   "md5": "6a6ada47668b9a274b0086680e123441",
+   "stitches": 2732,
+   "trims": 8
+  },
+  "identical": true,
+  "seconds": 29
+ },
+ "owl_census": {
+  "image": "owl_kent",
+  "route": "classical",
+  "width_mm": 127.0,
+  "lines": {
+   "zones": {
+    "beak_bristles": 5,
+    "eyes": 2,
+    "breast": 31,
+    "elsewhere": 37
+   },
+   "sewable": 75
+  },
+  "test": {
+   "zones": {
+    "beak_bristles": 5,
+    "eyes": 2,
+    "breast": 15,
+    "elsewhere": 7
+   },
+   "sewable": 29,
+   "refused_bar": {
+    "dark": 31,
+    "light": 28
+   }
+  },
+  "mass": {
+   "zones": {
+    "beak_bristles": 5,
+    "eyes": 2,
+    "breast": 15,
+    "elsewhere": 12
+   },
+   "sewable": 34,
+   "refused_bar": {
+    "dark": 31,
+    "light": 20
+   },
+   "exempt_mass": {
+    "dark": 0,
+    "light": 8
+   }
+  }
+ },
+ "owl_lines": {
+  "image": "owl_kent",
+  "arm": "lines",
+  "md5": "4f6a4e541970342eb557ea6acf64011f",
+  "stitches": 35446,
+  "trims": 422,
+  "color_changes": 32,
+  "thread_m": 56.81,
+  "under_1mm": 6624,
+  "hairline": {
+   "shapes": 0,
+   "strands": 75,
+   "dropped": 38,
+   "source": "lines",
+   "found": {
+    "dark": 235,
+    "light": 289
+   },
+   "refused_no_ridge": {
+    "dark": 162,
+    "light": 249
+   },
+   "sewn_by_polarity": {
+    "dark": 47,
+    "light": 28
+   }
+  },
+  "line_strand_stitches": 752,
+  "line_strand_thread_m": 0.737,
+  "bare_mm2": 6870.12,
+  "bare_new_vs_test_mm2": 0.0,
+  "seconds": 299
+ },
+ "owl_mass": {
+  "image": "owl_kent",
+  "arm": "mass",
+  "md5": "6d871582d4336c170264ddda6c3e4865",
+  "stitches": 35072,
+  "trims": 403,
+  "color_changes": 32,
+  "thread_m": 56.43,
+  "under_1mm": 6624,
+  "hairline": {
+   "shapes": 0,
+   "strands": 34,
+   "dropped": 28,
+   "source": "lines",
+   "found": {
+    "dark": 235,
+    "light": 289
+   },
+   "refused_no_ridge": {
+    "dark": 162,
+    "light": 249
+   },
+   "sewn_by_polarity": {
+    "dark": 22,
+    "light": 12
+   },
+   "refused_bar": {
+    "dark": 31,
+    "light": 20
+   },
+   "exempt_mass": {
+    "dark": 0,
+    "light": 8
+   }
+  },
+  "line_strand_stitches": 378,
+  "line_strand_thread_m": 0.358,
+  "bare_mm2": 6902.88,
+  "bare_new_vs_test_mm2": 0.0,
+  "seconds": 307
+ },
+ "owl_test": {
+  "image": "owl_kent",
+  "arm": "test",
+  "md5": "3412bec2b0014d3e81482711f76e5e39",
+  "stitches": 35042,
+  "trims": 402,
+  "color_changes": 32,
+  "thread_m": 56.4,
+  "under_1mm": 6624,
+  "hairline": {
+   "shapes": 0,
+   "strands": 29,
+   "dropped": 25,
+   "source": "lines",
+   "found": {
+    "dark": 235,
+    "light": 289
+   },
+   "refused_no_ridge": {
+    "dark": 162,
+    "light": 249
+   },
+   "sewn_by_polarity": {
+    "dark": 22,
+    "light": 7
+   },
+   "refused_bar": {
+    "dark": 31,
+    "light": 28
+   }
+  },
+  "line_strand_stitches": 348,
+  "line_strand_thread_m": 0.328,
+  "bare_mm2": 6910.69,
+  "bare_new_vs_test_mm2": 0.0,
+  "seconds": 315
+ },
+ "synth_mane": {
+  "case": "mane",
+  "drawn": 28,
+  "design_class": "photo_scene",
+  "width_mm": 30.0,
+  "px_per_mm": 7.967,
+  "lines": {
+   "md5": "ef3237060f81b7a89354453c59973c7b",
+   "stitches": 5054,
+   "trims": 65,
+   "color_changes": 3,
+   "thread_m": 3.28,
+   "under_1mm": 4161,
+   "hairline": {
+    "shapes": 0,
+    "strands": 53,
+    "dropped": 6,
+    "source": "lines",
+    "found": {
+     "dark": 46,
+     "light": 49
+    },
+    "refused_no_ridge": {
+     "dark": 6,
+     "light": 30
+    },
+    "sewn_by_polarity": {
+     "dark": 34,
+     "light": 19
+    }
+   },
+   "line_strand_stitches": 721,
+   "line_strand_thread_m": 0.842,
+   "census": {
+    "found": {
+     "dark": 46,
+     "light": 49
+    },
+    "refused_no_ridge": {
+     "dark": 6,
+     "light": 30
+    },
+    "sewn_by_polarity": {
+     "dark": 34,
+     "light": 19
+    }
+   },
+   "drawn_kept": 26
+  },
+  "test": {
+   "md5": "55a49676e2978699eda271eacd833047",
+   "stitches": 4389,
+   "trims": 42,
+   "color_changes": 2,
+   "thread_m": 2.49,
+   "under_1mm": 4161,
+   "hairline": {
+    "shapes": 0,
+    "strands": 4,
+    "dropped": 1,
+    "source": "lines",
+    "found": {
+     "dark": 46,
+     "light": 49
+    },
+    "refused_no_ridge": {
+     "dark": 6,
+     "light": 30
+    },
+    "sewn_by_polarity": {
+     "dark": 4,
+     "light": 0
+    }
+   },
+   "line_strand_stitches": 56,
+   "line_strand_thread_m": 0.054,
+   "census": {
+    "found": {
+     "dark": 46,
+     "light": 49
+    },
+    "refused_no_ridge": {
+     "dark": 6,
+     "light": 30
+    },
+    "refused_bar": {
+     "dark": 35,
+     "light": 19
+    },
+    "sewn_by_polarity": {
+     "dark": 4,
+     "light": 0
+    }
+   },
+   "drawn_kept": 1
+  },
+  "mass": {
+   "md5": "38d4f2d56e08d8e974bd0e832ff751bf",
+   "stitches": 4740,
+   "trims": 53,
+   "color_changes": 2,
+   "thread_m": 2.91,
+   "under_1mm": 4161,
+   "hairline": {
+    "shapes": 0,
+    "strands": 33,
+    "dropped": 6,
+    "source": "lines",
+    "found": {
+     "dark": 46,
+     "light": 49
+    },
+    "refused_no_ridge": {
+     "dark": 6,
+     "light": 30
+    },
+    "sewn_by_polarity": {
+     "dark": 33,
+     "light": 0
+    }
+   },
+   "line_strand_stitches": 407,
+   "line_strand_thread_m": 0.47,
+   "census": {
+    "found": {
+     "dark": 46,
+     "light": 49
+    },
+    "refused_no_ridge": {
+     "dark": 6,
+     "light": 30
+    },
+    "refused_bar": {
+     "dark": 1,
+     "light": 19
+    },
+    "exempt_mass": {
+     "dark": 34,
+     "light": 0
+    },
+    "sewn_by_polarity": {
+     "dark": 33,
+     "light": 0
+    }
+   },
+   "drawn_kept": 24
+  }
+ },
+ "synth_mane_40mm": {
+  "case": "mane_40mm",
+  "drawn": 28,
+  "design_class": "photo_scene",
+  "width_mm": 40.0,
+  "px_per_mm": 5.975,
+  "lines": {
+   "md5": "e7b94ce0671001deb64d343bdb8e62d6",
+   "stitches": 3731,
+   "trims": 31,
+   "color_changes": 2,
+   "thread_m": 4.67,
+   "under_1mm": 964,
+   "hairline": {
+    "shapes": 0,
+    "strands": 49,
+    "dropped": 6,
+    "source": "lines",
+    "found": {
+     "dark": 46,
+     "light": 49
+    },
+    "refused_no_ridge": {
+     "dark": 8,
+     "light": 32
+    },
+    "sewn_by_polarity": {
+     "dark": 32,
+     "light": 17
+    }
+   },
+   "line_strand_stitches": 809,
+   "line_strand_thread_m": 0.98,
+   "census": {
+    "found": {
+     "dark": 46,
+     "light": 49
+    },
+    "refused_no_ridge": {
+     "dark": 8,
+     "light": 32
+    },
+    "sewn_by_polarity": {
+     "dark": 32,
+     "light": 17
+    }
+   },
+   "drawn_kept": 23
+  },
+  "test": {
+   "md5": "464c56c47e5c64ead8937d565bd08b2e",
+   "stitches": 2978,
+   "trims": 8,
+   "color_changes": 1,
+   "thread_m": 3.75,
+   "under_1mm": 964,
+   "hairline": {
+    "shapes": 0,
+    "strands": 4,
+    "dropped": 1,
+    "source": "lines",
+    "found": {
+     "dark": 46,
+     "light": 49
+    },
+    "refused_no_ridge": {
+     "dark": 8,
+     "light": 32
+    },
+    "sewn_by_polarity": {
+     "dark": 4,
+     "light": 0
+    }
+   },
+   "line_strand_stitches": 56,
+   "line_strand_thread_m": 0.061,
+   "census": {
+    "found": {
+     "dark": 46,
+     "light": 49
+    },
+    "refused_no_ridge": {
+     "dark": 8,
+     "light": 32
+    },
+    "refused_bar": {
+     "dark": 33,
+     "light": 17
+    },
+    "sewn_by_polarity": {
+     "dark": 4,
+     "light": 0
+    }
+   },
+   "drawn_kept": 1
+  },
+  "mass": {
+   "md5": "d661b57532b1d2ba525c13d01b1e49b8",
+   "stitches": 3228,
+   "trims": 17,
+   "color_changes": 1,
+   "thread_m": 4.05,
+   "under_1mm": 964,
+   "hairline": {
+    "shapes": 0,
+    "strands": 21,
+    "dropped": 6,
+    "source": "lines",
+    "found": {
+     "dark": 46,
+     "light": 49
+    },
+    "refused_no_ridge": {
+     "dark": 8,
+     "light": 32
+    },
+    "sewn_by_polarity": {
+     "dark": 21,
+     "light": 0
+    }
+   },
+   "line_strand_stitches": 306,
+   "line_strand_thread_m": 0.359,
+   "census": {
+    "found": {
+     "dark": 46,
+     "light": 49
+    },
+    "refused_no_ridge": {
+     "dark": 8,
+     "light": 32
+    },
+    "refused_bar": {
+     "dark": 11,
+     "light": 17
+    },
+    "exempt_mass": {
+     "dark": 22,
+     "light": 0
+    },
+    "sewn_by_polarity": {
+     "dark": 21,
+     "light": 0
+    }
+   },
+   "drawn_kept": 11
+  }
+ },
+ "synth_s882": {
+  "case": "s882",
+  "drawn": 8,
+  "design_class": "photo_scene",
+  "width_mm": 30.0,
+  "px_per_mm": 6.2,
+  "lines": {
+   "md5": "37789a45fa1dac14c3ce6d824dc2ad9c",
+   "stitches": 1632,
+   "trims": 13,
+   "color_changes": 1,
+   "thread_m": 1.95,
+   "under_1mm": 604,
+   "hairline": {
+    "shapes": 0,
+    "strands": 8,
+    "dropped": 0,
+    "source": "lines",
+    "found": {
+     "dark": 8,
+     "light": 16
+    },
+    "refused_no_ridge": {
+     "dark": 0,
+     "light": 16
+    },
+    "sewn_by_polarity": {
+     "dark": 8,
+     "light": 0
+    }
+   },
+   "line_strand_stitches": 224,
+   "line_strand_thread_m": 0.279,
+   "census": {
+    "found": {
+     "dark": 8,
+     "light": 16
+    },
+    "refused_no_ridge": {
+     "dark": 0,
+     "light": 16
+    },
+    "sewn_by_polarity": {
+     "dark": 8,
+     "light": 0
+    }
+   },
+   "drawn_kept": 8
+  },
+  "test": {
+   "md5": "243da399287cf82a3dc3bd3c377e26af",
+   "stitches": 1464,
+   "trims": 7,
+   "color_changes": 1,
+   "thread_m": 1.74,
+   "under_1mm": 604,
+   "hairline": {
+    "shapes": 0,
+    "strands": 2,
+    "dropped": 0,
+    "source": "lines",
+    "found": {
+     "dark": 8,
+     "light": 16
+    },
+    "refused_no_ridge": {
+     "dark": 0,
+     "light": 16
+    },
+    "sewn_by_polarity": {
+     "dark": 2,
+     "light": 0
+    }
+   },
+   "line_strand_stitches": 56,
+   "line_strand_thread_m": 0.07,
+   "census": {
+    "found": {
+     "dark": 8,
+     "light": 16
+    },
+    "refused_no_ridge": {
+     "dark": 0,
+     "light": 16
+    },
+    "refused_bar": {
+     "dark": 6,
+     "light": 0
+    },
+    "sewn_by_polarity": {
+     "dark": 2,
+     "light": 0
+    }
+   },
+   "drawn_kept": 2
+  },
+  "mass": {
+   "md5": "37789a45fa1dac14c3ce6d824dc2ad9c",
+   "stitches": 1632,
+   "trims": 13,
+   "color_changes": 1,
+   "thread_m": 1.95,
+   "under_1mm": 604,
+   "hairline": {
+    "shapes": 0,
+    "strands": 8,
+    "dropped": 0,
+    "source": "lines",
+    "found": {
+     "dark": 8,
+     "light": 16
+    },
+    "refused_no_ridge": {
+     "dark": 0,
+     "light": 16
+    },
+    "sewn_by_polarity": {
+     "dark": 8,
+     "light": 0
+    }
+   },
+   "line_strand_stitches": 224,
+   "line_strand_thread_m": 0.279,
+   "census": {
+    "found": {
+     "dark": 8,
+     "light": 16
+    },
+    "refused_no_ridge": {
+     "dark": 0,
+     "light": 16
+    },
+    "refused_bar": {
+     "dark": 0,
+     "light": 0
+    },
+    "exempt_mass": {
+     "dark": 6,
+     "light": 0
+    },
+    "sewn_by_polarity": {
+     "dark": 8,
+     "light": 0
+    }
+   },
+   "drawn_kept": 8
+  }
+ }
+}

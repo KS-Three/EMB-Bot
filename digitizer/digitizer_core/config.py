@@ -285,6 +285,19 @@ class PipelineConfig:
     # `shape_overrides[sid].thread_wt`) instead of `thread_wt`. Candidate
     # geometry, unsewn (gate 1). Off, byte-identical.
     hairline_lines_strand_test: bool = False
+    # The strand test's hair-mass exemption (2026-10-15, default OFF; read
+    # only when `hairline_lines_strand_test` runs). The strand test refuses
+    # any stack of parallel lines, so a mane or a beard (strands side by
+    # side) and #882's own 8-strand synthetic read as bars. On, a stack the
+    # test would refuse is kept as hair when its members are STRANDS
+    # themselves: at least 95% of the same-polarity lines its stacked
+    # stations see pass the ridge test, or at least 75% when the nearest
+    # sits within 3 thread widths (a dense mass, where strand ends and
+    # touching strands break a few lines). The owl's breast barring stacks
+    # with WIDE bars, which fail the ridge test, and stays refused
+    # (`stage6_hairline_lines.mass_reading`). Candidate geometry, unsewn
+    # (gate 1). Off, byte-identical.
+    hairline_lines_strand_mass: bool = False
     # Hairline line route: chain the strands (2026-10-13, default OFF; read
     # only when the line route runs). The route sews each strand as its own
     # run and every hop between strands is a jump, a trim past `trim_at_mm`:
