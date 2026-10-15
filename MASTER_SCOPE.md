@@ -904,132 +904,19 @@ the Layers panel, and fabric/garment presets. Logic coverage is broad —
 nearly every `app/src/lib/*.js` module has a paired spec — with UI-behaviour
 coverage riding on live-browser e2e specs across several garments, the image
 content path, four export formats, and the embroidery field's own chrome.
-**The worksheet states the digitizer's assumptions; both surfaces state run
-time.** Backing and topper come off the fabric preset, not a stitch count;
-`src/sewtime.js` gives minutes at 650 spm incl. trims. Only what the engine
-derives — Kent's ruling left tension off. *(2026-09-20 — DOCTRINE)*
-**Hooping advice shows before download, not only on paper.** The Download
-sheet's "What to hoop" card states stabilizer, topper and needle for every
-design type, from `EMB.hoopingAdvice` — the same function the worksheet
-prints, incl. the 25k cutaway escalation. Needle is 75/11, ballpoint on knits
-and terry, sharp on other wovens and caps, with its basis beside it; an unknown
-garment gets no card. Trade categories, not sew-out constants: nothing reads
-them for stitches. *(confirmed 2026-10-01 — `test/fabrics.test.js`,
-`app/src/lib/hooping.spec.js`, `e2e/configurator-smoke.spec.js`; DOCTRINE)*
-
-**The review sheet and worksheet quote the job on the operator's own terms.**
-"Quote settings" on the Download sheet (`app/src/lib/quote.js`, one
-`embstudio:quote` record per browser — Kent's ruling, not per project) holds a
-machine, a running speed, a cone price and length, and an hourly rate; every
-field is optional and an empty one drops its row. Run time is charged per STOP
-(a colour stop the thread was not cut for counts; it cost nothing before), at
-the typed speed for the needle and the plan rate for the stops, and names the
-machine. Bobbin prints as 3/5 of the top-thread metres — Kent's ruling, after
-Madeira's 3 m per 1,000 stitches read 4.0 m beside 2.5 m of top thread on
-lettering. One profile ships, the SmartStitch S-1501 (15 needles, 1,200 spm
-nameplate used only as a ceiling on the typed speed); its source is a brand
-storefront, not a datasheet. Planning figures throughout — nothing here was
-timed on a machine, and no maker publishes trim or colour-change seconds, so
-a change is costed as a trim. Not built: per-machine re-sequencing, a bobbin
-price, needle-count warnings, the service lane's own run time.
-*(confirmed 2026-10-01 — `quote.spec.js`, `estimate.spec.js`, `pdfsheet.spec.js`, and the rows read in the running app)*
+**Detail moved to the area doc (2026-10-14, eighth pass).** The Studio's hooping card, quote settings (`embstudio:quote`), the upload crop box (`PipelineConfig.crop`, `DOMINANT_SHARE_MIN` 0.75), the 2026-09-30 design review, closed-loop calibration (default OFF, simulated accuracy only), the upload-only panel, the Shapes row's shades, the hoop gate, the delta-and-fix panel, the thread-from-photo match, the SVG-import warning, project naming and the library filters are all in
+[area 3, eighth-pass overflow](docs/scope/3-studio-app-wizard.md#overflow-moved-from-master_scope-2026-10-14-eighth-pass), verbatim. Status is unchanged: Implemented, Medium. *(moved, confirmed 2026-10-14 - `docs/scope/3-studio-app-wizard.md`; the claims inside keep their own pointers)*
 
 **What holds it at Medium:** fabric-preset accuracy is gated on the controlled
 sew-out CARD, which has not been sewn — the one physical out so far (2026-09-01)
 was a single uncontrolled icon. See Cross-cutting issues.
 
-**The customer crops to the logo, and the crop travels as COORDINATES.** A
-phone screenshot sewed its own chrome — 47 regions and 1,810 stitches, 24.9% of
-`screenshot_phone_ui_golke` at 80 mm — and under that, the art bbox spanned
-status bar to home indicator, so a target of 80 mm mapped to the SCREEN and the
-design came out **80 × 167.3 mm**. The panel now proposes a rectangle on upload
-(`lib/cropProposal.js` — the dominant ink cluster alone when it holds at least
-`DOMINANT_SHARE_MIN` **0.75** of the ink, else the bbox of every cluster;
-**Kent's ruling 2026-09-28** off a 31-image measurement putting the
-screenshot's logo at 0.846 and every genuine multi-part design at ≤ 0.600),
-shows it as a draggable box, and sends four normalized fractions.
-`PipelineConfig.crop` applies them in BOTH decode paths — stage 0 owns its own
-decode, and a crop in only one would have it classify the chrome the crop
-exists to remove. **The file's own bytes still go**; a browser re-encode is
-what 2026-09-20 paid to remove. No crop and a full-frame crop are both
-byte-identical to the pre-crop engine, and a proposal is never applied
-silently. *(confirmed 2026-09-29 — `digitizer_core/crop.py`,
-`app/src/ui/CropBox.svelte`; spec
-[`2026-09-22-upload-crop-design.md`](docs/superpowers/specs/2026-09-22-upload-crop-design.md))*
-
 **The two engines' fabric and machine tables are wire-tested to agree**
 (`test_fabric_wire.py`, `test_machine_wire.py`) — [area doc](docs/scope/3-studio-app-wizard.md).
-
-**The 2026-09-30 design review shipped in four parts (Kent's "SpaceX /
-Tesla" brief): a dark surround the hoop floats on with a flat garment step
-and a scale bar; the Layers list and the canvas pointing at the same shape;
-every setting explaining itself on hover (`lib/settingHelp.js`, `use:tip`);
-view segments, Download by machine brand, and the digitize panel as three
-tabs — Settings / Shapes / Threads, the spool list naming each cone once.**
-Each part is written up, with its measurements and tests, in the
-[area doc](docs/scope/3-studio-app-wizard.md). *(built and looked at
-2026-09-30)*
-
-**Closed-loop sew-out calibration SHIPS end to end, default OFF, on simulated
-accuracy only (2026-09-30).** The Garment step's new *Fabric preset* row names
-the preset in force and offers *Calibrate for this fabric…* (needs the service):
-download card v2 in any of the six machine formats (`GET /calibration/card`,
-82 × 103 mm, fits 5×7), sew it, drop a photo, and the reader
-(`digitizer_core/calibration/`) hands back a draft **profile** — three
-deltas that ADJUST the preset, clamped to the shipped table's span (DOCTRINE
-ruling) — which Accept writes to `project.fabricProfile` and both engines sew
-under. **Nothing is settled about cloth by this**: the reader recovers planted
-pulls to 0.01 mm on a *simulated* photo and no card has been sewn (phase 0
-deferred by Kent). Driven in a real browser against the real service
-2026-09-30. Brief: `docs/sewout-calibration-brief-2026-09-30.md`.
-*(built 2026-09-30 — `tests/test_calibration.py` 10, `test_fabric_profile.py`
-14, `CalibratePanel.spec.js` 5; PR #569)*
 
 **A Studio change is not verified until it has been *looked at* in a browser.**
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
 green suite. The list: DOCTRINE "Gotchas".
-
-**Uploading artwork is the whole interaction — the panel asks NOTHING about what the art is** (the "It's flat art" / "It's a photo" / "Use automatic detection" buttons went 2026-09-30, Kent's call): the Studio sends `detect_photographic` and `faces_route_flat` in place of any per-design override, and a found face sews FLAT; **the flat half came back the same evening (Kent): a tonal reading offers "Sew as flat art" (`forced_class=flat`), and a design set flat offers "Use automatic detection"**; a misroute is still phase 2's to fix; [area doc](docs/scope/3-studio-app-wizard.md), DOCTRINE 2026-09-30. *(confirmed 2026-09-30)*
-
-**The Shapes row shows a blended shape's shades (2026-10-13, Kent: "Show shades in the row", PR #884).** A shape routed through the gradient blend tier sews several threads but its row showed one swatch labelled "Auto (fill)". The service now returns an additive `blended` flag per review shape (true when any run is a `-blend<i>` band); a row spanning more than one machine block shows a strip of shade swatches with thread numbers, the tier reads "Auto (blended, N shades)", and a note says the picker sets the base colour only. Display only, no stitching code touched; built and jsdom-tested, NOT yet driven in a real browser (this area's display defects have all come from driving it). *(confirmed 2026-10-13 — PR #884, `DigitizePanel.spec.js`, `digitizer.spec.js`, service `_sew_facts` tests)* **The quality report groups thread-break risk and can point at it.** Preflight tags `STITCHES_TOO_SHORT`, `DENSITY_STACKED` and `SAME_HOLE_HEAVY` with `extra.break_risk` and `extra.show_shape_ids` (worst first, shade bands mapped to their region); `QualityReport` renders them under "Thread-break risk" with **Show on design**, which closes the sheet and selects the shape on the canvas. No threshold moved and no finding was added, so no grade changes. **Three limits, all still true:** the stacking check fires on no corpus design and the same-hole rate is diluted by the 0.15 mm row pitch, so in practice the group shows short satin stitches; there is **no sharp-satin-angle check** (no threshold with a source — gate 1; searched for one and found none: no primary source states a corner angle below which thread breaks, and Wilcom's Smart Corners defaults — cap under 20°, mitre under 45°, lap under 110° — are construction settings on a page that makes no break claim, so only a sew-out can supply the number — *confirmed 2026-10-01 — `docs/satin-angle-break-source-research-2026-10-01.md`, open web only*); and a "stitches under 0.5 mm" finding is deliberately absent, because a clean fill's row advance is under 0.5 mm by the row-pitch ruling — it rides out as `tiny_steps` / `tiny_step_fraction` only. Browser-built designs (lettering, shapes, hand-drawn, imported DST) still get no preflight. *(confirmed 2026-10-01 — `tests/test_break_risk.py`, `QualityReport.spec.js`, `DownloadSheet.spec.js`; measured 2026-10-01 — `logo_whitebg` at 80 mm, 573 of 4,129 fill steps under 0.5 mm with zero findings)*
-
-**A corner drag on a digitized design is a Design width change (fixed 2026-10-08).** It scaled the baked stitches with the button solid — 80 → 62 mm kept all 8,764 (1.66× density) — and "Re-digitize at N mm" snapped the design back to 80 mm and ran nothing. Now the button goes transparent and the run lands at the dragged width (6,246). *(fixed 2026-10-08 — `DigitizePanel.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
-**Upload file, then Auto Digitize Image** — the file browser opens first, nothing runs until the button, and any later change turns it transparent until pressed again; the panel states what the art was read as; `detail_layer` sits on that row only where the art is tonal. Engine routing unchanged (ROADMAP gate 2). *(confirmed 2026-10-05 — e2e `digitize-auto-start.spec.js`, browser; [area doc](docs/scope/3-studio-app-wizard.md))*
-
-**The hoop you picked is drawn, and the export gate reads the thread's own extent** (`hoopTransform`, `DownloadStep`: confirm, not block; PNG and PDF ungated). *(measured 2026-09-04/07 — `preview.spec.js`, `DownloadStep.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))* **Auto-fit caps to the largest hoop (Kent's ruling 2026-10-13, "Cap to hoop"):** `garments.autoFitBoxMm` is the placement box capped at 200 mm less 1 mm a side (pull compensation sews past the fit target), so full_back, jacket_back, blanket and tote auto-fit inside the 8×8 in hoop — a silent ~35% shrink, which a Size-panel line states — and the other six presets are byte-identical; a typed width still goes past the hoop and still gets `hoopFitNote`. *(confirmed 2026-10-13 — PR #865, `autofitHoopCap.spec.js` over every preset, `e2e/oversize-fix.spec.js`)*
-
-**The digitize panel states what changed and offers the fix** — a delta against `priorRun`, and `COLOR_STOPS_HEAVY` / `LETTERING_TOO_SMALL` / `STITCHES_TOO_SHORT` as one-click chips offered AFTER the run (Kent's call). The "Make it bigger" chips are a partial remedy, left for Kent: DOCTRINE. **`SATIN_GAPS_TIGHT`'s chip jumps to the width the finding names (2026-09-30, Kent's pick):** its headline shape's `clear_width_mm`, capped at 400, one button per parameter with the larger target winning over the 25% step — a claim about that shape, never the design. **`SATIN_GAPS_TIGHT` and `ARTWORK_UNCOVERED` are `info` since 2026-10-05 (Kent's call, issue #630): sentence, `extra` and chip stay, the grade is blind to both — the 2026-10-04 recapture had bisected all five band falls onto their 12 points while neither moved a stitch.** *(confirmed 2026-09-02, chip 2026-09-30; [area doc](docs/scope/3-studio-app-wizard.md))*
-
-**`cfg.border` reaches its own default** — `null` = unset, key omitted, panel says "automatic". *(confirmed 2026-09-02)*
-
-**Preview thread width is PHYSICAL** — `preview.js` `THREAD_WIDTH_MM` 0.4, drawn the same on the PDF sheet and SVG; holds zoomed in, not on a thumbnail. *(confirmed 2026-09-04 — `preview.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
-
-**Thread lighting is unverified against real thread** — eye-tuned; the one physical out cannot settle it (random operator threading, DOCTRINE). `pending sew-out`.
-
-**The thread picker matches a thread from a photo** — "Match from a photo…" in `ThreadPicker`: choose a picture, click a colour, get the chosen chart's five nearest threads with CIEDE2000 beside each; the photo is read on a canvas and never uploaded. `lib/colorMatch.js` is a port of the two skimage functions `digitizer_core/threads.py` snaps with, pinned to values generated from that Python, so both lanes name the same cone. **An approximate starting point, NOT a measurement, and the panel says so:** nothing corrects lighting or white balance (a white-reference click is the named follow-up — Kent's call 2026-10-01: not in this slice), and chart RGB is itself unverified against real thread. The picker's own nearest-name lookup (`nearestInList`) is still Euclidean RGB. *(confirmed 2026-10-01 — `colorMatch.spec.js`, `ThreadFromPhoto.spec.js`; driven in a browser)*
-
-**Typographic punctuation folds to its ASCII twin where a font lacks it** (`satinfont.js TYPOGRAPHIC_FOLD`) — [area doc](docs/scope/3-studio-app-wizard.md). *(fixed 2026-09-07)*
-
-**SVG import: wiring `parseSVG` as it stands would be a step BACKWARD.** Today the Studio rasterises an SVG upload, so the browser's own paint gets paint order, hidden layers, colours and strokes right; `parseSVG` gets all five wrong (a badge 27.7% under the wrong top thread; `vector_logo`'s background rect 4,906 of 6,918 stitches; all five ways of hiding an element sewn; `rgb(100%,0%,0%)` read as #640000 and named colours skipped; strokes and `<image>` dropped without a warning). Its one win is exact edges. About a MONTH to beat today, and the first blocker is paint order and overlaps: the JS engine has no polygon booleans. **Found on the way:** `knockoutBackground` (`src/quantize.js`) ignores the corner pixel's alpha, so a near-black mark on a transparent background was knocked out whole (#000000 and #141414 left an empty palette) — FIXED 2026-10-11 (PR #832): a corner of alpha 0 skips the colour match, 0 → 16 of 16 pixels kept on both marks, opaque corners byte-identical. *(measured 2026-10-11 — PR #829, `tools/svg-import-gate.mjs`, [`docs/svg-import-gate-2026-10-11.md`](docs/svg-import-gate-2026-10-11.md))*
-
-**A design is named after what is in it, and the registry stops swallowing
-failed writes.** Every project was "Untitled design"; `renameProject` and
-`deleteProject` reported success for index writes that never landed. Both
-propagate now, index first. Detail:
-[area 3](docs/scope/3-studio-app-wizard.md); DOCTRINE.
-*(fixed 2026-09-07)*
-
-**"My designs" filters by what a design is** — name text, stitches up to,
-colors (spools) up to, fits a hoop. The facts live on the index entry and are
-written from the summary bar's own combined design, so a design saved before
-this is unmeasured until it is next opened; a fact filter counts those rather
-than hiding them. No content search ("dogs"): that needs tagging. Detail:
-[area 3](docs/scope/3-studio-app-wizard.md).
-*(built and driven 2026-10-01 — `libraryFacts.spec.js`, `projects.spec.js`, `DesignFilter.spec.js`, `ProjectsDrawer.spec.js`; no e2e spec)*
-
-**The built bundle works wherever it is served** — [area doc](docs/scope/3-studio-app-wizard.md). *(fixed 2026-09-07)*
-
-**Lettering under the cap floor now names a way out.** Line breaks lead, "fewer characters" second, "Size up" withheld at the width cap. Detail: [area 3](docs/scope/3-studio-app-wizard.md); scope-history 09-07. *(fixed 2026-09-07)*
 
 ### 4. Export formats — [detail](docs/scope/4-export-formats.md)
 
