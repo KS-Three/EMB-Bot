@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import math
 from collections import deque
+from dataclasses import replace
 
 import cv2
 import numpy as np
@@ -65,11 +66,12 @@ OPENER_KEEP = 8      # ring-opening rays tried in pairs, shortest first
 # width carries a stroke round a corner (the u's bowl down into its spur
 # fans 87 deg; a bowl turns 30-55). Candidate.
 TURN_MAX_DEG = 60.0
-# `fold_cuts`: a zigzag leg under this share of its column's median leg is
-# SHORT -- the sewn reading's own line (`tools/lowercase_angle.py`
-# SHORT_FRAC). Ranks the fold look's candidates only, after every rule
-# above. Candidate.
-SHORT_LEG_FRAC = 0.5
+# `fold_cuts`: a curved column's station beside an end on a fold-look cut
+# whose rail end has moved less than this share of the pitch from the end
+# station is dropped (`_drop_stalls`). Well under the half pitch a tight
+# bowl's inner rail moves anyway (inner over outer radius): the 120 mm b's
+# stalled end moved 0.25, the bowls' ordinary ends 0.45-0.5. Candidate.
+STALL_FRAC = 0.3
 
 
 def _unit(v):
@@ -1124,20 +1126,33 @@ def _max_turn(col: Column, W: float) -> float:
     return most
 
 
-def _short_legs(col: Column) -> int:
-    """`fold_cuts`: how many legs of the column's zigzag (A1 B1 A2 B2 ...,
-    the path both engines lay through its stations) are under SHORT_LEG_FRAC
-    of its median leg. Across a stroke every leg is about a width; a column
-    closing onto its cut along the edge of the stroke it butts shrinks its
-    last crosses to a knot of short ones -- the 120 mm b's bowl ending on
-    its stem (2 legs of 0.24 and 0.43 mm against a 0.93 mm median), what
-    `tools/lowercase_angle.py`'s `junction_knots` reads as SHORT."""
-    pts = [p for a, b in col.stations for p in (a, b)]
-    L = np.array([math.dist(pts[i], pts[i + 1]) for i in range(len(pts) - 1)])
-    real = L > 0.05
-    if not real.any():
-        return 0
-    return int((L[real] < SHORT_LEG_FRAC * float(np.median(L[real]))).sum())
+def _drop_stalls(col: Column, fold_lines, pitch_mm: float) -> Column:
+    """`fold_cuts`: a CURVED column that ends on a fold-look cut at a concave
+    corner pairs its end station with a next one whose rail end has barely
+    moved along the outline -- two penetrations a tenth of a millimetre
+    apart on one rail. Sewn, the pull pushes the second into the notch
+    beside the corner, the letter-grown hold drags it back, and the leg into
+    it sews SHORT: the 120 mm b's bowl ending on its stem foot (rail ends
+    0.10 and 0.38 mm on; a 0.56 mm leg against a 1.17 mm median, the one
+    short leg `tools/lowercase_angle.py`'s `junction_knots` read there). That
+    station is dropped when one of its rail ends has moved under STALL_FRAC
+    of the pitch; the end station stays, and so does the column's reach."""
+    if col.kind != "curved" or not fold_lines:
+        return col
+    st = list(col.stations)
+    for end in (0, -1):
+        if len(st) < 4:
+            break
+        i0, i1 = (0, 1) if end == 0 else (len(st) - 1, len(st) - 2)
+        a0, b0 = st[i0]
+        tol = 0.25 * col.width_mm
+        if not any(Point(a0).distance(ln) < tol and Point(b0).distance(ln) < tol
+                   for ln in fold_lines):
+            continue
+        a1, b1 = st[i1]
+        if min(math.dist(a0, a1), math.dist(b0, b1)) < STALL_FRAC * pitch_mm:
+            del st[i1]
+    return col if len(st) == len(col.stations) else replace(col, stations=st)
 
 
 def _ring_opener(pc: Polygon, cut) -> bool:
@@ -1192,9 +1207,7 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
     TURN_MAX_DEG), then the fewest end crosses past FOLD_DEG (a column
     closing onto its cut at a slant), then the most sewn as STRAIGHT columns (a stem
     whole, the bowl butting it: the b's and g's stems, which a split bowl
-    otherwise keeps half of), then the fewest SHORT zigzag legs
-    (`_short_legs`: a bowl closing along the edge of the stem it butts, the
-    120 mm b), then the least turn; it must take the folds to
+    otherwise keeps half of), then the least turn; it must take the folds to
     REFINE_GAIN of the piece's. -> (cuts, [(piece, lines, new cuts)]) to
     take, or None."""
     col0 = build_column(pc, cut_lines, W, pitch_mm)
@@ -1261,8 +1274,7 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
         turn = max(_max_turn(c, W) for c in cols)
         score = (sum(_folded(c) for c in cols), len(cols), turn > TURN_MAX_DEG,
                  sum(_folded(c, ends=True) for c in cols),
-                 -sum(len(c.stations) for c in cols if c.kind == "straight"),
-                 sum(_short_legs(c) for c in cols), turn)
+                 -sum(len(c.stations) for c in cols if c.kind == "straight"), turn)
         if best is None or score < best[0]:
             best = (score, cand, final)
     if best is None or best[0][0] > REFINE_GAIN * f0:
@@ -1383,7 +1395,8 @@ def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False
     between consecutive stations along the moving rail -- the satin spacing
     itself (`machine.SATIN_SPACING_MM`): a station is one cross, and the
     crosses sit `pitch_mm` apart whichever rail each starts from.
-    `fold_cuts`: see `_fold_refine` (`cfg.lettering_columns_fold_cuts`).
+    `fold_cuts`: see `_fold_refine` and `_drop_stalls`
+    (`cfg.lettering_columns_fold_cuts`).
     `mitre_ends`: see `_mitre_ends` (`cfg.lettering_columns_square_ends`)."""
     W = stroke_width(poly)
     # a pinhole is the trace, not a counter
@@ -1436,4 +1449,7 @@ def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False
                 unsewn.append(sub)
             else:
                 columns.append(col)
+    if fold_cuts:
+        fold_lines = [LineString([c[0], c[1]]) for c in cuts if c[2] == "fold"]
+        columns = [_drop_stalls(c, fold_lines, pitch_mm) for c in columns]
     return LetterCut(poly, W, cuts, columns, unsewn)

@@ -53,6 +53,13 @@ def glyphs80() -> dict[str, Polygon]:
 
 
 @pytest.fixture(scope="module")
+def glyphs50() -> dict[str, Polygon]:
+    """The same at 50 mm with `small_text_true_size` OFF (`--dump-letters 50`):
+    the pre-flip engine, where the word's 3.1 mm capitals reach the lane."""
+    return _load(la.LETTERS_50)
+
+
+@pytest.fixture(scope="module")
 def shoulders_on(glyphs):
     return {ch: outline_cut.letter_columns(glyphs[ch], fold_cuts=True) for ch in SHOULDERS}
 
@@ -189,6 +196,76 @@ def test_the_80mm_e_ring_is_opened_at_its_bar(glyphs80):
     assert _folded(on) == 0
 
 
+@pytest.mark.parametrize("mitre", [False, True])
+def test_the_50mm_g_sews_as_off(glyphs50, mitre):
+    """At 50 mm the G's bowl tail and stem foot are one over-long piece
+    unless the tail is cut off at 2.2 W -- a stub. The stub refusal (#893)
+    turned that cut down, and with no other cure the piece sewed whole and
+    folded (2 crosses; 1 of 144 capital stations past 45 deg sewn, #921).
+    ON now takes OFF's cut when nothing else cures: the G sews as OFF."""
+    off = outline_cut.letter_columns(glyphs50["G"], mitre_ends=mitre)
+    on = outline_cut.letter_columns(glyphs50["G"], fold_cuts=True, mitre_ends=mitre)
+    assert min(outline_cut._column_len(c) for c in off.columns) < outline_cut.STUB_WIDTHS * off.W
+    assert [c.stations for c in on.columns] == [c.stations for c in off.columns]
+    assert _folded(on) == 0
+
+
+def test_fold_cuts_leave_every_capital_alone_at_50mm(glyphs50):
+    caps = {ch: p for ch, p in glyphs50.items() if ch.isupper()}
+    assert len(caps) == 18
+    for ch, p in caps.items():
+        off = outline_cut.letter_columns(p, mitre_ends=True)
+        on = outline_cut.letter_columns(p, fold_cuts=True, mitre_ends=True)
+        assert [c.stations for c in on.columns] == [c.stations for c in off.columns], ch
+
+
+def _stalls(cut, pitch_mm=0.4) -> int:
+    """Curved columns' end stations on a fold-look cut whose neighbour's
+    rail end has barely moved (`outline_cut._drop_stalls`)."""
+    lines = [outline_cut.LineString([c[0], c[1]]) for c in cut.cuts if c[2] == "fold"]
+    n = 0
+    for col in cut.columns:
+        if col.kind != "curved" or len(col.stations) < 3:
+            continue
+        for i0, i1 in ((0, 1), (-1, -2)):
+            (a0, b0), (a1, b1) = col.stations[i0], col.stations[i1]
+            tol = 0.25 * col.width_mm
+            on_fold = any(outline_cut.Point(a0).distance(ln) < tol
+                          and outline_cut.Point(b0).distance(ln) < tol for ln in lines)
+            n += on_fold and min(math.dist(a0, a1), math.dist(b0, b1)) < \
+                outline_cut.STALL_FRAC * pitch_mm
+    return n
+
+
+def test_the_120mm_b_bowl_end_does_not_stall(glyphs, monkeypatch):
+    """ON the 120 mm b's bowl ends on the fold cut at its stem foot, a
+    concave corner, and the next station's outer end had moved 0.1 mm along
+    the rail: sewn, its leg is SHORT (0.56 against a 1.17 mm median, the one
+    short leg at the b's junctions ON against none OFF). That station goes."""
+    on = outline_cut.letter_columns(glyphs["b"], fold_cuts=True, mitre_ends=True)
+    assert _stalls(on) == 0 and _folded(on) == 0 and not on.unsewn
+    monkeypatch.setattr(outline_cut, "_drop_stalls", lambda col, *_a: col)
+    kept = outline_cut.letter_columns(glyphs["b"], fold_cuts=True, mitre_ends=True)
+    assert _stalls(kept) == 1
+    assert sum(len(c.stations) for c in kept.columns) == sum(len(c.stations) for c in on.columns) + 1
+
+
+def test_drop_stalls_reads_only_a_curved_end_on_a_fold_cut():
+    from digitizer_core.columns import Column
+    from shapely.geometry import LineString
+    st = [((0.0, 0.0), (0.0, 1.0)), ((0.05, 0.0), (0.4, 1.0)), ((0.4, 0.0), (0.8, 1.0)),
+          ((0.8, 0.0), (1.2, 1.0)), ((1.2, 0.0), (1.6, 1.0))]
+    col = Column(stations=st, piece=Polygon([(0, 0), (2, 0), (2, 1), (0, 1)]), kind="curved",
+                 axis=None, width_mm=1.0)
+    fold = [LineString([(0.0, -0.1), (0.0, 1.1)])]
+    out = outline_cut._drop_stalls(col, fold, 0.4)
+    assert out.stations == [st[0]] + st[2:]
+    assert outline_cut._drop_stalls(col, [], 0.4) is col                   # no fold cut
+    assert outline_cut._drop_stalls(col, [LineString([(5, 0), (5, 1)])], 0.4) is col
+    from dataclasses import replace
+    assert outline_cut._drop_stalls(replace(col, kind="straight"), fold, 0.4).stations == st
+
+
 def test_the_120mm_e_is_left_as_it_was(glyphs):
     """At 120 mm the junction rules already cut the e at its bar (a through
     cut and an edge extension): ON leaves it alone."""
@@ -230,12 +307,13 @@ def test_off_never_enters_the_new_code(glyphs, glyphs80, monkeypatch):
     def boom(*_a, **_k):
         raise AssertionError("fold_cuts code reached with fold_cuts off")
     for name in ("_fold_refine", "_folded", "_column_len", "_max_turn", "_ring_opener",
-                 "_carried_ring"):
+                 "_carried_ring", "_drop_stalls"):
         monkeypatch.setattr(outline_cut, name,
                             own_thread_only(boom, getattr(outline_cut, name)))
     for ch in SHOULDERS + "e":
         outline_cut.letter_columns(glyphs[ch])
         outline_cut.letter_columns(glyphs80[ch])
+        outline_cut.letter_columns(glyphs[ch], mitre_ends=True)
 
 
 # --- end to end, default OFF ---------------------------------------------------
