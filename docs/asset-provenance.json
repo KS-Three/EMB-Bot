@@ -850,6 +850,12 @@
    "basis": "PR body of claude/preflight-glyph-metric; source fixture cleared by Kent 2026-10-08 (its own entry above)"
   },
   {
+   "prefix": "docs/renders/bean-one-trace/",
+   "status": "derived-render",
+   "source": "Zoomed source-ink outlines and thread renders of Hotel Fremont's 1895 (the 1 and the 5), THE's E and the tagline S, drawn by digitizer/tools/bean_glyph_trace.py from EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp (small_text_true_size ON); no new client art",
+   "basis": "PR body of claude/bean-one-trace; source fixture cleared by Kent 2026-10-08 (its own entry above)"
+  },
+  {
    "prefix": "docs/renders/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures (catch-all for new render directories)",

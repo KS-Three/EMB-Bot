@@ -467,8 +467,8 @@ def thread_holes(glyph, glyphs, idx, box, all_thread, run_masks) -> list[dict]:
             for rid, rm in run_masks.items():
                 k = int(((rm["mask"] > 0) & ring).sum())
                 if k:
-                    top = sorted(rm["labels"], key=lambda q: -rm["labels"][q])
-                touch.append({"run": rid, "shape": rm["shape"], "label": " + ".join(top[:2]), "touching_px": k})
+                    names = sorted(rm["labels"], key=lambda q: -rm["labels"][q])
+                    touch.append({"run": rid, "shape": rm["shape"], "label": " + ".join(names[:2]), "touching_px": k})
             touch.sort(key=lambda r: -r["touching_px"])
             pinch = None
             top = touch[:4]
@@ -506,7 +506,7 @@ def trace_glyph(run: dict, word: str, idx: int, glyphs: list, ev: dict, owners: 
     gx0, gy0, gx1, gy1 = glyph.bounds
     pad = ZONE_MM + 0.5
     box = (gx0 - pad, gy0 - pad, gx1 + pad, gy1 + pad)
-    zone = glyph.buffer(ZONE_MM)
+    zone = glyph.buffer(ZONE_MM + thread / 2.0)     # thread EDGES within ZONE_MM of the ink
 
     # which shapes, which tier
     regions = [r for r in result.regions if r.shape_id in mine]
@@ -662,6 +662,16 @@ def trace_glyph(run: dict, word: str, idx: int, glyphs: list, ev: dict, owners: 
     nl_shapes = sorted({e["shape"] + ":" + e["kind"] for e in ev["points"]
                         if e["shape"] not in letter_ids and zone.covers(Point(e["x"], e["y"]))})
     zone_thread["non_letter_runs_in_zone"] = nl_shapes
+    # how near the NEAREST thread of a shape that is no letter of the word comes, anywhere in the
+    # design (the zone above is in the plan frame; the instrument's zone is in a registered,
+    # per-glyph-shifted frame, so a sliver can sit just outside this one and inside that one)
+    nl_pts = [e for e in ev["points"] if e["shape"] not in letter_ids]
+    if nl_pts:
+        dn = dist_to(glyph, np.array([[e["x"], e["y"]] for e in nl_pts]))
+        k_ = int(np.argmin(dn))
+        zone_thread["nearest_non_letter_needle_mm"] = round(float(dn[k_]), 3)
+        zone_thread["nearest_non_letter_thread_edge_mm"] = round(max(0.0, float(dn[k_]) - thread / 2.0), 3)
+        zone_thread["nearest_non_letter_shape"] = nl_pts[k_]["shape"] + ":" + nl_pts[k_]["kind"]
     by_id = {r.shape_id: r for r in result.regions}
     zone_thread["non_letter_shapes"] = []
     for sid in sorted({s_.split(":")[0] for s_ in nl_shapes}):
@@ -1123,7 +1133,9 @@ def markdown(tr: dict) -> str:
     lines.append("- thread in the instrument's zone (nearer this glyph than any other, within 1 mm of its ink), "
                  + "; ".join(f"{k}: {v['mm2']} mm2 ({v['beyond_0.5mm_of_ink_mm2']} beyond 0.5 mm of the ink)"
                              for k, v in zt.items() if isinstance(v, dict))
-                 + f"; non-letter runs in the zone: {zt.get('non_letter_runs_in_zone') or 'none'}")
+                 + f"; non-letter runs in the zone: {zt.get('non_letter_runs_in_zone') or 'none'}"
+                 + (f"; nearest non-letter thread edge {zt['nearest_non_letter_thread_edge_mm']} mm "
+                    f"({zt['nearest_non_letter_shape']})" if "nearest_non_letter_shape" in zt else ""))
     for nl in zt.get("non_letter_shapes", []):
         lines.append(f"    - non-letter shape {nl['shape_id']}: {nl['tier']}, {nl['area_mm2']} mm2, bounds {nl['bounds_mm']}, "
                      f"{nl['polygon_to_glyph_mm']} mm from the glyph, thread rgb {nl['thread_rgb']}")
