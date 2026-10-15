@@ -145,6 +145,39 @@ def summarize(ties: list[dict], thread_mm: float = THREAD_MM) -> dict:
             "leg_mm": [round(min(legs), 3), round(max(legs), 3)] if legs else None}
 
 
+def word_ties(row: dict, thread_mm: float = THREAD_MM) -> dict:
+    """One word's saved ties -> the three readings, widest first:
+    `ties` every lock anchored in the word's box (any colour, any shape: the
+    ground's fill locks too, which no small-letter construction touches);
+    `ties_glyph_box` those in a source glyph's bounding box grown by half a
+    thread; `ties_ink` those within half a thread of a glyph's own ink -- the
+    lock that lands ON a letter. `glyph_ties`: `ties_ink` per glyph.
+    `by_tier`: the box's locks counted by the tier that sewed their run."""
+    from shapely import wkt
+    from shapely.geometry import Point
+    glyphs = [wkt.loads(g) for g in row.get("glyphs_wkt", [])]
+    half = thread_mm / 2.0
+    ties = row["ties_detail"]
+
+    def in_gbox(t):
+        x, y = t["anchor"]
+        return any(g.bounds[0] - half <= x <= g.bounds[2] + half and g.bounds[1] - half <= y <= g.bounds[3] + half
+                   for g in glyphs)
+
+    def near(t, g):
+        return g.distance(Point(t["anchor"])) <= half
+    tiers: dict[str, int] = {}
+    for t in ties:
+        k = f"{t.get('tier', t['kind'])}{'' if t['laid'] else ' (untied)'}"
+        tiers[k] = tiers.get(k, 0) + 1
+    return {"ties": summarize(ties),
+            "ties_glyph_box": summarize([t for t in ties if in_gbox(t)]),
+            "ties_ink": summarize([t for t in ties if any(near(t, g) for g in glyphs)]),
+            "glyph_ties": [{"bbox_mm": [round(v, 2) for v in g.bounds],
+                            **summarize([t for t in ties if near(t, g)])} for g in glyphs],
+            "by_tier": dict(sorted(tiers.items()))}
+
+
 def in_box(xy, box) -> bool:
     x0, y0, x1, y1 = box
     return x0 <= xy[0] <= x1 and y0 <= xy[1] <= y1
@@ -180,7 +213,7 @@ def spy_ties(log: list):
                 lead, trail = tie_legs(pre[i], head, tail)
                 for end, legs, anchor in (("in", lead, pre[i][0]), ("out", trail, pre[i][-1])):
                     if end in ends:
-                        log.append({"shape_id": r.shape_id, "kind": r.kind, "end": end,
+                        log.append({"shape_id": r.shape_id, "kind": r.kind, "end": end, "run_id": id(r),
                                     "anchor": [anchor[0], anchor[1]], "laid": legs is not None,
                                     "legs": [[x, y] for x, y in (legs or [])]})
         return spy
@@ -204,8 +237,16 @@ def _digitize(kind: str, name: str, overrides: dict):
             spec = slc.corpus_designs()[name]
             run = slc._digitize(spec["path"], {**spec["cfg"], **overrides})
     small = sorted(s for s, rep in {**bean, **sk}.items() if not rep.get("empty"))
+    rgb = {id(r): list(b.rgb) for b, r in run["plan"].iter_runs()}
+    regions = {r.shape_id: r for r in run["result"].regions}
     for t in log:
         t["small"] = t["shape_id"] in small and t["kind"] == "run"
+        t["rgb"] = rgb.get(t.pop("run_id"))
+        reg = regions.get(t["shape_id"])
+        meta = (reg.meta or {}) if reg is not None else {}
+        t["text"] = bool(meta.get("text_candidate") or meta.get("lettering_group"))
+        t["tier"] = ("bean" if t["shape_id"] in bean and not bean[t["shape_id"]].get("empty") else
+                     "skeleton" if t["shape_id"] in sk and not sk[t["shape_id"]].get("empty") else t["kind"])
     return run, log, small
 
 
@@ -237,18 +278,11 @@ def run_cell(fixture: str, tag: str, overrides: dict, out: Path) -> dict:
         box = census[name]["box_mm"]
         glyphs = fsl.source_glyphs(p, ft.ROIS[name])
         ties = [t for t in log if in_box(t["anchor"], box)]
-        per_glyph = [[] for _ in glyphs]
-        for t in ties:
-            if glyphs:
-                from shapely.geometry import Point
-                k = min(range(len(glyphs)), key=lambda j: glyphs[j].distance(Point(t["anchor"])))
-                per_glyph[k].append(t)
         w = read.get(name)
         row = slc.word_row(w.summary(), w.glyphs) if w else {}
         row.update(box_mm=box, stitches=census[name]["stitches"], trims=census[name]["trims"],
-                   ties=summarize(ties), ties_detail=ties,
-                   glyph_ties=[{"bbox_mm": [round(v, 2) for v in g.bounds], **summarize(per_glyph[j])}
-                               for j, g in enumerate(glyphs)])
+                   ties_detail=ties, glyphs_wkt=[g.wkt for g in glyphs])
+        row.update(word_ties(row))
         rec["words"][name] = row
     rec["secs"] = round(time.time() - t0)
     out.mkdir(parents=True, exist_ok=True)
@@ -259,10 +293,11 @@ def run_cell(fixture: str, tag: str, overrides: dict, out: Path) -> dict:
           f"{rec['secs']} s", flush=True)
     for name in WORDS:
         r = rec["words"][name]
-        t = r["ties"]
-        print(f"  {name:8s} ties {t['laid']}/{t['slots']}  thread {t['thread_mm']} mm  pile {t['pile_mm2']} mm2  "
-              f"foot {t['footprint_mm2']} mm2  leg {t['leg_mm']}  leg {r.get('legibility')} "
-              f"+sp {r.get('legibility_space')}  {r['stitches']} st {r['trims']} tr", flush=True)
+        t, g, k = r["ties"], r["ties_glyph_box"], r["ties_ink"]
+        print(f"  {name:8s} box {t['laid']}/{t['slots']} pile {t['pile_mm2']} | glyph boxes {g['laid']}/{g['slots']} "
+              f"pile {g['pile_mm2']} | on ink {k['laid']}/{k['slots']} pile {k['pile_mm2']} foot {k['footprint_mm2']}"
+              f" | legib {r.get('legibility')} +sp {r.get('legibility_space')} | {r['stitches']} st "
+              f"{r['trims']} tr | {r['by_tier']}", flush=True)
     return rec
 
 
@@ -307,25 +342,28 @@ def table(out: Path, before: str, after: str) -> str:
         lines.append(f"## {fx}: {a['stitches']:,} -> {b['stitches']:,} st, trims {a['trims']} -> {b['trims']}, "
                      f"shapes changed {o['changed']} ({o['changed_small']} small letters, "
                      f"{len(o['changed_other'])} other)")
-        lines.append("| word | ties laid (slots) | thread mm | pile mm2 | footprint mm2 | legs mm | "
-                     "legibility | +space | OCR | trims | stitches |")
+        lines.append("| word | locks in word box, laid (slots) | pile mm2: word box | glyph boxes | on the ink | "
+                     "ink footprint mm2 | legibility | +space | OCR | trims | stitches |")
         lines.append("|---|---|---|---|---|---|---|---|---|---|---|")
-        tot = {"a": 0.0, "b": 0.0}
+        keys = ("ties", "ties_glyph_box", "ties_ink")
+        tot = {k: [0.0, 0.0] for k in keys}
         for w in WORDS:
             x, y = a["words"][w], b["words"][w]
+            for k in keys:
+                tot[k][0] += x[k]["pile_mm2"]
+                tot[k][1] += y[k]["pile_mm2"]
             tx, ty = x["ties"], y["ties"]
-            tot["a"] += tx["pile_mm2"]
-            tot["b"] += ty["pile_mm2"]
+            piles = " | ".join(f"{x[k]['pile_mm2']} -> {y[k]['pile_mm2']} ({change(x[k]['pile_mm2'], y[k]['pile_mm2'])})"
+                               for k in keys)
             lines.append(
-                f"| {w} | {tx['laid']} ({tx['slots']}) -> {ty['laid']} ({ty['slots']}) | "
-                f"{tx['thread_mm']} -> {ty['thread_mm']} | {tx['pile_mm2']} -> {ty['pile_mm2']} "
-                f"({change(tx['pile_mm2'], ty['pile_mm2'])}) | {tx['footprint_mm2']} -> {ty['footprint_mm2']} | "
-                f"{tx['leg_mm']} -> {ty['leg_mm']} | {x.get('legibility')} -> {y.get('legibility')} | "
+                f"| {w} | {tx['laid']} ({tx['slots']}) -> {ty['laid']} ({ty['slots']}) | {piles} | "
+                f"{x['ties_ink']['footprint_mm2']} -> {y['ties_ink']['footprint_mm2']} | "
+                f"{x.get('legibility')} -> {y.get('legibility')} | "
                 f"{x.get('legibility_space')} -> {y.get('legibility_space')} | "
                 f"{fmt_ocr(x['ocr'])} -> {fmt_ocr(y['ocr'])} | {x['trims']} -> {y['trims']} | "
                 f"{x['stitches']} -> {y['stitches']} |")
-        lines.append(f"| **four boxes** | | | **{tot['a']:.3f} -> {tot['b']:.3f} "
-                     f"({change(tot['a'], tot['b'])})** | | | | | | | |")
+        piles = " | ".join(f"**{tot[k][0]:.3f} -> {tot[k][1]:.3f} ({change(tot[k][0], tot[k][1])})**" for k in keys)
+        lines.append(f"| **four words** | | {piles} | | | | | | |")
         lines.append("")
     rows = []
     for p in sorted(out.glob(f"logo_*__{before}.json")):
@@ -376,9 +414,9 @@ def render(out: Path, renders: Path, before: str, after: str) -> list[Path]:
                         cx, cy = to_px(*tie["anchor"])
                         cv2.circle(img, (int(cx), int(cy)), 3, (230, 120, 0), 1, cv2.LINE_AA)
                 crop = ft._crop(img, to_px, row["box_mm"], margin_mm=0.3)
-                ti = row["ties"]
-                pair.append(ft._label(crop, f"{w} | {t}: ties {ti['laid']}/{ti['slots']}, pile {ti['pile_mm2']} mm2, "
-                                            f"leg {row.get('legibility')}, trims {row['trims']}"))
+                ti = row["ties_ink"]
+                pair.append(ft._label(crop, f"{w} | {t}: locks on the ink {ti['laid']}/{ti['slots']}, pile "
+                                            f"{ti['pile_mm2']} mm2, legib {row.get('legibility')}, trims {row['trims']}"))
             strip = ft._hstack(pair, gap=10)
             rows.append(strip)
             width = max(width, strip.shape[1])
@@ -401,6 +439,8 @@ def main(argv=None) -> int:
     ap.add_argument("--set", action="append", metavar="KEY=VALUE", help="a PipelineConfig override (repeatable)")
     ap.add_argument("--table", action="store_true", help="print the before/after table from saved cells")
     ap.add_argument("--render", action="store_true", help="write the before/after sheets")
+    ap.add_argument("--reanalyze", action="store_true",
+                    help="re-read the saved Fremont cells' locks (`word_ties`) without digitizing")
     ap.add_argument("--before", default="switch")
     ap.add_argument("--after", default="ties")
     ap.add_argument("--out", type=Path, required=True)
@@ -411,6 +451,14 @@ def main(argv=None) -> int:
         run_cell(a.cell, a.tag, overrides, a.out)
     if a.logo:
         run_logo(a.logo, a.tag, overrides, a.out)
+    if a.reanalyze:
+        for p in sorted(a.out.glob("hat*__*.json")):
+            if p.stem.endswith("_design"):
+                continue
+            rec = json.loads(p.read_text())
+            for row in rec["words"].values():
+                row.update(word_ties(row))
+            p.write_text(json.dumps(rec, indent=1))
     if a.table:
         print(table(a.out, a.before, a.after))
     if a.render:
