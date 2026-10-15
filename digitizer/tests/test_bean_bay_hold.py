@@ -292,10 +292,11 @@ def test_corpus_rows_flag_a_new_uncovered_shape_and_the_changes():
         return {"md5": md5, "stitches": 10, "trims": 4, "shape_digests": digests, "bare_mm2": 1.0,
                 "uncovered_total_mm2": au, "uncovered_shapes": shapes, "bean_shapes": 1,
                 "words": {"w": {"legibility": leg}}}
-    cells = {"becker": {"switch": cell("a", 0.0, [], {"S1": "x"}, 0.5),
-                        "bay": cell("a", 0.0, [], {"S1": "x"}, 0.5)},
-             "fremont": {"switch": cell("a", 1.0, ["S1"], {"S1": "x"}, 0.5),
-                         "bay": cell("b", 2.0, ["S1", "S2"], {"S1": "y"}, 0.6)}}
+    base, arm = bbh.CORPUS_BASE, bbh.CORPUS_ARM
+    cells = {"becker": {base: cell("a", 0.0, [], {"S1": "x"}, 0.5),
+                        arm: cell("a", 0.0, [], {"S1": "x"}, 0.5)},
+             "fremont": {base: cell("a", 1.0, ["S1"], {"S1": "x"}, 0.5),
+                         arm: cell("b", 2.0, ["S1", "S2"], {"S1": "y"}, 0.6)}}
     rows = {r["design"]: r for r in bbh.corpus_rows(cells)}
     assert rows["becker"]["identical"] and rows["becker"]["changed"] == 0 and not rows["becker"]["au_up"]
     assert rows["fremont"]["changed"] == 1 and rows["fremont"]["au_up"] and rows["fremont"]["new_au"]
