@@ -63,7 +63,7 @@ from .stage4_vectorize import (enforce_color_cap, garment_sews_enclosed,
                                rehome_resnapped_regions, revalidate_threads,
                                tag_enclosed_background, vectorize)
 from .designangle import set_design_angle
-from .beanletters import tag_bean_letters
+from .beanletters import hold_bean_counters, tag_bean_letters
 from .stitchwidth import apply_stitch_widths, measure_stitch_widths
 from .textcluster import (detect_text_clusters, ocr_suggest_text,
                           regularize_text_clusters,
@@ -1121,6 +1121,10 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # (a shape the user pinned keeps its tier), and it moves no geometry.
     # None tags nothing and reads nothing.
     tag_bean_letters(regions, p, cfg)
+    # Their needle points held off small counters
+    # (`cfg.bean_letter_counter_hold_mm`, default None: never called).
+    if cfg.bean_letter_counter_hold_mm:
+        hold_bean_counters(regions, p, cfg)
     # Stage 1's BACKGROUND_ENCLOSED sentence promised holes "left unstitched";
     # when the rule looked at a garment, say what it decided. On a COPY —
     # `p` is shared across forks (`Generation.fork`), its warnings are not
