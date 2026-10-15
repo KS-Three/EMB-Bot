@@ -210,6 +210,68 @@ def test_the_stage7_call_passes_the_hold_only_when_set():
     assert "if cfg.bean_letter_bay_hold else {}" in src
 
 
+# --- the tool's pure helpers ---------------------------------------------------------
+
+def test_the_tools_arms_are_valid_config_and_change_only_the_hold():
+    from tools import bean_bay_hold as bbh
+    assert bbh.ARMS["switch"][0] == {}                   # main's defaults: the switch is ON
+    for name, (overrides, _label) in bbh.ARMS.items():
+        PipelineConfig(**overrides)
+        assert set(overrides) <= {"bean_letter_bay_hold"}, name
+    assert bbh.ARMS[bbh.CORPUS_ARM][0] == {"bean_letter_bay_hold": bbh.HOLD_MM}
+
+
+def _trace(bays, holes, glyph="5"):
+    return {"glyph": glyph, "tier": "bean letter",
+            "bays": [{"where": "top-centre", "mm2": 0.231, "bare_share": b} for b in bays],
+            "thread_holes": holes}
+
+
+def test_glyph_summary_counts_filled_bays_and_only_spurious_holes():
+    from tools import bean_bay_hold as bbh
+    holes = [{"source_counter": True, "reading": "strict"},
+             {"source_counter": False, "reading": "strict"},
+             {"source_counter": False, "reading": "bridged"}]
+    row = bbh.glyph_summary(_trace([0.36, 0.5, 0.49], holes),
+                            {"legibility": 1.0, "counters": 0.0, "sewn_counters_spurious": 1,
+                             "ocr_src": "5", "ocr_sewn": "A"})
+    assert row["bays_filled"] == 2                        # 0.5 is open: #905's rule
+    assert (row["holes_strict"], row["holes_bridged"]) == (1, 1)
+    assert row["spurious"] == 1 and row["ocr"] == "5->A"
+    assert bbh.glyph_summary(_trace([], []), None)["ocr"] is None
+
+
+def test_the_glyph_table_lists_only_glyphs_an_arm_changed():
+    from tools import bean_bay_hold as bbh
+    same = bbh.glyph_summary(_trace([0.6], [], "1"), None)
+    off = bbh.glyph_summary(_trace([0.36], [], "5"), None)
+    on = bbh.glyph_summary(_trace([0.55], [], "5"), None)
+
+    def cell(g):
+        return {"words": {w: {"glyphs": g if w == "1895" else []} for w in bbh.WORDS}}
+    table = bbh.glyph_table({"hat81__switch": cell([same, off]), "hat81__bay": cell([same, on])})
+    assert "| 81 | 1895 | 5 | switch |" in table and "| 81 | 1895 | 5 | bay |" in table
+    assert "| 1895 | 1 |" not in table
+
+
+def test_corpus_rows_flag_a_new_uncovered_shape_and_the_changes():
+    from tools import bean_bay_hold as bbh
+
+    def cell(md5, au, shapes, digests, leg):
+        return {"md5": md5, "stitches": 10, "trims": 4, "shape_digests": digests, "bare_mm2": 1.0,
+                "uncovered_total_mm2": au, "uncovered_shapes": shapes, "bean_shapes": 1,
+                "words": {"w": {"legibility": leg}}}
+    cells = {"becker": {"switch": cell("a", 0.0, [], {"S1": "x"}, 0.5),
+                        "bay": cell("a", 0.0, [], {"S1": "x"}, 0.5)},
+             "fremont": {"switch": cell("a", 1.0, ["S1"], {"S1": "x"}, 0.5),
+                         "bay": cell("b", 2.0, ["S1", "S2"], {"S1": "y"}, 0.6)}}
+    rows = {r["design"]: r for r in bbh.corpus_rows(cells)}
+    assert rows["becker"]["identical"] and rows["becker"]["changed"] == 0 and not rows["becker"]["au_up"]
+    assert rows["fremont"]["changed"] == 1 and rows["fremont"]["au_up"] and rows["fremont"]["new_au"]
+    assert rows["fremont"]["d_leg"] == {"w": 0.1}
+    assert "| fremont |" in bbh.corpus_table(cells)
+
+
 # --- OFF is byte-identical ----------------------------------------------------------
 
 GOLDEN_MD5 = {
