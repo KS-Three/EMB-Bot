@@ -148,6 +148,39 @@ def test_short_stitches_are_split_by_what_flanks_them():
     assert t2["short_edge"] == 2 and t2["short_chain"] == 3
 
 
+def _rows(n_rows: int, pitch: float, length: float = 9.0, step: float = 3.0):
+    """A boustrophedon: rows of `step` stitches turning by `pitch` at each end."""
+    pts = []
+    for r in range(n_rows):
+        xs = [i * step for i in range(int(length / step) + 1)]
+        pts += [(x, r * pitch) for x in (xs if r % 2 == 0 else reversed(xs))]
+    return pts
+
+
+def test_a_run_of_row_turns_is_tatami_like_and_a_lone_turn_or_a_satin_is_not():
+    plan = _plan([StitchRun(points=_rows(6, 0.15), kind=stitches.FILL)])
+    stream, prov = sss.attributed_stream(plan)
+    lengths, _ = sss.classify(stream)
+    flags = sss.tatami_like(stream, lengths)
+    assert sum(flags) > 0.6 * sum(1 for _, _, c in stream if c == "stitch")
+    # One turn is not a stretch of rows.
+    one = _plan([StitchRun(points=_rows(2, 0.15), kind=stitches.FILL)])
+    s1, _ = sss.attributed_stream(one)
+    assert not any(sss.tatami_like(s1, sss.classify(s1)[0]))
+    # A satin zigzag has short stitches but no long ones to flank a turn.
+    zig = _plan([StitchRun(points=[(i % 2 * 0.8, i * 0.3) for i in range(30)], kind=stitches.SATIN)])
+    sz, _ = sss.attributed_stream(zig)
+    assert not any(sss.tatami_like(sz, sss.classify(sz)[0]))
+
+
+def test_tatami_penetrations_are_counted_into_the_tally():
+    plan = _plan([StitchRun(points=_rows(8, 0.15), kind=stitches.FILL)])
+    stream, prov = sss.attributed_stream(plan)
+    t = sss.tally(stream, prov)
+    assert t["tat_pens"] > 0 and t["tat_near"] > 0
+    assert t["by_source"]["fill"]["tat_pens"] == t["tat_pens"]
+
+
 def test_the_counts_agree_with_the_census_on_a_stream_with_jumps_and_trims():
     plan = _plan([StitchRun(points=_line(0.0, 0.7, 12), kind=stitches.RUN),
                   StitchRun(points=_line(40.0, 2.5, 9), kind=stitches.FILL, jump=True, trim=True),

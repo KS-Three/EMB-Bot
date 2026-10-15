@@ -54,6 +54,15 @@ from tools import stitch_difficulty_census as sdc  # noqa: E402
 from tools._console import utf8_console  # noqa: E402
 
 SHORT_BINS = ("lt_0p5", "0p5_1")
+# The tatami-like proxy (source-agnostic, so a pro file can be asked too): a row
+# TURN is a stitch <= TURN_MAX_MM between two stitches >= TURN_FLANK_MM that
+# run in opposite directions (> TURN_REVERSE_DEG apart); a penetration is
+# tatami-like when TURN_MIN_COUNT turns lie within TURN_WINDOW stream entries.
+TURN_MAX_MM = 0.5
+TURN_FLANK_MM = 2.0
+TURN_REVERSE_DEG = 150.0
+TURN_WINDOW = 12
+TURN_MIN_COUNT = 2
 SINK_MODULES = ("dataclasses",)
 # Creators that rebuild a run from another one: they inherit its label.
 INHERIT_FROM = ("stage7_sequence.", "stage6_meander._reversed_piece")
@@ -245,12 +254,41 @@ def classify(stream):
     return lengths, near
 
 
+def tatami_like(stream, lengths) -> list[bool]:
+    """Per stream entry: does it sit inside a stretch of row turns (see
+    `TURN_MAX_MM`)? The same test for EMB-Bot's plans and for a pro file, so
+    "how much of the stacking is tatami geometry" can be asked of both."""
+    n = len(stream)
+    turns = []
+    for e in range(2, n - 1):
+        L = lengths[e]
+        if L is None or L > TURN_MAX_MM or lengths[e - 1] is None or lengths[e + 1] is None:
+            continue
+        if lengths[e - 1] < TURN_FLANK_MM or lengths[e + 1] < TURN_FLANK_MM:
+            continue
+        v1 = (stream[e - 1][0] - stream[e - 2][0], stream[e - 1][1] - stream[e - 2][1])
+        v2 = (stream[e + 1][0] - stream[e][0], stream[e + 1][1] - stream[e][1])
+        if sdc._angle_deg(v1[0], v1[1], v2[0], v2[1]) > TURN_REVERSE_DEG:
+            turns.append(e)
+    flag = [False] * n
+    lo = 0
+    for e in range(n):
+        while lo < len(turns) and turns[lo] < e - TURN_WINDOW:
+            lo += 1
+        hi = lo
+        while hi < len(turns) and turns[hi] <= e + TURN_WINDOW:
+            hi += 1
+        flag[e] = (hi - lo) >= TURN_MIN_COUNT
+    return flag
+
+
 def _bin(length: float) -> str:
     return sdc.BIN_NAMES[sum(length >= e for e in sdc.BIN_EDGES_MM)]
 
 
 COUNT_KEYS = ("lt_0p5", "0p5_1", "near", "union", "zero",
-              "short_iso", "short_chain", "short_edge", "near_g5", "near_g10", "near_g20")
+              "short_iso", "short_chain", "short_edge", "near_g5", "near_g10", "near_g20",
+              "tat_pens", "tat_near")
 
 
 def _blank():
@@ -265,6 +303,7 @@ def tally(stream, prov=None) -> dict:
     pens = sum(1 for _, _, c in stream if c == "stitch")
     sewn = sum(1 for v in lengths if v is not None)
     total, by_src, by_creator, pairs = _blank(), {}, {}, Counter()
+    tat = tatami_like(stream, lengths)
     rank, seen = {}, 0
     for e, (_, _, cmd) in enumerate(stream):
         if cmd == "stitch":
@@ -301,6 +340,10 @@ def tally(stream, prov=None) -> dict:
                 row["near"] += 1
             if short or j is not None:
                 row["union"] += 1
+            if tat[e]:
+                row["tat_pens"] += 1
+                if j is not None:
+                    row["tat_near"] += 1
             if ctx:
                 row[ctx] += 1
             if gap:
@@ -408,6 +451,10 @@ def source_pairs(rows, src_key, name, key):
     return out
 
 
+def _pct(num: float, den: float) -> str:
+    return f"{100 * num / den:.1f}%" if den else "n/a"
+
+
 def report(ours: list[dict], pro: list[dict]) -> str:
     L = []
     metrics = [("lt_0p5", "<0.5 mm"), ("0p5_1", "0.5-1 mm"), ("near", "stacked"), ("union", "short or stacked")]
@@ -441,6 +488,34 @@ def report(ours: list[dict], pro: list[dict]) -> str:
     for key in ("short_iso", "short_chain", "short_edge", "near_g5", "near_g10", "near_g20"):
         ratio, lo, hi = bootstrap_ratio(pairs_of(ours, key), pairs_of(pro, key), draws=4000, pro_groups=groups)
         L.append(f"| {key} | {pooled(ours, key):.1f} | {pooled(pro, key):.1f} | {ratio:.2f} | {lo:.2f} - {hi:.2f} |")
+    L.append("")
+
+    L.append("### Tatami-like stretches (stacking where the rows are)")
+    L.append("")
+    L.append(f"A penetration is tatami-like when {TURN_MIN_COUNT}+ row turns (a stitch <= {TURN_MAX_MM} mm between "
+             f"two stitches >= {TURN_FLANK_MM:g} mm that reverse) lie within {TURN_WINDOW} entries of it. "
+             "The same test runs on both sides; on EMB-Bot the provenance says how good a proxy it is.")
+    L.append("")
+    tp = sum(r["tat_pens"] for r in ours)
+    fp = sum(r["by_source"].get("fill", {}).get("tat_pens", 0) for r in ours)
+    fpens = sum(r["by_source"].get("fill", {}).get("pens", 0) for r in ours)
+    L.append(f"Proxy check on EMB-Bot: {_pct(fp, fpens)} of fill penetrations are flagged "
+             f"(recall); {_pct(fp, tp)} of flagged penetrations are fill (precision).")
+    L.append("")
+    L.append("| population | EMB-Bot | pro | ratio | 95% CI (pro by customer) |")
+    L.append("|---|---|---|---|---|")
+    L.append(f"| share of penetrations tatami-like | {_pct(tp, sum(r['penetrations'] for r in ours))} | "
+             f"{_pct(sum(r['tat_pens'] for r in pro), sum(r['penetrations'] for r in pro))} | | |")
+    for label, ok, ov in (
+        ("stacked, within tatami-like", [(r["tat_near"], r["tat_pens"]) for r in ours],
+         [(r["tat_near"], r["tat_pens"]) for r in pro]),
+        ("stacked, within the rest", [(r["near"] - r["tat_near"], r["penetrations"] - r["tat_pens"]) for r in ours],
+         [(r["near"] - r["tat_near"], r["penetrations"] - r["tat_pens"]) for r in pro]),
+    ):
+        ratio, lo, hi = bootstrap_ratio(ok, ov, draws=4000, pro_groups=groups)
+        a = _pct(sum(c for c, _ in ok), sum(d for _, d in ok))
+        b = _pct(sum(c for c, _ in ov), sum(d for _, d in ov))
+        L.append(f"| {label} | {a} | {b} | {ratio:.2f} | {lo:.2f} - {hi:.2f} |")
     L.append("")
 
     sources = sorted({s for r in ours for s in r["by_source"]})
