@@ -212,6 +212,9 @@ def census(name: str, small_stem: bool = False) -> list[dict]:
 
 
 def main(argv: list[str]) -> None:
+    if {"-h", "--help"} & set(argv):
+        print(__doc__.strip())
+        return
     if "--census" in argv:
         name = argv[argv.index("--census") + 1]
         for row in census(name, "--small-stem" in argv):
