@@ -1,6 +1,10 @@
 """Hair line supplement: refuse rendered-logo line detail (2026-10-15).
 
     python -m tools.hairline_logo_refusal probe [--only drone,owl_kent]
+    python -m tools.hairline_logo_refusal logos [--only drone,screenshot]
+    python -m tools.hairline_logo_refusal owl [--arms region,supp,refuse]
+    python -m tools.hairline_logo_refusal drawn
+    python -m tools.hairline_logo_refusal table | render [--only drone]
 
 #942's supplement (`cfg.hairline_lines_gradient`, OFF) moves 3 of the 9
 corpus logos (drone, screenshot, golden_tee): it sews highlights, hatching
@@ -356,8 +360,9 @@ def cfg_arm(arm: str, width: float, **kw):
 def _measure(plan, image, sp) -> dict:
     m = G.measure(plan, image, sp)
     _reg, sup = G.tier_warnings(plan)
-    if sup and "refused_logo" in sup:
-        m["supplement"]["refused_logo"] = sup["refused_logo"]
+    for k in L.LOGO_KEYS:
+        if sup and k in sup:
+            m["supplement"][k] = sup[k]
     m["lines_kept"] = (sup or {}).get("strands", 0)
     return m
 
@@ -433,6 +438,122 @@ def cmd_drawn() -> int:
     return 0
 
 
+# --------------------------------------------------------------- tables
+
+OUT = ROOT.parent / "docs" / "renders" / "hairline-lines-logo-refusal"
+MOVED = ("drone", "screenshot", "golden_tee")
+# Render labels (`G._label` keeps 48 characters).
+SHORT = {"supp": "supplement ON (#942)", "refuse": "supplement ON + logo refusal"}
+
+
+def _load(prefix: str) -> list[dict]:
+    return [json.loads(f.read_text(encoding="utf-8")) for f in sorted(DEBUG.glob(f"{prefix}*.json"))
+            if not f.name.endswith("_design.json")]
+
+
+def logo_table(rows) -> str:
+    out = ["| logo | class | supplement OFF: trims / stitches | supplement ON (#942): trims / "
+           "stitches / lines kept | ON + refusal: trims / stitches / lines kept | refused "
+           "edge / flat / pattern | bare new vs OFF mm2 (ON / ON+refusal) | ON+refusal == OFF? |",
+           "|---|---|---|---|---|---|---|---|"]
+    for r in sorted(rows, key=lambda r: r["logo"]):
+        b, s, f = r["base"], r["supp"], r["refuse"]
+        rs = (f.get("supplement") or {})
+        why = " / ".join(str(sum((rs.get(k) or {}).values())) if rs.get(k) is not None else "-"
+                         for k in ("refused_logo_edge", "refused_logo_flat", "refused_logo_pattern"))
+        out.append(
+            f"| {r['logo']} | {r['design_class']} | {b['trims']} / {b['stitches']:,} | "
+            f"{s['trims']} / {s['stitches']:,} / {s['lines_kept']} | "
+            f"{f['trims']} / {f['stitches']:,} / {f['lines_kept']} | {why} | "
+            f"{s.get('bare_new_vs_base_mm2', 0.0)} / {f.get('bare_new_vs_base_mm2', 0.0)} | "
+            f"{'yes' if f['md5'] == b['md5'] else 'NO'} (`{f['md5'][:8]}`) |")
+    return "\n".join(out)
+
+
+def owl_table(rows) -> str:
+    out = ["| arm | strands (region / supplement) | bristle-box strands | refused edge / flat / "
+           "pattern | stitches | trims | colour chg | thread m | bare new vs region mm2 | md5 |",
+           "|---|---|---|---|---|---|---|---|---|---|"]
+    order = {a: i for i, a in enumerate(ARMS)}
+    for r in sorted(rows, key=lambda r: order[r["arm"]]):
+        sup = r.get("supplement") or {}
+        why = " / ".join(str(sum(sup[k].values())) if sup.get(k) is not None else "-"
+                         for k in ("refused_logo_edge", "refused_logo_flat", "refused_logo_pattern"))
+        z = (r.get("zones") or {}).get("bristles", {}).get("n", "-") if r.get("zones") else "-"
+        out.append(
+            f"| {LABELS[r['arm']]} | {(r.get('region') or {}).get('strands', '-')} / "
+            f"{sup.get('strands', '-')} | {z} | {why} | {r['stitches']:,} | {r['trims']} | "
+            f"{r['color_changes']} | {r['thread_m']} | {r['bare_new_vs_region_mm2']} | "
+            f"`{r['md5'][:8]}` |")
+    return "\n".join(out)
+
+
+def drawn_table(rows) -> str:
+    out = ["| fixture | region md5 | supplement ON md5 | ON + refusal md5 | identical |",
+           "|---|---|---|---|---|"]
+    for r in rows:
+        m = [r[a]["md5"] for a in ("region", "supp", "refuse")]
+        out.append(f"| {r['image']} | `{m[0][:8]}` | `{m[1][:8]}` | `{m[2][:8]}` | "
+                   f"{'yes' if len(set(m)) == 1 else 'NO'} |")
+    return "\n".join(out)
+
+
+def cmd_table(out: Path) -> int:
+    out.mkdir(parents=True, exist_ok=True)
+    logos, owl, drawn = _load("logo_"), _load("owl_kent_"), _load("drawn_")
+    text = ("NINE LOGOS (Studio route, max_colors 6; OFF = hairline + from_lines + strand "
+            "test, the supplement off)\n\n" + logo_table(logos)
+            + "\n\nOWL_KENT 127 mm (Studio route, 40 wt, grid 8)\n\n" + owl_table(owl)
+            + "\n\nDRAWN HAIR 80 mm\n\n" + drawn_table(drawn) + "\n")
+    (out / "table.md").write_text(text, encoding="utf-8")
+    (out / "table.json").write_text(json.dumps({"logos": logos, "owl": owl, "drawn": drawn},
+                                               indent=1) + "\n", encoding="utf-8")
+    print(text)
+    return 0
+
+
+# -------------------------------------------------------------- renders
+
+def _render(design: dict, px_per_mm: float):
+    from digitizer_core import machine, stitchviz
+    return stitchviz.render_design(design, px_per_mm=px_per_mm,
+                                   thread_mm=machine.thread_profile(40).width_mm)
+
+
+def cmd_render(out: Path, only) -> int:
+    """BEFORE (supplement ON, #942) | AFTER (ON + the refusal) for each moved
+    logo, re-planned here, and owl_kent's bristle box at 16 px/mm from
+    `owl`'s saved designs."""
+    from digitizer_core.adapter import plan_to_design
+    out.mkdir(parents=True, exist_ok=True)
+    for name, path, width, kw in _cases(set(only or MOVED)):
+        if name == "owl_kent":
+            continue
+        result = run_stages(path, cfg_arm("base", width, **kw))
+        tiles = []
+        for a, tag in (("supp", "BEFORE"), ("refuse", "AFTER")):
+            plan = plan_stitches(result, cfg_arm(a, width, **kw))
+            tiles.append(G._label(_render(plan_to_design(plan, name=f"{name} {a}"), 8.0),
+                                  f"{tag}: {SHORT[a]}"))
+        hr.write_jpeg(out / f"{name}_before_after_8pxmm.jpg", G._strip(tiles))
+        print("wrote", name, flush=True)
+    have = [a for a in ("supp", "refuse") if (DEBUG / f"owl_kent_{a}_design.json").exists()]
+    if have:
+        sp = _sp_cached("owl_kent")
+        h, w = sp.rgb.shape[:2]
+        x0, y0, x1, y1 = hr.ZONES["owl_kent"]["bristles"]
+        to_mm = lambda px, py: ((px - sp.origin_px[0]) / sp.px_per_mm,  # noqa: E731
+                                (py - sp.origin_px[1]) / sp.px_per_mm)
+        a, b = to_mm(x0 * w, y0 * h), to_mm(x1 * w, y1 * h)
+        tiles = [G._label(hr.beak_crop("owl_kent", json.loads(
+            (DEBUG / f"owl_kent_{arm}_design.json").read_text(encoding="utf-8")),
+            (a[0], a[1], b[0], b[1]), 16.0, 40),
+            f"{'BEFORE' if arm == 'supp' else 'AFTER'}: {SHORT[arm]}") for arm in have]
+        hr.write_jpeg(out / "owl_kent_bristles_before_after_16pxmm.jpg", G._strip(tiles))
+        print("wrote owl_kent", flush=True)
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -447,7 +568,16 @@ def main(argv=None) -> int:
     c.add_argument("--only", default="")
     fe = sub.add_parser("features")
     fe.add_argument("--only", default="")
+    t = sub.add_parser("table")
+    t.add_argument("--out", type=Path, default=OUT)
+    r = sub.add_parser("render")
+    r.add_argument("--out", type=Path, default=OUT)
+    r.add_argument("--only", default="")
     args = ap.parse_args(argv)
+    if args.cmd == "table":
+        return cmd_table(args.out)
+    if args.cmd == "render":
+        return cmd_render(args.out, [s for s in args.only.split(",") if s])
     if args.cmd == "features":
         return cmd_features([s for s in args.only.split(",") if s])
     if args.cmd == "census":
