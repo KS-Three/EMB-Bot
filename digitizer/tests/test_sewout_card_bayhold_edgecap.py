@@ -42,10 +42,13 @@ def card(tmp_path_factory):
 
 
 def test_the_arms_differ_only_in_the_knob_under_test_and_are_valid_config():
-    # B: the switch is ON in every arm by override; the holds are #967's two candidates
-    assert ce.SWITCH == {"small_text_true_size": True}
+    # B: the switch is ON in every arm by override; the holds are #967's two candidates.
+    # Both holds are ON by default since 2026-10-15 (Kent's flip), so the card pins
+    # the counter hold OFF everywhere and the bay hold OFF in its OFF arm: the cuts
+    # mean what they did when the card was cut.
+    assert ce.SWITCH == {"small_text_true_size": True, "bean_letter_counter_hold_mm": None}
     assert [lbl for lbl, _o in ce.B_ARMS] == ["off", "hold0.2", "hold0.25"]
-    assert ce.B_ARMS[0][1] == {}
+    assert ce.B_ARMS[0][1] == {"bean_letter_bay_hold": None}
     assert ce.B_ARMS[1][1] == {"bean_letter_bay_hold": 0.2}
     assert ce.B_ARMS[2][1] == {"bean_letter_bay_hold": 0.25}
     for _lbl, ov in ce.B_ARMS:
@@ -56,9 +59,12 @@ def test_the_arms_differ_only_in_the_knob_under_test_and_are_valid_config():
         cfg = ce.p_config(pitch)
         assert cfg.edge_cap_bean_pitch_mm == pitch and cfg.thread_wt == 40
         assert cfg.garment_id == ce.GARMENT and cfg.forced_class == "flat"
-    # neither knob is on by default: the card does not touch the default config
+    # the card does not touch the default config: the bay hold is ON by default
+    # (0.2, Kent's flip 2026-10-15) and the card's OFF arm pins it off itself;
+    # the pitch is still OFF by default
     d = PipelineConfig()
-    assert d.bean_letter_bay_hold is None and d.edge_cap_bean_pitch_mm is None
+    assert d.bean_letter_bay_hold == 0.2 and d.edge_cap_bean_pitch_mm is None
+    assert PipelineConfig(**{**ce.SWITCH, **ce.B_ARMS[0][1]}).bean_letter_bay_hold is None
     # the rows: the 1895 row is 81 mm, THE and STAY are 92.5 mm
     assert ce.B_ROWS == (("1895", "b81"), ("THE", "b925"), ("STAY", "b925"))
     assert ce.CUTS["b81"][0] == 81.0 and ce.CUTS["b925"][0] == 92.5

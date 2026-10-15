@@ -62,7 +62,11 @@ NAME = "card_lettering_arms_40wt"
 DEFAULT_OUT = REPO / "docs" / "sewout" / "card-lettering-arms-2026-10-14"
 DEFAULT_CUTS = DEFAULT_OUT / "cuts"
 
-SWITCH = {"small_text_true_size": True}       # ON in every arm, by override
+#: ON in every arm, by override; both holds pinned OFF so the cuts mean what
+#: they did when the card was cut (2026-10-14; the holds are ON by default
+#: since 2026-10-15), and block A's hold arm sets its own.
+SWITCH = {"small_text_true_size": True,
+          "bean_letter_counter_hold_mm": None, "bean_letter_bay_hold": None}
 HOLD_MM = 0.25                                # #952's candidate
 
 #: cut -> (Studio width in mm, the replay's overrides). `s81` is the shared

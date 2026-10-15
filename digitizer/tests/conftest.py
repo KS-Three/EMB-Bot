@@ -459,4 +459,11 @@ PRE_FLIP["small_text_true_size_min_counter_mm"] = None
 # PR #960's 65 mm THE fix, carried by the flip; VP 2026-10-15). None is the
 # pre-flip engine: never filled, read as False.
 PRE_FLIP["small_text_keep_stray_lines"] = None
+# The two bean-letter holds (Kent's flip 2026-10-15, "flip both holds ON"):
+# needle points 0.25 mm off a small counter (#952) and stations 0.2 mm off an
+# open bay (#967). Plain defaults, not switch values: None is OFF, the engine
+# as the sew-out cards were cut. The tests ABOUT them are
+# `tests/test_bean_counter_hold.py` and `tests/test_bean_bay_hold.py`.
+PRE_FLIP["bean_letter_counter_hold_mm"] = None
+PRE_FLIP["bean_letter_bay_hold"] = None
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

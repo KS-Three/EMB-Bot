@@ -67,10 +67,14 @@ DEFAULT_CUTS = DEFAULT_OUT / "cuts"
 DEFAULT_RENDERS = REPO / "docs" / "renders" / "sewout-card-bayhold-edgecap"
 GARMENT = "hat_front"                       # the Hat profile, 0.4 mm pull: Kent's Fremont job
 
-SWITCH = {"small_text_true_size": True}     # ON in every B arm, by override
+#: ON in every B arm, by override; the counter hold (#952) pinned OFF in every
+#: arm and the bay hold pinned OFF in the OFF arm, so the card's cuts mean what
+#: they did when it was cut: both holds are ON by default since 2026-10-15.
+SWITCH = {"small_text_true_size": True, "bean_letter_counter_hold_mm": None}
 HOLD_A, HOLD_B = 0.2, 0.25                  # #967's two candidate holds
-#: B arms in tooth order: (label, overrides on top of SWITCH). OFF is "today's main".
-B_ARMS = (("off", {}),
+#: B arms in tooth order: (label, overrides on top of SWITCH). OFF was main's
+#: default when the card was cut (2026-10-15, before the flip).
+B_ARMS = (("off", {"bean_letter_bay_hold": None}),
           ("hold0.2", {"bean_letter_bay_hold": HOLD_A}),
           ("hold0.25", {"bean_letter_bay_hold": HOLD_B}))
 #: P arms in tooth order: (label, cfg.edge_cap_bean_pitch_mm). None = OFF = machine.BEAN_STITCH_MM.

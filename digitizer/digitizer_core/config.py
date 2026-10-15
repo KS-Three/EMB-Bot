@@ -2697,7 +2697,11 @@ class PipelineConfig:
     # the held letter sews up to ~0.1 mm wider outward. NOT part of the switch
     # above. None: the spines exactly as read, byte for byte. A CANDIDATE
     # (gate 1), unsewn. Measured: `tools/bean_counter_hold.py`.
-    bean_letter_counter_hold_mm: float | None = None
+    # **FLIPPED ON 2026-10-15 at 0.25, Kent's call** (with `bean_letter_bay_hold`
+    # below, over the sew-out card: "flip both holds ON"). A plain default,
+    # not a switch value, so None still means OFF everywhere the card tools
+    # pass it, and an explicit None is the pre-flip engine (`PRE_FLIP`).
+    bean_letter_counter_hold_mm: float | None = 0.25
     # Bean letters' STATIONS held this far (mm) off the letter's open BAYS --
     # a closing of the ink minus the ink, counters left to the hold above --
     # inside the ink of their own spine (`stage6_beanletter.hold_off_bays`).
@@ -2707,7 +2711,10 @@ class PipelineConfig:
     # only: no spine, ink read or pull changes. NOT part of the switch. None:
     # the stations exactly as laid, byte for byte. A CANDIDATE (gate 1),
     # unsewn.
-    bean_letter_bay_hold: float | None = None
+    # **FLIPPED ON 2026-10-15 at 0.2, Kent's call** (0.2 is #967's corpus arm;
+    # both values open the same bays). A plain default, not a switch value:
+    # None is OFF, the pre-flip engine (`PRE_FLIP`).
+    bean_letter_bay_hold: float | None = 0.2
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the

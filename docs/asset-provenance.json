@@ -937,6 +937,12 @@
    "basis": "PR body of claude/dot-rung-lettering-scope; source fixtures carry their own entries above"
   },
   {
+   "prefix": "docs/renders/bean-holds-on/",
+   "status": "derived-render",
+   "source": "Thread renders (digitizer_core.stitchviz via tools/fremont_triage's panel helpers) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp on a Hat at 80, 81 and 92.5 mm, the two bean-letter holds OFF beside ON (cfg.bean_letter_counter_hold_mm 0.25, cfg.bean_letter_bay_hold 0.2); no new artwork, no new client art",
+   "basis": "PR body of claude/bean-holds-on; source fixture has its own entry above"
+  },
+  {
    "prefix": "docs/renders/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures (catch-all for new render directories)",

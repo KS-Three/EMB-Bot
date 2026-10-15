@@ -61,6 +61,8 @@ OUT = Path(os.environ.get("PRO_PARITY_OUT", "pro_parity_out"))
 # Every flag that is ON by default and landed from 2026-09-01, with the value
 # that turns it off. Dates are the config.py line's, by `git log -S`.
 FLAGS: dict[str, object] = {
+    "bean_letter_counter_hold_mm": None,    # 2026-10-15, Kent's flip (0.25)
+    "bean_letter_bay_hold": None,           # 2026-10-15, Kent's flip (0.2)
     "small_text_true_size": False,          # 2026-10-14, Kent's flip
     "small_text_true_size_min_counter_mm": None,  # 2026-10-15, its 0.45 mm counter guard
     "small_text_keep_stray_lines": None,    # 2026-10-15, filled True by the switch
