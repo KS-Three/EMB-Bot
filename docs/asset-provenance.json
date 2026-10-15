@@ -881,6 +881,12 @@
    "basis": "PR body of claude/bean-bay-hold; source fixture cleared by Kent 2026-10-08 (its own entry above)"
   },
   {
+   "prefix": "docs/renders/sewout-card-bayhold-edgecap/",
+   "status": "derived-render",
+   "source": "Thread renders (digitizer_core.stitchviz) of the bay-hold / edge-cap sew-out card (digitizer/tools/sewout_card_bayhold_edgecap.py): EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp at 81 and 92.5 mm, Hat, cut to 1895, THE and STAY, plus a synthetic plate and disc drawn by the tool; no artwork pixels, no new client art",
+   "basis": "PR body of claude/sewout-card-bayhold-edgecap; source fixture cleared by Kent 2026-10-08 (its own entry above)"
+  },
+  {
    "prefix": "docs/renders/fremont-wordmark-ends/",
    "status": "derived-render",
    "source": "Rendered by digitizer/tools/wordmark_ticks.py --panels: crops of digitizer/testdata/photo/logo_hotel_fremont.webp's prep raster beside thread renders (digitizer_core.stitchviz) of EMB-Bot's own digitize of it at 81 mm, Hat; no new artwork, no new client art (Kent's marked screenshot is NOT in the repo)",
