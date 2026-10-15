@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .config import PipelineConfig, true_size_min_cap
+from .config import PipelineConfig, true_size_min_counter
 from .ink_path import read_cluster_ink
 from .words import word_key
 
@@ -100,14 +100,17 @@ def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
                 and str(r.meta.get("tier", "auto")).lower() == "auto"):
             clusters.setdefault(cid, []).append(r)
     tagged = 0
-    # The true-size switch's cap-height guard (`config.true_size_min_cap`):
+    # The true-size switch's counter guard (`config.true_size_min_counter`):
     # a line under it is not read at all, so it sews as it did before the flip.
-    min_cap = true_size_min_cap(cfg)
+    floor = true_size_min_counter(cfg)
+    if floor is not None:
+        from .small_text import passes_counter_guard
+        from .stage6_hairline import block_thread_wt
+        wts = block_thread_wt(regions, cfg)
     for members in clusters.values():
-        if min_cap is not None:
-            from .small_text import line_cap_mm
-            if line_cap_mm(members) < min_cap:
-                continue
+        if floor is not None and not passes_counter_guard(
+                members, p, floor, wts, int(cfg.thread_wt)):
+            continue
         inks = read_cluster_ink(p, members, **_ring(cfg))
         # A read the traced shape disagrees with is no read: left out of the
         # decision and never bean (`INK_SHAPE_MAX_RATIO`).

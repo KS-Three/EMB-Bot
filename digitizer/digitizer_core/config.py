@@ -101,24 +101,40 @@ SMALL_TEXT_TRUE_SIZE = {
     "bean_letter_corner_deg": 50.0,
 }
 
-# The cap-height guard on that switch (`PipelineConfig.
-# small_text_true_size_min_cap_mm`), Kent's ruling 2026-10-14 21:55: the
-# switch acts only on a line of lettering whose cap height is at least this.
-# Below it the line takes today's path, byte for byte. Fremont's Hat at 65 mm
-# read WORSE under the switch (tagline OCR 10/11 -> 5/11, THE 3/3 -> 1/3), at
-# 81 and 92.5 mm better. A CANDIDATE (gate 1), unsewn; Kent may lower it.
-SMALL_TEXT_TRUE_SIZE_MIN_CAP_MM = 1.6
+# The counter guard on that switch (`PipelineConfig.
+# small_text_true_size_min_counter_mm`; Kent, WoK 56 option A, 2026-10-14):
+# the switch acts on a line of lettering only if the smallest counter of its
+# letters in the SOURCE raster (`small_text.line_min_counter_mm`, the widest
+# inscribed circle of each counter the retrace reads) is at least this x
+# thread_wt / 40 mm across. A line with no counter passes. Below it the line
+# takes today's path, byte for byte. It replaced a 1.6 mm cap-height guard
+# that could not separate Fremont's Hat 81 mm date (cap 1.65, better ON) from
+# its 65 mm tagline (cap 1.74, worse ON): the tagline's real cost is its A's
+# apex counters closing -- ~0.40 mm across at 65 mm, 0.44 at 72 (closed on
+# main too), 0.50 at 81 (open). A CANDIDATE (gate 1), unsewn.
+SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM = 0.5
 
 
-def true_size_min_cap(cfg) -> float | None:
-    """The cap height (mm) under which a line of lettering keeps today's
-    path: `cfg.small_text_true_size_min_cap_mm` while the switch is ON, else
-    None (no guard: values set explicitly with the switch OFF act at every
-    size, as they did before the guard)."""
+def true_size_min_counter(cfg) -> float | None:
+    """The 40 wt counter floor (mm) under which a line of lettering keeps
+    today's path: `cfg.small_text_true_size_min_counter_mm` while the switch
+    is ON, else None (no guard: values set explicitly with the switch OFF act
+    on every line, as they did before the guard). The floor a line meets is
+    this x its thread weight / 40 (`counter_floor_mm`)."""
     if not getattr(cfg, "small_text_true_size", False):
         return None
-    cap = getattr(cfg, "small_text_true_size_min_cap_mm", None)
-    return float(cap) if cap and cap > 0 else None
+    floor = getattr(cfg, "small_text_true_size_min_counter_mm", None)
+    return float(floor) if floor and floor > 0 else None
+
+
+def counter_floor_mm(base_mm: float, thread_wt: int) -> float:
+    """`true_size_min_counter`'s floor at `thread_wt`, `base x wt / 40` as
+    ruled (0.5 mm at 40 wt, 0.75 at 60, 0.94 at 75). NOTE the direction: a
+    higher weight is a FINER thread, and `machine.thread_profile`'s own
+    `counter_min_width_mm` SHRINKS with it, so this scale guards more lines at
+    60 wt, not fewer. At the default 40 wt the two agree; flagged in the PR
+    for Kent rather than silently inverted."""
+    return float(base_mm) * float(thread_wt) / 40.0
 
 
 @dataclass
@@ -2595,16 +2611,18 @@ class PipelineConfig:
     # And `None` for one of the six no longer means "off" while the switch is
     # ON: it is refilled.
     small_text_true_size: bool = True
-    # The switch's cap-height guard (Kent 2026-10-14 21:55; see
-    # `SMALL_TEXT_TRUE_SIZE_MIN_CAP_MM`, 1.6). While `small_text_true_size` is
-    # ON, a line of lettering whose cap height (the median member height, as
-    # `small_text.restore_small_text` measures it) is under this is neither
-    # restored (`restore_small_text`) nor tagged bean (`beanletters.
-    # tag_bean_letters`): it sews exactly as it did before the flip. None: no
-    # guard. Read only while the switch is ON (`true_size_min_cap`): with the
-    # switch OFF, explicitly set restore / bean values act at every size, as
-    # before. A CANDIDATE (gate 1).
-    small_text_true_size_min_cap_mm: float | None = SMALL_TEXT_TRUE_SIZE_MIN_CAP_MM
+    # The switch's counter guard (Kent, WoK 56 option A; see
+    # `SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM`, 0.5). While `small_text_true_size`
+    # is ON, a line of lettering whose smallest SOURCE counter (the widest
+    # inscribed circle of each counter `small_text._retrace` reads from the
+    # raster, over the line's letters and the ones it adopts) is narrower than
+    # this x thread_wt / 40 mm is neither restored (`restore_small_text`) nor
+    # tagged bean (`beanletters.tag_bean_letters`): it sews exactly as it did
+    # before the flip. A line with no counter passes. None: no guard. Read
+    # only while the switch is ON (`true_size_min_counter`): with the switch
+    # OFF, explicitly set restore / bean values act on every line, as before.
+    # A CANDIDATE (gate 1), unsewn.
+    small_text_true_size_min_counter_mm: float | None = SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM
     # Bean letters' needle points held this far (mm) off a SMALL counter --
     # one no wider than `beanletters.COUNTER_HOLD_MAX_MM` -- inside the ink
     # (`beanletters.hold_bean_counters`, `ink_path.hold_off_counters`). A bean

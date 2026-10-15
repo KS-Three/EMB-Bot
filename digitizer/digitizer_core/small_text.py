@@ -97,10 +97,40 @@ def _height(r: Region) -> float:
 def line_cap_mm(members: list[Region]) -> float:
     """A line's cap height as `restore_small_text` measures it: the median
     member height of its core (`_core`), or of every member when the cluster
-    is too small to have one. The true-size switch's guard
-    (`config.true_size_min_cap`) reads this."""
+    is too small to have one."""
     core = _core(members) or list(members)
     return float(np.median([_height(r) for r in core])) if core else 0.0
+
+
+def counter_widths_mm(polys) -> list[float]:
+    """Every counter (interior ring) of `polys`, as the diameter of its widest
+    inscribed circle in mm (`shapely.ops.polylabel`, 0.01 mm tolerance) --
+    `columns._wide_counters`' measure of how wide a counter is."""
+    from shapely.ops import polylabel
+
+    out: list[float] = []
+    for poly in polys:
+        for ring in getattr(poly, "interiors", ()):
+            c = Polygon(ring).buffer(0)
+            for q in _polys(c):
+                if q.area > 0:
+                    out.append(2.0 * float(polylabel(q, tolerance=0.01).distance(q.exterior)))
+    return out
+
+
+def line_min_counter_mm(group: list[Region], p: Prep, cap: float | None = None,
+                        traced: dict[int, Polygon] | None = None) -> float | None:
+    """The true-size switch's counter guard (`config.true_size_min_counter`):
+    the narrowest SOURCE counter of a line's letters, in mm across -- each
+    letter re-read from the raster (`_retrace`, the same read
+    `restore_small_text` restores from, so the counters stage 4's sliver
+    floor dropped count). A letter the retrace could not read is measured on
+    its traced polygon. None: the line has no counter (it passes the guard)."""
+    if traced is None:
+        traced = _retrace(group, p, cap if cap else line_cap_mm(group))
+    polys = [traced.get(i, r.polygon) for i, r in enumerate(group)]
+    widths = counter_widths_mm(polys)
+    return min(widths) if widths else None
 
 
 def _adopt(members: list[Region], regions: list[Region], cap: float) -> list[Region]:
@@ -444,15 +474,55 @@ def _fill_old_holes(regions: list[Region], ids: set[int], old_union) -> None:
 _CLUSTER_TAGS = ("text_candidate", "text_cluster_id", "text_cluster_stroke_mm", "text_cluster_all_rescued")
 
 
+GUARD_KEY = "small_text_true_size_guarded"
+COUNTER_KEY = "small_text_min_counter_mm"
+
+
+def passes_counter_guard(members: list[Region], p: Prep, floor_base_mm: float | None,
+                         thread_wts: dict[int, int] | None = None,
+                         default_wt: int = 40) -> bool:
+    """Whether a text cluster passes the true-size switch's counter guard
+    (`config.true_size_min_counter`), for a reader after `restore_small_text`
+    (the bean tagger): the restore step's verdict when it measured the line
+    (`GUARD_KEY` failed, `COUNTER_KEY` passed), else measured here on the
+    cluster's core. None for the floor: no guard, every line passes."""
+    if not floor_base_mm:
+        return True
+    if any(r.meta.get(GUARD_KEY) for r in members):
+        return False
+    if any(COUNTER_KEY in r.meta for r in members):
+        return True
+    from .config import counter_floor_mm
+    line = _core(members) or list(members)
+    if not line:
+        return True
+    try:
+        narrow = line_min_counter_mm(line, p)
+    except Exception:  # unmeasured: today's path, like a restore that fails
+        return False
+    wt =(thread_wts or {}).get(line[0].thread_index, default_wt)
+    return narrow is None or narrow >= counter_floor_mm(floor_base_mm, wt)
+
+
 def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
-                       min_cap_mm: float | None = None) -> list[dict]:
+                       min_counter_mm: float | None = None,
+                       thread_wts: dict[int, int] | None = None,
+                       default_wt: int = 40) -> list[dict]:
     """The true-size half of this module (`cfg.small_text_restore_mm`): no
     scale, no move. For every line of lettering under `cap_mm`, ADOPT the
     untagged letters of the line into its text cluster and RETRACE every
     letter from the source raster, so each keeps the counters stage 4
     dropped. A lettering tier that reads cluster members -- bean letters
     sews the centreline of a member's source ink -- then sees the whole
-    line, the 8 included. -> one report row per cluster considered."""
+    line, the 8 included. -> one report row per cluster considered.
+
+    `min_counter_mm` (`config.true_size_min_counter`, the switch's counter
+    guard): a line whose narrowest source counter (`line_min_counter_mm`,
+    over its letters and the ones it would adopt) is under `min_counter_mm x
+    wt / 40` -- `wt` its thread's weight in `thread_wts`, else `default_wt`
+    -- is left exactly as it was: nothing adopted, retraced or stripped. Its
+    shapes are marked `GUARD_KEY` so the bean tagger leaves it too. A line
+    with no counter passes."""
     report: list[dict] = []
     if not cap_mm or cap_mm <= 0 or not regions:
         return report
@@ -475,15 +545,27 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
             if cap <= 0 or cap >= cap_mm:
                 row["skipped"] = "tall_enough"
                 continue
-            if min_cap_mm and cap < min_cap_mm:
-                # Under the switch's cap-height guard: today's path, untouched.
-                row["skipped"] = "below_min_cap"
-                continue
             group = [r for r in _adopt(members, regions, cap) if id(r) not in claimed]
             if len(group) < len(members):
                 row["skipped"] = "member_claimed"
                 continue
             traced = _retrace(group, p, cap)
+            if min_counter_mm:
+                from .config import counter_floor_mm
+                narrow = line_min_counter_mm(group, p, cap, traced=traced)
+                wt = (thread_wts or {}).get(members[0].thread_index, default_wt)
+                floor = counter_floor_mm(min_counter_mm, wt)
+                row["min_counter_mm"] = None if narrow is None else round(narrow, 3)
+                row["counter_floor_mm"] = round(floor, 3)
+                if narrow is not None and narrow < floor:
+                    # Under the switch's counter guard: today's path, untouched
+                    # but for the mark that keeps the bean tagger off it too.
+                    for r in clusters[cid]:
+                        r.meta[GUARD_KEY] = True
+                    row["skipped"] = "below_min_counter"
+                    continue
+                for r in group:
+                    r.meta[COUNTER_KEY] = row["min_counter_mm"]
             tags = {k: members[0].meta[k] for k in _CLUSTER_TAGS if k in members[0].meta}
             member_ids = {id(r) for r in members}
             for i, r in enumerate(group):
