@@ -112,6 +112,10 @@ ARMS = {
     # cluster, not the crop (2026-10-14, Fremont's 65 mm date).
     "ring": ({"small_text_true_size": True, "ink_ground_ring_mm": 0.8},
              "small_text_true_size ON + ink ground ring 0.8"),
+    # + cfg.small_text_keep_stray_lines: a line the tagger merged into
+    # another line's cluster keeps its tags (2026-10-14, Fremont's 65 mm THE).
+    "keep": ({"small_text_true_size": True, "small_text_keep_stray_lines": True},
+             "small_text_true_size ON + keep stray lines"),
 }
 ARM_ORDER = list(ARMS)
 

@@ -478,6 +478,24 @@ GUARD_KEY = "small_text_true_size_guarded"
 COUNTER_KEY = "small_text_min_counter_mm"
 
 
+def _stray_line(strays: list[Region], keep_stray_lines: bool) -> list[Region]:
+    """`keep_stray_lines`: the strays that are themselves a line of lettering
+    (`_core`, three or more), else none."""
+    kept = _core(strays) if keep_stray_lines and strays else []
+    return kept if len(kept) >= 3 else []
+
+
+def _release(kept: list[Region], new_cid: str, clusters: dict, order: list) -> str:
+    """Another line that shared the tagger's cluster: its own cluster now,
+    considered like any other."""
+    for r in kept:
+        r.meta["text_cluster_id"] = new_cid
+        r.meta["small_text_stray_line"] = True
+    clusters[new_cid] = kept
+    order.append(new_cid)
+    return new_cid
+
+
 def passes_counter_guard(members: list[Region], p: Prep, floor_base_mm: float | None,
                          thread_wts: dict[int, int] | None = None,
                          default_wt: int = 40) -> bool:
@@ -500,11 +518,12 @@ def passes_counter_guard(members: list[Region], p: Prep, floor_base_mm: float | 
         narrow = line_min_counter_mm(line, p)
     except Exception:  # unmeasured: today's path, like a restore that fails
         return False
-    wt =(thread_wts or {}).get(line[0].thread_index, default_wt)
+    wt = (thread_wts or {}).get(line[0].thread_index, default_wt)
     return narrow is None or narrow >= counter_floor_mm(floor_base_mm, wt)
 
 
 def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
+                       keep_stray_lines: bool = False,
                        min_counter_mm: float | None = None,
                        thread_wts: dict[int, int] | None = None,
                        default_wt: int = 40) -> list[dict]:
@@ -516,13 +535,24 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
     sews the centreline of a member's source ink -- then sees the whole
     line, the 8 included. -> one report row per cluster considered.
 
+    `keep_stray_lines` (`cfg.small_text_keep_stray_lines`): strays that are
+    themselves a line of lettering (`_core` finds three or more of one
+    thread, one height, one baseline) keep their tags as a cluster of their
+    own, and that cluster is considered in turn. At 65 mm the tagger puts
+    Fremont's black THE in the tan date's cluster; stripped as strays, its
+    three letters lost their lettering treatment, traced 1.8x fatter and the
+    E closed (2026-10-14). False: every stray stripped, as before.
+
     `min_counter_mm` (`config.true_size_min_counter`, the switch's counter
     guard): a line whose narrowest source counter (`line_min_counter_mm`,
     over its letters and the ones it would adopt) is under `min_counter_mm x
     wt / 40` -- `wt` its thread's weight in `thread_wts`, else `default_wt`
     -- is left exactly as it was: nothing adopted, retraced or stripped. Its
     shapes are marked `GUARD_KEY` so the bean tagger leaves it too. A line
-    with no counter passes."""
+    with no counter passes. The guard is per LINE: with `keep_stray_lines`, a
+    stray line in a guarded line's cluster (65 mm Fremont: THE in the date's
+    cluster) still leaves as a cluster of its own and is considered in turn;
+    the guarded line and its other strays keep today's tags."""
     report: list[dict] = []
     if not cap_mm or cap_mm <= 0 or not regions:
         return report
@@ -532,7 +562,11 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
         if cid:
             clusters.setdefault(cid, []).append(r)
     claimed: set[int] = set()
-    for cid in sorted(clusters):
+    order = sorted(clusters)
+    at = 0
+    while at < len(order):
+        cid = order[at]
+        at += 1
         row = {"cluster": cid, "members": len(clusters[cid])}
         report.append(row)
         try:
@@ -560,8 +594,17 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 if narrow is not None and narrow < floor:
                     # Under the switch's counter guard: today's path, untouched
                     # but for the mark that keeps the bean tagger off it too.
+                    # A stray LINE in its cluster is another line, judged on
+                    # its own counters: it leaves, as below.
+                    line_ids = {id(r) for r in group}
+                    kept = _stray_line([r for r in clusters[cid] if id(r) not in line_ids],
+                                       keep_stray_lines)
+                    kept_ids = {id(r) for r in kept}
                     for r in clusters[cid]:
-                        r.meta[GUARD_KEY] = True
+                        if id(r) not in kept_ids:
+                            r.meta[GUARD_KEY] = True
+                    if kept:
+                        row["stray_line"] = _release(kept, f"{cid}.line{at}", clusters, order)
                     row["skipped"] = "below_min_counter"
                     continue
                 for r in group:
@@ -585,10 +628,16 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
             # They sew as the ordinary shapes they are.
             line_ids = {id(r) for r in group}
             strays = [r for r in clusters[cid] if id(r) not in line_ids]
+            kept = _stray_line(strays, keep_stray_lines)
+            kept_ids = {id(r) for r in kept}
             for r in strays:
+                if id(r) in kept_ids:
+                    continue
                 for k in _CLUSTER_TAGS:
                     r.meta.pop(k, None)
                 r.meta["small_text_stray"] = True
+            if kept:
+                row["stray_line"] = _release(kept, f"{cid}.line{at}", clusters, order)
             row.update(adopted=len(group) - len(members), retraced=len(traced),
                        strays=len(strays))
         except Exception as exc:  # fail open

@@ -1,0 +1,33 @@
+{
+ "design": "tires",
+ "arm": "switch",
+ "kind": "logo",
+ "overrides": {
+  "small_text_true_size": true
+ },
+ "stitches": 2732,
+ "trims": 8,
+ "jumps": 0,
+ "thread_m": 7.188,
+ "size_mm": [
+  80.2,
+  29.7
+ ],
+ "md5": "6a6ada47668b9a274b0086680e123441",
+ "shape_digests": {
+  "S27641282": "0dd94d190b3e64aa85ce9ca3076d543c",
+  "Sf272c1de": "e927a5ac625d4c96e5ba16d32b0f961d",
+  "S8edf1545": "fd8e1edbd7d3d30675df0863c462de88",
+  "S1f2e2d7b": "164eec04afe6cc46e8b75bfa9d28a040"
+ },
+ "uncovered_total_mm2": 0.0,
+ "uncovered_wanted_mm2": 736.1,
+ "uncovered_worst_mm2": 0.0,
+ "uncovered_fires": false,
+ "uncovered_shapes": [],
+ "bare_mm2": 1.25,
+ "skeleton_shapes": 0,
+ "bean_shapes": 0,
+ "words": {},
+ "secs": 47
+}

@@ -99,6 +99,9 @@ SMALL_TEXT_TRUE_SIZE = {
     "bean_letter_serif_mm": 0.45,
     "bean_letter_min_arm_mm": 0.3,
     "bean_letter_corner_deg": 50.0,
+    # Kent WoK 56 (2026-10-15): the flip carries PR #960's 65 mm THE fix --
+    # a stray LINE in another line's cluster keeps its tags as its own.
+    "small_text_keep_stray_lines": True,
 }
 
 # The counter guard on that switch (`PipelineConfig.
@@ -2528,6 +2531,17 @@ class PipelineConfig:
     # None never calls the pass. A CANDIDATE (ROADMAP gate 1), unsewn; the
     # flip is Kent's. Tests: `tests/test_small_text.py`.
     small_text_restore_mm: float | None = None
+    # With `small_text_restore_mm`: a line of lettering the text tagger put
+    # in ANOTHER line's cluster keeps its tags as a cluster of its own
+    # instead of being stripped as a stray (`small_text.restore_small_text`).
+    # At 65 mm Fremont's THE shares the date's cluster; stripped, it lost its
+    # lettering treatment, traced 1.8x fatter and its E closed (THE OCR 3/3
+    # -> 1/3 under the true-size switch, 2026-10-14). False: today's strip.
+    # Geometry, not fabric: no sew-out settles which shapes are a line.
+    # None (the default) is False unless `small_text_true_size` fills it
+    # True (`SMALL_TEXT_TRUE_SIZE`, Kent WoK 56: the flip carries its own
+    # 65 mm THE fix); an explicit True or False wins over the switch.
+    small_text_keep_stray_lines: bool | None = None
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
@@ -2605,10 +2619,10 @@ class PipelineConfig:
     # runs by default). The pre-flip engine is `small_text_true_size=False`
     # (`tests/conftest.py`, PRE_FLIP); `setattr(cfg, "small_text_true_size",
     # False)` also clears what the switch filled. TRAP: `replace(cfg,
-    # small_text_true_size=False)` on a cfg built ON keeps the six filled
+    # small_text_true_size=False)` on a cfg built ON keeps the seven filled
     # values (replace passes them as explicit) -- build a fresh
     # `PipelineConfig(..., small_text_true_size=False)` for the OFF engine.
-    # And `None` for one of the six no longer means "off" while the switch is
+    # And `None` for one of the seven no longer means "off" while the switch is
     # ON: it is refilled.
     small_text_true_size: bool = True
     # The switch's counter guard (Kent, WoK 56 option A; see
@@ -4553,7 +4567,7 @@ class PipelineConfig:
         self._fill_true_size()
 
     def _fill_true_size(self) -> None:
-        # Records which of the six the switch filled (not a field: no repr, eq
+        # Records which of the seven the switch filled (not a field: no repr, eq
         # or replace() sees it), so that turning the switch OFF by setattr --
         # the way `flagcost.py` and `parity_config(**extra)` build an off arm
         # -- clears exactly those and leaves an explicit value alone.

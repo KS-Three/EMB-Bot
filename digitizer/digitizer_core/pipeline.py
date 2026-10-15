@@ -847,6 +847,7 @@ def build_generation(
         from .small_text import restore_small_text
         from .stage6_hairline import block_thread_wt
         restore_small_text(regions, p, cap_mm=cfg.small_text_restore_mm,
+                           keep_stray_lines=bool(cfg.small_text_keep_stray_lines),
                            min_counter_mm=true_size_min_counter(cfg),
                            thread_wts=block_thread_wt(regions, cfg),
                            default_wt=int(cfg.thread_wt))
