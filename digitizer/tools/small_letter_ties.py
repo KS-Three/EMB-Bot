@@ -421,8 +421,9 @@ def render(out: Path, renders: Path, before: str, after: str) -> list[Path]:
                 row = recs[t]["words"][w]
                 for tie in row["ties_detail"]:
                     pts = np.array([to_px(x, y) for x, y in tie["legs"]], np.int32)
-                    if len(pts) > 1:
-                        cv2.polylines(img, [pts], False, (0, 0, 230), 1, cv2.LINE_AA)
+                    white = tie.get("rgb") is not None and min(tie["rgb"]) >= ft.WHITE_MIN
+                    if len(pts) > 1:      # the white ground's locks grey, a letter's red
+                        cv2.polylines(img, [pts], False, (150, 150, 150) if white else (0, 0, 230), 1, cv2.LINE_AA)
                     elif not tie["laid"]:
                         cx, cy = to_px(*tie["anchor"])
                         cv2.circle(img, (int(cx), int(cy)), 3, (230, 120, 0), 1, cv2.LINE_AA)
@@ -434,7 +435,7 @@ def render(out: Path, renders: Path, before: str, after: str) -> list[Path]:
             rows.append(strip)
             width = max(width, strip.shape[1])
         sheet = np.vstack([np.pad(r, ((0, 8), (0, width - r.shape[1]), (0, 0)), constant_values=255) for r in rows])
-        sheet = ft._label(sheet, f"Fremont {fx}: left {before}, right {after}. Red: lock-stitch legs; blue ring: a "
+        sheet = ft._label(sheet, f"Fremont {fx}: left {before}, right {after}. Red: a letter-colour lock's legs; grey: the white ground fill's; blue ring: a "
                                  "slot left untied. stitchviz draws a 3-pass bean as ONE thread width.", width=width)
         path = renders / f"{fx}__{before}_vs_{after}.png"
         cv2.imwrite(str(path), sheet)
