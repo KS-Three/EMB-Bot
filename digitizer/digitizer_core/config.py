@@ -2540,6 +2540,15 @@ class PipelineConfig:
     # `tools/sewout_card_passes.py`. Not in `SMALL_TEXT_TRUE_SIZE`. A
     # CANDIDATE (gate 1).
     bean_letter_passes: int | None = None
+    # The bean tagger's ink read takes its ground colour only from a ring this
+    # deep round the cluster (`ink_path.read_cluster_ink`'s
+    # `ground_ring_mm`), not from every far pixel of the crop. At 65 mm
+    # Fremont's EST and 1895 are one cluster either side of the black
+    # Wisconsin state; the crop-wide ground came out dark and every digit read
+    # 0.84-1.73 mm thick, so the date never went bean (2026-10-14). None: the
+    # crop-wide read, byte for byte. Not in `SMALL_TEXT_TRUE_SIZE`. A
+    # CANDIDATE (gate 1): 0.8 mm was the ring tried.
+    ink_ground_ring_mm: float | None = None
     # Lock stitches on small letters laid ALONG the letter (2026-10-14,
     # `stitches.spread_tie_in` / `spread_tie_off`), for the runs of bean
     # letters and skeleton runs only. The ordinary lock bounces four legs of

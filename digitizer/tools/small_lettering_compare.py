@@ -102,6 +102,10 @@ ARMS = {
     # cfg.small_text_true_size: the four true-size values behind one switch,
     # bean stroke 0.5 (Kent 2026-10-14: THE as a centre line is fine).
     "switch": ({"small_text_true_size": True}, "small_text_true_size ON (bean 0.5)"),
+    # + cfg.ink_ground_ring_mm: the ink read's ground from a ring round the
+    # cluster, not the crop (2026-10-14, Fremont's 65 mm date).
+    "ring": ({"small_text_true_size": True, "ink_ground_ring_mm": 0.8},
+             "small_text_true_size ON + ink ground ring 0.8"),
     # + cfg.small_text_keep_stray_lines: a line the tagger merged into
     # another line's cluster keeps its tags (2026-10-14, Fremont's 65 mm THE).
     "keep": ({"small_text_true_size": True, "small_text_keep_stray_lines": True},
@@ -855,7 +859,8 @@ def main(argv=None) -> int:
     ap.add_argument("--pick", action="store_true", help="print the one-line-per-arm table for the PR body")
     ap.add_argument("--sheets", action="store_true")
     ap.add_argument("--corpus", nargs=2, metavar=("DESIGN", "ARM"),
-                    help="digitize one corpus design under one arm (ARM in %s); see the corpus section" % CORPUS_ARMS)
+                    help="digitize one corpus design under one arm (ARM in %s; the table reads %s); see the corpus section"
+                         % (ARM_ORDER, CORPUS_ARMS))
     ap.add_argument("--corpus-list", action="store_true", help="print the corpus design names")
     ap.add_argument("--corpus-sheet", metavar="DESIGN",
                     help="render sheet of one design from the --renders sidecars (written by --corpus ... --renders)")

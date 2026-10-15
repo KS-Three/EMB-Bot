@@ -467,6 +467,45 @@ def test_passes_none_is_three_and_one_or_two_lap_the_spine():
     assert c1.points[0] in ((0.0, 0.6), (0.9, 0.0)) and c1.points[-1] in ((0.0, 0.6), (0.9, 0.0))
 
 
+def test_ground_ring_reads_past_a_dark_shape_between_two_words():
+    # Fremont at 65 mm: EST and 1895 are one cluster either side of the black
+    # Wisconsin state. Read crop-wide, the ground came out dark and every
+    # digit read about a millimetre thick; the ring reads the white round
+    # the letters.
+    from digitizer_core.ink_path import read_cluster_ink
+
+    regions, p = _scene(text_at=((120, 262), (700, 262)), words=("EST", "1895"),
+                        blocker_px=(290, 150, 680, 360))
+    glyphs = _glyphs(regions)
+    assert len(glyphs) == 7
+    old = [i.stroke_mm for i in read_cluster_ink(p, glyphs)]
+    new = [i.stroke_mm for i in read_cluster_ink(p, glyphs, ground_ring_mm=0.8)]
+    assert all(s is not None and 0.15 < s < 0.4 for s in new), new
+    assert float(np.median(old)) > 2.0 * float(np.median(new)), (old, new)
+    # None is the crop-wide read, byte for byte
+    same = [i.stroke_mm for i in read_cluster_ink(p, glyphs, ground_ring_mm=None)]
+    assert same == old
+
+
+def test_the_tagger_passes_the_ground_ring_only_when_set(monkeypatch):
+    from digitizer_core import beanletters
+    from digitizer_core.ink_path import MemberInk
+
+    seen = []
+
+    def fake(p, members, **kw):
+        seen.append(kw)
+        return [MemberInk() for _ in members]
+
+    monkeypatch.setattr(beanletters, "read_cluster_ink", fake)
+    regions, p = _scene()
+    _tag(regions, {"Sg0", "Sg1", "Sg2", "Sg3"})
+    beanletters.tag_bean_letters(regions, p, PipelineConfig(bean_letter_max_stroke_mm=0.5))
+    beanletters.tag_bean_letters(regions, p, PipelineConfig(bean_letter_max_stroke_mm=0.5,
+                                                            ink_ground_ring_mm=0.8))
+    assert seen == [{}, {"ground_ring_mm": 0.8}]
+
+
 def _two_lines():
     """One tagger cluster holding a 4-letter line on thread 7 and a 3-letter
     line on thread 2 (Fremont at 65 mm: the tan date and the black THE)."""

@@ -34,6 +34,16 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **No speed feature: speed stays with the operator. Kent, 2026-10-14 20:20 CDT (VP relay of Kent), on PR #951.**
+  Asked whether to adjust embroidery speeds for harder stitches, he ruled no: not a speed
+  figure on the worksheet, not U01 SLOW/FAST output, not a speed advisory. What made it cheap
+  to decide: no format EMB-Bot writes carries a speed except pystitch's Barudan U01 writer,
+  and nothing emits one (`plan_to_pattern` adds no SLOW/FAST); 28 pro DSTs, 2 Barudan DSBs
+  and 19 Wilcom worksheets carry none. What survives is a GEOMETRY lead, not a speed one: our
+  sub-1 mm stitches are 33.8% of the total against the pro's 10.6%. Do not re-propose speed
+  output; `docs/speed-advisory-review-2026-10-14.md` holds the options that were priced and
+  not chosen. *(ruled 2026-10-14 — VP relay of Kent; measured 2026-10-14 — PR #951)*
+
 - **A customer's calibration profile ADJUSTS the shipped fabric preset,
   clamped — it never replaces it. And the customer card targets 5x7.**
   Kent's two calls of 2026-09-30, made with the trade-off in front of him

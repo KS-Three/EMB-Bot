@@ -1,0 +1,584 @@
+{
+ "file": "card_lettering_arms_40wt.dst",
+ "bytes": 15185,
+ "wt": 40,
+ "blocks": 3,
+ "stitches_file": 4476,
+ "stitches_plan": 4476,
+ "colour_changes_file": 0,
+ "colour_changes_plan": 0,
+ "colours": 1,
+ "extent_mm": [
+  71.0,
+  64.2
+ ],
+ "within_hoop": true,
+ "x_range_mm": [
+  -35.5,
+  35.5
+ ],
+ "y_range_mm": [
+  -32.1,
+  32.1
+ ],
+ "max_needle_stitch_mm": 2.0,
+ "max_record_axis_mm": 12.1,
+ "stops": [
+  {
+   "stop": 1,
+   "thread": "dark",
+   "stitches": 4676,
+   "thread_m": 2.1
+  }
+ ],
+ "stitches_by_piece": {
+  "A:1895-hold": 126,
+  "A:1895-off": 120,
+  "A:EST-hold": 82,
+  "A:EST-off": 82,
+  "A:strips": 80,
+  "B1:1895-off": 120,
+  "B1:1895-ties": 119,
+  "B1:EST-off": 82,
+  "B1:EST-ties": 82,
+  "B1:TAG-off": 520,
+  "B1:TAG-ties": 521,
+  "B1:THE-off": 156,
+  "B1:THE-ties": 159,
+  "B1:strips": 154,
+  "B2:1895-off": 139,
+  "B2:1895-ties": 142,
+  "B2:EST-off": 103,
+  "B2:EST-ties": 106,
+  "B2:TAG-off": 589,
+  "B2:TAG-ties": 593,
+  "B2:THE-off": 222,
+  "B2:THE-ties": 225,
+  "B2:strips": 154
+ },
+ "under_1mm_by_piece": {
+  "A:1895-hold": 115,
+  "A:1895-off": 109,
+  "A:EST-hold": 73,
+  "A:EST-off": 73,
+  "B1:1895-off": 109,
+  "B1:1895-ties": 108,
+  "B1:EST-off": 73,
+  "B1:EST-ties": 73,
+  "B1:TAG-off": 470,
+  "B1:TAG-ties": 471,
+  "B1:THE-off": 142,
+  "B1:THE-ties": 145,
+  "B2:1895-off": 128,
+  "B2:1895-ties": 131,
+  "B2:EST-off": 94,
+  "B2:EST-ties": 97,
+  "B2:TAG-off": 531,
+  "B2:TAG-ties": 535,
+  "B2:THE-off": 197,
+  "B2:THE-ties": 200
+ },
+ "lock_legs_0p8": 172,
+ "trims": 51,
+ "blocks_mm": {
+  "A": [
+   -35.5,
+   -32.1,
+   9.3,
+   -21.5
+  ],
+  "B1": [
+   -35.5,
+   -16.5,
+   38.1,
+   4.8
+  ],
+  "B2": [
+   -35.5,
+   9.8,
+   43.5,
+   32.1
+  ]
+ },
+ "pieces_mm": {
+  "A:1895-hold": [
+   -4.1,
+   -23.1,
+   1.3,
+   -21.5
+  ],
+  "A:1895-off": [
+   -13.4,
+   -23.1,
+   -8.1,
+   -21.6
+  ],
+  "A:EST-hold": [
+   -26.5,
+   -23.1,
+   -21.4,
+   -21.6
+  ],
+  "A:EST-off": [
+   -35.5,
+   -23.1,
+   -30.5,
+   -21.6
+  ],
+  "B1:1895-off": [
+   -13.4,
+   -7.5,
+   -8.1,
+   -6.0
+  ],
+  "B1:1895-ties": [
+   -4.1,
+   -7.5,
+   1.3,
+   -6.0
+  ],
+  "B1:EST-off": [
+   -35.5,
+   -7.5,
+   -30.5,
+   -6.0
+  ],
+  "B1:EST-ties": [
+   -26.5,
+   -7.5,
+   -21.4,
+   -6.0
+  ],
+  "B1:TAG-off": [
+   -35.5,
+   1.3,
+   -9.7,
+   4.8
+  ],
+  "B1:TAG-ties": [
+   -5.7,
+   1.3,
+   20.1,
+   4.8
+  ],
+  "B1:THE-off": [
+   9.3,
+   -7.5,
+   17.7,
+   -5.2
+  ],
+  "B1:THE-ties": [
+   21.7,
+   -7.5,
+   30.1,
+   -5.2
+  ],
+  "B2:1895-off": [
+   -12.0,
+   18.8,
+   -5.8,
+   20.5
+  ],
+  "B2:1895-ties": [
+   -1.8,
+   18.8,
+   4.3,
+   20.5
+  ],
+  "B2:EST-off": [
+   -35.5,
+   18.8,
+   -29.7,
+   20.5
+  ],
+  "B2:EST-ties": [
+   -25.7,
+   18.8,
+   -20.0,
+   20.5
+  ],
+  "B2:TAG-off": [
+   -35.5,
+   28.0,
+   -6.0,
+   32.1
+  ],
+  "B2:TAG-ties": [
+   -2.0,
+   28.0,
+   27.5,
+   32.1
+  ],
+  "B2:THE-off": [
+   12.3,
+   18.8,
+   21.9,
+   21.5
+  ],
+  "B2:THE-ties": [
+   25.9,
+   18.8,
+   35.5,
+   21.5
+  ]
+ },
+ "pieces": [
+  {
+   "block": "A",
+   "arm": "EST-off",
+   "word": "EST",
+   "label": "off",
+   "cut": "s81",
+   "size_mm": 81.0,
+   "overrides": {
+    "small_text_true_size": true
+   },
+   "roi": "est",
+   "runs": 9,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.01,
+   "height_mm": 1.48
+  },
+  {
+   "block": "A",
+   "arm": "EST-hold",
+   "word": "EST",
+   "label": "hold",
+   "cut": "s81_hold",
+   "size_mm": 81.0,
+   "overrides": {
+    "small_text_true_size": true,
+    "bean_letter_counter_hold_mm": 0.25
+   },
+   "roi": "est",
+   "runs": 9,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.01,
+   "height_mm": 1.48
+  },
+  {
+   "block": "A",
+   "arm": "1895-off",
+   "word": "1895",
+   "label": "off",
+   "cut": "s81",
+   "size_mm": 81.0,
+   "overrides": {
+    "small_text_true_size": true
+   },
+   "roi": "1895",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.39,
+   "height_mm": 1.51
+  },
+  {
+   "block": "A",
+   "arm": "1895-hold",
+   "word": "1895",
+   "label": "hold",
+   "cut": "s81_hold",
+   "size_mm": 81.0,
+   "overrides": {
+    "small_text_true_size": true,
+    "bean_letter_counter_hold_mm": 0.25
+   },
+   "roi": "1895",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.39,
+   "height_mm": 1.62
+  },
+  {
+   "block": "B1",
+   "arm": "EST-off",
+   "word": "EST",
+   "label": "off",
+   "cut": "s81",
+   "size_mm": 81.0,
+   "overrides": {
+    "small_text_true_size": true
+   },
+   "roi": "est",
+   "runs": 9,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.01,
+   "height_mm": 1.48
+  },
+  {
+   "block": "B1",
+   "arm": "EST-ties",
+   "word": "EST",
+   "label": "ties",
+   "cut": "s81_ties",
+   "size_mm": 81.0,
+   "overrides": {
+    "small_text_true_size": true,
+    "small_letter_ties": true
+   },
+   "roi": "est",
+   "runs": 9,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.01,
+   "height_mm": 1.48
+  },
+  {
+   "block": "B1",
+   "arm": "1895-off",
+   "word": "1895",
+   "label": "off",
+   "cut": "s81",
+   "size_mm": 81.0,
+   "overrides": {
+    "small_text_true_size": true
+   },
+   "roi": "1895",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.39,
+   "height_mm": 1.51
+  },
+  {
+   "block": "B1",
+   "arm": "1895-ties",
+   "word": "1895",
+   "label": "ties",
+   "cut": "s81_ties",
+   "size_mm": 81.0,
+   "overrides": {
+    "small_text_true_size": true,
+    "small_letter_ties": true
+   },
+   "roi": "1895",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.39,
+   "height_mm": 1.51
+  },
+  {
+   "block": "B1",
+   "arm": "THE-off",
+   "word": "THE",
+   "label": "off",
+   "cut": "s81",
+   "size_mm": 81.0,
+   "overrides": {
+    "small_text_true_size": true
+   },
+   "roi": "the",
+   "runs": 14,
+   "crossing_runs_dropped": 2,
+   "width_mm": 8.37,
+   "height_mm": 2.3
+  },
+  {
+   "block": "B1",
+   "arm": "THE-ties",
+   "word": "THE",
+   "label": "ties",
+   "cut": "s81_ties",
+   "size_mm": 81.0,
+   "overrides": {
+    "small_text_true_size": true,
+    "small_letter_ties": true
+   },
+   "roi": "the",
+   "runs": 14,
+   "crossing_runs_dropped": 2,
+   "width_mm": 8.37,
+   "height_mm": 2.3
+  },
+  {
+   "block": "B1",
+   "arm": "TAG-off",
+   "word": "TAG",
+   "label": "off",
+   "cut": "s81",
+   "size_mm": 81.0,
+   "overrides": {
+    "small_text_true_size": true
+   },
+   "roi": "tagline",
+   "runs": 50,
+   "crossing_runs_dropped": 8,
+   "width_mm": 25.8,
+   "height_mm": 3.52
+  },
+  {
+   "block": "B1",
+   "arm": "TAG-ties",
+   "word": "TAG",
+   "label": "ties",
+   "cut": "s81_ties",
+   "size_mm": 81.0,
+   "overrides": {
+    "small_text_true_size": true,
+    "small_letter_ties": true
+   },
+   "roi": "tagline",
+   "runs": 50,
+   "crossing_runs_dropped": 8,
+   "width_mm": 25.8,
+   "height_mm": 3.52
+  },
+  {
+   "block": "B2",
+   "arm": "EST-off",
+   "word": "EST",
+   "label": "off",
+   "cut": "s925",
+   "size_mm": 92.5,
+   "overrides": {
+    "small_text_true_size": true
+   },
+   "roi": "est",
+   "runs": 9,
+   "crossing_runs_dropped": 4,
+   "width_mm": 5.72,
+   "height_mm": 1.68
+  },
+  {
+   "block": "B2",
+   "arm": "EST-ties",
+   "word": "EST",
+   "label": "ties",
+   "cut": "s925_ties",
+   "size_mm": 92.5,
+   "overrides": {
+    "small_text_true_size": true,
+    "small_letter_ties": true
+   },
+   "roi": "est",
+   "runs": 9,
+   "crossing_runs_dropped": 4,
+   "width_mm": 5.72,
+   "height_mm": 1.68
+  },
+  {
+   "block": "B2",
+   "arm": "1895-off",
+   "word": "1895",
+   "label": "off",
+   "cut": "s925",
+   "size_mm": 92.5,
+   "overrides": {
+    "small_text_true_size": true
+   },
+   "roi": "1895",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 6.18,
+   "height_mm": 1.72
+  },
+  {
+   "block": "B2",
+   "arm": "1895-ties",
+   "word": "1895",
+   "label": "ties",
+   "cut": "s925_ties",
+   "size_mm": 92.5,
+   "overrides": {
+    "small_text_true_size": true,
+    "small_letter_ties": true
+   },
+   "roi": "1895",
+   "runs": 11,
+   "crossing_runs_dropped": 5,
+   "width_mm": 6.18,
+   "height_mm": 1.72
+  },
+  {
+   "block": "B2",
+   "arm": "THE-off",
+   "word": "THE",
+   "label": "off",
+   "cut": "s925",
+   "size_mm": 92.5,
+   "overrides": {
+    "small_text_true_size": true
+   },
+   "roi": "the",
+   "runs": 25,
+   "crossing_runs_dropped": 2,
+   "width_mm": 9.56,
+   "height_mm": 2.66
+  },
+  {
+   "block": "B2",
+   "arm": "THE-ties",
+   "word": "THE",
+   "label": "ties",
+   "cut": "s925_ties",
+   "size_mm": 92.5,
+   "overrides": {
+    "small_text_true_size": true,
+    "small_letter_ties": true
+   },
+   "roi": "the",
+   "runs": 25,
+   "crossing_runs_dropped": 2,
+   "width_mm": 9.56,
+   "height_mm": 2.66
+  },
+  {
+   "block": "B2",
+   "arm": "TAG-off",
+   "word": "TAG",
+   "label": "off",
+   "cut": "s925",
+   "size_mm": 92.5,
+   "overrides": {
+    "small_text_true_size": true
+   },
+   "roi": "tagline",
+   "runs": 58,
+   "crossing_runs_dropped": 7,
+   "width_mm": 29.49,
+   "height_mm": 4.14
+  },
+  {
+   "block": "B2",
+   "arm": "TAG-ties",
+   "word": "TAG",
+   "label": "ties",
+   "cut": "s925_ties",
+   "size_mm": 92.5,
+   "overrides": {
+    "small_text_true_size": true,
+    "small_letter_ties": true
+   },
+   "roi": "tagline",
+   "runs": 58,
+   "crossing_runs_dropped": 7,
+   "width_mm": 29.49,
+   "height_mm": 4.14
+  }
+ ],
+ "block_md5": {
+  "A": "3610b7d311c4437782f31aaf10159c6e",
+  "B1": "96a2220089831f3bd805372d57029d12",
+  "B2": "f0f1d974ac0f26bc75f3542d93683aa9"
+ },
+ "arm_md5": {
+  "A:1895-hold": "38212962aea90c867ee603fe77494b56",
+  "A:1895-off": "29f3bab5265abfe49981814e5f97709a",
+  "A:EST-hold": "79d2cb3a414eacb9f68101ec2a9ff05b",
+  "A:EST-off": "79d2cb3a414eacb9f68101ec2a9ff05b",
+  "B1:1895-off": "29f3bab5265abfe49981814e5f97709a",
+  "B1:1895-ties": "fb6201d2bfe8f3f49f0e35172b72f141",
+  "B1:EST-off": "79d2cb3a414eacb9f68101ec2a9ff05b",
+  "B1:EST-ties": "79d2cb3a414eacb9f68101ec2a9ff05b",
+  "B1:TAG-off": "bd49ab88a2dd55fb0284e3155b07e4b8",
+  "B1:TAG-ties": "039f505db54274f2a8e8ade1c2dc0299",
+  "B1:THE-off": "54bd597555b9dc8dc2c28451f2e0c4fc",
+  "B1:THE-ties": "d941140b794dd4e78c95f75600538ffa",
+  "B2:1895-off": "7314bb79d31db1278eb8fb2173d11286",
+  "B2:1895-ties": "48bf340f8cfa673d99acede61862349e",
+  "B2:EST-off": "051dd3e2e49b3c2dd0e858bf838738e8",
+  "B2:EST-ties": "5f17a75a4942c1dfc3b3f8c1d8e56439",
+  "B2:TAG-off": "3de2c10a92bb96d30857ef589f98f31b",
+  "B2:TAG-ties": "2633612f1c39ed0bbf9121126169347b",
+  "B2:THE-off": "81bc44c54faafdf487cf7e76be2d729c",
+  "B2:THE-ties": "1fd28a85cc8d83f420f5f31edbe2d018"
+ }
+}
