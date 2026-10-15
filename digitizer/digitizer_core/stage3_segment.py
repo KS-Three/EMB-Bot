@@ -228,12 +228,15 @@ ENCLOSED_PROTECT_OVERLAP = 0.6
 # (gap, minimum height) and dot widths (the span of its top `_STEM_MIN_DOTS`
 # dot heights), and how solid that band's rows are. Classification
 # candidates, read off the letter's shape -- not physical constants. The
-# synthetic Aileron i/j stand 4.8 dots tall, 0.77 dots wide, rows solid;
-# photo_sunset_backlit's specks with a same-colour region under them all
-# fail at least one (under 3 dots tall, or a band 52 to 122 dots wide).
+# synthetic Aileron i/j stand 4.8 dots tall, every row 0.77 dots wide and
+# solid; photo_sunset_backlit's specks with a same-colour region under them
+# all fail at least one (under 3 dots tall, or a band 52 to 122 dots wide),
+# and photo_dof_meadow's one survivor sat on a 3 px nub that widens to 2
+# dots (rows 3 -> 14 px under a 7 px speck).
 _STEM_GAP_DOTS = 1.5
 _STEM_MIN_DOTS = 3.0
 _STEM_MAX_WIDTH_DOTS = 2.0
+_STEM_MAX_ROW_DOTS = 1.5
 _STEM_MIN_ROW_FILL = 0.75
 
 
@@ -490,10 +493,13 @@ def resolve_small_regions(
         whose top sits below the dot by at most `_STEM_GAP_DOTS` dot heights
         and that is at least `_STEM_MIN_DOTS` dot heights tall, whose top
         band (`_STEM_MIN_DOTS` dot heights deep) reaches under the dot, spans
-        at most `_STEM_MAX_WIDTH_DOTS` dot widths, and is a stroke: each row
-        on average at least `_STEM_MIN_ROW_FILL` solid across its own extent
-        (an italic stem's rows are; a ragged photo fragment's are not). A
-        photo speck has no such column beneath it; a dot on lettering does.
+        at most `_STEM_MAX_WIDTH_DOTS` dot widths, and is a stroke of steady
+        width: no row wider than `_STEM_MAX_ROW_DOTS` dots, the rows within
+        half a dot (or 2 px) of each other, and each row on average at least
+        `_STEM_MIN_ROW_FILL` solid across its own extent (an italic stem's
+        rows are all three; a blob that widens under a nub, or a ragged
+        fragment, is not). A photo speck has no such column beneath it; a dot
+        on lettering does.
         With no colour known (`colour` is None), nothing is admitted."""
         y0, x0, y1, x1 = box
         dot_h, dot_w = y1 - y0, x1 - x0
@@ -513,6 +519,10 @@ def resolve_small_regions(
             cols = np.flatnonzero(band.any(axis=0)) + jx0
             if (cols.size == 0 or cols[-1] < x0 or cols[0] >= x1
                     or cols[-1] - cols[0] + 1 > _STEM_MAX_WIDTH_DOTS * dot_w):
+                continue
+            widths = band.sum(axis=1)
+            if (int(widths.max()) > _STEM_MAX_ROW_DOTS * dot_w
+                    or int(widths.max() - widths.min()) > max(2.0, 0.5 * dot_w)):
                 continue
             row_fill = []
             for row in band:

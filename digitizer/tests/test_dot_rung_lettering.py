@@ -115,6 +115,19 @@ def test_a_block_too_wide_is_no_stem():
     assert not dot
 
 
+def test_a_nub_that_widens_is_no_stem():
+    """photo_dof_meadow's survivor of the first cut: a speck over a narrow
+    nub that widens into a blob two dots across within three dot heights."""
+    regions = _scene()
+    # 8 px nub, then 34 px: inside the 2-dot band, but no steady stroke.
+    blob = _rect(50, 56, 65, 64) | _rect(65, 43, 170, 77)
+    ground = regions[0].full_mask() | regions[2].full_mask()
+    regions[0] = RegionMask.from_full(ground & ~blob, 0)
+    regions[2] = RegionMask.from_full(blob, 1)
+    _panel, dot, _stem, _speck = _kept(regions)
+    assert not dot
+
+
 def test_no_colour_known_admits_nothing():
     """On no ground (so the dot is not absorbed either way), with no colour."""
     _g, dot, _stem, speck = _kept(_scene(panel=False), scope=False, colours=False)

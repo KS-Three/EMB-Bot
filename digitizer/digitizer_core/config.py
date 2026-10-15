@@ -1570,8 +1570,9 @@ class PipelineConfig:
     # stage 3, so the scope is geometric: the rung admits a part only when a
     # region of the SAME colour stands below it as a stem -- its top within
     # 1.5 dot heights under the dot, at least three dot heights tall, its top
-    # three dot heights under the dot, no wider than 2 dots, rows solid
-    # (`stage3_segment._STEM_*`). Same colour is the
+    # three dot heights under the dot, no wider than 2 dots, a stroke of
+    # steady width (rows under 1.5 dots, solid) (`stage3_segment._STEM_*`).
+    # Same colour is the
     # layers' own CIELAB (`layer_lab`) or the raster's mean (`lab_img`, which
     # the photo lane hands over only when this is on), within
     # `cfg.merge_delta_e`; with neither, nothing is admitted. The three ratios
