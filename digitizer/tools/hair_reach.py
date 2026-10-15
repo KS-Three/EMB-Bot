@@ -5,6 +5,8 @@
     python -m tools.hair_reach drawn                  # hair_strands, hair_fine: the A/B bar's baselines
     python -m tools.hair_reach table  [--out DIR]
     python -m tools.hair_reach render --image owl_kent [--out DIR]
+    python -m tools.hair_reach size [--widths 127 180 250] [--strand-test]   # 2026-10-15
+    python -m tools.hair_reach sizetable | sizerender [--width 250 --probe side]
 
 MEASURE ONLY. No core edit; the one thing forced here is
 `stage6_hairline_lines.LINE_CLASSES`, monkeypatched in THIS tool (`lines_on`)
@@ -89,6 +91,7 @@ LABELS = {"off": "OFF", "region": "hairline ON (regions)",
 EXTRA_CLASSES = ("gradient",)
 DEBUG = ROOT / "debug_out" / "hair_reach"
 OUT = ROOT.parent / "docs" / "renders" / "claude-hair-reach"
+SIZE_OUT = ROOT.parent / "docs" / "renders" / "hair-reach-size-proof"
 MAX_JPEG_BYTES = 400_000
 # The levers (b): (width mm, work_px_per_mm). 8.0 is `PipelineConfig`'s default.
 LEVERS = {"w127": (127.0, 8.0), "w180": (180.0, 8.0), "w250": (250.0, 8.0),
@@ -144,26 +147,81 @@ def run_zone_counts(image: str, runs, sp) -> dict:
     return zone_counts(image, strands, sp)
 
 
-def census(image: str, width: float, grid: float, strand_test: bool, wt: int = 40) -> dict:
+# ----------------------------------------------------------- the size probe
+# The ridge test reads each line's sides at an offset in MILLIMETRES
+# (`side0` = half `hairline_max_width_mm`, `side1` = `side0` + `_SIDE_REACH_PX`
+# work pixels), on a raster whose pixel is the WORK pixel (`sp.px_per_mm` =
+# `cfg.work_px_per_mm`, 8 by default, for any design size). A bristle is a
+# fixed number of SOURCE pixels wide, so growing the design makes it wider in
+# mm and the same mm offset lands inside it. The probe holds the side sample
+# in SOURCE pixels instead: the footprint it has at the reference design
+# width, scaled by source-pixels-per-mm. It changes the UNIT the offset is
+# read in, not a value: at the reference width it is the identity, and no
+# constant in core (`hairline_max_width_mm`, `_SIDE_REACH_PX`,
+# `_PROFILE_STEP_WIDTHS`, `_SLIT_PX`) is touched.
+PROBES = ("main", "side", "side_core")
+REF_WIDTH_MM = 127.0
+
+
+def source_scale(image: str, width: float, ref_width: float = REF_WIDTH_MM) -> float:
+    """mm-per-source-pixel at `width` over mm-per-source-pixel at
+    `ref_width`: how many times wider a source pixel is in mm."""
+    w_px = cv2.imread(str(IMAGES[image]), cv2.IMREAD_UNCHANGED).shape[1]
+    return (w_px / ref_width) / (w_px / width)
+
+
+@contextlib.contextmanager
+def ridge_probe(mode: str, k: float):
+    """`L.ridge_contrast` wrapped for the length of a `with` block (the tool's
+    own patch; core is untouched, restored on exit, errors included).
+    `side`: the side sample's offset and reach x `k`. `side_core`: the core
+    window's half-width too. `main`: no wrapper."""
+    if mode not in PROBES:
+        raise ValueError(f"probe {mode!r} not in {PROBES}")
+    saved = L.ridge_contrast
+    if mode != "main":
+        def wrapped(pts, light, sp, *, polarity, core_mm, side0_mm, side1_mm, step_mm):
+            reach = (side1_mm - side0_mm) * k
+            side0_mm = side0_mm * k
+            if mode == "side_core":
+                core_mm = core_mm * k
+            return saved(pts, light, sp, polarity=polarity, core_mm=core_mm,
+                         side0_mm=side0_mm, side1_mm=side0_mm + reach, step_mm=step_mm)
+        L.ridge_contrast = wrapped
+    try:
+        yield saved
+    finally:
+        L.ridge_contrast = saved
+
+
+def census(image: str, width: float, grid: float, strand_test: bool, wt: int = 40,
+           probe: str = "main", result=None) -> dict:
     """Stages 0-4 and the line route's extraction on the Studio route, no
-    plan. The strands are what `strand_blocks` would sew (`_sewable`)."""
+    plan. The strands are what `strand_blocks` would sew (`_sewable`).
+    `probe` reads the ridge test's side sample in source pixels (see
+    `ridge_probe`); `result` is a `run_stages` result to reuse (the stages do
+    not depend on the probe)."""
     t0 = time.time()
     arm = "lines_st" if strand_test else "lines"
     cfg = cfg_for(width, grid, arm, wt)
     with lines_on():
-        result = run_stages(IMAGES[image], cfg)
+        if result is None:
+            result = run_stages(IMAGES[image], cfg)
         sp = result.source_pixels
         row = {"image": image, "width_mm": width, "work_px_per_mm": grid,
-               "strand_test": strand_test, "thread_wt": wt,
+               "strand_test": strand_test, "thread_wt": wt, "probe": probe,
                "design_class": result.design_class}
         if sp is None:
             row.update(reached=False, note="no source pixels captured on this lane")
             return row
-        strands, cen = L.extract_strands(sp, cfg)
+        k = source_scale(image, width)
+        row["side_scale"] = round(k, 4) if probe != "main" else 1.0
+        with ridge_probe(probe, k):
+            strands, cen = L.extract_strands(sp, cfg)
         keep, dropped = [], 0
         for pol in ("dark", "light"):
-            k, d = L._sewable([s for s in strands if s["polarity"] == pol], cfg, cfg.thread_wt)
-            keep += [s for s, _ in k]
+            k2, d = L._sewable([s for s in strands if s["polarity"] == pol], cfg, cfg.thread_wt)
+            keep += [s for s, _ in k2]
             dropped += d
     h, w = sp.rgb.shape[:2]
     row.update(
@@ -402,6 +460,133 @@ def cmd_render(image: str, width: float, grid: float, out: Path) -> int:
     return 0
 
 
+# ----------------------------------------------------------------- size probe
+
+SIZES = (127.0, 180.0, 250.0)
+SIZE_ZONES = ("bristles", "breast")
+
+
+def size_path(r: dict) -> Path:
+    return DEBUG / (f"size_{r['image']}_w{r['width_mm']:g}_g{r['work_px_per_mm']:g}_"
+                    f"{'st' if r['strand_test'] else 'plain'}_{r['probe']}.json")
+
+
+def cmd_size(image: str, widths, grid: float, strand_test: bool, probes) -> int:
+    """The size probe: per design width, stages 0-4 once, then the extraction
+    once per probe on the SAME raster. One row per (width, probe)."""
+    for width in widths:
+        cfg = cfg_for(width, grid, "lines_st" if strand_test else "lines")
+        with lines_on():
+            result = run_stages(IMAGES[image], cfg)
+        for probe in probes:
+            r = census(image, width, grid, strand_test, probe=probe, result=result)
+            size_path(r).write_text(json.dumps(r, indent=1) + "\n", encoding="utf-8")
+            print(json.dumps(r), flush=True)
+    return 0
+
+
+def size_table(rows: list[dict]) -> str:
+    """Per size: how many ridge lines pass and what is sewn in the bristle box
+    and on the breast, main vs probe. `side scale` = how many times wider the
+    side offset is in mm than main's (a source pixel is that much wider)."""
+    out = ["| design mm | strand test | reading | side scale | FDoG lines | ridge kept | "
+           "strands sewn | bristle box | breast | elsewhere | light |",
+           "|---|---|---|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        if not r.get("reached"):
+            continue
+        out.append(
+            f"| {r['width_mm']:g} | {'on' if r['strand_test'] else 'off'} | {r['probe']} | "
+            f"{r.get('side_scale', 1.0)} | {sum(r['found'].values())} | {r['ridge_lines']} | "
+            f"{r['strands']} | {_zn(r, 'bristles')} | {_zn(r, 'breast')} | "
+            f"{_zn(r, 'elsewhere')} | {r['light']} |")
+    return "\n".join(out)
+
+
+def verdict(rows: list[dict]) -> str:
+    """One line per strand-test arm: bristle-box strands at each size, main
+    vs probe, and whether the probe holds them flat. Flat = the probe's
+    count at the largest size is at least 75% of its count at the smallest,
+    AND main's is not (main lost more than a quarter)."""
+    lines = []
+    for st in (False, True):
+        sel = [r for r in rows if r.get("reached") and r["strand_test"] == st]
+        if not sel:
+            continue
+        parts = {}
+        for probe in PROBES:
+            by = {r["width_mm"]: _zn(r, "bristles") for r in sel if r["probe"] == probe}
+            if by:
+                parts[probe] = by
+        lines.append(f"strand test {'on' if st else 'off'}: " + "; ".join(
+            f"{p}: " + " / ".join(f"{int(w)} mm = {n}" for w, n in sorted(by.items()))
+            for p, by in parts.items()))
+    return "\n".join(lines)
+
+
+def cmd_sizetable(out: Path) -> int:
+    rows = [json.loads(f.read_text(encoding="utf-8")) for f in sorted(DEBUG.glob("size_*.json"))]
+    order = {p: i for i, p in enumerate(PROBES)}
+    rows.sort(key=lambda r: (r["image"], r["strand_test"], r["width_mm"], order[r["probe"]]))
+    out.mkdir(parents=True, exist_ok=True)
+    text = size_table(rows) + "\n\n" + verdict(rows) + "\n"
+    (out / "size_table.md").write_text(text, encoding="utf-8")
+    (out / "size_table.json").write_text(json.dumps(rows, indent=1) + "\n", encoding="utf-8")
+    print(text)
+    return 0
+
+
+def strand_panel(image: str, width: float, grid: float, probe: str, k: int = 2,
+                 result=None):
+    """-> BGR panel: the strands the route sews, `probe`'s reading, over a
+    washed copy of the raster, bristle box in green (as `strand_map`)."""
+    cfg = cfg_for(width, grid, "lines")
+    with lines_on():
+        if result is None:
+            result = run_stages(IMAGES[image], cfg)
+        sp = result.source_pixels
+        with ridge_probe(probe, source_scale(image, width)):
+            strands, _cen = L.extract_strands(sp, cfg)
+        keep = []
+        for pol in ("dark", "light"):
+            sewn, _dropped = L._sewable(
+                [s for s in strands if s["polarity"] == pol], cfg, cfg.thread_wt)
+            keep += [s for s, _pts in sewn]
+    big = cv2.resize(cv2.cvtColor(sp.rgb, cv2.COLOR_RGB2BGR), None, fx=k, fy=k,
+                     interpolation=cv2.INTER_AREA if k < 1 else cv2.INTER_NEAREST)
+    big = (0.55 * big + 0.45 * 255).astype(np.uint8)
+    for s in keep:
+        q = np.array([sp.to_px(x, y) for x, y in s["pts"]]) * k
+        cv2.polylines(big, [np.round(q).astype(np.int32)], False,
+                      (230, 160, 0) if s["polarity"] == "light" else (0, 0, 230), 2, cv2.LINE_AA)
+    h, w = big.shape[:2]
+    x0, y0, x1, y1 = ZONES[image]["bristles"]
+    cv2.rectangle(big, (int(x0 * w), int(y0 * h)), (int(x1 * w), int(y1 * h)), (0, 150, 0), 2)
+    z = zone_counts(image, keep, sp)
+    band = np.full((40, w, 3), 255, np.uint8)
+    cv2.putText(band, f"{probe} @ {width:g} mm: {len(keep)} strands, bristle box "
+                f"{z['bristles']['n']}, breast {z['breast']['n']}", (8, 28),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (30, 30, 30), 2, cv2.LINE_AA)
+    return np.vstack([band, big])
+
+
+def cmd_sizerender(image: str, width: float, grid: float, probe: str, out: Path) -> int:
+    """Before | after at one size: main's reading beside the probe's, on the
+    same raster. PNG: strands are 1-2 px lines and JPEG blurs them."""
+    cfg = cfg_for(width, grid, "lines")
+    with lines_on():
+        result = run_stages(IMAGES[image], cfg)
+    k = 0.4
+    panels = [strand_panel(image, width, grid, p, k, result) for p in ("main", probe)]
+    sep = np.full((panels[0].shape[0], 10, 3), 255, np.uint8)
+    out.mkdir(parents=True, exist_ok=True)
+    f = out / f"{image}_w{width:g}_main_vs_{probe}.png"
+    cv2.imwrite(str(f), np.hstack([panels[0], sep, panels[1]]),
+                [cv2.IMWRITE_PNG_COMPRESSION, 9])
+    print(f, f.stat().st_size)
+    return 0
+
+
 def cmd_drawn() -> int:
     """The A/B bar's two baselines: the drawn hair fixtures (80 mm, 40 wt,
     40 drawn strands each) with the region tier and with the line route
@@ -432,12 +617,32 @@ def main(argv=None) -> int:
     sub.add_parser("drawn")
     t = sub.add_parser("table")
     t.add_argument("--out", type=Path, default=OUT)
+    s = sub.add_parser("size", help="main vs source-pixel side sample at several design widths")
+    s.add_argument("--image", choices=list(IMAGES), default="owl_kent")
+    s.add_argument("--widths", type=float, nargs="+", default=list(SIZES))
+    s.add_argument("--grid", type=float, default=8.0)
+    s.add_argument("--strand-test", action="store_true")
+    s.add_argument("--probes", choices=PROBES, nargs="+", default=list(PROBES))
+    st = sub.add_parser("sizetable")
+    st.add_argument("--out", type=Path, default=SIZE_OUT)
+    sr = sub.add_parser("sizerender")
+    sr.add_argument("--image", choices=list(IMAGES), default="owl_kent")
+    sr.add_argument("--width", type=float, default=250.0)
+    sr.add_argument("--grid", type=float, default=8.0)
+    sr.add_argument("--probe", choices=PROBES[1:], default="side")
+    sr.add_argument("--out", type=Path, default=SIZE_OUT)
     args = ap.parse_args(argv)
     DEBUG.mkdir(parents=True, exist_ok=True)
     if args.cmd == "census":
         r = census(args.image, args.width, args.grid, args.strand_test)
         census_path(r).write_text(json.dumps(r, indent=1) + "\n", encoding="utf-8")
         print(json.dumps(r), flush=True)
+    elif args.cmd == "size":
+        return cmd_size(args.image, args.widths, args.grid, args.strand_test, args.probes)
+    elif args.cmd == "sizetable":
+        return cmd_sizetable(args.out)
+    elif args.cmd == "sizerender":
+        return cmd_sizerender(args.image, args.width, args.grid, args.probe, args.out)
     elif args.cmd == "run":
         print(json.dumps(run_arm(args.image, args.width, args.grid, args.arm)), flush=True)
     elif args.cmd == "drawn":
