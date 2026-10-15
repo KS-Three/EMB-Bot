@@ -66,6 +66,9 @@ class RegionMask:
     frame_shape: tuple[int, int]     # (H, W) of the frame it belongs to
     layer: int                       # index into Quant.thread_indices
     source: str = "classical"
+    # Admitted by the dot rung over a stem (`cfg.small_dot_rung_lettering`);
+    # stages 4 and 7 extend the rung only to such a region when scoped.
+    dot_rung: bool = False
 
     @classmethod
     def from_full(cls, mask: np.ndarray, layer: int,
@@ -222,11 +225,16 @@ def _bbox(mask: np.ndarray) -> tuple[int, int, int, int] | None:
 ENCLOSED_PROTECT_OVERLAP = 0.6
 
 # `cfg.small_dot_rung_lettering`: an i/j stem under a dot, in dot heights
-# (gap, minimum height) and dot widths (its top band's span). Classification
-# candidates, read off the letter's shape -- not physical constants.
+# (gap, minimum height) and dot widths (the span of its top `_STEM_MIN_DOTS`
+# dot heights), and how solid that band's rows are. Classification
+# candidates, read off the letter's shape -- not physical constants. The
+# synthetic Aileron i/j stand 4.8 dots tall, 0.77 dots wide, rows solid;
+# photo_sunset_backlit's specks with a same-colour region under them all
+# fail at least one (under 3 dots tall, or a band 52 to 122 dots wide).
 _STEM_GAP_DOTS = 1.5
-_STEM_MIN_DOTS = 2.0
-_STEM_MAX_WIDTH_DOTS = 2.5
+_STEM_MIN_DOTS = 3.0
+_STEM_MAX_WIDTH_DOTS = 2.0
+_STEM_MIN_ROW_FILL = 0.75
 
 
 def _chained_small_regions(regions, areas, boxes, small, min_area_px,
@@ -479,18 +487,21 @@ def resolve_small_regions(
     def has_stem_below(i: int, box) -> bool:
         """`cfg.small_dot_rung_lettering`: is there an i/j stem under this
         dot? A region of the same colour (CIE76 within `cfg.merge_delta_e`)
-        whose top sits below the dot by at most `_STEM_GAP_DOTS` dot heights,
-        that is at least `_STEM_MIN_DOTS` dot heights tall, and whose top band
-        (one dot height deep) reaches under the dot and spans at most
-        `_STEM_MAX_WIDTH_DOTS` dot widths. A photo speck has no such column
-        beneath it; a dot on lettering always does. With no colour known
-        (`colour` is None), nothing is admitted."""
+        whose top sits below the dot by at most `_STEM_GAP_DOTS` dot heights
+        and that is at least `_STEM_MIN_DOTS` dot heights tall, whose top
+        band (`_STEM_MIN_DOTS` dot heights deep) reaches under the dot, spans
+        at most `_STEM_MAX_WIDTH_DOTS` dot widths, and is a stroke: each row
+        on average at least `_STEM_MIN_ROW_FILL` solid across its own extent
+        (an italic stem's rows are; a ragged photo fragment's are not). A
+        photo speck has no such column beneath it; a dot on lettering does.
+        With no colour known (`colour` is None), nothing is admitted."""
         y0, x0, y1, x1 = box
         dot_h, dot_w = y1 - y0, x1 - x0
         mine = colour(i)
         if mine is None:
             return False
         reach = y1 + _STEM_GAP_DOTS * dot_h
+        depth = int(math.ceil(_STEM_MIN_DOTS * dot_h))
         for j, rj in enumerate(regions):
             if j == i or rj.area == 0:
                 continue
@@ -498,10 +509,16 @@ def resolve_small_regions(
             if (jy0 < y1 or jy0 > reach or jx1 <= x0 or jx0 >= x1
                     or jy1 - jy0 < _STEM_MIN_DOTS * dot_h):
                 continue
-            band = rj.crop[:dot_h].any(axis=0)
-            cols = np.flatnonzero(band) + jx0
+            band = rj.crop[:depth]
+            cols = np.flatnonzero(band.any(axis=0)) + jx0
             if (cols.size == 0 or cols[-1] < x0 or cols[0] >= x1
                     or cols[-1] - cols[0] + 1 > _STEM_MAX_WIDTH_DOTS * dot_w):
+                continue
+            row_fill = []
+            for row in band:
+                on = np.flatnonzero(row)
+                row_fill.append(on.size / (on[-1] - on[0] + 1) if on.size else 0.0)
+            if float(np.mean(row_fill)) < _STEM_MIN_ROW_FILL:
                 continue
             theirs = colour(j)
             if theirs is not None and float(np.linalg.norm(mine - theirs)) <= cfg.merge_delta_e:
@@ -590,8 +607,11 @@ def resolve_small_regions(
 
         reportable = areas[i] >= report_floor_px
         # Off, `clears` is `clears_run_floors` alone, as before the rung.
-        clears = (clears_run_floors(i, box)
-                  or clears_dot_rung(i, box, halo, (wy0, wx0, wy1, wx1)))
+        floors = clears_run_floors(i, box)
+        by_rung = not floors and clears_dot_rung(i, box, halo, (wy0, wx0, wy1, wx1))
+        clears = floors or by_rung
+        if by_rung and dot_scope:
+            regions[i].dot_rung = True
         if best is None:
             # No neighbour to absorb into: this is isolated artwork, and the
             # benchmark showed exactly what it tends to be — a logo's small

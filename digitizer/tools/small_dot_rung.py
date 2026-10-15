@@ -26,7 +26,7 @@ Where the parts under the loop floor are lost, traced on origin/main:
 
     python -m tools.small_dot_rung dots                  # synthetic i/j dots, OFF / ON / scope
     python -m tools.small_dot_rung fremont [--renders DIR] [--hole-ring]
-    python -m tools.small_dot_rung census [--only NAME,NAME] [--jsonl PATH]
+    python -m tools.small_dot_rung census [--only NAME,NAME] [--arms off,on,scope] [--jsonl PATH]
     python -m tools.small_dot_rung render DIR            # i/j dot stitch paths, OFF / ON / scope
     python -m tools.small_dot_rung render-photo DIR [NAME]   # a photo's stitch path, the three arms
 
@@ -254,10 +254,10 @@ def census_targets() -> list[tuple[str, str, str]]:
             + [(f"studio:{f}", "studio_hat80", f) for f in LOGOS])
 
 
-def census_row(name: str, route: str, rel: str) -> dict:
+def census_row(name: str, route: str, rel: str, arms_wanted=tuple(ARMS)) -> dict:
     from digitizer_core import PipelineConfig, digitize
     arms = {}
-    for tag in ARMS:
+    for tag in ("off",) + tuple(a for a in arms_wanted if a != "off"):
         t = time.time()
         with count_dot_rings() as box:
             if route == "lc80":
@@ -272,6 +272,7 @@ def census_row(name: str, route: str, rel: str) -> dict:
     off = arms["off"]
     return dict(name=name, route=route,
                 identical={t: a["md5"] == off["md5"] for t, a in arms.items() if t != "off"},
+                arms=list(arms),
                 stitches=[a["stitches"] for a in arms.values()],
                 trims=[a["trims"] for a in arms.values()],
                 shapes=[len(a["ids"]) for a in arms.values()],
@@ -422,10 +423,11 @@ def main(argv: list[str]) -> int:
     elif cmd == "census":
         only = argv[argv.index("--only") + 1].split(",") if "--only" in argv else None
         jsonl = Path(argv[argv.index("--jsonl") + 1]) if "--jsonl" in argv else None
+        wanted = tuple(argv[argv.index("--arms") + 1].split(",")) if "--arms" in argv else tuple(ARMS)
         for name, route, rel in census_targets():
             if only and not any(o in name for o in only):
                 continue
-            row = census_row(name, route, rel)
+            row = census_row(name, route, rel, wanted)
             print(json.dumps(row), flush=True)
             if jsonl is not None:
                 with jsonl.open("a", encoding="utf-8") as fh:

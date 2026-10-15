@@ -1569,8 +1569,9 @@ class PipelineConfig:
     # +78 shapes / +23 trims, photo_dof_meadow +20). No tagger exists at
     # stage 3, so the scope is geometric: the rung admits a part only when a
     # region of the SAME colour stands below it as a stem -- its top within
-    # 1.5 dot heights under the dot, at least two dot heights tall, its top
-    # band under the dot and no wider than 2.5 dots. Same colour is the
+    # 1.5 dot heights under the dot, at least three dot heights tall, its top
+    # three dot heights under the dot, no wider than 2 dots, rows solid
+    # (`stage3_segment._STEM_*`). Same colour is the
     # layers' own CIELAB (`layer_lab`) or the raster's mean (`lab_img`, which
     # the photo lane hands over only when this is on), within
     # `cfg.merge_delta_e`; with neither, nothing is admitted. The three ratios

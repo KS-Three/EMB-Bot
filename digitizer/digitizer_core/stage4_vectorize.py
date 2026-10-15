@@ -737,6 +737,9 @@ def vectorize(
                 parts, covered = from_alpha, True
 
         thread = chart[thread_indices[rm.layer]]
+        # `cfg.small_dot_rung` (default OFF), and its lettering scope.
+        dot_rung = bool(cfg.small_dot_rung and (not cfg.small_dot_rung_lettering
+                                                or getattr(rm, "dot_rung", False)))
         kept = 0
         for part in parts:
             if part.is_empty:
@@ -748,14 +751,18 @@ def vectorize(
                 # thread.
                 # `cfg.small_dot_rung` (default OFF): down to the dot rung's
                 # own loop floor, the ring the run tier then sews as a tack.
+                # Scoped (`cfg.small_dot_rung_lettering`), only for a mask
+                # stage 3 admitted over a stem.
                 rescueable = (sub_detail
                               and part.area >= machine.RUN_MIN_AREA_MM2
                               and part.exterior.length >= (
-                                  machine.DOT_RUNG_MIN_LOOP_MM if cfg.small_dot_rung
+                                  machine.DOT_RUNG_MIN_LOOP_MM if dot_rung
                                   else machine.RUN_MIN_LOOP_MM))
                 if not rescueable:
                     continue
             meta = {"layer": rm.layer}
+            if cfg.small_dot_rung_lettering and dot_rung:
+                meta["dot_rung"] = True
             if sub_detail:
                 meta["rescued_small_shape"] = True
             if covered:
