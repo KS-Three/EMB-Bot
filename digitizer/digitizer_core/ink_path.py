@@ -155,7 +155,8 @@ def hold_off_counters(spines_px: list, ink: np.ndarray, hold_px: float,
 
 
 def read_cluster_ink(p, members: list, *, counter_hold_mm: float | None = None,
-                     counter_max_mm: float | None = None) -> list[MemberInk]:
+                     counter_max_mm: float | None = None,
+                     ground_ring_mm: float | None = None) -> list[MemberInk]:
     """-> one `MemberInk` per member, in order. `p` is the prepared raster
     (`stage1_prep.Prep`), `members` the cluster's regions.
 
@@ -168,6 +169,15 @@ def read_cluster_ink(p, members: list, *, counter_hold_mm: float | None = None,
     `counter_hold_mm` (with `counter_max_mm`, the widest counter it serves):
     each spine's needle points held that far off the ink's small counters
     (`hold_off_counters`). None: the spines exactly as read.
+
+    `ground_ring_mm` (`cfg.ink_ground_ring_mm`): read the ground colour only
+    from a ring this deep, starting `INK_GROUND_CLEAR_MM` out from the
+    members, instead of from every far pixel of the crop. A cluster whose crop
+    spans another dark object reads that object as ground: at 65 mm Fremont's
+    EST and 1895 are one cluster either side of the black Wisconsin state,
+    the ground came out dark, and every digit read 0.84-1.73 mm thick on a
+    1.3 mm letter (true stroke ~0.15), so none went bean (2026-10-14). Read
+    as two clusters they read 0.14-0.16. None: the crop-wide read, as before.
 
     Fails open: nothing to read is an empty `MemberInk`, never an error."""
     from .legibility import _plan_frame
@@ -234,7 +244,12 @@ def read_cluster_ink(p, members: list, *, counter_hold_mm: float | None = None,
         t = np.clip(fg, 0.0, 1.0)
     else:
         lab = cv2.cvtColor(big, cv2.COLOR_RGB2LAB).astype(np.float32)
-        ground = np.median(lab[far], axis=0)
+        ground_px = far
+        if ground_ring_mm and ground_ring_mm > 0:
+            ring = far & (d_any <= (INK_GROUND_CLEAR_MM + ground_ring_mm) * S)
+            if ring.any():
+                ground_px = ring
+        ground = np.median(lab[ground_px], axis=0)
         d = np.linalg.norm(lab - ground, axis=2)
         strong = inside & (d >= np.percentile(d[inside], 80))
         axis = np.median(lab[strong], axis=0) - ground
