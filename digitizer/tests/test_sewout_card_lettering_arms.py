@@ -46,7 +46,10 @@ def test_the_cuts_differ_only_in_the_flag_under_test_and_are_valid_config():
     for name, (_w, ov) in ca.CUTS.items():
         assert ov["small_text_true_size"] is True, name
         PipelineConfig(**ov)
-    assert PipelineConfig().small_text_true_size is False
+    # The default is ON since #955; the card never relied on it -- every cut sets
+    # the switch itself (asserted above), and at 81 / 92.5 mm #955's counter
+    # guard does not bite, so a re-cut sews what the committed cuts record.
+    assert PipelineConfig().small_text_true_size is True
     assert PipelineConfig().bean_letter_counter_hold_mm is None
     assert PipelineConfig().small_letter_ties is False
     assert ca.CUTS["s81"] == (81.0, base) and ca.CUTS["s925"] == (92.5, base)

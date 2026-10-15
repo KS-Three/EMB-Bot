@@ -120,7 +120,11 @@ def enthusiast():
     """The enthusiast logo, stages 0-4 once, and the plan three ways: OFF,
     hairline ON (guard), hairline ON with the guard off (#872's bill)."""
     path = TESTDATA / "photo" / "enthusiast_logo.png"
-    base = dict(target_width_mm=80.0, garment_id="left_chest", thread_wt=40)
+    # `small_text_true_size` is ON by default since #955 and sews the tagline as
+    # bean letters, so the hairline tier never sees it: pinned OFF, the engine
+    # this hairline guard was built and measured on.
+    base = dict(target_width_mm=80.0, garment_id="left_chest", thread_wt=40,
+                small_text_true_size=False)
     result = run_stages(path, PipelineConfig(**base))
     plans = {"off": plan_stitches(result, PipelineConfig(**base))}
     plans["on"] = plan_stitches(result, PipelineConfig(**base, hairline=True))

@@ -106,7 +106,11 @@ def enthusiast():
     from tools.hairline_renders import bare_cells
     from digitizer_core import preflight
     path = TESTDATA / "photo" / "enthusiast_logo.png"
-    base = dict(target_width_mm=80.0, garment_id="left_chest", thread_wt=40)
+    # `small_text_true_size` is ON by default since #955 and sews the tagline as
+    # bean letters, so the hairline tier never sees it: pinned OFF, the engine
+    # this hairline guard was built and measured on.
+    base = dict(target_width_mm=80.0, garment_id="left_chest", thread_wt=40,
+                small_text_true_size=False)
     result = run_stages(path, PipelineConfig(**base))
     p = preflight.prep(path, PipelineConfig(**base), design_class=result.design_class)
     out = {}

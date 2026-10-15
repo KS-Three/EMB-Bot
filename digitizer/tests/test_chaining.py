@@ -787,9 +787,16 @@ def test_chaining_adds_zero_bare_thread_on_every_acceptance_fixture(
     `CEILING_MM` below pins those numbers as ceilings with 0.5 mm of room for
     the engine drift other lanes cause; a ceiling is the direction the gate
     cares about, and re-measure rather than widening it.
+
+    **RE-PINNED 2026-10-15 for `small_text_true_size` ON by default (#955):**
+    the switch re-traces enthusiast's "ENTERPRISES INC" line and sews it as
+    bean letters, which moves both art fixtures' floors. Measured, chain OFF
+    -> ON: benchmark 3.97 -> 3.97, full_back 4.90 -> 4.90, left_chest and
+    ribbon 0.00 -> 0.00. Chaining still adds nothing (on == off); it no
+    longer removes any either. Ceilings: the measurement + 0.5 mm, as before.
     """
-    CEILING_MM = {("benchmark", False): 3.8, ("benchmark", True): 2.8,
-                  ("full_back", False): 3.0, ("full_back", True): 1.8,
+    CEILING_MM = {("benchmark", False): 4.5, ("benchmark", True): 4.5,
+                  ("full_back", False): 5.4, ("full_back", True): 5.4,
                   ("left_chest", False): 0.5, ("left_chest", True): 0.5,
                   ("ribbon", False): 0.5, ("ribbon", True): 0.5}
     cases = [
