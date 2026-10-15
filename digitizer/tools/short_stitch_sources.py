@@ -173,7 +173,9 @@ def label_for(run, idx: int, linked: bool) -> tuple[str, str]:
     n = len(run.points)
     head = getattr(run, "_tie_head", 0)
     tail = getattr(run, "_tie_tail", 0)
-    if idx < head:
+    # `<=`: the lock's last leg is the stitch that ARRIVES at the run's own
+    # first point, so that arrival belongs to the lock, not to the run.
+    if head and idx <= head:
         return "tie_in", creator
     if idx >= n - tail:
         return "tie_off", creator
@@ -247,8 +249,12 @@ def _bin(length: float) -> str:
     return sdc.BIN_NAMES[sum(length >= e for e in sdc.BIN_EDGES_MM)]
 
 
+COUNT_KEYS = ("lt_0p5", "0p5_1", "near", "union", "zero",
+              "short_iso", "short_chain", "short_edge", "near_g5", "near_g10", "near_g20")
+
+
 def _blank():
-    return {"pens": 0, "lt_0p5": 0, "0p5_1": 0, "near": 0, "union": 0, "zero": 0}
+    return {"pens": 0, **{k: 0 for k in COUNT_KEYS}}
 
 
 def tally(stream, prov=None) -> dict:
@@ -259,11 +265,28 @@ def tally(stream, prov=None) -> dict:
     pens = sum(1 for _, _, c in stream if c == "stitch")
     sewn = sum(1 for v in lengths if v is not None)
     total, by_src, by_creator, pairs = _blank(), {}, {}, Counter()
+    rank, seen = {}, 0
+    for e, (_, _, cmd) in enumerate(stream):
+        if cmd == "stitch":
+            rank[e] = seen
+            seen += 1
     for e, (_, _, cmd) in enumerate(stream):
         if cmd != "stitch":
             continue
         length, j = lengths[e], near[e]
         short = length is not None and length < 1.0
+        # Source-agnostic context, so the pro (which has no provenance) can be
+        # split the same way: what flanks a short stitch, and how far back the
+        # hole it stacks on lies (3-5 = a retrace or a lock, more = a neighbour pass).
+        ctx = None
+        if short:
+            nb = [lengths[e - 1] if e > 0 else None, lengths[e + 1] if e + 1 < len(stream) else None]
+            ctx = ("short_edge" if None in nb else
+                   "short_iso" if min(nb) >= 1.0 else "short_chain")
+        gap = None
+        if j is not None:
+            g = rank[e] - rank[j]
+            gap = "near_g5" if g <= 5 else "near_g10" if g <= 10 else "near_g20"
         rows = [total]
         if prov is not None:
             src, creator = prov[e]
@@ -278,6 +301,10 @@ def tally(stream, prov=None) -> dict:
                 row["near"] += 1
             if short or j is not None:
                 row["union"] += 1
+            if ctx:
+                row[ctx] += 1
+            if gap:
+                row[gap] += 1
         if prov is not None and j is not None:
             pairs[f"{prov[e][0]} > {prov[j][0]}"] += 1
     n_short = total["lt_0p5"] + total["0p5_1"]
@@ -286,8 +313,7 @@ def tally(stream, prov=None) -> dict:
             raise ValueError(f"classify disagrees with census on {b}: {total[key] / sewn} vs {ref['bins'][b]}")
     if pens and abs(total["near"] / pens - ref["near_hole"]) > 6e-5:
         raise ValueError("classify disagrees with census on near_hole")
-    out = {"penetrations": pens, "sewn": sewn, "short": n_short, **{k: total[k] for k in
-           ("lt_0p5", "0p5_1", "near", "union", "zero")}}
+    out = {"penetrations": pens, "sewn": sewn, "short": n_short, **{k: total[k] for k in COUNT_KEYS}}
     if prov is not None:
         out.update(by_source=by_src, by_creator=by_creator, near_pairs=dict(pairs))
     return out
@@ -361,12 +387,13 @@ def bootstrap_ratio(ours: list[tuple[int, int]], pro: list[tuple[int, int]],
             return rng.integers(0, len(p), len(p))
         return np.concatenate([members[i] for i in rng.integers(0, len(members), len(members))])
 
-    point = rate(o, np.arange(len(o))) / rate(p, np.arange(len(p)))
-    vals = []
-    for _ in range(draws):
-        pr = rate(p, draw_pro())
-        vals.append(rate(o, rng.integers(0, len(o), len(o))) / pr if pr > 0 else math.inf)
-    lo, hi = np.percentile(vals, [2.5, 97.5])
+    with np.errstate(all="ignore"):     # a pro rate of zero is a ratio of inf, not a crash
+        point = rate(o, np.arange(len(o))) / rate(p, np.arange(len(p)))
+        vals = []
+        for _ in range(draws):
+            pr = rate(p, draw_pro())
+            vals.append(rate(o, rng.integers(0, len(o), len(o))) / pr if pr > 0 else math.inf)
+        lo, hi = np.percentile(vals, [2.5, 97.5])
     return float(point), float(lo), float(hi)
 
 def pairs_of(rows, key):
@@ -400,6 +427,20 @@ def report(ours: list[dict], pro: list[dict]) -> str:
     L.append("")
     L.append(f"EMB-Bot: {len(ours)} designs, {sum(r['penetrations'] for r in ours):,} penetrations. "
              f"Pro: {len(pro)} designs, {sum(r['penetrations'] for r in pro):,} penetrations.")
+    L.append("")
+
+    L.append("### Source-agnostic split (both sides, no provenance needed)")
+    L.append("")
+    L.append("A short stitch is `iso` when both neighbouring stitches are >= 1 mm (a row turn or a lone "
+             "connector), `chain` when a neighbour is short too (a bean or run pitch, a thin satin), "
+             "`edge` when it sits at a run boundary. A stacked penetration is `g5` when the earlier hole is "
+             "3-5 penetrations back (a retrace, a lock), `g10` 6-10 back, `g20` 11-20 back (a neighbouring pass).")
+    L.append("")
+    L.append("| class | EMB-Bot /1000 | pro /1000 | ratio | 95% CI (pro by customer) |")
+    L.append("|---|---|---|---|---|")
+    for key in ("short_iso", "short_chain", "short_edge", "near_g5", "near_g10", "near_g20"):
+        ratio, lo, hi = bootstrap_ratio(pairs_of(ours, key), pairs_of(pro, key), draws=4000, pro_groups=groups)
+        L.append(f"| {key} | {pooled(ours, key):.1f} | {pooled(pro, key):.1f} | {ratio:.2f} | {lo:.2f} - {hi:.2f} |")
     L.append("")
 
     sources = sorted({s for r in ours for s in r["by_source"]})
@@ -436,6 +477,14 @@ def report(ours: list[dict], pro: list[dict]) -> str:
                  f"{ratio:.2f} ({lo:.2f}-{hi:.2f}) | {w} |")
     L.append("")
     L.append(f"Pro pooled short-or-stacked: {pro_union:.1f} per 1000.")
+    L.append("")
+    L.append("### Each source's short stitches by context, and its stacked penetrations by reach back")
+    L.append("")
+    L.append("| source | short iso | short chain | short edge | stacked g5 | stacked g10 | stacked g20 |")
+    L.append("|---|---|---|---|---|---|---|")
+    for _, s, agg in sorted(table, key=lambda t: -t[0]):
+        L.append(f"| {s} | {agg['short_iso']:,} | {agg['short_chain']:,} | {agg['short_edge']:,} | "
+                 f"{agg['near_g5']:,} | {agg['near_g10']:,} | {agg['near_g20']:,} |")
     L.append("")
 
     creators = Counter()
