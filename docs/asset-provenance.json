@@ -851,6 +851,12 @@
    "basis": "digitizer/tools/lowercase_angle.py; PR body of claude/fold-cuts-junctions"
   },
   {
+   "prefix": "docs/renders/fold-cuts-g-ub/",
+   "status": "derived-render",
+   "source": "Rendered by digitizer/tools/lowercase_angle.py write_panes/compose_panes from digitizer/testdata/synthetic/lowercase_aileron.png (synthetic, Pillow's bundled CC0 Aileron glyphs); stitch-path zooms of G (50 mm, small_text_true_size OFF), u and b (120 mm), no client art",
+   "basis": "digitizer/tools/lowercase_angle.py; PR body of claude/fold-cuts-g-ub"
+  },
+  {
    "prefix": "docs/renders/preflight-glyph-metric/",
    "status": "derived-render",
    "source": "Thread render (digitizer_core.stitchviz) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp at 81 mm, Hat (tools/fremont_triage.py --arm main), with the glyph boxes cfg.preflight_glyph_metric read drawn over it; no artwork pixels, no new client art",
