@@ -10,6 +10,7 @@
 "tests/test_artfidelity_tune.py": 0.01,
 "tests/test_background_removal.py": 118.66,
 "tests/test_barecircle.py": 23.44,
+"tests/test_bean_counter_hold.py": 80.0,
 "tests/test_bean_letter.py": 0.01,
 "tests/test_bean_letters_pipeline.py": 131.6,
 "tests/test_bean_letters_units.py": 0.05,
