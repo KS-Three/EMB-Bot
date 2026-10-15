@@ -187,15 +187,25 @@ def block_digests(plan: StitchPlan) -> dict[str, str]:
 
 
 def arm_digests(plan: StitchPlan) -> dict[str, str]:
-    """md5 per arm (`block:word-label`): the arm's own stitches, label excluded."""
-    h: dict[str, "hashlib._Hash"] = {}
+    """md5 per arm (`block:word-label`): the arm's own stitches, label excluded,
+    taken from the arm's own top-left so WHERE it sits on the card does not
+    count (block A's OFF arm and block B1's OFF arm are the same stitches)."""
+    runs: dict[str, list] = {}
     for _b, r in plan.iter_runs():
         parts = r.shape_id.split(":")
         if len(parts) < 3 or parts[1] in ("label", "strips"):
             continue
-        m = h.setdefault(":".join(parts[:2]), hashlib.md5())
-        m.update(np.round(np.asarray(r.points, float), 3).tobytes())
-    return {k: v.hexdigest() for k, v in sorted(h.items())}
+        runs.setdefault(":".join(parts[:2]), []).append(np.asarray(r.points, float))
+    out = {}
+    for k, rs in sorted(runs.items()):
+        x0 = min(a[:, 0].min() for a in rs)
+        y0 = min(a[:, 1].min() for a in rs)
+        m = hashlib.md5()
+        for a in rs:
+            # floor with a nudge: a translated copy must not flip a value sitting on a rounding edge
+            m.update(np.floor((a - (x0, y0)) * 1000 + 0.5 + 1e-6).astype(np.int64).tobytes())
+        out[k] = m.hexdigest()
+    return out
 
 
 # --- renders ----------------------------------------------------------------------------
@@ -203,11 +213,12 @@ def arm_digests(plan: StitchPlan) -> dict[str, str]:
 def rows() -> tuple:
     out = []
     for key, (_letter, size, arms, words) in BLOCKS.items():
-        what = "bean_letter_counter_hold_mm" if key == "A" else "small_letter_ties"
-        names = " | ".join(f"{lbl} ({k} tooth{'s' if k > 1 else ''})" for k, (lbl, _c) in enumerate(arms, start=1))
-        for word in words:
-            out.append((f"{key}  {word} at {size} mm: {what} {names}",
-                        tuple(f"{key}:{word}-{lbl}" for lbl, _c in arms)))
+        what = "hold_mm" if key == "A" else "ties"
+        names = " | ".join(f"{lbl} ({k})" for k, (lbl, _c) in enumerate(arms, start=1))
+        # the title is clipped to the row's width, so a row holds several words
+        for group in (words[:3], words[3:]) if len(words) > 3 else (words,):
+            out.append((f"{key} {'/'.join(group)} at {size} mm, each word: {what} {names} teeth",
+                        tuple(f"{key}:{w}-{lbl}" for w in group for lbl, _c in arms)))
     return tuple(out)
 
 
@@ -234,7 +245,7 @@ value is settled, the default config is untouched).
 **What to sew:** `card_lettering_arms_40wt.dst`, ONE colour (dark), **40 wt**,
 a **4 x 4 in hoop** (the design is SIZE_MM mm, inside the 100 x 100 mm
 sewable field), on a hat front like the Fremont job. STITCHES stitches: allow
-roughly 3 minutes (an estimate from the stitch count, not a measurement).
+roughly 8 minutes (an estimate from the stitch count, not a measurement).
 
 ## What is in this folder
 
@@ -336,6 +347,10 @@ READBACK
 
 - **The pieces are small** (2-4 mm tall). "Looks the same at arm's length" is a
   finding, not a failure.
+- **Some arms are the same stitches on purpose.** EST has no counter, so
+  block A's EST arms are identical (EST is the control: if EST differs on the
+  cloth, it is the cloth), and the 81 mm EST arms of block B1 are identical
+  too (the ties flag changed no stitch of EST at 81 mm; it does at 92.5 mm).
 - **The 1895 digits are TAN thread in the logo** (a mid-tone), sewn here in
   the dark cone for contrast: read shape, not colour.
 - **Short stitches.** Bean letters sew at a 0.45 mm station pitch; the index

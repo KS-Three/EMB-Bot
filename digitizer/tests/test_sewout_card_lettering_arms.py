@@ -26,9 +26,9 @@ COMMITTED = ca.DEFAULT_OUT
 
 #: md5 of each block's stitch output, points rounded to 0.001 mm
 BLOCK_MD5 = {
-    "A": "@A@",
-    "B1": "@B1@",
-    "B2": "@B2@",
+    "A": "3610b7d311c4437782f31aaf10159c6e",
+    "B1": "96a2220089831f3bd805372d57029d12",
+    "B2": "f0f1d974ac0f26bc75f3542d93683aa9",
 }
 ARM_COUNT = 20
 
@@ -86,9 +86,10 @@ def test_the_arms_are_all_there_and_the_blocks_are_pinned(card):
 def test_each_flag_changes_its_own_arms_only(card):
     _out, rb = card
     md5, n = rb["arm_md5"], rb["stitches_by_piece"]
-    # A: the hold moves the needle points of both words
-    for word in ("EST", "1895"):
-        assert md5[f"A:{word}-off"] != md5[f"A:{word}-hold"], word
+    # A: the hold moves 1895's needle points (the 8 has the counters); EST has none, so it is
+    # the card's untouched control: the same stitches in both arms
+    assert md5["A:1895-off"] != md5["A:1895-hold"]
+    assert md5["A:EST-off"] == md5["A:EST-hold"]
     # B: the ties add lock stitches, so ON sews at least as many; at least one word differs at each size
     for key in ("B1", "B2"):
         words = ca.BLOCKS[key][3]
