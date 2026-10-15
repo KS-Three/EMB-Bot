@@ -13,6 +13,19 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-15 (eleventh pass) — scope refresh after PRs #969–#973 (the tenth, #968, covered #955 and #964–#967 and wrote no entry here)
+
+State of the range at writing (read with `gh pr view`): #969, #970, #971, #972 and #973 all MERGED 2026-10-15 (12:36, 13:00, 17:41, 17:38 and 19:18 UTC). `claude/dot-rung-lettering-scope` (HEAD `1b698cf6`) has no PR and is not on main. Snapshots of each PR body, not live status:
+
+- **#969** `cfg.edge_cap_bean_pitch_mm` (OFF): 11 census designs at 80 mm, main `dcc54a11`. Short-or-stacked penetrations 55,906 → 52,204 / 51,034 / 50,913 at 1.0 / 1.2 / 1.5 mm (−6.6 / −8.7 / −8.9%), penetrations 109,808 → 108,299 / 107,609 / 106,953, trims 486 → 486 / 485 / 486, thread 243.68 → 243.67 / 243.62 / 243.59 m. Silhouette uncovered median / max 0.40 / 3.33% OFF → 0.37 / 4.59, 0.47 / 4.73, 0.70 / 5.49; chord excursion 0.192 → 0.281 / 0.295 / 0.397 mm; Hotel Fremont 0.75 → 2.34%, Golke screenshot 3.33 → 5.49% at 1.5. Run tier 7,679 at every pitch. 149 tests passed at the PR head.
+- **#970** sew-out card `docs/sewout/card-bayhold-edgecap-2026-10-15/`: `card_bayhold_edgecap_40wt.dst` md5 `71f2d2ff9f477973b7035fbde9a56f31`, 6,128 stitches, 34 trims, 64.8 × 73.0 mm, about 14 minutes (assumed, not measured). P plate + disc 1,175 / 1,091 / 1,055 / 1,016 stitches at OFF / 1.0 / 1.2 / 1.5; median cap step 0.731 / 1.001 / 1.188 / 1.501 mm. Bean letters 1895 120, THE 222, STAY 184 stitches in every hold arm. Unsewn, with Kent.
+- **#971** `cfg.hairline_lines_logo_refusal` (OFF): 9 of 9 corpus logos byte-identical to supplement OFF; trims OFF / supplement ON / ON + refusal: drone 131 / 148 / 131, golden_tee 50 / 53 / 50, screenshot 65 / 73 / 65. owl_kent 127 mm: strands 9 / 20 supplement → 16 with the refusal, 4 bristle-box strands both ways, trims 277 / 295 / 291, stitches 66,094 / 66,322 / 66,276, 0.0 mm² bare. Refusal counts on owl: edge 3, flat 9, pattern 0.
+- **#972** `fold_cuts` G / u / b cure (flag OFF): synthetic Aileron word, Column lane ON. 50 mm with `--true-size-off`: stitches / trims OFF 1716 / 7, main ON 1734 / 8, this ON 1726 / 7; capital stations past 45° 0 of 139. 120 mm b (folds / short / crossed): OFF 3 / 0 / 7, main ON 14 / 3 / 95, this ON 1 / 0 / 4; 120 mm p: OFF 0 / 0 / 4, main ON 10 / 1 / 51, this ON 2 / 2 / 9. 65 tests passed at the PR head.
+- **#973** `cfg.hairline_lines_strand_mass` (OFF): drawn mane 30 mm, dark strands sewn: test OFF 34 / 34, test ON 4 / 34, ON + exemption 33 / 34; at 40 mm 32 / 32, 4 / 32, 21 / 32. owl_kent 127 mm: breast 31 / 15 / 15 of 31, bristles 5 / 5 / 5 of 5, fringe 37 / 7 / 12 of 37; trims 422 / 402 / 403, stitches 35,446 / 35,042 / 35,072. Breast margin about 0.03 of strand share.
+- **Scout finding, 2026-10-15, relayed by the director and not re-run in the lane:** `cfg.ink_ground_ring_mm` is no longer inert at 65 mm under the 0.45 counter guard: 65 mm Fremont 1895 OCR 1/4 → 2/4, glyph legibility 0.769 → 0.641; 72 mm byte-identical.
+- **Dot-rung lettering scope** (`cfg.small_dot_rung_lettering`, branch only): admits a part only over a same-colour stem. No PR, so no measured table was found.
+
+---
 **Last updated:** 2026-10-15 (ninth pass) — scope refresh after PRs #953–#962 (the eighth, #957, covered #942–#956)
 
 State of the range at writing (read with `gh pr view`): #953, #956, #958, #959, #960, #961 and #962 MERGED; #955 (the true-size flip) OPEN, not armed, being re-tasked (its latest commit is "counter guard: a guarded cluster stays whole, its stray line included"). The eighth pass recorded #953 as armed and open; it merged 2026-10-15 04:57.

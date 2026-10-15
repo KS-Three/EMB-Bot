@@ -2746,7 +2746,10 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     # `true_lab`, the raster's own colours, since every region here is layer 0.
     kept, floor_warnings = resolve_small_regions(
         regions, cfg, p.px_per_mm, chain_rescue=False,
-        lab_img=true_lab if keep_counters else None, keep_counters=keep_counters)
+        # `cfg.small_dot_rung_lettering` reads the same colours for its stem.
+        lab_img=true_lab if (keep_counters or (cfg.small_dot_rung
+                                               and cfg.small_dot_rung_lettering)) else None,
+        keep_counters=keep_counters)
 
     return kept_masks_to_quant(
         p,

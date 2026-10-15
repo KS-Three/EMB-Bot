@@ -1,0 +1,831 @@
+{
+ "fixture": "hat81",
+ "arm": "switch",
+ "label": "main defaults (small_text_true_size ON)",
+ "overrides": {},
+ "stitches": 15330,
+ "trims": 41,
+ "md5": "1541421fce6d1cce9097e7ed01480126",
+ "bean_shapes": 21,
+ "words": {
+  "est": {
+   "glyphs": [
+    {
+     "glyph": "E",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-left",
+       "mm2": 0.014,
+       "bare": 0.122
+      },
+      {
+       "where": "middle-centre",
+       "mm2": 0.772,
+       "bare": 0.476
+      },
+      {
+       "where": "bottom-left",
+       "mm2": 0.014,
+       "bare": 0.122
+      }
+     ],
+     "bays_filled": 3,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "E->E"
+    },
+    {
+     "glyph": "S",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-centre",
+       "mm2": 0.358,
+       "bare": 0.472
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.438,
+       "bare": 0.527
+      }
+     ],
+     "bays_filled": 1,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 0.989,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "S->S"
+    },
+    {
+     "glyph": "T",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-left",
+       "mm2": 0.158,
+       "bare": 0.408
+      },
+      {
+       "where": "top-right",
+       "mm2": 0.158,
+       "bare": 0.355
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.019,
+       "bare": 0.221
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.022,
+       "bare": 0.266
+      }
+     ],
+     "bays_filled": 4,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 0.851,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "T->T"
+    }
+   ],
+   "legibility": 0.947,
+   "legibility_space": 0.343,
+   "worst_glyph": 0.851,
+   "counters_open": [
+    0,
+    0
+   ],
+   "ocr": {
+    "recovered": 2,
+    "read": 2,
+    "ci95": [
+     0.342,
+     1.0
+    ]
+   },
+   "stitches": 124,
+   "trims": 0,
+   "box_mm": [
+    -9.72,
+    -13.51,
+    -3.24,
+    -10.63
+   ]
+  },
+  "1895": {
+   "glyphs": [
+    {
+     "glyph": "1",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "middle-left",
+       "mm2": 0.059,
+       "bare": 0.057
+      },
+      {
+       "where": "bottom-left",
+       "mm2": 0.034,
+       "bare": 0.041
+      },
+      {
+       "where": "bottom-right",
+       "mm2": 0.034,
+       "bare": 0.041
+      }
+     ],
+     "bays_filled": 3,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 0.663,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "1->F"
+    },
+    {
+     "glyph": "8",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "middle-left",
+       "mm2": 0.018,
+       "bare": 0.0
+      },
+      {
+       "where": "middle-right",
+       "mm2": 0.019,
+       "bare": 0.0
+      }
+     ],
+     "bays_filled": 2,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "8->8"
+    },
+    {
+     "glyph": "9",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "bottom-centre",
+       "mm2": 0.085,
+       "bare": 0.189
+      }
+     ],
+     "bays_filled": 1,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "9->9"
+    },
+    {
+     "glyph": "5",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-centre",
+       "mm2": 0.231,
+       "bare": 0.357
+      },
+      {
+       "where": "middle-centre",
+       "mm2": 0.481,
+       "bare": 0.471
+      }
+     ],
+     "bays_filled": 2,
+     "holes_strict": 0,
+     "holes_bridged": 1,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "5->A"
+    }
+   ],
+   "legibility": 0.916,
+   "legibility_space": 0.334,
+   "worst_glyph": 0.663,
+   "counters_open": [
+    3,
+    3
+   ],
+   "ocr": {
+    "recovered": 2,
+    "read": 4,
+    "ci95": [
+     0.15,
+     0.85
+    ]
+   },
+   "stitches": 199,
+   "trims": 2,
+   "box_mm": [
+    3.0,
+    -13.51,
+    9.72,
+    -10.63
+   ]
+  },
+  "the": {
+   "glyphs": [
+    {
+     "glyph": "T",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-left",
+       "mm2": 0.279,
+       "bare": 0.942
+      },
+      {
+       "where": "top-right",
+       "mm2": 0.278,
+       "bare": 0.982
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.033,
+       "bare": 0.857
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.034,
+       "bare": 0.793
+      }
+     ],
+     "bays_filled": 0,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "T->T"
+    },
+    {
+     "glyph": "H",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-centre",
+       "mm2": 1.034,
+       "bare": 0.974
+      },
+      {
+       "where": "top-left",
+       "mm2": 0.034,
+       "bare": 0.843
+      },
+      {
+       "where": "top-right",
+       "mm2": 0.029,
+       "bare": 0.829
+      },
+      {
+       "where": "bottom-left",
+       "mm2": 0.111,
+       "bare": 0.988
+      },
+      {
+       "where": "bottom-right",
+       "mm2": 0.125,
+       "bare": 0.989
+      },
+      {
+       "where": "bottom-left",
+       "mm2": 0.032,
+       "bare": 0.853
+      },
+      {
+       "where": "bottom-right",
+       "mm2": 0.028,
+       "bare": 0.843
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.11,
+       "bare": 1.0
+      }
+     ],
+     "bays_filled": 0,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 0.994,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "H->H"
+    },
+    {
+     "glyph": "E",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-left",
+       "mm2": 0.026,
+       "bare": 1.0
+      },
+      {
+       "where": "top-centre",
+       "mm2": 0.721,
+       "bare": 0.958
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.901,
+       "bare": 0.976
+      },
+      {
+       "where": "bottom-left",
+       "mm2": 0.026,
+       "bare": 1.0
+      }
+     ],
+     "bays_filled": 0,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "E->E"
+    }
+   ],
+   "legibility": 0.998,
+   "legibility_space": 0.883,
+   "worst_glyph": 0.994,
+   "counters_open": [
+    0,
+    0
+   ],
+   "ocr": {
+    "recovered": 3,
+    "read": 3,
+    "ci95": [
+     0.438,
+     1.0
+    ]
+   },
+   "stitches": 329,
+   "trims": 2,
+   "box_mm": [
+    -4.86,
+    -8.06,
+    5.02,
+    -4.49
+   ]
+  },
+  "tagline": {
+   "glyphs": [
+    {
+     "glyph": "E",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-left",
+       "mm2": 0.022,
+       "bare": 0.266
+      },
+      {
+       "where": "top-centre",
+       "mm2": 0.688,
+       "bare": 0.647
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.783,
+       "bare": 0.728
+      },
+      {
+       "where": "bottom-left",
+       "mm2": 0.022,
+       "bare": 0.266
+      }
+     ],
+     "bays_filled": 2,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 0.985,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "E->E"
+    },
+    {
+     "glyph": "A",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-centre",
+       "mm2": 0.031,
+       "bare": 0.018
+      },
+      {
+       "where": "bottom-left",
+       "mm2": 0.085,
+       "bare": 0.164
+      },
+      {
+       "where": "bottom-right",
+       "mm2": 0.081,
+       "bare": 0.175
+      },
+      {
+       "where": "bottom-left",
+       "mm2": 0.016,
+       "bare": 0.0
+      },
+      {
+       "where": "bottom-right",
+       "mm2": 0.012,
+       "bare": 0.667
+      }
+     ],
+     "bays_filled": 4,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "A->A"
+    },
+    {
+     "glyph": "T",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-left",
+       "mm2": 0.254,
+       "bare": 0.452
+      },
+      {
+       "where": "top-right",
+       "mm2": 0.254,
+       "bare": 0.494
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.026,
+       "bare": 0.239
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.026,
+       "bare": 0.413
+      }
+     ],
+     "bays_filled": 4,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "T->T"
+    },
+    {
+     "glyph": "|",
+     "tier": "run outline",
+     "bays": [],
+     "bays_filled": 0,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 0.983,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "7->"
+    },
+    {
+     "glyph": "S",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-right",
+       "mm2": 0.011,
+       "bare": 0.0
+      },
+      {
+       "where": "top-centre",
+       "mm2": 0.721,
+       "bare": 0.575
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.832,
+       "bare": 0.632
+      },
+      {
+       "where": "bottom-left",
+       "mm2": 0.014,
+       "bare": 0.0
+      }
+     ],
+     "bays_filled": 2,
+     "holes_strict": 0,
+     "holes_bridged": 1,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "S->S"
+    },
+    {
+     "glyph": "T",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-left",
+       "mm2": 0.255,
+       "bare": 0.454
+      },
+      {
+       "where": "top-right",
+       "mm2": 0.255,
+       "bare": 0.442
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.026,
+       "bare": 0.315
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.026,
+       "bare": 0.315
+      }
+     ],
+     "bays_filled": 4,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "T->T"
+    },
+    {
+     "glyph": "A",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-centre",
+       "mm2": 0.034,
+       "bare": 0.0
+      },
+      {
+       "where": "bottom-left",
+       "mm2": 0.087,
+       "bare": 0.232
+      },
+      {
+       "where": "bottom-right",
+       "mm2": 0.092,
+       "bare": 0.288
+      },
+      {
+       "where": "bottom-left",
+       "mm2": 0.014,
+       "bare": 0.519
+      },
+      {
+       "where": "bottom-right",
+       "mm2": 0.016,
+       "bare": 0.607
+      }
+     ],
+     "bays_filled": 3,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "A->A"
+    },
+    {
+     "glyph": "Y",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-centre",
+       "mm2": 0.458,
+       "bare": 0.648
+      },
+      {
+       "where": "top-right",
+       "mm2": 0.011,
+       "bare": 0.0
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.025,
+       "bare": 0.308
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.022,
+       "bare": 0.262
+      }
+     ],
+     "bays_filled": 3,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "Y->Y"
+    },
+    {
+     "glyph": "|",
+     "tier": "run outline",
+     "bays": [],
+     "bays_filled": 0,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 0.982,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "7->"
+    },
+    {
+     "glyph": "P",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-left",
+       "mm2": 0.023,
+       "bare": 0.349
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.18,
+       "bare": 0.441
+      },
+      {
+       "where": "bottom-left",
+       "mm2": 0.023,
+       "bare": 0.349
+      }
+     ],
+     "bays_filled": 3,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "P->P"
+    },
+    {
+     "glyph": "L",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-left",
+       "mm2": 0.021,
+       "bare": 0.284
+      },
+      {
+       "where": "top-left",
+       "mm2": 0.022,
+       "bare": 0.266
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.048,
+       "bare": 0.094
+      },
+      {
+       "where": "bottom-right",
+       "mm2": 0.046,
+       "bare": 0.303
+      },
+      {
+       "where": "bottom-left",
+       "mm2": 0.022,
+       "bare": 0.266
+      }
+     ],
+     "bays_filled": 5,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "L->L"
+    },
+    {
+     "glyph": "A",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-centre",
+       "mm2": 0.029,
+       "bare": 0.0
+      },
+      {
+       "where": "bottom-left",
+       "mm2": 0.085,
+       "bare": 0.163
+      },
+      {
+       "where": "bottom-right",
+       "mm2": 0.082,
+       "bare": 0.173
+      },
+      {
+       "where": "bottom-left",
+       "mm2": 0.016,
+       "bare": 0.448
+      },
+      {
+       "where": "bottom-right",
+       "mm2": 0.012,
+       "bare": 0.667
+      }
+     ],
+     "bays_filled": 4,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "A->A"
+    },
+    {
+     "glyph": "Y",
+     "tier": "bean letter",
+     "bays": [
+      {
+       "where": "top-centre",
+       "mm2": 0.448,
+       "bare": 0.67
+      },
+      {
+       "where": "top-right",
+       "mm2": 0.012,
+       "bare": 0.0
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.028,
+       "bare": 0.29
+      },
+      {
+       "where": "bottom-centre",
+       "mm2": 0.025,
+       "bare": 0.247
+      }
+     ],
+     "bays_filled": 3,
+     "holes_strict": 0,
+     "holes_bridged": 0,
+     "legibility": 1.0,
+     "counters": 1.0,
+     "spurious": 0,
+     "ocr": "Y->Y"
+    }
+   ],
+   "legibility": 0.996,
+   "legibility_space": 0.594,
+   "worst_glyph": 0.982,
+   "counters_open": [
+    4,
+    4
+   ],
+   "ocr": {
+    "recovered": 11,
+    "read": 11,
+    "ci95": [
+     0.741,
+     1.0
+    ]
+   },
+   "stitches": 849,
+   "trims": 6,
+   "box_mm": [
+    -12.64,
+    8.02,
+    14.58,
+    12.29
+   ]
+  }
+ },
+ "frame": {
+  "hw": [
+   1345,
+   2500
+  ],
+  "art_bbox": [
+   0.0,
+   0.0,
+   2500.0,
+   1345.0
+  ],
+  "px_per_mm": 30.864197530864196
+ },
+ "secs": 149
+}
