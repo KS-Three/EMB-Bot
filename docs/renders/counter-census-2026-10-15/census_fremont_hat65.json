@@ -1,0 +1,171 @@
+{
+ "design": "fremont_hat65",
+ "lines": [
+  {
+   "cluster": "TC111683cd",
+   "members": [
+    "S5396a7c4",
+    "Sa9ce03f2",
+    "S52a6d8ba",
+    "Scc1cc9a6",
+    "Sc2dce934",
+    "S720a8f87",
+    "S43d1139e",
+    "S10377a43",
+    "S3f6cf907",
+    "S33e546ee",
+    "S01e216dc",
+    "S7dd29df5"
+   ],
+   "n": 12,
+   "cap_mm": 4.758,
+   "min_counter_mm": 1.7,
+   "counters": 3,
+   "bean": 0,
+   "box_mm": [
+    -30.21,
+    -2.51,
+    30.19,
+    2.45
+   ],
+   "changed": true,
+   "word": null,
+   "verdict": "changed (no reader)"
+  },
+  {
+   "cluster": "TCd4e9ca24",
+   "members": [
+    "S49556310",
+    "S6ea6ed8c",
+    "Sa3084e6f",
+    "S2478d444",
+    "Sf943a52e",
+    "Sa1ed80de",
+    "Scf7b1087"
+   ],
+   "n": 7,
+   "cap_mm": 1.326,
+   "min_counter_mm": 0.45,
+   "counters": 3,
+   "bean": 0,
+   "box_mm": [
+    -7.36,
+    -10.39,
+    7.33,
+    -9.04
+   ],
+   "changed": true,
+   "word": null,
+   "verdict": "changed (no reader)"
+  },
+  {
+   "cluster": "TCd4e9ca24.line2",
+   "members": [
+    "S80e1f0d8",
+    "Sf0ec25b3",
+    "Sc35de5a5"
+   ],
+   "n": 3,
+   "cap_mm": 2.015,
+   "min_counter_mm": null,
+   "counters": 0,
+   "bean": 3,
+   "box_mm": [
+    -3.44,
+    -6.19,
+    3.44,
+    -4.03
+   ],
+   "changed": true,
+   "word": "the",
+   "verdict": "TIE",
+   "main": {
+    "box_mm": [
+     -3.9,
+     -6.47,
+     4.03,
+     -3.6
+    ],
+    "ocr": [
+     3,
+     3
+    ],
+    "legibility": 1.0
+   },
+   "switch": {
+    "box_mm": [
+     -3.9,
+     -6.47,
+     4.03,
+     -3.6
+    ],
+    "ocr": [
+     3,
+     3
+    ],
+    "legibility": 0.989
+   }
+  },
+  {
+   "cluster": "TCd99e6487",
+   "members": [
+    "S2aad5a8a",
+    "Sc652bae5",
+    "Sdb9dd17d",
+    "S11c9e058",
+    "Sd825d4db",
+    "S836120cb",
+    "S52c4bf6e",
+    "S5b8f862b",
+    "Sb73ce89e",
+    "S54c652bd",
+    "S3b7c7999"
+   ],
+   "n": 11,
+   "cap_mm": 1.716,
+   "min_counter_mm": 0.439,
+   "counters": 4,
+   "bean": 11,
+   "box_mm": [
+    -9.65,
+    7.19,
+    11.36,
+    8.98
+   ],
+   "changed": true,
+   "word": "tagline",
+   "verdict": "LOSS",
+   "main": {
+    "box_mm": [
+     -10.14,
+     6.43,
+     11.7,
+     9.86
+    ],
+    "ocr": [
+     10,
+     11
+    ],
+    "legibility": 0.893
+   },
+   "switch": {
+    "box_mm": [
+     -10.14,
+     6.43,
+     11.7,
+     9.86
+    ],
+    "ocr": [
+     5,
+     11
+    ],
+    "legibility": 0.736
+   }
+  }
+ ],
+ "secs": 577,
+ "stitches": [
+  11463,
+  11269
+ ]
+}

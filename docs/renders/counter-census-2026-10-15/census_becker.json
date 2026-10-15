@@ -1,0 +1,59 @@
+{
+ "design": "becker",
+ "lines": [
+  {
+   "cluster": "TC39a89979",
+   "members": [
+    "Sec1f1061",
+    "S334e3a12",
+    "S4d48640b",
+    "S030953b8",
+    "S805585ef"
+   ],
+   "n": 5,
+   "cap_mm": 27.932,
+   "min_counter_mm": 0.05,
+   "counters": 6,
+   "bean": 0,
+   "box_mm": [
+    -47.17,
+    -29.69,
+    47.76,
+    8.54
+   ],
+   "changed": false,
+   "word": null,
+   "verdict": "unchanged"
+  },
+  {
+   "cluster": "TCa74c54e3",
+   "members": [
+    "Scc08b907",
+    "Sdd5f27fb",
+    "Sa587cbf9",
+    "S501501b6",
+    "Sf1c25fcd",
+    "S14230a1b"
+   ],
+   "n": 6,
+   "cap_mm": 16.731,
+   "min_counter_mm": 0.14,
+   "counters": 3,
+   "bean": 0,
+   "box_mm": [
+    -48.7,
+    14.19,
+    46.86,
+    31.08
+   ],
+   "changed": false,
+   "word": null,
+   "verdict": "unchanged"
+  }
+ ],
+ "secs": 102,
+ "stitches": [
+  8758,
+  8758
+ ]
+}

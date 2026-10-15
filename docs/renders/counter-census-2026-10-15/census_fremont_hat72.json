@@ -1,0 +1,194 @@
+{
+ "design": "fremont_hat72",
+ "lines": [
+  {
+   "cluster": "TC281346e5",
+   "members": [
+    "S72e31303",
+    "S88a23190",
+    "Sf4ff659d",
+    "S42fa7011",
+    "S30e223c4",
+    "Sa64d6588",
+    "Sd3c9ae1d",
+    "Sf97fc368",
+    "S71fa15a4",
+    "Sbd1d268d",
+    "S19709b19"
+   ],
+   "n": 11,
+   "cap_mm": 1.901,
+   "min_counter_mm": 0.47,
+   "counters": 4,
+   "bean": 11,
+   "box_mm": [
+    -10.68,
+    7.96,
+    12.59,
+    9.95
+   ],
+   "changed": true,
+   "word": "tagline",
+   "verdict": "WIN",
+   "main": {
+    "box_mm": [
+     -11.23,
+     7.13,
+     12.96,
+     10.92
+    ],
+    "ocr": [
+     9,
+     11
+    ],
+    "legibility": 0.676
+   },
+   "switch": {
+    "box_mm": [
+     -11.23,
+     7.13,
+     12.96,
+     10.92
+    ],
+    "ocr": [
+     10,
+     11
+    ],
+    "legibility": 0.677
+   }
+  },
+  {
+   "cluster": "TC5e90a6a9",
+   "members": [
+    "S7569cf1c",
+    "S96e6910d",
+    "Se137a45a",
+    "S00d683b7",
+    "S2e9bb64f",
+    "S8e805010",
+    "S81beea5c",
+    "S4d1ea5e5",
+    "Sef80883c",
+    "Sdcab7c61",
+    "S5457064d",
+    "S4f5c74c1"
+   ],
+   "n": 12,
+   "cap_mm": 5.27,
+   "min_counter_mm": 1.9,
+   "counters": 3,
+   "bean": 0,
+   "box_mm": [
+    -33.49,
+    -2.77,
+    33.44,
+    2.72
+   ],
+   "changed": false,
+   "word": null,
+   "verdict": "unchanged"
+  },
+  {
+   "cluster": "TC8510c4f9",
+   "members": [
+    "S4dae0a0e",
+    "S373182f7",
+    "S2cb753df",
+    "S5fd4d0da"
+   ],
+   "n": 4,
+   "cap_mm": 1.469,
+   "min_counter_mm": 0.5,
+   "counters": 3,
+   "bean": 4,
+   "box_mm": [
+    3.14,
+    -11.51,
+    8.12,
+    -10.01
+   ],
+   "changed": true,
+   "word": "1895",
+   "verdict": "WIN",
+   "main": {
+    "box_mm": [
+     2.66,
+     -12.01,
+     8.64,
+     -9.45
+    ],
+    "ocr": [
+     0,
+     4
+    ],
+    "legibility": 0.53
+   },
+   "switch": {
+    "box_mm": [
+     2.66,
+     -12.01,
+     8.64,
+     -9.45
+    ],
+    "ocr": [
+     2,
+     4
+    ],
+    "legibility": 0.786
+   }
+  },
+  {
+   "cluster": "TCce0f2b29",
+   "members": [
+    "Se62981b5",
+    "Sc1906c91",
+    "S429527ba"
+   ],
+   "n": 3,
+   "cap_mm": 1.44,
+   "min_counter_mm": null,
+   "counters": 0,
+   "bean": 3,
+   "box_mm": [
+    -8.15,
+    -11.51,
+    -3.37,
+    -10.01
+   ],
+   "changed": true,
+   "word": "est",
+   "verdict": "TIE",
+   "main": {
+    "box_mm": [
+     -8.64,
+     -12.01,
+     -2.88,
+     -9.45
+    ],
+    "ocr": [
+     1,
+     2
+    ],
+    "legibility": 0.949
+   },
+   "switch": {
+    "box_mm": [
+     -8.64,
+     -12.01,
+     -2.88,
+     -9.45
+    ],
+    "ocr": [
+     1,
+     2
+    ],
+    "legibility": 0.929
+   }
+  }
+ ],
+ "secs": 606,
+ "stitches": [
+  13363,
+  13195
+ ]
+}
