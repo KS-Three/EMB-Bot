@@ -98,19 +98,22 @@ CUT_MARGIN_MM = 0.8          # a run belongs to a box if its extent lies inside 
 WHITE_MIN = 215              # a block whose every channel is this high is the white patch (fremont_triage.WHITE_MIN)
 
 
-def cut_arm(arm: str, cuts: Path, design_dir: Path | None = None) -> Path:
+def cut_arm(arm: str, cuts: Path, design_dir: Path | None = None, *, width_mm: float | None = None,
+            boxes: dict | None = None) -> Path:
     """Digitize the Fremont fixture as the Studio does (81 mm, Hat) with this
     arm's flags, and save the runs of the non-white thread that lie inside the
     T ("THE") and N ("1895") boxes, as JSON. Returns the file."""
     import time
     from tools import fremont_triage as ft
     t = time.time()
-    run = ft.run_arm("main", ft.KENT_WIDTH_MM, None, preflight=False, overrides=dict(CUT_ARMS[arm]))
+    width_mm = ft.KENT_WIDTH_MM if width_mm is None else width_mm
+    boxes = CUT_BOXES if boxes is None else boxes     # a sibling card cuts other words / sizes
+    run = ft.run_arm("main", width_mm, None, preflight=False, overrides=dict(CUT_ARMS[arm]))
     plan, p = run["plan"], run["gen"].p
-    out = {"arm": arm, "overrides": CUT_ARMS[arm], "width_mm": ft.KENT_WIDTH_MM,
+    out = {"arm": arm, "overrides": CUT_ARMS[arm], "width_mm": width_mm,
            "stitches_whole": plan.stats.stitch_count, "trims_whole": plan.stats.trims,
            "size_mm_whole": [round(v, 2) for v in plan.stats.size_mm], "boxes": {}}
-    for key, (roi, _arms) in CUT_BOXES.items():
+    for key, (roi, _arms) in boxes.items():
         x0, y0, x1, y1 = ft.roi_mm(p, ft.ROIS[roi])
         gx0, gy0, gx1, gy1 = x0 - CUT_MARGIN_MM, y0 - CUT_MARGIN_MM, x1 + CUT_MARGIN_MM, y1 + CUT_MARGIN_MM
         inside, crossing = [], []
