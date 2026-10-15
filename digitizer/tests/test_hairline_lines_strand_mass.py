@@ -10,6 +10,7 @@ Every number is a property of the file, not of cloth (ROADMAP gate 1).
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import cv2
 import pytest
@@ -35,6 +36,17 @@ PINS = {"s882_lines": "37789a45fa1dac14c3ce6d824dc2ad9c",
         "s882_test": "243da399287cf82a3dc3bd3c377e26af",
         "mane_lines": "ef3237060f81b7a89354453c59973c7b",
         "mane_test": "55a49676e2978699eda271eacd833047"}
+# The two bean-letter holds (`bean_letter_counter_hold_mm` 0.25 and
+# `bean_letter_bay_hold` 0.2, ON by default since 2026-10-15, Kent's flip)
+# reach the drawn mane's strands through the bean tagger and move its stream
+# (`mane_lines` read `1e5338e4...` with them on; the s882 synthetic did not
+# move). The PINS are main's streams before this flag OR the holds existed,
+# and the holds are not this file's subject, so both are pinned OFF here.
+HOLDS_OFF = dict(bean_letter_counter_hold_mm=None, bean_letter_bay_hold=None)
+
+
+def _syn_cfg(arm: str, width_mm: float) -> PipelineConfig:
+    return replace(syn_cfg(arm, width_mm), **HOLDS_OFF)
 
 
 def _warning(plan) -> dict:
@@ -50,14 +62,14 @@ def synth(tmp_path_factory):
         img, drawn = make()
         src = tmp_path_factory.mktemp(name) / f"{name}.png"
         cv2.imwrite(str(src), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-        result = run_stages(src, syn_cfg("lines", 30.0))
+        result = run_stages(src, _syn_cfg("lines", 30.0))
         sp = result.source_pixels
         out[name] = {"drawn": [[sp.to_mm(x, y) for x, y in p] for p in drawn]}
         for arm in ("lines", "test", "mass"):
-            out[name][arm] = plan_stitches(result, syn_cfg(arm, 30.0))
+            out[name][arm] = plan_stitches(result, _syn_cfg(arm, 30.0))
         out[name]["mass_alone"] = plan_stitches(result, PipelineConfig(
             target_width_mm=30.0, forced_class="photo_scene", photo_prep=False, **LINES,
-            hairline_lines_strand_mass=True))
+            hairline_lines_strand_mass=True, **HOLDS_OFF))
     return out
 
 
