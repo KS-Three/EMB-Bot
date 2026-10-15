@@ -151,7 +151,9 @@ def word_ties(row: dict, thread_mm: float = THREAD_MM) -> dict:
     ground's fill locks too, which no small-letter construction touches);
     `ties_glyph_box` those in a source glyph's bounding box grown by half a
     thread; `ties_ink` those in a non-white thread within half a thread of a
-    glyph's own ink -- the lock that lands ON a letter, in its colour. `glyph_ties`: `ties_ink` per glyph.
+    glyph's own ink -- the lock that lands ON a letter, in its colour;
+    `ties_ink_small` the part of those on bean-letter / skeleton runs, the
+    only locks `cfg.small_letter_ties` reaches. `glyph_ties`: `ties_ink` per glyph.
     `by_tier`: the box's locks counted by the tier that sewed their run."""
     from shapely import wkt
     from shapely.geometry import Point
@@ -178,6 +180,7 @@ def word_ties(row: dict, thread_mm: float = THREAD_MM) -> dict:
     return {"ties": summarize(ties),
             "ties_glyph_box": summarize([t for t in ties if in_gbox(t)]),
             "ties_ink": summarize([t for t in ties if any(near(t, g) for g in glyphs)]),
+            "ties_ink_small": summarize([t for t in ties if t.get("small") and any(near(t, g) for g in glyphs)]),
             "glyph_ties": [{"bbox_mm": [round(v, 2) for v in g.bounds],
                             **summarize([t for t in ties if near(t, g)])} for g in glyphs],
             "by_tier": dict(sorted(tiers.items()))}
@@ -352,10 +355,10 @@ def table(out: Path, before: str, after: str) -> str:
         lines.append(f"## {fx}: {a['stitches']:,} -> {b['stitches']:,} st, trims {a['trims']} -> {b['trims']}, "
                      f"shapes changed {o['changed']} ({o['changed_small']} small letters, "
                      f"{len(o['changed_other'])} other)")
-        lines.append("| word | locks in word box, laid (slots) | pile mm2: word box | glyph boxes | on the ink | "
+        lines.append("| word | locks in word box, laid (slots) | pile mm2: word box | glyph boxes | on the ink | on the ink, bean/skeleton runs | "
                      "ink footprint mm2 | legibility | +space | OCR | trims | stitches |")
-        lines.append("|---|---|---|---|---|---|---|---|---|---|---|")
-        keys = ("ties", "ties_glyph_box", "ties_ink")
+        lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
+        keys = ("ties", "ties_glyph_box", "ties_ink", "ties_ink_small")
         tot = {k: [0.0, 0.0] for k in keys}
         for w in WORDS:
             x, y = a["words"][w], b["words"][w]
