@@ -834,8 +834,10 @@ def build_generation(
     # identity edits/overrides run, not after. The chart is for the one-ink
     # link between ordinary glyphs (`textcluster._same_ink`): a word is sewn
     # in one colour, and the regions' `thread_index` values name THIS job's
-    # chart, not the default one.
-    detect_text_clusters(regions, p, chart=chart_for(cfg))
+    # chart, not the default one. `rescued_ink_link`: the same link in the
+    # rescued round (Fremont's THE at 80 mm, `cfg.text_cluster_rescued_ink_link`).
+    detect_text_clusters(regions, p, chart=chart_for(cfg),
+                         rescued_ink_link=bool(cfg.text_cluster_rescued_ink_link))
 
     # Lettering too small to sew, grown the way a digitizer grows it
     # (`cfg.small_text_cap_mm`, default None). Here, on the tagger's clusters

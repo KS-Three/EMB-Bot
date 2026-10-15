@@ -1355,3 +1355,94 @@ def test_the_ink_link_is_no_evidence_when_the_chart_cannot_place_a_thread():
     odd.thread_index = 10 ** 6
     detect_text_clusters(word + [odd], _P)
     assert odd.meta.get("text_cluster_id") == word[0].meta.get("text_cluster_id")
+
+
+# --- The rescued door's one-ink link (`rescued_ink_link`, 2026-10-15) -------
+
+def _fremont_the_at_80(date_ink: int, word_ink: int):
+    """Kent's Hotel Fremont Hat job at 80 mm, distilled: a rescued row (the
+    tan 1895) and, 4.5 mm above it, a three-letter word in another ink whose
+    ONE rescued letter (the E, traced at 2.19 mm2 under the 2.25 mm2 floor)
+    sits within `SIMILARITY_RATIO` of the row on every term -- height, stroke
+    and distance -- while its T and H are ordinary glyphs."""
+    date = _row("D", 4, x0=0.0, y=0.0)
+    for r in date:
+        r.thread_index = date_ink
+    e = _letter("E", 1.0, 4.5)                     # rescued, the word's ink
+    t = _letter("T", 3.3, 4.5, rescued=False)
+    h = _letter("H", 5.6, 4.5, rescued=False)
+    for r in (e, t, h):
+        r.thread_index = word_ink
+    return date, e, t, h
+
+
+def test_the_rescued_door_refuses_a_link_across_inks_when_asked():
+    """Fremont at 80 mm (2026-10-15): round 1 linked on size alone, so THE's
+    black E joined the tan 1895 beside it, the restore step stripped it as a
+    stray, and T and H alone could not make `MIN_CLUSTER_MEMBERS` -- T and H
+    went to the Column lane as crossing satin, one millimetre under a clean
+    THE at 81 mm, where the E clears the floor and enters with its word.
+
+    Both arms pinned. Off (the default of the function, every direct caller
+    byte-identical): the E is a letter of the date. On: round 1 refuses the
+    cross-ink link, the E is left for round 2 like any untagged rescued
+    candidate, and the word clusters in its own ink -- tagged, not redrawn,
+    because T and H are ordinary glyphs."""
+    chart = threads.CHART
+    assert chart.delta_e(14, 149) > TEXT_CLUSTER_DELTA_E_MAX, "Smoky vs Not Quite Red"
+
+    date, e, t, h = _fremont_the_at_80(date_ink=149, word_ink=14)
+    detect_text_clusters(date + [e, t, h], _P)
+    assert e.meta.get("text_cluster_id") == date[0].meta.get("text_cluster_id"), (
+        "without the link, round 1 links on size alone -- the old door, pinned")
+    assert "text_cluster_id" not in t.meta and "text_cluster_id" not in h.meta
+
+    date, e, t, h = _fremont_the_at_80(date_ink=149, word_ink=14)
+    detect_text_clusters(date + [e, t, h], _P, rescued_ink_link=True)
+    ids_date = {r.meta.get("text_cluster_id") for r in date}
+    assert len(ids_date) == 1 and None not in ids_date, "the date is still its own line"
+    assert all(r.meta["text_cluster_all_rescued"] is True for r in date)
+    assert e.meta.get("text_cluster_id") == t.meta.get("text_cluster_id") == h.meta.get("text_cluster_id")
+    assert e.meta["text_cluster_id"] not in ids_date, "another ink is another word"
+    assert e.meta["text_cluster_all_rescued"] is False, "T and H are ordinary: tagged, never redrawn"
+
+
+def test_the_rescued_door_with_the_ink_link_keeps_one_ink_rows_and_one_step_neighbours():
+    """The link can only REFUSE a pair, never add one, so a rescued row sewn
+    in one ink is the cluster it was (same members, same median stroke), and
+    a rescued glyph one quantization step away (0142 Sterling beside 0145
+    Skylight, dE 9.2) is still a letter of the row -- the same tolerance the
+    letter door has held since 2026-09-03."""
+    chart = threads.CHART
+    assert chart.delta_e(16, 17) < TEXT_CLUSTER_DELTA_E_MAX, "Sterling vs Skylight"
+
+    off = _row("R", 5)
+    on = _row("R", 5)
+    detect_text_clusters(off, _P)
+    detect_text_clusters(on, _P, rescued_ink_link=True)
+    assert [r.meta for r in on] == [r.meta for r in off], "one ink: byte-identical tags"
+
+    row = _row("S", 4)
+    for r in row:
+        r.thread_index = 17
+    near = _letter("N", 4 * 2.3, 0.0)
+    near.thread_index = 16
+    detect_text_clusters(row + [near], _P, rescued_ink_link=True)
+    assert near.meta.get("text_cluster_id") == row[0].meta.get("text_cluster_id"), (
+        "one quantization step is still one ink")
+
+
+def test_the_pipeline_passes_the_rescued_ink_link_from_the_config():
+    """The flag is ON by default (`PipelineConfig.text_cluster_rescued_ink_link`)
+    and the pipeline's one call hands it to the tagger; the function's own
+    default stays False so every direct caller is the engine as it was."""
+    import inspect
+
+    from digitizer_core import pipeline
+    from digitizer_core.config import PipelineConfig
+
+    assert PipelineConfig().text_cluster_rescued_ink_link is True
+    assert inspect.signature(detect_text_clusters).parameters["rescued_ink_link"].default is False
+    src = inspect.getsource(pipeline)
+    assert "rescued_ink_link=bool(cfg.text_cluster_rescued_ink_link)" in src, (
+        "the pipeline must pass the config's value to detect_text_clusters")

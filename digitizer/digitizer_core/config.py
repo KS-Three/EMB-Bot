@@ -2589,6 +2589,31 @@ class PipelineConfig:
     # True (`SMALL_TEXT_TRUE_SIZE`, Kent WoK 56: the flip carries its own
     # 65 mm THE fix); an explicit True or False wins over the switch.
     small_text_keep_stray_lines: bool | None = None
+    # The one-ink link (`textcluster._same_ink`, CIEDE2000 20 on the job's
+    # chart) in the text tagger's FIRST round too, the rescued door
+    # (`textcluster.detect_text_clusters`, 2026-10-15). That round linked on
+    # size alone (`SIMILARITY_RATIO` 0.5), so one rescued letter of a word
+    # could join another word in another ink. Fremont at 80 mm, Kent's Hat
+    # job: THE's black E traces at 2.19 mm2, under the 2.25 mm2 small-shape
+    # floor, and is the word's one rescued letter. It joined the tan 1895
+    # (heights 2.62 / 1.66, strokes 0.39 / 0.21, 5.7 mm apart: every term
+    # within 0.5), the restore step stripped it as a stray, and T and H
+    # alone could not make a three-member cluster: T and H went to the
+    # Column lane as crossing satin and the E to the run rescue, a garbled
+    # THE one millimetre under the clean one at 81 mm (where the E is
+    # 2.25 mm2, not rescued, and enters by the letter door with its word).
+    # True: round 1 refuses a link across inks, as round 2 always has; THE
+    # forms its own cluster and sews as bean letters, 14,897 / 46 ->
+    # 14,812 / 43, EST, 1895 and the tagline unchanged shape for shape
+    # (`tools/fremont_triage.run_arm` at 80 mm). A link can only be refused
+    # in that round, never added, so a rescued cluster in one ink is
+    # unchanged; a letter freed from a mixed cluster goes to the second
+    # round and may rejoin its line (the 3 mm tagline crop: EAT STAY PLAY
+    # read as one line of 11 instead of 6 + 3 with two letters held by the
+    # separator bars). Geometry, not fabric: no sew-out settles which shapes
+    # are a line. False: the pre-flip engine, byte for byte. Tests:
+    # `tests/test_textcluster.py`.
+    text_cluster_rescued_ink_link: bool = True
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
