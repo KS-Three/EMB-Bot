@@ -2554,6 +2554,19 @@ class PipelineConfig:
     # And `None` for one of the six no longer means "off" while the switch is
     # ON: it is refilled.
     small_text_true_size: bool = True
+    # Bean letters' needle points held this far (mm) off a SMALL counter --
+    # one no wider than `beanletters.COUNTER_HOLD_MAX_MM` -- inside the ink
+    # (`beanletters.hold_bean_counters`, `ink_path.hold_off_counters`). A bean
+    # letter sews its ink's centreline; Fremont's 1895 at 81 mm is 0.22 mm of
+    # ink under a 0.40 mm thread, so the thread centred on the stroke lays half
+    # its width into the counter and the 8 sewed both of its 0.3-0.4 mm2
+    # counters shut (0.33 / 0.28 bare under `small_text_true_size`). Held off,
+    # the thread lies on the stroke's outer side: 0.63 / 0.54 bare at 0.25
+    # (0.62 / 0.50 at 0.2, half the 40 wt laid width), +8 stitches. The cost:
+    # the held letter sews up to ~0.1 mm wider outward. NOT part of the switch
+    # above. None: the spines exactly as read, byte for byte. A CANDIDATE
+    # (gate 1), unsewn. Measured: `tools/bean_counter_hold.py`.
+    bean_letter_counter_hold_mm: float | None = None
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the

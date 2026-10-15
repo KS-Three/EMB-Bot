@@ -114,3 +114,48 @@ def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
                 r.meta[BEAN_LETTER_KEY] = ink.spines
                 tagged += 1
     return tagged
+
+
+# The widest counter whose bean letter is held off it
+# (`cfg.bean_letter_counter_hold_mm`), across its widest point. Fremont's 81 mm
+# counters are 0.5-0.85 mm across (8, 9, the tagline's A's and P); past about
+# a millimetre a 0.4 mm thread centred on the stroke leaves most of a counter
+# bare anyway, and the letter is no longer the small lettering this is for.
+# A CANDIDATE (gate 1).
+COUNTER_HOLD_MAX_MM = 1.0
+
+
+def hold_bean_counters(regions, p, cfg: PipelineConfig) -> int:
+    """Re-read the ink of every cluster `tag_bean_letters` tagged, with each
+    needle point held `cfg.bean_letter_counter_hold_mm` off the ink's small
+    counters (`ink_path.hold_off_counters`), and swap in those spines. The
+    clusters are formed exactly as `tag_bean_letters` forms them, so the
+    skeleton is the same one and only points near a counter move. -> how many
+    members' spines changed. None on the config reads nothing."""
+    hold = cfg.bean_letter_counter_hold_mm
+    if not hold or hold <= 0 or p is None:
+        return 0
+    clusters: dict[str, list] = {}
+    for r in regions:
+        cid = word_key(r, cfg)
+        if (cid and r.meta.get("stitched", True)
+                and str(r.meta.get("tier", "auto")).lower() == "auto"):
+            clusters.setdefault(cid, []).append(r)
+    changed = 0
+    for members in clusters.values():
+        if not any(r.meta.get(BEAN_LETTER_KEY) for r in members):
+            continue
+        inks = read_cluster_ink(p, members, counter_hold_mm=float(hold),
+                                counter_max_mm=COUNTER_HOLD_MAX_MM)
+        for r, ink in zip(members, inks):
+            old = r.meta.get(BEAN_LETTER_KEY)
+            # Same skeleton, same edges: only the points move. A read that
+            # disagrees on the spines' shape is not this letter's -- keep it.
+            if not old or len(ink.spines) != len(old) or any(
+                    len(a) != len(b) for a, b in zip(ink.spines, old)):
+                continue
+            if ink.spines != old:
+                r.meta[BEAN_LETTER_KEY] = ink.spines
+                r.meta["bean_counter_held"] = True
+                changed += 1
+    return changed
