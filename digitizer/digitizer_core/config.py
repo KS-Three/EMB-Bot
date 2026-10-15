@@ -2493,6 +2493,14 @@ class PipelineConfig:
     # None never calls the pass. A CANDIDATE (ROADMAP gate 1), unsewn; the
     # flip is Kent's. Tests: `tests/test_small_text.py`.
     small_text_restore_mm: float | None = None
+    # With `small_text_restore_mm`: a line of lettering the text tagger put
+    # in ANOTHER line's cluster keeps its tags as a cluster of its own
+    # instead of being stripped as a stray (`small_text.restore_small_text`).
+    # At 65 mm Fremont's THE shares the date's cluster; stripped, it lost its
+    # lettering treatment, traced 1.8x fatter and its E closed (THE OCR 3/3
+    # -> 1/3 under the true-size switch, 2026-10-14). False: today's strip.
+    # Geometry, not fabric: no sew-out settles which shapes are a line.
+    small_text_keep_stray_lines: bool = False
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.

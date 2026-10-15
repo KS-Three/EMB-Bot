@@ -504,3 +504,40 @@ def test_the_tagger_passes_the_ground_ring_only_when_set(monkeypatch):
     beanletters.tag_bean_letters(regions, p, PipelineConfig(bean_letter_max_stroke_mm=0.5,
                                                             ink_ground_ring_mm=0.8))
     assert seen == [{}, {"ground_ring_mm": 0.8}]
+
+
+def _two_lines():
+    """One tagger cluster holding a 4-letter line on thread 7 and a 3-letter
+    line on thread 2 (Fremont at 65 mm: the tan date and the black THE)."""
+    regions, p = _scene(text_at=((100, 262), (600, 262)), words=("1895", "THE"))
+    glyphs = _glyphs(regions)
+    assert len(glyphs) == 7
+    for r in glyphs[4:]:
+        r.thread_index = 2
+    _tag(regions, {r.shape_id for r in glyphs}, cid="TCmerged")
+    return regions, p, glyphs
+
+
+def test_stray_lines_are_stripped_by_default():
+    regions, p, glyphs = _two_lines()
+    small_text.restore_small_text(regions, p, cap_mm=3.0)
+    assert all(r.meta.get("text_cluster_id") == "TCmerged" for r in glyphs[:4])
+    assert all("text_cluster_id" not in r.meta and r.meta.get("small_text_stray") for r in glyphs[4:])
+
+
+def test_a_stray_line_keeps_its_tags_as_its_own_cluster():
+    regions, p, glyphs = _two_lines()
+    rep = small_text.restore_small_text(regions, p, cap_mm=3.0, keep_stray_lines=True)
+    assert all(r.meta.get("text_cluster_id") == "TCmerged" for r in glyphs[:4])
+    new = {r.meta.get("text_cluster_id") for r in glyphs[4:]}
+    assert len(new) == 1 and None not in new and "TCmerged" not in new
+    assert all(r.meta.get("small_text_stray_line") and not r.meta.get("small_text_stray") for r in glyphs[4:])
+    # and that cluster is considered as a line in turn
+    assert [row["cluster"] for row in rep] == ["TCmerged", new.pop()]
+
+
+def test_two_strays_are_not_a_line_and_are_still_stripped():
+    regions, p, glyphs = _two_lines()
+    regions.remove(glyphs[6])                       # the stray "line" is now two shapes
+    small_text.restore_small_text(regions, p, cap_mm=3.0, keep_stray_lines=True)
+    assert all("text_cluster_id" not in r.meta and r.meta.get("small_text_stray") for r in glyphs[4:6])
