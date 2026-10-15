@@ -13,6 +13,21 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-15 (ninth pass) — scope refresh after PRs #953–#962 (the eighth, #957, covered #942–#956)
+
+State of the range at writing (read with `gh pr view`): #953, #956, #958, #959, #960, #961 and #962 MERGED; #955 (the true-size flip) OPEN, not armed, being re-tasked (its latest commit is "counter guard: a guarded cluster stays whole, its stray line included"). The eighth pass recorded #953 as armed and open; it merged 2026-10-15 04:57.
+
+Merged in the range, with the numbers as each PR body measured them (snapshots, not live status):
+
+- **#953** `tools/bean_glyph_trace.py`, measure only: 0 own needle points off the ink in all six glyph readings (0 of 26 / 33 / 26 / 39 / 80 / 52). The 1's OCR miss is a black fill 0.69 mm away inside the instrument's window; the 5 at 81 mm has its upper bay 64% covered by thread width; THE's E at 92.5 mm is a tick-to-arm pinch the 20 px/mm render closes into a 0.72 mm² false counter; the 5 at 92.5 mm and the tagline S read S / 8 / A across masks with no geometric cause. Cells: 81 Hat 15,330 / 41, 92.5 Hat 18,675 / 54, 92.5 patch 20,832 / 48.
+- **#958** `cfg.ink_ground_ring_mm` (OFF; 0.8 mm candidate): ground colour from a ring round the cluster. Fremont 65 mm digits read 0.84–1.73 mm thick crop-wide against 0.14–0.16 mm with the ring; 65 mm 1895 OCR 1/4 → 2/4; 72 mm identical; 17 designs byte-identical. Inert under the 1.6 mm cap guard (the 65 mm date's cap is 1.33).
+- **#959** sew-out card, lettering arms: one 4×4 (71.0 × 64.2 mm), 20 arms, 40 wt, Hat; A hold OFF vs 0.25, B1/B2 ties OFF vs ON at 81 and 92.5 mm; handed to Kent, not sewn.
+- **#960** `cfg.small_text_keep_stray_lines` (OFF): strays forming a line of three or more letters keep their tags as a cluster. 65 mm THE OCR 1/3 → 3/3 (11,314 / 39 → 11,269 / 39); 72, 81, 92.5 mm and 17 designs byte-identical. #955 depends on it.
+- **#961** `tools/hair_reach.py size`, measure only: owl_kent ridge kept 84 / 27 / 7 at 127 / 180 / 250 mm against FDoG's 540 / 535 / 536 lines; side sample held in source pixels, ridge kept 84 / 71 / 61, strands 52 / 53 / 47, bristle box 4 / 7 / 7 (side + core 4 / 9 / 9), with eye-ring, beak and breast false positives.
+- **#962** `tools/restaurant_trace.py`, measure only, MEASURED NEGATIVE: bridge 80 mm 18,923 / 99, md5 `197a3287`; BAR & RESTAURANT legibility 0.227 (2 source glyphs); census arms 18,909 / 100 and 18,745 / 98 read 0.227 and 0.229; text cluster tags 8 of 12 letter regions.
+
+---
+
 **Last updated:** 2026-10-14 (eighth pass) — scope refresh after PRs #942–#956
 
 Rulings recorded 2026-10-14 (all "VP relay of Kent"): (1) Waiting-on-Kent 56 is RULED option A (~16:00 CDT): drone fix first (#948, done), then `small_text_true_size` ON; the drone residue is accepted. (2) 20:20 CDT: no speed feature, speed stays with the operator (#951); standing ruling in DOCTRINE. (3) 21:55 CDT: land the flip WITH a cap-height guard, `small_text_true_size_min_cap_mm` 1.6 (a gate-1 candidate); then 23:10 CDT: HOLD #955. At Fremont Hat 65 mm the guarded switch still regresses the tagline (cap about 1.74 mm, over 1.6): OCR 10/11 to 5/11, counters 3/4 to 1/4. A cap-height guard alone cannot separate the 81 mm dates (cap 1.65, want ON) from the 65 mm tagline (1.74, want OFF); Kent's lettering session will propose the guard quantity and its value. (4) Carried from the seventh pass and verified already recorded, so not repeated: zigzag cap 5.0 (item 53), `hairline_lines_chain` OFF until a sew-out (item 45), `detail_layer` and `hairline_from_lines` both kept (item 45).
