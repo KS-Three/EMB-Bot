@@ -2541,6 +2541,19 @@ class PipelineConfig:
     # crop-wide read, byte for byte. Not in `SMALL_TEXT_TRUE_SIZE`. A
     # CANDIDATE (gate 1): 0.8 mm was the ring tried.
     ink_ground_ring_mm: float | None = None
+    # Lock stitches on small letters laid ALONG the letter (2026-10-14,
+    # `stitches.spread_tie_in` / `spread_tie_off`), for the runs of bean
+    # letters and skeleton runs only. The ordinary lock bounces four legs of
+    # min(`TIE_STITCH_MM`, first stitch) on one station gap: at the 0.45 mm
+    # bean pitch that is 1.8 mm of thread on one 0.45 mm gap of a 0.2 mm
+    # stroke, at both ends of every trimmed letter. On: no lock where a
+    # three-pass bean already sews over its own opening stitch, and
+    # elsewhere up to `TIE_STITCHES` legs walked over the run's own first or
+    # last stations. `TIE_STITCH_MM`, `TIE_STITCHES` and every other tie are
+    # untouched. Measured by `tools/small_letter_ties.py`. Whether it holds
+    # on cloth is a sew-out (ROADMAP gate 1): a CANDIDATE. False is
+    # byte-identical. Not in `SMALL_TEXT_TRUE_SIZE`.
+    small_letter_ties: bool = False
     # ONE switch for small lettering at its true size (2026-10-14, Kent:
     # "keep working on improvements on this"). True fills each of the
     # values above that is still None with `SMALL_TEXT_TRUE_SIZE`; a value set
