@@ -801,7 +801,7 @@ def _text_cluster_id(shape_ids: list[str]) -> str:
 
 
 def detect_text_clusters(regions: list[Region], p: Prep, *,
-                         chart=None) -> None:
+                         chart=None, rescued_ink_link: bool = False) -> None:
     """Post-vectorization pass: tag every member of a qualifying group of
     glyph-shaped regions as a text candidate (`text_candidate`,
     `text_cluster_id`, `text_cluster_stroke_mm`, `text_cluster_all_rescued`
@@ -818,6 +818,21 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
        new. This is byte-identity for the measured population by
        construction, not by a flag that happened to hold on the fixtures we
        have.
+       `rescued_ink_link` (`cfg.text_cluster_rescued_ink_link`, 2026-10-15)
+       gives this round the one-ink link too. Linking on size alone, a
+       rescued letter of one word joined a word in another ink: Fremont's
+       THE at 80 mm, whose black E is the word's one rescued letter, joined
+       the tan 1895, was stripped as a stray, and left T and H short of
+       `MIN_CLUSTER_MEMBERS`. A link can only be REFUSED here, never added,
+       so round 1's partition only gets finer: a rescued cluster sewn in one
+       ink is the cluster it was, one that spanned two inks splits by ink,
+       and a piece that no longer clears `MIN_CLUSTER_MEMBERS` goes to round
+       2 like any untagged rescued candidate -- where it may join the line it
+       belongs to, so the FINAL partition can be coarser (Fremont's tagline
+       crop at 3 mm caps: two rescued letters held by the separator bars had
+       split EAT STAY PLAY into lines of 6 and 3; freed, round 2 reads one
+       line of 11). False keeps round 1 as above, so every direct caller is
+       byte-identical; the pipeline passes the config's value.
     2. The LETTER door (`_letter_candidates`, 2026-09-03) then clusters
        ordinary lettering, plus any rescued candidate round 1 left untagged,
        with `LETTER_HEIGHT_RATIO` (one line at one size) and the one-ink link
@@ -866,7 +881,7 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
 
     rescued = _candidates(regions)
     taken: set[str] = set()
-    for group in _cluster(rescued):
+    for group in _cluster(rescued, SIMILARITY_RATIO, chart if rescued_ink_link else None):
         if len(group) < MIN_CLUSTER_MEMBERS:
             continue
         tag(group)

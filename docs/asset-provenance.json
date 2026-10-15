@@ -893,6 +893,12 @@
    "basis": "PR body of claude/bridge-restaurant-tier; source fixture cleared by Kent 2026-10-08 (its own entry above)"
   },
   {
+   "prefix": "docs/renders/the-80mm-ink-link/",
+   "status": "derived-render",
+   "source": "Thread renders (digitizer_core.stitchviz via tools/fremont_triage's panel helpers) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp at 80 mm on a Hat (the Studio's request), of the phone screenshot fixture at its corpus size and of the Fremont tagline crop at 3 mm caps, link OFF beside link ON (cfg.text_cluster_rescued_ink_link), plus screenshots of EMB-Bot's own Studio (Stitches view) over the same Fremont digitize on main and on this lane; the artwork crops are the committed fixture; no new artwork, no new client art",
+   "basis": "PR body of claude/text-cluster-rescued-ink-link; source fixtures have their own entries above"
+  },
+  {
    "prefix": "docs/renders/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures (catch-all for new render directories)",
