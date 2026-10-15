@@ -2402,7 +2402,10 @@ def sequence(
                                            serif_mm=cfg.bean_letter_serif_mm,
                                            min_arm_mm=cfg.bean_letter_min_arm_mm,
                                            corner_deg=cfg.bean_letter_corner_deg,
-                                           passes=cfg.bean_letter_passes)
+                                           passes=cfg.bean_letter_passes,
+                                           **({"bay_hold_mm": cfg.bean_letter_bay_hold,
+                                               "stroke_mm": p.region.meta.get("ink_stroke_mm")}
+                                              if cfg.bean_letter_bay_hold else {}))
                 if not report["empty"]:
                     report["bean_letter"] = 1
                     report["bean_word"] = word_key(p.region, cfg)
