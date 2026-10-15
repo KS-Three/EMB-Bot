@@ -121,3 +121,114 @@ def test_the_line_route_reaches_the_drawn_hair_lane_only_when_forced(tmp_path, m
     assert row["design_class"] == "gradient", row
     assert row["reached"] and row["strands"] >= 3, row
     assert L.LINE_CLASSES == tuple(L.PHOTO_CLASSES), "the tool's patch leaked"
+    # the probe on the same crop: a row that says so, core restored
+    probe = H.census("hair_fine_crop", 24.0, 8.0, False, probe="side")
+    assert probe["probe"] == "side" and probe["side_scale"] == round(24.0 / 127.0, 4)
+    assert row["probe"] == "main" and row["side_scale"] == 1.0
+    assert L.ridge_contrast.__name__ == "ridge_contrast", "the probe's wrapper leaked"
+
+
+# ---------------------------------------------------------------- size probe
+# (2026-10-15) The ridge test's side sample read in SOURCE pixels. Measure
+# only: the probe is a wrapper the tool puts round `L.ridge_contrast`; no
+# constant in core moves.
+
+def test_source_scale_is_the_ratio_of_design_widths():
+    # a source pixel is design-width / source-width mm: 250 mm is 250/127 times
+    # wider than at the 127 mm reference, whatever the file's own width
+    assert H.source_scale("owl_kent", 127.0) == pytest.approx(1.0)
+    assert H.source_scale("owl_kent", 250.0) == pytest.approx(250.0 / 127.0)
+    assert H.source_scale("owl_kent", 90.0, ref_width=180.0) == pytest.approx(0.5)
+
+
+def _recorder(monkeypatch):
+    seen = []
+
+    def rec(pts, light, sp, *, polarity, core_mm, side0_mm, side1_mm, step_mm):
+        seen.append(dict(core=core_mm, side0=side0_mm, side1=side1_mm, step=step_mm))
+        return 99.0
+    monkeypatch.setattr(L, "ridge_contrast", rec)
+    return seen, rec
+
+
+def _call():
+    return L.ridge_contrast([(0, 0), (1, 0)], None, None, polarity="dark", core_mm=0.1,
+                            side0_mm=0.25, side1_mm=0.375, step_mm=0.5)
+
+
+def test_ridge_probe_scales_the_side_offset_and_reach_not_the_step(monkeypatch):
+    seen, rec = _recorder(monkeypatch)
+    with H.ridge_probe("side", 2.0):
+        assert L.ridge_contrast is not rec
+        assert _call() == 99.0
+    assert seen[0] == dict(core=0.1, side0=0.5, side1=0.5 + 0.25, step=0.5)
+    assert L.ridge_contrast is rec               # restored
+
+
+def test_ridge_probe_side_core_scales_the_core_too(monkeypatch):
+    seen, _rec = _recorder(monkeypatch)
+    with H.ridge_probe("side_core", 2.0):
+        _call()
+    assert seen[0]["core"] == pytest.approx(0.2) and seen[0]["side0"] == pytest.approx(0.5)
+
+
+def test_ridge_probe_main_is_no_wrapper_and_identity_at_scale_one(monkeypatch):
+    seen, rec = _recorder(monkeypatch)
+    with H.ridge_probe("main", 2.0):
+        assert L.ridge_contrast is rec           # untouched
+    with H.ridge_probe("side", 1.0):
+        _call()
+    assert seen[0] == dict(core=0.1, side0=0.25, side1=0.375, step=0.5)
+
+
+def test_ridge_probe_restores_after_an_error_and_refuses_an_unknown_mode():
+    before = L.ridge_contrast
+    with pytest.raises(RuntimeError):
+        with H.ridge_probe("side", 2.0):
+            raise RuntimeError("boom")
+    assert L.ridge_contrast is before
+    with pytest.raises(ValueError):
+        with H.ridge_probe("nope", 1.0):
+            pass
+
+
+class _Raster:
+    """Work raster at 8 px/mm, mm 0 at px 0."""
+    px_per_mm = 8.0
+
+    @staticmethod
+    def to_px(x, y):
+        return x * 8.0, y * 8.0
+
+
+def test_a_bristle_wider_in_mm_fails_the_main_reading_and_passes_the_probe():
+    """The mechanism, on a drawn line. A light bristle 9 work px wide (its
+    width at 2x the design size) with the side window at 2.0-3.0 px: main
+    samples the bristle itself and reads 0; the probe, offset x2 to 4.0-5.0
+    px, reaches the ground beyond its edge and reads the full contrast. Same
+    core, same function, only the unit of the offset."""
+    light = np.full((200, 200), 20.0, np.float32)
+    light[96:105, :] = 80.0                       # rows 96..104: +-4 px about row 100
+    pts = [(5.0, 12.5), (20.0, 12.5)]             # px y = 100
+    kw = dict(polarity="light", core_mm=0.05, side0_mm=0.25, side1_mm=0.375, step_mm=0.5)
+    main = L.ridge_contrast(pts, light, _Raster, **kw)
+    with H.ridge_probe("side", 2.0):
+        probe = L.ridge_contrast(pts, light, _Raster, **kw)
+    assert main < 12.0 <= probe, (main, probe)
+    assert probe == pytest.approx(60.0)
+
+
+def test_size_table_and_verdict_render_every_cell():
+    def row(w, probe, bristle, st=False):
+        return {"image": "owl_kent", "width_mm": w, "work_px_per_mm": 8.0, "strand_test": st,
+                "probe": probe, "design_class": "gradient", "reached": True, "side_scale": 1.0,
+                "found": {"dark": 3, "light": 4}, "ridge_lines": 9, "strands": 5, "light": 2,
+                "zones": {"bristles": {"n": bristle, "mm": 3.0}, "breast": {"n": 2, "mm": 5.0},
+                          "elsewhere": {"n": 1, "mm": 1.0}}}
+    rows = [row(127.0, "main", 4), row(250.0, "main", 1), row(250.0, "side", 4),
+            {"image": "x", "width_mm": 1.0, "strand_test": False, "probe": "main",
+             "reached": False}]
+    t = H.size_table(rows).splitlines()
+    assert len(t) == 2 + 3 and "| 250 | off | side |" in t[4]
+    v = H.verdict(rows)
+    assert "main: 127 mm = 4 / 250 mm = 1" in v and "side: 250 mm = 4" in v
