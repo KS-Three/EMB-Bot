@@ -71,7 +71,8 @@ def test_tag_reads_nothing_when_off_or_without_a_page(monkeypatch):
     monkeypatch.setattr(beanletters, "read_cluster_ink",
                         own_thread_only(boom, beanletters.read_cluster_ink))
     r = _region()
-    assert tag_bean_letters([r], object(), PipelineConfig()) == 0
+    # OFF: the line unset (the default sets it via `small_text_true_size`)
+    assert tag_bean_letters([r], object(), PipelineConfig(small_text_true_size=False)) == 0
     assert tag_bean_letters([r], None, _cfg()) == 0
     assert BEAN_LETTER_KEY not in r.meta and "ink_stroke_mm" not in r.meta
 

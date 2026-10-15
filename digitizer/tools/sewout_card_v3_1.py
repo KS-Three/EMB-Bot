@@ -95,8 +95,6 @@ PINS = {
     "small_lettering_skeleton": False,
     "small_lettering_skeleton_floor_mm": None,   # None = machine.MIN_STITCH_MM, 1.0 mm
     "small_text_cap_mm": None,                   # #909, OFF
-    # ON by default since 2026-10-14; while it is ON a None below is refilled
-    "small_text_true_size": False,
     "small_text_restore_mm": None,               # #911, OFF
     "bean_letter_max_stroke_mm": None,           # #911's companions, OFF
     "bean_letter_stitch_mm": None,
@@ -105,6 +103,11 @@ PINS = {
     "lettering_columns_square_ends": False,      # #907
     "lettering_columns_inside_connectors": False,  # #912
 }
+#: `small_text_true_size` is ON by default since 2026-10-14, and while it is ON
+#: the None values above are refilled. The card was cut before that flip, so
+#: every replay below adds this; it is kept out of PINS because each committed
+#: cut records PINS + its arm as the flags it was made with.
+PRE_TRUE_SIZE = {"small_text_true_size": False}
 ENDS_ON = {"lettering_columns_square_ends": True, "lettering_columns_inside_connectors": True}
 SKEL = {"small_lettering_skeleton": True}
 
@@ -197,7 +200,7 @@ def cut_fremont(arm: str, cuts: Path, design_dir: Path | None = None) -> Path:
     arm's flags; save the tagline and THE boxes and the E / MON letters."""
     from tools import fremont_triage as ft
     t = time.time()
-    run = ft.run_arm("main", ft.KENT_WIDTH_MM, None, preflight=False, overrides=dict(CUT_ARMS[arm]))
+    run = ft.run_arm("main", ft.KENT_WIDTH_MM, None, preflight=False, overrides={**CUT_ARMS[arm], **PRE_TRUE_SIZE})
     plan, p = run["plan"], run["gen"].p
     out = {"arm": arm, "overrides": CUT_ARMS[arm], "width_mm": ft.KENT_WIDTH_MM, "garment_id": "hat_front",
            "stitches_whole": plan.stats.stitch_count, "trims_whole": plan.stats.trims,
@@ -232,7 +235,8 @@ def cut_enthusiast(arm: str, cuts: Path) -> Path:
     from digitizer_core.pipeline import digitize
     from tools import small_lettering_skeleton as sls
     t = time.time()
-    cfg = PipelineConfig(target_width_mm=ENT_WIDTH_MM, garment_id=ENT_GARMENT, **ENT_ARMS[arm])
+    cfg = PipelineConfig(target_width_mm=ENT_WIDTH_MM, garment_id=ENT_GARMENT, **ENT_ARMS[arm],
+                         **PRE_TRUE_SIZE)
     log: dict = {}
     with sls.spy_skeleton(log):
         result, plan = digitize(ROOT / "testdata" / ENT_FILE, cfg)
@@ -264,7 +268,8 @@ def cut_becker(arm: str, cuts: Path) -> Path:
     """Digitize Becker's MARINE logo at 80 mm left chest; save the six letters."""
     from digitizer_core.pipeline import digitize
     t = time.time()
-    cfg = PipelineConfig(target_width_mm=BECKER_WIDTH_MM, garment_id=BECKER_GARMENT, **BECKER_ARMS[arm])
+    cfg = PipelineConfig(target_width_mm=BECKER_WIDTH_MM, garment_id=BECKER_GARMENT, **BECKER_ARMS[arm],
+                         **PRE_TRUE_SIZE)
     _result, plan = digitize(ROOT / "testdata" / BECKER_FILE, cfg)
     runs = _runs_of(plan, set(BECKER_SHAPES))
     seen = {r["shape_id"] for r in runs}
