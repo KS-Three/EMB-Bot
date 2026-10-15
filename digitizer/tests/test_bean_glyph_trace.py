@@ -32,7 +32,7 @@ def _cfg() -> PipelineConfig:
     return PipelineConfig(small_text_true_size=True)
 
 
-def _run(stray: bool):
+def _run(stray: bool, chord: bool = False):
     cfg = _cfg()
     runs, report = bl.bean_letter([L_SPINE], "L", entry=None, trim_at_mm=3.0,
                                   stitch_mm=cfg.bean_letter_stitch_mm, serif_mm=cfg.bean_letter_serif_mm,
@@ -45,6 +45,10 @@ def _run(stray: bool):
         # a neighbour's run that sews straight up the U's slot
         block_runs.append(stitches.StitchRun(points=[(0.5, 0.5), (0.5, 1.2)], kind=stitches.RUN,
                                              jump=True, trim=False, shape_id="N"))
+    if chord:
+        # a neighbour's run that closes the slot's mouth: a ring of thread round a false counter
+        block_runs.append(stitches.StitchRun(points=[(0.125, 0.45), (0.875, 0.45)], kind=stitches.RUN,
+                                             jump=True, trim=False, shape_id="N"))
     stitches.apply_ties(block_runs)
     plan = stitches.StitchPlan(
         blocks=[stitches.StitchBlock(thread_index=0, thread_number="1", rgb=(20, 20, 20), runs=block_runs)],
@@ -56,11 +60,11 @@ def _run(stray: bool):
             "bean": bean, "skel": {}}
 
 
-def _trace(stray: bool):
-    run = _run(stray)
+def _trace(stray: bool, chord: bool = False, ocr: bool = False):
+    run = _run(stray, chord)
     ev = bgt.build_events(run)
     glyphs = [L_INK, NB_INK]
-    tr = bgt.trace_glyph(run, "est", 0, glyphs, ev, {0: ["L"], 1: ["N"]}, None)
+    tr = bgt.trace_glyph(run, "est", 0, glyphs, ev, {0: ["L"], 1: ["N"]}, None, ocr)
     return run, ev, glyphs, tr
 
 
@@ -115,6 +119,16 @@ def test_a_strangers_run_across_the_bay_is_named_and_fills_it():
     assert {r["shape"] for r in off} == {"N"}
 
 
+def test_a_run_that_closes_the_slot_makes_a_spurious_thread_hole_and_names_the_run():
+    _run_, _ev, _g, clean = _trace(stray=False)
+    assert not [h for h in clean["thread_holes"] if not h["source_counter"]]
+    _run_, _ev, _g, tr = _trace(stray=False, chord=True)
+    spurious = [h for h in tr["thread_holes"] if not h["source_counter"]]
+    assert spurious, tr["thread_holes"]
+    steps = {b["label"] for h in spurious for b in h["bounded_by"]}
+    assert any(bgt.L_FOREIGN in s for s in steps), steps
+
+
 def test_the_gap_strip_is_measured_between_the_two_letters():
     _run_, _ev, _g, tr = _trace(stray=False)
     (gap,) = tr["gaps"]
@@ -155,3 +169,13 @@ def test_main_lists_cells_in_help(capsys):
         bgt.main(["--help"])
     assert e.value.code == 0
     assert "hat81" in capsys.readouterr().out
+
+
+def test_ocr_reads_gives_one_read_per_mask_when_tesseract_is_present():
+    from tools import glyph_legibility as gl
+    if not gl.tesseract_available():
+        pytest.skip("no tesseract binary")
+    _run_, _ev, _g, tr = _trace(stray=False, ocr=True)
+    oc = tr["ocr_reads"]
+    assert {"source", "own thread", "all thread", "own thread, half width"} <= set(oc)
+    assert all("char" in oc[k] for k in ("source", "own thread"))

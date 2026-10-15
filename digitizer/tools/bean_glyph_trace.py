@@ -85,12 +85,13 @@ DEFAULT_GLYPHS = {
 WORD_TEXT = {"est": "EST", "1895": "1895", "the": "THE", "tagline": "EAT|STAY|PLAY"}
 
 RASTER_PPM = 60.0          # px/mm of the coverage rasters
-RENDER_PPM = 130.0         # px/mm of the zoomed renders
+RENDER_PPM = 110.0         # px/mm of the zoomed renders
 ZONE_MM = 1.0              # an event within this of a glyph is "in its zone"
 TOL_MM = 0.05              # a needle point / thread this far off the ink is "outside"
 BAY_CLOSE_MM = 0.45        # closing radius that defines a bay of the source glyph
 MIN_BAY_MM2 = 0.01         # a bay smaller than this is the contour's roughness
 OPEN_SHARE = 0.5           # #905's rule: a bay or counter this bare is open
+BRIDGE_GAP_MM = 0.15        # a bare gap this narrow between two threads is no slit
 SAMPLE_MM = 0.02           # step along a thread segment when measuring excursions
 
 # Step labels (the construction step that put a needle point or segment there).
@@ -99,7 +100,10 @@ L_CORNER = "bean leg at a #946 corner station"
 L_TIE = "lock stitch (apply_ties)"
 L_HOP = "sewn travel hop between runs"
 L_OTHER = "needle point nothing recorded"
-L_FOREIGN = " (a neighbour's run)"
+L_FOREIGN = " (a neighbour letter's run)"
+L_NONLETTER = " (a shape that is no letter of the word)"
+COMP_TOL_MM = 0.5          # the instrument's push-compensation tolerance (glyph_read.COMP_TOL_MM)
+OCR_P = 20.0               # px/mm of the OCR masks (glyph_legibility works on a 20 px/mm grid)
 
 
 def _stitches():
@@ -108,6 +112,7 @@ def _stitches():
 
 
 # --- digitizing: the cell, with the tier functions spied ---------------------------
+
 
 @contextlib.contextmanager
 def spy_tiers(bean: dict, skel: dict):
@@ -168,6 +173,7 @@ def load_run(cell: str, arm: str, out: Path, reuse: bool) -> dict:
 
 
 # --- geometry helpers ---------------------------------------------------------------
+
 
 def dist_to(glyph, xy):
     """Distance (mm) from each of the points `xy` (N x 2) to the ink polygon
@@ -258,6 +264,7 @@ def bays_of(glyph, box, ppm=RASTER_PPM, close_mm=BAY_CLOSE_MM):
 
 # --- the thread, event by event ------------------------------------------------------
 
+
 def _tie_counts(pts: list) -> tuple[int, int]:
     """(leading, trailing) point counts of `apply_ties`' folded-in lock stitch:
     a bounce between exactly two coordinates (`stitches.strip_ties`' own
@@ -311,7 +318,7 @@ def build_events(run: dict) -> dict:
     stations = {sid: recorded_points(calls) for sid, calls in run["bean"].items()}
     pts_out, segs_out, runs_out = [], [], []
     ridx = -1
-    for b in plan.blocks:
+    for bi, b in enumerate(plan.blocks):
         prev = None                       # the needle's last position in this block, None after a break
         white = min(b.rgb) >= ft.WHITE_MIN
         for r in b.runs:
@@ -320,7 +327,14 @@ def build_events(run: dict) -> dict:
                 continue
             pts = [tuple(p) for p in r.points]
             lead, tail = _tie_counts(pts) if r.kind != st.TIE else (len(pts), 0)
-            rec = {"run": ridx, "shape": r.shape_id, "kind": r.kind, "jump": bool(r.jump),
+            rec_jump = None
+            if r.shape_id in run["bean"] and lead < len(pts):
+                for c in run["bean"][r.shape_id]:
+                    for rr in c["runs"]:
+                        if rr["points"] and math.dist(rr["points"][0], pts[lead]) < 1e-6:
+                            rec_jump = bool(rr["jump"])
+            rec = {"run": ridx, "block": bi, "recorded_jump": rec_jump,
+                   "shape": r.shape_id, "kind": r.kind, "jump": bool(r.jump),
                    "trim": bool(r.trim), "n": len(pts), "lead_tie": lead, "tail_tie": tail,
                    "white": white, "first": pts[0], "last": pts[-1],
                    "lead_leg": math.dist(pts[0], pts[1]) if lead and len(pts) > 1 else None,
@@ -366,6 +380,7 @@ def build_events(run: dict) -> dict:
 
 # --- one glyph ------------------------------------------------------------------------
 
+
 def spine_table(spines: list, cfg) -> list[dict]:
     """The source skeleton the bean tier was handed, spine by spine, with what
     `bean_letter` does to each before sewing (re-derived from its own helpers;
@@ -401,8 +416,80 @@ def check_spines(table: list, calls: list) -> bool:
         t["sews"] for t in table)
 
 
-def trace_glyph(run: dict, word: str, idx: int, glyphs: list, ev: dict, owners: dict, gl_rows: list | None) -> dict:
-    """Everything about one source glyph. `ev`: `build_events`."""
+def thread_holes(glyph, glyphs, idx, box, all_thread, run_masks) -> list[dict]:
+    """Bare areas the thread ENCLOSES near this glyph, each tagged as a source
+    counter (its centroid lies in one of the glyph's counters) or SPURIOUS (a
+    false counter: thread closed a bay or a gap into a ring), with the runs
+    whose thread bounds it and the narrowest gap between them. This is the
+    instrument's Euler read made attributable: `glyph_legibility` says a hole
+    appeared, not whose thread closed it.
+
+    Two readings. STRICT: the thread mask as drawn. BRIDGED: every bare gap
+    under `BRIDGE_GAP_MM` closed first. A 0.4 mm filament leaves no visible
+    slit that narrow on cloth, and the instrument's 20 px/mm render closes it
+    or not by a pixel's rounding (THE's E at 92.5 mm: the top arm's serif tick
+    ends 0.12 mm short of the middle arm; the instrument's render touches, a
+    60 px/mm one does not). A hole that only exists bridged says `bridged`."""
+    import cv2
+    import numpy as np
+    from scipy import ndimage as ndi
+    from shapely.geometry import Point, Polygon
+    r_b = max(1, int(round(BRIDGE_GAP_MM / 2.0 * RASTER_PPM)))
+    bridged = cv2.dilate(all_thread, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r_b + 1, 2 * r_b + 1)))
+    gx0, gy0, gx1, gy1 = glyph.bounds
+    counters = [Polygon(r) for r in glyph.interiors]
+    others = [g for j, g in enumerate(glyphs) if j != idx]
+    out = []
+    seen = []
+    for reading, mask in (("strict", all_thread), ("bridged", bridged)):
+        bare = (mask == 0).astype(np.uint8)
+        n, lab = cv2.connectedComponents(bare, connectivity=4)
+        edge = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]])).tolist())
+        for i in range(1, n):
+            if i in edge:
+                continue
+            m = lab == i
+            area = float(m.sum()) / RASTER_PPM ** 2
+            if area < 0.004:
+                continue
+            ys, xs = np.nonzero(m)
+            cx, cy = box[0] + xs.mean() / RASTER_PPM, box[1] + ys.mean() / RASTER_PPM
+            c = Point(cx, cy)
+            if not (gx0 - 0.1 <= cx <= gx1 + 0.1 and gy0 - 0.1 <= cy <= gy1 + 0.1):
+                continue
+            if any(g.contains(c) for g in others) or glyph.distance(c) > min([g.distance(c) for g in others] + [9.0]):
+                continue
+            if reading == "bridged" and any(math.dist((cx, cy), s) < 0.3 for s in seen):
+                continue                      # the same hole, already found strict
+            seen.append((cx, cy))
+            ring = cv2.dilate(m.astype(np.uint8), np.ones((2 * r_b + 5, 2 * r_b + 5), np.uint8)) > 0
+            touch = []
+            for rid, rm in run_masks.items():
+                k = int(((rm["mask"] > 0) & ring).sum())
+                if k:
+                    top = sorted(rm["labels"], key=lambda q: -rm["labels"][q])
+                touch.append({"run": rid, "shape": rm["shape"], "label": " + ".join(top[:2]), "touching_px": k})
+            touch.sort(key=lambda r: -r["touching_px"])
+            pinch = None
+            top = touch[:4]
+            for p_i in range(len(top)):
+                for q_i in range(p_i + 1, len(top)):
+                    ma, mb = run_masks[top[p_i]["run"]]["mask"] > 0, run_masks[top[q_i]["run"]]["mask"] > 0
+                    if ma.any() and mb.any() and not (ma & mb).any():
+                        d = float(ndi.distance_transform_edt(~mb)[ma].min()) / RASTER_PPM
+                        if pinch is None or d < pinch["gap_mm"]:
+                            pinch = {"runs": [top[p_i]["run"], top[q_i]["run"]], "gap_mm": round(d, 3)}
+            out.append({"source_counter": bool(any(cp.contains(c) for cp in counters)), "reading": reading,
+                        "mm2": round(area, 3), "centre_mm": [round(cx, 2), round(cy, 2)],
+                        "in_source_ink": bool(glyph.contains(c)), "bounded_by": touch[:5],
+                        "narrowest_gap_between_bounding_runs": pinch})
+    return out
+
+
+def trace_glyph(run: dict, word: str, idx: int, glyphs: list, ev: dict, owners: dict,
+                gl_read: tuple | None = None, ocr: bool = True) -> dict:
+    """Everything about one source glyph. `ev`: `build_events`; `gl_read`: `gl_read_word`."""
+    gl_rows, gl_dbg = gl_read if gl_read else (None, None)
     import cv2
     import numpy as np
     from shapely.geometry import Point
@@ -459,31 +546,60 @@ def trace_glyph(run: dict, word: str, idx: int, glyphs: list, ev: dict, owners: 
                 spines.append(row)
     sewn_report = {sid: run["bean"][sid][-1]["report"] for sid in sorted(mine) if sid in run["bean"]}
 
-    # events in this glyph's zone
+    # events in this glyph's zone. A needle point is OFF THE INK when it is
+    # more than TOL_MM from this glyph's ink (its own runs) or, for a run that
+    # is not this glyph's, from every glyph of the word and nearer this glyph
+    # than any other: a neighbour's thread inside the neighbour's own ink is
+    # the neighbour's business, not this glyph's.
+    from shapely.geometry import LineString
+    from shapely.ops import unary_union
+    letter_ids = {sid for ids in owners.values() for sid in ids}
+    word_ink = unary_union(glyphs)
+    others = unary_union([g for j, g in enumerate(glyphs) if j != idx]) if len(glyphs) > 1 else None
+
+    def suffix(shape: str) -> str:
+        return "" if shape in mine else (L_FOREIGN if shape in letter_ids else L_NONLETTER)
+
+    def measure(xy):
+        d_own = dist_to(glyph, xy)
+        d_all = dist_to(word_ink, xy)
+        d_oth = dist_to(others, xy) if others is not None else np.full(len(xy), np.inf)
+        return d_own, d_all, d_oth
+
     pt_rows, outside_pts = [], []
     zx0, zy0, zx1, zy1 = zone.bounds
     cand = [e for e in ev["points"] if zx0 <= e["x"] <= zx1 and zy0 <= e["y"] <= zy1]
     if cand:
         xy = np.array([[e["x"], e["y"]] for e in cand])
-        d_own = dist_to(glyph, xy)
-        d_nb = [dist_to(g, xy) if j != idx else np.full(len(xy), np.inf) for j, g in enumerate(glyphs)]
-        in_zone = np.array([zone.covers(Point(*q)) for q in xy])
+        d_own, d_all, d_oth = measure(xy)
         for k, e in enumerate(cand):
-            if not in_zone[k]:
+            if not zone.covers(Point(*xy[k])):
                 continue
-            nb = int(np.argmin([d[k] for d in d_nb]))
-            row = {**e, "d_mm": float(d_own[k]), "owner": e["shape"] in mine,
-                   "in_neighbour": labels[nb] if d_nb[nb][k] <= 1e-9 else None}
+            owner = e["shape"] in mine
+            off = bool(d_own[k] > TOL_MM) if owner else bool(d_all[k] > TOL_MM and d_own[k] <= d_oth[k])
+            row = {**e, "label": e["label"] + suffix(e["shape"]), "d_mm": float(d_own[k] if owner else d_all[k]),
+                   "owner": owner, "off_ink": off,
+                   "on_neighbour_ink": bool(owner and d_own[k] > TOL_MM and d_oth[k] <= 1e-9)}
             pt_rows.append(row)
-            if d_own[k] > TOL_MM:
+            if off:
                 outside_pts.append(row)
     owner_pts = [r for r in pt_rows if r["owner"]]
     non_tie = [r for r in owner_pts if r["label"] != L_TIE]
     needle_bbox = ([min(r["x"] for r in non_tie), min(r["y"] for r in non_tie),
                     max(r["x"] for r in non_tie), max(r["y"] for r in non_tie)] if non_tie else None)
+    # the stations of the glyph's own runs in sew order: one row per distinct position
+    stations: dict = {}
+    for r in owner_pts:
+        key = (round(r["x"], 4), round(r["y"], 4))
+        s_ = stations.setdefault(key, {"x": round(r["x"], 3), "y": round(r["y"], 3), "d_mm": round(r["d_mm"], 3),
+                                       "labels": [], "visits": 0, "first_run": r["run"]})
+        s_["visits"] += 1
+        if r["label"] not in s_["labels"]:
+            s_["labels"].append(r["label"])
+    station_rows = [{"n": i + 1, **v} for i, v in enumerate(stations.values())]
 
-    # segments in this glyph's zone: excursions off the ink
-    seg_rows, thread_masks = [], {}
+    # segments in this glyph's zone: excursions off the ink, and the thread itself, per step
+    seg_rows, thread_masks, run_masks = [], {}, {}
     W = int(math.ceil((box[2] - box[0]) * RASTER_PPM)) + 1
     H = int(math.ceil((box[3] - box[1]) * RASTER_PPM)) + 1
     tpx = max(1, int(round(thread * RASTER_PPM)))
@@ -494,25 +610,70 @@ def trace_glyph(run: dict, word: str, idx: int, glyphs: list, ev: dict, owners: 
         a, b = s["a"], s["b"]
         if max(a[0], b[0]) < zx0 or min(a[0], b[0]) > zx1 or max(a[1], b[1]) < zy0 or min(a[1], b[1]) > zy1:
             continue
+        if not zone.intersects(LineString([a, b])):
+            continue
         L = math.dist(a, b)
         n = max(2, int(math.ceil(L / SAMPLE_MM)) + 1)
         t = np.linspace(0.0, 1.0, n)
         xy = np.stack([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], 1)
-        if not any(zone.covers(Point(*q)) for q in xy[::max(1, n // 6)]) and not zone.intersects(
-                __import__("shapely.geometry", fromlist=["LineString"]).LineString([a, b])):
-            continue
-        d = dist_to(glyph, xy)
+        d_own, d_all, d_oth = measure(xy)
         owner = s["shape"] in mine
-        lab = s["label"] + ("" if owner else L_FOREIGN)
+        lab = s["label"] + suffix(s["shape"])
         m = thread_masks.setdefault(lab, np.zeros((H, W), np.uint8))
         cv2.line(m, px(a), px(b), 1, tpx)
-        out = d > TOL_MM
+        rm = run_masks.setdefault(s["run"], {"labels": {}, "shape": s["shape"], "kind": s["kind"],
+                                             "mask": np.zeros((H, W), np.uint8)})
+        rm["labels"][lab] = rm["labels"].get(lab, 0) + 1
+        cv2.line(rm["mask"], px(a), px(b), 1, tpx)
+        if owner:
+            d, out = d_own, d_own > TOL_MM
+        else:
+            d, out = d_all, (d_all > TOL_MM) & (d_own <= d_oth)
         if out.any():
             seg_rows.append({"a": [round(a[0], 3), round(a[1], 3)], "b": [round(b[0], 3), round(b[1], 3)],
-                             "len_mm": round(L, 3), "max_off_mm": round(float(d.max()), 3),
+                             "len_mm": round(L, 3), "max_off_mm": round(float(d[out].max()), 3),
                              "len_off_mm": round(float(out.sum()) * L / (n - 1), 3),
                              "run": s["run"], "shape": s["shape"], "owner": owner,
                              "kind": s["kind"], "label": lab})
+
+    # what the instrument's zone (`glyph_read.read_glyphs`: pixels nearer this glyph than any
+    # other, within COMP_TOL_MM + 0.5 mm of it) holds, by whose thread it is
+    from scipy import ndimage as ndi
+    gm = _mask([glyph], box)
+    dg = ndi.distance_transform_edt(gm == 0) / RASTER_PPM
+    if others is not None:
+        om = _mask([g for j, g in enumerate(glyphs) if j != idx], box)
+        do = ndi.distance_transform_edt(om == 0) / RASTER_PPM if om.any() else np.full_like(dg, np.inf)
+    else:
+        do = np.full_like(dg, np.inf)
+    zmask = ((dg <= 1.0) | (_fill_mask(glyph, box) > 0)) & (dg <= do)
+    zone_thread = {}
+    for cls, test in (("own", lambda k: L_FOREIGN not in k and L_NONLETTER not in k),
+                      ("neighbour letters", lambda k: L_FOREIGN in k),
+                      ("non-letter shapes", lambda k: L_NONLETTER in k)):
+        m = np.zeros((H, W), np.uint8)
+        for k, tm in thread_masks.items():
+            if test(k):
+                m |= tm
+        inz = (m > 0) & zmask
+        zone_thread[cls] = {"mm2": round(float(inz.sum()) / RASTER_PPM ** 2, 3),
+                            "beyond_0.5mm_of_ink_mm2": round(float((inz & (dg > COMP_TOL_MM)).sum()) / RASTER_PPM ** 2, 3),
+                            "nearest_to_ink_mm": round(float(dg[m > 0].min()), 3) if (m > 0).any() else None}
+    nl_shapes = sorted({e["shape"] + ":" + e["kind"] for e in ev["points"]
+                        if e["shape"] not in letter_ids and zone.covers(Point(e["x"], e["y"]))})
+    zone_thread["non_letter_runs_in_zone"] = nl_shapes
+    by_id = {r.shape_id: r for r in result.regions}
+    zone_thread["non_letter_shapes"] = []
+    for sid in sorted({s_.split(":")[0] for s_ in nl_shapes}):
+        r = by_id.get(sid)
+        if r is None:
+            continue
+        zone_thread["non_letter_shapes"].append({
+            "shape_id": sid, "area_mm2": round(r.polygon.area, 2),
+            "bounds_mm": [round(v, 2) for v in r.polygon.bounds],
+            "polygon_to_glyph_mm": round(r.polygon.distance(glyph), 3),
+            "thread_rgb": list(ft._thread_rgb(r, plan)),
+            "tier": "+".join(sorted({e["kind"] for e in ev["runs"] if e["shape"] == sid and not e["white"]}))})
 
     # bays, counters, gaps: bare in the source, then covered by which step's thread
     all_thread = np.zeros((H, W), np.uint8)
@@ -528,6 +689,7 @@ def trace_glyph(run: dict, word: str, idx: int, glyphs: list, ev: dict, owners: 
         b["status"] = "open" if (area and 1.0 - cov / area >= OPEN_SHARE) else "FILLED"
         b["covered_by_step_mm2"] = {k: round(float((m & (tm > 0)).sum()) / RASTER_PPM ** 2, 3)
                                     for k, tm in thread_masks.items() if (m & (tm > 0)).any()}
+    holes = thread_holes(glyph, glyphs, idx, box, all_thread, run_masks)
     counters = []
     from shapely.geometry import Polygon
     for ring in glyph.interiors:
@@ -567,7 +729,7 @@ def trace_glyph(run: dict, word: str, idx: int, glyphs: list, ev: dict, owners: 
             a, b = s["a"], s["b"]
             if max(a[0], b[0]) < ob[0] or min(a[0], b[0]) > ob[2] or max(a[1], b[1]) < ob[1] or min(a[1], b[1]) > ob[3]:
                 continue
-            lab = s["label"] + ("" if s["shape"] in mine else L_FOREIGN)
+            lab = s["label"] + suffix(s["shape"])
             m_ = by_step.setdefault(lab, np.zeros((gH, gW), np.uint8))
             cv2.line(m_, (int(round((a[0] - ob[0]) * RASTER_PPM)), int(round((a[1] - ob[1]) * RASTER_PPM))),
                      (int(round((b[0] - ob[0]) * RASTER_PPM)), int(round((b[1] - ob[1]) * RASTER_PPM))), 1, tpx)
@@ -613,6 +775,27 @@ def trace_glyph(run: dict, word: str, idx: int, glyphs: list, ev: dict, owners: 
                 ties.append({"run": e["run"], "end": end, "at": [round(e[key][0], 3), round(e[key][1], 3)],
                              "leg_mm": round(leg, 3)})
                 tie_legs.append(round(leg, 3))
+    # the hops INTO this glyph's runs: what the bean tier booked (a jump) against what the
+    # plan sews (stage 7's link pass buries a jump under cover and lays thread instead)
+    hops = []
+    prev_rec = None
+    for e in ev["runs"]:
+        if e["white"]:
+            prev_rec = None
+            continue
+        if e["shape"] in mine and prev_rec is not None and prev_rec["block"] == e["block"] and not e["trim"]:
+            a_, b_ = prev_rec["last"], e["first"]
+            dm = math.dist(a_, b_)
+            if dm >= _stitches().SAME_POINT_MM:
+                nn = max(2, int(math.ceil(dm / SAMPLE_MM)) + 1)
+                tt = np.linspace(0.0, 1.0, nn)
+                dd = dist_to(glyph, np.stack([a_[0] + (b_[0] - a_[0]) * tt, a_[1] + (b_[1] - a_[1]) * tt], 1))
+                hops.append({"run": e["run"], "from_run": prev_rec["run"], "from_shape": prev_rec["shape"],
+                             "from_xy": [round(a_[0], 3), round(a_[1], 3)], "to_xy": [round(b_[0], 3), round(b_[1], 3)],
+                             "dist_mm": round(dm, 3), "bean_letter_booked_jump": e["recorded_jump"],
+                             "plan_jump": e["jump"], "thread_laid": not e["jump"],
+                             "max_off_own_ink_mm": round(float(dd.max()), 3)})
+        prev_rec = e
     # the three sizes
     src_b = [round(v, 3) for v in glyph.bounds]
     thread_b = None
@@ -622,8 +805,7 @@ def trace_glyph(run: dict, word: str, idx: int, glyphs: list, ev: dict, owners: 
                     round(needle_bbox[2] + h, 3), round(needle_bbox[3] + h, 3)]
     by_label: dict = {}
     for r in outside_pts:
-        k = r["label"] + ("" if r["owner"] else L_FOREIGN)
-        by_label[k] = by_label.get(k, 0) + 1
+        by_label[r["label"]] = by_label.get(r["label"], 0) + 1
     seg_by_label: dict = {}
     for s in seg_rows:
         a = seg_by_label.setdefault(s["label"], {"segments": 0, "len_off_mm": 0.0, "max_off_mm": 0.0})
@@ -645,28 +827,93 @@ def trace_glyph(run: dict, word: str, idx: int, glyphs: list, ev: dict, owners: 
         "points_outside_by_step": by_label,
         "segments_outside": sorted(seg_rows, key=lambda r: -r["max_off_mm"]),
         "segments_outside_by_step": seg_by_label,
-        "bays": bays, "counters": counters, "gaps": gaps,
-        "lock_stitches": ties, "lock_leg_mm": tie_legs,
+        "bays": bays, "counters": counters, "thread_holes": holes, "gaps": gaps,
+        "lock_stitches": ties, "lock_leg_mm": tie_legs, "hops": hops,
         "owner_runs": [e for e in ev["runs"] if e["shape"] in mine and not e["white"]],
+        "stations": station_rows, "zone_thread": zone_thread,
         "gl_row": gl_rows[idx] if gl_rows and len(gl_rows) > idx else None,
     }
+    out["ocr_reads"] = ocr_reads(run, glyphs, idx, ev, mine, letter_ids, thread,
+                                 gl_dbg[idx] if gl_dbg else None) if ocr else None
     return out
 
 
 # --- the instrument's own read of the glyph --------------------------------------------
 
-def gl_rows(run: dict, word: str, n_glyphs: int, ocr: bool = True) -> list | None:
-    """`glyph_legibility`'s per-glyph rows of `word`, left to right, or None
-    when its component count differs from ours (then no row is paired)."""
+
+def gl_read_word(run: dict, word: str, n_glyphs: int, ocr: bool = True):
+    """`glyph_legibility`'s read of `word`: (per-glyph rows left to right, the
+    per-glyph debug windows {"S", "T", ...}), or None when its component count
+    differs from ours (then no row is paired with a glyph)."""
     from tools import glyph_legibility as gl
-    words, _dbg, _reg = gl.read_case("fremont", run["design"], use_ocr=ocr, words=[word])
+    words, dbg, _reg = gl.read_case("fremont", run["design"], use_ocr=ocr, words=[word])
     if not words:
         return None
     rows = [{k: (round(v, 3) if isinstance(v, float) else v) for k, v in g.items()
              if k in ("legibility", "legibility_space", "strokes", "clean", "counters", "space",
                       "ocr_src", "ocr_sewn", "ocr_recovered", "ocr_readable_src")}
             for g in words[0].glyphs]
-    return rows if len(rows) == n_glyphs else None
+    glyph_dbg = dbg.get(word, {}).get("glyphs", [])
+    return (rows, glyph_dbg) if len(rows) == n_glyphs and len(glyph_dbg) == n_glyphs else None
+
+
+def ocr_reads(run: dict, glyphs: list, idx: int, ev: dict, mine: set, letter_ids: set,
+              thread: float, dbg: dict | None) -> dict:
+    """tesseract on the glyph alone (psm 10, no language model: the instrument's
+    own reader), on four masks, so a wrong read can be told from a wrong glyph:
+
+      source          the artwork's glyph;
+      instrument      the thread window `glyph_legibility` handed its reader
+                      (registered, shifted, and holding whatever thread of ANY
+                      shape lies in the glyph's zone);
+      own thread      only this glyph's own runs, drawn at the thread's width;
+      all thread      every run in the window, drawn the same way;
+      own thread, half width   the own thread at half the filament (a thread-physics control).
+
+    If the instrument and `all thread` read alike and `own thread` reads the
+    glyph, the wrong read is somebody else's thread, not this glyph's."""
+    import cv2
+    import numpy as np
+    from tools import glyph_legibility as gl
+    if not gl.tesseract_available():
+        return {"unavailable": True}
+    glyph = glyphs[idx]
+    gx0, gy0, gx1, gy1 = glyph.bounds
+    box = (gx0 - 1.0, gy0 - 1.0, gx1 + 1.0, gy1 + 1.0)
+    W = int(math.ceil((box[2] - box[0]) * OCR_P)) + 1
+    H = int(math.ceil((box[3] - box[1]) * OCR_P)) + 1
+    tpx = max(1, int(round(thread * OCR_P)))
+
+    def draw(pred, width=None):
+        m = np.zeros((H, W), np.uint8)
+        for s in ev["segments"]:
+            a, b = s["a"], s["b"]
+            if not pred(s) or max(a[0], b[0]) < box[0] or min(a[0], b[0]) > box[2] \
+                    or max(a[1], b[1]) < box[1] or min(a[1], b[1]) > box[3]:
+                continue
+            cv2.line(m, (int(round((a[0] - box[0]) * OCR_P)), int(round((a[1] - box[1]) * OCR_P))),
+                     (int(round((b[0] - box[0]) * OCR_P)), int(round((b[1] - box[1]) * OCR_P))), 1, width or tpx)
+        return m > 0
+    masks = {"source": _mask([glyph], box, OCR_P) > 0}
+    if dbg is not None:
+        masks["instrument"] = np.asarray(dbg["T"], bool)
+    masks["own thread"] = draw(lambda s: s["shape"] in mine)
+    masks["all thread"] = draw(lambda s: True)
+    masks["own thread, half width"] = draw(lambda s: s["shape"] in mine, max(1, tpx // 2))
+    out = {"_masks": masks}
+    for name, m in masks.items():
+        ch, conf = gl._ocr_char(m, OCR_P) if m.any() else ("", -1.0)
+        out[name] = {"char": ch, "conf": round(max(conf, 0.0), 1)}
+    return out
+
+
+def strip_private(tr: dict) -> dict:
+    """Drop the arrays and geometry the renderer needs, keep what is JSON."""
+    for k in [k for k in tr if k.startswith("_")]:
+        tr.pop(k)
+    if isinstance(tr.get("ocr_reads"), dict):
+        tr["ocr_reads"].pop("_masks", None)
+    return tr
 
 
 # --- the renders ------------------------------------------------------------------------
@@ -782,11 +1029,32 @@ def render_glyph(run: dict, glyphs: list, tr: dict, ev: dict, path: Path, ppm: f
     tl = np.zeros((H, W, 3), np.uint8)
     p3[thread_px & (lab == 0)] = (p3[thread_px & (lab == 0)] * 0.6 + np.array([150, 150, 150]) * 0.4).astype(np.uint8)
     outline(p3, 1)
+    # panel 4: what each OCR read saw
+    p4 = np.full((H, W, 3), 255, np.uint8)
+    oc = tr.get("ocr_reads") or {}
+    ms = oc.get("_masks") or {}
+    if ms:
+        cells = list(ms.items())
+        cw, ch_ = W // 2, H // 2
+        for n_, (name, m) in enumerate(cells[:4]):
+            ys_, xs_ = np.nonzero(m)
+            if not len(ys_):
+                continue
+            crop = m[max(0, ys_.min() - 4):ys_.max() + 5, max(0, xs_.min() - 4):xs_.max() + 5]
+            f_ = max(1, int(min((cw - 8) / crop.shape[1], (ch_ - 30) / crop.shape[0])))
+            big = cv2.resize((~crop).astype(np.uint8) * 255, None, fx=f_, fy=f_, interpolation=cv2.INTER_NEAREST)
+            ox, oy = (n_ % 2) * cw + 4, (n_ // 2) * ch_ + 4
+            p4[oy:oy + big.shape[0], ox:ox + big.shape[1]] = big[..., None]
+            cv2.rectangle(p4, (ox, oy), (ox + big.shape[1], oy + big.shape[0]), (160, 160, 160), 1)
+            txt = oc.get(name, {}).get("char", "?")
+            cv2.putText(p4, f"{name} -> {txt!r}", (ox, oy + big.shape[0] + 14),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 0, 160), 1, cv2.LINE_AA)
     head = 54
     panels = []
     for img, title in ((p1, "source ink + skeleton (red raw, blue after hook cut, green ends, yellow corners)"),
                        (p2, "thread, numbered stations, red X = needle point off the ink"),
-                       (p3, "bays: green bare, red covered by thread; grey = other thread")):
+                       (p3, "bays: green bare, red covered by thread; grey = other thread"),
+                       (p4, "what OCR read: source / instrument window / own thread only / all thread")):
         canvas = np.full((H + head, W, 3), 255, np.uint8)
         canvas[head:] = img
         cv2.putText(canvas, title[:74], (4, 14), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (0, 0, 0), 1, cv2.LINE_AA)
@@ -801,6 +1069,7 @@ def render_glyph(run: dict, glyphs: list, tr: dict, ev: dict, path: Path, ppm: f
 
 
 # --- the table --------------------------------------------------------------------------
+
 
 def _f(v, nd=2):
     return "-" if v is None else (f"{v:.{nd}f}" if isinstance(v, float) else str(v))
@@ -831,7 +1100,7 @@ def markdown(tr: dict) -> str:
                  f"off the ink by > {TOL_MM} mm: {len(tr['points_outside'])} {tr['points_outside_by_step']}")
     for r in tr["points_outside"][:12]:
         lines.append(f"    - ({r['x']:.2f}, {r['y']:.2f}) {r['d_mm']:.2f} mm off, run {r['run']} {r['shape']}, {r['label']}"
-                     f"{'' if r['owner'] else L_FOREIGN}{', inside ' + repr(r['in_neighbour']) + chr(39) + 's ink' if r['in_neighbour'] else ''}")
+                     f"{', on a neighbour glyph' if r.get('on_neighbour_ink') else ''}")
     lines.append(f"- thread segments leaving the ink: {len(tr['segments_outside'])} {tr['segments_outside_by_step']}")
     for s in tr["segments_outside"][:8]:
         lines.append(f"    - {s['a']} -> {s['b']}: {s['len_mm']} mm long, {s['len_off_mm']} mm of it off the ink, "
@@ -839,8 +1108,33 @@ def markdown(tr: dict) -> str:
     for b in tr["bays"]:
         lines.append(f"- bay {b['id']} ({b['where']}): {b['mm2']} mm2 in the source, covered {b['covered_mm2']} mm2, "
                      f"bare {_f(b['bare_share'])} -> {b['status']}; by step {b['covered_by_step_mm2']}")
+    for h in tr.get("thread_holes", []):
+        kind = "a source counter" if h["source_counter"] else "SPURIOUS (not a source counter)"
+        pin = h.get("narrowest_gap_between_bounding_runs")
+        lines.append(f"- thread hole ({h['reading']}) at ({h['centre_mm'][0]}, {h['centre_mm'][1]}): {h['mm2']} mm2, {kind}; "
+                     f"bounded by " + ", ".join(f"run {b['run']} {b['label']} {b['touching_px']}px" for b in h["bounded_by"])
+                     + (f"; narrowest gap between bounding runs {pin['gap_mm']} mm (runs {pin['runs']})" if pin else ""))
     for c in tr["counters"]:
         lines.append(f"- counter: {c['mm2']} mm2, bare {_f(c['bare_share'])} -> {c['status']}")
+    for s_ in tr["stations"]:
+        lines.append(f"    - station {s_['n']}: ({s_['x']:.2f}, {s_['y']:.2f}) {s_['d_mm']:.2f} mm from the ink, "
+                     f"visited {s_['visits']}x, {' / '.join(s_['labels'])}")
+    zt = tr["zone_thread"]
+    lines.append("- thread in the instrument's zone (nearer this glyph than any other, within 1 mm of its ink), "
+                 + "; ".join(f"{k}: {v['mm2']} mm2 ({v['beyond_0.5mm_of_ink_mm2']} beyond 0.5 mm of the ink)"
+                             for k, v in zt.items() if isinstance(v, dict))
+                 + f"; non-letter runs in the zone: {zt.get('non_letter_runs_in_zone') or 'none'}")
+    for nl in zt.get("non_letter_shapes", []):
+        lines.append(f"    - non-letter shape {nl['shape_id']}: {nl['tier']}, {nl['area_mm2']} mm2, bounds {nl['bounds_mm']}, "
+                     f"{nl['polygon_to_glyph_mm']} mm from the glyph, thread rgb {nl['thread_rgb']}")
+    oc = tr.get("ocr_reads")
+    if oc and not oc.get("unavailable"):
+        lines.append("- OCR (psm 10) on: " + ", ".join(f"{k} -> '{v['char']}' ({v['conf']})" for k, v in oc.items()
+                                                        if isinstance(v, dict) and "char" in v))
+    for hp in tr.get("hops", []):
+        lines.append(f"- hop into run {hp['run']} from run {hp['from_run']} ({hp['from_xy']} -> {hp['to_xy']}): {hp['dist_mm']} mm, "
+                     f"bean_letter booked jump={hp['bean_letter_booked_jump']}, plan jump={hp['plan_jump']} "
+                     f"({'THREAD LAID' if hp['thread_laid'] else 'no thread'}), up to {hp['max_off_own_ink_mm']} mm off the ink")
     for gp in tr["gaps"]:
         lines.append(f"- gap to {gp['side']} neighbour '{gp['to']}': source {gp['src_gap_mm']} mm, thread-to-thread "
                      f"{_f(gp['sewn_thread_gap_mm'], 3)} mm; strip {gp['gap_mm2']} mm2, covered {gp['covered_mm2']} mm2 "
@@ -864,6 +1158,7 @@ def summary_row(tr: dict) -> dict:
 
 # --- main -------------------------------------------------------------------------------
 
+
 def analyse(run: dict, specs: list[str], ocr: bool = True) -> list[dict]:
     from tools import small_lettering_skeleton as sls
     cache: dict = {}
@@ -874,10 +1169,10 @@ def analyse(run: dict, specs: list[str], ocr: bool = True) -> list[dict]:
         if word not in cache:
             glyphs = word_glyphs(run["gen"].p, word)
             owners = sls._owners(run["result"], run["plan"], glyphs)
-            cache[word] = (glyphs, owners, gl_rows(run, word, len(glyphs), ocr))
+            cache[word] = (glyphs, owners, gl_read_word(run, word, len(glyphs), ocr))
         glyphs, owners, rows = cache[word]
         idx = pick_glyph(sel, glyphs, word)
-        tr = trace_glyph(run, word, idx, glyphs, ev, owners, rows)
+        tr = trace_glyph(run, word, idx, glyphs, ev, owners, rows, ocr)
         tr["_glyphs"], tr["_ev"] = glyphs, ev
         out.append(tr)
     return out
@@ -923,12 +1218,11 @@ def main(argv=None) -> int:
             name = f"{tr['cell']}__{tr['arm']}__{tr['word']}_{tr['glyph'].strip('#')}.png".replace("|", "bar")
             render_glyph(run, tr["_glyphs"], tr, tr["_ev"], a.renders / name)
         rows.append(summary_row(tr))
-        tr.pop("_glyphs"), tr.pop("_ev")
+        strip_private(tr)
     (a.out / f"{a.cell}__{a.arm}__trace.json").write_text(json.dumps(
         {"cell": a.cell, "arm": a.arm, "overrides": run.get("overrides"), "stitches": st.stitch_count,
          "trims": st.trims, "glyphs": traces, "summary": rows}, indent=1, default=str))
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())
