@@ -1,0 +1,88 @@
+{
+ "design": "drone",
+ "lines": [
+  {
+   "cluster": "TC997a55a6",
+   "members": [
+    "Sbf8a37c3",
+    "S14057482",
+    "S3e7df60e",
+    "S84fc22b3"
+   ],
+   "n": 4,
+   "cap_mm": 5.734,
+   "min_counter_mm": 1.489,
+   "counters": 1,
+   "bean": 0,
+   "box_mm": [
+    -28.24,
+    22.52,
+    2.87,
+    28.3
+   ],
+   "changed": false,
+   "word": null,
+   "verdict": "unchanged"
+  },
+  {
+   "cluster": "TC9f5c4b13",
+   "members": [
+    "S0d4a3c8f",
+    "S5403dda0",
+    "S6cb7b0da",
+    "S33b68606",
+    "S6d6db17f",
+    "Sa05913cd",
+    "S940673c7",
+    "S9833f682"
+   ],
+   "n": 8,
+   "cap_mm": 2.809,
+   "min_counter_mm": 1.1,
+   "counters": 5,
+   "bean": 0,
+   "box_mm": [
+    -23.36,
+    30.85,
+    22.63,
+    33.65
+   ],
+   "changed": true,
+   "word": null,
+   "verdict": "changed (no reader)"
+  },
+  {
+   "cluster": "TCea7fc83f",
+   "members": [
+    "S89cc9fe3",
+    "S6dd674f6",
+    "S3c4af2e7",
+    "S8438f8fc",
+    "Sa34f3d79",
+    "S1e345617",
+    "S24beef6d",
+    "S0a096aed",
+    "S2af2043d"
+   ],
+   "n": 9,
+   "cap_mm": 7.639,
+   "min_counter_mm": 1.8,
+   "counters": 3,
+   "bean": 0,
+   "box_mm": [
+    -39.69,
+    13.06,
+    39.79,
+    21.38
+   ],
+   "changed": false,
+   "word": null,
+   "verdict": "unchanged"
+  }
+ ],
+ "secs": 518,
+ "stitches": [
+  19326,
+  19281
+ ]
+}

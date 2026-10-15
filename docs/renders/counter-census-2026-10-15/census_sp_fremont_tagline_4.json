@@ -1,0 +1,40 @@
+{
+ "design": "sp_fremont_tagline_4",
+ "lines": [
+  {
+   "cluster": "TCf48eb743",
+   "members": [
+    "S45118ffd",
+    "Scb8fb1ed",
+    "S76f2851f",
+    "Sf88148e1",
+    "Se0c91604",
+    "S040a4bdb",
+    "S30288d3f",
+    "Sc0ed589e",
+    "Sa851223d",
+    "Sf4971df3",
+    "Saade29c5"
+   ],
+   "n": 11,
+   "cap_mm": 4.002,
+   "min_counter_mm": 0.869,
+   "counters": 4,
+   "bean": 11,
+   "box_mm": [
+    -23.8,
+    -1.91,
+    23.75,
+    2.21
+   ],
+   "changed": true,
+   "word": null,
+   "verdict": "changed (no reader)"
+  }
+ ],
+ "secs": 65,
+ "stitches": [
+  944,
+  991
+ ]
+}

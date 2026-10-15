@@ -1,0 +1,48 @@
+{
+ "design": "gaulke",
+ "lines": [
+  {
+   "cluster": "TCf4fb9b6c",
+   "members": [
+    "S2d2a0936",
+    "Se79874d5",
+    "Sbbd3a3df",
+    "S0c920d78",
+    "S99ad308b",
+    "S2bc221f8",
+    "Sc60e570f",
+    "S3ba157e2",
+    "S97506b61",
+    "S2ffb8519",
+    "S1a7191f5",
+    "S44974c8e",
+    "S93841276",
+    "Sbe29f71a",
+    "Sa8175815",
+    "S410bde6c",
+    "Sd908e7f6",
+    "S4a2cf289",
+    "S63f04e76"
+   ],
+   "n": 19,
+   "cap_mm": 4.282,
+   "min_counter_mm": 0.77,
+   "counters": 6,
+   "bean": 0,
+   "box_mm": [
+    -39.93,
+    11.95,
+    39.89,
+    16.38
+   ],
+   "changed": false,
+   "word": null,
+   "verdict": "unchanged"
+  }
+ ],
+ "secs": 141,
+ "stitches": [
+  4893,
+  4893
+ ]
+}
