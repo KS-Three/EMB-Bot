@@ -122,3 +122,4 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Column width on resize](column-width-on-resize-2026-10-01.md) — ruling 12: drawn width scales, pull comp fixed; store `widthPx`, mm is a view; no clamp 0.67-11.8 mm; columns lane done 10-11
 - [Letterform priors lane](letterform-priors-lane-2026-10-06.md) — "something new" on lettering was yesterday's lane (outline-cut); second pick: refit low-res text to lines+arcs, px-capped. Check sibling lanes before proposing new
 - [Lane triage 10-11](lane-triage-2026-10-11.md) — SNAPSHOT: lane HEAD = merged PR head means landed (squash); 25 lanes removable (Kent's), `manual-columns` stranded at task 5; a `-b X origin/main` lane pushes to main
+- [True-size guard below 81 mm](small-text-true-size-guard-2026-10-15.md) — 65 mm loss = strays bug + ink-ground bug + per-glyph OCR noise; counter guard 0.45 not 0.5; measure on run_arm
