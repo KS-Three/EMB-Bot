@@ -1389,9 +1389,10 @@ def _judged_overlong(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: i
     over-long thread. -> None (leave it whole), ("cut", option) or
     ("fold", `_fold_refine`'s result).
     Measured (`tools/lowercase_angle.py`, folds/short/crossed): the 120 mm p
-    keeps OFF's cut of its stem top (0/0/4; the ring pair the stub refusal
-    sent it to sewed 3/2/9), the 80 mm p takes the ring pair (0/0/5 against
-    OFF's 0/0/14), the 80 mm m keeps OFF's cuts (0/0/0, against 0/0/4)."""
+    keeps OFF's cut of its stem top, a 2.4 W straight stub (0/0/4; the ring
+    pair the stub refusal sent it to sewed 3/2/9), and the 80 mm m keeps
+    OFF's cuts (0/0/0; the stub refusal's pick carried a column 75 deg round
+    its arch and sewed 0/0/4)."""
     def sewn(subs, lines):
         return judge(pc, [build_column(g, lines, W, pitch_mm, mitre_ends=mitre_ends)
                           for g in subs])
