@@ -405,7 +405,9 @@ def rows_B() -> tuple:
 
 def rows_P() -> tuple:
     names = " | ".join(f"{lbl} ({k})" for k, (lbl, _p) in enumerate(P_ARMS, start=1))
-    return ((f"P edge_cap_bean_pitch_mm: {names} teeth", tuple(f"P:{lbl}" for lbl, _p in P_ARMS)),)
+    keys = tuple(f"P:{lbl}" for lbl, _p in P_ARMS)
+    # two rows of two (the card's own 2 x 2): one row of four is 7,000 px wide at 60 px/mm
+    return ((f"P edge_cap_bean_pitch_mm: {names} teeth, arms 1-2", keys[:2]), ("P arms 3-4", keys[2:]))
 
 
 def panel(plan: StitchPlan, card: CardBE, out: Path, rows: tuple, ppm: float = 60.0) -> None:
