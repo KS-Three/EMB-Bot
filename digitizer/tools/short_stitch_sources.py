@@ -58,9 +58,15 @@ SHORT_BINS = ("lt_0p5", "0p5_1")
 # TURN is a stitch <= TURN_MAX_MM between two stitches >= TURN_FLANK_MM that
 # run in opposite directions (> TURN_REVERSE_DEG apart); a penetration is
 # tatami-like when TURN_MIN_COUNT turns lie within TURN_WINDOW stream entries.
+#
+# The flank and reversal were first 2 mm / 150 degrees and caught 2% of fill
+# (a tatami row's end stitch is a remainder, usually 1-2 mm); 1 mm / 120
+# degrees, chosen on logo_alpha, enthusiast_logo and logo_script_tires, catches
+# 99-100% of fill penetrations on all three. `report` prints the recall and
+# precision on the whole corpus, so the proxy is never quoted without its error.
 TURN_MAX_MM = 0.5
-TURN_FLANK_MM = 2.0
-TURN_REVERSE_DEG = 150.0
+TURN_FLANK_MM = 1.0
+TURN_REVERSE_DEG = 120.0
 TURN_WINDOW = 12
 TURN_MIN_COUNT = 2
 SINK_MODULES = ("dataclasses",)
@@ -560,6 +566,24 @@ def report(ours: list[dict], pro: list[dict]) -> str:
     for _, s, agg in sorted(table, key=lambda t: -t[0]):
         L.append(f"| {s} | {agg['short_iso']:,} | {agg['short_chain']:,} | {agg['short_edge']:,} | "
                  f"{agg['near_g5']:,} | {agg['near_g10']:,} | {agg['near_g20']:,} |")
+    L.append("")
+
+    funcs, fpens, all_pens = Counter(), Counter(), sum(r["penetrations"] for r in ours)
+    for r in ours:
+        for k, v in r["by_creator"].items():
+            fn = k.split(" @ ", 1)[1]
+            funcs[fn] += v["union"]
+            fpens[fn] += v["pens"]
+    L.append("### By the function that built the run (its locks and links folded back in)")
+    L.append("")
+    L.append("`concentration` is the function's share of all short-or-stacked penetrations over its share of "
+             "all penetrations: above 1 it emits more than its size would predict.")
+    L.append("")
+    L.append("| function | short or stacked | share of short/stacked | share of penetrations | concentration |")
+    L.append("|---|---|---|---|---|")
+    for fn, v in funcs.most_common(8):
+        a, b = v / tot_union, fpens[fn] / all_pens
+        L.append(f"| {fn} | {v:,} | {100 * a:.1f}% | {100 * b:.1f}% | {a / b:.2f} |")
     L.append("")
 
     creators = Counter()

@@ -253,8 +253,8 @@ def test_the_report_renders_every_table():
     ours = [{"design": f"d{i}", **sss.tally(stream, prov)} for i in range(3)]
     pro = [{"design": f"p{i}", "cluster": f"c{i % 2}", **sss.tally(stream)} for i in range(4)]
     text = sss.report(ours, pro)
-    for head in ("Pooled rate per 1000", "Source-agnostic split", "By source", "Top creators",
-                 "Stacked: arrival source"):
+    for head in ("Pooled rate per 1000", "Source-agnostic split", "Tatami-like stretches", "By source",
+                 "By the function that built the run", "Top creators", "Stacked: arrival source"):
         assert head in text
     assert "| satin |" in text
 
