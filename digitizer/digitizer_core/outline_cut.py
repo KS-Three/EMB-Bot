@@ -65,6 +65,11 @@ OPENER_KEEP = 8      # ring-opening rays tried in pairs, shortest first
 # width carries a stroke round a corner (the u's bowl down into its spur
 # fans 87 deg; a bowl turns 30-55). Candidate.
 TURN_MAX_DEG = 60.0
+# `fold_cuts`: a zigzag leg under this share of its column's median leg is
+# SHORT -- the sewn reading's own line (`tools/lowercase_angle.py`
+# SHORT_FRAC). Ranks the fold look's candidates only, after every rule
+# above. Candidate.
+SHORT_LEG_FRAC = 0.5
 
 
 def _unit(v):
@@ -1119,6 +1124,22 @@ def _max_turn(col: Column, W: float) -> float:
     return most
 
 
+def _short_legs(col: Column) -> int:
+    """`fold_cuts`: how many legs of the column's zigzag (A1 B1 A2 B2 ...,
+    the path both engines lay through its stations) are under SHORT_LEG_FRAC
+    of its median leg. Across a stroke every leg is about a width; a column
+    closing onto its cut along the edge of the stroke it butts shrinks its
+    last crosses to a knot of short ones -- the 120 mm b's bowl ending on
+    its stem (2 legs of 0.24 and 0.43 mm against a 0.93 mm median), what
+    `tools/lowercase_angle.py`'s `junction_knots` reads as SHORT."""
+    pts = [p for a, b in col.stations for p in (a, b)]
+    L = np.array([math.dist(pts[i], pts[i + 1]) for i in range(len(pts) - 1)])
+    real = L > 0.05
+    if not real.any():
+        return 0
+    return int((L[real] < SHORT_LEG_FRAC * float(np.median(L[real]))).sum())
+
+
 def _ring_opener(pc: Polygon, cut) -> bool:
     """A cut from a ring piece's outside to its counter: alone it leaves
     the piece whole (an a's or a b's bowl still wraps its counter), two of
@@ -1171,7 +1192,9 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
     TURN_MAX_DEG), then the fewest end crosses past FOLD_DEG (a column
     closing onto its cut at a slant), then the most sewn as STRAIGHT columns (a stem
     whole, the bowl butting it: the b's and g's stems, which a split bowl
-    otherwise keeps half of), then the least turn; it must take the folds to
+    otherwise keeps half of), then the fewest SHORT zigzag legs
+    (`_short_legs`: a bowl closing along the edge of the stem it butts, the
+    120 mm b), then the least turn; it must take the folds to
     REFINE_GAIN of the piece's. -> (cuts, [(piece, lines, new cuts)]) to
     take, or None."""
     col0 = build_column(pc, cut_lines, W, pitch_mm)
@@ -1238,7 +1261,8 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
         turn = max(_max_turn(c, W) for c in cols)
         score = (sum(_folded(c) for c in cols), len(cols), turn > TURN_MAX_DEG,
                  sum(_folded(c, ends=True) for c in cols),
-                 -sum(len(c.stations) for c in cols if c.kind == "straight"), turn)
+                 -sum(len(c.stations) for c in cols if c.kind == "straight"),
+                 sum(_short_legs(c) for c in cols), turn)
         if best is None or score < best[0]:
             best = (score, cand, final)
     if best is None or best[0][0] > REFINE_GAIN * f0:
