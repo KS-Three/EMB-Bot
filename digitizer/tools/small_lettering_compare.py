@@ -102,6 +102,10 @@ ARMS = {
     # cfg.small_text_true_size: the four true-size values behind one switch,
     # bean stroke 0.5 (Kent 2026-10-14: THE as a centre line is fine).
     "switch": ({"small_text_true_size": True}, "small_text_true_size ON (bean 0.5)"),
+    # + cfg.small_text_keep_stray_lines: a line the tagger merged into
+    # another line's cluster keeps its tags (2026-10-14, Fremont's 65 mm THE).
+    "keep": ({"small_text_true_size": True, "small_text_keep_stray_lines": True},
+             "small_text_true_size ON + keep stray lines"),
 }
 ARM_ORDER = list(ARMS)
 
@@ -867,8 +871,9 @@ def main(argv=None) -> int:
         ap.error("--out is required")
     if a.corpus:
         design, arm = a.corpus
-        if design not in corpus_designs() or arm not in CORPUS_ARMS:
-            raise SystemExit(f"--corpus DESIGN in {list(corpus_designs())}, ARM in {CORPUS_ARMS}")
+        # Any arm of ARMS may be run; the corpus TABLE reads CORPUS_ARMS.
+        if design not in corpus_designs() or arm not in ARMS:
+            raise SystemExit(f"--corpus DESIGN in {list(corpus_designs())}, ARM in {ARM_ORDER}")
         corpus_cell(design, arm, a.out, a.renders)
     if a.corpus_sheet:
         print(corpus_sheet(a.corpus_sheet, a.out, a.renders or a.out / "renders"))

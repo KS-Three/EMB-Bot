@@ -435,14 +435,23 @@ def _fill_old_holes(regions: list[Region], ids: set[int], old_union) -> None:
 _CLUSTER_TAGS = ("text_candidate", "text_cluster_id", "text_cluster_stroke_mm", "text_cluster_all_rescued")
 
 
-def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float) -> list[dict]:
+def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
+                       keep_stray_lines: bool = False) -> list[dict]:
     """The true-size half of this module (`cfg.small_text_restore_mm`): no
     scale, no move. For every line of lettering under `cap_mm`, ADOPT the
     untagged letters of the line into its text cluster and RETRACE every
     letter from the source raster, so each keeps the counters stage 4
     dropped. A lettering tier that reads cluster members -- bean letters
     sews the centreline of a member's source ink -- then sees the whole
-    line, the 8 included. -> one report row per cluster considered."""
+    line, the 8 included. -> one report row per cluster considered.
+
+    `keep_stray_lines` (`cfg.small_text_keep_stray_lines`): strays that are
+    themselves a line of lettering (`_core` finds three or more of one
+    thread, one height, one baseline) keep their tags as a cluster of their
+    own, and that cluster is considered in turn. At 65 mm the tagger puts
+    Fremont's black THE in the tan date's cluster; stripped as strays, its
+    three letters lost their lettering treatment, traced 1.8x fatter and the
+    E closed (2026-10-14). False: every stray stripped, as before."""
     report: list[dict] = []
     if not cap_mm or cap_mm <= 0 or not regions:
         return report
@@ -452,7 +461,11 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float) -> list
         if cid:
             clusters.setdefault(cid, []).append(r)
     claimed: set[int] = set()
-    for cid in sorted(clusters):
+    order = sorted(clusters)
+    at = 0
+    while at < len(order):
+        cid = order[at]
+        at += 1
         row = {"cluster": cid, "members": len(clusters[cid])}
         report.append(row)
         try:
@@ -489,10 +502,25 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float) -> list
             # They sew as the ordinary shapes they are.
             line_ids = {id(r) for r in group}
             strays = [r for r in clusters[cid] if id(r) not in line_ids]
+            kept = _core(strays) if keep_stray_lines else []
+            kept = kept if len(kept) >= 3 else []
+            kept_ids = {id(r) for r in kept}
             for r in strays:
+                if id(r) in kept_ids:
+                    continue
                 for k in _CLUSTER_TAGS:
                     r.meta.pop(k, None)
                 r.meta["small_text_stray"] = True
+            if kept:
+                # Another line that shared the tagger's cluster: its own
+                # cluster now, considered like any other.
+                new_cid = f"{cid}.line{at}"
+                for r in kept:
+                    r.meta["text_cluster_id"] = new_cid
+                    r.meta["small_text_stray_line"] = True
+                clusters[new_cid] = kept
+                order.append(new_cid)
+                row["stray_line"] = new_cid
             row.update(adopted=len(group) - len(members), retraced=len(traced),
                        strays=len(strays))
         except Exception as exc:  # fail open
