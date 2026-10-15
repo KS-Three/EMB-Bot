@@ -1,0 +1,36 @@
+{
+ "design": "sp_synthetic_4",
+ "lines": [
+  {
+   "cluster": "TC2787fa6e",
+   "members": [
+    "Sd7358727",
+    "Sf8e0bee9",
+    "S9b4d2aca",
+    "S8008d95a",
+    "Se98cd778",
+    "S061c6481",
+    "S2ea0ad64"
+   ],
+   "n": 7,
+   "cap_mm": 4.008,
+   "min_counter_mm": 0.65,
+   "counters": 10,
+   "bean": 0,
+   "box_mm": [
+    -14.01,
+    -2.08,
+    14.04,
+    2.04
+   ],
+   "changed": false,
+   "word": null,
+   "verdict": "unchanged"
+  }
+ ],
+ "secs": 72,
+ "stitches": [
+  547,
+  547
+ ]
+}

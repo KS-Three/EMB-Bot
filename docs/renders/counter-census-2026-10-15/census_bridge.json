@@ -1,0 +1,32 @@
+{
+ "design": "bridge",
+ "lines": [
+  {
+   "cluster": "TCa18d21db",
+   "members": [
+    "Sf6fe55e0",
+    "S3963a893",
+    "S2953082f"
+   ],
+   "n": 3,
+   "cap_mm": 4.665,
+   "min_counter_mm": null,
+   "counters": 0,
+   "bean": 0,
+   "box_mm": [
+    -8.01,
+    11.14,
+    15.43,
+    20.24
+   ],
+   "changed": false,
+   "word": null,
+   "verdict": "unchanged"
+  }
+ ],
+ "secs": 275,
+ "stitches": [
+  18923,
+  18923
+ ]
+}

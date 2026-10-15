@@ -1,0 +1,72 @@
+{
+ "design": "enthusiast",
+ "lines": [
+  {
+   "cluster": "TC4afb95ba",
+   "members": [
+    "S7d55ed5c",
+    "Se00145c9",
+    "S90fd1f2c",
+    "S6959709e",
+    "Sd1c37da7",
+    "S71dd9d07",
+    "Scd87e08f",
+    "S814de9bb",
+    "S7014db84",
+    "Sa9b7eef9"
+   ],
+   "n": 10,
+   "cap_mm": 6.565,
+   "min_counter_mm": 1.05,
+   "counters": 1,
+   "bean": 0,
+   "box_mm": [
+    -23.9,
+    -4.05,
+    39.97,
+    2.76
+   ],
+   "changed": true,
+   "word": null,
+   "verdict": "changed (no reader)"
+  },
+  {
+   "cluster": "TC66337f3f",
+   "members": [
+    "S72668010",
+    "Sc07b43a1",
+    "S5cfbaa1f",
+    "Se2c735fa",
+    "S5345169d",
+    "S988eb60c",
+    "Sb06f9271",
+    "Sacc60621",
+    "S0a7a203e",
+    "S67188f24",
+    "S73040f57",
+    "Sdc28a8b8",
+    "S75ba8c4e",
+    "S6b648736"
+   ],
+   "n": 14,
+   "cap_mm": 1.642,
+   "min_counter_mm": 0.6,
+   "counters": 3,
+   "bean": 14,
+   "box_mm": [
+    -23.87,
+    3.84,
+    8.03,
+    5.63
+   ],
+   "changed": true,
+   "word": null,
+   "verdict": "changed (no reader)"
+  }
+ ],
+ "secs": 62,
+ "stitches": [
+  2447,
+  2408
+ ]
+}
