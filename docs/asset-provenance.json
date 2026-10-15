@@ -850,6 +850,12 @@
    "basis": "PR body of claude/preflight-glyph-metric; source fixture cleared by Kent 2026-10-08 (its own entry above)"
   },
   {
+   "prefix": "docs/renders/small-letter-ties/",
+   "status": "derived-render",
+   "source": "Thread renders (digitizer_core.stitchviz) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp at 81 and 92.5 mm, Hat, small_text_true_size ON, with cfg.small_letter_ties off and on, lock-stitch legs drawn over them by digitizer/tools/small_letter_ties.py; per-cell JSON beside them; no artwork pixels, no new client art",
+   "basis": "PR body of claude/small-letter-ties; source fixture cleared by Kent 2026-10-08 (its own entry above)"
+  },
+  {
    "prefix": "docs/renders/fremont-8-counter/",
    "status": "derived-render",
    "source": "Thread render (digitizer_core.stitchviz) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp at 81 mm, Hat (tools/bean_counter_hold.py --sheets), the source glyphs' outlines drawn over it in red; no artwork pixels, no new client art",

@@ -1002,7 +1002,8 @@ def _hoist_same_thread(blocks: list[StitchBlock], trim_at: float,
 
 
 def _shade_blocks(ordered: list[StitchRun], base_thread: int, chart,
-                  trim_at: float, tie: bool = True) -> list[StitchBlock]:
+                  trim_at: float, tie: bool = True,
+                  **tie_kw) -> list[StitchBlock]:
     """One group's finished, chained run list -> one StitchBlock per shade,
     dark to light.
 
@@ -1071,7 +1072,8 @@ def _shade_blocks(ordered: list[StitchRun], base_thread: int, chart,
         # same-thread blocks first — `apply_ties` is not idempotent, so it has
         # to run once, on the final block list.
         if tie:
-            _apply_ties(shade_runs)
+            # `tie_kw`: `cfg.small_letter_ties`' shape ids, or nothing.
+            _apply_ties(shade_runs, **tie_kw)
         thread = chart[key]
         out.append(
             StitchBlock(
@@ -2336,6 +2338,11 @@ def sequence(
     cap_sewn: list[PlannedRegion] = []
     merge_same_thread = bool(cfg.merge_adjacent_same_thread)
     hoist_same_thread = max(0.0, float(cfg.hoist_same_thread_margin_mm))
+    # `cfg.small_letter_ties` (default OFF): the shapes sewn below as bean
+    # letters or skeleton runs, whose runs `stitches.apply_ties` locks along
+    # their own centreline. Off, no tie call gains an argument.
+    small_letter_ids: set[str] = set()
+    tie_kw = {"small_letters": small_letter_ids} if cfg.small_letter_ties else {}
     # Seam ownership's "still to sew" set — see `border_later`'s declaration
     # above for the predicate and its blind spots.
     for _p in planned:
@@ -2397,6 +2404,7 @@ def sequence(
                 if not report["empty"]:
                     report["bean_letter"] = 1
                     report["bean_word"] = word_key(p.region, cfg)
+                    small_letter_ids.add(p.shape_id)
                     return runs, report, False
             # The hairline tier (`cfg.hairline`, default OFF, 2026-10-12 —
             # `stage6_hairline`'s docstring): a stroke at or under 1.5 laid
@@ -2482,6 +2490,7 @@ def sequence(
                 if not report["empty"]:
                     report["as_run"] = 1
                     report[SMALL_LETTER_KEY] = 1
+                    small_letter_ids.add(p.shape_id)
                     return runs, report, False
             outline_tried = False
             # Small print (`cfg.small_print_floor`, default OFF) reaches the
@@ -3344,7 +3353,7 @@ def sequence(
         # `sequence()` job.
         group_blocks = _shade_blocks(ordered, group[0].region.thread_index,
                                      chart_for(cfg), trim_at,
-                                     tie=not merge_same_thread)
+                                     tie=not merge_same_thread, **tie_kw)
         art_blocks.extend(group_blocks)
         cursor = group_blocks[-1].runs[-1].points[-1]
         cap_sewn.extend(sewn)
@@ -3366,7 +3375,7 @@ def sequence(
                                             hoist_same_thread)
             art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
         for _b in art_blocks:
-            _apply_ties(_b.runs)
+            _apply_ties(_b.runs, **tie_kw)
     blocks.extend(art_blocks)
 
     # --- The design-silhouette edge cap (cfg.edge_cap) ----------------------
