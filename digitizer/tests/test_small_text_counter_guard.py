@@ -1,5 +1,5 @@
 """The true-size switch's counter guard (`cfg.small_text_true_size_min_counter_mm`,
-Kent WoK 56 option A; `config.SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM` 0.5 x
+Kent WoK 56 option A; `config.SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM` 0.45 x
 thread_wt / 40 mm, a gate-1 CANDIDATE). It replaced a 1.6 mm cap-height guard
 that could not separate Fremont's Hat 81 mm date (better ON) from its 65 mm
 tagline (worse ON): the tagline's cost is its A's apex counters closing, so
@@ -19,6 +19,7 @@ from digitizer_core import PipelineConfig, beanletters, digitize, small_text
 from digitizer_core.config import (SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM, counter_floor_mm,
                                    true_size_min_counter)
 from digitizer_core.ink_path import MemberInk
+from shapely.geometry import box
 
 from .conftest import own_thread_only
 from .test_small_text import _glyphs, _scene, _tag, _two_lines
@@ -35,9 +36,9 @@ def _narrow(words=("1895",)) -> float:
 
 
 def test_the_guard_is_read_only_while_the_switch_is_on():
-    assert SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM == 0.5
-    assert PipelineConfig().small_text_true_size_min_counter_mm == 0.5
-    assert true_size_min_counter(PipelineConfig()) == 0.5
+    assert SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM == 0.45
+    assert PipelineConfig().small_text_true_size_min_counter_mm == 0.45
+    assert true_size_min_counter(PipelineConfig()) == 0.45
     # switch OFF: explicit restore / bean values act on every line, as before
     assert true_size_min_counter(PipelineConfig(small_text_true_size=False)) is None
     assert true_size_min_counter(PipelineConfig(small_text_true_size_min_counter_mm=None)) is None
@@ -53,9 +54,23 @@ def test_the_switch_fills_keep_stray_lines_and_an_explicit_value_wins():
 
 
 def test_the_floor_scales_with_thread_weight():
-    assert counter_floor_mm(0.5, 40) == pytest.approx(0.5)
-    assert counter_floor_mm(0.5, 60) == pytest.approx(0.75)
-    assert counter_floor_mm(0.5, 75) == pytest.approx(0.9375)
+    assert counter_floor_mm(0.45, 40) == 0.45          # exact: a 0.45 counter passes
+    assert counter_floor_mm(0.45, 60) == pytest.approx(0.675)
+    assert counter_floor_mm(0.45, 75) == pytest.approx(0.84375)
+
+
+def test_tracer_specks_are_not_counters():
+    """Becker's tracer leaves 0.05 / 0.14 mm holes in 28 / 17 mm letters."""
+    from shapely.geometry import Point
+    letter = box(0, 0, 10, 10)
+    speck = Point(3, 3).buffer(0.03)              # ~0.06 mm across
+    counter = Point(7, 7).buffer(0.25)            # ~0.5 mm across
+    poly = letter.difference(speck).difference(counter)
+    widths = small_text.counter_widths_mm([poly], cap=1.5)
+    assert len(widths) == 1 and widths[0] == pytest.approx(0.5, abs=0.06), widths
+    # a few % of a tall cap is not a counter either: 0.5 mm in a 28 mm letter
+    assert small_text.counter_widths_mm([poly], cap=28.0) == []
+    assert small_text.inscribed_width_mm(counter.exterior) == pytest.approx(0.5, abs=0.06)
 
 
 def test_the_scene_has_counters_and_the_measure_is_their_inscribed_width():
@@ -131,35 +146,50 @@ def test_a_guarded_cluster_keeps_its_stray_line():
     assert rep[0].get("stray_line") and len(rep) == 2
 
 
-@pytest.mark.parametrize("scale, reads", [(1.05, False), (0.95, True)])
-def test_bean_tagging_reads_no_ink_below_the_guard(monkeypatch, scale, reads):
+def _candidate_ink(calls):
+    def fake(_p, members, **_kw):
+        calls.append(len(members))
+        return [MemberInk(stroke_mm=0.25, spines=[[(0.0, 0.0), (0.5, 0.5)]]) for _ in members]
+    return fake
+
+
+@pytest.mark.parametrize("scale, tags", [(1.05, False), (0.95, True)])
+def test_bean_tagging_tags_no_candidate_below_the_guard(monkeypatch, scale, tags):
     narrow = _narrow()
     regions, p = _scene()
     _tag(regions, {"Sg0", "Sg1", "Sg2", "Sg3"})
     calls = []
-
-    def fake(_p, members, **_kw):
-        calls.append(len(members))
-        return [MemberInk(stroke_mm=None, spines=[]) for _ in members]
-
-    monkeypatch.setattr(beanletters, "read_cluster_ink", own_thread_only(fake, beanletters.read_cluster_ink))
+    monkeypatch.setattr(beanletters, "read_cluster_ink",
+                        own_thread_only(_candidate_ink(calls), beanletters.read_cluster_ink))
     cfg = PipelineConfig(small_text_true_size_min_counter_mm=narrow * scale)
-    assert beanletters.tag_bean_letters(regions, p, cfg) == 0
-    assert bool(calls) is reads
-    assert not any(beanletters.BEAN_LETTER_KEY in r.meta or "ink_stroke_mm" in r.meta for r in regions)
+    assert (beanletters.tag_bean_letters(regions, p, cfg) > 0) is tags
+    if not tags:
+        assert not any(beanletters.BEAN_LETTER_KEY in r.meta or "ink_stroke_mm" in r.meta for r in regions)
+
+
+def test_the_guard_is_not_read_on_a_line_with_no_bean_candidate(monkeypatch):
+    """The guard is read only on lines the switch would act on (VP 2026-10-15)."""
+    regions, p = _scene()
+    _tag(regions, {"Sg0", "Sg1", "Sg2", "Sg3"})
+    measured = []
+    monkeypatch.setattr(small_text, "line_min_counter_mm", lambda *a, **k: measured.append(1) or 0.0)
+    monkeypatch.setattr(beanletters, "read_cluster_ink", own_thread_only(
+        lambda _p, m, **_k: [MemberInk(stroke_mm=None, spines=[]) for _ in m], beanletters.read_cluster_ink))
+    assert beanletters.tag_bean_letters(regions, p, PipelineConfig()) == 0
+    assert measured == []
 
 
 def test_bean_tagging_takes_the_restore_steps_verdict(monkeypatch):
     """A line the restore step guarded stays guarded for the bean tagger even
-    when its own cluster (without the adopted 8) would pass."""
+    when its own cluster (without the adopted 8) would pass: not even read."""
     regions, p = _scene()
     _tag(regions, {"Sg0", "Sg1", "Sg2", "Sg3"})
     for r in regions:
         if r.meta.get("text_cluster_id"):
             r.meta[small_text.GUARD_KEY] = True
     calls = []
-    monkeypatch.setattr(beanletters, "read_cluster_ink", own_thread_only(
-        lambda _p, m, **_k: calls.append(1) or [MemberInk() for _ in m], beanletters.read_cluster_ink))
+    monkeypatch.setattr(beanletters, "read_cluster_ink",
+                        own_thread_only(_candidate_ink(calls), beanletters.read_cluster_ink))
     beanletters.tag_bean_letters(regions, p, PipelineConfig(small_text_true_size_min_counter_mm=1e-6))
     assert calls == []
 

@@ -102,19 +102,51 @@ def line_cap_mm(members: list[Region]) -> float:
     return float(np.median([_height(r) for r in core])) if core else 0.0
 
 
-def counter_widths_mm(polys) -> list[float]:
-    """Every counter (interior ring) of `polys`, as the diameter of its widest
-    inscribed circle in mm (`shapely.ops.polylabel`, 0.01 mm tolerance) --
-    `columns._wide_counters`' measure of how wide a counter is."""
-    from shapely.ops import polylabel
+# The counter guard's measure, the counter census's (`tools/counter_census.py`,
+# PR #964, 2026-10-15) so the guard acts where that table says it does: a
+# hole rasterised at this many px/mm, its width twice the largest distance
+# transform value inside it.
+COUNTER_PX_PER_MM = 40.0
+# Tracer dust is not a counter: a hole under this area (mm2, the census's
+# floor), or narrower than SPECK_MM or SPECK_CAP_FRAC of the line's cap
+# height, is not read. Becker's tracer leaves 0.05 / 0.14 mm specks in its
+# 28 / 17 mm letters; Fremont's narrowest real counter is 0.44 mm in a
+# 1.72 mm cap. Candidates, like the guard.
+COUNTER_MIN_HOLE_MM2 = 0.003
+SPECK_MM = 0.1
+SPECK_CAP_FRAC = 0.05
 
+
+def inscribed_width_mm(ring) -> float:
+    """Twice the largest distance from inside the ring to its edge, in mm,
+    on a `COUNTER_PX_PER_MM` raster (`tools/counter_census.py`'s measure)."""
+    ppm = COUNTER_PX_PER_MM
+    pts = np.asarray(ring.coords, np.float64)[:, :2]
+    x0, y0 = pts.min(axis=0) - 0.1
+    w = int(np.ceil((pts[:, 0].max() - x0 + 0.1) * ppm)) + 2
+    h = int(np.ceil((pts[:, 1].max() - y0 + 0.1) * ppm)) + 2
+    m = np.zeros((h, w), np.uint8)
+    cv2.fillPoly(m, [np.round((pts - [x0, y0]) * ppm).astype(np.int32)], 1)
+    if not m.any():
+        return 0.0
+    d = cv2.distanceTransform(m, cv2.DIST_L2, 5)
+    return round(2.0 * float(d.max()) / ppm, 3)
+
+
+def counter_widths_mm(polys, cap: float = 0.0) -> list[float]:
+    """Every counter (interior ring) of `polys` wider than tracer dust
+    (`COUNTER_MIN_HOLE_MM2`, `SPECK_MM`, `SPECK_CAP_FRAC` x `cap`), as its
+    `inscribed_width_mm`."""
+    speck = max(SPECK_MM, SPECK_CAP_FRAC * float(cap or 0.0))
     out: list[float] = []
     for poly in polys:
-        for ring in getattr(poly, "interiors", ()):
-            c = Polygon(ring).buffer(0)
-            for q in _polys(c):
-                if q.area > 0:
-                    out.append(2.0 * float(polylabel(q, tolerance=0.01).distance(q.exterior)))
+        for g in _polys(poly):
+            for ring in g.interiors:
+                if Polygon(ring).area < COUNTER_MIN_HOLE_MM2:
+                    continue
+                wd = inscribed_width_mm(ring)
+                if wd >= speck:
+                    out.append(wd)
     return out
 
 
@@ -126,10 +158,11 @@ def line_min_counter_mm(group: list[Region], p: Prep, cap: float | None = None,
     `restore_small_text` restores from, so the counters stage 4's sliver
     floor dropped count). A letter the retrace could not read is measured on
     its traced polygon. None: the line has no counter (it passes the guard)."""
+    cap = cap if cap else line_cap_mm(group)
     if traced is None:
-        traced = _retrace(group, p, cap if cap else line_cap_mm(group))
+        traced = _retrace(group, p, cap)
     polys = [traced.get(i, r.polygon) for i, r in enumerate(group)]
-    widths = counter_widths_mm(polys)
+    widths = counter_widths_mm(polys, cap)
     return min(widths) if widths else None
 
 

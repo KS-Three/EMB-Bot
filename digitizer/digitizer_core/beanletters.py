@@ -101,15 +101,17 @@ def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
             clusters.setdefault(cid, []).append(r)
     tagged = 0
     # The true-size switch's counter guard (`config.true_size_min_counter`):
-    # a line under it is not read at all, so it sews as it did before the flip.
+    # a line the restore step guarded is not read at all; any other line is
+    # measured only when it has a bean candidate -- the guard is read on the
+    # lines the switch would act on -- and one under it is left untagged and
+    # unmarked, as it sewed before the flip.
     floor = true_size_min_counter(cfg)
     if floor is not None:
-        from .small_text import passes_counter_guard
+        from .small_text import GUARD_KEY, passes_counter_guard
         from .stage6_hairline import block_thread_wt
         wts = block_thread_wt(regions, cfg)
     for members in clusters.values():
-        if floor is not None and not passes_counter_guard(
-                members, p, floor, wts, int(cfg.thread_wt)):
+        if floor is not None and any(r.meta.get(GUARD_KEY) for r in members):
             continue
         inks = read_cluster_ink(p, members, **_ring(cfg))
         # A read the traced shape disagrees with is no read: left out of the
@@ -124,6 +126,9 @@ def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
             goes = [whole and w is not None for w in widths]
         else:
             goes = weight_groups(widths, float(line))
+        if (floor is not None and any(go and ink.spines for ink, go in zip(inks, goes))
+                and not passes_counter_guard(members, p, floor, wts, int(cfg.thread_wt))):
+            continue
         for r, ink, go in zip(members, inks, goes):
             if ink.stroke_mm is not None:
                 r.meta["ink_stroke_mm"] = round(ink.stroke_mm, 3)

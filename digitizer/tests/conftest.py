@@ -449,10 +449,14 @@ PRE_FLIP["small_glyph_keep"] = False
 # The tests ABOUT it are `tests/test_small_text.py`,
 # `tests/test_bean_letters_pipeline.py` and `tests/test_bean_ink_shape_gate.py`.
 PRE_FLIP["small_text_true_size"] = False
-# ...and its counter guard (Kent, WoK 56 option A; 0.5 mm x thread_wt / 40,
+# ...and its counter guard (Kent, WoK 56 option A; 0.45 mm x thread_wt / 40,
 # replacing a 1.6 mm cap-height guard), which came with the flip: None is no
 # guard. With the switch OFF the guard is never read
 # (`config.true_size_min_counter`), so this pin is the posture, not a second
 # lever. The tests ABOUT it are `tests/test_small_text_counter_guard.py`.
 PRE_FLIP["small_text_true_size_min_counter_mm"] = None
+# ...and the value the switch fills into `small_text_keep_stray_lines` (True,
+# PR #960's 65 mm THE fix, carried by the flip; VP 2026-10-15). None is the
+# pre-flip engine: never filled, read as False.
+PRE_FLIP["small_text_keep_stray_lines"] = None
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}
