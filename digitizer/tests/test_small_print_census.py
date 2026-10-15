@@ -31,7 +31,9 @@ TESTDATA = Path(__file__).resolve().parents[1] / "testdata"
 
 
 def test_the_neighbouring_flags_sit_at_their_shipped_defaults():
-    cfg = PipelineConfig()
+    # the true-size switch (ON since 2026-10-14) is pinned OFF: the rows predate it
+    assert census.OFF_FLIPS == {"small_text_true_size": False}
+    cfg = PipelineConfig(**census.OFF_FLIPS)
     assert census.PINNED == {"small_glyph_keep": True, "small_lettering_skeleton": False,
                              "small_text_cap_mm": None, "small_text_restore_mm": None}
     for k, v in census.PINNED.items():

@@ -843,9 +843,14 @@ def build_generation(
     if cfg.small_text_restore_mm:
         # True size: adopt the line's untagged letters and give every letter
         # its counters back, before any reader of a letter's geometry.
+        from .config import true_size_min_counter
         from .small_text import restore_small_text
+        from .stage6_hairline import block_thread_wt
         restore_small_text(regions, p, cap_mm=cfg.small_text_restore_mm,
-                           keep_stray_lines=cfg.small_text_keep_stray_lines)
+                           keep_stray_lines=bool(cfg.small_text_keep_stray_lines),
+                           min_counter_mm=true_size_min_counter(cfg),
+                           thread_wts=block_thread_wt(regions, cfg),
+                           default_wt=int(cfg.thread_wt))
     if cfg.small_text_cap_mm:
         from .small_text import enlarge_small_text
         enlarge_small_text(regions, p, cap_mm=cfg.small_text_cap_mm)

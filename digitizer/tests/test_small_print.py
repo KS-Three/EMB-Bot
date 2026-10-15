@@ -171,9 +171,13 @@ def test_counters_open_on_the_synthetic_word_at_three_millimetres():
     ref = json.loads((TESTDATA / "small_print_synthetic_ref.json").read_text())
     image = small_print.synthetic_text()
     width = round(3.0 / ref["cap"], 2)
-    off, (r_off, _p, _a) = small_print.measure(image, PipelineConfig(target_width_mm=width), ref)
+    # `small_print_floor` priced alone, on the engine it was measured on: the
+    # true-size switch (ON since 2026-10-14, conftest PRE_FLIP) re-traces and
+    # beans this line itself, which leaves the floor nothing to hold open.
+    pre = {"small_text_true_size": False}
+    off, (r_off, _p, _a) = small_print.measure(image, PipelineConfig(target_width_mm=width, **pre), ref)
     on, (r_on, _p, _a) = small_print.measure(
-        image, PipelineConfig(target_width_mm=width, small_print_floor=True), ref)
+        image, PipelineConfig(target_width_mm=width, small_print_floor=True, **pre), ref)
     assert off["cap_mm"] == pytest.approx(3.0, abs=0.05)
     # the defect, measured 2026-10-12 (Windows): 8 of 10 counters shut,
     # 0.31 of the counter area open OFF; 4 shut, 0.68 open ON with the
@@ -379,11 +383,13 @@ def test_no_stitch_crosses_a_counter_on_fremonts_tagline_at_three_millimetres():
     """DONE-TEST, part 3. Measured 2026-10-13 (Windows): OFF 4 stitches over
     a counter (up to 1.96 mm), #878's ON 4 (up to 2.16 mm), now none."""
     image = small_print.load("fremont_tagline")
-    on = PipelineConfig(target_width_mm=FREMONT_3MM_WIDTH, small_print_floor=True)
+    # priced alone on the pre-flip engine (`small_text_true_size`, conftest PRE_FLIP)
+    on = PipelineConfig(target_width_mm=FREMONT_3MM_WIDTH, small_print_floor=True,
+                        small_text_true_size=False)
     res_on, plan_on = digitize(image, on)
     assert _counter_crossings(res_on, plan_on, on) == []
     # and the check bites: the same fixture OFF lays stitches over counters
-    off = PipelineConfig(target_width_mm=FREMONT_3MM_WIDTH)
+    off = PipelineConfig(target_width_mm=FREMONT_3MM_WIDTH, small_text_true_size=False)
     res_off, plan_off = digitize(image, off)
     assert len(_counter_crossings(res_off, plan_off, off)) >= 1
 

@@ -219,8 +219,10 @@ def test_widened_lettering_keeps_its_compensated_column(tmp_path):
     art = tmp_path / "bars.png"
     _thin_bars(art)
     with patch(_OCR_GATE_PATH, return_value=False):
+        # `small_text_true_size` OFF (ON since #955): the switch re-traces the
+        # sub-3 mm bars so none is widened; the widened tier is this test's subject.
         r, _p, seen = _sewn(art, target_width_mm=50.0, lettering_min_column_mm=FLOOR_MM,
-                            satin_rail_comp=True)
+                            satin_rail_comp=True, small_text_true_size=False)
     widened = [rg for rg in r.regions if widened_lettering(rg) and rg.shape_id in seen]
     assert len(widened) >= 5, "the fixture stopped widening any glyph"
     for rg in widened:

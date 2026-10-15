@@ -368,10 +368,12 @@ def cut_owl(arms: tuple[str, ...], cuts: Path) -> Path:
     assert HOP_MAX_MM == OWL_HOP_MAX_MM, HOP_MAX_MM
     arms = tuple(sorted(arms, key=lambda a: a != "owl_chain_on"))
     t = time.time()
-    result = run_stages(hlt.PHOTO, PipelineConfig(target_width_mm=OWL_WIDTH_MM, **OWL_ARMS[arms[0]], **OWL_ROUTE))
+    # small_text_true_size: ON since 2026-10-14; the owl was cut before it
+    result = run_stages(hlt.PHOTO, PipelineConfig(target_width_mm=OWL_WIDTH_MM, **OWL_ARMS[arms[0]], **OWL_ROUTE,
+                                                  **v31.PRE_TRUE_SIZE))
     path = None
     for arm in arms:
-        cfg = PipelineConfig(target_width_mm=OWL_WIDTH_MM, **OWL_ARMS[arm], **OWL_ROUTE)
+        cfg = PipelineConfig(target_width_mm=OWL_WIDTH_MM, **OWL_ARMS[arm], **OWL_ROUTE, **v31.PRE_TRUE_SIZE)
         path = owl_cut_from(arm, plan_stitches(result, cfg), result.source_pixels, cuts, t)
     return path
 

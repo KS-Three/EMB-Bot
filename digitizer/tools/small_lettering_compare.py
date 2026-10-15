@@ -91,17 +91,23 @@ FLOOR_073 = {"small_lettering_skeleton_floor_mm": 0.73}        # machine.BEAN_ST
 TRUE_SIZE = {"small_text_restore_mm": 3.0, "bean_letter_max_stroke_mm": 0.4,
              "bean_letter_stitch_mm": 0.45, "bean_letter_serif_mm": 0.45}
 
+# `small_text_true_size` is ON by default since 2026-10-14 (Kent, WoK 56
+# option A), so every arm but `switch` pins it OFF: "main" stays the engine
+# before the flip, and each option arm prices its option against that.
+OFF = {"small_text_true_size": False}
+
 # name -> (PipelineConfig overrides on the Studio request, label)
 ARMS = {
-    "main": ({}, "main (both options off)"),
-    "sk073": ({**SKELETON, **FLOOR_073}, "skeleton ON, floor 0.73 mm"),
-    "sk100": (dict(SKELETON), "skeleton ON, floor 1.0 mm (default)"),
-    "true": (dict(TRUE_SIZE), "true size: restore 3.0, bean 0.4 / pitch 0.45 / serif 0.45"),
-    "both073": ({**TRUE_SIZE, **SKELETON, **FLOOR_073}, "true size + skeleton, floor 0.73 mm"),
-    "both100": ({**TRUE_SIZE, **SKELETON}, "true size + skeleton, floor 1.0 mm"),
+    "main": (dict(OFF), "main (both options off; the pre-flip engine)"),
+    "sk073": ({**OFF, **SKELETON, **FLOOR_073}, "skeleton ON, floor 0.73 mm"),
+    "sk100": ({**OFF, **SKELETON}, "skeleton ON, floor 1.0 mm (default)"),
+    "true": ({**OFF, **TRUE_SIZE}, "true size: restore 3.0, bean 0.4 / pitch 0.45 / serif 0.45"),
+    "both073": ({**OFF, **TRUE_SIZE, **SKELETON, **FLOOR_073}, "true size + skeleton, floor 0.73 mm"),
+    "both100": ({**OFF, **TRUE_SIZE, **SKELETON}, "true size + skeleton, floor 1.0 mm"),
     # cfg.small_text_true_size: the four true-size values behind one switch,
-    # bean stroke 0.5 (Kent 2026-10-14: THE as a centre line is fine).
-    "switch": ({"small_text_true_size": True}, "small_text_true_size ON (bean 0.5)"),
+    # bean stroke 0.5 (Kent 2026-10-14: THE as a centre line is fine). The
+    # shipped default since 2026-10-14.
+    "switch": ({"small_text_true_size": True}, "small_text_true_size ON (bean 0.5; the default)"),
     # + cfg.ink_ground_ring_mm: the ink read's ground from a ring round the
     # cluster, not the crop (2026-10-14, Fremont's 65 mm date).
     "ring": ({"small_text_true_size": True, "ink_ground_ring_mm": 0.8},
@@ -482,8 +488,9 @@ def _glyph_rings(p, word: str) -> list:
 # at 2.5 / 3 / 4 mm caps, 40 wt. The arms are the two options MASTER_SCOPE 56 names
 # (candidates, gate 1); "main" has both off.
 
-CORPUS_ARMS = ["main", "true", "sk073"]
-CORPUS_ARM_LABEL = {"main": "main (both off)", "true": "true size", "sk073": "skeleton @ 0.73"}
+CORPUS_ARMS = ["main", "true", "sk073", "switch"]
+CORPUS_ARM_LABEL = {"main": "main (both off)", "true": "true size", "sk073": "skeleton @ 0.73",
+                    "switch": "small_text_true_size ON (the default)"}
 HAT_CORPUS = {"fremont_hat81": 81.0, "fremont_hat925": PRO_WIDTH_MM}
 SMALL_PRINT_CORPUS = ("synthetic", "fremont_tagline")
 SMALL_PRINT_CAPS = (2.5, 3.0, 4.0)
@@ -756,10 +763,11 @@ def _cnt(c: dict) -> str:
 
 
 def corpus_table(cells: dict) -> str:
-    """The PR table: per design, main vs true size vs skeleton @ 0.73."""
-    lines = ["| design | main st / tr | true size st / tr | same? | shapes changed | dAU mm2 | dBare mm2 | "
-             "skeleton@0.73 st / tr | same? | shapes changed | dAU mm2 | dBare mm2 |",
-             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    """The PR table: per design, main vs every other corpus arm."""
+    head = "".join(f"{CORPUS_ARM_LABEL[a]} st / tr | same? | shapes changed | dAU mm2 | dBare mm2 | "
+                   for a in CORPUS_ARMS[1:])
+    lines = ["| design | main st / tr | " + head.rstrip(),
+             "|---|---|" + "---|" * (5 * len(CORPUS_ARMS[1:]))]
     by = {(r["design"], r["arm"]): r for r in corpus_deltas(cells)}
     for name in _ordered(cells):
         base = cells[name].get("main")

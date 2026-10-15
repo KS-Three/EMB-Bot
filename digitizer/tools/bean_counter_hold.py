@@ -51,9 +51,12 @@ HOLD_MM = 0.25
 SWITCH = {"small_text_true_size": True}
 
 # name -> (PipelineConfig overrides on the request, label)
+# `small_text_true_size` is ON by default since 2026-10-14, so "main" pins it
+# OFF: the engine before the flip, as these arms were measured.
+OFF = {"small_text_true_size": False}
 ARMS = {
-    "main": ({}, "main"),
-    "main_hold": ({"bean_letter_counter_hold_mm": HOLD_MM}, f"main + hold {HOLD_MM}"),
+    "main": (dict(OFF), "main"),
+    "main_hold": ({**OFF, "bean_letter_counter_hold_mm": HOLD_MM}, f"main + hold {HOLD_MM}"),
     "switch": (dict(SWITCH), "small_text_true_size"),
     "switch_hold20": ({**SWITCH, "bean_letter_counter_hold_mm": HOLD_HALF_THREAD_MM},
                       f"small_text_true_size + hold {HOLD_HALF_THREAD_MM}"),

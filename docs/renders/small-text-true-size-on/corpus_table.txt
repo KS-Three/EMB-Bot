@@ -1,0 +1,49 @@
+| design | main st / tr | true size st / tr | same? | shapes changed | dAU mm2 | dBare mm2 | skeleton @ 0.73 st / tr | same? | shapes changed | dAU mm2 | dBare mm2 | small_text_true_size ON (the default) st / tr | same? | shapes changed | dAU mm2 | dBare mm2 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| becker | 8,758 / 29 | - | - | - | - | - | - | - | - | - | - | 8,758 / 29 | yes | 0 | +0.00 | +0.00 |
+| tires | 2,732 / 8 | - | - | - | - | - | - | - | - | - | - | 2,732 / 8 | yes | 0 | +0.00 | +0.00 |
+| enthusiast | 2,447 / 9 | - | - | - | - | - | - | - | - | - | - | 2,408 / 8 | NO | 22 | +0.00 | +0.12 |
+| fremont | 20,952 / 61 | - | - | - | - | - | - | - | - | - | - | 20,832 / 48 | NO | 74 | +0.00 | +0.00 |
+| bridge | 18,923 / 99 | - | - | - | - | - | - | - | - | - | - | 18,923 / 99 | yes | 0 | +0.00 | +0.00 |
+| golden_tee | 8,412 / 45 | - | - | - | - | - | - | - | - | - | - | 8,412 / 45 | yes | 0 | +0.00 | +0.00 |
+| gaulke | 4,893 / 23 | - | - | - | - | - | - | - | - | - | - | 4,893 / 23 | yes | 0 | +0.00 | +0.00 |
+| drone | 19,326 / 131 | - | - | - | - | - | - | - | - | - | - | 19,281 / 130 | NO | 8 | +0.00 | +0.44 |
+| screenshot | 8,467 / 58 | - | - | - | - | - | - | - | - | - | - | 8,511 / 63 | NO | 37 | +0.00 | +2.69 |
+| fremont_hat81 | 15,625 / 47 | - | - | - | - | - | - | - | - | - | - | 15,330 / 41 | NO | 123 | +0.00 | +0.00 |
+| fremont_hat925 | 18,882 / 53 | - | - | - | - | - | - | - | - | - | - | 18,675 / 54 | NO | 71 | +0.00 | +0.00 |
+| sp_synthetic_2.5 | 463 / 8 | - | - | - | - | - | - | - | - | - | - | 321 / 1 | NO | 8 | +0.00 | +1.25 |
+| sp_synthetic_3 | 474 / 4 | - | - | - | - | - | - | - | - | - | - | 378 / 2 | NO | 8 | +0.00 | +0.93 |
+| sp_synthetic_4 | 547 / 4 | - | - | - | - | - | - | - | - | - | - | 547 / 4 | yes | 0 | +0.00 | +0.00 |
+| sp_fremont_tagline_2.5 | 624 / 5 | - | - | - | - | - | - | - | - | - | - | 569 / 5 | NO | 13 | +0.00 | +1.44 |
+| sp_fremont_tagline_3 | 618 / 7 | - | - | - | - | - | - | - | - | - | - | 719 / 5 | NO | 13 | +0.00 | -2.06 |
+| sp_fremont_tagline_4 | 944 / 6 | - | - | - | - | - | - | - | - | - | - | 991 / 10 | NO | 13 | +0.00 | +1.56 |
+
+| design | arm | words | mean legibility | worst word | OCR glyphs recovered (Wilson 95%) |
+|---|---|---|---|---|---|
+| becker | main | 2 | 0.913 | BECKER 0.827 | n/a |
+| becker | switch | 2 | 0.913 | BECKER 0.827 | n/a |
+| fremont | main | 6 | 0.816 | 1895 0.214 | 27/33 [0.66-0.91] |
+| fremont | switch | 6 | 0.932 | the 0.667 | 29/33 [0.73-0.95] |
+| bridge | main | 2 | 0.480 | BAR & RESTAURANT 0.227 | 0/1 [0.00-0.79] |
+| bridge | switch | 2 | 0.480 | BAR & RESTAURANT 0.227 | 0/1 [0.00-0.79] |
+| fremont_hat81 | main | 6 | 0.816 | 1895 0.551 | 26/32 [0.65-0.91] |
+| fremont_hat81 | switch | 6 | 0.941 | fremont 0.835 | 30/32 [0.80-0.98] |
+| fremont_hat925 | main | 6 | 0.747 | 1895 0.214 | 25/33 [0.59-0.87] |
+| fremont_hat925 | switch | 6 | 0.925 | the 0.667 | 30/33 [0.76-0.97] |
+
+| design | arm | counters shut / of | counter area open | source covered | spill |
+|---|---|---|---|---|---|
+| sp_synthetic_2.5 | main | 8 / 10 | 0.28 | 0.98 | 0.83 |
+| sp_synthetic_2.5 | switch | 2 / 10 | 0.75 | 0.90 | 0.39 |
+| sp_synthetic_3 | main | 8 / 10 | 0.33 | 1.00 | 0.66 |
+| sp_synthetic_3 | switch | 2 / 10 | 0.65 | 0.98 | 0.54 |
+| sp_synthetic_4 | main | 2 / 10 | 0.57 | 1.00 | 0.43 |
+| sp_synthetic_4 | switch | 2 / 10 | 0.57 | 1.00 | 0.43 |
+| sp_fremont_tagline_2.5 | main | 4 / 4 | 0.05 | 0.97 | 1.43 |
+| sp_fremont_tagline_2.5 | switch | 2 / 4 | 0.56 | 0.91 | 0.56 |
+| sp_fremont_tagline_3 | main | 0 / 4 | 0.68 | 0.92 | 1.37 |
+| sp_fremont_tagline_3 | switch | 0 / 4 | 0.74 | 0.94 | 0.41 |
+| sp_fremont_tagline_4 | main | 0 / 4 | 0.68 | 1.00 | 1.41 |
+| sp_fremont_tagline_4 | switch | 0 / 4 | 0.97 | 0.88 | 0.34 |
+
+small_text_true_size ON (the default) changed 11 of 17 designs; new uncovered artwork: no increase anywhere; trims: worst +5 (screenshot); stitches: worst +16.3% (sp_fremont_tagline_3); legibility: worst -0.333 (fremont the)
