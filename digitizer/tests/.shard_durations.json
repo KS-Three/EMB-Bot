@@ -213,6 +213,7 @@
 "tests/test_sewout_card_v2.py": 30.85,
 "tests/test_sewout_card_v3.py": 70.0,
 "tests/test_sewout_card_v3_1.py": 90.0,
+"tests/test_sewout_card_v3_2.py": 120.0,
 "tests/test_sewout_reader.py": 37.45,
 "tests/test_sewout_walk_reach.py": 0.0,
 "tests/test_shade_axis.py": 0.23,

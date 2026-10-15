@@ -174,7 +174,8 @@ def _corners(spine: list, corner_deg: float) -> list[int]:
     return sorted(picked)
 
 
-def _bean_keep_corners(spine: list, stitch_mm: float | None, corner_deg: float) -> list:
+def _bean_keep_corners(spine: list, stitch_mm: float | None, corner_deg: float,
+                       passes: int | None = None) -> list:
     """`_bean_along`, with a station ON every corner of the spine and the
     rest spaced evenly between corners. At an even pitch the stations of
     Fremont's 5 skipped the corner where its stem meets its bar, the thread
@@ -182,7 +183,7 @@ def _bean_keep_corners(spine: list, stitch_mm: float | None, corner_deg: float) 
     "A", 2026-10-14). No corner: exactly `_bean_along`."""
     cuts = _corners(spine, corner_deg)
     if not cuts:
-        return _bean_along(spine, stitch_mm)
+        return _bean_along(spine, stitch_mm, passes)
     step = stitch_mm if stitch_mm and stitch_mm > 0 else machine.BEAN_STITCH_MM
     lap: list = []
     bounds = [0, *cuts, len(spine) - 1]
@@ -194,9 +195,9 @@ def _bean_keep_corners(spine: list, stitch_mm: float | None, corner_deg: float) 
         pts = _resample(piece, max(2, int(round(n / step)) + 1))
         lap.extend(pts if not lap else pts[1:])
     if len(lap) < 2:
-        return _bean_along(spine, stitch_mm)
+        return _bean_along(spine, stitch_mm, passes)
     out = list(lap)
-    for p in range(1, machine.BEAN_PASSES):
+    for p in range(1, passes if passes and passes > 0 else machine.BEAN_PASSES):
         leg = list(reversed(lap)) if p % 2 == 1 else list(lap)
         out.extend(leg[1:])
     return out
@@ -207,7 +208,8 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
                 stitch_mm: float | None = None,
                 serif_mm: float | None = None,
                 min_arm_mm: float | None = None,
-                corner_deg: float | None = None) -> tuple[list[StitchRun], dict]:
+                corner_deg: float | None = None,
+                passes: int | None = None) -> tuple[list[StitchRun], dict]:
     """One letter's spines -> bean runs in sew order, plus `run_outline`'s
     report contract (and `strokes`, how many spines sewed).
 
@@ -230,7 +232,10 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
     foot. None: the pitch, as above.
 
     `corner_deg` (`cfg.bean_letter_corner_deg`): a turn this sharp gets a
-    station of its own (`_bean_keep_corners`). None: even pitch, as before."""
+    station of its own (`_bean_keep_corners`). None: even pitch, as before.
+
+    `passes` (`cfg.bean_letter_passes`): laps along each spine. None:
+    `machine.BEAN_PASSES` (3)."""
     arm_floor = stitch_mm if stitch_mm and stitch_mm > 0 else _MIN_ARM_MM
     report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False,
               "arcs": 0, "yielded": 0, "strokes": 0}
@@ -263,8 +268,8 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
         spine = todo.pop(i)
         if rev:
             spine.reverse()
-        pts = (_bean_keep_corners(spine, stitch_mm, corner_deg) if corner_deg
-               else _bean_along(spine, stitch_mm))
+        pts = (_bean_keep_corners(spine, stitch_mm, corner_deg, passes) if corner_deg
+               else _bean_along(spine, stitch_mm, passes))
         if len(pts) < 2:
             continue
         jump = trim = False

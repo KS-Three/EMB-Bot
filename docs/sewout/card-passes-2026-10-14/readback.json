@@ -1,0 +1,198 @@
+{
+ "file": "card_passes_40wt.dst",
+ "bytes": 2972,
+ "wt": 40,
+ "blocks": 2,
+ "stitches_file": 718,
+ "stitches_plan": 718,
+ "colour_changes_file": 0,
+ "colour_changes_plan": 0,
+ "colours": 1,
+ "extent_mm": [
+  35.2,
+  26.8
+ ],
+ "within_hoop": true,
+ "x_range_mm": [
+  -17.6,
+  17.6
+ ],
+ "y_range_mm": [
+  -13.4,
+  13.4
+ ],
+ "max_needle_stitch_mm": 1.72,
+ "max_record_axis_mm": 11.2,
+ "stops": [
+  {
+   "stop": 1,
+   "thread": "dark",
+   "stitches": 748,
+   "thread_m": 0.38
+  }
+ ],
+ "stitches_by_piece": {
+  "N:p1": 50,
+  "N:p2": 85,
+  "N:p3": 120,
+  "N:strips": 73,
+  "T:p1": 72,
+  "T:p2": 106,
+  "T:p3": 156,
+  "T:strips": 86
+ },
+ "under_1mm_by_piece": {
+  "N:p1": 39,
+  "N:p2": 74,
+  "N:p3": 109,
+  "T:p1": 58,
+  "T:p2": 92,
+  "T:p3": 142
+ },
+ "lock_legs_0p8": 68,
+ "trims": 14,
+ "blocks_mm": {
+  "N": [
+   -17.6,
+   2.9,
+   8.6,
+   13.4
+  ],
+  "T": [
+   -17.6,
+   -13.4,
+   17.6,
+   -2.1
+  ]
+ },
+ "pieces_mm": {
+  "N:p1": [
+   -17.6,
+   11.9,
+   -12.2,
+   13.4
+  ],
+  "N:p2": [
+   -7.2,
+   11.9,
+   -1.8,
+   13.4
+  ],
+  "N:p3": [
+   3.2,
+   11.9,
+   8.6,
+   13.4
+  ],
+  "T:p1": [
+   -17.6,
+   -4.4,
+   -9.2,
+   -2.1
+  ],
+  "T:p2": [
+   -4.2,
+   -4.4,
+   4.2,
+   -2.1
+  ],
+  "T:p3": [
+   9.2,
+   -4.4,
+   17.6,
+   -2.1
+  ]
+ },
+ "pieces": [
+  {
+   "block": "T",
+   "arm": "p1",
+   "passes": 1,
+   "roi": "the",
+   "overrides": {
+    "small_text_true_size": true,
+    "bean_letter_passes": 1
+   },
+   "runs": 14,
+   "stitches": 68,
+   "crossing_runs_dropped": 2,
+   "width_mm": 8.37,
+   "height_mm": 2.3
+  },
+  {
+   "block": "T",
+   "arm": "p2",
+   "passes": 2,
+   "roi": "the",
+   "overrides": {
+    "small_text_true_size": true,
+    "bean_letter_passes": 2
+   },
+   "runs": 14,
+   "stitches": 106,
+   "crossing_runs_dropped": 3,
+   "width_mm": 8.37,
+   "height_mm": 2.3
+  },
+  {
+   "block": "T",
+   "arm": "p3",
+   "passes": 3,
+   "roi": "the",
+   "overrides": {
+    "small_text_true_size": true,
+    "bean_letter_passes": 3
+   },
+   "runs": 14,
+   "stitches": 152,
+   "crossing_runs_dropped": 2,
+   "width_mm": 8.37,
+   "height_mm": 2.3
+  },
+  {
+   "block": "N",
+   "arm": "p1",
+   "passes": 1,
+   "roi": "1895",
+   "overrides": {
+    "small_text_true_size": true,
+    "bean_letter_passes": 1
+   },
+   "runs": 11,
+   "stitches": 54,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.39,
+   "height_mm": 1.51
+  },
+  {
+   "block": "N",
+   "arm": "p2",
+   "passes": 2,
+   "roi": "1895",
+   "overrides": {
+    "small_text_true_size": true,
+    "bean_letter_passes": 2
+   },
+   "runs": 11,
+   "stitches": 89,
+   "crossing_runs_dropped": 6,
+   "width_mm": 5.39,
+   "height_mm": 1.51
+  },
+  {
+   "block": "N",
+   "arm": "p3",
+   "passes": 3,
+   "roi": "1895",
+   "overrides": {
+    "small_text_true_size": true,
+    "bean_letter_passes": 3
+   },
+   "runs": 11,
+   "stitches": 124,
+   "crossing_runs_dropped": 5,
+   "width_mm": 5.39,
+   "height_mm": 1.51
+  }
+ ]
+}

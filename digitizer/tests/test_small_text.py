@@ -466,3 +466,22 @@ def test_corner_leaves_a_round_bowl_alone():
     # a 0.5 mm radius arc, the bowl of a 1.9 mm digit
     arc = [(0.5 * math.cos(t / 40 * math.pi), 0.5 * math.sin(t / 40 * math.pi)) for t in range(41)]
     assert _corners(arc, 50.0) == []
+
+
+def test_passes_none_is_three_and_one_or_two_lap_the_spine():
+    from digitizer_core.stage6_beanletter import bean_letter
+
+    spine = [(0.0, 0.0), (1.8, 0.0)]                # 4 stations at 0.45
+    a, _ = bean_letter([spine], "S", entry=None, trim_at_mm=3.0, stitch_mm=0.45)
+    b, _ = bean_letter([spine], "S", entry=None, trim_at_mm=3.0, stitch_mm=0.45, passes=None)
+    assert [r.points for r in a] == [r.points for r in b]
+    three = a[0].points
+    assert len(three) == 5 + 4 + 4 and three[-1] == (1.8, 0.0)
+    (one,), _ = bean_letter([spine], "S", entry=None, trim_at_mm=3.0, stitch_mm=0.45, passes=1)
+    assert len(one.points) == 5 and one.points[-1] == (1.8, 0.0)
+    (two,), _ = bean_letter([spine], "S", entry=None, trim_at_mm=3.0, stitch_mm=0.45, passes=2)
+    assert len(two.points) == 9 and two.points[-1] == (0.0, 0.0), "an even count ends where it began"
+    # with corners on, the count still holds
+    (c1,), _ = bean_letter([[(0.0, 0.6), (0.0, 0.0), (0.9, 0.0)]], "S", entry=None, trim_at_mm=3.0,
+                           stitch_mm=0.45, corner_deg=50.0, passes=1)
+    assert c1.points[0] in ((0.0, 0.6), (0.9, 0.0)) and c1.points[-1] in ((0.0, 0.6), (0.9, 0.0))

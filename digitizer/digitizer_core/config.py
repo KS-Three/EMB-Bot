@@ -2524,6 +2524,14 @@ class PipelineConfig:
     # (single-glyph OCR: "A", 2026-10-14). None: even pitch, byte for byte.
     # Geometry, not fabric: no sew-out settles where a corner is.
     bean_letter_corner_deg: float | None = None
+    # Laps of a bean letter's run along each spine. None: `machine.BEAN_PASSES`
+    # (3), byte for byte. Kent, 2026-10-14: thread laid on itself spreads
+    # ("thread can be mushed together"), and `stitchviz` draws stacked passes
+    # as ONE thread, so how wide 1, 2 or 3 passes really sew -- and whether
+    # 0.45 mm holes hit three times hold on a hat -- is a sew-out question:
+    # `tools/sewout_card_passes.py`. Not in `SMALL_TEXT_TRUE_SIZE`. A
+    # CANDIDATE (gate 1).
+    bean_letter_passes: int | None = None
     # ONE switch for small lettering at its true size (2026-10-14, Kent:
     # "keep working on improvements on this"). True fills each of the
     # values above that is still None with `SMALL_TEXT_TRUE_SIZE`; a value set
