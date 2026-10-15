@@ -145,6 +145,9 @@ def _value(text: str):
 
 
 def main(argv: list[str]) -> None:
+    if {"-h", "--help"} & set(argv):
+        print(__doc__.strip())
+        return
     from thin_strokes import corpus_cases  # noqa: E402
     sf._memoized = _spy_memoized
     sf.stitch_shape = _spy_stitch_shape
