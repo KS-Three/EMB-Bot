@@ -514,6 +514,87 @@ def table(res: dict) -> str:
     return "\n".join(lines)
 
 
+# The line's band in plan millimetres (y down), with a margin: the arc runs
+# from about (-18.5, 3.8) to (17.8, 5.7) through (-2.7, 18.4) at 80 mm.
+BAND_MM = (-22.0, 0.0, 22.0, 22.0)
+
+
+def band_render(designs: list[tuple[str, dict]], out: Path, px_per_mm: float = 24.0,
+                scale: float = 0.6) -> None:
+    """Thread renders (`stitchviz.render_design`) of the line's band, one row
+    per (label, Design), stacked, written to `out`."""
+    import cv2
+    import numpy as np
+
+    from digitizer_core import stitchviz
+    from digitizer_core.stitchviz import UNITS_PER_MM
+    X0, Y0, X1, Y1 = BAND_MM
+    rows = []
+    for label, d in designs:
+        img = stitchviz.render_design(d, px_per_mm=px_per_mm, pad_mm=2.0)
+        pts = [s for s in d["stitches"] if s.get("type") in ("stitch", "jump")]
+        x0, y1 = min(s["x"] for s in pts), max(s["y"] for s in pts)
+
+        def px(x, y):         # plan mm (y down) -> render pixel (the Design's y is up)
+            return (int(((x * UNITS_PER_MM - x0) / UNITS_PER_MM + 2.0) * px_per_mm),
+                    int(((y1 + y * UNITS_PER_MM) / UNITS_PER_MM + 2.0) * px_per_mm))
+        a, b = px(X0, Y0), px(X1, Y1)
+        crop = img[max(0, a[1]):b[1], max(0, a[0]):b[0]].copy()
+        cv2.rectangle(crop, (0, 0), (min(crop.shape[1], 18 * len(label) + 20), 40), (255, 255, 255), -1)
+        cv2.putText(crop, label, (8, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 2)
+        rows.append(crop)
+    w = max(r.shape[1] for r in rows)
+    rows = [np.pad(r, ((0, 6), (0, w - r.shape[1]), (0, 0)), constant_values=255) for r in rows]
+    img = np.vstack(rows)
+    if scale != 1.0:
+        img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+    cv2.imwrite(str(out), img, [cv2.IMWRITE_PNG_COMPRESSION, 9])
+
+
+def regions_render(out: Path, px_per_mm: float = 22.5) -> None:
+    """The prep raster of the line's band with every region outlined: the
+    line's labelled regions in red (holes magenta) with their ids, the rest
+    cyan. What `LETTERS` was read off."""
+    from PIL import Image, ImageDraw
+
+    from digitizer_core import PipelineConfig
+    from digitizer_core.pipeline import build_generation
+    from tools.thin_strokes import REAL_ART, STUDIO_MAX_COLORS
+    rel, width, garment = REAL_ART[CASE]
+    cfg = PipelineConfig(target_width_mm=width, garment_id=garment, max_colors=STUDIO_MAX_COLORS)
+    gen = build_generation(str(ROOT / "testdata" / rel), cfg)
+    glyphs = set(json.loads(TRUTH.read_text())["fixtures"][CASE]["lines"][LINE])
+    p = gen.p
+    x0, y0, x1, y1 = p.art_bbox
+    cx, cy, ppm = (x0 + x1) / 2.0, (y0 + y1) / 2.0, p.px_per_mm
+    X0, Y0, X1, Y1 = BAND_MM
+    crop = Image.fromarray(p.rgb[int(Y0 * ppm + cy):int(Y1 * ppm + cy),
+                                 int(X0 * ppm + cx):int(X1 * ppm + cx)])
+    crop = crop.resize((int((X1 - X0) * px_per_mm), int((Y1 - Y0) * px_per_mm)), Image.BICUBIC)
+    d = ImageDraw.Draw(crop)
+
+    def to_px(x, y):
+        return ((x - X0) * px_per_mm, (y - Y0) * px_per_mm)
+    for r in gen.regions:
+        b = r.polygon.bounds
+        if r.shape_id in glyphs or b[2] < X0 or b[0] > X1 or b[3] < Y0 or b[1] > Y1:
+            continue
+        for g in getattr(r.polygon, "geoms", [r.polygon]):
+            d.line([to_px(*q) for q in g.exterior.coords], fill=(0, 200, 200), width=1)
+    for r in gen.regions:
+        if r.shape_id not in glyphs:
+            continue
+        for g in getattr(r.polygon, "geoms", [r.polygon]):
+            d.line([to_px(*q) for q in g.exterior.coords], fill=(255, 0, 0), width=2)
+            for hole in g.interiors:
+                d.line([to_px(*q) for q in hole.coords], fill=(255, 0, 255), width=2)
+        c = r.polygon.centroid
+        bx = to_px(c.x, r.polygon.bounds[1] - 0.9)
+        d.rectangle([bx[0] - 34, bx[1] - 9, bx[0] + 34, bx[1] + 9], fill=(255, 255, 255))
+        d.text((bx[0] - 32, bx[1] - 7), f"{LETTERS.get(r.shape_id, '?')} {r.shape_id[:6]}", fill=(0, 0, 0))
+    crop.save(out, optimize=True)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--set", nargs="*", default=[], metavar="KEY=VALUE",
@@ -525,7 +606,21 @@ def main(argv=None) -> int:
                     help="also read the words with tools.glyph_legibility")
     ap.add_argument("--design-out", type=Path, help="write the Design json here")
     ap.add_argument("--json", type=Path, help="write the rows here")
+    ap.add_argument("--band", nargs="+", metavar=("OUT.png", "LABEL=DESIGN.json"),
+                    help="no digitize: stack thread renders of the line's band from saved Designs")
+    ap.add_argument("--regions", type=Path, metavar="OUT.png",
+                    help="stages 1-4 only: the band's prep raster with the regions outlined")
     a = ap.parse_args(argv)
+    if a.regions:
+        regions_render(a.regions)
+        print("wrote", a.regions)
+        return 0
+    if a.band:
+        out, specs = Path(a.band[0]), a.band[1:]
+        band_render([(s.split("=", 1)[0], json.loads(Path(s.split("=", 1)[1]).read_text()))
+                     for s in specs], out)
+        print("wrote", out)
+        return 0
     res = run(_parse_set(a.set), adopt=a.adopt, design_out=a.design_out, legibility=a.legibility)
     print(table(res))
     if a.json:

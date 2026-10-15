@@ -1,0 +1,61 @@
+tools/restaurant_trace.py, 2026-10-15, main 44e8d858. Bridge at 80 mm, Studio six colours.
+
+== 1. main today (python -m tools.restaurant_trace --legibility)
+bridge 80 mm defaults: 18,923 st / 99 trims, md5 197a3287
+  Bridge: 3 source glyphs, legibility 0.733, worst 0.5, OCR 0/0 None
+  BAR & RESTAURANT: 2 source glyphs, legibility 0.227, worst 0.0, OCR 0/1 [0.0, 0.793]
+
+| glyph | cap x w mm | holes | mean w / skel mm (cv) | ink mm | text cluster | house group | L1 words | lane | sewn | restore / bean / skeleton |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B Sc1dfc688 | 3.62 x 5.02 | 0 | 1.80 / 1.994 (0.47) | 0.899 | component of 1; nearest S673d856d: height_ratio 0.772 vs 0.800 | nested in S46472e12 (45.9 x 45.6 mm) | small_component 2.000 vs 3.000 (component of 2) | refused (is_lettering False) | fill x1, underlay x1, 82 pts | off the line core (_core) / ink 0.90 >= 0.5 / area 13.0 >= 2.25 |
+| A S5afda564 | 3.22 x 5.14 | 0 | 1.30 / 1.513 (0.41) | 1.149 | aspect 1.59 > 1.4 | aspect 1.59 > 1.4 | small_component 2.000 vs 3.000 (component of 2) | refused (is_lettering False) | satin x1, underlay x1, 38 pts | off the line core (_core) / ink 1.15 >= 0.5 / area 9.2 >= 2.25 |
+| R S673d856d | 4.61 x 4.79 | 0 | 1.65 / 1.675 (0.48) | 0.766 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x2, travel x1, 84 pts | off the line core (_core) / ink 0.77 >= 0.5 / area 12.4 >= 2.25 |
+| & S4fdc326d | 4.63 x 3.79 | 2 | 0.77 / 0.808 (0.36) | 0.982 | component of 1; nearest Sc1dfc688: height_ratio 0.781 vs 0.800, ink 37.300 vs 20.000, stroke_ratio 0.405 vs 0.500 | nested in S46472e12 (45.9 x 45.6 mm) | small_component 1.000 vs 3.000 (component of 1) | refused (is_lettering False) | satin x1, 94 pts | off the line core (_core) / ink 0.98 >= 0.5 / area 8.0 >= 2.25 |
+| R Sf6fe55e0 | 5.14 x 3.89 | 0 | 1.65 / 1.821 (0.45) | 0.799 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x2, travel x2, underlay x2, 88 pts | line cap 4.66 >= 3 / ink 0.80 >= 0.5 / area 12.6 >= 2.25 |
+| E Seaf63fed | 4.92 x 2.38 | 0 | 0.95 / 1.031 (0.46) | 0.799 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x2, 46 pts | off the line core (_core) / ink 0.80 >= 0.5 / area 7.1 >= 2.25 |
+| ST S2c4ea3ad | 5.50 x 4.57 | 0 | 0.84 / 0.901 (0.38) | 0.667 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x5, travel x8, underlay x4, 146 pts | off the line core (_core) / ink 0.67 >= 0.5 / area 11.8 >= 2.25 |
+| A S2953082f | 4.66 x 3.04 | 0 | 1.23 / 1.386 (0.4) | 1.092 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x2, 46 pts | line cap 4.66 >= 3 / ink 1.09 >= 0.5 / area 8.4 >= 2.25 |
+| U Se05b0bea | 4.98 x 4.09 | 0 | 0.80 / 0.91 (0.31) | 0.666 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x2, travel x2, 68 pts | off the line core (_core) / ink 0.67 >= 0.5 / area 8.1 >= 2.25 |
+| R S3963a893 | 4.66 x 5.08 | 0 | 1.52 / 1.643 (0.49) | 0.667 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x2, travel x2, underlay x1, 70 pts | line cap 4.66 >= 3 / ink 0.67 >= 0.5 / area 11.8 >= 2.25 |
+| A Sc434b18d | 4.72 x 4.94 | 0 | 1.29 / 1.421 (0.41) | 1.098 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x2, travel x1, 58 pts | off the line core (_core) / ink 1.10 >= 0.5 / area 9.8 >= 2.25 |
+| NT S2242b799 | 7.63 x 6.29 | 0 | 1.30 / 1.434 (0.48) | 0.833 | nested in Sb7c53307 (52.1 x 40.4 mm) | nested in S46472e12 (45.9 x 45.6 mm) | nested box inside a larger candidate's box | refused (is_lettering False) | satin x2, travel x1, underlay x2, 91 pts | off the line core (_core) / ink 0.83 >= 0.5 / area 19.9 >= 2.25 |
+
+== 2. census arm: a fixed tagger (--adopt --legibility). The tagger columns are the SHIPPED replay; the tiers were handed the adopted line.
+bridge 80 mm defaults + adopt_line ['S2242b799', 'S5afda564', 'Sc1dfc688']: 18,909 st / 100 trims, md5 fda61ddb
+  Bridge: 3 source glyphs, legibility 0.733, worst 0.5, OCR 0/0 None
+  BAR & RESTAURANT: 2 source glyphs, legibility 0.227, worst 0.0, OCR 0/1 [0.0, 0.793]
+
+| glyph | cap x w mm | holes | mean w / skel mm (cv) | ink mm | text cluster | house group | L1 words | lane | sewn | restore / bean / skeleton |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B Sc1dfc688 | 3.70 x 4.86 | 0 | 1.77 / 2.076 (0.44) | 0.899 | component of 1; nearest S673d856d: height_ratio 0.772 vs 0.800 | nested in S46472e12 (45.9 x 45.6 mm) | small_component 2.000 vs 3.000 (component of 2) | columns | satin x1, 48 pts | off the line core (_core) / ink 0.90 >= 0.5 / area 12.7 >= 2.25 |
+| A S5afda564 | 3.23 x 5.20 | 0 | 1.21 / 1.369 (0.44) | 1.149 | aspect 1.59 > 1.4 | aspect 1.61 > 1.4 | small_component 2.000 vs 3.000 (component of 2) | columns | satin x3, travel x2, underlay x3, 69 pts | off the line core (_core) / ink 1.15 >= 0.5 / area 8.6 >= 2.25 |
+| R S673d856d | 4.66 x 4.85 | 0 | 1.62 / 1.699 (0.5) | 0.766 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x2, travel x2, 79 pts | line cap 4.67 >= 3 / ink 0.77 >= 0.5 / area 12.4 >= 2.25 |
+| & S4fdc326d | 4.63 x 3.79 | 2 | 0.77 / 0.808 (0.36) | 0.982 | component of 1; nearest Sc1dfc688: height_ratio 0.781 vs 0.800, ink 37.300 vs 20.000, stroke_ratio 0.405 vs 0.500 | nested in S46472e12 (45.9 x 45.6 mm) | small_component 1.000 vs 3.000 (component of 1) | refused (is_lettering False) | satin x1, 94 pts | off the line core (_core) / ink 0.98 >= 0.5 / area 8.0 >= 2.25 |
+| R Sf6fe55e0 | 5.13 x 3.89 | 0 | 1.66 / 1.804 (0.45) | 0.799 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x2, travel x2, underlay x2, 84 pts | off the line core (_core) / ink 0.80 >= 0.5 / area 12.6 >= 2.25 |
+| E Seaf63fed | 4.92 x 2.38 | 0 | 0.95 / 1.031 (0.46) | 0.799 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x2, 46 pts | off the line core (_core) / ink 0.80 >= 0.5 / area 7.1 >= 2.25 |
+| ST S2c4ea3ad | 5.51 x 4.57 | 0 | 0.82 / 0.89 (0.4) | 0.667 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x5, travel x7, underlay x4, 142 pts | off the line core (_core) / ink 0.67 >= 0.5 / area 11.6 >= 2.25 |
+| A S2953082f | 4.65 x 3.17 | 0 | 1.24 / 1.394 (0.41) | 1.092 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x2, travel x1, 49 pts | off the line core (_core) / ink 1.09 >= 0.5 / area 8.4 >= 2.25 |
+| U Se05b0bea | 4.92 x 4.09 | 0 | 0.81 / 0.898 (0.3) | 0.666 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x3, travel x3, 74 pts | off the line core (_core) / ink 0.67 >= 0.5 / area 8.1 >= 2.25 |
+| R S3963a893 | 4.67 x 5.08 | 0 | 1.52 / 1.612 (0.5) | 0.667 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x2, travel x1, underlay x1, 68 pts | line cap 4.67 >= 3 / ink 0.67 >= 0.5 / area 11.8 >= 2.25 |
+| A Sc434b18d | 4.74 x 4.98 | 0 | 1.29 / 1.4 (0.41) | 1.098 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | columns | satin x2, 62 pts | line cap 4.67 >= 3 / ink 1.10 >= 0.5 / area 9.8 >= 2.25 |
+| NT S2242b799 | 7.63 x 6.22 | 0 | 1.38 / 1.514 (0.47) | 0.833 | nested in Sb7c53307 (52.1 x 40.4 mm) | nested in S46472e12 (45.9 x 45.6 mm) | nested box inside a larger candidate's box | columns | satin x3, travel x2, underlay x2, 88 pts | off the line core (_core) / ink 0.83 >= 0.5 / area 21.0 >= 2.25 |
+
+== 3. census arm: --adopt --set small_text_true_size=true small_text_restore_mm=6 bean_letter_max_stroke_mm=1.3 (gate-1 candidates moved for the census only; run on the tool before its letters/tiers columns existed)
+bridge 80 mm {'small_text_true_size': True, 'small_text_restore_mm': 6, 'bean_letter_max_stroke_mm': 1.3} + adopt_line ['S2242b799', 'S5afda564', 'Sc1dfc688']: 18,745 st / 98 trims, md5 e33273bd
+  Bridge: 3 source glyphs, legibility 0.733, worst 0.5, OCR 0/0 None
+  BAR & RESTAURANT: 2 source glyphs, legibility 0.229, worst 0.0, OCR 0/1 [0.0, 0.793]
+
+| glyph | cap x w mm | holes | mean w / skel mm (cv) | ink mm | text cluster | house group | L1 words | lane | sewn |
+|---|---|---|---|---|---|---|---|---|---|
+| Sc1dfc688 | 3.62 x 5.02 | 0 | 1.80 / 1.994 (0.47) | 0.899 | component of 1; nearest S673d856d: height_ratio 0.772 vs 0.800 | nested in S46472e12 (45.9 x 45.6 mm) | small_component 2.000 vs 3.000 (component of 2) | refused (is_lettering False) | fill x1, underlay x1, 82 pts |
+| S5afda564 | 3.22 x 5.14 | 0 | 1.30 / 1.513 (0.41) | 1.108 | aspect 1.59 > 1.4 | aspect 1.59 > 1.4 | small_component 2.000 vs 3.000 (component of 2) | refused (is_lettering False) | satin x1, underlay x1, 38 pts |
+| S673d856d | 4.73 x 4.83 | 1 | 1.23 / 1.301 (0.37) | 0.766 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | not asked | run x3, 89 pts |
+| S4fdc326d | 4.63 x 3.79 | 2 | 0.77 / 0.808 (0.36) | 0.982 | component of 1; nearest Sc1dfc688: height_ratio 0.781 vs 0.800, ink 37.300 vs 20.000, stroke_ratio 0.405 vs 0.500 | nested in S46472e12 (45.9 x 45.6 mm) | small_component 1.000 vs 3.000 (component of 1) | refused (is_lettering False) | satin x1, 94 pts |
+| Sf6fe55e0 | 5.24 x 3.91 | 0 | 1.67 / 1.815 (0.47) | 0.816 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | refused (is_lettering False) | satin x1, underlay x2, 37 pts |
+| Seaf63fed | 4.90 x 2.41 | 0 | 0.94 / 0.938 (0.47) | 0.799 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | refused (is_lettering False) | satin x1, 32 pts |
+| S2c4ea3ad | 5.59 x 4.57 | 0 | 0.84 / 0.927 (0.35) | 0.667 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | refused (is_lettering False) | satin x3, travel x1, underlay x2, 95 pts |
+| S2953082f | 4.69 x 2.93 | 0 | 1.21 / 1.33 (0.43) | 1.083 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | refused (is_lettering False) | satin x1, 40 pts |
+| Se05b0bea | 4.89 x 4.09 | 0 | 0.86 / 0.982 (0.29) | 0.666 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | refused (is_lettering False) | satin x2, 66 pts |
+| S3963a893 | 4.62 x 4.75 | 1 | 1.01 / 1.15 (0.24) | 0.667 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | not asked | run x2, 79 pts |
+| Sc434b18d | 4.39 x 4.72 | 0 | 1.17 / 1.306 (0.4) | 1.098 | yes | nested in S46472e12 (45.9 x 45.6 mm) | in a word | not asked | run x3, 62 pts |
+| S2242b799 | 7.63 x 6.29 | 0 | 1.30 / 1.434 (0.48) | 0.833 | nested in Sb7c53307 (52.1 x 40.4 mm) | nested in S46472e12 (45.9 x 45.6 mm) | nested box inside a larger candidate's box | refused (is_lettering False) | satin x2, travel x1, underlay x2, 91 pts |
