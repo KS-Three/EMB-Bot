@@ -1,0 +1,648 @@
+{
+ "fixture": "hat72",
+ "arm": "switch",
+ "width_mm": 72.0,
+ "label": "small_text_true_size ON (bean 0.5)",
+ "overrides": {
+  "small_text_true_size": true
+ },
+ "stitches": 13195,
+ "trims": 46,
+ "size_mm": [
+  72.7,
+  39.5
+ ],
+ "skeleton_shapes": 0,
+ "bean_shapes": 17,
+ "words": {
+  "est": {
+   "glyphs": 3,
+   "legibility": 0.929,
+   "legibility_space": 0.105,
+   "worst_glyph": 0.792,
+   "counters_open": [
+    0,
+    0
+   ],
+   "ocr": {
+    "recovered": 1,
+    "read": 2,
+    "ci95": [
+     0.095,
+     0.905
+    ]
+   },
+   "stitches": 105,
+   "trims": 0,
+   "box_mm": [
+    -8.64,
+    -12.01,
+    -2.88,
+    -9.45
+   ],
+   "built": {
+    "skeleton": 0,
+    "bean": 3,
+    "outline": 0
+   },
+   "glyph_rows": [
+    {
+     "legibility": 0.996,
+     "legibility_space": 0.143,
+     "strokes": 1.0,
+     "clean": 0.996,
+     "counters": 1.0,
+     "space": 0.143,
+     "src_counters_openable": 0,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      30.2,
+      10.2,
+      31.35,
+      11.7
+     ],
+     "ocr_src": "E",
+     "ocr_sewn": "F",
+     "ocr_readable_src": true,
+     "ocr_recovered": false
+    },
+    {
+     "legibility": 1.0,
+     "legibility_space": 0.0,
+     "strokes": 1.0,
+     "clean": 1.0,
+     "counters": 1.0,
+     "space": 0.0,
+     "src_counters_openable": 0,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      32.0,
+      10.2,
+      33.1,
+      11.75
+     ],
+     "ocr_src": "I",
+     "ocr_sewn": "",
+     "ocr_readable_src": false,
+     "ocr_recovered": false
+    },
+    {
+     "legibility": 0.792,
+     "legibility_space": 0.171,
+     "strokes": 1.0,
+     "clean": 0.792,
+     "counters": 1.0,
+     "space": 0.171,
+     "src_counters_openable": 0,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      33.7,
+      10.2,
+      35.0,
+      11.7
+     ],
+     "ocr_src": "T",
+     "ocr_sewn": "T",
+     "ocr_readable_src": true,
+     "ocr_recovered": true
+    }
+   ]
+  },
+  "1895": {
+   "glyphs": 4,
+   "legibility": 0.786,
+   "legibility_space": 0.142,
+   "worst_glyph": 0.5,
+   "counters_open": [
+    2,
+    3
+   ],
+   "ocr": {
+    "recovered": 2,
+    "read": 4,
+    "ci95": [
+     0.15,
+     0.85
+    ]
+   },
+   "stitches": 175,
+   "trims": 2,
+   "box_mm": [
+    2.66,
+    -12.01,
+    8.64,
+    -9.45
+   ],
+   "built": {
+    "skeleton": 0,
+    "bean": 3,
+    "outline": 1
+   },
+   "glyph_rows": [
+    {
+     "legibility": 0.646,
+     "legibility_space": 0.0,
+     "strokes": 1.0,
+     "clean": 0.646,
+     "counters": 1.0,
+     "space": 0.0,
+     "src_counters_openable": 0,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      41.55,
+      10.2,
+      42.35,
+      11.7
+     ],
+     "ocr_src": "1",
+     "ocr_sewn": "F",
+     "ocr_readable_src": true,
+     "ocr_recovered": false
+    },
+    {
+     "legibility": 0.5,
+     "legibility_space": 0.0,
+     "strokes": 1.0,
+     "clean": 1.0,
+     "counters": 0.5,
+     "space": 0.0,
+     "src_counters_openable": 2,
+     "sewn_counters": 1,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      42.7,
+      10.2,
+      43.8,
+      11.75
+     ],
+     "ocr_src": "8",
+     "ocr_sewn": "8",
+     "ocr_readable_src": true,
+     "ocr_recovered": true
+    },
+    {
+     "legibility": 1.0,
+     "legibility_space": 0.4,
+     "strokes": 1.0,
+     "clean": 1.0,
+     "counters": 1.0,
+     "space": 0.4,
+     "src_counters_openable": 1,
+     "sewn_counters": 1,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      44.1,
+      10.2,
+      45.2,
+      11.7
+     ],
+     "ocr_src": "9",
+     "ocr_sewn": "9",
+     "ocr_readable_src": true,
+     "ocr_recovered": true
+    },
+    {
+     "legibility": 1.0,
+     "legibility_space": 0.167,
+     "strokes": 1.0,
+     "clean": 1.0,
+     "counters": 1.0,
+     "space": 0.167,
+     "src_counters_openable": 0,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      45.5,
+      10.2,
+      46.6,
+      11.75
+     ],
+     "ocr_src": "5",
+     "ocr_sewn": "",
+     "ocr_readable_src": true,
+     "ocr_recovered": false
+    }
+   ]
+  },
+  "the": {
+   "glyphs": 3,
+   "legibility": 0.634,
+   "legibility_space": 0.0,
+   "worst_glyph": 0.0,
+   "counters_open": [
+    0,
+    0
+   ],
+   "ocr": {
+    "recovered": 1,
+    "read": 3,
+    "ci95": [
+     0.061,
+     0.792
+    ]
+   },
+   "stitches": 291,
+   "trims": 3,
+   "box_mm": [
+    -4.32,
+    -7.17,
+    4.46,
+    -3.99
+   ],
+   "built": {
+    "skeleton": 0,
+    "bean": 0,
+    "outline": 3
+   },
+   "glyph_rows": [
+    {
+     "legibility": 0.0,
+     "legibility_space": 0.0,
+     "strokes": 1.0,
+     "clean": 0.998,
+     "counters": 0.0,
+     "space": 0.101,
+     "src_counters_openable": 0,
+     "sewn_counters": 1,
+     "sewn_counters_spurious": 1,
+     "bbox_mm": [
+      34.45,
+      14.95,
+      36.55,
+      17.4
+     ],
+     "ocr_src": "T",
+     "ocr_sewn": "T",
+     "ocr_readable_src": true,
+     "ocr_recovered": true
+    },
+    {
+     "legibility": 0.981,
+     "legibility_space": 0.0,
+     "strokes": 1.0,
+     "clean": 0.981,
+     "counters": 1.0,
+     "space": 0.0,
+     "src_counters_openable": 0,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      37.3,
+      14.95,
+      39.65,
+      17.4
+     ],
+     "ocr_src": "H",
+     "ocr_sewn": "",
+     "ocr_readable_src": true,
+     "ocr_recovered": false
+    },
+    {
+     "legibility": 0.921,
+     "legibility_space": 0.0,
+     "strokes": 1.0,
+     "clean": 0.921,
+     "counters": 1.0,
+     "space": 0.0,
+     "src_counters_openable": 0,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      40.4,
+      14.95,
+      42.3,
+      17.4
+     ],
+     "ocr_src": "E",
+     "ocr_sewn": "A",
+     "ocr_readable_src": true,
+     "ocr_recovered": false
+    }
+   ]
+  },
+  "tagline": {
+   "glyphs": 13,
+   "legibility": 0.677,
+   "legibility_space": 0.343,
+   "worst_glyph": 0.0,
+   "counters_open": [
+    1,
+    4
+   ],
+   "ocr": {
+    "recovered": 10,
+    "read": 11,
+    "ci95": [
+     0.623,
+     0.984
+    ]
+   },
+   "stitches": 654,
+   "trims": 7,
+   "box_mm": [
+    -11.23,
+    7.13,
+    12.96,
+    10.92
+   ],
+   "built": {
+    "skeleton": 0,
+    "bean": 11,
+    "outline": 2
+   },
+   "glyph_rows": [
+    {
+     "legibility": 1.0,
+     "legibility_space": 0.286,
+     "strokes": 1.0,
+     "clean": 1.0,
+     "counters": 1.0,
+     "space": 0.286,
+     "src_counters_openable": 0,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      27.65,
+      29.85,
+      29.15,
+      31.8
+     ],
+     "ocr_src": "E",
+     "ocr_sewn": "E",
+     "ocr_readable_src": true,
+     "ocr_recovered": true
+    },
+    {
+     "legibility": 0.0,
+     "legibility_space": 0.0,
+     "strokes": 1.0,
+     "clean": 1.0,
+     "counters": 0.0,
+     "space": 0.481,
+     "src_counters_openable": 1,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      29.25,
+      29.85,
+      31.3,
+      31.8
+     ],
+     "ocr_src": "A",
+     "ocr_sewn": "A",
+     "ocr_readable_src": true,
+     "ocr_recovered": true
+    },
+    {
+     "legibility": 1.0,
+     "legibility_space": 0.5,
+     "strokes": 1.0,
+     "clean": 1.0,
+     "counters": 1.0,
+     "space": 0.5,
+     "src_counters_openable": 0,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      31.0,
+      29.85,
+      32.65,
+      31.8
+     ],
+     "ocr_src": "T",
+     "ocr_sewn": "T",
+     "ocr_readable_src": true,
+     "ocr_recovered": true
+    },
+    {
+     "legibility": 0.893,
+     "legibility_space": 0.893,
+     "strokes": 1.0,
+     "clean": 0.893,
+     "counters": 1.0,
+     "space": 1.0,
+     "src_counters_openable": 0,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      33.85,
+      29.2,
+      34.15,
+      32.5
+     ],
+     "ocr_src": "7",
+     "ocr_sewn": "",
+     "ocr_readable_src": false,
+     "ocr_recovered": false
+    },
+    {
+     "legibility": 0.0,
+     "legibility_space": 0.0,
+     "strokes": 0.99,
+     "clean": 1.0,
+     "counters": 0.0,
+     "space": 0.677,
+     "src_counters_openable": 0,
+     "sewn_counters": 1,
+     "sewn_counters_spurious": 1,
+     "bbox_mm": [
+      35.4,
+      29.8,
+      36.8,
+      31.85
+     ],
+     "ocr_src": "S",
+     "ocr_sewn": "S",
+     "ocr_readable_src": true,
+     "ocr_recovered": true
+    },
+    {
+     "legibility": 1.0,
+     "legibility_space": 0.533,
+     "strokes": 1.0,
+     "clean": 1.0,
+     "counters": 1.0,
+     "space": 0.533,
+     "src_counters_openable": 0,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      36.9,
+      29.85,
+      38.6,
+      31.8
+     ],
+     "ocr_src": "T",
+     "ocr_sewn": "T",
+     "ocr_readable_src": true,
+     "ocr_recovered": true
+    },
+    {
+     "legibility": 0.0,
+     "legibility_space": 0.0,
+     "strokes": 1.0,
+     "clean": 1.0,
+     "counters": 0.0,
+     "space": 0.379,
+     "src_counters_openable": 1,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      38.3,
+      29.85,
+      40.4,
+      31.8
+     ],
+     "ocr_src": "A",
+     "ocr_sewn": "A",
+     "ocr_readable_src": true,
+     "ocr_recovered": true
+    },
+    {
+     "legibility": 1.0,
+     "legibility_space": 0.386,
+     "strokes": 1.0,
+     "clean": 1.0,
+     "counters": 1.0,
+     "space": 0.386,
+     "src_counters_openable": 0,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      40.0,
+      29.85,
+      41.85,
+      31.8
+     ],
+     "ocr_src": "Y",
+     "ocr_sewn": "Y",
+     "ocr_readable_src": true,
+     "ocr_recovered": true
+    },
+    {
+     "legibility": 0.903,
+     "legibility_space": 0.903,
+     "strokes": 1.0,
+     "clean": 0.903,
+     "counters": 1.0,
+     "space": 1.0,
+     "src_counters_openable": 0,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      42.8,
+      29.2,
+      43.1,
+      32.5
+     ],
+     "ocr_src": "7",
+     "ocr_sewn": "",
+     "ocr_readable_src": false,
+     "ocr_recovered": false
+    },
+    {
+     "legibility": 1.0,
+     "legibility_space": 0.111,
+     "strokes": 1.0,
+     "clean": 1.0,
+     "counters": 1.0,
+     "space": 0.111,
+     "src_counters_openable": 1,
+     "sewn_counters": 1,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      44.5,
+      29.85,
+      45.95,
+      31.8
+     ],
+     "ocr_src": "P",
+     "ocr_sewn": "T",
+     "ocr_readable_src": true,
+     "ocr_recovered": false
+    },
+    {
+     "legibility": 1.0,
+     "legibility_space": 0.436,
+     "strokes": 1.0,
+     "clean": 1.0,
+     "counters": 1.0,
+     "space": 0.436,
+     "src_counters_openable": 0,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      46.05,
+      29.85,
+      47.5,
+      31.8
+     ],
+     "ocr_src": "L",
+     "ocr_sewn": "L",
+     "ocr_readable_src": true,
+     "ocr_recovered": true
+    },
+    {
+     "legibility": 0.0,
+     "legibility_space": 0.0,
+     "strokes": 1.0,
+     "clean": 1.0,
+     "counters": 0.0,
+     "space": 0.367,
+     "src_counters_openable": 1,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      47.6,
+      29.85,
+      49.65,
+      31.8
+     ],
+     "ocr_src": "A",
+     "ocr_sewn": "A",
+     "ocr_readable_src": true,
+     "ocr_recovered": true
+    },
+    {
+     "legibility": 1.0,
+     "legibility_space": 0.417,
+     "strokes": 1.0,
+     "clean": 1.0,
+     "counters": 1.0,
+     "space": 0.417,
+     "src_counters_openable": 0,
+     "sewn_counters": 0,
+     "sewn_counters_spurious": 0,
+     "bbox_mm": [
+      49.2,
+      29.85,
+      51.05,
+      31.8
+     ],
+     "ocr_src": "Y",
+     "ocr_sewn": "Y",
+     "ocr_readable_src": true,
+     "ocr_recovered": true
+    }
+   ]
+  }
+ },
+ "frame": {
+  "hw": [
+   1345,
+   2500
+  ],
+  "art_bbox": [
+   0.0,
+   0.0,
+   2500.0,
+   1345.0
+  ],
+  "px_per_mm": 34.72222222222222
+ },
+ "secs": 289
+}

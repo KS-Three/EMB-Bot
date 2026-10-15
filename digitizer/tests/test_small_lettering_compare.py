@@ -35,7 +35,7 @@ def _cell(fx, arm, **kw):
 
 
 def test_arms_are_valid_config_and_carry_the_values_the_scope_names():
-    assert slc.ARM_ORDER == ["main", "sk073", "sk100", "true", "both073", "both100", "switch", "ring"]
+    assert slc.ARM_ORDER == ["main", "sk073", "sk100", "true", "both073", "both100", "switch", "ring", "keep"]
     for name, (overrides, _label) in slc.ARMS.items():
         PipelineConfig(**overrides)                 # every key is a real field, every value accepted
     assert slc.ARMS["main"][0] == {}
@@ -60,7 +60,7 @@ def test_arms_are_valid_config_and_carry_the_values_the_scope_names():
 def test_the_arms_change_only_the_two_options_and_nothing_else():
     base = PipelineConfig()
     keys = {"small_lettering_skeleton", "small_lettering_skeleton_floor_mm", *slc.TRUE_SIZE,
-            "small_text_true_size", "ink_ground_ring_mm"}
+            "small_text_true_size", "ink_ground_ring_mm", "small_text_keep_stray_lines"}
     for name, (overrides, _l) in slc.ARMS.items():
         assert set(overrides) <= keys, name
     # the options themselves are OFF in the config the arms start from
