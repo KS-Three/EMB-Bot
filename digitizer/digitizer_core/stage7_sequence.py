@@ -3711,7 +3711,9 @@ def sequence(
                 # `cfg.hairline_lines_strand_test` / `hairline_lines_chain` /
                 # `hairline_lines_gradient` only (absent off).
                 **{k: hair_lines[k] for k in ("refused_bar", "thread_wt", "hops", "hop_mm",
-                                              "refused_region", "refused_own_tone")
+                                              "refused_region", "refused_own_tone",
+                                              "refused_logo_edge", "refused_logo_flat",
+                                              "refused_logo_pattern")
                    if k in hair_lines},
             )
         )

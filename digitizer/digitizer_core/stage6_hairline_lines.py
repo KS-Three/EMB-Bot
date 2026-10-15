@@ -83,6 +83,12 @@ is line art the tracer already kept as a shape (the bridge logo's wave
 outlines), and sewing it again doubles it. Needs the strand test on too (it
 removes the barring, #897), else inert.
 
+**The supplement's logo refusal** (`cfg.hairline_lines_logo_refusal`,
+default OFF, 2026-10-15; `logo_line_test`): a third refusal for the line
+detail of RENDERED art, which #942 measured the supplement sewing on three
+logos. A line mostly along a shape's edge, or with flat ground or a pattern
+of hard lines beside it, is not a strand over texture.
+
 Every number is a property of the FILE, not of cloth (ROADMAP gate 1).
 """
 from __future__ import annotations
@@ -334,6 +340,8 @@ def supplement_test(regions, walked: set, sp, cfg):
     region_l = np.array([float(lab[r.thread_index][0]) for r in regions], np.float64)
     stroke = [is_stroke(r.polygon) for r in regions]
     tone = line_tone_images(sp, cfg) if any(stroke) else {}
+    logo = (logo_line_test([r.polygon for r in regions], sp)
+            if getattr(cfg, "hairline_lines_logo_refusal", False) else None)
 
     def refuse(s):
         if covered_share(s["pts"], zone) >= _SUPPLEMENT_COVERED_SHARE:
@@ -341,8 +349,92 @@ def supplement_test(regions, walked: set, sp, cfg):
         if tone and own_tone_share(s["pts"], s["polarity"], tone[s["polarity"]], sp,
                                    tree, region_l, stroke) >= _SUPPLEMENT_COVERED_SHARE:
             return "refused_own_tone"
-        return None
+        return logo(s["pts"]) if logo is not None else None
+    refuse.keys = SUPPLEMENT_KEYS + (LOGO_KEYS if logo is not None else ())
     return refuse
+
+
+# --- The supplement's logo refusal (`cfg.hairline_lines_logo_refusal`, OFF) ---
+# #942 measured the supplement sewing line detail of RENDERED art on 3 of the
+# 9 corpus logos -- drone's specular rims, the screenshot's engraved hatching,
+# golden_tee's bevel edges -- as if it were hair. Read beside the line on one
+# common grid (so a 27 px/mm logo and a 4 px/mm photo read the same mm), a
+# photographed strand sits on TEXTURE: fur has no flat pixels and no pattern
+# of hard lines. Rendered line detail sits on a shape's edge, on flat or
+# smoothly shaded ground, or inside a pattern of lines. All CANDIDATES,
+# in-sample on 3 logos and one photo (owl_kent), unsewn (gate 1); nothing in
+# stage 0 is read or changed (gate 2). Measured split in the PR.
+SUPPLEMENT_KEYS = ("refused_region", "refused_own_tone")
+LOGO_KEYS = ("refused_logo_edge", "refused_logo_flat", "refused_logo_pattern")
+# The common grid the ground is read on (owl_kent's own photo is 4.36 px/mm).
+_LOGO_GRID_PX_PER_MM = 4.0
+# 1. EDGE: at least this share of the line within `_LOGO_EDGE_MM` of a
+#    shape's boundary is the tracer's own edge drawn again (a bevel, a rim).
+_LOGO_EDGE_MM = 0.15
+_LOGO_EDGE_SHARE = 0.6
+# The band beside the line, either side: from one grid pixel to 1 mm out.
+_LOGO_BAND_PX = (1, 4)
+# 2. FLAT: at least this share of the band's pixels with a 3 x 3 L* std
+#    under `_LOGO_FLAT_STD` -- vector fill or smooth CG shading.
+_LOGO_FLAT_STD = 1.0
+_LOGO_FLAT_SHARE = 0.15
+# 3. PATTERN: the band's median 3 x 3 L* std at least this -- the ground is
+#    itself a pattern of hard lines (hatching, engraving), not fur.
+_LOGO_PATTERN_STD = 14.0
+
+
+def logo_texture(sp) -> tuple[np.ndarray, float]:
+    """(3 x 3 local L* std on the `_LOGO_GRID_PX_PER_MM` grid, the grid's
+    scale against `sp`)."""
+    f = _LOGO_GRID_PX_PER_MM / sp.px_per_mm
+    small = cv2.resize(_light(sp), None, fx=f, fy=f, interpolation=cv2.INTER_AREA)
+    m = cv2.blur(small, (3, 3))
+    sq = cv2.blur(small * small, (3, 3))
+    return np.sqrt(np.maximum(sq - m * m, 0.0)), f
+
+
+def _band(pts, sp, f, shape) -> np.ndarray:
+    """(H, W) bool: the grid pixels beside the polyline `pts` (mm), between
+    `_LOGO_BAND_PX` either side."""
+    q = np.round(np.array([((x * sp.px_per_mm + sp.origin_px[0]) * f,
+                            (y * sp.px_per_mm + sp.origin_px[1]) * f) for x, y in pts]
+                          )).astype(np.int32)
+    out = []
+    for r in _LOGO_BAND_PX:
+        m = np.zeros(shape, np.uint8)
+        cv2.polylines(m, [q], False, 1, thickness=2 * r + 1)
+        out.append(m.astype(bool))
+    return out[1] & ~out[0]
+
+
+def logo_line_test(polygons, sp):
+    """-> test(pts) -> the LOGO_KEYS key a supplement line is refused under,
+    or None: 1 its length on a shape's edge, 2 flat ground beside it, 3 a
+    pattern of lines beside it (constants above)."""
+    std, f = logo_texture(sp)
+    polys = [p for p in polygons if p is not None and not p.is_empty]
+    bounds = shapely.union_all([p.boundary for p in polys]) if polys else None
+    if bounds is not None:
+        shapely.prepare(bounds)
+
+    def test(pts):
+        if len(pts) < 2:
+            return None
+        if bounds is not None:
+            x, y = _samples(pts)
+            d = shapely.distance(bounds, shapely.points(x, y))
+            if float(np.mean(d < _LOGO_EDGE_MM)) >= _LOGO_EDGE_SHARE:
+                return "refused_logo_edge"
+        band = _band(pts, sp, f, std.shape)
+        if not band.any():
+            return None
+        b = std[band]
+        if float(np.mean(b < _LOGO_FLAT_STD)) >= _LOGO_FLAT_SHARE:
+            return "refused_logo_flat"
+        if float(np.median(b)) >= _LOGO_PATTERN_STD:
+            return "refused_logo_pattern"
+        return None
+    return test
 
 
 def _light(sp) -> np.ndarray:
@@ -622,21 +714,23 @@ def strand_blocks(sp, cfg, *, entry, trim_at_mm: float, allowed_threads: list[in
     `refuse(strand) -> key | None` (the gradient supplement,
     `supplement_test`): a strand it names a key for is not sewn, and the
     report counts it per polarity under `refused_region` and
-    `refused_own_tone`. None: no such test, and no such keys."""
+    `refused_own_tone` (and, with `cfg.hairline_lines_logo_refusal`, under
+    `LOGO_KEYS`: the keys are `refuse.keys`). None: no such test, and no
+    such keys."""
     strand_test = bool(getattr(cfg, "hairline_lines_strand_test", False))
     bw = dict(block_wt or {}) if strand_test else {}
     strands, census = extract_strands(sp, cfg)
     report = {"strands": 0, "dropped": 0, "jumps": 0, **census,
               "sewn_by_polarity": {}}
-    if refuse is not None:
-        report["refused_region"] = {}
-        report["refused_own_tone"] = {}
+    keys = tuple(getattr(refuse, "keys", SUPPLEMENT_KEYS)) if refuse is not None else ()
+    for key in keys:
+        report[key] = {}
 
     def free(group, polarity):
         if refuse is None:
             return group
         out = []
-        n = {"refused_region": 0, "refused_own_tone": 0}
+        n = {key: 0 for key in keys}
         for s in group:
             why = refuse(s)
             if why is None:

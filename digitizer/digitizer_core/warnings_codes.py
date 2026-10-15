@@ -236,7 +236,8 @@ HAIRLINE_STROKES_AS_RUN = "HAIRLINE_STROKES_AS_RUN"
 # (each {"dark": int, "light": int}), with "shapes" 0. As the gradient
 # supplement (`cfg.hairline_lines_gradient`) that is a SECOND warning beside
 # the region tier's, with "source": "lines_gradient", "refused_region" and
-# "refused_own_tone".
+# "refused_own_tone"; with `cfg.hairline_lines_logo_refusal` also
+# "refused_logo_edge", "refused_logo_flat" and "refused_logo_pattern".
 HAIRLINE_TIER_SEWN = "HAIRLINE_TIER_SEWN"
 # `cfg.bean_letter_max_stroke_mm` (2026-10-02): lettering whose ink strokes are
 # under the line sewed as bean runs along the ink's skeleton instead of satin.

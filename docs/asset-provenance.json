@@ -358,6 +358,13 @@
    "review": true
   },
   {
+   "prefix": "docs/renders/hairline-lines-logo-refusal/",
+   "status": "derived-render",
+   "source": "Session-generated renders of EMB-Bot's own stitch output (2026-10-15, cfg.hairline_lines_logo_refusal) via digitizer/tools/hairline_logo_refusal.py render, from fixtures already committed: the corpus logos drone, screenshot, golden_tee (tools.thin_strokes.corpus_cases) and digitizer/testdata/photo/owl_kent.jpg; no new artwork",
+   "basis": "digitizer/tools/hairline_logo_refusal.py; docs/renders/hairline-lines-logo-refusal/table.md",
+   "review": true
+  },
+  {
    "prefix": "docs/renders/blend-fallback-underlay-2026-10-05/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont, drone, bridge",

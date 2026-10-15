@@ -313,6 +313,19 @@ class PipelineConfig:
     # `supplement_test`). Carves nothing. Candidate geometry, unsewn
     # (gate 1). Off, byte-identical.
     hairline_lines_gradient: bool = False
+    # The gradient supplement's LOGO refusal (2026-10-15, default OFF; read
+    # only when the supplement runs, `hairline_lines_gradient` and the three
+    # flags it needs all on). #942's supplement sews line detail of rendered
+    # art on 3 of the 9 corpus logos (drone's highlights, the screenshot's
+    # hatching, golden_tee's bevels: +17 / +8 / +3 trims). On, a line that
+    # survives #942's two refusals is also refused when it lies mostly along
+    # a shape's edge, or when the ground beside it (read on a common 4 px/mm
+    # grid) is flat or a pattern of hard lines rather than texture
+    # (`stage6_hairline_lines.logo_line_test`). Reads the source raster's
+    # tone only; stage 0 is untouched (gate 2). Candidate constants,
+    # in-sample on three logos and owl_kent, unsewn (gate 1). Off,
+    # byte-identical; the supplement itself stays OFF (WoK 45).
+    hairline_lines_logo_refusal: bool = False
     # Hairline coverage guard (2026-10-13, default OFF; needs `hairline` on).
     # A shape whose hairline runs would leave more than
     # `stage6_hairline.COVERAGE_GUARD_MM2` of its own ink bare (a 0.4 mm
