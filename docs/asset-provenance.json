@@ -863,6 +863,12 @@
    "basis": "PR body of claude/fremont-8-counter; source fixture cleared by Kent 2026-10-08 (its own entry above)"
   },
   {
+   "prefix": "docs/renders/fremont-wordmark-ends/",
+   "status": "derived-render",
+   "source": "Rendered by digitizer/tools/wordmark_ticks.py --panels: crops of digitizer/testdata/photo/logo_hotel_fremont.webp's prep raster beside thread renders (digitizer_core.stitchviz) of EMB-Bot's own digitize of it at 81 mm, Hat; no new artwork, no new client art (Kent's marked screenshot is NOT in the repo)",
+   "basis": "PR body of claude/fremont-wordmark-ends; source fixture cleared by Kent 2026-10-08 (its own entry above)"
+  },
+  {
    "prefix": "docs/renders/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures (catch-all for new render directories)",
