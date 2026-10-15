@@ -140,18 +140,20 @@ def corpus_rows(cells: dict[str, dict[str, dict]]) -> list[dict]:
                      "au_up": (c["uncovered_total_mm2"] or 0) > (b["uncovered_total_mm2"] or 0) + 1e-9,
                      "new_au": bool(set(c["uncovered_shapes"]) - set(b["uncovered_shapes"])),
                      "d_bare": round(c["bare_mm2"] - b["bare_mm2"], 2), "d_leg": legs,
+                     "satin_same": b.get("satin_md5") == c.get("satin_md5"),
                      "bean": c.get("bean_shapes")})
     return rows
 
 
 def corpus_table(cells: dict[str, dict[str, dict]]) -> str:
     lines = ["| design | switch st / tr | + bay hold st / tr | identical | shapes changed | "
-             "ARTWORK_UNCOVERED mm2 | new AU shape | dBare mm2 | legibility change |",
-             "|---|---|---|---|---|---|---|---|---|"]
+             "ARTWORK_UNCOVERED mm2 | new AU shape | dBare mm2 | satin runs identical | legibility change |",
+             "|---|---|---|---|---|---|---|---|---|---|"]
     for r in corpus_rows(cells):
         leg = ", ".join(f"{w} {d:+.3f}" for w, d in r["d_leg"].items() if d) or ("none moved" if r["d_leg"] else "-")
         lines.append(f"| {r['design']} | {r['base']} | {r['arm']} | {'yes' if r['identical'] else 'NO'} | "
-                     f"{r['changed']} | {r['au']} | {'YES' if r['new_au'] else 'no'} | {r['d_bare']:+.2f} | {leg} |")
+                     f"{r['changed']} | {r['au']} | {'YES' if r['new_au'] else 'no'} | {r['d_bare']:+.2f} | "
+                     f"{'yes' if r['satin_same'] else 'NO'} | {leg} |")
     return "\n".join(lines)
 
 
@@ -240,6 +242,17 @@ def check_replan(fixture: str, arm: str) -> dict:
     return res
 
 
+def satin_md5(plan) -> str:
+    """md5 of the SATIN runs alone, in sew order (`stream_md5`'s recipe): the
+    satin tier the DOCTRINE 2026-09-30 notch-guard negative was measured on."""
+    import hashlib
+
+    from digitizer_core import stitches
+    coords = [[round(x, 4), round(y, 4), r.jump, r.trim]
+              for _, r in plan.iter_runs() if r.kind == stitches.SATIN for x, y in r.points]
+    return hashlib.md5(json.dumps(coords).encode()).hexdigest()
+
+
 def corpus_cell(name: str, out: Path) -> list[dict]:
     """One `small_lettering_compare` corpus design: digitized once, planned
     under the base and the hold arm, recorded the way that tool records it."""
@@ -259,7 +272,7 @@ def corpus_cell(name: str, out: Path) -> list[dict]:
     for arm in (CORPUS_BASE, CORPUS_ARM):
         pr = _plan(run, ARMS[arm][0], ({}, {}))
         rec = {"design": name, "arm": arm, "kind": spec["kind"], "overrides": ARMS[arm][0],
-               **slc.corpus_metrics(pr),
+               **slc.corpus_metrics(pr), "satin_md5": satin_md5(pr["plan"]),
                "bean_shapes": sum(1 for v in pr["bean"].values() if not v[-1]["report"].get("empty"))}
         if arm == CORPUS_BASE:
             rec.update(extra)                  # the small-print census reads the base cfg only

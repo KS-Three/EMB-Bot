@@ -26,7 +26,7 @@ from shapely.geometry import LineString, Point, Polygon
 
 from digitizer_core import PipelineConfig, digitize
 from digitizer_core.stage6_beanletter import (BAY_CLOSE_MM, _letter_ink, bean_letter,
-                                              hold_off_bays, letter_bays)
+                                              hold_off_bays, letter_bays, letter_counters)
 
 from .conftest import TESTDATA
 
@@ -113,9 +113,7 @@ def _holes(runs, ppm=20.0):
 
 def _upper_bay(spines):
     _own, ink = _letter_ink(spines, STROKE_MM)
-    bays = letter_bays(ink)
-    parts = list(getattr(bays, "geoms", [bays]))
-    return min(parts, key=lambda g: g.centroid.y)        # the topmost bay
+    return min(letter_bays(ink), key=lambda g: g.centroid.y)        # the topmost bay
 
 
 # --- the 5 and the E -------------------------------------------------------------
@@ -173,7 +171,40 @@ def test_a_closed_counter_is_not_a_bay():
     ring = _arc(0.0, 0.0, 0.4, 0, 360, 48)
     _own, ink = _letter_ink([ring], STROKE_MM)
     assert ink.geom_type == "Polygon" and len(ink.interiors) == 1     # the counter
-    assert letter_bays(ink) is None
+    assert letter_bays(ink) == []
+    assert len(letter_counters(ink)) == 1
+
+
+def test_a_stroke_between_two_bays_leans_toward_the_wider_one():
+    """The bowl top of a 5: its upper bay is narrow, its bowl wide. Leaning
+    into the wide pocket costs it a smaller share than the narrow one gains."""
+    own = LineString([(0, 0), (2, 0)]).buffer(STROKE_MM / 2)
+    narrow = Polygon([(0, 0.15), (2, 0.15), (2, 0.45), (0, 0.45)])
+    wide = Polygon([(0, -0.15), (2, -0.15), (2, -1.15), (0, -1.15)])
+    (q,) = hold_off_bays([(1.0, 0.0)], own, [narrow, wide], HOLD_MM)
+    assert q[1] < 0.0, q                                         # toward the wide pocket
+
+
+def test_a_stroke_between_a_bay_and_a_counter_is_not_pushed_into_the_counter():
+    """An A's leg: a bay outside, the counter inside. Held off the bay alone
+    the thread would close the counter (Fremont's tagline A's, first build)."""
+    own = LineString([(0, 0), (2, 0)]).buffer(STROKE_MM / 2)
+    bay = Polygon([(0, 0.15), (2, 0.15), (2, 0.55), (0, 0.55)])
+    counter = Polygon([(0, -0.15), (2, -0.15), (2, -0.55), (0, -0.55)])
+    assert hold_off_bays([(1.0, 0.0)], own, [bay], HOLD_MM)[0][1] < 0.0      # bay alone: pushed in
+    assert hold_off_bays([(1.0, 0.0)], own, [bay], HOLD_MM, [counter]) == [(1.0, 0.0)]
+
+
+def test_a_station_only_a_counter_crowds_is_not_moved():
+    own = LineString([(0, 0), (2, 0)]).buffer(STROKE_MM / 2)
+    far_bay = Point(0, 5).buffer(0.3)
+    counter = Polygon([(0, -0.15), (2, -0.15), (2, -0.55), (0, -0.55)])
+    assert hold_off_bays([(1.0, 0.0)], own, [far_bay], HOLD_MM, [counter]) == [(1.0, 0.0)]
+
+
+def test_a_junction_fillet_is_not_a_bay():
+    _own, ink = _letter_ink([[(0.0, 0.0), (1.5, 0.0)], [(0.75, 0.0), (0.75, 1.5)]], STROKE_MM)   # a T
+    assert letter_bays(ink) == []
 
 
 def test_the_bay_is_the_instruments_closing():
