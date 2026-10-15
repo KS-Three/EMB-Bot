@@ -1285,9 +1285,10 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
     left whole is refused, the STUB refusal gives way to it (a stub that
     sews no knot is no fault: the b's and g's cures cut a short stem foot),
     the fewest sewn folds then the fewest knots lead the ranking, and the
-    cut must sew fewer folds than the piece left whole. `against`: the
-    sewn reading to beat instead of the piece left whole's (OFF's cut of
-    an over-long piece, `_judged_overlong`); fewer knots then also count."""
+    cut must sew fewer folds, or as few and fewer knots, than the piece
+    left whole (the 80 mm p's ring: 14 crossed legs whole, 4 opened).
+    `against`: the sewn reading to beat instead of the piece left whole's
+    (OFF's cut of an over-long piece, `_judged_overlong`)."""
     col0 = build_column(pc, cut_lines, W, pitch_mm)
     f0 = _folded(col0)
     carried = f0 < FOLD_MIN and _carried_ring(pc, col0, W)
@@ -1461,12 +1462,7 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
     # `fold_cuts`: an over-long piece that also FOLDS (a lowercase a's bowl
     # carried round into its stem, 80 mm) refuses a cut that leaves a stub,
     # as `_fold_refine` does -- its spur cut off sewed as a four-cross knot.
-    # A piece that does not fold (every capital) is judged as shipped. A
-    # STRAIGHT stub is no knot and is not refused: the 120 mm p's stem top
-    # (2.4 W, seven parallel crosses) and the 80 mm m's first shoulder cut
-    # sew clean OFF, and refusing them sent the p to a ring pair that sewed
-    # 3 folds, 2 short and 9 crossed legs against OFF's 0/0/4, and the m to
-    # a column carried 75 deg round its arch (4 crossed against 0).
+    # A piece that does not fold (every capital) is judged as shipped.
     no_stubs = fold_cuts and _folded(build_column(pc, cut_lines, W, pitch_mm)) >= FOLD_MIN
     # With the fold look's sewn judge, such a piece is judged SEWN instead
     # (`_judged_overlong`): no stub is refused, and OFF's cut, every other
@@ -1491,8 +1487,8 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
                 continue
             lines = cut_lines + [LineString([p, q])]
             cols = [build_column(g, lines, W, pitch_mm) for g in subs]
-            if no_stubs and any(c is not None and c.kind != "straight"
-                                and _column_len(c) < STUB_WIDTHS * W for c in cols):
+            if no_stubs and any(c is not None and _column_len(c) < STUB_WIDTHS * W
+                                for c in cols):
                 # kept aside: the shipped choice, if nothing else cures it
                 score = sum(_overlong(c, W)[0] for c in cols)
                 if stub_best is None or score < stub_best[0]:
