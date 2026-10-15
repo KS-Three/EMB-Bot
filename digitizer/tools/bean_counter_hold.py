@@ -61,7 +61,7 @@ ARMS = {
                     f"small_text_true_size + hold {HOLD_MM}"),
 }
 ARM_ORDER = list(ARMS)
-FIXTURES = {"hat81": 81.0}
+FIXTURES = {"hat81": 81.0, "hat925": 92.5}       # Kent's stitch-out; the pro's size
 WORDS = ["est", "1895", "the", "tagline"]
 # The corpus pair: the switch (the default to be) without and with the hold.
 CORPUS_BASE, CORPUS_ARM = "switch", "switch_hold"
@@ -97,20 +97,26 @@ def corpus_rows(cells: dict[str, dict[str, dict]]) -> list[dict]:
             "au_mm2": (a["uncovered_total_mm2"], b["uncovered_total_mm2"]),
             "new_au": bool(b["uncovered_fires"] and not a["uncovered_fires"])
             or (set(b["uncovered_shapes"]) - set(a["uncovered_shapes"]) != set()),
+            # the small-print censuses' own counter read (`small_print.measure`)
+            "sp_shut": ((a["sp"]["counters_shut"], b["sp"]["counters_shut"], b["sp"]["counters"])
+                        if a.get("sp") and b.get("sp") else None),
             "d_leg": legs})
     return rows
 
 
 def corpus_table(cells: dict[str, dict[str, dict]]) -> str:
     lines = [f"| design | {CORPUS_BASE} st / tr | + hold st / tr | identical | shapes changed | "
-             "ARTWORK_UNCOVERED (mm2) | new AU shape | legibility change |",
-             "|---|---|---|---|---|---|---|---|"]
+             "ARTWORK_UNCOVERED (mm2) | new AU shape | legibility change | small-print counters shut |",
+             "|---|---|---|---|---|---|---|---|---|"]
     for r in corpus_rows(cells):
         (s0, s1), (t0, t1) = r["stitches"], r["trims"]
         (u0, u1) = r["au_mm2"]
-        legs = ", ".join(f"{w} {v:+.3f}" for w, v in r["d_leg"].items()) or "-"
+        legs = ", ".join(f"{w} {v:+.3f}" for w, v in r["d_leg"].items() if v) or "none moved"
+        if not r["d_leg"]:
+            legs = "-"
+        sp = "-" if not r["sp_shut"] else f"{r['sp_shut'][0]} -> {r['sp_shut'][1]} of {r['sp_shut'][2]}"
         lines.append(f"| {r['design']} | {s0:,} / {t0} | {s1:,} / {t1} | {'yes' if r['identical'] else 'NO'} | "
-                     f"{r['changed']} | {u0} -> {u1} | {'YES' if r['new_au'] else 'no'} | {legs} |")
+                     f"{r['changed']} | {u0} -> {u1} | {'YES' if r['new_au'] else 'no'} | {legs} | {sp} |")
     return "\n".join(lines)
 
 
@@ -204,9 +210,10 @@ def load_cells(out: Path) -> dict[str, dict]:
 def table(cells: dict[str, dict]) -> str:
     """Markdown: per arm, stitches / trims, then per word legibility and #905's
     open counters; and the 8's own two counters."""
-    lines = ["| arm | stitches | trims | EST | 1895 | THE | tagline | the 8's counters (bare share) | 9 | open (50% rule), 1895 |",
-             "|---|---|---|---|---|---|---|---|---|---|"]
-    for fx in FIXTURES:
+    lines = ["| size | arm | stitches | trims | EST | 1895 | THE | tagline | the 8's counters (bare share) | 9 | "
+             "open (50% rule), 1895 |",
+             "|---|---|---|---|---|---|---|---|---|---|---|"]
+    for fx, width in FIXTURES.items():
         for a in ARM_ORDER:
             c = cells.get(f"{fx}__{a}")
             if not c:
@@ -216,7 +223,7 @@ def table(cells: dict[str, dict]) -> str:
             eight = "/".join(f"{b:.3f}" for b in g[1]["bare"]) if len(g) > 1 else "-"
             nine = "/".join(f"{b:.3f}" for b in g[2]["bare"]) if len(g) > 2 else "-"
             k, n = open_counters(g)
-            lines.append(f"| {a} | {c['stitches']:,} | {c['trims']} | {legs} | {eight} | {nine} | {k} of {n} |")
+            lines.append(f"| {width:g} mm | {a} | {c['stitches']:,} | {c['trims']} | {legs} | {eight} | {nine} | {k} of {n} |")
     return "\n".join(lines)
 
 
@@ -307,9 +314,9 @@ def corpus_cell(name: str, arm: str, out: Path) -> dict:
         elif spec["kind"] == "hat":
             run = ft.run_arm(name, spec["width_mm"], None, preflight=False, overrides=overrides)
         else:
-            run, _extra = slc._digitize_small_print(spec, overrides, out)
+            run, extra = slc._digitize_small_print(spec, overrides, out)
     rec = {"design": name, "arm": arm, "kind": spec["kind"], "overrides": overrides,
-           **slc.corpus_metrics(run),
+           **slc.corpus_metrics(run), **(extra if spec["kind"] == "small_print" else {}),
            "bean_shapes": sum(1 for r in bean.values() if not r.get("empty")),
            "held_shapes": sum(1 for r in run["result"].regions if r.meta.get("bean_counter_held"))}
     case = slc.LEGIBILITY_CASE.get(name)
