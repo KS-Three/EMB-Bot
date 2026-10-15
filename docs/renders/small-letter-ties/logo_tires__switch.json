@@ -1,0 +1,41 @@
+{
+ "logo": "tires",
+ "tag": "switch",
+ "overrides": {
+  "small_text_true_size": true
+ },
+ "stitches": 2732,
+ "trims": 8,
+ "md5": "6a6ada47668b9a274b0086680e123441",
+ "shape_digests": {
+  "S27641282": "0dd94d190b3e64aa85ce9ca3076d543c",
+  "Sf272c1de": "e927a5ac625d4c96e5ba16d32b0f961d",
+  "S8edf1545": "fd8e1edbd7d3d30675df0863c462de88",
+  "S1f2e2d7b": "164eec04afe6cc46e8b75bfa9d28a040"
+ },
+ "small_shapes": [],
+ "ties_all": {
+  "slots": 16,
+  "laid": 16,
+  "untied": 0,
+  "legs": 64,
+  "thread_mm": 51.2,
+  "pile_mm2": 20.48,
+  "footprint_mm2": 7.002,
+  "leg_mm": [
+   0.8,
+   0.8
+  ]
+ },
+ "ties_small": {
+  "slots": 0,
+  "laid": 0,
+  "untied": 0,
+  "legs": 0,
+  "thread_mm": 0,
+  "pile_mm2": 0.0,
+  "footprint_mm2": 0.0,
+  "leg_mm": null
+ },
+ "secs": 51
+}
