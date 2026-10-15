@@ -1425,7 +1425,8 @@ def _satin_lettering_cover(cap_sewn: list[PlannedRegion],
 
 def _gate_saving(silhouette, omit, gated_runs, *, style: str,
                  entry, trim_at_mm: float,
-                 width_mm: float | None) -> tuple[float, float]:
+                 width_mm: float | None,
+                 bean_stitch_mm: float | None = None) -> tuple[float, float]:
     """-> (what the cap's gate saved, in %, how much cover it had, in mm²).
 
     `1 - gated/ungated` over the SAME geometry: the same cap emitted twice,
@@ -1460,7 +1461,8 @@ def _gate_saving(silhouette, omit, gated_runs, *, style: str,
         return 0.0, cover_mm2
     ungated, _report = silhouette_cap(silhouette, "__edge_cap__", style=style,
                                       entry=entry, trim_at_mm=trim_at_mm,
-                                      width_mm=width_mm, omit=None)
+                                      width_mm=width_mm, omit=None,
+                                      bean_stitch_mm=bean_stitch_mm)
     ungated_st = sum(len(r.points) for r in ungated)
     if not ungated_st:
         return 0.0, cover_mm2
@@ -3452,6 +3454,7 @@ def sequence(
             width_mm=cfg.border_width_mm,
             omit=cap_omit,
             walk_covered=cfg.edge_cap_walk_covered,
+            bean_stitch_mm=cfg.edge_cap_bean_pitch_mm,
         )
         # What the gate actually saved on THIS design, measured — the number
         # whose absence let a +58.7% bill read like a +13% one. Computed only
@@ -3461,7 +3464,8 @@ def sequence(
         cap_gate_saved, cap_omit_mm2 = (
             _gate_saving(silhouette, cap_omit, c_runs, style=cap_style,
                          entry=cursor, trim_at_mm=trim_at,
-                         width_mm=cfg.border_width_mm)
+                         width_mm=cfg.border_width_mm,
+                         bean_stitch_mm=cfg.edge_cap_bean_pitch_mm)
             if c_runs else (0.0, 0.0))
         if c_runs:
             # The needle always lifts into a new block and the thread is

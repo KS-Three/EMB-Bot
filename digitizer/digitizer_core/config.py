@@ -3667,6 +3667,22 @@ class PipelineConfig:
     # bean style only (`border_runs` owns satin's arcs). False is the shipped
     # cap byte for byte.
     edge_cap_walk_covered: bool = False
+    # Station pitch, in mm, of the BEAN edge cap only (built 2026-10-15,
+    # DEFAULT OFF). None sews the cap at `machine.BEAN_STITCH_MM` (0.73), the
+    # plan byte for byte. The short-stitch census
+    # (docs/short-stitch-sources-2026-10-15.md) found `run_outline` the worst
+    # source per stitch: every cap stitch is short or stacked, and the cap
+    # is 21% of the short stitches sewn in chains, the class at 4.2x the
+    # pro's. A number here re-spaces the cap's stations only. The run tier
+    # (small shapes sewn as an outline, often small lettering, where a long
+    # chord on a tight curve is a visible polygon), bean letters, the border
+    # tier's bean fallback and `edge_cap="satin"` keep `BEAN_STITCH_MM`.
+    # `edge_cap_walk_covered`'s walk uses the same pitch as the cap it joins.
+    # Every value is a gate-1 CANDIDATE (sew-out), never a setting; 1.0, 1.2
+    # and 1.5 mm were measured on the census corpus in the PR that added it
+    # (renders under docs/renders/edge-cap-bean-pitch/). A value <= 0 reads
+    # as None. tests/test_edge_cap_bean_pitch.py pins OFF by md5.
+    edge_cap_bean_pitch_mm: float | None = None
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth
