@@ -351,6 +351,13 @@
    "review": true
   },
   {
+   "prefix": "docs/renders/small-text-true-size-on/",
+   "status": "derived-render",
+   "source": "Session-generated renders of EMB-Bot's own stitch output (2026-10-14, the small_text_true_size flip) from repo fixtures already committed: digitizer/testdata/photo/drone_render.png and Hotel Fremont via tools/fremont_triage.py / glyph_legibility; no new artwork",
+   "basis": "docs/renders/small-text-true-size-on/provenance.txt",
+   "review": true
+  },
+  {
    "prefix": "docs/renders/blend-fallback-underlay-2026-10-05/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont, drone, bridge",

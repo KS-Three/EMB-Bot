@@ -1,0 +1,10 @@
+Renders made 2026-10-14 on branch claude/small-text-true-size-on from EMB-Bot's own stitch output (thread drawn at its laid width by stitchviz / fremont_triage._render), not photographs. Nothing was sewn.
+Every "before" row is `small_text_true_size=False` (the engine on main before this flip); every "after" row is the new default.
+stitchviz draws a bean letter's 3 stacked passes as ONE thread width, so the bean rows under-draw the sewn weight.
+Input artwork already in the repo, no new image and no new client artwork: digitizer/testdata/photo/drone_render.png (drone corpus case) and Hotel Fremont (tools/fremont_triage.py studio request; glyph_legibility case "fremont").
+
+fremont_hat81_tagline_before_after.png   EAT | STAY | PLAY at 81 mm on a Hat (Kent's stitch-out size): artwork, main, switch ON. tools/small_lettering_compare.py --cell hat81 main|switch, then --sheets.
+fremont_hat81_the_before_after.png       THE, same run.
+drone_and_drone_before_after.png         drone at 80 mm left chest, the 8 "AND DRONE" letters the restore step re-traces (the only shapes that change): main, switch ON. --corpus drone main|switch --renders, then --corpus-sheet drone.
+fremont_patch925_small_text_before_after.png  Fremont patch art at 92.5 mm (corpus "fremont"): every shape the switch changes, main vs switch ON.
+fremont_patch925_the_glyph_read_main.png / _switch.png  tools/glyph_legibility.py --case fremont --renders on those two designs: the E's upper bay reads as a closed (false) counter under the switch, counters 0.00 for that glyph, THE 1.000 -> 0.667.
