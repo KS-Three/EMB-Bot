@@ -10,8 +10,9 @@ engine file is changed by the PR that adds this card).
 
 **Source of Block P: PR #969's BRANCH.** `edge_cap_bean_pitch_mm` was not on
 `main` when this card was cut (#969, branch `claude/edge-cap-bean-pitch`); the
-P arms were generated from that branch, merged into this one. Block B's flag
-(`bean_letter_bay_hold`, #967) is on `main`.
+P arms were generated from that branch, merged into this one (#969 has since
+merged to `main`, and the arms are unchanged). Block B's flag
+(`bean_letter_bay_hold`, #967) was on `main` already.
 
 **What to sew:** `card_bayhold_edgecap_40wt.dst`, ONE colour (dark), **40 wt**,
 a **4 x 4 in hoop** (the design is 64.8 x 73.0 mm, inside the 100 x 100 mm sewable
