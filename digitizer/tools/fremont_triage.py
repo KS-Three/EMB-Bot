@@ -85,8 +85,10 @@ ARMS = {
     "lane_off": {"lettering_columns": False},
     "pre863": {},
     # The 1895 loss: `cfg.small_glyph_keep` OFF (it is ON by default since
-    # 2026-10-13, Kent's ruling). The ON arm is "main".
-    "small_glyph_keep_off": {"small_glyph_keep": False},
+    # 2026-10-13, Kent's ruling). The ON arm is "main". Kent's job also
+    # predates `small_text_true_size` (ON since 2026-10-14), so this arm, the
+    # engine as he sewed it, has that OFF too.
+    "small_glyph_keep_off": {"small_glyph_keep": False, "small_text_true_size": False},
 }
 ARM_ORDER = list(ARMS)
 

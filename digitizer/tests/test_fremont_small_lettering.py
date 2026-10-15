@@ -54,10 +54,16 @@ def test_every_arm_flag_exists_and_is_built_off():
     arms turn ON are OFF today; `small_glyph_keep` is the one default that
     flipped ON (2026-10-13, Kent), so its arms turn it OFF."""
     from digitizer_core import PipelineConfig
-    base = PipelineConfig()
+    # `small_text_true_size` flipped ON 2026-10-14; every arm pins it OFF (the
+    # record predates the flip), so the others are judged against that engine.
+    assert PipelineConfig().small_text_true_size is True
+    base = PipelineConfig(**fsl.PRE_TRUE_SIZE)
     for name, (_w, overrides, _label) in fsl.ARMS.items():
+        assert overrides["small_text_true_size"] is False, name
         for k, v in overrides.items():
             assert hasattr(base, k), f"{name}: {k} is not a PipelineConfig field"
+            if k == "small_text_true_size":
+                continue
             if k == "small_glyph_keep":
                 assert base.small_glyph_keep is True, f"{name}: keep is no longer the default"
                 assert v is False, f"{name}: {k} is already ON"

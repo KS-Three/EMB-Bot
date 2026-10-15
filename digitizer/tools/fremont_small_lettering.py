@@ -78,6 +78,13 @@ ARMS = {
     "nokeep_floor_81": (81.0, {"small_glyph_keep": False, **FLOOR},
                         "small_glyph_keep OFF + small_print_floor ON (control)"),
 }
+# `small_text_true_size` is ON by default since 2026-10-14 (Kent, WoK 56
+# option A). This table and its committed record (`signatures.json`) were
+# measured before that flip, so every arm runs with it OFF: the arms price the
+# floor, the stem rule and the tier flags against the engine they were
+# measured on. `tools/small_lettering_compare.py` measures the switch itself.
+PRE_TRUE_SIZE = {"small_text_true_size": False}
+ARMS = {name: (w, {**PRE_TRUE_SIZE, **o}, label) for name, (w, o, label) in ARMS.items()}
 # The four arms Kent named, in his order; the controls and alternatives follow.
 KENT_ARMS = ["main_81", "floor_81", "floor_stem_81", "floor_stem_92"]
 ARM_ORDER = list(ARMS)
