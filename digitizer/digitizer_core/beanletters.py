@@ -79,6 +79,13 @@ def weight_groups(widths: list[float | None], line_mm: float) -> list[bool]:
     return [whole and w is not None for w in widths]
 
 
+def _ring(cfg: PipelineConfig) -> dict:
+    """`read_cluster_ink`'s ground ring, passed only when set, so the OFF
+    call is the call it always was (`cfg.ink_ground_ring_mm`)."""
+    ring = cfg.ink_ground_ring_mm
+    return {"ground_ring_mm": float(ring)} if ring and ring > 0 else {}
+
+
 def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
     """Tag the members that sew as bean letters; -> how many. None on the
     config tags nothing and reads nothing. A member the review screen pinned
@@ -101,7 +108,7 @@ def tag_bean_letters(regions, p, cfg: PipelineConfig) -> int:
             from .small_text import line_cap_mm
             if line_cap_mm(members) < min_cap:
                 continue
-        inks = read_cluster_ink(p, members)
+        inks = read_cluster_ink(p, members, **_ring(cfg))
         # A read the traced shape disagrees with is no read: left out of the
         # decision and never bean (`INK_SHAPE_MAX_RATIO`).
         widths = [i.stroke_mm if ink_reads_shape(getattr(r, "polygon", None), i.stroke_mm) else None
@@ -153,7 +160,7 @@ def hold_bean_counters(regions, p, cfg: PipelineConfig) -> int:
         if not any(r.meta.get(BEAN_LETTER_KEY) for r in members):
             continue
         inks = read_cluster_ink(p, members, counter_hold_mm=float(hold),
-                                counter_max_mm=COUNTER_HOLD_MAX_MM)
+                                counter_max_mm=COUNTER_HOLD_MAX_MM, **_ring(cfg))
         for r, ink in zip(members, inks):
             old = r.meta.get(BEAN_LETTER_KEY)
             # Same skeleton, same edges: only the points move. A read that

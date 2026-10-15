@@ -1,0 +1,1307 @@
+{
+ "cell": "hat81",
+ "arm": "switch",
+ "overrides": {
+  "small_text_true_size": true
+ },
+ "stitches": 15330,
+ "trims": 41,
+ "glyphs": [
+  {
+   "cell": "hat81",
+   "arm": "switch",
+   "word": "1895",
+   "index": 0,
+   "glyph": "1",
+   "tier": "bean letter",
+   "built_as": "bean",
+   "kinds": [
+    "run"
+   ],
+   "shape_ids": [
+    "S15110a1c"
+   ],
+   "regions": [
+    {
+     "shape_id": "S15110a1c",
+     "area_mm2": 0.535,
+     "bounds_mm": [
+      3.53,
+      -12.91,
+      4.44,
+      -11.29
+     ],
+     "overlap_of_glyph": 0.876,
+     "polygon_off_ink_mm2": 0.029,
+     "restored": true,
+     "bean_spines": 4,
+     "ink_stroke_mm": 0.203,
+     "text_candidate": true
+    }
+   ],
+   "thread_mm": 0.4,
+   "src_bbox_mm": [
+    3.548,
+    -12.895,
+    4.455,
+    -11.275
+   ],
+   "src_w_mm": 0.907,
+   "src_h_mm": 1.62,
+   "src_area_mm2": 0.578,
+   "needle_bbox_mm": [
+    3.629,
+    -12.62,
+    4.412,
+    -11.357
+   ],
+   "thread_bbox_mm": [
+    3.429,
+    -12.82,
+    4.612,
+    -11.157
+   ],
+   "spines": [
+    {
+     "spine": 0,
+     "raw_mm": 0.44,
+     "after_hook_cut_mm": 0.44,
+     "hook_cut_mm": 0.0,
+     "free_ends": 1,
+     "corners": 0,
+     "start_mm": [
+      3.63,
+      -12.44
+     ],
+     "end_mm": [
+      4.0,
+      -12.62
+     ],
+     "sews": true,
+     "shape_id": "S15110a1c"
+    },
+    {
+     "spine": 1,
+     "raw_mm": 0.407,
+     "after_hook_cut_mm": 0.407,
+     "hook_cut_mm": 0.0,
+     "free_ends": 1,
+     "corners": 0,
+     "start_mm": [
+      3.67,
+      -11.36
+     ],
+     "end_mm": [
+      4.05,
+      -11.41
+     ],
+     "sews": true,
+     "shape_id": "S15110a1c"
+    },
+    {
+     "spine": 2,
+     "raw_mm": 1.241,
+     "after_hook_cut_mm": 1.241,
+     "hook_cut_mm": 0.0,
+     "free_ends": 0,
+     "corners": 0,
+     "start_mm": [
+      4.0,
+      -12.62
+     ],
+     "end_mm": [
+      4.05,
+      -11.41
+     ],
+     "sews": true,
+     "shape_id": "S15110a1c"
+    },
+    {
+     "spine": 3,
+     "raw_mm": 0.39,
+     "after_hook_cut_mm": 0.39,
+     "hook_cut_mm": 0.0,
+     "free_ends": 1,
+     "corners": 0,
+     "start_mm": [
+      4.05,
+      -11.41
+     ],
+     "end_mm": [
+      4.41,
+      -11.36
+     ],
+     "sews": true,
+     "shape_id": "S15110a1c"
+    }
+   ],
+   "bean_reports": {
+    "S15110a1c": {
+     "loops": 0,
+     "jumps": 0,
+     "empty": false,
+     "too_thin": false,
+     "arcs": 0,
+     "yielded": 0,
+     "strokes": 4
+    }
+   },
+   "needle_points_in_zone": 54,
+   "owner_needle_points": 26,
+   "points_outside": [
+    {
+     "x": 2.4527395237322205,
+     "y": -11.56957250911729,
+     "run": 192,
+     "i": 14,
+     "shape": "Sbf647133",
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)",
+     "d_mm": 1.1964445435746194,
+     "owner": false,
+     "off_ink": true,
+     "on_neighbour_ink": false
+    },
+    {
+     "x": 3.055736525898001,
+     "y": -13.657493751774819,
+     "run": 192,
+     "i": 39,
+     "shape": "Sbf647133",
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)",
+     "d_mm": 1.1847978766836162,
+     "owner": false,
+     "off_ink": true,
+     "on_neighbour_ink": false
+    },
+    {
+     "x": 3.0549170022661967,
+     "y": -13.444542193787052,
+     "run": 192,
+     "i": 32,
+     "shape": "Sbf647133",
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)",
+     "d_mm": 1.0347978766836168,
+     "owner": false,
+     "off_ink": true,
+     "on_neighbour_ink": false
+    },
+    {
+     "x": 2.625481496518848,
+     "y": -12.166578550615847,
+     "run": 192,
+     "i": 19,
+     "shape": "Sbf647133",
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)",
+     "d_mm": 0.9624490737099077,
+     "owner": false,
+     "off_ink": true,
+     "on_neighbour_ink": false
+    },
+    {
+     "x": 2.605654972055043,
+     "y": -12.358884060508007,
+     "run": 192,
+     "i": 24,
+     "shape": "Sbf647133",
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)",
+     "d_mm": 0.9457690946142371,
+     "owner": false,
+     "off_ink": true,
+     "on_neighbour_ink": false
+    },
+    {
+     "x": 2.6623422582069676,
+     "y": -12.627703381015895,
+     "run": 192,
+     "i": 25,
+     "shape": "Sbf647133",
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)",
+     "d_mm": 0.8986991386648377,
+     "owner": false,
+     "off_ink": true,
+     "on_neighbour_ink": false
+    },
+    {
+     "x": 2.8360848255251563,
+     "y": -13.013577982690048,
+     "run": 192,
+     "i": 31,
+     "shape": "Sbf647133",
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)",
+     "d_mm": 0.893130947275711,
+     "owner": false,
+     "off_ink": true,
+     "on_neighbour_ink": false
+    }
+   ],
+   "points_outside_by_step": {
+    "fill run (a shape that is no letter of the word)": 7
+   },
+   "segments_outside": [
+    {
+     "a": [
+      2.453,
+      -11.57
+     ],
+     "b": [
+      0.546,
+      -9.663
+     ],
+     "len_mm": 2.697,
+     "max_off_mm": 3.494,
+     "len_off_mm": 2.717,
+     "run": 192,
+     "shape": "Sbf647133",
+     "owner": false,
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)"
+    },
+    {
+     "a": [
+      2.625,
+      -12.167
+     ],
+     "b": [
+      1.063,
+      -10.604
+     ],
+     "len_mm": 2.21,
+     "max_off_mm": 2.668,
+     "len_off_mm": 2.229,
+     "run": 192,
+     "shape": "Sbf647133",
+     "owner": false,
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)"
+    },
+    {
+     "a": [
+      1.255,
+      -11.009
+     ],
+     "b": [
+      2.606,
+      -12.359
+     ],
+     "len_mm": 1.91,
+     "max_off_mm": 2.405,
+     "len_off_mm": 1.93,
+     "run": 192,
+     "shape": "Sbf647133",
+     "owner": false,
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)"
+    },
+    {
+     "a": [
+      2.662,
+      -12.628
+     ],
+     "b": [
+      1.381,
+      -11.347
+     ],
+     "len_mm": 1.812,
+     "max_off_mm": 2.264,
+     "len_off_mm": 1.832,
+     "run": 192,
+     "shape": "Sbf647133",
+     "owner": false,
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)"
+    },
+    {
+     "a": [
+      1.525,
+      -11.703
+     ],
+     "b": [
+      2.836,
+      -13.014
+     ],
+     "len_mm": 1.854,
+     "max_off_mm": 2.132,
+     "len_off_mm": 1.874,
+     "run": 192,
+     "shape": "Sbf647133",
+     "owner": false,
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)"
+    },
+    {
+     "a": [
+      1.593,
+      -12.195
+     ],
+     "b": [
+      3.056,
+      -13.657
+     ],
+     "len_mm": 2.068,
+     "max_off_mm": 1.97,
+     "len_off_mm": 2.088,
+     "run": 192,
+     "shape": "Sbf647133",
+     "owner": false,
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)"
+    },
+    {
+     "a": [
+      3.055,
+      -13.445
+     ],
+     "b": [
+      1.847,
+      -12.236
+     ],
+     "len_mm": 1.708,
+     "max_off_mm": 1.713,
+     "len_off_mm": 1.728,
+     "run": 192,
+     "shape": "Sbf647133",
+     "owner": false,
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)"
+    },
+    {
+     "a": [
+      3.056,
+      -13.657
+     ],
+     "b": [
+      2.986,
+      -13.8
+     ],
+     "len_mm": 0.159,
+     "max_off_mm": 1.335,
+     "len_off_mm": 0.179,
+     "run": 192,
+     "shape": "Sbf647133",
+     "owner": false,
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)"
+    },
+    {
+     "a": [
+      2.48,
+      -11.809
+     ],
+     "b": [
+      2.625,
+      -12.167
+     ],
+     "len_mm": 0.386,
+     "max_off_mm": 1.213,
+     "len_off_mm": 0.405,
+     "run": 192,
+     "shape": "Sbf647133",
+     "owner": false,
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)"
+    },
+    {
+     "a": [
+      2.443,
+      -11.347
+     ],
+     "b": [
+      2.453,
+      -11.57
+     ],
+     "len_mm": 0.223,
+     "max_off_mm": 1.202,
+     "len_off_mm": 0.241,
+     "run": 192,
+     "shape": "Sbf647133",
+     "owner": false,
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)"
+    },
+    {
+     "a": [
+      2.836,
+      -13.014
+     ],
+     "b": [
+      3.055,
+      -13.445
+     ],
+     "len_mm": 0.483,
+     "max_off_mm": 1.035,
+     "len_off_mm": 0.503,
+     "run": 192,
+     "shape": "Sbf647133",
+     "owner": false,
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)"
+    },
+    {
+     "a": [
+      2.606,
+      -12.359
+     ],
+     "b": [
+      2.662,
+      -12.628
+     ],
+     "len_mm": 0.275,
+     "max_off_mm": 0.946,
+     "len_off_mm": 0.294,
+     "run": 192,
+     "shape": "Sbf647133",
+     "owner": false,
+     "kind": "fill",
+     "label": "fill run (a shape that is no letter of the word)"
+    }
+   ],
+   "segments_outside_by_step": {
+    "fill run (a shape that is no letter of the word)": {
+     "segments": 12,
+     "len_off_mm": 16.02,
+     "max_off_mm": 3.494
+    }
+   },
+   "bays": [
+    {
+     "id": 1,
+     "mm2": 0.059,
+     "where": "middle-left",
+     "centre_mm": [
+      3.85,
+      -12.31
+     ],
+     "covered_mm2": 0.055,
+     "bare_share": 0.057,
+     "status": "FILLED",
+     "covered_by_step_mm2": {
+      "bean leg": 0.055,
+      "lock stitch (apply_ties)": 0.034
+     }
+    },
+    {
+     "id": 2,
+     "mm2": 0.034,
+     "where": "bottom-left",
+     "centre_mm": [
+      3.84,
+      -11.59
+     ],
+     "covered_mm2": 0.032,
+     "bare_share": 0.041,
+     "status": "FILLED",
+     "covered_by_step_mm2": {
+      "bean leg": 0.032,
+      "sewn travel hop between runs": 0.021
+     }
+    },
+    {
+     "id": 3,
+     "mm2": 0.034,
+     "where": "bottom-right",
+     "centre_mm": [
+      4.23,
+      -11.59
+     ],
+     "covered_mm2": 0.032,
+     "bare_share": 0.041,
+     "status": "FILLED",
+     "covered_by_step_mm2": {
+      "bean leg": 0.032,
+      "sewn travel hop between runs": 0.004
+     }
+    }
+   ],
+   "counters": [],
+   "thread_holes": [],
+   "gaps": [
+    {
+     "to": "8",
+     "side": "right",
+     "src_gap_mm": 0.391,
+     "sewn_thread_gap_mm": 0.237,
+     "gap_mm2": 0.026,
+     "covered_mm2": 0.016,
+     "bare_share": 0.411,
+     "this_glyph_thread_on_neighbour_ink_mm2": 0.0,
+     "covered_by_step_mm2": {
+      "bean leg (a neighbour letter's run)": 0.008,
+      "bean leg": 0.007
+     }
+    }
+   ],
+   "lock_stitches": [
+    {
+     "run": 444,
+     "end": "in",
+     "at": [
+      3.996,
+      -12.62
+     ],
+     "leg_mm": 0.41
+    }
+   ],
+   "lock_leg_mm": [
+    0.41
+   ],
+   "hops": [
+    {
+     "run": 441,
+     "from_run": 440,
+     "from_shape": "S022f2120",
+     "from_xy": [
+      5.119,
+      -12.134
+     ],
+     "to_xy": [
+      4.412,
+      -11.357
+     ],
+     "dist_mm": 1.051,
+     "bean_letter_booked_jump": false,
+     "plan_jump": true,
+     "thread_laid": false,
+     "max_off_own_ink_mm": 0.939
+    },
+    {
+     "run": 443,
+     "from_run": 442,
+     "from_shape": "S15110a1c",
+     "from_xy": [
+      3.671,
+      -11.357
+     ],
+     "to_xy": [
+      4.05,
+      -11.41
+     ],
+     "dist_mm": 0.383,
+     "bean_letter_booked_jump": false,
+     "plan_jump": false,
+     "thread_laid": true,
+     "max_off_own_ink_mm": 0.0
+    }
+   ],
+   "owner_runs": [
+    {
+     "run": 441,
+     "block": 2,
+     "recorded_jump": false,
+     "shape": "S15110a1c",
+     "kind": "run",
+     "jump": true,
+     "trim": false,
+     "n": 4,
+     "lead_tie": 0,
+     "tail_tie": 0,
+     "white": false,
+     "first": [
+      4.412064165881704,
+      -11.35693369058833
+     ],
+     "last": [
+      4.05,
+      -11.410200000000001
+     ],
+     "lead_leg": null,
+     "tail_leg": null
+    },
+    {
+     "run": 442,
+     "block": 2,
+     "recorded_jump": false,
+     "shape": "S15110a1c",
+     "kind": "run",
+     "jump": false,
+     "trim": false,
+     "n": 4,
+     "lead_tie": 0,
+     "tail_tie": 0,
+     "white": false,
+     "first": [
+      4.05,
+      -11.410200000000001
+     ],
+     "last": [
+      3.6705069206377816,
+      -11.357363365079724
+     ],
+     "lead_leg": null,
+     "tail_leg": null
+    },
+    {
+     "run": 443,
+     "block": 2,
+     "recorded_jump": false,
+     "shape": "S15110a1c",
+     "kind": "run",
+     "jump": false,
+     "trim": false,
+     "n": 10,
+     "lead_tie": 0,
+     "tail_tie": 0,
+     "white": false,
+     "first": [
+      4.05,
+      -11.410200000000001
+     ],
+     "last": [
+      3.9959999999999978,
+      -12.619800000000001
+     ],
+     "lead_leg": null,
+     "tail_leg": null
+    },
+    {
+     "run": 444,
+     "block": 2,
+     "recorded_jump": false,
+     "shape": "S15110a1c",
+     "kind": "run",
+     "jump": false,
+     "trim": false,
+     "n": 8,
+     "lead_tie": 4,
+     "tail_tie": 0,
+     "white": false,
+     "first": [
+      3.9959999999999978,
+      -12.619800000000001
+     ],
+     "last": [
+      3.628910761151584,
+      -12.436292300959655
+     ],
+     "lead_leg": 0.4104017359678077,
+     "tail_leg": null
+    }
+   ],
+   "stations": [
+    {
+     "n": 1,
+     "x": 4.412,
+     "y": -11.357,
+     "d_mm": 0.0,
+     "labels": [
+      "bean leg"
+     ],
+     "visits": 2,
+     "first_run": 441
+    },
+    {
+     "n": 2,
+     "x": 4.05,
+     "y": -11.41,
+     "d_mm": 0.0,
+     "labels": [
+      "bean leg"
+     ],
+     "visits": 6,
+     "first_run": 441
+    },
+    {
+     "n": 3,
+     "x": 3.671,
+     "y": -11.357,
+     "d_mm": 0.0,
+     "labels": [
+      "bean leg"
+     ],
+     "visits": 2,
+     "first_run": 442
+    },
+    {
+     "n": 4,
+     "x": 4.039,
+     "y": -11.81,
+     "d_mm": 0.0,
+     "labels": [
+      "bean leg"
+     ],
+     "visits": 3,
+     "first_run": 443
+    },
+    {
+     "n": 5,
+     "x": 4.039,
+     "y": -12.224,
+     "d_mm": 0.0,
+     "labels": [
+      "bean leg"
+     ],
+     "visits": 3,
+     "first_run": 443
+    },
+    {
+     "n": 6,
+     "x": 3.996,
+     "y": -12.62,
+     "d_mm": 0.0,
+     "labels": [
+      "bean leg",
+      "lock stitch (apply_ties)"
+     ],
+     "visits": 6,
+     "first_run": 443
+    },
+    {
+     "n": 7,
+     "x": 3.629,
+     "y": -12.436,
+     "d_mm": 0.0,
+     "labels": [
+      "lock stitch (apply_ties)",
+      "bean leg"
+     ],
+     "visits": 4,
+     "first_run": 444
+    }
+   ],
+   "zone_thread": {
+    "own": {
+     "mm2": 1.062,
+     "beyond_0.5mm_of_ink_mm2": 0.0,
+     "nearest_to_ink_mm": 0.0
+    },
+    "neighbour letters": {
+     "mm2": 0.0,
+     "beyond_0.5mm_of_ink_mm2": 0.0,
+     "nearest_to_ink_mm": 0.344
+    },
+    "non-letter shapes": {
+     "mm2": 0.427,
+     "beyond_0.5mm_of_ink_mm2": 0.427,
+     "nearest_to_ink_mm": 0.691
+    },
+    "non_letter_runs_in_zone": [
+     "Sbf647133:fill"
+    ],
+    "nearest_non_letter_needle_mm": 0.893,
+    "nearest_non_letter_thread_edge_mm": 0.693,
+    "nearest_non_letter_shape": "Sbf647133:fill",
+    "non_letter_shapes": [
+     {
+      "shape_id": "Sbf647133",
+      "area_mm2": 25.43,
+      "bounds_mm": [
+       -3.01,
+       -15.98,
+       3.06,
+       -9.66
+      ],
+      "polygon_to_glyph_mm": 0.887,
+      "thread_rgb": [
+       0,
+       0,
+       0
+      ],
+      "tier": "fill+travel+underlay"
+     }
+    ]
+   },
+   "gl_row": {
+    "legibility": 0.663,
+    "legibility_space": 0.059,
+    "strokes": 1.0,
+    "clean": 0.663,
+    "counters": 1.0,
+    "space": 0.059,
+    "ocr_src": "1",
+    "ocr_sewn": "F",
+    "ocr_readable_src": true,
+    "ocr_recovered": false
+   },
+   "ocr_reads": {
+    "source": {
+     "char": "1",
+     "conf": 95.0
+    },
+    "instrument": {
+     "char": "F",
+     "conf": 79.0
+    },
+    "own thread": {
+     "char": "I",
+     "conf": 83.0
+    },
+    "all thread": {
+     "char": "N",
+     "conf": 54.0
+    },
+    "own thread, half width": {
+     "char": "1",
+     "conf": 95.0
+    }
+   }
+  },
+  {
+   "cell": "hat81",
+   "arm": "switch",
+   "word": "1895",
+   "index": 3,
+   "glyph": "5",
+   "tier": "bean letter",
+   "built_as": "bean",
+   "kinds": [
+    "run"
+   ],
+   "shape_ids": [
+    "Sb192e650"
+   ],
+   "regions": [
+    {
+     "shape_id": "Sb192e650",
+     "area_mm2": 0.851,
+     "bounds_mm": [
+      7.94,
+      -12.91,
+      9.14,
+      -11.26
+     ],
+     "overlap_of_glyph": 0.872,
+     "polygon_off_ink_mm2": 0.046,
+     "restored": true,
+     "bean_spines": 2,
+     "ink_stroke_mm": 0.194,
+     "text_candidate": true
+    }
+   ],
+   "thread_mm": 0.4,
+   "src_bbox_mm": [
+    7.954,
+    -12.895,
+    9.153,
+    -11.243
+   ],
+   "src_w_mm": 1.199,
+   "src_h_mm": 1.652,
+   "src_area_mm2": 0.924,
+   "needle_bbox_mm": [
+    8.036,
+    -12.814,
+    9.017,
+    -11.367
+   ],
+   "thread_bbox_mm": [
+    7.836,
+    -13.014,
+    9.217,
+    -11.167
+   ],
+   "spines": [
+    {
+     "spine": 0,
+     "raw_mm": 2.685,
+     "after_hook_cut_mm": 2.685,
+     "hook_cut_mm": 0.0,
+     "free_ends": 1,
+     "corners": 0,
+     "start_mm": [
+      8.04,
+      -11.74
+     ],
+     "end_mm": [
+      8.2,
+      -12.24
+     ],
+     "sews": true,
+     "shape_id": "Sb192e650"
+    },
+    {
+     "spine": 1,
+     "raw_mm": 1.561,
+     "after_hook_cut_mm": 1.298,
+     "hook_cut_mm": 0.263,
+     "free_ends": 1,
+     "corners": 1,
+     "start_mm": [
+      8.2,
+      -12.24
+     ],
+     "end_mm": [
+      8.94,
+      -12.74
+     ],
+     "sews": true,
+     "shape_id": "Sb192e650"
+    }
+   ],
+   "bean_reports": {
+    "Sb192e650": {
+     "loops": 0,
+     "jumps": 0,
+     "empty": false,
+     "too_thin": false,
+     "arcs": 0,
+     "yielded": 0,
+     "strokes": 2
+    }
+   },
+   "needle_points_in_zone": 51,
+   "owner_needle_points": 33,
+   "points_outside": [],
+   "points_outside_by_step": {},
+   "segments_outside": [],
+   "segments_outside_by_step": {},
+   "bays": [
+    {
+     "id": 1,
+     "mm2": 0.231,
+     "where": "top-centre",
+     "centre_mm": [
+      8.64,
+      -12.49
+     ],
+     "covered_mm2": 0.148,
+     "bare_share": 0.357,
+     "status": "FILLED",
+     "covered_by_step_mm2": {
+      "bean leg": 0.107,
+      "bean leg at a #946 corner station": 0.081
+     }
+    },
+    {
+     "id": 2,
+     "mm2": 0.481,
+     "where": "middle-centre",
+     "centre_mm": [
+      8.52,
+      -11.82
+     ],
+     "covered_mm2": 0.254,
+     "bare_share": 0.471,
+     "status": "FILLED",
+     "covered_by_step_mm2": {
+      "lock stitch (apply_ties)": 0.076,
+      "bean leg": 0.254,
+      "bean leg at a #946 corner station": 0.003
+     }
+    }
+   ],
+   "counters": [],
+   "thread_holes": [
+    {
+     "source_counter": false,
+     "reading": "bridged",
+     "mm2": 0.117,
+     "centre_mm": [
+      8.51,
+      -11.84
+     ],
+     "in_source_ink": false,
+     "bounded_by": [
+      {
+       "run": 434,
+       "shape": "Sb192e650",
+       "label": "bean leg + lock stitch (apply_ties)",
+       "touching_px": 341
+      },
+      {
+       "run": 435,
+       "shape": "Sb192e650",
+       "label": "bean leg at a #946 corner station + bean leg",
+       "touching_px": 10
+      }
+     ],
+     "narrowest_gap_between_bounding_runs": null
+    }
+   ],
+   "gaps": [
+    {
+     "to": "9",
+     "side": "left",
+     "src_gap_mm": 0.421,
+     "sewn_thread_gap_mm": 0.306,
+     "gap_mm2": 0.239,
+     "covered_mm2": 0.075,
+     "bare_share": 0.686,
+     "this_glyph_thread_on_neighbour_ink_mm2": 0.0,
+     "covered_by_step_mm2": {
+      "lock stitch (apply_ties)": 0.012,
+      "bean leg": 0.018,
+      "bean leg at a #946 corner station": 0.017,
+      "bean leg (a neighbour letter's run)": 0.046
+     }
+    }
+   ],
+   "lock_stitches": [
+    {
+     "run": 434,
+     "end": "in",
+     "at": [
+      8.036,
+      -11.744
+     ],
+     "leg_mm": 0.425
+    }
+   ],
+   "lock_leg_mm": [
+    0.425
+   ],
+   "hops": [],
+   "owner_runs": [
+    {
+     "run": 434,
+     "block": 2,
+     "recorded_jump": false,
+     "shape": "Sb192e650",
+     "kind": "run",
+     "jump": true,
+     "trim": true,
+     "n": 23,
+     "lead_tie": 4,
+     "tail_tie": 0,
+     "white": false,
+     "first": [
+      8.035533595725969,
+      -11.744416207479555
+     ],
+     "last": [
+      8.1972,
+      -12.2418
+     ],
+     "lead_leg": 0.42484510974370054,
+     "tail_leg": null
+    },
+    {
+     "run": 435,
+     "block": 2,
+     "recorded_jump": false,
+     "shape": "Sb192e650",
+     "kind": "run",
+     "jump": false,
+     "trim": false,
+     "n": 10,
+     "lead_tie": 0,
+     "tail_tie": 0,
+     "white": false,
+     "first": [
+      8.1972,
+      -12.2418
+     ],
+     "last": [
+      8.9432673191906,
+      -12.737732680809403
+     ],
+     "lead_leg": null,
+     "tail_leg": null
+    }
+   ],
+   "stations": [
+    {
+     "n": 1,
+     "x": 8.036,
+     "y": -11.744,
+     "d_mm": 0.0,
+     "labels": [
+      "lock stitch (apply_ties)",
+      "bean leg"
+     ],
+     "visits": 4,
+     "first_run": 434
+    },
+    {
+     "n": 2,
+     "x": 8.302,
+     "y": -11.413,
+     "d_mm": 0.0,
+     "labels": [
+      "lock stitch (apply_ties)",
+      "bean leg"
+     ],
+     "visits": 5,
+     "first_run": 434
+    },
+    {
+     "n": 3,
+     "x": 8.712,
+     "y": -11.367,
+     "d_mm": 0.0,
+     "labels": [
+      "bean leg"
+     ],
+     "visits": 3,
+     "first_run": 434
+    },
+    {
+     "n": 4,
+     "x": 9.017,
+     "y": -11.636,
+     "d_mm": 0.0,
+     "labels": [
+      "bean leg"
+     ],
+     "visits": 3,
+     "first_run": 434
+    },
+    {
+     "n": 5,
+     "x": 8.986,
+     "y": -12.052,
+     "d_mm": 0.0,
+     "labels": [
+      "bean leg"
+     ],
+     "visits": 3,
+     "first_run": 434
+    },
+    {
+     "n": 6,
+     "x": 8.636,
+     "y": -12.263,
+     "d_mm": 0.0,
+     "labels": [
+      "bean leg"
+     ],
+     "visits": 3,
+     "first_run": 434
+    },
+    {
+     "n": 7,
+     "x": 8.197,
+     "y": -12.242,
+     "d_mm": 0.0,
+     "labels": [
+      "bean leg"
+     ],
+     "visits": 4,
+     "first_run": 434
+    },
+    {
+     "n": 8,
+     "x": 8.23,
+     "y": -12.728,
+     "d_mm": 0.0,
+     "labels": [
+      "bean leg at a #946 corner station"
+     ],
+     "visits": 3,
+     "first_run": 435
+    },
+    {
+     "n": 9,
+     "x": 8.584,
+     "y": -12.814,
+     "d_mm": 0.0,
+     "labels": [
+      "bean leg"
+     ],
+     "visits": 3,
+     "first_run": 435
+    },
+    {
+     "n": 10,
+     "x": 8.943,
+     "y": -12.738,
+     "d_mm": 0.0,
+     "labels": [
+      "bean leg"
+     ],
+     "visits": 2,
+     "first_run": 435
+    }
+   ],
+   "zone_thread": {
+    "own": {
+     "mm2": 1.624,
+     "beyond_0.5mm_of_ink_mm2": 0.0,
+     "nearest_to_ink_mm": 0.0
+    },
+    "neighbour letters": {
+     "mm2": 0.0,
+     "beyond_0.5mm_of_ink_mm2": 0.0,
+     "nearest_to_ink_mm": 0.333
+    },
+    "non-letter shapes": {
+     "mm2": 0.0,
+     "beyond_0.5mm_of_ink_mm2": 0.0,
+     "nearest_to_ink_mm": null
+    },
+    "non_letter_runs_in_zone": [],
+    "nearest_non_letter_needle_mm": 1.539,
+    "nearest_non_letter_thread_edge_mm": 1.339,
+    "nearest_non_letter_shape": "Sf95f853e:run",
+    "non_letter_shapes": []
+   },
+   "gl_row": {
+    "legibility": 1.0,
+    "legibility_space": 0.429,
+    "strokes": 1.0,
+    "clean": 1.0,
+    "counters": 1.0,
+    "space": 0.429,
+    "ocr_src": "5",
+    "ocr_sewn": "A",
+    "ocr_readable_src": true,
+    "ocr_recovered": false
+   },
+   "ocr_reads": {
+    "source": {
+     "char": "5",
+     "conf": 96.0
+    },
+    "instrument": {
+     "char": "A",
+     "conf": 81.0
+    },
+    "own thread": {
+     "char": "S",
+     "conf": 64.0
+    },
+    "all thread": {
+     "char": "S",
+     "conf": 58.0
+    },
+    "own thread, half width": {
+     "char": "I",
+     "conf": 22.0
+    }
+   }
+  }
+ ],
+ "summary": [
+  {
+   "glyph": "1895 '1' (hat81)",
+   "tier": "bean letter",
+   "ocr": "1 -> F",
+   "legibility": 0.663,
+   "points_off_ink": 7,
+   "points_by_step": {
+    "fill run (a shape that is no letter of the word)": 7
+   },
+   "segments_off_ink": 12,
+   "segments_by_step": {
+    "fill run (a shape that is no letter of the word)": {
+     "segments": 12,
+     "len_off_mm": 16.02,
+     "max_off_mm": 3.494
+    }
+   },
+   "bays": 3,
+   "bays_filled": 3,
+   "locks": 1,
+   "min_gap_bare": 0.411
+  },
+  {
+   "glyph": "1895 '5' (hat81)",
+   "tier": "bean letter",
+   "ocr": "5 -> A",
+   "legibility": 1.0,
+   "points_off_ink": 0,
+   "points_by_step": {},
+   "segments_off_ink": 0,
+   "segments_by_step": {},
+   "bays": 2,
+   "bays_filled": 2,
+   "locks": 1,
+   "min_gap_bare": 0.686
+  }
+ ]
+}

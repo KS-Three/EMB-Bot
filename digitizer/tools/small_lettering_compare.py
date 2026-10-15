@@ -108,6 +108,10 @@ ARMS = {
     # bean stroke 0.5 (Kent 2026-10-14: THE as a centre line is fine). The
     # shipped default since 2026-10-14.
     "switch": ({"small_text_true_size": True}, "small_text_true_size ON (bean 0.5; the default)"),
+    # + cfg.ink_ground_ring_mm: the ink read's ground from a ring round the
+    # cluster, not the crop (2026-10-14, Fremont's 65 mm date).
+    "ring": ({"small_text_true_size": True, "ink_ground_ring_mm": 0.8},
+             "small_text_true_size ON + ink ground ring 0.8"),
 }
 ARM_ORDER = list(ARMS)
 
@@ -859,7 +863,8 @@ def main(argv=None) -> int:
     ap.add_argument("--pick", action="store_true", help="print the one-line-per-arm table for the PR body")
     ap.add_argument("--sheets", action="store_true")
     ap.add_argument("--corpus", nargs=2, metavar=("DESIGN", "ARM"),
-                    help="digitize one corpus design under one arm (ARM in %s); see the corpus section" % CORPUS_ARMS)
+                    help="digitize one corpus design under one arm (ARM in %s; the table reads %s); see the corpus section"
+                         % (ARM_ORDER, CORPUS_ARMS))
     ap.add_argument("--corpus-list", action="store_true", help="print the corpus design names")
     ap.add_argument("--corpus-sheet", metavar="DESIGN",
                     help="render sheet of one design from the --renders sidecars (written by --corpus ... --renders)")
@@ -875,8 +880,9 @@ def main(argv=None) -> int:
         ap.error("--out is required")
     if a.corpus:
         design, arm = a.corpus
-        if design not in corpus_designs() or arm not in CORPUS_ARMS:
-            raise SystemExit(f"--corpus DESIGN in {list(corpus_designs())}, ARM in {CORPUS_ARMS}")
+        # Any arm of ARMS may be run; the corpus TABLE reads CORPUS_ARMS.
+        if design not in corpus_designs() or arm not in ARMS:
+            raise SystemExit(f"--corpus DESIGN in {list(corpus_designs())}, ARM in {ARM_ORDER}")
         corpus_cell(design, arm, a.out, a.renders)
     if a.corpus_sheet:
         print(corpus_sheet(a.corpus_sheet, a.out, a.renders or a.out / "renders"))
