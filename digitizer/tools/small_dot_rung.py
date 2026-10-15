@@ -32,7 +32,11 @@ Where the parts under the loop floor are lost, traced on origin/main:
 
 Three arms throughout: OFF (shipped), ON (`small_dot_rung`), and scope (the
 rung with `small_dot_rung_lettering`, 2026-10-15: a part is admitted only
-over a same-colour stem, which a photo speck does not have).
+over a same-colour stem, which a photo speck does not have). Measured
+2026-10-15: the scope keeps every synthetic i/j dot ON keeps (byte-identical
+to ON at 60 and 80 mm) and is byte-identical to OFF on all 26 scorecard
+fixtures, the five Studio-route logos and Fremont 81 mm Hat, where ON adds
++77 small parts to photo_sunset_backlit and +20 to photo_dof_meadow.
 
 `--hole-ring` reproduces the measured negative: it sews sub-floor HOLE rings
 too, through the same tack ring (a test seam, `_HOLE_RING`).
@@ -374,14 +378,22 @@ def render_photo(out: Path, rel: str, ppm: float = 10.0) -> Path:
     xs, ys = [p[0] for p in pts], [p[1] for p in pts]
     x0, y0 = min(xs) - 1.0, min(ys) - 1.0
     W, H = int((max(xs) + 1.0 - x0) * ppm), int((max(ys) + 1.0 - y0) * ppm)
-    off_ids = {r.shape_id for r in plans["off"][0].regions}
+    # New by GEOMETRY, not by id (an admitted part renumbers the shapes after
+    # it), and small: the part the rung admits is under the detail floor;
+    # the large shape it was cut out of changes outline too, and is not new.
+    floor_mm2 = PipelineConfig().min_detail_mm ** 2
+
+    def key(r):
+        return (tuple(round(v, 2) for v in r.polygon.bounds), round(r.polygon.area, 3))
+    off_keys = {key(r) for r in plans["off"][0].regions}
 
     def P(p):
         return (int(round((p[0] - x0) * ppm)), int(round((p[1] - y0) * ppm)))
     panes = []
     for tag, (result, plan) in plans.items():
         pane = np.full((H, W, 3), 255, np.uint8)
-        new = {r.shape_id for r in result.regions} - off_ids
+        new = {r.shape_id for r in result.regions
+               if key(r) not in off_keys and r.polygon.area < floor_mm2}
         for _b, run in plan.iter_runs():
             if run.shape_id in new:
                 continue
@@ -391,7 +403,7 @@ def render_photo(out: Path, rel: str, ppm: float = 10.0) -> Path:
             if run.shape_id in new and run.kind != "travel":
                 for a, b in zip(run.points[:-1], run.points[1:]):
                     cv2.line(pane, P(a), P(b), (200, 0, 200), 2, cv2.LINE_AA)
-        label = (f"{ARM_LABEL[tag]}: +{len(new)} shapes, "
+        label = (f"{ARM_LABEL[tag]}: +{len(new)} small parts, "
                  f"{plan.stats.stitch_count} st, {plan.stats.trims} trims")
         panes.append(np.vstack([_label_bar(W, label), pane]))
     dest = out / f"{Path(rel).stem}-off-on-scope.png"
