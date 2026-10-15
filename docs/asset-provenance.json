@@ -893,6 +893,12 @@
    "basis": "PR body of claude/hair-reach-size-proof; source fixture has its own entry above"
   },
   {
+   "prefix": "docs/renders/edge-cap-bean-pitch/",
+   "status": "derived-render",
+   "source": "Thread renders (digitizer_core.stitchviz) of EMB-Bot's own digitizes of digitizer/testdata/logo_alpha.png, logo_whitebg.png (synthetic) and photo/screenshot_phone_ui_golke.jpg (client-cleared-by-kent) at 80 mm, edge_cap_bean_pitch_mm OFF vs 1.5, with the cap path overlaid; no new artwork",
+   "basis": "PR body of claude/edge-cap-bean-pitch; source fixtures have their own entries above"
+  },
+  {
    "prefix": "docs/renders/bridge-restaurant-tier/",
    "status": "derived-render",
    "source": "Rendered by digitizer/tools/restaurant_trace.py (--regions: a crop of digitizer/testdata/photo/logo_bridge_bar.jpg's prep raster with EMB-Bot's own region outlines; --band: thread renders, digitizer_core.stitchviz, of EMB-Bot's own digitize of it at 80 mm) and tools/glyph_legibility.py's word panel; no new artwork, no new client art",
