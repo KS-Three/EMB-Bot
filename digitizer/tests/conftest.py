@@ -441,4 +441,22 @@ PRE_FLIP["lettering_columns_inside_connectors"] = False
 # `test_revalidate_small_shapes` prices that flag against ("16 -> 16 cones").
 # The test that is ABOUT the keep is `tests/test_small_glyph_keep.py`.
 PRE_FLIP["small_glyph_keep"] = False
+# `small_text_true_size` joined the flipped set 2026-10-14 (Kent, WoK 56
+# option A, after PR #948's drone fix), for the reason every entry above
+# gives. ON, small lettering is re-traced at its true size and thin letters
+# sew as bean centrelines (`config.SMALL_TEXT_TRUE_SIZE`), which moves the
+# stitches, trims and tiers of every fixture with lettering under 3 mm caps.
+# The tests ABOUT it are `tests/test_small_text.py`,
+# `tests/test_bean_letters_pipeline.py` and `tests/test_bean_ink_shape_gate.py`.
+PRE_FLIP["small_text_true_size"] = False
+# ...and its counter guard (Kent, WoK 56 option A; 0.45 mm x 40 / thread_wt,
+# replacing a 1.6 mm cap-height guard), which came with the flip: None is no
+# guard. With the switch OFF the guard is never read
+# (`config.true_size_min_counter`), so this pin is the posture, not a second
+# lever. The tests ABOUT it are `tests/test_small_text_counter_guard.py`.
+PRE_FLIP["small_text_true_size_min_counter_mm"] = None
+# ...and the value the switch fills into `small_text_keep_stray_lines` (True,
+# PR #960's 65 mm THE fix, carried by the flip; VP 2026-10-15). None is the
+# pre-flip engine: never filled, read as False.
+PRE_FLIP["small_text_keep_stray_lines"] = None
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

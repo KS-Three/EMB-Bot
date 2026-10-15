@@ -49,7 +49,10 @@ WEIGHTS = (40, 60)
 FIXTURES = ("synthetic", "fremont_tagline")
 
 # The neighbouring flags this census holds at their shipped defaults. Printed
-# with every run so a table says which engine it was measured on.
+# with every run so a table says which engine it was measured on. True size
+# (`small_text_true_size`) is ON by default since 2026-10-14; the census's
+# rows were measured before that, so it pins the switch OFF (`OFF_FLIPS`).
+OFF_FLIPS = {"small_text_true_size": False}
 PINNED = {"small_glyph_keep": True, "small_lettering_skeleton": False,
           "small_text_cap_mm": None, "small_text_restore_mm": None}
 
@@ -84,7 +87,7 @@ def column_widths(plan, box) -> dict:
 def cell(image, ref: dict, cap: float, wt: int, on: bool):
     """One grid cell -> (row dict, (result, plan, art))."""
     cfg = PipelineConfig(target_width_mm=round(cap / ref["cap"], 2), thread_wt=wt,
-                         small_print_floor=on)
+                         small_print_floor=on, **OFF_FLIPS)
     for k, v in PINNED.items():
         assert getattr(cfg, k) == v, (k, getattr(cfg, k))
     m, (res, plan, art) = small_print.measure(image, cfg, ref)

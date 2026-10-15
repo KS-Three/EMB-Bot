@@ -77,7 +77,10 @@ def run(logo: str, line: float, width: float, out: Path, scratch: Path) -> dict:
     from digitizer_core.stitchviz import render_design
 
     path = _source(logo, scratch, width)
-    base = dict(target_width_mm=width, garment_id="left_chest", max_colors=6)
+    # the pre-flip engine: `small_text_true_size` (ON since 2026-10-14) would
+    # set a bean line in the "off" arm too
+    base = dict(target_width_mm=width, garment_id="left_chest", max_colors=6,
+                small_text_true_size=False)
     gen = build_generation(str(path), PipelineConfig(**base))
     row: dict = {"logo": logo, "source_px_per_mm": round(gen.p.input_px_per_mm, 2), "line_mm": line}
     crops: dict[str, list[np.ndarray]] = {}

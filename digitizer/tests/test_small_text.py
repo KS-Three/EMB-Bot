@@ -197,7 +197,9 @@ def test_the_flag_runs_end_to_end_and_none_never_calls_the_pass(monkeypatch):
 # the whole line as centrelines; and bean letters take a shorter pitch.
 
 def test_true_size_defaults_are_off():
-    cfg = PipelineConfig()
+    # The values themselves default to None; since 2026-10-14 the switch
+    # (`small_text_true_size`, ON by default) fills them. This is the OFF engine.
+    cfg = PipelineConfig(small_text_true_size=False)
     assert cfg.small_text_restore_mm is None and cfg.bean_letter_stitch_mm is None
     regions, p = _scene()
     _tag(regions, {"Sg0", "Sg2", "Sg3"})
@@ -383,15 +385,33 @@ def test_one_switch_fills_the_four_values_and_explicit_ones_win():
 
     from digitizer_core.config import SMALL_TEXT_TRUE_SIZE
 
-    off = PipelineConfig()
-    assert off.small_text_true_size is False
+    off = PipelineConfig(small_text_true_size=False)
     assert all(getattr(off, k) is None for k in SMALL_TEXT_TRUE_SIZE)
+    # ON by default since 2026-10-14 (Kent, WoK 56 option A)
+    assert PipelineConfig().small_text_true_size is True
+    assert PipelineConfig() == PipelineConfig(small_text_true_size=True)
     on = PipelineConfig(small_text_true_size=True)
     assert {k: getattr(on, k) for k in SMALL_TEXT_TRUE_SIZE} == SMALL_TEXT_TRUE_SIZE
     mixed = PipelineConfig(small_text_true_size=True, bean_letter_max_stroke_mm=0.4)
     assert mixed.bean_letter_max_stroke_mm == 0.4 and mixed.small_text_restore_mm == 3.0
     # replace() re-runs __post_init__ and keeps what is already set
     assert replace(on, target_width_mm=81.0).bean_letter_stitch_mm == 0.45
+
+
+def test_setting_the_switch_off_clears_what_it_filled_and_keeps_explicit_values():
+    # `flagcost.py` and `parity_config(**extra)` build an OFF arm by setattr on
+    # a default (now ON) cfg; that must be the pre-flip engine, not ON in disguise.
+    from digitizer_core.config import SMALL_TEXT_TRUE_SIZE
+
+    cfg = PipelineConfig()
+    cfg.small_text_true_size = False
+    assert cfg == PipelineConfig(small_text_true_size=False)
+    mixed = PipelineConfig(bean_letter_max_stroke_mm=0.4)
+    mixed.small_text_true_size = False
+    assert mixed.bean_letter_max_stroke_mm == 0.4 and mixed.small_text_restore_mm is None
+    mixed.small_text_true_size = True
+    assert {k: getattr(mixed, k) for k in SMALL_TEXT_TRUE_SIZE} == {
+        **SMALL_TEXT_TRUE_SIZE, "bean_letter_max_stroke_mm": 0.4}
 
 
 def test_min_arm_none_is_byte_identical_and_a_shorter_floor_keeps_a_1s_flag_and_foot():
@@ -500,9 +520,12 @@ def test_the_tagger_passes_the_ground_ring_only_when_set(monkeypatch):
     monkeypatch.setattr(beanletters, "read_cluster_ink", fake)
     regions, p = _scene()
     _tag(regions, {"Sg0", "Sg1", "Sg2", "Sg3"})
-    beanletters.tag_bean_letters(regions, p, PipelineConfig(bean_letter_max_stroke_mm=0.5))
+    # the scene's 8 and 9 counters are under the switch's 0.5 mm counter guard;
+    # this prices the ring's plumbing, so the guard is off
+    off = {"small_text_true_size_min_counter_mm": None}
+    beanletters.tag_bean_letters(regions, p, PipelineConfig(bean_letter_max_stroke_mm=0.5, **off))
     beanletters.tag_bean_letters(regions, p, PipelineConfig(bean_letter_max_stroke_mm=0.5,
-                                                            ink_ground_ring_mm=0.8))
+                                                            ink_ground_ring_mm=0.8, **off))
     assert seen == [{}, {"ground_ring_mm": 0.8}]
 
 

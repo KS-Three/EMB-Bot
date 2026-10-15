@@ -242,7 +242,7 @@ def block_F3(c: CardV3, x0: float, y0: float, report: list) -> None:
     bottom = top
     for k, (arm, flags) in enumerate(F3_ARMS, start=1):
         cfg = PipelineConfig(target_width_mm=ink_w * mm_per_px, forced_class="flat", thread_wt=c.wt,
-                             garment_id=GARMENT, **flags)
+                             garment_id=GARMENT, small_text_true_size=False, **flags)  # pre-flip (2026-10-14), as sewn
         _res, plan = digitize(img, cfg)
         runs = [r for _b, r in plan.iter_runs()]
         box = place_runs(c, runs, x, top, "F3", arm)

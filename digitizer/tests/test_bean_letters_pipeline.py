@@ -24,13 +24,19 @@ LINE = 1.0
 
 
 def _cfg(**kw) -> PipelineConfig:
+    # The pre-flip engine (conftest PRE_FLIP): `small_text_true_size`, ON since
+    # 2026-10-14, sets a bean line of its own; this file prices the line alone.
+    kw.setdefault("small_text_true_size", False)
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6, **kw)
 
 
 # --- the decision ------------------------------------------------------------
 
 def test_it_is_built_off():
-    assert PipelineConfig().bean_letter_max_stroke_mm is None
+    # Built OFF; since 2026-10-14 the true-size switch (ON by default) sets
+    # 0.5 (`config.SMALL_TEXT_TRUE_SIZE`).
+    assert PipelineConfig(small_text_true_size=False).bean_letter_max_stroke_mm is None
+    assert PipelineConfig().bean_letter_max_stroke_mm == 0.5
 
 
 def test_one_weight_decides_by_its_median_and_carries_its_fused_pairs():

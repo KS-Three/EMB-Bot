@@ -99,7 +99,48 @@ SMALL_TEXT_TRUE_SIZE = {
     "bean_letter_serif_mm": 0.45,
     "bean_letter_min_arm_mm": 0.3,
     "bean_letter_corner_deg": 50.0,
+    # Kent WoK 56 (2026-10-15): the flip carries PR #960's 65 mm THE fix --
+    # a stray LINE in another line's cluster keeps its tags as its own.
+    "small_text_keep_stray_lines": True,
 }
+
+# The counter guard on that switch (`PipelineConfig.
+# small_text_true_size_min_counter_mm`; Kent, WoK 56 option A, 2026-10-14):
+# the switch acts on a line of lettering only if the smallest counter of its
+# letters in the SOURCE raster (`small_text.line_min_counter_mm`: each
+# counter the retrace reads, as twice its largest distance-transform value
+# at 40 px/mm, tracer specks left out -- the counter census's measure, PR
+# #964) is at least this x 40 / thread_wt mm across. It is read only on a
+# line the switch would act on (under the restore step's cap, or with a bean
+# candidate). A line with no counter passes. Below it the line takes today's
+# path. It replaced a 1.6 mm cap-height guard that could not separate
+# Fremont's Hat 81 mm date (cap 1.65, better ON) from its 65 mm tagline (cap
+# 1.72, worse ON): the tagline's real cost is its A's apex counters closing.
+# 0.45, not 0.5 (VP, from the census): the 65 mm tagline, the one LOSS, reads
+# 0.44; the 72 mm tagline (0.47) and 1895 (0.50) are wins. A THIN margin: a
+# 65 / 72 mm tagline sew-out is what settles it. A CANDIDATE (gate 1), unsewn.
+SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM = 0.45
+
+
+def true_size_min_counter(cfg) -> float | None:
+    """The 40 wt counter floor (mm) under which a line of lettering keeps
+    today's path: `cfg.small_text_true_size_min_counter_mm` while the switch
+    is ON, else None (no guard: values set explicitly with the switch OFF act
+    on every line, as they did before the guard). The floor a line meets is
+    this x 40 / its thread weight (`counter_floor_mm`)."""
+    if not getattr(cfg, "small_text_true_size", False):
+        return None
+    floor = getattr(cfg, "small_text_true_size_min_counter_mm", None)
+    return float(floor) if floor and floor > 0 else None
+
+
+def counter_floor_mm(base_mm: float, thread_wt: int) -> float:
+    """`true_size_min_counter`'s floor at `thread_wt`, `base x 40 / wt`
+    (0.45 mm at 40 wt, 0.30 at 60, 0.24 at 75): a higher weight is a FINER
+    thread, which keeps a narrower counter open, as `machine.thread_profile`'s
+    own `counter_min_width_mm` does. (The first spec read `x wt / 40`, the
+    wrong way round; corrected, VP option B, 2026-10-15.)"""
+    return float(base_mm) * 40.0 / float(thread_wt)
 
 
 @dataclass
@@ -2500,7 +2541,10 @@ class PipelineConfig:
     # lettering treatment, traced 1.8x fatter and its E closed (THE OCR 3/3
     # -> 1/3 under the true-size switch, 2026-10-14). False: today's strip.
     # Geometry, not fabric: no sew-out settles which shapes are a line.
-    small_text_keep_stray_lines: bool = False
+    # None (the default) is False unless `small_text_true_size` fills it
+    # True (`SMALL_TEXT_TRUE_SIZE`, Kent WoK 56: the flip carries its own
+    # 65 mm THE fix); an explicit True or False wins over the switch.
+    small_text_keep_stray_lines: bool | None = None
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
@@ -2571,7 +2615,32 @@ class PipelineConfig:
     # cleanly at 80 mm. Under 1.5 mm caps the text tagger finds nothing to act
     # on. Head to head: docs/renders/claude-small-lettering-head-to-head. Unsewn;
     # every value is a CANDIDATE (gate 1). False is byte-identical.
-    small_text_true_size: bool = False
+    #
+    # ON by default since 2026-10-14 (Kent, WoK 56 option A: "fix the drone
+    # bean miss, THEN flip true size ON"; the drone fix is PR #948's
+    # `beanletters.INK_SHAPE_MAX_RATIO`, itself a gate-1 candidate that now
+    # runs by default). The pre-flip engine is `small_text_true_size=False`
+    # (`tests/conftest.py`, PRE_FLIP); `setattr(cfg, "small_text_true_size",
+    # False)` also clears what the switch filled. TRAP: `replace(cfg,
+    # small_text_true_size=False)` on a cfg built ON keeps the seven filled
+    # values (replace passes them as explicit) -- build a fresh
+    # `PipelineConfig(..., small_text_true_size=False)` for the OFF engine.
+    # And `None` for one of the seven no longer means "off" while the switch is
+    # ON: it is refilled.
+    small_text_true_size: bool = True
+    # The switch's counter guard (Kent, WoK 56 option A; see
+    # `SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM`, 0.45). While `small_text_true_size`
+    # is ON, a line of lettering whose smallest SOURCE counter
+    # (`small_text.line_min_counter_mm`, over the counters `_retrace` reads
+    # from the raster for the line's letters and the ones it adopts, specks
+    # left out) is narrower than this x 40 / thread_wt mm is neither restored
+    # (`restore_small_text`) nor tagged bean (`beanletters.tag_bean_letters`):
+    # it sews as it did before the flip. A line with no counter passes. None:
+    # no guard. Read
+    # only while the switch is ON (`true_size_min_counter`): with the switch
+    # OFF, explicitly set restore / bean values act on every line, as before.
+    # A CANDIDATE (gate 1), unsewn.
+    small_text_true_size_min_counter_mm: float | None = SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM
     # Bean letters' needle points held this far (mm) off a SMALL counter --
     # one no wider than `beanletters.COUNTER_HOLD_MAX_MM` -- inside the ink
     # (`beanletters.hold_bean_counters`, `ink_path.hold_off_counters`). A bean
@@ -4499,12 +4568,29 @@ class PipelineConfig:
     chain_links: bool = False
 
     def __post_init__(self) -> None:
+        self._fill_true_size()
+
+    def _fill_true_size(self) -> None:
+        # Records which of the seven the switch filled (not a field: no repr, eq
+        # or replace() sees it), so that turning the switch OFF by setattr --
+        # the way `flagcost.py` and `parity_config(**extra)` build an off arm
+        # -- clears exactly those and leaves an explicit value alone.
+        filled = []
         if self.small_text_true_size:
             for name, value in SMALL_TEXT_TRUE_SIZE.items():
                 if getattr(self, name) is None:
                     object.__setattr__(self, name, value)
+                    filled.append(name)
+        object.__setattr__(self, "_true_size_filled", tuple(filled))
 
     def __setattr__(self, name: str, value) -> None:
+        if name == "small_text_true_size" and "_true_size_filled" in self.__dict__:
+            for n in self._true_size_filled:
+                if getattr(self, n) == SMALL_TEXT_TRUE_SIZE[n]:
+                    object.__setattr__(self, n, None)
+            object.__setattr__(self, name, value)
+            self._fill_true_size()
+            return
         # `coverage_edges` is DEPRECATED (Kent 2026-10-12: no; PRs #818, #824,
         # #841 — see the field's comment). Setting it True, in the constructor
         # or later, warns once and otherwise behaves exactly as before.

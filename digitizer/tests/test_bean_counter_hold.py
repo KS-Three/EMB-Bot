@@ -214,7 +214,9 @@ def test_the_tools_arms_are_valid_config_and_change_only_the_hold():
         extra = set(overrides) - {"small_text_true_size", "bean_letter_counter_hold_mm"}
         assert not extra, (name, extra)
     assert bch.ARMS["switch_hold"][0] == {**bch.ARMS["switch"][0], "bean_letter_counter_hold_mm": bch.HOLD_MM}
-    assert bch.ARMS["main_hold"][0] == {"bean_letter_counter_hold_mm": bch.HOLD_MM}
+    assert bch.ARMS["main_hold"][0] == {"small_text_true_size": False,
+                                        "bean_letter_counter_hold_mm": bch.HOLD_MM}
+    assert bch.ARMS["main"][0] == {"small_text_true_size": False}       # the pre-flip engine
 
 
 def test_open_counters_is_905s_fifty_percent_rule():
