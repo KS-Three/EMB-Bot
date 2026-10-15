@@ -2654,6 +2654,16 @@ class PipelineConfig:
     # above. None: the spines exactly as read, byte for byte. A CANDIDATE
     # (gate 1), unsewn. Measured: `tools/bean_counter_hold.py`.
     bean_letter_counter_hold_mm: float | None = None
+    # Bean letters' STATIONS held this far (mm) off the letter's open BAYS --
+    # a closing of the ink minus the ink, counters left to the hold above --
+    # inside the ink of their own spine (`stage6_beanletter.hold_off_bays`).
+    # Under the switch Fremont's 5 at 81 mm sewed its upper bay 64% covered
+    # and read A, and THE's E at 92.5 mm sewed the 0.26 mm slit between its
+    # tick and middle arm shut into a false counter (#953). Station placement
+    # only: no spine, ink read or pull changes. NOT part of the switch. None:
+    # the stations exactly as laid, byte for byte. A CANDIDATE (gate 1),
+    # unsewn.
+    bean_letter_bay_hold: float | None = None
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
