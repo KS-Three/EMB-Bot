@@ -740,6 +740,13 @@ def vectorize(
         # `cfg.small_dot_rung` (default OFF), and its lettering scope.
         dot_rung = bool(cfg.small_dot_rung and (not cfg.small_dot_rung_lettering
                                                 or getattr(rm, "dot_rung", False)))
+        # `cfg.detail_spokes` (default OFF): a mask stage 3 kept as a spoked
+        # mark bypasses the loop floor below (stage 7 sews spokes, not the
+        # outline) and carries its centre and tips in design mm, on its
+        # largest part only -- one mark per mask.
+        spoked = getattr(rm, "detail_spokes", None) if sub_detail else None
+        spoke_part = (max((q for q in parts if not q.is_empty), key=lambda q: q.area, default=None)
+                      if spoked is not None else None)
         kept = 0
         for part in parts:
             if part.is_empty:
@@ -754,10 +761,11 @@ def vectorize(
                 # Scoped (`cfg.small_dot_rung_lettering`), only for a mask
                 # stage 3 admitted over a stem.
                 rescueable = (sub_detail
-                              and part.area >= machine.RUN_MIN_AREA_MM2
-                              and part.exterior.length >= (
-                                  machine.DOT_RUNG_MIN_LOOP_MM if dot_rung
-                                  else machine.RUN_MIN_LOOP_MM))
+                              and (part is spoke_part
+                                   or (part.area >= machine.RUN_MIN_AREA_MM2
+                                       and part.exterior.length >= (
+                                           machine.DOT_RUNG_MIN_LOOP_MM if dot_rung
+                                           else machine.RUN_MIN_LOOP_MM))))
                 if not rescueable:
                     continue
             meta = {"layer": rm.layer}
@@ -765,6 +773,14 @@ def vectorize(
                 meta["dot_rung"] = True
             if sub_detail:
                 meta["rescued_small_shape"] = True
+            if part is spoke_part:
+                c_mm = _to_mm(np.array([spoked["centre"]], np.float64), cx, cy, p.px_per_mm)[0]
+                t_mm = _to_mm(np.array(spoked["tips"], np.float64), cx, cy, p.px_per_mm)
+                meta["detail_spokes"] = {
+                    "centre": [round(float(c_mm[0]), 4), round(float(c_mm[1]), 4)],
+                    "tips": [[round(float(x), 4), round(float(y), 4)] for x, y in t_mm],
+                    "host_layer": int(spoked["host_layer"]),
+                }
             if covered:
                 meta["coverage_edges"] = True
             elif outer_share is not None:

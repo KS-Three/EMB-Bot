@@ -769,6 +769,17 @@ DOT_RUNG_STITCH_MM = 0.45
 DOT_RUNG_PASSES = 3
 DOT_RUNG_MIN_LOOP_MM = 3 * DOT_RUNG_STITCH_MM
 
+# The spoked detail mark (`cfg.detail_spokes`, built OFF 2026-10-15;
+# `detail_spokes.py`). A small detail of another colour enclosed by one shape
+# and under the run tier's loop proxy -- the white star in Hotel Fremont's
+# black Wisconsin, 0.8 mm across -- sews as ONE run of spokes from its centre
+# on top of the shape round it, each spoke at least this long. 1.45 mm is
+# what the professional's Fremont hat file sews: five spokes of 1.4-1.5 mm
+# (two stitches each, out and back) on a design whose art star is ~0.9 mm,
+# so the pro exaggerates the mark about three times. A CANDIDATE (ROADMAP
+# gate 1): read from the pro's file, unsewn here; a sew-out settles it.
+DETAIL_SPOKE_MIN_MM = 1.45
+
 # --- Travel ----------------------------------------------------------------
 
 TRAVEL_STITCH_MM = 2.5  # shorter than fill so travel disappears under coverage

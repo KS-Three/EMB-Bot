@@ -94,13 +94,15 @@ from .stage6_sketch import sketch_fill
 from .stage6_satin import classify_ribbon, satin_shape
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
+from .detail_spokes import spoke_runs
 from .threads import chart_for
 from .warnings_codes import (BLEND_NO_REGIONS_DECOMPOSED, BORDER_LIGHTENED,
                              CLIP_DROPPED_SLIVER,
                              BORDER_SEAM_SHARED,
                              BORDER_SKIPPED_TOO_NARROW,
                              CONTOUR_DIRECTIONAL_COMP_UNSEWN,
-                             CONTOUR_RING_UNREACHABLE, EDGE_CAP_APPLIED,
+                             CONTOUR_RING_UNREACHABLE, DETAIL_SPOKES_SEWN,
+                             EDGE_CAP_APPLIED,
                              EDGE_CAP_EMPTY,
                              EDGE_CAP_LIGHTENED, EDGE_CAP_OVER_BUDGET,
                              HAIRLINE_STROKES_AS_RUN, HAIRLINE_TIER_SEWN,
@@ -1841,6 +1843,77 @@ def _sew_rest_pieces(pieces, stitch_one, entry, exit_near, trim_at):
     return runs, rep, filled
 
 
+def _spoke_host(mark: PlannedRegion, planned: list[PlannedRegion]) -> PlannedRegion | None:
+    """The shape a spoked mark sits on: a planned region of another thread
+    whose ARTWORK covers the mark's centre -- in the layer stage 3 named,
+    else the latest-sewn such shape. None when nothing covers it (the host
+    was deleted in review, or sewed nothing)."""
+    spec = mark.region.meta["detail_spokes"]
+    centre = Point(spec["centre"])
+    hosts = [p for p in planned
+             if p is not mark and p.region.thread_index != mark.region.thread_index
+             and p.region.polygon.covers(centre)]
+    if not hosts:
+        return None
+    named = [p for p in hosts if p.layer == spec.get("host_layer")]
+    return max(named or hosts, key=lambda p: (p.sew_index, p.region.area_mm2))
+
+
+def _place_spoke_marks(marks: list[PlannedRegion], planned: list[PlannedRegion],
+                       blocks: list[StitchBlock], cfg: PipelineConfig,
+                       trim_at: float) -> dict:
+    """Sew each spoked detail mark (`cfg.detail_spokes`) AFTER its host.
+
+    The mark's run (`detail_spokes.spoke_runs`: centre -> tip -> centre per
+    tip, in the mark's own thread) goes into the first block of that thread
+    that follows the host's block -- Fremont's white edge cap, so the mark
+    costs no colour change there -- or, when none follows, into a block of
+    its own inserted straight after the host's: the colour revisit the
+    pro's own file pays. A mark whose host cannot be found sews at the end
+    of the design. Mutates `blocks`; returns the warning's numbers.
+    """
+    chart = chart_for(cfg)
+    count = spokes = colour_changes = 0
+    ids: list[str] = []
+    for mark in marks:
+        spec = mark.region.meta["detail_spokes"]
+        runs, report = spoke_runs(tuple(spec["centre"]), [tuple(t) for t in spec["tips"]],
+                                  mark.shape_id)
+        if report["empty"]:
+            continue
+        host = _spoke_host(mark, planned)
+        host_at: int | None = None
+        if host is not None:
+            hid = host.shape_id
+            for k, b in enumerate(blocks):
+                if any(r.shape_id == hid or r.shape_id.startswith(hid + "-") for r in b.runs):
+                    host_at = k
+        t_index = mark.region.thread_index
+        start = host_at + 1 if host_at is not None else len(blocks)
+        later = next((k for k in range(start, len(blocks))
+                      if blocks[k].thread_index == t_index and blocks[k].step is None), None)
+        if later is not None:
+            block = blocks[later]
+            runs[0].jump = True
+            runs[0].trim = math.dist(block.runs[-1].points[-1], runs[0].points[0]) > trim_at
+            _apply_ties(runs)
+            block.runs.extend(runs)
+        else:
+            # The needle always lifts into a new block and the thread is
+            # always cut coming out of the previous one.
+            runs[0].jump = True
+            runs[0].trim = True
+            _apply_ties(runs)
+            thread = chart[t_index]
+            blocks.insert(start, StitchBlock(thread_index=t_index, thread_number=thread.number,
+                                             rgb=tuple(thread.rgb), runs=runs))
+            colour_changes += 1
+        count += 1
+        spokes += report["spokes"]
+        ids.append(mark.shape_id)
+    return {"count": count, "spokes": spokes, "colour_changes": colour_changes, "ids": ids}
+
+
 def sequence(
     planned: list[PlannedRegion], fabric: Fabric, cfg: PipelineConfig,
     source_pixels: SourcePixels | None = None,
@@ -2291,6 +2364,16 @@ def sequence(
     blocks.extend(applique_blocks)
     if applique_cursor is not None:
         cursor = applique_cursor
+
+    # `cfg.detail_spokes` (built OFF): a spoked detail mark leaves the colour
+    # loop here, the way an appliqué piece does, and is placed AFTER its host
+    # once every block exists (`_place_spoke_marks`, below the hairline
+    # blocks). It is thread on top of the host's finished fill: no link may
+    # route under it, no border yields to it, and the cap's silhouette does
+    # not include it. Empty on every plan without a tagged region.
+    spoke_marks = [p for p in planned if p.region.meta.get("detail_spokes")]
+    if spoke_marks:
+        planned = [p for p in planned if not p.region.meta.get("detail_spokes")]
 
     # Chaining's tier-blindness fix (see `_link_cover`'s docstring): the
     # artwork polygon of every shape that will predictably sew as an outline
@@ -3697,7 +3780,32 @@ def sequence(
                                       rgb=tuple(t.rgb), runs=hl_runs))
             cursor = hl_runs[-1].points[-1]
 
+    # --- Spoked detail marks (cfg.detail_spokes) ----------------------------
+    # Last, once every block exists, so "the next block of the mark's thread
+    # after its host" can be read off the finished list -- on Fremont's hat
+    # that is the white bean edge cap, so the mark costs no colour change.
+    spoke_report = (_place_spoke_marks(spoke_marks, planned, blocks, cfg, trim_at)
+                    if spoke_marks else None)
+
     warnings: list[dict] = list(applique_warnings)
+    if spoke_report is not None and spoke_report["count"]:
+        n, s = spoke_report["count"], spoke_report["spokes"]
+        warnings.append(
+            warn(
+                DETAIL_SPOKES_SEWN,
+                f"{n} small detail{'s' if n != 1 else ''} too small to outline "
+                f"sewed as {'a ' if n == 1 else ''}spoked mark{'s' if n != 1 else ''} "
+                f"({s} spoke{'s' if s != 1 else ''}) on top of the shape"
+                f"{'s' if n != 1 else ''} round {'them' if n != 1 else 'it'}"
+                + (f", adding {spoke_report['colour_changes']} colour change"
+                   f"{'s' if spoke_report['colour_changes'] != 1 else ''}"
+                   if spoke_report["colour_changes"] else "") + ".",
+                count=n,
+                spokes=s,
+                colour_changes=spoke_report["colour_changes"],
+                ids=spoke_report["ids"],
+            )
+        )
     if hair_lines is not None:
         warnings.append(
             warn(
