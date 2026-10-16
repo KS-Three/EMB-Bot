@@ -13,6 +13,17 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-15 (twelfth pass) — scope refresh after PRs #975–#977 (#955 had merged 10:34 UTC the same day; item 56 already said so)
+
+State of the range at writing (read with `gh pr view`): #975 MERGED 2026-10-15 21:02 UTC, #976 22:51 UTC, #977 2026-10-16 00:09 UTC.
+
+- **#975** `cfg.small_dot_rung_lettering` (OFF, read only when `small_dot_rung` is ON): scoped ON reads the OFF md5 on photo_sunset_backlit (45 / 89 / 26,056), dof_meadow (46 / 78 / 21,002), Fremont 81 mm Hat (161 / 41 / 15,330) and the other census fixtures; synthetic i dots 1/1, "hijlij" 4/4. Ratios tuned in-sample.
+- **#976** `text_cluster_rescued_ink_link` ON: Fremont Hat 80 mm 14,897 / 46 (`dd43ae1e`) → 14,812 / 43 (`aed530f4`), 16 shapes; 81 and 92.5 mm byte-identical; corpus 12 of 17 partitions identical; screenshot 8,511 / 63 → 8,502 / 62. Renders `docs/renders/the-80mm-ink-link/`.
+- **#977** `bean_letter_counter_hold_mm` 0.25 and `bean_letter_bay_hold` 0.2 ON as plain defaults (Kent): Hat 80 mm 14,812 / 43 → 14,824 / 43; 81 mm 15,330 → 15,340 / 41; 92.5 mm 18,675 → 18,706 / 54. Renders `docs/renders/bean-holds-on/`.
+- **Open, foreman session:** the 80 mm white star in the Wisconsin shape is dropped by stage 3 (0.227 mm²); the pro sews a five-spoke asterisk. `cfg.detail_spokes` in flight.
+
+---
+
 **Last updated:** 2026-10-15 (eleventh pass) — scope refresh after PRs #969–#973 (the tenth, #968, covered #955 and #964–#967 and wrote no entry here)
 
 State of the range at writing (read with `gh pr view`): #969, #970, #971, #972 and #973 all MERGED 2026-10-15 (12:36, 13:00, 17:41, 17:38 and 19:18 UTC). `claude/dot-rung-lettering-scope` (HEAD `1b698cf6`) has no PR and is not on main. Snapshots of each PR body, not live status:
