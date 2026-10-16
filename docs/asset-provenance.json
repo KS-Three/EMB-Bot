@@ -951,8 +951,8 @@
   {
    "prefix": "docs/renders/detail-spokes/",
    "status": "derived-render",
-   "source": "Thread renders (digitizer_core.stitchviz via tools/fremont_triage's panel helpers) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp on a Hat at 80, 81 and 92.5 mm (the Studio's request), cfg.detail_spokes OFF beside ON over the Wisconsin star and over the whole design; the artwork crops are the committed fixture; no new artwork, no new client art",
-   "basis": "PR body of claude/detail-spokes; source fixture has its own entry above"
+   "source": "Thread renders (digitizer_core.stitchviz via tools/fremont_triage's panel helpers) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp on a Hat at 80, 81 and 92.5 mm (the Studio's request), cfg.detail_spokes OFF beside ON over the Wisconsin star and over the whole design (re-rendered at the width-scaled spoke floor when the flag went ON, 2026-10-16), plus one 8 mm crop of digitizer/testdata/photo/screenshot_phone_ui_golke.jpg at 80 mm (the corpus's false positive at MIN_TIPS 3); the artwork crops are the committed fixtures; no new artwork, no new client art",
+   "basis": "PR bodies of claude/detail-spokes (built OFF) and claude/detail-spokes-on (the flip); source fixtures have their own entries above"
   },
   {
    "prefix": "docs/renders/",

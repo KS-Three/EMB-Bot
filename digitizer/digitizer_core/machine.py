@@ -778,7 +778,14 @@ DOT_RUNG_MIN_LOOP_MM = 3 * DOT_RUNG_STITCH_MM
 # (two stitches each, out and back) on a design whose art star is ~0.9 mm,
 # so the pro exaggerates the mark about three times. A CANDIDATE (ROADMAP
 # gate 1): read from the pro's file, unsewn here; a sew-out settles it.
+# The floor stage 7 uses SCALES with the design: DETAIL_SPOKE_MIN_MM x the
+# design's width / DETAIL_SPOKE_REF_WIDTH_MM, the width of the Hat PES the
+# 1.45 was read from -- 1.45 at 92.6 mm, 1.25 at Kent's 80 mm (Kent's call
+# 2026-10-16: at the fixed 1.45 an 80 mm Fremont's eastern spoke ended a
+# thread width past the state's edge; scaled, every end is inside). Both
+# numbers are the pro's sewn file; the scaling is the call.
 DETAIL_SPOKE_MIN_MM = 1.45
+DETAIL_SPOKE_REF_WIDTH_MM = 92.6
 
 # --- Travel ----------------------------------------------------------------
 
