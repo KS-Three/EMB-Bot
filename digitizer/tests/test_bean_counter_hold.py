@@ -36,10 +36,17 @@ STROKE_MM = 0.22    # Fremont's 1895 at 81 mm
 HOLD_MM = 0.2
 
 
-def test_flag_defaults_off():
-    assert PipelineConfig().bean_letter_counter_hold_mm is None
-    # not part of the small-text switch: the switch alone leaves it off
-    assert PipelineConfig(small_text_true_size=True).bean_letter_counter_hold_mm is None
+def test_flag_defaults_on_since_kents_flip_and_none_is_off():
+    """ON at 0.25 since 2026-10-15 (Kent: "flip both holds ON"). A plain default,
+    not a switch value: the switch neither fills nor clears it, an explicit None
+    is OFF (what the sew-out cards' OFF arms pass), and the pre-flip engine pins
+    None (`conftest.PRE_FLIP`)."""
+    from .conftest import PRE_FLIP
+    assert PipelineConfig().bean_letter_counter_hold_mm == 0.25
+    assert PipelineConfig(small_text_true_size=True).bean_letter_counter_hold_mm == 0.25
+    assert PipelineConfig(small_text_true_size=False).bean_letter_counter_hold_mm == 0.25
+    assert PipelineConfig(bean_letter_counter_hold_mm=None).bean_letter_counter_hold_mm is None
+    assert PRE_FLIP["bean_letter_counter_hold_mm"] is None
 
 
 # --- a synthetic 8 ---------------------------------------------------------------

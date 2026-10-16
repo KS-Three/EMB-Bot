@@ -41,16 +41,22 @@ def card(tmp_path_factory):
 
 
 def test_the_cuts_differ_only_in_the_flag_under_test_and_are_valid_config():
-    base = {"small_text_true_size": True}
-    # the switch is ON in every cut, by override: the default is untouched
+    base = {"small_text_true_size": True,
+            "bean_letter_counter_hold_mm": None, "bean_letter_bay_hold": None}
+    assert ca.SWITCH == base
+    # the switch is ON in every cut, by override, and both holds are pinned OFF
+    # (they are ON by default since Kent's flip of 2026-10-15, after the card was
+    # cut): the default is untouched and a re-cut sews what the cuts record
     for name, (_w, ov) in ca.CUTS.items():
         assert ov["small_text_true_size"] is True, name
+        assert ov["bean_letter_bay_hold"] is None, name
         PipelineConfig(**ov)
     # The default is ON since #955; the card never relied on it -- every cut sets
     # the switch itself (asserted above), and at 81 / 92.5 mm #955's counter
     # guard does not bite, so a re-cut sews what the committed cuts record.
     assert PipelineConfig().small_text_true_size is True
-    assert PipelineConfig().bean_letter_counter_hold_mm is None
+    assert PipelineConfig().bean_letter_counter_hold_mm == 0.25
+    assert PipelineConfig().bean_letter_bay_hold == 0.2
     assert PipelineConfig().small_letter_ties is False
     assert ca.CUTS["s81"] == (81.0, base) and ca.CUTS["s925"] == (92.5, base)
     assert ca.CUTS["s81_hold"][1] == {**base, "bean_letter_counter_hold_mm": 0.25}

@@ -37,9 +37,16 @@ KW = dict(entry=None, trim_at_mm=3.0, stitch_mm=0.45, serif_mm=0.45, min_arm_mm=
           corner_deg=50.0)
 
 
-def test_flag_defaults_off_and_is_not_in_the_switch():
-    assert PipelineConfig().bean_letter_bay_hold is None
-    assert PipelineConfig(small_text_true_size=True).bean_letter_bay_hold is None
+def test_flag_defaults_on_since_kents_flip_and_is_not_in_the_switch():
+    """ON at 0.2 since 2026-10-15 (Kent: "flip both holds ON"; 0.2 is #967's
+    corpus arm). A plain default: the switch neither fills nor clears it, an
+    explicit None is OFF, and the pre-flip engine pins None."""
+    from .conftest import PRE_FLIP
+    assert PipelineConfig().bean_letter_bay_hold == 0.2
+    assert PipelineConfig(small_text_true_size=True).bean_letter_bay_hold == 0.2
+    assert PipelineConfig(small_text_true_size=False).bean_letter_bay_hold == 0.2
+    assert PipelineConfig(bean_letter_bay_hold=None).bean_letter_bay_hold is None
+    assert PRE_FLIP["bean_letter_bay_hold"] is None
 
 
 # --- synthetic letters (design mm, y down) ----------------------------------------

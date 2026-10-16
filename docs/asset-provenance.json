@@ -937,6 +937,12 @@
    "basis": "PR body of claude/dot-rung-lettering-scope; source fixtures carry their own entries above"
   },
   {
+   "prefix": "docs/renders/bean-holds-on/",
+   "status": "derived-render",
+   "source": "Thread renders (digitizer_core.stitchviz via tools/fremont_triage's panel helpers) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp on a Hat at 80, 81 and 92.5 mm, the two bean-letter holds OFF beside ON (cfg.bean_letter_counter_hold_mm 0.25, cfg.bean_letter_bay_hold 0.2); no new artwork, no new client art",
+   "basis": "PR body of claude/bean-holds-on; source fixture has its own entry above"
+  },
+  {
    "prefix": "docs/renders/the-80mm-ink-link/",
    "status": "derived-render",
    "source": "Thread renders (digitizer_core.stitchviz via tools/fremont_triage's panel helpers) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp at 80 mm on a Hat (the Studio's request), of the phone screenshot fixture at its corpus size and of the Fremont tagline crop at 3 mm caps, link OFF beside link ON (cfg.text_cluster_rescued_ink_link), plus screenshots of EMB-Bot's own Studio (Stitches view) over the same Fremont digitize on main and on this lane; the artwork crops are the committed fixture; no new artwork, no new client art",
