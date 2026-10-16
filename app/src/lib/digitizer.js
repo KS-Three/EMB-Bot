@@ -1724,6 +1724,10 @@ export const SILENT_WARNINGS = new Set([
   // Stage 5's clip cut a shape in pieces and the ones too small to sew were
   // dropped (cfg.clip_keep_pieces, built OFF 2026-10-12). Bookkeeping only.
   "CLIP_DROPPED_SLIVER",
+  // A small detail sewed as a spoked mark on top of the shape round it
+  // (cfg.detail_spokes, built OFF 2026-10-15). The engine took the path;
+  // nothing for a customer to do.
+  "DETAIL_SPOKES_SEWN",
 ]);
 
 // Of the warnings that DO reach the panel, most are the engine reporting what

@@ -28,6 +28,7 @@ import numpy as np
 
 from . import machine
 from .config import PipelineConfig
+from .detail_spokes import find_tips
 from .stage1_prep import Prep
 from .stage2_quantize import Quant
 from .warnings_codes import (
@@ -69,6 +70,11 @@ class RegionMask:
     # Admitted by the dot rung over a stem (`cfg.small_dot_rung_lettering`);
     # stages 4 and 7 extend the rung only to such a region when scoped.
     dot_rung: bool = False
+    # Kept as a spoked detail mark (`cfg.detail_spokes`): {"centre": (x, y),
+    # "tips": [(x, y), ...] in FRAME pixels, "host_layer": int}. Stage 4
+    # carries it to `Region.meta["detail_spokes"]` in design mm; stage 7 sews
+    # it. None for every other region.
+    detail_spokes: dict | None = None
 
     @classmethod
     def from_full(cls, mask: np.ndarray, layer: int,
@@ -371,6 +377,16 @@ def resolve_small_regions(
     drop entirely (added straight to the kept set); it still has to clear
     stage 4's own real-geometry floor to survive as a Region, same as any
     other mask this function keeps.
+
+    `cfg.detail_spokes` (default OFF; `detail_spokes.py`): a sub-floor region
+    about to be absorbed that ONE neighbour of another colour encloses (nine
+    tenths of its ring; CIE76 over `cfg.merge_delta_e` on the colours known
+    here, nothing without them), at or over the run tier's area floor but
+    under its loop proxy, whose mask has three or more tips (`find_tips`), is
+    kept for stage 7's spoked mark -- appended to `rescued` with
+    `RegionMask.detail_spokes` set -- AND still unioned into its encloser, so
+    the host sews solid under the mark exactly as it sews today. A region
+    the detector reads no tips in (a dot) takes the path below unchanged.
     """
     min_area_px = (cfg.min_detail_mm * px_per_mm) ** 2
     areas = [r.area for r in regions]
@@ -441,6 +457,10 @@ def resolve_small_regions(
     # dot with a stem under it (`has_stem_below`).
     dot_scope = bool(cfg.small_dot_rung and cfg.small_dot_rung_lettering)
     keep_contrast = bool(cfg.keep_thin_strokes) and layer_lab is not None
+    # `cfg.detail_spokes` (default OFF): needs the regions' colours, from
+    # either source `colour()` reads; with neither, nothing is a mark.
+    spokes_on = bool(cfg.detail_spokes and cfg.small_shape_rescue
+                     and (layer_lab is not None or lab_img is not None))
 
     def clears_run_floors(i: int, box) -> bool:
         """Stage 3's cheap proxy for "the run tier can sew this": at least the
@@ -644,6 +664,31 @@ def resolve_small_regions(
             if de > cfg.merge_delta_e:
                 rescued.append(i)
                 continue
+        # `cfg.detail_spokes`: a spoked detail of another colour that `best`
+        # encloses is kept for stage 7's mark AND given to `best`, so the host
+        # sews solid under it (the pro's black under the white asterisk).
+        # Asked of a region about to be absorbed, before `keep_counters`: a
+        # star inside a solid shape is a detail on it, not a gap in it.
+        if (spokes_on and not clears and areas[i] >= noise_area_px
+                and best_share * 10 >= int(halo.sum()) * 9):
+            mine, theirs = colour(i), colour(best)
+            if (mine is not None and theirs is not None
+                    and float(np.linalg.norm(mine - theirs)) > cfg.merge_delta_e):
+                tips = find_tips(regions[i].crop)
+                if tips is not None:
+                    oy, ox = regions[i].origin
+                    (tcx, tcy), tpts = tips
+                    regions[i].detail_spokes = {
+                        "centre": (tcx + ox, tcy + oy),
+                        "tips": [(x + ox, y + oy) for x, y in tpts],
+                        "host_layer": regions[best].layer,
+                    }
+                    rescued.append(i)
+                    regions[best].union_from(regions[i])
+                    jb = boxes[best]
+                    boxes[best] = (min(jb[0], box[0]), min(jb[1], box[1]),
+                                   max(jb[2], box[2]), max(jb[3], box[3]))
+                    continue
         # `keep_counters` is asked LAST, of a region about to be absorbed and
         # of nothing else: whatever the rescue above keeps is sewn exactly as
         # it was. The first cut asked it first and unstitched thread the

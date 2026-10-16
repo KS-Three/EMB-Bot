@@ -69,7 +69,7 @@ from .textcluster import (detect_text_clusters, ocr_suggest_text,
                           regularize_text_clusters,
                           set_lettering_house_angle)
 from .design_ramp import DesignRamp, fit_design_ramp
-from .stage5_overlap import resolve_overlaps
+from .stage5_overlap import PlannedRegion, resolve_overlaps
 from .stage6_blend import SourcePixels, legacy_design_ramp_angle
 from .stage6_hairline import HairlineSet, InkSource, hairline_candidates
 from .stage6_hairline_lines import applies as hairline_lines_apply
@@ -756,7 +756,10 @@ def build_generation(
         masks, cfg, p.px_per_mm, p.enclosed_mask,
         layer_lab=rgb_to_lab(q.cluster_rgb) if (
             cfg.keep_thin_strokes or counters_on
-            or (cfg.small_dot_rung and cfg.small_dot_rung_lettering)) else None,
+            or (cfg.small_dot_rung and cfg.small_dot_rung_lettering)
+            # `cfg.detail_spokes` reads the same colours: a mark is a detail
+            # of ANOTHER colour than its host.
+            or cfg.detail_spokes) else None,
         keep_counters=counters_on)
     if dbg:
         debugviz.stage3(dbg, p.rgb, masks)
@@ -1667,9 +1670,27 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                  else hairline_candidates(stitched_regions, cfg,
                                           ink=getattr(result, "ink_source", None)))
                 if cfg.hairline else None)
+    # `cfg.detail_spokes` (built OFF): a spoked detail mark is thread sewn on
+    # TOP of its host, whose own pixels it still has (stage 3 gave them to
+    # the host, so the host sews solid under it). Stage 5 never sees one:
+    # in the host's layer or after it the clip by earlier colours would
+    # empty it (its whole artwork lies under the host), before it the host's
+    # clip would carve the mark out of the host. It joins `planned` ungrown,
+    # at its host layer's sew index; stage 7 sews it after the host. Nothing
+    # here runs for a plan without a tagged region.
+    marks = [r for r in stitched_regions if r.meta.get("detail_spokes")]
+    if marks:
+        stitched_regions = [r for r in stitched_regions if not r.meta.get("detail_spokes")]
     planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
                                                  design_class=result.design_class,
                                                  hairline=hairline)
+    if marks:
+        sew_of = {p.layer: p.sew_index for p in planned}
+        last = max(sew_of.values(), default=0)
+        for r in marks:
+            host_layer = r.meta["detail_spokes"].get("host_layer")
+            planned.append(PlannedRegion(region=r, polygon=r.polygon,
+                                         sew_index=sew_of.get(host_layer, last)))
     if dbg:
         debugviz.stage5(dbg, planned, result.design_size_mm, chart_for(cfg))
 

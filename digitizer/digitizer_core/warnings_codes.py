@@ -248,6 +248,17 @@ HAIRLINE_TIER_SEWN = "HAIRLINE_TIER_SEWN"
 # extra: {"count": int (shapes), "words": int (text clusters)}
 SMALL_LETTERING_AS_BEAN = "SMALL_LETTERING_AS_BEAN"
 
+# Stage 7 under `cfg.detail_spokes` (built OFF 2026-10-15, `detail_spokes.py`):
+# a small detail of another colour, enclosed by one shape and too small for
+# the run tier's outline, sewed as ONE run of spokes from its centre on top
+# of the shape round it (the pro's white asterisk on Fremont's black
+# Wisconsin). Info, not a problem -- the engine took the path (Kent's
+# 2026-10-02 ruling); ENGINE-SIDE ONLY, the Studio lists it in
+# SILENT_WARNINGS. extra: {"count": int (marks), "spokes": int (all marks'
+# spokes), "colour_changes": int (blocks ADDED to sew a mark after its host;
+# 0 when a later block of the mark's thread hosted it), "ids": list[str]}
+DETAIL_SPOKES_SEWN = "DETAIL_SPOKES_SEWN"
+
 # Stage 2 (photo segmentation)
 # A region owns exactly one thread, so a region whose own pixels span more
 # tone than one thread can express sews as a flat average no matter what the
