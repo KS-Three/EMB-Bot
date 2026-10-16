@@ -362,8 +362,15 @@ def test_a_mark_whose_host_sewed_nothing_sews_last():
 # --- the whole pipeline: Fremont 80 mm, the Studio's Hat request ----------------------
 
 # Today's main with the flag OFF (set explicitly): 14,824 stitches / 43 trims,
-# the bean-holds-on cell of docs/renders/bean-holds-on/README.md.
-FREMONT_80_OFF_MD5 = "75f44f905f946705695cf6365f2a8d5f"
+# the bean-holds-on cell of docs/renders/bean-holds-on/README.md. The stream's
+# md5 is PER PLATFORM on this fixture (the goldens' lesson: numerics diverge
+# per fixture, counts agree): Kent's Windows box reads `75f44f90`, CI's Linux
+# `027d14e6` (PR #980, shard 5/6, same 14,824 / 43). A third platform fails
+# here and gets its own pin, not a skip.
+FREMONT_80_OFF_MD5 = {
+    "win32": "75f44f905f946705695cf6365f2a8d5f",
+    "linux": "027d14e68b7a7f91a0a9399077f67847",
+}
 STAR_MM = (1.28, -12.02)        # the star's centre, design mm, y down
 
 
@@ -386,9 +393,10 @@ def fremont_on():
 
 
 def test_fremont_80_off_is_byte_identical(fremont_off):
+    import sys
     plan = fremont_off["plan"]
     assert (plan.stats.stitch_count, plan.stats.trims) == (14824, 43)
-    assert _stream_md5(plan) == FREMONT_80_OFF_MD5
+    assert _stream_md5(plan) == FREMONT_80_OFF_MD5[sys.platform]
     assert not [r for r in fremont_off["result"].regions if r.meta.get("detail_spokes")]
     assert not [w for w in plan.warnings if w["code"] == DETAIL_SPOKES_SEWN]
 

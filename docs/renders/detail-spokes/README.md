@@ -33,7 +33,9 @@ digitized twice with the flag set EXPLICITLY (OFF / ON), on this lane cut from `
 | 92.5 mm (the pro's width) | 18,706 / 54, `12032076` | 18,725 / 55, `37231abc` | 1 | `Sb81784b4`, 0.224 mm², 5 spokes, block 4 of 4 | `hat92p5_*.png` |
 
 The OFF cells are the bean-holds-on README's ON cells, byte for byte: this lane changes
-nothing with the flag down. ON costs 19 stitches (one 19-point run: 5 spokes x 2 + the
+nothing with the flag down. (Every md5 here is from Kent's Windows box; CI's Linux reads
+the same 14,824 / 43 at 80 mm OFF with its own md5, `027d14e6` — the goldens' per-fixture
+platform numerics, pinned per platform in `test_detail_spokes.py`.) ON costs 19 stitches (one 19-point run: 5 spokes x 2 + the
 centre start, plus the tie-in and tie-off legs, both laid along a spoke) and one trim
 (the hop from the cap's end into the mark) at every width, and no colour change, because
 the white edge cap already follows the black.
