@@ -1173,6 +1173,57 @@ describe("nothing runs until Auto Digitize Image is pressed", () => {
   });
 });
 
+// ---- a re-digitize applies the changed result, settings unchanged ----------
+//
+// The 2026-10-15 report: the engine (the service) changed under an UNCHANGED
+// Studio config, the service's finished job read 14,824, yet the panel kept
+// showing the previous run's 14,812 and its old "Since last run" delta. The
+// apply path must land the new result on the element whenever a run finishes,
+// even when nothing in the Studio changed and the stitch count is close. (The
+// actual stuck instance was a transient poll failure abandoning a still-live
+// job — pinned at the unit level in digitizer.spec.js's pollJob tests; this
+// guards the panel half: a finished run is never silently kept-as-was.)
+describe("a finished re-digitize applies the new result even with settings unchanged", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  test("new stitch count and delta land; the previous run is not kept", async () => {
+    const mod = await import("../lib/digitizer.js");
+    vi.spyOn(mod, "digitize").mockResolvedValue({
+      design: { stitchCount: 14824, widthMM: 81, heightMM: 44, colorCount: 3, stitches: [], colors: [] },
+      warnings: [], review: null,
+      stats: { trims: 43, color_changes: 3 },
+      preflight: { score: 90, grade: "A", findings: [], metrics: { color_changes: 3 } },
+    });
+    // The element as it sits after the PREVIOUS run: 14,812 stitches, grade B.
+    const prior = {
+      result: { stitchCount: 14812, widthMM: 81, heightMM: 44, colorCount: 3, stitches: [], colors: [] },
+      stats: { trims: 46, color_changes: 3 },
+      preflight: { score: 88, grade: "B", findings: [], metrics: { color_changes: 3 } },
+      priorRun: { stitch_count: 14897, color_changes: 3, trims: 49, score: 85, grade: "C" },
+    };
+    const utils = render(Harness, {
+      props: { element: baseElement([], prior), health: { ok: true }, onPatch: () => {} },
+    });
+    const run = () => utils.container.querySelector(".dgp-run");
+    // Nothing changed in the Studio, so the button is solid (not stale) --
+    // this is precisely the "unchanged settings" case from the report.
+    expect(run()).not.toHaveClass("dgp-run-stale");
+    expect(utils.container.querySelector(".dgp-stats")).toHaveTextContent("14,812");
+
+    await fireEvent.click(run());
+
+    await waitFor(() =>
+      expect(utils.container.querySelector(".dgp-stats")).toHaveTextContent("14,824"));
+    expect(utils.container.querySelector(".dgp-stats")).not.toHaveTextContent("14,812");
+    // The delta is recomputed from THIS run's prior (14,812) to the new 14,824.
+    const delta = utils.getByTestId("digitize-delta").textContent;
+    expect(delta).toMatch(/\+12 stitches/);
+    expect(delta).toMatch(/−3 trims/);
+    expect(delta).toMatch(/B → A/);
+    expect(delta).not.toMatch(/−85 stitches/); // never the previous run's delta
+  });
+});
+
 // ---- a corner drag on the field is a Design width change -------------------
 //
 // The field's corner handles SCALE the baked stitches (generate.js passes

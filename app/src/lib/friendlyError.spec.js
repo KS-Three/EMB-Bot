@@ -109,7 +109,11 @@ describe("the client tags what the Studio needs", () => {
   test("pollJob: the service dying mid-run, a stuck job and a failed job", async () => {
     stub();
     const { pollJob } = await import("./digitizer.js");
-    const dead = await pollJob("j", { fetchFn: async () => { throw new TypeError("Failed to fetch"); } }).catch((e) => e);
+    // A SUSTAINED outage still surfaces as OFFLINE — but since 2026-10-15 a
+    // single poll blip no longer kills a live job (pollJob retries transient
+    // failures up to maxTransientFailures), so "dying" here means every poll
+    // fails. Small budget + zero interval so it gives up promptly in the test.
+    const dead = await pollJob("j", { fetchFn: async () => { throw new TypeError("Failed to fetch"); }, intervalMs: 0, maxTransientFailures: 2 }).catch((e) => e);
     expect(friendlyError(dead, "digitize")).toBe(OFFLINE_DIGITIZE);
 
     const running = async () => ({ ok: true, json: async () => ({ state: "running" }) });
