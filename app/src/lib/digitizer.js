@@ -1326,24 +1326,70 @@ export async function startDigitize(image, config, fetchFn = globalThis.fetch) {
 // opts.onState hears every observed state ("queued"/"running") for honest
 // pending UI; opts.isCancelled() stops the loop quietly (a torn-down panel
 // must not keep a timer alive — the job cache means re-asking is free).
+//
+// A job already running on the service keeps running even when a single poll
+// can't reach it. A photograph at 80 mm is ~4 minutes, polled every 500 ms,
+// so one poll out of hundreds hitting a connection reset (the box under
+// load), or a 502/503/504 from a busy or just-restarted service, is ordinary.
+// Throwing out of the loop there ABANDONS a job that is still computing: the
+// service finishes and caches it, but nothing is polling it any more, so
+// DigitizePanel.runDigitize lands in its catch, shows the offline banner,
+// resets to idle AND clears the resume mark (its finally) — and the element
+// is stuck on the PREVIOUS run's stitches and "Since last run" delta with no
+// way back but a manual re-digitize. (Measured 2026-10-15: a re-digitize that
+// read 14,812 while the service's own finished job was 14,824.) So a transient
+// poll failure retries on the next tick instead of ending the run; only a
+// sustained outage (maxTransientFailures in a row, the service genuinely
+// gone) or the overall timeout gives up. A real job error (state "error") and
+// a 4xx — a bad request, or a 404 for an evicted/missing job, which is a
+// verdict on THIS request, not a blip — still surface at once.
 export async function pollJob(jobId, opts = {}) {
   const fetchFn = opts.fetchFn || globalThis.fetch;
   const intervalMs = opts.intervalMs == null ? 500 : opts.intervalMs;
   const timeoutMs = opts.timeoutMs == null ? 300000 : opts.timeoutMs;
+  // ~10 s of back-to-back failures at the default 500 ms cadence: long enough
+  // to ride out a reset or a service restart, short enough that a service that
+  // is truly down still reports promptly.
+  const maxTransient = opts.maxTransientFailures == null ? 20 : opts.maxTransientFailures;
   const t0 = Date.now();
+  let transient = 0;
+  const overBudget = () => {
+    if (Date.now() - t0 <= timeoutMs) return false;
+    const e = new Error("Digitizing timed out. Check the service window, then digitize again.");
+    e.kind = "timeout";
+    return e;
+  };
   for (;;) {
     if (opts.isCancelled && opts.isCancelled()) return null;
-    const r = await fetchFn(digitizerUrl() + "/jobs/" + jobId);
-    if (!r.ok) throw await httpError(r);
-    const job = await r.json();
+    let job;
+    try {
+      const r = await fetchFn(digitizerUrl() + "/jobs/" + jobId);
+      if (!r.ok) {
+        // 5xx is the service (busy, restarting), not a verdict on this job —
+        // retry. 4xx (incl. 404 "no such job") is this request; surface now.
+        const err = await httpError(r);
+        if (r.status < 500) throw err;
+        throw Object.assign(err, { _transient: true });
+      }
+      job = await r.json();
+      transient = 0; // a clean read clears the streak
+    } catch (err) {
+      // A thrown fetch/parse error carries no HTTP status (network reset,
+      // truncated body) and is transient; a 5xx is tagged above; anything
+      // else (a 4xx httpError, a thrown non-Error) surfaces immediately.
+      const retryable = err && (err._transient || err.status == null);
+      if (!retryable) throw err;
+      if (++transient > maxTransient) throw err;
+      const timedOut = overBudget();
+      if (timedOut) throw timedOut;
+      await new Promise((res) => setTimeout(res, intervalMs));
+      continue;
+    }
     if (job.state === "done") return job;
     if (job.state === "error") throw new Error(job.error || "Digitizing failed.");
     if (opts.onState) opts.onState(job.state);
-    if (Date.now() - t0 > timeoutMs) {
-      const e = new Error("Digitizing timed out. Check the service window, then digitize again.");
-      e.kind = "timeout";
-      throw e;
-    }
+    const timedOut = overBudget();
+    if (timedOut) throw timedOut;
     await new Promise((res) => setTimeout(res, intervalMs));
   }
 }

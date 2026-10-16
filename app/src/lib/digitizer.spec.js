@@ -418,6 +418,84 @@ test("pollJob throws the job's error for a failed job", async () => {
   await expect(pollJob("j1", { fetchFn, intervalMs: 0 })).rejects.toThrow(/bad art/);
 });
 
+// A re-digitize that keeps showing the PREVIOUS run's result (2026-10-15).
+// A long job (a photo at 80 mm is ~4 minutes) is polled ~every 500 ms, so a
+// single poll that can't reach the service -- a connection reset while the
+// box is loaded, a 502/503/504 from a busy or just-restarted service -- used
+// to throw straight out of the loop and ABANDON a job that was still running.
+// The service went on to finish and cache that job, but nothing was polling
+// it any more, so DigitizePanel's runDigitize landed in its catch, showed the
+// offline banner, reset to idle AND cleared the resume mark (its finally) --
+// leaving the element on the prior run's stitches and "Since last run" delta
+// with no way back but a manual re-digitize. A job alive on the service must
+// survive a transient poll blip.
+describe("pollJob survives a transient poll failure without abandoning a live job", () => {
+  it("retries a one-off fetch REJECT (connection reset) and returns the finished job", async () => {
+    stubStorage({});
+    const { pollJob } = await import("./digitizer.js");
+    const steps = [
+      async () => ({ ok: true, json: async () => ({ state: "running", job_id: "j1" }) }),
+      async () => { throw new TypeError("Failed to fetch"); },             // the blip
+      async () => ({ ok: true, json: async () => ({ state: "running", job_id: "j1" }) }),
+      async () => ({ ok: true, json: async () => ({ state: "done", job_id: "j1", design: { stitchCount: 14824, stitches: [] }, warnings: [] }) }),
+    ];
+    let i = 0;
+    const fetchFn = (...a) => steps[Math.min(i++, steps.length - 1)](...a);
+    const job = await pollJob("j1", { fetchFn, intervalMs: 0 });
+    expect(job.state).toBe("done");
+    expect(job.design.stitchCount).toBe(14824);
+  });
+
+  it("retries a 503 (busy / restarting service) and returns the finished job", async () => {
+    stubStorage({});
+    const { pollJob } = await import("./digitizer.js");
+    const steps = [
+      async () => ({ ok: false, status: 503, json: async () => ({ detail: "busy" }) }),
+      async () => ({ ok: true, json: async () => ({ state: "done", job_id: "j1", design: { stitchCount: 14824, stitches: [] }, warnings: [] }) }),
+    ];
+    let i = 0;
+    const fetchFn = () => steps[Math.min(i++, steps.length - 1)]();
+    const job = await pollJob("j1", { fetchFn, intervalMs: 0 });
+    expect(job.design.stitchCount).toBe(14824);
+  });
+
+  it("still gives up on a SUSTAINED outage rather than looping forever", async () => {
+    stubStorage({});
+    const { pollJob } = await import("./digitizer.js");
+    const fetchFn = async () => { throw new TypeError("Failed to fetch"); };
+    await expect(
+      pollJob("j1", { fetchFn, intervalMs: 0, maxTransientFailures: 3 }),
+    ).rejects.toThrow(/Failed to fetch|reach|service/i);
+  });
+
+  it("does NOT retry a 4xx (a bad request or an evicted/gone job) -- that is a verdict, not a blip", async () => {
+    stubStorage({});
+    const { pollJob } = await import("./digitizer.js");
+    let calls = 0;
+    const fetchFn = async () => { calls++; return { ok: false, status: 404, json: async () => ({ detail: "No such job. It may have been evicted." }) }; };
+    await expect(pollJob("j1", { fetchFn, intervalMs: 0, maxTransientFailures: 20 })).rejects.toThrow(/No such job/);
+    expect(calls).toBe(1); // surfaced on the first 404, not retried 20 times
+  });
+
+  it("a clean read between blips resets the budget, so scattered blips never add up to an outage", async () => {
+    stubStorage({});
+    const { pollJob } = await import("./digitizer.js");
+    // Two blips, each followed by a good running read, then done: with a
+    // budget of 1 this only passes if a success RESETS the streak.
+    const steps = [
+      async () => { throw new TypeError("Failed to fetch"); },
+      async () => ({ ok: true, json: async () => ({ state: "running", job_id: "j1" }) }),
+      async () => { throw new TypeError("Failed to fetch"); },
+      async () => ({ ok: true, json: async () => ({ state: "running", job_id: "j1" }) }),
+      async () => ({ ok: true, json: async () => ({ state: "done", job_id: "j1", design: { stitchCount: 14824, stitches: [] }, warnings: [] }) }),
+    ];
+    let i = 0;
+    const fetchFn = () => steps[Math.min(i++, steps.length - 1)]();
+    const job = await pollJob("j1", { fetchFn, intervalMs: 0, maxTransientFailures: 1 });
+    expect(job.state).toBe("done");
+  });
+});
+
 test("fetchHealth returns the payload when the service is up and null for down/non-ok/garbage", async () => {
   stubStorage({});
   const { fetchHealth } = await import("./digitizer.js");
