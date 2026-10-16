@@ -37,7 +37,11 @@ def test_the_arms_differ_only_in_passes_and_are_valid_config():
         assert cp.ARMS[arm] == {**base, "bean_letter_passes": n}
         cfg = PipelineConfig(**cp.ARMS[arm])
         assert cfg.bean_letter_passes == n and cfg.bean_letter_max_stroke_mm == 0.5
-    assert base == {"small_text_true_size": True}
+    # the switch ON by override, and both holds pinned OFF: they are ON by default
+    # since Kent's flip of 2026-10-15, after this card was cut, so a re-cut sews
+    # what the committed cuts record
+    assert base == {"small_text_true_size": True,
+                    "bean_letter_counter_hold_mm": None, "bean_letter_bay_hold": None}
 
 
 def test_the_card_reads_back_whole_and_fits_the_hoop(card):

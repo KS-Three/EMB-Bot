@@ -203,13 +203,168 @@ def _bean_keep_corners(spine: list, stitch_mm: float | None, corner_deg: float,
     return out
 
 
+# A BAY of a letter is a concavity of its ink: what a closing of this radius
+# adds to the ink with its counters filled (`tools/bean_glyph_trace.py`'s
+# `BAY_CLOSE_MM`, the instrument #953 measured the bays with). The upper bay
+# of Fremont's 5, the slit between THE's E tick and its middle arm.
+BAY_CLOSE_MM = 0.45
+# A bay smaller than this is not held off. The instrument counts pockets from
+# 0.01 mm2 (`MIN_BAY_MM2`, the outline's roughness), but every junction of two
+# strokes leaves a fillet of 0.01-0.04 mm2 (a T's stem under its bar, an 8's
+# waist) that a thread at the junction covers whatever the stations do.
+# Fremont's 5 upper bay is 0.23 mm2, the E's 0.7. A CANDIDATE (gate 1).
+BAY_MIN_MM2 = 0.05
+# Candidate needle points for a held station are laid on a grid this fine.
+_BAY_GRID_MM = 0.02
+
+
+def _letter_ink(spines: list, stroke_mm: float):
+    """The letter's ink as the bean tier knows it: each spine grown by half
+    the ink's stroke, flat at a FREE end (the ink reader already carried a
+    free end out to the ink's edge, `ink_path._carry_out`), round where it
+    meets another spine. -> (per-spine ink, the letter's ink)."""
+    from shapely.geometry import LineString, Polygon
+    from shapely.ops import unary_union
+
+    half = stroke_mm / 2.0
+    own = []
+    for i, s in enumerate(spines):
+        if len(s) < 2 or _length(s) <= 0:
+            own.append(None)
+            continue
+        g = LineString(s).buffer(half)
+        for end, nxt in ((s[0], s[1]), (s[-1], s[-2])):
+            if _attached(end, i, spines):
+                continue
+            dx, dy = end[0] - nxt[0], end[1] - nxt[1]
+            n = math.hypot(dx, dy)
+            if n < 1e-9:
+                continue
+            ux, uy = dx / n, dy / n                 # outward along the spine
+            vx, vy = -uy * stroke_mm, ux * stroke_mm
+            g = g.difference(Polygon([
+                (end[0] + vx, end[1] + vy),
+                (end[0] + vx + ux * stroke_mm, end[1] + vy + uy * stroke_mm),
+                (end[0] - vx + ux * stroke_mm, end[1] - vy + uy * stroke_mm),
+                (end[0] - vx, end[1] - vy)]))
+        own.append(g)
+    parts = [g for g in own if g is not None and not g.is_empty]
+    return own, (unary_union(parts) if parts else None)
+
+
+def letter_bays(ink) -> list:
+    """The BAYS of `ink` (`BAY_CLOSE_MM`): a closing of the ink with its
+    counters filled, minus that filled ink, one polygon per pocket, pockets
+    under `BAY_MIN_MM2` left out. A counter is not a bay: closed counters are
+    `cfg.bean_letter_counter_hold_mm`'s (#952)."""
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+
+    if ink is None or ink.is_empty:
+        return []
+    polys = [ink] if ink.geom_type == "Polygon" else list(getattr(ink, "geoms", []))
+    filled = unary_union([Polygon(g.exterior) for g in polys if g.geom_type == "Polygon"])
+    closed = filled.buffer(BAY_CLOSE_MM).buffer(-BAY_CLOSE_MM)
+    rest = closed.difference(filled)
+    pieces = [rest] if rest.geom_type == "Polygon" else list(getattr(rest, "geoms", []))
+    return [g for g in pieces if g.geom_type == "Polygon" and g.area >= BAY_MIN_MM2]
+
+
+def letter_counters(ink) -> list:
+    """The closed counters of `ink`, one polygon each."""
+    from shapely.geometry import Polygon
+
+    if ink is None or ink.is_empty:
+        return []
+    polys = [ink] if ink.geom_type == "Polygon" else list(getattr(ink, "geoms", []))
+    return [Polygon(r) for g in polys if g.geom_type == "Polygon" for r in g.interiors]
+
+
+def _width(g) -> float:
+    """A pocket's mean width, 2 x area / perimeter."""
+    return 2.0 * float(g.area) / max(float(g.length), 1e-9)
+
+
+def hold_off_bays(pts: list, own_ink, bays, hold_mm: float, counters=()) -> list:
+    """Every station of `pts` within `hold_mm` of a bay, moved to the point of
+    its OWN spine's ink (`own_ink`) within `hold_mm` of it where the worst
+    pocket beside it is least crowded -- the nearest of equals. A station no
+    move improves stays exactly where it is, and the needle never leaves the
+    spine's ink. `ink_path.hold_off_counters`' rule (#952), served to the
+    bays a closed-counter hold cannot see.
+
+    Crowding: for each pocket (a bay, or a closed counter in `counters`), how
+    far short of `hold_mm` the station sits from it, over the pocket's mean
+    width (`_width`) -- the share of a pocket a thread edge takes grows with
+    how far it reaches in and shrinks with how wide the pocket is. So a
+    stroke between two pockets (the bowl top of a 5, between its upper bay
+    and its bowl) leans toward the WIDER one, and a stroke between a bay and
+    a counter (an A's leg) is never pushed into the counter. A station only
+    counters crowd is not moved: that is #952's hold.
+
+    Why (`cfg.bean_letter_bay_hold`): a bean letter sews its ink's
+    centreline, and a 0.40 mm thread on Fremont's 0.19 mm strokes lays
+    0.10 mm past each edge -- the 5's upper bay at 81 mm sewed 64% covered
+    and read A, and THE's E at 92.5 mm sewed the 0.26 mm slit between its tick
+    and its middle arm shut (#953). Held, the thread lies on each stroke's
+    side away from the bay that needs it.
+
+    This moves bean STATIONS within a centreline's ink. It is not the satin
+    rail push DOCTRINE 2026-09-30 ruled out a notch guard on (that push is
+    pull compensation; a bean run has none)."""
+    import numpy as np
+    import shapely
+
+    if isinstance(bays, (list, tuple)):
+        bays = list(bays)
+    elif bays is not None:
+        bays = list(getattr(bays, "geoms", [bays]))
+    if not bays or own_ink is None or own_ink.is_empty or hold_mm <= 0:
+        return pts
+    pockets = bays + list(counters or ())
+    widths = np.array([_width(g) for g in pockets], float)[:, None]
+    nb = len(bays)
+    r = int(math.ceil(hold_mm / _BAY_GRID_MM))
+    oy, ox = np.mgrid[-r:r + 1, -r:r + 1]
+    ox, oy = ox.ravel() * _BAY_GRID_MM, oy.ravel() * _BAY_GRID_MM
+    reach = np.hypot(ox, oy)
+    disc = reach <= hold_mm + 1e-9
+    ox, oy, reach = ox[disc], oy[disc], reach[disc]
+
+    def crowding(xs, ys):
+        p = shapely.points(xs, ys)
+        d = np.array([np.asarray(shapely.distance(g, p), float) for g in pockets]).reshape(len(pockets), -1)
+        return (np.maximum(0.0, hold_mm - d) / widths).max(axis=0), d[:nb].min(axis=0)
+
+    moved: dict = {}
+    out = []
+    for q in pts:
+        key = (round(q[0], 9), round(q[1], 9))
+        if key not in moved:
+            moved[key] = tuple(q)
+            here, near_bay = crowding(np.array([q[0]]), np.array([q[1]]))
+            if near_bay[0] < hold_mm:
+                qx, qy = q[0] + ox, q[1] + oy
+                ok = shapely.contains_xy(own_ink, qx, qy)
+                if ok.any():
+                    qx, qy, dd = qx[ok], qy[ok], reach[ok]
+                    worst, _ = crowding(qx, qy)
+                    best = int(np.lexsort((qx, qy, dd, worst))[0])
+                    if worst[best] < here[0] - 1e-9:
+                        moved[key] = (float(qx[best]), float(qy[best]))
+        out.append(moved[key])
+    return out
+
+
 def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
                 trim_at_mm: float,
                 stitch_mm: float | None = None,
                 serif_mm: float | None = None,
                 min_arm_mm: float | None = None,
                 corner_deg: float | None = None,
-                passes: int | None = None) -> tuple[list[StitchRun], dict]:
+                passes: int | None = None,
+                bay_hold_mm: float | None = None,
+                stroke_mm: float | None = None) -> tuple[list[StitchRun], dict]:
     """One letter's spines -> bean runs in sew order, plus `run_outline`'s
     report contract (and `strokes`, how many spines sewed).
 
@@ -235,7 +390,12 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
     station of its own (`_bean_keep_corners`). None: even pitch, as before.
 
     `passes` (`cfg.bean_letter_passes`): laps along each spine. None:
-    `machine.BEAN_PASSES` (3)."""
+    `machine.BEAN_PASSES` (3).
+
+    `bay_hold_mm` (`cfg.bean_letter_bay_hold`) with `stroke_mm` (the
+    member's `ink_stroke_mm`): every station held that far off the letter's
+    bays inside its own spine's ink (`hold_off_bays`). None: the stations
+    exactly as laid, byte for byte."""
     arm_floor = stitch_mm if stitch_mm and stitch_mm > 0 else _MIN_ARM_MM
     report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False,
               "arcs": 0, "yielded": 0, "strokes": 0}
@@ -254,8 +414,16 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
                     and not (_attached(s[0], i, trimmed) and _attached(s[-1], i, trimmed)))
 
     todo = [s for i, s in enumerate(trimmed) if sews(i, s)]
+    todo_ix = [i for i, s in enumerate(trimmed) if sews(i, s)]
     if sum(_length(s) for s in todo) < _MIN_SPINE_MM:
         todo = []
+    # The bay hold (`cfg.bean_letter_bay_hold`): the letter's ink and bays,
+    # modelled from the spines AS READ (a cut serif hook is still ink). None
+    # or no stroke: nothing is read and every station is where it was.
+    own_ink = bays = counters = None
+    if bay_hold_mm and bay_hold_mm > 0 and stroke_mm and stroke_mm > 0 and todo:
+        own_ink, ink = _letter_ink([list(map(tuple, s)) for s in spines], float(stroke_mm))
+        bays, counters = letter_bays(ink) or None, letter_counters(ink)
     runs: list[StitchRun] = []
     cursor = entry
     while todo:
@@ -266,10 +434,13 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
                          key=lambda kr: (round(math.dist(cursor, todo[kr[0]][-1 if kr[1] else 0]), 6),
                                          kr[0], kr[1]))
         spine = todo.pop(i)
+        src = todo_ix.pop(i)
         if rev:
             spine.reverse()
         pts = (_bean_keep_corners(spine, stitch_mm, corner_deg, passes) if corner_deg
                else _bean_along(spine, stitch_mm, passes))
+        if bays is not None:
+            pts = hold_off_bays(pts, own_ink[src], bays, float(bay_hold_mm), counters)
         if len(pts) < 2:
             continue
         jump = trim = False

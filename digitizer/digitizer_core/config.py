@@ -285,6 +285,19 @@ class PipelineConfig:
     # `shape_overrides[sid].thread_wt`) instead of `thread_wt`. Candidate
     # geometry, unsewn (gate 1). Off, byte-identical.
     hairline_lines_strand_test: bool = False
+    # The strand test's hair-mass exemption (2026-10-15, default OFF; read
+    # only when `hairline_lines_strand_test` runs). The strand test refuses
+    # any stack of parallel lines, so a mane or a beard (strands side by
+    # side) and #882's own 8-strand synthetic read as bars. On, a stack the
+    # test would refuse is kept as hair when its members are STRANDS
+    # themselves: at least 95% of the same-polarity lines its stacked
+    # stations see pass the ridge test, or at least 75% when the nearest
+    # sits within 3 thread widths (a dense mass, where strand ends and
+    # touching strands break a few lines). The owl's breast barring stacks
+    # with WIDE bars, which fail the ridge test, and stays refused
+    # (`stage6_hairline_lines.mass_reading`). Candidate geometry, unsewn
+    # (gate 1). Off, byte-identical.
+    hairline_lines_strand_mass: bool = False
     # Hairline line route: chain the strands (2026-10-13, default OFF; read
     # only when the line route runs). The route sews each strand as its own
     # run and every hop between strands is a jump, a trim past `trim_at_mm`:
@@ -313,6 +326,19 @@ class PipelineConfig:
     # `supplement_test`). Carves nothing. Candidate geometry, unsewn
     # (gate 1). Off, byte-identical.
     hairline_lines_gradient: bool = False
+    # The gradient supplement's LOGO refusal (2026-10-15, default OFF; read
+    # only when the supplement runs, `hairline_lines_gradient` and the three
+    # flags it needs all on). #942's supplement sews line detail of rendered
+    # art on 3 of the 9 corpus logos (drone's highlights, the screenshot's
+    # hatching, golden_tee's bevels: +17 / +8 / +3 trims). On, a line that
+    # survives #942's two refusals is also refused when it lies mostly along
+    # a shape's edge, or when the ground beside it (read on a common 4 px/mm
+    # grid) is flat or a pattern of hard lines rather than texture
+    # (`stage6_hairline_lines.logo_line_test`). Reads the source raster's
+    # tone only; stage 0 is untouched (gate 2). Candidate constants,
+    # in-sample on three logos and owl_kent, unsewn (gate 1). Off,
+    # byte-identical; the supplement itself stays OFF (WoK 45).
+    hairline_lines_logo_refusal: bool = False
     # Hairline coverage guard (2026-10-13, default OFF; needs `hairline` on).
     # A shape whose hairline runs would leave more than
     # `stage6_hairline.COVERAGE_GUARD_MM2` of its own ink bare (a 0.4 mm
@@ -1563,6 +1589,24 @@ class PipelineConfig:
     # exactly as before. All three numbers are CANDIDATES (ROADMAP gate 1).
     # Off, byte-identical (md5-pinned in `tests/test_small_dot_rung.py`).
     small_dot_rung: bool = False
+    # The dot rung scoped to lettering (2026-10-15, built OFF; read only when
+    # `small_dot_rung` is ON). PR #939's catch: stage 3 cannot tell an i dot
+    # from a photo speck, so the rung ON admits specks (photo_sunset_backlit
+    # +78 shapes / +23 trims, photo_dof_meadow +20). No tagger exists at
+    # stage 3, so the scope is geometric: the rung admits a part only when a
+    # region of the SAME colour stands below it as a stem -- its top within
+    # 1.5 dot heights under the dot, at least three dot heights tall, its top
+    # three dot heights under the dot, no wider than 2 dots, a stroke of
+    # steady width (rows under 1.5 dots, solid) (`stage3_segment._STEM_*`).
+    # Same colour is the
+    # layers' own CIELAB (`layer_lab`) or the raster's mean (`lab_img`, which
+    # the photo lane hands over only when this is on), within
+    # `cfg.merge_delta_e`; with neither, nothing is admitted. The three ratios
+    # are classification candidates, not physical constants; the rung's own
+    # numbers and `RUN_MIN_LOOP_MM` are untouched (ROADMAP gate 1). Off (or
+    # with the rung off), byte-identical (md5-pinned in
+    # `tests/test_dot_rung_lettering.py`); `tools/small_dot_rung.py` measures.
+    small_dot_rung_lettering: bool = False
     # Small lettering thinner than the thread, sewn as ONE run down its
     # skeleton (2026-10-13, default OFF; Kent's "fine details" priority,
     # `digitizer_core/stage6_small_letter.py`, `tools/small_lettering_skeleton.py`).
@@ -2545,6 +2589,31 @@ class PipelineConfig:
     # True (`SMALL_TEXT_TRUE_SIZE`, Kent WoK 56: the flip carries its own
     # 65 mm THE fix); an explicit True or False wins over the switch.
     small_text_keep_stray_lines: bool | None = None
+    # The one-ink link (`textcluster._same_ink`, CIEDE2000 20 on the job's
+    # chart) in the text tagger's FIRST round too, the rescued door
+    # (`textcluster.detect_text_clusters`, 2026-10-15). That round linked on
+    # size alone (`SIMILARITY_RATIO` 0.5), so one rescued letter of a word
+    # could join another word in another ink. Fremont at 80 mm, Kent's Hat
+    # job: THE's black E traces at 2.19 mm2, under the 2.25 mm2 small-shape
+    # floor, and is the word's one rescued letter. It joined the tan 1895
+    # (heights 2.62 / 1.66, strokes 0.39 / 0.21, 5.7 mm apart: every term
+    # within 0.5), the restore step stripped it as a stray, and T and H
+    # alone could not make a three-member cluster: T and H went to the
+    # Column lane as crossing satin and the E to the run rescue, a garbled
+    # THE one millimetre under the clean one at 81 mm (where the E is
+    # 2.25 mm2, not rescued, and enters by the letter door with its word).
+    # True: round 1 refuses a link across inks, as round 2 always has; THE
+    # forms its own cluster and sews as bean letters, 14,897 / 46 ->
+    # 14,812 / 43, EST, 1895 and the tagline unchanged shape for shape
+    # (`tools/fremont_triage.run_arm` at 80 mm). A link can only be refused
+    # in that round, never added, so a rescued cluster in one ink is
+    # unchanged; a letter freed from a mixed cluster goes to the second
+    # round and may rejoin its line (the 3 mm tagline crop: EAT STAY PLAY
+    # read as one line of 11 instead of 6 + 3 with two letters held by the
+    # separator bars). Geometry, not fabric: no sew-out settles which shapes
+    # are a line. False: the pre-flip engine, byte for byte. Tests:
+    # `tests/test_textcluster.py`.
+    text_cluster_rescued_ink_link: bool = True
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
@@ -2653,7 +2722,24 @@ class PipelineConfig:
     # the held letter sews up to ~0.1 mm wider outward. NOT part of the switch
     # above. None: the spines exactly as read, byte for byte. A CANDIDATE
     # (gate 1), unsewn. Measured: `tools/bean_counter_hold.py`.
-    bean_letter_counter_hold_mm: float | None = None
+    # **FLIPPED ON 2026-10-15 at 0.25, Kent's call** (with `bean_letter_bay_hold`
+    # below, over the sew-out card: "flip both holds ON"). A plain default,
+    # not a switch value, so None still means OFF everywhere the card tools
+    # pass it, and an explicit None is the pre-flip engine (`PRE_FLIP`).
+    bean_letter_counter_hold_mm: float | None = 0.25
+    # Bean letters' STATIONS held this far (mm) off the letter's open BAYS --
+    # a closing of the ink minus the ink, counters left to the hold above --
+    # inside the ink of their own spine (`stage6_beanletter.hold_off_bays`).
+    # Under the switch Fremont's 5 at 81 mm sewed its upper bay 64% covered
+    # and read A, and THE's E at 92.5 mm sewed the 0.26 mm slit between its
+    # tick and middle arm shut into a false counter (#953). Station placement
+    # only: no spine, ink read or pull changes. NOT part of the switch. None:
+    # the stations exactly as laid, byte for byte. A CANDIDATE (gate 1),
+    # unsewn.
+    # **FLIPPED ON 2026-10-15 at 0.2, Kent's call** (0.2 is #967's corpus arm;
+    # both values open the same bays). A plain default, not a switch value:
+    # None is OFF, the pre-flip engine (`PRE_FLIP`).
+    bean_letter_bay_hold: float | None = 0.2
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
@@ -3644,6 +3730,22 @@ class PipelineConfig:
     # bean style only (`border_runs` owns satin's arcs). False is the shipped
     # cap byte for byte.
     edge_cap_walk_covered: bool = False
+    # Station pitch, in mm, of the BEAN edge cap only (built 2026-10-15,
+    # DEFAULT OFF). None sews the cap at `machine.BEAN_STITCH_MM` (0.73), the
+    # plan byte for byte. The short-stitch census
+    # (docs/short-stitch-sources-2026-10-15.md) found `run_outline` the worst
+    # source per stitch: every cap stitch is short or stacked, and the cap
+    # is 21% of the short stitches sewn in chains, the class at 4.2x the
+    # pro's. A number here re-spaces the cap's stations only. The run tier
+    # (small shapes sewn as an outline, often small lettering, where a long
+    # chord on a tight curve is a visible polygon), bean letters, the border
+    # tier's bean fallback and `edge_cap="satin"` keep `BEAN_STITCH_MM`.
+    # `edge_cap_walk_covered`'s walk uses the same pitch as the cap it joins.
+    # Every value is a gate-1 CANDIDATE (sew-out), never a setting; 1.0, 1.2
+    # and 1.5 mm were measured on the census corpus in the PR that added it
+    # (renders under docs/renders/edge-cap-bean-pitch/). A value <= 0 reads
+    # as None. tests/test_edge_cap_bean_pitch.py pins OFF by md5.
+    edge_cap_bean_pitch_mm: float | None = None
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth

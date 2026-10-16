@@ -202,8 +202,14 @@ def test_bean_tagging_takes_the_restore_steps_verdict(monkeypatch):
 # source counter is 0.32 mm at a 1.55 mm cap (under 0.45: the default is the
 # engine before the flip), 0.48 at 2.5 and 0.59 at 3 (over it: the default is
 # the switch) -- the counter census's own readings (PR #964) at 2.5 and 3.
-MD5 = {1.55: {"off": "dbb6380a91", "unguarded": "1644330929"},
-       2.5: {"off": "1ad15a6e07", "unguarded": "a502e7908a"},
+# The "unguarded" pins at 1.55 and 2.5 moved once (2026-10-15, later the same
+# day) when Kent flipped the two bean-letter holds ON (`bean_letter_counter_hold_mm`
+# 0.25, `bean_letter_bay_hold` 0.2): the line's bean letters hold their stations
+# off their counters and bays (1.55: `1644330929` -> `00098415bf`; 2.5:
+# `a502e7908a` -> `42401291c4`; 3 mm unchanged, nothing within a hold's reach).
+# "off" has no bean letters and did not move. A second move needs its own reason.
+MD5 = {1.55: {"off": "dbb6380a91", "unguarded": "00098415bf"},
+       2.5: {"off": "1ad15a6e07", "unguarded": "42401291c4"},
        3: {"off": "5da6cf3d84", "unguarded": "88822294f9"}}
 
 

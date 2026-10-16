@@ -59,8 +59,11 @@ NAME = "card_passes_40wt"
 DEFAULT_OUT = REPO / "docs" / "sewout" / "card-passes-2026-10-14"
 DEFAULT_CUTS = DEFAULT_OUT / "cuts"
 
-#: arm -> the replay's overrides. Only `bean_letter_passes` differs.
-ARMS = {f"p{n}": {"small_text_true_size": True, "bean_letter_passes": n}
+#: arm -> the replay's overrides. Only `bean_letter_passes` differs; the two
+#: holds are pinned OFF (they are ON by default since 2026-10-15, after this
+#: card was cut) so a re-cut sews what the committed cuts record.
+ARMS = {f"p{n}": {"small_text_true_size": True, "bean_letter_passes": n,
+                  "bean_letter_counter_hold_mm": None, "bean_letter_bay_hold": None}
         for n in (1, 2, 3)}
 ARM_ORDER = ("p1", "p2", "p3")
 #: block -> card v3's cut box (`sewout_card_v3.CUT_BOXES`): T is "THE", N is "1895".

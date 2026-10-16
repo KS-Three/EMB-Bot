@@ -754,7 +754,9 @@ def build_generation(
     counters_on = bool(cfg.keep_counters and classification.class_ not in PHOTO_CLASSES)
     masks, small_warnings = resolve_small_regions(
         masks, cfg, p.px_per_mm, p.enclosed_mask,
-        layer_lab=rgb_to_lab(q.cluster_rgb) if (cfg.keep_thin_strokes or counters_on) else None,
+        layer_lab=rgb_to_lab(q.cluster_rgb) if (
+            cfg.keep_thin_strokes or counters_on
+            or (cfg.small_dot_rung and cfg.small_dot_rung_lettering)) else None,
         keep_counters=counters_on)
     if dbg:
         debugviz.stage3(dbg, p.rgb, masks)
@@ -832,8 +834,10 @@ def build_generation(
     # identity edits/overrides run, not after. The chart is for the one-ink
     # link between ordinary glyphs (`textcluster._same_ink`): a word is sewn
     # in one colour, and the regions' `thread_index` values name THIS job's
-    # chart, not the default one.
-    detect_text_clusters(regions, p, chart=chart_for(cfg))
+    # chart, not the default one. `rescued_ink_link`: the same link in the
+    # rescued round (Fremont's THE at 80 mm, `cfg.text_cluster_rescued_ink_link`).
+    detect_text_clusters(regions, p, chart=chart_for(cfg),
+                         rescued_ink_link=bool(cfg.text_cluster_rescued_ink_link))
 
     # Lettering too small to sew, grown the way a digitizer grows it
     # (`cfg.small_text_cap_mm`, default None). Here, on the tagger's clusters

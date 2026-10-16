@@ -197,16 +197,20 @@ def test_ink_link_is_on_by_default_and_reads_its_key_only_when_on():
 
 
 @functools.lru_cache(maxsize=None)
-def _case_regions(case):
+def _case_regions(case, rescued_link=True):
     """(regions, settings, labelled letter ids or None) for a corpus case at
     its labelled settings, from ONE `run_stages` with the ink link ON (its
     tag pass only writes a key; every other guard here is read in
-    `is_lettering`), shared by every census test in this process."""
+    `is_lettering`), shared by every census test in this process.
+    `rescued_link` is the text tagger's `text_cluster_rescued_ink_link`
+    (ON since 2026-10-15); False is the pre-flip tagger, whose rescued round
+    linked on size alone, the population the screenshot census was read on."""
     import json
     from tools.thin_strokes import REAL_ART
     rel, width, garment = REAL_ART[case]
     base = dict(target_width_mm=width, garment_id=garment, max_colors=6)
-    res = run_stages(TESTDATA / rel, PipelineConfig(**base, lettering_columns_ink_link=True))
+    res = run_stages(TESTDATA / rel, PipelineConfig(**base, lettering_columns_ink_link=True,
+                                                    text_cluster_rescued_ink_link=rescued_link))
     truth = json.loads((TESTDATA / "lettering_truth.json").read_text(encoding="utf-8"))
     lab = truth["fixtures"].get(case)
     letters = None
@@ -217,13 +221,13 @@ def _case_regions(case):
     return tuple(res.regions), base, letters
 
 
-def _guard_census(case, flag="lettering_columns_ink_link", already=()):
+def _guard_census(case, flag="lettering_columns_ink_link", already=(), rescued_link=True):
     """(regions, labelled letter ids or None, refused ids): the shapes
     `is_lettering` admits with the `already` flags ON (every other lane
     guard pinned OFF, whatever its default) and refuses once `flag` is ON
     too. The ink link's OFF reading is the same regions read with the flag
     off (`test_ink_link_off_never_reaches_the_new_code`)."""
-    regions, base, letters = _case_regions(case)
+    regions, base, letters = _case_regions(case, rescued_link)
     pins = {k: False for k in (*GUARDS_ON, ICON)}
     pins.update({k: True for k in already})
     off = PipelineConfig(**base, **{**pins, flag: False})
@@ -256,13 +260,35 @@ def test_ink_link_keeps_golden_tees_swashes():
     assert refused == set()
 
 
-@pytest.mark.parametrize("case", ["becker", "bridge", "fremont", "drone", "screenshot"])
+@pytest.mark.parametrize("case", ["becker", "bridge", "fremont", "drone"])
 def test_ink_link_refuses_nothing_on_the_other_letter_fixtures(case):
-    """Nothing refused, so every labelled letter is kept. On `screenshot` this
-    pins the measured NEGATIVE too: its 4.5-6 mm status icons are the text's
-    own grey (dE 0.0, one at 9.1), so an ink link cannot see them."""
+    """Nothing refused, so every labelled letter is kept."""
     _regions, _letters, refused = _guard_census(case)
     assert refused == set()
+
+
+def test_ink_link_sees_the_screenshot_icons_once_the_text_clusters_are_one_ink():
+    """Until 2026-10-15 this fixture pinned a NEGATIVE: its 4.5-6 mm status
+    icons read as "the text's own grey (dE 0.0, one at 9.1), so an ink link
+    cannot see them". That grey was the text's own only because the tagger's
+    rescued round linked on size alone and had carried Silver (0308, dE 73
+    from the text's Black) and grey (dE 40) pieces -- every one on the hand
+    labels' ignore list -- into its text clusters, so a "text letter" existed
+    in every icon ink. With `text_cluster_rescued_ink_link` those pieces are
+    no text, each cluster is one ink, and the link sees the icons: house-only,
+    icon-coloured, none a labelled letter, #881's three captures among them.
+    The pre-flip reading is kept as the arm it was measured on."""
+    regions, letters, refused = _guard_census("screenshot")
+    assert letters, "screenshot's hand labels went stale: re-read the census"
+    assert refused and not (refused & letters)
+    by_id = {r.shape_id: r for r in regions}
+    for sid in refused:                            # every refusal is house-only
+        assert by_id[sid].meta.get("lettering_group")
+        assert not by_id[sid].meta.get("text_candidate")
+    if SCREENSHOT_CAPTURES <= set(by_id):
+        assert SCREENSHOT_CAPTURES <= refused
+    _regions, _letters, refused_pre = _guard_census("screenshot", rescued_link=False)
+    assert refused_pre == set(), "the pre-flip tagger's clusters hid the icons from the link"
 
 
 def test_ink_link_off_never_reaches_the_new_code(monkeypatch):
@@ -363,7 +389,12 @@ def test_icon_guard_is_on_by_default_and_judges_house_only_shapes():
 
 
 def test_icon_guard_refuses_the_screenshot_captures_and_no_letter():
-    regions, letters, refused = _guard_census("screenshot", ICON, GUARDS_ON)
+    """Read on the pre-flip tagger's clusters (`rescued_link=False`), the
+    population the census was taken on: there the ink link cannot see the
+    captures (see `test_ink_link_sees_the_screenshot_icons_...`), so the icon
+    guard is what refuses them. On the live tagger the ink link refuses them
+    first, and the icon guard's own refusals are judged the same way."""
+    regions, letters, refused = _guard_census("screenshot", ICON, GUARDS_ON, rescued_link=False)
     assert letters, "screenshot's hand labels went stale: re-read the census"
     assert not (refused & letters)
     by_id = {r.shape_id: r for r in regions}
@@ -376,6 +407,12 @@ def test_icon_guard_refuses_the_screenshot_captures_and_no_letter():
     assert len(big) >= 3                           # the three 4.5-6 mm captures
     if SCREENSHOT_CAPTURES <= set(by_id):
         assert SCREENSHOT_CAPTURES <= refused
+    regions, letters, refused = _guard_census("screenshot", ICON, GUARDS_ON)
+    assert letters and not (refused & letters)
+    by_id = {r.shape_id: r for r in regions}
+    for sid in refused:
+        assert by_id[sid].meta.get("lettering_group")
+        assert not by_id[sid].meta.get("text_candidate")
 
 
 @pytest.mark.parametrize("case", ["golden_tee", "enthusiast", "becker", "bridge",

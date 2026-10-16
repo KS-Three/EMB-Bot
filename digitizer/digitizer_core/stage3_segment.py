@@ -66,6 +66,9 @@ class RegionMask:
     frame_shape: tuple[int, int]     # (H, W) of the frame it belongs to
     layer: int                       # index into Quant.thread_indices
     source: str = "classical"
+    # Admitted by the dot rung over a stem (`cfg.small_dot_rung_lettering`);
+    # stages 4 and 7 extend the rung only to such a region when scoped.
+    dot_rung: bool = False
 
     @classmethod
     def from_full(cls, mask: np.ndarray, layer: int,
@@ -220,6 +223,21 @@ def _bbox(mask: np.ndarray) -> tuple[int, int, int, int] | None:
 # while still refusing a small region that only grazes an enclosed patch
 # along one edge.
 ENCLOSED_PROTECT_OVERLAP = 0.6
+
+# `cfg.small_dot_rung_lettering`: an i/j stem under a dot, in dot heights
+# (gap, minimum height) and dot widths (the span of its top `_STEM_MIN_DOTS`
+# dot heights), and how solid that band's rows are. Classification
+# candidates, read off the letter's shape -- not physical constants. The
+# synthetic Aileron i/j stand 4.8 dots tall, every row 0.77 dots wide and
+# solid; photo_sunset_backlit's specks with a same-colour region under them
+# all fail at least one (under 3 dots tall, or a band 52 to 122 dots wide),
+# and photo_dof_meadow's one survivor sat on a 3 px nub that widens to 2
+# dots (rows 3 -> 14 px under a 7 px speck).
+_STEM_GAP_DOTS = 1.5
+_STEM_MIN_DOTS = 3.0
+_STEM_MAX_WIDTH_DOTS = 2.0
+_STEM_MAX_ROW_DOTS = 1.5
+_STEM_MIN_ROW_FILL = 0.75
 
 
 def _chained_small_regions(regions, areas, boxes, small, min_area_px,
@@ -419,6 +437,9 @@ def resolve_small_regions(
     # the dot rung's own floor, so the proxy admits down to it too.
     dot_floor_px = (machine.DOT_RUNG_MIN_LOOP_MM * px_per_mm
                     if cfg.small_dot_rung else None)
+    # `cfg.small_dot_rung_lettering` (default OFF): the rung admits only a
+    # dot with a stem under it (`has_stem_below`).
+    dot_scope = bool(cfg.small_dot_rung and cfg.small_dot_rung_lettering)
     keep_contrast = bool(cfg.keep_thin_strokes) and layer_lab is not None
 
     def clears_run_floors(i: int, box) -> bool:
@@ -452,7 +473,67 @@ def resolve_small_regions(
             if j == i or jb is None or jb[2] <= wy0 or jb[0] >= wy1 or jb[3] <= wx0 or jb[1] >= wx1:
                 continue
             on_small += int((halo & regions[j].window(wy0, wx0, wy1, wx1)).sum())
-        return on_small * 10 < ring_px * 9
+        if on_small * 10 >= ring_px * 9:
+            return False
+        return not dot_scope or has_stem_below(i, box)
+
+    def colour(j: int) -> np.ndarray | None:
+        """CIELAB of region `j`: its layer's own colour, else the raster's
+        mean under it, else None (no colour is known)."""
+        if layer_lab is not None:
+            return layer_lab[regions[j].layer]
+        if lab_img is None:
+            return None
+        y0, x0, y1, x1 = regions[j].bbox
+        return lab_img[y0:y1, x0:x1][regions[j].crop].mean(axis=0)
+
+    def has_stem_below(i: int, box) -> bool:
+        """`cfg.small_dot_rung_lettering`: is there an i/j stem under this
+        dot? A region of the same colour (CIE76 within `cfg.merge_delta_e`)
+        whose top sits below the dot by at most `_STEM_GAP_DOTS` dot heights
+        and that is at least `_STEM_MIN_DOTS` dot heights tall, whose top
+        band (`_STEM_MIN_DOTS` dot heights deep) reaches under the dot, spans
+        at most `_STEM_MAX_WIDTH_DOTS` dot widths, and is a stroke of steady
+        width: no row wider than `_STEM_MAX_ROW_DOTS` dots, the rows within
+        half a dot (or 2 px) of each other, and each row on average at least
+        `_STEM_MIN_ROW_FILL` solid across its own extent (an italic stem's
+        rows are all three; a blob that widens under a nub, or a ragged
+        fragment, is not). A photo speck has no such column beneath it; a dot
+        on lettering does.
+        With no colour known (`colour` is None), nothing is admitted."""
+        y0, x0, y1, x1 = box
+        dot_h, dot_w = y1 - y0, x1 - x0
+        mine = colour(i)
+        if mine is None:
+            return False
+        reach = y1 + _STEM_GAP_DOTS * dot_h
+        depth = int(math.ceil(_STEM_MIN_DOTS * dot_h))
+        for j, rj in enumerate(regions):
+            if j == i or rj.area == 0:
+                continue
+            jy0, jx0, jy1, jx1 = rj.bbox
+            if (jy0 < y1 or jy0 > reach or jx1 <= x0 or jx0 >= x1
+                    or jy1 - jy0 < _STEM_MIN_DOTS * dot_h):
+                continue
+            band = rj.crop[:depth]
+            cols = np.flatnonzero(band.any(axis=0)) + jx0
+            if (cols.size == 0 or cols[-1] < x0 or cols[0] >= x1
+                    or cols[-1] - cols[0] + 1 > _STEM_MAX_WIDTH_DOTS * dot_w):
+                continue
+            widths = band.sum(axis=1)
+            if (int(widths.max()) > _STEM_MAX_ROW_DOTS * dot_w
+                    or int(widths.max() - widths.min()) > max(2.0, 0.5 * dot_w)):
+                continue
+            row_fill = []
+            for row in band:
+                on = np.flatnonzero(row)
+                row_fill.append(on.size / (on[-1] - on[0] + 1) if on.size else 0.0)
+            if float(np.mean(row_fill)) < _STEM_MIN_ROW_FILL:
+                continue
+            theirs = colour(j)
+            if theirs is not None and float(np.linalg.norm(mine - theirs)) <= cfg.merge_delta_e:
+                return True
+        return False
 
     # --- `cfg.keep_counters` ------------------------------------------------
     keep_counters = bool(keep_counters) and (layer_lab is not None or lab_img is not None)
@@ -536,8 +617,11 @@ def resolve_small_regions(
 
         reportable = areas[i] >= report_floor_px
         # Off, `clears` is `clears_run_floors` alone, as before the rung.
-        clears = (clears_run_floors(i, box)
-                  or clears_dot_rung(i, box, halo, (wy0, wx0, wy1, wx1)))
+        floors = clears_run_floors(i, box)
+        by_rung = not floors and clears_dot_rung(i, box, halo, (wy0, wx0, wy1, wx1))
+        clears = floors or by_rung
+        if by_rung and dot_scope:
+            regions[i].dot_rung = True
         if best is None:
             # No neighbour to absorb into: this is isolated artwork, and the
             # benchmark showed exactly what it tends to be — a logo's small

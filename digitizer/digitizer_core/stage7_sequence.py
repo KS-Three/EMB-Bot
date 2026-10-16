@@ -1425,7 +1425,8 @@ def _satin_lettering_cover(cap_sewn: list[PlannedRegion],
 
 def _gate_saving(silhouette, omit, gated_runs, *, style: str,
                  entry, trim_at_mm: float,
-                 width_mm: float | None) -> tuple[float, float]:
+                 width_mm: float | None,
+                 bean_stitch_mm: float | None = None) -> tuple[float, float]:
     """-> (what the cap's gate saved, in %, how much cover it had, in mm²).
 
     `1 - gated/ungated` over the SAME geometry: the same cap emitted twice,
@@ -1460,7 +1461,8 @@ def _gate_saving(silhouette, omit, gated_runs, *, style: str,
         return 0.0, cover_mm2
     ungated, _report = silhouette_cap(silhouette, "__edge_cap__", style=style,
                                       entry=entry, trim_at_mm=trim_at_mm,
-                                      width_mm=width_mm, omit=None)
+                                      width_mm=width_mm, omit=None,
+                                      bean_stitch_mm=bean_stitch_mm)
     ungated_st = sum(len(r.points) for r in ungated)
     if not ungated_st:
         return 0.0, cover_mm2
@@ -2400,7 +2402,10 @@ def sequence(
                                            serif_mm=cfg.bean_letter_serif_mm,
                                            min_arm_mm=cfg.bean_letter_min_arm_mm,
                                            corner_deg=cfg.bean_letter_corner_deg,
-                                           passes=cfg.bean_letter_passes)
+                                           passes=cfg.bean_letter_passes,
+                                           **({"bay_hold_mm": cfg.bean_letter_bay_hold,
+                                               "stroke_mm": p.region.meta.get("ink_stroke_mm")}
+                                              if cfg.bean_letter_bay_hold else {}))
                 if not report["empty"]:
                     report["bean_letter"] = 1
                     report["bean_word"] = word_key(p.region, cfg)
@@ -2502,12 +2507,16 @@ def sequence(
             # the polygon handed over is the same object as before.
             # `cfg.small_dot_rung` (default OFF): an outline under the loop
             # floor (an i dot) sews as a tack ring. Off, the call is
-            # today's, argument for argument.
+            # today's, argument for argument. Scoped
+            # (`cfg.small_dot_rung_lettering`), only a dot stage 3 admitted
+            # over a stem.
             if routes_to_run(p, tier):
                 runs, report = run_outline(small_print_cut(p, p.region.polygon, machine.BEAN_STITCH_MM), p.shape_id,
                                            entry=entry, trim_at_mm=trim_at,
                                            soft_vertices=cfg.run_soft_vertices,
-                                           **({"dot_rung": True} if cfg.small_dot_rung else {}))
+                                           **({"dot_rung": True} if cfg.small_dot_rung and (
+                                               not cfg.small_dot_rung_lettering
+                                               or p.region.meta.get("dot_rung")) else {}))
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
@@ -3449,6 +3458,7 @@ def sequence(
             width_mm=cfg.border_width_mm,
             omit=cap_omit,
             walk_covered=cfg.edge_cap_walk_covered,
+            bean_stitch_mm=cfg.edge_cap_bean_pitch_mm,
         )
         # What the gate actually saved on THIS design, measured — the number
         # whose absence let a +58.7% bill read like a +13% one. Computed only
@@ -3458,7 +3468,8 @@ def sequence(
         cap_gate_saved, cap_omit_mm2 = (
             _gate_saving(silhouette, cap_omit, c_runs, style=cap_style,
                          entry=cursor, trim_at_mm=trim_at,
-                         width_mm=cfg.border_width_mm)
+                         width_mm=cfg.border_width_mm,
+                         bean_stitch_mm=cfg.edge_cap_bean_pitch_mm)
             if c_runs else (0.0, 0.0))
         if c_runs:
             # The needle always lifts into a new block and the thread is
@@ -3703,8 +3714,11 @@ def sequence(
                 sewn_by_polarity=hair_lines["sewn_by_polarity"],
                 # `cfg.hairline_lines_strand_test` / `hairline_lines_chain` /
                 # `hairline_lines_gradient` only (absent off).
-                **{k: hair_lines[k] for k in ("refused_bar", "thread_wt", "hops", "hop_mm",
-                                              "refused_region", "refused_own_tone")
+                **{k: hair_lines[k] for k in ("refused_bar", "exempt_mass", "thread_wt",
+                                              "hops", "hop_mm",
+                                              "refused_region", "refused_own_tone",
+                                              "refused_logo_edge", "refused_logo_flat",
+                                              "refused_logo_pattern")
                    if k in hair_lines},
             )
         )

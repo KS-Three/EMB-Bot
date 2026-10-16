@@ -358,6 +358,20 @@
    "review": true
   },
   {
+   "prefix": "docs/renders/hairline-lines-logo-refusal/",
+   "status": "derived-render",
+   "source": "Session-generated renders of EMB-Bot's own stitch output (2026-10-15, cfg.hairline_lines_logo_refusal) via digitizer/tools/hairline_logo_refusal.py render, from fixtures already committed: the corpus logos drone, screenshot, golden_tee (tools.thin_strokes.corpus_cases) and digitizer/testdata/photo/owl_kent.jpg; no new artwork",
+   "basis": "digitizer/tools/hairline_logo_refusal.py; docs/renders/hairline-lines-logo-refusal/table.md",
+   "review": true
+  },
+  {
+   "prefix": "docs/renders/strand-mass-exemption/",
+   "status": "derived-render",
+   "source": "Session-generated renders of EMB-Bot's own stitch output (2026-10-15, cfg.hairline_lines_strand_mass) via digitizer/tools/hairline_strand_mass.py render/census: two synthetics drawn in code by that tool (a mane of 28 thin strands, mane_image; #882's 8-strand synthetic, s882_image; neither is saved as a file in the repo) and the committed photo digitizer/testdata/photo/owl_kent.jpg; no new artwork",
+   "basis": "digitizer/tools/hairline_strand_mass.py; docs/renders/strand-mass-exemption/table.json",
+   "review": true
+  },
+  {
    "prefix": "docs/renders/blend-fallback-underlay-2026-10-05/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures; filenames reference real/client art: fremont, drone, bridge",
@@ -851,6 +865,12 @@
    "basis": "digitizer/tools/lowercase_angle.py; PR body of claude/fold-cuts-junctions"
   },
   {
+   "prefix": "docs/renders/fold-cuts-g-ub/",
+   "status": "derived-render",
+   "source": "Rendered by digitizer/tools/lowercase_angle.py write_panes/compose_panes from digitizer/testdata/synthetic/lowercase_aileron.png (synthetic, Pillow's bundled CC0 Aileron glyphs); stitch-path zooms of G (50 mm, small_text_true_size OFF), u and b (120 mm), no client art",
+   "basis": "digitizer/tools/lowercase_angle.py; PR body of claude/fold-cuts-g-ub"
+  },
+  {
    "prefix": "docs/renders/preflight-glyph-metric/",
    "status": "derived-render",
    "source": "Thread render (digitizer_core.stitchviz) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp at 81 mm, Hat (tools/fremont_triage.py --arm main), with the glyph boxes cfg.preflight_glyph_metric read drawn over it; no artwork pixels, no new client art",
@@ -875,6 +895,18 @@
    "basis": "PR body of claude/fremont-8-counter; source fixture cleared by Kent 2026-10-08 (its own entry above)"
   },
   {
+   "prefix": "docs/renders/bean-bay-hold/",
+   "status": "derived-render",
+   "source": "Thread render (digitizer_core.stitchviz) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp at 81 and 92.5 mm, Hat (tools/bean_bay_hold.py --sheets), the source glyphs' outlines drawn over it in red, plus the measured cells as JSON; no artwork pixels, no new client art",
+   "basis": "PR body of claude/bean-bay-hold; source fixture cleared by Kent 2026-10-08 (its own entry above)"
+  },
+  {
+   "prefix": "docs/renders/sewout-card-bayhold-edgecap/",
+   "status": "derived-render",
+   "source": "Thread renders (digitizer_core.stitchviz) of the bay-hold / edge-cap sew-out card (digitizer/tools/sewout_card_bayhold_edgecap.py): EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp at 81 and 92.5 mm, Hat, cut to 1895, THE and STAY, plus a synthetic plate and disc drawn by the tool; no artwork pixels, no new client art",
+   "basis": "PR body of claude/sewout-card-bayhold-edgecap; source fixture cleared by Kent 2026-10-08 (its own entry above)"
+  },
+  {
    "prefix": "docs/renders/fremont-wordmark-ends/",
    "status": "derived-render",
    "source": "Rendered by digitizer/tools/wordmark_ticks.py --panels: crops of digitizer/testdata/photo/logo_hotel_fremont.webp's prep raster beside thread renders (digitizer_core.stitchviz) of EMB-Bot's own digitize of it at 81 mm, Hat; no new artwork, no new client art (Kent's marked screenshot is NOT in the repo)",
@@ -887,10 +919,34 @@
    "basis": "PR body of claude/hair-reach-size-proof; source fixture has its own entry above"
   },
   {
+   "prefix": "docs/renders/edge-cap-bean-pitch/",
+   "status": "derived-render",
+   "source": "Thread renders (digitizer_core.stitchviz) of EMB-Bot's own digitizes of digitizer/testdata/logo_alpha.png, logo_whitebg.png (synthetic) and photo/screenshot_phone_ui_golke.jpg (client-cleared-by-kent) at 80 mm, edge_cap_bean_pitch_mm OFF vs 1.5, with the cap path overlaid; no new artwork",
+   "basis": "PR body of claude/edge-cap-bean-pitch; source fixtures have their own entries above"
+  },
+  {
    "prefix": "docs/renders/bridge-restaurant-tier/",
    "status": "derived-render",
    "source": "Rendered by digitizer/tools/restaurant_trace.py (--regions: a crop of digitizer/testdata/photo/logo_bridge_bar.jpg's prep raster with EMB-Bot's own region outlines; --band: thread renders, digitizer_core.stitchviz, of EMB-Bot's own digitize of it at 80 mm) and tools/glyph_legibility.py's word panel; no new artwork, no new client art",
    "basis": "PR body of claude/bridge-restaurant-tier; source fixture cleared by Kent 2026-10-08 (its own entry above)"
+  },
+  {
+   "prefix": "docs/renders/dot-rung-lettering-scope/",
+   "status": "derived-render",
+   "source": "Rendered by digitizer/tools/small_dot_rung.py (render: stitch paths of EMB-Bot's own digitize of the word \"hijlij\" drawn at runtime in Pillow's bundled CC0 Aileron, and of digitizer/testdata/synthetic/lowercase_aileron.png; render-photo: stitch paths of EMB-Bot's own digitize of digitizer/testdata/photo/photo_sunset_backlit.png at 80 mm); no new artwork, no client art",
+   "basis": "PR body of claude/dot-rung-lettering-scope; source fixtures carry their own entries above"
+  },
+  {
+   "prefix": "docs/renders/bean-holds-on/",
+   "status": "derived-render",
+   "source": "Thread renders (digitizer_core.stitchviz via tools/fremont_triage's panel helpers) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp on a Hat at 80, 81 and 92.5 mm, the two bean-letter holds OFF beside ON (cfg.bean_letter_counter_hold_mm 0.25, cfg.bean_letter_bay_hold 0.2); no new artwork, no new client art",
+   "basis": "PR body of claude/bean-holds-on; source fixture has its own entry above"
+  },
+  {
+   "prefix": "docs/renders/the-80mm-ink-link/",
+   "status": "derived-render",
+   "source": "Thread renders (digitizer_core.stitchviz via tools/fremont_triage's panel helpers) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp at 80 mm on a Hat (the Studio's request), of the phone screenshot fixture at its corpus size and of the Fremont tagline crop at 3 mm caps, link OFF beside link ON (cfg.text_cluster_rescued_ink_link), plus screenshots of EMB-Bot's own Studio (Stitches view) over the same Fremont digitize on main and on this lane; the artwork crops are the committed fixture; no new artwork, no new client art",
+   "basis": "PR body of claude/text-cluster-rescued-ink-link; source fixtures have their own entries above"
   },
   {
    "prefix": "docs/renders/",
