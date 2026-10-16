@@ -46,18 +46,26 @@ TIP_DEPTH = 0.3
 TIP_DEPTH_MIN_PX = 1.5
 # Fewer boundary pixels than this is not a shape with a readable outline.
 _MIN_RING_PX = 12
+# The fewest tips a spoked detail has. 3 admits a triangle as the smallest
+# mark, as the build spec asked (a star, a cross, an asterisk); measured over
+# the 17-design corpus (docs/renders/detail-spokes/README.md) the one mark it
+# admits besides Fremont's star is a 0.15 mm² three-tipped speck of tyre
+# tread on `screenshot_phone_ui_golke`, so 4 (a cross) is the other candidate.
+MIN_TIPS = 3
 
 
-def find_tips(crop: np.ndarray) -> tuple[tuple[float, float], list[tuple[float, float]]] | None:
+def find_tips(crop: np.ndarray, min_tips: int = MIN_TIPS
+              ) -> tuple[tuple[float, float], list[tuple[float, float]]] | None:
     """The spoked-detail reading of one bbox-tight bool mask.
 
     Returns `(centre, tips)` in the crop's own pixel coordinates (x, y),
     `tips` in angular order round the centre, or None when the mask has
-    fewer than three tips. The centre is the pixel centroid. A tip is the
-    boundary pixel of greatest radius in its lobe; a lobe whose crest is two
-    corners (a fat cross arm, whose end corners stand equally proud with a
-    shallow dip between) is read as one tip, at the lobe's mean direction.
+    fewer than `min_tips` tips. The centre is the pixel centroid. A tip is
+    the boundary pixel of greatest radius in its lobe; a lobe whose crest is
+    two corners (a fat cross arm, whose end corners stand equally proud with
+    a shallow dip between) is read as one tip, at the lobe's mean direction.
     """
+    min_tips = max(3, int(min_tips))
     ys, xs = np.nonzero(crop)
     if xs.size < _MIN_RING_PX:
         return None
@@ -83,7 +91,7 @@ def find_tips(crop: np.ndarray) -> tuple[tuple[float, float], list[tuple[float, 
     r3 = np.concatenate([r, r, r])
     peaks, _props = find_peaks(r3, prominence=depth)
     peaks = sorted({int(k) - n for k in peaks if n <= k < 2 * n})
-    if len(peaks) < 3:
+    if len(peaks) < min_tips:
         return None
 
     def valley(a: int, b: int) -> float:
@@ -106,7 +114,7 @@ def find_tips(crop: np.ndarray) -> tuple[tuple[float, float], list[tuple[float, 
         if valley(last[-1], first[0]) > (1.0 - TIP_DEPTH) * min(r[last[-1]], r[first[0]]):
             groups[0] = last + first
             groups.pop()
-    if len(groups) < 3:
+    if len(groups) < min_tips:
         return None
     tips: list[tuple[float, float, float]] = []
     for g in groups:
@@ -118,7 +126,7 @@ def find_tips(crop: np.ndarray) -> tuple[tuple[float, float], list[tuple[float, 
         radius = float(max(r[k] for k in g))
         ang = math.atan2(uy / norm, ux / norm)
         tips.append((ang, cx + ux / norm * radius, cy + uy / norm * radius))
-    if len(tips) < 3:
+    if len(tips) < min_tips:
         return None
     tips.sort()
     return (cx, cy), [(x, y) for _ang, x, y in tips]

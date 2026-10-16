@@ -25,7 +25,7 @@ import pytest
 from shapely.geometry import Point, Polygon
 
 from digitizer_core import PipelineConfig, digitize, machine
-from digitizer_core.detail_spokes import TIP_DEPTH, find_tips, spoke_runs
+from digitizer_core.detail_spokes import MIN_TIPS, TIP_DEPTH, find_tips, spoke_runs
 from digitizer_core.regions import Region
 from digitizer_core.stage3_segment import RegionMask, resolve_small_regions
 from digitizer_core.stage5_overlap import PlannedRegion
@@ -115,9 +115,17 @@ def test_a_round_dot_a_square_and_a_pentagon_have_no_tips():
         assert find_tips(m) is None
 
 
-def test_a_triangle_is_the_smallest_spoked_mark():
+def test_a_triangle_is_the_smallest_spoked_mark_at_three_and_not_at_four():
+    """`MIN_TIPS` 3 is the spec's; 4 is the other candidate (it refuses the
+    corpus's one false positive, a three-tipped speck of tyre tread on the
+    screenshot design, and keeps every star and cross)."""
+    assert MIN_TIPS == 3
     res = find_tips(_ngon(3, 14))
     assert res is not None and len(res[1]) == 3
+    assert find_tips(_ngon(3, 14), min_tips=4) is None
+    assert len(find_tips(_star(), min_tips=4)[1]) == 5
+    assert len(find_tips(_cross(), min_tips=4)[1]) == 4
+    assert len(find_tips(_ascii(FREMONT_STAR_80), min_tips=4)[1]) == 5
 
 
 # The star's own mask in the prep raster at 80 mm (31.25 px/mm): stage 3's
