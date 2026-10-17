@@ -49,12 +49,27 @@ service is answering on 8721, the artwork auto-digitize lane. Starts its own
 Vite on 5199 and tears it down. Verified output:
 
 ```
-  text lane: 2,539 stitches · 127×17 mm · 5×7 in hoop
-  artwork lane: 2,244 stitches · 80×16 mm · 4×4 in hoop
+  text lane: 1,245 stitches · 102×12 mm · 5×7 in hoop
+  artwork lane: 2,414 stitches · 80×17 mm · 5×7 in hoop
 ```
 
 **Treat both counts as a shape, not a pin** — they move when engine work
-lands, and neither is asserted anywhere. Measured 2026-09-30 at `4b75546`.
+lands, and neither is asserted anywhere. Measured 2026-10-16 on Kent's
+Windows box at `4ef2614` (2026-09-30 at `4b75546`: 2,539 · 127×17 and
+2,244 · 80×16 · 4×4 in hoop).
+
+**The two lanes must report DIFFERENT captions.** Identical numbers on both
+lines are the 2026-10-16 false green: the Studio persists the current design
+in `localStorage` (`app/src/lib/projects.js`), so lane 2's reload kept lane
+1's lettering on the page and the poller accepted that caption while the
+digitize was still at "Sending your art…" — exit 0, both lines `1,245
+stitches · 102×12 mm`. The driver now clears `localStorage` before lane 2
+and accepts only a caption that differs from the pre-click one
+(`waitCaption(ms, notEqual)`). The same run found lane 1 waiting 30 s for a
+"Name on a hat" wizard tile the 2026-09-30 configurator redesign removed;
+it now fills the `Type a name or word` placeholder, as `typeText` in
+`app/e2e/helpers.js` does. If a smoke times out on a locator, check the e2e
+helpers before the app — the driver is not under any test.
 **Both lines must end `… in hoop`** — that is the canvas caption. Until
 2026-09-30 this block showed an artwork line ending `· 2 colors`, which is the
 left panel's `.dgp-stats`, not the canvas: the smoke's loose regex was
