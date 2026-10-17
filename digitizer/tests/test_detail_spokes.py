@@ -1,8 +1,10 @@
-"""`cfg.detail_spokes` (built OFF 2026-10-15): a small detail of another
-colour, enclosed by one shape and too small for the run tier's outline, sews
-as a spoked mark on top of the shape round it -- the way the professional
-sewed the white star in Hotel Fremont's black Wisconsin (one white run of
-five spokes, out and back from a common centre, after the black).
+"""`cfg.detail_spokes` (built OFF 2026-10-15, ON since 2026-10-16 -- Kent's
+"ON, tightened": `MIN_TIPS` 4, the spoke floor scaled by the design width):
+a small detail of another colour, enclosed by one shape and too small for the
+run tier's outline, sews as a spoked mark on top of the shape round it -- the
+way the professional sewed the white star in Hotel Fremont's black Wisconsin
+(one white run of five spokes, out and back from a common centre, after the
+black).
 
 Pinned here: the tip finder on a synthetic star, cross, dot, square, pentagon
 and triangle, and on the real star's mask at 80 mm; stage 3 keeps the star
@@ -29,7 +31,7 @@ from digitizer_core.detail_spokes import MIN_TIPS, TIP_DEPTH, find_tips, spoke_r
 from digitizer_core.regions import Region
 from digitizer_core.stage3_segment import RegionMask, resolve_small_regions
 from digitizer_core.stage5_overlap import PlannedRegion
-from digitizer_core.stage7_sequence import _place_spoke_marks, _spoke_host
+from digitizer_core.stage7_sequence import _place_spoke_marks, _spoke_host, spoke_floor_mm
 from digitizer_core.stitches import RUN, StitchBlock, StitchRun
 from digitizer_core.threads import chart_for, rgb_to_lab
 from digitizer_core.warnings_codes import DETAIL_SPOKES_SEWN
@@ -37,13 +39,20 @@ from digitizer_core.warnings_codes import DETAIL_SPOKES_SEWN
 from .conftest import TESTDATA
 
 
-def test_flag_defaults_off_and_the_floor_is_the_pros():
-    """OFF, so neither `PRE_FLIP` nor `flagcost.FLAGS` lists it (both are
-    for flags that default ON); the spoke floor is the pro's 1.45 mm."""
+def test_flag_defaults_on_since_kents_flip_and_the_floor_scales_from_the_pros():
+    """ON since 2026-10-16 (Kent: "ON, tightened"), so `PRE_FLIP` pins False
+    and `flagcost.FLAGS` lists it; the spoke floor is the pro's 1.45 mm at
+    his Hat file's 92.6 mm, scaled by the design's width."""
+    from tools.pro_parity import flagcost as fc
+
     from .conftest import PRE_FLIP
-    assert PipelineConfig().detail_spokes is False
-    assert "detail_spokes" not in PRE_FLIP
-    assert machine.DETAIL_SPOKE_MIN_MM == 1.45
+    assert PipelineConfig().detail_spokes is True
+    assert PRE_FLIP["detail_spokes"] is False
+    assert fc.FLAGS["detail_spokes"] is False
+    assert machine.DETAIL_SPOKE_MIN_MM == 1.45 and machine.DETAIL_SPOKE_REF_WIDTH_MM == 92.6
+    assert spoke_floor_mm(92.6) == pytest.approx(1.45)
+    assert spoke_floor_mm(80.0) == pytest.approx(1.45 * 80.0 / 92.6)
+    assert spoke_floor_mm(None) == 1.45 and spoke_floor_mm(0.0) == 1.45
     assert machine.RUN_MIN_LOOP_MM == 2.2 and machine.RUN_MIN_AREA_MM2 == 0.16
 
 
@@ -115,17 +124,18 @@ def test_a_round_dot_a_square_and_a_pentagon_have_no_tips():
         assert find_tips(m) is None
 
 
-def test_a_triangle_is_the_smallest_spoked_mark_at_three_and_not_at_four():
-    """`MIN_TIPS` 3 is the spec's; 4 is the other candidate (it refuses the
-    corpus's one false positive, a three-tipped speck of tyre tread on the
-    screenshot design, and keeps every star and cross)."""
-    assert MIN_TIPS == 3
-    res = find_tips(_ngon(3, 14))
+def test_a_triangle_is_refused_at_four_tips_and_was_the_smallest_mark_at_three():
+    """`MIN_TIPS` is 4 since Kent's flip (2026-10-16): the corpus's one false
+    positive at 3, a three-tipped speck of tyre tread on the screenshot
+    design, is refused, and every star and cross still passes. 3 (the
+    build's first floor) stays reachable as an argument."""
+    assert MIN_TIPS == 4
+    assert find_tips(_ngon(3, 14)) is None
+    res = find_tips(_ngon(3, 14), min_tips=3)
     assert res is not None and len(res[1]) == 3
-    assert find_tips(_ngon(3, 14), min_tips=4) is None
-    assert len(find_tips(_star(), min_tips=4)[1]) == 5
-    assert len(find_tips(_cross(), min_tips=4)[1]) == 4
-    assert len(find_tips(_ascii(FREMONT_STAR_80), min_tips=4)[1]) == 5
+    assert len(find_tips(_star())[1]) == 5
+    assert len(find_tips(_cross())[1]) == 4
+    assert len(find_tips(_ascii(FREMONT_STAR_80))[1]) == 5
 
 
 # The star's own mask in the prep raster at 80 mm (31.25 px/mm): stage 3's
@@ -351,6 +361,17 @@ def test_without_a_later_block_of_its_thread_the_mark_gets_one_after_the_host():
     assert added.runs[0].jump and added.runs[0].trim and added.runs[0].shape_id == "Sm"
 
 
+def test_the_placement_scales_the_floor_with_the_design_width():
+    cfg, chart, planned, pm, blocks = _mark_scene(True)
+    _place_spoke_marks([pm], planned, blocks, cfg, trim_at=3.0, design_width_mm=80.0)
+    run = blocks[3].runs[1]
+    reach = max(math.dist(q, (0.5, 0.5)) for q in run.points)
+    assert reach == pytest.approx(1.45 * 80.0 / 92.6)
+    cfg, chart, planned, pm, blocks = _mark_scene(True)
+    _place_spoke_marks([pm], planned, blocks, cfg, trim_at=3.0)             # no width: the pro's
+    assert max(math.dist(q, (0.5, 0.5)) for q in blocks[3].runs[1].points) == pytest.approx(1.45)
+
+
 def test_a_mark_whose_host_sewed_nothing_sews_last():
     cfg, chart, planned, pm, blocks = _mark_scene(False)
     blocks.pop(1)                                                        # the black sewed nothing
@@ -422,8 +443,13 @@ def test_fremont_80_on_sews_the_star_white_after_the_black(fremont_on, fremont_o
     assert any(r.shape_id == "__edge_cap__" for r in plan.blocks[k].runs)
     assert k > max(j for j, b in enumerate(plan.blocks) if b.thread_number == "0020")
     assert run.jump and run.trim and run.kind == RUN
-    spokes = [q for q in run.points if math.dist(q, spec["centre"]) >= machine.DETAIL_SPOKE_MIN_MM - 1e-6]
-    assert len(spokes) == 5
+    # the floor scales with the design's ARTWORK width (what stage 7 reads,
+    # not the plan's stitched extent): 1.45 x 80 / 92.6 at this width
+    bounds = [r.polygon.bounds for r in result.regions]
+    floor = spoke_floor_mm(max(b[2] for b in bounds) - min(b[0] for b in bounds))
+    assert 1.2 < floor < 1.3
+    reach = [math.dist(q, spec["centre"]) for q in run.points if math.dist(q, spec["centre"]) > 1.0]
+    assert len(reach) == 5 and all(abs(d - floor) < 1e-6 for d in reach), reach
     assert len(plan.blocks) == len(fremont_off["plan"].blocks)              # no colour change added
     w = [w for w in plan.warnings if w["code"] == DETAIL_SPOKES_SEWN]
     assert len(w) == 1 and w[0]["count"] == 1 and w[0]["spokes"] == 5 and w[0]["colour_changes"] == 0

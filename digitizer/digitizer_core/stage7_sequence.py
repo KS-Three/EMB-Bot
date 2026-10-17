@@ -1859,26 +1859,38 @@ def _spoke_host(mark: PlannedRegion, planned: list[PlannedRegion]) -> PlannedReg
     return max(named or hosts, key=lambda p: (p.sew_index, p.region.area_mm2))
 
 
+def spoke_floor_mm(design_width_mm: float | None) -> float:
+    """The spoke floor for a design `design_width_mm` wide:
+    `machine.DETAIL_SPOKE_MIN_MM` scaled from the pro's Hat file's width
+    (`machine.DETAIL_SPOKE_REF_WIDTH_MM`) -- 1.45 mm at 92.6, 1.25 at 80. An
+    unknown or empty width keeps the pro's own number."""
+    if not design_width_mm or design_width_mm <= 0:
+        return machine.DETAIL_SPOKE_MIN_MM
+    return machine.DETAIL_SPOKE_MIN_MM * float(design_width_mm) / machine.DETAIL_SPOKE_REF_WIDTH_MM
+
+
 def _place_spoke_marks(marks: list[PlannedRegion], planned: list[PlannedRegion],
                        blocks: list[StitchBlock], cfg: PipelineConfig,
-                       trim_at: float) -> dict:
+                       trim_at: float, design_width_mm: float | None = None) -> dict:
     """Sew each spoked detail mark (`cfg.detail_spokes`) AFTER its host.
 
     The mark's run (`detail_spokes.spoke_runs`: centre -> tip -> centre per
-    tip, in the mark's own thread) goes into the first block of that thread
-    that follows the host's block -- Fremont's white edge cap, so the mark
-    costs no colour change there -- or, when none follows, into a block of
-    its own inserted straight after the host's: the colour revisit the
+    tip, in the mark's own thread, each spoke at least
+    `spoke_floor_mm(design_width_mm)`) goes into the first block of that
+    thread that follows the host's block -- Fremont's white edge cap, so the
+    mark costs no colour change there -- or, when none follows, into a block
+    of its own inserted straight after the host's: the colour revisit the
     pro's own file pays. A mark whose host cannot be found sews at the end
     of the design. Mutates `blocks`; returns the warning's numbers.
     """
     chart = chart_for(cfg)
+    floor = spoke_floor_mm(design_width_mm)
     count = spokes = colour_changes = 0
     ids: list[str] = []
     for mark in marks:
         spec = mark.region.meta["detail_spokes"]
         runs, report = spoke_runs(tuple(spec["centre"]), [tuple(t) for t in spec["tips"]],
-                                  mark.shape_id)
+                                  mark.shape_id, min_mm=floor)
         if report["empty"]:
             continue
         host = _spoke_host(mark, planned)
@@ -3784,8 +3796,14 @@ def sequence(
     # Last, once every block exists, so "the next block of the mark's thread
     # after its host" can be read off the finished list -- on Fremont's hat
     # that is the white bean edge cap, so the mark costs no colour change.
-    spoke_report = (_place_spoke_marks(spoke_marks, planned, blocks, cfg, trim_at)
-                    if spoke_marks else None)
+    # The floor scales with the design's own width (the artwork's extent,
+    # which stage 4 scaled to the target width): 1.45 mm at the pro's 92.6.
+    spoke_report = None
+    if spoke_marks:
+        _xs = [p.region.polygon.bounds for p in planned + spoke_marks]
+        _design_w = (max(b[2] for b in _xs) - min(b[0] for b in _xs)) if _xs else None
+        spoke_report = _place_spoke_marks(spoke_marks, planned, blocks, cfg, trim_at,
+                                          design_width_mm=_design_w)
 
     warnings: list[dict] = list(applique_warnings)
     if spoke_report is not None and spoke_report["count"]:
