@@ -286,11 +286,14 @@ async function caption() {
   return await page.evaluate(CAPTION_JS);
 }
 
-async function waitCaption(ms = 60000) {
+// `notEqual`: a caption already on the page before the action under test.
+// A poller that accepts the first match reads the OLD caption as the new
+// result (SKILL.md, "wait for the value to CHANGE first, then settle").
+async function waitCaption(ms = 60000, notEqual = null) {
   const t0 = Date.now();
   for (;;) {
     const c = await caption();
-    if (c) return c;
+    if (c && c !== notEqual) return c;
     if (Date.now() - t0 > ms) return null;
     await page.waitForTimeout(500);
   }
@@ -309,9 +312,13 @@ async function smoke() {
 
   // ---- lane 1: lettering ------------------------------------------------
   log("lane 1: text/lettering");
-  await page.getByRole("button", { name: "Name on a hat", exact: false }).first().click();
-  await page.waitForSelector("canvas", { timeout: 20000 });
-  await page.fill("textarea", "FRITSCH'S");
+  // The configurator panel replaced the template wizard (PR 1 of the 2026-09-30
+  // redesign): no "Name on a hat" tile, no textarea. The text input is on the
+  // page from load, found by its placeholder -- the same recipe as
+  // `typeText` in app/e2e/helpers.js. Fixed 2026-10-16 after the smoke sat
+  // 30 s waiting for a button that no longer exists.
+  await page.getByRole("heading", { name: "Your design" }).waitFor({ timeout: 20000 });
+  await page.getByPlaceholder("Type a name or word").fill("FRITSCH'S");
   const textCap = await waitCaption(30000);
   shots.push(await shot("text-lettering"));
   results.push(`  text lane: ${textCap || "NO STITCH CAPTION"}`);
@@ -320,6 +327,14 @@ async function smoke() {
   // ---- lane 2: artwork auto-digitize ------------------------------------
   if (await digitizerUp()) {
     log("lane 2: artwork auto-digitize (service is up)");
+    // The Studio persists the current design in localStorage (app/src/lib/
+    // projects.js), so a plain reload keeps lane 1's lettering on the page
+    // and its caption satisfies the poller before the digitize has left the
+    // browser -- measured 2026-10-16: both lanes reported the identical
+    // "1,245 stitches · 102×12 mm" with the run still at "Sending your art…".
+    // Start lane 2 from an empty project, and accept only a caption that
+    // differs from whatever was on the page before the click.
+    await page.evaluate(() => { try { localStorage.clear(); } catch {} });
     await page.goto(BASE + "/", { waitUntil: "domcontentloaded" });
     const fixture = join(REPO, "app/e2e/fixtures/enthusiast_logo.png");
     // File first, then the button (Kent 2026-10-05). "Upload file" opens the
@@ -330,8 +345,9 @@ async function smoke() {
     // class because the chip "Digitized · …" also matches the word.
     // `app/e2e/digitize-auto-start.spec.js` pins all of it.
     await page.setInputFiles('[data-testid="art-file"]', fixture);
+    const before = await caption();
     await page.locator(".dgp-run:not([disabled])").click({ timeout: 30000 });
-    const artCap = await waitCaption(120000);
+    const artCap = await waitCaption(120000, before);
     shots.push(await shot("artwork-digitize"));
     results.push(`  artwork lane: ${artCap || "NO STITCH CAPTION"}`);
     if (!artCap) throw new Error("auto-digitize produced no stitches");
