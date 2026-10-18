@@ -1619,15 +1619,21 @@ class PipelineConfig:
     # its own, tagged `detail_spokes`, while the host still takes its pixels
     # and sews solid underneath. Stage 7 sews the mark as ONE run of its own
     # thread from the centroid out to each tip (extended to
-    # `machine.DETAIL_SPOKE_MIN_MM`) and back, after its host: in the next
-    # block of that thread when one follows, else in a block added after the
-    # host's (a colour revisit the pro's file also pays: 11 colour blocks for
-    # 3 threads). That is the professional's own construction of this star.
-    # Stage 5 never sees a mark (it is thread on top of its host, ungrown).
-    # The detector's ratios (`detail_spokes.TIP_DEPTH`) are classification
-    # candidates; the spoke floor is a gate-1 candidate from the pro's file.
+    # `machine.DETAIL_SPOKE_MIN_MM` scaled by the design's width over the
+    # pro's 92.6, `stage7_sequence.spoke_floor_mm`) and back, after its host:
+    # in the next block of that thread when one follows, else in a block
+    # added after the host's (a colour revisit the pro's file also pays: 11
+    # colour blocks for 3 threads). That is the professional's own
+    # construction of this star. Stage 5 never sees a mark (it is thread on
+    # top of its host, ungrown). The detector's ratios
+    # (`detail_spokes.TIP_DEPTH`, `MIN_TIPS`) are classification candidates;
+    # the spoke floor is a gate-1 candidate from the pro's file.
     # Off, byte-identical (md5-pinned in `tests/test_detail_spokes.py`).
-    detail_spokes: bool = False
+    # **FLIPPED ON 2026-10-16, Kent's call ("ON, tightened")**: `MIN_TIPS` 3
+    # -> 4 (the corpus's one false positive, a three-tipped tyre-tread speck,
+    # is refused; every star and cross passes) and the floor scales with the
+    # design width. False is the pre-flip engine (`PRE_FLIP`).
+    detail_spokes: bool = True
     # Small lettering thinner than the thread, sewn as ONE run down its
     # skeleton (2026-10-13, default OFF; Kent's "fine details" priority,
     # `digitizer_core/stage6_small_letter.py`, `tools/small_lettering_skeleton.py`).

@@ -471,4 +471,10 @@ PRE_FLIP["text_cluster_rescued_ink_link"] = False
 # `tests/test_bean_counter_hold.py` and `tests/test_bean_bay_hold.py`.
 PRE_FLIP["bean_letter_counter_hold_mm"] = None
 PRE_FLIP["bean_letter_bay_hold"] = None
+# Spoked detail marks (Kent's flip 2026-10-16, "ON, tightened"): a small
+# enclosed detail of another colour with four or more tips sews as a spoked
+# mark on top of its host (Fremont's Wisconsin star). False is the pre-flip
+# engine: the detail is absorbed and painted over. The tests ABOUT it are in
+# `tests/test_detail_spokes.py`.
+PRE_FLIP["detail_spokes"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

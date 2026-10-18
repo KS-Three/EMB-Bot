@@ -46,12 +46,13 @@ TIP_DEPTH = 0.3
 TIP_DEPTH_MIN_PX = 1.5
 # Fewer boundary pixels than this is not a shape with a readable outline.
 _MIN_RING_PX = 12
-# The fewest tips a spoked detail has. 3 admits a triangle as the smallest
-# mark, as the build spec asked (a star, a cross, an asterisk); measured over
-# the 17-design corpus (docs/renders/detail-spokes/README.md) the one mark it
-# admits besides Fremont's star is a 0.15 mm² three-tipped speck of tyre
-# tread on `screenshot_phone_ui_golke`, so 4 (a cross) is the other candidate.
-MIN_TIPS = 3
+# The fewest tips a spoked detail has: a cross. Built at 3 (a triangle);
+# measured over the 17-design corpus (docs/renders/detail-spokes/README.md)
+# the one mark 3 admitted besides Fremont's star was a 0.15 mm² three-tipped
+# speck of tyre tread on `screenshot_phone_ui_golke`, so Kent tightened it to
+# 4 when he flipped the flag ON (2026-10-16): every star and cross still
+# passes, the speck is refused.
+MIN_TIPS = 4
 
 
 def find_tips(crop: np.ndarray, min_tips: int = MIN_TIPS
