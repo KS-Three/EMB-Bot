@@ -1,6 +1,6 @@
 ---
 name: detail-spokes-on-2026-10-18
-description: detail_spokes flipped ON (Kent, "ON tightened"): MIN_TIPS 4, spoke floor scaled by design width; the per-platform md5 pin was a misdiagnosis (test-order leak), guard is counts-only until the leak is found
+description: detail_spokes flipped ON (Kent, "ON tightened"): MIN_TIPS 4, spoke floor scaled by design width; the Fremont OFF md5 depends on the host's SIMD (AVX-512 vs AVX2), not platform or test order; tests pin AVX2 (PR #987)
 metadata:
   type: project
 ---
@@ -19,22 +19,23 @@ positive (a 3-tipped tyre-tread speck on the phone screenshot); 14 of 17 corpus 
 Renders: `docs/renders/detail-spokes/`. Both constants are read from the pro's sewn Hat PES
 (gate 1 candidate, unsewn); the width scaling is Kent's ruling, not the pro's.
 
-**The md5 pin that was wrong twice.** #980 pinned the OFF stream's md5 per `sys.platform`
+**The md5 pin that was wrong THREE times.** #980 pinned the OFF stream's md5 per `sys.platform`
 (Windows `75f44f90`, Linux `027d14e6`) because CI read a different value than Kent's box. Then
 main went red at the #982 squash (a diff touching only `.claude/skills/`): Linux now read the
-WINDOWS value. Same runner image (ubuntu-24.04 20261012.334.1), same CPython 3.12.15, same wheels,
-same Python code as the green run before it. So the hash depends on which tests ran earlier in the
-same xdist worker, not on the platform. Counts never move (14,824 / 43); the difference is
-coordinates or order. #983 replaced the pin with a counts-only guard so main could go green; the
-leak itself was still unfound on 2026-10-19 (hunt dispatched as its own session, branch
-`stream-order-leak`).
+WINDOWS value on the same image, CPython and wheels. That was read as a test-order leak under
+xdist, and #983 made the guard counts-only. **Also wrong** (PR #987, 2026-10-19): every shard 5/6
+file run ahead of the digitize in one process, both worker orders, hash seeds, and four requests
+through one service process all left the laptop's stream at `75f44f90`. No leak, no product
+defect. The first CI run that recorded its CPU settled it: AMD EPYC 9V45 with numpy AVX512F/SKX/ICL
+read `027d14e6`; AVX2 hosts (Kent's Ryzen 7 4700U, the other runners) read `75f44f90`. Hosted
+runners draw different CPUs, and numpy/OpenCV dispatch AVX-512 kernels where present.
+`tests/conftest.py` now pins the TEST environment to AVX2 (`NPY_DISABLE_CPU_FEATURES`,
+`OPENCV_CPU_DISABLE`) and the single md5 is back; the shipped service is not pinned.
 
-**Why:** a per-platform pin is the easy story when CI disagrees with a laptop, and it was wrong
-here; the tell was one platform reading both values on identical code.
+**Why:** two stories in a row fitted the evidence (platform, then test order) because no log
+recorded the one variable that moved: the host CPU.
 
-**How to apply:** when a stream md5 differs between CI and local, compare two CI runs on the
-same code before pinning per platform. If one platform reads two values, it is shared mutable
-state under xdist (or in the long-lived service), never the OS. The counts-only guard in
-`test_fremont_80_off_is_byte_identical` is a stopgap: restore the single-value md5 once the leak
-is fixed. Related: [[the-80mm-ink-link-2026-10-15]], [[bean-holds-on-2026-10-15]],
-[[windows-goldens-fail-locally]].
+**How to apply:** when a stream md5 differs between CI runs of one image and one tree, record the
+host CPU and its enabled SIMD before theorising (the pin test's junit properties do). Unexplained
+"platform numerics" elsewhere (the three deselected goldens) may be the same cause. Related:
+[[the-80mm-ink-link-2026-10-15]], [[bean-holds-on-2026-10-15]], [[windows-goldens-fail-locally]].

@@ -1,4 +1,23 @@
 import os
+
+# The test environment's SIMD level is pinned to AVX2, BEFORE anything below
+# imports numpy or cv2 (both read these at import). PR #987: Hotel Fremont at
+# 80 mm, flag OFF, sews one stream on Kent's laptop (Ryzen 7 4700U, AVX2) and
+# CI's AVX2 runners (`75f44f90`) and another on CI's AMD EPYC 9V45 runners,
+# which dispatch AVX-512 kernels (`027d14e6`) -- same tree, image and wheels.
+# Not test order: every shard 5/6 file ahead of it, in one process, left the
+# laptop's stream unchanged. Pinned here so a byte-identity test means one
+# thing on every host; the shipped service is NOT pinned and may sew the
+# other stream on an AVX-512 machine. A name a library does not dispatch is
+# an ImportWarning (numpy) or a printed warning (OpenCV), never an error, so
+# the list carries numpy 2.5's group (`X86_V4`) and the older feature names.
+os.environ.setdefault(
+    "NPY_DISABLE_CPU_FEATURES",
+    "X86_V4 AVX512F AVX512CD AVX512_KNL AVX512_KNM AVX512_SKX AVX512_CLX "
+    "AVX512_CNL AVX512_ICL AVX512_SPR")
+os.environ.setdefault(
+    "OPENCV_CPU_DISABLE",
+    "AVX512_COMMON,AVX512_KNL,AVX512_KNM,AVX512_SKX,AVX512_CNL,AVX512_CLX,AVX512_ICL")
 import shutil
 from contextlib import contextmanager
 from pathlib import Path

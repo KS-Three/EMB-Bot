@@ -384,15 +384,11 @@ def test_a_mark_whose_host_sewed_nothing_sews_last():
 
 # Today's main with the flag OFF (set explicitly): 14,824 stitches / 43 trims,
 # the bean-holds-on cell of docs/renders/bean-holds-on/README.md, and ONE
-# stream md5. CI's Linux read `027d14e6` on two shard 5/6 runs (PR #980's
-# first, main 6218641e) and `75f44f90` on two others (PR #983, main dc8ca3f5)
-# with the same code, image and wheels. It is NOT test order: every shard 5/6
-# file run ahead of this digitize in one process, both xdist workers' orders,
-# hash seeds 1/2/default and four requests through one service process all
-# read `75f44f90` on Kent's box (2026-10-19). What that check cannot vary is
-# the host CPU (his is AVX2; a hosted runner may draw AVX-512), so a mismatch
-# names the host's CPU below (and junit.xml records it on every run): a red
-# here is that evidence, not a re-pin.
+# stream md5. The stream depends on the host's SIMD dispatch, not on test
+# order (PR #987): AVX2 hosts read `75f44f90`, CI's AVX-512 EPYC runners
+# `027d14e6`. tests/conftest.py pins the test environment to AVX2, so every
+# host should read `75f44f90`; a red here names the host's CPU and its
+# enabled SIMD (numpy and OpenCV), and junit.xml records both on every run.
 FREMONT_80_OFF_COUNTS = (14824, 43)
 FREMONT_80_OFF_MD5 = "75f44f905f946705695cf6365f2a8d5f"
 STAR_MM = (1.28, -12.02)        # the star's centre, design mm, y down
@@ -417,7 +413,8 @@ def _host_cpu() -> str:
         pass
     simd = [k for k in ("AVX2", "FMA3", "AVX512F", "AVX512_SKX", "AVX512_ICL", "AVX512_SPR")
             if feats.get(k)]
-    return f"host CPU {model!r}, numpy SIMD {simd}"
+    import cv2
+    return f"host CPU {model!r}, numpy SIMD {simd}, cv2 {cv2.getCPUFeaturesLine()}"
 
 
 @pytest.fixture(scope="module")
