@@ -383,14 +383,17 @@ def test_a_mark_whose_host_sewed_nothing_sews_last():
 # --- the whole pipeline: Fremont 80 mm, the Studio's Hat request ----------------------
 
 # Today's main with the flag OFF (set explicitly): 14,824 stitches / 43 trims,
-# the bean-holds-on cell of docs/renders/bean-holds-on/README.md. The stream's
-# md5 is NOT pinned: it is per MACHINE on this fixture, not even per platform
-# (the goldens' lesson: numerics diverge per fixture, counts agree). Kent's
-# Windows box reads `75f44f90`; CI's Linux read `027d14e6` on PR #980's shard
-# 5/6 and `75f44f90` on PR #983's, the same engine both times. So the OFF
-# pin is the pair of counts and the absence of any mark; the ON cell below
-# is pinned against OFF shape by shape, which holds on any machine.
+# the bean-holds-on cell of docs/renders/bean-holds-on/README.md, and ONE
+# stream md5. CI's Linux read `027d14e6` on two shard 5/6 runs (PR #980's
+# first, main 6218641e) and `75f44f90` on two others (PR #983, main dc8ca3f5)
+# with the same code, image and wheels. It is NOT test order: every shard 5/6
+# file run ahead of this digitize in one process, both xdist workers' orders,
+# hash seeds 1/2/default and four requests through one service process all
+# read `75f44f90` on Kent's box (2026-10-19). What that check cannot vary is
+# the host CPU (his is AVX2; a hosted runner may draw AVX-512), so a mismatch
+# names the host's CPU below and a red here is that evidence, not a re-pin.
 FREMONT_80_OFF_COUNTS = (14824, 43)
+FREMONT_80_OFF_MD5 = "75f44f905f946705695cf6365f2a8d5f"
 STAR_MM = (1.28, -12.02)        # the star's centre, design mm, y down
 
 
@@ -398,6 +401,22 @@ def _stream_md5(plan) -> str:
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
     return hashlib.md5(json.dumps(coords).encode()).hexdigest()
+
+
+def _host_cpu() -> str:
+    """The CPU model and the SIMD levels numpy dispatches to: what a stream
+    mismatch on a hosted runner has to be read against."""
+    import platform
+    from numpy._core._multiarray_umath import __cpu_features__ as feats
+    model = platform.processor()
+    try:
+        with open("/proc/cpuinfo", encoding="utf-8") as f:
+            model = next(l.split(":", 1)[1].strip() for l in f if l.startswith("model name"))
+    except (OSError, StopIteration):
+        pass
+    simd = [k for k in ("AVX2", "FMA3", "AVX512F", "AVX512_SKX", "AVX512_ICL", "AVX512_SPR")
+            if feats.get(k)]
+    return f"host CPU {model!r}, numpy SIMD {simd}"
 
 
 @pytest.fixture(scope="module")
@@ -415,9 +434,7 @@ def fremont_on():
 def test_fremont_80_off_is_byte_identical(fremont_off):
     plan = fremont_off["plan"]
     assert (plan.stats.stitch_count, plan.stats.trims) == FREMONT_80_OFF_COUNTS
-    # Recorded, not asserted: a new machine's md5 is information, not a red.
-    # (`_stream_md5(plan)` is what the renders' README quotes.)
-    assert len(_stream_md5(plan)) == 32
+    assert _stream_md5(plan) == FREMONT_80_OFF_MD5, _host_cpu()
     assert not [r for r in fremont_off["result"].regions if r.meta.get("detail_spokes")]
     assert not [w for w in plan.warnings if w["code"] == DETAIL_SPOKES_SEWN]
 
