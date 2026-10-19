@@ -955,6 +955,12 @@
    "basis": "PR bodies of claude/detail-spokes (built OFF) and claude/detail-spokes-on (the flip); source fixtures have their own entries above"
   },
   {
+   "prefix": "docs/renders/golden-tee-o-counter/",
+   "status": "derived-render",
+   "source": "Thread renders (digitizer_core.stitchviz) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_golden_tee.jpg scaled so GOLF sits at 4 and 5 mm caps (tools/small_print.py's line), cfg.open_cored_counters OFF beside ON with cfg.small_print_floor off and on; one 16x nearest-neighbour crop of the committed fixture's own pixels round the O's counter (prep_raster_o_counter.png); and crops of digitizer/testdata/photo/screenshot_phone_ui_golke.jpg at 80 mm over the five shapes ON keeps as counters; the artwork crops are the committed fixtures; no new artwork, no new client art",
+   "basis": "PR body of claude/golden-tee-o-counter; source fixtures have their own entries above"
+  },
+  {
    "prefix": "docs/renders/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures (catch-all for new render directories)",
