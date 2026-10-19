@@ -1840,15 +1840,26 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     lc_kw = {**({"fold_cuts": True} if fold_cuts else {}),
              # `cfg.lettering_columns_square_ends`: a slanted end face is mitred
              **({"mitre_ends": True} if square_ends else {})}
+    run_kw = dict(trim_at_mm=trim_at_mm,
+                  spacing_mm=spacing_mm, split_above_mm=split_above_mm,
+                  pull_mm=pull_mm, pull_floor_mm=pull_floor_mm,
+                  underlay_style=underlay_style, start_near=start_near,
+                  end_near=end_near, counter_clear_mm=counter_clear_mm,
+                  **({"square_ends": True} if square_ends else {}),
+                  **({"inside_connectors": True} if inside_connectors else {}))
+    if fold_cuts:
+        # `fold_cuts`' sewn judge: a fold-look candidate is sewn exactly as
+        # this letter will be, and read for folds and knots
+        # (`outline_cut._fold_refine`, `outline_cut.sewn_knots`)
+        from .outline_cut import sewn_knots
+
+        def judge(cols, cpoly):
+            held_j = _recorded_counters(cpoly, poly) if counter_clear_mm > 0 else cpoly
+            return sewn_knots(column_runs(cols, held_j, shape_id, **run_kw)[0])
+        lc_kw["judge"] = judge
     cut = letter_columns(poly, pitch_mm=spacing_mm, **lc_kw)
     held = _recorded_counters(cut.poly, poly) if counter_clear_mm > 0 else cut.poly
-    runs, report = column_runs(cut.columns, held, shape_id, trim_at_mm=trim_at_mm,
-                               spacing_mm=spacing_mm, split_above_mm=split_above_mm,
-                               pull_mm=pull_mm, pull_floor_mm=pull_floor_mm,
-                               underlay_style=underlay_style, start_near=start_near,
-                               end_near=end_near, counter_clear_mm=counter_clear_mm,
-                               **({"square_ends": True} if square_ends else {}),
-                               **({"inside_connectors": True} if inside_connectors else {}))
+    runs, report = column_runs(cut.columns, held, shape_id, **run_kw)
     report["cuts"] = len(cut.cuts)
     report["columns_unsewn"] += len(cut.unsewn)
     return runs, report

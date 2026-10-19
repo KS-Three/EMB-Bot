@@ -1155,6 +1155,69 @@ def _drop_stalls(col: Column, fold_lines, pitch_mm: float) -> Column:
     return col if len(st) == len(col.stations) else replace(col, stations=st)
 
 
+SEWN_FOLD_DEG = 45.0    # a sewn station cross past this off its stations' advance is a fold
+SEWN_SHORT_FRAC = 0.5   # a satin leg under this share of its run's median leg is short
+
+
+def sewn_knots(runs) -> tuple[int, int, int]:
+    """`fold_cuts`' sewn judge (`_fold_refine`): one letter's satin runs, as
+    `columns.column_runs` lays them, -> (station folds, short legs, crossed
+    legs) -- the reading `tools/lowercase_angle.py` takes of the sewn plan
+    (`cross_records`' station lean past 45 deg; `junction_knots`), restated
+    here so the engine does not import a tool; a test holds the two equal.
+    A STATION cross is an even leg of the zigzag A1 B1 A2 B2; it folds when
+    it leans past SEWN_FOLD_DEG off the advance between its neighbouring
+    stations. A leg AT A JUNCTION (its midpoint within its run's median leg
+    of another satin run of the letter) is SHORT under SEWN_SHORT_FRAC of
+    that median, and CROSSED when it crosses a non-adjacent leg of its own
+    run -- the zigzag folding over itself where two columns meet."""
+    from .stage6_satin import strip_splits
+    from .stitches import strip_ties
+    sat = [np.asarray(strip_splits(strip_ties(list(r.points))), dtype=float)
+           for r in runs if r.kind == "satin"]
+    folds = 0
+    for pts in sat:
+        if len(pts) < 6:
+            continue
+        vec = pts[1:] - pts[:-1]
+        length = np.hypot(vec[:, 0], vec[:, 1])
+        idx = np.nonzero(length > 0.6)[0]
+        if len(idx) < 5:
+            continue
+        mids = (pts[idx] + pts[idx + 1]) / 2.0
+        cross = np.degrees(np.arctan2(vec[idx, 1], vec[idx, 0]))
+        sta = [k for k in range(len(idx)) if idx[k] % 2 == 0]
+        for j in range(1, len(sta) - 1):
+            a, b = mids[sta[j - 1]], mids[sta[j + 1]]
+            adv = math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+            folds += abs((cross[sta[j]] - (adv + 90.0) + 90.0) % 180.0 - 90.0) > SEWN_FOLD_DEG
+    runs4 = [p for p in sat if len(p) >= 4]
+    lines = [LineString(p) for p in runs4]
+    short = crossed = 0
+    for k, pts in enumerate(runs4):
+        others = [ln for j, ln in enumerate(lines) if j != k]
+        if not others:
+            continue
+        legs = [LineString([pts[i], pts[i + 1]]) for i in range(len(pts) - 1)]
+        length = np.array([lg.length for lg in legs])
+        real = length > 0.05
+        if not real.any():
+            continue
+        med = float(np.median(length[real]))
+        hit = set()
+        for i in np.nonzero(real)[0]:
+            for j in np.nonzero(real[i + 2:])[0] + i + 2:
+                if legs[i].crosses(legs[j]):
+                    hit.update((int(i), int(j)))
+        for i in np.nonzero(real)[0]:
+            m = legs[i].interpolate(0.5, normalized=True)
+            if min(o.distance(m) for o in others) >= med:
+                continue
+            short += bool(length[i] < SEWN_SHORT_FRAC * med)
+            crossed += int(i) in hit
+    return folds, short, crossed
+
+
 def _ring_opener(pc: Polygon, cut) -> bool:
     """A cut from a ring piece's outside to its counter: alone it leaves
     the piece whole (an a's or a b's bowl still wraps its counter), two of
@@ -1183,7 +1246,7 @@ def _carried_ring(pc: Polygon, col: Column | None, W: float) -> bool:
 
 
 def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
-                 mitre_ends: bool = False):
+                 mitre_ends: bool = False, judge=None, against=None):
     """`fold_cuts`: the second look for a piece that is not over-long but
     FOLDS (`_folded` >= FOLD_MIN), or is a ring carried round a junction
     corner (`_carried_ring`: the 80 mm e), which is taken only when no
@@ -1209,12 +1272,31 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
     whole, the bowl butting it: the b's and g's stems, which a split bowl
     otherwise keeps half of), then the least turn; it must take the folds to
     REFINE_GAIN of the piece's. -> (cuts, [(piece, lines, new cuts)]) to
-    take, or None."""
+    take, or None.
+
+    `judge` (`letter_columns`' sewn judge, given by the Column lane):
+    `judge(pc, columns)` -> (station folds, short legs, crossed legs) of
+    the letter SEWN with `columns` in place of `pc` (`sewn_knots`). Every
+    look above reads the construction, and the construction does not show
+    the knot: at 80 mm the b's and the g's rings opened at a pair of cuts
+    sewed 10 and 15 crossed legs at their new junctions, against OFF's 5
+    and 10, while every candidate's stations read clean. With a judge, a
+    candidate that sews more short or more crossed legs than the piece
+    left whole is refused, the STUB refusal gives way to it (a stub that
+    sews no knot is no fault: the b's and g's cures cut a short stem foot),
+    the fewest sewn folds then the fewest knots lead the ranking, and the
+    cut must sew fewer folds, or as few and fewer knots, than the piece
+    left whole (the 80 mm p's ring: 14 crossed legs whole, 4 opened).
+    `against`: the sewn reading to beat instead of the piece left whole's
+    (OFF's cut of an over-long piece, `_judged_overlong`)."""
     col0 = build_column(pc, cut_lines, W, pitch_mm)
     f0 = _folded(col0)
     carried = f0 < FOLD_MIN and _carried_ring(pc, col0, W)
     if depth >= 3 or (f0 < FOLD_MIN and not carried):
         return None
+    if judge is not None:
+        base = (against if against is not None else
+                judge(pc, [build_column(pc, cut_lines, W, pitch_mm, mitre_ends=mitre_ends)]))
     long0, _tot0 = _overlong(col0, W)
     rf, _ = corners(pc, W, reflex_deg=REFINE_REFLEX_DEG)
     cands, openers = [], []
@@ -1267,7 +1349,7 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
             # bowl mitres its end across the whole bowl join -- 11 folds
             # and long diagonals that the unmitred column does not show
             cols = [build_column(sub, ls, W, pitch_mm, mitre_ends=True) for sub, ls, _ in final]
-        if any(_column_len(c) < STUB_WIDTHS * W for c in cols):
+        if judge is None and any(_column_len(c) < STUB_WIDTHS * W for c in cols):
             continue                        # a stub sews as a knot of short crosses
         if sum(_overlong(c, W)[0] for c in cols) > long0 + 1e-9:
             continue
@@ -1275,17 +1357,81 @@ def _fold_refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
         score = (sum(_folded(c) for c in cols), len(cols), turn > TURN_MAX_DEG,
                  sum(_folded(c, ends=True) for c in cols),
                  -sum(len(c.stations) for c in cols if c.kind == "straight"), turn)
-        if best is None or score < best[0]:
-            best = (score, cand, final)
+        sewn = ()
+        if judge is not None:
+            fl = [LineString([c[0], c[1]]) for c in cand]
+            k = judge(pc, [_drop_stalls(c, fl, pitch_mm) for c in cols])
+            if k[1] > base[1] or k[2] > base[2]:
+                continue                    # it knots where the piece whole did not
+            sewn = (k[0], k[1] + k[2])
+        if best is None or (sewn, score) < (best[3], best[0]):
+            best = (score, cand, final, sewn)
     if best is None or best[0][0] > REFINE_GAIN * f0:
         return None
+    if judge is not None and best[3] >= (base[0], base[1] + base[2]):
+        return None             # it sews no better than the piece left whole
     if carried and best[0][2]:
         return None             # a carried ring is cured only if nothing is carried after
     return best[1], best[2]
 
 
+def _judged_overlong(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
+                     mitre_ends: bool, judge, ref, options):
+    """`fold_cuts` with the sewn judge: the over-long second look for a piece
+    that also FOLDS. `ref` is the cut OFF takes (or None: OFF leaves the
+    piece whole), `options` every single cut that earns REFINE_GAIN, stubs
+    included -- the stub refusal was a stand-in for the knot a stub sews,
+    and the judge reads the knot itself. Each is sewn (`judge`) on the
+    pieces it cuts, as is a RING's fold-look cure (`_fold_refine`: the
+    a's bowl, which one cut cannot open). One that sews more short or more
+    crossed legs than OFF's choice is refused; of the rest the fewest sewn
+    folds, then the fewest knots, then OFF's own choice, then the least
+    over-long thread. -> None (leave it whole), ("cut", option) or
+    ("fold", `_fold_refine`'s result).
+    Measured (`tools/lowercase_angle.py`, folds/short/crossed): the 120 mm p
+    keeps OFF's cut of its stem top, a 2.4 W straight stub (0/0/4; the ring
+    pair the stub refusal sent it to sewed 3/2/9), and the 80 mm m keeps
+    OFF's cuts (0/0/0; the stub refusal's pick carried a column 75 deg round
+    its arch and sewed 0/0/4)."""
+    def sewn(subs, lines):
+        return judge(pc, [build_column(g, lines, W, pitch_mm, mitre_ends=mitre_ends)
+                          for g in subs])
+    # OFF's cut leaving no stub was taken by the stub refusal too: another
+    # is taken over it only for fewer sewn FOLDS (a capital's over-long
+    # piece can fold; none sews fewer folds cut otherwise, so all 18 sew as
+    # OFF). OFF's cut leaving a stub is the stub refusal's own ground, and
+    # fewer knots alone then count as well.
+    stub = ref is None or any(
+        c is not None and _column_len(c) < STUB_WIDTHS * W
+        for c in (build_column(g, ref[3], W, pitch_mm) for g in ref[2]))
+    ref_k = (sewn(ref[2], ref[3]) if ref is not None
+             else judge(pc, [build_column(pc, cut_lines, W, pitch_mm, mitre_ends=mitre_ends)]))
+    pick = None if ref is None else ("cut", ref)
+    key = ((ref_k[0], ref_k[1] + ref_k[2]), 0, ref[0] if ref is not None else 0.0)
+
+    def better(k, tie, score):
+        nonlocal key
+        if k[1] > ref_k[1] or k[2] > ref_k[2] or (not stub and k[0] >= ref_k[0]):
+            return False
+        if ((k[0], k[1] + k[2]), tie, score) < key:
+            key = ((k[0], k[1] + k[2]), tie, score)
+            return True
+        return False
+    for opt in options:
+        if opt is not ref and better(sewn(opt[2], opt[3]), 1, opt[0]):
+            pick = ("cut", opt)
+    if pc.interiors:
+        fold = _fold_refine(pc, cut_lines, W, pitch_mm, depth, mitre_ends, judge,
+                            against=ref_k if ref is not None else None)
+        if fold is not None and better(judge(pc, [build_column(sub, ls, W, pitch_mm,
+                                                               mitre_ends=mitre_ends)
+                                                  for sub, ls, _ in fold[1]]), 1, 0.0):
+            pick = ("fold", fold)
+    return pick
+
+
 def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
-            fold_cuts: bool = False, mitre_ends: bool = False):
+            fold_cuts: bool = False, mitre_ends: bool = False, judge=None):
     """Yield (piece, cut lines, new cuts). The junction rules missed a cut
     wherever a piece still sews over-long; look again at that piece's own
     concave corners and keep the one cut that most reduces it. With
@@ -1294,10 +1440,11 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
     (`_fold_refine`); off, this is the shipped function, step for step.
     `mitre_ends` is read only with `fold_cuts`: the fold look then judges
     each candidate on the columns `letter_columns` will build, mitred ends
-    and all (`cfg.lettering_columns_square_ends`)."""
+    and all (`cfg.lettering_columns_square_ends`). `judge`: the fold look's
+    sewn judge (`_fold_refine`), read only with `fold_cuts`."""
     long0, tot0 = _overlong(build_column(pc, cut_lines, W, pitch_mm), W)
     if depth >= 3 or tot0 <= 0 or long0 / tot0 < REFINE_TRIGGER:
-        fold = (_fold_refine(pc, cut_lines, W, pitch_mm, depth, mitre_ends)
+        fold = (_fold_refine(pc, cut_lines, W, pitch_mm, depth, mitre_ends, judge)
                 if fold_cuts and tot0 > 0 else None)
         if fold is None:
             yield pc, cut_lines, []
@@ -1318,6 +1465,13 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
     # as `_fold_refine` does -- its spur cut off sewed as a four-cross knot.
     # A piece that does not fold (every capital) is judged as shipped.
     no_stubs = fold_cuts and _folded(build_column(pc, cut_lines, W, pitch_mm)) >= FOLD_MIN
+    # With the fold look's sewn judge, such a piece is judged SEWN instead
+    # (`_judged_overlong`): no stub is refused, and OFF's cut, every other
+    # cut that earns REFINE_GAIN and a ring's fold-look cure are compared.
+    judged = no_stubs and judge is not None
+    if judged:
+        no_stubs = False
+        options = []
     best = stub_best = None
     for r in _cluster(rf, 0.25 * W):
         p = r["p"]
@@ -1342,15 +1496,31 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
                     stub_best = (score, cut, subs, lines)
                 continue
             score = sum(_overlong(c, W)[0] for c in cols)
+            if judged and score <= REFINE_GAIN * long0 and all(c is not None for c in cols):
+                options.append((score, cut, subs, lines))
             if best is None or score < best[0]:
                 best = (score, cut, subs, lines)
-    if best is None or best[0] > REFINE_GAIN * long0:
+    if judged:
+        pick = _judged_overlong(pc, cut_lines, W, pitch_mm, depth, mitre_ends, judge,
+                                best if best is not None and best[0] <= REFINE_GAIN * long0
+                                else None, options)
+        if pick is None:
+            yield pc, cut_lines, []
+            return
+        if pick[0] == "fold":
+            first = True
+            for sub, lines, extra in pick[1][1]:
+                yield sub, lines, (list(pick[1][0]) if first else []) + extra
+                first = False
+            return
+        best = pick[1]
+    elif best is None or best[0] > REFINE_GAIN * long0:
         # `fold_cuts`: no single cut cures it -- an a's bowl, still holding
         # the foot of its stem, is over-long AND a ring one cut cannot open
         # -- so it gets the fold look, whose ring-opening pairs can. A RING
         # only: an open over-long piece already had every single cut tried
         # (open to any piece, it cut a 0.3 mm flourish on bridge).
-        fold = (_fold_refine(pc, cut_lines, W, pitch_mm, depth, mitre_ends)
+        fold = (_fold_refine(pc, cut_lines, W, pitch_mm, depth, mitre_ends, judge)
                 if fold_cuts and pc.interiors else None)
         if fold is None:
             # `fold_cuts`: the stub refusal found no cure, and neither did a
@@ -1371,7 +1541,7 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
     first = True
     for g in best[2]:
         for sub, lines, extra in _refine(g, best[3], W, pitch_mm, depth + 1, fold_cuts,
-                                         mitre_ends):
+                                         mitre_ends, judge):
             yield sub, lines, ([best[1]] if first else []) + extra
             first = False
 
@@ -1390,14 +1560,19 @@ class LetterCut:
 
 
 def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False,
-                   mitre_ends: bool = False) -> LetterCut:
+                   mitre_ends: bool = False, judge=None) -> LetterCut:
     """A letter polygon -> its stroke Columns. `pitch_mm` is the progress
     between consecutive stations along the moving rail -- the satin spacing
     itself (`machine.SATIN_SPACING_MM`): a station is one cross, and the
     crosses sit `pitch_mm` apart whichever rail each starts from.
     `fold_cuts`: see `_fold_refine` and `_drop_stalls`
     (`cfg.lettering_columns_fold_cuts`).
-    `mitre_ends`: see `_mitre_ends` (`cfg.lettering_columns_square_ends`)."""
+    `mitre_ends`: see `_mitre_ends` (`cfg.lettering_columns_square_ends`).
+    `judge` (read only with `fold_cuts`): `judge(columns, poly)` -> the
+    (station folds, short legs, crossed legs) the letter sews with those
+    columns (`columns.lettering_columns_shape` sews them through
+    `column_runs` and reads them with `sewn_knots`); the fold look then
+    refuses a cut that knots (`_fold_refine`)."""
     W = stroke_width(poly)
     # a pinhole is the trace, not a counter
     poly = Polygon(poly.exterior, [h for h in poly.interiors if Polygon(h).area > 0.05 * W * W])
@@ -1438,9 +1613,35 @@ def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False
         cuts.remove(max(near, key=lambda k: k[3]))
         pieces = split(poly, cuts)
     cut_lines = [LineString([a, b]) for a, b, _, _ in cuts]
+    piece_judge = None
+    if fold_cuts and judge is not None:
+        # The fold look's sewn judge reads the WHOLE letter: a piece's
+        # candidate columns sewn beside the rest of the letter as the
+        # shipped look builds it (a junction knots with its neighbour).
+        rest = []
+        for pc in pieces:
+            for sub, lines, _extra in _refine(pc, cut_lines, W, pitch_mm, 0):
+                col = build_column(sub, lines, W, pitch_mm, mitre_ends=mitre_ends)
+                if col is not None:
+                    rest.append(col)
+
+        def piece_judge(pc, cols):
+            # in the letter's own order: the walk, and so which column of a
+            # junction sews first and tucks, follows it
+            out, put = [], False
+            for c in rest:
+                if c.piece.intersection(pc).area <= 0.02 * W * W:
+                    out.append(c)
+                elif not put:
+                    out += [k for k in cols if k is not None]
+                    put = True
+            if not put:
+                out += [k for k in cols if k is not None]
+            return judge(out, poly)
     columns, unsewn = [], []
     for pc in pieces:
-        for sub, lines, extra in (_refine(pc, cut_lines, W, pitch_mm, 0, True, mitre_ends)
+        for sub, lines, extra in (_refine(pc, cut_lines, W, pitch_mm, 0, True, mitre_ends,
+                                          piece_judge)
                                   if fold_cuts else _refine(pc, cut_lines, W, pitch_mm, 0)):
             cuts = cuts + extra
             col = (build_column(sub, lines, W, pitch_mm, mitre_ends=True) if mitre_ends

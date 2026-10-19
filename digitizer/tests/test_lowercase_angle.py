@@ -29,6 +29,7 @@ import pytest
 from shapely.geometry import Polygon
 
 from digitizer_core import PipelineConfig, digitize, outline_cut
+from digitizer_core.columns import lettering_columns_shape
 from tools import lowercase_angle as la
 from tests.conftest import own_thread_only
 
@@ -307,13 +308,87 @@ def test_off_never_enters_the_new_code(glyphs, glyphs80, monkeypatch):
     def boom(*_a, **_k):
         raise AssertionError("fold_cuts code reached with fold_cuts off")
     for name in ("_fold_refine", "_folded", "_column_len", "_max_turn", "_ring_opener",
-                 "_carried_ring", "_drop_stalls"):
+                 "_carried_ring", "_drop_stalls", "_judged_overlong", "sewn_knots"):
         monkeypatch.setattr(outline_cut, name,
                             own_thread_only(boom, getattr(outline_cut, name)))
     for ch in SHOULDERS + "e":
         outline_cut.letter_columns(glyphs[ch])
         outline_cut.letter_columns(glyphs80[ch])
         outline_cut.letter_columns(glyphs[ch], mitre_ends=True)
+    # nor does the Column lane's letter entry build the sewn judge OFF
+    lettering_columns_shape(glyphs80["b"], "S", **SHIPPED)
+
+
+# --- the sewn judge (claude/fold-cuts-p-crossed) --------------------------------
+# The construction does not show the knot a cut sews at its new junctions: on
+# main ON the 80 mm b and g sewed 10 and 15 crossed legs against OFF's 5 and
+# 10, the 120 mm p 3 folds, 2 short and 9 crossed legs against 0/0/4. With
+# `fold_cuts` the Column lane now judges a fold-look candidate SEWN
+# (`outline_cut.sewn_knots` over `column_runs`). These read the stored
+# polygons through the lane's own letter entry, with the shipped settings and
+# no neighbour to start or end near.
+
+#: the Column lane's arguments on the synthetic word (80 and 120 mm alike)
+SHIPPED = dict(trim_at_mm=3.0, spacing_mm=0.4, pull_mm=0.3, pull_floor_mm=1.5,
+               underlay_style="center_run", square_ends=True, inside_connectors=True)
+
+
+def _sewn(poly, fold: bool):
+    runs, _ = lettering_columns_shape(poly, "S", **SHIPPED,
+                                      **({"fold_cuts": True} if fold else {}))
+    return tuple(int(v) for v in outline_cut.sewn_knots(runs))
+
+
+@pytest.mark.parametrize("size,ch", [("80", c) for c in "abegmp"] + [("120", c) for c in "abgmp"])
+def test_the_judged_fold_look_knots_no_more_than_off(glyphs, glyphs80, size, ch):
+    """Station folds / short / crossed legs, OFF vs ON, sewn: ON never sews
+    more short or more crossed legs than OFF, nor more folds."""
+    poly = (glyphs80 if size == "80" else glyphs)[ch]
+    off, on = _sewn(poly, False), _sewn(poly, True)
+    assert on[0] <= off[0] and on[1] <= off[1] and on[2] <= off[2], (off, on)
+
+
+@pytest.mark.parametrize("ch,off_want", [("b", (3, 0, 5)), ("g", (1, 0, 6))])
+def test_the_80mm_b_and_g_rings_open_without_a_knot(glyphs80, ch, off_want):
+    """On main ON the ring pair the fold look kept read clean in construction
+    and sewed 10 (b) and 15 (g) crossed legs; the judge keeps a pair that
+    sews no fold and no knot at all."""
+    assert _sewn(glyphs80[ch], False) == off_want
+    assert _sewn(glyphs80[ch], True) == (0, 0, 0)
+
+
+def test_the_120mm_p_keeps_off_stem_cut(glyphs):
+    """OFF cuts the p's stem top off its bowl as a 2.4 W straight column --
+    a stub by STUB_WIDTHS -- and sews 0/0/4. The stub refusal sent it to a
+    ring pair that sewed 3/2/9; judged sewn, OFF's cut stands."""
+    off = outline_cut.letter_columns(glyphs["p"], mitre_ends=True)
+    assert min(outline_cut._column_len(c) for c in off.columns) < outline_cut.STUB_WIDTHS * off.W
+    assert _sewn(glyphs["p"], True) == _sewn(glyphs["p"], False) == (0, 0, 4)
+
+
+def test_the_120mm_b_is_cured_on_both_polygons(glyphs):
+    """#972: the stored 120 mm b (rounded to 1e-4 mm) and the pipeline's own
+    polygon pick different ring pairs. Judged sewn, both sew fewer folds than
+    OFF and no more knots."""
+    raw = json.loads(la.FIXTURE.with_name("lowercase_aileron_b_120_unrounded.json")
+                     .read_text(encoding="utf-8"))
+    pipeline = Polygon(raw["exterior"], raw["holes"])
+    assert 0 < pipeline.symmetric_difference(glyphs["b"]).area < 0.002
+    for poly in (glyphs["b"], pipeline):
+        off, on = _sewn(poly, False), _sewn(poly, True)
+        assert off[0] == 3 and on[0] <= 1 and on[1] <= off[1] and on[2] <= off[2], (off, on)
+
+
+def test_the_judge_leaves_every_capital_alone(glyphs80):
+    """The over-long look's judged branch reaches a capital piece that folds
+    (the B's, the G's): it may leave OFF's cut only for FEWER sewn folds, and
+    none sews fewer. All 18 capitals sew as OFF at 80 mm."""
+    caps = {ch: p for ch, p in glyphs80.items() if ch.isupper()}
+    assert len(caps) == 18
+    for ch, p in caps.items():
+        off, _ = lettering_columns_shape(p, "S", **SHIPPED)
+        on, _ = lettering_columns_shape(p, "S", fold_cuts=True, **SHIPPED)
+        assert [r.points for r in on] == [r.points for r in off], ch
 
 
 # --- end to end, default OFF ---------------------------------------------------
@@ -330,10 +405,10 @@ def word():
     kw = dict(target_width_mm=80.0, forced_class="flat")
 
     def boom(*_a, **_k):
-        raise AssertionError("_fold_refine reached on the default config")
+        raise AssertionError("fold_cuts code reached on the default config")
     with pytest.MonkeyPatch.context() as mp:      # OFF never runs the new code
-        mp.setattr(outline_cut, "_fold_refine",
-                   own_thread_only(boom, outline_cut._fold_refine))
+        for name in ("_fold_refine", "_judged_overlong", "sewn_knots"):
+            mp.setattr(outline_cut, name, own_thread_only(boom, getattr(outline_cut, name)))
         off_r, off = digitize(la.FIXTURE.with_suffix(".png"), PipelineConfig(**kw))
     _on_r, on = digitize(la.FIXTURE.with_suffix(".png"),
                          PipelineConfig(lettering_columns_fold_cuts=True, **kw))
@@ -375,3 +450,64 @@ def test_on_moves_only_lowercase_and_cuts_its_folds(word):
     assert e_ids and folds(off, e_ids)[0] >= 1 and folds(on, e_ids)[0] == 0
     assert on.stats.trims == off.stats.trims
     assert math.isclose(on.stats.stitch_count, off.stats.stitch_count, rel_tol=0.03)
+
+
+def _by_glyph(result, plan) -> dict[str, tuple[int, int, int]]:
+    """The tool's per-glyph reading: station folds / short / crossed legs."""
+    meta = json.loads(la.FIXTURE.with_suffix(".json").read_text(encoding="utf-8"))
+    to_px, _s = la.mm_to_px(result, meta["image"])
+    cfg = PipelineConfig(target_width_mm=80.0, forced_class="flat")
+    from digitizer_core.columns import is_lettering
+    ids = {r.shape_id for r in result.regions if is_lettering(r, cfg)}
+    out: dict[str, list[int]] = {}
+
+    def ch_at(x, y):
+        g = la._glyph_at(meta, *to_px(x, y))
+        return g["ch"] if g else None
+    for r in la.cross_records(plan, ids):
+        if r["station_lean"] is not None and r["station_lean"] > 45.0 and ch_at(r["x"], r["y"]):
+            out.setdefault(ch_at(r["x"], r["y"]), [0, 0, 0])[0] += 1
+    for k, recs in enumerate(la.junction_knots(plan, ids)):
+        for x, y, _l in recs:
+            if ch_at(x, y):
+                out.setdefault(ch_at(x, y), [0, 0, 0])[k + 1] += 1
+    return {ch: tuple(v) for ch, v in out.items()}
+
+
+def test_no_lowercase_glyph_knots_more_than_off_at_80mm(word):
+    """End to end at 80 mm, by the tool's own per-glyph reading: no lowercase
+    glyph sews more short or more crossed legs ON than OFF (main ON: the b 10
+    against 5, the g 15 against 10, the m 4 against 0), and the b, the g and
+    the e sew no fold."""
+    result, off, on = word
+    g_off, g_on = _by_glyph(result, off), _by_glyph(result, on)
+    for ch in set(g_off) | set(g_on):
+        if ch.islower():
+            o, n = g_off.get(ch, (0, 0, 0)), g_on.get(ch, (0, 0, 0))
+            assert n[1] <= o[1] and n[2] <= o[2], (ch, o, n)
+    assert all(g_on.get(ch, (0, 0, 0))[0] == 0 for ch in "bge")
+    assert g_off["b"][0] >= 1 and g_on.get("b", (0, 0, 0))[2] < g_off["b"][2]
+
+
+def test_sewn_knots_reads_as_the_tool(word):
+    """`outline_cut.sewn_knots` restates `tools/lowercase_angle.py`'s reading
+    so the engine need not import a tool: per lettering shape, both plans,
+    the two agree count for count."""
+    result, off, on = word
+    from digitizer_core.columns import is_lettering
+    cfg = PipelineConfig(target_width_mm=80.0, forced_class="flat")
+    ids = {r.shape_id for r in result.regions if is_lettering(r, cfg)}
+    checked = 0
+    for plan in (off, on):
+        by_shape: dict[str, list] = {}
+        for _b, r in plan.iter_runs():
+            if r.shape_id in ids:
+                by_shape.setdefault(r.shape_id, []).append(r)
+        for sid, runs in by_shape.items():
+            st = [r["station_lean"] for r in la.cross_records(plan, {sid})
+                  if r["station_lean"] is not None]
+            short, crossed = la.junction_knots(plan, {sid})
+            tool = (sum(v > 45.0 for v in st), len(short), len(crossed))
+            assert tuple(int(v) for v in outline_cut.sewn_knots(runs)) == tool, sid
+            checked += sum(tool) > 0
+    assert checked >= 10
