@@ -391,7 +391,8 @@ def test_a_mark_whose_host_sewed_nothing_sews_last():
 # hash seeds 1/2/default and four requests through one service process all
 # read `75f44f90` on Kent's box (2026-10-19). What that check cannot vary is
 # the host CPU (his is AVX2; a hosted runner may draw AVX-512), so a mismatch
-# names the host's CPU below and a red here is that evidence, not a re-pin.
+# names the host's CPU below (and junit.xml records it on every run): a red
+# here is that evidence, not a re-pin.
 FREMONT_80_OFF_COUNTS = (14824, 43)
 FREMONT_80_OFF_MD5 = "75f44f905f946705695cf6365f2a8d5f"
 STAR_MM = (1.28, -12.02)        # the star's centre, design mm, y down
@@ -431,8 +432,11 @@ def fremont_on():
     return ft.run_arm("main", 80.0, None, preflight=False, overrides={"detail_spokes": True})
 
 
-def test_fremont_80_off_is_byte_identical(fremont_off):
+def test_fremont_80_off_is_byte_identical(fremont_off, record_property):
     plan = fremont_off["plan"]
+    # In CI's junit.xml (the shard artifacts), green or red: which host read what.
+    record_property("host_cpu", _host_cpu())
+    record_property("stream_md5", _stream_md5(plan))
     assert (plan.stats.stitch_count, plan.stats.trims) == FREMONT_80_OFF_COUNTS
     assert _stream_md5(plan) == FREMONT_80_OFF_MD5, _host_cpu()
     assert not [r for r in fremont_off["result"].regions if r.meta.get("detail_spokes")]
