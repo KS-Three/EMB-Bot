@@ -2537,7 +2537,8 @@ def snap_region_edges(labels: np.ndarray, valid: np.ndarray, lab_img: np.ndarray
 
 def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
             split_tonal=False, shade_demand=False, design_ramp=None,
-            thin_population=False, snap_edges=False, keep_counters=False) -> Quant:
+            thin_population=False, snap_edges=False, keep_counters=False,
+            open_cored_counters=False) -> Quant:
     h, w = p.rgb.shape[:2]
     valid = ~p.bg_mask
     flat_rgb = p.rgb.reshape(-1, 3)
@@ -2751,7 +2752,11 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
         lab_img=true_lab if (keep_counters or (cfg.small_dot_rung
                                                and cfg.small_dot_rung_lettering)
                              or cfg.detail_spokes) else None,
-        keep_counters=keep_counters)
+        keep_counters=keep_counters,
+        # `cfg.open_cored_counters`, the caller's gate (gradient logos): the
+        # enclosed pixels left every region above, so a counter's bands are
+        # found round the hole they leave.
+        counter_core=p.enclosed_mask if open_cored_counters else None)
 
     return kept_masks_to_quant(
         p,
