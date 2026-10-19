@@ -405,16 +405,22 @@ def _host_cpu() -> str:
     mismatch on a hosted runner has to be read against."""
     import platform
     from numpy._core._multiarray_umath import __cpu_features__ as feats
-    model = platform.processor()
+    # The HARDWARE's AVX-512 flags: numpy's list below is what it ENABLED,
+    # which tests/conftest.py's pin empties of AVX-512 on any host.
+    model, hw = platform.processor(), "n/a"
     try:
         with open("/proc/cpuinfo", encoding="utf-8") as f:
-            model = next(l.split(":", 1)[1].strip() for l in f if l.startswith("model name"))
+            info = f.read()
+        model = next(l.split(":", 1)[1].strip() for l in info.splitlines()
+                     if l.startswith("model name"))
+        hw = sorted({w for w in info.split() if w.startswith("avx512")}) or "none"
     except (OSError, StopIteration):
         pass
     simd = [k for k in ("AVX2", "FMA3", "AVX512F", "AVX512_SKX", "AVX512_ICL", "AVX512_SPR")
             if feats.get(k)]
     import cv2
-    return f"host CPU {model!r}, numpy SIMD {simd}, cv2 {cv2.getCPUFeaturesLine()}"
+    return (f"host CPU {model!r}, hardware avx512 {hw}, numpy SIMD {simd}, "
+            f"cv2 {cv2.getCPUFeaturesLine()}")
 
 
 @pytest.fixture(scope="module")
