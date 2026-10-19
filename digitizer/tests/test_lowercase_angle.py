@@ -308,7 +308,8 @@ def test_off_never_enters_the_new_code(glyphs, glyphs80, monkeypatch):
     def boom(*_a, **_k):
         raise AssertionError("fold_cuts code reached with fold_cuts off")
     for name in ("_fold_refine", "_folded", "_column_len", "_max_turn", "_ring_opener",
-                 "_carried_ring", "_drop_stalls", "_judged_overlong", "sewn_knots"):
+                 "_carried_ring", "_drop_stalls", "_judged_overlong", "sewn_knots",
+                 "_uncovered"):
         monkeypatch.setattr(outline_cut, name,
                             own_thread_only(boom, getattr(outline_cut, name)))
     for ch in SHOULDERS + "e":
@@ -346,6 +347,56 @@ def test_the_judged_fold_look_knots_no_more_than_off(glyphs, glyphs80, size, ch)
     poly = (glyphs80 if size == "80" else glyphs)[ch]
     off, on = _sewn(poly, False), _sewn(poly, True)
     assert on[0] <= off[0] and on[1] <= off[1] and on[2] <= off[2], (off, on)
+
+
+def _bare(poly, runs) -> float:
+    """The glyph's area outside every triangle of consecutive satin points:
+    what the sewn satin leaves bare, read from the RUNS (not the columns)."""
+    from shapely.ops import unary_union
+    tris = []
+    for r in runs:
+        if r.kind != "satin":
+            continue
+        pts = list(r.points)
+        for i in range(len(pts) - 2):
+            t = Polygon([pts[i], pts[i + 1], pts[i + 2]])
+            if t.is_valid and t.area > 0:
+                tris.append(t)
+    return poly.difference(unary_union(tris)).area if tris else poly.area
+
+
+def test_uncovered_reads_the_area_outside_the_crosses():
+    """`_uncovered`: the piece's area outside every cross-to-cross quad of
+    its columns; a None column sews nothing, no column leaves it all bare."""
+    from digitizer_core.columns import Column
+    box = Polygon([(0, 0), (2, 0), (2, 1), (0, 1)])
+    st = [((x, 0.0), (x, 1.0)) for x in (0.0, 0.4, 0.8, 1.2, 1.6)]
+    col = Column(stations=st, piece=box, kind="straight", axis=None, width_mm=1.0)
+    assert math.isclose(outline_cut._uncovered(box, [col]), 0.4, abs_tol=1e-9)
+    full = Column(stations=st + [((2.0, 0.0), (2.0, 1.0))], piece=box, kind="straight",
+                  axis=None, width_mm=1.0)
+    assert math.isclose(outline_cut._uncovered(box, [full]), 0.0, abs_tol=1e-9)
+    assert math.isclose(outline_cut._uncovered(box, [None, full]), 0.0, abs_tol=1e-9)
+    assert math.isclose(outline_cut._uncovered(box, []), 2.0, abs_tol=1e-9)
+
+
+def test_the_80mm_b_cure_sews_its_bowl_shoulder(glyphs80, monkeypatch):
+    """The judge counts knots, and a column that sews nothing knots nothing:
+    with COVER_SLACK patched out the 80 mm b's winning ring pair sews 0/0/0
+    and leaves 1.4 W^2 of its bowl shoulder bare, against OFF's 0.5 W^2.
+    Guarded (a candidate may leave at most COVER_SLACK W^2 more of its piece
+    outside its crosses than the piece's own construction), the pair kept
+    sews 0/0/0 AND no more of the b bare than OFF (0.3 W^2)."""
+    poly = glyphs80["b"]
+    W2 = outline_cut.stroke_width(poly) ** 2
+    off_runs, _ = lettering_columns_shape(poly, "S", **SHIPPED)
+    on_runs, _ = lettering_columns_shape(poly, "S", fold_cuts=True, **SHIPPED)
+    assert tuple(int(v) for v in outline_cut.sewn_knots(on_runs)) == (0, 0, 0)
+    assert _bare(poly, on_runs) <= _bare(poly, off_runs)
+    monkeypatch.setattr(outline_cut, "COVER_SLACK", 1e9)
+    loose_runs, _ = lettering_columns_shape(poly, "S", fold_cuts=True, **SHIPPED)
+    assert tuple(int(v) for v in outline_cut.sewn_knots(loose_runs)) == (0, 0, 0)
+    assert _bare(poly, loose_runs) > _bare(poly, off_runs) + 0.5 * W2
 
 
 @pytest.mark.parametrize("ch,off_want", [("b", (3, 0, 5)), ("g", (1, 0, 6))])
@@ -407,7 +458,7 @@ def word():
     def boom(*_a, **_k):
         raise AssertionError("fold_cuts code reached on the default config")
     with pytest.MonkeyPatch.context() as mp:      # OFF never runs the new code
-        for name in ("_fold_refine", "_judged_overlong", "sewn_knots"):
+        for name in ("_fold_refine", "_judged_overlong", "sewn_knots", "_uncovered"):
             mp.setattr(outline_cut, name, own_thread_only(boom, getattr(outline_cut, name)))
         off_r, off = digitize(la.FIXTURE.with_suffix(".png"), PipelineConfig(**kw))
     _on_r, on = digitize(la.FIXTURE.with_suffix(".png"),
