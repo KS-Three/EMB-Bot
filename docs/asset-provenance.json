@@ -871,6 +871,12 @@
    "basis": "digitizer/tools/lowercase_angle.py; PR body of claude/fold-cuts-g-ub"
   },
   {
+   "prefix": "docs/renders/fold-cuts-p-crossed/",
+   "status": "derived-render",
+   "source": "Rendered by digitizer/tools/lowercase_angle.py render_pair (and _shots/_write_pairs for the 50 mm cell) from digitizer/testdata/synthetic/lowercase_aileron.png (synthetic, Pillow's bundled CC0 Aileron glyphs); thread renders of the lowercase line and stitch-path zooms of p, b, g, m, u, e, a (80 and 120 mm) and G (50 mm, small_text_true_size OFF), OFF above ON, no client art",
+   "basis": "digitizer/tools/lowercase_angle.py; docs/renders/fold-cuts-p-crossed/README.md; PR body of claude/dazzling-bouman-d1b411 (resumes claude/fold-cuts-p-crossed)"
+  },
+  {
    "prefix": "docs/renders/preflight-glyph-metric/",
    "status": "derived-render",
    "source": "Thread render (digitizer_core.stitchviz) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp at 81 mm, Hat (tools/fremont_triage.py --arm main), with the glyph boxes cfg.preflight_glyph_metric read drawn over it; no artwork pixels, no new client art",
