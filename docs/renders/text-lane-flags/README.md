@@ -1,15 +1,20 @@
 # The text lane's two flags, OFF beside ON (2026-10-20)
 
-MASTER_SCOPE 25 (`dedupeHoles`) and 40 (`underlayDirection`) each ended with
-"lettering has no flag yet". Both now reach `buildLetteringDesign` under the
-shape lane's names and values, and BOTH default OFF in this lane (the shape
-lane's `underlayDirection` has been ON since 2026-10-11; this one is a new
-flag and ships OFF, gate 3). Drawn from the stream the builder hands the
+MASTER_SCOPE 25 (`dedupeHoles`) says lettering "has its own and no flag
+yet"; 40 (`underlayDirection`) says `buildLetteringDesign` "is still not
+covered". Both now reach `buildLetteringDesign` under the shape lane's names
+and values, and BOTH default OFF in this lane (the shape lane's
+`underlayDirection` has been ON since 2026-10-11; this one is a new flag and
+ships OFF — COOKBOOK's additive-change rule, a new option defaults to today's
+output, and a flip is Kent's). Drawn from the stream the builder hands the
 writers by `node tools/text-lane-flags-sheet.mjs`; `counts.json` holds every
-number below. Three library fonts — `medium_font` (the Studio's default),
-`mai_en_fleur` (the most doubled holes of the 85 at this size), `pixel10` —
-the word FRITSCH at 40 and 100 mm wide on a 5 x 2.25 in garment, the underlay
-ladder deciding the underlay (centre-run at these caps). Not sewn.
+number in the tables, `census.json` (`--census`) the library-wide ones. Three
+library fonts — `medium_font` (the Studio's default), `mai_en_fleur` (the most
+doubled holes among the satin fonts at this size; `fold_inkstitch`, a bean
+font, has more, below), `pixel10` — the word FRITSCH at 40 and 100 mm wide on
+a 5 x 2.25 in garment, the underlay ladder deciding the underlay (the centre
+run at 40 mm, caps 5 to 8 mm; the edge loop at 100 mm, caps over 10 mm). Not
+sewn.
 
 ## What is in what ships (OFF)
 
@@ -22,9 +27,14 @@ the satin's start (`underlay`), a needle-down connector's last step
 adds a few (`satin`). A cross-stitch font (`noble`, not pictured) lays its
 leg ends twice the same way: 17 on FRITSCH, in no span.
 
-Across the 85 fonts, two words, two sizes: 4,811 such records on 223 of 340
-designs (`node tools/text-lane-flags-sheet.mjs` over three fonts; the sweep
-is the scratch script of the PR, 2026-10-20).
+Across the 85 fonts, two words (FRITSCH, Stitches), two sizes (40, 100 mm):
+4,811 such records on 223 of 332 designs (`node
+tools/text-lane-flags-sheet.mjs --census`, which writes `census.json`; 8 of the
+340 pairings lay nothing, the font lacking the word's glyphs). The
+most are in `fold_inkstitch`, a bean font whose run turns collapse onto one
+point: 257 of 1,491 records on FRITSCH at 40 mm, 338 of 1,665 (20%) on
+Stitches at 40 mm. Among the satin fonts mai_en_fleur's 146 leads
+(initials_XL 139, apesplit 95).
 
 ## `dedupeHoles` — OFF on the left, ON on the right
 
@@ -40,10 +50,15 @@ point, one straight after the other). Green ring: the same hole, laid once.
 | pixel10 | 40 mm | 8.39 mm | `fd08f0d56f282821dfa08bc76303eae7` | 3785 | 3754 | 18 (satin 10, underlay 7, travel 1) | `210ebcfe8205a4f200c9a6fe85f1fb8c` | 3767 | 0 |
 | pixel10 | 100 mm | 20.98 mm | `9152f6f964eba544506510c004b8f993` | 6879 | 6843 | 0 | same | 6879 | 0 |
 
-The OFF md5 is main's at `7220f3e` (byte-identical on all 340 library designs
+The OFF md5 is main's at `7220f3e` (byte-identical on all 332 library designs
 with the flag absent or `false`). ON is OFF's stream less exactly those
-records: jumps, trims, colour changes, the spans' kinds and order, width and
-height are unchanged (`test/text-lane-flags.test.js`). The rule is the shape
+records: jumps, trims, colour changes, width and height are unchanged, and
+each span is the OFF span less those records — except a run EVERY record of
+which sits on the record before it, which lays nothing and so has no span: a
+two-point needle-down walk whose both points round onto the stitch it leaves
+from. No pinned font has one; apesplit at 40 mm has 3 (FRITSCH, 284 spans to
+281) and 8 (Stitches, 324 to 316), all `travel`
+(`test/text-lane-flags.test.js`). The rule is the shape
 lane's, word for word: only a stitch whose record comes straight after a
 stitch on its point is left out; after a jump, a trim or a colour change the
 stitch is laid, whatever point it is on (a cut is three jump records to a
@@ -96,7 +111,7 @@ Two things the measurement turned up:
   glyph begins where the satin was going to end, so the connector would be
   laid back across the column.
 - **What ON does turn: closed rings and dots.** Of 11,516 columns across the
-  85 fonts, two words, two sizes, 24 turn, in 13 of 340 designs: 17 rings
+  85 fonts, two words, two sizes, 24 turn, in 13 of 332 designs: 17 rings
   (an O's two crosses meet, so its two ends are 0 to 0.3 mm apart and either
   is "nearer") and 7 short columns of 6 to 28 stitches whose ends are 0.7 to
   1.9 mm apart. No travel is added (the connectors are the same length), the
@@ -115,17 +130,21 @@ Two things the measurement turned up:
 1. **`dedupeHoles` for text.** The flip is `dedupeHoles: true` at
    `app/src/lib/generate.js`'s one text call site and a re-pin of the six
    md5s above (ON's are in the table). It removes 4,811 records from 223 of
-   340 library designs — up to 7% of a fine script's records at 40 mm
-   (mai_en_fleur: 2039 to 1893) — and nothing else. It is the same choice as
+   332 library designs — up to a fifth of a design's records (fold_inkstitch,
+   a bean font, Stitches at 40 mm: 1,665 to 1,327; the satin case pictured,
+   mai_en_fleur FRITSCH at 40 mm, 2,039 to 1,893, 7%) — and nothing else
+   but the spans of runs that laid nothing. It is the same choice as
    "Waiting on Kent" 25 for the shape lanes, on the same rule; it can be
    flipped with that one or alone. Not sewn: what a machine does with one
    zero-length record is machine-dependent
    (`docs/sub-unit-stitches-2026-10-03.md`).
 2. **`underlayDirection` for text.** ON changes nothing a column can feel on
    these fonts and turns 24 rings and dots on the library. Flip it for one
-   set of flags across both lanes (byte-identical on 327 of 340 library
+   set of flags across both lanes (byte-identical on 319 of 332 library
    designs, the other 13 as above), or leave it OFF and read item 40's
    "lettering not covered" as "lettering never had it".
 
-Regenerate: `node tools/text-lane-flags-sheet.mjs` (about 20 s). The pins:
-`node --test test/text-lane-flags.test.js`.
+Regenerate: `node tools/text-lane-flags-sheet.mjs` (about 20 s) for the
+pictures and `counts.json`; `node tools/text-lane-flags-sheet.mjs --census`
+(about a minute) for `census.json`, the library-wide numbers quoted above.
+The pins: `node --test test/text-lane-flags.test.js`.

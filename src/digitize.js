@@ -1908,8 +1908,10 @@
     // run before it ended on — an underlay's closed walk returning to the
     // satin's start, a glyph part beginning where the last one stopped — and
     // the cross of a column narrowed to nothing. Measured on "FRITSCH" at
-    // 40 mm with the ladder's underlay: 146 records in mai_en_fleur, 31 in
-    // montecarlo, 18 in pixel10, 5 in medium_font
+    // 40 mm with the ladder's underlay: 257 records in fold_inkstitch (a
+    // bean font, whose run turns collapse onto one point — the library's
+    // most, a fifth of its records on "Stitches"), 146 in mai_en_fleur, 31
+    // in montecarlo, 18 in pixel10, 5 in medium_font
     // (docs/renders/text-lane-flags/README.md). With the flag the first is
     // laid and the second is not. ONLY a stitch whose record comes straight
     // after a stitch on its point is left out: after a jump, a trim or a
@@ -1933,13 +1935,15 @@
     // 85 fonts, two words, two sizes, it turns 24, every one a closed ring
     // (an O's two crosses meet) or a dot whose two ends are under 2 mm
     // apart — no travel added, the thread moved by under 6 mm on a design
-    // of metres, 327 of 340 streams byte-identical. A column that starts at
+    // of metres, 319 of 332 streams byte-identical. A column that starts at
     // the wrong end would also cost what the turn saves, since the next part
     // of the glyph begins where the satin was going to end. It is read so
     // the two lanes take one set of flags. Asked only of a satin run that
     // follows its own underlay with the needle down, which is where the
-    // shape lane asks it (endOfRuns).
-    const underlayDirection = o.underlayDirection === true;
+    // shape lane asks it (endOfRuns). Read as `dedupeHoles` is, so the two
+    // lanes' flags take the same values (the shape lane's `!== false` is its
+    // ON default; this lane's default is OFF, so absent and `false` are one).
+    const underlayDirection = !!o.underlayDirection;
     let prevRun = null;
     // RUN SPANS (`design.runs`) — what each stitch IS, for the renderer.
     //
@@ -1969,7 +1973,12 @@
     // runsOrdered is lay.runs verbatim except on cap garments (see capMode above).
     // Every stitch record enters here. With `dedupeHoles` a stitch on the
     // point of the stitch that is the record before it is not laid; any other
-    // record before it (a jump, a trim, a colour change) and it is.
+    // record before it (a jump, a trim, a colour change) and it is. A run
+    // EVERY record of which sits on the record before it lays nothing, and
+    // pushSpan then gives it no span: a two-point needle-down walk whose both
+    // points round onto the stitch it leaves from (apesplit at 40 mm: 3 on
+    // FRITSCH, 8 on Stitches). The shape lane never meets this, since pushRun
+    // opens every run with a jump; here a span can go with its stitches.
     const stitchAt = (d) => {
       const p = stitches[stitches.length - 1];
       if (dedupeHoles && p && p.type === "stitch" && p.x === d.x && p.y === d.y) return;
@@ -1994,9 +2003,15 @@
       // `underlayDirection`: a satin column entered needle-down from its own
       // underlay starts at the end nearer the underlay's last point (the
       // thread's position, `lastPt`, in the same px frame as `pts`). The
-      // column's ends are its first and last crosses' midpoints. startNear
-      // returns `pts` itself when the column already starts there, which on
-      // the library is every time; `run.pts` is never changed in place.
+      // column's ends are its first and last crosses' midpoints: emitZigzag
+      // lays each station as its two rail points, so (0, 1) and (n-2, n-1)
+      // are the end stations. Under `splitSatin` (off by default) a cross
+      // wider than its split length carries split points, so pts[1] is then
+      // the first of those and the "end" sits off-centre by up to half the
+      // width; it matters only on a column wider than it is long with that
+      // flag on. startNear returns `pts` itself when the column already
+      // starts at the near end, which on the library is all but 24 rings
+      // and dots; `run.pts` is never changed in place.
       if (underlayDirection && run.kind === "satin" && lastPt && !(run.jump || forceJumpNext) &&
           prevRun && prevRun.kind === "underlay" && prevRun.charIdx === run.charIdx) {
         const n = pts.length;
