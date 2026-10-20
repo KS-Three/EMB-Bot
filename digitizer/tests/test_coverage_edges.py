@@ -19,7 +19,7 @@ from shapely.geometry import Point, Polygon
 from digitizer_core import PipelineConfig
 from digitizer_core.pipeline import build_generation
 
-from .conftest import TESTDATA
+from .conftest import PRE_FLIP, TESTDATA
 
 S = 16          # supersampling the truth is drawn at
 FRAME = 120     # source pixels
@@ -233,14 +233,19 @@ def test_becker_loses_its_reversals_and_keeps_its_ink():
     regions; from the alpha contour, 7 — the letters' own tips. Same
     regions, the same ink to within the half-pixel the mask sat inside."""
     art = TESTDATA / "becker_marine_logo.png"
-    p, off = _ink(art)
-    _p, on = _ink(art, coverage_edges=True)
+    # The 37 were counted on the engine before `subpixel_corner_runs` (ON
+    # since 2026-10-20, Kent's ruling), which fixes the same reversals its
+    # own way (9 left here): this prices coverage_edges against the engine it
+    # was measured on (`PRE_FLIP`).
+    pre = {"subpixel_corner_runs": PRE_FLIP["subpixel_corner_runs"]}
+    p, off = _ink(art, **pre)
+    _p, on = _ink(art, coverage_edges=True, **pre)
     assert p.native_alpha is not None and p.upscale[0] > 1.0
     assert len(on) == len(off)
     assert all(r.meta.get("coverage_edges") for r in on)
     # The enclosed letter bodies are the same contour from the other side.
     holes = [r for r in build_generation(str(art), PipelineConfig(
-        target_width_mm=WIDTH_MM, coverage_edges=True)).regions if r.meta.get("enclosed_background")]
+        target_width_mm=WIDTH_MM, coverage_edges=True, **pre)).regions if r.meta.get("enclosed_background")]
     assert holes and all(r.meta.get("coverage_edges") for r in holes)
     spikes_off, spikes_on = (sum(_spikes(r.polygon) for r in rs) for rs in (off, on))
     assert spikes_off > 25, spikes_off                       # what it is for

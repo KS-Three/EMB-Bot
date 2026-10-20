@@ -540,4 +540,10 @@ PRE_FLIP["bean_letter_bay_hold"] = None
 # engine: the detail is absorbed and painted over. The tests ABOUT it are in
 # `tests/test_detail_spokes.py`.
 PRE_FLIP["detail_spokes"] = False
+# Native-read corner runs (Kent's ruling 2026-10-20, MASTER_SCOPE item 41):
+# one side-line fit per corner run, an unread vertex takes its read
+# neighbours' offset, a vertex landing behind its predecessor drops. False is
+# the pre-flip engine: Becker's outline at 1.8 px/mm carries 7.1 reversals
+# per 100 mm. The tests ABOUT it are in `tests/test_subpixel_corner_runs.py`.
+PRE_FLIP["subpixel_corner_runs"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

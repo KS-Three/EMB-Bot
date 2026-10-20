@@ -1,8 +1,9 @@
 """`cfg.subpixel_corner_runs`: the native edge read's corner placement
-repaired where the Becker outline reversals start, built 2026-10-11,
-default OFF.
+repaired where the Becker outline reversals start, built 2026-10-11 OFF,
+flipped ON by default 2026-10-20 (Kent's ruling, MASTER_SCOPE item 41).
 
-The contracts. OFF is today's pipeline byte for byte. ON, Becker at its own
+The contracts. The default is the ON engine byte for byte, and OFF stays
+reachable as the pre-flip polygon. ON, Becker at its own
 1.8 px/mm loses its reversals (vertices turning back past 120 degrees)
 WITHOUT the 0.68 mm source-pixel staircase coming back (right-angle turns
 must not rise) — the reversal count alone is blind to a stair, which turns
@@ -22,7 +23,7 @@ from shapely.geometry import Polygon
 from digitizer_core import PipelineConfig, pipeline
 from digitizer_core.pipeline import build_generation
 from digitizer_core.subpixel import _fit_corner_runs, _inherit_offsets, drop_folds
-from tests.conftest import own_thread_only
+from tests.conftest import PRE_FLIP, own_thread_only
 
 BECKER = Path(__file__).resolve().parents[1] / "testdata" / "becker_marine_logo.png"
 
@@ -64,25 +65,27 @@ def _becker(monkeypatch, **kw):
     return gen.p, bare["polys"], [r.polygon for r in gen.regions]
 
 
-def test_the_default_is_off():
-    assert PipelineConfig().subpixel_corner_runs is False
+def test_the_default_is_on():
+    """Kent's ruling 2026-10-20; PRE_FLIP holds the pre-flip engine."""
+    assert PipelineConfig().subpixel_corner_runs is True
+    assert PRE_FLIP["subpixel_corner_runs"] is False
 
 
-def test_off_is_todays_polygon_byte_for_byte(monkeypatch):
+def test_the_default_is_the_on_polygon_byte_for_byte(monkeypatch):
     _p, bare, default = _becker(monkeypatch)
-    _p, bare_x, explicit = _becker(monkeypatch, subpixel_corner_runs=False)
+    _p, bare_x, explicit = _becker(monkeypatch, subpixel_corner_runs=True)
     assert [g.wkt for g in bare] == [g.wkt for g in bare_x]
     assert [g.wkt for g in default] == [g.wkt for g in explicit]
 
 
 def test_becker_reversals_go_and_the_staircase_stays_gone(monkeypatch):
-    p, today, _ = _becker(monkeypatch)
+    p, pre, _ = _becker(monkeypatch, subpixel_corner_runs=False)
     assert p.upscale[0] > 1.0 and p.input_px_per_mm == pytest.approx(1.81, abs=0.01)
-    _p, fixed, _ = _becker(monkeypatch, subpixel_corner_runs=True)
-    rev_today, rev_fixed = _turns(today, 120, 180), _turns(fixed, 120, 180)
-    assert rev_today >= 5.0                      # the defect is there to fix (7.1 measured)
+    _p, fixed, _ = _becker(monkeypatch)
+    rev_pre, rev_fixed = _turns(pre, 120, 180), _turns(fixed, 120, 180)
+    assert rev_pre >= 5.0                      # the defect is there to fix (7.1 measured)
     assert rev_fixed < 1.0                       # 0.92 measured
-    assert _turns(fixed, 60, 120) <= _turns(today, 60, 120)     # 26.5 -> 20.1 measured
+    assert _turns(fixed, 60, 120) <= _turns(pre, 60, 120)     # 26.5 -> 20.1 measured
 
 
 def _rect_cutout(tmp_path: Path) -> Path:
@@ -99,13 +102,13 @@ def _rect_cutout(tmp_path: Path) -> Path:
 
 @pytest.mark.parametrize("ppm", [1.8, 5.0])
 def test_a_clean_rectangle_comes_out_a_clean_quadrilateral(tmp_path, ppm):
-    """Square corners, no hook at any of them, the same size as today's.
-    (Today's at 1.8 px/mm carries a fold at every corner, 16 vertices;
+    """Square corners, no hook at any of them, the same size as the
+    pre-flip engine's. (The pre-flip one at 1.8 px/mm carries a fold at every corner, 16 vertices;
     measured 2026-10-11.)"""
     art = _rect_cutout(tmp_path)
     width = float(np.floor(60.0 / ppm * 10.0) / 10.0)
-    on = build_generation(str(art), PipelineConfig(target_width_mm=width))
-    fixed = build_generation(str(art), PipelineConfig(target_width_mm=width, subpixel_corner_runs=True))
+    on = build_generation(str(art), PipelineConfig(target_width_mm=width, subpixel_corner_runs=False))
+    fixed = build_generation(str(art), PipelineConfig(target_width_mm=width))
     assert on.p.upscale[0] > 1.0
     a = [r.polygon for r in on.regions if not r.meta.get("enclosed_background")]
     b = [r.polygon for r in fixed.regions if not r.meta.get("enclosed_background")]
