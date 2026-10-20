@@ -61,6 +61,7 @@ OUT = Path(os.environ.get("PRO_PARITY_OUT", "pro_parity_out"))
 # Every flag that is ON by default and landed from 2026-09-01, with the value
 # that turns it off. Dates are the config.py line's, by `git log -S`.
 FLAGS: dict[str, object] = {
+    "detail_spoke_scale": None,             # 2026-10-20, Kent: "Star is too big" (half)
     "subpixel_corner_runs": False,          # 2026-10-20, Kent's flip (item 41)
     "lettering_columns_small_stem": False,  # 2026-10-20, Kent's flip (item 52)
     "small_dot_rung": False,                # 2026-10-20, Kent's flip (item 52)

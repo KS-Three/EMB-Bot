@@ -9090,3 +9090,39 @@ deselected enthusiast goldens were the first candidates and are NOT this: with
 IPP capped at Kent's path on the AVX-512 Xeon, a full run still failed exactly
 those two (measured 2026-10-20, PR #1006), so their key is engine-stale, as the
 workflow says.
+
+## Bean letters read wiggly because of the bead, not the path: smoothing the spine moved nothing (2026-10-20)
+
+**What happened.** Kent, Fremont 81 mm Hat: *"1 is wiggly, it should be
+straighter"*, *"Eat Stay play are wiggly"*. Those letters sew as bean letters
+(3-pass runs along the source ink's skeleton, 0.45 mm stations). The needle
+points sit 0.03-0.16 mm from the ink's centre line, under one thread width, so
+the path was never off the art.
+
+**What was disproved.** Smoothing each corner-to-corner piece of the spine
+(Gaussian, ends and corners pinned) before stationing: at σ 0.08 and 0.12 mm
+the render was indistinguishable from OFF and the tagline's median
+second difference of the stations moved 0.125 → 0.111 mm. Not merged.
+*(measured 2026-10-20 — this lane's scratch renders, not committed)*
+
+**What did move it.** A longer stitch on STRAIGHT stretches only
+(`cfg.bean_letter_straight_mm`, built OFF; the coarsest even pitch up to the
+knob whose chords stay within `STRAIGHT_SAG_MM` 0.08 of the spine): at 0.9 the
+T, Y and 1 stems sew as one or two stitches instead of a chain of beads, the
+curves keep 0.45, the needle stays on the ink (max 0.045 mm off), Fremont 81 mm
+Hat 15,359 → 15,221 stitches, trims unchanged at 42.
+
+**What to DO.** When lettering "wiggles", draw the needle path over the source
+ink before touching the path: if it is on the centre line, the look is the
+construction (bead length), not the geometry.
+
+## Kent's spoked star: half the pro's size (2026-10-20)
+
+Kent, Fremont 81 mm Hat: *"Star is too big"* — the pro-sized mark
+(`detail_spokes`, item 62) spans ~2.5 mm over a ~0.8 mm art star. Offered
+half, two-thirds, art size or the pro's; he picked **half**:
+`cfg.detail_spoke_scale` 0.5 by default (spokes 0.63 mm at 81 mm, ~1.3 mm
+across), None is the pro's size (`PRE_FLIP`). Unsewn, a gate-1 candidate:
+whether a 0.63 mm spoke still reads as a star, not a white dot, is the
+sew-out's question. A ruling of taste over the pro's file, so do not "restore"
+the pro's size on parity grounds.

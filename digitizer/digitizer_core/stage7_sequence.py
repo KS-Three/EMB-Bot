@@ -1881,14 +1881,16 @@ def _spoke_host(mark: PlannedRegion, planned: list[PlannedRegion]) -> PlannedReg
     return max(named or hosts, key=lambda p: (p.sew_index, p.region.area_mm2))
 
 
-def spoke_floor_mm(design_width_mm: float | None) -> float:
+def spoke_floor_mm(design_width_mm: float | None, scale: float | None = None) -> float:
     """The spoke floor for a design `design_width_mm` wide:
     `machine.DETAIL_SPOKE_MIN_MM` scaled from the pro's Hat file's width
-    (`machine.DETAIL_SPOKE_REF_WIDTH_MM`) -- 1.45 mm at 92.6, 1.25 at 80. An
-    unknown or empty width keeps the pro's own number."""
+    (`machine.DETAIL_SPOKE_REF_WIDTH_MM`) -- 1.45 mm at 92.6, 1.25 at 80 --
+    times `scale` (`cfg.detail_spoke_scale`; None is 1.0, the pro's size). An
+    unknown or empty width keeps the pro's own number, times `scale`."""
+    k = 1.0 if scale is None else float(scale)
     if not design_width_mm or design_width_mm <= 0:
-        return machine.DETAIL_SPOKE_MIN_MM
-    return machine.DETAIL_SPOKE_MIN_MM * float(design_width_mm) / machine.DETAIL_SPOKE_REF_WIDTH_MM
+        return machine.DETAIL_SPOKE_MIN_MM * k
+    return machine.DETAIL_SPOKE_MIN_MM * float(design_width_mm) / machine.DETAIL_SPOKE_REF_WIDTH_MM * k
 
 
 def _place_spoke_marks(marks: list[PlannedRegion], planned: list[PlannedRegion],
@@ -1898,7 +1900,7 @@ def _place_spoke_marks(marks: list[PlannedRegion], planned: list[PlannedRegion],
 
     The mark's run (`detail_spokes.spoke_runs`: centre -> tip -> centre per
     tip, in the mark's own thread, each spoke at least
-    `spoke_floor_mm(design_width_mm)`) goes into the first block of that
+    `spoke_floor_mm(design_width_mm, cfg.detail_spoke_scale)`) goes into the first block of that
     thread that follows the host's block -- Fremont's white edge cap, so the
     mark costs no colour change there -- or, when none follows, into a block
     of its own inserted straight after the host's: the colour revisit the
@@ -1906,7 +1908,7 @@ def _place_spoke_marks(marks: list[PlannedRegion], planned: list[PlannedRegion],
     of the design. Mutates `blocks`; returns the warning's numbers.
     """
     chart = chart_for(cfg)
-    floor = spoke_floor_mm(design_width_mm)
+    floor = spoke_floor_mm(design_width_mm, cfg.detail_spoke_scale)
     count = spokes = colour_changes = 0
     ids: list[str] = []
     for mark in marks:
@@ -2546,6 +2548,8 @@ def sequence(
                                            min_arm_mm=cfg.bean_letter_min_arm_mm,
                                            corner_deg=cfg.bean_letter_corner_deg,
                                            passes=cfg.bean_letter_passes,
+                                           **({"straight_mm": cfg.bean_letter_straight_mm}
+                                              if cfg.bean_letter_straight_mm else {}),
                                            **({"bay_hold_mm": cfg.bean_letter_bay_hold,
                                                "stroke_mm": p.region.meta.get("ink_stroke_mm")}
                                               if cfg.bean_letter_bay_hold else {}))
