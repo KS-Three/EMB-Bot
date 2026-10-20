@@ -943,6 +943,12 @@
    "basis": "PR body of claude/dot-rung-lettering-scope; source fixtures carry their own entries above"
   },
   {
+   "prefix": "docs/renders/small-stem-dot/",
+   "status": "derived-render",
+   "source": "Rendered by digitizer/tools/small_stem_dot_renders.py: thread renders (digitizer_core.stitchviz via tools/fremont_triage's panel helpers) of EMB-Bot's own digitizes, cfg.lettering_columns_small_stem and cfg.small_dot_rung OFF beside ON (each alone, both, and both with cfg.small_dot_rung_lettering), of digitizer/testdata/synthetic/lowercase_aileron.png at 50 and 80 mm, of the word \"hijlij\" drawn at runtime in Pillow's bundled CC0 Aileron, of digitizer/testdata/photo/logo_hotel_fremont.webp on a Hat at 50 and 80 mm (the Studio's request) and as the small-print tagline crop at 2.5, 3 and 4 mm caps, and of digitizer/testdata/becker_marine_logo.png at 50 and 80 mm; the artwork panels are crops of those committed fixtures; no new artwork, no new client art",
+   "basis": "PR body of claude/dreamy-fermat-4x3aj9 (MASTER_SCOPE item 52 renders); source fixtures carry their own entries above"
+  },
+  {
    "prefix": "docs/renders/bean-holds-on/",
    "status": "derived-render",
    "source": "Thread renders (digitizer_core.stitchviz via tools/fremont_triage's panel helpers) of EMB-Bot's own digitize of digitizer/testdata/photo/logo_hotel_fremont.webp on a Hat at 80, 81 and 92.5 mm, the two bean-letter holds OFF beside ON (cfg.bean_letter_counter_hold_mm 0.25, cfg.bean_letter_bay_hold 0.2); no new artwork, no new client art",
