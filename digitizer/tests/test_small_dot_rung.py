@@ -1,4 +1,5 @@
-"""`cfg.small_dot_rung` (built OFF 2026-10-14): a closed part under the run
+"""`cfg.small_dot_rung` (built OFF 2026-10-14, ON with its lettering scope
+since 2026-10-20, Kent's flip): a closed part under the run
 tier's loop floor -- the dot of a small i or j -- is admitted and sewn as a
 tack ring instead of being dropped. `machine.RUN_MIN_LOOP_MM` is untouched
 (ROADMAP gate 1); the rung's numbers are candidates. `tools/small_dot_rung.py`
@@ -28,8 +29,14 @@ from digitizer_core.threads import rgb_to_lab
 from .conftest import TESTDATA
 
 
-def test_flag_defaults_off_and_the_floor_is_untouched():
-    assert PipelineConfig().small_dot_rung is False
+def test_flag_defaults_on_and_the_floor_is_untouched():
+    """ON since 2026-10-20 (Kent, MASTER_SCOPE item 52; PR #991's renders),
+    scoped to lettering, so `PRE_FLIP` pins both False; the loop floor is a
+    gate-1 cloth value and did not move with the flip."""
+    from .conftest import PRE_FLIP
+    cfg = PipelineConfig()
+    assert cfg.small_dot_rung is True and cfg.small_dot_rung_lettering is True
+    assert PRE_FLIP["small_dot_rung"] is False and PRE_FLIP["small_dot_rung_lettering"] is False
     assert machine.RUN_MIN_LOOP_MM == 2.2
     assert machine.DOT_RUNG_MIN_LOOP_MM == pytest.approx(3 * machine.DOT_RUNG_STITCH_MM)
     assert machine.DOT_RUNG_MIN_LOOP_MM < machine.RUN_MIN_LOOP_MM
@@ -109,7 +116,11 @@ def _scene():
 
 def _kept(on: bool):
     regions = _scene()
-    kept, _w = resolve_small_regions(regions, PipelineConfig(small_dot_rung=on), PX,
+    # The unscoped rung: this scene's dot has no stem, which the lettering
+    # scope (ON by default since 2026-10-20) would refuse; the scope's own
+    # stage-3 tests are in `tests/test_dot_rung_lettering.py`.
+    cfg = PipelineConfig(small_dot_rung=on, small_dot_rung_lettering=False)
+    kept, _w = resolve_small_regions(regions, cfg, PX,
                                      layer_lab=rgb_to_lab(RGB))
     return regions, kept
 
@@ -178,7 +189,8 @@ def test_goldens_are_byte_identical_either_way(fixture, flag):
     assert _md5(golden["stitch_coords"]) == GOLDEN_MD5[fixture]
     _result, plan = digitize(TESTDATA / fixture,
                              PipelineConfig(target_width_mm=80.0, edge_cap="none",
-                                            small_dot_rung=flag))
+                                            small_dot_rung=flag,
+                                            small_dot_rung_lettering=False))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
     assert _md5(coords) == GOLDEN_MD5[fixture]

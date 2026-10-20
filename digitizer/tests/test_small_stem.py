@@ -9,7 +9,7 @@ width is 2.771 mm^2 and sews satin. Not dropped, not merged with its dot (the
 dot is a separate 0.446 mm^2 region that stage 3's run-tier loop floor drops
 at 80 mm).
 
-`cfg.lettering_columns_small_stem` (default OFF) lets a lettering stem under
+`cfg.lettering_columns_small_stem` (default ON since 2026-10-20, Kent's flip) lets a lettering stem under
 the floor into the lane. These tests pin:
 
 - the trace: the stem is a lettering region under the floor, sewn as run
@@ -79,10 +79,14 @@ def run(tmp_path_factory, word, small_stem, guard=False):
     path = draw(text, tmp_path_factory.mktemp(f"w{text}{int(small_stem)}") / "w.png")
     # The column-end flags flipped ON 2026-10-13 (Kent); the OFF pins below
     # were taken without them, so this file keeps them False (conftest.PRE_FLIP).
+    # So is the dot rung (ON 2026-10-20), which sews the i dot beside the
+    # stem; the stem flag itself is ON by default since then, so every arm
+    # sets it explicitly.
     cfg = PipelineConfig(target_width_mm=width, forced_class="flat",
                          lettering_columns_square_ends=False,
                          lettering_columns_inside_connectors=False,
-                         **({"lettering_columns_small_stem": True} if small_stem else {}))
+                         small_dot_rung=False,
+                         lettering_columns_small_stem=small_stem)
     if not guard:
         return digitize(path, cfg), cfg
 
@@ -144,8 +148,13 @@ def test_a_stem_is_thin_and_long_a_dot_or_blob_is_not():
     assert columns.STEM_MIN_ASPECT == 6.0
 
 
-def test_the_flag_is_off_by_default():
-    assert PipelineConfig().lettering_columns_small_stem is False
+def test_the_flag_is_on_by_default():
+    """ON since 2026-10-20 (Kent, MASTER_SCOPE item 52; PR #991: one shape
+    moved, Fremont, the tagline cells and Becker byte-identical), so
+    `PRE_FLIP` pins it False."""
+    from tests.conftest import PRE_FLIP
+    assert PipelineConfig().lettering_columns_small_stem is True
+    assert PRE_FLIP["lettering_columns_small_stem"] is False
 
 
 # --- the trace (measured, no flag) ----------------------------------------

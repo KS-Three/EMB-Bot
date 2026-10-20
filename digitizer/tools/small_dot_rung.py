@@ -30,7 +30,7 @@ Where the parts under the loop floor are lost, traced on origin/main:
     python -m tools.small_dot_rung render DIR            # i/j dot stitch paths, OFF / ON / scope
     python -m tools.small_dot_rung render-photo DIR [NAME]   # a photo's stitch path, the three arms
 
-Three arms throughout: OFF (shipped), ON (`small_dot_rung`), and scope (the
+Three arms throughout: OFF (pre-flip), ON (`small_dot_rung`), and scope (shipped since 2026-10-20; the
 rung with `small_dot_rung_lettering`, 2026-10-15: a part is admitted only
 over a same-colour stem, which a photo speck does not have). Measured
 2026-10-15: the scope keeps every synthetic i/j dot ON keeps (byte-identical
@@ -65,7 +65,11 @@ LOGOS = ("becker_marine_logo.png", "photo/logo_bridge_bar.jpg", "photo/enthusias
 
 
 # The three arms: overrides on the shipped config.
-ARMS = {"off": {}, "on": {"small_dot_rung": True},
+# Every arm explicit: the rung and its scope are ON by default since
+# 2026-10-20 (Kent's flip), so "off" pins the pre-flip engine and "on" is
+# the unscoped rung.
+ARMS = {"off": {"small_dot_rung": False, "small_dot_rung_lettering": False},
+        "on": {"small_dot_rung": True, "small_dot_rung_lettering": False},
         "scope": {"small_dot_rung": True, "small_dot_rung_lettering": True}}
 
 
@@ -314,7 +318,7 @@ def _stack(panes, axis: int = 0):
     return np.concatenate(out, axis=axis)
 
 
-ARM_LABEL = {"off": "OFF (shipped)", "on": "ON  small_dot_rung",
+ARM_LABEL = {"off": "OFF (pre-flip)", "on": "ON  small_dot_rung",
              "scope": "ON + small_dot_rung_lettering"}
 INK = {"satin": (60, 60, 60), "underlay": (215, 160, 120), "travel": (120, 190, 120),
        "run": (40, 40, 200), "fill": (150, 150, 150)}

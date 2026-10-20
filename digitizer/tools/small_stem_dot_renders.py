@@ -57,16 +57,21 @@ WIDTHS = (50.0, 80.0)
 SP_CAPS = (2.5, 3.0, 4.0)
 BECKER = "becker_marine_logo.png"
 
+# Every flag explicit per arm: all three are ON by default since 2026-10-20
+# (Kent's flip), so "off" is the pre-flip engine, and the shipped default is
+# now the "scope" arm.
+_OFF = {"lettering_columns_small_stem": False, "small_dot_rung": False,
+        "small_dot_rung_lettering": False}
 ARMS = {
-    "off": {},
-    "stem": {"lettering_columns_small_stem": True},
-    "dot": {"small_dot_rung": True},
-    "both": {"lettering_columns_small_stem": True, "small_dot_rung": True},
+    "off": dict(_OFF),
+    "stem": {**_OFF, "lettering_columns_small_stem": True},
+    "dot": {**_OFF, "small_dot_rung": True},
+    "both": {**_OFF, "lettering_columns_small_stem": True, "small_dot_rung": True},
     "scope": {"lettering_columns_small_stem": True, "small_dot_rung": True,
               "small_dot_rung_lettering": True},
 }
-ARM_LABEL = {"off": "OFF (shipped)", "stem": "small_stem ON", "dot": "small_dot_rung ON",
-             "both": "both ON", "scope": "both ON + lettering scope"}
+ARM_LABEL = {"off": "OFF (pre-flip)", "stem": "small_stem ON", "dot": "small_dot_rung ON",
+             "both": "both ON", "scope": "both ON + lettering scope (shipped)"}
 FOCUS_PPM = 40.0
 TIGHT_PPM = 120.0
 TIGHT_MAX_MM2 = 30.0
