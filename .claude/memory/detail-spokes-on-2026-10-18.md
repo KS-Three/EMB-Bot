@@ -58,6 +58,8 @@ junit `host_cpu` property's IPP line first: `(l9)` means the cap took and the en
 Forcing a library down with an env var proves it is the mover only when the library confirms the
 switch took (`cv2.ipp.getIppVersion()`, `cv2.getCPUFeaturesLine()`'s `?` marks, numpy's
 `__cpu_features__`), and a switch that "did not take" wants the library's own spelling checked
-before a second CI draw. Unexplained "platform numerics" elsewhere (the two deselected enthusiast
-goldens) may be the same cause. Related:
+before a second CI draw. The two deselected enthusiast goldens are NOT the same cause: capped
+at Kent's path on the AVX-512 Xeon, a full run still failed exactly those two (2026-10-20, PR #1006).
+CI's draws after the cap (runs 3218, 3227) landed the pin on an AVX2 EPYC 7763, so an AMD AVX-512
+draw is still owed; the tripwire names the host when it comes. Related:
 [[the-80mm-ink-link-2026-10-15]], [[bean-holds-on-2026-10-15]], [[windows-goldens-fail-locally]].
