@@ -3778,9 +3778,12 @@ const _holeStar = [[180, 0], [227, 115], [351, 124], [256, 205], [286, 326], [18
 // after that stopped doing it when the skeleton became one pixel wide,
 // test/satin-spine.test.js.)
 const _holeNeedle = [{ x: 0, y: 108 }, { x: 145, y: 0 }, { x: 6, y: 117 }];
+// `satinSmallShapes` went ON by default on 2026-10-20 too (Kent): the two
+// satin stars below float arm to arm only on the pre-flip satin, so every
+// fixture here builds with it OFF; the subject is the hole, not the star.
 const _holeRun = (shape, widthMm, extra) => DG.buildQualityDesign(
   [{ rgb: [0, 0, 0], shapes: [Object.assign({ holes: [] }, shape)] }],
-  Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: widthMm, darkOnTop: false, ties: false, fillStagger: false }, extra));
+  Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: widthMm, darkOnTop: false, ties: false, fillStagger: false, satinSmallShapes: false }, extra));
 // Each a design that, with the flag off, puts two stitches on one point in the
 // kind of run named: [name, the run kind the pair is in, how it is built].
 const _holeCases = [
@@ -4026,7 +4029,9 @@ const _cfStar = (extra) => {
     const a = -Math.PI / 2 + (i * Math.PI) / 4, r = i % 2 ? 15 : 100;
     star.push({ x: Math.round((100 + r * Math.cos(a)) * 100) / 100, y: Math.round((100 + r * Math.sin(a)) * 100) / 100 });
   }
-  return _cfRun({ outer: star }, 20, Object.assign({ underlay: false }, extra));
+  // The float this star is here for is cast arm to arm, which the pre-flip
+  // satin does and `satinSmallShapes` (ON since 2026-10-20, Kent) does not.
+  return _cfRun({ outer: star }, 20, Object.assign({ underlay: false, satinSmallShapes: false }, extra));
 };
 const _cfCases = [
   ["a fill across a gap", (x) => _cfProngs(300, x)],

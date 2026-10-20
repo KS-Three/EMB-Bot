@@ -711,14 +711,20 @@ test("generateElement: a preset shape leaves no float a DST machine reads as a c
     ]);
     const call = { garment, fabric: fabricInForce(garment.id, undefined), pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: sizeMm, offsetXMm: 0, offsetYMm: 0, fillColumns: true };
     expect(d.stitches).toEqual(EMB.buildQualityDesign(regions, { ...call, cutFloats: true }).stitches);
-    const off = EMB.buildQualityDesign(regions, call);
-    expect(unasked(off)).toBeGreaterThan(0);
-    expect(trims(d)).toBeGreaterThan(trims(off));
+    // `satinSmallShapes` (ON by default since 2026-10-20, Kent) sews the star's
+    // arms round one centre zone and leaves neither shape a float the writer
+    // lays as three records, so the half that proves the reading can see one
+    // builds the pre-flip satin, `satinSmallShapes: false`, on and off the flag.
+    const pre = { ...call, satinSmallShapes: false };
+    const preOff = EMB.buildQualityDesign(regions, pre), preOn = EMB.buildQualityDesign(regions, { ...pre, cutFloats: true });
+    expect(unasked(preOff)).toBeGreaterThan(0);
+    expect(unasked(preOn)).toBe(0);
+    expect(trims(preOn)).toBeGreaterThan(trims(preOff));
     // `ties` is ON by default since 2026-10-20 and locks each cut it is given,
     // so the needles are compared untied: cutFloats itself moves none.
     const untied = { ...call, ties: false };
     expect(needles(EMB.buildQualityDesign(regions, { ...untied, cutFloats: true }))).toEqual(needles(EMB.buildQualityDesign(regions, untied)));
-    expect(d._debug.nTies).toBeGreaterThan(off._debug.nTies);
+    expect(preOn._debug.nTies).toBeGreaterThan(preOff._debug.nTies);
   }
 });
 

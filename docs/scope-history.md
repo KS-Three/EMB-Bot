@@ -13,6 +13,17 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-20 (sixteenth pass) — `satinSmallShapes` ON by default on Kent's ruling, the same day PR #994 built it OFF
+
+State at writing: main `134d505` (#1005 merged). Snapshot, not live status:
+
+- **The ruling.** Asked in-session with the sheet (`docs/renders/browser-satin-small-shapes/`) whether to flip whole, flip with a sharp-tip exemption (an angle or a tier, unbuilt, gate 1), or leave OFF, Kent chose **flip it whole**. Recorded in DOCTRINE (Standing rulings) and in `src/digitize.js`: `o.satinSmallShapes !== false`; the Studio's three `buildQualityDesign` calls pass nothing, so every browser satin shape now sews ON. The six md5 pins in `test/satin-small-shapes.test.js` are the off arm's bytes, unchanged.
+- **What the flip moved in the suites:** 7 engine tests and 1 Studio spec, every one a pin taken on the pre-flip satin in a test about something else, pinned there with `satinSmallShapes: false`: `digitize.test.js` (`_holeRun` base and `_cfStar`: the dedupeHoles stars and the cutFloats star no longer float arm to arm), `satin-walk.test.js` (the four frozen star counts 297 / 456 / 644 / 390), `generate.spec.js` (the 25 mm 12-point star keeps no three-record float ON, so the "reading can see one" half builds pre-flip). `satin-spine.test.js`'s round-ended bar keeps its end-to-end assertion on the off arm and gains an ON arm within a thread (0.4 mm) a side: 16 mm sews 15.6 ON.
+- **Suites at the head:** `node --test` 1306 tests, 1301 pass, 0 fail, 5 todo (pre-existing); `app` 100 files, 1874 passed; `tests/test_scope_budget.py` 10 passed; `asset-provenance` 3 pass. Not sewn.
+- **MASTER_SCOPE at this pass:** 26,996 words after #1005 → 26,914; defect 57 394 words; item 26 narrowed to the star's tier. Item 25 (`dedupeHoles`, flipped ON by #1000) still reads built OFF — flagged, not touched.
+
+---
+
 **Last updated:** 2026-10-20 (fifteenth pass) — scope refresh after PR #994 (the thirteenth and fourteenth passes, after #980–#988, wrote no entry here)
 
 State at writing (read with the GitHub API): #994 MERGED 2026-10-20 02:14 UTC. A snapshot of its body and of `docs/renders/browser-satin-small-shapes/README.md`, not live status:

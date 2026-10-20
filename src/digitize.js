@@ -907,8 +907,8 @@
     const useUnderlay = o.underlay !== false;
     // `underlayDirection` (default ON, Kent 2026-10-11; built OFF in PR #822; defect 57): a satin column starts at the end nearer where its underlay ends (satin.js startNear). `underlayDirection: false` restores the old order.
     const underlayDirection = o.underlayDirection !== false;
-    // `satinSmallShapes` (default OFF, built 2026-10-20; defect 57's remainder): the medial satin caps a run-out end onto the outline, sews a square or dot as the smallest column along its own axis, and sews a junction of three or more arms (a star's centre) once as one zone, the arms cut at it (satin.js smallShapesSatin). Off, medialSatin is byte for byte what it was. The flip is Kent's (gate 3).
-    const satinSmallShapes = o.satinSmallShapes === true;
+    // `satinSmallShapes` (built OFF 2026-10-20 and flipped ON the same day, Kent's ruling: flip it whole; `satinSmallShapes: false` is the off arm; defect 57's remainder): the medial satin caps a run-out end onto the outline (a sharp tip like a round one), sews a square or dot as the smallest column along its own axis, and sews a junction of three or more arms (a star's centre) once as one zone, the arms cut at it (satin.js smallShapesSatin). Off, medialSatin is byte for byte what it was before the option.
+    const satinSmallShapes = o.satinSmallShapes !== false;
     const perRegionAngle = o.perRegionAngle !== false;
     const garment = o.garment || { widthIn: 5, heightIn: 2.25 };
 

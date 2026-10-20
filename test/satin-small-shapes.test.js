@@ -7,7 +7,9 @@ const fabrics = require("../src/fabrics.js");
 
 // SMALL SHAPES IN THE BROWSER'S MEDIAL SATIN (2026-10-20; MASTER_SCOPE
 // defect 57's remainder, "Waiting on Kent" 26). Built behind
-// `satinSmallShapes`, OFF by default: the flip is Kent's (gate 3).
+// `satinSmallShapes` OFF, and ON by default the same day (Kent's ruling: flip
+// it whole); `satinSmallShapes: false` is the off arm, whose bytes the pins
+// below are. The tool passes the option explicitly either way.
 //
 // What the skeleton satin did to a small shape on left chest, as the Studio's
 // shape tool makes one (tools/satin-small-shapes.mjs measures every number):
