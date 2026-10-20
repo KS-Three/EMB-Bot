@@ -11,7 +11,7 @@ or over the floor) is back on the table.
 Since 2026-10-12 the shipped path keeps the piece carrying the most artwork
 (`cfg.clip_parent_keeps_ink`, default ON) rather than the largest, through
 `_split_clip` instead of `_largest_polygon`; extra pieces over the floor are
-still not kept (`cfg.clip_keep_pieces`, OFF). `tools/stage5_split_loss.measure`
+kept since 2026-10-20 (`cfg.clip_keep_pieces`, ON). `tools/stage5_split_loss.measure`
 spies on BOTH, so this still reads the default path -- and the test asserts
 the spy saw pieces, because a spy on a function the engine no longer calls
 reads zero and passes.

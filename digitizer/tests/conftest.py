@@ -548,4 +548,12 @@ PRE_FLIP["detail_spokes"] = False
 # files take as their premise. The tests ABOUT it are
 # `tests/test_phantom_blend_photo.py`.
 PRE_FLIP["dissolve_phantom_blends"] = False
+# Stage 5's cut-off pieces (defect 61's second half; Kent flipped it ON
+# 2026-10-20, item 46, after the halo lever above): every piece of a split
+# shape whose artwork clears the stage-4 floor sews as a region of its own,
+# which adds regions and trims wherever a later colour's artwork crosses an
+# earlier one's. False is the pre-flip engine: the parent keeps its ink and
+# the other pieces drop. The tests ABOUT it are
+# `tests/test_clip_keep_pieces.py`.
+PRE_FLIP["clip_keep_pieces"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}
