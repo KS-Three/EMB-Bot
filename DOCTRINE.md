@@ -34,6 +34,21 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **`satinSmallShapes` is ON whole: a sharp tip is capped like a round end. Kent, 2026-10-20.**
+  Asked with the OFF-beside-ON sheet in front of him
+  (`docs/renders/browser-satin-small-shapes/`) whether to flip the browser's
+  small-shape satin whole, flip it with a sharp-tip exemption (an angle or a
+  tier, unbuilt, gate 1), or leave it OFF, he chose whole. So in the plan a
+  tip or a round end sits 0.2–0.3 mm behind the drawn apex (the thread's
+  width reaches to within 0.1 mm of it), a star's centre is one zone, and
+  every junction of three or more arms in a browser satin shape is a zone —
+  the image lane's satin letters included, which no sheet drew. Do not build
+  the tip exemption and do not re-ask; a sew-out showing a starved tip is the
+  one thing that reopens it. `satinSmallShapes: false` is the off arm and
+  keeps the pre-option bytes (six md5 pins). The star's tier (a whole-rung
+  branch guard) is a separate open item, "Waiting on Kent" 26.
+  *(ruled 2026-10-20 — Kent; built 2026-10-20 — PR #994)*
+
 - **No speed feature: speed stays with the operator. Kent, 2026-10-14 20:20 CDT (VP relay of Kent), on PR #951.**
   Asked whether to adjust embroidery speeds for harder stitches, he ruled no: not a speed
   figure on the worksheet, not U01 SLOW/FAST output, not a speed advisory. What made it cheap

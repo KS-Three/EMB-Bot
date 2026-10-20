@@ -176,8 +176,12 @@ test("a star none of whose walks ran to the guard sews exactly what it sewed", a
   // star, these four with it. They sew a third fewer stitches. The counts
   // below are theirs since. (Main carried the first of those four parts alone
   // from 2026-10-08, `7bb83e9b`, and read 462 / 751 / 1025 / 594 under it.)
-  assert.strictEqual((await studioStar(12, 0.15, 12, undefined, TRIO_OFF)).stitchCount, 297);
-  assert.strictEqual((await studioStar(12, 0.15, 18, undefined, TRIO_OFF)).stitchCount, 456);
-  assert.strictEqual((await studioStar(12, 0.15, 23, undefined, TRIO_OFF)).stitchCount, 644);
-  assert.strictEqual((await studioStar(8, 0.15, 20, undefined, TRIO_OFF)).stitchCount, 390);
+  // `satinSmallShapes` (ON by default since 2026-10-20, Kent) sews a star's
+  // centre as one zone and moves every satin star; these counts are the walk's
+  // subject, so they are pinned on the pre-flip satin.
+  const PRE_FLIP = { ...TRIO_OFF, satinSmallShapes: false };
+  assert.strictEqual((await studioStar(12, 0.15, 12, undefined, PRE_FLIP)).stitchCount, 297);
+  assert.strictEqual((await studioStar(12, 0.15, 18, undefined, PRE_FLIP)).stitchCount, 456);
+  assert.strictEqual((await studioStar(12, 0.15, 23, undefined, PRE_FLIP)).stitchCount, 644);
+  assert.strictEqual((await studioStar(8, 0.15, 20, undefined, PRE_FLIP)).stitchCount, 390);
 });

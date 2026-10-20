@@ -1,6 +1,7 @@
 // What the browser's medial satin does to SMALL SHAPES, with `satinSmallShapes`
 // off beside on (MASTER_SCOPE defect 57's remainder: a star's centre, a round
-// end's last cross, squares and dots; built 2026-10-20, OFF by default).
+// end's last cross, squares and dots; built 2026-10-20 OFF, ON by default the
+// same day on Kent's ruling; `satinSmallShapes: false` is the off arm).
 //
 //   node tools/satin-small-shapes.mjs                 the table: every design off and on
 //   node tools/satin-small-shapes.mjs --json out.json the same as JSON (counts, md5s, measures)

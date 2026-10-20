@@ -1,5 +1,10 @@
 # Small shapes in the browser's medial satin: `satinSmallShapes` off beside on (2026-10-20)
 
+> **Flipped ON by default later the same day** (Kent's ruling, with this sheet in
+> front of him: flip it whole, tips capped like round ends). The "OFF" column
+> below is now the off arm, `satinSmallShapes: false`; the text that follows
+> was written while OFF was the default and is kept as the measurement.
+
 MASTER_SCOPE defect 57's remainder ("Waiting on Kent" 26, after PR #817): a
 star's centre, a round end's last cross, small squares and dots. The cure is
 built in `src/satin.js` behind one engine option, **`satinSmallShapes`, OFF by

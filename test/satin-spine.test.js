@@ -95,10 +95,17 @@ test("a 30 x 3 mm bar off the shape tool is sewn 30 x 3 mm, and no stitch is lon
 
 test("a round-ended bar is sewn end to end too, with no stitch longer than it is tall", async () => {
   // Before: 30.2 x 3.6 mm with a 30.2 mm stitch at this size, 15.1 mm for 16.
+  // The run-out alone (`satinSmallShapes: false`) reaches the apex; with the
+  // option, ON by default since 2026-10-20 (Kent), the last cross is a chord
+  // of the round end, so the plan reads up to a thread (0.4 mm) short at each
+  // end -- the cost Kent accepted with the flip (test/satin-small-shapes.test.js).
   for (const size of [16, 30]) {
-    const d = await studioShape("rect", { heightMm: 3, cornerRadiusMm: 1.5 }, size);
-    assert.ok(longestStitchMm(d) < 3.5, `${size} mm: longest stitch ${longestStitchMm(d).toFixed(1)} mm`);
-    assert.ok(Math.abs(d.widthMM - size) < 0.15, `${size} mm: sewn ${d.widthMM.toFixed(1)} mm long`);
+    const off = await studioShape("rect", { heightMm: 3, cornerRadiusMm: 1.5 }, size, undefined, { satinSmallShapes: false });
+    assert.ok(longestStitchMm(off) < 3.5, `${size} mm: longest stitch ${longestStitchMm(off).toFixed(1)} mm`);
+    assert.ok(Math.abs(off.widthMM - size) < 0.15, `${size} mm: sewn ${off.widthMM.toFixed(1)} mm long`);
+    const on = await studioShape("rect", { heightMm: 3, cornerRadiusMm: 1.5 }, size);
+    assert.ok(longestStitchMm(on) < 3.5, `${size} mm, capped: longest stitch ${longestStitchMm(on).toFixed(1)} mm`);
+    assert.ok(on.widthMM >= size - 2 * 0.4 && on.widthMM <= size + 0.15, `${size} mm, capped: sewn ${on.widthMM.toFixed(1)} mm long`);
   }
 });
 
