@@ -8966,3 +8966,45 @@ build failed its independent re-measure on a shape no census of mine held.
 
 *(measured 2026-10-04 — `tools/satin-walk-census.mjs --cover`, `--images`;
 MASTER_SCOPE defect 57; scope-history 10-04)*
+
+## A switch proves a library is the mover only when the library confirms it took: the Fremont stream follows Intel IPP's path (2026-10-20)
+
+**Ruling (Kent, 2026-10-20): the digitizer TEST environment runs OpenCV's
+bundled Intel IPP at its AVX2 path** — `os.environ.setdefault("OPENCV_IPP",
+"avx2")` at the top of `digitizer/tests/conftest.py` — so a stitch-stream md5
+pin is ONE value on every host. The shipped service is not capped; a
+customer's AVX-512 machine sews IPP's AVX-512 stream. *(confirmed 2026-10-20 —
+`test_detail_spokes.py::test_test_environment_caps_ipp_at_avx2`, green
+single-process and under xdist on an AVX-512 Xeon)*
+
+**What was disproved.** PR #987 pinned the Fremont 80 mm OFF md5 as two values
+keyed on numpy's AVX512F flag, after an env pin (`NPY_DISABLE_CPU_FEATURES` +
+`OPENCV_CPU_DISABLE` in conftest) "did not take" on an EPYC 9V74. A Cascade
+Lake Xeon (AVX512F: yes) then read a THIRD value, `050452`. On a Sapphire
+Rapids Xeon with CI's wheels, each candidate was forced down in turn: numpy's
+dispatch (X86_V4 / ICL / SPR off), OpenCV's own AVX512-SKX kernels
+(`OPENCV_CPU_DISABLE=AVX512-SKX`) and OpenBLAS's core type (HASWELL /
+SKYLAKEX / COOPERLAKE) all left `027d14e6`. Only IPP moved it: `OPENCV_IPP=avx2`
+→ `75f44f90` (Kent's laptop, CI's EPYC 7763); `OPENCV_IPP=avx512` → `050452`
+byte-for-byte (the Cascade Lake red); `sse42` → `8275d819`; `disabled` →
+`f4845611`. IPP's AVX-512 path sub-dispatches on the newer AVX-512 extensions,
+so Zen 4 and Sapphire Rapids agree and Cascade Lake does not — and a VENDOR
+key would have been wrong too, since this Intel host read the AMD value.
+*(measured 2026-10-20 — `.claude/memory/detail-spokes-on-2026-10-18.md`; the
+table in `test_detail_spokes.py`)*
+
+**Why the env pin "did not take".** `OPENCV_CPU_DISABLE` wants OpenCV's
+hyphenated names (`AVX512-SKX`); #987's `AVX512_SKX` was ignored with a
+printed "unknown CPU feature" warning. numpy 2.5 refuses
+`NPY_DISABLE_CPU_FEATURES=AVX512F` outright (its dispatch groups are `X86_V3
+X86_V4 AVX512_ICL AVX512_SPR`); the group names it accepts DID take, and moved
+nothing, because numpy was never the mover. Two misses were read as one "did
+not take", and a CI draw was spent on each.
+
+**What to DO.** On a stream red, read the junit `host_cpu` property's IPP line
+before anything else: `(l9)` means the cap took and the engine moved. When
+forcing a library down to ask whether it is the mover, read the library's own
+report that the switch took — `cv2.ipp.getIppVersion()`, the `?` marks in
+`cv2.getCPUFeaturesLine()`, numpy's `__cpu_features__` — before spending a CI
+draw on the answer. Treat the next "platform numerics" the same way: the two
+deselected enthusiast goldens are the open candidates.
