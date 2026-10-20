@@ -560,6 +560,10 @@ PRE_FLIP["detail_spokes"] = False
 # The mark's size (Kent 2026-10-20, "Star is too big": half the pro's).
 # None is the pro's size, the engine before that call.
 PRE_FLIP["detail_spoke_scale"] = None
+# Longer bean stitches on straight stretches (Kent 2026-10-20, "ON at 0.7
+# mm"). None is the even 0.45 pitch, the engine before that call. The
+# tests ABOUT it are `tests/test_bean_straight.py`.
+PRE_FLIP["bean_letter_straight_mm"] = None
 # Native-read corner runs (Kent's ruling 2026-10-20, MASTER_SCOPE item 41):
 # one side-line fit per corner run, an unread vertex takes its read
 # neighbours' offset, a vertex landing behind its predecessor drops. False is

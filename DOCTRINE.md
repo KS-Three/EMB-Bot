@@ -9110,7 +9110,10 @@ second difference of the stations moved 0.125 → 0.111 mm. Not merged.
 knob whose chords stay within `STRAIGHT_SAG_MM` 0.08 of the spine): at 0.9 the
 T, Y and 1 stems sew as one or two stitches instead of a chain of beads, the
 curves keep 0.45, the needle stays on the ink (max 0.045 mm off), Fremont 81 mm
-Hat 15,359 → 15,221 stitches, trims unchanged at 42.
+Hat 15,359 → 15,221 stitches, trims unchanged at 42. **Kent flipped it ON at
+0.7 the same day** ("ON at 0.7 mm", the middle arm; 15,281 stitches); None is
+the pre-flip engine. Unsewn: how long a 3-pass stitch may run on a cap is
+gate 1.
 
 **What to DO.** When lettering "wiggles", draw the needle path over the source
 ink before touching the path: if it is on the centre line, the look is the
