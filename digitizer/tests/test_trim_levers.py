@@ -64,6 +64,13 @@ def _run(**kw):
     # underlay) would price nothing. The lane's own trims are pinned in
     # `tests/test_lettering_columns.py`.
     kw.setdefault("lettering_columns", False)
+    # ... and without the photo lane's phantom-blend dissolve
+    # (`dissolve_phantom_blends`, ON since Kent's 2026-10-20 flip, item 46):
+    # this fixture reads the gradient lane, and with the dissolve ON both levers together
+    # leave 14 trims, not under ten (CI 2026-10-20).
+    # The numbers here were read without it; the dissolve's own price is
+    # `tests/test_phantom_blend_photo.py`'s and PR #1005's.
+    kw.setdefault("dissolve_phantom_blends", False)
     cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
     gen = build_generation(str(FIXTURE), cfg)
     result = finish_generation(gen.fork(), cfg)

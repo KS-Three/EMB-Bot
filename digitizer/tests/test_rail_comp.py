@@ -199,7 +199,9 @@ def test_on_the_wordmark_every_satin_shape_sews_on_its_artwork():
     assert len(on_seen) >= 30 and set(on_seen) == set(off_seen)
     total_off = total_on = 0.0
     for s in on_seen:
-        a = art_by_id[s]
+        # A piece `clip_keep_pieces` keeps (ON since 2026-10-20) sews as its
+        # own region, `<parent>-clipN`, on its parent's artwork.
+        a = art_by_id[s.split("-clip")[0]]
         extra_off = off_seen[s].difference(a).area
         extra_on = on_seen[s].difference(a).area
         # never more outside the artwork than the grown polygon had (a

@@ -107,6 +107,13 @@ def _plan(art: Path, **kw):
     # by default since Kent's 2026-10-12 flip) cuts MARINE's letters from
     # their outline and never reaches the pruner this file prices.
     kw.setdefault("lettering_columns", False)
+    # ... and without the photo lane's phantom-blend dissolve
+    # (`dissolve_phantom_blends`, ON since Kent's 2026-10-20 flip, item 46):
+    # this fixture reads the gradient lane, and with the dissolve ON the pruner's ON arm
+    # sews 25 trims against its OFF arm's 23 (CI 2026-10-20).
+    # The numbers here were read without it; the dissolve's own price is
+    # `tests/test_phantom_blend_photo.py`'s and PR #1005's.
+    kw.setdefault("dissolve_phantom_blends", False)
     cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
     gen = build_generation(str(art), cfg)
     result = finish_generation(gen.fork(), cfg)

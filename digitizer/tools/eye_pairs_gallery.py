@@ -148,10 +148,6 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "lettering_min_column_mm=1.0",
         "Widen sub-floor lettering to a 1.0 mm sewable column instead of the "
         "bean run; known to fill counters at a 2.2 mm cap height."),
-    "phantom_dissolve": (
-        "dissolve_phantom_blends=True",
-        "Dissolve JPEG ringing colours on the photo/gradient lane, so a logo's "
-        "anti-alias halo stops sewing as extra grey threads."),
     "directional_comp": (
         "directional_comp=True",
         "Compensate pull along the stitch direction and push across it, per "
@@ -234,6 +230,11 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
 # Arms that left the pending table because they SHIPPED. A sitting rendered
 # before the flip still carries their rows, and the page still names them.
 RETIRED_ARM_INTENT: dict[str, tuple[str, str]] = {
+    "phantom_dissolve": (
+        "dissolve_phantom_blends=True (shipped ON 2026-10-20)",
+        "Dissolve JPEG ringing colours on the photo/gradient lane, so a logo's "
+        "anti-alias halo stops sewing as extra grey threads. Kent banked it "
+        "OFF 2026-09-04 and flipped it on 2026-10-20 (MASTER_SCOPE item 46)."),
     "rail_comp": (
         "satin_rail_comp=True (shipped ON 2026-09-28)",
         "Put the pull compensation on the rails: satin widens outward along its "

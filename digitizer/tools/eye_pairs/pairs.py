@@ -64,7 +64,8 @@ ARMS: dict[str, dict] = {
     # `lettering_columns` (the outline-cut Column lane) shipped ON in #863, and
     # `letterform_priors_k=0.75` is the config default (Kent, 2026-10-07): each
     # is the base now and no longer an arm. See the retirement rule below.
-    "phantom_dissolve": {"dissolve_phantom_blends": True},
+    # `phantom_dissolve` (`dissolve_phantom_blends`) shipped ON 2026-10-20
+    # (Kent, item 46): the base now, so no longer an arm.
     "directional_comp": {"directional_comp": True},
     REF_ARM: {"__ref__": REF_COMMIT},
     REF_0930AM: {"__ref__": REF_0930AM_COMMIT},
