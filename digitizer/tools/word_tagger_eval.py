@@ -267,7 +267,7 @@ def _print_patterns(name, regions, tr, chart) -> None:
     from digitizer_core.textcluster import LETTER_HEIGHT_RATIO, MIN_CLUSTER_MEMBERS, _cluster
     from digitizer_core.words import _candidates, _pattern_ids
     lab = {sid for ids in tr["lines"].values() for sid in ids}
-    for comp in _cluster(_candidates(regions), LETTER_HEIGHT_RATIO, chart):
+    for comp in _cluster(_candidates(regions, chart), LETTER_HEIGHT_RATIO, chart):
         if len(comp) < MIN_CLUSTER_MEMBERS:
             continue
         pat = _pattern_ids(comp)

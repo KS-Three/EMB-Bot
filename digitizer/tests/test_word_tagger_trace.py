@@ -15,6 +15,7 @@ from shapely.affinity import scale as shp_scale
 from shapely.geometry import box
 
 from digitizer_core import threads
+from digitizer_core import words as W
 from digitizer_core.textcluster import LETTER_HEIGHT_RATIO, PROXIMITY_HEIGHT_MULT
 from digitizer_core.words import WORD_ASPECT_MAX, detect_words
 from tests.test_words import H, _glyph, _region, _rope, _text
@@ -225,7 +226,10 @@ def _ring(sid, cx, cy, r, stroke=0.8):
 
 def test_a_nested_glyph_names_its_host_and_the_containment_values():
     regions = _text("a", "HELTFU", x0=-11.0, y0=-2.0) + [_ring("ring", 0.0, 0.0, 15.0)]
-    t = T.trace(regions, threads.CHART)
+    # the rule before 2026-10-20 ("box") swallows the whole line; the shipped
+    # one frees it (`test_words.py`), so the naming is read under "box"
+    assert T.trace(regions, threads.CHART).words == [[f"a{i}" for i in range(6)]]
+    t = T.trace(regions, threads.CHART, rules=T.replace(T.base_rules(), nested="box"))
     assert t.words == []
     info = t.nested["a0"]
     assert info["host"] == "ring" and info["hosts"] == 1
@@ -255,9 +259,59 @@ def test_the_ring_policy_also_frees_a_two_by_two_icon_grid():
     panes = [_region(f"p{i}", box(x, y, x + 1.5, y + 1.5))
              for i, (x, y) in enumerate([(-1.7, -1.7), (0.2, -1.7), (-1.7, 0.2), (0.2, 0.2)])]
     regions = panes + [_ring("ring", 0.0, 0.0, 6.0)]
-    assert T.trace(regions, threads.CHART).words == []
+    assert T.trace(regions, threads.CHART).words == []          # shipped: ring+line keeps it out
     t = T.trace(regions, threads.CHART, rules=T.replace(T.base_rules(), nested="ring"))
     assert t.words == [["p0", "p1", "p2", "p3"]]
+    # ... and the line test is what refuses it: a 2x2 block doubles back
+    assert W._max_turn_deg([t.cands[f"p{i}"] for i in range(4)]) >= 90.0
+
+
+def test_the_shipped_nesting_policy_is_the_taggers_own_and_the_trace_mirrors_it():
+    """`base_rules().nested` names the tagger's rule, and on a word in a hole,
+    a grid in a hole and a word beside a host's ink the trace reads the same
+    words `detect_words` does (parity under the new drop)."""
+    assert T.base_rules().nested == T.SHIPPED_NEST == "ring+line"
+    assert T.Rules.__dataclass_fields__["nested"].default == T.SHIPPED_NEST
+    from shapely.geometry import Polygon as P
+    panes = [_region(f"p{i}", box(30 + x, y, 31.5 + x, y + 1.5))
+             for i, (x, y) in enumerate([(-1.7, -1.7), (0.2, -1.7), (-1.7, 0.2), (0.2, 0.2)])]
+    host = _region("host", P([(60, 0), (61, 0), (61, 29), (100, 29), (100, 30), (60, 30)]))
+    regions = (_text("a", "HELTFU", x0=-11.0, y0=-2.0) + [_ring("ring", 0.0, 0.0, 15.0)]
+               + panes + [_ring("ring2", 30.0, 0.0, 6.0)]
+               + _text("b", "HELT", x0=70.0, y0=5.0) + [host])
+    t = T.trace(regions, threads.CHART)
+    assert sorted(t.words) == _ids_of(detect_words(regions, chart=threads.CHART))
+    assert t.words == [[f"a{i}" for i in range(6)]]
+    assert t.rejected["p0"].rule == "nested" and t.rejected["b0"].rule == "nested"
+
+
+def test_box_line_frees_a_line_beside_a_hosts_ink_and_the_shipped_rule_does_not():
+    """The census-only `box+line` containment (measured 2026-10-20: 16
+    gained, 3 strays on golden_tee) against the shipped `ring+line`."""
+    from shapely.geometry import Polygon as P
+    host = _region("host", P([(0, 0), (1, 0), (1, 29), (40, 29), (40, 30), (0, 30)]))
+    # the word sits in the L's box AND inside its convex hull (the hull's
+    # diagonal runs from (1, 0) to (40, 29); at x 10-25 it passes y 7-18),
+    # beside the L's ink, outside its outline
+    regions = _text("a", "HELT", x0=10.0, y0=19.0) + [host]
+    if "host" not in T.trace(regions, threads.CHART, rules=T.replace(T.base_rules(), nested="box")).cands:
+        pytest.fail("fixture: the L host must pass the glyph screens")
+    assert T.trace(regions, threads.CHART).words == []
+    boxline = T.trace(regions, threads.CHART, rules=T.replace(T.base_rules(), nested="box+line"))
+    hullline = T.trace(regions, threads.CHART, rules=T.replace(T.base_rules(), nested="hull+line"))
+    assert boxline.words == [["a0", "a1", "a2", "a3"]]
+    assert hullline.words == [["a0", "a1", "a2", "a3"]]
+    # a word in the box but outside the hull: box+line frees it, hull+line not
+    corner = _text("c", "HELT", x0=10.0, y0=1.0) + [host]
+    assert T.trace(corner, threads.CHART, rules=T.replace(T.base_rules(), nested="box+line")).words == [
+        ["c0", "c1", "c2", "c3"]]
+    assert T.trace(corner, threads.CHART, rules=T.replace(T.base_rules(), nested="hull+line")).words == []
+    # and neither frees a block
+    panes = [_region(f"p{i}", box(10 + x, 19 + y, 11.5 + x, 20.5 + y))
+             for i, (x, y) in enumerate([(0, 0), (1.9, 0), (0, 1.9), (1.9, 1.9)])]
+    grid = panes + [host]
+    for pol in ("box+line", "hull+line"):
+        assert T.trace(grid, threads.CHART, rules=T.replace(T.base_rules(), nested=pol)).words == []
 
 
 def test_the_frame_policy_frees_a_word_beside_a_hosts_ink_and_the_ring_does_not():
@@ -288,4 +342,5 @@ def test_the_outline_policy_frees_a_glyph_beside_a_hosts_ink_not_in_its_hole():
 def test_parse_variant_reads_a_nested_policy():
     assert T.parse_variant("nested=frame") == ("nested=frame", {"nested": "frame"})
     assert T.parse_variant("nest_max_h=5") == ("nest_max_h=5", {"nest_max_h": 5.0})
-    assert set(T.NEST_VARIANTS) >= {"nested=ring", "nested=frame", "nested=outline"}
+    assert set(T.NEST_VARIANTS) >= {"nested=box", "nested=ring", "nested=frame", "nested=outline",
+                                    "nested=box+line", "nested=hull+line"}

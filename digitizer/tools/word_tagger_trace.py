@@ -6,6 +6,10 @@ regions and names, for every glyph a word should have and does not, the rule
 that turned it away with the measured value beside the threshold:
 
   admission   aspect, height_min, height_max, stroke_cv, no_skeleton, nested
+              (a box inside a larger candidate's box -- unless the glyph is
+              one of a LINE-shaped word in that candidate's hole, which the
+              tagger keeps since 2026-10-20; `--variant nested=box` replays
+              the rule before it)
   link        height_ratio, stroke_ratio, ink, distance  (against the
               nearest-to-linking partner; one link to ANY member joins)
   after link  pattern (twins), row_split, small_component (< 3 members)
@@ -80,12 +84,20 @@ class Rules:
     ink_de: float
     prox_mult: float
     min_members: int
-    # How `_drop_nested` picks the hosts that swallow a glyph (see
-    # `drop_nested`): "box" is the shipped rule; the others are census-only.
-    nested: str = "box"
+    # How the nesting drop picks the hosts that swallow a glyph (see
+    # `drop_nested`): `SHIPPED_NEST` is the tagger's own rule
+    # (`words._drop_nested_words`); "box" is the rule before 2026-10-20
+    # (`textcluster._drop_nested`, the census's "before"); the others are
+    # census-only.
+    nested: str = "ring+line"
     # Census-only: a host taller than this many times the glyph does not
     # swallow it. None: no cap (shipped).
     nest_max_h: float | None = None
+
+
+# The tagger's own nesting rule since 2026-10-20 (`words._drop_nested_words`):
+# a host does not swallow a line-shaped word lying in its hole.
+SHIPPED_NEST = "ring+line"
 
 
 def base_rules() -> Rules:
@@ -95,7 +107,7 @@ def base_rules() -> Rules:
                  max_height_mm=W.WORD_MAX_HEIGHT_MM, cv_max=W.WORD_STROKE_CV_MAX,
                  height_ratio=T.LETTER_HEIGHT_RATIO, stroke_ratio=T.SIMILARITY_RATIO,
                  ink_de=T.TEXT_CLUSTER_DELTA_E_MAX, prox_mult=T.PROXIMITY_HEIGHT_MULT,
-                 min_members=T.MIN_CLUSTER_MEMBERS)
+                 min_members=T.MIN_CLUSTER_MEMBERS, nested=SHIPPED_NEST)
 
 
 def admission(region, rules: Rules | None = None, memo: dict | None = None):
@@ -291,7 +303,50 @@ def nest_info(child, cands, chart=None) -> dict:
             "ink_de": de}
 
 
-NEST_POLICIES = ("box", "ring", "frame", "outline", "frame+outline")
+NEST_POLICIES = ("box", "ring", "frame", "outline", "frame+outline",
+                 "ring+line", "box+line", "hull+line")
+
+
+def _inside_hull(child, host) -> bool:
+    """Census-only: half of `child`'s ink or more inside `host`'s CONVEX
+    HULL -- a glyph in the concavity of a C-shaped arc reads 1."""
+    hull = host.region.polygon.convex_hull
+    cp = child.region.polygon
+    return cp.area > 0 and cp.intersection(hull).area >= 0.5 * cp.area
+
+
+def line_words(cands, chart, containment: str) -> dict[str, set[str]]:
+    """{host shape id: shape ids it may not swallow}: the members of every
+    linked word (`textcluster._cluster`, the tagger's link) with a LINE's
+    shape (`words._is_line`: a chain that never turns past
+    `words.LINE_TURN_MAX_DEG`) among the candidates a host's box holds,
+    under one of three containments:
+
+      ring   the word lies inside the host's outline, holes filled -- the
+             shipped `words._held_lines`
+      box    anywhere in the host's box (census-only: measured 2026-10-20,
+             16 gained with 3 strays on golden_tee 80 mm, three bevel
+             slivers beside a host's ink; see the doc)
+      hull   inside the host's convex hull (census-only: 15 gained, 6 strays)
+    """
+    from digitizer_core import words as W
+    if containment == "ring":
+        return W._held_lines(cands, chart)
+    from digitizer_core.textcluster import LETTER_HEIGHT_RATIO
+    from digitizer_core.textcluster import _cluster as link_components
+    boxes = [c.region.polygon.bounds for c in cands]
+    out: dict[str, set[str]] = {}
+    for i, h in enumerate(cands):
+        held = [c for j, c in enumerate(cands) if j != i and _box_holds(boxes[i], boxes[j])]
+        if containment == "hull":
+            held = [c for c in held if _inside_hull(c, h)]
+        if len(held) < 3:
+            continue
+        free = {c.region.shape_id for comp in link_components(held, LETTER_HEIGHT_RATIO, chart)
+                if W._is_line(comp) for c in comp}
+        if free:
+            out[h.region.shape_id] = free
+    return out
 
 
 def frame_ids(cands, chart) -> set[str]:
@@ -312,12 +367,18 @@ def frame_ids(cands, chart) -> set[str]:
 
 
 def drop_nested(raw, rules: Rules, chart):
-    """`_drop_nested` under `rules.nested` / `rules.nest_max_h`. "box" with no
-    cap IS `textcluster._drop_nested` (the census scores the shipped
-    function, not a copy). The others, none of them in the tagger:
+    """The nesting drop under `rules.nested` / `rules.nest_max_h`.
+    `SHIPPED_NEST` ("ring+line") with no cap IS `words._drop_nested_words`,
+    and "box" with no cap IS `textcluster._drop_nested`, the rule before
+    2026-10-20 (the census scores the shipped functions, not copies). The
+    rest, none of them in the tagger:
 
       ring           a host does not swallow the members of a word that
-                     lies inside its outline (`ring_words`)
+                     lies inside its outline (`ring_words`; #900, measured
+                     negative: frees a 2x2 icon grid too)
+      box+line       a host does not swallow a LINE-shaped word anywhere in
+                     its box (`line_words`)
+      hull+line      ... inside its convex hull
       frame          a host whose BOX holds a linked word swallows nothing
                      (`frame_ids`)
       outline        a host swallows only a glyph lying inside its outline
@@ -327,12 +388,17 @@ def drop_nested(raw, rules: Rules, chart):
       nest_max_h=K   a host over K times the glyph's height does not swallow
     """
     from digitizer_core.textcluster import _drop_nested
+    from digitizer_core.words import _drop_nested_words
     if rules.nested not in NEST_POLICIES:
         raise ValueError(f"unknown nested policy {rules.nested!r}")
     if rules.nested == "box" and rules.nest_max_h is None:
         return _drop_nested(raw)
+    if rules.nested == SHIPPED_NEST and rules.nest_max_h is None:
+        return _drop_nested_words(raw, chart)
     frames = frame_ids(raw, chart) if "frame" in rules.nested else set()
     rings = ring_words(raw, chart) if rules.nested == "ring" else {}
+    lines = (line_words(raw, chart, rules.nested.split("+")[0])
+             if rules.nested.endswith("+line") else {})
     boxes = [c.region.polygon.bounds for c in raw]
     out = []
     for i, c in enumerate(raw):
@@ -341,6 +407,8 @@ def drop_nested(raw, rules: Rules, chart):
             if i == j or h.region.shape_id in frames or not _box_holds(boxes[j], boxes[i]):
                 continue
             if c.region.shape_id in rings.get(j, ()):
+                continue
+            if c.region.shape_id in lines.get(h.region.shape_id, ()):
                 continue
             if rules.nest_max_h is not None and h.height_mm > rules.nest_max_h * c.height_mm:
                 continue
@@ -637,7 +705,11 @@ VARIANTS: dict[str, dict] = {
     "min_height_mm=0.8": {"min_height_mm": 0.8},
     "min_height_mm=0.6": {"min_height_mm": 0.6},
     "min_members=2": {"min_members": 2},
-    # the nesting drop (`drop_nested`), census-only
+    # the nesting drop (`drop_nested`): "box" is the rule before 2026-10-20
+    # (the census's "before"); the rest are census-only
+    "nested=box": {"nested": "box"},
+    "nested=box+line": {"nested": "box+line"},
+    "nested=hull+line": {"nested": "hull+line"},
     "nested=ring": {"nested": "ring"},
     "nested=frame": {"nested": "frame"},
     "nested=outline": {"nested": "outline"},
