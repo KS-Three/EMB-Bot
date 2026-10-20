@@ -1698,6 +1698,15 @@ class PipelineConfig:
     # is refused; every star and cross passes) and the floor scales with the
     # design width. False is the pre-flip engine (`PRE_FLIP`).
     detail_spokes: bool = True
+    # The spoked mark's SIZE, as a share of the pro's (`stage7_sequence.
+    # spoke_floor_mm`: 1.45 mm x width / 92.6, times this). Kent 2026-10-20,
+    # on his 81 mm Hat Fremont: "Star is too big" -- the pro-sized mark is
+    # ~2.5 mm across over a ~0.8 mm art star -- and he picked HALF (spokes
+    # ~0.63 mm, ~1.3 mm across, ~1.6x the art). None is 1.0, the pro's size
+    # (the engine before 2026-10-20, `PRE_FLIP`). A gate-1 candidate:
+    # unsewn; whether a 0.63 mm spoke still reads as a star on cloth, rather
+    # than closing into a white dot, is the sew-out's question.
+    detail_spoke_scale: float | None = 0.5
     # Small lettering thinner than the thread, sewn as ONE run down its
     # skeleton (2026-10-13, default OFF; Kent's "fine details" priority,
     # `digitizer_core/stage6_small_letter.py`, `tools/small_lettering_skeleton.py`).
@@ -2758,6 +2767,20 @@ class PipelineConfig:
     # `tools/sewout_card_passes.py`. Not in `SMALL_TEXT_TRUE_SIZE`. A
     # CANDIDATE (gate 1).
     bean_letter_passes: int | None = None
+    # The longest bean-letter stitch on a STRAIGHT stretch of spine, in mm
+    # (`stage6_beanletter._bean_keep_corners`). Each piece between corners is
+    # stationed at the coarsest even pitch, no longer than this and no
+    # shorter than `bean_letter_stitch_mm`, at which no stitch's chord leaves
+    # the spine by more than `stage6_beanletter.STRAIGHT_SAG_MM`; a curve
+    # (the bowl of a 9, an S) keeps the short pitch it needs. Kent
+    # 2026-10-20, Fremont 81 mm Hat: "1 is wiggly", "Eat Stay play are
+    # wiggly" -- 0.45 mm 3-pass stitches lay a straight stem as a chain of
+    # beads. (Smoothing the spine first was measured the same day and moved
+    # nothing visible: the stations already sat within ~0.1 mm of the ink's
+    # centre.) None: the pitch as before, byte for byte. A CANDIDATE (gate
+    # 1): how long a 3-pass bean stitch may run on a cap is a sew-out
+    # question. Built OFF; the flip is Kent's.
+    bean_letter_straight_mm: float | None = None
     # The bean tagger's ink read takes its ground colour only from a ring this
     # deep round the cluster (`ink_path.read_cluster_ink`'s
     # `ground_ring_mm`), not from every far pixel of the crop. At 65 mm

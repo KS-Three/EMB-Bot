@@ -174,15 +174,43 @@ def _corners(spine: list, corner_deg: float) -> list[int]:
     return sorted(picked)
 
 
-def _bean_keep_corners(spine: list, stitch_mm: float | None, corner_deg: float,
-                       passes: int | None = None) -> list:
+# A stretch of spine is STRAIGHT enough for `cfg.bean_letter_straight_mm`'s
+# longer stitch when no stitch's chord leaves the spine by more than this: a
+# fifth of a 40 wt thread's ~0.4 mm, about what the ink skeleton itself
+# wanders on a straight stem (0.03-0.13 mm measured on Fremont at 81 mm).
+# Geometry, not fabric.
+STRAIGHT_SAG_MM = 0.08
+
+
+def _station_piece(piece: list, step: float, straight_mm: float | None) -> list:
+    """One corner-to-corner piece, stationed evenly at `step` -- or, with
+    `straight_mm`, at the coarsest even pitch up to `straight_mm` whose
+    chords all stay within `STRAIGHT_SAG_MM` of the piece."""
+    n = _length(piece)
+    fine = max(2, int(round(n / step)) + 1)
+    if not straight_mm or straight_mm <= step:
+        return _resample(piece, fine)
+    from shapely.geometry import LineString
+    spine = LineString(piece)
+    for k in range(max(2, math.ceil(n / straight_mm) + 1), fine):
+        pts = _resample(piece, k)
+        if spine.hausdorff_distance(LineString(pts)) <= STRAIGHT_SAG_MM:
+            return pts
+    return _resample(piece, fine)
+
+
+def _bean_keep_corners(spine: list, stitch_mm: float | None, corner_deg: float | None,
+                       passes: int | None = None, straight_mm: float | None = None) -> list:
     """`_bean_along`, with a station ON every corner of the spine and the
     rest spaced evenly between corners. At an even pitch the stations of
     Fremont's 5 skipped the corner where its stem meets its bar, the thread
     cut straight across it, and the top of the 5 sewed as a triangle (read
-    "A", 2026-10-14). No corner: exactly `_bean_along`."""
-    cuts = _corners(spine, corner_deg)
-    if not cuts:
+    "A", 2026-10-14). No corner and no `straight_mm`: exactly `_bean_along`.
+
+    `straight_mm` (`cfg.bean_letter_straight_mm`): each piece takes
+    `_station_piece`'s longer pitch where it is straight."""
+    cuts = _corners(spine, corner_deg) if corner_deg else []
+    if not cuts and not straight_mm:
         return _bean_along(spine, stitch_mm, passes)
     step = stitch_mm if stitch_mm and stitch_mm > 0 else machine.BEAN_STITCH_MM
     lap: list = []
@@ -192,7 +220,7 @@ def _bean_keep_corners(spine: list, stitch_mm: float | None, corner_deg: float,
         n = _length(piece)
         if n <= 0:
             continue
-        pts = _resample(piece, max(2, int(round(n / step)) + 1))
+        pts = _station_piece(piece, step, straight_mm)
         lap.extend(pts if not lap else pts[1:])
     if len(lap) < 2:
         return _bean_along(spine, stitch_mm, passes)
@@ -364,7 +392,8 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
                 corner_deg: float | None = None,
                 passes: int | None = None,
                 bay_hold_mm: float | None = None,
-                stroke_mm: float | None = None) -> tuple[list[StitchRun], dict]:
+                stroke_mm: float | None = None,
+                straight_mm: float | None = None) -> tuple[list[StitchRun], dict]:
     """One letter's spines -> bean runs in sew order, plus `run_outline`'s
     report contract (and `strokes`, how many spines sewed).
 
@@ -395,7 +424,10 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
     `bay_hold_mm` (`cfg.bean_letter_bay_hold`) with `stroke_mm` (the
     member's `ink_stroke_mm`): every station held that far off the letter's
     bays inside its own spine's ink (`hold_off_bays`). None: the stations
-    exactly as laid, byte for byte."""
+    exactly as laid, byte for byte.
+
+    `straight_mm` (`cfg.bean_letter_straight_mm`): the longest stitch on a
+    straight stretch (`_station_piece`). None: the pitch, byte for byte."""
     arm_floor = stitch_mm if stitch_mm and stitch_mm > 0 else _MIN_ARM_MM
     report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False,
               "arcs": 0, "yielded": 0, "strokes": 0}
@@ -437,8 +469,8 @@ def bean_letter(spines, shape_id: str, *, entry: tuple[float, float] | None,
         src = todo_ix.pop(i)
         if rev:
             spine.reverse()
-        pts = (_bean_keep_corners(spine, stitch_mm, corner_deg, passes) if corner_deg
-               else _bean_along(spine, stitch_mm, passes))
+        pts = (_bean_keep_corners(spine, stitch_mm, corner_deg, passes, straight_mm)
+               if corner_deg or straight_mm else _bean_along(spine, stitch_mm, passes))
         if bays is not None:
             pts = hold_off_bays(pts, own_ink[src], bays, float(bay_hold_mm), counters)
         if len(pts) < 2:

@@ -17,6 +17,7 @@ three flat goldens and Fremont 80 mm, md5-pinned.
 """
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import math
@@ -53,6 +54,15 @@ def test_flag_defaults_on_since_kents_flip_and_the_floor_scales_from_the_pros():
     assert spoke_floor_mm(92.6) == pytest.approx(1.45)
     assert spoke_floor_mm(80.0) == pytest.approx(1.45 * 80.0 / 92.6)
     assert spoke_floor_mm(None) == 1.45 and spoke_floor_mm(0.0) == 1.45
+    # the size knob (Kent 2026-10-20, "Star is too big"): half the pro's by
+    # default; None is the pro's own size
+    assert PipelineConfig().detail_spoke_scale == 0.5
+    assert PRE_FLIP["detail_spoke_scale"] is None
+    assert fc.FLAGS["detail_spoke_scale"] is None
+    assert spoke_floor_mm(92.6, None) == pytest.approx(1.45)
+    assert spoke_floor_mm(92.6, 0.5) == pytest.approx(0.725)
+    assert spoke_floor_mm(81.0, 0.5) == pytest.approx(0.5 * 1.45 * 81.0 / 92.6)
+    assert spoke_floor_mm(None, 0.5) == pytest.approx(0.725)
     assert machine.RUN_MIN_LOOP_MM == 2.2 and machine.RUN_MIN_AREA_MM2 == 0.16
 
 
@@ -366,10 +376,14 @@ def test_the_placement_scales_the_floor_with_the_design_width():
     _place_spoke_marks([pm], planned, blocks, cfg, trim_at=3.0, design_width_mm=80.0)
     run = blocks[3].runs[1]
     reach = max(math.dist(q, (0.5, 0.5)) for q in run.points)
-    assert reach == pytest.approx(1.45 * 80.0 / 92.6)
+    assert reach == pytest.approx(0.5 * 1.45 * 80.0 / 92.6)                 # half the pro's (default)
     cfg, chart, planned, pm, blocks = _mark_scene(True)
-    _place_spoke_marks([pm], planned, blocks, cfg, trim_at=3.0)             # no width: the pro's
-    assert max(math.dist(q, (0.5, 0.5)) for q in blocks[3].runs[1].points) == pytest.approx(1.45)
+    _place_spoke_marks([pm], planned, blocks, cfg, trim_at=3.0)             # no width: the pro's, halved
+    assert max(math.dist(q, (0.5, 0.5)) for q in blocks[3].runs[1].points) == pytest.approx(0.725)
+    cfg, chart, planned, pm, blocks = _mark_scene(True)
+    cfg = dataclasses.replace(cfg, detail_spoke_scale=None)                 # the pro's own size
+    _place_spoke_marks([pm], planned, blocks, cfg, trim_at=3.0, design_width_mm=80.0)
+    assert max(math.dist(q, (0.5, 0.5)) for q in blocks[3].runs[1].points) == pytest.approx(1.45 * 80.0 / 92.6)
 
 
 def test_a_mark_whose_host_sewed_nothing_sews_last():
@@ -496,9 +510,12 @@ def test_fremont_80_on_sews_the_star_white_after_the_black(fremont_on, fremont_o
     # the floor scales with the design's ARTWORK width (what stage 7 reads,
     # not the plan's stitched extent): 1.45 x 80 / 92.6 at this width
     bounds = [r.polygon.bounds for r in result.regions]
-    floor = spoke_floor_mm(max(b[2] for b in bounds) - min(b[0] for b in bounds))
-    assert 1.2 < floor < 1.3
-    reach = [math.dist(q, spec["centre"]) for q in run.points if math.dist(q, spec["centre"]) > 1.0]
+    floor = spoke_floor_mm(max(b[2] for b in bounds) - min(b[0] for b in bounds),
+                           fremont_on["cfg"].detail_spoke_scale)
+    assert 0.6 < floor < 0.65                                               # half the pro's 1.25
+    # distinct tips: at half size a tip point appears more than once in the run
+    tips = {(round(q[0], 6), round(q[1], 6)) for q in run.points if math.dist(q, spec["centre"]) > 0.3}
+    reach = [math.dist(q, spec["centre"]) for q in tips]
     assert len(reach) == 5 and all(abs(d - floor) < 1e-6 for d in reach), reach
     assert len(plan.blocks) == len(fremont_off["plan"].blocks)              # no colour change added
     w = [w for w in plan.warnings if w["code"] == DETAIL_SPOKES_SEWN]
