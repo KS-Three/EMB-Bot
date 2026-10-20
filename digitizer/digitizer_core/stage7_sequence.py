@@ -2229,7 +2229,7 @@ def sequence(
                       if cfg.border_abrupt_raggedness is not None
                       else machine.BORDER_ABRUPT_RAGGEDNESS)
     rescue = cfg.small_shape_rescue
-    # `cfg.lettering_columns_small_stem` (default OFF): a lettering stem
+    # `cfg.lettering_columns_small_stem` (default ON, 2026-10-20): a lettering stem
     # under the area floor goes to the Column lane, not the run tier. Off,
     # `routes_to_run` below is today's, branch for branch. It also needs the
     # lane itself (satin + lettering_columns): a stem the lane does not take
@@ -2626,7 +2626,7 @@ def sequence(
             # ring and the fill's rows keep their thread off the counter,
             # and nothing the tier routes inside the shape crosses it. Off,
             # the polygon handed over is the same object as before.
-            # `cfg.small_dot_rung` (default OFF): an outline under the loop
+            # `cfg.small_dot_rung` (default ON, 2026-10-20): an outline under the loop
             # floor (an i dot) sews as a tack ring. Off, the call is
             # today's, argument for argument. Scoped
             # (`cfg.small_dot_rung_lettering`), only a dot stage 3 admitted

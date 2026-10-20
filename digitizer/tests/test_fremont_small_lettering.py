@@ -63,8 +63,8 @@ def test_every_arm_flag_exists_and_is_built_off():
         assert overrides["small_text_true_size"] is False, name
         for k, v in overrides.items():
             assert hasattr(base, k), f"{name}: {k} is not a PipelineConfig field"
-            if k == "small_text_true_size":
-                continue
+            if k in fsl.PRE_TRUE_SIZE and v == fsl.PRE_TRUE_SIZE[k]:
+                continue                        # the pre-flip base, not an arm
             if k == "small_glyph_keep":
                 assert base.small_glyph_keep is True, f"{name}: keep is no longer the default"
                 assert v is False, f"{name}: {k} is already ON"
