@@ -26,7 +26,7 @@ from digitizer_core import stage5_overlap as s5
 from digitizer_core.config import PipelineConfig
 
 
-def measure(image: str, width_mm: float) -> dict:
+def measure(image: str, width_mm: float, **cfg_kw) -> dict:
     dropped = []
     planned_out = []
     orig_largest, orig_resolve = s5._largest_polygon, pipeline.resolve_overlaps
@@ -67,6 +67,8 @@ def measure(image: str, width_mm: float) -> dict:
     try:
         cfg = PipelineConfig()
         cfg.target_width_mm = width_mm
+        for k, v in cfg_kw.items():
+            setattr(cfg, k, v)
         pipeline.digitize(image, cfg)
     finally:
         s5._largest_polygon, s5._split_clip, pipeline.resolve_overlaps = (

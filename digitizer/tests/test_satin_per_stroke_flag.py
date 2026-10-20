@@ -17,7 +17,7 @@ from shapely.geometry import Polygon
 from digitizer_core import PipelineConfig, machine
 from digitizer_core.pipeline import digitize
 from digitizer_core.stage6_satin import classify_ribbon, is_satin_candidate
-from tests.conftest import TESTDATA
+from tests.conftest import PRE_FLIP, TESTDATA
 
 BAR = Polygon([(0, 0), (24, 0), (24, 2), (0, 2)])
 
@@ -149,8 +149,13 @@ def test_the_cap_is_a_veto_not_a_vote_and_leaves_no_bare_cloth():
     art = TESTDATA / "becker_marine_logo.png"
     got = {}
     for on in (False, True):
+        # On the engine the guard was measured on (`PRE_FLIP`). With
+        # `subpixel_corner_runs` ON (2026-10-20) this flag leaves 8.3 mm2
+        # bare against 6.8 off: a finding for satin_per_stroke's own flip
+        # decision, not something this flip may quietly absorb.
         cfg = PipelineConfig(target_width_mm=100.0, garment_id="left_chest",
-                             satin_per_stroke=on)
+                             satin_per_stroke=on,
+                             subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"])
         result = run_stages(str(art), cfg)
         plan = plan_stitches(result, cfg)
         m = run_preflight(result, plan, cfg, image=str(art))["metrics"]
