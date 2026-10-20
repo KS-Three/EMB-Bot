@@ -1,15 +1,19 @@
 // The text lane's two flags (2026-10-20): `dedupeHoles` and `underlayDirection`
 // on buildLetteringDesign, both built OFF.
 //
-// MASTER_SCOPE 25 and 40 each said "lettering has no flag yet". This wires
-// the shape lane's two rules through the lettering builder under the same
-// names and values, and pins three things:
+// MASTER_SCOPE 25 said lettering "has its own and no flag yet" and 40 that
+// buildLetteringDesign "is still not covered". This wires the shape lane's
+// two rules through the lettering builder under the same names and values,
+// and pins three things:
 //
 //   1. OFF is main's stream, byte for byte: the md5 of the stitch stream for
-//      three library fonts (the Studio's default, the font with the most
-//      doubled holes, a pixel font) at two sizes, taken on main at 7220f3e.
+//      three library fonts (the Studio's default, the satin font with the
+//      most doubled holes at 40 mm, a pixel font) at two sizes, taken on main
+//      at 7220f3e.
 //   2. `dedupeHoles` ON lays no stitch straight after a stitch on the same
-//      point, and the stream is OFF's less exactly those records.
+//      point, and the stream is OFF's less exactly those records; a run every
+//      record of which repeats the record before it lays nothing and loses
+//      its span (apesplit), and no other span moves.
 //   3. `underlayDirection` ON turns nothing on these fonts, because this
 //      lane's underlay already finishes where its satin starts; it turns a
 //      closed ring whose two crosses meet, and nothing else moves.
@@ -113,12 +117,49 @@ test("dedupeHoles ON: no stitch straight after a stitch on its point, and the st
     assert.strictEqual(on.widthMM, off.widthMM, label);
     assert.strictEqual(on.heightMM, off.heightMM, label);
     assert.strictEqual(on.colorCount, off.colorCount, label);
-    // every span is still a span of stitches, in the same order of kinds
+    // every span is still a span of stitches, in the same order of kinds:
+    // none of the pinned fonts has a run that lays nothing (next test)
+    assert.strictEqual(allRepeating(off).length, 0, `${label}: fixture, no run of only repeated records`);
     assert.deepStrictEqual(on.runs.map((r) => r.kind), off.runs.map((r) => r.kind), label);
-    for (const r of on.runs) {
-      assert.ok(r.i0 <= r.i1 && r.i1 < on.stitches.length, `${label}: span ${r.kind} ${r.i0}..${r.i1}`);
-      for (let i = r.i0; i <= r.i1; i++) assert.strictEqual(on.stitches[i].type, "stitch", `${label}: span ${r.kind} holds a ${on.stitches[i].type}`);
-    }
+    spansAreStitches(on, label);
+  }
+});
+
+// The spans of OFF whose every record sits on the record before it: a run
+// that lays nothing under the flag.
+const allRepeating = (d) => d.runs.filter((r) => {
+  for (let i = r.i0; i <= r.i1; i++) {
+    const a = d.stitches[i - 1], b = d.stitches[i];
+    if (!(a && a.type === "stitch" && b.type === "stitch" && same(a, b))) return false;
+  }
+  return true;
+});
+const spansAreStitches = (d, label) => {
+  for (const r of d.runs) {
+    assert.ok(r.i0 <= r.i1 && r.i1 < d.stitches.length, `${label}: span ${r.kind} ${r.i0}..${r.i1}`);
+    for (let i = r.i0; i <= r.i1; i++) assert.strictEqual(d.stitches[i].type, "stitch", `${label}: span ${r.kind} holds a ${d.stitches[i].type}`);
+  }
+};
+
+test("dedupeHoles ON: a run every record of which repeats the record before it lays nothing and has no span; every other span stays", () => {
+  if (!binOrSkip("apesplit")) return;
+  // apesplit at 40 mm: two-point needle-down walks whose both points round
+  // onto the stitch they leave from. The shape lane never meets this (pushRun
+  // opens every run with a jump); here the span goes with its stitches.
+  for (const [text, spansOff, spansOn] of [["FRITSCH", 284, 281], ["Stitches", 324, 316]]) {
+    const off = build("apesplit", text, 40), on = build("apesplit", text, 40, { dedupeHoles: true });
+    const label = `apesplit "${text}" 40 mm`;
+    assert.strictEqual(off.runs.length, spansOff, `${label}: fixture, spans OFF`);
+    assert.strictEqual(on.runs.length, spansOn, `${label}: spans ON`);
+    const gone = allRepeating(off);
+    assert.strictEqual(gone.length, spansOff - spansOn, label);
+    for (const r of gone) { assert.strictEqual(r.kind, "travel", label); assert.strictEqual(r.i1 - r.i0 + 1, 2, label); }
+    // the spans ON are the spans OFF less exactly those, in order, each of its kind
+    assert.deepStrictEqual(on.runs.map((r) => r.kind), off.runs.filter((r) => !gone.includes(r)).map((r) => r.kind), label);
+    spansAreStitches(on, label);
+    // and the stream is still OFF's less the repeated records
+    assert.deepStrictEqual(on.stitches, withoutSecond(off.stitches), label);
+    assert.strictEqual(seconds(on), 0, label);
   }
 });
 

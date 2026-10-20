@@ -2,6 +2,7 @@
 // buildLetteringDesign hands the writers (MASTER_SCOPE 25 and 40, 2026-10-20).
 //
 //   node tools/text-lane-flags-sheet.mjs [outDir] [--fonts a,b,c] [--text WORD] [--widths 40,100]
+//   node tools/text-lane-flags-sheet.mjs [outDir] --census
 //
 // Default: medium_font (the Studio's default), mai_en_fleur, pixel10, the
 // word FRITSCH at 40 and 100 mm wide on a 5 x 2.25 in garment with the
@@ -11,6 +12,17 @@
 // 100 mm), counts.json with every number the README quotes, and prints the
 // table. Nothing is written to a .dst: the md5s are of the stream itself,
 // which is what the pins in test/text-lane-flags.test.js hold.
+//
+// --census: no pictures. Every font in src/fonts/bin, the words FRITSCH and
+// Stitches, 40 and 100 mm (340 pairings, 332 of which lay anything; about a
+// minute), OFF against each
+// flag ON, into census.json: the doubled records and the designs carrying
+// them, the spans a run that laid nothing loses, the columns after an
+// underlay and how many the first-and-last-STITCH rule would turn against
+// how many the cross rule does, the designs ON leaves byte-identical, the
+// largest change in needle-down thread, and the fonts with the most doubled
+// records by count and by share. The README's library-wide numbers come
+// from here.
 //
 // Key: thread between two stitches in a row is a dark line, needle-up a
 // light grey one; every needle hole a dot. Left (OFF): a RED ring round a
@@ -39,7 +51,8 @@ const opt = (name, dflt) => { const i = args.indexOf(name); if (i < 0) return df
 const FONTS = opt("--fonts", "medium_font,mai_en_fleur,pixel10").split(",");
 const TEXT = opt("--text", "FRITSCH");
 const WIDTHS = opt("--widths", "40,100").split(",").map(Number);
-const outDir = path.resolve(args[0] || path.join(ROOT, "docs", "renders", "text-lane-flags"));
+const CENSUS = args.includes("--census") ? (args.splice(args.indexOf("--census"), 1), true) : false;
+const outDir =path.resolve(args[0] || path.join(ROOT, "docs", "renders", "text-lane-flags"));
 fs.mkdirSync(outDir, { recursive: true });
 
 const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, underlay: true };
@@ -115,6 +128,49 @@ function sheet(panels, scale, file) {
   });
   fs.writeFileSync(file, encodePNG(W, H, rgba));
   return { W, H };
+}
+
+// ---- --census: the whole library, no pictures -------------------------------
+if (CENSUS) {
+  const fonts = fs.readdirSync(BIN).filter((f) => f.endsWith(".embf")).map((f) => f.replace(/\.embf$/, "")).sort();
+  const WORDS = ["FRITSCH", "Stitches"], SIZES = [40, 100];
+  const rows = [];
+  const c = { designs: 0, doubled: 0, designsWithDoubled: 0, spansLost: 0, designsLosingSpans: 0, columnsAfterUnderlay: 0,
+    pointRuleWouldTurn: 0, turned: 0, designsTurned: 0, identicalUnderDirection: 0, maxThreadDeltaMm: 0, maxThreadDeltaDesign: null };
+  for (const key of fonts) {
+    const font = load(key);
+    for (const text of WORDS) for (const w of SIZES) {
+      const off = build(font, text, w);
+      if (!off.runs) continue;   // nothing laid (the font has no glyph for the word)
+      const dd = build(font, text, w, { dedupeHoles: true }), dir = build(font, text, w, { underlayDirection: true });
+      c.designs++;
+      const D = doubled(off);
+      c.doubled += D.at.length; if (D.at.length) c.designsWithDoubled++;
+      const lost = off.runs.length - dd.runs.length;
+      c.spansLost += lost; if (lost) c.designsLosingSpans++;
+      const cols = columnsAfterUnderlay(off), colsOn = columnsAfterUnderlay(dir);
+      c.columnsAfterUnderlay += cols.length;
+      // the shape lane's own test, first and last STITCH against the thread
+      for (const k of cols.map((x) => x.span)) {
+        const s = off.runs[k], from = off.stitches[(off.runs[k - 1].kind === "travel" ? off.runs[k - 2] : off.runs[k - 1]).i1];
+        const a = off.stitches[s.i0], b = off.stitches[s.i1];
+        if (Math.hypot(b.x - from.x, b.y - from.y) < Math.hypot(a.x - from.x, a.y - from.y)) c.pointRuleWouldTurn++;
+      }
+      let turned = 0;
+      for (let i = 0; i < cols.length; i++) if (!same(cols[i].firstStitch, colsOn[i].firstStitch)) turned++;
+      c.turned += turned; if (turned) c.designsTurned++;
+      if (md5(off) === md5(dir)) c.identicalUnderDirection++;
+      const delta = Math.abs(threadMm(dir) - threadMm(off));
+      if (delta > c.maxThreadDeltaMm) { c.maxThreadDeltaMm = +delta.toFixed(2); c.maxThreadDeltaDesign = `${key} ${text} ${w} mm`; }
+      rows.push({ font: key, text, widthMm: w, records: off.stitches.length, doubled: D.at.length, byKind: D.byKind, share: +(D.at.length / off.stitches.length).toFixed(4), spansLost: lost, columnsAfterUnderlay: cols.length, turned });
+    }
+  }
+  const top = (by) => rows.slice().sort((a, b) => b[by] - a[by]).slice(0, 5).map((r) => ({ font: r.font, text: r.text, widthMm: r.widthMm, doubled: r.doubled, records: r.records, share: r.share }));
+  const census = { generated: new Date().toISOString().slice(0, 10), garment: base.garment, pxPerMm: base.pxPerMm, underlay: "ladder", words: WORDS, widthsMm: SIZES, fonts: fonts.length, totals: c, mostDoubled: top("doubled"), largestShare: top("share"), designs: rows };
+  fs.writeFileSync(path.join(outDir, "census.json"), JSON.stringify(census, null, 1) + "\n");
+  console.log(JSON.stringify({ totals: c, mostDoubled: census.mostDoubled, largestShare: census.largestShare }, null, 1));
+  console.log(`written to ${path.join(outDir, "census.json")}`);
+  process.exit(0);
 }
 
 // ---- the dedupeHoles pairs --------------------------------------------------
