@@ -555,11 +555,11 @@ def resolve_small_regions(
     # never rescue what geometry would then reject silently.
     noise_area_px = machine.RUN_MIN_AREA_MM2 * px_per_mm ** 2
     loop_floor_px = machine.RUN_MIN_LOOP_MM * px_per_mm
-    # `cfg.small_dot_rung` (default OFF): the run tier sews a ring down to
+    # `cfg.small_dot_rung` (default ON, 2026-10-20): the run tier sews a ring down to
     # the dot rung's own floor, so the proxy admits down to it too.
     dot_floor_px = (machine.DOT_RUNG_MIN_LOOP_MM * px_per_mm
                     if cfg.small_dot_rung else None)
-    # `cfg.small_dot_rung_lettering` (default OFF): the rung admits only a
+    # `cfg.small_dot_rung_lettering` (default ON, 2026-10-20): the rung admits only a
     # dot with a stem under it (`has_stem_below`).
     dot_scope = bool(cfg.small_dot_rung and cfg.small_dot_rung_lettering)
     keep_contrast = bool(cfg.keep_thin_strokes) and layer_lab is not None

@@ -13,6 +13,15 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-10-20 (fifteenth pass) — scope refresh after PR #994 (the thirteenth and fourteenth passes, after #980–#988, wrote no entry here)
+
+State at writing (read with the GitHub API): #994 MERGED 2026-10-20 02:14 UTC. A snapshot of its body and of `docs/renders/browser-satin-small-shapes/README.md`, not live status:
+
+- **#994** `satinSmallShapes` (browser engine option on `buildQualityDesign`, OFF; defect 57's remainder; no new mm constant). Left chest, pique preset, underlay on, OFF → ON: 5-point star 10 mm 131 → 104 stitches, longest 8.02 → 4.60 mm, needle outside 0.64 → 0.18 mm, needle-up 16.0 → 17.0 mm, cover 99.7% → 96.9%, plan 10.0 × 9.5 → 9.6 × 9.4 mm; 10 × 2 mm round-ended stroke 55 → 55, longest 2.40 both, needle outside 0.35 → 0.20 mm, cover 96.7% → 98.1%, sewn 10.0 → 9.4 mm; 1.5 mm square the same bytes (8 stitches); 1 mm dot 6 → 6, needle outside 0.31 → 0.20 mm, cover 67.5% → 100%, plan 1.6 × 1.6 → 0.8 × 1.4 mm; 6-point star 170 → 127, longest 9.85 → 5.30 mm, needle-up 42.6 → 22.3 mm, cover 99.7% → 95.9%; T (arms 10 × 2 mm, drawn and set to satin) 101 → 98, longest 10.40 → 2.53 mm; 6 mm square 47 → 33, longest 7.78 → 6.40 mm, cover 88.2% → 93.7%; 6 mm dot 27 → 33, sewn 5.0 → 6.2 mm tall, cover 89.6% → 95.5%. "Fritsch" (barstitch_regular, 12 mm; 1,635 stitches) and "Stitches" (venezia, 10 mm; 1,859) do not move either way. OFF md5s byte-identical to `main` at `0eb5e02` and at `c39f4c9`: star5 `52ec3113`, round `92d9d1fe`, square `795d20f7`, dot `4aeeb8a9`, barstitch `5cb7310b`, venezia `f4f5e3f9`. At the PR head `node --test` 1305 tests, 1276 pass, 0 fail, 5 todo, 24 skipped; `app` 1874 passed; `asset-provenance` pass. Not sewn; the flip (whole, with a sharp-tip exemption, or not at all) is Kent's.
+- **MASTER_SCOPE at this pass:** 26,818 words before the edit; defect 57 at 321 words before, rewritten under the 400-word cap; the pre-#994 text of defect 57 and item 26, and defect 56's 158-word closed pointer, moved to area 1 ("Fifteenth pass"). The main branch at writing: `8bc00e3` (#1000 merged: `ties`, `fillStagger`, `dedupeHoles` ON by default, Kent's ruling 2026-10-20).
+
+---
+
 **Last updated:** 2026-10-15 (twelfth pass) — scope refresh after PRs #975–#977 (#955 had merged 10:34 UTC the same day; item 56 already said so)
 
 State of the range at writing (read with `gh pr view`): #975 MERGED 2026-10-15 21:02 UTC, #976 22:51 UTC, #977 2026-10-16 00:09 UTC.

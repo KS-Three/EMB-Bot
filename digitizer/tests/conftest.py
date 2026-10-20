@@ -557,4 +557,14 @@ PRE_FLIP["bean_letter_bay_hold"] = None
 # engine: the detail is absorbed and painted over. The tests ABOUT it are in
 # `tests/test_detail_spokes.py`.
 PRE_FLIP["detail_spokes"] = False
+# The small stem and the dot rung, scoped to lettering (Kent's flip
+# 2026-10-20, MASTER_SCOPE item 52; OFF/ON renders in PR #991). ON, a thin
+# lettering stem under the area floor sews satin in the Column lane, and an
+# i/j dot over a same-colour stem sews instead of being dropped, which moves
+# the stitches and trims of lettering fixtures. False is the pre-flip engine.
+# The tests ABOUT them are `tests/test_small_stem.py`,
+# `tests/test_small_dot_rung.py` and `tests/test_dot_rung_lettering.py`.
+PRE_FLIP["lettering_columns_small_stem"] = False
+PRE_FLIP["small_dot_rung"] = False
+PRE_FLIP["small_dot_rung_lettering"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}
