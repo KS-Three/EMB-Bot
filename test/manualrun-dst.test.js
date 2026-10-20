@@ -16,6 +16,9 @@ const path = require("node:path");
 const DG = require("../src/digitize.js");
 const DST = require("../src/dst.js");
 const SF = require("../src/satinfont.js");
+// `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
+// (Kent); a pin below taken before that, on another subject, builds with them OFF.
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
 
 test("a drawn line sews along its path: pystitch reads every stitch on it, end to end, as a 0.73 mm bean", async (t) => {
   const harness = await import("../tools/crossval-stitch-formats.mjs");
@@ -29,7 +32,7 @@ test("a drawn line sews along its path: pystitch reads every stitch on it, end t
   // A bent line with one curved segment, the way Line mode records it.
   const line = { id: "s1", kind: "run", points: [{ x: 50, y: 300 }, { x: 300, y: 100 }, { x: 550, y: 250 }], curves: { 1: { x: 450, y: 60 } }, colorRgb: [20, 20, 20] };
   const { regions, pxPerMm } = MS.shapesToRegions([line]);
-  const d = DG.buildQualityDesign(regions, { garment: { widthIn: 8, heightIn: 8 }, pxPerMm, targetWidthMm: 60, underlay: true, darkOnTop: false });
+  const d = DG.buildQualityDesign(regions, { garment: { widthIn: 8, heightIn: 8 }, pxPerMm, targetWidthMm: 60, underlay: true, darkOnTop: false, ...TRIO_OFF });
   assert.deepStrictEqual(d.runs.map((r) => r.kind), ["run"]);
 
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "manualrun-dst-"));

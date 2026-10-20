@@ -145,13 +145,15 @@ function binOrSkip(p, key) {
 // `satinZigzag: false` (2026-10-13) for the same reason: the zigzag order
 // went default ON that day and moves alchemy (762 -> 797, its split return
 // legs), so the invariant stays on the stream it was pinned on.
+// `ties`, `fillStagger`, `dedupeHoles` false (2026-10-20) for the same reason:
+// all three went default ON that day (Kent).
 for (const [key, expected] of Object.entries(SATIN_BASELINE)) {
   test(`satin font ${key} stitches exactly as before run support`, () => {
     const p = path.join(BIN, key + ".embf");
     if (!binOrSkip(p, key)) return;
     const font = fb.decodeFontBin(fs.readFileSync(p));
     const text = font.glyphs["a"] ? "Emb" : "EMB";
-    const d = DG.buildLetteringDesign(font, text, { ...base, crossFloor: false, satinZigzag: false });
+    const d = DG.buildLetteringDesign(font, text, { ...base, crossFloor: false, satinZigzag: false, ties: false, fillStagger: false, dedupeHoles: false });
     assert.strictEqual(d.stitches.length, expected, `${key} stitch count moved`);
   });
 }

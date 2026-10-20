@@ -76,8 +76,11 @@ test("layoutText: charIdx accounts for a skipped space and a newline exactly lik
 // apart by pullCompMm/2 each (0.2 mm default → 0.1 mm per side → 0.2 mm of
 // width the fit target never accounted for). Underlay ON reports the same
 // 40.2 × 23.0, so the widening is the rails, not the underlay reaching wider.
+// `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
+// (Kent); a pin below taken before that, on another subject, builds with them OFF.
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
 test("buildLetteringDesign: straight 'AB' targetWidthMm 40 reports the extent it actually sews", () => {
-  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40, underlay: false };
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40, underlay: false, ...TRIO_OFF };
   const d = DG.buildLetteringDesign(font, "AB", base);
   // 701 -> 703 on 2026-09-11: the Euler-walk underpath's 2 mm pitch was not
   // being divided by the fit scale (satinfont.js UNDERPATH_STEP_MM), so at
@@ -818,7 +821,7 @@ test("underlay ladder: default-on is a real, intended output change — pinned d
   // top of this file. `underlay` has ALWAYS defaulted to true and has always
   // done nothing; now that it works, the DEFAULT output of every lettering
   // design changes. These are the new numbers for the same AB design.
-  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40 };
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40, ...TRIO_OFF };
   const off = DG.buildLetteringDesign(font, "AB", { ...base, underlay: false });
   const on = DG.buildLetteringDesign(font, "AB", base);
   assert.strictEqual(off.stitchCount, 691, "underlay off: the pre-underlay-ladder number, +2 for the 2026-09-11 underpath units fix, -12 for the 2026-10-08 connector double");
