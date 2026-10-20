@@ -1936,8 +1936,17 @@ def sequence(
     palette_spools: list[int] | None = None,
     hairline: dict | None = None,
     ink_source=None,
+    counter_holes: list | None = None,
 ) -> tuple[list[StitchBlock], list[dict]]:
     """-> (blocks in sew order, warnings).
+
+    `counter_holes` (`cfg.open_cored_counters`, 2026-10-19): the polygons
+    of the cored counters stage 3 kept (`Region.meta["cored_counter"]`,
+    unstitched, so not in `planned`), from `plan_stitches`. A satin shape
+    whose polygon has one of them as a hole gets the small-print holds on
+    that hole (`cored_holes_of`): the plain tier's `satin_shape` and the
+    Column lane's `lettering_columns_shape` both take it, and no chained
+    link crosses one. None, the default, is byte-identical.
 
     `design_class` is stage 0's verdict (PipelineResult.design_class, handed
     through by plan_stitches). Only the photo classes change anything here —
@@ -2016,7 +2025,7 @@ def sequence(
             source_pixels=source_pixels, design_class=design_class,
             fill_technique=fill_technique, streamline_mode=streamline_mode,
             detail_layer=detail_layer, palette_spools=palette_spools,
-            hairline=hairline, ink_source=ink_source)
+            hairline=hairline, ink_source=ink_source, counter_holes=counter_holes)
         off_rank = {}
         for _b in off_blocks:
             for _r in _b.runs:
@@ -2107,6 +2116,23 @@ def sequence(
             return poly
         return small_print_clear(poly, counters, profile_for(pr).width_mm / 2.0,
                                  art=pr.region.polygon, chord_mm=chord_mm, bar_mm=bar_mm)
+
+    def cored_holes_of(poly) -> list:
+        """`cfg.open_cored_counters`: the interiors of `poly` that are cored
+        counters (`counter_holes`, the counter regions stage 3 kept), each as
+        a polygon -- the shape's own traced ring, which a counter region
+        covers. [] with none, or with the flag off (no `counter_holes`)."""
+        if not counter_holes or not poly.interiors:
+            return []
+        out = []
+        for ring in poly.interiors:
+            hole = Polygon(ring)
+            if hole.is_empty:
+                continue
+            pt = hole.representative_point()
+            if any(c.covers(pt) for c in counter_holes):
+                out.append(hole)
+        return out
     hairline_shapes_sewn = hairline_strands = hairline_dropped = 0
     # (shape_id, artwork mm2) of each rest-piece part `rest_planned` cut off
     # below the clip floor: counted in CLIP_DROPPED_SLIVER, as stage 5 counts
@@ -2643,6 +2669,12 @@ def sequence(
                         _letter, p.region.meta.get("small_counters"),
                         _prof.counter_min_width_mm)
                     _clear = _prof.width_mm / 2.0
+                # `cfg.open_cored_counters`: with the floor off, the floor's
+                # holds on the letter's cored counters alone; with it on,
+                # every hole is held already. Off, no `counter_holes`.
+                _cored = [] if cfg.small_print_floor else cored_holes_of(_letter)
+                if _cored:
+                    _clear = profile_for(p).width_mm / 2.0
                 runs, report = lettering_columns_shape(
                     _letter, p.shape_id, trim_at_mm=trim_at,
                     spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
@@ -2651,6 +2683,7 @@ def sequence(
                     start_near=entry,
                     end_near=exit_near if cfg.satin_exit_toward_next else None,
                     **({"counter_clear_mm": _clear} if _clear > 0 else {}),
+                    **({"counter_holes": _cored} if _cored else {}),
                     # `cfg.lettering_columns_fold_cuts` (default OFF): off,
                     # the call is today's, argument for argument
                     **({"fold_cuts": True} if cfg.lettering_columns_fold_cuts else {}),
@@ -2740,9 +2773,15 @@ def sequence(
                             and not widened_lettering(p.region)
                             and fabric.pull_comp_mm > 0)
                 rail_comp_mm = fabric.pull_comp_mm if on_rails else 0.0
+                # `cfg.open_cored_counters`: this shape's cored counters, held
+                # at half the block's laid width (`satin_shape`). Off, no
+                # `counter_holes`, and the call is today's.
+                _cored_s = cored_holes_of(p.polygon)
                 runs, report = satin_shape(
                     p.polygon,
                     p.shape_id,
+                    **({"counter_holes": _cored_s,
+                        "counter_clear_mm": profile_for(p).width_mm / 2.0} if _cored_s else {}),
                     underlay_style="none" if small else satin_underlay,
                     trim_at_mm=trim_at,
                     start_near=entry,
@@ -3437,10 +3476,12 @@ def sequence(
             # Small print: no link may cross a counter the block keeps
             # open (`small_print_counters_of`); None with the flag off.
             sp_forbid = None
-            if cfg.small_print_floor:
-                _cs = [c.buffer(-stitches.SAME_POINT_MM) for q in sewn
-                       for c in small_print_counters_of(q)]
-                sp_forbid = unary_union(_cs) if _cs else None
+            _cs = ([c.buffer(-stitches.SAME_POINT_MM) for q in sewn
+                    for c in small_print_counters_of(q)]
+                   if cfg.small_print_floor else [])
+            # `cfg.open_cored_counters`: nor across a cored counter
+            _cs += [c.buffer(-stitches.SAME_POINT_MM) for c in (counter_holes or [])]
+            sp_forbid = unary_union(_cs) if _cs else None
             ordered, linked_in_shape = _chain(
                 ordered, sewn, group[0].region.thread_index,
                 unary_union(later_run_art) if later_run_art else None,

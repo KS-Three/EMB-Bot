@@ -70,6 +70,10 @@ class RegionMask:
     # Admitted by the dot rung over a stem (`cfg.small_dot_rung_lettering`);
     # stages 4 and 7 extend the rung only to such a region when scoped.
     dot_rung: bool = False
+    # Kept as a cored counter (`cfg.open_cored_counters`, `cored_counters`):
+    # stage 4 carries it to `Region.meta["cored_counter"]`, which stage 7
+    # reads to hold the satin tiers off the hole it is.
+    cored_counter: bool = False
     # Kept as a spoked detail mark (`cfg.detail_spokes`): {"centre": (x, y),
     # "tips": [(x, y), ...] in FRAME pixels, "host_layer": int}. Stage 4
     # carries it to `Region.meta["detail_spokes"]` in design mm; stage 7 sews
@@ -720,6 +724,7 @@ def resolve_small_regions(
                 continue
         if i in cored:
             regions[i].source = "counter"
+            regions[i].cored_counter = True
             counters.append(i)
             continue
         # The halo can only reach one pixel past the region, so this window

@@ -6247,6 +6247,107 @@ def _axis_polygon(poly: Polygon, art_poly: Polygon | None, mode):
     return art_poly if art_poly is not None else poly
 
 
+def _hold_off_counters(kept: list[dict], held: Polygon, clear_mm: float,
+                       split_above_mm: float | None) -> list[dict]:
+    """`cfg.open_cored_counters` (see `satin_shape`): every satin column of
+    `kept` that comes within `clear_mm` of one of `held`'s interiors is read
+    back as stations (`strip_splits`: A1, B1, A2, B2, ...), given the Column
+    lane's two holds on those holes (`columns._clear_counters`,
+    `columns._counter_safe_pieces`) and re-emitted (`columns._satin_points`,
+    the lane's own zigzag with the split comb) as one column per piece.
+    The pieces of one column share its stroke, spine slice and entry
+    rule; its underlay is built once, on the first (`underlay`), and only
+    the first keeps the stroke's free start, only the last its free end. A
+    column clear of every counter is the entry it was, untouched. A column
+    whose points do not read as a plain zigzag (an odd count) is left as
+    it is rather than misread."""
+    from .columns import _clear_counters, _counter_safe_pieces, _satin_points
+    above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
+    zone = unary_union([Polygon(r) for r in held.interiors]).buffer(clear_mm)
+    out: list[dict] = []
+    for k in kept:
+        pts = k["pts"]
+        if (k["kind"] != stitches.SATIN or len(pts) < 4
+                or not LineString(pts).intersects(zone)):
+            out.append(k)
+            continue
+        rails = strip_splits(pts)
+        if len(rails) % 2:
+            out.append(k)
+            continue
+        a_pts, b_pts = _clear_counters(rails[0::2], rails[1::2], held, clear_mm,
+                                       machine.SATIN_MIN_CROSS_MM)
+        pieces, _dropped = _counter_safe_pieces(list(zip(a_pts, b_pts)), held,
+                                                machine.SATIN_MIN_CROSS_MM, clear_mm)
+        pieces = [p for p in pieces if len(p) >= 2]
+        for j, sts in enumerate(pieces):
+            new_pts = _satin_points(sts, above, _comb_thresholds, _split_points)
+            if len(new_pts) < 4:
+                continue
+            out.append({**k, "pts": new_pts,
+                        "free_start": k["free_start"] and j == 0,
+                        "free_end": k["free_end"] and j == len(pieces) - 1,
+                        "underlay": k.get("underlay", True) and j == 0})
+    return out
+
+
+def _cut_runs_off_counters(runs: list[StitchRun], held: Polygon, clear_mm: float) -> list[StitchRun]:
+    """`cfg.open_cored_counters` (see `satin_shape`): every run of `runs`
+    that is not a satin column (underlay, travel, a hairline bean) is cut
+    where it passes within `clear_mm` of one of `held`'s interiors, and
+    each stretch that is still a stitch long (`machine.MIN_STITCH_MM`)
+    sews as a run of its own, in order; the link rule decides the hop
+    between them. The columns were held by `_hold_off_counters`."""
+    zone = unary_union([Polygon(r) for r in held.interiors]).buffer(clear_mm)
+    out: list[StitchRun] = []
+
+    def flush(pts: list) -> None:
+        if len(pts) >= 2 and LineString(pts).length >= machine.MIN_STITCH_MM:
+            out.append(StitchRun(points=pts, kind=run.kind, shape_id=run.shape_id))
+
+    for run in runs:
+        if run.kind == stitches.SATIN or len(run.points) < 2:
+            out.append(run)
+            continue
+        line = LineString(run.points)
+        if not line.intersects(zone):
+            out.append(run)
+            continue
+        # Stitch by stitch, never the polyline at once: GEOS's overlay nodes
+        # and DEDUPLICATES overlapping edges, so a three-pass bean differenced
+        # whole came back as one pass over its whole length (review of the
+        # first cut, 2026-10-19). Each stitch is cut on its own and the
+        # pieces chained where they meet, so every pass of a bean survives
+        # and the run's direction is its own.
+        cur: list = []
+        for a, b in zip(run.points, run.points[1:]):
+            seg = LineString([a, b])
+            if seg.length < 1e-9:
+                continue
+            if not seg.intersects(zone):
+                if not cur:
+                    cur.append((float(a[0]), float(a[1])))
+                cur.append((float(b[0]), float(b[1])))
+                continue
+            rest = seg.difference(zone)
+            parts = sorted((g for g in getattr(rest, "geoms", [rest])
+                            if g.geom_type == "LineString" and g.length > 1e-9),
+                           key=lambda g: seg.project(SPoint(g.coords[0])))
+            for g in parts:
+                p0, p1 = ((float(g.coords[0][0]), float(g.coords[0][1])),
+                          (float(g.coords[-1][0]), float(g.coords[-1][1])))
+                if cur and math.dist(cur[-1], p0) < 1e-6:
+                    cur.append(p1)             # continues the piece in hand
+                else:
+                    flush(cur)
+                    cur = [p0, p1]
+                if math.dist(p1, (float(b[0]), float(b[1]))) >= 1e-6:
+                    flush(cur)                 # the stitch leaves the zone's far side later
+                    cur = []
+        flush(cur)
+    return out
+
+
 def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 trim_at_mm: float,
                 start_near: tuple[float, float] | None = None,
@@ -6281,10 +6382,27 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 tip_caps: bool = False,
                 tip_corner_gate: bool = False,
                 hairline_tier: bool = False,
+                counter_holes: list | None = None,
+                counter_clear_mm: float = 0.0,
                 _seams_closed: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
+
+    `counter_holes` / `counter_clear_mm` (`cfg.open_cored_counters`,
+    2026-10-19): the shape's cored counters (polygons; stage 3 kept them as
+    holes of the shape) and half the block's laid width. The skeleton reads
+    a hole under the area floor as a pinhole -- its loop collapses into
+    the junction cluster and the width profile smooths across it -- so a
+    column runs straight over a 0.9 mm2 counter the trace held open
+    (golden_tee's O at a 4 mm cap). Every column of this shape is then
+    read back as stations (`strip_splits`) and given the Column lane's two
+    small-print holds on THOSE holes only (`columns._clear_counters`,
+    `columns._counter_safe_pieces`): no stitch over a counter, every
+    penetration a half width off it, a cross through one cut into the
+    pieces either side, each sewn as a column of its own. Underlay and
+    travel runs are cut at the counter the same way, and the link rule
+    does not sew across one. None / 0.0, byte-identical.
 
     `cap_recentre` (`cfg.satin_cap_recentre`, 2026-09-19): a free end whose
     spine tail is a surviving cap fork -- running diagonally into one corner
@@ -6430,6 +6548,13 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # points exactly the flat return, so it sews byte-for-byte as before.
     if junction_square:
         strokes = [_square_junction_ends(st, half_mm) for st in strokes]
+    # `counter_holes`: the polygon whose interiors are this shape's cored
+    # counters, or None when it has none to hold.
+    hold_poly = None
+    if counter_holes and counter_clear_mm > 0:
+        from .columns import counter_hold_polygon
+        hp = counter_hold_polygon(poly, counter_holes)
+        hold_poly = hp if hp.interiors else None
     kept: list[dict] = []
     for si, st in enumerate(strokes):
         parts: list = []
@@ -6460,6 +6585,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                          "slice": piece,
                          "free_start": st.free_start and at_start,
                          "free_end": st.free_end and at_end})
+    if hold_poly is not None:
+        kept = _hold_off_counters(kept, hold_poly, counter_clear_mm, split_above_mm)
     if not kept:
         report["empty"] = True
         return [], report
@@ -6534,11 +6661,14 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 under = Stroke(spine=list(k["slice"]), free_start=False, free_end=False, closed=False)
             else:
                 under = st
-            stroke_runs = [*_stroke_underlay(poly, under, eff_style, shape_id, field,
-                                             max_width_mm=max_width_mm, fold_guard=fold_guard,
-                                             rail_comp_mm=rail_comp_mm,
-                                             rail_comp_floor_mm=rail_comp_floor_mm,
-                                             half_mm=half_mm),
+            # A column `_hold_off_counters` cut into pieces carries its
+            # underlay on the first piece only (`underlay`); absent, True.
+            stroke_runs = [*(_stroke_underlay(poly, under, eff_style, shape_id, field,
+                                              max_width_mm=max_width_mm, fold_guard=fold_guard,
+                                              rail_comp_mm=rail_comp_mm,
+                                              rail_comp_floor_mm=rail_comp_floor_mm,
+                                              half_mm=half_mm)
+                             if k.get("underlay", True) else []),
                            StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id)]
         # Under the Euler walk a stroke is walked THROUGH: the column enters
         # at the end the walk arrives at and leaves by the other, where the
@@ -6744,6 +6874,18 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # from a single stroke's underlay to its own column into a trim, 36 -> 42
     # for the design. 0.0 keeps the tenth of a millimetre it always had.
     poly_link = poly.buffer(0.1 + rail_comp_mm)
+    if hold_poly is not None:
+        # `counter_holes`: the underlay's centre run and the travel legs
+        # walk the spine, which the skeleton laid across the counter; each
+        # is cut at the hold and sews as pieces. The buffer above closes a
+        # counter narrower than 0.2 + 2 x comp, and a hop the link rule
+        # then sews runs needle-down across it (`column_runs` has the same
+        # cut): a counter is not inside the shape.
+        runs = _cut_runs_off_counters(runs, hold_poly, counter_clear_mm)
+        _cored = unary_union([Polygon(r).buffer(-stitches.SAME_POINT_MM)
+                              for r in hold_poly.interiors])
+        if not _cored.is_empty:
+            poly_link = poly_link.difference(_cored)
     for prev, cur in zip(runs, runs[1:]):
         a, b = prev.points[-1], cur.points[0]
         d = math.dist(a, b)
