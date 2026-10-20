@@ -15,11 +15,17 @@ still not kept (`cfg.clip_keep_pieces`, OFF). `tools/stage5_split_loss.measure`
 spies on BOTH, so this still reads the default path -- and the test asserts
 the spy saw pieces, because a spy on a function the engine no longer calls
 reads zero and passes.
+
+Since 2026-10-20 `cfg.subpixel_corner_runs` is ON (Kent's ruling), and with it
+logo_mfab_lc at 80 mm splits NOTHING -- the repaired corners leave no sliver
+for the clip to cut off. So the reach is read on the engine the 10 pieces
+were measured on (`PRE_FLIP`), and the property on both.
 """
 from pathlib import Path
 
 import pytest
 
+from tests.conftest import PRE_FLIP
 from tools.stage5_split_loss import measure
 
 ART = Path(__file__).resolve().parents[1] / "testdata" / "art"
@@ -29,9 +35,10 @@ ART = Path(__file__).resolve().parents[1] / "testdata" / "art"
 # other four measured the same way and cost 45 s apiece (logo_toat_beanie).
 @pytest.mark.parametrize("name,width", [("logo_mfab_lc.png", 80.0)])
 def test_largest_polygon_drops_no_piece_over_floor(name, width):
-    r = measure(str(ART / name), width)
+    pre = measure(str(ART / name), width, subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"])
     # Reach: the spy must see the splits at all (10 pieces measured 2026-10-08).
-    assert r["pieces"] > 0, r
-    assert r["pieces_over_floor"] == 0, r
-    assert r["largest_piece_mm2"] < r["floor_mm2"], r
-    assert r["bare_mm2"] < 1.0, r
+    assert pre["pieces"] > 0, pre
+    for r in (pre, measure(str(ART / name), width)):
+        assert r["pieces_over_floor"] == 0, r
+        assert r["largest_piece_mm2"] < r["floor_mm2"], r
+        assert r["bare_mm2"] < 1.0, r
