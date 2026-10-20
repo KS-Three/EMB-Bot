@@ -1664,6 +1664,28 @@ def _cap_fold_host(blocks: list[StitchBlock], n_art: int, c_index: int,
     return blocks[host_i]
 
 
+def _cap_seam_joins(blocks: list[StitchBlock], c_index: int,
+                    cfg: PipelineConfig) -> bool:
+    """True when a cap block in cone `c_index` would sew straight after a
+    block in that same cone -- the edge cap's repeated-cone route (MASTER_SCOPE
+    defect 18), read by `tools/cone_revisits.py` at gap 1.
+
+    `cfg.merge_adjacent_same_thread` already folds consecutive same-thread
+    ARTWORK blocks; this is the same rule at the one seam it did not reach.
+    The caller extends `blocks[-1]` with the cap's runs instead of appending a
+    block: they stay jump + trim + tied as a block start, so every stitch and
+    cut is the same and in the same order -- only the stop goes. Nothing moves
+    past anything, which is what separates it from
+    `cfg.edge_cap_fold_into_colour` (`_cap_fold_host`, OFF). An operator-step
+    block (appliqué, puff) is never joined: its stop is the operator's.
+    """
+    if not (cfg.merge_adjacent_same_thread and blocks):
+        return False
+    prev = blocks[-1]
+    return (prev.thread_index == c_index and prev.step is None
+            and bool(prev.runs))
+
+
 def _cap_follow_pieces(runs, sewn: list[PlannedRegion], cfg: PipelineConfig):
     """Split the cap's runs into stretches, each tagged with the thread of the
     sewn region whose edge it stands against.
@@ -3540,13 +3562,15 @@ def sequence(
     # it costs the operator no extra cone — but it is its own block, because
     # a block boundary is where the needle lifts and this pass starts
     # somewhere the previous colour did not end. When the picked thread
-    # happens to match the last artwork block, the same-thread merge above
-    # has already run and will not fold this one in; that is deliberate,
-    # not an oversight — the merge pass reasons about artwork groups, and
-    # the cap is a design-level pass whose own boundary is meaningful.
-    # (`cfg.edge_cap_fold_into_colour`, default off, is the one exception: it
-    # sews a cone's stretches inside that cone's last artwork block when
-    # nothing later comes near them -- `_cap_fold_host`.)
+    # happens to match the last artwork block, the cap sews at the end of
+    # that block instead (`_cap_seam_joins`, under the same
+    # `cfg.merge_adjacent_same_thread`, 2026-10-20): its first run keeps the
+    # lift and the cut, so the pass still starts fresh, and the stop between
+    # two blocks of one cone bought nothing. Until then this was the edge
+    # cap's repeated-cone route (defect 18).
+    # (`cfg.edge_cap_fold_into_colour`, default off, goes further: it sews a
+    # cone's stretches inside that cone's last artwork block even with other
+    # cones after it, when nothing later comes near them -- `_cap_fold_host`.)
     cap_style = str(cfg.edge_cap or "none").lower()
     cap_lightened = 0
     cap_empty_style = ""
@@ -3670,6 +3694,9 @@ def sequence(
                         host = (_cap_fold_host(blocks, n_art, c_index, _runs,
                                                fold_clear)
                                 if cfg.edge_cap_fold_into_colour else None)
+                        if host is None and _cap_seam_joins(blocks, c_index,
+                                                            cfg):
+                            host = blocks[-1]
                         if host is not None:
                             # Already jump + trim + tied as a block start;
                             # it stays exactly that, one stop earlier.
@@ -3691,15 +3718,18 @@ def sequence(
                     c_index = _cap_thread(silhouette, cap_sewn,
                                           cap_sewn[0].region.thread_index,
                                           runs=c_runs)
-                    c_thread = chart_for(cfg)[c_index]
-                    blocks.append(
-                        StitchBlock(
-                            thread_index=c_index,
-                            thread_number=c_thread.number,
-                            rgb=tuple(c_thread.rgb),
-                            runs=c_runs,
+                    if _cap_seam_joins(blocks, c_index, cfg):
+                        blocks[-1].runs.extend(c_runs)
+                    else:
+                        c_thread = chart_for(cfg)[c_index]
+                        blocks.append(
+                            StitchBlock(
+                                thread_index=c_index,
+                                thread_number=c_thread.number,
+                                rgb=tuple(c_thread.rgb),
+                                runs=c_runs,
+                            )
                         )
-                    )
                     cursor = c_runs[-1].points[-1]
             cap_cost = {
                 "style": cap_style,
