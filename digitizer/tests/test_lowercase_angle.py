@@ -9,7 +9,7 @@ own perpendicular (0.0% past it, 80 and 120 mm) but folds lowercase
 crosses through a SHOULDER -- the u's bowl into its right stem, the b's and
 g's bowl into the stem, the m's arch off its first stem -- because the
 junction rules leave a concave corner uncut when its far side is smooth.
-`cfg.lettering_columns_fold_cuts` (default OFF) gives such a piece the
+`cfg.lettering_columns_fold_cuts` (ON since 2026-10-20) gives such a piece the
 second look `_refine` gives an over-long one -- and, since the follow-up
 (claude/fold-cuts-junctions), refuses a cut that leaves a stub (the u's
 spur), opens a ring with a PAIR of cuts (the a's bowl, which one cut
@@ -442,7 +442,7 @@ def test_the_judge_leaves_every_capital_alone(glyphs80):
         assert [r.points for r in on] == [r.points for r in off], ch
 
 
-# --- end to end, default OFF ---------------------------------------------------
+# --- end to end, OFF arm vs the default (ON since 2026-10-20) --------------------
 
 def _md5(plan) -> str:
     import hashlib
@@ -456,18 +456,21 @@ def word():
     kw = dict(target_width_mm=80.0, forced_class="flat")
 
     def boom(*_a, **_k):
-        raise AssertionError("fold_cuts code reached on the default config")
+        raise AssertionError("fold_cuts code reached with fold_cuts off")
     with pytest.MonkeyPatch.context() as mp:      # OFF never runs the new code
         for name in ("_fold_refine", "_judged_overlong", "sewn_knots", "_uncovered"):
             mp.setattr(outline_cut, name, own_thread_only(boom, getattr(outline_cut, name)))
-        off_r, off = digitize(la.FIXTURE.with_suffix(".png"), PipelineConfig(**kw))
-    _on_r, on = digitize(la.FIXTURE.with_suffix(".png"),
-                         PipelineConfig(lettering_columns_fold_cuts=True, **kw))
+        off_r, off = digitize(la.FIXTURE.with_suffix(".png"),
+                              PipelineConfig(lettering_columns_fold_cuts=False, **kw))
+    # the default IS the ON arm since Kent's flip 2026-10-20
+    _on_r, on = digitize(la.FIXTURE.with_suffix(".png"), PipelineConfig(**kw))
     return off_r, off, on
 
 
-def test_the_flag_is_off_by_default():
-    assert PipelineConfig().lettering_columns_fold_cuts is False
+def test_the_flag_is_on_by_default():
+    # Kent's flip 2026-10-20, after PR #986's sewn judge; False is the pre-flip lane
+    assert PipelineConfig().lettering_columns_fold_cuts is True
+    assert PipelineConfig() == PipelineConfig(lettering_columns_fold_cuts=True)
 
 
 def test_on_moves_only_lowercase_and_cuts_its_folds(word):

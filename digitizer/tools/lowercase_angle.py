@@ -339,7 +339,7 @@ def measure_synthetic(width_mm: float, columns: bool = True, base: Path = FIXTUR
     meta = json.loads(base.with_suffix(".json").read_text(encoding="utf-8"))
     cfg = PipelineConfig(target_width_mm=width_mm, forced_class="flat",
                          lettering_columns=columns,
-                         **({"lettering_columns_fold_cuts": True} if fold_cuts else {}),
+                         lettering_columns_fold_cuts=fold_cuts,
                          **cfg_kw)
     result, plan = digitize(base.with_suffix(".png"), cfg)
     to_px, s = mm_to_px(result, meta["image"])
@@ -568,7 +568,7 @@ def measure_corpus(name: str, fold_cuts: bool = False) -> dict:
     with Image.open(path) as im:
         wh = im.size
     cfg = PipelineConfig(target_width_mm=width, garment_id=garment,
-                         **({"lettering_columns_fold_cuts": True} if fold_cuts else {}))
+                         lettering_columns_fold_cuts=fold_cuts)
     result, plan = digitize(path, cfg)
     to_px, _s = mm_to_px(result, wh)
     letters = {r.shape_id for r in result.regions if is_lettering(r, cfg)}

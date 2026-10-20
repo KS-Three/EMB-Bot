@@ -2445,7 +2445,18 @@ class PipelineConfig:
     # over-long one, scored on folded crosses. Built OFF (Kent's call to
     # flip; renders only, nothing sewn); False is byte-identical.
     # Tests: `tests/test_lowercase_angle.py`.
-    lettering_columns_fold_cuts: bool = False
+    #
+    # **FLIPPED ON 2026-10-20, Kent's ruling** (relayed through the foreman),
+    # on PR #986's close-out of item 50's two open cases: the sewn judge
+    # (`outline_cut.sewn_knots`) and its coverage guard (`COVER_SLACK`). Its
+    # instrument is `tools/lowercase_angle.py` plus `sewn_knots`: on the
+    # synthetic word no glyph sews worse ON than OFF at 50, 80 or 120 mm,
+    # lowercase folds go 5 -> 0 at 80 mm and 13 -> 2 at 120, and capitals sew
+    # as OFF. KNOWN COST: lowercase in the lane digitizes 2-3.4x slower (the
+    # judge sews every candidate cut). KNOWN OPEN, sew-out (ROADMAP gate 1):
+    # every fold_cuts ratio is from one synthetic word, unsewn. False is the
+    # pre-flip construction, byte for byte (`tests/conftest.py`, PRE_FLIP).
+    lettering_columns_fold_cuts: bool = True
     # Under `lettering_columns`, a column ENDS ON the letter's own outline
     # (2026-10-13, Kent: "we need to work on lettering and how they start /
     # end"; `columns._hold_end_faces`). The pull push moves every cross end
