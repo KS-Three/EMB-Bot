@@ -70,7 +70,8 @@ GARMENT = "hat_front"                       # the Hat profile, 0.4 mm pull: Kent
 #: ON in every B arm, by override; the counter hold (#952) pinned OFF in every
 #: arm and the bay hold pinned OFF in the OFF arm, so the card's cuts mean what
 #: they did when it was cut: both holds are ON by default since 2026-10-15.
-SWITCH = {"small_text_true_size": True, "bean_letter_counter_hold_mm": None}
+SWITCH = {"small_text_true_size": True, "bean_letter_counter_hold_mm": None,
+          "bean_letter_straight_mm": None}
 HOLD_A, HOLD_B = 0.2, 0.25                  # #967's two candidate holds
 #: B arms in tooth order: (label, overrides on top of SWITCH). OFF was main's
 #: default when the card was cut (2026-10-15, before the flip).

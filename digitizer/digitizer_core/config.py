@@ -2779,8 +2779,11 @@ class PipelineConfig:
     # nothing visible: the stations already sat within ~0.1 mm of the ink's
     # centre.) None: the pitch as before, byte for byte. A CANDIDATE (gate
     # 1): how long a 3-pass bean stitch may run on a cap is a sew-out
-    # question. Built OFF; the flip is Kent's.
-    bean_letter_straight_mm: float | None = None
+    # question. **ON at 0.7 since 2026-10-20, Kent's call** on the off/0.9
+    # renders ("ON at 0.7 mm", the middle arm: fewer beads than 0.45,
+    # shorter stitches than 0.9). None is the pre-flip engine (`PRE_FLIP`);
+    # the sew-out card tools pin None.
+    bean_letter_straight_mm: float | None = 0.7
     # The bean tagger's ink read takes its ground colour only from a ring this
     # deep round the cluster (`ink_path.read_cluster_ink`'s
     # `ground_ring_mm`), not from every far pixel of the crop. At 65 mm

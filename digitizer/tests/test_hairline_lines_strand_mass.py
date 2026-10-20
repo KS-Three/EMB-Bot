@@ -45,9 +45,13 @@ PINS = {"s882_lines": "37789a45fa1dac14c3ce6d824dc2ad9c",
 # The same goes for the two item-46 flips (Kent, 2026-10-20):
 # `dissolve_phantom_blends` and `clip_keep_pieces` move the drawn mane's
 # `mane_lines` stream too (`451c0177...` with them on, CI 2026-10-20), and
-# the PINS predate both.
+# the PINS predate both. And the straight-stretch bean stitch
+# (`bean_letter_straight_mm`, ON at 0.7 since Kent's flip later that day)
+# reaches the mane's strands the same way (`mane_lines` read `e81c2525...`
+# with it on, CI 2026-10-20): pinned None here too.
 HOLDS_OFF = dict(bean_letter_counter_hold_mm=None, bean_letter_bay_hold=None,
-                 dissolve_phantom_blends=False, clip_keep_pieces=False)
+                 dissolve_phantom_blends=False, clip_keep_pieces=False,
+                 bean_letter_straight_mm=None)
 
 
 def _syn_cfg(arm: str, width_mm: float) -> PipelineConfig:

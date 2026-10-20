@@ -1,10 +1,11 @@
-"""`cfg.bean_letter_straight_mm` (built OFF 2026-10-20): a longer bean-letter
+"""`cfg.bean_letter_straight_mm` (built 2026-10-20, ON at 0.7 the same day --
+Kent's "ON at 0.7 mm"): a longer bean-letter
 stitch on a straight stretch of spine (`stage6_beanletter._station_piece`).
 
 Kent, Fremont 81 mm Hat, 2026-10-20: "1 is wiggly", "Eat Stay play are
 wiggly". 0.45 mm 3-pass stitches lay a straight stem as a chain of beads.
 Smoothing the spine first was measured the same day and moved nothing
-visible. The longer stitch is a gate-1 candidate; the flip is Kent's.
+visible. The longer stitch is a gate-1 candidate (unsewn).
 """
 import math
 
@@ -20,8 +21,13 @@ def _arc(r=0.8, n=80, sweep=math.pi):
     return [(r * math.cos(t), r * math.sin(t)) for t in (sweep * i / (n - 1) for i in range(n))]
 
 
-def test_off_by_default():
-    assert PipelineConfig().bean_letter_straight_mm is None
+def test_on_at_kents_0_7_and_pinned_none_before_the_flip():
+    from tools.pro_parity import flagcost as fc
+
+    from .conftest import PRE_FLIP
+    assert PipelineConfig().bean_letter_straight_mm == 0.7
+    assert PRE_FLIP["bean_letter_straight_mm"] is None
+    assert fc.FLAGS["bean_letter_straight_mm"] is None
 
 
 def test_a_straight_stem_takes_the_long_stitch():

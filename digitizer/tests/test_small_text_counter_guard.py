@@ -215,8 +215,16 @@ def test_bean_tagging_takes_the_restore_steps_verdict(monkeypatch):
 # `tools/lowercase_angle.py`'s reading the line sews no worse (station folds
 # past 45 deg 1 -> 1, short / crossed legs 0 / 18 -> 0 / 18, trims 2 -> 2,
 # 378 -> 366 stitches). 1.55 and 2.5 mm did not move (their lines sew bean).
-MD5 = {1.55: {"off": "dbb6380a91", "unguarded": "00098415bf"},
-       2.5: {"off": "1ad15a6e07", "unguarded": "42401291c4"},
+# The third: the 1.55 and 2.5 mm "unguarded" pins moved 2026-10-20 when Kent
+# flipped `bean_letter_straight_mm` ON at 0.7 ("ON at 0.7 mm", PR #1017):
+# a straight stretch of a bean spine takes the coarsest even pitch up to 0.7
+# instead of 0.45, so the line's bean letters sew fewer, longer stitches
+# (1.55: `00098415bf` -> `db84d85ef4`, 251 -> 236 stitches; 2.5: `42401291c4`
+# -> `ceb3c8109d`, 318 -> 297; trims 1 -> 1 at both). With the knob None
+# both still read their 10-15 values, on CI and on a Windows box alike. 3 mm
+# did not move (its line sews the Column lane, no bean letters).
+MD5 = {1.55: {"off": "dbb6380a91", "unguarded": "db84d85ef4"},
+       2.5: {"off": "1ad15a6e07", "unguarded": "ceb3c8109d"},
        3: {"off": "5da6cf3d84", "unguarded": "6212f19180"}}
 
 

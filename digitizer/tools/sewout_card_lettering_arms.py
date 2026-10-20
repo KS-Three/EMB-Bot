@@ -66,7 +66,8 @@ DEFAULT_CUTS = DEFAULT_OUT / "cuts"
 #: they did when the card was cut (2026-10-14; the holds are ON by default
 #: since 2026-10-15), and block A's hold arm sets its own.
 SWITCH = {"small_text_true_size": True,
-          "bean_letter_counter_hold_mm": None, "bean_letter_bay_hold": None}
+          "bean_letter_counter_hold_mm": None, "bean_letter_bay_hold": None,
+          "bean_letter_straight_mm": None}
 HOLD_MM = 0.25                                # #952's candidate
 
 #: cut -> (Studio width in mm, the replay's overrides). `s81` is the shared

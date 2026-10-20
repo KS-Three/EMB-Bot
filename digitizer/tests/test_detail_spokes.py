@@ -453,16 +453,26 @@ def _host_cpu() -> str:
             f"cv2 {cv2.getCPUFeaturesLine()}, ipp {cv2.ipp.getIppVersion()!r}")
 
 
+# Both arms pin `bean_letter_straight_mm` to None: the stream below was
+# captured before Kent's 0.7 flip (2026-10-20, "ON at 0.7 mm"), and the
+# longer stitch re-stations the tagline's bean letters (14,824 -> 14,749 at
+# 80 mm), which is not what this pin is about. The pin keeps the OFF md5
+# that every host was proven against, rather than re-capturing it here.
+_BEAN_PIN = {"bean_letter_straight_mm": None}
+
+
 @pytest.fixture(scope="module")
 def fremont_off():
     from tools import fremont_triage as ft
-    return ft.run_arm("main", 80.0, None, preflight=False, overrides={"detail_spokes": False})
+    return ft.run_arm("main", 80.0, None, preflight=False,
+                      overrides={"detail_spokes": False, **_BEAN_PIN})
 
 
 @pytest.fixture(scope="module")
 def fremont_on():
     from tools import fremont_triage as ft
-    return ft.run_arm("main", 80.0, None, preflight=False, overrides={"detail_spokes": True})
+    return ft.run_arm("main", 80.0, None, preflight=False,
+                      overrides={"detail_spokes": True, **_BEAN_PIN})
 
 
 def test_test_environment_caps_ipp_at_avx2():

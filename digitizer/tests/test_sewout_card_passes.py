@@ -39,9 +39,12 @@ def test_the_arms_differ_only_in_passes_and_are_valid_config():
         assert cfg.bean_letter_passes == n and cfg.bean_letter_max_stroke_mm == 0.5
     # the switch ON by override, and both holds pinned OFF: they are ON by default
     # since Kent's flip of 2026-10-15, after this card was cut, so a re-cut sews
-    # what the committed cuts record
+    # what the committed cuts record; the straight-stretch stitch
+    # (`bean_letter_straight_mm`, ON at 0.7 since Kent's 2026-10-20 flip) is
+    # pinned None for the same reason
     assert base == {"small_text_true_size": True,
-                    "bean_letter_counter_hold_mm": None, "bean_letter_bay_hold": None}
+                    "bean_letter_counter_hold_mm": None, "bean_letter_bay_hold": None,
+                    "bean_letter_straight_mm": None}
 
 
 def test_the_card_reads_back_whole_and_fits_the_hoop(card):
