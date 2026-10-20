@@ -710,10 +710,15 @@ test("generateElement: a preset shape leaves no float a DST machine reads as a c
       { id: "shape", points: shapePresetPoints(kind, params, sizeMm), curves: {}, stitchType: "auto", colorRgb: el.colorRgb, angleDeg: null },
     ]);
     const call = { garment, fabric: fabricInForce(garment.id, undefined), pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: sizeMm, offsetXMm: 0, offsetYMm: 0, fillColumns: true };
+    expect(d.stitches).toEqual(EMB.buildQualityDesign(regions, { ...call, cutFloats: true }).stitches);
     const off = EMB.buildQualityDesign(regions, call);
     expect(unasked(off)).toBeGreaterThan(0);
-    expect(needles(d)).toEqual(needles(off));
     expect(trims(d)).toBeGreaterThan(trims(off));
+    // `ties` is ON by default since 2026-10-20 and locks each cut it is given,
+    // so the needles are compared untied: cutFloats itself moves none.
+    const untied = { ...call, ties: false };
+    expect(needles(EMB.buildQualityDesign(regions, { ...untied, cutFloats: true }))).toEqual(needles(EMB.buildQualityDesign(regions, untied)));
+    expect(d._debug.nTies).toBeGreaterThan(off._debug.nTies);
   }
 });
 
@@ -781,9 +786,14 @@ test("generateElement: a manual fill leaves no float a DST machine reads as a cu
   const { regions, pxPerMm } = shapesToRegions(el.shapes);
   const fabric = fabricInForce(garment.id, undefined);
   const call = { garment, fabric, pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: 40, offsetXMm: 0, offsetYMm: 0, fillColumns: true };
+  expect(d.stitches).toEqual(EMB.buildQualityDesign(regions, { ...call, cutFloats: true }).stitches);
   const off = EMB.buildQualityDesign(regions, call);
   expect(unasked(off)).toBeGreaterThan(0);
-  expect(needles(d)).toEqual(needles(off));
+  // `ties` is ON by default since 2026-10-20 and locks each cut it is given,
+  // so the needles are compared untied: cutFloats itself moves none.
+  const untied = { ...call, ties: false };
+  expect(needles(EMB.buildQualityDesign(regions, { ...untied, cutFloats: true }))).toEqual(needles(EMB.buildQualityDesign(regions, untied)));
+  expect(d._debug.nTies).toBeGreaterThan(off._debug.nTies);
   expect(d.stitches.filter((s) => s.type === "trim").length).toBeGreaterThan(off.stitches.filter((s) => s.type === "trim").length);
 });
 

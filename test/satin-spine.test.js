@@ -62,7 +62,10 @@ test("a bar's column runs from one end of the bar to the other", () => {
 
 // ---- through the Studio's own modules --------------------------------------
 const lib = (name) => import(pathToFileURL(path.join(__dirname, "..", "app", "src", "lib", name)).href);
-async function studioShape(kind, params, sizeMm, garmentId = "left_chest") {
+// `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
+// (Kent); a pin below taken before that, on another subject, builds with them OFF.
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
+async function studioShape(kind, params, sizeMm, garmentId = "left_chest", extra) {
   const { shapePresetPoints } = await lib("shapePresets.js");
   const { shapesToRegions } = await lib("manualShapes.js");
   const { regions, pxPerMm } = shapesToRegions([
@@ -70,7 +73,7 @@ async function studioShape(kind, params, sizeMm, garmentId = "left_chest") {
   ]);
   return digitize.buildQualityDesign(regions, {
     garment: garments.getGarment(garmentId), fabric: fabrics.getFabric(fabrics.fabricForGarment(garmentId)), pxPerMm,
-    darkOnTop: false, underlay: true, targetWidthMm: sizeMm, offsetXMm: 0, offsetYMm: 0,
+    darkOnTop: false, underlay: true, targetWidthMm: sizeMm, offsetXMm: 0, offsetYMm: 0, ...extra,
   });
 }
 const longestStitchMm = (d) => {
@@ -220,7 +223,7 @@ test("an L turned exactly 45 degrees is sewn along both arms", () => {
 
 test("a fill is not touched: the shape tool's default rectangle sews what it sewed", async () => {
   // 50 x 30 mm is a fill; medialSatin never sees it. Counted on f887e27d.
-  const d = await studioShape("rect", { heightMm: 30, cornerRadiusMm: 0 }, 50);
+  const d = await studioShape("rect", { heightMm: 30, cornerRadiusMm: 0 }, 50, undefined, TRIO_OFF);
   assert.strictEqual(d._debug.nFill, 1);
   assert.strictEqual(d.stitchCount, 2935);
 });

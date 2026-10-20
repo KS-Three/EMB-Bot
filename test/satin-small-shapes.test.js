@@ -38,8 +38,12 @@ const pullCompMm = fabrics.getFabric(fabrics.fabricForGarment(GARMENT)).pullComp
 const OUT_ALLOWED_MM = pullCompMm / 2 + 0.05;
 
 const spec = async (id) => { const T = await tool(); return T.SHAPES.find((s) => s.id === id) || T.WORDS.find((s) => s.id === id); };
-const shape = async (id, on) => { const T = await tool(); return T.buildShape(await spec(id), on); };
-const word = async (id, on) => { const T = await tool(); return T.buildWord(await spec(id), on); };
+// `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
+// (Kent). This file's pins and counts were taken with them OFF, and they are
+// not its subject, so every design here is built with them OFF.
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
+const shape = async (id, on) => { const T = await tool(); return T.buildShape(await spec(id), on, TRIO_OFF); };
+const word = async (id, on) => { const T = await tool(); return T.buildWord(await spec(id), on, TRIO_OFF); };
 const longestStitchMm = (d) => {
   let m = 0;
   for (let i = 1; i < d.stitches.length; i++) if (d.stitches[i].type === "stitch") m = Math.max(m, Math.hypot(d.stitches[i].x - d.stitches[i - 1].x, d.stitches[i].y - d.stitches[i - 1].y) / 10);

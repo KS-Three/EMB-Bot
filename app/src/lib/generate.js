@@ -251,8 +251,8 @@ export function generateElement(element, garment, runtime) {
       // (`tools/cut-floats-shapes-sheet.mjs`, 2,870 designs): unasked DST cuts
       // 2,799 -> 0, trims 961 -> 3,760, DST cuts and stitches unchanged, no
       // needle point moved, no new thread. 12-point stars carry most of it
-      // (trims 2 -> 901). EXP and PES gain these cuts too, unlocked while
-      // `ties` is off. Engine default stays off.
+      // (trims 2 -> 901). EXP and PES gain these cuts too, locked by
+      // `ties`, which is ON by default since 2026-10-20. Engine default stays off.
       // docs/cut-floats-shapes-2026-10-08.md. Not sewn.
       cutFloats: true,
       underlay: element.underlay,
