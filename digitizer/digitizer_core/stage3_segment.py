@@ -246,6 +246,91 @@ _STEM_MAX_ROW_DOTS = 1.5
 _STEM_MIN_ROW_FILL = 0.75
 
 
+def _hole_holding(region: "RegionMask", core_px: tuple[int, int]) -> np.ndarray | None:
+    """The hole of `region` (a 4-connected component of its crop's complement
+    that does not reach the crop's border) holding frame pixel `core_px`
+    (y, x), as a full-frame-placed (crop-sized) bool with its origin, or None
+    when that pixel is not in a hole of `region`. 4-connected, so an 8-connected
+    ring closes it."""
+    y0, x0, y1, x1 = region.bbox
+    cy, cx = core_px
+    if not (y0 <= cy < y1 and x0 <= cx < x1):
+        return None
+    crop = region.window(y0, x0, y1, x1)
+    if crop[cy - y0, cx - x0]:
+        return None
+    pad = np.ones((crop.shape[0] + 2, crop.shape[1] + 2), np.uint8)
+    pad[1:-1, 1:-1] = ~crop
+    _n, lab = cv2.connectedComponents(pad, connectivity=4)
+    mine = lab[cy - y0 + 1, cx - x0 + 1]
+    if mine == lab[0, 0]:
+        return None
+    return lab[1:-1, 1:-1] == mine
+
+
+def cored_counters(regions: list["RegionMask"], small: list[int], core: np.ndarray,
+                   min_area_px: float, core_min_px: float, band_px: float) -> set[int]:
+    """`cfg.open_cored_counters`: the sub-floor regions that sit in a counter
+    whose middle is the page colour.
+
+    `core` is stage 1's `enclosed_mask` (page-coloured, not border-connected).
+    For each of its connected components of at least `core_min_px` and under
+    `min_area_px`, the shapes round it are walked inside out (by the area of
+    the hole holding the core). A shape narrower than `band_px` everywhere
+    (twice its largest distance-transform value) is a band -- a keyline or a
+    bevel a thread cannot lay -- and the walk goes past it; the first shape
+    that is not a band is the letter, and its hole is the counter, when that
+    hole is under `min_area_px`. Every region of `small` with nine tenths of
+    its pixels in the counter is returned. A hole at or over the floor ends
+    the walk with nothing: a counter that large is not the floor's to close."""
+    if core is None or not core.any():
+        return set()
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(core.astype(np.uint8), connectivity=8)
+    boxes = [None if r.area == 0 else r.bbox for r in regions]
+    small_set = set(small)
+    out: set[int] = set()
+    band_cache: dict[int, bool] = {}
+
+    def is_band(j: int) -> bool:
+        if j not in band_cache:
+            crop = regions[j].crop.astype(np.uint8)
+            pad = np.zeros((crop.shape[0] + 2, crop.shape[1] + 2), np.uint8)
+            pad[1:-1, 1:-1] = crop
+            band_cache[j] = 2.0 * float(cv2.distanceTransform(pad, cv2.DIST_L2, 5).max()) < band_px
+        return band_cache[j]
+
+    for c in range(1, n):
+        cx0, cy0, cw, ch, area = (int(v) for v in stats[c])
+        if area < core_min_px or area >= min_area_px:
+            continue
+        ys, xs = np.nonzero(lab[cy0:cy0 + ch, cx0:cx0 + cw] == c)
+        seed = (cy0 + int(ys[0]), cx0 + int(xs[0]))
+        chain = []
+        for j, b in enumerate(boxes):
+            if b is None or b[0] > cy0 or b[1] > cx0 or b[2] < cy0 + ch or b[3] < cx0 + cw:
+                continue
+            hole = _hole_holding(regions[j], seed)
+            if hole is not None:
+                chain.append((int(hole.sum()), j, hole))
+        chain.sort(key=lambda t: (t[0], t[1]))
+        for hole_px, j, hole in chain:
+            if hole_px >= min_area_px:
+                break
+            if is_band(j):
+                continue
+            hy0, hx0 = regions[j].bbox[:2]
+            hy1, hx1 = hy0 + hole.shape[0], hx0 + hole.shape[1]
+            for i in small_set:
+                bi = boxes[i]
+                if i == j or bi is None or bi[0] < hy0 or bi[1] < hx0 or bi[2] > hy1 or bi[3] > hx1:
+                    continue
+                sub = regions[i].window(hy0, hx0, hy1, hx1)
+                if int((sub & hole).sum()) * 10 >= int(regions[i].area) * 9:
+                    out.add(i)
+            break
+    return out
+
+
 def _chained_small_regions(regions, areas, boxes, small, min_area_px,
                            height, width) -> set[int]:
     """Sub-floor regions that form a connected structure clearing the floor.
@@ -311,6 +396,7 @@ def resolve_small_regions(
     enclosed_mask: np.ndarray | None = None, *, chain_rescue: bool = True,
     layer_lab: np.ndarray | None = None, lab_img: np.ndarray | None = None,
     keep_counters: bool = False,
+    counter_core: np.ndarray | None = None,
 ) -> tuple[list[RegionMask], list[dict]]:
     """Absorb or drop sub-sewable regions. Returns (kept, warnings).
 
@@ -387,6 +473,15 @@ def resolve_small_regions(
     `RegionMask.detail_spokes` set -- AND still unioned into its encloser, so
     the host sews solid under the mark exactly as it sews today. A region
     the detector reads no tips in (a dot) takes the path below unchanged.
+
+    `counter_core` (the caller's lane gate over `cfg.open_cored_counters`;
+    stage 1's `enclosed_mask`, None by default and byte-identical then): every
+    sub-floor region `cored_counters` finds inside a counter round a
+    page-coloured core is kept as its own region with `source="counter"`,
+    asked first of each small region after the enclosed guard -- before the
+    rescue, the drop and the absorb, all three of which put thread in the
+    counter (golden_tee's O: the rescue sewed its keyline ring as a Silver
+    disc at a 4 mm cap, the absorb gave every band to the O at 5 mm).
     """
     min_area_px = (cfg.min_detail_mm * px_per_mm) ** 2
     areas = [r.area for r in regions]
@@ -441,6 +536,13 @@ def resolve_small_regions(
     absorbed_reportable = dropped_reportable = 0
     rescued: list[int] = []
     protected: list[int] = []
+    # `cfg.open_cored_counters`: the bands and core of a counter round a
+    # page-coloured middle, found once before the loop (the walk reads the
+    # regions as they arrive, before any absorb has grown one).
+    cored = (cored_counters(regions, small, counter_core, min_area_px,
+                            machine.RUN_MIN_AREA_MM2 * px_per_mm ** 2,
+                            machine.thread_profile(cfg.thread_wt).width_mm * px_per_mm)
+             if counter_core is not None else set())
 
     # The run-tier floors, in mask units. The loop test uses 2*max(w, h) as a
     # perimeter proxy — a lower bound (the boundary must traverse the longer
@@ -616,6 +718,10 @@ def resolve_small_regions(
             if int((sub_mask & sub_enclosed).sum()) / areas[i] >= ENCLOSED_PROTECT_OVERLAP:
                 protected.append(i)
                 continue
+        if i in cored:
+            regions[i].source = "counter"
+            counters.append(i)
+            continue
         # The halo can only reach one pixel past the region, so this window
         # holds all of it; dilating the cropped mask inside the window gives
         # the same ring the full-image dilation would.
