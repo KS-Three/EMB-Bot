@@ -42,7 +42,12 @@ PINS = {"s882_lines": "37789a45fa1dac14c3ce6d824dc2ad9c",
 # (`mane_lines` read `1e5338e4...` with them on; the s882 synthetic did not
 # move). The PINS are main's streams before this flag OR the holds existed,
 # and the holds are not this file's subject, so both are pinned OFF here.
-HOLDS_OFF = dict(bean_letter_counter_hold_mm=None, bean_letter_bay_hold=None)
+# The same goes for the two item-46 flips (Kent, 2026-10-20):
+# `dissolve_phantom_blends` and `clip_keep_pieces` move the drawn mane's
+# `mane_lines` stream too (`451c0177...` with them on, CI 2026-10-20), and
+# the PINS predate both.
+HOLDS_OFF = dict(bean_letter_counter_hold_mm=None, bean_letter_bay_hold=None,
+                 dissolve_phantom_blends=False, clip_keep_pieces=False)
 
 
 def _syn_cfg(arm: str, width_mm: float) -> PipelineConfig:

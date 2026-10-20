@@ -19,7 +19,7 @@ from tools import eye_pairs_gallery as g  # noqa: E402
 # Restated from the yardstick spec, sections 3.2 and 3.7 / analysis.METRICS.
 SPEC_ARMS = ["per_stroke", "polygon_axis", "area_weighted",
              "design_angle", "rails_follow_edge", "wide_columns",
-             "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827",
+             "lettering_column", "directional_comp", "ref_0827",
              "ref_0930am", "split_7mm", "rails_symmetric", "pro_file", "split_off",
              "keep_counters", "bean_letters", "lettering_words"]
 # 2026-10-14 tidy (rule in tools/eye_pairs/pairs.py): five arms left because
@@ -37,7 +37,8 @@ SPEC_ARMS = ["per_stroke", "polygon_axis", "area_weighted",
 # day and left again (docs/eye-pairs-2026-10-03/).
 RETIRED_SPEC_ARMS = ["rail_comp", "rail_envelope", "patch_junctions", "cap_recentre",
                      "lettering_columns", "letterform_priors", "columns_words",
-                     "coverage_edges", "coverage_columns"]
+                     "coverage_edges", "coverage_columns", "phantom_dissolve"]
+# `phantom_dissolve` shipped ON 2026-10-20 (Kent, item 46) and left the table.
 # `patch_junctions` left the same day with no flip of its own: it was already
 # the shipped engine (`satin_junction_stack`'s part C, ON 2026-09-19).
 SPEC_METRICS = {

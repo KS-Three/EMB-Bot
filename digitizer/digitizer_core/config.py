@@ -423,10 +423,16 @@ class PipelineConfig:
     # flat lane above has always done it; this lane never has, and a JPEG
     # logo pays for the gap in cones — `logo_bridge_bar.jpg` sews the
     # ringing around its black spokes as four grey threads
-    # (`docs/kent-review-2026-09-03.md`). OFF by default: it moves the
-    # region set on every gradient-class design, so it waits on Kent's
-    # look at a render, not on a green suite.
-    dissolve_phantom_blends: bool = False
+    # (`docs/kent-review-2026-09-03.md`). Built OFF and banked OFF by Kent
+    # on 2026-09-04 (two mild negatives, Whale's leftover shards). ON by
+    # Kent's ruling 2026-10-20 on MASTER_SCOPE item 46, read off PR #1003's
+    # pricing (80 mm, left chest): bridge 17,653 -> 15,196 stitches and
+    # 89 -> 66 trims, and it cuts the thin grey halo `clip_keep_pieces`
+    # would sew from 19.06 to 3.06 mm²; golden_tee +25 stitches, +3 trims;
+    # drone, chrome, sunset and gaulke identical. The residual is defect
+    # 27's own (`0111` Whale shards, cause not established). False is the
+    # pre-flip engine (`tests/conftest.py`'s PRE_FLIP).
+    dissolve_phantom_blends: bool = True
     # Defect 58: a black-and-white logo sews four to six cones, because thin
     # strokes on a low-resolution source are mostly anti-alias grey. ON, a
     # raster `two_tone.detect` reads as two inks (achromatic, two modes, no
@@ -953,7 +959,8 @@ class PipelineConfig:
     #     bill collapses to +1 region and +1 trim (33 regions, 65 trims).
     #     Recorded as an OPEN LEAD, not a recommendation: that flag was ruled
     #     OFF and banked 2026-09-04 and the ruling stands; Kent did not rule
-    #     on it here, and nothing should flip it on this evidence.
+    #     on it here, and nothing should flip it on this evidence. (It was
+    #     flipped ON 2026-10-20 on other evidence: item 46, PR #1003.)
     #
     # What it buys, same sheet: Fremont 18 → 3 lost thin strokes (85.2% →
     # 92.5%, the sub-0.5 mm band 52.2% → 92.0%) and C 64 → B 76 as TRIM_HEAVY
@@ -1579,15 +1586,22 @@ class PipelineConfig:
     # the inkiest, the shape sews what it always did; it adds no region and
     # no warning. False is `_largest_polygon`, byte for byte.
     clip_parent_keeps_ink: bool = True
-    # `clip_keep_pieces` (default OFF): every OTHER piece whose ARTWORK clears
+    # `clip_keep_pieces` (default ON): every OTHER piece whose ARTWORK clears
     # the stage-4 region floor (`stage5_overlap.clip_piece_floor_mm2`,
     # min_detail_mm² / 4) becomes a region of its own, same thread and tier,
     # sewn right after its parent; the rest are dropped as before and counted
-    # in `CLIP_DROPPED_SLIVER` (silent in the Studio). It adds regions, and
-    # stitches (bridge: +5%, all from its JPEG-halo outline), so it waits.
-    # With both False the plan is the engine before defect 61, byte for byte.
-    # Measured 2026-10-12: `tools/clip_keep_pieces.py`.
-    clip_keep_pieces: bool = False
+    # in `CLIP_DROPPED_SLIVER` (silent in the Studio). Built OFF 2026-10-12
+    # (bridge +5.1%, all from its JPEG-halo outline). ON by Kent's ruling
+    # 2026-10-20 on MASTER_SCOPE item 46, after `dissolve_phantom_blends`
+    # (the halo's own lever) went ON first, read off PR #1003's pricing
+    # (`tools/clip_keep_pieces.py --halo-lever`, 80 mm, left chest): bridge
+    # +1.1% stitches (15,196 -> 15,370) and +1 trim for no coverage change
+    # (kappa 0.9883 both ways; its kept pieces lie under thread already
+    # sewn), golden_tee kappa 0.9958 -> 0.9995 (its 9.12 mm² of `3344` ink
+    # sewn), drone +0.0004, sunset +0.0006. With both False the plan is the
+    # engine before defect 61, byte for byte; `clip_keep_pieces=False` alone
+    # is the default before 2026-10-20 (`tests/conftest.py`'s PRE_FLIP).
+    clip_keep_pieces: bool = True
     # Small glyphs the run tier rescues (`rescued_small_shape`), kept whole
     # (2026-10-13; ON by Kent's ruling 2026-10-13). Kent's Fremont at 81 mm
     # on a hat sewed "1895" as "098" (`tools/fremont_triage.py`). Both losses

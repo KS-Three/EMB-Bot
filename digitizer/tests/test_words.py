@@ -384,7 +384,11 @@ def bridge():
     fname, corpus_w, garment = REAL_ART["bridge"]
     out = {}
     for w in (corpus_w, 50.0):
-        cfg = PipelineConfig(target_width_mm=w, garment_id=garment, max_colors=STUDIO_MAX_COLORS)
+        # `dissolve_phantom_blends` held OFF (ON since Kent's 2026-10-20 flip,
+        # item 46): the hand labels are shape ids read without it, and on this
+        # JPEG it re-cuts the halo regions they name.
+        cfg = PipelineConfig(target_width_mm=w, garment_id=garment, max_colors=STUDIO_MAX_COLORS,
+                             dissolve_phantom_blends=False)
         out[w] = (build_generation(str(TESTDATA / fname), cfg).regions, chart_for(cfg))
     return corpus_w, out
 

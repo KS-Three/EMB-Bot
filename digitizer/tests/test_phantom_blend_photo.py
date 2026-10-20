@@ -333,13 +333,14 @@ def bridge_pair():
         # this fixture's bar is "much less".
         return digitize(BRIDGE, PipelineConfig(
             target_width_mm=80.0, max_colors=6, satin=True,
-            garment_id="left_chest", dissolve_phantom_blends=on,
-            work_px_per_mm=None, **PRE_FLIP))
+            garment_id="left_chest", work_px_per_mm=None,
+            **{**PRE_FLIP, "dissolve_phantom_blends": on}))
     return run(False), run(True)
 
 
-def test_default_is_off():
-    assert PipelineConfig().dissolve_phantom_blends is False
+def test_default_is_on():
+    # Kent's flip 2026-10-20 (MASTER_SCOPE item 46, PR #1003's pricing).
+    assert PipelineConfig().dissolve_phantom_blends is True
 
 
 def test_bridge_bar_loses_its_grey_cones(bridge_pair):

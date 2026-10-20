@@ -130,6 +130,14 @@ def accepted_word(tmp_path_factory) -> Path:
 
 
 def _run(art: Path, width_mm: float, **kw):
+    # Without the photo lane's phantom-blend dissolve
+    # (`dissolve_phantom_blends`, ON since Kent's 2026-10-20 flip, item 46):
+    # this file (and `tests/test_house_anchor.py`, which runs through
+    # it) reads the gradient lane, and with the dissolve ON the letters' house
+    # angles move (KAYAK's cross 1.5 deg off its line, CI 2026-10-20).
+    # The numbers here were read without it; the dissolve's own price is
+    # `tests/test_phantom_blend_photo.py`'s and PR #1005's.
+    kw.setdefault("dissolve_phantom_blends", False)
     cfg = PipelineConfig(target_width_mm=width_mm, garment_id="left_chest", max_colors=6, **kw)
     gen = build_generation(str(art), cfg)
     return finish_generation(gen.fork(), cfg)

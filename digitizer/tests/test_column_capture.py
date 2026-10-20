@@ -204,13 +204,17 @@ def _case_regions(case, rescued_link=True):
     `is_lettering`), shared by every census test in this process.
     `rescued_link` is the text tagger's `text_cluster_rescued_ink_link`
     (ON since 2026-10-15); False is the pre-flip tagger, whose rescued round
-    linked on size alone, the population the screenshot census was read on."""
+    linked on size alone, the population the screenshot census was read on.
+    `dissolve_phantom_blends` is held OFF (ON since Kent's 2026-10-20 flip,
+    item 46): the hand labels are shape ids read on the engine without it,
+    and on the screenshot the dissolve re-cuts the regions they name."""
     import json
     from tools.thin_strokes import REAL_ART
     rel, width, garment = REAL_ART[case]
     base = dict(target_width_mm=width, garment_id=garment, max_colors=6)
     res = run_stages(TESTDATA / rel, PipelineConfig(**base, lettering_columns_ink_link=True,
-                                                    text_cluster_rescued_ink_link=rescued_link))
+                                                    text_cluster_rescued_ink_link=rescued_link,
+                                                    dissolve_phantom_blends=False))
     truth = json.loads((TESTDATA / "lettering_truth.json").read_text(encoding="utf-8"))
     lab = truth["fixtures"].get(case)
     letters = None

@@ -106,7 +106,7 @@ whole roof line).
 the piece carrying the most artwork. It adds no region and no warning; where
 the largest piece is also the inkiest, nothing changes.
 
-`cfg.clip_keep_pieces` (default OFF): the shape keeps the piece carrying the
+`cfg.clip_keep_pieces` (default ON, Kent 2026-10-20): the shape keeps the piece carrying the
 most artwork as above, and every other piece whose ARTWORK clears the stage-4 region floor
 (`clip_piece_floor_mm2`) sews as its own region of the same thread and tier,
 planned right after its parent; smaller pieces are dropped as before and
@@ -1015,7 +1015,7 @@ def resolve_overlaps(
 
     # Defect 61, two halves. `cfg.clip_parent_keeps_ink` (default ON): a split
     # shape keeps the piece carrying the most ARTWORK, not the most sewn
-    # area. `cfg.clip_keep_pieces` (default OFF): the other pieces carrying
+    # area. `cfg.clip_keep_pieces` (default ON): the other pieces carrying
     # enough artwork become regions of their own. Both off: every split below
     # goes through `_largest_polygon`, byte for byte.
     parent_ink = bool(getattr(cfg, "clip_parent_keeps_ink", True))

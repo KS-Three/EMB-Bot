@@ -9,10 +9,12 @@ so. Two settings, one per half of the cure:
 * `cfg.clip_parent_keeps_ink` (default ON, Kent 2026-10-12): the shape keeps
   the piece carrying the most ARTWORK, not the most sewn area. It adds no
   region and no warning.
-* `cfg.clip_keep_pieces` (default OFF): every other piece whose ARTWORK
-  clears the stage-4 region floor sews as its own region of the same thread
-  and tier, planned right after its parent; smaller ones are dropped as
-  before and counted in `CLIP_DROPPED_SLIVER`.
+* `cfg.clip_keep_pieces` (default ON, Kent 2026-10-20, item 46): every
+  other piece whose ARTWORK clears the stage-4 region floor sews as its own
+  region of the same thread and tier, planned right after its parent;
+  smaller ones are dropped as before and counted in `CLIP_DROPPED_SLIVER`.
+  `INK_ONLY` below is the default before that flip: the parent keeps its
+  ink and the other pieces drop.
 
 Both off is the engine before it, byte for byte.
 """
@@ -40,6 +42,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # The engine before defect 61.
 LEGACY = dict(clip_parent_keeps_ink=False, clip_keep_pieces=False)
+# The default from 2026-10-12 to 2026-10-20: the parent keeps its ink, the
+# other pieces drop.
+INK_ONLY = dict(clip_keep_pieces=False)
 
 
 def _region(sid, poly, layer, thread):
@@ -74,7 +79,8 @@ def _strip():
 def test_defaults():
     cfg = PipelineConfig()
     assert cfg.clip_parent_keeps_ink is True
-    assert cfg.clip_keep_pieces is False
+    # Kent's flip 2026-10-20 (MASTER_SCOPE item 46, PR #1003's pricing).
+    assert cfg.clip_keep_pieces is True
 
 
 def test_off_drops_the_smaller_piece_on_keeps_it():
@@ -110,13 +116,13 @@ def test_off_drops_the_smaller_piece_on_keeps_it():
 
 
 def test_parent_ink_alone_adds_no_region():
-    """The shipped default: `clip_parent_keeps_ink` on, `clip_keep_pieces`
-    off. Where the largest piece is also the inkiest -- B's right piece --
+    """The default before 2026-10-20: `clip_parent_keeps_ink` on,
+    `clip_keep_pieces` off. Where the largest piece is also the inkiest -- B's right piece --
     the plan is the legacy plan byte for byte, and the 40 mm² left of A
     still drops: this setting never adds a region."""
     regs = _cross(0.0)
     legacy, _ = _plan(regs, **LEGACY)
-    default, default_w = _plan(regs)
+    default, default_w = _plan(regs, **INK_ONLY)
     assert [p.shape_id for p in default] == [p.shape_id for p in legacy]
     assert [p.polygon.wkb for p in default] == [p.polygon.wkb for p in legacy]
     assert not any(w["code"] == CLIP_DROPPED_SLIVER for w in default_w)
@@ -136,9 +142,9 @@ def test_a_sliver_under_the_floor_is_dropped_and_counted():
     assert w["count"] == 1 and w["ids"] == ["B"]
     assert w["total_mm2"] == pytest.approx(0.4, abs=1e-3)
     assert w["floor_mm2"] == pytest.approx(floor, abs=1e-4)
-    # The default (parent keeps ink alone) drops it exactly as before, and
+    # Parent keeps ink alone (`INK_ONLY`) drops it exactly as before, and
     # says nothing: it keeps no pieces, so it counts none.
-    default, default_w = _plan(regs)
+    default, default_w = _plan(regs, **INK_ONLY)
     assert [p.polygon.wkb for p in default] == [p.polygon.wkb for p in off]
     assert not any(w["code"] == CLIP_DROPPED_SLIVER for w in default_w)
 
@@ -147,12 +153,13 @@ def test_the_shape_keeps_its_ink_not_its_largest_piece():
     """The drone case (`S53adc87e`, 2026-10-12): the strip's underlap tongue
     is cut off its artwork and is the BIGGER piece. The legacy engine sews
     the tongue -- no artwork in it -- and drops every square millimetre of
-    the strip's ink. The default keeps the ink, and adds no region."""
+    the strip's ink. The parent keeps the ink, with or without the pieces,
+    and adds no region."""
     regs, kw = _strip()
     off, _ = _plan(regs, **LEGACY, **kw)
     b_off = [p for p in off if p.region.thread_number == "2000"]
     assert len(b_off) == 1 and b_off[0].polygon.intersection(regs[1].polygon).area < 1e-6
-    for extra in ({}, {"clip_keep_pieces": True}):
+    for extra in (INK_ONLY, {}):
         on, on_w = _plan(regs, **kw, **extra)
         b_on = [p for p in on if p.region.thread_number == "2000"]
         assert [p.shape_id for p in b_on] == ["B"]
@@ -209,10 +216,11 @@ def test_both_off_never_leaves_largest_polygon(monkeypatch):
         for name, (regs, kw) in {"cross": (_cross(0.0), {}), "strip": _strip()}.items():
             plan, _ = _plan(regs, **LEGACY, **kw)
             assert ([p.shape_id for p in plan], [p.polygon.wkb for p in plan]) == reference[name]
-    # The default setting equals that reference wherever the largest piece
-    # is the inkiest -- the cross -- and only differs on the strip.
+    # The parent-keeps-ink setting alone equals that reference wherever the
+    # largest piece is the inkiest -- the cross -- and only differs on the
+    # strip.
     regs = _cross(0.0)
-    plan, _ = _plan(regs)
+    plan, _ = _plan(regs, **INK_ONLY)
     assert ([p.shape_id for p in plan], [p.polygon.wkb for p in plan]) == reference["cross"]
 
 
@@ -246,7 +254,7 @@ def test_gaulke_roof_line_is_sewn_by_default_and_lost_legacy():
     off, _ = resolve_overlaps(regions, fabric, PipelineConfig(**kw, **LEGACY),
                               result.design_class)
     assert _inkless_parents(off, regions), "the fixture no longer exercises the drop"
-    for extra in ({}, {"clip_keep_pieces": True}):
+    for extra in (INK_ONLY, {}):
         on, _ = resolve_overlaps(regions, fabric, PipelineConfig(**kw, **extra),
                                  result.design_class)
         assert _inkless_parents(on, regions) == []
@@ -270,9 +278,9 @@ def test_legacy_default_and_nothing_to_keep_are_byte_identical(rel):
     md5 = {}
     for tag, extra in (("default", {}),
                        ("legacy", LEGACY),
-                       ("pieces", {"clip_keep_pieces": True})):
+                       ("ink_only", INK_ONLY)):
         md5[tag] = _plan_md5(digitize(path, PipelineConfig(target_width_mm=80.0, **extra))[1])
-    assert md5["default"] == md5["legacy"] == md5["pieces"]
+    assert md5["default"] == md5["legacy"] == md5["ink_only"]
 
 
 def test_coverage_kappa_is_chance_corrected():
@@ -305,13 +313,14 @@ def _thin_kept_art(path, cfg_kw) -> float:
 
 def test_bridge_halo_lever_takes_most_of_the_flips_halo():
     """MASTER_SCOPE item 46: the flip's price on Bridge Bar is its grey JPEG
-    ringing kept as pieces, and the halo's own lever is the banked
-    `cfg.dissolve_phantom_blends`. Measured 2026-10-20 at 80 mm left chest:
+    ringing kept as pieces, and the halo's own lever is
+    `cfg.dissolve_phantom_blends` (banked OFF 2026-09-04, ON by default
+    since 2026-10-20, so the OFF arm names it). Measured 2026-10-20 at 80 mm left chest:
     lever OFF the flip keeps 19.1 mm² from thin grey parents (0111, 0465),
     lever ON 3.06 mm² (0111's residual shards, defect 27's known leftover)."""
     path = ROOT / "testdata" / "photo" / "logo_bridge_bar.jpg"
     kw = dict(target_width_mm=80.0, garment_id="left_chest")
-    off = _thin_kept_art(path, kw)
+    off = _thin_kept_art(path, dict(kw, dissolve_phantom_blends=False))
     on = _thin_kept_art(path, dict(kw, dissolve_phantom_blends=True))
     assert off >= 10.0, "the fixture no longer exercises the halo pieces"
     assert on <= 0.3 * off
