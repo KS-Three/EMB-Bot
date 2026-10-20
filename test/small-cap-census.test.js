@@ -11,9 +11,13 @@ import assert from "node:assert";
 
 const T = await import("../tools/small-cap-census.mjs");
 
+// `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
+// (Kent). Every count below was taken with them OFF -- a lock is four 0.8 mm
+// stitches, which would read as short stitches here -- so cells are built OFF.
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
 const cell = (font, text, cap) => {
   const f = T.loadFont(font);
-  return T.measureCell(f, text, cap, T.calibrate(f, text));
+  return T.measureCell(f, text, cap, T.calibrate(f, text, TRIO_OFF), TRIO_OFF);
 };
 const pick = (c, keys) => Object.fromEntries(keys.map((k) => [k, c[k]]));
 

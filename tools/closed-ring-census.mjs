@@ -217,7 +217,7 @@ if (opt("--hash")) {
   all.forEach((d, di) => {
     for (const fabricId of [null].concat(PRESETS)) for (const [fname, flag] of [["absent", {}], ["off", { fillColumns: false }], ["on", { fillColumns: true }]]) {
       const cases = [["", {}]];
-      if (di % 4 === 0 && [null, "pique_knit", "terry_towel"].includes(fabricId) && fname !== "off") cases.push([" | no underlay", { underlay: false }], [" | ties", { ties: true }], [" | fillStagger", { fillStagger: true }], [" | hat front", {}, "hat_front"]);
+      if (di % 4 === 0 && [null, "pique_knit", "terry_towel"].includes(fabricId) && fname !== "off") cases.push([" | no underlay", { underlay: false }], [" | no ties", { ties: false }], [" | no fillStagger", { fillStagger: false }], [" | hat front", {}, "hat_front"]);
       for (const [xname, x, garmentId] of cases) {
         const r = made(d, fabricId, Object.assign({}, flag, x), null, garmentId);
         out[`${d.name} | ${fabricId || "no fabric"} | fillColumns ${fname}${xname}`] = sha(JSON.stringify([r.stitches, r.colors, r.widthMM, r.heightMM, r.stitchCount, r.colorCount, r.runs, r.shapeOutlines, r.fit, r._debug]));
