@@ -127,3 +127,4 @@ Aim for hooks of 100-140 chars; put detail in the note, never here.
 - [Bean holds ON](bean-holds-on-2026-10-15.md) — Kent flipped counter hold 0.25 + bay hold 0.2 as PLAIN defaults (None stays OFF); the three sew-out cards pin None explicitly; grep card tools before any bean flip
 - [Detail spokes ON](detail-spokes-on-2026-10-18.md) — Kent: ON tightened (MIN_TIPS 4, floor 1.45 x width/92.6); the Fremont OFF md5 follows Intel IPP's path in the OpenCV wheel, not numpy/OpenBLAS/platform/order; test env capped at OPENCV_IPP=avx2 (10-20)
 - [Satin small shapes](satin-small-shapes-2026-10-20.md) — `satinSmallShapes` OFF (#994): cap, smallest column, junction zone; 5-point stars ARE satin on main; OFF md5 pins; flip + sharp tips Kent's
+- [Lane cleanup 10-20](lane-cleanup-2026-10-20.md) — SNAPSHOT: a dirty lane's flip was one Kent REVERSED ("Leave OFF for now"); read the parent's LAST turns before carrying stranded work; 55 lanes + 363 branches are Kent's to remove
