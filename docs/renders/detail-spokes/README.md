@@ -50,11 +50,12 @@ The OFF cells are the bean-holds-on README's ON cells, byte for byte. ON costs 1
 laid along a spoke) and one trim (the hop from the cap's end into the mark) at every
 width, and no colour change, because the white edge cap already follows the black. The
 #980 ON md5s (`8a2d73f3`, `e45e20de`, `37231abc`) were the fixed 1.45 mm floor; these are
-the scaled one. (md5s are from Kent's Windows box. The Fremont stream's md5 is per MACHINE, not even per
-platform: CI's Linux read the 80 mm OFF cell as `027d14e6` on #980's shard and as
-`75f44f90` — Kent's number — on #983's, the same engine both times, counts equal. So
-`test_detail_spokes.py` pins Fremont by its counts and by the ON cell's shape-by-shape
-equality with OFF, never by an md5; only the three flat goldens are md5-pinned.)
+the scaled one. (md5s are from Kent's Windows box, Intel IPP's AVX2 path. A stream's md5
+follows the code path IPP, inside the OpenCV wheel, dispatches to on the host: CI's
+AVX-512 runners read the 80 mm OFF cell as `027d14e6` and a Cascade Lake Xeon as `050452`
+until `tests/conftest.py` capped the test environment at `OPENCV_IPP=avx2` on 2026-10-20,
+the same engine every time, counts equal. So `test_detail_spokes.py` pins Fremont by its
+counts, by the ON cell's shape-by-shape equality with OFF, and by this one md5.)
 
 What the renders show (`*_wisconsin.png`: artwork | OFF | ON over the whole state at
 40 px/mm; `*_star.png`: the same at 120 px/mm, tight on the star): OFF, solid black where

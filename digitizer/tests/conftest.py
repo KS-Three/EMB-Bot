@@ -1,4 +1,21 @@
 import os
+
+# The test environment's OpenCV runs Intel IPP's AVX2 code path on EVERY host.
+# A stitch stream's bytes follow the path IPP (bundled in the OpenCV wheel)
+# dispatches to -- not numpy's SIMD, not OpenCV's own kernels, not OpenBLAS's
+# core type: each was forced down on an AVX-512 Xeon with CI's wheels
+# (2026-10-20) and none moved the Fremont 80 mm OFF md5; only this did. IPP's
+# AVX2 path (l9) reads `75f44f90` on Kent's laptop and CI's EPYC 7763, its
+# full AVX-512 path reads `027d14e6` on CI's EPYC 9V45 / 9V74 and a Sapphire
+# Rapids Xeon, and its base AVX-512 set reads `050452` on a Cascade Lake Xeon,
+# so an uncapped pin is one value per IPP sub-path a runner happens to draw.
+# OpenCV reads OPENCV_IPP lazily (on IPP's first use, measured), so a cv2
+# import ahead of this line cannot defeat it; `setdefault` lets a shell
+# override it to measure another path. The shipped service is NOT capped: a
+# customer's AVX-512 machine sews the k0 stream. tests/test_detail_spokes.py
+# has the tripwire that reads IPP's path and the measured table.
+os.environ.setdefault("OPENCV_IPP", "avx2")
+
 import shutil
 import time
 from contextlib import contextmanager
