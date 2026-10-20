@@ -83,7 +83,11 @@ ARMS = {
 # measured before that flip, so every arm runs with it OFF: the arms price the
 # floor, the stem rule and the tier flags against the engine they were
 # measured on. `tools/small_lettering_compare.py` measures the switch itself.
-PRE_TRUE_SIZE = {"small_text_true_size": False}
+# The small stem and the scoped dot rung flipped ON 2026-10-20 (Kent); the
+# record predates them too, and the stem arms price the stem, so every arm
+# starts from both OFF (the record reproduces either way at 81 mm).
+PRE_TRUE_SIZE = {"small_text_true_size": False, "lettering_columns_small_stem": False,
+                 "small_dot_rung": False, "small_dot_rung_lettering": False}
 ARMS = {name: (w, {**PRE_TRUE_SIZE, **o}, label) for name, (w, o, label) in ARMS.items()}
 # The four arms Kent named, in his order; the controls and alternatives follow.
 KENT_ARMS = ["main_81", "floor_81", "floor_stem_81", "floor_stem_92"]

@@ -16,6 +16,9 @@ const SF = require("../src/satinfont.js");
 const FAB = require("../src/fabrics.js");
 
 const G = SF.LETTERING_GUARDS;
+// `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
+// (Kent); a pin below taken before that, on another subject, builds with them OFF.
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
 
 // ---- the no-run pin ----------------------------------------------------------
 // A design with no run must sew exactly what it sewed before runs existed.
@@ -32,7 +35,7 @@ test("no run: a design of closed shapes and a column is byte-identical to main",
     { id: "s3", kind: "column", points: [{ x: 330, y: 100 }, { x: 450, y: 180 }, { x: 560, y: 120 }], curves: { 1: { x: 520, y: 240 } }, widthPx: 24, colorRgb: [0, 0, 200] },
   ];
   const { regions, pxPerMm } = MS.shapesToRegions(shapes);
-  const d = DG.buildQualityDesign(regions, { garment: { widthIn: 8, heightIn: 8 }, pxPerMm, targetWidthMm: 80, underlay: true, fabric: FAB.getFabric("jersey_tee"), darkOnTop: false });
+  const d = DG.buildQualityDesign(regions, { garment: { widthIn: 8, heightIn: 8 }, pxPerMm, targetWidthMm: 80, underlay: true, fabric: FAB.getFabric("jersey_tee"), darkOnTop: false, ...TRIO_OFF });
   const hash = crypto.createHash("sha256").update(JSON.stringify(d.stitches)).digest("hex");
   assert.strictEqual(d.stitchCount, 2579);
   assert.strictEqual(hash, NO_RUN_SHA);
@@ -119,7 +122,7 @@ const spanStitches = (d, kind, id) => {
 test("sewAs run: the path sews as a bean and NOTHING else of the shape sews (no underlay, no outline, no fill)", async () => {
   const path = [P(0, 0), P(300, 0)];
   const d = DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes: [await runShape(path)] }],
-    runOpts({ underlay: true, fabric: FAB.getFabric("jersey_tee"), outline: true }));
+    runOpts({ underlay: true, fabric: FAB.getFabric("jersey_tee"), outline: true, ...TRIO_OFF }));
   assert.deepStrictEqual(d.runs.map((r) => r.kind), ["run"]);
   assert.strictEqual(d._debug.nFill, 0);
   assert.strictEqual(d._debug.nSatin, 0);

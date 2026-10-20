@@ -737,7 +737,7 @@ def vectorize(
                 parts, covered = from_alpha, True
 
         thread = chart[thread_indices[rm.layer]]
-        # `cfg.small_dot_rung` (default OFF), and its lettering scope.
+        # `cfg.small_dot_rung` (default ON, 2026-10-20), and its lettering scope.
         dot_rung = bool(cfg.small_dot_rung and (not cfg.small_dot_rung_lettering
                                                 or getattr(rm, "dot_rung", False)))
         # `cfg.detail_spokes` (default OFF): a mask stage 3 kept as a spoked
@@ -756,7 +756,7 @@ def vectorize(
                 # a lower bound, so this is the authoritative test of whether
                 # the bean run has a sewable loop and the shape outweighs the
                 # thread.
-                # `cfg.small_dot_rung` (default OFF): down to the dot rung's
+                # `cfg.small_dot_rung` (default ON, 2026-10-20): down to the dot rung's
                 # own loop floor, the ring the run tier then sews as a tack.
                 # Scoped (`cfg.small_dot_rung_lettering`), only for a mask
                 # stage 3 admitted over a stem.

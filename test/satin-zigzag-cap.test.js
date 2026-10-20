@@ -69,12 +69,16 @@ test("the switch follows the cap: a number moves it, false lifts it", () => {
   assert.deepStrictEqual([off.L.zigzagColumns, off.L.zigzagCapped], [0, 0]);
 });
 
+// `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
+// (Kent); a pin below taken before that, on another subject, builds with them OFF.
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
+
 test("big text sews its pre-#904 stitch counts again", async () => {
   const T = await tool();
   const f = T.loadFont(T.BIG_FONT);
   // PR #904's own rows (test/wide-columns.test.js's call): auto-fit lands at
   // 198 mm, and 1e4 is clamped to the 304.8 mm Full Back.
-  const auto = T.buildBig(f, undefined), fullBack = T.buildBig(f, 1e4);
+  const auto = T.buildBig(f, undefined, TRIO_OFF), fullBack = T.buildBig(f, 1e4, TRIO_OFF);
   assert.strictEqual(Math.round(auto.widthMM), 198);
   assert.strictEqual(auto.stitchCount, 12492, "21,070 with the uncapped zigzag");
   assert.strictEqual(fullBack.stitchCount, 27033, "48,079 with the uncapped zigzag");
@@ -82,10 +86,10 @@ test("big text sews its pre-#904 stitch counts again", async () => {
   // the alternating-rail stream.
   for (const d of [auto, fullBack]) {
     assert.strictEqual(d.lettering.zigzagColumns, 0);
-    assert.deepStrictEqual(d.stitches, T.buildBig(f, d === auto ? undefined : 1e4, { satinZigzag: false }).stitches);
+    assert.deepStrictEqual(d.stitches, T.buildBig(f, d === auto ? undefined : 1e4, { satinZigzag: false, ...TRIO_OFF }).stitches);
   }
   // Lifting the cap gives #904's numbers back, so the harness is the same one.
-  assert.strictEqual(T.buildBig(f, undefined, { satinZigzagMaxMm: false }).stitchCount, 21070);
+  assert.strictEqual(T.buildBig(f, undefined, { satinZigzagMaxMm: false, ...TRIO_OFF }).stitchCount, 21070);
 });
 
 // md5 of JSON.stringify(design.stitches), captured on origin/main at 929bd126
@@ -109,7 +113,7 @@ test("small text (3 to 6 mm caps) is byte-identical to the stream before the cap
   for (const name of T.SMALL_FONTS) {
     const f = T.loadFont(name);
     for (const cap of T.SMALL_CAPS) {
-      const d = T.buildAtCap(f, cap);
+      const d = T.buildAtCap(f, cap, TRIO_OFF);
       assert.ok(Math.abs(d.lettering.capMm - cap) < 0.05, `${name} landed at ${d.lettering.capMm} mm, not ${cap}`);
       assert.ok(d.lettering.zigzagColumns > 0 && d.lettering.zigzagCapped === 0, `${name} ${cap}: every column under the cap`);
       assert.strictEqual(T.streamMd5(d), SMALL_MAIN[`${name} ${cap}`], `${name} at a ${cap} mm cap moved`);

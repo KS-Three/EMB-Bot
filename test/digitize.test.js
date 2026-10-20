@@ -3,6 +3,11 @@ const { test } = require("node:test");
 const fs = require("node:fs");
 const DG = require("../src/digitize.js");
 
+// `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
+// (Kent). A test whose subject is something else and whose pin (a hash, a
+// frozen count, "byte-identical to main") was taken on the engine before that
+// spreads this in: the pre-flip engine, so the pin still says what it said.
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
 const sq = (x0, y0, s) => [{ x: x0, y: y0 }, { x: x0 + s, y: y0 }, { x: x0 + s, y: y0 + s }, { x: x0, y: y0 + s }];
 
 test("groupRingsIntoShapes: side-by-side letters stay separate shapes", () => {
@@ -1908,7 +1913,7 @@ test("buildQualityDesign: no-fabric single-shape output frozen (snapshot, Phase-
   const outer = sq(0, 0, 100), hole = sq(20, 20, 60);
   const d = DG.buildQualityDesign(
     [{ rgb: [10, 20, 30], shapes: [{ outer, holes: [hole] }] }],
-    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: true, satinMaxWidthMm: 3 }
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, densityMm: 0.5, underlay: true, satinMaxWidthMm: 3, ...TRIO_OFF }
   );
   // RE-FREEZE (resize-density fix, 2026-07-27): this fixture has pxPerMm:1
   // with a ~100mm shape against a 101.6mm (4in) hoop, so sc≈1 and
@@ -2568,7 +2573,7 @@ test("buildLetteringDesign: the counter guard holds bold where a real font's cou
 test("buildLetteringDesign: short stitches move penetrations on the inside of bends and never change the stitch count", () => {
   const garment = { widthIn: 8, heightIn: 8 };
   const font = require("../test/fixtures/fonts/geneva_simple.json");
-  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false, targetWidthMm: 30 };
+  const base = { garment, pxPerMm: 8, emMm: 18, densityMm: 0.4, underlay: false, targetWidthMm: 30, ...TRIO_OFF };
   const on = DG.buildLetteringDesign(font, "SOC", base);
   const off = DG.buildLetteringDesign(font, "SOC", { ...base, shortStitch: false });
   assert.strictEqual(on.stitchCount, off.stitchCount);
@@ -2687,7 +2692,7 @@ test("buildQualityDesign: fabric densityAdjust scales the satin pitch as well as
 
 test("buildLetteringDesign: satinSpacingMm names the satin pitch; default, named and legacy densityMm are one design", () => {
   const font = JSON.parse(fs.readFileSync(__dirname + "/../test/fixtures/fonts/geneva_simple.json", "utf8"));
-  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40, underlay: false };
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40, underlay: false, ...TRIO_OFF };
   const dflt = DG.buildLetteringDesign(font, "AB", base);
   const named = DG.buildLetteringDesign(font, "AB", { ...base, satinSpacingMm: 0.4 });
   const legacy = DG.buildLetteringDesign(font, "AB", { ...base, densityMm: 0.4 });
@@ -2819,20 +2824,23 @@ test("engine parity: travel records never widen a design, so the JS and Python s
 // garments.js comment — while the Python lane has always tied every block
 // unconditionally (stitches.apply_ties, no config flag). A lettering file
 // exported from the Studio could start or end its thread with nothing holding
-// it. Default OFF: it changes every .dst/.pes a customer exports, so the flip
-// is Kent's, and with the flag off output must be byte-identical to before.
+// it. Default OFF until Kent flipped it ON (2026-10-20, with fillStagger and
+// dedupeHoles); `ties: false` is the off arm and must stay byte-identical to
+// the untied stream.
 
 const _tieFont = () => JSON.parse(fs.readFileSync(__dirname + "/../test/fixtures/fonts/geneva_simple.json", "utf8"));
 const _tieBase = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8 };
 const _fingerprint = (d) => d.stitches.map((s) => `${s.x},${s.y},${s.type}`).join(";");
 const _count = (d, k) => d.stitches.filter((s) => s.type === k).length;
 
-test("ties: OFF by default, and the flag off is byte-identical to omitting it", () => {
+test("ties: ON by default (Kent, 2026-10-20), and `ties: false` is the off arm", () => {
   const font = _tieFont();
   const omitted = DG.buildLetteringDesign(font, "Fritsch's", { ..._tieBase });
+  const explicitOn = DG.buildLetteringDesign(font, "Fritsch's", { ..._tieBase, ties: true });
   const explicitOff = DG.buildLetteringDesign(font, "Fritsch's", { ..._tieBase, ties: false });
-  assert.strictEqual(_fingerprint(omitted), _fingerprint(explicitOff));
-  assert.strictEqual((omitted._debug || {}).nTies || 0, 0, "no ties emitted with the flag off");
+  assert.strictEqual(_fingerprint(omitted), _fingerprint(explicitOn));
+  assert.ok(omitted._debug.nTies > 0, "omitting the flag ties");
+  assert.strictEqual((explicitOff._debug || {}).nTies || 0, 0, "no ties emitted with the flag off");
 });
 
 test("ties: ON adds lock stitches and NOT ONE trim", () => {
@@ -2994,18 +3002,19 @@ const _tieShapes = (extra) => DG.buildQualityDesign(
    { rgb: [200, 30, 30], shapes: [{ outer: sq(300, 0, 160), holes: [], tierOverride: "fill" }] }],
   Object.assign({ garment: { widthIn: 6, heightIn: 6 }, pxPerMm: 10, darkOnTop: false, underlay: true }, extra || {}));
 
-test("ties (shapes): OFF by default, and the flag off is byte-identical to omitting it", () => {
-  const omitted = _tieShapes(), explicitOff = _tieShapes({ ties: false });
-  assert.strictEqual(_fingerprint(omitted), _fingerprint(explicitOff));
-  assert.deepStrictEqual(omitted.runs, explicitOff.runs);
-  assert.strictEqual((omitted._debug || {}).nTies || 0, 0, "no ties emitted with the flag off");
-  assert.strictEqual(_lockLegs(omitted).length, 0, "and nothing in the untied design reads as a lock");
+test("ties (shapes): ON by default (Kent, 2026-10-20), and `ties: false` is the off arm", () => {
+  const omitted = _tieShapes(), explicitOn = _tieShapes({ ties: true }), explicitOff = _tieShapes({ ties: false });
+  assert.strictEqual(_fingerprint(omitted), _fingerprint(explicitOn));
+  assert.deepStrictEqual(omitted.runs, explicitOn.runs);
+  assert.ok(omitted._debug.nTies > 0, "omitting the flag ties");
+  assert.strictEqual((explicitOff._debug || {}).nTies || 0, 0, "no ties emitted with the flag off");
+  assert.strictEqual(_lockLegs(explicitOff).length, 0, "and nothing in the untied design reads as a lock");
 });
 
 test("ties (shapes): ON locks every thread where it starts and where it is cut", () => {
   // `apply_ties`' question: is the thread starting here, or being cut here.
   // Not "did the needle lift": a float that is not cut leaves the thread whole.
-  const off = _tieShapes(), on = _tieShapes({ ties: true });
+  const off = _tieShapes({ ties: false }), on = _tieShapes({ ties: true });
   const threads = _threads(on);
   assert.ok(_count(on, "trim") >= 3, "fixture: a colour change, a trim between shapes, a cut inside a fill");
   assert.ok(threads.some((t) => t.some((s, k) => k > 0 && s.type === "jump")), "fixture: a float inside a thread");
@@ -3031,7 +3040,7 @@ test("ties (shapes): ON locks every thread where it starts and where it is cut",
 
 test("ties (shapes): take the locks out and the design is the untied one, record for record", () => {
   // Nothing else moves. Each lock is the four records after its anchor.
-  const off = _tieShapes(), on = _tieShapes({ ties: true });
+  const off = _tieShapes({ ties: false }), on = _tieShapes({ ties: true });
   const s = on.stitches, kept = [];
   for (let i = 0; i < s.length; i++) {
     kept.push(s[i]);
@@ -3066,7 +3075,7 @@ test("ties: a lock adds no second penetration of the same hole -- both builders"
   const font = _tieFont();
   const lt = (ties) => DG.buildLetteringDesign(font, "Fritsch's Stitches", { ..._tieBase, ties });
   assert.strictEqual(_zeroLength(lt(true)), _zeroLength(lt(false)), "lettering");
-  assert.strictEqual(_zeroLength(_tieShapes({ ties: true })), _zeroLength(_tieShapes()), "shapes");
+  assert.strictEqual(_zeroLength(_tieShapes({ ties: true })), _zeroLength(_tieShapes({ ties: false })), "shapes");
 });
 
 test("ties (shapes): a lock never reaches past the stitch it lies on, and no sewn move gets longer", () => {
@@ -3083,7 +3092,7 @@ test("ties (shapes): a lock never reaches past the stitch it lies on, and no sew
     return m;
   };
   for (const extra of [{}, { fillColumns: true }, { fabric: FABRICS.getFabric("pique_knit") }]) {
-    const off = _tieShapes(extra), on = _tieShapes(Object.assign({ ties: true }, extra));
+    const off = _tieShapes(Object.assign({ ties: false }, extra)), on = _tieShapes(Object.assign({ ties: true }, extra));
     assert.deepStrictEqual(box(on), box(off), JSON.stringify(Object.keys(extra)) + ": the sewn box moved");
     assert.ok(longest(on) <= longest(off) + 1e-9, "a lock made a longer sewn move than the untied design has");
     assert.strictEqual(on.widthMM, off.widthMM);
@@ -3107,7 +3116,7 @@ test("ties (shapes): a lock belongs to the run it protects", () => {
     });
   }
   const kinds = (d) => d.runs.map((r) => r.kind + ":" + r.shape).join(",");
-  assert.strictEqual(kinds(_tieShapes({ ties: true })), kinds(_tieShapes()), "the runs themselves are the same runs");
+  assert.strictEqual(kinds(_tieShapes({ ties: true })), kinds(_tieShapes({ ties: false })), "the runs themselves are the same runs");
 });
 
 // applyTies, asked directly: the rules below only bite on streams no ordinary
@@ -3222,7 +3231,7 @@ test("ties (shapes): with the column flag off, a lock adds no sewn thread to a h
     for (const angleOverride of [null, 0, 30, 90]) {
       const sh = Object.assign({}, shape);
       if (angleOverride != null) sh.angleOverride = angleOverride;
-      const off = drawn(sh, widthPx, { fillColumns: false }), on = drawn(sh, widthPx, { fillColumns: false, ties: true });
+      const off = drawn(sh, widthPx, { fillColumns: false, ties: false }), on = drawn(sh, widthPx, { fillColumns: false, ties: true });
       locks += on._debug.nTies;
       assert.strictEqual(openGroundMm(on, shape, 0.15).sewn, openGroundMm(off, shape, 0.15).sewn, name + ", angle " + angleOverride);
     }
@@ -3380,7 +3389,7 @@ test("buildQualityDesign: stitches are byte-identical to main's on the shapeOutl
   const d = DG.buildQualityDesign(
     [{ rgb: [0, 0, 0], shapes: [{ outer: rect, holes: [], id: "s7", tierOverride: "fill" }] }],
     { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 6, underlay: false,
-      targetWidthMm: 40, offsetXMm: 5, offsetYMm: -3 }
+      targetWidthMm: 40, offsetXMm: 5, offsetYMm: -3, ...TRIO_OFF }
   );
   const hash = crypto.createHash("sha256").update(JSON.stringify(d.stitches)).digest("hex");
   // hash taken from main at 5371b120 on 2026-09-29; a change here means a
@@ -3463,7 +3472,7 @@ test("underlayRuns: a 3-point hole gets its own edge run and joins the lattice's
 // rails from the polygon, and its `center_run` underlay follows them.
 // Everything else still reads `outer`. A shape with no `sewAs` is untouched.
 const SP = require("../src/satinplay.js");
-const colOpts = (extra) => Object.assign({ garment: { widthIn: 8, heightIn: 8 }, pxPerMm: 6, targetWidthMm: 50, underlay: false }, extra);
+const colOpts = (extra) => Object.assign({ garment: { widthIn: 8, heightIn: 8 }, pxPerMm: 6, targetWidthMm: 50, underlay: false }, TRIO_OFF, extra);
 const straightCol = () => {
   const railA = [{ x: 0, y: 0 }, { x: 300, y: 0 }], railB = [{ x: 0, y: 24 }, { x: 300, y: 24 }];
   return { railA, railB, outer: railA.concat(railB.slice().reverse()) };
@@ -3752,7 +3761,10 @@ test("sewAs column: satinFromRails is reached through a real binding under Node"
 // notch. The writers keep such a record, so the needle goes down twice in one
 // hole (docs/sub-unit-stitches-2026-10-03.md: 16,575 of them on 8,255 designs
 // with every flag absent). `dedupeHoles: true` lays the first and not the
-// second, in every run of the shape builder. Built OFF.
+// second, in every run of the shape builder. Built OFF; ON by default since
+// 2026-10-20 (Kent). The fixtures below pin `ties` and `fillStagger` OFF, the
+// stream this rule was built and measured on, and `dedupeHoles: false` is the
+// off arm; the one test with ties asks for them.
 //
 // "The second" is a stitch whose record comes straight after a stitch on the
 // same point, and nothing wider. After a jump or a cut the stitch is laid,
@@ -3768,7 +3780,7 @@ const _holeStar = [[180, 0], [227, 115], [351, 124], [256, 205], [286, 326], [18
 const _holeNeedle = [{ x: 0, y: 108 }, { x: 145, y: 0 }, { x: 6, y: 117 }];
 const _holeRun = (shape, widthMm, extra) => DG.buildQualityDesign(
   [{ rgb: [0, 0, 0], shapes: [Object.assign({ holes: [] }, shape)] }],
-  Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: widthMm, darkOnTop: false }, extra));
+  Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: widthMm, darkOnTop: false, ties: false, fillStagger: false }, extra));
 // Each a design that, with the flag off, puts two stitches on one point in the
 // kind of run named: [name, the run kind the pair is in, how it is built].
 const _holeCases = [
@@ -3809,15 +3821,15 @@ const _holeSquares = (twoColours, extra) => {
   const a = { outer: sq(0, 0, 100), holes: [], tierOverride: "fill", angleOverride: 0 };
   const b = { outer: [{ x: 100, y: 99 }, { x: 130, y: 99 }, { x: 130, y: 130 }, { x: 100, y: 130 }], holes: [], tierOverride: "fill", angleOverride: 0 };
   const regions = twoColours ? [{ rgb: [0, 0, 0], shapes: [a] }, { rgb: [200, 0, 0], shapes: [b] }] : [{ rgb: [0, 0, 0], shapes: [a, b] }];
-  return DG.buildQualityDesign(regions, Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: 13, darkOnTop: false, underlay: false }, extra));
+  return DG.buildQualityDesign(regions, Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: 13, darkOnTop: false, underlay: false, ties: false, fillStagger: false }, extra));
 };
 
-test("dedupeHoles: OFF by default, and the flag off is byte-identical to omitting it", () => {
+test("dedupeHoles: ON by default (Kent, 2026-10-20), and `dedupeHoles: false` is the off arm", () => {
   for (const [name, kind, build] of _holeCases) {
-    const omitted = build(), off = build({ dedupeHoles: false });
-    assert.strictEqual(_fingerprint(off), _fingerprint(omitted), name);
-    assert.deepStrictEqual(off.runs, omitted.runs, name);
-    assert.ok(_secondByKind(omitted)[kind] > 0, `fixture, ${name}: left off, a ${kind} run has two stitches on one point`);
+    const omitted = build(), on = build({ dedupeHoles: true }), off = build({ dedupeHoles: false });
+    assert.strictEqual(_fingerprint(on), _fingerprint(omitted), name);
+    assert.deepStrictEqual(on.runs, omitted.runs, name);
+    assert.ok(_secondByKind(off)[kind] > 0, `fixture, ${name}: left off, a ${kind} run has two stitches on one point`);
   }
 });
 
@@ -3831,7 +3843,7 @@ test("dedupeHoles: ON, no run lays two stitches in a row on one point", () => {
 
 test("dedupeHoles: the stream is the one without it less those stitches, and nothing else moves", () => {
   for (const [name, , build] of _holeCases) {
-    const off = build(), on = build({ dedupeHoles: true });
+    const off = build({ dedupeHoles: false }), on = build({ dedupeHoles: true });
     assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)), name);
     assert.ok(on.stitches.length < off.stitches.length, name);
     for (const k of ["trim", "jump", "color", "end"]) assert.strictEqual(_count(on, k), _count(off, k), `${name}: the flag must take out no ${k}`);
@@ -3841,7 +3853,7 @@ test("dedupeHoles: the stream is the one without it less those stitches, and not
 
 test("dedupeHoles: every run still has its span, and the spans still hold every stitch", () => {
   for (const [name, , build] of _holeCases) {
-    const off = build(), on = build({ dedupeHoles: true });
+    const off = build({ dedupeHoles: false }), on = build({ dedupeHoles: true });
     assert.deepStrictEqual(on.runs.map((r) => r.kind), off.runs.map((r) => r.kind), name);
     let covered = 0, next = 0;
     for (const r of on.runs) {
@@ -3864,7 +3876,7 @@ test("dedupeHoles: three stitches in a row on one point leave one", () => {
     holes: [[{ x: 100, y: 0 }, { x: 180, y: 0 }, { x: 180, y: 50 }, { x: 130, y: 50 }]],
     tierOverride: "fill", angleOverride: 0,
   };
-  const off = _holeRun(shape, 10, { underlay: false }), on = _holeRun(shape, 10, { underlay: false, dedupeHoles: true });
+  const off = _holeRun(shape, 10, { underlay: false, dedupeHoles: false }), on = _holeRun(shape, 10, { underlay: false, dedupeHoles: true });
   assert.strictEqual(_show(off.stitches.slice(0, 5)), "j0,50 s0,50 s0,50 s0,50 s40,50", "fixture");
   assert.strictEqual(_show(on.stitches.slice(0, 3)), "j0,50 s0,50 s40,50");
   assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)));
@@ -3874,7 +3886,7 @@ test("dedupeHoles: a run's first stitch is laid even where the last run ended", 
   // The corner is sewn twice, with the second run's own jump between the two.
   // That stitch stays: taken out, a run that laid nothing would leave its jump
   // beside the next run's, and jumps in a row are how a file says "cut".
-  const off = _holeSquares(false), on = _holeSquares(false, { dedupeHoles: true });
+  const off = _holeSquares(false, { dedupeHoles: false }), on = _holeSquares(false, { dedupeHoles: true });
   const seam = (d) => _show(d.stitches.slice(d.runs[1].i0 - 1, d.runs[1].i0 + 3));
   assert.strictEqual(seam(off), "s35,-34 j35,-34 s35,-34 s65,-34", "fixture: the corner twice, a jump between");
   assert.strictEqual(seam(on), seam(off));
@@ -3894,7 +3906,7 @@ test("dedupeHoles: the stitch after a float is laid, even back on the point the 
     star.push({ x: Math.round(100 + r * Math.cos(a)), y: Math.round(100 + r * Math.sin(a)) });
   }
   const build = (extra) => _holeRun({ outer: star, tierOverride: "satin" }, 8, Object.assign({ underlay: false }, extra));
-  const off = build(), on = build({ dedupeHoles: true });
+  const off = build({ dedupeHoles: false }), on = build({ dedupeHoles: true });
   const back = (d) => d.stitches.findIndex((s, i, st) => i >= 2 && s.type === "stitch" && st[i - 1].type === "jump" && !_same(s, st[i - 1]) && st[i - 2].type === "stitch" && _same(s, st[i - 2]));
   assert.ok(back(off) >= 2, "fixture: a stitch, a float away, and a stitch back on the same point");
   assert.strictEqual(_show(off.stitches.slice(back(off) - 2, back(off) + 2)), "s11,6 j-18,-24 s11,6 s13,1", "fixture");
@@ -3910,7 +3922,7 @@ test("dedupeHoles: the stitch after a float is laid, even on the point the float
   // only penetration the row gets, and the record before it is a jump.
   const outer = [[0, 0], [30, 0], [30, 60], [100, 60], [110, 2.9], [120, 60], [120, 80], [0, 80]].map(([x, y]) => ({ x, y }));
   const build = (extra) => _holeRun({ outer, tierOverride: "fill", angleOverride: 0 }, 12, Object.assign({ underlay: false }, extra));
-  const off = build(), on = build({ dedupeHoles: true });
+  const off = build({ dedupeHoles: false }), on = build({ dedupeHoles: true });
   assert.strictEqual(_show(off.stitches.slice(6, 11)), "s-30,37 j50,37 s50,37 s50,36 s50,36", "fixture: a float, a stitch on its point, and the next row sewn twice on one point");
   assert.strictEqual(_show(on.stitches.slice(6, 10)), "s-30,37 j50,37 s50,37 s50,36");
   assert.strictEqual(_records(on.stitches), _records(_withoutSecond(off.stitches)));
@@ -3932,7 +3944,7 @@ test("dedupeHoles: the stitch after a float is laid, even when the float went no
     outer.push({ x: Math.round(100 + r * Math.cos(a)), y: Math.round(100 + r * Math.sin(a)) });
   }
   const build = (extra) => _holeRun({ outer, tierOverride: "satin" }, 5, Object.assign({ pullCompMm: 0, underlay: false }, extra));
-  const off = build(), on = build({ dedupeHoles: true });
+  const off = build({ dedupeHoles: false }), on = build({ dedupeHoles: true });
   const nowhere = (d) => d.stitches.findIndex((x, i, st) => i > 0 && x.type === "jump" && st[i - 1].type === "stitch" && _same(x, st[i - 1]) && st[i + 1] && st[i + 1].type === "stitch" && _same(x, st[i + 1]));
   const k0 = nowhere(off), k1 = nowhere(on);
   assert.strictEqual(_show(off.stitches.slice(k0 - 1, k0 + 3)), "s-24,0 j-24,0 s-24,0 s-19,1", "fixture: a stitch, a float that goes nowhere, and a stitch on its point");
@@ -3947,7 +3959,7 @@ test("dedupeHoles: a cut inside a run starts a new thread too", () => {
   const island = (extra) => _holeRun({ outer: box(0, 0, 80, 80), holes: [box(20, 20, 60, 60), box(30, 30, 50, 50)], tierOverride: "fill", angleOverride: 0 },
     8, Object.assign({ underlay: false, fillColumns: true }, extra));
   const cut = (d) => d.stitches.findIndex((s) => s.type === "trim");
-  const off = island(), on = island({ dedupeHoles: true });
+  const off = island({ dedupeHoles: false }), on = island({ dedupeHoles: true });
   assert.strictEqual(_show(off.stitches.slice(cut(off) - 1, cut(off) + 3)), "s40,-39 t10,-9 s10,-9 s-10,-9", "fixture: a cut, and a stitch on the cut point");
   assert.strictEqual(_show(on.stitches.slice(cut(on) - 1, cut(on) + 3)), "s40,-39 t10,-9 s10,-9 s-10,-9");
   // And where the cut lands on the point the thread has just left: a moat
@@ -3955,7 +3967,7 @@ test("dedupeHoles: a cut inside a run starts a new thread too", () => {
   const moat = (extra) => _holeRun({ outer: box(0, 0, 109.68, 109.68), holes: [box(48.37, 44.72, 94.05, 90.91), box(48.97, 45.32, 93.6, 90.51)], tierOverride: "fill", angleOverride: 90 },
     10.968, Object.assign({ underlay: false, fillColumns: true, fillRowMm: 0.02 }, extra));
   const spot = (d) => d.stitches.findIndex((s, i, st) => s.type === "trim" && i > 0 && i + 1 < st.length && st[i - 1].type === "stitch" && st[i + 1].type === "stitch" && _same(st[i - 1], st[i + 1]));
-  const offMoat = moat(), onMoat = moat({ dedupeHoles: true });
+  const offMoat = moat({ dedupeHoles: false }), onMoat = moat({ dedupeHoles: true });
   assert.ok(spot(offMoat) > 0, "fixture: a cut with a stitch on one point either side of it");
   assert.strictEqual(_show(offMoat.stitches.slice(spot(offMoat) - 1, spot(offMoat) + 2)), "s39,10 t39,10 s39,10", "fixture");
   assert.ok(spot(onMoat) > 0, "with the flag the stitch after that cut is still there");
@@ -3965,7 +3977,7 @@ test("dedupeHoles: a cut inside a run starts a new thread too", () => {
 test("dedupeHoles: a cut starts a new thread, and its first stitch is laid even on the spot", () => {
   // The same two squares in two colours. The thread is cut on the corner, and
   // the stitch after the cut is what holds the new thread: it stays.
-  const off = _holeSquares(true), on = _holeSquares(true, { dedupeHoles: true });
+  const off = _holeSquares(true, { dedupeHoles: false }), on = _holeSquares(true, { dedupeHoles: true });
   const seam = (d) => _show(d.stitches.slice(d.runs[1].i0 - 3, d.runs[1].i0 + 2));
   assert.strictEqual(seam(off), "s35,-34 t35,-34 c35,-34 j35,-34 s35,-34", "fixture");
   assert.strictEqual(seam(on), seam(off));
@@ -3974,7 +3986,7 @@ test("dedupeHoles: a cut starts a new thread, and its first stitch is laid even 
 
 test("dedupeHoles: with ties, every lock is still laid and none of them doubles a hole", () => {
   const star = (extra) => _holeRun({ outer: _holeStar, tierOverride: "fill" }, 34.2, extra);
-  const tied = star({ ties: true }), both = star({ ties: true, dedupeHoles: true });
+  const tied = star({ ties: true, dedupeHoles: false }), both = star({ ties: true, dedupeHoles: true });
   assert.ok(tied._debug.nTies >= 2 && _zeroLength(tied) > 0, "fixture: locks, and stitches on one point");
   assert.strictEqual(both._debug.nTies, tied._debug.nTies, "a lock for every thread end, as without the flag");
   assert.strictEqual(_lockLegs(both).length, both._debug.nTies);
@@ -3993,9 +4005,11 @@ test("dedupeHoles: with ties, every lock is still laid and none of them doubles 
 const _cfDst = require("../src/dst.js");
 const { decodeDST: _cfDecode } = require("../src/dstimport.js");
 const _cfPts = (a) => a.map(([x, y]) => ({ x, y }));
+// The fixtures were built and measured with the trio OFF (TRIO_OFF, top of
+// file); the tests that ask for ties set them.
 const _cfRun = (shape, widthMm, extra) => DG.buildQualityDesign(
   [{ rgb: [0, 0, 0], shapes: [Object.assign({ holes: [] }, shape)] }],
-  Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: widthMm, darkOnTop: false }, extra));
+  Object.assign({ garment: { id: "left_chest", widthIn: 4, heightIn: 4 }, pxPerMm: 10, targetWidthMm: widthMm, darkOnTop: false }, TRIO_OFF, extra));
 // Two prongs on a bar, sewn in rows: the plain walk floats from one prong to
 // the other across the gap on every row. `gap` in px, ten to the millimetre.
 const _cfProngs = (gap, extra) => _cfRun(
@@ -4019,7 +4033,7 @@ const _cfCases = [
   ["an underlay and its fill", _cfBar],
   ["a satin star", _cfStar],
   ["a fill across a gap, column walk", (x) => _cfProngs(300, Object.assign({ fillColumns: true }, x))],
-  ["a hole, two colours, three shapes", _tieShapes],
+  ["a hole, two colours, three shapes", (x) => _tieShapes(Object.assign({}, TRIO_OFF, x))],
 ];
 // Every float with the thread on: the jump records between two stitches, and
 // how many records the writer lays in a row for it. The move to the stitch

@@ -55,7 +55,10 @@ const CENSUS = args.includes("--census") ? (args.splice(args.indexOf("--census")
 const outDir =path.resolve(args[0] || path.join(ROOT, "docs", "renders", "text-lane-flags"));
 fs.mkdirSync(outDir, { recursive: true });
 
-const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, underlay: true };
+// `ties` is ON by default since 2026-10-20 and is not this sheet's subject:
+// OFF, the stream these pictures and counts were taken on. So is `dedupeHoles`,
+// whose OFF arm is therefore spelled out.
+const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, underlay: true, ties: false };
 const load = (key) => fb.decodeFontBin(fs.readFileSync(path.join(BIN, key + ".embf")));
 const build = (font, text, w, extra) => DG.buildLetteringDesign(font, text, { ...base, targetWidthMm: w, ...(extra || {}) });
 const md5 = (d) => crypto.createHash("md5").update(JSON.stringify(d.stitches)).digest("hex");
@@ -140,9 +143,9 @@ if (CENSUS) {
   for (const key of fonts) {
     const font = load(key);
     for (const text of WORDS) for (const w of SIZES) {
-      const off = build(font, text, w);
+      const off = build(font, text, w, { dedupeHoles: false });
       if (!off.runs) continue;   // nothing laid (the font has no glyph for the word)
-      const dd = build(font, text, w, { dedupeHoles: true }), dir = build(font, text, w, { underlayDirection: true });
+      const dd = build(font, text, w, { dedupeHoles: true }), dir = build(font, text, w, { dedupeHoles: false, underlayDirection: true });
       c.designs++;
       const D = doubled(off);
       c.doubled += D.at.length; if (D.at.length) c.designsWithDoubled++;
@@ -181,7 +184,7 @@ row("font | width | cap | OFF md5 | records | stitches | doubled holes (by span 
 for (const key of FONTS) {
   const font = load(key);
   for (const w of WIDTHS) {
-    const off = build(font, TEXT, w), on = build(font, TEXT, w, { dedupeHoles: true });
+    const off = build(font, TEXT, w, { dedupeHoles: false }), on = build(font, TEXT, w, { dedupeHoles: true });
     const dOff = doubled(off), dOn = doubled(on);
     const scale = w <= 50 ? 12 : 6;
     const marksOff = dOff.at.map((i) => ({ x: off.stitches[i].x, y: off.stitches[i].y, rgb: [220, 30, 30], ring: true }));
@@ -201,7 +204,7 @@ row("font | text | width | columns after an underlay | starting at the near cros
 const DIR_CASES = [...FONTS.flatMap((key) => WIDTHS.map((w) => [key, TEXT, w])), ["colorful", "Stitches", 100]];
 for (const [key, text, w] of DIR_CASES) {
   const font = load(key);
-  const off = build(font, text, w), on = build(font, text, w, { underlayDirection: true });
+  const off = build(font, text, w, { dedupeHoles: false }), on = build(font, text, w, { dedupeHoles: false, underlayDirection: true });
   const cOff = columnsAfterUnderlay(off), cOn = columnsAfterUnderlay(on);
   let turned = 0;
   for (let i = 0; i < cOff.length; i++) if (!same(cOff[i].firstStitch, cOn[i].firstStitch)) turned++;
