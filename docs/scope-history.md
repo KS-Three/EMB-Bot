@@ -20688,3 +20688,11 @@ reports `l9`). Single test 83.5 s uncapped, 83.0 s capped. Kent's call:
 `tests/conftest.py` caps the test environment at `OPENCV_IPP=avx2`; the pin
 is one md5 with `test_test_environment_caps_ipp_at_avx2` as its tripwire.
 The shipped service is not capped.
+
+**Same day, the full run under the cap on that Xeon** (`-n auto`, CI's flags,
+no deselects, main's 10-20 flips merged in mid-run): 2 failed / 5,235 passed /
+21 skipped / 14 xfailed / 9 xpassed in 54 min 44 s. The two reds are exactly
+CI's two deselected `enthusiast_logo` goldens, so #987's hypothesis that they
+are host SIMD is not supported. CI's two draws after the cap (runs 3218 and
+3227) both put the pin on an AVX2 EPYC 7763 (IPP l9, `75f44f90`); no AMD
+AVX-512 draw yet.

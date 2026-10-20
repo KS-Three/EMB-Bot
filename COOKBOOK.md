@@ -1786,9 +1786,11 @@ PRs #980, #983, #987, and the 2026-10-20 cap). Read a mismatch in this order:
    `test_flat_lane_byte_identical` and `test_stage2_photo_segment`); the towel
    `test_pushcomp` row was re-pinned that day and its deselect removed (three
    machines, AVX-512 and forced-AVX2 dispatch alike, compute the tuple in
-   `GOLDEN_FLAG_OFF`). PR #987 names the open hypothesis: the two that remain
-   may be host SIMD too — AVX-512 runners against AVX2 machines — rather than
-   "platform numerics". Unproven; the workflow is untouched.
+   `GOLDEN_FLAG_OFF`). PR #987's hypothesis that the two remaining rows were
+   host SIMD too was MEASURED FALSE on 2026-10-20 (PR #1006): a full run with
+   IPP capped at Kent's path on an AVX-512 Xeon still failed exactly those two,
+   so their key is engine-stale as the workflow says, and a re-capture, not a
+   SIMD story, is what revives them. The workflow is untouched.
 3. **Is it a pin a flip moved.** A flip re-pins the md5s of every test whose
    fixture it reaches, and the flip PR says which (PR #977 moved two
    `test_small_text_counter_guard` pins and gave the reason). A pin that moved
