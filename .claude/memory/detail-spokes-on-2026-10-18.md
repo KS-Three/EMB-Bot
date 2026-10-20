@@ -1,6 +1,6 @@
 ---
 name: detail-spokes-on-2026-10-18
-description: detail_spokes flipped ON (Kent, "ON tightened"): MIN_TIPS 4, spoke floor scaled by design width; the Fremont OFF md5 depends on the host's SIMD (AVX-512 vs AVX2), not platform or test order; tests pin AVX2 (PR #987)
+description: detail_spokes flipped ON (Kent, "ON tightened"): MIN_TIPS 4, spoke floor scaled by design width; the Fremont OFF md5 depends on the host's SIMD (AVX-512 vs AVX2), not platform or test order; pin keyed on numpy AVX512F (PR #987)
 metadata:
   type: project
 ---
@@ -29,8 +29,9 @@ through one service process all left the laptop's stream at `75f44f90`. No leak,
 defect. The first CI run that recorded its CPU settled it: AMD EPYC 9V45 with numpy AVX512F/SKX/ICL
 read `027d14e6`; AVX2 hosts (Kent's Ryzen 7 4700U, the other runners) read `75f44f90`. Hosted
 runners draw different CPUs, and numpy/OpenCV dispatch AVX-512 kernels where present.
-`tests/conftest.py` now pins the TEST environment to AVX2 (`NPY_DISABLE_CPU_FEATURES`,
-`OPENCV_CPU_DISABLE`) and the single md5 is back; the shipped service is not pinned.
+Pinning the TEST environment to AVX2 (`NPY_DISABLE_CPU_FEATURES`, `OPENCV_CPU_DISABLE` in
+conftest) was tried and did NOT take: an EPYC 9V74 still enabled numpy AVX512F and OpenCV
+AVX512-SKX and read `027d14e6`. So the pin holds two md5s keyed on numpy's AVX512F flag.
 
 **Why:** two stories in a row fitted the evidence (platform, then test order) because no log
 recorded the one variable that moved: the host CPU.

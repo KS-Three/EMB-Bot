@@ -383,14 +383,18 @@ def test_a_mark_whose_host_sewed_nothing_sews_last():
 # --- the whole pipeline: Fremont 80 mm, the Studio's Hat request ----------------------
 
 # Today's main with the flag OFF (set explicitly): 14,824 stitches / 43 trims,
-# the bean-holds-on cell of docs/renders/bean-holds-on/README.md, and ONE
-# stream md5. The stream depends on the host's SIMD dispatch, not on test
-# order (PR #987): AVX2 hosts read `75f44f90`, CI's AVX-512 EPYC runners
-# `027d14e6`. tests/conftest.py pins the test environment to AVX2, so every
-# host should read `75f44f90`; a red here names the host's CPU and its
-# enabled SIMD (numpy and OpenCV), and junit.xml records both on every run.
+# the bean-holds-on cell of docs/renders/bean-holds-on/README.md. The stream
+# md5 depends on the host's SIMD dispatch (PR #987), not on test order or
+# platform: AVX2 hosts (Kent's Ryzen 7 4700U, CI's EPYC 7763) read `75f44f90`,
+# AVX-512 hosts (CI's EPYC 9V45 / 9V74) read `027d14e6`, same tree and wheels.
+# Disabling AVX-512 via NPY_DISABLE_CPU_FEATURES + OPENCV_CPU_DISABLE in
+# conftest was tried and did NOT take on the 9V74 (numpy still enabled
+# AVX512F, OpenCV still ran AVX512-SKX; still `027d14e6`), so the pin is keyed
+# on numpy's AVX512F flag: two values, one per SIMD class, no tolerance. A red
+# names the host and its SIMD; junit.xml records both on every run.
 FREMONT_80_OFF_COUNTS = (14824, 43)
-FREMONT_80_OFF_MD5 = "75f44f905f946705695cf6365f2a8d5f"
+FREMONT_80_OFF_MD5 = {False: "75f44f905f946705695cf6365f2a8d5f",   # AVX2
+                      True: "027d14e68b7a7f91a0a9399077f67847"}    # AVX-512
 STAR_MM = (1.28, -12.02)        # the star's centre, design mm, y down
 
 
@@ -400,13 +404,19 @@ def _stream_md5(plan) -> str:
     return hashlib.md5(json.dumps(coords).encode()).hexdigest()
 
 
+def _avx512() -> bool:
+    """Whether numpy dispatches AVX-512 here: the key of the OFF pin."""
+    from numpy._core._multiarray_umath import __cpu_features__ as feats
+    return bool(feats.get("AVX512F"))
+
+
 def _host_cpu() -> str:
     """The CPU model and the SIMD levels numpy dispatches to: what a stream
     mismatch on a hosted runner has to be read against."""
     import platform
     from numpy._core._multiarray_umath import __cpu_features__ as feats
     # The HARDWARE's AVX-512 flags: numpy's list below is what it ENABLED,
-    # which tests/conftest.py's pin empties of AVX-512 on any host.
+    # which can differ from what the hardware has.
     model, hw = platform.processor(), "n/a"
     try:
         with open("/proc/cpuinfo", encoding="utf-8") as f:
@@ -441,7 +451,7 @@ def test_fremont_80_off_is_byte_identical(fremont_off, record_property):
     record_property("host_cpu", _host_cpu())
     record_property("stream_md5", _stream_md5(plan))
     assert (plan.stats.stitch_count, plan.stats.trims) == FREMONT_80_OFF_COUNTS
-    assert _stream_md5(plan) == FREMONT_80_OFF_MD5, _host_cpu()
+    assert _stream_md5(plan) == FREMONT_80_OFF_MD5[_avx512()], _host_cpu()
     assert not [r for r in fremont_off["result"].regions if r.meta.get("detail_spokes")]
     assert not [w for w in plan.warnings if w["code"] == DETAIL_SPOKES_SEWN]
 
