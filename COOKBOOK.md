@@ -5,7 +5,7 @@ Handoff doc. Read this before touching code. Full blow-by-blow history lives in
 by `.claude/memory/MEMORY.md`) — this file is the self-contained handoff.
 
 **Last refreshed 2026-10-20** over `5a4c019..0eb5e02` on `main` (2026-10-11 →
-10-19, 172 PRs merged). `.claude/hooks/nudge-cookbook-stale.js` nags once 20
+10-19, 172 PRs merged; PR #990, merged during the refresh, is folded in). `.claude/hooks/nudge-cookbook-stale.js` nags once 20
 source commits have piled up past the last touch; the foreman then assigns
 ONE named session per refresh (the K3 standing rule under "Branches &
 worktrees"), and every other session puts status in its PR body, not here.
@@ -1214,8 +1214,11 @@ sews nothing and cuts the smallest shape that contains it.
   sets of designs and says what made each; `--on dedupeHoles=true --off
   dedupeHoles=true` runs it with the flag, and `--against <other src>` says
   whether two engines' streams differ only by such stitches. No Studio
-  caller passes the flag; the flip is Kent's ("Waiting on Kent" 25). The
-  lettering builder has no such rule. `docs/sub-unit-stitches-2026-10-03.md`.
+  caller passes the flag; the flip is Kent's ("Waiting on Kent" 25). Since
+  PR #990 (2026-10-20) `buildLetteringDesign` takes `dedupeHoles` and
+  `underlayDirection` too, both built OFF there (MASTER_SCOPE 25 + 40;
+  `test/text-lane-flags.test.js`, `tools/text-lane-flags-sheet.mjs`).
+  `docs/sub-unit-stitches-2026-10-03.md`.
 - **A ring may arrive CLOSED, and three readers still take its points
   (2026-10-03).** `[p0, ..., pn, p0]`: the first point said again at the end.
   `offsetRing` moves the corners said ONCE (`distinctCorners`) and
@@ -2642,7 +2645,8 @@ and controllable to the user.
     longer ends at the far end from where its column starts;
     `underlayDirection: false` restores the old order, and
     `tools/underlay-direction-measure.mjs` plus the two `-sheet` scripts are
-    its instrument and renders.
+    its instrument and renders. `buildLetteringDesign` takes the same flag
+    since PR #990 (2026-10-20), built OFF there beside `dedupeHoles`.
   - `crossfill.js` — cross-stitch fill for pixel-art lettering fonts. Written
     from first principles, NOT ported: Ink/Stitch's is GPL-3.0 and this product
     is sold. The grid is MEASURED from the glyph outlines, in glyph units, so
