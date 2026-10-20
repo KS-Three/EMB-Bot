@@ -967,6 +967,12 @@
    "basis": "PR body of claude/golden-tee-o-counter; source fixtures have their own entries above"
   },
   {
+   "prefix": "docs/renders/text-lane-flags/",
+   "status": "derived-render",
+   "source": "Stitch-stream renders (tools/text-lane-flags-sheet.mjs) of buildLetteringDesign's own output for the words FRITSCH and Stitches in four library fonts (medium_font, mai_en_fleur, pixel10, colorful; src/fonts/bin, each with its LICENSE beside it), dedupeHoles and underlayDirection OFF beside ON; no artwork, no client art, no third-party stitch files",
+   "basis": "PR body of claude/eager-gates-n7bbm1 (MASTER_SCOPE 25 and 40, the text lane); docs/renders/text-lane-flags/README.md"
+  },
+  {
    "prefix": "docs/renders/",
    "status": "derived-render",
    "source": "Session-generated render/report from repo fixtures (catch-all for new render directories)",

@@ -856,9 +856,20 @@
   // ends by the column's start and keeps it. The same stitches, the other
   // way: a point flagged `travel` (entered by a jump) hands its flag to the
   // point the jump now lands on. Returns `pts` itself when nothing changes.
-  function startNear(pts, from) {
+  //
+  // `ends` (optional, 2026-10-20): the two END points to measure `from`
+  // against, `{ a, b }` for the start and the finish, when the column's first
+  // and last stitches are not its ends. A zigzag's first stitch is on one
+  // rail and its last on the other, so on a column wider than it is long the
+  // first STITCH is farther from the thread than the last even when the
+  // thread sits at the column's own start -- measured on the text lane,
+  // 300 of 11,516 columns, every one of them already starting where its
+  // underlay ends. That lane passes the midpoints of its first and last
+  // crosses. Left out, the ends are the first and last points, as before,
+  // and every shape-lane stream is unchanged.
+  function startNear(pts, from, ends) {
     if (!from || !pts || pts.length < 2) return pts;
-    const a = pts[0], b = pts[pts.length - 1];
+    const a = (ends && ends.a) || pts[0], b = (ends && ends.b) || pts[pts.length - 1];
     if (!(Math.hypot(b.x - from.x, b.y - from.y) < Math.hypot(a.x - from.x, a.y - from.y))) return pts;
     const n = pts.length, out = new Array(n);
     for (let k = 0; k < n; k++) {
