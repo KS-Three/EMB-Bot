@@ -28,6 +28,7 @@ from digitizer_core.words import (PATTERN_MIN_TWINS, WORD_KEYS, _candidates, _pa
                                   detect_words, is_text, tag_words, word_groups, word_key,
                                   word_ocr_text)
 from tools.word_tagger_eval import ari, kappa
+from tests.conftest import PRE_FLIP
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 H, W, S = 4.0, 3.0, 0.6        # cap height, glyph width, stroke (mm)
@@ -427,7 +428,11 @@ def test_the_icon_grids_in_a_hole_stay_out_at_100mm(name):
     from tools import word_tagger_trace as T
     from tools.thin_strokes import REAL_ART, STUDIO_MAX_COLORS
     fname, _w, garment = REAL_ART[name]
-    cfg = PipelineConfig(target_width_mm=100.0, garment_id=garment, max_colors=STUDIO_MAX_COLORS)
+    # The census #900 read was taken before `subpixel_corner_runs` (ON since
+    # 2026-10-20, Kent's ruling); ON, drone's grid reads as three panes, not
+    # four. Held on the engine it was measured on (`PRE_FLIP`).
+    cfg = PipelineConfig(target_width_mm=100.0, garment_id=garment, max_colors=STUDIO_MAX_COLORS,
+                         subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"])
     regions = build_generation(str(TESTDATA / fname), cfg).regions
     chart = chart_for(cfg)
     memo: dict = {}

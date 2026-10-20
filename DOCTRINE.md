@@ -9006,5 +9006,8 @@ before anything else: `(l9)` means the cap took and the engine moved. When
 forcing a library down to ask whether it is the mover, read the library's own
 report that the switch took — `cv2.ipp.getIppVersion()`, the `?` marks in
 `cv2.getCPUFeaturesLine()`, numpy's `__cpu_features__` — before spending a CI
-draw on the answer. Treat the next "platform numerics" the same way: the two
-deselected enthusiast goldens are the open candidates.
+draw on the answer. Treat the next "platform numerics" the same way. The two
+deselected enthusiast goldens were the first candidates and are NOT this: with
+IPP capped at Kent's path on the AVX-512 Xeon, a full run still failed exactly
+those two (measured 2026-10-20, PR #1006), so their key is engine-stale, as the
+workflow says.

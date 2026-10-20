@@ -1429,9 +1429,13 @@ class PipelineConfig:
     # move median edge error by -0.004 to +0.003 mm; the synthetic
     # ladder's rectangles keep their squared corners. Only the native read
     # (`subpixel_edges_upscaled`) is touched. Raster quantities of the
-    # source; no sew-out has seen it. Default OFF and byte-identical off.
+    # source; no sew-out has seen it. Byte-identical off.
     # `tests/test_subpixel_corner_runs.py`.
-    subpixel_corner_runs: bool = False
+    # **FLIPPED ON 2026-10-20, Kent's ruling (via the foreman; MASTER_SCOPE
+    # item 41)** on the measurement above, Becker 7.1 -> 0.9 reversals per
+    # 100 mm. No physical constant moved with it. False is the pre-flip
+    # engine (`PRE_FLIP`).
+    subpixel_corner_runs: bool = True
     # The same upscaled alpha cutout, outlined from the source's alpha
     # DIRECTLY instead of repaired from the mask. The `alpha < 128` mask and
     # its NEAREST enlargement throw the ramp away and stage 4 then walks a

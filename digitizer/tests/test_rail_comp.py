@@ -31,7 +31,7 @@ from digitizer_core import stage7_sequence as s7
 from digitizer_core.pipeline import digitize, fabric_for
 from digitizer_core.stage5_overlap import widened_lettering
 from digitizer_core.stitches import strip_ties
-from tests.conftest import TESTDATA
+from tests.conftest import PRE_FLIP, TESTDATA
 from tests.conftest import own_thread_only
 
 PULL = fabric_for(PipelineConfig(garment_id="left_chest")).pull_comp_mm
@@ -612,7 +612,12 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
                                        satin_tip_caps=False,
                                        # the envelope is the skeleton tier's; the
                                        # Column lane (ON since 2026-10-12) has none
-                                       lettering_columns=False))
+                                       lettering_columns=False,
+                                       # measured before `subpixel_corner_runs`
+                                       # (ON 2026-10-20): ON, the envelope's reach
+                                       # is 5.36 -> 5.07% bare, under the 0.5 pt
+                                       # this arm was sized on (`PRE_FLIP`)
+                                       subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"]))
         polys = {rg.shape_id: rg.polygon for rg in r.regions}
         num, den = bare_area(polys, p)
         wob = EW.analyse_plan(polys, p, background=set())
