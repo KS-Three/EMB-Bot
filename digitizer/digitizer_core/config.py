@@ -3437,6 +3437,10 @@ class PipelineConfig:
     # goldens are unaffected by construction. False keeps the pre-2026-08-28
     # path reachable and tested rather than dead-by-default, the same posture
     # `shade_palette_bind` keeps for its own off-path.
+    # Since 2026-10-20 it also covers the seam into the edge cap: a cap block
+    # in the last artwork block's cone sews at the end of that block
+    # (`stage7_sequence._cap_seam_joins`, defect 18's edge_cap route). Same
+    # stitches, same cuts, one stop fewer; False restores the separate block.
     merge_adjacent_same_thread: bool = True
     # The NON-adjacent half of the same revisit defect (2026-08-28): a cone
     # sewn, left for other colours, and returned to. Unlike the adjacent merge

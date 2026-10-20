@@ -71,13 +71,26 @@ def test_the_default_is_off():
 
 
 def test_off_every_cap_run_sits_in_a_cap_only_block_after_the_artwork():
-    """The shipped structure the flag departs from, pinned on both fixtures."""
+    """The shipped structure the flag departs from, pinned on both fixtures:
+    cap-only blocks after the artwork, except that a stretch in the LAST
+    artwork block's cone sews at that block's end (`_cap_seam_joins`, under
+    `merge_adjacent_same_thread`), which moves nothing past anything. With
+    that merge off, every cap run is in a cap-only block."""
     for regions in (APART, ABUT):
-        blocks = plan_for(regions).blocks
-        kinds = [all(is_cap(r) for r in b.runs if r.points) for b in blocks]
-        first = kinds.index(True)
-        assert all(kinds[first:]) and not any(kinds[:first])
-        assert not any(is_cap(r) for b in blocks[:first] for r in b.runs)
+        for merge in (False, True):
+            blocks = plan_for(regions, merge_adjacent_same_thread=merge).blocks
+            kinds = [all(is_cap(r) for r in b.runs if r.points)
+                     for b in blocks]
+            first = kinds.index(True)
+            assert all(kinds[first:]) and not any(kinds[:first])
+            art = blocks[:first]
+            assert not any(is_cap(r) for b in art[:-1] for r in b.runs)
+            tail = art[-1].runs
+            k = next((i for i, r in enumerate(tail) if is_cap(r)), len(tail))
+            assert all(is_cap(r) for r in tail[k:])
+            assert (k < len(tail)) is (
+                merge and blocks[first].thread_index != art[-1].thread_index
+                and regions is ABUT)
 
 
 def test_untouched_stretches_fold_and_save_every_cap_stop():
@@ -97,7 +110,9 @@ def test_it_reorders_and_never_adds_or_removes_a_stitch_or_a_cut():
     """Counted off the emitted machine stream (`StitchPlan.stats`), the one
     the file is encoded from: the same stitches, the same trims, and exactly
     one colour change fewer per folded cone."""
-    for regions, folded in ((APART, 2), (ABUT, 1)):
+    # ABUT's one foldable cone is its LAST, whose stretches the shipped plan
+    # already sews at the end of that block (`_cap_seam_joins`): nothing left.
+    for regions, folded in ((APART, 2), (ABUT, 0)):
         off = plan_for(regions)
         on = plan_for(regions, edge_cap_fold_into_colour=True)
         assert points(on.blocks) == points(off.blocks)
@@ -122,10 +137,12 @@ def test_the_service_does_not_call_a_host_block_the_design_edge():
 def test_a_stretch_something_later_sews_near_keeps_its_own_block():
     """L's stretches end where R's rows begin, and R sews after L, so L's cap
     must stay on top -- in its own block after R. R is the last artwork cone,
-    so its stretches fold."""
+    so its stretches fold (and with the flag off they already sit at the end
+    of R's block, `_cap_seam_joins`; without that join, four blocks)."""
     off = plan_for(ABUT)
     on = plan_for(ABUT, edge_cap_fold_into_colour=True)
-    assert len(off.blocks) == 4
+    assert len(plan_for(ABUT, merge_adjacent_same_thread=False).blocks) == 4
+    assert len(off.blocks) == 3
     assert len(on.blocks) == 3
     assert [b.thread_index for b in on.blocks] == [3, 5, 3]
     assert all(is_cap(r) for r in on.blocks[2].runs)

@@ -79,6 +79,16 @@ still takes `key=value` config overrides, to re-run under any field:
 
     .venv/bin/python -m tools.cone_revisits edge_cap=none
 
+## Re-measured 2026-10-20 — the cap's gap-1 repeats are closed
+
+A cap block wearing the LAST artwork block's cone now sews at that block's
+end (`stage7_sequence._cap_seam_joins`, under `merge_adjacent_same_thread`):
+same stitches, same cuts, one stop fewer. 43 -> 35 of 52 combos, 88 -> 79
+duplicates, `edge_cap` 74 -> 65, gap-1 9 -> 0; no other row moved. The 65
+left are gap >= 2 — a cap stretch whose cone sewed BEFORE other artwork;
+removing those moves the stretch ahead of that artwork, which is
+`edge_cap_fold_into_colour` (OFF).
+
 ## What it found, 2026-09-06 — 26 fixtures x 2 garments
 
 Reproduces MASTER_SCOPE's count exactly, and prices it:
