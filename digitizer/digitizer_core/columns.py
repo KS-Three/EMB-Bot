@@ -1484,12 +1484,20 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 counter_clear_mm: float = 0.0,
                 square_ends: bool = False,
                 inside_connectors: bool = False,
+                counter_poly: Polygon | None = None,
                 ) -> tuple[list[StitchRun], dict]:
     """Columns of ONE letter -> runs in sew order, plus a report in the
     satin tier's contract (`empty`, `too_thin`, `jumps`), extended with the
     column census stage 7 copies into the plan's counters.
     `counter_clear_mm` > 0 (`cfg.small_print_floor`) holds every
     penetration that far off the letter's counters (`_clear_counters`).
+    `counter_poly` (`cfg.open_cored_counters`, 2026-10-19): the polygon
+    whose INTERIORS are the counters that hold reads -- `poly` itself when
+    None, every hole of the letter, as the floor has always had it. Given
+    (`counter_hold_polygon`), only the holes stage 3 kept as cored
+    counters are held, and the letter's other holes sew as the lane sews
+    them with the floor off. Reads the hold's interiors and nothing else:
+    rails, end faces and the walk still read `poly`.
     `square_ends` (`cfg.lettering_columns_square_ends`) holds every
     penetration that starts on an end face on that face (`_hold_end_faces`).
     `inside_connectors` (`cfg.lettering_columns_inside_connectors`) keeps
@@ -1502,6 +1510,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
               "columns": 0, "columns_unsewn": 0, "thin_crosses": 0, "stations": 0,
               "spans": 0, "underpath_mm": 0.0, "junctions": 0, "tucks": 0}
     above = split_above_mm if split_above_mm is not None else machine.SPLIT_SATIN_ABOVE_MM
+    cpoly = counter_poly if counter_poly is not None else poly
 
     # 1. Each column's stations as the fabric will get them: pushed on the
     #    rails, crosses under the floor dropped.
@@ -1510,7 +1519,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     for col in columns:
         a_pts, b_pts = sewn_rails(col, poly, pull_mm, pull_floor_mm, hold)
         if counter_clear_mm > 0:
-            a_pts, b_pts = _clear_counters(a_pts, b_pts, poly, counter_clear_mm, min_cross_mm)
+            a_pts, b_pts = _clear_counters(a_pts, b_pts, cpoly, counter_clear_mm, min_cross_mm)
         # Short stitches on the inside of a bend (`satinplay.js` pullShort;
         # the engine's own guard): where a rail's penetrations bunch up
         # under SATIN_SHORT_STITCH_AT_MM -- the inner rail of an S's curl is
@@ -1522,7 +1531,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         if counter_clear_mm > 0:
             # Small print: no zigzag stitch over a counter
             # (`_counter_safe_pieces`); one column may sew as several.
-            pieces, dropped = _counter_safe_pieces(guarded, poly, min_cross_mm,
+            pieces, dropped = _counter_safe_pieces(guarded, cpoly, min_cross_mm,
                                                    counter_clear_mm)
             report["thin_crosses"] += dropped
             sewn_pieces = [p for p in pieces if len(p) >= 3]
@@ -1544,7 +1553,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         # Small print: a bar between two counters that no column sews (the
         # slashed 0's slash, once its crosses stop running over the
         # counters beside it) gets a column of its own (`_bar_columns`).
-        bars = _bar_columns(poly, ready, spacing_mm)
+        bars = _bar_columns(cpoly, ready, spacing_mm)
         if bars:
             report["bars"] = len(bars)
             ready.extend(bars)
@@ -1587,14 +1596,14 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     #    (`poly_link` is the sew-or-jump rule's polygon, see step 4; the
     #    connector below asks it the same question one leg early.)
     poly_link = poly.buffer(0.1 + pull_mm)
-    if counter_clear_mm > 0 and poly.interiors:
+    if counter_clear_mm > 0 and cpoly.interiors:
         # Small print: the buffer closes every counter narrower than twice
         # (0.1 + pull) -- at 0.3 mm pull, every counter under 0.8 mm -- and
         # a hop the link rule then sews runs needle-down across the bare
         # counter (the B's and the 8's diagonals, `tools/small_print.py`
         # renders at 4 mm). A counter is not inside the letter.
         _counters = unary_union([Polygon(r).buffer(-stitches.SAME_POINT_MM)
-                                 for r in poly.interiors])
+                                 for r in cpoly.interiors])
         if not _counters.is_empty:
             poly_link = poly_link.difference(_counters)
     # `inside_connectors`: a needle-down connector (the hop below, the
@@ -1611,7 +1620,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                   for c in ready if len(c.stations) >= 2]
         poly_hop = unary_union([poly.buffer(max(0.0, pull_mm - RAIL_REACH_INSET_MM) + _FACE_EPS_MM),
                                 *ground])
-        if counter_clear_mm > 0 and poly.interiors and not _counters.is_empty:
+        if counter_clear_mm > 0 and cpoly.interiors and not _counters.is_empty:
             poly_hop = poly_hop.difference(_counters)
     else:
         poly_hop = poly_link
@@ -1815,6 +1824,28 @@ def _recorded_counters(cut_poly: Polygon, letter: Polygon) -> Polygon:
     return both if both.geom_type == "Polygon" and not both.is_empty else cut_poly
 
 
+def counter_hold_polygon(poly: Polygon, counters) -> Polygon:
+    """`cfg.open_cored_counters` (2026-10-19): `poly`'s exterior with ONLY
+    the holes that are cored counters as its interiors -- the polygon the
+    counter holds (`_clear_counters`, `_counter_safe_pieces`, `_bar_columns`,
+    the link rule's cut) read their counters from, so a shape's other holes
+    sew exactly as the lane sews them with the floor off. Each counter
+    (a polygon, the counter region stage 3 kept) names the interior of
+    `poly` it covers -- the shape's own traced ring, not the counter's,
+    for `_recorded_counters`' reason -- and a counter that covers none of
+    `poly`'s interiors names nothing. Only the interiors are read by every
+    consumer; the exterior is `poly`'s."""
+    rings = []
+    for ring in poly.interiors:
+        hole = Polygon(ring)
+        if hole.is_empty:
+            continue
+        pt = hole.representative_point()
+        if any(c.covers(pt) for c in counters):
+            rings.append(ring.coords)
+    return Polygon(poly.exterior.coords, rings)
+
+
 def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             spacing_mm: float = machine.SATIN_SPACING_MM,
                             split_above_mm: float | None = None,
@@ -1826,10 +1857,18 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             fold_cuts: bool = False,
                             square_ends: bool = False,
                             inside_connectors: bool = False,
+                            counter_holes: list | None = None,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
     `counter_clear_mm`: see `column_runs` (`cfg.small_print_floor`).
+    `counter_holes` (`cfg.open_cored_counters`, 2026-10-19): the cored
+    counters of this letter (polygons); with `counter_clear_mm` > 0 the
+    floor's two holds -- no cross over a counter, every penetration half a
+    laid width off it -- are applied to THOSE holes only
+    (`counter_hold_polygon`), and the cut's polygon is handed over as it
+    is, the letter's other holes sewn as the lane sews them with the floor
+    off. None, the floor's own reading: every hole of the letter.
     `fold_cuts`: `cfg.lettering_columns_fold_cuts` (`outline_cut._fold_refine`)."""
     from .outline_cut import letter_columns
 
@@ -1840,13 +1879,20 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     lc_kw = {**({"fold_cuts": True} if fold_cuts else {}),
              # `cfg.lettering_columns_square_ends`: a slanted end face is mitred
              **({"mitre_ends": True} if square_ends else {})}
+    cored = bool(counter_holes) and counter_clear_mm > 0        # none named: the floor's reading
     run_kw = dict(trim_at_mm=trim_at_mm,
                   spacing_mm=spacing_mm, split_above_mm=split_above_mm,
                   pull_mm=pull_mm, pull_floor_mm=pull_floor_mm,
                   underlay_style=underlay_style, start_near=start_near,
                   end_near=end_near, counter_clear_mm=counter_clear_mm,
                   **({"square_ends": True} if square_ends else {}),
-                  **({"inside_connectors": True} if inside_connectors else {}))
+                  **({"inside_connectors": True} if inside_connectors else {}),
+                  **({"counter_poly": counter_hold_polygon(poly, counter_holes)} if cored else {}))
+
+    def recorded(cpoly):
+        # the floor: the letter's own rings for every hole; the cored
+        # counters alone ride in `counter_poly`, the cut's polygon untouched
+        return _recorded_counters(cpoly, poly) if counter_clear_mm > 0 and not cored else cpoly
     if fold_cuts:
         # `fold_cuts`' sewn judge: a fold-look candidate is sewn exactly as
         # this letter will be, and read for folds and knots
@@ -1854,11 +1900,10 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         from .outline_cut import sewn_knots
 
         def judge(cols, cpoly):
-            held_j = _recorded_counters(cpoly, poly) if counter_clear_mm > 0 else cpoly
-            return sewn_knots(column_runs(cols, held_j, shape_id, **run_kw)[0])
+            return sewn_knots(column_runs(cols, recorded(cpoly), shape_id, **run_kw)[0])
         lc_kw["judge"] = judge
     cut = letter_columns(poly, pitch_mm=spacing_mm, **lc_kw)
-    held = _recorded_counters(cut.poly, poly) if counter_clear_mm > 0 else cut.poly
+    held = recorded(cut.poly)
     runs, report = column_runs(cut.columns, held, shape_id, **run_kw)
     report["cuts"] = len(cut.cuts)
     report["columns_unsewn"] += len(cut.unsewn)

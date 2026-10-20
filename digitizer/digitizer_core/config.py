@@ -1026,6 +1026,25 @@ class PipelineConfig:
     # floors are the area floor, `RUN_MIN_AREA_MM2` for the core, and the thread
     # width. Logo classes only, the gate `keep_counters` uses. OFF is the engine
     # as it was.
+    # Two more things ride behind the same flag (2026-10-19, #988's two
+    # conditions), no new default behaviour:
+    #   - the GLYPH GUARD (`pipeline.cored_counter_core`): a core is a
+    #     counter only inside a shape the taggers call lettering
+    #     (`columns.is_lettering`, read off one extra flag-OFF stages-0-4
+    #     run), so the screenshot's five non-letter details stay absorbed,
+    #     ON byte-identical to OFF there. It also refuses golden_tee's O at
+    #     a 4 mm cap, where the sub-floor O is absorbed into a non-lettering
+    #     satin shape: 4 mm ON is OFF.
+    #   - the SATIN HOLD-OFF (`stage6_satin.satin_shape` `counter_holes`,
+    #     `columns.lettering_columns_shape` `counter_holes`): the small-print
+    #     floor's two holds -- no stitch over the counter, every penetration
+    #     half a laid width off it -- on the cored holes alone, in both satin
+    #     tiers, plus the underlay, travel and link rules kept out of them.
+    #     With `small_print_floor` ON the floor already holds every hole.
+    # The instrument's ceiling: a 0.4 mm thread held at the hole's edge
+    # leaves (hole eroded by 0.2 mm) open, and the traced hole is smaller
+    # than the artwork's counter (golden_tee at 5 mm: 0.77 of 1.85 mm2), so
+    # `tools/small_print.py`'s `counter_open` tops out near 0.15 there.
     open_cored_counters: bool = False
     # Widen rescued lettering to a sewable column
     # (`textcluster.regularize_text_clusters`, plan §4d, PR 4). The strokes
