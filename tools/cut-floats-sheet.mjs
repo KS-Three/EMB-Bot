@@ -139,7 +139,7 @@ for (const design of DESIGNS) {
     const arms = {};
     for (const [arm, cutFloats] of [["off", false], ["on", true]]) {
       const t0 = process.hrtime.bigint();
-      const d = build(design, g, { cutFloats });
+      const d = build(design, g, { cutFloats, ties: false });
       const ms = Number(process.hrtime.bigint() - t0) / 1e6;
       const tied = build(design, g, { cutFloats, ties: true });
       const m = measure(design, d);

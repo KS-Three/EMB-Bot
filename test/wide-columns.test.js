@@ -20,6 +20,9 @@ const fb = require("../src/fontbin.js");
 const G = require("../src/garments.js");
 
 const BIN = path.join(__dirname, "..", "src", "fonts", "bin");
+// `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
+// (Kent); a pin below taken before that, on another subject, builds with them OFF.
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
 const font = JSON.parse(fs.readFileSync(__dirname + "/fixtures/fonts/geneva_simple.json", "utf8"));
 
 // A straight column `lenPx` long and `widPx` wide, in the y direction.
@@ -289,7 +292,7 @@ test("a RUN font's authored pitch is a length on the fabric, not on the layout",
   if (!fs.existsSync(p)) { t.skip("western_light.embf not built"); return; }
   const f = fb.decodeFontBin(fs.readFileSync(p));
   const d = DG.buildLetteringDesign(f, "A", {
-    garment: G.getGarment("left_chest"), pxPerMm: 8, emMm: 18, rgb: [25, 25, 25], pullCompMm: 0.2 });
+    garment: G.getGarment("left_chest"), pxPerMm: 8, emMm: 18, rgb: [25, 25, 25], pullCompMm: 0.2, ...TRIO_OFF });
   const { n, worstAx } = overRecord(d);
   assert.strictEqual(n, 0, "not one sewn segment past a DST record");
   assert.ok(worstAx <= 4.1, `worst sewn segment ${worstAx} mm`);

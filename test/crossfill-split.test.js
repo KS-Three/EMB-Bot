@@ -67,10 +67,13 @@ async function tools() {
   if (!census) census = await import("../tools/small-cap-census.mjs");
   return census;
 }
-function build(font, text, garment, targetWidthMm) {
+// `ties`, `fillStagger` and `dedupeHoles` went ON by default on 2026-10-20
+// (Kent); a pin below taken before that, on another subject, builds with them OFF.
+const TRIO_OFF = { ties: false, fillStagger: false, dedupeHoles: false };
+function build(font, text, garment, targetWidthMm, extra) {
   return DG.buildLetteringDesign(font, text, {
     garment: garments.getGarment(garment), pxPerMm: 8, rgb: [20, 20, 20],
-    weightPreset: "normal", targetWidthMm,
+    weightPreset: "normal", targetWidthMm, ...extra,
   });
 }
 function maxAxisMm(design) {
@@ -94,7 +97,7 @@ test("byte-identical to pre-split main for the 9 fonts at 25 and 60 mm cap", asy
   for (const name of FONTS) {
     const font = loadFont(name), cal = calibrate(font, "AB");
     for (const cap of [25, 60]) {
-      const d = build(font, "AB", "full_back", cal.trialWidth * cap / cal.trialCap);
+      const d = build(font, "AB", "full_back", cal.trialWidth * cap / cal.trialCap, TRIO_OFF);
       const h = crypto.createHash("sha256").update(JSON.stringify(d.stitches)).digest("hex").slice(0, 16);
       assert.strictEqual(h, BEFORE[name + "@" + cap], name + " @ " + cap + " mm moved");
     }

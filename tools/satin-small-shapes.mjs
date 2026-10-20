@@ -82,7 +82,8 @@ async function studio() {
   if (!mods) mods = { presets: await lib("shapePresets.js"), manual: await lib("manualShapes.js") };
   return mods;
 }
-export async function buildShape(spec, on) {
+// `extra`: more builder options (a test pins `ties` and the rest OFF with it).
+export async function buildShape(spec, on, extra) {
   const { presets, manual } = await studio();
   const points = spec.kind === "joint" ? jointPoints(manual, spec.params) : presets.shapePresetPoints(spec.kind, spec.params, spec.sizeMm);
   const { regions, pxPerMm } = manual.shapesToRegions([
@@ -92,13 +93,13 @@ export async function buildShape(spec, on) {
   for (const p of points) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); }
   return DG.buildQualityDesign(regions, {
     garment, fabric, pxPerMm, darkOnTop: false, underlay: true, targetWidthMm: spec.kind === "joint" ? (x1 - x0) / pxPerMm : spec.sizeMm,
-    offsetXMm: 0, offsetYMm: 0, satinSmallShapes: !!on,
+    offsetXMm: 0, offsetYMm: 0, satinSmallShapes: !!on, ...extra,
   });
 }
 const fonts = new Map();
-export function buildWord(spec, on) {
+export function buildWord(spec, on, extra) {
   if (!fonts.has(spec.font)) fonts.set(spec.font, FB.decodeFontBin(fs.readFileSync(path.join(ROOT, "src", "fonts", "bin", spec.font + ".embf"))));
-  return DG.buildLetteringDesign(fonts.get(spec.font), spec.text, { garment, fabric, emMm: spec.emMm, pxPerMm: 8, satinSmallShapes: !!on });
+  return DG.buildLetteringDesign(fonts.get(spec.font), spec.text, { garment, fabric, emMm: spec.emMm, pxPerMm: 8, satinSmallShapes: !!on, ...extra });
 }
 
 // ---- measures ---------------------------------------------------------------

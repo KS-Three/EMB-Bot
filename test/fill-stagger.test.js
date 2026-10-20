@@ -1,6 +1,7 @@
 // Row stagger for the tatami fill: `tatamiFill({ stagger, minStitch })`, default
 // off, and the builder flag that turns it on for a shape's cover fill
-// (`buildQualityDesign({ fillStagger })`, default off).
+// (`buildQualityDesign({ fillStagger })`, built off, ON by default since
+// 2026-10-20, Kent; `fillStagger: false` is the off arm).
 //
 // Without it every row is divided evenly from its own end, so on any shape
 // with straight sides the needle holes of one row stand exactly under the
@@ -396,7 +397,9 @@ const count = (d, k) => d.stitches.filter((s) => s.type === k).length;
 const build = (extra) => DG.buildQualityDesign(
   [{ rgb: [10, 10, 10], shapes: [{ outer: rect(0, 0, 400, 200), holes: [], tierOverride: "fill" }, { outer: rect(600, 0, 300, 300), holes: [rect(700, 100, 100, 100)], tierOverride: "fill" }] },
    { rgb: [200, 30, 30], shapes: [{ outer: rect(0, 400, 250, 250), holes: [], tierOverride: "fill" }] }],
-  Object.assign({ garment: { widthIn: 6, heightIn: 6 }, pxPerMm: 10, darkOnTop: false, underlay: true }, extra || {}));
+  // `ties` and `dedupeHoles` went ON with this flag (2026-10-20); pinned OFF,
+  // the engine these fixtures were measured on, so the stagger is all that moves.
+  Object.assign({ garment: { widthIn: 6, heightIn: 6 }, pxPerMm: 10, darkOnTop: false, underlay: true, ties: false, dedupeHoles: false }, extra || {}));
 // Every tatami pass the builder asks the fill module for, with what it asked
 // and what it got. The builder looks the function up when it calls it.
 function passes(extra) {
@@ -405,11 +408,12 @@ function passes(extra) {
   try { return { design: build(extra), seen }; } finally { fill.tatamiFill = real; }
 }
 
-test("fillStagger (shapes): OFF by default, and the flag off is byte-identical to omitting it", () => {
-  const omitted = build(), explicitOff = build({ fillStagger: false });
-  assert.strictEqual(fingerprint(omitted), fingerprint(explicitOff));
-  assert.deepStrictEqual(omitted.runs, explicitOff.runs);
-  for (const p of passes().seen) assert.ok(!p.opts.stagger, "no pass is asked to stagger with the flag off");
+test("fillStagger (shapes): ON by default (Kent, 2026-10-20), and `fillStagger: false` is the off arm", () => {
+  const omitted = build(), explicitOn = build({ fillStagger: true });
+  assert.strictEqual(fingerprint(omitted), fingerprint(explicitOn));
+  assert.deepStrictEqual(omitted.runs, explicitOn.runs);
+  assert.ok(passes().seen.some((p) => p.opts.stagger), "omitting the flag staggers");
+  for (const p of passes({ fillStagger: false }).seen) assert.ok(!p.opts.stagger, "no pass is asked to stagger with the flag off");
 });
 
 test("fillStagger (shapes): ON staggers the cover fill of every shape, by the Python engine's cycle and shortest stitch", () => {
@@ -425,7 +429,7 @@ test("fillStagger (shapes): ON staggers the cover fill of every shape, by the Py
     assert.strictEqual(lined.threes, 0, "three holes in a line, of " + lined.n);
     assert.ok(lined.pairs < 0.1 * lined.n, lined.pairs + " of " + lined.n + " holes with one under them");
   }
-  for (const p of passes().seen.filter((q) => q.opts.rowSpacing === cover[0].opts.rowSpacing)) {
+  for (const p of passes({ fillStagger: false }).seen.filter((q) => q.opts.rowSpacing === cover[0].opts.rowSpacing)) {
     const lined = inLine(holesOf(p.pts, p.polys, p.opts.rowSpacing, p.opts.angleDeg), 0.3 * cover[0].opts.minStitch);
     assert.ok(lined.threes > 0.9 * lined.n, "the defect, flag off: " + lined.threes + " of " + lined.n + " holes are the head of three in a line");
   }
@@ -433,7 +437,7 @@ test("fillStagger (shapes): ON staggers the cover fill of every shape, by the Py
   // Python engine does not stagger them either (`_underlay_paths`, staggers=1)
   const under = seen.filter((p) => !p.opts.stagger);
   assert.ok(under.length >= 3, "fixture: underlay passes, " + under.length);
-  const offUnder = passes().seen.filter((p) => p.opts.rowSpacing !== cover[0].opts.rowSpacing);
+  const offUnder = passes({ fillStagger: false }).seen.filter((p) => p.opts.rowSpacing !== cover[0].opts.rowSpacing);
   assert.deepStrictEqual(under.map((p) => p.pts), offUnder.map((p) => p.pts), "every underlay pass is the one sewn with the flag off");
 });
 
@@ -453,7 +457,7 @@ test("fillStagger: the split tolerance is the Python engine's, to the digit", ()
 });
 
 test("fillStagger (shapes): the design keeps its size, its colours, its cuts and its runs", () => {
-  const off = build(), on = build({ fillStagger: true });
+  const off = build({ fillStagger: false }), on = build({ fillStagger: true });
   assert.notStrictEqual(fingerprint(on), fingerprint(off), "the flag does something");
   assert.strictEqual(on.widthMM, off.widthMM);
   assert.strictEqual(on.heightMM, off.heightMM);
@@ -465,7 +469,7 @@ test("fillStagger (shapes): the design keeps its size, its colours, its cuts and
 });
 
 test("fillStagger (shapes): with the column walk too", () => {
-  const off = build({ fillColumns: true }), on = build({ fillColumns: true, fillStagger: true });
+  const off = build({ fillColumns: true, fillStagger: false }), on = build({ fillColumns: true, fillStagger: true });
   assert.notStrictEqual(fingerprint(on), fingerprint(off));
   for (const k of ["trim", "color", "jump", "end"]) assert.strictEqual(count(on, k), count(off, k), k + " records");
   const { seen } = passes({ fillColumns: true, fillStagger: true });

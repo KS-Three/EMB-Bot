@@ -120,7 +120,8 @@
   }
 
   // Lock the thread wherever it starts and wherever it gets cut: the rule of
-  // `stitches.apply_ties`, for BOTH builders (`ties: true`, default off).
+  // `stitches.apply_ties`, for BOTH builders (`ties`, ON by default since
+  // 2026-10-20, Kent; `ties: false` is the off arm).
   //
   // It is asked of the FINISHED record stream, not of the runs on their way
   // into it, for two reasons the lettering port (2026-09-14, inline, in px)
@@ -1054,15 +1055,17 @@
     //    DRAWN (shrunk, it folds through itself), so there the fill covers no
     //    further at all, and the underlay went straight across a 1 mm slot.
     const fillColumns = !!o.fillColumns;
-    // `fillStagger` (default off): a shape's COVER fill puts the needle holes
+    // `fillStagger` (built off; ON by default since 2026-10-20, Kent, and
+    // `fillStagger: false` is the off arm): a shape's COVER fill puts the needle holes
     // between each row's ends on one grid, shifted row by row, where each row
     // now cuts itself evenly and the holes line up from row to row (fill.js,
     // "ROW STAGGER"). The underlay passes are left as they are: their rows are
     // 2 mm and more apart and lie under the cover, and the Python engine does
     // not stagger them either (`_underlay_paths`, staggers=1). Off, nothing
     // reads it and every stitch is unchanged.
-    const staggerOpts = o.fillStagger ? { stagger: FILL_STAGGERS, minStitch: MIN_STITCH_MM * pxPerFinalMm, splitTol: SPLIT_TOLERANCE_MM * pxPerFinalMm } : null;
-    // `dedupeHoles` (default off): no run lays a stitch straight after a
+    const staggerOpts = o.fillStagger !== false ? { stagger: FILL_STAGGERS, minStitch: MIN_STITCH_MM * pxPerFinalMm, splitTol: SPLIT_TOLERANCE_MM * pxPerFinalMm } : null;
+    // `dedupeHoles` (built off; ON by default since 2026-10-20, Kent, and
+    // `dedupeHoles: false` is the off arm): no run lays a stitch straight after a
     // stitch on the same point.
     //
     // `T` rounds to the stitch file's unit, 0.1 mm, so two penetrations nearer
@@ -1084,7 +1087,7 @@
     // made. The price is the doubled hole with a jump between the two, a run
     // that begins where the last one ended: 15 on those 8,255 designs.
     // Off, nothing is noted and every stitch is unchanged.
-    const dedupeHoles = !!o.dedupeHoles;
+    const dedupeHoles = o.dedupeHoles !== false;
     // The rings a FILL is sewn to: the shape's own, or under a fabric preset
     // the pull-compensated ones (grow the outer, shrink the holes), so it sews
     // to true size on stretchy cloth. No-fabric fills stay unoffset.
@@ -1597,11 +1600,12 @@
     // here and every record is unchanged.
     if (o.cutFloats) nTrims += cutLongFloats(stitches, spans);
     stitches.push({ x: 0, y: 0, type: "end" });
-    // Lock stitches, OFF by default (`ties`, 2026-10-03): until now this
+    // Lock stitches (`ties`, built OFF 2026-10-03, ON by default since
+    // 2026-10-20, Kent): until then this
     // builder tied nothing, on any lane it serves -- manual draw, basic shapes,
     // SVG import, the flatten lane -- so every trim left two loose ends. Off,
     // the stream below is the one built above, untouched. See applyTies.
-    const tied = o.ties ? applyTies(stitches, spans) : null;
+    const tied = o.ties !== false ? applyTies(stitches, spans) : null;
     const sewn = tied ? tied.stitches : stitches;
     const stitchCount = sewn.filter((s) => s.type === "stitch").length;
     // designWmm/designHmm is the traced-polygon box this was fit to; the sewn
@@ -1887,10 +1891,11 @@
     const maxStepPx = maxStitchMm / finalMmPerPx;   // longest single stitch (px)
     let nTrims = 0, nSatin = 0, lastPt = null, forceJumpNext = false;
 
-    // Lock stitches, OFF by default (2026-09-14). The Python lane ties every
+    // Lock stitches, built OFF (2026-09-14); ON by default since 2026-10-20
+    // (Kent), with `ties: false` the off arm. The Python lane ties every
     // block unconditionally and this lane tied nothing at all; `ties: true`
-    // closes that gap. It ships default-OFF for the reason every other flag in
-    // this repo did — it changes EVERY .dst/.pes a customer exports from
+    // closes that gap. It shipped default-OFF for the reason every other flag
+    // in this repo did — it changes EVERY .dst/.pes a customer exports from
     // lettering, and this house makes Kent rule a flip like that with the
     // measurement in front of him. With the flag off the stream is the one
     // built below, untouched, which is what the snapshot pins assert.
@@ -1901,8 +1906,9 @@
     // run that is not really stitching. They are put in once the stream is
     // finished (applyTies, 2026-10-03): until then they were pushed here as
     // each run went by, in px, and came out 0.2 to 2.0 mm long.
-    const ties = !!o.ties;
-    // `dedupeHoles` (default OFF, 2026-10-20): the shape builder's rule
+    const ties = o.ties !== false;
+    // `dedupeHoles` (built OFF 2026-10-20 and flipped ON the same day, Kent;
+    // `dedupeHoles: false` is the off arm): the shape builder's rule
     // (pushRun, "Waiting on Kent" 25), word for word, on this lane's stream.
     // `T` rounds to the file's unit, so two penetrations nearer than 0.1 mm
     // land on one point and the writers keep both: the needle goes down twice
@@ -1921,7 +1927,7 @@
     // reason pushRun gives (a cut is three jump records to a DST reader).
     // `stitchAt` is the one place a stitch record enters the stream before
     // applyTies, so the rule is asked once. Off, every stitch is unchanged.
-    const dedupeHoles = !!o.dedupeHoles;
+    const dedupeHoles = o.dedupeHoles !== false;
     // `underlayDirection` (default OFF here, 2026-10-20; the shape lane's is
     // ON since 2026-10-11, defect 57): a satin column begins at whichever of
     // its two ends is nearer where its underlay finished, satin.startNear,
