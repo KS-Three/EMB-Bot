@@ -258,6 +258,10 @@ def test_the_column_lane_holds_the_cored_hole_and_sews_the_other_as_before():
     assert _over(plain, left) > 0                                    # the premise: crossed OFF
     assert _over(flag, left, (stitches.SATIN, stitches.UNDERLAY, stitches.TRAVEL)) == 0
     assert _over(flag, right) == _over(plain, right)                 # the other hole: the lane's own
+    # the columns on the right hole's side are the lane's own, point for point
+    def right_side(runs):
+        return [p for r in runs if r.kind == stitches.SATIN for p in r.points if p[0] > 0.5]
+    assert right_side(flag) == right_side(plain)
     assert _over(floor, left) == 0 and _over(floor, right) == 0
     for r in flag:
         if r.kind == stitches.SATIN:
@@ -333,6 +337,24 @@ def test_underlay_and_travel_are_cut_at_the_counter_and_columns_are_not():
     assert _cut_runs_off_counters([clear], held, 0.2)[0] is clear
 
 
+def test_a_bean_cut_at_a_counter_keeps_every_pass_and_its_direction():
+    """A three-pass bean (out, back, out) through the counter: cut stitch by
+    stitch, each side keeps all three passes; differenced as one polyline
+    GEOS deduplicated the overlapping passes to one (review, 2026-10-19)."""
+    held = Polygon(_square(0, 0, 3.0), [_square(0, 0, 0.45)])
+    bean = StitchRun(points=[(-3.0, 0.0), (3.0, 0.0), (-3.0, 0.0), (3.0, 0.0)],
+                     kind=stitches.RUN, shape_id="S1")
+    out = _cut_runs_off_counters([bean], held, 0.2)
+    assert all(r.kind == stitches.RUN for r in out)
+    length = sum(LineString(r.points).length for r in out)
+    assert length == pytest.approx(3 * (6.0 - 1.3), abs=1e-6)          # every pass, less the hold
+    assert all(abs(p[0]) >= 0.65 - 1e-9 for r in out for p in r.points)   # nothing inside the hold
+    # direction is the run's own: the first piece starts where the bean did
+    assert out[0].points[0] == (-3.0, 0.0)
+    back = StitchRun(points=[(3.0, 0.0), (-3.0, 0.0)], kind=stitches.UNDERLAY, shape_id="S1")
+    assert [r.points[0] for r in _cut_runs_off_counters([back], held, 0.2)] == [(3.0, 0.0), (-0.65, 0.0)]
+
+
 # --- (2) the glyph guard ---------------------------------------------------------------
 
 def _frame(cores):
@@ -369,7 +391,14 @@ def test_the_guard_keeps_a_core_under_a_glyph_and_drops_one_under_nothing(monkey
     assert keep is not None
     assert keep[0:5, 0:5].all() and not keep[70:75, 70:75].any()
     assert int(keep.sum()) == 25
-    # under a shape no tagger calls lettering: nothing kept, None
+    # the second core under a shape no tagger calls lettering (a solid ground
+    # covering it), the glyph still there: the vote keeps the first alone
+    ground = SimpleNamespace(polygon=Polygon(_square(2.25, 2.25, 1.0)), meta={}, shape_id="S2")
+    monkeypatch.setattr(pipeline_mod, "build_generation",
+                        lambda *a, **k: SimpleNamespace(regions=[ground, glyph], p=_prep(mask)))
+    keep = pipeline_mod.cored_counter_core("img", cfg, None, _prep(mask))
+    assert keep is not None and int(keep.sum()) == 25 and keep[0:5, 0:5].all()
+    # under a shape no tagger calls lettering, and no glyph anywhere: None
     plain = SimpleNamespace(polygon=_ring_glyph(), meta={}, shape_id="S1")
     monkeypatch.setattr(pipeline_mod, "build_generation",
                         lambda *a, **k: SimpleNamespace(regions=[plain], p=_prep(mask)))

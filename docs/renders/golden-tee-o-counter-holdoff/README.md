@@ -61,7 +61,9 @@ of any shape covers, the thread painted at its laid width. Two ceilings bound it
 **At 5 mm the hold-off does what #988 asked.** The O (`Sbf659511`, the Column lane) lays
 no stitch in its traced hole: 27 satin, 4 underlay and 3 travel segments ran through it
 with #988's flag alone, 0 of each now. The opening goes 0.069 → 0.143, level with the
-floor-ON arm, 12 stitches fewer than #988's flag alone. What still sews in the hole is a
+floor-ON arm, 6 stitches fewer than #988's flag alone (976 → 970); the floor-ON arm
+itself is unchanged (982 / 14, as #988 measured it), since the floor already holds
+every hole. What still sews in the hole is a
 different shape: `S9ef10791`, the non-lettering ground the letters sit on, 14 satin
 segments in the traced hole under both arms. Its own artwork polygon never reaches the
 counter (it is not among the shapes round it); stage 5 extends it under the O and that
@@ -80,6 +82,27 @@ opening reaches past the traced hole to the counter's own edge, and a little pas
 the top right (`golden_tee_4mm_o_noguard.png`). Not a physical-constant question: the
 cross floor is the engine's own, and a ring column round the hole (a loop the skeleton
 kept) would sew that band; the pinhole read is the next thing to fix on this tier.
+
+## Known limits (from the review of the first cut)
+
+- **The guard reads `is_lettering` on the flag-OFF generation**, where the counter is
+  filled, so a letter whose only hole is that counter can read as a solid blob
+  (`lettering_columns_skip_blobs`, default ON) and be refused. A refusal is OFF, so
+  nothing is lost against today, but it bounds what the flag can ever open.
+- **A column that merely grazes the hold zone is re-emitted** through the Column lane's
+  zigzag (`columns._satin_points`), whose split comb reads the cross legs alone where
+  `satin_stroke`'s reads cross and return legs in turn. Identical for crosses up to
+  `SPLIT_SATIN_ABOVE_MM` (every small-print column); on a wider column beside a cored
+  hole the split points can move. Cosmetic.
+- **A hop across the counter is a jump, and under `trim_at_mm` an untrimmed one** --
+  the link rule's own answer, the same the small-print floor gives in the Column lane
+  (a routed path round the counter where one exists, else a jump). `counter_open`
+  paints needle-down thread only, so a float would read as open. Counted at 5 mm: no
+  jump, trimmed or not, crosses the counter; the O's pieces are linked round it.
+- **A bean or underlay run is cut stitch by stitch**, never as one polyline: GEOS's
+  overlay dedups overlapping edges, and the first cut turned a three-pass bean into one
+  pass over its whole length (found by the review, fixed, pinned in the tests). The 5 mm
+  numbers above are unchanged by the fix (970 / 11, 0.143).
 
 ## The guard's verdicts
 
@@ -106,8 +129,34 @@ between the run floor and the area floor pays nothing.
 
 ## The 17-design corpus (`small_lettering_compare.corpus_designs`), OFF beside ON
 
-See the PR body of this branch for the measured table (md5s are Kent's Windows box;
-Fremont's stream md5 is per machine, `docs/renders/detail-spokes/README.md`).
+Measured on this branch (main 346912eb), Windows, one digitize at a time. Every OFF md5
+is #988's OFF column. ON is OFF on all 17: the guard refuses the screenshot's five cores,
+and no other design has a candidate core a glyph holds at its corpus size (golden_tee's
+O counter is over the floor at 80 mm). Where no core is a candidate the ON run costs
+nothing extra (becker 25 → 27 s, fremont 133 → 124 s).
+
+| design | OFF | ON | changed shapes |
+|---|---|---|---|
+| becker | 8,758 / 29, `19b38100` | identical | 0 |
+| tires | 2,732 / 8, `6a6ada47` | identical | 0 |
+| enthusiast | 2,414 / 8, `9944fec7` | identical | 0 |
+| fremont | 20,882 / 49, `44382087` | identical | 0 |
+| bridge | 18,923 / 99, `197a3287` | identical | 0 |
+| golden_tee (80 mm) | 8,412 / 45, `9208ffe4` | identical | 0 |
+| gaulke | 4,893 / 23, `9f1a2036` | identical | 0 |
+| drone | 19,281 / 130, `a709b157` | identical | 0 |
+| screenshot | 8,505 / 62, `ae664b23` | identical | 0 |
+| fremont_hat81 | 15,359 / 42, `799ba5bc` | identical | 0 |
+| fremont_hat925 | 18,725 / 55, `24936229` | identical | 0 |
+| sp_synthetic_2.5 | 318 / 1, `42401291` | identical | 0 |
+| sp_synthetic_3 | 378 / 2, `88822294` | identical | 0 |
+| sp_synthetic_4 | 547 / 4, `290e5ab0` | identical | 0 |
+| sp_fremont_tagline_2.5 | 590 / 5, `c57e1189` | identical | 0 |
+| sp_fremont_tagline_3 | 719 / 5, `df03b9cc` | identical | 0 |
+| sp_fremont_tagline_4 | 985 / 10, `35ff0da6` | identical | 0 |
+
+md5s are Kent's Windows box; Fremont's stream md5 is per machine
+(`docs/renders/detail-spokes/README.md`).
 
 ## Renders
 

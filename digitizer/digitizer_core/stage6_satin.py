@@ -6300,6 +6300,11 @@ def _cut_runs_off_counters(runs: list[StitchRun], held: Polygon, clear_mm: float
     between them. The columns were held by `_hold_off_counters`."""
     zone = unary_union([Polygon(r) for r in held.interiors]).buffer(clear_mm)
     out: list[StitchRun] = []
+
+    def flush(pts: list) -> None:
+        if len(pts) >= 2 and LineString(pts).length >= machine.MIN_STITCH_MM:
+            out.append(StitchRun(points=pts, kind=run.kind, shape_id=run.shape_id))
+
     for run in runs:
         if run.kind == stitches.SATIN or len(run.points) < 2:
             out.append(run)
@@ -6308,12 +6313,38 @@ def _cut_runs_off_counters(runs: list[StitchRun], held: Polygon, clear_mm: float
         if not line.intersects(zone):
             out.append(run)
             continue
-        rest = line.difference(zone)
-        for g in getattr(rest, "geoms", [rest]):
-            if g.geom_type != "LineString" or g.length < machine.MIN_STITCH_MM:
+        # Stitch by stitch, never the polyline at once: GEOS's overlay nodes
+        # and DEDUPLICATES overlapping edges, so a three-pass bean differenced
+        # whole came back as one pass over its whole length (review of the
+        # first cut, 2026-10-19). Each stitch is cut on its own and the
+        # pieces chained where they meet, so every pass of a bean survives
+        # and the run's direction is its own.
+        cur: list = []
+        for a, b in zip(run.points, run.points[1:]):
+            seg = LineString([a, b])
+            if seg.length < 1e-9:
                 continue
-            out.append(StitchRun(points=[(float(x), float(y)) for x, y in g.coords],
-                                 kind=run.kind, shape_id=run.shape_id))
+            if not seg.intersects(zone):
+                if not cur:
+                    cur.append((float(a[0]), float(a[1])))
+                cur.append((float(b[0]), float(b[1])))
+                continue
+            rest = seg.difference(zone)
+            parts = sorted((g for g in getattr(rest, "geoms", [rest])
+                            if g.geom_type == "LineString" and g.length > 1e-9),
+                           key=lambda g: seg.project(SPoint(g.coords[0])))
+            for g in parts:
+                p0, p1 = ((float(g.coords[0][0]), float(g.coords[0][1])),
+                          (float(g.coords[-1][0]), float(g.coords[-1][1])))
+                if cur and math.dist(cur[-1], p0) < 1e-6:
+                    cur.append(p1)             # continues the piece in hand
+                else:
+                    flush(cur)
+                    cur = [p0, p1]
+                if math.dist(p1, (float(b[0]), float(b[1]))) >= 1e-6:
+                    flush(cur)                 # the stitch leaves the zone's far side later
+                    cur = []
+        flush(cur)
     return out
 
 
