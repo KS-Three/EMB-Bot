@@ -49,6 +49,70 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   branch guard) is a separate open item, "Waiting on Kent" 26.
   *(ruled 2026-10-20 — Kent; built 2026-10-20 — PR #994)*
 
+- **`dissolve_phantom_blends` ON, then `clip_keep_pieces` ON, in that order. Kent, 2026-10-20, on PR #1003's table.**
+  The 2026-09-04 banking of the halo lever (two mild negatives and Whale's
+  five-of-six residual) is superseded. Priced chance-corrected at 80 mm, the
+  lever takes bridge 17,653 → 15,196 stitches and 89 → 66 trims, and with it
+  ON the clip flip costs bridge +1.1% and one trim for no κ change while
+  lifting golden_tee's κ 0.9958 → 0.9995. The one cost he accepted (06:58Z):
+  MARINE at 80 mm folds one letter on the SKELETON tier, 6 crossing pairs
+  against 0, on the `lettering_columns=False` path the shipped Column lane
+  does not reach. Do not build a second halo flag for the SLIC+RAG lane (the
+  lever IS the port — "grep the other lane", 2026-09-04 below) and do not add
+  a width gate to the clip: it would take golden_tee's thin real piece, which
+  is the flip's gain. `0111` Whale's three leftover shards (3.06 mm²) stay the
+  named residual, cause not established. False is the pre-flip engine on
+  both; a test pricing another flag pins `PRE_FLIP`. *(ruled 2026-10-20 —
+  Kent; measured 2026-10-20 — PR #1003; flipped 2026-10-20 — PR #1005)*
+
+- **`lettering_columns_fold_cuts` ON. Kent, 2026-10-20.**
+  Flip-ready on PR #986's sewn judge and coverage guard (no glyph sews worse
+  ON than OFF at 50, 80 or 120 mm; lowercase folds 5 → 0 at 80 mm). The price
+  he took is time: a word with lowercase in the Column lane digitizes 2 to
+  3.4× slower, on every user job that reaches it. Do not re-ask on speed
+  alone; a sew-out showing a fold the judge missed, or a job-time budget,
+  reopens it. Every ratio behind it (`COVER_SLACK`, `SEWN_FOLD_DEG`,
+  `SEWN_SHORT_FRAC`, `STALL_FRAC`, `FOLD_DEG`, `FOLD_MIN`, `STUB_WIDTHS`,
+  `TURN_MAX_DEG`) is from one synthetic word, unsewn, gate 1.
+  *(ruled 2026-10-20 — Kent; flipped 2026-10-20 — PR #999)*
+
+- **`lettering_columns_small_stem` ON, and `small_dot_rung` ON only SCOPED (`small_dot_rung_lettering` ON with it). Kent, 2026-10-20, the scope confirmed the same day.**
+  The ruling named the rung; the lane shipped it scoped to a dot over a
+  same-colour stem and Kent confirmed, because the unscoped rung buries the
+  Wisconsin star on his Fremont 80 mm Hat (sewn in the first white block,
+  covered by the black fill), adds rope slivers, turns EST 1895 into blobs at
+  50 mm and admits photo specks (sunset +78 shapes, +23 trims); scoped, it is
+  byte-identical to OFF on Fremont at 50 and 80 mm, the tagline cells and
+  Becker, and still sews every synthetic i/j dot ("hijlij" 0/4 → 4/4). Do not
+  unscope it (one line, `small_dot_rung_lettering = False`) without a sew-out
+  that wants the star gone. `RUN_MIN_LOOP_MM` stays 2.2, a cloth value, gate
+  1; the rung's 0.45 / 3 / 1.35 and the scope's ratios are in-sample
+  candidates. *(ruled 2026-10-20 — Kent; flipped 2026-10-20 — PR #1002;
+  renders `docs/renders/small-stem-dot/README.md`)*
+
+- **`subpixel_corner_runs` ON; `subpixel_edges_min_px_per_mm` stays unset. Kent, 2026-10-20 (the floor: 2026-10-11).**
+  The corner runs cure Becker's outline reversals at 1.8 px/mm (7.1 → 0.9 per
+  100 mm) without the 0.68 mm staircase a resolution floor brings back; they
+  reach the native read on upscaled sources only, so Fremont at 80 mm is
+  untouched. Do not re-propose the floor. Read before proposing any flip that
+  was measured on the old outline: `satin_per_stroke` ON now leaves 8.3 mm²
+  bare against 6.8 (its guard pins `PRE_FLIP`), the border tier gets no
+  per-shape column on Becker at 80 mm, and logo_mfab_lc no longer splits at
+  stage 5. *(ruled 2026-10-20 — Kent; flipped 2026-10-20 — PR #1001)*
+
+- **The browser engine's `ties`, `fillStagger` and `dedupeHoles` are ON; only an explicit `false` turns one off. Kent, 2026-10-20.**
+  Reads are `o.X !== false`, like `underlay`: a falsy `0` or `null` no longer
+  means off, and no caller passes one. The Studio passes none, so every
+  browser-lane file now locks each trim end (four 0.8 mm stitches a lock),
+  staggers shape fills (+4 to 7% stitches) and lays a rounded hole once; bean
+  and run fonts LOSE 18–23% of their records, cut-heavy text gains up to +28%
+  (mai_en_fleur 80 mm), no trim is added anywhere. A pin taken on the old
+  engine builds with the trio OFF; `file-cut-census` and
+  `sub-unit-stitch-census` now read the flipped engine, so their dated docs
+  describe the one before. Not sewn: a sew-out card block is the one thing
+  that reopens any of the three. *(ruled 2026-10-20 — Kent; flipped and
+  measured 2026-10-20 — PR #1000)*
+
 - **No speed feature: speed stays with the operator. Kent, 2026-10-14 20:20 CDT (VP relay of Kent), on PR #951.**
   Asked whether to adjust embroidery speeds for harder stitches, he ruled no: not a speed
   figure on the worksheet, not U01 SLOW/FAST output, not a speed advisory. What made it cheap
