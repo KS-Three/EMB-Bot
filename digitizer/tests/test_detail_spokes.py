@@ -383,14 +383,18 @@ def test_a_mark_whose_host_sewed_nothing_sews_last():
 # --- the whole pipeline: Fremont 80 mm, the Studio's Hat request ----------------------
 
 # Today's main with the flag OFF (set explicitly): 14,824 stitches / 43 trims,
-# the bean-holds-on cell of docs/renders/bean-holds-on/README.md. The stream's
-# md5 is NOT pinned: it is per MACHINE on this fixture, not even per platform
-# (the goldens' lesson: numerics diverge per fixture, counts agree). Kent's
-# Windows box reads `75f44f90`; CI's Linux read `027d14e6` on PR #980's shard
-# 5/6 and `75f44f90` on PR #983's, the same engine both times. So the OFF
-# pin is the pair of counts and the absence of any mark; the ON cell below
-# is pinned against OFF shape by shape, which holds on any machine.
+# the bean-holds-on cell of docs/renders/bean-holds-on/README.md. The stream
+# md5 depends on the host's SIMD dispatch (PR #987), not on test order or
+# platform: AVX2 hosts (Kent's Ryzen 7 4700U, CI's EPYC 7763) read `75f44f90`,
+# AVX-512 hosts (CI's EPYC 9V45 / 9V74) read `027d14e6`, same tree and wheels.
+# Disabling AVX-512 via NPY_DISABLE_CPU_FEATURES + OPENCV_CPU_DISABLE in
+# conftest was tried and did NOT take on the 9V74 (numpy still enabled
+# AVX512F, OpenCV still ran AVX512-SKX; still `027d14e6`), so the pin is keyed
+# on numpy's AVX512F flag: two values, one per SIMD class, no tolerance. A red
+# names the host and its SIMD; junit.xml records both on every run.
 FREMONT_80_OFF_COUNTS = (14824, 43)
+FREMONT_80_OFF_MD5 = {False: "75f44f905f946705695cf6365f2a8d5f",   # AVX2
+                      True: "027d14e68b7a7f91a0a9399077f67847"}    # AVX-512
 STAR_MM = (1.28, -12.02)        # the star's centre, design mm, y down
 
 
@@ -398,6 +402,35 @@ def _stream_md5(plan) -> str:
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
     return hashlib.md5(json.dumps(coords).encode()).hexdigest()
+
+
+def _avx512() -> bool:
+    """Whether numpy dispatches AVX-512 here: the key of the OFF pin."""
+    from numpy._core._multiarray_umath import __cpu_features__ as feats
+    return bool(feats.get("AVX512F"))
+
+
+def _host_cpu() -> str:
+    """The CPU model and the SIMD levels numpy dispatches to: what a stream
+    mismatch on a hosted runner has to be read against."""
+    import platform
+    from numpy._core._multiarray_umath import __cpu_features__ as feats
+    # The HARDWARE's AVX-512 flags: numpy's list below is what it ENABLED,
+    # which can differ from what the hardware has.
+    model, hw = platform.processor(), "n/a"
+    try:
+        with open("/proc/cpuinfo", encoding="utf-8") as f:
+            info = f.read()
+        model = next(l.split(":", 1)[1].strip() for l in info.splitlines()
+                     if l.startswith("model name"))
+        hw = sorted({w for w in info.split() if w.startswith("avx512")}) or "none"
+    except (OSError, StopIteration):
+        pass
+    simd = [k for k in ("AVX2", "FMA3", "AVX512F", "AVX512_SKX", "AVX512_ICL", "AVX512_SPR")
+            if feats.get(k)]
+    import cv2
+    return (f"host CPU {model!r}, hardware avx512 {hw}, numpy SIMD {simd}, "
+            f"cv2 {cv2.getCPUFeaturesLine()}")
 
 
 @pytest.fixture(scope="module")
@@ -412,12 +445,13 @@ def fremont_on():
     return ft.run_arm("main", 80.0, None, preflight=False, overrides={"detail_spokes": True})
 
 
-def test_fremont_80_off_is_byte_identical(fremont_off):
+def test_fremont_80_off_is_byte_identical(fremont_off, record_property):
     plan = fremont_off["plan"]
+    # In CI's junit.xml (the shard artifacts), green or red: which host read what.
+    record_property("host_cpu", _host_cpu())
+    record_property("stream_md5", _stream_md5(plan))
     assert (plan.stats.stitch_count, plan.stats.trims) == FREMONT_80_OFF_COUNTS
-    # Recorded, not asserted: a new machine's md5 is information, not a red.
-    # (`_stream_md5(plan)` is what the renders' README quotes.)
-    assert len(_stream_md5(plan)) == 32
+    assert _stream_md5(plan) == FREMONT_80_OFF_MD5[_avx512()], _host_cpu()
     assert not [r for r in fremont_off["result"].regions if r.meta.get("detail_spokes")]
     assert not [w for w in plan.warnings if w["code"] == DETAIL_SPOKES_SEWN]
 
