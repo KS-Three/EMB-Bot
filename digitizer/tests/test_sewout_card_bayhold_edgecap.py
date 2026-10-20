@@ -45,8 +45,11 @@ def test_the_arms_differ_only_in_the_knob_under_test_and_are_valid_config():
     # B: the switch is ON in every arm by override; the holds are #967's two candidates.
     # Both holds are ON by default since 2026-10-15 (Kent's flip), so the card pins
     # the counter hold OFF everywhere and the bay hold OFF in its OFF arm: the cuts
-    # mean what they did when the card was cut.
-    assert ce.SWITCH == {"small_text_true_size": True, "bean_letter_counter_hold_mm": None}
+    # mean what they did when the card was cut. The straight-stretch stitch
+    # (`bean_letter_straight_mm`, ON at 0.7 since Kent's 2026-10-20 flip) is
+    # pinned None for the same reason.
+    assert ce.SWITCH == {"small_text_true_size": True, "bean_letter_counter_hold_mm": None,
+                         "bean_letter_straight_mm": None}
     assert [lbl for lbl, _o in ce.B_ARMS] == ["off", "hold0.2", "hold0.25"]
     assert ce.B_ARMS[0][1] == {"bean_letter_bay_hold": None}
     assert ce.B_ARMS[1][1] == {"bean_letter_bay_hold": 0.2}

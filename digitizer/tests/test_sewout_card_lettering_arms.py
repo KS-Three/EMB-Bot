@@ -42,7 +42,8 @@ def card(tmp_path_factory):
 
 def test_the_cuts_differ_only_in_the_flag_under_test_and_are_valid_config():
     base = {"small_text_true_size": True,
-            "bean_letter_counter_hold_mm": None, "bean_letter_bay_hold": None}
+            "bean_letter_counter_hold_mm": None, "bean_letter_bay_hold": None,
+            "bean_letter_straight_mm": None}    # 0.7 by default since 2026-10-20, Kent's flip
     assert ca.SWITCH == base
     # the switch is ON in every cut, by override, and both holds are pinned OFF
     # (they are ON by default since Kent's flip of 2026-10-15, after the card was
