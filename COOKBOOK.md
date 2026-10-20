@@ -1742,31 +1742,45 @@ over `5a4c019..0eb5e02` (2026-10-11 → 10-19).
 ### Reading a golden or md5 mismatch (2026-10-19)
 
 A byte-identical pin can go red on a tree whose engine did not change, and
-three wrong stories in a row were told about one such red before the right
+FOUR wrong stories in a row were told about one such red before the right
 variable was recorded (`.claude/memory/detail-spokes-on-2026-10-18.md`;
-PRs #980, #983, #987). Read a mismatch in this order:
+PRs #980, #983, #987, and the 2026-10-20 cap). Read a mismatch in this order:
 
-1. **Which host read it.** A stitch stream's md5 differs by the host's SIMD
-   CLASS — not by platform, not by test order. The same tree and wheels read
-   `75f44f90` for Fremont 80 mm OFF on every AVX2 host (Kent's Ryzen 7 4700U,
-   CI's EPYC 7763) and `027d14e6` on AVX-512 hosts (CI's EPYC 9V45 / 9V74),
-   because numpy and OpenCV dispatch AVX-512 kernels where the hardware has
-   them and hosted runners draw different CPUs run to run. Pinning the test
-   environment to AVX2 (`NPY_DISABLE_CPU_FEATURES`, `OPENCV_CPU_DISABLE` at
-   the top of `conftest.py`) was tried and did NOT take on a 9V74, so it is
-   gone. `tests/test_detail_spokes.py` holds the pattern: `FREMONT_80_OFF_MD5`
-   is a dict keyed on
-   `numpy._core._multiarray_umath.__cpu_features__["AVX512F"]`, counts are
-   asserted beside it, and the test writes `host_cpu` and `stream_md5` as junit
-   properties (`record_property`), so the `junit.xml` artifact of the shard
-   that runs it names the CPU model, the hardware's avx512 flags, numpy's
-   enabled SIMD and `cv2.getCPUFeaturesLine()` on every run, green or red.
-   **Before theorising about a stream red, read those two properties** (or
-   print `_host_cpu()` from that file locally). Four requests through one
-   service process returned byte-identical designs: it is not a product
-   defect. Pin a new stream the same way — two values keyed on AVX512F, no
-   tolerance, the host named in the assertion message — or pin counts and
-   per-shape equality against OFF and no md5 at all.
+1. **Which IPP path read it.** A stitch stream's md5 differs by the code path
+   Intel IPP — bundled inside the OpenCV wheel — dispatches to on the host:
+   not by platform, not by test order, and not by numpy's SIMD, OpenCV's own
+   kernels or OpenBLAS's core type. Measured 2026-10-20 on an AVX-512 Sapphire
+   Rapids Xeon with CI's wheels, each candidate forced down in turn: numpy
+   (`NPY_DISABLE_CPU_FEATURES`, X86_V4 / ICL / SPR off), OpenCV's AVX512-SKX
+   kernels (`OPENCV_CPU_DISABLE=AVX512-SKX`) and OpenBLAS (`OPENBLAS_CORETYPE`
+   HASWELL / SKYLAKEX) all left `027d14e6`; `OPENCV_IPP=avx2` read `75f44f90`
+   (Kent's Ryzen 7 4700U, CI's EPYC 7763) and `OPENCV_IPP=avx512` read
+   `050452` — a Cascade Lake Xeon's red, byte-for-byte — because IPP's AVX-512
+   path sub-dispatches on the newer AVX-512 extensions, so Zen 4 (CI's EPYC
+   9V45 / 9V74) and Sapphire Rapids agree and Cascade Lake does not; `sse42`
+   and `disabled` read two more values nobody has. **So `tests/conftest.py`
+   caps the TEST environment at `OPENCV_IPP=avx2`** (Kent's call 2026-10-20;
+   OpenCV reads it lazily, on IPP's first use, so import order cannot defeat
+   it) and every host reads one value. The shipped service is not capped.
+   PR #987's two-value pin keyed on numpy's AVX512F was keyed on a bystander,
+   and its earlier env pin "did not take" because `OPENCV_CPU_DISABLE` wants
+   OpenCV's hyphenated names (`AVX512-SKX`, not `AVX512_SKX`; an unknown name
+   is ignored with a printed warning) and numpy 2.5 refuses `AVX512F` outright
+   (its groups are `X86_V3 X86_V4 AVX512_ICL AVX512_SPR`) — and neither was
+   the mover. **A switch proves a library is the mover only when the library
+   confirms it took**: `cv2.ipp.getIppVersion()` names the path (`(l9)` is
+   AVX2), `cv2.getCPUFeaturesLine()` marks a disabled feature with `?`, and
+   numpy's `__cpu_features__` drops what it disabled.
+   `tests/test_detail_spokes.py` holds the pattern: ONE md5 beside the counts,
+   `test_test_environment_caps_ipp_at_avx2` as the tripwire that separates
+   "the cap did not take" from "the engine changed", and junit properties
+   (`record_property`) naming the CPU model, the hardware's avx512 flags,
+   numpy's enabled SIMD, OpenCV's feature line and IPP's path on every run,
+   green or red. **Before theorising about a stream red, read those
+   properties** (or print `_host_cpu()` from that file locally). Four
+   requests through one service process returned byte-identical designs: it
+   is not a product defect. Pin a new stream the same way — one value, no
+   tolerance, the host named in the assertion message.
 2. **Is it one of CI's two deselects.** CI deselects TWO golden node IDs since
    2026-10-08 (the `photo/enthusiast_logo.png` rows of
    `test_flat_lane_byte_identical` and `test_stage2_photo_segment`); the towel
