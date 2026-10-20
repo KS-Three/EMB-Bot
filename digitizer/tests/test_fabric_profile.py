@@ -23,13 +23,12 @@ from __future__ import annotations
 import pytest
 
 import json
-import time
 
 from digitizer_core import digitize, export
 from digitizer_core.fabrics import (FABRICS, apply_profile, get_fabric,
                                     normalize_profile, profile_clamps)
 from digitizer_core.pipeline import fabric_for
-from tests.conftest import TESTDATA, cfg
+from tests.conftest import TESTDATA, cfg, wait_for_job
 
 ART = TESTDATA / "logo_whitebg.png"
 
@@ -129,10 +128,7 @@ def _post(client, config):
 
 
 def _wait(client, job_id: str) -> None:
-    for _ in range(600):
-        if client.get(f"/jobs/{job_id}").json()["state"] in ("done", "error"):
-            return
-        time.sleep(0.1)
+    wait_for_job(client, job_id)
 
 
 def test_service_refuses_a_malformed_profile_at_submit(client):

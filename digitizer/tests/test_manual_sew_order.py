@@ -48,7 +48,6 @@ from __future__ import annotations
 import io
 import json
 import os
-import time
 from pathlib import Path
 
 import numpy as np
@@ -58,6 +57,8 @@ import shapely
 from shapely.geometry import Polygon
 
 fastapi = pytest.importorskip("fastapi", reason="service extra not installed")
+
+from .conftest import wait_for_job  # noqa: E402
 
 ART = Path(__file__).resolve().parents[1] / "testdata" / "logo_whitebg.png"
 BASE = {"target_width_mm": 80.0, "preflight": False}
@@ -74,11 +75,7 @@ def _digitize(client, config: dict) -> dict:
                         data={"config": json.dumps(config)})
     assert r.status_code == 202, r.text
     job_id = r.json()["job_id"]
-    for _ in range(1200):
-        state = client.get(f"/jobs/{job_id}").json()
-        if state["state"] in ("done", "error"):
-            break
-        time.sleep(0.1)
+    state = wait_for_job(client, job_id)
     assert state["state"] == "done", state.get("detail") or state.get("error")
     return state
 

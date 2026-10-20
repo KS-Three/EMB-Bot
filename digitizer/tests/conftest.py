@@ -1,5 +1,6 @@
 import os
 import shutil
+import time
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -109,6 +110,68 @@ def make_client():
     from fastapi.testclient import TestClient
 
     return lambda app, **kw: TestClient(app, **kw)
+
+
+# The deadline every service test waits on. Here, beside `client`, so one
+# rule serves every module that drives `/digitize` or `/digitize-manual`
+# through the shared app; the service import is inside the function for the
+# same reason `client`'s is (fastapi is the optional extra).
+#
+# WHY A DEADLINE TIED TO THE SERVICE, NOT A LOOP COUNT. Every module here
+# used to poll `for _ in range(600): ... sleep(0.1)`, a 60 s wall budget
+# (test_manual_sew_order.py had already quietly doubled its own to 1200).
+# That number measured the MACHINE, not the contract: `registry` is one
+# worker thread per process, so a job's wait is the queue ahead of it (the
+# cache-identity tests deliberately submit real digitizes and never read
+# them, so they are still sewing when the next test's job lands behind
+# them) PLUS its own run, and the own-run half moves with the host and its
+# load. `test_review_payload_carries_text_cluster_fields_over_http`
+# (`enthusiast_logo` at 90 mm, 24 tesseract spawns) measures 10.4 s serial
+# on a 4-core cloud box, 19 s under `-n 4` there, 12.4 s on the reference
+# box -- and tripped the 60 s budget as `'running' == 'done'` in CI on
+# 10ae9cc, three times in one `-n auto` session on 2026-09-03, and on
+# Kent's laptop under `-n 2` on 2026-10-19 (PR #987's body), each time
+# passing on re-run with nothing changed. 0 of 30 runs of this file alone
+# reproduced it here (2026-10-20, `-n 2`, `-n 4`, serial): the loss is to
+# contention, not to the code under test.
+#
+# The service's own guarantee is `JOB_TIMEOUT_S`: a RUNNING job past it is
+# reported `error` on the next read (`JobRegistry._expire_locked`), so a
+# genuine runaway still fails every caller's `state == "done"` assertion,
+# with `TIMED_OUT` in `error` and the registry's detail instead of a bare
+# `'running' == 'done'`. This waits for that terminal state and gives up
+# only past the service's own limit plus a margin, naming the registry's
+# counts when it does, so the next person reads "queued behind N" instead
+# of guessing.
+JOB_WAIT_MARGIN_S = 30.0
+
+
+def wait_for_job(client, job_id: str, *, interval_s: float = 0.1) -> dict:
+    """Poll `/jobs/{job_id}` until it is `done` or `error`; return that state.
+
+    Raises AssertionError past `JOB_TIMEOUT_S + JOB_WAIT_MARGIN_S`, naming
+    the states seen (and when), and `/health`'s registry counts.
+    """
+    from digitizer_service.jobs import JOB_TIMEOUT_S
+
+    t0 = time.monotonic()
+    deadline = t0 + JOB_TIMEOUT_S + JOB_WAIT_MARGIN_S
+    seen: dict[str, float] = {}
+    while True:
+        r = client.get(f"/jobs/{job_id}")
+        state = r.json()
+        if r.status_code != 200 or "state" not in state:
+            raise AssertionError(f"job {job_id}: HTTP {r.status_code} {state!r}")
+        seen.setdefault(state["state"], round(time.monotonic() - t0, 1))
+        if state["state"] in ("done", "error"):
+            return state
+        if time.monotonic() > deadline:
+            jobs = client.get("/health").json().get("jobs")
+            raise AssertionError(
+                f"job {job_id} still {state['state']!r} after "
+                f"{time.monotonic() - t0:.0f}s (state first seen at s: {seen}); "
+                f"registry {jobs}")
+        time.sleep(interval_s)
 
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
