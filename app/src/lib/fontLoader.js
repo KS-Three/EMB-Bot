@@ -98,14 +98,14 @@ export function loadCoverage() {
   return coveragePromise;
 }
 
-// Style tags per font — src/fonts/font-styles.json, written once by
+// Style tags per font — src/fonts/manifest-styles.json, written once by
 // tools/tag-font-styles.mjs. Resolves {key: [tag, ...]} or null. Optional by
 // design: a missing or unreadable file means the font search falls back to
 // name/key matching, exactly as before the tags existed. No model runs here.
 let stylesPromise = null;
 export function loadFontStyles() {
   if (!stylesPromise) {
-    stylesPromise = readBytes("font-styles.json")
+    stylesPromise = readBytes("manifest-styles.json")
       .then((b) => {
         const s = JSON.parse(new TextDecoder().decode(b));
         return s && s.fonts ? s.fonts : null;

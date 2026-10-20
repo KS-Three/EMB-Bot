@@ -4,7 +4,7 @@
 //   node tools/tag-font-styles.mjs [--model gemma3:4b] [--force] [--only key,key]
 //
 // Looks at each font's static preview PNG (src/fonts/previews/<key>.png) with a
-// LOCAL Ollama vision model and writes src/fonts/font-styles.json, a plain
+// LOCAL Ollama vision model and writes src/fonts/manifest-styles.json, a plain
 // {key: [tag, ...]} map drawn from the fixed vocabulary below. The app only
 // ever reads that committed JSON — Ollama is a build-time tool here, never a
 // runtime dependency, and nothing leaves the machine.
@@ -17,7 +17,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const OUT = join(root, "src", "fonts", "font-styles.json");
+const OUT = join(root, "src", "fonts", "manifest-styles.json");
 
 export const VOCAB = [
   "script", "handwritten", "brush", "serif", "sans", "slab", "block", "outline",

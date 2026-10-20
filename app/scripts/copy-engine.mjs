@@ -53,8 +53,8 @@ if (existsSync(coverageSrc)) copyFileSync(coverageSrc, coverageOut);
 else if (existsSync(coverageOut)) unlinkSync(coverageOut);
 // Style tags for the font search (tools/tag-font-styles.mjs). Optional, same as
 // coverage: no file means name/key search only.
-const stylesSrc = join(srcDir, "fonts", "font-styles.json");
-const stylesOut = join(fontsOut, "font-styles.json");
+const stylesSrc = join(srcDir, "fonts", "manifest-styles.json");
+const stylesOut = join(fontsOut, "manifest-styles.json");
 if (existsSync(stylesSrc)) copyFileSync(stylesSrc, stylesOut);
 else if (existsSync(stylesOut)) unlinkSync(stylesOut);
 const wantBins = new Set(readdirSync(binSrc).filter((f) => f.endsWith(".embf")));

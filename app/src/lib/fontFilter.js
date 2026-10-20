@@ -1,7 +1,7 @@
 // Pure font-list filtering for the browser dialog. Kept out of the component
 // so it's unit-testable without DOM.
 //
-// `styles` is the optional {key: [tag, ...]} map from src/fonts/font-styles.json
+// `styles` is the optional {key: [tag, ...]} map from src/fonts/manifest-styles.json
 // (tools/tag-font-styles.mjs). With it, a query also matches a font by its
 // STYLE: every word of the query must hit the name, the key, a tag, or a
 // synonym of a tag, so "bold script" narrows to bold script fonts. Without it
