@@ -27,9 +27,11 @@ from digitizer_core.threads import rgb_to_lab
 from .conftest import TESTDATA
 
 
-def test_flag_defaults_off_and_the_rung_is_untouched():
+def test_flag_defaults_on_and_the_rung_is_untouched():
+    """Both ON since 2026-10-20 (Kent's flip of the rung, scoped: PR #991
+    showed the unscoped rung burying Fremont's Wisconsin star)."""
     cfg = PipelineConfig()
-    assert cfg.small_dot_rung_lettering is False and cfg.small_dot_rung is False
+    assert cfg.small_dot_rung_lettering is True and cfg.small_dot_rung is True
     assert machine.RUN_MIN_LOOP_MM == 2.2
     assert machine.DOT_RUNG_STITCH_MM == 0.45 and machine.DOT_RUNG_PASSES == 3
     assert machine.DOT_RUNG_MIN_LOOP_MM == pytest.approx(1.35)
